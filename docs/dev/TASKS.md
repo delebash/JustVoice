@@ -1130,11 +1130,69 @@ FOUND WHILE BUILDING — needs the user's word, NOT decided:
         · Mastering options now say what they do: "" = the kind's default (was labelled "None",
           which on an audiobook meant ACX), "none" = raw, and "Custom" dropped (server renders it
           raw with a warning).
-OPEN:   the Lexicon-on-Overview question and the mastering wording above (no answer yet).
+DECIDED 2026-09-28 — "go", on: "Overview mastering options: switch to what the app now
+        offers: 'This kind's default (ACX)', 'None — raw', ACX, iAudio, Podcast, YouTube, with
+        'Custom' gone. This is the wording still waiting on your approval. Say go only if you
+        accept that wording." The mastering wording above stands as built; the mock matches it.
+OPEN:   the Lexicon-on-Overview question (no answer yet).
         Slice 3 (Script as the mock; Flagged needs the §8.14 checks — separate go), Slice 4
         (Render owns direction/takes/Gen/Compare), Slice 5 (presets excision — ruled, needs go).
         Game "1 · Lines" is unverified in the real app — the real data has no game project.
 GO:     given 2026-09-27 for Slices 1 + 2 and decisions 1-6 | needed for 3, 4, 5
+        Slice 3 was re-thought on 2026-09-28 — see the next item.
+
+### Studio Slice 3 — Script, redesigned against the 09-28 measurements (mock first)
+STATE:  DECIDED 2026-09-28. The user asked "think on the design again … is there feature
+        functionality missing for the script processor better ui?"; the review was presented;
+        then "update mock first"; then "1 your rec 2 move it 3 your rec 4 your rec"; then "go".
+        1 → every rec goes into the mock:
+          M1 loud marks go to Flagged + No speaker, not Guessed (badges stay on every line)
+          M2 a row is a paragraph, not a segment (spoken part marked, the tag grey inline)
+          M3 one "No speaker" filter replaces Below the floor + No answer (reason on the row)
+          M4 persona strip = the 1–9 legend, per-chapter counts, click to filter, find past 9
+          M5 one shared speaker picker, not a dropdown on every row
+          M6 real values: routes Auto/Guided/Direct, floor 0.5/0.7 read-only, no invented time
+          A1 row states: failed (server's reason) · can't re-cut (takes) · no text · no dialogue
+             found · cast changed since analyzed
+          A2 "No dialogue found" when quote marks exist but no dialogue was cut
+          A3 stale after Discover adds a persona — only the chapters that name them
+          A4 Double-check replaces Review the guesses (second run, flag disagreements)
+          A5 flag lines where the anchor and the model disagree
+          A6 "your fixes teach the next Analyze: N · Clear"
+          A7 Undo for bulk changes — the undo must not be saved as a fix
+          A8 the batch outlives the page (a service, not the component)
+          A9 Overview's Script row uses the grid's words
+          Keep the bulk "no speaker → Narrator". D1 Review the guesses out · D2 Confidence
+          column out · D3 rewrite in character off Script.
+        2 → "rewrite in character" MOVES to Render's line panel.  3 → A4 + A6 go in the mock
+        now; the build carries them only if their measurements hold.  4 → the go covers this
+        record, the mock, rebuild, validate, republish; no app code.
+        The full review as presented (verbatim), its evidence and its blast radius:
+        `docs/plans/2026-08-15-voice-workflow-redesign.md` §8.23 — READ IT before building.
+DECIDED 2026-09-29 — "your recs go", after measuring both against the user's app (numbers in
+        §8.23 "Measured, then dropped"). Presented: "Double-check: drop it for now. With the
+        model at 99.6%, doubling the time bought one catch in 268 lines, and it can't see the
+        stable kind of miss. The flag checks (§8.14) cost nothing extra. Revisit it if a harder
+        book shows misses that change between runs." and "'Your fixes teach the next Analyze':
+        drop the line. The mechanism does no harm, but the line would promise a benefit the
+        measurement doesn't show. Keeping the 'Clear' button alone isn't worth it either."
+        → A4 and A6 are OUT of Slice 3; removed from the mock (v26).
+WHY:    the mock's review design dates from 2026-08-16 (55–64% right). Measured 09-28: 22 of
+        272 dialogue lines anchored, 937/940 right, every miss at 0.70/1.00 and none repeated —
+        so "Guessed" is nearly all dialogue and cannot be the review signal.
+NOT:    Review the guesses. Double-check (A4) and the "your fixes" line (A6) — measured,
+        dropped 2026-09-29. A gold mark on every guess. Two no-speaker filters. A dropdown on
+        every row. The mock's "Direct / Chunked", "0.55" and "about 4m 3s". Rewrite on Script.
+        B1–B6 (split/merge, text edit, single quotes, dialogue tags, ChapterView duplication,
+        custom-kind Narrator) — out of this slice, each needs its own word.
+BUILT:  mock only — published 2026-09-28 as version 24 (v25 fixed the pre-existing
+        mismatches, v26 dropped A4/A6; §8.18); where each item landed is the table in §8.23
+        "Built in the mock"; validate.py on v26: 19 routes · 152 controls · 0 dead. The eval
+        gained `--fixes-from/--fixes/--fixes-pick` (`server/scripts/eval_attribution.py`).
+        App code: nothing.
+OPEN:   the app build of Slice 3 (without A4/A6).
+GO:     given 2026-09-28 for the record + the mock; 2026-09-29 for the measurements and the
+        drop | needed for app code
 
 ### The audiobook demo is JustWrite's sample, The Ninth Facet
 STATE:  DECIDED 2026-09-27 — "2 make a folder called samples just like jw and the load demo just

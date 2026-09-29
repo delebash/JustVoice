@@ -1,141 +1,199 @@
 <div class="top">
     <span class="crumb"><span class="lnk" onclick="nav('projects')">Projects</span>
-      › <span class="lnk proj-name" onclick="nav('overview')">Stillwater</span> › Studio
+      › <span class="lnk proj-name" onclick="nav('overview')">Stillwater</span>
+      › <span class="lnk" onclick="nav('chapters')">Studio</span>
       › <b>Ch. 1 — The Ninth Door</b></span>
     <span class="pill proj-kind">📖 audiobook</span>
     <span style="flex:1"></span>
-    <span class="pill live"><span class="dot"></span> gemma-3-12b</span></div>
+    <span class="pill live"><span class="dot"></span> gemma-4-26b-a4b-qat</span></div>
   <div class="body">
 
     <div class="card">
       <div class="sh"><h4>Who says what</h4>
-        <span class="sub">214 lines · 5 personas · last analyzed 2 min ago</span></div>
+        <span class="sub">214 lines · 96 spoken · analyzed yesterday</span></div>
       <div class="row" style="margin-bottom:10px">
-        <span class="pill">Route <b>Auto → direct</b></span>
-        <span class="pill">Confidence floor <b>0.55</b></span>
-        <span class="hint">Below the floor a line is demoted to unattributed — the model's guess is
-          kept on the row, not used.</span></div>
+        <span class="pill">Route <b>Auto → Direct</b></span>
+        <span class="pill">Confidence floor <b>0.5</b></span>
+        <span class="hint">Below the floor a line gets no speaker — the model's pick is kept on the row,
+          not used.</span></div>
       <div class="verbs">
-        <span class="verb"><button class="btn p" onclick="toast('Analyzing this chapter — results appear in the lines below.','ok')">✨ Analyze this chapter</button>
-          <span class="vs">Attributes each line to a persona already in the cast. Narration is never
+        <span class="verb"><button class="btn p" onclick="toast('Analyzing this chapter — results appear in the lines below. Lines you set are kept.','ok')">✨ Analyze this chapter</button>
+          <span class="vs">Attributes each spoken line to a persona already in the cast. Narration is never
             sent to the model. Stays on this page.</span></span>
-        <span class="verb"><button class="btn" onclick="toast('Second pass queued on 47 guessed and flagged lines.','ok')">🔎 Review the guesses</button>
-          <span class="vs">A second model pass over the 47 lines that are guesses or flagged. Never
-            runs on its own — you spend the tokens deliberately.</span></span>
         <span class="verb"><button class="btn" onclick="nav('chapters')">📚 Analyze several chapters</button>
-          <span class="vs">Opens the chapter grid. Pick what to run, results fill in as each
+          <span class="vs">Opens the chapter grid. Pick what to run; each row fills in as its chapter
             finishes.</span></span>
         <span style="flex:1"></span>
         <span class="verb"><button class="btn" onclick="nav('discover')">🔍 A speaker is missing</button>
-          <span class="vs">Attribution can only pick personas that exist. Discover finds names in the
-            prose that are not in your cast.</span></span>
+          <span class="vs">Attribution can only pick personas in the cast. Discover finds names in the
+            prose that aren't in it yet.</span></span>
       </div>
     </div>
 
     <div class="card" style="padding:0;overflow:hidden">
-      <div style="padding:11px 14px;border-bottom:1px solid var(--line)">
+      <div style="padding:11px 14px;border-bottom:1px solid var(--line)" data-chips>
         <div class="row">
+          <span class="hint" style="font-weight:700">Speakers</span>
+          <span class="tag" data-filter="p-marius" onclick="pickChip(this)" title="Press 1 to assign Marius"><b class="mono">1</b>&nbsp;Marius · 44</span>
+          <span class="tag" data-filter="p-june" onclick="pickChip(this)" title="Press 2 to assign June"><b class="mono">2</b>&nbsp;June · 41</span>
+          <span class="tag" data-filter="p-renn" onclick="pickChip(this)" title="Press 3 to assign Renn"><b class="mono">3</b>&nbsp;Renn · 7</span>
+          <span class="tag" data-filter="p-harbek" onclick="pickChip(this)" title="Press 4 to assign Harbek"><b class="mono">4</b>&nbsp;Harbek · 1</span>
+          <span class="tag" data-filter="p-narrator" onclick="pickChip(this)">Narrator · 118</span>
+          <span class="hint mono">/ any other persona</span></div>
+        <div class="row" style="margin-top:8px">
           <span class="tag ok" data-filter="all" onclick="pickChip(this)">All 214</span>
-          <span class="tag w" data-filter="guess" onclick="pickChip(this)">41 guessed</span>
-          <span class="tag e" data-filter="flag" onclick="pickChip(this)">6 flagged</span>
-          <span class="tag e" data-filter="floored" onclick="pickChip(this)">9 below the floor</span>
-          <span class="tag e" data-filter="noans" onclick="pickChip(this)">3 no answer</span>
+          <span class="tag" data-filter="guess" onclick="pickChip(this)">84 guessed</span>
+          <span class="tag e" data-filter="flag" onclick="pickChip(this)">3 flagged</span>
+          <span class="tag e" data-filter="none" onclick="pickChip(this)">3 no speaker</span>
           <span style="flex:1"></span>
-          <span class="hint mono">j / k move · 1–9 assign · Enter accept</span></div>
+          <span class="hint mono">j / k next line · 1–9 assign · Enter confirm · / find</span></div>
         <p class="hint" style="margin:7px 0 0">Everything is here, in reading order. The filters are a
           lens, never the view — <b>a wrong line is most often spotted by reading around it</b>, and
           the model can be certain and wrong, so nothing is hidden because it scored well.</p>
       </div>
 
       <div class="scr" data-filterable>
-        <div class="ln narr" data-state="all" onclick="toast('Line 1 — narration, never sent to the model.')">
+        <div class="ln mk k-pod" data-state="all" title="Music or ad direction from the import — never spoken, never given a speaker">
+          <span class="who">♪ marker</span>
+          <span class="txt">[music: harbour theme, 8 s]</span>
+          <span class="rt"></span></div>
+
+        <div class="ln narr" data-state="p-narrator" onclick="toast('Narration — never sent to the model.')">
           <span class="who">Narrator<span class="src" title="Prose. The model is never asked.">narration</span></span>
-          <span class="txt">Marius set the lamp on the table, and for a while neither of them said anything at all.</span>
-          <span class="rt"><span title="Reassign">✎</span></span></div>
+          <span class="txt">Marius set the lamp on the table.</span>
+          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
 
-        <div class="ln" data-state="all" onclick="toast('Line 2 — anchored by “said Marius”. Anchors beat the model.')">
-          <span class="who"><span class="av" style="background:#3a7d63">M</span>Marius<span class="src src-tag" title="&quot;said Marius&quot; in the prose.">tag</span></span>
-          <span class="txt">“You're late,” said Marius.</span>
-          <span class="rt"><span title="Reassign">✎</span></span></div>
+        <div class="ln" data-state="guess p-june p-narrator" onclick="toast('The model chose June — nothing in the prose names her here.')">
+          <span class="who"><span class="av" style="background:#c98aa7">J</span>June<span class="src src-llm" title="The model chose this, above the floor.">llm 0.97</span></span>
+          <span class="txt"><span class="sp">“You're late.”</span> <span class="nt">June didn't look up from the ledger.</span></span>
+          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
 
-        <div class="ln guess sel" data-state="guess" onclick="toast('Line 3 — the model chose June. No anchor in the prose.')">
-          <span class="who"><span class="av" style="background:#c98aa7">J</span>June<span class="src src-llm" title="The model chose this, above the floor.">llm 0.94</span></span>
-          <span class="txt">“By twenty minutes. It hardly signifies.”</span>
-          <span class="rt"><span title="Reassign">✎</span></span></div>
+        <div class="ln" data-state="p-marius p-narrator" onclick="toast('Anchored by “said Marius”; the second line carries from it.')">
+          <span class="who"><span class="av" style="background:#3a7d63">M</span>Marius<span class="src src-tag" title="“said Marius” in the prose.">tag</span><span class="src src-tag" title="Carried from “said Marius” in the same paragraph.">propagated</span></span>
+          <span class="txt"><span class="sp">“By twenty minutes,”</span> <span class="nt">said Marius.</span> <span class="sp">“It hardly signifies.”</span></span>
+          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
 
-        <div class="ln guess" data-state="guess" onclick="toast('Line 4 — a guess. 0.88 is still a guess.')">
-          <span class="who"><span class="av" style="background:#3a7d63">M</span>Marius<span class="src src-llm">llm 0.88</span></span>
-          <span class="txt">“It signifies to the tide.”</span>
-          <span class="rt"><span title="Reassign">✎</span></span></div>
+        <div class="ln" data-state="p-june" onclick="toast('You set June here — it was Marius. Analyze leaves it alone.')">
+          <span class="who"><span class="av" style="background:#c98aa7">J</span>June<span class="src src-you" title="You set this — it was Marius. Analyze leaves it alone.">✓ you</span></span>
+          <span class="txt"><span class="sp">“It signifies to the tide.”</span></span>
+          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
 
-        <div class="ln flag" data-state="flag" onclick="toast('Line 5 — flagged: third consecutive line by the same persona.')">
+        <div class="ln" data-state="guess p-marius p-narrator" onclick="toast('The model chose Marius.')">
           <span class="who"><span class="av" style="background:#3a7d63">M</span>Marius<span class="src src-llm">llm 1.00</span></span>
-          <span class="txt">“And you have never once waited on it.”
-            <b class="why">⚑ 3rd Marius in a row — the alternation probably broke at line 4</b></span>
-          <span class="rt"><span title="Reassign">✎</span></span></div>
+          <span class="txt"><span class="sp">“The tide turned below the floorboards.”</span> <span class="nt">He sighed.</span></span>
+          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
 
-        <div class="ln narr" data-state="all" onclick="toast('Narration.')">
+        <div class="ln narr" data-state="p-narrator" onclick="toast('Narration — never sent to the model.')">
           <span class="who">Narrator<span class="src">narration</span></span>
           <span class="txt">The harbour bell went twice and stopped, as though it had thought better of it.</span>
-          <span class="rt"><span title="Reassign">✎</span></span></div>
+          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
 
-        <div class="ln" data-state="all" onclick="toast('Line 7 — carried forward from the anchor at line 2.')">
-          <span class="who"><span class="av" style="background:#c98aa7">J</span>June<span class="src src-tag" title="Carried forward from the previous anchored line.">propagated</span></span>
-          <span class="txt">“It matters to me.”</span>
-          <span class="rt"><span title="Reassign">✎</span></span></div>
+        <div class="ln" data-state="guess p-june" onclick="toast('The model chose June.')">
+          <span class="who"><span class="av" style="background:#c98aa7">J</span>June<span class="src src-llm">llm 0.88</span></span>
+          <span class="txt"><span class="sp">“It matters to me.”</span></span>
+          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
 
-        <div class="ln none" data-state="floored" onclick="toast('Line 8 — below the floor. It wanted Marius at 0.41.')">
-          <span class="who"><select class="box" onclick="event.stopPropagation()" style="padding:2px 5px;font-size:11px;border-color:var(--danger-line)">
-              <option>— nobody —</option><option>Marius</option><option>June</option><option>Narrator</option></select>
-            <span class="src src-floor" title="It said Marius at 0.41, under the 0.55 floor.">floored · wanted Marius</span></span>
-          <span class="txt">“Then it matters.”
-            <b class="why">Blocked — a line with no speaker cannot render</b></span>
-          <span class="rt"><span title="Reassign">✎</span></span></div>
-
-        <div class="ln flag" data-state="flag" onclick="toast('Line 9 — flagged: Harbek has one line in the whole chapter.')">
+        <div class="ln flag" data-state="guess flag p-harbek" onclick="toast('Flagged: Harbek has one line in the whole chapter.')">
           <span class="who"><span class="av" style="background:#b3552e">H</span>Harbek<span class="src src-llm">llm 0.72</span></span>
-          <span class="txt">“Tide's wrong tonight.”
-            <b class="why">⚑ Harbek's only line in this chapter — usually a misattribution</b></span>
-          <span class="rt"><span title="Reassign">✎</span></span></div>
+          <span class="txt"><span class="sp">“Tide's wrong tonight.”</span>
+            <b class="why">⚑ Harbek's only line in this chapter — often a misattribution</b></span>
+          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
 
-        <div class="ln none" data-state="noans" onclick="toast('Line 10 — the model returned no row for this line.')">
-          <span class="who"><select class="box" onclick="event.stopPropagation()" style="padding:2px 5px;font-size:11px;border-color:var(--danger-line)">
-              <option>— nobody —</option><option>Marius</option><option>June</option></select>
-            <span class="src src-floor" title="The model returned fewer rows than there are lines.">no answer</span></span>
-          <span class="txt">“Nine doors, and every one of them shut.”
-            <b class="why">Blocked — the model never answered for this line</b></span>
-          <span class="rt"><span title="Reassign">✎</span></span></div>
+        <div class="ln none sel" data-state="none" onclick="toast('No speaker — the model wanted Marius at 0.41, under the 0.5 floor.')">
+          <span class="who">— no speaker —<span class="src src-floor" title="It said Marius at 0.41, under the 0.5 floor.">not sure · wanted Marius</span></span>
+          <span class="txt"><span class="sp">“Then it matters.”</span>
+            <b class="why">Blocked — a line with no speaker cannot render</b></span>
+          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
+        <div class="pick" data-state="none">
+          <span class="hint">Who says “Then it matters.”?</span>
+          <span class="tag" onclick="toast('Line → Marius.','ok')"><b class="mono">1</b>&nbsp;Marius</span>
+          <span class="tag" onclick="toast('Line → June.','ok')"><b class="mono">2</b>&nbsp;June</span>
+          <span class="tag" onclick="toast('Line → Renn.','ok')"><b class="mono">3</b>&nbsp;Renn</span>
+          <span class="tag" onclick="toast('Line → Harbek.','ok')"><b class="mono">4</b>&nbsp;Harbek</span>
+          <span class="tag" onclick="toast('Line → Narrator.','ok')">Narrator</span>
+          <input class="box" style="width:170px" placeholder="/ find a persona…" aria-label="Find a persona"></div>
+
+        <div class="ln" data-state="p-marius p-narrator" onclick="toast('Anchored by “Marius said”.')">
+          <span class="who"><span class="av" style="background:#3a7d63">M</span>Marius<span class="src src-tag" title="“Marius said” in the prose.">tag</span></span>
+          <span class="txt"><span class="sp">“Nine doors, and every one of them shut,”</span> <span class="nt">Marius said.</span></span>
+          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
+
+        <div class="ln" data-state="guess p-marius" onclick="toast('The model chose Marius.')">
+          <span class="who"><span class="av" style="background:#3a7d63">M</span>Marius<span class="src src-llm">llm 0.93</span></span>
+          <span class="txt"><span class="sp">“Somebody shut them.”</span></span>
+          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
+
+        <div class="ln flag" data-state="guess flag p-marius" onclick="toast('Flagged: the third Marius line in a row.')">
+          <span class="who"><span class="av" style="background:#3a7d63">M</span>Marius<span class="src src-llm">llm 1.00</span></span>
+          <span class="txt"><span class="sp">“Somebody always does.”</span>
+            <b class="why">⚑ 3rd Marius line in a row — the turns probably broke at the line before</b></span>
+          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
+
+        <div class="ln flag" data-state="flag p-june p-narrator" onclick="toast('Flagged: carried from “said June”, but the model says Marius.')">
+          <span class="who"><span class="av" style="background:#c98aa7">J</span>June<span class="src src-tag" title="“said June” in the prose.">tag</span><span class="src src-tag" title="Carried from “said June” in the same paragraph.">propagated</span></span>
+          <span class="txt"><span class="sp">“Wait,”</span> <span class="nt">said June. Marius was already at the door.</span> <span class="sp">“We go now.”</span>
+            <b class="why">⚑ “We go now.” carries “said June”, but the model says Marius — the anchor may have gone stale</b></span>
+          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
+
+        <div class="ln" data-state="guess p-june" onclick="toast('The model chose June.')">
+          <span class="who"><span class="av" style="background:#c98aa7">J</span>June<span class="src src-llm">llm 0.97</span></span>
+          <span class="txt"><span class="sp">“Then we wait for the tide.”</span></span>
+          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
+
+        <div class="ln none" data-state="none" onclick="toast('No speaker — the model skipped this line.')">
+          <span class="who">— no speaker —<span class="src src-floor" title="The model's answer had no entry for this line.">skipped</span></span>
+          <span class="txt"><span class="sp">“Nine.”</span>
+            <b class="why">Blocked — the model skipped this line</b></span>
+          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
+
+        <div class="ln" data-state="p-renn p-marius p-narrator" onclick="toast('Two speakers in one paragraph, each anchored by its own tag.')">
+          <span class="who"><span class="wl"><span class="av" style="background:#8a6fb0">R</span>Renn<span class="src src-tag">tag</span></span>
+            <span class="wl"><span class="av" style="background:#3a7d63">M</span>Marius<span class="src src-tag">tag</span></span></span>
+          <span class="txt"><i class="iw">Renn</i><span class="sp">“Go,”</span> <span class="nt">said Renn, and Marius answered,</span> <i class="iw">Marius</i><span class="sp">“After you.”</span></span>
+          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
+
+        <div class="ln narr" data-state="p-narrator" onclick="toast('Narration — never sent to the model.')">
+          <span class="who">Narrator<span class="src">narration</span></span>
+          <span class="txt">Outside, the fog came up the quay like something that meant to stay.</span>
+          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
       </div>
 
       <div class="row" style="padding:11px 14px;border-top:1px solid var(--line)">
-        <button class="btn" onclick="toast('Lines 3–5 selected. Pick a persona to reassign all three.')">⇅ Select a run</button>
-        <button class="btn" onclick="toast('Reassigned. Lines 6 and 7 are re-flagged — fixing one usually means the next was wrong too.','ok')">🎭 Reassign selected…</button>
-        <span class="hint">When the alternation breaks, several lines in a row are wrong at once.
-          Reassigning re-checks the neighbours.</span>
+        <button class="btn" onclick="toast('Lines 11–12 selected. Pick a persona to reassign both.')">⇅ Select a run</button>
+        <button class="btn" onclick="toast('Reassigned to June. The lines either side are re-checked — fixing one usually means the next was wrong too.','ok')">🎭 Reassign selected…</button>
+        <button class="btn" title="Everything the model couldn't place becomes narration. Lines with no speaker block the render." onclick="toast('Every line without a speaker now reads as Narrator.','ok')">Assign 3 → Narrator</button>
+        <button class="btn g" onclick="toast('Undone — lines 11–12 are back to Marius.','ok')">↶ Undo</button>
         <span style="flex:1"></span>
-        <button class="btn s g" onclick="toast('Showing lines 2 and 4 around the selected line.')">👁 Show context</button>
+        <button class="btn s g" onclick="toast('Showing the paragraphs either side of the selected line.')">👁 Show context</button>
       </div>
+      <p class="hint" style="margin:0;padding:0 14px 11px">Changing the speaker of a rendered line makes it
+        stale — it re-renders, and its old take is kept.</p>
     </div>
 
     <div class="card tint">
       <div class="sh"><h4>How to read the marks</h4></div>
       <div class="tw"><table><tbody>
-        <tr><td style="width:132px"><span class="src">narration</span></td>
-          <td>Prose. Never sent to the model, never in question — so it recedes.</td></tr>
+        <tr><td style="width:150px"><span class="src">narration</span></td>
+          <td>Prose. Never sent to the model, never in question — so it recedes. A paragraph's spoken
+            part is dark and its narration grey, and the grey part is read by the Narrator.</td></tr>
         <tr><td><span class="src src-tag">tag</span> / <span class="src src-tag">propagated</span></td>
           <td>The prose named the speaker, or it carried from a line that did. <b>Anchors beat the
-            model</b>, so its own pick is kept but not used.</td></tr>
+            model</b> — its own pick is kept, and a disagreement is flagged.</td></tr>
         <tr><td><span class="src src-llm">llm 0.94</span></td>
-          <td><b>A guess.</b> The number is the model's opinion of itself, and it has been 1.00 and
-            wrong — so the mark is the same at every score.</td></tr>
+          <td>The model chose. Most spoken lines are decided this way. The number is the model's
+            opinion of itself, and it has been 1.00 and wrong — so no score outranks a flag.</td></tr>
+        <tr><td><span class="src src-you">✓ you</span></td>
+          <td>You set or confirmed this, and Analyze leaves it alone.</td></tr>
         <tr><td><b class="why" style="display:inline">⚑ flagged</b></td>
-          <td>Checks on the text, not on the model: three in a row, a persona with one line, a
-            speaker not yet in the scene, dialogue on the Narrator, an anchor that went stale.</td></tr>
-        <tr><td><span class="src src-floor">floored</span></td>
-          <td>Under the confidence floor, or no answer at all. Blocks rendering either way.</td></tr>
+          <td>Checks on the text, not on the model's confidence: three in a row, a persona with one
+            line, a speaker not yet in the chapter, dialogue on the Narrator, an anchor the model
+            disagrees with.</td></tr>
+        <tr><td><span class="src src-floor">no speaker</span></td>
+          <td>The model wasn't sure — under the floor — or skipped the line. Blocks rendering either
+            way.</td></tr>
       </tbody></table></div>
-      <p class="hint" style="margin:9px 0 0">Direction, takes and rendering are <b>not</b> on this
-        page. Script decides who says what; how it is performed is
+      <p class="hint" style="margin:9px 0 0">Direction, takes, rewriting a line in its persona's voice and rendering
+        are <b>not</b> on this page. Script decides who says what; how it is performed is
         <span class="lnk" onclick="nav('render')">Render</span>.</p>
     </div>
 

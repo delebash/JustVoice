@@ -271,8 +271,10 @@ body[data-kind="podcast"] .k-book,body[data-kind="podcast"] .k-game{display:none
 .src-floor{border-color:var(--danger-line);background:var(--danger-bg);color:var(--danger-ink)}
 .rowacts .btn{margin-left:5px}
 
-/* Script reads as a screenplay. Weight carries risk: narration recedes because it is
-   never in question, a guess is marked whatever it scored, a flag is louder still. */
+/* Script reads as a screenplay, one row per paragraph. Weight carries risk: narration
+   recedes because it is never in question; a guess carries only its badge, because most
+   spoken lines are guesses (22 of 272 anchored, measured 2026-09-28) and the model is
+   right on nearly all of them; a flag and a missing speaker are the loud rows. */
 .scr{display:flex;flex-direction:column}
 .scr .ln{display:grid;grid-template-columns:158px 1fr 26px;gap:13px;align-items:start;
   padding:8px 14px 8px 11px;border-bottom:1px solid var(--line);border-left:3px solid transparent;
@@ -285,8 +287,17 @@ body[data-kind="podcast"] .k-book,body[data-kind="podcast"] .k-game{display:none
 .scr .ln:hover .rt{opacity:1}
 .scr .ln.narr{color:var(--ink-3)}
 .scr .ln.narr .who,.scr .ln.narr .txt{color:var(--ink-3);font-weight:400}
-.scr .ln.guess{border-left-color:var(--gold);background:var(--warn-bg)}
 .scr .ln.flag{border-left-color:var(--danger);background:var(--danger-bg)}
+.scr .sp{color:var(--ink)}
+.scr .nt{color:var(--ink-3)}
+.scr .iw{font-style:normal;font-size:10px;font-weight:700;color:var(--ink-2);margin-right:3px}
+.scr .wl{display:flex;align-items:center;gap:5px;width:100%;flex-wrap:wrap}
+.scr .ln.mk{cursor:default;color:var(--ink-3);font-style:italic}
+.scr .ln.mk .who{font-style:normal;color:var(--ink-3)}
+.scr .pick{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:8px 14px 10px 183px;
+  border-bottom:1px solid var(--line);background:var(--surface-2);font-size:12px}
+.scr .pick .tag{cursor:pointer}
+.src-you{border-color:var(--accent);background:var(--surface);color:var(--accent-ink)}
 .scr .ln.none{border-left-color:var(--danger);background:var(--danger-bg)}
 .scr .ln.none .txt{font-weight:600}
 .scr .ln.sel{outline:2px solid var(--accent);outline-offset:-2px}
@@ -459,9 +470,9 @@ tbody tr[onclick]:hover{background:var(--surface-2)}
           <tr><td><b>Render</b> · Stillwater ch. 1</td>
             <td style="width:150px"><div class="prog"><b style="width:38%"></b></div></td>
             <td class="n">71 / 187</td><td><span class="rt"><span>⏹</span></span></td></tr>
-          <tr><td><b>Analyze</b> · ch. 6</td>
-            <td><div class="prog"><b style="width:64%"></b></div></td>
-            <td class="n">127 / 198</td><td><span class="rt"><span>⏹</span></span></td></tr>
+          <tr><td><b>Analyze</b> · Stillwater · 3 chapters</td>
+            <td><div class="prog"><b style="width:67%"></b></div></td>
+            <td class="n">2 / 3</td><td><span class="rt"><span>⏹</span></span></td></tr>
         </tbody></table>
       </div>
       <div class="card">
@@ -578,9 +589,9 @@ tbody tr[onclick]:hover{background:var(--surface-2)}
       › <b class="proj-name">Stillwater</b> › Studio</span>
     <span class="pill proj-kind">📖 audiobook</span>
     <span style="flex:1"></span>
-    <button class="btn p k-book" onclick="nav('cast')">Continue — Cast Harbek and Renn ➜</button>
-    <button class="btn p k-game" onclick="nav('cast')">Continue — Cast 8 NPCs ➜</button>
-    <button class="btn p k-pod" onclick="nav('render')">Continue — Render 44 lines ➜</button>
+    <button class="btn p k-book" title="The first step with work left" onclick="nav('chapters')">Continue — 2 · Script ➜</button>
+    <button class="btn p k-game" title="The first step with work left" onclick="nav('cast')">Continue — 2 · Cast ➜</button>
+    <button class="btn p k-pod" title="The first step with work left" onclick="nav('render')">Continue — 4 · Render ➜</button>
   </div>
   <div class="body">
     <div class="steps-strip">
@@ -607,7 +618,8 @@ tbody tr[onclick]:hover{background:var(--surface-2)}
           <tr onclick="nav('discover')" style="cursor:pointer"><td><b class="lnk">1 · Discover</b></td>
             <td>3 of 14 chapters scanned</td><td><span class="tag w">3 proposed speakers</span></td></tr>
           <tr onclick="nav('chapters')" style="cursor:pointer"><td><b class="lnk">2 · Script</b></td>
-            <td>3 of 14 chapters analyzed · 1 running</td><td><span class="tag e">88 need a speaker</span></td></tr>
+            <td>7 of 14 chapters analyzed · 1 running</td><td><span class="tag e">88 no speaker</span>
+              <span class="tag e">8 flagged</span></td></tr>
           <tr onclick="nav('cast')" style="cursor:pointer"><td><b class="lnk">3 · Cast</b></td>
             <td>3 of 5 personas voiced</td><td><span class="tag e">40 lines blocked</span></td></tr>
           <tr onclick="nav('render')" style="cursor:pointer"><td><b class="lnk">4 · Render</b></td>
@@ -627,7 +639,7 @@ tbody tr[onclick]:hover{background:var(--surface-2)}
           <tr onclick="nav('discover')" style="cursor:pointer"><td><b class="lnk">1 · Discover</b></td>
             <td>12 of 12 episodes scanned</td><td><span class="tag ok">done</span></td></tr>
           <tr onclick="nav('chapters')" style="cursor:pointer"><td><b class="lnk">2 · Script</b></td>
-            <td>12 of 12 episodes analyzed</td><td><span class="tag ok">every line has a speaker</span></td></tr>
+            <td>12 of 12 episodes analyzed</td><td class="hint">0 no speaker · 0 flagged</td></tr>
           <tr onclick="nav('cast')" style="cursor:pointer"><td><b class="lnk">3 · Cast</b></td>
             <td>3 of 3 personas voiced</td><td><span class="tag ok">done</span></td></tr>
           <tr onclick="nav('render')" style="cursor:pointer"><td><b class="lnk">4 · Render</b></td>
@@ -654,10 +666,10 @@ tbody tr[onclick]:hover{background:var(--surface-2)}
             <div class="kr"><span class="tag proj-kind">📖 audiobook</span>
               <span class="hint">set when the project is created</span></div></div>
           <div class="f"><label>Mastering target</label>
-            <select class="box k-book" style="max-width:32ch"><option>None</option><option selected>ACX (-20 LUFS / -3.5 dB peak)</option><option>iAudio</option><option>Podcast</option><option>YouTube</option><option>Custom</option></select>
-            <select class="box k-game" style="max-width:32ch"><option selected>None</option><option>ACX (-20 LUFS / -3.5 dB peak)</option><option>iAudio</option><option>Podcast</option><option>YouTube</option><option>Custom</option></select>
-            <select class="box k-pod" style="max-width:32ch"><option>None</option><option>ACX (-20 LUFS / -3.5 dB peak)</option><option>iAudio</option><option selected>Podcast</option><option>YouTube</option><option>Custom</option></select>
-            <span class="hint">Export checks the finished audio against this.</span></div>
+            <select class="box k-book" style="max-width:32ch"><option>This kind's default (ACX)</option><option>None — raw</option><option selected>ACX (-20 LUFS / -3.5 dB peak)</option><option>iAudio</option><option>Podcast</option><option>YouTube</option></select>
+            <select class="box k-game" style="max-width:32ch"><option selected>This kind's default (raw)</option><option>None — raw</option><option>ACX (-20 LUFS / -3.5 dB peak)</option><option>iAudio</option><option>Podcast</option><option>YouTube</option></select>
+            <select class="box k-pod" style="max-width:32ch"><option>This kind's default (Podcast)</option><option>None — raw</option><option>ACX (-20 LUFS / -3.5 dB peak)</option><option>iAudio</option><option selected>Podcast</option><option>YouTube</option></select>
+            <span class="hint">Every render is mastered to this, and Export checks against it.</span></div>
           <div class="f"><label>Pronunciation lexicon</label>
             <div class="kr"><select class="box k-book" style="max-width:32ch"><option>None</option><option selected>Harbor names</option></select><select class="box k-game" style="max-width:32ch"><option selected>None</option><option>Harbor names</option></select><select class="box k-pod" style="max-width:32ch"><option selected>None</option><option>Harbor names</option></select>
               <button class="btn s g" onclick="nav('lexicons')">Open ➜</button></div></div>
@@ -687,7 +699,7 @@ tbody tr[onclick]:hover{background:var(--surface-2)}
       › <b class="proj-name lnk" onclick="nav('overview')">Stillwater</b> › Studio</span>
     <span class="pill proj-kind">📖 audiobook</span>
     <span style="flex:1"></span>
-    <span class="pill live"><span class="dot"></span> gemma-3-12b</span></div>
+    <span class="pill live"><span class="dot"></span> gemma-4-26b-a4b-qat</span></div>
   <div class="body">
     <div class="steps-strip">
       <span class="stp" onclick="nav('overview')">Overview</span>
@@ -709,64 +721,74 @@ tbody tr[onclick]:hover{background:var(--surface-2)}
 
 
     <div class="card">
-      <div class="sh"><h4>Who speaks in this book?</h4>
-        <span class="sub">5 in the cast · 3 proposed</span></div>
-      <p class="note" style="margin:0 0 11px">Reads the prose for names that aren't in your cast yet.
-        Creates nothing until you confirm each one.</p>
+      <div class="sh"><h4>Who speaks in this book?</h4></div>
+      <p class="note" style="margin:0 0 11px">Reads the prose for names that aren't in your cast yet. Nothing
+        is created until you add each one. Script can only give a line to a persona that exists, so this
+        step runs first.</p>
       <div class="tw"><table>
         <thead><tr><th style="width:32px"><input type="checkbox" class="ch-all" checked aria-label="Select all chapters" onchange="selectAllCh(this)"></th>
           <th>Chapter</th><th style="width:64px">Lines</th><th style="width:120px">Last scanned</th>
           <th style="width:96px">Proposed</th></tr></thead>
         <tbody>
           <tr><td><input type="checkbox" class="ck" checked aria-label="Select chapter 1" onchange="recalcAnalyze(this)"></td>
-            <td>1 · The Ninth Door</td><td class="n">214</td><td class="hint">2 min ago</td>
+            <td><b>1 · The Ninth Door</b></td><td class="n">214</td><td class="hint">2 min ago</td>
             <td><span class="tag w">3</span></td></tr>
           <tr><td><input type="checkbox" class="ck" checked aria-label="Select chapter 2" onchange="recalcAnalyze(this)"></td>
-            <td>2 · Salt and Ledger</td><td class="n">188</td><td class="hint">3 days ago</td>
+            <td><b>2 · Salt and Ledger</b></td><td class="n">188</td><td class="hint">3 days ago</td>
             <td class="hint">none</td></tr>
           <tr><td><input type="checkbox" class="ck" aria-label="Select chapter 3" onchange="recalcAnalyze(this)"></td>
-            <td>3 · The Harbour-Master</td><td class="n">231</td><td class="hint">3 days ago</td>
-            <td class="hint">none</td></tr>
+            <td><b>3 · The Harbour-Master</b></td><td class="n">231</td><td class="hint">3 days ago</td>
+            <td><span class="tag w">1</span></td></tr>
           <tr><td><input type="checkbox" class="ck" checked aria-label="Select chapter 4" onchange="recalcAnalyze(this)"></td>
-            <td>4 · Nine Doors Down</td><td class="n">176</td><td class="hint">never</td>
+            <td><b>4 · Nine Doors Down</b></td><td class="n">176</td><td class="hint">never</td>
             <td class="hint">—</td></tr>
           <tr><td><input type="checkbox" class="ck" aria-label="Select chapter 5" onchange="recalcAnalyze(this)"></td>
-            <td>5 · The Tide Turning</td><td class="n">203</td><td class="hint">never</td>
+            <td><b>5 · The Tide Turning</b></td><td class="n">203</td><td class="hint">never</td>
             <td class="hint">—</td></tr>
         </tbody></table></div>
       <div class="row" style="margin-top:11px">
-        <button class="btn p an-btn" data-verb="🔍 Scan" onclick="toast('Scanning for speakers — results appear below as each chapter finishes.','ok')">🔍 Scan 3 chapters</button>
-        <span class="hint an-est" data-tail="results appear below as each chapter finishes">593 lines · about 4m 3s · results appear below as each chapter finishes</span>
+        <button class="btn p an-btn" data-verb="🔍 Scan" onclick="toast('Scanning — each row fills in when its chapter finishes.','ok')">🔍 Scan 3 chapters</button>
+        <span class="hint an-est" data-tail="one model call per chapter; each row fills in when its chapter finishes, and a new scan replaces that chapter's last one">578 lines · one model call per chapter; each row fills in when its chapter finishes, and a new scan replaces that chapter's last one</span>
       </div>
     </div>
 
     <div class="card">
-      <div class="sh"><h4>Proposed speakers</h4><span class="sub">nothing is created until you say so</span></div>
+      <div class="sh"><h4>Proposed speakers</h4><span class="sub">nothing is created until you add it</span></div>
       <div class="tw"><table>
-        <thead><tr><th style="width:170px">Name in the prose</th><th style="width:60px">Lines</th>
-          <th>First appearance</th><th style="width:220px"></th></tr></thead>
+        <thead><tr><th style="width:230px">Name in the prose</th><th style="width:60px">Lines</th>
+          <th>First appearance</th><th style="width:150px">Where</th><th style="width:130px"></th></tr></thead>
         <tbody>
-          <tr><td><b>Tom Harlan</b><div class="hint">ch. 1</div></td><td class="n">14</td>
-            <td class="hint">“Tom Harlan kept the ledger, and kept it badly.”</td>
+          <tr><td><b>Harlan</b>
+              <div style="margin:3px 0"><span class="tag ok" title="Tom Harlan is already in your library. Add puts that persona in this cast and remembers Harlan as a name for them — no duplicate.">→ Tom Harlan · in your library</span></div></td>
+            <td class="n" title="Roughly how many lines of dialogue they speak in what was scanned">≈ 14</td>
+            <td class="hint" style="font-style:italic">“Harlan kept the ledger, and kept it badly.”</td>
+            <td class="hint">1 · The Ninth Door</td>
             <td class="rowacts">
-              <button class="btn s p" onclick="toast('Tom Harlan added to the cast.','ok');nav('cast')">＋ Add</button>
-              <button class="btn s" onclick="toast('Pick an existing persona to merge into.')">Merge…</button>
-              <button class="btn s g" onclick="toast('Ignored for this book.')">Ignore</button></td></tr>
-          <tr><td><b>the harbour-master</b><div class="hint">ch. 1, 3</div></td><td class="n">9</td>
-            <td class="hint">“The harbour-master said nothing at all.”</td>
+              <button class="btn s p" title="Put Tom Harlan (already in your library) in this cast" onclick="toast('Tom Harlan is in this cast — “Harlan” is saved as a name for him.','ok')">＋ Add</button>
+              <button class="btn s g" title="Drop it, and keep it out of later scans of this project. Restore undoes it." onclick="toast('Ignored — Discover won’t propose Harlan again in this book.')">Ignore</button></td></tr>
+          <tr><td><b>Old Voss</b><div class="hint">also written Voss</div></td>
+            <td class="n" title="Roughly how many lines of dialogue they speak in what was scanned">≈ 9</td>
+            <td class="hint" style="font-style:italic">“Old Voss said nothing at all.”</td>
+            <td class="hint">1 · The Ninth Door, 3 · The Harbour-Master</td>
             <td class="rowacts">
-              <button class="btn s p" onclick="toast('Harbour-master added to the cast.','ok');nav('cast')">＋ Add</button>
-              <button class="btn s" onclick="toast('Pick an existing persona to merge into.')">Merge…</button>
-              <button class="btn s g" onclick="toast('Ignored for this book.')">Ignore</button></td></tr>
-          <tr><td><b>a woman at the rail</b><div class="hint">ch. 1</div></td><td class="n">2</td>
-            <td class="hint">“A woman at the rail laughed once, and stopped.”</td>
+              <button class="btn s p" title="Create a persona for Old Voss and put them in this cast" onclick="toast('Old Voss added to the cast.','ok')">＋ Add</button>
+              <button class="btn s g" title="Drop it, and keep it out of later scans of this project. Restore undoes it." onclick="toast('Ignored — Discover won’t propose Old Voss again in this book.')">Ignore</button></td></tr>
+          <tr><td><b>Ansel</b></td>
+            <td class="n" title="Named, but not heard speaking in what was scanned">0</td>
+            <td><span class="hint" style="font-style:italic">“Ansel held the lantern higher.”</span>
+              <span class="tag e" title="This quote is not in the chapter — the model may have invented it, and the name with it.">quote not in the chapter</span></td>
+            <td class="hint">1 · The Ninth Door</td>
             <td class="rowacts">
-              <button class="btn s p" onclick="toast('Added to the cast.','ok');nav('cast')">＋ Add</button>
-              <button class="btn s" onclick="toast('Pick an existing persona to merge into.')">Merge…</button>
-              <button class="btn s g" onclick="toast('Ignored — two lines is often a description, not a speaker.')">Ignore</button></td></tr>
+              <button class="btn s p" title="Create a persona for Ansel and put them in this cast" onclick="toast('Ansel added to the cast.','ok')">＋ Add</button>
+              <button class="btn s g" title="Drop it, and keep it out of later scans of this project. Restore undoes it." onclick="toast('Ignored — Discover won’t propose Ansel again in this book.')">Ignore</button></td></tr>
         </tbody></table></div>
-      <p class="hint" style="margin:9px 0 0">A name with one or two lines is often a description rather
-        than a speaker. Merge folds it into an existing persona and keeps the alias.</p>
+    </div>
+
+    <div class="card tint">
+      <div class="sh"><h4>Ignored</h4><span class="sub">1 · never proposed again in this book</span></div>
+      <div class="tags">
+        <span class="tag">Hecate</span>
+        <button class="btn s g" title="Let Discover propose Hecate again" onclick="toast('Restored — Discover can propose Hecate again.','ok')">Restore</button></div>
     </div>
 
     <div class="card tint">
@@ -774,8 +796,8 @@ tbody tr[onclick]:hover{background:var(--surface-2)}
       <div class="tags">
         <span class="tag">🎭 Narrator</span><span class="tag">🎭 June</span><span class="tag">🎭 Marius</span>
         <span class="tag">🎭 Harbek</span><span class="tag">🎭 Renn</span></div>
-      <p class="hint" style="margin:9px 0 0">Attribution can only choose from these — that's why this
-        step runs first.</p>
+      <p class="hint" style="margin:9px 0 0">Script can only choose from these.
+        <span class="lnk" onclick="nav('chapters')">Go to Script ➜</span></p>
     </div>
   </div>
 </div>
@@ -785,7 +807,7 @@ tbody tr[onclick]:hover{background:var(--surface-2)}
       › <b class="proj-name lnk" onclick="nav('overview')">Stillwater</b> › Studio</span>
     <span class="pill proj-kind">📖 audiobook</span>
     <span style="flex:1"></span>
-    <span class="pill live"><span class="dot"></span> gemma-3-12b</span></div>
+    <span class="pill live"><span class="dot"></span> gemma-4-26b-a4b-qat</span></div>
   <div class="body">
     <div class="steps-strip">
       <span class="stp" onclick="nav('overview')">Overview</span>
@@ -812,86 +834,175 @@ tbody tr[onclick]:hover{background:var(--surface-2)}
       <p class="note" style="margin:0 0 11px">Attribution only — which persona speaks each line, and
         what the line says. How it is performed, and rendering it, come later.</p>
 
+      <div class="bn" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 11px">
+        <b>✨ Analyze · 3 chapters</b>
+        <span class="hint">6 · What the Ledger Knew · 2 of 3 done · 3m 20s · about 1m 30s left</span>
+        <div class="prog" style="flex:1;min-width:120px;max-width:220px"><b style="width:67%"></b></div>
+        <span class="hint">Keeps running while you work elsewhere.</span>
+        <span style="flex:1"></span>
+        <button class="btn s" onclick="toast('Run cancelled. Chapters already analyzed are kept.','warn')">Cancel</button>
+      </div>
+
       <div class="tw"><table>
         <thead><tr>
           <th style="width:32px"><input type="checkbox" class="ch-all" aria-label="Select all chapters"
             onchange="selectAllCh(this)"></th>
-          <th>Chapter</th><th style="width:58px">Lines</th><th style="width:110px">Analyzed</th>
+          <th>Chapter</th><th style="width:58px">Lines</th><th style="width:150px">Analyzed</th>
           <th style="width:82px">Anchored</th><th style="width:76px">Guessed</th>
           <th style="width:72px">Flagged</th><th style="width:90px">No speaker</th>
-          <th style="width:74px"></th></tr></thead>
+          <th style="width:150px"></th></tr></thead>
         <tbody>
           <tr onclick="nav('chapter')" style="cursor:pointer">
-            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" checked aria-label="Select chapter 1" onchange="recalcAnalyze()"></td>
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" aria-label="Select chapter 1" onchange="recalcAnalyze(this)"></td>
             <td><b class="lnk">1 · The Ninth Door</b></td><td class="n">214</td>
-            <td class="hint">2 min ago</td>
-            <td class="n">168</td><td><span class="tag w">41</span></td>
-            <td><span class="tag e">6</span></td><td><span class="tag e">5</span></td>
+            <td class="hint">yesterday</td>
+            <td class="n">9</td><td class="n">84</td>
+            <td><span class="tag e">3</span></td><td><span class="tag e">3</span></td>
             <td class="rowacts"><button class="btn s" onclick="event.stopPropagation();nav('chapter')">Review</button></td></tr>
 
           <tr onclick="nav('chapter')" style="cursor:pointer">
-            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" aria-label="Select chapter 2" onchange="recalcAnalyze()"></td>
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" aria-label="Select chapter 2" onchange="recalcAnalyze(this)"></td>
             <td><b class="lnk">2 · Salt and Ledger</b></td><td class="n">188</td>
-            <td class="hint">3 days ago</td>
-            <td class="n">181</td><td><span class="tag">7</span></td>
-            <td class="hint">0</td><td class="hint">0</td>
+            <td><span class="hint">3 days ago</span>
+              <span class="tag w" title="Analyzed before Renn joined the cast, and this chapter names Renn — attribution could not choose Renn then.">Renn added since</span></td>
+            <td class="n">11</td><td class="n">72</td>
+            <td><span class="tag e">1</span></td><td class="hint">0</td>
+            <td class="rowacts"><button class="btn s p" onclick="event.stopPropagation();toast('Re-analyzing Salt and Ledger — lines you set are kept.','ok')">Re-analyze</button><button class="btn s" onclick="event.stopPropagation();nav('chapter')">Review</button></td></tr>
+
+          <tr onclick="nav('chapter')" style="cursor:pointer">
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" aria-label="Select chapter 3" onchange="recalcAnalyze(this)"></td>
+            <td><b class="lnk">3 · The Harbour-Master</b></td><td class="n">231</td>
+            <td><span class="hint">3 days ago</span>
+              <span class="tag w" title="Analyzed before Renn joined the cast, and this chapter names Renn — attribution could not choose Renn then.">Renn added since</span></td>
+            <td class="n">7</td><td class="n">29</td>
+            <td><span class="tag e">2</span></td><td><span class="tag e">84</span></td>
+            <td class="rowacts"><button class="btn s p" onclick="event.stopPropagation();toast('Re-analyzing The Harbour-Master — lines you set are kept.','ok')">Re-analyze</button><button class="btn s" onclick="event.stopPropagation();nav('chapter')">Review</button></td></tr>
+
+          <tr onclick="nav('chapter')" style="cursor:pointer">
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" aria-label="Select chapter 4" onchange="recalcAnalyze(this)"></td>
+            <td><b class="lnk">4 · Nine Doors Down</b></td><td class="n">176</td>
+            <td class="hint">2 min ago</td>
+            <td class="n">6</td><td class="n">71</td>
+            <td><span class="tag e">1</span></td><td><span class="tag e">1</span></td>
             <td class="rowacts"><button class="btn s" onclick="event.stopPropagation();nav('chapter')">Review</button></td></tr>
 
           <tr onclick="nav('chapter')" style="cursor:pointer">
-            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" aria-label="Select chapter 3" onchange="recalcAnalyze()"></td>
-            <td><b class="lnk">3 · The Harbour-Master</b></td><td class="n">231</td>
-            <td class="hint">3 days ago</td>
-            <td class="n">96</td><td><span class="tag w">135</span></td>
-            <td><span class="tag e">11</span></td><td class="hint">0</td>
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" aria-label="Select chapter 5" onchange="recalcAnalyze(this)"></td>
+            <td><b class="lnk">5 · The Tide Turning</b></td><td class="n">203</td>
+            <td class="hint">just now</td>
+            <td class="n">8</td><td class="n">79</td>
+            <td><span class="tag e">1</span></td><td class="hint">0</td>
             <td class="rowacts"><button class="btn s" onclick="event.stopPropagation();nav('chapter')">Review</button></td></tr>
 
           <tr>
-            <td><input type="checkbox" class="ck" checked aria-label="Select chapter 4" onchange="recalcAnalyze()"></td>
-            <td><b>4 · Nine Doors Down</b></td><td class="n">176</td>
-            <td><span class="tag w">running…</span></td>
-            <td colspan="4"><div class="prog"><b style="width:44%"></b></div>
-              <span class="hint">77 of 176 · about 40 s left</span></td>
-            <td class="rowacts"><button class="btn s" onclick="toast('Stopped. Lines already decided are kept.','warn')">Stop</button></td></tr>
+            <td><input type="checkbox" class="ck" disabled aria-label="Chapter 6 is in the current run" title="In the current run"></td>
+            <td><b>6 · What the Ledger Knew</b></td><td class="n">198</td>
+            <td><span class="tag pd">analyzing…</span></td>
+            <td colspan="4"><div class="prog"><b style="width:40%"></b></div>
+              <span class="hint">reading · 52 s</span></td>
+            <td class="rowacts"><button class="btn s" disabled title="Wait for it to finish">Review</button></td></tr>
 
           <tr>
-            <td><input type="checkbox" class="ck" checked aria-label="Select chapter 5" onchange="recalcAnalyze()"></td>
-            <td><b>5 · The Tide Turning</b></td><td class="n">203</td>
+            <td><input type="checkbox" class="ck" checked aria-label="Select chapter 7" onchange="recalcAnalyze(this)"></td>
+            <td><b>7 · The Lamp Room</b></td><td class="n">142</td>
             <td class="hint">never</td>
             <td class="hint">—</td><td class="hint">—</td><td class="hint">—</td><td class="hint">—</td>
             <td class="rowacts"><button class="btn s" disabled title="Analyze it first">Review</button></td></tr>
 
           <tr>
-            <td><input type="checkbox" class="ck" aria-label="Select chapter 6" onchange="recalcAnalyze()"></td>
-            <td><b>6 · What the Ledger Knew</b></td><td class="n">198</td>
+            <td><input type="checkbox" class="ck" checked aria-label="Select chapter 8" onchange="recalcAnalyze(this)"></td>
+            <td><b>8 · Low Water</b></td><td class="n">121</td>
+            <td class="hint">never</td>
+            <td class="hint">—</td><td class="hint">—</td><td class="hint">—</td><td class="hint">—</td>
+            <td class="rowacts"><button class="btn s" disabled title="Analyze it first">Review</button></td></tr>
+
+          <tr onclick="nav('chapter')" style="cursor:pointer">
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" aria-label="Select chapter 9" onchange="recalcAnalyze(this)"></td>
+            <td><b class="lnk">9 · Renn's Account</b>
+              <div class="hint">Its speech is in ‘single quotes’, which aren't read as dialogue — every line went to the Narrator.</div></td>
+            <td class="n">97</td>
+            <td><span class="hint">yesterday</span>
+              <span class="tag w" title="Nothing in this chapter was read as speech. Speech in ‘single quotes’, «guillemets» or after a dash isn't read as dialogue.">no dialogue found</span></td>
+            <td class="n">0</td><td class="n">0</td><td class="hint">0</td><td class="hint">0</td>
+            <td class="rowacts"><button class="btn s" onclick="event.stopPropagation();nav('chapter')">Review</button></td></tr>
+
+          <tr>
+            <td><input type="checkbox" class="ck" aria-label="Select chapter 10" onchange="recalcAnalyze(this)"></td>
+            <td><b>10 · The Customs House</b></td><td class="n">133</td>
+            <td><span class="hint">never</span> <span class="tag e">failed</span></td>
+            <td colspan="4" class="hint">A paragraph of this chapter is too long for the model to read, even on its
+              own. It needs about 38,400 tokens and the model holds 32,768. Use a model with a larger context.</td>
+            <td class="rowacts"><button class="btn s" onclick="nav('engines')">Change model ➜</button></td></tr>
+
+          <tr onclick="nav('chapter')" style="cursor:pointer">
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" aria-label="Select chapter 11" onchange="recalcAnalyze(this)"></td>
+            <td><b class="lnk">11 · Fog Bells</b>
+              <div class="hint">Its text changed after 12 takes were recorded. Re-analyzing would re-cut the lines and delete those takes, so it stopped.</div></td>
+            <td class="n">88</td>
+            <td><span class="hint">5 days ago</span>
+              <span class="tag e" title="This chapter's text no longer matches its 84 rendered blocks, so analyzing would have to re-cut it — and that deletes the 12 take(s) already recorded against them. Delete the takes (or re-render after) if you want the new split.">can't re-cut</span></td>
+            <td class="n">4</td><td class="n">38</td><td class="hint">0</td><td class="hint">0</td>
+            <td class="rowacts"><button class="btn s" onclick="event.stopPropagation();nav('render')">Takes ➜</button><button class="btn s" onclick="event.stopPropagation();nav('chapter')">Review</button></td></tr>
+
+          <tr>
+            <td><input type="checkbox" class="ck" aria-label="Select chapter 12" onchange="recalcAnalyze(this)"></td>
+            <td><b>12 · What Harbek Saw</b></td><td class="n">156</td>
+            <td class="hint">never</td>
+            <td class="hint">—</td><td class="hint">—</td><td class="hint">—</td><td class="hint">—</td>
+            <td class="rowacts"><button class="btn s" disabled title="Analyze it first">Review</button></td></tr>
+
+          <tr>
+            <td><input type="checkbox" class="ck" disabled aria-label="Chapter 13 has no text" title="No text to analyze"></td>
+            <td><b>13 · The Last Door</b></td><td class="hint">—</td>
+            <td class="hint">no text yet</td>
+            <td colspan="4" class="hint">Paste or import its text first.</td>
+            <td class="rowacts"><button class="btn s" onclick="openModal('paste')">＋ Add text</button></td></tr>
+
+          <tr>
+            <td><input type="checkbox" class="ck" aria-label="Select chapter 14" onchange="recalcAnalyze(this)"></td>
+            <td><b>14 · Stillwater</b></td><td class="n">193</td>
             <td class="hint">never</td>
             <td class="hint">—</td><td class="hint">—</td><td class="hint">—</td><td class="hint">—</td>
             <td class="rowacts"><button class="btn s" disabled title="Analyze it first">Review</button></td></tr>
         </tbody></table></div>
 
       <div class="row" style="margin-top:12px">
-        <button class="btn p an-btn" data-verb="✨ Analyze" onclick="toast('Analyzing 3 chapters — each fills in as it finishes.','ok')">✨ Analyze 3 chapters</button>
-        <button class="btn" onclick="toast('Second pass queued on 47 guessed and flagged lines.','ok')">🔎 Review the guesses</button>
-        <span class="hint an-est" data-tail="rows fill in one chapter at a time, and each is reviewable the moment it lands">593 lines · about 4m 3s · rows fill in one chapter at a time, and each is reviewable the moment it lands</span>
+        <button class="btn p an-btn" data-verb="✨ Analyze" onclick="toast('Queued — starts when the current run finishes, and each row fills in as its chapter lands.','ok')">✨ Analyze 2 chapters</button>
+        <span class="hint an-est" data-tail="starts after the current run · each row fills in as its chapter finishes">263 lines · starts after the current run · each row fills in as its chapter finishes</span>
         <span style="flex:1"></span>
-        <select class="box" style="width:auto"><option>Route: Auto → direct</option>
-          <option>Direct</option><option>Chunked</option></select>
-        <span class="pill">Floor <b>0.55</b></span>
+        <select class="box" style="width:auto" aria-label="Route"><option>Route: Auto → Direct</option>
+          <option>Guided</option><option>Direct</option></select>
+        <span class="pill" title="Set by the route: 0.5 on Direct, 0.7 on Guided">Floor <b>0.5</b></span>
       </div>
     </div>
 
     <div class="card tint">
       <div class="sh"><h4>What these columns mean</h4></div>
       <div class="tw"><table><tbody>
-        <tr><td style="width:104px"><b>Anchored</b></td>
-          <td>The prose named the speaker — “said Marius” — or it carried from a line that did. Reliable.</td></tr>
+        <tr><td style="width:136px"><b>Anchored</b></td>
+          <td>The prose named the speaker — “said Marius” — or it carried from a line that did. Most
+            speech has no anchor: “she said” and a gesture before the line name nobody.</td></tr>
         <tr><td><b>Guessed</b></td>
-          <td>The model chose. <b>This is the number worth your eyes.</b> A guess can be wrong at any
-            confidence, so this count does not shrink because the model felt sure.</td></tr>
+          <td>The model chose. Most spoken lines are decided this way, so a guess alone is not a
+            warning — the model can be sure and wrong, and its score says nothing about which.</td></tr>
         <tr><td><b>Flagged</b></td>
-          <td>Checks on the text, not on the model: three lines in a row by one persona, a persona with
-            a single line, a speaker who has not appeared in the scene yet.</td></tr>
+          <td>Checks on the text, not on the model's confidence: three lines in a row by one persona, a
+            persona with a single line, a speaker not yet in the chapter, dialogue on the Narrator, an
+            anchor the model disagrees with.
+            <b>These are the lines worth your eyes.</b></td></tr>
         <tr><td><b>No speaker</b></td>
-          <td>It declined, or fell below the floor. These block rendering.</td></tr>
+          <td>The model wasn't sure, or skipped the line. These block rendering.</td></tr>
+        <tr><td><span class="tag w">Renn added since</span></td>
+          <td>Analyzed before that persona joined the cast, in a chapter that names them. Re-analyze
+            it — lines you set are kept.</td></tr>
+        <tr><td><span class="tag w">no dialogue found</span></td>
+          <td>Nothing in the text was read as speech. Speech in ‘single quotes’, «guillemets» or after
+            a dash isn't read as dialogue, so every line went to the Narrator.</td></tr>
+        <tr><td><span class="tag e">can't re-cut</span></td>
+          <td>The text changed after takes were recorded. Analyzing would re-cut the lines and delete
+            those takes, so it stops.</td></tr>
+        <tr><td><span class="tag e">failed</span></td>
+          <td>The model call failed. The reason is on the row, and nothing was saved.</td></tr>
       </tbody></table></div>
     </div>
   </div>
@@ -974,11 +1085,12 @@ tbody tr[onclick]:hover{background:var(--surface-2)}
 <div class="route" id="r-chapter">
 <div class="top">
     <span class="crumb"><span class="lnk" onclick="nav('projects')">Projects</span>
-      › <span class="lnk proj-name" onclick="nav('overview')">Stillwater</span> › Studio
+      › <span class="lnk proj-name" onclick="nav('overview')">Stillwater</span>
+      › <span class="lnk" onclick="nav('chapters')">Studio</span>
       › <b>Ch. 1 — The Ninth Door</b></span>
     <span class="pill proj-kind">📖 audiobook</span>
     <span style="flex:1"></span>
-    <span class="pill live"><span class="dot"></span> gemma-3-12b</span></div>
+    <span class="pill live"><span class="dot"></span> gemma-4-26b-a4b-qat</span></div>
   <div class="body">
     <div class="steps-strip">
       <span class="stp" onclick="nav('overview')">Overview</span>
@@ -1001,133 +1113,190 @@ tbody tr[onclick]:hover{background:var(--surface-2)}
 
     <div class="card">
       <div class="sh"><h4>Who says what</h4>
-        <span class="sub">214 lines · 5 personas · last analyzed 2 min ago</span></div>
+        <span class="sub">214 lines · 96 spoken · analyzed yesterday</span></div>
       <div class="row" style="margin-bottom:10px">
-        <span class="pill">Route <b>Auto → direct</b></span>
-        <span class="pill">Confidence floor <b>0.55</b></span>
-        <span class="hint">Below the floor a line is demoted to unattributed — the model's guess is
-          kept on the row, not used.</span></div>
+        <span class="pill">Route <b>Auto → Direct</b></span>
+        <span class="pill">Confidence floor <b>0.5</b></span>
+        <span class="hint">Below the floor a line gets no speaker — the model's pick is kept on the row,
+          not used.</span></div>
       <div class="verbs">
-        <span class="verb"><button class="btn p" onclick="toast('Analyzing this chapter — results appear in the lines below.','ok')">✨ Analyze this chapter</button>
-          <span class="vs">Attributes each line to a persona already in the cast. Narration is never
+        <span class="verb"><button class="btn p" onclick="toast('Analyzing this chapter — results appear in the lines below. Lines you set are kept.','ok')">✨ Analyze this chapter</button>
+          <span class="vs">Attributes each spoken line to a persona already in the cast. Narration is never
             sent to the model. Stays on this page.</span></span>
-        <span class="verb"><button class="btn" onclick="toast('Second pass queued on 47 guessed and flagged lines.','ok')">🔎 Review the guesses</button>
-          <span class="vs">A second model pass over the 47 lines that are guesses or flagged. Never
-            runs on its own — you spend the tokens deliberately.</span></span>
         <span class="verb"><button class="btn" onclick="nav('chapters')">📚 Analyze several chapters</button>
-          <span class="vs">Opens the chapter grid. Pick what to run, results fill in as each
+          <span class="vs">Opens the chapter grid. Pick what to run; each row fills in as its chapter
             finishes.</span></span>
         <span style="flex:1"></span>
         <span class="verb"><button class="btn" onclick="nav('discover')">🔍 A speaker is missing</button>
-          <span class="vs">Attribution can only pick personas that exist. Discover finds names in the
-            prose that are not in your cast.</span></span>
+          <span class="vs">Attribution can only pick personas in the cast. Discover finds names in the
+            prose that aren't in it yet.</span></span>
       </div>
     </div>
 
     <div class="card" style="padding:0;overflow:hidden">
-      <div style="padding:11px 14px;border-bottom:1px solid var(--line)">
+      <div style="padding:11px 14px;border-bottom:1px solid var(--line)" data-chips>
         <div class="row">
+          <span class="hint" style="font-weight:700">Speakers</span>
+          <span class="tag" data-filter="p-marius" onclick="pickChip(this)" title="Press 1 to assign Marius"><b class="mono">1</b>&nbsp;Marius · 44</span>
+          <span class="tag" data-filter="p-june" onclick="pickChip(this)" title="Press 2 to assign June"><b class="mono">2</b>&nbsp;June · 41</span>
+          <span class="tag" data-filter="p-renn" onclick="pickChip(this)" title="Press 3 to assign Renn"><b class="mono">3</b>&nbsp;Renn · 7</span>
+          <span class="tag" data-filter="p-harbek" onclick="pickChip(this)" title="Press 4 to assign Harbek"><b class="mono">4</b>&nbsp;Harbek · 1</span>
+          <span class="tag" data-filter="p-narrator" onclick="pickChip(this)">Narrator · 118</span>
+          <span class="hint mono">/ any other persona</span></div>
+        <div class="row" style="margin-top:8px">
           <span class="tag ok" data-filter="all" onclick="pickChip(this)">All 214</span>
-          <span class="tag w" data-filter="guess" onclick="pickChip(this)">41 guessed</span>
-          <span class="tag e" data-filter="flag" onclick="pickChip(this)">6 flagged</span>
-          <span class="tag e" data-filter="floored" onclick="pickChip(this)">9 below the floor</span>
-          <span class="tag e" data-filter="noans" onclick="pickChip(this)">3 no answer</span>
+          <span class="tag" data-filter="guess" onclick="pickChip(this)">84 guessed</span>
+          <span class="tag e" data-filter="flag" onclick="pickChip(this)">3 flagged</span>
+          <span class="tag e" data-filter="none" onclick="pickChip(this)">3 no speaker</span>
           <span style="flex:1"></span>
-          <span class="hint mono">j / k move · 1–9 assign · Enter accept</span></div>
+          <span class="hint mono">j / k next line · 1–9 assign · Enter confirm · / find</span></div>
         <p class="hint" style="margin:7px 0 0">Everything is here, in reading order. The filters are a
           lens, never the view — <b>a wrong line is most often spotted by reading around it</b>, and
           the model can be certain and wrong, so nothing is hidden because it scored well.</p>
       </div>
 
       <div class="scr" data-filterable>
-        <div class="ln narr" data-state="all" onclick="toast('Line 1 — narration, never sent to the model.')">
+        <div class="ln mk k-pod" data-state="all" title="Music or ad direction from the import — never spoken, never given a speaker">
+          <span class="who">♪ marker</span>
+          <span class="txt">[music: harbour theme, 8 s]</span>
+          <span class="rt"></span></div>
+
+        <div class="ln narr" data-state="p-narrator" onclick="toast('Narration — never sent to the model.')">
           <span class="who">Narrator<span class="src" title="Prose. The model is never asked.">narration</span></span>
-          <span class="txt">Marius set the lamp on the table, and for a while neither of them said anything at all.</span>
-          <span class="rt"><span title="Reassign">✎</span></span></div>
+          <span class="txt">Marius set the lamp on the table.</span>
+          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
 
-        <div class="ln" data-state="all" onclick="toast('Line 2 — anchored by “said Marius”. Anchors beat the model.')">
-          <span class="who"><span class="av" style="background:#3a7d63">M</span>Marius<span class="src src-tag" title="&quot;said Marius&quot; in the prose.">tag</span></span>
-          <span class="txt">“You're late,” said Marius.</span>
-          <span class="rt"><span title="Reassign">✎</span></span></div>
+        <div class="ln" data-state="guess p-june p-narrator" onclick="toast('The model chose June — nothing in the prose names her here.')">
+          <span class="who"><span class="av" style="background:#c98aa7">J</span>June<span class="src src-llm" title="The model chose this, above the floor.">llm 0.97</span></span>
+          <span class="txt"><span class="sp">“You're late.”</span> <span class="nt">June didn't look up from the ledger.</span></span>
+          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
 
-        <div class="ln guess sel" data-state="guess" onclick="toast('Line 3 — the model chose June. No anchor in the prose.')">
-          <span class="who"><span class="av" style="background:#c98aa7">J</span>June<span class="src src-llm" title="The model chose this, above the floor.">llm 0.94</span></span>
-          <span class="txt">“By twenty minutes. It hardly signifies.”</span>
-          <span class="rt"><span title="Reassign">✎</span></span></div>
+        <div class="ln" data-state="p-marius p-narrator" onclick="toast('Anchored by “said Marius”; the second line carries from it.')">
+          <span class="who"><span class="av" style="background:#3a7d63">M</span>Marius<span class="src src-tag" title="“said Marius” in the prose.">tag</span><span class="src src-tag" title="Carried from “said Marius” in the same paragraph.">propagated</span></span>
+          <span class="txt"><span class="sp">“By twenty minutes,”</span> <span class="nt">said Marius.</span> <span class="sp">“It hardly signifies.”</span></span>
+          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
 
-        <div class="ln guess" data-state="guess" onclick="toast('Line 4 — a guess. 0.88 is still a guess.')">
-          <span class="who"><span class="av" style="background:#3a7d63">M</span>Marius<span class="src src-llm">llm 0.88</span></span>
-          <span class="txt">“It signifies to the tide.”</span>
-          <span class="rt"><span title="Reassign">✎</span></span></div>
+        <div class="ln" data-state="p-june" onclick="toast('You set June here — it was Marius. Analyze leaves it alone.')">
+          <span class="who"><span class="av" style="background:#c98aa7">J</span>June<span class="src src-you" title="You set this — it was Marius. Analyze leaves it alone.">✓ you</span></span>
+          <span class="txt"><span class="sp">“It signifies to the tide.”</span></span>
+          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
 
-        <div class="ln flag" data-state="flag" onclick="toast('Line 5 — flagged: third consecutive line by the same persona.')">
+        <div class="ln" data-state="guess p-marius p-narrator" onclick="toast('The model chose Marius.')">
           <span class="who"><span class="av" style="background:#3a7d63">M</span>Marius<span class="src src-llm">llm 1.00</span></span>
-          <span class="txt">“And you have never once waited on it.”
-            <b class="why">⚑ 3rd Marius in a row — the alternation probably broke at line 4</b></span>
-          <span class="rt"><span title="Reassign">✎</span></span></div>
+          <span class="txt"><span class="sp">“The tide turned below the floorboards.”</span> <span class="nt">He sighed.</span></span>
+          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
 
-        <div class="ln narr" data-state="all" onclick="toast('Narration.')">
+        <div class="ln narr" data-state="p-narrator" onclick="toast('Narration — never sent to the model.')">
           <span class="who">Narrator<span class="src">narration</span></span>
           <span class="txt">The harbour bell went twice and stopped, as though it had thought better of it.</span>
-          <span class="rt"><span title="Reassign">✎</span></span></div>
+          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
 
-        <div class="ln" data-state="all" onclick="toast('Line 7 — carried forward from the anchor at line 2.')">
-          <span class="who"><span class="av" style="background:#c98aa7">J</span>June<span class="src src-tag" title="Carried forward from the previous anchored line.">propagated</span></span>
-          <span class="txt">“It matters to me.”</span>
-          <span class="rt"><span title="Reassign">✎</span></span></div>
+        <div class="ln" data-state="guess p-june" onclick="toast('The model chose June.')">
+          <span class="who"><span class="av" style="background:#c98aa7">J</span>June<span class="src src-llm">llm 0.88</span></span>
+          <span class="txt"><span class="sp">“It matters to me.”</span></span>
+          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
 
-        <div class="ln none" data-state="floored" onclick="toast('Line 8 — below the floor. It wanted Marius at 0.41.')">
-          <span class="who"><select class="box" onclick="event.stopPropagation()" style="padding:2px 5px;font-size:11px;border-color:var(--danger-line)">
-              <option>— nobody —</option><option>Marius</option><option>June</option><option>Narrator</option></select>
-            <span class="src src-floor" title="It said Marius at 0.41, under the 0.55 floor.">floored · wanted Marius</span></span>
-          <span class="txt">“Then it matters.”
-            <b class="why">Blocked — a line with no speaker cannot render</b></span>
-          <span class="rt"><span title="Reassign">✎</span></span></div>
-
-        <div class="ln flag" data-state="flag" onclick="toast('Line 9 — flagged: Harbek has one line in the whole chapter.')">
+        <div class="ln flag" data-state="guess flag p-harbek" onclick="toast('Flagged: Harbek has one line in the whole chapter.')">
           <span class="who"><span class="av" style="background:#b3552e">H</span>Harbek<span class="src src-llm">llm 0.72</span></span>
-          <span class="txt">“Tide's wrong tonight.”
-            <b class="why">⚑ Harbek's only line in this chapter — usually a misattribution</b></span>
-          <span class="rt"><span title="Reassign">✎</span></span></div>
+          <span class="txt"><span class="sp">“Tide's wrong tonight.”</span>
+            <b class="why">⚑ Harbek's only line in this chapter — often a misattribution</b></span>
+          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
 
-        <div class="ln none" data-state="noans" onclick="toast('Line 10 — the model returned no row for this line.')">
-          <span class="who"><select class="box" onclick="event.stopPropagation()" style="padding:2px 5px;font-size:11px;border-color:var(--danger-line)">
-              <option>— nobody —</option><option>Marius</option><option>June</option></select>
-            <span class="src src-floor" title="The model returned fewer rows than there are lines.">no answer</span></span>
-          <span class="txt">“Nine doors, and every one of them shut.”
-            <b class="why">Blocked — the model never answered for this line</b></span>
-          <span class="rt"><span title="Reassign">✎</span></span></div>
+        <div class="ln none sel" data-state="none" onclick="toast('No speaker — the model wanted Marius at 0.41, under the 0.5 floor.')">
+          <span class="who">— no speaker —<span class="src src-floor" title="It said Marius at 0.41, under the 0.5 floor.">not sure · wanted Marius</span></span>
+          <span class="txt"><span class="sp">“Then it matters.”</span>
+            <b class="why">Blocked — a line with no speaker cannot render</b></span>
+          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
+        <div class="pick" data-state="none">
+          <span class="hint">Who says “Then it matters.”?</span>
+          <span class="tag" onclick="toast('Line → Marius.','ok')"><b class="mono">1</b>&nbsp;Marius</span>
+          <span class="tag" onclick="toast('Line → June.','ok')"><b class="mono">2</b>&nbsp;June</span>
+          <span class="tag" onclick="toast('Line → Renn.','ok')"><b class="mono">3</b>&nbsp;Renn</span>
+          <span class="tag" onclick="toast('Line → Harbek.','ok')"><b class="mono">4</b>&nbsp;Harbek</span>
+          <span class="tag" onclick="toast('Line → Narrator.','ok')">Narrator</span>
+          <input class="box" style="width:170px" placeholder="/ find a persona…" aria-label="Find a persona"></div>
+
+        <div class="ln" data-state="p-marius p-narrator" onclick="toast('Anchored by “Marius said”.')">
+          <span class="who"><span class="av" style="background:#3a7d63">M</span>Marius<span class="src src-tag" title="“Marius said” in the prose.">tag</span></span>
+          <span class="txt"><span class="sp">“Nine doors, and every one of them shut,”</span> <span class="nt">Marius said.</span></span>
+          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
+
+        <div class="ln" data-state="guess p-marius" onclick="toast('The model chose Marius.')">
+          <span class="who"><span class="av" style="background:#3a7d63">M</span>Marius<span class="src src-llm">llm 0.93</span></span>
+          <span class="txt"><span class="sp">“Somebody shut them.”</span></span>
+          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
+
+        <div class="ln flag" data-state="guess flag p-marius" onclick="toast('Flagged: the third Marius line in a row.')">
+          <span class="who"><span class="av" style="background:#3a7d63">M</span>Marius<span class="src src-llm">llm 1.00</span></span>
+          <span class="txt"><span class="sp">“Somebody always does.”</span>
+            <b class="why">⚑ 3rd Marius line in a row — the turns probably broke at the line before</b></span>
+          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
+
+        <div class="ln flag" data-state="flag p-june p-narrator" onclick="toast('Flagged: carried from “said June”, but the model says Marius.')">
+          <span class="who"><span class="av" style="background:#c98aa7">J</span>June<span class="src src-tag" title="“said June” in the prose.">tag</span><span class="src src-tag" title="Carried from “said June” in the same paragraph.">propagated</span></span>
+          <span class="txt"><span class="sp">“Wait,”</span> <span class="nt">said June. Marius was already at the door.</span> <span class="sp">“We go now.”</span>
+            <b class="why">⚑ “We go now.” carries “said June”, but the model says Marius — the anchor may have gone stale</b></span>
+          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
+
+        <div class="ln" data-state="guess p-june" onclick="toast('The model chose June.')">
+          <span class="who"><span class="av" style="background:#c98aa7">J</span>June<span class="src src-llm">llm 0.97</span></span>
+          <span class="txt"><span class="sp">“Then we wait for the tide.”</span></span>
+          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
+
+        <div class="ln none" data-state="none" onclick="toast('No speaker — the model skipped this line.')">
+          <span class="who">— no speaker —<span class="src src-floor" title="The model's answer had no entry for this line.">skipped</span></span>
+          <span class="txt"><span class="sp">“Nine.”</span>
+            <b class="why">Blocked — the model skipped this line</b></span>
+          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
+
+        <div class="ln" data-state="p-renn p-marius p-narrator" onclick="toast('Two speakers in one paragraph, each anchored by its own tag.')">
+          <span class="who"><span class="wl"><span class="av" style="background:#8a6fb0">R</span>Renn<span class="src src-tag">tag</span></span>
+            <span class="wl"><span class="av" style="background:#3a7d63">M</span>Marius<span class="src src-tag">tag</span></span></span>
+          <span class="txt"><i class="iw">Renn</i><span class="sp">“Go,”</span> <span class="nt">said Renn, and Marius answered,</span> <i class="iw">Marius</i><span class="sp">“After you.”</span></span>
+          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
+
+        <div class="ln narr" data-state="p-narrator" onclick="toast('Narration — never sent to the model.')">
+          <span class="who">Narrator<span class="src">narration</span></span>
+          <span class="txt">Outside, the fog came up the quay like something that meant to stay.</span>
+          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
       </div>
 
       <div class="row" style="padding:11px 14px;border-top:1px solid var(--line)">
-        <button class="btn" onclick="toast('Lines 3–5 selected. Pick a persona to reassign all three.')">⇅ Select a run</button>
-        <button class="btn" onclick="toast('Reassigned. Lines 6 and 7 are re-flagged — fixing one usually means the next was wrong too.','ok')">🎭 Reassign selected…</button>
-        <span class="hint">When the alternation breaks, several lines in a row are wrong at once.
-          Reassigning re-checks the neighbours.</span>
+        <button class="btn" onclick="toast('Lines 11–12 selected. Pick a persona to reassign both.')">⇅ Select a run</button>
+        <button class="btn" onclick="toast('Reassigned to June. The lines either side are re-checked — fixing one usually means the next was wrong too.','ok')">🎭 Reassign selected…</button>
+        <button class="btn" title="Everything the model couldn't place becomes narration. Lines with no speaker block the render." onclick="toast('Every line without a speaker now reads as Narrator.','ok')">Assign 3 → Narrator</button>
+        <button class="btn g" onclick="toast('Undone — lines 11–12 are back to Marius.','ok')">↶ Undo</button>
         <span style="flex:1"></span>
-        <button class="btn s g" onclick="toast('Showing lines 2 and 4 around the selected line.')">👁 Show context</button>
+        <button class="btn s g" onclick="toast('Showing the paragraphs either side of the selected line.')">👁 Show context</button>
       </div>
+      <p class="hint" style="margin:0;padding:0 14px 11px">Changing the speaker of a rendered line makes it
+        stale — it re-renders, and its old take is kept.</p>
     </div>
 
     <div class="card tint">
       <div class="sh"><h4>How to read the marks</h4></div>
       <div class="tw"><table><tbody>
-        <tr><td style="width:132px"><span class="src">narration</span></td>
-          <td>Prose. Never sent to the model, never in question — so it recedes.</td></tr>
+        <tr><td style="width:150px"><span class="src">narration</span></td>
+          <td>Prose. Never sent to the model, never in question — so it recedes. A paragraph's spoken
+            part is dark and its narration grey, and the grey part is read by the Narrator.</td></tr>
         <tr><td><span class="src src-tag">tag</span> / <span class="src src-tag">propagated</span></td>
           <td>The prose named the speaker, or it carried from a line that did. <b>Anchors beat the
-            model</b>, so its own pick is kept but not used.</td></tr>
+            model</b> — its own pick is kept, and a disagreement is flagged.</td></tr>
         <tr><td><span class="src src-llm">llm 0.94</span></td>
-          <td><b>A guess.</b> The number is the model's opinion of itself, and it has been 1.00 and
-            wrong — so the mark is the same at every score.</td></tr>
+          <td>The model chose. Most spoken lines are decided this way. The number is the model's
+            opinion of itself, and it has been 1.00 and wrong — so no score outranks a flag.</td></tr>
+        <tr><td><span class="src src-you">✓ you</span></td>
+          <td>You set or confirmed this, and Analyze leaves it alone.</td></tr>
         <tr><td><b class="why" style="display:inline">⚑ flagged</b></td>
-          <td>Checks on the text, not on the model: three in a row, a persona with one line, a
-            speaker not yet in the scene, dialogue on the Narrator, an anchor that went stale.</td></tr>
-        <tr><td><span class="src src-floor">floored</span></td>
-          <td>Under the confidence floor, or no answer at all. Blocks rendering either way.</td></tr>
+          <td>Checks on the text, not on the model's confidence: three in a row, a persona with one
+            line, a speaker not yet in the chapter, dialogue on the Narrator, an anchor the model
+            disagrees with.</td></tr>
+        <tr><td><span class="src src-floor">no speaker</span></td>
+          <td>The model wasn't sure — under the floor — or skipped the line. Blocks rendering either
+            way.</td></tr>
       </tbody></table></div>
-      <p class="hint" style="margin:9px 0 0">Direction, takes and rendering are <b>not</b> on this
-        page. Script decides who says what; how it is performed is
+      <p class="hint" style="margin:9px 0 0">Direction, takes, rewriting a line in its persona's voice and rendering
+        are <b>not</b> on this page. Script decides who says what; how it is performed is
         <span class="lnk" onclick="nav('render')">Render</span>.</p>
     </div>
 
@@ -1196,7 +1365,7 @@ tbody tr[onclick]:hover{background:var(--surface-2)}
             <span class="av" style="background:#b3552e">H</span>
             <div style="min-width:0">
               <div class="nm">Harbek</div>
-              <div class="de">Found in chapter 4. Nothing written about him yet.</div>
+              <div class="de">Found in chapter 1. Nothing written about him yet.</div>
               <div class="as none">⚠ no persona · 22 lines blocked</div></div></div>
 
           <div class="spkcard" onclick="pickCard(this)">
@@ -1316,10 +1485,10 @@ tbody tr[onclick]:hover{background:var(--surface-2)}
       <span class="tag pd" data-filter="pending" onclick="pickChip(this)">Pending 187</span>
       <span class="tag" data-filter="stale" onclick="pickChip(this)">Stale 9</span>
       <span class="tag" data-filter="done" onclick="pickChip(this)">Done 27</span>
-      <span class="tag w" data-filter="uncast" onclick="pickChip(this)">Blocked 25</span>
+      <span class="tag w" data-filter="uncast" onclick="pickChip(this)">Blocked 4</span>
     </div>
 
-    <div class="bn e">✗ <b>25 lines can't render.</b> 3 have no speaker —
+    <div class="bn e">✗ <b>4 lines can't render.</b> 3 have no speaker —
       <span class="lnk" onclick="nav('chapter')">fix in Script</span>. Harbek has no persona —
       <span class="lnk" onclick="nav('cast')">fix in Cast</span>.</div>
 
@@ -1369,7 +1538,7 @@ tbody tr[onclick]:hover{background:var(--surface-2)}
                       <div class="kr"><input class="num" value="180"><span class="u">ms</span></div></div></div></div>
 
                 <div class="row"><button class="btn s" onclick="openModal('word')">📕 Pronunciation</button>
-                  <button class="btn s" onclick="toast('Rewrite proposed — accept or discard.')">✏️ Rewrite</button></div>
+                  <button class="btn s" onclick="toast('A rewrite in June’s voice is ready — accept it to replace the line’s text, or discard it.')">✏️ Rewrite in June’s voice</button></div>
               </div>
 
               <div class="card" style="padding:0;overflow:hidden">
@@ -2184,6 +2353,19 @@ tbody tr[onclick]:hover{background:var(--surface-2)}
       <button class="btn p" onclick="toast('[fear] [dramatic] set on line 41.','ok');closeModal()">Set</button></div>
   </div>
 
+  <!-- Paste a chapter's text — the Script grid's "no text yet" row -->
+  <div class="modal" id="m-paste" style="display:none">
+    <div class="modal-h"><span class="eb">Ch. 13 · The Last Door</span><h3>Add its text</h3>
+      <button class="xbtn" onclick="closeModal()">✕</button></div>
+    <div class="modal-b">
+      <p class="hint" style="margin:0">This chapter has no lines yet. Paste its text below (paragraphs
+        become blocks, narrator-implied — assign speakers here in Script).</p>
+      <textarea class="box" rows="8" placeholder="Paste the chapter text…"></textarea>
+    </div>
+    <div class="modal-f"><span style="flex:1"></span><button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn p" onclick="toast('Blocks added — tick the chapter to analyze it.','ok');closeModal()">Add as blocks</button></div>
+  </div>
+
   <!-- Add a lexicon word -->
   <div class="modal" id="m-word" style="display:none">
     <div class="modal-h"><span class="eb">Harbor names</span><h3>Add a pronunciation</h3>
@@ -2232,53 +2414,62 @@ function pickRadio(el) {
   el.classList.add('on');
 }
 
+/* A row can carry several states ("guess flag p-june"), and Script's speaker strip and
+   filter chips are one group, so picking a speaker clears the filter and back. */
 function pickChip(el) {
-  var group = el.parentElement;
+  var group = el.closest('[data-chips]') || el.parentElement;
   group.querySelectorAll('.tag[data-filter]').forEach(function (c) { c.classList.remove('ok'); });
   el.classList.add('ok');
   var want = el.dataset.filter;
   var host = group.closest('.body').querySelector('[data-filterable]');
   if (!host) return;
-  var rows = host.querySelectorAll('tbody tr[data-state], .ln[data-state]');
+  var rows = host.querySelectorAll('tbody tr[data-state], .ln[data-state], .pick[data-state]');
   var shown = 0;
   rows.forEach(function (r) {
-    var hit = want === 'all' || r.dataset.state === want;
+    var hit = want === 'all' || (r.dataset.state || '').split(' ').indexOf(want) !== -1;
     r.classList.toggle('hidden-row', !hit);
-    if (hit) shown++;
+    if (hit && !r.classList.contains('pick')) shown++;
   });
-  toast(shown + (shown === 1 ? ' line' : ' lines') + ' shown');
+  var unit = host.classList.contains('scr') ? ' paragraph' : ' line';
+  toast(shown + unit + (shown === 1 ? '' : 's') + ' shown');
 }
 
 /* Analyze / Discover scope */
+/* Stillwater's 14 chapters, in grid order. Chapter 13 has no text yet. */
 var SCOPE_CH = [
   { n: 1, lines: 214 }, { n: 2, lines: 188 }, { n: 3, lines: 231 },
-  { n: 4, lines: 176 }, { n: 5, lines: 203 }, { n: 6, lines: 198 }
+  { n: 4, lines: 176 }, { n: 5, lines: 203 }, { n: 6, lines: 198 },
+  { n: 7, lines: 142 }, { n: 8, lines: 121 }, { n: 9, lines: 97 },
+  { n: 10, lines: 133 }, { n: 11, lines: 88 }, { n: 12, lines: 156 },
+  { n: 13, lines: 0 }, { n: 14, lines: 193 }
 ];
 
 /* Selecting chapters recalculates in place -- no modal, no radios. The three radios
    were presets for these checkboxes, which is why they were redundant furniture.
-   Discover and Script both carry this grid, so everything is scoped to its own route. */
+   Discover and Script both carry this grid, so everything is scoped to its own route.
+   A disabled box (a chapter in the current run, or one with no text) is never picked.
+   No time is estimated up front: nothing in the app measures it before a run. */
 function chScope(el) {
   return (el && el.closest && el.closest('.route')) ||
          document.querySelector('.route.on') || document;
 }
 function selectAllCh(box) {
   var r = chScope(box);
-  r.querySelectorAll('.ck').forEach(function (b) { b.checked = box.checked; });
+  r.querySelectorAll('.ck').forEach(function (b) { if (!b.disabled) b.checked = box.checked; });
   recalcAnalyze(box);
 }
 function recalcAnalyze(el) {
   var r = chScope(el);
   var boxes = Array.prototype.slice.call(r.querySelectorAll('.ck'));
-  var picked = boxes.map(function (b, i) { return b.checked ? SCOPE_CH[i] : null; }).filter(Boolean);
+  var open = boxes.filter(function (b) { return !b.disabled; });
+  var picked = boxes.map(function (b, i) { return b.checked && !b.disabled ? SCOPE_CH[i] : null; })
+    .filter(Boolean);
   var all = r.querySelector('.ch-all');
   if (all) {
-    all.checked = picked.length === boxes.length;
-    all.indeterminate = picked.length > 0 && picked.length < boxes.length;
+    all.checked = open.length > 0 && picked.length === open.length;
+    all.indeterminate = picked.length > 0 && picked.length < open.length;
   }
   var ln = picked.reduce(function (a, c) { return a + c.lines; }, 0);
-  var secs = Math.max(1, Math.ceil(ln / 80)) * 33;
-  var mins = (secs >= 60 ? Math.floor(secs / 60) + 'm ' : '') + (secs % 60) + 's';
   var btn = r.querySelector('.an-btn');
   var est = r.querySelector('.an-est');
   if (btn) {
@@ -2288,7 +2479,7 @@ function recalcAnalyze(el) {
   }
   if (est) {
     est.textContent = picked.length
-      ? ln.toLocaleString() + ' lines · about ' + mins + ' · ' + est.dataset.tail
+      ? ln.toLocaleString() + ' lines · ' + est.dataset.tail
       : 'Pick at least one chapter.';
   }
 }

@@ -1290,12 +1290,41 @@ drifted — this section carried three different totals (123 / 126 / 119 wired)
 from three different build dates.
 
 ```
-19 routes · 139 controls · 0 dead · 4 deliberately disabled
-character/persona: 0 / 75          ← the §8.4 sweep is applied to the mock
+19 routes · 152 controls · 0 dead · 7 deliberately disabled     ← re-run 2026-09-29 (v26)
+character/persona: 0 / 78          ← the §8.4 sweep is applied to the mock
 dangling nav targets: none
 routes nothing links to: none      ← scene re-linked 2026-09-19 (6c7cf57)
-.lnk spans: 37, 20 without onclick (they sit inside clickable rows)
+.lnk spans: 43, 24 without onclick (they sit inside clickable rows)
+JS functions: 13, no duplicates, no undefined handlers
 ```
+
+**2026-09-29, version 26:** Double-check and the "your fixes" line are gone again — both
+measured and dropped (§8.23 "Measured, then dropped"); ch. 1 now carries 3 flags, the
+book 8.
+
+**2026-09-28: Script re-thought (§8.23), published as version 24.** `_new_chapters.html`
+(the grid: all 14 chapters, a run in progress in the kit task strip, the real row states,
+Double-check, the real route/floor values, the "your fixes" line), `_s2.html` (the chapter:
+paragraph rows, the speaker strip, one No speaker filter, the inline speaker picker, ✓ you,
+the two new flags, Undo and "Assign 3 → Narrator"), `_new_overview.html` (the Script row in
+the grid's words; Continue follows the app's own rule and label — `studioStatus.js`,
+`StudioOverview.vue:181`), `_s4.html` (Render's line panel carries "Rewrite in June's
+voice"), `_interactions.py` (`pickChip` takes multi-state rows and one chip group;
+`recalcAnalyze` skips disabled rows and estimates no time — which also drops the invented
+time from Discover's line; 14-chapter `SCOPE_CH`; the paste modal), `build_mock.py` (the
+gold rule on guesses is gone; paragraph, picker, marker and ✓ you styles). Rendered
+headless and checked: every filter, the chip group, select-all skipping the two disabled
+rows, the podcast marker row, zero JS errors.
+
+**Found while doing it, then FIXED the same day (v25, user: "fix thre preexisiting", then
+"go" on the five listed fixes):** Discover now matches `StudioDiscover.vue` — Merge… gone
+(Slice 2 decision 5), `gemma-4-26b-a4b-qat`, a library match ("→ Tom Harlan · in your
+library"), merged spellings ("also written Voss"), "≈" line counts, a "quote not in the
+chapter" tag, a Where column, an Ignored card with Restore, and the app's own copy; the
+proposals are names (the 2026-09-27 prompt fix stopped descriptors like "a woman at the
+rail"). Overview's mastering options are the app's (`StudioOverview.vue:63-70`). Render
+says 4 lines can't render (3 no speaker + Harbek's one line in ch. 1). Cast has Harbek
+"found in chapter 1". Home's running Analyze shows chapters (2 / 3), like the grid's strip.
 
 **2026-09-27: the `overview` route (Studio's Overview tab) is added**, and the
 **Dissolved model is deleted** (the toggle, its rail items, `setStudio`, and the
@@ -1621,6 +1650,241 @@ presets came through (§3 decision 6).
 
 User, 2026-08-17: **"3 i dont know yet"** — so it stays open, and nothing in
 the design may assume either answer.
+
+---
+
+### 8.23 Script, re-thought against the 2026-09-28 measurements — RULED 2026-09-28
+
+**How it was decided.** Before building Studio Slice 3 (Script as the mock), the
+user asked: *"think on the design again to see if you would add or delete or
+modify anything else for the script process, is there feature functionality
+missing for the script processor better ui?"* The review below was presented.
+They answered *"update mock first"*, then, to the four questions that followed,
+*"1 your rec 2 move it 3 your rec 4 your rec"*, then *"go"*. The four questions and
+what those answers mean:
+
+1. Which items go into the mock → **all the recs**: M1–M6, A1–A9, D1–D3, and keep
+   the bulk "no speaker → Narrator". B1–B6 stay out of this slice.
+2. "Rewrite in character" → **move it** to Render's line panel (`_s4.html`), not drop it.
+3. Double-check (A4) and "your fixes teach the model" (A6) → **in the mock now**;
+   the build carries them **only if their measurements hold** (below).
+4. The go covers: this record + the tracker item, the mock screens, rebuild,
+   `validate.py`, republish. **No app code.**
+
+The tracker item is `docs/dev/TASKS.md` → *"Studio Slice 3 — Script, redesigned
+against the 09-28 measurements"*.
+
+#### Why the mock's review design had to move
+
+It was drawn on 2026-08-16, when the model got 55–64% of lines right. The
+2026-09-28 tuning (`2026-09-28-speaker-attribution-tuning.md`) changed the facts
+the design rested on:
+
+| Fact | Measured | Source |
+|---|---|---|
+| Dialogue lines anchored by the prose | **22 of 272** (18 tag + 4 propagated), two books | tuning record, passes 0–1 |
+| Why so few | an anchor needs a persona's **name** within 18 characters of a speech verb; "she said" and action beats never anchor | `extraction/anchors.py:136` |
+| Right, thinking on | **937 / 940** (99.7%) | pass 4 |
+| The misses | every one at confidence 0.70 or 1.00; **none repeated** across runs | pass 4 |
+| A line of the prose as the code cuts it | `“You're late,” said Marius.` → Marius *You're late,* + Narrator *said Marius.* | `extraction/segmentation.py:57-78` |
+| Single quotes | ignored by design, so ‘…’ speech segments to **zero** dialogue | `segmentation.py:8` |
+| Where a fix goes | every speaker change (A→B) is saved as a worked example; the last 12 go into every Analyze prompt, project-wide | `api/extraction_api.py:125-145`, `api/projects_api.py:548-556` |
+| Was that measured | **no** — the eval posts the text and cast only | `server/scripts/eval_attribution.py:148` |
+| A confirm that changes nothing | records no fix — the writer fires only on a real change from an existing speaker | `api/projects_api.py:525-528` |
+| Discover's batch | its loop lives in the component, alive only inside Studio | `components/StudioDiscover.vue:150-200` |
+
+So "Guessed" is roughly every dialogue line. A gold mark on every guess (§8.15)
+would mark ~90% of the dialogue and point at nothing; the misses that remain are
+invisible to confidence and are what the flags and a second run can find.
+
+#### The review, as presented and approved (verbatim)
+
+**Modify**
+
+**M1. Make Flagged and No speaker loud, not Guessed.**
+- Every line keeps its small source badge (tag, propagated, llm 0.94), so you can still see which lines are guesses.
+- The gold rule on every guess goes. Guessed stays as a column and a filter, uncoloured.
+
+**M2. A row is a paragraph, not a segment.**
+- The mock shows `“You're late,” said Marius.` as one Marius line (`_s2.html:58`).
+- The code cuts that into two lines: Marius says `You're late,` and the Narrator says `said Marius.` (`segmentation.py:57-78`).
+- If each segment gets its own row, half the rows are narrator scraps like "said Marius."
+- If each paragraph gets a row, it looks like the mock: speaker on the left, the spoken part highlighted, the tag in grey. j/k still steps through the spoken parts.
+- This needs each line's paragraph number saved, which doesn't happen today.
+
+**M3. One "No speaker" filter replaces "Below the floor" and "No answer".**
+- Both counts are almost always 0 now, and a failed model call already stops the run with a reason.
+- The row still says which case it is: "wasn't sure — wanted Marius" or "skipped this line".
+
+**M4. The 1–9 keys get a legend: a persona strip across the top of the chapter.**
+- Example: `1 Marius 41 · 2 June 38 · 3 Harbek 1 · Narrator 120`, numbered by how many lines each has.
+- Clicking a name filters to that persona's lines.
+- The mock never says who "1" is. Salt-Iron has 14 personas, so anyone past 9 needs a type-to-find picker.
+- The strip also shows "Harbek 1" at a glance, without needing a rule.
+
+**M5. One shared speaker picker instead of a dropdown on every row.** Today every row carries its own select (`StudioView.vue:2265`), which gets heavy on a long chapter.
+
+**M6. Fix the mock's made-up values.**
+- Route options "Direct / Chunked" become Auto / Guided / Direct (`pipeline.py:258`).
+- The floor pill "0.55" becomes the real value, 0.5 for Direct and 0.7 for Guided. It is fixed in code (`pipeline.py:264`), so it's information, not a control.
+- "About 4m 3s" has no basis in the code. Before a run, show lines only; once the first chapter finishes, estimate time left from how long it took.
+
+**Add**
+
+**A1. Real states on each grid row.** The mock only has never, running and analyzed. Also needed:
+- Failed, with the server's reason.
+- Can't re-cut, because takes exist (`extraction_api.py:399`).
+- No text, linking to the paste box (`ChapterView.vue:759`).
+- No dialogue found (A2).
+- Cast changed since analyzed (A3).
+
+**A2. A "No dialogue found" warning.**
+- The segmenter ignores single quotes (`segmentation.py:8`). A UK-punctuated book, or «» / „“ / dash-style dialogue, produces zero dialogue.
+- That chapter would show 0 guessed · 0 flagged · 0 no speaker: the cleanest-looking row, and entirely wrong.
+- A cheap check: those quote marks appear but no dialogue was found, so say so. Actually segmenting single quotes is the separate IDEAS item from 2026-08-08.
+
+**A3. Mark chapters stale after Discover adds a persona.**
+- Analyze can only choose from the cast it had at the time. If Brick is added later, his lines stay with whoever got them.
+- Discover's saved scan knows which chapters mention Brick, so only those rows get "Brick added since — re-analyze".
+- This needs the cast used at analyze time saved on the chapter.
+
+**A4. "Double-check", replacing "Review the guesses".**
+- It runs the chapter a second time and flags every line where the two runs disagree.
+- Confidence can't see the remaining misses, but they were one-offs, so a second run should disagree on exactly those lines.
+- The evidence is thin: 3 misses. Measure it first with `eval:attribution --runs 2`.
+
+**A5. Flag lines where the anchor and the model disagree.**
+- When an anchor wins, the model's own pick is thrown away. Only `floored_from` gets saved (`extraction_api.py:367-372`).
+- Save the model's pick when it differs, and flag the line. A propagated anchor that drifted past a change of speaker shows up exactly there.
+
+**A6. Show that your fixes teach the model.**
+- Every speaker change is saved as a worked example. The last 12 go into every Analyze prompt for the project (`extraction_api.py:125-145`, `projects_api.py:548-556`), and nothing on screen says so.
+- Add a line like "Your fixes teach the next Analyze: 7 · Clear". The clear endpoint already exists (`extraction_api.py:821`).
+- This is unmeasured. The 99.7% was measured with no fixes in the prompt, because the eval sends only the text and the cast (`eval_attribution.py:148`).
+
+**A7. Undo for bulk changes** (reassigning a run, or sending every no-speaker line to the Narrator). The catch: the undo itself counts as a speaker change and would be saved as a fix, so the server has to skip that.
+
+**A8. The batch keeps running when you leave the page.**
+- Discover's loop lives inside its component (`StudioDiscover.vue:150-200`) and only survives while you stay in Studio.
+- Analyze with thinking on takes about 45 s per chapter, so a 60-chapter book runs most of an hour.
+- Run the batch from a shared service, like `ttsJobChannel.js` does for engines. The grid picks the run back up when you return, and a second run can't start on the same chapters.
+
+**A9. Overview's Script row uses the grid's words:** analyzed · flagged · no speaker (`studioStatus.js:165`).
+
+**Keep: "Assign all no-speaker lines → Narrator".** It exists today but isn't in the mock, and dropping it would quietly lose a feature. It's safe: assigning a line that had no speaker records no fix (`projects_api.py:525-528`).
+
+**Delete or move off Script**
+
+- **D1. "Review the guesses"**: replaced by A4, or simply removed.
+- **D2. The Confidence column**: the llm badge already carries the number.
+- **D3. Right-click "rewrite in character": this changes my rec from last turn.** Your rule for Script was *"who says what and what they say… not the direction they say it in"*. A style rewrite is performance, and on an audiobook it changes the author's words. Move it to Render's line panel (Slice 4) or drop it.
+
+**Bigger items, not for Slice 3** (out of this ruling; each needs its own word)
+
+- **B1. Split and merge a line.** This is tracked but deferred. With the model at 99.7%, a mis-cut line is now the bigger error, and Script has no way to fix one.
+- **B2. Editing a line's words.** "What they say" is Script's job, but text editing only exists in ChapterView (`ChapterView.vue:963`).
+- **B3. Segmenting single quotes, «» and „“** (IDEAS 2026-08-08).
+- **B4. Dialogue tags in full-cast audio.** Even when every speaker has a voice, the Narrator still reads "said Marius." Some productions drop those tags. This is a new idea and isn't tracked anywhere.
+- **B5. ChapterView duplicates Script.** It keeps a second chapter list and its own old strip, "1 Import · 2 Script · 3 Cast · 4 Render · 5 Export", with no Discover (`ChapterView.vue:689-695`).
+- **B6. Custom projects have no Narrator,** so Script can never finish (tracked, still open).
+
+**The first plan's questions, as the review revised them**
+
+- Q1 (Review the guesses): was "leave it out". Now: replace it with Double-check, if the measurement holds up.
+- Q2 (Flagged checks, §8.14): still yes — so §8.21 item 2 is answered. It's unknown whether they would have caught the 3 recorded misses; the eval can check that.
+- Q3 (store `analyzed_at`): yes — A1 and A3 need it, with the cast used at analyze time.
+- Q4 (what Enter accepts): confirming a line without changing it records no fix (`projects_api.py:525-528`). Label those lines "✓ you" rather than "corrected".
+- Q5 (rewrite in character): moved off Script (D3).
+- Q6 (route picker): Auto / Guided / Direct, the real routes (M6).
+
+#### Blast radius, as presented (greps run 2026-09-28)
+
+| Change | What it reaches (grep) |
+|---|---|
+| Paragraph number on each line (M2) | The places that create lines: `extraction_api.py:416` (analyze re-cut), `projects_api.py:496` `create_block` (paste), `:823` `_materialize_standard` (import), `:1333` `_update_project_from_standard` (re-import). Pasted and imported lines get none, so they fall back to one row per line. |
+| Save the model's pick when an anchor wins (A5) | `extraction_api.py:360-372` `with_audit`, the only writer of attribution notes on a line |
+| `analyzed_at` + cast used at analyze time (A1, A3) | Chapter metadata writers: `extraction_api.py:359`, `:1024` |
+| Rewrite off Script (D3) | `StudioView.vue:171`, `:2254`. `GenerateView.vue:396` keeps its own copy. |
+| Batch as a service (A8) | `StudioView.vue:1360`, the only renderer caller of `/analyze/stream` |
+| Undo without saving it as a fix (A7) | `projects_api.py:548-556` → `extraction_api.py:834` (the one writer; the Lab's `AttributionResult.vue:158` uses it too) |
+
+#### What this supersedes in the sections above
+
+- **§8.6's filter list** and **§8.15's filter set** `All · Guessed · Flagged · Below the floor · Unattributed` → `All · Guessed · Flagged · No speaker`, plus the persona strip (M3, M4).
+- **§8.9 "Review — the second LLM pass"** → Double-check (A4): still manual, scoped by the selection, but a second full run compared line by line — not a pass over the guesses. **Then measured and dropped 2026-09-29** (below): Script has no second pass.
+- **§8.13 rule 1** stands — every line still shows how it was decided — but the premise *"~40 rows, not 214"* is false with today's anchors; the loud treatment moves to flags (M1).
+- **§8.15's table**: guessed is no longer "marked — a left rule or tint"; rows are paragraphs (M2); "✓ you" joins the marks (Q4); "context on demand" survives for filtered views.
+- **§8.14** gains one check: *the anchor and the model disagree* (A5). (*The two runs disagree* went with A4.)
+
+#### Built in the mock (2026-09-28, version 24)
+
+Where each item landed, so the app build can be checked against it:
+
+| Item | In the mock |
+|---|---|
+| M1 | `build_mock.py`: `.scr .ln.guess` has no style; guesses carry only their `llm 0.97` badge; flags and no-speaker rows keep the red rule |
+| M2 | `_s2.html`: one `.ln` per paragraph; spoken part `.sp`, narration `.nt` grey inline; a two-speaker paragraph stacks both names in the gutter and labels each spoken part |
+| M3 | `_s2.html` chips: All 214 · 84 guessed · 4 flagged · 3 no speaker; rows say "not sure · wanted Marius" or "skipped" |
+| M4 | `_s2.html` speaker strip: 1 Marius · 44 · 2 June · 41 · 3 Renn · 7 · 4 Harbek · 1 · Narrator · 118 · "/ any other persona"; a chip filters, and it shares one group with the filter chips |
+| M5 | one inline picker under the selected line (`.pick`), numbered like the strip, with "/ find a persona…" |
+| M6 | grid route select Auto → Direct / Guided / Direct; floor 0.5 read-only with its per-route title; estimates show lines only; the running row's ETA comes from the run's finished chapters |
+| A1–A3 | grid rows: failed (the real `_one_paragraph_too_big` copy), can't re-cut (the real 409 copy on hover), no text (+ Add text → the paste modal), no dialogue found (ch. 9, ‘single quotes’), "Renn added since" + Re-analyze (ch. 2, 3) |
+| A4 | **dropped 2026-09-29 after measuring** (below) — removed from the grid and the chapter (v26) |
+| A5 | "“We go now.” carries “said June”, but the model says Marius — the anchor may have gone stale" |
+| A6 | **dropped 2026-09-29 after measuring** (below) — the "your fixes" line, its Clear and the "Saved as a fix" toasts removed (v26); the mechanism itself is untouched |
+| A7 | ↶ Undo in the chapter's action row |
+| A8 | the task strip above the grid: "Analyze · 3 chapters … 2 of 3 done … Keeps running while you work elsewhere." + Cancel; the running chapter's box is disabled |
+| A9 | Overview: "7 of 14 chapters analyzed · 1 running" + "88 no speaker" + "8 flagged" (the grid's totals) |
+| Keep | "Assign 3 → Narrator", with the app's own title text |
+| D1–D3 | no "Review the guesses"; no Confidence column; Render's line panel has "✏️ Rewrite in June's voice" (accepting replaces the line's text — the app keeps no original) |
+
+Counts agree across Home, Overview, the grid and the chapter: 2,140 lines, 14 chapters,
+88 no speaker (84 of them in ch. 3, an old analysis), Analyze running on ch. 6.
+
+#### Measured, then dropped: A4 and A6 (2026-09-28 night, ruled 2026-09-29)
+
+Both run by `npm run eval:attribution` against the user's own app (17494, the real
+data dir, `gemma-4-26b-a4b-qat`, thinking on — the live attribution preset), two runs
+per chapter, `--out` to compare lines.
+
+**A4 — Double-check.** 268 keyed lines, both books, two runs: 3 wrong answers in all
+(2 in run 1, 1 in run 2). The runs disagreed on **1 line** — Brass Rank D24 (Nettle →
+Cael at 0.70 in run 1, right in run 2): a real catch, and almost no noise. But
+"Quartermaster." (A Debt Called In D7) went to Sable at **1.00 in both runs** — a
+*stable* miss a second run cannot see (on 09-28 it looked like a one-off; today it failed
+every run, including all four with fixes). Cost: Analyze time doubles, ≈45 s more per
+chapter.
+
+**A6 — fixes in the prompt.** New eval options `--fixes-from CHAPTER`, `--fixes N`
+(12, what Analyze sends), `--fixes-pick shortest|spread` build the fixes from one keyed
+chapter's answers and leave that chapter out of the score. Run with the 12 **shortest**
+lines (least context, the risky kind) from "Bigger Inside" and "The Wool-Buyer":
+
+| Book | Without fixes | With 12 fixes |
+|---|---|---|
+| The Ninth Facet (Brass Rank, The Same Hour, The Keystone; ×2) | 191 / 192 | 191 / 192 |
+| The Salt-Iron Road (A Debt Called In, Salt and Tally; ×2) | 154 / 156 | 154 / 156 |
+
+Same misses on the same lines either way: the fixes neither help nor hurt on these books.
+The `spread` pick was not run.
+
+**The ruling.** Presented: *"Double-check: drop it for now. With the model at 99.6%,
+doubling the time bought one catch in 268 lines, and it can't see the stable kind of
+miss. The flag checks (§8.14) cost nothing extra. Revisit it if a harder book shows
+misses that change between runs."* and *"'Your fixes teach the next Analyze': drop the
+line. The mechanism does no harm, but the line would promise a benefit the measurement
+doesn't show. Keeping the 'Clear' button alone isn't worth it either."* User: **"your
+recs go"**.
+
+So: no second model pass of any kind in Script (§8.9's Review and A4 are both gone), and
+§8.14 gains only A5's check. The fix-examples mechanism (`_resolve_corrections`) stays as
+it is, unadvertised.
+
+#### Open
+
+- **The app build of Slice 3** needs its own go. The mock is the design it builds from.
+- **"Quartermaster."** is now a stable miss (every run on 09-28 night). Whether any of
+  the §8.14 flags would catch it is unknown until they exist.
 
 
 ---

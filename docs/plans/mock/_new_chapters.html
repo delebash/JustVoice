@@ -3,7 +3,7 @@
       › <b class="proj-name lnk" onclick="nav('overview')">Stillwater</b> › Studio</span>
     <span class="pill proj-kind">📖 audiobook</span>
     <span style="flex:1"></span>
-    <span class="pill live"><span class="dot"></span> gemma-3-12b</span></div>
+    <span class="pill live"><span class="dot"></span> gemma-4-26b-a4b-qat</span></div>
   <div class="body">
 
     <div class="card">
@@ -12,86 +12,175 @@
       <p class="note" style="margin:0 0 11px">Attribution only — which persona speaks each line, and
         what the line says. How it is performed, and rendering it, come later.</p>
 
+      <div class="bn" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 11px">
+        <b>✨ Analyze · 3 chapters</b>
+        <span class="hint">6 · What the Ledger Knew · 2 of 3 done · 3m 20s · about 1m 30s left</span>
+        <div class="prog" style="flex:1;min-width:120px;max-width:220px"><b style="width:67%"></b></div>
+        <span class="hint">Keeps running while you work elsewhere.</span>
+        <span style="flex:1"></span>
+        <button class="btn s" onclick="toast('Run cancelled. Chapters already analyzed are kept.','warn')">Cancel</button>
+      </div>
+
       <div class="tw"><table>
         <thead><tr>
           <th style="width:32px"><input type="checkbox" class="ch-all" aria-label="Select all chapters"
             onchange="selectAllCh(this)"></th>
-          <th>Chapter</th><th style="width:58px">Lines</th><th style="width:110px">Analyzed</th>
+          <th>Chapter</th><th style="width:58px">Lines</th><th style="width:150px">Analyzed</th>
           <th style="width:82px">Anchored</th><th style="width:76px">Guessed</th>
           <th style="width:72px">Flagged</th><th style="width:90px">No speaker</th>
-          <th style="width:74px"></th></tr></thead>
+          <th style="width:150px"></th></tr></thead>
         <tbody>
           <tr onclick="nav('chapter')" style="cursor:pointer">
-            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" checked aria-label="Select chapter 1" onchange="recalcAnalyze()"></td>
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" aria-label="Select chapter 1" onchange="recalcAnalyze(this)"></td>
             <td><b class="lnk">1 · The Ninth Door</b></td><td class="n">214</td>
-            <td class="hint">2 min ago</td>
-            <td class="n">168</td><td><span class="tag w">41</span></td>
-            <td><span class="tag e">6</span></td><td><span class="tag e">5</span></td>
+            <td class="hint">yesterday</td>
+            <td class="n">9</td><td class="n">84</td>
+            <td><span class="tag e">3</span></td><td><span class="tag e">3</span></td>
             <td class="rowacts"><button class="btn s" onclick="event.stopPropagation();nav('chapter')">Review</button></td></tr>
 
           <tr onclick="nav('chapter')" style="cursor:pointer">
-            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" aria-label="Select chapter 2" onchange="recalcAnalyze()"></td>
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" aria-label="Select chapter 2" onchange="recalcAnalyze(this)"></td>
             <td><b class="lnk">2 · Salt and Ledger</b></td><td class="n">188</td>
-            <td class="hint">3 days ago</td>
-            <td class="n">181</td><td><span class="tag">7</span></td>
-            <td class="hint">0</td><td class="hint">0</td>
+            <td><span class="hint">3 days ago</span>
+              <span class="tag w" title="Analyzed before Renn joined the cast, and this chapter names Renn — attribution could not choose Renn then.">Renn added since</span></td>
+            <td class="n">11</td><td class="n">72</td>
+            <td><span class="tag e">1</span></td><td class="hint">0</td>
+            <td class="rowacts"><button class="btn s p" onclick="event.stopPropagation();toast('Re-analyzing Salt and Ledger — lines you set are kept.','ok')">Re-analyze</button><button class="btn s" onclick="event.stopPropagation();nav('chapter')">Review</button></td></tr>
+
+          <tr onclick="nav('chapter')" style="cursor:pointer">
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" aria-label="Select chapter 3" onchange="recalcAnalyze(this)"></td>
+            <td><b class="lnk">3 · The Harbour-Master</b></td><td class="n">231</td>
+            <td><span class="hint">3 days ago</span>
+              <span class="tag w" title="Analyzed before Renn joined the cast, and this chapter names Renn — attribution could not choose Renn then.">Renn added since</span></td>
+            <td class="n">7</td><td class="n">29</td>
+            <td><span class="tag e">2</span></td><td><span class="tag e">84</span></td>
+            <td class="rowacts"><button class="btn s p" onclick="event.stopPropagation();toast('Re-analyzing The Harbour-Master — lines you set are kept.','ok')">Re-analyze</button><button class="btn s" onclick="event.stopPropagation();nav('chapter')">Review</button></td></tr>
+
+          <tr onclick="nav('chapter')" style="cursor:pointer">
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" aria-label="Select chapter 4" onchange="recalcAnalyze(this)"></td>
+            <td><b class="lnk">4 · Nine Doors Down</b></td><td class="n">176</td>
+            <td class="hint">2 min ago</td>
+            <td class="n">6</td><td class="n">71</td>
+            <td><span class="tag e">1</span></td><td><span class="tag e">1</span></td>
             <td class="rowacts"><button class="btn s" onclick="event.stopPropagation();nav('chapter')">Review</button></td></tr>
 
           <tr onclick="nav('chapter')" style="cursor:pointer">
-            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" aria-label="Select chapter 3" onchange="recalcAnalyze()"></td>
-            <td><b class="lnk">3 · The Harbour-Master</b></td><td class="n">231</td>
-            <td class="hint">3 days ago</td>
-            <td class="n">96</td><td><span class="tag w">135</span></td>
-            <td><span class="tag e">11</span></td><td class="hint">0</td>
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" aria-label="Select chapter 5" onchange="recalcAnalyze(this)"></td>
+            <td><b class="lnk">5 · The Tide Turning</b></td><td class="n">203</td>
+            <td class="hint">just now</td>
+            <td class="n">8</td><td class="n">79</td>
+            <td><span class="tag e">1</span></td><td class="hint">0</td>
             <td class="rowacts"><button class="btn s" onclick="event.stopPropagation();nav('chapter')">Review</button></td></tr>
 
           <tr>
-            <td><input type="checkbox" class="ck" checked aria-label="Select chapter 4" onchange="recalcAnalyze()"></td>
-            <td><b>4 · Nine Doors Down</b></td><td class="n">176</td>
-            <td><span class="tag w">running…</span></td>
-            <td colspan="4"><div class="prog"><b style="width:44%"></b></div>
-              <span class="hint">77 of 176 · about 40 s left</span></td>
-            <td class="rowacts"><button class="btn s" onclick="toast('Stopped. Lines already decided are kept.','warn')">Stop</button></td></tr>
+            <td><input type="checkbox" class="ck" disabled aria-label="Chapter 6 is in the current run" title="In the current run"></td>
+            <td><b>6 · What the Ledger Knew</b></td><td class="n">198</td>
+            <td><span class="tag pd">analyzing…</span></td>
+            <td colspan="4"><div class="prog"><b style="width:40%"></b></div>
+              <span class="hint">reading · 52 s</span></td>
+            <td class="rowacts"><button class="btn s" disabled title="Wait for it to finish">Review</button></td></tr>
 
           <tr>
-            <td><input type="checkbox" class="ck" checked aria-label="Select chapter 5" onchange="recalcAnalyze()"></td>
-            <td><b>5 · The Tide Turning</b></td><td class="n">203</td>
+            <td><input type="checkbox" class="ck" checked aria-label="Select chapter 7" onchange="recalcAnalyze(this)"></td>
+            <td><b>7 · The Lamp Room</b></td><td class="n">142</td>
             <td class="hint">never</td>
             <td class="hint">—</td><td class="hint">—</td><td class="hint">—</td><td class="hint">—</td>
             <td class="rowacts"><button class="btn s" disabled title="Analyze it first">Review</button></td></tr>
 
           <tr>
-            <td><input type="checkbox" class="ck" aria-label="Select chapter 6" onchange="recalcAnalyze()"></td>
-            <td><b>6 · What the Ledger Knew</b></td><td class="n">198</td>
+            <td><input type="checkbox" class="ck" checked aria-label="Select chapter 8" onchange="recalcAnalyze(this)"></td>
+            <td><b>8 · Low Water</b></td><td class="n">121</td>
+            <td class="hint">never</td>
+            <td class="hint">—</td><td class="hint">—</td><td class="hint">—</td><td class="hint">—</td>
+            <td class="rowacts"><button class="btn s" disabled title="Analyze it first">Review</button></td></tr>
+
+          <tr onclick="nav('chapter')" style="cursor:pointer">
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" aria-label="Select chapter 9" onchange="recalcAnalyze(this)"></td>
+            <td><b class="lnk">9 · Renn's Account</b>
+              <div class="hint">Its speech is in ‘single quotes’, which aren't read as dialogue — every line went to the Narrator.</div></td>
+            <td class="n">97</td>
+            <td><span class="hint">yesterday</span>
+              <span class="tag w" title="Nothing in this chapter was read as speech. Speech in ‘single quotes’, «guillemets» or after a dash isn't read as dialogue.">no dialogue found</span></td>
+            <td class="n">0</td><td class="n">0</td><td class="hint">0</td><td class="hint">0</td>
+            <td class="rowacts"><button class="btn s" onclick="event.stopPropagation();nav('chapter')">Review</button></td></tr>
+
+          <tr>
+            <td><input type="checkbox" class="ck" aria-label="Select chapter 10" onchange="recalcAnalyze(this)"></td>
+            <td><b>10 · The Customs House</b></td><td class="n">133</td>
+            <td><span class="hint">never</span> <span class="tag e">failed</span></td>
+            <td colspan="4" class="hint">A paragraph of this chapter is too long for the model to read, even on its
+              own. It needs about 38,400 tokens and the model holds 32,768. Use a model with a larger context.</td>
+            <td class="rowacts"><button class="btn s" onclick="nav('engines')">Change model ➜</button></td></tr>
+
+          <tr onclick="nav('chapter')" style="cursor:pointer">
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" aria-label="Select chapter 11" onchange="recalcAnalyze(this)"></td>
+            <td><b class="lnk">11 · Fog Bells</b>
+              <div class="hint">Its text changed after 12 takes were recorded. Re-analyzing would re-cut the lines and delete those takes, so it stopped.</div></td>
+            <td class="n">88</td>
+            <td><span class="hint">5 days ago</span>
+              <span class="tag e" title="This chapter's text no longer matches its 84 rendered blocks, so analyzing would have to re-cut it — and that deletes the 12 take(s) already recorded against them. Delete the takes (or re-render after) if you want the new split.">can't re-cut</span></td>
+            <td class="n">4</td><td class="n">38</td><td class="hint">0</td><td class="hint">0</td>
+            <td class="rowacts"><button class="btn s" onclick="event.stopPropagation();nav('render')">Takes ➜</button><button class="btn s" onclick="event.stopPropagation();nav('chapter')">Review</button></td></tr>
+
+          <tr>
+            <td><input type="checkbox" class="ck" aria-label="Select chapter 12" onchange="recalcAnalyze(this)"></td>
+            <td><b>12 · What Harbek Saw</b></td><td class="n">156</td>
+            <td class="hint">never</td>
+            <td class="hint">—</td><td class="hint">—</td><td class="hint">—</td><td class="hint">—</td>
+            <td class="rowacts"><button class="btn s" disabled title="Analyze it first">Review</button></td></tr>
+
+          <tr>
+            <td><input type="checkbox" class="ck" disabled aria-label="Chapter 13 has no text" title="No text to analyze"></td>
+            <td><b>13 · The Last Door</b></td><td class="hint">—</td>
+            <td class="hint">no text yet</td>
+            <td colspan="4" class="hint">Paste or import its text first.</td>
+            <td class="rowacts"><button class="btn s" onclick="openModal('paste')">＋ Add text</button></td></tr>
+
+          <tr>
+            <td><input type="checkbox" class="ck" aria-label="Select chapter 14" onchange="recalcAnalyze(this)"></td>
+            <td><b>14 · Stillwater</b></td><td class="n">193</td>
             <td class="hint">never</td>
             <td class="hint">—</td><td class="hint">—</td><td class="hint">—</td><td class="hint">—</td>
             <td class="rowacts"><button class="btn s" disabled title="Analyze it first">Review</button></td></tr>
         </tbody></table></div>
 
       <div class="row" style="margin-top:12px">
-        <button class="btn p an-btn" data-verb="✨ Analyze" onclick="toast('Analyzing 3 chapters — each fills in as it finishes.','ok')">✨ Analyze 3 chapters</button>
-        <button class="btn" onclick="toast('Second pass queued on 47 guessed and flagged lines.','ok')">🔎 Review the guesses</button>
-        <span class="hint an-est" data-tail="rows fill in one chapter at a time, and each is reviewable the moment it lands">593 lines · about 4m 3s · rows fill in one chapter at a time, and each is reviewable the moment it lands</span>
+        <button class="btn p an-btn" data-verb="✨ Analyze" onclick="toast('Queued — starts when the current run finishes, and each row fills in as its chapter lands.','ok')">✨ Analyze 2 chapters</button>
+        <span class="hint an-est" data-tail="starts after the current run · each row fills in as its chapter finishes">263 lines · starts after the current run · each row fills in as its chapter finishes</span>
         <span style="flex:1"></span>
-        <select class="box" style="width:auto"><option>Route: Auto → direct</option>
-          <option>Direct</option><option>Chunked</option></select>
-        <span class="pill">Floor <b>0.55</b></span>
+        <select class="box" style="width:auto" aria-label="Route"><option>Route: Auto → Direct</option>
+          <option>Guided</option><option>Direct</option></select>
+        <span class="pill" title="Set by the route: 0.5 on Direct, 0.7 on Guided">Floor <b>0.5</b></span>
       </div>
     </div>
 
     <div class="card tint">
       <div class="sh"><h4>What these columns mean</h4></div>
       <div class="tw"><table><tbody>
-        <tr><td style="width:104px"><b>Anchored</b></td>
-          <td>The prose named the speaker — “said Marius” — or it carried from a line that did. Reliable.</td></tr>
+        <tr><td style="width:136px"><b>Anchored</b></td>
+          <td>The prose named the speaker — “said Marius” — or it carried from a line that did. Most
+            speech has no anchor: “she said” and a gesture before the line name nobody.</td></tr>
         <tr><td><b>Guessed</b></td>
-          <td>The model chose. <b>This is the number worth your eyes.</b> A guess can be wrong at any
-            confidence, so this count does not shrink because the model felt sure.</td></tr>
+          <td>The model chose. Most spoken lines are decided this way, so a guess alone is not a
+            warning — the model can be sure and wrong, and its score says nothing about which.</td></tr>
         <tr><td><b>Flagged</b></td>
-          <td>Checks on the text, not on the model: three lines in a row by one persona, a persona with
-            a single line, a speaker who has not appeared in the scene yet.</td></tr>
+          <td>Checks on the text, not on the model's confidence: three lines in a row by one persona, a
+            persona with a single line, a speaker not yet in the chapter, dialogue on the Narrator, an
+            anchor the model disagrees with.
+            <b>These are the lines worth your eyes.</b></td></tr>
         <tr><td><b>No speaker</b></td>
-          <td>It declined, or fell below the floor. These block rendering.</td></tr>
+          <td>The model wasn't sure, or skipped the line. These block rendering.</td></tr>
+        <tr><td><span class="tag w">Renn added since</span></td>
+          <td>Analyzed before that persona joined the cast, in a chapter that names them. Re-analyze
+            it — lines you set are kept.</td></tr>
+        <tr><td><span class="tag w">no dialogue found</span></td>
+          <td>Nothing in the text was read as speech. Speech in ‘single quotes’, «guillemets» or after
+            a dash isn't read as dialogue, so every line went to the Narrator.</td></tr>
+        <tr><td><span class="tag e">can't re-cut</span></td>
+          <td>The text changed after takes were recorded. Analyzing would re-cut the lines and delete
+            those takes, so it stops.</td></tr>
+        <tr><td><span class="tag e">failed</span></td>
+          <td>The model call failed. The reason is on the row, and nothing was saved.</td></tr>
       </tbody></table></div>
     </div>
   </div>

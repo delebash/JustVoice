@@ -3,9 +3,9 @@
       › <b class="proj-name">Stillwater</b> › Studio</span>
     <span class="pill proj-kind">📖 audiobook</span>
     <span style="flex:1"></span>
-    <button class="btn p k-book" onclick="nav('cast')">Continue — Cast Harbek and Renn ➜</button>
-    <button class="btn p k-game" onclick="nav('cast')">Continue — Cast 8 NPCs ➜</button>
-    <button class="btn p k-pod" onclick="nav('render')">Continue — Render 44 lines ➜</button>
+    <button class="btn p k-book" title="The first step with work left" onclick="nav('chapters')">Continue — 2 · Script ➜</button>
+    <button class="btn p k-game" title="The first step with work left" onclick="nav('cast')">Continue — 2 · Cast ➜</button>
+    <button class="btn p k-pod" title="The first step with work left" onclick="nav('render')">Continue — 4 · Render ➜</button>
   </div>
   <div class="body"><div class="split">
     <div style="display:flex;flex-direction:column;gap:13px">
@@ -14,7 +14,8 @@
           <tr onclick="nav('discover')" style="cursor:pointer"><td><b class="lnk">1 · Discover</b></td>
             <td>3 of 14 chapters scanned</td><td><span class="tag w">3 proposed speakers</span></td></tr>
           <tr onclick="nav('chapters')" style="cursor:pointer"><td><b class="lnk">2 · Script</b></td>
-            <td>3 of 14 chapters analyzed · 1 running</td><td><span class="tag e">88 need a speaker</span></td></tr>
+            <td>7 of 14 chapters analyzed · 1 running</td><td><span class="tag e">88 no speaker</span>
+              <span class="tag e">8 flagged</span></td></tr>
           <tr onclick="nav('cast')" style="cursor:pointer"><td><b class="lnk">3 · Cast</b></td>
             <td>3 of 5 personas voiced</td><td><span class="tag e">40 lines blocked</span></td></tr>
           <tr onclick="nav('render')" style="cursor:pointer"><td><b class="lnk">4 · Render</b></td>
@@ -34,7 +35,7 @@
           <tr onclick="nav('discover')" style="cursor:pointer"><td><b class="lnk">1 · Discover</b></td>
             <td>12 of 12 episodes scanned</td><td><span class="tag ok">done</span></td></tr>
           <tr onclick="nav('chapters')" style="cursor:pointer"><td><b class="lnk">2 · Script</b></td>
-            <td>12 of 12 episodes analyzed</td><td><span class="tag ok">every line has a speaker</span></td></tr>
+            <td>12 of 12 episodes analyzed</td><td class="hint">0 no speaker · 0 flagged</td></tr>
           <tr onclick="nav('cast')" style="cursor:pointer"><td><b class="lnk">3 · Cast</b></td>
             <td>3 of 3 personas voiced</td><td><span class="tag ok">done</span></td></tr>
           <tr onclick="nav('render')" style="cursor:pointer"><td><b class="lnk">4 · Render</b></td>
@@ -61,10 +62,10 @@
             <div class="kr"><span class="tag proj-kind">📖 audiobook</span>
               <span class="hint">set when the project is created</span></div></div>
           <div class="f"><label>Mastering target</label>
-            <select class="box k-book" style="max-width:32ch"><option>None</option><option selected>ACX (-20 LUFS / -3.5 dB peak)</option><option>iAudio</option><option>Podcast</option><option>YouTube</option><option>Custom</option></select>
-            <select class="box k-game" style="max-width:32ch"><option selected>None</option><option>ACX (-20 LUFS / -3.5 dB peak)</option><option>iAudio</option><option>Podcast</option><option>YouTube</option><option>Custom</option></select>
-            <select class="box k-pod" style="max-width:32ch"><option>None</option><option>ACX (-20 LUFS / -3.5 dB peak)</option><option>iAudio</option><option selected>Podcast</option><option>YouTube</option><option>Custom</option></select>
-            <span class="hint">Export checks the finished audio against this.</span></div>
+            <select class="box k-book" style="max-width:32ch"><option>This kind's default (ACX)</option><option>None — raw</option><option selected>ACX (-20 LUFS / -3.5 dB peak)</option><option>iAudio</option><option>Podcast</option><option>YouTube</option></select>
+            <select class="box k-game" style="max-width:32ch"><option selected>This kind's default (raw)</option><option>None — raw</option><option>ACX (-20 LUFS / -3.5 dB peak)</option><option>iAudio</option><option>Podcast</option><option>YouTube</option></select>
+            <select class="box k-pod" style="max-width:32ch"><option>This kind's default (Podcast)</option><option>None — raw</option><option>ACX (-20 LUFS / -3.5 dB peak)</option><option>iAudio</option><option selected>Podcast</option><option>YouTube</option></select>
+            <span class="hint">Every render is mastered to this, and Export checks against it.</span></div>
           <div class="f"><label>Pronunciation lexicon</label>
             <div class="kr"><select class="box k-book" style="max-width:32ch"><option>None</option><option selected>Harbor names</option></select><select class="box k-game" style="max-width:32ch"><option selected>None</option><option>Harbor names</option></select><select class="box k-pod" style="max-width:32ch"><option selected>None</option><option>Harbor names</option></select>
               <button class="btn s g" onclick="nav('lexicons')">Open ➜</button></div></div>

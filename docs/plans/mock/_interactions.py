@@ -156,6 +156,19 @@ MODALS = """
       <button class="btn p" onclick="toast('[fear] [dramatic] set on line 41.','ok');closeModal()">Set</button></div>
   </div>
 
+  <!-- Paste a chapter's text — the Script grid's "no text yet" row -->
+  <div class="modal" id="m-paste" style="display:none">
+    <div class="modal-h"><span class="eb">Ch. 13 · The Last Door</span><h3>Add its text</h3>
+      <button class="xbtn" onclick="closeModal()">✕</button></div>
+    <div class="modal-b">
+      <p class="hint" style="margin:0">This chapter has no lines yet. Paste its text below (paragraphs
+        become blocks, narrator-implied — assign speakers here in Script).</p>
+      <textarea class="box" rows="8" placeholder="Paste the chapter text…"></textarea>
+    </div>
+    <div class="modal-f"><span style="flex:1"></span><button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn p" onclick="toast('Blocks added — tick the chapter to analyze it.','ok');closeModal()">Add as blocks</button></div>
+  </div>
+
   <!-- Add a lexicon word -->
   <div class="modal" id="m-word" style="display:none">
     <div class="modal-h"><span class="eb">Harbor names</span><h3>Add a pronunciation</h3>
@@ -205,53 +218,62 @@ function pickRadio(el) {
   el.classList.add('on');
 }
 
+/* A row can carry several states ("guess flag p-june"), and Script's speaker strip and
+   filter chips are one group, so picking a speaker clears the filter and back. */
 function pickChip(el) {
-  var group = el.parentElement;
+  var group = el.closest('[data-chips]') || el.parentElement;
   group.querySelectorAll('.tag[data-filter]').forEach(function (c) { c.classList.remove('ok'); });
   el.classList.add('ok');
   var want = el.dataset.filter;
   var host = group.closest('.body').querySelector('[data-filterable]');
   if (!host) return;
-  var rows = host.querySelectorAll('tbody tr[data-state], .ln[data-state]');
+  var rows = host.querySelectorAll('tbody tr[data-state], .ln[data-state], .pick[data-state]');
   var shown = 0;
   rows.forEach(function (r) {
-    var hit = want === 'all' || r.dataset.state === want;
+    var hit = want === 'all' || (r.dataset.state || '').split(' ').indexOf(want) !== -1;
     r.classList.toggle('hidden-row', !hit);
-    if (hit) shown++;
+    if (hit && !r.classList.contains('pick')) shown++;
   });
-  toast(shown + (shown === 1 ? ' line' : ' lines') + ' shown');
+  var unit = host.classList.contains('scr') ? ' paragraph' : ' line';
+  toast(shown + unit + (shown === 1 ? '' : 's') + ' shown');
 }
 
 /* Analyze / Discover scope */
+/* Stillwater's 14 chapters, in grid order. Chapter 13 has no text yet. */
 var SCOPE_CH = [
   { n: 1, lines: 214 }, { n: 2, lines: 188 }, { n: 3, lines: 231 },
-  { n: 4, lines: 176 }, { n: 5, lines: 203 }, { n: 6, lines: 198 }
+  { n: 4, lines: 176 }, { n: 5, lines: 203 }, { n: 6, lines: 198 },
+  { n: 7, lines: 142 }, { n: 8, lines: 121 }, { n: 9, lines: 97 },
+  { n: 10, lines: 133 }, { n: 11, lines: 88 }, { n: 12, lines: 156 },
+  { n: 13, lines: 0 }, { n: 14, lines: 193 }
 ];
 
 /* Selecting chapters recalculates in place -- no modal, no radios. The three radios
    were presets for these checkboxes, which is why they were redundant furniture.
-   Discover and Script both carry this grid, so everything is scoped to its own route. */
+   Discover and Script both carry this grid, so everything is scoped to its own route.
+   A disabled box (a chapter in the current run, or one with no text) is never picked.
+   No time is estimated up front: nothing in the app measures it before a run. */
 function chScope(el) {
   return (el && el.closest && el.closest('.route')) ||
          document.querySelector('.route.on') || document;
 }
 function selectAllCh(box) {
   var r = chScope(box);
-  r.querySelectorAll('.ck').forEach(function (b) { b.checked = box.checked; });
+  r.querySelectorAll('.ck').forEach(function (b) { if (!b.disabled) b.checked = box.checked; });
   recalcAnalyze(box);
 }
 function recalcAnalyze(el) {
   var r = chScope(el);
   var boxes = Array.prototype.slice.call(r.querySelectorAll('.ck'));
-  var picked = boxes.map(function (b, i) { return b.checked ? SCOPE_CH[i] : null; }).filter(Boolean);
+  var open = boxes.filter(function (b) { return !b.disabled; });
+  var picked = boxes.map(function (b, i) { return b.checked && !b.disabled ? SCOPE_CH[i] : null; })
+    .filter(Boolean);
   var all = r.querySelector('.ch-all');
   if (all) {
-    all.checked = picked.length === boxes.length;
-    all.indeterminate = picked.length > 0 && picked.length < boxes.length;
+    all.checked = open.length > 0 && picked.length === open.length;
+    all.indeterminate = picked.length > 0 && picked.length < open.length;
   }
   var ln = picked.reduce(function (a, c) { return a + c.lines; }, 0);
-  var secs = Math.max(1, Math.ceil(ln / 80)) * 33;
-  var mins = (secs >= 60 ? Math.floor(secs / 60) + 'm ' : '') + (secs % 60) + 's';
   var btn = r.querySelector('.an-btn');
   var est = r.querySelector('.an-est');
   if (btn) {
@@ -261,7 +283,7 @@ function recalcAnalyze(el) {
   }
   if (est) {
     est.textContent = picked.length
-      ? ln.toLocaleString() + ' lines \u00b7 about ' + mins + ' \u00b7 ' + est.dataset.tail
+      ? ln.toLocaleString() + ' lines \u00b7 ' + est.dataset.tail
       : 'Pick at least one chapter.';
   }
 }
