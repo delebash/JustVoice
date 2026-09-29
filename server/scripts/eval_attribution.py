@@ -4,6 +4,7 @@
     npm run eval:attribution                         # server on 127.0.0.1:8741
     npm run eval:attribution -- --runs 2 --route direct
     npm run eval:attribution -- --system draft.txt   # try a prompt, save nothing
+    npm run eval:attribution -- --fixes-from "Bigger Inside"   # with the user's fixes in the prompt
 
 Needs a running JustVoice server (it owns the model and the LIVE prompt rows —
 AI Settings → Features → the speaker_attribution routes). Each chapter goes
@@ -62,6 +63,31 @@ def post(server: str, path: str, body: dict, timeout: int = 1800) -> dict:
         raise SystemExit(f"{path} -> {e.code}: {e.read().decode()[:400]}") from e
 
 
+def build_fixes(book, key: dict, args, chars: list[dict]) -> list[dict]:
+    """The user's fixes as Analyze sends them (`_resolve_corrections`): a line's
+    text and the persona it belongs to. Built from the answer key of ONE chapter,
+    which the caller then leaves out of the score, so a fix never hands over an
+    answer being tested. Each snippet is the line exactly as a block stores it —
+    the segmenter's dialogue text — because that is what a fix records."""
+    from justvoice.extraction.segmentation import segment_paragraphs, split_into_paragraphs
+
+    scene = next((s for s in book.scenes if s.title == args.fixes_from), None)
+    if scene is None or args.fixes_from not in key["chapters"]:
+        raise SystemExit(f"--fixes-from: no keyed chapter called {args.fixes_from!r}")
+    text = "\n\n".join(line.text for line in scene.lines if line.text)
+    spoken = [s["text"] for s in segment_paragraphs(split_into_paragraphs(text)) if s["kind"] == "dialogue"]
+    name_to_id = {c["name"]: c["id"] for c in chars}
+    pool = [(spoken[int(d)], name_to_id[who]) for d, who in key["chapters"][args.fixes_from].items()
+            if who in name_to_id and who != "Narrator" and int(d) < len(spoken)]
+    if args.fixes_pick == "shortest":
+        pool.sort(key=lambda p: len(p[0]))
+        picked = pool[: args.fixes]
+    else:
+        step = max(len(pool) / max(args.fixes, 1), 1)
+        picked = [pool[int(i * step)] for i in range(min(args.fixes, len(pool)))]
+    return [{"text_snippet": t, "persona_id": pid} for t, pid in picked]
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--server", default="http://127.0.0.1:8741")
@@ -82,6 +108,13 @@ def main() -> int:
                     help="treat the model's context as this many tokens - forces chapter splitting")
     ap.add_argument("--show", type=int, default=12, help="errors to print per chapter")
     ap.add_argument("--out", help="write every row as JSON, for comparing runs")
+    ap.add_argument("--fixes-from", metavar="CHAPTER",
+                    help="send fixes (the user's past corrections) built from this keyed chapter's "
+                         "answers, and leave that chapter out of the score so no answer leaks")
+    ap.add_argument("--fixes", type=int, default=12,
+                    help="how many fixes to send (Analyze sends the 12 most recent)")
+    ap.add_argument("--fixes-pick", choices=["shortest", "spread"], default="shortest",
+                    help="shortest lines (least context, the risky kind) or evenly spread")
     args = ap.parse_args()
 
     root = HERE.parents[2] / "samples" / args.sample
@@ -116,14 +149,19 @@ def main() -> int:
     if args.max_context:
         body_extra["max_context"] = args.max_context
 
+    if args.fixes_from:
+        body_extra["corrections"] = build_fixes(book, key, args, chars)
+
     print(f"Attribution test · {book.project.name} · {args.server} · {args.runs} run(s)"
           f" · {', '.join(f'{k}={v!r:.40}' for k, v in body_extra.items()) or 'live settings'}\n")
+    for fix in body_extra.get("corrections", []):
+        print(f"   fix: “{fix['text_snippet'][:60]}” -> {id_to_name.get(fix['persona_id'])}")
 
     tests = []   # (title, text, truth, also_ok)
     for scene in book.scenes:
         if args.chapter and scene.title not in args.chapter:
             continue
-        if scene.title not in key["chapters"]:
+        if scene.title not in key["chapters"] or scene.title == args.fixes_from:
             continue   # a key may cover only some chapters of a long book
         tests.append((scene.title, "\n\n".join(line.text for line in scene.lines if line.text),
                       key["chapters"][scene.title], set(key.get("also_ok", {}).get(scene.title, []))))
