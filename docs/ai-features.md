@@ -63,8 +63,10 @@ Speed-check model**.
 
 ### Updating the local engine
 
-The **Update** button beside the built-in provider appears when llama.cpp publishes
-a newer **stable** release, and installs the engine build that release names. Before
+The **Update** button beside the built-in provider appears when there is a newer engine
+than yours. It offers one of two builds, whichever is newer: the build this version of
+the app is **tested with**, or the build named by llama.cpp's newest **official
+release**. Hover the button to see which one it is offering. Before
 the new engine replaces the one you have, the app checks that it starts *and* that it
 accepts the settings the app launches models with; if it fails either, your current
 engine is kept and the message says what it refused. If the newer release has no
@@ -76,13 +78,10 @@ as the engine — a release can improve one kind of model and set another back �
 updating is always your deliberate click, and it is worth re-running a speed check
 afterwards on a model you care about.
 
-That is not hypothetical. The engine version shipped with new installs is deliberately
-**not** the newest one published: in September 2026 an upstream change to how the
-graphics card combines a mixture-of-experts model's parts made multi-token prediction
-both slower and no longer exact — on the 26B model, about 20 % slower, and answering
-differently than the same model does without it. The bundled version is the last one
-before that change. Until it is fixed upstream, **Update will offer a newer version that
-is worse for that kind of model**, so it is worth checking what changed before taking it.
+**Why two kinds of build.** Each version of the app is tested with one engine build, and
+new installs get that build. llama.cpp publishes official releases less often than its
+daily builds, so the tested build can be newer than the newest official release. Without
+offering it, an install that started on an older engine could never reach it.
 
 On a PC without a preset the setup also won't recommend a model whose speed is
 well below reading speed — by default under 6.4 tokens per second, 20 % under

@@ -5,7 +5,8 @@
 - **The engine's Update button works again.** It had quietly stopped appearing in
   August, when llama.cpp changed how it labels releases — the app compared the new
   label to its own version number, decided you were up to date, and said nothing.
-  It now follows llama.cpp's stable releases
+  It now follows llama.cpp's official releases, and also offers the build this version
+  of the app is tested with, whichever is newer
   ([AI features](ai-features.md#updating-the-local-engine))
 - **An engine update can no longer leave you unable to load models.** Before a new
   engine replaces yours, the app checks that it starts *and* that it accepts the
@@ -15,12 +16,11 @@
 - **A feature that carries a JSON schema now really gets it.** The app was sending the
   schema in a form the local engine silently ignores, so the answer was only asked to
   be valid JSON, not to match the shape
-- **New installs get a newer, measured engine.** The bundled llama.cpp version moved
-  forward by about 750 builds. It isn't the newest one published — it's the last one
-  before an upstream change slowed multi-token prediction down and made it answer
-  differently, which we found by testing. On the 26B model it is about 3 % faster than
-  the engine it replaces and gives identical answers. Your existing install keeps the
-  engine it already has ([AI features](ai-features.md#updating-the-local-engine))
+- **New installs get a newer, tested engine.** The bundled llama.cpp version moved
+  forward by about 1,250 builds. We tested it on the 26B model with the kind of requests
+  the app really sends, and it runs as fast as the version we had measured before. Your
+  existing install keeps the engine it already has until you click Update
+  ([AI features](ai-features.md#updating-the-local-engine))
 
 - **Models set to run fully on the graphics card now really do.** The engine
   counts its output layer as a layer, so the app's "every layer" launch was
