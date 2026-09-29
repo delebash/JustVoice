@@ -1366,7 +1366,8 @@ BUILT:  2026-09-29, pieces 3a · 3b · 3c per §8.24 — committed and pushed th
         Checked: ruff + pytest, `npm run test:unit`, the renderer gate on the real data dir,
         Analyze of Brass Rank + The Keystone through the real app's grid (86 s, rows filled
         in, Keystone re-cut 25 → 50 lines), set speaker → Undo on a real line (fixes 0 → 1 → 0).
-OPEN:   for the user's word — copy the approved text did not name, chosen to match its pattern:
+DECIDED 2026-09-29 — "your rec on all the wording". The rec was to keep the built copy, so
+        all four stand as shipped in 86eb21d:
           · the Narrator check's question: "Spoken, but given to the Narrator — whose line is it?"
           · "AI named no one in the cast" / "The AI didn't name anyone in the cast." for a line
             the model answered with someone not in the cast (the approved "AI gave no answer"
@@ -1374,9 +1375,14 @@ OPEN:   for the user's word — copy the approved text did not name, chosen to m
           · "is it theirs?" / "are theirs" / "Put them back in the cast" — personas carry no
             pronouns, so the mock's "his" can't be known
           · "later in the same paragraph" for a line whose tag comes after it
-        Not measured: a chapter of several hundred lines on the chapter page.
-        `POST /v1/extraction/analyze-text` (the eval's endpoint) still blocks the server while
-        it runs — the plan moved only Discover's.
+OPEN:   Not measured: a chapter of several hundred lines on the chapter page.
+DECIDED 2026-09-29 — "your rec go" (then "go all three"): the rec was to move the model call
+        off the event loop in all three blocking endpoints, not only analyze-text.
+BUILT:  2026-09-29 — `asyncio.to_thread` around the pipeline in `POST /v1/extraction/analyze-text`,
+        `POST /v1/scenes/{id}/analyze` and `POST /v1/extraction/discover-speakers`
+        (`extraction_api.py`); docs/whats-new.md, docs/dev/code-map.md. Committed and pushed
+        the same day ("commit and push"). Live check on the real app: 109 health polls during
+        a 58 s analyze-text call, none failed, median 3 ms.
         The prompt rule: result in §8.25; not promoted.
 GO:     given 2026-09-28 for the record + the mock; 2026-09-29 for the measurements, the drop,
         the flag measurement, the plan, the second review's mock + plan changes, the
@@ -1402,10 +1408,10 @@ DECIDED 2026-09-29 — "1 no clear all does not remove narraotor, 2 no … go co
         · "Clear all" in the cast removes every persona EXCEPT the Narrator.
         · Neither ✕ nor "Clear all" asks for confirmation (removing from the cast asks today —
           on Discover it won't).
-OPEN:   the user's word on one reading: "each name gets an ✕" was built literally, so the
-        Narrator's tag has one too (as the Cast step can remove the Narrator); only "Clear all"
-        spares it. The ✕ / Clear all clicks were not exercised on the real data (they remove
-        cast members) — rendering was checked.
+DECIDED 2026-09-29 — "narrator keeps its x": the Narrator's tag keeps its ✕, as built
+        ("each name gets an ✕"); only "Clear all" spares it.
+OPEN:   The ✕ / Clear all clicks were not exercised on the real data (they remove cast
+        members) — rendering was checked.
 GO:     given 2026-09-29 ("go code the app", in the message that answered its two questions)
 
 ### The audiobook demo is JustWrite's sample, The Ninth Facet

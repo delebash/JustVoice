@@ -428,6 +428,11 @@ queues its ticked chapters on the project's chapter run
 (`services/chapterRun.js`, shared with Script's Analyze since 2026-09-29), which
 calls discover-speakers once per chapter — in a worker thread on the server, so
 a scan no longer stalls every other request — and promote once per added name.
+**Every model call in `extraction_api` runs off the event loop** (2026-09-29):
+the Analyze stream in its own `Thread`, and `asyncio.to_thread` in the scene
+discover, the non-streaming scene analyze, the Lab's `analyze-text` and its
+`discover-speakers`. The pipeline is blocking; `async def` around it stalled
+every other request, `/v1/health` included, for the length of the call.
 Analyze no longer runs it afterwards. **Each scan is saved on its
 chapter** — `scene.metadata.discover = {scanned_at, candidates}`, written by
 the discover endpoint (replacing that chapter's last scan) and pruned by

@@ -31,8 +31,12 @@
   speaker offers **Fix in Script ➜**, which opens the chapter on those lines
 - **Discover's lists take a ✕.** Each ignored name and each cast member has its own
   ✕, and both lists have **Clear all** (the cast's keeps the Narrator). Restore is
-  gone. A Discover scan also no longer freezes the rest of the app while the model
-  reads ([Studio → Discover](studio.md#discover))
+  gone ([Studio → Discover](studio.md#discover))
+- **A model reading a chapter no longer freezes the rest of the app.** A Discover
+  scan, and the attribution Lab's Analyze and Discover runs, used to hold up every
+  other request to JustVoice until the model finished — other pages waited, and a
+  status check could time out. They now run beside everything else, as Script's
+  Analyze already did
 
 - **The engine's Update button works again.** It had quietly stopped appearing in
   August, when llama.cpp changed how it labels releases — the app compared the new

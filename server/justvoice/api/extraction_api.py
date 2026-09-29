@@ -505,7 +505,12 @@ async def analyze_scene_endpoint(
 
     try:
         raw_out: dict = {}
-        rows = analyze_scene(settings=settings, request=req, raw_out=raw_out)
+        # In a worker thread: the pipeline blocks for the whole model call, and
+        # on the event loop it stalled every other request to the server —
+        # health checks included — until it finished (2026-09-29).
+        rows = await asyncio.to_thread(
+            analyze_scene, settings=settings, request=req, raw_out=raw_out,
+        )
     except LLMNotConfiguredError as e:
         raise HTTPException(status_code=501, detail=str(e))
     except AttributionModelError as e:
@@ -750,7 +755,12 @@ async def analyze_text_endpoint(
     )
     try:
         raw_out: dict = {}
-        rows = analyze_scene(settings=settings, request=req, raw_out=raw_out)
+        # In a worker thread: the pipeline blocks for the whole model call, and
+        # on the event loop it stalled every other request to the server —
+        # health checks included — until it finished (2026-09-29).
+        rows = await asyncio.to_thread(
+            analyze_scene, settings=settings, request=req, raw_out=raw_out,
+        )
     except LLMNotConfiguredError as e:
         raise HTTPException(status_code=501, detail=str(e))
     except AttributionModelError as e:
@@ -1427,9 +1437,11 @@ async def discover_text_endpoint(body: DiscoverTextRequest) -> DiscoverSpeakersR
     settings = get_state().settings.get()
     try:
         raw_out: dict = {}
-        candidates = identify_speakers(
-            body.text, body.known_characters, settings=settings, run_fn=run_fn,
-            raw_out=raw_out,
+        # In a worker thread, as the scene door's scan is: a blocking model call
+        # on the event loop stalls every other request (2026-09-29).
+        candidates = await asyncio.to_thread(
+            identify_speakers, body.text, body.known_characters, settings=settings,
+            run_fn=run_fn, raw_out=raw_out,
         )
     except LLMNotConfiguredError as e:
         raise HTTPException(status_code=501, detail=str(e))
