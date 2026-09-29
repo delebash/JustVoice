@@ -20,7 +20,7 @@
     </div>
 
     <div class="bn e">✗ <b>4 lines can't render.</b> 3 have no speaker —
-      <span class="lnk" onclick="nav('chapter')">fix in Script</span>. Harbek has no persona —
+      <span class="lnk" onclick="openScriptAt('none', true)">fix in Script</span>. Harbek has no persona —
       <span class="lnk" onclick="nav('cast')">fix in Cast</span>.</div>
 
     <div class="card" style="padding:0;overflow:hidden">
@@ -125,7 +125,7 @@
             <td>“Then it matters.”</td>
             <td><input class="cell-edit" disabled placeholder="no speaker yet"></td>
             <td><span class="tag e">blocked</span></td>
-            <td><button class="btn s" onclick="nav('chapter')">Fix in Script</button></td></tr>
+            <td><button class="btn s" title="Opens Script at this line" onclick="openScriptAt('none', true)">Fix in Script</button></td></tr>
         </tbody></table></div>
     </div>
 

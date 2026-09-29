@@ -8,11 +8,12 @@
 
     <div class="card">
       <div class="sh"><h4>Who says what</h4>
-        <span class="sub">2,140 lines · 14 chapters</span></div>
+        <span class="sub k-book">2,140 lines · 14 chapters</span>
+        <span class="sub k-pod">552 lines · 12 episodes</span></div>
       <p class="note" style="margin:0 0 11px">Attribution only — which persona speaks each line, and
         what the line says. How it is performed, and rendering it, come later.</p>
 
-      <div class="bn" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 11px">
+      <div class="bn k-book" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 11px">
         <b>✨ Analyze · 3 chapters</b>
         <span class="hint">6 · What the Ledger Knew · 2 of 3 done · 3m 20s · about 1m 30s left</span>
         <div class="prog" style="flex:1;min-width:120px;max-width:220px"><b style="width:67%"></b></div>
@@ -21,81 +22,91 @@
         <button class="btn s" onclick="toast('Run cancelled. Chapters already analyzed are kept.','warn')">Cancel</button>
       </div>
 
-      <div class="tw"><table>
+      <div class="row k-book" style="margin:0 0 9px" data-chips>
+        <span class="tag ok" data-filter="all" onclick="pickChip(this)">All 14</span>
+        <span class="tag e" data-filter="check" onclick="pickChip(this)" title="Chapters with flagged lines or lines with no speaker">To check 5</span>
+        <span class="tag" data-filter="never" onclick="pickChip(this)">Not analyzed 5</span>
+        <span class="tag w" data-filter="stale" onclick="pickChip(this)" title="A persona joined the cast since, and the text names them">Re-analyze 2</span>
+        <span class="tag e" data-filter="problem" onclick="pickChip(this)" title="Failed, can't re-cut, no text, or no dialogue found">Needs attention 4</span>
+        <span class="hint">Select-all ticks only the chapters shown.</span>
+      </div>
+
+      <div class="tw"><table data-filterable>
         <thead><tr>
-          <th style="width:32px"><input type="checkbox" class="ch-all" aria-label="Select all chapters"
+          <th style="width:32px"><input type="checkbox" class="ch-all" aria-label="Select all shown"
             onchange="selectAllCh(this)"></th>
-          <th>Chapter</th><th style="width:58px">Lines</th><th style="width:150px">Analyzed</th>
-          <th style="width:82px">Anchored</th><th style="width:76px">Guessed</th>
+          <th><span class="k-book">Chapter</span><span class="k-pod">Episode</span></th>
+          <th style="width:58px">Lines</th><th style="width:150px">Analyzed</th>
+          <th style="width:96px" title="Lines whose speaker the book names right next to them (&ldquo;said Marius&rdquo;)">Book says</th><th style="width:90px" title="Lines whose speaker the AI worked out from the story around them">AI decided</th>
           <th style="width:72px">Flagged</th><th style="width:90px">No speaker</th>
           <th style="width:150px"></th></tr></thead>
-        <tbody>
-          <tr onclick="nav('chapter')" style="cursor:pointer">
-            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" aria-label="Select chapter 1" onchange="recalcAnalyze(this)"></td>
+        <tbody class="k-book">
+          <tr data-state="check" onclick="nav('chapter')" style="cursor:pointer">
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" data-lines="214" aria-label="Select chapter 1" onchange="recalcAnalyze(this)"></td>
             <td><b class="lnk">1 · The Ninth Door</b></td><td class="n">214</td>
             <td class="hint">yesterday</td>
-            <td class="n">9</td><td class="n">84</td>
-            <td><span class="tag e">3</span></td><td><span class="tag e">3</span></td>
-            <td class="rowacts"><button class="btn s" onclick="event.stopPropagation();nav('chapter')">Review</button></td></tr>
+            <td class="n">9</td><td class="n">82</td>
+            <td><span class="tag e">5</span></td><td><span class="tag e">3</span></td>
+            <td class="rowacts"><button class="btn s" title="Opens the chapter at its first line to check" onclick="event.stopPropagation();openScriptAt('', true)">Review</button></td></tr>
 
-          <tr onclick="nav('chapter')" style="cursor:pointer">
-            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" aria-label="Select chapter 2" onchange="recalcAnalyze(this)"></td>
+          <tr data-state="stale check" onclick="nav('chapter')" style="cursor:pointer">
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" data-lines="188" aria-label="Select chapter 2" onchange="recalcAnalyze(this)"></td>
             <td><b class="lnk">2 · Salt and Ledger</b></td><td class="n">188</td>
             <td><span class="hint">3 days ago</span>
-              <span class="tag w" title="Analyzed before Renn joined the cast, and this chapter names Renn — attribution could not choose Renn then.">Renn added since</span></td>
+              <span class="tag w" title="Analyzed before Renn joined the cast, and this chapter's text names Renn — attribution could not choose Renn then.">Renn added since</span></td>
             <td class="n">11</td><td class="n">72</td>
             <td><span class="tag e">1</span></td><td class="hint">0</td>
             <td class="rowacts"><button class="btn s p" onclick="event.stopPropagation();toast('Re-analyzing Salt and Ledger — lines you set are kept.','ok')">Re-analyze</button><button class="btn s" onclick="event.stopPropagation();nav('chapter')">Review</button></td></tr>
 
-          <tr onclick="nav('chapter')" style="cursor:pointer">
-            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" aria-label="Select chapter 3" onchange="recalcAnalyze(this)"></td>
+          <tr data-state="stale check" onclick="nav('chapter')" style="cursor:pointer">
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" data-lines="231" aria-label="Select chapter 3" onchange="recalcAnalyze(this)"></td>
             <td><b class="lnk">3 · The Harbour-Master</b></td><td class="n">231</td>
             <td><span class="hint">3 days ago</span>
-              <span class="tag w" title="Analyzed before Renn joined the cast, and this chapter names Renn — attribution could not choose Renn then.">Renn added since</span></td>
+              <span class="tag w" title="Analyzed before Renn joined the cast, and this chapter's text names Renn — attribution could not choose Renn then.">Renn added since</span></td>
             <td class="n">7</td><td class="n">29</td>
             <td><span class="tag e">2</span></td><td><span class="tag e">84</span></td>
             <td class="rowacts"><button class="btn s p" onclick="event.stopPropagation();toast('Re-analyzing The Harbour-Master — lines you set are kept.','ok')">Re-analyze</button><button class="btn s" onclick="event.stopPropagation();nav('chapter')">Review</button></td></tr>
 
-          <tr onclick="nav('chapter')" style="cursor:pointer">
-            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" aria-label="Select chapter 4" onchange="recalcAnalyze(this)"></td>
+          <tr data-state="check" onclick="nav('chapter')" style="cursor:pointer">
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" data-lines="176" aria-label="Select chapter 4" onchange="recalcAnalyze(this)"></td>
             <td><b class="lnk">4 · Nine Doors Down</b></td><td class="n">176</td>
             <td class="hint">2 min ago</td>
             <td class="n">6</td><td class="n">71</td>
             <td><span class="tag e">1</span></td><td><span class="tag e">1</span></td>
             <td class="rowacts"><button class="btn s" onclick="event.stopPropagation();nav('chapter')">Review</button></td></tr>
 
-          <tr onclick="nav('chapter')" style="cursor:pointer">
-            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" aria-label="Select chapter 5" onchange="recalcAnalyze(this)"></td>
+          <tr data-state="check" onclick="nav('chapter')" style="cursor:pointer">
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" data-lines="203" aria-label="Select chapter 5" onchange="recalcAnalyze(this)"></td>
             <td><b class="lnk">5 · The Tide Turning</b></td><td class="n">203</td>
             <td class="hint">just now</td>
             <td class="n">8</td><td class="n">79</td>
             <td><span class="tag e">1</span></td><td class="hint">0</td>
             <td class="rowacts"><button class="btn s" onclick="event.stopPropagation();nav('chapter')">Review</button></td></tr>
 
-          <tr>
-            <td><input type="checkbox" class="ck" disabled aria-label="Chapter 6 is in the current run" title="In the current run"></td>
+          <tr data-state="running">
+            <td><input type="checkbox" class="ck" data-lines="198" disabled aria-label="Chapter 6 is in the current run" title="In the current run"></td>
             <td><b>6 · What the Ledger Knew</b></td><td class="n">198</td>
             <td><span class="tag pd">analyzing…</span></td>
             <td colspan="4"><div class="prog"><b style="width:40%"></b></div>
               <span class="hint">reading · 52 s</span></td>
             <td class="rowacts"><button class="btn s" disabled title="Wait for it to finish">Review</button></td></tr>
 
-          <tr>
-            <td><input type="checkbox" class="ck" checked aria-label="Select chapter 7" onchange="recalcAnalyze(this)"></td>
+          <tr data-state="never">
+            <td><input type="checkbox" class="ck" data-lines="142" checked aria-label="Select chapter 7" onchange="recalcAnalyze(this)"></td>
             <td><b>7 · The Lamp Room</b></td><td class="n">142</td>
             <td class="hint">never</td>
             <td class="hint">—</td><td class="hint">—</td><td class="hint">—</td><td class="hint">—</td>
             <td class="rowacts"><button class="btn s" disabled title="Analyze it first">Review</button></td></tr>
 
-          <tr>
-            <td><input type="checkbox" class="ck" checked aria-label="Select chapter 8" onchange="recalcAnalyze(this)"></td>
+          <tr data-state="never">
+            <td><input type="checkbox" class="ck" data-lines="121" checked aria-label="Select chapter 8" onchange="recalcAnalyze(this)"></td>
             <td><b>8 · Low Water</b></td><td class="n">121</td>
             <td class="hint">never</td>
             <td class="hint">—</td><td class="hint">—</td><td class="hint">—</td><td class="hint">—</td>
             <td class="rowacts"><button class="btn s" disabled title="Analyze it first">Review</button></td></tr>
 
-          <tr onclick="nav('chapter')" style="cursor:pointer">
-            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" aria-label="Select chapter 9" onchange="recalcAnalyze(this)"></td>
+          <tr data-state="problem" onclick="nav('chapter')" style="cursor:pointer">
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" data-lines="97" aria-label="Select chapter 9" onchange="recalcAnalyze(this)"></td>
             <td><b class="lnk">9 · Renn's Account</b>
               <div class="hint">Its speech is in ‘single quotes’, which aren't read as dialogue — every line went to the Narrator.</div></td>
             <td class="n">97</td>
@@ -104,16 +115,16 @@
             <td class="n">0</td><td class="n">0</td><td class="hint">0</td><td class="hint">0</td>
             <td class="rowacts"><button class="btn s" onclick="event.stopPropagation();nav('chapter')">Review</button></td></tr>
 
-          <tr>
-            <td><input type="checkbox" class="ck" aria-label="Select chapter 10" onchange="recalcAnalyze(this)"></td>
+          <tr data-state="problem never">
+            <td><input type="checkbox" class="ck" data-lines="133" aria-label="Select chapter 10" onchange="recalcAnalyze(this)"></td>
             <td><b>10 · The Customs House</b></td><td class="n">133</td>
             <td><span class="hint">never</span> <span class="tag e">failed</span></td>
             <td colspan="4" class="hint">A paragraph of this chapter is too long for the model to read, even on its
               own. It needs about 38,400 tokens and the model holds 32,768. Use a model with a larger context.</td>
             <td class="rowacts"><button class="btn s" onclick="nav('engines')">Change model ➜</button></td></tr>
 
-          <tr onclick="nav('chapter')" style="cursor:pointer">
-            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" aria-label="Select chapter 11" onchange="recalcAnalyze(this)"></td>
+          <tr data-state="problem" onclick="nav('chapter')" style="cursor:pointer">
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" data-lines="88" aria-label="Select chapter 11" onchange="recalcAnalyze(this)"></td>
             <td><b class="lnk">11 · Fog Bells</b>
               <div class="hint">Its text changed after 12 takes were recorded. Re-analyzing would re-cut the lines and delete those takes, so it stopped.</div></td>
             <td class="n">88</td>
@@ -122,56 +133,143 @@
             <td class="n">4</td><td class="n">38</td><td class="hint">0</td><td class="hint">0</td>
             <td class="rowacts"><button class="btn s" onclick="event.stopPropagation();nav('render')">Takes ➜</button><button class="btn s" onclick="event.stopPropagation();nav('chapter')">Review</button></td></tr>
 
-          <tr>
-            <td><input type="checkbox" class="ck" aria-label="Select chapter 12" onchange="recalcAnalyze(this)"></td>
+          <tr data-state="never">
+            <td><input type="checkbox" class="ck" data-lines="156" aria-label="Select chapter 12" onchange="recalcAnalyze(this)"></td>
             <td><b>12 · What Harbek Saw</b></td><td class="n">156</td>
             <td class="hint">never</td>
             <td class="hint">—</td><td class="hint">—</td><td class="hint">—</td><td class="hint">—</td>
             <td class="rowacts"><button class="btn s" disabled title="Analyze it first">Review</button></td></tr>
 
-          <tr>
-            <td><input type="checkbox" class="ck" disabled aria-label="Chapter 13 has no text" title="No text to analyze"></td>
+          <tr data-state="problem">
+            <td><input type="checkbox" class="ck" data-lines="0" disabled aria-label="Chapter 13 has no text" title="No text to analyze"></td>
             <td><b>13 · The Last Door</b></td><td class="hint">—</td>
             <td class="hint">no text yet</td>
             <td colspan="4" class="hint">Paste or import its text first.</td>
             <td class="rowacts"><button class="btn s" onclick="openModal('paste')">＋ Add text</button></td></tr>
 
-          <tr>
-            <td><input type="checkbox" class="ck" aria-label="Select chapter 14" onchange="recalcAnalyze(this)"></td>
+          <tr data-state="never">
+            <td><input type="checkbox" class="ck" data-lines="193" aria-label="Select chapter 14" onchange="recalcAnalyze(this)"></td>
             <td><b>14 · Stillwater</b></td><td class="n">193</td>
             <td class="hint">never</td>
             <td class="hint">—</td><td class="hint">—</td><td class="hint">—</td><td class="hint">—</td>
             <td class="rowacts"><button class="btn s" disabled title="Analyze it first">Review</button></td></tr>
+        </tbody>
+        <tbody class="k-pod">
+          <tr onclick="nav('chapter')" style="cursor:pointer">
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" data-lines="44" aria-label="Select episode 1" onchange="recalcAnalyze(this)"></td>
+            <td><b class="lnk">1 · First Light on the Quay</b></td><td class="n">44</td>
+            <td><span class="tag" title="The script named its speakers, so there was nothing to analyze">from the import</span></td>
+            <td class="hint">—</td><td class="hint">—</td><td class="hint">—</td><td class="hint">0</td>
+            <td class="rowacts"><button class="btn s" onclick="event.stopPropagation();nav('chapter')">Review</button></td></tr>
+          <tr onclick="nav('chapter')" style="cursor:pointer">
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" data-lines="48" aria-label="Select episode 2" onchange="recalcAnalyze(this)"></td>
+            <td><b class="lnk">2 · The Crane Driver</b></td><td class="n">48</td>
+            <td><span class="tag">from the import</span></td>
+            <td class="hint">—</td><td class="hint">—</td><td class="hint">—</td><td class="hint">0</td>
+            <td class="rowacts"><button class="btn s" onclick="event.stopPropagation();nav('chapter')">Review</button></td></tr>
+          <tr onclick="nav('chapter')" style="cursor:pointer">
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" data-lines="41" aria-label="Select episode 3" onchange="recalcAnalyze(this)"></td>
+            <td><b class="lnk">3 · Night Shift</b></td><td class="n">41</td>
+            <td><span class="tag">from the import</span></td>
+            <td class="hint">—</td><td class="hint">—</td><td class="hint">—</td><td class="hint">0</td>
+            <td class="rowacts"><button class="btn s" onclick="event.stopPropagation();nav('chapter')">Review</button></td></tr>
+          <tr onclick="nav('chapter')" style="cursor:pointer">
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" data-lines="52" aria-label="Select episode 4" onchange="recalcAnalyze(this)"></td>
+            <td><b class="lnk">4 · Customs</b></td><td class="n">52</td>
+            <td><span class="tag">from the import</span></td>
+            <td class="hint">—</td><td class="hint">—</td><td class="hint">—</td><td class="hint">0</td>
+            <td class="rowacts"><button class="btn s" onclick="event.stopPropagation();nav('chapter')">Review</button></td></tr>
+          <tr onclick="nav('chapter')" style="cursor:pointer">
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" data-lines="46" aria-label="Select episode 5" onchange="recalcAnalyze(this)"></td>
+            <td><b class="lnk">5 · The Pilot's Ladder</b></td><td class="n">46</td>
+            <td><span class="tag">from the import</span></td>
+            <td class="hint">—</td><td class="hint">—</td><td class="hint">—</td><td class="hint">0</td>
+            <td class="rowacts"><button class="btn s" onclick="event.stopPropagation();nav('chapter')">Review</button></td></tr>
+          <tr onclick="nav('chapter')" style="cursor:pointer">
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" data-lines="39" aria-label="Select episode 6" onchange="recalcAnalyze(this)"></td>
+            <td><b class="lnk">6 · Fog Signal</b></td><td class="n">39</td>
+            <td><span class="tag">from the import</span></td>
+            <td class="hint">—</td><td class="hint">—</td><td class="hint">—</td><td class="hint">0</td>
+            <td class="rowacts"><button class="btn s" onclick="event.stopPropagation();nav('chapter')">Review</button></td></tr>
+          <tr onclick="nav('chapter')" style="cursor:pointer">
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" data-lines="50" aria-label="Select episode 7" onchange="recalcAnalyze(this)"></td>
+            <td><b class="lnk">7 · The Tally Clerk</b></td><td class="n">50</td>
+            <td><span class="tag">from the import</span></td>
+            <td class="hint">—</td><td class="hint">—</td><td class="hint">—</td><td class="hint">0</td>
+            <td class="rowacts"><button class="btn s" onclick="event.stopPropagation();nav('chapter')">Review</button></td></tr>
+          <tr onclick="nav('chapter')" style="cursor:pointer">
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" data-lines="47" aria-label="Select episode 8" onchange="recalcAnalyze(this)"></td>
+            <td><b class="lnk">8 · Dry Dock</b></td><td class="n">47</td>
+            <td><span class="tag">from the import</span></td>
+            <td class="hint">—</td><td class="hint">—</td><td class="hint">—</td><td class="hint">0</td>
+            <td class="rowacts"><button class="btn s" onclick="event.stopPropagation();nav('chapter')">Review</button></td></tr>
+          <tr onclick="nav('chapter')" style="cursor:pointer">
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" data-lines="45" aria-label="Select episode 9" onchange="recalcAnalyze(this)"></td>
+            <td><b class="lnk">9 · The Ferryman</b></td><td class="n">45</td>
+            <td><span class="tag">from the import</span></td>
+            <td class="hint">—</td><td class="hint">—</td><td class="hint">—</td><td class="hint">0</td>
+            <td class="rowacts"><button class="btn s" onclick="event.stopPropagation();nav('chapter')">Review</button></td></tr>
+          <tr onclick="nav('chapter')" style="cursor:pointer">
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" data-lines="49" aria-label="Select episode 10" onchange="recalcAnalyze(this)"></td>
+            <td><b class="lnk">10 · Bonded Stores</b></td><td class="n">49</td>
+            <td><span class="tag">from the import</span></td>
+            <td class="hint">—</td><td class="hint">—</td><td class="hint">—</td><td class="hint">0</td>
+            <td class="rowacts"><button class="btn s" onclick="event.stopPropagation();nav('chapter')">Review</button></td></tr>
+          <tr onclick="nav('chapter')" style="cursor:pointer">
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" data-lines="43" aria-label="Select episode 11" onchange="recalcAnalyze(this)"></td>
+            <td><b class="lnk">11 · Slack Water</b></td><td class="n">43</td>
+            <td><span class="tag">from the import</span></td>
+            <td class="hint">—</td><td class="hint">—</td><td class="hint">—</td><td class="hint">0</td>
+            <td class="rowacts"><button class="btn s" onclick="event.stopPropagation();nav('chapter')">Review</button></td></tr>
+          <tr onclick="nav('chapter')" style="cursor:pointer">
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" data-lines="48" aria-label="Select episode 12" onchange="recalcAnalyze(this)"></td>
+            <td><b class="lnk">12 · Last Ship Out</b></td><td class="n">48</td>
+            <td><span class="tag">from the import</span></td>
+            <td class="hint">—</td><td class="hint">—</td><td class="hint">—</td><td class="hint">0</td>
+            <td class="rowacts"><button class="btn s" onclick="event.stopPropagation();nav('chapter')">Review</button></td></tr>
         </tbody></table></div>
 
-      <div class="row" style="margin-top:12px">
-        <button class="btn p an-btn" data-verb="✨ Analyze" onclick="toast('Queued — starts when the current run finishes, and each row fills in as its chapter lands.','ok')">✨ Analyze 2 chapters</button>
-        <span class="hint an-est" data-tail="starts after the current run · each row fills in as its chapter finishes">263 lines · starts after the current run · each row fills in as its chapter finishes</span>
+      <div class="row k-book" style="margin-top:12px">
+        <button class="btn p an-btn" data-verb="✨ Analyze" data-unit="chapter" onclick="toast('Queued — starts when the current run finishes, and each row fills in as its chapter lands.','ok')">✨ Analyze 2 chapters</button>
+        <span class="hint an-est" data-unit="chapter" data-tail="starts after the current run · each row fills in as its chapter finishes">263 lines · starts after the current run · each row fills in as its chapter finishes</span>
         <span style="flex:1"></span>
-        <select class="box" style="width:auto" aria-label="Route"><option>Route: Auto → Direct</option>
-          <option>Guided</option><option>Direct</option></select>
-        <span class="pill" title="Set by the route: 0.5 on Direct, 0.7 on Guided">Floor <b>0.5</b></span>
+        <select class="box" style="width:auto" aria-label="How the model reads"><option>Read: chosen for your model (rules only)</option>
+          <option>Read: with examples</option><option>Read: rules only</option></select>
+        <span class="pill" title="An answer under this confidence is dropped and the line gets no speaker: 0.5 reading rules only, 0.7 with examples">Keeps answers above <b>0.5</b></span>
+      </div>
+      <div class="row k-pod" style="margin-top:12px">
+        <button class="btn p an-btn" data-verb="✨ Analyze" data-unit="episode" disabled onclick="toast('Analyzing — each row fills in as its episode finishes. The speakers from the import are replaced, except lines you set.','ok')">✨ Analyze</button>
+        <span class="hint an-est" data-unit="episode" data-tail="each row fills in as its episode finishes · the speakers from the import are replaced, except lines you set">Pick at least one episode.</span>
+        <span style="flex:1"></span>
+        <select class="box" style="width:auto" aria-label="How the model reads"><option>Read: chosen for your model (rules only)</option>
+          <option>Read: with examples</option><option>Read: rules only</option></select>
+        <span class="pill" title="An answer under this confidence is dropped and the line gets no speaker: 0.5 reading rules only, 0.7 with examples">Keeps answers above <b>0.5</b></span>
       </div>
     </div>
 
     <div class="card tint">
       <div class="sh"><h4>What these columns mean</h4></div>
       <div class="tw"><table><tbody>
-        <tr><td style="width:136px"><b>Anchored</b></td>
-          <td>The prose named the speaker — “said Marius” — or it carried from a line that did. Most
-            speech has no anchor: “she said” and a gesture before the line name nobody.</td></tr>
-        <tr><td><b>Guessed</b></td>
-          <td>The model chose. Most spoken lines are decided this way, so a guess alone is not a
-            warning — the model can be sure and wrong, and its score says nothing about which.</td></tr>
+        <tr><td style="width:136px"><b>Book says</b></td>
+          <td>Lines whose speaker the book names right next to them — “said Marius” — or earlier in
+            the same paragraph. Most speech has no name beside it: “she said” and a gesture before the
+            line name nobody.</td></tr>
+        <tr><td><b>AI decided</b></td>
+          <td>Lines whose speaker the AI worked out from the story around them. Most spoken lines are
+            decided this way, and the AI is right on nearly all of them — but it can be sure and
+            wrong, so its confidence alone is not a warning.</td></tr>
         <tr><td><b>Flagged</b></td>
-          <td>Checks on the text, not on the model's confidence: three lines in a row by one persona, a
-            persona with a single line, a speaker not yet in the chapter, dialogue on the Narrator, an
-            anchor the model disagrees with.
+          <td>Lines where the AI most often goes wrong, so you know where to read closely: one person
+            speaking three times with no reply, a persona's only line in the chapter, dialogue given
+            to the Narrator, the book and the AI naming different speakers.
             <b>These are the lines worth your eyes.</b></td></tr>
         <tr><td><b>No speaker</b></td>
-          <td>The model wasn't sure, or skipped the line. These block rendering.</td></tr>
+          <td>The AI wasn't sure, or gave no answer. These block rendering.</td></tr>
+        <tr class="k-pod"><td><span class="tag">from the import</span></td>
+          <td>The script named its speakers, so there was nothing to analyze. The checks above run
+            only on what Analyze decided.</td></tr>
         <tr><td><span class="tag w">Renn added since</span></td>
-          <td>Analyzed before that persona joined the cast, in a chapter that names them. Re-analyze
+          <td>Analyzed before that persona joined the cast, and the text names them. Re-analyze
             it — lines you set are kept.</td></tr>
         <tr><td><span class="tag w">no dialogue found</span></td>
           <td>Nothing in the text was read as speech. Speech in ‘single quotes’, «guillemets» or after
@@ -180,7 +278,7 @@
           <td>The text changed after takes were recorded. Analyzing would re-cut the lines and delete
             those takes, so it stops.</td></tr>
         <tr><td><span class="tag e">failed</span></td>
-          <td>The model call failed. The reason is on the row, and nothing was saved.</td></tr>
+          <td>The AI call failed. The reason is on the row, and nothing was saved.</td></tr>
       </tbody></table></div>
     </div>
   </div>

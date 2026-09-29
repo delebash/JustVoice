@@ -6,6 +6,13 @@ The holding pen for unscheduled JustVoice ideas — same charter as JW's
 
 ---
 
+- **2026-09-29 · "Read by you" per chapter in Script** — a mark, with its date, on
+  each chapter you have read through on Script's chapter page. Reading is the real
+  review (the flags catch only some misses), so it may be worth tracking. Parked by
+  the user's "not now": decide after using the new Script on a real book. It adds
+  saved state, and it touches the ruling that the Script grid shows no completion
+  state (redesign doc §8.8, §8.25).
+
 - **2026-08-22 · Feature-horizon candidates live in `ROADMAP.md`** — the voicebox
   parity gaps (dictation hotkey epic, capture→voice promote, timeline) and the
   candidates inherited from voicebox's own roadmap (STT expansion, streaming

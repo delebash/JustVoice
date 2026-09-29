@@ -10,190 +10,328 @@
 
     <div class="card">
       <div class="sh"><h4>Who says what</h4>
-        <span class="sub">214 lines · 96 spoken · analyzed yesterday</span></div>
-      <div class="row" style="margin-bottom:10px">
-        <span class="pill">Route <b>Auto → Direct</b></span>
-        <span class="pill">Confidence floor <b>0.5</b></span>
-        <span class="hint">Below the floor a line gets no speaker — the model's pick is kept on the row,
-          not used.</span></div>
+        <span class="sub">214 lines · 96 spoken · analyzed yesterday · 7 lines changed speaker</span></div>
+      <p class="hint" style="margin:0 0 10px">Just read <b>rules only</b> (chosen for your model), keeping
+        answers above 0.5 confidence. Script decides who says each spoken line, so each one is voiced
+        by the right persona.</p>
       <div class="verbs">
-        <span class="verb"><button class="btn p" onclick="toast('Analyzing this chapter — results appear in the lines below. Lines you set are kept.','ok')">✨ Analyze this chapter</button>
-          <span class="vs">Attributes each spoken line to a persona already in the cast. Narration is never
+        <span class="verb"><button class="btn p" onclick="toast('Analyzing this chapter — results appear in the lines below. Lines you set are kept.','ok')">✨ Re-analyze this chapter</button>
+          <span class="vs">Works out who speaks each line, choosing from the cast. Narration is never
             sent to the model. Stays on this page.</span></span>
         <span class="verb"><button class="btn" onclick="nav('chapters')">📚 Analyze several chapters</button>
           <span class="vs">Opens the chapter grid. Pick what to run; each row fills in as its chapter
             finishes.</span></span>
         <span style="flex:1"></span>
         <span class="verb"><button class="btn" onclick="nav('discover')">🔍 A speaker is missing</button>
-          <span class="vs">Attribution can only pick personas in the cast. Discover finds names in the
-            prose that aren't in it yet.</span></span>
+          <span class="vs">Analyze can only pick personas in the cast. Discover finds names in the
+            text that aren't in it yet.</span></span>
       </div>
+    </div>
+
+    <div class="bn e" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span><b>3 lines have no speaker.</b> The render stops on these rather than dropping them silently —
+        set a speaker on each, or send them all to the narrator.</span>
+      <span style="flex:1"></span>
+      <button class="btn s" title="Everything the model couldn't place becomes narration." onclick="toast('Every line without a speaker now reads as Narrator.','ok')">Assign 3 → Narrator</button>
+    </div>
+    <div class="bn w" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span><b>Tom Harlan isn't in this cast.</b> 14 lines in this chapter are his. They keep their speaker,
+        but Analyze can't choose him and Cast doesn't list him.</span>
+      <span style="flex:1"></span>
+      <button class="btn s" onclick="toast('Tom Harlan is back in this cast — his 14 lines keep their speaker.','ok')">Put him back in the cast</button>
     </div>
 
     <div class="card" style="padding:0;overflow:hidden">
-      <div style="padding:11px 14px;border-bottom:1px solid var(--line)" data-chips>
-        <div class="row">
-          <span class="hint" style="font-weight:700">Speakers</span>
-          <span class="tag" data-filter="p-marius" onclick="pickChip(this)" title="Press 1 to assign Marius"><b class="mono">1</b>&nbsp;Marius · 44</span>
-          <span class="tag" data-filter="p-june" onclick="pickChip(this)" title="Press 2 to assign June"><b class="mono">2</b>&nbsp;June · 41</span>
-          <span class="tag" data-filter="p-renn" onclick="pickChip(this)" title="Press 3 to assign Renn"><b class="mono">3</b>&nbsp;Renn · 7</span>
-          <span class="tag" data-filter="p-harbek" onclick="pickChip(this)" title="Press 4 to assign Harbek"><b class="mono">4</b>&nbsp;Harbek · 1</span>
-          <span class="tag" data-filter="p-narrator" onclick="pickChip(this)">Narrator · 118</span>
-          <span class="hint mono">/ any other persona</span></div>
-        <div class="row" style="margin-top:8px">
-          <span class="tag ok" data-filter="all" onclick="pickChip(this)">All 214</span>
-          <span class="tag" data-filter="guess" onclick="pickChip(this)">84 guessed</span>
-          <span class="tag e" data-filter="flag" onclick="pickChip(this)">3 flagged</span>
-          <span class="tag e" data-filter="none" onclick="pickChip(this)">3 no speaker</span>
-          <span style="flex:1"></span>
-          <span class="hint mono">j / k next line · 1–9 assign · Enter confirm · / find</span></div>
-        <p class="hint" style="margin:7px 0 0">Everything is here, in reading order. The filters are a
-          lens, never the view — <b>a wrong line is most often spotted by reading around it</b>, and
-          the model can be certain and wrong, so nothing is hidden because it scored well.</p>
+      <div class="row" style="padding:11px 14px;border-bottom:1px solid var(--line)" data-chips>
+        <span class="tag ok" data-filter="all" onclick="pickChip(this)">All 214</span>
+        <span class="tag e" data-filter="check" onclick="pickChip(this)" title="Flagged lines and lines with no speaker">To check 8</span>
+        <span class="tag e" data-filter="none" onclick="pickChip(this)">No speaker 3</span>
+        <span class="tag w" data-filter="changed" onclick="pickChip(this)" title="Lines whose speaker the last Analyze changed">Changed 7</span>
+        <select class="box spk-filter" style="width:auto" aria-label="Show one speaker's lines" onchange="pickSpeaker(this)"><option value="all">Every speaker</option><option value="p-marius">Marius · 38</option><option value="p-june">June · 33</option><option value="p-renn">Renn · 7</option><option value="p-harbek">Harbek · 1</option><option value="p-harlan">Tom Harlan · 14 · not in this cast</option><option value="p-narrator">Narrator · 118</option></select>
+        <span style="flex:1"></span>
+        <button class="btn s" title="Jump to the next flagged or no-speaker line" onclick="scrNext(1)">Next to check ➜</button>
+        <button class="btn s g" onclick="openModal('keys')">⌨ Shortcuts</button>
       </div>
 
-      <div class="scr" data-filterable>
-        <div class="ln mk k-pod" data-state="all" title="Music or ad direction from the import — never spoken, never given a speaker">
-          <span class="who">♪ marker</span>
-          <span class="txt">[music: harbour theme, 8 s]</span>
-          <span class="rt"></span></div>
-
-        <div class="ln narr" data-state="p-narrator" onclick="toast('Narration — never sent to the model.')">
-          <span class="who">Narrator<span class="src" title="Prose. The model is never asked.">narration</span></span>
-          <span class="txt">Marius set the lamp on the table.</span>
-          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
-
-        <div class="ln" data-state="guess p-june p-narrator" onclick="toast('The model chose June — nothing in the prose names her here.')">
-          <span class="who"><span class="av" style="background:#c98aa7">J</span>June<span class="src src-llm" title="The model chose this, above the floor.">llm 0.97</span></span>
-          <span class="txt"><span class="sp">“You're late.”</span> <span class="nt">June didn't look up from the ledger.</span></span>
-          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
-
-        <div class="ln" data-state="p-marius p-narrator" onclick="toast('Anchored by “said Marius”; the second line carries from it.')">
-          <span class="who"><span class="av" style="background:#3a7d63">M</span>Marius<span class="src src-tag" title="“said Marius” in the prose.">tag</span><span class="src src-tag" title="Carried from “said Marius” in the same paragraph.">propagated</span></span>
-          <span class="txt"><span class="sp">“By twenty minutes,”</span> <span class="nt">said Marius.</span> <span class="sp">“It hardly signifies.”</span></span>
-          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
-
-        <div class="ln" data-state="p-june" onclick="toast('You set June here — it was Marius. Analyze leaves it alone.')">
-          <span class="who"><span class="av" style="background:#c98aa7">J</span>June<span class="src src-you" title="You set this — it was Marius. Analyze leaves it alone.">✓ you</span></span>
-          <span class="txt"><span class="sp">“It signifies to the tide.”</span></span>
-          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
-
-        <div class="ln" data-state="guess p-marius p-narrator" onclick="toast('The model chose Marius.')">
-          <span class="who"><span class="av" style="background:#3a7d63">M</span>Marius<span class="src src-llm">llm 1.00</span></span>
-          <span class="txt"><span class="sp">“The tide turned below the floorboards.”</span> <span class="nt">He sighed.</span></span>
-          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
-
-        <div class="ln narr" data-state="p-narrator" onclick="toast('Narration — never sent to the model.')">
-          <span class="who">Narrator<span class="src">narration</span></span>
-          <span class="txt">The harbour bell went twice and stopped, as though it had thought better of it.</span>
-          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
-
-        <div class="ln" data-state="guess p-june" onclick="toast('The model chose June.')">
-          <span class="who"><span class="av" style="background:#c98aa7">J</span>June<span class="src src-llm">llm 0.88</span></span>
-          <span class="txt"><span class="sp">“It matters to me.”</span></span>
-          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
-
-        <div class="ln flag" data-state="guess flag p-harbek" onclick="toast('Flagged: Harbek has one line in the whole chapter.')">
-          <span class="who"><span class="av" style="background:#b3552e">H</span>Harbek<span class="src src-llm">llm 0.72</span></span>
-          <span class="txt"><span class="sp">“Tide's wrong tonight.”</span>
-            <b class="why">⚑ Harbek's only line in this chapter — often a misattribution</b></span>
-          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
-
-        <div class="ln none sel" data-state="none" onclick="toast('No speaker — the model wanted Marius at 0.41, under the 0.5 floor.')">
-          <span class="who">— no speaker —<span class="src src-floor" title="It said Marius at 0.41, under the 0.5 floor.">not sure · wanted Marius</span></span>
-          <span class="txt"><span class="sp">“Then it matters.”</span>
-            <b class="why">Blocked — a line with no speaker cannot render</b></span>
-          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
-        <div class="pick" data-state="none">
-          <span class="hint">Who says “Then it matters.”?</span>
-          <span class="tag" onclick="toast('Line → Marius.','ok')"><b class="mono">1</b>&nbsp;Marius</span>
-          <span class="tag" onclick="toast('Line → June.','ok')"><b class="mono">2</b>&nbsp;June</span>
-          <span class="tag" onclick="toast('Line → Renn.','ok')"><b class="mono">3</b>&nbsp;Renn</span>
-          <span class="tag" onclick="toast('Line → Harbek.','ok')"><b class="mono">4</b>&nbsp;Harbek</span>
-          <span class="tag" onclick="toast('Line → Narrator.','ok')">Narrator</span>
-          <input class="box" style="width:170px" placeholder="/ find a persona…" aria-label="Find a persona"></div>
-
-        <div class="ln" data-state="p-marius p-narrator" onclick="toast('Anchored by “Marius said”.')">
-          <span class="who"><span class="av" style="background:#3a7d63">M</span>Marius<span class="src src-tag" title="“Marius said” in the prose.">tag</span></span>
-          <span class="txt"><span class="sp">“Nine doors, and every one of them shut,”</span> <span class="nt">Marius said.</span></span>
-          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
-
-        <div class="ln" data-state="guess p-marius" onclick="toast('The model chose Marius.')">
-          <span class="who"><span class="av" style="background:#3a7d63">M</span>Marius<span class="src src-llm">llm 0.93</span></span>
-          <span class="txt"><span class="sp">“Somebody shut them.”</span></span>
-          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
-
-        <div class="ln flag" data-state="guess flag p-marius" onclick="toast('Flagged: the third Marius line in a row.')">
-          <span class="who"><span class="av" style="background:#3a7d63">M</span>Marius<span class="src src-llm">llm 1.00</span></span>
-          <span class="txt"><span class="sp">“Somebody always does.”</span>
-            <b class="why">⚑ 3rd Marius line in a row — the turns probably broke at the line before</b></span>
-          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
-
-        <div class="ln flag" data-state="flag p-june p-narrator" onclick="toast('Flagged: carried from “said June”, but the model says Marius.')">
-          <span class="who"><span class="av" style="background:#c98aa7">J</span>June<span class="src src-tag" title="“said June” in the prose.">tag</span><span class="src src-tag" title="Carried from “said June” in the same paragraph.">propagated</span></span>
-          <span class="txt"><span class="sp">“Wait,”</span> <span class="nt">said June. Marius was already at the door.</span> <span class="sp">“We go now.”</span>
-            <b class="why">⚑ “We go now.” carries “said June”, but the model says Marius — the anchor may have gone stale</b></span>
-          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
-
-        <div class="ln" data-state="guess p-june" onclick="toast('The model chose June.')">
-          <span class="who"><span class="av" style="background:#c98aa7">J</span>June<span class="src src-llm">llm 0.97</span></span>
-          <span class="txt"><span class="sp">“Then we wait for the tide.”</span></span>
-          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
-
-        <div class="ln none" data-state="none" onclick="toast('No speaker — the model skipped this line.')">
-          <span class="who">— no speaker —<span class="src src-floor" title="The model's answer had no entry for this line.">skipped</span></span>
-          <span class="txt"><span class="sp">“Nine.”</span>
-            <b class="why">Blocked — the model skipped this line</b></span>
-          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
-
-        <div class="ln" data-state="p-renn p-marius p-narrator" onclick="toast('Two speakers in one paragraph, each anchored by its own tag.')">
-          <span class="who"><span class="wl"><span class="av" style="background:#8a6fb0">R</span>Renn<span class="src src-tag">tag</span></span>
-            <span class="wl"><span class="av" style="background:#3a7d63">M</span>Marius<span class="src src-tag">tag</span></span></span>
-          <span class="txt"><i class="iw">Renn</i><span class="sp">“Go,”</span> <span class="nt">said Renn, and Marius answered,</span> <i class="iw">Marius</i><span class="sp">“After you.”</span></span>
-          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
-
-        <div class="ln narr" data-state="p-narrator" onclick="toast('Narration — never sent to the model.')">
-          <span class="who">Narrator<span class="src">narration</span></span>
-          <span class="txt">Outside, the fog came up the quay like something that meant to stay.</span>
-          <span class="rt"><span onclick="toast('Opens the speaker picker under this line.')" title="Change the speaker">✎</span></span></div>
-      </div>
+      <div class="tw"><table class="scrt" data-filterable>
+        <thead><tr>
+          <th style="width:34px"><input type="checkbox" aria-label="Tick every line shown" onchange="scrTickAll(this)"></th>
+          <th style="width:215px">Speaker</th><th style="width:210px">Decided by</th><th>Text</th>
+          <th style="width:100px">Confidence</th><th style="width:300px">Check</th></tr></thead>
+        <tbody>
+          <tr class="ln mk pstart pend k-pod" data-state="all" title="Music or ad direction from the import — never spoken, never given a speaker">
+            <td></td><td class="hint">—</td><td class="by">♪ Marker</td>
+            <td><span class="q">[music: harbour theme, 8 s]</span></td><td class="cf"><span class="hint">—</span></td><td class="ck"></td></tr>
+          <tr class="ln pend pstart narr" data-state="p-narrator">
+            <td><input type="checkbox" class="tk" aria-label="Tick this line"></td>
+            <td><select class="box" aria-label="Speaker" onchange="scrSet(this)"><option value="narrator" selected>Narrator</option><option value="marius">Marius</option><option value="june">June</option><option value="renn">Renn</option><option value="harbek">Harbek</option></select></td>
+            <td class="by"><span title="Prose, not speech — the segmenter split it out and the model never saw it as a question.">Narration</span></td>
+            <td><span class="q">Marius set the lamp on the table.</span></td>
+            <td class="cf"><span class="tag ok">100%</span></td>
+            <td class="ck"></td></tr>
+          <tr class="ln pstart say" data-state="p-june">
+            <td><input type="checkbox" class="tk" aria-label="Tick this line"></td>
+            <td><select class="box" aria-label="Speaker" onchange="scrSet(this)"><option value="narrator">Narrator</option><option value="marius">Marius</option><option value="june" selected>June</option><option value="renn">Renn</option><option value="harbek">Harbek</option></select></td>
+            <td class="by"><span title="The AI worked it out from the lines around it, and was confident enough to keep.">AI, from the story around it</span></td>
+            <td><span class="q">“You're late.”</span></td>
+            <td class="cf"><span class="tag ok">97%</span></td>
+            <td class="ck"></td></tr>
+          <tr class="ln pend narr" data-state="p-narrator">
+            <td><input type="checkbox" class="tk" aria-label="Tick this line"></td>
+            <td><select class="box" aria-label="Speaker" onchange="scrSet(this)"><option value="narrator" selected>Narrator</option><option value="marius">Marius</option><option value="june">June</option><option value="renn">Renn</option><option value="harbek">Harbek</option></select></td>
+            <td class="by"><span title="Prose, not speech — the segmenter split it out and the model never saw it as a question.">Narration</span></td>
+            <td><span class="q">June didn't look up from the ledger.</span></td>
+            <td class="cf"><span class="tag ok">100%</span></td>
+            <td class="ck"></td></tr>
+          <tr class="ln pstart say" data-state="p-marius">
+            <td><input type="checkbox" class="tk" aria-label="Tick this line"></td>
+            <td><select class="box" aria-label="Speaker" onchange="scrSet(this)"><option value="narrator">Narrator</option><option value="marius" selected>Marius</option><option value="june">June</option><option value="renn">Renn</option><option value="harbek">Harbek</option></select></td>
+            <td class="by"><span class="ev" title="The words next to the line name the speaker. Found by pattern, no AI involved.">“said Marius”</span><div class="hint">the book says so</div></td>
+            <td><span class="q">“By twenty minutes,”</span></td>
+            <td class="cf"><span class="tag ok">100%</span></td>
+            <td class="ck"></td></tr>
+          <tr class="ln narr" data-state="p-narrator">
+            <td><input type="checkbox" class="tk" aria-label="Tick this line"></td>
+            <td><select class="box" aria-label="Speaker" onchange="scrSet(this)"><option value="narrator" selected>Narrator</option><option value="marius">Marius</option><option value="june">June</option><option value="renn">Renn</option><option value="harbek">Harbek</option></select></td>
+            <td class="by"><span title="Prose, not speech — the segmenter split it out and the model never saw it as a question.">Narration</span></td>
+            <td><span class="q">said Marius.</span></td>
+            <td class="cf"><span class="tag ok">100%</span></td>
+            <td class="ck"></td></tr>
+          <tr class="ln pend say" data-state="p-marius">
+            <td><input type="checkbox" class="tk" aria-label="Tick this line"></td>
+            <td><select class="box" aria-label="Speaker" onchange="scrSet(this)"><option value="narrator">Narrator</option><option value="marius" selected>Marius</option><option value="june">June</option><option value="renn">Renn</option><option value="harbek">Harbek</option></select></td>
+            <td class="by"><span class="ev" title="No name on this line, so it has the speaker named earlier in the same paragraph.">“said Marius”</span><div class="hint">earlier in the same paragraph</div></td>
+            <td><span class="q">“It hardly signifies.”</span></td>
+            <td class="cf"><span class="tag ok">100%</span></td>
+            <td class="ck"></td></tr>
+          <tr class="ln pend pstart say" data-state="p-june">
+            <td><input type="checkbox" class="tk" aria-label="Tick this line"></td>
+            <td><select class="box" aria-label="Speaker" onchange="scrSet(this)"><option value="narrator">Narrator</option><option value="marius">Marius</option><option value="june" selected>June</option><option value="renn">Renn</option><option value="harbek">Harbek</option></select></td>
+            <td class="by"><span title="You set this one. Re-analyzing leaves it exactly as it is.">You</span><div class="hint">was Marius</div></td>
+            <td><span class="q">“It signifies to the tide.”</span></td>
+            <td class="cf"><span class="hint">—</span></td>
+            <td class="ck"></td></tr>
+          <tr class="ln pstart say" data-state="p-marius">
+            <td><input type="checkbox" class="tk" aria-label="Tick this line"></td>
+            <td><select class="box" aria-label="Speaker" onchange="scrSet(this)"><option value="narrator">Narrator</option><option value="marius" selected>Marius</option><option value="june">June</option><option value="renn">Renn</option><option value="harbek">Harbek</option></select></td>
+            <td class="by"><span title="The AI worked it out from the lines around it, and was confident enough to keep.">AI, from the story around it</span></td>
+            <td><span class="q">“The tide turned below the floorboards.”</span></td>
+            <td class="cf"><span class="tag ok">100%</span></td>
+            <td class="ck"></td></tr>
+          <tr class="ln pend narr" data-state="p-narrator">
+            <td><input type="checkbox" class="tk" aria-label="Tick this line"></td>
+            <td><select class="box" aria-label="Speaker" onchange="scrSet(this)"><option value="narrator" selected>Narrator</option><option value="marius">Marius</option><option value="june">June</option><option value="renn">Renn</option><option value="harbek">Harbek</option></select></td>
+            <td class="by"><span title="Prose, not speech — the segmenter split it out and the model never saw it as a question.">Narration</span></td>
+            <td><span class="q">He sighed.</span></td>
+            <td class="cf"><span class="tag ok">100%</span></td>
+            <td class="ck"></td></tr>
+          <tr class="ln pend pstart narr" data-state="p-narrator">
+            <td><input type="checkbox" class="tk" aria-label="Tick this line"></td>
+            <td><select class="box" aria-label="Speaker" onchange="scrSet(this)"><option value="narrator" selected>Narrator</option><option value="marius">Marius</option><option value="june">June</option><option value="renn">Renn</option><option value="harbek">Harbek</option></select></td>
+            <td class="by"><span title="Prose, not speech — the segmenter split it out and the model never saw it as a question.">Narration</span></td>
+            <td><span class="q">The harbour bell went twice and stopped, as though it had thought better of it.</span></td>
+            <td class="cf"><span class="tag ok">100%</span></td>
+            <td class="ck"></td></tr>
+          <tr class="ln pstart say" data-state="p-june">
+            <td><input type="checkbox" class="tk" aria-label="Tick this line"></td>
+            <td><select class="box" aria-label="Speaker" onchange="scrSet(this)"><option value="narrator">Narrator</option><option value="marius">Marius</option><option value="june" selected>June</option><option value="renn">Renn</option><option value="harbek">Harbek</option></select></td>
+            <td class="by"><span title="The AI worked it out from the lines around it, and was confident enough to keep.">AI, from the story around it</span></td>
+            <td><span class="q">“I counted them.”</span></td>
+            <td class="cf"><span class="tag ok">91%</span></td>
+            <td class="ck"></td></tr>
+          <tr class="ln narr" data-state="p-narrator">
+            <td><input type="checkbox" class="tk" aria-label="Tick this line"></td>
+            <td><select class="box" aria-label="Speaker" onchange="scrSet(this)"><option value="narrator" selected>Narrator</option><option value="marius">Marius</option><option value="june">June</option><option value="renn">Renn</option><option value="harbek">Harbek</option></select></td>
+            <td class="by"><span title="Prose, not speech — the segmenter split it out and the model never saw it as a question.">Narration</span></td>
+            <td><span class="q">She set the ledger down.</span></td>
+            <td class="cf"><span class="tag ok">100%</span></td>
+            <td class="ck"></td></tr>
+          <tr class="ln pend say" data-state="p-marius">
+            <td><input type="checkbox" class="tk" aria-label="Tick this line"></td>
+            <td><select class="box" aria-label="Speaker" onchange="scrSet(this)"><option value="narrator">Narrator</option><option value="marius" selected>Marius</option><option value="june">June</option><option value="renn">Renn</option><option value="harbek">Harbek</option></select></td>
+            <td class="by"><span title="The AI worked it out from the lines around it, and was confident enough to keep.">AI, from the story around it</span></td>
+            <td><span class="q">“Twice.”</span></td>
+            <td class="cf"><span class="tag w">70%</span></td>
+            <td class="ck"></td></tr>
+          <tr class="ln pend pstart say" data-state="p-june">
+            <td><input type="checkbox" class="tk" aria-label="Tick this line"></td>
+            <td><select class="box" aria-label="Speaker" onchange="scrSet(this)"><option value="narrator">Narrator</option><option value="marius">Marius</option><option value="june" selected>June</option><option value="renn">Renn</option><option value="harbek">Harbek</option></select></td>
+            <td class="by"><span title="The AI worked it out from the lines around it, and was confident enough to keep.">AI, from the story around it</span></td>
+            <td><span class="q">“It matters to me.”</span></td>
+            <td class="cf"><span class="tag">88%</span></td>
+            <td class="ck"></td></tr>
+          <tr class="ln pend pstart say chk" data-state="check p-harbek" data-grp="one1">
+            <td><input type="checkbox" class="tk" aria-label="Tick this line"></td>
+            <td><select class="box" aria-label="Speaker" onchange="scrSet(this)"><option value="narrator">Narrator</option><option value="marius">Marius</option><option value="june">June</option><option value="renn">Renn</option><option value="harbek" selected>Harbek</option></select></td>
+            <td class="by"><span title="The AI worked it out from the lines around it, and was confident enough to keep.">AI, from the story around it</span></td>
+            <td><span class="q">“Tide's wrong tonight.”</span></td>
+            <td class="cf"><span class="tag w">72%</span></td>
+            <td class="ck">Harbek's only line in this chapter — is it his?<div class="ckb"><button class="btn s g" title="Shows every line, with this one selected, so you can read the exchange" onclick="event.stopPropagation();scrContext(this)">👁 Show the lines around</button><button class="btn s" title="Optional. Removes the mark from every line that shares it and takes them out of To check — the lines render the same either way (Shift+Enter)" onclick="event.stopPropagation();scrOk(this)">✓ Looks right</button></div></td></tr>
+          <tr class="ln pend pstart say" data-state="p-june">
+            <td><input type="checkbox" class="tk" aria-label="Tick this line"></td>
+            <td><select class="box" aria-label="Speaker" onchange="scrSet(this)"><option value="narrator">Narrator</option><option value="marius">Marius</option><option value="june" selected>June</option><option value="renn">Renn</option><option value="harbek">Harbek</option></select></td>
+            <td class="by"><span title="The AI worked it out from the lines around it, and was confident enough to keep.">AI, from the story around it</span></td>
+            <td><span class="q">“Then we wait for the tide.”</span></td>
+            <td class="cf"><span class="tag ok">97%</span></td>
+            <td class="ck"></td></tr>
+          <tr class="ln pstart say" data-state="p-harlan">
+            <td><input type="checkbox" class="tk" aria-label="Tick this line"></td>
+            <td><select class="box" aria-label="Speaker" onchange="scrSet(this)"><option value="harlan" selected>Tom Harlan — not in this cast</option><option value="narrator">Narrator</option><option value="marius">Marius</option><option value="june">June</option><option value="renn">Renn</option><option value="harbek">Harbek</option></select></td>
+            <td class="by"><span title="The AI worked it out from the lines around it, and was confident enough to keep.">AI, from the story around it</span></td>
+            <td><span class="q">“Ledger's short again, Miss June.”</span></td>
+            <td class="cf"><span class="tag ok">95%</span></td>
+            <td class="ck"></td></tr>
+          <tr class="ln pend narr" data-state="p-narrator">
+            <td><input type="checkbox" class="tk" aria-label="Tick this line"></td>
+            <td><select class="box" aria-label="Speaker" onchange="scrSet(this)"><option value="narrator" selected>Narrator</option><option value="marius">Marius</option><option value="june">June</option><option value="renn">Renn</option><option value="harbek">Harbek</option></select></td>
+            <td class="by"><span title="Prose, not speech — the segmenter split it out and the model never saw it as a question.">Narration</span></td>
+            <td><span class="q">He said it to the floor.</span></td>
+            <td class="cf"><span class="tag ok">100%</span></td>
+            <td class="ck"></td></tr>
+          <tr class="ln pend pstart say" data-state="changed p-renn">
+            <td><input type="checkbox" class="tk" aria-label="Tick this line"></td>
+            <td><select class="box" aria-label="Speaker" onchange="scrSet(this)"><option value="narrator">Narrator</option><option value="marius">Marius</option><option value="june">June</option><option value="renn" selected>Renn</option><option value="harbek">Harbek</option></select></td>
+            <td class="by"><span title="The AI worked it out from the lines around it, and was confident enough to keep.">AI, from the story around it</span><div><span class="tag w" title="The last Analyze gave this line a different speaker">changed · was June</span></div></td>
+            <td><span class="q">“It's in the ledger. I checked twice — sorry.”</span></td>
+            <td class="cf"><span class="tag ok">95%</span></td>
+            <td class="ck"></td></tr>
+          <tr class="ln pend pstart say none" data-state="check none">
+            <td><input type="checkbox" class="tk" aria-label="Tick this line"></td>
+            <td><select class="box" aria-label="Speaker" onchange="scrSet(this)"><option value="" selected>— no speaker —</option><option value="narrator">Narrator</option><option value="marius">Marius</option><option value="june">June</option><option value="renn">Renn</option><option value="harbek">Harbek</option></select></td>
+            <td class="by"><span title="The AI answered but was too unsure, so the answer was dropped and the line left with no speaker.">AI wasn't sure</span></td>
+            <td><span class="q">“Then it matters.”</span></td>
+            <td class="cf"><span class="tag w">41%</span></td>
+            <td class="ck">No speaker, so it can't render. The AI thought Marius, but wasn't sure.</td></tr>
+          <tr class="ln pstart say chk" data-state="check p-marius" data-grp="run1">
+            <td><input type="checkbox" class="tk" aria-label="Tick this line"></td>
+            <td><select class="box" aria-label="Speaker" onchange="scrSet(this)"><option value="narrator">Narrator</option><option value="marius" selected>Marius</option><option value="june">June</option><option value="renn">Renn</option><option value="harbek">Harbek</option></select></td>
+            <td class="by"><span class="ev" title="The words next to the line name the speaker. Found by pattern, no AI involved.">“Marius said”</span><div class="hint">the book says so</div></td>
+            <td><span class="q">“Nine doors, and every one of them shut,”</span></td>
+            <td class="cf"><span class="tag ok">100%</span></td>
+            <td class="ck">Marius speaks 3 times with no reply — is one of these the other person's?<div class="ckb"><button class="btn s g" title="Shows every line, with this one selected, so you can read the exchange" onclick="event.stopPropagation();scrContext(this)">👁 Show the lines around</button><button class="btn s" title="Optional. Removes the mark from every line that shares it and takes them out of To check — the lines render the same either way (Shift+Enter)" onclick="event.stopPropagation();scrOk(this)">✓ Looks right</button></div></td></tr>
+          <tr class="ln pend narr" data-state="p-narrator">
+            <td><input type="checkbox" class="tk" aria-label="Tick this line"></td>
+            <td><select class="box" aria-label="Speaker" onchange="scrSet(this)"><option value="narrator" selected>Narrator</option><option value="marius">Marius</option><option value="june">June</option><option value="renn">Renn</option><option value="harbek">Harbek</option></select></td>
+            <td class="by"><span title="Prose, not speech — the segmenter split it out and the model never saw it as a question.">Narration</span></td>
+            <td><span class="q">Marius said.</span></td>
+            <td class="cf"><span class="tag ok">100%</span></td>
+            <td class="ck"></td></tr>
+          <tr class="ln pend pstart say chk" data-state="check p-marius" data-grp="run1">
+            <td><input type="checkbox" class="tk" aria-label="Tick this line"></td>
+            <td><select class="box" aria-label="Speaker" onchange="scrSet(this)"><option value="narrator">Narrator</option><option value="marius" selected>Marius</option><option value="june">June</option><option value="renn">Renn</option><option value="harbek">Harbek</option></select></td>
+            <td class="by"><span title="The AI worked it out from the lines around it, and was confident enough to keep.">AI, from the story around it</span></td>
+            <td><span class="q">“Somebody shut them.”</span></td>
+            <td class="cf"><span class="tag ok">93%</span></td>
+            <td class="ck">Marius speaks 3 times with no reply — is one of these the other person's?<div class="ckb"><button class="btn s g" title="Shows every line, with this one selected, so you can read the exchange" onclick="event.stopPropagation();scrContext(this)">👁 Show the lines around</button><button class="btn s" title="Optional. Removes the mark from every line that shares it and takes them out of To check — the lines render the same either way (Shift+Enter)" onclick="event.stopPropagation();scrOk(this)">✓ Looks right</button></div></td></tr>
+          <tr class="ln pend pstart say chk" data-state="check p-marius" data-grp="run1">
+            <td><input type="checkbox" class="tk" aria-label="Tick this line"></td>
+            <td><select class="box" aria-label="Speaker" onchange="scrSet(this)"><option value="narrator">Narrator</option><option value="marius" selected>Marius</option><option value="june">June</option><option value="renn">Renn</option><option value="harbek">Harbek</option></select></td>
+            <td class="by"><span title="The AI worked it out from the lines around it, and was confident enough to keep.">AI, from the story around it</span></td>
+            <td><span class="q">“Somebody always does.”</span></td>
+            <td class="cf"><span class="tag ok">100%</span></td>
+            <td class="ck">Marius speaks 3 times with no reply — is one of these the other person's?<div class="ckb"><button class="btn s g" title="Shows every line, with this one selected, so you can read the exchange" onclick="event.stopPropagation();scrContext(this)">👁 Show the lines around</button><button class="btn s" title="Optional. Removes the mark from every line that shares it and takes them out of To check — the lines render the same either way (Shift+Enter)" onclick="event.stopPropagation();scrOk(this)">✓ Looks right</button></div></td></tr>
+          <tr class="ln pstart say" data-state="changed p-renn">
+            <td><input type="checkbox" class="tk" aria-label="Tick this line"></td>
+            <td><select class="box" aria-label="Speaker" onchange="scrSet(this)"><option value="narrator">Narrator</option><option value="marius">Marius</option><option value="june">June</option><option value="renn" selected>Renn</option><option value="harbek">Harbek</option></select></td>
+            <td class="by"><span class="ev" title="The words next to the line name the speaker. Found by pattern, no AI involved.">“said Renn”</span><div class="hint">the book says so</div><div><span class="tag w" title="The last Analyze gave this line a different speaker">changed · was Marius</span></div></td>
+            <td><span class="q">“Go,”</span></td>
+            <td class="cf"><span class="tag ok">100%</span></td>
+            <td class="ck"></td></tr>
+          <tr class="ln narr" data-state="p-narrator">
+            <td><input type="checkbox" class="tk" aria-label="Tick this line"></td>
+            <td><select class="box" aria-label="Speaker" onchange="scrSet(this)"><option value="narrator" selected>Narrator</option><option value="marius">Marius</option><option value="june">June</option><option value="renn">Renn</option><option value="harbek">Harbek</option></select></td>
+            <td class="by"><span title="Prose, not speech — the segmenter split it out and the model never saw it as a question.">Narration</span></td>
+            <td><span class="q">said Renn, and Marius answered,</span></td>
+            <td class="cf"><span class="tag ok">100%</span></td>
+            <td class="ck"></td></tr>
+          <tr class="ln pend say" data-state="p-marius">
+            <td><input type="checkbox" class="tk" aria-label="Tick this line"></td>
+            <td><select class="box" aria-label="Speaker" onchange="scrSet(this)"><option value="narrator">Narrator</option><option value="marius" selected>Marius</option><option value="june">June</option><option value="renn">Renn</option><option value="harbek">Harbek</option></select></td>
+            <td class="by"><span class="ev" title="The words next to the line name the speaker. Found by pattern, no AI involved.">“Marius answered”</span><div class="hint">the book says so</div></td>
+            <td><span class="q">“After you.”</span></td>
+            <td class="cf"><span class="tag ok">100%</span></td>
+            <td class="ck"></td></tr>
+          <tr class="ln pstart say" data-state="p-june">
+            <td><input type="checkbox" class="tk" aria-label="Tick this line"></td>
+            <td><select class="box" aria-label="Speaker" onchange="scrSet(this)"><option value="narrator">Narrator</option><option value="marius">Marius</option><option value="june" selected>June</option><option value="renn">Renn</option><option value="harbek">Harbek</option></select></td>
+            <td class="by"><span class="ev" title="The words next to the line name the speaker. Found by pattern, no AI involved.">“said June”</span><div class="hint">the book says so</div></td>
+            <td><span class="q">“Wait,”</span></td>
+            <td class="cf"><span class="tag ok">100%</span></td>
+            <td class="ck"></td></tr>
+          <tr class="ln narr" data-state="p-narrator">
+            <td><input type="checkbox" class="tk" aria-label="Tick this line"></td>
+            <td><select class="box" aria-label="Speaker" onchange="scrSet(this)"><option value="narrator" selected>Narrator</option><option value="marius">Marius</option><option value="june">June</option><option value="renn">Renn</option><option value="harbek">Harbek</option></select></td>
+            <td class="by"><span title="Prose, not speech — the segmenter split it out and the model never saw it as a question.">Narration</span></td>
+            <td><span class="q">said June. Marius was already at the door.</span></td>
+            <td class="cf"><span class="tag ok">100%</span></td>
+            <td class="ck"></td></tr>
+          <tr class="ln pend say chk" data-state="check p-june" data-grp="anc1">
+            <td><input type="checkbox" class="tk" aria-label="Tick this line"></td>
+            <td><select class="box" aria-label="Speaker" onchange="scrSet(this)"><option value="narrator">Narrator</option><option value="marius">Marius</option><option value="june" selected>June</option><option value="renn">Renn</option><option value="harbek">Harbek</option></select></td>
+            <td class="by"><span class="ev" title="No name on this line, so it has the speaker named earlier in the same paragraph.">“said June”</span><div class="hint">earlier in the same paragraph</div></td>
+            <td><span class="q">“We go now.”</span></td>
+            <td class="cf"><span class="tag ok">100%</span></td>
+            <td class="ck">The book says June, the AI says Marius — whose line is it?<div class="ckb"><button class="btn s g" title="Shows every line, with this one selected, so you can read the exchange" onclick="event.stopPropagation();scrContext(this)">👁 Show the lines around</button><button class="btn s" title="Optional. Removes the mark from every line that shares it and takes them out of To check — the lines render the same either way (Shift+Enter)" onclick="event.stopPropagation();scrOk(this)">✓ Looks right</button></div></td></tr>
+          <tr class="ln pend pstart say none" data-state="check none">
+            <td><input type="checkbox" class="tk" aria-label="Tick this line"></td>
+            <td><select class="box" aria-label="Speaker" onchange="scrSet(this)"><option value="" selected>— no speaker —</option><option value="narrator">Narrator</option><option value="marius">Marius</option><option value="june">June</option><option value="renn">Renn</option><option value="harbek">Harbek</option></select></td>
+            <td class="by"><span title="The AI's answer had no entry for this line.">AI gave no answer</span></td>
+            <td><span class="q">“Nine.”</span></td>
+            <td class="cf"><span class="hint">—</span></td>
+            <td class="ck">No speaker, so it can't render. The AI gave no answer.</td></tr>
+          <tr class="ln pend pstart narr" data-state="p-narrator">
+            <td><input type="checkbox" class="tk" aria-label="Tick this line"></td>
+            <td><select class="box" aria-label="Speaker" onchange="scrSet(this)"><option value="narrator" selected>Narrator</option><option value="marius">Marius</option><option value="june">June</option><option value="renn">Renn</option><option value="harbek">Harbek</option></select></td>
+            <td class="by"><span title="Prose, not speech — the segmenter split it out and the model never saw it as a question.">Narration</span></td>
+            <td><span class="q">Outside, the fog came up the quay like something that meant to stay.</span></td>
+            <td class="cf"><span class="tag ok">100%</span></td>
+            <td class="ck"></td></tr>
+        </tbody></table></div>
 
       <div class="row" style="padding:11px 14px;border-top:1px solid var(--line)">
-        <button class="btn" onclick="toast('Lines 11–12 selected. Pick a persona to reassign both.')">⇅ Select a run</button>
-        <button class="btn" onclick="toast('Reassigned to June. The lines either side are re-checked — fixing one usually means the next was wrong too.','ok')">🎭 Reassign selected…</button>
-        <button class="btn" title="Everything the model couldn't place becomes narration. Lines with no speaker block the render." onclick="toast('Every line without a speaker now reads as Narrator.','ok')">Assign 3 → Narrator</button>
-        <button class="btn g" onclick="toast('Undone — lines 11–12 are back to Marius.','ok')">↶ Undo</button>
+        <span class="hint tick-n">Tick lines to change several at once.</span>
+        <select class="box needs-tick" style="width:auto" disabled aria-label="Set the speaker of ticked lines" onchange="scrBulkSet(this)"><option value="">Set the speaker of ticked lines…</option><option value="narrator">Narrator</option><option value="marius">Marius</option><option value="june">June</option><option value="renn">Renn</option><option value="harbek">Harbek</option></select>
+        <button class="btn s needs-tick" disabled title="For ticked lines spoken by exactly two personas: each line goes to the other one" onclick="scrSwap()">⇄ Swap their two speakers</button>
+        <button class="btn s needs-tick" disabled title="Removes the marks from the ticked lines and makes them yours" onclick="scrMarkRight()">✓ Looks right</button>
         <span style="flex:1"></span>
-        <button class="btn s g" onclick="toast('Showing the paragraphs either side of the selected line.')">👁 Show context</button>
+        <button class="btn s g" title="Undo your last change (Ctrl+Z)" onclick="toast('Undone — your last change is back as it was.','ok')">↶ Undo</button>
+        <button class="btn s g" onclick="toast('Showing the lines either side of each line in view.')">👁 Show the lines around</button>
       </div>
       <p class="hint" style="margin:0;padding:0 14px 11px">Changing the speaker of a rendered line makes it
         stale — it re-renders, and its old take is kept.</p>
+      <div class="row" style="padding:11px 14px;border-top:1px solid var(--line)">
+        <button class="btn s" disabled title="This is the first chapter">← Previous chapter</button>
+        <span style="flex:1"></span>
+        <span class="hint">Next: 2 · Salt and Ledger · 1 to check</span>
+        <button class="btn s p" onclick="toast('Opens 2 · Salt and Ledger.')">Next chapter ➜</button>
+      </div>
     </div>
 
     <div class="card tint">
-      <div class="sh"><h4>How to read the marks</h4></div>
+      <div class="sh"><h4>What the columns mean</h4></div>
       <div class="tw"><table><tbody>
-        <tr><td style="width:150px"><span class="src">narration</span></td>
-          <td>Prose. Never sent to the model, never in question — so it recedes. A paragraph's spoken
-            part is dark and its narration grey, and the grey part is read by the Narrator.</td></tr>
-        <tr><td><span class="src src-tag">tag</span> / <span class="src src-tag">propagated</span></td>
-          <td>The prose named the speaker, or it carried from a line that did. <b>Anchors beat the
-            model</b> — its own pick is kept, and a disagreement is flagged.</td></tr>
-        <tr><td><span class="src src-llm">llm 0.94</span></td>
-          <td>The model chose. Most spoken lines are decided this way. The number is the model's
-            opinion of itself, and it has been 1.00 and wrong — so no score outranks a flag.</td></tr>
-        <tr><td><span class="src src-you">✓ you</span></td>
-          <td>You set or confirmed this, and Analyze leaves it alone.</td></tr>
-        <tr><td><b class="why" style="display:inline">⚑ flagged</b></td>
-          <td>Checks on the text, not on the model's confidence: three in a row, a persona with one
-            line, a speaker not yet in the chapter, dialogue on the Narrator, an anchor the model
-            disagrees with.</td></tr>
-        <tr><td><span class="src src-floor">no speaker</span></td>
-          <td>The model wasn't sure — under the floor — or skipped the line. Blocks rendering either
-            way.</td></tr>
+        <tr><td style="width:170px"><b>Speaker</b></td>
+          <td>Who says the line. Change it here; a line you set is yours, and Analyze leaves it alone.</td></tr>
+        <tr><td><b>Decided by</b></td>
+          <td>Why the line has its speaker. <b>Narration</b> — text outside quote marks, read by the
+            Narrator. <b>Words in quotes, like “said Marius”</b> — the book names the speaker right
+            there; you can check it against the text. <b>AI, from the story around it</b> — nothing
+            names the speaker, so the AI worked it out; most spoken lines are decided this way.
+            <b>You</b> — you set or confirmed it.</td></tr>
+        <tr><td><b>Confidence</b></td>
+          <td>How sure the AI said it was. A low number is worth a look. A high one is not proof —
+            the AI has been 100% sure and wrong.</td></tr>
+        <tr><td><b>Check</b></td>
+          <td>Where the AI most often goes wrong, so you know where to read closely. Its most common
+            mistake is losing track of turns in a back-and-forth — two people alternate, and it gives
+            two lines in a row to one of them. So a line is marked when one person speaks three times
+            with no reply, when it is a persona's only line in the chapter, when dialogue went to the
+            Narrator, or when the book and the AI name different speakers. The line may well be right:
+            “👁 Show the lines around” lets you read the exchange, and “✓ Looks right” (optional) removes
+            the mark — the line renders the same either way.</td></tr>
       </tbody></table></div>
-      <p class="hint" style="margin:9px 0 0">Direction, takes, rewriting a line in its persona's voice and rendering
-        are <b>not</b> on this page. Script decides who says what; how it is performed is
+      <p class="hint" style="margin:9px 0 0">Direction, takes and rendering are <b>not</b> on this page.
+        Script decides who says what; how it is performed is
         <span class="lnk" onclick="nav('render')">Render</span>.</p>
     </div>
 

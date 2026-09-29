@@ -45,46 +45,29 @@ body[data-kind="podcast"] .k-book,body[data-kind="podcast"] .k-game{display:none
 .s-done{background:var(--accent)}
 .s-stale{background:oklch(0.62 0.10 265)}
 .rowacts{white-space:nowrap;text-align:right}
-/* How a speaker was decided — the five sources the pipeline can assign. */
-.src{display:inline-block;margin-left:6px;font-size:9.5px;font-weight:700;letter-spacing:.03em;
-  padding:1px 6px;border-radius:var(--r-pill);border:1px solid var(--line);color:var(--ink-3);
-  background:var(--surface-2);vertical-align:middle;white-space:nowrap}
-.src-tag{border-color:var(--accent-line);background:var(--accent-soft);color:var(--accent-ink)}
-.src-llm{border-color:var(--line-strong);color:var(--ink-2)}
-.src-floor{border-color:var(--danger-line);background:var(--danger-bg);color:var(--danger-ink)}
 .rowacts .btn{margin-left:5px}
 
-/* Script reads as a screenplay, one row per paragraph. Weight carries risk: narration
-   recedes because it is never in question; a guess carries only its badge, because most
-   spoken lines are guesses (22 of 272 anchored, measured 2026-09-28) and the model is
-   right on nearly all of them; a flag and a missing speaker are the loud rows. */
-.scr{display:flex;flex-direction:column}
-.scr .ln{display:grid;grid-template-columns:158px 1fr 26px;gap:13px;align-items:start;
-  padding:8px 14px 8px 11px;border-bottom:1px solid var(--line);border-left:3px solid transparent;
-  cursor:pointer;font-size:12.5px;line-height:1.5}
-.scr .ln:hover{background:var(--surface-2)}
-.scr .who{display:inline-flex;align-items:center;gap:5px;flex-wrap:wrap;
-  font-weight:650;font-size:11.5px;padding-top:1px}
-.scr .txt{color:var(--ink)}
-.scr .rt{opacity:0;transition:opacity .12s}
-.scr .ln:hover .rt{opacity:1}
-.scr .ln.narr{color:var(--ink-3)}
-.scr .ln.narr .who,.scr .ln.narr .txt{color:var(--ink-3);font-weight:400}
-.scr .ln.flag{border-left-color:var(--danger);background:var(--danger-bg)}
-.scr .sp{color:var(--ink)}
-.scr .nt{color:var(--ink-3)}
-.scr .iw{font-style:normal;font-size:10px;font-weight:700;color:var(--ink-2);margin-right:3px}
-.scr .wl{display:flex;align-items:center;gap:5px;width:100%;flex-wrap:wrap}
-.scr .ln.mk{cursor:default;color:var(--ink-3);font-style:italic}
-.scr .ln.mk .who{font-style:normal;color:var(--ink-3)}
-.scr .pick{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:8px 14px 10px 183px;
-  border-bottom:1px solid var(--line);background:var(--surface-2);font-size:12px}
-.scr .pick .tag{cursor:pointer}
-.src-you{border-color:var(--accent);background:var(--surface);color:var(--accent-ink)}
-.scr .ln.none{border-left-color:var(--danger);background:var(--danger-bg)}
-.scr .ln.none .txt{font-weight:600}
-.scr .ln.sel{outline:2px solid var(--accent);outline-offset:-2px}
-.scr .why{display:block;margin-top:3px;font-size:10.5px;font-weight:700;color:var(--danger-ink)}
+/* Script's chapter page is the app's own table: one row per line, a speaker dropdown on
+   every row, column headings (ruled 2026-09-29 - "see original is easy to understand";
+   two screenplay layouts before it hid the one control that matters). The lines of a
+   paragraph sit together: the divider is drawn only under a paragraph's last line. A line
+   to check is tinted and says why in its Check column. */
+.scrt td{padding:8px;vertical-align:middle}
+.scrt tr.ln{cursor:pointer}
+.scrt tr.ln td{border-bottom-color:transparent}
+.scrt tr.ln.pend td{border-bottom-color:var(--line)}
+.scrt tr.narr td,.scrt tr.mk td{color:var(--ink-3)}
+.scrt tr.mk{cursor:default}
+.scrt tr.mk td{font-style:italic}
+.scrt tr.chk td,.scrt tr.none td{background:var(--danger-bg)}
+.scrt tr.chk td:first-child,.scrt tr.none td:first-child{box-shadow:inset 3px 0 0 var(--danger)}
+.scrt tr.sel td{background:var(--accent-soft)}
+.scrt tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
+.scrt td.ck{font-size:11px;font-weight:650;color:var(--danger-ink)}
+.scrt td.ck .ckb{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.scrt td.by .ev{font-style:italic;color:var(--ink)}
+.scrt td select.box{min-width:170px}
+.scrt .q{font-size:12.5px;line-height:1.5}
 
 /* A control the current voice cannot honour is shown, disabled, with its reason —
    never hidden, or the user cannot tell the difference between "off" and "absent". */
@@ -285,14 +268,14 @@ function openProject(kind, name) {
   document.body.setAttribute('data-kind', kind);
   document.querySelectorAll('.proj-name').forEach(function (n) { n.textContent = name; });
   document.querySelectorAll('.proj-kind').forEach(function (n) { n.innerHTML = KIND[kind]; });
+  // A kind has its own chapter rows, so the run buttons are counted again.
+  recalcAll();
   nav('overview');
 }
 
 document.body.setAttribute('data-kind', 'audiobook');
 // The estimate is computed from the boxes that start ticked, never hardcoded.
-document.querySelectorAll('.route').forEach(function (r) {
-  if (r.querySelector('.ck')) recalcAnalyze(r.querySelector('.ck'));
-});
+recalcAll();
 nav('home');
 </script>
 """

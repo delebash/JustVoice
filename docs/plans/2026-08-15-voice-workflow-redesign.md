@@ -1290,13 +1290,31 @@ drifted — this section carried three different totals (123 / 126 / 119 wired)
 from three different build dates.
 
 ```
-19 routes · 152 controls · 0 dead · 7 deliberately disabled     ← re-run 2026-09-29 (v26)
-character/persona: 0 / 78          ← the §8.4 sweep is applied to the mock
+19 routes · 182 controls · 0 dead · 11 deliberately disabled    ← re-run 2026-09-29 (v30)
+character/persona: 0 / 76          ← the §8.4 sweep is applied to the mock (v30)
 dangling nav targets: none
 routes nothing links to: none      ← scene re-linked 2026-09-19 (6c7cf57)
-.lnk spans: 43, 24 without onclick (they sit inside clickable rows)
-JS functions: 13, no duplicates, no undefined handlers
+.lnk spans: 55, 36 without onclick (they sit inside clickable rows)
+JS functions: 39, no duplicates, no undefined handlers
 ```
+
+**2026-09-29, version 30:** "Decided by" shows the evidence (the book's own words, or "AI,
+from the story around it"); the Check column asks its question in terms of the
+conversation, with "Show the lines around" and "Looks right"; the two-speakers flag is
+gone; the grid gets state filters, and links into Script land on the problem (§8.25).
+
+**2026-09-29, version 29:** the chapter page is the app's own table again — a speaker
+dropdown on every row, column headings, a visible Confidence column, a Check column
+(§8.25 "Back to the table"). The screenplay of v27 and v28 is gone.
+
+**2026-09-29, version 28:** the chapter's rows are lines again, grouped by paragraph — one
+row, one speaker (§8.25 "The chapter's rows, corrected").
+
+**2026-09-29, version 27:** the second review of Script (§8.25) — flag groups, "one
+paragraph, two speakers", the review keys, next / previous chapter, swap, the "Changed"
+filter, a speaker removed from the cast, the podcast's own Script grid. What landed where
+is the table in §8.25 "Built in the mock". The validator's "GLYPH CONTROLS … dead: 0" line
+is NOT evidence that a glyph works — see the finding in §8.25.
 
 **2026-09-29, version 26:** Double-check and the "your fixes" line are gone again — both
 measured and dropped (§8.23 "Measured, then dropped"); ch. 1 now carries 3 flags, the
@@ -1880,11 +1898,541 @@ So: no second model pass of any kind in Script (§8.9's Review and A4 are both g
 §8.14 gains only A5's check. The fix-examples mechanism (`_resolve_corrections`) stays as
 it is, unadvertised.
 
+#### The flag checks, measured (2026-09-29, no model)
+
+> **CORRECTED the same day — read §8.25 first.** The "Misses caught" column below and the
+> "What it means" paragraph are WRONG as conclusions: they come from how the result was
+> scored, not from the checks. Re-scored on the same keys and saved runs, three in a row
+> catches "Quartermaster." in 4 of 4 runs and a new check catches Brass Rank D24 in 2 of 2,
+> both with no false alarms. The false-alarm columns and the C3 verdict stand.
+
+Ruled first (user: *"you rec on all go"*): **three in a row** = three or more back-to-back
+spoken paragraphs, with no narration-only paragraph between them, all given to one persona
+→ flag the third and after; **"not in the chapter yet"** → measure (a) *not named yet* and
+(b) *never named in the chapter*, keep the better or neither; **Undo** → a `no_fix` flag on
+the line update.
+
+Measured by a scratch script: the real segmenter on each keyed chapter, a persona "named"
+when its full name, an alias or any capitalised part of the name appears.
+
+| Check | False alarms on the answer keys (268 lines, perfect attribution) | Flags on right lines in the saved runs (878) | Misses caught (6 wrong lines = Brass Rank D24 ×2, "Quartermaster." ×4) |
+|---|---|---|---|
+| C1 three in a row | **0** | 4 | 0 |
+| C2 a persona's only line | 1 | 0 | 0 |
+| C3a not named yet | 9 | 30 | 0 |
+| C3b never named in the chapter | 6 | 20 | 0 |
+| C4 dialogue on the Narrator | **0** | 0 | 0 |
+| A5 anchor vs model | not measured — the saved runs don't carry the model's own pick on anchored lines | | |
+
+C3's false alarms are characters the chapter calls by a nickname the persona doesn't list
+(Odeline Marran is "Ode" all through The Keystone — 5 lines) or who speak before they are
+named (Ino, Adder Voss).
+
+**What it means.** On Gemma 4 26B **no check catches either remaining miss** — both are
+the right people in the scene, the wrong one of them, which no structural check can see.
+C3 (a and b) caught nothing and raised false alarms, so under the ruling **neither is
+built**. C1, C2 and C4 are quiet (0–1 false alarms in 268 lines) and stay as a cheap guard
+for weaker models — the Guided route for small models, where the 09-28 baseline was
+55–64% — but they are unmeasured there. On today's model the Flagged filter will usually
+be empty; **the real review is reading, which is why the paragraph screenplay (M2)
+matters most.**
+
 #### Open
 
-- **The app build of Slice 3** needs its own go. The mock is the design it builds from.
-- **"Quartermaster."** is now a stable miss (every run on 09-28 night). Whether any of
-  the §8.14 flags would catch it is unknown until they exist.
+- **The app build of Slice 3** — the plan is §8.24, awaiting approval.
+- ~~**"Quartermaster."** is a stable miss that nothing in Script can flag.~~ Wrong — three
+  in a row flags it in every run (§8.25).
+- **The flags on a weak model** — measure them on a Guided-route run if it matters.
+
+---
+
+### 8.24 Slice 3 — the build plan (APPROVED 2026-09-29 — "do all 3 and commint" + "go")
+
+#### What Script is
+
+Script answers one question: **who says each line.** It is two screens.
+
+- **The grid** is where Script opens. One row per chapter: how many lines, when it was
+  analyzed, how its lines were decided, how many flag groups and no-speaker lines it has,
+  and what state it is in. You tick chapters and run Analyze on them; rows fill in as each
+  chapter finishes, and the run survives leaving the page.
+- **The chapter** is the app's own table, in reading order: **one row is one line, with a
+  speaker dropdown on every row** and column headings — Speaker, Decided by, Text,
+  Confidence, Check. "Decided by" shows the evidence: the book's own words when it names
+  the speaker (`“said Marius”`), otherwise "AI, from the story around it". A line where
+  the AI most often goes wrong is tinted and asks its question in the Check column, with
+  "Show the lines around" and an optional "Looks right".
+  Ticking rows changes several lines at once. "Next to check" jumps to the next such line.
+  The keys are an extra behind a "Shortcuts" link, never the way to use the page.
+
+**The mock (v30) is the design.** If this plan and the mock disagree, the mock wins and
+the plan is wrong. Direction, takes and rendering are Render's (Slice 4), never Script's.
+
+#### What is decided (2026-09-28 and 2026-09-29, §8.23 and §8.25)
+
+| Rule | Decided |
+|---|---|
+| The chapter page | The original table is the base: one row per line, a speaker dropdown on every row, column headings, roomy rows (2026-09-29, §8.25 "Back to the table"). This replaces M2 (paragraph rows), M4 (the speaker strip) and M5 (the one shared picker). |
+| Confidence | A visible Confidence column, as in the original. This reverses D2 and §8.13's "no confidence column" — the user: "if confidence is 50% but user only sees it on hover it hides errror". |
+| "Decided by" | The evidence, not a category (2026-09-29, "yes go"): the book's own words in quotes when it names the speaker — `“said Marius”`, with "the book says so" or "earlier in the same paragraph" under it — otherwise "AI, from the story around it", "AI wasn't sure", "AI gave no answer", "Narration", "You". "model" is "AI" everywhere on the page. |
+| Three in a row | Three or more back-to-back spoken paragraphs, no narration-only paragraph between them, all given to one persona. The **whole run is one flag group.** |
+| Two speakers in one paragraph | **DROPPED** 2026-09-29 (the user: "all a user sees is line by line, i dont know about a paragraph unless i look at real text"). Only flags whose reason can be checked from the rows shown are built. |
+| The Check column's words | A question in terms of the conversation, naming the people: "Marius speaks 3 times with no reply — is one of these the other person's?" · "Harbek's only line in this chapter — is it his?" · "The book says June, the AI says Marius — whose line is it?" · "No speaker, so it can't render. The AI thought Marius, but wasn't sure." Beside each: "👁 Show the lines around" (every line back, this one selected) and "✓ Looks right" (optional: removes the mark and takes the line out of To check; the line renders the same either way). |
+| A persona's only line · dialogue on the Narrator · the book and the AI disagree | Built. The last is unmeasured. |
+| Not built | "Not named yet", "never named in the chapter", "a line says its own speaker's name" — measured, false alarms, no catches. "Two speakers in one paragraph" — dropped. Double-check and the "your fixes" line — measured, dropped. "Read by you" — not now (§8.25). |
+| Yours never flags | A line you set or confirmed is never flagged. One key accepts a flagged group as right. |
+| "Added since" | A persona in the cast now but not when the chapter was analyzed, whose name or "also called" names appear in that chapter's text. Every analyzed chapter is searched; Discover's scan is not consulted. |
+| Rewrite in character | Stays on Script as today's right-click, no new visible control, until Slice 4 moves it to Render's line panel and deletes the right-click. |
+| Undo | Sends `no_fix`, and removes the fix the undone change saved. |
+| Where the logic lives | Flags and rollups are **Python on the server**, and the eval imports the same function. One chapter-run service serves Discover and Analyze. Keyboard, selection and Undo are a pure module with unit tests. |
+
+#### What the mock shows that is still a proposal
+
+These are in the mock (v30), and were approved with the plan 2026-09-29. Each is a choice the approved
+text did not name, so each needs the user's yes with the plan:
+
+| Proposal | In the mock |
+|---|---|
+| A speech over several paragraphs is one turn | For three in a row, a paragraph that opens a quote and never closes it carries on into the next one, so the whole speech counts once. Measured on The Speckled Band's key: without this, 2 false alarms (Helen Stoner's account, 5 and 10 paragraphs); with it, 0 (§8.25) |
+| Keys, behind "Shortcuts" | `j` / `k` line · `n` / `Shift+N` next / previous line to check · `1–9` give the line to that speaker (this chapter's speakers, most lines first) · `0` the Narrator · `Enter` this line looks right · `Shift+Enter` looks right, for every line sharing its mark · `Space` tick · `[` `]` previous / next chapter · `Ctrl+Z` undo |
+| Counts are lines | A filter's number is the number of rows it shows. "To check" is flagged lines plus lines with no speaker. The grid's Flagged column and Overview count flagged lines |
+| "✓ Looks right" accepts the whole mark | On a marked line, "✓ Looks right" makes every line that shares the mark yours. Setting a line's speaker clears that line's mark |
+| A speaker who isn't in the cast is a banner | One banner above the table — "Tom Harlan isn't in this cast. 14 lines in this chapter are his…" with "Put him back in the cast" — not a flag on each line. His rows show "Tom Harlan — not in this cast" in the dropdown. It does not block rendering — the render resolves a line's persona directly (`render_chapter_api.py:154`) |
+| The lines of a paragraph sit together | The divider is drawn only under a paragraph's last line |
+| Confidence colours | As the app today (`StudioView.vue:2286`): above 90% green, above 80% plain, otherwise highlighted |
+| Flags run only on what Analyze decided | A chapter whose speakers came with the import shows "from the import" and no flags; "not in the cast" is the exception, it applies everywhere |
+| Undo steps back through your changes | Newest first, since you opened the chapter; leaving the chapter clears it |
+| Swap needs exactly two speakers | "Swap the two speakers" acts on a selection spoken by exactly two personas; otherwise it is disabled with the reason |
+| "Changed" | On a re-analyze that keeps the lines, a line whose speaker changes records who it was. The chip shows only when there are any, and the mark clears when you set or confirm the line |
+
+**Not drawn in the mock** (it cannot show them without contradicting its other screens —
+both are whole-app or whole-project states): the two states that block a run. Proposed
+copy, on the run row with Analyze disabled:
+- No language model: *"Analyze needs a language model. Set one in AI Settings ➜"*
+- The cast has only the Narrator: *"Your cast has only the Narrator, so Analyze has nobody
+  to choose from. Find the speakers first — Discover ➜"*
+
+Today nothing stops either: `runAnalyze` checks only the chapter and its text
+(`StudioView.vue:1344`), and a missing model surfaces as a toast after the call fails.
+
+#### One "analyzed" rule
+
+A chapter is **analyzed** when Analyze has run on it (`analyzed_at`). Older data has no
+`analyzed_at`; there, a chapter whose lines carry a pipeline `source` counts as analyzed
+with no date (no migration — the user resets). A chapter is **from the import** when
+Analyze never ran and every spoken line has a speaker (podcast scripts, game sheets).
+Overview and the grid use this one rule; today Overview counts "any line has a speaker"
+(`attribution.js:85`, `studioStatus.js:31`), which calls an imported script "analyzed".
+
+#### 3a · Server
+
+| Change | Where |
+|---|---|
+| The chapter records `analyzed_at` and `analyzed_cast` (the persona ids Analyze could choose from) | `api/extraction_api.py` `_persist_attribution`, beside `meta["source_text"]` (`:358`) |
+| Each line records its `paragraph_idx`; when an anchor wins and the model picked someone else, its `llm_speaker`; on an in-place re-analyze that changes its speaker, its `prev_persona_id` | same function, `with_audit` (`:360-372`) |
+| New `extraction/flags.py`: `flag_groups(lines, cast_ids)` — a pure function, the five checks plus "not in the cast" — with pytest on the sample books' keys and on hand-made runs | new file beside `anchors.py` |
+| New `GET /v1/projects/{id}/script`: one row per chapter — lines, spoken, `analyzed_at`, from the import, anchored, guessed, by you, flag groups, no speaker, no dialogue found, added since, not in the cast | `api/extraction_api.py`; models in `models.py` |
+| New `GET /v1/scenes/{id}/script`: the chapter as paragraphs of lines, with its flag groups and the speaker strip's counts | same |
+| The eval prints flags with every run: caught, missed, false alarms | `server/scripts/eval_attribution.py` imports `flag_groups` |
+| A line the book names records the words that named it — `anchor_words`, e.g. "said Marius" — for "Decided by" to show | `extraction/anchors.py` `Anchor` (`:42`) gains the matched words (the name and verb `find_anchors` already finds, `:121-137`); `pipeline.py:701-703` passes them on; `with_audit` stores them. A propagated line records the words of the tag it carried from |
+| **The segmenter reads straight-quoted speech that runs on** (item 6): a paragraph that opens a straight quote and never closes it is speech to its end, as a curly one already is (`segmentation.py:22`; the straight branch `:23` needs the closing quote). Measured on The Speckled Band with its quotes straightened: 14 paragraphs of speech, 1,247 of 6,473 spoken words, are read as narration today. Test: the straightened story finds all 247 lines, the curly one is unchanged | `extraction/segmentation.py`; new tests beside `server/tests/test_analyze_persist.py` |
+| A line update can say `no_fix`; when it records a fix it returns its `fix_id`; one fix can be deleted | `api/projects_api.py` `UpdateBlockRequest` (`:208`), the `persona_id_changed` branch (`:548`); new `DELETE /v1/projects/{id}/corrections/{fix_id}` beside the delete-all (`extraction_api.py:821`) |
+| Discover's scan stops blocking the server | `discover_speakers_endpoint` (`extraction_api.py:960`) runs its model call in a worker thread, as the Analyze stream already does (`:575-615`) |
+
+Lines made by import or paste have no `paragraph_idx`; each is its own paragraph.
+
+**FINDING behind the last row (2026-09-29):** while the eval's `analyze-text` call was
+running, `/v1/health` timed out. That endpoint and Discover's are `async def` around a
+blocking pipeline with no worker thread — the only `Thread(` / `to_thread` in the file are
+the Analyze stream's. So today a Discover scan stalls every other request to the server for
+the length of each chapter's model call. A batch that "keeps running while you work
+elsewhere" needs this fixed first.
+
+#### 3b · The grid
+
+| Change | Where |
+|---|---|
+| New `components/StudioScript.vue`: the grid and its row states, **filter chips by state (All · To check · Not analyzed · Re-analyze · Needs attention), with select-all ticking only the chapters shown** (item 1), the run row, the "what these columns mean" card with the grid's columns in the chapter's words ("Book says", "AI decided"); reads `GET /v1/projects/{id}/script` | replaces the Script section of `StudioView.vue` (`:2170-2293`) and its step-bar controls (`:1768-1794`) |
+| **Links into Script land on the problem** (item 2): Render's "fix in Script" opens the chapter filtered to its lines with no speaker, the first one selected; the grid's Review opens the chapter at its first line to check; Overview's and Home's Script numbers open the grid on "To check" | the Render step's blocked-lines banner and row action; `StudioOverview.vue`'s Script row; `HomeView.vue`'s Continue card |
+| **"Chapter" / "episode" from `useCopy()`** (item 5), as `StudioDiscover.vue` does | every new Script string |
+| New `services/chapterRun.js`: ONE run of chapters at a time per project, whichever step started it; per-chapter progress, failure and Cancel in the kit task strip; survives leaving Studio; a chapter already in a run can't be queued again | takes the loop out of `StudioDiscover.vue` (`:150-200`) and the stream call out of `StudioView.vue` `runAnalyze` (`:1343`, `:1360`) |
+| Overview's Script row in the grid's words, on the one "analyzed" rule | `views/studioStatus.js` `case "script"` (`:165-171`), `:31`, + its test |
+
+#### 3c · The chapter
+
+| Change | Where |
+|---|---|
+| **First, before building the page** (item 4): load the longest real chapter into the table — every row a `UiSelect` — and measure how long it takes to open and to scroll. If it's slow, the table renders only the rows on screen | a scratch measurement on the user's real data; the result goes here |
+| New `components/StudioScriptChapter.vue`: the table as it is today (`UiTable`, a `UiSelect` per row) plus a tick column, Decided by in plain words, the Check column, the filters (All · To check · No speaker · Changed) and a speaker filter, the ticked-rows actions (set the speaker, swap their two speakers, these are right), the two banners (no speaker · not in the cast), Next to check, previous / next chapter, Re-analyze this chapter (stays on the page), the "what the columns mean" card; reads `GET /v1/scenes/{id}/script`, re-reads it after every change | grows out of the table in `StudioView.vue:2239-2291`; the Kind column goes ("Decided by" says Narration) |
+| New `views/scriptReview.js` + test: the selection, the keys, the run selection, swap, confirm, the undo stack — state and a key in, new state and the changes to send out | pure module, no Vue |
+| Rewrite stays reachable by right-click | `rewriteRow` / `runRewrite` / `acceptRewrite` and their modal stay in `StudioView.vue` (`:150-210`); the new component emits the row |
+| The label-guide `dl` goes; the "what the columns mean" card replaces it. The Confidence column STAYS | `StudioView.vue:2188-2210`; the column at `:2285-2288` |
+
+#### Docs and checks, in the same change
+
+`docs/studio.md` (the Script section rewritten), `docs/whats-new.md`, `docs/dev/code-map.md`
+(the new files). `cd server && ruff check . && pytest`; `npm run test:unit`; the renderer
+gate with `--data-dir src-tauri/target/debug/data`; `npm run eval:attribution` on both
+books, which now reports the flags; and Analyze run on the demo book in the real app,
+because the gate does not click.
+
+#### Blast radius (greps run 2026-09-29)
+
+| Change | Who reaches it |
+|---|---|
+| `flags.py` and the two `script` endpoints | new code, no callers |
+| Scene metadata gains `analyzed_at`, `analyzed_cast` | writers: `extraction_api.py:359` (persist), `:1024` (Discover scan) — the only two |
+| Block metadata gains `paragraph_idx`, `llm_speaker`, `prev_persona_id` | writer: `extraction_api.py:360-372` `with_audit`; line creators without them: `projects_api.py:496` `create_block`, `:823` `_materialize_standard`, `:1333` `_update_project_from_standard` |
+| Block PATCH gains `no_fix`, returns `fix_id`; one fix can be deleted | PATCH callers: `services/projects.js:63`, `ChapterView.vue:58`, `:417`, `StudioView.vue:200`, `:937`, `:1421`, `:1457` — none sends `no_fix`, so all keep recording fixes. Fix writer `extraction_api.py:834` ← `projects_api.py:556`, `extraction_api.py:878` (the Lab). Fix readers: `extraction_api.py:445`, `:520`, `:683` |
+| A speaker removed from the cast | `projects_api.py:682` `remove_from_cast` ← `services/projects.js:74`, `StudioView.vue:620` (buttons at `:1885`, `:1993`, `:2007`). It deletes only the cast row; the lines keep their `persona_id` |
+| One "analyzed" rule | `attribution.js:85` `hasSpeakerInfo` ← `studioStatus.js:31`, `StudioView.vue:836`, `:916`, `:1245`, `:1253`, `:1289` |
+| One chapter-run service | `StudioDiscover.vue:150-200` (its loop), `StudioView.vue:1343`, `:1360` (the only `/analyze/stream` caller) |
+| The segmenter reads straight-quoted speech that runs on | every caller of `segment_paragraphs`: `pipeline.py:609` (Analyze), `identify.py:217` (Discover's line counts), `server/scripts/eval_attribution.py:79`; `split_into_paragraphs` also at `extraction_api.py:295`. **A straight-quoted chapter analyzed before the fix gets a different cut** — re-analyzing it re-cuts, which the app refuses once it has takes (`extraction_api.py:399`); curly-quoted text (all three test books) is unchanged |
+| Lines record `anchor_words` | `Anchor` built at `anchors.py:158`, `:178`, `:187`; read at `pipeline.py:701-703`; stored by `with_audit` (`extraction_api.py:360-372`) |
+| Discover's endpoint moves its model call to a thread | `extraction_api.py:960`; its one caller is `StudioDiscover.vue:173`. (The Lab uses a separate endpoint, `extraction_api.py:1131` ← `services/attributionLab.js:75`, and the Discover eval goes through `/v1/ai/run` — neither changes) |
+| The Script section leaves `StudioView.vue` | entry points: `StudioDiscover.vue:437` "Go to Script ➜", `ChapterView.vue:692` "2 Script", `studioStatus.js:165`, `:211` |
+
+---
+
+### 8.25 Slice 3, the second review — RULED 2026-09-29
+
+**How it was decided.** With the build plan waiting, the user switched models and asked:
+*"do you have any other recommnedations for the script slice 3 to make it better more
+accurate user friendly feature rich, think on it nad what opus has done"*. Mid-review they
+added *"your rec for 1 and 2"* (the plan's two gaps), then asked what decision 5 meant,
+then: **"your rec on all go"**.
+
+#### The flag result, re-scored
+
+The first scoring (§8.23) flagged only the third line of a run and counted a catch only
+when the flag sat exactly on the wrong line. In "Ino." / "Quartermaster." / "Breathe." the
+wrong line is the middle one: the flag landed on "Breathe." and was counted as a flag on a
+correct line. Re-read on the same keys and saved runs, read-only, no model:
+
+| Check | False alarms on the answer keys (268 lines) | Wrong lines caught (6 in the saved runs) |
+|---|---|---|
+| Three in a row, flagging the whole run | 0 | 4 of 4 ("Quartermaster.") |
+| One paragraph, two speakers (new) | 0 — the keys have 92 paragraphs with two or more spoken parts and none changes speaker | 2 of 2 (Brass Rank D24) |
+| A line says its own speaker's name (new) | 3 (self-introductions: "Ino. Water-clerk. I keep the tally.") | 0 |
+
+On the 878 right lines of the runs, the first two checks flag 10 — every one of them the
+other lines of a group that holds a real miss. **Caveats:** two distinct misses, and the
+new check was designed after seeing one of them. It rests on a prose convention (a new
+speaker starts a new paragraph), and a harder book is the out-of-sample test.
+
+#### The review, as presented and approved (verbatim)
+
+**What I'd change because of it:**
+- **A flag marks a group** (the run, or the paragraph) with one reason on it. This changes the wording you approved ("flag the third and any after it").
+- **Add "one paragraph, two speakers"**, skipping paragraphs where the prose names both speakers.
+- **One key accepts a flagged group as right.** Lines you set or confirmed never flag.
+- **Correct the record.** §8.23 and `TASKS.md` currently say the Flagged filter will usually be empty.
+
+**Accuracy**
+
+1. **A prompt rule for lines that only address someone.** "Quartermaster." is Ino addressing Sable by her title, and the model gives it to Sable in every run. The prompt has no rule for this (`prompts.py:34-49`). Candidate: "A line that only names or addresses someone is spoken to that person, by someone else." It needs measuring with the eval's `--system` option first, about 15 minutes with the app and model.
+2. **Warn when a quote mark is left inside narration.** I ran the segmenter: with straight quotes, a speech paragraph that doesn't close its quote is read as narration (`segmentation.py:23`). The Narrator reads it and the model never sees it. Long speeches are written exactly that way. Neither sample book ever leaves a quote open, so this has never been exercised.
+3. **A third answer-keyed book that isn't a JustWrite sample.** Both books come from one source. A public-domain chapter with long speeches would show the real accuracy. The cost is hand-labelling about 150 lines.
+
+**Faster review (none of these are in the mock)**
+
+| Add | Why |
+|---|---|
+| Next / previous chapter on the chapter page | Reading 14–60 chapters in order shouldn't go through the grid each time |
+| Jump to the next flagged or no-speaker line | With few flags, jumping beats scrolling |
+| Swap the two speakers across a selected run | When turns slip, A/B/A/B must become B/A/B/A; "Reassign" can only set one speaker |
+| "Changed by the last Analyze" filter | After a re-analyze you check only the lines that moved, at no model cost |
+| Grid filters by state, with select-all acting on what's shown | Ticking 23 of 60 chapters by hand is tedious |
+| Links into Script land on the problem | Render's "3 have no speaker" opens the chapter filtered, first line selected |
+| "Read by you" per chapter, with date | Reading is the review, so track it; this touches your no-completion-state ruling (§8.8) |
+
+**States the mock and plan are missing**
+
+- **No language model, or a cast with only the Narrator.** Nothing stops Analyze today; it checks only chapter and text (`StudioView.vue:1344`).
+- **A speaker removed from the cast.** Their lines keep pointing at them, because removal deletes only the cast row (`projects_api.py:682`).
+- **Chapters whose speakers came with the import** (podcast scripts). "Never analyzed" would be wrong for them.
+- **One "analyzed" rule for Overview and the grid.** Today it's "any line has a speaker" (`attribution.js:85`).
+- **The selected line inside a two-part paragraph.** The mock outlines the whole row.
+
+**Build quality**
+
+- **Flags in Python on the server, with the eval importing the same function.** What was measured is then what ships, and every eval run reports flags too. The plan has them in JS.
+- **One shared chapter-run service for Discover and Analyze.** The plan adds a second hand-written loop next to Discover's (`StudioDiscover.vue:150-200`).
+- **Keyboard, selection and Undo as a pure module with unit tests**, since the gate doesn't click.
+- **Undo also removes the fix the undone change saved.** Nothing removes a single fix today (`extraction_api.py:834`), so a mis-click leaves two contradictory examples in the prompt.
+- **Measure the chapter page on the longest real chapter** before building it.
+- **"Chapter" / "episode" from `useCopy()`**, as Discover does.
+
+**Decisions for you**
+
+1. Flags: accept the group rule and the new check, and correct the record?
+2. Measure the prompt rule?
+3. Which of the rest go into the mock and the plan? My picks are next/previous chapter, jump to next problem, swap speakers, the "Changed" filter, all five missing states, and the first four build items.
+4. Add a third book?
+5. Still open from earlier: decision 2, "added since" — text search for every chapter, or only as a fallback?
+
+**The plan's two gaps, as answered mid-review:**
+
+1. **"Rewrite in character" until Slice 4:** keep it on Script, but only as the right-click it already is today (`StudioView.vue:2254`). No new visible control, so the page still looks like the mock. Slice 4 moves it to Render's line panel and deletes the right-click, and that removal gets written into Slice 4's tracker text so it can't be forgotten.
+2. **"Renn added since":** search the chapter's text for the new persona's name and aliases, for every chapter, not only the ones Discover never scanned. That's one rule instead of two. A missed mark leaves lines silently on the wrong speaker, while a false mark costs one needless re-analyze, so the rule should favour catching.
+
+#### What the go did NOT cover
+
+Left out of decision 3's picks, so **not** in the mock or the plan: grid filters by state ·
+links into Script landing on the problem · "Read by you" · measuring the chapter page on
+the longest chapter · chapter / episode words from `useCopy()`. And accuracy item 2, the
+warning for a quote mark left inside narration, was in no decision. Each needs its own word.
+
+#### The prompt rule, measured (2026-09-29, 01:12–01:31)
+
+Run by `npm run eval:attribution -- --runs 2 --system <candidate>` against the user's app
+(17494, the real data dir, `gemma-4-26b-a4b-qat`, thinking on). The candidate is the live
+Direct prompt — verified equal to the code's `DIRECT_SYSTEM` — plus one rule, written with
+names that are in neither book:
+
+> 6. A line that calls someone by name or title ("Anna.", "Sergeant.", "Yes, Doctor.") is
+> spoken TO that person, so its speaker is someone else - unless the speaker is plainly
+> introducing themselves.
+
+| | Without the rule (last night's runs) | With the rule |
+|---|---|---|
+| Both books, 2 runs each | 533 / 536 | 534 / 536 |
+| "Quartermaster." (A Debt Called In D7) | wrong in 2 of 2 | wrong in 1 of 2, still at 1.00 |
+| Brass Rank D24 | wrong in 1 of 2 | wrong in 0 of 2 (it was a one-off before too) |
+| "Ysolde Marrin. I buy wool…" (Salt and Tally D27) | right in 2 of 2 | **no speaker in 1 of 2** (0.40, under the floor) — a self-introduction |
+
+**Reading.** The totals are inside the noise. The rule fixed the stable miss half the
+time, and cost a blank on exactly the case its own exception names. Not promoted; it
+needed its own go anyway. The three-in-a-row group already flags "Quartermaster." in every
+run, at no model cost.
+
+#### Built in the mock (2026-09-29, version 27; the rows redrawn in version 28)
+
+| Item | In the mock |
+|---|---|
+| Flag groups | `_s2.html`: the Marius run is one `.grp` with one reason and "✓ These are right"; single-paragraph flags keep their reason on the row |
+| One paragraph, two speakers | a flagged paragraph given to June and Marius; the paragraph where the prose names Renn and Marius is not flagged |
+| Next / previous chapter | the foot of the chapter, with `[` `]` |
+| Jump to the next line to check | "Next to check ➜" and `n` / `Shift+N` — real: it walks the flagged and no-speaker lines in reading order |
+| Swap the two speakers | the action row |
+| "Changed" | the "7 changed" chip, "changed · was June" on the rows, "7 lines changed speaker" in the header |
+| A speaker removed from the cast | "Tom Harlan · 14 · not in this cast" in the strip, his line flagged with "Put him back in the cast". Discover proposes the same Tom Harlan, from the library |
+| Speakers from the import | `_new_chapters.html`: the podcast's own grid — 12 episodes, "from the import", Analyze off until an episode is ticked; Overview says "12 of 12 episodes have speakers · from the import" |
+| The selected line | the outline sits on the spoken part; the picker opens by itself on a line with no speaker and on the pencil for any other |
+| Keys | `j` `k` `n` `1–9` `Enter` `Shift+Enter` `/` `[` `]` `Ctrl+Z` all answer in the mock |
+| Numbers | ch. 1: 9 anchored + 82 guessed + 2 by you + 3 no speaker = 96 spoken (it was 9 + 84 + 3, which left no room for a line set by you); 5 flag groups; the book 10 |
+
+**FOUND and fixed while testing, in the mock's shared script:** no glyph control in the
+mock had ever fired — play, download, the row menus, the chevrons, 49 of them. The
+handler meant to stop a glyph's click from also firing its row stopped it *before* it
+reached the glyph (a capture-phase listener on `document`). `validate.py` reported
+"GLYPH CONTROLS: 49 | dead: 0" throughout, because it looks for the `onclick` attribute
+and never clicks. Found by clicking one in a headless browser.
+
+#### The chapter's rows, corrected (2026-09-29, version 28)
+
+The user, on the paragraph rows of v27: *"for me this looks like it assings june to this
+whole text which is not correct, june whould be assigned to only the part in quotes and
+the narrator would get the rest, this is how it currently worsk, i dont understnad this
+new design it is not intuitive"*. They were right: the name on the left read as owning
+the whole row, and the only hint otherwise was dark text against grey. Presented:
+
+1. **One row per line, as the app works today.** Every row has one speaker. The cost is that a paragraph's lines are no longer visibly together.
+2. **Keep the paragraph row and label every part inside it**, Narrator included. It's accurate but busy.
+3. **One row per line, grouped by paragraph.** My rec.
+   - Each row is one line with one speaker, as you're used to.
+   - The lines of a paragraph sit together, with a divider only between paragraphs.
+   - Narrator rows stay grey, so they recede.
+   - The flags still work, because they need to know where a paragraph starts and ends.
+
+User: *"i approve"*, then *"go"* → **option 3.** It replaces M2 (§8.23). In the mock: every
+line is a `.ln` row inside its paragraph's `.par`; a flag on a whole paragraph or a run
+wraps its rows and carries one reason and "✓ These are right"; a flag on one line keeps
+its reason on that line; the selection is the row.
+
+#### Back to the table (2026-09-29, version 29)
+
+The user, on v28: *"there is no whay to change an incorrect speaker we had drop down
+before and this statement is untrue a new speaker usually starts a new paragraph, bull
+plenty of times speakers in one paragraph, this design is poor, it was easier before you
+had 1 line per speaker and you could change the speaker that was selected, this grid is
+cramped llm 0.91 what does that mean, you need to make it easy and intuitive as well as
+necessary, see original is easy to understand"*, with a screenshot of the app's table.
+
+**What went wrong, as presented:** the way to change a speaker was hidden behind a pencil
+that appears on hover, plus number keys; "llm 0.91" is jargon where the original has the
+column headings Decided by and Confidence; the rows were cramped and had no headings; and
+the page was designed for speed by keyboard, which should be an extra on top of a page
+that is obvious with a mouse.
+
+**What was proposed, verbatim:**
+
+- **Kept from the original:** one row per line, a speaker dropdown on every row, column headings, roomy rows.
+- **"Decided by" in plain words:** Narration, The text named them, The model, You.
+- **A "Check" column:** a flagged row gets a tint and a short reason. There are no group boxes.
+- **A checkbox per row:** tick several, then set one speaker for all of them or swap their two speakers.
+- **Kept from the new work:** the chapter grid as the landing page · filters: All, To check, No speaker, Changed · "Next to check" and next/previous chapter · Undo.
+- **Removed:** the numbered speaker strip, the badges, the hover pencil and the pop-up picker.
+- **Keyboard shortcuts** stay as an optional extra behind a "Shortcuts" link.
+
+The three questions: (1) the original table as the base, with the additions? (2) the
+confidence number — keep the column as in the original, or show it only on hover (the rec
+was hover only)? (3) the two-speakers flag — keep with plainer wording, or drop it? The
+two-speakers evidence given: all 129 paragraphs with two or more spoken parts in the three
+test books kept one speaker, which is three books only.
+
+**The user: "1 your rec 2 keep confidence its good useful info, if confidence is 50% but
+user only sees it on hover it hides errror, dont be lazy. 3 your rec   go".** So: the
+table; a visible Confidence column; the flag kept, reading "Two speakers in this
+paragraph".
+
+**In the mock (v29):** `_s2.html` is the table — tick · Speaker · Decided by · Text ·
+Confidence · Check. Changing a dropdown is real in the mock: the line becomes yours, its
+confidence goes to "—" and its flag clears. "✓ OK" on a flagged line accepts every line
+sharing the flag. Ticking rows enables "Set the speaker of ticked lines", "Swap their two
+speakers" and "These are right". Two banners sit above the table, in the original's
+manner: the lines with no speaker (the app's own copy, `StudioView.vue:2212-2216`) and
+the speaker who isn't in the cast. The wording "The text named them" became "Named in the
+text", which needs no pronoun; the hover text on each is the app's own
+(`services/attribution.js` `SOURCE_LEGEND`).
+
+**Also corrected, found while reading the app's labels:** the app keeps the route keys off
+the screen — it says "rules only" and "with examples" (`services/attribution.js`
+`ROUTE_WORDS`), never "Direct" and "Guided". The mock's grid and chapter now use the
+app's words: "Read: chosen for your model (rules only)" and "Keeps answers above 0.5".
+
+**The user's screenshot shows the state the plan proposes to block.** Brass Rank has 35
+lines with no speaker — every spoken line in it — while Cast reads 0/1 and Discover has 9
+still to review: Analyze ran with a cast of only the Narrator.
+
+#### The six items, the plan approved, and what the table's words mean (2026-09-29, version 30)
+
+**The six items** (the user: *"1 do it the six items your rec i told you this many times
+go"*, then *"do all 3 and commint"* and *"go"*): 1 grid filters by state, select-all on
+what's shown — yes · 2 links into Script land on the problem — yes · 3 "Read by you" —
+**not now** (in `docs/dev/IDEAS.md`) · 4 measure the chapter page on the longest chapter —
+yes, first step of 3c · 5 chapter / episode from `useCopy()` — yes · 6 a quote mark left
+inside narration — yes, as a segmenter fix. **The plan §8.24 and its proposals — approved.**
+
+**The two-speakers flag is dropped** (*"1 yes drop it 2 yes go"*). The user: *"all a user
+sees is line by line, i dont know about a paragraph unless i look at real text … why are
+we bringing this up as a possible error, what is the logic to mark it differently for
+approval, it seems confusing"*. The answer given: a flag whose reason depends on something
+the table doesn't show can't be understood from the table; it caught nothing on The
+Speckled Band, and its one catch was a line the model gets right in most runs. Kept: only
+flags whose reason can be checked from the rows shown. **"✓ OK" became "✓ Looks right"**,
+explained as optional — it removes the mark and takes the line out of To check.
+
+**The labels now say what they mean** (*"yes go"*). The user: *"what does named in text
+mean and 3 Marius lines in a row, these things are not being helpful in determining who
+spoke what and if it is correct, please explain better what you are doing and why"*. The
+explanation given, kept here because it is what the page has to teach:
+
+> Script decides who says each spoken line, so each line is voiced by the right persona.
+> Every line gets its speaker in one of three ways: **Narration** (text outside quote
+> marks — certain); **named in the text** (the book names the speaker next to the line,
+> `“By twenty minutes,” said Marius.`, found by pattern without asking the AI —
+> near-certain, 62 of 62 right in The Speckled Band); **the model** (nothing names the
+> speaker, so the AI read the story around it — right about 99% of the time, but sure
+> even when wrong). The AI's most common mistake is losing track of turns in a
+> back-and-forth: two people alternate, and it gives two lines in a row to one of them.
+> So one person speaking three times with no reply marks where to read closely — in the
+> test book "Ino." / "Quartermaster." / "Breathe." all went to Sable, and the middle one
+> is Ino's.
+
+The two changes approved: **show the evidence instead of a category** (the book's own
+words, `“said Marius”`, or "AI, from the story around it") and **say the flag in terms of
+the conversation** ("Marius speaks 3 times with no reply — is one of these the other
+person's?") with "Show the lines around" beside it. The grid's Anchored / Guessed columns
+became "Book says" / "AI decided", so the two screens use one vocabulary.
+
+**In the mock (v30):** all of the above; the grid's state chips; select-all ticking only
+the chapters shown (a bug found by the headless test: the header box unticked itself when
+a filter was on, because it compared against every chapter, hidden ones included — fixed
+in the mock's script); Render's "fix in Script" landing on the first line with no
+speaker; the grid's Review landing on the first line to check; Overview's and Home's
+Script numbers opening the grid on "To check". Chapter 1 now has 5 marked lines and 3
+with no speaker; the book 10 marked.
+
+#### The third book — The Adventure of the Speckled Band (2026-09-29)
+
+User: *"go with the speckled band"*. Arthur Conan Doyle, 1892.
+
+- **Source and status, checked on the web 2026-09-29:** "The Adventures of Sherlock
+  Holmes", Project Gutenberg eBook #1661 (https://www.gutenberg.org/ebooks/1661). Its page
+  states *"Public domain in the USA."* Project Gutenberg's permission page says of such
+  books that *"nobody can grant, or withhold, permission to do with this item as you
+  please"*. The copy in the repo holds the story's text only — no Project Gutenberg
+  header, licence or name. Only hard line wraps were joined.
+- **In the repo:** `samples/the-speckled-band/book.txt` (9,805 words, 251 paragraphs) and
+  `attribution-truth.json` (247 spoken lines, labelled by hand from the text, every tag in
+  a line's own paragraph checked against the key by script). It loads through the
+  `book_prose` adapter, the path a plain-text import takes, so the story is one chapter
+  and ships no characters; the key carries the cast (Sherlock Holmes, Dr. Watson, Helen
+  Stoner, Dr. Grimesby Roylott) with aliases and no descriptions.
+- **The eval** learned to read it: a key may name its `book` and `adapter`, and carry the
+  cast as `{name, aliases, notes}` (`server/scripts/eval_attribution.py`). The two
+  JustWrite samples load exactly as before.
+- **What it has that the JustWrite samples don't:** a first-person narrator who also
+  speaks (Watson is "I"), a driver who is not in the cast, an account told over 5 and 10
+  paragraphs in a row, and a speaker quoting someone else inside her own speech.
+
+**Accuracy** (the user's app, `gemma-4-26b-a4b-qat`, thinking on, the whole story in one
+call of about 14,000 tokens, 175–193 s):
+
+| | Right | Wrong | No speaker |
+|---|---|---|---|
+| Run 1 | 245 / 247 | 2 | 0 |
+| Run 2 | 245 / 247 | 2 | 0 |
+| Both | **490 / 494 (99.2%)** | 4 | 0 |
+
+Decided by the prose (`tag`): 62 of 62 right. Decided by the model: 428 of 432.
+
+| Wrong line | Runs | What happened |
+|---|---|---|
+| D95 "I cannot imagine." (Holmes) | both | given to Watson at 1.00, in an untagged exchange between the two |
+| D96 "I see many objections to any such theory." (Watson) | run 2 | given to Holmes — with D95 that is a swapped pair |
+| D109 "Holmes, the busybody!" (Roylott) | run 1 | given to Holmes: a line that names Holmes, given to Holmes |
+
+**The flags, out of sample** (no model; "three in a row" counting a speech over several
+paragraphs as one turn):
+
+| Check | False alarms on the key (247 lines) | Wrong lines caught (4) |
+|---|---|---|
+| Three in a row | 0 (2 without the several-paragraphs rule) | 1 — D95 in run 1, the middle of three Watsons |
+| One paragraph, two speakers | 0 of 37 paragraphs with two or more spoken parts | 0 |
+| A persona's only line · dialogue on the Narrator | 0 | 0 |
+| A line says its own speaker's name | **5** (four self-introductions and one quoted name) | 1 — D109 |
+
+So the two checks that were clean on the JustWrite books are clean here too, which is the
+out-of-sample test §8.25 asked for. But they caught **1 of 4** wrong lines. A swapped pair
+in a two-person exchange (run 2) is invisible to every check: nothing about two lines
+trading speakers breaks a rule of prose. **Reading stays necessary; the flags shorten it.**
+"Swap the two speakers" is the tool for exactly that miss.
+
+**Straight quotes** (no model): the same story with its curly quotes turned straight.
+
+| | Curly, as published | Straight |
+|---|---|---|
+| Spoken lines found | 247 | 233 |
+| Paragraphs of speech read as narration | 0 | **14** |
+| Spoken words read as narration | 0 | **1,247 of 6,473 (19%)** |
+
+Those 14 are the paragraphs of a speech that runs on — each opens a quote and only the
+last closes it. The segmenter handles that for curly quotes (`segmentation.py:22`) and not
+for straight ones (`:23`), so the Narrator would read a fifth of the speech and the model
+would never see it. A check for "a quote mark left inside narration" finds all 14 and
+raises nothing on the curly text.
+
+#### Open
+
+- **The plan's proposals** (the table in §8.24) and the plan itself await approval.
+- **The prompt rule** — not promoted. D109 here is the same kind of line; a tighter wording
+  could be measured on all three books.
+- **The six items the go did not cover**, above. The straight-quotes measurement now backs
+  the sixth, as a fix in the segmenter and not only a warning.
+- **"A line says its own speaker's name"** — 8 false alarms and 1 catch across the three
+  books. Still not worth building.
 
 
 ---

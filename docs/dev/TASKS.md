@@ -1138,6 +1138,10 @@ OPEN:   the Lexicon-on-Overview question (no answer yet).
         Slice 3 (Script as the mock; Flagged needs the §8.14 checks — separate go), Slice 4
         (Render owns direction/takes/Gen/Compare), Slice 5 (presets excision — ruled, needs go).
         Game "1 · Lines" is unverified in the real app — the real data has no game project.
+        Slice 4 ALSO moves "rewrite in character" off Script: it stays on Script as today's
+        right-click until then (decided 2026-09-29, next item); Slice 4 builds it in Render's
+        line panel and DELETES the Script right-click (`rewriteRow`, its modal, the
+        `@contextmenu` on the Script row).
 GO:     given 2026-09-27 for Slices 1 + 2 and decisions 1-6 | needed for 3, 4, 5
         Slice 3 was re-thought on 2026-09-28 — see the next item.
 
@@ -1177,6 +1181,77 @@ DECIDED 2026-09-29 — "your recs go", after measuring both against the user's a
         drop the line. The mechanism does no harm, but the line would promise a benefit the
         measurement doesn't show. Keeping the 'Clear' button alone isn't worth it either."
         → A4 and A6 are OUT of Slice 3; removed from the mock (v26).
+DECIDED 2026-09-29 — "you rec on all go", on the three gaps and two steps presented:
+        1 "a speaker not yet in the chapter" (§8.14) → "don't choose now. Put both versions,
+          (a) 'not named yet' and (b) 'never named in the chapter', into the flag measurement,
+          and keep whichever catches real misses with fewer false alarms, or neither."
+        2 "three in a row" → "three or more back-to-back spoken paragraphs, with no
+          narration-only paragraph between them, all given to the same persona, flag the
+          third and any after it." (count paragraphs, not lines; narration breaks a run; 3)
+        3 Undo → "a `no_fix` flag on the line update", so an undo is never saved as a fix.
+        Measure the flags first, no model: on the answer keys (perfect attribution — every
+          flag there is noise) and on the saved wrong runs (does it catch Brass Rank D24 and
+          "Quartermaster."?).
+        Then a build plan in the plan doc — pieces 3a server · 3b grid · 3c chapter, with
+          files and blast radius — for approval BEFORE any app code.
+DECIDED 2026-09-29 (later) — "your rec on all go", on a second review of Slice 3 (asked:
+        "do you have any other recommnedations for the script slice 3 to make it better more
+        accurate user friendly feature rich"). The review as presented, verbatim, with its
+        evidence and blast radius: redesign doc §8.25 — READ IT before building. The five
+        decisions and the recs they took:
+        1 Flags → "A flag marks a group (the run, or the paragraph) with one reason on it."
+          · "Add 'one paragraph, two speakers', skipping paragraphs where the prose names
+          both speakers." · "One key accepts a flagged group as right. Lines you set or
+          confirmed never flag." · "Correct the record." This REPLACES the same day's "flag
+          the third and any after it".
+        2 Measure the prompt rule for lines that only address someone — measure only;
+          promoting it needs its own go.
+        3 Into the mock and the plan: "next/previous chapter, jump to next problem, swap
+          speakers, the 'Changed' filter, all five missing states, and the first four build
+          items" (flags in Python with the eval importing the same function · one shared
+          chapter-run service for Discover and Analyze · keyboard, selection and Undo as a
+          pure tested module · Undo also removes the fix the undone change saved).
+        4 A third answer-keyed book that isn't a JustWrite sample — which book is NOT decided.
+        5 "Added since" → "search each analyzed chapter's text for her name and her 'also
+          called' names", for every chapter; Discover's scan is not consulted.
+        And the plan's two gaps: "rewrite in character" → "keep it on Script, but only as the
+          right-click it already is today. No new visible control … Slice 4 moves it to
+          Render's line panel and deletes the right-click"; "added since" → as 5.
+DECIDED 2026-09-29 — "i approve", then "go", on the chapter page's layout. The user, on the
+        mock's paragraph rows: "for me this looks like it assings june to this whole text which
+        is not correct, june whould be assigned to only the part in quotes and the narrator
+        would get the rest, this is how it currently worsk … it is not intuitive". Presented:
+        (1) one row per line, as the app works today; (2) keep the paragraph row and label
+        every part inside it; (3) "One row per line, grouped by paragraph. My rec. — Each row
+        is one line with one speaker, as you're used to. — The lines of a paragraph sit
+        together, with a divider only between paragraphs. — Narrator rows stay grey, so they
+        recede. — The flags still work, because they need to know where a paragraph starts and
+        ends." → OPTION 3. This REPLACES M2 ("a row is a paragraph, not a segment").
+        Also that turn: "go with the speckled band" → the third answer-keyed book.
+DECIDED 2026-09-29 (after seeing v28) — "1 your rec 2 keep confidence its good useful info,
+        if confidence is 50% but user only sees it on hover it hides errror, dont be lazy. 3
+        your rec   go". The user on v28: "there is no whay to change an incorrect speaker we
+        had drop down before … this design is poor, it was easier before you had 1 line per
+        speaker and you could change the speaker that was selected, this grid is cramped llm
+        0.91 what does that mean, you need to make it easy and intuitive … see original is
+        easy to understand". The three questions and their answers:
+        1 "Use the original table as the base, with the additions above?" → YES. As
+          presented: "Kept from the original: one row per line, a speaker dropdown on every
+          row, column headings, roomy rows. · 'Decided by' in plain words: Narration, The text
+          named them, The model, You. · A 'Check' column: a flagged row gets a tint and a
+          short reason. There are no group boxes. · A checkbox per row: tick several, then
+          set one speaker for all of them or swap their two speakers. · Kept from the new
+          work: the chapter grid as the landing page; filters All, To check, No speaker,
+          Changed; 'Next to check' and next/previous chapter; Undo. · Removed: the numbered
+          speaker strip, the badges, the hover pencil and the pop-up picker. · Keyboard
+          shortcuts stay as an optional extra behind a 'Shortcuts' link."
+        2 The confidence number → a VISIBLE Confidence column, as in the original. This
+          REVERSES D2 and §8.13's "no confidence column".
+        3 The two-speakers flag → kept, reworded "Two speakers in this paragraph" (the claim
+          "a new speaker usually starts a new paragraph" is dropped; the user: "bull plenty
+          of times speakers in one paragraph").
+        This REPLACES the screenplay rows of v27/v28 and M4 (the speaker strip), M5 (the one
+        shared picker).
 WHY:    the mock's review design dates from 2026-08-16 (55–64% right). Measured 09-28: 22 of
         272 dialogue lines anchored, 937/940 right, every miss at 0.70/1.00 and none repeated —
         so "Guessed" is nearly all dialogue and cannot be the review signal.
@@ -1186,13 +1261,114 @@ NOT:    Review the guesses. Double-check (A4) and the "your fixes" line (A6) —
         B1–B6 (split/merge, text edit, single quotes, dialogue tags, ChapterView duplication,
         custom-kind Narrator) — out of this slice, each needs its own word.
 BUILT:  mock only — published 2026-09-28 as version 24 (v25 fixed the pre-existing
-        mismatches, v26 dropped A4/A6; §8.18); where each item landed is the table in §8.23
-        "Built in the mock"; validate.py on v26: 19 routes · 152 controls · 0 dead. The eval
-        gained `--fixes-from/--fixes/--fixes-pick` (`server/scripts/eval_attribution.py`).
-        App code: nothing.
-OPEN:   the app build of Slice 3 (without A4/A6).
-GO:     given 2026-09-28 for the record + the mock; 2026-09-29 for the measurements and the
-        drop | needed for app code
+        mismatches, v26 dropped A4/A6, v27 carries the second review; §8.18); where each item
+        landed: the tables in §8.23 and §8.25 "Built in the mock"; validate.py on v27: 19
+        routes · 171 controls · 0 dead. The eval gained `--fixes-from/--fixes/--fixes-pick`
+        (`server/scripts/eval_attribution.py`). App code: nothing.
+        v27 also FIXED the mock's shared script: no glyph control (play, download, row menus,
+        chevrons) had ever fired — the validator counts the attribute, it never clicks.
+MEASURED 2026-09-29 (the prompt rule, real model, 2 runs/chapter, both books — §8.25): 534/536
+        with the rule, 533/536 without. "Quartermaster." wrong in 1 of 2 runs instead of 2 of
+        2; a self-introduction line lost its speaker in 1 of 2. Inside the noise — NOT promoted.
+BUILT 2026-09-29 — the third answer-keyed book: `samples/the-speckled-band/` (`book.txt` +
+        `attribution-truth.json`, 247 lines). Conan Doyle, 1892; Project Gutenberg eBook #1661,
+        whose page states "Public domain in the USA." (checked on the web that day); no
+        Gutenberg header, licence or name in the copy. The eval reads a key's `book`, `adapter`
+        and cast objects; `docs/dev/code-map.md` names the three samples. Mock v28 redraws the
+        chapter as one row per line.
+BUILT 2026-09-29 — mock v29: the chapter page is the app's own table (tick · Speaker dropdown
+        · Decided by · Text · Confidence · Check), the two banners, the ticked-rows actions,
+        "Next to check", the Shortcuts list. The grid and chapter use the app's route words
+        ("rules only" / "with examples", `services/attribution.js` ROUTE_WORDS), not "Direct" /
+        "Guided". validate.py on v29: 19 routes · 179 controls · 0 dead. Driven headless: the
+        dropdown, ✓ OK on a run, filters, tick + swap, keys — 0 JS errors. Record: §8.25
+        "Back to the table"; the plan §8.24 follows it.
+MEASURED 2026-09-29 (The Speckled Band, real model, 2 runs — §8.25): 490/494 (99.2%), no
+        blanks; 62 of 62 tag-decided lines right. The flags, out of sample: 0 false alarms
+        for three in a row and for two speakers in a paragraph, but only 1 of 4 wrong lines
+        caught — a swapped pair in a two-person exchange is invisible to every check. Three
+        in a row needs "a speech over several paragraphs is one turn" (2 false alarms
+        without it) — a PROPOSAL in §8.24, not yet ruled.
+        Straight quotes (no model): 14 paragraphs of speech, 1,247 of 6,473 spoken words
+        (19%), are read as narration when the same story uses straight quotes.
+FINDING 2026-09-29 — Discover's scan blocks the server: `/v1/health` timed out while an
+        analyze-text call ran, and `discover_speakers_endpoint` (`extraction_api.py:960`) is
+        built the same way (no worker thread; the Analyze stream has one, `:575-615`). The fix
+        is in the plan's 3a. Not fixed.
+MEASURED 2026-09-29 (flags, no model — §8.23 "The flag checks, measured", CORRECTED in
+        §8.25): the first scoring said no check catches either remaining miss; that was the
+        scoring, not the checks. Re-scored on the same keys and saved runs: three in a row
+        (whole run flagged) catches "Quartermaster." 4 of 4, "one paragraph, two speakers"
+        catches Brass Rank D24 2 of 2, both with 0 false alarms on 268 keyed lines. C3a/C3b
+        and "a line says its own speaker's name" raise false alarms and catch nothing → not
+        built. A5 unmeasured.
+DECIDED 2026-09-29 — "1 do it the six items your rec i told you this many times go", then
+        "do all 3 and commint" + "go" (the three: the six items, the build plan, a commit).
+        The six items, as the recs were given:
+          1 Grid filters by state, select-all acts on what's shown → YES
+          2 Links into Script land on the problem → YES
+          3 "Read by you" per chapter → NOT NOW — "decide after using the new Script on a
+            real book. It adds saved state and touches your no-completion-state ruling."
+          4 Measure the chapter page on the longest chapter → YES, first step of piece 3c
+          5 "Chapter" / "episode" from `useCopy()` → YES
+          6 A quote mark left inside narration → YES, "the better fix is in the segmenter,
+            not a warning" — backed by the straight-quote measurement (§8.25)
+        The build plan §8.24 and its table of proposals → APPROVED as written.
+DECIDED 2026-09-29 — "1 yes drop it 2 yes go". The user on the table: "all a user sees is line
+        by line, i dont know about a paragraph unless i look at real text … why are we bringing
+        this up as a possible error, what is the logic to mark it differently for approval, it
+        seems confusing". The two questions and answers:
+        1 "Drop the 'two speakers in a paragraph' flag?" → DROPPED. It reverses the earlier
+          "keep, reworded". Kept: only flags whose reason can be checked from the rows shown —
+          3 lines in a row, a persona's only line in the chapter, the text and the model naming
+          different speakers, no speaker.
+        2 "Keep '✓ OK', renamed 'Looks right'?" → YES. It only removes the mark and takes the
+          line out of "To check"; the line renders the same either way.
+        With the same go, the Check reasons become plain questions naming the people:
+          "Marius has 3 lines in a row — did someone else say one?" · "Harbek's only line in
+          this chapter — is it his?" · "The text says June, the model says Marius" (kept).
+DECIDED 2026-09-29 — "yes go", on the user's "what does named in text mean and 3 Marius lines
+        in a row, these things are not being helpful in determining who spoke what and if it is
+        correct, please explain better what you are doing and why". The two changes as offered:
+        1 "Show the evidence instead of a category. For a named line, show the words themselves,
+          e.g. `said Marius`, so you can check it at a glance. For the AI's lines: 'AI, from the
+          story around it'."
+        2 "Say the flag in terms of the conversation, e.g. 'Marius speaks 3 times with no reply —
+          is one of these the other person's?', with 'Show the lines around' beside it so you can
+          read the exchange."
+        Carried through for one vocabulary: "model" becomes "AI" in the Check reasons, and the
+        grid's Anchored / Guessed columns take the same words as the chapter's Decided by.
+OPEN:   the app build of Slice 3, pieces 3a · 3b · 3c per §8.24 — needs its go to start.
+        The prompt rule: result in §8.25; not promoted.
+GO:     given 2026-09-28 for the record + the mock; 2026-09-29 for the measurements, the drop,
+        the flag measurement, the plan, the second review's mock + plan changes, the
+        prompt-rule measurement, the third book and the chapter's rows | needed for app code,
+        the prompt change, the six items
+
+### Discover: remove one Ignored name or one cast member with ✕, and "Clear all" on both
+STATE:  DECIDED 2026-09-29, for next — "add to task for next, on app discover for ignore and
+        alrady in cast tags should have x to click to remove individualt tags from that section
+        both sectons should have clear all button instead of restore".
+        · Ignored: each name gets an ✕ that takes it off the list (the job Restore does today);
+          a "Clear all" button empties the list. Restore goes.
+        · Already in the cast: each name gets an ✕ that removes that persona from this
+          project's cast; a "Clear all" button removes every one.
+WHY:    One click on the thing itself, where today Ignored needs a separate Restore button per
+        name and the cast can only be edited on the Cast step.
+NOT:    A Restore button beside each ignored name.
+BUILT:  nothing. The pieces exist: the kit's `UiTag` has `removable` + `@remove` (its own ✕,
+        `just-llm-runner/ui/src/common/components/UiTag.vue`); taking names off the ignore list
+        is `POST /v1/projects/{id}/discover/unignore` with a list (`extraction_api.py:1085`),
+        called today by `restore()` (`StudioDiscover.vue:268`); removing from the cast is
+        `DELETE /v1/projects/{id}/cast/{persona_id}` (`projects_api.py:682`) — the persona
+        stays in the library — called today with a confirm by `removeFromCast`
+        (`StudioView.vue:612`).
+OPEN:   the build. And two questions the text does not answer:
+        · Does "Clear all" in the cast also remove the Narrator? The cast's Narrator is what
+          narration binds to, and Analyze can't choose a speaker from an empty cast.
+        · Do both ✕ and "Clear all" ask for confirmation? Removing from the cast does today;
+          taking a name off the ignore list does not.
+GO:     given for the record | needed for the build
 
 ### The audiobook demo is JustWrite's sample, The Ninth Facet
 STATE:  DECIDED 2026-09-27 — "2 make a folder called samples just like jw and the load demo just

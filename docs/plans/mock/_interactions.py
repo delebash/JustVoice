@@ -169,6 +169,29 @@ MODALS = """
       <button class="btn p" onclick="toast('Blocks added — tick the chapter to analyze it.','ok');closeModal()">Add as blocks</button></div>
   </div>
 
+  <!-- Script chapter: the keyboard shortcuts -->
+  <div class="modal" id="m-keys" style="display:none">
+    <div class="modal-h"><span class="eb">Script</span><h3>Keyboard shortcuts</h3>
+      <button class="xbtn" onclick="closeModal()">✕</button></div>
+    <div class="modal-b">
+      <p class="hint" style="margin:0">Everything here can also be done with the mouse. Click a line
+        first to select it.</p>
+      <div class="tw"><table><tbody>
+        <tr><td style="width:150px" class="mono">j &nbsp; k</td><td>Next / previous spoken line</td></tr>
+        <tr><td class="mono">n &nbsp; Shift+N</td><td>Next / previous line to check</td></tr>
+        <tr><td class="mono">1 – 4</td><td>Give the line to 1 Marius · 2 June · 3 Renn · 4 Harbek — this
+          chapter's speakers, most lines first</td></tr>
+        <tr><td class="mono">0</td><td>Give the line to the Narrator</td></tr>
+        <tr><td class="mono">Enter</td><td>This line looks right — it becomes yours</td></tr>
+        <tr><td class="mono">Shift+Enter</td><td>Looks right, for every line sharing this line's mark</td></tr>
+        <tr><td class="mono">Space</td><td>Tick or untick the line</td></tr>
+        <tr><td class="mono">[ &nbsp; ]</td><td>Previous / next chapter</td></tr>
+        <tr><td class="mono">Ctrl+Z</td><td>Undo your last change</td></tr>
+      </tbody></table></div>
+    </div>
+    <div class="modal-f"><span style="flex:1"></span><button class="btn" onclick="closeModal()">Close</button></div>
+  </div>
+
   <!-- Add a lexicon word -->
   <div class="modal" id="m-word" style="display:none">
     <div class="modal-h"><span class="eb">Harbor names</span><h3>Add a pronunciation</h3>
@@ -227,74 +250,332 @@ function pickChip(el) {
   var want = el.dataset.filter;
   var host = group.closest('.body').querySelector('[data-filterable]');
   if (!host) return;
-  var rows = host.querySelectorAll('tbody tr[data-state], .ln[data-state], .pick[data-state]');
-  var shown = 0;
-  rows.forEach(function (r) {
-    var hit = want === 'all' || (r.dataset.state || '').split(' ').indexOf(want) !== -1;
-    r.classList.toggle('hidden-row', !hit);
-    if (hit && !r.classList.contains('pick')) shown++;
-  });
-  var unit = host.classList.contains('scr') ? ' paragraph' : ' line';
-  toast(shown + unit + (shown === 1 ? '' : 's') + ' shown');
+  var shown = filterRows(host, want);
+  if (host.querySelector('.ck')) recalcAnalyze(host);
+  var who = group.querySelector('select.spk-filter');
+  if (who) who.value = 'all';
+  toast(shown + (shown === 1 ? ' line' : ' lines') + ' shown');
 }
 
-/* Analyze / Discover scope */
-/* Stillwater's 14 chapters, in grid order. Chapter 13 has no text yet. */
-var SCOPE_CH = [
-  { n: 1, lines: 214 }, { n: 2, lines: 188 }, { n: 3, lines: 231 },
-  { n: 4, lines: 176 }, { n: 5, lines: 203 }, { n: 6, lines: 198 },
-  { n: 7, lines: 142 }, { n: 8, lines: 121 }, { n: 9, lines: 97 },
-  { n: 10, lines: 133 }, { n: 11, lines: 88 }, { n: 12, lines: 156 },
-  { n: 13, lines: 0 }, { n: 14, lines: 193 }
-];
+function filterRows(host, want) {
+  var shown = 0;
+  host.querySelectorAll('tbody tr[data-state]').forEach(function (r) {
+    var hit = want === 'all' || (r.dataset.state || '').split(' ').indexOf(want) !== -1;
+    r.classList.toggle('hidden-row', !hit);
+    if (hit && inKind(r)) shown++;
+  });
+  return shown;
+}
 
-/* Selecting chapters recalculates in place -- no modal, no radios. The three radios
-   were presets for these checkboxes, which is why they were redundant furniture.
-   Discover and Script both carry this grid, so everything is scoped to its own route.
-   A disabled box (a chapter in the current run, or one with no text) is never picked.
-   No time is estimated up front: nothing in the app measures it before a run. */
+/* A project kind hides the other kinds' variants (k-book / k-pod / k-game), so anything
+   that counts rows has to skip the ones belonging to another kind. */
+var KIND_CLASS = { audiobook: 'k-book', podcast: 'k-pod', game: 'k-game' };
+function inKind(el) {
+  var mine = KIND_CLASS[document.body.getAttribute('data-kind')] || 'k-book';
+  for (var n = el; n && n !== document.body; n = n.parentElement) {
+    var c = n.classList;
+    if (c && (c.contains('k-book') || c.contains('k-pod') || c.contains('k-game')) &&
+        !c.contains(mine)) return false;
+  }
+  return true;
+}
+function kindFirst(root, sel) {
+  var all = root.querySelectorAll(sel);
+  for (var i = 0; i < all.length; i++) if (inKind(all[i])) return all[i];
+  return null;
+}
+
+/* Analyze / Discover scope. Selecting chapters recalculates in place -- no modal, no
+   radios. The three radios were presets for these checkboxes, which is why they were
+   redundant furniture. Discover and Script both carry this grid, so everything is scoped
+   to its own route. Each box carries its own line count (data-lines). A disabled box (a
+   chapter in the current run, or one with no text) is never picked. No time is estimated
+   up front: nothing in the app measures it before a run. */
 function chScope(el) {
   return (el && el.closest && el.closest('.route')) ||
          document.querySelector('.route.on') || document;
 }
 function selectAllCh(box) {
   var r = chScope(box);
-  r.querySelectorAll('.ck').forEach(function (b) { if (!b.disabled) b.checked = box.checked; });
+  r.querySelectorAll('.ck').forEach(function (b) {
+    var row = b.closest('tr');
+    if (!b.disabled && inKind(b) && !(row && row.classList.contains('hidden-row'))) b.checked = box.checked;
+  });
   recalcAnalyze(box);
 }
 function recalcAnalyze(el) {
   var r = chScope(el);
-  var boxes = Array.prototype.slice.call(r.querySelectorAll('.ck'));
+  var boxes = Array.prototype.slice.call(r.querySelectorAll('.ck')).filter(inKind);
   var open = boxes.filter(function (b) { return !b.disabled; });
-  var picked = boxes.map(function (b, i) { return b.checked && !b.disabled ? SCOPE_CH[i] : null; })
-    .filter(Boolean);
+  var picked = open.filter(function (b) { return b.checked; });
+  /* The header box speaks for the chapters SHOWN: with a filter on, "select all" ticks
+     only those, and a chapter ticked before the filter stays ticked and still counts. */
+  var shown = open.filter(function (b) { var tr = b.closest('tr'); return !(tr && tr.classList.contains('hidden-row')); });
+  var shownPicked = shown.filter(function (b) { return b.checked; });
   var all = r.querySelector('.ch-all');
   if (all) {
-    all.checked = open.length > 0 && picked.length === open.length;
-    all.indeterminate = picked.length > 0 && picked.length < open.length;
+    all.checked = shown.length > 0 && shownPicked.length === shown.length;
+    all.indeterminate = shownPicked.length > 0 && shownPicked.length < shown.length;
   }
-  var ln = picked.reduce(function (a, c) { return a + c.lines; }, 0);
-  var btn = r.querySelector('.an-btn');
-  var est = r.querySelector('.an-est');
+  var ln = picked.reduce(function (a, b) { return a + (parseInt(b.dataset.lines, 10) || 0); }, 0);
+  var btn = kindFirst(r, '.an-btn');
+  var est = kindFirst(r, '.an-est');
+  var unit = (btn && btn.dataset.unit) || 'chapter';
   if (btn) {
     btn.textContent = btn.dataset.verb + (picked.length
-      ? ' ' + picked.length + (picked.length === 1 ? ' chapter' : ' chapters') : '');
+      ? ' ' + picked.length + ' ' + unit + (picked.length === 1 ? '' : 's') : '');
     btn.disabled = picked.length === 0;
   }
   if (est) {
     est.textContent = picked.length
       ? ln.toLocaleString() + ' lines \u00b7 ' + est.dataset.tail
-      : 'Pick at least one chapter.';
+      : 'Pick at least one ' + unit + '.';
   }
 }
+function recalcAll() {
+  document.querySelectorAll('.route').forEach(function (r) {
+    if (r.querySelector('.ck')) recalcAnalyze(r.querySelector('.ck'));
+  });
+}
+
+/* Script chapter. It is the app's own table (ruled 2026-09-29, after two redesigns that
+   hid the one control that matters): one row per line, a speaker dropdown on every row,
+   column headings. A flagged line is tinted and says why in its Check column. Ticking
+   rows is how several lines are changed at once. The keys are an extra, never the way. */
+var SCR_KEYS = ['Marius', 'June', 'Renn', 'Harbek'];
+function scrRoot() { return document.querySelector('#r-chapter .scrt'); }
+function scrRows(sel) {
+  var root = scrRoot();
+  if (!root) return [];
+  return Array.prototype.slice.call(root.querySelectorAll(sel)).filter(function (row) {
+    return !row.classList.contains('hidden-row') && inKind(row);
+  });
+}
+function scrCurrent() {
+  var root = scrRoot();
+  return root ? root.querySelector('tr.ln.sel') : null;
+}
+function scrSelect(row) {
+  var root = scrRoot();
+  if (!root || !row) return;
+  root.querySelectorAll('tr.sel').forEach(function (r) { r.classList.remove('sel'); });
+  row.classList.add('sel');
+  if (row.scrollIntoView) row.scrollIntoView({ block: 'nearest' });
+}
+function scrWords(row) { return row.querySelector('.q').textContent.trim(); }
+/* A line you set or confirm is yours: Analyze leaves it alone and it is never flagged. */
+function scrYours(row) {
+  row.classList.remove('chk', 'none');
+  row.dataset.state = (row.dataset.state || '').split(' ').filter(function (t) {
+    return t !== 'check' && t !== 'none' && t !== 'changed';
+  }).join(' ');
+  row.querySelector('.by').innerHTML = '<span title="You set this one. Re-analyzing leaves it exactly as it is.">You</span>';
+  row.querySelector('.cf').innerHTML = '<span class="hint">—</span>';
+  row.querySelector('.ck').innerHTML = '';
+}
+function scrSet(select) {
+  var row = select.closest('tr');
+  var name = select.options[select.selectedIndex].text;
+  var none = select.querySelector('option[value=""]');
+  if (none) none.remove();
+  scrYours(row);
+  row.dataset.state = (row.dataset.state + ' p-' + select.value).trim();
+  toast(scrWords(row) + ' → ' + name + '. Saved.', 'ok');
+}
+function scrAssign(name) {
+  var row = scrCurrent();
+  if (!row || row.classList.contains('mk')) { toast('Select a line first.'); return; }
+  var select = row.querySelector('select');
+  for (var i = 0; i < select.options.length; i++) {
+    if (select.options[i].text === name) { select.selectedIndex = i; scrSet(select); return; }
+  }
+}
+/* "OK" on a flagged line accepts every line that shares its flag. */
+function scrOk(btn) {
+  var row = btn.closest('tr');
+  var grp = row.dataset.grp;
+  var rows = grp ? scrRoot().querySelectorAll('tr[data-grp="' + grp + '"]') : [row];
+  var n = rows.length;
+  Array.prototype.forEach.call(rows, scrYours);
+  toast('Looks right — ' + (n === 1 ? 'this line is' : 'these ' + n + ' lines are') +
+    ' yours now, and the mark is gone.', 'ok');
+}
+/* "Show the lines around" on a marked line: every line comes back, and this one is
+   selected, so the exchange can be read in order. */
+function scrContext(btn) {
+  var row = btn.closest('tr');
+  var all = document.querySelector('#r-chapter [data-chips] .tag[data-filter="all"]');
+  if (all && !all.classList.contains('ok')) pickChip(all);
+  scrSelect(row);
+  toast('Every line shown — read the lines around the selected one.');
+}
+function scrConfirm() {
+  var row = scrCurrent();
+  if (!row || row.classList.contains('mk')) { toast('Select a line first.'); return; }
+  if (row.classList.contains('none')) { toast('This line has no speaker yet — pick one first.', 'warn'); return; }
+  scrYours(row);
+  toast('Confirmed — this line is yours now. Analyze leaves it alone.', 'ok');
+}
+function scrTicked() { return scrRows('tr.ln').filter(function (r) { var b = r.querySelector('.tk'); return b && b.checked; }); }
+function scrTickAll(box) {
+  scrRows('tr.ln').forEach(function (r) { var b = r.querySelector('.tk'); if (b) b.checked = box.checked; });
+  scrTickCount();
+}
+function scrTickCount() {
+  var n = scrTicked().length;
+  var out = document.querySelector('#r-chapter .tick-n');
+  if (out) out.textContent = n ? n + (n === 1 ? ' line ticked' : ' lines ticked') : 'Tick lines to change several at once.';
+  document.querySelectorAll('#r-chapter .needs-tick').forEach(function (c) { c.disabled = n === 0; });
+}
+function scrBulkSet(select) {
+  var rows = scrTicked();
+  if (!select.value) return;
+  var name = select.options[select.selectedIndex].text;
+  rows.forEach(function (r) {
+    var s = r.querySelector('select');
+    if (!s) return;
+    for (var i = 0; i < s.options.length; i++) if (s.options[i].text === name) s.selectedIndex = i;
+    var none = s.querySelector('option[value=""]');
+    if (none) none.remove();
+    scrYours(r);
+  });
+  toast(rows.length + (rows.length === 1 ? ' line' : ' lines') + ' → ' + name + '. Saved.', 'ok');
+  select.value = '';
+}
+function scrSwap() {
+  var rows = scrTicked().filter(function (r) { return r.classList.contains('say'); });
+  var names = [];
+  rows.forEach(function (r) {
+    var s = r.querySelector('select');
+    var n = s.options[s.selectedIndex].text;
+    if (names.indexOf(n) === -1) names.push(n);
+  });
+  if (names.length !== 2) {
+    toast('Swap needs ticked lines spoken by exactly two personas — these have ' + names.length + '.', 'warn');
+    return;
+  }
+  rows.forEach(function (r) {
+    var s = r.querySelector('select');
+    var want = s.options[s.selectedIndex].text === names[0] ? names[1] : names[0];
+    for (var i = 0; i < s.options.length; i++) if (s.options[i].text === want) s.selectedIndex = i;
+    scrYours(r);
+  });
+  toast('Swapped ' + names[0] + ' and ' + names[1] + ' across ' + rows.length + ' lines. Saved.', 'ok');
+}
+function scrMarkRight() {
+  var rows = scrTicked().filter(function (r) { return !r.classList.contains('none') && !r.classList.contains('mk'); });
+  rows.forEach(scrYours);
+  toast('Confirmed — ' + rows.length + (rows.length === 1 ? ' line is' : ' lines are') + ' yours now.', 'ok');
+}
+function scrMove(step, sel) {
+  var list = scrRows(sel);
+  if (!list.length) { toast('Nothing to check in this view.'); return; }
+  var cur = scrCurrent();
+  var next = null;
+  var i = list.indexOf(cur);
+  if (i !== -1) {
+    next = list[i + step] || null;
+  } else {
+    /* The selection is not in this list: take the nearest one in reading order. */
+    var all = scrRows('tr.ln');
+    var at = all.indexOf(cur);
+    for (var k = 0; k < list.length; k++) {
+      var pos = all.indexOf(list[k]);
+      if (step > 0 && pos > at) { next = list[k]; break; }
+      if (step < 0 && pos < at) next = list[k];
+    }
+  }
+  if (!next) {
+    toast(step > 0 ? 'That was the last one in this chapter.' : 'That was the first one in this chapter.');
+    return;
+  }
+  scrSelect(next);
+}
+function scrNext(step) { scrMove(step, 'tr.ln.chk, tr.ln.none'); }
+/* A link into Script lands on the problem: the chapter, filtered when asked, with the
+   first line of that kind selected (the grid's Review, Render's "fix in Script"). */
+function openScriptAt(filter, selectFirst) {
+  nav('chapter');
+  if (filter) {
+    var chip = document.querySelector('#r-chapter .tag[data-filter="' + filter + '"]');
+    if (chip) pickChip(chip);
+  }
+  if (selectFirst) {
+    var first = scrRows(filter === 'none' ? 'tr.ln.none' : 'tr.ln.chk, tr.ln.none')[0];
+    if (first) scrSelect(first);
+  }
+}
+function openGridAt(filter) {
+  nav('chapters');
+  var chip = document.querySelector('#r-chapters .tag[data-filter="' + filter + '"]');
+  if (chip) pickChip(chip);
+}
+function pickSpeaker(select) {
+  var group = select.closest('[data-chips]');
+  var host = select.closest('.body').querySelector('[data-filterable]');
+  group.querySelectorAll('.tag[data-filter]').forEach(function (c) {
+    c.classList.toggle('ok', select.value === 'all' && c.dataset.filter === 'all');
+  });
+  var shown = filterRows(host, select.value);
+  toast(shown + (shown === 1 ? ' line' : ' lines') + ' shown');
+}
+document.addEventListener('click', function (e) {
+  var t = e.target;
+  if (!t.closest) return;
+  var row = t.closest('#r-chapter .scrt tr.ln');
+  if (row && !row.classList.contains('mk')) scrSelect(row);
+  if (t.classList && t.classList.contains('tk')) scrTickCount();
+});
+document.addEventListener('keydown', function (e) {
+  var route = document.getElementById('r-chapter');
+  if (!route || !route.classList.contains('on')) return;
+  var t = e.target;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) return;
+  if (document.getElementById('mask').classList.contains('on')) return;
+  if (e.ctrlKey || e.metaKey) {
+    if (e.key === 'z') {
+      toast('Undone — your last change is back as it was.', 'ok');
+      e.preventDefault();
+    }
+    return;
+  }
+  if (e.altKey) return;
+  var k = e.key;
+  if (k === 'j') scrMove(1, 'tr.ln.say');
+  else if (k === 'k') scrMove(-1, 'tr.ln.say');
+  else if (k === 'n') scrNext(1);
+  else if (k === 'N') scrNext(-1);
+  else if (k === ']') toast('Opens 2 · Salt and Ledger.');
+  else if (k === '[') toast('This is the first chapter.');
+  else if (k === ' ') {
+    var cur = scrCurrent();
+    var box = cur && cur.querySelector('.tk');
+    if (box) { box.checked = !box.checked; scrTickCount(); }
+  } else if (k === 'Enter') {
+    var here = scrCurrent();
+    var ok = here && here.querySelector('.ck button');
+    if (e.shiftKey && ok) scrOk(ok); else scrConfirm();
+  } else if (k >= '1' && k <= '9') {
+    var name = SCR_KEYS[parseInt(k, 10) - 1];
+    if (name) scrAssign(name); else toast('No persona is on ' + k + ' in this chapter.');
+  } else if (k === '0') {
+    scrAssign('Narrator');
+  } else return;
+  e.preventDefault();
+});
+
 /* A SECOND recalcAnalyze used to sit here and overwrote the scoped one above.
    It queried #chGrid / #chAll / #anBtn / #anEst, none of which exist anywhere in
    the built file, so ticking a chapter updated nothing. Deleted 2026-08-17. */
 
-/* A glyph inside a row must not also fire the row's own click. */
-document.addEventListener('click', function (e) {
-  if (e.target.closest && e.target.closest('.rt')) e.stopPropagation();
-}, true);
+/* A glyph inside a row must not also fire the row's own click: stop the click at the
+   glyph's .rt wrapper, AFTER the glyph's own handler has run. Until 2026-09-29 this was a
+   capture-phase listener on document, which stopped the click BEFORE it reached the glyph,
+   so no glyph control in the mock ever fired - and validate.py, which only looks for the
+   onclick attribute, counted all of them as working. Found by clicking one. */
+document.querySelectorAll('.rt').forEach(function (rt) {
+  rt.addEventListener('click', function (e) { e.stopPropagation(); });
+});
 
 /* Cast: select a speaker card, then click a persona to assign it. */
 function pickCard(el) {
