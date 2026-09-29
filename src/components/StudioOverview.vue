@@ -192,7 +192,13 @@ async function deleteProject() {
             data-key="key" row-hover @row-click="({ data }) => emit('go', data.key)">
             <template #label="{ row }"><a class="studio-overview__step" href="#studio" @click.prevent>{{ row.label }}</a></template>
             <template #text="{ row }">{{ row.text }}</template>
-            <template #tag="{ row }"><UiTag v-if="row.tag" :intent="row.tag.intent">{{ row.tag.label }}</UiTag></template>
+            <template #tag="{ row }">
+              <span class="studio-overview__tags">
+                <UiTag v-for="t in (row.tags || (row.tag ? [row.tag] : []))" :key="t.label" :intent="t.intent"
+                  :title="t.title || ''" :class="{ 'studio-overview__go': t.go }"
+                  @click="t.go && ($event.stopPropagation(), emit('go', ...t.go))">{{ t.label }}</UiTag>
+              </span>
+            </template>
           </UiTable>
         </div>
       </div>
@@ -266,6 +272,8 @@ async function deleteProject() {
 .studio-overview__step { font-weight: 700; color: var(--accent-ink); }
 .studio-overview__steps :deep(.ui-table-row) { cursor: pointer; }
 .studio-overview__actions { gap: 8px; flex-wrap: wrap; }
+.studio-overview__tags { display: inline-flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
+.studio-overview__go { cursor: pointer; }
 @media (max-width: 1100px) {
   .studio-overview { grid-template-columns: 1fr; }
 }

@@ -22,6 +22,11 @@ every [D#] dialogue segment, labelled by hand. Per segment the result is
 and every result is also broken down by the source that decided it (tag,
 propagated, llm, floored), so a change can be traced to the stage it moved.
 
+Every run also reports Script's flags (`justvoice/extraction/flags.py`, the
+function the app ships): how many WRONG lines sit inside a flag group
+(caught), how many don't (missed), and how many groups hold no wrong line at
+all (false alarms).
+
 Built 2026-09-28 so attribution changes are measured, not eyeballed.
 """
 
@@ -42,6 +47,8 @@ from types import SimpleNamespace
 HERE = Path(__file__).resolve()
 sys.path.insert(0, str(HERE.parents[1]))
 
+from justvoice.extraction.flags import flag_groups, lines_from_rows, quote_left_open  # noqa: E402
+from justvoice.extraction.segmentation import split_into_paragraphs  # noqa: E402
 from justvoice.imports import run_adapter  # noqa: E402
 
 
@@ -192,7 +199,9 @@ def main() -> int:
 
     grand = Counter()
     by_source = Counter()
+    flag_total = Counter()
     dump = []
+    cast_ids = {c["id"] for c in chars}
     for title, text, truth, also_ok in tests:
         scene = SimpleNamespace(title=title)
         for run in range(args.runs):
@@ -200,6 +209,13 @@ def main() -> int:
             r = post(args.server, "/v1/extraction/analyze-text",
                      {"text": text, "characters": chars, **body_extra})
             dialogue = [row for row in r["rows"] if row["kind"] == "dialogue"]
+            open_paras = {i for i, p in enumerate(split_into_paragraphs(text)) if quote_left_open(p)}
+            groups = flag_groups(lines_from_rows(r["rows"], narrator_ids=("narrator", "p_narrator")),
+                                 cast_ids, narrator_id="narrator", open_paragraphs=open_paras)
+            flags_on = {}
+            for g in groups:
+                for lid in g.lines:
+                    flags_on.setdefault(lid, []).append(g.check)
             if len(dialogue) != len(truth):
                 print(f"   {len(dialogue)} dialogue segments, key has {len(truth)} — the numbering is off")
             c = Counter()
@@ -223,7 +239,8 @@ def main() -> int:
                                   f"{' ' + format(row.get('confidence') or 0, '.2f') if src in ('llm', 'floored') else ''}]"
                                   f"  “{row['text'][:60]}”")
                 dump.append({"chapter": scene.title, "run": run, "d": i, "want": want, "got": got,
-                             "source": src, "confidence": row.get("confidence"), "verdict": verdict})
+                             "source": src, "confidence": row.get("confidence"), "verdict": verdict,
+                             "flags": flags_on.get(f"D{i}", [])})
             n = sum(c.values())
             grand.update(c)
             if c["blank"] > n / 2 and r.get("raw_llm") is not None:
@@ -239,6 +256,18 @@ def main() -> int:
                 print("   " + e)
             if len(errors) > args.show:
                 print(f"   … {len(errors) - args.show} more")
+            wrong = {f"D{d['d']}" for d in dump
+                     if d["chapter"] == scene.title and d["run"] == run and d["verdict"] == "WRONG"}
+            caught = {lid for lid in wrong if lid in flags_on}
+            idle = [g for g in groups if not wrong & set(g.lines)]
+            kinds = Counter(g.check for g in groups)
+            flag_total.update(groups=len(groups), wrong=len(wrong), caught=len(caught),
+                              idle=len(idle))
+            print(f"   flags: {len(groups)} group(s)"
+                  f"{' (' + ' · '.join(f'{k} {n}' for k, n in kinds.items()) + ')' if kinds else ''}"
+                  f" · caught {len(caught)} of {len(wrong)} wrong line(s)"
+                  f"{' ' + ', '.join(sorted(wrong - caught)) + ' missed' if wrong - caught else ''}"
+                  f" · {len(idle)} group(s) hold no wrong line")
 
     n = sum(grand.values())
     print(f"\nTOTAL right {grand['right']}/{n} ({100 * grand['right'] / max(n, 1):.0f}%) · "
@@ -248,6 +277,8 @@ def main() -> int:
         f"{s}: {by_source[(s, 'right')]}/{sum(v for (ss, _), v in by_source.items() if ss == s)} right"
         f"{', ' + str(by_source[(s, 'WRONG')]) + ' wrong' if by_source[(s, 'WRONG')] else ''}"
         for s in ("tag", "propagated", "llm", "floored") if any(ss == s for ss, _ in by_source)))
+    print(f"flags: {flag_total['groups']} group(s) · caught {flag_total['caught']} of "
+          f"{flag_total['wrong']} wrong line(s) · {flag_total['idle']} group(s) hold no wrong line")
     if args.out:
         Path(args.out).write_text(json.dumps(dump, indent=1), encoding="utf-8")
     return 0

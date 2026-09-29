@@ -1338,7 +1338,45 @@ DECIDED 2026-09-29 — "yes go", on the user's "what does named in text mean and
           read the exchange."
         Carried through for one vocabulary: "model" becomes "AI" in the Check reasons, and the
         grid's Anchored / Guessed columns take the same words as the chapter's Decided by.
-OPEN:   the app build of Slice 3, pieces 3a · 3b · 3c per §8.24 — needs its go to start.
+DECIDED 2026-09-29 — "2 no  the ai change wording just leave it, go code the app". The
+        offered rename to "AI Model" is NOT made: "AI, from the story around it" and the other
+        labels stay as in the mock v30. GO for the app build of Slice 3, per §8.24.
+BUILT:  2026-09-29, pieces 3a · 3b · 3c per §8.24 — committed and pushed the same day
+        ("commit and push"), in the commit that carries this line.
+        3a — `extraction/segmentation.py` reads a straight quote left open as speech to the
+        paragraph's end (the straightened Speckled Band now finds all 247 lines, identical to
+        the curly text; every sample file's split unchanged) · `anchors.Anchor.words` +
+        `AttributionRow.anchor_words` · `_persist_attribution` writes `analyzed_at`,
+        `analyzed_cast` and per line `paragraph_idx`, `anchor_words`, `llm_speaker`,
+        `prev_persona_id` · new `extraction/flags.py` (`flag_groups`, `lines_from_rows`,
+        `spoken_block`) · `GET /v1/projects/{id}/script`, `GET /v1/scenes/{id}/script` ·
+        block PATCH `no_fix`, `fix_id`, explicit null clears speaker/source/confidence ·
+        `DELETE /v1/projects/{id}/corrections/{fix_id}` · Discover's model call in a worker
+        thread · the eval prints flags. Tests: `test_segmentation.py`, `test_script_flags.py`
+        (hand-made runs + the three answer keys), `test_script_api.py`.
+        3b — `components/StudioScript.vue` (grid, chips, select-all on what's shown, run row,
+        route select, the two blocked states) · `services/chapterRun.js` (Discover and
+        Analyze share it) · Overview's Script row + two tags and Home's "need a speaker" open
+        the grid on To check · render-stopped modal "Fix in Script ➜" · one "analyzed" rule
+        (`attribution.chapterAnalyzed` / `speakersFromImport`; `hasSpeakerInfo` deleted).
+        3c — measured first (§8.24 table: 78-line chapter opens in 183–326 ms, 60 fps scroll →
+        no virtualization) · `components/StudioScriptChapter.vue` · `views/scriptReview.js` +
+        test · the old Script table, its step-bar controls and label guide deleted from
+        StudioView; Rewrite stays a right-click on a line's text.
+        Checked: ruff + pytest, `npm run test:unit`, the renderer gate on the real data dir,
+        Analyze of Brass Rank + The Keystone through the real app's grid (86 s, rows filled
+        in, Keystone re-cut 25 → 50 lines), set speaker → Undo on a real line (fixes 0 → 1 → 0).
+OPEN:   for the user's word — copy the approved text did not name, chosen to match its pattern:
+          · the Narrator check's question: "Spoken, but given to the Narrator — whose line is it?"
+          · "AI named no one in the cast" / "The AI didn't name anyone in the cast." for a line
+            the model answered with someone not in the cast (the approved "AI gave no answer"
+            would have been false there)
+          · "is it theirs?" / "are theirs" / "Put them back in the cast" — personas carry no
+            pronouns, so the mock's "his" can't be known
+          · "later in the same paragraph" for a line whose tag comes after it
+        Not measured: a chapter of several hundred lines on the chapter page.
+        `POST /v1/extraction/analyze-text` (the eval's endpoint) still blocks the server while
+        it runs — the plan moved only Discover's.
         The prompt rule: result in §8.25; not promoted.
 GO:     given 2026-09-28 for the record + the mock; 2026-09-29 for the measurements, the drop,
         the flag measurement, the plan, the second review's mock + plan changes, the
@@ -1356,19 +1394,19 @@ STATE:  DECIDED 2026-09-29, for next — "add to task for next, on app discover 
 WHY:    One click on the thing itself, where today Ignored needs a separate Restore button per
         name and the cast can only be edited on the Cast step.
 NOT:    A Restore button beside each ignored name.
-BUILT:  nothing. The pieces exist: the kit's `UiTag` has `removable` + `@remove` (its own ✕,
-        `just-llm-runner/ui/src/common/components/UiTag.vue`); taking names off the ignore list
-        is `POST /v1/projects/{id}/discover/unignore` with a list (`extraction_api.py:1085`),
-        called today by `restore()` (`StudioDiscover.vue:268`); removing from the cast is
-        `DELETE /v1/projects/{id}/cast/{persona_id}` (`projects_api.py:682`) — the persona
-        stays in the library — called today with a confirm by `removeFromCast`
-        (`StudioView.vue:612`).
-OPEN:   the build. And two questions the text does not answer:
-        · Does "Clear all" in the cast also remove the Narrator? The cast's Narrator is what
-          narration binds to, and Analyze can't choose a speaker from an empty cast.
-        · Do both ✕ and "Clear all" ask for confirmation? Removing from the cast does today;
-          taking a name off the ignore list does not.
-GO:     given for the record | needed for the build
+BUILT:  2026-09-29 — `StudioDiscover.vue`: kit `UiTag removable` on each ignored name
+        (`unignore([n])`) and each cast member (`uncast([c])`, DELETE per persona, no confirm);
+        "Clear all" on Ignored (unignore every name) and on the cast (everyone but the Narrator);
+        Restore deleted. docs/studio.md Discover section.
+DECIDED 2026-09-29 — "1 no clear all does not remove narraotor, 2 no … go code the app":
+        · "Clear all" in the cast removes every persona EXCEPT the Narrator.
+        · Neither ✕ nor "Clear all" asks for confirmation (removing from the cast asks today —
+          on Discover it won't).
+OPEN:   the user's word on one reading: "each name gets an ✕" was built literally, so the
+        Narrator's tag has one too (as the Cast step can remove the Narrator); only "Clear all"
+        spares it. The ✕ / Clear all clicks were not exercised on the real data (they remove
+        cast members) — rendering was checked.
+GO:     given 2026-09-29 ("go code the app", in the message that answered its two questions)
 
 ### The audiobook demo is JustWrite's sample, The Ninth Facet
 STATE:  DECIDED 2026-09-27 — "2 make a folder called samples just like jw and the load demo just

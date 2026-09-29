@@ -44,6 +44,11 @@ class Anchor:
 
     speaker: str  # character id
     source: str   # "tag" (Name + verb adjacency) | "propagated" (forward/back fill)
+    # The book's own words that named the speaker, e.g. "said Marius" — the
+    # name, the verb and anything between them, as written. A propagated
+    # anchor carries the words of the tag it was propagated from. Script's
+    # "Decided by" shows them (§8.24, 3a).
+    words: str = ""
 
 
 def _build_name_regex(characters: list[dict]) -> re.Pattern:
@@ -126,6 +131,7 @@ def find_anchors(
         # direction) — defends against narration like "Mara stood up.
         # Sarah said, 'Where?'"
         best_name: str | None = None
+        best_words = ""
         best_dist = 1_000_000
         for n in names:
             for v in verbs:
@@ -133,6 +139,7 @@ def find_anchors(
                 if dist < best_dist:
                     best_dist = dist
                     best_name = n.group(0)
+                    best_words = text[min(n.start(), v.start()):max(n.end(), v.end())]
         if best_name is None or best_dist > 18:
             continue
         speaker_id = name_to_id.get(best_name.lower())
@@ -155,7 +162,7 @@ def find_anchors(
                 did = neighbor.get("dialogue_id")
                 if did is None or did in anchors:
                     continue
-                anchors[did] = Anchor(speaker=speaker_id, source="tag")
+                anchors[did] = Anchor(speaker=speaker_id, source="tag", words=best_words)
 
     # ── Pass 2: forward + backward propagation (per paragraph) ───
     # Untagged dialogue inherits the most-recent tagged speaker WITHIN
@@ -169,21 +176,21 @@ def find_anchors(
 
     for para_segs in by_para.values():
         # Forward sweep
-        last_speaker: str | None = None
+        last: Anchor | None = None
         for s in para_segs:
             did = s.get("dialogue_id")
             if did in anchors:
-                last_speaker = anchors[did].speaker
-            elif last_speaker is not None:
-                anchors[did] = Anchor(speaker=last_speaker, source="propagated")
+                last = anchors[did]
+            elif last is not None:
+                anchors[did] = Anchor(speaker=last.speaker, source="propagated", words=last.words)
         # Backward sweep — covers an unanchored dialogue BEFORE the first
         # tag in the same paragraph.
-        last_speaker = None
+        last = None
         for s in reversed(para_segs):
             did = s.get("dialogue_id")
             if did in anchors:
-                last_speaker = anchors[did].speaker
-            elif last_speaker is not None:
-                anchors[did] = Anchor(speaker=last_speaker, source="propagated")
+                last = anchors[did]
+            elif last is not None:
+                anchors[did] = Anchor(speaker=last.speaker, source="propagated", words=last.words)
 
     return anchors

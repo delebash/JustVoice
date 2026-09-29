@@ -92,7 +92,7 @@ The sheet is what the LLM features read, and nothing else:
 The character sheet is the system prompt for both:
 
 - **Generate view** — type a line, click ✏️ Rewrite. The LLM rewrites the line in the persona's voice. A preview appears; accept to replace the textarea, discard to keep the original.
-- **Studio Script tab** — right-click a dialogue row attributed to a persona. Same preview-then-accept flow; accepted text replaces the block's text. The block is marked with a ✨ icon so you can spot rewritten blocks later.
+- **Studio Script** — on a chapter, right-click the text of a spoken line that has a speaker. Same preview-then-accept flow; accepted text replaces the line's text.
 
 Both refuse with a clear message when the sheet is empty — there is nothing to write in the voice of.
 

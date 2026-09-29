@@ -25,7 +25,7 @@ Top toolbar:
 - **Render chapter** — kick off the chapter pipeline (default takes only). A
   chapter with lines nobody speaks **refuses to render** and names them —
   they'd otherwise be missing from the audio with nothing said. Fix them in
-  [Studio · Script](studio.md#fixing-what-it-got-wrong), which can send them
+  [Studio · Script](studio.md#a-chapter), which can send them
   all to the narrator in one click. `♪ marker` rows are exempt: they're
   direction, not speech, and never blocked anything.
 - **Export** — bundle the chapter as WAV / M4B / ZIP.

@@ -170,12 +170,12 @@ const continueStatus = computed(() => {
 // Mini workflow status for the Continue card — one cache-stats call +
 // one cast call for the single continue project (cheap; no per-scene
 // block walks on Home).
-const miniStatus = ref(null);  // { rendered, total, castTotal, castVoiced }
+const miniStatus = ref(null);  // { rendered, total, castTotal, castVoiced, noSpeaker }
 async function loadMiniStatus() {
   miniStatus.value = null;
   const p = continueProject.value;
   if (!p) return;
-  const out = { rendered: 0, total: 0, castTotal: 0, castVoiced: 0 };
+  const out = { rendered: 0, total: 0, castTotal: 0, castVoiced: 0, noSpeaker: 0 };
   try {
     const cs = await api.request(`/v1/render/cache-stats?project_id=${p.id}`);
     out.total = (cs?.scenes || []).length;
@@ -191,6 +191,11 @@ async function loadMiniStatus() {
     const byId = new Map(personas.value.map((x) => [x.id, x]));
     out.castVoiced = cast.filter((x) => byId.get(x.persona_id)?.voice_id).length;
   } catch { /* no cast yet */ }
+  // Lines the render stops on — the number that opens Script on "To check".
+  const script = await api.safeRequest(`/v1/projects/${p.id}/script`, null);
+  out.noSpeaker = (script?.chapters || [])
+    .filter((c) => c.analyzed || c.from_import)
+    .reduce((n, c) => n + (c.no_speaker || 0), 0);
   miniStatus.value = out;
   writeSnapshot();
 }
@@ -213,6 +218,11 @@ function resumeProject() {
   if (!p) return;
   // Opening a project always lands on its Studio Overview (2026-09-27).
   openProjectInStudio(activeProject, p);
+}
+// …except through a number that names the work: Script's grid, on "To check".
+function openScriptToCheck() {
+  const p = continueProject.value;
+  if (p) openProjectInStudio(activeProject, p, "script:check");
 }
 
 // ── Start something (kind pills → Projects create flow) ──────────────
@@ -389,6 +399,8 @@ onMounted(() => {
             <span v-for="st in miniSteps" :key="st.label" class="home__mini-step" :class="{ 'home__mini-step--done': st.done }" :title="st.sub">
               {{ st.done ? "✓" : "" }} {{ st.label }} <i>{{ st.sub }}</i>
             </span>
+            <UiTag v-if="miniStatus?.noSpeaker" intent="danger" class="home__to-check"
+              title="Opens Script on the chapters to check" @click="openScriptToCheck">{{ miniStatus.noSpeaker.toLocaleString() }} need a speaker</UiTag>
           </div>
         </div>
         <UiButton intent="primary" label="Resume ➜" title="Open this project's home base" @click="resumeProject" />
@@ -551,6 +563,7 @@ onMounted(() => {
 .home__pill--hero { font-size: 14px; padding: 10px 20px; }
 .home__hero-foot { font-size: 12px; }
 .home__mini { display: flex; gap: 6px; margin-top: 7px; flex-wrap: wrap; }
+.home__to-check { cursor: pointer; }
 .home__mini-step {
   font-size: 10.5px; font-weight: 700; color: var(--ink-3);
   border: 1px solid var(--line); border-radius: 999px;

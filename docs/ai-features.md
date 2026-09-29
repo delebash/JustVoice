@@ -11,7 +11,7 @@ is the **AI Settings** page in the sidebar.
 | Feature | What it does | When you use it |
 |---|---|---|
 | **Compose** | Writes a fresh in-character line from a persona's character sheet | Generate view → 🎲 Compose button |
-| **Persona rewrite** | Rewrites the current text in a character's voice (preview-then-accept) | Generate view → ✏️ Rewrite · Studio Script → right-click a dialogue block |
+| **Persona rewrite** | Rewrites the current text in a character's voice (preview-then-accept) | Generate view → ✏️ Rewrite · Studio Script → right-click a spoken line's text |
 | **Speaker attribution** | Extracts who says what and what they say | Studio Script tab → Analyze |
 | **Smart-assign** | Matches each character in your cast to a TTS voice | Studio Cast tab → Smart-assign |
 | **Render preset suggest** | Classifies a chapter's tone and picks the best render preset | Studio Render tab → 💡 Suggest |

@@ -2,6 +2,38 @@
 
 ## v0.1.0
 
+- **Script opens on a grid of your chapters.** One row per chapter says how many lines
+  it has, when it was analyzed, how many lines the book itself names the speaker of
+  and how many the AI decided, how many are flagged and how many have no speaker.
+  Filter to the chapters to check, tick them — select-all ticks only what's shown —
+  and Analyze runs them one after another; each row fills in as its chapter finishes,
+  and the run keeps going while you work elsewhere. A chapter analyzed before someone
+  joined the cast, whose text names them, says so and offers Re-analyze
+  ([Studio → Script](studio.md#the-chapter-grid))
+- **A chapter's page says why each line has its speaker.** "Decided by" shows the
+  book's own words when it names the speaker — *“said Marius”* — or "AI, from the
+  story around it". Lines where the AI most often goes wrong are marked with a
+  question: one person speaking three times with no reply, a persona's only line,
+  speech given to the Narrator, the book and the AI naming different people. "Next to
+  check" jumps between them; tick lines to set several at once or swap two speakers;
+  Undo takes back your changes, including what they would have taught the next
+  Analyze ([Studio → Script](studio.md#a-chapter))
+- **Speech in straight quotes that runs over several paragraphs is read as speech.**
+  Each paragraph of a long speech opens a quote and only the last closes it; with
+  straight quotes (`"`) the unclosed paragraphs used to go to the Narrator — a fifth
+  of the spoken words in the test book. Curly quotes always worked. A chapter in
+  straight quotes analyzed before this gets a different split when re-analyzed
+- **"Analyzed" means Analyze ran.** An imported podcast script that names its
+  speakers used to count as analyzed; it now shows as *from the import*, and
+  Overview says "12 of 12 episodes have speakers · from the import"
+- **Links land on the problem.** Overview's and Home's "no speaker" numbers open
+  Script's grid on the chapters to check, and a render that stops on lines with no
+  speaker offers **Fix in Script ➜**, which opens the chapter on those lines
+- **Discover's lists take a ✕.** Each ignored name and each cast member has its own
+  ✕, and both lists have **Clear all** (the cast's keeps the Narrator). Restore is
+  gone. A Discover scan also no longer freezes the rest of the app while the model
+  reads ([Studio → Discover](studio.md#discover))
+
 - **The engine's Update button works again.** It had quietly stopped appearing in
   August, when llama.cpp changed how it labels releases — the app compared the new
   label to its own version number, decided you were up to date, and said nothing.

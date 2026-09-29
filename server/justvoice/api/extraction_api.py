@@ -24,6 +24,7 @@ import asyncio
 import json
 import logging
 import re
+from datetime import datetime, timezone
 from queue import SimpleQueue
 from threading import Thread
 from typing import Literal
@@ -40,6 +41,8 @@ from ..database import get_db
 from ..database.models import Block, Persona, ProjectPersona, Scene, Take
 from ..errors import conflict, not_found
 from ..extraction import AnalyzeRequest, analyze_scene
+from ..extraction.flags import model_disagreed
+from ..models import ProjectScript, SceneScript, ScriptChapter, ScriptFlag, ScriptLine, ScriptSpeaker
 from ..extraction.pipeline import AttributionModelError, auto_route
 
 log = logging.getLogger(__name__)
@@ -57,6 +60,7 @@ class AttributionRowResponse(BaseModel):
     floored_from: str | None = None
     llm_speaker: str | None = None
     llm_confidence: float | None = None
+    anchor_words: str | None = None
 
 
 class AnalyzeSceneRequest(BaseModel):
@@ -219,6 +223,10 @@ def _narrator_persona_id(db: Session, project_id: str) -> str | None:
     return row[0] if row else None
 
 
+# The Block.source values an Analyze run writes (pipeline.AttributionRow).
+# "corrected" and "manual" are the user's and the import's.
+PIPELINE_SOURCES = frozenset({"narration", "tag", "propagated", "llm", "floored"})
+
 # The quote pairs segmentation.py recognizes, in its own order.
 _QUOTE_PAIRS = (("“", "”"), ('"', '"'))
 
@@ -356,20 +364,49 @@ def _persist_attribution(db: Session, scene: Scene, rows: list, text: str) -> Pe
 
     meta = _scene_meta(scene)
     meta["source_text"] = text
+    # "Analyzed" is Analyze having run, never "a line has a speaker" — an
+    # imported script arrives with speakers and was never analyzed. The cast
+    # it could choose from is what "added since" compares against (§8.24).
+    meta["analyzed_at"] = datetime.now(timezone.utc).isoformat()
+    meta["analyzed_cast"] = sorted(known)
     scene.metadata_json = json.dumps(meta)
 
-    def with_audit(existing: dict, row) -> str | None:
-        """Keep the block's own metadata, and record the pre-floor pick.
+    _unchanged = object()
 
-        `floored_from` is the model's answer before the confidence floor
-        discarded it — the single best "check this row" hint in the payload,
-        and the only part of a run that had nowhere to live once the Script
-        table started reading from blocks instead of the response."""
+    def with_audit(existing: dict, row, prev=_unchanged) -> str | None:
+        """Keep the block's own metadata, and record what Script's check
+        column and "Decided by" read (§8.24, 3a):
+
+        * `floored_from` — the model's answer before the confidence floor
+          discarded it.
+        * `paragraph_idx` — which paragraph of the analyzed text the line
+          came from; "three in a row" counts paragraphs, not lines.
+        * `anchor_words` — the book's own words that named the speaker.
+        * `llm_speaker` — the model's pick, kept only where the book's words
+          won and the model had said someone else.
+        * `prev_persona_id` — who the line was before this re-analyze
+          changed it; the key's presence is the mark, its value may be null
+          ("had no speaker")."""
         meta = dict(existing)
         if row.source == "floored" and row.floored_from:
             meta["floored_from"] = row.floored_from
         else:
             meta.pop("floored_from", None)
+        meta["paragraph_idx"] = row.paragraph_idx
+        anchored = row.source in ("tag", "propagated")
+        if anchored and row.anchor_words:
+            meta["anchor_words"] = row.anchor_words
+        else:
+            meta.pop("anchor_words", None)
+        model_pick = persona_for(model_disagreed(row.source, row.speaker, row.llm_speaker) or "")
+        if model_pick:
+            meta["llm_speaker"] = model_pick
+        else:
+            meta.pop("llm_speaker", None)
+        if prev is _unchanged:
+            meta.pop("prev_persona_id", None)
+        else:
+            meta["prev_persona_id"] = prev
         return json.dumps(meta) if meta else None
 
     if in_place:
@@ -378,10 +415,19 @@ def _persist_attribution(db: Session, scene: Scene, rows: list, text: str) -> Pe
             if block.source == "corrected":
                 kept += 1
                 continue
-            block.persona_id = persona_for(row.speaker)
+            new_persona = persona_for(row.speaker)
+            # Only a RE-analyze changes a line: the first run over imported
+            # lines decides them, it doesn't change anyone's mind.
+            reanalyzed = block.source in PIPELINE_SOURCES
+            prev = (
+                block.persona_id
+                if reanalyzed and block.persona_id != new_persona
+                else _unchanged
+            )
+            block.persona_id = new_persona
             block.extraction_confidence = row.confidence
             block.source = row.source
-            block.metadata_json = with_audit(_json_meta(block.metadata_json), row)
+            block.metadata_json = with_audit(_json_meta(block.metadata_json), row, prev)
         return PersistInfo(mode="in_place", written=len(rows) - kept, kept_corrected=kept)
 
     # Read the outgoing blocks BEFORE deleting them — attribute access on a
@@ -799,6 +845,204 @@ async def extraction_config() -> ExtractionConfigResponse:
     )
 
 
+# ── Script — the chapter grid and the chapter page (Slice 3, §8.24) ─────
+#
+# Both screens read the chapter's blocks, as the Script table always has; the
+# flags and the counts are computed here, in Python, by the same function the
+# eval scores (`extraction/flags.py`), so what was measured is what ships.
+
+
+def _name_pattern(names: list[str]) -> re.Pattern | None:
+    names = sorted({n.strip() for n in names if n and n.strip()}, key=len, reverse=True)
+    if not names:
+        return None
+    return re.compile(r"\b(" + "|".join(re.escape(n) for n in names) + r")\b", re.IGNORECASE)
+
+
+def _chapter_script(
+    scene: Scene,
+    blocks: list,
+    *,
+    cast_ids: set[str],
+    narrator_id: str | None,
+    personas: dict,
+) -> tuple[ScriptChapter, list[ScriptLine], list]:
+    """One chapter's Script state: its grid row, its lines and its flag groups.
+
+    One rule decides "analyzed" everywhere (§8.24): Analyze has run
+    (`analyzed_at`), or — older data, no migration — its lines carry a
+    pipeline source. "From the import": never analyzed, and every line
+    already has a speaker."""
+    from ..extraction.flags import Line, flag_groups, flagged_lines, not_in_cast, spoken_block
+
+    meta = _scene_meta(scene)
+    rows = []
+    for b in blocks:
+        bm = _json_meta(b.metadata_json)
+        marker = bool(bm.get("marker"))
+        speakable = not marker and bool((b.text or "").strip())
+        spoken = speakable and spoken_block(b.source, b.text)
+        rows.append((b, bm, marker, speakable, spoken))
+
+    analyzed_at = meta.get("analyzed_at")
+    analyzed = bool(analyzed_at) or any(b.source in PIPELINE_SOURCES for b, *_ in rows)
+    speakable_rows = [r for r in rows if r[3]]
+    from_import = (
+        not analyzed and bool(speakable_rows) and all(r[0].persona_id for r in speakable_rows)
+    )
+
+    lines = [
+        Line(
+            id=b.id, speaker=b.persona_id, text=b.text or "", spoken=spoken, source=b.source,
+            paragraph=bm.get("paragraph_idx"), llm_speaker=bm.get("llm_speaker"), marker=marker,
+        )
+        for b, bm, marker, _speakable, spoken in rows
+    ]
+    # Flags run only on what Analyze decided; "not in the cast" everywhere.
+    groups = flag_groups(lines, cast_ids, narrator_id=narrator_id) if analyzed else []
+    marked = flagged_lines(groups)
+    no_speaker = {r[0].id for r in speakable_rows if not r[0].persona_id}
+    gone = not_in_cast(lines, cast_ids)
+
+    by_group: dict[str, list[int]] = {}
+    for gi, g in enumerate(groups):
+        for lid in g.lines:
+            by_group.setdefault(lid, []).append(gi)
+
+    out_lines = [
+        ScriptLine(
+            id=b.id, position=b.position, text=b.text or "", persona_id=b.persona_id,
+            source=b.source, confidence=b.extraction_confidence,
+            paragraph=bm.get("paragraph_idx"), spoken=spoken, marker=marker,
+            speakable=speakable, anchor_words=bm.get("anchor_words"),
+            llm_speaker=bm.get("llm_speaker"), floored_from=bm.get("floored_from"),
+            changed="prev_persona_id" in bm, prev_persona_id=bm.get("prev_persona_id"),
+            flags=by_group.get(b.id, []), metadata=bm,
+        )
+        for b, bm, marker, speakable, spoken in rows
+    ]
+
+    spoken_rows = [r for r in rows if r[4]]
+    added: list[str] = []
+    before = meta.get("analyzed_cast")
+    if analyzed and isinstance(before, list):
+        text = meta.get("source_text") or "\n\n".join(b.text or "" for b in blocks)
+        for pid in sorted(cast_ids - set(before) - {narrator_id}):
+            p = personas.get(pid)
+            pat = _name_pattern([p.name, *_persona_aliases(p)]) if p else None
+            if pat and pat.search(text):
+                added.append(p.name)
+
+    chapter = ScriptChapter(
+        scene_id=scene.id, position=scene.position, title=scene.title,
+        lines=len(speakable_rows), spoken=len(spoken_rows),
+        analyzed_at=analyzed_at, analyzed=analyzed, from_import=from_import,
+        # Book says + AI decided + by you + no speaker = spoken: a line left with
+        # no speaker is counted there, never as decided.
+        anchored=sum(1 for r in spoken_rows
+                     if r[0].source in ("tag", "propagated") and r[0].persona_id),
+        guessed=sum(1 for r in spoken_rows if r[0].source == "llm" and r[0].persona_id),
+        by_you=sum(1 for r in spoken_rows if r[0].source == "corrected" and r[0].persona_id),
+        no_speaker=len(no_speaker), flagged=len(marked), flag_groups=len(groups),
+        # "To check" is for what Analyze (or the import) decided; a chapter
+        # never analyzed needs Analyze, not checking.
+        to_check=len(marked | no_speaker) if (analyzed or from_import) else 0,
+        changed=sum(1 for ln in out_lines if ln.changed),
+        no_dialogue_found=analyzed and bool(speakable_rows) and not spoken_rows,
+        added_since=added,
+        not_in_cast=[
+            ScriptSpeaker(persona_id=pid, name=personas[pid].name if pid in personas else pid,
+                          lines=n, in_cast=False)
+            for pid, n in gone.most_common()
+        ],
+    )
+    return chapter, out_lines, groups
+
+
+def _script_context(db: Session, project_id: str, speaker_ids: set[str]):
+    cast_ids = {
+        pid for (pid,) in db.query(ProjectPersona.persona_id).filter(
+            ProjectPersona.project_id == project_id)
+    }
+    ids = cast_ids | {i for i in speaker_ids if i}
+    personas = {p.id: p for p in db.query(Persona).filter(Persona.id.in_(ids))} if ids else {}
+    return cast_ids, _narrator_persona_id(db, project_id), personas
+
+
+@router.get(
+    "/v1/projects/{project_id}/script",
+    response_model=ProjectScript,
+    summary="Script's chapter grid — one row per chapter",
+)
+async def project_script(project_id: str, db: Session = Depends(get_db)) -> ProjectScript:
+    from ..database.models import Project
+
+    if db.query(Project).filter(Project.id == project_id).first() is None:
+        raise not_found(f"project {project_id}")
+    scenes = (
+        db.query(Scene).filter(Scene.project_id == project_id).order_by(Scene.position).all()
+    )
+    by_scene: dict[str, list] = {s.id: [] for s in scenes}
+    if scenes:
+        for b in (
+            db.query(Block)
+            .filter(Block.scene_id.in_(list(by_scene)))
+            .order_by(Block.scene_id, Block.position)
+        ):
+            by_scene[b.scene_id].append(b)
+    cast_ids, narrator_id, personas = _script_context(
+        db, project_id, {b.persona_id for bs in by_scene.values() for b in bs})
+    return ProjectScript(
+        project_id=project_id,
+        chapters=[
+            _chapter_script(s, by_scene[s.id], cast_ids=cast_ids,
+                            narrator_id=narrator_id, personas=personas)[0]
+            for s in scenes
+        ],
+    )
+
+
+@router.get(
+    "/v1/scenes/{scene_id}/script",
+    response_model=SceneScript,
+    summary="Script's chapter page — the lines, their marks and the speakers",
+)
+async def scene_script(scene_id: str, db: Session = Depends(get_db)) -> SceneScript:
+    scene = db.query(Scene).filter(Scene.id == scene_id).first()
+    if scene is None:
+        raise not_found(f"scene {scene_id}")
+    blocks = db.query(Block).filter(Block.scene_id == scene_id).order_by(Block.position).all()
+    cast_ids, narrator_id, personas = _script_context(
+        db, scene.project_id, {b.persona_id for b in blocks})
+    chapter, lines, groups = _chapter_script(
+        scene, blocks, cast_ids=cast_ids, narrator_id=narrator_id, personas=personas)
+    # Every line a persona reads — the Narrator's narration included, as the
+    # speaker filter shows it ("Narrator · 118").
+    counts: dict[str, int] = {}
+    for ln in lines:
+        if ln.speakable and ln.persona_id:
+            counts[ln.persona_id] = counts.get(ln.persona_id, 0) + 1
+    speakers = [
+        ScriptSpeaker(persona_id=pid, name=p.name, lines=counts.get(pid, 0),
+                      in_cast=pid in cast_ids)
+        for pid, p in personas.items()
+        if pid in cast_ids or counts.get(pid)
+    ]
+    speakers.sort(key=lambda sp: (-sp.lines, sp.name.lower()))
+    return SceneScript(
+        chapter=chapter,
+        project_id=scene.project_id,
+        narrator_id=narrator_id,
+        lines=lines,
+        flag_groups=[
+            ScriptFlag(check=g.check, speaker=g.speaker, lines=g.lines, turns=g.turns,
+                       other=g.other)
+            for g in groups
+        ],
+        speakers=speakers,
+    )
+
+
 # ── Speaker-correction management (Phase 5) ──────────────────────────────
 
 
@@ -831,17 +1075,35 @@ async def clear_corrections(project_id: str, db: Session = Depends(get_db)) -> d
     return {"deleted": deleted}
 
 
-def record_correction(db: Session, project_id: str, text_snippet: str, persona_id: str) -> None:
-    """THE one correction writer (parity batch 2026-08-06): the Studio block-PATCH
-    side effect and the Lab's reassign both call this — same row shape, same
-    200-per-project cap (oldest dropped), so the two doors can't drift."""
+@router.delete("/v1/projects/{project_id}/corrections/{fix_id}")
+async def delete_correction(project_id: str, fix_id: str, db: Session = Depends(get_db)) -> dict:
+    """Remove ONE saved fix — Script's Undo, taking back the fix the undone
+    change saved. Without it a mis-click left two contradicting examples in
+    the prompt (§8.25). A fix already gone (capped out) is not an error."""
     from ..database.models import SpeakerCorrection
 
-    db.add(SpeakerCorrection(
+    deleted = (
+        db.query(SpeakerCorrection)
+        .filter(SpeakerCorrection.project_id == project_id, SpeakerCorrection.id == fix_id)
+        .delete()
+    )
+    db.commit()
+    return {"deleted": deleted}
+
+
+def record_correction(db: Session, project_id: str, text_snippet: str, persona_id: str) -> str:
+    """THE one correction writer (parity batch 2026-08-06): the Studio block-PATCH
+    side effect and the Lab's reassign both call this — same row shape, same
+    200-per-project cap (oldest dropped), so the two doors can't drift.
+    Returns the new fix's id, so the change that saved it can be undone."""
+    from ..database.models import SpeakerCorrection
+
+    fix = SpeakerCorrection(
         project_id=project_id,
         text_snippet=(text_snippet or "")[:400],
         persona_id=persona_id,
-    ))
+    )
+    db.add(fix)
     # SessionLocal runs autoflush=False — without this flush the overflow query
     # can't see the row just added and the cap drifts one past 200 forever.
     db.flush()
@@ -854,6 +1116,7 @@ def record_correction(db: Session, project_id: str, text_snippet: str, persona_i
     )
     for row in overflow:
         db.delete(row)
+    return fix.id
 
 
 class CorrectionIn(BaseModel):
@@ -965,9 +1228,11 @@ async def discover_speakers_endpoint(
     """Identification, not attribution: proposes NEW speakers for Studio's
     Discover step. No persona is created here — promotion is
     POST /v1/projects/{id}/personas/promote. The scan itself IS saved, on the
-    chapter (`metadata.discover`), replacing that chapter's previous scan."""
-    from datetime import datetime, timezone
+    chapter (`metadata.discover`), replacing that chapter's previous scan.
 
+    The model call runs in a worker thread (2026-09-29): it is blocking, and
+    on the event loop it stalled every other request to the server — health
+    checks included — for the length of each chapter's call."""
     from ..extraction.identify import identify_speakers
 
     from ..database.models import Project
@@ -990,8 +1255,10 @@ async def discover_speakers_endpoint(
     settings = get_state().settings.get()
     try:
         raw_out: dict = {}
-        candidates = identify_speakers(body.text, cast, settings=settings, library=library,
-                                       raw_out=raw_out)
+        candidates = await asyncio.to_thread(
+            identify_speakers, body.text, cast, settings=settings, library=library,
+            raw_out=raw_out,
+        )
     except LLMNotConfiguredError as e:
         raise HTTPException(status_code=501, detail=str(e))
     except Exception as e:

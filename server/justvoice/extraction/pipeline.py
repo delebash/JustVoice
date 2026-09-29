@@ -66,6 +66,9 @@ class AttributionRow:
     # Speaker Lab can render disagreement badges.
     llm_speaker: str | None = None
     llm_confidence: float | None = None
+    # When an anchor decided the row: the book's own words that named the
+    # speaker ("said Marius"); a propagated row carries its tag's words.
+    anchor_words: str | None = None
 
 
 class AnalyzeRequest(BaseModel):
@@ -703,6 +706,7 @@ def analyze_scene(
                     source=anchor.source,  # "tag" or "propagated"
                     llm_speaker=llm_speaker,
                     llm_confidence=llm_conf,
+                    anchor_words=anchor.words or None,
                 )
             )
             continue

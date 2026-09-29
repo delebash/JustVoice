@@ -15,11 +15,26 @@ Press `?` from anywhere in the app (when no input is focused) to open the in-app
 |---|---|
 | `/` | Open the paralinguistic / SFX tag menu (the slash menu) in the textarea |
 
-## Studio Script tab
+## Studio Script — a chapter
+
+These are an extra: everything is also a click, and **⌨ Shortcuts** on the page
+lists them. They act on the selected line (click a row to select it), and do
+nothing while you type or a dropdown is open.
 
 | Keys | Action |
 |---|---|
-| Right-click on a dialogue row | Open the rewrite preview modal. Accepts → replaces the block's text. Discards → original stays |
+| `j` / `k` | Next / previous line |
+| `n` / `Shift+N` | Next / previous line to check |
+| `1`–`9` | Give the line to that speaker — this chapter's, most lines first |
+| `0` | Give the line to the Narrator |
+| `Enter` | This line looks right |
+| `Shift+Enter` | Looks right, for every line sharing its mark |
+| `Space` | Tick or untick the line |
+| `[` / `]` | Previous / next chapter |
+| `Ctrl+Z` | Undo your last change |
+| Right-click a spoken line's text | Open the rewrite preview. Accept → replaces the line's text. Discard → the original stays |
+
+See [Studio → Script](studio.md#a-chapter).
 
 ## Studio Cast tab
 

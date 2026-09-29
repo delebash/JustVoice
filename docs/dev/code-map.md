@@ -363,9 +363,13 @@ HF source, for pinning.
 `server/justvoice/extraction/pipeline.py`, `analyze_scene`, five stages:
 
 1. **Segment** — `split_into_paragraphs` → `segment_paragraphs`, each tagged
-   `dialogue` or `narration`.
+   `dialogue` or `narration`. A quote that opens and never closes is speech to
+   the paragraph's end, curly or straight (the straight branch since
+   2026-09-29) — how a speech over several paragraphs is written.
 2. **Deterministic anchors, before any LLM** — `find_anchors(segments,
    characters)` catches *"said Mara"* and propagates. Skipped if `propagate` off.
+   Each `Anchor` carries the book's matched `words` ("said Mara"); a propagated
+   one carries its tag's.
 3. **Route pick** — `pick_route` resolves Auto by model size; each route carries
    a **confidence floor**.
 4. **The LLM call — dialogue only.** Narration is never sent. Feature action
@@ -376,13 +380,40 @@ HF source, for pinning.
 | Case | Result |
 |---|---|
 | narration | `narrator`, confidence **1.0**, source `narration` — model never asked |
-| dialogue **with** an anchor | **anchor wins**, confidence 1.0, source `tag` or `propagated`. The LLM's pick is kept as `llm_speaker` |
+| dialogue **with** an anchor | **anchor wins**, confidence 1.0, source `tag` or `propagated`. The LLM's pick is kept as `llm_speaker`, the book's words as `anchor_words` |
 | dialogue, no anchor, above floor | the LLM's pick, source `llm` |
 | dialogue, no anchor, **below floor** | demoted to `unknown`, source `floored`, `floored_from` records what it wanted |
 | LLM returned fewer rows than lines | padded with `unknown` @ 0.4 |
 
 **Five sources: `narration · tag · propagated · llm · floored`.** A line can be
 unattributed for two different reasons — unsure, or never answered.
+
+**What a run writes** (`extraction_api._persist_attribution`): the scene's
+metadata gets `source_text`, `analyzed_at` and `analyzed_cast` (the cast ids it
+could choose from — "added since" compares against it); each block's metadata
+gets `paragraph_idx`, `anchor_words`, `llm_speaker` (only where the book won and
+the model differed — `flags.model_disagreed`), `floored_from`, and on an
+in-place re-analyze that changes a line's speaker, `prev_persona_id` (the key's
+presence is the "changed" mark; the block PATCH drops it when the line becomes
+`corrected`).
+
+**Script's flags — `extraction/flags.py`** (Slice 3, 2026-09-29): `flag_groups`
+is a pure function over a chapter's lines — **run** (one persona, three or more
+turns with no reply; a paragraph that leaves its quote open carries on into the
+next, so a long speech is one turn), **only** (a cast persona's only line),
+**narrator** (speech on the Narrator), **disagree** (`llm_speaker` set) — plus
+`not_in_cast`. Marks go only on lines whose source Analyze wrote.
+`server/scripts/eval_attribution.py` imports the same function (via
+`lines_from_rows`) and prints caught / missed / false alarms with every run.
+`GET /v1/projects/{id}/script` (the grid's rows) and `GET /v1/scenes/{id}/script`
+(one chapter's lines, groups and speakers) compute them in
+`extraction_api._chapter_script`, on the one "analyzed" rule:
+`analyzed_at`, or — older data — a pipeline source on any line.
+
+**Undo's server half:** the block PATCH takes `no_fix` (no correction row),
+returns the `fix_id` a speaker change saved, and treats an explicit `null` for
+`persona_id` / `source` / `extraction_confidence` as "clear it";
+`DELETE /v1/projects/{id}/corrections/{fix_id}` removes one fix.
 
 **Two separate endpoints, often confused:**
 
@@ -393,8 +424,11 @@ unattributed for two different reasons — unsure, or never answered.
   into personas and links them to the project.
 
 **Discover is its own Studio step** (2026-09-27): `components/StudioDiscover.vue`
-calls discover-speakers once per ticked chapter and promote once per added
-name. Analyze no longer runs it afterwards. **Each scan is saved on its
+queues its ticked chapters on the project's chapter run
+(`services/chapterRun.js`, shared with Script's Analyze since 2026-09-29), which
+calls discover-speakers once per chapter — in a worker thread on the server, so
+a scan no longer stalls every other request — and promote once per added name.
+Analyze no longer runs it afterwards. **Each scan is saved on its
 chapter** — `scene.metadata.discover = {scanned_at, candidates}`, written by
 the discover endpoint (replacing that chapter's last scan) and pruned by
 `extraction_api.prune_discovered`, which promote and the new
@@ -695,13 +729,14 @@ active project so the title-bar switcher works while Studio is on screen.
 
 | Step | Where | What it is |
 |---|---|---|
-| **Overview** | `components/StudioOverview.vue` | Where-it-stands rows (`views/studioStatus.js`, pure + tested — counts only from blocks, cast and the render cache), Continue, settings (title, author → M4B artist, description, kind, mastering target), re-import, .justvoice.zip, delete |
-| **Discover** | `components/StudioDiscover.vue` | Chapter grid + Scan + Proposed speakers (Add / Ignore) |
+| **Overview** | `components/StudioOverview.vue` | Where-it-stands rows (`views/studioStatus.js`, pure + tested — counts from blocks, cast, the render cache and Script's grid rows; Script's two tags open the grid on "To check"), Continue, settings (title, author → M4B artist, description, kind, mastering target), re-import, .justvoice.zip, delete |
+| **Discover** | `components/StudioDiscover.vue` | Chapter grid + Scan + Proposed speakers (Add / Ignore); Ignored and Already-in-the-cast each have a ✕ per name and Clear all (the cast's keeps the Narrator) |
+| **Script** | `components/StudioScript.vue` (the chapter grid) · `components/StudioScriptChapter.vue` (one chapter) | The grid reads `GET /v1/projects/{id}/script` (Studio owns the fetch; Overview reads the same rows) and queues Analyze on `services/chapterRun.js` — one run of chapters per project, one kit task per chapter, module state so it survives leaving Studio. The chapter page reads `GET /v1/scenes/{id}/script` and re-reads after every change; its selection, keys, set / swap / confirm and undo stack are `views/scriptReview.js` (pure, unit-tested). Rewrite-in-character is still StudioView's modal, opened by the page's right-click (`@rewrite`) until Slice 4 moves it to Render |
 | **Lines** (game) | `views/LinesView.vue` embedded with `:project-id` | the line grid, its own project picker hidden |
 
 | Step | Subtitle in the tab strip | What it does |
 |---|---|---|
-| **Script** | *"Who speaks each line"* | Table **Speaker · Kind · Decided by · Text · Confidence**. Right-click → per-block Rewrite preview |
+| **Script** | *"Who speaks each line"* | The chapter grid (**Lines · Analyzed · Book says · AI decided · Flagged · No speaker**), then a chapter's table **Speaker · Decided by · Text · Confidence · Check**. Right-click a line's text → Rewrite preview |
 | **Cast** | *"Map people to voices"* | Persona cards + a **Voice library** panel (*"Picking voice for X"* — select a card, click a voice). Narrator card: *"The voice of everything that isn't spoken"*. Actions: `＋ Add persona` (from the library) · `Clear cast` (*"unassign voices from all N cast members. The personas stay — only the voice links go"*) · `Smart-assign` · Audition · Open Speech engines. Game kind shows a table instead: **NPC · Role · Voice** |
 | **Render** | *"Batch render + mastering"* | Table **# · Cached · Render preset · Check**. Select unrendered / Select all · Render · Cancel · Retry · Play · **Run ACX QC** · Suggest |
 | **Export** | *"Package + ACX checklist"* | Packaging (described in-code as a mock export screen) |

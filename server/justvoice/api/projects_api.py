@@ -131,6 +131,9 @@ class BlockResponse(BaseModel):
     extraction_confidence: Optional[float] = None
     source: Optional[str] = None
     created_at: datetime
+    # Set by the block PATCH when the change saved a speaker fix for the
+    # attribution prompt — Script's Undo deletes exactly that fix.
+    fix_id: Optional[str] = None
 
     @classmethod
     def from_orm(cls, row: Block) -> "BlockResponse":
@@ -208,11 +211,17 @@ class CreateBlockRequest(BaseModel):
 class UpdateBlockRequest(BaseModel):
     position: Optional[int] = None
     text: Optional[str] = None
+    # Left out = unchanged. `persona_id`, `source` and `extraction_confidence`
+    # sent as null = cleared: Script's Undo puts back a line exactly as it was,
+    # including one that had no speaker, no source or no confidence.
     persona_id: Optional[str] = None
     direction: Optional[str] = None
     metadata: Optional[dict] = None
     extraction_confidence: Optional[float] = None
     source: Optional[str] = None
+    # A speaker change normally saves a fix the next Analyze learns from.
+    # Undo sends this: taking a change back is not a fix.
+    no_fix: bool = False
 
 
 class CastAssignRequest(BaseModel):
@@ -526,6 +535,7 @@ async def update_block(
         body.persona_id is not None
         and b.persona_id is not None
         and body.persona_id != b.persona_id
+        and not body.no_fix
     )
 
     if body.position is not None:
@@ -534,17 +544,26 @@ async def update_block(
         if body.text != b.text:
             _drop_scene_source_text(db, b.scene_id)
         b.text = body.text
-    if body.persona_id is not None:
+    if body.persona_id is not None or "persona_id" in body.model_fields_set:
         b.persona_id = body.persona_id
     if body.direction is not None:
         b.direction = body.direction
     if body.metadata is not None:
         b.metadata_json = json.dumps(body.metadata)
-    if body.extraction_confidence is not None:
+    sent = body.model_fields_set
+    if body.extraction_confidence is not None or "extraction_confidence" in sent:
         b.extraction_confidence = body.extraction_confidence
-    if body.source is not None:
+    if body.source is not None or "source" in sent:
         b.source = body.source
+        # Setting or confirming a line clears Script's "changed by the last
+        # Analyze" mark — unless the caller is restoring metadata (Undo).
+        if body.source == "corrected" and body.metadata is None:
+            meta = json.loads(b.metadata_json or "{}")
+            if "prev_persona_id" in meta:
+                del meta["prev_persona_id"]
+                b.metadata_json = json.dumps(meta)
 
+    fix_id = None
     if persona_id_changed:
         # Look up the parent project via the scene, then write through THE one
         # correction writer (extraction_api.record_correction — the Lab's
@@ -553,11 +572,13 @@ async def update_block(
         if scene:
             from .extraction_api import record_correction
 
-            record_correction(db, scene.project_id, b.text, body.persona_id)
+            fix_id = record_correction(db, scene.project_id, b.text, body.persona_id)
 
     db.commit()
     db.refresh(b)
-    return BlockResponse.from_orm(b)
+    out = BlockResponse.from_orm(b)
+    out.fix_id = fix_id
+    return out
 
 
 @router.delete("/v1/blocks/{block_id}")

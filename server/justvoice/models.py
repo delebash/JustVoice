@@ -1504,3 +1504,102 @@ class ComparisonReport(BaseModel):
     verdict: str
     a_label: str | None = None
     b_label: str | None = None
+
+# ─── Script — who says each line (Studio Slice 3, §8.24) ─────────────────
+
+
+class ScriptSpeaker(BaseModel):
+    persona_id: str
+    name: str
+    # Lines this persona reads in the chapter (the chapter page; the grid's
+    # not-in-the-cast rows count spoken lines).
+    lines: int = 0
+    # False for a persona who has left the cast but still has lines here.
+    in_cast: bool = True
+
+
+class ScriptChapter(BaseModel):
+    """One row of Script's chapter grid. Counts are lines."""
+
+    scene_id: str
+    position: int
+    title: str | None = None
+    # Every line with text, narration included; 0 = no text yet.
+    lines: int = 0
+    spoken: int = 0
+    # When Analyze last ran. Older data has none: `analyzed` is then read off
+    # the lines (a pipeline `source`), with no date.
+    analyzed_at: str | None = None
+    analyzed: bool = False
+    # Never analyzed, and every line already has its speaker (podcast
+    # scripts, game sheets). Flags never run on these.
+    from_import: bool = False
+    anchored: int = 0      # "Book says" — the book's own words named the speaker
+    guessed: int = 0       # "AI decided"
+    by_you: int = 0
+    no_speaker: int = 0    # lines the render stops on
+    flagged: int = 0       # lines inside a flag group
+    flag_groups: int = 0
+    # Flagged lines + lines with no speaker, once Analyze (or the import)
+    # decided the chapter; 0 before.
+    to_check: int = 0
+    changed: int = 0       # lines the last Analyze gave a different speaker
+    no_dialogue_found: bool = False
+    # Personas who joined the cast after this chapter was analyzed and whose
+    # name (or "also called" name) appears in its text.
+    added_since: list[str] = Field(default_factory=list)
+    not_in_cast: list[ScriptSpeaker] = Field(default_factory=list)
+
+
+class ProjectScript(BaseModel):
+    project_id: str
+    chapters: list[ScriptChapter]
+
+
+class ScriptLine(BaseModel):
+    id: str
+    position: int
+    text: str
+    persona_id: str | None = None
+    source: str | None = None
+    confidence: float | None = None
+    # The paragraph of the analyzed text; null for an imported or pasted line
+    # (a paragraph of its own).
+    paragraph: int | None = None
+    spoken: bool = False
+    marker: bool = False
+    speakable: bool = True
+    # The book's own words that named the speaker ("said Marius").
+    anchor_words: str | None = None
+    # The model's pick, where the book's words won and it had said another.
+    llm_speaker: str | None = None
+    # The model's pick the confidence floor dropped.
+    floored_from: str | None = None
+    # The last Analyze changed this line's speaker; `prev_persona_id` is who
+    # it was (null = it had none).
+    changed: bool = False
+    prev_persona_id: str | None = None
+    # Indexes into SceneScript.flag_groups.
+    flags: list[int] = Field(default_factory=list)
+    # The block's whole metadata — Undo puts it back exactly.
+    metadata: dict = Field(default_factory=dict)
+
+
+class ScriptFlag(BaseModel):
+    check: Literal["run", "only", "narrator", "disagree"]
+    speaker: str | None = None
+    lines: list[str]
+    turns: int = 0
+    other: str | None = None
+
+
+class SceneScript(BaseModel):
+    """Script's chapter page: the lines, their marks and the speakers."""
+
+    chapter: ScriptChapter
+    project_id: str
+    narrator_id: str | None = None
+    lines: list[ScriptLine]
+    flag_groups: list[ScriptFlag]
+    # The cast, plus anyone with lines here who has left it; most lines first.
+    speakers: list[ScriptSpeaker]

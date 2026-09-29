@@ -14,11 +14,26 @@ describe("blockStats", () => {
       { text: "[music]", metadata: { marker: true } },
       { text: "   " },
     ]);
-    expect(st).toEqual({ speakable: 3, unplaced: 1, analyzed: true, byPersona: { nar: 1, june: 1 } });
+    expect(st).toEqual({ speakable: 3, unplaced: 1, analyzed: true, fromImport: false, byPersona: { nar: 1, june: 1 } });
   });
 
-  it("calls a chapter unanalyzed when no block carries speaker information", () => {
+  it("calls a chapter analyzed only when Analyze ran on it — the one rule", () => {
     expect(blockStats([{ text: "Plain prose." }]).analyzed).toBe(false);
+    // Analyze recorded when it ran …
+    expect(blockStats([{ text: "Prose.", persona_id: "nar", source: "corrected" }],
+      { metadata: { analyzed_at: "2026-09-29T00:00:00Z" } }).analyzed).toBe(true);
+    // … and older data counts by its pipeline sources.
+    expect(blockStats([{ text: "Prose.", persona_id: "nar", source: "narration" }]).analyzed).toBe(true);
+  });
+
+  it("an imported script with every speaker set is 'from the import', not analyzed", () => {
+    const st = blockStats([
+      { text: "Welcome back.", persona_id: "host" },
+      { text: "Thanks.", persona_id: "guest", source: "manual" },
+      { text: "[music]", metadata: { marker: true } },
+    ]);
+    expect(st).toMatchObject({ analyzed: false, fromImport: true });
+    expect(blockStats([{ text: "Prose." }]).fromImport).toBe(false);
   });
 });
 
@@ -32,10 +47,19 @@ describe("projectState", () => {
 
   it("rolls chapters and cast up, and counts lines blocked on a missing voice", () => {
     expect(projectState({ scenes, stats, cast, cache: { total: 11, cached: 5 } })).toEqual({
-      chapters: 2, scanned: 0, proposed: 0, analyzed: 1, lines: 14, unplaced: 2,
-      castTotal: 2, castVoiced: 1, speakersBesideNarrator: 1, blocked: 4,
+      chapters: 2, scanned: 0, proposed: 0, analyzed: 1, fromImport: 0, running: 0, flagged: 0,
+      noSpeaker: 2, lines: 14, unplaced: 2, castTotal: 2, castVoiced: 1, speakersBesideNarrator: 1, blocked: 4,
       rendered: 5, renderable: 11,
     });
+  });
+
+  it("takes the flagged lines from the server's Script rows, and counts no-speaker lines only where Analyze ran", () => {
+    const script = [
+      { scene_id: "a", analyzed: true, flagged: 4, no_speaker: 2 },
+      { scene_id: "b", analyzed: false, flagged: 0, no_speaker: 4 },
+    ];
+    expect(projectState({ scenes, stats, cast, script, running: 1 }))
+      .toMatchObject({ flagged: 4, noSpeaker: 2, running: 1 });
   });
 
   it("leaves the render counts null until the cache has been read", () => {
@@ -52,14 +76,24 @@ describe("stepStatus", () => {
   };
 
   it("names what is in the way, never a verdict", () => {
-    expect(stepStatus("script", base, UNIT)).toEqual({
-      text: "3 of 14 chapters analyzed", tag: { intent: "danger", label: "88 lines need a speaker" },
+    const toCheck = { go: ["script", "check"], title: "Opens Script on the chapters to check" };
+    const noSpeaker = { intent: "danger", label: "88 no speaker", ...toCheck };
+    const flagged = { intent: "danger", label: "10 flagged", ...toCheck };
+    expect(stepStatus("script", { ...base, flagged: 10, noSpeaker: 88, running: 1 }, UNIT)).toEqual({
+      text: "3 of 14 chapters analyzed · 1 running", tag: noSpeaker, tags: [noSpeaker, flagged],
     });
     expect(stepStatus("cast", base, UNIT)).toEqual({
       text: "3 of 5 personas voiced", tag: { intent: "danger", label: "40 lines blocked" },
     });
     expect(stepStatus("render", base, UNIT)).toEqual({
       text: "412 of 2,140 lines rendered", tag: { intent: "accent2", label: "1,728 to go" },
+    });
+  });
+
+  it("says a script whose speakers came with the import has speakers, not 'analyzed'", () => {
+    const pod = { ...base, chapters: 12, analyzed: 0, fromImport: 12, unplaced: 0 };
+    expect(stepStatus("script", pod, { singular: "Episode", plural: "Episodes" })).toEqual({
+      text: "12 of 12 episodes have speakers · from the import", tag: null, tags: [],
     });
   });
 
@@ -84,6 +118,8 @@ describe("continueStep", () => {
     expect(continueStep("audiobook", { ...done, speakersBesideNarrator: 0 })).toBe("export");
     expect(continueStep("audiobook", { ...done, unplaced: 3 })).toBe("script");
     expect(continueStep("audiobook", { ...done, analyzed: 1 })).toBe("script");
+    // A chapter whose speakers came with the import needs no Analyze.
+    expect(continueStep("audiobook", { ...done, analyzed: 1, fromImport: 1 })).toBe("export");
     expect(continueStep("audiobook", { ...done, castVoiced: 1 })).toBe("cast");
     expect(continueStep("audiobook", { ...done, rendered: 4 })).toBe("render");
     expect(continueStep("audiobook", done)).toBe("export");

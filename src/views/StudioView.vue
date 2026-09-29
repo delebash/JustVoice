@@ -18,19 +18,17 @@
   Phase 6      — Render tab (Studio Render slice).
 -->
 <script setup>
-import { computed, onActivated, onMounted, ref, watch } from "vue";
+import { computed, onActivated, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
 // Task lifecycles ride the kit runners (AI-call convention, app-structure §8);
 // the store import remains for READS only (per-scene bars, taskForScene).
-import { AiTaskStrip, runAiEndpoint, runAiEndpointStream, useAiTasksStore, withAiTask } from "@delebash/llm-ui";
+import { runAiEndpoint, useAiTasksStore, withAiTask } from "@delebash/llm-ui";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";
 import { isStepFor, stepsFor } from "./studioSteps.js";
 import { blockStats, projectState } from "./studioStatus.js";
 import { useCopy } from "../services/copy.js";
-import {
-  SOURCE_LEGEND, hasSpeakerInfo, isMarker, isSpeakable, proseFromBlocks,
-  routeWords, sourceChipClass, sourceMeaning, unplacedBlocks,
-} from "../services/attribution.js";
+import { unplacedBlocks } from "../services/attribution.js";
+import { chapterRunFor, onChapterDone } from "../services/chapterRun.js";
 import { readPref, writePref } from "../services/prefs.js";
 import { pushToast } from "@delebash/llm-ui";
 import { useActiveProject } from "../stores/activeProject.js";
@@ -55,6 +53,8 @@ import { EmptyState } from "@delebash/llm-ui";
 import ExportPanel from "../components/ExportPanel.vue";
 import StudioOverview from "../components/StudioOverview.vue";
 import StudioDiscover from "../components/StudioDiscover.vue";
+import StudioScript from "../components/StudioScript.vue";
+import StudioScriptChapter from "../components/StudioScriptChapter.vue";
 import LinesView from "./LinesView.vue";
 import { confirmDialog } from "@delebash/llm-ui";
 
@@ -130,31 +130,31 @@ function cycleGender(voice) {
   }
 }
 
-// Per-block right-click Rewrite (plan Q1 / LD3). When the user
-// right-clicks a Script tab row, we open a preview modal where the LLM
-// rewrites that block's text in the persona's voice. User accepts →
-// row.text replaces; rejects → original stays.
+// Per-line right-click Rewrite (plan Q1 / LD3). Right-clicking a line's text
+// on Script's chapter page opens a preview modal where the LLM rewrites it in
+// the persona's voice. Accept → the line's text is replaced; reject → nothing
+// changes. It stays a right-click, with no visible control, until Slice 4
+// moves it to Render's line panel and deletes it here (§8.25).
 const rewriteModalOpen = ref(false);
-const rewriteRowIndex = ref(null);
+const rewriteLine = ref(null);     // {id, text, persona_id} — the script line
 const rewriteOriginal = ref("");
 const rewritePreview = ref("");
 const rewriteBusy = ref(false);
 const rewriteError = ref("");
 
-function rewriteRow(idx) {
-  if (!analyzeRows.value[idx]) return;
-  const row = analyzeRows.value[idx];
-  // Only dialogue/character rows have a persona to rewrite against.
-  if (rowKind(row) !== "dialogue") {
-    pushToast({ message: "Rewrite only applies to dialogue rows.", kind: "info" });
+function rewriteRow(line) {
+  if (!line) return;
+  // Only speech has a persona to rewrite against.
+  if (!line.spoken) {
+    pushToast({ message: "Rewrite only applies to spoken lines.", kind: "info" });
     return;
   }
-  if (!row.speaker || row.speaker === "unknown" || row.speaker === narratorPersona.value?.id) {
-    pushToast({ message: "Assign a persona to this row first.", kind: "info" });
+  if (!line.persona_id || line.persona_id === narratorPersona.value?.id) {
+    pushToast({ message: "Give this line a speaker first.", kind: "info" });
     return;
   }
-  rewriteRowIndex.value = idx;
-  rewriteOriginal.value = row.text;
+  rewriteLine.value = { id: line.id, text: line.text, persona_id: line.persona_id };
+  rewriteOriginal.value = line.text;
   rewritePreview.value = "";
   rewriteError.value = "";
   rewriteModalOpen.value = true;
@@ -162,16 +162,14 @@ function rewriteRow(idx) {
 }
 
 async function runRewrite() {
-  const idx = rewriteRowIndex.value;
-  if (idx == null || !analyzeRows.value[idx]) return;
-  const row = analyzeRows.value[idx];
-  const personaId = row.speaker;
+  const line = rewriteLine.value;
+  if (!line) return;
   rewriteBusy.value = true;
   try {
-    const r = await api.request(`/v1/personas/${personaId}/rewrite`, {
+    const r = await api.request(`/v1/personas/${line.persona_id}/rewrite`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: row.text }),
+      body: JSON.stringify({ text: line.text }),
     });
     rewritePreview.value = r?.text || r?.rewritten || "";
     if (!rewritePreview.value) {
@@ -185,44 +183,53 @@ async function runRewrite() {
 }
 
 async function acceptRewrite() {
-  const idx = rewriteRowIndex.value;
-  if (idx == null || !analyzeRows.value[idx] || !rewritePreview.value) {
-    rewriteModalOpen.value = false;
-    return;
-  }
-  const before = analyzeRows.value[idx];
-  analyzeRows.value[idx] = { ...before, text: rewritePreview.value, rewritten: true };
+  const line = rewriteLine.value;
   rewriteModalOpen.value = false;
+  if (!line || !rewritePreview.value) return;
   try {
-    // Straight onto the block — the "Apply" button that used to be the way
-    // anything in this table reached the server is gone (it re-POSTed every
-    // row as a NEW block and duplicated the chapter).
-    await api.request(`/v1/blocks/${before.block_id}`, {
+    // Straight onto the block — the chapter page re-reads it.
+    await api.request(`/v1/blocks/${line.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: rewritePreview.value }),
     });
-    pushToast({ message: "Block rewritten.", kind: "success" });
+    pushToast({ message: "Line rewritten.", kind: "success" });
   } catch (e) {
-    analyzeRows.value[idx] = before;
     pushToast({ message: `Couldn't save the rewrite: ${e?.message || e}`, kind: "error" });
   }
+  scriptVersion.value += 1;
 }
 
-// Script tab state (Phase 4 / Slice 2)
+// Script (Slice 3, §8.24): the chapter grid, or one chapter's page.
 const scenes = ref([]);
-const selectedSceneId = ref(null);
-const sceneText = ref("");
-const analyzeBusy = ref(false);
-const analyzeRows = ref([]);
-const analyzeRouteUsed = ref(null);
-// Why that route ran ("auto" | "forced") — the no-silent-state rule: the
-// meta line says Auto's pick vs forced. (The stored force died with the
-// pills, 2026-08-06 — "forced" now only ever means a per-run override.)
-const analyzeRouteSource = ref(null);
-const analyzeFloor = ref(null);
-const editedFlags = ref({});  // {rowIdx: true} for rows the user changed
-const legendOpen = ref(false);
+// GET /v1/projects/{id}/script — one row per chapter, the grid's and
+// Overview's numbers on the one "analyzed" rule.
+const scriptChapters = ref([]);
+const scriptSceneId = ref(null);     // the open chapter; null = the grid
+const scriptFocus = ref(null);       // "check" | "none" — where the page lands
+const scriptFilter = ref("all");     // the grid's chip
+const scriptVersion = ref(0);        // bumped when Studio changed a line itself
+
+async function loadProjectScript(projectId = selectedProjectId.value) {
+  if (!projectId) {
+    scriptChapters.value = [];
+    return;
+  }
+  const r = await api.safeRequest(`/v1/projects/${projectId}/script`, null);
+  if (projectId !== selectedProjectId.value) return;
+  scriptChapters.value = r?.chapters || [];
+}
+function scriptRow(sceneId) {
+  return scriptChapters.value.find((c) => c.scene_id === sceneId) || null;
+}
+// Open Script: the grid (optionally on a chip), or a chapter (optionally
+// landing on its first line to check / with no speaker).
+function openScript({ sceneId = null, focus = null, filter = null } = {}) {
+  scriptSceneId.value = sceneId;
+  scriptFocus.value = focus;
+  if (filter) scriptFilter.value = filter;
+  tab.value = "script";
+}
 
 // Render tab state (Phase 6 / Slice 1)
 const renderPresets = ref([]);
@@ -244,7 +251,6 @@ const renderGate = computed(() => {
 });
 const suggestBusyScene = ref(null);
 const sceneBlockCounts = ref({});  // {sceneId: count of blocks}
-const sceneAnalyzed = ref({});     // {sceneId: any block carries a pipeline source}
 // {sceneId: blockStats(blocks)} — spoken lines, unplaced lines, lines per
 // persona. Read from the same per-chapter block fetch as the two above; the
 // Overview rolls it up (studioStatus.projectState).
@@ -337,19 +343,32 @@ const renderedSceneCount = computed(() =>
   (cacheStats.value?.scenes || []).filter((sc) => sc.total > 0 && sc.cached === sc.total).length);
 // The Script card's live count — the thing the user went looking for and
 // found hardcoded ("the heading is in studio like render 0/4 rendered, the
-// script used to show this and now doesn't"). Same shape as Render's.
-const analyzedSceneCount = computed(() =>
-  scenes.value.filter((s) => sceneAnalyzed.value[s.id]).length);
+// script used to show this and now doesn't"). Same shape as Render's, on the
+// one "analyzed" rule the grid uses.
+const analyzedSceneCount = computed(() => scriptChapters.value.filter((c) => c.analyzed).length);
 // The Overview's rollup (studioStatus.js). The cast carries a narrator flag
 // so Discover can tell "only the Narrator so far" from a populated cast.
 const overviewState = computed(() => projectState({
   scenes: scenes.value,
   stats: sceneStats.value,
+  script: scriptChapters.value,
+  running: chapterRunFor(selectedProjectId.value)?.current?.kind === "analyze" ? 1 : 0,
   cast: projectPersonas.value.map((p) => ({
     id: p.id, name: p.name, voice_id: p.voice_id, narrator: p.id === narratorPersona.value?.id,
   })),
   cache: cacheStats.value ? { total: cacheStats.value.total, cached: cacheStats.value.cached } : null,
 }));
+
+// The cast as Script's pages read it — a cast of only the Narrator blocks Analyze.
+const scriptCast = computed(() => projectPersonas.value.map((p) => ({
+  id: p.id, name: p.name, narrator: p.id === narratorPersona.value?.id,
+})));
+// A step, and where in it to land: Overview's Script numbers open the grid on
+// To check.
+function goStep(k, arg = null) {
+  if (k === "script") openScript({ sceneId: null, filter: arg || "all" });
+  else tab.value = k;
+}
 
 // Spoken lines per chapter, for Discover's grid.
 const linesByScene = computed(() =>
@@ -423,12 +442,11 @@ watch([selectedProject, () => tab.value], () => {
     loadCacheStats();
     loadMasterTarget();
   }
-  // Overview's Render row reads the same cache probe Render does. Script's
-  // speaker fixes PATCH blocks without re-reading the chapter, so the open
-  // chapter's counts are refreshed here, where they are shown.
+  // Overview's Render row reads the same cache probe Render does, and its
+  // Script row the grid's rows.
   if (tab.value === "overview" && selectedProject.value) {
     loadCacheStats();
-    if (selectedSceneId.value) refreshSceneMeta(selectedSceneId.value);
+    loadProjectScript();
   }
 }, { immediate: true });
 
@@ -806,23 +824,22 @@ watch([() => selectedProject.value?.name, tab, TAB_LABELS], publishCrumbs, { imm
 async function loadScenesForProject(projectId) {
   if (!projectId) {
     scenes.value = [];
-    selectedSceneId.value = null;
+    scriptSceneId.value = null;
+    scriptChapters.value = [];
     return;
   }
   try {
     const r = await api.safeRequest(`/v1/projects/${projectId}/scenes`, []);
     // Endpoint returns a bare array (block_count included per scene).
     scenes.value = Array.isArray(r) ? r : r?.scenes || [];
-    // Reset the scene selection whenever it doesn't belong to THIS
-    // project — keeping the old id froze Script/Render on the previous
-    // book's chapter (user-hit: "book dropdown doesn't change anything").
-    if (!scenes.value.some((s) => s.id === selectedSceneId.value)) {
-      selectedSceneId.value = scenes.value[0]?.id ?? null;
-    }
+    // A chapter open in Script that isn't in THIS project closes back to the
+    // grid — keeping the old id froze Script on the previous book's chapter
+    // (user-hit: "book dropdown doesn't change anything").
+    if (!scenes.value.some((s) => s.id === scriptSceneId.value)) scriptSceneId.value = null;
+    loadProjectScript(projectId);
     // Eager-fetch per-scene block counts for the Render tab's
     // "Select all unrendered" affordance.
     sceneBlockCounts.value = {};
-    sceneAnalyzed.value = {};
     sceneStats.value = {};
     await Promise.all(
       scenes.value.map(async (s) => {
@@ -831,10 +848,7 @@ async function loadScenesForProject(projectId) {
           const list = Array.isArray(blocks) ? blocks : blocks?.blocks ?? [];
           if (selectedProjectId.value !== projectId) return;   // switched away mid-load
           sceneBlockCounts.value = { ...sceneBlockCounts.value, [s.id]: list.length };
-          // A chapter counts as done when its blocks carry speaker
-          // information — there is no separate flag (restore decision 2).
-          sceneAnalyzed.value = { ...sceneAnalyzed.value, [s.id]: chapterHasSpeakers(list) };
-          sceneStats.value = { ...sceneStats.value, [s.id]: blockStats(list) };
+          sceneStats.value = { ...sceneStats.value, [s.id]: blockStats(list, s) };
         } catch { /* tolerated */ }
       }),
     );
@@ -908,12 +922,13 @@ const unplacedUnanalyzed = computed(() =>
 
 /** True when every selected chapter can render. Otherwise opens the blocker. */
 async function passesSpeakerCheck(queue) {
+  await loadProjectScript();
   const found = [];
   for (const s of queue) {
     const blocks = await sceneBlocks(s.id);
     const missing = unplacedBlocks(blocks);
     if (missing.length) {
-      found.push({ scene: s, blocks: missing, analyzed: chapterHasSpeakers(blocks) });
+      found.push({ scene: s, blocks: missing, analyzed: !!scriptRow(s.id)?.analyzed });
     }
   }
   if (!found.length) return true;
@@ -958,7 +973,7 @@ async function assignUnplacedToNarrator() {
   unplacedModalOpen.value = false;
   // Every chapter the fix touched, so the Overview's counts follow.
   for (const group of unplacedFound.value) await refreshSceneMeta(group.scene.id);
-  await hydrateRows(selectedSceneId.value);
+  await loadProjectScript();
   pushToast({
     message: failed
       ? `Assigned those lines to ${narratorPersona.value.name}; ${failed} failed.`
@@ -1224,8 +1239,8 @@ async function sceneBlocks(sceneId) {
 }
 
 // Re-read ONE chapter's derived state after it changes: its block count, its
-// analyzed flag, and the scene row itself (analyze stores the prose that
-// produced the split in scene metadata, and loadSceneText reads it there).
+// counts for the Overview, and the scene rows (Analyze stores the prose that
+// produced the split in scene metadata).
 async function refreshSceneMeta(sceneId) {
   if (!sceneId || !selectedProjectId.value) return;
   const [rows, blocks] = await Promise.all([
@@ -1234,261 +1249,34 @@ async function refreshSceneMeta(sceneId) {
   ]);
   const list = Array.isArray(rows) ? rows : rows?.scenes || [];
   if (list.length) scenes.value = list;
-  // The chapter can have been DELETED since we last looked — the full reload
-  // this narrowed re-points the selection in that case, and dropping that
-  // left the Script tab holding a chapter the server no longer has.
+  // The chapter can have been DELETED since we last looked.
   if (!scenes.value.some((s) => s.id === sceneId)) {
-    selectedSceneId.value = scenes.value[0]?.id ?? null;   // the watcher reloads
+    if (scriptSceneId.value === sceneId) scriptSceneId.value = null;
     return;
   }
   sceneBlockCounts.value = { ...sceneBlockCounts.value, [sceneId]: blocks.length };
-  sceneAnalyzed.value = { ...sceneAnalyzed.value, [sceneId]: chapterHasSpeakers(blocks) };
-  sceneStats.value = { ...sceneStats.value, [sceneId]: blockStats(blocks) };
+  sceneStats.value = { ...sceneStats.value, [sceneId]: blockStats(blocks, scenes.value.find((s) => s.id === sceneId)) };
 }
 
-// "Does this chapter have speaker information" is ONE question with one
-// answer, in services/attribution.js — Studio, Chapters and the render
-// resolver all read it from there now.
-function chapterHasSpeakers(blocks) {
-  return blocks.some(hasSpeakerInfo);
-}
-
-// The prose analyze runs against. The server keeps the exact text that
-// produced a chapter's current split on the scene, because that is the only
-// way re-analyze reproduces it — the stored blocks are segments, so joining
-// them back loses the paragraph structure anchoring and propagation depend
-// on. No stored copy (never analyzed, or the text was edited since) → the
-// blocks themselves, which is what the first analyze reads.
-async function loadSceneText(sceneId) {
-  if (!sceneId) {
-    sceneText.value = "";
-    return;
-  }
-  try {
-    const stored = scenes.value.find((sc) => sc.id === sceneId)?.metadata?.source_text;
-    if (stored) {
-      sceneText.value = stored;
-      return;
-    }
-    sceneText.value = proseFromBlocks(await sceneBlocks(sceneId));
-  } catch {
-    sceneText.value = "";
-  }
-}
-
-// The Script table IS the chapter's blocks (restore decision 2) — there is
-// nowhere else the analysis lives. Until 2026-08-08 the rows sat in a ref
-// that a chapter change wiped, so every analysis was thrown away the moment
-// you looked at another chapter.
-// Once a chapter has speaker information the table shows EVERY block, not
-// only the attributed ones — a paragraph pasted in afterwards carries
-// source="manual", and hiding it would leave a line that blocks the render
-// with nowhere to fix it. Markers ride along flagged, so they can be shown
-// as what they are instead of as unplaced dialogue.
-function rowsFromBlocks(blocks) {
-  if (!chapterHasSpeakers(blocks)) return [];
-  return blocks.map((b) => ({
-    block_id: b.id,
-    text: b.text,
-    speaker: b.persona_id || "unknown",
-    confidence: b.extraction_confidence,
-    source: b.source || "manual",
-    marker: isMarker(b),
-    speakable: isSpeakable(b),
-  }));
-}
-
-// Kind is DERIVED, never stored (restore decision 6): the segmenter is the
-// only thing that decides narration-vs-dialogue, and it records that
-// decision as source="narration". Wrong only for a hand-corrected narration
-// row, which is cosmetic.
-function rowKind(row) {
-  return row.source === "narration" ? "narration" : "dialogue";
-}
-
-async function hydrateRows(sceneId) {
-  editedFlags.value = {};
-  analyzeRouteUsed.value = null;
-  analyzeFloor.value = null;
-  if (!sceneId) {
-    analyzeRows.value = [];
-    return;
-  }
-  try {
-    analyzeRows.value = rowsFromBlocks(await sceneBlocks(sceneId));
-  } catch {
-    analyzeRows.value = [];
-  }
-}
-
-watch(selectedSceneId, async (id) => {
-  await loadSceneText(id);
-  // Switching chapters faster than the fetches resolve would otherwise land
-  // the previous chapter's rows under the current chapter's name — the
-  // awaits complete in finish order, not selection order.
-  if (selectedSceneId.value !== id) return;
-  await hydrateRows(id);
-}, { immediate: true });
-
-// The Script tab's own Cancel button routes through the store so the
-// The Script pane's inline strip finds its task by feature — running OR
-// lingering, so the done/failed state stays visible for the family linger
-// window instead of vanishing the instant the call returns. (The old
-// hand-rolled banner + its cancelAnalyze() died 2026-08-08; the strip's own
-// Cancel aborts the kit-owned controller.)
-const analyzeTask = computed(() =>
-  tasks.visibleTasks.find((t) => t.feature === "speaker_attribution" && t.inline)
-);
-
-async function runAnalyze() {
-  if (!selectedSceneId.value || !sceneText.value.trim()) {
-    pushToast({ message: "Pick a scene with text to analyze.", kind: "info" });
-    return;
-  }
-  analyzeBusy.value = true;
-  const sceneTitle = scenes.value.find((sc) => sc.id === selectedSceneId.value)?.title || "scene";
-  const wordCount = sceneText.value.trim().split(/\s+/).length;
-  try {
-    // `inline: true` — the Script pane mounts its own AiTaskStrip where the
-    // hand-rolled "Analyzing…" banner used to sit (the 2026-08-08 ruling: the
-    // kit strip IS the indicator; the global stack must not show it twice).
-    // Lane 2A (same day): the endpoint STREAMS the family frames, so a
-    // minute-long chapter shows live tokens/tok-s instead of a silent wait;
-    // the done frame carries the same fields as the JSON response. The URL is
-    // app-resolved (api.serverUrl) — the kit client passes absolutes through.
-    const r = await runAiEndpointStream({
-      url: `${api.serverUrl}/v1/scenes/${selectedSceneId.value}/analyze/stream`,
-      body: { text: sceneText.value },
-      task: {
-        feature: "speaker_attribution",
-        label: `Speaker extraction · ${sceneTitle}`,
-        stats: [`${wordCount} words in`],
-        onRetry: () => runAnalyze(),
-        inline: true,
-      },
-    });
-    // The run wrote itself onto the chapter's blocks, so the table reloads
-    // from there rather than from the response — one code path with the
-    // on-entry hydration, and what you see is provably what was saved.
-    // ONE chapter changed, so refresh one: reloading the whole project cost
-    // a block fetch per scene (~100 requests per analyze on a real book).
-    const sceneId = selectedSceneId.value;
+// A finished chapter of the project's run (services/chapterRun.js — Discover
+// and Analyze share it): a scan folds into the chapter rows, an Analyze
+// re-reads that chapter's counts and the grid's rows.
+const offChapterDone = onChapterDone(async ({ projectId, sceneId, kind, result }) => {
+  if (projectId !== selectedProjectId.value) return;
+  if (kind === "discover" && result) {
+    applyScans({ [sceneId]: { scanned_at: new Date().toISOString(), candidates: result.candidates || [] } });
+  } else if (kind === "analyze") {
     await refreshSceneMeta(sceneId);
-    await loadSceneText(sceneId);
-    await hydrateRows(sceneId);
-    analyzeRouteUsed.value = r.route_used;
-    analyzeRouteSource.value = r.route_source || "auto";
-    analyzeFloor.value = r.confidence_floor;
-    // Analyze no longer runs Discover behind your back (2026-09-27): finding
-    // speakers is its own step, and runs before this one.
-    const kept = r.persisted?.kept_corrected || 0;
-    pushToast({
-      message: `Analyzed ${analyzeRows.value.length} segment${analyzeRows.value.length === 1 ? "" : "s"}, read ${routeWords(analyzeRouteUsed.value)}. Saved to this ${copy.value.chapter.singular.toLowerCase()}${kept ? `; ${kept} corrected row${kept === 1 ? "" : "s"} left alone` : ""}.`,
-      kind: "success",
-      duration: 3500,
-    });
-  } catch (e) {
-    const msg = String(e?.message || e);
-    pushToast({
-      message: /abort/i.test(msg)
-        ? "Analyze cancelled."
-        : msg.includes("501") || e?.status === 501 || /no llm provider/i.test(msg)
-          ? "Analyze unavailable — wire an LLM provider in AI Settings."
-          : `Analyze failed: ${msg}`,
-      kind: "warning",
-      duration: 6000,
-    });
-  } finally {
-    analyzeBusy.value = false;
+    await loadProjectScript();
   }
-}
+});
+onBeforeUnmount(offChapterDone);
 
-// A speaker fix writes straight through to the block (restore decision 6).
-// It used to mutate the local ref and stop there, so nothing reached the
-// server AND the correction memory the analyze prompt reads was never
-// written from Studio — record_correction fires on exactly this PATCH.
-async function setRowSpeaker(idx, speaker) {
-  const row = analyzeRows.value[idx];
-  if (!row || !speaker || speaker === row.speaker) return;
-  // Same rule the bulk action enforces: a marker or a blank block is not
-  // speech and must never be given a voice. The template hides the dropdown
-  // on those rows, which is exactly how the next caller gets it wrong.
-  if (!row.speakable) return;
-  const before = { speaker: row.speaker, source: row.source };
-  analyzeRows.value[idx] = { ...row, speaker, source: "corrected" };
-  editedFlags.value = { ...editedFlags.value, [idx]: true };
-  try {
-    await api.request(`/v1/blocks/${row.block_id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ persona_id: speaker, source: "corrected" }),
-    });
-  } catch (e) {
-    analyzeRows.value[idx] = { ...analyzeRows.value[idx], ...before };
-    pushToast({ message: `Couldn't save that speaker: ${e?.message || e}`, kind: "error" });
-  }
-}
-
-// Only lines that will be SPOKEN can be unplaced. A marker or a blank block
-// has no speaker by definition, and the render skips both — counting them
-// here made the banner promise a refusal that would never come, and the bulk
-// button would have given a music cue a voice.
-const unknownRowCount = computed(() =>
-  analyzeRows.value.filter((r) => r.speakable && r.speaker === "unknown").length,
-);
-
-// The bulk exit from unknowns (restore decisions 5 + 6). Everything the
-// model couldn't place becomes narration read by the Narrator — the answer
-// that is right most of the time and never silently drops a line.
-async function assignAllUnknown() {
-  const narratorId = narratorPersona.value?.id;
-  if (!narratorId) {
-    pushToast({ message: "This project has no Narrator persona to assign to.", kind: "warning" });
-    return;
-  }
-  let failed = 0;
-  for (let i = 0; i < analyzeRows.value.length; i += 1) {
-    const row = analyzeRows.value[i];
-    if (!row.speakable || row.speaker !== "unknown") continue;
-    const before = row;
-    analyzeRows.value[i] = { ...before, speaker: narratorId, source: "corrected" };
-    editedFlags.value = { ...editedFlags.value, [i]: true };
-    try {
-      await api.request(`/v1/blocks/${before.block_id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ persona_id: narratorId, source: "corrected" }),
-      });
-    } catch {
-      analyzeRows.value[i] = before;
-      failed += 1;
-    }
-  }
-  pushToast({
-    message: failed
-      ? `Assigned the rest to ${narratorPersona.value.name}; ${failed} failed.`
-      : `Every line without a speaker now reads as ${narratorPersona.value.name}.`,
-    kind: failed ? "warning" : "success",
-  });
-}
-
-function speakerLabel(spk) {
-  if (!spk || spk === "unknown") return "unknown";
-  if (spk === "narrator") return narratorPersona.value?.name || "Narrator";
-  const persona = projectPersonas.value.find((p) => p.id === spk);
-  return persona?.name || spk;
-}
-
-// Real persona ids only. "unknown" is a state the pipeline leaves behind,
-// never something you'd choose — and PATCH cannot write a null persona back
-// anyway (UpdateBlockRequest treats null as "unchanged").
-function speakerOptions() {
-  const narrator = narratorPersona.value;
-  const opts = narrator ? [{ label: narrator.name, value: narrator.id }] : [];
-  for (const p of projectPersonas.value) {
-    if (p.id !== narrator?.id) opts.push({ label: p.name, value: p.id });
-  }
-  return opts;
+// Script's chapter page changed lines — the counts Overview and the grid
+// show follow.
+async function onScriptChanged() {
+  if (scriptSceneId.value) await refreshSceneMeta(scriptSceneId.value);
+  await loadProjectScript();
 }
 
 function voiceById(voiceId) {
@@ -1674,12 +1462,19 @@ async function smartAssignCast() {
 // (which also fires after the initial mount) or it works at most once.
 // Returns the step asked for, or null. openProjectInStudio (services/
 // openProject.js) sends "overview"; Chapters' strip sends script/cast/…
+// A step may carry where to land after a colon: "script:check" opens Script's
+// grid on To check (Home's and Overview's Script numbers).
 function consumeTabHandoff() {
   try {
     const t = window.sessionStorage?.getItem("jv.studio.tab");
     if (t) {
       window.sessionStorage.removeItem("jv.studio.tab");
-      return t;
+      const [step, arg] = t.split(":");
+      if (step === "script") {
+        scriptSceneId.value = null;
+        scriptFilter.value = arg || "all";
+      }
+      return step;
     }
   } catch { /* ignore */ }
   return null;
@@ -1703,23 +1498,9 @@ onActivated(async () => {
   // First entry: loadAll has not picked a project yet — hold the step for the
   // project watcher.
   if (!selectedProjectId.value) requestedTab = asked;
-  // SAME project: nothing above reloads, and this view is KeepAlive'd, so
-  // without this it keeps showing what it had when you left. That is not
-  // cosmetic any more — since Analyze started writing blocks, Chapters can
-  // change the very text this tab holds, and Re-analyze would send the stale
-  // copy and write the OLD wording back over the edit.
-  //
-  // The OPEN chapter only. A full project reload costs a block fetch per
-  // scene, and this fires on every entry — the same N+1 that was just taken
-  // out of runAnalyze for happening far less often. Other chapters' counts
-  // going briefly stale is cosmetic; the open chapter's text is not.
-  const id = selectedSceneId.value;
-  await refreshSceneMeta(id);
-  // It re-points the selection when the chapter is gone; the watcher owns
-  // the reload from there.
-  if (selectedSceneId.value !== id) return;
-  await loadSceneText(id);
-  if (selectedSceneId.value === id) await hydrateRows(id);
+  // SAME project: nothing above reloads, and this view is KeepAlive'd, so it
+  // re-reads what Script and Overview show — one request.
+  await loadProjectScript();
 });
 
 // Keep the app-wide active project (sidebar vocabulary, topbar chips,
@@ -1765,33 +1546,6 @@ watch(selectedProjectId, (id) => {
         <span class="jv-stepcard__title">{{ t.label }}</span>
         <span class="jv-stepcard__sub">{{ t.sub }}</span>
       </button>
-      <template v-if="tab === 'script' && selectedProject">
-        <span class="jv-spacer" />
-        <UiSelect v-model="selectedSceneId" class="studio__script-select"
-          :placeholder="`— no ${copy.chapter.plural.toLowerCase()} —`"
-          :options="scenes.map((sc) => ({ value: sc.id, label: sc.title || `${copy.chapter.singular} ${sc.position + 1}` }))" />
-        <UiButton
-          intent="primary"
-          size="small"
-          :disabled="analyzeBusy || !sceneText.trim()"
-          :label="analyzeRows.length ? '✨ Re-analyze' : '✨ Analyze chapter'"
-          :title="analyzeRows.length
-            ? 'Run it again against the current cast and your corrections. The text is never re-cut and rows you fixed are left alone.'
-            : 'Works out who speaks each line and saves it onto this chapter'"
-          @click="runAnalyze"
-        />
-        <UiButton
-          v-if="unknownRowCount"
-          intent="secondary"
-          size="small"
-          :disabled="!narratorPersona"
-          :label="`Assign ${unknownRowCount} → ${narratorPersona ? narratorPersona.name : 'Narrator'}`"
-          :title="narratorPersona
-            ? 'Everything the model couldn\'t place becomes narration. Lines with no speaker block the render.'
-            : 'This project kind has no Narrator persona — set a speaker on each line instead.'"
-          @click="assignAllUnknown"
-        />
-      </template>
       <template v-if="tab === 'render' && selectedProject">
         <span class="jv-spacer" />
         <UiTag :intent="masterPillIntent" :title="masterPillTitle">{{ masterPill }}</UiTag>
@@ -1815,7 +1569,7 @@ watch(selectedProjectId, (id) => {
         Pick a {{ copy.book.singular.toLowerCase() }} above, or create one in <a href="#projects">Projects</a>.
       </div>
       <StudioOverview v-else :project="selectedProject" :steps="visibleTabs" :state="overviewState"
-        @go="(k) => (tab = k)" @reimported="loadScenesForProject(selectedProjectId)" />
+        @go="goStep" @reimported="loadScenesForProject(selectedProjectId)" />
     </template>
 
     <!-- ── Discover — its own step (prose kinds) ───────────────────── -->
@@ -1827,8 +1581,8 @@ watch(selectedProjectId, (id) => {
     <KeepAlive>
       <StudioDiscover v-if="tab === 'discover' && selectedProject" :project="selectedProject" :scenes="scenes"
         :lines-by-scene="linesByScene"
-        :cast="projectPersonas.map((p) => ({ id: p.id, name: p.name }))"
-        @cast-changed="loadAll" @go="(k) => (tab = k)" @scans="applyScans" />
+        :cast="scriptCast"
+        @cast-changed="loadAll" @go="goStep" @scans="applyScans" />
     </KeepAlive>
 
     <!-- ── Lines — a game project's step 1 (the writers' sheet) ────── -->
@@ -2167,129 +1921,21 @@ watch(selectedProjectId, (id) => {
       </template>
     </section>
 
-    <!-- ── Script tab — Phase 4 / Slice 2 ───────────────────────────── -->
+    <!-- ── Script — the chapter grid, or one chapter (Slice 3, §8.24) ── -->
     <section v-if="tab === 'script'" class="studio__script">
       <div v-if="!selectedProject" class="jv-banner">
         Pick a {{ copy.book.singular.toLowerCase() }} above to attribute its script.
       </div>
-      <template v-else>
-        <p v-if="analyzeRows.length" class="jv-muted studio__script-meta">
-          {{ analyzeRows.length }} segments
-          <template v-if="analyzeRouteUsed">
-            · just read <strong>{{ routeWords(analyzeRouteUsed) }}</strong>
-            {{ analyzeRouteSource === "auto" ? "(chosen for your model)" : "(you forced it)" }},
-            keeping answers above {{ analyzeFloor }} confidence
-          </template>
-          <template v-else>
-            · saved from an earlier run — re-analyze to redo it with the current cast
-          </template>
-        </p>
-
-        <!-- Design law #4/#6: UiButton intents only, and no borderless
-             text-only buttons — the ghost intent IS the quiet utility. -->
-        <UiButton
-          v-if="analyzeRows.length"
-          intent="ghost"
-          size="small"
-          :label="legendOpen ? 'Hide the label guide' : 'What do these labels mean?'"
-          @click="legendOpen = !legendOpen"
-        />
-
-        <!-- The source legend: the whole audit trail of the attribution
-             pipeline, explained nowhere before. Shape precedent — .jv-card
-             groups controls into a section (design-law inventory), and
-             .jv-deflist is the canonical term/definition grid promoted from
-             KeyboardCheatsheet's scoped copy. -->
-        <div v-if="legendOpen && analyzeRows.length" class="jv-card jv-card--soft studio__legend">
-          <dl class="jv-deflist">
-            <template v-for="[key, meaning] in SOURCE_LEGEND" :key="key">
-              <dt><span :class="sourceChipClass(key)">{{ key }}</span></dt>
-              <dd class="jv-muted">{{ meaning }}</dd>
-            </template>
-          </dl>
-        </div>
-
-        <div v-if="unknownRowCount" class="jv-banner jv-banner--warn">
-          <strong>{{ unknownRowCount }} line{{ unknownRowCount === 1 ? "" : "s" }} {{ unknownRowCount === 1 ? "has" : "have" }} no speaker.</strong>
-          The render stops on these rather than dropping them silently — set a speaker
-          on each, or send them all to the narrator with the button above.
-        </div>
-
-        <!-- Inline analyze progress — the KIT strip, in the spot the
-             hand-rolled "Analyzing…" banner occupied until 2026-08-08 (user
-             ruling: "the llm runner strip should be in location that second
-             strip is and second strip should be removed"). The task is
-             inline-flagged, so the global stack never shows the run twice;
-             elapsed, tokens, stall state and Cancel are the kit's. -->
-        <AiTaskStrip v-if="analyzeTask" :task="analyzeTask" />
-
-        <template v-if="!analyzeRows.length">
-          <p class="jv-muted studio__script-meta">
-            This {{ copy.chapter.singular.toLowerCase() }} hasn't been analyzed yet.
-            Check the text below, then click Analyze — the result saves onto the
-            {{ copy.chapter.singular.toLowerCase() }} and is here when you come back.
-          </p>
-          <UiTextarea
-            class="studio__script-text"
-            v-model="sceneText"
-            :placeholder="`Paste the ${copy.chapter.singular.toLowerCase()} text here, then click Analyze.`"
-          />
-        </template>
-
-        <table v-else class="jv-table studio__script-table">
-          <thead>
-            <tr>
-              <th>Speaker</th>
-              <th>Kind</th>
-              <th>Decided by</th>
-              <th>Text</th>
-              <th>Confidence</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="(row, i) in analyzeRows"
-              :key="row.block_id"
-              :class="{ 'jv-row--attention': row.speakable && row.speaker === 'unknown' }"
-              @contextmenu.prevent="rewriteRow(i)"
-              :title="rowKind(row) === 'dialogue' ? 'Right-click to rewrite this line in character' : ''"
-            >
-              <!-- Every SPOKEN row is assignable (restore decision 6). The
-                   dropdown used to be gated to dialogue, so a misread
-                   narration line — the most common mistake there is — could
-                   not be fixed at all: "the only thing i see is that a user
-                   can change the speaker but not narrator". A marker is not
-                   speech; giving it a voice is the one wrong answer. -->
-              <td>
-                <template v-if="row.speakable">
-                  <UiSelect
-                    :model-value="row.speaker"
-                    width="id"
-                    :options="speakerOptions()"
-                    :placeholder="row.speaker === 'unknown' ? '— no speaker —' : ''"
-                    @update:model-value="(v) => setRowSpeaker(i, v)"
-                  />
-                  <span v-if="editedFlags[i]" class="studio__edited" title="You changed this">✎</span>
-                  <span v-if="row.rewritten" class="studio__edited" title="LLM-rewritten">✨</span>
-                </template>
-                <span v-else class="jv-muted">—</span>
-              </td>
-              <td>
-                <UiTag v-if="row.marker" intent="accent2" title="Music / ad direction from the import — never spoken">♪ marker</UiTag>
-                <UiTag v-else intent="ghost">{{ rowKind(row) }}</UiTag>
-              </td>
-              <td>
-                <span :class="sourceChipClass(row.source)" :title="sourceMeaning(row.source)">{{ row.source }}</span>
-              </td>
-              <td class="studio__script-text-cell">{{ row.text }}</td>
-              <td>
-                <UiTag v-if="row.confidence != null" :intent="row.confidence > 0.9 ? 'success' : row.confidence > 0.8 ? 'ghost' : 'accent2'">{{ (row.confidence * 100).toFixed(0) }}%</UiTag>
-                <span v-else class="jv-muted">—</span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </template>
+      <StudioScriptChapter v-else-if="scriptSceneId" :project="selectedProject" :scene-id="scriptSceneId"
+        :chapters="scriptChapters" :scenes="scenes" :cast="scriptCast" :focus="scriptFocus"
+        :version="scriptVersion"
+        @back="openScript({ sceneId: null })"
+        @open="(id, focus) => openScript({ sceneId: id, focus })"
+        @go="(k) => (tab = k)" @changed="onScriptChanged" @cast-changed="loadAll"
+        @rewrite="rewriteRow" />
+      <StudioScript v-else :project="selectedProject" :chapters="scriptChapters" :scenes="scenes"
+        :cast="scriptCast" v-model:filter="scriptFilter"
+        @open="(id, focus) => openScript({ sceneId: id, focus })" @go="(k) => (tab = k)" />
     </section>
 
     <!-- ── Render tab — Phase 6 / Slice 1 ───────────────────────────── -->
@@ -2506,12 +2152,14 @@ watch(selectedProjectId, (id) => {
     >
       <p class="jv-muted" style="margin: 0 0 12px">
         These would be missing from the audio, so nothing is rendered until they
-        have a voice. Send them all to the narrator, or close this and set
-        speakers row by row in 2 · Script.
+        have a voice. Send them all to the narrator, or fix them in Script.
       </p>
       <div v-for="group in unplacedFound" :key="group.scene.id" class="studio__unplaced-group">
         <strong>{{ group.scene.title || `${copy.chapter.singular} ${group.scene.position + 1}` }}</strong>
         <span class="jv-muted"> — {{ group.blocks.length }}</span>
+        <UiButton intent="ghost" size="small" label="Fix in Script ➜"
+          :title="`Opens this ${copy.chapter.singular.toLowerCase()} on its lines with no speaker, the first one selected`"
+          @click="unplacedModalOpen = false; openScript({ sceneId: group.scene.id, focus: 'none' })" />
         <ul class="studio__unplaced-list">
           <li v-for="b in group.blocks.slice(0, 8)" :key="b.id" class="jv-muted">{{ b.text }}</li>
           <li v-if="group.blocks.length > 8" class="jv-muted">…and {{ group.blocks.length - 8 }} more</li>
@@ -2534,7 +2182,7 @@ watch(selectedProjectId, (id) => {
     <AppModal
       v-if="rewriteModalOpen"
       eyebrow="Rewrite in character"
-      :title="rewriteRowIndex != null && analyzeRows[rewriteRowIndex] ? speakerLabel(analyzeRows[rewriteRowIndex].speaker) : 'Block'"
+      :title="rewriteLine ? (projectPersonas.find((p) => p.id === rewriteLine.persona_id)?.name || 'Line') : 'Line'"
       :max-width="'720px'"
       dismissable
       @close="rewriteModalOpen = false"
@@ -3019,52 +2667,7 @@ watch(selectedProjectId, (id) => {
 }
 
 
-/* ── Script tab ───────────────────────────────────────────────────── */
-.studio__script-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 6px;
-}
-.studio__script-label {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--ink-3);
-  font-weight: 600;
-}
-.studio__script-select { flex: 1 1 240px; max-width: var(--w-url); }
-
-.studio__script-meta {
-  font-size: 11.5px;
-  margin: 0 0 8px;
-}
-
-.studio__script-text {
-  width: 100%;
-  min-height: 240px;
-  font-family: var(--font-serif, Georgia, serif);
-  font-size: 13.5px;
-  line-height: 1.55;
-  resize: vertical;
-  padding: 12px 14px;
-}
-
-.studio__script-table { font-size: 12px; width: 100%; }
-.studio__script-table th { white-space: nowrap; }
-.studio__script-text-cell {
-  max-width: 480px;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.studio__edited { color: var(--accent); margin-left: 6px; font-size: 11px; }
-
-/* The row-attention state and the definition grid are canonical
-   (.jv-row--attention, .jv-deflist in styles.css). Only the spacing is
-   local. */
-.studio__legend { margin: 8px 0 12px; font-size: 12px; }
-
+/* ── Script — its pages style themselves (StudioScript*.vue) ─────── */
 
 .studio__unplaced-group { margin-bottom: 12px; font-size: 13px; }
 .studio__unplaced-list {

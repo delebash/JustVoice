@@ -17,10 +17,17 @@ import re
 # Match either pair of curly quotes OR a straight quote span.
 # Greedy enough to capture multi-sentence dialogue inside one set of
 # quotes; not greedy enough to swallow the next paragraph.
+#
+# A speech that runs over several paragraphs opens a quote on each one and
+# closes only the last, so a quote that opens and never closes is speech to
+# the paragraph's end — for straight quotes too (2026-09-29). Without the
+# straight branch, The Speckled Band with its quotes straightened lost 14
+# paragraphs of speech, 1,247 of 6,473 spoken words, to the Narrator.
 _DIALOGUE_PATTERN = re.compile(
     r"“([^“”]*?)”"   # curly
     r"|“([^“”]*?)$"        # curly, unclosed at line end
-    r'|"([^"]*?)"',                       # straight
+    r'|"([^"]*?)"'                        # straight
+    r'|"([^"]*?)$',                       # straight, unclosed at line end
     re.DOTALL,
 )
 
@@ -68,7 +75,7 @@ def segment_paragraphs(
                     })
             # The dialogue itself.
             dialogue = next(
-                (g for g in (m.group(1), m.group(2), m.group(3)) if g is not None),
+                (g for g in m.groups() if g is not None),
                 "",
             ).strip()
             if dialogue:

@@ -1082,6 +1082,20 @@ progress {
   border-radius: 0;
   background: transparent;
 }
+/* Row states on a kit grid, through its `:row-class` (Studio · Script's
+   chapter page, 2026-09-29; `.jv-row--attention` mirrors `.jv-table`'s).
+   A line with no speaker is warned; a line the checks mark is tinted; the
+   selected line is outlined; `--para-open` drops the divider under a line
+   whose paragraph carries on in the next row, so a paragraph's lines sit
+   together. */
+.jv-table-look .ui-table tbody tr.jv-row--flag > td { background: var(--accent-soft); }
+.jv-table-look .ui-table tbody tr.jv-row--attention > td { background: var(--warn-bg); }
+.jv-table-look .ui-table tbody tr.jv-row--para-open > td { border-bottom-color: transparent; }
+.jv-table-look .ui-table tbody tr.jv-row--selected > td {
+  box-shadow: inset 0 2px 0 var(--accent), inset 0 -2px 0 var(--accent);
+}
+.jv-table-look .ui-table tbody tr.jv-row--selected > td:first-child { box-shadow: inset 2px 2px 0 var(--accent), inset 0 -2px 0 var(--accent); }
+.jv-table-look .ui-table tbody tr.jv-row--selected > td:last-child { box-shadow: inset -2px 2px 0 var(--accent), inset 0 -2px 0 var(--accent); }
 
 /* Two-column list + detail pane (preview L148-155) */
 .jv-pane {

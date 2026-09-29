@@ -18,26 +18,28 @@
   while you look at Script.
 
   Scope is an inline grid (§8.7: never a modal) — a select-all checkbox in the
-  header and one per chapter. The run is the kit task (`withAiTask`, inline),
-  shown by the AiTaskStrip at the top of this page with its Cancel — the same
-  strip Script shows for Analyze.
+  header and one per chapter. The scan runs on the project's chapter run
+  (services/chapterRun.js, 2026-09-29) — the same run Script's Analyze uses, so
+  only one runs at a time and it survives leaving Studio. Each chapter is a kit
+  task, shown by the AiTaskStrip at the top of this page with its Cancel.
 
   2026-09-27 fixes (A B C D + 1-5): a proposal that names a persona already in
   your LIBRARY says so ("→ Brick Halvorn") and Add re-links that persona and
   learns the name as an alias instead of making a duplicate; spellings of one
   person merge into one row ("Sedge" + "Old Sedge"); a quote the server could
   not find in the chapter is flagged; Ignore is remembered for the project and
-  listed below with Restore.
+  listed below. Each ignored name and each cast member has its own ✕, and both
+  lists have "Clear all" (2026-09-29) — the cast's keeps the Narrator.
 -->
 <script setup>
 import { computed, ref, watch } from "vue";
 import {
-  AiTaskStrip, UiButton, UiCheckbox, UiTable, UiTag, pushToast, useAiTasksStore, withAiTask,
+  AiTaskStrip, UiButton, UiCheckbox, UiTable, UiTag, pushToast, useAiTasksStore,
 } from "@delebash/llm-ui";
 import { useApi } from "../stores/api.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { useCopy } from "../services/copy.js";
-import { proseFromBlocks } from "../services/attribution.js";
+import { chapterRunFor, failureOf, inRun, queueChapters } from "../services/chapterRun.js";
 import { proposedSpeakers } from "../views/studioStatus.js";
 
 const props = defineProps({
@@ -45,11 +47,12 @@ const props = defineProps({
   scenes: { type: Array, default: () => [] },
   // {sceneId: spoken lines} — Studio already counts these for every chapter.
   linesByScene: { type: Object, default: () => ({}) },
-  // The cast, [{id, name}] — a proposal for one of them is not shown.
+  // The cast, [{id, name, narrator}] — a proposal for one of them is not shown.
   cast: { type: Array, default: () => [] },
 });
 // `scans`: {sceneId: discover|null} — the saved-scan changes for Studio to
-// fold into its chapter rows (null = that chapter's saved list emptied).
+// fold into its chapter rows (null = that chapter's saved list emptied). A
+// finished scan reaches Studio through the chapter run instead.
 const emit = defineEmits(["cast-changed", "go", "scans"]);
 
 const api = useApi();
@@ -60,15 +63,20 @@ const tasks = useAiTasksStore();
 const projectsStore = useProjectsStore();
 
 const selected = ref({});     // {sceneId: true}
-const running = ref({});      // {sceneId: "scanning" | "failed"} — this run only
-const failure = ref({});      // {sceneId: the server's reason} — shown on the row
 const busyName = ref(null);   // a proposal being added or ignored
 
 watch(() => props.project?.id, () => {
   selected.value = {};
-  running.value = {};
-  failure.value = {};
 });
+
+// Where a chapter stands in the project's run: "scanning" (this one now),
+// "queued", or a failure from this session's scans.
+function rowState(scene) {
+  const where = inRun(props.project.id, scene.id);
+  if (where) return where === "current" ? "scanning" : "queued";
+  return failureOf(props.project.id, scene.id)?.kind === "discover" ? "failed" : null;
+}
+const failureText = (scene) => failureOf(props.project.id, scene.id)?.reason || "";
 
 const chapterWord = computed(() => copy.value.chapter);
 const titleOf = (s) => s.title || `${chapterWord.value.singular} ${s.position + 1}`;
@@ -87,13 +95,19 @@ function waitingIn(scene) {
 const ignored = ref([]);
 watch(() => props.project, (p) => { ignored.value = [...(p?.discover_ignored || [])]; }, { immediate: true });
 
-const scanning = computed(() => Object.values(running.value).includes("scanning"));
-const pickedScenes = computed(() => props.scenes.filter((s) => selected.value[s.id]));
+const run = computed(() => chapterRunFor(props.project.id));
+const scanning = computed(() => run.value?.current?.kind === "discover");
+// A chapter already in the run can't be queued again.
+const pickable = (s) => !inRun(props.project.id, s.id);
+const pickedScenes = computed(() => props.scenes.filter((s) => selected.value[s.id] && pickable(s)));
 const pickedLines = computed(() =>
   pickedScenes.value.reduce((n, s) => n + (props.linesByScene[s.id] || 0), 0));
-const allPicked = computed(() => props.scenes.length > 0 && pickedScenes.value.length === props.scenes.length);
+const allPicked = computed(() => {
+  const open = props.scenes.filter(pickable);
+  return open.length > 0 && open.every((s) => selected.value[s.id]);
+});
 function toggleAll(on) {
-  selected.value = on ? Object.fromEntries(props.scenes.map((s) => [s.id, true])) : {};
+  selected.value = on ? Object.fromEntries(props.scenes.filter(pickable).map((s) => [s.id, true])) : {};
 }
 function toggleOne(id, on) {
   selected.value = { ...selected.value, [id]: on };
@@ -130,94 +144,13 @@ function ago(iso) {
   return d === 1 ? "yesterday" : `${d} days ago`;
 }
 
-// The chapter's prose, exactly as Analyze would read it: the stored text that
-// produced its split when there is one, else its blocks joined back up.
-async function sceneText(scene) {
-  if (scene.metadata?.source_text) return scene.metadata.source_text;
-  const r = await api.safeRequest(`/v1/scenes/${scene.id}/blocks`, []);
-  return proseFromBlocks(Array.isArray(r) ? r : (r?.blocks ?? []));
-}
-
-// Token usage across the run's calls, for the strip's finish line.
-function addUsage(total, u) {
-  if (!u || typeof u !== "object") return total;
-  const out = { ...(total || {}) };
-  for (const [k, v] of Object.entries(u)) if (typeof v === "number") out[k] = (out[k] || 0) + v;
-  return out;
-}
-
-async function scan() {
+// Queue the ticked chapters on the project's run. A run already going (an
+// Analyze, say) takes them after its own.
+function scan() {
   const targets = pickedScenes.value;
-  if (!targets.length || scanning.value) return;
-  running.value = Object.fromEntries(targets.map((s) => [s.id, "scanning"]));
-  failure.value = {};
-  const noun = (targets.length === 1 ? chapterWord.value.singular : chapterWord.value.plural).toLowerCase();
-  try {
-    await withAiTask({
-      feature: "speaker_identification",
-      label: `Discover speakers · ${targets.length} ${noun}`,
-      inline: true,
-      meta: { projectId: props.project.id },
-      onRetry: () => scan(),
-    }, async (task) => {
-      task.setProgress(0, targets.length);
-      let done = 0;
-      let failed = 0;
-      let usage = null;
-      for (const scene of targets) {
-        if (task.signal.aborted) break;
-        task.setStats([`reading ${titleOf(scene)}`, `${done} of ${targets.length} done`]);
-        try {
-          const text = (await sceneText(scene)).trim();
-          if (text) {
-            const out = await api.request(`/v1/scenes/${scene.id}/discover-speakers`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ text }),
-              signal: task.signal,
-            });
-            usage = addUsage(usage, out?.usage);
-            // The server saved it; mirror the saved shape so the rows fill in
-            // now, without re-reading the project.
-            emit("scans", {
-              [scene.id]: { scanned_at: new Date().toISOString(), candidates: out?.candidates || [] },
-            });
-          }
-          const { [scene.id]: _drop, ...rest } = running.value;
-          running.value = rest;
-        } catch (e) {
-          if (task.signal.aborted) break;
-          running.value = { ...running.value, [scene.id]: "failed" };
-          if (e?.status === 501 || /no llm provider/i.test(String(e?.message || e))) {
-            throw new Error("Discover needs a language model — wire one in AI Settings.");
-          }
-          // The server's own words (a model that would not load, say) — a bare
-          // "failed" tells you nothing you can act on.
-          failure.value = { ...failure.value, [scene.id]: String(e?.message || e) };
-          failed += 1;
-        }
-        done += 1;
-        task.setProgress(done, targets.length);
-      }
-      // Every chapter failing is a failed run, and the strip says why; some
-      // failing leaves a finished run with the reasons on their rows.
-      if (failed && failed === targets.length) {
-        throw new Error(failure.value[targets[0].id] || "Discover failed.");
-      }
-      task.setStats([
-        `${proposals.value.length} to review`,
-        ...(failed ? [`${failed} ${failed === 1 ? chapterWord.value.singular : chapterWord.value.plural} failed`.toLowerCase()] : []),
-      ]);
-      return { result: null, usage };
-    });
-  } catch (e) {
-    if (!/abort/i.test(String(e?.message || e))) {
-      pushToast({ message: String(e?.message || e), kind: "warning", duration: 6000 });
-    }
-  } finally {
-    // Chapters never reached (Cancel) go back to their saved state.
-    running.value = Object.fromEntries(Object.entries(running.value).filter(([, v]) => v === "failed"));
-  }
+  if (!targets.length) return;
+  queueChapters({ projectId: props.project.id, kind: "discover", chapters: targets });
+  selected.value = {};
 }
 
 // The server prunes a name from every chapter's saved list on promote and on
@@ -265,20 +198,55 @@ async function add(c) {
   }
 }
 
-async function restore(name) {
+// Take names off the ignore list — one (its ✕) or all ("Clear all"). No
+// confirmation (decided 2026-09-29): a name taken off only means Discover may
+// propose it again.
+async function unignore(names) {
+  if (!names.length) return;
   try {
     const r = await api.request(`/v1/projects/${props.project.id}/discover/unignore`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ names: [name] }),
+      body: JSON.stringify({ names }),
     });
     ignored.value = r?.ignored || [];
     projectsStore.reload();
-    pushToast({ message: `${name} can be proposed again — scan a chapter that names them.`, kind: "info" });
+    pushToast({
+      message: names.length === 1
+        ? `${names[0]} can be proposed again — scan a chapter that names them.`
+        : `${names.length} names can be proposed again.`,
+      kind: "info",
+    });
   } catch (e) {
-    pushToast({ message: `Restore failed: ${e?.message || e}`, kind: "error" });
+    pushToast({ message: `Couldn't take that off the list: ${e?.message || e}`, kind: "error" });
   }
 }
+
+// Take personas out of this project's cast — one (its ✕) or all ("Clear
+// all", which keeps the Narrator: decided 2026-09-29). The persona stays in
+// the library, and lines already given to it keep it. No confirmation here.
+const castBusy = ref(false);
+async function uncast(people) {
+  if (!people.length || castBusy.value) return;
+  castBusy.value = true;
+  let failed = 0;
+  for (const p of people) {
+    try {
+      await api.request(`/v1/projects/${props.project.id}/cast/${p.id}`, { method: "DELETE" });
+    } catch { failed += 1; }
+  }
+  castBusy.value = false;
+  emit("cast-changed");
+  pushToast({
+    message: failed
+      ? `${people.length - failed} removed from the cast; ${failed} failed.`
+      : people.length === 1
+        ? `${people[0].name} removed from the cast — still in your library.`
+        : `${people.length} removed from the cast — still in your library.`,
+    kind: failed ? "warning" : "success",
+  });
+}
+const clearable = computed(() => props.cast.filter((c) => !c.narrator));
 
 async function ignore(c) {
   busyName.value = c.key;
@@ -320,21 +288,23 @@ async function ignore(c) {
         <template v-else>
           <UiTable class="jv-table-look studio-discover__grid" :data="scenes" :columns="GRID_COLUMNS" data-key="id">
             <template #head-sel>
-              <UiCheckbox :model-value="allPicked" :disabled="scanning"
+              <UiCheckbox :model-value="allPicked" :disabled="!scenes.some(pickable)"
                 :title="allPicked ? 'Select none' : 'Select all'"
                 @update:model-value="toggleAll" />
             </template>
             <template #sel="{ row }">
-              <UiCheckbox :model-value="!!selected[row.id]" :disabled="scanning"
+              <UiCheckbox :model-value="!!selected[row.id] && pickable(row)" :disabled="!pickable(row)"
+                :title="pickable(row) ? '' : 'In the current run'"
                 @update:model-value="(v) => toggleOne(row.id, v)" />
             </template>
             <template #title="{ row }"><strong>{{ titleOf(row) }}</strong></template>
             <template #lines="{ row }"><span class="jv-mono">{{ (linesByScene[row.id] || 0).toLocaleString() }}</span></template>
             <template #scanned="{ row }">
-              <UiTag v-if="running[row.id] === 'scanning'" intent="solid">scanning…</UiTag>
-              <template v-else-if="running[row.id] === 'failed'">
-                <UiTag intent="danger" :title="failure[row.id] || ''">failed</UiTag>
-                <div v-if="failure[row.id]" class="jv-hint studio-discover__why">{{ failure[row.id] }}</div>
+              <UiTag v-if="rowState(row) === 'scanning'" intent="solid">scanning…</UiTag>
+              <UiTag v-else-if="rowState(row) === 'queued'" intent="ghost">queued</UiTag>
+              <template v-else-if="rowState(row) === 'failed'">
+                <UiTag intent="danger" :title="failureText(row)">failed</UiTag>
+                <div v-if="failureText(row)" class="jv-hint studio-discover__why">{{ failureText(row) }}</div>
               </template>
               <span v-else-if="row.metadata?.discover?.scanned_at" class="jv-muted"
                 :title="new Date(row.metadata.discover.scanned_at).toLocaleString()">{{ ago(row.metadata.discover.scanned_at) }}</span>
@@ -350,7 +320,7 @@ async function ignore(c) {
           <div class="jv-inline-row studio-discover__run">
             <UiButton
               intent="primary"
-              :disabled="!pickedScenes.length || scanning"
+              :disabled="!pickedScenes.length"
               :loading="scanning"
               :label="pickedScenes.length
                 ? `🔍 Scan ${pickedScenes.length} ${(pickedScenes.length === 1 ? chapterWord.singular : chapterWord.plural).toLowerCase()}`
@@ -359,7 +329,7 @@ async function ignore(c) {
             />
             <span class="jv-hint">
               {{ pickedScenes.length
-                ? `${pickedLines.toLocaleString()} lines · one model call per ${chapterWord.singular.toLowerCase()}; each row fills in when its ${chapterWord.singular.toLowerCase()} finishes, and a new scan replaces that ${chapterWord.singular.toLowerCase()}'s last one`
+                ? `${pickedLines.toLocaleString()} lines · ${run?.current ? "starts after the current run" : `one model call per ${chapterWord.singular.toLowerCase()}`}; each row fills in when its ${chapterWord.singular.toLowerCase()} finishes, and a new scan replaces that ${chapterWord.singular.toLowerCase()}'s last one`
                 : `Tick the ${chapterWord.plural.toLowerCase()} to read.` }}
             </span>
           </div>
@@ -397,7 +367,7 @@ async function ignore(c) {
               :title="row.library ? `Put ${row.library.name} (already in your library) in this cast` : `Create a persona for ${row.name} and put them in this cast`"
               @click="add(row)" />
             <UiButton intent="ghost" size="small" label="Ignore" :disabled="busyName !== null"
-              title="Drop it, and keep it out of later scans of this project. Restore undoes it."
+              title="Drop it, and keep it out of later scans of this project. Its ✕ in Ignored undoes it."
               @click="ignore(row)" />
           </template>
           <template #empty>
@@ -413,12 +383,13 @@ async function ignore(c) {
       <div class="jv-card__header">
         <h3 class="jv-card__title">Ignored</h3>
         <span class="jv-hint">{{ ignored.length }} · never proposed again in this {{ copy.book.singular.toLowerCase() }}</span>
+        <span class="jv-spacer" />
+        <UiButton intent="ghost" size="small" label="Clear all"
+          title="Take every name off this list — Discover may propose them again" @click="unignore([...ignored])" />
       </div>
       <div class="jv-card__body studio-discover__cast">
-        <span v-for="n in ignored" :key="n" class="studio-discover__ignored">
-          <UiTag intent="ghost">{{ n }}</UiTag>
-          <UiButton intent="ghost" size="small" label="Restore" :title="`Let Discover propose ${n} again`" @click="restore(n)" />
-        </span>
+        <UiTag v-for="n in ignored" :key="n" intent="ghost" removable :value="n"
+          :title="`✕ lets Discover propose ${n} again`" @remove="unignore([n])" />
       </div>
     </div>
 
@@ -426,10 +397,16 @@ async function ignore(c) {
       <div class="jv-card__header">
         <h3 class="jv-card__title">Already in the cast</h3>
         <span class="jv-hint">{{ castNames.length }}</span>
+        <span class="jv-spacer" />
+        <UiButton v-if="clearable.length" intent="ghost" size="small" label="Clear all" :disabled="castBusy"
+          title="Take everyone but the Narrator out of this cast — they stay in your library, and lines already given to them keep them"
+          @click="uncast(clearable)" />
       </div>
       <div class="jv-card__body">
         <div class="studio-discover__cast">
-          <UiTag v-for="n in castNames" :key="n" intent="ghost">🎭 {{ n }}</UiTag>
+          <UiTag v-for="c in cast" :key="c.id" intent="ghost" removable :value="c.name"
+            :title="`✕ takes ${c.name} out of this cast — the persona stays in your library`"
+            @remove="uncast([c])">🎭 {{ c.name }}</UiTag>
           <span v-if="!castNames.length" class="jv-muted">Nobody yet.</span>
         </div>
         <p class="jv-hint">
@@ -449,5 +426,4 @@ async function ignore(c) {
 .studio-discover__why { max-width: 60ch; margin-top: 4px; }
 .studio-discover__quote { display: block; max-width: 46ch; color: var(--ink-2); font-style: italic; }
 .studio-discover__lib { margin: 3px 0; }
-.studio-discover__ignored { display: inline-flex; align-items: center; gap: 4px; }
 </style>

@@ -9,14 +9,17 @@
 // since the "both" ruling the same day). Nothing records an export, so Export
 // shows no count — a number with no data behind it would be invented.
 
-import { hasSpeakerInfo, isSpeakable, unplacedBlocks } from "../services/attribution.js";
+import {
+  chapterAnalyzed, isSpeakable, speakersFromImport, unplacedBlocks,
+} from "../services/attribution.js";
 
 /**
  * One chapter's blocks → the counts the Overview rolls up.
  * `byPersona` is spoken lines per persona, so "lines blocked on a voice" can be
  * recomputed when a voice is assigned without refetching every chapter.
+ * `scene` carries `metadata.analyzed_at` — the one "analyzed" rule.
  */
-export function blockStats(blocks) {
+export function blockStats(blocks, scene = null) {
   const list = blocks || [];
   const byPersona = {};
   let speakable = 0;
@@ -28,7 +31,8 @@ export function blockStats(blocks) {
   return {
     speakable,
     unplaced: unplacedBlocks(list).length,
-    analyzed: list.some(hasSpeakerInfo),
+    analyzed: chapterAnalyzed(scene, list),
+    fromImport: speakersFromImport(scene, list),
     byPersona,
   };
 }
@@ -109,12 +113,15 @@ export function proposedSpeakers(scenes, cast = []) {
 /**
  * Roll the chapters and the cast up into the project's state.
  * `stats` is {sceneId: blockStats}; `cast` is [{id, name, voice_id, narrator}];
- * `cache` is the /v1/render/cache-stats body, or null before it loads.
+ * `cache` is the /v1/render/cache-stats body, or null before it loads;
+ * `script` is GET /v1/projects/{id}/script's chapters (the flags are the
+ * server's), or null before it loads; `running` counts chapters being analyzed.
  */
-export function projectState({ scenes = [], stats = {}, cast = [], cache = null }) {
+export function projectState({ scenes = [], stats = {}, cast = [], cache = null, script = null, running = 0 }) {
   let lines = 0;
   let unplaced = 0;
   let analyzed = 0;
+  let fromImport = 0;
   const byPersona = {};
   for (const s of scenes) {
     const st = stats[s.id];
@@ -122,8 +129,15 @@ export function projectState({ scenes = [], stats = {}, cast = [], cache = null 
     lines += st.speakable;
     unplaced += st.unplaced;
     if (st.analyzed) analyzed += 1;
+    if (st.fromImport) fromImport += 1;
     for (const [pid, n] of Object.entries(st.byPersona)) byPersona[pid] = (byPersona[pid] || 0) + n;
   }
+  const flagged = (script || []).reduce((n, c) => n + (c.flagged || 0), 0);
+  // Lines with no speaker in what Analyze (or the import) decided — the
+  // grid's "To check". A chapter never analyzed needs Analyze instead.
+  const noSpeaker = script
+    ? script.filter((c) => c.analyzed || c.from_import).reduce((n, c) => n + (c.no_speaker || 0), 0)
+    : unplaced;
   const voiceless = cast.filter((p) => !p.voice_id);
   const scanned = scenes.filter((s) => s.metadata?.discover?.scanned_at).length;
   const proposed = proposedSpeakers(scenes, cast).length;
@@ -133,6 +147,10 @@ export function projectState({ scenes = [], stats = {}, cast = [], cache = null 
     scanned,
     proposed,
     analyzed,
+    fromImport,
+    running,
+    flagged,
+    noSpeaker,
     lines,
     unplaced,
     castTotal: cast.length,
@@ -149,6 +167,8 @@ const plural = (n, one, many = `${one}s`) => `${n.toLocaleString()} ${n === 1 ? 
 /**
  * The row for one step: what it says, and the tag (if any) naming the thing
  * in the way. `unit` is the kind's word for a chapter ({singular, plural}).
+ * Script's row can carry two (`tags`), each opening Script's grid on "To
+ * check" (`go`).
  */
 export function stepStatus(key, state, unit) {
   const ch = (n) => `${n.toLocaleString()} ${(n === 1 ? unit.singular : unit.plural).toLowerCase()}`;
@@ -162,13 +182,24 @@ export function stepStatus(key, state, unit) {
           ? { intent: "accent2", label: `${plural(state.proposed, "speaker")} to review` }
           : null,
       };
-    case "script":
+    case "script": {
+      if (!state.chapters) return { text: `No ${unit.plural.toLowerCase()} yet`, tag: null, tags: [] };
+      const toCheck = { go: ["script", "check"], title: `Opens Script on the ${unit.plural.toLowerCase()} to check` };
+      const tags = [
+        ...(state.noSpeaker ? [{ intent: "danger", label: `${state.noSpeaker.toLocaleString()} no speaker`, ...toCheck }] : []),
+        ...(state.flagged ? [{ intent: "danger", label: `${state.flagged.toLocaleString()} flagged`, ...toCheck }] : []),
+      ];
+      // Every chapter's speakers came with the import (a podcast's scripts):
+      // there was nothing to analyze, and "0 of 12 analyzed" would say otherwise.
+      const imported = !state.analyzed && state.fromImport > 0 && state.fromImport === state.chapters;
       return {
-        text: state.chapters
-          ? `${state.analyzed.toLocaleString()} of ${ch(state.chapters)} analyzed`
-          : `No ${unit.plural.toLowerCase()} yet`,
-        tag: state.unplaced ? { intent: "danger", label: `${plural(state.unplaced, "line")} need a speaker` } : null,
+        text: imported
+          ? `${state.fromImport.toLocaleString()} of ${ch(state.chapters)} have speakers · from the import`
+          : `${state.analyzed.toLocaleString()} of ${ch(state.chapters)} analyzed${state.running ? ` · ${state.running} running` : ""}`,
+        tag: tags[0] || null,
+        tags,
       };
+    }
     case "lines":
       return {
         text: state.lines ? plural(state.lines, "line") : "No lines yet — re-import the sheet",
@@ -208,7 +239,7 @@ export function continueStep(projectType, state) {
     // Discover has work while names wait on Add/Ignore, or while the cast is
     // still only the Narrator and some chapter has never been scanned.
     if (state.proposed || (!state.speakersBesideNarrator && state.scanned < state.chapters)) return "discover";
-    if (state.analyzed < state.chapters || state.unplaced) return "script";
+    if (state.analyzed + (state.fromImport || 0) < state.chapters || state.unplaced) return "script";
   }
   if (state.castVoiced < state.castTotal || state.blocked) return "cast";
   if (state.renderable === null || state.rendered < state.renderable) return "render";

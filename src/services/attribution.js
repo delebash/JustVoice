@@ -75,15 +75,29 @@ export function isSpeakable(block) {
   return !isMarker(block) && !!(block?.text || "").trim();
 }
 
+// The Block.source values an Analyze run writes. "corrected" is yours and
+// "manual" a line nobody attributed — neither says Analyze ran.
+const PIPELINE_SOURCES = new Set(["narration", "tag", "propagated", "llm", "floored"]);
+
 /**
- * Does this block carry speaker information at all? `source` means the
- * pipeline decided it; `persona_id` alone means an IMPORT did — podcast
- * markdown assigns every line from its `HOST:` labels, and calling those
- * chapters "not analyzed" invited one click that discarded known-correct
- * speakers and replaced them with model guesses.
+ * ONE "analyzed" rule (Studio Slice 3, §8.24) — the server's
+ * (`extraction_api._chapter_script`) and Overview's: Analyze has run on the
+ * chapter (`scene.metadata.analyzed_at`). Older data has no date; there, a
+ * chapter whose lines carry a pipeline `source` counts. It used to be "any
+ * line has a speaker", which called an imported podcast script analyzed.
  */
-export function hasSpeakerInfo(block) {
-  return !!block?.source || !!block?.persona_id;
+export function chapterAnalyzed(scene, blocks) {
+  return !!scene?.metadata?.analyzed_at || (blocks || []).some((b) => PIPELINE_SOURCES.has(b?.source));
+}
+
+/**
+ * Speakers from the import: never analyzed, and every line that will be
+ * spoken already has its speaker (podcast `HOST:` labels, game sheets).
+ * Analyzing those would discard known-correct speakers for model guesses.
+ */
+export function speakersFromImport(scene, blocks) {
+  const speech = (blocks || []).filter(isSpeakable);
+  return !chapterAnalyzed(scene, blocks) && speech.length > 0 && speech.every((b) => !!b.persona_id);
 }
 
 /** Finished: every line that will be spoken knows who speaks it. */
