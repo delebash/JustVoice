@@ -430,6 +430,15 @@ same way (no lead-in) and merges candidates by name. Knobs:
 **Test:** `npm run eval:attribution -- --whole --max-context N` forces splitting
 on the answer-keyed samples.
 
+**The answer-keyed samples** (`samples/<name>/attribution-truth.json`, read by
+`server/scripts/eval_attribution.py`): `the-ninth-facet` and `the-salt-iron-road`
+are JustWrite's own sample books; `the-speckled-band` (2026-09-29) is published
+prose — Conan Doyle's story, public domain, from Project Gutenberg — loaded as a
+plain-text import through the `book_prose` adapter. A key may name its book file
+and adapter (`"book"`, `"adapter"`) and, for a book that ships no characters,
+carry the cast with its aliases. It is the only sample with a first-person
+narrator who also speaks and with speeches that run over several paragraphs.
+
 **The prompt is starved.** `_resolve_cast` (`extraction_api.py:145-167`)
 hardcodes role/gender/pronouns to `None` and aliases to `[]`;
 `format_characters` (`extraction/prompts.py:82-97`) reads those empty fields. The

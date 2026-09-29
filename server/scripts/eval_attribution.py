@@ -5,6 +5,7 @@
     npm run eval:attribution -- --runs 2 --route direct
     npm run eval:attribution -- --system draft.txt   # try a prompt, save nothing
     npm run eval:attribution -- --fixes-from "Bigger Inside"   # with the user's fixes in the prompt
+    npm run eval:attribution -- --sample the-speckled-band     # published prose, a plain-text import
 
 Needs a running JustVoice server (it owns the model and the LIVE prompt rows —
 AI Settings → Features → the speaker_attribution routes). Each chapter goes
@@ -119,15 +120,28 @@ def main() -> int:
 
     root = HERE.parents[2] / "samples" / args.sample
     key = json.loads((root / "attribution-truth.json").read_text(encoding="utf-8"))
-    book = run_adapter("justwrite", (root / "book.json").read_bytes(), filename="book.json")
+    # A key may name its book file and the adapter that reads it — a plain-text
+    # book goes through book_prose, the path a non-JustWrite import takes.
+    book_file = key.get("book", "book.json")
+    book = run_adapter(key.get("adapter", "justwrite"), (root / book_file).read_bytes(), filename=book_file)
 
-    # The cast exactly as _resolve_cast shapes it for Analyze.
+    # The cast exactly as _resolve_cast shapes it for Analyze. A cast entry is a
+    # name, or {"name", "aliases", "notes"} for a book that ships no characters
+    # (the key then stands in for what Discover would have added).
+    cast = [c if isinstance(c, dict) else {"name": c} for c in key["cast"]]
+    cast_names = [c["name"] for c in cast]
+
+    def char(name: str, aliases, notes) -> dict:
+        return {"id": ("p_" + name.lower().replace(" ", "_")) if args.readable_ids else slug(name),
+                "name": name, "role": None, "gender": None, "pronouns": None,
+                "aliases": list(aliases or []), "description": notes}
+
     chars = [{"id": "p_narrator", "name": "Narrator", "role": None, "gender": None,
               "pronouns": None, "aliases": [], "description": None}]
-    for c in book.characters:
-        if c.name in key["cast"]:
-            chars.append({"id": ("p_" + c.name.lower().replace(" ", "_")) if args.readable_ids else slug(c.name), "name": c.name, "role": None, "gender": None,
-                          "pronouns": None, "aliases": list(c.aliases), "description": c.notes})
+    if book.characters:
+        chars += [char(c.name, c.aliases, c.notes) for c in book.characters if c.name in cast_names]
+    else:
+        chars += [char(c["name"], c.get("aliases"), c.get("notes")) for c in cast]
     id_to_name = {c["id"]: c["name"] for c in chars}
     id_to_name.update({"narrator": "Narrator", "unknown": "unknown"})
 
@@ -152,7 +166,7 @@ def main() -> int:
     if args.fixes_from:
         body_extra["corrections"] = build_fixes(book, key, args, chars)
 
-    print(f"Attribution test · {book.project.name} · {args.server} · {args.runs} run(s)"
+    print(f"Attribution test · {key.get('title') or book.project.name} · {args.server} · {args.runs} run(s)"
           f" · {', '.join(f'{k}={v!r:.40}' for k, v in body_extra.items()) or 'live settings'}\n")
     for fix in body_extra.get("corrections", []):
         print(f"   fix: “{fix['text_snippet'][:60]}” -> {id_to_name.get(fix['persona_id'])}")
