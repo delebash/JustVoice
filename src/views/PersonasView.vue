@@ -4,8 +4,10 @@
   (see plan: voice + delivery + effects + personality all live here directly).
 
   Layout:
-    Left:  library list with filter chips (All / Used / Unused / By project)
-           and a "Used in N project(s)" badge per persona card.
+    Left:  library list with filter chips (All / Used / Unused / By project),
+           the books each persona is in (names are unique within a book, not
+           across the library — two "Narrator"s are told apart by their
+           books, 2026-09-29), and ticks + "Delete N selected".
     Right: rich editor for the selected persona.
 
   Persona vs Voice: Voice is the TTS artifact (engine preset or cloned WAV).
@@ -23,7 +25,7 @@ import { computed, onMounted, ref, watch, nextTick } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "@delebash/llm-ui";
 import { confirmDialog } from "@delebash/llm-ui";
-import { UiButton, UiInput, UiTextarea, UiTag, UiSelect, AppModal, UiTable } from "@delebash/llm-ui";
+import { UiButton, UiCheckbox, UiInput, UiTextarea, UiTag, UiSelect, AppModal, UiTable } from "@delebash/llm-ui";
 import { EmptyState } from "@delebash/llm-ui";
 import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
 import { usePersonasStore } from "../stores/personas.js";
@@ -36,9 +38,10 @@ import { useProjectsStore } from "../stores/projects.js";
 // which matters here — "which project uses this persona most" was unanswerable
 // without re-reading the whole list.
 const PERSONA_COLUMNS = [
+  { id: "pick", header: "", headerStyle: { width: "1%" }, cellStyle: { width: "1%" } },
   { id: "name", accessorKey: "name", header: "Persona", sortable: true },
   { id: "voice", header: "Voice" },
-  { id: "used", header: "Used in", headerStyle: { width: "110px" } },
+  { id: "used", header: "Used in" },
   { id: "actions", header: "Actions",
     headerStyle: { width: "150px", textAlign: "right" },
     cellStyle: { textAlign: "right", whiteSpace: "nowrap" } },
@@ -110,6 +113,55 @@ const filteredPersonas = computed(() => {
 
 function usageCount(personaId) {
   return (usage.value[personaId] || []).length;
+}
+// The books a persona is in, by name — what tells two personas with the
+// same name apart (names are unique within a book, not the library).
+function booksOf(personaId) {
+  return (usage.value[personaId] || []).map((u) => u.project_name).filter(Boolean);
+}
+
+// Tick several personas and delete them at once (decided 2026-09-29). Each
+// goes the way a single Delete does: out of every cast, its lines keep no
+// speaker. Ticks count only for personas the current filter shows.
+const picked = ref({});
+const pickedPersonas = computed(() => filteredPersonas.value.filter((p) => picked.value[p.id]));
+const allPicked = computed(() =>
+  filteredPersonas.value.length > 0 && filteredPersonas.value.every((p) => picked.value[p.id]));
+function pickAll(on) {
+  picked.value = on ? Object.fromEntries(filteredPersonas.value.map((p) => [p.id, true])) : {};
+}
+const bulkDeleting = ref(false);
+async function removePicked() {
+  const list = pickedPersonas.value;
+  if (!list.length || bulkDeleting.value) return;
+  const cast = list.filter((p) => booksOf(p.id).length);
+  const ok = await confirmDialog({
+    title: `Delete ${list.length} persona${list.length === 1 ? "" : "s"}?`,
+    message: `${list.map((p) => (booksOf(p.id).length ? `${p.name} (in ${booksOf(p.id).join(", ")})` : p.name)).join(", ")}.`
+      + (cast.length
+        ? ` ${cast.length === 1 ? "One is" : `${cast.length} are`} in a book's cast — deleting takes ${cast.length === 1 ? "it" : "them"} out, and ${cast.length === 1 ? "its" : "their"} lines lose their speaker.`
+        : "")
+      + " Voices and lexicons are kept.",
+    danger: true,
+    confirmLabel: `Delete ${list.length}`,
+  });
+  if (!ok) return;
+  bulkDeleting.value = true;
+  let failed = 0;
+  for (const p of list) {
+    try {
+      await api.request(`/v1/personas/${p.id}`, { method: "DELETE" });
+    } catch { failed += 1; }
+  }
+  bulkDeleting.value = false;
+  picked.value = {};
+  await loadAll();
+  pushToast({
+    kind: failed ? "warning" : "success",
+    message: failed
+      ? `${list.length - failed} deleted; ${failed} failed.`
+      : `${list.length} persona${list.length === 1 ? "" : "s"} deleted.`,
+  });
 }
 
 // Live verdict for the draft's voice — does the spoken-delivery text
@@ -437,6 +489,16 @@ onMounted(loadAll);
            cursor and the row tint that two scoped rules used to do by hand. -->
       <UiTable v-else class="jv-table-look" :data="filteredPersonas" :columns="PERSONA_COLUMNS"
         data-key="id" row-hover @row-click="({ data }) => (selectedId = data.id)">
+        <template #head-pick>
+          <UiCheckbox :model-value="allPicked" :disabled="!filteredPersonas.length || bulkDeleting"
+            :title="allPicked ? 'Untick every persona shown' : 'Tick every persona shown'" @update:model-value="pickAll" />
+        </template>
+        <template #pick="{ row }">
+          <span @click.stop>
+            <UiCheckbox :model-value="!!picked[row.id]" :disabled="bulkDeleting"
+              @update:model-value="(v) => (picked = { ...picked, [row.id]: v })" />
+          </span>
+        </template>
         <template #name="{ row }">
           <span class="personas__card-avatar personas__avatar-sm" :style="{ background: colorFor(row.name) }">{{ (row.name || "?").charAt(0).toUpperCase() }}</span>
           <strong>{{ row.name }}</strong>
@@ -446,7 +508,8 @@ onMounted(loadAll);
           <span class="jv-muted">{{ voices.find((v) => v.id === row.voice_id)?.name || (row.voice_id || "no voice yet") }}</span>
         </template>
         <template #used="{ row }">
-          <UiTag :intent="usageCount(row.id) > 0 ? 'success' : 'ghost'">{{ usageCount(row.id) }} project{{ usageCount(row.id) === 1 ? '' : 's' }}</UiTag>
+          <span v-if="usageCount(row.id)" class="personas__books">{{ booksOf(row.id).join(", ") }}</span>
+          <span v-else class="jv-muted" title="Not in any cast">—</span>
         </template>
         <template #actions="{ row }">
           <div class="jv-table__actions" @click.stop>
@@ -456,6 +519,13 @@ onMounted(loadAll);
         </template>
         <template #empty>No personas match this filter.</template>
       </UiTable>
+      <div v-if="!loading && filteredPersonas.length" class="jv-inline-row personas__bulk">
+        <UiButton intent="danger-outline" size="small" :disabled="!pickedPersonas.length || bulkDeleting"
+          :loading="bulkDeleting"
+          :label="pickedPersonas.length ? `Delete ${pickedPersonas.length} selected` : 'Delete selected'"
+          @click="removePicked" />
+        <span class="jv-hint">{{ pickedPersonas.length ? `${pickedPersonas.length} ticked` : "Tick personas to delete several at once." }}</span>
+      </div>
     </template>
 
     <!-- ── Editor dialog (consolidated pattern 2026-06-12) ───────────── -->
@@ -698,6 +768,8 @@ onMounted(loadAll);
 /* The row's cursor and hover tint come from UiTable's `row-hover`. */
 .personas__row-sub { font-size: 12.5px; margin-left: 36px; }
 .personas__avatar-sm { width: 26px; height: 26px; font-size: 12px; vertical-align: middle; margin-right: 8px; }
+.personas__books { display: inline-block; max-width: 40ch; }
+.personas__bulk { gap: 8px; align-items: center; margin-top: 10px; }
 
 .personas__grid {
   display: grid;

@@ -23,6 +23,7 @@ import { useApi } from "../stores/api.js";
 import { useCopy } from "../services/copy.js";
 import { routeWords } from "../services/attribution.js";
 import { cancelRun, chapterRunFor, failureOf, inRun, queueChapters } from "../services/chapterRun.js";
+import { useKeptScroll } from "../composables/useKeptScroll.js";
 
 const props = defineProps({
   project: { type: Object, required: true },
@@ -41,6 +42,10 @@ const emit = defineEmits(["open", "go", "update:filter"]);
 const api = useApi();
 const copy = useCopy();
 const tasks = useAiTasksStore();
+// Kept alive in Studio: coming back from another step finds the grid as you
+// left it, scrolled where it was.
+const root = ref(null);
+useKeptScroll(root);
 const word = computed(() => copy.value.chapter);
 const lower = (n, w = word.value) => (n === 1 ? w.singular : w.plural).toLowerCase();
 
@@ -200,7 +205,7 @@ function openRow(r, focus = null) {
 </script>
 
 <template>
-  <section class="studio-script">
+  <section ref="root" class="studio-script">
     <div class="jv-card">
       <div class="jv-card__header">
         <h3 class="jv-card__title">Who says what</h3>
@@ -367,8 +372,8 @@ function openRow(r, focus = null) {
           <dt>Flagged</dt>
           <dd class="jv-muted">Lines where the AI most often goes wrong, so you know where to read closely:
             one person speaking three times with no reply, a persona's only line in the
-            {{ word.singular.toLowerCase() }}, dialogue given to the Narrator, the book and the AI naming
-            different speakers. These are the lines worth your eyes.</dd>
+            {{ word.singular.toLowerCase() }}, the book and the AI naming different speakers. These are the
+            lines worth your eyes.</dd>
           <dt>No speaker</dt>
           <dd class="jv-muted">The AI wasn't sure, or gave no answer. These block rendering.</dd>
           <dt>from the import</dt>

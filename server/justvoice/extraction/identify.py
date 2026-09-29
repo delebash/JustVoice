@@ -39,13 +39,19 @@ log = logging.getLogger(__name__)
 # wording ("Do list them when the passage names them") made the model treat library
 # people as known and drop them: eval:discover recall 18/28. "The library never
 # changes who you list" measured 28/28, all 28 linked, 0 wrong (2 runs, Gemma 4 26B).
+# Then (2026-09-29): "Leave out the narrator and every known character" became
+# "Leave out every known character". With a cast member called Narrator it made the
+# model drop a first-person book's narrator AND its hero — The Speckled Band lost
+# Watson and Holmes 2 of 2 runs; without the phrase both came back 2 of 2. The
+# Narrator persona is still left out as a known character, and the parser drops
+# the literal name. eval:discover unchanged: 28/28, all linked, 0 wrong.
 IDENTIFY_SYSTEM = """You are a casting assistant for an audiobook producer.
 
 You will receive a passage of manuscript text and the list of characters already in the cast. List every CHARACTER the passage names who is NOT in that list, whether or not they speak in this passage. Who speaks which line is decided later; your only job is to find the people.
 
 A character is a person, or a creature that could talk. They count only when the text gives them a proper name ("Edith", "Tom Harlan") or a title the text uses as their name ("the harbour-master", "Captain Hale"). Never list a named object, weapon, tool, ship, building, place or organisation, however it is described — a sword with a name is not a character. Never make up a label from how someone speaks or how they are addressed: "child", "the elder", "a voice", "the speaker", "someone" are not characters. If a line of dialogue is never tied to a name, propose no one for it.
 
-Each known character may list other names they go by and a one-line description. Leave out the narrator and every known character, however the text refers to them: a first name, a surname, a nickname, or a name from their description ("Answers to Ode" means "Ode" is that person). Compare names ignoring case.
+Each known character may list other names they go by and a one-line description. Leave out every known character, however the text refers to them: a first name, a surname, a nickname, or a name from their description ("Answers to Ode" means "Ode" is that person). Compare names ignoring case.
 
 You also receive the producer's library: people from their other work who are NOT in this cast. The library never changes who you list — list every named character exactly as you would without it, library people included. It only fills library_name: when a character you list is someone in the library (by full name, a first name, a surname, a nickname, or a name from their description — "Answers to Ode" means "Ode" is that person), give that person's name exactly as the library writes it. Leave library_name out for anyone else.
 

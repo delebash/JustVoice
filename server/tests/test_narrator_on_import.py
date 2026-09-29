@@ -1,15 +1,14 @@
 # SPDX-License-Identifier: MIT
-"""An imported book gets a Narrator too — and never two of them.
+"""An import never makes a narrator; a book's own "Narrator" becomes it.
 
-Until 2026-08-08 only `create_project` made one, so every book that arrived
-from JustWrite (the primary workflow) had no narrator at all and its prose
-could not be bound to anything: attribution's narration rows had nowhere to
-go and the render dropped them in silence.
+Until 2026-09-29 every import made a new "Narrator" persona, and deleting the
+book left it in the library — re-imports piled them up (three in the user's
+library). Decided that day: no book gets a narrator on its own; you tick one
+in Cast or use "+ Add Narrator".
 
-The second half matters as much: `ensure_project_persona` dedupes on
-(imported_from, imported_id), NOT on name, and a manuscript may ship its own
-narrator character — `docs/import-and-export.md:50` shows exactly that. Ours
-must adopt the book's rather than sit beside it under the same name.
+One case stays: a manuscript may ship its own narrator character —
+`docs/import-and-export.md:50` shows exactly that — and that character is
+marked as the narrator. Nothing new is created.
 """
 
 from __future__ import annotations
@@ -43,11 +42,21 @@ def _import(client, **kwargs):
     return r.json()["project_id"]
 
 
-def test_an_imported_book_gets_a_narrator(client):
+def test_an_import_makes_no_narrator(client):
     cast = _cast(client, _import(client))
-    narrators = [c for c in cast if c["name"].lower() == "narrator"]
-    assert len(narrators) == 1, cast
-    assert narrators[0]["role_label"] == "narrator"
+    assert [c["name"] for c in cast] == ["Mara Vance"]
+    assert not [c for c in cast if c["role_label"] == "narrator"]
+    personas = client.get("/v1/personas").json()["personas"]
+    assert not [p for p in personas if p["name"].lower() == "narrator"]
+
+
+def test_reimporting_a_deleted_book_leaves_no_narrator_behind(client):
+    """The pile-up this replaced: import, delete, import again."""
+    first = _import(client)
+    assert client.delete(f"/v1/projects/{first}").status_code == 200
+    _import(client)
+    names = [p["name"] for p in client.get("/v1/personas").json()["personas"]]
+    assert names == ["Mara Vance"], "the character is reused by its id; no Narrator appears"
 
 
 def test_a_book_that_names_its_own_narrator_gets_one_not_two(client):

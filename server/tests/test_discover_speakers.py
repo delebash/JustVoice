@@ -120,6 +120,7 @@ def test_discover_with_stubbed_llm(client, monkeypatch):
         {"name": "Tom Harlan", "role_hint": "neighbor", "approx_lines": 3, "evidence": None,
          "evidence_found": None, "library_match": None}
     ]
+    assert r.json()["named_cast"] == [], "the text names nobody in the cast"
 
 
 def test_promote_creates_then_reuses(client):
@@ -165,20 +166,37 @@ def test_a_scan_is_saved_on_its_chapter_and_replaces_the_last_one(client, monkey
     assert [c["name"] for c in _saved(client, pid, scene_id)["candidates"]] == ["Old Crow"]
 
 
-def test_promote_and_ignore_prune_the_saved_scan(client, monkeypatch):
+def test_add_and_ignore_keep_the_saved_scan(client, monkeypatch):
+    """Decided 2026-09-29 ("your rec go"): Add and Ignore change a name's status,
+    they don't remove it — the chapter's record of who it names stays whole."""
     pid, scene_id = _import_project(client)
     _scan(client, monkeypatch, scene_id, ["Tom Harlan", "The Stranger", "Old Crow"])
+    everyone = ["Tom Harlan", "The Stranger", "Old Crow"]
 
     r = client.post(f"/v1/projects/{pid}/personas/promote",
                     json={"candidates": [{"name": "tom harlan"}]})
     assert r.status_code == 200, r.text
-    assert [c["name"] for c in _saved(client, pid, scene_id)["candidates"]] == ["The Stranger", "Old Crow"]
+    assert [c["name"] for c in _saved(client, pid, scene_id)["candidates"]] == everyone
 
     r = client.post(f"/v1/projects/{pid}/discover/ignore", json={"names": ["THE STRANGER"]})
-    assert r.status_code == 200 and r.json() == {"removed": 1, "ignored": ["THE STRANGER"]}
-    saved = _saved(client, pid, scene_id)
-    assert [c["name"] for c in saved["candidates"]] == ["Old Crow"]
-    assert saved["scanned_at"], "pruning a name must not erase that the chapter was scanned"
+    assert r.status_code == 200 and r.json() == {"ignored": ["THE STRANGER"]}
+    assert [c["name"] for c in _saved(client, pid, scene_id)["candidates"]] == everyone
+
+
+def test_a_scan_records_the_cast_members_the_chapter_names(client, monkeypatch):
+    """The cast is found by name in the text, without the AI: the fixture cast
+    has Mara Vance, named here in full and by her first name."""
+    pid, scene_id = _import_project(client)
+    mara = next(c for c in client.get(f"/v1/projects/{pid}/cast").json()["cast"]
+                if c["persona_name"] == "Mara Vance")
+    _stub(monkeypatch, [])
+    text = "Rain fell. Mara Vance opened the door. Later Mara laughed."
+    r = client.post(f"/v1/scenes/{scene_id}/discover-speakers", json={"text": text})
+    assert r.status_code == 200, r.text
+    expect = [{"persona_id": mara["persona_id"], "name": "Mara Vance", "mentions": 2,
+               "evidence": "Mara Vance opened the door."}]
+    assert r.json()["named_cast"] == expect
+    assert _saved(client, pid, scene_id)["named_cast"] == expect
 
 
 def _stub(monkeypatch, cands):
@@ -218,13 +236,16 @@ def test_a_library_persona_is_matched_and_add_relinks_it_and_learns_the_alias(cl
     assert len(client.get("/v1/personas").json()["personas"]) == before, "no duplicate persona"
     assert client.get(f"/v1/personas/{brick['id']}").json()["aliases"] == ["Brick"]
     assert brick["id"] in {c["persona_id"] for c in client.get(f"/v1/projects/{pid}/cast").json()["cast"]}
-    # Now cast — and "Brick" is his alias — so a re-scan proposes nobody.
+    # Now cast — and "Brick" is his alias — so a re-scan proposes nobody new,
+    # and records him as a cast member the chapter names.
     assert _discover(client, scene_id) == []
+    named = _saved(client, pid, scene_id)["named_cast"]
+    assert brick["id"] in [n["persona_id"] for n in named]
 
 
 def test_add_keeps_the_other_spellings_as_aliases(client, monkeypatch):
     """A merged proposal ("Old Sedge" + "Sedge") becomes one persona that knows
-    both names, and both leave the saved scan."""
+    both names. The saved scan keeps both names (Add changes status only)."""
     pid, scene_id = _import_project(client)
     _stub(monkeypatch, [{"name": "Old Sedge"}, {"name": "Sedge"}])
     _discover(client, scene_id)
@@ -232,7 +253,7 @@ def test_add_keeps_the_other_spellings_as_aliases(client, monkeypatch):
                     json={"candidates": [{"name": "Old Sedge", "aliases": ["Sedge"]}]})
     [new_id] = r.json()["created"]
     assert client.get(f"/v1/personas/{new_id}").json()["aliases"] == ["Sedge"]
-    assert _saved(client, pid, scene_id)["candidates"] == []
+    assert [c["name"] for c in _saved(client, pid, scene_id)["candidates"]] == ["Old Sedge", "Sedge"]
 
 
 def test_a_nickname_from_a_library_description_links_to_that_persona(client, monkeypatch):
@@ -281,18 +302,19 @@ def test_the_quote_is_checked_against_the_chapter(client, monkeypatch):
 
 
 def test_ignore_is_remembered_across_scans_and_can_be_undone(client, monkeypatch):
-    """Fix 4: an ignored name stays out of every later scan until restored."""
+    """Fix 4: an ignored name is remembered for the project. Since 2026-09-29 a
+    re-scan still records it — the page shows it as Ignored, with Undo."""
     pid, scene_id = _import_project(client)
     _stub(monkeypatch, [{"name": "Gudgeon"}, {"name": "Tom Harlan"}])
     _discover(client, scene_id)
     r = client.post(f"/v1/projects/{pid}/discover/ignore", json={"names": ["Gudgeon"]})
     assert r.json()["ignored"] == ["Gudgeon"]
     assert client.get(f"/v1/projects/{pid}").json()["discover_ignored"] == ["Gudgeon"]
-    assert [c["name"] for c in _discover(client, scene_id)] == ["Tom Harlan"]
+    assert [c["name"] for c in _discover(client, scene_id)] == ["Gudgeon", "Tom Harlan"]
 
     r = client.post(f"/v1/projects/{pid}/discover/unignore", json={"names": ["gudgeon"]})
     assert r.json()["ignored"] == []
-    assert [c["name"] for c in _discover(client, scene_id)] == ["Gudgeon", "Tom Harlan"]
+    assert client.get(f"/v1/projects/{pid}").json()["discover_ignored"] == []
 
 
 def test_persona_aliases_survive_a_put_that_does_not_send_them(client):

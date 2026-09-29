@@ -49,6 +49,14 @@ KIND_MASTER_DEFAULTS = {
 }
 
 
+def kind_master(project_type: str | None) -> str:
+    """The mastering target a NEW project is created with — its kind's default,
+    written into the project so the setting shows the real target (2026-09-29:
+    the "This kind's default" option died as a duplicate of the target it named).
+    "none" = raw."""
+    return KIND_MASTER_DEFAULTS.get(project_type or "") or "none"
+
+
 def resolve_master_target(
     *,
     requested: str | None = None,

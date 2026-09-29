@@ -72,8 +72,11 @@ def _mara_id(client, project_id):
 
 
 def _narrator_id(client, project_id):
-    cast = client.get(f"/v1/projects/{project_id}/cast").json()["cast"]
-    return next(c["persona_id"] for c in cast if c["role_label"] == "narrator")
+    """The book's narrator, given by "+ Add Narrator" — since 2026-09-29 no
+    book has one until you choose it."""
+    r = client.post(f"/v1/projects/{project_id}/narrator")
+    assert r.status_code == 201, r.text
+    return next(c["persona_id"] for c in r.json()["cast"] if c["role_label"] == "narrator")
 
 
 def _answer(speaker: str, confidence: float = 0.95):
@@ -108,14 +111,30 @@ def test_first_analyze_resegments_and_saves(client, project, monkeypatch):
 
 
 def test_narration_binds_to_the_narrator(client, project, monkeypatch):
+    narrator = _narrator_id(client, project.id)
     monkeypatch.setattr(
         "justvoice.extraction.pipeline.run_feature", _answer(_mara_id(client, project.id)),
     )
     _analyze(client, project.scene_id, f"{PARA_1}\n\n{PARA_2}")
 
-    narrator = _narrator_id(client, project.id)
     narration = [b for b in _blocks(client, project.scene_id) if b["source"] == "narration"]
     assert narration and all(b["persona_id"] == narrator for b in narration)
+
+
+def test_a_book_with_no_narrator_analyzes_and_leaves_narration_unread(client, project, monkeypatch):
+    """No book gets a narrator on its own (2026-09-29). Analyze still runs;
+    narration keeps no speaker until a narrator is chosen, which moves it."""
+    monkeypatch.setattr(
+        "justvoice.extraction.pipeline.run_feature", _answer(_mara_id(client, project.id)),
+    )
+    r = _analyze(client, project.scene_id, f"{PARA_1}\n\n{PARA_2}")
+    assert r.status_code == 200, r.text
+    narration = [b for b in _blocks(client, project.scene_id) if b["source"] == "narration"]
+    assert narration and all(b["persona_id"] is None for b in narration)
+
+    narrator = _narrator_id(client, project.id)
+    narration = [b for b in _blocks(client, project.scene_id) if b["source"] == "narration"]
+    assert all(b["persona_id"] == narrator for b in narration)
 
 
 def test_reanalyze_updates_in_place_and_keeps_corrections(client, project, monkeypatch):

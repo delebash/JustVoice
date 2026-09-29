@@ -320,7 +320,20 @@ async function refresh() {
   } catch {
     health.value = null;
   }
+  refreshLlm();
 }
+
+// The language-model indicator beside the voice one (2026-09-29 — Studio's
+// own "TTS" / "Script" chips died as duplicates). The built-in runner loads a
+// model when an AI task runs, so it is re-read on the same events as health
+// and whenever a task starts or ends — no timer.
+const llm = ref(null);   // GET /v1/llm-runner/status
+async function refreshLlm() {
+  llm.value = await api.safeRequest("/v1/llm-runner/status", null);
+}
+const llmModel = computed(() =>
+  ["running", "loading"].includes(llm.value?.status) ? llm.value.modelId || "" : "");
+watch(() => tasks.runningCount, refreshLlm);
 
 // Boot banner — the Python server takes a few seconds to come up on
 // fresh launch. Without any signal, the UI looks broken (empty stores,
@@ -531,9 +544,10 @@ onMounted(async () => {
           </span>
         </template>
 
-        <!-- Engine pill — persistent visibility of the currently-loaded
-             TTS engine. Click lands on the AI console's Speech engines tab
-             (the /engines redirect). -->
+        <!-- Engine pills — what is loaded right now: the voice engine, and the
+             language model the AI features run on. Each opens its page in the
+             AI console (voice: the Speech engines tab via the /engines
+             redirect). -->
         <button
           v-if="health"
           type="button"
@@ -542,31 +556,42 @@ onMounted(async () => {
           :title="health.current_engine ? `Voice engine loaded: ${health.current_engine}. Click to manage speech engines.` : 'No voice engine loaded. Click to load one.'"
           @click="goView('engines')"
         >
-          <span class="jv-topbar__engine-icon">🧠</span>
+          <span class="jv-topbar__engine-icon">🔊</span>
           {{ health.current_engine || "No voice engine" }}
         </button>
+        <button
+          v-if="health"
+          type="button"
+          class="jv-topbar__engine-pill"
+          :class="{ 'jv-topbar__engine-pill--empty': !llmModel }"
+          :title="llmModel
+            ? `Language model ${llm?.status === 'loading' ? 'loading' : 'loaded'}: ${llmModel}. Click to open AI Settings.`
+            : 'No language model loaded — one loads when an AI feature runs, or the features use the provider set in AI Settings. Click to open AI Settings.'"
+          @click="goView('ai')"
+        >
+          <span class="jv-topbar__engine-icon">🧠</span>
+          {{ llmModel ? `${llmModel}${llm?.status === "loading" ? " · loading" : ""}` : "No language model" }}
+        </button>
 
-        <!-- Status and server URL are TWO controls, not one (user, 2026-08-08).
-             They used to be a single button, so clicking the URL opened the
-             status panel — the one thing a URL must not do. The status text
-             toggles the panel; the URL is a real link that opens the server in
-             the browser through the app's Tauri opener (the webview swallows
-             target=_blank, so an unrouted anchor is silently dead). -->
+        <!-- Status and server URL are TWO things, not one (user, 2026-08-08).
+             The status is text, not a button (2026-09-29: "it shouldnt be a
+             click at all") — the AI status button beside it and the sidebar's
+             AI Tasks open the task panel. The URL is a real link that opens
+             the server in the browser through the app's Tauri opener (the
+             webview swallows target=_blank, so an unrouted anchor is silently
+             dead). -->
         <span class="jv-topbar__statusgroup">
-          <button
-            type="button"
+          <span
             class="jv-topbar__status"
             :class="{ 'jv-topbar__status--warn': !health || health.status !== 'ok' }"
-            data-panel-toggle
-            :title="tasks.runningCount ? 'Open status panel' : 'Server status'"
-            @click="tasks.togglePanel()"
+            title="Server status"
           >
             <span class="jv-topbar__dot"></span>
             {{ health && health.status === "ok" ? "Operational" : (health ? health.status : "Offline") }}
             <span v-if="tasks.runningCount" class="jv-topbar__taskcount">
               · <strong>{{ tasks.runningCount }}</strong> in flight
             </span>
-          </button>
+          </span>
           <a
             class="jv-topbar__url"
             :href="api.serverUrl"

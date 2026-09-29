@@ -161,7 +161,28 @@ async def get_persona(id: str) -> Persona:
 
 
 @router.put("/v1/personas/{id}", response_model=Persona)
-async def update_persona(id: str, body: CreatePersonaRequest) -> Persona:
+async def update_persona(id: str, body: CreatePersonaRequest, db: Session = Depends(get_db)) -> Persona:
+    from ..errors import conflict
+    from ._persona_helpers import cast_member_named, same_name
+
+    current = get_state().personas.get(id)
+    if current is None:
+        raise not_found(f"persona {id}")
+    # Names are unique within a book (2026-09-29): a rename is refused when a
+    # book this persona is in already has someone by the new name.
+    if same_name(body.name) != same_name(current.name):
+        books = (
+            db.query(Project.id, Project.name)
+            .join(ProjectPersona, ProjectPersona.project_id == Project.id)
+            .filter(ProjectPersona.persona_id == id)
+        )
+        for project_id, book in books:
+            taken = cast_member_named(db, project_id, body.name, besides=id)
+            if taken is not None:
+                raise conflict(
+                    f'{book} already has someone called "{taken}". Names are unique '
+                    "within a book — pick another name."
+                )
     p = get_state().personas.update(
         id,
         name=body.name,

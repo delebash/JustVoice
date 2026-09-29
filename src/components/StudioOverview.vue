@@ -33,7 +33,7 @@ import { projectsService } from "../services/projects.js";
 import { useCopy } from "../services/copy.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { useActiveProject } from "../stores/activeProject.js";
-import { continueStep, stepStatus } from "../views/studioStatus.js";
+import { stepStatus } from "../views/studioStatus.js";
 
 const props = defineProps({
   project: { type: Object, required: true },
@@ -59,9 +59,13 @@ const KIND_LABEL = {
 // four names are MASTER_PRESET_NAMES. The Projects pane labelled "" as "None",
 // which on an audiobook actually mastered to ACX; and it offered "Custom",
 // which the server renders raw with a warning — neither is offered here.
-const KIND_DEFAULT_WORDS = { audiobook: "ACX", podcast: "Podcast" };
+// A new project is created with its kind's target (server `mastering.kind_master`),
+// so there is no "kind's default" option — it only repeated a target below. An
+// older project that stored none still renders to its kind's target, and shows it.
+const KIND_MASTER = { audiobook: "acx", podcast: "podcast" };
+const masterShown = computed(() =>
+  props.project.mastering_preset || KIND_MASTER[props.project.project_type] || "none");
 const MASTERING_PRESETS = computed(() => [
-  { id: "", label: `This kind's default (${KIND_DEFAULT_WORDS[props.project.project_type] || "raw"})` },
   { id: "none", label: "None — raw" },
   { id: "acx", label: "ACX (-20 LUFS / -3.5 dB peak)" },
   { id: "inaudio", label: "iAudio" },
@@ -125,8 +129,10 @@ const STATUS_COLUMNS = [
   { id: "text", header: "Status" },
   { id: "tag", header: "In the way", headerStyle: { textAlign: "right" }, cellStyle: { textAlign: "right" } },
 ];
-const next = computed(() => continueStep(props.project.project_type, props.state));
-const nextLabel = computed(() => props.steps.find((s) => s.key === next.value)?.label || "");
+// No text yet — a prose project with no lines has no step to work on. (The
+// "Continue" button that pointed at the first step with work left died
+// 2026-09-29 as a duplicate of the step cards and these rows.)
+const noText = computed(() => !props.state.lines && props.project.project_type !== "game_voicelines");
 
 // ── Whole-project actions ───────────────────────────────────────────────
 const showReimport = ref(false);
@@ -173,18 +179,9 @@ async function deleteProject() {
       <div class="jv-card">
         <div class="jv-card__header">
           <h3 class="jv-card__title">Where it stands</h3>
-          <span class="jv-spacer" />
-          <UiButton
-            v-if="next"
-            intent="primary"
-            size="small"
-            :label="`Continue — ${nextLabel} ➜`"
-            :title="`The first step with work left`"
-            @click="emit('go', next)"
-          />
         </div>
         <div class="jv-card__body">
-          <p v-if="!next" class="jv-hint">
+          <p v-if="noText" class="jv-hint">
             No text yet — add or import {{ unit.plural.toLowerCase() }} in
             <a href="#chapter">{{ unit.plural }}</a>, then come back here.
           </p>
@@ -224,7 +221,7 @@ async function deleteProject() {
             <UiTag intent="ghost">{{ KIND_LABEL[project.project_type] || project.project_type }}</UiTag>
           </UiField>
           <UiField label="Mastering target" layout="block" hint="Every render is mastered to this, and Export checks against it.">
-            <UiSelect :model-value="project.mastering_preset || ''" width="name" :options="MASTERING_PRESETS"
+            <UiSelect :model-value="masterShown" width="name" :options="MASTERING_PRESETS"
               option-value="id" @update:model-value="commitMastering" />
           </UiField>
         </div>

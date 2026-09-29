@@ -513,24 +513,17 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   gap: 8px;
   font-size: 12px;
   color: var(--ink-2);
-  /* Now a clickable button — opens the kit AI status panel. Keep the
-     visual subtle so it still reads as a status indicator; the
-     `in flight` chip on the right is what tells the user there's
-     something to open. */
+  /* Status text, not a control (2026-09-29) — the AI status button beside
+     it opens the task panel. */
   background: transparent;
   border: 1px solid transparent;
   border-radius: var(--r-pill);
   padding: 4px 10px;
-  cursor: pointer;
   font-family: inherit;
   /* Never wrap to a second line — the title's ellipsis absorbs the
      squeeze instead (the topbar stays one line on every view). */
   white-space: nowrap;
   flex-shrink: 0;
-}
-.jv-topbar__status:hover {
-  background: var(--surface-2);
-  border-color: var(--line);
 }
 .jv-topbar__taskcount {
   color: var(--accent);

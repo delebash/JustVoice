@@ -1369,6 +1369,7 @@ BUILT:  2026-09-29, pieces 3a · 3b · 3c per §8.24 — committed and pushed th
 DECIDED 2026-09-29 — "your rec on all the wording". The rec was to keep the built copy, so
         all four stand as shipped in 86eb21d:
           · the Narrator check's question: "Spoken, but given to the Narrator — whose line is it?"
+            (the check itself was DROPPED later the same day — "Any cast member can be the narrator")
           · "AI named no one in the cast" / "The AI didn't name anyone in the cast." for a line
             the model answered with someone not in the cast (the approved "AI gave no answer"
             would have been false there)
@@ -1410,8 +1411,12 @@ DECIDED 2026-09-29 — "1 no clear all does not remove narraotor, 2 no … go co
           on Discover it won't).
 DECIDED 2026-09-29 — "narrator keeps its x": the Narrator's tag keeps its ✕, as built
         ("each name gets an ✕"); only "Clear all" spares it.
-OPEN:   The ✕ / Clear all clicks were not exercised on the real data (they remove cast
-        members) — rendering was checked.
+CHECKED 2026-09-29 on a test project (deleted after): each ✕ and both Clear alls work on page and
+        server, no dialog, Clear all keeps the Narrator, removed personas stay in the library.
+DECIDED 2026-09-29 — "do it all your rec go": the header spacer before "Clear all" goes — the
+        card title already takes the free space, so the spacer split it and put the count
+        mid-header. BUILT 2026-09-29 (`StudioDiscover.vue`, both headers); on screen the count
+        now sits beside "Clear all", as in the other cards.
 GO:     given 2026-09-29 ("go code the app", in the message that answered its two questions)
 
 ### No built-in personas — the Narrator is an ordinary persona, one per project
@@ -1450,6 +1455,360 @@ BUILT:  2026-09-29 — `database/migrations.py` `_migrate_drop_personas_is_built
         deleted across a restart · run first on a copy of the live DB (column gone, rows kept,
         an insert without it works), then on the live DB at the app's restart. Committed and
         pushed the same day ("commit anbd push").
+GO:     given 2026-09-29
+
+### Any cast member can be the narrator
+STATE:  DECIDED 2026-09-29 — "do it all your rec go", on the user's "i think any persona should
+        be able to be set as the narrator, what do you think?" and the rec as given:
+        · "A 'Narrator: [persona ▾]' picker on Studio's Cast step (the Narrator card), listing
+          everyone in the cast."
+        · "One narrator per project. Choosing a new one takes the role off the old one. The old
+          persona stays in the cast as an ordinary member."
+        · "Narration follows the role. Lines Analyze decided are narration move to the new
+          narrator. Lines you set yourself stay as they are."
+        · "New projects still start with a persona called 'Narrator', which you can then replace
+          with anyone."
+WHY:    A first-person narrator (Watson in The Speckled Band) narrates and speaks: one persona,
+        one voice. Until now only a persona named "Narrator" or "Add Narrator" could hold it.
+NOT:    Narration staying on the old narrator until the next Analyze.
+BUILT:  2026-09-29 — `PUT /v1/projects/{id}/narrator` (`projects_api.set_narrator`: role moves,
+        `source == "narration"` lines of the old narrator or of nobody move, `corrected` stay,
+        returns `moved_lines`); "Add Narrator" (`ensure_narrator`) checks the role before the
+        name, so it never makes a second narrator; Studio Cast's `UiField` "Narrator" picker +
+        the narrator card's letter from its name (`StudioView.vue`); tests in
+        `test_project_narrator.py`; docs personas.md, studio.md (Cast), whats-new, code-map.
+        Checked on a throwaway podcast demo (deleted after): picking Sarah moved the role, the
+        old Narrator stayed cast without it, card + toast followed.
+DECIDED 2026-09-29 — "your rec on both go", on the interaction the picker raised (Script's
+        "Spoken, but given to the Narrator" marked every line of a narrator who speaks): "limit
+        that check to a narrator persona that isn't also a speaking character".
+BUILT:  2026-09-29 — `extraction_api._chapter_script`: the check runs while the narrator is
+        the persona called "Narrator" (the name the app already uses for the generic narrator:
+        the lookup's fallback, Discover's parser, import); any other narrator is a character
+        and counts like anyone for every check. Tests in `test_script_api.py`; studio.md marks.
+        A renamed Narrator ("Main Narrator") therefore loses this one check.
+DECIDED 2026-09-29 — "your rec go on both", after the user's "i dont understand this narrator
+        stuff, it sounds likke it is complicated, why dont we just have a check box on the
+        persona that says this is the narrator, and only 1 narrator can be selected". The recs:
+        1 "Replace the dropdown with a 'Narrator' checkbox on each cast card, one narrator per
+          project." (On the cast card, not the Personas page — a persona is in many projects.)
+        2 "Drop the 'given to the Narrator' check and its name rule." It caught nothing on The
+          Speckled Band (0 caught, 0 false alarms). The narrator is then an ordinary persona in
+          every check: three in a row and a persona's only line count it like anyone.
+        This REPLACES the picker dropdown and the name rule built earlier the same day.
+BUILT:  2026-09-29 — Studio Cast: a `UiCheckbox` "Narrator" on every card (the narrator's own
+        ticked and locked; ticking another calls `PUT /v1/projects/{id}/narrator`); the dropdown
+        gone. `flags.py`: the "narrator" check and `narrator_id` gone — the narrator counts like
+        any persona (its one spoken line is an only line, three in a row a run); the name rule
+        gone from `_chapter_script`; `ScriptFlag.check` loses "narrator"; the eval call; the
+        Check question and both "what the columns mean" cards; tests; studio.md, personas.md,
+        whats-new, code-map.
+GO:     given 2026-09-29
+
+### Download cancel: remove the partial files before the job says "cancelled"
+STATE:  DECIDED 2026-09-29 — "do it all your rec go". FINDING the same day: the flaky
+        `test_prefetch_cancel_via_http_endpoint` (1 in 15 under load) is a real ordering bug —
+        `installer.py` marks the job failed/"cancelled by user" and only then `rmtree`s the URL
+        partials, so a watcher sees "cancelled" while the files remain, and a download started
+        in that window could have its new files deleted. Rec: delete first, then mark.
+BUILT:  2026-09-29 — `installer.py` prefetch cancel: wipe (URL) / log (HF), then mark failed.
+        The test passed 20 of 20 after (no model running at the time; it had failed 1 in 15
+        with the model busy). The other "cancelled by user" paths delete nothing after marking.
+GO:     given 2026-09-29
+
+### Discover missed Sherlock Holmes on The Speckled Band
+STATE:  DECIDED 2026-09-29 — "do it all your rec go": look into why. FINDING the same day, on a
+        test import: Discover proposed nine names and not Holmes, the story's main speaker, so
+        Analyze left 143 of 361 lines with no speaker. It also proposed "Percy Armitage" and
+        "Mr. Armitage" as two people. (Watson not proposed is expected: he narrates as "I".)
+FINDING 2026-09-29 (live prompt through /v1/ai/run, writes nothing, 2 runs each):
+        · With the cast = the project's persona named "Narrator" (description "The book's
+          narrator: reads everything…"): Holmes 0/2, Watson 0/2 — reproduced.
+        · Same prompt without "the narrator and" in "Leave out the narrator and every known
+          character": Holmes 2/2, Watson 2/2.
+        · Live prompt with an empty cast: Holmes 2/2, Watson 2/2.
+        So the instruction to leave out "the narrator", with a cast member called Narrator,
+        drops the first-person narrator (Watson) and Holmes with him.
+DECIDED 2026-09-29 — "your rec on both go": drop "the narrator and", measured first.
+BUILT:  2026-09-29 — measured `npm run eval:discover --runs 2`: live 28/28, all linked, 0
+        wrong; candidate 28/28, all linked, 0 wrong, one stray label ("a Warden") in 1 of 8
+        chapter runs. Then `identify.IDENTIFY_SYSTEM` changed, and the live row
+        `speaker_attribution.identify` PUT to the same text (it equalled the old code text, so
+        no edit of the user's was overwritten; template and JSON settings kept). Through the
+        app's Lab discover path on The Speckled Band: Holmes + Watson found 2/2.
+GO:     given 2026-09-29
+
+### Discover: tick several proposed speakers and add (or ignore) them at once
+STATE:  DECIDED 2026-09-29 — "go", on the user's "proposed speakers should have checkbox so we
+        can select multiple at a time and then click add button normal select and select all
+        checbox and add button" and the rec as given: "a checkbox on each row, a select-all box
+        in the header that ticks only the rows shown, and an '＋ Add N selected' button under
+        the table … also 'Ignore N selected', and keep each row's own Add and Ignore for
+        one-off use".
+BUILT:  2026-09-29 — `StudioDiscover.vue`: a pick column (`UiCheckbox`, header ticks all),
+        "＋ Add N selected" = one promote call with every ticked row (`toCandidate`, shared with
+        the row's Add), "Ignore N selected" = one ignore call; docs studio.md, whats-new. Not
+        yet seen on screen (the live project had no proposals waiting).
+GO:     given 2026-09-29
+
+### The engine indicators live in the main header; Studio's two chips go
+STATE:  DECIDED 2026-09-29 — "go", on the user's "in studio header we have TTS · none Script ·
+        AI features we also have no voice engine in main header these ar eredundent, i think in
+        main header we have indication of speech and llm engine loaded and click on it takes you
+        to engines page like it does now" and the rec: "remove those two chips from Studio. The
+        main header would then show two indicators, the speech engine and the language model,
+        each opening its engines page as the voice one does now."
+BUILT:  2026-09-29 — `App.vue`: a language-model pill beside the voice one (🔊 voice → Speech
+        engines, 🧠 model → AI Settings), fed by `/v1/llm-runner/status` on the same refresh
+        events plus every AI task start/end, no timer; Studio's project-bar chips and their
+        `headerTts`/`headerLlm` gone (`StudioView.vue`); whats-new. Seen on screen by the user.
+GO:     given 2026-09-29
+
+### "Operational" in the main header is status, not a button
+STATE:  DECIDED 2026-09-29 — "go", on the user's "the word operationail in header when you clcikc
+        it opens ai tasks this is wrong it shouldnt be a click at all". Rec: plain text; AI
+        Tasks stays in the sidebar.
+BUILT:  2026-09-29 — `App.vue`: the status is a `span` (no click, no panel toggle),
+        `styles.css` `.jv-topbar__status` loses its cursor and hover; generate.md.
+GO:     given 2026-09-29
+
+### Discover records everyone each chapter names, and keeps it
+STATE:  DECIDED 2026-09-29 — "your rec go", on the user's "when you scan it should shwo results
+        consustantly each time, regardless of in cast or not … when i click scan and get nothing
+        it seems broken … i think we should always keep data so if i sacn it shows characters per
+        each chapter and it persetistsl". The rec as given:
+        · "Per chapter, the scan saves everyone: people already in your cast, people in your
+          library but not in this cast, and new names. It's saved with the chapter, so it
+          survives switching steps, restarts and rescans."
+        · "Cast members are found without the AI: by matching their names and 'also called'
+          names in the chapter text … The AI keeps doing only what it was measured on: finding
+          the new names."
+        · "One list, each person once, with a status: In the cast (which persona) · In your
+          library (Add links that persona) · New (Add, Ignore) · Ignored (Undo)."
+        · "Add and Ignore change the status; they don't remove the row."
+        · "Filter chips: All · New · In the cast · Ignored. The grid's column becomes 'Found'
+          (everyone) with the number of new names beside it."
+NOT:    Adding someone already in the cast as a separate new persona ("not them — add as new")
+        — a possible later addition.
+BUILT:  2026-09-29 — server: `names.cast_named_in` (full name / alias phrase, or a first or
+        last name of 3+ letters, capitalised, owned by one cast member; one mention per place,
+        not per word) · the discover endpoint saves and returns `named_cast`, keeps ignored
+        names in `candidates`, and nothing prunes the record (`prune_discovered` deleted;
+        ignore/unignore return `{ignored}` only). Renderer: `studioStatus.foundSpeakers`
+        (replaces `proposedSpeakers`; status worked out now against the cast + ignore list;
+        `isWaiting`) · `projectState` takes `ignored` · StudioDiscover: "Characters found" with a
+        Status column, chips All · New · In the cast · Ignored (New = new names AND library
+        personas — both still wait on Add), Add/Ignore on waiting rows, Undo on Ignored rows,
+        ticks only on waiting rows, grid column "Found" (N + "M new"), `pruneLocally` and the
+        `scans` emit gone · Studio passes aliases and the ignore list, and carries `named_cast`
+        from a finished scan. Tests: test_discover_speakers.py (30), studioStatus.test.js (15).
+        Checked on the real app with a throwaway import (deleted after): a scan of Bigger Inside
+        found 6 (5 In the cast by name, Old Sedge In your library), Ignore kept the row as
+        Ignored across a reload, Undo put it back, the chips and Overview's "1 to review" moved,
+        a step switch kept the list. Docs studio.md, projects.md, whats-new, code-map.
+GO:     given 2026-09-29
+
+### No automatic narrator; persona names are unique within a book
+STATE:  DECIDED 2026-09-29 — "go", on the user's "duplicate narrator in persona, we should not
+        allow duplicate names", "maybe we can have duplicate names but not per project per project
+        only unique names, what do you think? and if no project? what do you think?" and "i dont
+        think each project should automatically create a narrator". The recs as given:
+        1 No automatic narrator
+        · "Neither import nor New book creates a narrator persona any more."
+        · "One case stays: if the book itself has a character called 'Narrator', that character
+          is marked as the narrator. Nothing new is created."
+        · "You choose the narrator in Cast, either by ticking Narrator on any cast member or with
+          + Add Narrator."
+        · "+ Add Narrator first uses a 'Narrator' from your library that isn't in any book. It
+          only makes a new one if there isn't one free."
+        · "Choosing a narrator moves the book's narration lines to it. That's already built."
+        · "Not checked yet: whether Analyze runs cleanly on a book with no narrator. Its
+          narration lines would just be left without a speaker. I'll check that first, and if it
+          doesn't work, fixing it becomes part of this change."
+        2 Names are unique within a book
+        · "Adding someone to a cast is refused if the book already has someone with that name.
+          That covers Cast's add, Discover's Add and the narrator. Case and extra spaces don't
+          count."
+        · "Renaming a persona is refused if any book it's in already has someone with the new
+          name."
+        · "An import keeps the book's characters exactly as they are. It never refuses them."
+        · "A persona that's in no book has no rule."
+        · "The Personas page already asks the server which books each persona is in
+          (/v1/personas/usage). I'll make sure the book names show, so two personas with the
+          same name can be told apart."
+        4 "Deleting a book keeps its personas."
+        5 "Your two leftover Narrators stay until you delete them. The Ninth Facet keeps its
+          narrator."
+        6 "The out-of-date comment in _ensure_narrator gets fixed."
+        Order: Discover first, then this; only the test files these changes touch.
+        This REVERSES "A new project still gets a Narrator" (No built-in personas, above) and
+        "New projects still start with a persona called 'Narrator'" (Any cast member can be the
+        narrator, above).
+FINDING 2026-09-29 (live app): three personas named Narrator — `11359b0b` made 8 ms after The
+        Ninth Facet's import (its narrator), `e08979c7` (09-28 17:51) and `46aec889` (09-29 16:33)
+        in no cast, left by earlier imports whose books were deleted. `_ensure_narrator` made a
+        new one on every import (it checked only the importing book); characters did not
+        duplicate, because `ensure_project_persona` reuses them by the book's character id; and
+        `delete_project` keeps a book's personas.
+NOT:    Names unique across the whole library (the first rec, replaced by per book). Deleting a
+        book offering to delete the personas only it used.
+BUILT:  2026-09-29 — 1: `create_project` makes no narrator; import calls `_adopt_book_narrator`
+        (role to a book character called Narrator, never a new persona); `POST /narrator` links a
+        library "Narrator" in no cast (oldest first) before creating one, and moves the unowned
+        narration (`move_narration`, shared with the PUT; returns `moved_lines`); Studio's Add
+        Narrator card copy + toast. Checked first: Analyze on a book with no narrator runs and
+        leaves narration with no speaker (`persona_for` → None) — now a test. 2:
+        `_persona_helpers.same_name` / `cast_member_named` / `refuse_same_name` (409) in
+        `POST /cast`, Discover's promote (library link + `ensure_project_persona(unique_in_cast=
+        True)`) and `PUT /v1/personas/{id}` on a name change; import paths unchecked. Personas
+        page "Used in" = book names. 6: the stale docstring went with the function. Tests:
+        test_project_narrator.py, test_narrator_on_import.py, new test_unique_names_in_a_book.py,
+        fixtures in test_analyze_persist / test_script_api / test_cast_names (they relied on the
+        automatic narrator). Checked on the real app with the throwaway import: no narrator after
+        import, Add Narrator made one (yours is in a book, so not free), adding your real
+        Narrator to that cast → 409. Docs personas.md (The Narrator, Names), studio.md,
+        projects.md, whats-new, code-map.
+FINDING 2026-09-29, at the live check: the two leftover Narrators (`e08979c7`, `46aec889`) were
+        no longer in the library (13 → 11 personas). Nothing this session ran deletes a persona;
+        the server log records only failed requests, so it cannot say who did. Asked the user.
+GO:     given 2026-09-29
+
+### Personas: tick several and delete them at once
+STATE:  DECIDED 2026-09-29 — "go", on the user's "checkbox for persona so we can delete multople
+        at a time". The rec as given:
+        · "A checkbox on each persona, a select-all box, and a Delete (N) button."
+        · "One confirmation lists the names and says which ones are in a book's cast."
+        · "Each is deleted the same way a single Delete works now: it leaves the cast, and its
+          lines lose their speaker."
+BUILT:  2026-09-29 — `PersonasView.vue`: a pick column (`UiCheckbox`, header ticks every persona
+        the filter shows; a tick doesn't open the editor), "Delete N selected" under the table
+        (Discover's bulk-row precedent), one `confirmDialog` naming them with their books and
+        counting those in a cast, then one DELETE each (no server change; no Undo, unlike the
+        single Delete). Checked on the real app: ticked two throwaway personas and the test
+        book's Narrator, the confirmation read "Narrator (in ZZ test — delete me), ZZ Delete Test
+        A, ZZ Delete Test B. One is in a book's cast …", exactly those three went. Docs
+        personas.md, whats-new.
+GO:     given 2026-09-29
+
+### Script: "Next to check" wraps around, and always reaches a lone line to check
+STATE:  DECIDED 2026-09-29 — "go", on the user's report (two screenshots): a chapter with "To
+        check 1", and "Next to check" answered "Nothing more to check below." FINDING:
+        `scriptReview.nextToCheck` searched only AFTER the selected line, so a lone line to
+        check that is the selected one, or above it, was never reached. The rec as given:
+        · "Next to check wraps around. After the last line to check, it goes back to the first
+          one from the top. Previous (Shift+N) wraps to the bottom."
+        · "With only one line to check, it always scrolls to that line and selects it, even if
+          it's already selected."
+        · "When it wraps and there's more than one line to check, a short note says 'Back to
+          the first line to check'."
+        · "'Nothing to check' appears only when the chapter has none. The button is already
+          disabled in that case."
+BUILT:  2026-09-29 — `scriptReview.nextToCheck` wraps (modulo walk from the selected line; null
+        only when no line needs checking); `StudioScriptChapter.nextCheck` selects and scrolls to
+        it even when already selected, notes "Back to the first/last line to check" on a wrap
+        when there is more than one, and says "Nothing to check in this chapter." otherwise.
+        Tests: scriptReview.test.js (21 — wrap both ways, a lone line from above/below/itself,
+        none). By the time of the check the user had fixed that line (every chapter 0 to
+        check), so it was checked on Bigger Inside with one line's speaker blanked in the
+        headless browser's copy only (nothing saved): from the last row Next jumped to it in
+        view with no note, again after scrolling away, and Shift+N; with two, a wrap showed
+        "Back to the first line to check". Gate 16/16. Docs studio.md, whats-new.
+GO:     given 2026-09-29
+
+### Speakers and personas become two things: Cast gives each speaker a persona
+STATE:  DECIDED 2026-09-29 — "option a, go ahead and plan and code it". The user, on the Cast
+        step: "a voice is all tied to a persona you set voice pitch engine in persona … a persona
+        is the actual spoken voice adjusted with pitch speed and other settings", "i think
+        persona is the single point for an actual spoken voice that is then assigned to cast",
+        and "the mock already has it correct, persona on right, cast on left assign cast a
+        persona". The model as given (Fable's, restated and agreed):
+        · "Persona: a finished spoken voice. It's a voice and its engine, plus speed, pitch,
+          gain, direction and effects. It lives in your library and can be reused anywhere."
+        · "Speaker: a person in one book, with a name, aliases and who they are. Discover finds
+          speakers, and Script gives lines to them."
+        · "Cast: gives each speaker a persona. One persona can play many speakers, so change it
+          once and all of them change. This is exactly the mock: speakers on the left, personas
+          on the right." — the mock's Cast needs no redraw.
+        What the build changes, as given:
+        · "Lines, the cast link and the remembered speaker fixes point at a speaker, and the
+          speaker points at its persona."
+        · "Generations, lexicons, channels and training jobs stay on the persona."
+        · "Your data gets reset."
+        · "The per-book unique-name rule moves to speakers, and the narrator becomes a speaker
+          cast like anyone."
+        · Option A: "who she is" moves to the speaker, and the persona keeps a short note on how
+          it sounds; "Compose and Rewrite on the Generate page have no book, so they would read
+          the persona's note instead of the character sheet."
+        · "When a Discover name exactly matches a persona in your library, the speaker arrives
+          already cast with it … Cast would show that assignment so you can change it."
+        Also said by Fable, NOT part of this go (offered as additions): tick several speakers →
+        one persona; audition a persona on the speaker's own line; Smart-assign suggests instead
+        of applying; "New persona…" from Cast; a speaker with no lines doesn't count as
+        blocking; a table for a game's hundreds of NPCs.
+DECIDED 2026-09-29, while planning (plan §5):
+        · Auto-cast — "Every new speaker": a new speaker whose name exactly matches a persona in
+          the library arrives cast with it — Discover's Add, a book import, + Add Narrator and
+          Cast's ＋ Add alike.
+        · Words — "speakers everythwere": the people in a book are SPEAKERS on every screen and
+          in every doc, never "characters" — including game and podcast projects (no "NPCs",
+          no "Hosts"). The new record is a speaker (`speakers` in code); a line's Speaker is one
+          of the book's speakers; "Cast" is the step and the act of giving speakers personas.
+          (Asked on the user's "we have characters found in discovery so either we call them
+          characters or speakers but not both"; "Characters found" was a breach of §8.4 made
+          earlier the same day.)
+        · Removing — "yes ask first": removing a speaker (Discover's "Already in the cast" ✕ and
+          Clear all, Cast's ✕) deletes it from the book and its lines go back to No speaker, so
+          it asks first — "one confirmation that names who goes and how many lines each has,
+          for example 'Remove Nettle? 22 lines will have no speaker.'"
+        · Library — "your rec": "In your library" in Discover means an exact persona name,
+          matched in code; the model is no longer sent the library, and that paragraph of the
+          Discover prompt goes, measured before and after.
+        · Commit — "your rec": commit today's work first, no push, so the split is its own
+          change.
+        · Discover's "In the cast" rows — "so add selected button and remove selected button,
+          you rec go", on the user's "ones that are already in cast should have button remove
+          from cast and note in cast already" and the rec as given: "The action cell says
+          'already in the cast' in grey, with a Remove from cast button beside it. Remove asks
+          first, as you ruled: 'Remove Cael Ferren from the cast? 21 lines will have no
+          speaker.' After removal the row turns New and stays in the list, with ＋ Add to bring
+          them back. The Already in the cast card at the bottom stays." Built as part of the
+          split. Plus a bulk "Remove N selected": In-the-cast rows get a tick too, beside
+          "＋ Add N selected" and "Ignore N selected"; one confirmation names who goes and each
+          one's lines.
+PLAN:   docs/plans/2026-09-29-speakers-and-personas.md — READ IT before coding any part.
+BUILT:  in progress.
+GO:     given 2026-09-29
+
+### Switching Studio steps keeps Script where you left it
+STATE:  DECIDED 2026-09-29 — "your rec go", on the user's "this is a spa and navigating a in a
+        spa shouldnt reset the state unless we tell it to" and the rec as given: "keep the
+        Script pages alive the same way Discover is. Switching steps and coming back would then
+        return you to the same page (grid or chapter), with the same ticks, filters, selected
+        line and scroll. Undo would still clear when you open a different chapter, as approved;
+        it would no longer clear just because you switched steps." (Discover's empty list after
+        adding Old Sedge was checked with the user and is correct.)
+BUILT:  2026-09-29 — `StudioView.vue`: StudioScript and StudioScriptChapter each in a
+        `<KeepAlive>` (as Discover); new `composables/useKeptScroll.js` (records the shared
+        scroller's position while shown, puts it back on return) used by both; the chapter
+        page's Undo still clears when `sceneId` changes. Checked on the real app (nothing
+        saved): grid tick, chapter chip, ticked line and scroll all survive Script → Overview →
+        Script. Docs studio.md, whats-new.
+GO:     given 2026-09-29
+
+### Overview: no "This kind's default" mastering option; no "Continue" button
+STATE:  DECIDED 2026-09-29 — "go", twice:
+        · on the user's "this kinds defau;lt no reason to have that as option" (the Overview's
+          mastering list) and the rec: "New projects get their kind's target written in when
+          they're created (ACX for an audiobook, Podcast for a podcast, None — raw otherwise),
+          so the dropdown always shows the real target. Remove the 'This kind's default'
+          option." This REVERSES the 2026-09-28 wording ruling that listed that option.
+        · on the user's "remove the reduncent button on project continue to script".
+BUILT:  2026-09-29 — `mastering.kind_master`, written by both project-create doors
+        (`projects_api` create + import); the Overview's list loses the "" option and shows
+        an older project's kind target when it stored none (`StudioOverview.masterShown`); the
+        render's resolver is unchanged, so such a project still renders to its kind's target.
+        The Continue button and `studioStatus.continueStep` (+ its tests) are gone; the "No
+        text yet" hint reads `state.lines` directly. Docs studio.md, whats-new.
 GO:     given 2026-09-29
 
 ### The audiobook demo is JustWrite's sample, The Ninth Facet

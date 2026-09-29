@@ -42,9 +42,10 @@ your own. Deleting it touches nothing else.
 - **Audiobook** — *The Ninth Facet*, JustWrite's own sample novel: two parts,
   four chapters, eight characters and plenty of dialogue, some tagged ("said
   Threll"), some not. It is imported exactly as your own JustWrite export
-  would be, so its characters arrive as the cast (plus the Narrator). To try
-  **Discover** on it, remove a few of them from the cast first — Discover only
-  proposes people who aren't cast yet.
+  would be, so its characters arrive as the cast. It has no narrator until you
+  pick one on Studio's Cast step. **Discover** shows the cast it finds as *In
+  the cast*; remove a few of them first to see them come back as *In your
+  library*.
 - **Game voicelines** — *Emberfall VO*, five lines with stable line ids.
 - **Podcast** — *Signal & Noise ep. 42*, three hosts.
 

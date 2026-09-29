@@ -211,7 +211,7 @@ def main() -> int:
             dialogue = [row for row in r["rows"] if row["kind"] == "dialogue"]
             open_paras = {i for i, p in enumerate(split_into_paragraphs(text)) if quote_left_open(p)}
             groups = flag_groups(lines_from_rows(r["rows"], narrator_ids=("narrator", "p_narrator")),
-                                 cast_ids, narrator_id="narrator", open_paragraphs=open_paras)
+                                 cast_ids, open_paragraphs=open_paras)
             flags_on = {}
             for g in groups:
                 for lid in g.lines:

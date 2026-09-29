@@ -124,3 +124,59 @@ def named_in(text: str, personas: Iterable) -> list:
         if any(k.casefold() in words for k in keys):
             out.append(p)
     return out
+
+
+# Words a first/last-name hit never counts on: titles and the like, which
+# begin names ("Old Sedge", "Mr. Armitage") and appear everywhere.
+_NOT_A_NAME = {"the", "old", "young", "mr", "mrs", "miss", "ms", "dr", "sir", "lady",
+               "lord", "master", "mister", "doctor", "captain", "saint", "st"}
+
+
+def cast_named_in(text: str, personas: Iterable) -> list[dict]:
+    """The cast members `text` names, for Discover's record of everyone a
+    chapter names (2026-09-29) — found without the AI, so the same every scan.
+
+    Stricter than `named_in` (which only pre-filters the library for a prompt):
+    a persona counts when its full name or an alias appears as a phrase, or
+    when its first or last name (3+ letters, not a title) appears capitalised
+    and belongs to no other persona in `personas` — ambiguity is refused, as in
+    `match`. Returns `[{persona_id, name, mentions, evidence}]` in order of first
+    appearance; `evidence` is the sentence that first names them, trimmed."""
+    pool = list(personas)
+    body = text or ""
+    owners: dict[str, list] = {}
+    for p in pool:
+        for label in _labels(p):
+            words = [w for w in norm(label).split() if len(w) >= 3 and w not in _NOT_A_NAME]
+            if len(norm(label).split()) >= 2:
+                for w in {words[0], words[-1]} if words else set():
+                    owners.setdefault(w, []).append(p)
+    out = []
+    for p in pool:
+        spans: list[tuple[int, int]] = []
+        for label in _labels(p):
+            pat = r"\b" + r"\s+".join(re.escape(w) for w in label.split()) + r"\b"
+            spans += [m.span() for m in re.finditer(pat, body, re.IGNORECASE)]
+        for word, who in owners.items():
+            if len(who) == 1 and who[0] is p:
+                spans += [m.span() for m in re.finditer(r"\b" + re.escape(word.capitalize()) + r"\b", body)]
+        if not spans:
+            continue
+        # "Mara Vance" also matches "Mara" and "Vance": one mention, not three.
+        mentions, reach = 0, -1
+        for s, e in sorted(spans):
+            if s >= reach:
+                mentions += 1
+            reach = max(reach, e)
+        first = min(s for s, _ in spans)
+        start = max(body.rfind(".", 0, first), body.rfind("\n", 0, first)) + 1
+        end = min([i for i in (body.find(".", first), body.find("\n", first)) if i >= 0] or [len(body)])
+        sentence = body[start:end + 1].strip()
+        if len(sentence) > 120:
+            sentence = sentence[: 117].rstrip() + "…"
+        pid = p.get("id") if isinstance(p, dict) else getattr(p, "id", None)
+        name = p.get("name") if isinstance(p, dict) else getattr(p, "name", "")
+        out.append({"persona_id": pid, "name": name, "mentions": mentions,
+                    "evidence": sentence, "_first": first})
+    out.sort(key=lambda r: r.pop("_first"))
+    return out

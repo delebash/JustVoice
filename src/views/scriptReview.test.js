@@ -57,9 +57,28 @@ describe("selection", () => {
   it("Next to check walks the whole chapter in reading order", () => {
     expect(nextToCheck(LINES, "n0", 1)).toBe("d1");
     expect(nextToCheck(LINES, "d3", 1)).toBe("d4");
-    expect(nextToCheck(LINES, "d4", 1)).toBeNull();
     expect(nextToCheck(LINES, "d4", -1)).toBe("d3");
     expect(nextToCheck(LINES, null, 1)).toBe("d1");
+    expect(nextToCheck(LINES, null, -1)).toBe("d4");
+  });
+
+  it("wraps past either end (2026-09-29)", () => {
+    expect(nextToCheck(LINES, "d4", 1)).toBe("d1");
+    expect(nextToCheck(LINES, "d5", 1)).toBe("d1");
+    expect(nextToCheck(LINES, "d1", -1)).toBe("d4");
+  });
+
+  it("a lone line to check is always reached — from above, below, or itself", () => {
+    const one = [line("a", "june"), line("b", null), line("c", "june")];
+    for (const from of ["a", "b", "c", null]) {
+      expect(nextToCheck(one, from, 1)).toBe("b");
+      expect(nextToCheck(one, from, -1)).toBe("b");
+    }
+  });
+
+  it("finds nothing only when nothing needs checking", () => {
+    expect(nextToCheck([line("a", "june"), line("b", "june")], "a", 1)).toBeNull();
+    expect(nextToCheck([], null, 1)).toBeNull();
   });
 });
 
@@ -196,11 +215,9 @@ describe("the words on a row", () => {
     const g = [
       { check: "only", speaker: "marius", lines: ["a"] },
       { check: "disagree", speaker: "june", other: "marius", lines: ["a"] },
-      { check: "narrator", speaker: "nar", lines: ["a"] },
     ];
     expect(checkQuestion(line("a", "marius", { flags: [0] }), g, nameOf, "Chapter")).toBe("Marius's only line in this chapter — is it theirs?");
     expect(checkQuestion(line("a", "june", { flags: [1] }), g, nameOf)).toBe("The book says June, the AI says Marius — whose line is it?");
-    expect(checkQuestion(line("a", "nar", { flags: [2] }), g, nameOf)).toBe("Spoken, but given to the Narrator — whose line is it?");
   });
 
   it("shows confidence in the app's colours, and none on a line that is yours", () => {

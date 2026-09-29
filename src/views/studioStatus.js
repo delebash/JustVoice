@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 //
 // Where each Studio step stands — the Overview's "Where it stands" rows and
-// its Continue button. Pure, so it is tested without mounting Studio.
+// its Script tags. Pure, so it is tested without mounting Studio.
 //
 // HONEST COUNTS ONLY (2026-09-27, decision 2). Every number here comes from
 // data the project holds: the chapters' blocks, the cast, the render cache,
@@ -54,28 +54,65 @@ export function isVariant(a, b) {
 }
 
 /**
- * The names a project's saved scans still propose, merged across chapters:
- * [{key, name, names, role_hint, evidence, evidence_found, lines, chapters,
- *   library}] — most lines first.
+ * Everyone a project's saved scans found, merged across chapters, each person
+ * once with a status — Discover's record (decided 2026-09-29):
+ *   "cast"    in this cast; `persona` is who
+ *   "library" a persona in your library but not this cast; Add links it
+ *   "new"     a name no persona has; Add makes one
+ *   "ignored" on the project's ignore list; Undo takes it off
+ * [{key, status, name, names, persona, role_hint, evidence, evidence_found,
+ *   lines, mentions, chapters}], waiting rows first.
  *
- * Merged (Discover fixes A + D, 2026-09-27): every proposal the server matched
- * to the same library persona is ONE row ("Brick", "Brick Halvorn" → Brick
- * Halvorn); among the rest, a name that is another with words added is ONE row
- * ("Sedge" + "Old Sedge"), shown under its longest form.
+ * A saved scan holds the AI's names that were not cast (`candidates`, ignored
+ * ones included) and the cast members the text names (`named_cast`, found by
+ * name without the AI). The status is worked out now, not at scan time, so
+ * someone added or ignored since shows as such — Add and Ignore change a row,
+ * they never remove it.
  *
- * Dropped: a name already in the cast (it may have been added since the scan),
- * and a library match whose persona has since joined the cast.
- * `cast` is [{id, name}] (names alone are accepted too).
+ * Merged (Discover fixes A + D, 2026-09-27): everything that points at one
+ * persona is one row ("Brick", "Brick Halvorn" → Brick Halvorn); among the
+ * rest, a name that is another with words added is one row ("Sedge" + "Old
+ * Sedge"), shown under its longest form.
+ * `cast` is [{id, name, aliases}] (names alone are accepted too); `ignored` is
+ * the project's ignore list.
  */
-export function proposedSpeakers(scenes, cast = []) {
+const STATUS_ORDER = { new: 0, library: 1, cast: 2, ignored: 3 };
+export function foundSpeakers(scenes, cast = [], ignored = []) {
   const castRows = cast.map((c) => (typeof c === "string" ? { id: null, name: c } : c));
-  const castNames = new Set(castRows.map((c) => normName(c.name)));
   const castIds = new Set(castRows.map((c) => c.id).filter(Boolean));
+  const castByName = new Map();
+  for (const c of castRows) {
+    for (const n of [c.name, ...(c.aliases || [])]) {
+      const k = normName(n);
+      if (k && !castByName.has(k)) castByName.set(k, c);
+    }
+  }
+  const ignoredNames = new Set((ignored || []).map(normName));
   const rows = [];
-  const add = (row, s, c) => {
+  const personaRow = (id, name) => {
+    let row = rows.find((r) => r.persona?.id === id);
+    if (!row) {
+      row = blank(`p:${id}`, name);
+      row.persona = { id, name };
+      rows.push(row);
+    }
+    return row;
+  };
+  const nameRow = (status, name) => {
+    let row = rows.find((r) => r.status === status && !r.persona && r.names.some((n) => isVariant(n, name)));
+    if (!row) {
+      row = blank(`${status}:${normName(name)}`, name);
+      row.status = status;
+      rows.push(row);
+    }
+    return row;
+  };
+  const note = (row, s, name, c) => {
+    const clean = (name || "").trim();
+    if (clean && !row.names.includes(clean)) row.names.push(clean);
+    if (!row.persona && clean.length > row.name.length) row.name = clean;
     row.lines += c.approx_lines || 0;
-    if (!row.names.includes(c.name.trim())) row.names.push(c.name.trim());
-    if (c.name.trim().length > row.name.length && !row.library) row.name = c.name.trim();
+    row.mentions += c.mentions || 0;
     if (!row.role_hint && c.role_hint) row.role_hint = c.role_hint;
     // The first chapter's quote that names them — "first appearance".
     if (!row.evidence && c.evidence) {
@@ -85,39 +122,53 @@ export function proposedSpeakers(scenes, cast = []) {
     if (!row.chapters.includes(s.id)) row.chapters.push(s.id);
   };
   for (const s of scenes || []) {
-    for (const c of s.metadata?.discover?.candidates || []) {
+    const saved = s.metadata?.discover;
+    if (!saved) continue;
+    for (const m of saved.named_cast || []) {
+      const now = castRows.find((c) => c.id === m.persona_id);
+      note(personaRow(m.persona_id, now?.name || m.name), s, m.name, m);
+    }
+    for (const c of saved.candidates || []) {
       const key = normName(c.name);
-      if (!key || castNames.has(key)) continue;
+      if (!key) continue;
       const lib = c.library_match || null;
-      if (lib && castIds.has(lib.persona_id)) continue;
-      const row = lib
-        ? rows.find((r) => r.library?.persona_id === lib.persona_id)
-        : rows.find((r) => !r.library && r.names.some((n) => isVariant(n, c.name)));
-      if (row) {
-        add(row, s, c);
-      } else {
-        const fresh = {
-          key: lib ? `lib:${lib.persona_id}` : key, name: c.name.trim(), names: [],
-          role_hint: "", evidence: "", evidence_found: null, lines: 0, chapters: [], library: lib,
-        };
-        add(fresh, s, c);
-        rows.push(fresh);
-      }
+      const inCast = lib && castIds.has(lib.persona_id)
+        ? castRows.find((r) => r.id === lib.persona_id)
+        : castByName.get(key);
+      if (inCast?.id) note(personaRow(inCast.id, inCast.name), s, c.name, c);
+      else if (ignoredNames.has(key)) note(nameRow("ignored", c.name), s, c.name, c);
+      else if (lib) note(personaRow(lib.persona_id, lib.name), s, c.name, c);
+      else note(nameRow("new", c.name), s, c.name, c);
     }
   }
-  // Most lines first; a tie (common — a named character often speaks none in
-  // the chapters scanned) keeps book order.
-  return rows.sort((a, b) => b.lines - a.lines);
+  for (const r of rows) {
+    if (r.persona) r.status = castIds.has(r.persona.id) ? "cast" : "library";
+  }
+  // Waiting rows first; then most lines, then most mentions; a tie keeps book
+  // order (a named character often speaks none in the chapters scanned).
+  return rows.sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status]
+    || b.lines - a.lines || b.mentions - a.mentions);
 }
+function blank(key, name) {
+  return {
+    key, status: null, name: (name || "").trim(), names: [], persona: null, role_hint: "",
+    evidence: "", evidence_found: null, lines: 0, mentions: 0, chapters: [],
+  };
+}
+/** A row still waiting for Add or Ignore. */
+export const isWaiting = (r) => r.status === "new" || r.status === "library";
 
 /**
  * Roll the chapters and the cast up into the project's state.
- * `stats` is {sceneId: blockStats}; `cast` is [{id, name, voice_id, narrator}];
+ * `stats` is {sceneId: blockStats}; `cast` is [{id, name, aliases, voice_id,
+ * narrator}]; `ignored` is the project's Discover ignore list;
  * `cache` is the /v1/render/cache-stats body, or null before it loads;
  * `script` is GET /v1/projects/{id}/script's chapters (the flags are the
  * server's), or null before it loads; `running` counts chapters being analyzed.
  */
-export function projectState({ scenes = [], stats = {}, cast = [], cache = null, script = null, running = 0 }) {
+export function projectState({
+  scenes = [], stats = {}, cast = [], ignored = [], cache = null, script = null, running = 0,
+}) {
   let lines = 0;
   let unplaced = 0;
   let analyzed = 0;
@@ -140,7 +191,8 @@ export function projectState({ scenes = [], stats = {}, cast = [], cache = null,
     : unplaced;
   const voiceless = cast.filter((p) => !p.voice_id);
   const scanned = scenes.filter((s) => s.metadata?.discover?.scanned_at).length;
-  const proposed = proposedSpeakers(scenes, cast).length;
+  // Found names still waiting for Add or Ignore.
+  const proposed = foundSpeakers(scenes, cast, ignored).filter(isWaiting).length;
   const blocked = voiceless.reduce((sum, p) => sum + (byPersona[p.id] || 0), 0);
   return {
     chapters: scenes.length,
@@ -229,19 +281,3 @@ export function stepStatus(key, state, unit) {
   }
 }
 
-/**
- * The first step with work left — where Continue goes. Null when there is
- * nothing to work on yet (no text), which the Overview says in words instead.
- */
-export function continueStep(projectType, state) {
-  if (!state.lines) return projectType === "game_voicelines" ? "lines" : null;
-  if (projectType !== "game_voicelines") {
-    // Discover has work while names wait on Add/Ignore, or while the cast is
-    // still only the Narrator and some chapter has never been scanned.
-    if (state.proposed || (!state.speakersBesideNarrator && state.scanned < state.chapters)) return "discover";
-    if (state.analyzed + (state.fromImport || 0) < state.chapters || state.unplaced) return "script";
-  }
-  if (state.castVoiced < state.castTotal || state.blocked) return "cast";
-  if (state.renderable === null || state.rendered < state.renderable) return "render";
-  return "export";
-}

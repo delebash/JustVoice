@@ -354,14 +354,17 @@ const overviewState = computed(() => projectState({
   script: scriptChapters.value,
   running: chapterRunFor(selectedProjectId.value)?.current?.kind === "analyze" ? 1 : 0,
   cast: projectPersonas.value.map((p) => ({
-    id: p.id, name: p.name, voice_id: p.voice_id, narrator: p.id === narratorPersona.value?.id,
+    id: p.id, name: p.name, aliases: p.aliases || [], voice_id: p.voice_id,
+    narrator: p.id === narratorPersona.value?.id,
   })),
+  ignored: selectedProject.value?.discover_ignored || [],
   cache: cacheStats.value ? { total: cacheStats.value.total, cached: cacheStats.value.cached } : null,
 }));
 
-// The cast as Script's pages read it — a cast of only the Narrator blocks Analyze.
+// The cast as Script's and Discover's pages read it — a cast of only the
+// Narrator blocks Analyze; the aliases let Discover tell who is In the cast.
 const scriptCast = computed(() => projectPersonas.value.map((p) => ({
-  id: p.id, name: p.name, narrator: p.id === narratorPersona.value?.id,
+  id: p.id, name: p.name, aliases: p.aliases || [], narrator: p.id === narratorPersona.value?.id,
 })));
 // A step, and where in it to land: Overview's Script numbers open the grid on
 // To check.
@@ -374,9 +377,9 @@ function goStep(k, arg = null) {
 const linesByScene = computed(() =>
   Object.fromEntries(Object.entries(sceneStats.value).map(([k, v]) => [k, v.speakable])));
 
-// Discover's saved-scan changes ({sceneId: discover}) folded into the chapter
-// rows — the server already holds them, so this only spares a re-fetch, and
-// Overview's Discover row moves the moment a chapter finishes.
+// A finished scan ({sceneId: discover}) folded into the chapter rows — the
+// server already holds it, so this only spares a re-fetch, and Overview's
+// Discover row moves the moment a chapter finishes.
 function applyScans(patch) {
   scenes.value = scenes.value.map((s) => (s.id in patch
     ? { ...s, metadata: { ...(s.metadata || {}), discover: patch[s.id] } }
@@ -420,14 +423,6 @@ const stepCards = computed(() => visibleTabs.value.map((t) => {
   }
   return { ...t, sub };
 }));
-
-// Header engine chips (JustWrite reference): which engines power this
-// work, visible where you work. TTS = loaded tts engine; Script = the
-// loaded LLM. Both link out.
-const headerTts = computed(() =>
-  (engines.value || []).find((e) => e.status === "loaded" && (e.kind === "tts" || !e.kind)) || null);
-const headerLlm = computed(() =>
-  (engines.value || []).find((e) => e.status === "loaded" && e.kind === "llm") || null);
 
 watch([selectedProject, () => tab.value], () => {
   // Resolve the step: whatever isn't a stop of THIS kind (the empty seed,
@@ -603,20 +598,56 @@ async function addPersonaToCast(p) {
   }
 }
 
-// Idempotent backend call — creates a Narrator persona for this project
-// and adds it to the cast in the "narrator" role. The empty-state slot in
-// the Narrator section calls it: the one way back after the Narrator was
-// deleted or left the cast.
+// Idempotent backend call — gives this project a narrator in the "narrator"
+// role: a free "Narrator" from the library (one in no book) first, a new one
+// only if there is none, and narration lines with no speaker move to it. The
+// empty-state slot in the Narrator section calls it. No book gets a narrator
+// on its own (2026-09-29), so this or a card's Narrator tick is how one comes.
+// Any cast member can be the narrator (2026-09-29) — a first-person narrator
+// reads the prose and speaks their own lines in one voice. Each cast card has
+// a "Narrator" checkbox; ticking one moves the role there (one narrator per
+// project), and the server moves the narration Analyze decided with it; lines
+// you set stay where you put them.
+const settingNarrator = ref(false);
+async function setNarrator(personaId) {
+  const projectId = selectedProjectId.value;
+  if (!projectId || !personaId || personaId === narratorPersona.value?.id || settingNarrator.value) return;
+  settingNarrator.value = true;
+  try {
+    const r = await api.request(`/v1/projects/${projectId}/narrator`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ persona_id: personaId }),
+    });
+    await loadProjectPersonas(projectId);
+    const moved = r?.moved_lines || 0;
+    if (moved) await loadScenesForProject(projectId);   // the chapters' counts follow
+    const name = projectPersonas.value.find((p) => p.id === personaId)?.name || "They";
+    pushToast({
+      kind: "success",
+      message: `${name} narrates now${moved ? ` — ${moved.toLocaleString()} line${moved === 1 ? "" : "s"} of narration moved to them` : ""}.`,
+    });
+  } catch (e) {
+    pushToast({ kind: "error", message: `Couldn't change the narrator: ${e?.message || e}` });
+  } finally {
+    settingNarrator.value = false;
+  }
+}
+
 const creatingNarrator = ref(false);
 async function createNarrator() {
   if (!selectedProjectId.value || creatingNarrator.value) return;
   creatingNarrator.value = true;
   try {
-    await api.request(`/v1/projects/${selectedProjectId.value}/narrator`, {
+    const r = await api.request(`/v1/projects/${selectedProjectId.value}/narrator`, {
       method: "POST",
     });
     await loadProjectPersonas(selectedProjectId.value);
-    pushToast({ kind: "success", message: "Narrator added to the cast." });
+    const moved = r?.moved_lines || 0;
+    pushToast({
+      kind: "success",
+      message: `Narrator added to the cast${moved ? ` — ${moved.toLocaleString()} narration line${moved === 1 ? "" : "s"} now read by it` : ""}.`,
+    });
   } catch (e) {
     pushToast({ kind: "error", message: `Add Narrator failed: ${e?.message || e}` });
   } finally {
@@ -1264,7 +1295,11 @@ async function refreshSceneMeta(sceneId) {
 const offChapterDone = onChapterDone(async ({ projectId, sceneId, kind, result }) => {
   if (projectId !== selectedProjectId.value) return;
   if (kind === "discover" && result) {
-    applyScans({ [sceneId]: { scanned_at: new Date().toISOString(), candidates: result.candidates || [] } });
+    applyScans({ [sceneId]: {
+      scanned_at: new Date().toISOString(),
+      candidates: result.candidates || [],
+      named_cast: result.named_cast || [],
+    } });
   } else if (kind === "analyze") {
     await refreshSceneMeta(sceneId);
     await loadProjectScript();
@@ -1518,16 +1553,8 @@ watch(selectedProjectId, (id) => {
     <div class="jv-section studio__project-bar">
       <label class="studio__project-label">{{ copy.book.singular }}:</label>
       <UiSelect v-model="selectedProjectId" width="name" :options="projectOptions" />
-      <span class="jv-spacer" />
-      <!-- Which engines power this work (JustWrite reference chips). -->
-      <UiChip as="a" :selected="!!headerTts" href="#engines"
-         :title="headerTts ? `${headerTts.name || headerTts.id} is loaded — renders use it. Manage on the Speech engines tab.` : 'No TTS engine loaded — the first render sets one up. Manage on the Speech engines tab.'">
-        TTS · {{ headerTts ? (headerTts.name || headerTts.id) : "none" }}
-      </UiChip>
-      <UiChip as="a" :selected="!!headerLlm" href="#settings"
-         :title="headerLlm ? `${headerLlm.name || headerLlm.id} answers Script/Smart-assign. Routing in Settings → AI features.` : 'No local LLM loaded — Script/Smart-assign route per Settings → AI features.'">
-        Script · {{ headerLlm ? (headerLlm.name || headerLlm.id) : "AI features" }}
-      </UiChip>
+      <!-- What is loaded — voice engine, language model — is the main
+           header's to show (2026-09-29); the chips that repeated it here died. -->
     </div>
 
     <!-- ── Overview, then the numbered steps (studioSteps.js) ─────────── -->
@@ -1582,7 +1609,7 @@ watch(selectedProjectId, (id) => {
       <StudioDiscover v-if="tab === 'discover' && selectedProject" :project="selectedProject" :scenes="scenes"
         :lines-by-scene="linesByScene"
         :cast="scriptCast"
-        @cast-changed="loadAll" @go="goStep" @scans="applyScans" />
+        @cast-changed="loadAll" @go="goStep" />
     </KeepAlive>
 
     <!-- ── Lines — a game project's step 1 (the writers' sheet) ────── -->
@@ -1637,13 +1664,16 @@ watch(selectedProjectId, (id) => {
               title="Remove from this cast — persona stays in the library"
               @click.stop="removeFromCast(narratorPersona)"
             >✕</button>
-            <span class="studio__char-portrait" :style="{ background: colorFor(narratorPersona.name) }">N</span>
+            <span class="studio__char-portrait" :style="{ background: colorFor(narratorPersona.name) }">{{ (narratorPersona.name || "?").charAt(0).toUpperCase() }}</span>
             <div class="studio__char-main">
               <div class="studio__char-name-row">
                 <strong class="studio__char-name">{{ narratorPersona.name }}</strong>
                 <UiTag intent="success">main</UiTag>
               </div>
               <div class="studio__char-role jv-muted">{{ personaRole(narratorPersona) || "carries the narration" }}</div>
+              <span class="studio__char-narrator" title="The narrator reads everything outside quote marks. To hand it over, tick Narrator on someone else's card." @click.stop>
+                <UiCheckbox :model-value="true" disabled label="Narrator" />
+              </span>
               <div v-if="narratorPersona.voice_id" class="studio__char-voice">
                 <span class="studio__char-glyph" :style="{ background: colorFor(voiceById(narratorPersona.voice_id)?.name), color: '#fff' }">{{ (voiceById(narratorPersona.voice_id)?.name || "?").slice(0, 2) }}</span>
                 {{ voiceName(narratorPersona.voice_id) }}
@@ -1659,13 +1689,13 @@ watch(selectedProjectId, (id) => {
             type="button"
             class="studio__narrator-empty"
             :disabled="creatingNarrator"
-            title="Create a Narrator persona for this project and add it to the cast"
+            title="Put a Narrator in this cast — one from your library that isn't in any book, or a new one"
             @click="createNarrator"
           >
             <span class="studio__char-portrait" :style="{ background: 'var(--surface-3)' }">N</span>
             <span class="studio__narrator-empty-text">
               <strong>{{ creatingNarrator ? "Adding Narrator…" : "Add Narrator" }}</strong>
-              <span class="jv-muted">Creates a Narrator persona for this project — voice is assigned below.</span>
+              <span class="jv-muted">Uses a Narrator from your library that isn't in any book, or makes one. Or tick Narrator on anyone in the cast.</span>
             </span>
           </button>
         </section>
@@ -1762,6 +1792,11 @@ watch(selectedProjectId, (id) => {
             <div class="studio__char-main">
               <strong class="studio__char-name">{{ p.name }}</strong>
               <div class="studio__char-role jv-muted">{{ personaRole(p) }}</div>
+              <span class="studio__char-narrator" @click.stop
+                :title="`Make ${p.name} the narrator — they read everything outside quote marks, and the narration Analyze decided moves to them`">
+                <UiCheckbox :model-value="false" :disabled="settingNarrator" label="Narrator"
+                  @update:model-value="(v) => v && setNarrator(p.id)" />
+              </span>
               <div v-if="p.voice_id" class="studio__char-voice">
                 <span class="studio__char-glyph" :style="{ background: colorFor(voiceById(p.voice_id)?.name), color: '#fff' }">{{ (voiceById(p.voice_id)?.name || "?").slice(0, 2) }}</span>
                 {{ voiceName(p.voice_id) }}
@@ -1921,21 +1956,29 @@ watch(selectedProjectId, (id) => {
     </section>
 
     <!-- ── Script — the chapter grid, or one chapter (Slice 3, §8.24) ── -->
-    <section v-if="tab === 'script'" class="studio__script">
-      <div v-if="!selectedProject" class="jv-banner">
-        Pick a {{ copy.book.singular.toLowerCase() }} above to attribute its script.
-      </div>
-      <StudioScriptChapter v-else-if="scriptSceneId" :project="selectedProject" :scene-id="scriptSceneId"
+    <div v-if="tab === 'script' && !selectedProject" class="jv-banner">
+      Pick a {{ copy.book.singular.toLowerCase() }} above to attribute its script.
+    </div>
+    <!-- Kept alive across step switches (2026-09-29, "navigating in a spa
+         shouldnt reset the state"): coming back to Script finds the same page,
+         ticks, filters, selected line and scroll. The chapter page still
+         clears its Undo when a DIFFERENT chapter opens. -->
+    <KeepAlive>
+      <StudioScriptChapter v-if="tab === 'script' && selectedProject && scriptSceneId"
+        :project="selectedProject" :scene-id="scriptSceneId"
         :chapters="scriptChapters" :scenes="scenes" :cast="scriptCast" :focus="scriptFocus"
         :version="scriptVersion"
         @back="openScript({ sceneId: null })"
         @open="(id, focus) => openScript({ sceneId: id, focus })"
         @go="(k) => (tab = k)" @changed="onScriptChanged" @cast-changed="loadAll"
         @rewrite="rewriteRow" />
-      <StudioScript v-else :project="selectedProject" :chapters="scriptChapters" :scenes="scenes"
+    </KeepAlive>
+    <KeepAlive>
+      <StudioScript v-if="tab === 'script' && selectedProject && !scriptSceneId"
+        :project="selectedProject" :chapters="scriptChapters" :scenes="scenes"
         :cast="scriptCast" v-model:filter="scriptFilter"
         @open="(id, focus) => openScript({ sceneId: id, focus })" @go="(k) => (tab = k)" />
-    </section>
+    </KeepAlive>
 
     <!-- ── Render tab — Phase 6 / Slice 1 ───────────────────────────── -->
     <section v-if="tab === 'render'" class="studio__render">
@@ -2409,6 +2452,7 @@ watch(selectedProjectId, (id) => {
 }
 .studio__char-card:hover { border-color: var(--accent-line, var(--accent)); }
 .studio__char-card--narrator { background: var(--accent-soft); grid-column: 1 / -1; }
+.studio__char-narrator { display: inline-flex; margin-top: 6px; }
 .studio__char-card--selected { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .studio__char-card--unassigned { border-style: dashed; }
 

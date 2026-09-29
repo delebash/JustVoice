@@ -13,8 +13,12 @@ checks mark that shape (docs/plans/2026-08-15-voice-workflow-redesign.md §8.23,
   is as often the middle one as the last. A speech over several paragraphs
   (each opens a quote, only the last closes it) is one turn.
 * **only** — a persona's only line in the chapter.
-* **narrator** — speech given to the Narrator.
 * **disagree** — the book named one speaker and the model said another.
+
+The narrator is an ordinary persona in every check (2026-09-29): any cast
+member can narrate — Watson narrates and speaks — so a "speech given to the
+Narrator" check would mark a first-person narrator's every line. It was
+dropped; it had caught nothing on the published test book.
 
 Plus **not in the cast**, which is not a mark on a line but a fact about the
 chapter: lines whose persona has left the cast.
@@ -55,7 +59,7 @@ class Line:
 
 @dataclass
 class FlagGroup:
-    check: str                    # "run" | "only" | "narrator" | "disagree"
+    check: str                    # "run" | "only" | "disagree"
     speaker: str | None           # whose line(s) these are
     lines: list[str] = field(default_factory=list)   # the ids marked
     # run: how many turns the persona took with no reply.
@@ -90,13 +94,11 @@ def flag_groups(
     lines: list[Line],
     cast_ids: set[str] | frozenset[str],
     *,
-    narrator_id: str | None,
     open_paragraphs: set[int] | None = None,
 ) -> list[FlagGroup]:
     """The chapter's flag groups, in reading order of their first line.
 
-    `cast_ids` is the project's cast now; `narrator_id` its Narrator.
-    `open_paragraphs` names the paragraphs whose quote is left open, for a
+    `cast_ids` is the project's cast now. `open_paragraphs` names the paragraphs whose quote is left open, for a
     caller whose lines have lost their quote marks (the eval reads the
     pipeline's rows); without it, the lines' own text is read — a stored
     dialogue block keeps its quote marks."""
@@ -117,7 +119,7 @@ def flag_groups(
     for para in paras:
         spoken = [ln for ln in para if ln.spoken]
         who = {ln.speaker for ln in spoken}
-        if not spoken or len(who) != 1 or None in who or narrator_id in who:
+        if not spoken or len(who) != 1 or None in who:
             close()
             run, run_who, open_last = [], None, False
             continue
@@ -144,10 +146,8 @@ def flag_groups(
         if ln.source not in DECIDED:
             continue
         w = ln.speaker
-        if w and w in cast_ids and w != narrator_id and count[w] == 1:
+        if w and w in cast_ids and count[w] == 1:
             groups.append(FlagGroup("only", w, [ln.id]))
-        if w and w == narrator_id:
-            groups.append(FlagGroup("narrator", w, [ln.id]))
         if ln.llm_speaker and ln.llm_speaker != w:
             groups.append(FlagGroup("disagree", w, [ln.id], other=ln.llm_speaker))
 

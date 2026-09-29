@@ -10,23 +10,65 @@ The Persona layer holds the **character sheet**, the **voice mapping** (which ca
 
 ## The Narrator
 
-Audiobook and podcast projects get a persona called **Narrator** the moment
-they're created — whether you started the project by hand or imported one.
-It's the voice of everything that isn't spoken: when [Studio ·
-Script](studio.md) analyzes a chapter, every stretch of prose outside quote
-marks is bound to it.
+A book's **narrator** is the voice of everything that isn't spoken: when
+[Studio · Script](studio.md) analyzes a chapter, every stretch of prose outside
+quote marks goes to it.
 
-It is an ordinary persona — rename it, give it a voice, write its two notes,
+**No book gets one on its own.** A project you create, or import, starts with
+no narrator — unless the manuscript itself has a character called *Narrator*,
+who then becomes it. On Studio's Cast step, tick **Narrator** on anyone in the
+cast, or use **Add Narrator**: it puts a persona called Narrator from your
+library that isn't in any book into the cast — so a deleted book's narrator is
+used again instead of piling up — and makes a new one only if there is none.
+Until a book has a narrator, Analyze leaves its narration with no speaker, and
+a chapter won't render; choosing one moves those lines to it.
+
+The narrator is an ordinary persona — rename it, give it a voice, write its two notes,
 take it out of the cast or delete it, like any other. What makes it the
 project's narrator is its place in the cast, not anything about the persona:
 rename it and it is still the one the prose goes to.
 
+**Anyone in the cast can be the narrator.** A book told in the first person has
+a narrator who also speaks — Watson tells *The Speckled Band* and talks in it —
+and both should be one voice. On Studio's Cast step, tick **Narrator** on their
+card. There is one narrator per project: the persona who had the role stays in
+the cast as an ordinary member, and the narrator's own box stays ticked until you
+tick someone else's. The narration Analyze decided moves to the new
+narrator at once; lines you set yourself stay where you put them.
+
 Deleting it (or taking it out of the cast) leaves the project with no narrator,
 and every line of narration with no speaker — a chapter won't render until they
 have one. It stays that way — restarting the app doesn't bring a Narrator back.
-Studio's Cast step offers **Add Narrator**, which makes a new one, and Script's
-**Assign N → Narrator** gives it the narration back. Cast it
-a voice early; a chapter whose narration has no voice won't render either.
+Studio's Cast step offers **Add Narrator**, which brings one back and gives it
+the narration that has no speaker; Script's **Assign N → Narrator** does the
+same for a chapter. Cast it a voice early; a chapter whose narration has no
+voice won't render either.
+
+## Names
+
+A name is unique **within a book**, not across your library. Two books can each
+have a *Narrator* or a *Mother*, but one cast can't hold two people with the
+same name — Script's speaker list, Analyze and Discover all find people by name
+within a book. Case and extra spaces don't count: *mara* and *Mara* are the
+same name.
+
+- Adding someone to a cast — Studio's Cast step, or Discover's **＋ Add** — is
+  refused when the book already has someone by that name.
+- Renaming a persona is refused when a book it's in already has someone by the
+  new name; the message says which book.
+- A persona that's in no book can have any name.
+- An import keeps the book's characters as the manuscript has them, even two
+  with the same name.
+
+The persona list's **Used in** column names the books each persona is in, so
+two personas with the same name are told apart.
+
+## Deleting several at once
+
+Tick personas in the list — the box in the header ticks every one shown — then
+**Delete N selected**. One confirmation lists them and says which are in a
+book's cast. Each goes exactly as a single **Delete** does: it leaves every
+cast, and its lines lose their speaker. Voices and lexicons are kept.
 
 ## The editor has two halves
 

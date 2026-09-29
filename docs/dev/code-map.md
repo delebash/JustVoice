@@ -54,9 +54,24 @@ and answered wrongly each time, when the answers were sitting in the code and in
 
 **No persona is special** (2026-09-29). A project's narrator is the cast member
 whose `project_personas.role_label` is `"narrator"` (else one named "Narrator")
-— `extraction_api._narrator_persona_id`, `StudioView.narratorPersona`. Every
-persona deletes the same way; its cast links cascade and its lines' `persona_id`
-goes null.
+— `extraction_api._narrator_persona_id`, `StudioView.narratorPersona`. Any cast
+member can hold it — Studio Cast's per-card "Narrator" checkbox calls
+`PUT /v1/projects/{id}/narrator`, which moves the role (one per
+project) and the `source == "narration"` lines of the old narrator (or of nobody)
+with it; `POST` (Add Narrator) checks the role before the name, then links a
+library "Narrator" in no cast before creating one, and moves the unowned
+narration too (`projects_api.move_narration`, shared with the PUT). **Nothing
+makes a narrator on its own** (2026-09-29): create makes none, and import only
+gives the role to a book character called Narrator (`_adopt_book_narrator`).
+Every persona deletes the same way; its cast links cascade and its lines'
+`persona_id` goes null.
+
+**Names are unique within a book** (2026-09-29), not across the library —
+`_persona_helpers.same_name` (casefold, spaces collapsed) + `refuse_same_name`
+(409). Checked by `POST /v1/projects/{id}/cast`, Discover's promote (the
+library-link path and `ensure_project_persona(unique_in_cast=True)`), and
+`PUT /v1/personas/{id}` when the name changes (every project the persona is
+in). Import paths don't check — the book's characters arrive as they are.
 
 `voice_instruct` and `personality` are **two fields, not three** — the
 2026-08-15 split (Slice A, `f54c4ea`). One field feeding both the synth and the
@@ -406,7 +421,7 @@ presence is the "changed" mark; the block PATCH drops it when the line becomes
 is a pure function over a chapter's lines — **run** (one persona, three or more
 turns with no reply; a paragraph that leaves its quote open carries on into the
 next, so a long speech is one turn), **only** (a cast persona's only line),
-**narrator** (speech on the Narrator), **disagree** (`llm_speaker` set) — plus
+**disagree** (`llm_speaker` set) — plus
 `not_in_cast`. Marks go only on lines whose source Analyze wrote.
 `server/scripts/eval_attribution.py` imports the same function (via
 `lines_from_rows`) and prints caught / missed / false alarms with every run.
@@ -439,13 +454,15 @@ discover, the non-streaming scene analyze, the Lab's `analyze-text` and its
 `discover-speakers`. The pipeline is blocking; `async def` around it stalled
 every other request, `/v1/health` included, for the length of the call.
 Analyze no longer runs it afterwards. **Each scan is saved on its
-chapter** — `scene.metadata.discover = {scanned_at, candidates}`, written by
-the discover endpoint (replacing that chapter's last scan) and pruned by
-`extraction_api.prune_discovered`, which promote and the new
-`POST /v1/projects/{id}/discover/ignore` both call. The component holds no
-results: it derives them from the scenes (`studioStatus.proposedSpeakers`) and
-hands changes back to Studio via `scans`; Studio keeps it in a `KeepAlive` so a
-scan survives a step switch.
+chapter** — `scene.metadata.discover = {scanned_at, candidates, named_cast}`,
+written by the discover endpoint and replaced only by that chapter's next scan
+(2026-09-29: nothing prunes it — Add and Ignore change a row's status, not the
+record). `candidates` are the model's names that aren't cast (ignored ones
+kept); `named_cast` the cast members the text names, found without the model by
+`names.cast_named_in`. The component holds no results: `studioStatus.foundSpeakers`
+merges the scenes' records against the current cast and ignore list into one
+list with a status (cast · library · new · ignored); Studio keeps it in a
+`KeepAlive` so a scan survives a step switch.
 
 **Names are matched in one place — `extraction/names.py`** (2026-09-27): full
 name / alias / first-or-last name (3+ letters), ambiguity refused, prefixes
@@ -740,7 +757,7 @@ active project so the title-bar switcher works while Studio is on screen.
 | Step | Where | What it is |
 |---|---|---|
 | **Overview** | `components/StudioOverview.vue` | Where-it-stands rows (`views/studioStatus.js`, pure + tested — counts from blocks, cast, the render cache and Script's grid rows; Script's two tags open the grid on "To check"), Continue, settings (title, author → M4B artist, description, kind, mastering target), re-import, .justvoice.zip, delete |
-| **Discover** | `components/StudioDiscover.vue` | Chapter grid + Scan + Proposed speakers (Add / Ignore); Ignored and Already-in-the-cast each have a ✕ per name and Clear all (the cast's keeps the Narrator) |
+| **Discover** | `components/StudioDiscover.vue` | Chapter grid (Found column) + Scan + Characters found (status per person, chips All · New · In the cast · Ignored; Add / Ignore / Undo); Ignored and Already-in-the-cast each have a ✕ per name and Clear all (the cast's keeps the Narrator) |
 | **Script** | `components/StudioScript.vue` (the chapter grid) · `components/StudioScriptChapter.vue` (one chapter) | The grid reads `GET /v1/projects/{id}/script` (Studio owns the fetch; Overview reads the same rows) and queues Analyze on `services/chapterRun.js` — one run of chapters per project, one kit task per chapter, module state so it survives leaving Studio. The chapter page reads `GET /v1/scenes/{id}/script` and re-reads after every change; its selection, keys, set / swap / confirm and undo stack are `views/scriptReview.js` (pure, unit-tested). Rewrite-in-character is still StudioView's modal, opened by the page's right-click (`@rewrite`) until Slice 4 moves it to Render |
 | **Lines** (game) | `views/LinesView.vue` embedded with `:project-id` | the line grid, its own project picker hidden |
 

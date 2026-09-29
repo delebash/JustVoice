@@ -1582,7 +1582,7 @@ class ScriptLine(BaseModel):
 
 
 class ScriptFlag(BaseModel):
-    check: Literal["run", "only", "narrator", "disagree"]
+    check: Literal["run", "only", "disagree"]
     speaker: str | None = None
     lines: list[str]
     turns: int = 0

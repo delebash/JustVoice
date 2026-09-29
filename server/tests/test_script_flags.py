@@ -39,7 +39,7 @@ def prose(i, text="He paused.", *, p=None):
 
 
 def checks(lines, cast=CAST):
-    return [(g.check, g.speaker, g.lines) for g in flag_groups(lines, cast, narrator_id="narrator")]
+    return [(g.check, g.speaker, g.lines) for g in flag_groups(lines, cast)]
 
 
 # ── Three in a row ─────────────────────────────────────────────────────────
@@ -49,7 +49,7 @@ def test_three_turns_with_no_reply_flag_the_whole_run():
     # "Ino." / "Quartermaster." / "Breathe." all went to one speaker, and the
     # wrong one was the MIDDLE line — so the group is the run, not its third.
     lines = [say(0, "june"), say(1, "june"), say(2, "june"), say(3, "marius")]
-    groups = flag_groups(lines, CAST, narrator_id="narrator")
+    groups = flag_groups(lines, CAST)
     run = [g for g in groups if g.check == "run"]
     assert len(run) == 1
     assert run[0].lines == ["d0", "d1", "d2"] and run[0].turns == 3
@@ -95,7 +95,7 @@ def test_the_speech_then_two_more_turns_is_three():
         say(2, "june"),
         say(3, "june"),
     ]
-    groups = [g for g in flag_groups(lines, CAST, narrator_id="narrator") if g.check == "run"]
+    groups = [g for g in flag_groups(lines, CAST) if g.check == "run"]
     assert len(groups) == 1 and groups[0].turns == 3
 
 
@@ -131,17 +131,19 @@ def test_a_personas_only_line():
     assert not any(c[0] == "only" and c[1] == "marius" for c in checks(lines))
 
 
-def test_speech_given_to_the_narrator():
+def test_the_narrator_is_an_ordinary_persona():
+    """No "given to the Narrator" check (2026-09-29): any cast member can
+    narrate, and a first-person narrator speaks. The narrator's speech counts
+    like anyone's — one line of it is an only line, three in a row a run."""
     lines = [say(0, "narrator"), say(1, "june"), say(2, "june")]
-    assert ("narrator", "narrator", ["d0"]) in checks(lines)
-    # ...and it never forms a run of its own.
-    three = [say(i, "narrator") for i in range(3)]
-    assert [c[0] for c in checks(three)] == ["narrator"] * 3
+    assert checks(lines) == [("only", "narrator", ["d0"])]
+    three = [say(i, "narrator") for i in range(3)] + [say(3, "june")]
+    assert [c[0] for c in checks(three)] == ["run", "only"]
 
 
 def test_the_book_and_the_model_disagree():
     lines = [say(0, "june", source="tag", llm="marius"), say(1, "marius"), say(2, "june")]
-    groups = flag_groups(lines, CAST, narrator_id="narrator")
+    groups = flag_groups(lines, CAST)
     dis = [g for g in groups if g.check == "disagree"]
     assert len(dis) == 1 and dis[0].speaker == "june" and dis[0].other == "marius"
 
@@ -157,7 +159,7 @@ def test_groups_come_in_reading_order():
     lines = [say(0, "renn"), say(1, "june"), say(2, "june"), say(3, "june"),
              say(4, "marius", source="tag", llm="june")]
     assert [c[0] for c in checks(lines)] == ["only", "run", "only", "disagree"]
-    assert flagged_lines(flag_groups(lines, CAST, narrator_id="narrator")) == {
+    assert flagged_lines(flag_groups(lines, CAST)) == {
         "d0", "d1", "d2", "d3", "d4"}
 
 
@@ -210,14 +212,13 @@ def _key_lines(sample: str):
                 lines.append(Line(id=f"N{i}", speaker="Narrator", text=seg["text"], spoken=False,
                                   source="narration", paragraph=seg["paragraph_idx"]))
         open_paras = {i for i, p in enumerate(paras) if quote_left_open(p)}
-        yield scene.title, flag_groups(lines, cast, narrator_id="Narrator",
-                                       open_paragraphs=open_paras)
+        yield scene.title, flag_groups(lines, cast, open_paragraphs=open_paras)
 
 
 @pytest.mark.parametrize("sample", ["the-ninth-facet", "the-salt-iron-road", "the-speckled-band"])
-def test_the_answer_keys_raise_no_run_and_no_narrator_flag(sample):
+def test_the_answer_keys_raise_no_run_flag(sample):
     for _title, groups in _key_lines(sample):
-        assert [g for g in groups if g.check in ("run", "narrator", "disagree")] == []
+        assert [g for g in groups if g.check in ("run", "disagree")] == []
 
 
 def test_the_answer_keys_only_lines_are_real_ones():

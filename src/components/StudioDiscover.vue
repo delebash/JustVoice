@@ -3,19 +3,22 @@
   Studio · Discover — its own step (redesign §8.5, built 2026-09-27).
 
   Discover is a different verb from Script's Analyze: it attributes nothing.
-  It reads the prose for names NOT yet in the cast and, only when you say so,
-  creates personas for them. Analyze can only choose from personas that
+  It reads the prose for everyone it names and, only when you say so, creates
+  personas for the new ones. Analyze can only choose from personas that
   exist, which is why this step runs first.
 
-  SAVED, NOT HELD (2026-09-27, "both"). Each chapter's scan lives on the
-  chapter (`scene.metadata.discover = {scanned_at, candidates}`), written by
-  the discover endpoint and pruned server-side by promote and by
-  /discover/ignore. This component therefore keeps no results of its own: the
-  Proposed list and the grid's Last scanned / Proposed columns are DERIVED
-  from the `scenes` prop, and every change is handed back to Studio through
-  `scans` so Overview's counts move with it. Studio also keeps this step
-  alive across step switches (KeepAlive), so a scan in flight keeps running
-  while you look at Script.
+  A RECORD, NOT A TO-DO LIST (decided 2026-09-29, "your rec go"). Each
+  chapter's scan lives on the chapter (`scene.metadata.discover = {scanned_at,
+  candidates, named_cast}`), written by the discover endpoint and replaced
+  only by the next scan of that chapter: the AI's names that are not in the
+  cast, and the cast members the text names (found by name, no AI). Add and
+  Ignore change a person's STATUS — In the cast · In your library · New ·
+  Ignored — and never remove them, so a rescan of a finished chapter still
+  shows everyone. This component keeps no results of its own: the list and
+  the grid's Found column are DERIVED from the `scenes` prop, the cast and the
+  ignore list (`studioStatus.foundSpeakers`). Studio keeps this step alive
+  across step switches (KeepAlive), so a scan in flight keeps running while
+  you look at Script.
 
   Scope is an inline grid (§8.7: never a modal) — a select-all checkbox in the
   header and one per chapter. The scan runs on the project's chapter run
@@ -24,36 +27,34 @@
   task, shown by the AiTaskStrip at the top of this page with its Cancel.
 
   2026-09-27 fixes (A B C D + 1-5): a proposal that names a persona already in
-  your LIBRARY says so ("→ Brick Halvorn") and Add re-links that persona and
+  your LIBRARY says so (In your library) and Add re-links that persona and
   learns the name as an alias instead of making a duplicate; spellings of one
   person merge into one row ("Sedge" + "Old Sedge"); a quote the server could
   not find in the chapter is flagged; Ignore is remembered for the project and
-  listed below. Each ignored name and each cast member has its own ✕, and both
+  listed below as well. Each ignored name and each cast member has its own ✕, and both
   lists have "Clear all" (2026-09-29) — the cast's keeps the Narrator.
 -->
 <script setup>
 import { computed, ref, watch } from "vue";
 import {
-  AiTaskStrip, UiButton, UiCheckbox, UiTable, UiTag, pushToast, useAiTasksStore,
+  AiTaskStrip, UiButton, UiCheckbox, UiChip, UiTable, UiTag, pushToast, useAiTasksStore,
 } from "@delebash/llm-ui";
 import { useApi } from "../stores/api.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { useCopy } from "../services/copy.js";
 import { chapterRunFor, failureOf, inRun, queueChapters } from "../services/chapterRun.js";
-import { proposedSpeakers } from "../views/studioStatus.js";
+import { foundSpeakers, isWaiting } from "../views/studioStatus.js";
 
 const props = defineProps({
   project: { type: Object, required: true },
   scenes: { type: Array, default: () => [] },
   // {sceneId: spoken lines} — Studio already counts these for every chapter.
   linesByScene: { type: Object, default: () => ({}) },
-  // The cast, [{id, name, narrator}] — a proposal for one of them is not shown.
+  // The cast, [{id, name, aliases, narrator}] — who shows as In the cast.
   cast: { type: Array, default: () => [] },
 });
-// `scans`: {sceneId: discover|null} — the saved-scan changes for Studio to
-// fold into its chapter rows (null = that chapter's saved list emptied). A
-// finished scan reaches Studio through the chapter run instead.
-const emit = defineEmits(["cast-changed", "go", "scans"]);
+// A finished scan reaches Studio through the chapter run, not from here.
+const emit = defineEmits(["cast-changed", "go"]);
 
 const api = useApi();
 const copy = useCopy();
@@ -83,17 +84,41 @@ const titleOf = (s) => s.title || `${chapterWord.value.singular} ${s.position + 
 const titleById = computed(() => Object.fromEntries(props.scenes.map((s) => [s.id, titleOf(s)])));
 
 const castNames = computed(() => props.cast.map((c) => c.name));
-const proposals = computed(() => proposedSpeakers(props.scenes, props.cast));
-// Per chapter: how many of its proposals are still waiting — the same rows,
-// counted where they were found.
-function waitingIn(scene) {
-  return proposals.value.filter((r) => r.chapters.includes(scene.id)).length;
-}
 
 // The project's remembered Ignore list (fix 4). Seeded from the project, then
 // kept current from the ignore / unignore replies.
 const ignored = ref([]);
 watch(() => props.project, (p) => { ignored.value = [...(p?.discover_ignored || [])]; }, { immediate: true });
+
+// Everyone the saved scans found, each once, with a status.
+const found = computed(() => foundSpeakers(props.scenes, props.cast, ignored.value));
+const counts = computed(() => ({
+  all: found.value.length,
+  new: found.value.filter(isWaiting).length,
+  cast: found.value.filter((r) => r.status === "cast").length,
+  ignored: found.value.filter((r) => r.status === "ignored").length,
+}));
+// The chips: New is everyone still waiting for Add or Ignore — new names and
+// library personas not in this cast.
+const filter = ref("all");
+const shown = computed(() => found.value.filter((r) => filter.value === "all"
+  || (filter.value === "new" ? isWaiting(r) : r.status === filter.value)));
+// Per chapter: everyone it names, and how many of them are still waiting.
+function foundIn(scene) {
+  const rows = found.value.filter((r) => r.chapters.includes(scene.id));
+  return { total: rows.length, waiting: rows.filter(isWaiting).length };
+}
+const STATUS = {
+  new: { label: "New", intent: "accent2", title: "No persona has this name. Add makes one and puts it in this cast." },
+  library: { label: "In your library", intent: "info" },
+  cast: { label: "In the cast", intent: "success" },
+  ignored: { label: "Ignored", intent: "secondary", title: "You ignored this name for this book. Undo shows it as new again." },
+};
+function statusTitle(r) {
+  if (r.status === "library") return `${r.persona.name} is already in your library. Add puts that persona in this cast and remembers ${r.names.join(", ")} as a name for them — no duplicate.`;
+  if (r.status === "cast") return `${r.persona.name} is in this cast.`;
+  return STATUS[r.status].title;
+}
 
 const run = computed(() => chapterRunFor(props.project.id));
 const scanning = computed(() => run.value?.current?.kind === "discover");
@@ -123,10 +148,12 @@ const GRID_COLUMNS = computed(() => [
   { id: "title", header: chapterWord.value.singular },
   { id: "lines", header: "Lines", headerStyle: { textAlign: "right" }, cellStyle: { textAlign: "right" } },
   { id: "scanned", header: "Last scanned" },
-  { id: "proposed", header: "Proposed" },
+  { id: "found", header: "Found" },
 ]);
 const RESULT_COLUMNS = [
-  { id: "name", accessorKey: "name", header: "Name in the prose", sortable: true },
+  { id: "pick", header: "", headerStyle: { width: "1%" }, cellStyle: { width: "1%" } },
+  { id: "name", accessorKey: "name", header: "Name", sortable: true },
+  { id: "status", header: "Status" },
   { id: "lines", accessorKey: "lines", header: "Lines", sortable: true,
     headerStyle: { textAlign: "right" }, cellStyle: { textAlign: "right" } },
   { id: "evidence", header: "First appearance" },
@@ -153,38 +180,86 @@ function scan() {
   selected.value = {};
 }
 
-// The server prunes a name from every chapter's saved list on promote and on
-// ignore; this mirrors that onto Studio's rows so nothing has to re-fetch.
-function pruneLocally(names) {
-  const drop = new Set(names.map((n) => (n || "").trim().toLowerCase()));
-  const patch = {};
-  for (const s of props.scenes) {
-    const saved = s.metadata?.discover;
-    if (!saved?.candidates?.length) continue;
-    const keep = saved.candidates.filter((c) => !drop.has((c.name || "").trim().toLowerCase()));
-    if (keep.length !== saved.candidates.length) patch[s.id] = { ...saved, candidates: keep };
+// One proposal as promote takes it: a library match re-links that persona
+// (and teaches it these names); otherwise one new persona, with the other
+// spellings as its aliases.
+function toCandidate(c) {
+  return c.status === "library"
+    ? { name: c.names[0] || c.persona.name, persona_id: c.persona.id, aliases: c.names.slice(1) }
+    : { name: c.name, personality: c.role_hint || null, aliases: c.names.filter((n) => n !== c.name) };
+}
+
+// Tick several waiting rows, then Add or Ignore them together (2026-09-29).
+// Keyed by the row's key; only rows still waiting count, so a row that
+// changed status since it was ticked is not acted on.
+const picked = ref({});
+const pickedRows = computed(() => found.value.filter((r) => isWaiting(r) && picked.value[r.key]));
+const pickableShown = computed(() => shown.value.filter(isWaiting));
+const allProposalsPicked = computed(() =>
+  pickableShown.value.length > 0 && pickableShown.value.every((r) => picked.value[r.key]));
+function pickAll(on) {
+  picked.value = on ? Object.fromEntries(pickableShown.value.map((r) => [r.key, true])) : {};
+}
+const bulkBusy = ref(false);
+
+async function addSelected() {
+  const rows = pickedRows.value;
+  if (!rows.length || bulkBusy.value) return;
+  bulkBusy.value = true;
+  try {
+    const r = await api.request(`/v1/projects/${props.project.id}/personas/promote`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ candidates: rows.map(toCandidate) }),
+    });
+    picked.value = {};
+    const made = (r?.created || []).length;
+    pushToast({
+      message: `${rows.length} added to the cast${made < rows.length ? ` (${rows.length - made} were already personas in your library)` : ""} — give them voices in Cast.`,
+      kind: "success",
+    });
+    emit("cast-changed");
+  } catch (e) {
+    pushToast({ message: `Add failed: ${e?.message || e}`, kind: "error" });
+  } finally {
+    bulkBusy.value = false;
   }
-  if (Object.keys(patch).length) emit("scans", patch);
+}
+
+async function ignoreSelected() {
+  const rows = pickedRows.value;
+  if (!rows.length || bulkBusy.value) return;
+  bulkBusy.value = true;
+  try {
+    const names = rows.flatMap((c) => c.names);
+    const r = await api.request(`/v1/projects/${props.project.id}/discover/ignore`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ names }),
+    });
+    ignored.value = r?.ignored || ignored.value;
+    projectsStore.reload();
+    picked.value = {};
+  } catch (e) {
+    pushToast({ message: `Ignore failed: ${e?.message || e}`, kind: "error" });
+  } finally {
+    bulkBusy.value = false;
+  }
 }
 
 async function add(c) {
   busyName.value = c.key;
   try {
-    // A library match re-links that persona (and teaches it these names);
-    // otherwise one new persona, with the other spellings as its aliases.
-    const others = c.names.filter((n) => n !== c.name);
-    const body = c.library
-      ? { candidates: [{ name: c.names[0], persona_id: c.library.persona_id, aliases: c.names.slice(1) }] }
-      : { candidates: [{ name: c.name, personality: c.role_hint || null, aliases: others }] };
+    const body = { candidates: [toCandidate(c)] };
     const r = await api.request(`/v1/projects/${props.project.id}/personas/promote`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    pruneLocally(c.names);
+    const lib = c.status === "library" ? c.persona : null;
     pushToast({
-      message: c.library
-        ? `${c.library.name} is in the cast now${c.names.some((n) => n !== c.library.name) ? ` — and knows "${c.names.filter((n) => n !== c.library.name).join('", "')}" as another name` : ""}.`
+      message: lib
+        ? `${lib.name} is in the cast now${c.names.some((n) => n !== lib.name) ? ` — and knows "${c.names.filter((n) => n !== lib.name).join('", "')}" as another name` : ""}.`
         : (r?.created || []).length
           ? `${c.name} added to the cast — give them a voice in Cast.`
           : `${c.name} already existed as a persona — linked to this project.`,
@@ -198,9 +273,9 @@ async function add(c) {
   }
 }
 
-// Take names off the ignore list — one (its ✕) or all ("Clear all"). No
-// confirmation (decided 2026-09-29): a name taken off only means Discover may
-// propose it again.
+// Take names off the ignore list — a row's Undo, an Ignored tag's ✕, or
+// "Clear all". No confirmation (decided 2026-09-29): the name only shows as
+// new again.
 async function unignore(names) {
   if (!names.length) return;
   try {
@@ -213,8 +288,8 @@ async function unignore(names) {
     projectsStore.reload();
     pushToast({
       message: names.length === 1
-        ? `${names[0]} can be proposed again — scan a chapter that names them.`
-        : `${names.length} names can be proposed again.`,
+        ? `${names[0]} is no longer ignored.`
+        : `${names.length} names are no longer ignored.`,
       kind: "info",
     });
   } catch (e) {
@@ -258,7 +333,6 @@ async function ignore(c) {
     });
     ignored.value = r?.ignored || ignored.value;
     projectsStore.reload();
-    pruneLocally(c.names);
   } catch (e) {
     pushToast({ message: `Ignore failed: ${e?.message || e}`, kind: "error" });
   } finally {
@@ -277,8 +351,9 @@ async function ignore(c) {
       </div>
       <div class="jv-card__body">
         <p class="jv-lede">
-          Reads the prose for names that aren't in your cast yet. Nothing is created until you add
-          each one. Script can only give a line to a persona that exists, so this step runs first.
+          Reads the prose for everyone it names: your cast, people in your library, and new names.
+          Nothing is created until you add someone. Script can only give a line to a persona that
+          exists, so this step runs first.
         </p>
 
         <div v-if="!scenes.length" class="jv-banner">
@@ -310,9 +385,13 @@ async function ignore(c) {
                 :title="new Date(row.metadata.discover.scanned_at).toLocaleString()">{{ ago(row.metadata.discover.scanned_at) }}</span>
               <span v-else class="jv-muted">never</span>
             </template>
-            <template #proposed="{ row }">
-              <UiTag v-if="waitingIn(row)" intent="accent2">{{ waitingIn(row) }}</UiTag>
-              <span v-else-if="row.metadata?.discover?.scanned_at" class="jv-muted">none</span>
+            <template #found="{ row }">
+              <template v-if="foundIn(row).total">
+                <span class="jv-mono">{{ foundIn(row).total }}</span>
+                <UiTag v-if="foundIn(row).waiting" intent="accent2" class="studio-discover__new"
+                  :title="`${foundIn(row).waiting} not in the cast yet`">{{ foundIn(row).waiting }} new</UiTag>
+              </template>
+              <span v-else-if="row.metadata?.discover?.scanned_at" class="jv-muted">nobody</span>
               <span v-else class="jv-muted">—</span>
             </template>
           </UiTable>
@@ -339,20 +418,40 @@ async function ignore(c) {
 
     <div class="jv-card">
       <div class="jv-card__header">
-        <h3 class="jv-card__title">Proposed speakers</h3>
-        <span class="jv-hint">nothing is created until you add it</span>
+        <h3 class="jv-card__title">Characters found</h3>
+        <span class="jv-hint">nothing is created until you add someone</span>
       </div>
       <div class="jv-card__body">
-        <UiTable class="jv-table-look" :data="proposals" :columns="RESULT_COLUMNS" data-key="key">
+        <div v-if="found.length" class="jv-inline-row studio-discover__chips">
+          <UiChip :selected="filter === 'all'" @click="filter = 'all'">All {{ counts.all }}</UiChip>
+          <UiChip :selected="filter === 'new'" title="Not in this cast yet: new names, and people in your library"
+            @click="filter = 'new'">New {{ counts.new }}</UiChip>
+          <UiChip :selected="filter === 'cast'" @click="filter = 'cast'">In the cast {{ counts.cast }}</UiChip>
+          <UiChip :selected="filter === 'ignored'" @click="filter = 'ignored'">Ignored {{ counts.ignored }}</UiChip>
+        </div>
+        <UiTable class="jv-table-look" :data="shown" :columns="RESULT_COLUMNS" data-key="key">
+          <template #head-pick>
+            <UiCheckbox :model-value="allProposalsPicked" :disabled="!pickableShown.length || bulkBusy"
+              :title="allProposalsPicked ? 'Untick every new name shown' : 'Tick every new name shown'"
+              @update:model-value="pickAll" />
+          </template>
+          <template #pick="{ row }">
+            <UiCheckbox v-if="isWaiting(row)" :model-value="!!picked[row.key]" :disabled="bulkBusy"
+              @update:model-value="(v) => (picked = { ...picked, [row.key]: v })" />
+          </template>
           <template #name="{ row }">
             <strong>{{ row.name }}</strong>
-            <div v-if="row.names.length > 1" class="jv-hint">also written {{ row.names.filter((n) => n !== row.name).join(", ") }}</div>
-            <div v-if="row.library" class="studio-discover__lib">
-              <UiTag intent="accent2" :title="`${row.library.name} is already in your library. Add puts that persona in this cast and remembers ${row.names.join(', ')} as a name for them — no duplicate.`">→ {{ row.library.name }} · in your library</UiTag>
-            </div>
+            <div v-if="row.names.some((n) => n !== row.name)" class="jv-hint">also written {{ row.names.filter((n) => n !== row.name).join(", ") }}</div>
             <div v-if="row.role_hint" class="jv-hint">{{ row.role_hint }}</div>
           </template>
-          <template #lines="{ row }"><span class="jv-mono" :title="row.lines ? 'Roughly how many lines of dialogue they speak in what was scanned' : 'Named, but not heard speaking in what was scanned'">{{ row.lines ? `≈ ${row.lines}` : "0" }}</span></template>
+          <template #status="{ row }">
+            <UiTag :intent="STATUS[row.status].intent" :title="statusTitle(row)">{{ STATUS[row.status].label }}</UiTag>
+          </template>
+          <template #lines="{ row }">
+            <span v-if="row.lines" class="jv-mono" title="Roughly how many lines of dialogue they speak in what was scanned">≈ {{ row.lines }}</span>
+            <span v-else-if="row.mentions" class="jv-muted" title="How many times the text names them in what was scanned">named {{ row.mentions }}×</span>
+            <span v-else class="jv-mono" title="Named, but not heard speaking in what was scanned">0</span>
+          </template>
           <template #evidence="{ row }">
             <span class="studio-discover__quote">{{ row.evidence ? `“${row.evidence}”` : "—" }}</span>
             <UiTag v-if="row.evidence_found === false" intent="danger"
@@ -362,34 +461,48 @@ async function ignore(c) {
             <span class="jv-muted">{{ row.chapters.map((id) => titleById[id]).filter(Boolean).join(", ") }}</span>
           </template>
           <template #actions="{ row }">
-            <UiButton intent="primary" size="small" label="＋ Add" :loading="busyName === row.key"
-              :disabled="busyName !== null"
-              :title="row.library ? `Put ${row.library.name} (already in your library) in this cast` : `Create a persona for ${row.name} and put them in this cast`"
-              @click="add(row)" />
-            <UiButton intent="ghost" size="small" label="Ignore" :disabled="busyName !== null"
-              title="Drop it, and keep it out of later scans of this project. Its ✕ in Ignored undoes it."
-              @click="ignore(row)" />
+            <template v-if="isWaiting(row)">
+              <UiButton intent="primary" size="small" label="＋ Add" :loading="busyName === row.key"
+                :disabled="busyName !== null"
+                :title="row.status === 'library' ? `Put ${row.persona.name} (already in your library) in this cast` : `Create a persona for ${row.name} and put them in this cast`"
+                @click="add(row)" />
+              <UiButton intent="ghost" size="small" label="Ignore" :disabled="busyName !== null"
+                title="Mark it Ignored for this book. It stays in this list; Undo takes it back."
+                @click="ignore(row)" />
+            </template>
+            <UiButton v-else-if="row.status === 'ignored'" intent="ghost" size="small" label="Undo"
+              title="Take it off the ignore list — it shows as new again" @click="unignore(row.names)" />
           </template>
           <template #empty>
-            {{ scenes.some((s) => s.metadata?.discover?.scanned_at)
-              ? "Nobody waiting — every name found is in the cast or was ignored."
-              : "Scan some chapters to see who they name." }}
+            {{ !scenes.some((s) => s.metadata?.discover?.scanned_at)
+              ? "Scan some chapters to see who they name."
+              : found.length ? "Nobody here — try All." : "The chapters scanned name nobody." }}
           </template>
         </UiTable>
+        <div v-if="counts.new" class="jv-inline-row studio-discover__bulk">
+          <UiButton intent="primary" size="small" :disabled="!pickedRows.length || bulkBusy || busyName !== null"
+            :loading="bulkBusy" :label="pickedRows.length ? `＋ Add ${pickedRows.length} selected` : '＋ Add selected'"
+            title="Put every ticked name in this cast — a name that matches a library persona links that persona instead of making a new one"
+            @click="addSelected" />
+          <UiButton intent="ghost" size="small" :disabled="!pickedRows.length || bulkBusy || busyName !== null"
+            :label="pickedRows.length ? `Ignore ${pickedRows.length} selected` : 'Ignore selected'"
+            title="Mark every ticked name Ignored for this book"
+            @click="ignoreSelected" />
+          <span class="jv-hint">{{ pickedRows.length ? `${pickedRows.length} ticked` : "Tick names to add or ignore several at once." }}</span>
+        </div>
       </div>
     </div>
 
     <div v-if="ignored.length" class="jv-card jv-card--soft">
       <div class="jv-card__header">
         <h3 class="jv-card__title">Ignored</h3>
-        <span class="jv-hint">{{ ignored.length }} · never proposed again in this {{ copy.book.singular.toLowerCase() }}</span>
-        <span class="jv-spacer" />
+        <span class="jv-hint">{{ ignored.length }} · shown as Ignored in this {{ copy.book.singular.toLowerCase() }}</span>
         <UiButton intent="ghost" size="small" label="Clear all"
-          title="Take every name off this list — Discover may propose them again" @click="unignore([...ignored])" />
+          title="Take every name off this list — they show as new again" @click="unignore([...ignored])" />
       </div>
       <div class="jv-card__body studio-discover__cast">
         <UiTag v-for="n in ignored" :key="n" intent="ghost" removable :value="n"
-          :title="`✕ lets Discover propose ${n} again`" @remove="unignore([n])" />
+          :title="`✕ takes ${n} off the list — it shows as new again`" @remove="unignore([n])" />
       </div>
     </div>
 
@@ -397,7 +510,6 @@ async function ignore(c) {
       <div class="jv-card__header">
         <h3 class="jv-card__title">Already in the cast</h3>
         <span class="jv-hint">{{ castNames.length }}</span>
-        <span class="jv-spacer" />
         <UiButton v-if="clearable.length" intent="ghost" size="small" label="Clear all" :disabled="castBusy"
           title="Take everyone but the Narrator out of this cast — they stay in your library, and lines already given to them keep them"
           @click="uncast(clearable)" />
@@ -425,5 +537,7 @@ async function ignore(c) {
 .studio-discover__cast { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
 .studio-discover__why { max-width: 60ch; margin-top: 4px; }
 .studio-discover__quote { display: block; max-width: 46ch; color: var(--ink-2); font-style: italic; }
-.studio-discover__lib { margin: 3px 0; }
+.studio-discover__chips { gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.studio-discover__new { margin-left: 6px; }
+.studio-discover__bulk { gap: 8px; align-items: center; margin-top: 10px; }
 </style>

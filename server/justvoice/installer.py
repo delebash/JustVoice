@@ -404,7 +404,9 @@ def spawn_prefetch(
             state.job_append_log(job_id, "[completed] prefetch finished")
         except (_Cancelled, DownloadCancelled):
             log.info("prefetch cancelled for %s/%s", engine_id, variant_id)
-            state.job_update(job_id, phase="failed", error="cancelled by user")
+            # Clean up BEFORE the job says so: a watcher that sees "cancelled"
+            # may start the next fetch into the same folder at once, and a
+            # wipe landing after that would delete its new files (2026-09-29).
             if is_hf:
                 # The kit downloader's chunked partials (.part + .json maps)
                 # sit beside the plain files — the next fetch resumes past
@@ -413,6 +415,7 @@ def spawn_prefetch(
             else:
                 # URL path: partials live in target_dir, safe to wipe.
                 shutil.rmtree(target_dir, ignore_errors=True)
+            state.job_update(job_id, phase="failed", error="cancelled by user")
         except Exception as e:
             log.exception("prefetch failed for %s/%s", engine_id, variant_id)
             state.job_update(job_id, phase="failed", error=str(e))

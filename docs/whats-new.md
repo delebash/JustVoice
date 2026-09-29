@@ -2,6 +2,56 @@
 
 ## v0.1.0
 
+- **"Next to check" always finds the line.** It used to look only below the line you
+  had selected, so a chapter's one line to check — selected, or above it — got
+  "Nothing more to check below". It now wraps around to the top (`Shift+N` to the
+  bottom) ([Studio → Script](studio.md))
+- **Discover keeps a record of everyone each chapter names.** A scan saves the cast
+  members the chapter names (found by name, without the model), people in your
+  library, and new names — one list, each person once, with a status: **In the
+  cast**, **In your library**, **New** or **Ignored**, and chips to filter by it.
+  Add and Ignore change the status instead of removing the row, so rescanning a
+  finished chapter no longer comes back empty. The chapter grid's **Proposed**
+  column is now **Found** ([Studio → Discover](studio.md#discover))
+- **No book gets a narrator on its own.** Creating or importing a book no longer
+  makes a Narrator persona — every import made a new one, and deleting the book left
+  it in your library. Tick **Narrator** on anyone in the cast, or use **Add
+  Narrator**, which uses a Narrator from your library that isn't in any book before
+  making one, and moves the narration with no speaker to it ([Personas → The
+  Narrator](personas.md#the-narrator))
+- **Names are unique within a book.** One cast can't hold two people with the same
+  name; adding or renaming into a clash is refused and says so. Different books,
+  and personas in no book, can share a name — the persona list now names the books
+  each persona is in ([Personas → Names](personas.md#names))
+- **Delete several personas at once.** Tick them in the persona list, then **Delete
+  N selected** ([Personas](personas.md#deleting-several-at-once))
+- **Switching Studio steps keeps your place in Script.** Coming back finds the same
+  chapter or grid, with the same ticks, filters, selected line and scroll — it used
+  to start over ([Studio](studio.md))
+- **The mastering target shows the real target.** A new project starts on its kind's
+  target (ACX for an audiobook, Podcast for a podcast, raw otherwise), so the
+  "This kind's default" option — which only repeated one of the others — is gone
+- **Overview's "Continue ➜" button is gone.** It repeated the step cards and the
+  clickable rows of "Where it stands"
+- **The title bar shows both engines.** Beside the voice engine there is now the
+  language model the AI features run on (the model's name while it is loaded);
+  each opens its settings page. Studio's own "TTS" and "Script" chips, which
+  repeated this, are gone, and the "Operational" status is no longer a button
+- **Add or ignore several proposed speakers at once.** Discover's Proposed speakers
+  list has a checkbox on each name and one to tick them all, then **＋ Add N
+  selected** / **Ignore N selected** ([Studio → Discover](studio.md#discover))
+- **Discover no longer misses a first-person book's narrator and hero.** Told to leave
+  out "the narrator", with a cast member called Narrator, the model dropped Watson
+  *and* Holmes from The Speckled Band. Both are found now; the sample books still
+  find every character they did
+- **Anyone in the cast can be the narrator.** A first-person narrator also speaks —
+  Watson tells *The Speckled Band* and talks in it — so tick **Narrator** on their
+  card in Studio's Cast step and their narration and lines share one voice. The persona
+  who had the role stays in the cast; the narration Analyze decided moves with the
+  role, and lines you set stay ([Personas → The Narrator](personas.md#the-narrator))
+- **Cancelling a voice-model download cleans up before it says "cancelled".** The
+  half-downloaded files used to be removed just after, so a download started right
+  away could lose its first files
 - **The Narrator can be deleted like any other persona.** Deleting it used to fail
   with "persona … is built-in". There are no built-in personas now: the Narrator a
   new audiobook or podcast gets is an ordinary persona, and it can leave the cast
@@ -20,7 +70,7 @@
   book's own words when it names the speaker — *“said Marius”* — or "AI, from the
   story around it". Lines where the AI most often goes wrong are marked with a
   question: one person speaking three times with no reply, a persona's only line,
-  speech given to the Narrator, the book and the AI naming different people. "Next to
+  the book and the AI naming different people. "Next to
   check" jumps between them; tick lines to set several at once or swap two speakers;
   Undo takes back your changes, including what they would have taught the next
   Analyze ([Studio → Script](studio.md#a-chapter))

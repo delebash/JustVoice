@@ -34,7 +34,8 @@ def _persona(client, name: str) -> str:
 
 
 def test_cast_entries_carry_the_persona_name(client):
-    pid = _project(client)  # audiobook ⇒ a Narrator is already cast
+    pid = _project(client)
+    assert client.post(f"/v1/projects/{pid}/narrator").status_code == 201  # "+ Add Narrator"
     mara = _persona(client, "Mara Vance")
     assert client.post(f"/v1/projects/{pid}/cast", json={"persona_id": mara}).status_code == 201
 

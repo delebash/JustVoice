@@ -194,15 +194,12 @@ def _persona_aliases(p) -> list[str]:
 
 
 def _narrator_persona_id(db: Session, project_id: str) -> str | None:
-    """The project's Narrator persona — decision 4: narration rows bind to
-    it instead of null.
-
-    Every audiobook/podcast project gets one at creation
-    (projects_api.create_project) and it sat in the cast unused: nothing
-    ever bound it to a block, so every narration block had persona_id null
-    and render_chapter_api dropped it silently. Matched by the cast's
-    role_label first, then by name for projects whose Narrator was renamed
-    in but re-linked without the label."""
+    """The project's narrator — decision 4: narration rows bind to it
+    instead of null. None when the book has no narrator yet (since 2026-09-29
+    nothing makes one on its own): Analyze then leaves narration with no
+    speaker, and choosing a narrator moves those lines to it
+    (projects_api.move_narration). Matched by the cast's role_label first,
+    then by name for a cast member called Narrator without the label."""
     row = (
         db.query(ProjectPersona.persona_id)
         .filter(
@@ -909,7 +906,7 @@ def _chapter_script(
         for b, bm, marker, _speakable, spoken in rows
     ]
     # Flags run only on what Analyze decided; "not in the cast" everywhere.
-    groups = flag_groups(lines, cast_ids, narrator_id=narrator_id) if analyzed else []
+    groups = flag_groups(lines, cast_ids) if analyzed else []
     marked = flagged_lines(groups)
     no_speaker = {r[0].id for r in speakable_rows if not r[0].persona_id}
     gone = not_in_cast(lines, cast_ids)
@@ -1162,36 +1159,13 @@ def _count_project_corrections(db: Session, project_id: str) -> int:
 # ── Speaker identification — Studio's Discover step (CONCEPTS §3) ──
 #
 # A chapter's scan is SAVED on the chapter (decided 2026-09-27, "both"): the
-# scene's `metadata.discover = {scanned_at, candidates}`. It is what lets the
-# Discover step survive a restart and what gives Overview and Discover real
-# "scanned / last scanned" data. Nothing becomes a persona until promote; a
-# promoted or ignored name is pruned from every chapter's saved list, so the
-# list only ever holds names still waiting on a decision.
-
-
-def _discover_names(names) -> set[str]:
-    return {(n or "").strip().lower() for n in names if (n or "").strip()}
-
-
-def prune_discovered(db: Session, project_id: str, names) -> int:
-    """Drop `names` (case-insensitive) from every chapter's saved scan in the
-    project. Returns how many entries were removed. Caller commits."""
-    drop = _discover_names(names)
-    if not drop:
-        return 0
-    removed = 0
-    for sc in db.query(Scene).filter(Scene.project_id == project_id).all():
-        meta = _scene_meta(sc)
-        saved = meta.get("discover")
-        if not isinstance(saved, dict) or not saved.get("candidates"):
-            continue
-        keep = [c for c in saved["candidates"] if (c.get("name") or "").strip().lower() not in drop]
-        if len(keep) != len(saved["candidates"]):
-            removed += len(saved["candidates"]) - len(keep)
-            saved["candidates"] = keep
-            meta["discover"] = saved
-            sc.metadata_json = json.dumps(meta)
-    return removed
+# scene's `metadata.discover = {scanned_at, candidates, named_cast}`. It is what
+# lets the Discover step survive a restart and what gives Overview and Discover
+# real "scanned / last scanned" data. Nothing becomes a persona until promote.
+# Since 2026-09-29 the record is everyone the chapter names — the AI's new names
+# (`candidates`) and the cast members found by name (`named_cast`) — and it is
+# KEPT: Add and Ignore change a name's status on the page, they never delete it
+# from the record, so a scan shows the same people every time.
 
 
 class DiscoverSpeakersRequest(BaseModel):
@@ -1218,9 +1192,22 @@ class SpeakerCandidateOut(BaseModel):
     library_match: LibraryMatch | None = None
 
 
+class NamedCastMember(BaseModel):
+    """A cast member the chapter names — found by `names.cast_named_in`, no AI."""
+
+    persona_id: str
+    name: str
+    mentions: int = 0
+    evidence: str | None = None
+
+
 class DiscoverSpeakersResponse(BaseModel):
     scene_id: str
+    # The names the AI found that are not in the cast (ignored ones included —
+    # the page shows them as Ignored).
     candidates: list[SpeakerCandidateOut]
+    # The cast members the chapter names (2026-09-29: a scan records everyone).
+    named_cast: list[NamedCastMember] = []
     # The run's usage (§16) — None only if the call never ran.
     usage: RunUsage | None = None
 
@@ -1245,7 +1232,6 @@ async def discover_speakers_endpoint(
     checks included — for the length of each chapter's call."""
     from ..extraction.identify import identify_speakers
 
-    from ..database.models import Project
     from ..extraction import names
 
     scene = db.query(Scene).filter(Scene.id == scene_id).first()
@@ -1274,16 +1260,14 @@ async def discover_speakers_endpoint(
     except Exception as e:
         log.exception("speaker identification failed")
         raise HTTPException(status_code=502, detail=f"identification failed: {e}")
-    project = db.query(Project).filter(Project.id == scene.project_id).first()
-    ignored = {names.norm(n) for n in project_ignored(project)}
     by_name = {names.norm(p["name"]): p for p in library}
     out = []
     for c in candidates:
         # Already cast under a name the model could not connect — a first or
-        # last name alone ("Cael" for Cael Ferren). Not a proposal.
+        # last name alone ("Cael" for Cael Ferren): that person is recorded
+        # below, as a cast member the chapter names. An IGNORED name stays in
+        # the record; the page shows it as Ignored.
         if names.match(c.name, cast) is not None:
-            continue
-        if names.norm(c.name) in ignored:
             continue
         # The model's claim counts only when it names a real library persona.
         lib = by_name.get(names.norm(c.library_name or "")) or names.match(c.name, library)
@@ -1293,14 +1277,20 @@ async def discover_speakers_endpoint(
             evidence_found=names.quote_in_text(c.evidence, body.text) if c.evidence else None,
             library_match=LibraryMatch(persona_id=lib["id"], name=lib["name"]) if lib else None,
         ))
+    # Everyone the chapter names who is already cast, found by name in the text
+    # (no AI — the same on every scan). The Narrator is a cast member like any
+    # other; prose rarely names it.
+    named_cast = [NamedCastMember(**r) for r in names.cast_named_in(body.text, cast)]
     meta = _scene_meta(scene)
     meta["discover"] = {
         "scanned_at": datetime.now(timezone.utc).isoformat(),
         "candidates": [c.model_dump() for c in out],
+        "named_cast": [r.model_dump() for r in named_cast],
     }
     scene.metadata_json = json.dumps(meta)
     db.commit()
-    return DiscoverSpeakersResponse(scene_id=scene_id, candidates=out, usage=raw_out.get("usage"))
+    return DiscoverSpeakersResponse(scene_id=scene_id, candidates=out, named_cast=named_cast,
+                                    usage=raw_out.get("usage"))
 
 
 class IgnoreDiscoveredRequest(BaseModel):
@@ -1308,7 +1298,6 @@ class IgnoreDiscoveredRequest(BaseModel):
 
 
 class IgnoreDiscoveredResponse(BaseModel):
-    removed: int
     # The project's whole ignore list after the change.
     ignored: list[str]
 
@@ -1337,9 +1326,9 @@ async def ignore_discovered_endpoint(
     body: IgnoreDiscoveredRequest,
     db: Session = Depends(get_db),
 ) -> IgnoreDiscoveredResponse:
-    """Discover's Ignore: the name leaves every chapter's saved scan AND is
-    remembered for the project, so a re-scan does not propose it again
-    (fix 4). /discover/unignore takes it back off the list."""
+    """Discover's Ignore: the name is remembered for the project, and every
+    chapter that names it shows it as Ignored (fix 4; since 2026-09-29 the saved
+    scans keep it). /discover/unignore takes it back off the list."""
     from ..database.models import Project
     from ..extraction.names import norm
 
@@ -1353,9 +1342,8 @@ async def ignore_discovered_endpoint(
             current.append(n.strip())
             have.add(norm(n))
     _set_ignored(project, current)
-    removed = prune_discovered(db, project_id, body.names)
     db.commit()
-    return IgnoreDiscoveredResponse(removed=removed, ignored=current)
+    return IgnoreDiscoveredResponse(ignored=current)
 
 
 @router.post(
@@ -1368,8 +1356,8 @@ async def unignore_discovered_endpoint(
     body: IgnoreDiscoveredRequest,
     db: Session = Depends(get_db),
 ) -> IgnoreDiscoveredResponse:
-    """Takes names off the project's ignore list. Nothing comes back by itself —
-    the next scan of a chapter that names them proposes them again."""
+    """Takes names off the project's ignore list; the chapters that name them
+    show them as proposals again."""
     from ..database.models import Project
     from ..extraction.names import norm
 
@@ -1380,7 +1368,7 @@ async def unignore_discovered_endpoint(
     current = [n for n in project_ignored(project) if norm(n) not in drop]
     _set_ignored(project, current)
     db.commit()
-    return IgnoreDiscoveredResponse(removed=0, ignored=current)
+    return IgnoreDiscoveredResponse(ignored=current)
 
 
 class DiscoverTextRequest(BaseModel):
@@ -1491,6 +1479,9 @@ def _link_library_persona(db: Session, project_id: str, persona_id: str, found_a
         .first()
     )
     if link is None:
+        from ._persona_helpers import refuse_same_name
+
+        refuse_same_name(db, project_id, persona.name, besides=persona_id)
         db.add(ProjectPersona(project_id=project_id, persona_id=persona_id))
     aliases = _persona_aliases(persona)
     known = {norm(persona.name), *(norm(a) for a in aliases)}
@@ -1541,9 +1532,8 @@ async def promote_speakers_endpoint(
             imported_from="discovered",
             imported_id=slug,
             aliases=cand.aliases,
+            unique_in_cast=True,
         )
         (created if was_created else reused).append(pid)
-    # A promoted name is in the cast now — it is no longer a proposal.
-    prune_discovered(db, project_id, [n for c in body.candidates for n in (c.name, *c.aliases)])
     db.commit()
     return PromoteSpeakersResponse(created=created, reused=reused)

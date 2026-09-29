@@ -82,16 +82,21 @@ export function move(shown, selectedId, delta) {
 }
 
 /**
- * The next (dir 1) or previous (dir -1) line to check after the selected one,
+ * The next (dir 1) or previous (dir -1) line to check from the selected one,
  * in reading order over EVERY line — "Next to check" walks the chapter, not
- * only what a filter shows. Null when there is none that way.
+ * only what a filter shows. It wraps (decided 2026-09-29): past the last it
+ * starts again from the top, going back past the first from the bottom — so a
+ * chapter with one line to check always lands on it, even when it is the one
+ * selected. Null only when the chapter has none.
  */
 export function nextToCheck(lines, selectedId, dir = 1) {
+  const n = lines.length;
   const at = lines.findIndex((ln) => ln.id === selectedId);
-  for (let i = at + dir; i >= 0 && i < lines.length; i += dir) {
+  const from = at >= 0 ? at : dir > 0 ? -1 : n;
+  for (let step = 1; step <= n; step += 1) {
+    const i = (((from + dir * step) % n) + n) % n;
     if (toCheck(lines[i])) return lines[i].id;
   }
-  if (at < 0 && dir > 0) return lines.find(toCheck)?.id ?? null;
   return null;
 }
 
@@ -363,8 +368,6 @@ export function checkQuestion(line, groups, nameOf, chapterWord = "chapter") {
       return `${who} speaks ${g.turns} times with no reply — is one of these the other person's?`;
     case "only":
       return `${who}'s only line in this ${chapterWord.toLowerCase()} — is it theirs?`;
-    case "narrator":
-      return "Spoken, but given to the Narrator — whose line is it?";
     case "disagree":
       return `The book says ${who}, the AI says ${nameOf(g.other)} — whose line is it?`;
     default:

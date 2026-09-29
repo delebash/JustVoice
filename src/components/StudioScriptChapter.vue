@@ -27,6 +27,7 @@ import {
 import { useApi } from "../stores/api.js";
 import { useCopy } from "../services/copy.js";
 import { routeWords } from "../services/attribution.js";
+import { useKeptScroll } from "../composables/useKeptScroll.js";
 import { inRun, onChapterDone, queueChapters } from "../services/chapterRun.js";
 import {
   KEYS, applyLocally, checkQuestion, confidenceCell, confirm, decidedBy, filterCounts, keyAction,
@@ -303,10 +304,24 @@ function select(id) {
   }
   scrollToSelected();
 }
+// Wraps past either end (decided 2026-09-29): a lone line to check is always
+// reached, even when it is the one selected — it scrolls back into view.
 function nextCheck(dir = 1) {
   const id = nextToCheck(lines.value, selected.value, dir);
-  if (id) select(id);
-  else pushToast({ message: dir > 0 ? "Nothing more to check below." : "Nothing more to check above.", kind: "info" });
+  if (!id) {
+    pushToast({ message: "Nothing to check in this chapter.", kind: "info" });
+    return;
+  }
+  const from = lines.value.findIndex((ln) => ln.id === selected.value);
+  const to = lines.value.findIndex((ln) => ln.id === id);
+  const wrapped = from >= 0 && (dir > 0 ? to <= from : to >= from);
+  select(id);
+  if (wrapped && counts.value.check > 1) {
+    pushToast({
+      message: dir > 0 ? "Back to the first line to check." : "Back to the last line to check.",
+      kind: "info",
+    });
+  }
 }
 function showAround(line) {
   // Every line back, this one selected.
@@ -338,6 +353,9 @@ function onButton(target) {
   return !!el?.closest("button, a[href], [role='button'], [role='checkbox'], [role='menuitem']");
 }
 const root = ref(null);
+// Kept alive in Studio: coming back from another step finds the page scrolled
+// where you left it.
+useKeptScroll(root);
 function onKey(ev) {
   if (keysOpen.value || document.querySelector(".ui-modal")) return;
   // Studio is kept alive behind other views: never act from off screen.
@@ -611,8 +629,8 @@ const flagged = (ln) => (ln.flags || []).length > 0;
             <dd class="jv-muted">Where the AI most often goes wrong, so you know where to read closely. Its most common
               mistake is losing track of turns in a back-and-forth — two people alternate, and it gives two lines in
               a row to one of them. So a line is marked when one person speaks three times with no reply, when it
-              is a persona's only line in the {{ word.singular.toLowerCase() }}, when dialogue went to the Narrator,
-              or when the book and the AI name different speakers. The line may well be right: “👁 Show the lines
+              is a persona's only line in the {{ word.singular.toLowerCase() }}, or when the book and the AI name
+              different speakers. The line may well be right: “👁 Show the lines
               around” lets you read the exchange, and “✓ Looks right” (optional) removes the mark — the line
               renders the same either way.</dd>
           </dl>

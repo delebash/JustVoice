@@ -10,10 +10,10 @@ The step names adapt to your project kind (chapters for audiobooks, quests for
 game projects, episodes for podcasts) — same flow, your vocabulary.
 
 **Why Discover comes first.** Script can only give a line to a persona that
-already exists. On an imported manuscript the project starts with one persona —
-the Narrator — so Discover reads the prose for the other names and, when you say
-so, creates personas for them. Casting before that would mean assigning voices
-to a list of one.
+already exists. A new project starts with an empty cast, and an import brings
+only the characters its manuscript lists — so Discover reads the prose for
+everyone it names and, when you say so, creates personas for the new ones.
+Casting before that would mean assigning voices to a list that isn't finished.
 
 **Game projects are the exception**: they have no Discover or Script step. A
 line list arrives from the writers with its speakers already attached, so a game
@@ -23,6 +23,10 @@ line-by-line grid as the Lines tab.
 If your cast is already complete — a JustWrite import that brought its
 characters, or a project you have analyzed before — nothing stops you clicking
 straight to Cast. The order is the path of least surprise, not a lock.
+
+**Switching steps keeps your place.** Go from Script to Cast and back and Script
+is as you left it: the same chapter or grid, the same ticks and filters, the same
+selected line and scroll position. Discover keeps its ticks the same way.
 
 ## Overview
 
@@ -41,7 +45,6 @@ row opens that step:
 Every number is read from the project itself; nothing is estimated. Export
 shows no count because nothing records an export.
 
-**Continue ➜** opens the first step that still has work in it.
 
 **Project** holds the settings, saved as you type:
 
@@ -49,9 +52,9 @@ shows no count because nothing records an export.
 - **Author** — written into the M4B you export as its author.
 - **Kind** — shown, not editable; it is fixed when the project is created.
 - **Mastering target** — what every render is mastered to, and what Export
-  checks against. *This kind's default* means ACX for an audiobook, podcast
-  loudness for a podcast, and raw for everything else; **None — raw** means
-  raw whatever the kind. See [the mastering target](#the-mastering-target).
+  checks against. A new project starts on its kind's target — ACX for an
+  audiobook, Podcast for a podcast, **None — raw** for everything else — and you
+  can change it to any of them. See [the mastering target](#the-mastering-target).
 
 **Also from here:** **Re-import** merges a newer version of the source file into
 this project, and **Export .justvoice.zip** saves the whole project as one file.
@@ -60,12 +63,14 @@ takes, generations, personas, voices and lexicons are kept.
 
 ## Discover
 
-Finds the people your text names who aren't in the cast yet. It creates
+Finds everyone your text names — people already in your cast, people in your
+library, and new names — and keeps that record for each chapter. It creates
 nothing on its own.
 
 1. Tick the chapters to read — the checkbox in the header selects them all. The
    line count updates as you tick. **Last scanned** says when each chapter was
-   last read, and **Proposed** how many of its names still wait on you.
+   last read, and **Found** how many people it names, with how many of them are
+   **new** (not in this cast yet).
 2. **Scan** reads them one at a time, one model call per chapter. The task strip
    at the top of the page shows the chapter it is reading, and **Cancel** stops
    the scan. Each row fills in as its chapter finishes, so you can start on the
@@ -73,27 +78,42 @@ nothing on its own.
    scan. The scan shares one run of chapters with Script's Analyze: if an
    Analyze is going, the scan **starts after** it, and a chapter already in the
    run can't be ticked.
-3. **Proposed speakers** lists every new name found: roughly how many lines
-   they speak in what was scanned (**0** means named but not heard speaking),
-   the **First appearance** — the quote that names them — and which chapters.
-   Spellings of one person are one row: "Sedge" and "Old Sedge" show as *Old
-   Sedge, also written Sedge*.
-   - **→ Name · in your library** means the name refers to a persona you
-     already have, but not in this cast ("Brick" → *Brick Halvorn*). **＋ Add**
-     then puts that persona in the cast and remembers "Brick" as another name
-     for him — it never makes a duplicate. Discover shows the model the
-     personas in your library that the chapter could be naming, with their
-     *Also called* names and the first line of their description, so a
-     nickname that only appears in a description is caught too: if Odeline
-     Marran's description says *"Answers to Ode."*, "Ode" comes back as
-     *→ Odeline Marran · in your library*, not as a new person.
-   - Otherwise **＋ Add** creates a new persona, keeping any other spellings as
-     its *Also called* names.
+3. **Characters found** lists everyone the scanned chapters name, each person
+   once, with a **status**, roughly how many lines they speak in what was
+   scanned (**0** means named but not heard speaking; a cast member shows how
+   many times the text names them instead), the **First appearance** — the
+   quote that names them — and which chapters. Spellings of one person are one
+   row: "Sedge" and "Old Sedge" show as *Old Sedge, also written Sedge*. The
+   chips above it filter the list: **All**, **New** (everyone not in this cast
+   yet — new names and people in your library), **In the cast** and
+   **Ignored**. The statuses:
+   - **In the cast** — someone this cast already has, whatever the text calls
+     them: full name, first name, surname, or one of their *Also called* names.
+     Nothing to do.
+   - **In your library** — a persona you already have, but not in this cast
+     ("Brick" → *Brick Halvorn*). **＋ Add** puts that persona in the cast and
+     remembers "Brick" as another name for him — it never makes a duplicate.
+     Discover shows the model the personas in your library that the chapter
+     could be naming, with their *Also called* names and the first line of
+     their description, so a nickname that only appears in a description is
+     caught too: if Odeline Marran's description says *"Answers to Ode."*,
+     "Ode" comes back as *Odeline Marran*, In your library, not as a new person.
+   - **New** — no persona has this name. **＋ Add** creates one, keeping any
+     other spellings as its *Also called* names. Names are unique within a
+     book, so Add is refused if the cast already has someone by that name
+     ([Personas → Names](personas.md#names)).
+   - **Ignored** — you ignored the name for this project. **Undo** (or its **✕**
+     in the **Ignored** box below) shows it as new again; **Clear all** there
+     empties the list.
+
+   **Add** and **Ignore** change a row's status — they never remove it, so
+   rescanning a chapter you've finished still shows everyone it names.
    - **quote not in the chapter** means the quote the model gave is not in the
      text — treat the name as suspect.
-   - **Ignore** drops the name and keeps it out of every later scan of this
-     project. Ignored names are listed under **Ignored**: a name's **✕** lets
-     Discover propose it again, and **Clear all** empties the list.
+   - **Several at once:** tick the waiting names (the box in the header ticks
+     every New and In-your-library row shown), then **＋ Add N selected** or
+     **Ignore N selected**. Each works exactly as its row's own button would — a
+     library match still links that persona.
 
 **What counts as a name.** Discover proposes everyone the text *names* — a
 proper name ("Edith") or a title used as one ("the harbour-master") — whether
@@ -112,15 +132,17 @@ lines already given to them keep them — Script then says they aren't in the
 cast, with a button to put them back.
 
 Scan results are saved with each chapter, so they are still there after you
-move to another step, switch project, or restart the app. A scan keeps running
-while you look at another step. Discover needs a language model; without one,
-Scan says so.
+move to another step, switch project, or restart the app. Scanning a chapter
+again replaces that chapter's record. A scan keeps running while you look at
+another step. Discover needs a language model; without one, Scan says so.
 
-Discover only proposes names that are **not** in the cast yet — someone you
-already cast never appears here, however much they speak, and whatever the
-text calls them: their full name, first name, surname, or any of their *Also
-called* names. The model is also given each cast member's one-line character
-sheet, so a nickname the sheet mentions ("Answers to Ode") is recognised too.
+**Your cast is found without the model.** A cast member counts as named when
+the chapter uses their full name or one of their *Also called* names, or their
+first name or surname alone (three letters or more, capitalised) when no one
+else in the cast shares it — so the same scan always finds the same people. The
+model is asked only for the names that are new. It is given each cast member's
+one-line character sheet, so a nickname the sheet mentions ("Answers to Ode")
+is not proposed as someone new.
 
 **A named thing can still slip through.** A named, enchanted object — a maul
 called *Gudgeon* that rides a character's shoulder — can read to the model as
@@ -254,7 +276,10 @@ under a paragraph's last line.
 **No speaker**, and — after a re-analyze that changed anyone — **Changed**.
 Each chip's number is the number of rows it shows. The speaker dropdown beside
 them shows one persona's lines. **Next to check ➜** jumps to the next marked or
-no-speaker line in reading order.
+no-speaker line in reading order, and scrolls it into view. Past the last one it
+starts again from the top ("Back to the first line to check"), so with a single
+line to check it always takes you there. `Shift+N` goes the other way and wraps
+to the bottom.
 
 **Fixing lines.**
 
@@ -267,7 +292,8 @@ no-speaker line in reading order.
   the wrong way round, which no mark can spot.
 - **✓ Looks right** on ticked lines makes them yours without changing them.
 - **↶ Undo** steps back through your changes since you opened the chapter,
-  newest first. Leaving the chapter, or re-analyzing it, clears it.
+  newest first. Opening another chapter, or re-analyzing this one, clears it;
+  switching to another step and back does not.
 - **👁 Show the lines around** (at the foot) adds the line either side of each
   line a filter shows.
 
@@ -315,7 +341,6 @@ it was built:
 |---|---|
 | One persona speaks **three or more times in a row** — back-to-back spoken paragraphs, no narration-only paragraph between, all theirs | *Marius speaks 3 times with no reply — is one of these the other person's?* The **whole run** is marked: the wrong line is as often the middle one as the last |
 | A persona's **only line** in the chapter | *Harbek's only line in this chapter — is it theirs?* |
-| Speech given to the **Narrator** | *Spoken, but given to the Narrator — whose line is it?* |
 | **The book and the AI disagree** — the book's words named one speaker, the AI said another | *The book says June, the AI says Marius — whose line is it?* |
 
 A speech that runs over several paragraphs — each opens a quote, only the last
@@ -443,7 +468,21 @@ Discover, then analyze again.
 ## Cast
 
 Every character in the project, with their voice assignment — the speakers
-Discover added, plus the Narrator and anyone a JustWrite import brought with it.
+Discover added, your narrator, and anyone a JustWrite import brought with it.
+Names are unique within a book: adding someone whose name the cast already has
+is refused ([Personas → Names](personas.md#names)).
+
+Every card has a **Narrator** checkbox: the narrator reads everything that isn't
+spoken, and any cast member can be it, because a first-person narrator also
+speaks — tick it on Watson's card and his narration and his lines share one
+voice. There is one narrator per project: ticking someone takes the role off the
+persona who had it (they stay in the cast), and moves the narration Analyze
+decided to them; lines you set yourself stay. The narrator's own box stays ticked
+until you tick someone else's. A book has no narrator until you choose one —
+nothing makes one on its own. With nobody in the role, **Add Narrator** puts a
+persona called Narrator from your library that isn't in any book into the cast,
+or makes one if there is none, and moves the narration that has no speaker to
+it ([The Narrator](personas.md#the-narrator)).
 Add a character, open the voice params modal to tune their delivery, and press
 **▶** to hear a voice preview before committing — the preview plays a stock
 sample line, not a line from your script. **Smart assign** asks the LLM to

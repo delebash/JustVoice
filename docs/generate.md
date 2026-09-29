@@ -171,7 +171,7 @@ A failed task also badges the ✨ AI-tasks button red until you open the panel �
 
 ### Status panel
 
-The **AI tasks** panel slides in from the right. Open it from any strip's Details button, the ✨ button in the title bar, the ✨ AI tasks row in the sidebar, or the server-status pill in the title bar.
+The **AI tasks** panel slides in from the right. Open it from any strip's Details button, the ✨ button in the title bar, or the ✨ AI tasks row in the sidebar. The server status in the title bar ("Operational", and how many tasks are in flight) is status only — it is not a button.
 
 The panel has two sections:
 

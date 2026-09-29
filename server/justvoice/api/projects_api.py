@@ -37,7 +37,8 @@ from ..database.models import (
 )
 from ..errors import not_found, bad_request
 from ..app_state import get_state
-from ._persona_helpers import ensure_project_persona
+from ._persona_helpers import ensure_project_persona, refuse_same_name
+from ..mastering import kind_master
 from .extraction_api import RunUsage, project_ignored
 from ..imports import list_adapters, run_adapter
 from ..imports.standard_schema import (
@@ -258,36 +259,28 @@ async def list_projects(
     )
 
 
-# Project kinds that get an auto-created Narrator persona. Game projects
-# (NPCs only) and custom projects don't — they have no single prose voice.
+# Project kinds whose import adopts the book's own "Narrator" character.
+# Game projects (NPCs only) and custom projects have no single prose voice.
 _NARRATOR_KINDS = {"audiobook", "podcast"}
 
 
-def _ensure_narrator(db: Session, project: Project) -> None:
-    """Give a prose-voice project its Narrator. Caller commits.
+def _adopt_book_narrator(db: Session, project: Project) -> None:
+    """An imported book that has its own character called "Narrator": that
+    character is the narrator. Caller commits.
 
-    Everything that isn't spoken is read by this persona: analyze binds every
-    narration segment to it (extraction_api), and a block with no persona is
-    refused at render. Both entry points need it — until 2026-08-08 only the
-    manual "New project" flow created one, so every IMPORTED book (the
-    JustWrite workflow, i.e. most of them) had no narrator at all and its
-    prose could never be bound to anything.
+    Nothing is ever CREATED here (decided 2026-09-29, "i dont think each
+    project should automatically create a narrator"): every import used to
+    make a new "Narrator" persona, and deleting the book left it in the
+    library, so re-imports piled them up. A book with no such character has
+    no narrator until you tick one in Cast or use "+ Add Narrator".
 
-    The persona is editable (rename / voice / personality) but DELETE is
-    refused — see personas_api.delete_persona.
-
-    On import this runs AFTER the characters, because a manuscript may name
-    its own narrator — `docs/import-and-export.md:50` shows exactly that
-    (`{"id": "narr", "name": "Narrator"}`). `ensure_project_persona` dedupes
-    on (imported_from, imported_id), not on name, so creating ours blindly
-    would leave the cast with two entries both called Narrator. When the
-    book brought one, that IS the narrator: adopt it by giving it the role
-    instead."""
+    Runs AFTER the characters — a manuscript may name its own narrator
+    (`docs/import-and-export.md:50`, `{"id": "narr", "name": "Narrator"}`)."""
     if project.project_type not in _NARRATOR_KINDS:
         return
     # SessionLocal runs autoflush=False, and the import adds its characters'
     # ProjectPersona links without flushing — without this the lookups below
-    # cannot see them and we duplicate the book's own narrator.
+    # cannot see them.
     db.flush()
     already = (
         db.query(ProjectPersona.persona_id)
@@ -308,19 +301,25 @@ def _ensure_narrator(db: Session, project: Project) -> None:
     )
     if imported is not None:
         imported.role_label = "narrator"
-        return
-    narrator = DbPersona(
-        name="Narrator",
-        voice_instruct="Steady, clear, unhurried — carries the prose between dialogue.",
-        personality=(
-            "The book's narrator: reads everything that is not a character's line. "
-            "Steady, clear, unhurried."
-        ),
-    )
-    db.add(narrator)
-    db.flush()
-    db.add(
-        ProjectPersona(project_id=project.id, persona_id=narrator.id, role_label="narrator")
+
+
+def move_narration(db: Session, project_id: str, new_id: str, old_id: str | None) -> int:
+    """Narration follows the narrator: every line Analyze decided is
+    narration (`source == "narration"`) that belonged to the old narrator, or
+    to nobody, moves to the new one. Lines you set yourself (`corrected`) stay.
+    Returns how many moved. Caller commits."""
+    from sqlalchemy import or_
+
+    scene_ids = [sid for (sid,) in db.query(Scene.id).filter(Scene.project_id == project_id)]
+    if not scene_ids:
+        return 0
+    owners = [Block.persona_id.is_(None)]
+    if old_id and old_id != new_id:
+        owners.append(Block.persona_id == old_id)
+    return (
+        db.query(Block)
+        .filter(Block.scene_id.in_(scene_ids), Block.source == "narration", or_(*owners))
+        .update({Block.persona_id: new_id}, synchronize_session=False)
     )
 
 
@@ -334,11 +333,9 @@ async def create_project(
         project_type=body.project_type,
         metadata_json=json.dumps(body.metadata),
         default_lexicon_id=body.default_lexicon_id,
-        mastering_preset=body.mastering_preset,
+        mastering_preset=body.mastering_preset or kind_master(body.project_type),
     )
     db.add(p)
-    db.flush()
-    _ensure_narrator(db, p)
     db.commit()
     db.refresh(p)
     return ProjectResponse.from_orm(p)
@@ -624,7 +621,8 @@ async def assign_to_cast(
 ) -> CastResponse:
     if not db.query(Project).filter(Project.id == project_id).first():
         raise not_found(f"project {project_id}")
-    if not db.query(Persona).filter(Persona.id == body.persona_id).first():
+    persona = db.query(Persona).filter(Persona.id == body.persona_id).first()
+    if not persona:
         raise not_found(f"persona {body.persona_id}")
     existing = (
         db.query(ProjectPersona)
@@ -637,6 +635,7 @@ async def assign_to_cast(
     if existing:
         existing.role_label = body.role_label
     else:
+        refuse_same_name(db, project_id, persona.name, besides=body.persona_id)
         db.add(
             ProjectPersona(
                 project_id=project_id,
@@ -648,25 +647,86 @@ async def assign_to_cast(
     return await get_cast(project_id, db)
 
 
+class SetNarratorRequest(BaseModel):
+    persona_id: str
+
+
+class SetNarratorResponse(CastResponse):
+    # Narration lines that moved to the new narrator.
+    moved_lines: int = 0
+
+
+@router.put("/v1/projects/{project_id}/narrator", response_model=SetNarratorResponse)
+async def set_narrator(
+    project_id: str, body: SetNarratorRequest, db: Session = Depends(get_db)
+) -> SetNarratorResponse:
+    """Make one cast member the project's narrator (2026-09-29: any persona
+    can be — a first-person narrator narrates AND speaks, one voice).
+
+    One narrator per project: the role comes off whoever held it, and they
+    stay in the cast as an ordinary member. Narration follows the role: every
+    line Analyze decided is narration (`source == "narration"`) that belonged
+    to the old narrator, or to nobody, moves to the new one. Lines you set
+    yourself (`corrected`) stay as they are."""
+    from .extraction_api import _narrator_persona_id
+
+    if db.query(Project).filter(Project.id == project_id).first() is None:
+        raise not_found(f"project {project_id}")
+    link = (
+        db.query(ProjectPersona)
+        .filter(ProjectPersona.project_id == project_id, ProjectPersona.persona_id == body.persona_id)
+        .first()
+    )
+    if link is None:
+        raise bad_request("That persona isn't in this project's cast — add them to the cast first.")
+    old_id = _narrator_persona_id(db, project_id)
+    if old_id == body.persona_id and link.role_label == "narrator":
+        return SetNarratorResponse(cast=(await get_cast(project_id, db)).cast)
+
+    for other in db.query(ProjectPersona).filter(
+        ProjectPersona.project_id == project_id,
+        ProjectPersona.role_label == "narrator",
+        ProjectPersona.persona_id != body.persona_id,
+    ):
+        other.role_label = None
+    link.role_label = "narrator"
+    moved = move_narration(db, project_id, body.persona_id, old_id)
+    db.commit()
+    return SetNarratorResponse(cast=(await get_cast(project_id, db)).cast, moved_lines=moved)
+
+
 @router.post(
     "/v1/projects/{project_id}/narrator",
-    response_model=CastResponse,
+    response_model=SetNarratorResponse,
     status_code=201,
 )
 async def ensure_narrator(
     project_id: str, db: Session = Depends(get_db)
-) -> CastResponse:
-    """Idempotent: create a Narrator persona for this project and link it
-    to the cast with the "narrator" role. Returns the project's cast. If a narrator
-    is already linked, returns the existing cast unchanged.
+) -> SetNarratorResponse:
+    """Idempotent: give this project a narrator. Returns the cast, and how
+    many narration lines moved to it. If a narrator is already linked, the
+    cast comes back unchanged.
 
-    Studio Cast's "Add Narrator" calls it — the one way back to a narrator
-    after the persona was deleted or left the cast (there is no startup
-    fill-in since 2026-09-29, so a deletion sticks).
+    Studio Cast's "+ Add Narrator" calls it. Since 2026-09-29 no book gets a
+    narrator on its own, so this (or ticking Narrator on a cast member) is how
+    one arrives. In order: a cast member called Narrator takes the role; else
+    a "Narrator" from the library that is in no book joins the cast (so
+    deleted books' narrators are used again, not piled up); else a new one is
+    made. Narration lines with no speaker then move to it.
     """
     p = db.query(Project).filter(Project.id == project_id).first()
     if not p:
         raise not_found(f"project {project_id}")
+    # The role is what makes a narrator (any cast member can hold it since
+    # 2026-09-29), so it is checked first — by name alone, a project whose
+    # narrator is Watson would get a second one.
+    has_role = (
+        db.query(ProjectPersona)
+        .filter(ProjectPersona.project_id == project_id, ProjectPersona.role_label == "narrator")
+        .first()
+    )
+    if has_role is not None:
+        return SetNarratorResponse(cast=(await get_cast(project_id, db)).cast)
     existing = (
         db.query(ProjectPersona)
         .join(DbPersona, DbPersona.id == ProjectPersona.persona_id)
@@ -676,26 +736,34 @@ async def ensure_narrator(
         )
         .first()
     )
-    if existing is None:
-        narrator = DbPersona(
-            name="Narrator",
-            voice_instruct="Steady, clear, unhurried — carries the prose between dialogue.",
-            personality=(
-                "The book's narrator: reads everything that is not a character's "
-                "line. Steady, clear, unhurried."
-            ),
+    if existing is not None:
+        # A cast member called "Narrator" with no role takes it, as at import.
+        existing.role_label = "narrator"
+        narrator_id = existing.persona_id
+    else:
+        free = (
+            db.query(DbPersona)
+            .filter(DbPersona.name.ilike("narrator"))
+            .filter(~db.query(ProjectPersona).filter(ProjectPersona.persona_id == DbPersona.id).exists())
+            .order_by(DbPersona.created_at)
+            .first()
         )
-        db.add(narrator)
-        db.flush()
-        db.add(
-            ProjectPersona(
-                project_id=project_id,
-                persona_id=narrator.id,
-                role_label="narrator",
+        if free is None:
+            free = DbPersona(
+                name="Narrator",
+                voice_instruct="Steady, clear, unhurried — carries the prose between dialogue.",
+                personality=(
+                    "The book's narrator: reads everything that is not a character's "
+                    "line. Steady, clear, unhurried."
+                ),
             )
-        )
-        db.commit()
-    return await get_cast(project_id, db)
+            db.add(free)
+            db.flush()
+        db.add(ProjectPersona(project_id=project_id, persona_id=free.id, role_label="narrator"))
+        narrator_id = free.id
+    moved = move_narration(db, project_id, narrator_id, None)
+    db.commit()
+    return SetNarratorResponse(cast=(await get_cast(project_id, db)).cast, moved_lines=moved)
 
 
 @router.delete("/v1/projects/{project_id}/cast/{persona_id}")
@@ -756,7 +824,7 @@ def _materialize_standard(
                 "schema_version": standard.schema_version,
             }
         ),
-        mastering_preset="acx" if project_type == "audiobook" else None,
+        mastering_preset=kind_master(project_type),
         imported_from=standard.source,
     )
     db.add(p)
@@ -785,10 +853,8 @@ def _materialize_standard(
         char_to_persona_id[char.id] = pid
         (created_personas if created else reused_personas).append(pid)
 
-    # After the characters, never before — see _ensure_narrator's docstring:
-    # a book that ships its own "Narrator" character must be adopted rather
-    # than duplicated.
-    _ensure_narrator(db, p)
+    # After the characters, never before — see _adopt_book_narrator.
+    _adopt_book_narrator(db, p)
 
     # Scenes + Blocks.
     total_blocks = 0

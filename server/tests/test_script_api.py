@@ -58,6 +58,8 @@ def project(client):
     assert r.status_code == 200, r.text
     pid = r.json()["project_id"]
     sid = client.get(f"/v1/projects/{pid}/scenes").json()[0]["id"]
+    # "+ Add Narrator" — no book has a narrator until you choose one (2026-09-29).
+    assert client.post(f"/v1/projects/{pid}/narrator").status_code == 201
     cast = client.get(f"/v1/projects/{pid}/cast").json()["cast"]
     ids = {c["persona_name"]: c["persona_id"] for c in cast}
     narrator = next(c["persona_id"] for c in cast if c["role_label"] == "narrator")
@@ -300,3 +302,30 @@ def test_a_null_speaker_clears_it_and_a_missing_one_leaves_it(client, project, m
     assert r.json()["source"] is None and r.json()["extraction_confidence"] is None
     r = client.patch(f"/v1/blocks/{line['id']}", json={"direction": "loud"})
     assert r.json()["direction"] == "loud"
+
+
+# ── A narrator who also speaks (2026-09-29) ────────────────────────────────
+
+
+def _groups(client, scene_id):
+    return [(g["check"], g["speaker"]) for g in
+            client.get(f"/v1/scenes/{scene_id}/script").json()["flag_groups"]]
+
+
+def test_speech_on_the_narrator_counts_like_anyones(client, project, monkeypatch):
+    """No "given to the Narrator" check: the Narrator's one spoken line is an
+    only line, as anyone's would be."""
+    _model_says(monkeypatch, {0: project.tom, 1: project.narrator, 2: project.tom, 3: project.mara})
+    _analyze(client, project.scene_id)
+    groups = _groups(client, project.scene_id)
+    assert ("only", project.narrator) in groups
+    assert not [g for g in groups if g[0] not in ("run", "only", "disagree")]
+
+
+def test_a_character_who_narrates_is_counted_like_anyone(client, project, monkeypatch):
+    """Tom narrates and speaks: three of his lines in a row are a run."""
+    _model_says(monkeypatch, _all_tom(project))
+    _analyze(client, project.scene_id)
+    r = client.put(f"/v1/projects/{project.id}/narrator", json={"persona_id": project.tom})
+    assert r.status_code == 200, r.text
+    assert ("run", project.tom) in _groups(client, project.scene_id)
