@@ -73,7 +73,6 @@ def _row_to_persona(row) -> Persona:
         engine_override=row.engine_override,
         imported_from=row.imported_from,
         imported_id=row.imported_id,
-        is_builtin=bool(getattr(row, "is_builtin", False)),
         created_at=row.created_at or _now(),
         updated_at=row.updated_at or _now(),
     )
@@ -154,7 +153,6 @@ class PersonaStore:
             engine_override=p.engine_override,
             imported_from=p.imported_from,
             imported_id=p.imported_id,
-            is_builtin=p.is_builtin,
             created_at=p.created_at,
             updated_at=p.updated_at,
         )
@@ -202,7 +200,6 @@ class PersonaStore:
         aliases: list[str] | None = None,
         imported_from: str | None = None,
         imported_id: str | None = None,
-        is_builtin: bool = False,
         id: str | None = None,
     ) -> Persona:
         """Create a persona. `id` may be supplied for migrations that need
@@ -225,7 +222,6 @@ class PersonaStore:
                 llm_model=llm_model,
                 imported_from=imported_from,
                 imported_id=imported_id,
-                is_builtin=is_builtin,
                 created_at=_now(),
                 updated_at=_now(),
             )

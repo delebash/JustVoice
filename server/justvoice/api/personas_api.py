@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from ..app_state import get_state
 from ..database import get_db
 from ..database.models import Project, ProjectPersona
-from ..errors import bad_request, not_found
+from ..errors import not_found
 from ..models import CreatePersonaRequest, Persona, PersonaList
 from .extraction_api import RunUsage
 
@@ -188,14 +188,10 @@ async def delete_persona(id: str) -> dict:
     persona = get_state().personas.get(id)
     if persona is None:
         raise not_found(f"persona {id}")
-    if persona.is_builtin:
-        # Soft sentinel — auto-created by the project lifecycle (Narrator
-        # on audiobook + podcast). Rename and voice reassignment still
-        # work via PUT; only the row itself is protected.
-        raise bad_request(
-            f"persona {id} is built-in (auto-created by its project) — it can be "
-            f"renamed or reassigned, but not deleted."
-        )
+    # Every persona deletes the same way, the Narrator included (2026-09-29:
+    # no built-in personas). Its cast links go with it (ON DELETE CASCADE)
+    # and its lines keep no speaker (SET NULL) — the render blocker catches
+    # those, and Studio offers "+ Add Narrator" again.
     if not get_state().personas.delete(id):
         raise not_found(f"persona {id}")
     return {"deleted": True}

@@ -50,7 +50,7 @@ def run_migrations(engine) -> None:
     _migrate_generations_ok_status_and_preset(engine, inspector, tables)
     _migrate_voice_profiles_personality(engine, inspector, tables)
     _migrate_personas_absorb_profile_fields(engine, inspector, tables)
-    _migrate_personas_is_builtin(engine, inspector, tables)
+    _migrate_drop_personas_is_builtin(engine, inspector, tables)
     _migrate_drop_voice_profile_tables(engine, inspector, tables)
     _migrate_render_presets_effects_chain(engine, inspector, tables)
     _migrate_render_presets_voice_nullable(engine, inspector, tables)
@@ -148,23 +148,27 @@ def _migrate_personas_absorb_profile_fields(engine, inspector, tables: set[str])
         _add_column(engine, "personas", "imported_id VARCHAR", "imported_id")
 
 
-def _migrate_personas_is_builtin(engine, inspector, tables: set[str]) -> None:
-    """Adds `is_builtin BOOLEAN NOT NULL DEFAULT 0` to personas — soft
-    sentinel for personas auto-created by the project lifecycle
-    (Narrator for audiobook + podcast projects). The personas DELETE
-    endpoint refuses to remove builtins; UI hides the ✕ affordance.
-    Existing personas default to false on backfill.
+def _migrate_drop_personas_is_builtin(engine, inspector, tables: set[str]) -> None:
+    """Drop `personas.is_builtin` (2026-09-29: no built-in personas — the
+    Narrator is an ordinary persona). A one-time drop by the user's word
+    ("your rec go on both"), an exception to the no-migrations rule: the
+    column is `NOT NULL` with no default in a database made from the old
+    model, so every persona insert fails while it stays. Delete this once
+    no database carries the column.
+
+    The column takes part in no foreign key, so SQLite's DROP COLUMN works.
     """
     if "personas" not in tables:
         return
-    columns = _get_columns(inspector, "personas")
-    if "is_builtin" not in columns:
-        _add_column(
-            engine,
-            "personas",
-            "is_builtin BOOLEAN NOT NULL DEFAULT 0",
-            "is_builtin",
-        )
+    if "is_builtin" not in _get_columns(inspector, "personas"):
+        return
+    if not _supports_drop_column(engine):
+        logger.warning("personas.is_builtin left in place: this SQLite has no DROP COLUMN")
+        return
+    with engine.connect() as conn:
+        conn.execute(text("ALTER TABLE personas DROP COLUMN is_builtin"))
+        conn.commit()
+    logger.info("Dropped is_builtin column from personas")
 
 
 def _migrate_blocks_extraction_telemetry(engine, inspector, tables: set[str]) -> None:

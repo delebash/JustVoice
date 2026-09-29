@@ -627,7 +627,7 @@ target: **custom projects** (`_NARRATOR_KINDS` is audiobook+podcast, but
 before 2026-08-09**, because `_ensure_narrator` runs at create/import only and
 never backfills. The button now disables itself and says why rather than
 failing on click — that is the whole mitigation.
-NOT: adding "custom" to `_NARRATOR_KINDS` on my own — `test_builtin_narrator`
+NOT: adding "custom" to `_NARRATOR_KINDS` on my own — `test_project_narrator`
 pins the opposite as a deliberate decision ("no single prose voice"), and
 reversing it is not mine to do.
 OPEN: pick one — give custom projects a Narrator · hide Script from them ·
@@ -1413,6 +1413,44 @@ DECIDED 2026-09-29 — "narrator keeps its x": the Narrator's tag keeps its ✕,
 OPEN:   The ✕ / Clear all clicks were not exercised on the real data (they remove cast
         members) — rendering was checked.
 GO:     given 2026-09-29 ("go code the app", in the message that answered its two questions)
+
+### No built-in personas — the Narrator is an ordinary persona, one per project
+STATE:  DECIDED 2026-09-29 — "your rec", on the two questions after the user hit "Delete failed:
+        400 Bad Request: persona … is built-in" on the Personas page ("there should be no built in
+        personas as far as i know, unluess we have 1 narrator built in, even importing a book
+        should not consider the persona built in"). The recs, as given:
+        · Option 1, no built-in personas: "The Narrator becomes an ordinary persona you can
+          delete like any other. The flag is removed everywhere: the database column, the delete
+          guard, the three places that set it, the hidden ✕ in Studio, `test_builtin_narrator.py`
+          and the docs. A new project still gets a Narrator, and Cast keeps '+ Add Narrator'.
+          Deleting the Narrator leaves the project's narration lines with no speaker. The render
+          then stops on them, as it does for any unassigned line, and 'Assign → Narrator' fixes
+          it after '+ Add Narrator'."
+        · One Narrator per project (as today), not one shared across all projects — "each book
+          usually has its own narrator voice".
+WHY:    The flag protected only the Narrator, surprised the user, and the Personas page offered a
+        Delete it could never honour.
+NOT:    Option 2 — keep the Narrator protected and hide its Delete on the Personas page.
+        One app-wide Narrator shared by every project.
+BUILT:  2026-09-29 ("your rec on all go") — the flag is gone from the API model, persona
+        storage, the delete guard, the three setters (`projects_api.py` create/import and
+        "Add Narrator", `database/session.py` startup fill-in) and Studio's hidden ✕;
+        `test_builtin_narrator.py` → `test_project_narrator.py` (the Narrator deletes, leaves the
+        cast, comes back via "Add Narrator"); docs/personas.md, whats-new, code-map.
+DECIDED 2026-09-29 — "your rec go on both", on the two gaps the first build surfaced:
+        · The column: "a one-time drop, so you keep your data" (the live DB has
+          `personas.is_builtin NOT NULL` with no default, so every insert fails while it stays —
+          a reset or a drop). An exception to the no-migrations rule, by this word.
+        · The startup fill-in: "remove the fill-in, so deleting sticks and 'Add Narrator' is the
+          only way back".
+BUILT:  2026-09-29 — `database/migrations.py` `_migrate_drop_personas_is_builtin` (DROP COLUMN;
+        replaces the add-column migration; delete it once no DB carries the column) · the model
+        column gone (`database/models.py`) · `_backfill_narrator_personas` and its boot call gone
+        (`database/session.py`) · tests: the drop on an old-shape DB, a deleted Narrator stays
+        deleted across a restart · run first on a copy of the live DB (column gone, rows kept,
+        an insert without it works), then on the live DB at the app's restart. Committed and
+        pushed the same day ("commit anbd push").
+GO:     given 2026-09-29
 
 ### The audiobook demo is JustWrite's sample, The Ninth Facet
 STATE:  DECIDED 2026-09-27 — "2 make a folder called samples just like jw and the load demo just

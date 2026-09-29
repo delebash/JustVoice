@@ -51,7 +51,12 @@ and answered wrongly each time, when the answers were sitting in the code and in
 | `engine_override` | force an engine regardless of the voice's default |
 | `lexicon_id` | FK → `lexicons`, `ondelete=SET NULL` |
 | `imported_from` / `imported_id` | provenance: `justwrite` · `manual` · `unreal` · `voice_profile`. **Re-import updates in place, never duplicates** |
-| `is_builtin` | the auto-created Narrator. DELETE is refused; rename and voice reassignment still work |
+
+**No persona is special** (2026-09-29). A project's narrator is the cast member
+whose `project_personas.role_label` is `"narrator"` (else one named "Narrator")
+— `extraction_api._narrator_persona_id`, `StudioView.narratorPersona`. Every
+persona deletes the same way; its cast links cascade and its lines' `persona_id`
+goes null.
 
 `voice_instruct` and `personality` are **two fields, not three** — the
 2026-08-15 split (Slice A, `f54c4ea`). One field feeding both the synth and the

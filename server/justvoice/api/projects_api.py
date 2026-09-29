@@ -316,7 +316,6 @@ def _ensure_narrator(db: Session, project: Project) -> None:
             "The book's narrator: reads everything that is not a character's line. "
             "Steady, clear, unhurried."
         ),
-        is_builtin=True,
     )
     db.add(narrator)
     db.flush()
@@ -657,13 +656,13 @@ async def assign_to_cast(
 async def ensure_narrator(
     project_id: str, db: Session = Depends(get_db)
 ) -> CastResponse:
-    """Idempotent: create a builtin Narrator persona for this project
-    and link it to the cast. Returns the project's cast. If a narrator
+    """Idempotent: create a Narrator persona for this project and link it
+    to the cast with the "narrator" role. Returns the project's cast. If a narrator
     is already linked, returns the existing cast unchanged.
 
-    UI uses this from the Studio Cast "+ Add Narrator" placeholder so
-    pre-feature projects don't need a server restart for the backfill
-    to land.
+    Studio Cast's "Add Narrator" calls it — the one way back to a narrator
+    after the persona was deleted or left the cast (there is no startup
+    fill-in since 2026-09-29, so a deletion sticks).
     """
     p = db.query(Project).filter(Project.id == project_id).first()
     if not p:
@@ -685,7 +684,6 @@ async def ensure_narrator(
                 "The book's narrator: reads everything that is not a character's "
                 "line. Steady, clear, unhurried."
             ),
-            is_builtin=True,
         )
         db.add(narrator)
         db.flush()

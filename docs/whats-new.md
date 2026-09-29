@@ -2,6 +2,12 @@
 
 ## v0.1.0
 
+- **The Narrator can be deleted like any other persona.** Deleting it used to fail
+  with "persona … is built-in". There are no built-in personas now: the Narrator a
+  new audiobook or podcast gets is an ordinary persona, and it can leave the cast
+  in Studio too. A deleted Narrator stays deleted — restarting the app no longer
+  brings one back — until **Add Narrator** in Studio's Cast step makes a new one
+  ([Personas → The Narrator](personas.md#the-narrator))
 - **Script opens on a grid of your chapters.** One row per chapter says how many lines
   it has, when it was analyzed, how many lines the book itself names the speaker of
   and how many the AI decided, how many are flagged and how many have no speaker.

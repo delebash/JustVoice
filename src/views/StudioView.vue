@@ -603,12 +603,12 @@ async function addPersonaToCast(p) {
   }
 }
 
-// Idempotent backend call — creates a builtin Narrator persona for
-// this project + adds it to the cast. Used by the empty-state slot in
-// the Narrator section so pre-feature projects don't need a server
-// restart for the init-time backfill to land.
+// Idempotent backend call — creates a Narrator persona for this project
+// and adds it to the cast in the "narrator" role. The empty-state slot in
+// the Narrator section calls it: the one way back after the Narrator was
+// deleted or left the cast.
 const creatingNarrator = ref(false);
-async function createBuiltinNarrator() {
+async function createNarrator() {
   if (!selectedProjectId.value || creatingNarrator.value) return;
   creatingNarrator.value = true;
   try {
@@ -1628,11 +1628,10 @@ watch(selectedProjectId, (id) => {
             @click="selectedCharacterId = narratorPersona.id"
             title="The narrator carries the prose between quotes — pick your steadiest voice"
           >
-            <!-- Builtin Narrator (project-lifecycle owned) — the project
-                 always has one, so we hide the remove ✕. Rename + voice
-                 reassignment still work as normal. -->
+            <!-- The Narrator is an ordinary persona (2026-09-29): it can
+                 leave the cast like anyone else, and "Add Narrator"
+                 below brings one back. -->
             <button
-              v-if="!narratorPersona.is_builtin"
               type="button"
               class="studio__char-x"
               title="Remove from this cast — persona stays in the library"
@@ -1660,13 +1659,13 @@ watch(selectedProjectId, (id) => {
             type="button"
             class="studio__narrator-empty"
             :disabled="creatingNarrator"
-            title="Create the project's builtin Narrator persona and add it to the cast"
-            @click="createBuiltinNarrator"
+            title="Create a Narrator persona for this project and add it to the cast"
+            @click="createNarrator"
           >
             <span class="studio__char-portrait" :style="{ background: 'var(--surface-3)' }">N</span>
             <span class="studio__narrator-empty-text">
               <strong>{{ creatingNarrator ? "Adding Narrator…" : "Add Narrator" }}</strong>
-              <span class="jv-muted">Creates the project's builtin Narrator persona — voice is assigned below.</span>
+              <span class="jv-muted">Creates a Narrator persona for this project — voice is assigned below.</span>
             </span>
           </button>
         </section>

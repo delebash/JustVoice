@@ -16,10 +16,17 @@ It's the voice of everything that isn't spoken: when [Studio ·
 Script](studio.md) analyzes a chapter, every stretch of prose outside quote
 marks is bound to it.
 
-It behaves like any other persona — rename it, give it a voice, write its two
-notes — with one exception: it can't be deleted, because the prose has to
-belong to someone. Cast it a voice early; a chapter whose narration has no
-voice won't render.
+It is an ordinary persona — rename it, give it a voice, write its two notes,
+take it out of the cast or delete it, like any other. What makes it the
+project's narrator is its place in the cast, not anything about the persona:
+rename it and it is still the one the prose goes to.
+
+Deleting it (or taking it out of the cast) leaves the project with no narrator,
+and every line of narration with no speaker — a chapter won't render until they
+have one. It stays that way — restarting the app doesn't bring a Narrator back.
+Studio's Cast step offers **Add Narrator**, which makes a new one, and Script's
+**Assign N → Narrator** gives it the narration back. Cast it
+a voice early; a chapter whose narration has no voice won't render either.
 
 ## The editor has two halves
 

@@ -34,7 +34,7 @@ def _persona(client, name: str) -> str:
 
 
 def test_cast_entries_carry_the_persona_name(client):
-    pid = _project(client)  # audiobook ⇒ a builtin Narrator is already cast
+    pid = _project(client)  # audiobook ⇒ a Narrator is already cast
     mara = _persona(client, "Mara Vance")
     assert client.post(f"/v1/projects/{pid}/cast", json={"persona_id": mara}).status_code == 201
 
@@ -70,7 +70,7 @@ def test_deleting_a_persona_drops_it_from_the_cast(client):
     so a deleted persona takes its cast links with it. `persona_name` is
     Optional and the query outer-joins purely defensively — this test is what
     says the null branch is unreachable in normal operation."""
-    pid = _project(client, "game_voicelines")  # no builtin narrator in the way
+    pid = _project(client, "game_voicelines")  # no Narrator in the way
     ghost = _persona(client, "Ghost")
     assert client.post(f"/v1/projects/{pid}/cast", json={"persona_id": ghost}).status_code == 201
     assert client.delete(f"/v1/personas/{ghost}").status_code == 200
