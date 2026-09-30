@@ -219,3 +219,67 @@ project restored (checked: the library holds only The Ninth Facet, active = The 
   rewritten because the old ones became untrue.
 - A split's second half copies the first's metadata except the import's line id — so a line
   "changed by the last Analyze" shows that mark on both halves.
+
+## 3. Decided 2026-09-30 — the choices not in the plan
+
+The user asked "whats your rec on the needs your word and explain it more"; the answer below was
+presented; then "your rec on all", then "go". Verbatim:
+
+Here is each item, what it means, and what I'd do.
+
+**1. How Auto picks a chapter's speech marks**
+- The plan said Auto picks the main mark "by counting". I count only the **first** speech mark in each paragraph, not every mark.
+- Why: speech often has quotes inside it. In The Speckled Band, Helen quotes her sister: *“‘Tell me, Helen,’ said she, ‘have you ever…’”*. That paragraph has one double mark and two singles.
+  - Counting every mark, a chapter with a few paragraphs like that is called single-quoted. Every real speech is then misread.
+  - My own test caught exactly this.
+- A speech's own mark always comes before any quote inside it, so counting first marks can't be outvoted that way.
+- The weak spot is narration with a quoted word before any speech (*the 'Iron Duke' arrived*). That paragraph counts toward single, but one paragraph doesn't outweigh the rest of the chapter.
+- All 37 chapters of the three sample books read as double.
+- **Rec: keep it.**
+
+**2. No hint under Speech marks**
+- Every other field on Overview has a line of explanation under it. The plan gave none for this one, so I left it blank.
+- While writing this answer I found something the hint should say. **A change only affects chapters you haven't edited.** A chapter you've edited is read as its lines (item A), so the new marks don't cut it again.
+- Example: a single-quoted book analyzed as double shows "no dialogue found". You fix a line, then switch to ‘Single’ and re-analyze. Nothing changes, and today nothing in the app tells you why.
+- **Rec: add a hint:** *"How the book marks speech. Takes effect the next time a chapter is analyzed; a chapter whose lines you've edited keeps them."*
+  - Also add the same caveat to the grid's "no dialogue found" advice. It currently says "change the setting and re-analyze", which doesn't work for an edited chapter.
+  - Add an entry to IDEAS.md for a **"Cut again from the text"** action for that case. The action itself would need its own decision.
+
+**3. Wording the plan didn't give**
+
+| Where | What I wrote |
+|---|---|
+| Toast after a split | "Split into two lines. Undo was cleared — Merge puts them back together." |
+| Toast after a merge | "Merged 2 lines into one. Undo was cleared — Split takes them apart again." |
+| Merge confirm (the plan's words, split in two) | title "Merge 3 lines?", text "This deletes 2 rendered takes.", button "Merge" |
+| ✎ Edit… hover | "Edit this line's words, or split it in two" |
+| ✎ Edit… when greyed out | "Tick exactly one line to edit its words." |
+| ⇲ Merge hover | "Join the ticked lines into one, with the first line's speaker" |
+| ⇲ Merge when greyed out | "Only lines that sit next to each other can be merged." |
+| Split at the cursor hover | "The words after the cursor become a new line, with the same speaker" |
+| Split with the cursor at either end | "Put the cursor inside the words — both new lines need some." |
+| A line changed during an Analyze | "This chapter's lines changed while it was being analyzed, so nothing was saved. Analyze it again." |
+| Left out hover | "Only says who spoke — Overview → Leave out dialogue tags is on, so the audio skips it" |
+| Undo with nothing to undo | "Nothing to undo since the last split or merge" (or "…the last Analyze", or "…you opened this chapter") |
+| Note under the table | "Changing the speaker or the words of a rendered line makes it stale — it re-renders, and its old take is kept. Merging deletes the takes of the lines joined onto the first, and asks first." |
+
+- **Rec: keep them all, with one change:** the "no dialogue found" advice from item 2.
+
+**4. A split copies the line's marks to both halves**
+- The new half takes everything the line carried except the import's line id. That includes:
+  - the "changed · was June" mark from the last Analyze;
+  - the book's words that named the speaker ("said Marius");
+  - the AI's disagreeing pick, which drives the "The book says…, the AI says…" check.
+- So after splitting a marked line, both halves show the mark, and the counts go up by one.
+- The alternative is a new half with no marks. But then it shows no evidence at all, which is odd too. Both halves really did get their speaker from that one decision.
+- The usual next step after a split is to set a speaker on one half. That makes the line yours and clears its marks anyway.
+- **Rec: keep it.**
+
+**5. The tracker says "uncommitted"**
+- The line "BUILT: 2026-09-30, uncommitted at the time of writing" was true when written. It is now `e323997`.
+- **Rec: fix it in the same commit as items 2 and 3**, rather than a commit of its own.
+
+**6. Push**
+- `e323997` is local only. **Rec: push after items 2 and 3 land**, so the pushed version doesn't carry the misleading advice.
+
+If you agree, say go and I'll do items 2, 3 and 5 in one commit, then push when you say so.

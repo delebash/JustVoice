@@ -247,7 +247,8 @@ async function deleteProject() {
               option-value="id" @update:model-value="commitMastering" />
           </UiField>
           <template v-if="prose">
-            <UiField label="Speech marks" layout="block">
+            <UiField label="Speech marks" layout="block"
+              hint="How the book marks speech. Takes effect the next time a chapter is analyzed; a chapter whose lines you've edited keeps them.">
               <UiSelect :model-value="meta.speech_marks || 'auto'" width="name" :options="SPEECH_MARKS"
                 option-value="id" @update:model-value="commitMarks" />
             </UiField>

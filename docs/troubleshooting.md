@@ -26,7 +26,9 @@ session are the usual JustVoice culprit, and the loading screen offers
 Nothing in its text was read as speech. Check Overview → **Speech marks**: Auto
 reads double quotes, single quotes, guillemets and German marks, but if the
 book mixes them it may pick the wrong one — set it to the book's own style and
-re-analyze. Speech after a dash isn't read in any setting. See
+re-analyze. That can't re-cut a chapter whose lines you've already edited (a
+word changed, a split, a merge): it keeps them. Speech after a dash isn't read
+in any setting. See
 [Studio → Speech marks](studio.md#speech-marks).
 
 **A voice preview or engine load answers 500 / 503 with an import error**

@@ -1423,12 +1423,15 @@ WHY:    B1–B6 were left out of Slice 3 (§8.23); the checks found an edit quie
         "said X" anchor from the next Analyze, and two dead buttons on the old Chapters page.
 NOT:    Reorder of lines. Speech after a dash. Undo for split/merge. "Read by you" (parked).
         Any change to the old Chapters page in this build — B5 dropped; it goes in Slice 4.
-BUILT:  2026-09-30, uncommitted at the time of writing — what, where and the checks: the plan
-        doc §2. Server suite 914 passed; unit 115; gate clean; live pass on the real app (one
-        window): The Speckled Band as one chapter = 361 lines, opens in 102-105 ms, scrolls at
-        16.7 ms/frame — no virtualization needed.
-OPEN:   the choices the plan didn't name, listed in §2 "Not in the plan" — for the user's word.
-GO:     given 2026-09-30 for all of §1 | a push needs its own word
+BUILT:  2026-09-30, JV `e323997` — what, where and the checks: the plan doc §2. Server suite
+        914 passed; unit 115; gate clean; live pass on the real app (one window): The Speckled
+        Band as one chapter = 361 lines, opens in 102-105 ms, scrolls at 16.7 ms/frame — no
+        virtualization needed.
+DECIDED 2026-09-30 — "your rec on all", then "go", on the choices the plan didn't name (verbatim:
+        plan doc §3): keep Auto's first-mark rule, the wording and the split's copied marks; add a
+        hint under Speech marks and the edited-chapter caveat to "no dialogue found"; an IDEAS
+        entry for "Cut again from the text"; push once those land.
+GO:     given 2026-09-30 for all of §1 and §3, the push included
 
 ### Discover: remove one Ignored name or one cast member with ✕, and "Clear all" on both
 STATE:  DECIDED 2026-09-29, for next — "add to task for next, on app discover for ignore and

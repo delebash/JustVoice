@@ -6,6 +6,16 @@ The holding pen for unscheduled JustVoice ideas — same charter as JW's
 
 ---
 
+- **2026-09-30 · "Cut again from the text" for an edited chapter** — since
+  2026-09-30 a chapter whose lines were edited (a word changed, a split, a merge)
+  is re-analyzed as its lines stand, so a new Speech marks setting can't re-cut
+  it: a single-quoted book analyzed as double, with one line fixed by hand, stays
+  "no dialogue found" whatever the setting. An explicit action on the chapter
+  would re-join its lines by paragraph and cut them again with the current marks,
+  losing the hand cuts (refused, as any re-cut is, once takes exist). The hint
+  under Speech marks and the grid's advice say so meanwhile. Needs its own
+  decision (`docs/plans/2026-09-30-script-leftovers.md` §3, item 2).
+
 - **2026-09-29 · From the full walkthrough** (none started; the evidence is in TASKS's
   fresh-install RESULT and the FINDINGs of the same day):
   - **Smart-assign re-writes every cast.** On a partly cast book it re-applied the six

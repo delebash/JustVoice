@@ -236,6 +236,8 @@ A row can also carry a tag:
 - **no dialogue found** — nothing in the text was read as speech, so every line
   went to the Narrator. Speech after a dash isn't read as dialogue, and neither
   are marks other than Overview → [Speech marks](#speech-marks) is set to.
+  Changing that setting and re-analyzing fixes it, unless you've edited the
+  chapter's lines — then it keeps them.
 - **failed** — the model call failed; the reason is on the row, and nothing
   was saved.
 - **can't re-cut** — analyzing would cut the chapter's lines differently from
@@ -554,7 +556,10 @@ of a word inside the speech (*‘The boys’ bikes are gone,’*). Fix that line
 any setting. A chapter where nothing was read as speech says **no dialogue
 found** on the grid.
 
-Changing the setting takes effect the next time a chapter is analyzed.
+Changing the setting takes effect the next time a chapter is analyzed — for a
+chapter you haven't edited. A chapter whose lines you've edited (a word
+changed, a split, a merge) keeps them, so a new setting won't cut it again (see
+[Re-analyze](#re-analyze)).
 
 ### A line's words: edit, split, merge
 

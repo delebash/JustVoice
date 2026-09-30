@@ -385,7 +385,8 @@ function openRow(r, focus = null) {
           <dt>no dialogue found</dt>
           <dd class="jv-muted">Nothing in the text was read as speech, so every line went to the Narrator.
             Speech after a dash isn't read as dialogue. If the book marks speech another way than Overview →
-            Speech marks is set to, change the setting and re-analyze.</dd>
+            Speech marks is set to, change the setting and re-analyze — unless you've edited this chapter's
+            lines: then it keeps them, and a new setting won't cut it again.</dd>
           <dt>can't re-cut</dt>
           <dd class="jv-muted">Analyzing would cut this chapter's lines differently from the ones that have
             takes, and that would delete those takes, so it stops.</dd>
