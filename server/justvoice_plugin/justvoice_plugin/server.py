@@ -17,8 +17,8 @@ import argparse
 import asyncio
 import logging
 import os
-import signal
 import sys
+import threading
 from typing import Any
 
 import uvicorn
@@ -88,6 +88,11 @@ class AlignBody(BaseModel):
 
 
 # ─── App factory ───────────────────────────────────────────────────────
+
+
+# How long /shutdown waits after answering before the process exits — enough
+# for the reply to leave.
+EXIT_AFTER_REPLY_S = 0.2
 
 
 def make_app(engine: EmbeddedEngine) -> FastAPI:
@@ -302,14 +307,18 @@ def make_app(engine: EmbeddedEngine) -> FastAPI:
 
     @app.post("/shutdown")
     async def shutdown():
-        """Graceful shutdown — host calls this before SIGTERM to let the
-        engine release GPU memory cleanly."""
+        """Graceful shutdown — the host calls this before it would terminate
+        the process, so the engine releases GPU memory cleanly. It answers, then
+        exits with 0 a moment later (plugin 0.3.1, 2026-09-30). Until then it
+        killed itself inside this handler: the reply never went out, the host
+        force-killed the launcher that was still winding down, and every clean
+        stop was logged as exit code 1 — a real failure looked the same."""
         try:
             if engine.is_loaded():
                 await asyncio.to_thread(engine.unload)
         except Exception:
             pass
-        os.kill(os.getpid(), signal.SIGTERM)
+        threading.Timer(EXIT_AFTER_REPLY_S, os._exit, args=(0,)).start()
         return {"shutting_down": True}
 
     return app

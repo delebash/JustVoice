@@ -292,3 +292,135 @@ def test_stop_endpoint_reports_what_it_stopped(app, monkeypatch):
     body = TestClient(app).post("/v1/engines/leftovers/stop").json()
     assert [r["pid"] for r in body["leftovers"]] == [10, 20]
     assert seen == ["stopped from the app"]
+
+
+# ── 5. A clean stop exits 0 (plugin 0.3.1, 2026-09-30) ──────────────────────
+#
+# docs/plans/2026-09-30-lifetime-leftovers.md, item 1. /shutdown used to kill
+# the engine inside its own handler: the reply never went out, the host
+# force-killed the launcher still winding down, and every clean stop logged
+# exit code 1.
+
+PLUGIN_ROOT = Path(__file__).resolve().parents[1] / "justvoice_plugin"
+
+_ENGINE = """
+import sys
+sys.path.insert(0, sys.argv[1])
+from justvoice_plugin.embedded import EmbeddedEngine
+from justvoice_plugin.server import serve
+
+class Idle(EmbeddedEngine):
+    def load(self, device="auto", variant=None):
+        self._loaded = True
+    def unload(self):
+        self._loaded = False
+
+sys.argv = [sys.argv[0], "serve"]
+serve(Idle())
+"""
+
+
+def test_a_real_engine_answers_shutdown_then_exits_0():
+    import httpx
+
+    p = subprocess.Popen([sys.executable, "-c", _ENGINE, str(PLUGIN_ROOT)],
+                         stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+    try:
+        line = p.stdout.readline().strip()
+        assert line.startswith("PORT="), line
+        r = httpx.post(f"http://127.0.0.1:{line[5:]}/shutdown", timeout=10)
+        assert r.status_code == 200 and r.json() == {"shutting_down": True}
+        assert _wait_exit(p, 10) is not None
+        assert p.returncode == 0
+    finally:
+        if p.poll() is None:
+            p.kill()
+
+
+def _stopping_engine(monkeypatch, *, answers: bool, leaves: bool):
+    """An EngineProcess whose /shutdown answers (or not) and whose process
+    leaves on its own after it (or not) — no real engine."""
+    from justvoice.engines import manager as m
+
+    monkeypatch.setattr(m, "memory_in_use_mb", lambda: None)
+    monkeypatch.setattr(m, "SHUTDOWN_EXIT_WAIT_S", 0.2)
+    calls = []
+
+    class Client:
+        def post(self, path, timeout=None):
+            calls.append(("post", path))
+            if not answers:
+                raise ConnectionError("gone")
+
+        def close(self):
+            pass
+
+    class Proc:
+        pid = 4242
+        returncode = None
+
+        def poll(self):
+            return self.returncode
+
+        def wait(self, timeout=None):
+            calls.append(("wait", timeout))
+            if leaves and ("post", "/shutdown") in calls and answers:
+                self.returncode = 0
+                return 0
+            if self.returncode is None and ("terminate",) not in calls:
+                raise subprocess.TimeoutExpired("engine", timeout)
+            return self.returncode
+
+        def terminate(self):
+            calls.append(("terminate",))
+            self.returncode = 1
+
+        def kill(self):
+            calls.append(("kill",))
+            self.returncode = 1
+
+    ep = m.EngineProcess.__new__(m.EngineProcess)
+    ep.manifest = SimpleNamespace(id="idle")
+    ep.proc, ep.client, ep.port = Proc(), Client(), 1
+    return ep, calls
+
+
+def test_an_engine_that_answers_is_left_to_exit_on_its_own(monkeypatch):
+    ep, calls = _stopping_engine(monkeypatch, answers=True, leaves=True)
+    ep.terminate()
+    assert ("terminate",) not in calls and ("kill",) not in calls
+    assert ep.proc is None
+
+
+def test_an_engine_that_answers_but_stays_is_still_terminated(monkeypatch):
+    ep, calls = _stopping_engine(monkeypatch, answers=True, leaves=False)
+    ep.terminate()
+    assert ("terminate",) in calls
+
+
+def test_an_engine_that_never_answered_is_terminated_without_waiting(monkeypatch):
+    ep, calls = _stopping_engine(monkeypatch, answers=False, leaves=True)
+    ep.terminate()
+    assert calls[1] == ("terminate",)           # straight after the failed /shutdown
+
+
+# ── 6. The close works with "Require a token even on localhost" on (2026-09-30) ──
+
+
+def test_shutdown_needs_no_token_from_this_machine(app, monkeypatch):
+    from justvoice.api import system_api
+    from justvoice.engines import manager
+
+    stopped = []
+    monkeypatch.setattr(manager, "shutdown_manager", lambda: stopped.append(True))
+    monkeypatch.setattr(system_api.threading, "Timer",
+                        lambda *a, **k: SimpleNamespace(start=lambda: None, daemon=False))
+    local = TestClient(app, raise_server_exceptions=False, client=("127.0.0.1", 50000))
+    r = local.patch("/v1/settings", json={"auth": {"tokens": ["t0k"], "require_for_loopback": True}})
+    assert r.status_code == 200, r.text
+    assert local.get("/v1/settings").status_code == 401          # the setting is really on
+
+    assert local.post("/v1/shutdown").status_code == 200         # the shell's close, no token
+    assert stopped == [True]
+    remote = TestClient(app, raise_server_exceptions=False, client=("192.168.1.20", 50000))
+    assert remote.post("/v1/shutdown").status_code == 401

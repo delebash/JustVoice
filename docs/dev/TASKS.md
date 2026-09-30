@@ -1146,9 +1146,10 @@ DECIDED 2026-09-28 — "go", on: "Overview mastering options: switch to what the
         offers: 'This kind's default (ACX)', 'None — raw', ACX, iAudio, Podcast, YouTube, with
         'Custom' gone. This is the wording still waiting on your approval. Say go only if you
         accept that wording." The mastering wording above stands as built; the mock matches it.
-OPEN:   the Lexicon-on-Overview question (no answer yet).
-        Slice 4 (Render owns direction/takes/Gen/Compare), Slice 5 (presets excision — ruled,
-        needs go). (Slice 3 was BUILT 2026-09-29, `86eb21d` — its entry is below.)
+OPEN:   Slice 4 (Render owns direction/takes/Gen/Compare), Slice 5 (presets excision — ruled,
+        needs go). (Slice 3 was BUILT 2026-09-29, `86eb21d` — its entry is below.) The
+        Lexicon-on-Overview question was ANSWERED 2026-09-30 — "ok mark that as to be wired": see
+        "A project's pronunciation lexicon reaches the audio".
         Game "1 · Lines" is unverified in the real app — the real data has no game project.
         Slice 4 ALSO moves "rewrite in character" off Script: it stays on Script as today's
         right-click until then (decided 2026-09-29, next item); Slice 4 builds it in Render's
@@ -1408,6 +1409,25 @@ GO:     given 2026-09-28 for the record + the mock; 2026-09-29 for the measureme
         the flag measurement, the plan, the second review's mock + plan changes, the
         prompt-rule measurement, the third book and the chapter's rows | needed for app code,
         the prompt change, the six items
+
+### A project's pronunciation lexicon reaches the audio
+STATE:  DECIDED 2026-09-30 — "ok mark that as to be wired", on the answer to "what do you think on
+        5 think on it a few times". The answer, verbatim, with its evidence:
+        `docs/plans/2026-09-30-project-lexicon.md` §1 — READ IT before building. a · Overview row
+        "Pronunciation lexicon" (None, this book's lexicons, your general ones; "Open ➜") · b ·
+        every render path applies it (the one resolver, plus the Lines render and the voiceline
+        export) · c · the book's lexicon wins over the personas', in a fixed order · d · the
+        pronunciation scan counts exactly what the render applies · e · the render cache keyed
+        on what the lexicons change in each line, not on which lexicons are attached.
+WHY:    everything around the project lexicon treats it as live — import makes one, the scan
+        counts it, export carries it, the mock shows it — and the render never reads it
+        (`render_chapter_api.py:177`): a fixed name is still said wrong, silently.
+        f · per-line lexicons — ADDED the same day ("and also do you fix on lexicon the found
+        along the way"): each line gets its own speaker's persona lexicon plus the book's, not
+        every persona's lexicon on every line of the chapter.
+NOT:    leaving it off (would mean removing it from import, scan, export and the scope).
+BUILT:  nothing yet. When: before Slice 4 (the rec — Slice 4 rebuilds Render on the same resolver).
+GO:     needed for the build
 
 ### Slice 3's leftovers — edit, split and merge lines; speech marks; dialogue tags; the old Chapters page; one narrator rule
 STATE:  DECIDED 2026-09-30 — "finish slice 3 and related items", then "go" on the plan as
@@ -2039,6 +2059,18 @@ OPEN:   (not decided, surfaced 2026-09-29)
         · On a clean stop each engine logs exit code 1 (`EngineProcess.terminate`: POST
           /shutdown, then TerminateProcess if still alive). Memory is released at once either
           way; whether the plugin's /shutdown ends the process on its own was not checked.
+DECIDED 2026-09-30 — "you have a go and on 4 … there is no other session so check and commit and
+        do 4 as well  go and push", on the plan for all three plus the splash's live test. The
+        plan, verbatim, with its blast radius: `docs/plans/2026-09-30-lifetime-leftovers.md` §1 —
+        READ IT. 1 · the engine answers /shutdown then exits 0; the manager waits ≤2 s before
+        forcing; plugin 0.3.1 · 2 · the kit's auth takes a per-app list of paths open from this
+        machine, JustVoice passes /v1/shutdown · 3 · the splash's server half tested live with a
+        staged stray engine · 4 · the kit's uncommitted edits checked and committed, then the solo
+        MTP escalation fixed · push both repos.
+BUILT:  2026-09-30 — 1, 2, 3 (what, where, the live checks: the plan doc §2). The kit's pending
+        work (the b11239 pin, Update offering the tested build) reviewed and committed as kit
+        `ec3633b`. 4 — the fix is the kit's open choice ("skip the restart, or first check for
+        other GPU holders"), brought back to the user with a rec, not coded.
 
 ### FINDING — every engine install failed under tauri dev: a 0-byte uv.exe
 STATE:  FINDING 2026-09-29 (walkthrough). Install → "[WinError 193] %1 is not a valid Win32

@@ -423,9 +423,16 @@ the kit `BootModelLoad`'s `#failed` slot). `POST /v1/shutdown` (loopback only,
 `api/system_api.py`) stops engines then sets the uvicorn `Server.should_exit`
 that `serve.py` parks on `app.state`; the Tauri shell's `stop_child()` calls it
 on every close/stop/restart and hard-kills only when it doesn't answer or the
-process doesn't exit in time. Engine start/load/stop log lines carry pid, server
-pid and pool memory in use before → after (`memory_in_use_mb`). Tests:
-`tests/test_engine_lifetime.py` (real processes for the watch and the sweep).
+process doesn't exit in time. It carries no token, so `app.py` passes
+`loopback_open_paths=("/v1/shutdown",)` to the kit's `BearerAuthMiddleware`
+(2026-09-30): with "Require a token even on localhost" on, the close used to
+fall back to the hard kill. Engine start/load/stop log lines carry pid, server
+pid and pool memory in use before → after (`memory_in_use_mb`). An engine's own
+`/shutdown` answers, then `os._exit(0)`s 0.2 s later (plugin 0.3.1), and
+`EngineProcess.terminate` waits `SHUTDOWN_EXIT_WAIT_S` for it before forcing —
+killing itself inside the handler made every clean stop log exit code 1.
+Tests: `tests/test_engine_lifetime.py` (real processes for the watch, the sweep
+and the clean exit).
 
 **Dev tools:** `npm run check:engines` (`server/scripts/check_engines.py`) —
 `--drift` compares each venv's real contents against its manifest,

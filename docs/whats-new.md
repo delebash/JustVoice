@@ -2,6 +2,14 @@
 
 ## v0.1.0
 
+- **Closing the app shuts down cleanly with "Require a token even on localhost" on.**
+  The window's close asks the server to stop, and that request carries no token — so
+  with the setting on it was refused and the app fell back to killing the server. The
+  shutdown now answers from this machine without a token, as the health check and the
+  token settings already did; from anywhere else it is still refused
+  ([Settings reference](settings-reference.md))
+- **A speech engine that stops cleanly now logs exit code 0.** Every clean stop used to
+  log exit code 1, so a real failure looked the same as a normal one
 - **Books in single quotes, guillemets or German marks now have dialogue.** Only
   double quotes used to count as speech, so a book written ‘like this’ was read as
   all narration and no re-analyze could fix it. Overview has a new **Speech marks**

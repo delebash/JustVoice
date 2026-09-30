@@ -19,7 +19,9 @@ The full UI is served at `http://<host>:17494/ui/` — any browser works, which 
 how you run JustVoice on a remote GPU box and drive it from a laptop. The usual
 flags have `JUSTVOICE_*` environment-variable twins for service managers. Add
 bearer tokens (Settings → auth) before exposing a host beyond loopback; loopback
-requests are exempt unless you require otherwise.
+requests are exempt unless you require otherwise. Even then, closing the desktop
+app still shuts its server down cleanly: its shutdown request answers from this
+machine without a token (it never does from anywhere else).
 
 Dev utilities live on the domain CLI, not the server command:
 `python -m justvoice.cli default-settings` (print the full settings document

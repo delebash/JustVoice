@@ -89,6 +89,9 @@ NOT_ENGINES = {"__pycache__", "__init__", "base", "catalog", "factory", "registr
 PORT_HANDSHAKE_TIMEOUT_S = 30.0
 HEALTH_CHECK_INTERVAL_S = 0.25
 SUBPROCESS_KILL_TIMEOUT_S = 5.0
+# How long an engine that answered /shutdown gets to exit by itself before
+# it is terminated (EngineProcess.terminate).
+SHUTDOWN_EXIT_WAIT_S = 2.0
 
 # The speech measured currency (the 2026-08-13/14 redesign, amended —
 # docs/plans/2026-08-13-speech-catalog-redesign.md §10). The probes can
@@ -567,8 +570,9 @@ class InstallError(RuntimeError):
 #: Kept in lockstep with justvoice_plugin/pyproject.toml — the /load
 #: `model_dir` contract (phase ②) rides the SDK, so a venv carrying an
 #: older install gets a fast refresh at spawn. 0.3.0 (2026-09-29): the engine
-#: watches JUSTVOICE_SERVER_PID and exits when its server is gone.
-PLUGIN_VERSION = "0.3.0"
+#: watches JUSTVOICE_SERVER_PID and exits when its server is gone. 0.3.1
+#: (2026-09-30): /shutdown answers, then exits 0.
+PLUGIN_VERSION = "0.3.1"
 
 
 def memory_in_use_mb() -> int | None:
@@ -1435,9 +1439,11 @@ class EngineProcess:
         difference is what stopping it freed."""
         pid = self.proc.pid if self.proc is not None else None
         before = memory_in_use_mb() if pid is not None and self.proc.poll() is None else None
+        asked = False
         if self.client:
             try:
                 self.client.post("/shutdown", timeout=2.0)
+                asked = True
             except Exception:
                 pass
             try:
@@ -1448,6 +1454,16 @@ class EngineProcess:
 
         if not self.proc:
             return
+
+        # An engine that answered /shutdown exits on its own with 0 (plugin
+        # 0.3.1) — give it the moment, and force only one that doesn't leave.
+        # Forcing one that was already on its way out is what logged every
+        # clean stop as exit code 1.
+        if asked and self.proc.poll() is None:
+            try:
+                self.proc.wait(timeout=SHUTDOWN_EXIT_WAIT_S)
+            except subprocess.TimeoutExpired:
+                pass
 
         if self.proc.poll() is None:
             try:

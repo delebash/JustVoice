@@ -178,6 +178,11 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
         BearerAuthMiddleware,
         read_auth=read_auth,
         type_base="https://justvoice.dev/errors/",
+        # The desktop shell closes the server through /v1/shutdown and carries
+        # no token; with "Require a token even on localhost" on, every close
+        # fell back to a hard kill (2026-09-30). It stays refused from
+        # anywhere but this machine (system_api's own check, and auth).
+        loopback_open_paths=("/v1/shutdown",),
     )
 
     if settings.cors.origins or settings.cors.origin_regex:

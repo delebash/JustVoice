@@ -12,7 +12,7 @@ need your attention; this page is the operator config under `/v1/settings`.)
 | `cache` | The disk-LRU render cache limits (identical renders cost nothing twice). |
 | `limits` | Guardrails — max text length per generation and friends. |
 | `cors` | Allowed origins when serving browsers beyond localhost. |
-| `auth` | Bearer tokens; auth is off while the list is empty. Loopback exempt unless required. |
+| `auth` | Bearer tokens; auth is off while the list is empty. Loopback exempt unless required. Even when required, three things still answer from this machine without a token: the health check, the token settings themselves (so you can't lock yourself out), and the desktop app's shutdown when you close its window. |
 | `mastering` | The default loudness target per preset (ACX / iAudio / Podcast / YouTube) — see [Mastering](mastering.md). |
 | `training` | LoRA training knobs incl. validation split — see [Labs](labs.md) → Train. |
 | `models` | Model source URL overrides per engine/variant, for mirrors or pinned downloads. |
