@@ -151,6 +151,12 @@ One engine is **loaded** per slot (one TTS, one STT). Loading takes 10-30s (mode
 - `installed` — present on disk, not currently loaded.
 - `loaded` — resident and ready to render. The card also shows **which device** it loaded on (`· CUDA` / `· CPU`).
 
+Each loaded engine is its own program, and it never outlives the server that
+started it: it exits within a couple of seconds of the server going, closing the
+window stops it cleanly, and the server stops any left from an earlier session
+when it starts — see
+[GPU → Engines left over from an earlier session](gpu.md#engines-left-over-from-an-earlier-session).
+
 The verbs split the same way as the LLM catalog: a model that isn't on disk
 shows **Download (N GB)** — download only; once its files are on disk the row
 shows **Load model**. Click Load on any on-disk model; the same slot's prior

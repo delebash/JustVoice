@@ -2,6 +2,15 @@
 
 ## v0.1.0
 
+- **Speech engines no longer outlive the app.** An engine used to keep running,
+  and keep its GPU memory, whenever the server was closed the hard way — five of
+  them held 1.6 GB across four restarts, and the AI model then couldn't load. Now an
+  engine exits when its server goes, closing the window shuts everything down
+  cleanly, and the server stops any leftovers when it starts. If a model still
+  fails to load because of them, the loading screen says how much they hold and
+  offers **Stop them and retry**, and a failed model load's message now starts by
+  naming whatever else is holding GPU memory
+  ([GPU → Engines left over from an earlier session](gpu.md#engines-left-over-from-an-earlier-session))
 - **One pause between lines, everywhere.** Studio's Render joined lines with 250 ms
   while the exported audiobook and ACX QC used 600 ms, so the chapter you listened to
   was paced differently from the one you shipped. Both now use **Pause between lines**

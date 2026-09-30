@@ -26,6 +26,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, ConfigDict
 
 from .embedded import EmbeddedEngine
+from .lifetime import watch_server
 from .protocol import SynthRequest
 
 log = logging.getLogger("justvoice_plugin.server")
@@ -342,6 +343,10 @@ def serve(engine: EmbeddedEngine) -> None:
         stream=sys.stderr,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
+
+    # Never outlive the server that started us (2026-09-29): a hard-killed host
+    # used to leave this process running, holding its GPU memory.
+    watch_server()
 
     app = make_app(engine)
     config = uvicorn.Config(app, host=args.host, port=args.port, log_level="warning", access_log=False)

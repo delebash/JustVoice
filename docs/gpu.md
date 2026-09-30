@@ -210,6 +210,41 @@ Two honest limits, both of which the panel states inline rather than hiding:
   counters, only compute workloads appear; a program using the GPU purely to
   draw its window won't be listed, and the panel notes that too.
 
+### Engines left over from an earlier session
+
+Each speech engine runs as its own program next to the JustVoice server, and it
+holds GPU memory while its model is loaded. An engine never outlives the server
+that started it:
+
+- **It watches its server.** Every couple of seconds an engine checks that the
+  server which started it is still running, and exits if it isn't — however the
+  server went: closed, crashed or killed. Its GPU memory is released as it exits.
+- **Closing the window shuts down cleanly.** The desktop app asks the server to
+  stop, the server stops its engines (which releases their memory at once), and
+  then exits. The app forces the server closed only if that hasn't happened
+  within a few seconds.
+- **The server clears up when it starts.** It looks for engines from this
+  install whose server no longer exists, stops them, and writes to its log what
+  it stopped and how much GPU memory that freed. An engine whose server is still
+  running is never touched — including one belonging to a second JustVoice
+  server on the same install.
+
+Engines left behind before these three existed, or by a JustVoice older than
+this one, can still be holding memory — and that is exactly what makes the AI
+model fail to load when it fitted yesterday. When a model load fails at launch
+and such engines are running, the loading screen says so under the error, for
+example *"1.5 GB of GPU memory is held by 2 Whisper STT processes from an
+earlier session"*, with a **Stop them and retry** button: it stops them and
+loads the model again. Whenever a model fails to load, its error message also
+starts by naming any other program holding a sizeable amount of GPU memory
+(200 MB or more — the desktop's own share stays out of it), with the amount
+each one holds.
+
+The server log records every engine start and stop with its process ID, the
+server's process ID and the memory in use before and after — so "what was
+holding the GPU?" has an answer after the fact too. It is under **Settings →
+Logs**, or the tray's **Open log file**.
+
 **How loading works now.** When you load an engine JustVoice has **measured
 before on this machine**, it checks **measured free memory** first —
 including what other apps are holding. If there isn't room, it frees the
@@ -244,6 +279,7 @@ You can still load one engine per slot (one TTS + one STT). Unload via the Speec
 ## Troubleshooting
 
 - **Engine load fails with `[WinError 1314] A required privilege is not held by the client`** — A Windows edge case in the old HuggingFace download cache. Since 2026-08-14 speech-model downloads land as **plain files** (the speech cache) with no symlinks anywhere, so new downloads cannot hit this. It can still surface on a model that was downloaded the old way (before this change): **just click Load again** — a fresh attempt finishes placing the one missing file — or delete the model and download it again, which moves it onto the new plain-file path for good. You do NOT need Developer Mode or admin rights; JustVoice is expected to work without either.
+- **The AI model fails to load: "could not load its speculative-decoding (MTP) draft even on its own"** — Read the start of the message first. If it names other programs holding GPU memory, that is the likely cause: close them (or, on the loading screen, click **Stop them and retry** for JustVoice's own leftover engines — see [Engines left over from an earlier session](#engines-left-over-from-an-earlier-session)) and load again. Only if nothing else is holding memory do the other causes apply: the model's tune leaves too little room for the draft (raise `n_cpu_moe`), the draft file is damaged (re-download it), or turn MTP off.
 - **GPU info card shows "no GPU detected"** — Either no discrete GPU is present (laptops often have CPU + integrated graphics only, which torch ignores) or the driver isn't installed. Run `nvidia-smi` (NVIDIA) or `vulkaninfo` (AMD) from a terminal to verify.
 - **The torch download fails during engine setup** — Most often a network issue pulling the ~2 GB wheel. The install log carries the pip output; installing the engine again resumes rather than starting over.
 - **Out-of-memory on render** — Switch to a smaller model variant (Speech engines tab → engine row), or load a lighter engine entirely.

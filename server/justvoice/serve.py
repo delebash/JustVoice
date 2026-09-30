@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import logging
 import os
+import sys
 from pathlib import Path
 
 import uvicorn
@@ -61,6 +62,16 @@ def main() -> None:
 
     seed_workspace()
 
+    # Engines a dead server left running still hold their GPU memory; stop
+    # them before this server starts its own (2026-09-29). Only this install's
+    # engines, and only those whose server is gone — `engines/leftovers.py`.
+    from .engines.leftovers import stop_leftover_engines
+
+    try:
+        stop_leftover_engines("startup sweep")
+    except Exception as e:  # noqa: BLE001 — a failed sweep must never block startup
+        logging.getLogger(__name__).warning("leftover-engine sweep failed: %s", e)
+
     # CLI/env overrides sit on top of the settings-derived host/port.
     from .app_state import get_state
 
@@ -69,7 +80,20 @@ def main() -> None:
     bind_port = args.port or settings.server.port
 
     print(f"JustVoice {VERSION} — http://{bind_host}:{bind_port}/  (data: {dd})")
-    uvicorn.run(app, host=bind_host, port=bind_port, log_level=args.log_level.lower())
+    # `uvicorn.run`, unrolled so POST /v1/shutdown can reach the Server and
+    # end it cleanly (should_exit → the lifespan shutdown hook stops engines).
+    # The grace period bounds a close that an open stream would otherwise hold.
+    server = uvicorn.Server(uvicorn.Config(
+        app, host=bind_host, port=bind_port, log_level=args.log_level.lower(),
+        timeout_graceful_shutdown=3,
+    ))
+    app.state.uvicorn_server = server
+    try:
+        server.run()
+    except KeyboardInterrupt:
+        pass
+    if not server.started:
+        sys.exit(3)  # uvicorn's STARTUP_FAILURE, as `uvicorn.run` exits (e.g. port taken)
 
 
 if __name__ == "__main__":

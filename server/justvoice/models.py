@@ -915,6 +915,25 @@ class VramEvent(BaseModel):
     reason: str = ""
 
 
+class LeftoverEngine(BaseModel):
+    """One engine process tree whose server is gone (2026-09-29)."""
+
+    pid: int
+    engine_id: str
+    engine_name: str
+    started: float                  # epoch seconds
+    server_pid: int | None = None   # the server that started it, when known
+    gpu_mb: int | None = None       # None = unmeasurable on this box
+
+
+class LeftoverEnginesResponse(BaseModel):
+    """`GET /v1/engines/leftovers` (what is left over) and
+    `POST /v1/engines/leftovers/stop` (what was stopped)."""
+
+    leftovers: list[LeftoverEngine]
+    gpu_mb: int | None = None       # summed; None when nothing could be measured
+
+
 class EngineVramResponse(BaseModel):
     """`GET /v1/engines/vram` — the one budget view (Q4): the arch-aware
     arbiter snapshot + the on-demand claim + eviction events. `mem_arch`

@@ -407,6 +407,25 @@ venvs adding 431 MB and adding 18.7 GB (measured 2026-08-22).
 AMD-on-Windows is CPU plus a logged override recipe. Deprecated engines are
 exempt and frozen at whatever they last declared.
 
+**An engine never outlives its server** (2026-09-29). Four pieces, one per way
+it used to: `EngineProcess.spawn` passes `JUSTVOICE_SERVER_PID`, and the plugin's
+`serve()` starts `justvoice_plugin/lifetime.py`'s `watch_server()` — a daemon
+thread that `os._exit(0)`s within `CHECK_EVERY_S` of that server going (Windows:
+a SYNCHRONIZE handle, immune to pid reuse; POSIX: `kill(pid, 0)` plus the
+reparent check). `engines/leftovers.py` finds this install's engine trees (a
+command line running one of OUR `engines/<id>/engine.py … serve`) whose server
+is gone, measures them with the kit's ONE whole-machine `gpu_processes` query
+(not the per-pid probe — ~1 s each on Windows), and stops them; `serve.py` runs
+it once before uvicorn starts, and `GET`/`POST /v1/engines/leftovers[/stop]`
+serve the boot splash's **Stop them and retry** (`LeftoverEnginesHelp.vue` in
+the kit `BootModelLoad`'s `#failed` slot). `POST /v1/shutdown` (loopback only,
+`api/system_api.py`) stops engines then sets the uvicorn `Server.should_exit`
+that `serve.py` parks on `app.state`; the Tauri shell's `stop_child()` calls it
+on every close/stop/restart and hard-kills only when it doesn't answer or the
+process doesn't exit in time. Engine start/load/stop log lines carry pid, server
+pid and pool memory in use before → after (`memory_in_use_mb`). Tests:
+`tests/test_engine_lifetime.py` (real processes for the watch and the sweep).
+
 **Dev tools:** `npm run check:engines` (`server/scripts/check_engines.py`) —
 `--drift` compares each venv's real contents against its manifest,
 `--upstream` compares every pin against GitHub / PyPI / HF,

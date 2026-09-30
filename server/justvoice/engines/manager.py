@@ -566,8 +566,25 @@ class InstallError(RuntimeError):
 
 #: Kept in lockstep with justvoice_plugin/pyproject.toml — the /load
 #: `model_dir` contract (phase ②) rides the SDK, so a venv carrying an
-#: older install gets a fast refresh at spawn.
-PLUGIN_VERSION = "0.2.0"
+#: older install gets a fast refresh at spawn. 0.3.0 (2026-09-29): the engine
+#: watches JUSTVOICE_SERVER_PID and exits when its server is gone.
+PLUGIN_VERSION = "0.3.0"
+
+
+def memory_in_use_mb() -> int | None:
+    """Memory in use on the pool models load into (the GPU on a discrete box),
+    read fresh — the kit's one door, a single fast device query. For the
+    engine start/stop log lines; None = unmeasurable."""
+    try:
+        from llm_runner.runner.hardware import used_pool_mb
+
+        return used_pool_mb(fresh=True)
+    except Exception:  # noqa: BLE001 — measuring is informative only
+        return None
+
+
+def _mb(v: int | None) -> str:
+    return "?" if v is None else str(v)
 
 
 def _ensure_plugin_current(python_exe: Path) -> None:
@@ -1326,6 +1343,10 @@ class EngineProcess:
         env.pop("HF_HUB_CACHE", None)
         env["JUSTVOICE_MODEL_DIR"] = str(self.manifest.models_dir)
         env["JUSTVOICE_ENGINE_DIR"] = str(self.manifest.engine_dir)
+        # The engine exits when this server is gone, however it went (plugin
+        # 0.3.0, justvoice_plugin.lifetime) — a hard-killed host used to leave it
+        # running and holding GPU memory. `engines/leftovers.py` reads it too.
+        env["JUSTVOICE_SERVER_PID"] = str(os.getpid())
 
         cmd = [str(python_exe), str(engine_py), "serve", "--port", "0"]
         log.info("spawning engine subprocess: %s", " ".join(cmd))
@@ -1384,7 +1405,8 @@ class EngineProcess:
             try:
                 r = self.client.get("/health")
                 if r.status_code == 200:
-                    log.info("engine %s ready on port %d", self.manifest.id, self.port)
+                    log.info("engine %s started: pid %d, server pid %d, port %d",
+                             self.manifest.id, self.proc.pid, os.getpid(), self.port)
                     return
             except httpx.HTTPError:
                 pass
@@ -1408,7 +1430,11 @@ class EngineProcess:
         return self.client.get(path)
 
     def terminate(self) -> None:
-        """Best-effort graceful shutdown then SIGTERM/SIGKILL."""
+        """Best-effort graceful shutdown then SIGTERM/SIGKILL. Logs the pid, the
+        server pid and the memory in use before and after (2026-09-29) — the
+        difference is what stopping it freed."""
+        pid = self.proc.pid if self.proc is not None else None
+        before = memory_in_use_mb() if pid is not None and self.proc.poll() is None else None
         if self.client:
             try:
                 self.client.post("/shutdown", timeout=2.0)
@@ -1439,6 +1465,9 @@ class EngineProcess:
             except Exception as e:
                 log.warning("terminate failed for %s: %s", self.manifest.id, e)
 
+        log.info("engine %s stopped: pid %s, server pid %d, exit code %s; memory in use "
+                 "%s -> %s MB", self.manifest.id, pid, os.getpid(), self.proc.returncode,
+                 _mb(before), _mb(memory_in_use_mb() if before is not None else None))
         self.proc = None
         self.port = None
 
@@ -2296,6 +2325,7 @@ class EngineManager:
             # concurrently, which JV cannot guarantee → it books as "computed"
             # and is never persisted as measurement evidence.
             pool_before = self.pool_used_mb(fresh=True) if books else None
+            gpu_before = pool_before if books else memory_in_use_mb()
 
             # Activity lock first (lock order: activity → self._lock): a
             # terminate must wait for the slot's in-flight synth line.
@@ -2393,6 +2423,10 @@ class EngineManager:
                     )
                     if delta > 0:
                         self._reserve_engine(m, target_kind, delta, "computed")
+            log.info("engine %s loaded %s: pid %s, server pid %d; memory in use %s -> %s MB",
+                     engine_id, self._current_variants.get(engine_id),
+                     getattr(getattr(proc, "proc", None), "pid", None), os.getpid(),
+                     _mb(gpu_before), _mb(memory_in_use_mb()))
             # (The qwen3-llm adapter hook died with the engine — F1 Phase 2:
             # the shared stack's bundled runner is THE local LLM.)
             if progress:
@@ -2591,10 +2625,12 @@ def get_manager() -> EngineManager:
     once — `atexit` would otherwise call it repeatedly.
 
     LIMIT, stated so nobody trusts it too far: `atexit` runs on normal
-    interpreter exit. It does NOT run on SIGKILL or Windows `TerminateProcess`,
-    so a hard-killed host still orphans engines. Closing that needs OS-level
-    lifetime binding (a Windows job object / POSIX process group), which is a
-    bigger change than this.
+    interpreter exit. It does NOT run on SIGKILL or Windows `TerminateProcess`.
+    Since 2026-09-29 that gap is closed elsewhere: every engine watches the
+    server that started it (`JUSTVOICE_SERVER_PID`, plugin 0.3.0) and exits
+    within seconds of it going; `engines/leftovers.py` sweeps anything older
+    at startup; and the desktop shell closes through POST /v1/shutdown before
+    it ever hard-kills.
     """
     global _manager, _atexit_registered
     with _manager_lock:

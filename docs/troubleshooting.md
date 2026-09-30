@@ -15,6 +15,13 @@ masters audio depends on it.
 cancellable — the Speech engines tab's load job has a Cancel; a cancelled load leaves
 the previous state intact.
 
+**A model that loaded fine yesterday won't load today.** Something else may be
+holding the GPU memory it needs. The load's error message names any other
+program holding a sizeable amount; speech engines left over from an earlier
+session are the usual JustVoice culprit, and the loading screen offers
+**Stop them and retry**. See
+[GPU → Engines left over from an earlier session](gpu.md#engines-left-over-from-an-earlier-session).
+
 **A voice preview or engine load answers 500 / 503 with an import error**
 — "Numba needs NumPy 2.0 or less", "No module named ...", or similar. That
 engine's Python environment does not contain what the engine expects, which

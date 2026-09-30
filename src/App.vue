@@ -12,6 +12,7 @@ import { useServerStore } from "./stores/server.js";
 import AudioKeepAlive from "./components/AudioKeepAlive.vue";
 import QuickSetup from "./components/QuickSetup.vue";
 import KeyboardCheatsheet from "./components/KeyboardCheatsheet.vue";
+import LeftoverEnginesHelp from "./components/LeftoverEnginesHelp.vue";
 import { AiSetupOffer, AiStatusButton, AiTaskStrip, BootModelLoad, HelpDrawer, HelpTrigger, LlmUiHosts, TitleBar, openExternal, pushToast, useAiTasksNav, useAiTasksStore, useModelApply, warmModelId } from "@delebash/llm-ui";
 import { readPref, writePref } from "./services/prefs.js";
 
@@ -658,7 +659,9 @@ onMounted(async () => {
       <img class="splash__logo" src="/justtts.svg" alt="" />
       <div class="splash__name">JustVoice</div>
       <div class="splash__strip">
-        <BootModelLoad />
+        <BootModelLoad>
+          <template #failed="{ task }"><LeftoverEnginesHelp :task="task" /></template>
+        </BootModelLoad>
       </div>
     </div>
   </div>

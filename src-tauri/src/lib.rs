@@ -53,6 +53,10 @@ const SERVER_PORT: u16 = 17494;
 const TRAY_ICON_LABEL: &str = "justvoice-tray";
 const MAIN_WINDOW_LABEL: &str = "main";
 const DATA_DIR_ENV: &str = "JUSTVOICE_DATA_DIR";
+/// How long a close waits for the server's shutdown reply (it answers once its
+/// engines have stopped), then for its process to exit, before a hard kill.
+const SHUTDOWN_REPLY_WAIT: Duration = Duration::from_secs(10);
+const SHUTDOWN_EXIT_WAIT: Duration = Duration::from_secs(5);
 
 // ─── Data root (the portable, user-settable location for ALL app data) ──────
 // Resolved by the shell BEFORE the server spawns; the server honors the env var
@@ -223,12 +227,33 @@ impl SidecarState {
         }
     }
 
-    fn kill_child(&self) {
-        if let Ok(mut guard) = self.child.lock() {
-            if let Some(mut child) = guard.take() {
-                let _ = child.kill();
+    /// Close the server: ask it to shut down (POST /v1/shutdown — it stops its
+    /// engines, which releases their GPU memory at once, then exits) and wait
+    /// for it to go. A hard kill only when it doesn't answer or doesn't exit in
+    /// time (2026-09-29). The hard kill used to be the only close there was,
+    /// and it skipped every cleanup the server has — engines outlived it.
+    fn stop_child(&self) {
+        let Ok(mut guard) = self.child.lock() else {
+            return;
+        };
+        let Some(mut child) = guard.take() else {
+            return;
+        };
+        if request_server_shutdown() {
+            let start = Instant::now();
+            while start.elapsed() < SHUTDOWN_EXIT_WAIT {
+                if let Ok(Some(_)) = child.try_wait() {
+                    eprintln!("[sidecar] server shut down cleanly");
+                    return;
+                }
+                std::thread::sleep(Duration::from_millis(100));
             }
+            eprintln!("[sidecar] server did not exit after shutdown — killing it");
+        } else {
+            eprintln!("[sidecar] server did not accept shutdown — killing it");
         }
+        let _ = child.kill();
+        let _ = child.wait();
     }
 
     // Replace the running sidecar (storage_relocate: stop → move → respawn).
@@ -329,6 +354,32 @@ fn spawn_sidecar(data_root: &std::path::Path) -> std::io::Result<Option<Child>> 
     });
 
     Ok(Some(cmd))
+}
+
+/// POST /v1/shutdown on the local server; true once it answered 200. Plain
+/// HTTP/1.1 over a socket: this runs on the close path, which is synchronous,
+/// and the answer is one status line. The server replies only after its
+/// engines have stopped, so the read waits up to SHUTDOWN_REPLY_WAIT.
+fn request_server_shutdown() -> bool {
+    use std::io::{Read, Write};
+    let addr = SocketAddr::from(([127, 0, 0, 1], SERVER_PORT));
+    let Ok(mut stream) = TcpStream::connect_timeout(&addr, Duration::from_millis(500)) else {
+        return false;
+    };
+    let _ = stream.set_write_timeout(Some(Duration::from_secs(2)));
+    let _ = stream.set_read_timeout(Some(SHUTDOWN_REPLY_WAIT));
+    let request = format!(
+        "POST /v1/shutdown HTTP/1.1\r\nHost: 127.0.0.1:{SERVER_PORT}\r\n\
+         Content-Length: 0\r\nConnection: close\r\n\r\n"
+    );
+    if stream.write_all(request.as_bytes()).is_err() {
+        return false;
+    }
+    let mut head = [0u8; 32];
+    match stream.read(&mut head) {
+        Ok(n) if n > 0 => String::from_utf8_lossy(&head[..n]).starts_with("HTTP/1.1 200"),
+        _ => false,
+    }
 }
 
 fn port_in_use(port: u16) -> bool {
@@ -436,13 +487,13 @@ fn start_server(app: AppHandle, state: tauri::State<'_, SidecarState>) -> Result
 
 #[tauri::command]
 fn stop_server(state: tauri::State<'_, SidecarState>) -> Result<(), String> {
-    state.kill_child();
+    state.stop_child();
     Ok(())
 }
 
 #[tauri::command]
 fn restart_server(app: AppHandle, state: tauri::State<'_, SidecarState>) -> Result<(), String> {
-    state.kill_child();
+    state.stop_child();
     // Wait briefly for port free, then respawn.
     let _ = wait_for_port_free(SERVER_PORT, Duration::from_secs(5));
     match spawn_sidecar(&resolve_data_root(&app)) {
@@ -510,7 +561,7 @@ fn storage_relocate(app: AppHandle, new_root: String) -> Result<(), String> {
     }
     // Stop the server so nothing holds the DB open during the move.
     if let Some(state) = app.try_state::<SidecarState>() {
-        state.kill_child();
+        state.stop_child();
     }
     wait_for_port_free(SERVER_PORT, Duration::from_secs(5));
 
@@ -781,12 +832,12 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event_id: &str) {
         }
         "server_stop" => {
             if let Some(state) = app.try_state::<SidecarState>() {
-                state.kill_child();
+                state.stop_child();
             }
         }
         "server_restart" => {
             if let Some(state) = app.try_state::<SidecarState>() {
-                state.kill_child();
+                state.stop_child();
                 std::thread::sleep(Duration::from_millis(500));
                 if let Ok(child) = spawn_sidecar(&resolve_data_root(app)) {
                     state.store_child(child);
@@ -837,7 +888,7 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event_id: &str) {
             // Kill the sidecar FIRST — quitting from the tray orphaned the
             // Python server (audit 2026-08-05; the family kill-then-exit rule).
             if let Some(state) = app.try_state::<SidecarState>() {
-                state.kill_child();
+                state.stop_child();
             }
             app.exit(0);
         }
@@ -961,8 +1012,11 @@ pub fn run() {
                         let _ = window.hide();
                         return;
                     }
-                    // Default behavior: kill sidecar.
-                    state.kill_child();
+                    // Default behavior: stop the sidecar. Hide first — a clean
+                    // stop takes a few seconds, and a window that sits there
+                    // unresponsive while it happens reads as a hang.
+                    let _ = window.hide();
+                    state.stop_child();
                 }
             }
         })

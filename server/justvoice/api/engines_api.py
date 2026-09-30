@@ -31,6 +31,8 @@ from ..models import (
     EnginesListResponse,
     EngineVramResponse,
     Feature,
+    LeftoverEngine,
+    LeftoverEnginesResponse,
     Prerequisites,
     VramClaim,
     VramEvent,
@@ -390,3 +392,49 @@ async def get_current_engine() -> CurrentEngineResponse:
             )
         )
     return CurrentEngineResponse(engine=None)
+
+
+# ── Engines left behind by a server that is gone (2026-09-29) ─────────────
+# The boot splash offers "Stop them" when a model fails to load while old
+# engines hold GPU memory; the server also sweeps them once at startup
+# (serve.py). `engines/leftovers.py` owns what counts as one.
+
+
+def _leftovers_response(found) -> LeftoverEnginesResponse:
+    manifests = get_manager().manifests()
+    rows = [
+        LeftoverEngine(
+            pid=lo.pid, engine_id=lo.engine_id,
+            engine_name=getattr(manifests.get(lo.engine_id), "name", lo.engine_id),
+            started=lo.started, server_pid=lo.server_pid, gpu_mb=lo.gpu_mb,
+        )
+        for lo in found
+    ]
+    measured = [r.gpu_mb for r in rows if r.gpu_mb is not None]
+    return LeftoverEnginesResponse(leftovers=rows, gpu_mb=sum(measured) if measured else None)
+
+
+@router.get(
+    "/v1/engines/leftovers",
+    response_model=LeftoverEnginesResponse,
+    summary="Engine processes whose server is gone, and the GPU memory they hold",
+)
+async def list_leftover_engines() -> LeftoverEnginesResponse:
+    from fastapi.concurrency import run_in_threadpool
+
+    from ..engines.leftovers import find_leftover_engines
+
+    return _leftovers_response(await run_in_threadpool(find_leftover_engines))
+
+
+@router.post(
+    "/v1/engines/leftovers/stop",
+    response_model=LeftoverEnginesResponse,
+    summary="Stop every engine process whose server is gone",
+)
+async def stop_leftover_engines() -> LeftoverEnginesResponse:
+    from fastapi.concurrency import run_in_threadpool
+
+    from ..engines.leftovers import stop_leftover_engines as _stop
+
+    return _leftovers_response(await run_in_threadpool(_stop, "stopped from the app"))
