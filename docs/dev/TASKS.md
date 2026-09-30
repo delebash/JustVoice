@@ -1854,7 +1854,7 @@ DECIDED 2026-09-29, after the build — "go on all three", on the recs as given:
         3. Commit: "finish 1 and 2, then commit the whole split as one change, with
            explicit paths and no push. The full server suite waits, as you said."
 PLAN:   docs/plans/2026-09-29-speakers-and-personas.md — READ IT before coding any part.
-BUILT:  2026-09-29, uncommitted. Server: `speakers` table + `api/speakers_api.py` +
+BUILT:  2026-09-29, JV `fd593f8` (pushed later that day). Server: `speakers` table + `api/speakers_api.py` +
         `api/_speaker_helpers.py` (replaces `_persona_helpers.py`); `ProjectPersona` and
         the `/cast` routes gone; blocks and corrections carry `speaker_id`; render, takes,
         voice-line export (manifest key `speaker`) and project export follow line →
@@ -1872,7 +1872,8 @@ BUILT:  2026-09-29, uncommitted. Server: `speakers` table + `api/speakers_api.py
         checked equal to the code first). Verified: targeted pytest (52 files) and vitest,
         ruff, biome, vite build, the renderer gate (14 views + 3 shell checks, 0 JS errors), a live walk of every
         new door on the real app, and headless screenshots of Cast, Discover and Personas.
-        NOT run: the full server suite (held by the user's word).
+        NOT run at the time: the full server suite (held by the user's word). It ran later
+        the same day: 865 passed, then 880 after the engine-lifetime work.
         Then, on "go on all three": (1) the hint reads "Read by Discover, Smart-assign
         and Rewrite in character. Never heard." in the app, the mock (published v32) and
         studio.md; (2) the placeholders are `{{speakers}}`, `{{known_speakers}}` and
@@ -1882,7 +1883,7 @@ BUILT:  2026-09-29, uncommitted. Server: `speakers` table + `api/speakers_api.py
         pinned by `test_renamed_placeholders_keep_every_word_the_model_reads`; the four
         live prompt rows and four Lab sample rows were each checked equal to the code
         first, then switched (the identify sample's leftover `library` value went with
-        it); (3) committed as one change, no push.
+        it); (3) committed as one change (`fd593f8`), pushed once the user gave the word.
         Walkthrough fix (2026-09-29): the selected speaker's card lost text typed in the next
         field — a save reloaded the speakers and the card reset every field. It now resets only
         when a different speaker is selected, and a save updates only its own field.
@@ -2018,6 +2019,20 @@ BUILT:  2026-09-29, all four parts. 1 `justvoice_plugin/lifetime.py` (plugin 0.3
         logged it; serverless window close fell back to the kill. Suites: JV 880 passed, kit
         1009 passed, unit 110, gate passed (every view, zero JS errors), JV + JW vite builds, cargo check.
         NOT verified live: the splash button under a real failed load (unit-tested only).
+        Committed and pushed: JV `24149e5`, kit `eb83043` (the kit's own hunks only — the kit
+        working tree held another session's uncommitted edits in lifecycle.py, TASKS.md and
+        test_lifecycle.py, staged around by hunk and tested alone: 1006 passed).
+OPEN:   (not decided, surfaced 2026-09-29)
+        · The kit still reads a SOLO draft "invalid vector subscript" as the co-load race and
+          runs both escalation stages (stage 2 restarts the engine) before failing — kit TASKS
+          "The MTP solo-crash message blames causes the log contradicts", its open half.
+        · With "Require a token even on localhost" on (Settings → Access tokens), the shell's
+          POST /v1/shutdown gets 401 and the close falls back to the hard kill (engines still
+          exit on their own within ~2 s). Exempting /v1/shutdown on loopback would be a change
+          to the kit's auth policy (`llm_runner/platform/auth.py`).
+        · On a clean stop each engine logs exit code 1 (`EngineProcess.terminate`: POST
+          /shutdown, then TerminateProcess if still alive). Memory is released at once either
+          way; whether the plugin's /shutdown ends the process on its own was not checked.
 
 ### FINDING — every engine install failed under tauri dev: a 0-byte uv.exe
 STATE:  FINDING 2026-09-29 (walkthrough). Install → "[WinError 193] %1 is not a valid Win32

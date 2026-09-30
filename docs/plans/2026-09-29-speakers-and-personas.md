@@ -5,6 +5,12 @@
 text is in `docs/dev/TASKS.md` ("Speakers and personas become two things"); this
 doc is how it gets built. Read both before coding any part.
 
+**Status: BUILT and pushed, 2026-09-29.** JV `fd593f8` (all three slices) · `0fba24f`
+(walkthrough fix: Cast's selected card kept resetting typed text) · `28f1822` (persona
+names unique across the library and never blank — the follow-on ruling, TASKS "Persona
+names are unique across the library"). The full server suite ran after (865, then 880
+passed). What was built, verified and left out is in the TASKS entry's BUILT block.
+
 ## 1. What it is
 
 Three words, one job each:
