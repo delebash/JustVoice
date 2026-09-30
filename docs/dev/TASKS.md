@@ -1420,6 +1420,9 @@ DECIDED 2026-09-29 — "do it all your rec go": the header spacer before "Clear 
 GO:     given 2026-09-29 ("go code the app", in the message that answered its two questions)
 
 ### No built-in personas — the Narrator is an ordinary persona, one per project
+SUPERSEDED by "Speakers and personas become two things" (below, 2026-09-29, fd593f8): the narrator is now a SPEAKER with the narrator role, and a
+        persona is a voice — nothing about the narrator lives on a persona any more. What
+        still holds: no built-in personas; deleting one needs no guard.
 STATE:  DECIDED 2026-09-29 — "your rec", on the two questions after the user hit "Delete failed:
         400 Bad Request: persona … is built-in" on the Personas page ("there should be no built in
         personas as far as i know, unluess we have 1 narrator built in, even importing a book
@@ -1458,6 +1461,9 @@ BUILT:  2026-09-29 — `database/migrations.py` `_migrate_drop_personas_is_built
 GO:     given 2026-09-29
 
 ### Any cast member can be the narrator
+SUPERSEDED in part by "Speakers and personas become two things" (below, 2026-09-29, fd593f8): still one narrator per book and still the
+        Narrator tick on each card, but the tick is on a SPEAKER's card and
+        `PUT /v1/projects/{id}/narrator` takes `speaker_id`; narration moves between speakers.
 STATE:  DECIDED 2026-09-29 — "do it all your rec go", on the user's "i think any persona should
         be able to be set as the narrator, what do you think?" and the rec as given:
         · "A 'Narrator: [persona ▾]' picker on Studio's Cast step (the Narrator card), listing
@@ -1573,6 +1579,11 @@ BUILT:  2026-09-29 — `App.vue`: the status is a `span` (no click, no panel tog
 GO:     given 2026-09-29
 
 ### Discover records everyone each chapter names, and keeps it
+SUPERSEDED in part by "Speakers and personas become two things" (below, 2026-09-29, fd593f8): the record and its statuses stand, but they are
+        worked out against the book's SPEAKERS; "In your library" means a persona with exactly
+        that name (matched in code — the model is no longer sent the library) and Add makes a
+        speaker already cast with it; the list is "Speakers found"; In-the-cast rows gained
+        Remove from cast / Remove N selected (ask first).
 STATE:  DECIDED 2026-09-29 — "your rec go", on the user's "when you scan it should shwo results
         consustantly each time, regardless of in cast or not … when i click scan and get nothing
         it seems broken … i think we should always keep data so if i sacn it shows characters per
@@ -1609,6 +1620,10 @@ BUILT:  2026-09-29 — server: `names.cast_named_in` (full name / alias phrase, 
 GO:     given 2026-09-29
 
 ### No automatic narrator; persona names are unique within a book
+SUPERSEDED in part by "Speakers and personas become two things" (below, 2026-09-29, fd593f8): still no automatic narrator; names are unique
+        within a book for SPEAKERS, and personas have no name rule at all. + Add Narrator now
+        makes (or adopts) a speaker called Narrator, cast with a persona of exactly that name
+        if the library has one — it no longer looks for a free library Narrator.
 STATE:  DECIDED 2026-09-29 — "go", on the user's "duplicate narrator in persona, we should not
         allow duplicate names", "maybe we can have duplicate names but not per project per project
         only unique names, what do you think? and if no project? what do you think?" and "i dont
@@ -1674,6 +1689,9 @@ FINDING 2026-09-29, at the live check: the two leftover Narrators (`e08979c7`, `
 GO:     given 2026-09-29
 
 ### Personas: tick several and delete them at once
+SUPERSEDED in part by "Speakers and personas become two things" (below, 2026-09-29, fd593f8): the ticks and Delete N selected stand, but a
+        deleted persona now leaves the speakers it played with no persona — their lines keep
+        their speaker — and the confirmation names those speakers.
 STATE:  DECIDED 2026-09-29 — "go", on the user's "checkbox for persona so we can delete multople
         at a time". The rec as given:
         · "A checkbox on each persona, a select-all box, and a Delete (N) button."
