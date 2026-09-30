@@ -156,7 +156,44 @@ OPEN:   the fresh run itself — start the app, choose the SHARED model folder
         `<data>/ai-cache` must NOT exist. Venv rebuilds link from the kept uv
         cache, so Python packages will not re-download; CPython and every
         model will.
-GO:     GIVEN 2026-09-19.
+DECIDED 2026-09-29 — "do what you can without my intervention, then let me know the things
+        that i have to do, so run whtever test scenerious you can automate yourself, do a full
+        walkthrough and see how it works and let me know you have full permissions for
+        anything, go", on the recs as given:
+        1 "Push first … With your word I'll try once more. If it's blocked again, it needs
+          you to type `! git push origin main`."
+        2 "Then the fresh-install test, but start with a read-only look at `ai-cache` … what's
+          in it, how big it is and when it was written, without deleting anything. … Then the
+          test as written: open the app, choose the shared model folder in QuickSetup,
+          install the engines. Order: Kokoro first … Then the other four in the background:
+          Chatterbox, Qwen3, LuxTTS and Whisper. … Pass or fail gets recorded in the TASKS
+          entry."
+        3 "Then finish The Ninth Facet: Cast, then render The Keystone. … I make six personas
+          from Kokoro voices, one for the Narrator and one for each of the 5 speakers with
+          lines in The Keystone. The Narrator persona would be named 'Narrator' … The other
+          five get plain voice-style names … Smart-assign casts them … Then I render The
+          Keystone and check the audio exists and plays."
+        Plus a full walkthrough of the app, automated where it can be.
+RESULT 2026-09-29 — PASS, after one cleanup.
+        · Speech: all five engines installed through the app's own Install doors (venv ~20 s
+          each, linked from the kept uv cache; models 6-78 s) into `engines/<id>/.venv` and
+          `<data>/speech-cache` (11 GB). `ai-cache` untouched. First it FAILED on every engine —
+          "[WinError 193]" — see the uv FINDING below.
+        · LLM, checked on an EMPTY data folder (a scratch server, API only, deleted after, its
+          registry entry removed): first launch creates no `ai-cache` and downloads nothing (the
+          presets name the local runner with no model, so warm-on-boot is a no-op); it detects
+          JustWrite's cache as a shareable option; the choice applies at once when the engine is
+          idle. The 29 GB `<data>/ai-cache` here was the 2026-09-19 first session downloading
+          gemma BEFORE the shared folder was chosen (its two blobs = JustWrite's, same sha256
+          names and sizes; llama.cpp b10750 unused; nothing referenced it) — DELETED 2026-09-29,
+          28 GB freed, the model verified still running from JustWrite's cache. Pass condition
+          now holds: `<data>/ai-cache` does not exist.
+        · The Ninth Facet end to end on the real app: Discover + Analyze all four chapters,
+          Cast (six personas via the Personas page, Smart-assign, three more by hand), Render
+          all, ACX QC all_ok (RMS −20.1…−20.5, peak −3.5), M4B 36:29 with 4 named chapters;
+          Whisper transcribed the render back to the text. Game + podcast demos: speakers only,
+          voice-line manifest key `speaker`; both demo projects deleted after.
+GO:     GIVEN 2026-09-19 · and 2026-09-29 for the above.
 
 ### The component-reuse sweep — DONE, and the git rule that came out of it
 STATE:  DECIDED 2026-08-21 — "what is your rec on settingshell vs tabstrip, and jv
@@ -1846,7 +1883,57 @@ BUILT:  2026-09-29, uncommitted. Server: `speakers` table + `api/speakers_api.py
         live prompt rows and four Lab sample rows were each checked equal to the code
         first, then switched (the identify sample's leftover `library` value went with
         it); (3) committed as one change, no push.
+        Walkthrough fix (2026-09-29): the selected speaker's card lost text typed in the next
+        field — a save reloaded the speakers and the card reset every field. It now resets only
+        when a different speaker is selected, and a save updates only its own field.
 GO:     given 2026-09-29
+
+### ~~ACX mastering failed ACX~~ — FIXED 2026-09-29
+STATE:  FIXED on "do what you can without my intervention … go" (the walkthrough). Every
+        chapter mastered "acx" by this app came out out of spec: The Keystone measured −16.8
+        LUFS, RMS −17.11, peak −0.47, and the app's own ACX QC said fail.
+WHY:    `mastering._run_master` ran `dynaudnorm=g=15:p=0.95` AFTER `loudnorm`, so it
+        renormalised toward a 0.95 (−0.45 dB) peak and undid the preset. Since the first commit.
+BUILT:  `dynaudnorm` first, `loudnorm` last (same audio: −19.9 LUFS / −3.5 dBTP); live QC after:
+        all four chapters ok. `tests/test_mastering_chain.py` runs the real chain (fails on the old
+        order, passes on the new; skipped without ffmpeg). Docs mastering.md (chain order).
+GO:     given 2026-09-29
+
+### FINDING — the chapter you audition is paced differently from the one that ships
+STATE:  FINDING 2026-09-29 (walkthrough). Studio's Render (`POST /v1/render_chapter`) joins lines
+        with `BetweenLines.silence_ms = 250`; export and ACX QC (`render_scene_to_wav`) join them
+        with a hardcoded `600`. The Keystone: 505 s auditioned, 522 s exported.
+WHY:    Both are hardcoded, against the "no hardcoded operator-tunable values" invariant; and
+        what you listen to is not what ships.
+OPEN:   which gap is right, and a setting for it.
+GO:     needed
+
+### FINDING — a persona can be saved with no name
+STATE:  FINDING 2026-09-29 (walkthrough, adversarial). Personas → + New persona, type a name,
+        clear it, Save → "Persona created", a row with "?" and no name. `CreatePersonaRequest.name`
+        has no minimum and the dialog's Save stays enabled. (The blank row was deleted.)
+OPEN:   refuse a blank name on the server and disable Save while it is blank.
+GO:     needed
+
+### FINDING — unknown inline tags are read aloud
+STATE:  FINDING 2026-09-29 (walkthrough). The podcast demo's first line ends "[warm]"
+        (`demo_projects.py:97`); no engine declares `warm`, and `inline_tags.strip` removes only
+        KNOWN tags, so it is spoken — Kokoro + Whisper: "Welcome back to the show. Warm, it is
+        good to have you here."
+OPEN:   the demo text; and whether an unknown [word] is stripped (or flagged in Script) for an
+        engine that takes no tags.
+GO:     needed
+
+### FINDING — every engine install failed under tauri dev: a 0-byte uv.exe
+STATE:  FINDING 2026-09-29 (walkthrough). Install → "[WinError 193] %1 is not a valid Win32
+        application". `src-tauri/target/debug/uv.exe` was a 0-byte placeholder left on 2026-07-29
+        (uv added as a Tauri sidecar in 2cf0924, removed in fcccd95); `cargo run` puts
+        `target/debug` first on PATH, so `engines/manager._check_uv_available` →
+        `shutil.which("uv")` found it. The file (untracked build output) was deleted; installs
+        then worked.
+OPEN:   the resolver accepts any file named uv (`is_file()`), and the user sees the raw WinError —
+        skip an empty/non-runnable candidate (probe `uv --version`) and name the bad file.
+GO:     needed
 
 ### Switching Studio steps keeps Script where you left it
 STATE:  DECIDED 2026-09-29 — "your rec go", on the user's "this is a spa and navigating a in a

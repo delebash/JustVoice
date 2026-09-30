@@ -25,10 +25,15 @@ ffmpeg chain, in order:
 2. **Pad the head** to the preset's `head_silence_secs`. (ACX wants room at
    both ends of a file; the chain adds it, it does not trim what you rendered.)
 3. **High-pass at 80 Hz** — rumble and handling noise below speech.
-4. **Normalize** to the preset's loudness target and true-peak ceiling
-   (`loudnorm` with I / TP / LRA from the preset).
-5. **Even out the dynamics** (`dynaudnorm`), then **resample** to the preset's
-   sample rate and fold to its channel count.
+4. **Even out the dynamics** (`dynaudnorm`) — quiet passages come up toward
+   the loud ones.
+5. **Normalize** to the preset's loudness target and true-peak ceiling
+   (`loudnorm` with I / TP / LRA from the preset), then **resample** to the
+   preset's sample rate and fold to its channel count. Normalizing comes last
+   so the file ends at the preset's numbers: an ACX chapter measures about
+   −20 LUFS with its true peak at −3.5 dB. (Until 2026-09-29 the two steps ran
+   the other way round, and an "acx" chapter came out at about −17 LUFS with
+   its peak near −0.5 dB — mastered, yet failing ACX QC.)
 
 There is **no noise gate** — earlier versions of this page listed one. Noise
 floor is a *measurement* the ACX report will grow, not something the chain

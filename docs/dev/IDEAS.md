@@ -6,6 +6,29 @@ The holding pen for unscheduled JustVoice ideas — same charter as JW's
 
 ---
 
+- **2026-09-29 · From the full walkthrough** (none started; the evidence is in TASKS's
+  fresh-install RESULT and the FINDINGs of the same day):
+  - **Smart-assign re-writes every cast.** On a partly cast book it re-applied the six
+    existing casts and toasted "applied 8 assignments" when 2 changed; it can overwrite a
+    hand-picked cast. Only uncast speakers by default, and count what changed.
+  - **Smart-assign left Old Sedge uncast** though "Gravel old man" (note: "seventies") fits
+    "an old road-warden, a pensioner" — a reason for "suggest, don't apply" (Fable's offer).
+  - **Discover proposes descriptive labels** — "a Concern clerk", "the courier" — which its
+    prompt says never to list; they arrive as New and need Ignore by hand.
+  - **"the Warden" is Ophra Kell**, but her Who they are says "Warden" only in the imported
+    voice-hint lines Discover doesn't read, and Also called was empty. An import could seed
+    Also called from the book's role/title, or Discover's known list could carry it.
+  - **Discover's evidence can start mid-quote** (`" Haldane Threll had come down …`).
+  - **"Assigned Narrator to Narrator."** — the Cast toast when a persona and speaker share a
+    name; "Narrator now plays Narrator." or naming it once reads better.
+  - **Remove with no lines** asks "Remove Old Sedge from the cast?" with an empty body; "They
+    have no lines yet." would read less like a missing message.
+  - **The shared-cache question is asked only in AI Settings** (the kit's Quick Setup band);
+    a model downloaded before visiting it fills the app's own cache — what made the 29 GB on
+    2026-09-19. Ask at the first download whenever a family cache exists. (Kit: the
+    `cache_api.py` module docstring still says the choice waits for a restart; the code
+    applies it at once.)
+
 - **2026-09-29 · "Read by you" per chapter in Script** — a mark, with its date, on
   each chapter you have read through on Script's chapter page. Reading is the real
   review (the flags catch only some misses), so it may be worth tracking. Parked by

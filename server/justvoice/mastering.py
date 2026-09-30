@@ -166,11 +166,16 @@ def _run_master(
     # processing without a codec generation pass out_format="wav".
     fmt = out_format or preset.format
 
-    # ffmpeg filter chain
+    # ffmpeg filter chain. `loudnorm` runs LAST of the level stages, so the
+    # preset's loudness and true-peak ceiling are what the file ends at. Until
+    # 2026-09-29 `dynaudnorm` ran after it and renormalised toward a 0.95 peak:
+    # an "acx" chapter came out at -16.8 LUFS with its peak at -0.5 dBFS and
+    # failed the app's own ACX QC. In this order the same audio measures
+    # -19.9 LUFS / -3.5 dBTP.
     af_chain = [
         "highpass=f=80",
-        f"loudnorm=I={preset.loudness_target_lufs}:TP={preset.true_peak_dbfs}:LRA={preset.loudness_range_lu}",
         "dynaudnorm=g=15:p=0.95",
+        f"loudnorm=I={preset.loudness_target_lufs}:TP={preset.true_peak_dbfs}:LRA={preset.loudness_range_lu}",
         f"aresample={preset.sample_rate}",
     ]
     if channels != preset.channels:

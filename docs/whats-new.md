@@ -2,6 +2,11 @@
 
 ## v0.1.0
 
+- **ACX mastering now meets ACX.** A chapter mastered for ACX used to come out too loud
+  — about −17 LUFS with its peak near −0.5 dB — because the dynamics step ran after the
+  loudness step and undid it; ACX QC then failed it. The order is fixed: an ACX chapter now
+  measures about −20 LUFS with its peak at −3.5 dB, and passes. Render again to get the new
+  levels ([Mastering](mastering.md))
 - **Speakers and personas are two things.** A **persona** is now a finished spoken
   voice: a voice and its engine, plus speed, pitch, gain, direction, effects,
   lexicon and a short **Note on how it sounds**. It lives in your library and can

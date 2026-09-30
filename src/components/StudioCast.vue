@@ -196,14 +196,25 @@ async function assign(persona) {
   }
 }
 
-// The selected speaker's card saves each field when you leave it.
+// The selected speaker's card saves each field when you leave it. The draft
+// resets only when a DIFFERENT speaker is selected: a save reloads the
+// speakers, and resetting on that reload wiped whatever was being typed in the
+// next field (found 2026-09-29 — tab from Also called into Who they are, type,
+// and the text vanished).
 const draft = ref({ name: "", aliases: "", description: "" });
-function resetDraft(s) {
-  draft.value = s
-    ? { name: s.name, aliases: (s.aliases || []).join(", "), description: s.description || "" }
-    : { name: "", aliases: "", description: "" };
+const FIELD_OF = {
+  name: (s) => s.name,
+  aliases: (s) => (s.aliases || []).join(", "),
+  description: (s) => s.description || "",
+};
+function resetDraft(s, only = null) {
+  if (!s) {
+    draft.value = { name: "", aliases: "", description: "" };
+    return;
+  }
+  for (const k of only ? [only] : Object.keys(FIELD_OF)) draft.value[k] = FIELD_OF[k](s);
 }
-watch(selected, resetDraft, { immediate: true });
+watch(() => selected.value?.id, () => resetDraft(selected.value), { immediate: true });
 async function saveField(field) {
   const s = selected.value;
   if (!s) return;
@@ -221,11 +232,12 @@ async function saveField(field) {
     body = { description: draft.value.description };
   }
   try {
-    await projectsService.updateSpeaker(s.id, body);
+    const saved = await projectsService.updateSpeaker(s.id, body);
+    if (saved) resetDraft(saved, field);
     emit("changed");
   } catch (e) {
     pushToast({ kind: "error", message: `Save failed: ${e?.message || e}` });
-    resetDraft(s);
+    resetDraft(s, field);
   }
 }
 function blurOnEnter(e) {
