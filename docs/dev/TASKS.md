@@ -1162,6 +1162,9 @@ OPEN:   Slice 4 (Render owns direction/takes/Gen/Compare), Slice 5 (presets exci
         "＋ Add text" (mock `_new_chapters.html`); Words / Est. audio columns → dropped.
         GAP, not in the mock: add / rename / reorder / delete a chapter. Rec (not decided):
         Script's chapter grid — "＋ Add chapter", and Rename · Move · Delete per row; mock first.
+        NEXT (2026-09-30, user "lets move to the next slice"): Slice 4 is researched, not planned —
+        `docs/plans/2026-09-30-mock-vs-app-and-slice-4.md` §3 (what exists, what the mock shows)
+        and §3.4 (D1–D8, the decisions to put to the user before any plan). Resume at its §4.
 GO:     given 2026-09-27 for Slices 1 + 2 and decisions 1-6 | needed for 3, 4, 5
         Slice 3 was re-thought on 2026-09-28 — see the next item.
 
@@ -1409,6 +1412,36 @@ GO:     given 2026-09-28 for the record + the mock; 2026-09-29 for the measureme
         the flag measurement, the plan, the second review's mock + plan changes, the
         prompt-rule measurement, the third book and the chapter's rows | needed for app code,
         the prompt change, the six items
+
+### FINDING — a persona's pace, pitch and gain can't be edited anywhere in the app
+STATE:  FINDING — code-verified 2026-09-30 (found by the mock-vs-app comparison). The persona
+        editor's "+ Edit" beside the delivery chips only toasts "Edit delivery in Generate · Tune
+        Speed / Pitch / Pause-after on the Generate tab, then save as the persona default"
+        (`PersonasView.vue:436-441`); Generate has no save-to-persona path (`default_delivery`
+        appears in `src/` only in PersonasView's display and `components/VoiceParamsModal.vue`,
+        which nothing imports — orphaned, apparently by the speakers split). Yet Cast says "Pace,
+        pitch, gain, delivery, effects — all of it lives there." (`StudioCast.vue:599`).
+WHY:    the persona layer (§8.3, §8.22 — the tuning that survives a recast) has no editor; Slice
+        4's per-line override would sit on top of it.
+OPEN:   the fix — the mock's persona editor (`workbench`, `_s7`: "How it speaks" Pace / Pitch /
+        Gain / Pause) or a smaller stopgap; and whether it goes before Slice 4 (D8 in
+        `docs/plans/2026-09-30-mock-vs-app-and-slice-4.md` §3.4). Needs the user's word.
+GO:     needed
+
+### Voice gender in every voice dropdown, and speaker pronouns — with the Personas redesign
+STATE:  DECIDED 2026-09-30 as a to-do — "add that as todo possbile wehn we do the redesign of
+        persona per mock". The answers as presented, verbatim: `docs/plans/2026-09-30-voice-gender-
+        and-pronouns.md`. In short: one shared voice-gender service (today only VoicesView has
+        it); every voice dropdown's label shows it ("Bella · Female · Kokoro", "?" when unknown);
+        Cast's persona card uses the same answer; a gender filter on the Personas voice dropdown
+        only. Speakers get Pronouns (he / she / they / blank), filled from JustWrite's sheet and
+        Discover, fed to the attribution prompt's empty pronouns slot; personas get no field.
+WHY:    a voice's gender is only visible on the Voices page; the attribution prompt has a
+        pronouns slot that is always empty (`_resolve_cast` sends None).
+NOT:    a male/female "sex" dropdown on speakers; a gender field on personas.
+BUILT:  nothing. OPEN: the two checks in the doc's §2, then a plan — when the Personas page is
+        redesigned per the mock.
+GO:     needed
 
 ### A project's pronunciation lexicon reaches the audio
 STATE:  DECIDED 2026-09-30 — "ok mark that as to be wired", on the answer to "what do you think on
@@ -2091,7 +2124,10 @@ GO:     given 2026-09-27 for the record and the mock | needed for app code and t
 
 ### THE VOICE-WORKFLOW REDESIGN — the resume surface
 
-STATE: BEING DESIGNED IN THE MOCK. NOTHING BUILT IN APP CODE.
+STATE: PARTLY BUILT (corrected 2026-09-30 — this line said "nothing built in app code"): Studio's
+Overview, Discover, Script and Cast match the mock; Render, Scene, New project and the library
+screens (Personas + its editor, Voices, Lexicons, Effects, Engines) do not, or only partly.
+**Screen by screen, with what is missing: `docs/plans/2026-09-30-mock-vs-app-and-slice-4.md` §1.**
 **`docs/plans/2026-08-15-voice-workflow-redesign.md` §8 is THE resume surface** —
 the mock is the design, and §8 carries every ruling made while walking it, the
 reasoning, the mock's exact state (§8.18) and how to build it (§8.1). §1–§7 of
