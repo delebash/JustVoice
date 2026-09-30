@@ -48,7 +48,7 @@ HERE = Path(__file__).resolve()
 sys.path.insert(0, str(HERE.parents[1]))
 
 from justvoice.extraction.flags import flag_groups, lines_from_rows, quote_left_open  # noqa: E402
-from justvoice.extraction.segmentation import split_into_paragraphs  # noqa: E402
+from justvoice.extraction.segmentation import detect_marks, split_into_paragraphs  # noqa: E402
 from justvoice.imports import run_adapter  # noqa: E402
 
 
@@ -209,7 +209,8 @@ def main() -> int:
             r = post(args.server, "/v1/extraction/analyze-text",
                      {"text": text, "characters": chars, **body_extra})
             dialogue = [row for row in r["rows"] if row["kind"] == "dialogue"]
-            open_paras = {i for i, p in enumerate(split_into_paragraphs(text)) if quote_left_open(p)}
+            marks = detect_marks(text)   # the chapter's, as the app reads it
+            open_paras = {i for i, p in enumerate(split_into_paragraphs(text)) if quote_left_open(p, marks)}
             groups = flag_groups(lines_from_rows(r["rows"], narrator_ids=("narrator", "p_narrator")),
                                  cast_ids, open_paragraphs=open_paras)
             flags_on = {}

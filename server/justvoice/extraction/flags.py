@@ -36,6 +36,8 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass, field
 
+from .segmentation import left_open, opens_speech
+
 # The sources an Analyze run writes for a spoken line.
 DECIDED = frozenset({"tag", "propagated", "llm", "floored"})
 
@@ -69,10 +71,11 @@ class FlagGroup:
     other: str | None = None
 
 
-def quote_left_open(text: str) -> bool:
+def quote_left_open(text: str, marks: str | None = None) -> bool:
     """A paragraph that opens a quote and never closes it — a speech that
-    carries on into the next paragraph."""
-    return text.count("“") > text.count("”") or text.count('"') % 2 == 1
+    carries on into the next paragraph. `marks` is the chapter's speech-mark
+    style; one paragraph is too little to read it from, so pass it."""
+    return left_open(text, marks)
 
 
 def _paragraphs(lines: list[Line]) -> list[list[Line]]:
@@ -96,13 +99,14 @@ def flag_groups(
     cast_ids: set[str] | frozenset[str],
     *,
     open_paragraphs: set[int] | None = None,
+    marks: str | None = None,
 ) -> list[FlagGroup]:
     """The chapter's flag groups, in reading order of their first line.
 
     `cast_ids` is the project's cast now. `open_paragraphs` names the paragraphs whose quote is left open, for a
     caller whose lines have lost their quote marks (the eval reads the
     pipeline's rows); without it, the lines' own text is read — a stored
-    dialogue block keeps its quote marks."""
+    dialogue block keeps its quote marks — in the chapter's `marks` style."""
     groups: list[FlagGroup] = []
 
     # ── Three in a row ──────────────────────────────────────────────────
@@ -136,7 +140,7 @@ def flag_groups(
         open_last = (
             first in open_paragraphs
             if open_paragraphs is not None and first is not None
-            else quote_left_open(" ".join(ln.text for ln in para))
+            else quote_left_open(" ".join(ln.text for ln in para), marks)
         )
     close()
 
@@ -197,9 +201,9 @@ def flagged_lines(groups: list[FlagGroup]) -> set[str]:
 def spoken_block(source: str | None, text: str | None) -> bool:
     """Is a stored line speech? The segmenter decides and records it as the
     source; a line it didn't decide (yours, an import's) is speech when it
-    opens with a quote mark — a stored dialogue line keeps its quotes."""
+    opens with a speech mark — a stored dialogue line keeps its marks."""
     if source == "narration":
         return False
     if source in DECIDED:
         return True
-    return (text or "").lstrip().startswith(("“", '"'))
+    return opens_speech(text)

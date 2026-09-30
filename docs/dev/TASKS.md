@@ -650,43 +650,18 @@ OPEN: add a settings knob (default scene-break pause, ms) and have the importer
 stamp it on each scene's last line.
 GO: needed.
 
-### Script tab: two project kinds can never finish a chapter
-
-STATE: OPEN — your call. Surfaced 2026-08-09 by the post-build sweeps of
-`docs/plans/2026-08-08-script-tab-restore.md` (§12); the build itself is done
-and committed in `3a5a23d`.
-WHY: narration binds to the project's Narrator (restore decision 4), and a
-block with no persona now REFUSES to render (decision 5) instead of being
-dropped in silence. Two kinds have no Narrator to bind to, so their narration
-is permanently unplaceable and the bulk "assign to Narrator" button has no
-target: **custom projects** (`_NARRATOR_KINDS` is audiobook+podcast, but
-`visibleTabs` gives Script to every non-game kind) and **any project imported
-before 2026-08-09**, because `_ensure_narrator` runs at create/import only and
-never backfills. The button now disables itself and says why rather than
-failing on click — that is the whole mitigation.
-NOT: adding "custom" to `_NARRATOR_KINDS` on my own — `test_project_narrator`
-pins the opposite as a deliberate decision ("no single prose voice"), and
-reversing it is not mine to do.
-OPEN: pick one — give custom projects a Narrator · hide Script from them ·
-let the bulk action target any cast persona. Separately: whether an
-already-imported project should get a Narrator on demand, or whether your data
-reset covers it.
-GO: needed.
-
-### Script tab: split / merge / reorder a block was deferred, not dropped
+### Script tab: reorder a line was deferred, not dropped
 
 STATE: DEFERRED by your ruling in the restore's decision 6 ("Defer split,
-merge and reorder"), and then lost — the tracker item was deleted whole when
-the build closed, so the deferral survived only inside the plan doc.
-WHY it still matters: it is the only way to fix a mis-cut line, and §8 names
-manual split as the workaround for the biggest attribution failure there is —
-a UK-punctuated manuscript segments to ZERO dialogue
-(`extraction/segmentation.py:8-10`, also in IDEAS).
-NOT: built in the first pass — all three change the block count, which is
-exactly the operation that destroys takes through `Take.block_id`'s CASCADE
-(`database/models.py:305`). They need their own confirm-before-destroying
-design.
-OPEN: that design, then the build.
+merge and reorder"). Split and merge were BUILT 2026-09-30 (Script's "✎ Edit…"
+→ "Split at the cursor", and "⇲ Merge" — `docs/plans/2026-09-30-script-
+leftovers.md`); reorder was left out of that plan and needs its own word.
+WHY it still matters: a line the segmenter put in the wrong order has no fix
+but deleting and re-adding it, and nothing on Script adds a line.
+NOT: built with split/merge — the 2026-09-30 plan said "Reorder isn't in this
+plan and needs its own word."
+OPEN: the design (where it lives, and whether a moved line keeps its
+`paragraph_idx`), then the build.
 GO: needed.
 
 ## The next build
@@ -1172,13 +1147,20 @@ DECIDED 2026-09-28 — "go", on: "Overview mastering options: switch to what the
         'Custom' gone. This is the wording still waiting on your approval. Say go only if you
         accept that wording." The mastering wording above stands as built; the mock matches it.
 OPEN:   the Lexicon-on-Overview question (no answer yet).
-        Slice 3 (Script as the mock; Flagged needs the §8.14 checks — separate go), Slice 4
-        (Render owns direction/takes/Gen/Compare), Slice 5 (presets excision — ruled, needs go).
+        Slice 4 (Render owns direction/takes/Gen/Compare), Slice 5 (presets excision — ruled,
+        needs go). (Slice 3 was BUILT 2026-09-29, `86eb21d` — its entry is below.)
         Game "1 · Lines" is unverified in the real app — the real data has no game project.
         Slice 4 ALSO moves "rewrite in character" off Script: it stays on Script as today's
         right-click until then (decided 2026-09-29, next item); Slice 4 builds it in Render's
         line panel and DELETES the Script right-click (`rewriteRow`, its modal, the
         `@contextmenu` on the Script row).
+        Slice 4 ALSO DELETES the old Chapters page (`views/ChapterView.vue`, route `/chapter`)
+        — decided 2026-09-30, "go", verbatim in `docs/plans/2026-09-30-script-leftovers.md` §1
+        "Changed". Where its features go: takes, Generate/Regenerate, compare, direction and
+        "Fix pronunciation" → Render's line panel (mock `_s4.html`); paste text → Script's
+        "＋ Add text" (mock `_new_chapters.html`); Words / Est. audio columns → dropped.
+        GAP, not in the mock: add / rename / reorder / delete a chapter. Rec (not decided):
+        Script's chapter grid — "＋ Add chapter", and Rename · Move · Delete per row; mock first.
 GO:     given 2026-09-27 for Slices 1 + 2 and decisions 1-6 | needed for 3, 4, 5
         Slice 3 was re-thought on 2026-09-28 — see the next item.
 
@@ -1426,6 +1408,27 @@ GO:     given 2026-09-28 for the record + the mock; 2026-09-29 for the measureme
         the flag measurement, the plan, the second review's mock + plan changes, the
         prompt-rule measurement, the third book and the chapter's rows | needed for app code,
         the prompt change, the six items
+
+### Slice 3's leftovers — edit, split and merge lines; speech marks; dialogue tags; the old Chapters page; one narrator rule
+STATE:  DECIDED 2026-09-30 — "finish slice 3 and related items", then "go" on the plan as
+        presented. The plan, verbatim, with its blast-radius table: `docs/plans/2026-09-30-script-
+        leftovers.md` §1 — READ IT before building any part. In short: A re-analyzing an edited
+        chapter keeps its lines · B3 Speech marks (Auto · Double · Single · Guillemets · German)
+        · B2+B1 "✎ Edit…" (Save · Split at the cursor · Cancel) and "⇲ Merge" in the ticked-lines
+        bar · B4 "Leave out dialogue tags" (off by default) · B6 one narrator rule (the role
+        only; custom imports adopt a "Narrator") · the long-chapter measurement on The Speckled
+        Band. B5 DROPPED the same day ("go", §1 "Changed"): the old Chapters page is deleted in
+        Slice 4 instead — recorded on the Slice 4 lines of "Build the mock's Studio".
+WHY:    B1–B6 were left out of Slice 3 (§8.23); the checks found an edit quietly strips every
+        "said X" anchor from the next Analyze, and two dead buttons on the old Chapters page.
+NOT:    Reorder of lines. Speech after a dash. Undo for split/merge. "Read by you" (parked).
+        Any change to the old Chapters page in this build — B5 dropped; it goes in Slice 4.
+BUILT:  2026-09-30, uncommitted at the time of writing — what, where and the checks: the plan
+        doc §2. Server suite 914 passed; unit 115; gate clean; live pass on the real app (one
+        window): The Speckled Band as one chapter = 361 lines, opens in 102-105 ms, scrolls at
+        16.7 ms/frame — no virtualization needed.
+OPEN:   the choices the plan didn't name, listed in §2 "Not in the plan" — for the user's word.
+GO:     given 2026-09-30 for all of §1 | a push needs its own word
 
 ### Discover: remove one Ignored name or one cast member with ✕, and "Clear all" on both
 STATE:  DECIDED 2026-09-29, for next — "add to task for next, on app discover for ignore and

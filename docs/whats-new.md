@@ -2,6 +2,31 @@
 
 ## v0.1.0
 
+- **Books in single quotes, guillemets or German marks now have dialogue.** Only
+  double quotes used to count as speech, so a book written ‘like this’ was read as
+  all narration and no re-analyze could fix it. Overview has a new **Speech marks**
+  setting — Auto (the default: each chapter's own), “Double”, ‘Single’, «Guillemets»
+  or „German“ — and in single-quote mode an apostrophe (don’t, 'tis) never starts or
+  ends a speech ([Studio → Speech marks](studio.md#speech-marks))
+- **Edit, split and merge lines on Script.** Tick a line and choose **✎ Edit…** to
+  change its words (Undo puts them back) or **Split at the cursor**; tick lines that
+  sit next to each other and choose **⇲ Merge**. Merging asks first when it would
+  delete rendered takes ([Studio → A line's words](studio.md#a-lines-words-edit-split-merge))
+- **An edited chapter re-analyzes as well as it did the first time.** Editing a line —
+  the right-click rewrite included — used to make the next Analyze read every line as
+  a paragraph of its own, which lost every *"said Marius"* in the chapter and sent all
+  of it to the AI. Now a chapter you've edited is read as its lines stand, and what you
+  cut by hand is never re-cut ([Studio → Re-analyze](studio.md#re-analyze))
+- **Leave out dialogue tags.** A new Overview switch, off by default: the narrator
+  skips lines like *"said Marius,"* that only say who spoke, in the chapter audio, the
+  M4B and its captions alike. Script marks each skipped line **Left out**
+  ([Studio → Leaving out dialogue tags](studio.md#leaving-out-dialogue-tags))
+- **One narrator rule.** The narrator is the speaker holding the narrator role —
+  nothing else. A speaker merely called "Narrator" used to count on the server but not
+  in Studio, so the two could disagree; a custom (plain-text, SRT) import now adopts
+  its own "Narrator" as audiobooks and podcasts do. Script's no-speaker banner on a
+  book with no narrator links to Cast instead of offering a button that did nothing
+  ([Cast](studio.md#cast))
 - **Speech engines no longer outlive the app.** An engine used to keep running,
   and keep its GPU memory, whenever the server was closed the hard way — five of
   them held 1.6 GB across four restarts, and the AI model then couldn't load. Now an

@@ -63,6 +63,12 @@ shows no count because nothing records an export.
   checks against. A new project starts on its kind's target — ACX for an
   audiobook, Podcast for a podcast, **None — raw** for everything else — and you
   can change it to any of them. See [the mastering target](#the-mastering-target).
+- **Speech marks** — how the book marks speech: **Auto — from the text** (the
+  default), **“Double”**, **‘Single’**, **«Guillemets»** or **„German“**. Every
+  project but a game has it. See [speech marks](#speech-marks).
+- **Leave out dialogue tags** — off by default. When it's on, the narrator skips
+  lines like *“said Marius,”* that only say who spoke. See [leaving out dialogue
+  tags](#leaving-out-dialogue-tags).
 
 **Also from here:** **Re-import** merges a newer version of the source file into
 this project, and **Export .justvoice.zip** saves the whole project as one file.
@@ -228,12 +234,13 @@ A row can also carry a tag:
   Analyze couldn't choose them then. **Re-analyze** on the row runs it again;
   lines you set are kept.
 - **no dialogue found** — nothing in the text was read as speech, so every line
-  went to the Narrator. Speech in ‘single quotes’, «guillemets» or after a dash
-  isn't read as dialogue.
+  went to the Narrator. Speech after a dash isn't read as dialogue, and neither
+  are marks other than Overview → [Speech marks](#speech-marks) is set to.
 - **failed** — the model call failed; the reason is on the row, and nothing
   was saved.
-- **can't re-cut** — the text changed after takes were recorded, and analyzing
-  would re-cut the lines and delete those takes, so it stopped. **Takes ➜**
+- **can't re-cut** — analyzing would cut the chapter's lines differently from
+  the ones that have takes, and that would delete those takes, so it stopped
+  (see [Re-analyze](#re-analyze) for when a chapter is re-cut). **Takes ➜**
   opens Render.
 
 **The chips** above the grid show the chapters in one state: **To check**
@@ -319,9 +326,14 @@ to the bottom.
   line goes to the other one. That is the fix for a back-and-forth the AI got
   the wrong way round, which no mark can spot.
 - **✓ Looks right** on ticked lines makes them yours without changing them.
+- **✎ Edit…** (tick exactly one line) opens the line's words, with **Save**,
+  **Split at the cursor** and **Cancel**. See [a line's words](#a-lines-words-edit-split-merge).
+- **⇲ Merge** (tick two or more lines that sit next to each other) joins them
+  into one line.
 - **↶ Undo** steps back through your changes since you opened the chapter,
-  newest first. Opening another chapter, or re-analyzing this one, clears it;
-  switching to another step and back does not.
+  newest first — edited words included. Opening another chapter, re-analyzing
+  this one, or a split or merge clears it; switching to another step and back
+  does not.
 - **👁 Show the lines around** (at the foot) adds the line either side of each
   line a filter shows.
 
@@ -332,9 +344,15 @@ example the undone change saved, so a mis-click doesn't teach anything.
 
 **Lines with no speaker block the render.** A line nobody speaks can't become
 audio, and JustVoice will not quietly leave a sentence out of your audiobook.
-The banner above the table counts them and offers **Assign N → Narrator**. If
-you go to Render first, the render stops and lists them; **Fix in Script ➜**
-there opens the chapter on its lines with no speaker, the first one selected.
+The banner above the table counts them and offers **Assign N → Narrator**. A
+book with no narrator yet says *This book has no narrator — choose one on Cast
+➜* instead, and the link opens Cast. If you go to Render first, the render
+stops and lists them; **Fix in Script ➜** there opens the chapter on its lines
+with no speaker, the first one selected.
+
+**Left out.** With Overview's **Leave out dialogue tags** on, a line that only
+says who spoke carries a grey **Left out** tag. It stays in the script so you
+can see it; the audio skips it.
 
 **A speaker you removed.** Removing a speaker from the cast (on Discover or
 Cast — both ask first) gives every line they had back to **no speaker**, so
@@ -414,10 +432,10 @@ into narration and speech at the quote marks; lines the book names are found by
 pattern; lines with no name inherit one from the same paragraph; the model
 decides the rest, and a model answer below the confidence floor is dropped.
 
-**Quote marks.** Straight (`"`) and curly (`“ ”`) quotes both count, and a
-speech that runs over several paragraphs — each opening a quote, only the last
-closing it — is speech on every paragraph, with either kind. Single quotes are
-never read as dialogue (they are apostrophes too often).
+**Speech marks.** The text is cut at the book's own speech marks — double
+quotes, single quotes, guillemets or German marks, as [speech
+marks](#speech-marks) describes. A speech that runs over several paragraphs —
+each opening a mark, only the last closing it — is speech on every paragraph.
 
 **How the model reads a line.** It reads each line in its surroundings — who
 was just spoken to, whose actions and thoughts fill the paragraph, who a *"she
@@ -480,10 +498,18 @@ mark.
 If neither the cast nor your fixes have changed, re-analyzing mostly spends
 time for the same answer.
 
-One case does re-cut: the **first** analyze of an imported chapter. Import
+**A chapter you've edited is read as its lines.** Once you've changed a line's
+words, or split or merged lines, Analyze reads the chapter as its lines stand.
+Lines from one paragraph are read together, so *"said Marius"* still names the
+speaker of the line beside it. Each line stays one line, and only the speakers
+are decided again — what you cut by hand is never re-cut.
+
+Two cases do re-cut. The **first** analyze of an imported chapter: import
 stores one line per paragraph, and attribution needs one line per speaker
-turn, so the paragraphs are split. If the chapter already has recorded takes,
-JustVoice refuses to re-cut rather than destroy them (**can't re-cut**).
+turn, so the paragraphs are split. And a chapter you haven't edited since it
+was analyzed, when [speech marks](#speech-marks) now read its text differently
+— it is cut again from its original text. If the chapter already has recorded
+takes, JustVoice refuses to re-cut rather than destroy them (**can't re-cut**).
 
 **Some chapters arrive with their speakers.** A podcast script that labels its
 speakers (`HOST:`) is attributed the moment it's imported. Script shows those
@@ -494,6 +520,67 @@ you mean to.
 Analyze does not look for new speakers — that is [Discover](#discover). A line
 whose speaker isn't in the cast comes back with no speaker; add that person in
 Discover, then analyze again.
+
+### Speech marks
+
+Books mark speech in different ways, and Analyze can only find dialogue where
+it knows to look. Overview → **Speech marks** says which way this book does it:
+
+| Setting | Speech looks like |
+|---|---|
+| **Auto — from the text** (the default) | whichever of the styles below the chapter uses |
+| **“Double”** | “Come here,” said Marius. — or straight `"` quotes |
+| **‘Single’** | ‘Come here,’ said Marius. — the British style, or straight `'` quotes |
+| **«Guillemets»** | «Come here», dit Marius. — or »Komm her«, pointing inward |
+| **„German“** | „Komm her“, sagte Marius. — or „…” |
+
+**Auto** looks at the first speech mark of each paragraph and takes the style
+that opens the most. Only the first counts, because a speech's own mark always
+comes before any quote inside it: when Helen quotes her sister *‘…’* inside her
+own *“…”*, the book is still double-quoted. Set the style yourself if Auto ever
+picks the wrong one — a chapter that is mostly quotations inside speeches, say.
+
+One style is read at a time. The book's other marks are quotes inside a speech,
+never speech of their own.
+
+**Single quotes are apostrophes too.** In single-quote mode a speech opens only
+at the start of a word, never on an elision (*'tis*, *rock 'n' roll*, *the
+'90s*), and closes only where no letter follows — the apostrophe in *don’t*
+never ends a speech. One case still cuts a line early: an apostrophe at the end
+of a word inside the speech (*‘The boys’ bikes are gone,’*). Fix that line with
+**✎ Edit…** → **Split at the cursor**, or **⇲ Merge**.
+
+**Speech after a dash** (— Come here, said Marius.) isn't read as dialogue in
+any setting. A chapter where nothing was read as speech says **no dialogue
+found** on the grid.
+
+Changing the setting takes effect the next time a chapter is analyzed.
+
+### A line's words: edit, split, merge
+
+The segmenter can cut a line wrong — a trailing apostrophe in single-quote
+mode, a speech the marks didn't catch. These fix it by hand, from the bar
+under the table:
+
+- **✎ Edit…** — tick exactly one line. Its text becomes an editor:
+  - **Save** keeps the new words. **↶ Undo** puts the old ones back.
+  - **Split at the cursor** cuts the line where the cursor is: the words after
+    it become a new line straight below, with the same speaker. The first line
+    keeps any rendered takes — its words changed, so it re-renders — and the
+    new line has none.
+  - **Cancel** closes the editor unchanged.
+- **⇲ Merge** — tick two or more lines that sit next to each other. They become
+  one line: their words joined with a space, with the first line's speaker. If
+  the other lines have rendered takes, it asks first — *Merge 3 lines? This
+  deletes 2 rendered takes.*
+
+A split or merge changes which lines the chapter has, so it clears **↶ Undo**,
+as a re-analyze does. Each undoes the other: merge the two halves of a split,
+or split a merged line where it was joined. After either, the chapter is read
+as its lines (see [Re-analyze](#re-analyze)): what you cut stays cut.
+
+Changing a line's words is not direction — *how* a line is said stays on
+[Render](#render).
 
 ## Cast
 
@@ -635,6 +722,30 @@ what is missing:
   persona in Studio · Cast."*;
 - **a persona with no voice** — *"The persona Harbek (warm) has no voice — pick
   one on the Personas page."*
+
+### Leaving out dialogue tags
+
+In a full-cast book every speaker has their own voice, so the narrator reading
+*"said Marius"* between two of Marius's lines only repeats what the listener
+already hears. Overview → **Leave out dialogue tags** (off by default) skips
+those lines.
+
+A line is left out only when it is **nothing but a tag** — who spoke, a speaking
+verb, perhaps an adverb — and it sits next to a spoken line of the same
+paragraph:
+
+| Line | Read? |
+|---|---|
+| *said Marius,* · *she whispered.* · *Marius said quietly.* | left out |
+| *said Marius, turning away.* | read — it says more than who spoke |
+| *He sat down.* | read — not a tag |
+
+The rule is the same for chapter audio, the exported M4B and its captions, so
+the captions always match what you hear. Script shows each line it skips with a
+grey **Left out** tag, and a left-out line never stops a render for want of a
+speaker. It works on analyzed chapters (it needs to know which lines are
+speech and which paragraph each came from), and the speaking verbs it knows are
+English.
 
 ### One Qwen3 model at a time
 

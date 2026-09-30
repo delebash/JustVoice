@@ -213,13 +213,6 @@ The holding pen for unscheduled JustVoice ideas — same charter as JW's
   `rowsFromBlocks` still emits a table row for it, showing a `—` speaker and
   no dropdown. Harmless, slightly baffling. Either filter them from the table
   or give them the treatment markers get.
-- **2026-08-08 · Single-quoted manuscripts segment to zero dialogue** — the
-  segmenter matches double quotes only, deliberately, to avoid apostrophe false
-  positives (`extraction/segmentation.py:8-10, 20-25`). A UK-punctuated book
-  (`'Where is he?'`) therefore reads entirely as narration and NO amount of
-  re-analyzing fixes it. Biggest attribution failure mode in the system.
-  Out of scope for `docs/plans/2026-08-08-script-tab-restore.md`; needs either a
-  segmenter option or manual split (itself deferred there).
 - **2026-08-08 · Anchor-vs-LLM disagreement is computed, sent, and dropped** —
   every anchor-won row carries `llm_speaker` + `llm_confidence`, and
   `extraction/pipeline.py:57-60` says they exist "so the Speaker Lab can render

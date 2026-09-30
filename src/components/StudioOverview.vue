@@ -21,11 +21,17 @@
   in the same change, so each save uses the same PATCH /v1/projects/{id} and
   autosave that pane had. Author reaches the M4B `artist` tag
   (projects_api.m4b_author).
+
+  Speech marks and Leave out dialogue tags (2026-09-30, docs/plans/2026-09-30-
+  script-leftovers.md B3/B4) are prose settings, kept in the project's
+  metadata (`speech_marks`, `leave_out_tags`) and merged in on save like
+  Author. The server reads them: extraction_api._project_meta (Analyze,
+  Discover, Script) and render_chapter_api (the render skips the tags).
 -->
 <script setup>
 import { computed, ref, watch } from "vue";
 import {
-  UiButton, UiField, UiInput, UiSelect, UiTable, UiTag, UiTextarea,
+  UiButton, UiField, UiInput, UiSelect, UiTable, UiTag, UiTextarea, UiToggle,
   confirmDialog, pushToast, saveBlob,
 } from "@delebash/llm-ui";
 import ImportModal from "../views/ImportModal.vue";
@@ -76,6 +82,16 @@ const MASTERING_PRESETS = computed(() => [
 const meta = computed(() => (props.project.metadata && typeof props.project.metadata === "object")
   ? props.project.metadata : {});
 
+// segmentation.SPEECH_MARKS; "auto" (or nothing stored) reads each chapter's own.
+const SPEECH_MARKS = [
+  { id: "auto", label: "Auto — from the text" },
+  { id: "double", label: "“Double”" },
+  { id: "single", label: "‘Single’" },
+  { id: "guillemets", label: "«Guillemets»" },
+  { id: "german", label: "„German“" },
+];
+const prose = computed(() => props.project.project_type !== "game_voicelines");
+
 // Local copies, committed on change — the Projects pane's autosave, moved.
 const editName = ref("");
 const editAuthor = ref("");
@@ -118,6 +134,12 @@ function commitDescription() {
 }
 function commitMastering(v) {
   if ((v || "") !== (props.project.mastering_preset || "")) patch({ mastering_preset: v || "" });
+}
+function commitMarks(v) {
+  if ((v || "auto") !== (meta.value.speech_marks || "auto")) patch({ metadata: { ...meta.value, speech_marks: v } });
+}
+function commitTags(v) {
+  if (!!v !== !!meta.value.leave_out_tags) patch({ metadata: { ...meta.value, leave_out_tags: !!v } });
 }
 
 // ── Where it stands ─────────────────────────────────────────────────────
@@ -224,6 +246,17 @@ async function deleteProject() {
             <UiSelect :model-value="masterShown" width="name" :options="MASTERING_PRESETS"
               option-value="id" @update:model-value="commitMastering" />
           </UiField>
+          <template v-if="prose">
+            <UiField label="Speech marks" layout="block">
+              <UiSelect :model-value="meta.speech_marks || 'auto'" width="name" :options="SPEECH_MARKS"
+                option-value="id" @update:model-value="commitMarks" />
+            </UiField>
+            <UiField label="Leave out dialogue tags" layout="block"
+              hint="The narrator skips lines like “said Marius,” that only say who spoke.">
+              <UiToggle :model-value="!!meta.leave_out_tags" aria-label="Leave out dialogue tags"
+                @update:model-value="commitTags" />
+            </UiField>
+          </template>
         </div>
       </div>
     </div>

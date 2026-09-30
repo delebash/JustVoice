@@ -266,3 +266,95 @@ def test_editing_a_block_forgets_the_stored_source_text(client, project, monkeyp
 
     meta = client.get(f"/v1/projects/{project.id}/scenes").json()[0]["metadata"]
     assert "source_text" not in meta
+
+
+# ── An edited chapter is re-analyzed as its lines (2026-09-30) ─────────────
+#
+# docs/plans/2026-09-30-script-leftovers.md, A. An edit drops the analyzed
+# text, and the page then sends the lines joined up — each line a paragraph
+# of its own, so "said Mara Vance" sat alone and no speech was anchored.
+
+TAGGED = f"{PARA_1}\n\n“We leave at dawn,” said Mara Vance, “before the tide.”"
+
+
+def _meta(client, project_id):
+    return client.get(f"/v1/projects/{project_id}/scenes").json()[0]["metadata"]
+
+
+def _joined(client, scene_id):
+    """What Script sends once the analyzed text is gone (`proseFromBlocks`)."""
+    return "\n\n".join(b["text"] for b in _blocks(client, scene_id))
+
+
+def test_an_edited_chapter_keeps_its_lines_and_its_anchors(client, project, monkeypatch):
+    mara = _mara_id(client, project.id)
+    _narrator_id(client, project.id)
+    # The model names someone who doesn't exist: only the book's words can
+    # give these lines to Mara.
+    monkeypatch.setattr("justvoice.extraction.pipeline.run_feature", _answer("nobody-real"))
+    assert _analyze(client, project.scene_id, TAGGED).status_code == 200
+    before = _blocks(client, project.scene_id)
+    assert [b["source"] for b in before] == ["narration", "tag", "narration", "tag"]
+
+    client.patch(f"/v1/blocks/{before[0]['id']}", json={"text": "The lamps went out."})
+    assert "source_text" not in _meta(client, project.id)
+
+    r = _analyze(client, project.scene_id, _joined(client, project.scene_id))
+    assert r.status_code == 200, r.text
+    assert r.json()["persisted"]["mode"] == "in_place"
+    after = _blocks(client, project.scene_id)
+    assert [b["id"] for b in after] == [b["id"] for b in before]
+    assert [b["source"] for b in after] == ["narration", "tag", "narration", "tag"]
+    assert after[1]["speaker_id"] == after[3]["speaker_id"] == mara
+    assert after[1]["metadata"]["anchor_words"] == "said Mara Vance"
+    assert [b["metadata"]["paragraph_idx"] for b in after] == [0, 1, 1, 1]
+    meta = _meta(client, project.id)
+    assert "source_text" not in meta and meta["analyzed_at"]   # still read as its lines
+
+
+def test_an_edited_chapter_with_takes_is_never_refused(client, project, monkeypatch):
+    monkeypatch.setattr("justvoice.extraction.pipeline.run_feature", _answer("nobody-real"))
+    _analyze(client, project.scene_id, TAGGED)
+    blocks = _blocks(client, project.scene_id)
+
+    from justvoice.database import session as db_session
+    from justvoice.database.models import Generation, Take
+
+    db = db_session.SessionLocal()
+    try:
+        gen = Generation(text="x", engine="stub", status="completed")
+        db.add(gen)
+        db.flush()
+        db.add(Take(block_id=blocks[1]["id"], generation_id=gen.id, is_default=True))
+        db.commit()
+    finally:
+        db.close()
+
+    client.patch(f"/v1/blocks/{blocks[2]['id']}", json={"text": "said Mara Vance quietly,"})
+    r = _analyze(client, project.scene_id, _joined(client, project.scene_id))
+    assert r.status_code == 200, r.text                       # no re-cut, so no refusal
+    assert [b["id"] for b in _blocks(client, project.scene_id)] == [b["id"] for b in blocks]
+
+
+def test_lines_changed_during_the_run_save_nothing(client, project, monkeypatch):
+    monkeypatch.setattr("justvoice.extraction.pipeline.run_feature", _answer("nobody-real"))
+    _analyze(client, project.scene_id, TAGGED)
+    blocks = _blocks(client, project.scene_id)
+    client.patch(f"/v1/blocks/{blocks[0]['id']}", json={"text": "The lamps went out."})
+
+    def delete_a_line_mid_run(action, variables, **overrides):
+        client.delete(f"/v1/blocks/{blocks[2]['id']}")
+        return _answer("nobody-real")(action, variables, **overrides)
+
+    monkeypatch.setattr("justvoice.extraction.pipeline.run_feature", delete_a_line_mid_run)
+    r = _analyze(client, project.scene_id, _joined(client, project.scene_id))
+    assert r.status_code == 409, r.text
+    assert "changed while it was being analyzed" in r.json()["detail"]
+
+
+def test_a_chapter_never_edited_is_still_cut_from_its_text(client, project, monkeypatch):
+    monkeypatch.setattr("justvoice.extraction.pipeline.run_feature", _answer("nobody-real"))
+    _analyze(client, project.scene_id, TAGGED)
+    assert _meta(client, project.id)["source_text"] == TAGGED
+    r = _analyze(client, project.scene_id, TAGGED)
+    assert r.status_code == 200 and _meta(client, project.id)["source_text"] == TAGGED

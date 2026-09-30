@@ -96,7 +96,10 @@ export function queueChapters({ projectId, kind, chapters, route = null }) {
 async function chapterText(api, projectId, scene) {
   // The stored text that produced the chapter's split when there is one (the
   // only way a re-analyze reproduces it), else its blocks joined back up. Read
-  // fresh: the chapter may have been edited since it was queued.
+  // fresh: the chapter may have been edited since it was queued. An analyzed
+  // chapter edited since has no stored text, and the server then reads it as
+  // its lines stand and ignores this (extraction_api._lines_to_keep,
+  // 2026-09-30) — the join made every line a paragraph of its own.
   const fresh = await api.safeRequest(`/v1/projects/${projectId}/scenes`, null);
   const row = Array.isArray(fresh) ? fresh.find((s) => s.id === scene.id) : null;
   const stored = (row || scene).metadata?.source_text;

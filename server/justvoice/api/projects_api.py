@@ -501,6 +501,110 @@ async def delete_block(block_id: str, db: Session = Depends(get_db)) -> dict:
     return {"deleted": True}
 
 
+# ── Split and merge a line — Script's "✎ Edit…" and "⇲ Merge" (2026-09-30) ──
+#
+# docs/plans/2026-09-30-script-leftovers.md, B1. The only way to fix a line
+# the segmenter cut wrong. Both change how many lines the chapter has, so both
+# drop its analyzed text: from then on Analyze reads it as its lines
+# (`extraction_api._lines_to_keep`) and never re-cuts what was cut by hand.
+# Neither has an Undo — each undoes the other.
+
+
+class SplitBlockRequest(BaseModel):
+    # Where the new line starts, as a character offset into `text`.
+    at: int
+    # The words to split, when the editor changed them first; left out = the
+    # line's own.
+    text: Optional[str] = None
+
+
+class MergeBlocksRequest(BaseModel):
+    ids: list[str] = Field(..., min_length=2)
+
+
+class BlockListResponse(BaseModel):
+    blocks: list[BlockResponse]
+
+
+def _renumber(ordered: list[Block]) -> None:
+    for i, blk in enumerate(ordered):
+        blk.position = i
+
+
+@router.post("/v1/blocks/{block_id}/split", response_model=BlockListResponse)
+async def split_block(
+    block_id: str, body: SplitBlockRequest, db: Session = Depends(get_db)
+) -> BlockListResponse:
+    """One line becomes two, cut at `at`. Both keep the speaker and how it was
+    decided. The first keeps the line's id, and with it its rendered takes —
+    its words changed, so they are out of date and it re-renders. The second
+    is new, with no takes, and does not carry the import's line id
+    (`source_ref`): one line of the source can only be one line here."""
+    b = db.query(Block).filter(Block.id == block_id).first()
+    if not b:
+        raise not_found(f"block {block_id}")
+    text = b.text if body.text is None else body.text
+    first, second = text[: body.at].rstrip(), text[body.at :].lstrip()
+    if not first or not second:
+        raise bad_request("Put the cursor inside the words — both new lines need some.")
+
+    ordered = (
+        db.query(Block).filter(Block.scene_id == b.scene_id).order_by(Block.position).all()
+    )
+    meta = json.loads(b.metadata_json or "{}")
+    meta.pop("source_ref", None)
+    new = Block(
+        scene_id=b.scene_id,
+        position=b.position + 1,
+        text=second,
+        speaker_id=b.speaker_id,
+        direction=b.direction,
+        metadata_json=json.dumps(meta) if meta else None,
+        extraction_confidence=b.extraction_confidence,
+        source=b.source,
+    )
+    b.text = first
+    db.add(new)
+    at = next(i for i, blk in enumerate(ordered) if blk.id == b.id)
+    _renumber([*ordered[: at + 1], new, *ordered[at + 1 :]])
+    _drop_scene_source_text(db, b.scene_id)
+    db.commit()
+    db.refresh(b)
+    db.refresh(new)
+    return BlockListResponse(blocks=[BlockResponse.from_orm(b), BlockResponse.from_orm(new)])
+
+
+@router.post("/v1/scenes/{scene_id}/blocks/merge", response_model=BlockResponse)
+async def merge_blocks(
+    scene_id: str, body: MergeBlocksRequest, db: Session = Depends(get_db)
+) -> BlockResponse:
+    """Lines that sit next to each other become one: their words joined with a
+    space, on the first line — its id, speaker, takes and everything it
+    carries. The others are deleted, and their rendered takes with them
+    (Take.block_id is ON DELETE CASCADE); Script asks before it sends this
+    when there are any."""
+    if not db.query(Scene).filter(Scene.id == scene_id).first():
+        raise not_found(f"scene {scene_id}")
+    ordered = db.query(Block).filter(Block.scene_id == scene_id).order_by(Block.position).all()
+    index = {blk.id: i for i, blk in enumerate(ordered)}
+    if len(set(body.ids)) != len(body.ids) or any(i not in index for i in body.ids):
+        raise bad_request("Merge takes two or more different lines of this chapter.")
+    picked = sorted(index[i] for i in body.ids)
+    if picked != list(range(picked[0], picked[0] + len(picked))):
+        raise bad_request("Only lines that sit next to each other can be merged.")
+
+    keep, *gone = (ordered[i] for i in picked)
+    keep.text = " ".join(t for t in (blk.text.strip() for blk in (keep, *gone)) if t)
+    for blk in gone:
+        db.delete(blk)
+    db.flush()
+    _renumber([blk for blk in ordered if blk not in gone])
+    _drop_scene_source_text(db, scene_id)
+    db.commit()
+    db.refresh(keep)
+    return BlockResponse.from_orm(keep)
+
+
 # ── Multi-adapter import pipeline ─────────────────────────────────────────
 #
 # Replaces the original JustWrite-only endpoint. Sources are pluggable

@@ -106,7 +106,7 @@ def test_discover_501_without_llm(client, monkeypatch):
 def test_discover_with_stubbed_llm(client, monkeypatch):
     _pid, scene_id = _import_project(client)
 
-    def fake_identify(text, known, *, settings, run_fn=None, raw_out=None):
+    def fake_identify(text, known, *, settings, run_fn=None, raw_out=None, marks=None):
         # The cast arrives as people, not bare names (fix 2): name, aliases,
         # and the character sheet the model gets one line of.
         assert "Mara Vance" in [k["name"] for k in known]
@@ -143,7 +143,7 @@ def test_add_makes_a_speaker_and_no_persona(client):
 
 
 def _scan(client, monkeypatch, scene_id, names):
-    def fake_identify(text, known, *, settings, run_fn=None, raw_out=None):
+    def fake_identify(text, known, *, settings, run_fn=None, raw_out=None, marks=None):
         return [SpeakerCandidate(name=n, role_hint=None, approx_lines=2) for n in names]
 
     monkeypatch.setattr("justvoice.extraction.identify.identify_speakers", fake_identify)
@@ -201,7 +201,7 @@ def test_a_scan_records_the_cast_members_the_chapter_names(client, monkeypatch):
 
 
 def _stub(monkeypatch, cands):
-    def fake_identify(text, known, *, settings, run_fn=None, raw_out=None):
+    def fake_identify(text, known, *, settings, run_fn=None, raw_out=None, marks=None):
         return [SpeakerCandidate(**c) for c in cands]
 
     monkeypatch.setattr("justvoice.extraction.identify.identify_speakers", fake_identify)
@@ -312,7 +312,7 @@ def test_discover_adhoc_free_text(client, monkeypatch):
     """POST /v1/extraction/discover-speakers — no scene, caller-supplied known
     names (parity batch 2026-08-06: the Lab's identify columns run this)."""
 
-    def fake_identify(text, known, *, settings, run_fn=None, raw_out=None):
+    def fake_identify(text, known, *, settings, run_fn=None, raw_out=None, marks=None):
         assert known == ["Mara Vance"]
         assert "Tom" in text
         return [SpeakerCandidate(name="Tom Harlan", role_hint="neighbor", approx_lines=3)]

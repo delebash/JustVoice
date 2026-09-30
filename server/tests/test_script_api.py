@@ -244,10 +244,19 @@ def test_a_line_left_with_no_speaker_is_not_counted_as_decided(client, project, 
 
 
 def test_no_dialogue_found(client, project, monkeypatch):
+    # Speech after a dash is the style the segmenter doesn't read (single
+    # quotes are read since 2026-09-30, Speech marks).
     _model_says(monkeypatch, {})
-    _analyze(client, project.scene_id, "The lamps guttered.\n\n'Wait,' she said.")
+    _analyze(client, project.scene_id, "The lamps guttered.\n\n— Wait, she said.")
     row = client.get(f"/v1/projects/{project.id}/script").json()["chapters"][0]
     assert row["analyzed"] and row["spoken"] == 0 and row["no_dialogue_found"]
+
+
+def test_a_single_quoted_chapter_finds_its_speech(client, project, monkeypatch):
+    _model_says(monkeypatch, {})
+    _analyze(client, project.scene_id, "The lamps guttered.\n\n‘Wait,’ she said. ‘I don’t know.’")
+    lines = client.get(f"/v1/scenes/{project.scene_id}/script").json()["lines"]
+    assert [ln["text"] for ln in lines if ln["spoken"]] == ["‘Wait,’", "‘I don’t know.’"]
 
 
 def test_unknown_scene_and_project_404(client):

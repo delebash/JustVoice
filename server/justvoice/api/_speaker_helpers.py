@@ -159,20 +159,20 @@ def speaker_line_counts(db: Session, project_id: str) -> dict[str, int]:
 
 
 def narrator_speaker_id(db: Session, project_id: str) -> str | None:
-    """The book's narrator — the speaker holding the "narrator" role, else a
-    speaker called Narrator. None when the book has none yet (nothing makes
-    one on its own): Analyze then leaves narration with no speaker."""
+    """The book's narrator — the speaker holding the "narrator" role. None
+    when the book has none yet (nothing makes one on its own): Analyze then
+    leaves narration with no speaker.
+
+    The role only, as Studio and Cast read it (2026-09-30, one narrator rule).
+    A speaker merely CALLED Narrator used to count here too, so the server
+    and the app could disagree on who narrates; an imported "Narrator"
+    character gets the role at import (`adopt_book_narrator`)."""
     row = (
         db.query(Speaker.id)
         .filter(Speaker.project_id == project_id, Speaker.role_label == "narrator")
         .first()
     )
-    if row:
-        return row[0]
-    for sid, stored in db.query(Speaker.id, Speaker.name).filter(Speaker.project_id == project_id):
-        if same_name(stored) == "narrator":
-            return sid
-    return None
+    return row[0] if row else None
 
 
 def move_narration(db: Session, project_id: str, new_id: str, old_id: str | None) -> int:
@@ -195,9 +195,10 @@ def move_narration(db: Session, project_id: str, new_id: str, old_id: str | None
     )
 
 
-# Project kinds whose import adopts the book's own "Narrator" character.
-# Game projects (a sheet of lines) and custom projects have no prose voice.
-NARRATOR_KINDS = {"audiobook", "podcast"}
+# Project kinds whose import adopts the book's own "Narrator" character —
+# every prose kind (custom joined 2026-09-30: an SRT or plain-text import can
+# name one too). A game sheet has no prose voice.
+NARRATOR_KINDS = {"audiobook", "podcast", "custom"}
 
 
 def adopt_book_narrator(db: Session, project) -> None:

@@ -17,12 +17,19 @@
   after every change. Rewrite in character stays on the Text cell's
   right-click until Slice 4 moves it to Render (the parent owns its modal).
   Direction, takes and rendering are Render's, never Script's.
+
+  A line's words are Script's (2026-09-30, docs/plans/2026-09-30-script-
+  leftovers.md B1/B2): "✎ Edit…" on one ticked line opens its text with Save,
+  Split at the cursor and Cancel, and "⇲ Merge" joins ticked lines that sit
+  next to each other. Both live in the ticked-lines bar — the rows get no new
+  buttons. A split or merge changes which lines exist, so it clears Undo, as an
+  Analyze does; each undoes the other.
 -->
 <script setup>
 import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from "vue";
 import {
-  AiTaskStrip, AppModal, UiButton, UiCheckbox, UiChip, UiSelect, UiTable, UiTag, pushToast,
-  useAiTasksStore,
+  AiTaskStrip, AppModal, UiButton, UiCheckbox, UiChip, UiSelect, UiTable, UiTag, UiTextarea,
+  confirmDialog, pushToast, useAiTasksStore,
 } from "@delebash/llm-ui";
 import { useApi } from "../stores/api.js";
 import { useCopy } from "../services/copy.js";
@@ -30,9 +37,9 @@ import { routeWords } from "../services/attribution.js";
 import { useKeptScroll } from "../composables/useKeptScroll.js";
 import { inRun, onChapterDone, queueChapters } from "../services/chapterRun.js";
 import {
-  KEYS, applyLocally, checkQuestion, confidenceCell, confirm, decidedBy, filterCounts, keyAction,
-  markOf, move, nextToCheck, numberKeys, popUndo, pushUndo, setSpeaker, speakerOptions, swap,
-  swapState, toCheck, visibleLines, wasBefore,
+  KEYS, applyLocally, checkQuestion, confidenceCell, confirm, decidedBy, editText, filterCounts,
+  keyAction, markOf, mergeState, move, nextToCheck, numberKeys, popUndo, pushUndo, setSpeaker,
+  speakerOptions, swap, swapState, toCheck, visibleLines, wasBefore,
 } from "../views/scriptReview.js";
 
 const props = defineProps({
@@ -83,11 +90,17 @@ const around = ref(false);
 const selected = ref(null);
 const ticked = ref({});
 const undoStack = ref([]);
+const editing = ref(null);        // {id, text} — the line whose words are open (✎ Edit…)
 const justRan = ref(null);      // {route_used, route_source, confidence_floor} after a run here
+
+// What cleared Undo last — the Undo button says since when there is nothing.
+const undoSince = ref("you opened this chapter");
 
 async function openChapter() {
   // Leaving the chapter clears its undo (approved: "since you opened the chapter").
   undoStack.value = [];
+  undoSince.value = "you opened this chapter";
+  editing.value = null;
   ticked.value = {};
   around.value = false;
   speaker.value = "all";
@@ -165,6 +178,8 @@ const offDone = onChapterDone(({ projectId, sceneId, kind, result }) => {
     justRan.value = { route_used: result.route_used, route_source: result.route_source, floor: result.confidence_floor };
     // The lines may have been re-cut; nothing in the undo stack is safe to replay.
     undoStack.value = [];
+    undoSince.value = "the last Analyze";
+    editing.value = null;
     ticked.value = {};
   }
   load();
@@ -242,6 +257,93 @@ function confirmTicked() {
 const noSpeakerIds = computed(() => lines.value.filter((ln) => ln.speakable && !ln.marker && !ln.speaker_id).map((ln) => ln.id));
 function allToNarrator() {
   if (narratorId.value) send(setSpeaker(lines.value, noSpeakerIds.value, narratorId.value), "narrator");
+}
+
+// ── A line's words: edit, split, merge ───────────────────────────────────
+const editBox = ref(null);
+const editLine = computed(() => {
+  const ids = tickedIds.value;
+  if (ids.length !== 1) return { ok: false, reason: "Tick exactly one line to edit its words." };
+  const line = lines.value.find((ln) => ln.id === ids[0]);
+  return line?.speakable && !line.marker
+    ? { ok: true, line }
+    : { ok: false, reason: "Only spoken or narrated lines have words to edit." };
+});
+function startEdit() {
+  if (!editLine.value.ok) return;
+  const line = editLine.value.line;
+  editing.value = { id: line.id, text: line.text };
+  select(line.id);
+  nextTick(() => editBox.value?.focus?.());
+}
+function cancelEdit() {
+  editing.value = null;
+}
+async function saveEdit() {
+  const ed = editing.value;
+  if (!ed) return;
+  const changes = editText(lines.value, ed.id, ed.text);
+  editing.value = null;
+  // Like every action in the ticked-lines bar, it clears the ticks.
+  ticked.value = {};
+  if (changes.length) await send(changes, "words");
+}
+// A split or a merge changes which lines exist: nothing on the Undo list can
+// be put back after one.
+async function restructured(message) {
+  undoStack.value = [];
+  undoSince.value = "the last split or merge";
+  editing.value = null;
+  ticked.value = {};
+  pushToast({ message, kind: "success" });
+  await load();
+  emit("changed");
+}
+async function splitAtCursor() {
+  const ed = editing.value;
+  const el = editBox.value?.el;
+  if (!ed || busy.value) return;
+  const at = el ? el.selectionStart : -1;
+  const line = lines.value.find((ln) => ln.id === ed.id);
+  busy.value = true;
+  try {
+    await api.request(`/v1/blocks/${ed.id}/split`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ at, ...(line && ed.text !== line.text ? { text: ed.text } : {}) }),
+    });
+    busy.value = false;
+    await restructured("Split into two lines. Undo was cleared — Merge puts them back together.");
+  } catch (e) {
+    busy.value = false;
+    pushToast({ message: String(e?.message || e), kind: "error" });
+  }
+}
+const mergeCheck = computed(() => mergeState(lines.value, tickedIds.value));
+async function mergeTicked() {
+  const m = mergeCheck.value;
+  if (!m.ok || busy.value) return;
+  if (m.takes) {
+    const ok = await confirmDialog({
+      title: `Merge ${m.ids.length} lines?`,
+      message: `This deletes ${m.takes} rendered take${m.takes === 1 ? "" : "s"}.`,
+      danger: true, confirmLabel: "Merge",
+    });
+    if (!ok) return;
+  }
+  busy.value = true;
+  try {
+    await api.request(`/v1/scenes/${props.sceneId}/blocks/merge`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: m.ids }),
+    });
+    busy.value = false;
+    await restructured(`Merged ${m.ids.length} lines into one. Undo was cleared — Split takes them apart again.`);
+  } catch (e) {
+    busy.value = false;
+    pushToast({ message: String(e?.message || e), kind: "error" });
+  }
 }
 
 async function undo() {
@@ -370,9 +472,16 @@ function onKey(ev) {
 onMounted(() => window.addEventListener("keydown", onKey));
 // Studio sits in the app's KeepAlive: leaving the view deactivates this page
 // without unmounting it, and its keys must go with it.
+// Coming back re-reads the lines (2026-09-30): the page is kept for its
+// ticks, filters, selection and scroll, never for its data — a setting
+// changed on Overview (Leave out dialogue tags), a narrator chosen on Cast or
+// a speaker removed on Discover showed only after another chapter was opened.
+let activatedOnce = false;
 onActivated(() => {
   window.removeEventListener("keydown", onKey);
   window.addEventListener("keydown", onKey);
+  if (activatedOnce) load();
+  activatedOnce = true;
 });
 onDeactivated(() => window.removeEventListener("keydown", onKey));
 onBeforeUnmount(() => {
@@ -478,10 +587,11 @@ const flagged = (ln) => (ln.flags || []).length > 0;
           The render stops on these rather than dropping them silently — set a speaker on each, or send
           them all to the narrator.</span>
         <span class="jv-spacer" />
-        <UiButton intent="secondary" size="small" :disabled="!narratorId || busy"
+        <UiButton v-if="narratorId" intent="secondary" size="small" :disabled="busy"
           :label="`Assign ${counts.none} → ${nameOf(narratorId)}`"
-          :title="narratorId ? 'Everything the model couldn\'t place becomes narration.' : 'This book has no narrator — choose one on Cast, or set a speaker on each line.'"
+          title="Everything the model couldn't place becomes narration."
           @click="allToNarrator" />
+        <a v-else href="#studio" @click.prevent="emit('go', 'cast')">This book has no narrator — choose one on Cast ➜</a>
       </div>
 
       <div class="jv-card studio-script-ch__lines">
@@ -530,9 +640,25 @@ const flagged = (ln) => (ln.flags || []).length > 0;
             </div>
           </template>
           <template #text="{ row }">
-            <span class="studio-script-ch__text"
-              :title="row.spoken && row.speaker_id && row.speaker_id !== narratorId ? 'Right-click to rewrite this line in character' : ''"
-              @contextmenu.prevent="emit('rewrite', row)">{{ row.text }}</span>
+            <div v-if="editing?.id === row.id" class="studio-script-ch__edit" @click.stop>
+              <UiTextarea ref="editBox" v-model="editing.text" width="prose" auto-resize :rows="2"
+                :disabled="busy" />
+              <div class="studio-script-ch__qacts">
+                <UiButton intent="primary" size="small" label="Save" :disabled="busy || !editing.text.trim()"
+                  @click="saveEdit" />
+                <UiButton intent="secondary" size="small" label="Split at the cursor" :disabled="busy"
+                  title="The words after the cursor become a new line, with the same speaker"
+                  @click="splitAtCursor" />
+                <UiButton intent="ghost" size="small" label="Cancel" :disabled="busy" @click="cancelEdit" />
+              </div>
+            </div>
+            <template v-else>
+              <span class="studio-script-ch__text"
+                :title="row.spoken && row.speaker_id && row.speaker_id !== narratorId ? 'Right-click to rewrite this line in character' : ''"
+                @contextmenu.prevent="emit('rewrite', row)">{{ row.text }}</span>
+              <UiTag v-if="row.left_out" intent="secondary"
+                title="Only says who spoke — Overview → Leave out dialogue tags is on, so the audio skips it">Left out</UiTag>
+            </template>
           </template>
           <template #conf="{ row }">
             <UiTag v-if="confidenceCell(row).intent" :intent="confidenceCell(row).intent">{{ confidenceCell(row).text }}</UiTag>
@@ -566,16 +692,22 @@ const flagged = (ln) => (ln.flags || []).length > 0;
             @click="swapTicked" />
           <UiButton intent="secondary" size="small" label="✓ Looks right" :disabled="!tickedIds.length || busy"
             title="Removes the marks from the ticked lines and makes them yours" @click="confirmTicked" />
+          <UiButton intent="secondary" size="small" label="✎ Edit…" :disabled="!editLine.ok || busy"
+            :title="editLine.ok ? 'Edit this line\'s words, or split it in two' : editLine.reason" @click="startEdit" />
+          <UiButton intent="secondary" size="small" label="⇲ Merge" :disabled="!mergeCheck.ok || busy"
+            :title="mergeCheck.ok ? 'Join the ticked lines into one, with the first line\'s speaker' : mergeCheck.reason"
+            @click="mergeTicked" />
           <span class="jv-spacer" />
           <UiButton intent="ghost" size="small" label="↶ Undo" :disabled="!undoStack.length || busy"
-            :title="undoStack.length ? `Undo your last change (Ctrl+Z)` : 'Nothing to undo since you opened this chapter'"
+            :title="undoStack.length ? `Undo your last change (Ctrl+Z)` : `Nothing to undo since ${undoSince}`"
             @click="undo" />
           <UiButton intent="ghost" size="small" :label="around ? '👁 Only the lines filtered' : '👁 Show the lines around'"
             :disabled="filter === 'all' && speaker === 'all'"
             title="Shows the lines either side of each line in view" @click="around = !around" />
         </div>
-        <p class="jv-hint studio-script-ch__foot">Changing the speaker of a rendered line makes it stale — it
-          re-renders, and its old take is kept.</p>
+        <p class="jv-hint studio-script-ch__foot">Changing the speaker or the words of a rendered line makes it
+          stale — it re-renders, and its old take is kept. Merging deletes the takes of the lines joined onto the
+          first, and asks first.</p>
         <div class="jv-inline-row studio-script-ch__bar">
           <UiButton intent="secondary" size="small" :label="`← Previous ${word.singular.toLowerCase()}`"
             :disabled="!prevChapter" :title="prevChapter ? chapterName(prevChapter) : `This is the first ${word.singular.toLowerCase()}`"
@@ -610,6 +742,11 @@ const flagged = (ln) => (ln.flags || []).length > 0;
               different speakers. The line may well be right: “👁 Show the lines
               around” lets you read the exchange, and “✓ Looks right” (optional) removes the mark — the line
               renders the same either way.</dd>
+            <template v-if="project.metadata?.leave_out_tags">
+              <dt>Left out</dt>
+              <dd class="jv-muted">A line that only says who spoke, like “said Marius,”. Overview → Leave out
+                dialogue tags is on, so the audio skips it; it stays here so you can see it.</dd>
+            </template>
           </dl>
           <p class="jv-hint">Direction, takes and rendering are <strong>not</strong> on this page. Script decides who
             says what; how it is performed is <a href="#studio" @click.prevent="emit('go', 'render')">Render</a>.</p>
@@ -643,6 +780,7 @@ const flagged = (ln) => (ln.flags || []).length > 0;
 .studio-script-ch__bar { gap: 8px; flex-wrap: wrap; align-items: center; padding: 11px 14px; }
 .studio-script-ch__foot { margin: 0; padding: 0 14px 11px; }
 .studio-script-ch__text { display: block; max-width: 60ch; }
+.studio-script-ch__edit { display: flex; flex-direction: column; gap: 6px; }
 .studio-script-ch__ev { font-style: italic; color: var(--ink); }
 .studio-script-ch__q { max-width: 40ch; color: var(--ink); }
 .studio-script-ch__qacts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }

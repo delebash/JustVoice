@@ -2,9 +2,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  applyLocally, checkQuestion, confidenceCell, confirm, decidedBy, filterCounts, keyAction,
-  markOf, move, nextToCheck, numberKeys, popUndo, pushUndo, setSpeaker, speakerOptions, swap,
-  swapState, toCheck, visibleLines, wasBefore,
+  applyLocally, checkQuestion, confidenceCell, confirm, decidedBy, editText, filterCounts, keyAction,
+  markOf, mergeState, move, nextToCheck, numberKeys, popUndo, pushUndo, setSpeaker, speakerOptions,
+  swap, swapState, toCheck, visibleLines, wasBefore,
 } from "./scriptReview.js";
 
 const line = (id, speaker_id, extra = {}) => ({
@@ -226,5 +226,40 @@ describe("the words on a row", () => {
     // No speaker: the floor's number explains the drop; any other is a pick that isn't there.
     expect(confidenceCell(line("a", null, { source: "floored", confidence: 0.41 })).text).toBe("41%");
     expect(confidenceCell(line("a", null, { source: "llm", confidence: 1 })).text).toBe("—");
+  });
+});
+
+describe("a line's words (2026-09-30)", () => {
+  const TEXTED = LINES.map((l) => ({ ...l, text: `words of ${l.id}`, takes: l.id === "d3" ? 2 : 0 }));
+
+  it("Save sends the new words, and Undo puts the old ones back", () => {
+    const changes = editText(TEXTED, "d2", "  new words  ");
+    expect(changes.map((c) => c.after)).toEqual([{ text: "new words" }]);
+    expect(applyLocally(TEXTED, changes).find((l) => l.id === "d2").text).toBe("new words");
+    const u = popUndo(pushUndo([], changes, "words"));
+    expect(u.patches[0].body).toEqual({ text: "words of d2", no_fix: true });
+  });
+
+  it("blank or unchanged words send nothing", () => {
+    expect(editText(TEXTED, "d2", "   ")).toEqual([]);
+    expect(editText(TEXTED, "d2", "words of d2")).toEqual([]);
+    expect(editText(TEXTED, "gone", "x")).toEqual([]);
+  });
+
+  it("an Undo of a speaker change never sends the words", () => {
+    const u = popUndo(pushUndo([], setSpeaker(TEXTED, ["d4"], "june"), "set"));
+    expect(u.patches[0].body).not.toHaveProperty("text");
+  });
+
+  it("Merge takes two or more readable lines that sit next to each other", () => {
+    expect(mergeState(TEXTED, ["d3", "d1", "d2"])).toEqual({ ok: true, ids: ["d1", "d2", "d3"], takes: 2 });
+    expect(mergeState(TEXTED, ["d1", "d3"]).reason).toMatch(/next to each other/);
+    expect(mergeState(TEXTED, ["d1"]).ok).toBe(false);
+    expect(mergeState(TEXTED, ["d5", "m6"]).reason).toMatch(/spoken or narrated/);
+  });
+
+  it("the takes Merge deletes are every line's but the first", () => {
+    expect(mergeState(TEXTED, ["d3", "d4"]).takes).toBe(0);
+    expect(mergeState(TEXTED, ["d2", "d3"]).takes).toBe(2);
   });
 });

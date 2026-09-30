@@ -286,7 +286,7 @@ function openRow(r, focus = null) {
                 <UiTag v-for="n in row.added_since" :key="n" intent="accent2"
                   :title="`Analyzed before ${n} joined the cast, and this ${word.singular.toLowerCase()}'s text names ${n} — Analyze could not choose ${n} then.`">{{ n }} added since</UiTag>
                 <UiTag v-if="row.no_dialogue_found" intent="accent2"
-                  title="Nothing in this chapter was read as speech. Speech in ‘single quotes’, «guillemets» or after a dash isn't read as dialogue.">no dialogue found</UiTag>
+                  title="Nothing in this chapter was read as speech. Speech after a dash isn't read as dialogue, and neither are marks other than Overview → Speech marks is set to.">no dialogue found</UiTag>
               </template>
             </template>
             <template #anchored="{ row }">
@@ -383,11 +383,12 @@ function openRow(r, focus = null) {
           <dd class="jv-muted">Analyzed before that speaker was added, and the text names them.
             Re-analyze it — lines you set are kept.</dd>
           <dt>no dialogue found</dt>
-          <dd class="jv-muted">Nothing in the text was read as speech. Speech in ‘single quotes’,
-            «guillemets» or after a dash isn't read as dialogue, so every line went to the Narrator.</dd>
+          <dd class="jv-muted">Nothing in the text was read as speech, so every line went to the Narrator.
+            Speech after a dash isn't read as dialogue. If the book marks speech another way than Overview →
+            Speech marks is set to, change the setting and re-analyze.</dd>
           <dt>can't re-cut</dt>
-          <dd class="jv-muted">The text changed after takes were recorded. Analyzing would re-cut the lines
-            and delete those takes, so it stops.</dd>
+          <dd class="jv-muted">Analyzing would cut this chapter's lines differently from the ones that have
+            takes, and that would delete those takes, so it stops.</dd>
           <dt>failed</dt>
           <dd class="jv-muted">The AI call failed. The reason is on the row, and nothing was saved.</dd>
         </dl>

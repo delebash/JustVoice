@@ -32,18 +32,20 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from llm_runner.llm import LLMNotConfiguredError
 
 from ..app_state import get_state
 from ..database import get_db
-from ..database.models import Block, Scene, Speaker, Take
+from ..database.models import Block, Project, Scene, Speaker, Take
 from ..errors import conflict, not_found
 from ..extraction import AnalyzeRequest, analyze_scene
 from ..extraction.flags import model_disagreed
 from ..models import ProjectScript, SceneScript, ScriptChapter, ScriptFlag, ScriptLine, ScriptSpeaker
 from ..extraction.pipeline import AttributionModelError, auto_route
+from ..extraction.segmentation import QUOTE_PAIRS, paragraphs_of, resolve_marks, segments_from_lines
 from ._speaker_helpers import ensure_speaker, narrator_speaker_id, speaker_aliases
 
 log = logging.getLogger(__name__)
@@ -184,11 +186,7 @@ def _resolve_cast(scene_id: str, db: Session) -> list[dict]:
 # "corrected" and "manual" are the user's and the import's.
 PIPELINE_SOURCES = frozenset({"narration", "tag", "propagated", "llm", "floored"})
 
-# The quote pairs segmentation.py recognizes, in its own order.
-_QUOTE_PAIRS = (("“", "”"), ('"', '"'))
-
-
-def _block_text(kind: str, text: str, source_text: str) -> str:
+def _block_text(kind: str, text: str, source_text: str, marks: str = "double") -> str:
     """The text a row stores as its block — dialogue keeps its quote marks.
 
     The segmenter returns the INNER text of a quoted span, so writing that
@@ -200,13 +198,18 @@ def _block_text(kind: str, text: str, source_text: str) -> str:
     segmenter has a branch for dialogue that opens and runs to the end of a
     line without ever closing (`segmentation.py:22`); handing that back a
     closing quote would put punctuation in the manuscript that the author
-    did not write."""
+    did not write.
+
+    `marks` is the style the chapter was cut by; its pairs are tried first
+    (`segmentation.QUOTE_PAIRS`), then every other style's."""
     if kind != "dialogue":
         return text
-    for open_q, close_q in _QUOTE_PAIRS:
+    pairs = [*QUOTE_PAIRS.get(marks, ()),
+             *(p for style, ps in QUOTE_PAIRS.items() if style != marks for p in ps)]
+    for open_q, close_q in pairs:
         if f"{open_q}{text}{close_q}" in source_text:
             return f"{open_q}{text}{close_q}"
-    for open_q, _close_q in _QUOTE_PAIRS:
+    for open_q, _close_q in pairs:
         if f"{open_q}{text}" in source_text:
             return f"{open_q}{text}"
     return f'"{text}"'
@@ -221,6 +224,57 @@ def _json_meta(raw: str | None) -> dict:
 
 def _scene_meta(scene: Scene) -> dict:
     return _json_meta(scene.metadata_json)
+
+
+def _project_meta(db: Session, project_id: str) -> dict:
+    """A project's settings kept in its metadata — among them Overview's
+    Speech marks (`speech_marks`) and Leave out dialogue tags
+    (`leave_out_tags`), 2026-09-30. The client merges the object before it
+    PATCHes, so a key written here is never dropped by another's save."""
+    p = db.query(Project).filter(Project.id == project_id).first()
+    return _json_meta(p.metadata_json) if p else {}
+
+
+def _lines_to_keep(scene: Scene, blocks: list) -> list | None:
+    """The lines to re-analyze as they stand, or None to cut the text again.
+
+    An analyzed chapter whose lines were edited since — a line's words
+    changed, a line added, removed, split or merged — no longer has the text
+    it was cut from: the edit dropped it
+    (`projects_api._drop_scene_source_text`). Joining the lines back up read
+    every line as a paragraph of its own, so each "said Marius" sat alone,
+    away from the speech it names: every anchor in the chapter was lost and
+    every line went to the model (2026-09-30). Now the lines are kept, read
+    by the paragraph they came from, and only their speakers are decided
+    again. A chapter never analyzed, or that still has its text, is cut from
+    the text as before."""
+    meta = _scene_meta(scene)
+    if meta.get("source_text"):
+        return None
+    if not (meta.get("analyzed_at") or any(b.source in PIPELINE_SOURCES for b in blocks)):
+        return None
+    kept = [b for b in blocks if (b.text or "").strip()]
+    return kept or None
+
+
+def _analysis_input(db: Session, scene: Scene, text: str):
+    """What an Analyze of `scene` reads: (text, marks, the ids of the lines
+    kept, their segments). The last two are None when the text is cut
+    again — then `text` is the caller's."""
+    from ..extraction.flags import spoken_block
+
+    blocks = db.query(Block).filter(Block.scene_id == scene.id).order_by(Block.position).all()
+    kept = _lines_to_keep(scene, blocks)
+    segments = None
+    if kept:
+        segments = segments_from_lines([
+            {"text": b.text, "spoken": spoken_block(b.source, b.text),
+             "paragraph": _json_meta(b.metadata_json).get("paragraph_idx")}
+            for b in kept
+        ])
+        text = "\n\n".join(paragraphs_of(segments))
+    marks = resolve_marks(_project_meta(db, scene.project_id).get("speech_marks"), text)
+    return text, marks, ([b.id for b in kept] if kept else None), segments
 
 
 def _inherited(blocks: list, text: str) -> list[tuple[dict, str | None]]:
@@ -261,7 +315,15 @@ def _inherited(blocks: list, text: str) -> list[tuple[dict, str | None]]:
     return out
 
 
-def _persist_attribution(db: Session, scene: Scene, rows: list, text: str) -> PersistInfo:
+def _persist_attribution(
+    db: Session,
+    scene: Scene,
+    rows: list,
+    text: str,
+    *,
+    marks: str = "double",
+    line_ids: list[str] | None = None,
+) -> PersistInfo:
     """Write an analyze run onto the scene's blocks. Caller commits.
 
     Two paths:
@@ -283,7 +345,12 @@ def _persist_attribution(db: Session, scene: Scene, rows: list, text: str) -> Pe
     The text that produced these rows is stored on the scene, because the
     split is only reproducible from it — joining the stored blocks back
     together loses the paragraph structure that anchoring and propagation
-    depend on (both are same-paragraph only)."""
+    depend on (both are same-paragraph only).
+
+    `line_ids` names the lines a run over an EDITED chapter read as they
+    stood (`_lines_to_keep`): one row each, written in place, and the text is
+    not stored — the chapter keeps being read as its lines, so a hand-made
+    cut is never undone by a re-analyze."""
     blocks = (
         db.query(Block).filter(Block.scene_id == scene.id).order_by(Block.position).all()
     )
@@ -313,11 +380,19 @@ def _persist_attribution(db: Session, scene: Scene, rows: list, text: str) -> Pe
             return None
         return speaker if speaker in known else None
 
-    texts = [_block_text(r.kind, r.text, text) for r in rows]
-    in_place = len(blocks) == len(rows) and [b.text for b in blocks] == texts
-
     meta = _scene_meta(scene)
-    meta["source_text"] = text
+    if line_ids is None:
+        texts = [_block_text(r.kind, r.text, text, marks) for r in rows]
+        in_place = len(blocks) == len(rows) and [b.text for b in blocks] == texts
+        meta["source_text"] = text
+    else:
+        now = [b for b in blocks if (b.text or "").strip()]
+        if [b.id for b in now] != line_ids or len(now) != len(rows):
+            raise conflict(
+                "This chapter's lines changed while it was being analyzed, so nothing "
+                "was saved. Analyze it again."
+            )
+        blocks, texts, in_place = now, [], True
     # "Analyzed" is Analyze having run, never "a line has a speaker" — an
     # imported script arrives with speakers and was never analyzed. The cast
     # it could choose from is what "added since" compares against (§8.24).
@@ -445,11 +520,12 @@ async def analyze_scene_endpoint(
     corrections = body.corrections if body.corrections is not None else _resolve_corrections(scene.project_id, db)
 
     settings = get_state().settings.get()
+    text, marks, line_ids, segments = _analysis_input(db, scene, body.text)
     # Route precedence lives in ONE place (pipeline.pick_route): the body's
     # explicit route (a per-run override) > Auto. The pipeline reports the
     # pick that RAN via raw_out — never re-derived here.
     req = AnalyzeRequest(
-        text=body.text,
+        text=text,
         characters=characters,
         corrections=corrections,
         route=body.route,
@@ -464,6 +540,7 @@ async def analyze_scene_endpoint(
         # health checks included — until it finished (2026-09-29).
         rows = await asyncio.to_thread(
             analyze_scene, settings=settings, request=req, raw_out=raw_out,
+            marks=marks, segments=segments,
         )
     except LLMNotConfiguredError as e:
         raise HTTPException(status_code=501, detail=str(e))
@@ -473,7 +550,7 @@ async def analyze_scene_endpoint(
         log.exception("extraction pipeline failed")
         raise HTTPException(status_code=502, detail=f"extraction failed: {e}")
 
-    persisted = _persist_attribution(db, scene, rows, body.text)
+    persisted = _persist_attribution(db, scene, rows, text, marks=marks, line_ids=line_ids)
     db.commit()
 
     return AnalyzeSceneResponse(
@@ -524,8 +601,9 @@ async def analyze_scene_stream_endpoint(
     characters = body.characters if body.characters is not None else _resolve_cast(scene_id, db)
     corrections = body.corrections if body.corrections is not None else _resolve_corrections(scene.project_id, db)
     settings = get_state().settings.get()
+    text, marks, line_ids, segments = _analysis_input(db, scene, body.text)
     req = AnalyzeRequest(
-        text=body.text,
+        text=text,
         characters=characters,
         corrections=corrections,
         route=body.route,
@@ -544,6 +622,8 @@ async def analyze_scene_stream_endpoint(
                 raw_out=raw_out,
                 on_delta=lambda t: q.put({"delta": t}),
                 on_progress=lambda p: q.put({"progress": p}),
+                marks=marks,
+                segments=segments,
             )
             usage = raw_out.get("usage") or {}
             q.put({
@@ -590,7 +670,7 @@ async def analyze_scene_stream_endpoint(
             wscene = wdb.query(Scene).filter(Scene.id == scene_id).first()
             if wscene is None:
                 raise not_found(f"scene {scene_id}")   # deleted mid-run
-            info = _persist_attribution(wdb, wscene, rows, body.text)
+            info = _persist_attribution(wdb, wscene, rows, text, marks=marks, line_ids=line_ids)
             wdb.commit()
             return info.model_dump()
         finally:
@@ -830,6 +910,8 @@ def _chapter_script(
     cast_ids: set[str],
     narrator_id: str | None,
     speakers: dict,
+    project_meta: dict | None = None,
+    take_counts: dict | None = None,
 ) -> tuple[ScriptChapter, list[ScriptLine], list]:
     """One chapter's Script state: its grid row, its lines and its flag groups.
 
@@ -838,8 +920,11 @@ def _chapter_script(
     pipeline source. "From the import": never analyzed, and every line
     already has a speaker."""
     from ..extraction.flags import Line, flag_groups, flagged_lines, spoken_block
+    from ..extraction.tags import left_out_blocks
 
     meta = _scene_meta(scene)
+    pm = project_meta or {}
+    tags_left_out = left_out_blocks(blocks) if pm.get("leave_out_tags") else set()
     rows = []
     for b in blocks:
         bm = _json_meta(b.metadata_json)
@@ -862,8 +947,11 @@ def _chapter_script(
         )
         for b, bm, marker, _speakable, spoken in rows
     ]
-    # Flags run only on what Analyze decided.
-    groups = flag_groups(lines, cast_ids) if analyzed else []
+    # Flags run only on what Analyze decided, reading quotes in the chapter's
+    # speech-mark style (a speech left open carries on into the next paragraph).
+    marks = resolve_marks(pm.get("speech_marks"),
+                          meta.get("source_text") or "\n\n".join(b.text or "" for b in blocks))
+    groups = flag_groups(lines, cast_ids, marks=marks) if analyzed else []
     marked = flagged_lines(groups)
     no_speaker = {r[0].id for r in speakable_rows if not r[0].speaker_id}
 
@@ -881,6 +969,7 @@ def _chapter_script(
             llm_speaker=bm.get("llm_speaker"), floored_from=bm.get("floored_from"),
             changed="prev_speaker_id" in bm, prev_speaker_id=bm.get("prev_speaker_id"),
             flags=by_group.get(b.id, []), metadata=bm,
+            left_out=b.id in tags_left_out, takes=(take_counts or {}).get(b.id, 0),
         )
         for b, bm, marker, speakable, spoken in rows
     ]
@@ -945,11 +1034,12 @@ async def project_script(project_id: str, db: Session = Depends(get_db)) -> Proj
         ):
             by_scene[b.scene_id].append(b)
     cast_ids, narrator_id, speakers = _script_context(db, project_id)
+    pm = _project_meta(db, project_id)
     return ProjectScript(
         project_id=project_id,
         chapters=[
             _chapter_script(s, by_scene[s.id], cast_ids=cast_ids,
-                            narrator_id=narrator_id, speakers=speakers)[0]
+                            narrator_id=narrator_id, speakers=speakers, project_meta=pm)[0]
             for s in scenes
         ],
     )
@@ -966,8 +1056,15 @@ async def scene_script(scene_id: str, db: Session = Depends(get_db)) -> SceneScr
         raise not_found(f"scene {scene_id}")
     blocks = db.query(Block).filter(Block.scene_id == scene_id).order_by(Block.position).all()
     cast_ids, narrator_id, by_id = _script_context(db, scene.project_id)
+    takes = dict(
+        db.query(Take.block_id, func.count(Take.id))
+        .filter(Take.block_id.in_([b.id for b in blocks]))
+        .group_by(Take.block_id)
+        .all()
+    )
     chapter, lines, groups = _chapter_script(
-        scene, blocks, cast_ids=cast_ids, narrator_id=narrator_id, speakers=by_id)
+        scene, blocks, cast_ids=cast_ids, narrator_id=narrator_id, speakers=by_id,
+        project_meta=_project_meta(db, scene.project_id), take_counts=takes)
     # Every line a speaker reads — the narrator's narration included, as the
     # speaker filter shows it ("Narrator · 118").
     counts: dict[str, int] = {}
@@ -1179,8 +1276,9 @@ async def discover_speakers_endpoint(
     settings = get_state().settings.get()
     try:
         raw_out: dict = {}
+        marks = resolve_marks(_project_meta(db, scene.project_id).get("speech_marks"), body.text)
         candidates = await asyncio.to_thread(
-            identify_speakers, body.text, cast, settings=settings, raw_out=raw_out,
+            identify_speakers, body.text, cast, settings=settings, raw_out=raw_out, marks=marks,
         )
     except LLMNotConfiguredError as e:
         raise HTTPException(status_code=501, detail=str(e))

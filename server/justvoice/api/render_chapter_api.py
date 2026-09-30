@@ -27,6 +27,7 @@ from ..database import session as _db_session
 from ..database.session import SessionLocal
 from ..delivery_merge import compose_instruct, merge_delivery
 from ..errors import bad_request, internal, not_found
+from ..extraction.tags import left_out_blocks
 from ..mastering import have_ffmpeg, master, master_to_wav, resolve_master_target
 from ..models import ChapterLine, Delivery, RenderChapterRequest
 from ..render_core import (
@@ -111,6 +112,11 @@ def _resolve_scene_to_lines(
     cached" is a question about the renderable lines and it runs on every
     Home/Studio visit.
 
+    A line that is only a dialogue tag ("said Marius,") is skipped when the
+    project has Overview's "Leave out dialogue tags" on (2026-09-30,
+    extraction/tags.py) — here, so chapter audio, the M4B export and the
+    captions all leave out the same lines.
+
     Returns (lines, lexicon_ids). Raises if the scene has no blocks.
     """
     db = _open_db()
@@ -127,6 +133,12 @@ def _resolve_scene_to_lines(
         if not blocks:
             raise bad_request(f"scene {scene_id} has no blocks to render")
         speakers = {s.id: s for s in db.query(Speaker).filter(Speaker.project_id == scene.project_id)}
+        project = db.query(Project).filter(Project.id == scene.project_id).first()
+        try:
+            leave_out_tags = bool(json.loads(project.metadata_json or "{}").get("leave_out_tags"))
+        except (AttributeError, TypeError, ValueError):
+            leave_out_tags = False
+        tags_left_out = left_out_blocks(blocks) if leave_out_tags else set()
 
         preset = None
         preset_effects: list[dict] = []
@@ -145,7 +157,7 @@ def _resolve_scene_to_lines(
         voiceless: set[str] = set()            # persona names with no voice
 
         for position, block in enumerate(blocks, start=1):
-            if not block.text or not block.text.strip():
+            if not block.text or not block.text.strip() or block.id in tags_left_out:
                 continue
 
             voice_id: str | None = None

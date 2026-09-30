@@ -94,8 +94,9 @@ rename and promote. Imports don't check — the book's people arrive as they are
 another persona has (409), case and extra spaces aside — on create and rename.
 `persona_named` still returns None for two older personas that share a name.
 
-**The narrator** is the speaker whose `role_label` is `"narrator"` (else one
-named "Narrator") — `_speaker_helpers.narrator_speaker_id`,
+**The narrator** is the speaker whose `role_label` is `"narrator"` — the role
+only, since 2026-09-30 (a speaker merely named "Narrator" used to count on the
+server but not in Studio) — `_speaker_helpers.narrator_speaker_id`,
 `StudioView.narratorSpeaker`. Any speaker can hold it — Studio Cast's per-card
 "Narrator" checkbox calls the PUT above. **Nothing makes a narrator on its own**:
 create makes none, and an import only gives the role to a book speaker called
@@ -440,9 +441,24 @@ HF source, for pinning.
 `server/justvoice/extraction/pipeline.py`, `analyze_scene`, five stages:
 
 1. **Segment** — `split_into_paragraphs` → `segment_paragraphs`, each tagged
-   `dialogue` or `narration`. A quote that opens and never closes is speech to
-   the paragraph's end, curly or straight (the straight branch since
-   2026-09-29) — how a speech over several paragraphs is written.
+   `dialogue` or `narration`, in one of four speech-mark styles
+   (`segmentation.SPEECH_MARKS`: double · single · guillemets · german,
+   2026-09-30). The project's `metadata.speech_marks` picks one; Auto (or
+   unset) is `detect_marks` — the style whose mark opens the most paragraphs'
+   first speech — resolved per chapter by `extraction_api._analysis_input`,
+   and passed to Discover's line counts and Script's flags too. Single mode
+   opens only at a word's start (never on an elision) and closes only where no
+   letter follows. A mark that opens and never closes is speech to the
+   paragraph's end — how a speech over several paragraphs is written.
+   **An analyzed chapter edited since** (no `source_text` — a text edit, add,
+   delete, split or merge dropped it) is not segmented at all:
+   `_lines_to_keep` → `segmentation.segments_from_lines` hands the pipeline its
+   lines as they stand (`analyze_scene(segments=…)`), neighbours of one
+   `paragraph_idx` read as one paragraph so anchors still work, and
+   `_persist_attribution(line_ids=…)` writes one row per line in place and
+   stores no text (lines changed mid-run → 409, nothing saved). Joining the
+   lines back up (the old path) made every line its own paragraph and lost
+   every anchor.
 2. **Deterministic anchors, before any LLM** — `find_anchors(segments,
    characters)` catches *"said Mara"* and propagates. Skipped if `propagate` off.
    Each `Anchor` carries the book's matched `words` ("said Mara"); a propagated
@@ -487,6 +503,23 @@ Analyze wrote.
 (one chapter's lines, groups and speakers) compute them in
 `extraction_api._chapter_script`, on the one "analyzed" rule:
 `analyzed_at`, or — older data — a pipeline source on any line.
+
+**Split and merge — Script's "✎ Edit…" and "⇲ Merge"** (2026-09-30,
+`projects_api.split_block` / `merge_blocks`): `POST /v1/blocks/{id}/split
+{at, text?}` cuts a line at a character offset — the first keeps the id, takes
+and `source_ref`, the second is new with the same speaker; `POST
+/v1/scenes/{id}/blocks/merge {ids}` joins lines that sit next to each other onto
+the first and deletes the rest (their takes cascade). Both renumber the
+scene's positions and drop `source_text`. `ScriptLine.takes` (chapter page
+only) lets Merge say how many takes it deletes before it asks.
+
+**Leave out dialogue tags — `extraction/tags.py`** (2026-09-30): `is_tag_only`
+(who + an `anchors.DIALOGUE_VERBS` verb + an optional adverb, nothing else) and
+`left_out` / `left_out_blocks` (a tag-only narration line beside a spoken line
+of the same `paragraph_idx`). With the project's `metadata.leave_out_tags`,
+`render_chapter_api._resolve_scene_to_lines` skips those blocks — so chapter
+audio, the M4B export, captions and the render-readiness check all agree — and
+`_chapter_script` sets `ScriptLine.left_out` for Script's "Left out" tag.
 
 **Undo's server half:** the block PATCH takes `no_fix` (no correction row),
 returns the `fix_id` a speaker change saved, and treats an explicit `null` for

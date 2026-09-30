@@ -85,3 +85,39 @@ def test_a_game_import_gets_no_narrator(client):
     assert r.status_code == 200, r.text
     cast = _cast(client, r.json()["project_id"])
     assert not [c for c in cast if c["name"].lower() == "narrator"], cast
+
+
+# ── One narrator rule (2026-09-30, docs/plans/2026-09-30-script-leftovers.md B6) ──
+
+SRT = (
+    "1\n00:00:01,000 --> 00:00:03,000\nNARRATOR: The rain fell on the quay.\n\n"
+    "2\n00:00:03,500 --> 00:00:05,000\nMARA: We leave at dawn.\n"
+).encode("utf-8")
+
+
+def _import_srt(client):
+    r = client.post(
+        "/v1/projects/import",
+        data={"source": "srt"},
+        files={"file": ("scene.srt", SRT, "application/x-subrip")},
+    )
+    assert r.status_code == 200, r.text
+    return r.json()["project_id"]
+
+
+def test_a_custom_import_adopts_its_own_narrator(client):
+    pid = _import_srt(client)
+    assert client.get(f"/v1/projects/{pid}").json()["project_type"] == "custom"
+    narrators = [c for c in _cast(client, pid) if c["name"].lower() == "narrator"]
+    assert len(narrators) == 1 and narrators[0]["role_label"] == "narrator"
+
+
+def test_a_speaker_merely_called_narrator_is_not_the_narrator(client):
+    """The role is the rule — Studio and Cast read only the role, and so does
+    the server now; a name alone made the two disagree."""
+    pid = client.post("/v1/projects", json={"name": "Stillwater", "project_type": "audiobook"}).json()["id"]
+    r = client.post(f"/v1/projects/{pid}/speakers", json={"name": "Narrator"})
+    assert r.status_code in (200, 201), r.text
+    scene_id = client.post(f"/v1/projects/{pid}/scenes", json={"title": "One"}).json()["id"]
+    client.post(f"/v1/scenes/{scene_id}/blocks", json={"text": "The rain fell."})
+    assert client.get(f"/v1/scenes/{scene_id}/script").json()["narrator_id"] is None

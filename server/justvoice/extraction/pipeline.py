@@ -32,7 +32,7 @@ from .prompts import (
     format_paragraphs,
 )
 from .pieces import ParagraphTooBig, Piece, is_break, plan_pieces
-from .segmentation import segment_paragraphs, split_into_paragraphs
+from .segmentation import paragraphs_of, segment_paragraphs, split_into_paragraphs
 
 log = logging.getLogger(__name__)
 
@@ -591,6 +591,8 @@ def analyze_scene(
     raw_out: dict | None = None,
     on_delta=None,
     on_progress=None,
+    marks: str | None = None,
+    segments: list[dict] | None = None,
 ) -> list[AttributionRow]:
     """Run the full pipeline.
 
@@ -600,6 +602,12 @@ def analyze_scene(
     pills + the Auto size rule (settings.extraction — the attribution
     restore); engine routing itself stays preset-resolved.
 
+    `marks` is the chapter's speech-mark style (segmentation.SPEECH_MARKS);
+    None reads it from the text. `segments` skips segmenting altogether: an
+    analyzed chapter whose lines were edited since is re-read as its lines
+    stand (`extraction_api._segments_from_lines`), one row per segment, in
+    order — `request.text` is then only what the rows are reported against.
+
     `on_delta` (lane 2A, 2026-08-08): when set, the LLM call STREAMS — each raw
     text chunk is passed to `on_delta(text)` as it arrives (the SSE endpoint
     forwards them so the strip shows live tok/s on a minute-long chapter), and
@@ -608,8 +616,11 @@ def analyze_scene(
     way — streaming changes how the reply travels, never what runs.
     """
     # ── 1. Segment ───────────────────────────────────────────────
-    paragraphs = split_into_paragraphs(request.text)
-    segments = segment_paragraphs(paragraphs)
+    if segments is None:
+        paragraphs = split_into_paragraphs(request.text)
+        segments = segment_paragraphs(paragraphs, marks=marks)
+    else:
+        paragraphs = paragraphs_of(segments)
     if not segments:
         return []
 

@@ -20,7 +20,7 @@ from justvoice.extraction.flags import (
     lines_from_rows,
     quote_left_open,
 )
-from justvoice.extraction.segmentation import segment_paragraphs, split_into_paragraphs
+from justvoice.extraction.segmentation import detect_marks, segment_paragraphs, split_into_paragraphs
 from justvoice.imports import run_adapter
 
 CAST = {"marius", "june", "renn", "narrator"}
@@ -210,7 +210,8 @@ def _key_lines(sample: str):
             else:
                 lines.append(Line(id=f"N{i}", speaker="Narrator", text=seg["text"], spoken=False,
                                   source="narration", paragraph=seg["paragraph_idx"]))
-        open_paras = {i for i, p in enumerate(paras) if quote_left_open(p)}
+        marks = detect_marks(text)   # the chapter's, as the app and the eval read it
+        open_paras = {i for i, p in enumerate(paras) if quote_left_open(p, marks)}
         yield scene.title, flag_groups(lines, cast, open_paragraphs=open_paras)
 
 

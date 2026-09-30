@@ -178,6 +178,7 @@ def identify_speakers(
     settings,
     run_fn: Callable[..., Any] | None = None,
     raw_out: dict | None = None,
+    marks: str | None = None,
 ) -> list[SpeakerCandidate]:
     """Run the identification LLM call through the shared run path. `run_fn`
     is the seam — tests inject a stub; production uses engines.llm.run's
@@ -190,7 +191,7 @@ def identify_speakers(
 
     from ..models import ExtractionSettings
     from .pieces import ParagraphTooBig, Piece, plan_pieces
-    from .segmentation import segment_paragraphs, split_into_paragraphs
+    from .segmentation import resolve_marks, segment_paragraphs, split_into_paragraphs
 
     measure_fn = None
     if run_fn is None:
@@ -205,6 +206,9 @@ def identify_speakers(
     # an answer reserve per dialogue line — generous for Discover's short answer).
     # No lead-in: Discover finds names, not turns.
     paragraphs = split_into_paragraphs(text) or [text]
+    # The project's Speech marks, or the whole text's (one paragraph is too
+    # little to read them from) — for counting each paragraph's lines.
+    marks = resolve_marks(marks, text)
     plan = [Piece(0, 0, len(paragraphs))]
     if measure_fn is not None:
         try:
@@ -216,7 +220,8 @@ def identify_speakers(
         if fit is not None and empty is not None:
             text_tokens = max(fit.prompt_tokens - empty.prompt_tokens, 0)
             total = sum(len(q) for q in paragraphs) or 1
-            lines = [sum(1 for g in segment_paragraphs([q]) if g["kind"] == "dialogue") for q in paragraphs]
+            lines = [sum(1 for g in segment_paragraphs([q], marks=marks) if g["kind"] == "dialogue")
+                     for q in paragraphs]
             costs = [-(-len(q) * text_tokens // total) + ext.answer_tokens_per_line * n
                      for q, n in zip(paragraphs, lines)]
             room = fit.context - empty.prompt_tokens

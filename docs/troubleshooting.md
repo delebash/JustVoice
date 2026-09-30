@@ -22,6 +22,13 @@ session are the usual JustVoice culprit, and the loading screen offers
 **Stop them and retry**. See
 [GPU → Engines left over from an earlier session](gpu.md#engines-left-over-from-an-earlier-session).
 
+**A chapter says "no dialogue found", or every line went to the Narrator.**
+Nothing in its text was read as speech. Check Overview → **Speech marks**: Auto
+reads double quotes, single quotes, guillemets and German marks, but if the
+book mixes them it may pick the wrong one — set it to the book's own style and
+re-analyze. Speech after a dash isn't read in any setting. See
+[Studio → Speech marks](studio.md#speech-marks).
+
 **A voice preview or engine load answers 500 / 503 with an import error**
 — "Numba needs NumPy 2.0 or less", "No module named ...", or similar. That
 engine's Python environment does not contain what the engine expects, which

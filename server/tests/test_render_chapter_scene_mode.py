@@ -504,3 +504,70 @@ def test_strict_passes_when_every_line_has_a_voice(tmp_db, monkeypatch):  # noqa
         scene_id="scene-1", preset_id=None, st=_fake_state(personas), strict=True,
     )
     assert len(lines) == 2
+
+
+# ─── Leave out dialogue tags (2026-09-30, extraction/tags.py) ─────────────
+
+
+def _tagged_chapter(db, *, leave_out: bool, narrator: str | None = "persona-narr"):
+    """“Come here,” said Mara, “now.” — then a paragraph of narration."""
+    import json
+
+    scene = _make_project_with_scene(db)
+    if leave_out:
+        db.query(Project).filter(Project.id == scene.project_id).one().metadata_json = json.dumps(
+            {"leave_out_tags": True})
+    rows = [
+        ("“Come here,”", "persona-mara", "tag", 0),
+        ("said Mara,", narrator, "narration", 0),
+        ("“now.”", "persona-mara", "tag", 0),
+        ("She sat down.", narrator, "narration", 1),
+    ]
+    for pos, (text, persona, source, para) in enumerate(rows):
+        b = _add_block(db, scene.id, pos, text, persona)
+        b.source = source
+        b.metadata_json = json.dumps({"paragraph_idx": para})
+    db.commit()
+
+
+_VOICED = {
+    "persona-mara": _make_persona("persona-mara", voice_id="voice-mara"),
+    "persona-narr": _make_persona("persona-narr", voice_id="voice-narr"),
+}
+
+
+def test_a_tag_only_line_is_left_out_when_the_project_says_so(tmp_db, monkeypatch):  # noqa: F811
+    session_factory, _engine = tmp_db
+    _patch_session(monkeypatch, session_factory)
+    db = session_factory()
+    _tagged_chapter(db, leave_out=True)
+    db.close()
+    lines, _ = render_chapter_api._resolve_scene_to_lines(
+        scene_id="scene-1", preset_id=None, st=_fake_state(_VOICED), strict=True)
+    assert [ln.text for ln in lines] == ["“Come here,”", "“now.”", "She sat down."]
+
+
+def test_tags_are_read_when_the_switch_is_off(tmp_db, monkeypatch):  # noqa: F811
+    session_factory, _engine = tmp_db
+    _patch_session(monkeypatch, session_factory)
+    db = session_factory()
+    _tagged_chapter(db, leave_out=False)
+    db.close()
+    lines, _ = render_chapter_api._resolve_scene_to_lines(
+        scene_id="scene-1", preset_id=None, st=_fake_state(_VOICED), strict=True)
+    assert [ln.text for ln in lines] == ["“Come here,”", "said Mara,", "“now.”", "She sat down."]
+
+
+def test_a_left_out_tag_never_blocks_the_render(tmp_db, monkeypatch):  # noqa: F811
+    # A tag with no speaker would refuse the chapter — but it isn't read.
+    session_factory, _engine = tmp_db
+    _patch_session(monkeypatch, session_factory)
+    db = session_factory()
+    _tagged_chapter(db, leave_out=True)
+    blk = db.query(Block).filter(Block.text == "said Mara,").one()
+    blk.speaker_id = None
+    db.commit()
+    db.close()
+    lines, _ = render_chapter_api._resolve_scene_to_lines(
+        scene_id="scene-1", preset_id=None, st=_fake_state(_VOICED), strict=True)
+    assert "said Mara," not in [ln.text for ln in lines]

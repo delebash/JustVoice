@@ -1638,6 +1638,12 @@ class ScriptLine(BaseModel):
     flags: list[int] = Field(default_factory=list)
     # The block's whole metadata — Undo puts it back exactly.
     metadata: dict = Field(default_factory=dict)
+    # Only a dialogue tag, and the project leaves those out of the audio
+    # (Overview → Leave out dialogue tags, extraction/tags.py): shown "Left out".
+    left_out: bool = False
+    # Rendered takes on the line — Merge says how many it would delete. The
+    # chapter page fills it; the grid leaves it 0.
+    takes: int = 0
 
 
 class ScriptFlag(BaseModel):

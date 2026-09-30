@@ -192,6 +192,36 @@ export function swap(lines, ids) {
     }));
 }
 
+/**
+ * "✎ Edit…" → Save: the line's new words, as one change Undo can take back.
+ * Nothing when the words are blank or unchanged.
+ */
+export function editText(lines, id, text) {
+  const line = lines.find((ln) => ln.id === id);
+  const words = (text ?? "").trim();
+  if (!line || !words || words === line.text) return [];
+  // Only the words go back: a speaker Undo never re-sends a line's text.
+  return [{ id, before: { text: line.text }, after: { text: words } }];
+}
+
+/**
+ * Can the ticked lines merge? Two or more readable lines that sit next to each
+ * other — {ok, ids, takes} with `ids` in reading order and `takes` the rendered
+ * takes merging deletes (every line's but the first), or {ok: false, reason}.
+ * `lines` is every line of the chapter, as the server orders them.
+ */
+export function mergeState(lines, ids) {
+  const want = new Set(ids);
+  const at = lines.map((ln, i) => (want.has(ln.id) ? i : -1)).filter((i) => i >= 0);
+  if (at.length < 2) return { ok: false, reason: "Tick two or more lines that sit next to each other." };
+  if (at.some((i) => !isReadable(lines[i]))) return { ok: false, reason: "Only spoken or narrated lines can be merged." };
+  if (at[at.length - 1] - at[0] !== at.length - 1) {
+    return { ok: false, reason: "Only lines that sit next to each other can be merged." };
+  }
+  const picked = at.map((i) => lines[i]);
+  return { ok: true, ids: picked.map((ln) => ln.id), takes: picked.slice(1).reduce((n, ln) => n + (ln.takes || 0), 0) };
+}
+
 /** The lines as they will read once `changes` land — the page shows them at once. */
 export function applyLocally(lines, changes) {
   const byId = new Map(changes.map((c) => [c.id, c.after]));
@@ -199,6 +229,7 @@ export function applyLocally(lines, changes) {
     const after = byId.get(ln.id);
     if (!after) return ln;
     const next = { ...ln };
+    if ("text" in after) next.text = after.text;
     if ("speaker_id" in after) next.speaker_id = after.speaker_id;
     if ("source" in after) next.source = after.source;
     if (after.source === "corrected") {
@@ -212,8 +243,10 @@ export function applyLocally(lines, changes) {
 
 // ── Undo ──────────────────────────────────────────────────────────────────
 //
-// Newest first, since the chapter was opened; leaving the chapter clears it.
-// An entry is one action (a set, a swap, a "Looks right") and all its changes.
+// Newest first, since the chapter was opened; leaving the chapter clears it,
+// and so do an Analyze, a split and a merge — they change which lines exist.
+// An entry is one action (a set, a swap, a "Looks right", an edit) and all
+// its changes.
 
 export function pushUndo(stack, changes, label) {
   return changes.length ? [{ label, changes }, ...stack] : stack;
