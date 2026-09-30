@@ -8,6 +8,10 @@
   shutdown now answers from this machine without a token, as the health check and the
   token settings already did; from anywhere else it is still refused
   ([Settings reference](settings-reference.md))
+- **A model whose speculative-decoding draft won't load fails fast when another program
+  holds the GPU memory.** It used to restart the AI engine and try again first, which can't
+  free another program's memory; now it says at once what is holding it. With nothing else
+  on the GPU it still restarts once ([GPU](gpu.md))
 - **A speech engine that stops cleanly now logs exit code 0.** Every clean stop used to
   log exit code 1, so a real failure looked the same as a normal one
 - **Books in single quotes, guillemets or German marks now have dialogue.** Only
