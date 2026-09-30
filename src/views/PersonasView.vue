@@ -722,7 +722,8 @@ onMounted(async () => {
       <template #footer>
         <span class="jv-spacer" />
         <UiButton intent="secondary" label="Cancel" @click="closeEditor" />
-        <UiButton intent="primary" label="Save" :disabled="!dirty" @click="savePersona" />
+        <UiButton intent="primary" label="Save" :disabled="!dirty || !draft.name.trim()"
+          :title="draft.name.trim() ? '' : 'A persona needs a name'" @click="savePersona" />
       </template>
     </AppModal>
 

@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from ..app_state import get_state
 from ..database import get_db
 from ..database.models import Project, Speaker
-from ..errors import not_found
+from ..errors import bad_request, conflict, not_found
 from ..models import CreatePersonaRequest, Persona, PersonaList
 from .extraction_api import RunUsage
 
@@ -97,10 +97,31 @@ async def persona_usage_detail(
     )
 
 
+def _persona_name(name: str | None, *, besides: str | None = None) -> str:
+    """The name a persona may have, or a refusal (decided 2026-09-29): a persona
+    must have a name, and names are unique across the library — case and extra
+    spaces don't count. A persona is a voice in the library, so its name is the
+    library's; a person's per-book name lives on the speaker. The exact-name
+    auto-cast (`_speaker_helpers.persona_named`) depends on it."""
+    from ._speaker_helpers import same_name
+
+    clean = " ".join((name or "").split())
+    if not clean:
+        raise bad_request("A persona needs a name.")
+    want = same_name(clean)
+    for p in get_state().personas.list():
+        if p.id != besides and same_name(p.name) == want:
+            raise conflict(
+                f'A persona called "{p.name}" already exists. Persona names are unique — '
+                "rename one of them first."
+            )
+    return clean
+
+
 @router.post("/v1/personas", response_model=Persona, status_code=201)
 async def create_persona(body: CreatePersonaRequest) -> Persona:
     return get_state().personas.create(
-        body.name,
+        _persona_name(body.name),
         body.voice_id,
         body.default_delivery,
         voice_instruct=body.voice_instruct,
@@ -125,9 +146,11 @@ async def get_persona(id: str) -> Persona:
 
 @router.put("/v1/personas/{id}", response_model=Persona)
 async def update_persona(id: str, body: CreatePersonaRequest) -> Persona:
+    if get_state().personas.get(id) is None:
+        raise not_found(f"persona {id}")
     p = get_state().personas.update(
         id,
-        name=body.name,
+        name=_persona_name(body.name, besides=id),
         voice_id=body.voice_id,
         default_delivery=body.default_delivery,
         voice_instruct=body.voice_instruct,

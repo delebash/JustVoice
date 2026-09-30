@@ -225,9 +225,13 @@ def test_add_casts_a_new_speaker_with_the_persona_of_exactly_its_name(client, mo
     Add makes the speaker already cast with it. A first name alone is not
     that name, and two personas sharing the name mean neither."""
     pid, scene_id = _import_project(client)
+    from justvoice.app_state import get_state
+
     brick = client.post("/v1/personas", json={"name": "Brick Halvorn"}).json()
+    # Two personas of one name: the API refuses the second since 2026-09-29, but a
+    # library from before then can hold them — the store makes them here.
     for _ in range(2):
-        client.post("/v1/personas", json={"name": "Anna"})
+        get_state().personas.create("Anna")
     r = client.post(f"/v1/projects/{pid}/speakers/promote", json={"candidates": [
         {"name": "brick  halvorn"}, {"name": "Brick"}, {"name": "Anna"}]})
     assert r.status_code == 200, r.text

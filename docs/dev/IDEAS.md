@@ -21,6 +21,8 @@ The holding pen for unscheduled JustVoice ideas — same charter as JW's
   - **Discover's evidence can start mid-quote** (`" Haldane Threll had come down …`).
   - **"Assigned Narrator to Narrator."** — the Cast toast when a persona and speaker share a
     name; "Narrator now plays Narrator." or naming it once reads better.
+  - **Toasts show HTTP status codes** — "Save failed 409 Conflict: A persona called …";
+    the words after the colon are the message, the code is noise.
   - **Remove with no lines** asks "Remove Old Sedge from the cast?" with an empty body; "They
     have no lines yet." would read less like a missing message.
   - **The shared-cache question is asked only in AI Settings** (the kit's Quick Setup band);

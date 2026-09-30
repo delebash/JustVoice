@@ -49,9 +49,26 @@ row per persona:
 | Voice | The voice it's built on, or *no voice yet* |
 | Used by | Who it plays, as *speaker — book*: `June — Stillwater`. The same speaker name in several books reads `Narrator — Stillwater · Emberfall`. A persona that plays no one reads **— not used yet —** |
 
-Personas have **no name rule**. Two personas can share a name, and the *Used by*
-column tells them apart. The name rule belongs to speakers, which are unique
-within a book (see [Studio · Discover](studio.md#discover)).
+### Names
+
+**Every persona has a name, and no two personas share one** — across your whole
+library, with case and extra spaces not counting ("Gravel old man", "gravel  OLD
+man" and " Gravel old man " are the same name). Creating or renaming a persona
+into a name another persona has is refused: *A persona called "Gravel old man"
+already exists. Persona names are unique — rename one of them first.* **Save**
+stays off while the name is blank.
+
+A persona is a voice, so name it for how it sounds — "Narrator (warm)", "Gravel
+old man" — not for one book's person. The person's name belongs to the
+**speaker**, and speaker names are unique within a book instead, so every book
+can have its own speaker called Narrator (see [Studio · Discover](studio.md#discover)).
+
+Unique names are what make **casting by name** dependable: a new speaker whose
+name is exactly a persona's name arrives already cast with it. A persona you
+call exactly "Narrator" is the one **+ Add Narrator** casts; for a book that
+needs a different narrator voice, cast its Narrator speaker by hand in Cast.
+(Personas made before 2026-09-29 could share a name. If two still do, a new
+speaker of that name matches neither and arrives uncast; rename one to fix it.)
 
 ### Deleting
 

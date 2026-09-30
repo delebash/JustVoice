@@ -661,26 +661,70 @@ def _uv_candidates() -> list[Path]:
     return out
 
 
-def _check_uv_available() -> str:
-    """Resolve uv — bundled sidecar first, then PATH. Returns an absolute path.
+def _uv_runs(path) -> bool:
+    """Does this file actually run as uv? Being a file named uv is not enough:
+    on 2026-09-29 a 0-byte `uv.exe` left in `src-tauri/target/debug` (first on
+    PATH under `tauri dev`) shadowed the real one, and every engine install died
+    with "[WinError 193] %1 is not a valid Win32 application"."""
+    try:
+        p = Path(path)
+        if not p.is_file() or p.stat().st_size == 0:
+            return False
+        r = subprocess.run([str(p), "--version"], capture_output=True, text=True, timeout=20)
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return r.returncode == 0 and "uv" in (r.stdout or "").lower()
 
-    Raises InstallError only when neither exists, which in a correctly built
-    release should be unreachable.
+
+def _path_uvs() -> list[str]:
+    """Every uv on PATH, in PATH order — `shutil.which` gives only the first,
+    and the first may be the broken one."""
+    exe = "uv.exe" if sys.platform == "win32" else "uv"
+    out: list[str] = []
+    seen: set[str] = set()
+    first = shutil.which("uv")
+    for hit in [first, *(str(Path(d) / exe) for d in os.environ.get("PATH", "").split(os.pathsep) if d)]:
+        if hit and os.path.normcase(hit) not in seen and Path(hit).is_file():
+            seen.add(os.path.normcase(hit))
+            out.append(hit)
+    if first and os.path.normcase(first) not in seen:
+        out.insert(0, first)
+    return out
+
+
+def _check_uv_available() -> str:
+    """Resolve uv — bundled sidecar first, then PATH. Returns a path that RUNS.
+
+    A candidate that exists but does not run (empty, truncated, the wrong
+    file) is skipped, and if nothing runs the error names the bad files rather
+    than surfacing Windows' "[WinError 193]". Raises InstallError when no uv
+    is found at all, which in a correctly built release should be unreachable.
     """
+    bad: list[str] = []
     for cand in _uv_candidates():
         if cand.is_file():
-            return str(cand)
-    uv_path = shutil.which("uv")
-    if not uv_path:
+            if _uv_runs(cand):
+                return str(cand)
+            bad.append(str(cand))
+    for hit in _path_uvs():
+        if _uv_runs(hit):
+            if bad:
+                log.warning("uv: skipped %s — present but not a working uv", ", ".join(bad))
+            return hit
+        bad.append(hit)
+    if bad:
         raise InstallError(
-            "uv was not found beside the server binary or on PATH. A release build "
-            "ships it as a sidecar, so this usually means a broken install — "
-            "reinstall JustVoice. For a dev checkout, install uv from "
-            "https://docs.astral.sh/uv/ (macOS/Linux: "
-            "`curl -LsSf https://astral.sh/uv/install.sh | sh`, "
-            "Windows: `irm https://astral.sh/uv/install.ps1 | iex`)."
+            "uv was found but doesn't run: " + ", ".join(bad) + ". The file is empty or "
+            "broken — delete it, or reinstall uv (https://docs.astral.sh/uv/), then try again."
         )
-    return uv_path
+    raise InstallError(
+        "uv was not found beside the server binary or on PATH. A release build "
+        "ships it as a sidecar, so this usually means a broken install — "
+        "reinstall JustVoice. For a dev checkout, install uv from "
+        "https://docs.astral.sh/uv/ (macOS/Linux: "
+        "`curl -LsSf https://astral.sh/uv/install.sh | sh`, "
+        "Windows: `irm https://astral.sh/uv/install.ps1 | iex`)."
+    )
 
 
 def _uv_env() -> dict[str, str]:

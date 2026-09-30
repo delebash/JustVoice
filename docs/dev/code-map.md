@@ -47,7 +47,7 @@ training jobs stay on the persona** — they belong to the voice.
 
 | Field | What it does |
 |---|---|
-| `name`, `language`, `avatar_path` | identity. **No name rule** — two personas may share a name; "Used by (speaker — book)" on the Personas page tells them apart |
+| `name`, `language`, `avatar_path` | identity. `name` is unique across the library (case and extra spaces aside) and never blank — `personas_api._persona_name` |
 | `voice_id` | the instrument. **Not** an FK — voices are JSON manifests, the column carries the id verbatim |
 | `voice_instruct` | the spoken-delivery instruction. **The only persona text that reaches the synth.** Composed into `delivery.instruct` and consumed by **Qwen3 CustomVoice alone** — `luxtts/engine.py` contains no instruct read and its manifest declares `instruct_field: False`, and Qwen3 Base's clone call never passes it. This row said "Qwen3 CustomVoice, LuxTTS" until 2026-08-17, as did the persona editor's own label |
 | `note` | a short note on how it sounds (replaced `personality`, the character sheet, 2026-09-29). Read by Generate's Compose / Rewrite (`personas_api._require_persona_with_note` refuses without one) and by Smart-assign as the persona's `tone`. **Never reaches the synth** |
@@ -89,7 +89,10 @@ which creates speakers only — never personas).
 **Names are unique within a book — for speakers** (2026-09-29):
 `same_name` + `refuse_same_name` (409, `_speaker_helpers.py:70`), checked on add,
 rename and promote. Imports don't check — the book's people arrive as they are.
-Personas have no name rule.
+**Persona names are unique across the library** (2026-09-29):
+`personas_api._persona_name` trims the name, refuses a blank one (400) and a name
+another persona has (409), case and extra spaces aside — on create and rename.
+`persona_named` still returns None for two older personas that share a name.
 
 **The narrator** is the speaker whose `role_label` is `"narrator"` (else one
 named "Narrator") — `_speaker_helpers.narrator_speaker_id`,

@@ -2,6 +2,15 @@
 
 ## v0.1.0
 
+- **Persona names are unique, and a persona must have a name.** A persona is a voice
+  in your library, so no two share a name (case and extra spaces don't count);
+  creating or renaming into a taken name is refused, and Save stays off while the name
+  is blank — the dialog used to save a persona with no name at all. It also makes
+  casting by exact name dependable ([Personas → Names](personas.md#names))
+- **Engine installs skip a broken uv.** An empty `uv.exe` ahead of the real one on the
+  path made every engine install fail with "[WinError 193]". The app now passes over a
+  uv that doesn't run, and if none runs it names the bad file instead
+  ([Speech engines](engines.md))
 - **ACX mastering now meets ACX.** A chapter mastered for ACX used to come out too loud
   — about −17 LUFS with its peak near −0.5 dB — because the dynamics step ran after the
   loudness step and undid it; ACX QC then failed it. The order is fixed: an ACX chapter now
@@ -49,9 +58,8 @@
   Narrator if you have one — and moves the narration with no speaker to it
   ([Personas → The Narrator](personas.md#the-narrator))
 - **Speaker names are unique within a book.** One book can't have two speakers with
-  the same name; adding or renaming into a clash is refused and says so. Personas
-  have no name rule — the persona list's **Used by** column tells two of the same
-  name apart ([Studio → Discover](studio.md#discover))
+  the same name; adding or renaming into a clash is refused and says so
+  ([Studio → Discover](studio.md#discover))
 - **Delete several personas at once.** Tick them in the persona list, then **Delete
   N selected** ([Personas](personas.md#deleting-several-at-once))
 - **Switching Studio steps keeps your place in Script.** Coming back finds the same

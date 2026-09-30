@@ -1908,12 +1908,38 @@ WHY:    Both are hardcoded, against the "no hardcoded operator-tunable values" i
 OPEN:   which gap is right, and a setting for it.
 GO:     needed
 
-### FINDING — a persona can be saved with no name
-STATE:  FINDING 2026-09-29 (walkthrough, adversarial). Personas → + New persona, type a name,
-        clear it, Save → "Persona created", a row with "?" and no name. `CreatePersonaRequest.name`
-        has no minimum and the dialog's Save stays enabled. (The blank row was deleted.)
-OPEN:   refuse a blank name on the server and disable Save while it is blank.
-GO:     needed
+### Persona names are unique across the library, and a persona must have a name
+STATE:  DECIDED 2026-09-29 — "go and your rec on the other fixes", on the user's "I thought we
+        are not allowing duplicate names in persona? do you think we should allow dup or did we
+        decided unique name per project" and the rec as given: "persona names unique across the
+        whole library (ignoring case and extra spaces), plus a persona must have a name."
+        · "A persona is a library item now, not a person in a book. Per-book uniqueness doesn't
+          mean anything for personas any more. The per-book identity lives on the speaker
+          ('Narrator' in each book), and the persona names the voice ('Narrator (warm)', 'Gravel
+          old man')."
+        · "The exact-name auto-cast depends on it. With two personas called 'Narrator', a new
+          Narrator speaker silently matches neither and arrives uncast."
+        · "Creating or renaming into a taken name would be refused with a clear message, the
+          same way speakers work. The same change fixes the empty-name bug the walkthrough
+          found."
+        · The trade-off, as given: "you can have only one 'Narrator' persona. If different books
+          need different narrator voices, you'd name them for the voice … and cast each book's
+          Narrator speaker yourself."
+        Supersedes, for personas, the split's "personas have no name rule". Speaker names stay
+        unique within a book.
+FINDING 2026-09-29 (walkthrough, adversarial), folded in: Personas → + New persona, type a name,
+        clear it, Save → "Persona created", a row with "?" and no name. (The blank row was
+        deleted.)
+BUILT:  2026-09-29 — `personas_api._persona_name` on POST and PUT: trims, refuses blank (400
+        "A persona needs a name."), refuses a name another persona has (409 'A persona called
+        "X" already exists. Persona names are unique — rename one of them first.'), case and
+        extra spaces aside; PUT on an unknown id stays 404. PersonasView: Save off while the
+        name is blank. Tests in test_unique_names_in_a_book.py (unique, blank, rename);
+        test_discover_speakers makes its two same-named personas through the store (older data
+        can hold them; `persona_named` still matches neither). Checked by clicks on the real
+        app: blank → Save off; "narrator" and a rename into "steady BIG man" refused, nothing
+        changed. Your 9 personas were already distinct. Full server suite 855 passed. Docs
+        personas.md (Names), ai-features.md, code-map, whats-new.
 
 ### FINDING — unknown inline tags are read aloud
 STATE:  FINDING 2026-09-29 (walkthrough). The podcast demo's first line ends "[warm]"
@@ -1931,9 +1957,14 @@ STATE:  FINDING 2026-09-29 (walkthrough). Install → "[WinError 193] %1 is not 
         `target/debug` first on PATH, so `engines/manager._check_uv_available` →
         `shutil.which("uv")` found it. The file (untracked build output) was deleted; installs
         then worked.
-OPEN:   the resolver accepts any file named uv (`is_file()`), and the user sees the raw WinError —
-        skip an empty/non-runnable candidate (probe `uv --version`) and name the bad file.
-GO:     needed
+DECIDED 2026-09-29 — "your rec on the other fixes": "skip an empty/non-runnable candidate
+        (probe `uv --version`) and name the bad file" (this entry's OPEN, as written).
+BUILT:  2026-09-29 — `engines/manager.py`: `_uv_runs` (non-empty and `--version` says uv),
+        `_path_uvs` (every uv on PATH, not only which()'s first), `_check_uv_available` skips a
+        candidate that doesn't run (logged) and, when none runs, says "uv was found but doesn't
+        run: <file> … delete it, or reinstall uv". Tests in test_uv_resolution.py (skip, name
+        the file, empty never counts). Checked for real: a 0-byte uv.exe first on PATH is
+        skipped and E:\UV_TOOL_DIR\uv.exe is used. Docs whats-new.
 
 ### Switching Studio steps keeps Script where you left it
 STATE:  DECIDED 2026-09-29 — "your rec go", on the user's "this is a spa and navigating a in a

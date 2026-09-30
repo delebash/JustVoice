@@ -182,8 +182,8 @@ prompt (`speaker_attribution.identify`) used to list "people in the library,
 not in this cast" so the model could link nicknames to them. The library now
 holds voices, not people, so that list and its paragraph are gone; Discover's
 **In your library** status is worked out in code instead — a found name that is
-**exactly** the name of one persona in your library (two personas of that name
-match neither). The removal was measured on 2026-09-29 with `npm run
+**exactly** the name of a persona in your library (persona names are unique since
+2026-09-29; two older personas that still share a name match neither). The removal was measured on 2026-09-29 with `npm run
 eval:discover` (2 runs over *The Ninth Facet*, with some of its people taken out
 of the cast for the model to find) before it was made:
 

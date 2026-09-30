@@ -39,6 +39,7 @@ def test_bundled_uv_beside_the_server_binary_wins_over_path(tmp_path, monkeypatc
 
     monkeypatch.setattr(manager, "_uv_candidates", lambda: [bundled])
     monkeypatch.setattr(manager.shutil, "which", lambda _n: r"C:\somewhere\else\uv.exe")
+    monkeypatch.setattr(manager, "_uv_runs", lambda _p: True)   # order, not runnability
 
     assert manager._check_uv_available() == str(bundled)
 
@@ -46,14 +47,15 @@ def test_bundled_uv_beside_the_server_binary_wins_over_path(tmp_path, monkeypatc
 def test_falls_back_to_path_when_nothing_is_bundled(tmp_path, monkeypatch):
     """Dev checkouts have no bundled sidecar and must keep working."""
     monkeypatch.setattr(manager, "_uv_candidates", lambda: [tmp_path / "absent-uv"])
-    monkeypatch.setattr(manager.shutil, "which", lambda _n: "/usr/local/bin/uv")
+    monkeypatch.setattr(manager, "_path_uvs", lambda: ["/usr/local/bin/uv"])
+    monkeypatch.setattr(manager, "_uv_runs", lambda _p: True)
 
     assert manager._check_uv_available() == "/usr/local/bin/uv"
 
 
 def test_missing_everywhere_raises_something_actionable(tmp_path, monkeypatch):
     monkeypatch.setattr(manager, "_uv_candidates", lambda: [tmp_path / "absent-uv"])
-    monkeypatch.setattr(manager.shutil, "which", lambda _n: None)
+    monkeypatch.setattr(manager, "_path_uvs", lambda: [])
 
     with pytest.raises(manager.InstallError) as e:
         manager._check_uv_available()
@@ -117,3 +119,39 @@ def test_venv_creation_passes_the_pin_and_has_no_silent_fallback(monkeypatch, tm
     assert "--python" in argv
     assert argv[argv.index("--python") + 1] == manager.ENGINE_PYTHON_VERSION
     assert sys.executable not in argv, "must not pin to the running interpreter"
+
+
+def test_a_uv_that_does_not_run_is_skipped(tmp_path, monkeypatch):
+    """2026-09-29: a 0-byte uv.exe first on PATH (a stale Tauri placeholder in
+    target/debug) made every install fail with "[WinError 193]". A file that
+    does not run is passed over for the next one that does."""
+    exe = "uv.exe" if sys.platform == "win32" else "uv"
+    empty = tmp_path / "stale" / exe
+    empty.parent.mkdir()
+    empty.write_bytes(b"")
+    good = str(tmp_path / "real" / exe)
+    monkeypatch.setattr(manager, "_uv_candidates", lambda: [empty])
+    monkeypatch.setattr(manager, "_path_uvs", lambda: [str(empty), good])
+    monkeypatch.setattr(manager, "_uv_runs", lambda p: str(p) == good)
+
+    assert manager._check_uv_available() == good
+
+
+def test_when_no_uv_runs_the_error_names_the_bad_file(tmp_path, monkeypatch):
+    exe = "uv.exe" if sys.platform == "win32" else "uv"
+    empty = tmp_path / exe
+    empty.write_bytes(b"")
+    monkeypatch.setattr(manager, "_uv_candidates", lambda: [])
+    monkeypatch.setattr(manager, "_path_uvs", lambda: [str(empty)])
+
+    with pytest.raises(manager.InstallError) as e:
+        manager._check_uv_available()
+    assert str(empty) in str(e.value) and "doesn't run" in str(e.value)
+    assert "WinError" not in str(e.value)
+
+
+def test_an_empty_file_never_counts_as_uv(tmp_path):
+    empty = tmp_path / "uv.exe"
+    empty.write_bytes(b"")
+    assert manager._uv_runs(empty) is False
+    assert manager._uv_runs(tmp_path / "missing-uv") is False
