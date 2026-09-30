@@ -231,6 +231,12 @@ async def _generate_via_manager(
     """
     mgr = get_manager()
     st = get_state()
+    # Every [tag] this engine can't perform goes, as in a chapter render
+    # (decided 2026-09-29) — Generate used to send the text untouched, so
+    # Kokoro read "[warm]" aloud as "warm".
+    from ..render_core import performable_text
+
+    req = req.model_copy(update={"text": performable_text(st, engine_id, req.text)})
     max_chunk_chars, crossfade_ms = _chunking_params(st.settings.get())
     request_delivery = req.delivery.model_dump(exclude_none=True) if req.delivery else {}
     # 3-tier voice tuning merge (#88): preset > request > persona defaults.
@@ -351,6 +357,9 @@ def _generate_via_inprocess(engine_id: str, req: GenerateRequest) -> Response:
     engines silently truncate.
     """
     st = get_state()
+    from ..render_core import performable_text
+
+    req = req.model_copy(update={"text": performable_text(st, engine_id, req.text)})
     engine = st.engines.get(engine_id)
     if engine is None:
         raise not_found(f"engine {engine_id}")

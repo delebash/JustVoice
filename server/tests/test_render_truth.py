@@ -318,7 +318,8 @@ def _master_state():
         ),
     )
     return SimpleNamespace(
-        settings=SimpleNamespace(get=lambda: SimpleNamespace(mastering=presets)),
+        settings=SimpleNamespace(get=lambda: SimpleNamespace(
+            mastering=presets, generation=SimpleNamespace(pause_between_lines_ms=600))),
         personas=SimpleNamespace(get=lambda pid: _persona("p1")),
     )
 

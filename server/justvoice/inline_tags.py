@@ -64,10 +64,24 @@ def parse(text: str) -> list[TextToken | TagToken]:
     return tokens
 
 
-def strip(text: str) -> str:
-    """Strip all known tags. Used by engines that don't support paralinguistic cues."""
-    out: list[str] = []
-    for t in parse(text):
-        if isinstance(t, TextToken):
-            out.append(t.text)
-    return "".join(out)
+def strip(text: str, keep: set[str] | frozenset[str] | None = None) -> str:
+    """Drop every `[tag]` whose name is not in `keep` — known or not.
+
+    Until 2026-09-29 this dropped only the tags `parse` knows (ATOMIC, SPANS)
+    and left any other `[word]` in the text, where the engine read it aloud:
+    the podcast demo's "[warm]" came out as the word "warm". A tag the
+    rendering engine does not list can never be performed, only spoken, so
+    it goes. `keep` = the names the engine performs; None or empty drops
+    every tag (an engine that takes none). Bracketed text such as "[sic]" is
+    a tag by this shape and is dropped too — decided with the rule.
+    """
+    keep = {" ".join(k.split()).lower() for k in keep} if keep else set()
+    return _STRIP_RE.sub(
+        lambda m: m.group(0) if " ".join(m.group(2).split()).lower() in keep else "", text
+    )
+
+
+# What `strip` treats as a tag: `_TAG_RE`'s shape, but a name may be a few words —
+# Chatterbox Turbo's `[clear throat]` is one tag, and on an engine without tags
+# it must go like `[cough]` does rather than be read aloud.
+_STRIP_RE = re.compile(r"\[(/?)([A-Za-z][\w ]{0,40}?)(?::([-\d.\w]+))?\]")

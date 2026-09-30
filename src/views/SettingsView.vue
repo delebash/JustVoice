@@ -167,7 +167,7 @@ const settings = ref({
   models:    {},
   engines:   { kokoro: { model_dir_override: "" }, default_tts_engine: "kokoro" },
   app:       { primary_use_case: "unset", secondary_use_cases: [], onboarding_shown: false },
-  generation:{ max_chunk_chars: 800, crossfade_ms: 50, stream_piece_chars: 200, normalize_audio: true, autoplay_on_generate: true },
+  generation:{ max_chunk_chars: 800, crossfade_ms: 50, stream_piece_chars: 200, pause_between_lines_ms: 600, normalize_audio: true, autoplay_on_generate: true },
 });
 const serverReachable = ref(false);
 
@@ -1403,6 +1403,30 @@ onMounted(() => {
             :marks="[{ value: 0, label: 'hard cut' }, { value: 50, label: 'sweet spot' }, { value: 200, label: 'blurred' }]"
             class="setting-row__slider"
             aria-label="Crossfade between chunks"
+            @change="saveDebounced"
+          />
+        </div>
+
+        <!-- Pause between lines (2026-09-29: one value for Render, export and ACX QC) -->
+        <div class="setting-row">
+          <div class="setting-row__head">
+            <div>
+              <div class="setting-row__title">Pause between lines</div>
+              <div class="setting-row__desc">
+                The silence between two lines of a chapter — the same in Studio's Render, the
+                exported audiobook and ACX QC, so what you audition is what ships. A line's own
+                pause from an import (a script's pause after) still wins for that line.
+              </div>
+            </div>
+            <span class="setting-row__value">{{ settings.generation.pause_between_lines_ms }} ms</span>
+          </div>
+          <UiSlider
+            v-model="settings.generation.pause_between_lines_ms"
+            :min="0" :max="3000" :step="50"
+            width="long" :show-number="false"
+            :marks="[{ value: 0, label: 'none' }, { value: 600, label: 'default' }, { value: 3000, label: 'long' }]"
+            class="setting-row__slider"
+            aria-label="Pause between lines"
             @change="saveDebounced"
           />
         </div>

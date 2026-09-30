@@ -283,6 +283,60 @@ def _tags_supported(state: AppState, engine_id: str) -> bool | None:
     return bool(manifest.capabilities.get("paralinguistic_tags"))
 
 
+def _capability_row(engine_id: str) -> Any | None:
+    """The capability row of the variant that will actually render (see
+    `_emotion_tagset` for why variant-precise), or None when there is none."""
+    from .engines.capability_details import lookup as lookup_capability
+
+    probe_ids: list[str] = []
+    try:
+        from .engines.manager import get_manager
+
+        mgr = get_manager()
+        probe_ids.append(mgr.current_variant_id(engine_id) or mgr.resolved_default_variant(engine_id))
+    except Exception:
+        # Registry backends and test fakes have no manager; the engine id is
+        # then the only thing to go on, which is correct for them.
+        pass
+    probe_ids.append(engine_id)
+    for pid in probe_ids:
+        if not pid:
+            continue
+        detail = lookup_capability(pid)
+        if detail is not None:
+            return detail
+    return None
+
+
+def performable_text(state: AppState, engine_id: str, text: str, tags_supported: bool | None = None) -> str:
+    """`text` with every `[tag]` this engine cannot perform removed (decided
+    2026-09-29: "drop every [word] tag the chosen engine doesn't list, not
+    only the ones the app recognises").
+
+    An engine that takes no tags loses them all. One that takes tags keeps
+    exactly the bracket tags its RENDERING variant lists — Chatterbox Turbo
+    keeps its vocabulary, Multilingual (one engine id, a tokenless variant)
+    keeps none. Without a capability row the parser's own set is kept, which
+    is what a tag engine got before. Shared by the chapter render, the cache
+    probe and Generate, so all three speak the same words."""
+    from .inline_tags import ATOMIC, SPANS
+
+    if tags_supported is None:
+        tags_supported = bool(_tags_supported(state, engine_id))
+    if not tags_supported:
+        return strip_tags(text)
+    row = _capability_row(engine_id)
+    if row is None:
+        return strip_tags(text, keep=ATOMIC | SPANS)
+    known = {
+        t.lower()
+        for tagset in row.inline_tags
+        if (tagset.syntax or "").startswith("[")
+        for t in tagset.tags
+    }
+    return strip_tags(text, keep=known)
+
+
 def _emotion_tagset(engine_id: str) -> Any | None:
     """The emotion tag set of the variant that will actually render, or None.
 
@@ -300,33 +354,15 @@ def _emotion_tagset(engine_id: str) -> Any | None:
     resolves Turbo's row for Turbo and Multilingual's tokenless row for
     Multilingual.
     """
-    from .engines.capability_details import lookup as lookup_capability
-
-    probe_ids: list[str] = []
-    try:
-        from .engines.manager import get_manager
-
-        mgr = get_manager()
-        probe_ids.append(mgr.current_variant_id(engine_id) or mgr.resolved_default_variant(engine_id))
-    except Exception:
-        # Registry backends and test fakes have no manager; the engine id is
-        # then the only thing to go on, which is correct for them.
-        pass
-    probe_ids.append(engine_id)
-
-    for pid in probe_ids:
-        if not pid:
-            continue
-        detail = lookup_capability(pid)
-        if detail is None:
-            continue
-        for tagset in detail.inline_tags:
-            if tagset.category == "emotion" and tagset.value_map:
-                return tagset
-        # The row resolved and simply has no emotion vocabulary. Do NOT fall
-        # through to the base engine's row — that is how Multilingual would
-        # inherit Turbo's tags.
+    row = _capability_row(engine_id)
+    if row is None:
         return None
+    for tagset in row.inline_tags:
+        if tagset.category == "emotion" and tagset.value_map:
+            return tagset
+    # The row resolved and simply has no emotion vocabulary. Do NOT fall
+    # through to the base engine's row — that is how Multilingual would
+    # inherit Turbo's tags.
     return None
 
 
@@ -426,9 +462,7 @@ def probe_line_cached(
     tags_supported = _tags_supported(state, engine_id)
     if tags_supported is None:
         return None
-    effective_text = text
-    if not tags_supported:
-        effective_text = strip_tags(effective_text)
+    effective_text = performable_text(state, engine_id, text, tags_supported)
     effective_text, ipa_map = _apply_lexicons(
         effective_text, lexicons, state,
         ipa_capable=_supports_phoneme_input(engine_id),
@@ -508,15 +542,14 @@ def render_line(
         if manifest is None:
             raise not_found(f"engine {engine_id}")
 
-    # Inline-tag stripping for engines that don't support paralinguistic cues
-    effective_text = text
+    # Every [tag] this engine can't perform goes (performable_text) — kept in
+    # lockstep with probe_line_cached, which derives the same text.
     tags_supported = (
         bool(engine.meta.supports_paralinguistic_tags)
         if engine is not None
         else bool(manifest.capabilities.get("paralinguistic_tags"))
     )
-    if not tags_supported:
-        effective_text = strip_tags(effective_text)
+    effective_text = performable_text(state, engine_id, text, tags_supported)
     effective_text, ipa_map = _apply_lexicons(
         effective_text, lexicons, state,
         ipa_capable=_supports_phoneme_input(engine_id),

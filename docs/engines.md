@@ -85,6 +85,13 @@ of any kind, so leaving `[laugh]` in the text would have it read out as a
 word. Tags belong to Chatterbox Turbo and MOSS-TTSD, where they are the
 model's own syntax.
 
+**A tag the rendering engine doesn't list is dropped, never spoken** (since
+2026-09-29) — in a chapter render and on Generate alike. Each engine keeps exactly
+the bracket tags its loaded variant lists; every other `[word]` goes, including
+one no engine knows (the podcast demo's old `[warm]` used to be read out as
+"warm") and ordinary bracketed text such as `[sic]`. An engine that takes no tags
+loses them all.
+
 **Emotion is the exception, and that is why it is a list.** `Emotion` is a
 nine-value label rather than a sentence, so it can compile two ways: into the
 instruction for engines that read prose, or into the engine's own token for
@@ -98,7 +105,8 @@ not offered while it is loaded. See [generate.md](generate.md).
 three register (`[narration]` `[dramatic]` `[advertisement]`) and nine
 non-verbal (`[cough]` `[laugh]` `[chuckle]` `[sigh]` `[gasp]` `[groan]`
 `[sniff]` `[clear throat]` `[shush]`). They are Turbo's alone — Multilingual
-shares the engine but not the tokenizer and reads them aloud as words.
+shares the engine but not the tokenizer, so on Multilingual they are dropped
+before rendering (they used to be read aloud as words).
 Resemble's model card documents only three by name, so the rest are declared
 from the checkpoint's reserved token ids and have not been verified by ear.
 

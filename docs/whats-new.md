@@ -2,6 +2,17 @@
 
 ## v0.1.0
 
+- **One pause between lines, everywhere.** Studio's Render joined lines with 250 ms
+  while the exported audiobook and ACX QC used 600 ms, so the chapter you listened to
+  was paced differently from the one you shipped. Both now use **Pause between lines**
+  in Settings → Generation pipeline (600 ms by default); a line's own pause from an
+  import still wins ([Studio → Render](studio.md#render))
+- **A tag the engine can't perform is dropped, not read aloud.** Only the tags the app
+  recognised used to be removed, so a `[warm]` was spoken as "warm". Now every
+  bracketed tag the rendering engine doesn't list is dropped — on Generate too, which
+  used to send text untouched — and Chatterbox Turbo keeps its own. Bracketed text
+  like `[sic]` is dropped the same way. The podcast demo loses its `[warm]`
+  ([Speech engines](engines.md))
 - **Persona names are unique, and a persona must have a name.** A persona is a voice
   in your library, so no two share a name (case and extra spaces don't count);
   creating or renaming into a taken name is refused, and Save stays off while the name

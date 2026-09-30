@@ -94,7 +94,7 @@ def _podcast() -> StandardImport:
             StandardScene(
                 id="intro", title="Ep. 42 — The codec episode", kind="segment",
                 lines=[
-                    StandardLine(character_id="sarah", text="Welcome back to Signal and Noise. I'm Sarah, that's Jin, and today we have Mave from the Open Audio Project. [warm]"),
+                    StandardLine(character_id="sarah", text="Welcome back to Signal and Noise. I'm Sarah, that's Jin, and today we have Mave from the Open Audio Project."),
                     StandardLine(character_id="jin", text="Mave, your team just shipped a codec that's half the bitrate of anything else out there. [curious]"),
                     StandardLine(character_id="mave", text="[laughs] Half on a good day. The trick is we stopped trying to preserve the waveform."),
                 ],

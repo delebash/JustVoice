@@ -681,10 +681,12 @@ and that every mapped tag is one the set declares. Turbo has no token for
 is a behaviour, not a state. Upstream documents three tags by name and says
 "and more" — the rest are declared from token ids and **unrendered here**.
 
-Latent, not fixed: `_tags_supported` reads engine-level manifest
-`CAPABILITIES`, and `chatterbox` declares `paralinguistic_tags: True` for the
-whole family — so a hand-typed `[laugh]` is not stripped for Multilingual,
-which has no such token. The emotion path is variant-precise; this one is not.
+**Fixed 2026-09-29:** `render_core.performable_text` drops every `[tag]` the
+RENDERING variant doesn't list (`_capability_row`, the same variant-precise probe
+the emotion path uses), so a hand-typed `[laugh]` no longer reaches Multilingual,
+and an unknown `[warm]` no longer reaches anything. `inline_tags.strip(text,
+keep=…)` does the dropping (multi-word tags like `[clear throat]` included);
+`render_line`, `probe_line_cached` and both Generate paths call it.
 
 **Qwen3 was the same bug and is fixed** (2026-08-22). It declared
 `paralinguistic_tags: True` on the strength of `inline_tags.py`'s docstring,

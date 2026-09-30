@@ -17,7 +17,7 @@ need your attention; this page is the operator config under `/v1/settings`.)
 | `training` | LoRA training knobs incl. validation split — see [Labs](labs.md) → Train. |
 | `models` | Model source URL overrides per engine/variant, for mirrors or pinned downloads. |
 | `engines` | Per-engine settings (GPU opt-in state, variants). See [Engines](engines.md). |
-| `generation` | Generation defaults incl. auto-chunking — see [Generate](generate.md). |
+| `generation` | Generation defaults incl. auto-chunking, and `pause_between_lines_ms` — the silence between a chapter's lines in Render, export and ACX QC (600) — see [Generate](generate.md), [Studio → Render](studio.md#render). |
 | `captures` | Dictation: push-to-talk chord, refinement — see [Dictation](dictation.md). |
 | `mcp` | One field: the default voice for agent `speak` calls — see [MCP server](mcp-server.md). |
 | `app` | `primary_use_case` (the Welcome pick; re-pick here) and app-level toggles. |

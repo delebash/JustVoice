@@ -613,6 +613,11 @@ Batch-render the project scene by scene. Each scene can bind a **render preset**
 status, and the render cache means an unchanged line costs nothing to re-render
 — cache hits are reported as such.
 
+Lines are joined with **Pause between lines** (Settings → Generation pipeline,
+600 ms by default) — the same pause in Render, in the exported audiobook and in
+ACX QC, so the chapter you audition is the chapter that ships. A line's own pause
+from an import (a script's `pause_after_ms`) still wins for that line.
+
 ### What a chapter needs before it renders
 
 A line's voice is found in three steps: the line's **speaker**, the **persona**

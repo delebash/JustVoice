@@ -119,6 +119,11 @@ class GenerationSettings(BaseModel):
     # max_chunk_chars ceiling above is a truncation guard, far too big to
     # buy any time-to-first-audio.
     stream_piece_chars: int = 200  # 80-800 in UI slider
+    # The silence between two lines of a chapter (decided 2026-09-29): ONE value
+    # for Studio's Render, the export and ACX QC, so what you audition is what
+    # ships. Until then Render used 250 ms and export/QC a hardcoded 600. A
+    # line's own pause (an import's pause_after_ms) still overrides it.
+    pause_between_lines_ms: int = 600  # 0-3000 in the UI
     normalize_audio: bool = True
     autoplay_on_generate: bool = True
 
@@ -1272,7 +1277,9 @@ class ChapterLine(BaseModel):
 
 
 class BetweenLines(BaseModel):
-    silence_ms: int = 250
+    # None = Settings → generation.pause_between_lines_ms (2026-09-29); a caller
+    # that sends a value still gets it.
+    silence_ms: int | None = None
 
 
 class RenderChapterRequest(BaseModel):

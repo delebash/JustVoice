@@ -1905,8 +1905,18 @@ STATE:  FINDING 2026-09-29 (walkthrough). Studio's Render (`POST /v1/render_chap
         with a hardcoded `600`. The Keystone: 505 s auditioned, 522 s exported.
 WHY:    Both are hardcoded, against the "no hardcoded operator-tunable values" invariant; and
         what you listen to is not what ships.
-OPEN:   which gap is right, and a setting for it.
-GO:     needed
+DECIDED 2026-09-29 — "your rec both go", on the rec as given: "one setting, Pause between
+        lines, default 600 ms, used by Studio's Render, export and ACX QC alike. It would sit in
+        Settings with the other render settings. A line's own pause from an import still
+        overrides it. Effect: what you audition matches what ships. Export stays exactly as it
+        is today; Studio's Render gets longer pauses."
+BUILT:  2026-09-29 — `GenerationSettings.pause_between_lines_ms = 600`; `BetweenLines.silence_ms`
+        is None by default (= the setting; a caller's value still wins); `render_chapter` and
+        `render_scene_to_wav` (export + QC) both read it. Settings → Generation pipeline:
+        "Pause between lines" slider (0-3000 ms). Tests `test_pause_between_lines.py` (both paths
+        take the setting; a sent value wins); the render_truth fake gained the setting. Live:
+        The Keystone's Render 505.19 s → 522.34 s = QC's figure; at 800 ms 532.14 s (+49 × 0.2 s);
+        set back to 600; QC all_ok. Docs studio.md (Render), settings-reference, whats-new.
 
 ### Persona names are unique across the library, and a persona must have a name
 STATE:  DECIDED 2026-09-29 — "go and your rec on the other fixes", on the user's "I thought we
@@ -1946,9 +1956,22 @@ STATE:  FINDING 2026-09-29 (walkthrough). The podcast demo's first line ends "[w
         (`demo_projects.py:97`); no engine declares `warm`, and `inline_tags.strip` removes only
         KNOWN tags, so it is spoken — Kokoro + Whisper: "Welcome back to the show. Warm, it is
         good to have you here."
-OPEN:   the demo text; and whether an unknown [word] is stripped (or flagged in Script) for an
-        engine that takes no tags.
-GO:     needed
+DECIDED 2026-09-29 — "your rec both go", on the rec as given: "when rendering, drop every
+        [word] tag the chosen engine doesn't list, not only the ones the app recognises. A tag
+        the engine doesn't know can never be performed, only spoken. Tags an engine does know
+        ([sigh] on Chatterbox, for example) keep working. Also take [warm] out of the podcast
+        demo's text. One consequence: bracketed text like [sic] would also be silent. In
+        narration that's usually what you want."
+BUILT:  2026-09-29 — `inline_tags.strip(text, keep=…)` drops every bracket tag not in `keep`
+        (multi-word ones like `[clear throat]` too); `render_core.performable_text` keeps exactly
+        the bracket tags the RENDERING variant lists (`_capability_row`, shared with the emotion
+        path) — none for an engine without tags, none for tokenless Chatterbox Multilingual (the
+        code-map's "latent, not fixed" `[laugh]` gap closes with it). `render_line`,
+        `probe_line_cached` and both Generate paths call it (Generate used to send text
+        untouched). The podcast demo loses "[warm]". Tests `test_performable_tags.py`; the
+        lockstep guard in test_emotion_wiring names `performable_text`. Live: Kokoro +
+        "Welcome back to the show. [warm] It is good to have you here." → Whisper: "Welcome
+        back to the show. It is good to have you here." Docs engines.md, code-map, whats-new.
 
 ### FINDING — every engine install failed under tauri dev: a 0-byte uv.exe
 STATE:  FINDING 2026-09-29 (walkthrough). Install → "[WinError 193] %1 is not a valid Win32

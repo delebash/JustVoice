@@ -500,7 +500,10 @@ async def render_chapter(req: RenderChapterRequest) -> Response:
     for kw in line_kwargs:
         rendered.append(render_line(st, **kw))
 
-    combined = concat_lines(rendered, silence_ms=req.between_lines.silence_ms)
+    gap = req.between_lines.silence_ms
+    if gap is None:
+        gap = st.settings.get().generation.pause_between_lines_ms
+    combined = concat_lines(rendered, silence_ms=gap)
 
     # Scene mode: the server decides the mastering target (request → preset →
     # project → kind) and returns a WAV monitor. Studio has never sent a
@@ -583,7 +586,8 @@ def render_scene_to_wav(st, scene_id: str, *, strict: bool = True, master: bool 
             use_cache=True,
         )
         rendered.append(rl)
-    combined = concat_lines(rendered, silence_ms=600)
+    # The same gap Studio's Render uses (was a hardcoded 600 until 2026-09-29).
+    combined = concat_lines(rendered, silence_ms=st.settings.get().generation.pause_between_lines_ms)
     target = _scene_master_target(scene_id, None, None)[0] if master else None
     wav, _applied, _fallback = _master_scene_pcm(combined, target)
     return wav

@@ -213,7 +213,8 @@ def test_the_cache_probe_applies_every_transform_the_render_does() -> None:
     probe report a hit that the render will miss."""
     probe = inspect.getsource(probe_line_cached)
     render = inspect.getsource(render_line)
-    for transform in ("strip_tags", "_apply_lexicons", "_apply_emotion_tag"):
+    # The tag drop is `performable_text` since 2026-09-29 (was a bare strip_tags).
+    for transform in ("performable_text", "_apply_lexicons", "_apply_emotion_tag"):
         assert transform in probe, f"{transform} missing from probe_line_cached"
         assert transform in render, f"{transform} missing from render_line"
 
