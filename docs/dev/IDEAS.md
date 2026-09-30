@@ -6,6 +6,52 @@ The holding pen for unscheduled JustVoice ideas — same charter as JW's
 
 ---
 
+- **2026-09-30 · audio.cpp as a second speech runtime, and two engines looked at**
+  (none started; all facts read from the upstream repos and model cards on
+  2026-09-30, nothing measured on this machine):
+  - **audio.cpp beside PyTorch, not instead of it.**
+    [`0xShug0/audio.cpp`](https://github.com/0xShug0/audio.cpp) is a native
+    (ggml, Apache-2.0) server for audio models — the same shape as the kit's
+    llama.cpp: a pinned binary plus GGUF files, Windows builds split CUDA 12.4 /
+    CUDA 13.3 / Vulkan / CPU like the kit's cuda12/cuda13 tiers. CUDA 12.4 build
+    439 MB + 579 MB runtime, Vulkan 57 MB, against ~4.4 GB of torch. Vulkan, Metal
+    and ROCm backends would serve the "all acceleration on every platform" ruling
+    where torch leaves AMD-on-Windows on CPU. Its own numbers (RTX 5090): Qwen3-TTS
+    1.83× faster than Python one-shot, 3.06× long-form; Q8 weights cut Qwen3 peak
+    VRAM ~25%. The server takes an inline reference clip and per-request options on
+    `/v1/audio/speech` and has explicit unload, idle-unload and a loaded-model cap.
+    **Why it can't replace the engines today:** Chatterbox Turbo is "testing" with
+    its built-in voice only (a reference clip is rejected — no cloning); Chatterbox
+    Multilingual has 19 of our 23 languages (no he/ja/ru/zh); LoRA adapters load
+    only for VibeVoice and YuE2, so every trained Qwen3/Chatterbox voice is lost,
+    and training stays PyTorch regardless; Qwen3 CustomVoice 0.6B isn't packaged;
+    LuxTTS and Whisper aren't supported; Kokoro's English needs eSpeak-ng (GPL-3),
+    which the release workflow doesn't bundle. The project is 99 days old (created
+    2026-06-23), one author wrote 473 of ~780 commits, 12 releases between 13 Aug
+    and 25 Sep; output is not bit-identical to PyTorch, so cached renders would
+    re-render and voices tuned by ear would shift. **If picked up:** a second
+    runtime behind the manifest seam, binary managed in the kit next to
+    llama.cpp's; first test Qwen3 1.7B against our PyTorch engine — same lines,
+    same seeds, time, VRAM, and by ear. Revisit replacement when Turbo clones, LoRA
+    loads for Qwen3 and Chatterbox, and the release pace settles.
+  - **Breeze TTS 2 — not added: non-commercial weights.**
+    [`BreezeBlue/Breeze-TTS-2`](https://huggingface.co/BreezeBlue/Breeze-TTS-2)
+    clones, takes written direction and inline vocal events in one model (today
+    that costs a LoRA run), on our Qwen3 stack (`qwen-tts==0.1.1`,
+    `transformers==4.57.3`, `torch==2.9.1`). Its licence: "No Commercial Purpose is
+    permitted… Any Commercial Purpose involving the Model Materials, a Derivative
+    Model, or an Output requires a separate written commercial license", with no
+    creator or small-business exception — the Higgs case, against the roster rule
+    that output must permit commercial use. Also en + zh only, 7.68 GB, ~7.7 GiB
+    VRAM on a 12 GB-minimum card, officially Linux-only. Comes back only if the
+    licence or the roster rule changes.
+  - **MiMo-V2.5-TTS — not an engine: no weights.** Xiaomi offers it only through
+    its API and MiMo Studio (their Hugging Face org has MiMo-V2.5-ASR, no TTS
+    repo). It could only be a cloud provider in `engines/tts_providers/`, with its
+    own adapter — chat-completions with an `audio` block, not `/v1/audio/speech`.
+    "Free for a limited time"; no stated terms on commercial use of the output;
+    the text and any cloning clip go to Xiaomi's servers.
+
 - **2026-09-30 · "Cut again from the text" for an edited chapter** — since
   2026-09-30 a chapter whose lines were edited (a word changed, a split, a merge)
   is re-analyzed as its lines stand, so a new Speech marks setting can't re-cut
