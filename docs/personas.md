@@ -1,175 +1,237 @@
 # Personas
 
-A **persona** is a named character: a voice, a note on how they sound, a note on who they are, and optional delivery / effects / lexicon overrides. Each persona maps to a Voice (see [voices.md](voices.md)).
+A **persona** is a finished spoken voice. It's a voice and its engine, plus
+speed, pitch, gain, spoken direction, effects and lexicon, and a short **note
+on how it sounds**. Personas live in your library, and you can use one in any
+book.
 
-## Why personas exist (vs just using voices)
+A persona is not a person. The people in a book are its **speakers**:
+[Studio · Discover](studio.md#discover) finds them and
+[Studio · Script](studio.md#script) gives lines to them. On
+[Studio · Cast](studio.md#cast), each speaker gets a persona. **One persona can
+play many speakers.** Change the persona once and every speaker it plays
+changes with it: in this book, in every other book, and in the next render.
 
-In an audiobook with 8 characters, "voice profile" and "character" are not the same thing. Two characters can share a voice (Twin A and Twin B use the same Chatterbox clone with different exaggeration tweaks). One character can use different voices in different chapters (flashback Mara at age 12 vs present-day Mara).
+| Word | What it is | Where it lives |
+|---|---|---|
+| **Persona** | A finished spoken voice: voice, engine, delivery, effects, lexicon, a note on how it sounds | Your library, used in any book |
+| **Speaker** | A person in one book: a name, the other names the text uses (*Also called*), and *Who they are* | One book |
+| **Cast** | Which persona plays each speaker | The speaker's persona |
 
-The Persona layer holds the **character sheet**, the **voice mapping** (which can change), and per-character delivery overrides. It survives voice changes.
+## Why a persona is separate from a speaker
 
-## The Narrator
+Until 2026-09-29 one record did both jobs. A persona was the person Discover
+found *and* the sound, so Discover made a voiceless persona for every name it
+found, and Cast needed a voice list to finish each one. Keeping the two apart
+does three things:
 
-A book's **narrator** is the voice of everything that isn't spoken: when
-[Studio · Script](studio.md) analyzes a chapter, every stretch of prose outside
-quote marks goes to it.
+- **Reuse without copies.** A steady narrator voice, a gruff dockhand voice or a
+  child's voice is made once and plays speakers in every book.
+- **Minor speakers can share a voice.** One persona can play thirty minor
+  speakers; tune it once and all thirty follow.
+- **Recasting doesn't lose the person.** A speaker's *Who they are* and *Also
+  called* stay on the speaker whichever persona plays them, so trying a
+  different voice never loses what Discover and Script know about them.
 
-**No book gets one on its own.** A project you create, or import, starts with
-no narrator — unless the manuscript itself has a character called *Narrator*,
-who then becomes it. On Studio's Cast step, tick **Narrator** on anyone in the
-cast, or use **Add Narrator**: it puts a persona called Narrator from your
-library that isn't in any book into the cast — so a deleted book's narrator is
-used again instead of piling up — and makes a new one only if there is none.
-Until a book has a narrator, Analyze leaves its narration with no speaker, and
-a chapter won't render; choosing one moves those lines to it.
+A book's lines, its cast and the corrections Script remembers all point at
+**speakers**. Generations, lexicons, audio channels, MCP bindings and training
+jobs stay on the **persona**, because they belong to the voice.
 
-The narrator is an ordinary persona — rename it, give it a voice, write its two notes,
-take it out of the cast or delete it, like any other. What makes it the
-project's narrator is its place in the cast, not anything about the persona:
-rename it and it is still the one the prose goes to.
+## The list
 
-**Anyone in the cast can be the narrator.** A book told in the first person has
-a narrator who also speaks — Watson tells *The Speckled Band* and talks in it —
-and both should be one voice. On Studio's Cast step, tick **Narrator** on their
-card. There is one narrator per project: the persona who had the role stays in
-the cast as an ordinary member, and the narrator's own box stays ticked until you
-tick someone else's. The narration Analyze decided moves to the new
-narrator at once; lines you set yourself stay where you put them.
+The Personas page lists your library with filter chips (**All · Used · Unused ·
+By project**), a search box that matches a persona's name or its note, and one
+row per persona:
 
-Deleting it (or taking it out of the cast) leaves the project with no narrator,
-and every line of narration with no speaker — a chapter won't render until they
-have one. It stays that way — restarting the app doesn't bring a Narrator back.
-Studio's Cast step offers **Add Narrator**, which brings one back and gives it
-the narration that has no speaker; Script's **Assign N → Narrator** does the
-same for a chapter. Cast it a voice early; a chapter whose narration has no
-voice won't render either.
+| Column | Shows |
+|---|---|
+| Persona | Its name, and the start of its note |
+| Voice | The voice it's built on, or *no voice yet* |
+| Used by | Who it plays, as *speaker — book*: `June — Stillwater`. The same speaker name in several books reads `Narrator — Stillwater · Emberfall`. A persona that plays no one reads **— not used yet —** |
 
-## Names
+Personas have **no name rule**. Two personas can share a name, and the *Used by*
+column tells them apart. The name rule belongs to speakers, which are unique
+within a book (see [Studio · Discover](studio.md#discover)).
 
-A name is unique **within a book**, not across your library. Two books can each
-have a *Narrator* or a *Mother*, but one cast can't hold two people with the
-same name — Script's speaker list, Analyze and Discover all find people by name
-within a book. Case and extra spaces don't count: *mara* and *Mara* are the
-same name.
+### Deleting
 
-- Adding someone to a cast — Studio's Cast step, or Discover's **＋ Add** — is
-  refused when the book already has someone by that name.
-- Renaming a persona is refused when a book it's in already has someone by the
-  new name; the message says which book.
-- A persona that's in no book can have any name.
-- An import keeps the book's characters as the manuscript has them, even two
-  with the same name.
+**Delete** on a row asks first. If the persona plays anyone, the confirmation
+says who: *"It plays Nettle (The Ninth Facet) — that speaker loses its
+persona."* The speakers stay in their books and keep their lines, but they have
+no persona until Cast gives them another. A chapter won't render while any of
+its speakers has no persona. The voice and lexicon are kept, and the toast has
+**Undo**.
 
-The persona list's **Used in** column names the books each persona is in, so
-two personas with the same name are told apart.
+### Deleting several at once
 
-## Deleting several at once
+Tick personas in the list (the box in the header ticks every one shown), then
+use **Delete N selected**. One confirmation names them and, when any of them
+plays someone, how many speakers lose their persona and which: *"2 speakers lose
+their persona and need another in Cast before rendering: Nettle (The Ninth
+Facet), Old Sedge (The Ninth Facet)."* Each persona goes exactly as a single
+**Delete** does. Voices and lexicons are kept.
 
-Tick personas in the list — the box in the header ticks every one shown — then
-**Delete N selected**. One confirmation lists them and says which are in a
-book's cast. Each goes exactly as a single **Delete** does: it leaves every
-cast, and its lines lose their speaker. Voices and lexicons are kept.
+## The editor
 
-## The editor has two halves
+Click a row, or **Edit**, to open the editor. **＋ New persona** opens it blank,
+and **Save** creates the persona. Cast's **Edit their persona →** and a persona
+row's ✎ open the editor straight onto that persona, so a speaker's voice is one
+click from the cast.
 
-The persona editor is split, and the split is the whole point: **one half
-changes what you hear, the other half doesn't.** Before this split a single
-"Personality" box did both jobs, so adding a sentence about a character's
-childhood could quietly change how they were performed.
+The header shows **Used in N projects** when the persona plays anyone.
+
+### Name, language, note
+
+| Field | Used for |
+|---|---|
+| Name | How the persona shows on Cast, in *Used by*, and in Generate's persona list. |
+| Language | The persona's language tag. |
+| Note on how it sounds | A sentence or two about the voice, for example *"Warm and unhurried, a little gravel at the bottom of the range."* **Never heard**: Compose and Rewrite on the Generate page read it, and so does Smart-assign when it matches speakers to personas. |
+| Avatar path | Optional. |
 
 ### How they sound
 
-Voice, engine override, lexicon override, the delivery overlay, the effects
-chain — and **Spoken delivery**, the free-text instruction for engines that
-accept one.
+Everything in this half reaches the synthesizer.
 
-### How they're written
+| Field | Used for |
+|---|---|
+| Voice | Which TTS voice speaks. |
+| Engine override | Makes this persona use a different engine from its voice's own. |
+| Lexicon override | A lexicon for this persona only (for example, street slang for one voice). It overrides the project lexicon for every speaker this persona plays. |
+| Spoken delivery | The `instruct` / style prompt for engines that take direction: how a line is *performed*. |
+| Default delivery overlay | Speed / pitch / gain / pause defaults for this voice (Tier-2). |
+| Effects chain | Reverb, EQ and compression, applied after the TTS renders. |
 
-**Character sheet** — prose about who the character is. It drives Compose,
-Rewrite, casting suggestions and the game-export sidecar, and it **never
-reaches the TTS engine**.
+### Used by
 
-## Fields
+Below the fields, **Used by** lists every speaker the persona plays as
+`🎭 June — Stillwater · 61 lines`, with the total line count beside the heading.
+**Open Cast →** takes you to that book's Cast step. When the persona plays
+speakers in several books there is one button per book: **Open Stillwater Cast
+→**.
 
-| Field | Half | Used for |
-|---|---|---|
-| Name | — | Display in cast lists, in Script tab attribution dropdowns. |
-| Also called | — | Other names the text uses for them — a nickname, a surname, a title ("Ode" for Odeline Marran), separated by commas. Discover treats them as this persona, not a newcomer, and Script's attribution matches "said Ode" to her. A JustWrite import fills it from the book's aliases, and Discover's **＋ Add** adds the name the text used when it links a persona from your library. |
-| Language | — | Per-persona language tag. |
-| Voice | Sound | Which TTS voice speaks these lines. |
-| Spoken delivery | Sound | The `instruct` / style prompt for engines that take direction. How the line is *performed*. |
-| Engine override | Sound | Per-persona engine selection. Useful when one character sounds best in Chatterbox while the rest use Kokoro. |
-| Lexicon override | Sound | A persona-scoped lexicon (e.g. street slang for Old Crow). Overrides any project-level lexicon for this character only. |
-| Default delivery overlay | Sound | Speed / pitch / gain / pause defaults for this character (Tier-2). |
-| Effects chain | Sound | Reverb, EQ, compression applied after the TTS renders. |
-| Character sheet | Prose | Who they are. Drives Compose / Rewrite, Smart-assign's casting suggestions, and the game-export sidecar. |
+## Spoken delivery: the one text field that changes the audio
 
-> Role, gender and pronouns are **not** persona fields yet. Smart-assign and the
-> attribution prompt accept them, but nothing on the persona supplies them —
-> tracked in `docs/dev/TASKS.md`.
+**Spoken delivery** is a short description of how the voice speaks, for example
+*"Clipped, world-weary noir delivery. Dry wit. Boston accent in stressful
+moments."* or *"Eager, optimistic, ends sentences with rising intonation."*
 
-## Spoken delivery — the one field that changes the audio
+**Qwen3-TTS CustomVoice is the only engine that reads it.** It arrives as that
+model's `instruct` field when JustVoice renders a line this persona plays. The
+model uses it to adjust *delivery* (pacing, intonation, vocal warmth) without
+changing the manuscript words. Every other engine ignores the field, including
+Qwen3 **Base**, which clones voices but drops the instruction. (This page named
+LuxTTS here until 2026-08-17; its adapter reads no instruction at all.)
 
-**Spoken delivery** is a short description of how the character speaks. Examples: "Clipped, world-weary noir delivery. Dry wit. Boston accent in stressful moments." or "Eager, optimistic, ends sentences with rising intonation."
+The editor tells you which case you're in. A line under the box names the
+engine this persona's voice uses and says whether it takes direction. Trust
+that line over any list: it reads the engine's real capability. Cast shows the
+same verdict as a tag on each persona row (**✓ written**, **tags** or **✗
+none**).
 
-**Qwen3-TTS CustomVoice is the only engine that reads it.** It arrives as that model's `instruct` field when JustVoice renders a block voiced by this persona, and the model uses it to adjust *delivery* — pacing, intonation, vocal warmth — without changing the manuscript words. Every other engine ignores the field, including Qwen3 **Base**, which clones but drops the instruction. (This page named LuxTTS here until 2026-08-17; its adapter reads no instruction at all.)
-
-The editor tells you which case you're in: a line under the box names the engine your cast voice uses and says whether it takes direction. Trust that line over any list — it reads the engine's real capability.
-
-The flow is automatic — no checkbox, no extra dispatch. Just write a delivery note, render a chapter, and an instruct-capable engine picks it up.
+There is no checkbox or extra step. Write a delivery note, render a chapter, and
+an instruct-capable engine picks it up.
 
 ### How it combines with the line
 
-Spoken delivery is the character's **standing** instruction, not the last word. At render time three things join into the one instruction the engine receives, most specific last:
+Spoken delivery is the voice's **standing** instruction, not the last word. At
+render time three things join into the one instruction the engine receives,
+most specific last:
 
-1. this persona's **Spoken delivery** — who they are
+1. this persona's **Spoken delivery**
 2. the **Emotion** label, if one is set
 3. the line's own **direction**, from the Chapters editor's `+ direction` button
 
-So a persona reading *"gravel-voiced harbour-master, always weary"* on a line marked *"shouting over the wind"* arrives as `gravel-voiced harbour-master, always weary. shouting over the wind`. A single hint passes through untouched — nothing reformats a note you wrote by hand.
+So a persona whose delivery reads *"gravel-voiced harbour-master, always weary"*
+on a line marked *"shouting over the wind"* sends the engine `gravel-voiced
+harbour-master, always weary. shouting over the wind`. A single hint passes
+through untouched; nothing reformats a note you wrote by hand.
 
-A render preset's `delivery.instruct` replaces the persona's in that first slot when both are set — useful for a chapter-specific delivery (whispered, intimate) without changing the persona's baseline. The line's direction still rides on the end.
+A render preset's `delivery.instruct` replaces the persona's in that first slot
+when both are set. That's useful for a chapter-specific delivery (whispered,
+intimate) without changing the persona's baseline. The line's direction still
+goes on the end.
 
-**Emotion is portable in a way this field is not.** Prose only reaches Qwen3; the nine-value Emotion label also compiles into a tag for Chatterbox Turbo, so it survives recasting a character onto a cloning engine. See [generate.md](generate.md) and [engines.md](engines.md).
+**Emotion is portable in a way this field is not.** Written direction only
+reaches Qwen3, but the nine-value Emotion label also compiles into a tag for
+Chatterbox Turbo, so it survives moving a speaker onto a cloning engine. See
+[generate.md](generate.md) and [engines.md](engines.md).
 
-## Character sheet — the prose half
+## The note: what the AI reads about the voice
 
-The sheet is what the LLM features read, and nothing else:
+The note is for the language-model features, and nothing else reads it:
 
-### Compose 🎲 and Rewrite ✏️
+- **Compose 🎲 and Rewrite ✏️ on the Generate page.** Generate has no book, so
+  there is no speaker to read. Both buttons use the chosen persona's note as the
+  voice to write in. Rewrite shows a preview; accept it to replace the textarea,
+  or discard it to keep the original. Both buttons are disabled until the
+  persona has a note. The server refuses with *"{name} has no note on how it
+  sounds — write one on the Personas page to use Compose / Rewrite."*
+- **Smart-assign on Cast** sends each persona's name, its voice's gender and
+  language, and its note (as the persona's tone) to your language model, which
+  matches them against the speakers.
 
-The character sheet is the system prompt for both:
+**Rewrite in character** in Studio · Script is different. It rewrites a line as
+the *speaker*, so it reads the speaker's *Who they are* on Cast, not the
+persona's note (see [Studio · Script](studio.md#script)).
 
-- **Generate view** — type a line, click ✏️ Rewrite. The LLM rewrites the line in the persona's voice. A preview appears; accept to replace the textarea, discard to keep the original.
-- **Studio Script** — on a chapter, right-click the text of a spoken line that has a speaker. Same preview-then-accept flow; accepted text replaces the line's text.
+Rewriting is always explicit and never happens at render time. The manuscript's
+words are only changed when you ask for a rewrite and accept it.
 
-Both refuse with a clear message when the sheet is empty — there is nothing to write in the voice of.
+## The Narrator
 
-Rewrite is always explicit — never auto-applied at render time. The manuscript words are sacred unless you ask for a rewrite and accept it.
+A book's narrator is a **speaker**, not a persona. When
+[Studio · Script](studio.md#script) analyzes a chapter, it gives the narrator
+every stretch of prose outside quote marks. The narrator is cast like anyone
+else: give it a persona on Cast, and that persona reads the narration. One
+steady narrator persona can narrate every book you make.
 
-Routes through your AI Features pin for `persona_rewrite` (see `ai-features.md`).
+**No book gets a narrator on its own.** A project you create or import starts
+with none, unless the manuscript has its own speaker called *Narrator*, who then
+becomes the narrator. There are two ways to get one on Cast:
 
-### Casting
+- **Add Narrator** makes a speaker called Narrator, cast with your persona called
+  *Narrator* if the library has exactly one by that name. If the book already
+  has a speaker called Narrator, that speaker takes the role instead. Narration
+  with no speaker moves to it.
+- **Tick Narrator** on any speaker's card. A book told in the first person has
+  a narrator who also speaks (Watson tells *The Speckled Band* and talks in it),
+  and both should be one voice. There is one narrator per book. The speaker who
+  had the role stays in the cast as an ordinary speaker. The narration Analyze
+  decided moves to the new narrator at once; lines you set yourself stay where
+  you put them.
 
-Smart-assign sends the first 200 characters of each sheet to the LLM as that character's description (see below).
+Until a book has a narrator, Analyze leaves its narration with no speaker, and a
+chapter won't render. Removing the narrator from the cast returns its lines to
+no speaker in the same way. Script's **Assign N → Narrator** and the render's
+**Assign all to Narrator** (each shows the narrator's name) send lines with no
+speaker to the narrator once there is one.
 
-## Auto-create from JustWrite (and other imports)
+## Imports
 
-When you import a manuscript, every character in the source becomes a Persona automatically, keyed on `(imported_from, imported_id)`. Re-importing the same source uses the existing persona rows instead of creating duplicates. See [Import & export](import-and-export.md).
+An import (JustWrite, CSV, SRT, podcast script) turns the people the source
+lists into the book's **speakers**, not personas. Each speaker is keyed on the source's own
+id, so re-importing the same book reuses its speakers instead of duplicating
+them. An import keeps them exactly as the source has them, even two with the
+same name. Each new speaker is cast with the persona of exactly its
+name if your library has one. See [Import & export](import-and-export.md).
 
-**What an import fills.** Everything the source knows about a character is
-sheet material, so it all lands in the **character sheet**: the one-liner and
-any aliases, followed by a `Voice hint:` block carrying gender, age and role.
-The **Spoken delivery** box starts **empty** — "female, age 34, protagonist"
-is a casting hint, not a direction to the TTS, and guessing one would change
-how your book sounds without you asking. That box is yours to write.
+Everything the source knows about a person lands in the speaker's **Who they
+are**: the one-liner, then a `Voice hint:` block carrying gender, age and role.
+Its aliases become the speaker's **Also called**. Nothing is written into any
+persona's Spoken delivery. *"female, age 34, protagonist"* is a casting hint, not
+a direction to the TTS, and guessing a direction would change how your book
+sounds without you asking.
 
 ## Smart-assign
 
-The Cast tab's **Smart-assign** button sends every character + every voice to your LLM and asks for the best mapping. Pre-flight:
+**✨ Smart-assign** on Studio · Cast sends the book's speakers, the narrator
+aside (name, *Also called*, *Who they are*), and your personas (name, voice gender, language, note)
+to your language model, which proposes a persona for each speaker. The matches
+apply straight away. It is a starting point, so listen to each assignment before
+rendering and change any you disagree with by clicking another persona.
 
-1. Click ❓ chips in the voice library → cycle to set gender on any unset voices.
-2. Confirm Gender + Pronouns on every main persona.
-3. Then click Smart-assign.
-
-Smart-assign is a starting point — review every assignment before rendering. Voices from different providers can coexist in one cast (OpenAI's voice for the protagonist, Kokoro for villagers, Chatterbox clone for the narrator).
+Personas on different engines and providers can share one cast, for example an
+OpenAI voice for the protagonist, Kokoro for the villagers and a Chatterbox clone
+for the narrator. Cast warns when a cast spans several engines (chapters swap
+engines while rendering) or uses online voices (billed per use).

@@ -75,8 +75,8 @@ function wireKit(app) {
     labAdapters: {
       speaker_attribution: attributionLabAdapter,
       // Render-only (Part 6, 2026-08-06): smart-assign's Lab keeps the
-      // generic run; the raw characterId → voiceId object renders as
-      // readable Character → Voice names.
+      // generic run; the raw speakerId → personaId object renders as
+      // readable Speaker → Persona names.
       smart_assign: { render: SmartAssignResult },
       // Every refine Lab run takes production's real path (/v1/refine/lab-run:
       // composed system + few-shot history) — the card's Lab over the

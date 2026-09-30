@@ -11,11 +11,13 @@ JV's seeds, and success/failure cases register a fake adapter under the preset's
 Affordance Table (what the endpoint must guarantee):
   ✅ 400 when text is empty
   ✅ 404 when persona doesn't exist
-  ✅ 400 when persona has no personality
+  ✅ 400 when persona has no note (how it sounds — 2026-09-29; the character
+     sheet moved to the speaker, whose rewrite is /v1/speakers/{id}/rewrite)
   ✅ 501 when no LLM provider is registered
   ✅ 502 when the LLM call raises
   ✅ 200 with {original, rewritten, persona_id} on success
-  ✅ The persona's personality reaches the system prompt via the template row
+  ✅ The persona's note reaches the system prompt via the template row
+     (its {{personality}} variable keeps the name)
 """
 
 from __future__ import annotations
@@ -45,14 +47,14 @@ from justvoice.seed_presets import (
 )
 
 
-def _make_persona(personality: str | None = "Test personality") -> Persona:
+def _make_persona(note: str | None = "Warm, low, unhurried.") -> Persona:
     """Build a Persona with all required fields."""
     now = datetime.now(timezone.utc)
     return Persona(
         id="persona-mara",
         name="Mara",
         voice_id="voice-mara",
-        personality=personality,
+        note=note,
         default_delivery={},
         created_at=now,
         updated_at=now,
@@ -146,17 +148,17 @@ def test_rewrite_empty_text_400(rewrite_client):
     assert r.status_code == 400
 
 
-# ─── 3. 400 when persona has no personality ─────────────────────────────
+# ─── 3. 400 when persona has no note ────────────────────────────────────
 
 
-def test_rewrite_persona_without_personality_400(rewrite_client):
-    rewrite_client.set_persona(_make_persona(personality=None))
+def test_rewrite_persona_without_a_note_400(rewrite_client):
+    rewrite_client.set_persona(_make_persona(note=None))
     r = rewrite_client.client.post(
         "/v1/personas/persona-mara/rewrite",
         json={"text": "Hello."},
     )
     assert r.status_code == 400
-    assert "personality" in r.json()["detail"].lower()
+    assert "no note on how it sounds" in r.json()["detail"]
 
 
 # ─── 4. 501 when no LLM provider registered ─────────────────────────────
@@ -214,11 +216,11 @@ def test_rewrite_success_returns_original_and_rewritten(rewrite_client):
     assert body["persona_id"] == "persona-mara"
 
 
-# ─── 7. The template row renders the personality into the system ────────
+# ─── 7. The template row renders the note into the system ───────────────
 
 
-def test_rewrite_passes_personality_into_system_prompt(rewrite_client):
-    rewrite_client.set_persona(_make_persona(personality="Boston dialect, dry sarcasm."))
+def test_rewrite_passes_the_note_into_system_prompt(rewrite_client):
+    rewrite_client.set_persona(_make_persona(note="Boston dialect, dry sarcasm."))
     adapter = rewrite_client.register(
         lambda model: LLMResponse(text="Rewritten!", model=model)
     )
@@ -226,7 +228,7 @@ def test_rewrite_passes_personality_into_system_prompt(rewrite_client):
         "/v1/personas/persona-mara/rewrite",
         json={"text": "Hello."},
     )
-    # The row's system template carried the personality…
+    # The row's system template carried the note…
     assert "Boston dialect" in adapter.last["system"]
     assert "Rewrite the user's line" in adapter.last["system"]
     # …and its {{text}} user half rendered the request text.

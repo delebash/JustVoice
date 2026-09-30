@@ -43,8 +43,11 @@ def _seed(db, n_blocks: int = 3):
     scene = Scene(id="scene-1", project_id=proj.id, position=0, title="Ch 1")
     db.add(scene)
     db.flush()
+    from tests.speaker_fixtures import speaker_played_by
+
+    sid = speaker_played_by(db, scene.id, "p1")
     for i in range(n_blocks):
-        db.add(Block(scene_id=scene.id, position=i, text=f"line {i}", persona_id="p1"))
+        db.add(Block(scene_id=scene.id, position=i, text=f"line {i}", speaker_id=sid))
     db.flush()
     db.commit()
 

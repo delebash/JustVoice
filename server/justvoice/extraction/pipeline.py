@@ -42,7 +42,7 @@ class AttributionRow:
     """Result row for one segment.
 
     Block columns set by POST /v1/scenes/{id}/analyze on persist:
-      persona_id           ← speaker (when not "unknown" or "narrator")
+      speaker_id           ← speaker (when not "unknown" or "narrator")
       extraction_confidence ← confidence
       source               ← source
     """
@@ -50,7 +50,7 @@ class AttributionRow:
     paragraph_idx: int
     kind: str  # "narration" | "dialogue"
     text: str
-    speaker: str  # persona_id | "narrator" | "unknown"
+    speaker: str  # speaker_id | "narrator" | "unknown"
     confidence: float
     # What the PIPELINE can decide — exactly these five, all assigned below.
     # ("auto" was never one of them; it belongs to RoutePick.source, a
@@ -461,7 +461,7 @@ def _attribute_in_pieces(request, settings, pick, paragraphs, segments, prompt_c
     # explicit-prompt door.
     action = f"speaker_attribution.{pick.name}"
     base_vars = {
-        "characters": format_characters(prompt_cast),
+        "speakers": format_characters(prompt_cast),
         "corrections": format_corrections(prompt_corrections),
     }
     n_para = len(paragraphs)
@@ -639,7 +639,7 @@ def analyze_scene(
     prompt_cast, handle_to_id = prompt_handles(request.characters)
     id_to_handle = {v: k for k, v in handle_to_id.items()}
     prompt_corrections = [
-        {**c, "persona_id": id_to_handle.get(c.get("persona_id"), c.get("persona_id"))}
+        {**c, "speaker_id": id_to_handle.get(c.get("speaker_id"), c.get("speaker_id"))}
         for c in (request.corrections or [])
     ]
 

@@ -32,7 +32,6 @@ Adding a new migration:
 from __future__ import annotations
 
 import logging
-import sqlite3
 
 from sqlalchemy import inspect, text
 
@@ -49,8 +48,6 @@ def run_migrations(engine) -> None:
     # idempotent — safe to run on a fresh DB AND on an upgraded one.
     _migrate_generations_ok_status_and_preset(engine, inspector, tables)
     _migrate_voice_profiles_personality(engine, inspector, tables)
-    _migrate_personas_absorb_profile_fields(engine, inspector, tables)
-    _migrate_drop_personas_is_builtin(engine, inspector, tables)
     _migrate_drop_voice_profile_tables(engine, inspector, tables)
     _migrate_render_presets_effects_chain(engine, inspector, tables)
     _migrate_render_presets_voice_nullable(engine, inspector, tables)
@@ -73,14 +70,6 @@ def _add_column(engine, table: str, column_sql: str, label: str) -> None:
         conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column_sql}"))
         conn.commit()
     logger.info("Added %s column to %s", label, table)
-
-
-def _supports_drop_column(engine) -> bool:
-    """Whether `ALTER TABLE ... DROP COLUMN` is supported by the dialect +
-    runtime. SQLite gained the feature in 3.35 (Mar 2021)."""
-    if engine.dialect.name != "sqlite":
-        return True
-    return tuple(int(p) for p in sqlite3.sqlite_version.split(".")[:3]) >= (3, 35, 0)
 
 
 # ── per-table migrations ──────────────────────────────────────────────────
@@ -118,57 +107,6 @@ def _migrate_voice_profiles_personality(engine, inspector, tables: set[str]) -> 
         _add_column(engine, "voice_profiles", "personality TEXT", "personality")
     if "default_delivery" not in columns:
         _add_column(engine, "voice_profiles", "default_delivery TEXT", "default_delivery")
-
-
-def _migrate_personas_absorb_profile_fields(engine, inspector, tables: set[str]) -> None:
-    """Adds voice-styling columns to personas as part of the Profile-kill
-    rollout (Slice 1 of the approved plan).
-
-    Persona becomes the sole identity layer; effects/delivery/personality
-    and friends move from VoiceProfile onto Persona. The actual data
-    migration (copying voice_profile rows into orphan Persona records) is
-    in `migrate_profiles.py` and runs at AppState init.
-    """
-    if "personas" not in tables:
-        return
-    columns = _get_columns(inspector, "personas")
-    if "voice_id" not in columns:
-        _add_column(engine, "personas", "voice_id VARCHAR", "voice_id")
-    if "language" not in columns:
-        _add_column(engine, "personas", "language VARCHAR DEFAULT 'en'", "language")
-    if "avatar_path" not in columns:
-        _add_column(engine, "personas", "avatar_path VARCHAR", "avatar_path")
-    if "personality" not in columns:
-        _add_column(engine, "personas", "personality TEXT", "personality")
-    if "default_delivery" not in columns:
-        _add_column(engine, "personas", "default_delivery TEXT", "default_delivery")
-    if "effects_chain" not in columns:
-        _add_column(engine, "personas", "effects_chain TEXT", "effects_chain")
-    if "imported_id" not in columns:
-        _add_column(engine, "personas", "imported_id VARCHAR", "imported_id")
-
-
-def _migrate_drop_personas_is_builtin(engine, inspector, tables: set[str]) -> None:
-    """Drop `personas.is_builtin` (2026-09-29: no built-in personas — the
-    Narrator is an ordinary persona). A one-time drop by the user's word
-    ("your rec go on both"), an exception to the no-migrations rule: the
-    column is `NOT NULL` with no default in a database made from the old
-    model, so every persona insert fails while it stays. Delete this once
-    no database carries the column.
-
-    The column takes part in no foreign key, so SQLite's DROP COLUMN works.
-    """
-    if "personas" not in tables:
-        return
-    if "is_builtin" not in _get_columns(inspector, "personas"):
-        return
-    if not _supports_drop_column(engine):
-        logger.warning("personas.is_builtin left in place: this SQLite has no DROP COLUMN")
-        return
-    with engine.connect() as conn:
-        conn.execute(text("ALTER TABLE personas DROP COLUMN is_builtin"))
-        conn.commit()
-    logger.info("Dropped is_builtin column from personas")
 
 
 def _migrate_blocks_extraction_telemetry(engine, inspector, tables: set[str]) -> None:

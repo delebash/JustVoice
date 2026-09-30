@@ -83,7 +83,7 @@ def _podcast() -> StandardImport:
         source="demo",
         project=StandardProject(
             name="Demo — Signal & Noise ep. 42", kind="podcast",
-            description="seeded demo · 3 hosts", language="en-US",
+            description="seeded demo · 3 speakers", language="en-US",
         ),
         characters=[
             StandardCharacter(id="sarah", name="Sarah", voice_hint="bright host"),

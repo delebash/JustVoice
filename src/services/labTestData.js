@@ -37,23 +37,19 @@ async function chapterProse(sceneId) {
 
 // Projects, personas and voices are SHARED state: they come from their stores,
 // which every writer in the app reloads. Fetching them here was a private second
-// copy — the Lab's picker went on listing yesterday's projects (2026-08-15). The
-// per-project cast has no store and stays a direct read.
+// copy — the Lab's picker went on listing yesterday's projects (2026-08-15). A
+// book's speakers have no store and stay a direct read.
 async function listProjects() {
   const store = useProjectsStore();
   await store.ensureLoaded();
   return store.items;
 }
 
+// A book's speakers (2026-09-29) — id · name · aliases · description.
 async function castOf(projectId) {
-  const personas = usePersonasStore();
-  const [cast] = await Promise.all([
-    api().request(`/v1/projects/${projectId}/cast`),
-    personas.ensureLoaded(),
-  ]);
-  const byId = Object.fromEntries(personas.items.map((p) => [p.id, p]));
-  const rows = (cast?.cast || []).map((c) => byId[c.persona_id]).filter(Boolean);
-  if (!rows.length) throw new Error("That project has no cast yet.");
+  const r = await api().request(`/v1/projects/${projectId}/speakers`);
+  const rows = r?.speakers || [];
+  if (!rows.length) throw new Error("That project has no speakers yet.");
   return rows;
 }
 
@@ -80,31 +76,43 @@ export function castNamesBlock(rows) {
   return rows.map((p) => p.name).filter(Boolean).join("\n");
 }
 
-// smart_assign {{characters}} — mirrors smart_assign_api._format_characters
-// over the fields StudioView's production call sends (id · name ·
-// personality, the character sheet).
+// smart_assign {{speakers}} — mirrors smart_assign_api._format_characters
+// over the fields Studio · Cast's production call sends: the book's speakers
+// (id · name · aliases · description — "who they are").
 export function smartAssignCharactersBlock(rows) {
   return rows
-    .map((p) => {
-      const bits = [`id="${p.id}"`, `name="${p.name}"`];
-      const desc = p.personality;
-      if (desc) bits.push(`description="${String(desc).slice(0, 200)}"`);
+    .map((sp) => {
+      const bits = [`id="${sp.id}"`, `name="${sp.name}"`];
+      if (sp.aliases?.length) bits.push(`aliases="${sp.aliases.join(", ")}"`);
+      if (sp.description) bits.push(`description="${String(sp.description).slice(0, 200)}"`);
       return `- ${bits.join(", ")}`;
     })
     .join("\n");
 }
 
-// smart_assign {{voices}} — mirrors smart_assign_api._format_voices over the
-// fields StudioView's production call sends (id · name · gender · language).
+// smart_assign {{personas}} — mirrors smart_assign_api._format_voices over the
+// fields Studio · Cast's production call sends: the personas (id · name · its
+// voice's gender · tone = the note on how it sounds · language), 2026-09-29.
 export function smartAssignVoicesBlock(rows) {
   return rows
     .map((v) => {
       const bits = [`id="${v.id}"`, `name="${v.name || v.id}"`];
       if (v.gender) bits.push(`gender="${v.gender}"`);
+      if (v.tone) bits.push(`tone="${v.tone}"`);
       if (v.language) bits.push(`language="${v.language}"`);
       return `- ${bits.join(", ")}`;
     })
     .join("\n");
+}
+// The personas as Cast sends them to Smart-assign.
+async function personasAsVoices() {
+  const [personas, voices] = await Promise.all([allPersonas(), allVoices().catch(() => [])]);
+  if (!personas.length) throw new Error("No personas yet — make one on the Personas page.");
+  const voiceById = Object.fromEntries(voices.map((v) => [v.id, v]));
+  return personas.map((p) => ({
+    id: p.id, name: p.name, gender: voiceById[p.voice_id]?.gender || null,
+    language: p.language || null, tone: p.note || null,
+  }));
 }
 
 // voice_gender {{voices}} — mirrors voices_api's lines ("- Name — description")
@@ -129,18 +137,17 @@ async function presetsBlock() {
 // show_notes {{script}} — mirrors projects_api's show-notes builder
 // ("## Title" + "WHO: text" per block, NARRATION when unassigned).
 async function scriptOf(projectId) {
-  const personas = usePersonasStore();
-  const [scenes] = await Promise.all([
+  const [scenes, speakers] = await Promise.all([
     api().request(`/v1/projects/${projectId}/scenes`),
-    personas.ensureLoaded(),
+    api().request(`/v1/projects/${projectId}/speakers`),
   ]);
-  const nameById = Object.fromEntries(personas.items.map((p) => [p.id, p.name]));
+  const nameById = Object.fromEntries((speakers?.speakers || []).map((sp) => [sp.id, sp.name]));
   const parts = [];
   for (const scene of scenes || []) {
     parts.push(`## ${scene.title || "Segment"}`);
     const blocks = await api().request(`/v1/scenes/${scene.id}/blocks`);
     for (const b of blocks || []) {
-      parts.push(`${(b.persona_id && nameById[b.persona_id]) || "NARRATION"}: ${b.text}`);
+      parts.push(`${(b.speaker_id && nameById[b.speaker_id]) || "NARRATION"}: ${b.text}`);
     }
   }
   const script = parts.join("\n").slice(0, 24000);
@@ -162,7 +169,16 @@ export const LAB_TEST_SOURCES = [
     label: "cast",
     kind: "cast",
     async list() {
-      return (await listProjects()).map((p) => ({ id: p.id, label: `Cast of ${p.name}` }));
+      return (await listProjects()).map((p) => ({ id: p.id, label: `Speakers of ${p.name}` }));
+    },
+  },
+  {
+    id: "library",
+    label: "personas",
+    kind: "personas",
+    async list() {
+      const n = (await allPersonas().catch(() => [])).length;
+      return n ? [{ id: "all", label: `All personas (${n})` }] : [];
     },
   },
   {
@@ -206,7 +222,7 @@ export const LAB_TEST_SOURCES = [
 
 const ATTR_PICKERS = [
   { source: "chapters", fill: async (id) => ({ paragraphs: await chapterProse(id) }) },
-  { source: "cast", fill: async (id) => ({ characters: castNamesBlock(await castOf(id)) }) },
+  { source: "cast", fill: async (id) => ({ speakers: castNamesBlock(await castOf(id)) }) },
 ];
 
 export const LAB_TEST_ACTIONS = {
@@ -215,13 +231,13 @@ export const LAB_TEST_ACTIONS = {
   "speaker_attribution.identify": {
     pickers: [
       { source: "chapters", fill: async (id) => ({ manuscript: await chapterProse(id) }) },
-      { source: "cast", fill: async (id) => ({ known_characters: castNamesBlock(await castOf(id)) }) },
+      { source: "cast", fill: async (id) => ({ known_speakers: castNamesBlock(await castOf(id)) }) },
     ],
   },
   smart_assign: {
     pickers: [
-      { source: "cast", fill: async (id) => ({ characters: smartAssignCharactersBlock(await castOf(id)) }) },
-      { source: "voices", fill: async () => ({ voices: smartAssignVoicesBlock(await allVoices()) }) },
+      { source: "cast", fill: async (id) => ({ speakers: smartAssignCharactersBlock(await castOf(id)) }) },
+      { source: "library", fill: async () => ({ personas: smartAssignVoicesBlock(await personasAsVoices()) }) },
     ],
   },
   voice_gender: {
@@ -244,8 +260,10 @@ export const LAB_TEST_ACTIONS = {
         source: "personas",
         fill: async (id) => {
           const p = (await allPersonas()).find((x) => x.id === id);
-          if (!p?.personality?.trim()) throw new Error("That persona has no personality text yet.");
-          return { personality: p.personality.trim() };
+          // Compose / Rewrite read the persona's note on how it sounds
+          // (2026-09-29); the template variable keeps its name.
+          if (!p?.note?.trim()) throw new Error("That persona has no note on how it sounds yet.");
+          return { personality: p.note.trim() };
         },
       },
     ],
@@ -256,8 +274,10 @@ export const LAB_TEST_ACTIONS = {
         source: "personas",
         fill: async (id) => {
           const p = (await allPersonas()).find((x) => x.id === id);
-          if (!p?.personality?.trim()) throw new Error("That persona has no personality text yet.");
-          return { personality: p.personality.trim() };
+          // Compose / Rewrite read the persona's note on how it sounds
+          // (2026-09-29); the template variable keeps its name.
+          if (!p?.note?.trim()) throw new Error("That persona has no note on how it sounds yet.");
+          return { personality: p.note.trim() };
         },
       },
     ],

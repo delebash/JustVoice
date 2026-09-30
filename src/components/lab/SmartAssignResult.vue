@@ -2,15 +2,17 @@
 <!--
   SmartAssignResult — the smart-assign Lab column's readable result (Part 6,
   2026-08-06: "a readable rendering for id-JSON results" — the raw
-  characterId → voiceId object told the user nothing). Render-only adapter:
+  speakerId → personaId object told the user nothing). Render-only adapter:
   the generic /v1/ai/run path still runs the column; this just resolves the
-  ids to the app's character and voice NAMES. Unparseable replies fall back
+  ids to the app's speaker and persona NAMES (2026-09-29: Smart-assign
+  matches a book's speakers to personas). Unparseable replies fall back
   honestly to a pointer at the raw output.
 -->
 <script setup>
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
 import { usePersonasStore } from "../../stores/personas.js";
-import { useVoicesStore } from "../../stores/voices.js";
+import { useApi } from "../../stores/api.js";
+import { useActiveProject } from "../../stores/activeProject.js";
 
 const props = defineProps({
   result: { type: Object, default: null },
@@ -21,9 +23,16 @@ const props = defineProps({
 });
 
 const personasStore = usePersonasStore();
-const voicesStore = useVoicesStore();
 personasStore.ensureLoaded();
-voicesStore.ensureLoaded();
+// The open book's speakers name the left column; a Lab run filled from
+// another book shows those ids as they came.
+const api = useApi();
+const activeProject = useActiveProject();
+const speakers = ref([]);
+watch(() => activeProject.id, async (id) => {
+  const r = id ? await api.safeRequest(`/v1/projects/${id}/speakers`, { speakers: [] }) : null;
+  speakers.value = r?.speakers || [];
+}, { immediate: true });
 
 function firstJsonObject(text) {
   const t = String(text || "").replace(/<think>[\s\S]*?<\/think>/g, "");
@@ -40,13 +49,13 @@ function firstJsonObject(text) {
 const assignments = computed(() => {
   const obj = firstJsonObject(props.result?.content);
   if (!obj) return null;
+  const sName = (id) => speakers.value.find((sp) => sp.id === id)?.name || id;
   const pName = (id) => personasStore.items.find((p) => p.id === id)?.name || id;
-  const vName = (id) => voicesStore.items.find((v) => v.id === id)?.name || id;
-  return Object.entries(obj).map(([cid, vid]) => ({
-    cid,
-    vid: String(vid),
-    character: pName(cid),
-    voice: vName(String(vid)),
+  return Object.entries(obj).map(([sid, pid]) => ({
+    sid,
+    pid: String(pid),
+    speaker: sName(sid),
+    persona: pName(String(pid)),
   }));
 });
 </script>
@@ -54,11 +63,11 @@ const assignments = computed(() => {
 <template>
   <div class="sar">
     <table v-if="assignments && assignments.length" class="sar__table">
-      <thead><tr><th>Character</th><th>Voice</th></tr></thead>
+      <thead><tr><th>Speaker</th><th>Persona</th></tr></thead>
       <tbody>
-        <tr v-for="a in assignments" :key="a.cid">
-          <td><strong :title="a.cid">{{ a.character }}</strong></td>
-          <td :title="a.vid">{{ a.voice }}</td>
+        <tr v-for="a in assignments" :key="a.sid">
+          <td><strong :title="a.sid">{{ a.speaker }}</strong></td>
+          <td :title="a.pid">{{ a.persona }}</td>
         </tr>
       </tbody>
     </table>

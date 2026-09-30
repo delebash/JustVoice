@@ -102,7 +102,7 @@ const CHIPS = [
   { id: "all", label: "All", tip: "" },
   { id: "check", label: "To check", tip: "Chapters with flagged lines or lines with no speaker" },
   { id: "never", label: "Not analyzed", tip: "" },
-  { id: "stale", label: "Re-analyze", tip: "A persona joined the cast since, and the text names them" },
+  { id: "stale", label: "Re-analyze", tip: "A speaker was added since, and the text names them" },
   { id: "problem", label: "Needs attention", tip: "Failed, can't re-cut, no text, or no dialogue found" },
 ];
 const chip = ref(props.filter || "all");
@@ -214,7 +214,7 @@ function openRow(r, focus = null) {
       </div>
       <div class="jv-card__body">
         <p class="jv-lede">
-          Attribution only — which persona speaks each line, and what the line says. How it is
+          Attribution only — which speaker says each line, and what the line says. How it is
           performed, and rendering it, come later.
         </p>
 
@@ -371,7 +371,7 @@ function openRow(r, focus = null) {
             wrong, so its confidence alone is not a warning.</dd>
           <dt>Flagged</dt>
           <dd class="jv-muted">Lines where the AI most often goes wrong, so you know where to read closely:
-            one person speaking three times with no reply, a persona's only line in the
+            one person speaking three times with no reply, a speaker's only line in the
             {{ word.singular.toLowerCase() }}, the book and the AI naming different speakers. These are the
             lines worth your eyes.</dd>
           <dt>No speaker</dt>
@@ -380,7 +380,7 @@ function openRow(r, focus = null) {
           <dd class="jv-muted">The script named its speakers, so there was nothing to analyze. The checks
             above run only on what Analyze decided.</dd>
           <dt>added since</dt>
-          <dd class="jv-muted">Analyzed before that persona joined the cast, and the text names them.
+          <dd class="jv-muted">Analyzed before that speaker was added, and the text names them.
             Re-analyze it — lines you set are kept.</dd>
           <dt>no dialogue found</dt>
           <dd class="jv-muted">Nothing in the text was read as speech. Speech in ‘single quotes’,

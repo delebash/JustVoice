@@ -77,29 +77,26 @@ class PersonaChannel(Base):
     channel_id = Column(String, ForeignKey("channels.id", ondelete="CASCADE"), primary_key=True)
 
 
-# ── Persona layer (character sheets — separate from VoiceProfile) ──
+# ── Persona layer — the finished spoken voices (the library) ──────────────
 
 
 class Persona(Base):
-    """Character — the sole identity layer after the Profile-kill (plan Q1).
+    """A finished spoken voice: a voice and its engine, plus speed, pitch,
+    gain, spoken direction, effects and lexicon. It lives in the library and
+    plays any number of speakers, in any book (decided 2026-09-29 — until then
+    one persona row was both the person in the book and their sound; the
+    person is now a `Speaker`).
 
-    All voice-styling fields live directly on the persona, not behind a
-    Profile FK. Two text fields, one master each (the 2026-08-15 split —
-    one field feeding both the synth and the LLM prompts was the bug):
+    Two text fields, one master each:
 
       * `voice_instruct` — the spoken-delivery instruction. Engines whose
         manifest declares an instruct field consume it as `delivery.instruct`
-        at synth time (Qwen3-TTS custom-voice, LuxTTS); the rest ignore it.
-        It is the ONLY field that changes what the audio sounds like.
-      * `personality` — the character sheet. Drives Compose / Rewrite,
-        casting suggestions (smart-assign) and the game-export sidecar.
-        It never reaches the synth.
+        at synth time (Qwen3-TTS custom-voice); the rest ignore it. It is the
+        ONLY field that changes what the audio sounds like.
+      * `note` — a short note on how it sounds, for people and for Compose /
+        Rewrite on Generate (which has no book). It never reaches the synth.
 
-    Two fields, not three: once the instruct is extracted, "backstory" and
-    "character sheet" are one field written twice.
-
-    Imported from JustWrite character roster, voice-profile migration, or
-    created manually inside JustVoice.
+    Made on the Personas page, or migrated from a voice profile.
     """
 
     __tablename__ = "personas"
@@ -112,16 +109,12 @@ class Persona(Base):
     # today (storage/voices.py); this column carries the voice id verbatim
     # and is not a foreign key constraint.
     voice_id = Column(String, nullable=True)
-    # Spoken-delivery instruction (Qwen3 `instruct`, LuxTTS style-prompt).
+    # Spoken-delivery instruction (Qwen3 `instruct`).
     voice_instruct = Column(Text, nullable=True)
-    # The character sheet — prose about who this character is. Read by the
-    # LLM features and the export sidecar, never by an engine.
-    personality = Column(Text, nullable=True)  # max 2000 chars at the API layer
-    # Other names the prose uses for them — "Ode" for Odeline Marran (JSON
-    # list). Read by Discover (a nickname is not a new person) and by
-    # attribution's anchors and prompt (extraction/anchors.py, prompts.py).
-    # Added 2026-09-27 with no migration: a dev DB needs a reset.
-    aliases = Column(Text, nullable=True)
+    # A short note on how it sounds. Read by Compose / Rewrite on Generate and
+    # by Smart-assign, never by an engine. (Replaced `personality`, the
+    # character sheet, 2026-09-29 — who a person is lives on the Speaker now.)
+    note = Column(Text, nullable=True)
     # Tier-2 delivery overlay (JSON-serialized Delivery shape).
     default_delivery = Column(Text, nullable=True)
     # Pedalboard effects chain (JSON array of {type, params}). Cascade order:
@@ -202,14 +195,37 @@ class Project(Base):
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
 
 
-class ProjectPersona(Base):
-    """Cast assignment: which personas appear in this project, in what role."""
+class Speaker(Base):
+    """A person in one book — the book's cast is its speakers (decided
+    2026-09-29). Discover finds them, Script gives lines to them, and Cast
+    gives each a persona (the voice); one persona can play many speakers.
 
-    __tablename__ = "project_personas"
+    `aliases` and `description` are what the AI reads to recognise them:
+    the other names the text uses ("Sedge" for Old Sedge) and who they are.
+    A speaker cannot outlive its book, and deleting one leaves its lines with
+    no speaker (the FK on blocks is SET NULL)."""
 
-    project_id = Column(String, ForeignKey("projects.id", ondelete="CASCADE"), primary_key=True)
-    persona_id = Column(String, ForeignKey("personas.id", ondelete="CASCADE"), primary_key=True)
-    role_label = Column(String, nullable=True)  # "narrator" / "protagonist" / "NPC" / etc.
+    __tablename__ = "speakers"
+
+    id = Column(String, primary_key=True, default=_uuid)
+    project_id = Column(String, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    name = Column(String, nullable=False)
+    # Other names the text uses (JSON list) — "Also called".
+    aliases = Column(Text, nullable=True)
+    # Who they are — "Who they are" on Cast; the AI reads it, it is never heard.
+    description = Column(Text, nullable=True)
+    # The cast: the persona that plays them. Null = not cast yet.
+    persona_id = Column(String, ForeignKey("personas.id", ondelete="SET NULL"), nullable=True)
+    # "narrator" for the book's narrator (one per book); null otherwise.
+    role_label = Column(String, nullable=True)
+    # Provenance — a re-import merges on (imported_from, imported_id).
+    imported_from = Column(String, nullable=True)
+    imported_id = Column(String, nullable=True)
+    created_at = Column(DateTime, default=_utcnow)
+    updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
+
+
+Index("ix_speakers_project", Speaker.project_id)
 
 
 class Scene(Base):
@@ -239,7 +255,8 @@ class Block(Base):
     scene_id = Column(String, ForeignKey("scenes.id", ondelete="CASCADE"), nullable=False)
     position = Column(Integer, nullable=False)
     text = Column(Text, nullable=False)
-    persona_id = Column(String, ForeignKey("personas.id", ondelete="SET NULL"), nullable=True)
+    # Who says it — one of the book's speakers (their persona is the voice).
+    speaker_id = Column(String, ForeignKey("speakers.id", ondelete="SET NULL"), nullable=True)
     # Emotion/style hint passed through to the engine's instruct field
     direction = Column(String, nullable=True)
     metadata_json = Column(Text, nullable=True)
@@ -617,7 +634,7 @@ class Webhook(Base):
 class SpeakerCorrection(Base):
     """Writer-supplied corrections to speaker-attribution mistakes.
 
-    Phase 5 of the Profile-kill plan. Captured when a block's persona_id
+    Phase 5 of the Profile-kill plan. Captured when a block's speaker_id
     changes via PATCH (the writer fixing the analyze pipeline's output).
     The extraction backend reads the top-12 most-recent per project as
     worked examples injected into the LLM prompt — so the next analyze
@@ -633,14 +650,11 @@ class SpeakerCorrection(Base):
     # The block.text at the time of correction (snippet for the
     # worked-example block in the prompt).
     text_snippet = Column(Text, nullable=False)
-    # The persona the writer assigned (may be null for "unknown" /
+    # The speaker the writer gave the line to (may be null for "unknown" /
     # "narrator" — both also count as corrections worth remembering).
-    #
-    # Named character_id until 2026-08-22. The column is an FK to personas.id
-    # and always was; "character" is not an entity in this app (persona is the
-    # entity, cast the project's set, speaker the attribution word). Renaming
-    # it required a data reset — pre-release, seeds-only, no migration.
-    persona_id = Column(String, ForeignKey("personas.id", ondelete="SET NULL"), nullable=True)
+    # Pointed at personas until 2026-09-29, when the person in the book became
+    # a Speaker; the change came with a data reset (no migration).
+    speaker_id = Column(String, ForeignKey("speakers.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime, default=_utcnow)
 
 

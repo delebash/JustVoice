@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import json
 
-from justvoice.database.models import Block, Persona, Project, ProjectPersona, Scene
+from justvoice.database.models import Block, Persona, Project, Scene, Speaker
 
 pytest_plugins = ["tests.conftest_db"]
 
@@ -44,15 +44,16 @@ def test_scene_block_ordering(db_session):
 
 
 def test_cast_assignment(db_session):
-    """ProjectPersona is a many-to-many with role_label."""
+    """A speaker belongs to one book and is played by a persona (the cast)."""
     p = Project(name="Game", project_type="game_voicelines")
-    persona = Persona(name="Mara", personality="Lead detective")
+    persona = Persona(name="Gruff dockhand", note="low, gravelly")
     db_session.add_all([p, persona])
     db_session.flush()
-    db_session.add(ProjectPersona(project_id=p.id, persona_id=persona.id, role_label="protagonist"))
+    db_session.add(Speaker(project_id=p.id, name="Mara", description="Lead detective",
+                           persona_id=persona.id, role_label="narrator"))
     db_session.commit()
-    row = db_session.query(ProjectPersona).filter(ProjectPersona.project_id == p.id).first()
-    assert row.role_label == "protagonist"
+    row = db_session.query(Speaker).filter(Speaker.project_id == p.id).first()
+    assert row.role_label == "narrator"
     assert row.persona_id == persona.id
 
 

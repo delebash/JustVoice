@@ -118,7 +118,7 @@ only a 1.7B VoiceDesign checkpoint — no smaller variant exists.
 
 VoiceDesign invents a speaker from scratch on **every single call**. Ask it
 twice for "a gravel-voiced harbour-master" and you get two different
-harbour-masters — same character, different person. That is fine for one
+harbour-masters — same description, different person. That is fine for one
 line and useless for a chapter.
 
 So when you **Keep** a designed voice, JustVoice saves the audio you just
@@ -351,7 +351,7 @@ Every voice has a gender chip (F / M / N / ❓ / unset) in the library. JustVoic
 - **Kokoro voices**: parses the `<region><gender>_<name>` convention (af_alloy = American Female; bm_george = British Male).
 - **Cloned / freeform voices**: first-name dictionary (sarah.wav → F, michael.wav → M). Ambiguous names (Alex, Jamie, Riley) deliberately left unset.
 
-Click the chip to cycle through F → M → N → unset → ❓. The override saves on the voice and feeds **Smart-assign** (the LLM voice→character matcher) on subsequent runs.
+Click the chip to cycle through F → M → N → unset → ❓. The override saves on the voice and feeds **Smart-assign** on subsequent runs — it matches a book's speakers to personas, and a persona's gender is its voice's.
 
 For the voices the dictionary can't label (the ❓ ones), the toolbar's
 **✨ Guess unknown genders** button asks the AI to label them in one batch —

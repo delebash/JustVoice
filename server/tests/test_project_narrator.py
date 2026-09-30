@@ -1,13 +1,13 @@
 # SPDX-License-Identifier: MIT
-"""A book's narrator — an ordinary persona, chosen, never made on its own.
+"""A book's narrator — a speaker holding the narrator role, never made on its own.
 
-The narrator is the cast member holding the "narrator" role — the role, not
-anything on the persona, says so. Since 2026-09-29 there are no built-in
-personas (the Narrator renames, re-voices, leaves the cast and deletes like
-any other), and no book gets a narrator on its own ("i dont think each
-project should automatically create a narrator"): you tick one in Cast, or
-"+ Add Narrator" (POST /narrator) gives the book one — a free "Narrator"
-from the library first, a new one only if there is none.
+Since 2026-09-29 the people in a book are its speakers, and each speaker is
+played by a persona (the finished voice). The narrator is the speaker holding
+the "narrator" role — the role, not the name, says so. No book gets one on its
+own ("i dont think each project should automatically create a narrator"):
+Cast's tick makes any speaker the narrator, and "+ Add Narrator" (POST
+/narrator) makes a speaker called Narrator — cast with the persona of exactly
+that name when the library has one.
 """
 
 from __future__ import annotations
@@ -25,114 +25,82 @@ def client(tmp_path):
 
 
 def _create_project(client, name: str, kind: str) -> str:
-    r = client.post(
-        "/v1/projects",
-        json={"name": name, "project_type": kind},
-    )
+    r = client.post("/v1/projects", json={"name": name, "project_type": kind})
     assert r.status_code == 201, r.text
     return r.json()["id"]
 
 
-def _cast(client, project_id: str) -> list[dict]:
-    r = client.get(f"/v1/projects/{project_id}/cast")
+def _speakers(client, project_id: str) -> list[dict]:
+    r = client.get(f"/v1/projects/{project_id}/speakers")
     assert r.status_code == 200, r.text
-    return r.json().get("cast", [])
+    return r.json()["speakers"]
 
 
 def _narrator(client, project_id: str) -> dict | None:
-    return next((c for c in _cast(client, project_id) if c.get("role_label") == "narrator"), None)
+    return next((s for s in _speakers(client, project_id) if s["role_label"] == "narrator"), None)
 
 
 def _book(client, name: str = "Book", kind: str = "audiobook") -> tuple[str, str]:
-    """A new book given a narrator by "+ Add Narrator"; (project id, narrator id)."""
+    """A new book given a narrator by "+ Add Narrator"; (project id, narrator speaker id)."""
     pid = _create_project(client, name, kind)
     r = client.post(f"/v1/projects/{pid}/narrator")
     assert r.status_code == 201, r.text
-    return pid, _narrator(client, pid)["persona_id"]
+    return pid, _narrator(client, pid)["id"]
 
 
-def _narrators_in_library(client) -> list[str]:
-    return [p["id"] for p in client.get("/v1/personas").json()["personas"] if p["name"] == "Narrator"]
+def _speaker_of(client, sid, block_id):
+    return next(b for b in client.get(f"/v1/scenes/{sid}/blocks").json() if b["id"] == block_id)["speaker_id"]
 
 
 @pytest.mark.parametrize("kind", ["audiobook", "podcast", "game_voicelines", "custom"])
 def test_a_new_project_gets_no_narrator(client, kind):
     pid = _create_project(client, "Stillwater", kind)
-    assert _cast(client, pid) == []
-    assert _narrators_in_library(client) == []
+    assert _speakers(client, pid) == []
+    assert client.get("/v1/personas").json()["personas"] == []
 
 
-def test_no_persona_is_built_in(client):
-    """The persona API carries no built-in flag at all."""
-    _pid, narrator_id = _book(client)
-    assert "is_builtin" not in client.get(f"/v1/personas/{narrator_id}").json()
+def test_add_narrator_makes_a_speaker_and_no_persona(client):
+    pid, sid = _book(client)
+    narrator = _narrator(client, pid)
+    assert narrator["name"] == "Narrator" and narrator["persona_id"] is None
+    assert client.get("/v1/personas").json()["personas"] == []
 
 
-def test_the_narrator_deletes_like_any_persona(client):
-    """Deleting it takes it out of the cast too (ON DELETE CASCADE); the
-    project has no narrator until "+ Add Narrator" gives it one again."""
-    pid, narrator_id = _book(client)
-
-    r = client.delete(f"/v1/personas/{narrator_id}")
-    assert r.status_code == 200, r.text
-    assert client.get(f"/v1/personas/{narrator_id}").status_code == 404
-    assert _narrator(client, pid) is None
-
-    r = client.post(f"/v1/projects/{pid}/narrator")
-    assert r.status_code == 201, r.text
-    back = [c for c in r.json()["cast"] if c.get("role_label") == "narrator"]
-    assert len(back) == 1 and back[0]["persona_id"] != narrator_id
-
-
-def test_a_persona_you_made_deletes_too(client):
-    r = client.post("/v1/personas", json={"name": "Sarah"})
-    assert r.status_code in (200, 201), r.text
-    r = client.delete(f"/v1/personas/{r.json()['id']}")
-    assert r.status_code == 200, r.text
+def test_add_narrator_is_cast_with_a_persona_of_exactly_that_name(client):
+    """Every new speaker: a persona called "narrator " (case and spaces aside)
+    plays it at once."""
+    voice = client.post("/v1/personas", json={"name": "narrator "}).json()["id"]
+    pid, _ = _book(client)
+    assert _narrator(client, pid)["persona_id"] == voice
 
 
 def test_ensure_narrator_endpoint_is_idempotent(client):
-    """POST /v1/projects/{id}/narrator gives the book one on the first call
-    and changes nothing on the second. Studio Cast's "+ Add Narrator"."""
     pid = _create_project(client, "Book", "audiobook")
     r1 = client.post(f"/v1/projects/{pid}/narrator")
     assert r1.status_code == 201, r1.text
-    narrators = [c for c in r1.json()["cast"] if c.get("role_label") == "narrator"]
-    assert len(narrators) == 1
-
-    # Second call: still exactly one.
+    first = [s["id"] for s in r1.json()["speakers"] if s["role_label"] == "narrator"]
     r2 = client.post(f"/v1/projects/{pid}/narrator")
     assert r2.status_code == 201, r2.text
-    narrators2 = [c for c in r2.json()["cast"] if c.get("role_label") == "narrator"]
-    assert len(narrators2) == 1
-    assert narrators[0]["persona_id"] == narrators2[0]["persona_id"]
+    assert [s["id"] for s in r2.json()["speakers"] if s["role_label"] == "narrator"] == first
+    assert len(_speakers(client, pid)) == 1
 
 
-def test_ensure_narrator_after_the_narrator_left_the_cast(client):
-    """Take the Narrator out of the cast (the persona stays in the library,
-    in no book), then "+ Add Narrator" — the same persona comes back."""
+def test_a_removed_narrator_takes_its_speaker_off_the_narration(client):
+    """Removing the narrator's speaker leaves its lines with no speaker;
+    "+ Add Narrator" makes a new one and gives them back."""
     pid, narrator_id = _book(client)
-    r = client.delete(f"/v1/projects/{pid}/cast/{narrator_id}")
-    assert r.status_code == 200, r.text
+    sid = client.post(f"/v1/projects/{pid}/scenes", json={"title": "One"}).json()["id"]
+    line = client.post(f"/v1/scenes/{sid}/blocks", json={
+        "position": 0, "text": "It was early April.", "speaker_id": narrator_id,
+        "source": "narration"}).json()["id"]
+    r = client.delete(f"/v1/speakers/{narrator_id}")
+    assert r.status_code == 200 and r.json() == {"deleted": True, "lines": 1}
     assert _narrator(client, pid) is None
+    assert _speaker_of(client, sid, line) is None
 
     r = client.post(f"/v1/projects/{pid}/narrator")
-    assert r.status_code == 201
-    assert [c["persona_id"] for c in r.json()["cast"] if c.get("role_label") == "narrator"] == [narrator_id]
-    assert _narrators_in_library(client) == [narrator_id]
-
-
-def test_add_narrator_uses_a_free_library_narrator_before_making_one(client):
-    """A deleted book's Narrator is in no book: the next book's "+ Add
-    Narrator" takes it instead of making another. One still in a book is not
-    free, so a second book beside it gets its own."""
-    first, narrator_id = _book(client, "First")
-    assert client.delete(f"/v1/projects/{first}").status_code == 200
-    second, reused = _book(client, "Second")
-    assert reused == narrator_id
-    _third, fresh = _book(client, "Third")
-    assert fresh != narrator_id
-    assert sorted(_narrators_in_library(client)) == sorted([narrator_id, fresh])
+    assert r.status_code == 201 and r.json()["moved_lines"] == 1
+    assert _speaker_of(client, sid, line) == _narrator(client, pid)["id"] != narrator_id
 
 
 def test_add_narrator_takes_the_narration_nobody_reads(client):
@@ -141,78 +109,56 @@ def test_add_narrator_takes_the_narration_nobody_reads(client):
     pid = _create_project(client, "Book", "audiobook")
     sid = client.post(f"/v1/projects/{pid}/scenes", json={"title": "One"}).json()["id"]
     line = client.post(f"/v1/scenes/{sid}/blocks", json={
-        "position": 0, "text": "It was early April.", "persona_id": None, "source": "narration"}).json()["id"]
+        "position": 0, "text": "It was early April.", "speaker_id": None, "source": "narration"}).json()["id"]
     r = client.post(f"/v1/projects/{pid}/narrator")
     assert r.status_code == 201 and r.json()["moved_lines"] == 1
-    assert _speaker(client, sid, line) == _narrator(client, pid)["persona_id"]
+    assert _speaker_of(client, sid, line) == _narrator(client, pid)["id"]
 
 
-def test_narrator_is_renameable_and_voice_reassignable(client):
-    """Renamed, it is still the project's narrator — the cast role, not the
-    name, says so."""
+def test_the_narrator_renames_like_any_speaker(client):
+    """Renamed, it is still the book's narrator — the role, not the name."""
     pid, narrator_id = _book(client)
-    r = client.put(
-        f"/v1/personas/{narrator_id}",
-        json={"name": "Main Narrator", "voice_id": None},
-    )
+    r = client.patch(f"/v1/speakers/{narrator_id}", json={"name": "Main Narrator"})
     assert r.status_code == 200, r.text
     assert r.json()["name"] == "Main Narrator"
-    assert _narrator(client, pid)["persona_id"] == narrator_id
+    assert _narrator(client, pid)["id"] == narrator_id
 
 
-def test_a_deleted_narrator_stays_deleted_across_a_restart(tmp_path):
-    """There is no startup fill-in any more: "Add Narrator" is the one way back."""
+def test_a_removed_narrator_stays_removed_across_a_restart(tmp_path):
+    """There is no startup fill-in: "Add Narrator" is the one way back."""
     client = TestClient(create_app(data_dir=tmp_path), raise_server_exceptions=False)
     pid, narrator_id = _book(client)
-    assert client.delete(f"/v1/personas/{narrator_id}").status_code == 200
-
+    assert client.delete(f"/v1/speakers/{narrator_id}").status_code == 200
     again = TestClient(create_app(data_dir=tmp_path), raise_server_exceptions=False)
     assert _narrator(again, pid) is None
 
 
-def test_the_old_built_in_column_is_dropped_and_personas_save_again(tmp_path):
-    """A database made from the old model has `personas.is_builtin NOT NULL`
-    with no default — every insert fails while it stays. The migration drops
-    it and keeps the rows."""
-    from sqlalchemy import create_engine, inspect, text
-
-    from justvoice.database.migrations import run_migrations
-
-    engine = create_engine(f"sqlite:///{tmp_path / 'old.db'}")
-    with engine.connect() as conn:
-        conn.execute(text(
-            "CREATE TABLE personas (id VARCHAR NOT NULL PRIMARY KEY, name VARCHAR NOT NULL, "
-            "is_builtin BOOLEAN NOT NULL, created_at DATETIME)"
-        ))
-        conn.execute(text("INSERT INTO personas (id, name, is_builtin) VALUES ('n1', 'Narrator', 1)"))
-        conn.commit()
-
-    run_migrations(engine)
-
-    assert "is_builtin" not in {c["name"] for c in inspect(engine).get_columns("personas")}
-    with engine.connect() as conn:
-        conn.execute(text("INSERT INTO personas (id, name) VALUES ('p2', 'Mara')"))
-        conn.commit()
-        rows = conn.execute(text("SELECT id, name FROM personas ORDER BY id")).fetchall()
-    assert rows == [("n1", "Narrator"), ("p2", "Mara")]
-    run_migrations(engine)   # a second boot is a no-op
+def test_a_deleted_book_takes_its_speakers_with_it(client):
+    """Speakers can't outlive their book — so no leftover Narrators pile up;
+    the persona that played them stays in the library."""
+    voice = client.post("/v1/personas", json={"name": "Narrator"}).json()["id"]
+    pid, narrator_id = _book(client)
+    assert client.delete(f"/v1/projects/{pid}").status_code == 200
+    assert client.patch(f"/v1/speakers/{narrator_id}", json={"name": "x"}).status_code == 404
+    assert [p["id"] for p in client.get("/v1/personas").json()["personas"]] == [voice]
 
 
-# ── Any cast member can be the narrator (2026-09-29) ───────────────────────
+# ── Any speaker can be the narrator (2026-09-29) ─────────────────────────────
 
 
 def _book_with_watson(client):
-    """An audiobook whose cast is its Narrator plus Watson, with a chapter of
-    narration: one line on the Narrator, one on nobody, one you set, one of
+    """An audiobook whose speakers are its Narrator plus Watson, with a chapter
+    of narration: one line on the Narrator, one on nobody, one you set, one of
     Watson's dialogue."""
     pid, old = _book(client, "Band")
-    watson = client.post("/v1/personas", json={"name": "Dr. Watson"}).json()["id"]
-    assert client.post(f"/v1/projects/{pid}/cast", json={"persona_id": watson}).status_code == 201
+    r = client.post(f"/v1/projects/{pid}/speakers", json={"name": "Dr. Watson"})
+    assert r.status_code == 201, r.text
+    watson = r.json()["id"]
     sid = client.post(f"/v1/projects/{pid}/scenes", json={"title": "One"}).json()["id"]
 
-    def block(pos, text, persona, source):
+    def block(pos, text, speaker, source):
         r = client.post(f"/v1/scenes/{sid}/blocks", json={
-            "position": pos, "text": text, "persona_id": persona, "source": source})
+            "position": pos, "text": text, "speaker_id": speaker, "source": source})
         assert r.status_code == 201, r.text
         return r.json()["id"]
 
@@ -225,47 +171,106 @@ def _book_with_watson(client):
     return pid, sid, old, watson, ids
 
 
-def _speaker(client, sid, block_id):
-    return next(b for b in client.get(f"/v1/scenes/{sid}/blocks").json() if b["id"] == block_id)["persona_id"]
-
-
-def test_any_cast_member_can_be_the_narrator(client):
+def test_any_speaker_can_be_the_narrator(client):
     pid, sid, old, watson, ids = _book_with_watson(client)
-    r = client.put(f"/v1/projects/{pid}/narrator", json={"persona_id": watson})
+    r = client.put(f"/v1/projects/{pid}/narrator", json={"speaker_id": watson})
     assert r.status_code == 200, r.text
     assert r.json()["moved_lines"] == 2
 
-    roles = {c["persona_id"]: c["role_label"] for c in r.json()["cast"]}
+    roles = {s["id"]: s["role_label"] for s in r.json()["speakers"]}
     assert roles[watson] == "narrator"
-    assert roles[old] is None                     # still cast, as an ordinary member
-    assert [c for c in _cast(client, pid) if c["role_label"] == "narrator"] == [
-        c for c in _cast(client, pid) if c["persona_id"] == watson]
+    assert roles[old] is None                     # still a speaker, as an ordinary one
+    assert [s["id"] for s in _speakers(client, pid) if s["role_label"] == "narrator"] == [watson]
 
     # Narration follows the role; a line you set stays; dialogue is untouched.
-    assert _speaker(client, sid, ids["on_old"]) == watson
-    assert _speaker(client, sid, ids["on_none"]) == watson
-    assert _speaker(client, sid, ids["yours"]) == old
-    assert _speaker(client, sid, ids["speech"]) == watson
+    assert _speaker_of(client, sid, ids["on_old"]) == watson
+    assert _speaker_of(client, sid, ids["on_none"]) == watson
+    assert _speaker_of(client, sid, ids["yours"]) == old
+    assert _speaker_of(client, sid, ids["speech"]) == watson
 
 
 def test_add_narrator_never_makes_a_second_one(client):
     pid, _sid, _old, watson, _ids = _book_with_watson(client)
-    client.put(f"/v1/projects/{pid}/narrator", json={"persona_id": watson})
+    client.put(f"/v1/projects/{pid}/narrator", json={"speaker_id": watson})
     r = client.post(f"/v1/projects/{pid}/narrator")
     assert r.status_code == 201
-    assert [c["persona_id"] for c in r.json()["cast"] if c["role_label"] == "narrator"] == [watson]
+    assert [s["id"] for s in r.json()["speakers"] if s["role_label"] == "narrator"] == [watson]
 
 
-def test_the_narrator_must_be_in_the_cast(client):
+def test_the_narrator_must_be_a_speaker_of_this_book(client):
     pid = _create_project(client, "Band", "audiobook")
-    stranger = client.post("/v1/personas", json={"name": "Stranger"}).json()["id"]
-    r = client.put(f"/v1/projects/{pid}/narrator", json={"persona_id": stranger})
+    other = _create_project(client, "Other", "audiobook")
+    stranger = client.post(f"/v1/projects/{other}/speakers", json={"name": "Stranger"}).json()["id"]
+    r = client.put(f"/v1/projects/{pid}/narrator", json={"speaker_id": stranger})
     assert r.status_code == 400
-    assert "isn't in this project's cast" in r.text
+    assert "isn't in this book" in r.json()["detail"]
 
 
 def test_choosing_the_current_narrator_changes_nothing(client):
     pid, sid, old, _watson, ids = _book_with_watson(client)
-    r = client.put(f"/v1/projects/{pid}/narrator", json={"persona_id": old})
+    r = client.put(f"/v1/projects/{pid}/narrator", json={"speaker_id": old})
     assert r.status_code == 200 and r.json()["moved_lines"] == 0
-    assert _speaker(client, sid, ids["on_none"]) is None
+    assert _speaker_of(client, sid, ids["on_none"]) is None
+
+
+# ── Speakers — the people in a book, and their cast ─────────────────────────
+
+
+def test_a_speaker_is_cast_by_giving_it_a_persona_and_uncast_by_null(client):
+    pid = _create_project(client, "Book", "audiobook")
+    voice = client.post("/v1/personas", json={"name": "Gruff dockhand"}).json()["id"]
+    sp = client.post(f"/v1/projects/{pid}/speakers", json={
+        "name": "Harbek", "aliases": ["Harb", " harbek "], "description": "A dock guard."}).json()
+    assert sp["aliases"] == ["Harb"], "trimmed, de-duplicated, never the speaker's own name"
+    assert sp["persona_id"] is None and sp["lines"] == 0
+    r = client.patch(f"/v1/speakers/{sp['id']}", json={"persona_id": voice})
+    assert r.json()["persona_id"] == voice and r.json()["persona_name"] == "Gruff dockhand"
+    r = client.patch(f"/v1/speakers/{sp['id']}", json={"persona_id": None})
+    assert r.json()["persona_id"] is None
+    assert client.patch(f"/v1/speakers/{sp['id']}", json={"persona_id": "nope"}).status_code == 404
+
+
+def test_one_persona_can_play_many_speakers_and_deleting_it_uncasts_them(client):
+    pid = _create_project(client, "Book", "audiobook")
+    voice = client.post("/v1/personas", json={"name": "Guard"}).json()["id"]
+    a = client.post(f"/v1/projects/{pid}/speakers", json={"name": "First guard", "persona_id": voice}).json()
+    b = client.post(f"/v1/projects/{pid}/speakers", json={"name": "Second guard", "persona_id": voice}).json()
+    assert a["persona_id"] == b["persona_id"] == voice
+    usage = client.get("/v1/personas/usage").json()["usage"][voice]
+    assert sorted(u["speaker_name"] for u in usage) == ["First guard", "Second guard"]
+    assert client.delete(f"/v1/personas/{voice}").status_code == 200
+    assert {s["persona_id"] for s in _speakers(client, pid)} == {None}
+
+
+def test_clear_cast_uncasts_every_speaker_and_keeps_them(client):
+    pid = _create_project(client, "Book", "audiobook")
+    voice = client.post("/v1/personas", json={"name": "Guard"}).json()["id"]
+    for n in ("A", "B"):
+        client.post(f"/v1/projects/{pid}/speakers", json={"name": n, "persona_id": voice})
+    r = client.post(f"/v1/projects/{pid}/speakers/uncast")
+    assert r.status_code == 200
+    assert [(s["name"], s["persona_id"]) for s in r.json()["speakers"]] == [("A", None), ("B", None)]
+
+
+def test_rewrite_in_character_reads_the_speakers_who_they_are(client, monkeypatch):
+    """Script's right-click Rewrite: the speaker's "Who they are" is the
+    character (it moved off the persona 2026-09-29)."""
+    from types import SimpleNamespace
+
+    pid = _create_project(client, "Book", "audiobook")
+    sp = client.post(f"/v1/projects/{pid}/speakers", json={"name": "Mara"}).json()
+    r = client.post(f"/v1/speakers/{sp['id']}/rewrite", json={"text": "Hi."})
+    assert r.status_code == 400 and "Who they are" in r.json()["detail"]
+
+    client.patch(f"/v1/speakers/{sp['id']}", json={"description": "Lead detective. Dry wit."})
+    seen = {}
+
+    def fake_run(action, variables, **_kw):
+        seen.update(action=action, **variables)
+        return SimpleNamespace(text="  Well. Hi.  ", prompt_tokens=1, completion_tokens=2, model="m")
+
+    monkeypatch.setattr("justvoice.engines.llm.run.run_feature", fake_run)
+    r = client.post(f"/v1/speakers/{sp['id']}/rewrite", json={"text": "Hi."})
+    assert r.status_code == 200, r.text
+    assert (r.json()["original"], r.json()["rewritten"], r.json()["speaker_id"]) == ("Hi.", "Well. Hi.", sp["id"])
+    assert seen == {"action": "persona_rewrite", "personality": "Lead detective. Dry wit.", "text": "Hi."}

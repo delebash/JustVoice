@@ -19,7 +19,7 @@ const emit = defineEmits(["update:modelValue"]);
 
 // One line per character: "Name" or "Name | alias, alias" (":" tolerated by
 // the parser; the editor writes the "|" form). "- " bullets tolerated for
-// the identify card's known-characters lines.
+// the identify card's known-speakers lines.
 const cast = computed(() =>
   String(props.modelValue || "")
     .split("\n")
@@ -67,7 +67,7 @@ function removeAt(i) {
     </ul>
     <p v-else class="cast-ed__empty">No cast yet — add everyone who speaks in the passage.</p>
     <div class="cast-ed__add">
-      <UiInput v-model="newName" placeholder="Character name" @keydown.enter.prevent="add" />
+      <UiInput v-model="newName" placeholder="Speaker name" @keydown.enter.prevent="add" />
       <UiInput v-model="newAliases" placeholder="Aliases (comma-separated, optional)" @keydown.enter.prevent="add" />
       <UiButton intent="secondary" size="small" label="＋ Add" @click="add" />
     </div>

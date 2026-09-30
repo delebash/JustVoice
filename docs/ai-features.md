@@ -10,10 +10,10 @@ is the **AI Settings** page in the sidebar.
 
 | Feature | What it does | When you use it |
 |---|---|---|
-| **Compose** | Writes a fresh in-character line from a persona's character sheet | Generate view → 🎲 Compose button |
-| **Persona rewrite** | Rewrites the current text in a character's voice (preview-then-accept) | Generate view → ✏️ Rewrite · Studio Script → right-click a spoken line's text |
-| **Speaker attribution** | Extracts who says what and what they say | Studio Script tab → Analyze |
-| **Smart-assign** | Matches each character in your cast to a TTS voice | Studio Cast tab → Smart-assign |
+| **Compose** | Writes a fresh line in a persona's voice from its note on how it sounds | Generate view → 🎲 Compose button |
+| **Persona rewrite** | Rewrites the current text in a persona's voice, or a line in its speaker's character (preview-then-accept) | Generate view → ✏️ Rewrite · Studio Script → right-click a spoken line's text |
+| **Speaker attribution** | Extracts who says what and what they say; its Find new speakers row lists the people a chapter names | Studio Script tab → Analyze · Studio Discover → Scan |
+| **Smart-assign** | Matches each speaker in a book to a persona | Studio Cast tab → Smart-assign |
 | **Render preset suggest** | Classifies a chapter's tone and picks the best render preset | Studio Render tab → 💡 Suggest |
 | **Show notes** | Chapter summaries for podcast descriptions | Projects → Show notes |
 | **Dictation cleanup** | Raw speech → clean text before paste | Captures — runs after a dictation when auto-refine is on |
@@ -156,6 +156,49 @@ and a working model returns something like
 `Can you check if the export finished before we send it?` — fillers
 dropped, punctuation added, nothing answered back.
 
+## Who the AI features read (speakers and personas)
+
+Since 2026-09-29 a book's people and the voices that play them are two things,
+and each AI feature reads the half it needs:
+
+- **Speakers** are the people in one book — a name, **Also called**, and **Who
+  they are**. Discover finds them, Script's Analyze gives lines to them, and
+  Script's right-click *Rewrite in character* reads the line's speaker's **Who
+  they are** (`POST /v1/speakers/{id}/rewrite`; a speaker with nothing there is
+  refused with "*name* has nothing under Who they are — write it on Cast to
+  rewrite in character.").
+- **Personas** are finished voices. Generate has no book, so its 🎲 Compose and
+  ✏️ Rewrite read the persona's **Note on how it sounds** instead (a persona
+  without one is refused: "*name* has no note on how it sounds — write one on
+  the Personas page to use Compose / Rewrite."). The Compose and Rewrite prompts
+  keep their `{{personality}}` variable; its value is the persona's note on
+  Generate and the speaker's Who they are on Script.
+- **Smart-assign** matches the book's speakers (name, Also called, Who they are)
+  to your personas (name, their voice's gender, language, and the note as
+  `tone`), and applies its matches straight away — change any of them on Cast.
+
+**Discover no longer sends your library to the model.** The Find new speakers
+prompt (`speaker_attribution.identify`) used to list "people in the library,
+not in this cast" so the model could link nicknames to them. The library now
+holds voices, not people, so that list and its paragraph are gone; Discover's
+**In your library** status is worked out in code instead — a found name that is
+**exactly** the name of one persona in your library (two personas of that name
+match neither). The removal was measured on 2026-09-29 with `npm run
+eval:discover` (2 runs over *The Ninth Facet*, with some of its people taken out
+of the cast for the model to find) before it was made:
+
+| Prompt | Library sent | Found | Wrong |
+|---|---|---|---|
+| The old prompt | yes | 28/28 | 0 |
+| The old prompt | no | 26/28 | 4 |
+| The new prompt (paragraph removed) | no | 26/28 | 4 |
+
+The paragraph itself changed nothing — the old and new prompts score the same
+without a library. The drop from 28 to 26 comes from no longer handing the model
+descriptions of people who are not in this book's cast: it missed Haldane Threll
+twice and proposed Gudgeon — Brick's enchanted maul, an object — four times. The
+book's own speakers are still sent as its known cast.
+
 ## Speaker attribution — two routes and the Auto row
 
 Under the **SPEAKER ATTRIBUTION** heading there are two real routed
@@ -212,13 +255,13 @@ Guided's card tests Guided, Direct's tests Direct. The prompt boxes you see
 are exactly what runs — there is no separate route picker to disagree with
 them.
 
-**The cast editor.** The Characters box isn't a raw text area — it's the
-original Speaker Lab's cast editor: your cast as removable chips, a
-**Character name** input, an **Aliases** input, and a **＋ Add** button
-(Enter adds too). A chip shows the name in bold and its aliases beside it
-("**Renn** — aliases: Old Renn, the harbor-master"). Under the hood each
-character is one line of plain text you could also type by hand — the name,
-then a `|` and comma-separated aliases when it has any:
+**The cast editor.** The Speakers box (the prompt's `{{speakers}}`
+variable) isn't a raw text area — it's the original Speaker Lab's cast editor:
+your speakers as removable chips, a **Speaker name** input, an **Aliases**
+input, and a **＋ Add** button (Enter adds too). A chip shows the name in bold
+and its aliases beside it ("**Renn** — aliases: Old Renn, the harbor-master").
+Under the hood each speaker is one line of plain text you could also type by
+hand — the name, then a `|` and comma-separated aliases when it has any:
 
 ```
 Mara
@@ -241,8 +284,8 @@ controls so you never have to invent test data:
   chapter's real prose in the passage box. The picker then shows what you
   inserted, so you can see which chapter is in the box; pick its top row to
   clear the label.
-- **Insert from cast…** lists your projects ("Cast of Stillwater") and
-  fills the Characters box with that project's real cast, one name per
+- **Insert from cast…** lists your projects ("Speakers of Stillwater") and
+  fills the Speakers box with that project's real speakers, one name per
   line.
 - **Sample** fills the passage AND the cast together with the built-in
   cellar scene — the original Speaker Lab's sample passage, word for word
@@ -257,11 +300,11 @@ uses that project's stored corrections, exactly like a production Analyze
 (the same most-recent-12).
 
 **Results you can correct.** Every row shows speaker · line · confidence,
-with a reassign dropdown. The dropdown lists the open project's cast **by
+with a reassign dropdown. The dropdown lists the open project's speakers **by
 name** and starts on the row's current speaker, so it reads like any other
 dropdown — change it and the correction is recorded. A row whose speaker
-isn't in the project's cast starts on **Assign…** instead. Reassigning to a
-real character records a
+isn't one of the project's speakers starts on **Assign…** instead. Reassigning
+to a real speaker records a
 **speaker correction** for the open project, exactly like fixing a block on
 the Studio Script tab — the Lab teaches production. (The correction
 examples inject into the run's **user prompt**, which is separate from
@@ -298,9 +341,9 @@ button in the app: Studio's Analyze, Smart-assign, 💡 Suggest, Show notes,
 the persona 🎲/✏️ buttons, and the voice ✨ gender guess.
 
 The **Find new speakers** row's Lab runs the discovery scan instead — the
-same prompt behind Studio's **Discover** step. It lists the characters the text
-names who aren't in the known-characters list, speaking or not, each with the
-quote that names them; nothing is created from the Lab. Its Characters box is the same cast
+same prompt behind Studio's **Discover** step. It lists the people the text
+names who aren't in the Known speakers list, speaking or not, each with the
+quote that names them; nothing is created from the Lab. Its Known speakers box is the same cast
 editor, and Insert from chapter/cast fill it the same way.
 
 ## Filling the other features' Labs from your app
@@ -309,13 +352,15 @@ Every feature's Lab has the same idea — the test input should be your real
 app data in exactly the shape a production run sends, never hand-typed
 fakes:
 
-- **Smart-assign**: *Insert from cast…* fills the Characters box with your
-  project's cast in the run's own wire shape
-  (`- id="c_mara", name="Mara", description="dry, mid-30s archivist"` — the
-  description is the first 200 characters of the persona's character sheet),
-  and *Insert from voices…* fills the Voices box with your fetched voice
-  library the same way. The result renders as a readable table —
-  **Character → Voice by name** (hover a name to see the underlying id);
+- **Smart-assign**: *Insert from cast…* fills the Speakers box with your
+  project's speakers in the run's own wire shape
+  (`- id="…", name="Renn", aliases="Old Renn", description="gravel-voiced"` —
+  the description is the first 200 characters of the speaker's Who they are),
+  and *Insert from personas…* fills the Personas box with your personas the
+  same way (`- id="…", name="Slate", gender="male", tone="low and dry",
+  language="en-US"` — the tone is the persona's note on how it sounds). The
+  result renders as a readable table — **Speaker → Persona by name** (hover a
+  name to see the underlying id);
   if a model returns something unreadable, the Lab says so and points you
   at the raw output instead of pretending.
 - **Voice gender guess**: *Insert from voices…* fills the box with
@@ -326,9 +371,9 @@ fakes:
 - **Show notes**: *Insert from script…* builds a project's script the way
   production does — `## Chapter title` headings with `SPEAKER: line` rows,
   NARRATION where no one is assigned.
-- **Compose / Rewrite**: *Insert from persona…* drops a persona's character
-  sheet into the box, so you test with the same text the 🎲 and ✏️ buttons
-  use.
+- **Compose / Rewrite**: *Insert from persona…* drops a persona's note on how
+  it sounds into the box, so you test with the same text Generate's 🎲 and ✏️
+  buttons use.
 
 ## Thinking — one control, honest errors
 

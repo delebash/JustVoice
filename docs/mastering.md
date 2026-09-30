@@ -74,7 +74,7 @@ a machine without ffmpeg the numbers are the raw render's, and the report says
 so instead of letting you read them as final.
 
 QC never refuses the whole book. A chapter that can't render yet — lines with
-no speaker, or a character with no voice cast — is reported as **not ready**
+no speaker, a speaker with no persona, or a persona with no voice — is reported as **not ready**
 with the reason, and the chapters that *are* finished are still measured. That
 matters because a book spends most of its life half-done. The **M4B export**
 is the opposite and deliberately so: it stops on the first chapter that isn't

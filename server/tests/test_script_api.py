@@ -60,15 +60,15 @@ def project(client):
     sid = client.get(f"/v1/projects/{pid}/scenes").json()[0]["id"]
     # "+ Add Narrator" — no book has a narrator until you choose one (2026-09-29).
     assert client.post(f"/v1/projects/{pid}/narrator").status_code == 201
-    cast = client.get(f"/v1/projects/{pid}/cast").json()["cast"]
-    ids = {c["persona_name"]: c["persona_id"] for c in cast}
-    narrator = next(c["persona_id"] for c in cast if c["role_label"] == "narrator")
+    cast = client.get(f"/v1/projects/{pid}/speakers").json()["speakers"]
+    ids = {s["name"]: s["id"] for s in cast}
+    narrator = next(s["id"] for s in cast if s["role_label"] == "narrator")
     return SimpleNamespace(id=pid, scene_id=sid, mara=ids["Mara Vance"], tom=ids["Tom Hale"],
                            narrator=narrator)
 
 
 def _model_says(monkeypatch, picks: dict[int, str], confidence: float = 0.95):
-    """Stub the model: `picks` maps each [D#] to a persona id."""
+    """Stub the model: `picks` maps each [D#] to a speaker id."""
     def run(action, variables, **overrides):
         reply = [{"dialogue_id": d, "speaker": who, "confidence": confidence}
                  for d, who in picks.items()]
@@ -116,12 +116,12 @@ def test_each_line_records_its_paragraph_and_the_books_words(client, project, mo
     blocks = _blocks(client, project.scene_id)
     assert [b["metadata"]["paragraph_idx"] for b in blocks] == [0, 0, 1, 2, 3, 4]
     d0 = blocks[0]
-    assert d0["source"] == "tag" and d0["persona_id"] == project.mara
+    assert d0["source"] == "tag" and d0["speaker_id"] == project.mara
     assert d0["metadata"]["anchor_words"] == "said Mara"
     # The book won; the model had said Tom — kept for "the book and the AI disagree".
     assert d0["metadata"]["llm_speaker"] == project.tom
     assert "llm_speaker" not in blocks[2]["metadata"]      # the model decided that one
-    assert "prev_persona_id" not in d0["metadata"]         # a first run changes no one's mind
+    assert "prev_speaker_id" not in d0["metadata"]         # a first run changes no one's mind
 
 
 def test_a_propagated_line_carries_its_tags_words(client, project, monkeypatch):
@@ -140,20 +140,20 @@ def test_a_reanalyze_records_who_a_changed_line_was(client, project, monkeypatch
     _analyze(client, project.scene_id, _scene_meta(client, project.id)["source_text"])
 
     spoken = _spoken(client, project.scene_id)
-    changed = [b for b in spoken if "prev_persona_id" in b["metadata"]]
+    changed = [b for b in spoken if "prev_speaker_id" in b["metadata"]]
     assert [b["text"] for b in changed] == ["“Why?”"]
-    assert changed[0]["persona_id"] == project.mara
-    assert changed[0]["metadata"]["prev_persona_id"] == project.tom
+    assert changed[0]["speaker_id"] == project.mara
+    assert changed[0]["metadata"]["prev_speaker_id"] == project.tom
 
     page = client.get(f"/v1/scenes/{project.scene_id}/script").json()
     assert page["chapter"]["changed"] == 1
     line = next(ln for ln in page["lines"] if ln["id"] == changed[0]["id"])
-    assert line["changed"] and line["prev_persona_id"] == project.tom
+    assert line["changed"] and line["prev_speaker_id"] == project.tom
 
     # Confirming the line ("Looks right") clears the mark and saves no fix.
     r = client.patch(f"/v1/blocks/{line['id']}", json={"source": "corrected"})
     assert r.status_code == 200 and r.json()["fix_id"] is None
-    assert "prev_persona_id" not in r.json()["metadata"]
+    assert "prev_speaker_id" not in r.json()["metadata"]
 
 
 # ── The two script endpoints ───────────────────────────────────────────────
@@ -181,10 +181,10 @@ def test_the_chapter_page_carries_its_flags(client, project, monkeypatch):
     assert (ch["lines"], ch["spoken"], ch["anchored"], ch["guessed"], ch["by_you"]) == (6, 4, 1, 3, 0)
     assert (ch["flagged"], ch["flag_groups"], ch["no_speaker"], ch["to_check"]) == (4, 3, 0, 4)
     assert ch["analyzed"] and ch["analyzed_at"] and not ch["from_import"]
-    # Speakers: most lines first, the whole cast offered.
-    assert [(s["persona_id"], s["lines"]) for s in page["speakers"]][:2] == [
+    # Speakers: most lines first, every speaker of the book offered.
+    assert [(s["speaker_id"], s["lines"]) for s in page["speakers"]][:2] == [
         (project.tom, 3), (project.narrator, 2)]
-    assert {s["persona_id"] for s in page["speakers"]} == {project.tom, project.narrator,
+    assert {s["speaker_id"] for s in page["speakers"]} == {project.tom, project.narrator,
                                                             project.mara}
     assert page["narrator_id"] == project.narrator
 
@@ -206,34 +206,33 @@ def test_the_grid_row_and_the_one_analyzed_rule(client, project, monkeypatch):
 
 def test_speakers_from_the_import_are_not_analyzed(client, project):
     for b in _blocks(client, project.scene_id):
-        client.patch(f"/v1/blocks/{b['id']}", json={"persona_id": project.narrator})
+        client.patch(f"/v1/blocks/{b['id']}", json={"speaker_id": project.narrator})
     row = client.get(f"/v1/projects/{project.id}/script").json()["chapters"][0]
     assert row["from_import"] and not row["analyzed"]
     assert row["no_speaker"] == 0 and row["flag_groups"] == 0
 
 
-def test_a_persona_added_since_whose_name_is_in_the_text(client, project, monkeypatch):
+def test_a_speaker_added_since_whose_name_is_in_the_text(client, project, monkeypatch):
     _model_says(monkeypatch, _all_tom(project))
     _analyze(client, project.scene_id)
     for name in ("Tide", "Harbek"):           # "The tide." names one; nothing names Harbek
-        pid = client.post("/v1/personas", json={"name": name}).json()["id"]
-        r = client.post(f"/v1/projects/{project.id}/cast", json={"persona_id": pid})
+        r = client.post(f"/v1/projects/{project.id}/speakers", json={"name": name})
         assert r.status_code == 201, r.text
     row = client.get(f"/v1/projects/{project.id}/script").json()["chapters"][0]
     assert row["added_since"] == ["Tide"]
 
 
-def test_a_speaker_who_left_the_cast(client, project, monkeypatch):
+def test_a_removed_speaker_leaves_their_lines_with_no_speaker(client, project, monkeypatch):
+    """Since 2026-09-29 removing a speaker deletes it from the book: its lines
+    go back to no speaker, and the page no longer lists it."""
     _model_says(monkeypatch, _all_tom(project))
     _analyze(client, project.scene_id)
-    client.delete(f"/v1/projects/{project.id}/cast/{project.tom}")
+    r = client.delete(f"/v1/speakers/{project.tom}")
+    assert r.status_code == 200 and r.json()["lines"] == 3
     page = client.get(f"/v1/scenes/{project.scene_id}/script").json()
-    assert page["chapter"]["not_in_cast"] == [
-        {"persona_id": project.tom, "name": "Tom Hale", "lines": 3, "in_cast": False}]
-    tom = next(s for s in page["speakers"] if s["persona_id"] == project.tom)
-    assert tom["in_cast"] is False
-    # Their lines keep the speaker.
-    assert sum(ln["persona_id"] == project.tom for ln in page["lines"]) == 3
+    assert project.tom not in {s["speaker_id"] for s in page["speakers"]}
+    assert sum(ln["speaker_id"] == project.tom for ln in page["lines"]) == 0
+    assert page["chapter"]["no_speaker"] == 3
 
 
 def test_a_line_left_with_no_speaker_is_not_counted_as_decided(client, project, monkeypatch):
@@ -270,17 +269,17 @@ def test_a_speaker_change_returns_its_fix_and_undo_removes_it(client, project, m
     base = _fix_count(client, project.id)
 
     r = client.patch(f"/v1/blocks/{line['id']}",
-                     json={"persona_id": project.mara, "source": "corrected"})
+                     json={"speaker_id": project.mara, "source": "corrected"})
     fix_id = r.json()["fix_id"]
     assert fix_id and _fix_count(client, project.id) == base + 1
 
     # Undo: the old speaker back, no new fix, and the saved one deleted.
     r = client.patch(f"/v1/blocks/{line['id']}", json={
-        "persona_id": project.tom, "source": line["source"],
+        "speaker_id": project.tom, "source": line["source"],
         "extraction_confidence": line["extraction_confidence"],
         "metadata": line["metadata"], "no_fix": True})
     assert r.status_code == 200 and r.json()["fix_id"] is None
-    assert r.json()["source"] == "llm" and r.json()["persona_id"] == project.tom
+    assert r.json()["source"] == "llm" and r.json()["speaker_id"] == project.tom
     r = client.delete(f"/v1/projects/{project.id}/corrections/{fix_id}")
     assert r.json() == {"deleted": 1}
     assert _fix_count(client, project.id) == base
@@ -293,9 +292,9 @@ def test_a_null_speaker_clears_it_and_a_missing_one_leaves_it(client, project, m
     _analyze(client, project.scene_id)
     line = _spoken(client, project.scene_id)[1]
     r = client.patch(f"/v1/blocks/{line['id']}", json={"direction": "quietly"})
-    assert r.json()["persona_id"] == project.tom
-    r = client.patch(f"/v1/blocks/{line['id']}", json={"persona_id": None, "no_fix": True})
-    assert r.json()["persona_id"] is None
+    assert r.json()["speaker_id"] == project.tom
+    r = client.patch(f"/v1/blocks/{line['id']}", json={"speaker_id": None, "no_fix": True})
+    assert r.json()["speaker_id"] is None
     # Source and confidence clear the same way — a line that came with the
     # import had neither.
     r = client.patch(f"/v1/blocks/{line['id']}", json={"source": None, "extraction_confidence": None})
@@ -326,6 +325,6 @@ def test_a_character_who_narrates_is_counted_like_anyone(client, project, monkey
     """Tom narrates and speaks: three of his lines in a row are a run."""
     _model_says(monkeypatch, _all_tom(project))
     _analyze(client, project.scene_id)
-    r = client.put(f"/v1/projects/{project.id}/narrator", json={"persona_id": project.tom})
+    r = client.put(f"/v1/projects/{project.id}/narrator", json={"speaker_id": project.tom})
     assert r.status_code == 200, r.text
     assert ("run", project.tom) in _groups(client, project.scene_id)

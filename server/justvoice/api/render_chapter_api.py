@@ -3,11 +3,12 @@
 Two modes:
   * Direct mode — `lines[]` passed literally (legacy adapter use).
   * Scene mode — `scene_id` (+ optional `preset_id`) passed; the server
-    resolves blocks → personas → lines internally. Each block's persona
+    resolves blocks → speakers → personas → lines internally (the speaker is
+    who says the line, the persona plays them — 2026-09-29). The persona
     contributes voice_id, default_delivery (tier-2), voice_instruct (→
     delivery.instruct for engines that consume it), and lexicon_id. The
-    preset overlays on top (tier-3). The persona's `personality` — the
-    character sheet — never reaches this path (2026-08-15 split).
+    preset overlays on top (tier-3). A speaker's "Who they are" never reaches
+    this path.
 """
 
 from __future__ import annotations
@@ -21,7 +22,7 @@ from pydantic import BaseModel
 from ..app_state import get_state
 from ..audio.effects import parse_chain, resolve_chain
 from ..audio.wav import write_wav_container
-from ..database.models import Block, Project, RenderPreset, Scene
+from ..database.models import Block, Project, RenderPreset, Scene, Speaker
 from ..database import session as _db_session
 from ..database.session import SessionLocal
 from ..delivery_merge import compose_instruct, merge_delivery
@@ -94,14 +95,15 @@ def _resolve_scene_to_lines(
     *,
     strict: bool = False,
 ) -> tuple[list[ChapterLine], list[str]]:
-    """Resolve a scene's blocks → ChapterLines via persona lookup.
+    """Resolve a scene's blocks → ChapterLines: block → speaker → persona.
 
     Each block becomes one ChapterLine. The persona contributes voice,
     tier-2 delivery overlay, voice_instruct (→ delivery.instruct), and
     lexicon. The preset (tier-3) overlays on top via merge_delivery.
 
     `strict` decides what a block with no usable voice means. Real renders
-    pass strict=True and the chapter REFUSES, naming the offending lines
+    pass strict=True and the chapter REFUSES, naming the offending lines,
+    the speakers no persona plays and the personas with no voice
     (Script-tab restore 2026-08-08, decision 5): a line the attribution
     pipeline couldn't place used to be dropped here in silence, so a
     sentence simply went missing from the audiobook with nothing said. The
@@ -124,6 +126,7 @@ def _resolve_scene_to_lines(
         )
         if not blocks:
             raise bad_request(f"scene {scene_id} has no blocks to render")
+        speakers = {s.id: s for s in db.query(Speaker).filter(Speaker.project_id == scene.project_id)}
 
         preset = None
         preset_effects: list[dict] = []
@@ -138,7 +141,8 @@ def _resolve_scene_to_lines(
         lexicon_ids: set[str] = set()
         skipped = 0
         unplaced: list[tuple[int, str]] = []   # (1-based line no, block text)
-        voiceless: set[str] = set()            # persona names cast without a voice
+        uncast: set[str] = set()               # speaker names no persona plays
+        voiceless: set[str] = set()            # persona names with no voice
 
         for position, block in enumerate(blocks, start=1):
             if not block.text or not block.text.strip():
@@ -150,8 +154,9 @@ def _resolve_scene_to_lines(
             persona_effects: list[dict] = []
             persona = None
 
-            if block.persona_id:
-                persona = st.personas.get(block.persona_id)
+            speaker = speakers.get(block.speaker_id) if block.speaker_id else None
+            if speaker is not None and speaker.persona_id:
+                persona = st.personas.get(speaker.persona_id)
                 if persona is not None:
                     voice_id = persona.voice_id
                     tier2 = persona.default_delivery or {}
@@ -174,10 +179,12 @@ def _resolve_scene_to_lines(
                 skipped += 1
                 if _is_marker(block):
                     pass
-                elif persona is None:
+                elif speaker is None:
                     unplaced.append((position, block.text.strip()))
+                elif persona is None:
+                    uncast.add(speaker.name)
                 else:
-                    voiceless.add(persona.name or block.persona_id)
+                    voiceless.add(persona.name)
                 log.debug("scene resolve: block %s has no voice — excluded", block.id)
                 continue
 
@@ -240,7 +247,7 @@ def _resolve_scene_to_lines(
                 )
             )
 
-        if strict and (unplaced or voiceless):
+        if strict and (unplaced or uncast or voiceless):
             parts: list[str] = []
             if unplaced:
                 shown = ", ".join(
@@ -252,10 +259,15 @@ def _resolve_scene_to_lines(
                     f"Open Studio · Script and set one on each, or send them all to "
                     f"the narrator."
                 )
+            if uncast:
+                parts.append(
+                    f"Nobody plays {', '.join(sorted(uncast))} yet — give them a persona "
+                    f"in Studio · Cast."
+                )
             if voiceless:
                 parts.append(
-                    f"No voice is cast for {', '.join(sorted(voiceless))} — "
-                    f"assign one in Studio · Cast."
+                    f"The persona {', '.join(sorted(voiceless))} has no voice — pick one "
+                    f"on the Personas page."
                 )
             raise bad_request(
                 "This chapter isn't ready to render. " + " ".join(parts)
@@ -268,7 +280,8 @@ def _resolve_scene_to_lines(
         if not lines:
             raise bad_request(
                 f"scene {scene_id} has blocks but none could be rendered "
-                f"(no persona/voice assigned). Open Studio Cast tab to assign voices."
+                f"(no speaker, persona or voice). Give the lines speakers in Script and "
+                f"the speakers personas in Cast."
             )
 
         return lines, list(lexicon_ids)

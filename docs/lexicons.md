@@ -5,7 +5,7 @@ A **lexicon** is a pronunciation dictionary. JustVoice applies it as a preproces
 ## Scopes
 
 - **Project-scoped** — applies to every Block in the project. Most book-specific names live here.
-- **Persona-scoped** — applies only when the speaker is a given Persona. Useful for character-specific dialects (Old Crow's street slang isn't applied when the Narrator reads the same word).
+- **Persona-scoped** — applies only to lines whose speaker is played by a given Persona — every speaker that persona plays, in any book. Useful for a speaker's own dialect (Old Crow's street slang isn't applied when the Narrator reads the same word).
 - **Reusable** — domain lexicons (nautical / medical / theological / cookery) saved as their own files and attached to multiple projects.
 
 ## Entry shapes
@@ -26,15 +26,15 @@ The lexicon editor includes a preview text field. Type a sentence; JustVoice sho
 
 | Case | Scope |
 |---|---|
-| A character's surname that appears in narration AND dialogue | Project |
-| A character whose speech uses street slang the narrator never uses | Persona |
+| A speaker's surname that appears in narration AND dialogue | Project |
+| A speaker whose speech uses street slang the narrator never uses | Persona (the one that plays them) |
 | Industry terms common to medical thrillers | Reusable, attached to the project |
-| One-off mispronunciation by a single character (intentional) | Persona |
+| One-off mispronunciation by a single speaker (intentional) | Persona (the one that plays them) |
 
 ## Find the names before you hear them wrong
 
 A book-scoped lexicon has a **🔎 Scan the book for names** button. It reads
-every line of the book and lists the proper nouns — character and place
+every line of the book and lists the proper nouns — people's and place
 names — that the lexicon doesn't cover yet, most frequent first. Click a
 name to add it as a blank row; **＋ Add all** takes the whole list. A blank
 row changes nothing until you give it a pronunciation, so add freely and
@@ -44,7 +44,7 @@ The scan is deliberately conservative: a capitalized word only counts when
 a sentence didn't force the capital, and a word that ever appears lowercase
 is treated as ordinary. What survives is almost always a name.
 
-Importing a book from JustWrite seeds this list for free — every character
+Importing a book from JustWrite seeds this list for free — every person
 the book hands over arrives as a blank lexicon row, so the pronunciation
 worklist exists from minute one.
 

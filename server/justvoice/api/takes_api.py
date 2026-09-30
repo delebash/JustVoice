@@ -280,27 +280,25 @@ async def get_generation_audio(generation_id: str, db: Session = Depends(get_db)
 
 @router.post("/v1/blocks/{block_id}/render", response_model=TakeResponse)
 async def render_block(block_id: str, db: Session = Depends(get_db)) -> TakeResponse:
-    """Render ONE block through the production path (persona voice +
-    tier-2 delivery + lexicon) and persist Generation + default Take —
+    """Render ONE block through the production path (line → speaker →
+    persona: voice + tier-2 delivery + lexicon) and persist Generation +
+    default Take —
     the Lines grid's per-row ↻ and 'Re-render N changed' both call this.
     Clears derived staleness because the new generation carries the
     block's current text."""
     from ..app_state import get_state
-    from ..database.models import Block, Persona
+    from ..database.models import Block
     from ..errors import not_found
     from ..export_voicelines import _render_block_production
     from ..render_core import _resolve_engine_for_voice
     from ..render_jobs import persist_block_take
     from ..synth_scheduler import get_scheduler
+    from ._speaker_helpers import persona_for_block
 
     block = db.query(Block).filter(Block.id == block_id).first()
     if block is None:
         raise not_found(f"block {block_id}")
-    persona = (
-        db.query(Persona).filter(Persona.id == block.persona_id).first()
-        if block.persona_id
-        else None
-    )
+    persona = persona_for_block(db, block)
     state = get_state()
     # The render rides the scheduler as an interactive single (§7b P2-6 —
     # one synth door) and the endpoint awaits instead of blocking the loop.

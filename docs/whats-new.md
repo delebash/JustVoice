@@ -2,27 +2,51 @@
 
 ## v0.1.0
 
+- **Speakers and personas are two things.** A **persona** is now a finished spoken
+  voice: a voice and its engine, plus speed, pitch, gain, direction, effects,
+  lexicon and a short **Note on how it sounds**. It lives in your library and can
+  be used in any book. A **speaker** is a person in one book: a name, the other
+  names the text uses (**Also called**) and **Who they are**. Discover finds
+  speakers, Script gives lines to speakers, and **Cast gives each speaker a
+  persona**. One persona can play many speakers, so change it once and all of them
+  change. Also called and Who they are moved from the persona to the speaker; in
+  place of the character sheet, a persona has its note, which Compose, Rewrite and
+  Smart-assign read.
+  Cast is now the speakers on the left and your personas on the right, with a
+  card for the selected speaker (Name, Also called, Who they are, **Edit their
+  persona →**). A new speaker whose name exactly matches a persona in your library
+  arrives already cast with it. Removing a speaker (Cast's ✕, or Discover's new
+  **Remove from cast** and **Remove N selected**) asks first, because their lines
+  go back to no speaker. The persona list's **Used by** column shows who each
+  persona plays. Your data was reset for this change: **Load demo** brings The
+  Ninth Facet back, and its chapters need Discover and Analyze again
+  ([Personas](personas.md), [Studio → Cast](studio.md#cast))
+- **The Lab's cast boxes say Speakers, Known speakers and Personas.** They were
+  Characters, Known characters and Voices. Only the boxes' names changed — the
+  prompts the model reads are word for word the same
+  ([AI features](ai-features.md))
 - **"Next to check" always finds the line.** It used to look only below the line you
   had selected, so a chapter's one line to check — selected, or above it — got
   "Nothing more to check below". It now wraps around to the top (`Shift+N` to the
   bottom) ([Studio → Script](studio.md))
-- **Discover keeps a record of everyone each chapter names.** A scan saves the cast
-  members the chapter names (found by name, without the model), people in your
-  library, and new names — one list, each person once, with a status: **In the
-  cast**, **In your library**, **New** or **Ignored**, and chips to filter by it.
+- **Discover keeps a record of everyone each chapter names.** A scan saves the
+  speakers in the cast the chapter names (found by name, without the model), names
+  a persona in your library has, and new names — one list, each person once, with a
+  status: **In the cast**, **In your library**, **New** or **Ignored**, and chips to
+  filter by it.
   Add and Ignore change the status instead of removing the row, so rescanning a
   finished chapter no longer comes back empty. The chapter grid's **Proposed**
   column is now **Found** ([Studio → Discover](studio.md#discover))
 - **No book gets a narrator on its own.** Creating or importing a book no longer
-  makes a Narrator persona — every import made a new one, and deleting the book left
-  it in your library. Tick **Narrator** on anyone in the cast, or use **Add
-  Narrator**, which uses a Narrator from your library that isn't in any book before
-  making one, and moves the narration with no speaker to it ([Personas → The
-  Narrator](personas.md#the-narrator))
-- **Names are unique within a book.** One cast can't hold two people with the same
-  name; adding or renaming into a clash is refused and says so. Different books,
-  and personas in no book, can share a name — the persona list now names the books
-  each persona is in ([Personas → Names](personas.md#names))
+  makes a Narrator — every import made a new one, and deleting the book left it in
+  your library. Tick **Narrator** on any speaker in the cast, or use **Add
+  Narrator**, which makes a speaker called Narrator — cast with your persona called
+  Narrator if you have one — and moves the narration with no speaker to it
+  ([Personas → The Narrator](personas.md#the-narrator))
+- **Speaker names are unique within a book.** One book can't have two speakers with
+  the same name; adding or renaming into a clash is refused and says so. Personas
+  have no name rule — the persona list's **Used by** column tells two of the same
+  name apart ([Studio → Discover](studio.md#discover))
 - **Delete several personas at once.** Tick them in the persona list, then **Delete
   N selected** ([Personas](personas.md#deleting-several-at-once))
 - **Switching Studio steps keeps your place in Script.** Coming back finds the same
@@ -43,20 +67,20 @@
 - **Discover no longer misses a first-person book's narrator and hero.** Told to leave
   out "the narrator", with a cast member called Narrator, the model dropped Watson
   *and* Holmes from The Speckled Band. Both are found now; the sample books still
-  find every character they did
+  find everyone they did
 - **Anyone in the cast can be the narrator.** A first-person narrator also speaks —
   Watson tells *The Speckled Band* and talks in it — so tick **Narrator** on their
-  card in Studio's Cast step and their narration and lines share one voice. The persona
+  card in Studio's Cast step and their narration and lines share one voice. The speaker
   who had the role stays in the cast; the narration Analyze decided moves with the
   role, and lines you set stay ([Personas → The Narrator](personas.md#the-narrator))
 - **Cancelling a voice-model download cleans up before it says "cancelled".** The
   half-downloaded files used to be removed just after, so a download started right
   away could lose its first files
-- **The Narrator can be deleted like any other persona.** Deleting it used to fail
-  with "persona … is built-in". There are no built-in personas now: the Narrator a
-  new audiobook or podcast gets is an ordinary persona, and it can leave the cast
-  in Studio too. A deleted Narrator stays deleted — restarting the app no longer
-  brings one back — until **Add Narrator** in Studio's Cast step makes a new one
+- **The Narrator can be deleted like anyone else.** Deleting it used to fail
+  with "persona … is built-in". There are no built-in personas now, and the
+  narrator is an ordinary speaker that can leave the cast in Studio. A removed
+  narrator stays removed — restarting the app no longer brings one back — until
+  **Add Narrator** in Studio's Cast step makes a new one
   ([Personas → The Narrator](personas.md#the-narrator))
 - **Script opens on a grid of your chapters.** One row per chapter says how many lines
   it has, when it was analyzed, how many lines the book itself names the speaker of
@@ -69,7 +93,7 @@
 - **A chapter's page says why each line has its speaker.** "Decided by" shows the
   book's own words when it names the speaker — *“said Marius”* — or "AI, from the
   story around it". Lines where the AI most often goes wrong are marked with a
-  question: one person speaking three times with no reply, a persona's only line,
+  question: one person speaking three times with no reply, a speaker's only line,
   the book and the AI naming different people. "Next to
   check" jumps between them; tick lines to set several at once or swap two speakers;
   Undo takes back your changes, including what they would have taught the next

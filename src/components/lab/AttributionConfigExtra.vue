@@ -62,7 +62,7 @@ const ownFloor = computed(
   <div v-if="action === 'speaker_attribution.identify'" class="attx">
     <div class="jv-banner attx__note">
       Runs the real discovery pipeline — the same scan behind Studio's "new
-      speakers found" banner. It proposes names not in the known-characters
+      speakers found" banner. It proposes names not in the known-speakers
       list as a review list; nothing is created from here.
     </div>
   </div>

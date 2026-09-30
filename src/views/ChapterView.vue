@@ -41,11 +41,9 @@ const personasStore = usePersonasStore();
 const voicesStore = useVoicesStore();
 const projects = computed(() => projectsStore.items);
 const scenes = ref([]);
-// Full persona records — regen resolves the block's cast voice from here.
+// Full persona records — regen resolves the voice of the persona that plays
+// the line's speaker from here.
 const personaRecords = computed(() => personasStore.items);
-const personasById = computed(() =>
-  Object.fromEntries(personasStore.items.map((p) => [p.id, p.name])),
-);
 async function editDirection(block) {
   const value = await promptDialog({
     title: "Performance note",
@@ -66,8 +64,8 @@ async function editDirection(block) {
   }
 }
 
-function personaName(id) {
-  return personasById.value[id] || id.slice(0, 8);
+function speakerName(id) {
+  return speakersById.value[id]?.name || "unknown speaker";
 }
 // [laughs]-style paralinguistic tags render as pills; capable engines
 // perform them (CONCEPTS §17), so they stay visible, not buried in prose.
@@ -304,14 +302,13 @@ function audioUrl(take) {
 const regenBusy = ref(new Map());
 
 async function regenerateBlock(block) {
-  // Voice resolution (regen demote, user decision 2026-06-12): the
-  // block's cast persona voice wins; only an uncast block asks. The
-  // old top-bar "Voice for re-generate" select silently overrode the
-  // cast and confused everyone.
-  let voice = null;
-  if (block.persona_id) {
-    voice = personaRecords.value.find((p) => p.id === block.persona_id)?.voice_id || null;
-  }
+  // Voice resolution (regen demote, user decision 2026-06-12): the voice
+  // of the persona that plays the line's speaker wins; only a line nobody
+  // voices asks. The old top-bar "Voice for re-generate" select silently
+  // overrode the cast and confused everyone.
+  const speaker = speakersById.value[block.speaker_id] || null;
+  const persona = speaker?.persona_id ? personaRecords.value.find((p) => p.id === speaker.persona_id) : null;
+  let voice = persona?.voice_id || null;
   if (!voice) {
     if (!availableVoices.value.length) {
       pushToast({ message: "No voices available — add one in Voices first.", kind: "warn" });
@@ -319,9 +316,11 @@ async function regenerateBlock(block) {
     }
     const picked = await promptDialog({
       title: "Regenerate with which voice?",
-      message: block.persona_id
-        ? `${personaName(block.persona_id)} has no voice cast yet — pick one for this take.`
-        : "This line has no speaker cast — pick a voice for this take.",
+      message: persona
+        ? `${persona.name} has no voice yet — pick one for this take.`
+        : speaker
+          ? `Nobody plays ${speaker.name} yet — pick a voice for this take.`
+          : "This line has no speaker — pick a voice for this take.",
       fields: [{
         key: "voice",
         label: "Voice",
@@ -658,25 +657,28 @@ watch([scenes, selectedProjectId], () => { if (viewMode.value === "list") loadCh
 // ── Workflow strip (journeys audiobook arc): Import → Script → Cast →
 // Render → Export, with live status per step so the whole flow can be
 // walked and verified in order. ───────────────────────────────────────
-const castStats = ref({ total: 0, voiced: 0 });
-async function loadCastStats() {
-  castStats.value = { total: 0, voiced: 0 };
-  if (!selectedProjectId.value) return;
-  try {
-    const r = await api.request(`/v1/projects/${selectedProjectId.value}/cast`);
-    const cast = r?.cast || [];
-    // The personas STORE, not one GET per cast member — Home dropped the same
-    // fan-out for the same reason (HomeView.vue:187-191: "the old per-persona
-    // GET fan-out (<=16 requests) was the slow part").
-    await personasStore.ensureLoaded();
-    const byId = new Map(personasStore.items.map((p) => [p.id, p]));
-    castStats.value = {
-      total: cast.length,
-      voiced: cast.filter((c) => byId.get(c.persona_id)?.voice_id).length,
-    };
-  } catch { /* cast endpoint empty — strip shows 0 */ }
+// The book's speakers (2026-09-29): a line points at one, and the speaker at
+// the persona that plays them. The strip counts them; a line's tag names them.
+const speakers = ref([]);
+const speakersById = computed(() => Object.fromEntries(speakers.value.map((sp) => [sp.id, sp])));
+async function loadSpeakers() {
+  const id = selectedProjectId.value;
+  if (!id) {
+    speakers.value = [];
+    return;
+  }
+  const r = await api.safeRequest(`/v1/projects/${id}/speakers`, { speakers: [] });
+  if (id === selectedProjectId.value) speakers.value = r?.speakers || [];
 }
-watch([selectedProjectId, viewMode], () => { if (viewMode.value === "list") loadCastStats(); });
+watch([selectedProjectId, viewMode], loadSpeakers, { immediate: true });
+// Cast: speakers played by a persona that has a voice, of all of them.
+const castStats = computed(() => {
+  const voiced = new Set(personaRecords.value.filter((p) => p.voice_id).map((p) => p.id));
+  return {
+    total: speakers.value.length,
+    cast: speakers.value.filter((sp) => voiced.has(sp.persona_id)).length,
+  };
+});
 
 const workflowSteps = computed(() => {
   const n = scenes.value.length;
@@ -690,7 +692,7 @@ const workflowSteps = computed(() => {
     // Script before Cast (ruling 12): analysis is what discovers the speakers
     // this strip then counts as the cast.
     { label: "2 Script", sub: n ? `${attributed}/${n} attributed` : "—", done: n > 0 && attributed === n, act: () => goStudio("script") },
-    { label: "3 Cast", sub: castStats.value.total ? `${castStats.value.voiced}/${castStats.value.total} voiced` : "no cast yet", done: castStats.value.total > 0 && castStats.value.voiced === castStats.value.total, act: () => goStudio("cast") },
+    { label: "3 Cast", sub: castStats.value.total ? `${castStats.value.cast}/${castStats.value.total} cast` : "no speakers yet", done: castStats.value.total > 0 && castStats.value.cast === castStats.value.total, act: () => goStudio("cast") },
     { label: "4 Render", sub: n ? `${cachedAll}/${n} rendered` : "—", done: n > 0 && cachedAll === n, act: () => goStudio("render") },
     { label: "5 Export", sub: "M4B · WAVs · ACX", done: false, act: () => { exportOpen.value = true; runExportQc(); } },
   ];
@@ -929,10 +931,10 @@ async function savePastedText() {
         :key="block.id"
         class="jv-card chapter-view__block"
       >
-        <!-- Block header: position + persona -->
+        <!-- Block header: position + speaker -->
         <div class="chapter-view__block-header">
           <span class="chapter-view__block-num">{{ block.position + 1 }}</span>
-          <UiTag intent="success" v-if="block.persona_id">{{ personaName(block.persona_id) }}</UiTag>
+          <UiTag intent="success" v-if="block.speaker_id">{{ speakerName(block.speaker_id) }}</UiTag>
           <UiTag
             v-else-if="block.metadata?.marker"
             intent="ghost"

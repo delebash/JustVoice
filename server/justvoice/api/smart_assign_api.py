@@ -1,10 +1,12 @@
 # SPDX-License-Identifier: MIT
-"""POST /v1/llm/smart-assign — LLM voice→character matcher.
+"""POST /v1/llm/smart-assign — the LLM proposes who plays whom.
 
-Phase 4 — pairs with the Studio Cast tab's 🪄 Smart-assign button.
-Ports JustWrite's llm.js:139-172 prompt verbatim. Sends a one-shot
-chat through the dispatch with feature='smart_assign'; returns the
-proposed {character_id: voice_id} map.
+Pairs with Studio Cast's ✨ Smart-assign button: the book's speakers go in
+as `characters` and the library's personas (the finished voices) as
+`voices` — the names of the template row's variables, which predate the
+2026-09-29 speakers/personas split and still fit it (a persona IS the voice).
+Ported from JustWrite's llm.js:139-172 prompt. One chat through the dispatch
+with feature='smart_assign'; returns the proposed {speaker_id: persona_id} map.
 """
 
 from __future__ import annotations
@@ -27,10 +29,11 @@ router = APIRouter(tags=["llm"])
 
 
 class SmartAssignCharacter(BaseModel):
+    """A speaker — who they are is this prompt's only description source."""
+
     id: str
     name: str
-    # The character sheet — this prompt's only description source.
-    personality: str | None = None
+    description: str | None = None
     gender: str | None = None
     pronouns: str | None = None
     aliases: list[str] = []
@@ -38,6 +41,8 @@ class SmartAssignCharacter(BaseModel):
 
 
 class SmartAssignVoice(BaseModel):
+    """A persona — `tone` carries its note on how it sounds."""
+
     id: str
     name: str
     gender: str | None = None
@@ -72,8 +77,8 @@ def _format_characters(chars: list[SmartAssignCharacter]) -> str:
             bits.append(f'pronouns="{c.pronouns}"')
         if c.aliases:
             bits.append(f'aliases="{", ".join(c.aliases)}"')
-        if c.personality:
-            bits.append(f'description="{c.personality[:200]}"')
+        if c.description:
+            bits.append(f'description="{c.description[:200]}"')
         lines.append("- " + ", ".join(bits))
     return "\n".join(lines)
 
@@ -119,14 +124,15 @@ async def smart_assign(body: SmartAssignRequest) -> SmartAssignResponse:
             detail="smart-assign requires non-empty characters AND voices",
         )
 
-    # The template row owns the wording ({{characters}}/{{voices}} — ruling 9);
-    # code computes the variable VALUES. No token cap (caps ruling 2026-08-07).
+    # The template row owns the wording ({{speakers}}/{{personas}} — ruling 9;
+    # the book's speakers matched to personas, 2026-09-29); code computes the
+    # variable VALUES. No token cap (caps ruling 2026-08-07).
     try:
         resp = run_feature(
             "smart_assign",
             {
-                "characters": _format_characters(body.characters),
-                "voices": _format_voices(body.voices),
+                "speakers": _format_characters(body.characters),
+                "personas": _format_voices(body.voices),
             },
         )
     except LLMNotConfiguredError as e:

@@ -111,14 +111,12 @@ def test_block_render_clears_staleness(client, monkeypatch):
     stale = next(r for r in lines if r["line_id"] == "Q01_A")
     assert stale["take_status"] == "stale"
 
-    # voice on the persona so the production renderer accepts the block
-    personas = client.get("/v1/personas").json()["personas"]
-    hale = next(p for p in personas if p["name"] == "Hale")
-    body = {
-        **{k: hale.get(k) for k in ("name", "language", "personality")},
-        "voice_id": "af_heart",
-    }
-    client.put(f"/v1/personas/{hale['id']}", json=body)
+    # Hale played by a persona with a voice, so the production renderer
+    # accepts the block (line → speaker → persona, 2026-09-29).
+    speakers = client.get(f"/v1/projects/{pid}/speakers").json()["speakers"]
+    hale = next(sp for sp in speakers if sp["name"] == "Hale")
+    voice = client.post("/v1/personas", json={"name": "Gruff guard", "voice_id": "af_heart"}).json()["id"]
+    client.patch(f"/v1/speakers/{hale['id']}", json={"persona_id": voice})
 
     monkeypatch.setattr(
         "justvoice.render_core.render_line",

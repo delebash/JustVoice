@@ -1,7 +1,7 @@
 # Lines — the game home base
 
 Game projects live line-by-line, not chapter-by-chapter. The Lines tab is every
-line of the project in one grid: stable id, character, text, and a **derived
+line of the project in one grid: stable id, speaker, text, and a **derived
 status** — `none` (never rendered), `rendered`, or `stale` (rendered, then the
 text changed).
 
@@ -26,7 +26,8 @@ Your line ids come from your import (`source_ref` in the CSV, or generated
 ## Export
 
 The per-line export writes one WAV per line, named by your `source_ref` (or the
-generated id), plus a JSON manifest — drop the folder into your engine's import
-pipeline. CSV import expects fixed headers — `scene, character, text, delivery,
-pause_after_ms` (only `text` is required); see
+generated id), plus a JSON manifest (each entry names the line's `speaker`) —
+drop the folder into your engine's import pipeline. CSV import expects fixed
+headers — `scene, character, text, delivery, pause_after_ms` (only `text` is
+required; `character` names the line's speaker); see
 [Import & export](import-and-export.md).

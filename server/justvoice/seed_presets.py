@@ -211,7 +211,7 @@ DEFAULT_PRESET_ID: str = "p_notes"
 # (the SAMPLE LAW, amended 2026-08-06 on a user catch — "samples represent
 # real world text": the attribution adapter feeds the REAL pipeline, which
 # segments and adds the [D#] tags itself, so its sample is raw prose exactly
-# as a user would paste it, never pre-tagged; its characters box is plain
+# as a user would paste it, never pre-tagged; its speakers box is plain
 # names — the adapter's own parse format, not the template composer's).
 # SYNTHESIZED, never real user data. Fill-if-empty per (action, label).
 # The attribution sample is the ORIGINAL Speaker Lab's cellar passage, word
@@ -219,7 +219,7 @@ DEFAULT_PRESET_ID: str = "p_notes"
 # SAMPLE_TEXT + SAMPLE_CAST): anchored quotes, a bare quote, and a
 # narration-only opener.
 _ATTR_SAMPLE_VARS = {
-    "characters": "Mara\nSarah",
+    "speakers": "Mara\nSarah",
     "corrections": "",
     "paragraphs": 'Mara stood at the rail. The fog clawed at her ankles.\n\n'
                   '"Where are you going?" Sarah asked.\n\n'
@@ -234,17 +234,16 @@ DEFAULT_TEST_SAMPLES: list[dict] = [
      "variables": _ATTR_SAMPLE_VARS},
     {"actions": ["speaker_attribution.identify"], "label": "Discover the harbor-master",
      "variables": {
-         "known_characters": "- Mara\n- Renn",
-         "library": "- (none)",
+         "known_speakers": "- Mara\n- Renn",
          "manuscript": '"Boats out past the light again," the harbor-master said, '
                        'nailing the notice to the gate. Mara read it twice. '
                        '"And you\'ll say nothing," she said. "Nothing worth coin," he said.',
      }},
     {"actions": ["smart_assign"], "label": "Two leads, four voices",
      "variables": {
-         "characters": '- id="c_mara", name="Mara" — dry, mid-30s archivist\n'
+         "speakers": '- id="c_mara", name="Mara" — dry, mid-30s archivist\n'
                        '- id="c_harbek", name="Old Harbek" — gravelly harbor-master, 70s',
-         "voices": '- id="v_finch", name="Finch" — bright youthful female\n'
+         "personas": '- id="v_finch", name="Finch" — bright youthful female\n'
                    '- id="v_slate", name="Slate" — low weathered male\n'
                    '- id="v_reed", name="Reed" — neutral mid male\n'
                    '- id="v_lark", name="Lark" — warm adult female',

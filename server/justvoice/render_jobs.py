@@ -25,10 +25,10 @@ import threading
 from types import SimpleNamespace
 
 from .database import session as db_session
+from .api._speaker_helpers import persona_for_block
 from .database.models import (
     Block,
     Generation,
-    Persona,
     RenderJob,
     RenderJobBlock,
     Scene,
@@ -61,9 +61,15 @@ def persist_block_take(db, state, block, wav: bytes) -> Take:
     persistence shape, shared by POST /v1/blocks/{id}/render and the job
     runner."""
     scene = db.query(Scene).filter(Scene.id == block.scene_id).first()
+    # The persona that voiced it (line → speaker → persona); the job runner
+    # hands a plain copy that already carries it.
+    persona_id = getattr(block, "persona_id", None)
+    if persona_id is None:
+        found = persona_for_block(db, block)
+        persona_id = found.id if found is not None else None
     gen = Generation(
         block_id=block.id,
-        persona_id=block.persona_id,
+        persona_id=persona_id,
         project_id=scene.project_id if scene else None,
         chapter_id=block.scene_id,
         text=block.text,
@@ -312,11 +318,7 @@ def _run_job(job_id: str) -> None:
                 if block is None:
                     jb.status = "failed"
                     continue
-                persona = (
-                    db.query(Persona).filter(Persona.id == block.persona_id).first()
-                    if block.persona_id
-                    else None
-                )
+                persona = persona_for_block(db, block)
                 voice = None
                 if persona is not None:
                     store_p = state.personas.get(persona.id)
@@ -332,7 +334,8 @@ def _run_job(job_id: str) -> None:
                 block_data = SimpleNamespace(
                     id=block.id,
                     scene_id=block.scene_id,
-                    persona_id=block.persona_id,
+                    speaker_id=block.speaker_id,
+                    persona_id=persona.id if persona is not None else None,
                     text=block.text,
                 )
                 persona_data = (

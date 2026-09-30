@@ -70,7 +70,10 @@ def _scene_with_one_block(session_factory, *, seed_persona_row: bool = False):
         # RenderPreset.voice_id is an FK onto personas.
         db.add(PersonaRow(id="persona-mara", name="Mara", voice_id="voice-mara"))
         db.flush()
-    db.add(Block(scene_id="scene-1", position=0, text="The fog came in.", persona_id="persona-mara"))
+    from tests.speaker_fixtures import speaker_played_by
+
+    db.add(Block(scene_id="scene-1", position=0, text="The fog came in.",
+                 speaker_id=speaker_played_by(db, "scene-1", "persona-mara")))
     db.commit()
     db.close()
 
@@ -146,8 +149,9 @@ def test_explicit_instruct_beats_the_personas(tmp_db, monkeypatch):  # noqa: F81
 
 
 def test_import_fills_the_sheet_and_leaves_the_instruct_empty(tmp_db, tmp_path):  # noqa: F811
-    """JustWrite hands over a one-liner + a casting hint. Both are sheet
-    material; the spoken-delivery box is the user's to write."""
+    """JustWrite hands over a one-liner + a casting hint. Both are "Who they
+    are" material on the SPEAKER (2026-09-29); no persona — so no spoken-delivery
+    box — is made by an import at all."""
     session_factory, _engine = tmp_db
     standard = StandardImport(
         source="justwrite",
@@ -175,13 +179,18 @@ def test_import_fills_the_sheet_and_leaves_the_instruct_empty(tmp_db, tmp_path):
     db.commit()
     db.close()
 
-    store = PersonaStore(tmp_path, session_factory=session_factory)
-    mara = next(p for p in store.list() if p.name == "Mara Vance")
+    from justvoice.database.models import Speaker
 
-    assert "The archivist who reads the tide tables." in mara.personality
-    assert "Voice hint:" in mara.personality
-    assert "female, age 34, protagonist" in mara.personality
-    assert mara.voice_instruct is None
+    db = session_factory()
+    try:
+        mara = db.query(Speaker).filter(Speaker.name == "Mara Vance").one()
+        assert "The archivist who reads the tide tables." in mara.description
+        assert "Voice hint:" in mara.description
+        assert "female, age 34, protagonist" in mara.description
+        assert mara.persona_id is None
+    finally:
+        db.close()
+    assert PersonaStore(tmp_path, session_factory=session_factory).list() == []
 
 
 # ─── 5. Casting reads the sheet ─────────────────────────────────────────
@@ -191,7 +200,7 @@ def test_smart_assign_description_comes_from_the_sheet():
     long_sheet = "x" * 500
     block = _format_characters(
         [
-            SmartAssignCharacter(id="p1", name="Mara", personality=long_sheet),
+            SmartAssignCharacter(id="p1", name="Mara", description=long_sheet),
             SmartAssignCharacter(id="p2", name="Renn"),
         ]
     )

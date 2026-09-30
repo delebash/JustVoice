@@ -71,7 +71,7 @@ Delivery direction box, a persona's Spoken delivery, a line's own direction —
 reaches **Qwen3 CustomVoice, Qwen3 VoiceDesign, and a Qwen3 LoRA**. It does
 not reach a clone: Qwen3 *Base* clones but drops the instruction silently, as
 its clone call takes text, reference and language only. So "direct the
-performance in words" and "use this character's cloned voice" are, today, a
+performance in words" and "use this speaker's cloned voice" are, today, a
 choice — and that includes a designed voice once you keep it, because keeping
 one turns it into a clone
 ([voices.md](voices.md#keeping-a-designed-voice-is-what-makes-it-one-voice)).
@@ -125,9 +125,9 @@ worth trying if output sounds metallic.
 ## Picking an engine for a use case
 
 - **Audiobook narration in your own voice.** Chatterbox Turbo. Clone from 1-2 minutes of clean read-aloud.
-- **Audiobook with 5+ characters.** Chatterbox Turbo for main voices + Kokoro for incidental characters (faster to render, plenty of voices).
+- **Audiobook with 5+ speakers.** Chatterbox Turbo for the main speakers' personas + Kokoro for minor speakers (faster to render, plenty of voices).
 - **Multilingual audiobook.** Chatterbox Multilingual — 23 languages, and it clones. Qwen3 covers 10 and is reported strongest on Chinese / Japanese / Korean (reported, not measured here) — but only its Base checkpoint clones; CustomVoice gives you its 9 preset speakers instead.
-- **Game NPC dialogue at 50-500 line scale.** Kokoro (fast on CPU, 54 voices). Render speed matters at scale.
+- **Game dialogue at 50-500 line scale.** Kokoro (fast on CPU, 54 voices). Render speed matters at scale.
 - **Multi-speaker game cutscenes.** MOSS-TTSD. One render produces every part, tagged `[S1]` `[S2]` `[S3]`, each cloned from its own reference clip.
 - **Podcast voiceover.** Chatterbox Turbo if you want it to sound like you; Kokoro if you want preset variety fast.
 - **Dictation playback** (MCP `speak` tool). Kokoro. Lowest latency.
@@ -239,10 +239,11 @@ JustVoice after synthesis so they work on every engine, and Chatterbox
 Multilingual covers Chinese *and* clones.
 
 Nothing you have produced is affected. Existing renders, voices and personas
-are unchanged; a persona cast to a voice on either engine keeps rendering while
-the engine is installed. If you want to move a character off one, recast it in
-Studio · Cast — the persona keeps its delivery settings, and the host-side ones
-(gain, pitch, pauses, effects, lexicon) carry over to any engine.
+are unchanged; a persona whose voice is on either engine keeps rendering while
+the engine is installed. To move off one, give the persona a voice on another
+engine on the Personas page — it keeps its delivery settings, and the host-side
+ones (gain, pitch, pauses, effects, lexicon) carry over to any engine — or give
+its speakers a different persona in Studio · Cast.
 
 ## Which engines run on your operating system
 

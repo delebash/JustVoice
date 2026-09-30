@@ -160,7 +160,7 @@ def register_tools(mcp: FastMCP) -> None:
     @mcp.tool(
         name="justvoice.list_personas",
         description=(
-            "List personas (characters) with their bound voice. Use the "
+            "List personas (finished voices) with their bound voice. Use the "
             "returned `name` with justvoice.speak(persona=...)."
         ),
     )
@@ -173,7 +173,7 @@ def register_tools(mcp: FastMCP) -> None:
                     "name": p.name,
                     "voice_id": p.voice_id,
                     "language": p.language,
-                    "has_personality": bool(p.personality),
+                    "has_note": bool(p.note),
                 }
                 for p in personas
             ]

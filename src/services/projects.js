@@ -65,14 +65,28 @@ export const projectsService = {
   removeBlock(blockId) {
     return withApi().del(`/v1/blocks/${blockId}`);
   },
-  getCast(projectId) {
-    return withApi().get(`/v1/projects/${projectId}/cast`);
+  // The people in a book — its speakers; each is cast by giving it a persona
+  // (the voice). The project ↔ persona cast link died 2026-09-29.
+  listSpeakers(projectId) {
+    return withApi().get(`/v1/projects/${projectId}/speakers`);
   },
-  assignCast(projectId, body) {
-    return withApi().post(`/v1/projects/${projectId}/cast`, body);
+  addSpeaker(projectId, body) {
+    return withApi().post(`/v1/projects/${projectId}/speakers`, body);
   },
-  removeFromCast(projectId, personaId) {
-    return withApi().del(`/v1/projects/${projectId}/cast/${personaId}`);
+  updateSpeaker(speakerId, body) {
+    return withApi().patch(`/v1/speakers/${speakerId}`, body);
+  },
+  removeSpeaker(speakerId) {
+    return withApi().del(`/v1/speakers/${speakerId}`);
+  },
+  uncastAll(projectId) {
+    return withApi().post(`/v1/projects/${projectId}/speakers/uncast`, {});
+  },
+  setNarrator(projectId, speakerId) {
+    return withApi().put(`/v1/projects/${projectId}/narrator`, { speaker_id: speakerId });
+  },
+  addNarrator(projectId) {
+    return withApi().post(`/v1/projects/${projectId}/narrator`, {});
   },
   exportZip(projectId, opts = {}) {
     const params = new URLSearchParams();

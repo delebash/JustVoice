@@ -8,20 +8,21 @@ JustVoice serves five distinct audiences. Pick your primary at first launch — 
 
 **Flow**:
 1. **Import** the manuscript (JustWrite export, or any of the supported [import formats](import-and-export.md)).
-2. **Cast** — pick voices for every character via the Voices tab. Smart-assign auto-matches; review.
+2. **Discover** — find the people the manuscript names and add them to the book as its **speakers**.
 3. **Script** — let the AI work out who speaks each line; the result saves onto the chapter. Correct any misattributions in the Script tab — every row is assignable, narration included, and your corrections feed back into subsequent re-analyses. Any line left without a speaker blocks the render rather than going missing from the audio.
-4. **Render** — batch render every chapter. ACX [mastering.md](mastering.md) preset applies automatically.
-5. **Export** — M4B audiobook file with chapter markers, muxed server-side from the Export tab. See [Audiobook → M4B](import-and-export.md#audiobook--m4b).
+4. **Cast** — give each speaker a **persona**, a finished voice from your [Personas](personas.md) library; one persona can play several speakers. Smart-assign proposes a match for everyone; change any you disagree with.
+5. **Render** — batch render every chapter. ACX [mastering.md](mastering.md) preset applies automatically.
+6. **Export** — M4B audiobook file with chapter markers, muxed server-side from the Export tab. See [Audiobook → M4B](import-and-export.md#audiobook--m4b).
 
-**Engine pick**: Chatterbox Turbo (voice cloning, sounds like real narrators) + Kokoro (incidental characters).
+**Engine pick**: Chatterbox Turbo (voice cloning, sounds like real narrators) + Kokoro (personas for minor speakers).
 
-## 🎮 Game NPC dialogue
+## 🎮 Game dialogue
 
-**Goal**: voice 50-500 NPC lines with consistent character voices.
+**Goal**: voice 50-500 dialogue lines with a consistent voice for every speaker.
 
 **Flow**:
-1. **Import** a CSV of dialogue rows (`scene, character, text, delivery, pause_after_ms` — only `text` is required; include an `id`/`line_id`/`dialogue_id` column so re-imports merge by stable id). See [import-and-export.md](import-and-export.md).
-2. **Cast** — assign each character to a voice. Cloned voices for hero NPCs, preset voices for villagers.
+1. **Import** a CSV of dialogue rows (`scene, character, text, delivery, pause_after_ms` — only `text` is required; include an `id`/`line_id`/`dialogue_id` column so re-imports merge by stable id). See [import-and-export.md](import-and-export.md). Each `character` in the sheet becomes one of the project's speakers.
+2. **Cast** — give each speaker a persona. Personas on cloned voices for the heroes, on preset voices for villagers — one "villager" persona can play them all.
 3. **Render** — bulk render every line.
 4. **Export** — per-line WAVs grouped by scene plus a `manifest.json` of line metadata for Unreal import; an Unreal `.uplugin` bundle is planned.
 
@@ -29,16 +30,16 @@ JustVoice serves five distinct audiences. Pick your primary at first launch — 
 
 ## 🎙️ Podcast production
 
-**Goal**: produce a multi-track podcast episode with multiple host voices and effects.
+**Goal**: produce a multi-track podcast episode with several speakers' voices and effects.
 
 **Flow**:
 1. **Import** a script (CSV, SRT, or write directly in JustVoice).
-2. **Cast** voices for hosts + guests.
+2. **Cast** — give each speaker (hosts and guests) a persona.
 3. **Stories timeline** *(planned — the tab is a placeholder today; episodes work through Chapters + Studio)* — arrange voiced segments on a multi-track timeline. Add SFX, music beds via drag-drop. Trim, split, version-pin per clip.
 4. **Render** — full episode mix-down. Podcast [mastering.md](mastering.md) preset (-16 LUFS).
 5. **Export** — MP3 / WAV.
 
-**Engine pick**: Chatterbox Turbo for hosts (clone real voices) + Kokoro for incidental characters.
+**Engine pick**: Chatterbox Turbo for the hosts' personas (clone real voices) + Kokoro for minor speakers.
 
 ## ⌨️ Dictation / agent voice
 

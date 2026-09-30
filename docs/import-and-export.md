@@ -77,6 +77,14 @@ the project opens (audiobook chapter view, game voiceline table,
 podcast timeline, …). `character_id` is optional — adapters can emit
 lines without a speaker (e.g. SRT cues with no `SPEAKER:` prefix).
 
+`characters` is the schema's word for the people the source names. On commit
+each one becomes a **speaker** in the new book — a name, its aliases as **Also
+called**, and `notes` plus `voice_hint` as **Who they are** — and each line
+points at its speaker. An import creates **no personas**: a speaker whose name is
+exactly the name of a persona in your library arrives already cast with it, and
+the rest wait for one in [Studio → Cast](studio.md#cast). Two people with one
+name in the source stay two speakers.
+
 ---
 
 ### <a id="import-justwrite"></a>JustWrite book (`justwrite`)
@@ -104,16 +112,18 @@ unzipped the file, a bare `book.json` imports too.
   Bold and italics flatten to plain text, which is what a voice engine reads. The
   `* * *` scene marks you see in JustWrite are never spoken — they are drawn on
   screen between scenes, not stored in the text.
-- **The cast.** Every character becomes a speaking part carrying its name, a
-  casting hint built from gender, age and role, the one-line description, and any
-  aliases. Aliases earn their place: the same character gets addressed by
-  different names through the prose, and the voice has to match.
+- **The speakers.** Every person in the book becomes a speaker in this book,
+  carrying its name, its aliases as **Also called**, and a **Who they are** built
+  from the one-line description and a casting hint from gender, age and role.
+  Aliases earn their place: the same person gets addressed by different names
+  through the prose, and attribution has to recognise every one of them.
 
-  All of that lands in the persona's **character sheet** — the prose half. The
-  **Spoken delivery** box, the one that actually directs the TTS, starts
-  **empty**: "female, age 34, protagonist" tells you who to cast, not how to
-  perform, and JustVoice will not invent a performance you did not ask for. See
-  [Personas](personas.md).
+  A speaker is a person, not a voice, so nothing here decides how anyone sounds:
+  "female, age 34, protagonist" tells you who to cast, not how to perform. A
+  speaker whose name is exactly a persona in your library arrives cast with that
+  persona; everyone else gets one in [Studio → Cast](studio.md#cast). The import
+  creates no personas. A book with its own "Narrator" makes that speaker the
+  narrator; a book without one gets none. See [Personas](personas.md).
 
 **What does not come across, and why**
 
@@ -123,11 +133,11 @@ unzipped the file, a bare `book.json` imports too.
   **Studio → Script**.
 - **Pronunciations.** A JustWrite book has no pronunciation list, so the project
   starts without a lexicon. Build one under **Lexicons** for the names your engine
-  gets wrong — character and place names are the usual offenders.
+  gets wrong — people's and place names are the usual offenders.
 - **Scene titles.** JustWrite's per-scene titles are planning labels ("Sarah
   confronts him"), not published prose, so they are not narrated.
 - **Everything else in the file** — plot strands, notes, worldbuilding, statuses,
-  JustWrite's own AI results, deleted items. JustVoice takes prose and cast.
+  JustWrite's own AI results, deleted items. JustVoice takes prose and speakers.
 
 **Empty chapters are skipped**, and the warning names them, so an outlined but
 unwritten chapter does not become a silent scene. To leave more out, use the
@@ -151,8 +161,9 @@ finished book. Stdlib-only parsing (works headless, no optional deps).
   the whole file becomes one scene.
 
 Every paragraph becomes one `line` with `character_id: null` — prose
-carries no speaker data. Speakers are discovered later by Script
-extraction and promoted to personas (see CONCEPTS.md §3).
+carries no speaker data. The book's speakers are found later by
+**Studio → Discover**, whose **＋ Add** makes each one a speaker in the book,
+and **Studio → Script** gives lines to them (see [Studio](studio.md)).
 
 **Chapter-split strategy** — the import-review page's "Split on"
 selector (form field `split_on`, also accepted by the API directly):
@@ -176,7 +187,7 @@ left alone); unlabeled paragraphs continue the current speaker.
 `## headings` split segments into scenes; `— marker —` / `---` lines
 import as unattributed marker lines (`delivery.marker=true`).
 Paralinguistic tags like `[laughs]` stay in the text — capable engines
-perform them. Unknown labels become characters → personas at commit.
+perform them. Each label becomes one of the episode's speakers at commit.
 
 ### <a id="import-csv_lines"></a>CSV lines (`csv_lines`)
 
@@ -192,7 +203,8 @@ forest,Hero,The trees are thick here.,,
 
 - Only `text` is mandatory.
 - `scene` groups rows into a `StandardScene` (default `default`).
-- `character` is slugged into an id and reused across rows.
+- `character` names the line's speaker: it is slugged into an id and reused
+  across rows, so each name becomes one speaker in the project.
 - `delivery` is parsed as JSON if it looks like JSON, otherwise stored
   as `{"instruct": "<raw string>"}`.
 - `pause_after_ms` is parsed as an integer; ignored if non-numeric.
@@ -220,7 +232,7 @@ An unattributed line.
 
 - One cue becomes one `StandardLine`.
 - A leading `SPEAKER:` (uppercase, up to 40 chars) is lifted into a
-  `StandardCharacter` and stripped from the text.
+  `StandardCharacter` — a speaker in the project — and stripped from the text.
 - `pause_after_ms` on a line is the gap between its cue's end and the
   next cue's start (so the rendered chapter preserves the original
   pacing).
@@ -313,7 +325,7 @@ JustVoice produces audio in three shapes, depending on what you're doing with it
 
 | Format | What it is | Use case |
 |---|---|---|
-| **WAV** | Single uncompressed audio file | One-line renders, podcast intros, game NPC lines |
+| **WAV** | Single uncompressed audio file | One-line renders, podcast intros, game dialogue lines |
 | **M4B** | Audiobook container with chapter markers | ACX submission, audiobook distribution |
 | **ZIP** | Bundle of per-block WAVs + manifest.json | Game-dev workflows, archival, hand-off to a DAW |
 
@@ -371,15 +383,16 @@ Cover art and narrator/ASIN metadata are **not** written today — add them in a
 
 ### Game-dev → ZIP bundle
 
-For NPC dialogue + game audio, the voicelines export packages:
+For game dialogue, the voicelines export packages:
 - One WAV per line, named by its stable line id and grouped into a folder per scene
 - A `manifest.json` listing each WAV's metadata — one entry per line, with these
-  fields:
+  fields (`speaker` is the line's speaker by name, `null` for a line with none;
+  until 2026-09-29 this key was `character`):
   ```json
   {
     "line_id": "s01_l001",
     "scene": "tavern",
-    "character": "Shopkeeper",
+    "speaker": "Shopkeeper",
     "text": "Welcome, traveler. What'll it be?",
     "file": "tavern/s01_l001.wav",
     "duration_s": 2.4,
@@ -402,8 +415,11 @@ rather than one chapter, and downloads as `<project>_VO.zip`.
   archive stays diffable across re-exports — the same line keeps the same path.
 - **`manifest.json`** alongside, in the format above.
 - Every line is rendered through the **production render path** (`render_core.render_line` with
-  the persona's delivery and lexicon), so the export matches what the Studio Render tab
-  produced. It is not a separate, drifting code path.
+  the voice, delivery, effects and lexicon of the persona that plays the line's speaker), so the
+  export matches what the Studio Render tab produced. It is not a separate, drifting code path.
+- A line nobody voices stops the export — no speaker, a speaker with no persona, or a persona
+  with no voice — with `line <id> has no voice (…) — give every speaker a persona with a voice
+  before exporting`.
 
 Stable ids are what make this useful in a game pipeline: re-export after editing three lines and
 only those three files change, so your engine's asset diff stays small. That is also why
@@ -416,7 +432,9 @@ The Projects tab's **Export project** action produces a `.justvoice.zip` archive
 - All chapters' rendered WAVs
 - All takes (not just defaults — full history for re-roll archaeology)
 - The project's full SQLite snapshot
-- Persona cast list + voice profile bindings
+- The book's speakers (`speakers/<id>.json` — name, Also called, Who they are, the persona
+  that plays them, the narrator role) and the personas that play them (`personas/<id>.json`);
+  the archive's `manifest.json` counts both (`speaker_count`, `persona_count`)
 - Lexicons used
 - Render presets
 

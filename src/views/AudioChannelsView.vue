@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: MIT -->
 <!--
   AudioChannelsView — named audio output configs for multi-device routing.
-  OBS / multi-monitor / per-character podcast monitoring use cases.
+  OBS / multi-monitor / per-persona podcast monitoring use cases.
 
   Voice profiles assigned to channels with non-default device IDs use native
   playback via Tauri IPC (list_audio_output_devices + play_audio_to_devices).

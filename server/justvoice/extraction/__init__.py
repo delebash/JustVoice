@@ -17,7 +17,7 @@
 
 `analyze_scene(scene_text, characters, ...)` is the public entrypoint
 that POST /v1/scenes/{id}/analyze dispatches to. Returns a list of
-attribution rows ready to write into Block rows with persona_id +
+attribution rows ready to write into Block rows with speaker_id +
 extraction_confidence + source.
 """
 

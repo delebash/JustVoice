@@ -31,9 +31,7 @@ def client(tmp_path):
 
 
 def _cast(client, project_id):
-    cast = client.get(f"/v1/projects/{project_id}/cast").json()["cast"]
-    personas = {p["id"]: p for p in client.get("/v1/personas").json()["personas"]}
-    return [{**c, "name": personas[c["persona_id"]]["name"]} for c in cast]
+    return client.get(f"/v1/projects/{project_id}/speakers").json()["speakers"]
 
 
 def _import(client, **kwargs):
@@ -46,17 +44,17 @@ def test_an_import_makes_no_narrator(client):
     cast = _cast(client, _import(client))
     assert [c["name"] for c in cast] == ["Mara Vance"]
     assert not [c for c in cast if c["role_label"] == "narrator"]
-    personas = client.get("/v1/personas").json()["personas"]
-    assert not [p for p in personas if p["name"].lower() == "narrator"]
+    assert client.get("/v1/personas").json()["personas"] == [], "an import makes no persona"
 
 
-def test_reimporting_a_deleted_book_leaves_no_narrator_behind(client):
-    """The pile-up this replaced: import, delete, import again."""
+def test_reimporting_a_deleted_book_leaves_nothing_behind(client):
+    """The pile-up this replaced: import, delete, import again. Speakers go
+    with their book; the library of personas never saw them."""
     first = _import(client)
     assert client.delete(f"/v1/projects/{first}").status_code == 200
-    _import(client)
-    names = [p["name"] for p in client.get("/v1/personas").json()["personas"]]
-    assert names == ["Mara Vance"], "the character is reused by its id; no Narrator appears"
+    second = _import(client)
+    assert [c["name"] for c in _cast(client, second)] == ["Mara Vance"]
+    assert client.get("/v1/personas").json()["personas"] == []
 
 
 def test_a_book_that_names_its_own_narrator_gets_one_not_two(client):

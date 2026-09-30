@@ -48,7 +48,7 @@ const props = defineProps({
   // Bumped by the parent when it changed a line itself (a rewrite).
   version: { type: Number, default: 0 },
 });
-const emit = defineEmits(["back", "open", "go", "changed", "cast-changed", "rewrite"]);
+const emit = defineEmits(["back", "open", "go", "changed", "rewrite"]);
 
 const api = useApi();
 const copy = useCopy();
@@ -99,7 +99,7 @@ async function openChapter() {
     selected.value = nextToCheck(lines.value, null, 1);
   } else if (props.focus === "none") {
     filter.value = "none";
-    selected.value = lines.value.find((ln) => ln.speakable && !ln.marker && !ln.persona_id)?.id ?? null;
+    selected.value = lines.value.find((ln) => ln.speakable && !ln.marker && !ln.speaker_id)?.id ?? null;
   } else {
     filter.value = "all";
   }
@@ -112,7 +112,7 @@ const chapter = computed(() => page.value?.chapter || null);
 const groups = computed(() => page.value?.flag_groups || []);
 const speakers = computed(() => page.value?.speakers || []);
 const narratorId = computed(() => page.value?.narrator_id || null);
-const nameOf = (id) => speakers.value.find((s) => s.persona_id === id)?.name || (id ? "someone not in the cast" : "nobody");
+const nameOf = (id) => speakers.value.find((s) => s.speaker_id === id)?.name || (id ? "someone removed" : "nobody");
 
 const counts = computed(() => filterCounts(lines.value));
 const shown = computed(() =>
@@ -213,10 +213,10 @@ async function send(changes, label) {
   emit("changed");
 }
 
-function setOne(line, personaId) {
-  if (!personaId) return;
+function setOne(line, speakerId) {
+  if (!speakerId) return;
   selected.value = line.id;
-  send(setSpeaker(lines.value, [line.id], personaId), "speaker");
+  send(setSpeaker(lines.value, [line.id], speakerId), "speaker");
 }
 function looksRight(line, whole) {
   const ids = whole ? markOf(groups.value, lines.value, line.id) : [line.id];
@@ -224,9 +224,9 @@ function looksRight(line, whole) {
 }
 const tickedIds = computed(() => lines.value.filter((ln) => ticked.value[ln.id]).map((ln) => ln.id));
 const bulkSpeaker = ref(null);
-function setTicked(personaId) {
-  if (!personaId) return;
-  send(setSpeaker(lines.value, tickedIds.value, personaId), "speaker");
+function setTicked(speakerId) {
+  if (!speakerId) return;
+  send(setSpeaker(lines.value, tickedIds.value, speakerId), "speaker");
   bulkSpeaker.value = null;
   ticked.value = {};
 }
@@ -239,7 +239,7 @@ function confirmTicked() {
   send(confirm(lines.value, tickedIds.value), "looks right");
   ticked.value = {};
 }
-const noSpeakerIds = computed(() => lines.value.filter((ln) => ln.speakable && !ln.marker && !ln.persona_id).map((ln) => ln.id));
+const noSpeakerIds = computed(() => lines.value.filter((ln) => ln.speakable && !ln.marker && !ln.speaker_id).map((ln) => ln.id));
 function allToNarrator() {
   if (narratorId.value) send(setSpeaker(lines.value, noSpeakerIds.value, narratorId.value), "narrator");
 }
@@ -270,21 +270,6 @@ async function undo() {
   });
   await load();
   emit("changed");
-}
-
-async function putBackInCast(s) {
-  try {
-    await api.request(`/v1/projects/${props.project.id}/cast`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ persona_id: s.persona_id }),
-    });
-    pushToast({ message: `${s.name} is back in this cast — their ${s.lines} line${s.lines === 1 ? "" : "s"} keep their speaker.`, kind: "success" });
-    emit("cast-changed");
-    await load();
-  } catch (e) {
-    pushToast({ message: `Couldn't add ${s.name}: ${e?.message || e}`, kind: "error" });
-  }
 }
 
 // ── Moving around ────────────────────────────────────────────────────────
@@ -418,18 +403,18 @@ function rowClass(ln) {
   const nxt = shown.value[i + 1];
   return {
     "jv-row--selected": ln.id === selected.value,
-    "jv-row--attention": ln.speakable && !ln.marker && !ln.persona_id,
+    "jv-row--attention": ln.speakable && !ln.marker && !ln.speaker_id,
     "jv-row--flag": (ln.flags || []).length > 0,
     // The lines of a paragraph sit together: the divider only under its last line.
     "jv-row--para-open": !!nxt && ln.paragraph != null && nxt.paragraph === ln.paragraph,
     "studio-script-ch__narr": ln.source === "narration",
   };
 }
-const optionsFor = (ln) => speakerOptions(speakers.value, narratorId.value, ln);
+const speakerChoices = computed(() => speakerOptions(speakers.value, narratorId.value));
 const speakerFilterOptions = computed(() => [
   { value: "all", label: "Every speaker" },
   ...[...speakers.value].filter((s) => s.lines > 0).sort((a, b) => b.lines - a.lines)
-    .map((s) => ({ value: s.persona_id, label: `${s.name} · ${s.lines}${s.in_cast ? "" : " · not in this cast"}` })),
+    .map((s) => ({ value: s.speaker_id, label: `${s.name} · ${s.lines}` })),
 ]);
 const flagged = (ln) => (ln.flags || []).length > 0;
 </script>
@@ -455,7 +440,7 @@ const flagged = (ln) => (ln.flags || []).length > 0;
               {{ justRan.route_source === "auto" ? "(chosen for your model)" : "(you chose it)" }},
               keeping answers above {{ justRan.floor }} confidence.
             </template>
-            Script decides who says each spoken line, so each one is voiced by the right persona.
+            Script decides who says each spoken line — one of this book's speakers.
           </p>
           <div class="studio-script-ch__verbs">
             <span class="studio-script-ch__verb">
@@ -480,7 +465,7 @@ const flagged = (ln) => (ln.flags || []).length > 0;
             <span class="jv-spacer" />
             <span class="studio-script-ch__verb">
               <UiButton intent="secondary" label="🔍 A speaker is missing" @click="emit('go', 'discover')" />
-              <span class="jv-hint">Analyze can only pick personas in the cast. Discover finds names in the text
+              <span class="jv-hint">Analyze can only pick this book's speakers. Discover finds names in the text
                 that aren't in it yet.</span>
             </span>
           </div>
@@ -495,16 +480,8 @@ const flagged = (ln) => (ln.flags || []).length > 0;
         <span class="jv-spacer" />
         <UiButton intent="secondary" size="small" :disabled="!narratorId || busy"
           :label="`Assign ${counts.none} → ${nameOf(narratorId)}`"
-          :title="narratorId ? 'Everything the model couldn\'t place becomes narration.' : 'This project has no Narrator persona — set a speaker on each line instead.'"
+          :title="narratorId ? 'Everything the model couldn\'t place becomes narration.' : 'This book has no narrator — choose one on Cast, or set a speaker on each line.'"
           @click="allToNarrator" />
-      </div>
-      <div v-for="s in chapter.not_in_cast" :key="s.persona_id" class="jv-banner jv-banner--info studio-script-ch__banner">
-        <span><strong>{{ s.name }} isn't in this cast.</strong>
-          {{ s.lines }} line{{ s.lines === 1 ? "" : "s" }} in this {{ word.singular.toLowerCase() }}
-          {{ s.lines === 1 ? "is" : "are" }} theirs. They keep their speaker, but Analyze can't choose them
-          and Cast doesn't list them.</span>
-        <span class="jv-spacer" />
-        <UiButton intent="secondary" size="small" label="Put them back in the cast" @click="putBackInCast(s)" />
       </div>
 
       <div class="jv-card studio-script-ch__lines">
@@ -538,7 +515,7 @@ const flagged = (ln) => (ln.flags || []).length > 0;
             <span v-if="row.marker" class="jv-muted">—</span>
             <span v-else-if="!row.speakable" class="jv-muted">—</span>
             <span v-else @click.stop>
-              <UiSelect :model-value="row.persona_id" width="name" :options="optionsFor(row)"
+              <UiSelect :model-value="row.speaker_id" width="name" :options="speakerChoices"
                 placeholder="— no speaker —" :disabled="busy"
                 @update:model-value="(v) => setOne(row, v)" />
             </span>
@@ -549,12 +526,12 @@ const flagged = (ln) => (ln.flags || []).length > 0;
               · was {{ wasBefore(undoStack, row.id) ? nameOf(wasBefore(undoStack, row.id)) : "no one" }}</span>
             <div v-if="decidedBy(row, lines).sub" class="jv-hint">{{ decidedBy(row, lines).sub }}</div>
             <div v-if="row.changed">
-              <UiTag intent="accent2" title="The last Analyze gave this line a different speaker">changed · was {{ row.prev_persona_id ? nameOf(row.prev_persona_id) : "no one" }}</UiTag>
+              <UiTag intent="accent2" title="The last Analyze gave this line a different speaker">changed · was {{ row.prev_speaker_id ? nameOf(row.prev_speaker_id) : "no one" }}</UiTag>
             </div>
           </template>
           <template #text="{ row }">
             <span class="studio-script-ch__text"
-              :title="row.spoken && row.persona_id && row.persona_id !== narratorId ? 'Right-click to rewrite this line in character' : ''"
+              :title="row.spoken && row.speaker_id && row.speaker_id !== narratorId ? 'Right-click to rewrite this line in character' : ''"
               @contextmenu.prevent="emit('rewrite', row)">{{ row.text }}</span>
           </template>
           <template #conf="{ row }">
@@ -585,7 +562,7 @@ const flagged = (ln) => (ln.flags || []).length > 0;
             @update:model-value="setTicked" />
           <UiButton intent="secondary" size="small" label="⇄ Swap their two speakers"
             :disabled="!swapCheck.ok || busy"
-            :title="swapCheck.ok ? 'For ticked lines spoken by exactly two personas: each line goes to the other one' : swapCheck.reason"
+            :title="swapCheck.ok ? 'For ticked lines spoken by exactly two speakers: each line goes to the other one' : swapCheck.reason"
             @click="swapTicked" />
           <UiButton intent="secondary" size="small" label="✓ Looks right" :disabled="!tickedIds.length || busy"
             title="Removes the marks from the ticked lines and makes them yours" @click="confirmTicked" />
@@ -629,7 +606,7 @@ const flagged = (ln) => (ln.flags || []).length > 0;
             <dd class="jv-muted">Where the AI most often goes wrong, so you know where to read closely. Its most common
               mistake is losing track of turns in a back-and-forth — two people alternate, and it gives two lines in
               a row to one of them. So a line is marked when one person speaks three times with no reply, when it
-              is a persona's only line in the {{ word.singular.toLowerCase() }}, or when the book and the AI name
+              is a speaker's only line in the {{ word.singular.toLowerCase() }}, or when the book and the AI name
               different speakers. The line may well be right: “👁 Show the lines
               around” lets you read the exchange, and “✓ Looks right” (optional) removes the mark — the line
               renders the same either way.</dd>

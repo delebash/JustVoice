@@ -24,6 +24,7 @@ from justvoice.errors import ApiError
 from justvoice.models import Persona
 
 from tests.conftest_db import tmp_db  # noqa: F401 — pytest discovers via fixture name
+from tests.speaker_fixtures import speaker_played_by
 
 
 def _patch_session(monkeypatch, session_factory):
@@ -77,11 +78,12 @@ def _make_project_with_scene(db, scene_id: str = "scene-1"):
 
 
 def _add_block(db, scene_id: str, position: int, text: str, persona_id: str | None):
+    """A line said by a speaker that `persona_id` plays (None = no speaker)."""
     b = Block(
         scene_id=scene_id,
         position=position,
         text=text,
-        persona_id=persona_id,
+        speaker_id=speaker_played_by(db, scene_id, persona_id),
     )
     db.add(b)
     db.flush()
@@ -358,7 +360,7 @@ def test_all_blocks_skipped_raises_bad_request(tmp_db, monkeypatch):  # noqa: F8
             st=_fake_state({}),
         )
     assert exc_info.value.status_code == 400
-    assert "no persona/voice" in str(exc_info.value.detail).lower()
+    assert "no speaker, persona or voice" in str(exc_info.value.detail).lower()
 
 
 # ─── Edge: empty-text blocks are skipped ────────────────────────────────
@@ -434,7 +436,32 @@ def test_strict_names_a_persona_cast_without_a_voice(tmp_db, monkeypatch):  # no
         render_chapter_api._resolve_scene_to_lines(
             scene_id="scene-1", preset_id=None, st=_fake_state(personas), strict=True,
         )
-    assert "Persona persona-noisy" in str(exc_info.value.detail)
+    assert "The persona Persona persona-noisy has no voice" in str(exc_info.value.detail)
+
+
+def test_strict_names_a_speaker_no_persona_plays(tmp_db, monkeypatch):  # noqa: F811
+    """Since 2026-09-29: a line's speaker is there, but no persona plays them."""
+    from justvoice.database.models import Speaker
+
+    session_factory, _engine = tmp_db
+    _patch_session(monkeypatch, session_factory)
+
+    db = session_factory()
+    scene = _make_project_with_scene(db)
+    harbek = Speaker(project_id=scene.project_id, name="Harbek")
+    db.add(harbek)
+    db.flush()
+    db.add(Block(scene_id=scene.id, position=0, text="Halt.", speaker_id=harbek.id))
+    _add_block(db, scene.id, 1, "Voiced.", "persona-mara")
+    db.commit()
+    db.close()
+
+    personas = {"persona-mara": _make_persona("persona-mara", voice_id="voice-mara")}
+    with pytest.raises(ApiError) as exc_info:
+        render_chapter_api._resolve_scene_to_lines(
+            scene_id="scene-1", preset_id=None, st=_fake_state(personas), strict=True,
+        )
+    assert "Nobody plays Harbek yet" in str(exc_info.value.detail)
 
 
 def test_strict_ignores_markers(tmp_db, monkeypatch):  # noqa: F811

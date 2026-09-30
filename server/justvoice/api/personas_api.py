@@ -1,4 +1,8 @@
-"""/v1/personas CRUD + cross-project usage."""
+"""/v1/personas CRUD + where each persona is used.
+
+A persona is a finished spoken voice in the library (2026-09-29): it plays
+speakers — the people in a book — and one persona can play many. So "used"
+means the speakers it plays, in which books."""
 
 from __future__ import annotations
 
@@ -8,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from ..app_state import get_state
 from ..database import get_db
-from ..database.models import Project, ProjectPersona
+from ..database.models import Project, Speaker
 from ..errors import not_found
 from ..models import CreatePersonaRequest, Persona, PersonaList
 from .extraction_api import RunUsage
@@ -21,47 +25,55 @@ async def list_personas() -> PersonaList:
     return PersonaList(personas=get_state().personas.list())
 
 
-class PersonaProjectUsage(BaseModel):
+class PersonaSpeakerUsage(BaseModel):
+    """One speaker this persona plays."""
+
     project_id: str
     project_name: str
+    speaker_id: str
+    speaker_name: str
+    lines: int = 0
 
 
 class PersonaUsageMap(BaseModel):
-    usage: dict[str, list[PersonaProjectUsage]]
+    usage: dict[str, list[PersonaSpeakerUsage]]
+
+
+def _usage(db: Session, persona_id: str | None = None) -> dict[str, list[PersonaSpeakerUsage]]:
+    from ._speaker_helpers import speaker_line_counts
+
+    q = (
+        db.query(Speaker.persona_id, Speaker.id, Speaker.name, Project.id, Project.name)
+        .join(Project, Project.id == Speaker.project_id)
+        .filter(Speaker.persona_id.isnot(None))
+    )
+    if persona_id is not None:
+        q = q.filter(Speaker.persona_id == persona_id)
+    rows = q.all()
+    counts: dict[str, dict[str, int]] = {}
+    usage: dict[str, list[PersonaSpeakerUsage]] = {}
+    for pid, sid, sname, project_id, project_name in rows:
+        if project_id not in counts:
+            counts[project_id] = speaker_line_counts(db, project_id)
+        usage.setdefault(pid, []).append(PersonaSpeakerUsage(
+            project_id=project_id, project_name=project_name,
+            speaker_id=sid, speaker_name=sname, lines=counts[project_id].get(sid, 0),
+        ))
+    for entries in usage.values():
+        entries.sort(key=lambda u: (u.project_name.lower(), u.speaker_name.lower()))
+    return usage
 
 
 @router.get("/v1/personas/usage", response_model=PersonaUsageMap)
 async def persona_usage(db: Session = Depends(get_db)) -> PersonaUsageMap:
-    """Return {persona_id: [{project_id, project_name}, ...]} for every
-    persona referenced via ProjectPersona. Drives the Personas tab's
-    library-mode "Used in N projects" badges + filter chips."""
-    rows = (
-        db.query(ProjectPersona.persona_id, Project.id, Project.name)
-        .join(Project, Project.id == ProjectPersona.project_id)
-        .all()
-    )
-    usage: dict[str, list[PersonaProjectUsage]] = {}
-    for persona_id, project_id, project_name in rows:
-        usage.setdefault(persona_id, []).append(
-            PersonaProjectUsage(project_id=project_id, project_name=project_name)
-        )
-    return PersonaUsageMap(usage=usage)
-
-
-# ── Cross-project NPC detail (Phase 7 / Slice 1) ─────────────────────────
-
-
-class PersonaUsageProjectDetail(BaseModel):
-    project_id: str
-    project_name: str
-    project_type: str
-    scene_count: int  # scenes in the project that have at least one block for this persona
-    line_count: int   # total blocks attributed to this persona across the project
+    """{persona_id: [the speakers it plays, with their book]} — the Personas
+    page's "Used by" column and filters."""
+    return PersonaUsageMap(usage=_usage(db))
 
 
 class PersonaUsageDetailResponse(BaseModel):
     persona_id: str
-    projects: list[PersonaUsageProjectDetail]
+    speakers: list[PersonaSpeakerUsage]
     total_lines: int
 
 
@@ -72,64 +84,16 @@ class PersonaUsageDetailResponse(BaseModel):
 async def persona_usage_detail(
     persona_id: str, db: Session = Depends(get_db)
 ) -> PersonaUsageDetailResponse:
-    """Per-project line counts for one persona — drives the cross-project
-    detail panel in PersonasView (Phase 7 / Slice 1, plan task #76)."""
-    from ..database.models import Block, Scene
-
-    persona_exists = (
-        get_state().personas.get(persona_id) is not None
-        or db.query(ProjectPersona).filter(ProjectPersona.persona_id == persona_id).first() is not None
-    )
-    if not persona_exists:
+    """The speakers one persona plays, each with its book and lines — the
+    persona editor's "Used by" panel."""
+    if get_state().personas.get(persona_id) is None:
         raise not_found(f"persona {persona_id}")
-
-    # Aggregate by project — count blocks attributed to this persona,
-    # plus how many distinct scenes those blocks live in.
-    rows = (
-        db.query(
-            Project.id,
-            Project.name,
-            Project.project_type,
-            Scene.id.label("scene_id"),
-            Block.id.label("block_id"),
-        )
-        .join(Scene, Scene.project_id == Project.id)
-        .join(Block, Block.scene_id == Scene.id)
-        .filter(Block.persona_id == persona_id)
-        .all()
-    )
-
-    by_project: dict[str, dict] = {}
-    for pid, pname, ptype, scene_id, _block_id in rows:
-        entry = by_project.setdefault(
-            pid,
-            {
-                "project_id": pid,
-                "project_name": pname,
-                "project_type": ptype,
-                "scene_ids": set(),
-                "line_count": 0,
-            },
-        )
-        entry["scene_ids"].add(scene_id)
-        entry["line_count"] += 1
-
-    projects = [
-        PersonaUsageProjectDetail(
-            project_id=e["project_id"],
-            project_name=e["project_name"],
-            project_type=e["project_type"],
-            scene_count=len(e["scene_ids"]),
-            line_count=e["line_count"],
-        )
-        for e in by_project.values()
-    ]
-    projects.sort(key=lambda p: p.line_count, reverse=True)
-
+    speakers = _usage(db, persona_id).get(persona_id, [])
+    speakers.sort(key=lambda u: -u.lines)
     return PersonaUsageDetailResponse(
         persona_id=persona_id,
-        projects=projects,
-        total_lines=sum(p.line_count for p in projects),
+        speakers=speakers,
+        total_lines=sum(u.lines for u in speakers),
     )
 
 
@@ -146,9 +110,8 @@ async def create_persona(body: CreatePersonaRequest) -> Persona:
         llm_model=body.llm_model,
         language=body.language,
         avatar_path=body.avatar_path,
-        personality=body.personality,
+        note=body.note,
         effects_chain=body.effects_chain,
-        aliases=body.aliases,
     )
 
 
@@ -161,28 +124,7 @@ async def get_persona(id: str) -> Persona:
 
 
 @router.put("/v1/personas/{id}", response_model=Persona)
-async def update_persona(id: str, body: CreatePersonaRequest, db: Session = Depends(get_db)) -> Persona:
-    from ..errors import conflict
-    from ._persona_helpers import cast_member_named, same_name
-
-    current = get_state().personas.get(id)
-    if current is None:
-        raise not_found(f"persona {id}")
-    # Names are unique within a book (2026-09-29): a rename is refused when a
-    # book this persona is in already has someone by the new name.
-    if same_name(body.name) != same_name(current.name):
-        books = (
-            db.query(Project.id, Project.name)
-            .join(ProjectPersona, ProjectPersona.project_id == Project.id)
-            .filter(ProjectPersona.persona_id == id)
-        )
-        for project_id, book in books:
-            taken = cast_member_named(db, project_id, body.name, besides=id)
-            if taken is not None:
-                raise conflict(
-                    f'{book} already has someone called "{taken}". Names are unique '
-                    "within a book — pick another name."
-                )
+async def update_persona(id: str, body: CreatePersonaRequest) -> Persona:
     p = get_state().personas.update(
         id,
         name=body.name,
@@ -195,9 +137,8 @@ async def update_persona(id: str, body: CreatePersonaRequest, db: Session = Depe
         llm_model=body.llm_model,
         language=body.language,
         avatar_path=body.avatar_path,
-        personality=body.personality,
+        note=body.note,
         effects_chain=body.effects_chain,
-        aliases=body.aliases,
     )
     if not p:
         raise not_found(f"persona {id}")
@@ -209,10 +150,9 @@ async def delete_persona(id: str) -> dict:
     persona = get_state().personas.get(id)
     if persona is None:
         raise not_found(f"persona {id}")
-    # Every persona deletes the same way, the Narrator included (2026-09-29:
-    # no built-in personas). Its cast links go with it (ON DELETE CASCADE)
-    # and its lines keep no speaker (SET NULL) — the render blocker catches
-    # those, and Studio offers "+ Add Narrator" again.
+    # Every persona deletes the same way (2026-09-29: no built-in personas).
+    # The speakers it played lose their persona (SET NULL) and keep their
+    # lines — the render stops on them until Cast gives them another.
     if not get_state().personas.delete(id):
         raise not_found(f"persona {id}")
     return {"deleted": True}
@@ -239,20 +179,21 @@ class RewriteResponse(BaseModel):
     usage: RunUsage | None = None  # §16, same as ComposeResponse
 
 
-def _require_persona_with_personality(persona_id: str):
+def _require_persona_with_note(persona_id: str):
     """Shared guard for /compose + /rewrite — both need a persona with a
-    non-empty personality field. Raises 404 / 400 as appropriate."""
+    note on how it sounds (Generate has no book, so no speaker's "Who they
+    are" to read). Raises 404 / 400 as appropriate."""
     from fastapi import HTTPException
 
     persona = get_state().personas.get(persona_id)
     if not persona:
         raise not_found(f"persona {persona_id}")
-    if not (persona.personality and persona.personality.strip()):
+    if not (persona.note and persona.note.strip()):
         raise HTTPException(
             status_code=400,
             detail=(
-                f"persona {persona_id} has no personality prompt — set one "
-                "to enable Compose / Rewrite."
+                f"{persona.name} has no note on how it sounds — write one on the "
+                "Personas page to use Compose / Rewrite."
             ),
         )
     return persona
@@ -263,8 +204,8 @@ def _require_persona_with_personality(persona_id: str):
     response_model=ComposeResponse,
     summary="Generate a fresh in-character line via LLM",
 )
-async def compose_with_personality(id: str) -> ComposeResponse:
-    """LLM-fills a line of dialogue in the persona's personality voice.
+async def compose_with_note(id: str) -> ComposeResponse:
+    """LLM-fills a line of dialogue in the persona's voice (its note).
 
     Drives the Compose button in the Generate view's floating bar.
     Runs through the shared run path — the `compose` template row + its
@@ -276,12 +217,14 @@ async def compose_with_personality(id: str) -> ComposeResponse:
 
     from ..engines.llm.run import run_feature
 
-    persona = _require_persona_with_personality(id)
-    # The template row owns the wording ({{personality}} in the system half);
+    persona = _require_persona_with_note(id)
+    # The template row owns the wording ({{personality}} in the system half —
+    # the variable keeps its name; its value is the persona's note since
+    # 2026-09-29);
     # the old hardcoded temperature=0.9 lives on its preset (p_compose —
     # ruling 9; its seeded 300 cap died in the caps ruling 2026-08-07).
     try:
-        resp = run_feature("compose", {"personality": persona.personality.strip()})
+        resp = run_feature("compose", {"personality": persona.note.strip()})
     except LLMNotConfiguredError as e:
         raise HTTPException(status_code=501, detail=str(e))
     except Exception as e:
@@ -301,11 +244,12 @@ async def compose_with_personality(id: str) -> ComposeResponse:
 @router.post(
     "/v1/personas/{id}/rewrite",
     response_model=RewriteResponse,
-    summary="Rewrite the supplied text in the persona's character voice (preview-then-accept)",
+    summary="Rewrite the supplied text in the persona's voice (preview-then-accept)",
 )
 async def rewrite_in_character(id: str, body: RewriteRequest) -> RewriteResponse:
-    """Take the user's text + persona.personality, return a rewritten
-    in-character version for preview. The user accepts (text replaces
+    """Take the user's text + the persona's note, return a rewritten version
+    in that voice for preview. (Script's "Rewrite in character" reads a
+    speaker's "Who they are" instead — /v1/speakers/{id}/rewrite.) The user accepts (text replaces
     the textarea) or rejects (original preserved) before sending to TTS.
 
     NEVER an automatic render-time hook — see plan Q3. Always explicit.
@@ -318,7 +262,7 @@ async def rewrite_in_character(id: str, body: RewriteRequest) -> RewriteResponse
 
     from ..engines.llm.run import run_feature
 
-    persona = _require_persona_with_personality(id)
+    persona = _require_persona_with_note(id)
     if not body.text.strip():
         raise HTTPException(
             status_code=400,
@@ -331,7 +275,7 @@ async def rewrite_in_character(id: str, body: RewriteRequest) -> RewriteResponse
     try:
         resp = run_feature(
             "persona_rewrite",
-            {"personality": persona.personality.strip(), "text": body.text},
+            {"personality": persona.note.strip(), "text": body.text},
         )
     except LLMNotConfiguredError as e:
         raise HTTPException(status_code=501, detail=str(e))

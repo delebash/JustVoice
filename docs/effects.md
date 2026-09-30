@@ -6,7 +6,7 @@ JustVoice has an effects chain: 10 effect types, 4 built-in presets, custom pres
 
 | Effect | What it does |
 |---|---|
-| **Pitch shift** | ± 12 semitones. Subtle (1-2 st) for character distinction; extreme (±6+) for monsters / kids / etc. |
+| **Pitch shift** | ± 12 semitones. Subtle (1-2 st) to tell two personas apart; extreme (±6+) for monsters / kids / etc. |
 | **High-pass filter** | Cut low frequencies. 180 Hz removes rumble; 80 Hz removes only sub-bass. |
 | **Low-pass filter** | Cut high frequencies. 4500 Hz for radio voice; 8000 Hz for telephone. |
 | **Reverb** | Adds space. Room / hall / chamber / plate variants. Wet/dry mix knob. |
@@ -35,11 +35,11 @@ Applying an effects chain to a take produces a **new take version** with effects
 A chain belongs to a **persona** or to a **render preset**, and nothing else
 carries one:
 
-- **The persona's chain** is how a character always sounds — Old Crow over a CB
-  radio, a giant always thick. Every line that persona speaks gets it, in every
-  render.
+- **The persona's chain** is how that voice always sounds — Old Crow over a CB
+  radio, a giant always thick. Every line of every speaker that persona plays
+  gets it, in every render.
 - **The render preset's chain** is how a *scene* sounds, and it layers **on top
-  of** the persona's: character first, scene colour after. Bind the preset to a
+  of** the persona's: persona first, scene colour after. Bind the preset to a
   scene in Studio · Render.
 
 Both run, in that order. This is not a "lowest set value wins" cascade, and
@@ -55,8 +55,8 @@ entirely until 2026-08-15 — the editor saved chains and only single-line
 previews played them, so the render that mattered came out dry.)
 
 Each rendered line is cached on its chain as well as its text and voice, so
-editing one character's reverb re-renders that character's lines and leaves the
-rest of the chapter alone. Mastering is a separate, later pass — see
+editing one persona's reverb re-renders the lines of the speakers it plays and
+leaves the rest of the chapter alone. Mastering is a separate, later pass — see
 [mastering.md](mastering.md).
 
 ## Custom presets

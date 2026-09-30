@@ -7,8 +7,8 @@ This is JustVoice's primary single-line interface — for batch chapter-style re
 ## When to use Generate
 
 - **Dictation users** — quick line synthesis, paste, send. Use the [MCP server](mcp-server.md) for agent-driven workflows.
-- **Game devs** — render NPC dialogue lines one at a time during iteration. Use [chapter.md](take-versioning.md) for bulk export.
-- **Audiobook producers** — preview how a character sounds before committing to a full chapter render. Settings here flow into the chapter pipeline through the [persona](personas.md) you cast.
+- **Game devs** — render dialogue lines one at a time during iteration. Use [chapter.md](take-versioning.md) for bulk export.
+- **Audiobook producers** — preview how a persona sounds before committing to a full chapter render. Settings here flow into the chapter pipeline through the [persona](personas.md) that plays each speaker.
 - **Podcasters** — record a one-off intro / outro / ad-read. (The Stories timeline is a placeholder; there is nothing to drag it onto yet.)
 
 ## The floating chip bar
@@ -22,11 +22,13 @@ Below the textarea is a row of chip cards. Each chip selects one input:
 | 🗣️ Lang | Language hint for engines that support per-call language switching (Chatterbox-Multilingual, Qwen3). |
 | 👤 Persona | Pick a [persona](personas.md) — wraps voice + delivery defaults + effects + the spoken-delivery instruction. (It was called "profile" before personas absorbed that entity.) |
 | 🎛️ Effects | Apply a saved effects chain to the output. |
-| 🎭 Persona rewrite | Re-rolls input through the selected persona's character sheet via LLM before TTS. Always visible; disabled (with tooltip) when no persona is picked or its sheet is empty. |
 | 🔁 Autoplay | Auto-play the result on render. |
 
-The three action buttons at the right end:
-- **🎲 Compose** — asks the LLM to write a fresh in-character line into the textarea, using the selected persona's **character sheet**. Always visible; **disabled** when no persona is selected or its sheet is empty (tooltip explains why). Requires an LLM service configured in Settings → External.
+The action buttons at the right end:
+- **✏️ Rewrite** — asks the LLM to rewrite the textarea text in the selected persona's voice, shown as a preview you accept or discard; nothing changes until you accept.
+- **🎲 Compose** — asks the LLM to write a fresh line into the textarea in the selected persona's voice.
+
+  Both read the persona's **Note on how it sounds** — Generate has no book, so there is no speaker's *Who they are* to read (who a person is lives on the book's speaker since 2026-09-29; Script's *Rewrite in character* reads that instead). Both are always visible and **disabled** when no persona is selected or its note is empty (the tooltip says so); a call without a note is refused with "*name* has no note on how it sounds — write one on the Personas page to use Compose / Rewrite." Both require an LLM service configured in Settings → External.
 - **▶ Generate** — renders the textarea content. Disabled until a voice is picked.
 - **⏹ Stop** — cancels a queued/running render. Always visible; disabled when nothing is in flight.
 
@@ -70,7 +72,7 @@ At render time this is joined with the persona's **Spoken delivery** and the lin
 
 A dropdown of nine labels: *neutral · happy · sad · angry · fearful · whispered · shouted · sarcastic · contemptuous*.
 
-It is a list rather than a sentence for one reason: **it is the only delivery control with a cross-engine meaning.** Prose can only be handed to an engine that reads prose, but a label can be compiled two different ways, so the same choice survives recasting a character onto a different engine.
+It is a list rather than a sentence for one reason: **it is the only delivery control with a cross-engine meaning.** Prose can only be handed to an engine that reads prose, but a label can be compiled two different ways, so the same choice survives recasting a speaker onto a persona on a different engine.
 
 - **Engines that read prose** (Qwen3-TTS) get the label folded into the instruction, alongside the persona's spoken delivery and the line's direction.
 - **Engines with an emotion vocabulary** (Chatterbox Turbo) get their own token prefixed to the line — pick *fearful* and Turbo renders `[fear] Who's there?`.
@@ -194,7 +196,7 @@ Click a take to see its lineage via the [take versioning](take-versioning.md) ch
 
 - **"No engine loaded."** — Click the link to load one on the [Speech engines](engines.md) tab (AI page). Kokoro is the lightest if you're unsure.
 - **Voice dropdown says "no voices available"** — The loaded engine is clone-only (Chatterbox) and you haven't cloned a reference WAV yet. Use the link in the banner to [Voices](voices.md).
-- **Compose button is disabled (grayed out)** — No persona is selected, or the selected persona's character sheet is empty. Pick one in the 👤 Persona chip, or write a sheet in [Personas](personas.md) → "How they're written".
+- **Compose or Rewrite is disabled (grayed out)** — No persona is selected, or the selected persona has no note on how it sounds. Pick one in the 👤 Persona chip, or write its **Note on how it sounds** in [Personas](personas.md).
 - **Compose returns "LLM not configured"** — Wire an OpenAI-compatible endpoint in Settings → External.
 - **Slash menu shows no tags** — The loaded engine has no inline-tag taxonomy. Switch to Chatterbox-Turbo or MOSS-TTSD to access tags.
 - **Render is silent / clipped at the end** — Some engines (Chatterbox family) hallucinate trailing noise; the trim utility removes that. If clipping the actual content, file an issue with the offending text.

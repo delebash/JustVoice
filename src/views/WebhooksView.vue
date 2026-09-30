@@ -130,7 +130,7 @@ onMounted(refresh);
       <pre class="webhooks-view__tools jv-mono">tools exposed
 justvoice.speak           {text, voice|persona, channel}
 justvoice.list_voices     → library
-justvoice.list_personas   → characters
+justvoice.list_personas   → personas
 justvoice.transcribe      {audio} → text</pre>
     </div>
 

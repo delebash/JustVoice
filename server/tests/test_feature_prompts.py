@@ -66,7 +66,7 @@ def test_extraction_prompts_seeded(tmp_path):
     g, d = by_key["speaker_attribution.guided"], by_key["speaker_attribution.direct"]
     assert "attribute dialogue" in g["system"] and "WORKED EXAMPLES" in g["system"]
     assert "attribute dialogue" in d["system"] and "WORKED EXAMPLES" not in d["system"]
-    assert "{{characters}}" in g["userTemplate"] and "{{paragraphs}}" in g["userTemplate"]
+    assert "{{speakers}}" in g["userTemplate"] and "{{paragraphs}}" in g["userTemplate"]
     assert g["feature"] == "speaker_attribution" and g["builtIn"] is True
 
     from justvoice.extraction import prompts as _p
@@ -83,3 +83,32 @@ def test_extraction_config_serves_db_prompts(tmp_path):
     assert "WORKED EXAMPLES" in body["system_prompts"]["guided"]
     assert "WORKED EXAMPLES" not in body["system_prompts"]["direct"]
     assert "{{paragraphs}}" in body["user_template"]
+
+
+def test_renamed_placeholders_keep_every_word_the_model_reads():
+    """2026-09-29: the placeholders are named for speakers and personas so the
+    Lab's boxes say so ({{speakers}}, {{known_speakers}}, {{personas}}), but
+    the words the model reads did not change — "Known characters:",
+    "Characters in this scene:", "Available voices:" stay. Checked byte for
+    byte against the templates before the rename; pinned here."""
+    from llm_runner.llm.prompts import render
+
+    from justvoice.seed_feature_prompts import DEFAULT_FEATURE_PROMPTS as D
+
+    cast = '- id="s1", name="Mara"'
+    assert render(D["speaker_attribution.guided"]["user_template"], {
+        "speakers": cast, "corrections": "", "paragraphs": "[D1] Hi.",
+    }) == (
+        "Characters in this scene:\n" + cast + "\n\n"
+        "Paragraphs (dialogue segments tagged inline):\n\n[D1] Hi.\n\n"
+        "Return only the JSON array, one entry per [D#] in the order they appear.\n"
+    )
+    assert render(D["speaker_attribution.identify"]["user_template"], {
+        "known_speakers": "- Mara", "manuscript": "Text.",
+    }) == "Known characters:\n- Mara\n\nManuscript text:\nText."
+    assert render(D["smart_assign"]["user_template"], {
+        "speakers": cast, "personas": '- id="p1", name="Slate"',
+    }) == (
+        "Characters:\n" + cast + '\n\nAvailable voices:\n- id="p1", name="Slate"\n\n'
+        "Return only the JSON object."
+    )

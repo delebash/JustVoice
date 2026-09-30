@@ -6,22 +6,23 @@ confidence is no warning. What it measurably gets wrong has a shape, and these
 checks mark that shape (docs/plans/2026-08-15-voice-workflow-redesign.md §8.23,
 §8.25 — each was measured on answer-keyed books before it was built):
 
-* **run** — one persona speaks three or more turns in a row: back-to-back
+* **run** — one speaker speaks three or more turns in a row: back-to-back
   spoken paragraphs, no narration-only paragraph between, all given to them.
   Its most common mistake is losing track of turns in a back-and-forth, and
   it shows up exactly like this. The WHOLE run is one group — the wrong line
   is as often the middle one as the last. A speech over several paragraphs
   (each opens a quote, only the last closes it) is one turn.
-* **only** — a persona's only line in the chapter.
+* **only** — a speaker's only line in the chapter.
 * **disagree** — the book named one speaker and the model said another.
 
-The narrator is an ordinary persona in every check (2026-09-29): any cast
-member can narrate — Watson narrates and speaks — so a "speech given to the
+The narrator is an ordinary speaker in every check (2026-09-29): any speaker
+can narrate — Watson narrates and speaks — so a "speech given to the
 Narrator" check would mark a first-person narrator's every line. It was
 dropped; it had caught nothing on the published test book.
 
-Plus **not in the cast**, which is not a mark on a line but a fact about the
-chapter: lines whose persona has left the cast.
+("Not in the cast" went with the speakers/personas split, 2026-09-29: a line
+points at one of the book's speakers, and removing a speaker takes its lines
+back to No speaker, so no line can point outside the book.)
 
 A line you set or confirmed (`corrected`) is never marked, and neither is one
 nothing decided (`manual`, an import's own). Only what Analyze decided is.
@@ -44,7 +45,7 @@ class Line:
     """One line of a chapter, in reading order."""
 
     id: str
-    speaker: str | None          # persona id; None = no speaker
+    speaker: str | None          # speaker id; None = no speaker
     text: str = ""
     spoken: bool = True
     source: str | None = None
@@ -62,7 +63,7 @@ class FlagGroup:
     check: str                    # "run" | "only" | "disagree"
     speaker: str | None           # whose line(s) these are
     lines: list[str] = field(default_factory=list)   # the ids marked
-    # run: how many turns the persona took with no reply.
+    # run: how many turns the speaker took with no reply.
     turns: int = 0
     # disagree: who the model said.
     other: str | None = None
@@ -191,15 +192,6 @@ def lines_from_rows(rows: list[dict], *, narrator_ids=("narrator",)) -> list[Lin
 
 def flagged_lines(groups: list[FlagGroup]) -> set[str]:
     return {i for g in groups for i in g.lines}
-
-
-def not_in_cast(lines: list[Line], cast_ids: set[str] | frozenset[str]) -> Counter:
-    """{persona id: spoken lines} for speakers who have left the cast. Their
-    lines keep the speaker — removing a persona deletes only the cast row."""
-    return Counter(
-        ln.speaker for ln in lines
-        if ln.spoken and not ln.marker and ln.speaker and ln.speaker not in cast_ids
-    )
 
 
 def spoken_block(source: str | None, text: str | None) -> bool:

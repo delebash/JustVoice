@@ -16,7 +16,7 @@ provider** flow.
 | You want… | Add this | Why |
 |---|---|---|
 | Speaker attribution on a fresh book | An LLM provider (Claude / OpenAI / Gemini / Ollama) | Speaker attribution + Compose + Rewrite + Smart-assign all route through LLM dispatch. No provider = these features error with HTTP 501 |
-| Voice cloning without a GPU | ElevenLabs or Speechify (TTS provider) | Studio-quality cloning, charged per character. Useful for podcast hosts who don't have a GPU |
+| Voice cloning without a GPU | ElevenLabs or Speechify (TTS provider) | Studio-quality cloning, charged per character. Useful for podcasters who don't have a GPU |
 | Your own TTS server | OpenAI-compatible (TTS provider) | Point a base URL at your Kokoro-FastAPI / Chatterbox-TTS-Server / Qwen3-TTS server |
 | Low-cost cloud LLM | DeepSeek or OpenRouter (LLM provider) | Cheaper per-token than Claude / OpenAI for speaker attribution at audiobook scale |
 | Local LLM, no API costs | Ollama (LLM provider) | Run llama3.2 / qwen3 / mistral locally. Routes everything through your machine |
@@ -31,7 +31,7 @@ provider** flow.
 2. Click **+ Add provider** (Online) or **+ Add self-hosted server** (Local).
    An inline editor expands.
 3. Fill in the form:
-   - **Name** — what shows in dropdowns and the Studio Cast voice library.
+   - **Name** — what shows in dropdowns: the Voices page and a persona's **Voice** list.
    - **Base URL** — the API root. Examples:
      - ElevenLabs: `https://api.elevenlabs.io`
      - OpenAI TTS: `https://api.openai.com/v1`
@@ -42,7 +42,7 @@ provider** flow.
    - **TTS model** — the model id the server expects (e.g.
      `eleven_flash_v2_5`).
    - **Voices** — the voice ids you want JustVoice to use; only those appear
-     in the Studio Cast voice library. **⟳ Fetch voices** asks the server for
+     on the Voices page and in a persona's **Voice** list. **⟳ Fetch voices** asks the server for
      its list so you can pick instead of type.
 4. **Test connection** checks the URL + key round-trip before you commit.
 5. Click **Save provider**.
@@ -79,7 +79,7 @@ After registering one or more LLM providers, open **AI Settings → Routing by f
 
 - **Fetch voices hangs or errors** — the provider's server is unreachable.
   Test connection first; check the base URL + API key.
-- **A provider's voices don't show in Studio Cast** — only the voices picked
-  on the provider row appear; Edit the row and add them.
+- **A provider's voices don't show when you pick a persona's voice** — only
+  the voices picked on the provider row appear; Edit the row and add them.
 - **Compose / Rewrite return HTTP 501** — no language model is set up yet.
   Connect one on the LLM providers tab (or run the LLM engine setup).

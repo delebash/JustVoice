@@ -12,6 +12,10 @@
 // `const { book, chapter } = useCopy()` and the bindings stay live as
 // the primary-use-case selection changes (Settings → re-run welcome,
 // for instance, swaps the whole vocabulary without a refresh).
+//
+// The people in a project are SPEAKERS for every kind (2026-09-29, "speakers
+// everythwere") — no NPCs, Hosts or Characters — so there is no per-kind
+// word for them here.
 
 import { computed } from "vue";
 import { useOnboarding } from "../stores/onboarding.js";
@@ -21,31 +25,26 @@ const TERMS = {
   audiobook: {
     book:    { singular: "Book",    plural: "Books"    },
     chapter: { singular: "Chapter", plural: "Chapters" },
-    cast:    { singular: "Cast",    plural: "Cast"     },
     line:    { singular: "Line",    plural: "Lines"    },
   },
   game: {
     book:    { singular: "Voice line set", plural: "Voice line sets" },
     chapter: { singular: "Scene",          plural: "Scenes"          },
-    cast:    { singular: "NPC",            plural: "NPCs"            },
     line:    { singular: "Voiceline",      plural: "Voicelines"      },
   },
   podcast: {
     book:    { singular: "Episode", plural: "Episodes" },
     chapter: { singular: "Segment", plural: "Segments" },
-    cast:    { singular: "Host",    plural: "Hosts"    },
     line:    { singular: "Block",   plural: "Blocks"   },
   },
   dictation: {
     book:    { singular: "Capture", plural: "Captures" },
     chapter: { singular: "Session", plural: "Sessions" },
-    cast:    { singular: "Voice",   plural: "Voices"   },
     line:    { singular: "Block",   plural: "Blocks"   },
   },
   accessibility: {
     book:    { singular: "Document", plural: "Documents" },
     chapter: { singular: "Section",  plural: "Sections"  },
-    cast:    { singular: "Voice",    plural: "Voices"    },
     line:    { singular: "Line",     plural: "Lines"     },
   },
   // multiple + unset both fall back to neutral terminology so neither
@@ -53,13 +52,11 @@ const TERMS = {
   multiple: {
     book:    { singular: "Project",   plural: "Projects"   },
     chapter: { singular: "Section",   plural: "Sections"   },
-    cast:    { singular: "Character", plural: "Characters" },
     line:    { singular: "Block",     plural: "Blocks"     },
   },
   unset: {
     book:    { singular: "Project",   plural: "Projects"   },
     chapter: { singular: "Section",   plural: "Sections"   },
-    cast:    { singular: "Character", plural: "Characters" },
     line:    { singular: "Block",     plural: "Blocks"     },
   },
 };

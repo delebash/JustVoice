@@ -78,7 +78,7 @@ def test_extraction_config_shape(app) -> None:
     )
     # The shared renderer's {{var}} placeholders (F1 Phase 2 — the old
     # single-brace .replace tokens converted with the template-row move).
-    for token in ("{{characters}}", "{{corrections}}", "{{paragraphs}}"):
+    for token in ("{{speakers}}", "{{corrections}}", "{{paragraphs}}"):
         assert token in body["user_template"]
 
 
@@ -176,7 +176,7 @@ def test_user_prompt_and_floor_overrides(app, monkeypatch) -> None:
             "characters": CAST,
             "route": "direct",
             "propagate": False,
-            "userPrompt": "CAST:\n{{characters}}\nBODY:\n{{paragraphs}}",
+            "userPrompt": "CAST:\n{{speakers}}\nBODY:\n{{paragraphs}}",
             "confidence_floor": 0.65,
         },
     )

@@ -192,10 +192,10 @@ def test_lab_run_uses_stored_project_corrections(client, monkeypatch):
     monkeypatch.setattr("justvoice.extraction.pipeline.run_feature", fake)
     _scene_id = _import_project(client)
     pid = client.get("/v1/projects").json()["projects"][0]["id"]
-    persona = client.get("/v1/personas").json()["personas"][0]
+    speaker = client.get(f"/v1/projects/{pid}/speakers").json()["speakers"][0]
     r = client.post(
         f"/v1/projects/{pid}/corrections",
-        json={"text_snippet": '"Hi," said Mara.', "persona_id": persona["id"]},
+        json={"text_snippet": '"Hi," said Mara.', "speaker_id": speaker["id"]},
     )
     assert r.status_code == 200, r.text
 
@@ -226,7 +226,7 @@ def test_cellar_sample_seeds(client):
         assert len(cellar) == 1
         vars_rows = s.query(llm_db.TestSampleVar).filter_by(sample_id=cellar[0].id).all()
         by_name = {v.name: v.value for v in vars_rows}
-        assert "cellar" in by_name["paragraphs"] and by_name["characters"] == "Mara\nSarah"
+        assert "cellar" in by_name["paragraphs"] and by_name["speakers"] == "Mara\nSarah"
     finally:
         s.close()
 

@@ -123,16 +123,18 @@ def _seed(client) -> str:
 
 
 def _cast_everything(client, pid: str) -> None:
-    """Give every block a persona that has a voice, so the project is
-    genuinely render-ready. Imported prose names no speakers at all, and QC
-    reports that as not-ready now rather than measuring around it."""
+    """Give every block a speaker played by a persona that has a voice, so the
+    project is genuinely render-ready. Imported prose names no speakers at all,
+    and QC reports that as not-ready now rather than measuring around it."""
     r = client.post("/v1/personas", json={"name": "Reader", "voice_id": "voice-x"})
     assert r.status_code in (200, 201), r.text
     persona_id = r.json()["id"]
-    client.post(f"/v1/projects/{pid}/cast", json={"persona_id": persona_id})
+    r = client.post(f"/v1/projects/{pid}/speakers", json={"name": "Reader", "persona_id": persona_id})
+    assert r.status_code == 201, r.text
+    speaker_id = r.json()["id"]
     for sc in client.get(f"/v1/projects/{pid}/scenes").json():
         for b in client.get(f"/v1/scenes/{sc['id']}/blocks").json():
-            client.patch(f"/v1/blocks/{b['id']}", json={"persona_id": persona_id})
+            client.patch(f"/v1/blocks/{b['id']}", json={"speaker_id": speaker_id})
 
 
 def test_qc_endpoint_with_stubbed_renderer(client, monkeypatch):

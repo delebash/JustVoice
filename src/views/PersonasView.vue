@@ -1,27 +1,33 @@
 <!-- SPDX-License-Identifier: MIT -->
 <!--
-  PersonasView — Personas are the sole identity layer after the Profile-kill
-  (see plan: voice + delivery + effects + personality all live here directly).
+  PersonasView — the library of finished voices (2026-09-29: speakers and
+  personas are two things).
+
+  A persona is a finished spoken voice: a voice and its engine, plus speed,
+  pitch, gain, spoken direction, effects and lexicon, and a short note on how
+  it sounds. The PEOPLE in a book are its speakers (Studio · Discover finds
+  them, Cast gives each one a persona); one persona can play many speakers.
+  So a persona has no "Also called" and no character sheet — those moved to
+  the speaker — and personas have no name rule: "Used by" (speaker — book)
+  tells two of the same name apart.
 
   Layout:
     Left:  library list with filter chips (All / Used / Unused / By project),
-           the books each persona is in (names are unique within a book, not
-           across the library — two "Narrator"s are told apart by their
-           books, 2026-09-29), and ticks + "Delete N selected".
-    Right: rich editor for the selected persona.
+           who each persona plays, and ticks + "Delete N selected".
+    Right: rich editor for the selected persona. Cast's "Edit their persona →"
+           opens one here (`?open=<id>`).
 
   Persona vs Voice: Voice is the TTS artifact (engine preset or cloned WAV).
-  Persona is the character that USES a voice + adds a spoken-delivery
-  instruction, a character sheet, delivery overrides, effects and lexicon
-  overrides. No Profile layer in between.
+  Persona USES a voice and adds a spoken-delivery instruction, delivery
+  overrides, effects and a lexicon override. No Profile layer in between.
 
-  The editor is in two halves, and the split is the point (2026-08-15):
-  "How they sound" holds everything that reaches the synth; "How they're
-  written" holds the sheet the LLM features read. One field used to do both
-  jobs, so editing a character's description changed their voice.
+  "How they sound" holds everything that reaches the synth (2026-08-15). The
+  note on how it sounds is read by Compose, Rewrite and Smart-assign — never
+  heard.
 -->
 <script setup>
 import { computed, onMounted, ref, watch, nextTick } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "@delebash/llm-ui";
 import { confirmDialog } from "@delebash/llm-ui";
@@ -33,6 +39,8 @@ import { useVoicesStore } from "../stores/voices.js";
 import { useEnginesStore } from "../stores/engines.js";
 import { useLexiconsStore } from "../stores/lexicons.js";
 import { useProjectsStore } from "../stores/projects.js";
+import { useActiveProject } from "../stores/activeProject.js";
+import { openProjectInStudio } from "../services/openProject.js";
 
 // Kit grid in the JustVoice look (`jv-table-look`); sorting comes with it,
 // which matters here — "which project uses this persona most" was unanswerable
@@ -41,20 +49,11 @@ const PERSONA_COLUMNS = [
   { id: "pick", header: "", headerStyle: { width: "1%" }, cellStyle: { width: "1%" } },
   { id: "name", accessorKey: "name", header: "Persona", sortable: true },
   { id: "voice", header: "Voice" },
-  { id: "used", header: "Used in" },
+  { id: "used", header: "Used by" },
   { id: "actions", header: "Actions",
     headerStyle: { width: "150px", textAlign: "right" },
     cellStyle: { textAlign: "right", whiteSpace: "nowrap" } },
 ];
-const CROSS_PROJECT_COLUMNS = [
-  { id: "project_name", accessorKey: "project_name", header: "Project", sortable: true },
-  { id: "project_type", accessorKey: "project_type", header: "Type", sortable: true },
-  { id: "scene_count", accessorKey: "scene_count", header: "Scenes", sortable: true,
-    meta: { headerClass: "jv-mono" }, cellStyle: { width: "1%" } },
-  { id: "line_count", accessorKey: "line_count", header: "Lines", sortable: true,
-    meta: { headerClass: "jv-mono" }, cellStyle: { width: "1%" } },
-];
-
 const api = useApi();
 
 // All five lists come from shared stores (single source of truth).
@@ -70,7 +69,9 @@ const voices = computed(() => voicesStore.items);
 const engines = computed(() => enginesStore.items);
 const lexicons = computed(() => lexiconsStore.items);
 const projects = computed(() => projectsStore.items);
-const usage = ref({});  // { persona_id: [...] } — per-view, not shared
+// {persona_id: [{project_id, project_name, speaker_id, speaker_name, lines}]} —
+// the speakers each persona plays. Per-view, not shared.
+const usage = ref({});
 const selectedId = ref(null);
 // `creating` opens the editor dialog for a brand-new (unsaved) persona —
 // one surface, not a prompt-then-dialog (G-PERSONA-1). Save commits it.
@@ -106,23 +107,36 @@ const filteredPersonas = computed(() => {
   }
   const q = search.value.trim().toLowerCase();
   if (q) list = list.filter((p) =>
-    (p.name || "").toLowerCase().includes(q) || (p.personality || "").toLowerCase().includes(q)
-    || (p.aliases || []).some((a) => a.toLowerCase().includes(q)));
+    (p.name || "").toLowerCase().includes(q) || (p.note || "").toLowerCase().includes(q));
   return list;
 });
 
 function usageCount(personaId) {
   return (usage.value[personaId] || []).length;
 }
-// The books a persona is in, by name — what tells two personas with the
-// same name apart (names are unique within a book, not the library).
+// The books a persona is in, by name, each once.
 function booksOf(personaId) {
-  return (usage.value[personaId] || []).map((u) => u.project_name).filter(Boolean);
+  return [...new Set((usage.value[personaId] || []).map((u) => u.project_name).filter(Boolean))];
+}
+// "Used by", as the mock: "June — Stillwater", one speaker name across books
+// as "Narrator — Stillwater · Emberfall".
+function usedBy(personaId) {
+  const byName = new Map();
+  for (const u of usage.value[personaId] || []) {
+    if (!byName.has(u.speaker_name)) byName.set(u.speaker_name, []);
+    if (!byName.get(u.speaker_name).includes(u.project_name)) byName.get(u.speaker_name).push(u.project_name);
+  }
+  return [...byName].map(([name, books]) => `${name} — ${books.join(" · ")}`).join(", ");
+}
+// "Nettle (The Ninth Facet)" — who loses this persona when it goes.
+function playsText(personaId) {
+  return (usage.value[personaId] || []).map((u) => `${u.speaker_name} (${u.project_name})`).join(", ");
 }
 
 // Tick several personas and delete them at once (decided 2026-09-29). Each
-// goes the way a single Delete does: out of every cast, its lines keep no
-// speaker. Ticks count only for personas the current filter shows.
+// goes the way a single Delete does: every speaker it played is left with no
+// persona (their lines keep their speaker). Ticks count only for personas the
+// current filter shows.
 const picked = ref({});
 const pickedPersonas = computed(() => filteredPersonas.value.filter((p) => picked.value[p.id]));
 const allPicked = computed(() =>
@@ -134,12 +148,13 @@ const bulkDeleting = ref(false);
 async function removePicked() {
   const list = pickedPersonas.value;
   if (!list.length || bulkDeleting.value) return;
-  const cast = list.filter((p) => booksOf(p.id).length);
+  const played = list.filter((p) => usageCount(p.id)).map((p) => playsText(p.id)).join(", ");
+  const n = list.reduce((sum, p) => sum + usageCount(p.id), 0);
   const ok = await confirmDialog({
     title: `Delete ${list.length} persona${list.length === 1 ? "" : "s"}?`,
-    message: `${list.map((p) => (booksOf(p.id).length ? `${p.name} (in ${booksOf(p.id).join(", ")})` : p.name)).join(", ")}.`
-      + (cast.length
-        ? ` ${cast.length === 1 ? "One is" : `${cast.length} are`} in a book's cast — deleting takes ${cast.length === 1 ? "it" : "them"} out, and ${cast.length === 1 ? "its" : "their"} lines lose their speaker.`
+    message: `${list.map((p) => p.name).join(", ")}.`
+      + (n
+        ? ` ${n} speaker${n === 1 ? "" : "s"} lose${n === 1 ? "s" : ""} their persona and need${n === 1 ? "s" : ""} another in Cast before rendering: ${played}.`
         : "")
       + " Voices and lexicons are kept.",
     danger: true,
@@ -230,9 +245,7 @@ function bufferFor(persona) {
     language: persona.language ?? "en",
     avatar_path: persona.avatar_path ?? "",
     voice_instruct: persona.voice_instruct ?? "",
-    personality: persona.personality ?? "",
-    // Edited as one comma-separated line; saved as a list.
-    aliases_text: (persona.aliases ?? []).join(", "),
+    note: persona.note ?? "",
     engine_override: persona.engine_override ?? "",
     lexicon_id: persona.lexicon_id ?? "",
     default_delivery: { ...(persona.default_delivery ?? {}) },
@@ -255,7 +268,7 @@ function markDirty() { dirty.value = true; }
 function blankDraft() {
   return {
     id: null, name: "", voice_id: "", language: "en", avatar_path: "",
-    voice_instruct: "", personality: "", aliases_text: "", engine_override: "", lexicon_id: "",
+    voice_instruct: "", note: "", engine_override: "", lexicon_id: "",
     default_delivery: {}, effects_chain: [],
     llm_rewrite_enabled: false, llm_model: "qwen-1.7b-local",
   };
@@ -277,6 +290,26 @@ function closeEditor() {
   creating.value = false;
   selectedId.value = null;
   draft.value = null;
+  // Opened from Cast (?open=<id>): drop it, so the same persona opens again.
+  if (route.query.open) router.replace({ query: {} });
+}
+
+// Cast's "Edit their persona →" opens one persona here (2026-09-29).
+const route = useRoute();
+const router = useRouter();
+function openFromRoute() {
+  const id = route.query.open;
+  if (id && personas.value.some((p) => p.id === id)) selectedId.value = id;
+}
+watch(() => route.query.open, openFromRoute);
+
+// "Open Cast →" on a speaker this persona plays — that book's Cast step.
+const activeProject = useActiveProject();
+function openCast(projectId) {
+  const project = projects.value.find((pr) => pr.id === projectId);
+  if (!project) return;
+  closeEditor();
+  openProjectInStudio(activeProject, project, "cast");
 }
 
 async function savePersona() {
@@ -287,8 +320,7 @@ async function savePersona() {
     language: draft.value.language || "en",
     avatar_path: draft.value.avatar_path || null,
     voice_instruct: draft.value.voice_instruct || null,
-    personality: draft.value.personality || null,
-    aliases: (draft.value.aliases_text || "").split(",").map((a) => a.trim()).filter(Boolean),
+    note: draft.value.note || null,
     default_delivery: draft.value.default_delivery,
     effects_chain: draft.value.effects_chain || [],
     engine_override: draft.value.engine_override || null,
@@ -324,7 +356,8 @@ async function savePersona() {
 async function removePersona(p) {
   const ok = await confirmDialog({
     title: "Delete persona?",
-    message: `"${p.name}" will be removed. Voice and lexicon are kept (only the binding is removed).`,
+    message: `"${p.name}" will be removed. Voice and lexicon are kept (only the binding is removed).`
+      + (usageCount(p.id) ? ` It plays ${playsText(p.id)} — ${usageCount(p.id) === 1 ? "that speaker loses its" : "those speakers lose their"} persona.` : ""),
     danger: true,
     confirmLabel: "Delete",
   });
@@ -352,8 +385,7 @@ async function removePersona(p) {
                 name: snapshot.name,
                 voice_id: snapshot.voice_id,
                 voice_instruct: snapshot.voice_instruct,
-                personality: snapshot.personality,
-                aliases: snapshot.aliases || [],
+                note: snapshot.note,
                 language: snapshot.language,
                 avatar_path: snapshot.avatar_path,
                 default_delivery: snapshot.default_delivery || {},
@@ -429,16 +461,8 @@ function deliveryChipValue(key, value) {
   return String(value);
 }
 
-function listMeta(p) {
-  const bits = [];
-  const v = voices.value.find((x) => x.id === p.voice_id);
-  bits.push(v?.name || (p.voice_id ? p.voice_id : "no voice yet"));
-  if (p.personality) bits.push(p.personality.slice(0, 64) + (p.personality.length > 64 ? "…" : ""));
-  return bits.join(" · ") || "—";
-}
-
-// Same avatar palette/hash as the Studio cast cards — one character,
-// one colour, everywhere.
+// Same avatar palette/hash as the Studio cast cards — one name, one colour,
+// everywhere.
 const AVATAR_COLORS = ["#3a7d63", "#7c5cbf", "#b3552e", "#2e7d8a", "#a8763e", "#947b2f", "#c98aa7", "#5b7a99", "#b04a3e"];
 function colorFor(name) {
   let h = 0;
@@ -446,7 +470,10 @@ function colorFor(name) {
   return AVATAR_COLORS[h % AVATAR_COLORS.length];
 }
 
-onMounted(loadAll);
+onMounted(async () => {
+  await loadAll();
+  openFromRoute();
+});
 </script>
 
 <template>
@@ -480,8 +507,8 @@ onMounted(loadAll);
       <EmptyState
         v-else-if="!filteredPersonas.length && !personas.length"
         icon="Sparkle"
-        title="No characters yet"
-        message="A persona pairs a name + a voice + how they sound + who they are. Audiobook cast, game NPCs, podcast hosts all live here."
+        title="No personas yet"
+        message="A persona is a finished spoken voice — a voice and its engine, plus speed, pitch, gain, direction and effects. Cast gives one to each speaker in a book, and one persona can play many."
         action-label="+ Create your first persona"
         @action="createBlank"
       />
@@ -502,14 +529,14 @@ onMounted(loadAll);
         <template #name="{ row }">
           <span class="personas__card-avatar personas__avatar-sm" :style="{ background: colorFor(row.name) }">{{ (row.name || "?").charAt(0).toUpperCase() }}</span>
           <strong>{{ row.name }}</strong>
-          <div v-if="row.personality" class="jv-muted personas__row-sub">{{ row.personality.slice(0, 70) }}{{ row.personality.length > 70 ? "…" : "" }}</div>
+          <div v-if="row.note" class="jv-muted personas__row-sub">{{ row.note.slice(0, 70) }}{{ row.note.length > 70 ? "…" : "" }}</div>
         </template>
         <template #voice="{ row }">
           <span class="jv-muted">{{ voices.find((v) => v.id === row.voice_id)?.name || (row.voice_id || "no voice yet") }}</span>
         </template>
         <template #used="{ row }">
-          <span v-if="usageCount(row.id)" class="personas__books">{{ booksOf(row.id).join(", ") }}</span>
-          <span v-else class="jv-muted" title="Not in any cast">—</span>
+          <span v-if="usageCount(row.id)" class="jv-muted personas__books">{{ usedBy(row.id) }}</span>
+          <span v-else class="jv-muted" title="No speaker in any book has this persona">— not used yet —</span>
         </template>
         <template #actions="{ row }">
           <div class="jv-table__actions" @click.stop>
@@ -543,7 +570,7 @@ onMounted(loadAll);
           imported from {{ selectedPersona.imported_from }}
         </UiTag>
         <UiTag v-if="usageCount(draft.id) > 0" intent="success">
-          Used in {{ usageCount(draft.id) }} project{{ usageCount(draft.id) === 1 ? '' : 's' }}
+          Used in {{ booksOf(draft.id).length }} project{{ booksOf(draft.id).length === 1 ? '' : 's' }}
         </UiTag>
       </template>
         <div class="personas__grid">
@@ -552,18 +579,28 @@ onMounted(loadAll);
             <UiInput ref="nameInput" width="name" v-model="draft.name" @input="markDirty" />
           </label>
 
-          <!-- Other names the prose uses for them. Discover treats them as this
-               persona (not a newcomer) and Script's attribution anchors on
-               them — "said Ode" finds Odeline Marran. -->
-          <label class="personas__field">
-            <span>Also called</span>
-            <UiInput width="path" v-model="draft.aliases_text" @input="markDirty"
-              placeholder="Other names the text uses, separated by commas — e.g. Ode, the surveyor" />
-          </label>
-
           <label class="personas__field">
             <span>Language</span>
             <UiInput width="token" v-model="draft.language" @input="markDirty" placeholder="en" />
+          </label>
+
+          <!-- Option A (2026-09-29): who a PERSON is lives on the speaker; the
+               persona keeps a short note on how it sounds. Compose and Rewrite
+               on Generate have no book, so they read this; so does Smart-assign
+               when it matches speakers to personas. -->
+          <label class="personas__field personas__field--wide">
+            <span>Note on how it sounds</span>
+            <UiTextarea
+              class="personas__prose"
+              v-model="draft.note"
+              :rows="2"
+              placeholder="Warm and unhurried, a little gravel at the bottom of the range."
+              @input="markDirty"
+            />
+            <p class="jv-muted personas__hint">
+              Read by Compose and Rewrite on the Generate page and by Smart-assign — it never
+              changes the audio.
+            </p>
           </label>
 
           <label class="personas__field">
@@ -654,45 +691,30 @@ onMounted(loadAll);
             </div>
           </div>
 
-          <!-- ── How they're written: prose the LLM features read ─────── -->
-          <h4 class="jv-section__title personas__section">How they're written</h4>
-
-          <label class="personas__field personas__field--wide">
-            <span>Character sheet</span>
-            <UiTextarea
-              class="personas__textarea"
-              v-model="draft.personality"
-              placeholder="Lead detective. Dry wit, hates the fog, protective of Sarah. Speaks in short declaratives."
-              @input="markDirty"
-            />
-            <p class="jv-muted personas__hint">
-              Drives Compose and Rewrite, casting suggestions, and the game
-              export sidecar — it never changes the audio.
-            </p>
-          </label>
         </div>
 
-        <!-- Cross-project usage detail panel (Phase 7 / Slice 1). -->
-        <div
-          v-if="usageDetail && usageDetail.projects && usageDetail.projects.length"
-          class="jv-divider"
-        />
-        <section
-          v-if="usageDetail && usageDetail.projects && usageDetail.projects.length"
-          class="personas__cross-project"
-        >
-          <h4 class="personas__section-h">
-            Across projects
-            <UiTag intent="ghost">{{ usageDetail.total_lines }} line{{ usageDetail.total_lines === 1 ? "" : "s" }}</UiTag>
-          </h4>
-          <UiTable class="jv-table-look personas__cross-project-table"
-            :data="usageDetail.projects" :columns="CROSS_PROJECT_COLUMNS" data-key="project_id" row-hover>
-            <template #project_name="{ row }"><strong>{{ row.project_name }}</strong></template>
-            <template #project_type="{ row }"><UiTag intent="ghost">{{ row.project_type }}</UiTag></template>
-            <template #scene_count="{ row }"><span class="jv-mono">{{ row.scene_count }}</span></template>
-            <template #line_count="{ row }"><span class="jv-mono">{{ row.line_count }}</span></template>
-          </UiTable>
-        </section>
+        <!-- Used by — the speakers this persona plays (mock: "🎭 June —
+             Stillwater · 61 lines", then Open Cast →). -->
+        <template v-if="usageDetail?.speakers?.length">
+          <div class="jv-divider" />
+          <section class="personas__used-by">
+            <h4 class="jv-section__title">
+              Used by
+              <UiTag intent="ghost">{{ usageDetail.total_lines }} line{{ usageDetail.total_lines === 1 ? "" : "s" }}</UiTag>
+            </h4>
+            <div class="personas__chips">
+              <UiTag v-for="u in usageDetail.speakers" :key="u.speaker_id" intent="ghost">
+                🎭 {{ u.speaker_name }} — {{ u.project_name }} · {{ u.lines }} line{{ u.lines === 1 ? "" : "s" }}
+              </UiTag>
+            </div>
+            <div class="personas__chips personas__used-by-open">
+              <UiButton v-for="b in [...new Map(usageDetail.speakers.map((u) => [u.project_id, u.project_name]))]"
+                :key="b[0]" intent="secondary" size="small"
+                :label="new Set(usageDetail.speakers.map((u) => u.project_id)).size > 1 ? `Open ${b[1]} Cast →` : 'Open Cast →'"
+                @click="openCast(b[0])" />
+            </div>
+          </section>
+        </template>
 
 
       <!-- Dialog footer = Save + Cancel (G-PERSONA-4). Delete lives on
@@ -768,7 +790,7 @@ onMounted(loadAll);
 /* The row's cursor and hover tint come from UiTable's `row-hover`. */
 .personas__row-sub { font-size: 12.5px; margin-left: 36px; }
 .personas__avatar-sm { width: 26px; height: 26px; font-size: 12px; vertical-align: middle; margin-right: 8px; }
-.personas__books { display: inline-block; max-width: 40ch; }
+.personas__books { display: inline-block; max-width: 48ch; }
 .personas__bulk { gap: 8px; align-items: center; margin-top: 10px; }
 
 .personas__grid {
@@ -797,6 +819,10 @@ onMounted(loadAll);
   padding-top: 12px;
   border-top: 1px solid var(--line);
 }
+
+.personas__prose { max-width: 60ch; }
+.personas__used-by { display: flex; flex-direction: column; gap: 8px; }
+.personas__used-by-open { margin-top: 2px; }
 
 .personas__textarea {
   min-height: 100px;

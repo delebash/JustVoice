@@ -57,7 +57,7 @@ export function sourceChipClass(source) {
 // These four questions were being answered in three places with three
 // different rules, and they had already drifted: Studio called a chapter
 // analyzed when any block carried a pipeline `source`, ChapterView called it
-// attributed when every non-marker block had a persona, and the render
+// attributed when every non-marker block had a speaker, and the render
 // resolver skipped markers and blank text that Studio's own "unplaced"
 // counter went on counting. The counters disagreed on screen.
 
@@ -97,18 +97,18 @@ export function chapterAnalyzed(scene, blocks) {
  */
 export function speakersFromImport(scene, blocks) {
   const speech = (blocks || []).filter(isSpeakable);
-  return !chapterAnalyzed(scene, blocks) && speech.length > 0 && speech.every((b) => !!b.persona_id);
+  return !chapterAnalyzed(scene, blocks) && speech.length > 0 && speech.every((b) => !!b.speaker_id);
 }
 
 /** Finished: every line that will be spoken knows who speaks it. */
 export function isFullyAttributed(blocks) {
   const speech = (blocks || []).filter(isSpeakable);
-  return speech.length > 0 && speech.every((b) => !!b.persona_id);
+  return speech.length > 0 && speech.every((b) => !!b.speaker_id);
 }
 
 /** The lines standing between this chapter and a render. */
 export function unplacedBlocks(blocks) {
-  return (blocks || []).filter((b) => isSpeakable(b) && !b.persona_id);
+  return (blocks || []).filter((b) => isSpeakable(b) && !b.speaker_id);
 }
 
 // ── Shared reads ──────────────────────────────────────────────────────────

@@ -7,8 +7,8 @@ import {
   swapState, toCheck, visibleLines, wasBefore,
 } from "./scriptReview.js";
 
-const line = (id, persona_id, extra = {}) => ({
-  id, persona_id, source: "llm", confidence: 0.95, spoken: true, speakable: true, marker: false,
+const line = (id, speaker_id, extra = {}) => ({
+  id, speaker_id, source: "llm", confidence: 0.95, spoken: true, speakable: true, marker: false,
   flags: [], changed: false, metadata: { paragraph_idx: 0 }, paragraph: 0, ...extra,
 });
 
@@ -20,7 +20,7 @@ const LINES = [
   line("d2", "june", { flags: [0] }),
   line("d3", "june", { flags: [0] }),
   line("d4", null, { source: "floored", confidence: 0.4, floored_from: "marius" }),
-  line("d5", "marius", { changed: true, prev_persona_id: "june" }),
+  line("d5", "marius", { changed: true, prev_speaker_id: "june" }),
   line("m6", null, { marker: true, speakable: false, spoken: false }),
 ];
 const GROUPS = [{ check: "run", speaker: "june", lines: ["d1", "d2", "d3"], turns: 3 }];
@@ -84,22 +84,20 @@ describe("selection", () => {
 
 describe("speakers", () => {
   const speakers = [
-    { persona_id: "nar", name: "Narrator", lines: 118, in_cast: true },
-    { persona_id: "june", name: "June", lines: 33, in_cast: true },
-    { persona_id: "marius", name: "Marius", lines: 38, in_cast: true },
-    { persona_id: "renn", name: "Renn", lines: 0, in_cast: true },
-    { persona_id: "tom", name: "Tom Harlan", lines: 14, in_cast: false },
+    { speaker_id: "nar", name: "Narrator", lines: 118 },
+    { speaker_id: "june", name: "June", lines: 33 },
+    { speaker_id: "marius", name: "Marius", lines: 38 },
+    { speaker_id: "renn", name: "Renn", lines: 0 },
   ];
 
-  it("1–9 are this chapter's cast speakers, most lines first; the Narrator is 0", () => {
+  it("1–9 are this chapter's speakers, most lines first; the Narrator is 0", () => {
     expect(numberKeys(speakers, "nar")).toEqual(["marius", "june"]);
   });
 
-  it("the dropdown offers the Narrator first, then the cast; a speaker who left only on their own lines", () => {
-    expect(speakerOptions(speakers, "nar", line("x", "june")).map((o) => o.label))
+  it("the dropdown offers the Narrator first, then the book's speakers by lines", () => {
+    expect(speakerOptions(speakers, "nar").map((o) => o.label))
       .toEqual(["Narrator", "Marius", "June", "Renn"]);
-    expect(speakerOptions(speakers, "nar", line("x", "tom"))[0])
-      .toEqual({ value: "tom", label: "Tom Harlan — not in this cast" });
+    expect(speakerOptions(speakers, "nar")[1]).toEqual({ value: "marius", label: "Marius" });
   });
 });
 
@@ -107,8 +105,8 @@ describe("changes", () => {
   it("setting a speaker makes the line yours and skips lines that already have them", () => {
     const ch = setSpeaker(LINES, ["d1", "d5", "m6"], "marius");
     expect(ch.map((c) => c.id)).toEqual(["d1"]);
-    expect(ch[0].after).toEqual({ persona_id: "marius", source: "corrected" });
-    expect(ch[0].before).toMatchObject({ persona_id: "june", source: "llm", extraction_confidence: 0.95 });
+    expect(ch[0].after).toEqual({ speaker_id: "marius", source: "corrected" });
+    expect(ch[0].before).toMatchObject({ speaker_id: "june", source: "llm", extraction_confidence: 0.95 });
   });
 
   it("Looks right takes the whole mark, and never a line with no speaker", () => {
@@ -122,13 +120,13 @@ describe("changes", () => {
     expect(swapState(LINES, ["d1", "d2"])).toMatchObject({ ok: false });
     expect(swapState(LINES, ["d1", "d4"]).reason).toMatch(/no speaker/);
     expect(swapState(LINES, ["d1", "d5"])).toEqual({ ok: true, a: "june", b: "marius" });
-    expect(swap(LINES, ["d1", "d5"]).map((c) => [c.id, c.after.persona_id])).toEqual([["d1", "marius"], ["d5", "june"]]);
+    expect(swap(LINES, ["d1", "d5"]).map((c) => [c.id, c.after.speaker_id])).toEqual([["d1", "marius"], ["d5", "june"]]);
     expect(swap(LINES, ["d1", "d2"])).toEqual([]);
   });
 
   it("the page shows a change at once: the line is yours, unmarked and not 'changed'", () => {
     const after = applyLocally(LINES, setSpeaker(LINES, ["d5"], "june"));
-    expect(after.find((l) => l.id === "d5")).toMatchObject({ persona_id: "june", source: "corrected", flags: [], changed: false });
+    expect(after.find((l) => l.id === "d5")).toMatchObject({ speaker_id: "june", source: "corrected", flags: [], changed: false });
     expect(after.find((l) => l.id === "d1")).toBe(LINES[1]);
   });
 });
@@ -149,7 +147,7 @@ describe("undo", () => {
 
     u = popUndo(u.rest);
     expect(u.patches).toEqual([{ id: "d1", body: {
-      persona_id: "june", source: "llm", extraction_confidence: 0.95,
+      speaker_id: "june", source: "llm", extraction_confidence: 0.95,
       metadata: { paragraph_idx: 0 }, no_fix: true } }]);
     expect(u.fixIds).toEqual(["fx1"]);
     expect(popUndo(u.rest).entry).toBeNull();
@@ -157,7 +155,7 @@ describe("undo", () => {
 
   it("puts back a line that had no speaker as having none", () => {
     const u = popUndo(pushUndo([], setSpeaker(LINES, ["d4"], "marius"), "set"));
-    expect(u.patches[0].body.persona_id).toBeNull();
+    expect(u.patches[0].body.speaker_id).toBeNull();
     expect(wasBefore(pushUndo([], setSpeaker(LINES, ["d1"], "marius"), "set"), "d1")).toBe("june");
   });
 });

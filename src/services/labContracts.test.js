@@ -32,7 +32,7 @@ describe("the ONE characters shape", () => {
   });
 
   it("the seeded cellar sample's cast parses to Mara + Sarah", () => {
-    // Mirrors seed_presets.py _ATTR_SAMPLE_VARS.characters verbatim.
+    // Mirrors seed_presets.py _ATTR_SAMPLE_VARS.speakers verbatim.
     const rows = parseCharacters("Mara\nSarah");
     expect(rows.map((r) => r.name)).toEqual(["Mara", "Sarah"]);
   });
@@ -63,27 +63,27 @@ describe("passage variable resolution", () => {
 
 describe("fill blocks mirror the production formatters", () => {
   it("smart-assign characters — smart_assign_api._format_characters shape", () => {
+    // The book's speakers: "who they are" is the description (2026-09-29).
     const block = smartAssignCharactersBlock([
-      { id: "c_1", name: "Mara", personality: "dry archivist" },
-      { id: "c_2", name: "Renn", personality: "gravel-voiced" },
-      // No character sheet — and the spoken-delivery text is NOT a
-      // fallback description (the 2026-08-15 split).
-      { id: "c_3", name: "Extra", voice_instruct: "clipped, dry" },
+      { id: "s_1", name: "Mara", description: "dry archivist" },
+      { id: "s_2", name: "Renn", aliases: ["Old Renn"], description: "gravel-voiced" },
+      { id: "s_3", name: "Extra" },
     ]);
     expect(block).toBe(
-      '- id="c_1", name="Mara", description="dry archivist"\n' +
-        '- id="c_2", name="Renn", description="gravel-voiced"\n' +
-        '- id="c_3", name="Extra"',
+      '- id="s_1", name="Mara", description="dry archivist"\n' +
+        '- id="s_2", name="Renn", aliases="Old Renn", description="gravel-voiced"\n' +
+        '- id="s_3", name="Extra"',
     );
   });
 
   it("smart-assign voices — smart_assign_api._format_voices shape", () => {
+    // The personas: tone is the note on how it sounds (2026-09-29).
     const block = smartAssignVoicesBlock([
-      { id: "v_1", name: "Slate", gender: "male", language: "en-US" },
-      { id: "v_2", name: "Finch" },
+      { id: "p_1", name: "Slate", gender: "male", tone: "low and dry", language: "en-US" },
+      { id: "p_2", name: "Finch" },
     ]);
     expect(block).toBe(
-      '- id="v_1", name="Slate", gender="male", language="en-US"\n- id="v_2", name="Finch"',
+      '- id="p_1", name="Slate", gender="male", tone="low and dry", language="en-US"\n- id="p_2", name="Finch"',
     );
   });
 

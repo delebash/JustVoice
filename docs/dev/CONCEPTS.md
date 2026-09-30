@@ -553,8 +553,8 @@ Mocked as Speaker Lab step 3 (`#splab/3`).
   source tag + status + elapsed + Cancel + "Cancel all", and Recent
   with duration + tokens. Opens from the header ⚙ chip anywhere.
 - **Both prompts are editable per column** — system prompt AND user
-  prompt, the user prompt templated with `{{characters}}` /
-  `{{paragraphs}}` variables.
+  prompt, the user prompt templated with `{{speakers}}` /
+  `{{paragraphs}}` variables (`{{characters}}` until 2026-09-29).
 - **Named tweak presets:** Save as / Load on each column; the active
   production preset wears a ✓ production badge; "Use as production"
   promotes the column's full config (model + tier + temp + both

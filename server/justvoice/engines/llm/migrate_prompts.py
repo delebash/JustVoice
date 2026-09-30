@@ -39,8 +39,9 @@ log = logging.getLogger(__name__)
 # Old key → new key (the family dotted spelling; `identify` predates it).
 _KEY_RENAMES = {"identify": "speaker_attribution.identify"}
 
-# The attribution user template's pre-shared substitution tokens → {{var}}.
-_BRACE_TOKENS = ("characters", "corrections", "paragraphs")
+# The attribution user template's pre-shared substitution tokens → today's
+# {{var}} names (`characters` is `speakers` since 2026-09-29).
+_BRACE_TOKENS = {"characters": "speakers", "corrections": "corrections", "paragraphs": "paragraphs"}
 
 # The OLD seeded attribution user template, verbatim (single-brace .replace
 # tokens — extraction/prompts.py's USER_TEMPLATE before the {{var}} move).
@@ -56,8 +57,8 @@ Return only the JSON array, one entry per [D#] in the order they appear.
 
 
 def _convert_braces(text_: str) -> str:
-    for name in _BRACE_TOKENS:
-        text_ = text_.replace("{" + name + "}", "{{" + name + "}}")
+    for old, new in _BRACE_TOKENS.items():
+        text_ = text_.replace("{" + old + "}", "{{" + new + "}}")
     return text_
 
 

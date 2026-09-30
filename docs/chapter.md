@@ -6,19 +6,19 @@ This is where audiobook production lives. For one-off renders use [generate.md](
 
 ## Concepts
 
-- **Project** — a book, a game's NPC roster, a podcast season. Holds metadata + the persona cast list + an optional manifest. See [core-concepts.md](core-concepts.md).
+- **Project** — a book, a game's dialogue, a podcast season. Holds metadata + its speakers (the people in it, each played by a persona) + an optional manifest. See [core-concepts.md](core-concepts.md).
 - **Chapter** — a top-level division. An audiobook chapter, a game scene, a podcast episode.
 - **Scene** — an intermediate division inside a chapter. Useful for long chapters; otherwise can be one scene per chapter.
-- **Block** — a single rendering unit. Each block has its own text + persona attribution + per-block delivery override. On import it's a paragraph; once [Studio · Script](studio.md) analyzes the chapter it becomes one **speaker turn**, because a paragraph that mixes narration and dialogue needs more than one voice. Expect a chapter to show more, shorter blocks after analysis — the words don't change, only where the cuts are. Performance notes and import line-ids follow the paragraph they came from.
+- **Block** — a single rendering unit. Each block has its own text + its speaker + per-block delivery override. On import it's a paragraph; once [Studio · Script](studio.md) analyzes the chapter it becomes one **speaker turn**, because a paragraph that mixes narration and dialogue needs more than one voice. Expect a chapter to show more, shorter blocks after analysis — the words don't change, only where the cuts are. Performance notes and import line-ids follow the paragraph they came from.
 - **Take** — one rendered version of a block. Re-rolling a block creates a new take with a lineage chain back to its source. See [take-versioning.md](take-versioning.md).
 
-A chapter render walks every block in order, picks the default take for each, runs each speaker's effects chain, masters the concatenation to the project's target, and emits one WAV. Re-rendering a single block doesn't invalidate the other blocks' cached takes.
+A chapter render walks every block in order, picks the default take for each, runs the effects chain of the persona that plays each speaker, masters the concatenation to the project's target, and emits one WAV. Re-rendering a single block doesn't invalidate the other blocks' cached takes.
 
 ## Navigation
 
 The left pane lists projects → chapters → scenes → blocks. Click to navigate. The right pane shows the currently-selected block.
 
-The chapters list carries per-chapter **Script** and **Render** status columns — Script shows attribution state (e.g. `unassigned speakers` when lines still need a persona), Render shows cache state (`✓ cached` / `n/m cached`) — so you can see at a glance which chapters still need attribution or rendering.
+The chapters list carries per-chapter **Script** and **Render** status columns — Script shows attribution state (e.g. `unassigned speakers` when lines still need a speaker), Render shows cache state (`✓ cached` / `n/m cached`) — so you can see at a glance which chapters still need attribution or rendering.
 
 Top toolbar:
 - **Import** — pull in a script via one of the [import adapters](import-and-export.md) (JustWrite JSON / CSV / SRT / Audacity labels / JustVoice standard schema).
@@ -32,7 +32,7 @@ Top toolbar:
 
 ## Per-block controls
 
-- **Persona attribution** — pick the speaking character from the project's cast.
+- **Speaker** — the line's speaker, shown as a tag. Who speaks each line is set in [Studio · Script](studio.md); who plays each speaker in [Studio · Cast](studio.md#cast).
 - **Text** — the block content. Editable inline.
 - **Delivery override** — per-block delivery tweaks (volume nudge, pause-before, emotion). Tier-3 in the [3-tier merge](render-presets.md#where-a-preset-sits-in-the-precedence).
 - **Takes carousel** — `← Take 3 of 7 →` arrows + dropdown with timestamps. Click any take to switch the default.
@@ -45,7 +45,7 @@ Top toolbar:
 When you click **Render chapter**:
 
 1. JustVoice walks each block in order.
-2. For each block: applies its persona's lexicon → the persona's delivery defaults → the block's delivery override → renders via the engine → runs the persona's **effects chain** (with the scene's render preset layered on top).
+2. For each block: finds its speaker and the persona that plays them, then applies that persona's lexicon → its delivery defaults → the block's delivery override → renders via the engine → runs the persona's **effects chain** (with the scene's render preset layered on top).
 3. Concatenates the per-block WAVs with crossfade (per `settings.generation.crossfade_ms`).
 4. Applies the mastering target — resolved from the render preset, else the project, else the project kind (ACX for audiobooks; see [mastering.md](mastering.md#which-preset-a-render-uses)).
 5. Emits one WAV.
@@ -69,19 +69,21 @@ Old takes stay in the DB until you bulk-delete them — useful for going back if
 The Chapter tab is gated on having a project selected. New users: hit the **Go to Projects** link in the empty-state banner to import a manuscript. Adapters:
 
 - **JustWrite JSON** — the primary integration (export a book from JustWrite, open it here)
-- **CSV** — `character,text` columns
+- **CSV** — `character,text` columns (`character` names the line's speaker)
 - **SRT** — subtitle files (timing ignored; lines become blocks)
 - **Audacity labels** — label-track export
 - **JustVoice standard** — our own portable schema
 
 See [import-and-export.md](import-and-export.md) for adapter specifics + JSON schemas.
 
-## Per-character override
+## Per-persona settings
 
-Each persona in the cast can override:
-- **Engine** — one character uses Chatterbox, the rest use Kokoro.
-- **Lexicon** — Old Crow uses street-slang.lex; everyone else uses the project default.
-- **Delivery defaults** — per-character speed / pitch / emotion baseline.
+Each persona that plays a speaker can set:
+- **Engine** — one persona on Chatterbox, the rest on Kokoro.
+- **Lexicon** — Old Crow's persona uses street-slang.lex; everyone else uses the project default.
+- **Delivery defaults** — per-persona speed / pitch / emotion baseline.
+
+A persona that plays several speakers brings the same settings to all of them.
 
 These overrides feed Tier-2 of the [3-tier merge](render-presets.md#where-a-preset-sits-in-the-precedence).
 
@@ -111,6 +113,6 @@ Whisper must be installed; it loads on first use.
 
 - **"No project selected. Go to Projects."** — Click the link to import or create a blank project.
 - **"No blocks in this scene"** — Empty scene. Add blocks via the import flow or click "+ Block" on the scene.
-- **A block won't render** — Check the persona is attributed (not "(unset)"). Persona must map to a profile or have an engine fallback.
+- **A block won't render** — It needs a speaker (Studio · Script), the speaker needs a persona (Studio · Cast), and the persona needs a voice (Personas). The render refusal names whichever is missing.
 - **Chapter render fails partway** — Check the task-strip error. Most common: engine failed to load on first use; load it manually via [engines.md](engines.md) first.
 - **Mastered output is too quiet / loud** — Switch mastering target in [mastering.md](mastering.md).

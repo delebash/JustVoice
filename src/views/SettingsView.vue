@@ -1018,7 +1018,7 @@ onMounted(() => {
             <tr><td><code class="jv-mono">POST</code></td><td><code class="jv-mono">/v1/generate</code></td><td>Single-line synthesis → audio/wav. Auto-chunks long text.</td></tr>
             <tr><td><code class="jv-mono">POST</code></td><td><code class="jv-mono">/v1/render_chapter</code></td><td>Multi-line chapter render with mastering + cache.</td></tr>
             <tr><td><code class="jv-mono">GET</code></td><td><code class="jv-mono">/v1/voices</code></td><td>List preset + stored voices.</td></tr>
-            <tr><td><code class="jv-mono">GET</code></td><td><code class="jv-mono">/v1/personas</code></td><td>List personas (voice binding, personality, effects chain, lexicon).</td></tr>
+            <tr><td><code class="jv-mono">GET</code></td><td><code class="jv-mono">/v1/personas</code></td><td>List personas (voice binding, note, effects chain, lexicon).</td></tr>
             <tr><td><code class="jv-mono">GET</code></td><td><code class="jv-mono">/v1/engines</code></td><td>Engine catalog + load state.</td></tr>
             <tr><td><code class="jv-mono">GET</code></td><td><code class="jv-mono">/v1/engines/capabilities</code></td><td>Per-engine knob + inline-tag manifest (drives UI gating).</td></tr>
             <tr><td><code class="jv-mono">POST</code></td><td><code class="jv-mono">/v1/engines/{id}/load</code></td><td>Load an engine into memory.</td></tr>
@@ -1784,7 +1784,7 @@ onMounted(() => {
           <span class="jv-chip-card" title="Render text to speech; returns a generation id + audio URL"><strong>justvoice.speak</strong></span>
           <span class="jv-chip-card" title="Audio → text via the local Whisper engine"><strong>justvoice.transcribe</strong></span>
           <span class="jv-chip-card" title="All voices (presets + cloned + designed)"><strong>justvoice.list_voices</strong></span>
-          <span class="jv-chip-card" title="Characters with their bound voice"><strong>justvoice.list_personas</strong></span>
+          <span class="jv-chip-card" title="Personas with their bound voice"><strong>justvoice.list_personas</strong></span>
         </div>
       </div>
     </div>

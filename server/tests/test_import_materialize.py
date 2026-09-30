@@ -1,15 +1,16 @@
 # SPDX-License-Identifier: MIT
-"""Import materialization — persona reuse linking + lexicon creation.
+"""Import materialization — the book's speakers + lexicon creation.
 
-Covers the two silent-drop bugs found in the A0 audit:
-  1. reused personas got no ProjectPersona row for the new project
-  2. StandardImport.lexicon_entries were never materialized
+Covers the silent-drop bug found in the A0 audit (StandardImport.lexicon_entries
+were never materialized), and — since the 2026-09-29 split — that a book's
+characters arrive as that book's speakers, cast with the persona of exactly
+their name when the library has one.
 """
 
 from __future__ import annotations
 
 from justvoice.api.projects_api import _materialize_lexicon, _materialize_standard
-from justvoice.database.models import ProjectPersona
+from justvoice.database.models import Persona, Speaker
 from justvoice.imports.standard_schema import (
     StandardCharacter,
     StandardImport,
@@ -43,22 +44,39 @@ def _standard(name: str, lexicon: bool = False) -> StandardImport:
     )
 
 
-def test_reused_persona_is_linked_to_new_project(db_session, tmp_path):
+def test_each_book_gets_its_own_speakers_played_by_the_named_persona(db_session, tmp_path):
+    """The same character in two books is a speaker in each; a persona of
+    exactly that name plays both ("Every new speaker", 2026-09-29)."""
+    voice = Persona(name="mara vance ")
+    db_session.add(voice)
+    db_session.commit()
+    p1, _sc, _bl, created1, _ = _materialize_standard(_standard("Book one"), db_session)
+    db_session.commit()
+    p2, _sc, _bl, created2, _ = _materialize_standard(_standard("Book two"), db_session)
+    db_session.commit()
+
+    assert len(created1) == 1 and len(created2) == 1 and created1 != created2
+    rows = db_session.query(Speaker).filter(Speaker.name == "Mara Vance").all()
+    assert {s.project_id for s in rows} == {p1.id, p2.id}
+    assert {s.persona_id for s in rows} == {voice.id}
+
+
+def test_a_reimport_reuses_the_books_speaker(db_session, tmp_path):
+    """A second materialize of the same character INTO the same book (the
+    re-import path) finds the speaker by its import id — never a duplicate."""
+    from justvoice.api._speaker_helpers import ensure_speaker
+
     p1, *_ = _materialize_standard(_standard("Book one"), db_session)
     db_session.commit()
-    p2, _sc, _bl, created, reused = _materialize_standard(
-        _standard("Book two"), db_session
-    )
-    db_session.commit()
-
-    assert created == [] and len(reused) == 1
-    links = db_session.query(ProjectPersona).filter(ProjectPersona.persona_id == reused[0]).all()
-    assert {link.project_id for link in links} == {p1.id, p2.id}
+    again, created = ensure_speaker(db_session, p1.id, name="Mara Vance",
+                                    imported_from="justwrite", imported_id="mara")
+    assert created is False
+    assert db_session.query(Speaker).filter(Speaker.project_id == p1.id).count() == 1
 
 
-def test_store_reads_materialized_personas(tmp_db, tmp_path):
-    """Post-flip: PersonaStore reads the SAME rows the materializer
-    writes — the dual-write (and its self-heal) is gone by design."""
+def test_an_import_makes_speakers_and_no_persona(tmp_db, tmp_path):
+    """Since 2026-09-29 a book's characters are its speakers; the library of
+    personas (the voices) is untouched by an import."""
     session_factory, _engine = tmp_db
     db = session_factory()
     try:
@@ -66,13 +84,10 @@ def test_store_reads_materialized_personas(tmp_db, tmp_path):
             _standard("Book one"), db
         )
         db.commit()
+        assert [s.name for s in db.query(Speaker).filter(Speaker.id.in_(created))] == ["Mara Vance"]
     finally:
         db.close()
-    assert len(created) == 1
-    pstore = PersonaStore(tmp_path, session_factory=session_factory)
-    p = pstore.get(created[0])
-    assert p is not None and p.name == "Mara Vance"
-    assert not p.voice_id  # unassigned until Cast
+    assert PersonaStore(tmp_path, session_factory=session_factory).list() == []
 
 
 def test_legacy_persona_files_import_once(tmp_db, tmp_path):
@@ -106,8 +121,8 @@ def test_legacy_persona_files_import_once(tmp_db, tmp_path):
 def test_store_crud_round_trip(tmp_db, tmp_path):
     session_factory, _engine = tmp_db
     store = PersonaStore(tmp_path, session_factory=session_factory)
-    created = store.create("Mara", voice_id=None, personality="lake person")
-    assert store.get(created.id).personality == "lake person"
+    created = store.create("Mara", voice_id=None, note="warm, low, unhurried")
+    assert store.get(created.id).note == "warm, low, unhurried"
     updated = store.update(created.id, voice_instruct="dry wit", voice_id="af_heart")
     assert updated.voice_instruct == "dry wit" and updated.voice_id == "af_heart"
     fetched = store.get(created.id)
@@ -254,7 +269,7 @@ def test_demo_projects_seed_through_the_real_materializer(db_session, tmp_path):
         db_session.commit()
         assert project.project_type == kind
         assert scene_count >= 1 and block_count >= 3
-        assert created  # personas land in SQLite
+        assert created  # speakers land in SQLite
     # game demo carries stable line ids
     import json as _json
 
@@ -283,5 +298,5 @@ def test_the_audiobook_demo_is_the_ninth_facet_through_the_justwrite_adapter(tmp
     project = client.get(f"/v1/projects/{pid}").json()
     assert project["name"] == "The Ninth Facet" and project["project_type"] == "audiobook"
     assert len(client.get(f"/v1/projects/{pid}/scenes").json()) == 4
-    cast = {c["persona_name"] for c in client.get(f"/v1/projects/{pid}/cast").json()["cast"]}
+    cast = {s["name"] for s in client.get(f"/v1/projects/{pid}/speakers").json()["speakers"]}
     assert {"Cael Ferren", "Haldane Threll"} <= cast

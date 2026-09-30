@@ -55,6 +55,7 @@ from .api import (
     mcp_bindings_api,
     models_api,
     personas_api,
+    speakers_api,
     align_api,
     voice_bundle_api,
     pronunciation_api,
@@ -213,6 +214,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app.include_router(voices_api.router)
     app.include_router(voice_bundle_api.router)
     app.include_router(personas_api.router)
+    app.include_router(speakers_api.router)
     app.include_router(lexicons_api.router)
     app.include_router(engines_api.router)
     app.include_router(models_api.router)

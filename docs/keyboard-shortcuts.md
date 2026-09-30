@@ -32,7 +32,7 @@ nothing while you type or a dropdown is open.
 | `Space` | Tick or untick the line |
 | `[` / `]` | Previous / next chapter |
 | `Ctrl+Z` | Undo your last change |
-| Right-click a spoken line's text | Open the rewrite preview. Accept → replaces the line's text. Discard → the original stays |
+| Right-click a spoken line's text | Open the rewrite preview — the line rewritten as its speaker would say it, from their *Who they are*. Accept → replaces the line's text. Discard → the original stays |
 
 See [Studio → Script](studio.md#a-chapter).
 
@@ -40,10 +40,11 @@ See [Studio → Script](studio.md#a-chapter).
 
 | Keys | Action |
 |---|---|
-| Click voice name (with a character selected) | Assign that voice to the selected character |
-| Click gender chip on a voice row | Cycle the gender hint: F → M → N → engine default |
-| Click ⚙ on a voice row | Open the Voice tuning modal for that voice |
-| Click ▶ on a voice row | Preview the voice with a sample sentence — a compact player opens in place |
+| Click a persona (with a speaker selected) | Assign it to the selected speaker. Clicking the persona that already plays them takes it away |
+| Click ▶ on a persona row | Play its voice's sample — a compact player opens in place |
+| Click ✎ on a persona row | Open that persona on the Personas page |
+
+See [Studio → Cast](studio.md#cast).
 
 ## Engines
 

@@ -168,8 +168,9 @@ const continueStatus = computed(() => {
 });
 
 // Mini workflow status for the Continue card — one cache-stats call +
-// one cast call for the single continue project (cheap; no per-scene
-// block walks on Home).
+// one speakers call for the single continue project (cheap; no per-scene
+// block walks on Home). `castVoiced` counts speakers played by a persona
+// that has a voice.
 const miniStatus = ref(null);  // { rendered, total, castTotal, castVoiced, noSpeaker }
 async function loadMiniStatus() {
   miniStatus.value = null;
@@ -182,15 +183,15 @@ async function loadMiniStatus() {
     out.rendered = (cs?.scenes || []).filter((sc) => sc.total > 0 && sc.cached === sc.total).length;
   } catch { /* zero-chapter projects 404 here — strip shows import-first */ }
   try {
-    const c = await api.request(`/v1/projects/${p.id}/cast`);
-    const cast = c?.cast || [];
-    out.castTotal = cast.length;
+    const c = await api.request(`/v1/projects/${p.id}/speakers`);
+    const speakers = c?.speakers || [];
+    out.castTotal = speakers.length;
     // Voiced state comes from the personas list refresh() already
     // fetched — the old per-persona GET fan-out (≤16 requests) was the
     // slow part of the Home fill.
     const byId = new Map(personas.value.map((x) => [x.id, x]));
-    out.castVoiced = cast.filter((x) => byId.get(x.persona_id)?.voice_id).length;
-  } catch { /* no cast yet */ }
+    out.castVoiced = speakers.filter((x) => byId.get(x.persona_id)?.voice_id).length;
+  } catch { /* no speakers yet */ }
   // Lines the render stops on — the number that opens Script on "To check".
   const script = await api.safeRequest(`/v1/projects/${p.id}/script`, null);
   out.noSpeaker = (script?.chapters || [])
@@ -208,7 +209,7 @@ const miniSteps = computed(() => {
   const n = p.scene_count ?? m.total;
   return [
     { label: `1 Import`, sub: n ? `${n} ${continueMeta.value.unit}` : "no text yet", done: n > 0 },
-    { label: `2 Cast`, sub: m.castTotal ? `${m.castVoiced}/${m.castTotal} voiced` : "—", done: m.castTotal > 0 && m.castVoiced === m.castTotal },
+    { label: `2 Cast`, sub: m.castTotal ? `${m.castVoiced}/${m.castTotal} cast` : "—", done: m.castTotal > 0 && m.castVoiced === m.castTotal },
     { label: `3 Render`, sub: n ? `${m.rendered}/${n} rendered` : "—", done: n > 0 && m.rendered === n },
   ];
 });
@@ -265,7 +266,7 @@ const captureCount = computed(() => capturesTotal.value ?? captures.value.length
 const statCards = computed(() => [
   { label: "Projects", value: projects.value.length, sub: projectKindCount.value ? `${projectKindCount.value} kind${projectKindCount.value === 1 ? "" : "s"}` : "create one to start", href: "#projects" },
   { label: "Voices", value: voices.value.length, sub: `across ${new Set(voices.value.map((v) => v.engine || "?")).size} engines`, href: "#voices" },
-  { label: "Personas", value: personas.value.length, sub: "cross-project characters", href: "#personas" },
+  { label: "Personas", value: personas.value.length, sub: "finished voices, any book", href: "#personas" },
   { label: "Lexicons", value: lexicons.value.length, sub: `${lexiconEntries.value} entries`, href: "#lexicons" },
   { label: "Cache", value: cacheGB.value ? `${cacheGB.value} GB` : "0", sub: cacheSub.value, href: "#cache" },
   { label: "Captures", value: captureCount.value, sub: "dictation + TTS history", href: "#captures" },

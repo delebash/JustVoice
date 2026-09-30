@@ -26,7 +26,7 @@ import { readPref, writePref } from "./services/prefs.js";
 //
 // `lane` groups tabs in the sidebar (plan Q4 architecture):
 //   workflow — Do the work. Always-on for the current use case.
-//   library  — Manage assets (voices, characters, etc.).
+//   library  — Manage assets (voices, personas, etc.).
 //   tools    — Diagnostics, comparison, training labs.
 //   advanced — Cache, channels, webhooks — collapsed by default.
 // Settings is its own thing — pinned at the very bottom of the sidebar
@@ -37,8 +37,8 @@ const VIEWS = [
   { id: "home",      lane: "workflow", label: "Home",      icon: "🏠", lede: "" },
   { id: "projects",  lane: "workflow", label: "Projects",  icon: "📖", lede: "Multi-use Project library. Audiobooks, game voicelines, podcasts. Import a book from JustWrite, or scripts, line lists and subtitle files from other tools.", visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
   { id: "chapter",   lane: "workflow", label: "Chapters",   icon: "📑", lede: "Multi-block chapter editor with per-block take versioning. Source-lineage chains preserved.", visibleFor: ["audiobook", "podcast", "multiple", "unset"] },
-  { id: "lines",     lane: "workflow", label: "Lines",      icon: "🎮", lede: "Every line of the game project — stable ids, characters, derived take status. Re-import the writers\u2019 next sheet (only changed lines go stale), re-render exactly those, export per-line WAVs + manifest.", visibleFor: ["game", "multiple", "unset"] },
-  { id: "studio",    lane: "workflow", label: "Studio",    icon: "🎬", lede: "A project's home. Overview holds its settings and shows where each step stands; then Discover finds the speakers your text names, Script works out who says each line, Cast gives each persona a voice, Render makes the audio and Export packages it. A game project starts from its Lines instead — the sheet already says who speaks.", visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
+  { id: "lines",     lane: "workflow", label: "Lines",      icon: "🎮", lede: "Every line of the game project — stable ids, speakers, derived take status. Re-import the writers\u2019 next sheet (only changed lines go stale), re-render exactly those, export per-line WAVs + manifest.", visibleFor: ["game", "multiple", "unset"] },
+  { id: "studio",    lane: "workflow", label: "Studio",    icon: "🎬", lede: "A project's home. Overview holds its settings and shows where each step stands; then Discover finds the speakers your text names, Script works out who says each line, Cast gives each speaker a persona, Render makes the audio and Export packages it. A game project starts from its Lines instead — the sheet already says who speaks.", visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
   { id: "stories",   lane: "workflow", label: "Stories",   icon: "🎞️", lede: "Multi-track timeline editor. For podcasting, game-dialogue assembly, and per-chapter multi-voice arrangement.", visibleFor: ["game", "podcast", "multiple", "unset"] },
   { id: "generate",  lane: "workflow", label: "Generate",  icon: "📝", lede: "Pick a voice. Type the line. Apply delivery overlay. The server renders it. Type / for paralinguistic tags." },
   // Always visible (queue item 11): dictation is a cross-cutting utility
@@ -51,8 +51,8 @@ const VIEWS = [
   // baked into it ("Kokoro 54 + Qwen 9") — numbers that go stale the moment
   // an engine ships a voice, and which the type filters show anyway.
   { id: "voices",    lane: "library", label: "Voices",    icon: "🎙️", lede: "" },
-  { id: "personas",  lane: "library", label: "Personas",  icon: "🎭", lede: "Characters. Each persona has a name, a voice, a spoken-delivery instruction (how they sound), a character sheet (who they are), default delivery, effects, lexicon override. Cross-project — one Mara across many books or quests. Filter by usage in the library list.", visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
-  { id: "lexicons",  lane: "library", label: "Lexicons",  icon: "📚", lede: "Pronunciation dictionaries. Force \"Beauchamp\" → \"BEE-chum\", domain words → consistent phoneme-level pronunciation across a whole book. Per-character override.", visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
+  { id: "personas",  lane: "library", label: "Personas",  icon: "🎭", lede: "Finished voices. Each persona is a voice and its engine, plus speed, pitch, gain, spoken direction, effects, a lexicon override and a short note on how it sounds. Cast gives one to each speaker in a book, and one persona can play many speakers, in any book. Filter by usage in the library list.", visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
+  { id: "lexicons",  lane: "library", label: "Lexicons",  icon: "📚", lede: "Pronunciation dictionaries. Force \"Beauchamp\" → \"BEE-chum\", domain words → consistent phoneme-level pronunciation across a whole book. Per-persona override.", visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
   { id: "effects",   lane: "library", label: "Effects",   icon: "🎛️", lede: "Pedalboard-backed effects chain. Apply non-destructively — creates a new generation version that preserves the original. 8 types · 4 built-in presets + custom.", visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
   { id: "presets",   lane: "library", label: "Presets",   icon: "🎚️", lede: "Render presets — named bundles of voice + delivery + effects chain + master target. Studio Render binds one per scene to lock per-chapter or per-quest output consistency.", visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
   // (The Voice engines page left the sidebar in the parity batch, 2026-08-06 —

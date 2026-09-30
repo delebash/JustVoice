@@ -38,22 +38,22 @@ def _import_project(client) -> str:
     return r.json()["project_id"]
 
 
-def _mk_persona(client, name: str) -> str:
-    r = client.post("/v1/personas", json={"name": name})
-    assert r.status_code in (200, 201), r.text
+def _mk_speaker(client, pid: str, name: str) -> str:
+    r = client.post(f"/v1/projects/{pid}/speakers", json={"name": name})
+    assert r.status_code == 201, r.text
     return r.json()["id"]
 
 
 def test_lab_door_records_and_counts(client) -> None:
-    """persona_id is an FK to personas — the door records REAL personas
-    (the renderer's reassign offers only the project's real cast)."""
+    """speaker_id is an FK to speakers — the door records REAL speakers of the
+    book (the renderer's reassign offers only the book's speakers)."""
     pid = _import_project(client)
-    hale = _mk_persona(client, "Hale")
+    hale = _mk_speaker(client, pid, "Hale the Elder")
     assert client.get(f"/v1/projects/{pid}/corrections/count").json()["count"] == 0
 
     r = client.post(
         f"/v1/projects/{pid}/corrections",
-        json={"text_snippet": "“Halt,” he said.", "persona_id": hale},
+        json={"text_snippet": "“Halt,” he said.", "speaker_id": hale},
     )
     assert r.status_code == 200, r.text
     assert r.json() == {"ok": True, "count": 1}
@@ -64,24 +64,27 @@ def test_lab_door_records_and_counts(client) -> None:
     assert client.get(f"/v1/projects/{pid}/corrections/count").json()["count"] == 0
 
 
-def test_lab_door_refuses_unknown_personas(client) -> None:
-    """A synthetic lab-cast id is not a persona — the door answers 404, never
-    a 500 off the FK."""
+def test_lab_door_refuses_unknown_speakers(client) -> None:
+    """A synthetic lab-cast id is not a speaker, and nor is another book's —
+    the door answers 404, never a 500 off the FK."""
     pid = _import_project(client)
-    r = client.post(
-        f"/v1/projects/{pid}/corrections",
-        json={"text_snippet": "“Halt,” he said.", "persona_id": "c_hale_0"},
-    )
-    assert r.status_code == 404, r.text
+    other = _import_project(client)
+    theirs = _mk_speaker(client, other, "Stranger")
+    for bad in ("c_hale_0", theirs):
+        r = client.post(
+            f"/v1/projects/{pid}/corrections",
+            json={"text_snippet": "“Halt,” he said.", "speaker_id": bad},
+        )
+        assert r.status_code == 404, r.text
     assert client.get(f"/v1/projects/{pid}/corrections/count").json()["count"] == 0
 
 
 def test_snippet_capped_at_400_chars(client) -> None:
     pid = _import_project(client)
-    who = _mk_persona(client, "Anna")
+    who = _mk_speaker(client, pid, "Anna")
     client.post(
         f"/v1/projects/{pid}/corrections",
-        json={"text_snippet": "x" * 1000, "persona_id": who},
+        json={"text_snippet": "x" * 1000, "speaker_id": who},
     )
     from justvoice.database import session as db_session
     from justvoice.database.models import SpeakerCorrection
@@ -97,8 +100,8 @@ def test_snippet_capped_at_400_chars(client) -> None:
 def test_cap_at_200_per_project(client) -> None:
     pid = _import_project(client)
     other = _import_project(client)
-    who_a = _mk_persona(client, "Anna")
-    who_b = _mk_persona(client, "Bram")
+    who_a = _mk_speaker(client, pid, "Anna")
+    who_b = _mk_speaker(client, other, "Bram")
     from justvoice.api.extraction_api import record_correction
     from justvoice.database import session as db_session
     from justvoice.database.models import SpeakerCorrection
@@ -123,10 +126,10 @@ def test_cap_at_200_per_project(client) -> None:
 
 
 def test_studio_block_patch_shares_the_writer(client) -> None:
-    """A persona reassign on a block writes the SAME correction memory the
+    """A speaker reassign on a block writes the SAME correction memory the
     Lab door does (the shared record_correction — the two cannot drift)."""
     pid = _import_project(client)
-    keeper = _mk_persona(client, "Keeper")
+    keeper = _mk_speaker(client, pid, "Keeper")
     from justvoice.database import session as db_session
     from justvoice.database.models import Block
 
@@ -137,7 +140,7 @@ def test_studio_block_patch_shares_the_writer(client) -> None:
     finally:
         db.close()
 
-    r = client.patch(f"/v1/blocks/{block_id}", json={"persona_id": keeper})
+    r = client.patch(f"/v1/blocks/{block_id}", json={"speaker_id": keeper})
     assert r.status_code == 200, r.text
 
     counted = client.get(f"/v1/projects/{pid}/corrections/count").json()
@@ -147,7 +150,7 @@ def test_studio_block_patch_shares_the_writer(client) -> None:
     db = db_session.SessionLocal()
     try:
         row = db.query(SpeakerCorrection).filter(SpeakerCorrection.project_id == pid).one()
-        assert row.persona_id == keeper
+        assert row.speaker_id == keeper
         assert row.text_snippet == block_text[:400]
     finally:
         db.close()

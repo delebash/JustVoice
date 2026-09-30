@@ -6,7 +6,7 @@ Route specific voices to specific OS audio devices. The **Channels** tab is wher
 
 - **Streaming / production rigs** — send the narrator to your speakers, send a chat-companion voice to OBS audio source 2, send a "warning bell" to a separate monitor.
 - **Accessibility** — route TTS to a different device than system audio so screen-reader output stays separate.
-- **DAW workflows** — bind each character voice to a different virtual audio cable (BlackHole / VB-Cable / Loopback) so they show up as discrete tracks in Ableton / Reaper / Logic.
+- **DAW workflows** — bind each persona to a different virtual audio cable (BlackHole / VB-Cable / Loopback) so they show up as discrete tracks in Ableton / Reaper / Logic.
 - **Dictation** — route the dictate-window's confirmation tone to a specific device so it doesn't interrupt the active call's audio.
 
 ## How it works
@@ -50,7 +50,7 @@ When a render's audio is ready, JustVoice routes via:
 
 You could route OS audio to BlackHole and split there. Two reasons we do it in JustVoice instead:
 
-1. **Per-character granularity** — OS routing routes ALL of JustVoice's audio. Channels routes per-render based on the speaker.
+1. **Per-persona granularity** — OS routing routes ALL of JustVoice's audio. Channels routes per-render based on the persona that plays the speaker.
 2. **Survives device changes** — when a Bluetooth headset reconnects, JustVoice picks it up by name (`BT Headset`). OS-level routing would lose the binding.
 
 ## Audio keep-alive (macOS)

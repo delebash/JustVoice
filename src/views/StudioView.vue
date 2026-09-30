@@ -5,7 +5,8 @@
   Discover → Script → Cast → Render → Export for prose kinds and
   Lines → Cast → Render → Export for game — the order lives in studioSteps.js
   and is pinned by its test. Overview is components/StudioOverview.vue,
-  Discover components/StudioDiscover.vue, Lines the LinesView grid embedded.
+  Discover components/StudioDiscover.vue, Cast components/StudioCast.vue,
+  Lines the LinesView grid embedded.
   Ported in shape from JustWrite's StudioView.vue.
 
   Terminology adapts via useCopy():
@@ -13,7 +14,7 @@
     podcast   → Hosts / Episode / Render
     game      → NPCs / Quest / Render
 
-  Phase 4 / Slice 1 — shell + Cast tab + VoiceParamsModal.
+  Phase 4 / Slice 1 — shell + Cast tab.
   Phase 4 / Slice 2 — Script tab + analyze + Smart-assign.
   Phase 6      — Render tab (Studio Render slice).
 -->
@@ -29,34 +30,21 @@ import { blockStats, projectState } from "./studioStatus.js";
 import { useCopy } from "../services/copy.js";
 import { unplacedBlocks } from "../services/attribution.js";
 import { chapterRunFor, onChapterDone } from "../services/chapterRun.js";
-import { readPref, writePref } from "../services/prefs.js";
 import { pushToast } from "@delebash/llm-ui";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { usePersonasStore } from "../stores/personas.js";
 import { useVoicesStore } from "../stores/voices.js";
 import { useEnginesStore } from "../stores/engines.js";
-import { UiButton, UiInput, UiTextarea, UiCheckbox, UiTag, UiChip, UiSelect, AppModal, UiTable } from "@delebash/llm-ui";
+import { UiButton, UiTextarea, UiCheckbox, UiTag, UiSelect, AppModal } from "@delebash/llm-ui";
 
-// Kit grids in the JustVoice look (`jv-table-look`). `row-hover` carries the
-// pointer cursor and the row tint; selection is a `:row-class`.
-const RIGHT = { textAlign: "right", width: "1%", whiteSpace: "nowrap" };
-const NPC_COLUMNS = [
-  { id: "portrait", header: "", headerStyle: { width: "1%" }, cellStyle: { width: "1%" } },
-  { id: "name", accessorKey: "name", header: "NPC", sortable: true },
-  { id: "role", header: "Role" },
-  { id: "voice", header: "Voice" },
-  { id: "actions", header: "", headerStyle: RIGHT, cellStyle: RIGHT },
-];
-import VoiceParamsModal from "../components/VoiceParamsModal.vue";
-import { EmptyState } from "@delebash/llm-ui";
 import ExportPanel from "../components/ExportPanel.vue";
 import StudioOverview from "../components/StudioOverview.vue";
 import StudioDiscover from "../components/StudioDiscover.vue";
+import StudioCast from "../components/StudioCast.vue";
 import StudioScript from "../components/StudioScript.vue";
 import StudioScriptChapter from "../components/StudioScriptChapter.vue";
 import LinesView from "./LinesView.vue";
-import { confirmDialog } from "@delebash/llm-ui";
 
 const api = useApi();
 const activeProject = useActiveProject();
@@ -85,58 +73,14 @@ const tab = ref("");
 let requestedTab = null;
 const loading = ref(false);
 
-const selectedCharacterId = ref(null);
-const voiceParamsModalOpen = ref(false);
-const tuningVoice = ref(null);  // {voiceId, name, params}
-const smartAssignBusy = ref(false);
-
-// JustWrite-style voice library filter: engine selector + name search.
-// "" = all engines. Defaults to the currently-loaded TTS engine when one
-// is up (set by the engines load below). Server-backed renderer pref so the
-// user's pick survives reloads.
-const voiceEngineFilter = ref(readPref("studioVoiceEngineFilter", ""));
-watch(voiceEngineFilter, (v) => { writePref("studioVoiceEngineFilter", v || ""); });
-const voiceSearchQuery = ref("");
-
-// Gender overrides — local-only per-voice gender hint that the user
-// click-cycles (engine label → female → male → neutral → engine label).
-// Smart-assign reads from voice.gender; this overlay lets the user fix
-// the hint without editing the engine's manifest. Server-backed renderer pref
-// so the override survives reloads.
-const GENDER_CYCLE = ["female", "male", "neutral", ""];
-const _loadedGenderOverrides = readPref("voiceGenderOverrides", {});
-const voiceGenderOverrides = ref(
-  _loadedGenderOverrides && typeof _loadedGenderOverrides === "object" ? _loadedGenderOverrides : {},
-);
-watch(voiceGenderOverrides, (v) => { writePref("voiceGenderOverrides", v); }, { deep: true });
-
-function displayedGender(voice) {
-  if (Object.hasOwn(voiceGenderOverrides.value, voice.id)) {
-    return voiceGenderOverrides.value[voice.id];
-  }
-  return voice.gender || "";
-}
-function cycleGender(voice) {
-  const current = displayedGender(voice);
-  const idx = GENDER_CYCLE.indexOf(current);
-  const next = GENDER_CYCLE[(idx + 1) % GENDER_CYCLE.length];
-  if (next === (voice.gender || "")) {
-    // Cycled back to the engine's value — drop the override.
-    const copy = { ...voiceGenderOverrides.value };
-    delete copy[voice.id];
-    voiceGenderOverrides.value = copy;
-  } else {
-    voiceGenderOverrides.value = { ...voiceGenderOverrides.value, [voice.id]: next };
-  }
-}
-
 // Per-line right-click Rewrite (plan Q1 / LD3). Right-clicking a line's text
 // on Script's chapter page opens a preview modal where the LLM rewrites it in
-// the persona's voice. Accept → the line's text is replaced; reject → nothing
-// changes. It stays a right-click, with no visible control, until Slice 4
-// moves it to Render's line panel and deletes it here (§8.25).
+// character — from the speaker's "who they are" (2026-09-29). Accept → the
+// line's text is replaced; reject → nothing changes. It stays a right-click,
+// with no visible control, until Slice 4 moves it to Render's line panel and
+// deletes it here (§8.25).
 const rewriteModalOpen = ref(false);
-const rewriteLine = ref(null);     // {id, text, persona_id} — the script line
+const rewriteLine = ref(null);     // {id, text, speaker_id} — the script line
 const rewriteOriginal = ref("");
 const rewritePreview = ref("");
 const rewriteBusy = ref(false);
@@ -144,16 +88,16 @@ const rewriteError = ref("");
 
 function rewriteRow(line) {
   if (!line) return;
-  // Only speech has a persona to rewrite against.
+  // Only speech has a speaker to rewrite against.
   if (!line.spoken) {
     pushToast({ message: "Rewrite only applies to spoken lines.", kind: "info" });
     return;
   }
-  if (!line.persona_id || line.persona_id === narratorPersona.value?.id) {
+  if (!line.speaker_id || line.speaker_id === narratorSpeaker.value?.id) {
     pushToast({ message: "Give this line a speaker first.", kind: "info" });
     return;
   }
-  rewriteLine.value = { id: line.id, text: line.text, persona_id: line.persona_id };
+  rewriteLine.value = { id: line.id, text: line.text, speaker_id: line.speaker_id };
   rewriteOriginal.value = line.text;
   rewritePreview.value = "";
   rewriteError.value = "";
@@ -166,7 +110,7 @@ async function runRewrite() {
   if (!line) return;
   rewriteBusy.value = true;
   try {
-    const r = await api.request(`/v1/personas/${line.persona_id}/rewrite`, {
+    const r = await api.request(`/v1/speakers/${line.speaker_id}/rewrite`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: line.text }),
@@ -238,14 +182,14 @@ const sceneSelectedForRender = ref({});  // {sceneId: bool}
 const renderBusyScene = ref(null);
 
 // Render gate (queue item 13): the buttons say WHY they're disabled
-// instead of failing later — no text → nothing to render; no voiced
-// cast → server would skip every block.
+// instead of failing later — no text → nothing to render; nobody played by a
+// persona with a voice → the server would refuse every line.
 const renderGate = computed(() => {
   if (!scenes.value.some((s) => sceneBlockCounts.value[s.id])) {
     return { ok: false, reason: "Nothing to render yet — chapters have no text. Import or paste in Chapters first." };
   }
-  if (!projectPersonas.value.some((p) => p.voice_id)) {
-    return { ok: false, reason: "No voices assigned — cast at least one voice in 1 · Cast first." };
+  if (!speakers.value.some(speakerReady)) {
+    return { ok: false, reason: "Nobody is cast yet — give a speaker a persona with a voice in Cast first." };
   }
   return { ok: true, reason: "" };
 });
@@ -306,39 +250,6 @@ function stepBy(delta) {
 
 // Live step-card subtitles (item 2; design contract = the JustWrite
 // Audio Studio screenshots): honest counts only — no fake progress.
-const voicedCount = computed(() => projectPersonas.value.filter((p) => p.voice_id).length);
-// Counts shown in the Characters / NPCs section head — narrator is
-// surfaced separately above, so we count characterPersonas for
-// non-game projects and projectPersonas for game projects (no narrator).
-const charactersListLength = computed(() =>
-  isGameProject.value ? projectPersonas.value.length : characterPersonas.value.length,
-);
-const charactersUnassigned = computed(() => {
-  const list = isGameProject.value ? projectPersonas.value : characterPersonas.value;
-  return list.filter((p) => !p.voice_id).length;
-});
-
-// Cast-level engine notice (item 6 — closes the user's voices-and-
-// engine-loading concern at ASSIGN time, not just at preview): says
-// when the cast spans engines (render-time swapping) or uses metered
-// online voices.
-const castEngineNotice = computed(() => {
-  const assigned = projectPersonas.value
-    .filter((p) => p.voice_id)
-    .map((p) => voiceById(p.voice_id))
-    .filter(Boolean);
-  if (!assigned.length) return "";
-  const engines_ = [...new Set(assigned.map((v) => v.engine))];
-  const metered = assigned.filter((v) => voiceLocality(v) === "online").length;
-  const bits = [];
-  if (engines_.length > 1) {
-    bits.push(`this cast spans ${engines_.length} engines (${engines_.join(", ")}) — chapters will swap engines while rendering`);
-  }
-  if (metered) {
-    bits.push(`${metered} voice${metered === 1 ? "" : "s"} use${metered === 1 ? "s" : ""} an online provider — billed per use, text leaves this machine`);
-  }
-  return bits.join(" · ");
-});
 const renderedSceneCount = computed(() =>
   (cacheStats.value?.scenes || []).filter((sc) => sc.total > 0 && sc.cached === sc.total).length);
 // The Script card's live count — the thing the user went looking for and
@@ -346,25 +257,29 @@ const renderedSceneCount = computed(() =>
 // script used to show this and now doesn't"). Same shape as Render's, on the
 // one "analyzed" rule the grid uses.
 const analyzedSceneCount = computed(() => scriptChapters.value.filter((c) => c.analyzed).length);
-// The Overview's rollup (studioStatus.js). The cast carries a narrator flag
-// so Discover can tell "only the Narrator so far" from a populated cast.
+// The Overview's rollup (studioStatus.js). The cast is the book's speakers,
+// each with a narrator flag (so Discover can tell "only the Narrator so far"
+// from a populated cast) and whether a persona with a voice plays them.
 const overviewState = computed(() => projectState({
   scenes: scenes.value,
   stats: sceneStats.value,
   script: scriptChapters.value,
   running: chapterRunFor(selectedProjectId.value)?.current?.kind === "analyze" ? 1 : 0,
-  cast: projectPersonas.value.map((p) => ({
-    id: p.id, name: p.name, aliases: p.aliases || [], voice_id: p.voice_id,
-    narrator: p.id === narratorPersona.value?.id,
+  cast: speakers.value.map((sp) => ({
+    id: sp.id, name: sp.name, aliases: sp.aliases || [], ready: speakerReady(sp),
+    narrator: sp.id === narratorSpeaker.value?.id,
   })),
   ignored: selectedProject.value?.discover_ignored || [],
+  personas: personas.value,
   cache: cacheStats.value ? { total: cacheStats.value.total, cached: cacheStats.value.cached } : null,
 }));
 
-// The cast as Script's and Discover's pages read it — a cast of only the
-// Narrator blocks Analyze; the aliases let Discover tell who is In the cast.
-const scriptCast = computed(() => projectPersonas.value.map((p) => ({
-  id: p.id, name: p.name, aliases: p.aliases || [], narrator: p.id === narratorPersona.value?.id,
+// The book's speakers as Script's and Discover's pages read them — a cast of
+// only the Narrator blocks Analyze; the aliases let Discover tell who is In
+// the cast; the line counts let Discover's Remove say what it takes.
+const scriptCast = computed(() => speakers.value.map((sp) => ({
+  id: sp.id, name: sp.name, aliases: sp.aliases || [], narrator: sp.id === narratorSpeaker.value?.id,
+  lines: sp.lines || 0,
 })));
 // A step, and where in it to land: Overview's Script numbers open the grid on
 // To check.
@@ -391,7 +306,7 @@ const STEP_TITLES = {
   discover: "Find the speakers the text names",
   script: "Who speaks each line",
   lines: "The writers' sheet, line by line",
-  cast: "Give each persona a voice",
+  cast: "Give each speaker a persona",
   render: "Batch render + mastering",
   export: "Package + ACX checklist",
 };
@@ -407,9 +322,9 @@ const stepCards = computed(() => visibleTabs.value.map((t) => {
   } else if (t.key === "lines") {
     sub = overviewState.value.lines ? `${overviewState.value.lines} lines` : "no lines yet";
   } else if (t.key === "cast") {
-    sub = projectPersonas.value.length
-      ? `${voicedCount.value}/${projectPersonas.value.length} voiced`
-      : "no cast yet";
+    sub = overviewState.value.castTotal
+      ? `${overviewState.value.castReady}/${overviewState.value.castTotal} cast`
+      : "no speakers yet";
   } else if (t.key === "script") {
     sub = scenes.value.length
       ? `${analyzedSceneCount.value}/${scenes.value.length} analyzed`
@@ -471,327 +386,20 @@ const projectOptions = computed(() => {
   return projects.value.map((p) => ({ label: p.name, value: p.id }));
 });
 
-// Personas bound to the selected project via ProjectPersona m2m.
-const projectPersonas = ref([]);
-
-// {personaId: role_label} from the cast — the "narrator" role survives a
-// rename, the name does not.
-const castRoles = ref({});
-
-const narratorPersona = computed(() =>
-  projectPersonas.value.find((p) => castRoles.value[p.id] === "narrator")
-  || projectPersonas.value.find((p) => /^narrator$/i.test(p.name || ""))
-  || null,
-);
-const characterPersonas = computed(() =>
-  projectPersonas.value.filter((p) => p.id !== narratorPersona.value?.id),
-);
-
-const selectedCharacter = computed(() =>
-  characterPersonas.value.find((p) => p.id === selectedCharacterId.value) || null,
-);
-
-const voiceLibraryByEngine = computed(() => {
-  const out = {};
-  for (const v of voices.value) {
-    const k = v.engine || "other";
-    out[k] = out[k] || [];
-    out[k].push(v);
-  }
-  return out;
-});
-
-// Engine options for the Cast tab voice-list filter dropdown. Each entry
-// shows the engine label + voice count to make picking easier.
-const voiceEngineOptions = computed(() => {
-  const opts = Object.entries(voiceLibraryByEngine.value)
-    .map(([id, group]) => ({ value: id, label: `${id} (${group.length})`, pill: `${id} · ${group.length}` }))
-    .sort((a, b) => a.label.localeCompare(b.label));
-  return [{ value: "", label: `All engines (${voices.value.length})`, pill: `All · ${voices.value.length}` }, ...opts];
-});
-
-// Filtered + flattened voice list driving the Cast tab sidebar. Honors
-// engine filter + name search. Empty list → "no voices match" placeholder.
-// (Voice hiding died 2026-08-21 with the Voices-page feature — this was
-// its mirror, and a mirror of nothing filters nothing.)
-const engineMetaById = computed(() => {
-  const m = {};
-  for (const e of engines.value || []) m[e.id] = e;
-  return m;
-});
-const filteredVoices = computed(() => {
-  const q = voiceSearchQuery.value.trim().toLowerCase();
-  return voices.value
-    .filter((v) => {
-      // Voices of a not-installed engine can't audition — keep them out
-      // of the cast library entirely (they live on Voices with a NEEDS
-      // INSTALL tag). The isolation test this used to also carry went
-      // 2026-08-22: every engine has its own environment now, so
-      // "isolated" no longer narrows anything.
-      const e = engineMetaById.value[v.engine];
-      return !(e && e.status === "not_installed");
-    })
-    .filter((v) => !voiceEngineFilter.value || v.engine === voiceEngineFilter.value)
-    .filter((v) => !q || (v.name || "").toLowerCase().includes(q) || (v.id || "").toLowerCase().includes(q) || (v.tone || "").toLowerCase().includes(q));
-});
-
-// Map persona_id → voice_id, so the voice library can show ✓ next to
-// voices already cast to the selected character. JustWrite affordance G
-// from the source-of-truth read this turn.
-function isVoiceAssignedToSelected(voiceId) {
-  if (!selectedCharacter.value) return false;
-  return selectedCharacter.value.voice_id === voiceId;
+// The book's speakers (2026-09-29) — the people in it, each cast by giving it
+// a persona (GET /v1/projects/{id}/speakers, most lines first). Cast is
+// components/StudioCast.vue.
+const speakers = ref([]);
+const narratorSpeaker = computed(() => speakers.value.find((sp) => sp.role_label === "narrator") || null);
+const personaById = computed(() => Object.fromEntries(personas.value.map((p) => [p.id, p])));
+// Heard at render: played by a persona that has a voice.
+function speakerReady(sp) {
+  return !!personaById.value[sp.persona_id]?.voice_id;
 }
 
-// voice_id → persona name across the whole project cast — the library
-// rows show "✓ <name>" so one glance covers the full casting state.
-const castAsByVoiceId = computed(() => {
-  const out = {};
-  for (const p of projectPersonas.value) {
-    if (p.voice_id) out[p.voice_id] = out[p.voice_id] ? `${out[p.voice_id]}, ${p.name}` : p.name;
-  }
-  return out;
-});
-
-// Deterministic avatar colors (mock gives every character its own hue).
-const AVATAR_COLORS = ["#3a7d63", "#7c5cbf", "#b3552e", "#2e7d8a", "#a8763e", "#947b2f", "#c98aa7", "#5b7a99", "#b04a3e"];
-function colorFor(name) {
-  let h = 0;
-  for (const c of String(name || "?")) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-  return AVATAR_COLORS[h % AVATAR_COLORS.length];
-}
-
-// First meaningful line of the character sheet doubles as the card's role
-// line. Demo + imported sheets often carry a "Voice hint:" block — skip it.
-function personaRole(p) {
-  for (const line of (p?.personality || "").split("\n")) {
-    const t = line.trim();
-    if (t && !/^voice hint:?$/i.test(t)) return t;
-  }
-  return "";
-}
-
-// ── Add an existing library persona to this project's cast (user ask:
-// "cast i have no way to add a persona i have created"). The POST
-// endpoint existed; only the affordance was missing.
-const addPersonaOpen = ref(false);
-const addPersonaBusy = ref(null);
-const addablePersonas = computed(() => {
-  const inCast = new Set(projectPersonas.value.map((p) => p.id));
-  return personas.value.filter((p) => !inCast.has(p.id));
-});
-async function addPersonaToCast(p) {
-  if (!selectedProjectId.value || addPersonaBusy.value) return;
-  addPersonaBusy.value = p.id;
-  try {
-    await api.request(`/v1/projects/${selectedProjectId.value}/cast`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ persona_id: p.id }),
-    });
-    await loadProjectPersonas(selectedProjectId.value);
-    pushToast({ kind: "success", message: `${p.name} added to the cast.` });
-  } catch (e) {
-    pushToast({ kind: "error", message: `Add failed: ${e?.message || e}` });
-  } finally {
-    addPersonaBusy.value = null;
-  }
-}
-
-// Idempotent backend call — gives this project a narrator in the "narrator"
-// role: a free "Narrator" from the library (one in no book) first, a new one
-// only if there is none, and narration lines with no speaker move to it. The
-// empty-state slot in the Narrator section calls it. No book gets a narrator
-// on its own (2026-09-29), so this or a card's Narrator tick is how one comes.
-// Any cast member can be the narrator (2026-09-29) — a first-person narrator
-// reads the prose and speaks their own lines in one voice. Each cast card has
-// a "Narrator" checkbox; ticking one moves the role there (one narrator per
-// project), and the server moves the narration Analyze decided with it; lines
-// you set stay where you put them.
-const settingNarrator = ref(false);
-async function setNarrator(personaId) {
-  const projectId = selectedProjectId.value;
-  if (!projectId || !personaId || personaId === narratorPersona.value?.id || settingNarrator.value) return;
-  settingNarrator.value = true;
-  try {
-    const r = await api.request(`/v1/projects/${projectId}/narrator`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ persona_id: personaId }),
-    });
-    await loadProjectPersonas(projectId);
-    const moved = r?.moved_lines || 0;
-    if (moved) await loadScenesForProject(projectId);   // the chapters' counts follow
-    const name = projectPersonas.value.find((p) => p.id === personaId)?.name || "They";
-    pushToast({
-      kind: "success",
-      message: `${name} narrates now${moved ? ` — ${moved.toLocaleString()} line${moved === 1 ? "" : "s"} of narration moved to them` : ""}.`,
-    });
-  } catch (e) {
-    pushToast({ kind: "error", message: `Couldn't change the narrator: ${e?.message || e}` });
-  } finally {
-    settingNarrator.value = false;
-  }
-}
-
-const creatingNarrator = ref(false);
-async function createNarrator() {
-  if (!selectedProjectId.value || creatingNarrator.value) return;
-  creatingNarrator.value = true;
-  try {
-    const r = await api.request(`/v1/projects/${selectedProjectId.value}/narrator`, {
-      method: "POST",
-    });
-    await loadProjectPersonas(selectedProjectId.value);
-    const moved = r?.moved_lines || 0;
-    pushToast({
-      kind: "success",
-      message: `Narrator added to the cast${moved ? ` — ${moved.toLocaleString()} narration line${moved === 1 ? "" : "s"} now read by it` : ""}.`,
-    });
-  } catch (e) {
-    pushToast({ kind: "error", message: `Add Narrator failed: ${e?.message || e}` });
-  } finally {
-    creatingNarrator.value = false;
-  }
-}
-
-// Remove one persona from this project's cast (item 2 / user-hit: add
-// existed, remove didn't). DELETE endpoint pre-existed; persona stays
-// in the library.
-async function removeFromCast(p) {
-  const ok = await confirmDialog({
-    title: `Remove ${p.name} from this cast?`,
-    message: "Only the project link is removed — the persona stays in your library.",
-    confirmLabel: "Remove",
-  });
-  if (!ok) return;
-  try {
-    await api.request(`/v1/projects/${selectedProjectId.value}/cast/${p.id}`, { method: "DELETE" });
-    if (selectedCharacterId.value === p.id) selectedCharacterId.value = null;
-    await loadProjectPersonas(selectedProjectId.value);
-    pushToast({ kind: "success", message: `${p.name} removed from the cast.` });
-  } catch (e) {
-    pushToast({ kind: "error", message: `Remove failed: ${e?.message || e}` });
-  }
-}
-
-const clearCastBusy = ref(false);
-async function clearCast() {
-  const cast = projectPersonas.value.filter((p) => p.voice_id);
-  if (!cast.length) return;
-  const ok = await confirmDialog({
-    title: "Clear cast?",
-    message: `Unassign voices from all ${cast.length} cast member${cast.length === 1 ? "" : "s"}. The personas stay — only the voice links go.`,
-    confirmLabel: "Clear cast",
-    danger: true,
-  });
-  if (!ok) return;
-  clearCastBusy.value = true;
-  try {
-    for (const p of cast) await assignVoice(p.id, "");
-  } finally {
-    clearCastBusy.value = false;
-  }
-}
-
-// Preview a voice — calls /v1/generate with a short sample sentence,
-// plays it in the cast card's compact audition player. JustWrite
-// affordance J. Per-voice preview state stops the button being
-// re-clicked while in flight.
-// Engines whose manifest declares instruct_field — these consume the
-// persona's spoken-delivery text as a style prompt at render time. Drives
-// the "instruct" chip in the voice library (user ask: "how do I know
-// what TTS takes input from these fields").
-const instructEngineIds = computed(() => new Set(
-  (engines.value || [])
-    .filter((e) => (e.capabilities || []).includes("instruct_field"))
-    .map((e) => e.id),
-));
-
-// LOCAL vs ONLINE — same badge logic as the Voices page, so the cast
-// flow shows whether a voice bills an online API before it's assigned.
-const engineBackends = computed(() => {
-  const m = {};
-  for (const e of engines.value || []) m[e.id] = e.backend || "";
-  return m;
-});
-function voiceLocality(v) {
-  const e = engineMetaById.value[v.engine];
-  if (e?.self_hosted) return "self-hosted";
-  const backend = engineBackends.value[v.engine];
-  if (backend === undefined) return null;
-  return backend === "managed" ? "local" : "online";
-}
-
-const previewingVoiceId = ref(null);
-// The casting rail's compact audition player (the ruling 2026-08-15: the
-// global bottom bar died; playback is compact and in place). One player
-// atop the cast card serves every ▶ audition button.
-const voicePreviewNow = ref(null); // { url, name, engine } | null
-// Per-scene inline playback for finished renders — same ruling.
+// Per-scene inline playback for finished renders (the ruling 2026-08-15: the
+// global bottom bar died; playback is compact and in place).
 const scenePlay = ref(null); // { id, url } | null
-// Same ask-before-load contract as the Voices page (user-hit: Studio
-// play silently switched/loaded engines). Shares the Voices opt-in pref
-// so "Always auto-load" applies app-wide.
-async function previewVoice(voice) {
-  if (!voice || previewingVoiceId.value) return;
-  previewingVoiceId.value = voice.id;
-  try {
-    const always = readPref("autoLoadEngine") === "always";
-    let blob;
-    try {
-      blob = await api.request(`/v1/voices/${voice.id}/preview?auto_load=${always}`, { method: "POST" });
-    } catch (e) {
-      const m = String(e?.message || "").match(/engine_not_loaded:([\w.-]+)/);
-      if (!m) throw e;
-      const engineId = m[1];
-      const ok = await confirmDialog({
-        title: `Load ${engineId}?`,
-        message: `"${voice.name}" needs the ${engineId} engine, which isn't loaded. Load it now to preview? The first load can take ~25–55 s; after that previews are instant.`,
-        confirmLabel: "Load & preview",
-      });
-      if (!ok) return;
-      pushToast({ message: `Loading ${engineId}… this can take up to a minute.`, kind: "info" });
-      blob = await api.request(`/v1/voices/${voice.id}/preview?auto_load=true`, { method: "POST" });
-      pushToast({
-        message: `${engineId} loaded.`,
-        kind: "success",
-        action: { label: "Always auto-load", fn: () => writePref("autoLoadEngine", "always") },
-      });
-      // Topbar pill + Engines page track loads from anywhere.
-      window.dispatchEvent(new Event("jv:health-refresh"));
-    }
-    if (blob instanceof Blob) {
-      if (voicePreviewNow.value?.url) URL.revokeObjectURL(voicePreviewNow.value.url);
-      voicePreviewNow.value = {
-        url: URL.createObjectURL(blob),
-        name: voice.name,
-        engine: voice.engine || "",
-      };
-    }
-  } catch (e) {
-    pushToast({
-      message: `Preview failed: ${e?.message || e}`,
-      kind: "error",
-      duration: 6000,
-    });
-  } finally {
-    previewingVoiceId.value = null;
-  }
-}
-
-// Open the VoiceParamsModal for a voice in the library (independent of
-// the persona). Lets the user dial in tier-2 overrides before assigning.
-// JustWrite affordance I.
-function openVoiceTunerForLibraryVoice(voice) {
-  tuningVoice.value = {
-    voiceId: voice.id,
-    name: voice.name,
-    params: { /* fresh — library tuning starts blank */ },
-    personaId: null,  // null → not bound; modal save handler skips persistence
-  };
-  voiceParamsModalOpen.value = true;
-}
 
 async function loadAll() {
   loading.value = true;
@@ -815,30 +423,30 @@ async function loadAll() {
   }
 }
 
-async function loadProjectPersonas(projectId) {
+async function loadSpeakers(projectId = selectedProjectId.value) {
   if (!projectId) {
-    projectPersonas.value = [];
+    speakers.value = [];
     return;
   }
-  try {
-    const r = await api.safeRequest(`/v1/projects/${projectId}/cast`, { cast: [] });
-    const castEntries = r?.cast || [];
-    const ids = new Set(castEntries.map((c) => c.persona_id));
-    projectPersonas.value = personas.value.filter((p) => ids.has(p.id));
-    castRoles.value = Object.fromEntries(
-      castEntries.filter((c) => c.role_label).map((c) => [c.persona_id, c.role_label]),
-    );
-  } catch {
-    projectPersonas.value = [];
-    castRoles.value = {};
-  }
+  const r = await api.safeRequest(`/v1/projects/${projectId}/speakers`, { speakers: [] });
+  if (projectId !== selectedProjectId.value) return;   // switched away mid-load
+  speakers.value = r?.speakers || [];
+}
+
+// Cast or Discover changed the speakers. `moved` > 0 when lines changed
+// speaker with it (a new narrator, a removed speaker): the chapters' counts
+// follow.
+async function onCastChanged(e) {
+  await loadSpeakers();
+  if (e?.moved) await loadScenesForProject(selectedProjectId.value);
 }
 
 watch(selectedProjectId, (id) => {
-  loadProjectPersonas(id);
+  loadSpeakers(id);
   loadScenesForProject(id);
 }, { immediate: true });
-watch(personas, () => loadProjectPersonas(selectedProjectId.value));
+// A persona deleted or renamed elsewhere changes who plays whom.
+watch(personas, () => loadSpeakers());
 
 // Breadcrumb: Studio › [Project] › [Tab]. Owned only while this view is
 // active (X-1: KeepAlive-cached views must not re-publish a stale crumb
@@ -938,7 +546,7 @@ async function suggestPresetFor(scene) {
 }
 
 // ── The unplaced-lines blocker (restore decision 5) ──────────────────
-// A block with no persona renders to nothing. The server used to drop those
+// A block with no speaker renders to nothing. The server used to drop those
 // in silence, so a line just went missing from the audiobook; it now refuses
 // the chapter. This is the same refusal one step earlier, where the fix is:
 // the offending lines, named, with the one-click way out.
@@ -969,9 +577,9 @@ async function passesSpeakerCheck(queue) {
 }
 
 async function assignUnplacedToNarrator() {
-  const narratorId = narratorPersona.value?.id;
+  const narratorId = narratorSpeaker.value?.id;
   if (!narratorId) {
-    pushToast({ message: "This project has no Narrator persona to assign to.", kind: "warning" });
+    pushToast({ message: "This book has no narrator to assign to — add one on Cast.", kind: "warning" });
     return;
   }
   unplacedFixing.value = true;
@@ -991,8 +599,8 @@ async function assignUnplacedToNarrator() {
             // impossible for the whole chapter, forever, in one click.
             body: JSON.stringify(
               group.analyzed
-                ? { persona_id: narratorId, source: "corrected" }
-                : { persona_id: narratorId },
+                ? { speaker_id: narratorId, source: "corrected" }
+                : { speaker_id: narratorId },
             ),
           });
         } catch { failed += 1; }
@@ -1007,8 +615,8 @@ async function assignUnplacedToNarrator() {
   await loadProjectScript();
   pushToast({
     message: failed
-      ? `Assigned those lines to ${narratorPersona.value.name}; ${failed} failed.`
-      : `Those lines now read as ${narratorPersona.value.name}. Render again.`,
+      ? `Assigned those lines to ${narratorSpeaker.value.name}; ${failed} failed.`
+      : `Those lines now read as ${narratorSpeaker.value.name}. Render again.`,
     kind: failed ? "warning" : "success",
   });
 }
@@ -1314,183 +922,6 @@ async function onScriptChanged() {
   await loadProjectScript();
 }
 
-function voiceById(voiceId) {
-  return voices.value.find((v) => v.id === voiceId) || null;
-}
-
-// Never fall back to the id (user ruling 2026-08-15): a cloned voice is minted
-// `voice_<32 hex>` (storage/voices.py:76), and printing that in a cast card
-// names nothing. A lookup that misses means the voice is gone — say so.
-function voiceName(voiceId) {
-  return voiceById(voiceId)?.name || "(voice unavailable)";
-}
-
-async function assignVoice(personaId, voiceId) {
-  try {
-    // PUT persona with updated voice_id. Personas API takes the same shape
-    // as CreatePersonaRequest — fetch the existing persona, change voice_id,
-    // PUT it back.
-    const persona = personas.value.find((p) => p.id === personaId);
-    if (!persona) return;
-    const body = {
-      name: persona.name,
-      voice_id: voiceId,
-      language: persona.language,
-      avatar_path: persona.avatar_path,
-      voice_instruct: persona.voice_instruct,
-      personality: persona.personality,
-      default_delivery: persona.default_delivery || {},
-      effects_chain: persona.effects_chain || [],
-      lexicon_id: persona.lexicon_id,
-      engine_override: persona.engine_override,
-      llm_rewrite_enabled: persona.llm_rewrite_enabled,
-      llm_model: persona.llm_model,
-    };
-    await api.request(`/v1/personas/${personaId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    await loadAll();
-    pushToast({
-      message: voiceId
-        ? `Assigned ${voiceById(voiceId)?.name || voiceId} to ${persona.name}.`
-        : `Unassigned voice from ${persona.name}.`,
-      kind: "success",
-      duration: 3000,
-    });
-  } catch (e) {
-    pushToast({ message: `Assign failed: ${e?.message || e}`, kind: "error" });
-  }
-}
-
-function openVoiceTuner(persona) {
-  if (!persona?.voice_id) {
-    pushToast({ message: "Assign a voice first.", kind: "info" });
-    return;
-  }
-  tuningVoice.value = {
-    voiceId: persona.voice_id,
-    name: voiceById(persona.voice_id)?.name || persona.voice_id,
-    params: { ...(persona.default_delivery || {}) },
-    personaId: persona.id,
-  };
-  voiceParamsModalOpen.value = true;
-}
-
-async function onVoiceParamsSaved(newParams) {
-  const t = tuningVoice.value;
-  if (!t) return;
-  // Library-mode tuning (no personaId): the user tuned a voice from the
-  // sidebar without picking a character. Nothing to persist — the
-  // session-only params are discarded. A future iteration could cache
-  // them keyed by voiceId so subsequent assignments pre-populate.
-  if (!t.personaId) {
-    voiceParamsModalOpen.value = false;
-    tuningVoice.value = null;
-    pushToast({ message: "Library-mode tune dismissed. Assign to a character first to persist parameters.", kind: "info", duration: 4000 });
-    return;
-  }
-  const persona = personas.value.find((p) => p.id === t.personaId);
-  if (!persona) return;
-  const body = {
-    name: persona.name,
-    voice_id: persona.voice_id,
-    language: persona.language,
-    avatar_path: persona.avatar_path,
-    voice_instruct: persona.voice_instruct,
-    personality: persona.personality,
-    default_delivery: newParams,
-    effects_chain: persona.effects_chain || [],
-    lexicon_id: persona.lexicon_id,
-    engine_override: persona.engine_override,
-    llm_rewrite_enabled: persona.llm_rewrite_enabled,
-    llm_model: persona.llm_model,
-  };
-  try {
-    await api.request(`/v1/personas/${t.personaId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    voiceParamsModalOpen.value = false;
-    tuningVoice.value = null;
-    await loadAll();
-    pushToast({ message: `Voice params saved.`, kind: "success", duration: 2500 });
-  } catch (e) {
-    pushToast({ message: `Save failed: ${e?.message || e}`, kind: "error" });
-  }
-}
-
-async function smartAssignCast() {
-  if (!characterPersonas.value.length) {
-    pushToast({ message: "No characters in this project to assign.", kind: "info" });
-    return;
-  }
-  if (!voices.value.length) {
-    pushToast({ message: "No voices available to assign from.", kind: "info" });
-    return;
-  }
-  smartAssignBusy.value = true;
-  const saStats = [`${characterPersonas.value.length} characters`, `${voices.value.length} voices`];
-  try {
-    const applied = await withAiTask({
-      feature: "smart_assign",
-      label: `Smart-assign · ${characterPersonas.value.length} characters`,
-      stats: saStats,
-      onRetry: () => smartAssignCast(),
-    }, async (saTask) => {
-      const r = await api.request("/v1/llm/smart-assign", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: saTask.signal,
-        body: JSON.stringify({
-          characters: characterPersonas.value.map((p) => ({
-            id: p.id,
-            name: p.name,
-            personality: p.personality,
-          })),
-          voices: voices.value.map((v) => ({
-            id: v.id,
-            name: v.name,
-            gender: v.gender,
-            language: v.language,
-          })),
-        }),
-      });
-      const proposed = r?.assignments || {};
-      let count = 0;
-      for (const [characterId, voiceId] of Object.entries(proposed)) {
-        const persona = characterPersonas.value.find((p) => p.id === characterId);
-        const voice = voices.value.find((v) => v.id === voiceId);
-        if (persona && voice) {
-          await assignVoice(characterId, voiceId);
-          count += 1;
-        }
-      }
-      saTask.setStats([...saStats, `${count} applied`]);
-      return { result: count, usage: r?.usage };
-    });
-    pushToast({
-      message: applied
-        ? `Smart-assign applied ${applied} assignment${applied === 1 ? "" : "s"}.`
-        : "Smart-assign returned no matches.",
-      kind: applied ? "success" : "warning",
-      duration: 4500,
-    });
-  } catch (e) {
-    pushToast({
-      message: e?.message?.includes("501") || e?.status === 501
-        ? "Smart-assign unavailable — wire an LLM provider in Engines → LLM tab."
-        : `Smart-assign failed: ${e?.message || e}`,
-      kind: "warning",
-      duration: 6000,
-    });
-  } finally {
-    smartAssignBusy.value = false;
-  }
-}
-
 // Chapters workflow strip hands the target tab over (Cast/Script/Render/
 // Export). Consumed on EVERY entry: App.vue keeps views alive (KeepAlive),
 // so mounted fires once per session — the handoff must ride onActivated
@@ -1585,9 +1016,8 @@ watch(selectedProjectId, (id) => {
           @click="renderAll"
         />
       </template>
-      <!-- Cast-tab actions moved inside the Characters card head (S1) so
-           they act on the same surface they affect, matching the
-           JustWrite Audio Studio reference. -->
+      <!-- Cast's actions live in its own Speakers head (StudioCast.vue), on
+           the surface they affect. -->
     </div>
 
     <!-- ── Overview — the project's own page ───────────────────────── -->
@@ -1608,351 +1038,20 @@ watch(selectedProjectId, (id) => {
     <KeepAlive>
       <StudioDiscover v-if="tab === 'discover' && selectedProject" :project="selectedProject" :scenes="scenes"
         :lines-by-scene="linesByScene"
-        :cast="scriptCast"
-        @cast-changed="loadAll" @go="goStep" />
+        :cast="scriptCast" :personas="personas"
+        @cast-changed="onCastChanged" @go="goStep" />
     </KeepAlive>
 
     <!-- ── Lines — a game project's step 1 (the writers' sheet) ────── -->
     <LinesView v-if="tab === 'lines' && selectedProject" :project-id="selectedProject.id" />
 
-    <!-- ── Cast tab ─────────────────────────────────────────────────── -->
+    <!-- ── Cast — give each speaker a persona (2026-09-29) ──────────── -->
     <section v-if="tab === 'cast'" class="studio__cast">
       <div v-if="!selectedProject" class="jv-banner">
-        Pick a {{ copy.book.singular.toLowerCase() }} above to manage its {{ copy.cast.plural.toLowerCase() }}.
+        Pick a {{ copy.book.singular.toLowerCase() }} above to cast its speakers.
       </div>
-
-      <template v-else>
-        <div class="studio__cast-cols jv-card">
-        <div class="studio__cast-card">
-
-        <!-- Compact audition player — ONE in-flow player atop the cast card
-             serves every ▶ button (the ruling 2026-08-15: the global bottom
-             bar died; playback is compact and in place). -->
-        <div v-if="voicePreviewNow" class="studio__audition">
-          <span class="jv-muted">Audition · <strong>{{ voicePreviewNow.name }}</strong><template v-if="voicePreviewNow.engine"> · {{ voicePreviewNow.engine }}</template></span>
-          <audio :src="voicePreviewNow.url" controls autoplay class="jv-audio-inline" />
-        </div>
-
-        <!-- NARRATOR section (JustWrite Audio Studio reference): eyebrow,
-             headline, intent paragraph (smart-assign + cast-maps guidance
-             combined), then the narrator persona row. Shows for any
-             non-game project — when there's no narrator persona yet a
-             placeholder slot invites the user to add one. -->
-        <section v-if="!isGameProject" class="studio__narrator-section">
-          <span class="jv-eyebrow">NARRATOR</span>
-          <h3 class="studio__narrator-h">The voice of everything that isn't spoken</h3>
-          <p class="studio__narrator-desc jv-muted">
-            <strong>Smart-assign</strong> asks your LLM to match each character's
-            name and role against the available voices and propose an initial
-            cast. <strong>Cast</strong> maps people to voices: select a card →
-            click a voice in the library; click the assigned voice again to
-            unassign. ▶ auditions any voice in place.
-          </p>
-          <article
-            v-if="narratorPersona"
-            class="jv-card studio__char-card studio__char-card--narrator"
-            :class="{ 'studio__char-card--selected': selectedCharacterId === narratorPersona.id }"
-            @click="selectedCharacterId = narratorPersona.id"
-            title="The narrator carries the prose between quotes — pick your steadiest voice"
-          >
-            <!-- The Narrator is an ordinary persona (2026-09-29): it can
-                 leave the cast like anyone else, and "Add Narrator"
-                 below brings one back. -->
-            <button
-              type="button"
-              class="studio__char-x"
-              title="Remove from this cast — persona stays in the library"
-              @click.stop="removeFromCast(narratorPersona)"
-            >✕</button>
-            <span class="studio__char-portrait" :style="{ background: colorFor(narratorPersona.name) }">{{ (narratorPersona.name || "?").charAt(0).toUpperCase() }}</span>
-            <div class="studio__char-main">
-              <div class="studio__char-name-row">
-                <strong class="studio__char-name">{{ narratorPersona.name }}</strong>
-                <UiTag intent="success">main</UiTag>
-              </div>
-              <div class="studio__char-role jv-muted">{{ personaRole(narratorPersona) || "carries the narration" }}</div>
-              <span class="studio__char-narrator" title="The narrator reads everything outside quote marks. To hand it over, tick Narrator on someone else's card." @click.stop>
-                <UiCheckbox :model-value="true" disabled label="Narrator" />
-              </span>
-              <div v-if="narratorPersona.voice_id" class="studio__char-voice">
-                <span class="studio__char-glyph" :style="{ background: colorFor(voiceById(narratorPersona.voice_id)?.name), color: '#fff' }">{{ (voiceById(narratorPersona.voice_id)?.name || "?").slice(0, 2) }}</span>
-                {{ voiceName(narratorPersona.voice_id) }}
-                <span class="jv-muted">· {{ voiceById(narratorPersona.voice_id)?.engine || "" }}</span>
-                <button type="button" class="jv-rowact" title="Audition" :disabled="previewingVoiceId" @click.stop="previewVoice(voiceById(narratorPersona.voice_id))">▶</button>
-                <button type="button" class="jv-rowact" title="Tune voice parameters" @click.stop="openVoiceTuner(narratorPersona)">⚙</button>
-              </div>
-              <span v-else class="studio__char-unassigned">⚠ no voice assigned</span>
-            </div>
-          </article>
-          <button
-            v-else
-            type="button"
-            class="studio__narrator-empty"
-            :disabled="creatingNarrator"
-            title="Put a Narrator in this cast — one from your library that isn't in any book, or a new one"
-            @click="createNarrator"
-          >
-            <span class="studio__char-portrait" :style="{ background: 'var(--surface-3)' }">N</span>
-            <span class="studio__narrator-empty-text">
-              <strong>{{ creatingNarrator ? "Adding Narrator…" : "Add Narrator" }}</strong>
-              <span class="jv-muted">Uses a Narrator from your library that isn't in any book, or makes one. Or tick Narrator on anyone in the cast.</span>
-            </span>
-          </button>
-        </section>
-
-        <div class="studio__cast-card-head">
-          <span class="jv-eyebrow">{{ isGameProject ? "NPCS" : "CHARACTERS" }}</span>
-          <span class="jv-muted" v-if="charactersListLength">
-            {{ charactersListLength }} {{ isGameProject ? "NPC" : "character" }}{{ charactersListLength === 1 ? "" : "s" }} ·
-            {{ charactersUnassigned }} unassigned
-          </span>
-          <span class="jv-spacer" />
-          <!-- S1: Cast actions live inside the card they act on
-               (JustWrite Audio Studio reference). -->
-          <UiButton
-            intent="secondary"
-            size="small"
-            label="＋ Add persona"
-            title="Add an existing library persona to this cast"
-            @click="addPersonaOpen = true"
-          />
-          <UiButton
-            intent="secondary"
-            size="small"
-            label="✕ Clear cast"
-            :loading="clearCastBusy"
-            :disabled="clearCastBusy || !projectPersonas.some((p) => p.voice_id)"
-            title="Unassign every voice — personas stay"
-            @click="clearCast"
-          />
-          <UiButton
-            intent="primary"
-            size="small"
-            label="✨ Smart-assign"
-            :loading="smartAssignBusy"
-            :disabled="smartAssignBusy"
-            title="LLM proposes a voice per character from bios + gender hints"
-            @click="smartAssignCast"
-          />
-        </div>
-        <div v-if="castEngineNotice" class="jv-banner jv-banner--warn" style="font-size:12px; margin-bottom:10px">
-          {{ castEngineNotice }}
-        </div>
-        <div class="studio__cast-scroll">
-        <div v-if="!charactersListLength" class="studio__cast-empty">
-          <h4>{{ isGameProject ? "No NPCs yet" : "No characters yet" }}</h4>
-          <p v-if="isGameProject" class="jv-muted">
-            <a href="#studio" @click.prevent="addPersonaOpen = true">Add existing personas</a>
-            to this {{ copy.book.singular.toLowerCase() }}, or re-import the sheet — its speakers
-            arrive as personas.
-          </p>
-          <p v-else class="jv-muted">
-            Two ways in: run <a href="#studio" @click.prevent="tab = 'discover'">{{ TAB_LABELS.discover }}</a>
-            — the speakers it finds arrive here as personas — or
-            <a href="#studio" @click.prevent="addPersonaOpen = true">add existing personas</a>
-            to this {{ copy.book.singular.toLowerCase() }}.
-          </p>
-        </div>
-        <UiTable v-else-if="isGameProject" class="jv-table-look studio__npc-table"
-          :data="projectPersonas" :columns="NPC_COLUMNS" data-key="id" row-hover
-          :row-class="(row) => (selectedCharacterId === row.id ? 'studio__npc-row--selected' : '')"
-          @row-click="({ data }) => (selectedCharacterId = data.id)">
-          <template #portrait="{ row }">
-            <span class="studio__char-portrait studio__char-portrait--sm" :style="{ background: colorFor(row.name) }">{{ (row.name || "?").charAt(0).toUpperCase() }}</span>
-          </template>
-          <template #name="{ row }"><strong>{{ row.name }}</strong></template>
-          <template #role="{ row }"><span class="jv-muted studio__npc-role">{{ personaRole(row) }}</span></template>
-          <template #voice="{ row }">
-            <template v-if="row.voice_id">
-              <span class="studio__char-glyph" :style="{ background: colorFor(voiceById(row.voice_id)?.name), color: '#fff' }">{{ (voiceById(row.voice_id)?.name || "?").slice(0, 2) }}</span>
-              {{ voiceName(row.voice_id) }}
-              <span class="jv-muted">· {{ voiceById(row.voice_id)?.engine || "" }}</span>
-            </template>
-            <span v-else class="studio__char-unassigned">⚠ no voice</span>
-          </template>
-          <template #actions="{ row }">
-            <button v-if="row.voice_id" type="button" class="jv-rowact" title="Audition" :disabled="previewingVoiceId" @click.stop="previewVoice(voiceById(row.voice_id))">▶</button>
-            <button v-if="row.voice_id" type="button" class="jv-rowact" title="Tune voice parameters" @click.stop="openVoiceTuner(row)">⚙</button>
-            <button type="button" class="jv-rowact jv-rowact--danger" title="Remove from this cast — persona stays in the library" @click.stop="removeFromCast(row)">✕</button>
-          </template>
-        </UiTable>
-        <div v-else class="studio__cast-grid">
-          <!-- Character cards — narrator now lives in its own
-               .studio__narrator-section above (JustWrite reference). -->
-          <article
-            v-for="p in characterPersonas"
-            :key="p.id"
-            class="jv-card studio__char-card"
-            :class="{ 'studio__char-card--selected': selectedCharacterId === p.id, 'studio__char-card--unassigned': !p.voice_id }"
-            :title="`Select, then click a voice in the library to cast ${p.name}`"
-            @click="selectedCharacterId = p.id"
-          >
-            <button type="button" class="studio__char-x" title="Remove from this cast — persona stays in the library" @click.stop="removeFromCast(p)">✕</button>
-            <span class="studio__char-portrait" :style="{ background: colorFor(p.name) }">{{ (p.name || "?").charAt(0).toUpperCase() }}</span>
-            <div class="studio__char-main">
-              <strong class="studio__char-name">{{ p.name }}</strong>
-              <div class="studio__char-role jv-muted">{{ personaRole(p) }}</div>
-              <span class="studio__char-narrator" @click.stop
-                :title="`Make ${p.name} the narrator — they read everything outside quote marks, and the narration Analyze decided moves to them`">
-                <UiCheckbox :model-value="false" :disabled="settingNarrator" label="Narrator"
-                  @update:model-value="(v) => v && setNarrator(p.id)" />
-              </span>
-              <div v-if="p.voice_id" class="studio__char-voice">
-                <span class="studio__char-glyph" :style="{ background: colorFor(voiceById(p.voice_id)?.name), color: '#fff' }">{{ (voiceById(p.voice_id)?.name || "?").slice(0, 2) }}</span>
-                {{ voiceName(p.voice_id) }}
-                <span class="jv-muted">· {{ voiceById(p.voice_id)?.engine || "" }}</span>
-                <button type="button" class="jv-rowact" title="Audition" :disabled="previewingVoiceId" @click.stop="previewVoice(voiceById(p.voice_id))">▶</button>
-                <button type="button" class="jv-rowact" title="Tune voice parameters" @click.stop="openVoiceTuner(p)">⚙</button>
-              </div>
-              <span v-else class="studio__char-unassigned">⚠ no voice assigned</span>
-            </div>
-          </article>
-        </div>
-        </div>
-        </div>
-
-        <!-- Voice library sidebar — JustWrite-pattern table per
-             SettingsProviderForm.vue:965-1100. Read line-by-line this
-             turn to ensure all 13 affordances ship instead of the prior
-             5: provider-status, "picking voice for X" status line,
-             search with icon + count, voice table with name + tone +
-             ✓ if assigned + gender chip + tune + preview, loading,
-             empty-engine, empty-filter states. -->
-        <aside class="studio__voice-library">
-          <div class="studio__voice-library-head">
-            <h4 class="studio__voice-library-h">Voice library</h4>
-            <span class="jv-spacer" />
-            <!-- Same control as the Voices page toolbar (item 6 —
-                 consistency): engine DROPDOWN, not pills. -->
-            <UiSelect v-model="voiceEngineFilter" style="max-width: 180px" title="Show only voices from one engine" :options="voiceEngineOptions" />
-          </div>
-
-          <template v-if="!voices.length">
-            <EmptyState
-              icon="Sparkle"
-              title="No voices loaded yet"
-              message="Load a TTS engine to populate the voice library. JustVoice ships with 54 Kokoro voices that run on CPU."
-              action-label="Open Speech engines"
-              compact
-              @action="(typeof window !== 'undefined') && (window.location.hash = '#engines')"
-            />
-          </template>
-          <template v-else>
-            <!-- Picking-for banner (mock: amber strip). -->
-            <div class="studio__voice-picking" v-if="projectPersonas.length">
-              <template v-if="selectedCharacter">
-                Picking voice for <strong>{{ selectedCharacter.name }}</strong> — click a voice to assign
-              </template>
-              <template v-else>
-                Select a character card, then click a voice to assign it.
-              </template>
-            </div>
-
-            <!-- Search with icon + count (#E). -->
-            <div class="studio__voice-search">
-              <span class="studio__voice-search-icon">🔍</span>
-              <UiInput
-                v-model="voiceSearchQuery"
-                type="search"
-                size="small"
-                class="studio__voice-search-input"
-                placeholder="Search by name or tone…"
-              />
-              <span class="studio__voice-search-count jv-muted">{{ filteredVoices.length }}</span>
-            </div>
-
-            <!-- V2: only the voice rows scroll — header/picking/search
-                 stay pinned at the top of the aside. -->
-            <div class="studio__voice-rows">
-            <!-- Empty-filter state (#L). -->
-            <div v-if="!filteredVoices.length" class="jv-muted studio__voice-empty">
-              No voices match this filter.
-            </div>
-
-            <!-- Voice row — name + tone + assigned ✓ + gender chip +
-                 tune ⚙ + preview ▶. JustWrite affordances G/H/I/J. -->
-            <div
-              v-for="v in filteredVoices"
-              :key="v.id"
-              class="studio__vrow"
-              :class="{ 'studio__vrow--assigned': !!castAsByVoiceId[v.id], 'studio__vrow--disabled': !selectedCharacter }"
-            >
-              <!-- Avatar + name + tone — primary click target (assign/unassign) -->
-              <button
-                type="button"
-                class="studio__vrow-main"
-                :disabled="!selectedCharacter"
-                :title="!selectedCharacter ? 'Pick a character first' : isVoiceAssignedToSelected(v.id) ? `Unassign ${v.name} from ${selectedCharacter.name}` : `Assign ${v.name} to ${selectedCharacter.name}`"
-                @click="selectedCharacter && assignVoice(selectedCharacter.id, isVoiceAssignedToSelected(v.id) ? '' : v.id)"
-              >
-                <span class="studio__vrow-avatar" :style="{ background: colorFor(v.name) }">{{ (v.name || "?").charAt(0).toUpperCase() }}</span>
-                <span class="studio__vrow-text">
-                  <strong class="studio__vrow-name">{{ v.name }}</strong>
-                  <i class="studio__vrow-tone">
-                    {{ v.tone || v.engine || "" }}
-                    <span
-                      v-if="instructEngineIds.has(v.engine)"
-                      class="studio__vrow-instruct"
-                      title="This engine performs direction — it reads the persona's Personality text and per-line ＋ direction notes when rendering"
-                    >takes direction</span>
-                    <span
-                      v-if="voiceLocality(v) === 'local'"
-                      class="jv-locality jv-locality--local"
-                      title="Runs on this machine — no usage cost; loads the engine into RAM/VRAM on first use"
-                    >local</span>
-                    <span
-                      v-else-if="voiceLocality(v) === 'self-hosted'"
-                      class="jv-locality jv-locality--local"
-                      title="An OpenAI-compatible server you run yourself — free and private"
-                    >self-hosted</span>
-                    <span
-                      v-else-if="voiceLocality(v) === 'online'"
-                      class="jv-locality jv-locality--online"
-                      title="External provider — needs network and may bill per character/minute"
-                    >online · metered</span>
-                  </i>
-                </span>
-              </button>
-              <span
-                v-if="castAsByVoiceId[v.id]"
-                class="studio__vrow-cast"
-                :title="`Cast as ${castAsByVoiceId[v.id]}`"
-              >✓ {{ castAsByVoiceId[v.id] }}</span>
-
-              <!-- Gender chip click-cycle (#H) -->
-              <UiChip
-                class="studio__voice-gender"
-                :title="displayedGender(v) ? `Cycle gender hint (now ${displayedGender(v)})` : 'Click to set gender hint'"
-                @click.stop="cycleGender(v)"
-              >
-                {{ displayedGender(v) || "?" }}
-              </UiChip>
-
-              <!-- Tune button (#I) — opens VoiceParamsModal for this voice -->
-              <button
-                type="button"
-                class="jv-rowact"
-                title="Tune voice parameters (speed, exaggeration, …)"
-                @click.stop="openVoiceTunerForLibraryVoice(v)"
-              >⚙</button>
-
-              <!-- Preview button (#J) — calls /v1/generate with sample text -->
-              <button
-                type="button"
-                class="jv-rowact"
-                :disabled="previewingVoiceId === v.id"
-                :title="previewingVoiceId === v.id ? 'Generating preview…' : 'Preview this voice with a sample sentence'"
-                @click.stop="previewVoice(v)"
-              >{{ previewingVoiceId === v.id ? "⏳" : "▶" }}</button>
-            </div>
-            <p class="studio__voice-foot jv-muted">
-              Assigned voices show who they're cast as. One voice can play multiple minor characters.
-            </p>
-            </div><!-- /.studio__voice-rows -->
-          </template>
-        </aside>
-        </div>
-      </template>
+      <StudioCast v-else :project="selectedProject" :speakers="speakers" :personas="personas"
+        :voices="voices" :engines="engines" @changed="onCastChanged" @go="goStep" />
     </section>
 
     <!-- ── Script — the chapter grid, or one chapter (Slice 3, §8.24) ── -->
@@ -1970,7 +1069,7 @@ watch(selectedProjectId, (id) => {
         :version="scriptVersion"
         @back="openScript({ sceneId: null })"
         @open="(id, focus) => openScript({ sceneId: id, focus })"
-        @go="(k) => (tab = k)" @changed="onScriptChanged" @cast-changed="loadAll"
+        @go="(k) => (tab = k)" @changed="onScriptChanged"
         @rewrite="rewriteRow" />
     </KeepAlive>
     <KeepAlive>
@@ -2145,42 +1244,6 @@ watch(selectedProjectId, (id) => {
       <ExportPanel v-else :project="selectedProject" :scenes="scenes" />
     </section>
 
-    <!-- Voice params modal — Tier-2 voice tuning. -->
-    <VoiceParamsModal
-      v-if="tuningVoice"
-      :open="voiceParamsModalOpen"
-      :voice-id="tuningVoice.voiceId"
-      :voice-name="tuningVoice.name"
-      :model-value="tuningVoice.params"
-      @save="onVoiceParamsSaved"
-      @cancel="voiceParamsModalOpen = false; tuningVoice = null"
-    />
-
-    <!-- Add an existing library persona to the cast. -->
-    <AppModal v-if="addPersonaOpen" eyebrow="Cast" :title="`Add a persona to this ${copy.book.singular.toLowerCase()}`" :max-width="'520px'" dismissable @close="addPersonaOpen = false">
-          <p v-if="!addablePersonas.length" class="jv-muted" style="margin: 4px 0 8px">
-            Every library persona is already in this cast.
-            <a href="#personas">Create a new persona</a> and it'll appear here.
-          </p>
-          <ul v-else class="studio__addpersona-list">
-            <li v-for="p in addablePersonas" :key="p.id" class="studio__addpersona-row">
-              <span class="studio__char-portrait studio__char-portrait--sm" :style="{ background: colorFor(p.name) }">{{ (p.name || "?").charAt(0).toUpperCase() }}</span>
-              <div class="studio__addpersona-meta">
-                <strong>{{ p.name }}</strong>
-                <span class="jv-muted">{{ voiceById(p.voice_id)?.name || (p.voice_id || "no voice yet") }}</span>
-              </div>
-              <UiButton
-                intent="secondary"
-                size="small"
-                label="Add"
-                :loading="addPersonaBusy === p.id"
-                :disabled="addPersonaBusy !== null"
-                @click="addPersonaToCast(p)"
-              />
-            </li>
-          </ul>
-    </AppModal>
-
     <!-- The render blocker (restore decision 5). A line nobody speaks used
          to be dropped from the audio without a word; now the render stops
          here and offers the one-click way out. -->
@@ -2194,7 +1257,7 @@ watch(selectedProjectId, (id) => {
     >
       <p class="jv-muted" style="margin: 0 0 12px">
         These would be missing from the audio, so nothing is rendered until they
-        have a voice. Send them all to the narrator, or fix them in Script.
+        have a speaker. Send them all to the narrator, or fix them in Script.
       </p>
       <div v-for="group in unplacedFound" :key="group.scene.id" class="studio__unplaced-group">
         <strong>{{ group.scene.title || `${copy.chapter.singular} ${group.scene.position + 1}` }}</strong>
@@ -2212,9 +1275,9 @@ watch(selectedProjectId, (id) => {
         <UiButton
           intent="primary"
           :loading="unplacedFixing"
-          :disabled="unplacedFixing || !narratorPersona"
-          :label="`Assign all to ${narratorPersona ? narratorPersona.name : 'Narrator'}`"
-          :title="narratorPersona ? '' : 'This project has no Narrator persona'"
+          :disabled="unplacedFixing || !narratorSpeaker"
+          :label="`Assign all to ${narratorSpeaker ? narratorSpeaker.name : 'Narrator'}`"
+          :title="narratorSpeaker ? '' : 'This book has no narrator — add one on Cast'"
           @click="assignUnplacedToNarrator"
         />
       </template>
@@ -2224,7 +1287,7 @@ watch(selectedProjectId, (id) => {
     <AppModal
       v-if="rewriteModalOpen"
       eyebrow="Rewrite in character"
-      :title="rewriteLine ? (projectPersonas.find((p) => p.id === rewriteLine.persona_id)?.name || 'Line') : 'Line'"
+      :title="rewriteLine ? (speakers.find((sp) => sp.id === rewriteLine.speaker_id)?.name || 'Line') : 'Line'"
       :max-width="'720px'"
       dismissable
       @close="rewriteModalOpen = false"
@@ -2292,81 +1355,6 @@ watch(selectedProjectId, (id) => {
 }
 
 .studio__steps { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-/* V3: cast-card is now a column INSIDE the shared outer jv-card —
-   no border, no background, no own card chrome. */
-.studio__cast-card {
-  padding: 14px 16px;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  height: 100%;
-  overflow: hidden;
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-}
-.studio__cast-card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
-.studio__cast-card-head strong { font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-2); }
-.studio__cast-card-head .jv-muted { font-size: 12px; }
-
-/* Narrator section (JustWrite Audio Studio reference): eyebrow,
-   headline, intent paragraph, narrator persona row. Sits above the
-   Characters head inside the shared cast card's left column. */
-.studio__narrator-section {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding-bottom: 14px;
-  margin-bottom: 14px;
-  border-bottom: 1px solid var(--line);
-}
-.studio__narrator-h {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--ink);
-  line-height: 1.3;
-}
-.studio__narrator-desc {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.55;
-}
-.studio__narrator-desc strong { color: var(--ink); font-weight: 600; }
-.studio__narrator-empty {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  padding: 12px 14px;
-  border: 1px dashed var(--line-strong);
-  border-radius: 10px;
-  background: var(--surface);
-  cursor: pointer;
-  font: inherit;
-  text-align: left;
-  width: 100%;
-}
-.studio__narrator-empty:hover { border-color: var(--accent); background: var(--accent-soft); }
-.studio__narrator-empty-text { display: flex; flex-direction: column; gap: 2px; }
-.studio__narrator-empty-text strong { font-size: 13.5px; font-weight: 600; }
-.studio__narrator-empty-text .jv-muted { font-size: 12px; }
-.studio__cast-scroll { overflow-y: auto; min-height: 0; flex: 1 1 0; }
-.studio__char-x {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  border: 0;
-  background: transparent;
-  color: var(--ink-3);
-  cursor: pointer;
-  font-size: 11px;
-  padding: 2px 4px;
-  opacity: 0;
-}
-.studio__char-card:hover .studio__char-x { opacity: 1; }
-.studio__char-x:hover { color: var(--danger, #b04a3e); }
 .studio__step {
   appearance: none;
   font: inherit;
@@ -2389,327 +1377,6 @@ watch(selectedProjectId, (id) => {
   flex: 1 1 0;
   min-height: 0;
 }
-.studio__cast-cols {
-  display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr);
-  /* V3: shared outer .jv-card — the two columns sit inside it with a
-     hairline divider, no per-column card chrome. */
-  gap: 0;
-  padding: 0;
-  /* S2 + F4: row fills the .studio__cast leftover height, and grid's
-     default align-items:stretch makes Characters and Voice library
-     panes always match — even when one is empty. */
-  grid-template-rows: minmax(0, 1fr);
-  flex: 1 1 0;
-  min-height: 0;
-  overflow: hidden;
-}
-/* Hairline between the two panes inside the shared card. */
-.studio__cast-cols > .studio__voice-library { border-left: 1px solid var(--line); }
-@media (max-width: 900px) {
-  .studio__cast-cols {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto;
-  }
-}
-.studio__cast-empty {
-  border: 1px dashed var(--line-strong);
-  border-radius: 10px;
-  padding: 22px 24px;
-  background: var(--surface);
-}
-.studio__cast-empty h4 { margin: 0 0 6px; font-size: 14px; }
-.studio__cast-empty p { margin: 0; font-size: 12.5px; line-height: 1.6; }
-.studio__cast-empty a { color: var(--accent-ink); text-decoration: underline; }
-
-.studio__cast-toolbar {
-  grid-column: 1 / -1;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.studio__lede { font-size: 13px; color: var(--ink-2); margin: 0 0 4px; max-width: 880px; }
-
-.studio__cast-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 10px;
-  align-content: start;
-}
-
-/* Compact horizontal card (mock .cast-card): portrait left, name/role/
-   voice line right. Selected = accent ring; unassigned = dashed edge. */
-.studio__char-card {
-  position: relative;
-  display: flex;
-  align-items: flex-start;
-  gap: 11px;
-  padding: 12px 14px;
-  margin: 0;
-  cursor: pointer;
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-.studio__char-card:hover { border-color: var(--accent-line, var(--accent)); }
-.studio__char-card--narrator { background: var(--accent-soft); grid-column: 1 / -1; }
-.studio__char-narrator { display: inline-flex; margin-top: 6px; }
-.studio__char-card--selected { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-.studio__char-card--unassigned { border-style: dashed; }
-
-.studio__char-portrait {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  background: var(--accent);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 15px;
-  flex: none;
-}
-.studio__char-main { min-width: 0; flex: 1; }
-.studio__char-name-row { display: flex; align-items: center; gap: 6px; }
-.studio__char-name { font-weight: 600; font-size: 13.5px; }
-.studio__char-role { font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.studio__char-voice { display: flex; align-items: center; gap: 6px; font-size: 12px; margin-top: 4px; }
-.studio__char-glyph {
-  width: 20px; height: 20px; border-radius: 50%;
-  background: var(--surface-3); color: var(--ink-2);
-  font-size: 9px; font-weight: 700;
-  display: inline-flex; align-items: center; justify-content: center;
-  flex: none;
-}
-.studio__char-unassigned { font-size: 11.5px; color: var(--warn-ink); display: inline-block; margin-top: 4px; }
-
-.studio__voice-library {
-  /* V3: pane inside the shared .studio__cast-cols.jv-card — no own
-     card chrome (border / bg / radius set on the wrapper).
-     V5: tint the voice-library pane (surface-2) so it reads distinct
-     from the white Cast pane on the left — JustWrite-style contrast. */
-  padding: 14px;
-  background: var(--surface-2);
-  border: 0;
-  border-radius: 0;
-  /* S2: fills the cast-cols row track so it always matches the
-     Characters pane height.
-     V2: aside is a flex column — head + picking banner + search stay
-     pinned; only the inner .studio__voice-rows scroller moves. */
-  height: 100%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-.studio__voice-rows {
-  flex: 1 1 0;
-  min-height: 0;
-  overflow-y: auto;
-}
-/* V3: seamless scroll — hide the scrollbars on both inner scrollers
-   so the panes look like one continuous card. Mouse-wheel /
-   touch-pad / keyboard scrolling all still work. */
-.studio__cast-scroll,
-.studio__voice-rows { scrollbar-width: none; }
-.studio__cast-scroll::-webkit-scrollbar,
-.studio__voice-rows::-webkit-scrollbar { width: 0; height: 0; }
-.studio__voice-library-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
-.studio__voice-library-head .studio__voice-library-h { margin: 0 6px 0 0; }
-.studio__engine-pill { cursor: pointer; font-size: 11px; }
-.studio__engine-pill:hover { border-color: var(--accent); }
-
-/* Mock voice row: avatar · name + italic tone · ✓ cast-as · actions.
-   Assigned rows tint green. */
-.studio__vrow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 7px 10px;
-  margin-bottom: 6px;
-  background: var(--surface);
-}
-.studio__vrow--assigned {
-  background: var(--accent-soft);
-  border-color: var(--accent-line, #b8d2c3);
-}
-.studio__vrow--disabled { opacity: 0.75; }
-.studio__vrow-main {
-  appearance: none; border: 0; background: transparent;
-  display: flex; align-items: center; gap: 10px;
-  flex: 1; min-width: 0;
-  font: inherit; text-align: left; cursor: pointer; padding: 0;
-}
-.studio__vrow-main:disabled { cursor: not-allowed; }
-.studio__vrow-avatar {
-  width: 26px; height: 26px; border-radius: 50%;
-  color: #fff; font-size: 11px; font-weight: 700;
-  display: inline-flex; align-items: center; justify-content: center;
-  flex: none;
-}
-.studio__vrow-text { min-width: 0; display: flex; flex-direction: column; }
-.studio__vrow-name { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.studio__vrow-tone { font-size: 11px; color: var(--ink-3); font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.studio__vrow-cast { flex: none; font-size: 11.5px; font-weight: 600; color: var(--accent-ink); }
-.studio__voice-foot { font-size: 11.5px; margin: 10px 0 0; }
-.studio__voice-library-h {
-  margin: 0 0 10px;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--ink-3);
-  font-weight: 600;
-}
-.studio__voice-group { margin-bottom: 12px; }
-.studio__voice-group-h {
-  font-size: 10.5px;
-  text-transform: uppercase;
-  color: var(--ink-3);
-  margin-bottom: 4px;
-  font-family: var(--font-mono);
-}
-.studio__voice-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  padding: 8px 10px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  margin-bottom: 4px;
-  font-size: 12px;
-  color: var(--ink);
-  transition: background 0.12s, border-color 0.12s;
-}
-.studio__voice-row:hover { background: var(--surface-2); border-color: var(--line-strong); }
-.studio__voice-row--disabled { opacity: 0.55; }
-.studio__voice-row-name-btn {
-  appearance: none;
-  background: transparent;
-  border: 0;
-  padding: 0;
-  margin: 0;
-  flex: 1;
-  min-width: 0;
-  cursor: pointer;
-  text-align: left;
-  font: inherit;
-  color: inherit;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-.studio__voice-row-name-btn:hover:not(:disabled) .studio__voice-row-name {
-  color: var(--accent);
-}
-.studio__voice-row-name-btn:disabled { cursor: not-allowed; }
-.studio__voice-row-name {
-  display: inline-block;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 12.5px;
-}
-.studio__voice-gender {
-  appearance: none;
-  border: 1px solid var(--line-strong);
-  background: var(--surface);
-  color: var(--ink-2);
-  cursor: pointer;
-  padding: 1px 8px;
-  font-size: 10.5px;
-  border-radius: var(--r-pill);
-}
-.studio__voice-gender:hover { background: var(--surface-2); }
-.studio__voice-row-name {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.studio__voice-row-meta {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-  font-size: 10.5px;
-}
-.studio__voice-filter {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 8px;
-}
-.studio__voice-filter .jv-input { flex: 1; min-width: 0; }
-
-.studio__voice-picking {
-  background: var(--warn-bg);
-  border: 1px solid var(--warn-line);
-  color: var(--warn-ink);
-  border-radius: 7px;
-  padding: 8px 11px;
-  font-size: 12px;
-  margin-bottom: 8px;
-}
-
-.studio__voice-search {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 10px;
-}
-.studio__voice-search-icon {
-  position: absolute;
-  left: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 11px;
-  pointer-events: none;
-  color: var(--ink-3);
-}
-.studio__voice-search-input {
-  flex: 1;
-  padding-left: 26px !important;
-}
-.studio__voice-search-count {
-  font-size: 11px;
-  min-width: 24px;
-  text-align: right;
-}
-
-.studio__voice-empty {
-  font-size: 12px;
-  padding: 8px 0;
-  text-align: center;
-}
-
-.studio__voice-row-name-row {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-.studio__voice-row-assigned {
-  color: var(--accent);
-  font-weight: 700;
-  font-size: 12px;
-}
-.studio__voice-row-tone {
-  display: block;
-  font-size: 10.5px;
-  font-style: italic;
-  color: var(--ink-3);
-  margin-top: 1px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-
 /* ── Script — its pages style themselves (StudioScript*.vue) ─────── */
 
 .studio__unplaced-group { margin-bottom: 12px; font-size: 13px; }
@@ -2773,51 +1440,4 @@ watch(selectedProjectId, (id) => {
   100% { transform: translateX(280%); }
 }
 
-.studio__npc-table { margin: 0; }
-.studio__npc-role { font-size: 12.5px; }
-/* The row's cursor and hover tint come from `row-hover`; selection is a
-   `:row-class`, and the rule reaches INTO the component (audit §19.1). */
-.studio__npc-table :deep(.ui-table-row.studio__npc-row--selected) td { background: var(--accent-soft); }
-.studio__char-portrait--sm { width: 28px; height: 28px; font-size: 12px; }
-
-.studio__addpersona-list { list-style: none; margin: 0; padding: 0; max-height: 50vh; overflow-y: auto; }
-.studio__addpersona-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 4px;
-  border-bottom: 1px dashed var(--line);
-}
-.studio__addpersona-row:last-child { border-bottom: 0; }
-.studio__addpersona-meta { display: flex; flex-direction: column; flex: 1; min-width: 0; }
-.studio__addpersona-meta .jv-muted { font-size: 11.5px; }
-
-
-.studio__vrow-instruct {
-  font-size: 9px;
-  font-weight: 800;
-  font-style: normal;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--accent-ink);
-  background: var(--accent-soft);
-  border-radius: 4px;
-  padding: 1px 5px;
-  margin-left: 5px;
-  vertical-align: 1px;
-}
-.studio__vrow-online {
-  color: var(--warn-ink);
-  background: var(--warn-bg);
-}
-
-/* The compact audition player atop the cast card (2026-08-15: the global
-   bottom bar died — playback is compact and in place). */
-.studio__audition {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-bottom: 12px;
-  font-size: 12px;
-}
 </style>

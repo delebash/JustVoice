@@ -18,7 +18,6 @@ from justvoice.extraction.flags import (
     flag_groups,
     flagged_lines,
     lines_from_rows,
-    not_in_cast,
     quote_left_open,
 )
 from justvoice.extraction.segmentation import segment_paragraphs, split_into_paragraphs
@@ -148,10 +147,10 @@ def test_the_book_and_the_model_disagree():
     assert len(dis) == 1 and dis[0].speaker == "june" and dis[0].other == "marius"
 
 
-def test_a_speaker_who_left_the_cast():
+def test_a_speaker_the_cast_does_not_hold_is_never_an_only_line():
+    """Since 2026-09-29 a removed speaker's lines lose their speaker, so this
+    only happens with stale ids — the "only line" check is still about the cast."""
     lines = [say(0, "tom"), say(1, "tom"), say(2, "june"), say(3, "june")]
-    assert not_in_cast(lines, CAST) == {"tom": 2}
-    # Not an "only line" either: that check is about the cast.
     assert not any(c[0] == "only" and c[1] == "tom" for c in checks(lines))
 
 

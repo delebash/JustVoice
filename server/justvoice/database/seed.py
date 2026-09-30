@@ -143,7 +143,7 @@ BUILTIN_RENDER_PRESETS: list[dict] = [
     },
     {
         "name": "Dramatic Dialogue",
-        "description": "Heightened, emotional character dialogue.",
+        "description": "Heightened, emotional dialogue.",
         "delivery": {
             "speed": 1.03,
             "pause_before": 150,

@@ -41,7 +41,7 @@ def test_all_actions_seed_as_shared_rows(tmp_path):
     # died in the tier-debris cleanup 2026-08-07).
     assert len(DEFAULT_FEATURE_PROMPTS) == 13
     assert rows["refine.base"].user_template == "{{transcript}}"
-    assert "{{characters}}" in rows["speaker_attribution.guided"].user_template
+    assert "{{speakers}}" in rows["speaker_attribution.guided"].user_template
     assert rows["smart_assign"].json_mode is True
     assert rows["speaker_attribution.guided"].json_mode is False  # array output
 
@@ -132,7 +132,7 @@ def test_edited_legacy_row_migrates_wins_and_table_drops(tmp_path):
     # The edit won over the seed default…
     assert row.system == "MY EDITED CASTING PROMPT"
     # …while the untouched (legacy-empty) user template took the NEW seed's.
-    assert "{{voices}}" in row.user_template
+    assert "{{personas}}" in row.user_template
     from llm_runner.llm import db as llm_db
 
     ls = llm_db.session()

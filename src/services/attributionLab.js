@@ -21,9 +21,9 @@ export function passageFrom(vars) {
   return vars.paragraphs || vars.manuscript || vars.text || vars.user_content || "";
 }
 
-// Cast lines → structured characters — the ONE agreed characters shape
-// (Part 6): one per line, shared by this parser, CastEditor's serializer,
-// the seeded cellar sample and labTestData's cast fills.
+// Speaker lines → the structured cast the pipeline takes — the ONE agreed
+// shape (Part 6): one per line, shared by this parser, CastEditor's
+// serializer, the seeded cellar sample and labTestData's cast fills.
 //   "Mara"  ·  "Mara | Lady Mara, the captain"  ·  "Mara: Lady Mara"
 export function parseCharacters(raw) {
   return String(raw || "")
@@ -63,10 +63,10 @@ async function run(body, { signal } = {}) {
 async function runInner(body, vars, extra, api, signal) {
   // Discovery ("Find new speakers") has its own pipeline door — the ad-hoc
   // identify twin of analyze-text. The column's prompt boxes ARE this action's
-  // row, so they always ride as overrides; known characters come from the
-  // {{known_characters}} box (one name per line, "- " bullets tolerated).
+  // row, so they always ride as overrides; the known speakers come from the
+  // {{known_speakers}} box (one name per line, "- " bullets tolerated).
   if (body.action === "speaker_attribution.identify") {
-    const known = String(vars.known_characters || vars.characters || "")
+    const known = String(vars.known_speakers || vars.speakers || "")
       .split("\n")
       .map((s) => s.trim().replace(/^[-•]\s*/, ""))
       .filter(Boolean)
@@ -108,7 +108,7 @@ async function runInner(body, vars, extra, api, signal) {
 
   const payload = {
     text: passageFrom(vars),
-    characters: parseCharacters(vars.characters),
+    characters: parseCharacters(vars.speakers),
     // Part 5 (2026-08-06): the typed corrections box died — with a project
     // open, the run uses that project's STORED corrections server-side,
     // through the same resolver production uses.
@@ -160,8 +160,8 @@ export const attributionLabAdapter = {
   render: AttributionResult,
   configExtra: AttributionConfigExtra,
   varConfig: {
-    characters: { editor: CastEditor },
-    known_characters: { editor: CastEditor },
+    speakers: { editor: CastEditor },
+    known_speakers: { editor: CastEditor },
     paragraphs: { counters: true },
     manuscript: { counters: true },
     // Part 5 (2026-08-06): nothing can honestly be typed here — corrections

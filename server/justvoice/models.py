@@ -587,15 +587,15 @@ class ImportVoiceRequest(BaseModel):
 
 
 class Persona(BaseModel):
+    """A finished spoken voice — the library's unit (2026-09-29 split). It
+    plays speakers; who a person in a book IS lives on the `Speaker`."""
+
     id: str
     name: str
-    # Optional — a persona can exist before a voice is cast (Studio Cast
-    # binds voices later; render skips voice-less personas). Was required,
-    # which 422'd persona creation with an empty voice library
-    # (user-hit 2026-06-12).
+    # Optional — a persona can be saved before its voice is picked; a speaker
+    # it plays can't render until it has one. Was required, which 422'd
+    # persona creation with an empty voice library (user-hit 2026-06-12).
     voice_id: str | None = None
-    # Persona is the sole identity layer after the Profile-kill (plan Q1).
-    # All voice-styling fields live here directly, not behind a Profile FK.
     language: str = "en"
     avatar_path: str | None = None
     # Spoken-delivery instruction — the ONE field that changes the audio.
@@ -604,13 +604,9 @@ class Persona(BaseModel):
     # accept it ignore it. **Never an LLM rewrite of the manuscript** —
     # Rewrite is a separate explicit tool.
     voice_instruct: str | None = None
-    # The character sheet — who this character is, in prose. Read by
-    # Compose / Rewrite, smart-assign casting and the game-export sidecar.
-    # It never reaches an engine — that is `voice_instruct`'s job alone
-    # (the 2026-08-15 split; one field serving both was the bug).
-    personality: str | None = None
-    # Other names the prose uses for them ("Ode" for Odeline Marran).
-    aliases: list[str] = []
+    # A short note on how it sounds. Read by Compose / Rewrite on Generate and
+    # by Smart-assign; never by an engine — that is `voice_instruct`'s job.
+    note: str | None = None
     # Tier-2 delivery overlay defaults (3-tier voice tuning per task #88):
     #   render_preset (Tier 3) > persona.default_delivery (Tier 2) > engine (Tier 1).
     # JSON dict matching the Delivery shape (speed / pitch / gain_db / etc).
@@ -643,10 +639,7 @@ class CreatePersonaRequest(BaseModel):
     language: str = "en"
     avatar_path: str | None = None
     voice_instruct: str | None = None
-    personality: str | None = None
-    # None = leave the stored aliases alone. PUT sends this whole model, and
-    # every caller that predates aliases would otherwise wipe them.
-    aliases: list[str] | None = None
+    note: str | None = None
     default_delivery: dict[str, Any] = {}
     effects_chain: list[dict[str, Any]] = []
     lexicon_id: str | None = None
@@ -654,6 +647,50 @@ class CreatePersonaRequest(BaseModel):
     # Legacy — see Persona model
     llm_rewrite_enabled: bool = False
     llm_model: str | None = None
+
+
+# ─── Speakers — the people in one book ──────────────────────────────────
+
+
+class Speaker(BaseModel):
+    """A person in one book (2026-09-29). The book's cast is its speakers;
+    Cast gives each a persona. `lines` counts the lines they read."""
+
+    id: str
+    project_id: str
+    name: str
+    # "Also called" — the other names the text uses.
+    aliases: list[str] = []
+    # "Who they are" — read by the AI, never heard.
+    description: str | None = None
+    # The persona that plays them; null = not cast yet.
+    persona_id: str | None = None
+    persona_name: str | None = None
+    # "narrator" for the book's narrator.
+    role_label: str | None = None
+    lines: int = 0
+
+
+class SpeakerList(BaseModel):
+    speakers: list[Speaker]
+
+
+class CreateSpeakerRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=200)
+    aliases: list[str] = []
+    description: str | None = None
+    # Left out = cast by an exact persona name when one exists (every new
+    # speaker, decided 2026-09-29).
+    persona_id: str | None = None
+
+
+class UpdateSpeakerRequest(BaseModel):
+    """Left out = unchanged. `persona_id` sent as null = un-cast."""
+
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    aliases: list[str] | None = None
+    description: str | None = None
+    persona_id: str | None = None
 
 
 # ─── Lexicons ───────────────────────────────────────────────────────────
@@ -1505,13 +1542,10 @@ class ComparisonReport(BaseModel):
 
 
 class ScriptSpeaker(BaseModel):
-    persona_id: str
+    speaker_id: str
     name: str
-    # Lines this persona reads in the chapter (the chapter page; the grid's
-    # not-in-the-cast rows count spoken lines).
+    # Lines this speaker reads in the chapter.
     lines: int = 0
-    # False for a persona who has left the cast but still has lines here.
-    in_cast: bool = True
 
 
 class ScriptChapter(BaseModel):
@@ -1541,10 +1575,9 @@ class ScriptChapter(BaseModel):
     to_check: int = 0
     changed: int = 0       # lines the last Analyze gave a different speaker
     no_dialogue_found: bool = False
-    # Personas who joined the cast after this chapter was analyzed and whose
-    # name (or "also called" name) appears in its text.
+    # Speakers added after this chapter was analyzed whose name (or "also
+    # called" name) appears in its text.
     added_since: list[str] = Field(default_factory=list)
-    not_in_cast: list[ScriptSpeaker] = Field(default_factory=list)
 
 
 class ProjectScript(BaseModel):
@@ -1556,7 +1589,7 @@ class ScriptLine(BaseModel):
     id: str
     position: int
     text: str
-    persona_id: str | None = None
+    speaker_id: str | None = None
     source: str | None = None
     confidence: float | None = None
     # The paragraph of the analyzed text; null for an imported or pasted line
@@ -1571,10 +1604,10 @@ class ScriptLine(BaseModel):
     llm_speaker: str | None = None
     # The model's pick the confidence floor dropped.
     floored_from: str | None = None
-    # The last Analyze changed this line's speaker; `prev_persona_id` is who
+    # The last Analyze changed this line's speaker; `prev_speaker_id` is who
     # it was (null = it had none).
     changed: bool = False
-    prev_persona_id: str | None = None
+    prev_speaker_id: str | None = None
     # Indexes into SceneScript.flag_groups.
     flags: list[int] = Field(default_factory=list)
     # The block's whole metadata — Undo puts it back exactly.
@@ -1597,5 +1630,5 @@ class SceneScript(BaseModel):
     narrator_id: str | None = None
     lines: list[ScriptLine]
     flag_groups: list[ScriptFlag]
-    # The cast, plus anyone with lines here who has left it; most lines first.
+    # The book's speakers, most lines first.
     speakers: list[ScriptSpeaker]

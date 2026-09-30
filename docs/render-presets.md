@@ -34,7 +34,7 @@ target that no render ever read.)
 
 ## The preset's effects chain
 
-The chain layers **on top of** the persona's, in that order — the character's
+The chain layers **on top of** the persona's, in that order — the persona's
 own sound first, the scene's colour after. It runs on chapter renders, not just
 single-line previews. Leave the preset's chain empty and the persona's runs
 alone.

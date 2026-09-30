@@ -38,8 +38,7 @@ const GROUPS = [
   {
     title: "Studio Cast",
     items: [
-      { keys: ["Click voice name"], label: "Assign voice to selected character" },
-      { keys: ["Click gender chip"], label: "Cycle gender hint (female / male / neutral / engine default)" },
+      { keys: ["Click a persona"], label: "Assign it to the selected speaker" },
     ],
   },
   {

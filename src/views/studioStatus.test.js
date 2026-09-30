@@ -6,30 +6,30 @@ import { blockStats, foundSpeakers, projectState, stepStatus } from "./studioSta
 const UNIT = { singular: "Chapter", plural: "Chapters" };
 
 describe("blockStats", () => {
-  it("counts spoken lines, unplaced lines and lines per persona — markers and blanks are not lines", () => {
+  it("counts spoken lines, unplaced lines and lines per speaker — markers and blanks are not lines", () => {
     const st = blockStats([
-      { text: "Narration.", persona_id: "nar", source: "narration" },
-      { text: "“Hi,” said June.", persona_id: "june", source: "tag" },
-      { text: "“Who?”", persona_id: null, source: "floored" },
+      { text: "Narration.", speaker_id: "nar", source: "narration" },
+      { text: "“Hi,” said June.", speaker_id: "june", source: "tag" },
+      { text: "“Who?”", speaker_id: null, source: "floored" },
       { text: "[music]", metadata: { marker: true } },
       { text: "   " },
     ]);
-    expect(st).toEqual({ speakable: 3, unplaced: 1, analyzed: true, fromImport: false, byPersona: { nar: 1, june: 1 } });
+    expect(st).toEqual({ speakable: 3, unplaced: 1, analyzed: true, fromImport: false, bySpeaker: { nar: 1, june: 1 } });
   });
 
   it("calls a chapter analyzed only when Analyze ran on it — the one rule", () => {
     expect(blockStats([{ text: "Plain prose." }]).analyzed).toBe(false);
     // Analyze recorded when it ran …
-    expect(blockStats([{ text: "Prose.", persona_id: "nar", source: "corrected" }],
+    expect(blockStats([{ text: "Prose.", speaker_id: "nar", source: "corrected" }],
       { metadata: { analyzed_at: "2026-09-29T00:00:00Z" } }).analyzed).toBe(true);
     // … and older data counts by its pipeline sources.
-    expect(blockStats([{ text: "Prose.", persona_id: "nar", source: "narration" }]).analyzed).toBe(true);
+    expect(blockStats([{ text: "Prose.", speaker_id: "nar", source: "narration" }]).analyzed).toBe(true);
   });
 
   it("an imported script with every speaker set is 'from the import', not analyzed", () => {
     const st = blockStats([
-      { text: "Welcome back.", persona_id: "host" },
-      { text: "Thanks.", persona_id: "guest", source: "manual" },
+      { text: "Welcome back.", speaker_id: "host" },
+      { text: "Thanks.", speaker_id: "guest", source: "manual" },
       { text: "[music]", metadata: { marker: true } },
     ]);
     expect(st).toMatchObject({ analyzed: false, fromImport: true });
@@ -40,15 +40,15 @@ describe("blockStats", () => {
 describe("projectState", () => {
   const scenes = [{ id: "a" }, { id: "b" }];
   const stats = {
-    a: { speakable: 10, unplaced: 2, analyzed: true, byPersona: { nar: 5, harbek: 3 } },
-    b: { speakable: 4, unplaced: 0, analyzed: false, byPersona: { harbek: 1 } },
+    a: { speakable: 10, unplaced: 2, analyzed: true, bySpeaker: { nar: 5, harbek: 3 } },
+    b: { speakable: 4, unplaced: 0, analyzed: false, bySpeaker: { harbek: 1 } },
   };
-  const cast = [{ id: "nar", voice_id: "v1", narrator: true }, { id: "harbek", voice_id: null }];
+  const cast = [{ id: "nar", ready: true, narrator: true }, { id: "harbek", ready: false }];
 
-  it("rolls chapters and cast up, and counts lines blocked on a missing voice", () => {
+  it("rolls chapters and speakers up, and counts lines blocked on a speaker no voiced persona plays", () => {
     expect(projectState({ scenes, stats, cast, cache: { total: 11, cached: 5 } })).toEqual({
       chapters: 2, scanned: 0, proposed: 0, analyzed: 1, fromImport: 0, running: 0, flagged: 0,
-      noSpeaker: 2, lines: 14, unplaced: 2, castTotal: 2, castVoiced: 1, speakersBesideNarrator: 1, blocked: 4,
+      noSpeaker: 2, lines: 14, unplaced: 2, castTotal: 2, castReady: 1, speakersBesideNarrator: 1, blocked: 4,
       rendered: 5, renderable: 11,
     });
   });
@@ -71,7 +71,7 @@ describe("projectState", () => {
 
 describe("stepStatus", () => {
   const base = {
-    chapters: 14, scanned: 3, proposed: 3, analyzed: 3, lines: 2140, unplaced: 88, castTotal: 5, castVoiced: 3,
+    chapters: 14, scanned: 3, proposed: 3, analyzed: 3, lines: 2140, unplaced: 88, castTotal: 5, castReady: 3,
     speakersBesideNarrator: 4, blocked: 40, rendered: 412, renderable: 2140,
   };
 
@@ -83,7 +83,7 @@ describe("stepStatus", () => {
       text: "3 of 14 chapters analyzed · 1 running", tag: noSpeaker, tags: [noSpeaker, flagged],
     });
     expect(stepStatus("cast", base, UNIT)).toEqual({
-      text: "3 of 5 personas voiced", tag: { intent: "danger", label: "40 lines blocked" },
+      text: "3 of 5 speakers cast", tag: { intent: "danger", label: "40 lines blocked" },
     });
     expect(stepStatus("render", base, UNIT)).toEqual({
       text: "412 of 2,140 lines rendered", tag: { intent: "accent2", label: "1,728 to go" },
@@ -114,22 +114,22 @@ describe("foundSpeakers", () => {
       { id: "a", metadata: scan([
         { name: "Tom Harlan", role_hint: "neighbor", approx_lines: 3, evidence: "Tom Harlan kept the ledger", evidence_found: true },
         { name: "Mara", approx_lines: 9 },
-      ], [{ persona_id: "m", name: "Mara Vance", mentions: 4, evidence: "Mara Vance sat." }]) },
+      ], [{ speaker_id: "m", name: "Mara Vance", mentions: 4, evidence: "Mara Vance sat." }]) },
       { id: "b", metadata: scan([{ name: "tom harlan", approx_lines: 2 }]) },
       { id: "c", metadata: {} },
     ];
     const cast = [{ id: "m", name: "Mara Vance", aliases: ["Mara"] }];
     const rows = foundSpeakers(scenes, cast);
     expect(rows[0]).toEqual({
-      key: "new:tom harlan", status: "new", name: "Tom Harlan", names: ["Tom Harlan", "tom harlan"], persona: null,
-      role_hint: "neighbor", evidence: "Tom Harlan kept the ledger", evidence_found: true, lines: 5, mentions: 0,
-      chapters: ["a", "b"],
+      key: "new:tom harlan", status: "new", name: "Tom Harlan", names: ["Tom Harlan", "tom harlan"],
+      speaker: null, persona: null, role_hint: "neighbor", evidence: "Tom Harlan kept the ledger",
+      evidence_found: true, lines: 5, mentions: 0, chapters: ["a", "b"],
     });
     // The AI's "Mara" (her alias) and the name match are ONE row: her.
-    expect(rows[1]).toMatchObject({ key: "p:m", status: "cast", name: "Mara Vance", persona: { id: "m" },
+    expect(rows[1]).toMatchObject({ key: "s:m", status: "cast", name: "Mara Vance", speaker: { id: "m" },
       lines: 9, mentions: 4, chapters: ["a"] });
     expect(rows).toHaveLength(2);
-    expect(projectState({ scenes, cast: [{ ...cast[0], voice_id: null }] }))
+    expect(projectState({ scenes, cast: [{ ...cast[0], ready: false }] }))
       .toMatchObject({ scanned: 2, proposed: 1 });
   });
 
@@ -152,24 +152,34 @@ describe("foundSpeakers", () => {
     expect(row).toMatchObject({ name: "Old Sedge", names: ["Sedge", "Old Sedge"], lines: 4, chapters: ["a", "b"] });
   });
 
-  it("makes one row per library persona, In your library until it is cast", () => {
-    const lib = { persona_id: "p-brick", name: "Brick Halvorn" };
-    const scenes = [
-      { id: "a", metadata: scan([{ name: "Brick", approx_lines: 4, library_match: lib }]) },
-      { id: "b", metadata: scan([{ name: "Brick Halvorn", approx_lines: 1, library_match: lib }]) },
-    ];
-    const rows = foundSpeakers(scenes, []);
-    expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ key: "p:p-brick", status: "library", name: "Brick Halvorn",
-      names: ["Brick", "Brick Halvorn"], persona: { id: "p-brick" }, lines: 5 });
-    const cast = foundSpeakers(scenes, [{ id: "p-brick", name: "Brick Halvorn" }]);
-    expect(pick(cast)).toEqual([["Brick Halvorn", "cast"]]);
+  it("In your library = a persona of EXACTLY that name, one only (2026-09-29)", () => {
+    const scenes = [{ id: "a", metadata: scan([
+      { name: "Old Sedge", approx_lines: 4 }, { name: "Sedge's dog" }, { name: "Brick" }]) }];
+    const personas = [{ id: "p1", name: "old sedge" }, { id: "p2", name: "Brick Halvorn" }];
+    const rows = foundSpeakers(scenes, [], [], personas);
+    expect(pick(rows)).toEqual([["Sedge's dog", "new"], ["Brick", "new"], ["Old Sedge", "library"]]);
+    expect(rows[2].persona).toEqual({ id: "p1", name: "old sedge" });
+    // Two personas share the name: neither is meant, so it is New.
+    const twin = [...personas, { id: "p3", name: "Old Sedge" }];
+    expect(pick(foundSpeakers(scenes, [], [], twin))).toContainEqual(["Old Sedge", "new"]);
+    expect(projectState({ scenes, personas })).toMatchObject({ proposed: 3 });
   });
 
-  it("a cast member taken out of the cast since the scan shows In your library", () => {
-    const scenes = [{ id: "a", metadata: scan([], [{ persona_id: "n", name: "Nettle", mentions: 2 }]) }];
+  it("a shorter spelling joins the library row — Sedge is Old Sedge", () => {
+    const scenes = [
+      { id: "a", metadata: scan([{ name: "Sedge", approx_lines: 2 }]) },
+      { id: "b", metadata: scan([{ name: "Old Sedge", approx_lines: 1 }]) },
+    ];
+    const rows = foundSpeakers(scenes, [], [], [{ id: "p1", name: "Old Sedge" }]);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ status: "library", names: ["Old Sedge", "Sedge"], lines: 3,
+      chapters: ["b", "a"], persona: { id: "p1" } });
+  });
+
+  it("a speaker removed since the scan turns New, and stays in the list", () => {
+    const scenes = [{ id: "a", metadata: scan([], [{ speaker_id: "n", name: "Nettle", mentions: 2 }]) }];
     expect(pick(foundSpeakers(scenes, [{ id: "n", name: "Nettle" }]))).toEqual([["Nettle", "cast"]]);
-    expect(pick(foundSpeakers(scenes, []))).toEqual([["Nettle", "library"]]);
+    expect(pick(foundSpeakers(scenes, []))).toEqual([["Nettle", "new"]]);
   });
 
   it("never merges different people who only share a prefix", () => {

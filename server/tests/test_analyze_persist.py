@@ -64,11 +64,8 @@ def _analyze(client, scene_id, text):
 
 
 def _mara_id(client, project_id):
-    cast = client.get(f"/v1/projects/{project_id}/cast").json()["cast"]
-    personas = {p["id"]: p for p in client.get("/v1/personas").json()["personas"]}
-    return next(
-        c["persona_id"] for c in cast if "Mara" in (personas[c["persona_id"]]["name"] or "")
-    )
+    speakers = client.get(f"/v1/projects/{project_id}/speakers").json()["speakers"]
+    return next(sp["id"] for sp in speakers if "Mara" in sp["name"])
 
 
 def _narrator_id(client, project_id):
@@ -76,7 +73,7 @@ def _narrator_id(client, project_id):
     book has one until you choose it."""
     r = client.post(f"/v1/projects/{project_id}/narrator")
     assert r.status_code == 201, r.text
-    return next(c["persona_id"] for c in r.json()["cast"] if c["role_label"] == "narrator")
+    return next(sp["id"] for sp in r.json()["speakers"] if sp["role_label"] == "narrator")
 
 
 def _answer(speaker: str, confidence: float = 0.95):
@@ -107,7 +104,7 @@ def test_first_analyze_resegments_and_saves(client, project, monkeypatch):
     # Dialogue keeps its quote marks, or the stored chapter reads wrong AND
     # re-segmenting it would find no dialogue at all.
     assert after[1]["text"] == "“We leave at dawn,”"
-    assert after[1]["persona_id"] == mara
+    assert after[1]["speaker_id"] == mara
 
 
 def test_narration_binds_to_the_narrator(client, project, monkeypatch):
@@ -118,7 +115,7 @@ def test_narration_binds_to_the_narrator(client, project, monkeypatch):
     _analyze(client, project.scene_id, f"{PARA_1}\n\n{PARA_2}")
 
     narration = [b for b in _blocks(client, project.scene_id) if b["source"] == "narration"]
-    assert narration and all(b["persona_id"] == narrator for b in narration)
+    assert narration and all(b["speaker_id"] == narrator for b in narration)
 
 
 def test_a_book_with_no_narrator_analyzes_and_leaves_narration_unread(client, project, monkeypatch):
@@ -130,11 +127,11 @@ def test_a_book_with_no_narrator_analyzes_and_leaves_narration_unread(client, pr
     r = _analyze(client, project.scene_id, f"{PARA_1}\n\n{PARA_2}")
     assert r.status_code == 200, r.text
     narration = [b for b in _blocks(client, project.scene_id) if b["source"] == "narration"]
-    assert narration and all(b["persona_id"] is None for b in narration)
+    assert narration and all(b["speaker_id"] is None for b in narration)
 
     narrator = _narrator_id(client, project.id)
     narration = [b for b in _blocks(client, project.scene_id) if b["source"] == "narration"]
-    assert all(b["persona_id"] == narrator for b in narration)
+    assert all(b["speaker_id"] == narrator for b in narration)
 
 
 def test_reanalyze_updates_in_place_and_keeps_corrections(client, project, monkeypatch):
@@ -147,7 +144,7 @@ def test_reanalyze_updates_in_place_and_keeps_corrections(client, project, monke
     # The user fixes the dialogue row — Studio's PATCH, source="corrected".
     r = client.patch(
         f"/v1/blocks/{blocks[1]['id']}",
-        json={"persona_id": narrator, "source": "corrected"},
+        json={"speaker_id": narrator, "source": "corrected"},
     )
     assert r.status_code == 200, r.text
 
@@ -161,7 +158,7 @@ def test_reanalyze_updates_in_place_and_keeps_corrections(client, project, monke
 
     after = _blocks(client, project.scene_id)
     assert [b["id"] for b in after] == [b["id"] for b in blocks]   # nothing re-created
-    assert after[1]["persona_id"] == narrator                       # the fix survived
+    assert after[1]["speaker_id"] == narrator                       # the fix survived
     assert after[1]["source"] == "corrected"
 
 
@@ -198,12 +195,12 @@ def test_recut_is_refused_once_takes_exist(client, project, monkeypatch):
 
 def test_an_invented_speaker_leaves_the_line_unplaced(client, project, monkeypatch):
     monkeypatch.setattr(
-        "justvoice.extraction.pipeline.run_feature", _answer("a-persona-that-never-existed"),
+        "justvoice.extraction.pipeline.run_feature", _answer("a-speaker-that-never-existed"),
     )
     r = _analyze(client, project.scene_id, f"{PARA_1}\n\n{PARA_2}")
     assert r.status_code == 200, r.text
     dialogue = [b for b in _blocks(client, project.scene_id) if b["source"] != "narration"]
-    assert dialogue and all(b["persona_id"] is None for b in dialogue)
+    assert dialogue and all(b["speaker_id"] is None for b in dialogue)
 
 
 def test_the_imports_line_ids_survive_the_recut(client, project, monkeypatch):

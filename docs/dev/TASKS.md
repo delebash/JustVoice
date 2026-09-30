@@ -1775,8 +1775,59 @@ DECIDED 2026-09-29, while planning (plan §5):
           split. Plus a bulk "Remove N selected": In-the-cast rows get a tick too, beside
           "＋ Add N selected" and "Ignore N selected"; one confirmation names who goes and each
           one's lines.
+        · The selected speaker's card on Cast — "ok add also called there, continue with the
+          split", on the rec as given: "Name: editable, so a rename happens here. Also called:
+          the other names the text uses, separated by commas ('Sedge'). Who they are: the text
+          box the mock already has. Edit their persona →: as in the mock, for the voice
+          settings." Each speaker's card in the grid also shows "also called Sedge" under the
+          name. The app says "Who they are" / "Edit their persona" (the mock's "she"/"her" —
+          the app knows no one's gender). The mock's Cast gets the same field.
+DECIDED 2026-09-29, after the build — "go on all three", on the recs as given:
+        1. The hint under Who they are: "reword it to 'Read by Discover, Smart-assign and
+           Rewrite in character. Never heard.' — it names the features that actually read
+           it, the same way the persona note's hint does. The mock and the docs that quote
+           the hint change with it."
+        2. The Lab's "Characters" / "Known characters" boxes: "rename only the prompt
+           placeholders: `{{characters}}` becomes `{{speakers}}`, `{{known_characters}}`
+           becomes `{{known_speakers}}`, Smart-assign's `{{voices}}` becomes
+           `{{personas}}`. Every word the model reads stays the same, including 'Known
+           characters:' and 'Available voices:', so no prompt re-measure is needed. A test
+           will check that each prompt sent to the model is byte-identical to before. The
+           live prompt rows get updated only after checking they still match the code, as
+           last time. The Lab boxes would then read 'Speakers', 'Known speakers' and
+           'Personas'."
+        3. Commit: "finish 1 and 2, then commit the whole split as one change, with
+           explicit paths and no push. The full server suite waits, as you said."
 PLAN:   docs/plans/2026-09-29-speakers-and-personas.md — READ IT before coding any part.
-BUILT:  in progress.
+BUILT:  2026-09-29, uncommitted. Server: `speakers` table + `api/speakers_api.py` +
+        `api/_speaker_helpers.py` (replaces `_persona_helpers.py`); `ProjectPersona` and
+        the `/cast` routes gone; blocks and corrections carry `speaker_id`; render, takes,
+        voice-line export (manifest key `speaker`) and project export follow line →
+        speaker → persona; persona `personality` → `note`, `aliases` dropped; imports and
+        Discover's Add make speakers (exact persona name casts them); the Discover prompt's
+        library paragraph removed (measured, plan §6). Renderer: new
+        `components/StudioCast.vue` (the mock's Cast), StudioView's old Cast + voice
+        library + tuner removed; Discover's In-the-cast rows get Remove from cast / Remove N
+        selected (ask first); Script, Chapters, Home, Lines ("Speaker" column), Generate
+        (note), Personas (Note, Used by, `?open=`), the Lab, Settings/App/cheatsheet words;
+        `copy.js` per-kind cast words removed. Mock: Cast's Name / Also called, "speakers"
+        on Lines and Overview (published v31). Live DB: backed up to
+        `justvoice.db.bak-2026-09-29-before-speakers-split`, book + personas deleted, four
+        tables recreated; the identify prompt row PUT and three prompt rows reset (each
+        checked equal to the code first). Verified: targeted pytest (52 files) and vitest,
+        ruff, biome, vite build, the renderer gate (14 views + 3 shell checks, 0 JS errors), a live walk of every
+        new door on the real app, and headless screenshots of Cast, Discover and Personas.
+        NOT run: the full server suite (held by the user's word).
+        Then, on "go on all three": (1) the hint reads "Read by Discover, Smart-assign
+        and Rewrite in character. Never heard." in the app, the mock (published v32) and
+        studio.md; (2) the placeholders are `{{speakers}}`, `{{known_speakers}}` and
+        Smart-assign's `{{personas}}` in the seeds, the pipeline, identify, smart-assign,
+        the legacy prompt migrator, the Lab adapter and fills, the eval script, tests and
+        docs — every rendered prompt proved byte-identical to before (scratch check) and
+        pinned by `test_renamed_placeholders_keep_every_word_the_model_reads`; the four
+        live prompt rows and four Lab sample rows were each checked equal to the code
+        first, then switched (the identify sample's leftover `library` value went with
+        it); (3) committed as one change, no push.
 GO:     given 2026-09-29
 
 ### Switching Studio steps keeps Script where you left it

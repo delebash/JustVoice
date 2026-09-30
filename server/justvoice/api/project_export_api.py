@@ -2,9 +2,9 @@
 """/v1/projects/{id}/export — per-project ZIP for machine migration + handoff.
 
 Different from /v1/backup (whole-server disaster recovery): export bundles
-a single project's data (Scenes + Blocks + Cast + Lexicons + rendered audio
-+ masters) so a producer can hand off a book to an author for review or
-move it between studio + travel laptops.
+a single project's data (Scenes + Blocks + Speakers + the Personas that play
+them + Lexicons + rendered audio + masters) so a producer can hand off a book
+to an author for review or move it between studio + travel laptops.
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 
 from ..database import (
     Project,
-    ProjectPersona,
+    Speaker,
     Scene,
     Block,
     Persona,
@@ -58,7 +58,8 @@ async def export_project(
     scenes = (
         db.query(Scene).filter(Scene.project_id == project_id).order_by(Scene.position).all()
     )
-    persona_ids = [r.persona_id for r in db.query(ProjectPersona).filter(ProjectPersona.project_id == project_id).all()]
+    speakers = db.query(Speaker).filter(Speaker.project_id == project_id).all()
+    persona_ids = sorted({s.persona_id for s in speakers if s.persona_id})
     personas = db.query(Persona).filter(Persona.id.in_(persona_ids)).all() if persona_ids else []
     lexicon_ids = {project.default_lexicon_id} | {p.lexicon_id for p in personas}
     lexicon_ids.discard(None)
@@ -100,7 +101,7 @@ async def export_project(
                         "id": b.id,
                         "position": b.position,
                         "text": b.text,
-                        "persona_id": b.persona_id,
+                        "speaker_id": b.speaker_id,
                         "direction": b.direction,
                         "metadata": json.loads(b.metadata_json or "{}"),
                     }
@@ -109,10 +110,27 @@ async def export_project(
             }
             zf.writestr(f"scenes/{scene.position:03d}-{_slugify(scene.title or scene.id)}.json", json.dumps(scene_payload, indent=2))
 
-        # cast/<persona_id>.json
+        # speakers/<speaker_id>.json — the people in the book
+        for sp in speakers:
+            zf.writestr(
+                f"speakers/{sp.id}.json",
+                json.dumps(
+                    {
+                        "id": sp.id,
+                        "name": sp.name,
+                        "aliases": json.loads(sp.aliases) if sp.aliases else [],
+                        "description": sp.description,
+                        "persona_id": sp.persona_id,
+                        "role_label": sp.role_label,
+                    },
+                    indent=2,
+                ),
+            )
+
+        # personas/<persona_id>.json — the voices that play them
         for persona in personas:
             zf.writestr(
-                f"cast/{persona.id}.json",
+                f"personas/{persona.id}.json",
                 json.dumps(
                     {
                         "id": persona.id,
@@ -120,7 +138,7 @@ async def export_project(
                         "language": persona.language,
                         "voice_id": persona.voice_id,
                         "voice_instruct": persona.voice_instruct,
-                        "personality": persona.personality,
+                        "note": persona.note,
                         "engine_override": persona.engine_override,
                         "lexicon_id": persona.lexicon_id,
                     },
@@ -191,6 +209,7 @@ async def export_project(
                     "project_id": project.id,
                     "exported_at": datetime.now(timezone.utc).isoformat(),
                     "scene_count": len(scenes),
+                    "speaker_count": len(speakers),
                     "persona_count": len(personas),
                     "lexicon_count": len(lexicons),
                     "include_audio": include_audio,

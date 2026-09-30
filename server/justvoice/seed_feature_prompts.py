@@ -77,9 +77,11 @@ Return ONLY the markdown."""
 # The attribution user template — extraction/prompts.py's USER_TEMPLATE with the
 # three .replace tokens converted to the shared {{var}} form (the pipeline now
 # passes format_characters/format_corrections/format_paragraphs output as
-# variables instead of substituting inline).
+# variables instead of substituting inline). The placeholders are named for the
+# book's speakers (2026-09-29, so the Lab's boxes say Speakers); the words the
+# model reads are unchanged.
 _ATTR_USER_TEMPLATE = """Characters in this scene:
-{{characters}}
+{{speakers}}
 {{corrections}}
 Paragraphs (dialogue segments tagged inline):
 
@@ -165,13 +167,10 @@ DEFAULT_FEATURE_PROMPTS: dict[str, dict] = {
     "speaker_attribution.identify": {
         "feature": "speaker_discovery",
         "label": "Find new speakers",
-        "description": "Behind Discover speakers: lists characters who talk in the text but aren't in your cast yet.",
+        "description": "Behind Discover: lists the speakers who talk in the text but aren't in the cast yet.",
         "system": IDENTIFY_SYSTEM,
         "user_template": """Known characters:
-{{known_characters}}
-
-People in the library, not in this cast:
-{{library}}
+{{known_speakers}}
 
 Manuscript text:
 {{manuscript}}""",
@@ -179,13 +178,13 @@ Manuscript text:
     # ── casting / production helpers ────────────────────────────────────────
     "smart_assign": {
         "feature": "smart_assign",
-        "description": "Matches each character to a voice from your library, judging age, gender and tone — the Smart-assign button on the Cast tab.",
+        "description": "Matches each speaker to a persona from your library, judging age, gender and tone — the Smart-assign button on Cast.",
         "system": _SMART_ASSIGN_SYSTEM,
         "user_template": """Characters:
-{{characters}}
+{{speakers}}
 
 Available voices:
-{{voices}}
+{{personas}}
 
 Return only the JSON object.""",
         "json_mode": True,
@@ -212,13 +211,13 @@ Return only the JSON object.""",
     # ── persona voice features ──────────────────────────────────────────────
     "compose": {
         "feature": "compose",
-        "description": "Writes a fresh line the character would actually say, from the persona's personality — the 🎲 button.",
+        "description": "Writes a fresh line in a persona's voice, from its note on how it sounds — the 🎲 button on Generate.",
         "system": _COMPOSE_SYSTEM,
         "user_template": "Compose a line.",
     },
     "persona_rewrite": {
         "feature": "persona_rewrite",
-        "description": "Rewrites your line the way the character would say it. You see the result first and keep it or toss it.",
+        "description": "Rewrites a line in character — from the speaker's \"who they are\" in Script, or the persona's note on Generate. You see the result first and keep it or toss it.",
         "system": _PERSONA_REWRITE_SYSTEM,
         "user_template": "{{text}}",
     },

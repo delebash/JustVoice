@@ -8,9 +8,10 @@
   (6) the results table — speaker · the line · confidence % · a REASSIGN
       dropdown whose pick writes correction memory exactly as Studio's block
       reassign does (the shared record_correction door). The dropdown offers
-      the ACTIVE project's REAL cast (SpeakerCorrection.persona_id is an FK
-      to personas — the lab's typed cast is prompt-side labels with synthetic
-      ids and can never be recorded), plus the non-teaching Narrator/unknown;
+      the ACTIVE project's REAL speakers (SpeakerCorrection.speaker_id is an
+      FK to speakers — the lab's typed cast is prompt-side labels with
+      synthetic ids and can never be recorded), plus the non-teaching
+      Narrator/unknown;
   (7) cross-column disagreement highlighting (this component receives EVERY
       column's results — a wavy underline marks where this column disagrees
       with the first);
@@ -73,67 +74,66 @@ const IDISH = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$|^c
 
 function speakerLabel(spk) {
   if (!spk || spk === "unknown") return "unknown";
-  if (spk === "narrator" || spk === narratorPersonaId.value) return "Narrator";
+  if (spk === "narrator" || spk === narratorSpeakerId.value) return "Narrator";
   // The pipeline echoes the ids the run was given (the typed lab cast); a
-  // reassigned row carries a REAL persona id instead.
+  // reassigned row carries a REAL speaker id instead.
   return (
     cast.value.find((c) => c.id === spk)?.name
-    || castRows.value.find((c) => c.persona_id === spk)?.persona_name
+    || castRows.value.find((c) => c.id === spk)?.name
     || (IDISH.test(spk) ? "unknown" : spk)
   );
 }
 // ── (6) Reassign — writes correction memory like Studio. ──────────────
 // Corrections are per-project; the write targets the ACTIVE project (named in
 // the toast the write raises). No project open → the reassign still updates the
-// row here and says so. The teachable choices are the project's REAL cast
-// (persona rows — the FK the correction table demands), never the typed lab
-// cast's synthetic ids.
+// row here and says so. The teachable choices are the project's REAL speakers
+// (the FK the correction table demands), never the typed lab cast's synthetic
+// ids.
 const projectId = computed(() => activeProjectStore.id || null);
 const projectName = computed(() => {
   const id = projectId.value;
   if (!id) return "";
   return projectsStore.items?.find((p) => p.id === id)?.name || id;
 });
-// The cast endpoint ships the NAME with the id (2026-08-15) — no client-side
-// id→name lookup, so an empty persona cache can no longer turn this dropdown
-// into a column of UUIDs.
+// The book's speakers, each with its name (2026-09-29) — no id→name lookup,
+// so this dropdown can never turn into a column of UUIDs.
 const castRows = ref([]);
 async function loadProjectCast() {
   if (!projectId.value) { castRows.value = []; return; }
-  const r = await api.safeRequest(`/v1/projects/${projectId.value}/cast`, { cast: [] });
-  castRows.value = (r?.cast || []).filter((c) => c.persona_name);
+  const r = await api.safeRequest(`/v1/projects/${projectId.value}/speakers`, { speakers: [] });
+  castRows.value = (r?.speakers || []).filter((c) => c.name);
 }
-const narratorPersonaId = computed(
-  () => castRows.value.find((c) => c.role_label === "narrator")?.persona_id || "");
+const narratorSpeakerId = computed(
+  () => castRows.value.find((c) => c.role_label === "narrator")?.id || "");
 // ONE Narrator entry: the literal, which is non-teaching by Studio's rule, so
-// the narrator PERSONA is filtered out rather than offered twice.
+// the narrator SPEAKER is filtered out rather than offered twice.
 const reassignOptions = computed(() => [
   { value: "narrator", label: "Narrator" },
   ...castRows.value
     .filter((c) => c.role_label !== "narrator")
-    .map((c) => ({ value: c.persona_id, label: c.persona_name })),
+    .map((c) => ({ value: c.id, label: c.name })),
   { value: "unknown", label: "unknown" },
 ]);
-const personaIdByName = computed(() => {
+const speakerIdByName = computed(() => {
   const m = new Map();
   for (const c of castRows.value) {
-    if (c.role_label !== "narrator") m.set(c.persona_name.toLowerCase(), c.persona_id);
+    if (c.role_label !== "narrator") m.set(c.name.toLowerCase(), c.id);
   }
   return m;
 });
 // Which option this row is ON. A run answers with the ids it was GIVEN: the
-// Lab parses the Characters box into synthetic ids (`c_mara_0` —
-// attributionLab.js:37) while these options are real personas, so the box
+// Lab parses the Speakers box into synthetic ids (`c_mara_0` —
+// attributionLab.js:37) while these options are real speakers, so the box
 // matched nothing and rendered empty. Bridge the two id spaces by NAME — the
-// box is filled from the project's cast, so the strings are the same.
-// Production rows already carry persona ids and match directly.
+// box is filled from the project's speakers, so the strings are the same.
+// Production rows already carry speaker ids and match directly.
 function selectedFor(row) {
   const spk = row.speaker;
   if (!spk || spk === "unknown" || spk === "narrator") return spk || "";
-  if (spk === narratorPersonaId.value) return "narrator";
-  if (castRows.value.some((c) => c.persona_id === spk)) return spk;
+  if (spk === narratorSpeakerId.value) return "narrator";
+  if (castRows.value.some((c) => c.id === spk)) return spk;
   const name = cast.value.find((c) => c.id === spk)?.name || spk;
-  return personaIdByName.value.get(String(name).toLowerCase()) || "";
+  return speakerIdByName.value.get(String(name).toLowerCase()) || "";
 }
 
 onMounted(() => {
@@ -146,7 +146,7 @@ async function reassign(row, newSpeaker) {
   if (newSpeaker === prev) return;
   row.speaker = newSpeaker;
   row.source = "corrected";
-  // Only a real character teaches the model (Studio's rule: narrator splits are
+  // Only a real speaker teaches the model (Studio's rule: narrator splits are
   // mechanical, "unknown" teaches nothing).
   const teaches = newSpeaker && newSpeaker !== "narrator" && newSpeaker !== "unknown";
   if (!teaches) return;
@@ -158,7 +158,7 @@ async function reassign(row, newSpeaker) {
     await api.request(`/v1/projects/${projectId.value}/corrections`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text_snippet: row.text || "", persona_id: newSpeaker }),
+      body: JSON.stringify({ text_snippet: row.text || "", speaker_id: newSpeaker }),
     });
     pushToast({ message: `Recorded — the next run for ${projectName.value} learns from it.`, kind: "success", duration: 3000 });
   } catch (e) {
@@ -219,7 +219,7 @@ async function reassign(row, newSpeaker) {
         <span class="attr__text">{{ row.text }}</span>
         <UiSelect class="attr__reassign" width="id" :model-value="selectedFor(row)"
           placeholder="Assign…"
-          :options="reassignOptions" title="Correct the speaker — a real character teaches the next run"
+          :options="reassignOptions" title="Correct the speaker — a real speaker teaches the next run"
           @update:model-value="(v) => reassign(row, v)" />
       </div>
     </div>

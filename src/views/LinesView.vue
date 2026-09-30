@@ -3,7 +3,7 @@
   LinesView — the game dev's home base (mock #game/3, CONCEPTS §1).
 
   A grid, not a manuscript: every line of the project with its stable
-  line id, character, text, and DERIVED take status (none / rendered /
+  line id, speaker, text, and DERIVED take status (none / rendered /
   stale — server computes it from the latest take's text). Grouped by
   scene. Re-import merges the writers' next sheet by line id; the stale
   banner re-renders exactly the changed lines; Export downloads the
@@ -57,7 +57,7 @@ const filtered = computed(() => {
       (l) =>
         (l.line_id || "").toLowerCase().includes(q) ||
         (l.text || "").toLowerCase().includes(q) ||
-        (l.character || "").toLowerCase().includes(q),
+        (l.speaker || "").toLowerCase().includes(q),
     );
   }
   return list;
@@ -81,7 +81,7 @@ const lineKey = (r) => (r?.__group ? `g:${r.scene_id}` : r?.block_id);
 const groupRowClass = (r) => (r?.__group ? "lines__group" : false);
 const LINE_COLUMNS = [
   { id: "line_id", accessorKey: "line_id", header: "Line ID", sortable: true },
-  { id: "character", accessorKey: "character", header: "Character", sortable: true },
+  { id: "speaker", accessorKey: "speaker", header: "Speaker", sortable: true },
   { id: "text", header: "Text" },
   { id: "take", header: "Take" },
   { id: "actions", header: "", headerStyle: { width: "56px" },
@@ -244,7 +244,7 @@ watch(selectedProjectId, (id) => {
     <div class="jv-lib-toolbar lines__toolbar">
       <UiSelect v-if="!embedded" v-model="selectedProjectId" class="lines__project" title="Game projects" placeholder="— no game projects —"
         :options="gameProjects" option-label="name" option-value="id" @update:model-value="loadLines" />
-      <UiInput v-model="search" class="lines__search" placeholder="Search text, id, or character…" title="Filter the grid" />
+      <UiInput v-model="search" class="lines__search" placeholder="Search text, id, or speaker…" title="Filter the grid" />
       <div class="lines__chips">
         <UiChip
           v-for="f in ['all', 'rendered', 'stale', 'none']"
@@ -276,7 +276,7 @@ watch(selectedProjectId, (id) => {
         {{ row.title }} — {{ row.count }} line{{ row.count === 1 ? "" : "s" }}
       </template>
       <template #line_id="{ row }"><span class="jv-mono lines__id">{{ row.line_id || "—" }}</span></template>
-      <template #character="{ row }"><span class="lines__who">{{ row.character || "—" }}</span></template>
+      <template #speaker="{ row }"><span class="lines__who">{{ row.speaker || "—" }}</span></template>
       <template #text="{ row }"><span class="lines__text" :title="row.text">{{ row.text }}</span></template>
       <template #take="{ row }"><UiTag :intent="statusPill(row.take_status).intent">{{ statusPill(row.take_status).label }}</UiTag></template>
       <template #actions="{ row }">

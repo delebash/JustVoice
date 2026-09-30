@@ -23,111 +23,133 @@ and answered wrongly each time, when the answers were sitting in the code and in
 
 ---
 
-## 1. The entity model — Voice · Persona · Cast
+## 1. The entity model — Voice · Persona · Speaker · Cast
 
-**This is the question that keeps getting re-litigated. It was decided
-2026-06-11 (`CONCEPTS.md` §2) and the code still matches.**
-
-> **There are only TWO entities. There is no "cast member" object, and none
-> exists in storage.**
+**Re-decided 2026-09-29** ("option a, go ahead and plan and code it" —
+`docs/dev/TASKS.md`, *Speakers and personas become two things*; build plan
+`docs/plans/2026-09-29-speakers-and-personas.md`). Until then one `Persona` row
+was both the person in a book and their sound, and the cast was a join table.
+That merge is gone:
 
 | | What it is | Where |
 |---|---|---|
-| **Voice** | **The instrument.** A preset, clone, blend, trained LoRA, import or designed voice. No character attached. | JSON manifests on disk — `storage/voices.py`, written by `atomic_write_json` |
-| **Persona** | **The character.** A library object bundling everything that makes a character sound like themselves. Crosses projects and project kinds. | `personas` table, `database/models.py:83` |
-| **Cast** | **Not a third thing.** The Studio surface listing the personas speaking *in this project*. | `project_personas` — a join table: `project_id · persona_id · role_label`. **Three columns, nothing else.** `database/models.py:199` |
+| **Voice** | **The instrument.** A preset, clone, blend, trained LoRA, import or designed voice. No person attached. | JSON manifests on disk — `storage/voices.py`, written by `atomic_write_json` |
+| **Persona** | **A finished spoken voice** — a voice and its engine, plus speed, pitch, gain, spoken direction, effects, lexicon, and a short note on how it sounds. Library-level: plays any number of speakers, in any book and project kind. | `personas` table, `database/models.py:83` |
+| **Speaker** | **A person in one book** — a name, the other names the text uses (*Also called*), and *Who they are*. Discover finds them, Script gives lines to them. Deleted with its book (`ondelete=CASCADE`). | `speakers` table, `database/models.py:198` |
+| **Cast** | **Not a table.** Each speaker's persona — `speakers.persona_id` (`ondelete=SET NULL`, `database/models.py:218`). One persona can play many speakers. | the Studio step `components/StudioCast.vue` |
 
-**What lives on a Persona** (`database/models.py:83-135`) — the full list, because
+A line points at a speaker (`blocks.speaker_id`, `database/models.py:259`), and
+the speaker at its persona. **Generations, lexicons, channels, MCP bindings and
+training jobs stay on the persona** — they belong to the voice.
+
+**What lives on a Persona** (`database/models.py:83-129`) — the full list, because
 "what is tuned on a persona" keeps getting asked:
 
 | Field | What it does |
 |---|---|
-| `name`, `language`, `avatar_path` | identity |
+| `name`, `language`, `avatar_path` | identity. **No name rule** — two personas may share a name; "Used by (speaker — book)" on the Personas page tells them apart |
 | `voice_id` | the instrument. **Not** an FK — voices are JSON manifests, the column carries the id verbatim |
 | `voice_instruct` | the spoken-delivery instruction. **The only persona text that reaches the synth.** Composed into `delivery.instruct` and consumed by **Qwen3 CustomVoice alone** — `luxtts/engine.py` contains no instruct read and its manifest declares `instruct_field: False`, and Qwen3 Base's clone call never passes it. This row said "Qwen3 CustomVoice, LuxTTS" until 2026-08-17, as did the persona editor's own label |
-| `personality` | the character sheet. Drives Compose / Rewrite / smart-assign / the game-export sidecar. **Never reaches the synth.** Max 2000 chars at the API layer |
+| `note` | a short note on how it sounds (replaced `personality`, the character sheet, 2026-09-29). Read by Generate's Compose / Rewrite (`personas_api._require_persona_with_note` refuses without one) and by Smart-assign as the persona's `tone`. **Never reaches the synth** |
 | `default_delivery` | JSON `Delivery` — speed, pitch, gain, etc. |
 | `effects_chain` | JSON array of `{type, params}` |
 | `engine_override` | force an engine regardless of the voice's default |
-| `lexicon_id` | FK → `lexicons`, `ondelete=SET NULL` |
-| `imported_from` / `imported_id` | provenance: `justwrite` · `manual` · `unreal` · `voice_profile`. **Re-import updates in place, never duplicates** |
+| `lexicon_id` | FK → `lexicons`, `ondelete=SET NULL` — applies to every speaker the persona plays |
+| `imported_from` / `imported_id` | provenance: `manual` · `voice_profile` (`migrate_profiles.py`). No import makes a persona any more |
 
-**No persona is special** (2026-09-29). A project's narrator is the cast member
-whose `project_personas.role_label` is `"narrator"` (else one named "Narrator")
-— `extraction_api._narrator_persona_id`, `StudioView.narratorPersona`. Any cast
-member can hold it — Studio Cast's per-card "Narrator" checkbox calls
-`PUT /v1/projects/{id}/narrator`, which moves the role (one per
-project) and the `source == "narration"` lines of the old narrator (or of nobody)
-with it; `POST` (Add Narrator) checks the role before the name, then links a
-library "Narrator" in no cast before creating one, and moves the unowned
-narration too (`projects_api.move_narration`, shared with the PUT). **Nothing
-makes a narrator on its own** (2026-09-29): create makes none, and import only
-gives the role to a book character called Narrator (`_adopt_book_narrator`).
-Every persona deletes the same way; its cast links cascade and its lines'
-`persona_id` goes null.
+**What lives on a Speaker** (`database/models.py:198-228`): `project_id` ·
+`name` · `aliases` (JSON — *Also called*) · `description` (*Who they are*, read by
+the AI, never heard) · `persona_id` (the cast) · `role_label` (`"narrator"` or
+null) · `imported_from` / `imported_id` (a re-import merges on them). API shape
+`models.Speaker` also carries `persona_name` and `lines` (the speaker's line
+count, `_speaker_helpers.speaker_line_counts`).
 
-**Names are unique within a book** (2026-09-29), not across the library —
-`_persona_helpers.same_name` (casefold, spaces collapsed) + `refuse_same_name`
-(409). Checked by `POST /v1/projects/{id}/cast`, Discover's promote (the
-library-link path and `ensure_project_persona(unique_in_cast=True)`), and
-`PUT /v1/personas/{id}` when the name changes (every project the persona is
-in). Import paths don't check — the book's characters arrive as they are.
+**The speaker API** — `api/speakers_api.py`, helpers in `api/_speaker_helpers.py`
+(which replaced `_persona_helpers.py`):
 
-`voice_instruct` and `personality` are **two fields, not three** — the
-2026-08-15 split (Slice A, `f54c4ea`). One field feeding both the synth and the
-LLM prompts was the bug.
+| Route | What it does |
+|---|---|
+| `GET /v1/projects/{id}/speakers` | the book's speakers, most lines first |
+| `POST /v1/projects/{id}/speakers` | add one (Cast's ＋ Add); 409 on a name the book has |
+| `PATCH /v1/speakers/{id}` | name · aliases · description · `persona_id` (null = un-cast); a rename into a clash is 409 |
+| `DELETE /v1/speakers/{id}` | remove from the book; its lines and remembered fixes lose the speaker; returns `{"deleted": true, "lines": n}` |
+| `POST /v1/projects/{id}/speakers/uncast` | Clear cast — every speaker loses its persona, the speakers stay |
+| `PUT /v1/projects/{id}/narrator` `{speaker_id}` | move the narrator role (one per book) and the `source == "narration"` lines of the old narrator (or of nobody) with it (`move_narration`) |
+| `POST /v1/projects/{id}/narrator` | + Add Narrator: idempotent; a speaker called Narrator takes the role, else a new one is made, then unowned narration moves to it |
+| `POST /v1/speakers/{id}/rewrite` | Script's *Rewrite in character* from the speaker's Who they are (`{{personality}}` in the `persona_rewrite` template); 400 when it is empty |
+| `POST /v1/projects/{id}/speakers/promote` | Discover's ＋ Add (in `extraction_api.py`); `{name, description, aliases}` per candidate; a batch with a name the book has is refused whole (409) |
+
+**Every new speaker is cast by exact name** (2026-09-29, "Every new speaker"):
+`ensure_speaker` (`_speaker_helpers.py:90`) gives a new speaker the persona
+`persona_named` finds — exactly one persona whose name matches (casefold, spaces
+collapsed); two of that name match none. Used by Discover's promote, Cast's
+＋ Add, + Add Narrator and every import (`projects_api._materialize_standard`,
+which creates speakers only — never personas).
+
+**Names are unique within a book — for speakers** (2026-09-29):
+`same_name` + `refuse_same_name` (409, `_speaker_helpers.py:70`), checked on add,
+rename and promote. Imports don't check — the book's people arrive as they are.
+Personas have no name rule.
+
+**The narrator** is the speaker whose `role_label` is `"narrator"` (else one
+named "Narrator") — `_speaker_helpers.narrator_speaker_id`,
+`StudioView.narratorSpeaker`. Any speaker can hold it — Studio Cast's per-card
+"Narrator" checkbox calls the PUT above. **Nothing makes a narrator on its own**:
+create makes none, and an import only gives the role to a book speaker called
+Narrator (`adopt_book_narrator`, `_speaker_helpers.py:203`).
+
+**Deleting** a persona un-casts every speaker it played (`SET NULL`); their lines
+keep their speaker. Deleting a speaker leaves its lines with no speaker.
+Deleting a book deletes its speakers.
 
 ### The consequences that matter for UI
 
-- **A cast row IS a persona.** Editing voice or delivery on the Cast surface
-  edits the persona, and therefore **follows it into every other project**.
-  `CONCEPTS.md` §2 says the UI must make that visible (*"backed by persona ➜"*)
-  so cross-project edits never surprise anyone. **That affordance does not exist
-  in the app or the mock.**
-- **One voice can back many personas**, with different delivery on each — *"Old
-  Crow voices Tom Harlan in Stillwater and Guard Captain Hale in Emberfall"*
-  (`CONCEPTS.md` §2). **This is how a shared way of speaking is expressed.** Two
-  characters do not share a persona; they share a *voice*, and each persona
-  tunes it differently.
-- **Personas are library-level for persistence** — book 2 reuses book 1's cast
-  and it sounds identical; the same persona can speak in an audiobook and a game.
-- `PersonasView.vue` already implements this: cross-project filters
-  (All / Used / Unused / By project), a **Used in** column, a cross-project usage
-  panel, and an editor split into **"How they sound"** (voice · engine override ·
-  lexicon override · spoken delivery) and **"How they're written"** (the
-  character sheet, labelled *"it never changes the audio"*).
+- **Cast is a book-level edit.** Clicking a persona on Cast PATCHes
+  `speakers.persona_id` (`StudioCast.vue` `assign()`); it never writes the
+  persona. The persona's voice and settings are edited on the Personas page —
+  Cast's *Edit their persona →* opens it there (`/personas?open=<id>`), and it
+  **follows the persona into every book that uses it**. The Personas page shows
+  that reach as **Used by** (speaker — book) and a *Used by* panel with each
+  speaker's line count.
+- **One persona can play many speakers** ("Two speakers can share one persona —
+  change it once and both change"), and **one voice can back many personas**,
+  with different delivery on each (`CONCEPTS.md` §2's *"Old Crow voices Tom
+  Harlan in Stillwater and Guard Captain Hale in Emberfall"*).
+- **Personas are library-level for persistence** — book 2 casts book 1's
+  personas and they sound identical; the same persona can speak in an audiobook
+  and a game.
+- `PersonasView.vue`: cross-project filters (All / Used / Unused / By project), a
+  **Used by** column, the *Used by* panel with *Open Cast →*, and an editor whose
+  **"How they sound"** section is voice · engine override · lexicon override ·
+  spoken delivery, plus **Note on how it sounds** ("it never changes the audio").
 
 ### The direction of assignment — do not get this backwards
 
-> **A persona is assigned a voice. A cast is assigned a persona.**
+> **A persona is assigned a voice. A speaker is assigned a persona.**
 > **The persona is the ONE place an output voice is defined** (user ruling,
-> 2026-08-16).
+> 2026-08-16, and again 2026-09-29: *"a persona is the actual spoken voice
+> adjusted with pitch speed and other settings"*).
 
 Verified end to end:
 
 - `Persona.voice_id` — the voice lives on the persona.
-- `POST /v1/projects/{id}/cast` accepts **`persona_id` + `role_label`, nothing
-  else** (`projects_api.py:599`). `ProjectPersona` has three columns.
-- `assignVoice(personaId, voiceId)` in `StudioView.vue:1467` **PUTs the persona**
-  with a new `voice_id`. It is a persona edit, wearing a project-scoped screen.
+- `speakers.persona_id` — the only link from a book to a voice. Render follows
+  **line → speaker → persona → voice** (`_speaker_helpers.persona_for_block`,
+  `:137`; `render_chapter_api` preloads the book's speakers, `:129`).
 
 **There is no cast-level voice override in the code.** `grep` for
-`voice_override` across `server/` and `src/` returns nothing, and no per-project
-or per-block voice column exists (`Block` has `persona_id` only). So there is
-nothing to delete — the rule already holds in the data.
+`voice_override` across `server/` and `src/` returns nothing; `Block` has
+`speaker_id` only and `Speaker` has `persona_id` only. So there is nothing to
+delete — the rule holds in the data.
 
-**What breaks the "one place" rule is presentation, plus two real leftovers:**
+**What breaks the "one place" rule is two real leftovers:**
 
-1. **Studio · Cast is titled "Map people to voices"** and looks project-local
-   while writing a library object. `CONCEPTS.md` §2 already required a *"backed
-   by persona ➜"* affordance so the cross-project effect is visible. It does not
-   exist.
-2. **`RenderPreset.voice_id` is a column named `voice_id` that is a foreign key
-   to `personas.id`** (`database/models.py:524`). It is read by nothing at
+1. **`RenderPreset.voice_id` is a column named `voice_id` that is a foreign key
+   to `personas.id`** (`database/models.py:570`). It is read by nothing at
    render, and it is `ondelete="RESTRICT"`, so a dead misnamed field can block
    deleting a persona. This is a literal second place a "voice" appears to be
    set, and it is the naming collision behind much of the confusion.
-3. **`Persona.engine_override`** is a second lever on what comes out, sitting
+2. **`Persona.engine_override`** is a second lever on what comes out, sitting
    beside `voice_id`.
 
 ### Where a voice is MADE — every door produces a `Voice`, never a persona
@@ -156,20 +178,33 @@ so a loudness correction can only be applied at render.)
 
 So the app already answers *"where do you build a voice"*: **in the voice
 library.** The persona then **selects** one — `PersonasView`'s "How they sound"
-section is a `UiSelect` over existing voices, and Studio · Cast's library panel
-is a picker. Nothing in the persona path creates an artifact.
+section is a `UiSelect` over existing voices. Studio · Cast's right-hand panel
+lists **personas**, never voices (the voice list there died 2026-09-29). Nothing
+in the persona path creates an artifact.
 
 One inconsistency worth knowing: `TrainingJob.persona_id` exists in the
-SQLAlchemy model (`database/models.py:642`, CASCADE) while the live training
+SQLAlchemy model (`database/models.py:675`, CASCADE) while the live training
 path keys off `voice_name` / `final_voice_id` in the JSON store
 (`storage/training_jobs.py`). The produced artifact is a **Voice** either way.
 
 ### Vocabulary (ruled 2026-08-16, verified against the code)
 
-> A **persona** is the entity. The **cast** is the personas in this project. A
-> line's **speaker** is which persona says it. **Never "character"** — the word
-> appears nowhere in the schema or the API.
+> A **persona** is a finished voice. A **speaker** is a person in one book
+> (`speakers`). The **cast** is each speaker's persona. A line's speaker is
+> `blocks.speaker_id`. **Never "character"** on a screen or in a doc — for any
+> project kind, no "NPCs", no "Hosts" (re-ruled 2026-09-29, *"speakers
+> everythwere"*).
 
+The word survives only where it names an outside format or a prompt variable:
+the import standard schema (`characters`, `character_id`, `StandardCharacter`),
+the CSV `character` column, JustWrite's `book.json`, the Smart-assign request's
+`characters` list, the analyze-text / discover-speakers request fields
+(`characters`, `known_characters`), and the words the prompts themselves say
+to the model ("Known characters:", "Characters in this scene:"). The prompt
+PLACEHOLDERS are `{{speakers}}`, `{{known_speakers}}` and Smart-assign's
+`{{personas}}` (2026-09-29), which the Lab shows as its *Speakers* / *Known
+speakers* / *Personas* boxes — renamed without changing one byte the model
+reads (`test_renamed_placeholders_keep_every_word_the_model_reads`).
 Attribution words are real and distinct: `discover-speakers`,
 `SpeakerCandidate`, `speaker_attribution`.
 
@@ -189,8 +224,8 @@ podcast: show/episode/segment.
 |---|---|---|
 | `projects` | `project_type` · `default_lexicon_id` · `mastering_preset` · provenance | `project_type` is the per-kind switch |
 | `scenes` | `project_id` · `position` · `title` | a chapter / quest / episode |
-| `blocks` | `scene_id` · `position` · `text` · **`persona_id`** · `direction` · `extraction_confidence` · `source` | the atomic unit of render + take versioning. `persona_id` is `SET NULL` |
-| `project_personas` | `project_id` · `persona_id` · `role_label` | the cast. Nothing else |
+| `blocks` | `scene_id` · `position` · `text` · **`speaker_id`** · `direction` · `extraction_confidence` · `source` | the atomic unit of render + take versioning. `speaker_id` → speakers, `SET NULL` |
+| `speakers` | `project_id` · `name` · `aliases` · `description` · `persona_id` · `role_label` · `imported_from` / `imported_id` | the people in one book; `persona_id` is the cast (`SET NULL`). See §1 |
 | `personas` | see §1 | |
 | `lexicons` / `lexicon_entries` | `scope` = global \| project \| persona; `notation` default `phonetic` | |
 | `generations` | `block_id` · `persona_id` · `text` · `engine` · `seed` · `instruct` · `audio_path` · `status` · `ok_status` · `is_favorited` · `source` · `preset_id` · `effects_chain` · `cache_key` | one synth result |
@@ -203,7 +238,7 @@ podcast: show/episode/segment.
 | `effect_presets` | `chain_json` · `is_builtin` · `sort_order` | named effect chains |
 | `render_presets` | `voice_id` (**FK → personas, `ondelete=RESTRICT`**) · `delivery_json` · `effects_chain` · `master` · `lexicons_json` · `seed` · `cache_scope` | see §7 |
 | `webhooks` | `events_json` · `secret_hash` · `log_tail_json` | |
-| `speaker_corrections` | `project_id` · `text_snippet` · `persona_id` → personas (named `character_id` until 2026-08-22) | fed back into attribution as `corrections` |
+| `speaker_corrections` | `project_id` · `text_snippet` · `speaker_id` → speakers, `SET NULL` (`persona_id` until 2026-09-29, `character_id` until 2026-08-22) | fed back into attribution as `corrections` |
 | `training_jobs` | `persona_id` · `engine` · `status` · sample counts · `loss_history_json` · `adapter_path` | LoRA training |
 | `mcp_bindings` | `client_id` · `persona_id` · `default_engine` | dictation clients |
 | `prefs` / `settings` | key/value; `settings` is a single row of JSON | renderer UI prefs + all operator knobs |
@@ -261,7 +296,7 @@ Three facts this grid exists to keep visible:
 - **Prose direction reaches one checkpoint, and that checkpoint cannot clone.**
   Qwen3 Base clones and drops instruct — `engine.py`'s clone branch passes
   text, reference and language only. So "direct in words" and "use this
-  character's cloned voice" are a choice today. The way to have both is a LoRA
+  speaker's cloned voice" are a choice today. The way to have both is a LoRA
   on an instruct-capable checkpoint.
 - **`tada/engine.py` reads no delivery field at all.** Text, reference clip,
   language, seed. Nothing else.
@@ -409,20 +444,21 @@ HF source, for pinning.
 unattributed for two different reasons — unsure, or never answered.
 
 **What a run writes** (`extraction_api._persist_attribution`): the scene's
-metadata gets `source_text`, `analyzed_at` and `analyzed_cast` (the cast ids it
-could choose from — "added since" compares against it); each block's metadata
+metadata gets `source_text`, `analyzed_at` and `analyzed_cast` (the speaker ids
+it could choose from — "added since" compares against it); each block's metadata
 gets `paragraph_idx`, `anchor_words`, `llm_speaker` (only where the book won and
 the model differed — `flags.model_disagreed`), `floored_from`, and on an
-in-place re-analyze that changes a line's speaker, `prev_persona_id` (the key's
+in-place re-analyze that changes a line's speaker, `prev_speaker_id` (the key's
 presence is the "changed" mark; the block PATCH drops it when the line becomes
 `corrected`).
 
 **Script's flags — `extraction/flags.py`** (Slice 3, 2026-09-29): `flag_groups`
-is a pure function over a chapter's lines — **run** (one persona, three or more
+is a pure function over a chapter's lines — **run** (one speaker, three or more
 turns with no reply; a paragraph that leaves its quote open carries on into the
-next, so a long speech is one turn), **only** (a cast persona's only line),
-**disagree** (`llm_speaker` set) — plus
-`not_in_cast`. Marks go only on lines whose source Analyze wrote.
+next, so a long speech is one turn), **only** (a speaker's only line),
+**disagree** (`llm_speaker` set). (`not_in_cast` died 2026-09-29: a line's
+speaker is always one of the book's.) Marks go only on lines whose source
+Analyze wrote.
 `server/scripts/eval_attribution.py` imports the same function (via
 `lines_from_rows`) and prints caught / missed / false alarms with every run.
 `GET /v1/projects/{id}/script` (the grid's rows) and `GET /v1/scenes/{id}/script`
@@ -432,16 +468,16 @@ next, so a long speech is one turn), **only** (a cast persona's only line),
 
 **Undo's server half:** the block PATCH takes `no_fix` (no correction row),
 returns the `fix_id` a speaker change saved, and treats an explicit `null` for
-`persona_id` / `source` / `extraction_confidence` as "clear it";
+`speaker_id` / `source` / `extraction_confidence` as "clear it";
 `DELETE /v1/projects/{id}/corrections/{fix_id}` removes one fix.
 
 **Two separate endpoints, often confused:**
 
-- `POST /v1/scenes/{id}/analyze` — attributes lines to personas **already in the
-  cast**.
+- `POST /v1/scenes/{id}/analyze` — gives lines to the book's **speakers**.
 - `POST /v1/scenes/{id}/discover-speakers` — finds names in the prose that are
-  **not** in the cast. `POST /v1/projects/{id}/personas/promote` turns candidates
-  into personas and links them to the project.
+  **not** speakers of the book. `POST /v1/projects/{id}/speakers/promote` turns
+  candidates into speakers (cast with the persona of exactly their name, if the
+  library has one).
 
 **Discover is its own Studio step** (2026-09-27): `components/StudioDiscover.vue`
 queues its ticked chapters on the project's chapter run
@@ -457,20 +493,28 @@ Analyze no longer runs it afterwards. **Each scan is saved on its
 chapter** — `scene.metadata.discover = {scanned_at, candidates, named_cast}`,
 written by the discover endpoint and replaced only by that chapter's next scan
 (2026-09-29: nothing prunes it — Add and Ignore change a row's status, not the
-record). `candidates` are the model's names that aren't cast (ignored ones
-kept); `named_cast` the cast members the text names, found without the model by
-`names.cast_named_in`. The component holds no results: `studioStatus.foundSpeakers`
-merges the scenes' records against the current cast and ignore list into one
-list with a status (cast · library · new · ignored); Studio keeps it in a
-`KeepAlive` so a scan survives a step switch.
+record). `candidates` are the model's names that aren't speakers (ignored ones
+kept); `named_cast` the speakers the text names (`speaker_id` + name), found
+without the model by `names.cast_named_in`. The component holds no results:
+`studioStatus.foundSpeakers` merges the scenes' records against the current
+speakers, the persona library and the ignore list into one list with a status
+(cast · library · new · ignored — **library** = exactly one persona has that
+name, worked out in code; a removed speaker's row turns new); Studio keeps it in
+a `KeepAlive` so a scan survives a step switch. Rows In the cast have *Remove
+from cast* and tick into *Remove N selected* — both `DELETE /v1/speakers/{id}`
+after a confirmation naming each one's lines.
 
 **Names are matched in one place — `extraction/names.py`** (2026-09-27): full
 name / alias / first-or-last name (3+ letters), ambiguity refused, prefixes
-never. The discover endpoint uses it to drop a proposal that names someone
-cast, and to attach a `library_match` for a persona in the library but not the
-cast; promote's `persona_id` path re-links that persona and adds the variant to
-`Persona.aliases`. `Persona.aliases` also reaches Analyze through
-`_resolve_cast` (anchors.py and the attribution prompt already read it). The
+never. The discover endpoint uses it to drop a proposal that names one of the
+book's speakers. **The model is no longer sent the library** (2026-09-29):
+`identify.identify_speakers` takes no `library`, and the `{{library}}` lines and
+their system-prompt paragraph are gone — measured first with
+`npm run eval:discover` (old prompt with library 28/28 found, 0 wrong; without,
+26/28 and 4 wrong; the new prompt without = the old prompt without, so the
+paragraph cost nothing — the drop is the missing descriptions of people not in
+the cast). A speaker's aliases (*Also called*) reach Analyze through
+`_resolve_cast` (anchors.py and the attribution prompt read them). The
 ignore list is `Project.discover_ignored`, its own column because project PATCH
 replaces `metadata_json` wholesale. **Prompt test:** `npm run eval:discover`
 (`server/scripts/eval_discover.py`, scenario in
@@ -500,11 +544,12 @@ and adapter (`"book"`, `"adapter"`) and, for a book that ships no characters,
 carry the cast with its aliases. It is the only sample with a first-person
 narrator who also speaks and with speeches that run over several paragraphs.
 
-**The prompt is starved.** `_resolve_cast` (`extraction_api.py:145-167`)
-hardcodes role/gender/pronouns to `None` and aliases to `[]`;
-`format_characters` (`extraction/prompts.py:82-97`) reads those empty fields. The
-model receives **a bare list of `id` and `name`**. Test this before blaming a
-model for poor attribution.
+**The prompt is thin.** `_resolve_cast` (`extraction_api.py:153-172`) returns
+the book's speakers with role/gender/pronouns hardcoded to `None`, their
+*Also called* as `aliases` and *Who they are* as `description`;
+`format_characters` (`extraction/prompts.py:98-113`) sends `id`, `name` and
+`aliases` only — *Who they are* does not reach Analyze (one line of it is
+Discover's known list). Test this before blaming a model for poor attribution.
 
 ---
 
@@ -513,6 +558,10 @@ model for poor attribution.
 - **Single line:** `POST /v1/blocks/{block_id}/render` (`takes_api.py`) and
   `POST /v1/generate`.
 - **Chapter:** `POST /v1/render_chapter` (`render_chapter_api.py`).
+- **Who voices a line:** line → speaker → persona → voice, everywhere —
+  `_speaker_helpers.persona_for_block` for `render_jobs`, `takes_api` and
+  `export_voicelines`; `render_chapter_api` resolves the same chain from the
+  book's preloaded speakers.
 - **Batch job:** `POST /v1/render_jobs`, with cancel/resume and per-block retry.
 - **Core:** `render_core.py` — `render_line`, `probe_line_cached`,
   `_apply_lexicons`, `_resolve_engine_for_voice`,
@@ -575,16 +624,17 @@ engine-specific, and three fields are read by nothing at all.**
 | — | — | **`tada/engine.py` reads no delivery field at all** |
 
 **Design consequence, and it is a big one:** tuning does **not** move cleanly with
-a character across a recast. The **host-side half — gain, pitch, effects,
+a persona across a change of voice or engine. The **host-side half — gain, pitch, effects,
 lexicon, pauses — always survives**. The **engine half — speed, instruct,
-temperature — survives only if the new engine happens to honour it.** Cast a
-persona from Kokoro to Chatterbox and its `speed` silently stops doing anything.
+temperature — survives only if the new engine happens to honour it.** Move a
+persona's voice from Kokoro to Chatterbox and its `speed` silently stops doing
+anything.
 
 `emotion` is the single exception and the reason it is an enum rather than
 prose: it compiles into instruct prose for one family and into a token for the
 other, so it is the one piece of a *performance* that crosses the boundary.
 
-Any persona editor must therefore show, per field, whether the currently cast
+Any persona editor must therefore show, per field, whether the persona's current
 voice's engine honours it. The machinery exists —
 `GET /v1/engines/{id}/capabilities` and `capability_details.py`.
 
@@ -680,11 +730,13 @@ CustomVoice/VoiceDesign remains un-built and un-promised.
 render cache key. Lines rendered before the fix will re-render once.
 
 **Render refuses and names** rather than silently dropping
-(`render_chapter_api.py:174-190`):
+(`render_chapter_api.py:247-270`), all three in one *"This chapter isn't ready
+to render."* message:
 
 - *"N line(s) have no speaker: line 3 ("…") … Open Studio · Script and set one on
   each, or send them all to the narrator."*
-- *"No voice is cast for X — assign one in Studio · Cast."*
+- *"Nobody plays X yet — give them a persona in Studio · Cast."*
+- *"The persona X has no voice — pick one on the Personas page."*
 
 **Mastering targets are exactly four** — `mastering.py:38`:
 `acx · inaudio · podcast · youtube`. There is no "game asset" target.
@@ -713,7 +765,7 @@ exposes queue depth or the current engine.**
 
 | View | Lines | What it is |
 |---|---|---|
-| `StudioView` | **3132** | The four production steps. See below. |
+| `StudioView` | ~1440 (2026-09-29) | The production steps' container. Cast moved out to `components/StudioCast.vue` with the speakers/personas split (it was 3132 lines with the old Cast and its voice library inside). See below. |
 | `SettingsView` | 2099 | Workspace focus · connection · headless access · tokens · data location · disk · server bind · cache · limits · local model paths · generation pipeline · training · validation thresholds · testing/danger zone |
 | `ChapterView` | 1481 | The chapter **list** (columns **Chapter · Words · Est. audio · Script · Render**, filter chips, add/move/rename/delete, *Open in Studio ➜*) **and** the per-chapter block editor with takes (`＋ Generate first take`, set-default, regenerate, delete take) |
 | `VoicesView` | 1302 | The voice library. Columns **Name · Gender · Type · Engine · Lang · Samples · Gens · Effects · Channel · Cast as**. Actions: Guess unknown genders · Import .justvoice.zip · Clone new voice · Train LoRA · Blend with… Plus the **voice inspector** behind a row interaction |
@@ -728,7 +780,7 @@ exposes queue depth or the current engine.**
 | `RenderPresetsView` | 325 | **Name · Persona · Master target · Delivery** |
 | `CacheView` | 310 | Total on disk · by scope · recent entries · clear |
 | `RenderLabView` | 296 | Settings sweep (inside Labs) |
-| `LinesView` | 292 | Game voicelines grid — **Line ID · Character · Text · Take**, Re-import CSV, Export VO zip |
+| `LinesView` | 292 | Game voicelines grid — **Line ID · Speaker · Text · Take**, Re-import CSV, Export VO zip |
 | `AudioToolsView` | 261 | Analyze a WAV · apply a mastering target (inside Labs) |
 | `ImportReviewView` | 236 | Post-import check — **Chapter · Lines · Words · Est. audio** |
 | `WebhooksView` | 232 | Subscriptions |
@@ -757,14 +809,15 @@ active project so the title-bar switcher works while Studio is on screen.
 | Step | Where | What it is |
 |---|---|---|
 | **Overview** | `components/StudioOverview.vue` | Where-it-stands rows (`views/studioStatus.js`, pure + tested — counts from blocks, cast, the render cache and Script's grid rows; Script's two tags open the grid on "To check"), Continue, settings (title, author → M4B artist, description, kind, mastering target), re-import, .justvoice.zip, delete |
-| **Discover** | `components/StudioDiscover.vue` | Chapter grid (Found column) + Scan + Characters found (status per person, chips All · New · In the cast · Ignored; Add / Ignore / Undo); Ignored and Already-in-the-cast each have a ✕ per name and Clear all (the cast's keeps the Narrator) |
+| **Discover** | `components/StudioDiscover.vue` | Chapter grid (Found column) + Scan + Speakers found (status per person, chips All · New · In the cast · Ignored; Add / Ignore / Undo; In-the-cast rows *already in the cast* + Remove from cast; ticks → ＋ Add / Ignore / Remove N selected); Ignored and Already-in-the-cast each have a ✕ per name and Clear all (the cast's keeps the Narrator); every removal asks first |
+| **Cast** | `components/StudioCast.vue` | Speakers left (narrator card, cards with *also called*, Narrator tick, ✕ asks first; a game project gets a table), the selected speaker's Name / Also called / Who they are / *Edit their persona →*; personas right (search, engine filter, direction tag, ▶ plays its voice, ✎), click to assign; ＋ Add · ✕ Clear cast · ✨ Smart-assign |
 | **Script** | `components/StudioScript.vue` (the chapter grid) · `components/StudioScriptChapter.vue` (one chapter) | The grid reads `GET /v1/projects/{id}/script` (Studio owns the fetch; Overview reads the same rows) and queues Analyze on `services/chapterRun.js` — one run of chapters per project, one kit task per chapter, module state so it survives leaving Studio. The chapter page reads `GET /v1/scenes/{id}/script` and re-reads after every change; its selection, keys, set / swap / confirm and undo stack are `views/scriptReview.js` (pure, unit-tested). Rewrite-in-character is still StudioView's modal, opened by the page's right-click (`@rewrite`) until Slice 4 moves it to Render |
 | **Lines** (game) | `views/LinesView.vue` embedded with `:project-id` | the line grid, its own project picker hidden |
 
 | Step | Subtitle in the tab strip | What it does |
 |---|---|---|
 | **Script** | *"Who speaks each line"* | The chapter grid (**Lines · Analyzed · Book says · AI decided · Flagged · No speaker**), then a chapter's table **Speaker · Decided by · Text · Confidence · Check**. Right-click a line's text → Rewrite preview |
-| **Cast** | *"Map people to voices"* | Persona cards + a **Voice library** panel (*"Picking voice for X"* — select a card, click a voice). Narrator card: *"The voice of everything that isn't spoken"*. Actions: `＋ Add persona` (from the library) · `Clear cast` (*"unassign voices from all N cast members. The personas stay — only the voice links go"*) · `Smart-assign` · Audition · Open Speech engines. Game kind shows a table instead: **NPC · Role · Voice** |
+| **Cast** | *"Give each speaker a persona"* | Speaker cards + a **Personas** panel (*"Select a speaker, then click a persona to assign it."*). Actions: `＋ Add` (a speaker by name) · `✕ Clear cast` (*"Unassign personas from all N speakers. The speakers stay — only the persona links go."*) · `✨ Smart-assign` (applies at once). Game kind shows a table instead: **Speaker · Role · Persona** |
 | **Render** | *"Batch render + mastering"* | Table **# · Cached · Render preset · Check**. Select unrendered / Select all · Render · Cancel · Retry · Play · **Run ACX QC** · Suggest |
 | **Export** | *"Package + ACX checklist"* | Packaging (described in-code as a mock export screen) |
 
@@ -819,10 +872,10 @@ Verified 2026-08-15/16. **None of it is fixed.** Also filed in `TASKS.md`.
    `ondelete="RESTRICT"` against `personas`** — a dead field that can block
    deleting a persona for a reason no screen can explain.
 6. **The synth scheduler has no UI** — see §5.
-7. **The analyze prompt gets id + name only** — see §4.
+7. **The analyze prompt gets id, name and aliases only** — see §4.
 8. **ChapterView offers "Generate first take" on speaker-less blocks** and prints
    raw block UUIDs (`b0e22b69`) at the user — the render path refuses a block
-   with no persona, so the button cannot work.
+   with no speaker, so the button cannot work.
 9. **`StudioView.vue:257`'s step-order comment is stale** — see §6.
 10. ~~**`Delivery.pitch` is dead.**~~ **FIXED 2026-08-17.** No engine read it
     and the host never applied it, so every pitch slider in the app did
@@ -863,11 +916,11 @@ knob has no adapter reader, or an adapter override has no declaration.
 library, one lexicon set. What differs is the import/export pipeline and the
 per-kind surface:
 
-- **Audiobook producers** — long-form narration, multi-persona casting,
+- **Audiobook producers** — long-form narration, casting many speakers,
   pronunciation discipline, ACX mastering, the JustWrite workflow. Import EPUB /
   DOCX / `.jw.json`; export chapter WAVs → M4B at ACX −20 LUFS.
-- **Game developers** — Unreal, 50–500 NPC lines. **No Script step** — the CSV
-  names speakers. Line-first grid, stable line IDs, per-line WAV + JSON sidecar,
+- **Game developers** — Unreal, 50–500 dialogue lines. **No Script step** — the
+  CSV names speakers. Line-first grid, stable line IDs, per-line WAV + JSON sidecar,
   VO zip export.
 - **Podcasters** — multi-track Stories timeline, paralinguistic tags, effects
   chain; −16 LUFS stereo.
@@ -875,12 +928,13 @@ per-kind surface:
   project-shaped** — captures, not scenes.
 - **Accessibility** — real-time TTS, screen-reader integration. Future.
 
-**Persona creation depends on what the source file knows** (`CONCEPTS.md` §3):
-`.jw.json` and game CSV and podcast markdown all create personas **at import**;
-a bare EPUB/DOCX creates them **later**, via Script's discover pass. Dedup is by
-`imported_from + imported_id` — re-import updates in place.
+**Speaker creation depends on what the source file knows**: `.jw.json` and game
+CSV and podcast markdown all create speakers **at import**; a bare EPUB/DOCX
+creates them **later**, via Studio · Discover. No import creates a persona.
+Speakers dedup by `imported_from + imported_id` — re-import updates in place.
+(`CONCEPTS.md` §3 predates the split and says "personas".)
 
-**Voice assignment has three paths by scale** (`CONCEPTS.md` §4): smart-assign
-(one button proposes a whole cast) · card + library click (~5–15 personas) ·
-per-row dropdown (game/podcast table scale, with *"▶ test line"* auditioning on a
-real line from that persona's script).
+**Casting has two paths today** (`CONCEPTS.md` §4 planned three): Smart-assign
+(one button matches every speaker to a persona and applies it) · select a
+speaker card or table row, then click a persona. The planned per-row dropdown
+with *"▶ test line"* auditioning on the speaker's own line is not built.

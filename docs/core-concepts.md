@@ -9,14 +9,18 @@ JustVoice's data model is generic on purpose. The five use cases share one tree 
 | In an audiobook | In a game | In a podcast |
 |---|---|---|
 | Book | Voice line set | Episode |
-| Chapter | Scene / Quest / NPC | Segment |
+| Chapter | Scene / Quest | Segment |
 | Paragraph | Voiceline | Block |
 
 The terminology helper (`useCopy()`) renders the right word automatically based on the use case you picked at first launch.
 
 ## Project
 
-The top-level container. Has a `project_type` (audiobook / game_voicelines / podcast / custom), an `imported_from` provenance tag, a default mastering preset, and an optional default render preset. Cast (Personas assigned to the project) lives here.
+The top-level container. Has a `project_type` (audiobook / game_voicelines / podcast / custom), an `imported_from` provenance tag, a default mastering preset, and an optional default render preset. Its **speakers** live here — the people in it (see below).
+
+## Speaker
+
+A person in one project: a **name**, the other names the text uses (**Also called**), and **Who they are** — what the AI reads for attribution and for rewriting in character, never heard. Discover finds speakers, Script gives lines to them, and Cast gives each one a **persona** to speak with. Names are unique within a project — adding or renaming into a clash is refused (an import keeps the source's people as they are). One speaker can be the project's **narrator**, who reads everything outside quote marks; no project gets one on its own. Deleting a project deletes its speakers.
 
 ## Scene
 
@@ -24,7 +28,7 @@ A subdivision. Chapters for audiobooks, quests or dialogue sets for games, episo
 
 ## Block
 
-The smallest renderable unit. Holds the **text** that becomes audio, an optional **persona_id** (who's speaking), and an optional **direction** (delivery hint — e.g. "with growing dread"). Auto-attribution from prose runs at the Block level via the Script tab — see [take-versioning.md](take-versioning.md) and [personas.md](personas.md).
+The smallest renderable unit. Holds the **text** that becomes audio, an optional **speaker_id** (who's speaking), and an optional **direction** (delivery hint — e.g. "with growing dread"). Auto-attribution from prose runs at the Block level via the Script tab — see [take-versioning.md](take-versioning.md) and [personas.md](personas.md).
 
 ## Take
 
@@ -33,10 +37,10 @@ A rendered audio version of a Block. Multiple takes per Block; one is the **defa
 ## Voices, Personas, Lexicons — the three orthogonal layers
 
 - **Voice** = a TTS profile (cloned / preset / designed / blended). The thing the engine actually speaks with.
-- **Persona** = a named character bound to a voice. Two text fields, one job each: its **spoken delivery** becomes the TTS `instruct` for engines that take direction, and its **character sheet** drives the explicit Compose/Rewrite flows (preview-then-accept — never an automatic render-time rewrite) and casting suggestions. Optional lexicon override.
+- **Persona** = a finished spoken voice: a voice and its engine, plus speed, pitch, gain, spoken direction, effects, an optional lexicon override, and a short **note on how it sounds**. It lives in your library and plays any number of speakers, in any project. Its **spoken delivery** becomes the TTS `instruct` for engines that take direction; its **note** is what Generate's Compose/Rewrite (preview-then-accept — never an automatic render-time rewrite) and Smart-assign read.
 - **Lexicon** = a pronunciation dictionary. Maps "Beauchamp" → "BEE-chum" before TTS sees it.
 
-These compose. A persona has a voice; the voice can have effects; the persona can have a lexicon override; all three are queried for every Block render.
+These compose. A Block's speaker is played by a persona; the persona has a voice and can carry effects and a lexicon override. Every Block render follows **line → speaker → persona → voice**, and stops on a line with no speaker, a speaker with no persona, or a persona with no voice.
 
 ## Lists
 

@@ -38,12 +38,13 @@ from llm_runner.llm import LLMNotConfiguredError
 
 from ..app_state import get_state
 from ..database import get_db
-from ..database.models import Block, Persona, ProjectPersona, Scene, Take
+from ..database.models import Block, Scene, Speaker, Take
 from ..errors import conflict, not_found
 from ..extraction import AnalyzeRequest, analyze_scene
 from ..extraction.flags import model_disagreed
 from ..models import ProjectScript, SceneScript, ScriptChapter, ScriptFlag, ScriptLine, ScriptSpeaker
 from ..extraction.pipeline import AttributionModelError, auto_route
+from ._speaker_helpers import ensure_speaker, narrator_speaker_id, speaker_aliases
 
 log = logging.getLogger(__name__)
 
@@ -67,7 +68,7 @@ class AnalyzeSceneRequest(BaseModel):
     """Body for POST /v1/scenes/{id}/analyze.
 
     `text` is the raw scene prose to attribute. `characters` defaults to
-    the project's cast (via ProjectPersona) when omitted. `corrections`
+    the book's speakers when omitted. `corrections`
     defaults to the most-recent SpeakerCorrection rows for the project
     once Slice 2 lands.
     """
@@ -143,81 +144,40 @@ def _resolve_corrections(project_id: str, db: Session, *, limit: int = 12) -> li
     return [
         {
             "text_snippet": r.text_snippet,
-            "persona_id": r.persona_id or "unknown",
+            "speaker_id": r.speaker_id or "unknown",
         }
         for r in rows
     ]
 
 
 def _resolve_cast(scene_id: str, db: Session) -> list[dict]:
-    """Look up the project's cast (via ProjectPersona) for `scene_id`."""
+    """The book's speakers for `scene_id`, as attribution and Discover read
+    them: name, the other names the text uses, and who they are."""
     scene = db.query(Scene).filter(Scene.id == scene_id).first()
     if scene is None:
         return []
-    rows = (
-        db.query(Persona)
-        .join(ProjectPersona, ProjectPersona.persona_id == Persona.id)
-        .filter(ProjectPersona.project_id == scene.project_id)
-        .all()
-    )
     return [
         {
-            "id": p.id,
-            "name": p.name,
+            "id": s.id,
+            "name": s.name,
             "role": None,
-            "gender": None,  # Persona schema doesn't carry these fields
-            "pronouns": None,  # today; Phase 4 / Slice 4 (Smart-assign)
-            # Persona aliases (2026-09-27) — anchors.py and the attribution
-            # prompt always read this key; until now it was always empty.
-            "aliases": _persona_aliases(p),
-            # One line of the character sheet — Discover's known list (fix 2).
-            "description": p.personality,
+            "gender": None,
+            "pronouns": None,
+            # "Also called" — anchors.py and the attribution prompt read it.
+            "aliases": speaker_aliases(s),
+            # Who they are — one line of it is Discover's known list (fix 2).
+            "description": s.description,
         }
-        for p in rows
+        for s in db.query(Speaker).filter(Speaker.project_id == scene.project_id).all()
     ]
-
-
-def _persona_aliases(p) -> list[str]:
-    try:
-        out = json.loads(p.aliases) if getattr(p, "aliases", None) else []
-    except (TypeError, ValueError):
-        return []
-    return [str(a) for a in out if str(a).strip()] if isinstance(out, list) else []
 
 
 # ── Persistence — the analysis IS the chapter's blocks ───────────────────
 #
 # Decision 2 of the Script-tab restore: no new table, no new column, no
 # renderer-side store. A block that carries a `source` was attributed; the
-# Script tab rebuilds its table from `persona_id` + `extraction_confidence`
+# Script tab rebuilds its table from `speaker_id` + `extraction_confidence`
 # + `source` every time you open the chapter.
-
-
-def _narrator_persona_id(db: Session, project_id: str) -> str | None:
-    """The project's narrator — decision 4: narration rows bind to it
-    instead of null. None when the book has no narrator yet (since 2026-09-29
-    nothing makes one on its own): Analyze then leaves narration with no
-    speaker, and choosing a narrator moves those lines to it
-    (projects_api.move_narration). Matched by the cast's role_label first,
-    then by name for a cast member called Narrator without the label."""
-    row = (
-        db.query(ProjectPersona.persona_id)
-        .filter(
-            ProjectPersona.project_id == project_id,
-            ProjectPersona.role_label == "narrator",
-        )
-        .first()
-    )
-    if row:
-        return row[0]
-    row = (
-        db.query(Persona.id)
-        .join(ProjectPersona, ProjectPersona.persona_id == Persona.id)
-        .filter(ProjectPersona.project_id == project_id)
-        .filter(Persona.name.ilike("narrator"))
-        .first()
-    )
-    return row[0] if row else None
 
 
 # The Block.source values an Analyze run writes (pipeline.AttributionRow).
@@ -336,20 +296,17 @@ def _persist_attribution(db: Session, scene: Scene, rows: list, text: str) -> Pe
             "That run produced no lines to attribute, so nothing was saved. "
             "Check the chapter has text."
         )
-    narrator_id = _narrator_persona_id(db, scene.project_id)
+    narrator_id = narrator_speaker_id(db, scene.project_id)
     # The speakers the model was actually offered. It answers with ids from
     # the cast it was given, but nothing stops it inventing one — and
-    # Block.persona_id is a foreign key, so an invented id would fail the
+    # Block.speaker_id is a foreign key, so an invented id would fail the
     # whole insert. An unrecognized name means the line is unplaced, which
     # is what the Script tab and the render blocker are there for.
     known = {
-        pid
-        for (pid,) in db.query(ProjectPersona.persona_id).filter(
-            ProjectPersona.project_id == scene.project_id
-        )
+        sid for (sid,) in db.query(Speaker.id).filter(Speaker.project_id == scene.project_id)
     }
 
-    def persona_for(speaker: str) -> str | None:
+    def speaker_for(speaker: str) -> str | None:
         if speaker == "narrator":
             return narrator_id
         if not speaker or speaker == "unknown":
@@ -381,7 +338,7 @@ def _persist_attribution(db: Session, scene: Scene, rows: list, text: str) -> Pe
         * `anchor_words` — the book's own words that named the speaker.
         * `llm_speaker` — the model's pick, kept only where the book's words
           won and the model had said someone else.
-        * `prev_persona_id` — who the line was before this re-analyze
+        * `prev_speaker_id` — who the line was before this re-analyze
           changed it; the key's presence is the mark, its value may be null
           ("had no speaker")."""
         meta = dict(existing)
@@ -395,15 +352,15 @@ def _persist_attribution(db: Session, scene: Scene, rows: list, text: str) -> Pe
             meta["anchor_words"] = row.anchor_words
         else:
             meta.pop("anchor_words", None)
-        model_pick = persona_for(model_disagreed(row.source, row.speaker, row.llm_speaker) or "")
+        model_pick = speaker_for(model_disagreed(row.source, row.speaker, row.llm_speaker) or "")
         if model_pick:
             meta["llm_speaker"] = model_pick
         else:
             meta.pop("llm_speaker", None)
         if prev is _unchanged:
-            meta.pop("prev_persona_id", None)
+            meta.pop("prev_speaker_id", None)
         else:
-            meta["prev_persona_id"] = prev
+            meta["prev_speaker_id"] = prev
         return json.dumps(meta) if meta else None
 
     if in_place:
@@ -412,16 +369,16 @@ def _persist_attribution(db: Session, scene: Scene, rows: list, text: str) -> Pe
             if block.source == "corrected":
                 kept += 1
                 continue
-            new_persona = persona_for(row.speaker)
+            new_speaker = speaker_for(row.speaker)
             # Only a RE-analyze changes a line: the first run over imported
             # lines decides them, it doesn't change anyone's mind.
             reanalyzed = block.source in PIPELINE_SOURCES
             prev = (
-                block.persona_id
-                if reanalyzed and block.persona_id != new_persona
+                block.speaker_id
+                if reanalyzed and block.speaker_id != new_speaker
                 else _unchanged
             )
-            block.persona_id = new_persona
+            block.speaker_id = new_speaker
             block.extraction_confidence = row.confidence
             block.source = row.source
             block.metadata_json = with_audit(_json_meta(block.metadata_json), row, prev)
@@ -460,7 +417,7 @@ def _persist_attribution(db: Session, scene: Scene, rows: list, text: str) -> Pe
                 scene_id=scene.id,
                 position=i,
                 text=block_text,
-                persona_id=persona_for(row.speaker),
+                speaker_id=speaker_for(row.speaker),
                 direction=parent_direction,
                 extraction_confidence=row.confidence,
                 source=row.source,
@@ -872,7 +829,7 @@ def _chapter_script(
     *,
     cast_ids: set[str],
     narrator_id: str | None,
-    personas: dict,
+    speakers: dict,
 ) -> tuple[ScriptChapter, list[ScriptLine], list]:
     """One chapter's Script state: its grid row, its lines and its flag groups.
 
@@ -880,7 +837,7 @@ def _chapter_script(
     (`analyzed_at`), or — older data, no migration — its lines carry a
     pipeline source. "From the import": never analyzed, and every line
     already has a speaker."""
-    from ..extraction.flags import Line, flag_groups, flagged_lines, not_in_cast, spoken_block
+    from ..extraction.flags import Line, flag_groups, flagged_lines, spoken_block
 
     meta = _scene_meta(scene)
     rows = []
@@ -895,21 +852,20 @@ def _chapter_script(
     analyzed = bool(analyzed_at) or any(b.source in PIPELINE_SOURCES for b, *_ in rows)
     speakable_rows = [r for r in rows if r[3]]
     from_import = (
-        not analyzed and bool(speakable_rows) and all(r[0].persona_id for r in speakable_rows)
+        not analyzed and bool(speakable_rows) and all(r[0].speaker_id for r in speakable_rows)
     )
 
     lines = [
         Line(
-            id=b.id, speaker=b.persona_id, text=b.text or "", spoken=spoken, source=b.source,
+            id=b.id, speaker=b.speaker_id, text=b.text or "", spoken=spoken, source=b.source,
             paragraph=bm.get("paragraph_idx"), llm_speaker=bm.get("llm_speaker"), marker=marker,
         )
         for b, bm, marker, _speakable, spoken in rows
     ]
-    # Flags run only on what Analyze decided; "not in the cast" everywhere.
+    # Flags run only on what Analyze decided.
     groups = flag_groups(lines, cast_ids) if analyzed else []
     marked = flagged_lines(groups)
-    no_speaker = {r[0].id for r in speakable_rows if not r[0].persona_id}
-    gone = not_in_cast(lines, cast_ids)
+    no_speaker = {r[0].id for r in speakable_rows if not r[0].speaker_id}
 
     by_group: dict[str, list[int]] = {}
     for gi, g in enumerate(groups):
@@ -918,12 +874,12 @@ def _chapter_script(
 
     out_lines = [
         ScriptLine(
-            id=b.id, position=b.position, text=b.text or "", persona_id=b.persona_id,
+            id=b.id, position=b.position, text=b.text or "", speaker_id=b.speaker_id,
             source=b.source, confidence=b.extraction_confidence,
             paragraph=bm.get("paragraph_idx"), spoken=spoken, marker=marker,
             speakable=speakable, anchor_words=bm.get("anchor_words"),
             llm_speaker=bm.get("llm_speaker"), floored_from=bm.get("floored_from"),
-            changed="prev_persona_id" in bm, prev_persona_id=bm.get("prev_persona_id"),
+            changed="prev_speaker_id" in bm, prev_speaker_id=bm.get("prev_speaker_id"),
             flags=by_group.get(b.id, []), metadata=bm,
         )
         for b, bm, marker, speakable, spoken in rows
@@ -934,11 +890,11 @@ def _chapter_script(
     before = meta.get("analyzed_cast")
     if analyzed and isinstance(before, list):
         text = meta.get("source_text") or "\n\n".join(b.text or "" for b in blocks)
-        for pid in sorted(cast_ids - set(before) - {narrator_id}):
-            p = personas.get(pid)
-            pat = _name_pattern([p.name, *_persona_aliases(p)]) if p else None
+        for sid in sorted(cast_ids - set(before) - {narrator_id}):
+            sp = speakers.get(sid)
+            pat = _name_pattern([sp.name, *speaker_aliases(sp)]) if sp else None
             if pat and pat.search(text):
-                added.append(p.name)
+                added.append(sp.name)
 
     chapter = ScriptChapter(
         scene_id=scene.id, position=scene.position, title=scene.title,
@@ -947,9 +903,9 @@ def _chapter_script(
         # Book says + AI decided + by you + no speaker = spoken: a line left with
         # no speaker is counted there, never as decided.
         anchored=sum(1 for r in spoken_rows
-                     if r[0].source in ("tag", "propagated") and r[0].persona_id),
-        guessed=sum(1 for r in spoken_rows if r[0].source == "llm" and r[0].persona_id),
-        by_you=sum(1 for r in spoken_rows if r[0].source == "corrected" and r[0].persona_id),
+                     if r[0].source in ("tag", "propagated") and r[0].speaker_id),
+        guessed=sum(1 for r in spoken_rows if r[0].source == "llm" and r[0].speaker_id),
+        by_you=sum(1 for r in spoken_rows if r[0].source == "corrected" and r[0].speaker_id),
         no_speaker=len(no_speaker), flagged=len(marked), flag_groups=len(groups),
         # "To check" is for what Analyze (or the import) decided; a chapter
         # never analyzed needs Analyze, not checking.
@@ -957,23 +913,14 @@ def _chapter_script(
         changed=sum(1 for ln in out_lines if ln.changed),
         no_dialogue_found=analyzed and bool(speakable_rows) and not spoken_rows,
         added_since=added,
-        not_in_cast=[
-            ScriptSpeaker(persona_id=pid, name=personas[pid].name if pid in personas else pid,
-                          lines=n, in_cast=False)
-            for pid, n in gone.most_common()
-        ],
     )
     return chapter, out_lines, groups
 
 
-def _script_context(db: Session, project_id: str, speaker_ids: set[str]):
-    cast_ids = {
-        pid for (pid,) in db.query(ProjectPersona.persona_id).filter(
-            ProjectPersona.project_id == project_id)
-    }
-    ids = cast_ids | {i for i in speaker_ids if i}
-    personas = {p.id: p for p in db.query(Persona).filter(Persona.id.in_(ids))} if ids else {}
-    return cast_ids, _narrator_persona_id(db, project_id), personas
+def _script_context(db: Session, project_id: str):
+    """The book's speakers ({id: Speaker}), their ids, and the narrator's."""
+    speakers = {s.id: s for s in db.query(Speaker).filter(Speaker.project_id == project_id)}
+    return set(speakers), narrator_speaker_id(db, project_id), speakers
 
 
 @router.get(
@@ -997,13 +944,12 @@ async def project_script(project_id: str, db: Session = Depends(get_db)) -> Proj
             .order_by(Block.scene_id, Block.position)
         ):
             by_scene[b.scene_id].append(b)
-    cast_ids, narrator_id, personas = _script_context(
-        db, project_id, {b.persona_id for bs in by_scene.values() for b in bs})
+    cast_ids, narrator_id, speakers = _script_context(db, project_id)
     return ProjectScript(
         project_id=project_id,
         chapters=[
             _chapter_script(s, by_scene[s.id], cast_ids=cast_ids,
-                            narrator_id=narrator_id, personas=personas)[0]
+                            narrator_id=narrator_id, speakers=speakers)[0]
             for s in scenes
         ],
     )
@@ -1019,21 +965,18 @@ async def scene_script(scene_id: str, db: Session = Depends(get_db)) -> SceneScr
     if scene is None:
         raise not_found(f"scene {scene_id}")
     blocks = db.query(Block).filter(Block.scene_id == scene_id).order_by(Block.position).all()
-    cast_ids, narrator_id, personas = _script_context(
-        db, scene.project_id, {b.persona_id for b in blocks})
+    cast_ids, narrator_id, by_id = _script_context(db, scene.project_id)
     chapter, lines, groups = _chapter_script(
-        scene, blocks, cast_ids=cast_ids, narrator_id=narrator_id, personas=personas)
-    # Every line a persona reads — the Narrator's narration included, as the
+        scene, blocks, cast_ids=cast_ids, narrator_id=narrator_id, speakers=by_id)
+    # Every line a speaker reads — the narrator's narration included, as the
     # speaker filter shows it ("Narrator · 118").
     counts: dict[str, int] = {}
     for ln in lines:
-        if ln.speakable and ln.persona_id:
-            counts[ln.persona_id] = counts.get(ln.persona_id, 0) + 1
+        if ln.speakable and ln.speaker_id:
+            counts[ln.speaker_id] = counts.get(ln.speaker_id, 0) + 1
     speakers = [
-        ScriptSpeaker(persona_id=pid, name=p.name, lines=counts.get(pid, 0),
-                      in_cast=pid in cast_ids)
-        for pid, p in personas.items()
-        if pid in cast_ids or counts.get(pid)
+        ScriptSpeaker(speaker_id=sid, name=sp.name, lines=counts.get(sid, 0))
+        for sid, sp in by_id.items()
     ]
     speakers.sort(key=lambda sp: (-sp.lines, sp.name.lower()))
     return SceneScript(
@@ -1098,7 +1041,7 @@ async def delete_correction(project_id: str, fix_id: str, db: Session = Depends(
     return {"deleted": deleted}
 
 
-def record_correction(db: Session, project_id: str, text_snippet: str, persona_id: str) -> str:
+def record_correction(db: Session, project_id: str, text_snippet: str, speaker_id: str) -> str:
     """THE one correction writer (parity batch 2026-08-06): the Studio block-PATCH
     side effect and the Lab's reassign both call this — same row shape, same
     200-per-project cap (oldest dropped), so the two doors can't drift.
@@ -1108,7 +1051,7 @@ def record_correction(db: Session, project_id: str, text_snippet: str, persona_i
     fix = SpeakerCorrection(
         project_id=project_id,
         text_snippet=(text_snippet or "")[:400],
-        persona_id=persona_id,
+        speaker_id=speaker_id,
     )
     db.add(fix)
     # SessionLocal runs autoflush=False — without this flush the overflow query
@@ -1128,7 +1071,7 @@ def record_correction(db: Session, project_id: str, text_snippet: str, persona_i
 
 class CorrectionIn(BaseModel):
     text_snippet: str
-    persona_id: str
+    speaker_id: str
 
 
 @router.post("/v1/projects/{project_id}/corrections")
@@ -1138,14 +1081,15 @@ async def add_correction(
     """The Lab's reassign door (parity batch 2026-08-06): a corrected speaker in
     the attribution Lab writes correction memory exactly as Studio's block
     reassign does — record_correction is the shared implementation.
-    persona_id must be a REAL persona (the FK the table carries) — the Lab's
-    typed cast uses synthetic ids, which teach nothing and are refused here.
-    The field was named character_id until 2026-08-22."""
-    if db.query(Persona).filter(Persona.id == body.persona_id).first() is None:
+    speaker_id must be a REAL speaker of this book (the FK the table carries) —
+    the Lab's typed cast uses synthetic ids, which teach nothing and are
+    refused here. (character_id until 2026-08-22, persona_id until 2026-09-29.)"""
+    sp = db.get(Speaker, body.speaker_id)
+    if sp is None or sp.project_id != project_id:
         raise HTTPException(
-            status_code=404, detail=f"persona {body.persona_id} not found"
+            status_code=404, detail=f"speaker {body.speaker_id} not found in this book"
         )
-    record_correction(db, project_id, body.text_snippet, body.persona_id)
+    record_correction(db, project_id, body.text_snippet, body.speaker_id)
     db.commit()
     n = _count_project_corrections(db, project_id)
     return {"ok": True, "count": n}
@@ -1161,20 +1105,17 @@ def _count_project_corrections(db: Session, project_id: str) -> int:
 # A chapter's scan is SAVED on the chapter (decided 2026-09-27, "both"): the
 # scene's `metadata.discover = {scanned_at, candidates, named_cast}`. It is what
 # lets the Discover step survive a restart and what gives Overview and Discover
-# real "scanned / last scanned" data. Nothing becomes a persona until promote.
+# real "scanned / last scanned" data. Nothing becomes a speaker until promote.
 # Since 2026-09-29 the record is everyone the chapter names — the AI's new names
-# (`candidates`) and the cast members found by name (`named_cast`) — and it is
+# (`candidates`) and the book's speakers found by name (`named_cast`) — and it is
 # KEPT: Add and Ignore change a name's status on the page, they never delete it
-# from the record, so a scan shows the same people every time.
+# from the record, so a scan shows the same people every time. "In your library"
+# (a persona of exactly that name) is worked out on the page, against the
+# library as it is now; Add casts such a speaker with it (`ensure_speaker`).
 
 
 class DiscoverSpeakersRequest(BaseModel):
     text: str
-
-
-class LibraryMatch(BaseModel):
-    persona_id: str
-    name: str
 
 
 class SpeakerCandidateOut(BaseModel):
@@ -1186,16 +1127,13 @@ class SpeakerCandidateOut(BaseModel):
     # Is that quote really in the chapter? False = the model made it up, which
     # is the tell of a made-up name (fix 3). None = no quote given.
     evidence_found: bool | None = None
-    # A persona already in the library (not in this cast) this name refers
-    # to — "Brick" → Brick Halvorn. Add re-links it instead of making a
-    # duplicate (fix A).
-    library_match: LibraryMatch | None = None
 
 
 class NamedCastMember(BaseModel):
-    """A cast member the chapter names — found by `names.cast_named_in`, no AI."""
+    """A speaker of this book the chapter names — found by
+    `names.cast_named_in`, no AI."""
 
-    persona_id: str
+    speaker_id: str
     name: str
     mentions: int = 0
     evidence: str | None = None
@@ -1203,10 +1141,10 @@ class NamedCastMember(BaseModel):
 
 class DiscoverSpeakersResponse(BaseModel):
     scene_id: str
-    # The names the AI found that are not in the cast (ignored ones included —
-    # the page shows them as Ignored).
+    # The names the AI found that are not speakers here (ignored ones
+    # included — the page shows them as Ignored).
     candidates: list[SpeakerCandidateOut]
-    # The cast members the chapter names (2026-09-29: a scan records everyone).
+    # The book's speakers the chapter names (2026-09-29: a scan records everyone).
     named_cast: list[NamedCastMember] = []
     # The run's usage (§16) — None only if the call never ran.
     usage: RunUsage | None = None
@@ -1215,7 +1153,7 @@ class DiscoverSpeakersResponse(BaseModel):
 @router.post(
     "/v1/scenes/{scene_id}/discover-speakers",
     response_model=DiscoverSpeakersResponse,
-    summary="Find speaking characters not yet in the project cast",
+    summary="Find the people a chapter names who aren't speakers in the book yet",
 )
 async def discover_speakers_endpoint(
     scene_id: str,
@@ -1223,8 +1161,8 @@ async def discover_speakers_endpoint(
     db: Session = Depends(get_db),
 ) -> DiscoverSpeakersResponse:
     """Identification, not attribution: proposes NEW speakers for Studio's
-    Discover step. No persona is created here — promotion is
-    POST /v1/projects/{id}/personas/promote. The scan itself IS saved, on the
+    Discover step. No speaker is created here — promotion is
+    POST /v1/projects/{id}/speakers/promote. The scan itself IS saved, on the
     chapter (`metadata.discover`), replacing that chapter's previous scan.
 
     The model call runs in a worker thread (2026-09-29): it is blocking, and
@@ -1238,47 +1176,32 @@ async def discover_speakers_endpoint(
     if scene is None:
         raise not_found(f"scene {scene_id}")
     cast = _resolve_cast(scene_id, db)
-    cast_ids = {c["id"] for c in cast}
-    # The producer's other personas (rec C, 2026-09-28): the model is told who
-    # they are, so a nickname that lives only in a description ("Answers to
-    # Ode.") comes back as that persona instead of a duplicate proposal. Only
-    # the ones this text could be naming ride — a library of hundreds would
-    # otherwise spend the context on people the chapter never mentions.
-    library = names.named_in(body.text, [
-        {"id": p.id, "name": p.name, "aliases": _persona_aliases(p), "description": p.personality}
-        for p in db.query(Persona).all() if p.id not in cast_ids
-    ])
     settings = get_state().settings.get()
     try:
         raw_out: dict = {}
         candidates = await asyncio.to_thread(
-            identify_speakers, body.text, cast, settings=settings, library=library,
-            raw_out=raw_out,
+            identify_speakers, body.text, cast, settings=settings, raw_out=raw_out,
         )
     except LLMNotConfiguredError as e:
         raise HTTPException(status_code=501, detail=str(e))
     except Exception as e:
         log.exception("speaker identification failed")
         raise HTTPException(status_code=502, detail=f"identification failed: {e}")
-    by_name = {names.norm(p["name"]): p for p in library}
     out = []
     for c in candidates:
-        # Already cast under a name the model could not connect — a first or
-        # last name alone ("Cael" for Cael Ferren): that person is recorded
-        # below, as a cast member the chapter names. An IGNORED name stays in
-        # the record; the page shows it as Ignored.
+        # Already a speaker under a name the model could not connect — a first
+        # or last name alone ("Cael" for Cael Ferren): that person is recorded
+        # below, as a speaker the chapter names. An IGNORED name stays in the
+        # record; the page shows it as Ignored.
         if names.match(c.name, cast) is not None:
             continue
-        # The model's claim counts only when it names a real library persona.
-        lib = by_name.get(names.norm(c.library_name or "")) or names.match(c.name, library)
         out.append(SpeakerCandidateOut(
             name=c.name, role_hint=c.role_hint, approx_lines=c.approx_lines,
             evidence=c.evidence,
             evidence_found=names.quote_in_text(c.evidence, body.text) if c.evidence else None,
-            library_match=LibraryMatch(persona_id=lib["id"], name=lib["name"]) if lib else None,
         ))
-    # Everyone the chapter names who is already cast, found by name in the text
-    # (no AI — the same on every scan). The Narrator is a cast member like any
+    # Every speaker of this book the chapter names, found by name in the text
+    # (no AI — the same on every scan). The narrator is a speaker like any
     # other; prose rarely names it.
     named_cast = [NamedCastMember(**r) for r in names.cast_named_in(body.text, cast)]
     meta = _scene_meta(scene)
@@ -1395,7 +1318,7 @@ class DiscoverTextRequest(BaseModel):
 @router.post(
     "/v1/extraction/discover-speakers",
     response_model=DiscoverSpeakersResponse,
-    summary="Find speaking characters in free-form text (the attribution Lab)",
+    summary="Find the people free-form text names (the attribution Lab)",
 )
 async def discover_text_endpoint(body: DiscoverTextRequest) -> DiscoverSpeakersResponse:
     """No scene id — the Lab's discovery door (parity batch 2026-08-06),
@@ -1451,45 +1374,11 @@ async def discover_text_endpoint(body: DiscoverTextRequest) -> DiscoverSpeakersR
 
 class PromoteCandidate(BaseModel):
     name: str
-    # The discovery pass's role hint ("Mara's neighbour") — sheet material.
-    personality: str | None = None
-    # An existing library persona this name refers to (Discover's library
-    # match). Given → that persona joins the cast and, if the text called them
-    # something new, learns it as an alias; no new persona is made.
-    persona_id: str | None = None
+    # The discovery pass's role hint ("Mara's neighbour") — "Who they are".
+    description: str | None = None
     # Other spellings the scan found for the same person ("Sedge" beside
-    # "Old Sedge") — kept as aliases on the new or re-linked persona.
+    # "Old Sedge") — kept as "Also called".
     aliases: list[str] = []
-
-
-def _link_library_persona(db: Session, project_id: str, persona_id: str, found_as: list[str]) -> str:
-    """Put an existing persona in this project's cast, and remember the name the
-    text used for them as an alias when it is new ("Brick" on Brick Halvorn) —
-    Discover fixes A + 1. The same name is then known to every later scan and
-    to Analyze's anchors."""
-    from ..extraction.names import norm
-    from ..storage.personas import clean_aliases
-
-    persona = db.query(Persona).filter(Persona.id == persona_id).first()
-    if persona is None:
-        raise not_found(f"persona {persona_id}")
-    link = (
-        db.query(ProjectPersona)
-        .filter(ProjectPersona.project_id == project_id, ProjectPersona.persona_id == persona_id)
-        .first()
-    )
-    if link is None:
-        from ._persona_helpers import refuse_same_name
-
-        refuse_same_name(db, project_id, persona.name, besides=persona_id)
-        db.add(ProjectPersona(project_id=project_id, persona_id=persona_id))
-    aliases = _persona_aliases(persona)
-    known = {norm(persona.name), *(norm(a) for a in aliases)}
-    new = [n.strip() for n in found_as if n and n.strip() and norm(n) not in known]
-    if new:
-        kept = clean_aliases([*aliases, *new], persona.name)
-        persona.aliases = json.dumps(kept) if kept else None
-    return persona_id
 
 
 class PromoteSpeakersRequest(BaseModel):
@@ -1502,38 +1391,30 @@ class PromoteSpeakersResponse(BaseModel):
 
 
 @router.post(
-    "/v1/projects/{project_id}/personas/promote",
+    "/v1/projects/{project_id}/speakers/promote",
     response_model=PromoteSpeakersResponse,
-    summary="Promote discovered speakers to personas in this project's cast",
+    summary="Add discovered names to the book as speakers",
 )
 async def promote_speakers_endpoint(
     project_id: str,
     body: PromoteSpeakersRequest,
     db: Session = Depends(get_db),
 ) -> PromoteSpeakersResponse:
+    """Discover's Add: each name becomes a speaker in this book, cast with the
+    persona of exactly its name when the library has one ("Every new
+    speaker", 2026-09-29). A name the book already has is refused (names are
+    unique within a book) and nothing in the batch is saved."""
     from ..database.models import Project
-    from ._persona_helpers import ensure_project_persona
 
     if db.query(Project).filter(Project.id == project_id).first() is None:
         raise not_found(f"project {project_id}")
     created: list[str] = []
     reused: list[str] = []
     for cand in body.candidates:
-        if cand.persona_id:
-            pid = _link_library_persona(db, project_id, cand.persona_id, [cand.name, *cand.aliases])
-            reused.append(pid)
-            continue
-        slug = re.sub(r"[^a-z0-9]+", "_", cand.name.lower()).strip("_") or "speaker"
-        pid, was_created = ensure_project_persona(
-            db,
-            project_id,
-            name=cand.name,
-            personality=cand.personality,
-            imported_from="discovered",
-            imported_id=slug,
-            aliases=cand.aliases,
-            unique_in_cast=True,
+        speaker, was_created = ensure_speaker(
+            db, project_id, name=cand.name, description=cand.description,
+            aliases=cand.aliases, unique=True,
         )
-        (created if was_created else reused).append(pid)
+        (created if was_created else reused).append(speaker.id)
     db.commit()
     return PromoteSpeakersResponse(created=created, reused=reused)

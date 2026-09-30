@@ -58,7 +58,7 @@ list to finish it. That merge is gone.
 
 | Table | Change |
 |---|---|
-| `speakers` **new** | `id · project_id` (→ projects, CASCADE) `· name · aliases` (JSON) `· sheet` (who they are) `· persona_id` (→ personas, SET NULL) `· role_label` ("narrator") `· imported_from · imported_id` (re-import merge) `· created_at · updated_at` |
+| `speakers` **new** | `id · project_id` (→ projects, CASCADE) `· name · aliases` (JSON) `· description` (who they are) `· persona_id` (→ personas, SET NULL) `· role_label` ("narrator") `· imported_from · imported_id` (re-import merge) `· created_at · updated_at` |
 | `blocks` | `persona_id` → **`speaker_id`** (→ speakers, SET NULL) |
 | `speaker_corrections` | `persona_id` → **`speaker_id`** |
 | `project_personas` | **dropped** — the cast is `speakers.persona_id` |
@@ -192,5 +192,27 @@ the live row only after checking it equals the old code text.
    then turns New and stays. In-the-cast rows can be ticked too, and the bulk bar
    gains **Remove N selected** beside ＋ Add / Ignore. The bottom "Already in the
    cast" card stays.
+6. **The selected speaker's card on Cast** (decided "ok add also called there"):
+   **Name** (editable — renames happen here) · **Also called** (comma-separated) ·
+   **Who they are** · **Edit their persona →**. The grid cards show "also called …"
+   under the name. The mock's Cast gets the Also called field too.
 
 Nothing is open. Build per §4.
+
+## 6. The Discover prompt, measured (item 3)
+
+`npm run eval:discover -- --server http://127.0.0.1:17494 --runs 2` on The
+Ninth Facet, 2026-09-29:
+
+| Condition | Recall | Wrong |
+|---|---|---|
+| Live prompt, library sent | 28/28 | 0 |
+| New prompt (library paragraph removed), no library | 26/28 | 4 |
+| Live prompt, no library | 26/28 | 4 |
+
+The last two rows are identical, so removing the paragraph costs nothing by
+itself. The drop from the first row comes from no longer sending the library:
+its descriptions named people the book mentions (Haldane Threll ×2, Gudgeon ×4
+were missed without them). "In your library" is now an exact persona name
+matched in code, as decided. The live row was checked equal to the old code
+text before the new one was PUT.

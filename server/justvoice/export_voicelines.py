@@ -22,7 +22,8 @@ import re
 import zipfile
 
 from .database import session as db_session
-from .database.models import Block, Persona, Scene
+from .api._speaker_helpers import persona_for_block
+from .database.models import Block, Scene, Speaker
 
 log = logging.getLogger(__name__)
 
@@ -80,11 +81,8 @@ def export_voicelines(state, project_id: str, *, render_block_fn=None) -> bytes:
                     .all()
                 )
                 for bi, block in enumerate(blocks):
-                    persona = (
-                        db.query(Persona).filter(Persona.id == block.persona_id).first()
-                        if block.persona_id
-                        else None
-                    )
+                    speaker = db.get(Speaker, block.speaker_id) if block.speaker_id else None
+                    persona = persona_for_block(db, block)
                     lid = _line_id(block, si, bi)
                     wav = render_block_fn(state, persona, block)
                     path = f"{group}/{lid}.wav"
@@ -93,7 +91,7 @@ def export_voicelines(state, project_id: str, *, render_block_fn=None) -> bytes:
                         {
                             "line_id": lid,
                             "scene": scene.title,
-                            "character": persona.name if persona else None,
+                            "speaker": speaker.name if speaker else None,
                             "text": block.text,
                             "file": path,
                             "duration_s": round(_wav_duration_s(wav), 3),
@@ -115,8 +113,8 @@ def _render_block_production(state, persona, block) -> bytes:
     from .errors import bad_request
     from .render_core import render_line
 
-    # Persona resolution mirrors render_chapter's scene mode: the persona
-    # contributes voice + tier-2 delivery + lexicon.
+    # Mirrors render_chapter's scene mode: the persona that plays the line's
+    # speaker contributes voice + tier-2 delivery + lexicon.
     voice = None
     delivery = None
     effects: list[dict] = []
@@ -126,16 +124,17 @@ def _render_block_production(state, persona, block) -> bytes:
         if store_p is not None:
             voice = store_p.voice_id or None
             delivery = dict(store_p.default_delivery or {}) or None
-            # A character's effects chain is part of how that character
-            # sounds — the game export ships the same voice the studio
-            # auditions. (Mastering is the part game exports skip.)
+            # A persona's effects chain is part of how it sounds — the game
+            # export ships the same voice the studio auditions. (Mastering is
+            # the part game exports skip.)
             effects = list(store_p.effects_chain or [])
             if store_p.lexicon_id:
                 lexicons.append(store_p.lexicon_id)
     if not voice:
-        who = persona.name if persona is not None else "narrator/unassigned"
+        who = f"the persona {persona.name}" if persona is not None else "no persona"
         raise bad_request(
-            f"block {block.id} ({who}) has no voice assigned — cast every speaker before exporting"
+            f"line {block.id} has no voice ({who}) — give every speaker a persona with a voice "
+            f"before exporting"
         )
     rl = render_line(
         state,
@@ -175,11 +174,7 @@ def collect_block_specs(state, project_id: str):
                 .all()
             )
             for block in blocks:
-                persona = (
-                    db.query(Persona).filter(Persona.id == block.persona_id).first()
-                    if block.persona_id
-                    else None
-                )
+                persona = persona_for_block(db, block)
                 voice = None
                 if persona is not None:
                     store_p = state.personas.get(persona.id)

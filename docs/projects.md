@@ -28,7 +28,7 @@ The row used to expand into a detail pane. Everything it held moved:
 | Title, author, mastering target | Studio · **Overview** |
 | Description | Studio · **Overview** (new there) |
 | Export ZIP, Delete | Studio · **Overview** → *Also from here* / *Delete project* |
-| Cast pills and **+ Add personas** | Studio · **Cast** — the one place a cast is edited |
+| Cast pills and **+ Add personas** | Studio · **Cast** — the one place a book's speakers get their personas |
 | Render preset | gone — render presets are being retired |
 | Webhook on complete | gone — nothing ever sent it; webhooks are set up in Settings |
 | The chapters subtable | the **Chapters** tab, and Studio's steps |
@@ -40,14 +40,15 @@ picked, so you can click through the whole flow before importing anything of
 your own. Deleting it touches nothing else.
 
 - **Audiobook** — *The Ninth Facet*, JustWrite's own sample novel: two parts,
-  four chapters, eight characters and plenty of dialogue, some tagged ("said
+  four chapters, eight people and plenty of dialogue, some tagged ("said
   Threll"), some not. It is imported exactly as your own JustWrite export
-  would be, so its characters arrive as the cast. It has no narrator until you
-  pick one on Studio's Cast step. **Discover** shows the cast it finds as *In
-  the cast*; remove a few of them first to see them come back as *In your
-  library*.
+  would be, so its eight people arrive as the book's speakers — with no
+  personas yet, unless your library has a persona of exactly one of their
+  names. It has no narrator until you add or pick one on Studio's Cast step.
+  **Discover** shows the speakers it finds as *In the cast*; remove one there
+  (it asks first) and its row turns *New*, ready to ＋ Add back.
 - **Game voicelines** — *Emberfall VO*, five lines with stable line ids.
-- **Podcast** — *Signal & Noise ep. 42*, three hosts.
+- **Podcast** — *Signal & Noise ep. 42*, three speakers.
 
 The book lives in the app's `samples/` folder, the same layout JustWrite ships
 (`samples/<name>/book.json`).

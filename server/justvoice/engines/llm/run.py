@@ -4,7 +4,7 @@
 One thin seam so all eight feature call sites read the same way:
 
     from ..engines.llm.run import run_feature
-    resp = run_feature("smart_assign", {"characters": …, "voices": …})
+    resp = run_feature("smart_assign", {"speakers": …, "personas": …})
 
 `run_feature` = the kit's `run_action` (resolve the action's template row →
 render fail-loud → resolve its ENGINE PRESET → overlay tunables → ensure a

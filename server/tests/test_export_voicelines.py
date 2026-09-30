@@ -67,7 +67,7 @@ def test_zip_layout_and_manifest(client, monkeypatch):
         "Q01_HALE_001", "Q01_VYRA_001", "Q02_KEEPER_001",
     ]
     entry = manifest[0]
-    assert entry["character"] == "Guard Hale"
+    assert entry["speaker"] == "Guard Hale"   # the line's speaker (2026-09-29: was "character")
     assert entry["file"] == "ashfall-village/Q01_HALE_001.wav"
     assert entry["duration_s"] == 0.25
     assert len(entry["text_hash"]) == 16
@@ -75,8 +75,8 @@ def test_zip_layout_and_manifest(client, monkeypatch):
 
 def test_unassigned_voice_fails_with_actionable_error(client):
     pid = _seed(client)
-    # No voices assigned to the imported personas → production renderer
-    # must refuse with guidance rather than emit silent/garbage audio.
+    # No persona plays the imported speakers → production renderer must
+    # refuse with guidance rather than emit silent/garbage audio.
     r = client.post(f"/v1/projects/{pid}/export_voicelines")
     assert r.status_code == 400
-    assert "no voice assigned" in r.text
+    assert "give every speaker a persona with a voice" in r.json()["detail"]

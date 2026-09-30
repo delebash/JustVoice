@@ -7,7 +7,7 @@ podcast = episodes + segments. Same data model, different metadata +
 export pipelines.
 
 Also: POST /v1/projects/import?source=justwrite ingests a JustWrite book
-JSON and auto-creates Project + Scenes + Blocks + Personas.
+JSON and auto-creates Project + Scenes + Blocks + Speakers.
 """
 
 from __future__ import annotations
@@ -24,20 +24,18 @@ from sqlalchemy.orm import Session
 
 from ..database import (
     Project,
-    ProjectPersona,
     Scene,
     Block,
-    Persona,
+    Speaker,
     get_db,
 )
 from ..database.models import (
     Lexicon as DbLexicon,
     LexiconEntry as DbLexiconEntry,
-    Persona as DbPersona,
 )
 from ..errors import not_found, bad_request
 from ..app_state import get_state
-from ._persona_helpers import ensure_project_persona, refuse_same_name
+from ._speaker_helpers import adopt_book_narrator, ensure_speaker
 from ..mastering import kind_master
 from .extraction_api import RunUsage, project_ignored
 from ..imports import list_adapters, run_adapter
@@ -123,7 +121,7 @@ class BlockResponse(BaseModel):
     scene_id: str
     position: int
     text: str
-    persona_id: Optional[str]
+    speaker_id: Optional[str]
     direction: Optional[str]
     metadata: dict
     # Phase 3 / Slice 2 — extraction telemetry surfaced to the Studio
@@ -143,29 +141,13 @@ class BlockResponse(BaseModel):
             scene_id=row.scene_id,
             position=row.position,
             text=row.text,
-            persona_id=row.persona_id,
+            speaker_id=row.speaker_id,
             direction=row.direction,
             metadata=json.loads(row.metadata_json or "{}"),
             extraction_confidence=row.extraction_confidence,
             source=row.source,
             created_at=row.created_at,
         )
-
-
-class CastEntry(BaseModel):
-    persona_id: str
-    # The name ships WITH the id (user ruling 2026-08-15: "we should not be
-    # using these types of ids in user facing gui"). Every consumer used to
-    # look this up client-side against a cached persona list, so an empty
-    # cache rendered raw UUIDs in the Projects cast row and in the Lab's
-    # reassign dropdown. Optional only for the outer join below; the FK
-    # cascades, so in normal operation it is always a name.
-    persona_name: Optional[str]
-    role_label: Optional[str]
-
-
-class CastResponse(BaseModel):
-    cast: list[CastEntry]
 
 
 # ── Request shapes ──────────────────────────────────────────────────────
@@ -198,7 +180,7 @@ class CreateSceneRequest(BaseModel):
 class CreateBlockRequest(BaseModel):
     position: int = 0
     text: str = Field(..., min_length=1)
-    persona_id: Optional[str] = None
+    speaker_id: Optional[str] = None
     direction: Optional[str] = None
     metadata: dict = Field(default_factory=dict)
     # Phase 3 / Slice 2 — extraction telemetry. Analyze runs write these
@@ -212,10 +194,10 @@ class CreateBlockRequest(BaseModel):
 class UpdateBlockRequest(BaseModel):
     position: Optional[int] = None
     text: Optional[str] = None
-    # Left out = unchanged. `persona_id`, `source` and `extraction_confidence`
+    # Left out = unchanged. `speaker_id`, `source` and `extraction_confidence`
     # sent as null = cleared: Script's Undo puts back a line exactly as it was,
     # including one that had no speaker, no source or no confidence.
-    persona_id: Optional[str] = None
+    speaker_id: Optional[str] = None
     direction: Optional[str] = None
     metadata: Optional[dict] = None
     extraction_confidence: Optional[float] = None
@@ -223,11 +205,6 @@ class UpdateBlockRequest(BaseModel):
     # A speaker change normally saves a fix the next Analyze learns from.
     # Undo sends this: taking a change back is not a fix.
     no_fix: bool = False
-
-
-class CastAssignRequest(BaseModel):
-    persona_id: str
-    role_label: Optional[str] = None
 
 
 # ── Project CRUD ─────────────────────────────────────────────────────────
@@ -256,70 +233,6 @@ async def list_projects(
             ProjectResponse.from_orm(row, scene_count=counts.get(row.id, 0))
             for row in rows
         ]
-    )
-
-
-# Project kinds whose import adopts the book's own "Narrator" character.
-# Game projects (NPCs only) and custom projects have no single prose voice.
-_NARRATOR_KINDS = {"audiobook", "podcast"}
-
-
-def _adopt_book_narrator(db: Session, project: Project) -> None:
-    """An imported book that has its own character called "Narrator": that
-    character is the narrator. Caller commits.
-
-    Nothing is ever CREATED here (decided 2026-09-29, "i dont think each
-    project should automatically create a narrator"): every import used to
-    make a new "Narrator" persona, and deleting the book left it in the
-    library, so re-imports piled them up. A book with no such character has
-    no narrator until you tick one in Cast or use "+ Add Narrator".
-
-    Runs AFTER the characters — a manuscript may name its own narrator
-    (`docs/import-and-export.md:50`, `{"id": "narr", "name": "Narrator"}`)."""
-    if project.project_type not in _NARRATOR_KINDS:
-        return
-    # SessionLocal runs autoflush=False, and the import adds its characters'
-    # ProjectPersona links without flushing — without this the lookups below
-    # cannot see them.
-    db.flush()
-    already = (
-        db.query(ProjectPersona.persona_id)
-        .filter(
-            ProjectPersona.project_id == project.id,
-            ProjectPersona.role_label == "narrator",
-        )
-        .first()
-    )
-    if already:
-        return
-    imported = (
-        db.query(ProjectPersona)
-        .join(DbPersona, DbPersona.id == ProjectPersona.persona_id)
-        .filter(ProjectPersona.project_id == project.id)
-        .filter(DbPersona.name.ilike("narrator"))
-        .first()
-    )
-    if imported is not None:
-        imported.role_label = "narrator"
-
-
-def move_narration(db: Session, project_id: str, new_id: str, old_id: str | None) -> int:
-    """Narration follows the narrator: every line Analyze decided is
-    narration (`source == "narration"`) that belonged to the old narrator, or
-    to nobody, moves to the new one. Lines you set yourself (`corrected`) stay.
-    Returns how many moved. Caller commits."""
-    from sqlalchemy import or_
-
-    scene_ids = [sid for (sid,) in db.query(Scene.id).filter(Scene.project_id == project_id)]
-    if not scene_ids:
-        return 0
-    owners = [Block.persona_id.is_(None)]
-    if old_id and old_id != new_id:
-        owners.append(Block.persona_id == old_id)
-    return (
-        db.query(Block)
-        .filter(Block.scene_id.in_(scene_ids), Block.source == "narration", or_(*owners))
-        .update({Block.persona_id: new_id}, synchronize_session=False)
     )
 
 
@@ -502,7 +415,7 @@ async def create_block(
         scene_id=scene_id,
         position=body.position,
         text=body.text,
-        persona_id=body.persona_id,
+        speaker_id=body.speaker_id,
         direction=body.direction,
         metadata_json=json.dumps(body.metadata),
         extraction_confidence=body.extraction_confidence,
@@ -523,14 +436,14 @@ async def update_block(
     if not b:
         raise not_found(f"block {block_id}")
 
-    # Phase 5: capture speaker corrections — when persona_id changes from
+    # Phase 5: capture speaker corrections — when speaker_id changes from
     # the existing value to a new one AND the existing value wasn't null
     # (manual reassignment, not "first assignment"), write a
     # SpeakerCorrection row for the future analyze pipeline to learn from.
-    persona_id_changed = (
-        body.persona_id is not None
-        and b.persona_id is not None
-        and body.persona_id != b.persona_id
+    speaker_changed = (
+        body.speaker_id is not None
+        and b.speaker_id is not None
+        and body.speaker_id != b.speaker_id
         and not body.no_fix
     )
 
@@ -540,8 +453,8 @@ async def update_block(
         if body.text != b.text:
             _drop_scene_source_text(db, b.scene_id)
         b.text = body.text
-    if body.persona_id is not None or "persona_id" in body.model_fields_set:
-        b.persona_id = body.persona_id
+    if body.speaker_id is not None or "speaker_id" in body.model_fields_set:
+        b.speaker_id = body.speaker_id
     if body.direction is not None:
         b.direction = body.direction
     if body.metadata is not None:
@@ -555,12 +468,12 @@ async def update_block(
         # Analyze" mark — unless the caller is restoring metadata (Undo).
         if body.source == "corrected" and body.metadata is None:
             meta = json.loads(b.metadata_json or "{}")
-            if "prev_persona_id" in meta:
-                del meta["prev_persona_id"]
+            if "prev_speaker_id" in meta:
+                del meta["prev_speaker_id"]
                 b.metadata_json = json.dumps(meta)
 
     fix_id = None
-    if persona_id_changed:
+    if speaker_changed:
         # Look up the parent project via the scene, then write through THE one
         # correction writer (extraction_api.record_correction — the Lab's
         # reassign shares it since the parity batch; cap + shape live once).
@@ -568,7 +481,7 @@ async def update_block(
         if scene:
             from .extraction_api import record_correction
 
-            fix_id = record_correction(db, scene.project_id, b.text, body.persona_id)
+            fix_id = record_correction(db, scene.project_id, b.text, body.speaker_id)
 
     db.commit()
     db.refresh(b)
@@ -586,200 +499,6 @@ async def delete_block(block_id: str, db: Session = Depends(get_db)) -> dict:
     db.delete(b)
     db.commit()
     return {"deleted": True}
-
-
-# ── Cast (project ↔ persona many-to-many) ────────────────────────────────
-
-
-@router.get("/v1/projects/{project_id}/cast", response_model=CastResponse)
-async def get_cast(project_id: str, db: Session = Depends(get_db)) -> CastResponse:
-    if not db.query(Project).filter(Project.id == project_id).first():
-        raise not_found(f"project {project_id}")
-    # OUTER join, defensively: the persona FK cascades (models.py:194 +
-    # PRAGMA foreign_keys=ON), so a link cannot normally outlive its persona —
-    # but if one ever did, it should still reach the caller trying to repair
-    # the cast rather than vanish from the list. test_cast_names.py locks both.
-    rows = (
-        db.query(ProjectPersona, Persona.name)
-        .outerjoin(Persona, Persona.id == ProjectPersona.persona_id)
-        .filter(ProjectPersona.project_id == project_id)
-        .all()
-    )
-    return CastResponse(
-        cast=[
-            CastEntry(
-                persona_id=link.persona_id, persona_name=name, role_label=link.role_label
-            )
-            for link, name in rows
-        ]
-    )
-
-
-@router.post("/v1/projects/{project_id}/cast", response_model=CastResponse, status_code=201)
-async def assign_to_cast(
-    project_id: str, body: CastAssignRequest, db: Session = Depends(get_db)
-) -> CastResponse:
-    if not db.query(Project).filter(Project.id == project_id).first():
-        raise not_found(f"project {project_id}")
-    persona = db.query(Persona).filter(Persona.id == body.persona_id).first()
-    if not persona:
-        raise not_found(f"persona {body.persona_id}")
-    existing = (
-        db.query(ProjectPersona)
-        .filter(
-            ProjectPersona.project_id == project_id,
-            ProjectPersona.persona_id == body.persona_id,
-        )
-        .first()
-    )
-    if existing:
-        existing.role_label = body.role_label
-    else:
-        refuse_same_name(db, project_id, persona.name, besides=body.persona_id)
-        db.add(
-            ProjectPersona(
-                project_id=project_id,
-                persona_id=body.persona_id,
-                role_label=body.role_label,
-            )
-        )
-    db.commit()
-    return await get_cast(project_id, db)
-
-
-class SetNarratorRequest(BaseModel):
-    persona_id: str
-
-
-class SetNarratorResponse(CastResponse):
-    # Narration lines that moved to the new narrator.
-    moved_lines: int = 0
-
-
-@router.put("/v1/projects/{project_id}/narrator", response_model=SetNarratorResponse)
-async def set_narrator(
-    project_id: str, body: SetNarratorRequest, db: Session = Depends(get_db)
-) -> SetNarratorResponse:
-    """Make one cast member the project's narrator (2026-09-29: any persona
-    can be — a first-person narrator narrates AND speaks, one voice).
-
-    One narrator per project: the role comes off whoever held it, and they
-    stay in the cast as an ordinary member. Narration follows the role: every
-    line Analyze decided is narration (`source == "narration"`) that belonged
-    to the old narrator, or to nobody, moves to the new one. Lines you set
-    yourself (`corrected`) stay as they are."""
-    from .extraction_api import _narrator_persona_id
-
-    if db.query(Project).filter(Project.id == project_id).first() is None:
-        raise not_found(f"project {project_id}")
-    link = (
-        db.query(ProjectPersona)
-        .filter(ProjectPersona.project_id == project_id, ProjectPersona.persona_id == body.persona_id)
-        .first()
-    )
-    if link is None:
-        raise bad_request("That persona isn't in this project's cast — add them to the cast first.")
-    old_id = _narrator_persona_id(db, project_id)
-    if old_id == body.persona_id and link.role_label == "narrator":
-        return SetNarratorResponse(cast=(await get_cast(project_id, db)).cast)
-
-    for other in db.query(ProjectPersona).filter(
-        ProjectPersona.project_id == project_id,
-        ProjectPersona.role_label == "narrator",
-        ProjectPersona.persona_id != body.persona_id,
-    ):
-        other.role_label = None
-    link.role_label = "narrator"
-    moved = move_narration(db, project_id, body.persona_id, old_id)
-    db.commit()
-    return SetNarratorResponse(cast=(await get_cast(project_id, db)).cast, moved_lines=moved)
-
-
-@router.post(
-    "/v1/projects/{project_id}/narrator",
-    response_model=SetNarratorResponse,
-    status_code=201,
-)
-async def ensure_narrator(
-    project_id: str, db: Session = Depends(get_db)
-) -> SetNarratorResponse:
-    """Idempotent: give this project a narrator. Returns the cast, and how
-    many narration lines moved to it. If a narrator is already linked, the
-    cast comes back unchanged.
-
-    Studio Cast's "+ Add Narrator" calls it. Since 2026-09-29 no book gets a
-    narrator on its own, so this (or ticking Narrator on a cast member) is how
-    one arrives. In order: a cast member called Narrator takes the role; else
-    a "Narrator" from the library that is in no book joins the cast (so
-    deleted books' narrators are used again, not piled up); else a new one is
-    made. Narration lines with no speaker then move to it.
-    """
-    p = db.query(Project).filter(Project.id == project_id).first()
-    if not p:
-        raise not_found(f"project {project_id}")
-    # The role is what makes a narrator (any cast member can hold it since
-    # 2026-09-29), so it is checked first — by name alone, a project whose
-    # narrator is Watson would get a second one.
-    has_role = (
-        db.query(ProjectPersona)
-        .filter(ProjectPersona.project_id == project_id, ProjectPersona.role_label == "narrator")
-        .first()
-    )
-    if has_role is not None:
-        return SetNarratorResponse(cast=(await get_cast(project_id, db)).cast)
-    existing = (
-        db.query(ProjectPersona)
-        .join(DbPersona, DbPersona.id == ProjectPersona.persona_id)
-        .filter(
-            ProjectPersona.project_id == project_id,
-            DbPersona.name.ilike("narrator"),
-        )
-        .first()
-    )
-    if existing is not None:
-        # A cast member called "Narrator" with no role takes it, as at import.
-        existing.role_label = "narrator"
-        narrator_id = existing.persona_id
-    else:
-        free = (
-            db.query(DbPersona)
-            .filter(DbPersona.name.ilike("narrator"))
-            .filter(~db.query(ProjectPersona).filter(ProjectPersona.persona_id == DbPersona.id).exists())
-            .order_by(DbPersona.created_at)
-            .first()
-        )
-        if free is None:
-            free = DbPersona(
-                name="Narrator",
-                voice_instruct="Steady, clear, unhurried — carries the prose between dialogue.",
-                personality=(
-                    "The book's narrator: reads everything that is not a character's "
-                    "line. Steady, clear, unhurried."
-                ),
-            )
-            db.add(free)
-            db.flush()
-        db.add(ProjectPersona(project_id=project_id, persona_id=free.id, role_label="narrator"))
-        narrator_id = free.id
-    moved = move_narration(db, project_id, narrator_id, None)
-    db.commit()
-    return SetNarratorResponse(cast=(await get_cast(project_id, db)).cast, moved_lines=moved)
-
-
-@router.delete("/v1/projects/{project_id}/cast/{persona_id}")
-async def remove_from_cast(
-    project_id: str, persona_id: str, db: Session = Depends(get_db)
-) -> dict:
-    deleted = (
-        db.query(ProjectPersona)
-        .filter(
-            ProjectPersona.project_id == project_id,
-            ProjectPersona.persona_id == persona_id,
-        )
-        .delete()
-    )
-    db.commit()
-    return {"deleted": bool(deleted)}
 
 
 # ── Multi-adapter import pipeline ─────────────────────────────────────────
@@ -808,7 +527,7 @@ def _materialize_standard(
     standard: StandardImport,
     db: Session,
 ) -> tuple[Project, int, int, list[str], list[str]]:
-    """Turn a StandardImport into ORM rows. Returns (project, scene_count, block_count, created_personas, reused_personas).
+    """Turn a StandardImport into ORM rows. Returns (project, scene_count, block_count, created_speakers, reused_speakers).
 
     Caller commits + refreshes. We only flush to get ids.
     """
@@ -830,31 +549,32 @@ def _materialize_standard(
     db.add(p)
     db.flush()
 
-    # Personas — create-or-reuse via the shared dual-write helper.
-    created_personas: list[str] = []
-    reused_personas: list[str] = []
-    char_to_persona_id: dict[str, str] = {}
+    # The book's characters become its speakers (2026-09-29). Everything the
+    # source knows about one is "Who they are" material: the one-liner and the
+    # casting hint (voice_hint). An import keeps the characters exactly as the
+    # book has them — two with one name stay two; each is cast with the persona
+    # of exactly its name when the library has one.
+    created_speakers: list[str] = []
+    reused_speakers: list[str] = []
+    char_to_speaker_id: dict[str, str] = {}
     for char in standard.characters:
-        # Everything the source knows about the character is sheet material:
-        # the one-liner + aliases (notes) and the casting hint (voice_hint).
-        # `voice_instruct` is deliberately left empty — see ensure_project_persona.
         sheet = char.notes or ""
         if char.voice_hint:
             sheet = f"{sheet}\n\nVoice hint:\n{char.voice_hint}".strip()
-        pid, created = ensure_project_persona(
+        speaker, created = ensure_speaker(
             db,
             p.id,
             name=char.name,
-            personality=sheet or None,
+            description=sheet or None,
+            aliases=char.aliases,
             imported_from=standard.source,
             imported_id=char.id,
-            aliases=char.aliases,
         )
-        char_to_persona_id[char.id] = pid
-        (created_personas if created else reused_personas).append(pid)
+        char_to_speaker_id[char.id] = speaker.id
+        (created_speakers if created else reused_speakers).append(speaker.id)
 
-    # After the characters, never before — see _adopt_book_narrator.
-    _adopt_book_narrator(db, p)
+    # After the speakers, never before — see adopt_book_narrator.
+    adopt_book_narrator(db, p)
 
     # Scenes + Blocks.
     total_blocks = 0
@@ -875,8 +595,8 @@ def _materialize_standard(
         db.add(s)
         db.flush()
         for block_idx, line in enumerate(scene.lines):
-            persona_id = (
-                char_to_persona_id.get(line.character_id) if line.character_id else None
+            speaker_id = (
+                char_to_speaker_id.get(line.character_id) if line.character_id else None
             )
             # delivery → direction: best-effort surface a short tag for the UI
             direction = None
@@ -909,14 +629,14 @@ def _materialize_standard(
                     scene_id=s.id,
                     position=block_idx,
                     text=line.text,
-                    persona_id=persona_id,
+                    speaker_id=speaker_id,
                     direction=direction,
                     metadata_json=json.dumps(meta) if meta else None,
                 )
             )
             total_blocks += 1
 
-    return p, len(standard.scenes), total_blocks, created_personas, reused_personas
+    return p, len(standard.scenes), total_blocks, created_speakers, reused_speakers
 
 
 def _materialize_lexicon(
@@ -1346,18 +1066,18 @@ def _update_project_from_standard(
                     "(id / line_id / dialogue_id column)"
                 )
 
-    # Characters create-or-reuse, as on first import.
-    char_to_persona_id: dict[str, str] = {}
+    # Speakers create-or-reuse, as on first import.
+    char_to_speaker_id: dict[str, str] = {}
     for char in standard.characters:
         sheet = char.notes or ""
         if char.voice_hint:
             sheet = f"{sheet}\n\nVoice hint:\n{char.voice_hint}".strip()
-        pid, _created = ensure_project_persona(
+        speaker, _created = ensure_speaker(
             db, project.id,
-            name=char.name, personality=sheet or None,
-            imported_from=standard.source, imported_id=char.id, aliases=char.aliases,
+            name=char.name, description=sheet or None, aliases=char.aliases,
+            imported_from=standard.source, imported_id=char.id,
         )
-        char_to_persona_id[char.id] = pid
+        char_to_speaker_id[char.id] = speaker.id
 
     existing_scenes = (
         db.query(Scene).filter(Scene.project_id == project.id).order_by(Scene.position).all()
@@ -1409,23 +1129,23 @@ def _update_project_from_standard(
         next_pos = len(blocks)
         for line in std_scene.lines:
             incoming_refs.add(line.source_ref)
-            persona_id = (
-                char_to_persona_id.get(line.character_id) if line.character_id else None
+            speaker_id = (
+                char_to_speaker_id.get(line.character_id) if line.character_id else None
             )
             existing = by_ref.get(line.source_ref)
             if existing is None:
                 db.add(
                     Block(
                         scene_id=scene.id, position=next_pos, text=line.text,
-                        persona_id=persona_id,
+                        speaker_id=speaker_id,
                         metadata_json=json.dumps({"source_ref": line.source_ref}),
                     )
                 )
                 next_pos += 1
                 summary["added"] += 1
-            elif existing.text != line.text or existing.persona_id != persona_id:
+            elif existing.text != line.text or existing.speaker_id != speaker_id:
                 existing.text = line.text
-                existing.persona_id = persona_id
+                existing.speaker_id = speaker_id
                 summary["updated"] += 1
             else:
                 summary["unchanged"] += 1
@@ -1442,7 +1162,7 @@ class ProjectLineOut(BaseModel):
     line_id: str | None
     scene_id: str
     scene_title: str | None
-    character: str | None
+    speaker: str | None
     text: str
     # "none" (never rendered) | "rendered" | "stale" (text changed since)
     take_status: str
@@ -1493,16 +1213,16 @@ async def project_lines(project_id: str, db: Session = Depends(get_db)) -> Proje
                     line_id = json.loads(b.metadata_json).get("source_ref")
                 except json.JSONDecodeError:
                     pass
-            persona = (
-                db.query(Persona.name).filter(Persona.id == b.persona_id).first()
-                if b.persona_id
+            speaker = (
+                db.query(Speaker.name).filter(Speaker.id == b.speaker_id).first()
+                if b.speaker_id
                 else None
             )
             out.append(
                 ProjectLineOut(
                     block_id=b.id, line_id=line_id,
                     scene_id=scene.id, scene_title=scene.title,
-                    character=persona[0] if persona else None,
+                    speaker=speaker[0] if speaker else None,
                     text=b.text, take_status=status,
                 )
             )
@@ -1517,7 +1237,7 @@ async def create_demo_project(
     body: CreateDemoRequest, db: Session = Depends(get_db)
 ) -> ImportRunResponse:
     """Seed a demo project for the kind — runs through the same
-    materializer as a real import (CONCEPTS §13.7), so personas, lexicon
+    materializer as a real import (CONCEPTS §13.7), so speakers, lexicon
     dual-writes, and line ids behave exactly like production data."""
     from ..demo_projects import demo_standard
 
@@ -1571,9 +1291,9 @@ async def project_show_notes(
         )
         for b in rows:
             who = None
-            if b.persona_id:
-                p_row = db.query(Persona.name).filter(Persona.id == b.persona_id).first()
-                who = p_row[0] if p_row else None
+            if b.speaker_id:
+                s_row = db.query(Speaker.name).filter(Speaker.id == b.speaker_id).first()
+                who = s_row[0] if s_row else None
             parts.append(f"{who or 'NARRATION'}: {b.text}")
     script = "\n".join(parts)
     if not script.strip():

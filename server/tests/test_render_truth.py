@@ -195,7 +195,9 @@ def _seed_scene(db, *, project_type: str = "audiobook", mastering=None):
     sc = Scene(id="scene-1", project_id=proj.id, position=0, title="Ch 1")
     db.add(sc)
     db.flush()
-    db.add(Block(scene_id=sc.id, position=0, text="A line.", persona_id="p1"))
+    from tests.speaker_fixtures import speaker_played_by
+
+    db.add(Block(scene_id=sc.id, position=0, text="A line.", speaker_id=speaker_played_by(db, sc.id, "p1")))
     db.flush()
     db.commit()
     return sc

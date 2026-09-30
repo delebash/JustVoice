@@ -7,15 +7,15 @@
 // without mounting anything: the renderer gate loads the page but never
 // clicks it.
 //
-// A "line" is one row of GET /v1/scenes/{id}/script: {id, persona_id, source,
+// A "line" is one row of GET /v1/scenes/{id}/script: {id, speaker_id, source,
 // confidence, spoken, speakable, marker, flags: [group index], changed,
-// prev_persona_id, metadata, …}. A "group" is one of its flag_groups:
+// prev_speaker_id, metadata, …}. A "group" is one of its flag_groups:
 // {check, speaker, lines: [id], turns, other}.
 
 /** The PATCH fields a line is restored from — everything a change touches. */
 function snapshot(line) {
   return {
-    persona_id: line.persona_id ?? null,
+    speaker_id: line.speaker_id ?? null,
     source: line.source ?? null,
     extraction_confidence: line.confidence ?? null,
     metadata: { ...(line.metadata || {}) },
@@ -31,7 +31,7 @@ export function isReadable(line) {
 
 /** A line the render stops on. */
 export function hasNoSpeaker(line) {
-  return isReadable(line) && !line.persona_id;
+  return isReadable(line) && !line.speaker_id;
 }
 
 /** "To check": a flagged line, or one with no speaker. */
@@ -66,7 +66,7 @@ export function filterCounts(lines) {
  * "Show the lines around" for a filtered view.
  */
 export function visibleLines(lines, { filter = "all", speaker = "all", around = false } = {}) {
-  const hit = lines.map((ln) => passes(ln, filter) && (speaker === "all" || ln.persona_id === speaker));
+  const hit = lines.map((ln) => passes(ln, filter) && (speaker === "all" || ln.speaker_id === speaker));
   if (!around || (filter === "all" && speaker === "all")) return lines.filter((_, i) => hit[i]);
   return lines.filter((_, i) => hit[i] || hit[i - 1] || hit[i + 1]);
 }
@@ -104,30 +104,26 @@ export function nextToCheck(lines, selectedId, dir = 1) {
 
 /**
  * Keys 1–9: this chapter's speakers, most lines first (the Narrator is 0).
- * `speakers` is the page's list ({persona_id, name, lines, in_cast}).
+ * `speakers` is the page's list ({speaker_id, name, lines}).
  */
 export function numberKeys(speakers, narratorId) {
   return speakers
-    .filter((s) => s.in_cast && s.persona_id !== narratorId && s.lines > 0)
+    .filter((s) => s.speaker_id !== narratorId && s.lines > 0)
     .sort((a, b) => b.lines - a.lines)
     .slice(0, 9)
-    .map((s) => s.persona_id);
+    .map((s) => s.speaker_id);
 }
 
 /**
- * The speaker dropdown's options for one line: the Narrator, then the cast by
- * lines in this chapter; a speaker who has left the cast is offered only on
- * their own lines, and says so.
+ * The speaker dropdown's options: the narrator, then the book's speakers by
+ * lines in this chapter. (A removed speaker takes their lines' speaker with
+ * them since 2026-09-29, so no line points at someone outside this list.)
  */
-export function speakerOptions(speakers, narratorId, line) {
-  const cast = speakers.filter((s) => s.in_cast);
-  const narrator = cast.filter((s) => s.persona_id === narratorId);
-  const rest = cast.filter((s) => s.persona_id !== narratorId)
+export function speakerOptions(speakers, narratorId) {
+  const narrator = speakers.filter((s) => s.speaker_id === narratorId);
+  const rest = speakers.filter((s) => s.speaker_id !== narratorId)
     .sort((a, b) => b.lines - a.lines || a.name.localeCompare(b.name));
-  const out = [...narrator, ...rest].map((s) => ({ value: s.persona_id, label: s.name }));
-  const gone = line?.persona_id && speakers.find((s) => s.persona_id === line.persona_id && !s.in_cast);
-  if (gone) out.unshift({ value: gone.persona_id, label: `${gone.name} — not in this cast` });
-  return out;
+  return [...narrator, ...rest].map((s) => ({ value: s.speaker_id, label: s.name }));
 }
 
 // ── Changes ───────────────────────────────────────────────────────────────
@@ -135,12 +131,12 @@ export function speakerOptions(speakers, narratorId, line) {
 // A change is {id, before, after}: `after` is the PATCH to send, `before` the
 // PATCH that puts the line back. `fixId` is added once the server answers.
 
-/** Give these lines to one persona. Lines that already have them are skipped. */
-export function setSpeaker(lines, ids, personaId) {
+/** Give these lines to one speaker. Lines that already have them are skipped. */
+export function setSpeaker(lines, ids, speakerId) {
   const want = new Set(ids);
   return lines
-    .filter((ln) => want.has(ln.id) && isReadable(ln) && ln.persona_id !== personaId)
-    .map((ln) => ({ id: ln.id, before: snapshot(ln), after: { persona_id: personaId, source: "corrected" } }));
+    .filter((ln) => want.has(ln.id) && isReadable(ln) && ln.speaker_id !== speakerId)
+    .map((ln) => ({ id: ln.id, before: snapshot(ln), after: { speaker_id: speakerId, source: "corrected" } }));
 }
 
 /** Every line that shares a mark with this one ("✓ Looks right" takes the whole mark). */
@@ -155,18 +151,18 @@ export function markOf(groups, lines, id) {
 export function confirm(lines, ids) {
   const want = new Set(ids);
   return lines
-    .filter((ln) => want.has(ln.id) && isReadable(ln) && ln.persona_id && ln.source !== "corrected")
+    .filter((ln) => want.has(ln.id) && isReadable(ln) && ln.speaker_id && ln.source !== "corrected")
     .map((ln) => ({ id: ln.id, before: snapshot(ln), after: { source: "corrected" } }));
 }
 
 /**
  * Can the ticked lines' speakers be swapped? Only when they are spoken by
- * exactly two personas — {ok, a, b} or {ok: false, reason}.
+ * exactly two speakers — {ok, a, b} or {ok: false, reason}.
  */
 export function swapState(lines, ids) {
   const want = new Set(ids);
   const picked = lines.filter((ln) => want.has(ln.id) && isReadable(ln));
-  const who = [...new Set(picked.map((ln) => ln.persona_id))];
+  const who = [...new Set(picked.map((ln) => ln.speaker_id))];
   if (!picked.length) return { ok: false, reason: "Tick the lines to swap." };
   if (who.includes(null) || who.includes(undefined)) {
     return { ok: false, reason: "A ticked line has no speaker — give it one first." };
@@ -192,7 +188,7 @@ export function swap(lines, ids) {
     .map((ln) => ({
       id: ln.id,
       before: snapshot(ln),
-      after: { persona_id: ln.persona_id === st.a ? st.b : st.a, source: "corrected" },
+      after: { speaker_id: ln.speaker_id === st.a ? st.b : st.a, source: "corrected" },
     }));
 }
 
@@ -203,7 +199,7 @@ export function applyLocally(lines, changes) {
     const after = byId.get(ln.id);
     if (!after) return ln;
     const next = { ...ln };
-    if ("persona_id" in after) next.persona_id = after.persona_id;
+    if ("speaker_id" in after) next.speaker_id = after.speaker_id;
     if ("source" in after) next.source = after.source;
     if (after.source === "corrected") {
       // Yours: no longer flagged, and no longer "changed by the last Analyze".
@@ -243,7 +239,7 @@ export function popUndo(stack) {
 export function wasBefore(stack, id) {
   for (const entry of stack) {
     const c = entry.changes.find((x) => x.id === id);
-    if (c && "persona_id" in c.after) return c.before.persona_id;
+    if (c && "speaker_id" in c.after) return c.before.speaker_id;
   }
   return undefined;
 }
@@ -288,7 +284,7 @@ export function keyAction(ev, inField = false) {
 
 // ── The words on a row ────────────────────────────────────────────────────
 //
-// `nameOf(personaId)` gives a persona's name. Approved copy (§8.24, §8.25):
+// `nameOf(speakerId)` gives a speaker's name. Approved copy (§8.24, §8.25):
 // "Decided by" shows the evidence, never a category; the Check column asks
 // its question in terms of the conversation, naming the people.
 
@@ -330,7 +326,7 @@ export function decidedBy(line, lines = []) {
   if (src === "llm") {
     // Kept above the floor but matched no one in the cast: the model named
     // someone who isn't in it (or said "unknown"), not "no answer".
-    return line.persona_id
+    return line.speaker_id
       ? { text: "AI, from the story around it", sub: "", tip: TIP.llm }
       : { text: "AI named no one in the cast", sub: "", tip: TIP.noneInCast };
   }
@@ -340,7 +336,7 @@ export function decidedBy(line, lines = []) {
       : { text: "AI wasn't sure", sub: "", tip: TIP.floored };
   }
   if (src === "corrected") return { text: "You", sub: "", tip: TIP.corrected };
-  return line.persona_id
+  return line.speaker_id
     ? { text: "From the import", sub: "", tip: TIP.imported }
     : { text: "Not analyzed yet", sub: "", tip: TIP.none };
 }

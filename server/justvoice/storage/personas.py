@@ -36,18 +36,6 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def clean_aliases(aliases, name: str = "") -> list[str]:
-    """Trimmed, de-duplicated (case-blind), never the persona's own name."""
-    out: list[str] = []
-    seen = {(name or "").strip().casefold()}
-    for a in aliases or []:
-        a = str(a).strip()
-        if a and a.casefold() not in seen:
-            seen.add(a.casefold())
-            out.append(a)
-    return out
-
-
 def _row_to_persona(row) -> Persona:
     def _loads(raw, fallback):
         if not raw:
@@ -65,8 +53,7 @@ def _row_to_persona(row) -> Persona:
         language=row.language or "en",
         avatar_path=row.avatar_path,
         voice_instruct=row.voice_instruct,
-        personality=row.personality,
-        aliases=_loads(getattr(row, "aliases", None), []),
+        note=row.note,
         default_delivery=_loads(row.default_delivery, {}),
         effects_chain=_loads(row.effects_chain, []),
         lexicon_id=row.lexicon_id,
@@ -145,8 +132,7 @@ class PersonaStore:
             language=p.language,
             avatar_path=p.avatar_path,
             voice_instruct=p.voice_instruct,
-            personality=p.personality,
-            aliases=json.dumps(p.aliases) if p.aliases else None,
+            note=p.note,
             default_delivery=json.dumps(p.default_delivery) if p.default_delivery else None,
             effects_chain=json.dumps(p.effects_chain) if p.effects_chain else None,
             lexicon_id=p.lexicon_id,
@@ -195,9 +181,8 @@ class PersonaStore:
         llm_model: str | None = None,  # accepted, not persisted (legacy)
         language: str = "en",
         avatar_path: str | None = None,
-        personality: str | None = None,
+        note: str | None = None,
         effects_chain: list[dict] | None = None,
-        aliases: list[str] | None = None,
         imported_from: str | None = None,
         imported_id: str | None = None,
         id: str | None = None,
@@ -212,8 +197,7 @@ class PersonaStore:
                 language=language,
                 avatar_path=avatar_path,
                 voice_instruct=voice_instruct,
-                personality=personality,
-                aliases=clean_aliases(aliases, name),
+                note=note,
                 default_delivery=default_delivery or {},
                 effects_chain=effects_chain or [],
                 lexicon_id=lexicon_id,
@@ -247,7 +231,6 @@ class PersonaStore:
                 return None
             data = current.model_dump()
             data.update({k: v for k, v in fields.items() if v is not None})
-            data["aliases"] = clean_aliases(data.get("aliases"), data.get("name", ""))
             data["updated_at"] = _now().isoformat()
             new = Persona.model_validate(data)
 
@@ -265,8 +248,7 @@ class PersonaStore:
                 row.language = new.language
                 row.avatar_path = new.avatar_path
                 row.voice_instruct = new.voice_instruct
-                row.personality = new.personality
-                row.aliases = json.dumps(new.aliases) if new.aliases else None
+                row.note = new.note
                 row.default_delivery = (
                     json.dumps(new.default_delivery) if new.default_delivery else None
                 )

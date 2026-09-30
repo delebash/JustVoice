@@ -1,6 +1,6 @@
 # Getting started
 
-JustVoice is a cross-platform voice-production studio. Five audiences share one engine pool: audiobook producers, game developers (Unreal / NPC dialogue), podcasters, dictation users, and accessibility users.
+JustVoice is a cross-platform voice-production studio. Five audiences share one engine pool: audiobook producers, game developers (Unreal / game dialogue), podcasters, dictation users, and accessibility users.
 
 ## First launch
 
@@ -14,8 +14,8 @@ JustVoice is a cross-platform voice-production studio. Five audiences share one 
 
 ## Common next steps
 
-- **Producing an audiobook.** Import a manuscript via Projects → "+ Import…", choose JustWrite or CSV or SRT or Audacity Labels, and it opens in Studio on its Overview. Work the steps in order — Discover finds your speakers, Script works out who says each line, Cast gives them voices, Render makes the audio.
-- **Voicing game NPCs.** Voices tab → "+ Clone new voice" with a reference WAV (Chatterbox required). Then Projects → "+ Import…" with a CSV of dialogue rows (fixed headers: scene, character, text, delivery, pause_after_ms — only text is required), and work the Lines tab.
+- **Producing an audiobook.** Import a manuscript via Projects → "+ Import…", choose JustWrite or CSV or SRT or Audacity Labels, and it opens in Studio on its Overview. Work the steps in order — Discover finds your speakers, Script works out who says each line, Cast gives each speaker a persona (a finished voice from your library), Render makes the audio.
+- **Voicing game dialogue.** Voices tab → "+ Clone new voice" with a reference WAV (Chatterbox required). Then Projects → "+ Import…" with a CSV of dialogue rows (fixed headers: scene, character, text, delivery, pause_after_ms — only text is required; each `character` becomes a speaker), give each speaker a persona in Studio · Cast, and work the Lines tab.
 - **Recording a podcast script.** Projects → "+ New blank Project" → Project type "Podcast" → arrange voiced segments per chapter in Studio (the multi-track Stories timeline is planned, not built).
 - **Dictating with global hotkey.** Captures tab → confirm all 6 readiness gates pass → set the push-to-talk chord in Settings → Capture.
 

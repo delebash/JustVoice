@@ -47,8 +47,10 @@ const rewritePreview = ref(null);  // { original, rewritten } | null
 const selectedPersona = computed(() =>
   personas.value.find((p) => p.id === selectedPersonaId.value) || null,
 );
-const hasPersonality = computed(() =>
-  !!(selectedPersona.value?.personality?.trim()),
+// Compose and Rewrite have no book, so they read the persona's note on how it
+// sounds (2026-09-29; who a person is lives on the book's speaker).
+const hasNote = computed(() =>
+  !!(selectedPersona.value?.note?.trim()),
 );
 const personaOptions = computed(() => [
   { label: "— no persona —", value: "" },
@@ -355,7 +357,7 @@ async function refreshVoices() {
 }
 
 async function composeLine() {
-  if (!selectedPersonaId.value || !hasPersonality.value) return;
+  if (!selectedPersonaId.value || !hasNote.value) return;
   composeBusy.value = true;
   try {
     // The kit runner owns the task (row + seconds + tokens + cancel).
@@ -383,7 +385,7 @@ async function composeLine() {
 }
 
 async function rewriteLine() {
-  if (!selectedPersonaId.value || !hasPersonality.value) return;
+  if (!selectedPersonaId.value || !hasNote.value) return;
   if (!text.value.trim()) {
     pushToast({ message: "Type something to rewrite first.", kind: "info" });
     return;
@@ -785,22 +787,22 @@ onActivated(() => {
         intent="ghost"
         size="lg"
         :loading="rewriteBusy"
-        :disabled="rewriteBusy || !hasPersonality"
+        :disabled="rewriteBusy || !hasNote"
         label="✏️ Rewrite"
-        :title="hasPersonality
+        :title="hasNote
           ? 'Rewrite the textarea text in this persona\'s voice (preview-then-accept). Manuscript words stay verbatim unless you accept the result.'
-          : 'Pick a persona that has a personality prompt to enable Rewrite'"
+          : 'Pick a persona that has a note on how it sounds to enable Rewrite'"
         @click="rewriteLine"
       />
       <UiButton
         intent="ghost"
         size="lg"
         :loading="composeBusy"
-        :disabled="composeBusy || !hasPersonality"
+        :disabled="composeBusy || !hasNote"
         label="🎲 Compose"
-        :title="hasPersonality
-          ? 'Generate a fresh in-character line via the persona\'s personality prompt'
-          : 'Pick a persona that has a personality prompt to enable Compose'"
+        :title="hasNote
+          ? 'Generate a fresh line in this persona\'s voice, from its note on how it sounds'
+          : 'Pick a persona that has a note on how it sounds to enable Compose'"
         @click="composeLine"
       />
       <UiButton
@@ -1139,7 +1141,7 @@ onActivated(() => {
     <AppModal
       v-if="rewritePreview"
       eyebrow="Rewrite preview"
-      :title="`In ${selectedPersona?.name || 'character'}'s voice`"
+      :title="`In ${selectedPersona?.name || 'this persona'}'s voice`"
       :max-width="'820px'"
       dismissable
       @close="rejectRewrite"
