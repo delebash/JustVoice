@@ -63,6 +63,13 @@ shows no count because nothing records an export.
   checks against. A new project starts on its kind's target — ACX for an
   audiobook, Podcast for a podcast, **None — raw** for everything else — and you
   can change it to any of them. See [the mastering target](#the-mastering-target).
+- **Pronunciation lexicon** — the book's own pronunciation dictionary: **None**,
+  one of this book's lexicons, or one of your reusable ones. Every line of the
+  book is read with it, whoever says it, and it wins over a persona's lexicon
+  when both have an entry for the same word that the engine can use. Choosing
+  one re-renders only the lines that
+  contain its words. **Open ➜** goes to the Lexicons page. See
+  [Lexicons](lexicons.md#which-lexicons-a-line-is-read-with).
 - **Speech marks** — how the book marks speech: **Auto — from the text** (the
   default), **“Double”**, **‘Single’**, **«Guillemets»** or **„German“**. Every
   project but a game has it. See [speech marks](#speech-marks).

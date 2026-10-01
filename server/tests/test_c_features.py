@@ -112,6 +112,11 @@ def test_vtt_and_srt_formats():
 # ── Pronunciation scan ───────────────────────────────────────────────────
 
 
+def _each(texts, covered=()):
+    """Every line read with the same lexicon words."""
+    return [(t, frozenset(covered)) for t in texts]
+
+
 def test_scan_finds_mid_sentence_names_only():
     from justvoice.pronunciation import scan_names
 
@@ -119,7 +124,7 @@ def test_scan_finds_mid_sentence_names_only():
         "Elara crossed the square. The baker waved at Elara.",
         "Nobody had seen Brindlewood so quiet. Quiet suited it.",
     ]
-    words = {w["word"]: w["count"] for w in scan_names(texts, covered=set())}
+    words = {w["word"]: w["count"] for w in scan_names(_each(texts))}
     assert words.get("Elara") == 2          # mid-sentence occurrence qualifies it
     assert words.get("Brindlewood") == 1
     # "Quiet" starts a sentence AND appears lowercase — an ordinary word.
@@ -131,8 +136,20 @@ def test_scan_respects_lexicon_coverage():
     from justvoice.pronunciation import scan_names
 
     texts = ["They followed Elara to Brindlewood."]
-    out = scan_names(texts, covered={"elara"})
+    out = scan_names(_each(texts, {"elara"}))
     assert [w["word"] for w in out] == ["Brindlewood"]
+
+
+def test_scan_coverage_is_per_line():
+    """A persona's lexicon reaches only that persona's lines (2026-09-30), so
+    a name it holds still counts where someone else says it."""
+    from justvoice.pronunciation import scan_names
+
+    out = scan_names([
+        ("They followed Elara home.", frozenset({"Elara"})),
+        ("Nobody told Elara why.", frozenset()),
+    ])
+    assert out == [{"word": "Elara", "count": 1}]
 
 
 def test_scan_respects_multiword_coverage_but_flags_lone_parts():
@@ -143,7 +160,7 @@ def test_scan_respects_multiword_coverage_but_flags_lone_parts():
     from justvoice.pronunciation import scan_names
 
     texts = ["They met Mara Vance at the mill. Later Mara smiled at Vance."]
-    out = {w["word"]: w["count"] for w in scan_names(texts, covered={"Mara Vance"})}
+    out = {w["word"]: w["count"] for w in scan_names(_each(texts, {"Mara Vance"}))}
     assert out == {"Mara": 1, "Vance": 1}  # only the lone occurrences
 
 
@@ -151,7 +168,7 @@ def test_scan_orders_by_frequency():
     from justvoice.pronunciation import scan_names
 
     texts = ["Ask Wren. Tell Wren everything, and bring Alder to Wren."]
-    out = scan_names(texts, covered=set())
+    out = scan_names(_each(texts))
     assert [w["word"] for w in out] == ["Wren", "Alder"]
 
 

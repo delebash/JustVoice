@@ -30,7 +30,7 @@ def _fakes(monkeypatch, pause_ms):
     monkeypatch.setattr(render_chapter_api, "get_state", lambda: state)
     line = ChapterLine(voice="v", text="Hello.")
     monkeypatch.setattr(render_chapter_api, "_resolve_scene_to_lines",
-                        lambda *a, **k: ([line, line], []))
+                        lambda *a, **k: [line, line])
     monkeypatch.setattr(render_chapter_api, "render_line", lambda *a, **k: object())
 
     async def no_warm(*a, **k):

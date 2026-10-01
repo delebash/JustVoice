@@ -8,7 +8,8 @@ Two modes:
     contributes voice_id, default_delivery (tier-2), voice_instruct (→
     delivery.instruct for engines that consume it), and lexicon_id. The
     preset overlays on top (tier-3). A speaker's "Who they are" never reaches
-    this path.
+    this path. Each line is read with the book's lexicon, then its own
+    persona's (render_core.line_lexicons, 2026-09-30).
 """
 
 from __future__ import annotations
@@ -33,6 +34,7 @@ from ..models import ChapterLine, Delivery, RenderChapterRequest
 from ..render_core import (
     QWEN_FAMILY_LABELS,
     concat_lines,
+    line_lexicons,
     probe_line_cached,
     qwen_family_conflicts,
     render_line,
@@ -95,12 +97,17 @@ def _resolve_scene_to_lines(
     st,
     *,
     strict: bool = False,
-) -> tuple[list[ChapterLine], list[str]]:
+) -> list[ChapterLine]:
     """Resolve a scene's blocks → ChapterLines: block → speaker → persona.
 
     Each block becomes one ChapterLine. The persona contributes voice,
     tier-2 delivery overlay, voice_instruct (→ delivery.instruct), and
     lexicon. The preset (tier-3) overlays on top via merge_delivery.
+
+    Each line carries its OWN lexicons (`ChapterLine.lexicons`): the book's,
+    then the persona's that speaks it. Until 2026-09-30 this returned one
+    list for the whole scene — every persona's lexicon, so Old Crow's slang
+    reached the narrator — and never the book's.
 
     `strict` decides what a block with no usable voice means. Real renders
     pass strict=True and the chapter REFUSES, naming the offending lines,
@@ -117,7 +124,7 @@ def _resolve_scene_to_lines(
     extraction/tags.py) — here, so chapter audio, the M4B export and the
     captions all leave out the same lines.
 
-    Returns (lines, lexicon_ids). Raises if the scene has no blocks.
+    Raises if the scene has no blocks.
     """
     db = _open_db()
     try:
@@ -139,6 +146,7 @@ def _resolve_scene_to_lines(
         except (AttributeError, TypeError, ValueError):
             leave_out_tags = False
         tags_left_out = left_out_blocks(blocks) if leave_out_tags else set()
+        book_lexicon = getattr(project, "default_lexicon_id", None)
 
         preset = None
         preset_effects: list[dict] = []
@@ -150,7 +158,6 @@ def _resolve_scene_to_lines(
                 preset_effects = parse_chain(preset.effects_chain)
 
         lines: list[ChapterLine] = []
-        lexicon_ids: set[str] = set()
         skipped = 0
         unplaced: list[tuple[int, str]] = []   # (1-based line no, block text)
         uncast: set[str] = set()               # speaker names no persona plays
@@ -174,8 +181,6 @@ def _resolve_scene_to_lines(
                     tier2 = persona.default_delivery or {}
                     instruct = (persona.voice_instruct or "").strip() or None
                     persona_effects = persona.effects_chain or []
-                    if persona.lexicon_id:
-                        lexicon_ids.add(persona.lexicon_id)
 
             if not voice_id:
                 # No persona / no voice. DEBUG, not WARNING: this resolver
@@ -256,6 +261,7 @@ def _resolve_scene_to_lines(
                     # Same cascade the single-line path uses: the persona's
                     # chain, then the preset's on top.
                     effects=resolve_chain(persona_effects, preset_effects) or None,
+                    lexicons=line_lexicons(book_lexicon, persona.lexicon_id) or None,
                 )
             )
 
@@ -296,9 +302,20 @@ def _resolve_scene_to_lines(
                 f"the speakers personas in Cast."
             )
 
-        return lines, list(lexicon_ids)
+        return lines
     finally:
         db.close()
+
+
+def _lexicons_for(line: ChapterLine, request_lexicons: list[str] | None = None) -> list[str]:
+    """The lexicons one line renders with: its own (the book's, then its
+    persona's), then the request's — direct-mode callers name theirs on the
+    request. In that order, so the book's still wins."""
+    out: list[str] = []
+    for lid in [*(line.lexicons or []), *(request_lexicons or [])]:
+        if lid not in out:
+            out.append(lid)
+    return out
 
 
 def _scene_master_target(
@@ -412,7 +429,7 @@ async def render_cache_stats(project_id: str) -> RenderCacheStatsResponse:
     grand_total = grand_cached = 0
     for scene in scenes:
         try:
-            lines, scene_lexicons = _resolve_scene_to_lines(scene.id, None, st)
+            lines = _resolve_scene_to_lines(scene.id, None, st)
         except Exception:
             out.append(SceneCacheStats(scene_id=scene.id, title=scene.title or "", total=0, cached=0))
             continue
@@ -425,7 +442,7 @@ async def render_cache_stats(project_id: str) -> RenderCacheStatsResponse:
                 language=line.language,
                 delivery=line.delivery.model_dump(exclude_none=True) if line.delivery else {},
                 seed=line.seed,
-                lexicons=scene_lexicons,
+                lexicons=_lexicons_for(line),
                 effects=line.effects,
                 cache_scope=f"scene:{scene.id}",
             )
@@ -451,10 +468,9 @@ async def render_chapter(req: RenderChapterRequest) -> Response:
     # Scene mode — resolve blocks → personas → lines on the server.
     cache_scope = req.cache_scope
     if req.scene_id and not req.lines:
-        lines, scene_lexicons = _resolve_scene_to_lines(
+        lines = _resolve_scene_to_lines(
             req.scene_id, req.preset_id, st, strict=True,
         )
-        merged_lexicons = list({*req.lexicons, *scene_lexicons})
         # Scene renders share one per-scene cache scope with the QC/M4B
         # assembly path (render_scene_to_wav) and the cache-stats probe —
         # otherwise the same audio caches twice and the banner lies.
@@ -462,7 +478,6 @@ async def render_chapter(req: RenderChapterRequest) -> Response:
             cache_scope = f"scene:{req.scene_id}"
     else:
         lines = req.lines
-        merged_lexicons = req.lexicons
 
     if not lines:
         raise bad_request("lines must not be empty (or pass scene_id)")
@@ -499,7 +514,7 @@ async def render_chapter(req: RenderChapterRequest) -> Response:
             language=line.language,
             delivery=line.delivery.model_dump(exclude_none=True) if line.delivery else None,
             seed=line.seed,
-            lexicons=merged_lexicons,
+            lexicons=_lexicons_for(line, req.lexicons),
             effects=line.effects,
             cache_scope=cache_scope,
             use_cache=True,
@@ -582,7 +597,7 @@ def render_scene_to_wav(st, scene_id: str, *, strict: bool = True, master: bool 
     and refusing the whole book because chapter 40 isn't cast yet would
     make it useless for the entire middle of a production.
     """
-    lines, scene_lexicons = _resolve_scene_to_lines(scene_id, None, st, strict=strict)
+    lines = _resolve_scene_to_lines(scene_id, None, st, strict=strict)
     rendered = []
     for line in lines:
         rl = render_line(
@@ -592,7 +607,7 @@ def render_scene_to_wav(st, scene_id: str, *, strict: bool = True, master: bool 
             language=line.language,
             delivery=line.delivery.model_dump(exclude_none=True) if line.delivery else None,
             seed=line.seed,
-            lexicons=scene_lexicons,
+            lexicons=_lexicons_for(line),
             effects=line.effects,
             cache_scope=f"scene:{scene_id}",
             use_cache=True,

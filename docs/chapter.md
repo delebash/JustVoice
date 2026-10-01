@@ -45,7 +45,7 @@ Top toolbar:
 When you click **Render chapter**:
 
 1. JustVoice walks each block in order.
-2. For each block: finds its speaker and the persona that plays them, then applies that persona's lexicon → its delivery defaults → the block's delivery override → renders via the engine → runs the persona's **effects chain** (with the scene's render preset layered on top).
+2. For each block: finds its speaker and the persona that plays them, then applies the book's lexicon, then that persona's → its delivery defaults → the block's delivery override → renders via the engine → runs the persona's **effects chain** (with the scene's render preset layered on top).
 3. Concatenates the per-block WAVs with crossfade (per `settings.generation.crossfade_ms`).
 4. Applies the mastering target — resolved from the render preset, else the project, else the project kind (ACX for audiobooks; see [mastering.md](mastering.md#which-preset-a-render-uses)).
 5. Emits one WAV.
@@ -80,7 +80,7 @@ See [import-and-export.md](import-and-export.md) for adapter specifics + JSON sc
 
 Each persona that plays a speaker can set:
 - **Engine** — one persona on Chatterbox, the rest on Kokoro.
-- **Lexicon** — Old Crow's persona uses street-slang.lex; everyone else uses the project default.
+- **Lexicon** — Old Crow's persona adds street-slang.lex on Old Crow's lines; every line is read with the book's lexicon first (Overview → **Pronunciation lexicon**).
 - **Delivery defaults** — per-persona speed / pitch / emotion baseline.
 
 A persona that plays several speakers brings the same settings to all of them.

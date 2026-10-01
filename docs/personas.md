@@ -114,7 +114,7 @@ Everything in this half reaches the synthesizer.
 |---|---|
 | Voice | Which TTS voice speaks. |
 | Engine override | Makes this persona use a different engine from its voice's own. |
-| Lexicon override | A lexicon for this persona only (for example, street slang for one voice). It overrides the project lexicon for every speaker this persona plays. |
+| Lexicon | A lexicon for this persona only (for example, street slang for one voice). It is read on every line this persona speaks, after the book's own lexicon — and only on those lines. Where both have an entry for the same word that the engine can use, the book's wins. See [Lexicons](lexicons.md#which-lexicons-a-line-is-read-with). |
 | Spoken delivery | The `instruct` / style prompt for engines that take direction: how a line is *performed*. |
 | Default delivery overlay | Speed / pitch / gain / pause defaults for this voice (Tier-2). |
 | Effects chain | Reverb, EQ and compression, applied after the TTS renders. |

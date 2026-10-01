@@ -137,12 +137,12 @@ def collect_project_line_kwargs(
     resolves lenient and skips scenes that raise, exactly like the
     measuring assembly it warms for.
     """
-    from .api.render_chapter_api import _resolve_scene_to_lines
+    from .api.render_chapter_api import _lexicons_for, _resolve_scene_to_lines
 
     out: list[dict] = []
     for sc in project_scenes(project_id):
         try:
-            lines, lexicons = _resolve_scene_to_lines(
+            lines = _resolve_scene_to_lines(
                 sc.id, None, state, strict=not skip_unrenderable
             )
         except Exception:
@@ -157,7 +157,7 @@ def collect_project_line_kwargs(
                     language=line.language,
                     delivery=line.delivery.model_dump(exclude_none=True) if line.delivery else None,
                     seed=line.seed,
-                    lexicons=lexicons,
+                    lexicons=_lexicons_for(line),
                     effects=line.effects,
                     cache_scope=f"scene:{sc.id}",
                     use_cache=True,

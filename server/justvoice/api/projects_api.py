@@ -277,8 +277,14 @@ async def update_project(
         p.description = body.description
     if body.metadata is not None:
         p.metadata_json = json.dumps(body.metadata)
-    if body.default_lexicon_id is not None:
-        p.default_lexicon_id = body.default_lexicon_id
+    # Overview's "Pronunciation lexicon". Left out = unchanged; sent as null
+    # = "None" (it could not be cleared before 2026-09-30). An id that names
+    # no lexicon is refused here, not left to the foreign key.
+    if "default_lexicon_id" in body.model_fields_set:
+        lexicon_id = body.default_lexicon_id or None
+        if lexicon_id and db.get(DbLexicon, lexicon_id) is None:
+            raise not_found(f"lexicon {lexicon_id}")
+        p.default_lexicon_id = lexicon_id
     if body.mastering_preset is not None:
         p.mastering_preset = body.mastering_preset
     db.commit()

@@ -223,6 +223,12 @@ it, Apply to (this chapter / a list / whole book), a rollup, ▶ Without / ▶ W
   and exports, with unrendered lines rendered through the cache as now — or do takes stay a per-line
   audition history while the chapter keeps rendering from the cache? This changes export, ACX QC,
   captions and the cache-stats probe.
+  **Also in D4 (carried 2026-09-30, `2026-09-30-project-lexicon.md` §6 item 7):** stale vs
+  re-render. The mock's Lexicons page (`_s10.html`, "Affects") says editing an entry marks the
+  lines that hold its words **stale**, "not re-rendered — you choose when to pay for it". The app
+  today keys the cache on what a lexicon changes, so those lines simply render again at the next
+  render. Which one Slice 4 builds decides whether a lexicon edit (or any cache-key change) waits
+  for you.
 - **D5 · The Render step's shape.** A chapter grid that opens one chapter's line page (as Script
   does), keeping today's chapter table as the grid? What stays of today's columns (Cached, Check,
   ▶ Render, ACX QC)?
@@ -233,6 +239,13 @@ it, Apply to (this chapter / a list / whole book), a rollup, ▶ Without / ▶ W
   persona tuning defect (§2) is fixed before Slice 4's per-line override lands on top of it.
 - Also carry (decided): Rewrite moves to Render's panel and the Script right-click is deleted; the
   old Chapters page is deleted; states use §8.16's words.
+- Also carry (decided 2026-09-30, `2026-09-30-project-lexicon.md` §6 item 4): **"📕 Pronunciation"
+  in Render's line panel is built right** — it opens the book's chosen lexicon, and creates one for
+  the book if there is none (today's "Fix pronunciation" on the old Chapters page opens the first
+  lexicon in the library, `LexiconsView.vue:431`).
+- **Update 2026-09-30 (later):** D8's first half is done — the project lexicon is BUILT (not yet
+  committed), `2026-09-30-project-lexicon.md` §4. The overview row in §1 ("Pronunciation lexicon
+  row" missing) is built too.
 
 ## 4. Where to resume (a new session starts here)
 

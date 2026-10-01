@@ -63,6 +63,25 @@ def _resolve_effects_chain(req: GenerateRequest, db) -> list[dict]:
     return resolve_chain(persona_chain, preset_chain)
 
 
+def _read_through_lexicons(st, engine_id: str, req: GenerateRequest) -> tuple[GenerateRequest, dict]:
+    """(req with its text as this engine will say it, the IPA map for its words).
+
+    The chapter render's own steps, in its order (render_core.render_line):
+    drop the [tags] this engine can't perform, then apply the lexicons the
+    request names — Generate sends the selected persona's. The IPA map rides
+    in the delivery. Until 2026-09-30 this path read no lexicon at all, so a
+    line on Generate was said one way and the same line in a chapter another.
+    The book's lexicon is not added: Generate is not a line of a book.
+    """
+    from ..render_core import _apply_lexicons, _supports_phoneme_input, performable_text
+
+    text, ipa_map = _apply_lexicons(
+        performable_text(st, engine_id, req.text), req.lexicons, st,
+        ipa_capable=_supports_phoneme_input(engine_id),
+    )
+    return req.model_copy(update={"text": text}), ipa_map
+
+
 def _chunking_params(settings) -> tuple[int, int]:
     """Pull max_chunk_chars + crossfade_ms from settings.generation."""
     max_chunk_chars = int(getattr(settings.generation, "max_chunk_chars", DEFAULT_MAX_CHUNK_CHARS))
@@ -233,10 +252,8 @@ async def _generate_via_manager(
     st = get_state()
     # Every [tag] this engine can't perform goes, as in a chapter render
     # (decided 2026-09-29) — Generate used to send the text untouched, so
-    # Kokoro read "[warm]" aloud as "warm".
-    from ..render_core import performable_text
-
-    req = req.model_copy(update={"text": performable_text(st, engine_id, req.text)})
+    # Kokoro read "[warm]" aloud as "warm". Then the lexicons (2026-09-30).
+    req, ipa_map = _read_through_lexicons(st, engine_id, req)
     max_chunk_chars, crossfade_ms = _chunking_params(st.settings.get())
     request_delivery = req.delivery.model_dump(exclude_none=True) if req.delivery else {}
     # 3-tier voice tuning merge (#88): preset > request > persona defaults.
@@ -282,6 +299,8 @@ async def _generate_via_manager(
         )
         if composed:
             delivery["instruct"] = composed
+        if ipa_map:
+            delivery["ipa_map"] = ipa_map
         # Effects chain (Slice 6) — cascaded persona → preset.
         effects = _resolve_effects_chain(req, db)
     finally:
@@ -357,9 +376,7 @@ def _generate_via_inprocess(engine_id: str, req: GenerateRequest) -> Response:
     engines silently truncate.
     """
     st = get_state()
-    from ..render_core import performable_text
-
-    req = req.model_copy(update={"text": performable_text(st, engine_id, req.text)})
+    req, ipa_map = _read_through_lexicons(st, engine_id, req)
     engine = st.engines.get(engine_id)
     if engine is None:
         raise not_found(f"engine {engine_id}")
@@ -402,6 +419,8 @@ def _generate_via_inprocess(engine_id: str, req: GenerateRequest) -> Response:
         )
         if composed:
             delivery["instruct"] = composed
+        if ipa_map:
+            delivery["ipa_map"] = ipa_map
         effects = _resolve_effects_chain(req, db)
     finally:
         db.close()

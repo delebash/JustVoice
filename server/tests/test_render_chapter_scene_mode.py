@@ -146,7 +146,7 @@ def test_resolves_blocks_to_chapter_lines(tmp_db, monkeypatch):  # noqa: F811
         "persona-mara": _make_persona("persona-mara", voice_id="voice-mara"),
         "persona-jane": _make_persona("persona-jane", voice_id="voice-jane"),
     }
-    lines, lexicons = render_chapter_api._resolve_scene_to_lines(
+    lines = render_chapter_api._resolve_scene_to_lines(
         scene_id="scene-1",
         preset_id=None,
         st=_fake_state(personas),
@@ -156,7 +156,7 @@ def test_resolves_blocks_to_chapter_lines(tmp_db, monkeypatch):  # noqa: F811
     assert lines[0].text == "Hello world."
     assert lines[1].voice == "voice-jane"
     assert lines[1].text == "Reply text."
-    assert lexicons == []
+    assert [line.lexicons for line in lines] == [None, None]
 
 
 # ─── #3 Persona.default_delivery merges via merge_delivery ────────────
@@ -179,7 +179,7 @@ def test_persona_default_delivery_flows_into_chapter_line(tmp_db, monkeypatch): 
             default_delivery={"speed": 1.2, "gain_db": -3.0},
         ),
     }
-    lines, _ = render_chapter_api._resolve_scene_to_lines(
+    lines = render_chapter_api._resolve_scene_to_lines(
         scene_id="scene-1",
         preset_id=None,
         st=_fake_state(personas),
@@ -210,7 +210,7 @@ def test_persona_voice_instruct_becomes_delivery_instruct(tmp_db, monkeypatch): 
             voice_instruct="Clipped, world-weary noir delivery.",
         ),
     }
-    lines, _ = render_chapter_api._resolve_scene_to_lines(
+    lines = render_chapter_api._resolve_scene_to_lines(
         scene_id="scene-1",
         preset_id=None,
         st=_fake_state(personas),
@@ -250,7 +250,7 @@ def test_explicit_preset_instruct_wins_over_persona_instruct(tmp_db, monkeypatch
             voice_instruct="Should not win.",
         ),
     }
-    lines, _ = render_chapter_api._resolve_scene_to_lines(
+    lines = render_chapter_api._resolve_scene_to_lines(
         scene_id="scene-1",
         preset_id="preset-acx",
         st=_fake_state(personas),
@@ -259,10 +259,11 @@ def test_explicit_preset_instruct_wins_over_persona_instruct(tmp_db, monkeypatch
     assert delivery_dict.get("instruct") == "From preset — explicit override"
 
 
-# ─── #5 Persona.lexicon_id collected ────────────────────────────────────
+# ─── #5 Persona.lexicon_id rides on that persona's own lines ────────────
+# (the book's lexicon and the order are pinned in test_project_lexicon.py)
 
 
-def test_persona_lexicon_ids_collected_and_deduped(tmp_db, monkeypatch):  # noqa: F811
+def test_a_persona_lexicon_reaches_only_its_own_lines(tmp_db, monkeypatch):  # noqa: F811
     session_factory, _engine = tmp_db
     _patch_session(monkeypatch, session_factory)
 
@@ -278,13 +279,15 @@ def test_persona_lexicon_ids_collected_and_deduped(tmp_db, monkeypatch):  # noqa
         "persona-a": _make_persona("persona-a", voice_id="voice-a", lexicon_id="lex-narrator"),
         "persona-b": _make_persona("persona-b", voice_id="voice-b", lexicon_id="lex-character"),
     }
-    _lines, lexicons = render_chapter_api._resolve_scene_to_lines(
+    lines = render_chapter_api._resolve_scene_to_lines(
         scene_id="scene-1",
         preset_id=None,
         st=_fake_state(personas),
     )
-    # Order isn't guaranteed (set-based dedup); compare as sets.
-    assert set(lexicons) == {"lex-narrator", "lex-character"}
+    # Until 2026-09-30 both lexicons were applied to all three lines.
+    assert [line.lexicons for line in lines] == [
+        ["lex-narrator"], ["lex-character"], ["lex-narrator"],
+    ]
 
 
 # ─── #6 Block with no persona is skipped ────────────────────────────────
@@ -304,7 +307,7 @@ def test_block_with_no_persona_is_skipped(tmp_db, monkeypatch):  # noqa: F811
     personas = {
         "persona-mara": _make_persona("persona-mara", voice_id="voice-mara"),
     }
-    lines, _ = render_chapter_api._resolve_scene_to_lines(
+    lines = render_chapter_api._resolve_scene_to_lines(
         scene_id="scene-1",
         preset_id=None,
         st=_fake_state(personas),
@@ -331,7 +334,7 @@ def test_block_with_persona_but_no_voice_is_skipped(tmp_db, monkeypatch):  # noq
         "persona-noisy": _make_persona("persona-noisy", voice_id=""),  # empty voice
         "persona-mara": _make_persona("persona-mara", voice_id="voice-mara"),
     }
-    lines, _ = render_chapter_api._resolve_scene_to_lines(
+    lines = render_chapter_api._resolve_scene_to_lines(
         scene_id="scene-1",
         preset_id=None,
         st=_fake_state(personas),
@@ -378,7 +381,7 @@ def test_empty_text_blocks_skipped(tmp_db, monkeypatch):  # noqa: F811
     db.close()
 
     personas = {"persona-mara": _make_persona("persona-mara", voice_id="voice-mara")}
-    lines, _ = render_chapter_api._resolve_scene_to_lines(
+    lines = render_chapter_api._resolve_scene_to_lines(
         scene_id="scene-1",
         preset_id=None,
         st=_fake_state(personas),
@@ -481,7 +484,7 @@ def test_strict_ignores_markers(tmp_db, monkeypatch):  # noqa: F811
     db.close()
 
     personas = {"persona-mara": _make_persona("persona-mara", voice_id="voice-mara")}
-    lines, _ = render_chapter_api._resolve_scene_to_lines(
+    lines = render_chapter_api._resolve_scene_to_lines(
         scene_id="scene-1", preset_id=None, st=_fake_state(personas), strict=True,
     )
     assert len(lines) == 1
@@ -500,7 +503,7 @@ def test_strict_passes_when_every_line_has_a_voice(tmp_db, monkeypatch):  # noqa
     db.close()
 
     personas = {"persona-mara": _make_persona("persona-mara", voice_id="voice-mara")}
-    lines, _ = render_chapter_api._resolve_scene_to_lines(
+    lines = render_chapter_api._resolve_scene_to_lines(
         scene_id="scene-1", preset_id=None, st=_fake_state(personas), strict=True,
     )
     assert len(lines) == 2
@@ -542,7 +545,7 @@ def test_a_tag_only_line_is_left_out_when_the_project_says_so(tmp_db, monkeypatc
     db = session_factory()
     _tagged_chapter(db, leave_out=True)
     db.close()
-    lines, _ = render_chapter_api._resolve_scene_to_lines(
+    lines = render_chapter_api._resolve_scene_to_lines(
         scene_id="scene-1", preset_id=None, st=_fake_state(_VOICED), strict=True)
     assert [ln.text for ln in lines] == ["“Come here,”", "“now.”", "She sat down."]
 
@@ -553,7 +556,7 @@ def test_tags_are_read_when_the_switch_is_off(tmp_db, monkeypatch):  # noqa: F81
     db = session_factory()
     _tagged_chapter(db, leave_out=False)
     db.close()
-    lines, _ = render_chapter_api._resolve_scene_to_lines(
+    lines = render_chapter_api._resolve_scene_to_lines(
         scene_id="scene-1", preset_id=None, st=_fake_state(_VOICED), strict=True)
     assert [ln.text for ln in lines] == ["“Come here,”", "said Mara,", "“now.”", "She sat down."]
 
@@ -568,6 +571,6 @@ def test_a_left_out_tag_never_blocks_the_render(tmp_db, monkeypatch):  # noqa: F
     blk.speaker_id = None
     db.commit()
     db.close()
-    lines, _ = render_chapter_api._resolve_scene_to_lines(
+    lines = render_chapter_api._resolve_scene_to_lines(
         scene_id="scene-1", preset_id=None, st=_fake_state(_VOICED), strict=True)
     assert "said Mara," not in [ln.text for ln in lines]

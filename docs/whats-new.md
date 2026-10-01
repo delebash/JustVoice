@@ -2,6 +2,35 @@
 
 ## v0.1.0
 
+- **A book's pronunciation lexicon now reaches the audio.** Overview has a new
+  **Pronunciation lexicon** row — None, one of this book's lexicons or a reusable
+  one. Until now the render read only the personas' lexicons, so a name fixed in the
+  book's lexicon was still said wrong, with nothing to tell you. Every line is now
+  read with the book's lexicon first, on the chapter audio, the M4B, the ACX check,
+  captions, Lines and the voice-line export alike; where the book's and a persona's
+  lexicon both have an entry the engine can use for the same word, the book's wins
+  ([Lexicons → Which lexicons a line is read with](lexicons.md#which-lexicons-a-line-is-read-with))
+- **Generate says a word the way the persona's lexicon says it.** Generate showed the
+  picked persona's lexicon and sent it, and the server ignored it; now a line on
+  Generate is read through it, as the same line in a chapter is
+- **Lexicons shows who uses each one, and a new book lexicon is put to use.** A
+  **Used by** column lists the books that chose a lexicon and the personas that carry
+  it, or says **— not in use —**. A book-scoped lexicon you make for a book that has
+  none chosen becomes that book's lexicon, as an import's does
+  ([Lexicons](lexicons.md#which-lexicons-a-line-is-read-with))
+- **The persona's "Lexicon override" is now "Lexicon"**, with its empty choice "None" —
+  it never overrode the book's; it adds its own words on that persona's lines
+- **A persona's lexicon stays on that persona's lines.** Every persona's lexicon in
+  the cast used to be applied to every line of the chapter, so one speaker's slang
+  spelling also reached the narrator
+- **Changing a lexicon re-renders only the lines it changes.** Choosing a lexicon, or
+  editing one pronunciation, used to re-render far more than it touched — on Kokoro a
+  single IPA edit re-rendered the whole chapter. Now only the lines that contain the
+  word are rendered again
+- **"Scan the book for names" works, and counts what the render reads.** The scan
+  failed with an error on any book. It now runs, and a name counts as handled only
+  where the render would read it — the lexicon chosen on Overview, or the speaking
+  persona's on that persona's lines ([Lexicons](lexicons.md#find-the-names-before-you-hear-them-wrong))
 - **Closing the app shuts down cleanly with "Require a token even on localhost" on.**
   The window's close asks the server to stop, and that request carries no token — so
   with the setting on it was refused and the app fell back to killing the server. The

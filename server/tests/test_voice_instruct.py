@@ -79,7 +79,7 @@ def _scene_with_one_block(session_factory, *, seed_persona_row: bool = False):
 
 
 def _resolve(persona, preset_id=None):
-    lines, _lexicons = render_chapter_api._resolve_scene_to_lines(
+    lines = render_chapter_api._resolve_scene_to_lines(
         scene_id="scene-1", preset_id=preset_id, st=_state(persona)
     )
     return lines[0].delivery.model_dump(exclude_none=True) if lines[0].delivery else {}

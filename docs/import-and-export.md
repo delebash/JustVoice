@@ -415,8 +415,9 @@ rather than one chapter, and downloads as `<project>_VO.zip`.
   archive stays diffable across re-exports — the same line keeps the same path.
 - **`manifest.json`** alongside, in the format above.
 - Every line is rendered through the **production render path** (`render_core.render_line` with
-  the voice, delivery, effects and lexicon of the persona that plays the line's speaker), so the
-  export matches what the Studio Render tab produced. It is not a separate, drifting code path.
+  the voice, delivery, effects and lexicon of the persona that plays the line's speaker, after
+  the project's own pronunciation lexicon), so the export matches what the Studio Render tab
+  produced. It is not a separate, drifting code path.
 - A line nobody voices stops the export — no speaker, a speaker with no persona, or a persona
   with no voice — with `line <id> has no voice (…) — give every speaker a persona with a voice
   before exporting`.

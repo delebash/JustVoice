@@ -20,6 +20,7 @@ import { EmptyState } from "@delebash/llm-ui";
 import { useLexiconsStore } from "../stores/lexicons.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { usePersonasStore } from "../stores/personas.js";
+import { lexiconUsedBy } from "./lexiconUsage.js";
 
 const api = useApi();
 
@@ -88,10 +89,14 @@ const LEXICON_COLUMNS = [
   { id: "scope", header: "Scope", headerStyle: { width: "130px" } },
   { id: "count", header: "Entries", headerStyle: { width: "90px" } },
   { id: "words", header: "Words" },
+  // Who reads it at render (2026-09-30): the books that chose it on Overview,
+  // the personas that carry it. Precedent: Personas' "Used by".
+  { id: "used", header: "Used by" },
   { id: "actions", header: "Actions",
     headerStyle: { width: "150px", textAlign: "right" },
     cellStyle: { textAlign: "right", whiteSpace: "nowrap" } },
 ];
+const usedBy = (lex) => lexiconUsedBy(lex.id, projects.value, personas.value);
 
 // The entry list inside the dialog keeps its own flat look (no card chrome,
 // tighter padding), so it does NOT wear `jv-table-look`. Its actions address
@@ -487,6 +492,10 @@ onActivated(() => {
         <code v-for="(e, i) in (row.entries || []).slice(0, 4)" :key="i" class="jv-mono lex__word">{{ e.grapheme }}</code>
         <span v-if="(row.entries || []).length > 4" class="jv-muted">+{{ (row.entries || []).length - 4 }}</span>
         <span v-if="!(row.entries || []).length" class="jv-muted">(empty)</span>
+      </template>
+      <template #used="{ row }">
+        <span v-if="usedBy(row).length" class="jv-muted">{{ usedBy(row).join(", ") }}</span>
+        <span v-else class="jv-muted">— not in use —</span>
       </template>
       <template #actions="{ row }">
         <div class="jv-table__actions" @click.stop>

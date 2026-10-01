@@ -6,6 +6,28 @@ The holding pen for unscheduled JustVoice ideas — same charter as JW's
 
 ---
 
+- **2026-10-01 · New TTS engines: IndexTTS 2.5, FireRedTTS3, FireRedAudio and the
+  2026 field** — researched 2026-09-30 at the user's ask; nothing started, nothing
+  decided, nothing measured here. The full record, with sources, is
+  `docs/plans/2026-10-01-tts-engine-scan.md`; its §12 lists six rulings that are
+  the user's to make. In short:
+  - **IndexTTS 2.5 — not now.** A custom Bilibili licence (Apache-2.0 until
+    2025-09-09) forbids using its outputs to improve another AI model, which
+    collides with the Dataset Builder and LoRA training; Python <3.12 and torch 2.8
+    pins; English is its weakest language and collapses at the default segment
+    length. Its draw is real: the best open emotion control on a cloned voice.
+  - **FireRedTTS3 — test before adopting.** Best self-reported English speaker
+    similarity, 24 cloning languages, Apache-2.0 metadata, ungated — but an
+    "intended solely for academic research purposes" disclaimer needs a ruling,
+    flash-attn is hard-coded, torch 2.8, 20.8 GB fp32 (INT8 runs in 8.3 GiB).
+  - **FireRedAudio — no.** A 9B sibling with lower English similarity, zh/en
+    only, Python <3.11, no Windows report anywhere.
+  - **Worth testing:** VoxCPM2 and Step-Audio-EditX for emotion or style on a
+    cloned voice; MOSS-TTS-Nano or Sopro for the CPU cloning slot.
+  - **audio.cpp already ships Q8 builds of all of these**, which makes the entry
+    below the cheapest way to try them; Q8 is the safe quantisation, 4-bit is
+    fragile in diffusion decoders.
+
 - **2026-09-30 · audio.cpp as a second speech runtime, and two engines looked at**
   (none started; all facts read from the upstream repos and model cards on
   2026-09-30, nothing measured on this machine):

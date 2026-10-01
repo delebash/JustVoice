@@ -533,8 +533,8 @@ function goProjects() {
 // ── Fix-it loop entry (journeys fixit journey) ────────────────────────
 // Flag a misread word on the line → Lexicons opens with it prefilled.
 // Uses the user's text selection when it's inside this block; otherwise
-// asks. Lexicon hashes are part of the render-cache key, so saving the
-// entry re-renders exactly the lines that contain the word.
+// asks. The render cache is keyed on what a lexicon changes in a line, so
+// saving the entry re-renders exactly the lines that contain the word.
 async function flagPronunciation(block) {
   let word = "";
   const sel = typeof window !== "undefined" ? String(window.getSelection() || "").trim() : "";

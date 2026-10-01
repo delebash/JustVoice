@@ -54,7 +54,7 @@ training jobs stay on the persona** — they belong to the voice.
 | `default_delivery` | JSON `Delivery` — speed, pitch, gain, etc. |
 | `effects_chain` | JSON array of `{type, params}` |
 | `engine_override` | force an engine regardless of the voice's default |
-| `lexicon_id` | FK → `lexicons`, `ondelete=SET NULL` — applies to every speaker the persona plays |
+| `lexicon_id` | FK → `lexicons`, `ondelete=SET NULL` — read on the lines of every speaker the persona plays, after the book's lexicon (`render_core.line_lexicons`) |
 | `imported_from` / `imported_id` | provenance: `manual` · `voice_profile` (`migrate_profiles.py`). No import makes a persona any more |
 
 **What lives on a Speaker** (`database/models.py:198-228`): `project_id` ·
@@ -124,7 +124,7 @@ Deleting a book deletes its speakers.
   and a game.
 - `PersonasView.vue`: cross-project filters (All / Used / Unused / By project), a
   **Used by** column, the *Used by* panel with *Open Cast →*, and an editor whose
-  **"How they sound"** section is voice · engine override · lexicon override ·
+  **"How they sound"** section is voice · engine override · lexicon (read after the book's) ·
   spoken delivery, plus **Note on how it sounds** ("it never changes the audio").
 
 ### The direction of assignment — do not get this backwards
@@ -226,7 +226,7 @@ podcast: show/episode/segment.
 
 | Table | Key columns | Notes |
 |---|---|---|
-| `projects` | `project_type` · `default_lexicon_id` · `mastering_preset` · provenance | `project_type` is the per-kind switch |
+| `projects` | `project_type` · `default_lexicon_id` · `mastering_preset` · provenance | `project_type` is the per-kind switch. `default_lexicon_id` is Overview's **Pronunciation lexicon** — read on every line of the book (§5, "Which lexicons a line is read with") |
 | `scenes` | `project_id` · `position` · `title` | a chapter / quest / episode |
 | `blocks` | `scene_id` · `position` · `text` · **`speaker_id`** · `direction` · `extraction_confidence` · `source` | the atomic unit of render + take versioning. `speaker_id` → speakers, `SET NULL` |
 | `speakers` | `project_id` · `name` · `aliases` · `description` · `persona_id` · `role_label` · `imported_from` / `imported_id` | the people in one book; `persona_id` is the cast (`SET NULL`). See §1 |
@@ -626,11 +626,35 @@ Discover's known list). Test this before blaming a model for poor attribution.
   book's preloaded speakers.
 - **Batch job:** `POST /v1/render_jobs`, with cancel/resume and per-block retry.
 - **Core:** `render_core.py` — `render_line`, `probe_line_cached`,
-  `_apply_lexicons`, `_resolve_engine_for_voice`,
+  `line_lexicons`, `_apply_lexicons`, `_resolve_engine_for_voice`,
   `resolve_audio_prompt_for_stored`, `voice_synth_fields`,
   `voice_design_instruct(_for_id)`, `qwen_family_for_voice`,
   `qwen_family_conflicts`, `_tags_supported`, `pcm_to_wav`,
   `concat_lines(silence_ms=250)`.
+
+**Which lexicons a line is read with** (2026-09-30,
+`docs/plans/2026-09-30-project-lexicon.md`) — `render_core.line_lexicons(book,
+persona)` is the one rule: the book's (`projects.default_lexicon_id`), then the
+lexicon of the persona that speaks the line. Three doors call it and nothing
+else decides: `render_chapter_api._resolve_scene_to_lines` (each `ChapterLine`
+carries its own `lexicons`; chapter audio, cache-stats, M4B, ACX QC and captions
+all read them through `_lexicons_for`), `export_voicelines._render_block_production`
+(Lines ↻, render jobs, the voice-line export) and `pronunciation_api` (the name
+scan, per line). `_apply_lexicons` lets the **first entry that acts on a word**
+win, so the book's beats the persona's whether each is a respelling or IPA.
+Direct-mode `/v1/render_chapter` still takes `lexicons` on the request; they
+follow each line's own. `/v1/generate` applies the `lexicons` its request names
+(Generate sends the picked persona's) through the same `_apply_lexicons`
+(`generate_api._read_through_lexicons`, both synth paths) — never a book's.
+`POST /v1/lexicons` makes a new book-scoped lexicon the book's own when the
+book has none (`lexicons_api._choose_for_book_with_none`), as an import does.
+
+**The cache key holds what the lexicons changed, not which were attached**: the
+respelt text, and `delivery.ipa_map` cut down to the words the line contains
+(`_ipa_words`, the same whole-word rule as `engines/kokoro/ipa.py`). So choosing
+a lexicon or editing an entry re-renders only the lines with that word.
+`CacheKeyBuilder.with_lexicons` is gone. Lines rendered with a lexicon attached
+before 2026-09-30 re-render once; lines rendered with none keep their key.
 
 **How each voice SOURCE reaches an engine** — `voice_synth_fields` is the one
 place that knows, and it carries synth **inputs** only (clip, vector,
@@ -674,7 +698,7 @@ engine-specific, and three fields are read by nothing at all.**
 | `gain_db` | **host** — post-render `apply_gain_db`, clamped to [−24, +12] (`render_core.py:343-346`) | **every engine** |
 | `pitch` | **host** — post-render `pitch_shift` effect, clamped ±12 st. **Wired 2026-08-17**; before that it was read by nobody | **every engine** |
 | effects chain | **host** — `apply_effects_chain`, after gain and pitch | **every engine** |
-| lexicons | **host** — `_apply_lexicons` substitutes text before synth | **every engine** |
+| lexicons | **host** — `_apply_lexicons` substitutes text before synth; an IPA entry rides `delivery.ipa_map` to an engine that takes phonemes (Kokoro) | respellings: **every engine** |
 | `speed` | engine | **kokoro** (`engine.py:159`), **luxtts** (`:105`) |
 | `instruct` | engine | **qwen3 CustomVoice only** (`:155`). Composed by `delivery_merge.compose_instruct` from persona `voice_instruct` → `emotion` → `Block.direction`, most specific last, a lone hint verbatim. Both render paths use that one function since 2026-08-17; before it, `/v1/generate` composed nothing |
 | ~~`style_prompt`~~ | — | **Deleted 2026-08-17.** A second prose field against `instruct`'s "this line", concatenated into it by the adapter one line before the model saw them. Qwen has one slot; the standing-vs-this-line axis is persona-vs-line, which already exists |

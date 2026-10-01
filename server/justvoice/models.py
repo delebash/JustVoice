@@ -1293,6 +1293,10 @@ class ChapterLine(BaseModel):
     # mode fills it from the block's persona; direct-mode callers may pass
     # one. Part of the render cache key — see render_core.render_line.
     effects: list[dict] | None = None
+    # The lexicons this line is read with, in order (render_core.line_lexicons:
+    # the book's, then its speaker's persona's). Scene mode fills it; a
+    # request's own `lexicons` follow it on every line.
+    lexicons: list[str] | None = None
 
 
 class BetweenLines(BaseModel):

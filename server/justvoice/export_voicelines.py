@@ -9,7 +9,8 @@ The game build consumes audio BY LINE ID (mock #game/6, CONCEPTS §1):
       manifest.json        ← one diffable entry per line
 
 Rendering reuses the production scene resolution (persona → voice /
-delivery / lexicon), one line at a time so each WAV is exactly one block.
+delivery / lexicon, after the book's own lexicon), one line at a time so
+each WAV is exactly one block.
 """
 
 from __future__ import annotations
@@ -54,9 +55,9 @@ def _wav_duration_s(wav: bytes) -> float:
 def export_voicelines(state, project_id: str, *, render_block_fn=None) -> bytes:
     """Render every block to its own WAV; return the zip bytes.
 
-    `render_block_fn(state, voice_id, text, persona) -> bytes` is the
-    test seam; production uses render_core.render_line + the persona's
-    delivery/lexicon, matching the Studio render path.
+    `render_block_fn(state, persona, block) -> bytes` is the test seam;
+    production uses render_core.render_line + the persona's delivery and the
+    line's lexicons, matching the Studio render path.
     """
     if render_block_fn is None:
         render_block_fn = _render_block_production
@@ -107,18 +108,39 @@ def export_voicelines(state, project_id: str, *, render_block_fn=None) -> bytes:
         db.close()
 
 
+def _book_lexicon_id(scene_id: str) -> str | None:
+    """The lexicon chosen for the book this scene belongs to (Overview →
+    Pronunciation lexicon). Its own short session: the single-line door runs
+    on scheduler threads, on plain copies of the rows (render_jobs)."""
+    from .database.models import Project
+
+    db = db_session.SessionLocal()
+    try:
+        row = (
+            db.query(Project.default_lexicon_id)
+            .join(Scene, Scene.project_id == Project.id)
+            .filter(Scene.id == scene_id)
+            .first()
+        )
+        return row[0] if row else None
+    finally:
+        db.close()
+
+
 def _render_block_production(state, persona, block) -> bytes:
     """One block → one WAV through the production render path."""
     from .audio.wav import write_wav_container
     from .errors import bad_request
-    from .render_core import render_line
+    from .render_core import line_lexicons, render_line
 
     # Mirrors render_chapter's scene mode: the persona that plays the line's
-    # speaker contributes voice + tier-2 delivery + lexicon.
+    # speaker contributes voice + tier-2 delivery + lexicon, and the book's
+    # own lexicon is read first (2026-09-30 — this door read only the
+    # persona's, so a Lines ↻ and the chapter audio could say a name two ways).
     voice = None
     delivery = None
     effects: list[dict] = []
-    lexicons: list[str] = []
+    persona_lexicon = None
     if persona is not None:
         store_p = state.personas.get(persona.id)
         if store_p is not None:
@@ -128,8 +150,7 @@ def _render_block_production(state, persona, block) -> bytes:
             # export ships the same voice the studio auditions. (Mastering is
             # the part game exports skip.)
             effects = list(store_p.effects_chain or [])
-            if store_p.lexicon_id:
-                lexicons.append(store_p.lexicon_id)
+            persona_lexicon = store_p.lexicon_id
     if not voice:
         who = f"the persona {persona.name}" if persona is not None else "no persona"
         raise bad_request(
@@ -141,7 +162,7 @@ def _render_block_production(state, persona, block) -> bytes:
         voice=voice,
         text=block.text,
         delivery=delivery,
-        lexicons=lexicons,
+        lexicons=line_lexicons(_book_lexicon_id(block.scene_id), persona_lexicon),
         effects=effects,
         cache_scope=f"scene:{block.scene_id}",
         use_cache=True,

@@ -27,9 +27,15 @@
   metadata (`speech_marks`, `leave_out_tags`) and merged in on save like
   Author. The server reads them: extraction_api._project_meta (Analyze,
   Discover, Script) and render_chapter_api (the render skips the tags).
+
+  Pronunciation lexicon (2026-09-30, docs/plans/2026-09-30-project-lexicon.md)
+  is the project's own `default_lexicon_id`: every line of the book is read
+  with it, before its speaker's persona lexicon (render_core.line_lexicons).
+  The list is this book's lexicons, then the reusable ones. Precedent for a
+  select with a button beside it inside one field: `.jv-inline-row`.
 -->
 <script setup>
-import { computed, ref, watch } from "vue";
+import { computed, onActivated, onMounted, ref, watch } from "vue";
 import {
   UiButton, UiField, UiInput, UiSelect, UiTable, UiTag, UiTextarea, UiToggle,
   confirmDialog, pushToast, saveBlob,
@@ -39,6 +45,8 @@ import { projectsService } from "../services/projects.js";
 import { useCopy } from "../services/copy.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { useActiveProject } from "../stores/activeProject.js";
+import { useLexiconsStore } from "../stores/lexicons.js";
+import { lexiconChoices } from "../views/studioLexicon.js";
 import { stepStatus } from "../views/studioStatus.js";
 
 const props = defineProps({
@@ -51,6 +59,18 @@ const emit = defineEmits(["go", "reimported"]);
 const copy = useCopy();
 const projectsStore = useProjectsStore();
 const activeProject = useActiveProject();
+const lexiconsStore = useLexiconsStore();
+// Re-read the library each time the page is shown, and whenever the project
+// names a lexicon the list doesn't hold: an import makes the book's lexicon
+// on the server, and the list may have been loaded before it (Home loads it).
+function refreshLexicons() {
+  lexiconsStore.reload();
+}
+onMounted(refreshLexicons);
+onActivated(refreshLexicons);
+watch(() => props.project.default_lexicon_id, (id) => {
+  if (id && !lexiconsStore.byId(id)) refreshLexicons();
+});
 
 const KIND_LABEL = {
   audiobook: "📖 Audiobook",
@@ -91,6 +111,8 @@ const SPEECH_MARKS = [
   { id: "german", label: "„German“" },
 ];
 const prose = computed(() => props.project.project_type !== "game_voicelines");
+
+const lexicon = computed(() => lexiconChoices(lexiconsStore.items, props.project));
 
 // Local copies, committed on change — the Projects pane's autosave, moved.
 const editName = ref("");
@@ -134,6 +156,12 @@ function commitDescription() {
 }
 function commitMastering(v) {
   if ((v || "") !== (props.project.mastering_preset || "")) patch({ mastering_preset: v || "" });
+}
+function commitLexicon(v) {
+  if ((v || "") !== (props.project.default_lexicon_id || "")) patch({ default_lexicon_id: v || null });
+}
+function openLexicons() {
+  window.location.hash = "#lexicons";
 }
 function commitMarks(v) {
   if ((v || "auto") !== (meta.value.speech_marks || "auto")) patch({ metadata: { ...meta.value, speech_marks: v } });
@@ -245,6 +273,13 @@ async function deleteProject() {
           <UiField label="Mastering target" layout="block" hint="Every render is mastered to this, and Export checks against it.">
             <UiSelect :model-value="masterShown" width="name" :options="MASTERING_PRESETS"
               option-value="id" @update:model-value="commitMastering" />
+          </UiField>
+          <UiField label="Pronunciation lexicon" layout="block">
+            <div class="jv-inline-row">
+              <UiSelect :model-value="lexicon.chosen" width="name" :options="lexicon.options"
+                option-value="id" @update:model-value="commitLexicon" />
+              <UiButton intent="ghost" size="small" label="Open ➜" @click="openLexicons" />
+            </div>
           </UiField>
           <template v-if="prose">
             <UiField label="Speech marks" layout="block"

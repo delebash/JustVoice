@@ -1,7 +1,9 @@
 """Per-line render cache — disk-backed LRU with in-memory hot tier.
 
 Each scope is a subdirectory; each entry is one PCM-with-format-header
-file keyed by `sha256(engine || voice || engine_version || text || delivery || lexicons)`.
+file keyed by `sha256(engine || engine_version || voice || text || language
+|| seed || delivery || effects)`. Lexicons are not a field of their own: what
+they change is already in the text and the delivery (render_core.render_line).
 """
 
 from __future__ import annotations
@@ -62,13 +64,6 @@ class CacheKeyBuilder:
         self._h.update(b"delivery:")
         self._h.update(canonical.encode("utf-8"))
         self._h.update(b"\n")
-        return self
-
-    def with_lexicons(self, lexicon_ids: list[str]) -> "CacheKeyBuilder":
-        for lid in sorted(lexicon_ids):
-            self._h.update(b"lex:")
-            self._h.update(lid.encode("utf-8"))
-            self._h.update(b"\n")
         return self
 
     def with_effects_chain(self, chain_hash: str) -> "CacheKeyBuilder":

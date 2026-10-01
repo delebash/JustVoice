@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import io
 import logging
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -400,6 +401,24 @@ def _supports_phoneme_input(engine_id: str) -> bool:
         return False
 
 
+def line_lexicons(book_lexicon_id: str | None, persona_lexicon_id: str | None) -> list[str]:
+    """The lexicons one line is read with, in order: the book's (Overview →
+    Pronunciation lexicon), then the lexicon of the persona that speaks it.
+
+    The one rule every door that renders a line shares — the chapter resolver,
+    the single-line door and the name scan — so they cannot drift. The book's
+    goes first because `_apply_lexicons` lets the first entry for a word win:
+    a name belongs to the book, not to a voice reused across books (decided
+    2026-09-30). Until then the render read every persona's lexicon on every
+    line of the chapter and never read the book's.
+    """
+    out: list[str] = []
+    for lid in (book_lexicon_id, persona_lexicon_id):
+        if lid and lid not in out:
+            out.append(lid)
+    return out
+
+
 def _apply_lexicons(
     text: str, lexicon_ids: list[str], state: AppState, *, ipa_capable: bool = False
 ) -> tuple[str, dict[str, str]]:
@@ -419,23 +438,70 @@ def _apply_lexicons(
     Until 2026-08-21 only ``alias`` was ever applied: the IPA column was
     stored, displayed, and silently ignored at render.
 
-    Lexicons apply in order — first match wins for a given grapheme.
+    Lexicons apply in order, and the first entry that ACTS on a word wins it,
+    whichever kind it is (2026-09-30). That is what lets the book's lexicon,
+    listed first by `line_lexicons`, beat the persona's: an IPA entry never
+    touched the text, so a later lexicon's respelling of the same word used
+    to replace it and leave the IPA nothing to pronounce. An entry claims
+    only what it can match — an IPA entry the word in any case, a respelling
+    its exact spelling — and one that does nothing here (a blank row, or
+    IPA-only on an engine that can't take it) claims nothing, so a later
+    lexicon can still answer.
+
+    ``ipa_map`` holds only the words THIS line contains. It rides in the
+    delivery and so in the cache key; carrying every entry made any IPA edit
+    re-render every line. The match is the engine's own (`_ipa_words`).
     """
     if not lexicon_ids:
         return text, {}
     out = text
     ipa_map: dict[str, str] = {}
+    # lower(), not casefold(): both matchers compare lowercased, and casefold
+    # folds "Maße" into "Masse", two words to the engine.
+    spoken_as_ipa: set[str] = set()   # lowercased — IPA matches any case
+    respelt: set[str] = set()         # exact — a respelling matches its own spelling
     for lid in lexicon_ids:
         lex = state.lexicons.get(lid)
         if not lex:
             continue
         for entry in lex.entries:
-            if ipa_capable and entry.phoneme_ipa:
-                if entry.grapheme not in ipa_map:
-                    ipa_map[entry.grapheme] = entry.phoneme_ipa.strip()
-            elif entry.alias:
+            word = entry.grapheme.strip().lower()
+            if not word or word in spoken_as_ipa:
+                continue
+            if ipa_capable and entry.phoneme_ipa and entry.phoneme_ipa.strip():
+                ipa_map[entry.grapheme] = entry.phoneme_ipa.strip()
+                spoken_as_ipa.add(word)
+            elif entry.alias and entry.grapheme not in respelt:
                 out = out.replace(entry.grapheme, entry.alias)
+                respelt.add(entry.grapheme)
+    if ipa_map:
+        spoken = _ipa_words(out, ipa_map)
+        ipa_map = {g: p for g, p in ipa_map.items() if g.strip().lower() in spoken}
     return out, ipa_map
+
+
+def _ipa_words(text: str, ipa_map: dict[str, str]) -> set[str]:
+    """The mapped words the engine will speak from IPA in `text`, lowercased.
+
+    Step for step what engines/kokoro/ipa.py `splice` does: whole words, case
+    aside, the longest entry first so "Mara Vance" is not also "Mara"; split
+    on those, and every piece that IS an entry is spoken from its IPA — which
+    includes an entry ending in punctuation ("Dr.") that the regex itself
+    can't match but that stands alone between two matches. Two matchers, one
+    rule; test_project_lexicon pins them together.
+    """
+    entries = sorted(
+        (g.strip() for g, p in ipa_map.items() if g.strip() and (p or "").strip()),
+        key=len, reverse=True,
+    )
+    if not entries or not text.strip():
+        return set()
+    pattern = re.compile(r"\b(" + "|".join(re.escape(g) for g in entries) + r")\b", re.IGNORECASE)
+    parts = pattern.split(text)
+    if len(parts) == 1:
+        return set()
+    known = {g.lower() for g in entries}
+    return {p.lower() for p in parts if p and p.lower() in known}
 
 
 def probe_line_cached(
@@ -483,7 +549,6 @@ def probe_line_cached(
         .with_language(language)
         .with_seed(seed)
         .with_delivery_json(canonical_json(delivery))
-        .with_lexicons(lexicons)
         .with_effects_chain(effects_chain_hash(effects))
         .finish()
     )
@@ -561,7 +626,10 @@ def render_line(
     # starts lying about what is cached.
     effective_text = _apply_emotion_tag(effective_text, delivery, _emotion_tagset(engine_id))
 
-    # Cache lookup
+    # Cache lookup. The key holds what the lexicons CHANGED in this line — the
+    # respelt text, and the IPA for its own words (in the delivery) — never
+    # which lexicons were attached. It held their ids until 2026-09-30, so
+    # choosing a lexicon on Overview re-rendered every line of the book.
     cache_enabled = use_cache and settings.cache.enabled
     cache_key = (
         CacheKeyBuilder()
@@ -571,7 +639,6 @@ def render_line(
         .with_language(language)
         .with_seed(seed)
         .with_delivery_json(canonical_json(delivery))
-        .with_lexicons(lexicons)
         .with_effects_chain(effects_chain_hash(effects))
         .finish()
     )

@@ -18,7 +18,7 @@ async def list_lexicons() -> LexiconList:
 
 @router.post("/v1/lexicons", response_model=Lexicon, status_code=201)
 async def create_lexicon(body: CreateLexiconRequest) -> Lexicon:
-    return get_state().lexicons.create(
+    lex = get_state().lexicons.create(
         body.name,
         body.entries,
         scope=body.scope,
@@ -26,6 +26,28 @@ async def create_lexicon(body: CreateLexiconRequest) -> Lexicon:
         project_id=body.project_id,
         persona_id=body.persona_id,
     )
+    if lex.scope == "project" and lex.project_id:
+        _choose_for_book_with_none(lex.project_id, lex.id)
+    return lex
+
+
+def _choose_for_book_with_none(project_id: str, lexicon_id: str) -> None:
+    """A book-scoped lexicon made for a book that has none chosen becomes the
+    book's lexicon (Overview → Pronunciation lexicon), the way an import's
+    does (projects_api._materialize_lexicon). Decided 2026-09-30: until then
+    a lexicon made by hand here did nothing until someone found Overview's
+    row. A book that already has one keeps it."""
+    from ..database import session as db_session
+    from ..database.models import Project
+
+    db = db_session.SessionLocal()
+    try:
+        project = db.get(Project, project_id)
+        if project is not None and not project.default_lexicon_id:
+            project.default_lexicon_id = lexicon_id
+            db.commit()
+    finally:
+        db.close()
 
 
 @router.get("/v1/lexicons/{id}", response_model=Lexicon)

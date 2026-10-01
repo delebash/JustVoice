@@ -623,10 +623,15 @@ onMounted(async () => {
               :options="[{ value: '', label: '(use voice default)' }, ...engines.map((e) => ({ value: e.id, label: e.name || e.id }))]" />
           </label>
 
+          <!-- Not an override (2026-09-30): the book's lexicon is read first and
+               wins on the same word; this one adds on this persona's lines. -->
           <label class="personas__field">
-            <span>Lexicon override</span>
+            <span>Lexicon</span>
             <UiSelect width="name" v-model="draft.lexicon_id" @update:model-value="markDirty"
-              :options="[{ value: '', label: '(none — use project default)' }, ...lexicons.map((lx) => ({ value: lx.id, label: lx.name }))]" />
+              :options="[{ value: '', label: 'None' }, ...lexicons.map((lx) => ({ value: lx.id, label: lx.name }))]" />
+            <p class="jv-muted personas__hint">
+              Read on this persona's lines, after the book's lexicon. The book's wins on the same word.
+            </p>
           </label>
 
           <label class="personas__field personas__field--wide">

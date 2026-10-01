@@ -210,7 +210,7 @@ def test_scene_lines_carry_the_persona_chain(tmp_db, monkeypatch):  # noqa: F811
     _seed_scene(db)
     db.close()
 
-    lines, _lex = render_chapter_api._resolve_scene_to_lines(
+    lines = render_chapter_api._resolve_scene_to_lines(
         "scene-1", None, _state_with({"p1": _persona("p1", effects=GAIN_UP)}),
     )
     assert lines[0].effects == GAIN_UP
@@ -233,7 +233,7 @@ def test_preset_chain_overlays_the_persona_chain(tmp_db, monkeypatch):  # noqa: 
     db.commit()
     db.close()
 
-    lines, _lex = render_chapter_api._resolve_scene_to_lines(
+    lines = render_chapter_api._resolve_scene_to_lines(
         "scene-1", "pr-1", _state_with({"p1": _persona("p1", effects=GAIN_UP)}),
     )
     # Cascade order: persona first, preset on top.
@@ -247,7 +247,7 @@ def test_no_chain_leaves_the_line_alone(tmp_db, monkeypatch):  # noqa: F811
     _seed_scene(db)
     db.close()
 
-    lines, _lex = render_chapter_api._resolve_scene_to_lines(
+    lines = render_chapter_api._resolve_scene_to_lines(
         "scene-1", None, _state_with({"p1": _persona("p1")}),
     )
     assert lines[0].effects is None

@@ -1136,9 +1136,6 @@ TESTED 2026-09-27 on the Ninth Facet demo (user: "run the tests on discovery on 
         (eval 18/28 → 28/28, "Ode" → Odeline Marran, Gudgeon no longer proposed);
         long chapters read in pieces (`docs/plans/2026-09-28-chapter-splitting.md`).
 FOUND WHILE BUILDING — needs the user's word, NOT decided:
-        · Lexicon on Overview was in the plan, but a project's `default_lexicon_id` is never
-          applied at render (`render_chapter_api._resolve_scene_to_lines` adds persona lexicons
-          only). Left OFF Overview: wire the render to apply it, or keep it off?
         · Mastering options now say what they do: "" = the kind's default (was labelled "None",
           which on an audiobook meant ACX), "none" = raw, and "Custom" dropped (server renders it
           raw with a warning).
@@ -1148,8 +1145,8 @@ DECIDED 2026-09-28 — "go", on: "Overview mastering options: switch to what the
         accept that wording." The mastering wording above stands as built; the mock matches it.
 OPEN:   Slice 4 (Render owns direction/takes/Gen/Compare), Slice 5 (presets excision — ruled,
         needs go). (Slice 3 was BUILT 2026-09-29, `86eb21d` — its entry is below.) The
-        Lexicon-on-Overview question was ANSWERED 2026-09-30 — "ok mark that as to be wired": see
-        "A project's pronunciation lexicon reaches the audio".
+        Lexicon-on-Overview question was ANSWERED ("ok mark that as to be wired") and BUILT
+        2026-09-30: `docs/plans/2026-09-30-project-lexicon.md` (its §7 holds the closed item).
         Game "1 · Lines" is unverified in the real app — the real data has no game project.
         Slice 4 ALSO moves "rewrite in character" off Script: it stays on Script as today's
         right-click until then (decided 2026-09-29, next item); Slice 4 builds it in Render's
@@ -1162,6 +1159,9 @@ OPEN:   Slice 4 (Render owns direction/takes/Gen/Compare), Slice 5 (presets exci
         "＋ Add text" (mock `_new_chapters.html`); Words / Est. audio columns → dropped.
         GAP, not in the mock: add / rename / reorder / delete a chapter. Rec (not decided):
         Script's chapter grid — "＋ Add chapter", and Rename · Move · Delete per row; mock first.
+        Slice 4 ALSO builds "📕 Pronunciation" in the line panel right — the book's chosen
+        lexicon, one made for the book if none (decided 2026-09-30, `2026-09-30-project-lexicon.md`
+        §6 item 4) — and D4 carries stale-vs-re-render for lexicon edits (§6 item 7).
         NEXT (2026-09-30, user "lets move to the next slice"): Slice 4 is researched, not planned —
         `docs/plans/2026-09-30-mock-vs-app-and-slice-4.md` §3 (what exists, what the mock shows)
         and §3.4 (D1–D8, the decisions to put to the user before any plan). Resume at its §4.
@@ -1442,25 +1442,6 @@ NOT:    a male/female "sex" dropdown on speakers; a gender field on personas.
 BUILT:  nothing. OPEN: the two checks in the doc's §2, then a plan — when the Personas page is
         redesigned per the mock.
 GO:     needed
-
-### A project's pronunciation lexicon reaches the audio
-STATE:  DECIDED 2026-09-30 — "ok mark that as to be wired", on the answer to "what do you think on
-        5 think on it a few times". The answer, verbatim, with its evidence:
-        `docs/plans/2026-09-30-project-lexicon.md` §1 — READ IT before building. a · Overview row
-        "Pronunciation lexicon" (None, this book's lexicons, your general ones; "Open ➜") · b ·
-        every render path applies it (the one resolver, plus the Lines render and the voiceline
-        export) · c · the book's lexicon wins over the personas', in a fixed order · d · the
-        pronunciation scan counts exactly what the render applies · e · the render cache keyed
-        on what the lexicons change in each line, not on which lexicons are attached.
-WHY:    everything around the project lexicon treats it as live — import makes one, the scan
-        counts it, export carries it, the mock shows it — and the render never reads it
-        (`render_chapter_api.py:177`): a fixed name is still said wrong, silently.
-        f · per-line lexicons — ADDED the same day ("and also do you fix on lexicon the found
-        along the way"): each line gets its own speaker's persona lexicon plus the book's, not
-        every persona's lexicon on every line of the chapter.
-NOT:    leaving it off (would mean removing it from import, scan, export and the scope).
-BUILT:  nothing yet. When: before Slice 4 (the rec — Slice 4 rebuilds Render on the same resolver).
-GO:     needed for the build
 
 ### Slice 3's leftovers — edit, split and merge lines; speech marks; dialogue tags; the old Chapters page; one narrator rule
 STATE:  DECIDED 2026-09-30 — "finish slice 3 and related items", then "go" on the plan as
