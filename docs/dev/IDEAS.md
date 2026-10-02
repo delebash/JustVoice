@@ -6,6 +6,46 @@ The holding pen for unscheduled JustVoice ideas — same charter as JW's
 
 ---
 
+- **2026-10-02 · No Python at all: the server in JavaScript, a small Rust layer** —
+  the user, after the audio.cpp switch: "we could rewrite the llm runner mostly in
+  javascript with a little rust backend for downloadn and system info and get rid of
+  python all together"; "the reason we wen python was becauase of the audio
+  requirements at the time, tht has changed". Nothing started, nothing decided.
+  - **Why it's on the table now.** Python came in for the PyTorch speech engines. Since
+    the 2026-10-01 switch every model runs in audio.cpp (C++), and with training removed
+    the app has no PyTorch at all. A LoRA trainer rebuilt in C++ on ggml (inside our
+    copy of audio.cpp — Q1's path) would keep it that way: ggml has automatic
+    differentiation and an optimizer, but the backward pass of Qwen3-TTS's layers, GPU
+    support for every op it needs, and the training loop would all have to be built.
+  - **What Python still does** (measured 2026-10-02):
+    - JustVoice's server: about 33,000 lines in 168 files, plus 98 test files — the
+      HTTP API that the UI, JustWrite, MCP and headless mode all use; SQLite storage;
+      render orchestration and its cache; imports, lexicons, speaker attribution;
+    - the kit's runner: about 26,000 lines in 70 files, 1,027 tests — llama.cpp process
+      management, the VRAM manager, model fit and measurements, downloads, LLM routing.
+      JustWrite and docgen run it too, and JustWrite has its own Python server;
+    - the audio math: numpy and scipy (effects filters), python-stretch (pitch),
+      pyloudnorm (ACX loudness).
+  - **The shape.** The logic in JavaScript; Rust only for plumbing (downloads, system
+    info), keeping the rule that business logic never goes in Rust.
+  - **What decides it:**
+    - **The server still has to exist.** JustWrite drives JustVoice over HTTP, MCP calls
+      it, and `justvoice-server serve` runs with no window. The logic can't live only in
+      the webview: it would be a JavaScript runtime (Node, Bun or Deno) shipped as the
+      sidecar instead of the Python one. That removes Python, not the sidecar.
+    - **The audio math needs JavaScript or WebAssembly replacements**, each checked
+      against today's output so no render changes.
+    - **It is a family decision** (the 2026-08-14 sameness law). The kit is shared, so
+      rewriting the runner moves JustWrite and docgen with it.
+    - **The size.** About 59,000 lines of Python, plus the tests that prove them,
+      rewritten and re-verified across three apps.
+  - **Before deciding — a sizing study:**
+    - the JavaScript runtime sidecar's size against today's PyInstaller one;
+    - a JavaScript or WebAssembly replacement for each piece of audio math, compared
+      output for output;
+    - how headless mode, MCP and JustWrite's link would work;
+    - the order to move the pieces in.
+
 - **2026-10-01 · New TTS engines: IndexTTS 2.5, FireRedTTS3, FireRedAudio and the
   2026 field** — researched 2026-09-30 at the user's ask; nothing started, nothing
   decided, nothing measured here. The full record, with sources, is

@@ -708,7 +708,13 @@ DECIDED: 2026-10-02 — Q1 (CI on our copy's repo to publish binaries): "q1 yes 
 OPEN:   gaps, in order: switch plan §5 (Turbo/Nano cloning, blends, single-word IPA, CustomVoice
         0.6B, training rebuilt on the runtime, Chatterbox he/ja/ru/zh, our-copy fix for the
         aligner's seconds) — the CPU cloner (Pocket TTS) and Kokoro on the CPU landed with the item
-        below · Q1's CI when the first C++ gap starts. Gates on the switch's final tree: ruff
+        below · Q1's CI when the first C++ gap starts.
+        NEXT (asked 2026-10-02, awaiting the user's pick + go): the user said "continue with the
+        current conversion in jv". Presented: no C++ needed — gap 8 speed on every engine
+        (host-side time-stretch; today Speed reaches only Kokoro and KittenTTS), gap 4 Qwen3
+        CustomVoice 0.6B (convert with audiocpp_gguf), gap 9 16-bit rows / new engines (VoxCPM2
+        first); needs C++ (Q1, "not now") — gaps 1, 2, 3, 7, 10 and the training rebuild (5).
+        Lean: gap 8 first, gap 4 second. Gates on the switch's final tree: ruff
         clean, server 894 passed, vitest 122 passed, biome clean, vite build, smoke 14/14 views
         zero JS errors on the real data dir, kit binary 37 + spawn 6 passed; the runtime row was
         screenshotted and measured.
