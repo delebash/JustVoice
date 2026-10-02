@@ -17,11 +17,9 @@ as Studio's Analyze — race configurations in columns, correct results in
 place, and every correction teaches the next run
 (see [AI features](ai-features.md)).
 
-**Training moved.** Teaching a voice is a way of *getting* a voice, so it
-lives on the [Voices](voices.md) page beside cloning, designing, importing
-and blending — the **Trained** tab under **+ New voice**.
+**Training is gone.** Voice training (a LoRA fine-tune) was removed on
+2026-10-02 — see [Engines → Voice training](engines.md#voice-training).
 
 Old bookmarks keep working: the retired `/compare`, `/renderlab` and
-`/audio` addresses redirect here, `/train` opens the Voices page on its
-Trained tab, `/speakerlab` lands on the AI Settings Lab, and `/cache`,
-`/channels`, `/webhooks` redirect into Settings.
+`/audio` addresses redirect here, `/speakerlab` lands on the AI Settings
+Lab, and `/cache`, `/channels`, `/webhooks` redirect into Settings.

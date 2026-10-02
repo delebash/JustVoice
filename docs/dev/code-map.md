@@ -33,14 +33,14 @@ That merge is gone:
 
 | | What it is | Where |
 |---|---|---|
-| **Voice** | **The instrument.** A preset, clone, blend, trained LoRA, import or designed voice. No person attached. | JSON manifests on disk — `storage/voices.py`, written by `atomic_write_json` |
+| **Voice** | **The instrument.** A preset, clone, blend, import or designed voice. No person attached. | JSON manifests on disk — `storage/voices.py`, written by `atomic_write_json` |
 | **Persona** | **A finished spoken voice** — a voice and its engine, plus speed, pitch, gain, spoken direction, effects, lexicon, and a short note on how it sounds. Library-level: plays any number of speakers, in any book and project kind. | `personas` table, `database/models.py:83` |
 | **Speaker** | **A person in one book** — a name, the other names the text uses (*Also called*), and *Who they are*. Discover finds them, Script gives lines to them. Deleted with its book (`ondelete=CASCADE`). | `speakers` table, `database/models.py:198` |
 | **Cast** | **Not a table.** Each speaker's persona — `speakers.persona_id` (`ondelete=SET NULL`, `database/models.py:218`). One persona can play many speakers. | the Studio step `components/StudioCast.vue` |
 
 A line points at a speaker (`blocks.speaker_id`, `database/models.py:259`), and
-the speaker at its persona. **Generations, lexicons, channels, MCP bindings and
-training jobs stay on the persona** — they belong to the voice.
+the speaker at its persona. **Generations, lexicons, channels and MCP bindings
+stay on the persona** — they belong to the voice.
 
 **What lives on a Persona** (`database/models.py:83-129`) — the full list, because
 "what is tuned on a persona" keeps getting asked:
@@ -49,7 +49,7 @@ training jobs stay on the persona** — they belong to the voice.
 |---|---|
 | `name`, `language`, `avatar_path` | identity. `name` is unique across the library (case and extra spaces aside) and never blank — `personas_api._persona_name` |
 | `voice_id` | the instrument. **Not** an FK — voices are JSON manifests, the column carries the id verbatim |
-| `voice_instruct` | the spoken-delivery instruction. **The only persona text that reaches the synth.** Composed into `delivery.instruct` and consumed by **Qwen3 CustomVoice alone** — `luxtts/engine.py` contains no instruct read and its manifest declares `instruct_field: False`, and Qwen3 Base's clone call never passes it. This row said "Qwen3 CustomVoice, LuxTTS" until 2026-08-17, as did the persona editor's own label |
+| `voice_instruct` | the spoken-delivery instruction. **The only persona text that reaches the synth.** Composed into `delivery.instruct` and consumed by **Qwen3 CustomVoice** (and VoiceDesign, after a designed voice's description) — Qwen3 Base has no instruction input, and Kokoro and Chatterbox take none (§3b) |
 | `note` | a short note on how it sounds (replaced `personality`, the character sheet, 2026-09-29). Read by Generate's Compose / Rewrite (`personas_api._require_persona_with_note` refuses without one) and by Smart-assign as the persona's `tone`. **Never reaches the synth** |
 | `default_delivery` | JSON `Delivery` — speed, pitch, gain, etc. |
 | `effects_chain` | JSON array of `{type, params}` |
@@ -167,12 +167,10 @@ and none of them takes or touches a persona:**
 | Design from prose | `POST /v1/voices/design` (`voices_api.py:161`) | `Voice` |
 | Import `.justvoice.zip` | `POST /v1/voices/import` (`voices_api.py:183`) | `Voice` |
 | Blend | `POST /v1/voices/blend` (`voices_api.py`) | `Voice` — needs ≥ 2 `source_voice_ids` |
-| Train a LoRA | `POST /v1/train` (`training_api.py`) | a job; on completion `training_callback` **mints a `VoiceRecord`** with `source="lora"` and `adapter_path`, and returns `final_voice_id` (`training_api.py`). `phase5_api.py` was a plan-phase name and no longer exists — training split out to `training_api.py`, blending to `voices_api.py` |
 
 **A `VoiceRecord` carries no tuning at all** (`models.py:446`): `id · engine ·
 source · name · language · gender · design_prompt · transcript · sample_count ·
-blend_recipe · embedding · adapter_path · training_job_id · created_at ·
-updated_at`. No speed, no pitch, no gain, no effects, no instruct — and the
+blend_recipe · embedding · created_at · updated_at`. No speed, no pitch, no gain, no effects, no instruct — and the
 `Voice` DTO returns even less. **So there is exactly ONE place tuning lives
 today: the persona.** Any claim that the app has two competing tuning surfaces
 is about a proposal, not about the code. (Whether a voice-level correction
@@ -186,10 +184,9 @@ section is a `UiSelect` over existing voices. Studio · Cast's right-hand panel
 lists **personas**, never voices (the voice list there died 2026-09-29). Nothing
 in the persona path creates an artifact.
 
-One inconsistency worth knowing: `TrainingJob.persona_id` exists in the
-SQLAlchemy model (`database/models.py:675`, CASCADE) while the live training
-path keys off `voice_name` / `final_voice_id` in the JSON store
-(`storage/training_jobs.py`). The produced artifact is a **Voice** either way.
+Voice training (`POST /v1/train`, a LoRA fine-tune that minted a `lora`
+voice) was removed on 2026-10-02 — its PyTorch environments went with the
+speech-runtime switch, and the runtime cannot render a trained voice.
 
 ### Vocabulary (ruled 2026-08-16, verified against the code)
 
@@ -217,8 +214,7 @@ Attribution words are real and distinct: `discover-speakers`,
 ## 2. The data model — every table
 
 `server/justvoice/database/models.py`. SQLite via SQLAlchemy is the primary
-store; the only on-disk JSON is voice manifests and training-job records
-(`storage/atomic.py`).
+store; the only on-disk JSON is voice manifests (`storage/atomic.py`).
 
 **Content spine:** `Project → Scene → Block`, generalised across kinds
 (`CONCEPTS.md` §1) — audiobook: book/chapter/paragraph · game: title/quest/line ·
@@ -243,7 +239,6 @@ podcast: show/episode/segment.
 | `render_presets` | `voice_id` (**FK → personas, `ondelete=RESTRICT`**) · `delivery_json` · `effects_chain` · `master` · `lexicons_json` · `seed` · `cache_scope` | see §7 |
 | `webhooks` | `events_json` · `secret_hash` · `log_tail_json` | |
 | `speaker_corrections` | `project_id` · `text_snippet` · `speaker_id` → speakers, `SET NULL` (`persona_id` until 2026-09-29, `character_id` until 2026-08-22) | fed back into attribution as `corrections` |
-| `training_jobs` | `persona_id` · `engine` · `status` · sample counts · `loss_history_json` · `adapter_path` | LoRA training |
 | `mcp_bindings` | `client_id` · `persona_id` · `default_engine` | dictation clients |
 | `prefs` / `settings` | key/value; `settings` is a single row of JSON | renderer UI prefs + all operator knobs |
 
@@ -251,195 +246,178 @@ podcast: show/episode/segment.
 
 ## 3. Engines — the capability matrix
 
-Read from each `server/justvoice/engines/<id>/manifest.py`. **Cloning is not
-Chatterbox-only.**
+Read from each `server/justvoice/engines/<id>/manifest.py`. Since the
+2026-10-01 switch (`docs/plans/2026-10-01-audiocpp-switch.md`) an engine is a
+**catalog**: its manifest names the model files and how the audio.cpp runtime
+loads them; there is no per-engine program. **Cloning is not Chatterbox-only.**
 
 ### 3a. What each MODEL is — every shipped variant
 
-Sizes are the summed real bytes of each manifest's pinned load set, not a
-rounded claim. **The variant is the unit, never the engine** — every trap below
-is a case of the engine-level flag disagreeing with the variant that loads.
+Every variant is one pinned file (two for speech recognition) in
+`audio-cpp/audio.cpp-gguf` at the commit in `engines/audiocpp/release.py`
+(`MODEL_REPO` / `MODEL_REVISION`). Sizes are the summed real bytes. **The
+variant is the unit, never the engine** — every trap below is a case of the
+engine-level flag disagreeing with the variant that loads.
 
-| Engine | Variant | Clones | Presets | Designs | Multi-speaker | Langs | Download |
+| Engine | Variant | audio.cpp family · task | Clones | Presets | Designs | Langs | Download |
 |---|---|---|---|---|---|---|---|
-| **kokoro** | `kokoro-multi-lang-v1_0` | ✗ | **54** | ✗ | ✗ | 9 | 349 MB |
-| | `kokoro-en-v0_19` | ✗ | fewer, untyped | ✗ | ✗ | en | 320 MB |
-| **chatterbox** | `chatterbox-multilingual-v2` | **✓** | 0 | ✗ | ✗ | **23** | 3.21 GB |
-| | `chatterbox-turbo-v1` | **✓** | 0 | ✗ | ✗ | en | 2.99 GB |
-| **qwen3** | `qwen3-cv-1.7b` / `-0.6b` | ✗ | **9** | ✗ | ✗ | 10 | 4.52 / 2.50 GB |
-| | `qwen3-base-1.7b` / `-0.6b` | **✓** | 0 | ✗ | ✗ | 10 | 4.54 / 2.52 GB |
-| **luxtts** | `luxtts-base` | **✓** | 0 | ✗ | ✗ | en | 1.18 GB |
-| **tada** | `tada-3b` | **✓** | 0 | ✗ | ✗ | 10 | **19.6 GB** (3 repos) |
-| **moss_tts** | `moss-ttsd-v0` | **✓** | 0 | ✗ | **✓ [S1][S2][S3]** | en, zh | 4.12 GB |
-| **whisper** | — | ✗ (ASR) | — | — | — | multilingual | — |
+| **kokoro** | `kokoro-82m-q8` | `kokoro_tts` · tts | ✗ | **49** | ✗ | 8 | 190 MB |
+| **qwen3** | `qwen3-cv-1.7b-q8` | `qwen3_tts` · tts | ✗ | **9** | ✗ | 10 | 2.82 GB |
+| | `qwen3-base-1.7b-q8` / `qwen3-base-0.6b-q8` | `qwen3_tts` · tts (`clone: True`) | **✓** | 0 | ✗ | 10 | 2.70 / 1.99 GB |
+| | `qwen3-vd-1.7b-q8` | `qwen3_tts` · vdes | ✗ | 0 | **✓** | 10 | 2.82 GB |
+| **chatterbox** | `chatterbox-multilingual-v2-q8` | `chatterbox` · clon | **✓** | 0 | ✗ | **19** | 2.09 GB |
+| **asr** (STT) | `qwen3-asr-1.7b-q8` + companion `::aligner` (`qwen3_forced_aligner` · align) | `qwen3_asr` · asr | — | — | — | 30 | 3.60 GB |
+
+Kokoro's five Japanese voices are filtered out of `STATIC_VOICES` (the
+runtime's Kokoro needs MeCab/UniDic for Japanese). The variant ids are new at
+the switch; engine ids and voice ids are unchanged.
 
 ### 3b. What each engine DOES with a delivery — the honest ✓ grid
 
-✓ = the adapter reads it. Blank = the value is accepted, merged, stored and
-silently dropped. This is the grid to check before promising any control.
+✓ = `engines/audiocpp/slot.py: to_speech_request` sends it. Blank = accepted,
+merged, stored and dropped. `test_engine_knob_wiring.py` drives every declared
+knob through the mapping and fails if one doesn't come out the other side.
 
-| Field | kokoro | chat-ML | chat-Turbo | qwen3-CV | qwen3-Base | luxtts | tada | moss |
-|---|---|---|---|---|---|---|---|---|
-| `speed` | **✓** | | | | | **✓** | | |
-| `instruct` (prose) | | | | **✓** | | | | |
-| `emotion` | | | **✓ tag** | **✓ prose** | | | | |
-| `temperature` | | ✓ | ✓ | ✓ | ✓ | | | via `engine.*` |
-| `seed` | n/a — deterministic | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| reference clip | | ✓ | ✓ | **refuses** | ✓ | ✓ | ✓ | ✓ |
-| phoneme override | declared, **not wired** | | | | | | | |
+| Field | kokoro | kitten | pocket | chatterbox | qwen3-CV | qwen3-Base | qwen3-VD |
+|---|---|---|---|---|---|---|---|
+| `speed` | **✓** `speed` | **✓** `speed` | | | | | |
+| `instruct` (prose) | | | | | **✓** `options.instruct` | | **✓** `instructions` (the description) |
+| `emotion` | | | | | **✓ prose** | | **✓ prose** |
+| `temperature` | | | | ✓ `options.temperature` | ✓ | ✓ | ✓ |
+| `engine.*` knobs | | | | `exaggeration`, `cfg_weight`→`guidance_scale`, `repetition_penalty`, `top_p` | `talker_top_k`/`_top_p`→`top_k`/`top_p`, `repetition_penalty` | same | same |
+| `seed` | ✓ | sent, does not repeat (not offered) | ✓ | ✓ | ✓ | ✓ | ✓ |
+| voice | `voice` (the id) | `voice` = `AUDIOCPP_VOICE[id]` (Bella…) | `voice` = `AUDIOCPP_VOICE[id]` (alba…) | | `options.speaker` | | |
+| reference clip | | | ✓ `voice_ref` on the `tts` task (its `clon` task refuses); gated on TERMS | **required** `voice_ref` | **refuses** | **required** `voice_ref` | |
+| clip transcript | | | | | | ✓ `reference_text` (not with `xvector_only`) | |
+| language | voice's code (`KOKORO_LANGUAGE`) | English only | none — the model IS the language; another refuses by name | code | **name** (`QWEN_LANGUAGE`; `en` is rejected) | name | name |
+| `voice_vector` (blend) | **refuses** (422, named gap) | | | | | | |
 
 Everything NOT in that grid — `gain_db`, `pitch`, the effects chain, lexicons,
 `pause_before`/`pause_after` — is host-side and works on **all** of them. See
-§5's delivery matrix for where each is applied.
+§5's delivery matrix for where each is applied. Same seed + text + settings →
+the same audio on Kokoro, Qwen3 and Chatterbox (measured 2026-10-01) and Pocket
+TTS (2026-10-02); not on KittenTTS.
 
 Three facts this grid exists to keep visible:
 
-- **`speed` reaches two of nine models.** For a narration app that is the
-  most-wanted knob and it is mostly inert. It is also the easiest to fix: a
-  host-side time-stretch would move it into the always-works set.
-- **Prose direction reaches one checkpoint, and that checkpoint cannot clone.**
-  Qwen3 Base clones and drops instruct — `engine.py`'s clone branch passes
-  text, reference and language only. So "direct in words" and "use this
-  speaker's cloned voice" are a choice today. The way to have both is a LoRA
-  on an instruct-capable checkpoint.
-- **`tada/engine.py` reads no delivery field at all.** Text, reference clip,
-  language, seed. Nothing else.
+- **`speed` reaches one engine.** A host-side time-stretch would move it into
+  the always-works set (switch plan §5).
+- **Prose direction reaches the two checkpoints that cannot clone.** Qwen3 Base
+  has no instruction input. "Direct in words" and "use this speaker's cloned
+  voice" are a choice today; a LoRA on Base was the way to have both, and
+  voice training was removed on 2026-10-02.
+- **Wrong-family requests refuse by name** instead of rendering something else
+  — a clip on CustomVoice, no clip on Base or Chatterbox, no description on
+  VoiceDesign (`AudioCppError`, surfaced as the load/synth error).
 
-### 3c. Inline tags — the syntaxes are incompatible
+### 3c. Inline tags — none on the runtime
 
-| Engine | Categories | Tags |
-|---|---|---|
-| **chatterbox-turbo** | emotion · register · paralinguistic | 19, see §5's tag surface |
-| **moss-tts** | speaker · pause | `[S1]` `[S2]` `[S3]` · `[pause 0.5s]` … `[pause 2.0s]` |
-| everything else | — | none |
+No capability row declares `inline_tags` and no manifest claims
+`paralinguistic_tags` (pinned by `test_designed_voice_parity.py`), so
+`render_core.performable_text` strips every bracket tag before any engine sees
+it. Chatterbox Turbo's 19 tags and its emotion `value_map` return with Turbo
+cloning (switch plan §5); the compilation path (`render_core._apply_emotion_tag`)
+stays, tested against Turbo's set written out in `test_emotion_wiring.py`.
 
-Turbo wants `[laugh]`, MOSS wants `[S1]`. **A tag typed into a script is
-engine-specific text** — recast the line onto another voice and it is either
-read aloud literally or dropped. Any script-level design has to own that.
-
-**Two traps:**
+**Traps:**
 
 1. **`qwen3` declares `voice_cloning: True` at engine level as the union across
-   its variants** (`qwen3/manifest.py:34-37`). The **per-variant flag is the
-   truth** — CustomVoice does not clone, Base is clone-only. The file records a
-   past bug where the engine-level flag made the catalog's Cloning filter
-   believe CustomVoice cloned. **Any UI that offers cloning must branch on the
-   variant, not the engine.**
-2. **`voice_design` is `False` in every manifest today.** The whole design path
-   is built and gated pending one download — `qwen3/manifest.py:38-42` says it
-   *"flips back with the VoiceDesign variant."* So the door offers **Install**,
-   not a dead ✗.
+   its variants.** The **per-variant flag is the truth** — CustomVoice does not
+   clone, Base is clone-only, VoiceDesign designs. **Any UI that offers
+   cloning must branch on the variant, not the engine.**
+2. **`lookup()` walks `-` suffixes** — `chatterbox-multilingual-v2-q8` reaches
+   `chatterbox-multilingual`, `qwen3-base-1.7b-q8` reaches `qwen3-base`. A
+   variant whose id can't reach a row fails
+   `test_every_manifest_variant_resolves_to_a_row`.
 
 ### 3d. Which engines run on which OS — and where that is enforced
 
-Every manifest declares `SUPPORTED_OSES` explicitly; **no engine may inherit
-the all-three default** (`test_os_gate.py` fails if one tries). macOS is the
-only platform anything excludes: **qwen3** (CUDA-only adapter), **tada** (MPS
-tensor issues) and **moss-tts** (flash-attn). The user-facing
-table is `docs/engines.md` → *Which engines run on your operating system*.
+Every manifest declares `SUPPORTED_OSES` explicitly (`test_os_gate.py` fails
+if one leans on the default), and since the switch all four declare all three
+OSes: the runtime ships a build for each (`release.binaries()`). The gate is
+still **`install_engine()`** (`manager.py`) — the first thing it does, before
+any install work, raising `InstallError` naming the host OS and the declared
+list. `EngineInfo.supported_on_this_os` carries the verdict to the client
+(computed server-side — the renderer may be a browser on another machine);
+`SpeechEnginesTab.vue:osBlocked()` reads it.
 
-**The gate is `install_engine()` (`manager.py:836`)** — the first thing it
-does, before any install work. It raises `InstallError` naming the host OS and
-the declared list. `EngineInfo.supported_on_this_os` carries the verdict to the
-client, computed server-side because the renderer may be a browser on another
-machine; `SpeechEnginesTab.vue:osBlocked()` reads it and swaps the Install
-button for a badge.
+### 3e. The speech runtime — install, process, slots, state
 
-Until 2026-08-17 this was inert in every case. The only `supports_current_os()`
-call sat in the shared-venv builder (`shared_venv.py:199`, deleted 2026-08-22)
-behind `if m.isolation != "shared": continue` — so it could never reach MOSS or
-(then) Dia, **the only engines that declared a restriction**. Everything it did evaluate declared all three and passed. The
-`supported_oses` docstring promised a catalog filter that did not exist, and
-`engines_api` served the field to a UI that never read it.
+**One audio.cpp server runs every model** (`server/justvoice/engines/audiocpp/`;
+it has no `manifest.py`, so discovery skips it). `EngineManifest.isolation`
+answers `"audiocpp"` for every engine; `uses_audiocpp` is true when every
+variant row carries an `audiocpp` block.
 
-Chatterbox is **clone-only** — no preset voices, the host catalog stays empty
-for it (`chatterbox/manifest.py:168`). Kokoro's list is **static, 54 presets,
-unconditional** (`kokoro/manifest.py:66`) and `voices_api.py:51-62` never checks
-which variant is installed.
+| Piece | Where | What it does |
+|---|---|---|
+| pinned release | `release.py` | `TAG` (`v0.9.0`), the `BinaryAsset` rows per platform/GPU (Windows cuda12 + cudart 12.4, cuda13 + cudart 13.3, vulkan, cpu; Linux vulkan, cpu; macOS metal), `MODEL_REPO`/`MODEL_REVISION`, `model_source()` |
+| install | `runtime.install()` → kit `llm_runner.runner.binary.acquire_runtime` | staged download → launch-verify (`--no-ui --max-loaded-models 0 --version`) → atomic swap into `<engines_runtime_root>/audiocpp/<tag>/<gpu>/`; `installed_exe()` is cached, `forget_installed()` drops it |
+| eSpeak NG | `espeak.py` | fetches the `espeakng-loader` 0.2.4 wheel for this platform from PyPI, checks its pinned sha256, unpacks the library + `espeak-ng-data` into `<root>/audiocpp/espeak-ng-0.2.4/`; its paths ride Kokoro's `session_options` |
+| backend choice | `runtime.configured_backend()/configured_gpu()` ← `settings.engines.speech_runtime` | `auto` = `select_runtime_asset` (the kit's GPU preference; cuda12 vs cuda13 by compute capability via `concrete_gpu`); a pinned backend that isn't installed reads as not installed |
+| the processes | `AudioCppServer.ensure()`, one per placement (`runtime.get_server("gpu" \| "cpu")`) | writes `<data_dir>/engines-runtime-config/audiocpp-server.json` — or `audiocpp-server-cpu.json` for the CPU process, the same build with `backend: cpu` at `speech_runtime.cpu_threads` (0 = physical cores) — (`lazy_load: true`, `max_loaded_models: 0`, every on-disk variant + its companions as `<id>::<role>`), restarts when that signature changes, spawns through the kit's `spawn_child` (Windows kill-on-close Job Object + virus-scanner retry) with `JUSTVOICE_SERVER_PID` set, `--no-ui`, log `<data_dir>/logs/audiocpp-server[-cpu].log`. A CPU-build runtime has only the CPU one (`slot.effective_placement`) |
+| a slot | `slot.AudioCppSlot(manifest, placement)` (`manager._new_slot`) | answers the manager's old engine-process calls against its placement's process: `/load` (model on disk? then warm it — audio.cpp is lazy), `/synth` (refuses a Pocket TTS reference clip with 403 `terms_required` until the manifest TERMS are accepted), `/transcribe`, `/align`, `terminate` = `unload_models` |
+| the API | `api/speech_runtime_api.py` | `GET /v1/speech-runtime` (release, build, backend setting, builds for this OS, GPUs, running/pid); `PUT` saves backend/gpu, unloads the speech slots, stops the server |
 
-### 3e. How an engine environment gets built — and where its state lives
+**Install = the runtime, once.** `install_engine()` (any engine) →
+`_install_audiocpp_runtime()`: runtime, then eSpeak NG. Models are separate:
+`installer.spawn_prefetch` → `speech_cache.fetch_hf_variant` (pinned files,
+plain layout), and a cold `manager.load` fetches a missing variant first
+(`_ensure_variant_local`). `manager.uninstall()` deletes the engine's
+speech-cache folder and raises `InstallError` (409 at the API) if a file
+survives — Windows won't delete a file the runtime holds open.
 
-**One venv per engine, always** (2026-08-22; the shared interpreter and its
-`constraints.txt` ceiling are deleted). `EngineManifest.isolation` survives as
-the single door other code asks through, and returns `"venv"` for everything.
+**Source and state are different roots.** `ENGINES_DIR` is the catalog source
+(read-only when frozen); `engines_runtime_root()` is mutable state —
+`ENGINES_DIR` unfrozen (so the runtime lands inside `engines/audiocpp/`,
+gitignored), `<data_dir>/engines-runtime` frozen.
 
-`install_engine()` → `_install_engine_isolated()` (`manager.py`), in order:
+**Placement — the graphics card or the CPU, per model** (2026-10-02,
+`docs/plans/2026-10-02-cpu-placement.md` §8). `manager.placement_for(m, kind,
+variant)` → (`"gpu"` | `"cpu"`, the reason the row says, unload-the-AI-model?):
+a CPU-build runtime → cpu; the user's `engine_overrides[id].placements[variant]`
+→ that; else Auto — gpu when no un-slept, unpinned `llm` reservation is on the
+card (`_ai_model_on_card`) or the variant's newest measured `load` footprint
+fits `_free_card_mb`; else cpu when `cpu_speed` (newest `source="speed"`,
+`backend="cpu"` row on this machine, else the manifest variant's `cpu_realtime`
+reference) ≥ `speech_runtime.cpu_min_realtime`; else gpu, and when the size was
+never measured `_unload_ai_model` runs `make_room(total, protected tts/stt)`
+first (the kit's eviction event → the app's toast). `load()` resolves it before
+anything moves, reloads a loaded model whose place changed, and records the
+reason (`placement_reason_for`); `synth`/`transcribe` on a CPU slot record the
+first real-time factor after each load (`_record_cpu_speed`, kit column
+`realtime_x`). The device is then `cpu` for a CPU placement, else
+`_resolve_device` = `backend_of(installed_exe())`; `_books_memory` books VRAM for
+anything but `cpu`.
 
-| Step | What it does |
-|---|---|
-| `_check_uv_available()` | bundled uv sidecar beside the server binary first, PATH only as the dev fallback |
-| `uv venv --python 3.13` | uv **downloads a managed CPython** if the box has none — this is what lets an engine install on a machine with no Python at all. It lands in `<runtime root>/.uv-python` |
-| plugin install | `justvoice_plugin` first, so the subprocess has its base class |
-| `manifest.INSTALL` | each step in order: `torch` (index from `_detect_torch_index_url`), `pip`, `pip-no-deps`, `pip-git`, `pip-find-links`, `pip-local`, `model-*` |
-| `ACCEL_INSTALL` | hardware-conditional arm, chosen from the kit's detected runtimes |
-| stamps | origin + manifest fingerprint, **last**, so a half-finished install leaves none |
+**Memory: each kind books its own share.** Speech and speech-recognition models
+live in ONE process, so the per-PID-tree probe sees both; the second kind's
+booking is the measurement less what the other kind in that pid already booked
+(`manager._own_share_mb`), so the first model is never counted twice.
 
-**Two stamps decide `is_installed`**, and each is a bug someone hit:
+**Alignment quirk.** audio.cpp v0.9.0's `/v1/audio/alignments` converts sample
+positions to seconds with the INPUT rate after resampling to 16 kHz, so a
+24 kHz render came back at 2/3 of its real word times; `slot.as_16k_mono`
+sends 16 kHz mono so the seconds are right (measured 2026-10-01).
 
-- `.jv-venv-origin` (`record_venv_origin` / `venv_origin_matches`) — the
-  install path the venv was built under. Venvs bake absolute paths into
-  `pyvenv.cfg` and their launchers, so a moved app folder leaves venvs that are
-  all present and all dead. An UNSTAMPED venv reads as matching here.
-- `.jv-venv-manifest` (`manifest_package_fingerprint`) — sha256 over the
-  declared package set **plus `ENGINE_PYTHON_VERSION`**. An unstamped venv reads
-  as MISMATCHED, the opposite rule, deliberately: unstamped means shared-venv
-  era, i.e. a different Python and a different torch. This is what closes the
-  `peft` class — a manifest that gains a package flips the row to (re)Install
-  instead of reporting ready and failing later somewhere else.
+**The runtime never outlives its server.** On Windows the kill-on-close Job
+Object ends it with the server however the server dies (pinned with real
+processes in `test_engine_lifetime.py`). `engines/leftovers.py` finds this
+install's runtime processes (argv[0] under the runtime folder) whose server is
+gone — `JUSTVOICE_SERVER_PID` from the environment, else the parent — measures
+them with the kit's ONE whole-machine `gpu_processes` query, and stops them;
+`serve.py` runs it once before uvicorn starts, and `GET`/`POST
+/v1/engines/leftovers[/stop]` serve the boot splash's **Stop them and retry**
+(`LeftoverEnginesHelp.vue` in the kit `BootModelLoad`'s `#failed` slot).
+`POST /v1/shutdown` (loopback only, `api/system_api.py`) runs
+`shutdown_manager()` — unload every slot, stop the runtime — then sets the
+uvicorn `Server.should_exit` that `serve.py` parks on `app.state`; the Tauri
+shell's `stop_child()` calls it on every close/stop/restart and hard-kills only
+when it doesn't answer. It carries no token, so `app.py` passes
+`loopback_open_paths=("/v1/shutdown",)` to the kit's `BearerAuthMiddleware`.
 
-**Source and state are different roots.** `ENGINES_DIR` is where plugin SOURCE
-lives (`manifest.py`, `engine.py`, `train_lora.py`, `requirements.txt`) and is
-read-only in a frozen build. `engines_runtime_root()` is where MUTABLE state
-goes — venvs, model caches, the uv cache — and returns `ENGINES_DIR` unfrozen,
-`<data_dir>/engines-runtime` frozen. `EngineManifest.state_dir` hangs `.venv`,
-`models/`, `voices/`, `state/` off it. Before this split a packaged build wrote
-engine venvs into the PyInstaller temp directory, which the OS deletes on exit.
-
-**`_uv_env()` is THE place the cache location lives.** It `setdefault`s
-`UV_CACHE_DIR` and `UV_PYTHON_INSTALL_DIR` under the runtime root and is passed
-at every uv spawn. The cache must sit on the same volume as the venvs or uv
-silently copies instead of hardlinking — the difference between the five engine
-venvs adding 431 MB and adding 18.7 GB (measured 2026-08-22).
-
-**The family torch pin** — every engine that installs torch names the same
-`torch==2.13.0` / `torchaudio==2.11.0`, guarded by
-`tests/test_engine_constraints.py`. Index by GPU tier via the kit's own rule
-(`concrete_gpu(hw, "cuda")`): cap ≥ 10 → cu130, else cu126; ROCm 7.2 on Linux;
-AMD-on-Windows is CPU plus a logged override recipe. Deprecated engines are
-exempt and frozen at whatever they last declared.
-
-**An engine never outlives its server** (2026-09-29). Four pieces, one per way
-it used to: `EngineProcess.spawn` passes `JUSTVOICE_SERVER_PID`, and the plugin's
-`serve()` starts `justvoice_plugin/lifetime.py`'s `watch_server()` — a daemon
-thread that `os._exit(0)`s within `CHECK_EVERY_S` of that server going (Windows:
-a SYNCHRONIZE handle, immune to pid reuse; POSIX: `kill(pid, 0)` plus the
-reparent check). `engines/leftovers.py` finds this install's engine trees (a
-command line running one of OUR `engines/<id>/engine.py … serve`) whose server
-is gone, measures them with the kit's ONE whole-machine `gpu_processes` query
-(not the per-pid probe — ~1 s each on Windows), and stops them; `serve.py` runs
-it once before uvicorn starts, and `GET`/`POST /v1/engines/leftovers[/stop]`
-serve the boot splash's **Stop them and retry** (`LeftoverEnginesHelp.vue` in
-the kit `BootModelLoad`'s `#failed` slot). `POST /v1/shutdown` (loopback only,
-`api/system_api.py`) stops engines then sets the uvicorn `Server.should_exit`
-that `serve.py` parks on `app.state`; the Tauri shell's `stop_child()` calls it
-on every close/stop/restart and hard-kills only when it doesn't answer or the
-process doesn't exit in time. It carries no token, so `app.py` passes
-`loopback_open_paths=("/v1/shutdown",)` to the kit's `BearerAuthMiddleware`
-(2026-09-30): with "Require a token even on localhost" on, the close used to
-fall back to the hard kill. Engine start/load/stop log lines carry pid, server
-pid and pool memory in use before → after (`memory_in_use_mb`). An engine's own
-`/shutdown` answers, then `os._exit(0)`s 0.2 s later (plugin 0.3.1), and
-`EngineProcess.terminate` waits `SHUTDOWN_EXIT_WAIT_S` for it before forcing —
-killing itself inside the handler made every clean stop log exit code 1.
-Tests: `tests/test_engine_lifetime.py` (real processes for the watch, the sweep
-and the clean exit).
-
-**Dev tools:** `npm run check:engines` (`server/scripts/check_engines.py`) —
-`--drift` compares each venv's real contents against its manifest,
-`--upstream` compares every pin against GitHub / PyPI / HF,
-`--test <engine>` builds a scratch venv and imports the adapter in it.
-`server/scripts/harvest_revisions.py` prints the current commit sha for every
-HF source, for pinning.
+**Dev tools:** `server/scripts/harvest_revisions.py` prints the current commit
+sha for every HF source, for pinning. (`npm run check:engines`, the venv drift
+checker, went with the venvs.)
 
 ---
 
@@ -651,20 +629,21 @@ book has none (`lexicons_api._choose_for_book_with_none`), as an import does.
 
 **The cache key holds what the lexicons changed, not which were attached**: the
 respelt text, and `delivery.ipa_map` cut down to the words the line contains
-(`_ipa_words`, the same whole-word rule as `engines/kokoro/ipa.py`). So choosing
+(`_ipa_words`, the whole-word rule the removed `engines/kokoro/ipa.py` splice used —
+pinned with literal expectations in `test_project_lexicon.py`, since no engine on the
+speech runtime takes IPA, so `ipa_map` is empty today). So choosing
 a lexicon or editing an entry re-renders only the lines with that word.
 `CacheKeyBuilder.with_lexicons` is gone. Lines rendered with a lexicon attached
 before 2026-09-30 re-render once; lines rendered with none keep their key.
 
 **How each voice SOURCE reaches an engine** — `voice_synth_fields` is the one
-place that knows, and it carries synth **inputs** only (clip, vector,
-adapter); prose for the instruct slot composes at the API layer instead:
+place that knows, and it carries synth **inputs** only (clip, vector);
+prose for the instruct slot composes at the API layer instead:
 
 | source | contributes |
 |---|---|
 | cloned · imported | `audio_prompt_path` + `ref_text` |
 | blended | `voice_vector` |
-| lora | `adapter_path` |
 | designed, clip frozen | `audio_prompt_path` + `ref_text` — it is a clone now |
 | designed, no clip | nothing here; its `design_prompt` composes FIRST into `delivery.instruct` via `voice_design_instruct` |
 | preset | nothing |
@@ -688,26 +667,25 @@ preset_effects)`.
 
 ### What actually reaches the engine — the delivery matrix
 
-`render_core.render_line` passes the whole `delivery` dict into
-`engine.synthesize()`; each engine picks what it understands. **Three fields are
-applied by the host and therefore work on every engine. Everything else is
-engine-specific, and three fields are read by nothing at all.**
+`render_core.render_line` passes the whole `delivery` dict to the manager, and the
+slot maps it onto audio.cpp's request (`engines/audiocpp/slot.py:
+to_speech_request`, per family — §3b). **The host-applied fields work on every
+engine; everything else is engine-specific.**
 
 | Field | Applied by | Works on |
 |---|---|---|
 | `gain_db` | **host** — post-render `apply_gain_db`, clamped to [−24, +12] (`render_core.py:343-346`) | **every engine** |
 | `pitch` | **host** — post-render `pitch_shift` effect, clamped ±12 st. **Wired 2026-08-17**; before that it was read by nobody | **every engine** |
 | effects chain | **host** — `apply_effects_chain`, after gain and pitch | **every engine** |
-| lexicons | **host** — `_apply_lexicons` substitutes text before synth; an IPA entry rides `delivery.ipa_map` to an engine that takes phonemes (Kokoro) | respellings: **every engine** |
-| `speed` | engine | **kokoro** (`engine.py:159`), **luxtts** (`:105`) |
-| `instruct` | engine | **qwen3 CustomVoice only** (`:155`). Composed by `delivery_merge.compose_instruct` from persona `voice_instruct` → `emotion` → `Block.direction`, most specific last, a lone hint verbatim. Both render paths use that one function since 2026-08-17; before it, `/v1/generate` composed nothing |
+| lexicons | **host** — `_apply_lexicons` substitutes text before synth; an IPA entry would ride `delivery.ipa_map` to an engine that takes phonemes, and none does on the runtime (`phoneme_override: False` everywhere), so its respelling is used | respellings: **every engine** |
+| `speed` | engine | **kokoro** only (`speed`) |
+| `instruct` | engine | **qwen3 CustomVoice** (`options.instruct`) and **VoiceDesign** (`instructions`, the description). Composed by `delivery_merge.compose_instruct` from persona `voice_instruct` → `emotion` → `Block.direction`, most specific last, a lone hint verbatim. Both render paths use that one function since 2026-08-17; before it, `/v1/generate` composed nothing |
 | ~~`style_prompt`~~ | — | **Deleted 2026-08-17.** A second prose field against `instruct`'s "this line", concatenated into it by the adapter one line before the model saw them. Qwen has one slot; the standing-vs-this-line axis is persona-vs-line, which already exists |
-| `temperature` | engine | **chatterbox** (`:175`), **qwen3** (`:179`) |
-| `engine.*` subdict | engine | chatterbox · qwen3 · luxtts · moss_tts. **Fixed 2026-08-17** — `nest_engine_keys()` in `delivery_merge.py` moves flat capability keys into `engine` before the merge, so the UI's flat save now arrives nested |
+| `temperature` | engine | **chatterbox**, **qwen3** (`options.temperature`) |
+| `engine.*` subdict | engine | chatterbox · qwen3 (§3b's mapping). **Fixed 2026-08-17** — `nest_engine_keys()` in `delivery_merge.py` moves flat capability keys into `engine` before the merge, so the UI's flat save now arrives nested |
 | `seed` | host | `delivery.seed` wins over `req.seed` — a deliberate override |
-| `emotion` | **host, two ways** | **The only cross-engine direction control.** An enum compiles where prose cannot: composed into `instruct` for prose engines, and compiled into a token by `render_core._apply_emotion_tag` for engines whose capability row declares an `inline_tags` set with `category="emotion"` and a `value_map` — **Chatterbox Turbo alone**. Variant-precise via `manager.current_variant_id`, because Multilingual shares the engine id and would read `[angry]` aloud. Applied after the lexicon and mirrored in `probe_line_cached`, or the cache probe lies. Had **no writer in `src/` at all** until 2026-08-17 |
+| `emotion` | **host, two ways** | **The only cross-engine direction control.** An enum compiles where prose cannot: composed into `instruct` for prose engines (Qwen3 CustomVoice / VoiceDesign), and compiled into a token by `render_core._apply_emotion_tag` for engines whose capability row declares an `inline_tags` set with `category="emotion"` and a `value_map` — that was Chatterbox Turbo, which is not on the runtime yet, so **no row declares one today**. Variant-precise via `manager.current_variant_id`. Applied after the lexicon and mirrored in `probe_line_cached`, or the cache probe lies. Had **no writer in `src/` at all** until 2026-08-17 |
 | `pause_before` / `pause_after` | **host** | **Wired 2026-08-17** — `concat_lines` uses them per join. Blank = the project gap; a value replaces it; both sides of a join add. `0` is a deliberate butt-join |
-| — | — | **`tada/engine.py` reads no delivery field at all** |
 
 **Design consequence, and it is a big one:** tuning does **not** move cleanly with
 a persona across a change of voice or engine. The **host-side half — gain, pitch, effects,
@@ -716,38 +694,41 @@ temperature — survives only if the new engine happens to honour it.** Move a
 persona's voice from Kokoro to Chatterbox and its `speed` silently stops doing
 anything.
 
-`emotion` is the single exception and the reason it is an enum rather than
-prose: it compiles into instruct prose for one family and into a token for the
-other, so it is the one piece of a *performance* that crosses the boundary.
+`emotion` is meant to be the exception and is why it is an enum rather than
+prose: it compiles into instruct prose for one family and into a token for an
+engine with an emotion vocabulary, so it is the one piece of a *performance*
+that can cross the boundary — once such an engine is back on the runtime.
 
 Any persona editor must therefore show, per field, whether the persona's current
 voice's engine honours it. The machinery exists —
 `GET /v1/engines/{id}/capabilities` and `capability_details.py`.
 
-### The per-engine knob matrix — declaration ↔ adapter
+### The per-engine knob matrix — declaration ↔ the runtime
 
-`capability_details.py` is the config that drives every slider in the app. It
-was audited against each adapter's call site on **2026-08-17**, with the
-installed packages introspected where available (chatterbox, zipvoice and
-qwen_tts were all in the then-shared venv; each now lives in its own
-`engines/<id>/.venv`). **Pinned by
-`server/tests/test_engine_knob_wiring.py`, which fails in both directions —
-a declared knob no adapter reads, or an override no UI can reach.**
+`capability_details.py` is the config that drives every slider in the app.
+Since the 2026-10-01 switch every knob it declares must reach audio.cpp through
+`slot.to_speech_request` — **pinned by `server/tests/test_engine_knob_wiring.py`,
+which sets each declared knob and fails unless the value comes out in the
+request** (`test_every_declared_knob_reaches_the_runtime`).
 
-| Capability row | Knobs (after the audit) | Verified against |
+| Capability row | Knobs | audio.cpp request |
 |---|---|---|
-| `kokoro` | speed | `KPipeline(lang_code, voice, speed, split_pattern)` |
-| `chatterbox` | exaggeration · cfg_weight · temperature · repetition_penalty · min_p · seed | `ChatterboxTTS.generate(text, repetition_penalty=1.2, min_p=0.05, top_p=1.0, audio_prompt_path, exaggeration=0.5, cfg_weight=0.5, temperature=0.8)` |
-| `chatterbox-multilingual` | + top_p | `ChatterboxMultilingualTTS.generate(…, repetition_penalty=2.0, min_p=0.05, top_p=1.0)` |
-| `chatterbox-turbo` | temperature · repetition_penalty · top_p · top_k · seed | `ChatterboxTurboTTS.generate(…, repetition_penalty=1.2, min_p=0.0, top_p=0.95, exaggeration=0.0, cfg_weight=0.0, temperature=0.8, top_k=1000, norm_loudness=True)` |
-| `qwen3` | talker_temperature · talker_top_k · talker_top_p · repetition_penalty · seed | `generate_custom_voice(..., **kwargs)` / `generate_voice_clone(..., **kwargs)` → HF `generate` |
-| `luxtts` | speed · num_steps · guidance_scale · max_ref_length · t_shift · seed | `generate_speech(text, encode_dict, num_steps=4, guidance_scale=3.0, t_shift=0.5, speed=1.0)` + `encode_prompt(prompt_audio, duration=5, rms=0.001)` |
-| `moss-tts` | temperature · top_p · top_k · repetition_penalty · max_new_tokens · seed | `moss_tts/engine.py:111-115` |
-| `tada` | seed only | `generate_from_text_and_prompt(text, prompt, language)` — takes nothing else |
+| `kokoro` | speed · seed | `speed` · `seed` |
+| `chatterbox` / `chatterbox-multilingual` | temperature · exaggeration · cfg_weight · repetition_penalty · top_p · seed | `options.temperature` · `options.exaggeration` · `options.guidance_scale` · `options.repetition_penalty` · `options.top_p` · `seed` (exaggeration and guidance verified to take effect per request, no reload) |
+| `qwen3` / `qwen3-cv` / `qwen3-base` / `qwen3-vd` | talker_temperature · talker_top_k · talker_top_p · repetition_penalty · seed | `options.temperature` · `options.top_k` · `options.top_p` · `options.repetition_penalty` · `seed` |
+
+Min-p (Chatterbox) left at the switch — the runtime takes no such option. The
+rows for Chatterbox Turbo / Nano, LuxTTS, MOSS-TTSD, TADA and the macOS MLX
+Qwen3 builds went with those engines.
+
+The 2026-08-17 audit below was made against the Python adapters the switch
+removed; it stays as the record of what the declarations got wrong then.
 
 ### The inline-tag surface
 
-Separate from knobs, and the same failure mode. `chatterbox-turbo` declared
+**No engine on the speech runtime declares tags** (§3c); what follows is the
+surface Chatterbox Turbo had, and the shape it returns in. Separate from knobs,
+and the same failure mode. `chatterbox-turbo` declared
 **4** tags; the checkpoint's `added_tokens.json` holds **19** at reserved ids
 50257–50275, so fifteen were unreachable. Declared in full 2026-08-17, split
 into three categories because they are not one kind of thing:
@@ -783,7 +764,7 @@ read aloud. Now `False` in both `qwen3/manifest.py` and the adapter's
 `instruct`; that is its whole surface. A real tag→prose translation for
 CustomVoice/VoiceDesign remains un-built and un-promised.
 
-**What the audit corrected**, all previously user-visible lies:
+**What the 2026-08-17 audit corrected** (against the pre-switch adapters), all previously user-visible lies:
 
 - **`min_p` and `top_p` (chatterbox)** — declared from the start, never
   forwarded. Both are real parameters with the declared defaults; the adapter
@@ -847,22 +828,21 @@ exposes queue depth or the current engine.**
 `/engines` → `/ai?tab=speech-engines`, unknown → `/home`).
 
 **Redirect-only paths** that set `sessionStorage` then land on a parent:
-`/cache`, `/channels`, `/webhooks` → `/settings`; `/compare`, `/train`,
+`/cache`, `/channels`, `/webhooks` → `/settings`; `/compare`,
 `/renderlab`, `/audio` → `/labs`; `/speakerlab` → `/ai?tab=features&action=speaker_attribution.guided`
 (the Speaker Lab died in the 2026-08-06 parity batch).
 
 | View | Lines | What it is |
 |---|---|---|
 | `StudioView` | ~1440 (2026-09-29) | The production steps' container. Cast moved out to `components/StudioCast.vue` with the speakers/personas split (it was 3132 lines with the old Cast and its voice library inside). See below. |
-| `SettingsView` | 2099 | Workspace focus · connection · headless access · tokens · data location · disk · server bind · cache · limits · local model paths · generation pipeline · training · validation thresholds · testing/danger zone |
+| `SettingsView` | 2099 | Workspace focus · connection · headless access · tokens · data location · disk · server bind · cache · limits · local model paths · generation pipeline (incl. the default voice language) · testing/danger zone |
 | `ChapterView` | 1481 | The chapter **list** (columns **Chapter · Words · Est. audio · Script · Render**, filter chips, add/move/rename/delete, *Open in Studio ➜*) **and** the per-chapter block editor with takes (`＋ Generate first take`, set-default, regenerate, delete take) |
-| `VoicesView` | 1302 | The voice library. Columns **Name · Gender · Type · Engine · Lang · Samples · Gens · Effects · Channel · Cast as**. Actions: Guess unknown genders · Import .justvoice.zip · Clone new voice · Train LoRA · Blend with… Plus the **voice inspector** behind a row interaction |
+| `VoicesView` | 1302 | The voice library. Columns **Name · Gender · Type · Engine · Lang · Samples · Gens · Effects · Channel · Cast as**. Actions: Guess unknown genders · Import .justvoice.zip · Clone new voice · Blend with… Plus the **voice inspector** behind a row interaction |
 | `GenerateView` | 1282 | One-off synth: voice, text, seed + randomize, **delivery overlay**, insert tag, Rewrite, Compose, lexicon view, and a **history** of takes/favorites/retry |
 | `ProjectsView` | 950 | Project list (**Project · Kind · Structure · Last opened**) + detail expansion with scenes (**# · Title · Blocks · Duration · Status**), `＋ Add personas`, *Open in Studio ➜* |
 | `PersonasView` | 695 | The persona library — see §1 |
 | `LexiconsView` | 632 | Pronunciation dictionaries |
 | `HomeView` | 561 | Empty hero *"What are you making?"* · Continue/Resume card · live tasks · engine status **with VRAM** + Unload/Switch · recent generations with inline replay |
-| `lora/LoraView` + `PreparerTab` · `DatasetTab` · `TrainingTab` | — | The LoRA workflow, inside the Voices page's LoRA tab (replaced `TrainView` 2026-08-21) |
 | `CapturesView` | 409 | Dictation captures, refined vs raw transcript, pin, retranscribe |
 | `CompareView` | 358 | A/B two takes → metric deltas + verdict (inside Labs) |
 | `RenderPresetsView` | 325 | **Name · Persona · Master target · Delivery** |
@@ -875,7 +855,7 @@ exposes queue depth or the current engine.**
 | `EffectsView` | 222 | Effect-chain presets |
 | `AudioChannelsView` | 172 | Output channels |
 | `AiView` | 97 | The AI console (kit) — tabs incl. `features`, `speech-engines` |
-| `LabsView` | 79 | Container for `compare · train · renderlab · audio` |
+| `LabsView` | 79 | Container for `compare · renderlab · audio` |
 | `StoriesView` | 43 | The timeline — thin |
 
 ### StudioView's steps
@@ -945,10 +925,11 @@ Verified 2026-08-15/16. **None of it is fixed.** Also filed in `TASKS.md`.
    `render_presets.delivery_json`. `render_chapter_api`'s
    `Delivery.model_fields` filter keeps them, because `engine` is itself a
    declared field.
-3. **Kokoro speaks English whatever the voice claims.** `kokoro/engine.py:107`
-   sets `lang = "en-us" if lexicon else ""` once at load; `synth()` never touches
-   language. Sara and Nicola (Italian) and every ja/zh/es/fr/hi/pt preset are
-   phonemized as English.
+3. ~~**Kokoro speaks English whatever the voice claims.**~~ **FIXED 2026-10-01**
+   with the switch: the old `kokoro/engine.py` set the language once at load and
+   phonemized every preset as English; `slot.to_speech_request` now sends each
+   line the voice's own language (`KOKORO_LANGUAGE`, from `kokoro/voices.py`).
+   The Japanese presets left the catalog (the runtime has no MeCab/UniDic).
 4. **Four of the Voices table's columns are wired to nothing.** `GET /v1/voices`
    returns id · engine · source · name · language · gender · sample_url
    (`models.py:464-471`). **Effects**, **Channel**, **Samples** (`sample_count`
@@ -984,9 +965,9 @@ Verified 2026-08-15/16. **None of it is fixed.** Also filed in `TASKS.md`.
     (`standard_schema.StandardLine`), and `_materialize_standard` dropped it
     instead of persisting it. It now rides on the block's metadata, so no
     schema change was needed.
-13. **`tada/engine.py` reads no delivery field at all.** Still true — but its
-    three fake sliders were removed on 2026-08-17, so nothing lies about it
-    now. Seed still applies.
+13. ~~**`tada/engine.py` reads no delivery field at all.**~~ Gone with TADA
+    (2026-10-01); its three fake sliders had already been removed on
+    2026-08-17.
 14. **The variant capability `lookup()` used `split("-")[0]`** — **FIXED
     2026-08-17**; it now walks `-` suffixes, matching the frontend.
 

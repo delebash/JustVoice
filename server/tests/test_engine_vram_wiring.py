@@ -66,8 +66,9 @@ class _Resp:
 
 
 class _Proc:
-    def __init__(self, manifest):
+    def __init__(self, manifest, placement="gpu"):
         self.manifest = manifest
+        self.placement = placement
         self.terminated = False
         self.load_bodies = []
 
@@ -89,21 +90,24 @@ class _Proc:
         return _Resp()
 
 
-def _manifest(engine_id="eng", kind="tts", cpu_adequate=False):
+def _manifest(engine_id="eng", kind="tts", backend="cuda"):
     """A duck-typed manifest. Deliberately carries NO memory number of any
-    kind — the amended currency has no field to carry one."""
+    kind — the amended currency has no field to carry one. `backend` is where
+    the speech runtime runs for this test (what `_resolve_device` answers)."""
     return SimpleNamespace(
-        id=engine_id, kind=kind, isolation="venv", is_installed=True,
-        default_variant_id="v1",
-        requirements={"cpu_adequate": cpu_adequate,
-                      "gpu_runtimes": ["cuda", "cpu"]},
+        id=engine_id, kind=kind, is_installed=True, default_variant_id="v1",
+        requirements={}, backend=backend,
     )
 
 
 def _mgr(monkeypatch, hw, manifest):
     from justvoice.engines import manager as mgr_mod
 
-    monkeypatch.setattr(mgr_mod, "EngineProcess", _Proc)
+    monkeypatch.setattr(mgr_mod, "_new_slot", _Proc)
+    # Every model runs where the speech runtime runs — the test's manifest says
+    # where (the real rule, the installed build's backend, is pinned below).
+    monkeypatch.setattr(EngineManager, "_resolve_device",
+                        lambda self, m, requested: m.backend)
     # Offline-deterministic by default: no measured pool, no prior measurement
     # rows, no persistence.
     monkeypatch.setattr(EngineManager, "pool_used_mb",
@@ -119,39 +123,29 @@ def _mgr(monkeypatch, hw, manifest):
     return mgr
 
 
-# ─── device policy (Q2) ───────────────────────────────────────────────
+# ─── where a model runs: the speech runtime's backend ─────────────────
 
 
-def test_auto_resolves_cpu_for_cpu_adequate(monkeypatch, arb_env):
-    mgr = _mgr(monkeypatch, _discrete(), _manifest(cpu_adequate=True))
-    assert mgr._resolve_device(mgr._manifests["eng"], "auto") == "cpu"
+@pytest.mark.parametrize("build, expect", [("cuda12", "cuda"), ("cuda13", "cuda"),
+                                           ("vulkan", "vulkan"), ("cpu", "cpu"), (None, "cpu")])
+def test_the_device_is_the_installed_runtimes_backend(build, expect, monkeypatch):
+    """No per-engine device since the 2026-10-01 switch: every model runs in the
+    one runtime, so the resolved device is its build's backend (none installed →
+    cpu, which books nothing on a discrete card)."""
+    from pathlib import Path
 
+    from justvoice.engines.audiocpp import runtime
 
-def test_auto_resolves_cuda_on_a_cuda_box(monkeypatch, arb_env):
-    mgr = _mgr(monkeypatch, _discrete(), _manifest())
-    assert mgr._resolve_device(mgr._manifests["eng"], "auto") == "cuda"
-
-
-def test_auto_resolves_cpu_without_cuda(monkeypatch, arb_env):
-    mgr = _mgr(monkeypatch, _one_pool(), _manifest())
-    assert mgr._resolve_device(mgr._manifests["eng"], "auto") == "cpu"
-
-
-def test_explicit_request_wins(monkeypatch, arb_env):
-    mgr = _mgr(monkeypatch, _one_pool(), _manifest(cpu_adequate=True))
-    assert mgr._resolve_device(mgr._manifests["eng"], "cuda") == "cuda"
-
-
-def test_user_device_setting_wins_over_auto(monkeypatch, arb_env):
-    mgr = _mgr(monkeypatch, _discrete(), _manifest())
-    monkeypatch.setattr(EngineManager, "_user_device_override",
-                        staticmethod(lambda engine_id: "cpu"))
-    assert mgr._resolve_device(mgr._manifests["eng"], "auto") == "cpu"
+    exe = None if build is None else Path(f"C:/rt/audiocpp/v0.9.0/{build}/audiocpp_server.exe")
+    monkeypatch.setattr(runtime, "installed_exe", lambda backend=None: exe)
+    m = _manifest()
+    assert EngineManager.__new__(EngineManager)._resolve_device(m, "auto") == expect
+    # A per-call request has nothing to move — one runtime, one place.
+    assert EngineManager.__new__(EngineManager)._resolve_device(m, "cpu") == expect
 
 
 def test_resolved_device_is_passed_down_explicitly(monkeypatch, arb_env):
-    """Q2: the engine subprocess never sees "auto" again — the hidden
-    torch/sherpa greedy-cuda is removed at the door."""
+    """The slot never sees "auto": the door resolves, and the card shows it."""
     arb_env(_discrete())
     mgr = _mgr(monkeypatch, _discrete(), _manifest())
     mgr.load("eng", device="auto")
@@ -213,7 +207,7 @@ def test_prior_measured_admits_and_books_early(monkeypatch, arb_env):
     from justvoice.engines import manager as mgr_mod
 
     mgr = _mgr(monkeypatch, _discrete(), _manifest())
-    monkeypatch.setattr(mgr_mod, "EngineProcess", _EarlyProc)
+    monkeypatch.setattr(mgr_mod, "_new_slot", _EarlyProc)
     monkeypatch.setattr(EngineManager, "_prior_measured_mb",
                         lambda self, kind, engine_id: 1500)
     mgr.load("eng", device="auto")
@@ -244,7 +238,7 @@ def test_failed_load_releases_the_early_booking(monkeypatch, arb_env):
     from justvoice.engines import manager as mgr_mod
 
     mgr = _mgr(monkeypatch, _discrete(), _manifest())
-    monkeypatch.setattr(mgr_mod, "EngineProcess", _FailProc)
+    monkeypatch.setattr(mgr_mod, "_new_slot", _FailProc)
     monkeypatch.setattr(EngineManager, "_prior_measured_mb",
                         lambda self, kind, engine_id: 1500)
     with pytest.raises(RuntimeError, match="engine load failed"):
@@ -275,7 +269,7 @@ def test_first_load_delta_fallback_books_computed_never_persists(monkeypatch, ar
 
 def test_cpu_load_books_nothing_on_discrete(monkeypatch, arb_env):
     arb = arb_env(_discrete())
-    mgr = _mgr(monkeypatch, _discrete(), _manifest(cpu_adequate=True))
+    mgr = _mgr(monkeypatch, _discrete(), _manifest(backend="cpu"))
     mgr.load("eng", device="auto")
     assert arb.reservation_of("tts:eng") is None
     assert mgr.resolved_device_for("eng") == "cpu"
@@ -286,7 +280,7 @@ def test_one_pool_books_whichever_device_resolves(monkeypatch, arb_env):
     one-pool box, so even a cpu-resolved load claims the pool — at its
     MEASURED resident set."""
     arb = arb_env(_one_pool())
-    mgr = _mgr(monkeypatch, _one_pool(), _manifest(cpu_adequate=True))
+    mgr = _mgr(monkeypatch, _one_pool(), _manifest(backend="cpu"))
     monkeypatch.setattr(EngineManager, "_engine_proc_mb",
                         lambda self, proc, *, fresh=True: 800)
     mgr.load("eng", device="auto")
@@ -358,7 +352,7 @@ def test_bump_never_creates_a_booking_for_a_cpu_placed_engine(monkeypatch, arb_e
     """The standing policy holds through the create path: a CPU-placed engine
     on a discrete box books nothing, even if a probe returns a number."""
     arb = arb_env(_discrete())
-    mgr = _mgr(monkeypatch, _discrete(), _manifest(cpu_adequate=True))
+    mgr = _mgr(monkeypatch, _discrete(), _manifest(backend="cpu"))
     mgr.load("eng", device="auto")
     monkeypatch.setattr(EngineManager, "_engine_proc_mb",
                         lambda self, proc, *, fresh=False: 700)
@@ -577,7 +571,7 @@ def test_transcribe_marks_stt_busy(monkeypatch, arb_env):
             return {"text": "hi"}
 
     class _SttProc:
-        manifest = SimpleNamespace(id="whisper", kind="stt")
+        manifest = SimpleNamespace(id="asr", kind="stt")
 
         def is_alive(self):
             return True
@@ -594,12 +588,11 @@ def test_transcribe_marks_stt_busy(monkeypatch, arb_env):
     mgr._cancel_load_requests = set()
     mgr._activity_locks = {}
     mgr._resolved_devices = {}
+    mgr._placement_reasons = {}
     mgr._hw_cache = None
     mgr._hw_detected = True
     mgr._probe_cache = {}
-    # Dict contract since 2026-08-21: confidence rides along (None = the
-    # engine measured nothing — the fake here returns text only).
-    assert mgr.transcribe({"wav_b64": ""}) == {"text": "hi", "confidence": None}
+    assert mgr.transcribe({"wav_b64": ""}) == "hi"
     assert seen == [{"stt"}]
     assert "stt" not in arb.busy_kinds()
 
@@ -625,7 +618,7 @@ def _admission_mgr(monkeypatch, arb, *, prior_mb, used_mb):
     monkeypatch.setattr(EngineManager, "_safety_margin_mb", staticmethod(lambda: 1024))
     # The reconcile is the runner's job and needs a router; here it must simply
     # not be reached for a decision.
-    monkeypatch.setattr(mgr_mod, "EngineProcess", _Proc)
+    monkeypatch.setattr(mgr_mod, "_new_slot", _Proc)
     return mgr
 
 
@@ -670,3 +663,29 @@ def test_admission_still_prices_on_the_probe_when_the_probe_is_worse(monkeypatch
     with pytest.raises(RuntimeError, match="not enough memory"):
         mgr.load("eng", device="auto")
     assert arb.reservation_of("tts:eng") is None
+
+
+# ─── prior evidence must be about a model the engine still has ────────────
+
+
+def test_a_prior_measurement_counts_only_for_a_live_catalog_variant(monkeypatch):
+    """A footprint measured on a model the catalog no longer offers says nothing
+    about its replacement: the PyTorch Qwen3's 7.1 GB (pre-2026-10-01) refused the
+    8-bit GGUF outright on an 8 GB card. Rows for live variants still count, the
+    largest winning."""
+    import llm_runner.llm.stores as stores
+    import llm_runner.runner.hardware as hardware
+
+    rows = [
+        SimpleNamespace(modelId="tts:qwen3:qwen3-cv-1.7b", machineKey="box", vramModelMb=7115),
+        SimpleNamespace(modelId="tts:qwen3", machineKey="box", vramModelMb=6900),
+        SimpleNamespace(modelId="tts:qwen3:qwen3-base-0.6b-q8", machineKey="box", vramModelMb=3100),
+        SimpleNamespace(modelId="tts:qwen3:qwen3-cv-1.7b-q8", machineKey="other", vramModelMb=9000),
+    ]
+    monkeypatch.setattr(stores, "get_model_measurement_store",
+                        lambda: SimpleNamespace(list=lambda _k: rows))
+    monkeypatch.setattr(hardware, "current_machine_key", lambda: "box")
+    mgr = EngineManager.__new__(EngineManager)
+    assert mgr._prior_measured_mb("tts", "qwen3") == 3100
+    rows.append(SimpleNamespace(modelId="tts:qwen3:qwen3-cv-1.7b-q8", machineKey="box", vramModelMb=6400))
+    assert mgr._prior_measured_mb("tts", "qwen3") == 6400

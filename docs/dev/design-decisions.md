@@ -15,7 +15,7 @@ integration decisions record (2026-07-15) is executed history at
 - **A voice production studio with five first-class use cases** — audiobook (chapters
   + cast + lexicons + ACX + M4B), game voicing (Unreal NPC lines at 50–500 scale,
   per-line WAV + JSON sidecar), podcast (multi-track timeline, paralinguistic tags),
-  dictation (hotkey + Whisper + LLM refine + paste injection), accessibility/TTS.
+  dictation (hotkey + local speech recognition + LLM refine + paste injection), accessibility/TTS.
   **No use case is privileged**; all five share the engine pool, voice profiles,
   personas, lexicons, effects, and the HTTP API. Differentiation lives at the UI tab
   level + per-use-case export pipelines.
@@ -52,10 +52,14 @@ integration decisions record (2026-07-15) is executed history at
 - **Migrations: hand-rolled idempotent column-existence checks — no Alembic.**
   Settings live in a SQLite `settings` row (the freeze-era `settings.json` is legacy;
   renderer prefs go through `/v1/prefs`).
-- **Engines: 6** (kokoro, luxtts, qwen3, chatterbox [3 variants], tada,
-  moss_tts — `engines/catalog.py`; dia dropped 2026-08-17) + external OpenAI-compatible; Higgs removed
-  2026-06-09 (non-commercial weights). **Per-engine venvs** — one engine's install
-  can never break another's deps.
+- **Engines: 3 TTS + speech recognition, all in ONE runtime** (2026-10-01):
+  kokoro, qwen3 [CustomVoice · Base 1.7B/0.6B · VoiceDesign], chatterbox
+  [Multilingual], asr [Qwen3-ASR + forced aligner] — each a catalog of 8-bit GGUF
+  files (`engines/<id>/manifest.py`) run by one audio.cpp server
+  (`engines/audiocpp/`), plus external OpenAI-compatible and cloud providers. The
+  per-engine Python venvs, LuxTTS, TADA, MOSS-TTSD and Whisper went with the switch
+  (`docs/plans/2026-10-01-audiocpp-switch.md`); dia was dropped 2026-08-17, Higgs
+  removed 2026-06-09 (non-commercial weights).
 - **Sidecar naming guard (durable):** console scripts are `justvoice` /
   `justvoice-server` — the split avoids the Windows `CreateProcessW` spawn-loop and
   must survive any rename. Headless: `justvoice-server serve` serves the UI at
@@ -75,9 +79,10 @@ integration decisions record (2026-07-15) is executed history at
   `/v1/generate` and chapter render.
 - **Channel bindings are PERSONA-level** — `/v1/personas/{id}/channels`
   (`api/channels_api.py`); the freeze's profile-level design shipped differently.
-- CUDA: installer ships CPU-baseline torch (~250 MB); GPU is an in-app opt-in wheel
-  download + `restart_server`. First launch is real (<1–3 s), no engine preload,
-  models load lazily behind 20 rotating messages.
+- GPU: the speech runtime downloads per machine in the build that suits it (CUDA /
+  Vulkan / CPU / Metal), switchable on the AI page's runtime row; no PyTorch ships or
+  installs. First launch is real (<1–3 s), no engine preload, models load lazily
+  behind 20 rotating messages.
 - Render queue is resumable (`RenderJob` survives restart; `_run_startup` requeues).
   Take versioning: per-paragraph selector with `is_default`, lineage via
   `source_take_id`. Voice previews: in-memory LRU cap 20 / 10-min TTL, discarded
@@ -163,10 +168,10 @@ integration decisions record (2026-07-15) is executed history at
 |---|---|
 | Apache-2.0 (→ GPL when pedalboard) | MIT everywhere; first-party DSP |
 | 9 engines v1 | 7 (catalog.py) |
-| 13 tabs, flat | 14 routes + 3 hidden; Train/Compare/SpeakerLab/RenderLab/Audio → **Labs**; Cache/Channels/Webhooks → **Settings** |
+| 13 tabs, flat | 14 routes + 3 hidden; Compare/SpeakerLab/RenderLab/Audio → **Labs** (Train went to Voices, then was removed 2026-10-02); Cache/Channels/Webhooks → **Settings** |
 | `settings.json` atomic store | SQLite `settings` row; `/v1/prefs` for renderer prefs |
 | 3-way theme toggle in localStorage | the shared kit appearance engine, prefs in SQL |
 | channels bind to profiles | channels bind to **personas** |
 | `/v1/render_jobs*`, `/v1/generate_async`, per-gen stream/cancel | `/v1/render_chapter`, `/v1/render/cache-stats`, `/v1/generate/{id}/status` |
-| `/v1/effects/available`·`/presets`, `/v1/cache` GET+DELETE, `/v1/training_jobs*`, `/v1/unreal/voicelines/*`, `/v1/health/filesystem` | `/v1/effects/catalog`·`/v1/effect-presets`, `/v1/cache/stats·clear·recent`, `/v1/train*`, `/v1/projects/{id}/export_voicelines`, `/v1/system/info` |
+| `/v1/effects/available`·`/presets`, `/v1/cache` GET+DELETE, `/v1/training_jobs*`, `/v1/unreal/voicelines/*`, `/v1/health/filesystem` | `/v1/effects/catalog`·`/v1/effect-presets`, `/v1/cache/stats·clear·recent`, no training (`/v1/train*` removed 2026-10-02), `/v1/projects/{id}/export_voicelines`, `/v1/system/info` |
 | — (absent from the freeze) | `/v1/voices/design`, scene analyze/discover-speakers, `/v1/llm/smart-assign`·`preset-suggest`, project qc/show-notes/narrator/corrections, `/v1/extraction/*`, `/v1/prefs`, `/v1/logs/tail` (`/v1/feature-pins` came and went — dropped with F1 Phase 2) |

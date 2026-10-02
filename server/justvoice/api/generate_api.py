@@ -28,7 +28,7 @@ from ..audio.effects import apply_effects_chain, parse_chain, resolve_chain
 from ..audio.wav import strip_wav_header, write_wav_container
 from ..delivery_merge import compose_instruct, merge_delivery
 from ..engines.base import SynthRequest
-from ..engines.manager import get_manager
+from ..engines.manager import TermsRequired, get_manager
 from ..errors import bad_request, internal, not_found
 from ..models import GenerateRequest
 
@@ -211,8 +211,8 @@ def _resolve_audio_prompt_for_stored(stored) -> str | None:
 
 def _voice_synth_fields(stored) -> dict:
     """Everything the stored voice contributes to the engine call — the
-    reference clip AND (2026-08-19) its transcript, a blend's style vector,
-    a trained voice's adapter. Wrapper over render_core's single resolver."""
+    reference clip AND (2026-08-19) its transcript, a blend's style vector.
+    Wrapper over render_core's single resolver."""
     from ..render_core import voice_synth_fields
 
     return voice_synth_fields(get_state(), stored)
@@ -237,7 +237,7 @@ async def _generate_via_manager(
 
     `voice_fields` carries whatever the stored voice contributes to the
     call — the reference WAV path (and its transcript) for a clone, the
-    style vector for a blend, the adapter dir for a trained voice. The host
+    style vector for a blend. The host
     resolves them so the engine subprocess never needs access to the voice
     store. See `render_core.voice_synth_fields`.
 
@@ -353,6 +353,8 @@ async def _generate_via_manager(
             wav_bytes = write_wav_container(pcm_int16, sample_rate, channels)
             wav_bytes = apply_effects_chain(wav_bytes, effects)
             return Response(content=wav_bytes, media_type="audio/wav")
+        except TermsRequired as e:
+            raise e.api_error() from e
         except Exception as e:
             raise internal(f"engine synthesize: {e}")
 

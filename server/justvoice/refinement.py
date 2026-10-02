@@ -20,14 +20,14 @@ import re
 from dataclasses import dataclass
 
 # A run that repeats this many times gets collapsed before the LLM sees
-# the transcript. Whisper occasionally loops content hundreds of times
+# the transcript. A recogniser occasionally loops content hundreds of times
 # when audio trails off — smaller refine models truncate legitimate
 # output to "make room" for the loop, and bigger ones echo the run
 # verbatim. Stripping deterministically sidesteps both.
 _REPETITION_RUN_THRESHOLD = 6
 
 # Upper bound on the length of a repeating unit that the character-level
-# pass will detect (covers observed Whisper hallucination phrases while
+# pass will detect (covers observed recogniser hallucination phrases while
 # keeping legitimate long-phrase repetition below the threshold).
 _MAX_REPETITION_UNIT_CHARS = 60
 

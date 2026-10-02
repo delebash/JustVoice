@@ -41,8 +41,6 @@ class SynthRequest:
     xvector_only: bool = False
     # A blended voice's style vector — kokoro-onnx takes it per call.
     voice_vector: list[float] | None = None
-    # A trained voice's LoRA adapter directory.
-    adapter_path: str | None = None
 
 
 @dataclass
@@ -97,10 +95,7 @@ class TTSBackend(Protocol):
     # synthesize_with_embedding (blending is HOST-side file math — see
     # engines/blending.py — because managed engines run as subprocess
     # procs the registry never holds; a blended voice reaches synth as
-    # SynthRequest.voice_vector) and train_start / train_cancel (training
-    # is a host-owned subprocess per engine — see training_runner.py — for
-    # the same registry reason, and because VRAM eviction before a run is
-    # the manager's job, not an adapter's). The supports_voice_blending /
-    # supports_training booleans live on EngineCapabilityDetail, per
-    # variant, not here.
+    # SynthRequest.voice_vector) and train_start / train_cancel (voice
+    # training was removed on 2026-10-02). The supports_voice_blending
+    # boolean lives on EngineCapabilityDetail, per variant, not here.
     def clone(self, reference_wav_path: str, name: str) -> str: ...

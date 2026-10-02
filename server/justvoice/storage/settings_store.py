@@ -224,9 +224,4 @@ class SettingsStore:
             out.append("cors.origins")
         if prev.limits.request_body_max_bytes != new.limits.request_body_max_bytes:
             out.append("limits.request_body_max_bytes")
-        if (
-            prev.engines.kokoro.model_dir_override
-            != new.engines.kokoro.model_dir_override
-        ):
-            out.append("engines.kokoro.model_dir_override")
         return out

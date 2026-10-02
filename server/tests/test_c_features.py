@@ -249,12 +249,14 @@ def test_bundle_refuses_missing_engine_with_the_reason(tmp_path):
         import_bundle(store, payload, known_engines={"kokoro"})
 
 
-def test_bundle_refuses_lora_and_preset(tmp_path):
+def test_bundle_refuses_a_preset(tmp_path):
     from justvoice.voice_bundle import build_bundle
 
     store = _FakeVoices(tmp_path)
-    v = store.create(_rec(source="lora", adapter_path="/x"))
-    with pytest.raises(ValueError, match="adapter"):
+    # A stored record cannot be a preset, so the guard is defensive — build
+    # one past validation to reach it.
+    v = store.create(_rec().model_copy(update={"source": "preset"}))
+    with pytest.raises(ValueError, match="preset"):
         build_bundle(store, v.id)
 
 

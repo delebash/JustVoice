@@ -124,6 +124,10 @@ class GenerationSettings(BaseModel):
     # ships. Until then Render used 250 ms and export/QC a hardcoded 600. A
     # line's own pause (an import's pause_after_ms) still overrides it.
     pause_between_lines_ms: int = 600  # 0-3000 in the UI
+    # The language a voice speaks when nothing else decides it — today, a Kokoro
+    # blend of voices in different languages (engines/blending.blend_language).
+    # BCP-47. Lived under `training` until training was removed (2026-10-02).
+    default_voice_language: str = "en-US"
     normalize_audio: bool = True
     autoplay_on_generate: bool = True
 
@@ -217,66 +221,24 @@ class MasterPresetSettings(BaseModel):
     )
 
 
-class TrainingValidationSettings(BaseModel):
-    min_sample_duration_secs: float = 1.0
-    max_sample_duration_secs: float = 60.0
-    min_snr_db: float = 15.0
-    max_silence_ratio: float = 0.30
-    # Share of samples at digital full scale before a clip is called
-    # clipped — the pre-flight gate the Train tab applies via /v1/analyze.
-    max_clipping_ratio: float = 0.01
-    # The Preparer's cut point: a silence at least this long splits a long
-    # recording into clips (POST /v1/train/prepare).
-    split_silence_secs: float = 0.4
-    # Whisper's own certainty about a clip's transcript, 0–1: the geometric
-    # mean of the chosen tokens' probabilities (engines/whisper/engine.py
-    # `_sequence_confidence`). A clip the transcriber was unsure about is a
-    # clip whose text is probably wrong, and a wrong transcript teaches the
-    # model the wrong thing. 0.85 is Alexandria's Preparer default
-    # (app/static/index.html `prep-confidence`, read 2026-08-21).
-    # An engine that cannot measure confidence reports None = UNKNOWN, which
-    # never fails the gate.
-    min_transcript_confidence: float = 0.85
-    min_accepted_samples: int = 3
-
-
-class TrainingSettings(BaseModel):
-    enabled: bool = True
-    max_concurrent_jobs: int = 1
-    max_samples_per_job: int = 5_000
-    sample_loss_every: int = 50
-    default_voice_language: str = "en-US"
-    validation: TrainingValidationSettings = TrainingValidationSettings()
-
-
-class KokoroEngineSettings(BaseModel):
-    model_dir_override: str | None = None
-
-
 class EngineModelSourceOverride(BaseModel):
     """Operator-provided source for one engine model variant.
 
     Per CLAUDE.md "no hardcoded operator-tunable values": engine model
-    URLs / HF repos live in each engine's manifest.MODELS as defaults,
-    but the operator can override them per (engine, variant) here without
-    editing code. The prefetch worker resolves the source as:
-      override.url || override.hf_repo+revision || manifest default.
+    HF repos live in each engine's manifest VARIANTS as defaults, but the
+    operator can point a variant at another repo (a mirror, a fork) here
+    without editing code. The variant's pinned file names are kept
+    (`engine_sources_api.resolve_source`).
     """
 
-    url: str | None = None           # URL-tarball engines (kokoro, …)
-    hf_repo: str | None = None       # HF-snapshot engines (chatterbox, …)
+    hf_repo: str | None = None
     hf_revision: str | None = None   # pin a commit / tag
 
 
 class EngineOverrides(BaseModel):
-    """Per-engine operator overrides (download sources + the legacy
-    kokoro model_dir override). Keyed by variant id in `sources`.
-
-    EnginesSettings.engine_overrides maps engine_id -> EngineOverrides;
-    settings.engines.kokoro.model_dir_override stays where it is for
-    backward compat (no migration cost — the kokoro adapter already
-    reads it from there).
-    """
+    """Per-engine operator overrides (download sources, keyed by variant id
+    in `sources`, and the default model). EnginesSettings.engine_overrides
+    maps engine_id -> EngineOverrides."""
 
     sources: dict[str, EngineModelSourceOverride] = {}
     # The operator's own default MODEL for this engine (parity batch
@@ -285,14 +247,37 @@ class EngineOverrides(BaseModel):
     # _resolved_default_variant consults this first, so a no-variant load
     # actually loads it (never just relabels a row). None = manifest default.
     default_variant: str | None = None
-    # The operator's Device choice for this engine (the 2026-08-13 VRAM
-    # wiring, Q2 decided 2026-08-08: "q2 ok"): "auto" | "cuda" | "cpu".
-    # None/"auto" = the load door's policy (cpu_adequate manifest fact →
-    # cpu; else cuda when the box has it; else cpu). An explicit value
-    # passes straight to the engine — including an explicit "cuda" on an
-    # engine whose venv may lack GPU wheels: a load error surfacing to an
-    # explicit override is acceptable, `auto` never goes there.
-    device: str | None = None
+    # Where each of this engine's models runs — variant id → "auto" | "gpu" | "cpu"
+    # (CPU placement, 2026-10-02; docs/plans/2026-10-02-cpu-placement.md §8). A
+    # variant not listed is "auto": the manager's rule picks from what it measured.
+    # (The per-engine `device` choice that left with the per-engine environments on
+    # 2026-10-01 was one setting for every model; this is per model.)
+    placements: dict[str, Literal["auto", "gpu", "cpu"]] = {}
+    # When the user accepted the engine's own terms (the manifest's TERMS — Pocket
+    # TTS: Kyutai's prohibited-use terms, which gate cloning). ISO-8601; None = not
+    # accepted, and the gated use is refused.
+    terms_accepted_at: str | None = None
+
+
+class SpeechRuntimeSettings(BaseModel):
+    """The ONE audio.cpp runtime every speech engine shares (the 2026-10-01 switch,
+    docs/plans/2026-10-01-audiocpp-switch.md §3.1). Set on the AI page's runtime row
+    through PUT /v1/speech-runtime, which also stops the server so the next load starts
+    the new build."""
+
+    # "auto" = this machine's choice (CUDA on NVIDIA, Vulkan on AMD/Intel, Metal on a
+    # Mac); "cuda" | "vulkan" | "cpu" | "metal" pins that build. A pinned build that is
+    # not installed reads as "not installed" until its Install runs.
+    backend: str = "auto"
+    # Which GPU the server runs on (audio.cpp's `device` — 0 = the first).
+    gpu: int = 0
+    # The second, CPU-only process (CPU placement, 2026-10-02): how many threads it
+    # computes with. 0 = this machine's physical core count — measured: Kokoro speaks
+    # 2.28× real time at 4 threads and 3.15× at 8 on an 8-core Ryzen.
+    cpu_threads: int = 0
+    # "Fast enough on the CPU" for Auto: a model runs there only when it speaks at
+    # least this many seconds of audio per second of work (decided 2026-10-02: 2×).
+    cpu_min_realtime: float = 2.0
 
 
 class ExternalEngineConfig(BaseModel):
@@ -317,7 +302,6 @@ class ExternalEngineConfig(BaseModel):
 
 
 class EnginesSettings(BaseModel):
-    kokoro: KokoroEngineSettings = KokoroEngineSettings()
     # Per-engine operator overrides — engine_id -> overrides. Today only
     # holds per-variant download sources; see EngineOverrides.
     engine_overrides: dict[str, EngineOverrides] = {}
@@ -325,6 +309,8 @@ class EnginesSettings(BaseModel):
     # (user ask 2026-06-12: a default-engine setting instead of
     # whichever-engine-happens-to-be-first). Engine id, e.g. "kokoro".
     default_tts_engine: str = "kokoro"
+    # The audio.cpp runtime's backend and GPU — one for every speech engine.
+    speech_runtime: SpeechRuntimeSettings = SpeechRuntimeSettings()
     external: list[ExternalEngineConfig] = []
     # LEGACY LLM provider list — dormant since 2026-08-01 (providers live in
     # the shared DB store); the field STAYS because migrate_providers reads it
@@ -359,7 +345,7 @@ class CapturesSettings(BaseModel):
     desktop shell; the server stores them so every window + CLI client
     reads the same preferences."""
 
-    stt_model: str = "whisper-turbo"  # variant id on the whisper engine
+    stt_model: str = "qwen3-asr-1.7b-q8"  # variant id on the asr engine (engines/asr)
     language: str = "auto"
     auto_refine: bool = True
     llm_model: str = "qwen3-llm-0.6b"  # variant id on the qwen3-llm engine
@@ -427,7 +413,6 @@ class Settings(BaseModel):
     cors: CorsSettings = CorsSettings()
     auth: AuthSettings = AuthSettings()
     mastering: MasterPresetSettings = MasterPresetSettings()
-    training: TrainingSettings = TrainingSettings()
     models: ModelsSettings = ModelsSettings()
     engines: EnginesSettings = EnginesSettings()
     generation: GenerationSettings = GenerationSettings()
@@ -447,7 +432,6 @@ class SettingsPatch(BaseModel):
     cors: CorsSettings | None = None
     auth: AuthSettings | None = None
     mastering: MasterPresetSettings | None = None
-    training: TrainingSettings | None = None
     models: ModelsSettings | None = None
     engines: EnginesSettings | None = None
     generation: GenerationSettings | None = None
@@ -465,17 +449,10 @@ class SettingsPatchResponse(BaseModel):
 # ─── Voices ─────────────────────────────────────────────────────────────
 
 
-# "lora" deliberately breaks the past-participle grammar the other values
-# share (cloned/designed/imported/blended). The user-facing word for this
-# kind of voice is LoRA — on the tab, on the filter chip, in the docs — and
-# the word in the data must be the word on the screen. Renamed from
-# "trained" 2026-08-21 with no alias and no back-compat branch: a manifest
-# still carrying "trained" is unreadable by design, so a half-rename cannot
-# survive unnoticed.
-VoiceSource = Literal[
-    "preset", "cloned", "designed", "imported", "blended", "lora"
-]
-StoredVoiceSource = Literal["cloned", "designed", "imported", "blended", "lora"]
+# ("lora" — a trained voice — left with training on 2026-10-02, no alias: a
+# stored voice still carrying it is unreadable by design.)
+VoiceSource = Literal["preset", "cloned", "designed", "imported", "blended"]
+StoredVoiceSource = Literal["cloned", "designed", "imported", "blended"]
 
 
 # How a blended voice was made. Four strategies, three of which are weighted
@@ -530,8 +507,6 @@ class VoiceRecord(BaseModel):
     sample_count: int = 0
     blend_recipe: BlendRecipe | None = None
     embedding: list[float] | None = None
-    adapter_path: str | None = None
-    training_job_id: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -750,7 +725,6 @@ Feature = Literal[
     "gpu_accel",
     "single_speaker_dialogue",
     "voice_blending",
-    "training",
 ]
 
 
@@ -775,16 +749,6 @@ class EngineInfo(BaseModel):
     status: EngineStatus = "not_installed"
     current: bool = False
     is_stubbed: bool = False
-    # Importable module names this engine needs to load. Catalog-static —
-    # used by the installer to decide whether a pip step is needed and to
-    # check (via find_spec) whether the install eventually made the engine
-    # importable.
-    runtime_deps: list[str] = []
-    # pip package specs (e.g. "sherpa-onnx>=1.13"). The installer pip-installs
-    # these as the first phase of an Install before downloading model files.
-    # Empty means "no pip step needed" — either pure-Python or pip name not
-    # yet known.
-    pip_packages: list[str] = []
     # When the engine has multiple model variants in `/v1/engines/<id>/models`,
     # this is the id of the one `POST /v1/engines/<id>/load` (with no
     # `model_variant` arg) actually loads. The GUI uses it to (a) label
@@ -805,12 +769,11 @@ class EngineInfo(BaseModel):
     # loaded. The dropdown UI uses this to label "Loaded: <variant>"
     # correctly across page refreshes.
     current_variant_id: str | None = None
-    # Always "venv" since 2026-08-22: every engine gets its own environment,
-    # built to exactly what its manifest declares. The other value was
-    # "shared" — one interpreter holding most engines at once, where each
-    # install re-resolved every other engine's dependencies. The field stays
-    # so the client can see what it is rather than assume.
-    isolation: str = "venv"
+    # "audiocpp" since 2026-10-01: the engine's models run in the ONE audio.cpp
+    # runtime (no environment of its own — installing any engine installs the
+    # runtime). Until then "venv": each engine its own Python environment.
+    # External (in-process) providers carry "" — they are not installed at all.
+    isolation: str = ""
     # OSes this engine works on, straight from the manifest. Values:
     # "windows" | "linux" | "macos". This comment used to say "UI hides
     # engines whose list doesn't include the user's current OS" — no UI ever
@@ -827,28 +790,23 @@ class EngineInfo(BaseModel):
     # row (badged); an uninstalled one is hidden from the catalog and never
     # offered by Voice engine setup. Set by the manifest's DEPRECATED.
     deprecated: str = ""
-    # Model-weights license — distinct from framework code license (the
-    # `license` field above tracks the Python package). Common values:
-    # "Apache-2.0", "MIT", "Llama-3.2-Community", "CC-BY-NC-4.0".
-    # Set per engine manifest (`WEIGHTS_LICENSE = "..."`). Surfaced in
-    # the Engines tab so users selling produced audio know the terms.
+    # Model-weights license — distinct from framework code license. Common
+    # values: "Apache-2.0", "MIT". Set per engine manifest
+    # (`WEIGHTS_LICENSE = "..."`). Surfaced in the Engines tab so users selling
+    # produced audio know the terms. (The `attribution` field beside it left
+    # with TADA on 2026-10-01 — its "Built with Llama" was the only producer.)
     weights_license: str = ""
-    # Attribution text the producing tool must display when the user
-    # ships output produced by this engine. Llama-3.2 §1.b mandates
-    # "Built with Llama" for any Llama-derivative model — TADA hits
-    # this. Empty string means no attribution required.
-    #
-    # Rendered as a pill next to the engine's description in the Engines
-    # tab (`EnginesView.vue`, `.ev-attrib`), with the weights licence in
-    # its tooltip. This is a LICENCE OBLIGATION, not decoration — the
-    # field reached the API in June but nothing consumed it until
-    # 2026-07-29, so the notice the licence requires was not actually
-    # being shown. Do not drop the render without checking the licence.
-    attribution: str = ""
-    # The device the last confirmed load actually resolved to (the 2026-08-13
-    # VRAM wiring, Q2: resolved device always visible, never hidden). null =
-    # not loaded this server process.
+    # Where the last confirmed load actually runs — the speech runtime's
+    # backend ("cuda", "vulkan", "cpu", "metal"; the 2026-08-13 VRAM wiring, Q2:
+    # always visible, never hidden). null = not loaded this server process.
     resolved_device: str | None = None
+    # Why the loaded model runs there, in the user's words ("CPU — 3.2× real time
+    # measured here; keeps the graphics card for the AI model"). "" = not loaded.
+    placement_reason: str = ""
+    # The engine's own terms, when it has some (Pocket TTS: Kyutai's prohibited-use
+    # terms, which gate cloning) — {title, text, url, gates}; None = no terms.
+    terms: dict[str, str] | None = None
+    terms_accepted: bool = False
 
 
 class EnginesListResponse(BaseModel):
@@ -1022,22 +980,6 @@ class InlineTagSet(BaseModel):
     value_map: dict[str, str] | None = None
 
 
-class TrainingSpec(BaseModel):
-    """Per-engine LoRA training defaults — the values the Train form opens
-    with. Each set is lifted from a code-verified upstream recipe (cited on
-    the capability row), never invented here."""
-
-    epochs: int
-    learning_rate: float
-    batch_size: int
-    grad_accum: int
-    lora_rank: int
-    lora_alpha: int
-    # None = the trainer script's own default dtype.
-    precision: str | None = None
-    target_modules: list[str] = []
-
-
 class EngineCapabilityDetail(BaseModel):
     """Per-engine (or per-variant) capability surface for UI gating.
 
@@ -1062,9 +1004,6 @@ class EngineCapabilityDetail(BaseModel):
     supports_xvector_only: bool = False
     supports_multi_speaker: bool = False  # MOSS speaker_prompts map
     supports_voice_blending: bool = False  # style-vector averaging (kokoro)
-    supports_training: bool = False  # a LoRA fine-tune path exists for this variant
-    # Present exactly when supports_training is True.
-    training_defaults: TrainingSpec | None = None
 
     # Numeric / continuous knobs (sliders)
     knobs: list[KnobSpec] = []
@@ -1137,6 +1076,17 @@ class ModelVariant(BaseModel):
     # "Open folder" verb. The SERVER resolves it so the layout knowledge
     # stays in one place (speech_cache.py); None when nothing is local.
     local_dir: str | None = None
+    # Where it runs (CPU placement, 2026-10-02). `placement` is the user's choice
+    # ("auto" | "gpu" | "cpu"); `runs_on` is where it runs now when loaded, or where
+    # a load would put it now ("gpu" | "cpu"), and `runs_on_reason` says why.
+    placement: str = "auto"
+    runs_on: str | None = None
+    runs_on_reason: str = ""
+    # Its speed on the CPU, seconds of audio per second of work: measured on this
+    # machine when `cpu_realtime_here`, else the manifest's reference figure (a
+    # Ryzen 7 5700X, 8 threads). None = never measured — the CPU is not offered by Auto.
+    cpu_realtime: float | None = None
+    cpu_realtime_here: bool = False
 
 
 class ModelsListResponse(BaseModel):
@@ -1172,7 +1122,6 @@ class UnloadResponse(BaseModel):
 class UninstallResponse(BaseModel):
     engine_id: str
     model_files_removed: bool
-    pip_packages_removed: list[str] = []
 
 
 # ─── Jobs (install progress) ────────────────────────────────────────────
@@ -1323,7 +1272,7 @@ class RenderChapterRequest(BaseModel):
     lexicons: list[str] = []
 
 
-# ─── Phase 5 — blend + train ───────────────────────────────────────────
+# ─── Phase 5 — blend ─────────────────────────────────────────────────
 
 
 class BlendVoiceRequest(BaseModel):
@@ -1336,154 +1285,6 @@ class BlendVoiceRequest(BaseModel):
     strategy: BlendStrategy = "blend"
     # recombine only.
     segments: list[BlendSegment] | None = None
-
-
-class TrainingSample(BaseModel):
-    wav_b64: str
-    transcript: str
-
-
-# "uploaded" = came in as a ZIP (Alexandria interchange or our own export).
-TrainingDatasetOrigin = Literal["clips", "prepared", "generated", "uploaded"]
-
-
-class TrainingDataset(BaseModel):
-    id: str
-    name: str
-    clip_count: int
-    total_seconds: float
-    created_at: datetime
-    # The language the clips are SPOKEN in. A LoRA adapter carries the
-    # phonology of its training language, so a run must train with the
-    # matching codec language token — the dataset is where that fact
-    # belongs, not the run form.
-    language: str | None = None
-    # Which clip is the voice's identity anchor. It becomes ref.wav +
-    # ref_text.txt, the speaker embedding is extracted from it before
-    # training, and it is replayed as the voice prompt on EVERY later
-    # render (qwen3/engine.py `_lora_clone_prompt`). None = the runner
-    # picks the longest clip, which is the old always-on behaviour.
-    ref_index: int | None = None
-    ref_transcript: str | None = None
-    # How the set was made — clips added by hand, cut from one recording
-    # by the Preparer, or generated line-by-line in the Dataset builder.
-    origin: TrainingDatasetOrigin = "clips"
-
-
-class TrainingDatasetList(BaseModel):
-    datasets: list[TrainingDataset]
-
-
-class CreateTrainingDatasetRequest(BaseModel):
-    name: str
-    samples: list[TrainingSample]
-    language: str | None = None
-    ref_index: int | None = None
-    origin: TrainingDatasetOrigin = "clips"
-
-
-class UpdateTrainingDatasetRequest(BaseModel):
-    """Rename, retarget the reference clip, or correct the language of a
-    dataset that already exists. Every field optional — absent = unchanged."""
-
-    name: str | None = None
-    language: str | None = None
-    ref_index: int | None = None
-
-
-class TrainVoiceRequest(BaseModel):
-    engine: str
-    name: str
-    # Either inline clips OR a saved dataset (training_datasets storage) —
-    # dataset_id wins when both are present.
-    samples: list[TrainingSample] = []
-    dataset_id: str | None = None
-    # Which checkpoint family to fine-tune (e.g. "qwen3-base-1.7b",
-    # "chatterbox-turbo"). None = the engine's default trainable variant.
-    variant: str | None = None
-    # None on any knob = the engine's training_defaults (capability surface).
-    epochs: int | None = None
-    learning_rate: float | None = None
-    batch_size: int | None = None
-    grad_accum: int | None = None
-    lora_rank: int | None = None
-    lora_alpha: int | None = None
-    language: str | None = None
-    # base_voice DIED 2026-08-21 (review R4): it never reached any trainer
-    # — only the legacy worker's metadata json ever read it, so the field
-    # was a control that moved nothing.
-    # Override the dataset's stored reference clip for THIS run only. None =
-    # the dataset's own ref_index, and failing that the longest clip.
-    ref_index: int | None = None
-
-
-TrainingPhase = Literal[
-    "queued", "validating", "preparing", "running", "completed", "failed", "cancelled"
-]
-
-
-class SampleReport(BaseModel):
-    index: int
-    accepted: bool
-    duration_seconds: float
-    rejection_reason: str | None = None
-    snr_db: float | None = None
-
-
-class DatasetValidation(BaseModel):
-    accepted: int
-    rejected: int
-    reports: list[SampleReport] = []
-    usable_seconds: float
-    avg_wer: float | None = None
-    speaker_consistency: float | None = None
-
-
-class TrainJob(BaseModel):
-    job_id: str
-    engine: str
-    voice_name: str
-    phase: TrainingPhase
-    progress: float
-    loss_curve: list[float] = []
-    eta_seconds: int | None = None
-    validation: DatasetValidation | None = None
-    final_voice_id: str | None = None
-    error: str | None = None
-    # Stamped at enqueue so the Trained-adapters table can say what a run
-    # was, without re-deriving it from the request that made it.
-    epochs: int | None = None
-    sample_count: int | None = None
-    # Which dataset fed the run, so the adapters table can name it instead
-    # of leaving the reader to guess which clips made this voice.
-    dataset_id: str | None = None
-    dataset_name: str | None = None
-    # The language the run trained at — the codec language token the
-    # adapter now carries. Stamped so a finished adapter can say what it
-    # speaks rather than being assumed English.
-    language: str | None = None
-    # The trainer's own output, newest last. A progress bar says a run is
-    # moving; only the log says WHAT it is doing and why it stopped.
-    # Capped server-side (storage/training_jobs.JOB_LOG_CAP) — a long run
-    # must not grow the job record without bound.
-    logs: list[str] = []
-
-
-class TrainJobList(BaseModel):
-    jobs: list[TrainJob]
-
-
-class TrainingCallback(BaseModel):
-    job_id: str
-    phase: TrainingPhase
-    progress: float
-    loss_curve_append: list[float] = []
-    eta_seconds: int | None = None
-    validation: DatasetValidation | None = None
-    adapter_path: str | None = None
-    error: str | None = None
-    # Trainer stdout lines to append to the job's log ring.
-    logs_append: list[str] = []
 
 
 # ─── Cache ──────────────────────────────────────────────────────────────
@@ -1525,9 +1326,6 @@ class WavFormat(BaseModel):
 
 
 class LoudnessStats(BaseModel):
-    # Estimated SNR (frame-percentile method, analyzer.py) — None when the
-    # clip is too short to frame. Feeds the training clip gates.
-    snr_db: float | None = None
     peak_dbfs: float
     rms_dbfs: float
     crest_factor_db: float

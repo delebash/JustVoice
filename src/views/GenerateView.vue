@@ -4,6 +4,7 @@ import { ref, reactive, onActivated, onMounted, computed, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import { lexiconMatches } from "../services/lexiconPreview.js";
 import { pushToast, runAiEndpoint, withAiTask } from "@delebash/llm-ui";
+import { handleTermsRefusal } from "../services/engineTerms.js";
 import { confirmDialog } from "@delebash/llm-ui";
 import { UiButton, UiInput, UiTextarea, UiField, UiCheckbox, UiTag, UiSelect, AppModal, UiTable, UiSlider } from "@delebash/llm-ui";
 
@@ -509,7 +510,8 @@ async function generate() {
       setTimeout(() => document.querySelector(".generate-view__audio")?.play?.().catch(() => {}), 60);
     }
   } catch (e) {
-    if (!aborted) {
+    // A Pocket TTS clone before Kyutai's terms are accepted opens them instead.
+    if (!aborted && !handleTermsRefusal(e)) {
       pushToast({ message: `Render failed: ${e.message || e}`, kind: "error", duration: 6000 });
     }
   } finally {

@@ -43,6 +43,11 @@ server/justvoice/engines/*/.venv/
 server/justvoice/engines/*/voices/
 server/justvoice/engines/*/state/
 server/justvoice/engines/.shared-venv/
+# The audio.cpp speech runtime + eSpeak NG, installed by the app. In a source checkout the
+# runtime root IS the engines dir, so they land beside the package's own .py files —
+# everything in that folder but its source is install output (2 GB for the CUDA build).
+server/justvoice/engines/audiocpp/*
+!server/justvoice/engines/audiocpp/*.py
 
 # Voicebox upstream audit clone — reference only, separate repo upstream
 voicebox-upstream/

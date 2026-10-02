@@ -12,7 +12,7 @@ import { UiButton, UiInput, UiTextarea, UiField, UiTag, UiChip, UiSelect, UiChec
 // Kit-side, because every app in the family shows a language somewhere.
 import { languageName, languageOptionsFrom } from "@delebash/llm-ui";
 import { EmptyState } from "@delebash/llm-ui";
-// The page's tab strip is the kit's, shared with Settings and LoRA. It was a
+// The page's tab strip is the kit's, shared with Settings and Labs. It was a
 // hand-rolled `.jv-subnav` whose tabs had drifted to 12px — under this app's
 // minimum type size.
 import { UiTabStrip } from "@delebash/llm-ui";
@@ -23,12 +23,11 @@ import { UiTabStrip } from "@delebash/llm-ui";
 // the Engines tab's, so the factory moved into services.
 import { DownloadBar } from "@delebash/llm-ui";
 import { makeEngineLoadTask } from "../services/ttsJobChannel.js";
+// An engine's own terms (Pocket TTS — Kyutai's, before the first clone; decided 2026-10-02).
+import { acceptEngineTerms, handleTermsRefusal } from "../services/engineTerms.js";
 import { useVoicesStore } from "../stores/voices.js";
 import { runAiEndpoint } from "@delebash/llm-ui";
 import { useEnginesStore } from "../stores/engines.js";
-// Training is a way to GET a voice, so its surface lives in this page's
-// LoRA tab rather than off in Labs (ruling 13, 2026-08-15).
-import LoraView from "./lora/LoraView.vue";
 
 const api = useApi();
 // voices / engines come from shared stores. Mutations here (clone /
@@ -178,7 +177,7 @@ async function cycleGender(v) {
 // ── Catalog filtering + search. ──────────────────────────────────────
 const search = ref("");
 // Filter ids match the server's VoiceSource literals exactly
-// (models.py: preset | cloned | designed | imported | blended | lora).
+// (models.py: preset | cloned | designed | imported | blended).
 const typeFilter = ref("all");
 
 const TYPE_FILTERS = [
@@ -188,7 +187,6 @@ const TYPE_FILTERS = [
   { id: "designed", label: "Designed" },
   { id: "imported", label: "Imported" },
   { id: "blended",  label: "Blended" },
-  { id: "lora",     label: "LoRA" },
 ];
 
 // Voice hiding DIED 2026-08-21 ("remove hidden on voices grid that
@@ -232,8 +230,8 @@ function voiceLocality(v) {
   return backend === "managed" ? "local" : "online";
 }
 
-// Isolated engines with no venv yet (MOSS) — their static voices
-// can't preview until Install runs in Engines. Tag + sort last so they
+// Engines whose speech runtime isn't installed yet — their static voices
+// can't preview until Install runs on Speech engines. Tag + sort last so they
 // never read as "the default voice" (user-hit: an uninstalled engine's
 // stock voice listed first).
 const engineMeta = computed(() => {
@@ -241,8 +239,8 @@ const engineMeta = computed(() => {
   for (const e of engines.value || []) m[e.id] = e;
   return m;
 });
-// The isolation half of this test went 2026-08-22 — every engine builds
-// its own environment now, so it was always true and narrowed nothing.
+// "not installed" = the shared speech runtime is missing (the 2026-10-01
+// switch) — one install covers every engine.
 function needsInstall(v) {
   const e = engineMeta.value[v.engine];
   return !!e && e.status === "not_installed";
@@ -332,7 +330,7 @@ function voiceRowClass(row) {
 
 const typeCounts = computed(() => {
   const list = voices.value || [];
-  const cs = { all: list.length, preset: 0, cloned: 0, designed: 0, imported: 0, blended: 0, lora: 0 };
+  const cs = { all: list.length, preset: 0, cloned: 0, designed: 0, imported: 0, blended: 0 };
   for (const v of list) if (cs[v.source] !== undefined) cs[v.source]++;
   return cs;
 });
@@ -466,9 +464,9 @@ async function previewVoice(v) {
       const mi = String(e?.message || "").match(/engine_not_installed:([\w.-]+)/);
       if (mi) {
         const ok = await confirmDialog({
-          title: `Install ${mi[1]} first`,
-          message: `"${v.name}" belongs to the ${mi[1]} engine, which isn't installed yet (isolated engines need their own venv built once). Open Engines to install it?`,
-          confirmLabel: "Open Engines",
+          title: "Install the speech runtime first",
+          message: `"${v.name}" plays on the ${mi[1]} engine, and the speech runtime every engine runs on isn't installed yet. Open Speech engines to install it?`,
+          confirmLabel: "Open Speech engines",
         });
         if (ok) window.location.hash = "#engines";
         return;
@@ -499,6 +497,7 @@ async function previewVoice(v) {
     await nextTick();
     playerEl.value?.play().catch(() => {});
   } catch (e) {
+    if (handleTermsRefusal(e)) return;
     pushToast({ message: `Preview failed: ${e.message || e}`, kind: "error" });
   } finally {
     previewingId.value = null;
@@ -548,17 +547,6 @@ onActivated(() => { void refresh(); });
 // stores subscribe to the same event and reload themselves, so refetching
 // them from this listener would double every request.
 window.addEventListener("jv:health-refresh", () => { void loadCapabilities(); });
-onMounted(() => {
-  // #train used to be a Labs tab; it lands here now (ruling 13) and the
-  // redirect names the tab it wanted.
-  try {
-    const want = window.sessionStorage?.getItem("jv.voices.acquireTab");
-    if (want) {
-      window.sessionStorage.removeItem("jv.voices.acquireTab");
-      if (PAGE_TABS.some((t) => t.id === want)) setAcquireTab(want);
-    }
-  } catch { /* ignore */ }
-});
 
 // ── How you get a voice: the page's own tabs ─────────────────────────
 //
@@ -573,13 +561,9 @@ const PAGE_TABS = [
   { id: "designed", label: "Design", verb: "Design", capability: "design" },
   { id: "imported", label: "Import", verb: "Import", capability: null },
   { id: "blended", label: "Blend", verb: "Blend", capability: "blending" },
-  // LoRA is the only tab whose label is not a verb: it names the THING
-  // (a LoRA adapter), because that is the word the field uses and the
-  // word on its filter chip. Renamed from "Train"/"trained" 2026-08-21.
-  { id: "lora", label: "LoRA", verb: "Train", capability: "training" },
 ];
 // The page opens on its library, every time: a remembered tab would
-// strand you on LoRA weeks later when you wanted the voice list.
+// strand you on Blend weeks later when you wanted the voice list.
 const acquireTab = ref("voices");
 const activeTab = computed(
   () => PAGE_TABS.find((t) => t.id === acquireTab.value) || PAGE_TABS[0],
@@ -599,7 +583,6 @@ const CAPABILITY_FIELD = {
   cloning: "supports_voice_cloning",
   design: "supports_voice_design",
   blending: "supports_voice_blending",
-  training: "supports_training",
 };
 function capableFor(capability) {
   return capability
@@ -730,11 +713,33 @@ const supportsCloneText = computed(
 const engineAction = computed(() => {
   const e = selectedRow.value?.engine;
   if (!e) return null;
-  if (e.status === "not_installed") return { kind: "install", label: "⤓ Install", fn: () => installEngine(e.id) };
+  if (e.status === "not_installed") return { kind: "install", label: "⤓ Install speech runtime", fn: () => installEngine(e.id) };
   if (e.status !== "loaded") return { kind: "load", label: "Load", fn: () => loadEngine(e.id) };
   return null;
 });
 const engineReady = computed(() => selectedRow.value?.engine?.status === "loaded");
+
+// Cloning with an engine whose makers set terms (Pocket TTS — Kyutai's) waits until they
+// are accepted: the Clone tab shows them, with Accept, before anything is sent, and the
+// server refuses until then (decided 2026-10-02). null = nothing to accept.
+const termsPending = computed(() => {
+  const e = selectedRow.value?.engine;
+  return acquireTab.value === "cloned" && e?.terms && !e.terms_accepted ? e : null;
+});
+const termsBusy = ref(false);
+async function acceptTerms() {
+  const e = termsPending.value;
+  if (!e) return;
+  termsBusy.value = true;
+  try {
+    await acceptEngineTerms(api, e.id);
+    pushToast({ message: `${e.name} can clone voices now.`, kind: "success" });
+  } catch (err) {
+    pushToast({ message: `Couldn't record that: ${err?.message || err}`, kind: "error" });
+  } finally {
+    termsBusy.value = false;
+  }
+}
 
 const tabBlocker = computed(() => {
   const tab = activeTab.value;
@@ -759,8 +764,8 @@ function firstCapableRow(tabId) {
     || rows[0] || null;
 }
 /** Open a tab with the form cleared. Every door goes through here — the tab
- *  strip, the return to the library after a save, and the #train deep-link —
- *  so nothing half-typed survives a tab change. (Until 2026-08-21 the reset
+ *  strip and the return to the library after a save — so nothing
+ *  half-typed survives a tab change. (Until 2026-08-21 the reset
  *  lived in an `openAcquire()` that nothing called, so it never ran.) */
 function setAcquireTab(id) {
   resetAcquireForm();
@@ -781,8 +786,12 @@ watch(activeCapableRows, (rows) => {
 
 async function installEngine(engineId) {
   try {
-    await api.request(`/v1/engines/${engineId}/install`, { method: "POST" });
-    pushToast({ message: `Installing ${engineId} — watch progress on Speech engines.` });
+    await api.request(`/v1/engines/${engineId}/install`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    pushToast({ message: "Installing the speech runtime — watch progress on Speech engines." });
     window.location.hash = "#engines";
   } catch (e) {
     pushToast({ message: `Install failed: ${e.message || e}`, kind: "error" });
@@ -1040,6 +1049,7 @@ async function auditionCandidate() {
     const bin = Uint8Array.from(atob(r.wav_b64), (c) => c.charCodeAt(0));
     candidateUrl.value = URL.createObjectURL(new Blob([bin], { type: "audio/wav" }));
   } catch (e) {
+    if (handleTermsRefusal(e)) return;
     pushToast({ message: `Audition failed: ${e.message || e}`, kind: "error" });
   } finally {
     candidateBusy.value = false;
@@ -1569,7 +1579,6 @@ function voiceTypeVariant(source) {
   if (source === "cloned") return "success";
   if (source === "designed") return "solid";
   if (source === "blended") return "accent2";
-  if (source === "lora") return "info";
   if (source === "imported") return "violet";
   return "ghost";
 }
@@ -1646,11 +1655,7 @@ function voiceTypeVariant(source) {
        chosen model takes), Result on the right (hear it, then keep it). -->
   <div v-if="!onLibraryTab" class="voices-view__acquire">
 
-      <!-- LoRA is a whole workflow, not a form: Preparer, Dataset and
-           Training live inside it as sub-tabs. -->
-      <LoraView v-if="acquireTab === 'lora'" />
-
-      <div v-else class="jv-split">
+      <div class="jv-split">
         <div class="jv-split__col">
           <p v-if="tabBlocker" class="jv-banner jv-banner--warn">{{ tabBlocker }}</p>
 
@@ -1660,6 +1665,17 @@ function voiceTypeVariant(source) {
 
             <!-- Clone -->
           <template v-if="acquireTab === 'cloned'">
+            <!-- The chosen model's makers' terms, before the first clone (Pocket TTS). -->
+            <div v-if="termsPending" class="jv-banner jv-banner--info voices-view__terms">
+              <strong>{{ termsPending.terms.title }}</strong>
+              <p>
+                {{ termsPending.name }} clones a voice only after you accept {{ termsPending.terms.owner }}'s
+                terms — once, on this install. Its preset voices need no acceptance.
+              </p>
+              <div class="voices-view__terms-text">{{ termsPending.terms.text }}</div>
+              <UiButton intent="primary" size="small" :loading="termsBusy"
+                :label="`Accept ${termsPending.terms.owner}'s terms`" @click="acceptTerms" />
+            </div>
             <div
               class="voices-view__drop"
               :class="{ 'voices-view__drop--active': dropActive, 'voices-view__drop--filled': !!cloneFile }"
@@ -2086,10 +2102,11 @@ function voiceTypeVariant(source) {
           <div v-if="canAudition" class="jv-btn-group">
             <UiButton
               intent="secondary"
-              :disabled="!valid || candidateBusy || !engineReady"
+              :disabled="!valid || candidateBusy || !engineReady || !!termsPending"
               :loading="candidateBusy"
               :label="candidateBusy ? 'Rendering…' : '▶ Play'"
-              :title="engineReady ? 'Render a sample with these settings' : 'Load the model first'"
+              :title="termsPending ? `Accept ${termsPending.terms.owner}'s terms above first`
+                : engineReady ? 'Render a sample with these settings' : 'Load the model first'"
               @click="auditionCandidate"
             />
           </div>
@@ -2207,7 +2224,7 @@ function voiceTypeVariant(source) {
         <span
           v-if="needsInstall(row)"
           class="jv-locality jv-locality--online"
-          :title="`${row.engine} is an isolated engine with no venv yet — Install it in Engines before this voice can play`"
+          :title="`${row.engine} runs on the speech runtime, which isn't installed yet — install it on AI Settings → Speech engines before this voice can play`"
         >NEEDS INSTALL</span>
       </template>
 
@@ -2358,6 +2375,11 @@ function voiceTypeVariant(source) {
 .voices-view__drop--active { border-color: var(--accent); background: var(--accent-soft); }
 .voices-view__drop--filled { padding: 10px 14px; }
 .voices-view__drop-row { display: flex; align-items: center; gap: 8px; width: 100%; }
+/* The chosen model's makers' terms on the Clone tab (Pocket TTS — Kyutai's). Prose at a
+   readable measure; the terms themselves as written, line breaks kept. */
+.voices-view__terms { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; max-width: 64ch; }
+.voices-view__terms p { margin: 0; }
+.voices-view__terms-text { white-space: pre-wrap; color: var(--ink-2); }
 .voices-view__drop-row .ui-input { flex: 1; }
 .voices-view__drop-row .voices-view__clip { flex: 1; }
 .voices-view__drop-lead { font-weight: 600; font-size: 13px; }

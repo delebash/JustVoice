@@ -47,7 +47,7 @@ const personaRecords = computed(() => personasStore.items);
 async function editDirection(block) {
   const value = await promptDialog({
     title: "Performance note",
-    message: "Direction for this line — instruct-capable engines (Qwen3, LuxTTS) perform it; others ignore it.",
+    message: "Direction for this line — Qwen3 CustomVoice and VoiceDesign perform it; other engines ignore it.",
     placeholder: "e.g. weary, almost whispering",
     initial: block.direction || "",
   });

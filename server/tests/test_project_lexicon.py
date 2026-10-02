@@ -146,40 +146,32 @@ def test_the_ipa_map_holds_only_this_lines_words():
     assert ipa_for("Worcestershire sauce") == {}
 
 
-def test_the_host_keeps_exactly_the_words_the_engine_would_splice():
-    """render_core decides which IPA entries a line carries; kokoro/ipa.py
-    decides which it speaks. Two matchers, one rule — this holds them together."""
-    from justvoice.engines.kokoro import ipa
-
+def test_the_host_keeps_exactly_the_words_an_ipa_splice_speaks():
+    """render_core decides which IPA entries a line carries; the engine-side
+    splice decides which it speaks — two matchers, one rule. The splice was
+    kokoro/ipa.py until the 2026-10-01 switch and returns with the runtime's
+    text+IPA input (switch plan §5); these are the words it spoke for each text,
+    taken from it before it went, so the host matcher cannot drift meanwhile."""
     full = {"Worcester": "W", "Mara Vance": "MV", "Mara": "M", "Dr.": "D", "A.": "AA"}
     st = SimpleNamespace(lexicons=_lexicons(_lex(
         "book", *[{"grapheme": g, "phoneme_ipa": p} for g, p in full.items()]
     )))
-
-    def spoken(text):
-        """The entries the engine really uses for this text."""
-        used = []
-        by_ipa = {p: g for g, p in full.items()}
-        out = ipa.splice(text, full, lambda seg: "")
-        for token in (out or "").split():
-            used.append(by_ipa[token])
-        return sorted(set(used))
-
-    for text in (
-        "To Worcester.",
-        "worcester and Mara Vance",
-        "Mara came. Mara Vance left.",
-        "Worcestershire",
-        "Nobody here.",
+    spoken = {
+        "To Worcester.": ["Worcester"],
+        "worcester and Mara Vance": ["Mara Vance", "Worcester"],
+        "Mara came. Mara Vance left.": ["Mara", "Mara Vance"],
+        "Worcestershire": [],
+        "Nobody here.": [],
         # An entry ending in punctuation never matches the regex, but the
-        # engine still speaks it when it sits alone between two matches.
-        "Marathon Dr.A.",
-        "Worcester Dr. Worcester",
-        "Dr.",
-        "   ",
-    ):
+        # splice still spoke it when it sat alone between two matches.
+        "Marathon Dr.A.": ["A.", "Dr."],
+        "Worcester Dr. Worcester": ["Worcester"],
+        "Dr.": [],
+        "   ": [],
+    }
+    for text, words in spoken.items():
         kept = _apply_lexicons(text, ["book"], st, ipa_capable=True)[1]
-        assert sorted(kept) == spoken(text), text
+        assert sorted(kept) == words, text
 
 
 class _Cache:
@@ -577,3 +569,41 @@ def test_a_new_book_lexicon_is_chosen_for_a_book_that_has_none(client):
     other = _post(client, "/v1/projects", {"name": "Ember", "project_type": "audiobook"})["id"]
     _post(client, "/v1/lexicons", {"name": "Nautical"})
     assert client.get(f"/v1/projects/{other}").json()["default_lexicon_id"] is None
+
+
+# ── an IPA entry reaches only an engine that takes phonemes ─────────────
+
+
+def test_apply_lexicons_routes_ipa_and_alias_by_capability():
+    from justvoice.models import Lexicon, LexiconEntry
+
+    now = datetime.now(timezone.utc)
+    lex = Lexicon(
+        id="lx1", name="test", created_at=now, updated_at=now,
+        entries=[
+            LexiconEntry(grapheme="Worcester", phoneme_ipa="wˈʊstər"),
+            LexiconEntry(grapheme="Dr.", alias="Doctor"),
+        ],
+    )
+
+    class _Lexicons:
+        def get(self, lid):
+            return lex if lid == "lx1" else None
+
+    class _State:
+        lexicons = _Lexicons()
+
+    # IPA-capable engine: alias substitutes text, IPA goes to the map.
+    text, ipa_map = render_core._apply_lexicons(
+        "Dr. Smith of Worcester", ["lx1"], _State(), ipa_capable=True
+    )
+    assert text == "Doctor Smith of Worcester"
+    assert ipa_map == {"Worcester": "wˈʊstər"}
+
+    # Engine that cannot take phonemes: the IPA entry does nothing —
+    # a guessed pronunciation beats reading IPA letters aloud.
+    text, ipa_map = render_core._apply_lexicons(
+        "Dr. Smith of Worcester", ["lx1"], _State(), ipa_capable=False
+    )
+    assert text == "Doctor Smith of Worcester"
+    assert ipa_map == {}

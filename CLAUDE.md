@@ -1,7 +1,7 @@
 # JustVoice
 
 A cross-platform voice production server: **Tauri 2 shell + Vue 3 renderer + Python (FastAPI +
-SQLite) server**, with PyTorch TTS engines in-process and Kokoro through `sherpa-onnx-python`.
+SQLite) server**, with every speech model run by one audio.cpp process (the speech runtime).
 Also runs **headless** as `justvoice-server serve`, no Tauri shell.
 
 Standalone product. JustWrite drives JustVoice for audiobooks — JW hands over the prose, JV does
@@ -17,21 +17,23 @@ Only TTS and each app's feature catalog differ. A change in those repos lands he
 
 ```bash
 npm install
-cd server && pip install -e . && cd ..   # engines install their own venvs from the app
+cd server && pip install -e . && cd ..   # the speech runtime installs from the app
 npm run tauri dev                  # Tauri + Vite + Python sidecar (dev port 1430, HMR 1431)
 npm run tauri build                # production installer
 
 justvoice-server serve             # headless; same UI at /ui/
 cd server && ruff check . && pytest    # both must pass before a commit
-npm run check:engines              # per-engine: manifest vs venv, pins vs upstream
 ```
 
-**Engines install themselves, one venv each.** Clicking Install on an engine row
-builds `engines/<id>/.venv` on Python 3.13 from that manifest alone — uv downloads a
-managed CPython if the machine has none, so nothing has to be installed by hand. The
-server itself is separate: `pip install -e .` in a dev checkout, a frozen PyInstaller
-sidecar in a release, and it never touches the uv cache. `docs/dev/code-map.md` §3e is
-the mechanism; `docs/engines.md` is the user-facing half.
+**One speech runtime runs every engine (since 2026-10-01).** Installing any engine — the
+runtime row on AI Settings → Speech engines — downloads the pinned audio.cpp build for this
+machine (`server/justvoice/engines/audiocpp/`, binaries via the kit's `acquire_runtime`) plus
+eSpeak NG; each engine is then a catalog (`engines/<id>/manifest.py`) of GGUF model files in
+the speech cache. In a source checkout the runtime lands INSIDE `engines/audiocpp/`
+(gitignored, 2 GB for CUDA) — never `git add` that folder by hand. The server itself is
+separate: `pip install -e .` in a dev checkout, a frozen PyInstaller sidecar in a release.
+`docs/plans/2026-10-01-audiocpp-switch.md` is the record; `docs/engines.md` the user-facing
+half. Voice training (LoRA) was removed 2026-10-02 — no PyTorch anywhere.
 
 **The console script is `justvoice-server`, never `justvoice`.** The Tauri binary is
 `justvoice.exe`; giving both the same name makes Windows `CreateProcessW` resolve
@@ -107,7 +109,7 @@ implementation lives in the kit. The one-off snapshot scripts predating the law 
 ## Invariants that bite
 
 - **No hardcoded operator-tunable values.** Every knob lives in settings (SQLite via `SettingsStore`) and is reachable through `PATCH /v1/settings`.
-- **SQLite via SQLAlchemy is the primary persistence layer**, and there is no renderer-side store. `settings.json` was folded into the `settings` table and renderer UI prefs into `prefs` (the 2026-06-19 storage rewrite; `SettingsStore` imports a legacy `settings.json` once). Per-artifact JSON sidecars on disk are the exception and still live: `storage/atomic.py`'s `atomic_write_json` (tmp + `os.replace` + fsync) writes voice manifests (`storage/voices.py`) and training-job records (`storage/training_jobs.py`).
+- **SQLite via SQLAlchemy is the primary persistence layer**, and there is no renderer-side store. `settings.json` was folded into the `settings` table and renderer UI prefs into `prefs` (the 2026-06-19 storage rewrite; `SettingsStore` imports a legacy `settings.json` once). Per-artifact JSON sidecars on disk are the exception and still live: `storage/atomic.py`'s `atomic_write_json` (tmp + `os.replace` + fsync) writes voice manifests (`storage/voices.py`).
 - **`server/justvoice/models.py` is the cross-language source of truth.** The Vue client fetches directly against the OpenAPI shape; the JustWrite-facing boundary rules are `docs/dev/design-decisions.md` §3.
 - **Business logic never goes in Rust.** `src-tauri/` is plumbing — spawn the sidecar, host the webview, shut down cleanly. If you are writing logic there, it belongs in Python.
 - **Every file carries an SPDX-License-Identifier header.** Files lifted from an upstream MIT codebase also carry a full attribution block referencing `voicebox-pin.txt`. Ship license is MIT.
@@ -136,7 +138,7 @@ implementation lives in the kit. The one-off snapshot scripts predating the law 
 
 | Concern | Layer |
 |---|---|
-| TTS model loading + inference | `server/justvoice/engines/<engine>/` (`manifest.py` + `engine.py` per engine) |
+| TTS/STT models + the speech runtime | `server/justvoice/engines/<engine>/manifest.py` (catalog) · `engines/audiocpp/` (runtime + request mapping) |
 | Storage — settings, voices, profiles, projects, chapters, takes, generations, lexicons, personas, story items, renderer prefs | `server/justvoice/storage/` + `database/` |
 | Render orchestration + cache | `server/justvoice/render_core.py`, `api/render_chapter_api.py` |
 | Audio analyzer, WAV math, mastering | `server/justvoice/audio/`, `mastering.py` |

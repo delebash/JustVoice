@@ -2,6 +2,48 @@
 
 ## v0.1.0
 
+- **Speech models run on the graphics card or the CPU, chosen per model (2026-10-02).**
+  Each model row on AI Settings → Speech engines now says where it runs and why, with
+  an **Auto · GPU · CPU** choice. Auto keeps a model on the graphics card when nothing
+  else is there or it fits beside the AI model, moves it to the CPU when it speaks at
+  least 2× real time there, and otherwise unloads the AI model for it with a toast — so
+  on an 8 GB card Kokoro no longer pushes your language model out. CPU models run in a
+  second runtime process that takes no graphics memory; its threads are on the runtime
+  row. Voice engine setup's tiers say where each engine will run
+  ([Engines → Where each model runs](engines.md#where-each-model-runs--the-graphics-card-or-the-cpu))
+- **Two new engines that run well on the CPU.** **KittenTTS** — eight English preset
+  voices, 3.4× real time on an 8-core CPU. **Pocket TTS** — Kyutai's cloning model, the
+  first since LuxTTS to clone fast on a CPU (4× real time), with 20 preset voices, one
+  model each for English, German, Italian, Portuguese and Spanish. Its first clone asks
+  you to accept Kyutai's terms ([Engines → The catalog](engines.md#the-catalog))
+- **Voice training is gone (2026-10-02).** The Voices page's **LoRA** tab — the
+  Preparer, the Dataset Builder and training runs — is removed, with the training
+  settings and the `training.completed` / `training.failed` webhook events. It ran on
+  the Python environments the speech runtime replaced, and the runtime cannot render a
+  trained voice; it is to be rebuilt on the runtime later. **Default voice language**, the language a blend falls back to, moved
+  from the Training settings to Settings → Generation
+  ([Engines → Voice training](engines.md#voice-training))
+- **Every voice engine now runs on one speech runtime (2026-10-01).** Kokoro,
+  Qwen3-TTS, Chatterbox and speech recognition used to be separate Python programs,
+  each with its own environment to install. Now one program — the speech runtime,
+  built on [audio.cpp](https://github.com/0xShug0/audio.cpp) — runs them all. Install
+  it once from the **Speech runtime** row at the top of AI Settings → Speech engines
+  (the Voice engine setup wizard does the same); it picks the build for your machine
+  — CUDA, Vulkan, CPU or Metal — and its **Backend** select changes that. Each engine
+  is then just its models, downloaded from its rows. Measured on an 8 GB card: Qwen3
+  renders about 7× faster than before, Chatterbox about twice as fast, and models load
+  in seconds; the same seed now gives the same audio on every engine; on Windows, AMD and
+  Intel graphics get the GPU (Vulkan) build for every engine instead of the CPU. **Your old engine downloads don't carry
+  over** — the runtime uses new 8-bit model files, so each engine's model downloads
+  again (from its row, or the first time you load it). Speech recognition is now
+  Qwen3-ASR, which got fewer words wrong than Whisper in most languages measured, and
+  chapter captions time their words with its aligner. Not available yet on the
+  runtime: Chatterbox Turbo and its inline tags, Chatterbox in Hebrew, Japanese,
+  Russian and Chinese, Kokoro blends and its Japanese voices, IPA lexicon entries
+  (respellings work), and Qwen3 CustomVoice 0.6B;
+  LuxTTS, TADA, MOSS-TTSD and Whisper are gone. The full list, and why, is in
+  [Engines → Not available yet](engines.md#not-available-yet); the runtime itself in
+  [Engines → The speech runtime](engines.md#the-speech-runtime)
 - **A book's pronunciation lexicon now reaches the audio.** Overview has a new
   **Pronunciation lexicon** row — None, one of this book's lexicons or a reusable
   one. Until now the render read only the personas' lexicons, so a name fixed in the
@@ -281,7 +323,8 @@
   what another already depends on, and every engine has a real Uninstall.
   Costs far less disk than it sounds: the five environments report 5,284 MB
   but add only 431 MB, because they share one download cache
-  ([Engines](engines.md#where-the-python-environments-live))
+  (replaced on 2026-10-01 by one speech runtime for every engine —
+  [Engines](engines.md#the-speech-runtime))
 - See which programs are holding GPU memory: **show apps** on the memory
   strip's *Other apps* cell ([GPU / CUDA](gpu.md#which-apps-are-using-the-gpu))
 - A sleeping AI model lends its memory to your speech engine and takes it

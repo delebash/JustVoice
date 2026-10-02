@@ -186,8 +186,9 @@ ALL-CAPS or Title-Case labels only — prose sentences with colons are
 left alone); unlabeled paragraphs continue the current speaker.
 `## headings` split segments into scenes; `— marker —` / `---` lines
 import as unattributed marker lines (`delivery.marker=true`).
-Paralinguistic tags like `[laughs]` stay in the text — capable engines
-perform them. Each label becomes one of the episode's speakers at commit.
+Paralinguistic tags like `[laughs]` stay in the text, and an engine that
+lists the tag performs it; every other engine has it removed before rendering,
+never read aloud (no engine on the speech runtime takes tags yet). Each label becomes one of the episode's speakers at commit.
 
 ### <a id="import-csv_lines"></a>CSV lines (`csv_lines`)
 
@@ -462,8 +463,7 @@ A voice travels as one file: `GET /v1/voices/{id}/bundle.zip` exports it,
 what the voice *is*: a cloned or imported voice brings its reference
 clip (and can re-clone on any cloning engine), a designed voice brings
 its description, a blended voice brings its mixed vector (Kokoro-only —
-the numbers only mean something to the engine that mixed them). LoRA
-voices travel as their adapter instead — the ⬇ Download on the LoRA tab.
+the numbers only mean something to the engine that mixed them).
 Importing refuses, with the reason, anything that could not render:
 a clip voice without its clip, or a voice whose engine this install
 doesn't have.
@@ -472,6 +472,6 @@ doesn't have.
 
 - **M4B export fails with 503** — ffmpeg is not on the server's PATH. Install it and restart the server; the same binary powers [mastering](mastering.md).
 - **M4B is missing chapter markers** — chapters come from the FFMETADATA file `mux_m4b()` writes, one entry per assembled chapter. A project whose scenes have not been rendered produces no chapters; render first, then export.
-- **WAV plays at wrong speed** — Mismatched sample rate. Check the engine's output rate vs the destination application's expected rate. Engines emit at their native rate (Kokoro 24 kHz, Chatterbox 24 kHz, LuxTTS 48 kHz, TADA 24 kHz).
+- **WAV plays at wrong speed** — Mismatched sample rate. Check the engine's output rate vs the destination application's expected rate. Every local engine — Kokoro, Qwen3-TTS, Chatterbox — renders at 24 kHz on the speech runtime; an online provider may differ.
 - **Mastered audio is silent at the start** — A bug in the mastering normalize step. Try the "iAudio" target instead of ACX; iAudio's threshold is gentler.
 - **ZIP export is huge** — Unmastered + every take is large. Project export offers `include_audio` / `include_masters` toggles; bulk-delete old takes first to slim the archive.

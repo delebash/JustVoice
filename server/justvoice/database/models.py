@@ -497,7 +497,7 @@ class MCPBinding(Base):
 
 class Capture(Base):
     """A dictation / system-audio / uploaded recording. Persisted with both
-    raw Whisper output and post-refinement transcript."""
+    raw recogniser output and post-refinement transcript."""
 
     __tablename__ = "captures"
 
@@ -659,34 +659,6 @@ class SpeakerCorrection(Base):
 
 
 Index("ix_speaker_corrections_project_created", SpeakerCorrection.project_id, SpeakerCorrection.created_at)
-
-
-# ── Training jobs ────────────────────────────────────────────────────────
-
-
-class TrainingJob(Base):
-    """PEFT/LoRA voice training jobs with QC pipeline."""
-
-    __tablename__ = "training_jobs"
-
-    id = Column(String, primary_key=True, default=_uuid)
-    # Replaces the prior voice_profiles FK after Slice 4 of the
-    # Profile-kill rollout. Training jobs target a persona's voice.
-    persona_id = Column(String, ForeignKey("personas.id", ondelete="CASCADE"), nullable=False)
-    engine = Column(String, nullable=False)
-    # "qc" | "training" | "completed" | "failed"
-    status = Column(String, nullable=False, default="qc")
-    samples_accepted = Column(Integer, default=0, nullable=False)
-    samples_rejected = Column(Integer, default=0, nullable=False)
-    current_step = Column(Integer, default=0, nullable=False)
-    total_steps = Column(Integer, nullable=True)
-    # JSON: list of {step: int, loss: float}
-    loss_history_json = Column(Text, default="[]", nullable=False)
-    adapter_path = Column(String, nullable=True)
-    error = Column(Text, nullable=True)
-    started_at = Column(DateTime, nullable=True)
-    finished_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=_utcnow)
 
 
 class Pref(Base):

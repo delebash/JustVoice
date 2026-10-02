@@ -33,7 +33,8 @@ function fmtMb(mb) {
   return mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb} MB`;
 }
 
-// "2 Whisper processes and 1 Kokoro process"
+// "2 Speech runtime processes" — one per earlier server (since the 2026-10-01
+// switch every speech model runs in the one audio.cpp process).
 const who = computed(() => {
   const counts = new Map();
   for (const lo of found.value?.leftovers || []) {

@@ -39,12 +39,12 @@ Below the chip bar is a banner showing what the currently-loaded engine actually
 - ✓ pitch ±N st — pitch shift is available (post-process on every engine)
 - ✓ temperature — sampling-variance knob is real
 - ✓ seed — deterministic generation supported
-- ✓ N emotion tags — the engine has a declared emotion taxonomy in its capability manifest
-- ✓ free-form delivery — accepts the Delivery direction textarea (Qwen3 only)
+- ✓ N emotion tags — the engine has a declared emotion taxonomy in its capability manifest (none does today)
+- ✓ free-form delivery — accepts the Delivery direction textarea (Qwen3 CustomVoice and VoiceDesign)
 - ✓ cloning — accepts a reference WAV
-- ✓ IPA phoneme input — bypass the text parser (Kokoro)
+- ✓ IPA phoneme input — takes pronunciations as phonemes (none does on the speech runtime yet)
 
-Engines that don't support a feature show **✗** with a note naming one that does. The pills are sourced from `/v1/engines/capabilities` — they reflect what each engine's adapter actually wires, not aspirational claims. The **loaded model's** row wins over the engine's: with Chatterbox Turbo loaded you get Turbo's controls (paralinguistic tags, no exaggeration/CFG sliders), not Multilingual's. See [engines.md](engines.md) for per-engine details.
+Engines that don't support a feature show **✗** with a note naming one that does. The pills are sourced from `/v1/engines/capabilities` — they reflect what the speech runtime actually receives for each engine, not aspirational claims. The **loaded model's** row wins over the engine's: with Qwen3 Base loaded you get Base's controls (cloning, no free-form delivery), not CustomVoice's. See [engines.md](engines.md#what-each-engine-can-be-tuned-with) for per-engine details.
 
 ## Delivery overlay
 
@@ -55,8 +55,8 @@ repeating the numbers: Speed reads *slower · as written · faster*, Gain reads
 *quieter · unchanged · louder*. The six **primary controls** are universal across
 engines:
 
-- **Speed** — 0.5–2.0× pacing multiplier. Honoured natively by **Kokoro** and **LuxTTS**; other engines ignore it.
-- **Pitch** — semitones, **post-process on every engine**. The rendered audio is pitch-shifted after synthesis, so it works the same everywhere. (No engine transposes natively — LuxTTS's *T-shift* was previously described here as native pitch, which was wrong; see below.)
+- **Speed** — 0.5–2.0× pacing multiplier. Honoured natively by **Kokoro**; the other engines ignore it.
+- **Pitch** — semitones, **post-process on every engine**. The rendered audio is pitch-shifted after synthesis, so it works the same everywhere. No engine transposes natively.
 - **Gain** — output WAV amplitude in dB. Applied by the server, so it works on every engine.
 - **Temperature** — sampling variance (engine-specific range)
 - **Pause before → after** — silence in ms around this line. Blank means "use the project's gap"; a value replaces it for that join, and a line's `pause after` plus the next line's `pause before` add together. **0 is a deliberate butt-join**, not "unset".
@@ -64,7 +64,7 @@ engines:
 
 ### Delivery direction (free-form)
 
-A textarea for describing how the line goes, in your own words — *"clipped, world-weary, dry"*. Shown always, but live ONLY when the engine accepts a freeform `instruct` field, which today is **Qwen3-TTS alone**. The pill in the label flips between `disabled · requires Qwen3-TTS` (ghost) and `free-form` (green).
+A textarea for describing how the line goes, in your own words — *"clipped, world-weary, dry"*. Shown always, but live ONLY when the loaded model accepts a freeform instruction, which today is **Qwen3-TTS CustomVoice and VoiceDesign** (Qwen3 Base clones and takes no instruction). On VoiceDesign the instruction is the voice description itself. The pill in the label flips between `disabled · requires Qwen3-TTS` (ghost) and `free-form` (green).
 
 At render time this is joined with the persona's **Spoken delivery** and the line's own **direction** into the single instruction the engine receives, most specific last. See [personas.md](personas.md).
 
@@ -74,35 +74,29 @@ A dropdown of nine labels: *neutral · happy · sad · angry · fearful · whisp
 
 It is a list rather than a sentence for one reason: **it is the only delivery control with a cross-engine meaning.** Prose can only be handed to an engine that reads prose, but a label can be compiled two different ways, so the same choice survives recasting a speaker onto a persona on a different engine.
 
-- **Engines that read prose** (Qwen3-TTS) get the label folded into the instruction, alongside the persona's spoken delivery and the line's direction.
-- **Engines with an emotion vocabulary** (Chatterbox Turbo) get their own token prefixed to the line — pick *fearful* and Turbo renders `[fear] Who's there?`.
-- **Every other engine** has no way to express it. The field is disabled and says so, rather than accepting a value it would drop.
+- **Engines that read prose** (Qwen3-TTS CustomVoice and VoiceDesign) get the label folded into the instruction, alongside the persona's spoken delivery and the line's direction.
+- **Engines with an emotion vocabulary** get their own token prefixed to the line instead. Chatterbox Turbo was that engine — pick *fearful* and it rendered `[fear] Who's there?` — and it is not available on the speech runtime yet (see [Engines → Not available yet](engines.md#not-available-yet)), so no engine takes emotion this way today.
+- **Every other engine** (Kokoro, Chatterbox Multilingual, Qwen3 Base) has no way to express it. The field is disabled and says so, rather than accepting a value it would drop.
 
-The list is filtered to what the loaded engine can actually say. Turbo has no token for *sad*, *shouted* or *contemptuous*, so those are not offered while it is loaded and the hint names them — put those in the Delivery direction box on an engine that reads prose. *Neutral* is always available: it is expressible by adding nothing.
+When an engine with a vocabulary is loaded, the list is filtered to what it can actually say and the hint names what it can't. *Neutral* is always available: it is expressible by adding nothing.
 
 The vocabulary comes from `/v1/engines/capabilities` rather than being typed into the UI, so the picker cannot drift from what the server accepts.
 
-**Emotion is not the same as an inline tag.** Emotion is the state the whole line is spoken in, so it is a field. A non-verbal sound happens at a *moment*, so you type it where you want it — `/` in the textarea, or the **🏷️ Insert tag** button. Chatterbox Turbo carries both: seven emotion tokens, three register tokens (`[narration]`, `[dramatic]`, `[advertisement]`), and nine non-verbal ones (`[laugh]`, `[cough]`, `[sigh]`, `[gasp]`, `[groan]`, `[sniff]`, `[chuckle]`, `[clear throat]`, `[shush]`).
-
-> Resemble's model card names only `[cough]`, `[laugh]` and `[chuckle]` and says "and more". The other sixteen hold reserved token ids in the checkpoint's own `added_tokens.json`, so they are real — but they have not been listened to here. Treat them as likely rather than proven.
-
-Tags whose manifest entry carries a `placement: start_of_turn` rule get inserted at the start of the line automatically, regardless of cursor position.
+**Emotion is not the same as an inline tag.** Emotion is the state the whole line is spoken in, so it is a field. A non-verbal sound happens at a *moment*, so it is typed where you want it — `/` in the textarea, or the **🏷️ Insert tag** button. No engine takes inline tags on the speech runtime today (Chatterbox Turbo, which did, is not available yet), so both list nothing, and bracketed text you type yourself is removed before the model sees it — never read out as a word.
 
 ### Engine-specific knobs
 
 Below the primary controls, the form auto-renders any extra knobs the engine declares in its capability manifest (`server/justvoice/engines/capability_details.py`). For example:
 
-- **Chatterbox Multilingual** — `Exaggeration`, `CFG weight`; advanced `Repetition penalty`, `Min p`, `Top p`
-- **Chatterbox Turbo** — advanced `Repetition penalty`, `Top p`, `Top k`. Turbo accepts exaggeration and CFG weight but Resemble defaults them to 0 (off) for speed, so they are not offered.
-- **Qwen3** — advanced `Top k`, `Top p`, `Repetition penalty` (mapped onto the talker)
-- **LuxTTS** — `Inference steps`, `Guidance scale`, `Max ref length`; advanced `Timestep shift`, `Reference loudness`, `Smoothing`
-- **MOSS-TTSD** — advanced `Top p`, `Top k`, `Repetition penalty`, `Max length`
+- **Chatterbox Multilingual** — `Exaggeration`, `CFG weight`; advanced `Repetition penalty`, `Top p`
+- **Qwen3** (every model) — advanced `Top k`, `Top p`, `Repetition penalty`
 - **Kokoro** — none beyond Speed
-- **TADA** — none. Its generate call takes text, reference prompt and language only; Seed still applies.
+
+Every engine takes a Seed: the same seed, text and settings give the same audio.
 
 Each knob renders as a paired slider + number input, just like the primary controls. Non-advanced knobs appear in the main grid; advanced knobs live behind a collapsible `⚙ Show advanced knobs (N)` details block. Values only ship to the API when they differ from the engine's default — no payload noise.
 
-This replaces the old "Raw engine knobs (JSON)" textarea. The manifest is the source of truth: add a `KnobSpec` to an engine's `capability_details.py` entry and the UI picks it up automatically.
+This replaces the old "Raw engine knobs (JSON)" textarea. The manifest is the source of truth: add a `KnobSpec` to an engine's `capability_details.py` entry and the UI picks it up automatically — and a test fails until the speech runtime's request mapping (`engines/audiocpp/slot.py`) actually passes it on.
 
 ## Lexicon preview
 
@@ -115,17 +109,13 @@ The row is always visible — it has two states:
 - **No lexicon attached** (default): the pill reads `no lexicon attached`, count is `0`, the `View applied entries` button is disabled. An inline hint reads `— attach via Personas.`
 - **Lexicon attached**: the pill shows the lexicon name, the count reflects how many distinct words in the current textarea text would actually be replaced, and the `View applied entries` button opens a modal listing every match (`Word / Pronunciation / Format / Count`).
 
-**How a lexicon gets attached.** Picking a persona attaches that persona's lexicon (its **Lexicon** field, if it has one). The Generate view watches the selected persona, fetches `/v1/lexicons/{id}`, and populates the row + modal. Switching personas re-fetches; picking a persona without a lexicon drops back to the empty state. The lexicon is also sent to the server at render time as `lexicons: ["lex_id"]`, and the line is read through it: respellings replace the words, and on Kokoro an IPA entry is spoken as written — the same rules as a chapter ([Lexicons](lexicons.md#which-lexicons-a-line-is-read-with)). Until 2026-09-30 the server ignored it, so only the preview changed. A book's lexicon is not added here: a line on Generate belongs to no book.
+**How a lexicon gets attached.** Picking a persona attaches that persona's lexicon (its **Lexicon** field, if it has one). The Generate view watches the selected persona, fetches `/v1/lexicons/{id}`, and populates the row + modal. Switching personas re-fetches; picking a persona without a lexicon drops back to the empty state. The lexicon is also sent to the server at render time as `lexicons: ["lex_id"]`, and the line is read through it: respellings replace the words — the same rules as a chapter ([Lexicons](lexicons.md#which-lexicons-a-line-is-read-with)). The preview lists IPA entries too (shown as `/ipa/`), but no engine on the speech runtime takes IPA yet: an entry with both a respelling and IPA is read with its respelling, and an IPA-only entry changes nothing. Until 2026-09-30 the server ignored it, so only the preview changed. A book's lexicon is not added here: a line on Generate belongs to no book.
 
 ## Paralinguistic slash menu
 
-Type **/** in the textarea. A menu pops up with the engine's inline-tag taxonomy:
+Type **/** in the textarea. A menu pops up with the loaded engine's inline-tag taxonomy — and today it is empty for every engine: none of Kokoro, Qwen3-TTS or Chatterbox Multilingual takes inline tags on the speech runtime. The engine that had tags, Chatterbox Turbo, is not available yet (see [Engines → Not available yet](engines.md#not-available-yet)).
 
-- **Chatterbox-Turbo:** `[laugh] [cough] [chuckle] [sigh]` — inline anywhere.
-- **MOSS-TTSD:** `[S1] [S2] [S3]` speaker markers + `[pause 1.5s]` for exact timing.
-- **Kokoro:** no inline tags (speed only).
-
-Filter by typing. Use ↑↓ to navigate, Enter / Tab to insert, Esc to close. Tags whose manifest carries a start-of-turn placement rule get inserted at position 0 regardless of cursor location.
+When there are tags: filter by typing, ↑↓ to navigate, Enter / Tab to insert, Esc to close. Tags whose manifest carries a start-of-turn placement rule are inserted at position 0 regardless of cursor location.
 
 ## Auto-chunking
 
@@ -150,7 +140,7 @@ Two kinds of work appear there, and only these two:
 - **Anything that queries a language model** — Compose, Persona rewrite, Speaker attribution, Smart assign, ACX QC, Render-preset suggest, Show notes, Voice gender. This is what the strip exists for, and it is the same queue JustWrite and the docs generator use for their own AI features.
 - **Long TTS renders** — this view's ▶ Generate, a chapter render, Lines → *Re-render changed*, and a Studio scene render.
 
-What does **not** appear there: installing an engine, downloading a model, and loading a model all report on their own row in the Speech engines tab (see [Engines](engines.md#cancelling-an-in-flight-load)), and training jobs report in the Train view's job list. Those are file and process work rather than model queries, and putting them in this queue only buried the runs you actually wanted to watch.
+What does **not** appear there: installing an engine, downloading a model, and loading a model all report on their own row in the Speech engines tab (see [Engines](engines.md#cancelling-an-in-flight-load)). That is file and process work rather than model queries, and putting them in this queue only buried the runs you actually wanted to watch.
 
 ### Strip lifecycle
 
@@ -198,7 +188,7 @@ Click a take to see its lineage via the [take versioning](take-versioning.md) ch
 - **Voice dropdown says "no voices available"** — The loaded engine is clone-only (Chatterbox) and you haven't cloned a reference WAV yet. Use the link in the banner to [Voices](voices.md).
 - **Compose or Rewrite is disabled (grayed out)** — No persona is selected, or the selected persona has no note on how it sounds. Pick one in the 👤 Persona chip, or write its **Note on how it sounds** in [Personas](personas.md).
 - **Compose returns "LLM not configured"** — Wire an OpenAI-compatible endpoint in Settings → External.
-- **Slash menu shows no tags** — The loaded engine has no inline-tag taxonomy. Switch to Chatterbox-Turbo or MOSS-TTSD to access tags.
+- **Slash menu shows no tags** — No engine on the speech runtime takes inline tags yet. Bracketed text in the line is removed before rendering, so it is never read aloud.
 - **Render is silent / clipped at the end** — Some engines (Chatterbox family) hallucinate trailing noise; the trim utility removes that. If clipping the actual content, file an issue with the offending text.
 - **Pitch does nothing** — Pitch is applied after synthesis, so it works on every engine. If a value has no audible effect, check that it actually saved: an empty cell means "use the default", not zero.
 - **An engine knob seems to be ignored** — Until 2026-08-17 engine-specific knobs never reached the engine at all (they were saved flat and read nested). If you are on an older build, that is why. Values set before the fix are picked up automatically — no re-entry needed — but any line rendered with them is cached under the old settings and needs a re-render.
@@ -213,9 +203,9 @@ Click a take to see its lineage via the [take versioning](take-versioning.md) ch
 | Effects chip | `delivery.engine.*` (mostly profile-managed) |
 | Seed | `seed` |
 | Delivery overlay sliders | `delivery.speed / pitch / gain_db / temperature / pause_before / pause_after` |
-| Inline emotion / paralinguistic / SFX tags (via SlashTagMenu) | inline in `text` (e.g. `[laugh]` for Chatterbox-Turbo, `[S1]` for MOSS-TTSD) |
+| Inline emotion / paralinguistic / SFX tags (via SlashTagMenu) | inline in `text` — kept only for an engine that lists them (none today); every other `[tag]` is removed before rendering |
 | Delivery direction | `delivery.instruct` |
-| Emotion | `delivery.emotion` — prose for Qwen3, a `[tag]` for Chatterbox Turbo |
+| Emotion | `delivery.emotion` — folded into the instruction for Qwen3 CustomVoice and VoiceDesign |
 | Engine-specific knobs (advanced + primary) | `delivery.engine.{key}` — only sent when changed from default |
 | Render preset (no UI yet) | `preset_id` |
 | Lexicon attach | `lexicons: ["lex_id"]` |

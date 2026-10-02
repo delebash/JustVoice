@@ -55,7 +55,9 @@ dependencies = [
 # that put engine packages into THIS env installed the wrong thing into
 # the wrong place — [kokoro] still pulled sherpa-onnx two days after the
 # runtime swapped to kokoro-onnx, and [qwen3] named a package that was
-# never the real dependency. `pip install -e .` is the whole server setup.
+# never the real dependency. Since 2026-10-01 no engine has Python
+# dependencies at all — every model runs in the audio.cpp speech runtime the
+# app downloads. `pip install -e .` is the whole server setup.
 dev = ["pytest>=8", "pytest-asyncio>=0.24", "playwright>=1.48", "ruff>=0.7"]
 
 # The frozen PyInstaller bundle's runner source — @main, never a SHA pin (JW's

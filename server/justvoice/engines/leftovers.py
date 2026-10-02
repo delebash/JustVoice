@@ -1,24 +1,24 @@
 # SPDX-License-Identifier: MIT
-"""Engine processes left behind by a server that is gone — found, measured,
-stopped (decided 2026-09-29).
+"""Speech-runtime processes left behind by a server that is gone — found,
+measured, stopped (decided 2026-09-29; the runtime since 2026-10-01).
 
-An engine subprocess is `<engines>/<id>/.venv/python engine.py serve`; on
-Windows the venv `python.exe` is uv's launcher and the real interpreter is its
-CHILD (the launcher-shim fact), so one engine is a two-process tree. When its
-server is hard-killed the tree keeps running and keeps its GPU memory — five
-such trees held 1.6 GB on 2026-09-29 and the app's language model could no
-longer load. Since plugin 0.3.0 an engine exits by itself when its server goes
-(`justvoice_plugin.lifetime`); this module is the sweep for everything that
-predates that, or slipped past it:
+Every speech model runs in ONE audio.cpp server process our server starts
+(`engines/audiocpp/runtime.py`). On Windows it sits in a kill-on-close Job
+Object, so it dies with our server however that server dies; elsewhere, or for
+one an older JustVoice left, this module is the sweep:
 
   - run once when the server starts (`stop_leftover_engines`, from app.py);
   - `GET /v1/engines/leftovers` / `POST /v1/engines/leftovers/stop`, which the
     boot splash's failed-load box offers as a button.
 
-Only THIS install's engines are touched: a process counts only when its
-command line runs one of our `engine.py` files. An engine whose server is
-alive is never touched — that includes a second JustVoice server on the same
-install (the renderer gate runs one).
+(Until the switch the engines were Python subprocesses — `engine.py serve` in
+each engine's venv — and five such trees held 1.6 GB on 2026-09-29, the day
+this sweep was written.)
+
+Only THIS install's runtime is touched: a process counts only when it runs a
+binary under this install's runtime folder. One whose server is alive is never
+touched — that includes a second JustVoice server on the same install (the
+renderer gate runs one).
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ log = logging.getLogger(__name__)
 
 @dataclass
 class Leftover:
-    pid: int                      # the tree's root (the venv launcher on Windows)
+    pid: int                      # the tree's root
     engine_id: str
     started: float                # epoch seconds
     server_pid: int | None        # who started it, when known
@@ -41,33 +41,26 @@ class Leftover:
     gpu_mb: int | None = None
 
 
-def _engine_scripts() -> dict[str, str]:
-    """normcase(path of each engine.py) → engine id, for this install."""
-    from .manager import ENGINES_DIR
+def _audiocpp_root() -> str:
+    """normcase(dir every installed audio.cpp server lives under), for this install."""
+    from .manager import engines_runtime_root
 
-    out: dict[str, str] = {}
-    for d in Path(ENGINES_DIR).iterdir():
-        f = d / "engine.py"
-        if f.is_file():
-            out[os.path.normcase(str(f))] = d.name
-    return out
+    return os.path.normcase(str(Path(engines_runtime_root()) / "audiocpp"))
 
 
-def _engine_id_of(cmdline: list[str], scripts: dict[str, str]) -> str | None:
-    if "serve" not in cmdline:
-        return None
-    for arg in cmdline:
-        eid = scripts.get(os.path.normcase(arg))
-        if eid:
-            return eid
+def _engine_id_of(cmdline: list[str], audiocpp_root: str) -> str | None:
+    """"audiocpp" when this command line runs a binary under this install's runtime
+    folder (our own pinned server, started with JUSTVOICE_SERVER_PID set), else None."""
+    if cmdline and audiocpp_root and os.path.normcase(cmdline[0]).startswith(audiocpp_root):
+        return "audiocpp"
     return None
 
 
 def _server_gone(proc, psutil) -> tuple[bool, int | None]:
-    """(gone?, server pid). The server pid comes from the engine's environment
-    (`JUSTVOICE_SERVER_PID`, plugin 0.3.0+); a pid that now belongs to a
-    process started AFTER the engine was recycled, so that server is gone too.
-    Older engines carry no variable: their launcher's parent is the server."""
+    """(gone?, server pid). The server pid comes from the process's environment
+    (`JUSTVOICE_SERVER_PID`); a pid that now belongs to a process started AFTER
+    this one was recycled, so that server is gone too. With no variable the
+    parent is the server."""
     server_pid = None
     try:
         raw = (proc.environ() or {}).get("JUSTVOICE_SERVER_PID", "")
@@ -90,16 +83,16 @@ def _server_gone(proc, psutil) -> tuple[bool, int | None]:
 
 
 def find_leftover_engines(*, measure: bool = True) -> list[Leftover]:
-    """This install's engine process trees whose server is gone."""
+    """This install's runtime process trees whose server is gone."""
     try:
         import psutil
     except ImportError:
         return []
-    scripts = _engine_scripts()
+    root = _audiocpp_root()
     engines: dict[int, tuple[object, str]] = {}
     for p in psutil.process_iter(["pid", "cmdline"]):
         try:
-            eid = _engine_id_of(p.info.get("cmdline") or [], scripts)
+            eid = _engine_id_of(p.info.get("cmdline") or [], root)
         except Exception:  # noqa: BLE001
             eid = None
         if eid:

@@ -86,9 +86,5 @@ def generations_root(data_dir: Path) -> Path:
     return d
 
 
-def training_root(data_dir: Path) -> Path:
-    return storage_root(data_dir) / "training"
-
-
 def settings_path(data_dir: Path) -> Path:
     return data_dir / "settings.json"

@@ -278,7 +278,7 @@ function taskKind(t) {
   const l = (t.label || "").toLowerCase();
   if (l.includes("render")) return "render";
   if (l.includes("extract") || l.includes("script") || l.includes("analy")) return "extract";
-  if (l.includes("clone") || l.includes("train")) return "train";
+  if (l.includes("clone")) return "clone";
   return "task";
 }
 function cancelTask(t) {

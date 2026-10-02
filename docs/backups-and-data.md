@@ -39,11 +39,9 @@ resolves the same way).
 
 **Moving the app.** The install folder is self-contained — move it to another
 drive or a USB stick and it keeps working, because everything inside it is
-relative. One exception: the speech engines run in Python environments that
-record their own location internally and can't be relocated. JustVoice notices
-this and shows the affected engines as **not installed** with an Install
-button, rather than failing when you try to load one. Reinstalling rebuilds
-the environment; your downloaded models and all your work are untouched.
+relative. That includes the speech runtime every voice engine runs on: it
+needs no fixed location, and JustVoice writes its configuration afresh, with
+the current paths, every time it starts it.
 
 JustWrite follows the identical rule, so both apps behave the same way.
 
@@ -63,11 +61,14 @@ or re-render*:
 - **AI models cache** — the language models behind Compose, attribution, and
   friends. Cleared models re-download on demand; refuses while a model is
   loaded (unload first).
-- **Speech models** — every downloaded TTS/STT model, counted across every
-  place they can live: the speech cache *and* the older per-engine folders
-  models downloaded before 2026-08-14 sit in. One number, one Clear — the
-  catalog keeps every model and each re-downloads when next loaded. Refuses
-  while a speech engine is loaded.
+- **Speech models** — every downloaded TTS/STT model, in the speech cache
+  (`speech-cache/` in the data folder). One number, one Clear — the catalog
+  keeps every model and each re-downloads when next loaded. Refuses while a
+  speech model is loaded. Models downloaded before the 2026-10-01 switch to
+  the speech runtime are a format it can't use; they still sit in the speech
+  cache, are counted here, and go with Clear — the engines' new models
+  download fresh. (Older still: models from before 2026-08-14 lived in
+  per-engine folders, which are no longer counted.)
 - **Render cache** — cached renders; an identical render computes again
   instead of returning instantly. Labs → Cache offers scoped clears (by age)
   when you don't want to drop everything.
@@ -79,7 +80,7 @@ engine builds are shown for the full picture.
 
 **Export backup…** downloads one ZIP: the database (every project, take,
 persona, lexicon, setting) plus your content folders — voices, personas,
-lexicons, project files, generated audio, training data, and dictation
+lexicons, project files, generated audio, and dictation
 recordings. Untick **Include generated audio** to leave out the renders and
 dictation recordings — the backup shrinks to structure and library only, which
 matters when generated audio runs to many gigabytes.

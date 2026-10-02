@@ -32,6 +32,7 @@ from .audio.wav import strip_wav_header, write_wav_container
 from .cache import CacheKeyBuilder, pack_pcm_with_format, unpack_pcm_with_format
 from .delivery import apply_gain_db, canonical_json
 from .engines.base import SynthRequest
+from .engines.manager import TermsRequired
 from .errors import bad_request, internal, not_found
 from .inline_tags import strip as strip_tags
 from .version import VERSION
@@ -144,7 +145,7 @@ def voice_design_instruct_for_id(state: AppState, voice_id: str | None) -> str |
 #
 #   cv   CustomVoice — the 9 preset speakers. Cannot clone.
 #   base Base        — anything with a reference clip (cloned, imported,
-#                      frozen-designed) and anything with a LoRA adapter.
+#                      frozen-designed).
 #   vd   VoiceDesign — a clip-less designed voice, rendered from prose.
 #
 # Mixing families in one cast cannot work in a single pass. Before
@@ -174,8 +175,6 @@ def qwen_family_for_voice(state: AppState, voice_id: str) -> str | None:
     if stored is None:
         # Not in the library, but qwen3 owns it — one of the 9 presets.
         return "cv"
-    if getattr(stored, "adapter_path", None) or stored.source == "lora":
-        return "base"
     if resolve_audio_prompt_for_stored(state, stored):
         return "base"
     if stored.source == "designed":
@@ -231,13 +230,12 @@ def voice_synth_fields(state: AppState, stored) -> dict:
     the engine protocol expects. THE one place that knows how each voice
     source reaches an engine — added 2026-08-19 with the acquisition build,
     because three call sites (render, generate, audition) each resolved the
-    reference clip and nothing else, so blended and trained voices rendered
+    reference clip and nothing else, so blended voices rendered
     as their bare id and came out in the wrong voice entirely.
 
         cloned / imported → audio_prompt_path (+ ref_text where the engine
                             takes the clip's transcript)
         blended          → voice_vector (the style vector; kokoro)
-        trained          → adapter_path (the LoRA dir)
         designed         → audio_prompt_path + ref_text IF its preview was
                            frozen at save; otherwise nothing here, and its
                            description reaches the engine as instruct prose
@@ -261,8 +259,6 @@ def voice_synth_fields(state: AppState, stored) -> dict:
             out["ref_text"] = stored.transcript
     if stored.source == "blended" and getattr(stored, "embedding", None):
         out["voice_vector"] = list(stored.embedding)
-    if stored.source == "lora" and getattr(stored, "adapter_path", None):
-        out["adapter_path"] = stored.adapter_path
     return out
 
 
@@ -721,6 +717,8 @@ def render_line(
         for piece in chunks:
             try:
                 piece_pcm, piece_sr, piece_ch = _synth_piece(piece)
+            except TermsRequired as e:
+                raise e.api_error() from e
             except Exception as e:
                 raise internal(f"engine synthesize (chunked): {e}")
             samples = np.frombuffer(piece_pcm, dtype="<i2").astype(np.float32) / 32767.0
@@ -735,6 +733,8 @@ def render_line(
     else:
         try:
             pcm, out_sample_rate, out_channels = _synth_piece(effective_text)
+        except TermsRequired as e:
+            raise e.api_error() from e
         except Exception as e:
             raise internal(f"engine synthesize: {e}")
 

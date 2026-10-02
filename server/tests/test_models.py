@@ -11,7 +11,6 @@ from justvoice.models import (
     MasterPresetSettings,
     Settings,
     SettingsPatch,
-    TrainingSettings,
 )
 
 
@@ -27,12 +26,3 @@ def test_settings_patch_optional_fields() -> None:
     patch = SettingsPatch(mastering=MasterPresetSettings())
     assert patch.mastering is not None
     assert patch.server is None
-
-
-def test_training_settings_defaults_sane() -> None:
-    t = TrainingSettings()
-    assert t.enabled is True
-    assert t.max_concurrent_jobs >= 1
-    assert t.max_samples_per_job > 0
-    assert t.validation.min_sample_duration_secs > 0
-    assert t.validation.max_sample_duration_secs > t.validation.min_sample_duration_secs

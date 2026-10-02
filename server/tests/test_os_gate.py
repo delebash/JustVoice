@@ -15,7 +15,7 @@ The 2026-08-17 audit found the gate inert in every case:
   * `engines_api` served `supported_oses` to the client and no UI read it.
 
 These tests pin both halves of the fix: every manifest declares explicitly,
-and `install_engine()` refuses regardless of isolation mode.
+and `install_engine()` refuses before any install work runs.
 """
 
 from __future__ import annotations
@@ -75,101 +75,66 @@ def test_supports_current_os_agrees_with_the_declaration(engine_id):
     assert m.supports_current_os() is expected
 
 
-def test_the_restricted_engine_still_restricts():
-    """Regression pin for the engine the old gate could not reach.
-
-    MOSS-TTSD is `ISOLATION = "venv"`, which is precisely why the
-    shared-venv check skipped it. If it ever silently gains macOS, the
-    flash-attn reasoning in its manifest has been lost. (Dia was the other
-    one; the engine was dropped 2026-08-17.)
-    """
-    manifests = discover_engines()
-    for engine_id in ("moss-tts",):
-        assert "macos" not in manifests[engine_id].supported_oses, (
-            f"{engine_id} now claims macOS. Its manifest excluded macOS for a "
-            f"recorded reason; if that changed, update the reason too."
-        )
-        assert manifests[engine_id].isolation == "venv", (
-            f"{engine_id} is no longer venv-isolated — re-check that the OS "
-            f"gate in install_engine still covers it."
-        )  # since 2026-08-22 this holds for every engine, which is the point
+def test_every_engine_runs_on_all_three():
+    """Since the 2026-10-01 switch every engine is a set of model files the
+    speech runtime loads, and audio.cpp ships a build for Windows, Linux and
+    macOS — so no shipped engine has a platform reason to exclude one. (The two
+    that did, MOSS-TTSD and TADA, left with their Python runtimes.)"""
+    for engine_id, m in _manifests():
+        assert set(m.supported_oses) == VALID_OS_LABELS, engine_id
 
 
 # ── The gate ──────────────────────────────────────────────────────────────
 
 
-@pytest.mark.parametrize("engine_id", ["moss-tts", "tada"])
-def test_install_engine_refuses_an_unsupported_os(engine_id, monkeypatch):
-    """The gate fires before any install work, for every engine.
-
-    It used to matter that these two were `venv` while others were `shared`:
-    the OLD gate lived in the shared-venv builder and could not see them. The
-    gate has sat above the install split since 2026-08-17 and there is no
-    split left to sit above, but the case is kept — both engines exclude
-    macOS, so a regression here has something real to fail on. qwen3 LEFT
-    this list 2026-08-21: it genuinely supports macOS now (the MLX arm), so
-    refusing it on a Mac would pin a stale fact.
-    """
+@pytest.fixture
+def mac_excluded(monkeypatch):
+    """Kokoro with macOS taken out of its declaration, on a host claiming to be a
+    Mac — a restricted engine for the gate to refuse (no shipped one is)."""
     monkeypatch.setattr(mgr_mod, "_current_os_label", lambda: "macos")
-    m = discover_engines()[engine_id]
-    assert not m.supports_current_os()
+    m = discover_engines()["kokoro"]
+    monkeypatch.setattr(m.module, "SUPPORTED_OSES", ["windows", "linux"])
+    return m
 
+
+def test_install_engine_refuses_an_unsupported_os(mac_excluded):
+    assert not mac_excluded.supports_current_os()
     with pytest.raises(InstallError) as excinfo:
-        mgr_mod.install_engine(m)
-
+        mgr_mod.install_engine(mac_excluded)
     msg = str(excinfo.value)
-    assert engine_id in msg
-    assert "macos" in msg
+    assert "kokoro" in msg and "macos" in msg
     # The message names what IS supported, so the user can act on it.
-    for declared in m.supported_oses:
+    for declared in mac_excluded.supported_oses:
         assert declared in msg
 
 
-def test_the_gate_runs_before_any_install_work(monkeypatch):
-    """Refusal must happen before the install path is entered.
-
-    Guards against a future refactor that moves the check down into the
-    installer — the exact shape of the original bug, where the only OS check
-    sat inside the shared-venv builder and never saw these two engines.
-    """
+def test_the_gate_runs_before_any_install_work(mac_excluded, monkeypatch):
+    """Refusal must happen before the install path is entered — the original bug
+    was an OS check sitting inside one install arm that some engines never
+    reached."""
     called: list[str] = []
-    monkeypatch.setattr(mgr_mod, "_current_os_label", lambda: "macos")
-    monkeypatch.setattr(
-        mgr_mod, "_install_engine_isolated",
-        lambda *a, **k: called.append("isolated"),
-    )
-
-    # tada (venv) + moss-tts (venv) — the two that still exclude macOS.
-    for engine_id in ("tada", "moss-tts"):
-        with pytest.raises(InstallError):
-            mgr_mod.install_engine(discover_engines()[engine_id])
-
+    monkeypatch.setattr(mgr_mod, "_install_audiocpp_runtime",
+                        lambda *a, **k: called.append("runtime"))
+    with pytest.raises(InstallError):
+        mgr_mod.install_engine(mac_excluded)
     assert called == [], f"install work ran despite the OS gate: {called}"
 
 
 def test_a_supported_os_passes_the_gate(monkeypatch):
-    """The gate must not block the happy path.
-
-    Kokoro declares all three OSes, so it passes whatever the host claims to
-    be, and the install runs. There is one install arm to stub: since
-    2026-08-22 every engine builds its own venv, so the shared arm this test
-    used to also stub no longer exists.
-    """
+    """The gate must not block the happy path: Kokoro declares all three OSes,
+    so the runtime install runs (stubbed — never a real download in a test)."""
     called: list[str] = []
     monkeypatch.setattr(mgr_mod, "_current_os_label", lambda: "macos")
-    monkeypatch.setattr(
-        mgr_mod, "_install_engine_isolated",
-        lambda *a, **k: called.append("isolated"),
-    )
-
+    monkeypatch.setattr(mgr_mod, "_install_audiocpp_runtime",
+                        lambda *a, **k: called.append("runtime"))
     mgr_mod.install_engine(discover_engines()["kokoro"])
-    assert called == ["isolated"]
+    assert called == ["runtime"]
 
 
 # ── The wire ──────────────────────────────────────────────────────────────
 
 
-def test_the_catalog_serves_the_verdict_not_just_the_list():
+def test_the_catalog_serves_the_verdict_not_just_the_list(tmp_path):
     """`supported_on_this_os` must reach the client.
 
     The renderer must never re-derive this: it can be a browser on a
@@ -180,7 +145,7 @@ def test_the_catalog_serves_the_verdict_not_just_the_list():
 
     from justvoice.app import create_app
 
-    with TestClient(create_app()) as client:
+    with TestClient(create_app(data_dir=tmp_path)) as client:
         body = client.get("/v1/engines").json()
 
     managed = {e["id"]: e for e in body["engines"] if e.get("supported_oses")}

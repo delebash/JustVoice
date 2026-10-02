@@ -1,30 +1,23 @@
-"""Subprocess engine manager — discovery, install (uv), lifecycle, HTTP proxy.
+"""Speech engine manager — discovery, the runtime install, per-kind slots, memory.
 
-Each engine lives in `server/justvoice/engines/<id>/` with three source files:
-- `manifest.py`   declarative metadata + install steps
-- `engine.py`    adapter that subclasses justvoice_plugin.EmbeddedEngine
-- `requirements.txt`  pip requirements
+Each engine lives in `server/justvoice/engines/<id>/` as a catalog: `manifest.py`
+(metadata, capabilities, and the model VARIANTS with their pinned GGUF files). Every
+variant's models run in the ONE audio.cpp speech runtime (`engines/audiocpp/`, the
+2026-10-01 switch — docs/plans/2026-10-01-audiocpp-switch.md):
 
-On Install: `uv venv` creates `engines/<id>/.venv/`, then we run each step
-from `manifest.INSTALL` (pip / pip-no-deps / pip-git / pip-find-links /
-torch / pip-local) against that venv.
+On Install: the runtime binary for this machine (+ eSpeak NG) — once, for every engine.
+On Download: the variant's file(s) into the speech cache (`speech_cache.py`).
+On Load: the model's PLACEMENT is decided — the graphics card or the CPU, per model, Auto
+  from what was measured (`placement_for`, docs/plans/2026-10-02-cpu-placement.md §8) — the
+  runtime process for that placement is (re)started with every downloaded model in its
+  config, and the slot (`audiocpp/slot.py: AudioCppSlot`) warms the chosen model. One slot
+  per kind (tts / stt), the kit's VRAM arbiter books each kind's measured share (a CPU-placed
+  model books nothing on a discrete card).
+On Synth / Transcribe / Align: the slot maps our request onto audio.cpp's HTTP API.
+On Uninstall: the engine's downloaded models are deleted; the runtime stays.
 
-On Load: spawn `<venv>/bin/python engines/<id>/engine.py serve --port 0`
-as a subprocess. The plugin's `serve()` writes `PORT=<n>` to stdout once
-it has bound; we read that, then POST /load.
-
-On Synth: httpx to the engine's loopback port. Audio comes back as raw
-bytes — no base64 overhead.
-
-On Uninstall: terminate subprocess if running, then rmtree
-`engines/<id>/.{venv,models,voices,state}`. Plugin source (manifest.py,
-engine.py, requirements.txt) is left alone — that's the adapter, not user
-state.
-
-Cross-platform notes:
-- Windows: subprocess uses `.venv\\Scripts\\python.exe`; POSIX uses `.venv/bin/python`.
-- uv must be on PATH (we shell out via `subprocess.run(["uv", ...])`); the
-  manager verifies this at startup and surfaces a clear error if missing.
+Until 2026-10-01 each engine was a Python subprocess in its own uv-built venv; that
+machinery is gone, and voice training with it (removed 2026-10-02).
 """
 
 from __future__ import annotations
@@ -32,19 +25,16 @@ from __future__ import annotations
 import atexit
 import logging
 import os
-import platform
 import shutil
-import signal
-import subprocess
 import sys
 import threading
 import time
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
-import httpx
-
+if TYPE_CHECKING:
+    from .audiocpp.slot import AudioCppSlot
 
 log = logging.getLogger(__name__)
 
@@ -56,25 +46,17 @@ ENGINES_DIR = Path(__file__).resolve().parent
 
 
 def engines_runtime_root() -> Path:
-    """Where engine MUTABLE state lives — venvs, model caches, the uv cache.
+    """Where engine MUTABLE state lives — the speech runtime's builds and eSpeak NG
+    (`<root>/audiocpp/…`).
 
     Unfrozen this is `ENGINES_DIR` itself: the source tree is writable and
-    everything stays beside the plugin it belongs to.
+    everything stays beside the code it belongs to (.gitignore keeps it out of git).
 
     Frozen it CANNOT be. A PyInstaller build unpacks `justvoice/engines/`
     into the bundle, which is read-only in `--onedir` and a per-run temp
-    directory in `--onefile` — so `ENGINES_DIR/<id>/.venv` was either a
-    permission error or a multi-GB install that the OS deleted the moment the
-    app closed. Frozen therefore roots under the data dir the user chose:
-    `<data_dir>/engines-runtime`.
-
-    `engines-runtime` is deliberately SHORT. Windows still caps most path
-    APIs at 260 characters, and a venv holds paths like
-    `<root>/chatterbox/.venv/Lib/site-packages/...`; every character spent
-    here is one the deepest wheel cannot use.
-
-    Plugin SOURCE (manifest.py / engine.py) is never affected — it loads
-    from the bundle. Only state moves.
+    directory in `--onefile`. Frozen therefore roots under the data dir the user
+    chose: `<data_dir>/engines-runtime` — deliberately SHORT, because Windows still
+    caps most path APIs at 260 characters.
     """
     if not getattr(sys, "frozen", False):
         return ENGINES_DIR
@@ -84,14 +66,8 @@ def engines_runtime_root() -> Path:
 
 
 # Folder names that aren't engines — skip during discovery.
-NOT_ENGINES = {"__pycache__", "__init__", "base", "catalog", "factory", "registry", "model_catalog", "kokoro_voices", "_torch_helpers", "external_openai"}
-
-PORT_HANDSHAKE_TIMEOUT_S = 30.0
-HEALTH_CHECK_INTERVAL_S = 0.25
-SUBPROCESS_KILL_TIMEOUT_S = 5.0
-# How long an engine that answered /shutdown gets to exit by itself before
-# it is terminated (EngineProcess.terminate).
-SHUTDOWN_EXIT_WAIT_S = 2.0
+NOT_ENGINES = {"__pycache__", "__init__", "base", "catalog", "factory", "registry", "model_catalog",
+               "kokoro_voices", "_torch_helpers", "external_openai", "audiocpp"}
 
 # The speech measured currency (the 2026-08-13/14 redesign, amended —
 # docs/plans/2026-08-13-speech-catalog-redesign.md §10). The probes can
@@ -121,13 +97,6 @@ def _kind_busy(kind: str):
             arb.busy_end(kind)
 
 
-def _venv_python(venv_dir: Path) -> Path:
-    """Path to the Python interpreter inside an engine's venv."""
-    if sys.platform == "win32":
-        return venv_dir / "Scripts" / "python.exe"
-    return venv_dir / "bin" / "python"
-
-
 def _current_os_label() -> str:
     """Normalised OS string used by manifests' SUPPORTED_OSES lists."""
     if sys.platform == "win32":
@@ -135,128 +104,6 @@ def _current_os_label() -> str:
     if sys.platform == "darwin":
         return "macos"
     return "linux"
-
-
-# ─── Moved-install detection (user ruling 2026-08-14) ─────────────────
-# The app folder is portable: the user can move the whole install and it
-# keeps working, because everything inside it is relative. Python venvs are
-# the exception — `pyvenv.cfg`, the `Scripts/` launchers and the installed
-# console scripts all embed ABSOLUTE paths, so a moved install carries venvs
-# that silently no longer work. We stamp each venv with the install path it
-# was built for and compare on status, so a moved install reports "needs
-# reinstall" up front instead of failing deep inside a load.
-VENV_ORIGIN_FILE = ".jv-venv-origin"
-
-
-def record_venv_origin(venv_dir: Path) -> None:
-    """Stamp the install path this venv was created under. Best-effort: a
-    venv that cannot be stamped simply falls back to the legacy behaviour
-    (treated as matching) rather than breaking the install."""
-    try:
-        (venv_dir / VENV_ORIGIN_FILE).write_text(
-            str(engines_runtime_root().resolve()), encoding="utf-8")
-    except OSError:  # noqa: BLE001 — a stamp is a convenience, never a gate
-        log.debug("could not stamp venv origin at %s", venv_dir, exc_info=True)
-
-
-# ─── Manifest-drift detection (2026-08-22) ────────────────────────────
-# A venv is built ONCE, from the manifest as it read that day. Edit the
-# manifest afterwards — add a package, bump a pin, change the Python — and
-# nothing on an already-installed machine notices: the interpreter is still
-# there, so the engine reports installed and runs with the OLD contents. The
-# failure then surfaces far from its cause, as an ImportError inside a feature
-# nobody connected to a manifest edit weeks earlier. That is the shape of the
-# `peft` hole: declared in the manifest, absent from the environment, and the
-# UI said ready the whole time.
-#
-# So each venv carries a fingerprint of the package set it was built from, and
-# `is_installed` compares it against what the manifest declares NOW. Any
-# difference means "(re)Install", which is a button the user can see, instead
-# of a failure they cannot explain.
-VENV_MANIFEST_FILE = ".jv-venv-manifest"
-
-
-def manifest_package_fingerprint(packages: list[str]) -> str:
-    """sha256 over the declared package set + the Python it is built for.
-
-    The Python version belongs in here: moving the engines from 3.12 to 3.13
-    changes every wheel in the venv while the manifest's package list may not
-    change at all.
-    """
-    import hashlib
-
-    payload = "\n".join([f"python={ENGINE_PYTHON_VERSION}", *packages])
-    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
-
-
-def record_venv_manifest(venv_dir: Path, packages: list[str]) -> None:
-    """Stamp the fingerprint of the package set this venv was built from.
-    Best-effort, like the origin stamp — a venv that cannot be stamped simply
-    reads as needing (re)install, which is the safe direction."""
-    try:
-        (venv_dir / VENV_MANIFEST_FILE).write_text(
-            manifest_package_fingerprint(packages), encoding="utf-8"
-        )
-    except OSError:  # noqa: BLE001
-        log.debug("could not stamp venv manifest at %s", venv_dir, exc_info=True)
-
-
-def venv_manifest_matches(venv_dir: Path, packages: list[str]) -> bool:
-    """False when the stamp is missing OR names a different package set.
-
-    Missing counts as a MISMATCH here — the opposite of `venv_origin_matches`,
-    deliberately. An unstamped venv predates this check, which means it was
-    built by the shared-venv era's installer: a different Python, a different
-    torch, and in chatterbox's case a different transformers. Reading those as
-    current would leave the very environments this migration exists to replace
-    reporting themselves as fine. An unstamped venv reads as "reinstall", and
-    reinstall is exactly right for it.
-    """
-    try:
-        stamped = (venv_dir / VENV_MANIFEST_FILE).read_text(encoding="utf-8").strip()
-    except OSError:
-        return False
-    return bool(stamped) and stamped == manifest_package_fingerprint(packages)
-
-
-def venv_origin_matches(venv_dir: Path) -> bool:
-    """False ONLY when the stamp exists and names a different install.
-
-    An unstamped venv (built before this existed) reads as matching — the
-    interpreter health probe still covers the genuinely broken ones, and
-    declaring every pre-existing venv dead would force a needless rebuild.
-    """
-    try:
-        stamped = (venv_dir / VENV_ORIGIN_FILE).read_text(encoding="utf-8").strip()
-    except OSError:
-        return True
-    if not stamped:
-        return True
-    return Path(stamped) == engines_runtime_root().resolve()
-
-
-def legacy_files_engine_visible(models_dir: Path, expected: list[str]) -> bool:
-    """True when every expected legacy file sits where the ENGINE will look:
-    flat or ONE subdir under models_dir (the kokoro engine's own search).
-    THE one probe for the legacy engine-dir layout — the load door and the
-    catalog's on_disk flag must agree, or the row says "on disk" while the
-    load can't find the files. The first probes used rglob at any depth and
-    claimed a tarball extracted TWO levels deep
-    (models/<variant>/<tarball-root>/) was servable — user-hit 2026-08-15
-    ("Kokoro model files not found")."""
-    if not expected or not models_dir.exists():
-        return False
-
-    def _visible(f: str) -> bool:
-        if (models_dir / f).exists():
-            return True
-        return any((sub / f).exists()
-                   for sub in models_dir.iterdir() if sub.is_dir())
-
-    try:
-        return all(_visible(f) for f in expected)
-    except OSError:
-        return False
 
 
 # ─── Manifest loading ─────────────────────────────────────────────────
@@ -287,28 +134,13 @@ class EngineManifest:
 
     @property
     def weights_license(self) -> str:
-        """Model-weights license — distinct from framework code license.
-        Falls back to LICENSE when WEIGHTS_LICENSE is unset (most engines
-        ship Apache-2.0 code + Apache-2.0 weights, so the fallback is
-        usually right). Override on engines whose weights diverge from
-        their wrapper code license — e.g. TADA (Apache code + Llama-3.2
-        Community weights)."""
+        """Model-weights license — distinct from the framework code license.
+        Falls back to LICENSE when WEIGHTS_LICENSE is unset."""
         return getattr(self.module, "WEIGHTS_LICENSE", "") or getattr(self.module, "LICENSE", "")
 
     @property
-    def attribution(self) -> str:
-        """Attribution string the consuming tool must display when
-        shipping output produced by this engine. Empty string means
-        none required. Llama-3.2 §1.b mandates "Built with Llama" for
-        any Llama-derivative — TADA sets this to that string."""
-        return getattr(self.module, "ATTRIBUTION", "")
-
-    @property
     def kind(self) -> str:
-        """Phase 2 / Slice 1 — engine discriminator. Defaults to "tts"
-        so every existing manifest stays backward-compatible without
-        edits. LLM provider engines (Phase 2 / Slice 3+) declare
-        KIND = "llm"; embedding engines KIND = "embedding"."""
+        """Phase 2 / Slice 1 — engine discriminator. Defaults to "tts"."""
         return self.kinds[0]
 
     @property
@@ -330,91 +162,43 @@ class EngineManifest:
         return getattr(self.module, "REQUIREMENTS", {})
 
     @property
-    def install_steps(self) -> list[dict[str, Any]]:
-        # A step may gate itself by OS ("oses": [...]) — qwen3's MLX arm
-        # installs mlx-audio on macOS and the torch stack elsewhere
-        # (2026-08-19). No "oses" key = the step applies everywhere.
-        # Filtering HERE means every consumer (the executor, the shared/
-        # model step splits, is_installed) sees only this machine's steps.
-        here = _current_os_label()
-        return [s for s in getattr(self.module, "INSTALL", [])
-                if here in (s.get("oses") or (here,))]
-
-    @property
     def static_voices(self) -> list[dict[str, Any]]:
         """Voices the engine ships statically — exposed to the host catalog
-        even when the engine subprocess isn't loaded. Cloning-based engines
-        leave this empty; their voices are user-created and stored host-side.
+        even when the engine isn't loaded. Cloning-based engines leave this
+        empty; their voices are user-created and stored host-side.
         """
         return getattr(self.module, "STATIC_VOICES", [])
 
     @property
     def default_variant_id(self) -> str | None:
         """The model variant `/v1/engines/<id>/load` loads when no variant is
-        specified. Used by the GUI to (a) label which variant is the engine's
-        default, and (b) hide that variant from the per-variant Load list so
-        the user isn't offered two routes to the same model.
-        """
+        specified (the user's Set-as-default choice is layered over it by
+        `EngineManager._resolved_default_variant`)."""
         return getattr(self.module, "DEFAULT_VARIANT_ID", None)
 
     @property
     def isolation(self) -> str:
-        """Always "venv": every engine gets its own environment at
-        engines/<id>/.venv/, built to exactly what its manifest declares.
-
-        There is no second value any more. Until 2026-08-22 the default was
-        "shared" — all the core engines resolved into ONE interpreter, which
-        meant every install re-resolved every other engine's dependencies and
-        the tightest pin anywhere won for everyone. That cost real things: it
-        held chatterbox two major versions below the transformers it asks for,
-        it needed a venv-wide numpy ceiling to stop librosa's numba from
-        breaking, a package one engine declared but the shared resolution
-        never installed was invisible (peft — LoRA training would have refused
-        on a machine that reported ready), and a shared engine had no
-        Uninstall at all, because there was nothing of its own to remove.
-
-        The property survives as the single door other code asks through, and
-        so that a future engine needing something genuinely different has one
-        place to say so. See docs/engines.md and the 2026-08-22 research doc.
-
-        No shipped manifest declares ISOLATION any more; the default IS the
-        rule.
-        """
-        return getattr(self.module, "ISOLATION", "venv")
+        """Always "audiocpp": every engine's models run in the one shared speech
+        runtime (the 2026-10-01 switch). The UI reads it to show the runtime row
+        instead of a per-engine Install. Until 2026-10-01 the answer was "venv" —
+        each engine its own Python environment."""
+        return "audiocpp"
 
     @property
     def supported_oses(self) -> list[str]:
-        """OSes this engine can install + run on. Values: "windows" |
-        "linux" | "macos".
+        """OSes this engine can run on. Values: "windows" | "linux" | "macos".
 
-        ENFORCED AT `install_engine()` — an engine that does not support the
-        host OS cannot be installed, whatever its isolation mode. The catalog
-        still LISTS it; `EngineInfo.supported_on_this_os` carries the verdict
-        so the UI can show why the Install button is gone.
-
-        This docstring used to claim "Manager filters the catalog by
-        sys.platform so users on macOS don't see Dia … or MOSS-TTS". That
-        filter never existed, and the one real check (`shared_venv.py:199`)
-        sat behind `if m.isolation != "shared": continue` — so it could not
-        reach Dia or MOSS, the only two engines that declared a restriction.
-        Every engine it did evaluate declared all three OSes and passed. The
-        gate was inert in every case (2026-08-17).
-
-        The default stays all-three for engines that declare nothing, but
-        every shipped manifest now declares explicitly and records its
-        grounds — `test_os_gate.py` fails if a new one forgets.
-        """
+        ENFORCED AT `install_engine()`. The catalog still LISTS a blocked engine;
+        `EngineInfo.supported_on_this_os` carries the verdict so the UI can show
+        why. Every shipped manifest declares explicitly — `test_os_gate.py` fails
+        if a new one forgets."""
         return getattr(self.module, "SUPPORTED_OSES", ["windows", "linux", "macos"])
 
     @property
     def deprecated(self) -> str:
         """Non-empty = marked for removal. The string is the user-facing why.
-
-        Deliberately NOT a hard block: an engine already installed keeps
-        working (user ruling 2026-08-17 — "dont remove them now you can mark
-        them for removal and hide them"). The catalog hides it while it is
-        uninstalled, and Voice engine setup never offers it.
-        """
+        The catalog hides it while it is uninstalled; Voice engine setup never
+        offers it."""
         return getattr(self.module, "DEPRECATED", "") or ""
 
     def supports_current_os(self) -> bool:
@@ -422,106 +206,20 @@ class EngineManifest:
         return _current_os_label() in self.supported_oses
 
     @property
-    def model_install_steps(self) -> list[dict[str, Any]]:
-        """Just the model-file steps from INSTALL — the weights, not the
-        packages. Install runs the WHOLE list; this subset exists for callers
-        that only want to know which files an engine expects on disk (the
-        models API's expected-files check).
-
-        Its counterpart `shared_install_steps` (everything BUT the model
-        steps) died with the shared venv on 2026-08-22: it existed so the
-        shared builder could install packages without touching weights, and
-        nothing else ever asked for it."""
-        steps = getattr(self.module, "MODEL_INSTALL_STEPS", None)
-        if steps is not None:
-            return steps
-        return [s for s in self.install_steps if str(s.get("kind", "")).startswith("model-")]
-
-    @property
-    def declared_packages(self) -> list[str]:
-        """Every dependency this manifest asks for, as stable strings — the
-        input to the venv fingerprint (`manifest_package_fingerprint`).
-
-        Covers the steps that decide what ends up IN the environment: pip,
-        pip-no-deps, torch, git refs, find-links and local paths. Deliberately
-        excluded:
-
-        - `model-*` steps — model FILES, not packages. They live in the speech
-          cache with their own on-disk checks, and a weights change must not
-          make the UI demand a venv rebuild.
-        - `ACCEL_INSTALL` — chosen from the host's runtimes, not the manifest.
-          Folding it in would make the fingerprint flip whenever detection
-          did (a driver update, an eGPU unplugged) and ask for a reinstall
-          nothing in the manifest called for.
-
-        Built from `install_steps`, so it already reflects this OS's `oses`
-        filtering — the macOS MLX arm and the Windows torch arm fingerprint
-        differently, which is correct: they ARE different environments.
-        """
-        out: list[str] = []
-        for step in self.install_steps:
-            kind = str(step.get("kind", ""))
-            if kind in ("pip", "pip-no-deps", "torch"):
-                version = step.get("version")
-                for p in step.get("packages") or []:
-                    out.append(f"{kind}:{p}=={version}" if version and "=" not in p
-                               else f"{kind}:{p}")
-            elif kind == "pip-git":
-                ref = step.get("ref") or "HEAD"
-                nd = "+no-deps" if step.get("no_deps") else ""
-                out.append(f"{kind}:{step.get('url')}@{ref}{nd}")
-            elif kind == "pip-find-links":
-                for p in step.get("packages") or []:
-                    out.append(f"{kind}:{step.get('url')}:{p}")
-            elif kind == "pip-local":
-                out.append(f"{kind}:{step.get('path')}")
-            elif kind == "requirements-file":
-                out.append(f"{kind}:{step.get('path', 'requirements.txt')}")
-        return sorted(out)
-
-    @property
-    def state_dir(self) -> Path:
-        """Where this engine's MUTABLE state lives — venv, models, voices.
-
-        Unfrozen this is `engine_dir` itself, byte-for-byte the old layout.
-        Frozen it moves under the data dir, because the bundle the plugin
-        source is unpacked into is read-only (`--onedir`) or deleted when the
-        app exits (`--onefile`). Keeping the split here means the SOURCE
-        properties below never have to think about it.
-        """
-        return engines_runtime_root() / self.engine_dir.name
-
-    @property
-    def venv_dir(self) -> Path:
-        return self.state_dir / ".venv"
-
-    @property
-    def models_dir(self) -> Path:
-        return self.state_dir / "models"
+    def uses_audiocpp(self) -> bool:
+        """True when this engine's models run in the audio.cpp runtime (every variant row
+        carries an `audiocpp` block — docs/plans/2026-10-01-audiocpp-switch.md)."""
+        rows = getattr(self.module, "VARIANTS", None) or []
+        return bool(rows) and all(r.get("audiocpp") for r in rows)
 
     @property
     def is_installed(self) -> bool:
-        """True when this engine's own venv is present, usable, and current.
+        """True when this engine can run: the shared speech runtime is installed for
+        the configured backend. Its models download separately, into the speech
+        cache, and a Load fetches a missing one first."""
+        from .audiocpp.runtime import installed_exe
 
-        Three things have to hold, and each one is a bug someone hit:
-
-        1. The interpreter file exists.
-        2. It was built for THIS install location. Venvs bake absolute paths
-           into `pyvenv.cfg` and their launchers, so a moved app folder leaves
-           venvs that are all still on disk and all dead.
-        3. Its package set still matches what the manifest declares. Without
-           this, adding a package to a manifest changed nothing on a machine
-           that had already installed the engine: it kept reporting ready
-           while missing the new dependency, and the failure surfaced much
-           later, somewhere else. That is exactly how `peft` came to be
-           declared but absent — LoRA training would have refused to start on
-           an engine the UI called installed.
-        """
-        if not _venv_python(self.venv_dir).is_file():
-            return False
-        if not venv_origin_matches(self.venv_dir):
-            return False
-        return venv_manifest_matches(self.venv_dir, self.declared_packages)
+        return installed_exe() is not None
 
 
 def discover_engines() -> dict[str, EngineManifest]:
@@ -560,25 +258,53 @@ def discover_engines() -> dict[str, EngineManifest]:
     return out
 
 
-# ─── Install (uv-based) ───────────────────────────────────────────────
+# ─── Install ──────────────────────────────────────────────────────────
 
 
 class InstallError(RuntimeError):
     pass
 
 
-#: Kept in lockstep with justvoice_plugin/pyproject.toml — the /load
-#: `model_dir` contract (phase ②) rides the SDK, so a venv carrying an
-#: older install gets a fast refresh at spawn. 0.3.0 (2026-09-29): the engine
-#: watches JUSTVOICE_SERVER_PID and exits when its server is gone. 0.3.1
-#: (2026-09-30): /shutdown answers, then exits 0.
-PLUGIN_VERSION = "0.3.1"
+class TermsRequired(RuntimeError):
+    """An engine refused a use its own terms gate until the user accepts them (manifest
+    TERMS — Pocket TTS cloning, decided 2026-10-02). The API answers 403 with
+    `code: terms_required` and the engine id, so the app can show the terms."""
+
+    def __init__(self, engine_id: str, message: str):
+        super().__init__(message)
+        self.engine_id = engine_id
+
+    def api_error(self):
+        """The 403 problem the app keys on: type `…/terms-required`, plus the engine."""
+        from ..errors import ApiError
+
+        return ApiError(403, "terms-required", "Terms not accepted", str(self),
+                        extra={"engine": self.engine_id})
+
+
+def _wav_seconds(data: bytes) -> float | None:
+    """A WAV's duration from its RIFF header — data bytes / byte rate, so any sample
+    format reads. None when the bytes are not a WAV this can walk."""
+    import struct
+
+    if len(data) < 12 or data[:4] != b"RIFF" or data[8:12] != b"WAVE":
+        return None
+    i, rate, size = 12, None, None
+    while i + 8 <= len(data):
+        cid, n = data[i:i + 4], struct.unpack("<I", data[i + 4:i + 8])[0]
+        if cid == b"fmt " and i + 20 <= len(data):
+            rate = struct.unpack("<I", data[i + 16:i + 20])[0]
+        elif cid == b"data":
+            size = min(n, len(data) - i - 8)
+            break
+        i += 8 + n + (n & 1)
+    return size / rate if rate and size else None
 
 
 def memory_in_use_mb() -> int | None:
     """Memory in use on the pool models load into (the GPU on a discrete box),
     read fresh — the kit's one door, a single fast device query. For the
-    engine start/stop log lines; None = unmeasurable."""
+    load log lines; None = unmeasurable."""
     try:
         from llm_runner.runner.hardware import used_pool_mb
 
@@ -591,911 +317,83 @@ def _mb(v: int | None) -> str:
     return "?" if v is None else str(v)
 
 
-def _ensure_plugin_current(python_exe: Path) -> None:
-    """Refresh the venv's justvoice_plugin when it predates PLUGIN_VERSION
-    (cheap dist-info glob; the reinstall is a tiny wheel, seconds).
-    Best-effort by design: a failure leaves the old SDK, which degrades
-    gracefully — it ignores the extra /load field and the engine loads its
-    legacy way.
-
-    `--reinstall-package`, never bare `--reinstall`: the bare form reinstalls
-    the WHOLE resolution, transitive deps included, which re-resolves them to
-    their newest compatible versions. On a venv whose engine deps were pinned
-    by earlier install steps that is a silent downgrade-proof upgrade of
-    other people's pins. It is not hypothetical: a bare `--reinstall` here
-    on 2026-08-14 re-resolved numpy to 2.5.2 in an environment every engine
-    had pinned below 2.0, and librosa's numba refused to import.
-    Scoping the reinstall to the SDK leaves satisfied deps exactly as the
-    engine steps installed them.
-    """
-    try:
-        venv_root = python_exe.parents[1]
-        sps = [venv_root / "Lib" / "site-packages",
-               *venv_root.glob("lib/python*/site-packages")]
-        sp = next((p for p in sps if p.is_dir()), None)
-        if sp is None or list(sp.glob(f"justvoice_plugin-{PLUGIN_VERSION}.dist-info")):
-            return
-        uv = _check_uv_available()
-        plugin_dir = Path(__file__).resolve().parents[2] / "justvoice_plugin"
-        log.info("refreshing justvoice_plugin to %s in %s", PLUGIN_VERSION, venv_root)
-        subprocess.run(
-            [uv, "pip", "install", "--python", str(python_exe),
-             "--reinstall-package", "justvoice-plugin",
-             str(plugin_dir)],
-            capture_output=True, text=True, timeout=180,
-            env=_uv_env(),
-        )
-    except Exception:  # noqa: BLE001 — best-effort; the old SDK still works
-        log.debug("plugin currency refresh failed", exc_info=True)
-
-
-#: The Python the ENGINE venvs are built on, pinned deliberately.
-#:
-#: Not `sys.executable`, for two reasons. In the shipped bundle the server is a
-#: PyInstaller one-file sidecar, so `sys.executable` is `justvoice-server.exe` —
-#: not a Python interpreter at all. Passing it to `uv venv --python` fails, and
-#: the code then fell through to a no-`--python` fallback where uv picked
-#: whatever interpreter it liked. Engine setup "worked" by accident, on an
-#: unpredictable version.
-#:
-#: That unpredictability is the real problem: the engine wheels are
-#: version-sensitive (torch cu124, numba/llvmlite ship per-Python builds), so
-#: "whatever uv found" is not a basis for installing them. Pinning means uv
-#: resolves a matching interpreter from the machine, or downloads a managed one
-#: if there is none — which is also what lets engine install work on a box with
-#: no Python at all, with the user never running a command.
-#:
-#: Bump this only together with checking the engine wheel matrix.
-#:
-#: 3.13 since 2026-08-22, and the version itself does real work. On 3.12
-#: chatterbox-tts's own dependency marker asks for numpy<2, which is
-#: incompatible with kokoro-onnx's numpy>=2.0.2 — a conflict that was
-#: unresolvable while both lived in one interpreter and is the reason kokoro
-#: was carved out first. On 3.13 that same marker flips to numpy>=2 and the
-#: conflict simply stops existing. Every engine's wheels were re-checked for
-#: cp313 (2026-08-22), piper-phonemize included, which is the one dependency
-#: with no PyPI wheels at all.
-#:
-#: 3.14 was considered and rejected: it buys nothing here, and kokoro-onnx
-#: caps below it.
-ENGINE_PYTHON_VERSION = "3.13"
-
-
-def _uv_candidates() -> list[Path]:
-    """Where to look for uv, in priority order.
-
-    The BUNDLED copy wins. JustVoice ships uv as a Tauri `externalBin` sidecar,
-    which lands beside the server binary — so a user who has never installed uv
-    (i.e. almost every user) still gets working engine installs. PATH is the
-    dev-machine fallback, not the shipping mechanism.
-    """
-    exe = "uv.exe" if sys.platform == "win32" else "uv"
-    out: list[Path] = []
-    # Frozen: sys.executable IS the sidecar, so its directory holds the
-    # co-located uv. Unfrozen: this is the interpreter's dir, harmless to probe.
-    try:
-        out.append(Path(sys.executable).resolve().parent / exe)
-    except OSError:
-        pass
-    # Dev convenience: a vendored copy under the repo, if anyone drops one in.
-    out.append(ENGINES_DIR.parent.parent / "vendor" / exe)
-    return out
-
-
-def _uv_runs(path) -> bool:
-    """Does this file actually run as uv? Being a file named uv is not enough:
-    on 2026-09-29 a 0-byte `uv.exe` left in `src-tauri/target/debug` (first on
-    PATH under `tauri dev`) shadowed the real one, and every engine install died
-    with "[WinError 193] %1 is not a valid Win32 application"."""
-    try:
-        p = Path(path)
-        if not p.is_file() or p.stat().st_size == 0:
-            return False
-        r = subprocess.run([str(p), "--version"], capture_output=True, text=True, timeout=20)
-    except (OSError, subprocess.SubprocessError):
-        return False
-    return r.returncode == 0 and "uv" in (r.stdout or "").lower()
-
-
-def _path_uvs() -> list[str]:
-    """Every uv on PATH, in PATH order — `shutil.which` gives only the first,
-    and the first may be the broken one."""
-    exe = "uv.exe" if sys.platform == "win32" else "uv"
-    out: list[str] = []
-    seen: set[str] = set()
-    first = shutil.which("uv")
-    for hit in [first, *(str(Path(d) / exe) for d in os.environ.get("PATH", "").split(os.pathsep) if d)]:
-        if hit and os.path.normcase(hit) not in seen and Path(hit).is_file():
-            seen.add(os.path.normcase(hit))
-            out.append(hit)
-    if first and os.path.normcase(first) not in seen:
-        out.insert(0, first)
-    return out
-
-
-def _check_uv_available() -> str:
-    """Resolve uv — bundled sidecar first, then PATH. Returns a path that RUNS.
-
-    A candidate that exists but does not run (empty, truncated, the wrong
-    file) is skipped, and if nothing runs the error names the bad files rather
-    than surfacing Windows' "[WinError 193]". Raises InstallError when no uv
-    is found at all, which in a correctly built release should be unreachable.
-    """
-    bad: list[str] = []
-    for cand in _uv_candidates():
-        if cand.is_file():
-            if _uv_runs(cand):
-                return str(cand)
-            bad.append(str(cand))
-    for hit in _path_uvs():
-        if _uv_runs(hit):
-            if bad:
-                log.warning("uv: skipped %s — present but not a working uv", ", ".join(bad))
-            return hit
-        bad.append(hit)
-    if bad:
-        raise InstallError(
-            "uv was found but doesn't run: " + ", ".join(bad) + ". The file is empty or "
-            "broken — delete it, or reinstall uv (https://docs.astral.sh/uv/), then try again."
-        )
-    raise InstallError(
-        "uv was not found beside the server binary or on PATH. A release build "
-        "ships it as a sidecar, so this usually means a broken install — "
-        "reinstall JustVoice. For a dev checkout, install uv from "
-        "https://docs.astral.sh/uv/ (macOS/Linux: "
-        "`curl -LsSf https://astral.sh/uv/install.sh | sh`, "
-        "Windows: `irm https://astral.sh/uv/install.ps1 | iex`)."
-    )
-
-
-def _uv_env() -> dict[str, str]:
-    """Environment for every uv invocation — cache and managed interpreters
-    pinned BESIDE the venvs.
-
-    uv populates a venv by hardlinking out of its cache. A hardlink cannot
-    cross a filesystem, so when the cache sits on a different volume from the
-    venv, uv silently falls back to full byte copies — and the whole economics
-    of one-venv-per-engine depend on those links. Measured here 2026-08-22
-    with the cache on the same volume: the five engine venvs add 431 MB over
-    the cache they link into, where copying would have cost 18,750 MB.
-
-    uv's own defaults put both under the user profile (`%LOCALAPPDATA%` /
-    `~/.cache`), i.e. almost always the system drive — while the user picks
-    where JustVoice installs. Pinning them under the engines root makes the
-    hardlinks work wherever that is, and keeps the bytes inside the install
-    the user chose.
-
-    `setdefault`, never overwrite: a user who has already set `UV_CACHE_DIR`
-    (or is sharing one across projects) keeps theirs.
-
-    THE one place these locations live — a frozen build re-roots them by
-    changing `engines_runtime_root()`, not by adding a second definition.
-    """
-    env = os.environ.copy()
-    root = engines_runtime_root()
-    env.setdefault("UV_CACHE_DIR", str(root / ".uv-cache"))
-    env.setdefault("UV_PYTHON_INSTALL_DIR", str(root / ".uv-python"))
-    return env
-
-
-#: PyTorch wheel indexes, per hardware tier. Every value here was checked
-#: against the live index on 2026-08-22 for the pinned torch line — an index
-#: that does not carry our version is worse than no index, because uv resolves
-#: DOWN to whatever that index does have.
-#:
-#: - cu126 is the wide-compat CUDA build: it carries the whole 2.6.0 → 2.13.0
-#:   range, so it survives a pin bump in either direction. Turing (7.5) through
-#:   Ada (8.9) run on it. RENDER-PROVEN here 2026-08-22 on an RTX 2070 SUPER.
-#: - cu130 is for Blackwell (compute cap ≥ 10.0), which needs CUDA ≥ 12.8 and
-#:   cannot run the 12.x builds at all.
-#: - rocm7.2 carries torch 2.11–2.13 — the only ROCm index that has our pin.
-#:
-#: The two indexes this code used to name are BOTH dead ends and are the reason
-#: this table exists: `cu124` stops at torch 2.6.0 (so it excluded every RTX 50
-#: card and any pin above 2.6), and `rocm6.2` stops at torch **2.5.1** — below
-#: the 2.6.0 the manifests pinned, which made AMD-on-Linux installs impossible
-#: rather than merely slow (verified against both indexes, 2026-08-22).
-TORCH_INDEX_CUDA12 = "https://download.pytorch.org/whl/cu126"
-TORCH_INDEX_CUDA13 = "https://download.pytorch.org/whl/cu130"
-TORCH_INDEX_ROCM = "https://download.pytorch.org/whl/rocm7.2"
-
-
-def _detect_torch_index_url() -> tuple[str | None, str]:
-    """Pick a torch wheel index for THIS box.
-
-    Returns (index_url, label). `None` means the default PyPI index, which is
-    the CORRECT answer twice over: on a CPU-only box, and on Apple Silicon —
-    the stock PyPI wheel is the one that carries MPS, and pointing macOS at a
-    CUDA/ROCm index would fetch nothing installable.
-
-    Detection runs through the kit (`llm_runner.runner.hardware.detect`), the
-    same door the ACCEL_INSTALL step already uses, so JustVoice and the LLM
-    stack agree about the machine instead of each sniffing it their own way.
-    The CUDA tier likewise comes from the kit's own rule
-    (`concrete_gpu(hw, "cuda")` → `cuda12` | `cuda13`, the boundary being
-    compute capability 10.0 = Blackwell) rather than a second copy of it here.
-
-    A missing or broken kit is survivable, not fatal: the nvidia-smi probe
-    below still finds the card and takes the wide-compat cuda12 tier, which is
-    also what an unknown compute capability resolves to.
-    """
-    # User override always wins — including Intel Arc (`/whl/xpu`), which we
-    # deliberately do not auto-detect, and the AMD-on-Windows recipe in
-    # docs/engines.md.
-    override = os.environ.get("JUSTVOICE_TORCH_INDEX")
-    if override:
-        return override, f"override({override})"
-
-    hw = None
-    try:
-        from llm_runner.runner.hardware import detect
-
-        hw = detect()
-    except Exception:  # noqa: BLE001 — no kit → fall back to the raw probes
-        log.debug("kit hardware detect unavailable; using direct probes", exc_info=True)
-
-    runtimes = dict(getattr(hw, "runtimes", None) or {})
-    gpus = list(getattr(hw, "gpus", None) or [])
-
-    # ─ NVIDIA ─────────────────────────────────────────────────────────
-    if runtimes.get("cuda"):
-        tier = "cuda12"
-        try:
-            from llm_runner.runner.binary import concrete_gpu
-
-            tier = concrete_gpu(hw, "cuda") or "cuda12"
-        except Exception:  # noqa: BLE001 — unknown tier → widest-compat build
-            log.debug("kit cuda tier rule unavailable; assuming cuda12", exc_info=True)
-        if tier == "cuda13":
-            return TORCH_INDEX_CUDA13, "cuda-13.0"
-        return TORCH_INDEX_CUDA12, "cuda-12.6"
-
-    # Kit absent or silent about CUDA — ask the driver directly.
-    try:
-        result = subprocess.run(
-            ["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"],
-            capture_output=True, text=True, timeout=5,
-        )
-        if result.returncode == 0 and result.stdout.strip():
-            return TORCH_INDEX_CUDA12, "cuda-12.6"
-    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
-        pass
-
-    # ─ AMD ────────────────────────────────────────────────────────────
-    amd = runtimes.get("rocm") or any(
-        (getattr(g, "vendor", "") or "").upper() == "AMD" for g in gpus
-    )
-    if not amd and platform.system() == "Linux":
-        try:
-            result = subprocess.run(
-                ["rocm-smi", "--showid"],
-                capture_output=True, text=True, timeout=5,
-            )
-            amd = result.returncode == 0 and bool(result.stdout.strip())
-        except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
-            pass
-    if amd:
-        if platform.system() == "Linux":
-            # UNMEASURED on real AMD hardware here — index membership was
-            # verified (rocm7.2 carries torch 2.11–2.13), the render was not.
-            return TORCH_INDEX_ROCM, "rocm-7.2"
-        # AMD on Windows: pytorch.org publishes NO ROCm wheels for Windows, so
-        # the honest default is CPU. AMD themselves ship a Radeon-on-Windows
-        # build (ROCm 7.2.1 / torch 2.9.1, Python 3.12) from their own index —
-        # a manual recipe, because it needs a different torch AND a different
-        # Python than the family pin. Per-engine venvs make that legal.
-        log.info(
-            "AMD GPU on %s — pytorch.org has no ROCm wheels for this OS, so "
-            "engines install CPU torch. For AMD's own Radeon build set "
-            "JUSTVOICE_TORCH_INDEX to their wheel index before installing; "
-            "the recipe is in docs/engines.md.",
-            platform.system(),
-        )
-        return None, "cpu (AMD: see docs/engines.md)"
-
-    # ─ Apple Silicon / CPU ────────────────────────────────────────────
-    # Default PyPI. On macOS that wheel IS the MPS build; elsewhere it is CPU.
-    return None, "cpu"
-
-
 def install_engine(
     manifest: EngineManifest,
     progress: Callable[[str, str | None], None] | None = None,
     cancel_check: Callable[[], bool] | None = None,
 ) -> None:
-    """Install an engine: create its venv at engines/<id>/.venv and run the
-    manifest's full INSTALL list against it.
+    """Install an engine — which, since the 2026-10-01 switch, means installing the
+    ONE speech runtime every engine shares (idempotent: a second engine finds it there).
 
-    `progress(phase, line)` reports each step + the latest pip / download
-    line. `cancel_check` polled at every chunk + step boundary.
-
-    Refuses outright when the manifest does not declare the host OS. This is
-    THE os gate. It sits here, above everything, because the previous one
-    lived in the shared-venv builder and was reached only for shared engines —
-    which excluded the only two engines that restrict their OS at all. See
-    `EngineManifest.supported_oses`.
+    Refuses outright when the manifest does not declare the host OS. This is THE os
+    gate; see `EngineManifest.supported_oses`.
     """
     if not manifest.supports_current_os():
         raise InstallError(
             f"{manifest.id} does not support {_current_os_label()} — "
             f"the manifest declares {', '.join(manifest.supported_oses)}."
         )
-    return _install_engine_isolated(manifest, progress, cancel_check)
+    _install_audiocpp_runtime(progress, cancel_check)
 
 
-def _wrap_progress(progress):
-    """Coerce None into a no-op callable for helpers that require one."""
-    if progress is None:
-        return lambda phase, line: None
-    return progress
-
-
-def _wrap_cancel(cancel_check):
-    if cancel_check is None:
-        return lambda: None
-    def _check():
-        if cancel_check():
-            raise InstallError("cancelled by user")
-    return _check
-
-
-def _install_engine_isolated(
-    manifest: EngineManifest,
+def _install_audiocpp_runtime(
     progress: Callable[[str, str | None], None] | None = None,
     cancel_check: Callable[[], bool] | None = None,
 ) -> None:
-    """Build this engine's venv and run its full INSTALL pipeline against it.
+    """Install the ONE speech runtime every audio.cpp engine shares: the pinned server
+    build for this machine (the kit's verified acquisition), then eSpeak NG for Kokoro.
+    Installing any engine installs it; a second engine finds it already there."""
+    from .audiocpp import espeak, runtime
 
-    THE install path — since 2026-08-22 there is no other. Its counterpart,
-    which set up one shared interpreter and then downloaded only model files
-    per engine, is gone.
-    """
-    uv = _check_uv_available()
-    venv = manifest.venv_dir
+    emit = progress or (lambda phase, line: None)
+    last = {"mb": -1}
 
-    def emit(phase: str, line: str | None = None) -> None:
-        if progress:
-            progress(phase, line)
+    def _prog(done: int, total: int | None) -> None:
+        mb = done // (1024 * 1024)
+        if mb // 16 != last["mb"]:
+            last["mb"] = mb // 16
+            emit("downloading", f"speech runtime: {mb} MB"
+                 + (f" of {total // (1024 * 1024)} MB" if total else ""))
 
-    def check_cancel() -> None:
-        if cancel_check and cancel_check():
-            raise InstallError("cancelled by user")
-
-    # 1. Create venv — idempotent (uv complains if one exists, so we pass
-    #    --allow-existing). Pinned to ENGINE_PYTHON_VERSION, NOT sys.executable:
-    #    see that constant for why, but briefly — in the shipped bundle
-    #    sys.executable is the PyInstaller sidecar, which is not an interpreter.
-    #    There is deliberately no "let uv pick anything" fallback here; an
-    #    engine venv on an arbitrary Python version installs wheels that may not
-    #    match, and failing loudly beats a subtly wrong environment.
-    emit("creating-venv", f"uv venv {venv} (python {ENGINE_PYTHON_VERSION})")
-    result = subprocess.run(
-        [uv, "venv", str(venv), "--python", ENGINE_PYTHON_VERSION, "--allow-existing"],
-        capture_output=True, text=True, env=_uv_env(),
-    )
-    if result.returncode != 0:
-        raise InstallError(f"uv venv failed: {result.stderr.strip() or result.stdout.strip()}")
-    check_cancel()
-
-    python_exe = _venv_python(venv)
-    if not python_exe.is_file():
-        raise InstallError(f"venv created but python not found at {python_exe}")
-    # Stamp the install path this venv belongs to (moved-install detection).
-    record_venv_origin(venv)
-
-    # 2. Always install justvoice-plugin first so the engine subprocess has its
-    #    base class + serve() shim available.
-    plugin_dir = Path(__file__).resolve().parents[2] / "justvoice_plugin"
-    emit("installing-plugin", f"installing justvoice_plugin from {plugin_dir}")
-    _run_uv_pip(uv, python_exe, ["pip", "install", str(plugin_dir)], emit, check_cancel)
-
-    # 3. Execute each step from manifest.INSTALL.
-    for i, step in enumerate(manifest.install_steps):
-        check_cancel()
-        kind = step.get("kind")
-        emit("step", f"[{i + 1}/{len(manifest.install_steps)}] {kind}")
-
-        if kind == "pip":
-            packages = step.get("packages", [])
-            if not packages:
-                continue
-            _run_uv_pip(uv, python_exe, ["pip", "install", *packages], emit, check_cancel)
-
-        elif kind == "pip-no-deps":
-            packages = step.get("packages", [])
-            if not packages:
-                continue
-            _run_uv_pip(uv, python_exe, ["pip", "install", "--no-deps", *packages], emit, check_cancel)
-
-        elif kind == "pip-git":
-            url = step["url"]
-            ref = step.get("ref")
-            spec = f"git+{url}" + (f"@{ref}" if ref else "")
-            args = ["pip", "install"]
-            # no_deps: for packages whose metadata would fight the venv —
-            # chatterbox's pyproject pins torch/transformers/gradio; we
-            # install its declared deps ourselves, minus the demo-only ones.
-            if step.get("no_deps"):
-                args.append("--no-deps")
-            _run_uv_pip(uv, python_exe, [*args, spec], emit, check_cancel)
-
-        elif kind == "pip-find-links":
-            url = step["url"]
-            packages = step.get("packages", [])
-            args = ["pip", "install", "--find-links", url, *packages]
-            _run_uv_pip(uv, python_exe, args, emit, check_cancel)
-
-        elif kind == "pip-local":
-            path = step["path"]
-            # Resolve relative to the engine's directory.
-            resolved = (manifest.engine_dir / path).resolve()
-            _run_uv_pip(uv, python_exe, ["pip", "install", str(resolved)], emit, check_cancel)
-
-        elif kind == "torch":
-            index_url, label = _detect_torch_index_url()
-            version = step.get("version")  # e.g. "2.6.0" — pins torch to that release
-            base_packages = step.get("packages") or ["torch", "torchaudio"]
-            # Inject version pin if requested.
-            if version:
-                packages = [f"{p}=={version}" if "=" not in p else p for p in base_packages]
-            else:
-                packages = base_packages
-            args = ["pip", "install"]
-            if index_url:
-                args += ["--index-url", index_url]
-            args += packages
-            emit("torch", f"torch variant: {label}{f' v{version}' if version else ''}")
-            _run_uv_pip(uv, python_exe, args, emit, check_cancel)
-
-        elif kind == "requirements-file":
-            # Engine ships a requirements.txt; install it.
-            req_file = manifest.engine_dir / step.get("path", "requirements.txt")
-            _run_uv_pip(uv, python_exe, ["pip", "install", "-r", str(req_file)], emit, check_cancel)
-
-        elif kind == "model-tarball":
-            # Download + extract a .tar.bz2 / .tar.gz model tarball into the
-            # engine's models/ dir. Used by Kokoro (k2-fsa GitHub Releases).
-            _install_model_tarball(manifest, step, emit, check_cancel)
-
-        elif kind == "model-file":
-            # Download a single model file (no extraction).
-            _install_model_file(manifest, step, emit, check_cancel)
-
-        else:
-            raise InstallError(f"unknown install step kind: {kind!r}")
-
-    # 3b. Hardware-conditional runtime arm (manifest ACCEL_INSTALL):
-    #    {runtime: [packages]} — the first arm whose runtime this box has
-    #    is installed into the engine venv. This is how an ONNX engine gets
-    #    its accelerated onnxruntime build: the base wheel is CPU-only on
-    #    Windows/Linux, and no static INSTALL list can name the right
-    #    variant for every machine.
-    accel = getattr(manifest.module, "ACCEL_INSTALL", None) or {}
-    if accel:
-        rt_map = {}
-        try:
-            from llm_runner.runner.hardware import detect
-
-            rt_map = getattr(detect(), "runtimes", None) or {}
-        except Exception:  # noqa: BLE001 — no probe → CPU install, still correct
-            pass
-        for runtime in ("cuda", "rocm", "directml"):
-            packages = accel.get(runtime)
-            if packages and rt_map.get(runtime):
-                emit("accel", f"{runtime} runtime: {' '.join(packages)}")
-                _run_uv_pip(
-                    uv, python_exe, ["pip", "install", *packages],
-                    emit, check_cancel,
-                )
-                break
-
-    # 4. If the engine ships a requirements.txt and no requirements-file step
-    #    was declared explicitly, install it here as a convenience.
-    req_file = manifest.engine_dir / "requirements.txt"
-    has_explicit_req_step = any(s.get("kind") == "requirements-file" for s in manifest.install_steps)
-    if req_file.is_file() and not has_explicit_req_step:
-        emit("requirements-txt", str(req_file))
-        _run_uv_pip(uv, python_exe, ["pip", "install", "-r", str(req_file)], emit, check_cancel)
-
-    # 5. Pre-create the models / voices / state dirs so engine.py code paths
-    #    can assume they exist.
-    for sub in ("models", "voices", "state"):
-        (manifest.state_dir / sub).mkdir(parents=True, exist_ok=True)
-
-    # 6. Stamp what this venv was built from — LAST, so a run that failed
-    #    or was cancelled part-way leaves no stamp and reads as needing
-    #    (re)install rather than as complete.
-    record_venv_manifest(venv, manifest.declared_packages)
-
-    emit("done", None)
-
-
-def _install_model_tarball(
-    manifest: EngineManifest,
-    step: dict[str, Any],
-    emit: Callable[[str, str | None], None],
-    check_cancel: Callable[[], None],
-) -> None:
-    """Download + extract a .tar.bz2 / .tar.gz / .tgz tarball into the engine's
-    models dir. Streams the download so the UI sees real progress; verifies
-    SHA-256 when the step declares one (and it's not a TODO placeholder).
-
-    The tarball is removed after successful extraction — no leftover bytes.
-    """
-    import hashlib
-    import tarfile
-
-    import requests
-
-    url = step["url"]
-    sha256 = step.get("sha256")
-    skip_verify = step.get("skip_verify", False) or (
-        isinstance(sha256, str) and sha256.startswith("TODO")
-    )
-
-    models_dir = manifest.models_dir
-    models_dir.mkdir(parents=True, exist_ok=True)
-
-    # Skip download only if the engine's _resolved_dir logic would already
-    # find the files (the user installed the tarball before) — THE one
-    # engine-visibility probe, matching the engine's flat-or-one-subdir
-    # search. The old any-depth rglob skipped the download for a tarball
-    # stranded two levels deep, leaving the engine unloadable.
-    expected = step.get("expected_files", [])
-    if legacy_files_engine_visible(models_dir, expected):
-        emit("model-tarball", "model files already present, skipping download")
-        return
-
-    # Decide archive format from URL suffix.
-    fn = url.rsplit("/", 1)[-1].lower()
-    if fn.endswith((".tar.bz2", ".tbz2")):
-        mode = "r:bz2"
-    elif fn.endswith((".tar.gz", ".tgz")):
-        mode = "r:gz"
-    else:
-        raise InstallError(f"unsupported model-tarball format: {fn}")
-
-    tarball_path = models_dir / "_download.tar"
-    emit("downloading-model", f"GET {url}")
-    h = hashlib.sha256()
-    downloaded = 0
-    last_announce = 0
-    with requests.get(url, stream=True, timeout=600) as r:
-        r.raise_for_status()
-        total = int(r.headers.get("content-length", 0) or 0)
-        with tarball_path.open("wb") as f:
-            for chunk in r.iter_content(chunk_size=1024 * 64):
-                check_cancel()
-                if not chunk:
-                    continue
-                f.write(chunk)
-                h.update(chunk)
-                downloaded += len(chunk)
-                if downloaded - last_announce >= 1024 * 1024:
-                    if total > 0:
-                        emit("downloading-model", f"{downloaded // 1048576} / {total // 1048576} MB")
-                    else:
-                        emit("downloading-model", f"{downloaded // 1048576} MB")
-                    last_announce = downloaded
-    actual = h.hexdigest()
-    emit("downloading-model", f"downloaded {downloaded // 1048576} MB ({actual[:12]}...)")
-
-    if not skip_verify and sha256:
-        if actual.lower() != sha256.lower():
-            tarball_path.unlink(missing_ok=True)
-            raise InstallError(
-                f"model-tarball sha256 mismatch: expected {sha256}, got {actual}"
-            )
-
-    emit("extracting-model", str(tarball_path))
-    with tarfile.open(tarball_path, mode) as tar:
-        tar.extractall(models_dir)
-    tarball_path.unlink(missing_ok=True)
-    emit("model-tarball", "done")
-
-
-def _install_model_file(
-    manifest: EngineManifest,
-    step: dict[str, Any],
-    emit: Callable[[str, str | None], None],
-    check_cancel: Callable[[], None],
-) -> None:
-    """Download a single model file (no extraction) into models_dir."""
-    import hashlib
-
-    import requests
-
-    url = step["url"]
-    target = step.get("target_path") or url.rsplit("/", 1)[-1]
-    sha256 = step.get("sha256")
-    skip_verify = step.get("skip_verify", False) or (
-        isinstance(sha256, str) and sha256.startswith("TODO")
-    )
-
-    models_dir = manifest.models_dir
-    models_dir.mkdir(parents=True, exist_ok=True)
-    dest = models_dir / target
-    dest.parent.mkdir(parents=True, exist_ok=True)
-
-    if dest.exists():
-        emit("model-file", f"{target} already present, skipping")
-        return
-
-    emit("downloading-model", f"GET {url}")
-    h = hashlib.sha256()
-    downloaded = 0
-    with requests.get(url, stream=True, timeout=600) as r:
-        r.raise_for_status()
-        with dest.open("wb") as f:
-            for chunk in r.iter_content(chunk_size=1024 * 64):
-                check_cancel()
-                if not chunk:
-                    continue
-                f.write(chunk)
-                h.update(chunk)
-                downloaded += len(chunk)
-
-    if not skip_verify and sha256:
-        actual = h.hexdigest()
-        if actual.lower() != sha256.lower():
-            dest.unlink(missing_ok=True)
-            raise InstallError(f"model-file sha256 mismatch on {target}")
-    emit("model-file", f"{target} ({downloaded // 1048576} MB)")
-
-
-def _run_uv_pip(
-    uv: str,
-    python_exe: Path,
-    args: list[str],
-    emit: Callable[[str, str | None], None],
-    check_cancel: Callable[[], None],
-) -> None:
-    """Run `uv pip ...` against a specific venv's interpreter, streaming
-    output so the UI can show progress.
-
-    uv's --python flag is a *pip-subcommand* option, not a global option,
-    so it has to come after `pip install` (or whatever pip subcommand args
-    is). We splice it in after the first arg.
-
-    There is no `--constraint` ceiling any more. It existed to stop one
-    engine's install from re-resolving another engine's pins inside a single
-    shared interpreter; with a venv per engine there is no other engine in
-    here to protect, and the ceiling's own content (numpy<2, for librosa's
-    numba) was already wrong for kokoro, which needs numpy>=2.
-    """
-    # args[0] is "pip"; args[1] is the pip subcommand ("install"); --python
-    # goes after that. Verify and place it correctly.
-    if len(args) < 2 or args[0] != "pip":
-        raise InstallError(f"_run_uv_pip args must start with ['pip', '<subcommand>', ...]; got {args}")
-    cmd = [uv, args[0], args[1], "--python", str(python_exe), *args[2:], "--no-progress"]
-    log.info("uv pip command: %s", " ".join(cmd))
-    proc = subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        bufsize=1,
-        env=_uv_env(),
-    )
+    emit("downloading", "speech runtime (audio.cpp)")
     try:
-        assert proc.stdout is not None
-        last_line = ""
-        for line in proc.stdout:
-            check_cancel()
-            line = line.rstrip()
-            if not line:
-                continue
-            last_line = line
-            emit("installing-deps", line[:200])
-        rc = proc.wait()
-        if rc != 0:
-            raise InstallError(f"uv pip failed (exit {rc}). last: {last_line!r}")
-    finally:
-        if proc.poll() is None:
-            proc.terminate()
-            try:
-                proc.wait(timeout=SUBPROCESS_KILL_TIMEOUT_S)
-            except subprocess.TimeoutExpired:
-                proc.kill()
+        runtime.install(on_progress=_prog, cancel_check=cancel_check)
+    except Exception as e:  # noqa: BLE001 — every failure is the install's answer
+        if "cancel" in str(e).lower() or type(e).__name__ == "DownloadCancelled":
+            raise InstallError("cancelled by user") from e
+        raise InstallError(f"speech runtime install failed: {e}") from e
+    emit("installing", "eSpeak NG (Kokoro's pronunciation)")
+    try:
+        espeak.install(engines_runtime_root())
+    except Exception as e:  # noqa: BLE001
+        raise InstallError(f"eSpeak NG install failed: {e}") from e
+    runtime.forget_installed()
+    emit("done", "speech runtime ready")
 
 
-# ─── Subprocess lifecycle ─────────────────────────────────────────────
+# ─── Manager ──────────────────────────────────────────────────────────
 
 
-class EngineProcess:
-    """One running engine subprocess. Owns the Popen + the loopback port +
-    the httpx client that proxies calls from the host to the engine."""
+def _new_slot(m: EngineManifest, placement: str = "gpu") -> AudioCppSlot:
+    """The slot a load fills: one model in the speech runtime's process for `placement`
+    ("gpu" | "cpu"). The one seam tests swap for a fake (it was the `EngineProcess` class
+    until 2026-10-01)."""
+    from .audiocpp.slot import AudioCppSlot
 
-    def __init__(self, manifest: EngineManifest):
-        self.manifest = manifest
-        self.proc: subprocess.Popen | None = None
-        self.port: int | None = None
-        self.client: httpx.Client | None = None
-        self._stderr_thread: threading.Thread | None = None
-
-    def spawn(self) -> None:
-        """Start the subprocess and read PORT= from stdout.
-
-        The interpreter is always this engine's own venv.
-        """
-        python_exe = _venv_python(self.manifest.venv_dir)
-        if not python_exe.is_file():
-            raise RuntimeError(
-                f"engine {self.manifest.id} is not installed (no venv at {self.manifest.venv_dir})"
-            )
-        engine_py = self.manifest.engine_dir / "engine.py"
-        if not engine_py.is_file():
-            raise RuntimeError(f"engine {self.manifest.id} is missing engine.py")
-
-        # Phase ②: the /load model_dir contract needs the current SDK in
-        # the venv — refresh a stale install before the subprocess exists.
-        _ensure_plugin_current(python_exe)
-
-        env = os.environ.copy()
-        # Isolate HF cache to this engine's models dir so Uninstall is a clean rmtree.
-        # Set ONLY HF_HOME — transformers + huggingface_hub both honour it and
-        # share the same cache tree below it. Setting HUGGINGFACE_HUB_CACHE +
-        # TRANSFORMERS_CACHE explicitly creates a SPLIT cache: one tree gets
-        # the safetensors, the other gets only the config.json, and loaders
-        # that look in the wrong tree blow up with "Can't load feature
-        # extractor for ...". Hit this on Qwen3-TTS's `speech_tokenizer/`.
-        hf_home = self.manifest.models_dir / "hf"
-        hf_home.mkdir(parents=True, exist_ok=True)
-        env["HF_HOME"] = str(hf_home)
-        env.pop("HUGGINGFACE_HUB_CACHE", None)
-        env.pop("TRANSFORMERS_CACHE", None)
-        env.pop("HF_HUB_CACHE", None)
-        env["JUSTVOICE_MODEL_DIR"] = str(self.manifest.models_dir)
-        env["JUSTVOICE_ENGINE_DIR"] = str(self.manifest.engine_dir)
-        # The engine exits when this server is gone, however it went (plugin
-        # 0.3.0, justvoice_plugin.lifetime) — a hard-killed host used to leave it
-        # running and holding GPU memory. `engines/leftovers.py` reads it too.
-        env["JUSTVOICE_SERVER_PID"] = str(os.getpid())
-
-        cmd = [str(python_exe), str(engine_py), "serve", "--port", "0"]
-        log.info("spawning engine subprocess: %s", " ".join(cmd))
-        self.proc = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            bufsize=1,
-            env=env,
-            cwd=str(self.manifest.engine_dir),
-        )
-
-        # Read PORT= from stdout (first line). Timeout if the engine hangs.
-        deadline = time.monotonic() + PORT_HANDSHAKE_TIMEOUT_S
-        line = None
-        while time.monotonic() < deadline:
-            if self.proc.poll() is not None:
-                stderr_tail = self.proc.stderr.read() if self.proc.stderr else ""
-                raise RuntimeError(
-                    f"engine {self.manifest.id} subprocess exited during startup "
-                    f"(rc={self.proc.returncode}). stderr: {stderr_tail[-2000:]}"
-                )
-            assert self.proc.stdout is not None
-            line = self.proc.stdout.readline()
-            if line and line.startswith("PORT="):
-                break
-            time.sleep(HEALTH_CHECK_INTERVAL_S)
-        if not line or not line.startswith("PORT="):
-            self.terminate()
-            raise RuntimeError(f"engine {self.manifest.id} never announced port within {PORT_HANDSHAKE_TIMEOUT_S}s")
-        try:
-            self.port = int(line.strip().split("=", 1)[1])
-        except ValueError:
-            self.terminate()
-            raise RuntimeError(f"engine {self.manifest.id} sent bad PORT line: {line!r}")
-
-        # 30 min timeout — heavy autoregressive engines (MOSS-TTSD at 12,000+
-        # tokens) can legitimately take 10+ min for a single
-        # synth on consumer GPUs. Better to wait than to false-error.
-        self.client = httpx.Client(base_url=f"http://127.0.0.1:{self.port}", timeout=1800.0)
-
-        # Pipe stderr to our logger so engine logs surface in JustVoice server logs.
-        def relay_stderr() -> None:
-            assert self.proc is not None
-            assert self.proc.stderr is not None
-            for ln in self.proc.stderr:
-                log.info("[%s] %s", self.manifest.id, ln.rstrip())
-
-        self._stderr_thread = threading.Thread(target=relay_stderr, daemon=True)
-        self._stderr_thread.start()
-
-        # Health probe — verify the FastAPI is actually responding.
-        deadline = time.monotonic() + 10.0
-        while time.monotonic() < deadline:
-            try:
-                r = self.client.get("/health")
-                if r.status_code == 200:
-                    log.info("engine %s started: pid %d, server pid %d, port %d",
-                             self.manifest.id, self.proc.pid, os.getpid(), self.port)
-                    return
-            except httpx.HTTPError:
-                pass
-            time.sleep(HEALTH_CHECK_INTERVAL_S)
-        self.terminate()
-        raise RuntimeError(f"engine {self.manifest.id} subprocess started but /health never returned 200")
-
-    def is_alive(self) -> bool:
-        return self.proc is not None and self.proc.poll() is None
-
-    def post(self, path: str, json: dict | None = None, timeout: float | None = None) -> httpx.Response:
-        if not self.client:
-            raise RuntimeError("engine subprocess not running")
-        if timeout is not None:
-            return self.client.post(path, json=json, timeout=timeout)
-        return self.client.post(path, json=json)
-
-    def get(self, path: str) -> httpx.Response:
-        if not self.client:
-            raise RuntimeError("engine subprocess not running")
-        return self.client.get(path)
-
-    def terminate(self) -> None:
-        """Best-effort graceful shutdown then SIGTERM/SIGKILL. Logs the pid, the
-        server pid and the memory in use before and after (2026-09-29) — the
-        difference is what stopping it freed."""
-        pid = self.proc.pid if self.proc is not None else None
-        before = memory_in_use_mb() if pid is not None and self.proc.poll() is None else None
-        asked = False
-        if self.client:
-            try:
-                self.client.post("/shutdown", timeout=2.0)
-                asked = True
-            except Exception:
-                pass
-            try:
-                self.client.close()
-            except Exception:
-                pass
-            self.client = None
-
-        if not self.proc:
-            return
-
-        # An engine that answered /shutdown exits on its own with 0 (plugin
-        # 0.3.1) — give it the moment, and force only one that doesn't leave.
-        # Forcing one that was already on its way out is what logged every
-        # clean stop as exit code 1.
-        if asked and self.proc.poll() is None:
-            try:
-                self.proc.wait(timeout=SHUTDOWN_EXIT_WAIT_S)
-            except subprocess.TimeoutExpired:
-                pass
-
-        if self.proc.poll() is None:
-            try:
-                if sys.platform == "win32":
-                    self.proc.terminate()
-                else:
-                    self.proc.send_signal(signal.SIGTERM)
-                self.proc.wait(timeout=SUBPROCESS_KILL_TIMEOUT_S)
-            except subprocess.TimeoutExpired:
-                self.proc.kill()
-                try:
-                    self.proc.wait(timeout=2.0)
-                except subprocess.TimeoutExpired:
-                    pass
-            except Exception as e:
-                log.warning("terminate failed for %s: %s", self.manifest.id, e)
-
-        log.info("engine %s stopped: pid %s, server pid %d, exit code %s; memory in use "
-                 "%s -> %s MB", self.manifest.id, pid, os.getpid(), self.proc.returncode,
-                 _mb(before), _mb(memory_in_use_mb() if before is not None else None))
-        self.proc = None
-        self.port = None
+    return AudioCppSlot(m, placement)
 
 
-# ─── EngineManager — public surface ───────────────────────────────────
+def _x(v: float) -> str:
+    """A real-time factor the way the rows say it: 3.2×, 12×."""
+    return f"{v:.1f}×" if v < 10 else f"{v:.0f}×"
 
 
 class EngineManager:
     """Top-level manager. One process per `kind` slot loaded at a time
     (Phase 2 / Slice 1 — was a single _current slot pre-Profile-kill).
 
-    Slots map: kind ("tts" | "llm" | "embedding") → EngineProcess. Loading
+    Slots map: kind ("tts" | "stt") → AudioCppSlot (a model in the shared
+    speech runtime — until 2026-10-01, an engine subprocess). Loading
     a new engine of the same kind unloads the prior occupant of THAT slot;
     other kinds stay loaded. Required for speaker attribution (needs LLM
     + TTS resident simultaneously) and similar mixed-kind workflows.
@@ -1508,7 +406,7 @@ class EngineManager:
     def __init__(self):
         self._manifests: dict[str, EngineManifest] = {}
         # Per-kind slot map (Phase 2 / Slice 1).
-        self._loaded: dict[str, EngineProcess] = {}
+        self._loaded: dict[str, AudioCppSlot] = {}
         # Per-engine last loaded variant — surfaced as EngineInfo.current_variant_id
         # so the UI shows server truth not local-state.
         self._current_variants: dict[str, str] = {}
@@ -1530,6 +428,9 @@ class EngineManager:
         # once-per-process kit hardware snapshot the device policy + admission
         # read (None until first use; detect shells out to nvidia-smi).
         self._resolved_devices: dict[str, str] = {}
+        # Why each loaded engine runs where it does (CPU placement, 2026-10-02) — the
+        # Speech engines row says it. engine_id → the reason clause.
+        self._placement_reasons: dict[str, str] = {}
         self._hw_cache = None
         self._hw_detected = False
         # The measured true-up's probe TTL cache: key → (monotonic ts, value).
@@ -1540,19 +441,19 @@ class EngineManager:
     # ─── Per-kind slot helpers (Phase 2 / Slice 1) ────────────────────
 
     @property
-    def _current(self) -> EngineProcess | None:
+    def _current(self) -> AudioCppSlot | None:
         """Back-compat alias for callers that haven't been ported to the
         kind-aware API. Returns the TTS slot's process or None."""
         return self._loaded.get("tts")
 
     @_current.setter
-    def _current(self, proc: EngineProcess | None) -> None:
+    def _current(self, proc: AudioCppSlot | None) -> None:
         if proc is None:
             self._loaded.pop("tts", None)
         else:
             self._loaded["tts"] = proc
 
-    def loaded_for(self, kind: str) -> EngineProcess | None:
+    def loaded_for(self, kind: str) -> AudioCppSlot | None:
         with self._lock:
             proc = self._loaded.get(kind)
             return proc if proc and proc.is_alive() else None
@@ -1593,47 +494,192 @@ class EngineManager:
                 self._hw_cache = None
         return self._hw_cache
 
+    def _resolve_device(self, m: EngineManifest, requested: str | None) -> str:
+        """Where a model runs: where the ONE speech runtime runs — the backend of its
+        installed build (settings.engines.speech_runtime, the 2026-10-01 switch). That is
+        what the engine card shows and what the memory booking reads ("cpu" books nothing
+        on a discrete card). A per-call `requested` device has nothing to move and is
+        ignored; it stays in the signature for the load API's shape.
+
+        Until the switch this was Q2's ladder (decided 2026-08-08): an explicit request →
+        the per-engine Device setting → the `cpu_adequate` auto policy."""
+        from .audiocpp.runtime import backend_of, installed_exe
+
+        exe = installed_exe()
+        return backend_of(exe) if exe is not None else "cpu"
+
+    # ── Placement: the graphics card or the CPU, per model (2026-10-02) ───────────
+    # docs/plans/2026-10-02-cpu-placement.md §8. The user's choice per model (Auto / GPU /
+    # CPU — engine_overrides[id].placements) and, for Auto, the decided order:
+    #   1. the GPU when nothing else is on the card, or when the model's MEASURED
+    #      graphics-memory size fits beside the AI model;
+    #   2. else the CPU, when it speaks at least `cpu_min_realtime` (2×) real time there;
+    #   3. else the GPU with the AI model unloaded first — the kit's eviction event, so
+    #      the app's existing toast says so.
+    # A model never measured on the card counts as not fitting while an AI model is on it
+    # (decision 1, 2026-10-02) — no size is ever guessed.
+
     @staticmethod
-    def _user_device_override(engine_id: str) -> str:
-        """The operator's Device choice for this engine
-        (settings.engines.engine_overrides[id].device — the Speech-engines
-        card's Device select, Q2's decided setting). Best-effort: unit tests
-        run without app state → "" (auto)."""
+    def _user_placement(engine_id: str, variant: str | None) -> str:
+        """The user's choice for this model: "auto" | "gpu" | "cpu"."""
         try:
             from ..app_state import get_state
 
             ov = get_state().settings.get().engines.engine_overrides.get(engine_id)
-            return (ov.device or "") if ov else ""
-        except Exception:  # noqa: BLE001 — no state / mid-boot → auto
-            return ""
+            return ((ov.placements.get(variant or "") if ov else None) or "auto")
+        except Exception:  # noqa: BLE001 — no state (bare tests / mid-boot) → Auto
+            return "auto"
 
-    def _resolve_device(self, m: EngineManifest, requested: str | None) -> str:
-        """Q2 (decided 2026-08-08 round 2): an explicit request wins → the
-        operator's per-engine Device setting → the auto policy (`cpu_adequate`
-        manifest fact → cpu; else cuda when this box has it; else cpu). The
-        resolved device is ALWAYS passed down explicitly — the engine
-        subprocess's own torch/sherpa "auto" (hidden greedy-cuda) is the thing
-        this removes (precedent: the runner's #274 embed placement)."""
-        if requested not in (None, "", "auto"):
-            return requested
-        user = self._user_device_override(m.id)
-        if user not in ("", "auto"):
-            return user
+    @staticmethod
+    def _variant_row(m, variant: str | None) -> dict | None:
+        rows = getattr(getattr(m, "module", None), "VARIANTS", None) or []
+        return next((r for r in rows if r.get("id") == variant), None)
+
+    def cpu_speed(self, kind: str, engine_id: str, variant: str | None) -> tuple[float | None, bool]:
+        """(seconds of audio per second of work on the CPU, measured on THIS machine?).
+        The newest speed this machine recorded for the model, else the manifest's reference
+        figure (§6), else (None, False) — never offered to the CPU by Auto."""
+        try:
+            from llm_runner.llm.stores import get_model_measurement_store
+            from llm_runner.runner.hardware import current_machine_key
+
+            mk = current_machine_key()
+            for row in get_model_measurement_store().list(f"{kind}:{engine_id}:{variant or ''}"):
+                if (row.machineKey == mk and row.source == "speed" and (row.backend or "") == "cpu"
+                        and float(getattr(row, "realtimeX", 0) or 0) > 0):
+                    return float(row.realtimeX), True
+        except Exception:  # noqa: BLE001 — bare tests / store not wired
+            pass
+        ref = (self._variant_row(self.get_manifest(engine_id), variant) or {}).get("cpu_realtime")
+        return (float(ref), False) if ref else (None, False)
+
+    def _prior_gpu_mb(self, kind: str, engine_id: str, variant: str | None) -> int:
+        """This model's newest measured graphics-memory size on this machine (the load
+        footprint rows); 0 = never measured on the card."""
+        try:
+            from llm_runner.llm.stores import get_model_measurement_store
+            from llm_runner.runner.hardware import current_machine_key
+
+            mk = current_machine_key()
+            for row in get_model_measurement_store().list(f"{kind}:{engine_id}:{variant or ''}"):
+                if row.machineKey == mk and row.source == "load" and row.vramModelMb > 0:
+                    return int(row.vramModelMb)
+        except Exception:  # noqa: BLE001
+            pass
+        return 0
+
+    def _ai_model_on_card(self) -> bool:
+        """Is an AI model holding the graphics card now? A sleeping one holds nothing (the
+        runner idle-unloaded it); the tiny pinned embedder is not the AI model."""
         hw = self._hardware()
-        runtimes = getattr(hw, "runtimes", None) or {}
-        reqs = getattr(m, "requirements", None) or {}
-        if reqs.get("cpu_adequate"):
-            # cpu_adequate means "auto books no VRAM on discrete boxes" —
-            # kokoro is real-time on CPU and the GPU stays free for the
-            # big engines. Apple Silicon is the exception: one memory
-            # pool, so there is nothing to preserve, and CoreML is the
-            # platform's own accelerator — auto uses it (2026-08-21).
-            if "coreml" in (reqs.get("gpu_runtimes") or []) and (
-                runtimes.get("coreml") or runtimes.get("metal")
-            ):
-                return "coreml"
-            return "cpu"
-        return "cuda" if runtimes.get("cuda") else "cpu"
+        try:
+            from llm_runner.runner.arbiter import get_arbiter
+            from llm_runner.runner.hardware import mem_arch
+
+            if hw is None or mem_arch(hw) != "discrete":
+                return False
+            snap = get_arbiter().snapshot(hw)
+        except Exception:  # noqa: BLE001 — no kit → nothing to protect
+            return False
+        return any(r.get("kind") == "llm" and not r.get("asleep") and not r.get("pinned")
+                   and int(r.get("vram_mb") or 0) > 0 for r in snap.get("reservations") or [])
+
+    def _free_card_mb(self, kind: str, engine_id: str) -> int | None:
+        """Graphics memory a load of `engine_id` could use now, after the safety margin:
+        the measured truth and the ledger, whichever says less (as `_admit_memory`), plus
+        what this kind's current occupant gives back when it is replaced. None = unknown."""
+        hw = self._hardware()
+        try:
+            from llm_runner.runner.arbiter import get_arbiter
+            from llm_runner.runner.hardware import budget_total_mb
+
+            arb = get_arbiter()
+            total = int(budget_total_mb(hw)) if hw is not None else 0
+            if total <= 0:
+                return None
+            committed = max(0, total - arb.remaining_mb(hw))
+            used = self.pool_used_mb(fresh=True)
+            free = total - max(committed, used if used is not None else 0)
+            with self._lock:
+                occ = self._loaded.get(kind)
+            if occ is not None and occ.manifest.id != engine_id:
+                free += int(arb.reserved_mb(f"{kind}:{occ.manifest.id}") or 0)
+            return free - self._safety_margin_mb()
+        except Exception:  # noqa: BLE001
+            return None
+
+    def placement_for(self, m, kind: str, variant: str | None) -> tuple[str, str, bool]:
+        """Where a load of this model goes now: ("gpu" | "cpu", why — a clause the row says
+        after "Runs on the CPU ·", unload the AI model first?)."""
+        from .audiocpp.runtime import backend_of, cpu_min_realtime, installed_exe
+
+        exe = installed_exe()
+        if exe is not None and backend_of(exe) == "cpu":
+            return "cpu", "this machine's speech runtime is the CPU build", False
+        choice = self._user_placement(m.id, variant)
+        x, here = self.cpu_speed(kind, m.id, variant)
+        speed = (f"{_x(x)} real time {'here' if here else 'on the reference machine'}" if x else "")
+        if choice == "gpu":
+            return "gpu", "your choice", False
+        if choice == "cpu":
+            return "cpu", "your choice" + (f" — {speed}" if speed else ""), False
+        if not self._ai_model_on_card():
+            return "gpu", "nothing else is on the graphics card", False
+        prior = self._prior_gpu_mb(kind, m.id, variant)
+        free = self._free_card_mb(kind, m.id) if prior else None
+        if prior and free is not None and prior <= free:
+            return "gpu", f"it fits beside the AI model ({prior} MB)", False
+        if x is not None and x >= cpu_min_realtime():
+            return "cpu", f"{speed}, which keeps the graphics card for the AI model", False
+        slow = f"only {speed} on the CPU" if x else "it has no usable speed on the CPU"
+        return "gpu", f"{slow}, so the AI model makes room", not prior
+
+    def _unload_ai_model(self, engine_id: str) -> None:
+        """Auto's third step for a model never measured on the card: unload the AI model
+        before the load (decision 1, 2026-10-02). Through the kit's `make_room`, so the
+        eviction event — and the app's toast — say who made room for whom. Speech kinds
+        are protected; a busy AI model (mid-answer) is protected by the arbiter itself."""
+        hw = self._hardware()
+        try:
+            from llm_runner.runner.arbiter import get_arbiter
+            from llm_runner.runner.hardware import budget_total_mb
+
+            total = int(budget_total_mb(hw)) if hw is not None else 0
+            if total > 0:
+                get_arbiter().make_room(total, protected_kinds=("tts", "stt"), hardware=hw,
+                                        reason=f"loading {engine_id}")
+        except Exception:  # noqa: BLE001 — no kit → nothing to unload
+            log.debug("AI-model unload before %s unavailable", engine_id, exc_info=True)
+
+    def placement_reason_for(self, engine_id: str) -> str:
+        with self._lock:
+            return self._placement_reasons.get(engine_id, "")
+
+    def _record_cpu_speed(self, kind: str, proc, audio_s: float | None, wall_s: float) -> None:
+        """The first line (or clip) a CPU-placed model handles after each load records its
+        real-time factor in the kit's measurement store — from then on Auto reads THIS
+        machine's number, not the manifest's reference. Best-effort; never fails the work."""
+        if getattr(proc, "placement", "gpu") != "cpu" or getattr(proc, "speed_recorded", True):
+            return
+        if not audio_s or audio_s < 2.0 or wall_s <= 0:
+            return
+        proc.speed_recorded = True
+        engine_id = proc.manifest.id
+        with self._lock:
+            variant = self._current_variants.get(engine_id) or ""
+        try:
+            from llm_runner.llm.stores import get_model_measurement_store
+            from llm_runner.runner.hardware import current_machine_key
+
+            get_model_measurement_store().record(
+                f"{kind}:{engine_id}:{variant}", machine_key=current_machine_key(),
+                source="speed", label="CPU real-time factor", tokens_per_sec=0.0,
+                vram_total_mb=0, at=int(time.time() * 1000), rows=[],
+                kind="stt" if kind == "stt" else "tts",
+                realtime_x=round(audio_s / wall_s, 2), backend="cpu",
+            )
+        except Exception:  # noqa: BLE001
+            log.debug("CPU speed record failed for %s", engine_id, exc_info=True)
 
     def _books_memory(self, resolved_device: str) -> bool:
         """THE ONE-POOL RULING (2026-08-13, "your rec go"): on one-pool boxes
@@ -1709,8 +755,8 @@ class EngineManager:
         except Exception:  # noqa: BLE001 — no kit → honestly unmeasurable
             return None
 
-    def _engine_proc_mb(self, proc: EngineProcess, *, fresh: bool = True) -> int | None:
-        """Measured memory held by ONE engine subprocess — its process TREE
+    def _engine_proc_mb(self, proc: AudioCppSlot, *, fresh: bool = True) -> int | None:
+        """Measured memory held by the slot's process — its process TREE
         (pid + descendants, summed: Windows venv pythons are launcher shims
         whose CHILD holds the memory; the single-pid probe read 4 MB where
         the child held 1131): dedicated device memory on discrete boxes
@@ -1744,22 +790,53 @@ class EngineManager:
         self._probe_cache[key] = (now, val)
         return val
 
+    def _own_share_mb(self, kind: str, proc, total: int | None) -> int | None:
+        """One kind's share of a process another kind also lives in. audio.cpp serves
+        speech AND speech→text from ONE server, so its measured footprint holds both
+        models — booking the whole of it per kind counted the first model twice. Each
+        kind books the total less what the other kinds in that same process already
+        booked (the process's own overhead stays with whichever loaded first). A
+        process with one kind in it — every Python engine — is returned unchanged."""
+        if not total:
+            return total
+        pid = getattr(getattr(proc, "proc", None), "pid", None)
+        with self._lock:
+            others = [(k, p.manifest.id) for k, p in self._loaded.items()
+                      if k != kind and pid and getattr(getattr(p, "proc", None), "pid", None) == pid]
+        if not others:
+            return total
+        try:
+            from llm_runner.runner.arbiter import get_arbiter
+
+            arb = get_arbiter()
+            booked = sum(arb.reserved_mb(f"{k}:{eid}") or 0 for k, eid in others)
+        except Exception:  # noqa: BLE001 — no kit → nothing booked
+            booked = 0
+        return max(0, int(total) - int(booked)) or None
+
     def _prior_measured_mb(self, kind: str, engine_id: str) -> int:
         """The newest measured footprint of this engine on THIS box, from the
         shared measurement store (rows recorded by `_record_speech_load`
         under `kind:engine:variant` ids). Across variants the MAX wins —
         conservative until the exact variant has its own row. 0 = no
-        evidence yet."""
+        evidence yet.
+
+        Only rows for a variant the catalog STILL offers count. A footprint
+        measured on a model the engine no longer has says nothing about the one
+        that replaced it — every pre-2026-10-01 row is a PyTorch engine's, and
+        Qwen3's 7.1 GB from that era refused the 8-bit GGUF outright on an 8 GB
+        card (measured live 2026-10-01)."""
         try:
             from llm_runner.llm.stores import get_model_measurement_store
             from llm_runner.runner.hardware import current_machine_key
 
+            from .model_catalog import models_for
+
             mk = current_machine_key()
-            prefix = f"{kind}:{engine_id}"
+            live = {f"{kind}:{engine_id}:{v.id}" for v in models_for(engine_id)}
             best = 0
             for row in get_model_measurement_store().list(None):
-                if (row.modelId == prefix or row.modelId.startswith(prefix + ":")) \
-                        and row.machineKey == mk and row.vramModelMb > 0:
+                if row.modelId in live and row.machineKey == mk and row.vramModelMb > 0:
                     best = max(best, int(row.vramModelMb))
             return best
         except Exception:  # noqa: BLE001 — bare tests / store not wired
@@ -1924,7 +1001,7 @@ class EngineManager:
         if proc is None:
             return
         engine_id = proc.manifest.id
-        mb = self._engine_proc_mb(proc, fresh=fresh)
+        mb = self._own_share_mb(kind, proc, self._engine_proc_mb(proc, fresh=fresh))
         if not mb:
             return
         try:
@@ -1980,6 +1057,7 @@ class EngineManager:
                 self._loaded.pop(kind, None)
                 self._current_variants.pop(engine_id, None)
                 self._resolved_devices.pop(engine_id, None)
+                self._placement_reasons.pop(engine_id, None)
 
     def resolved_device_for(self, engine_id: str) -> str | None:
         """The device the last confirmed load of this engine actually resolved
@@ -2018,10 +1096,8 @@ class EngineManager:
         load via Voices → both rows said "Load model").
 
         Order: the USER's default_variant override (Set as default) → manifest
-        DEFAULT_VARIANT_ID → sole catalog variant → the variant whose files are
-        in the engine's models_dir (kokoro loads whatever's on disk; the
-        tarball extracts into a variant-named subdir) → first catalog variant
-        as best effort.
+        DEFAULT_VARIANT_ID → sole catalog variant → the first variant already in
+        the speech cache → first catalog variant as best effort.
         """
         user = self._user_default_variant(m.id)
         if user:
@@ -2038,24 +1114,24 @@ class EngineManager:
             return ""
         if len(variants) > 1:
             try:
+                from .. import speech_cache
+                from ..app_state import get_state
+
+                data_dir = get_state().data_dir
                 for v in variants:
-                    d = m.models_dir / v.id
-                    if d.is_dir() and any(d.iterdir()):
+                    if speech_cache.variant_on_disk(data_dir, m.id, v.id):
                         return v.id
-            except Exception:
+            except Exception:  # noqa: BLE001 — bare tests / no app state
                 pass
         return variants[0].id
 
     def _ensure_variant_local(self, m: EngineManifest, variant_id: str | None,
                               progress, cancel_check) -> str | None:
-        """The load door's acquisition step (phase ②, plan doc §12): make
-        sure the variant's files are LOCAL before the subprocess exists, and
-        return the local dir the engine should load from — or None, meaning
-        "load your legacy way" (a pre-② HF-cache install under the engine's
-        models/hf keeps working offline until a re-download; bare tests and
-        URL-source engines whose files ride the legacy install steps also
-        land here). Fetches ride the speech cache: plain files, the kit
-        downloader, no hub code, no symlinks."""
+        """The load door's acquisition step (phase ②, plan doc §12): make sure the
+        variant's file(s) are in the speech cache before the runtime is told about
+        them, and return that folder — or None when there is nothing to fetch (no
+        variant, no app state, no catalog row). Plain files, the kit downloader, no
+        hub code, no symlinks."""
         if not variant_id:
             return None
         try:
@@ -2069,64 +1145,13 @@ class EngineManager:
             return str(speech_cache.variant_dir(data_dir, m.id, variant_id))
         try:
             from ..api.engine_sources_api import resolve_source
-            from ..hf_cache import is_hf_repo_cached
 
             src, _prov = resolve_source(m.id, variant_id)
-        except Exception:  # noqa: BLE001 — no catalog row → legacy path
+        except Exception:  # noqa: BLE001 — no catalog row → nothing to fetch
             return None
         repo = src.get("hf_repo")
-        url = src.get("url")
-        if not repo and url:
-            # URL-source variant (kokoro-style tarball) — phase ④: the load
-            # door's cold fetch lands in the speech cache too, so the legacy
-            # engine-dir models location gets no new writes from any path.
-            # A pre-④ tarball install under the engine dir keeps serving
-            # (same contract as the HF legacy arm below) — probed by THE one
-            # engine-visibility rule (see legacy_files_engine_visible: a
-            # too-deep extract falls through to the speech-cache fetch).
-            try:
-                expected = [f for step in m.model_install_steps
-                            for f in (step.get("expected_files") or [])]
-                if legacy_files_engine_visible(m.models_dir, expected):
-                    return None
-            except Exception:  # noqa: BLE001 — probe must never block a load
-                pass
-            if progress:
-                progress("downloading-model",
-                         f"fetching {variant_id} into the speech cache")
-            from ..installer import fetch_url_variant
-
-            last_u = {"mb": -1}
-
-            def _uprog(done: int) -> None:
-                if progress:
-                    mb = done // (1024 * 1024)
-                    if mb // 16 != last_u["mb"]:
-                        last_u["mb"] = mb // 16
-                        progress("downloading-model",
-                                 f"{variant_id}: {mb} MB downloaded")
-
-            try:
-                # Every url row of a multi-file variant (kokoro-onnx ships
-                # model + voices pack as two files); single-row variants
-                # collapse to the old one-url behaviour.
-                url_rows = [s.get("url") for s in (src.get("sources") or [])
-                            if s.get("url")]
-                fetch_url_variant(
-                    data_dir, m.id, variant_id, url_rows or url,
-                    on_progress=_uprog,
-                    cancel_check=(lambda: bool(cancel_check())) if cancel_check else None,
-                )
-            except Exception as e:  # noqa: BLE001 — incl. _Cancelled
-                if "cancel" in str(e).lower() or type(e).__name__ in ("_Cancelled", "DownloadCancelled"):
-                    raise RuntimeError("cancelled by user") from e
-                raise RuntimeError(
-                    f"model download failed for {m.id}/{variant_id}: {e}") from e
-            return str(speech_cache.variant_dir(data_dir, m.id, variant_id))
         if not repo:
             return None
-        if is_hf_repo_cached(repo, root=m.models_dir / "hf" / "hub"):
-            return None  # legacy install — the engine's own cache serves it
         if progress:
             progress("downloading-model",
                      f"fetching {variant_id} into the speech cache")
@@ -2140,9 +1165,6 @@ class EngineManager:
                     progress("downloading-model",
                              f"{variant_id}: {pct}% of {total // (1024 * 1024)} MB")
 
-        # `revision`, not `hf_revision`: no manifest has ever written the
-        # latter, so this fallback silently pinned every legacy-shaped row to
-        # None (= whatever the repo's default branch holds today).
         sources = src.get("sources") or [{
             "hf_repo": repo, "revision": src.get("revision"),
             "files": src.get("files")}]
@@ -2163,8 +1185,8 @@ class EngineManager:
         """Mark an in-flight load for cancellation. Returns True if a load is
         actually in progress for that engine; False otherwise (no-op cancel).
         The load loop polls `cancel_check()` at safe points and raises
-        `RuntimeError("cancelled")` to short-circuit. Side effect: kills the
-        subprocess if it was already spawned."""
+        `RuntimeError("cancelled")` to short-circuit. Side effect: unloads the
+        engine's model if it was already in the runtime."""
         with self._lock:
             self._cancel_load_requests.add(engine_id)
             # Find this engine across all kind slots and terminate it.
@@ -2221,26 +1243,42 @@ class EngineManager:
         install_engine(m, progress=progress, cancel_check=cancel_check)
 
     def uninstall(self, engine_id: str) -> dict:
-        """Kill subprocess if running, rmtree every install-created directory.
-
-        Leaves plugin SOURCE (manifest.py / engine.py / requirements.txt)
-        untouched so a reinstall works.
-        """
+        """Delete every downloaded model of this engine (its speech-cache folder),
+        unloading it first. The runtime is shared and stays; the engine's catalog
+        (`manifest.py`) is source and stays."""
         m = self.get_manifest(engine_id)
         if m is None:
             raise InstallError(f"unknown engine: {engine_id}")
+        freed = []
         with self._lock:
             for kind, proc in list(self._loaded.items()):
                 if proc.manifest.id == engine_id:
                     proc.terminate()
                     self._loaded.pop(kind, None)
+                    freed.append(kind)
             self._current_variants.pop(engine_id, None)
+            self._resolved_devices.pop(engine_id, None)
+        # The booking goes with the memory, as on every other unload path.
+        for kind in freed:
+            self._release_engine(kind, engine_id)
         removed = []
-        for sub in (".venv", "models", "voices", "state"):
-            p = m.state_dir / sub
-            if p.exists():
-                shutil.rmtree(p, ignore_errors=True)
-                removed.append(sub)
+        # The server restarts without these models on its next use (its config
+        # lists only what is on disk).
+        try:
+            from ..app_state import get_state
+            from ..paths import speech_cache_root
+
+            root = speech_cache_root(get_state().data_dir) / engine_id
+        except Exception:  # noqa: BLE001 — bare tests / no app state
+            root = None
+        if root is not None and root.exists():
+            shutil.rmtree(root, ignore_errors=True)
+            if root.exists():
+                # A file the runtime still holds open (Windows refuses the delete).
+                raise InstallError(
+                    f"some {m.name} model files are still in use and were not deleted — "
+                    f"unload the model and try again ({root})")
+            removed.append("models")
         return {"engine_id": engine_id, "removed": removed}
 
     # ─── Load / Unload ────────────────────────────────────────────────
@@ -2275,43 +1313,45 @@ class EngineManager:
         try:
             _maybe_cancel()
 
-            # Every engine owns its venv, and Install is what builds it —
-            # Load never builds an environment behind the user's back. (Until
-            # 2026-08-22 shared engines had no Install button at all, so this
-            # door silently ran a 5-10 minute setup on first Load.)
+            # Install is what fetches the speech runtime — Load never installs a
+            # program behind the user's back (it does fetch a missing MODEL file,
+            # below: a download, on the row's own bar).
             if not m.is_installed:
                 raise RuntimeError(
-                    f"engine {engine_id} is not installed yet. "
-                    f"Click Install to build its environment."
+                    f"the speech runtime is not installed yet, so {m.name} cannot load. "
+                    f"Install it on AI Settings → Speech engines."
                 )
 
             _maybe_cancel()
 
             target_kind = m.kind
-            # Phase ② (plan doc §12): make the planned variant's files LOCAL
-            # before the subprocess exists — network leaves the load path.
-            # Skipped when this engine already holds the slot with the same
-            # (or unspecified) variant: that path early-returns below and
-            # must never trigger a fetch.
+            # Where it runs (CPU placement, 2026-10-02): decided before anything moves, for
+            # the variant this load will end up with.
             cur0 = self.loaded_for(target_kind)
+            planned = (variant if variant not in (None, "", "auto")
+                       else ((self._current_variants.get(engine_id)
+                              if cur0 is not None and cur0.manifest.id == engine_id else None)
+                             or self._resolved_default_variant(m) or None))
+            placement, why, unload_ai = self.placement_for(m, target_kind, planned)
+            from .audiocpp.slot import effective_placement
+
+            placement = effective_placement(placement)
+            # Phase ② (plan doc §12): make the planned variant's files LOCAL
+            # before the runtime is (re)started with them — network leaves the load path.
+            # Skipped when this engine already holds the slot with the same
+            # (or unspecified) variant in the same place: that path early-returns below
+            # and must never trigger a fetch.
             _already = (
                 cur0 is not None and cur0.manifest.id == engine_id
                 and cur0.is_alive()
+                and getattr(cur0, "placement", "gpu") == placement
                 and (variant in (None, "", "auto")
                      or self._current_variants.get(engine_id) == variant)
             )
             local_dir = None
             if not _already:
-                planned = (variant if variant not in (None, "", "auto")
-                           else (self._resolved_default_variant(m) or None))
                 local_dir = self._ensure_variant_local(
                     m, planned, progress, effective_cancel)
-
-            # (Nothing to fetch here any more. This used to be the legacy
-            # model-step install for SHARED engines, whose Load door was also
-            # their first-run install. Per-engine venvs run the full INSTALL
-            # list — model steps included — at Install time, and the gate
-            # above has already refused an engine that never ran it.)
 
             # The 2026-08-13 VRAM wiring (step 3): resolve the device at the ONE
             # load door and pass it down explicitly — the engine subprocess never
@@ -2325,10 +1365,14 @@ class EngineManager:
             # engine keeps running); if an occupant must die to make room,
             # `make_room` evicts it through our own evictor. Skipped when this
             # very engine already holds the slot (it is resident and reserved).
-            device = self._resolve_device(m, device)
+            device = "cpu" if placement == "cpu" else self._resolve_device(m, device)
             books = self._books_memory(device)
             cur = self.loaded_for(target_kind)
-            if books and not (cur is not None and cur.manifest.id == engine_id):
+            if unload_ai and not _already:
+                # Auto's third step, for a model never measured on the card (decision 1).
+                self._unload_ai_model(engine_id)
+            if books and not (cur is not None and cur.manifest.id == engine_id
+                              and getattr(cur, "placement", "gpu") == placement):
                 prior = self._prior_measured_mb(target_kind, engine_id)
                 if prior > 0:
                     self._admit_memory(m, target_kind, engine_id, prior)
@@ -2349,15 +1393,19 @@ class EngineManager:
                 # Unload the SAME-KIND slot's prior occupant — other kinds
                 # stay loaded (Phase 2 / Slice 1).
                 prior = self._loaded.get(target_kind)
-                if prior and prior.manifest.id != engine_id:
+                moving = (prior is not None and prior.manifest.id == engine_id
+                          and getattr(prior, "placement", "gpu") != placement)
+                if prior and (prior.manifest.id != engine_id or moving):
                     log.info(
-                        "unloading %s engine %s before loading %s",
+                        "unloading %s engine %s before loading %s%s",
                         target_kind, prior.manifest.id, engine_id,
+                        f" on the {placement.upper()}" if moving else "",
                     )
                     prior.terminate()
                     self._loaded.pop(target_kind, None)
                     self._release_engine(target_kind, prior.manifest.id)
                     self._resolved_devices.pop(prior.manifest.id, None)
+                    self._placement_reasons.pop(prior.manifest.id, None)
                 elif prior and prior.manifest.id == engine_id and prior.is_alive():
                     # Already loaded — just return current voices. Record the
                     # RESOLVED variant: "auto"/None must map to the default
@@ -2370,15 +1418,16 @@ class EngineManager:
                     return prior.get("/voices").json()
 
                 if progress:
-                    progress("loading", f"loading {engine_id}…")
-                proc = EngineProcess(m)
+                    progress("loading", f"loading {engine_id} on the "
+                                        f"{'CPU' if placement == 'cpu' else 'graphics card'}…")
+                proc = _new_slot(m, placement)
                 proc.spawn()
                 self._loaded[target_kind] = proc
 
             _maybe_cancel()
 
             # A FRESH no-variant load resolves the default HERE (parity batch
-            # 2026-08-06): the engine subprocess receives `variant` verbatim, so
+            # 2026-08-06): the slot receives `variant` verbatim, so
             # the user's Set-as-default choice must be substituted before the
             # POST — otherwise it would only relabel a row while the engine
             # still loaded its own default. Deliberately AFTER the
@@ -2406,13 +1455,23 @@ class EngineManager:
                 # releases is a lying ledger) is worth the belt.
                 self._release_engine(target_kind, engine_id)
                 raise RuntimeError(f"engine load failed: {r.text}")
+            # Record what actually LOADED: the slot answers with the variant it
+            # resolved, which differs from the request when the request names a
+            # model the catalog no longer has (a stored "whisper-turbo" dictation
+            # setting resolves to the speech-recognition default — and the card
+            # must say so, not echo the stale name).
+            try:
+                loaded_as = (r.json() or {}).get("variant")
+            except Exception:  # noqa: BLE001 — a fake/legacy answer without a body
+                loaded_as = None
             with self._lock:
                 self._current_variants[engine_id] = (
-                    variant
-                    if variant not in (None, "", "auto")
-                    else self._resolved_default_variant(m)
+                    loaded_as
+                    or (variant if variant not in (None, "", "auto")
+                        else self._resolved_default_variant(m))
                 )
                 self._resolved_devices[engine_id] = device
+                self._placement_reasons[engine_id] = why
             # Book the CONFIRMED load at its MEASURED footprint — the per-PID
             # TREE probe (launcher shims: the child holds the memory), so a
             # concurrent runner load can't cross-charge. Probe miss on a box
@@ -2423,7 +1482,8 @@ class EngineManager:
             # measurable at all → no booking — the strip says "not measured
             # yet" rather than displaying an invention.
             if books:
-                measured = self._engine_proc_mb(proc, fresh=True)
+                measured = self._own_share_mb(target_kind, proc,
+                                              self._engine_proc_mb(proc, fresh=True))
                 if measured:
                     self._reserve_engine(m, target_kind, measured, "measured")
                     self._record_speech_load(
@@ -2497,6 +1557,7 @@ class EngineManager:
             self._loaded.pop(kind, None)
             self._current_variants.pop(prev, None)
             self._resolved_devices.pop(prev, None)
+            self._placement_reasons.pop(prev, None)
         # Free the booking with the memory (the 2026-08-13 wiring — every
         # unload path releases; idempotent beside make_room's own release).
         self._release_engine(kind, prev)
@@ -2513,15 +1574,23 @@ class EngineManager:
     def synth(self, engine_id: str, body: dict) -> tuple[bytes, dict]:
         """Returns (audio_bytes, headers_dict_for_re_export)."""
         m = self.get_manifest(engine_id)
-        with self._activity(m.kind if m else "tts"):
+        kind = m.kind if m else "tts"
+        with self._activity(kind):
             proc = self._require_current(engine_id)
+            t0 = time.perf_counter()
             r = proc.post("/synth", json=body)
+            wall = time.perf_counter() - t0
         # High-water true-up: generate() is where a TTS engine's memory peaks
         # (Opus finding 2) — async + TTL-absorbed, raise-only, never blocks
         # the line.
-        self.bump_engine_reservation_async(m.kind if m else "tts")
+        self.bump_engine_reservation_async(kind)
+        if r.status_code == 403:
+            payload = r.json() if callable(getattr(r, "json", None)) else {}
+            if (payload or {}).get("code") == "terms_required":
+                raise TermsRequired(engine_id, payload.get("detail") or "accept the engine's terms first")
         if r.status_code != 200:
             raise RuntimeError(f"engine synth failed: {r.text}")
+        self._record_cpu_speed(kind, proc, _wav_seconds(r.content or b""), wall)
         # Mirror the engine's audio headers back through to the host caller.
         sample_rate = r.headers.get("X-JustVoice-Sample-Rate")
         channels = r.headers.get("X-JustVoice-Channels")
@@ -2558,15 +1627,13 @@ class EngineManager:
             raise RuntimeError(f"engine chat failed: {r.text}")
         return r.json().get("text", "")
 
-    def transcribe(self, body: dict, *, timeout: float = 600.0) -> dict:
+    def transcribe(self, body: dict, *, timeout: float = 600.0) -> str:
         """Transcription via the loaded stt-slot engine (G2 wiring).
         body matches the shim's TranscribeBody: wav_b64/audio_path/language.
         stt-busy for the call's duration (the 2026-08-13 VRAM wiring, step 4 —
         Q1's never-evict-busy: a mid-transcription whisper is not a victim).
 
-        Returns `{"text", "confidence"}`. `confidence` is None when the engine
-        cannot measure it — UNKNOWN, never zero, so callers gate only on a
-        real number."""
+        Returns the text."""
         with self._activity("stt"), _kind_busy("stt"):
             proc = self.loaded_for("stt")
             if proc is None:
@@ -2574,15 +1641,15 @@ class EngineManager:
                     "no STT engine loaded — install + load 'whisper' on the "
                     "Engines tab first"
                 )
+            t0 = time.perf_counter()
             r = proc.post("/transcribe", json=body, timeout=timeout)
+            wall = time.perf_counter() - t0
         self.bump_engine_reservation_async("stt")
         if r.status_code != 200:
             raise RuntimeError(f"engine transcribe failed: {r.text}")
-        payload = r.json()
-        return {
-            "text": payload.get("text") or "",
-            "confidence": payload.get("confidence"),
-        }
+        if getattr(proc, "placement", "gpu") == "cpu" and not getattr(proc, "speed_recorded", True):
+            self._record_cpu_speed("stt", proc, _input_seconds(body), wall)
+        return r.json().get("text") or ""
 
     def align(self, body: dict, *, timeout: float = 600.0) -> list[dict]:
         """Word timings via the loaded stt-slot engine — the /align door.
@@ -2604,7 +1671,7 @@ class EngineManager:
             raise RuntimeError(f"engine align failed: {r.text}")
         return r.json().get("words") or []
 
-    def _require_current(self, engine_id: str) -> EngineProcess:
+    def _require_current(self, engine_id: str) -> AudioCppSlot:
         with self._lock:
             for proc in self._loaded.values():
                 if proc.manifest.id == engine_id and proc.is_alive():
@@ -2612,6 +1679,20 @@ class EngineManager:
             raise RuntimeError(
                 f"engine {engine_id} is not loaded — POST /v1/engines/{engine_id}/load first"
             )
+
+
+def _input_seconds(body: dict) -> float | None:
+    """The length of a transcription's input audio (a path or base64 WAV)."""
+    try:
+        if body.get("audio_path"):
+            return _wav_seconds(Path(body["audio_path"]).read_bytes())
+        if body.get("wav_b64"):
+            import base64
+
+            return _wav_seconds(base64.b64decode(body["wav_b64"]))
+    except (OSError, ValueError):
+        return None
+    return None
 
 
 # ─── Singleton accessor ───────────────────────────────────────────────
@@ -2625,28 +1706,20 @@ _atexit_registered = False
 def get_manager() -> EngineManager:
     """The process-wide engine manager, created on first use.
 
-    Creating one also arms an `atexit` reaper. Engine subprocesses are children
-    of this process and do NOT die with it on their own, and until now the only
-    thing that killed them was FastAPI's `shutdown` event — so any exit that
-    did not run it leaked a live `engine.py serve` holding a GPU and the venv
-    interpreter open.
-
-    That is not hypothetical or test-only: it made a shared-venv rebuild fail
-    with `os error 32` (the leaked engine had the interpreter open), and in the
-    test suite it accumulated silently, because 25 of 27 test files build
-    `TestClient(app)` without entering it as a context manager, which is the
-    only thing that runs lifespan.
+    Creating one also arms an `atexit` reaper that stops the speech runtime: it
+    is a child of this process, and FastAPI's `shutdown` event is not the only
+    way out (25 of 27 test files build `TestClient(app)` without entering it, so
+    lifespan never runs there).
 
     Registered lazily so importing this module has no side effect, and only
     once — `atexit` would otherwise call it repeatedly.
 
-    LIMIT, stated so nobody trusts it too far: `atexit` runs on normal
-    interpreter exit. It does NOT run on SIGKILL or Windows `TerminateProcess`.
-    Since 2026-09-29 that gap is closed elsewhere: every engine watches the
-    server that started it (`JUSTVOICE_SERVER_PID`, plugin 0.3.0) and exits
-    within seconds of it going; `engines/leftovers.py` sweeps anything older
-    at startup; and the desktop shell closes through POST /v1/shutdown before
-    it ever hard-kills.
+    LIMIT: `atexit` runs on normal interpreter exit, not on SIGKILL or Windows
+    `TerminateProcess`. Those are covered elsewhere: on Windows the runtime sits
+    in a kill-on-close Job Object (the kit's `spawn_child`), so it dies with this
+    process however it dies; `engines/leftovers.py` sweeps anything older at
+    startup; and the desktop shell closes through POST /v1/shutdown before it
+    ever hard-kills.
     """
     global _manager, _atexit_registered
     with _manager_lock:
@@ -2659,10 +1732,14 @@ def get_manager() -> EngineManager:
 
 
 def shutdown_manager() -> None:
-    """Called on JustVoice server shutdown — kill any running engine subprocess."""
+    """Called on JustVoice server shutdown — unload every slot and stop the runtime."""
     global _manager
     with _manager_lock:
         if _manager is None:
             return
         _manager.unload()
         _manager = None
+    # The one audio.cpp server goes with us, whatever was loaded in it.
+    from .audiocpp.runtime import shutdown_server
+
+    shutdown_server()

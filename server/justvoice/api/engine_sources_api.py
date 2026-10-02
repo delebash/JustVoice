@@ -3,10 +3,13 @@
 
 CLAUDE.md project rule: "No hardcoded operator-tunable values — every
 knob lives in settings.json + reachable via PATCH /v1/settings". Engine
-model repos/URLs live in each engine's manifest VARIANTS rows as verified
-*defaults* (phase ②c), and this surface lets the operator override them
-per variant without editing code (e.g. if k2-fsa moves kokoro's release
-tarball, or if the user wants to point Chatterbox at a fork).
+model repos live in each engine's manifest VARIANTS rows as verified
+*defaults* (phase ②c), and this surface lets the operator point a variant at
+another Hugging Face repo (a mirror, a fork) without editing code. The
+override swaps the repository and revision and KEEPS the pinned file names —
+the runtime's config names those files, and a whole-tree fetch of a GGUF repo
+can run to many gigabytes. (A `url` override for tarball engines went with
+them on 2026-10-01.)
 
 Endpoints:
 
@@ -15,8 +18,7 @@ Endpoints:
     ("manifest" | "override"). Renderer uses this to render the
     per-row "Source ▾" affordance.
 - PUT    /v1/engines/{engine_id}/sources/{variant_id}
-    Set the override (url | hf_repo + revision). Validates at least
-    one is present.
+    Set the override (hf_repo + optional revision). hf_repo is required.
 - DELETE /v1/engines/{engine_id}/sources/{variant_id}
     Clear the override → reverts to the manifest default.
 
@@ -49,10 +51,8 @@ class VariantSource(BaseModel):
     variant_id: str
     name: str | None = None
     size_mb: int | None = None
-    # Effective values after override resolution. Exactly one of url/
-    # hf_repo will be set for a valid source; both null = unconfigured
-    # (a misconfigured manifest, surfaced honestly).
-    url: str | None = None
+    # Effective values after override resolution. hf_repo null =
+    # unconfigured (a misconfigured manifest, surfaced honestly).
     hf_repo: str | None = None
     hf_revision: str | None = None
     # "manifest" (no override) | "override" (operator-set).
@@ -78,15 +78,14 @@ def _catalog_variant(engine_id: str, variant_id: str) -> ModelVariant | None:
 def _default_source_for(engine_id: str, variant: ModelVariant) -> dict[str, Any]:
     """The manifest's VERIFIED source rows (phase ②c, plan doc §12): the
     first source drives the single-source wire fields; the FULL list rides
-    `sources` so multi-repo variants (TADA: codec + model + tokenizer
-    mirror) download completely. `files` is the pinned per-file list the
+    `sources` so multi-file variants (speech recognition: the recogniser +
+    its aligner) download completely. `files` is the pinned per-file list the
     speech-cache fetch resolves verbatim — a missing name fails loud."""
     from ..engines.model_catalog import sources_for
 
     sources = sources_for(engine_id, variant.id)
     first = sources[0] if sources else {}
     return {
-        "url": first.get("url"),
         "hf_repo": first.get("hf_repo"),
         "hf_revision": first.get("revision"),
         "files": first.get("files"),
@@ -99,32 +98,32 @@ def _default_source_for(engine_id: str, variant: ModelVariant) -> dict[str, Any]
 def resolve_source(engine_id: str, variant_id: str) -> tuple[dict[str, Any], str]:
     """Resolve the effective download source for (engine, variant).
 
-    Returns ({url?, hf_repo?, hf_revision?, files?, sources?, size_mb?,
-    name?}, "manifest" | "override"). `sources` is the manifest's full
-    verified multi-source list (phase ②c); an operator OVERRIDE replaces
-    the whole spec with its single repo/url and carries no pinned files —
-    the fetch then takes the override repo's whole tree (the operator
-    pointed at a fork; its file list is theirs).
+    Returns ({hf_repo?, hf_revision?, files?, sources?, size_mb?, name?},
+    "manifest" | "override"). `sources` is the manifest's full verified
+    multi-source list (phase ②c); an operator OVERRIDE swaps every row's repo
+    and revision and keeps its pinned files, so the fetch asks the mirror for
+    exactly the names the runtime will load (a missing one fails loud).
 
     Used by the prefetch worker (S1), the load door's acquisition, and
     GET /sources for the UI.
     """
     variant = _catalog_variant(engine_id, variant_id)
     default = _default_source_for(engine_id, variant) if variant else {
-        "url": None, "hf_repo": None, "hf_revision": None,
+        "hf_repo": None, "hf_revision": None,
         "files": None, "sources": None, "size_mb": None, "name": variant_id,
     }
 
     settings = get_state().settings.get()
     overrides = settings.engines.engine_overrides.get(engine_id)
     override = overrides.sources.get(variant_id) if overrides else None
-    if override and (override.url or override.hf_repo):
+    if override and override.hf_repo:
+        rows = [{**row, "hf_repo": override.hf_repo, "revision": override.hf_revision}
+                for row in (default["sources"] or [])]
         effective = {
-            "url": override.url,
             "hf_repo": override.hf_repo,
             "hf_revision": override.hf_revision,
-            "files": None,
-            "sources": None,
+            "files": default["files"],
+            "sources": rows or None,
             "size_mb": default["size_mb"],
             "name": default["name"],
         }
@@ -158,7 +157,6 @@ async def list_sources(engine_id: str) -> EngineSourcesResponse:
                 variant_id=vid,
                 name=eff.get("name"),
                 size_mb=eff.get("size_mb"),
-                url=eff.get("url"),
                 hf_repo=eff.get("hf_repo"),
                 hf_revision=eff.get("hf_revision"),
                 provenance=prov,
@@ -182,8 +180,8 @@ async def set_source(
         # know about? No — that would let a typo become a silently
         # broken row. Reject.
         raise not_found(f"variant {variant_id!r} on engine {engine_id!r}")
-    if not (body.url or body.hf_repo):
-        raise bad_request("override needs at least one of url or hf_repo")
+    if not body.hf_repo:
+        raise bad_request("override needs hf_repo")
 
     store = get_state().settings
     settings = store.get()
@@ -201,7 +199,6 @@ async def set_source(
         variant_id=variant_id,
         name=eff.get("name"),
         size_mb=eff.get("size_mb"),
-        url=eff.get("url"),
         hf_repo=eff.get("hf_repo"),
         hf_revision=eff.get("hf_revision"),
         provenance=prov,
@@ -230,7 +227,6 @@ async def clear_source(engine_id: str, variant_id: str) -> VariantSource:
         variant_id=variant_id,
         name=eff.get("name"),
         size_mb=eff.get("size_mb"),
-        url=eff.get("url"),
         hf_repo=eff.get("hf_repo"),
         hf_revision=eff.get("hf_revision"),
         provenance=prov,

@@ -5,7 +5,7 @@
 # delegates to JustVoice's /v1/generate pipeline and persists a Generation
 # row (voicebox plays on speakers + saves to History; headless JustVoice
 # returns a fetchable audio URL instead). transcribe is added alongside the
-# bundled Whisper STT engine. Original copyright (c) the voicebox authors.
+# bundled speech-recognition engine. Original copyright (c) the voicebox authors.
 """JustVoice MCP tool implementations.
 
 Thin wrappers over existing routes/services. Tools are registered with
@@ -101,8 +101,8 @@ def register_tools(mcp: FastMCP) -> None:
     @mcp.tool(
         name="justvoice.transcribe",
         description=(
-            "Transcribe an audio clip to text with the local Whisper STT "
-            "engine. Pass exactly one of `audio_base64` (bytes as base64) "
+            "Transcribe an audio clip to text with the local speech "
+            "recognition engine. Pass exactly one of `audio_base64` (bytes as base64) "
             "or `audio_path` (absolute local file path — loopback callers "
             "only)."
         ),

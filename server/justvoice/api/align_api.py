@@ -1,19 +1,21 @@
 # SPDX-License-Identifier: MIT
 """/v1/align + chapter captions — word-level timestamps (C1, 2026-08-21).
 
-The route: rendered audio + the KNOWN text → per-word times. Whisper
-transcribes with token timestamps (whisper/engine.py `align`), the host
-maps that hypothesis onto the real words (justvoice.alignment — knowing
-the text is what makes this forced alignment: an ASR misread never loses
-a word's timing), and captions.py formats the result as WebVTT or SRT.
+The route: rendered audio + the KNOWN text → per-word times. The speech-
+recognition engine's word aligner (Qwen3-ForcedAligner, a companion of the
+`asr` model in the speech runtime — engines/audiocpp/slot.py `_align`) times
+the given words, the host maps them onto the real words (justvoice.alignment —
+an aligner that drops or splits a word never loses its neighbours' timing),
+and captions.py formats the result as WebVTT or SRT. Until 2026-10-01 Whisper's
+token timestamps did this — and had stopped producing any ("no token_timestamps").
 
 Engine-agnostic by construction — it measures the finished audio, so it
 works identically for every TTS engine, which is strictly more than
 Kokoro-FastAPI's Kokoro-only timestamps.
 
-Accuracy honest-note (research in the 2026-08-21 plan doc §3): Whisper
-cross-attention timing carries roughly ±100 ms of jitter — right for
-read-along highlighting and captions, not for frame-exact editing.
+Accuracy honest-note: a forced aligner is built for this job (it is told
+the words), but its timing is still model output — right for read-along
+highlighting and captions, not for frame-exact editing.
 """
 
 from __future__ import annotations

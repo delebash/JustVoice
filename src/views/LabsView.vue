@@ -3,8 +3,7 @@
   LabsView — the Tools lane collapsed into one Settings-style tabbed
   view (user decision 2026-06-12, SAME tab strip as Settings —
   the kit's UiTabStrip): Compare · Render · Audio (the TTS domain). Train left on
-  2026-08-19 — training is a way to GET a voice, so it lives in Voices
-  beside clone/design/import/blend (ruling 13); #train still lands on it.
+  2026-08-19 for Voices, and voice training was removed on 2026-10-02.
   Legacy hashes (#compare/#renderlab/#audio) redirect here with
   jv.labs.sub carrying the target tab; #speakerlab redirects to the AI
   console's Lab instead (the Speaker Lab reunified there, parity batch
@@ -13,7 +12,7 @@
 -->
 <script setup>
 import { computed, onActivated, ref } from "vue";
-// The tab strip is the kit's, shared with Settings and LoRA. It used to be a
+// The tab strip is the kit's, shared with Settings and Voices. It used to be a
 // hand-rolled `.jv-subnav`, which had drifted to 12px — under this app's
 // minimum type size.
 import { UiTabStrip } from "@delebash/llm-ui";
@@ -47,7 +46,7 @@ const activeEntry = computed(
 const activeComponent = computed(() => activeEntry.value.component);
 
 // Consumed on EVERY entry (kept-alive view; a mounted-time read fires once
-// per session — later #compare/#train/#renderlab/#audio links would no-op).
+// per session — later #compare/#renderlab/#audio links would no-op).
 onActivated(() => {
   try {
     const sub = window.sessionStorage?.getItem("jv.labs.sub");

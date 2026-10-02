@@ -88,16 +88,16 @@ def test_fetch_skips_files_already_at_size(tmp_path, _offline):
 
 def test_multi_source_nests_per_repo(tmp_path, _offline):
     man = sc.fetch_hf_variant(
-        tmp_path, "tada", "v1",
+        tmp_path, "eng", "v1",
         [{"hf_repo": "owner/repo", "files": ["model-4.bin"]},
          {"hf_repo": "owner/codec", "files": None}],
     )
-    vdir = sc.variant_dir(tmp_path, "tada", "v1")
+    vdir = sc.variant_dir(tmp_path, "eng", "v1")
     assert (vdir / "owner--repo" / "model-4.bin").is_file()
     assert (vdir / "owner--codec" / "enc-3.bin").is_file()
     assert {f["path"] for f in man["files"]} == {
         "owner--repo/model-4.bin", "owner--codec/enc-3.bin"}
-    assert sc.variant_on_disk(tmp_path, "tada", "v1") is True
+    assert sc.variant_on_disk(tmp_path, "eng", "v1") is True
 
 
 def test_on_disk_is_size_exact_never_folder_non_empty(tmp_path, _offline):
@@ -120,14 +120,3 @@ def test_missing_pinned_file_fails_before_any_byte(tmp_path, _offline):
         sc.fetch_hf_variant(tmp_path, "eng", "v1",
                             [{"hf_repo": "owner/repo", "files": ["nope.bin"]}])
     assert _offline == []   # fail-loud resolve — nothing streamed
-
-
-def test_tarball_dir_manifest(tmp_path):
-    vdir = tmp_path / "speech-cache" / "kokoro" / "v1"
-    (vdir / "voices").mkdir(parents=True)
-    (vdir / "model.onnx").write_bytes(b"\0" * 5)
-    (vdir / "voices" / "af.bin").write_bytes(b"\0" * 2)
-    man = sc.write_manifest_from_dir(vdir, url="https://x/y.tar.bz2")
-    assert man["url"] == "https://x/y.tar.bz2"
-    assert {f["path"] for f in man["files"]} == {"model.onnx", "voices/af.bin"}
-    assert sc.variant_on_disk(tmp_path, "kokoro", "v1") is True

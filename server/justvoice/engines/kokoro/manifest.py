@@ -1,41 +1,31 @@
-"""Manifest for the Kokoro engine plugin.
+# SPDX-License-Identifier: MIT
+"""Manifest for Kokoro — 54 preset voices, run by the audio.cpp runtime.
 
-Kokoro (via kokoro-onnx) is the lightest engine in the catalog — no torch,
-no transformers, just onnxruntime + espeak phonemization. 54 preset voices;
-CPU is real-time many times over, GPU optional.
+Since the 2026-10-01 switch (docs/plans/2026-10-01-audiocpp-switch.md) Kokoro is one GGUF
+file served by audio.cpp, not a Python program: no venv, no onnxruntime, no torch. The
+voice pack is inside the GGUF; the voice ids are unchanged (`voices.py`, k2-fsa naming
+`<lang><gender>_<name>`), so every persona built on a Kokoro voice keeps working.
 
-Runtime swapped 2026-08-19: sherpa-onnx → kokoro-onnx (MIT,
-github.com/thewh1teagle/kokoro-onnx). Two reasons, both user-visible:
+English, Spanish, French, Hindi, Italian and Portuguese are phonemized by eSpeak NG, which
+the runtime install fetches onto this machine (`engines/audiocpp/espeak.py`). Chinese works
+from the GGUF's own table. Japanese needs MeCab + UniDic, which the release GGUF does not
+carry — Japanese voices return with the gaps (plan §5).
 
-  * `create(text, voice: str | ndarray)` takes a RAW STYLE VECTOR — so a
-    blended voice (elementwise weighted average of preset vectors, see
-    engines/blending.py) plays instantly, with no repacking and no reload.
-    sherpa's wrapper only ever accepted an integer speaker id fixed at
-    load time.
-  * `lang` is per-call, which closes the "every Kokoro voice speaks
-    English" finding — sherpa's wrapper took one language at load.
-
-The voices file is a name-keyed np.load-able pack; the voice ids match
-`voices.py` (k2-fsa naming, `<lang><gender>_<name>`).
+Not yet back after the switch (plan §5): blended voices (audio.cpp takes no voice vector
+yet) and per-word IPA from lexicons (respellings still work).
 """
+
+from ..audiocpp.release import model_source
 
 ID = "kokoro"
 NAME = "Kokoro"
 
-# No ISOLATION line: every engine has had its own venv since 2026-08-22, so
-# kokoro is no longer the exception it was carved out as. (It was carved out
-# because kokoro-onnx needs numpy>=2.0.2 and the shared venv held a numpy<2
-# ceiling for chatterbox — a clash that per-engine venvs make unstateable.)
 SUPPORTED_OSES = ["windows", "linux", "macos"]
 DESCRIPTION = (
-    "Kokoro-82M via kokoro-onnx — 54 preset voices, instant blends "
-    "(weighted voice mixing), per-line language. 337 MB model download "
-    "(model + voice pack, summed from the release's own byte sizes). "
-    "No torch: onnxruntime + espeak. CPU is real-time; installing on a "
-    "CUDA or DirectML machine adds that GPU runtime, and Apple Silicon "
-    "uses CoreML automatically."
+    "Kokoro-82M — 49 preset voices in eight languages, fast on any machine. Runs in the "
+    "audio.cpp speech runtime from one 190 MB model file."
 )
-LICENSE = "MIT"  # kokoro-onnx wrapper; the model weights are Apache-2.0
+LICENSE = "Apache-2.0"
 
 CAPABILITIES = {
     "preset_voices": True,
@@ -43,105 +33,39 @@ CAPABILITIES = {
     "voice_design": False,
     "instruct_field": False,
     "paralinguistic_tags": False,
-    "phoneme_override": True,
-    # Blends are host-side vector math over this engine's voices file
-    # (engines/blending.py); the result renders through voice_vector.
-    "voice_blending": True,
+    # Returns with the single-word IPA splice (plan §5, gap 3).
+    "phoneme_override": False,
+    # Returns when audio.cpp takes a voice vector (plan §5, gap 2).
+    "voice_blending": False,
 }
 
 REQUIREMENTS = {
-    # onnxruntime execution providers: the base wheel is CPU everywhere and
-    # CoreML on macOS; CUDA/DirectML arrive by installing the matching
-    # accelerated onnxruntime distribution (kokoro-onnx auto-detects it,
-    # and ONNX_PROVIDER overrides).
-    "gpu_runtimes": ["cuda", "coreml", "directml", "cpu"],
-    # The 2026-08-13 VRAM wiring (Q2's auto policy): Kokoro is real-time on
-    # CPU (ONNX, no torch) — `auto` resolves to cpu and the load books no
-    # device memory on discrete boxes.
-    "cpu_adequate": True,
+    "gpu_runtimes": ["cuda", "vulkan", "metal", "cpu"],
 }
 
-# uv pip install steps run against engines/kokoro/.venv.
-INSTALL = [
-    {"kind": "pip", "packages": ["kokoro-onnx>=0.6.1"]},
-]
-
-# Hardware-conditional runtime arms (manager `_accel_install_step`, added
-# 2026-08-21 — before this, CUDA and DirectML were DECLARED above but no
-# door ever installed the accelerated onnxruntime build, so choosing
-# Device=cuda could only fail). One arm installs, picked by the host's
-# detected runtimes in this priority order; each is the door kokoro-onnx's
-# own provider detection expects (session.py _ACCELERATED_DISTRIBUTIONS).
-# macOS needs no arm — the base onnxruntime wheel already carries CoreML.
-ACCEL_INSTALL = {
-    "cuda": ["kokoro-onnx[gpu]>=0.6.1"],          # → onnxruntime-gpu
-    "directml": ["onnxruntime-directml>=1.20.1"],  # any Windows GPU
-}
-
-# Voices exposed to the host catalog even when the engine isn't loaded —
-# Kokoro's voice list is static (54 presets, no clones). Voice-cloning
-# engines (Chatterbox/Qwen3/etc.) leave this empty; their voices live
-# in the host's voice store once cloned and don't need static declaration.
 from .voices import preset_voices_as_dicts as _preset_voices_as_dicts  # noqa: E402
 
-STATIC_VOICES = _preset_voices_as_dicts()
-
-# Facts-only variant rows: per-file URL sources from kokoro-onnx's
-# model-files-v1.1 GitHub release, sizes read from the release API
-# 2026-08-19 (exact bytes, not the page's rounded MB). Both variants share
-# the same 54-voice pack.
-_RELEASE = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.1"
-_VOICES_SRC = {
-    "url": f"{_RELEASE}/voices-v1.0.bin",
-    "size_bytes": 28_214_398,
-    "files": ["voices-v1.0.bin"],
-}
+# The five Japanese voices need MeCab + UniDic, which the release GGUF lacks — offered
+# again when that lands (plan §5, gap 7). 49 of the 54 speak today.
+STATIC_VOICES = [v for v in _preset_voices_as_dicts() if v.get("language") != "ja"]
 
 VARIANTS = [
     {
-        "id": "kokoro-v1.0",
-        "name": "Kokoro v1.0",
-        "description": (
-            "Full-precision Kokoro-82M ONNX. All 54 preset voices; the "
-            "canonical choice."
-        ),
-        "languages": ["en-US", "en-GB", "ja", "zh", "es", "fr", "hi", "it", "pt-BR"],
+        "id": "kokoro-82m-q8",
+        "name": "Kokoro 82M",
+        "description": "49 preset voices in eight languages. 8-bit weights.",
+        "languages": ["en-US", "en-GB", "zh", "es", "fr", "hi", "it", "pt-BR"],
         "voice_cloning": False,
         "preset_voices": len(STATIC_VOICES),
         "quality": 95,
         "weights_license": "Apache-2.0",
-        "sources": [
-            {
-                "url": f"{_RELEASE}/kokoro-v1.0.onnx",
-                "size_bytes": 325_505_369,
-                "files": ["kokoro-v1.0.onnx"],
-            },
-            dict(_VOICES_SRC),
-        ],
-    },
-    {
-        "id": "kokoro-v1.0-int8",
-        "name": "Kokoro v1.0 int8",
-        "description": (
-            "Integer-quantized Kokoro-82M — a third of the download, "
-            "audibly rougher (the release's own spectral-correlation "
-            "figures: 0.874–0.916 against full precision)."
-        ),
-        "languages": ["en-US", "en-GB", "ja", "zh", "es", "fr", "hi", "it", "pt-BR"],
-        "voice_cloning": False,
-        "preset_voices": len(STATIC_VOICES),
-        "quality": 80,
-        "weights_license": "Apache-2.0",
-        "sources": [
-            {
-                "url": f"{_RELEASE}/kokoro-v1.0.int8.onnx",
-                "size_bytes": 114_119_327,
-                "files": ["kokoro-v1.0.int8.onnx"],
-            },
-            dict(_VOICES_SRC),
-        ],
+        "sources": [model_source("Kokoro-82M-GGUF/kokoro-82m-q8_0.gguf", 189_549_408)],
+        "audiocpp": {"family": "kokoro_tts", "task": "tts", "file": "Kokoro-82M-GGUF/kokoro-82m-q8_0.gguf"},
+        # Seconds of audio per second of work on the CPU — the reference machine's figure
+        # (Ryzen 7 5700X, 8 threads, 2026-10-02) until a render measures this one
+        # (docs/plans/2026-10-02-cpu-placement.md §6).
+        "cpu_realtime": 3.15,
     },
 ]
 
-# Plain Load (no variant picked) loads full precision.
-DEFAULT_VARIANT_ID = "kokoro-v1.0"
+DEFAULT_VARIANT_ID = "kokoro-82m-q8"

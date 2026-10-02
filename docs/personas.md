@@ -34,8 +34,8 @@ does three things:
   different voice never loses what Discover and Script know about them.
 
 A book's lines, its cast and the corrections Script remembers all point at
-**speakers**. Generations, lexicons, audio channels, MCP bindings and training
-jobs stay on the **persona**, because they belong to the voice.
+**speakers**. Generations, lexicons, audio channels and MCP bindings stay on
+the **persona**, because they belong to the voice.
 
 ## The list
 
@@ -133,12 +133,13 @@ speakers in several books there is one button per book: **Open Stillwater Cast
 *"Clipped, world-weary noir delivery. Dry wit. Boston accent in stressful
 moments."* or *"Eager, optimistic, ends sentences with rising intonation."*
 
-**Qwen3-TTS CustomVoice is the only engine that reads it.** It arrives as that
-model's `instruct` field when JustVoice renders a line this persona plays. The
-model uses it to adjust *delivery* (pacing, intonation, vocal warmth) without
-changing the manuscript words. Every other engine ignores the field, including
-Qwen3 **Base**, which clones voices but drops the instruction. (This page named
-LuxTTS here until 2026-08-17; its adapter reads no instruction at all.)
+**Only Qwen3-TTS reads it — CustomVoice and VoiceDesign.** On CustomVoice it
+arrives as the model's instruction when JustVoice renders a line this persona
+plays, and the model uses it to adjust *delivery* (pacing, intonation, vocal
+warmth) without changing the manuscript words. On a designed voice with no kept
+clip it is added after the voice's description. Every other engine ignores the
+field: Kokoro, Chatterbox, and Qwen3 **Base**, which clones voices and has no
+instruction input.
 
 The editor tells you which case you're in. A line under the box names the
 engine this persona's voice uses and says whether it takes direction. Trust
@@ -169,10 +170,13 @@ when both are set. That's useful for a chapter-specific delivery (whispered,
 intimate) without changing the persona's baseline. The line's direction still
 goes on the end.
 
-**Emotion is portable in a way this field is not.** Written direction only
-reaches Qwen3, but the nine-value Emotion label also compiles into a tag for
-Chatterbox Turbo, so it survives moving a speaker onto a cloning engine. See
-[generate.md](generate.md) and [engines.md](engines.md).
+**Emotion is meant to be portable in a way this field is not.** Written
+direction only reaches Qwen3, but the nine-value Emotion label can also compile
+into an engine's own tag, so it would survive moving a speaker onto a cloning
+engine. The engine that took it as a tag, Chatterbox Turbo, is not available on
+the speech runtime yet, so today Emotion reaches Qwen3 CustomVoice and
+VoiceDesign only. See [generate.md](generate.md) and
+[engines.md](engines.md#not-available-yet).
 
 ## The note: what the AI reads about the voice
 

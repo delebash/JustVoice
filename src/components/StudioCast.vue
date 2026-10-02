@@ -28,6 +28,7 @@ import {
 import { useApi } from "../stores/api.js";
 import { projectsService } from "../services/projects.js";
 import { readPref, writePref } from "../services/prefs.js";
+import { handleTermsRefusal } from "../services/engineTerms.js";
 
 const props = defineProps({
   project: { type: Object, required: true },
@@ -455,6 +456,7 @@ async function play(p) {
       audition.value = { url: URL.createObjectURL(blob), name: p.name, engine: voice.engine || "" };
     }
   } catch (e) {
+    if (handleTermsRefusal(e)) return;
     pushToast({ message: `Preview failed: ${e?.message || e}`, kind: "error", duration: 6000 });
   } finally {
     previewing.value = null;

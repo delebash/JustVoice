@@ -13,6 +13,9 @@ import AudioKeepAlive from "./components/AudioKeepAlive.vue";
 import QuickSetup from "./components/QuickSetup.vue";
 import KeyboardCheatsheet from "./components/KeyboardCheatsheet.vue";
 import LeftoverEnginesHelp from "./components/LeftoverEnginesHelp.vue";
+// An engine's own terms (Pocket TTS — Kyutai's, before the first clone): one dialog for the
+// whole app, opened by `jv:engine-terms` (services/engineTerms.js).
+import EngineTermsDialog from "./components/EngineTermsDialog.vue";
 import { AiSetupOffer, AiStatusButton, AiTaskStrip, BootModelLoad, HelpDrawer, HelpTrigger, LlmUiHosts, TitleBar, openExternal, pushToast, useAiTasksNav, useAiTasksStore, useModelApply, warmModelId } from "@delebash/llm-ui";
 import { readPref, writePref } from "./services/prefs.js";
 
@@ -28,7 +31,7 @@ import { readPref, writePref } from "./services/prefs.js";
 // `lane` groups tabs in the sidebar (plan Q4 architecture):
 //   workflow — Do the work. Always-on for the current use case.
 //   library  — Manage assets (voices, personas, etc.).
-//   tools    — Diagnostics, comparison, training labs.
+//   tools    — Diagnostics, comparison, render and audio labs.
 //   advanced — Cache, channels, webhooks — collapsed by default.
 // Settings is its own thing — pinned at the very bottom of the sidebar
 // outside the Advanced collapse.
@@ -146,7 +149,6 @@ const HELP_SLUG_BY_VIEW = {
   lexicons: "lexicons",
   captures: "dictation",
   effects:  "effects",
-  train:    "engines",
   compare:  "mastering",
   cache:    "core-concepts",
   audio:    "mastering",
@@ -645,6 +647,7 @@ onMounted(async () => {
       @quick-setup="closeAiOffer(); router.push('/ai?quicksetup=1')"
       @connect-provider="closeAiOffer(); router.push('/ai?providers=online')" />
     <QuickSetup v-if="showQuickSetup" @close="onQuickSetupClosed" />
+    <EngineTermsDialog />
     <KeyboardCheatsheet />
     <HelpDrawer />
     <!-- GlobalAudioPlayer died 2026-08-15 (user ruling: no fixed bottom

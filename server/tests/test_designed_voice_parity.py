@@ -214,9 +214,6 @@ def test_each_voice_names_the_checkpoint_it_needs(client) -> None:
     state.voices.write_ref_wav(cloned.id, _wav())
     assert qwen_family_for_voice(state, cloned.id) == "base"
 
-    trained = _store(state, source="lora", name="Alder", adapter_path="/x/adapter")
-    assert qwen_family_for_voice(state, trained.id) == "base"
-
     # A designed voice becomes a Base voice the moment it is frozen — the
     # whole point of A, and the reason E has to run after it.
     frozen = _store(state, design_prompt="a harbour-master", name="Frozen")
@@ -307,37 +304,16 @@ def test_the_mlx_variants_resolve_to_the_same_families(client, monkeypatch) -> N
 
 # ── C — Qwen3 has no tag vocabulary ────────────────────────────────────
 
-def test_qwen3_does_not_claim_paralinguistic_tags() -> None:
-    """Upstream ships no bracketed-tag vocabulary and the promised
-    tag→instruct translation was never written, so the flag that decides
-    whether `render_core` strips markup has to be False — otherwise
-    `[laugh]` goes into the model's text and gets read aloud."""
-    from pathlib import Path
+def test_no_engine_claims_paralinguistic_tags_on_the_runtime() -> None:
+    """The flag decides whether `render_core` strips bracketed markup — True on
+    an engine that cannot read it puts `[laugh]` into the text, read aloud.
+    Qwen3 never had a tag vocabulary; Chatterbox Turbo, whose native syntax tags
+    ARE, is not on the speech runtime yet (switch plan §5), so no engine claims
+    them today."""
+    from justvoice.engines.manager import discover_engines
 
-    from justvoice.engines.qwen3 import manifest as qwen_manifest
-
-    # The manifest is the flag the HOST reads — `render_core._tags_supported`
-    # asks the manager for it, because a managed engine's own module lives in
-    # a venv the host cannot import (torch et al).
-    assert qwen_manifest.CAPABILITIES["paralinguistic_tags"] is False
-
-    # The adapter's EngineMeta reports the same fact over the plugin
-    # protocol, and must not drift from it. Read as text for the same reason.
-    engine_src = (
-        Path(qwen_manifest.__file__).with_name("engine.py").read_text(encoding="utf-8")
-    )
-    assert "supports_paralinguistic_tags=False," in engine_src
-    assert "supports_paralinguistic_tags=True," not in engine_src
-
-
-def test_engines_whose_syntax_it_actually_is_still_keep_tags() -> None:
-    """Chatterbox-Turbo's `[tag]` IS its native input format — C must not
-    have stripped the one engine that reads them."""
-    from justvoice.engines.chatterbox import manifest as cb_manifest
-    from justvoice.engines.kokoro import manifest as kokoro_manifest
-
-    assert cb_manifest.CAPABILITIES["paralinguistic_tags"] is True
-    assert kokoro_manifest.CAPABILITIES["paralinguistic_tags"] is False
+    for engine_id, m in discover_engines().items():
+        assert m.capabilities.get("paralinguistic_tags", False) is False, engine_id
 
 
 def test_stripping_removes_markup_qwen_would_have_spoken() -> None:

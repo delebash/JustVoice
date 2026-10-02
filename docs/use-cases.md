@@ -14,7 +14,7 @@ JustVoice serves five distinct audiences. Pick your primary at first launch — 
 5. **Render** — batch render every chapter. ACX [mastering.md](mastering.md) preset applies automatically.
 6. **Export** — M4B audiobook file with chapter markers, muxed server-side from the Export tab. See [Audiobook → M4B](import-and-export.md#audiobook--m4b).
 
-**Engine pick**: Chatterbox Turbo (voice cloning, sounds like real narrators) + Kokoro (personas for minor speakers).
+**Engine pick**: Chatterbox Multilingual or Qwen3-TTS Base (voice cloning, sounds like real narrators) — or Qwen3-TTS CustomVoice when you want to direct each line in words — + Kokoro (personas for minor speakers).
 
 ## 🎮 Game dialogue
 
@@ -26,7 +26,7 @@ JustVoice serves five distinct audiences. Pick your primary at first launch — 
 3. **Render** — bulk render every line.
 4. **Export** — per-line WAVs grouped by scene plus a `manifest.json` of line metadata for Unreal import; an Unreal `.uplugin` bundle is planned.
 
-**Engine pick**: Kokoro (CPU-fast at scale, 54 preset voices) + Chatterbox for protagonist clones.
+**Engine pick**: Kokoro (fast at scale, 49 preset voices) + Chatterbox Multilingual or Qwen3-TTS Base for protagonist clones.
 
 ## 🎙️ Podcast production
 
@@ -39,7 +39,7 @@ JustVoice serves five distinct audiences. Pick your primary at first launch — 
 4. **Render** — full episode mix-down. Podcast [mastering.md](mastering.md) preset (-16 LUFS).
 5. **Export** — MP3 / WAV.
 
-**Engine pick**: Chatterbox Turbo for the hosts' personas (clone real voices) + Kokoro for minor speakers.
+**Engine pick**: Chatterbox Multilingual or Qwen3-TTS Base for the hosts' personas (clone real voices) + Kokoro for minor speakers.
 
 ## ⌨️ Dictation / agent voice
 
@@ -59,7 +59,7 @@ JustVoice serves five distinct audiences. Pick your primary at first launch — 
 - Keep JustVoice running headless (`justvoice-server serve`).
 - MCP integrations with assistive tools, or a thin OS-level shim that pipes selected text to `/v1/render`.
 
-**Engine pick**: Kokoro (CPU-realtime, no GPU needed) or a small Chatterbox model.
+**Engine pick**: Kokoro (faster than real time on the CPU, no GPU needed).
 
 ---
 

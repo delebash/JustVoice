@@ -1,5 +1,5 @@
 import { chromium } from "playwright";
-const TABS = ["Overview","Generate","Chapter","Voices","Compare","Train","Personas","Lexicons","Engines","Cache","Settings"];
+const TABS = ["Overview","Generate","Chapter","Voices","Compare","Personas","Lexicons","Engines","Cache","Settings"];
 const b = await chromium.launch();
 const p = await b.newPage({ viewport: { width: 1280, height: 800 } });
 const errs = [];

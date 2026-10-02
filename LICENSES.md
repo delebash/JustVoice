@@ -8,8 +8,8 @@ Authoritative inventory of third-party software shipped with, bundled into, or i
 > text carrying the `<year> <owner>` placeholder, following the convention `MIT.txt` already set;
 > per-component copyright holders belong in `NOTICE.md`, not in these shared texts.
 >
-> No text is owed for `GPL-3.0-or-later`: `parselmouth` is not redistributed, and shipping the GPL
-> text would wrongly imply that it is.
+> No text is owed for the GPL: neither eSpeak NG nor `parselmouth` is redistributed, and shipping the
+> GPL text would wrongly imply that it is.
 >
 > BSD-3-Clause cl. 1–2 additionally require each component's *own* copyright notice, which a shared
 > placeholder text cannot carry. Those five notices are reproduced verbatim in `NOTICE.md` →
@@ -21,7 +21,7 @@ JustVoice is **MIT** (see `LICENSE`), and **nothing it distributes constrains th
 Two categories are inventoried here, and the difference between them is what decides whether a licence can propagate at all:
 
 - **Distributed** — code frozen into the shipped `justvoice-server` sidecar by PyInstaller, binaries bundled as Tauri `externalBin`, and the front-end. These form a combined work with JustVoice, so a copyleft licence here relicenses the whole product. That is exactly what `pedalboard` did.
-- **Installed on demand** — engine dependencies resolved from PyPI onto the user's machine, into the shared engine venv, when the user installs an engine. JustVoice never redistributes these, and each runs as a separate process. One of them is `GPL-3.0-or-later` and does **not** propagate — see *Installed on demand* below for why.
+- **Downloaded on demand** — what the app fetches onto the user's machine when the user installs or loads something: the audio.cpp speech runtime, eSpeak NG, and the speech models. JustVoice never redistributes these, and the runtime runs as a separate process. eSpeak NG is `GPL-3.0` and does **not** propagate — see *Downloaded on demand* below for why.
 
 The project was GPL-3.0-or-later between 2026-06-08 and 2026-07-29, forced by exactly one dependency: `pedalboard`, which is GPL-3.0 because it statically links JUCE. It was removed on 2026-07-29 and its twelve effects reimplemented in `server/justvoice/audio/dsp/` on numpy + scipy, with pitch shifting delegated to Signalsmith Stretch (MIT). See `NOTICE.md` for the full license history.
 
@@ -46,15 +46,6 @@ The project was GPL-3.0-or-later between 2026-06-08 and 2026-07-29, forced by ex
 | **cachetools** | `>=7.0` | `MIT` | ✓ | ✓ | https://github.com/tkem/cachetools |
 | **fastmcp** | `>=3.0,<4.0` | `Apache-2.0` | ✓ | ✓ | https://github.com/jlowin/fastmcp |
 | **llm-runner** (own repo, pinned SHA) | `git+…@e7d2f1c` | `MIT` | ✓ | ✓ | https://github.com/delebash/just-llm-runner |
-| **uv** (bundled binary, `externalBin`) | `0.12.0` (pinned in `release.yml`) | `Apache-2.0 OR MIT` | ✓ | ✓ | https://github.com/astral-sh/uv |
-| **sherpa-onnx** / **sherpa-onnx-python** | `>=1.13` (extra: `kokoro`) | `Apache-2.0` | ✓ | ✓ (GPLv3 only) | https://github.com/k2-fsa/sherpa-onnx |
-| **chatterbox-tts** | `>=0.2` (extra: `chatterbox`) | `MIT` | ✓ | ✓ | https://github.com/resemble-ai/chatterbox |
-| **qwen-tts** | `>=0.1` (extra: `qwen3`) | `Apache-2.0` | ✓ | ✓ | https://github.com/QwenLM/Qwen3-TTS |
-| **torch** | `>=2.2` (extras: `chatterbox`, `qwen3`) | `BSD-3-Clause` | ✓ | ✓ | https://github.com/pytorch/pytorch |
-| **peft** | `>=0.13` (extra: `training`) | `Apache-2.0` | ✓ | ✓ | https://github.com/huggingface/peft |
-| **transformers** | `>=4.45` (extra: `training`) | `Apache-2.0` | ✓ | ✓ | https://github.com/huggingface/transformers |
-| **safetensors** | `>=0.4` (extra: `training`) | `Apache-2.0` | ✓ | ✓ | https://github.com/huggingface/safetensors |
-| **faster-whisper** | `>=1.0` (extra: `training`) | `MIT` | ✓ | ✓ | https://github.com/SYSTRAN/faster-whisper |
 | **pyloudnorm** | `>=0.1` (Phase 2) | `MIT` | ✓ | ✓ | https://github.com/csteinmetz1/pyloudnorm |
 | **scipy** | `>=1.11` | `BSD-3-Clause` | ✓ | ✓ | https://github.com/scipy/scipy |
 | **python-stretch** (Signalsmith Stretch) | `>=0.3` | `MIT` | ✓ | ✓ | https://github.com/gregogiudici/python-stretch |
@@ -78,28 +69,40 @@ The two compatibility columns are kept because they record *why* each dependency
 - **AGPL** — would force the combined work to AGPL-3.0 if distributed. **There is no CI gate for this.** This line previously claimed `pip-licenses --fail-on AGPL-3.0` ran in CI; checked 2026-07-29, no workflow performs any licence check, so the only thing enforcing this file is a human following the refresh policy below. Worth building — it is the one check that would have caught `pedalboard` in June 2026 before the relicense.
 - **Anything copyleft** — GPL or LGPL — needs a decision, not a row. A copyleft dependency that is **distributed** relicenses the whole product (that is what pedalboard did); LGPL is survivable but only via dynamic linking, with notice and source-availability obligations attached. A copyleft dependency that is only **installed on demand** is a different case with a different answer — see the next section.
 
-## Installed on demand — not distributed
+## Downloaded on demand — not distributed
 
-Engine extras (`[chatterbox]`, `[qwen3]`, `[kokoro]`, `[all-engines]`) are **not** part of a release. `.github/workflows/release.yml` installs `./server[dev]` only — *"Install server without heavy ML extras to keep the sidecar small"* — so nothing in this section is frozen into `justvoice-server`. uv resolves these from PyPI onto the user's machine, into the shared engine venv, at the moment the user installs an engine.
+None of this is part of a release: `.github/workflows/release.yml` installs `./server[dev]` and
+bundles only the `justvoice-server` sidecar. Each item is fetched onto the user's machine, from its
+publisher, when the user installs the speech runtime or downloads a model.
 
-| Component | Reached via | SPDX license | Distributed by JustVoice |
+| Component | When it is fetched | SPDX license | Distributed by JustVoice |
 |---|---|---|---|
-| **parselmouth** (Praat) | `chatterbox-tts` → transitive | `GPL-3.0-or-later` | no |
+| **audio.cpp** (the speech runtime, prebuilt binaries — pinned `v0.9.0`) | Install speech runtime | `Apache-2.0` (Copyright 2026 ShugoAI LLC; the release ships no `NOTICE`) | no |
+| **eSpeak NG** (library + data, via the `espeakng-loader` 0.2.4 wheel — loader `MIT`) | Install speech runtime | `GPL-3.0` | no |
+| **Speech models** — GGUF files from `audio-cpp/audio.cpp-gguf` @ a pinned commit, each under its original model's licence | Download / first load | Kokoro-82M `Apache-2.0` · KittenTTS Mini 0.8 `Apache-2.0` · Pocket TTS `CC-BY-4.0` (its 20 presets `CC-BY-4.0` or `CC0-1.0` — NOTICE.md) · Qwen3-TTS, Qwen3-ASR, Qwen3-ForcedAligner `Apache-2.0` · Chatterbox `MIT` | no |
 
-**Why this GPL row does not relicense JustVoice.** GPL obligations attach to the *distribution* of a combined work, and JustVoice does not distribute parselmouth in any form. It is declared in no dependency list in this repository, imported by no line of JustVoice code (verified 2026-07-29 — the only mentions anywhere in the repo are this section and its counterpart in `NOTICE.md`), and absent from the shipped sidecar. The user's own machine fetches it from PyPI at their request, and it is imported only inside a `chatterbox` engine subprocess — its own interpreter, its own venv, across a process boundary. `chatterbox-tts` itself is `MIT`; the copyleft sits one level beneath it, and chatterbox manages its own licence obligations.
+Licences verified 2026-10-01: audio.cpp against the `LICENSE` in its release archive; the loader and
+eSpeak NG against their GitHub repositories (PyPI carries no licence metadata for the loader); each
+model directory against the licence table in the GGUF repository's README at the pinned commit,
+cross-checked against the upstream model cards. KittenTTS and Pocket TTS verified 2026-10-02 against
+their model cards, and Pocket TTS's presets against Kyutai's `kyutai/tts-voices` README — six of its
+26 presets are left out for non-commercial or unstated licences.
 
-Contrast `pedalboard`, which genuinely did force GPL on the whole project. The difference is not the licence — both are GPLv3 — it is the relationship:
+**Why the GPL row does not relicense JustVoice.** GPL obligations attach to the *distribution* of a
+combined work, and JustVoice does not distribute eSpeak NG in any form. No JustVoice code links or
+imports it: JustVoice downloads the published wheel onto the user's machine, unpacks the library and
+its data, and passes their paths to the audio.cpp runtime — a separate program, in its own process —
+which loads it to read text for Kokoro. Contrast `pedalboard`, which genuinely did force GPL on the
+whole project:
 
-| | `pedalboard` (forced GPL) | `parselmouth` (does not) |
+| | `pedalboard` (forced GPL) | eSpeak NG (does not) |
 |---|---|---|
-| Dependency kind | core, non-optional | optional extra, transitive |
+| Dependency kind | core, non-optional | fetched at the user's request |
 | In the shipped artifact? | **yes** — frozen by PyInstaller | no |
-| Who obtains it | JustVoice, and redistributes it | the user, from PyPI |
-| Linkage | in-process | separate venv, separate process |
+| Who obtains it | JustVoice, and redistributes it | the user's own install, from PyPI |
+| Linkage | in-process with JustVoice | inside the audio.cpp process |
 
 Redistribution **plus** in-process linkage is the only shape that propagates. Neither half alone does.
-
-**Decision, 2026-07-29: parselmouth stays.** Reviewed and accepted deliberately, on the reasoning above. It is documented as a section rather than a table row precisely because it is not a licence the product inherits — listing it alongside the distributed dependencies would imply that it is.
 
 ## Refresh policy
 
@@ -107,5 +110,6 @@ Redistribution **plus** in-process linkage is the only shape that propagates. Ne
 - On every Apache-2.0 dep bump, diff the upstream `NOTICE` against `NOTICE.md`'s snapshot.
 - On any novel license appearing (`pip-licenses` whitelist check fails), open an issue, add `LICENSES/<SPDX>.txt`, add a row here, and add a section in `NOTICE.md` before merging.
 - Before adding any GPL or LGPL dependency, read the row above about copyleft. `pedalboard` was added without that step in June 2026 and cost the project its permissive licence for seven weeks.
-- **Audit transitive dependencies, not just direct ones — and audit them per install target.** `parselmouth` was never "added"; it arrived beneath `chatterbox-tts`. Resolve each extra and inspect the whole tree (e.g. `uv pip compile --extra chatterbox server/pyproject.toml`). Where a copyleft hit lands decides the answer: in the **distributed** set it is a blocker, in the **installed on demand** set it is a decision to document.
-- Ask which set a new dependency joins before clearing it. A dep promoted from an engine extra into core `dependencies` moves from *installed on demand* to *distributed*, and its licence has to be re-cleared under the stricter rule even though nothing about the dep itself changed.
+- **Audit transitive dependencies, not just direct ones — and audit them per install target.** `parselmouth` was never "added"; it arrived beneath `chatterbox-tts`. Where a copyleft hit lands decides the answer: in the **distributed** set it is a blocker, in the **downloaded on demand** set it is a decision to document.
+- Ask which set a new dependency joins before clearing it. Something moved from a download into core `dependencies` (or into the bundle) moves from *downloaded on demand* to *distributed*, and its licence has to be re-cleared under the stricter rule even though nothing about it changed.
+- A new speech model or a new runtime release: re-check the model's licence row in the GGUF repository's README at the new pinned commit, and the runtime archive's `LICENSE` (and any `NOTICE`).

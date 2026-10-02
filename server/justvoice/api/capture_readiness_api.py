@@ -1,9 +1,14 @@
 # SPDX-License-Identifier: MIT
-"""/v1/capture/readiness — Whisper + LLM model readiness for dictation.
+"""/v1/capture/readiness — speech-recognition + LLM model readiness for dictation.
 
 Polled every 5s by useDictationReadiness while either model is missing
 or downloading; stops once both green. Drives the 6-gate readiness
 checklist + the hotkey-enabled toggle gating in Settings → Captures.
+
+Speech recognition is the `asr` engine's model in the speech runtime (the
+2026-10-01 switch replaced Whisper): ready = the model the dictation setting
+names (`settings.captures.stt_model`) is in the speech cache. It loads on first
+use, so "downloaded" is the gate, not "loaded".
 """
 
 from __future__ import annotations
@@ -12,7 +17,6 @@ from typing import Optional
 
 from fastapi import APIRouter
 from pydantic import BaseModel
-
 
 router = APIRouter(tags=["captures"])
 
@@ -31,36 +35,26 @@ class CaptureReadiness(BaseModel):
     llm: ModelReadiness
 
 
-_WHISPER_DEFAULT = "turbo"
-
-_WHISPER_DISPLAY = {
-    "base": "Whisper Base (74M)",
-    "small": "Whisper Small (244M)",
-    "medium": "Whisper Medium (769M)",
-    "large": "Whisper Large (1.5B)",
-    "turbo": "Whisper Large v3 Turbo",
-}
-_WHISPER_SIZE_MB = {"base": 74, "small": 244, "medium": 769, "large": 1500, "turbo": 1500}
-
-
-def _check_model_cached(hf_repo: str) -> bool:
-    """Quick HF cache probe — same shape as engines/_torch_helpers.is_model_cached
-    but inline so this endpoint doesn't pull torch into the API import graph.
-    """
+def _stt_readiness() -> ModelReadiness:
+    """The dictation recogniser: on disk in the speech cache = ready."""
     try:
-        from pathlib import Path
+        from ..app_state import get_state
+        from ..engines.model_catalog import models_for
+        from ..speech_cache import variant_on_disk
 
-        from huggingface_hub import constants as hf_constants
-
-        repo_cache = Path(hf_constants.HF_HUB_CACHE) / ("models--" + hf_repo.replace("/", "--"))
-        if not repo_cache.exists():
-            return False
-        snaps = repo_cache / "snapshots"
-        if not snaps.exists():
-            return False
-        return bool(list(snaps.rglob("*.safetensors")) or list(snaps.rglob("*.bin")))
-    except Exception:
-        return False
+        st = get_state()
+        want = st.settings.get().captures.stt_model
+        variants = models_for("asr")
+        v = next((x for x in variants if x.id == want), None) or (variants[0] if variants else None)
+        if v is None:
+            return ModelReadiness(ready=False, display_name="No speech-recognition model")
+        return ModelReadiness(
+            ready=variant_on_disk(st.data_dir, "asr", v.id),
+            display_name=v.name,
+            size_mb=v.size_mb or None,
+        )
+    except Exception:  # noqa: BLE001 — not-set-up is a state, not an error
+        return ModelReadiness(ready=False, display_name="Speech recognition not set up")
 
 
 def _llm_readiness() -> ModelReadiness:
@@ -89,16 +83,4 @@ def _llm_readiness() -> ModelReadiness:
 
 @router.get("/v1/capture/readiness", response_model=CaptureReadiness)
 async def get_capture_readiness() -> CaptureReadiness:
-    # Default model picks; in a fuller implementation we'd read these from
-    # CaptureSettings. For v1 we use the defaults.
-    whisper_model = _WHISPER_DEFAULT
-    whisper_ready = _check_model_cached(f"openai/whisper-{whisper_model}")
-
-    return CaptureReadiness(
-        stt=ModelReadiness(
-            ready=whisper_ready,
-            display_name=_WHISPER_DISPLAY.get(whisper_model, whisper_model),
-            size_mb=_WHISPER_SIZE_MB.get(whisper_model),
-        ),
-        llm=_llm_readiness(),
-    )
+    return CaptureReadiness(stt=_stt_readiness(), llm=_llm_readiness())

@@ -6,8 +6,7 @@ model files live at ``<data_dir>/speech-cache/<engine>/<variant>/`` as PLAIN
 files at their repo-relative paths, with one ``files.json`` per variant as
 the on-disk truth:
 
-    {"repo": "...", "revision": "main", "commit_sha": "...",
-     "url": "",                       # tarball-sourced variants carry it
+    {"sources": [{"hf_repo": "...", "revision": "...", "commit_sha": "..."}],
      "fetched_at": 1755150000000,
      "files": [{"path": "...", "size": 123, "oid": "..."}, ...]}
 
@@ -23,9 +22,9 @@ Design points, each deliberate:
 - `variant_on_disk` verifies every manifest file exists at its recorded
   size (stat, no hashing) — this replaces folder-non-empty heuristics and
   HF-cache probing for speech engines.
-- Multi-repo variants (TADA: codec + model) nest one subdir per repo under
-  the variant dir (``<owner>--<name>/``); single-repo variants keep their
-  files at the variant root — the dir the engine's local load door gets.
+- Multi-repo variants nest one subdir per repo under the variant dir
+  (``<owner>--<name>/``); single-repo variants keep their files at the variant
+  root — the folder the speech runtime's config points into.
 """
 
 from __future__ import annotations
@@ -197,20 +196,5 @@ def fetch_hf_variant(
         "fetched_at": int(time.time() * 1000),
         "files": recorded,
     }
-    atomic_write_json(vdir / MANIFEST_NAME, manifest)
-    return manifest
-
-
-def write_manifest_from_dir(vdir: Path, *, url: str = "") -> dict[str, Any]:
-    """Manifest for a variant that arrived OUTSIDE the HF path (kokoro's
-    extracted release tarball): walk the tree, record path+size (oid empty
-    — no upstream blob id exists for tarball members)."""
-    files = []
-    for p in sorted(vdir.rglob("*")):
-        if p.is_file() and p.name != MANIFEST_NAME:
-            files.append({"path": p.relative_to(vdir).as_posix(),
-                          "size": p.stat().st_size, "oid": ""})
-    manifest = {"sources": [], "url": url,
-                "fetched_at": int(time.time() * 1000), "files": files}
     atomic_write_json(vdir / MANIFEST_NAME, manifest)
     return manifest

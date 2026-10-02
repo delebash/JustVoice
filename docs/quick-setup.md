@@ -9,22 +9,38 @@ setup wizard that gets you from a fresh install to working TTS in three steps:
 
 1. **Detect** — probes your GPU + which engines + LLM providers are already registered.
 2. **Confirm** — shows a recommended setup for your hardware tier; lets you override.
-3. **Install** — installs the recommended TTS engines.
+3. **Install** — installs the **speech runtime**, the one program every voice engine runs on.
 
-Total time depends on download size: 0.4 GB for CPU tier, up to 22 GB for the full 32 GB GPU tier.
+Every voice engine runs on the same speech runtime (see
+[Engines → The speech runtime](engines.md#the-speech-runtime)), so the install
+step is one download, not one per engine: 60–460 MB depending on your graphics
+card (the NVIDIA CUDA build is the large one). Each engine's model then
+downloads the first time you load it — the tier decides which engines that will
+be, and the estimate below is that total.
 
 ## Hardware tiers
 
-| Tier | VRAM range | Engines installed | Estimated download |
+| Tier | VRAM range | Engines — and where each runs | Models to download (on first load) |
 |---|---|---|---|
-| **CPU / low VRAM** | <7 GB | Kokoro | 0.4 GB |
-| **8 GB** | 7-11 GB | Kokoro + Chatterbox | 2.4 GB |
-| **12 GB** | 11-14 GB | Kokoro + Chatterbox + Qwen3-TTS | 8.1 GB |
-| **16 GB** | 14-20 GB | adds LuxTTS | 9.3 GB |
-| **24 GB** | 20-28 GB | adds MOSS-TTSD | 13.4 GB |
-| **32 GB+** | 28 GB+ | adds TADA Llama | 33.0 GB |
+| **CPU / low VRAM** | <7 GB | Kokoro, KittenTTS and Pocket TTS — preset voices and cloning, all on the CPU | 0.8 GB |
+| **8 GB** | 7-11 GB | Kokoro and Pocket TTS on the CPU (keeps the card free for the AI model) + Chatterbox Multilingual on the graphics card | 2.5 GB |
+| **12 GB+** | 11 GB+ | as 8 GB, plus Qwen3-TTS on the graphics card | 5.4 GB |
 
-JustVoice auto-detects your VRAM via `/v1/system/info` and pre-picks the right tier. You can override with the dropdown in the confirm step — useful if you'd rather not download 14 GB on a 24 GB card right now.
+The sizes are each engine's default 8-bit model (Pocket TTS: English). Qwen3-TTS
+starts the 12 GB tier because its 1.7B model peaked at 7.8 GB of graphics memory
+on its own on an 8 GB card while rendering a book; on a smaller card it would
+leave nothing for anything else. Kokoro, KittenTTS and Pocket TTS each speak more
+than three times faster than real time on an 8-core CPU, so on the CPU they cost
+the AI model nothing.
+
+Each engine in the list says where it will run. That is the expected place; at
+each load **Auto** decides from what it has measured on your machine — see
+[Engines → Where each model runs](engines.md#where-each-model-runs--the-graphics-card-or-the-cpu).
+Pocket TTS asks you to accept Kyutai's terms before its first clone.
+
+JustVoice auto-detects your VRAM via `/v1/system/info` and pre-picks the right
+tier. You can override it with the dropdown in the confirm step, and uncheck
+any engine you don't want — the runtime install is the same either way.
 
 ## What about the AI features?
 
@@ -39,26 +55,27 @@ model); per-feature choices live under Routing by feature. See
 
 ## Watching install progress
 
-The install step shows one row per engine being installed with:
+The install step shows one bar, **Speech runtime**, with the download's real
+bytes and percent and the stage it has reached. The runtime is downloaded,
+checked that it starts on this machine, and only then put in place.
 
-- Engine name + id.
-- A progress bar (deterministic when the job reports bytes-total, indeterminate-shimmer otherwise).
-- The current phase (`queued` / `downloading` / `loading_weights` / `completed` / `failed`).
-- An error message if anything fails.
-
-You can **Cancel** mid-install. Engines that have already completed are kept; the in-progress engine's subprocess is killed and any partial download is reaped. The wizard then jumps to the Done step.
+You can **Cancel** mid-install. A cancelled install changes nothing — the
+runtime is only put in place once it has downloaded and passed its check. The
+wizard then jumps to the Done step.
 
 ## Done step
 
-Shows a success summary — N voice engines installed (with failures counted) —
-and, when no text-AI model is set up yet, a pointer to the LLM engine setup
-under AI Settings.
+Says whether the speech runtime installed (with the error if it didn't, and a
+pointer to retry from AI Settings → Speech engines), reminds you that each
+engine's model downloads the first time you load it — on the Voices page or on
+AI Settings → Speech engines — and, when no text-AI model is set up yet, points
+to the LLM engine setup under AI Settings.
 
 ## Skipping the wizard
 
 Click **Skip — configure later** in the confirm step. You can:
 
-- Install voice engines manually on the Speech engines tab of the AI page.
+- Install the speech runtime yourself from the **Speech runtime** row at the top of the Speech engines tab on the AI page, and download models from each engine's rows.
 
 The wizard re-runs from **Settings → About → Run welcome again**.
 
@@ -71,5 +88,5 @@ doesn't make it re-pop on an install you already set up.
 ## Troubleshooting
 
 - **Detection shows "CPU only" but you have a GPU** — check Settings → GPU. If JustVoice doesn't detect a runtime (CUDA / Metal / DirectML), your driver may need to be reinstalled or the runtime isn't on your PATH. Pick the tier manually for now.
-- **An engine install fails while building its environment** — each engine builds its own Python environment before its models download, which takes a few minutes the first time and is quicker afterwards (the downloads are cached and shared). If it fails, check Settings → Logs for the pip output. Common causes: a PyPI rate limit, or a build dependency missing from your system. Only that engine is affected — retry it from its own **Install** button.
+- **The speech runtime fails to install** — the bar shows the error; most often it is the download. Retry from **Install speech runtime** on the AI page's Speech engines tab. See [GPU](gpu.md#troubleshooting).
 - **AI features answer 501** — the text-AI model isn't set up; that's the other wizard: AI Settings → Run LLM engine setup.

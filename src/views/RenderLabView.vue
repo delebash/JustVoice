@@ -11,6 +11,7 @@
 import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "@delebash/llm-ui";
+import { handleTermsRefusal } from "../services/engineTerms.js";
 import { promptDialog } from "@delebash/llm-ui";
 import { UiButton, UiInput, UiTextarea, UiToggle, UiTag, UiSelect } from "@delebash/llm-ui";
 import { useVoicesStore } from "../stores/voices.js";
@@ -98,6 +99,7 @@ async function renderCell(cell) {
   } catch (e) {
     cell.status = "failed";
     cell.error = String(e?.message || e);
+    handleTermsRefusal(e);
   }
 }
 

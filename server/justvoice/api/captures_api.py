@@ -2,12 +2,12 @@
 #
 # Route surface adapted from voicebox (MIT) — backend/routes/captures.py +
 # routes/transcription.py at the commit pinned in voicebox-pin.txt,
-# rewritten on JustVoice's managed-engine architecture (Whisper runs in
-# the stt-slot subprocess; refinement routes through the LLM provider
-# dispatch). Original copyright (c) the voicebox authors.
+# rewritten on JustVoice's managed-engine architecture (the recogniser runs
+# in the stt slot of the speech runtime; refinement routes through the LLM
+# provider dispatch). Original copyright (c) the voicebox authors.
 """/v1/captures + /v1/transcribe — the dictation backend (parity gaps
 G1/G2). The desktop hotkey records audio and POSTs it here; headless
-callers upload files. The Capture row stores BOTH the raw Whisper output
+callers upload files. The Capture row stores BOTH the raw recogniser output
 and the post-refinement transcript so the UI can toggle between them.
 """
 
@@ -45,38 +45,29 @@ def _captures_dir() -> Path:
     return d
 
 
-def _stt_transcribe(audio_path: str, language: str | None) -> str:
-    """The text alone — what dictation, MCP and the /v1/transcribe door want.
-
-    Callers that need Whisper's own certainty (the Preparer's min-confidence
-    gate) call `_stt_transcribe_detailed` instead."""
-    return _stt_transcribe_detailed(audio_path, language)["text"]
-
-
 def ensure_stt_loaded():
-    """The stt slot's manager, with whisper auto-loaded on first use.
+    """The stt slot's manager, with speech recognition auto-loaded on first use.
     Shared by transcription and word alignment — one loading rule."""
     from ..engines.manager import get_manager
 
     mgr = get_manager()
     settings = get_state().settings.get()
     if mgr.loaded_for("stt") is None:
-        status = mgr.status("whisper")
+        status = mgr.status("asr")
         if status == "installed":
-            log.info("captures: auto-loading whisper (%s) on first use", settings.captures.stt_model)
-            mgr.load("whisper", device="auto", variant=settings.captures.stt_model)
+            log.info("captures: auto-loading speech recognition (%s) on first use",
+                     settings.captures.stt_model)
+            mgr.load("asr", device="auto", variant=settings.captures.stt_model)
         else:
             raise bad_request(
-                f"STT engine 'whisper' is {status} — install it on the Engines tab first"
+                f"Speech recognition is {status} — install the speech runtime on the AI page first"
             )
     return mgr, settings
 
 
-def _stt_transcribe_detailed(audio_path: str, language: str | None) -> dict:
-    """Transcribe via the stt-slot engine; auto-load whisper if installed.
-
-    Returns `{"text", "confidence"}`; `confidence` is None when the engine
-    cannot measure it (UNKNOWN — never gate on None)."""
+def _stt_transcribe(audio_path: str, language: str | None) -> str:
+    """Transcribe via the stt-slot engine; auto-load speech recognition if installed.
+    What dictation, MCP and the /v1/transcribe door share."""
     mgr, settings = ensure_stt_loaded()
     lang = language or settings.captures.language
     return mgr.transcribe(
@@ -165,11 +156,7 @@ async def transcribe(
             tmp.write(chunk)
         tmp_path = Path(tmp.name)
     try:
-        # Detailed on purpose: the LoRA clip table shows the transcriber's
-        # own certainty next to each transcript, and this door returning
-        # text-only silently starved that display (found 2026-08-21).
-        r = _stt_transcribe_detailed(str(tmp_path), language)
-        return {"text": r["text"], "confidence": r.get("confidence"), "language": language}
+        return {"text": _stt_transcribe(str(tmp_path), language), "language": language}
     finally:
         tmp_path.unlink(missing_ok=True)
 
@@ -305,7 +292,7 @@ async def refine_capture(
 async def retranscribe_capture(
     capture_id: str, language: str | None = None, db: Session = Depends(get_db)
 ) -> CaptureRow:
-    """Re-run STT on the stored audio (e.g. after switching Whisper sizes),
+    """Re-run STT on the stored audio (e.g. after switching recognition models),
     then re-apply the capture's refinement flags."""
     c = db.query(Capture).filter(Capture.id == capture_id).first()
     if not c:

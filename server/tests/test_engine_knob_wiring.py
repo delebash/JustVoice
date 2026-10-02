@@ -1,154 +1,103 @@
 # SPDX-License-Identifier: MIT
-"""Every declared knob must be a knob an adapter actually forwards.
+"""Every declared knob must be a knob the engine actually receives.
 
 The 2026-08-17 audit found 13 knobs declared in `capability_details` that no
 engine adapter read, and 7 the adapters read that nothing declared. Both
 directions are user-visible lies: a slider that moves nothing, or a control
-that exists but cannot be reached. These tests pin the wiring so the two
-files cannot drift apart again silently.
+that exists but cannot be reached. Since the 2026-10-01 switch the "adapter"
+is one function — `engines/audiocpp/slot.py: to_speech_request`, which maps our
+request onto audio.cpp's — so these tests drive it directly: set every
+declared knob, and the value must come out the other side.
 """
 
 from __future__ import annotations
 
-import re
-from pathlib import Path
-
 import pytest
 
 from justvoice.delivery_merge import nest_engine_keys
+from justvoice.engines.audiocpp.slot import to_speech_request
 from justvoice.engines.capability_details import CAPABILITY_DETAILS, lookup
+from justvoice.engines.manager import discover_engines
 from justvoice.models import Delivery
 
-
-ENGINES_DIR = Path(__file__).resolve().parents[1] / "justvoice" / "engines"
-
-# Capability-map key → the adapter file that has to consume its knobs.
-# Variant rows share their base engine's adapter.
-ADAPTER_FOR = {
-    "kokoro": "kokoro",
-    "chatterbox": "chatterbox",
-    "chatterbox-turbo": "chatterbox",
-    "chatterbox-nano": "chatterbox",
-    "chatterbox-multilingual": "chatterbox",
-    "qwen3": "qwen3",
-    # The qwen3 checkpoint families (2026-08-19) share the qwen3 adapter;
-    # their rows differ in capability, not knobs.
-    "qwen3-cv": "qwen3",
-    "qwen3-base": "qwen3",
-    "qwen3-vd": "qwen3",
-    # The macOS MLX Base rows — full-id keys that pre-empt the suffix walk
-    # to drop training (see the bottom of capability_details.py).
-    "qwen3-base-1.7b-mlx": "qwen3",
-    "qwen3-base-0.6b-mlx": "qwen3",
-    "luxtts": "luxtts",
-    "moss-tts": "moss_tts",
-    "tada": "tada",
-    # Alias rows for the two families whose variant ids diverge from their
-    # engine id (see the bottom of capability_details.py). Same object, so
-    # these re-check the same content — cheap, and it keeps the parametrised
-    # tests total over CAPABILITY_DETAILS rather than a hand-kept subset.
-    "moss-ttsd": "moss_tts",
+# Capability row → a catalog variant that renders with it, and how the body
+# must look for that family to take the request at all (a clone needs a clip,
+# VoiceDesign a description).
+ROW_VARIANT = {
+    "kokoro": ("kokoro", "kokoro-82m-q8", {"voice_id": "af_heart"}),
+    "chatterbox": ("chatterbox", "chatterbox-multilingual-v2-q8", {"audio_prompt_path": "/v/ref.wav"}),
+    "chatterbox-multilingual": ("chatterbox", "chatterbox-multilingual-v2-q8",
+                                {"audio_prompt_path": "/v/ref.wav"}),
+    "qwen3": ("qwen3", "qwen3-cv-1.7b-q8", {"voice_id": "Ryan"}),
+    "qwen3-cv": ("qwen3", "qwen3-cv-1.7b-q8", {"voice_id": "Ryan"}),
+    "qwen3-base": ("qwen3", "qwen3-base-1.7b-q8", {"audio_prompt_path": "/v/ref.wav"}),
+    "qwen3-vd": ("qwen3", "qwen3-vd-1.7b-q8", {"delivery": {"instruct": "A gravel voice."}}),
+    "kitten": ("kitten", "kitten-mini-0.8", {"voice_id": "kitten_leo"}),
+    "pocket": ("pocket", "pocket-en-q8", {"voice_id": "pocket_alba"}),
 }
 
-# Knobs satisfied by a canonical Delivery field or by host-side handling
-# rather than by an `engine_overrides.get(...)` read in the adapter.
-HOST_HANDLED = {
-    "seed",        # render_core resolves it; adapters call torch.manual_seed
-    "speed",       # canonical Delivery field, read as delivery["speed"]
-    "temperature",  # canonical Delivery field, adapters read it top-level
+# Where each knob lands in audio.cpp's request ("options.x" = inside options).
+LANDS_AT = {
+    "speed": "speed", "seed": "seed",
+    "temperature": "options.temperature", "talker_temperature": "options.temperature",
+    "exaggeration": "options.exaggeration", "cfg_weight": "options.guidance_scale",
+    "repetition_penalty": "options.repetition_penalty", "top_p": "options.top_p",
+    "talker_top_k": "options.top_k", "talker_top_p": "options.top_p",
 }
+TOP_LEVEL = {"speed", "seed"}   # canonical Delivery fields / the request's own seed
 
 
-def _adapter_source(engine: str) -> str:
-    path = ENGINES_DIR / engine / "engine.py"
-    return path.read_text(encoding="utf-8") if path.is_file() else ""
+def _row(engine: str, variant: str) -> dict:
+    return next(r for r in discover_engines()[engine].module.VARIANTS if r["id"] == variant)
+
+
+def test_every_capability_row_has_a_variant_to_drive() -> None:
+    assert set(ROW_VARIANT) == set(CAPABILITY_DETAILS)
 
 
 @pytest.mark.parametrize("cap_id", sorted(CAPABILITY_DETAILS))
-def test_every_declared_knob_is_read_by_its_adapter(cap_id: str) -> None:
+def test_every_declared_knob_reaches_the_runtime(cap_id: str) -> None:
     """No slider may exist that the engine never receives."""
-    detail = CAPABILITY_DETAILS[cap_id]
-    src = _adapter_source(ADAPTER_FOR[cap_id])
-    assert src, f"no adapter source for {cap_id}"
-    for knob in detail.knobs:
-        if knob.key in HOST_HANDLED:
-            continue
-        assert re.search(rf'["\']{re.escape(knob.key)}["\']', src), (
-            f"{cap_id}: knob {knob.key!r} is declared but "
-            f"{ADAPTER_FOR[cap_id]}/engine.py never reads it"
-        )
-
-
-@pytest.mark.parametrize("engine", sorted(set(ADAPTER_FOR.values())))
-def test_every_override_the_adapter_reads_is_declared(engine: str) -> None:
-    """No engine control may exist that no UI can reach."""
-    src = _adapter_source(engine)
-    read = set(re.findall(r'engine_overrides\.get\(\s*["\'](\w+)["\']', src))
-    declared: set[str] = set()
-    for cap_id, adapter in ADAPTER_FOR.items():
-        if adapter == engine:
-            declared |= {k.key for k in CAPABILITY_DETAILS[cap_id].knobs}
-    # Non-numeric overrides that ride the same subdict but cannot be KnobSpecs
-    # (which are slider + number only), so they are surfaced another way:
-    #   instruct — qwen3's textarea, gated by supports_instruct_freeform
-    #   prefix_speaker_2 was dia2's second reference-clip PATH; it went with
-    #     the engine on 2026-08-17.
-    declared |= {"instruct"}
-    missing = read - declared
-    assert not missing, (
-        f"{engine}/engine.py reads {sorted(missing)} from delivery.engine "
-        f"but capability_details declares no knob for them — unreachable"
-    )
+    engine, variant, base = ROW_VARIANT[cap_id]
+    for knob in CAPABILITY_DETAILS[cap_id].knobs:
+        assert knob.key in LANDS_AT, f"{cap_id}: knob {knob.key!r} has no audio.cpp mapping"
+        value = (knob.max if knob.max != knob.default else knob.min)
+        body = {"text": "Hi.", "language": "en", **base}
+        delivery = dict(base.get("delivery") or {})
+        if knob.key == "seed":
+            body["seed"] = int(value)
+        elif knob.key in TOP_LEVEL:
+            delivery[knob.key] = value
+        else:
+            delivery["engine"] = {knob.key: value}
+        body["delivery"] = delivery
+        req = to_speech_request(_row(engine, variant), body)
+        where = LANDS_AT[knob.key]
+        got = (req.get("options") or {}).get(where[8:]) if where.startswith("options.") else req.get(where)
+        assert got == pytest.approx(value), f"{cap_id}: {knob.key}={value} reached audio.cpp as {got!r}"
 
 
 def test_variant_lookup_walks_suffixes_not_just_the_base() -> None:
-    """`chatterbox-turbo-v1` must reach Turbo's row, not the base engine's.
-
-    The old `split("-")[0]` jumped straight to "chatterbox", which serves
-    Multilingual's exaggeration / cfg_weight and hides Turbo's tags.
-    """
-    turbo = lookup("chatterbox-turbo-v1")
-    assert turbo is not None and turbo.engine_id == "chatterbox-turbo"
-    multi = lookup("chatterbox-multilingual-v2")
-    assert multi is not None and multi.engine_id == "chatterbox-multilingual"
-    # A bare engine id still resolves to itself.
+    """A manifest variant id carries a version/precision tail the capability map
+    does not; the walk must reach the most specific row, not the engine's."""
+    assert lookup("chatterbox-multilingual-v2-q8").engine_id == "chatterbox-multilingual"
+    assert lookup("qwen3-base-1.7b-q8").engine_id == "qwen3-base"
     assert lookup("chatterbox").engine_id == "chatterbox"
     # An unrelated id with a tail falls through to nothing, not to a wrong row.
     assert lookup("totally-unknown-engine") is None
 
 
 def test_every_manifest_variant_resolves_to_a_row() -> None:
-    """A variant the catalog offers must reach a capability row.
-
-    `GET /v1/engines/{variant_id}/capabilities` 404'd for `moss-ttsd-v0`
-    because the family is named differently from its engine id and the
-    suffix walk never reaches it.
-    A 404 here means the Generate UI silently falls back to the engine's row —
-    or to nothing.
-    """
-    import importlib
-
+    """A variant the catalog offers must reach a capability row (speech
+    recognition has none by design — nothing to tune)."""
     unresolved = []
-    for engine_dir in sorted(p.name for p in ENGINES_DIR.iterdir() if p.is_dir()):
-        if engine_dir.startswith(".") or not (ENGINES_DIR / engine_dir / "manifest.py").is_file():
+    for engine_id, m in discover_engines().items():
+        if lookup(engine_id) is None:
             continue
-        mod = importlib.import_module(f"justvoice.engines.{engine_dir}.manifest")
-        # Speech-to-text engines (whisper) have no TTS capability row by
-        # design — nothing to tune, nothing to look up.
-        if lookup(getattr(mod, "ID", engine_dir)) is None:
-            continue
-        for variant in getattr(mod, "VARIANTS", []) or []:
-            vid = variant.get("id")
-            if vid and lookup(vid) is None:
-                unresolved.append(f"{engine_dir}:{vid}")
-    assert not unresolved, (
-        f"variant ids that reach no capability row: {unresolved} — add an alias "
-        f"in capability_details.py or rename the variant"
-    )
-
-
-def test_the_divergent_family_aliases_point_at_the_right_engines() -> None:
-    assert lookup("moss-ttsd-v0").engine_id == "moss-tts"
+        for variant in getattr(m.module, "VARIANTS", []) or []:
+            if lookup(variant["id"]) is None:
+                unresolved.append(f"{engine_id}:{variant['id']}")
+    assert not unresolved, f"variant ids that reach no capability row: {unresolved}"
 
 
 def test_nest_engine_keys_moves_private_knobs_under_engine() -> None:
@@ -180,3 +129,11 @@ def test_canonical_delivery_fields_are_never_nested() -> None:
     out = nest_engine_keys(flat)
     assert "engine" not in out
     assert set(out) == set(flat)
+
+
+def test_every_capability_row_has_its_own_display_name():
+    """A picker listing two rows under one name is the duplicate this fixed
+    (Nano and Turbo, the two MLX Base rows — all gone with the 2026-10-01
+    switch; the rule stays for whatever row comes next)."""
+    names = [d.display_name for d in CAPABILITY_DETAILS.values()]
+    assert len(set(names)) == len(names), names

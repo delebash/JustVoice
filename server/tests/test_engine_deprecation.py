@@ -30,27 +30,28 @@ from justvoice.engines import manager as mgr_mod
 from justvoice.engines.manager import discover_engines
 
 
-# The roster decision. Engines here must carry a DEPRECATED reason; every
-# other shipped engine must NOT — a stray mark would silently hide a keeper.
-MARKED_FOR_REMOVAL = {"tada", "moss-tts"}
+# Nothing shipped is marked today: the two engines the 2026-08-17 roster marked
+# (TADA, MOSS-TTSD) were removed outright with the 2026-10-01 switch. The
+# mechanism stays for the next one, so these tests mark Kokoro for the length of
+# a test.
+REASON = "Marked for removal in this test — the reason a user reads on the badge."
 
 
-def test_exactly_the_decided_engines_are_marked():
+@pytest.fixture
+def marked(monkeypatch):
+    m = discover_engines()["kokoro"]
+    monkeypatch.setattr(m.module, "DEPRECATED", REASON, raising=False)
+    return m
+
+
+def test_no_shipped_engine_is_marked():
     marked = {eid for eid, m in discover_engines().items() if m.deprecated}
-    assert marked == MARKED_FOR_REMOVAL, (
-        f"marked-for-removal set drifted from the 2026-08-17 roster decision: "
-        f"expected {sorted(MARKED_FOR_REMOVAL)}, found {sorted(marked)}. "
-        f"If the roster changed, change this test and the plan doc together."
-    )
+    assert marked == set(), f"an engine is marked for removal: {sorted(marked)}"
 
 
-@pytest.mark.parametrize("engine_id", sorted(MARKED_FOR_REMOVAL))
-def test_the_mark_carries_a_reason_a_user_can_read(engine_id):
+def test_the_mark_is_the_reason_a_user_reads(marked):
     """The flag is a sentence, not a boolean — the UI shows it verbatim."""
-    reason = discover_engines()[engine_id].deprecated
-    assert reason, f"{engine_id} is marked with an empty reason"
-    assert len(reason) > 30, f"{engine_id}'s reason is too terse to help: {reason!r}"
-    assert reason[0].isupper(), f"{engine_id}'s reason should read as prose: {reason!r}"
+    assert marked.deprecated == REASON
 
 
 def test_an_unmarked_engine_reports_an_empty_string_not_none():
@@ -59,45 +60,29 @@ def test_an_unmarked_engine_reports_an_empty_string_not_none():
         assert isinstance(m.deprecated, str), f"{eid} returned {type(m.deprecated)}"
 
 
-def test_marking_does_NOT_block_install(monkeypatch):
-    """The user said mark and hide, NOT remove.
-
-    A marked engine that somebody already installed has to keep working, and
-    re-installing it must stay possible. This test exists so a later change
-    cannot quietly promote the mark into a gate — the way the OS gate is one.
-    """
+def test_marking_does_NOT_block_install(marked, monkeypatch):
+    """The user said mark and hide, NOT remove: a marked engine somebody already
+    installed keeps working, and installing it again stays possible. This test
+    exists so a later change cannot quietly promote the mark into a gate — the
+    way the OS gate is one."""
     called: list[str] = []
-    monkeypatch.setattr(
-        mgr_mod, "_install_engine_isolated", lambda *a, **k: called.append("isolated")
-    )
-
-    for engine_id in sorted(MARKED_FOR_REMOVAL):
-        m = discover_engines()[engine_id]
-        assert m.deprecated  # precondition
-        mgr_mod.install_engine(m)  # must not raise
-
-    assert len(called) == len(MARKED_FOR_REMOVAL), (
-        f"a marked engine was refused installation: {called}"
-    )
+    monkeypatch.setattr(mgr_mod, "_install_audiocpp_runtime",
+                        lambda *a, **k: called.append("runtime"))
+    mgr_mod.install_engine(marked)  # must not raise
+    assert called == ["runtime"]
 
 
-def test_the_catalog_serves_the_mark():
+def test_the_catalog_serves_the_mark(marked, tmp_path):
     from fastapi.testclient import TestClient
 
     from justvoice.app import create_app
 
-    with TestClient(create_app()) as client:
+    with TestClient(create_app(data_dir=tmp_path)) as client:
         body = client.get("/v1/engines").json()
 
     served = {e["id"]: e for e in body["engines"] if e.get("backend") == "managed"}
     assert served, "no managed engines served"
-
-    manifests = discover_engines()
+    assert served["kokoro"]["deprecated"] == REASON
     for engine_id, row in served.items():
-        assert "deprecated" in row, f"{engine_id} served no deprecated field"
-        assert row["deprecated"] == manifests[engine_id].deprecated
-
-    for engine_id in MARKED_FOR_REMOVAL:
-        assert served[engine_id]["deprecated"], (
-            f"{engine_id} is marked in its manifest but the catalog says otherwise"
-        )
+        if engine_id != "kokoro":
+            assert row["deprecated"] == "", engine_id

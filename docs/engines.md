@@ -1,182 +1,361 @@
 # Engines
 
-JustVoice ships with 6 commercial-output-permitting TTS engines plus an external OpenAI-compatible bridge. Each engine runs in its own Python environment, so installing Chatterbox cannot touch Kokoro's dependencies — see [Where the Python environments live](#where-the-python-environments-live).
+Every local speech engine in JustVoice runs on **one program — the speech
+runtime**. It is [audio.cpp](https://github.com/0xShug0/audio.cpp) (Apache-2.0),
+a C++ runtime for speech models, and JustVoice installs the build that suits
+your hardware, starts it when a model loads, and stops it when you close the
+app. Each engine is then just a set of model files the runtime can load:
+Kokoro, KittenTTS, Pocket TTS, Qwen3-TTS and Chatterbox for speech, and
+Speech recognition for turning speech back into text. Each model runs on your
+graphics card or your CPU — chosen per model, see
+[Where each model runs](#where-each-model-runs--the-graphics-card-or-the-cpu).
 
-> **Why no Higgs?** Higgs Audio v3 was removed 2026-06-09 — its model weights are released under a non-commercial license, which conflicts with JustVoice's audiobook / game / podcast use cases where users sell their generated output. Every remaining bundled engine's weights permit commercial output (verified against each engine's HuggingFace model card).
->
-> **TADA attribution.** TADA's wrapper code is Apache-2.0 but its weights are released under the Llama 3.2 Community License (it's built on Llama 3.2). The license requires any product or service built on Llama-derivative models to display **"Built with Llama"** in the UI AND include the same notice in documentation. JustVoice surfaces it on the TADA Engines card under the description (driven by the engine manifest's `WEIGHTS_LICENSE` + `ATTRIBUTION` fields). If you publish work produced with TADA (audiobook, podcast, game), reproduce **"Built with Llama"** in your credits. See `NOTICE.md` for the authoritative copy.
+Until 2026-10-01 each engine was its own Python program in its own Python
+environment. The runtime replaced all of them at once, for three reasons we
+measured on the same lines, seeds and settings before switching — see
+[the switch record](plans/2026-10-01-audiocpp-switch.md) for every number:
+
+- **Speed.** Qwen3 renders about 7× faster (2.0× real time against 0.26×),
+  Chatterbox about 2× (2.1× against 0.9×), and models load in seconds rather
+  than half a minute.
+- **The same seed gives the same audio** on every engine. Before, only Qwen3
+  repeated itself.
+- **One install instead of five.** No Python environments, no PyTorch
+  download, nothing to rebuild when you move the install folder.
+
+What the switch cost is listed under
+[Not available yet](#not-available-yet) — nothing was hidden to make the
+numbers look good.
+
+> **Why no Higgs?** Higgs Audio v3 was removed 2026-06-09 — its model weights
+> are released under a non-commercial license, which conflicts with
+> JustVoice's audiobook / game / podcast use cases where users sell their
+> generated output. Every bundled model's weights permit commercial output.
+
+## The speech runtime
+
+The **Speech runtime** row sits at the top of **AI Settings → Speech
+engines → Local · free**, above the engines it runs. It shows the runtime's
+version, the build in use and whether it is running:
+
+- **Install speech runtime** — one-time. Downloads the runtime for this
+  machine, checks that it starts, and puts it in place. Models download
+  separately, per engine. Voice engine setup (the first-run wizard) does the
+  same thing.
+- **Backend** — which build runs. **Auto** picks CUDA on an NVIDIA card,
+  Vulkan on AMD or Intel graphics, Metal on a Mac, and the CPU build when
+  there is no usable GPU. Pick one yourself to override it. Changing the
+  backend unloads the speech models and stops the runtime; the next load
+  starts the build you chose. A build you have not downloaded yet shows as
+  **not installed** until you click Install.
+- **GPU** — which graphics card the runtime uses. Shown only on a machine
+  with more than one.
+
+The builds audio.cpp publishes, and what each costs to download:
+
+| Your machine | Build |
+|---|---|
+| Windows, NVIDIA GeForce 40-series and older | CUDA 12.4, plus the CUDA runtime libraries |
+| Windows, NVIDIA GeForce 50-series (Blackwell) and newer | CUDA 13.3, plus the CUDA runtime libraries |
+| Windows, AMD or Intel graphics | Vulkan |
+| Linux, any GPU | Vulkan |
+| macOS | Metal |
+| Any machine, no usable GPU | CPU |
+
+The Windows CUDA 12.4 build is a 461 MB download (about 2 GB once unpacked)
+and the Vulkan build 60 MB — the two measured here; the CUDA builds are larger
+because they carry NVIDIA's libraries. Vulkan also runs on NVIDIA cards, more
+slowly than CUDA.
+
+The runtime is pinned to one audio.cpp release (v0.9.0 today). A JustVoice
+update that moves to a newer release shows the row as **not installed**;
+clicking Install fetches the new build and nothing else changes — your
+downloaded models stay.
+
+**Two slots, at most two processes.** The runtime holds at most one speech model
+and one speech-recognition model at a time — the same two slots as before.
+Loading a second speech model unloads the first. Models on the graphics card run
+in one process and models on the CPU in a second one, started only when a model
+is placed there; neither has a window of its own. Their logs are
+`logs/audiocpp-server.log` and `logs/audiocpp-server-cpu.log` in your data
+folder.
+
+- **CPU threads** — how many threads the models on the CPU compute with, next
+  to the Backend select. It starts at your machine's physical core count, which
+  is the fastest setting measured: Kokoro speaks 3.2× real time at 8 threads and
+  2.3× at 4 on an 8-core Ryzen 7 5700X. Changing it reloads the models on the
+  CPU; it is not shown when the runtime is the CPU build, which runs everything
+  at this setting anyway.
+
+**eSpeak NG.** Kokoro and KittenTTS read text through eSpeak NG, the open-source
+pronunciation library. Installing the runtime also downloads eSpeak NG
+(GPL-3.0) onto your machine from its published Python package; JustVoice
+itself never ships it.
 
 ## The catalog
 
-| Engine | Type | Download | Languages | Voice cloning | Weight license |
+Every model is an 8-bit file pinned to one commit of
+[audio-cpp/audio.cpp-gguf](https://huggingface.co/audio-cpp/audio.cpp-gguf).
+
+| Engine · model | Download | Languages | Clones | Preset voices | Weights licence |
 |---|---|---|---|---|---|
-| **Kokoro** | preset (54 voices) · fast on CPU | 333 MB | 8 | — | Apache-2.0 |
-| **Chatterbox Turbo** | clone + paralinguistic | 3.0 GB | en | ✓ | MIT |
-| **Chatterbox Multilingual** | clone | 3.2 GB | 23 | ✓ | MIT |
-| **Qwen3-TTS** | 9 presets + instruct · *or* clone | 2.5–4.5 GB | 10 | ✓ (Base only) | Apache-2.0 |
-| **LuxTTS (ZipVoice)** | clone · 48 kHz | 1.2 GB | en | ✓ | Apache-2.0 |
-| **Hume TADA** ⚠ | clone · long-form coherent | 19.6 GB | 10 | ✓ | Llama 3.2 Community (+ MIT codec) |
-| **MOSS-TTSD** ⚠ | clone · dialogue | 4.1 GB | en + zh | ✓ (experimental) | Apache-2.0 |
-| **External** (OpenAI-compatible) | HTTP | 0 MB | — | varies | depends on provider |
+| **Kokoro 82M** | 190 MB | 8 (American and British English, Mandarin, Spanish, French, Hindi, Italian, Brazilian Portuguese) | — | 49 | Apache-2.0 |
+| **KittenTTS Mini 0.8** | 302 MB | English | — | 8 | Apache-2.0 |
+| **Pocket TTS** — one model per language: English, German, Italian, Portuguese, Spanish | 258 MB each | 1 each | ✓ | 20 | CC-BY-4.0 |
+| **Qwen3-TTS CustomVoice 1.7B** | 2.8 GB | 10 | — | 9 | Apache-2.0 |
+| **Qwen3-TTS Base 1.7B** | 2.7 GB | 10 | ✓ | — | Apache-2.0 |
+| **Qwen3-TTS Base 0.6B** | 2.0 GB | 10 | ✓ | — | Apache-2.0 |
+| **Qwen3-TTS VoiceDesign 1.7B** | 2.8 GB | 10 | — (designs a voice from words) | — | Apache-2.0 |
+| **Chatterbox Multilingual** | 2.1 GB | 19 | ✓ | — | MIT |
+| **Speech recognition — Qwen3-ASR 1.7B** | 3.6 GB (with its word aligner) | 30 | — | — | Apache-2.0 |
+| **External** (OpenAI-compatible) | — | — | varies | varies | depends on provider |
 
-(Download sizes are the SUM of each variant's pinned, verified model files
-— checked against the real repositories on 2026-08-14, replacing earlier
-hand-typed figures that were wrong for most engines. The old per-engine
-"Speed" column was cut the same day: its realtime factors were never
-measured. The honest generalisation: Kokoro is the one engine that is
-genuinely fast on CPU; the PyTorch cloning engines want a GPU.)
+Qwen3 speaks Chinese, English, Japanese, Korean, German, French, Russian,
+Portuguese, Spanish and Italian. Chatterbox speaks Arabic, Danish, German,
+Greek, English, Spanish, Finnish, French, Hindi, Italian, Korean, Malay, Dutch,
+Norwegian, Polish, Portuguese, Swedish, Swahili and Turkish.
 
-**Qwen3-TTS is two different checkpoints**, and the difference decides what
-you can do with it. *CustomVoice* ships 9 preset speakers (Vivian, Serena,
-Uncle Fu, Dylan, Eric, Ryan, Aiden, Ono Anna, Sohee) and takes a plain-English
-`instruct` line to steer their style and emotion — it **cannot clone a voice**.
-*Base* clones from a 3–10 second reference clip and has no preset speakers.
-Both speak the same 10 languages: Chinese, English, Japanese, Korean, German,
-French, Russian, Portuguese, Spanish, Italian. (Until 2026-08-15 this table
-said 17 languages and marked every Qwen row as cloning-capable; both were
-wrong, and the Cloning filter believed them.)
+**Qwen3-TTS is three different models**, and the difference decides what you
+can do with it:
+
+- **CustomVoice** ships 9 preset speakers (Vivian, Serena, Uncle Fu, Dylan,
+  Eric, Ryan, Aiden, Ono Anna, Sohee) and takes a plain-English instruction to
+  steer their style and emotion. It **cannot clone**.
+- **Base** clones from a 3–10 second reference clip and its transcript, and
+  has no preset speakers. It ignores written direction.
+- **VoiceDesign** makes a voice from a written description ("a gravelly
+  harbour-master, sixties, unhurried") and speaks the line in it.
+
+**KittenTTS** is a small English model built to run without a graphics card,
+with eight preset voices: Bella, Luna, Rosie and Kiki (female), Jasper, Bruno,
+Hugo and Leo (male). The same seed does not give it the same audio twice, so it
+offers no seed.
+
+**Pocket TTS** is Kyutai's small cloning model — the one that clones fast
+enough on a CPU. It clones from a short clip (no transcript needed) and speaks
+20 preset voices. Each language is its own model and its own download; the
+presets speak whichever language's model is loaded, and a line in another
+language stops with a message naming the model to load, rather than reading
+German with English sounds.
+
+- **Its presets** are the 20 of Kyutai's 26 whose recordings permit selling
+  what you make: Alba, Estelle, the twelve VCTK voices (Anna, Azelma, Charles,
+  Eponine, Eve, Fantine, George, Jane, Mary, Michael, Paul, Vera), the four
+  Voice-Zero voices (Bill Boerst, Caro Davy, Peter Yearsley, Stuart Bell) and
+  two donated voices (Javert, Marius). Cosette and Jean come from
+  non-commercial recordings and four more state no licence, so they are left
+  out. Kyutai gives them no gender; set one on the Voices page if you want
+  Smart-assign to use it.
+- **Its languages are not equally good.** Read back by a recogniser on
+  2026-10-02, English, German and Italian came out clean; Portuguese and
+  Spanish sometimes leave words out, depending on the seed — a long line in
+  quotation marks kept only its last sentence. Listen to a few lines before a
+  long render in those two.
+- **Cloning asks you to accept Kyutai's terms, once.** JustVoice downloads
+  Pocket TTS from audio.cpp's copy, which needs no sign-in. Kyutai, who made it,
+  asks everyone who clones with it to accept their prohibited-use terms — no
+  cloning a voice without that person's consent, nothing deceptive, nothing
+  presented as a genuine recording of a real person. The Clone tab shows the
+  terms with an **Accept** button when Pocket TTS is the chosen model, the
+  Pocket TTS row on Speech engines has **Read and accept**, and a Pocket TTS
+  clone asked for anywhere else (a chapter, Generate, JustWrite, the API) stops
+  with a message until you have. Presets need no acceptance.
+- **The weights are CC-BY-4.0**, which permits commercial use; the credit it
+  asks for is in NOTICE.md.
+### How fast, and how much memory
+
+Measured on an RTX 2070 SUPER (8 GB) on 2026-10-01, rendering a whole novel
+(289 lines) per engine, and on that machine's CPU — an 8-core Ryzen 7 5700X, 8
+threads — on 2026-10-02:
+
+| Model | On the graphics card | On the CPU | Graphics memory |
+|---|---|---|---|
+| Kokoro | 11.9× real time on CUDA · 2.8× on Vulkan | 3.2× | under 1 GB |
+| KittenTTS Mini 0.8 | — | 3.4× | — |
+| Pocket TTS | — | English 3.9× presets · 4.1× cloning; German, Italian, Portuguese, Spanish 3.4–3.6× | — |
+| Qwen3-TTS CustomVoice 1.7B | 1.9× real time on CUDA · 1.7× on Vulkan | — | 3–7.8 GB while rendering |
+| Chatterbox Multilingual | 2.1× real time on CUDA | — | about 3.2 GB |
+| Qwen3-ASR 1.7B (recognition) | — | 2.6×, with the same accuracy | about 3–4 GB |
+
+"Real time" is seconds of audio per second of rendering: 2× renders an hour
+of narration in half an hour. Your numbers will differ with your machine; the
+memory strip at the top of the console shows the real figure for your card
+after the first load, and a model's row shows the CPU speed measured on your
+machine after its first line there. A model placed on the CPU uses no
+graphics memory at all — measured at 0 MB on both the CUDA and Vulkan builds.
+
+## Where each model runs — the graphics card or the CPU
+
+Each model runs either on your graphics card or on your CPU, and every model
+row on Speech engines has its own line saying which: **Runs on** with an
+**Auto · GPU · CPU** choice, followed by where it runs — or would load now —
+and why ("Loads on the CPU — 3.2× real time here, which keeps the graphics
+card for the AI model"). The reason it matters: on an 8 GB card, Kokoro on the
+graphics card pushed a 6.8 GB language model out, while on the CPU it speaks
+three times faster than real time and takes nothing from the card.
+
+**Auto** decides at each load, in this order:
+
+1. **The graphics card** when nothing else is on it — or when this model's
+   graphics memory, measured on your machine, fits beside the AI model.
+2. **Otherwise the CPU**, if the model speaks at least **2× real time** there.
+3. **Otherwise the graphics card, with the AI model unloaded first.** A toast
+   names what was unloaded; the AI model loads itself back the next time a
+   feature needs it.
+
+A model that has never run on your card has no measured size yet, so while an
+AI model is on the card it counts as not fitting — nothing is ever guessed.
+"Fast enough" uses the speed measured on your machine; until a model's first
+line on your CPU records one, Auto uses the speed measured on the reference
+machine above. A model with no CPU speed at all — Qwen3-TTS, Chatterbox — is
+never sent to the CPU by Auto; on the CPU they run several times slower than
+real time.
+
+**GPU** and **CPU** pin the model there, whatever Auto would do. Changing a
+loaded model's place reloads it in its new place. A machine whose speech
+runtime is the CPU build runs everything on the CPU and says so.
+
+The 2× bar is `speech_runtime.cpu_min_realtime` in the settings (see
+[Settings reference](settings-reference.md)); the CPU threads are on the
+runtime row.
 
 ## What each engine can be tuned with
 
 Two things decide which controls you get: **which engine is loaded**, and
-**which of its variants**. The loaded variant wins — with Chatterbox Turbo
-loaded you get Turbo's controls, not Multilingual's.
-
-Three settings are applied by JustVoice **after** synthesis, so they work
-identically on every engine:
+**which of its models**. Four settings are applied by JustVoice itself, so they
+work the same on every engine:
 
 | Always available | What it does |
 |---|---|
 | **Gain** | output level in dB, clamped to −24…+12 |
 | **Pitch** | semitone shift of the rendered audio |
 | **Effects chain** | reverb, EQ, compressor, delay and the rest |
-| **Lexicon** | pronunciation substitution, applied to the text before synthesis |
+| **Lexicon** | pronunciation respellings, applied to the text before synthesis |
 
-Everything else is passed to the engine, and each one honours a different set:
+Everything else is passed to the engine:
 
-| Engine | Clones | Speed | Written direction | Emotion | Engine controls |
-|---|---|---|---|---|---|
-| **Kokoro** | ✗ | ✓ | ✗ | ✗ | none |
-| **Chatterbox Multilingual** | ✓ | ✗ | ✗ | ✗ | Exaggeration · CFG weight · Temperature · Repetition penalty · Min p · Top p |
-| **Chatterbox Turbo** | ✓ | ✗ | ✗ | **✓ as a tag** | Temperature · Repetition penalty · Top p · Top k · 19 inline tags |
-| **Qwen3 CustomVoice** | ✗ | ✗ | **✓ instruct** | **✓ as words** | Temperature · Top k · Top p · Repetition penalty |
-| **Qwen3 Base** | ✓ | ✗ | ✗ (**✓ with a LoRA**) | ✗ | as above |
-| **Qwen3 VoiceDesign** | ✗ | ✗ | **✓ instruct** | **✓ as words** | as above |
-| **LuxTTS** | ✓ | ✓ | ✗ | ✗ | Inference steps · Guidance scale · Max ref length · Reference loudness · Timestep shift · Smoothing |
-| **MOSS-TTSD** | ✓ | ✗ | ✗ | ✗ | Temperature · Top p · Top k · Repetition penalty · Max length · speaker + pause tags |
-| **TADA** | ✓ | ✗ | ✗ | ✗ | none — text, reference and language only |
+| Model | Clones | Speed | Written direction | Engine controls |
+|---|---|---|---|---|
+| **Kokoro** | ✗ | ✓ | ✗ | none |
+| **KittenTTS** | ✗ | ✓ | ✗ | none (no seed — see below) |
+| **Pocket TTS** | ✓ | ✗ | ✗ | none |
+| **Chatterbox Multilingual** | ✓ | ✗ | ✗ | Exaggeration · CFG weight · Temperature · Repetition penalty · Top p |
+| **Qwen3 CustomVoice** | ✗ | ✗ | **✓ instruction** | Temperature · Top k · Top p · Repetition penalty |
+| **Qwen3 Base** | ✓ | ✗ | ✗ | as above |
+| **Qwen3 VoiceDesign** | ✗ | ✗ | **✓ the description** | as above |
+
+Every engine but KittenTTS takes a **seed**: the same seed, text and settings
+give the same audio (measured on Kokoro, Qwen3 and Chatterbox on 2026-10-01 and
+on Pocket TTS on 2026-10-02). KittenTTS gave different audio for the same seed,
+so it offers none.
 
 **Direction and identity pull against each other.** Written direction — the
-Delivery direction box, a persona's Spoken delivery, a line's own direction —
-reaches **Qwen3 CustomVoice, Qwen3 VoiceDesign, and a Qwen3 LoRA**. It does
-not reach a clone: Qwen3 *Base* clones but drops the instruction silently, as
-its clone call takes text, reference and language only. So "direct the
-performance in words" and "use this speaker's cloned voice" are, today, a
-choice — and that includes a designed voice once you keep it, because keeping
-one turns it into a clone
-([voices.md](voices.md#keeping-a-designed-voice-is-what-makes-it-one-voice)).
-The way to have both is a LoRA trained on that voice, which renders on Base
-*with* the instruction attached — see Train in [labs.md](labs.md).
+Delivery direction box, a persona's spoken delivery, a line's own direction —
+reaches Qwen3 CustomVoice and Qwen3 VoiceDesign. It does not reach a clone:
+Qwen3 Base and Pocket TTS clone but have no instruction input, and Chatterbox
+steers through Exaggeration and CFG weight rather than words. So "direct the performance in
+words" and "use this speaker's cloned voice" are a choice today — and that
+includes a designed voice once you keep it, because keeping one turns it into
+a clone ([voices.md](voices.md#keeping-a-designed-voice-is-what-makes-it-one-voice)).
 
-**Qwen3 takes no inline tags.** Direction reaches it as prose, in the
-instruction field, and nothing else. Bracketed markup typed into the text is
-removed before the model sees it — upstream Qwen3-TTS has no tag vocabulary
-of any kind, so leaving `[laugh]` in the text would have it read out as a
-word. Tags belong to Chatterbox Turbo and MOSS-TTSD, where they are the
-model's own syntax.
+**No engine takes inline tags right now.** Bracketed markup typed into the
+text — `[laugh]`, `[sigh]` — is removed before the model sees it, so it is
+never read out as a word. The engine that understood them, Chatterbox Turbo,
+is not available yet (see below). The rule from 2026-09-29 still holds: **a tag
+the rendering engine doesn't list is dropped, never spoken**, in a chapter
+render and on Generate alike — including ordinary bracketed text such as
+`[sic]`.
 
-**A tag the rendering engine doesn't list is dropped, never spoken** (since
-2026-09-29) — in a chapter render and on Generate alike. Each engine keeps exactly
-the bracket tags its loaded variant lists; every other `[word]` goes, including
-one no engine knows (the podcast demo's old `[warm]` used to be read out as
-"warm") and ordinary bracketed text such as `[sic]`. An engine that takes no tags
-loses them all.
+**Emotion** is a nine-value label rather than a sentence. On Qwen3
+CustomVoice and VoiceDesign it becomes part of the instruction; the other
+engines have no way to take it.
 
-**Emotion is the exception, and that is why it is a list.** `Emotion` is a
-nine-value label rather than a sentence, so it can compile two ways: into the
-instruction for engines that read prose, or into the engine's own token for
-engines that have an emotion vocabulary. Chatterbox Turbo is the only engine
-in the second group — pick *fearful* and it renders `[fear] Who's there?`.
-Turbo has no token for *sad*, *shouted* or *contemptuous*, so those three are
-not offered while it is loaded. See [generate.md](generate.md).
+**Language.** The line's language goes to the engine in the form it expects —
+Qwen3 wants the language's name, the others a code — so you never type either.
+Pocket TTS takes no language: its loaded model is the language, and a line in
+another one is refused by name.
 
-**Chatterbox Turbo's inline tags — all nineteen.** Seven emotion (`[angry]`
-`[fear]` `[happy]` `[sarcastic]` `[surprised]` `[crying]` `[whispering]`),
-three register (`[narration]` `[dramatic]` `[advertisement]`) and nine
-non-verbal (`[cough]` `[laugh]` `[chuckle]` `[sigh]` `[gasp]` `[groan]`
-`[sniff]` `[clear throat]` `[shush]`). They are Turbo's alone — Multilingual
-shares the engine but not the tokenizer, so on Multilingual they are dropped
-before rendering (they used to be read aloud as words).
-Resemble's model card documents only three by name, so the rest are declared
-from the checkpoint's reserved token ids and have not been verified by ear.
+## Not available yet
 
-**Cloning is not Chatterbox-only.** Chatterbox, LuxTTS, MOSS-TTSD, TADA
-and **Qwen3 Base** all clone. Kokoro and **Qwen3 CustomVoice** do not —
-and because that split runs *inside* the Qwen3 family, the variant is what
-decides, not the engine name.
+These worked before the 2026-10-01 switch and do not yet run on the speech
+runtime. Each returns when the runtime learns to do it; the order is in
+[the switch record](plans/2026-10-01-audiocpp-switch.md#5-after-the-cut--the-gaps-in-order).
+A request that needs one of them stops with a message naming it, rather than
+rendering something else in its place.
 
-**A note on LuxTTS "T-shift".** It was previously presented as a native pitch
-control. It is not. The fork we ship (`ysharma3501/LuxTTS`) calls it a
-*"sampling param, higher can sound better but worse WER"*, and the ZipVoice
-base it derives from defines `--t-shift` as *"shift t to smaller ones if
-t\_shift < 1.0"* — the flow-matching sampling schedule, valid over (0, 1.0],
-default 0.5. It trades pronunciation accuracy against quality, not key. It is
-now labelled **Timestep shift** under advanced controls; use the Pitch slider
-for pitch.
+- **Chatterbox Turbo**, with its 19 inline tags (`[laugh]`, `[sigh]`,
+  `[whispering]` …). The runtime has Turbo but cannot yet clone with it, and
+  a Chatterbox voice is always a clone.
+- **Chatterbox in Hebrew, Japanese, Russian and Chinese** — the runtime's
+  Chatterbox covers 19 of the original model's 23 languages. Qwen3 speaks
+  Japanese, Russian and Chinese in the meantime.
+- **Kokoro blends** — a voice mixed from several Kokoro voices.
+- **Kokoro's five Japanese voices** — Japanese needs a dictionary the runtime
+  does not ship yet.
+- **Exact pronunciations (IPA) in a lexicon.** A lexicon entry with both an
+  IPA pronunciation and a respelling now uses the respelling; an entry with
+  only IPA has no effect until this returns.
+- **Qwen3-TTS CustomVoice 0.6B** — the smaller preset-speaker model.
+- **A confidence score from speech recognition.** The old recogniser
+  reported how sure it was of each transcript; the new one does not.
 
-LuxTTS also carries two controls that act on the **reference clip** rather than
-the render — **Max ref length** (how many seconds are encoded; set it above
-your clip's length to avoid truncation artifacts) and **Reference loudness**
-(the fork's `rms`; around 0.01 is its suggestion) — plus a **Smoothing** toggle
-worth trying if output sounds metallic.
+**Removed for good:** LuxTTS, TADA and MOSS-TTSD. LuxTTS was the one engine
+that cloned quickly on a CPU; Pocket TTS took its place on 2026-10-02. TADA and
+MOSS-TTSD were already marked for removal. Whisper, the old speech recogniser, was
+replaced by Qwen3-ASR, which got fewer words wrong on both human speech (4.3 %
+against 5.8 %) and rendered narration (8.6 % against 9.9 %).
 
 ## Picking an engine for a use case
 
-- **Audiobook narration in your own voice.** Chatterbox Turbo. Clone from 1-2 minutes of clean read-aloud.
-- **Audiobook with 5+ speakers.** Chatterbox Turbo for the main speakers' personas + Kokoro for minor speakers (faster to render, plenty of voices).
-- **Multilingual audiobook.** Chatterbox Multilingual — 23 languages, and it clones. Qwen3 covers 10 and is reported strongest on Chinese / Japanese / Korean (reported, not measured here) — but only its Base checkpoint clones; CustomVoice gives you its 9 preset speakers instead.
-- **Game dialogue at 50-500 line scale.** Kokoro (fast on CPU, 54 voices). Render speed matters at scale.
-- **Multi-speaker game cutscenes.** MOSS-TTSD. One render produces every part, tagged `[S1]` `[S2]` `[S3]`, each cloned from its own reference clip.
-- **Podcast voiceover.** Chatterbox Turbo if you want it to sound like you; Kokoro if you want preset variety fast.
+- **Audiobook narration in your own voice.** Chatterbox Multilingual or Qwen3
+  Base. Clone from a minute or two of clean read-aloud.
+- **Audiobook with many speakers.** Cloned or designed voices for the main
+  cast, Kokoro for minor speakers — faster to render, 49 voices to choose from.
+- **Directed performances.** Qwen3 CustomVoice — tell each line how to sound
+  in plain words.
+- **A voice nobody recorded.** Qwen3 VoiceDesign — describe it.
+- **Multilingual audiobook.** Chatterbox Multilingual clones in 19 languages;
+  Qwen3 covers 10, including Chinese, Japanese and Korean.
+- **Game dialogue at 50–500 line scale.** Kokoro. Render speed matters at
+  scale.
 - **Dictation playback** (MCP `speak` tool). Kokoro. Lowest latency.
+- **No graphics card, or a small one shared with an AI model.** Kokoro and
+  KittenTTS for preset voices, Pocket TTS for cloning — all three speak more
+  than three times faster than real time on an 8-core CPU.
 
-## Loading / unloading
+## Loading and unloading
 
-One engine is **loaded** per slot (one TTS, one STT). Loading takes 10-30s (model load + warmup). The **speech engines** tab on the ai page shows the current state per engine:
+One model is **loaded** per slot (one speech, one speech recognition). A load
+takes a few seconds. The Speech engines tab shows each engine's state:
 
-- `not installed` — first download required. (This also appears if you moved
-  the JustVoice install folder: the engine's Python environment records its
-  own location and has to be rebuilt. Click Install — your downloaded models
-  stay put. See [Backup and data](backups-and-data.md#where-your-data-lives).)
-- `installed` — present on disk, not currently loaded.
-- `loaded` — resident and ready to render. The card also shows **which device** it loaded on (`· CUDA` / `· CPU`).
+- **needs the speech runtime** — the runtime is not installed yet. Models can
+  still download; Load waits for the runtime.
+- **installed** — the runtime is there; the engine's models load on demand.
+- **loaded** — resident and ready to render, with where it runs
+  (`· CUDA`, `· VULKAN`, `· CPU`).
 
-Each loaded engine is its own program, and it never outlives the server that
-started it: it exits within a couple of seconds of the server going, closing the
-window stops it cleanly, and the server stops any left from an earlier session
-when it starts — see
+The verbs split the same way as the AI model catalog: a model that isn't on
+disk shows **Download (N GB)** — download only; once its files are on disk
+the row shows **Load model**. A load of a model that is not downloaded yet
+downloads it first. Loading a model unloads the same slot's previous one.
+
+The runtime never outlives JustVoice: closing the window stops it, and the
+server stops one left over from an earlier session when it starts — see
 [GPU → Engines left over from an earlier session](gpu.md#engines-left-over-from-an-earlier-session).
-
-The verbs split the same way as the LLM catalog: a model that isn't on disk
-shows **Download (N GB)** — download only; once its files are on disk the row
-shows **Load model**. Click Load on any on-disk model; the same slot's prior
-occupant auto-unloads.
 
 ### The catalog rows
 
 Each engine group expands into its model rows, and each row carries the model's
-**facts** — read from the engine's pinned manifest, never typed twice:
+**facts** — read from the engine's pinned catalog, never typed twice:
 
-- **Language chip** — `en` for single-language models, `23 langs` for
+- **Language chip** — `en` for single-language models, `19 langs` for
   multilingual ones (hover for the full list).
 - **Capability chips** — `CLONING` (clones a voice from a short clean sample)
   and `PRESETS · N` (ships N ready-made voices). The filter row above the list
   (**All · TTS · STT · Cloning · Preset voices**) filters on exactly these
-  facts — pick **Cloning** and only the models that can clone remain.
-- **Licence chip** — the model's *weights* licence. Every bundled engine
-  permits selling your generated output; a gold **⚠** chip means an obligation
-  rides the licence (TADA's Llama-3.2-Community requires "Built with Llama" in
-  your published credits — hover the chip for the exact requirement).
+  facts.
+- **Licence chip** — the model's *weights* licence. Every bundled model
+  permits selling your generated output.
 - **Download size · on disk** — the verified download size, plus "on disk"
   once every file is present.
 - **Measured memory** — on the loaded row: "X GB measured" once this machine
@@ -187,291 +366,112 @@ Each engine group expands into its model rows, and each row carries the model's
 The **⋯ menu** on each row holds the less-common verbs:
 
 - **Re-download** — deletes the local files and downloads fresh. Use it when a
-  download looks corrupted; it's also how a model downloaded before the speech
-  cache moves onto the new layout.
-- **Open folder** — opens the model's on-disk folder in your file explorer
-  (desktop app only; the browser UI can't reach your file manager and says so).
+  download looks corrupted.
+- **Open folder** — opens the model's folder in your file explorer (desktop
+  app only; the browser UI can't reach your file manager and says so).
 - **View on Hugging Face** — the model's upstream repository page.
-- **Delete downloaded model** — removes the downloaded weights; the engine and
-  other models stay, and the model re-downloads on demand. (Unload first — a
-  loaded model's files can't be deleted.)
+- **Delete downloaded model** — removes the downloaded file; the engine and
+  other models stay, and the model downloads again on demand. (Unload first —
+  a loaded model's files can't be deleted.)
 
 These are the same four verbs, in the same order and with the same words, as
-the **⋯** menu on an AI model row under **LLM providers** — the two catalogs
-are one interaction grammar, not two.
+the **⋯** menu on an AI model row under **LLM providers**.
+
+At the bottom of an engine group with anything downloaded, **Delete downloaded
+models** removes all of that engine's models at once. The speech runtime stays
+installed. If a file is still in use — Windows will not delete a file a
+program holds open — it says so and names the folder, instead of claiming a
+delete that did not happen.
 
 ### Loading and the memory budget
 
-Loads run against the **shared memory budget** (the memory strip at the top of the AI Settings console, above the tabs — measured used/free, a TTS/STT cell per loaded engine with the model's name and its real memory take, the LLM, other apps; one strip for the whole console since 2026-08-15). For an engine JustVoice has measured before on this machine: if the pool is short, it frees the least-recently-used *idle* model and toasts what it unloaded; if everything resident is busy, the load refuses with an honest message quoting the measured numbers instead of an out-of-memory crash. An engine's first-ever load carries no number yet ("not measured yet" on the strip) — it simply attempts, gets measured, and is remembered. Each card also carries a **Device** select (Auto / CUDA / CPU) — Auto sends CPU-fast engines (Kokoro) to CPU and the rest to your GPU, and an explicit choice always wins. The full story is in [GPU / CUDA](gpu.md#the-shared-memory-budget).
+Loads run against the **shared memory budget** — the memory strip at the top
+of AI Settings, which shows measured use, a cell for each loaded speech model
+with its real memory take, the language model, and other apps. For a model
+JustVoice has measured before on this machine: if the pool is short, it frees
+the least-recently-used *idle* model and toasts what it unloaded; if
+everything resident is busy, the load refuses with a message quoting the
+measured numbers instead of an out-of-memory crash. A model's first-ever load
+carries no number yet ("not measured yet") — it simply attempts, gets
+measured, and is remembered.
+
+Because one runtime holds both slots, the memory it uses is split between
+them: the speech-recognition cell shows what loading that model added, not
+the runtime's whole footprint a second time. The full story is in
+[GPU](gpu.md#the-shared-memory-budget).
 
 ### Cancelling an in-flight load
 
-Loading can take a while. Downloads run from the row's **Download** button (or the API, which still fetches on a cold load) and go through the **speech cache**: plain files downloaded by the same chunked, resumable downloader the AI models use (a dropped connection resumes past the completed chunks instead of starting over), placed on disk *before* the engine process starts — the engine itself never touches the network. While a load or download is in progress:
+Downloads run from the row's **Download** button and go through the **speech
+cache**: plain files fetched by the same chunked, resumable downloader the AI
+models use — a dropped connection resumes past the completed chunks instead
+of starting over. While a load or download is in progress:
 
 - A progress bar appears **on the engine's own row**, naming the model and the
-  stage it's in. Installs and downloads show real bytes and percent; a load
-  shows the stage it has reached (`spawning subprocess`, `loading model
-  weights`), because a model load reports no percentage and JustVoice does not
-  invent one.
-- The bar has a **Cancel** button while it runs. Clicking it sends
-  `POST /v1/engines/{id}/cancel-load`, which:
-  - Sets a cancel flag the manager polls between safe steps (model download → subprocess spawn → child `/load` call).
-  - Kills the child subprocess if already spawned, so no VRAM is left allocated.
-  - Aborts the client-side fetch so you stop waiting.
+  stage it's in. Downloads show real bytes and percent; a load shows the stage
+  it has reached, because a model load reports no percentage and JustVoice
+  does not invent one.
+- The bar has a **Cancel** button while it runs.
 - A cancelled or failed bar stays on the row with its error and offers
   **Retry** and **Dismiss**. It doesn't clear itself — you decide when you've
   read it.
 
 The row is deliberately the *only* place these appear. The full-width strip at
 the top of the screen is the **AI task** queue: it is for work that queries a
-language model (Compose, speaker attribution, ACX QC, and the like) and for
-long TTS renders. Installing, downloading and loading are file and process
-work, so they live on the row that owns them — the same rule the AI model
-catalog follows for its own downloads and loads.
-
-## ⚠ Marked for removal — TADA and MOSS-TTSD
-
-Both are **scheduled for removal** and are no longer offered to new setups.
-If you already installed one it keeps working exactly as before, and its row
-stays on the Speech engines tab with a **⚠ marked for removal** badge; hover it
-for the reason. If you have not installed it, it no longer appears in the
-catalog and Voice engine setup never includes it in a tier. Searching for it by
-name still finds it, so nothing is a dead end.
-
-**Why TADA is going:** it is our largest download by a wide margin — 19.6 GB
-across three repositories — and it accepts none of the per-render controls. Its
-generate call takes text, a reference clip and a language, and nothing else. Its
-ten languages are a subset of Chatterbox Multilingual's twenty-three, which also
-clones and does take those controls, for 3.2 GB.
-
-**Why MOSS-TTSD is going:** it was here for multi-speaker dialogue, and that
-path was never wired — the adapter passes a single reference clip, so `[S1]` and
-`[S2]` both come out in the same voice. JustVoice renders **one speaker per
-line** and joins the results, which is a different shape from what a dialogue
-model wants. Its other two draws are already covered: pauses are applied by
-JustVoice after synthesis so they work on every engine, and Chatterbox
-Multilingual covers Chinese *and* clones.
-
-Nothing you have produced is affected. Existing renders, voices and personas
-are unchanged; a persona whose voice is on either engine keeps rendering while
-the engine is installed. To move off one, give the persona a voice on another
-engine on the Personas page — it keeps its delivery settings, and the host-side
-ones (gain, pitch, pauses, effects, lexicon) carry over to any engine — or give
-its speakers a different persona in Studio · Cast.
+language model and for long renders. Installing, downloading and loading are
+file and process work, so they live on the row that owns them.
 
 ## Which engines run on your operating system
 
-Not every engine runs everywhere, and the ones that don't are **listed but not
-offered**. Instead of an Install or Download button you get a badge —
-`not available on this OS · windows · linux` — and hovering it says which
-platforms the engine does declare. Nothing is hidden: you can still read the
-engine's description, its models, their sizes and licences. You just can't
-install something that would fail.
+All four run on Windows, Linux and macOS — the runtime is built for each. What
+differs is the backend:
 
-| Engine | Windows | Linux | macOS | Why |
-|---|:--:|:--:|:--:|---|
-| **Kokoro** | ✓ | ✓ | ✓ | ONNX via kokoro-onnx; CPU is real-time everywhere |
-| **Chatterbox** | ✓ | ✓ | ✓ | Apple GPU attempted with the known float32 repair; falls back to CPU if it fails |
-| **LuxTTS** | ✓ | ✓ | ✓ | Every dependency publishes wheels for all three, including piper-phonemize |
-| **Whisper (STT)** | ✓ | ✓ | ✓ | transformers + torch, nothing platform-specific |
-| **Qwen3-TTS** | ✓ | ✓ | ✓ | Torch checkpoints on Windows/Linux; on a Mac the catalog shows the MLX variants instead |
-| **TADA** | ✓ | ✓ | ✗ | Known tensor issues on Apple's MPS backend (marked for removal) |
-| **MOSS-TTSD** | ✓ | ✓ | ✗ | Needs flash-attn, which barely builds outside Linux (marked for removal) |
+| | NVIDIA | AMD / Intel graphics | Apple Silicon | CPU only |
+|---|:--:|:--:|:--:|:--:|
+| **Windows** | CUDA | Vulkan | — | CPU |
+| **Linux** | Vulkan | Vulkan | — | CPU |
+| **macOS** | — | — | Metal | — |
 
-A note on how this is decided: each engine declares its own platforms, and the
-server — not your browser — decides whether the machine actually running the
-engine qualifies. That matters when you use JustVoice headless
-(`justvoice-server serve`) from a laptop against a server elsewhere: what you
-can install depends on that server's OS, not yours.
-
-## Hardware acceleration, engine by engine
-
-Every engine installs the right runtime for the machine it lands on — the
-install itself picks the GPU arm, there is nothing to configure first.
-
-| Engine | NVIDIA (CUDA) | Apple Silicon | Windows AMD/Intel GPU | Linux AMD (ROCm) | CPU |
-|---|:--:|:--:|:--:|:--:|:--:|
-| **Kokoro** | ✓ installed when CUDA is detected | ✓ CoreML, used automatically | ✓ DirectML, installed when detected | — | ✓ real-time |
-| **Chatterbox** | ✓ CUDA torch wheel | ✓ MPS (float32 repair) | CPU | ✓ ROCm torch wheel | ✓ slow |
-| **Qwen3-TTS** | ✓ CUDA torch wheel | ✓ MLX variants (their own runtime) | CPU | ✓ ROCm torch wheel | works, slow |
-| **Whisper** | ✓ CUDA torch wheel | ✓ MPS | CPU | ✓ ROCm torch wheel | ✓ |
-
-Two footnotes worth knowing. First, on a machine with a discrete GPU,
-**Auto sends Kokoro to the CPU on purpose** — it is real-time there, and
-the graphics card stays free for the engines that need it; pick CUDA or
-DirectML in the engine's Device select if you want it on the GPU anyway.
-On Apple Silicon there is one shared memory pool, so Auto uses CoreML.
-Second, the torch engines have no DirectML arm — PyTorch's DirectML
-backend stalled upstream — so on a Windows machine with an AMD or Intel
-GPU they run on the CPU; Kokoro is the engine that accelerates there.
-
-## GPU detection + tier-aware default
-
-Settings → GPU shows your backend (CUDA / MPS / Metal / XPU / DirectML / ROCm), device name, VRAM total / used, compute capability, and HSA override status. On CPU-only boxes Kokoro is the recommended engine (it's built for CPU); for GPU boxes there is no hand-typed VRAM-to-engine pairing table any more — an engine's real footprint is **measured on your machine at its first load** and shown on the console's memory strip, which is the honest way to see what fits (the old GB-tier suggestions were never measured; cut 2026-08-14).
-
-## Which PyTorch build gets installed
-
-Chosen for you from detected hardware when an environment is built. NVIDIA
-cards get **CUDA 12.6**, or **CUDA 13.0** on Blackwell (GeForce 50-series and
-newer, which cannot run the 12.x builds at all); Linux AMD gets **ROCm 7.2**;
-Apple Silicon gets the standard build, which carries the Metal (MPS) backend;
-everything else gets CPU. Intel Arc and AMD-on-Windows are manual — set
-`JUSTVOICE_TORCH_INDEX` before installing.
-
-Roughly 2–3 GB per PyTorch build, downloaded once and then hard-linked into
-each engine's environment rather than downloaded again — which is why several
-environments cost far less than several copies. Override with
-`JUSTVOICE_TORCH_INDEX` and reinstall the engine — see
-[GPU / CUDA](gpu.md#which-pytorch-build-gets-installed-nvidia).
+Windows with an AMD or Intel GPU is now accelerated for every engine — before
+the switch only Kokoro was. Linux NVIDIA users run the Vulkan build, because
+audio.cpp publishes no Linux CUDA build.
 
 ## Where model files live — the speech cache
 
-Since 2026-08-14, downloaded speech models live in **the speech cache**:
-one plain folder per model variant at
-`<data dir>/speech-cache/<engine>/<variant>/`, holding the model's files
-exactly as they are named upstream, plus a small `files.json` manifest
-recording where each file came from (repository + pinned revision), its
-expected size, and its upstream checksum id.
+Downloaded speech models live in **the speech cache**: one plain folder per
+model at `<data dir>/speech-cache/<engine>/<model>/`, holding the model's file
+exactly as it is named upstream, plus a small `files.json` recording where it
+came from (repository and pinned revision), its expected size, and its
+upstream checksum id.
 
-Why this matters to you:
-
-- **Downloads resume.** Files come down through the same chunked
-  downloader the AI models use — a dropped connection resumes past the
-  completed chunks on the next attempt, and files that already finished
-  are skipped entirely.
-- **"Downloaded" means downloaded.** A model only counts as on-disk when
-  every file named in its manifest is present at its recorded size. A
-  half-fetched folder never shows a Load button.
-- **No symlinks, no privileges.** Nothing in the cache is linked or
-  hidden inside a hash-named blob store — what you see in the folder is
-  the model. This is what structurally removed the Windows
-  `WinError 1314` failure class.
-- **Delete really deletes.** "Delete model" removes that one variant's
-  folder — the engine and other variants stay.
-- **Only what the engine loads.** Each variant's file list is pinned to
-  the files its engine actually reads. Example: Chatterbox Turbo's
-  repository carries an alternative 1 GB vocoder checkpoint the Turbo
-  code never opens — JustVoice doesn't download it.
-
-Models downloaded before this change (into the old per-engine
-HuggingFace cache) keep working: the engine loads them the old way until
-you delete and re-download, which moves them onto the new layout.
+- **Downloads resume.** A dropped connection resumes past the completed chunks
+  on the next attempt.
+- **"Downloaded" means downloaded.** A model only counts as on disk when every
+  file in its record is present at its recorded size. A half-fetched folder
+  never shows a Load button.
+- **No symlinks, no privileges.** What you see in the folder is the model.
+- **Delete really deletes.** "Delete downloaded model" removes that one
+  model's folder.
 
 To reclaim the whole store at once, **Settings → Storage → Disk usage →
 Speech models → Clear** deletes every downloaded speech model in one step
 (each re-downloads on demand) — see
 [Backup and data](backups-and-data.md#disk-usage).
 
-## Where the Python environments live
+The runtime itself lives under `engines-runtime/audiocpp/<release>/<build>/`
+next to the app (in a source checkout, next to the engine catalog).
 
-Local engines run in Python environments JustVoice builds for you — you never
-create or activate one by hand. **Every engine gets its own**, at
-`<engines>/<engine_id>/.venv/`, built to exactly what that engine's manifest
-declares. Nothing is shared between them.
+## Voice training
 
-Clicking **Install engine** builds that one environment and downloads that
-one engine's models. **Uninstall engine** deletes both. Every engine has both
-buttons, and neither reaches anything another engine depends on.
-
-### Why one each, when they mostly want the same PyTorch
-
-Because "mostly" was doing a lot of work. Until 2026-08-22 the engines shared
-one environment, and each install re-resolved every other engine's
-dependencies into it. Four things followed, and all four were real:
-
-- **The tightest pin anywhere won for everyone.** Chatterbox asks for
-  `transformers 5.2.0`; it ran on 4.57.3 for months because another engine
-  needed that. On its own it now gets what it asks for — and renders slightly
-  *faster* for it.
-- **A ceiling had to be maintained by hand.** One engine's audio library
-  refused to work above NumPy 2.0, so the whole environment was held below
-  2.0 — which made Kokoro, which needs 2.0 or newer, impossible to install
-  there. It got carved out first, for that reason alone.
-- **A missing package was invisible.** A dependency could be declared in a
-  manifest and never actually installed, and nothing noticed: the engine
-  reported ready and failed later, somewhere else entirely.
-- **There was no Uninstall.** An engine with no environment of its own has
-  nothing to remove, so shared engines simply had no Uninstall button.
-
-### What it costs on disk
-
-Much less than it sounds, and the honest answer needs two numbers, because
-they mean different things. Measured with all five engines installed
-(2026-08-22):
-
-| | |
-|---|--:|
-| What the five folders report (what Explorer shows you) | 5,284 MB |
-| What they actually add, beyond the download cache | **431 MB** |
-| What they would cost with no sharing at all | 18,750 MB |
-
-The gap between the first two rows is the whole trick. Every engine names the
-**same PyTorch version** (2.13.0), and JustVoice fills a new environment by
-*hard-linking* out of one download cache rather than copying — so the same
-bytes appear inside several folders while existing once on the drive. A file
-listing counts them each time; the drive does not. Per engine, the bytes that
-are genuinely new run from 14 MB (Kokoro, which uses no PyTorch) to 120 MB.
-
-One consequence worth knowing: deleting an engine's environment frees much
-less than its folder size suggests, because most of what is in it is shared
-with the cache. The cache is where those bytes actually live.
-
-Two things that saving depends on. The cache has to sit on the same drive as
-the environments, which JustVoice arranges — both live inside your install
-folder. And the engines have to agree about PyTorch: one engine on a
-different version means a second full CUDA stack, about **4.3 GB**. A test
-fails if two ever disagree, so that can only happen deliberately.
-
-### If an environment gets out of date
-
-JustVoice stamps each environment with the package set it was built from. If
-an update changes what an engine needs, that engine's row offers **Install**
-again rather than pretending to be current. Reinstalling is safe and touches
-nothing else.
-
-### Which Python, which PyTorch
-
-Python **3.13**, and PyTorch **2.13.0** with torchaudio **2.11.0**, the same
-in every engine. On Python 3.12 two of our engines had NumPy requirements
-that could not both be satisfied; on 3.13 they agree, which is the reason for
-the version.
-
-Which PyTorch *build* you get depends on your hardware — see
-[GPU acceleration](gpu.md) for the full matrix:
-
-| Hardware | Build |
-|---|---|
-| NVIDIA, GeForce 40-series and older (compute capability under 10.0) | CUDA 12.6 |
-| NVIDIA, GeForce 50-series / Blackwell and newer | CUDA 13.0 |
-| AMD on Linux | ROCm 7.2 |
-| AMD on Windows | CPU by default — see below |
-| Apple Silicon | the standard build, which carries Metal (MPS) |
-| Everything else | CPU |
-
-### AMD on Windows
-
-PyTorch publishes no ROCm builds for Windows, so JustVoice installs the CPU
-build there and says so in the log. AMD publishes their own Radeon-on-Windows
-PyTorch, and you can point JustVoice at it:
-
-1. Install AMD's ROCm SDK packages for Windows, following AMD's own
-   instructions (their PyTorch-on-Radeon page under *Install → Windows*).
-   Their current build is **ROCm 7.2.1 with PyTorch 2.9.1**, needs **Python
-   3.12**, driver **26.2.2 or newer**, and supports a specific GPU list
-   (RX 7900 XTX class and AI PRO R9700 at the time of writing).
-2. Set `JUSTVOICE_TORCH_INDEX` to AMD's wheel index before starting
-   JustVoice.
-3. Install the engines you want.
-
-Because each engine has its own environment, an AMD-specific PyTorch and
-Python in one of them affects nothing else — Kokoro, which uses no PyTorch at
-all, is untouched either way. This is a manual recipe: JustVoice does not yet
-detect AMD-on-Windows and offer it for you.
+Removed on 2026-10-02, to be rebuilt on the speech runtime later. Training a
+voice (a LoRA fine-tune of Qwen3 Base) ran on PyTorch in the per-engine Python
+environments the 2026-10-01 switch retired, and the speech runtime cannot
+render a trained voice. The Voices page's LoRA tab, its Preparer and Dataset
+Builder, the training settings and the training webhook events went with it.
 
 ## Online + self-hosted providers (LLM + TTS)
 
-Local engines (above) are managed by JustVoice — installed into the
-environments described above, loaded one-at-a-time. Online + self-hosted
+Local engines (above) are managed by JustVoice. Online and self-hosted
 providers are a separate flow:
 
 - **LLM providers** — Anthropic Claude, OpenAI, Gemini, Ollama, DeepSeek, OpenRouter. Needed for Compose, Persona rewrite, Speaker attribution, Smart-assign, Render preset suggest.

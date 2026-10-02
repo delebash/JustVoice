@@ -208,7 +208,7 @@ const instructStatus = computed(() => {
   if (voice.source === "cloned" || voice.source === "imported") {
     return {
       ok: false,
-      text: `✗ ${name} takes direction, but this voice is a clone — its identity comes from the recording and written direction is dropped. Train a LoRA on the same voice to get both.`,
+      text: `✗ ${name} takes direction, but this voice is a clone — its identity comes from the recording and written direction is dropped.`,
     };
   }
   return { ok: true, text: `✓ ${name} takes direction — it performs this text when rendering.` };

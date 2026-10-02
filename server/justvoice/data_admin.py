@@ -79,7 +79,6 @@ def _asset_dirs() -> dict:
         lexicons_root,
         personas_root,
         projects_root,
-        training_root,
         voices_root,
     )
 
@@ -92,7 +91,6 @@ def _asset_dirs() -> dict:
         "lexicons": lexicons_root(data_dir),
         "projects": projects_root(data_dir),
         "generations": generations_root(data_dir),
-        "training": training_root(data_dir),
         "captures": data_dir / "captures",
     }
 
@@ -103,7 +101,7 @@ def run_factory_reset() -> int:
 
     Deletes every DB row (projects, scenes, blocks, takes, generations,
     captures, bindings, …) AND the file-backed stores (personas, voices,
-    lexicons, project JSON, training jobs, generation audio, capture
+    lexicons, project JSON, generation audio, capture
     recordings), clears the render cache, and resets settings to defaults —
     keeping only the server host/port section so the running instance stays
     reachable. Downloaded engine models on disk are NOT deleted (multi-GB;
@@ -178,7 +176,7 @@ def run_factory_reset() -> int:
         reseed_shared_llm(bind, db_session.SessionLocal)
 
     # 2. File-backed stores. Mid-Phase-1.5 personas/voices/lexicons/
-    # projects/training still live as JSON files + in-memory caches —
+    # projects still live as JSON files + in-memory caches —
     # the DB wipe alone leaves them all alive (user-hit 2026-06-12:
     # personas survived reset). Blow away the dirs and re-instantiate
     # the stores so the caches drop too. Captures audio joins the wipe
@@ -191,12 +189,10 @@ def run_factory_reset() -> int:
         lexicons_root,
         personas_root,
         projects_root,
-        training_root,
         voices_root,
     )
     from .storage.lexicons import LexiconStore
     from .storage.personas import PersonaStore
-    from .storage.training_jobs import TrainingRegistry
     from .storage.voices import VoiceStore
 
     state_data_dir = getattr(state, "data_dir", None)
@@ -206,7 +202,6 @@ def run_factory_reset() -> int:
             voices_root(state_data_dir),
             lexicons_root(state_data_dir),
             projects_root(state_data_dir),
-            training_root(state_data_dir),
             generations_root(state_data_dir),
             state_data_dir / "captures",
         ):
@@ -217,7 +212,6 @@ def run_factory_reset() -> int:
         state.personas = PersonaStore(state_data_dir)
         state.voices = VoiceStore(state_data_dir)
         state.lexicons = LexiconStore(state_data_dir)
-        state.training = TrainingRegistry(state_data_dir)
 
     # 3. Render cache — memory + disk. (Engine teardown already ran in step 0.)
     cache = getattr(state, "_render_cache", None)

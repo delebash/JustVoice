@@ -64,19 +64,13 @@ class VoicePreviewRequest(BaseModel):
     preview_text: str = Field(
         default="The quick brown fox jumps over the lazy dog.",
         min_length=1,
-        # 300 was an audition-sized cap. The Dataset builder generates real
-        # training lines through this same door, and a training clip is
-        # gated at settings.training.validation.max_sample_duration_secs
-        # (60 s by default) — roughly 150 words, ~900 characters. 2000
-        # leaves headroom for a long reference passage without letting a
-        # whole chapter through.
+        # 300 was an audition-sized cap. 2000 leaves headroom for a long
+        # reference passage without letting a whole chapter through.
         max_length=2000,
     )
     language: str = "en-US"
     delivery: Optional[dict] = None
-    # Per-render RNG seed. Same seed + same inputs = the same voice, which
-    # is what makes a generated training set coherent instead of thirty
-    # different speakers (Alexandria's Dataset builder is built on this).
+    # Per-render RNG seed. Same seed + same inputs = the same voice.
     # None = random, the previous always-on behaviour.
     seed: Optional[int] = None
 
@@ -196,8 +190,8 @@ def _resolve_blend(body: "VoicePreviewRequest", state) -> "tuple[list[float], st
     # (tracked, code-verified 2026-08-20). The client used to send
     # language: "en-US" unconditionally, which won over the engine's own
     # per-voice fallback, so Chinese text was phonemized with English rules.
-    # A pinned language still wins — the Dataset builder and
-    # services/projects.js set one on purpose.
+    # A pinned language still wins — services/projects.js sets one on
+    # purpose.
     if _client_pinned_language(body):
         return vector, None
 
@@ -359,6 +353,10 @@ async def preview_voice(body: VoicePreviewRequest) -> VoicePreviewResponse:
         handle = get_scheduler().submit([(body.engine, _do)], interactive=True)
         await handle.wait_async()
         if handle.error is not None:
+            from ..engines.manager import TermsRequired
+
+            if isinstance(handle.error, TermsRequired):
+                raise handle.error.api_error() from handle.error
             raise bad_request(f"preview synthesize failed: {handle.error}")
         wav_bytes, sample_rate, channels = handle.items[0].result
 
@@ -627,7 +625,7 @@ def _resolve_audition_target(voice_id: str, auto_load: bool):
 
     1. voice of the currently-loaded managed engine,
     2. static voice of an installed managed engine (load-on-consent),
-    3. stored voice (clone / design / import / blend / trained),
+    3. stored voice (clone / design / import / blend),
     4. in-process engine preset.
 
     Returns ("managed" | "inprocess", engine_id, voice_fields | None);

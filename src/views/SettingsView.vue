@@ -163,9 +163,8 @@ const settings = ref({
   cors:      {},
   auth:      {},
   mastering: {},
-  training:  {},
   models:    {},
-  engines:   { kokoro: { model_dir_override: "" }, default_tts_engine: "kokoro" },
+  engines:   { default_tts_engine: "kokoro" },
   app:       { primary_use_case: "unset", secondary_use_cases: [], onboarding_shown: false },
   generation:{ max_chunk_chars: 800, crossfade_ms: 50, stream_piece_chars: 200, pause_between_lines_ms: 600, normalize_audio: true, autoplay_on_generate: true },
 });
@@ -587,7 +586,6 @@ async function restartAndInstall() {
 // the UI is interactive immediately.
 const CAPTURE_KEY = "justvoice:capture_settings";
 const capture = ref({
-  sttModel: "turbo",
   llmModel: "1.7B",
   refinementMode: "smart-cleanup",
   language: "auto",
@@ -1300,24 +1298,6 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- ─── GPU · Local model paths ─── -->
-    <div v-show="activeSub === 'gpu'" class="jv-section" v-if="settings.engines">
-      <div class="jv-card">
-        <div class="jv-card__header">
-          <h3 class="jv-card__title">Local model paths</h3>
-        </div>
-        <UiField label="Kokoro model directory (absolute path)" layout="block">
-          <UiInput
-            v-model="settings.engines.kokoro.model_dir_override"
-            :spellcheck="false"
-            width="path"
-            placeholder="e.g. C:\Users\you\kokoro-multi-lang-v1_0"
-          />
-        </UiField>
-        <p class="jv-muted jv-note jv-mt8">Restart required after changing.</p>
-      </div>
-    </div>
-
     <!-- ─── Generation · Pipeline knobs (preview parity) ─── -->
     <div v-show="activeSub === 'generation'" class="jv-section" v-if="settings.generation">
       <div class="jv-card">
@@ -1459,57 +1439,21 @@ onMounted(() => {
             <UiToggle v-model="settings.generation.autoplay_on_generate" @change="saveDebounced" aria-label="Autoplay on generate" />
           </div>
         </div>
-      </div>
-    </div>
 
-    <!-- ─── Generation · Training ─── -->
-    <div v-show="activeSub === 'generation'" class="jv-section" v-if="settings.training">
-      <div class="jv-card">
-        <div class="jv-card__header">
-          <h3 class="jv-card__title">Training</h3>
-        </div>
-        <div class="settings-grid">
-          <UiField label="Max concurrent jobs" layout="block">
-            <UiInput v-model.number="settings.training.max_concurrent_jobs" type="number" width="token" />
-          </UiField>
-          <UiField label="Max samples per job" layout="block">
-            <UiInput v-model.number="settings.training.max_samples_per_job" type="number" width="token" />
-          </UiField>
-          <UiField label="Sample loss every (steps)" layout="block">
-            <UiInput v-model.number="settings.training.sample_loss_every" type="number" width="token" />
-          </UiField>
-          <UiField label="Default voice language (BCP-47)" layout="block">
-            <UiInput v-model="settings.training.default_voice_language" width="token" />
-          </UiField>
-        </div>
-        <div class="jv-mt14">
-          <UiCheckbox
-            v-model="settings.training.enabled"
-            label="Training enabled (master gate — off makes POST /v1/train return 501)"
-          />
-        </div>
-
-        <template v-if="settings.training.validation">
-          <div class="jv-divider"></div>
-          <h4 class="jv-eyebrow-h">Validation thresholds</h4>
-          <div class="settings-grid">
-            <UiField label="Min sample duration (s)" layout="block">
-              <UiInput v-model.number="settings.training.validation.min_sample_duration_secs" type="number" width="token" />
-            </UiField>
-            <UiField label="Max sample duration (s)" layout="block">
-              <UiInput v-model.number="settings.training.validation.max_sample_duration_secs" type="number" width="token" />
-            </UiField>
-            <UiField label="Min SNR (dB)" layout="block">
-              <UiInput v-model.number="settings.training.validation.min_snr_db" type="number" width="token" />
-            </UiField>
-            <UiField label="Max silence ratio" layout="block">
-              <UiInput v-model.number="settings.training.validation.max_silence_ratio" type="number" width="token" />
-            </UiField>
-            <UiField label="Min accepted samples" layout="block">
-              <UiInput v-model.number="settings.training.validation.min_accepted_samples" type="number" width="token" />
-            </UiField>
+        <!-- Default voice language — moved here from the Training card when
+             training was removed (2026-10-02); a blend is its only reader. -->
+        <div class="setting-row">
+          <div class="setting-row__head">
+            <div>
+              <div class="setting-row__title">Default voice language</div>
+              <div class="setting-row__desc">
+                The language a blended voice speaks when the voices it mixes are not all one
+                language — in the audition and in the saved voice. A language code such as en-US.
+              </div>
+            </div>
+            <UiInput v-model="settings.generation.default_voice_language" width="token" aria-label="Default voice language" @blur="saveDebounced" />
           </div>
-        </template>
+        </div>
       </div>
     </div>
 
@@ -1664,20 +1608,13 @@ onMounted(() => {
         <div class="setting-row">
           <div class="setting-row__head">
             <div>
-              <div class="setting-row__title">STT (Whisper)</div>
-              <div class="setting-row__desc">Speech-to-text model. Larger = better accuracy + slower. Turbo is best balance.</div>
+              <div class="setting-row__title">Speech recognition</div>
+              <div class="setting-row__desc">
+                Turns your recording into text — the model is the one under
+                <a href="#/ai">AI Settings → Speech engines → Speech recognition</a>;
+                dictation loads it on first use.
+              </div>
             </div>
-            <UiSelect
-              v-model="capture.sttModel"
-              width="name"
-              :options="[
-                { label: 'faster-whisper-base.en (fast, recommended)', value: 'base.en' },
-                { label: 'faster-whisper-small.en', value: 'small.en' },
-                { label: 'faster-whisper-medium.en', value: 'medium.en' },
-                { label: 'faster-whisper-large-v3', value: 'large-v3' },
-                { label: 'faster-whisper-turbo (near-best, fast)', value: 'turbo' },
-              ]"
-            />
           </div>
         </div>
         <div class="setting-row">
@@ -1716,7 +1653,7 @@ onMounted(() => {
           <div class="setting-row__head">
             <div>
               <div class="setting-row__title">Capture language</div>
-              <div class="setting-row__desc">Whisper language hint. "auto" detects per-recording.</div>
+              <div class="setting-row__desc">Language hint for speech recognition. "auto" detects per-recording.</div>
             </div>
             <UiSelect
               v-model="capture.language"
@@ -1806,7 +1743,7 @@ onMounted(() => {
         <div class="jv-card__header"><h3 class="jv-card__title">Exposed tools</h3></div>
         <div class="jv-row jv-gap6 jv-wrap jv-mt8">
           <span class="jv-chip-card" title="Render text to speech; returns a generation id + audio URL"><strong>justvoice.speak</strong></span>
-          <span class="jv-chip-card" title="Audio → text via the local Whisper engine"><strong>justvoice.transcribe</strong></span>
+          <span class="jv-chip-card" title="Audio → text via the local speech-recognition engine"><strong>justvoice.transcribe</strong></span>
           <span class="jv-chip-card" title="All voices (presets + cloned + designed)"><strong>justvoice.list_voices</strong></span>
           <span class="jv-chip-card" title="Personas with their bound voice"><strong>justvoice.list_personas</strong></span>
         </div>
@@ -1875,18 +1812,20 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- ─── GPU — live info + CUDA wheel flow (task #91) ─── -->
-    <!-- ─── GPU acceleration (preview parity, preview lines 1717-1741) ─── -->
+    <!-- ─── GPU — live info (task #91). The "CUDA wheel download flow" mock
+         card that sat under it left on 2026-10-01: it was never wired, and the
+         per-engine PyTorch it described went with the switch to the speech
+         runtime, whose build is chosen on AI Settings → Speech engines. ─── -->
     <div v-show="activeSub === 'gpu'" class="jv-section">
       <div class="jv-card">
-        <div class="jv-card__header"><h3 class="jv-card__title">GpuInfoCard</h3></div>
+        <div class="jv-card__header"><h3 class="jv-card__title">GPU</h3></div>
         <p v-if="!gpuInfo" class="jv-muted">Loading GPU info…</p>
         <template v-else>
           <div class="setting-row">
             <div class="setting-row__head">
               <div>
                 <div class="setting-row__title">Backend</div>
-                <div class="setting-row__desc">Compute runtime PyTorch engines are using.</div>
+                <div class="setting-row__desc">The best compute runtime this machine reports. The speech runtime's own build (CUDA, Vulkan, CPU) is chosen on AI Settings → Speech engines.</div>
               </div>
               <strong>{{ (gpuInfo.active_backend || "cpu").toUpperCase() }}</strong>
             </div>
@@ -1906,7 +1845,7 @@ onMounted(() => {
                 <div class="setting-row__title">VRAM total / used</div>
                 <div class="setting-row__desc">
                   Currently using <strong>{{ gpuVramUsedGB }} GB</strong> of <strong>{{ gpuVramTotalGB }} GB</strong>.
-                  Unload engines via the Engines tab to free VRAM before loading larger models.
+                  Unload models on AI Settings → Speech engines to free VRAM before loading larger ones.
                 </div>
               </div>
               <div class="jv-col-end">
@@ -1928,30 +1867,6 @@ onMounted(() => {
             </div>
           </div>
         </template>
-      </div>
-    </div>
-
-    <div v-show="activeSub === 'gpu'" class="jv-section">
-      <div class="jv-card">
-        <div class="jv-card__header"><h3 class="jv-card__title">CUDA wheel download flow</h3></div>
-        <p class="jv-muted jv-hint">
-          PyTorch engines ship with the CPU wheel by default. Switching to CUDA reinstalls torch in
-          the engine's venv with the matching CUDA build (~2 GB download). Per-engine — Chatterbox
-          on CUDA and Kokoro on CPU is fine. Phases: <code class="jv-mono">idle → stopping engines →
-          waiting for download → ready</code>.
-        </p>
-        <div class="jv-row jv-mt14">
-          <UiTag intent="success">phase: ready</UiTag>
-          <span class="jv-muted jv-note">torch 2.4.1+cu124 · 2.1 GB</span>
-          <span class="jv-spacer" />
-          <UiButton intent="secondary" size="small" label="Switch to CPU-only" />
-          <UiButton intent="secondary" size="small" label="Switch to ROCm (AMD)" />
-          <UiButton intent="secondary" size="small" label="Re-download" />
-        </div>
-        <p class="jv-muted jv-note-xs jv-mt10">
-          The switch is per-engine. Use the Engines tab → engine row → "Install with CUDA" to enable
-          per engine. On Apple Silicon, MPS / CoreML is auto-detected — no switch required.
-        </p>
       </div>
     </div>
 

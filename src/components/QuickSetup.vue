@@ -39,56 +39,54 @@ const engines = ref([]);
 const llmProviders = ref([]);
 
 // ── Tier recipes ────────────────────────────────────────────────────
-// Per-tier recipe: which VOICE engines to install (the pin half died with
-// the pin era — AI routing lives in the shared presets).
+// Per-tier recipe: which VOICE engines to set up (the pin half died with
+// the pin era — AI routing lives in the shared presets). Every engine runs
+// on the one speech runtime since the 2026-10-01 switch, so setting up is
+// ONE runtime install; the tier only decides which engines' models you'll
+// be downloading, and those come down the first time each one loads. The
+// sizes are the default 8-bit models' real files (the engine manifests);
+// the tiers follow memory measured on an 8 GB card (switch plan §2.1, §8):
+// Qwen3 1.7B peaked at 7.8 GB on its own, so it starts the 12 GB tier.
+//
+// Where each engine runs (decided 2026-10-02, CPU placement — the tiers of decision 3):
+// the CPU-fast engines (Kokoro 3.2×, KittenTTS 3.4×, Pocket TTS 3.9× real time, measured
+// on an 8-core Ryzen) go on the CPU so the card stays free for the AI model; Chatterbox
+// and Qwen3-TTS need the card. `runsOn` is what the list says; Auto decides at each load.
+const RUNS_ON = {
+  cpu: "on the CPU",
+  cpuBesideAi: "on the CPU — keeps the card free for the AI model",
+  gpu: "on the graphics card",
+};
 const TIER_RECIPES = {
   cpu: {
     label: "CPU / low VRAM",
-    blurb: "Kokoro runs realtime on CPU.",
-    ttsEngineIds: ["kokoro"],
-    estimatedDownloadGb: 0.4,
+    blurb: "Kokoro, KittenTTS and Pocket TTS — preset voices and voice cloning, all on the CPU.",
+    ttsEngineIds: ["kokoro", "kitten", "pocket"],
+    runsOn: { kokoro: "cpu", kitten: "cpu", pocket: "cpu" },
+    estimatedDownloadGb: 0.8,
   },
   vram8: {
     label: "8 GB tier",
-    blurb: "Kokoro + Chatterbox cover most production work. Voice cloning on 8 GB.",
-    ttsEngineIds: ["kokoro", "chatterbox"],
-    estimatedDownloadGb: 2.4,
+    blurb: "Kokoro and Pocket TTS on the CPU, plus Chatterbox Multilingual on the graphics card for cloning in 19 languages.",
+    ttsEngineIds: ["kokoro", "pocket", "chatterbox"],
+    runsOn: { kokoro: "cpuBesideAi", pocket: "cpuBesideAi", chatterbox: "gpu" },
+    estimatedDownloadGb: 2.5,
   },
   vram12: {
-    label: "12 GB tier",
-    blurb: "Adds Qwen3-TTS 0.6B for natural-language delivery instructions.",
-    ttsEngineIds: ["kokoro", "chatterbox", "qwen3"],
-    estimatedDownloadGb: 8.1,
-  },
-  vram16: {
-    label: "16 GB tier",
-    blurb: "Adds LuxTTS (lightweight cloning).",
-    ttsEngineIds: ["kokoro", "chatterbox", "qwen3", "luxtts"],
-    estimatedDownloadGb: 9.3,
-  },
-  vram24: {
-    label: "24 GB tier",
-    blurb: "Adds MOSS-TTSD (multi-speaker dialogue).",
-    ttsEngineIds: ["kokoro", "chatterbox", "qwen3", "luxtts", "moss-tts"],
-    estimatedDownloadGb: 13.4,
-  },
-  vram32: {
-    label: "32 GB+ tier",
-    blurb: "Full pool including TADA Llama.",
-    ttsEngineIds: ["kokoro", "chatterbox", "qwen3", "luxtts", "moss-tts", "tada"],
-    estimatedDownloadGb: 33.0,
+    label: "12 GB+ tier",
+    blurb: "Adds Qwen3-TTS on the graphics card — preset speakers you direct in plain words, designed voices, and cloning.",
+    ttsEngineIds: ["kokoro", "pocket", "chatterbox", "qwen3"],
+    runsOn: { kokoro: "cpuBesideAi", pocket: "cpuBesideAi", chatterbox: "gpu", qwen3: "gpu" },
+    estimatedDownloadGb: 5.4,
   },
 };
 
-const TIER_ORDER = ["cpu", "vram8", "vram12", "vram16", "vram24", "vram32"];
+const TIER_ORDER = ["cpu", "vram8", "vram12"];
 
 function tierForVramMb(mb) {
   if (!mb || mb < 7 * 1024) return "cpu";
   if (mb < 11 * 1024) return "vram8";
-  if (mb < 14 * 1024) return "vram12";
-  if (mb < 20 * 1024) return "vram16";
-  if (mb < 28 * 1024) return "vram24";
-  return "vram32";
+  return "vram12";
 }
 
 // Auto-detected tier (from /v1/system) — used as the dropdown default.
@@ -164,31 +162,24 @@ async function detect() {
 }
 
 // ── Install step ────────────────────────────────────────────────────
-// One kit download task per engine (ttsJobChannel over the job API) — the
-// shared DownloadBar renders them; the hand pollJob + percent bars died with
-// the parity batch (2026-08-06).
-const installTasks = ref({});   // engineId -> createDownloadTask instance
-const installAborted = ref(false);
+// ONE kit download task (ttsJobChannel over the job API): installing any
+// engine installs the speech runtime they all share, so the first chosen
+// engine's install is the whole step. The shared DownloadBar renders it.
+const runtimeTask = ref(null);
 
 async function runInstalls() {
   step.value = "install";
-  installAborted.value = false;
-  installTasks.value = {};
-  for (const engine of enginesToInstall.value) {
-    if (installAborted.value) break;
-    const task = makeEngineDownloadTask(api, engine.id, {});
-    installTasks.value = { ...installTasks.value, [engine.id]: task };
-    await task.start();   // engines install one at a time, as before
+  const first = enginesToInstall.value[0];
+  if (first) {
+    runtimeTask.value = makeEngineDownloadTask(api, first.id, {});
+    await runtimeTask.value.start();
   }
   step.value = "done";
 }
 
 function cancelInstalls() {
-  installAborted.value = true;
-  for (const t of Object.values(installTasks.value)) {
-    if (t.state === "running") t.cancel();
-  }
-  pushToast({ message: "Install cancelled. Engines that finished are kept.", kind: "info" });
+  if (runtimeTask.value?.state === "running") runtimeTask.value.cancel();
+  pushToast({ message: "Install cancelled.", kind: "info" });
 }
 
 // ── Optional helpers — local LLM detect-and-connect + STT readiness ──
@@ -242,12 +233,8 @@ function close() {
 
 onMounted(() => { detect(); probeHelpers(); });
 
-const totalInstalled = computed(() =>
-  Object.values(installTasks.value).filter((t) => t.state === "done").length,
-);
-const totalFailed = computed(() =>
-  Object.values(installTasks.value).filter((t) => t.state === "error").length,
-);
+const runtimeInstalled = computed(() => runtimeTask.value?.state === "done");
+const runtimeFailed = computed(() => runtimeTask.value?.state === "error");
 const hasLlmProvider = computed(() => llmProviders.value.length > 0);
 </script>
 
@@ -300,18 +287,20 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
                 <UiCheckbox
                   :model-value="!deselectedEngineIds.has(id)"
                   :disabled="enginesAlreadyInstalled.some((e) => e.id === id)"
-                  :title="enginesAlreadyInstalled.some((e) => e.id === id) ? 'Already on disk' : 'Uncheck to skip this engine'"
+                  :title="enginesAlreadyInstalled.some((e) => e.id === id) ? 'Ready — the speech runtime is installed' : 'Uncheck to skip this engine'"
                   @change="toggleEngine(id)"
                 />
                 <span class="quick-setup__engine-name">{{ engines.find((e) => e.id === id)?.name || id }}</span>
+                <span class="quick-setup__engine-where">{{ RUNS_ON[recipe.runsOn?.[id]] || "" }}</span>
                 <span v-if="engines.find((e) => e.id === id)?.description" class="jv-muted quick-setup__engine-blurb">{{ engines.find((e) => e.id === id)?.description }}</span>
-                <UiTag v-if="enginesAlreadyInstalled.some((e) => e.id === id)" intent="success">already installed</UiTag>
-                <UiTag intent="ghost" v-else>to install</UiTag>
+                <UiTag v-if="enginesAlreadyInstalled.some((e) => e.id === id)" intent="success">ready</UiTag>
+                <UiTag intent="ghost" v-else>needs the speech runtime</UiTag>
               </li>
             </ul>
             <p class="jv-muted quick-setup__note quick-setup__note--est">
-              Estimated download: <strong>{{ recipe.estimatedDownloadGb }} GB</strong>
-              · {{ enginesToInstall.length }} new · {{ enginesAlreadyInstalled.length }} already on disk
+              Every engine runs on one speech runtime — it downloads now (60–460 MB, depending on
+              your graphics card). Each engine's model downloads the first time you load it:
+              about <strong>{{ recipe.estimatedDownloadGb }} GB</strong> for this tier.
             </p>
           </section>
 
@@ -349,7 +338,7 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
               <li v-if="sttReadiness">
                 <span class="quick-setup__helper-ic">🎤</span>
                 <span class="quick-setup__helper-name"><strong>STT — {{ sttReadiness.display_name }}</strong>
-                  <span class="jv-muted"> · Train transcripts + capture promotion + dictation</span>
+                  <span class="jv-muted"> · Capture promotion + dictation</span>
                 </span>
                 <UiTag intent="success" v-if="sttReadiness.ready">cached</UiTag>
                 <UiTag intent="ghost" v-else  :title="'Downloads on first use'">{{ sttReadiness.size_mb ? `${sttReadiness.size_mb} MB on first use` : "downloads on first use" }}</UiTag>
@@ -360,7 +349,7 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
           <section>
             <div class="quick-setup__row-label">What happens next</div>
             <ol class="quick-setup__next">
-              <li>Engines download &amp; verify (one-time)</li>
+              <li>The speech runtime downloads &amp; verifies (one-time)</li>
               <li>Clone your voice from ~30 s of audio — or skip and use preset voices</li>
               <li>Pick what you're making (audiobook · game · podcast) and import</li>
             </ol>
@@ -374,22 +363,26 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
         <!-- ── INSTALL step ─────────────────────────────────────── -->
         <template v-else-if="step === 'install'">
           <p class="jv-muted quick-setup__note-md quick-setup__note-md--lede">
-            Engines install one at a time — each downloads, verifies, and lands in
-            your library before the next starts.
+            The speech runtime downloads, is checked, and is put in place. Every
+            voice engine runs on it.
           </p>
-          <!-- THE one download bar per engine (kit DownloadBar over the kit
-               task — same control every download in the family renders). -->
-          <DownloadBar v-for="engine in enginesToInstall" :key="engine.id"
-            :title="engine.name" :role="engine.id"
-            :task="installTasks[engine.id] || { state: '', label: 'Waiting…', done: 0, total: 0, error: '' }" />
+          <!-- THE one download bar (kit DownloadBar over the kit task — same
+               control every download in the family renders). -->
+          <DownloadBar title="Speech runtime" role="runs every voice engine"
+            :task="runtimeTask || { state: '', label: 'Waiting…', done: 0, total: 0, error: '' }" />
         </template>
 
         <!-- ── DONE step ────────────────────────────────────────── -->
         <template v-else>
-          <p>
-            <strong>{{ totalInstalled }}</strong> voice engine{{ totalInstalled === 1 ? "" : "s" }} installed
-            <span v-if="totalFailed">· <strong>{{ totalFailed }}</strong> failed</span>.
+          <p v-if="runtimeInstalled">
+            The speech runtime is installed. Each engine's model downloads the first
+            time you load it — on the Voices page, or AI Settings → Speech engines.
           </p>
+          <p v-else-if="runtimeFailed">
+            The speech runtime didn't install: {{ runtimeTask?.error || "unknown error" }}.
+            Retry from AI Settings → Speech engines.
+          </p>
+          <p v-else>Install cancelled — nothing was changed.</p>
           <p v-if="!hasLlmProvider" class="jv-muted quick-setup__note-md">
             The AI text features (attribution, dictation cleanup, compose) have their own
             setup — open <a href="#/ai">AI Settings</a> and run the LLM engine setup.
@@ -403,9 +396,7 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
           <span class="jv-spacer" />
           <UiButton
             intent="primary"
-            :label="enginesToInstall.length
-              ? `Install ${enginesToInstall.length} engine${enginesToInstall.length === 1 ? '' : 's'}`
-              : 'Finish'"
+            :label="enginesToInstall.length ? 'Install speech runtime' : 'Finish'"
             title="Nothing here blocks you: the AI text features have their own setup under AI Settings"
             @click="enginesToInstall.length ? runInstalls() : close()"
           />
@@ -481,6 +472,7 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
 .quick-setup__engine-row { display: flex; align-items: center; gap: 8px; }
 .quick-setup__engine-row input { accent-color: var(--accent); width: 15px; height: 15px; flex: none; }
 .quick-setup__engine-name { font-weight: 600; }
+.quick-setup__engine-where { color: var(--ink-2); white-space: nowrap; }
 .quick-setup__engine-blurb { font-size: 11px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .quick-setup__next { margin: 0; padding-left: 18px; font-size: 12.5px; line-height: 1.8; }
 </style>

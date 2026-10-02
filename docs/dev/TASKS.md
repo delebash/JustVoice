@@ -666,6 +666,154 @@ GO: needed.
 
 ## The next build
 
+### Every Python speech engine is replaced by our own copy of audio.cpp — one cut, then the gaps
+STATE:  DECIDED 2026-10-01 — "we do a full switch"; "i dont want to do anything side by side";
+        "maybe we just copy the repo and make it our own"; "the app is not in production so no need
+        for it to remain running lets do the cut all at once then add the missing features";
+        "as long as qwen asr is as good as whisper we can drop whisper"; "dont care about
+        watermark"; on a one-author project: "1 author wroter our current code".
+WHY:    measured 2026-10-01 on this RTX 2070 SUPER, same 20 Ninth Facet lines and seeds both sides:
+        Qwen3 CustomVoice 1.7B 2.0× real time against ours 0.26× (6.5× at matched fp16, so the
+        speed is the runtime, not the 8-bit file); Chatterbox Multilingual 2.08× against 0.92×;
+        loads ~4 s against 24–34 s; the same seed repeats on all three engines; words-right level.
+        One native runtime replaces five Python venvs + torch for rendering. Evidence lives in the
+        session scratchpad (`scratchpad/abtest/`), which is temporary.
+NOT:    both runtimes side by side · keeping the app working through the switch · sending every
+        change upstream.
+BUILT:  2026-10-01, UNCOMMITTED — under "run the pre-cut checks, go your rec do the design and
+        coding go". The record is `docs/plans/2026-10-01-audiocpp-switch.md` (§4 R1–R15 the calls
+        made under "your rec", §8 every check and the live run). Pre-cut checks A (whole book, 3
+        engines, 0 failures), B (LLM alongside), C (Vulkan), D (recognition, 7 languages) all
+        run. The cut: kit `acquire_runtime` + public `spawn_child`/`close_job`; `engines/audiocpp/`
+        (runtime, slot, release, eSpeak); manifests → 8-bit GGUF; `asr` engine replaces Whisper;
+        runtime row + Backend/GPU setting (`PUT /v1/speech-runtime`); luxtts/whisper/tada/
+        moss_tts, every engine.py, justvoice_plugin, the venv/uv/torch installer, uv sidecar,
+        check:engines, legacy model dirs and the URL arm removed; docs swept. Server 888 passed
+        before the live-run fixes; live end to end through JustVoice on the real data dir passed
+        after three fixes found there (caption times ×2/3 at 24 kHz; stale variant label;
+        pre-switch footprints refusing Qwen3).
+DECIDED: 2026-10-02 — Q2: "q2 remove traingin and rebuild" → "go on both removing" (with the
+        old downloads). Removed everywhere: the training API and runner, both trainer scripts, the
+        dataset preparer and builder screens and their settings, trained-voice render paths, the
+        tests and the docs; rebuilt later on the speech runtime (a new item when it starts).
+        Gates after the removal: ruff clean, server 852 passed (the training tests went), vitest
+        122, biome clean, vite build, smoke 14/14 views zero JS errors on the real data dir; the
+        moved Default voice language row rendered, measured and saved. Left: `legacy-gui/` (the
+        old single-file reference GUI) still has its Train tab — untouched, a frozen reference;
+        the live DB keeps an empty `training_jobs` table until a reset.
+        Q3 became the item below ("Speech models run on the CPU or the GPU…").
+DECIDED: 2026-10-02 — Q1 (CI on our copy's repo to publish binaries): "q1 yes but not now" — yes,
+        when the first change needs C++, not before. "commit and push" — the switch, the training
+        removal and CPU placement committed and pushed the same day.
+OPEN:   gaps, in order: switch plan §5 (Turbo/Nano cloning, blends, single-word IPA, CustomVoice
+        0.6B, training rebuilt on the runtime, Chatterbox he/ja/ru/zh, our-copy fix for the
+        aligner's seconds) — the CPU cloner (Pocket TTS) and Kokoro on the CPU landed with the item
+        below · Q1's CI when the first C++ gap starts. Gates on the switch's final tree: ruff
+        clean, server 894 passed, vitest 122 passed, biome clean, vite build, smoke 14/14 views
+        zero JS errors on the real data dir, kit binary 37 + spawn 6 passed; the runtime row was
+        screenshotted and measured.
+GO:     needed, per step
+
+### Speech models run on the CPU or the GPU — chosen per model, automatically, measured
+STATE:  DECIDED 2026-10-02 as direction, first steps under go. The user: "do others run well on cpu
+        besides just kokoro, we should make this easy and universial, we still should have our
+        recommendation engined that setsup the env based on pc specs and model, so if model runs
+        better on cpu we run it on cpu, this should be something that just works and the use can
+        be informed that they can choose to run on cpu or gpu" → "we are no longer limited to the
+        models we originally had, we have access to all engines in audio.cpp so i am sure other
+        models run well on cpu only, we dont need to test qwen chaterbox on cpu we already know
+        they run poorly" → "go on your plan". The plan as presented:
+          1. shortlist from audio.cpp's catalogue by our rules — weights that permit selling the
+             output, no Hugging Face login to download, clones or preset voices — starting from
+             docs/plans/2026-10-01-tts-engine-scan.md and audio.cpp's model specs + licence table;
+          2. candidates to check: Piper, KittenTTS, Soprano, MOSS-TTS-Nano, NeuTTS, ZipVoice;
+             re-check Pocket TTS (rejected on the HF-login rule) and Supertonic (no cloning);
+             recognition: Parakeet, Moonshine;
+          3. measure the shortlist on the CPU on this machine — speed, memory, a listen;
+          4. then automatic placement: Auto / GPU / CPU per model, Auto from the measured numbers
+             (GPU when it fits beside the AI model; else CPU if fast enough there; else GPU with
+             the AI model unloaded and a toast), CPU models in a second CPU-only runtime process,
+             each row saying where it runs and why; Voice engine setup recommends from the same
+             numbers; built on the kit's measurement store and speed bands, not a second copy.
+WHY:    on 8 GB a Kokoro render on the GPU evicted the whole 6.8 GB AI model (switch plan §8 B);
+        on the CPU it measured 2.8× real time and costs no graphics memory.
+NOT:    Qwen3 or Chatterbox on the CPU (they run poorly there — the user) · one backend for every
+        model (the runtime row's Backend select alone).
+BUILT:  steps 1–3 done 2026-10-02 — research, shortlist and CPU measurements in
+        docs/plans/2026-10-02-cpu-placement.md (§4 shortlist, §6 numbers, §7 the step-4 proposal).
+        Measured on the Ryzen 7 5700X: a CPU-backend runtime holds 0 MB of graphics memory; Kokoro
+        3.15× real time at 8 threads (2.28× at the app's 4), KittenTTS 3.41×, Inflect 4.77×,
+        MOSS-TTS-Nano 0.21× (no usable CPU cloner), Magpie 0.13×; every recogniser ≥ 10× real
+        time on the CPU, Parakeet matching its GPU accuracy.
+DECIDED: 2026-10-02 — "your rec on 1-5" (the step-4 decisions, plan doc §7 D1–D5), as presented:
+          1. "fast enough" on the CPU for speech = 2× real time — Kokoro, Kitten and Inflect pass,
+             everything else fails by a wide margin;
+          2. CPU threads = the number of physical cores (8 on this machine), as a setting;
+          3. add KittenTTS as a CPU voice, not Inflect (one voice);
+          4. a CPU recogniser: measure Qwen3-ASR on the CPU first (whether the "qwen on cpu" ruling
+             covers the recogniser is the research's §5 question 3, asked again); if it's too slow,
+             Parakeet for English and European languages, Qwen3-ASR kept on the GPU for ja and zh;
+          5. cloning stays GPU-only for now — nothing in audio.cpp clones fast enough on the CPU.
+DECIDED: 2026-10-02 — research §5 question 1, Pocket TTS: "use the copy and show kyutai's terms
+        before first clone". As presented: audio.cpp's own ungated copy (audio-cpp/audio.cpp-gguf)
+        is downloaded with no login; Kyutai's gated repo (kyutai/pocket-tts) asks for a login and
+        acceptance of its prohibited-use terms, so JustVoice shows those terms to the user, who
+        accepts them before their first Pocket TTS clone. Presets: cosette and jean are
+        non-commercial and giovanni, lola, juergen, rafael state no licence — 20 usable (plan doc
+        §5). Unmeasured on the CPU, and whether the copy carries the cloning weights is unverified.
+DECIDED: 2026-10-02 — "your rec on the rest go", on the research's §5 questions 2–4, as presented:
+          2. Supertonic 3 — out: its licence makes every audiobook voiced with it carry a
+             machine-generated disclosure, and Kokoro and Kitten cover CPU presets without that;
+          3. Qwen3-ASR — measure both the 1.7B and the 0.6B on the CPU (this is D4's measurement);
+          4. Chatterbox Turbo — out: audio.cpp's Turbo has one English voice and no cloning.
+MEASURED: 2026-10-02, under the go above (plan doc §6):
+        - Pocket TTS (audio.cpp's copy) CLONES, on the CPU, at 4.05× real time — a low reference
+          (106 Hz) gave ~96 Hz, a high one (229 Hz) gave 226 Hz. Presets alba / estelle 3.90× /
+          3.94×. audio.cpp's Pocket takes the clip on its plain speech task, not the clone task.
+          This CONTRADICTS decision 5 above ("nothing in audio.cpp clones fast enough on the CPU"),
+          which was made before Pocket was measured — back to the user.
+        - Qwen3-ASR 1.7B on the CPU: 2.6× real time with its GPU accuracy (2.5 s per English clip,
+          up to 5.7 s; 0.53 s on the GPU), 4.9 GB RAM peak. The 0.6B: 5.0×, clearly worse outside
+          English and Chinese. Whether 2.6× is "too slow" for D4 is back to the user.
+DECIDED: 2026-10-02 — "your rec on 1 and 2, go on 3 and go on build". As presented:
+          1. decision 5 now that Pocket clones on the CPU — add Pocket TTS as an engine: CPU-capable
+             cloning plus its 20 commercially usable presets, with Kyutai's terms shown before the
+             first clone; English plus German, Italian, Portuguese and Spanish, each as its own
+             download. Cloned voices on Chatterbox and Qwen3 stay GPU-only;
+          2. the recogniser — keep Qwen3-ASR 1.7B as the only recogniser and let Auto move it to the
+             CPU when the graphics card is busy, using the same 2× bar as speech; you keep its
+             accuracy and its Japanese and Chinese, and dictation waits about 2 s longer; Parakeet
+             isn't needed for now;
+          3. build step 4: a second runtime process for the CPU, at 8 threads, as a setting;
+             Auto / GPU / CPU on each model; KittenTTS and Pocket TTS added as engines, with the
+             Kyutai terms prompt; Voice engine setup recommending from the numbers.
+DECIDED: 2026-10-02 — "your rec on 1-3 go", on the three behaviours the build surfaced, as presented:
+          1. Auto before a model has ever run on the graphics card: an unknown size counts as
+             "doesn't fit" while an AI model is on the card — a model fast enough on the CPU goes
+             there, any other takes the third step (GPU with the AI model unloaded, and a toast);
+             with no AI model on the card it goes to the GPU and gets measured there;
+          2. the Kyutai terms gate: the server refuses any Pocket TTS render from a reference clip
+             until the terms have been accepted once; the Clone tab shows the terms with an Accept
+             button when Pocket is the chosen model, and so does that refusal; JustWrite, MCP and
+             API calls get the same refusal until the terms are accepted;
+          3. Voice engine setup's tiers: CPU / low VRAM — Kokoro, KittenTTS and Pocket TTS, preset
+             voices and cloning, all on the CPU; 8 GB — Kokoro and Pocket TTS on the CPU (keeps the
+             card free for the AI model) plus Chatterbox on the GPU for cloning in 19 languages;
+             12 GB+ — adds Qwen3-TTS on the GPU; each engine in the list says where it will run.
+BUILT:  step 4, 2026-10-02, UNCOMMITTED — docs/plans/2026-10-02-cpu-placement.md §8 (design) and
+        §9 (what landed, gates, the live run). Two runtime processes; Auto / GPU / CPU per model
+        with its reason on the row; CPU speed recorded per load (kit `realtime_x`); KittenTTS and
+        Pocket TTS (20 presets, five languages, Kyutai's terms gate → 403 terms-required →
+        EngineTermsDialog, the Clone tab and the engine row); Voice engine setup's tiers; docs.
+        Gates: server 895 passed, ruff, biome, vitest 122, vite build, smoke 14/14 on the real
+        data dir; kit 1,027 passed; JustWrite builds and its 592 unit tests pass with the kit change. Live with Gemma
+        resident: Kokoro and speech recognition loaded on the CPU without moving the card; the
+        Pocket gate refused then rendered; the test acceptance was cleared afterwards.
+OPEN:   Pocket TTS Portuguese and Spanish drop words (measured; documented) · speech recognition
+        at 2.06× here, just over the bar · old speech load rows carry the LLM's backend. Committed
+        and pushed 2026-10-02 ("commit and push").
+GO:     given 2026-10-02 for steps 1–3 (done), D4's measurement (done) and the step-4 build
+
 ### THE 2026-08-20 VOICES FIX SESSION — layout delivered; fixes list approved "your rec"
 STATE:  DECIDED 2026-08-20 — *"forget it just fix jv layout for the voices try
 to do a professional job"* (delivered, rendered-verified) → *"do it go"* on
@@ -1426,6 +1574,70 @@ WHY:    the persona layer (§8.3, §8.22 — the tuning that survives a recast) 
 OPEN:   the fix — the mock's persona editor (`workbench`, `_s7`: "How it speaks" Pace / Pitch /
         Gain / Pause) or a smaller stopgap; and whether it goes before Slice 4 (D8 in
         `docs/plans/2026-09-30-mock-vs-app-and-slice-4.md` §3.4). Needs the user's word.
+GO:     needed
+
+### FINDING — language never reaches Chatterbox or Qwen3: every render on them is told English
+STATE:  FINDING — code-verified 2026-10-01 (found by the persona review). Added to this list at
+        the user's word: "add your persona bugs to list to be fixed". Chapter renders build each
+        line with no language (`render_chapter_api.py:256-266`) and pass `language=line.language`
+        (`:442`, `:514`, `:607`); Generate sends none (`GenerateView.vue:482-488`; it only shows
+        the voice's at `:778`). The engines then default: Chatterbox `req.language or "en"`
+        (`chatterbox/engine.py:274`), Qwen3 the same (`qwen3/engine.py:361-362`). So a German
+        clone on Chatterbox Multilingual, or Sohee / Ono Anna on Qwen3, is told English, and the
+        persona's own Language field (`models.py:604`) is never read at render. Kokoro is
+        unaffected — it falls back to its voice's language (`kokoro/engine.py:220`).
+WHY:    two of our three cloning engines are multilingual, and neither gets the language.
+OPEN:   which wins — the persona's language, the voice's, or the book's — then send it from
+        both doors (the chapter resolver and Generate).
+GO:     needed
+
+### FINDING — a persona's seed is ignored when a chapter renders
+STATE:  FINDING — code-verified 2026-10-01 (found by the persona review); added at the user's
+        word, as above. A seed saved in the persona's delivery stays inside `delivery`; the
+        chapter resolver never sets the line's own seed (`render_chapter_api.py:256-266`) and
+        renders pass `seed=line.seed` (`:444`, `:516`, `:609`), which is empty. The engines read
+        only that one (`chatterbox/engine.py:285`, `qwen3/engine.py:371`, `luxtts/engine.py:90`),
+        so every chapter render samples at random. Generate resolves the delivery's seed on its
+        managed-engine path (`generate_api.py:324`) but not on its in-process one (`:440`).
+WHY:    a seed is how a sampled voice (Chatterbox, Qwen3) is made to repeat itself.
+OPEN:   resolve the delivery's seed into the line's seed in the chapter resolver, and on
+        Generate's in-process path, the way `generate_api.py:324` already does.
+GO:     needed
+
+### FINDING — the persona's "Engine override" is read by nothing
+STATE:  FINDING — code-verified 2026-10-01 (found by the persona review); added at the user's
+        word, as above. The Personas editor offers it (`PersonasView.vue:620-624`) and it is
+        stored (`database/models.py:123`), but no render path reads it — `engine_override` has no
+        hit in `render_core.py`, `generate_api.py`, `delivery_merge.py`, `synth_scheduler.py`,
+        `render_jobs.py` or the exports. Cast does read it, as the persona's engine label
+        (`StudioCast.vue:67`), so setting it makes Cast show an engine the audio never uses.
+        Redesign doc §10.4 already flagged it: "a persona reaching past its instrument".
+WHY:    a control that changes nothing, and mislabels Cast when set.
+OPEN:   remove it everywhere (editor, Cast's label, API, export, column), or replace it with
+        the model pin the persona review will propose.
+GO:     needed
+
+### FINDING — the lexicon previews still show IPA as if an engine spoke it
+STATE:  FINDING — code-verified 2026-10-01 (surfaced by the audio.cpp switch). Since the switch no
+        engine takes phonemes (`phoneme_override` False on every manifest), so the render uses an
+        entry's respelling and an IPA-only entry does nothing (`render_core._apply_lexicons`). The
+        previews (`services/lexiconPreview.js`, used by GenerateView and LexiconsView) still count
+        and display IPA entries as applied. docs/lexicons.md now says so in words.
+WHY:    a preview that promises a pronunciation the audio won't have.
+OPEN:   which engine a preview assumes — GenerateView knows the picked voice's engine;
+        LexiconsView has none (a lexicon is engine-free) · until IPA returns (switch plan §5.3),
+        mark IPA-only entries "not spoken yet"?
+GO:     needed
+
+### FINDING — Settings → Capture's fields are kept in the browser and never reach the server
+STATE:  FINDING — code-verified 2026-10-01 (surfaced while replacing its dead Whisper picker).
+        Refinement mode, capture language and auto-paste live in `localStorage`
+        (`SettingsView.vue`, `CAPTURE_KEY`) — the comment says "Persisted via PATCH /v1/settings
+        when wired; for now uses localStorage". The server's `settings.captures` (language,
+        stt_model, refinement flags) is what dictation reads. The switch removed the picker that
+        offered faster-whisper sizes the server never used; the rest predates it.
+WHY:    controls that look like settings and change nothing.
+OPEN:   wire them to `settings.captures` via PATCH, or remove them.
 GO:     needed
 
 ### Voice gender in every voice dropdown, and speaker pronouns — with the Personas redesign

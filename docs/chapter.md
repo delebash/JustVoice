@@ -101,13 +101,18 @@ Mastering is already applied on the render itself — WAV out, encoded on export
 
 Every rendered chapter can produce a caption file — `GET
 /v1/scenes/{scene_id}/captions?format=vtt` (or `srt`). The server renders
-the chapter (already-rendered lines come from cache), listens to it with
-Whisper, and times **every word of the real text** — a misheard word never
-loses its timing, because the text is known and the audio is only
-measured. Use the `.vtt` for web players and read-along; `.srt` for video
-editors. Word timing is accurate to roughly a tenth of a second — right
-for captions and follow-along highlighting, not for sample-exact editing.
-Whisper must be installed; it loads on first use.
+the chapter (already-rendered lines come from cache) and times **every word
+of the real text** with the speech-recognition engine's word aligner
+(Qwen3-ForcedAligner, which downloads with the Speech recognition model). The
+aligner is given the words, so it never has to guess them — it only measures
+where each one falls. Use the `.vtt` for web players and read-along; `.srt`
+for video editors. The timing is right for captions and follow-along
+highlighting, not for sample-exact editing.
+
+The speech runtime must be installed; the Speech recognition model loads on
+first use, and downloads first if it isn't on disk yet (3.6 GB with its
+aligner). Until 2026-10-01 captions used Whisper's word timings, which had
+stopped coming back at all on current builds; the aligner replaces them.
 
 ## Troubleshooting
 

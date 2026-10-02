@@ -31,21 +31,49 @@ word changed, a split, a merge): it keeps them. Speech after a dash isn't read
 in any setting. See
 [Studio → Speech marks](studio.md#speech-marks).
 
-**A voice preview or engine load answers 500 / 503 with an import error**
-— "Numba needs NumPy 2.0 or less", "No module named ...", or similar. That
-engine's Python environment does not contain what the engine expects, which
-normally means something installed into it from outside JustVoice.
+**A model load says "the speech runtime is not installed yet".** Every voice
+engine and speech recognition run on one program, the speech runtime. Install
+it from the **Speech runtime** row at the top of **AI Settings → Speech
+engines** — once, for every engine. See
+[Engines → The speech runtime](engines.md#the-speech-runtime).
 
-The repair is one button: **Uninstall engine** then **Install engine** on that
-engine's row under **AI → Speech engines**. Since every engine has its own
-environment, this touches nothing else, and your downloaded models live in the
-speech cache rather than in the environment, so nothing re-downloads.
+**A render stops with "… not available yet on the new speech runtime".** The
+line's voice is a **blended** voice, and the speech runtime cannot render one
+yet. Give the speaker's persona a different
+voice for now. See [Engines → Not available yet](engines.md#not-available-yet).
 
-(This used to be a much bigger deal. When the engines shared one environment,
-a single bad `pip install` took down every engine but Kokoro at once — Kokoro
-being the only one with no numba in its dependency chain, which made the
-problem look narrower than it was.) See
-[Engines](engines.md#where-the-python-environments-live).
+**A Pocket TTS clone stops with "… only after you accept Kyutai's terms".**
+Pocket TTS clones only once you have accepted Kyutai's terms for it, on this
+install. Open Voices → Clone with Pocket TTS chosen, or the Pocket TTS row on AI
+Settings → Speech engines, read the terms and click **Accept**. Its preset
+voices never need it. See [Engines → The catalog](engines.md#the-catalog).
+
+**A Pocket TTS line stops with "… speaks English, and this line is German".**
+Pocket TTS is one model per language. Load the model for the line's language on
+Speech engines (Pocket TTS German, Italian, Portuguese or Spanish), or give that
+speaker a voice on another engine.
+
+**Speech renders slowly since a model moved to the CPU.** Auto puts a model on
+the CPU only when it speaks at least 2× real time there, and measures it on
+your machine at its first line. If your CPU is slower than that, the next load
+takes it back to the graphics card. To keep it on the card regardless, set its
+**Runs on** to **GPU** on Speech engines. See
+[Engines → Where each model runs](engines.md#where-each-model-runs--the-graphics-card-or-the-cpu).
+
+**A render stops naming the wrong kind of model.** Qwen3-TTS is three
+different models, and a voice belongs to one of them: *"the CustomVoice model
+cannot clone — use a Base model for this voice"* (a cloned voice on
+CustomVoice), *"the Base model is clone-only — this voice needs a reference
+clip"* (a preset speaker on Base), or *"VoiceDesign renders from a voice
+description and this voice has none"*. Chatterbox likewise *"speaks only cloned
+voices"*. Load the model the voice was made with, or pick a voice made for the
+loaded one.
+
+**The speech runtime won't start.** The error quotes the end of the runtime's
+own log; the whole log is `logs/audiocpp-server.log` in your data folder. A
+build that doesn't suit the machine (for example the CUDA build after a
+graphics-driver problem) can be swapped for another on the runtime row's
+**Backend** select — see [GPU](gpu.md#which-build-the-runtime-uses).
 
 **Restore finished but something looks off.** A restore (Settings → Backups →
 Import backup…) replaces the data live and reloads the app. If a view still

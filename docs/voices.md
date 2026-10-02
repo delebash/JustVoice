@@ -12,21 +12,27 @@ you can clone it again on another engine. The result is a new voice, and it
 will sound a little different, because each engine clones with its own
 character.
 
-## The five ways to get a voice
+## The four ways to get a voice
 
 The Voices page has a tab per way in — **Voices** for the library itself,
-then **Clone**, **Design**, **Import**, **Blend** and **LoRA**. Each one
+then **Clone**, **Design**, **Import** and **Blend**. Each one
 produces the matching voice type, so the tab you used and the filter chip
 that finds the result are the same word.
 
 | Type | What it is | Engines |
 |---|---|---|
-| **Preset** | Ships with the engine. Nothing to make. | Kokoro (54), Qwen3 **CustomVoice** (9) |
-| **Cloned** | Learned from a recording of someone speaking. | Chatterbox Turbo + Multilingual, Qwen3 **Base**, LuxTTS (the light one — runs on CPU) (TADA and MOSS-TTSD are marked for removal and no longer offered) |
+| **Preset** | Ships with the engine. Nothing to make. | Kokoro (49), Pocket TTS (20), KittenTTS (8), Qwen3 **CustomVoice** (9) |
+| **Cloned** | Learned from a recording of someone speaking. | Chatterbox Multilingual, Pocket TTS, Qwen3 **Base** (1.7B or 0.6B) |
 | **Designed** | Invented from a written description — no recording. | Qwen3 **VoiceDesign** |
 | **Imported** | An audio clip stored as-is. | any — no engine needed |
-| **Blended** | A voice made out of voices the engine already has — mixed, exaggerated, added and subtracted, or spliced. | Kokoro |
-| **LoRA** | Taught from a set of clips (a LoRA fine-tune). | Qwen3 **Base**, Chatterbox **Turbo** |
+| **Blended** | A voice made out of voices the engine already has — mixed, exaggerated, added and subtracted, or spliced. | Kokoro — **not available yet** on the speech runtime |
+
+Every engine runs on the speech runtime since 2026-10-01. One of these types
+is waiting on it: **Blended** voices cannot render until the runtime can take
+a voice made of numbers — a render that needs one stops with a message naming
+the gap rather than speaking in some other voice. Kokoro also offers 49 of its 54 voices: its five Japanese
+voices need a dictionary the runtime does not ship yet. See
+[Engines → Not available yet](engines.md#not-available-yet).
 
 ### Which of them take written direction
 
@@ -42,16 +48,16 @@ from a description:
 | **Designed**, no kept clip | Yes — and its description leads, with your direction added after |
 | **Designed**, kept clip | **No** — it is a clone now |
 | **Cloned** / **Imported** | **No** — the identity is the recording |
-| **LoRA** | Yes — this is the point of training |
 | **Blended** (Kokoro) | No — Kokoro takes no direction at all |
 
-If you want a specific person's voice *and* the ability to direct it line by
-line, **train a LoRA**. That is the only combination that gives you both.
+No voice type gives you a specific person's voice *and* line-by-line written
+direction. Voice training (a LoRA fine-tune) was the way to get both; it was
+removed on 2026-10-02.
 
-Chatterbox is a separate case: it takes no written direction at any time, but
-its cloned voices do accept per-line `[tag]` emotion markup typed into the
-text. Qwen3 accepts no tags at all — type them and they are removed before
-the model sees them, rather than read aloud.
+Chatterbox takes no written direction at any time; it steers through its
+**Exaggeration** and **CFG weight** controls instead. No engine accepts
+bracketed `[tag]` markup today — type one and it is removed before the model
+sees it, rather than read aloud.
 
 ### Finding a voice in the library
 
@@ -61,7 +67,9 @@ name — *American English*, *British English*, *Chinese* — never as a code.
 Any column heading sorts the list.
 
 Each tab lists the engines that can do its job and what each one needs —
-**Install** for one you do not have, **Load** for one that is not running.
+**Install speech runtime** when the runtime every engine runs on is not
+installed yet, **Load** for a model that is not running (a load downloads the
+model first if it isn't on disk).
 Where a model ships in more than one build, a **Size** dropdown sits beside
 the picker and the line under it spells the choice out in full — the build's
 name and what it weighs. Size decides which weights **Load** fetches, so
@@ -81,13 +89,22 @@ noise floor.
 
 Type what the clip says if you can. On Qwen3 Base the transcript is passed
 to the model as part of the clone prompt (upstream's own demo passes it); on
-Chatterbox it is stored but not used. The form says which of the two you are
-looking at.
+Chatterbox and Pocket TTS it is stored but not used. The form says which you
+are looking at.
+
+**Pocket TTS** clones on the CPU — about four times faster than real time on
+an 8-core machine — so it is the one to pick without a graphics card, or with
+one the AI model is using. Before its first clone the Clone tab shows
+**Kyutai's terms for Pocket TTS** with an **Accept** button: Kyutai, who made
+the model, asks everyone who clones with it to accept their prohibited-use
+terms (no cloning without the person's consent, nothing deceptive). You accept
+once; until then **▶ Play** waits, and a Pocket TTS clone asked for anywhere
+else stops with a message saying so. Each language is its own Pocket TTS model
+— load the one for the language you are cloning in. See
+[Engines → The catalog](engines.md#the-catalog).
 
 A clone gives you someone's own timbre and **loses written direction** — the
-identity comes entirely from the reference clip. Chatterbox Turbo still takes
-a per-line emotion tag; the others take neither. If you want both a cloned
-identity *and* written direction, train instead.
+identity comes entirely from the reference clip.
 
 
 ### What each model asks for
@@ -110,9 +127,9 @@ lists models alphabetically.
 Describe the voice in plain words — *"a gravel-voiced harbour-master in his
 seventies, unhurried"* — and the model invents it. No recording needed.
 
-This needs Qwen3's **VoiceDesign** checkpoint, which is a separate download
-from the CustomVoice and Base ones; the tab offers to install it. There is
-only a 1.7B VoiceDesign checkpoint — no smaller variant exists.
+This needs Qwen3's **VoiceDesign** model, a separate 2.8 GB download from the
+CustomVoice and Base ones; loading it downloads it. There is only a 1.7B
+VoiceDesign model — no smaller variant exists.
 
 ### Keeping a designed voice is what makes it one voice
 
@@ -155,14 +172,20 @@ cloning-capable models only, and defaults to your default TTS engine.
 
 ## Blend — make a voice out of other voices
 
+> **Not available yet.** Blending runs on Kokoro, and Kokoro on the speech
+> runtime (since 2026-10-01) cannot yet take a voice made of numbers, so the
+> Blend tab offers no engine and a blended voice you made before cannot
+> render. It returns when the runtime can — see
+> [Engines → Not available yet](engines.md#not-available-yet). The rest of
+> this section describes how blending works when it is available.
+
 Blending needs **Kokoro**. A Kokoro voice is a block of numbers describing
 how it sounds, so voices can be arithmetic on each other; most engines'
 voices are not that kind of thing.
 
-Above the pickers are **Language** and **Gender** filters. Kokoro ships 54
-voices across 9 languages, and every picker on this tab shows a voice by
-name, language and gender — "Bella · American English · female" — so you
-are choosing a voice, not decoding an id.
+Above the pickers are **Language** and **Gender** filters, and every picker
+on this tab shows a voice by name, language and gender — "Bella · American
+English · female" — so you are choosing a voice, not decoding an id.
 
 Four strategies, each producing an ordinary saved voice.
 
@@ -223,8 +246,8 @@ determinism, usable by any persona, in any project, forever. It is not a
 "blend mode" you keep switching on.
 
 Its **language comes from the voices you mixed**: if they all speak the same
-language, so does the blend; if they disagree, it takes your default voice
-language. That is why the Blend tab has no language picker — and it applies
+language, so does the blend; if they disagree, it takes your **Default voice
+language** (Settings → Generation). That is why the Blend tab has no language picker — and it applies
 to **Play** as well as to saving, so a mix of two Mandarin voices auditions
 in Mandarin. (Kokoro does not translate: type your test line in the language
 the voices speak.)
@@ -232,116 +255,6 @@ the voices speak.)
 Pressing **Play** renders a sample without saving anything. If you like it,
 **Save this voice** keeps the take you just heard rather than rendering a
 second, slightly different one.
-
-## LoRA — teach one voice properly
-
-A LoRA fine-tune: give it a dataset of clips and it teaches a base model
-that one voice. It is much slower than cloning, and its payoff is that a
-trained voice **still takes written direction** — it renders on a
-checkpoint that reads instructions, where a clone drops them.
-
-Training runs on Qwen3 **Base** or Chatterbox **Turbo**, and needs that
-checkpoint downloaded. The **LoRA** tab holds the whole job as three
-sub-tabs:
-
-| Sub-tab | What it is for |
-|---|---|
-| **Preparer** | Recordings you own, cut into a training dataset. |
-| **Dataset** | A training dataset generated line by line from a described voice. |
-| **Training** | The run itself, and hearing what came out. |
-
-The tab opens on **Preparer**, because the strip reads left to right as the
-order of the work. A link that names a step still goes straight there — the
-Labs `#train` link lands on **Training**.
-
-### Preparer
-
-One recording in — or several with **Batch Mode** on — and a dataset out.
-Each recording is split at its silences, every clip is checked, the
-keepers are transcribed with Whisper, and what survives is saved as a
-dataset, ready to pick on the Training tab (or download as a ZIP).
-
-The **Configuration** row controls the checks for this run: **Language**,
-**Confidence** (how sure the transcriber must be about a clip's words — an
-unsure transcript is probably a wrong one, and a wrong transcript teaches
-the voice wrong sounds) and **Min SNR** (the least signal-over-noise a
-clip may have). Both start at your defaults from Settings → Training and
-override them for one run. A measurement that cannot be taken never fails
-a clip on its own.
-
-The **Processing Queue** shows each recording's progress and the
-**Execution Logs** window says why every dropped clip was dropped.
-
-### Dataset Builder
-
-Describe a voice once, write the lines you want it to say, and generate
-each one. Because you wrote each line, its transcript is exact — the one
-thing a recorded dataset can never guarantee.
-
-- **Root Voice Description** — one description for the whole set, spoken
-  by the **Model** you pick in the **Language** you pick.
-- **Global Seed** — empty = random; the same seed = the same voice on
-  every row. Set one, or every row is a slightly different person. A
-  row's own Seed overrides it.
-- Rows carry **Emotion / Style** (added to the description for that row
-  only) and **Text**. Generate rows one at a time, or **Generate
-  Pending** / **Regen All**; listen to each and re-generate until it is
-  right. Rows and audio live on the server — closing the tab loses
-  nothing.
-- **Import JSON / Export JSON** move the rows as a script file —
-  Alexandria's dataset scripts load unchanged, and yours load there.
-  In the desktop app, Export JSON asks where to save the file, like every
-  other export; in a browser it goes to your Downloads folder.
-- **Save as Training Dataset** freezes the generated rows, with the
-  **Reference Sample** picker choosing the voice's anchor clip.
-
-### Datasets, ZIPs, and the reference sample
-
-A dataset is WAV clips plus their transcripts. On the Training tab it can
-also arrive as a **ZIP upload** and leave as a **ZIP download** — the
-format is interchangeable with Alexandria's, so datasets travel between
-the two apps unchanged. **New Dataset from WAV Files** builds one from
-clips you already have: each clip is checked against your quality rules
-and transcribed before saving.
-
-Every dataset has one clip that matters more than the rest: the
-**Reference Sample**. Training takes the voice's fingerprint from that
-single clip, and every line the finished voice ever speaks is prompted
-with it — a bad choice colours everything the voice says. By default the
-longest clip is used; the Dataset Builder, the WAV-files flow and the
-Training tab all let you choose instead. Pick a clear, unhurried,
-representative line.
-
-### Training
-
-Pick a dataset, name the adapter, choose the **Base Model**, and **Start
-Training**. Choosing a base fills every knob — Epochs, Learning Rate,
-Batch Size, LoRA Rank, LoRA Alpha, Grad Accum Steps — with the settings
-that base is known to train well at; **How Settings Affect LoRA Voice
-Quality** explains each one. **Language** matters and is not cosmetic: it
-sets the sound system the voice is taught in, and an adapter trained on
-English audio gives German text an English accent. Train one adapter per
-language; a dataset that recorded its language fills this in for you.
-
-Two things worth knowing before you start: training takes the whole
-graphics card (every speech engine unloads while it runs), and clips are
-checked twice (once as the dataset is made, again by the trainer, which
-reports anything it drops).
-
-**Training Progress** shows the epoch, the loss, and a live log of what
-the trainer is doing. A finished run lands in your library as a normal
-voice of type **LoRA** and in the **Trained Adapters** table — with the
-dataset, language, epochs, final loss and sample count that made it, and
-**⬇ Download** for the adapter weights as a ZIP.
-
-**Built-in adapters** ship with the app: they appear in Trained Adapters
-with a *built-in* badge, and **⬇ Download** fetches their weights the
-first time — after that they are ordinary voices in your library.
-
-**Test Voice** renders your own line, with optional direction, through
-any finished adapter. Use it — lower final loss is not automatically the
-better likeness, and past a point a voice garbles lines it has never
-seen. Your ear decides.
 
 ## Gender + accent + tone tags
 

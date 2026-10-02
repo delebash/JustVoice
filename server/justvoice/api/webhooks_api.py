@@ -48,8 +48,6 @@ WebhookEvent = Literal[
     "render.failed",
     "generation.created",
     "voice.created",
-    "training.completed",
-    "training.failed",
     "model.download.completed",
     "model.download.failed",
     "webhook.test",

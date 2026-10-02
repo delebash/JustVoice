@@ -1,8 +1,9 @@
 # SPDX-License-Identifier: MIT
 """Tests for engine manifests — discovery + required-field validation.
 
-Every engine plugin must have a manifest.py declaring its id, name,
-capabilities, and install steps. Discovery walks engines/<id>/manifest.py.
+Every engine is a catalog: a manifest.py declaring its id, name,
+capabilities and its model VARIANTS, each runnable in the speech runtime.
+Discovery walks engines/<id>/manifest.py.
 """
 
 from __future__ import annotations
@@ -45,9 +46,15 @@ def test_manifest_imports_cleanly(engine_id: str) -> None:
     assert isinstance(getattr(mod, "NAME"), str)
 
 
-def test_engine_dir_has_engine_py(engine_id: str) -> None:
-    p = ENGINES_DIR / engine_id / "engine.py"
-    assert p.exists(), f"{engine_id} missing engine.py"
+def test_every_engine_runs_in_the_speech_runtime(engine_id: str) -> None:
+    """Since 2026-10-01 there is no per-engine program: an engine.py beside a
+    manifest would be dead code, and a variant with no `audiocpp` block would
+    have nothing to run it."""
+    from justvoice.engines.manager import discover_engines
+
+    assert not (ENGINES_DIR / engine_id / "engine.py").exists(), f"{engine_id} has a stray engine.py"
+    m = next(m for m in discover_engines().values() if m.engine_dir.name == engine_id)
+    assert m.uses_audiocpp, f"{engine_id}: a variant has no audiocpp block"
 
 
 def test_at_least_one_engine_discovered() -> None:

@@ -110,7 +110,7 @@ user never sees Episodes, a game dev never sees Chapters. Three rules:
 1. **Only the structure slot changes.** One nav item swaps its noun
    (Chapters / Lines / Episodes); podcast additionally gains Timeline under
    it. Everything else is bolted down: Home, Studio, Generate (Workflow);
-   Projects, Voices, Personas, Lexicons, Engines (Library); Compare, Train
+   Projects, Voices, Personas, Lexicons, Engines (Library); Compare
    (Tools). Shared machinery keeps shared vocabulary and never moves.
 2. **The menu follows the active project, not a global app mode.** Open
    *Stillwater* → Chapters; switch to *Emberfall* → Lines. Slot position
@@ -270,9 +270,10 @@ costs specific features, and the UI says exactly which.
   "connect an LLM" hint deep-linking to setup. Audiobook EPUB flow is the
   big loser without one; games/podcasts barely notice (their sources name
   speakers).
-- **STT — bundle small.** Whisper-small (~244 MB) as a checkbox, on by
-  default. Consumers: Train dataset auto-transcripts, promoting captures
-  to clone samples. Skipped → Train asks for manual transcripts.
+- **STT — one engine, on demand.** Since 2026-10-01 speech recognition is
+  the `asr` engine in the speech runtime (Qwen3-ASR 1.7B + its word aligner,
+  3.6 GB, downloaded on first use; Whisper before that). Consumers: dictation,
+  promoting captures to clone samples, chapter captions.
 - Both re-offerable later: Settings → AI features, plus the deep-links
   from degraded spots. First-run stays one screen — no wizard sprawl.
 
@@ -359,7 +360,7 @@ two actions' engine presets (AI Settings → Routing by feature), not pins.
    survive component unmount; header status button + slide-in panel;
    stalled detection ~5 s / stuck >30 s via lastDeltaAt). JV already has
    active_tasks + SSE server-side; adopt the **header task panel UI** for
-   renders + LLM calls + training jobs in one place.
+   renders + LLM calls in one place.
 3. **Editable hardware-preset store** (`stores/hardwarePresets.js` —
    factory seed + user-editable tier recipes + reset; "model ids and
    quants change every few weeks — store data, don't hardcode").
@@ -421,7 +422,7 @@ folding into the plan:
    (a) *Proof-listen surface*: play a chapter while text highlights
    word-by-word; one-key flags (mispronunciation / artifact / pacing) que
    into a punch list that feeds the existing fix-it loop.
-   (b) *Auto-QC*: we bundle Whisper anyway — transcribe each rendered
+   (b) *Auto-QC*: we ship a recogniser anyway — transcribe each rendered
    take, diff against source text, auto-flag divergent lines
    (open-model hallucinations/skips caught locally, no human pass).
    This is a genuine differentiator vs every OSS tool surveyed.
@@ -474,8 +475,8 @@ Three integration points verified in the current ecosystem:
 
 JustVoice's add: an optional **viseme/phoneme timing sidecar** per line in
 the game export. Derivation: word-level timestamps (§14.1) refined to
-phoneme timings via forced alignment (Whisper/sherpa alignment — we
-bundle STT already), mapped to the 15-viseme set. Manifest entry gains
+phoneme timings via forced alignment (the Qwen3 forced aligner that ships
+with speech recognition for captions), mapped to the 15-viseme set. Manifest entry gains
 `"visemes": [...]` (opt-in export toggle). This rides entirely on
 artifacts we already planned — timestamps + STT — and makes the game
 export consumable by all three integration paths without JustVoice ever

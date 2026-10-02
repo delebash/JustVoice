@@ -11,9 +11,8 @@ IS on its engine:
   * designed — the description; renders on any voice-design engine.
   * blended — the mixed vector (kokoro-space numbers): meaningful only on
     the engine that mixed it, and the import refuses any other.
-  * lora / preset — NOT bundled: an adapter already travels as
-    `/v1/train/{job}/adapter.zip` with its own contract, and a preset
-    ships with its engine — there is nothing of yours to carry.
+  * preset — NOT bundled: a preset ships with its engine — there is
+    nothing of yours to carry.
 
 Pure logic over a voices-store-shaped object — the API route stays thin
 and the round-trip pins run against a fake store.
@@ -41,11 +40,6 @@ def build_bundle(voices_store, voice_id: str) -> tuple[bytes, str]:
     if rec is None:
         raise LookupError(f"voice '{voice_id}' not found")
     if rec.source not in _BUNDLEABLE:
-        if rec.source == "lora":
-            raise ValueError(
-                "a LoRA voice travels as its adapter — use the adapter "
-                "download on the LoRA tab instead"
-            )
         raise ValueError("preset voices ship with their engine — nothing to export")
 
     manifest = {

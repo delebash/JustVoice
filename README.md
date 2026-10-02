@@ -11,8 +11,8 @@ License: **MIT** (see `LICENSE`).
 - **Audiobook production** — write in JustWrite, produce in JustVoice, ship to ACX with chapter markers and ACX-spec mastering
 - **Game NPC voicing** — voice 50–500 NPCs from one project, export per-line WAVs for Unreal Engine import
 - **Podcasting** — multi-track timeline editor, paralinguistic tags, multi-character mixing
-- **Dictation** — global hotkey + Whisper + local LLM refinement + OS-level paste injection
-- **General TTS** — 8 engines (Kokoro, Chatterbox×2, Qwen3×2, LuxTTS, TADA, MossTTS, plus OpenAI-compatible external providers), all installable to isolated venvs and all permitting commercial output
+- **Dictation** — global hotkey + local speech recognition (Qwen3-ASR) + local LLM refinement + OS-level paste injection
+- **General TTS** — Kokoro, Chatterbox Multilingual and Qwen3-TTS (CustomVoice, Base, VoiceDesign), run by one local speech runtime ([audio.cpp](https://github.com/0xShug0/audio.cpp)), plus OpenAI-compatible and cloud providers — every bundled model permits commercial output
 
 **Five audiences share one engine pool, voice catalogue, lexicon, and persona layer — differentiation lives in import/export pipelines and per-use-case UI surfaces.**
 
@@ -27,7 +27,7 @@ Read the docs in this order:
 | `CONTRACT.md` | The JustWrite ↔ JustVoice HTTP boundary contract |
 | `docs/plans/archive/PHASE_PLAN.md` | Build phases 1 → 6 (status of each) |
 | `docs/plans/archive/PHASE5_JUSTWRITE_INTEGRATION.md` | Concrete JustWrite-side edits for the JustWrite → JustVoice audiobook bridge |
-| `NOTICE.md` | Third-party attribution (MIT/Apache lifts + Llama 3.2 weights for TADA) |
+| `NOTICE.md` | Third-party attribution (MIT/Apache lifts, the speech runtime, models) |
 | `LICENSES.md` | Dependency license inventory |
 | `MORNING_RECAP.md` | Current build state — what shipped, what's pending |
 | `voicebox-pin.txt` | Pinned upstream commit hash for code lifted under MIT — referenced by per-file attribution headers |
@@ -56,11 +56,13 @@ Then point any browser at `http://localhost:17494/ui/`.
 
 > **Naming**: the Python console script is `justvoice-server`, not `justvoice`. Don't rename — on Windows, using the same name as the Tauri binary causes infinite spawn loops.
 
-### Install more engines
+### Install the speech engines
 
-Use the Engines tab in the UI — every engine installs its own isolated
-environment (with the right GPU runtime for your machine) with progress
-shown. There are no pip extras to remember; the app is the installer.
+Use AI Settings → Speech engines in the UI: **Install speech runtime** downloads
+the one program every engine runs on, in the build that suits your machine
+(CUDA, Vulkan, CPU or Metal), and each model downloads from its own row. There
+are no pip extras to remember; the app is the installer. See
+[docs/engines.md](docs/engines.md).
 
 ## Repository layout
 
@@ -82,7 +84,7 @@ shown. There are no pip extras to remember; the app is the installer.
 │   │   │   ├── models.py      # 24 ORM tables matching DESIGN_FREEZE §4
 │   │   │   ├── migrations.py  # Idempotent column-existence helpers (per-file attribution in header)
 │   │   │   └── session.py     # init_db + get_db dependency
-│   │   ├── engines/           # Per-engine plugin manifests + adapters + per-engine venv
+│   │   ├── engines/           # Per-engine model catalogs + audiocpp/ (the speech runtime + request mapping)
 │   │   ├── storage/           # Atomic JSON for settings.json only (everything else is in SQLite now)
 │   │   ├── models.py          # Pydantic source-of-truth (cross-language contract)
 │   │   └── app.py             # FastAPI factory; create_app() registers all routers
@@ -118,7 +120,7 @@ JustWrite is the novel-writing app. JustVoice can be driven by JustWrite (the au
 
 ### Upstream code lifts
 
-A handful of files in this repo (`engines/_torch_helpers.py`, `audio/chunked.py`, `database/migrations.py`) carry per-file MIT attribution headers referencing a pinned upstream commit. The full license trail is in `NOTICE.md` + `voicebox-pin.txt`.
+A handful of files in this repo (`audio/chunked.py`, `database/migrations.py`) carry per-file MIT attribution headers referencing a pinned upstream commit. The full license trail is in `NOTICE.md` + `voicebox-pin.txt`.
 
 ## Contributing
 

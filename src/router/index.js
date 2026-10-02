@@ -41,7 +41,7 @@ const routes = [
 
   // ── Legacy sub-tab deep-links ─────────────────────────────────────
   // Settings sub-tabs (#cache/#channels/#webhooks) and Labs sub-tabs
-  // (#compare/#train/#renderlab/#audio) were top-level hashes. The
+  // (#compare/#renderlab/#audio) were top-level hashes. The
   // destination view reads the chosen sub-tab from sessionStorage on mount, so
   // set it here then redirect to the parent view.
   ...["cache", "channels", "webhooks"].map((sub) => ({
@@ -58,18 +58,6 @@ const routes = [
   {
     path: "/speakerlab",
     redirect: { path: "/ai", query: { tab: "features", action: "speaker_attribution.guided" } },
-  },
-  // #train now lands in Voices, whose LoRA tab hosts the whole training
-  // workflow (ruling 13, 2026-08-19; tab renamed Train → LoRA 2026-08-21).
-  {
-    path: "/train",
-    redirect: () => {
-      try {
-        sessionStorage.setItem("jv.voices.acquireTab", "lora");
-        sessionStorage.setItem("jv.lora.sub", "training");
-      } catch { /* ignore */ }
-      return "/voices";
-    },
   },
   ...["compare", "renderlab", "audio"].map((sub) => ({
     path: `/${sub}`,

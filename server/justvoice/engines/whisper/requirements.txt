@@ -1,2 +1,0 @@
-# Deps declared in manifest.INSTALL (torch + transformers + librosa).
-# This file kept for tooling that scans it.

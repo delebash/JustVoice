@@ -304,7 +304,7 @@ def blend_language_for(st, engine: str, source_ids: list[str]) -> str:
         engine,
         source_ids,
         stored_language=_lang,
-        default=st.settings.get().training.default_voice_language,
+        default=st.settings.get().generation.default_voice_language,
     )
 
 

@@ -8,16 +8,15 @@
 // CustomVoice family cannot, so an engine-level answer offers a tick the
 // chosen checkpoint can't honour.
 //
-// Both surfaces that ask "which engines can do X" (the Voices page's
-// new-voice tabs, and Train's base picker) resolve rows through here, so
-// the rule lives once.
+// Every surface that asks "which engines can do X" (the Voices page's
+// new-voice tabs) resolves rows through here, so the rule lives once.
 
 /**
  * Rows that can do `field`, each resolved back to its engine.
  *
  * @param {object} rows     the `engines` map from GET /v1/engines/capabilities
  * @param {Array}  engines  the engines store's items
- * @param {string} field    e.g. "supports_voice_cloning" / "supports_training"
+ * @param {string} field    e.g. "supports_voice_cloning" / "supports_voice_design"
  * @returns {Array<{rowId: string, row: object, engine: object, isVariant: boolean}>}
  */
 export function capableRows(rows, engines, field) {
@@ -34,14 +33,13 @@ export function capableRows(rows, engines, field) {
     // Marked-for-removal engines are never OFFERED for a new voice —
     // the 2026-08-17 roster ruling's picker half, wired 2026-08-21 (the
     // Engines tab already badges + hides them; this closes the Clone /
-    // Design / Train / Dataset-builder pickers). Existing voices on a
+    // Design / Blend pickers). Existing voices on a
     // deprecated engine keep rendering — this filters offers, not use.
     if ((engine.deprecated || "").trim()) continue;
     out.push({ rowId, row, engine, isVariant: rowId !== engine.id });
   }
   // Where an engine has variant rows, its union row is noise — it would
-  // list the same engine twice and, for training, offer a row that
-  // carries no defaults.
+  // list the same engine twice.
   const withVariants = new Set(out.filter((o) => o.isVariant).map((o) => o.engine.id));
   return out.filter((o) => o.isVariant || !withVariants.has(o.engine.id));
 }
@@ -75,8 +73,7 @@ export function rowOptions(rows, engines, field) {
 }
 
 /** One option per ENGINE (deduped) — value = engine id. For pickers that
- *  choose the engine itself (Import's "Model that speaks as this clip",
- *  the Dataset Builder's Model). */
+ *  choose the engine itself (Import's "Model that speaks as this clip"). */
 export function engineOptionsFor(rows, engines, field) {
   const seen = new Set();
   const out = [];

@@ -1,8 +1,7 @@
 """Application-wide state container, FastAPI-injected via Depends.
 
 Holds long-lived singletons: the engine registry, the four stores
-(settings/voices/personas/lexicons), the training registry, the
-render cache, and the data dir.
+(settings/voices/personas/lexicons), the render cache, and the data dir.
 """
 
 from __future__ import annotations
@@ -17,7 +16,6 @@ from .storage import (
     LexiconStore,
     PersonaStore,
     SettingsStore,
-    TrainingRegistry,
     VoiceStore,
 )
 
@@ -36,7 +34,6 @@ class AppState:
             max_memory_entries=self.settings.get().cache.max_memory_entries,
         )
         self.lexicons = LexiconStore(data_dir)
-        self.training = TrainingRegistry(data_dir)
         self.engines = EngineRegistry()
         self._jobs: dict[str, dict] = {}  # install jobs, in-memory
 

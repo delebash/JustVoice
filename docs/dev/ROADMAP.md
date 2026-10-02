@@ -19,12 +19,14 @@ Voice, seeded) + user presets + persona→preset chain cascade with cache-keyed 
 async generation queue with pause-at-boundary + resume (`render_jobs_api.py`);
 multi-sample voice profiles (`storage/voices.py` samples/); takes with favorites AND
 lineage; auto-chunk + crossfade (`render_core.py`); personas + compose +
-rewrite-in-character; captures + re-transcribe + 5 Whisper sizes; paralinguistic
-tags + delivery instruct; MCP (`justvoice.speak/transcribe/list_voices`); outbound
+rewrite-in-character; captures + re-transcribe (Qwen3-ASR since 2026-10-01);
+delivery instruct; MCP (`justvoice.speak/transcribe/list_voices`); outbound
 HMAC-signed webhooks (`webhooks_api.py`); per-model unload; per-generation engine
 switch. Plus everything voicebox has no equivalent of: projects/chapters/casting,
-LoRA training, blending, lexicons with IPA-to-audio, ACX mastering, word-level
-captions, voice bundles.
+lexicons, ACX mastering, word-level captions, voice bundles. (LoRA training was
+removed 2026-10-02. Kokoro blending, IPA-to-audio and inline paralinguistic tags
+are on hold since the 2026-10-01 switch to the audio.cpp runtime — switch
+plan §5.)
 
 **Gaps (ours, honest):**
 - **Global dictation hotkey + paste injection — STUBBED** (`src-tauri/src/lib.rs:19-20`
@@ -40,28 +42,26 @@ captions, voice bundles.
 | Feature (their wording) | Do we have it? | Verdict for us |
 |---|---|---|
 | Windows / Linux auto-paste (SendInput / uinput / AT-SPI) | No — our whole dictation hotkey/paste layer is stubbed | Candidate; belongs WITH the hotkey gap above as one dictation epic |
-| STT engine expansion (Parakeet v3, Qwen3-ASR beside Whisper) | No — Whisper only | Candidate; faster-whisper also worth evaluating in the same pass (no ffmpeg, ROCm wheels Win+Linux; Apple GPU gap) — session research 2026-08-22 |
+| STT engine expansion (Parakeet v3, Qwen3-ASR beside Whisper) | **Qwen3-ASR replaced Whisper** (2026-10-01, audio.cpp runtime) | Parakeet v3 measured 6.5× faster, no ja/zh, weaker ru/fr (switch plan §8 D) — a candidate fast row for English/European dictation |
 | Pipeline routing (source → transform → sink chains, preset editor) | Partial — outbound webhooks exist (`webhooks_api.py`); no chain/editor concept | Candidate, low priority |
 | Streaming transcription (WebSocket `/transcribe/stream`) | No | Candidate; pairs with dictation epic |
 | End-to-end speech LLMs (Moshi, GLM-4-Voice, Qwen2.5 Omni) | No | Watch-list only — engine-roster decision, not a feature toggle |
-| **Voice Design (voices from text descriptions)** | **HAVE** — Qwen3-TTS VoiceDesign (`generate_voice_design`, 1.7B) + Dataset Builder rides it | none needed |
+| **Voice Design (voices from text descriptions)** | **HAVE** — Qwen3-TTS VoiceDesign (`generate_voice_design`, 1.7B) | none needed |
 | Long-form capture (dual-stream mic + system audio + summary LLM) | No — captures are mic-only; system-audio capture is a named audience feature (CLAUDE.md) not yet built | Candidate |
 | Platform sinks (Apple Notes, Obsidian, opt-in) | No | Candidate, low priority |
-| Plugin architecture (custom models/transforms/sinks) | Partial by construction — engines are already manifest+engine.py plugins; no third-party story | Watch-list |
+| Plugin architecture (custom models/transforms/sinks) | Partial by construction — an engine is a manifest catalog of model files the one audio.cpp runtime loads; no third-party story | Watch-list |
 | Mobile companion | No | Watch-list |
 
 ## 2b. Resilience items (ours, from the 2026-08-22 env research)
 
-- **Vendor LuxTTS's wheels** — it holds the CPU-cloning roster slot while living in
-  one person's git repo (`ysharma3501/LuxTTS` + `LinaCodec`; upstream ZipVoice has
-  zero releases). SHA pins do not survive a deleted repo. Build the two wheels once
-  and host them with our release assets (needs a hosting decision). Same class:
-  mirror `piper-phonemize` from the k2-fsa index.
-- **AMD-on-Windows auto-detect** — deferred from the 2026-08-22 migration (override
-  recipe only; no AMD hardware here to verify detection or AMD's SDK-package flow).
+- ~~Vendor LuxTTS's wheels~~ — moot: LuxTTS left with the 2026-10-01 switch; the
+  CPU-cloning slot is open again (switch plan §5).
+- ~~AMD-on-Windows auto-detect~~ — moot: the speech runtime's Vulkan build
+  accelerates AMD and Intel graphics on Windows with no PyTorch involved.
 
 ## 3. Not on any list on purpose
 
 Pocket TTS (rejected 2026-08-22 — HF-auth-gated cloning weights), Supertonic 3
 (no cloning in the OSS release; would also cost Kokoro's blending + IPA if swapped
-into the preset slot; weights OpenRAIL-M), TADA/MOSS un-marking (no word).
+into the preset slot; weights OpenRAIL-M). TADA and MOSS-TTSD were removed with
+the 2026-10-01 switch.

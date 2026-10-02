@@ -1,6 +1,6 @@
 """FastAPI application factory.
 
-Boots the AppState (engine registry + stores + training registry),
+Boots the AppState (engine registry + stores),
 walks installed model dirs to register real engines, registers any
 configured external engines, then mounts every router.
 
@@ -59,8 +59,6 @@ from .api import (
     align_api,
     voice_bundle_api,
     pronunciation_api,
-    dataset_builder_api,
-    training_api,
     project_export_api,
     projects_api,
     render_chapter_api,
@@ -68,6 +66,7 @@ from .api import (
     render_presets_api,
     server_auth_api,
     settings_api,
+    speech_runtime_api,
     sse_streams_api,
     system_api,
     takes_api,
@@ -222,6 +221,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app.include_router(speakers_api.router)
     app.include_router(lexicons_api.router)
     app.include_router(engines_api.router)
+    app.include_router(speech_runtime_api.router)
     app.include_router(models_api.router)
     app.include_router(engines_models_api.router)
     app.include_router(engine_sources_api.router)
@@ -301,11 +301,6 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app.include_router(external_api.router)
     app.include_router(cache_api.router)
     app.include_router(master_api.router)
-    # BEFORE training_api: both live under /v1/train/*, FastAPI matches in
-    # registration order, and training_api's /v1/train/{job_id} would
-    # otherwise capture "builder" as a job id and 404 every builder call.
-    app.include_router(dataset_builder_api.router)
-    app.include_router(training_api.router)
     app.include_router(projects_api.router)
 
     # Phase 4a backend (DESIGN_FREEZE §5)
@@ -325,13 +320,11 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app.include_router(make_logs_router(PRODUCT))
     # JV's app-specific stores ride the shared router's extras hook (phase ④):
     # the Settings Disk-usage panel gets one row + one clear verb per store.
-    # "Speech models" is ONE user-facing number across layout generations
-    # (user ruling 2026-08-14 — the panel showed 0 MB while the catalog said
-    # gigabytes on disk): the speech cache PLUS every engine's legacy models
-    # dir (tarball installs + the per-engine HF hub caches live there).
-    _legacy_model_dirs = [m.models_dir for m in get_manager().manifests().values()]
+    # "Speech models" is the speech cache — every downloaded speech model lives
+    # there since the 2026-10-01 switch (the per-engine legacy model dirs went
+    # with the per-engine environments).
     app.include_router(make_disk_router(data_dir, extra_buckets={
-        "speechCache": [speech_cache_root(data_dir), *_legacy_model_dirs],
+        "speechCache": [speech_cache_root(data_dir)],
         "renderCache": cache_root(data_dir),
     }))
     app.include_router(sse_streams_api.router)
@@ -458,15 +451,11 @@ def _register_existing_engines(state: AppState, data_dir: Path) -> None:
         ", ".join(sorted(mgr.manifests().keys())) or "(none)",
     )
 
-    # All built-in engines (kokoro, chatterbox, tada, qwen3, luxtts,
-    # moss-tts) now live as managed plugins under engines/<id>/. Higgs
-    # was removed 2026-06-09 (non-commercial weight license conflicted
-    # with commercial-output use cases). The legacy in-process engine
-    # factory was removed
-    # along with the per-engine flat-file modules. External OpenAI-compat
-    # engines are still registered in `state.engines` via
-    # `_register_external_engines` below — they don't need subprocess
-    # isolation because they're just httpx clients.
+    # Every built-in engine (kokoro, qwen3, chatterbox, asr) is a catalog under
+    # engines/<id>/ whose models run in the one audio.cpp speech runtime (the
+    # 2026-10-01 switch). External OpenAI-compat engines are still registered in
+    # `state.engines` via `_register_external_engines` below — they're just
+    # httpx clients.
 
 
 def _register_external_engines(state: AppState) -> None:

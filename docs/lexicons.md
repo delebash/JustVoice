@@ -26,16 +26,16 @@ Every line is read with up to two lexicons, in this order:
    street slang is never applied when the narrator reads the same word.
 
 **When both have the same word, the book's wins.** A name belongs to the book,
-not to a voice you reuse across books. On Kokoro that holds whatever kind of
-entry each one is — a book's IPA pronunciation beats a persona's respelling of
-the same word.
+not to a voice you reuse across books. On an engine that takes IPA that holds
+whatever kind of entry each one is — a book's IPA pronunciation beats a
+persona's respelling of the same word.
 
 An entry that can't do anything on the line's engine decides nothing, and the
 persona's is used instead:
 
 - a **blank row** — the book's lexicon only lists the name;
-- an **IPA-only entry** on an engine that can't take IPA (every engine but
-  Kokoro — see [IPA entries reach the audio](#ipa-entries-reach-the-audio)).
+- an **IPA-only entry** on an engine that can't take IPA — which is every
+  engine today (see [IPA entries reach the audio](#ipa-entries-reach-the-audio)).
 
 A respelling matches its exact spelling, so the book's "worcester" leaves
 "Worcester" to the persona's entry. A longer entry wins over a word inside it,
@@ -117,13 +117,22 @@ worklist exists from minute one.
 
 ## IPA entries reach the audio
 
-An entry's IPA pronunciation is spliced into the speech itself on engines
-that accept phonemes (Kokoro today): the word is *pronounced* as written in
-the entry, everything around it unchanged. Engines that can't take
-phonemes use the entry's respelling instead; an IPA-only entry does
-nothing there — a guessed pronunciation beats hearing IPA letters read
-aloud. The live preview marks both: respellings replace the word,
-pronunciations show as 「/…/」 after it.
+On an engine that accepts phonemes, an entry's IPA pronunciation is spliced
+into the speech itself: the word is *pronounced* as written in the entry,
+everything around it unchanged. Engines that can't take phonemes use the
+entry's respelling instead; an IPA-only entry does nothing there — a guessed
+pronunciation beats hearing IPA letters read aloud.
+
+**No engine takes phonemes today.** Kokoro did until the 2026-10-01 switch to
+the speech runtime, which cannot yet splice IPA into a line (see
+[Engines → Not available yet](engines.md#not-available-yet)). Until it can,
+every engine reads an entry's **respelling**: give the names that matter a
+respelling ("Beauchamp" → "BEE-chum") as well as their IPA. The IPA stays
+stored with the entry; an IPA-only entry changes nothing on today's engines.
+
+The live preview marks both: respellings replace the word, pronunciations
+show as 「/…/」 after it — the preview shows the IPA you've entered even
+though no engine speaks it yet.
 
 ## Import + export
 
@@ -133,10 +142,10 @@ Lexicons round-trip as `.justlex.json` files. Import a JustWrite character lexic
 
 Different engines respect lexicons differently:
 
-- **Kokoro** uses a phoneme front-end; phonetic entries map cleanly.
+- **Kokoro** reads text through eSpeak NG, a phoneme front-end, so respellings
+  steer it well. It took IPA entries directly before the 2026-10-01 switch (see
+  above).
 - **Chatterbox** is end-to-end neural; lexicons are applied as text-substitutions ("Beauchamp" → "BEE-chum") before tokenization.
-- **Qwen3-TTS** takes respellings only, like Chatterbox. It does not take IPA —
-  Kokoro is the only engine that does, so an IPA-only entry does nothing on
-  Qwen3.
+- **Qwen3-TTS** takes respellings only, like Chatterbox.
 
 JustVoice routes each entry through the engine's preferred path automatically.

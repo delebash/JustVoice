@@ -2,7 +2,7 @@
 <!--
   WebhooksView — outbound HMAC-signed webhook subscriptions for async event
   notifications. Use cases: JustWrite gets notified on render-complete,
-  CI pipelines watching for training-complete, custom integrations.
+  CI pipelines watching for a finished render, custom integrations.
 -->
 <script setup>
 import { onMounted, ref } from "vue";
@@ -25,8 +25,6 @@ const EVENT_OPTIONS = [
   "render.failed",
   "generation.created",
   "voice.created",
-  "training.completed",
-  "training.failed",
   "model.download.completed",
   "model.download.failed",
 ];

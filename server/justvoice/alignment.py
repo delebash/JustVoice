@@ -2,15 +2,15 @@
 """Word-level alignment — attach times to the words we KNOW were spoken.
 
 The engine-agnostic half of word timestamps (C1, 2026-08-21 go; research
-in the 2026-08-21 plan doc §3): Whisper transcribes the rendered audio
-with per-token timing, and this module maps that hypothesis onto the
-KNOWN line text. Knowing the text is what makes this forced alignment
+in the 2026-08-21 plan doc §3): the speech-recognition engine's aligner
+times the rendered audio's words, and this module maps that hypothesis onto
+the KNOWN line text. Knowing the text is what makes this forced alignment
 rather than transcription — an ASR mistake ("Wooster" for "Worcester")
 must not lose the word's timing, and it doesn't: the words align by
 sequence matching and every unmatched known word interpolates between its
 timed neighbours.
 
-Pure functions only — the Whisper call lives in the engine; these are
+Pure functions only — the aligner call lives in the engine slot; these are
 testable with fabricated hypotheses.
 """
 

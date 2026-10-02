@@ -22,6 +22,7 @@ from ..app_state import get_state
 from ..engines.capability_details import CAPABILITY_DETAILS, lookup as lookup_capability
 from ..engines.catalog import compute_status
 from ..engines.manager import EngineManifest, get_manager
+from ..errors import bad_request, not_found
 from ..models import (
     EMOTION_VALUES,
     CurrentEngineResponse,
@@ -54,7 +55,6 @@ _CAPABILITY_TO_FEATURE: dict[str, Feature] = {
     "gpu_accel": "gpu_accel",
     "single_speaker_dialogue": "single_speaker_dialogue",
     "voice_blending": "voice_blending",
-    "training": "training",
 }
 
 
@@ -106,11 +106,49 @@ def _info_from_manifest(manifest: EngineManifest, status: str) -> EngineInfo:
         supported_on_this_os=manifest.supports_current_os(),
         deprecated=manifest.deprecated,
         weights_license=manifest.weights_license,
-        attribution=manifest.attribution,
         # The 2026-08-13 VRAM wiring (Q2): the device the load actually
         # resolved to, straight from the one load door.
         resolved_device=mgr.resolved_device_for(manifest.id),
+        # CPU placement (2026-10-02): why it runs there.
+        placement_reason=mgr.placement_reason_for(manifest.id),
+        terms=_terms_of(manifest),
+        terms_accepted=_terms_accepted(manifest.id),
     )
+
+
+def _terms_of(manifest: EngineManifest) -> dict[str, str] | None:
+    """The engine's own terms (manifest TERMS), as the app shows them; None = none."""
+    terms = getattr(manifest.module, "TERMS", None)
+    return {k: str(v) for k, v in terms.items()} if terms else None
+
+
+def _terms_accepted(engine_id: str) -> bool:
+    ov = get_state().settings.get().engines.engine_overrides.get(engine_id)
+    return bool(ov and ov.terms_accepted_at)
+
+
+@router.post("/v1/engines/{id}/terms", summary="Accept an engine's own terms")
+async def accept_engine_terms(id: str) -> dict:
+    """Record that the user accepted this engine's terms (manifest TERMS) — once per
+    install. Pocket TTS refuses a render from a reference clip until then (decided
+    2026-10-02: the server refuses; the Clone tab and the refusal show the terms)."""
+    from datetime import datetime, timezone
+
+    from ..models import EngineOverrides
+
+    m = get_manager().get_manifest(id)
+    if m is None:
+        raise not_found(f"engine {id}")
+    if not getattr(m.module, "TERMS", None):
+        raise bad_request(f"{m.name} has no terms to accept")
+    store = get_state().settings
+    cur = store.get()
+    ov = cur.engines.engine_overrides.get(id) or EngineOverrides()
+    if not ov.terms_accepted_at:
+        ov.terms_accepted_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        cur.engines.engine_overrides[id] = ov
+        store.set(cur)
+    return {"engine_id": id, "accepted": True, "at": ov.terms_accepted_at}
 
 
 def _current_id() -> str | None:
@@ -405,7 +443,9 @@ def _leftovers_response(found) -> LeftoverEnginesResponse:
     rows = [
         LeftoverEngine(
             pid=lo.pid, engine_id=lo.engine_id,
-            engine_name=getattr(manifests.get(lo.engine_id), "name", lo.engine_id),
+            # The one audio.cpp server holds every model — it has no manifest.
+            engine_name=("Speech runtime" if lo.engine_id == "audiocpp"
+                         else getattr(manifests.get(lo.engine_id), "name", lo.engine_id)),
             started=lo.started, server_pid=lo.server_pid, gpu_mb=lo.gpu_mb,
         )
         for lo in found

@@ -47,8 +47,6 @@ from .models import (
     RenderPreset,
     # Webhooks (v1.0 from gap-decision workflow)
     Webhook,
-    # Training jobs
-    TrainingJob,
     # Speaker-attribution correction memory (Phase 5)
     SpeakerCorrection,
     # Renderer UI preferences (key/value; replaces the renderer's localStorage)
@@ -84,7 +82,6 @@ __all__ = [
     "EffectPreset",
     "RenderPreset",
     "Webhook",
-    "TrainingJob",
     "SpeakerCorrection",
     "Pref",
     "SettingsRow",

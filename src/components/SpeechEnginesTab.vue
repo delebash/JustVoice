@@ -22,9 +22,20 @@
   models live on the LLM providers tab of this same console. Kept from the
   old Engines page, deliberately: the hardware card, the loaded-now rail,
   search + kind chips, the weights-licence attribution row (a licence
-  OBLIGATION — see the inline note), per-variant delete, venv uninstall, and
-  the folder-tab pair itself (Engines' approved mock v7). The fit dots died
-  2026-08-14 with the invented per-variant vram_mb column.
+  OBLIGATION when one applies), per-variant delete, and the folder-tab pair
+  itself (Engines' approved mock v7). The fit dots died 2026-08-14 with the
+  invented per-variant vram_mb column.
+
+  Since the 2026-10-01 switch every engine here runs in the ONE speech runtime
+  (audio.cpp): the runtime row at the top installs it and picks its backend;
+  the per-engine Install, Device select and environment Uninstall went with
+  the per-engine Python environments.
+
+  CPU placement (2026-10-02, docs/plans/2026-10-02-cpu-placement.md §8): every model
+  runs on the graphics card or the CPU — Auto / GPU / CPU on its own line under the
+  model, which says where it runs (or would load) and why; the runtime row sets the CPU
+  process's threads. An engine with its own terms (Pocket TTS) says on its foot whether
+  they are accepted, and opens them (services/engineTerms.js).
 -->
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
@@ -39,7 +50,8 @@ import {
 } from "reka-ui";
 
 import SpeechProvidersPanel from "./SpeechProvidersPanel.vue";
-import { UiSelect } from "@delebash/llm-ui";
+import { UiNumber, UiSelect } from "@delebash/llm-ui";
+import { openEngineTerms } from "../services/engineTerms.js";
 
 // The Local/Online half switch (the folder-tab pair).
 const half = ref("local");
@@ -108,68 +120,9 @@ function clearTerminalTask(key) {
 // ── Default engine (settings.engines.default_tts_engine — the ONE source;
 // the old Settings → Generation dropdown died for this row action). ─────
 const defaultEngineId = ref("");
-// engine_id → the operator's Device choice (settings.engines.
-// engine_overrides[id].device — Q2's decided setting; "" = auto).
-const deviceOverrides = reactive({});
 async function loadDefaults() {
   const s = await api.safeRequest("/v1/settings", null);
   defaultEngineId.value = s?.engines?.default_tts_engine || "";
-  const ov = s?.engines?.engine_overrides || {};
-  for (const [id, o] of Object.entries(ov)) deviceOverrides[id] = o?.device || "auto";
-}
-
-// The per-engine Device select (Q2, decided 2026-08-08 round 2): a REAL
-// setting, resolved at the one load door — never a hidden torch default.
-// Read-modify-write the overrides map (a bare PATCH could clobber siblings).
-async function setDeviceOverride(engine, value) {
-  try {
-    const s = await api.request("/v1/settings");
-    const overrides = { ...(s?.engines?.engine_overrides || {}) };
-    overrides[engine.id] = { ...(overrides[engine.id] || {}), device: value };
-    await api.request("/v1/settings", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ engines: { engine_overrides: overrides } }),
-    });
-    deviceOverrides[engine.id] = value;
-    const note = engine.status === "loaded" ? " Takes effect on the next load." : "";
-    pushToast({ message: `${engine.name || engine.id} device set to ${value}.${note}`, kind: "success" });
-  } catch (e) {
-    pushToast({ message: `Couldn't set the device: ${e?.message || e}`, kind: "error" });
-  }
-}
-// What this MACHINE can run — /v1/system's runtime map (cuda, mps,
-// coreml, directml, rocm, mlx, cpu…). Fetched once; the per-engine
-// options below intersect it with what the ENGINE declares, so the menu
-// never offers Metal on Windows or CUDA on a Mac. (It used to be a
-// hardcoded Auto/CUDA/CPU triple whatever the platform or engine.)
-const machineRuntimes = reactive({});
-(async () => {
-  const s = await api.safeRequest("/v1/system", null);
-  Object.assign(machineRuntimes, s?.runtimes || {});
-})();
-
-const RUNTIME_LABELS = {
-  cuda: "CUDA (NVIDIA)",
-  rocm: "ROCm (AMD)",
-  mps: "Metal (Apple GPU)",
-  metal: "Metal (Apple GPU)",
-  coreml: "CoreML (Apple)",
-  directml: "DirectML (Windows GPU)",
-  mlx: "MLX (Apple Silicon)",
-  cpu: "CPU",
-};
-
-function deviceOptionsFor(e) {
-  const declared = e?.prerequisites?.gpu_runtimes || [];
-  const usable = declared.filter(
-    (r) => r !== "cpu" && machineRuntimes[r],
-  );
-  return [
-    { label: "Auto", value: "auto" },
-    ...usable.map((r) => ({ label: RUNTIME_LABELS[r] || r.toUpperCase(), value: r })),
-    { label: "CPU", value: "cpu" },
-  ];
 }
 
 async function setDefaultEngine(engine) {
@@ -212,8 +165,11 @@ async function setDefaultVariant(engine, variantId) {
 async function refresh() {
   const e = await api.safeRequest("/v1/engines", { engines: [] });
   // Speech only: the LLM/Embeddings sections died here (they live on the LLM
-  // tabs of this console).
-  engines.value = (e?.engines ?? []).filter((x) => ["tts", "stt"].includes(x.kind || "tts"));
+  // tabs of this console). Managed only: external providers (cloud and the
+  // servers you run) list on SpeechProvidersPanel with their own verbs — here
+  // they used to get an Install that 404'd and a Device select that did nothing.
+  engines.value = (e?.engines ?? []).filter(
+    (x) => ["tts", "stt"].includes(x.kind || "tts") && x.backend === "managed");
   enginesLoaded.value = true;
   await Promise.all(
     engines.value.map(async (eng) => {
@@ -235,7 +191,7 @@ async function refresh() {
 // "· on disk" and offering Load for files that had just been deleted.
 function refreshAll() {
   for (const k of Object.keys(variants)) delete variants[k];
-  return refresh();
+  return Promise.all([refresh(), refreshRuntime()]);
 }
 
 function variantsFor(engineId) {
@@ -253,10 +209,140 @@ function modelOnDisk(e, v) {
   return v.on_disk === true
     || (v.on_disk == null && (e.status === "installed" || e.status === "loaded"));
 }
-// Every engine builds its own environment (2026-08-22), so the isolation
-// test this used to carry is gone — an engine needs Install exactly when it
-// has not been installed.
+// "not installed" means the shared speech runtime is missing — its install
+// lives on the runtime row, not on the engine (the 2026-10-01 switch).
 function engineNeedsInstall(e) { return e.status === "not_installed"; }
+
+// ── The speech runtime (docs/plans/2026-10-01-audiocpp-switch.md §3.1) ──
+// ONE audio.cpp program runs every engine on this tab: its
+// version, the build this machine runs (CUDA, Vulkan, CPU, Metal), and the
+// GPU. Installing it is any engine's install job (the server installs
+// the runtime once for all of them); changing the backend or GPU is
+// PUT /v1/speech-runtime, which frees the speech slots and stops the server
+// so the next load starts the chosen build.
+const runtime = ref(null);
+const RUNTIME_KEY = "__speech-runtime";
+const BACKEND_LABELS = { cuda: "CUDA (NVIDIA)", vulkan: "Vulkan", cpu: "CPU", metal: "Metal (Apple GPU)" };
+const backendOptions = computed(() => [
+  { label: "Auto", value: "auto" },
+  ...(runtime.value?.backends || []).map((b) => ({ label: BACKEND_LABELS[b] || b, value: b })),
+]);
+const gpuOptions = computed(() => (runtime.value?.gpus || []).map((name, i) => ({ label: `${i} · ${name}`, value: i })));
+function runtimeSummary(r) {
+  const parts = [BACKEND_LABELS[r.backend] || r.backend || "no build for this machine"];
+  if (r.build && r.build !== r.backend) parts.push(r.build);
+  if (r.installed) parts.push(r.running ? "running" : "stopped — starts on the first load");
+  if (r.installed && r.cpu_running && r.backend !== "cpu") parts.push("CPU models running");
+  return parts.join(" · ");
+}
+async function refreshRuntime() {
+  runtime.value = await api.safeRequest("/v1/speech-runtime", null);
+}
+async function installRuntime() {
+  const first = engines.value[0];
+  if (!first) return;
+  clearTerminalTask(RUNTIME_KEY);
+  const task = makeEngineDownloadTask(api, first.id, {});
+  dlTasks[RUNTIME_KEY] = task;
+  try {
+    await task.start();
+    if (task.state !== "done") return;  // error/cancelled — the bar says which
+    pushToast({ message: "Speech runtime installed.", kind: "success", duration: 4000 });
+    for (const e of engines.value) delete variants[e.id];
+    await Promise.all([refresh(), refreshRuntime()]);
+    delete dlTasks[RUNTIME_KEY]; delete taskKind[RUNTIME_KEY];
+  } catch {
+    // The bar carries the error (failed lingers until dismissed).
+  }
+}
+async function setRuntime(patch) {
+  const cur = runtime.value || {};
+  try {
+    runtime.value = await api.request("/v1/speech-runtime", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      // Every field, every time: a PUT replaces the setting.
+      body: JSON.stringify({
+        backend: cur.backend_setting || "auto", gpu: cur.gpu || 0,
+        cpu_threads: cur.cpu_threads || 0, cpu_min_realtime: cur.cpu_min_realtime || 2,
+        ...patch,
+      }),
+    });
+    // The slots were freed server-side — every surface re-reads.
+    window.dispatchEvent(new Event("jv:health-refresh"));
+    pushToast({
+      message: "cpu_threads" in patch
+        ? "CPU threads changed — models on the CPU use them from their next load."
+        : runtime.value.installed
+          ? "Speech runtime changed — the next load uses it."
+          : "Saved. Install the speech runtime to use this build.",
+      kind: "success",
+    });
+  } catch (e) {
+    pushToast({ message: `Couldn't change the speech runtime: ${e?.message || e}`, kind: "error" });
+  }
+}
+// The CPU process's threads: the field shows what it runs with; typing the physical
+// core count back stores 0, so it keeps following this machine.
+function setCpuThreads(n) {
+  const v = Math.max(1, Math.round(Number(n) || 0));
+  if (!runtime.value || v === runtime.value.cpu_threads_used) return;
+  setRuntime({ cpu_threads: v === runtime.value.physical_cores ? 0 : v });
+}
+
+// ── Where each model runs (CPU placement, 2026-10-02) ──────────────────
+// Auto / GPU / CPU per model; the server says where it runs — or where a load would
+// put it now — and why. Changing a loaded model's place reloads it there.
+const PLACEMENT_OPTIONS = [
+  { label: "Auto", value: "auto" },
+  { label: "GPU", value: "gpu" },
+  { label: "CPU", value: "cpu" },
+];
+const WHERE = { gpu: "the graphics card", cpu: "the CPU" };
+function placeText(e, v) {
+  const where = WHERE[v.runs_on] || v.runs_on;
+  const verb = modelLoaded(e, v) ? "Running on" : "Loads on";
+  return `${verb} ${where}${v.runs_on_reason ? ` — ${v.runs_on_reason}` : ""}`;
+}
+async function setPlacement(e, v, placement) {
+  if (placement === v.placement) return;
+  try {
+    const r = await api.request(
+      `/v1/engines/${encodeURIComponent(e.id)}/models/${encodeURIComponent(v.id)}/placement`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ placement }),
+      });
+    delete variants[e.id];
+    await refresh();
+    // A loaded model that would now run elsewhere moves: the load door unloads it and
+    // loads it in its new place, on the row's own bar.
+    if (r?.moves) await runLoad(e, v.id);
+  } catch (err) {
+    pushToast({ message: `Couldn't change where ${v.name} runs: ${err?.message || err}`, kind: "error" });
+  }
+}
+
+// Delete every downloaded model of one engine — the engine-level removal
+// now that there is no environment to uninstall (the runtime stays).
+async function removeEngineModels(engine) {
+  const ok = await confirmDialog({
+    title: `Delete every downloaded ${engine.name || engine.id} model?`,
+    message: "Deletes this engine's model files from disk. The speech runtime stays installed, and any model downloads again when you need it.",
+    danger: true, confirmLabel: "Delete downloaded models",
+  });
+  if (!ok) return;
+  try {
+    await api.request(`/v1/engines/${encodeURIComponent(engine.id)}`, { method: "DELETE" });
+    delete variants[engine.id];
+    window.dispatchEvent(new Event("jv:health-refresh"));
+    await refresh();
+    pushToast({ message: `${engine.name || engine.id} models deleted.`, kind: "success", duration: 4000 });
+  } catch (e) {
+    pushToast({ message: `Delete failed: ${e.message || e}`, kind: "error" });
+  }
+}
+function anyOnDisk(e) { return variantsFor(e.id).some((v) => v.on_disk === true); }
 // The OS gate's verdict, computed SERVER-side (`EngineInfo.supported_on_this_os`)
 // — never re-derived here, because the renderer can be a browser on a
 // different machine than the server. False means `install_engine` refuses,
@@ -268,30 +354,6 @@ function deprecated(e) { return (e.deprecated || "").trim(); }
 function osBlockedTitle(e) {
   const list = (e.supported_oses || []).join(", ") || "no platforms";
   return `${e.name || e.id} declares support for ${list}, and this server is not running one of them. Installing it would fail.`;
-}
-
-// ── Install (engine venv) — kit job-channel task, row bar only. ───────
-// No global task strip: that strip is the AI task panel, for runs that QUERY
-// a model. Moving bytes and building an environment belongs on the row's
-// DownloadBar, which is what the kit's own llama.cpp engine install does
-// (`engineInstallChannel()` → `engineGateTask`) — see `runLoad` for the full
-// note. The job task decides the OUTCOME by state, not by exception.
-async function installEngine(engine) {
-  const key = _engineKey(engine.id);
-  clearTerminalTask(key);
-  const task = makeEngineDownloadTask(api, engine.id, {});
-  dlTasks[key] = task;
-  try {
-    await task.start();
-    if (task.state !== "done") return;  // error/cancelled — the row's bar says which
-    pushToast({ message: `${engine.name || engine.id} installed.`, kind: "success", duration: 4000 });
-    delete variants[engine.id];
-    await refresh();
-    delete dlTasks[key]; delete taskKind[key]; // done bars are reaped (the LLM catalog's rule) — error/cancelled linger for Retry/Dismiss
-  } catch {
-    // The task row carries the error (failed lingers until dismissed) — the
-    // pre-conversion code surfaced no toast here either.
-  }
 }
 
 // ── Load (weights already on disk — the Download verb is separate now:
@@ -355,44 +417,6 @@ async function unload(engine) {
   }
 }
 
-async function uninstall(engine) {
-  const hasPipPackages = Array.isArray(engine.pip_packages) && engine.pip_packages.length > 0;
-  let uninstallDeps = false;
-  if (hasPipPackages) {
-    const choice = await promptDialog({
-      title: `Uninstall ${engine.id}?`,
-      message: "Model files will be removed from disk. You can also remove the Python packages this engine pulled in.",
-      fields: [{
-        key: "scope", label: "What to remove", type: "select", defaultValue: "files-only",
-        options: [
-          { value: "files-only", label: "Model files only" },
-          { value: "files-and-deps", label: `Model files + Python packages (${engine.pip_packages.join(", ")})` },
-        ],
-      }],
-      confirmLabel: "Uninstall", cancelLabel: "Cancel", danger: true,
-    });
-    if (!choice) return;
-    uninstallDeps = choice.scope === "files-and-deps";
-  } else {
-    const ok = await confirmDialog({
-      title: `Uninstall ${engine.id}?`,
-      message: "Model files will be removed from disk.",
-      danger: true, confirmLabel: "Uninstall",
-    });
-    if (!ok) return;
-  }
-  try {
-    let path = `/v1/engines/${encodeURIComponent(engine.id)}`;
-    if (uninstallDeps) path += "?uninstall_deps=true";
-    await api.request(path, { method: "DELETE" });
-    delete variants[engine.id];
-    await refresh();
-    pushToast({ message: `${engine.name || engine.id} uninstalled.`, kind: "success", duration: 4000 });
-  } catch (e) {
-    pushToast({ message: `Uninstall failed: ${e.message || e}`, kind: "error" });
-  }
-}
-
 async function deleteModel(e, v) {
   const ok = await confirmDialog({
     // Same words as the kit catalog's freeDownload confirm — the menu item and
@@ -423,19 +447,18 @@ function langTitle(v) {
 }
 // Weights-licence chip — the kit's use-limited warn pattern, retold
 // honestly for JV: every bundled engine's weights permit commercial output
-// (Higgs died for that in 2026-06), so here the gold ⚠ means an OBLIGATION
-// rides the licence — TADA's Llama-3.2-Community requires "Built with
-// Llama" in your published credits (NOTICE.md has the authoritative copy).
+// (Higgs died for that in 2026-06), so a gold ⚠ means an OBLIGATION rides the
+// licence (NOTICE.md has the authoritative copy). Pocket TTS (CC-BY-4.0,
+// added 2026-10-02) carries one — a credit to Kyutai; TADA's "Built with
+// Llama" left on 2026-10-01.
 const PERMISSIVE_LICENSES = new Set(["mit", "apache-2.0", "bsd-2-clause", "bsd-3-clause"]);
 function licenseWarn(v) {
   return !!v.weights_license && !PERMISSIVE_LICENSES.has(v.weights_license.toLowerCase());
 }
-function licenseTitle(e, v) {
+function licenseTitle(v) {
   if (!v.weights_license) return "";
   if (!licenseWarn(v)) return `${v.weights_license} — permissive; publishing your generated audio commercially is fine.`;
-  return `${v.weights_license} — commercial output is permitted, but an obligation rides this licence`
-    + (e.attribution ? `: display "${e.attribution}" in your published credits.` : ".")
-    + " See NOTICE.md.";
+  return `${v.weights_license} — commercial output is permitted, but an obligation rides this licence. See NOTICE.md.`;
 }
 
 // Per-row measured-memory hint (§13): joins the vram endpoint's
@@ -625,7 +648,7 @@ async function unloadKind(kind) {
 }
 
 onMounted(() => {
-  refresh(); loadDefaults();
+  refresh(); refreshRuntime(); loadDefaults();
   unsubscribeVram = subscribeVramFeed();
   window.addEventListener("jv:health-refresh", refreshAll);
 });
@@ -694,6 +717,51 @@ onBeforeUnmount(() => {
       No engines listed — the Python server may not be running. Check <a href="#settings">Settings → Server</a>.
     </p>
 
+    <!-- The speech runtime — ONE audio.cpp program runs every engine below
+         (the 2026-10-01 switch). Same group grammar as an engine row: name ·
+         id · description · status + the one verb on the head, settings on the
+         foot. Install here replaces each engine's old Install. -->
+    <div v-if="runtime && engines.length" class="ev-group">
+      <div class="ev-ghead">
+        <span class="nm">Speech runtime</span><span class="id">{{ runtime.runtime }} {{ runtime.version }}</span>
+        <span class="desc" title="One program runs every speech model below — one install, one download per model">Runs every speech model below</span>
+        <span class="gsum">
+          <template v-if="dlTasks[RUNTIME_KEY]?.state !== 'running'">
+            <span v-if="!runtime.installed" class="ev-badge none">not installed</span>
+            <span class="meta">{{ runtimeSummary(runtime) }}</span>
+            <UiButton v-if="!runtime.installed" intent="primary" size="small"
+              label="Install speech runtime" :disabled="!runtime.backend"
+              title="One-time: downloads the speech runtime for this machine. Models download separately."
+              @click.stop="installRuntime" />
+          </template>
+          <span v-else class="meta">working…</span>
+        </span>
+      </div>
+      <DownloadBar v-if="dlTasks[RUNTIME_KEY]?.state" :task="dlTasks[RUNTIME_KEY]"
+        :title="`Speech runtime · ${runtime.runtime} ${runtime.version}`" />
+      <div class="ev-gfoot">
+        Backend
+        <UiSelect :modelValue="runtime.backend_setting || 'auto'" width="id"
+          :options="backendOptions"
+          title="Which build of the runtime runs. Auto picks CUDA on NVIDIA, Vulkan on AMD and Intel, Metal on a Mac. Changing it unloads the speech models."
+          @update:modelValue="(v) => setRuntime({ backend: v })" />
+        <template v-if="gpuOptions.length > 1">
+          GPU
+          <UiSelect :modelValue="runtime.gpu || 0" width="name" :options="gpuOptions"
+            title="Which GPU the runtime runs on. Changing it unloads the speech models."
+            @update:modelValue="(v) => setRuntime({ gpu: Number(v) })" />
+        </template>
+        <template v-if="runtime.backend !== 'cpu'">
+          CPU threads
+          <UiNumber :modelValue="runtime.cpu_threads_used" :min="1" :step="1" size="small" width="token"
+            :use-grouping="false"
+            :title="`How many threads the models placed on the CPU compute with. This machine has ${runtime.physical_cores} cores; more threads, faster speech, up to that. Changing it reloads the models on the CPU.`"
+            @update:modelValue="setCpuThreads" />
+          <span>of {{ runtime.physical_cores }} cores</span>
+        </template>
+      </div>
+    </div>
+
     <!-- capability sections (speech only) -->
     <div v-for="sec in sectionData" :key="sec.id">
       <div class="ev-section-h">
@@ -710,33 +778,17 @@ onBeforeUnmount(() => {
             <span v-for="c in engineCaps(e)" :key="c" class="ev-cap" :class="c">{{ c.toUpperCase() }}</span>
           </span>
           <span class="desc" :title="e.description">{{ e.description }}</span>
-          <!-- Weights-licence attribution. NOT decorative: the Llama 3.2
-               Community License §1.b requires any product built on a
-               Llama-derivative model to display "Built with Llama" in the
-               UI. TADA's weights are Llama-derived, so this row is a
-               licence obligation for anyone shipping JustVoice. Do not
-               remove without checking the weights licence first. -->
-          <span v-if="e.attribution" class="ev-attrib"
-            :title="`Required by the model's weights licence${e.weights_license ? ' (' + e.weights_license + ')' : ''}`"
-          >{{ e.attribution }}</span>
           <span class="gsum">
             <span v-if="anyTaskRunning(e.id)" class="meta">working… · click to expand</span>
-            <!-- The OS gate (2026-08-17). Shown for ANY blocked engine, not
-                 just venv ones: a shared engine has no Install button, its
-                 door is the per-variant Download — so the badge has to carry
-                 the explanation on its own. Listed rather than hidden, so a
-                 Mac user learns MOSS-TTSD exists and why it is not
-                 offered. -->
+            <!-- The OS gate (2026-08-17): listed rather than hidden, so a
+                 user learns the engine exists and why it is not offered. -->
             <span v-if="!anyTaskRunning(e.id) && osBlocked(e)" class="ev-badge none"
               :title="osBlockedTitle(e)">not available on this OS · {{ (e.supported_oses || []).join(" · ") || "none" }}</span>
             <span v-if="!anyTaskRunning(e.id) && deprecated(e)" class="ev-badge none"
               :title="deprecated(e)">⚠ marked for removal</span>
-            <span v-if="!anyTaskRunning(e.id) && !osBlocked(e) && engineNeedsInstall(e)" class="ev-badge none">engine not installed</span>
-            <UiButton v-if="!anyTaskRunning(e.id) && !osBlocked(e) && engineNeedsInstall(e)" intent="primary" size="small"
-              label="Install engine"
-              title="One-time: builds the Python environment this engine runs in. Models download separately afterwards."
-              @click.stop="installEngine(e)" />
-            <span v-if="!anyTaskRunning(e.id) && !engineNeedsInstall(e)" class="meta">{{ groupSummary(e) }}</span>
+            <span v-if="!anyTaskRunning(e.id) && !osBlocked(e) && engineNeedsInstall(e)" class="ev-badge none"
+              title="Install the speech runtime on the row above — it runs every engine here. Models can download first.">needs the speech runtime</span>
+            <span v-if="!anyTaskRunning(e.id)" class="meta">{{ groupSummary(e) }}</span>
             <span v-if="!anyTaskRunning(e.id) && !engineNeedsInstall(e) && loadedVariantName(e)" class="ldd">● {{ loadedVariantName(e) }} loaded<template v-if="e.resolved_device"> · {{ e.resolved_device.toUpperCase() }}</template></span>
             <!-- Set-as-default (engine) — rightmost, the family position. -->
             <UiButton v-if="sec.id === 'tts'" :intent="defaultEngineId === e.id ? 'success' : 'secondary'" size="small"
@@ -747,7 +799,8 @@ onBeforeUnmount(() => {
         </div>
 
         <div class="ev-gbody" v-if="isOpen(e)">
-          <div v-for="v in visibleVariantsFor(e.id)" :key="v.id" class="ev-model" :class="{ dim: engineNeedsInstall(e) || osBlocked(e) }">
+          <template v-for="v in visibleVariantsFor(e.id)" :key="v.id">
+          <div class="ev-model" :class="{ dim: osBlocked(e) }">
             <span class="vn">{{ v.name }}</span>
             <!-- The facts chips (§6): languages · Cloning · Presets · N ·
                  licence — read straight off the ②c manifest facts the wire
@@ -759,7 +812,7 @@ onBeforeUnmount(() => {
               <span v-if="v.preset_voices > 0" class="ev-cap presets"
                 :title="`${v.preset_voices} ready-made voices — no sample needed`">PRESETS · {{ v.preset_voices }}</span>
               <span v-if="v.weights_license" class="ev-lic" :class="{ 'ev-lic--warn': licenseWarn(v) }"
-                :title="licenseTitle(e, v)"><template v-if="licenseWarn(v)">⚠ </template>{{ v.weights_license }}</span>
+                :title="licenseTitle(v)"><template v-if="licenseWarn(v)">⚠ </template>{{ v.weights_license }}</span>
             </span>
             <!-- Download size only — no memory claim. The footprint is
                  measured at load (the budget strip shows it); a number
@@ -777,13 +830,15 @@ onBeforeUnmount(() => {
                    files are on disk. The old one-step "⬇ Load (N GB)" died. -->
               <UiButton v-if="!modelLoaded(e, v) && !modelOnDisk(e, v)" intent="primary" size="small"
                 :label="`Download (${fmtDisk(v.size_mb)})`"
-                :disabled="busyAnywhere(e.id, v.id) || engineNeedsInstall(e) || osBlocked(e)"
+                :disabled="busyAnywhere(e.id, v.id) || osBlocked(e)"
                 :title="osBlocked(e) ? osBlockedTitle(e) : 'Download the model files. Load it from this row once it\'s on disk.'"
                 @click="downloadOnly(e, v.id)" />
               <UiButton v-if="!modelLoaded(e, v) && modelOnDisk(e, v)" intent="primary" size="small"
                 label="Load model"
                 :disabled="busyAnywhere(e.id, v.id) || engineNeedsInstall(e) || osBlocked(e)"
-                :title="osBlocked(e) ? osBlockedTitle(e) : `Load into the ${(e.kind || 'tts').toUpperCase()} slot`"
+                :title="osBlocked(e) ? osBlockedTitle(e)
+                  : engineNeedsInstall(e) ? 'Install the speech runtime first — the row at the top of this list'
+                  : `Load into the ${(e.kind || 'tts').toUpperCase()} slot`"
                 @click="runLoad(e, v.id)" />
               <!-- Set-as-default (model) — the user layer the manager resolves
                    over the manifest default. Rightmost, family position. -->
@@ -815,6 +870,17 @@ onBeforeUnmount(() => {
               </DropdownMenuRoot>
             </span>
           </div>
+          <!-- Where it runs (CPU placement, 2026-10-02): the choice, and the server's
+               answer in words — visible, never only on hover. -->
+          <div v-if="v.runs_on" class="ev-mplace" :class="{ dim: osBlocked(e) }" :data-variant="v.id">
+            Runs on
+            <UiSelect :modelValue="v.placement || 'auto'" width="token" size="small" :options="PLACEMENT_OPTIONS"
+              :disabled="busyAnywhere(e.id, v.id) || osBlocked(e)"
+              title="Auto picks from what was measured on this machine: the graphics card when nothing else is on it or the model fits beside the AI model, else the CPU when the model is fast enough there."
+              @update:modelValue="(p) => setPlacement(e, v, p)" />
+            <span class="ev-mplace__why">{{ placeText(e, v) }}</span>
+          </div>
+          </template>
 
           <!-- THE one download bar (kit DownloadBar over the kit task) — every
                install/download/load renders identically to the LLM side. -->
@@ -823,23 +889,19 @@ onBeforeUnmount(() => {
             :done-label="taskKind[row.key] === 'load' ? 'Loaded' : ''"
             :task="row.task" />
 
-          <!-- The Device select (Q2, decided): a real setting the ONE load
-               door resolves — auto follows the engine's cpu_adequate fact,
-               an explicit choice always wins. The engine's hidden torch
-               "auto" (greedy-cuda) no longer decides anything. -->
-          <div class="ev-gfoot">
-            Device
-            <UiSelect :modelValue="deviceOverrides[e.id] || 'auto'" width="name"
-              :options="deviceOptionsFor(e)"
-              title="Where this engine's model loads. Auto picks CPU for CPU-fast engines, otherwise your GPU."
-              @update:modelValue="(v) => setDeviceOverride(e, v)" />
-            <span v-if="e.resolved_device" class="jv-muted">loaded on {{ e.resolved_device.toUpperCase() }}</span>
-          </div>
-
-          <div class="ev-gfoot" v-if="e.status !== 'not_installed'">
-            own environment
-            <UiButton intent="ghost" size="small" label="Uninstall engine" class="ev-danger ev-push-right"
-              title="Remove this engine's environment and all its downloaded models" @click="uninstall(e)" />
+          <!-- No Device select: every model runs where the speech runtime
+               runs (the Backend select on the runtime row). -->
+          <div class="ev-gfoot" v-if="anyOnDisk(e) || e.terms">
+            <template v-if="e.terms">
+              <span v-if="e.terms_accepted">{{ e.terms.owner }}'s terms accepted — cloning is on</span>
+              <template v-else>
+                <span>Cloning waits until you accept {{ e.terms.owner }}'s terms</span>
+                <UiButton intent="secondary" size="small" label="Read and accept"
+                  @click="openEngineTerms(e.id)" />
+              </template>
+            </template>
+            <UiButton v-if="anyOnDisk(e)" intent="ghost" size="small" label="Delete downloaded models" class="ev-danger ev-push-right"
+              title="Delete every downloaded model of this engine — the speech runtime stays" @click="removeEngineModels(e)" />
           </div>
         </div>
       </div>

@@ -1,95 +1,53 @@
 # GPU / CUDA
 
-JustVoice's engines run on whatever compute backend Python and PyTorch can find. The **Settings → GPU** sub-page surfaces what's detected and what's active.
+Every speech model in JustVoice runs in one program, **the speech runtime**
+([audio.cpp](https://github.com/0xShug0/audio.cpp)), and the runtime comes in a
+build per kind of hardware. Which build runs is the one GPU decision you have —
+**AI Settings → Speech engines → Speech runtime → Backend** — and **Auto** gets
+it right on most machines. **Settings → GPU** shows what the machine reports.
 
-## What you'll see
+## What you'll see on Settings → GPU
 
-- **Active backend** — what's actually being used right now (`cuda` / `metal` / `coreml` / `directml` / `rocm` / `mlx` / `cpu`).
-- **Detected runtimes** — every runtime the system reports as available. JustVoice picks the most capable one.
-- **GPU cards** — vendor, model, VRAM, driver version (per GPU if you have multiple).
+- **Backend** — the best compute runtime the machine reports (`cuda` / `metal` /
+  `directml` / `rocm` / `cpu`). This is detection, not a setting.
+- **Device** — vendor, model and driver of the first GPU.
+- **VRAM total / used** — measured, the same number `nvidia-smi` or Task Manager shows.
 
-If the runtimes list is empty, you're CPU-only. Most engines still work on
-CPU, with a real split in usability: **Kokoro is built for CPU** (it's the
-one engine whose Auto device choice picks CPU deliberately) and stays
-comfortably usable there; the PyTorch cloning engines (Chatterbox, Qwen3,
-TADA, MOSS) are far slower on CPU — expect long renders to take many
-times the audio's length. For audiobook-scale work with a cloning engine,
-get CUDA (NVIDIA) or Metal (Apple Silicon) working.
+## Which build the runtime uses
 
-## Which PyTorch build gets installed (NVIDIA)
+| Your machine | Auto picks | What else you can choose |
+|---|---|---|
+| Windows, NVIDIA GeForce 40-series and older | CUDA 12.4 | Vulkan, CPU |
+| Windows, NVIDIA GeForce 50-series (Blackwell) and newer | CUDA 13.3 | Vulkan, CPU |
+| Windows, AMD or Intel graphics | Vulkan | CPU |
+| Linux, any GPU | Vulkan | CPU |
+| macOS | Metal | — |
+| No usable GPU | CPU | — |
 
-You do not choose this, and there is nothing to click: JustVoice detects your
-hardware when it builds an engine's Python environment and installs the
-matching PyTorch there.
+The CUDA split follows the card's compute capability (10.0 and above needs the
+13.x build), the same rule the AI model runner uses for its own builds, so the
+two never disagree about your card. Linux NVIDIA machines run Vulkan because
+audio.cpp publishes no Linux CUDA build.
 
-- **NVIDIA** (`nvidia-smi` answers) → CUDA **12.6** on most cards, or CUDA
-  **13.0** on Blackwell and newer. The split is by compute capability: 10.0
-  and above (GeForce 50-series, RTX PRO Blackwell, B-series data-centre parts)
-  needs CUDA 12.8 or later and cannot run a 12.6 build at all, while
-  everything older runs on 12.6, which is picked for the wider driver
-  compatibility. JustVoice uses the same rule here as the LLM runner does for
-  its own builds, so the two never disagree about your card.
-- **AMD on Linux** (`rocm-smi` answers) → the ROCm **7.2** wheels.
-- **AMD on Windows** → CPU. PyTorch publishes no ROCm build for Windows; AMD
-  publish their own, which you can opt into — see
-  [Engines](engines.md#amd-on-windows).
-- **Intel Arc** → the XPU wheels, but only if you ask: Arc is not reliably
-  detectable, so set `JUSTVOICE_TORCH_INDEX` yourself.
-- **Apple Silicon** → the standard build. Metal (MPS) ships inside it; there
-  is no separate wheel to choose.
-- **Anything else, including no GPU** → the CPU wheels.
+**Changing it.** Pick another backend (and, on a machine with more than one
+GPU, another **GPU**) on the runtime row. The speech models unload and the
+runtime stops; the next load starts the build you chose. A build you have not
+downloaded yet shows **not installed** until you click **Install speech
+runtime** — the Windows CUDA 12.4 build is a 461 MB download (about 2 GB once
+unpacked, most of it NVIDIA's libraries), the Vulkan build 60 MB. Your
+downloaded models are not affected; the same files serve every build.
 
-The version installed is **PyTorch 2.13.0** with torchaudio 2.11.0, the same
-in every engine — see [Engines](engines.md#what-it-costs-on-disk) for why
-agreement matters to your disk.
+**Without a GPU.** Every engine runs on the CPU build. Kokoro measured 2.8×
+real time there (2026-10-01) — comfortably usable. Qwen3 and Chatterbox were
+not measured on the CPU; expect them to be much slower than real time, which
+for audiobook-scale work means a GPU (CUDA, Vulkan or Metal).
 
-Confirm the result under Settings → GPU: the runtimes panel lists `cuda` when
-the driver is present, and the memory strip's **Acceleration** cell says
-which backend is actually in use.
-
-**Overriding it.** Set `JUSTVOICE_TORCH_INDEX` to a PyTorch wheel index before
-the environment is built, and that wins over detection — this is how you get
-Intel Arc's XPU wheels, or AMD's own Radeon-on-Windows build:
-
-```
-JUSTVOICE_TORCH_INDEX=https://download.pytorch.org/whl/xpu
-JUSTVOICE_TORCH_INDEX=https://download.pytorch.org/whl/cu130
-```
-
-Pick an index that actually carries the pinned version. An index that stops
-below it is worse than none: the installer resolves *down* to whatever that
-index does have, and you end up on an old PyTorch with no error to explain it.
-
-Because the build is chosen at install time, changing it means rebuilding:
-set the variable, then click **Uninstall engine** and **Install engine** on
-the engines you want moved. Your downloaded models live in the speech cache
-and are not affected.
-
-> **Note:** Settings → GPU also shows a "CUDA wheel download flow" card with
-> Switch to CPU-only / Switch to ROCm / Re-download buttons. Those are a
-> **design mock — they are not wired to anything**, and the version line
-> beside them is placeholder text, not your actual build. The detection and
-> the environment variable above are the real mechanism.
-
-## Metal / CoreML (Apple Silicon)
-
-Apple Silicon Macs get Metal automatically — PyTorch detects MPS (Metal Performance Shaders) on Apple GPUs. No wheel switch required.
-
-Chatterbox specifically forces CPU on macOS due to a known PyTorch MPS bug with the Chatterbox model architecture (see `engines/chatterbox/engine.py:62-65`). All other engines run on MPS.
-
-## ROCm (AMD)
-
-Limited support. PyTorch ROCm wheels exist for Linux only; Windows ROCm is not currently supported by upstream PyTorch. Hardware detection has no ROCm arm, so on Linux + AMD point `JUSTVOICE_TORCH_INDEX` at a ROCm index before the environment is built (see above) — nothing picks it for you.
-
-AMD is also the one platform with no per-process GPU memory reporting: vendor tooling publishes whole-card usage only, so the **show apps** panel says it can't read the breakdown there.
-
-## DirectML (Windows non-NVIDIA)
-
-For Windows users with AMD or Intel GPUs, DirectML provides a fallback. Most engines work via DirectML but slower than native CUDA. Detected automatically; no switch needed.
-
-## MLX (Apple Silicon, future)
-
-MLX is Apple's experimental ML framework. We detect it but no engine adapter currently targets it; CoreML / Metal is the active Apple Silicon path.
+Until 2026-10-01 each engine was a Python program with its own PyTorch build,
+chosen per engine at install time (CUDA 12.6 / 13.0, ROCm, or CPU wheels, with
+`JUSTVOICE_TORCH_INDEX` as the override). That is gone, and so is the
+per-engine **Device** select: one runtime, one backend, for every engine. A
+Windows machine with AMD or Intel graphics now accelerates every engine through
+Vulkan — before, only Kokoro accelerated there.
 
 ## The shared memory budget
 
@@ -116,8 +74,11 @@ never internal bookkeeping:
   your AI features run on a cloud provider and nothing will load locally.
 - **TTS** / **STT** — always present, one per slot: **—** when nothing is
   loaded, otherwise the loaded model's name and its real, measured memory
-  take (or **on CPU** for a CPU-placed engine, which holds no VRAM on a
-  discrete card).
+  take (or **on CPU** when the model is placed on the CPU, which holds no VRAM
+  on a discrete card — see [Engines → Where each model runs](engines.md#where-each-model-runs--the-graphics-card-or-the-cpu)).
+  Two slots in the same runtime process split its footprint, so the second
+  slot's number is what loading its model *added* — the process's whole
+  footprint is never counted twice.
   The very first time an engine loads on your machine the cell says **not
   measured yet** for a moment: JustVoice attaches no number to a load it has
   never observed — it measures the engine process itself as soon as the load
@@ -179,7 +140,7 @@ your speech engine, that costs you nothing.
 "Other apps" tells you *how much* memory something else is holding. Clicking
 **show apps** on that cell tells you *what* — a list of every program
 currently holding GPU memory, biggest first, with the amount each one holds.
-Anything belonging to JustVoice itself (an engine subprocess, the local model
+Anything belonging to JustVoice itself (the speech runtime, the local model
 runner) is marked **this app**, so you can separate your own footprint from
 the rest of the desktop at a glance.
 
@@ -212,38 +173,40 @@ Two honest limits, both of which the panel states inline rather than hiding:
 
 ### Engines left over from an earlier session
 
-Each speech engine runs as its own program next to the JustVoice server, and it
-holds GPU memory while its model is loaded. An engine never outlives the server
-that started it:
+The speech runtime runs as its own program next to the JustVoice server, and it
+holds GPU memory while a model is loaded. It never outlives the server that
+started it:
 
-- **It watches its server.** Every couple of seconds an engine checks that the
-  server which started it is still running, and exits if it isn't — however the
-  server went: closed, crashed or killed. Its GPU memory is released as it exits.
+- **On Windows it dies with the server.** The server starts the runtime inside
+  a Windows job that the operating system closes when the server ends — closed,
+  crashed or killed — and closing it ends the runtime and releases its memory.
 - **Closing the window shuts down cleanly.** The desktop app asks the server to
-  stop, the server stops its engines (which releases their memory at once), and
+  stop, the server stops the runtime (which releases its memory at once), and
   then exits. The app forces the server closed only if that hasn't happened
   within a few seconds.
-- **The server clears up when it starts.** It looks for engines from this
-  install whose server no longer exists, stops them, and writes to its log what
-  it stopped and how much GPU memory that freed. An engine whose server is still
-  running is never touched — including one belonging to a second JustVoice
-  server on the same install.
+- **The server clears up when it starts.** It looks for a runtime from this
+  install whose server no longer exists, stops it, and writes to its log what
+  it stopped and how much GPU memory that freed. A runtime whose server is
+  still running is never touched — including one belonging to a second
+  JustVoice server on the same install.
 
-Engines left behind before these three existed, or by a JustVoice older than
-this one, can still be holding memory — and that is exactly what makes the AI
-model fail to load when it fitted yesterday. When a model load fails at launch
-and such engines are running, the loading screen says so under the error, for
-example *"1.5 GB of GPU memory is held by 2 Whisper STT processes from an
-earlier session"*, with a **Stop them and retry** button: it stops them and
-loads the model again. Whenever a model fails to load, its error message also
-starts by naming any other program holding a sizeable amount of GPU memory
-(200 MB or more — the desktop's own share stays out of it), with the amount
-each one holds.
+A runtime left behind by a JustVoice older than this one — or, before
+2026-10-01, the per-engine Python programs that preceded it — can still be
+holding memory, and that is exactly what makes the AI model fail to load when
+it fitted yesterday. When a model load fails at launch and such a process is
+running, the loading screen says so under the error, for example *"1.5 GB of
+GPU memory is held by 2 Speech runtime processes from an earlier session"*,
+with a **Stop them and retry** button: it stops them and loads the model again.
+Whenever a model fails to load, its error message also starts by naming any
+other program holding a sizeable amount of GPU memory (200 MB or more — the
+desktop's own share stays out of it), with the amount each one holds.
 
-The server log records every engine start and stop with its process ID, the
-server's process ID and the memory in use before and after — so "what was
-holding the GPU?" has an answer after the fact too. It is under **Settings →
-Logs**, or the tray's **Open log file**.
+The server log records every model load with the process ID and the memory in
+use before and after, and the runtime writes its own log to
+`logs/audiocpp-server.log` in your data folder — so "what was holding the
+GPU?" has an answer after the fact too. The server log is under **Settings →
+Logs**, or the tray's **Open log file**; the runtime's sits beside it in the
+same folder.
 
 **How loading works now.** When you load an engine JustVoice has **measured
 before on this machine**, it checks **measured free memory** first —
@@ -262,7 +225,7 @@ admission treatment. The same protection runs in the other direction: an AI
 run fired mid-render can't kill the rendering engine — it proceeds in
 reduced-memory mode and runs full speed after the render ends.
 
-**Per-engine device choice.** Each engine card has a **Device** select (Auto / CUDA / CPU), stored in settings. **Auto** picks CPU for engines that are genuinely fast on CPU (Kokoro) and your GPU for the rest — the engine's own hidden "auto" no longer decides. An explicit choice always wins; the card shows which device the engine actually loaded on. CPU-placed engines cost no VRAM on discrete cards (their RAM use is shown for information, never enforced).
+**Where models run.** Every model runs on the speech runtime's backend (the runtime row's **Backend** select); the engine card shows it once loaded (`· CUDA`, `· VULKAN`, `· CPU`). The CPU build costs no VRAM on a discrete card (its RAM use is shown for information, never enforced). There is no per-engine Device select any more — the 2026-10-01 switch put every engine in one runtime.
 
 **Warm boot.** With the budget in charge, the local AI model now warms up at launch by default on fresh installs (the family default) — the first Analyze is instant, and if a render needs the memory the idle model is simply evicted with a toast. Turn it off in the AI engine console if you prefer a cold start. Databases created before 2026-08-13 keep their old warm-off setting until you change it or reset.
 
@@ -278,14 +241,12 @@ You can still load one engine per slot (one TTS + one STT). Unload via the Speec
 
 ## Troubleshooting
 
-- **Engine load fails with `[WinError 1314] A required privilege is not held by the client`** — A Windows edge case in the old HuggingFace download cache. Since 2026-08-14 speech-model downloads land as **plain files** (the speech cache) with no symlinks anywhere, so new downloads cannot hit this. It can still surface on a model that was downloaded the old way (before this change): **just click Load again** — a fresh attempt finishes placing the one missing file — or delete the model and download it again, which moves it onto the new plain-file path for good. You do NOT need Developer Mode or admin rights; JustVoice is expected to work without either.
 - **The AI model fails to load: "could not load its speculative-decoding (MTP) draft even on its own"** — Read the start of the message first. If it names other programs holding GPU memory, that is the likely cause: close them (or, on the loading screen, click **Stop them and retry** for JustVoice's own leftover engines — see [Engines left over from an earlier session](#engines-left-over-from-an-earlier-session)) and load again. Only if nothing else is holding memory do the other causes apply: the model's tune leaves too little room for the draft (raise `n_cpu_moe`), the draft file is damaged (re-download it), or turn MTP off. When other programs are holding memory the load fails straight away rather than first restarting the AI engine and trying again — a restart can't free another program's memory, so it would only add time. With nothing else on the GPU it still restarts once and retries before it gives up.
-- **GPU info card shows "no GPU detected"** — Either no discrete GPU is present (laptops often have CPU + integrated graphics only, which torch ignores) or the driver isn't installed. Run `nvidia-smi` (NVIDIA) or `vulkaninfo` (AMD) from a terminal to verify.
-- **The torch download fails during engine setup** — Most often a network issue pulling the ~2 GB wheel. The install log carries the pip output; installing the engine again resumes rather than starting over.
+- **GPU info card shows "no GPU detected"** — Either no discrete GPU is present (laptops often have CPU + integrated graphics only, which detection may not report) or the driver isn't installed. Run `nvidia-smi` (NVIDIA) or `vulkaninfo` (AMD) from a terminal to verify.
+- **The speech runtime fails to install** — Most often a network issue pulling the archive from GitHub. The bar on the runtime row carries the error; Install again resumes. If it says the program would not start, a virus scanner may still be holding the freshly unpacked files — wait a moment and retry.
 - **Out-of-memory on render** — Switch to a smaller model variant (Speech engines tab → engine row), or load a lighter engine entirely.
-- **Engine runs but very slow** — Check Settings → GPU: are you actually on CUDA, or did detection fall back to the CPU wheels? The Active backend pill is authoritative. Also check the engine's own **Device** select on the Speech engines tab — an explicit CPU choice there beats any wheel.
-- **macOS: Chatterbox is way slower than expected** — Chatterbox forces CPU on Mac due to the MPS bug. This is intentional. Use Kokoro / Qwen3 on Mac for GPU acceleration.
+- **Rendering is very slow** — Check the runtime row on AI Settings → Speech engines: which build is running? A CPU build on a machine with a GPU means Backend was set to CPU, or the GPU build failed to start and you installed CPU instead. The loaded engine card shows the backend it is on.
 
 ## What's detected — under the hood
 
-Settings → GPU calls `/v1/system` which returns the runtimes dict and the `gpus` list. The page picks the highest-priority active runtime and labels the rest. No magic — the same data you'd get from `nvidia-smi` + `torch.cuda.is_available()` + PyTorch's mps backend check.
+Settings → GPU calls `/v1/system`, which returns the runtimes the machine reports and the `gpus` list — the same data you'd get from `nvidia-smi` (or the platform's equivalent). The speech runtime's own state is `GET /v1/speech-runtime`: release, the build installed, the backend setting and the builds available for this OS, the GPUs, and whether it is running.

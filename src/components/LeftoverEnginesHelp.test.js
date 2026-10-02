@@ -22,11 +22,13 @@ vi.mock("@delebash/llm-ui", () => ({
 
 const { default: LeftoverEnginesHelp } = await import("./LeftoverEnginesHelp.vue");
 
-const TWO_WHISPERS = {
+// Since the 2026-10-01 switch the only engine process is the speech runtime
+// (audio.cpp) — one per server that started it.
+const TWO_RUNTIMES = {
   gpu_mb: 1581,
   leftovers: [
-    { pid: 10, engine_id: "whisper", engine_name: "Whisper STT", gpu_mb: 1295 },
-    { pid: 20, engine_id: "whisper", engine_name: "Whisper STT", gpu_mb: 286 },
+    { pid: 10, engine_id: "audiocpp", engine_name: "Speech runtime", gpu_mb: 1295 },
+    { pid: 20, engine_id: "audiocpp", engine_name: "Speech runtime", gpu_mb: 286 },
   ],
 };
 
@@ -50,26 +52,26 @@ async function mount(task) {
 }
 
 test("names the leftover engines and what they hold", async () => {
-  request.mockResolvedValueOnce(TWO_WHISPERS);
+  request.mockResolvedValueOnce(TWO_RUNTIMES);
   await mount({ retry: vi.fn() });
   expect(el.textContent).toContain(
-    "1.5 GB of GPU memory is held by 2 Whisper STT processes from an earlier session.",
+    "1.5 GB of GPU memory is held by 2 Speech runtime processes from an earlier session.",
   );
   expect(el.querySelector("button").textContent).toBe("Stop them and retry");
 });
 
-test("mixed engines, memory unmeasurable", async () => {
+test("memory unmeasurable", async () => {
   request.mockResolvedValueOnce({
     gpu_mb: null,
     leftovers: [
-      { pid: 1, engine_name: "Whisper STT", gpu_mb: null },
-      { pid: 2, engine_name: "Kokoro", gpu_mb: null },
-      { pid: 3, engine_name: "Kokoro", gpu_mb: null },
+      { pid: 1, engine_name: "Speech runtime", gpu_mb: null },
+      { pid: 2, engine_name: "Speech runtime", gpu_mb: null },
+      { pid: 3, engine_name: "Speech runtime", gpu_mb: null },
     ],
   });
   await mount({ retry: vi.fn() });
   expect(el.textContent).toContain(
-    "1 Whisper STT process and 2 Kokoro processes from an earlier session are still running.",
+    "3 Speech runtime processes from an earlier session are still running.",
   );
 });
 
@@ -81,7 +83,7 @@ test("renders nothing when there are none", async () => {
 
 test("Stop them and retry stops them, then re-runs the load", async () => {
   const retry = vi.fn();
-  request.mockResolvedValueOnce(TWO_WHISPERS).mockResolvedValueOnce(TWO_WHISPERS);
+  request.mockResolvedValueOnce(TWO_RUNTIMES).mockResolvedValueOnce(TWO_RUNTIMES);
   await mount({ retry });
   el.querySelector("button").click();
   await new Promise((r) => setTimeout(r, 0));

@@ -30,17 +30,23 @@ This product incorporates, links against, or depends on the following third-part
 
 ## Model weights — attribution requirements
 
-JustVoice itself is free software, but a few bundled engines ship model weights whose license terms require an attribution notice in any published work produced with them. These are reproduced inline in the Engines tab card UI and listed here for the authoritative copy.
+JustVoice itself is free software, and every speech model it offers permits commercial use of what
+you produce with it. Kokoro-82M, KittenTTS Mini 0.8, Qwen3-TTS, Qwen3-ASR and Qwen3-ForcedAligner are
+Apache-2.0 and Chatterbox is MIT — no attribution requirement (see `LICENSES.md` → *Downloaded on
+demand*). One carries a credit, shown with a ⚠ on its model rows in the app:
 
-### HumeAI TADA (model weights: Llama 3.2 Community License)
+- **Pocket TTS — CC BY 4.0, Kyutai** (added 2026-10-02; https://huggingface.co/kyutai/pocket-tts).
+  CC BY asks that the licensor be credited when the licensed material is shared. JustVoice does not
+  share it — your app downloads it from audio.cpp's copy — but the credit is easy to give where you
+  credit your tools: *"Pocket TTS by Kyutai, CC BY 4.0."* Its preset voices come from recordings
+  under their own licences: Alba — Alba MacKenna, CC BY 4.0; Anna, Azelma, Charles, Eponine, Eve,
+  Fantine, George, Jane, Mary, Michael, Paul, Vera — the VCTK corpus (University of Edinburgh, CSTR),
+  CC BY 4.0; Bill Boerst, Caro Davy, Peter Yearsley, Stuart Bell — Voice-Zero (LibriVox), CC0;
+  Estelle, Javert, Marius — Kyutai's own and donated recordings, CC0. Cloning with Pocket TTS also
+  asks you to accept Kyutai's prohibited-use terms, which the app shows before the first clone.
 
-- Upstream weights: https://huggingface.co/HumeAI/tada-3b-ml (Llama 3.2 Community License) + https://huggingface.co/HumeAI/tada-codec (MIT)
-- Wrapper code: `hume-tada` (Apache-2.0)
-- License text: see Meta's published terms at https://www.llama.com/llama3_2/license/
-
-TADA is built on Meta Llama 3.2. The Llama 3.2 Community License §1.b requires that any product or service built using Llama-derivative models display **"Built with Llama"** prominently in the user interface AND include the same notice in any associated documentation. The 700M MAU threshold in §2 is a separate clause that doesn't apply to JustVoice's distribution model.
-
-JustVoice surfaces the "Built with Llama" notice on the Engines tab when TADA is selected (see `src/views/EnginesView.vue` license row; data driven by `WEIGHTS_LICENSE` + `ATTRIBUTION` fields on the engine manifest). End users who ship audiobooks, podcasts, or game audio produced with TADA must reproduce the same attribution in their published work's credits.
+(HumeAI TADA, whose Llama 3.2 Community License required "Built with Llama" in the UI and in your
+published credits, was removed with the 2026-10-01 switch to the speech runtime.)
 
 ---
 
@@ -84,34 +90,29 @@ Copyright (c) 2009, Jay Loden, Dave Daeschler, Giampaolo Rodola'  (psutil)
 Copyright (c) 2001-2002 Enthought, Inc. 2003, SciPy Developers.   (scipy)
 ```
 
-**Installed on demand** — `torch` arrives only with the `chatterbox` / `qwen3` extras and is never redistributed by JustVoice, so no notice obligation attaches to us. Recorded for completeness; PyTorch's `LICENSE` lists many holders beyond these three:
+### audio.cpp (Apache-2.0) — the speech runtime
 
-```
-Copyright (c) 2016-     Facebook, Inc            (Adam Paszke)
-Copyright (c) 2014-     Facebook, Inc            (Soumith Chintala)
-Copyright (c) 2011-2014 Idiap Research Institute (Ronan Collobert)
-  … full list: https://github.com/pytorch/pytorch/blob/main/LICENSE
-```
+- Upstream: https://github.com/0xShug0/audio.cpp — prebuilt release archives, pinned `v0.9.0`
+- License: Apache-2.0, Copyright 2026 ShugoAI LLC
+- Downloaded onto the user's machine when they install the speech runtime; never bundled with or
+  redistributed by JustVoice. Its release archive carries a `LICENSE` and no `NOTICE` file
+  (checked 2026-10-01), so there is no §4(d) content to propagate. Re-check on every pin bump.
 
-### transformers (Apache-2.0)
+### eSpeak NG (GPL-3.0) — Kokoro's and KittenTTS's pronunciation library
 
-- Upstream: https://github.com/huggingface/transformers
-- License: Apache-2.0
+- Upstream: https://github.com/espeak-ng/espeak-ng, fetched as the `espeakng-loader` 0.2.4 wheel
+  (the loader is MIT — https://github.com/thewh1teagle/espeakng-loader)
+- Downloaded onto the user's machine with the speech runtime and loaded by the audio.cpp process —
+  never by JustVoice code, never redistributed by JustVoice. Why the GPL does not reach JustVoice:
+  `LICENSES.md` → *Downloaded on demand*.
 
-```
-Copyright 2018- The HuggingFace team. All rights reserved.
-```
+### Speech models (GGUF)
 
-### sherpa-onnx / sherpa-onnx-python (Apache-2.0)
-
-- Upstream: https://github.com/k2-fsa/sherpa-onnx
-- License: Apache-2.0
-- Used by: Kokoro engine via the `sherpa-onnx-python` PyPI package
-
-### PyTorch / torch (BSD-3-Clause)
-
-- Upstream: https://github.com/pytorch/pytorch
-- License: BSD-3-Clause (PyTorch itself); bundles further BSD/MIT/Apache sub-components — see PyTorch's own NOTICES.
+- Upstream: https://huggingface.co/audio-cpp/audio.cpp-gguf at a pinned commit; each directory keeps
+  its original model's licence (Kokoro-82M Apache-2.0 — hexgrad; KittenTTS Mini 0.8 Apache-2.0 —
+  KittenML; Pocket TTS CC BY 4.0 — Kyutai, see *Model weights* above; Qwen3-TTS, Qwen3-ASR,
+  Qwen3-ForcedAligner Apache-2.0 — Qwen; Chatterbox MIT — Resemble AI).
+- Downloaded by the user's app on demand; not redistributed by JustVoice.
 
 ### numpy (BSD-3-Clause)
 
@@ -141,31 +142,6 @@ Copyright 2019 Kenneth Reitz
 - License: MIT
 - Own repo, consumed as a pinned git dependency and frozen into the sidecar by PyInstaller.
 
-### uv (Apache-2.0 OR MIT)
-
-- Upstream: https://github.com/astral-sh/uv
-- License: dual — upstream ships both `LICENSE-APACHE` and `LICENSE-MIT`, so an MIT product may
-  take the MIT option. No upstream `NOTICE` file (checked 2026-07-29).
-- Bundled as a Tauri `externalBin` sidecar so that installing an engine needs no system Python,
-  pip, or toolchain from the user. Version pinned in `.github/workflows/release.yml`.
-
-### chatterbox-tts (MIT) / qwen-tts (Apache-2.0)
-
-- Installed on demand by the app's engine installer into each engine's own
-  environment (the pip extras of the same names died 2026-08-21) — neither is
-  frozen into the shipped sidecar.
-- `qwen-tts` verified 2026-07-29: `Apache-2.0` both upstream (`QwenLM/Qwen3-TTS`) and on PyPI
-  (0.1.1). It ships no upstream `NOTICE` file. This entry previously read "license TBD".
-- `chatterbox-tts` pulls in **parselmouth** (`GPL-3.0-or-later`) transitively. That copyleft does
-  not reach JustVoice: it is never redistributed, and it is imported only inside the chatterbox
-  engine subprocess. See `LICENSES.md` → *Installed on demand* for the full reasoning.
-
-### peft (Apache-2.0) / safetensors (Apache-2.0) — LoRA training
-
-- Installed by the app into the training-capable engines' own environments
-  (the `[training]` pip extra died 2026-08-21; faster-whisper left with it —
-  transcription rides the Whisper engine, not a second library).
-
 ### scipy
 
 - Upstream: https://github.com/scipy/scipy
@@ -183,10 +159,10 @@ Copyright 2019 Kenneth Reitz
 > project ever *distributed*, and the sole reason for the 2026-06-08 Apache-2.0 → GPL-3.0-or-later
 > flip. Its twelve effects now live in `server/justvoice/audio/dsp/`.
 >
-> One copyleft dependency is still *reachable* — `parselmouth` (`GPL-3.0-or-later`), pulled in
-> transitively by the `chatterbox` extra. It does not relicense anything, because JustVoice never
-> redistributes it and never links it in-process. Redistribution plus in-process linkage is what
-> propagated with pedalboard; see `LICENSES.md` → *Installed on demand*.
+> One copyleft component is *reachable* — eSpeak NG (`GPL-3.0`), downloaded with the speech
+> runtime. It relicenses nothing, because JustVoice never redistributes it and never links it
+> in-process. Redistribution plus in-process linkage is what propagated with pedalboard; see `LICENSES.md` →
+> *Downloaded on demand*.
 
 ---
 
