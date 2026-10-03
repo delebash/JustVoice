@@ -745,6 +745,30 @@ DECIDED: 2026-10-02 — "all 4 , fork repo, public, your rec on all go". The fou
 GO:     given 2026-10-02 for every gap ("you have a go for all gaps"); decision-text gaps,
         commit and push still asked
 
+### Our copy of audio.cpp — fork, releases, the app's pin, the C++ gaps
+STATE:  OPEN — fork created 2026-10-02 (github.com/delebash/audio.cpp, public; branch `jv` at
+        v0.9.0's 795c45fb; local clone E:\Dev\Web\audio.cpp); the plan and four questions are in
+        docs/plans/2026-10-02-our-audiocpp-copy.md (§5: tag scheme v0.9.0-jv.N — rec yes · how
+        installs move — rec keep the old build working and offer an update · first release =
+        aligner seconds + VoxCPM2 transcript — rec yes · keep the app's 16 kHz aligner resample
+        for now — rec keep).
+BUILT:  2026-10-03 on `jv`, committed locally, not pushed — 0acac2b1 VoxCPM2 transcript reaches
+        the model; cf08c14b aligner + Qwen3-ASR word spans at the input rate. Both checked through
+        the server against v0.9.0 (plan §2). Local builds are CPU-only (VS 2026; no CUDA
+        toolkit here that pairs with it); CUDA comes from CI.
+DECIDED: 2026-10-03 — "your rec on all 5 go, commit and push" on the five as shown: 1 "Tag scheme
+        v0.9.0-jv.N (our build N on upstream v0.9.0)? … yes." · 2 "How installs move to our build
+        … keep the older build working and have the runtime row offer 'Update to v0.9.0-jv.1'." ·
+        3 "First release = these two fixes? … yes." · 4 "Keep the app's 16 kHz resample for the
+        aligner? … keep it." · 5 "Commit the doc corrections and the new plan doc, and push jv to
+        the fork?"
+OPEN:   push `jv` → the fork's workflows register → CI dry run → tag v0.9.0-jv.1 (publishes) →
+        the app: an installed older build keeps working and the runtime row offers "Update to
+        v0.9.0-jv.1"; the pin moves to our release; VoxCPM2's row gets "and its transcript" and
+        the transcript field back.
+GO:     given 2026-10-02 ("all 4 , fork repo, public, your rec on all go" · "you have a go for
+        all gaps"); §5 asked
+
 ### 16-bit rows, the 8-bit vs 16-bit test, and VoxCPM2 (gap 9, with fixes 3 and 4)
 STATE:  DECIDED 2026-10-02 — "your rec on all 3 go" on the plan as presented
         (docs/plans/2026-10-02-gap-9-16bit-and-voxcpm2.md — READ IT before coding): 1 "Which
@@ -770,9 +794,11 @@ DECIDED: 2026-10-02 — "your rec on all 3 go, commit and push" on the three que
         it, which is a small C++ change I'd add to the C++ gaps." · 2 "Chatterbox: … the default
         stays 8-bit … My recommendation: before switching (16-bit is 3.7 GB against 2.1 GB), run
         a bigger test, three seeds over a full chapter." · 3 "Commit and push gap 9".
-OPEN:   the Chatterbox test — three seeds over the whole chapter, 8-bit against 16-bit; its
-        numbers go back to the user before any default changes · the VoxCPM2 transcript fix is a
-        C++ gap for our audio.cpp copy (listed on the audio.cpp item).
+        The Chatterbox test ran 2026-10-02 (plan §6): the whole chapter × 3 seeds — 8-bit 10.8 %
+        words wrong (19/150 lines > 20 %), 16-bit 11.2 % (18/150): level, the default stays 8-bit;
+        engines.md / whats-new corrected (uncommitted).
+OPEN:   the VoxCPM2 transcript fix ships with our first audio.cpp release (the item above),
+        then the row text gets "and its transcript" back.
 GO:     given 2026-10-02 ("you have a go for all gaps" → "your rec on all 3 go")
 
 ### Speech models run on the CPU or the GPU — chosen per model, automatically, measured

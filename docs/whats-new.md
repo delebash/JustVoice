@@ -9,9 +9,8 @@
   parentheses, so a line's own brackets are read as dashes
   ([Engines → The catalog](engines.md#the-catalog))
 - **Every model has a 16-bit row (2026-10-02)** beside its 8-bit default — the
-  original precision, a larger download that needs more memory. On a real chapter
-  the two read back the same on Kokoro, Pocket TTS and Qwen3; Chatterbox's 16-bit
-  got a few short lines right that its 8-bit missed
+  original precision, a larger download that needs more memory. Read back on a
+  real chapter, the two precisions came out level on every engine
   ([Engines → 8-bit or 16-bit](engines.md#8-bit-or-16-bit))
 - **A chapter that mixes engines with different sample rates joins them at the
   highest one (2026-10-02).** Until VoxCPM2 every engine spoke at 24 kHz, so this

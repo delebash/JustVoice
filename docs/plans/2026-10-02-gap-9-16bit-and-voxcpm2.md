@@ -172,6 +172,13 @@ and placement lines, no horizontal overflow, no JS errors. (A first screenshot s
 "0 models" — the row's loading state before its `/models` answered, ~2.6 s under the page's
 concurrent load; it rendered 10 after.)
 
+**The bigger Chatterbox test (decided 2026-10-02: "run a bigger test, three seeds over a full
+chapter").** All 50 lines of "The Keystone" × seeds 101/202/303, 8-bit against 16-bit, the
+same clip and harness: **8-bit 10.8 % words wrong, 19 of 150 lines > 20 % wrong; 16-bit
+11.2 %, 18 of 150;** no long silences in either (1,500.9 s / 1,454.3 s of audio). Level —
+the first run's gap (7.2 % against 10.8 % on 32 single-seed lines) was noise. The default stays
+8-bit; engines.md and whats-new corrected (they had said Chatterbox's 16-bit read better).
+
 ## 5. Open — asked with recommendations
 
 1. **Which models get a 16-bit row?** Rec: all of them in §2's table (KittenTTS has none).

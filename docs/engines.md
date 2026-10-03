@@ -204,16 +204,17 @@ own recogniser read every take back:
 | Pocket TTS, English | 6.2 % / 6.2 % | 2 / 2 |
 | Qwen3-TTS CustomVoice 1.7B | 9.9 % / 10.9 % | 6 / 5 |
 | Qwen3-TTS CustomVoice 0.6B | 9.0 % / 8.5 % | 4 / 3 |
-| Chatterbox Multilingual | 10.8 % / 7.2 % | 5 / 2 |
+| Chatterbox Multilingual (the whole chapter, 3 takes per line) | 10.8 % / 11.2 % | 19 / 18 of 150 |
 
 Most of what reads as "wrong" is the recogniser spelling invented names its own
-way (Cael as "Kale"), which happens at both precisions. Kokoro, Pocket TTS and
-Qwen3 showed no 8-bit penalty: Qwen3's occasional long pause or garbled short line
-turned up at 16-bit as often as at 8-bit. **Chatterbox** is the exception so far —
-at 16-bit it got three short lines right that the 8-bit file did not ("You have it"
-came out as "Have it"). If a Chatterbox voice drops short words, try its 16-bit row.
-Pocket TTS's Portuguese and Spanish models drop words now and then at both
-precisions, so the 16-bit row does not fix that.
+way (Cael as "Kale"), which happens at both precisions. None of the engines showed
+an 8-bit penalty: Qwen3's occasional long pause or garbled short line turned up at
+16-bit as often as at 8-bit, and Chatterbox — which looked better at 16-bit on a
+first, single-take run of 30 lines — came out level once the whole chapter was read
+three times at each precision. Pocket TTS's Portuguese and Spanish models drop words
+now and then at both precisions, so the 16-bit row does not fix that either. The
+8-bit rows stay the defaults; the 16-bit rows are there for anyone who wants the
+original precision.
 
 ### How fast, and how much memory
 
