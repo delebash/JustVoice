@@ -1918,10 +1918,16 @@ WHY:    the persona layer (§8.3, §8.22 — the tuning that survives a recast) 
 DECIDED: 2026-10-03, the order — "we need to do the persona first that is before slice 4, why do
         you keep forgeting this?" Personas come before Slice 4 (D8 answered). Until then this
         was recorded only as an open question, so every session read "next is Slice 4".
-OPEN:   the scope of "the persona" — the mock's whole Personas redesign (the index `_s9` and the
-        persona editor `workbench` / `_s7` "How it speaks" Pace / Pitch / Gain / Pause, which
-        also carries "Voice gender in every voice dropdown, and speaker pronouns") or only this
-        editor fix. Asked 2026-10-03.
+DECIDED: 2026-10-03, the scope — "whole redesign per mock" (the index `_s9` and the persona
+        editor `workbench` / `_s7`, carrying "Voice gender in every voice dropdown, and speaker
+        pronouns").
+OPEN:   the design check the user asked for first, the same day: "did we rethink on the persona
+        to make sure we have it designed correctly whihc it changing options on engine nad model
+        selection, think on the desing nad make sure it is correct and accounts for voice desing
+        clone, regular and models that take direction like qwen and thos that take workds like
+        chatterbox, think on it several times". No code until that review is shown and approved.
+        The review and its facts are saved in docs/plans/2026-10-03-persona-redesign.md ("make
+        sure yyou save thsi info").
 GO:     needed
 
 ### FINDING — language never reaches Chatterbox or Qwen3: every render on them is told English
