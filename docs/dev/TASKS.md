@@ -796,7 +796,15 @@ BUILT:  2026-10-03 — the "—" fix: VoicesView sends a transcript only when ty
         sound alone…"; and a voice saved from an x-vector audition keeps no x-vector flag, so its
         renders on Qwen3 Base are refused (renders never sent the flag — it lives on the audition
         only).
-OPEN:   commit + push the pin move →
+        Committed + pushed 2026-10-03: JV 806c7a6 (the pin move, the "—" fix, gaps 1–3 app code
+        gated on jv.2 / jv.3, docs, TASKS); our audio.cpp `jv` at faf1ee03.
+        Tags v0.9.0-jv.2 (42db68d9) and v0.9.0-jv.3 (3865d245) pushed 2026-10-03; both release
+        runs FAILED on macOS — `std::to_string` of a 128-bit file time in the voice-pack cache key
+        (86767dad; libc++ only, MSVC was fine; the dry run had built cf08c14b, before the gap
+        commits). Fixed in faf1ee03; both runs cancelled, NOTHING PUBLISHED for jv.2/jv.3; dry run
+        37123528985 of faf1ee03 (gaps 1–3 + the fix) on every platform. Asked: how to re-release
+        (the pushed tags point at the broken commits).
+OPEN:   re-release →
         the app: an installed older build keeps working and the runtime row offers "Update to
         v0.9.0-jv.1"; the pin moves to our release; VoxCPM2's row gets "and its transcript" and
         the transcript field back.
