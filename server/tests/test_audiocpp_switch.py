@@ -61,8 +61,9 @@ def test_the_aligner_rides_with_speech_recognition():
     assert comp["role"] == "aligner" and comp["file"] in row["sources"][0]["files"]
 
 
-def test_turbo_and_nano_rows_are_gone_until_turbo_clones():
-    assert lookup("chatterbox-turbo-v1").engine_id == "chatterbox"   # falls through to the base row
+def test_turbo_has_its_own_row_again_and_multilingual_has_no_min_p():
+    # Gap 1 (docs/plans/2026-10-03-gap-1-turbo-cloning.md): Turbo clones on our audio.cpp.
+    assert lookup("chatterbox-turbo-v1").engine_id == "chatterbox-turbo"
     assert "min_p" not in {k.key for k in lookup("chatterbox-multilingual").knobs}
 
 

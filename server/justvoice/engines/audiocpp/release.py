@@ -17,8 +17,35 @@ import sys
 
 from llm_runner.runner.schema import BinaryAsset
 
-TAG = "v0.9.0"                       # released 2026-09-30 — git 795c45fb
-_DL = f"https://github.com/0xShug0/audio.cpp/releases/download/{TAG}"
+# Our build 1 on audio.cpp v0.9.0 (github.com/delebash/audio.cpp, tag at adedc094, published
+# 2026-10-03 by the fork's release workflow): VoxCPM2 takes the clip's transcript, and the
+# aligner's seconds are at the input rate. Upstream's v0.9.0 was released 2026-09-30 (795c45fb).
+TAG = "v0.9.0-jv.1"
+_DL = f"https://github.com/delebash/audio.cpp/releases/download/{TAG}"
+
+# Older pinned releases an install may still hold, newest first. One of them keeps working
+# until the runtime row's "Update to <TAG>" installs the pinned build (decided 2026-10-03).
+PREVIOUS_TAGS: tuple[str, ...] = ("v0.9.0",)
+
+# Every build the app has pinned or will, oldest first — upstream's, then ours
+# (github.com/delebash/audio.cpp, tags v0.9.0-jv.N). A feature names the first build that has
+# it, so an older installed build refuses that feature by name instead of failing inside.
+BUILDS_IN_ORDER: tuple[str, ...] = ("v0.9.0", "v0.9.0-jv.1", "v0.9.0-jv.2", "v0.9.0-jv.3")
+FEATURES: dict[str, str] = {
+    "voxcpm2_transcript": "v0.9.0-jv.1",   # a VoxCPM2 clone uses the clip's transcript
+    "voice_pack": "v0.9.0-jv.2",   # Kokoro blends (gap 2)
+    "inline_ipa": "v0.9.0-jv.2",   # Kokoro "[word](/phonemes/)" — a lexicon's IPA (gap 3)
+    "turbo_clone": "v0.9.0-jv.3",  # Chatterbox Turbo / Nano clone a voice (gap 1)
+}
+
+
+def pinned_has(feature: str) -> bool:
+    """Whether the PINNED build has `feature` — what the app offers. The installed build may
+    still be older; `runtime.has_feature` answers for it."""
+    first = FEATURES.get(feature)
+    if first not in BUILDS_IN_ORDER or TAG not in BUILDS_IN_ORDER:
+        return False
+    return BUILDS_IN_ORDER.index(TAG) >= BUILDS_IN_ORDER.index(first)
 
 # The model files: audio.cpp's own GGUF packages. Commit pinned 2026-10-01.
 MODEL_REPO = "audio-cpp/audio.cpp-gguf"

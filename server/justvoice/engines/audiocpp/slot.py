@@ -82,6 +82,26 @@ def _data_dir() -> Path:
     return get_state().data_dir
 
 
+def write_voice_pack(vector) -> Path:
+    """A blend's style pack as the raw float32 rows × 256 file our audio.cpp's `voice_pack`
+    option reads (gap 2). Named by its content, so each blend is written once and kept."""
+    import hashlib
+
+    import numpy as np
+
+    arr = np.asarray(vector, dtype="<f4").ravel()
+    if arr.size == 0 or arr.size % 256:
+        raise AudioCppError(f"a blended voice has {arr.size} values — Kokoro's are rows × 256")
+    raw = arr.tobytes()
+    out = _data_dir() / "cache" / "kokoro-voice-packs" / f"{hashlib.sha1(raw).hexdigest()}.bin"
+    if not out.is_file():
+        out.parent.mkdir(parents=True, exist_ok=True)
+        tmp = out.with_suffix(".tmp")
+        tmp.write_bytes(raw)
+        tmp.replace(out)
+    return out
+
+
 def variant_spec(manifest, variant_id: str | None) -> dict | None:
     """The manifest row for `variant_id` (or the engine's default), with its `audiocpp` block."""
     rows = list(getattr(manifest.module, "VARIANTS", []) or [])
@@ -278,6 +298,10 @@ class AudioCppSlot:
                 # (197 → 197 MB) and the memory ledger booked 0 MB for a multi-GB model.
                 srv.speech({"model": self._row["id"], "input": "(A calm, clear voice)Ready.",
                             "seed": 1})
+            elif spec["family"] == "chatterbox_turbo":
+                # The app offers Turbo's cloned voices only, but its built-in voice needs no
+                # clip, so a Load books its memory now rather than on the first line.
+                srv.speech({"model": self._row["id"], "input": "Ready.", "seed": 1})
         except AudioCppError as e:
             log.info("audio.cpp warm-up of %s skipped: %s", self._row["id"], e)
 
@@ -287,8 +311,20 @@ class AudioCppSlot:
         if not self.is_alive() or self._row is None:
             return _err(409, f"{self.manifest.name} is not loaded")
         if body.get("voice_vector"):
-            return _err(422, "Blended voices are not available yet on the new speech runtime — "
-                             "they return when audio.cpp takes a voice vector (switch plan §5).")
+            if self._row["audiocpp"]["family"] != "kokoro_tts":
+                return _err(422, f"{self.manifest.name} has no blended voices — blends are Kokoro's")
+            from .runtime import has_feature
+
+            if not has_feature("voice_pack"):   # the CPU process runs the same build
+                return _err(409, "Blended voices need the speech runtime update — Update it on "
+                                 "AI Settings → Speech engines.")
+            body = {**body, "voice_pack_path": str(write_voice_pack(body["voice_vector"]))}
+        if self._row["audiocpp"]["family"] == "chatterbox_turbo":
+            from .runtime import has_feature
+
+            if not has_feature("turbo_clone"):   # an older build refuses the clip inside
+                return _err(409, f"{self._row.get('name', 'Chatterbox Turbo')} voices need the speech "
+                                 "runtime update — Update it on AI Settings → Speech engines.")
         terms = getattr(self.manifest.module, "TERMS", None)
         if (terms and terms.get("gates") == "cloning" and body.get("audio_prompt_path")
                 and not terms_accepted(self.manifest.id)):
@@ -429,10 +465,26 @@ def to_speech_request(row: dict, body: dict) -> dict:
         req["voice"] = voice
         req["language"] = KOKORO_LANGUAGE.get(lang or voice_lang,
                                               KOKORO_LANGUAGE.get((lang or voice_lang).split("-")[0], "en-us"))
+        if delivery.get("ipa_map"):
+            # A lexicon's IPA: the words it covers ride as "[word](/phonemes/)" (gap 3). The host
+            # sends an ipa_map only when the installed runtime splices (render_core).
+            from ..kokoro.ipa import splice
+
+            req["input"] = splice(req["input"], delivery["ipa_map"])
+        opts: dict[str, Any] = {}
+        if body.get("voice_pack_path"):
+            # A blend: its pack rides `voice_pack`; the voice id only picks the language and
+            # the G2P, so it is the first preset that speaks the blend's language.
+            opts["voice_pack"] = str(body["voice_pack_path"]).replace("\\", "/")
+            req["voice"] = next((vid for vid, _n, lg, _g in VOICES
+                                 if KOKORO_LANGUAGE.get(lg.lower(), lg.lower()) == req["language"]),
+                                "af_heart")
         if delivery.get("speed"):
             req["speed"] = float(delivery["speed"])
         if delivery.get("phonemes"):
-            req["options"] = {"phonemes": [str(delivery["phonemes"])]}
+            opts["phonemes"] = [str(delivery["phonemes"])]
+        if opts:
+            req["options"] = opts
         return req
 
     if family == "qwen3_tts":
@@ -454,8 +506,16 @@ def to_speech_request(row: dict, body: dict) -> dict:
             if not spec.get("clone"):
                 raise AudioCppError("the CustomVoice model cannot clone — use a Base model for this voice")
             req["voice_ref"] = str(body["audio_prompt_path"]).replace("\\", "/")
-            if body.get("ref_text") and not body.get("xvector_only"):
+            # audio.cpp clones a Base voice in ICL mode (the clip and what it says) unless
+            # `x_vector_only_mode` asks for the speaker vector alone, and ICL without a transcript
+            # is refused — so a clip with neither is refused here, by name (decided 2026-10-03).
+            if body.get("xvector_only"):
+                opts["x_vector_only_mode"] = True
+            elif body.get("ref_text"):
                 req["reference_text"] = body["ref_text"]
+            else:
+                raise AudioCppError("Qwen3 Base needs what the clip says — type the transcript, or "
+                                    "tick x-vector only.")
         else:
             if spec.get("clone"):
                 raise AudioCppError("the Base model is clone-only — this voice needs a reference clip")
@@ -501,6 +561,27 @@ def to_speech_request(row: dict, body: dict) -> dict:
                              ("repetition_penalty", "repetition_penalty"), ("top_p", "top_p")):
             if knobs.get(ours) is not None:
                 opts[theirs] = float(knobs[ours])
+        temperature = delivery.get("temperature", knobs.get("temperature"))
+        if temperature is not None:
+            opts["temperature"] = float(temperature)
+        if opts:
+            req["options"] = opts
+        return req
+
+    if family == "chatterbox_turbo":
+        # Turbo and Nano (gap 1): English, cloned voices only — our audio.cpp needs a clip
+        # longer than 5 s and refuses a shorter one by name. Exaggeration / CFG / min-p do
+        # nothing on Turbo, so only its own sampling knobs are sent.
+        if not body.get("audio_prompt_path"):
+            raise AudioCppError(f"{row.get('name', 'Chatterbox Turbo')} speaks only cloned voices — "
+                                "this voice has no reference clip")
+        req["voice_ref"] = str(body["audio_prompt_path"]).replace("\\", "/")
+        opts = {}
+        for key in ("repetition_penalty", "top_p"):
+            if knobs.get(key) is not None:
+                opts[key] = float(knobs[key])
+        if knobs.get("top_k") is not None:
+            opts["top_k"] = int(knobs["top_k"])
         temperature = delivery.get("temperature", knobs.get("temperature"))
         if temperature is not None:
             opts["temperature"] = float(temperature)

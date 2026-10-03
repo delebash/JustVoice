@@ -19,7 +19,8 @@ to its base engine id; consumers should try the variant id first.
 
 from __future__ import annotations
 
-from ..models import EngineCapabilityDetail, KnobSpec
+from ..models import EngineCapabilityDetail, InlineTagSet, KnobSpec
+from .audiocpp.release import pinned_has
 
 
 # Shared knob definitions — reused across engines that accept the same
@@ -87,11 +88,12 @@ CAPABILITY_DETAILS: dict[str, EngineCapabilityDetail] = {
         engine_id="kokoro",
         display_name="Kokoro",
         supports_voice_cloning=False,
-        # Per-word IPA from lexicons and blended voices return with the switch
-        # plan's gaps (docs/plans/2026-10-01-audiocpp-switch.md §5, gaps 2–3):
-        # audio.cpp takes neither a voice vector nor a text+IPA splice yet.
-        supports_phoneme_input=False,
-        supports_voice_blending=False,
+        # A lexicon's IPA (gap 3) rides our audio.cpp's inline "[word](/phonemes/)" —
+        # offered once the pinned build has it; render_core also checks the INSTALLED one.
+        supports_phoneme_input=pinned_has("inline_ipa"),
+        # Blends (gap 2) need our audio.cpp's `voice_pack` option — offered once the
+        # pinned build has it (release.pinned_has), so the flag flips with the pin.
+        supports_voice_blending=pinned_has("voice_pack"),
         # audio.cpp's Kokoro takes a decoder-noise seed — the same seed repeats
         # the same audio (measured 2026-10-01); the old onnx path could not.
         knobs=[_speed_knob(), _seed_knob()],
@@ -147,9 +149,8 @@ CAPABILITY_DETAILS: dict[str, EngineCapabilityDetail] = {
     # The engine-level row is the fallback; the Multilingual row below is what
     # every shipped variant resolves to. audio.cpp's Chatterbox takes
     # temperature, exaggeration, CFG (its `guidance_scale`), repetition penalty
-    # and top-p per request — no min-p, which the PyTorch engine had. Turbo,
-    # Nano and their 19 inline tags return with Turbo cloning
-    # (docs/plans/2026-10-01-audiocpp-switch.md §5, gap 1).
+    # and top-p per request — no min-p, which the PyTorch engine had. Turbo
+    # and Nano have rows of their own below (gap 1).
     "chatterbox": EngineCapabilityDetail(
         engine_id="chatterbox",
         display_name="Chatterbox",
@@ -210,6 +211,97 @@ CAPABILITY_DETAILS: dict[str, EngineCapabilityDetail] = {
         pitch_post_process=True,
         notes=["19 languages. For language transfer, set cfg_weight=0 (Resemble docs).",
                "The same seed gives the same audio."],
+    ),
+
+    # ─── Chatterbox Turbo (and Nano, below) — back with gap 1 ─────────
+    # docs/plans/2026-10-03-gap-1-turbo-cloning.md. Our audio.cpp clones on
+    # Turbo from a file we convert from Resemble's own checkpoint. The row is
+    # the pre-switch one (git 1c7398d^) minus training (gap 5). Turbo takes
+    # temperature, top-p, top-k and repetition penalty per request;
+    # exaggeration / CFG / min-p do nothing on Turbo (upstream ignores them
+    # with a warning), so they are not offered.
+    "chatterbox-turbo": EngineCapabilityDetail(
+        engine_id="chatterbox-turbo",
+        display_name="Chatterbox Turbo",
+        supports_voice_cloning=True,
+        supports_clone_prompt_text=False,
+        knobs=[
+            _temperature_knob(default=0.8),
+            KnobSpec(
+                key="repetition_penalty", label="Repetition penalty",
+                min=1.0, max=4.0, step=0.1, default=1.2, advanced=True,
+            ),
+            KnobSpec(
+                key="top_p", label="Top p", min=0.0, max=1.0, step=0.01,
+                default=0.95, advanced=True,
+            ),
+            KnobSpec(
+                key="top_k", label="Top k", min=1, max=2000, step=1,
+                default=1000, advanced=True,
+            ),
+            _seed_knob(),
+        ],
+        # The checkpoint's own added_tokens.json: nineteen reserved tokens,
+        # ids 50257–50275, in three kinds — a state the line is spoken IN, a
+        # register it is read AS, and a sound made AT a point in the text.
+        # Upstream's model card names only [cough] [laugh] [chuckle] and says
+        # "and more"; the other sixteen are declared from the reserved ids.
+        inline_tags=[
+            InlineTagSet(
+                category="emotion",
+                label="Emotion",
+                tags=[
+                    "angry", "fear", "happy", "sarcastic", "surprised",
+                    "crying", "whispering",
+                ],
+                syntax="[{value}]",
+                placement="inline_anywhere",
+                hint="The state the line is spoken in. Place at the start of "
+                     "the line unless you want the shift mid-sentence.",
+                # `Delivery.emotion` compiles to these tokens. `neutral` maps
+                # to the empty string: expressible, emits no tag. Absent keys
+                # are not expressible here — `shouted` and `contemptuous` have
+                # no token, and `[crying]` is a behaviour rather than `sad`'s
+                # state, so sad is not mapped onto it.
+                value_map={
+                    "neutral": "",
+                    "happy": "happy",
+                    "angry": "angry",
+                    "fearful": "fear",
+                    "whispered": "whispering",
+                    "sarcastic": "sarcastic",
+                },
+            ),
+            InlineTagSet(
+                category="register",
+                label="Register",
+                tags=["narration", "dramatic", "advertisement"],
+                syntax="[{value}]",
+                placement="inline_anywhere",
+                hint="How the passage is read overall, rather than what the "
+                     "speaker feels.",
+            ),
+            InlineTagSet(
+                category="paralinguistic",
+                label="Non-verbal",
+                tags=[
+                    "cough", "laugh", "chuckle", "sigh", "gasp", "groan",
+                    "sniff", "clear throat", "shush",
+                ],
+                syntax="[{value}]",
+                placement="inline_anywhere",
+                hint="Insert at the moment in the text where you want the sound.",
+            ),
+        ],
+        pitch_post_process=True,
+        notes=[
+            "English only. Clones from a reference clip longer than 5 seconds.",
+            "The 19 inline tags are Turbo's own — Multilingual shares the engine "
+            "but not the tokenizer, and reads them as words.",
+            "[surprised] and [crying] have no Delivery.emotion equivalent; "
+            "type them inline. [shouted] and [contemptuous] have no token.",
+            "The same seed gives the same audio.",
+        ],
     ),
 
     # ─── Qwen3-TTS ────────────────────────────────────────────────────
@@ -301,12 +393,12 @@ CAPABILITY_DETAILS: dict[str, EngineCapabilityDetail] = {
 CAPABILITY_DETAILS["voxcpm2"] = EngineCapabilityDetail(
     # ─── VoxCPM2 (audio.cpp `voxcpm2`, gap 9, 2026-10-02) ──────────────
     # Clones from a clip and designs from a description; written direction reaches both as
-    # the parenthesised prefix. The clip's transcript does not reach the model through
-    # audio.cpp's server yet (manifest docstring), so no transcript field is offered.
+    # the parenthesised prefix. The clip's transcript reaches the model from our build
+    # v0.9.0-jv.1 on (manifest docstring), so the transcript field follows the pin.
     engine_id="voxcpm2",
     display_name="VoxCPM2",
     supports_voice_cloning=True,
-    supports_clone_prompt_text=False,
+    supports_clone_prompt_text=pinned_has("voxcpm2_transcript"),
     supports_voice_design=True,
     supports_instruct_freeform=True,
     knobs=[
@@ -330,6 +422,14 @@ CAPABILITY_DETAILS["voxcpm2"] = EngineCapabilityDetail(
         "48 kHz output.",
     ],
 )
+
+
+# Nano is Turbo's architecture at 110M parameters with the same tag vocabulary
+# (both repos' added_tokens.json compared byte for byte 2026-08-19) and the same
+# generate surface. A copy with its own name, not an alias — the alias put a
+# second "Chatterbox Turbo" in every picker (2026-08-20).
+CAPABILITY_DETAILS["chatterbox-nano"] = CAPABILITY_DETAILS["chatterbox-turbo"].model_copy(
+    update={"engine_id": "chatterbox-nano", "display_name": "Chatterbox Nano"})
 
 
 def lookup(engine_or_variant_id: str) -> EngineCapabilityDetail | None:

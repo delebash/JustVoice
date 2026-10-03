@@ -30,7 +30,9 @@ ROW_VARIANT = {
                                 {"audio_prompt_path": "/v/ref.wav"}),
     "qwen3": ("qwen3", "qwen3-cv-1.7b-q8", {"voice_id": "Ryan"}),
     "qwen3-cv": ("qwen3", "qwen3-cv-1.7b-q8", {"voice_id": "Ryan"}),
-    "qwen3-base": ("qwen3", "qwen3-base-1.7b-q8", {"audio_prompt_path": "/v/ref.wav"}),
+    "qwen3-base": ("qwen3", "qwen3-base-1.7b-q8", {"audio_prompt_path": "/v/ref.wav", "ref_text": "Hi there."}),
+    "chatterbox-turbo": ("chatterbox", "chatterbox-turbo-q8", {"audio_prompt_path": "/v/ref.wav"}),
+    "chatterbox-nano": ("chatterbox", "chatterbox-nano-q8", {"audio_prompt_path": "/v/ref.wav"}),
     "qwen3-vd": ("qwen3", "qwen3-vd-1.7b-q8", {"delivery": {"instruct": "A gravel voice."}}),
     "kitten": ("kitten", "kitten-mini-0.8", {"voice_id": "kitten_leo"}),
     "pocket": ("pocket", "pocket-en-q8", {"voice_id": "pocket_alba"}),
@@ -44,13 +46,18 @@ LANDS_AT = {
     "exaggeration": "options.exaggeration", "cfg_weight": "options.guidance_scale",
     "repetition_penalty": "options.repetition_penalty", "top_p": "options.top_p",
     "talker_top_k": "options.top_k", "talker_top_p": "options.top_p",
+    "top_k": "options.top_k",
     "cfg_value": "options.guidance_scale", "inference_timesteps": "options.num_inference_steps",
 }
 TOP_LEVEL = {"speed", "seed"}   # canonical Delivery fields / the request's own seed
 
 
 def _row(engine: str, variant: str) -> dict:
-    return next(r for r in discover_engines()[engine].module.VARIANTS if r["id"] == variant)
+    # PENDING_VARIANTS: rows written and published that wait for the pinned runtime's feature
+    # (Chatterbox Turbo / Nano until v0.9.0-jv.3) — their knobs must reach the runtime too.
+    module = discover_engines()[engine].module
+    rows = list(module.VARIANTS) + list(getattr(module, "PENDING_VARIANTS", []))
+    return next(r for r in rows if r["id"] == variant)
 
 
 def test_every_capability_row_has_a_variant_to_drive() -> None:

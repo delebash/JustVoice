@@ -30,8 +30,11 @@ router = APIRouter(tags=["engines"])
 
 class SpeechRuntimeInfo(BaseModel):
     runtime: str = "audio.cpp"
-    version: str
+    version: str                     # the installed release, else the pinned one
     installed: bool
+    # The pinned release when an older one is installed — the runtime row offers
+    # "Update to <it>"; the older build keeps working until then (2026-10-03).
+    update_to: str | None = None
     backend: str | None = None       # "cuda" | "vulkan" | "cpu" | "metal" — the build in use
     build: str | None = None         # the build key ("cuda12", "vulkan", …)
     backend_setting: str = "auto"    # settings.engines.speech_runtime.backend
@@ -60,11 +63,13 @@ def _info() -> SpeechRuntimeInfo:
         cpu_threads,
         get_server,
         installed_exe,
+        installed_tag,
         physical_cores,
         selected_asset,
     )
 
     exe = installed_exe()
+    tag = installed_tag() if exe is not None else None
     asset = selected_asset() if exe is None else None
     srv = get_server("gpu")
     cpu = get_server("cpu")
@@ -75,8 +80,9 @@ def _info() -> SpeechRuntimeInfo:
     except Exception:  # noqa: BLE001 — no kit / detection failed → no list
         gpus = []
     return SpeechRuntimeInfo(
-        version=release.TAG,
+        version=tag or release.TAG,
         installed=exe is not None,
+        update_to=release.TAG if tag is not None and tag != release.TAG else None,
         backend=backend_of(exe) if exe else (None if asset is None else
                                              ("cuda" if asset.gpu.startswith("cuda") else asset.gpu)),
         build=exe.parent.name if exe else (asset.gpu if asset else None),

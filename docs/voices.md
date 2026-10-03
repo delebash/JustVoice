@@ -87,10 +87,11 @@ Drop in a clip of one person speaking. **10 seconds to 2 minutes**, one
 speaker, as clean as you can get: 16 kHz or better, dialogue delivery, low
 noise floor.
 
-Type what the clip says if you can. On Qwen3 Base the transcript is passed
-to the model as part of the clone prompt (upstream's own demo passes it); on
-Chatterbox and Pocket TTS it is stored but not used. The form says which you
-are looking at.
+Type what the clip says if you can. On Qwen3 Base and VoxCPM2 the transcript
+is passed to the model with the clip (VoxCPM2 from speech runtime v0.9.0-jv.1);
+on Chatterbox and Pocket TTS it is stored but not used. Leave the box empty and
+the voice has no transcript — nothing is filled in for you. The form says which
+you are looking at.
 
 **Pocket TTS** clones on the CPU — about four times faster than real time on
 an 8-core machine — so it is the one to pick without a graphics card, or with
@@ -112,11 +113,12 @@ identity comes entirely from the reference clip.
 Controls appear only when the chosen model actually uses them — a field
 that changes nothing is never shown. **What's said in the recording**
 appears for Qwen3 Base: it listens to your clip *while reading those
-words*, so a word-for-word transcript gives a truer copy (skip it and the
-clone still works, just less exactly). Chatterbox copies the sound alone,
-so that field doesn't appear there. The **speaker-vector** checkbox
-(Qwen3 Base) clones from the voice's fingerprint without any words —
-faster to set up, less exact.
+words*, so a word-for-word transcript gives a truer copy. Qwen3 Base needs
+one of two things: the transcript, or the **Skip the words** checkbox, which
+clones from the voice's fingerprint without any words — faster to set up, less
+exact. With neither, ▶ Play stops and says so. VoxCPM2 shows the field too and
+clones from the clip alone when it is empty. Chatterbox copies the sound alone,
+so that field doesn't appear there.
 
 Every model dropdown shows each model's state the same way the rest of
 the app does — **· loaded**, **(not loaded)**, **(not installed)** — and

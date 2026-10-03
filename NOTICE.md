@@ -92,11 +92,16 @@ Copyright (c) 2001-2002 Enthought, Inc. 2003, SciPy Developers.   (scipy)
 
 ### audio.cpp (Apache-2.0) — the speech runtime
 
-- Upstream: https://github.com/0xShug0/audio.cpp — prebuilt release archives, pinned `v0.9.0`
+- Upstream: https://github.com/0xShug0/audio.cpp. JustVoice runs its own build, from JustVoice's
+  copy https://github.com/delebash/audio.cpp (a public fork, branch `jv`) — prebuilt release
+  archives made by the fork's release workflow, pinned `v0.9.0-jv.1` (upstream v0.9.0 plus
+  JustVoice's changes). Every file the copy changes says so in a first-line comment, with the date
+  and what changed (Apache-2.0 §4(b)).
 - License: Apache-2.0, Copyright 2026 ShugoAI LLC
 - Downloaded onto the user's machine when they install the speech runtime; never bundled with or
   redistributed by JustVoice. Its release archive carries a `LICENSE` and no `NOTICE` file
-  (checked 2026-10-01), so there is no §4(d) content to propagate. Re-check on every pin bump.
+  (checked 2026-10-03 on v0.9.0-jv.1), so there is no §4(d) content to propagate. Re-check on
+  every pin bump.
 
 ### eSpeak NG (GPL-3.0) — Kokoro's and KittenTTS's pronunciation library
 

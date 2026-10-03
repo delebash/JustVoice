@@ -342,8 +342,9 @@ def _install_audiocpp_runtime(
 ) -> None:
     """Install the ONE speech runtime every audio.cpp engine shares: the pinned server
     build for this machine (the kit's verified acquisition), then eSpeak NG for Kokoro.
-    Installing any engine installs it; a second engine finds it already there."""
-    from .audiocpp import espeak, runtime
+    Installing any engine installs it; a second engine finds it already there. Over an older
+    pinned build it is the update: the old build runs until this finishes, then stops."""
+    from .audiocpp import espeak, release, runtime
 
     emit = progress or (lambda phase, line: None)
     last = {"mb": -1}
@@ -356,6 +357,8 @@ def _install_audiocpp_runtime(
                  + (f" of {total // (1024 * 1024)} MB" if total else ""))
 
     emit("downloading", "speech runtime (audio.cpp)")
+    # An older pinned build still runs until this finishes (the runtime row's "Update to …").
+    was = runtime.installed_tag()
     try:
         runtime.install(on_progress=_prog, cancel_check=cancel_check)
     except Exception as e:  # noqa: BLE001 — every failure is the install's answer
@@ -368,6 +371,17 @@ def _install_audiocpp_runtime(
     except Exception as e:  # noqa: BLE001
         raise InstallError(f"eSpeak NG install failed: {e}") from e
     runtime.forget_installed()
+    if was is not None and was != release.TAG:
+        # An update: the processes still run the older build. Free the speech slots (their
+        # bookings go with them) and stop both, so the next load starts the pinned build —
+        # the same as changing the backend (speech_runtime_api.set_speech_runtime).
+        mgr = get_manager()
+        for kind in ("tts", "stt"):
+            slot = mgr.loaded_for(kind)
+            if slot is not None and getattr(slot.manifest, "uses_audiocpp", False):
+                mgr.unload(kind)
+        runtime.shutdown_server()
+        log.info("speech runtime updated %s → %s; both processes stopped", was, release.TAG)
     emit("done", "speech runtime ready")
 
 

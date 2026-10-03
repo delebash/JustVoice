@@ -238,16 +238,23 @@ function runtimeSummary(r) {
 async function refreshRuntime() {
   runtime.value = await api.safeRequest("/v1/speech-runtime", null);
 }
+// Install, or — over an older pinned build — update: the same job (the server installs the
+// pinned build and, after an update, stops the old processes so the next load starts it).
 async function installRuntime() {
   const first = engines.value[0];
   if (!first) return;
+  const updateTo = runtime.value?.installed ? runtime.value.update_to : null;
   clearTerminalTask(RUNTIME_KEY);
   const task = makeEngineDownloadTask(api, first.id, {});
   dlTasks[RUNTIME_KEY] = task;
   try {
     await task.start();
     if (task.state !== "done") return;  // error/cancelled — the bar says which
-    pushToast({ message: "Speech runtime installed.", kind: "success", duration: 4000 });
+    pushToast({
+      message: updateTo ? `Speech runtime updated to ${updateTo}.` : "Speech runtime installed.",
+      kind: "success", duration: 4000,
+    });
+    if (updateTo) window.dispatchEvent(new Event("jv:health-refresh"));  // the slots were freed
     for (const e of engines.value) delete variants[e.id];
     await Promise.all([refresh(), refreshRuntime()]);
     delete dlTasks[RUNTIME_KEY]; delete taskKind[RUNTIME_KEY];
@@ -733,12 +740,16 @@ onBeforeUnmount(() => {
               label="Install speech runtime" :disabled="!runtime.backend"
               title="One-time: downloads the speech runtime for this machine. Models download separately."
               @click.stop="installRuntime" />
+            <UiButton v-else-if="runtime.update_to" intent="primary" size="small"
+              :label="`Update to ${runtime.update_to}`"
+              title="Downloads the newer speech runtime. The one installed keeps working until the download finishes; the speech models then load again on their next use."
+              @click.stop="installRuntime" />
           </template>
           <span v-else class="meta">working…</span>
         </span>
       </div>
       <DownloadBar v-if="dlTasks[RUNTIME_KEY]?.state" :task="dlTasks[RUNTIME_KEY]"
-        :title="`Speech runtime · ${runtime.runtime} ${runtime.version}`" />
+        :title="`Speech runtime · ${runtime.runtime} ${runtime.update_to || runtime.version}`" />
       <div class="ev-gfoot">
         Backend
         <UiSelect :modelValue="runtime.backend_setting || 'auto'" width="id"

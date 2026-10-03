@@ -65,6 +65,7 @@ def _hardware():
 def forget_installed() -> None:
     """Drop the cached install answer — after an install, uninstall or backend change."""
     _INSTALLED.clear()
+    _INSTALLED_TAG.clear()
 
 
 def _settings():
@@ -142,21 +143,59 @@ def selected_asset(backend: str | None = None):
     return select_runtime_asset(rows, hw)
 
 
-def installed_exe(backend: str | None = None) -> Path | None:
-    """The installed server for this box at the pinned tag, or None — never downloads.
-    None = the operator's backend setting."""
+def _find_installed(backend: str) -> tuple[Path | None, str | None]:
+    """The installed server for this box and the release it came from: the pinned tag,
+    else an older pinned release still on disk (`release.PREVIOUS_TAGS`, newest first).
+    An older build keeps working until the runtime row's Update installs the pinned one
+    (decided 2026-10-03, TASKS "Our copy of audio.cpp"). The install folder depends on the
+    tag and the build key only, so the pinned asset row finds an older tag's folder."""
     from llm_runner.runner.binary import installed_runtime_exe
 
+    asset = selected_asset(backend)
+    if asset is None:
+        return None, None
+    for tag in (release.TAG, *release.PREVIOUS_TAGS):
+        exe = installed_runtime_exe(_runtime_root(), FOLDER, tag, asset)
+        if exe is not None:
+            return exe, tag
+    return None, None
+
+
+_INSTALLED_TAG: dict[str, str | None] = {}
+
+
+def installed_exe(backend: str | None = None) -> Path | None:
+    """The installed server for this box — the pinned tag's, or an older pinned release's
+    until it is updated — or None. Never downloads. None = the operator's backend setting."""
     if backend is None:
         backend = configured_backend()
     if backend in _INSTALLED:
         exe = _INSTALLED[backend]
         if exe is None or exe.is_file():
             return exe
-    asset = selected_asset(backend)
-    exe = None if asset is None else installed_runtime_exe(_runtime_root(), FOLDER, release.TAG, asset)
+    exe, tag = _find_installed(backend)
     _INSTALLED[backend] = exe
+    _INSTALLED_TAG[backend] = tag
     return exe
+
+
+def installed_tag(backend: str | None = None) -> str | None:
+    """The release the installed server came from (`release.TAG` once updated), or None."""
+    if backend is None:
+        backend = configured_backend()
+    installed_exe(backend)
+    return _INSTALLED_TAG.get(backend)
+
+
+def has_feature(name: str, backend: str | None = None) -> bool:
+    """Whether the installed build has `name` (`release.FEATURES`) — False when nothing is
+    installed or the build is older than the first one that has it."""
+    first = release.FEATURES.get(name)
+    tag = installed_tag(backend)
+    order = release.BUILDS_IN_ORDER
+    if first is None or tag is None or tag not in order or first not in order:
+        return False
+    return order.index(tag) >= order.index(first)
 
 
 def install(

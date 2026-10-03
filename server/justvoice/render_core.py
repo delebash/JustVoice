@@ -389,13 +389,19 @@ def _apply_emotion_tag(text: str, delivery: dict[str, Any], tagset: Any | None) 
 
 
 def _supports_phoneme_input(engine_id: str) -> bool:
-    """Whether this engine can pronounce a word from IPA (Kokoro can)."""
+    """Whether this engine can pronounce a word from IPA NOW: its capability row says so (the
+    pinned runtime splices it — Kokoro, gap 3) and the INSTALLED runtime is new enough. On an
+    older installed runtime an entry's respelling is used instead, as on an engine without IPA."""
     try:
         from .engines.capability_details import lookup
 
         cap = lookup(engine_id)
-        return bool(cap and cap.supports_phoneme_input)
-    except Exception:  # noqa: BLE001 — capability table unavailable → no IPA
+        if not (cap and cap.supports_phoneme_input):
+            return False
+        from .engines.audiocpp.runtime import has_feature
+
+        return has_feature("inline_ipa")
+    except Exception:  # noqa: BLE001 — capability table or runtime unavailable → no IPA
         return False
 
 

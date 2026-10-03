@@ -2,6 +2,20 @@
 
 ## v0.1.0
 
+- **An empty transcript stays empty (2026-10-03).** Auditioning a cloned voice
+  without typing what the clip says sent a dash as its transcript, and saving the
+  audition kept it, so Qwen3 Base read the clip as saying "—". Now an empty box
+  is no transcript: VoxCPM2 and Chatterbox clone from the sound alone, and Qwen3
+  Base asks for the transcript or **Skip the words**, by name. **Skip the words**
+  works again on Qwen3 Base — it had not reached the speech runtime since the
+  2026-10-01 switch ([Voices → What each model asks for](voices.md#what-each-model-asks-for))
+- **JustVoice's own build of the speech runtime (2026-10-03).** The runtime now
+  comes from [JustVoice's copy of audio.cpp](https://github.com/delebash/audio.cpp),
+  so fixes no longer wait on upstream. The first build, v0.9.0-jv.1, lets
+  VoxCPM2 use a cloned voice's transcript — a transcript field appears when you
+  clone with it. The build you have keeps working; the runtime row on AI
+  Settings → Speech engines offers **Update to v0.9.0-jv.1**
+  ([Engines → The speech runtime](engines.md#the-speech-runtime))
 - **VoxCPM2, a new engine (2026-10-02).** OpenBMB's 2B model clones a voice from
   a short clip or designs one from a written description, in 30 languages, at
   48 kHz — and written direction reaches its cloned voices, which no other engine

@@ -1022,7 +1022,10 @@ async function auditionCandidate() {
     if (selectedLanguage.value) body.language = selectedLanguage.value;
     if (acquireTab.value === "cloned") {
       body.ref_wav_b64 = await fileToB64(cloneFile.value);
-      body.transcript = cloneTranscript.value.trim() || "—";
+      // Only what was typed: an empty box is no transcript. A placeholder here was passed to the
+      // engine as what the clip says, and kept by a save (decided 2026-10-03).
+      const transcript = cloneTranscript.value.trim();
+      if (transcript) body.transcript = transcript;
       body.xvector_only = xvectorOnly.value;
     } else if (acquireTab.value === "designed") {
       body.prompt = designPrompt.value.trim();

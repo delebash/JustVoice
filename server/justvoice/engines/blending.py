@@ -160,9 +160,10 @@ def pack_mean(engine_id: str, *, data_dir: Path) -> list[float]:
 # ── Kokoro ───────────────────────────────────────────────────────────────
 
 
-def _kokoro_voices_file(data_dir: Path) -> Path:
-    """The installed variant's voices file. No fetching — blending never
-    triggers a download; the caller surfaces 'install kokoro first'."""
+def _kokoro_gguf(data_dir: Path) -> Path:
+    """The installed Kokoro model file — any downloaded variant (their voices are the same
+    preset packs). No fetching — blending never triggers a download; the caller surfaces
+    'download Kokoro first'."""
     from .. import speech_cache
     from .kokoro import manifest as kokoro_manifest
 
@@ -170,28 +171,46 @@ def _kokoro_voices_file(data_dir: Path) -> Path:
         vid = variant["id"]
         if speech_cache.variant_on_disk(data_dir, "kokoro", vid):
             d = Path(speech_cache.variant_dir(data_dir, "kokoro", vid))
-            hits = sorted(d.rglob("voices*.bin")) + sorted(d.rglob("voices*.npz"))
+            hits = sorted(d.rglob("*.gguf"))
             if hits:
                 return hits[0]
-    raise LookupError("kokoro is not installed — download it in Engines first")
+    raise LookupError("Kokoro is not downloaded — download it on AI Settings → Speech engines first")
+
+
+_PACK_CACHE: dict[tuple[str, int], tuple[dict, set]] = {}
 
 
 def _kokoro_pack(data_dir: Path):
-    """The loaded voices pack + its name set. One door, because every
-    strategy needs it and the failure mode below is worth stating once."""
+    """The preset voices as name → (rows, 1, 256) float32 arrays, plus the name set.
+
+    Since the 2026-10-01 switch Kokoro is one audio.cpp GGUF, and its voices are files
+    embedded in it — `voices.json` plus `voices/<id>.bin`, raw float32 rows × 256
+    (gap 2, docs/plans/2026-10-03-gap-2-kokoro-blends.md). Until 2026-10-03 this looked for
+    the old engine's `voices*.bin`/`.npz` and every blend answered "kokoro is not installed".
+    Read once per model file version."""
+    import json
+
     import numpy as np
 
-    voices_file = _kokoro_voices_file(data_dir)
-    try:
-        pack = np.load(voices_file)
-        return pack, set(pack.files)
-    except Exception as e:
-        # A pre-2026-08-19 sherpa-onnx directory holds a raw packed bin that
-        # np.load cannot read — the runtime changed; the fix is a re-download.
-        raise LookupError(
-            f"kokoro voices file is from the retired sherpa-onnx runtime — "
-            f"re-download Kokoro in Engines ({e})"
-        )
+    from .audiocpp.gguf_files import embedded_files
+
+    gguf = _kokoro_gguf(data_dir)
+    key = (str(gguf), gguf.stat().st_mtime_ns)
+    if key in _PACK_CACHE:
+        return _PACK_CACHE[key]
+    files = embedded_files(gguf)
+    if "voices.json" not in files:
+        raise LookupError(f"{gguf.name} carries no voices — re-download Kokoro")
+    pack: dict = {}
+    for name, entry in json.loads(files["voices.json"]).items():
+        raw = files.get(f"voices/{entry['path']}")
+        if raw is None:
+            continue
+        rows, cols = int(entry["rows"]), int(entry["cols"])
+        pack[name] = np.frombuffer(raw, dtype="<f4").reshape(rows, 1, cols).copy()
+    _PACK_CACHE.clear()
+    _PACK_CACHE[key] = (pack, set(pack))
+    return _PACK_CACHE[key]
 
 
 def _kokoro_pack_shape(pack, names) -> tuple:

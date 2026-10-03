@@ -104,7 +104,8 @@ def test_cloning_claims_are_wired_in_the_mapping(engine: str) -> None:
     for v in models_for(engine):
         if not v.voice_cloning:
             continue
-        req = to_speech_request(_row(engine, v.id), {"text": "Hi.", "audio_prompt_path": "C:\\v\\ref.wav"})
+        req = to_speech_request(_row(engine, v.id), {"text": "Hi.", "audio_prompt_path": "C:\\v\\ref.wav",
+                                                     "ref_text": "What the clip says."})
         assert req["voice_ref"] == "C:/v/ref.wav", v.id
         with pytest.raises(AudioCppError):
             to_speech_request(_row(engine, v.id), {"text": "Hi.", "voice_id": "x"})

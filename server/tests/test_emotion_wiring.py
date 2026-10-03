@@ -7,10 +7,9 @@ reader. It is also the only direction control with a cross-engine meaning:
 prose can be folded into `instruct` for the one family that reads prose, but
 a labelled enum can ALSO compile into a token for a family that has an
 emotion vocabulary. Chatterbox Turbo is that family — nineteen reserved
-tokens in its `added_tokens.json`. Turbo is not on the speech runtime yet
-(the 2026-10-01 switch, plan §5), so no shipped row has a tag set today; the
-compilation path stays for its return and is driven here by Turbo's own
-emotion set, written out below.
+tokens in its `added_tokens.json`. Turbo left with the 2026-10-01 switch and
+came back with gap 1 (docs/plans/2026-10-03-gap-1-turbo-cloning.md); its own
+capability row's emotion set drives the compilation here.
 
 `style_prompt` went the other way. It was a second prose field meaning "the
 consistent voice character" against `instruct`'s "this line", and Qwen has
@@ -31,7 +30,7 @@ from justvoice.app import create_app
 from justvoice.database.seed import seed_workspace
 from justvoice.delivery_merge import compose_instruct
 from justvoice.engines.capability_details import CAPABILITY_DETAILS
-from justvoice.models import EMOTION_VALUES, Delivery, Emotion, EngineCapabilityDetail, InlineTagSet
+from justvoice.models import EMOTION_VALUES, Delivery, Emotion, EngineCapabilityDetail
 from justvoice.render_core import (
     _apply_emotion_tag,
     _emotion_tagset,
@@ -47,15 +46,8 @@ def client(tmp_path):
     return TestClient(app, raise_server_exceptions=False)
 
 
-# Chatterbox Turbo's emotion set as it was declared before the switch — the
-# shape `_apply_emotion_tag` compiles against when Turbo returns.
-TURBO_EMOTION = InlineTagSet(
-    category="emotion", label="Emotion",
-    tags=["angry", "fear", "happy", "sarcastic", "surprised", "crying", "whispering"],
-    syntax="[{value}]", placement="inline_anywhere",
-    value_map={"neutral": "", "happy": "happy", "angry": "angry", "fearful": "fear",
-               "whispered": "whispering", "sarcastic": "sarcastic"},
-)
+# Chatterbox Turbo's emotion set — the shape `_apply_emotion_tag` compiles against.
+TURBO_EMOTION = CAPABILITY_DETAILS["chatterbox-turbo"].inline_tags[0]
 
 
 # ── compose_instruct — one slot, most specific last ────────────────────
@@ -128,7 +120,9 @@ def test_no_emotion_and_no_tagset_are_both_no_ops() -> None:
     assert _apply_emotion_tag("A line.", {"emotion": "angry"}, None) == "A line."
 
 
-# ── No shipped engine has an emotion vocabulary on the runtime ─────────
+# ── No engine's default variant has an emotion vocabulary ──────────────
+# (Chatterbox's default is Multilingual, which has no tokens; Turbo's set is
+# its own variant's.)
 
 def test_no_shipped_engine_has_an_emotion_tagset_yet() -> None:
     for engine_id in ("kokoro", "qwen3", "chatterbox"):

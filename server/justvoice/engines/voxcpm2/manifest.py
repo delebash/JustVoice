@@ -10,25 +10,28 @@ v0.9.0 runs it on the plain speech task only ("VoxCPM2 only supports the Tts tas
   prefix on the text, "(a deep, slow, elderly man's voice)The line.", which is how VoxCPM2
   takes it (its README; audio.cpp splits the leading tag off and does not speak it — measured
   2026-10-02 with a Qwen3-ASR read-back);
-- the clip's transcript does not reach the model through audio.cpp's server yet: VoxCPM2's
-  transcript-guided cloning needs the clip as prompt audio too, and v0.9.0's server sets prompt
-  audio for transcription only (`app/server/runtime.cpp`). Measured with the CLI: the transcript
-  alone changes nothing, the clip as prompt audio plus `prompt_text` does. A change for our copy
-  of audio.cpp; the mapping already sends the transcript.
+- the clip's transcript reaches the model from our build v0.9.0-jv.1 on: VoxCPM2's
+  transcript-guided cloning needs the clip as prompt audio too, and upstream v0.9.0's server set
+  prompt audio for transcription only (`app/server/runtime.cpp`) — measured with the CLI, the
+  transcript alone changed nothing. Our copy passes the clip as prompt audio when a transcript
+  comes with it (audio.cpp 0acac2b1). An older installed build ignores the transcript.
 
 Per request: `guidance_scale` (CFG) and `num_inference_steps`, and the seed. On the CPU it ran
 at 0.2× real time with a 15 GB peak footprint (2026-10-02) — a graphics-card model.
 """
 
-from ..audiocpp.release import model_source, sixteen_bit
+from ..audiocpp.release import model_source, pinned_has, sixteen_bit
 
 ID = "voxcpm2"
 NAME = "VoxCPM2"
 
 SUPPORTED_OSES = ["windows", "linux", "macos"]
-# "and its transcript" waits for our copy of audio.cpp to pass the transcript on (decided
-# 2026-10-02, TASKS gap 9).
+# The approved text (TASKS gap 9) says "and its transcript"; it was held back until our copy of
+# audio.cpp passed the transcript on, and follows the pinned build.
 DESCRIPTION = (
+    "OpenBMB's 2B model, 30 languages: clones a voice from a short clip and its transcript, or "
+    "designs one from a written description. Runs in the audio.cpp speech runtime."
+    if pinned_has("voxcpm2_transcript") else
     "OpenBMB's 2B model, 30 languages: clones a voice from a short clip, or designs one from a "
     "written description. Runs in the audio.cpp speech runtime."
 )

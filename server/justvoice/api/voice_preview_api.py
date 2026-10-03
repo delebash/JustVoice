@@ -215,8 +215,10 @@ async def preview_voice(body: VoicePreviewRequest) -> VoicePreviewResponse:
     if body.source in ("cloned", "imported"):
         if not body.ref_wav_b64:
             raise bad_request("ref_wav_b64 required for cloned/imported preview")
-        if not body.transcript:
-            raise bad_request("transcript required for cloned/imported preview")
+        # The transcript is optional, as on a direct clone: without one the engine clones from
+        # the clip alone, and Qwen3 Base asks for it or for x-vector only by name (the slot).
+        # Requiring it here made the Voices screen send a placeholder that the engine took as
+        # what the clip says (decided 2026-10-03).
     elif body.source == "designed":
         if not body.prompt:
             raise bad_request("prompt required for designed preview")

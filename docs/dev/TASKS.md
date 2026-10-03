@@ -762,12 +762,96 @@ DECIDED: 2026-10-03 — "your rec on all 5 go, commit and push" on the five as s
         3 "First release = these two fixes? … yes." · 4 "Keep the app's 16 kHz resample for the
         aligner? … keep it." · 5 "Commit the doc corrections and the new plan doc, and push jv to
         the fork?"
-OPEN:   push `jv` → the fork's workflows register → CI dry run → tag v0.9.0-jv.1 (publishes) →
+        2026-10-03: dry run 37097796871 green on all 14 builds; v0.9.0-jv.1 tagged at adedc094 and
+        published by run 37104734208 (09:09Z, every asset the app requests present; archive has a
+        LICENSE, no NOTICE). Pin move APPLIED, UNCOMMITTED: TAG v0.9.0-jv.1 from our fork,
+        PREVIOUS_TAGS ("v0.9.0",), FEATURES voxcpm2_transcript, VoxCPM2 "and its transcript" +
+        transcript field, engines.md / NOTICE / LICENSES / whats-new, tests. Live on the real data
+        dir (headless): the row offered "Update to v0.9.0-jv.1"; the update took 25 s and stopped
+        the old process; VoxCPM2 clone, same seed — v0.9.0: real vs wrong transcript byte-
+        identical; jv.1: different, real reads back word for word, wrong → gibberish. HELD on a
+        found bug: an audition of a clone with an empty transcript sends "—" (VoicesView.vue:1025,
+        the preview API requires a transcript), the server passes it as ref_text
+        (voice_preview_api.py:290) and saving the audition stores it (:453) — Qwen3 Base already
+        gets "—" today; VoxCPM2 on jv.1 would speak gibberish. Fix asked. Also noted: the runtime
+        install job reports no bytes (0/0), and the old v0.9.0 folder (2 GB) stays on disk.
+        Suite: 965 passed, 3 failed (the gap-1 capability rows, waiting on its manifest rows).
+DECIDED: 2026-10-03 — "your rec on all go, commit and push" on the "—" fix as shown: "The Voices
+        screen sends a transcript only when you typed one, and the preview API stops requiring one.
+        An audition without a transcript renders from the clip alone, as a direct save already
+        does. That works for Chatterbox and VoxCPM2. Qwen3 Base is the exception: it refuses a clip
+        with no transcript unless x-vector only is ticked ("ICL mode requires reference text" in
+        audio.cpp). For that case I'd have the app refuse by name: "Qwen3 Base needs what the clip
+        says — type the transcript, or tick x-vector only."" Not covered (no rec was given, asked
+        again): the runtime download's missing progress bytes; removing the old build after an
+        update.
+BUILT:  2026-10-03 — the "—" fix: VoicesView sends a transcript only when typed; the preview API
+        no longer requires one; the slot sends Qwen3 Base's `x_vector_only_mode` when x-vector only
+        is ticked (it never reached audio.cpp since the switch — audio.cpp then ran ICL and refused)
+        and refuses a clip with neither, with the approved message. Live (headless, real data dir,
+        jv.1): VoxCPM2 audition without a transcript read back word for word; Qwen3 Base with
+        neither → the message; with x-vector only → rendered, read back word for word (that load
+        downloaded Qwen3 Base 1.7B, 2.6 GB, into the data dir). voices.md + whats-new. Asked: the
+        message says "tick x-vector only" but the checkbox reads "Skip the words — clone from the
+        sound alone…"; and a voice saved from an x-vector audition keeps no x-vector flag, so its
+        renders on Qwen3 Base are refused (renders never sent the flag — it lives on the audition
+        only).
+OPEN:   commit + push the pin move →
         the app: an installed older build keeps working and the runtime row offers "Update to
         v0.9.0-jv.1"; the pin moves to our release; VoxCPM2's row gets "and its transcript" and
         the transcript field back.
 GO:     given 2026-10-02 ("all 4 , fork repo, public, your rec on all go" · "you have a go for
         all gaps"); §5 asked
+
+### Kokoro blends render again — a voice-pack input in our audio.cpp (gap 2)
+STATE:  BUILT 2026-10-03 under "you have a go for all gaps" — plan + record:
+        docs/plans/2026-10-03-gap-2-kokoro-blends.md (READ IT). Making a blend was broken since
+        the switch (blending looked for the old voices file); hearing one was refused.
+BUILT:  audio.cpp 86767dad on `jv` (the `voice_pack` request option, checked byte for byte
+        through our server build); the app (uncommitted): voices read from the Kokoro GGUF's
+        embedded files, the slot sends `voice_pack`, an older runtime refuses by name; the
+        capability follows the pin (on at v0.9.0-jv.2).
+OPEN:   ship v0.9.0-jv.2 (after jv.1) → move the pin → blends visible → voices.md / engines.md
+        in that commit → live check through the app.
+GO:     given 2026-10-02 ("you have a go for all gaps")
+
+### A lexicon's IPA reaches Kokoro — inline pronunciations in our audio.cpp (gap 3)
+STATE:  BUILT 2026-10-03 under "you have a go for all gaps" — plan + record:
+        docs/plans/2026-10-03-gap-3-kokoro-ipa.md (READ IT).
+BUILT:  audio.cpp 42db68d9 on `jv` ("[word](/phonemes/)", checked through our server build:
+        "Bochamp" → "Beecham"); the app (uncommitted): IPA → Kokoro symbols, the splice by the
+        host's own matching rule, used only when the installed runtime has it.
+OPEN:   ships with v0.9.0-jv.2 (with gap 2) → pin move → lexicons.md / engines.md in that commit.
+GO:     given 2026-10-02 ("you have a go for all gaps")
+
+### Chatterbox Turbo and Nano clone again — core Chatterbox's encoders in our audio.cpp (gap 1)
+STATE:  BUILT in our audio.cpp 2026-10-03 under "you have a go for all gaps" — plan + record:
+        docs/plans/2026-10-03-gap-1-turbo-cloning.md (READ IT: §2 facts, §4 questions, §6 record).
+        Restores the pre-switch rows: Turbo (350M) and Nano (110M), English, clone-only, the 19
+        inline tags; training stays out (gap 5).
+BUILT:  audio.cpp 3865d245 on `jv`, committed locally, not pushed — a converter from Resemble's
+        own checkpoint that keeps the voice encoder, the S3 tokenizer and CAMPPlus (byte-identical
+        to core Chatterbox's), the Turbo session cloning under upstream's settings (> 5 s clip,
+        −27 LUFS, 375 tokens / 15 s), Nano's head count from the GGUF. Live on our CPU build:
+        clones match their reference (0.92–0.95 vs 0.58–0.60), word-exact read-back, Turbo and
+        Nano, q8_0 and f16. The app (uncommitted): FEATURES["turbo_clone"], the two capability
+        rows, the slot's mapping + 409 + warm-up, tests.
+DECIDED: 2026-10-03 — "your rec on all go, commit and push" on the two as shown: 1 "Publish the
+        two converted models on Hugging Face? That's public repos delebash/chatterbox-turbo-GGUF
+        and delebash/chatterbox-nano-GGUF, at 8-bit and 16-bit, the same way as CustomVoice 0.6B.
+        My recommendation is yes: the weights are MIT, and the app needs a fixed download source."
+        · 2 "Which release carries it? My recommendation is a new v0.9.0-jv.3, so jv.2 stays blends
+        + IPA as decided and reaches you sooner."
+BUILT:  2026-10-03 — published (public, MIT, model cards + LICENSE): huggingface.co/delebash/
+        chatterbox-turbo-GGUF @ db9317b6f796c4d11112ee845a6189328e25fb15 and delebash/chatterbox-
+        nano-GGUF @ e707626a9bb9d3cbb035abfaacb82616c4c3d2e7 (q8_0 + f16, sha256 matching the
+        local files); the fork's `jv` pushed (3865d245). The manifest rows (Turbo, Nano, 8-bit +
+        f16) wait in chatterbox `PENDING_VARIANTS` until the pin has `turbo_clone`; the knob-wiring
+        test reads them there.
+OPEN:   jv.3 → pin move → GPU measurements on the release build → docs (engines.md, whats-new,
+        NOTICE/LICENSES).
+GO:     given 2026-10-02 ("you have a go for all gaps") and 2026-10-03 ("your rec on all go,
+        commit and push")
 
 ### 16-bit rows, the 8-bit vs 16-bit test, and VoxCPM2 (gap 9, with fixes 3 and 4)
 STATE:  DECIDED 2026-10-02 — "your rec on all 3 go" on the plan as presented

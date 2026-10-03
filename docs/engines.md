@@ -2,10 +2,11 @@
 
 Every local speech engine in JustVoice runs on **one program — the speech
 runtime**. It is [audio.cpp](https://github.com/0xShug0/audio.cpp) (Apache-2.0),
-a C++ runtime for speech models, and JustVoice installs the build that suits
+a C++ runtime for speech models — JustVoice installs its own build of it, made
+from [JustVoice's copy](https://github.com/delebash/audio.cpp), the build that suits
 your hardware, starts it when a model loads, and stops it when you close the
 app. Each engine is then just a set of model files the runtime can load:
-Kokoro, KittenTTS, Pocket TTS, Qwen3-TTS and Chatterbox for speech, and
+Kokoro, KittenTTS, Pocket TTS, Qwen3-TTS, Chatterbox and VoxCPM2 for speech, and
 Speech recognition for turning speech back into text. Each model runs on your
 graphics card or your CPU — chosen per model, see
 [Where each model runs](#where-each-model-runs--the-graphics-card-or-the-cpu).
@@ -67,10 +68,13 @@ and the Vulkan build 60 MB — the two measured here; the CUDA builds are larger
 because they carry NVIDIA's libraries. Vulkan also runs on NVIDIA cards, more
 slowly than CUDA.
 
-The runtime is pinned to one audio.cpp release (v0.9.0 today). A JustVoice
-update that moves to a newer release shows the row as **not installed**;
-clicking Install fetches the new build and nothing else changes — your
-downloaded models stay.
+The runtime is pinned to one build of JustVoice's copy of audio.cpp — today
+**v0.9.0-jv.1**, audio.cpp v0.9.0 with two fixes: VoxCPM2 uses a clip's
+transcript, and speech recognition's word times are right for audio at any
+sample rate. When a JustVoice update moves to a newer build, the build you have
+keeps working and the row offers **Update to** the new version. Clicking it
+downloads the new build and unloads whatever was loaded — load it again to use
+it. Your downloaded models stay.
 
 **Two slots, at most two processes.** The runtime holds at most one speech model
 and one speech-recognition model at a time — the same two slots as before.
@@ -149,9 +153,8 @@ voice**: a persona's spoken delivery or a line's direction steers a clone the
 way it steers Qwen3 CustomVoice. Two things to know. It does not speak
 anything in parentheses — it reads brackets as direction — so JustVoice turns
 a line's own brackets into dashes ("He left (quietly) and…" is read as "He
-left — quietly — and…"). And it clones from the clip's sound alone for now:
-VoxCPM2 can also use the clip's transcript, but the speech runtime does not
-pass it on yet. It is a graphics-card model: about 1.3× real time on an 8 GB
+left — quietly — and…"). And when a cloned voice has a transcript of its clip,
+VoxCPM2 uses that too, as Qwen3 Base does. It is a graphics-card model: about 1.3× real time on an 8 GB
 card, 0.2× on a CPU.
 
 **KittenTTS** is a small English model built to run without a graphics card,

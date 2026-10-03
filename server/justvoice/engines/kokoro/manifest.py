@@ -15,7 +15,7 @@ Not yet back after the switch (plan §5): blended voices (audio.cpp takes no voi
 yet) and per-word IPA from lexicons (respellings still work).
 """
 
-from ..audiocpp.release import model_source, sixteen_bit
+from ..audiocpp.release import model_source, pinned_has, sixteen_bit
 
 ID = "kokoro"
 NAME = "Kokoro"
@@ -33,10 +33,10 @@ CAPABILITIES = {
     "voice_design": False,
     "instruct_field": False,
     "paralinguistic_tags": False,
-    # Returns with the single-word IPA splice (plan §5, gap 3).
-    "phoneme_override": False,
-    # Returns when audio.cpp takes a voice vector (plan §5, gap 2).
-    "voice_blending": False,
+    # A lexicon's IPA rides our audio.cpp's inline pronunciations (gap 3) — on with the pin.
+    "phoneme_override": pinned_has("inline_ipa"),
+    # Blends need our audio.cpp's `voice_pack` option (gap 2) — on once the pin has it.
+    "voice_blending": pinned_has("voice_pack"),
 }
 
 REQUIREMENTS = {

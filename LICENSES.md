@@ -77,7 +77,7 @@ publisher, when the user installs the speech runtime or downloads a model.
 
 | Component | When it is fetched | SPDX license | Distributed by JustVoice |
 |---|---|---|---|
-| **audio.cpp** (the speech runtime, prebuilt binaries — pinned `v0.9.0`) | Install speech runtime | `Apache-2.0` (Copyright 2026 ShugoAI LLC; the release ships no `NOTICE`) | no |
+| **audio.cpp** (the speech runtime, prebuilt binaries from JustVoice's copy, github.com/delebash/audio.cpp — pinned `v0.9.0-jv.1`) | Install speech runtime | `Apache-2.0` (Copyright 2026 ShugoAI LLC; the release ships no `NOTICE`) | no |
 | **eSpeak NG** (library + data, via the `espeakng-loader` 0.2.4 wheel — loader `MIT`) | Install speech runtime | `GPL-3.0` | no |
 | **Speech models** — GGUF files from `audio-cpp/audio.cpp-gguf` @ a pinned commit, each under its original model's licence | Download / first load | Kokoro-82M `Apache-2.0` · KittenTTS Mini 0.8 `Apache-2.0` · Pocket TTS `CC-BY-4.0` (its 20 presets `CC-BY-4.0` or `CC0-1.0` — NOTICE.md) · Qwen3-TTS, Qwen3-ASR, Qwen3-ForcedAligner `Apache-2.0` · Chatterbox `MIT` · VoxCPM2 `Apache-2.0` — and Qwen3-TTS CustomVoice 0.6B from our own conversion at `delebash/Qwen3-TTS-12Hz-0.6B-CustomVoice-GGUF`, `Apache-2.0` | no |
 
