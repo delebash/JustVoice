@@ -1633,7 +1633,9 @@ DECIDED 2026-09-28 — "go", on: "Overview mastering options: switch to what the
         offers: 'This kind's default (ACX)', 'None — raw', ACX, iAudio, Podcast, YouTube, with
         'Custom' gone. This is the wording still waiting on your approval. Say go only if you
         accept that wording." The mastering wording above stands as built; the mock matches it.
-OPEN:   Slice 4 (Render owns direction/takes/Gen/Compare), Slice 5 (presets excision — ruled,
+OPEN:   the Personas work FIRST (decided 2026-10-03, "we need to do the persona first that is
+        before slice 4" — the FINDING "a persona's pace, pitch and gain can't be edited"), then
+        Slice 4 (Render owns direction/takes/Gen/Compare), Slice 5 (presets excision — ruled,
         needs go). (Slice 3 was BUILT 2026-09-29, `86eb21d` — its entry is below.) The
         Lexicon-on-Overview question was ANSWERED ("ok mark that as to be wired") and BUILT
         2026-09-30: `docs/plans/2026-09-30-project-lexicon.md` (its §7 holds the closed item).
@@ -1913,9 +1915,13 @@ STATE:  FINDING — code-verified 2026-09-30 (found by the mock-vs-app compariso
         pitch, gain, delivery, effects — all of it lives there." (`StudioCast.vue:599`).
 WHY:    the persona layer (§8.3, §8.22 — the tuning that survives a recast) has no editor; Slice
         4's per-line override would sit on top of it.
-OPEN:   the fix — the mock's persona editor (`workbench`, `_s7`: "How it speaks" Pace / Pitch /
-        Gain / Pause) or a smaller stopgap; and whether it goes before Slice 4 (D8 in
-        `docs/plans/2026-09-30-mock-vs-app-and-slice-4.md` §3.4). Needs the user's word.
+DECIDED: 2026-10-03, the order — "we need to do the persona first that is before slice 4, why do
+        you keep forgeting this?" Personas come before Slice 4 (D8 answered). Until then this
+        was recorded only as an open question, so every session read "next is Slice 4".
+OPEN:   the scope of "the persona" — the mock's whole Personas redesign (the index `_s9` and the
+        persona editor `workbench` / `_s7` "How it speaks" Pace / Pitch / Gain / Pause, which
+        also carries "Voice gender in every voice dropdown, and speaker pronouns") or only this
+        editor fix. Asked 2026-10-03.
 GO:     needed
 
 ### FINDING — language never reaches Chatterbox or Qwen3: every render on them is told English

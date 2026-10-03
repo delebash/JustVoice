@@ -237,6 +237,8 @@ it, Apply to (this chapter / a list / whole book), a rollup, ▶ Without / ▶ W
 - **D7 · Chapter add/rename/reorder/delete** (the gap) — the mock needs it first; rec Script's grid.
 - **D8 · Order** — the project lexicon before Slice 4 (the rec already recorded), and whether the
   persona tuning defect (§2) is fixed before Slice 4's per-line override lands on top of it.
+  **ANSWERED 2026-10-03:** "we need to do the persona first that is before slice 4". (The project
+  lexicon was built 2026-09-30.) The persona scope is asked in TASKS.
 - Also carry (decided): Rewrite moves to Render's panel and the Script right-click is deleted; the
   old Chapters page is deleted; states use §8.16's words.
 - Also carry (decided 2026-09-30, `2026-09-30-project-lexicon.md` §6 item 4): **"📕 Pronunciation"
