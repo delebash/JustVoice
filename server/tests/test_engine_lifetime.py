@@ -115,7 +115,7 @@ def runtime_root(monkeypatch):
     interpreter's folder would also match pytest itself, the fake's parent, and
     the sweep rightly skips a child of another runtime.)"""
     monkeypatch.setattr(leftovers, "_engine_id_of",
-                        lambda cmdline, root: "audiocpp" if FAKE in cmdline else None)
+                        lambda cmdline, roots: "audiocpp" if FAKE in cmdline else None)
 
 
 def _fake_runtime(server_pid: int) -> subprocess.Popen:
@@ -152,7 +152,7 @@ def test_a_runtime_whose_server_lives_is_never_touched(runtime_root):
 
 
 def test_only_a_binary_under_this_installs_runtime_folder_counts():
-    root = os.path.normcase("C:\\data\\engines-runtime\\audiocpp")
+    root = (os.path.normcase("C:\\data\\engines-runtime\\audiocpp"),)
     assert leftovers._engine_id_of(
         ["C:\\data\\engines-runtime\\audiocpp\\v0.9.0\\cuda12\\audiocpp_server.exe", "--config", "x"],
         root) == "audiocpp"

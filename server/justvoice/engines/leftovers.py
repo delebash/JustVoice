@@ -16,7 +16,8 @@ each engine's venv — and five such trees held 1.6 GB on 2026-09-29, the day
 this sweep was written.)
 
 Only THIS install's runtime is touched: a process counts only when it runs a
-binary under this install's runtime folder. One whose server is alive is never
+binary under this install's runtime folder, or the development build `npm run dev`
+points it at (`audiocpp/dev_build.py`). One whose server is alive is never
 touched — that includes a second JustVoice server on the same install (the
 renderer gate runs one).
 """
@@ -41,17 +42,22 @@ class Leftover:
     gpu_mb: int | None = None
 
 
-def _audiocpp_root() -> str:
-    """normcase(dir every installed audio.cpp server lives under), for this install."""
+def _audiocpp_roots() -> tuple[str, ...]:
+    """normcase(every dir this install's audio.cpp servers live under): the runtime folder,
+    and the development build's bin folder when `npm run dev` points at one."""
+    from .audiocpp import dev_build
     from .manager import engines_runtime_root
 
-    return os.path.normcase(str(Path(engines_runtime_root()) / "audiocpp"))
+    roots = [os.path.normcase(str(Path(engines_runtime_root()) / "audiocpp"))]
+    if (dev := dev_build.current()) is not None:
+        roots.append(os.path.normcase(str(dev.bin_dir)))
+    return tuple(roots)
 
 
-def _engine_id_of(cmdline: list[str], audiocpp_root: str) -> str | None:
-    """"audiocpp" when this command line runs a binary under this install's runtime
-    folder (our own pinned server, started with JUSTVOICE_SERVER_PID set), else None."""
-    if cmdline and audiocpp_root and os.path.normcase(cmdline[0]).startswith(audiocpp_root):
+def _engine_id_of(cmdline: list[str], audiocpp_roots: tuple[str, ...]) -> str | None:
+    """"audiocpp" when this command line runs a binary under one of this install's runtime
+    folders (our own server, started with JUSTVOICE_SERVER_PID set), else None."""
+    if cmdline and any(r and os.path.normcase(cmdline[0]).startswith(r) for r in audiocpp_roots):
         return "audiocpp"
     return None
 
@@ -88,11 +94,11 @@ def find_leftover_engines(*, measure: bool = True) -> list[Leftover]:
         import psutil
     except ImportError:
         return []
-    root = _audiocpp_root()
+    roots = _audiocpp_roots()
     engines: dict[int, tuple[object, str]] = {}
     for p in psutil.process_iter(["pid", "cmdline"]):
         try:
-            eid = _engine_id_of(p.info.get("cmdline") or [], root)
+            eid = _engine_id_of(p.info.get("cmdline") or [], roots)
         except Exception:  # noqa: BLE001
             eid = None
         if eid:

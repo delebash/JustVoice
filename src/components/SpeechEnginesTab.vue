@@ -219,7 +219,11 @@ function engineNeedsInstall(e) { return e.status === "not_installed"; }
 // GPU. Installing it is any engine's install job (the server installs
 // the runtime once for all of them); changing the backend or GPU is
 // PUT /v1/speech-runtime, which frees the speech slots and stops the server
-// so the next load starts the chosen build.
+// so the next load starts the chosen build. Under `npm run dev` the runtime is
+// our audio.cpp checkout's own build (`dev_source` names the checkout): its
+// version is "dev · <commit>", there is no update, and its backend is fixed
+// when it is built (docs/dev/TASKS.md, "`npm run dev` always runs the latest
+// audio.cpp", D4).
 const runtime = ref(null);
 const RUNTIME_KEY = "__speech-runtime";
 const BACKEND_LABELS = { cuda: "CUDA (NVIDIA)", vulkan: "Vulkan", cpu: "CPU", metal: "Metal (Apple GPU)" };
@@ -230,7 +234,8 @@ const backendOptions = computed(() => [
 const gpuOptions = computed(() => (runtime.value?.gpus || []).map((name, i) => ({ label: `${i} · ${name}`, value: i })));
 function runtimeSummary(r) {
   const parts = [BACKEND_LABELS[r.backend] || r.backend || "no build for this machine"];
-  if (r.build && r.build !== r.backend) parts.push(r.build);
+  if (r.dev_source) parts.push(`development build from ${r.dev_source}`);
+  else if (r.build && r.build !== r.backend) parts.push(r.build);
   if (r.installed) parts.push(r.running ? "running" : "stopped — starts on the first load");
   if (r.installed && r.cpu_running && r.backend !== "cpu") parts.push("CPU models running");
   return parts.join(" · ");
@@ -773,8 +778,10 @@ onBeforeUnmount(() => {
       <div class="ev-gfoot">
         Backend
         <UiSelect :modelValue="runtime.backend_setting || 'auto'" width="id"
-          :options="backendOptions"
-          title="Which build of the runtime runs. Auto picks CUDA on NVIDIA, Vulkan on AMD and Intel, Metal on a Mac. Changing it unloads the speech models."
+          :options="backendOptions" :disabled="!!runtime.dev_source"
+          :title="runtime.dev_source
+            ? 'The development build runs. Its backend is the one it was built with.'
+            : 'Which build of the runtime runs. Auto picks CUDA on NVIDIA, Vulkan on AMD and Intel, Metal on a Mac. Changing it unloads the speech models.'"
           @update:modelValue="(v) => setRuntime({ backend: v })" />
         <template v-if="gpuOptions.length > 1">
           GPU

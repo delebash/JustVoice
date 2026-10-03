@@ -3,11 +3,26 @@
 
 from __future__ import annotations
 
+import os
 import struct
 from pathlib import Path
 
 import numpy as np
 import pytest
+
+# `npm run dev` names its audio.cpp build to the server in this variable, and a test run from
+# that shell would inherit it: every feature on, catalogs built for it at import. The suite
+# tests the pinned release unless a test points at a build itself (test_audiocpp_dev_build.py).
+os.environ.pop("JUSTVOICE_AUDIOCPP_BUILD", None)
+
+
+@pytest.fixture(autouse=True)
+def _no_dev_build_between_tests():
+    """A test that points the server at a development build leaves no trace for the next."""
+    yield
+    from justvoice.engines.audiocpp import dev_build
+
+    dev_build.current.cache_clear()
 
 
 @pytest.fixture(autouse=True)

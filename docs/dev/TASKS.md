@@ -666,6 +666,104 @@ GO: needed.
 
 ## The next build
 
+### `npm run dev` always runs the latest audio.cpp — the dev app on our checkout, no release
+STATE:  BUILT 2026-10-03 — one open finding (the tooltip, OPEN below).
+BUILT:  our audio.cpp 6d1825eb (cmake/text_dictionaries.cmake, D3); JustVoice: scripts/tauri.js
+        + scripts/audiocpp-dev.js (package.json `dev` / `tauri`), engines/audiocpp/dev_build.py,
+        release.pinned_has / runtime / leftovers / the install job / the runtime info + row,
+        tests/test_audiocpp_dev_build.py (12) + conftest drops the variable; CLAUDE.md, README,
+        fork plan §6.
+CHECKED: the first `build/jv-dev` build took 681 s and compiled the fork's head (so `6a2bb4c5`
+        builds); a no-change `npm run dev` build takes ~4 s. Through `npm run dev` on the real
+        data dir: the runtime info says `dev · 6d1825eb`, CUDA, no update; both audio.cpp
+        processes run `..\audio.cpp\build\jv-dev\bin\audiocpp_server.exe`; read back by the app's
+        own Qwen3-ASR — Kokoro English, `jf_alpha` Japanese, a Kokoro blend, Chatterbox Russian
+        (е for ё), Chinese and Japanese cloned, and Chatterbox Turbo cloned (installed through
+        the app, 840 MB) all exact; "Bochamp" → "Beecham" only with the lexicon's IPA (a
+        temporary lexicon, deleted). Hebrew rendered; Qwen3-ASR has no Hebrew, so it is for the
+        ear. The row renders as D4, with the row's existing backend label "CUDA (NVIDIA)". Server
+        990 passed, ruff clean, vitest 122/122, biome clean, smoke passed.
+OPEN:   the D4 tooltip on the disabled Backend choice never shows — the kit's UiSelect renders
+        Reka's SelectRoot (no element) as its root, so a `title` passed to it is dropped. Every
+        UiSelect tooltip is lost the same way (14 in JustVoice). The fix is in the kit (forward
+        attrs to the trigger) — needs a go, since it changes the kit for all three apps.
+ASKED:  "we need to fix it so when i run npm run dev it runs the app with the correct developmnet
+        version of audio cpp just like your test server i should not have to do a release build
+        so i can test the real app" · "the deve app should always ve running the latest dev
+        version of audio cpp" · "same way we ran the latest llm runner version everything should
+        just work" · "you should be running and test the app the same way i do with npm run dev
+        instead of your own private server, we should do testing with real app and real data".
+FINDING: the fork's head `6a2bb4c5` (jieba and MeCab moved into framework/text) was never
+        compiled — a dry run of the local build re-configures for new source files since the last
+        build (12:46). The gap 7 live checks ran the build from before that move. The first dev
+        build compiles it; a failure is fixed in the fork.
+PLAN (as shown and approved):
+        1. One wrapper for `npm run dev` and `npm run tauri dev`. It builds `../audio.cpp` first,
+           recompiling only what changed. Then it starts the app pointed at that build through an
+           environment variable the server inherits.
+           - `npm run tauri build` and the packaged app are unchanged and ignore the variable.
+           - If there's no `../audio.cpp` checkout, dev runs the pinned release as today and
+             prints one line saying so.
+        2. The server uses the dev build instead of the downloaded release.
+           - Every feature is on, since the dev build is the fork's latest code.
+           - Its backend (CUDA, CPU…) is read from the build's own CMake settings.
+           - The cleanup for leftover servers after a crash also covers the dev build's folder.
+           - On a fresh data dir, Install fetches only eSpeak NG, since there's no binary to
+             download.
+        3. The dev build folder is complete.
+           - The CUDA DLLs (`cudart`, `cublas`, `cublasLt`, `cufft`) are copied beside the exe,
+             as the release ships them (`release.yml:534`).
+           - So are `libmecab.dll` and `jieba/`.
+        4. The runtime row says it's the dev build (the text is D4).
+        5. Docs: CLAUDE.md and README dev commands, and the fork plan §6, where the wrapper
+           replaces the manual build recipe.
+        6. Tests: dev-mode tests. The existing tests run without the variable, so they're
+           unchanged.
+DECIDED: 2026-10-03 — "your rec go" on D1–D5 as shown:
+        D1. If the build fails: the app doesn't start, and the compiler error shows in the
+            terminal. Rec: yes. Starting on the old build would break "always the latest".
+        D2. Which build folder: a new `../audio.cpp/build/jv-dev`. The wrapper sets it up on the
+            first run: CUDA 12.4 if it's installed, otherwise CPU. That costs one full build of
+            about 30 min now, and it works on any machine. (Not: reuse `windows-cuda12-local`.)
+        D3. `libmecab.dll` and `jieba/`: a step in the fork's CMake build downloads both (pinned
+            versions, checksummed) beside the binary. Every build gets them, including the
+            release, so the release's own copy step isn't needed. Windows gets checked now; macOS
+            and Linux get checked at the release. (Not: the wrapper copies them, for dev only.)
+        D4. Runtime row text in dev:
+            - version: `audio.cpp dev · 6a2bb4c5`, with `+ local changes` added when the checkout
+              has uncommitted edits;
+            - status: `CUDA · development build from ..\audio.cpp · running`;
+            - no Update button. The Build choice is disabled, with the tooltip "The development
+              build runs. Its backend is the one it was built with."
+        D5. A dev server left over from a crash locks the exe, so the build can't replace it. The
+            wrapper stops it if its JustVoice server is gone (the same rule the app's leftover
+            cleanup uses). Otherwise the wrapper stops with "Close the running JustVoice first."
+BLAST RADIUS (as shown):
+        - `release.pinned_has` → true for every feature with a dev build: speech_runtime_api.py
+          :69,132 · capability_details.py:93,96,401 · chatterbox/manifest.py:32,34,51,129 ·
+          kokoro/manifest.py:37,39,51 · voxcpm2/manifest.py:34. Manifests read it at import, so
+          the variable is set before the server starts (lib.rs:313-342 only adds
+          JUSTVOICE_DATA_DIR and never clears the environment).
+        - `runtime.installed_exe` / `installed_tag` → the dev exe and a "dev" tag:
+          speech_runtime_api.py:91-93 · slot.py:156,166 · manager.py:220-222, 365-366, 582, 690.
+          manager.py:365-368 would download the pinned binary and treat the dev build as
+          "replaced"; in dev mode it skips both and installs eSpeak only.
+        - `runtime.has_feature` → true with a dev build: slot.py:316-325 · render_core.py:403-405.
+        - `runtime.backend_of(exe)` reads the CMake settings for a dev exe: speech_runtime_api.py
+          :106,108 (`build=exe.parent.name` would say "bin") · slot.py:157 · manager.py:582,691 ·
+          runtime.py:306.
+        - Leftover cleanup matches the dev bin folder: leftovers.py:95 ← find_leftover_engines ←
+          engines_api.py:465-467, leftovers.py:139 (today only paths under the runtime root,
+          leftovers.py:54).
+        - `npm run dev` / `npm run tauri` through the wrapper: package.json:13,15 · CLAUDE.md:21 ·
+          README.md:44. `tauri build` passes straight through; beforeDevCommand unchanged.
+        - Runtime row: SpeechEnginesTab.vue:232-235, :753, :757-765, :777.
+        - The fork's build fetches libmecab and jieba: release.yml:534 (the release's packaging
+          must keep the new files); macOS and Linux verified only at the release.
+TEST:   through `npm run dev` with the real data: Turbo cloning, a Kokoro blend, a lexicon IPA
+        word, a line each in Hebrew, Russian, Chinese and Japanese, and the dictionary row.
+GO:     given 2026-10-03 ("your rec go").
+
 ### Every Python speech engine is replaced by our own copy of audio.cpp — one cut, then the gaps
 STATE:  DECIDED 2026-10-01 — "we do a full switch"; "i dont want to do anything side by side";
         "maybe we just copy the repo and make it our own"; "the app is not in production so no need
@@ -866,7 +964,8 @@ BUILT:  2026-10-03, committed + pushed (our audio.cpp 6a2bb4c5; JV the same turn
         AUDIOCPP_UNIDIC_DIR, refusals by name), gated on the pin; the row checked live in the real
         UI (install 6 s, 260 MB on disk).
 OPEN:   ONE release with everything (new tag name — jv.2/jv.3 exist on broken commits; the feature
-        table points at its tag; CI adds libmecab + jieba/ to every build; NOTICE/LICENSES;
+        table points at its tag; libmecab on macOS/Linux — jieba/ everywhere and Windows'
+        libmecab.dll now come from the fork's build, cmake/text_dictionaries.cmake; NOTICE/LICENSES;
         engines.md/whats-new; live in-app checks) → gap 5 (training rebuild) is the remaining gap.
         Local build recipe + release state: docs/plans/2026-10-02-our-audiocpp-copy.md §6.
         the app: an installed older build keeps working and the runtime row offers "Update to

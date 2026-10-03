@@ -44,6 +44,9 @@ class SpeechRuntimeInfo(BaseModel):
     update_to: str | None = None
     backend: str | None = None       # "cuda" | "vulkan" | "cpu" | "metal" — the build in use
     build: str | None = None         # the build key ("cuda12", "vulkan", …)
+    # `npm run dev`: the checkout the development build came from ("..\audio.cpp"), else None.
+    # `version` is then "dev · <commit>" (decided 2026-10-03, D4).
+    dev_source: str | None = None
     backend_setting: str = "auto"    # settings.engines.speech_runtime.backend
     backends: list[str] = []         # the builds audio.cpp publishes for this OS
     gpu: int = 0                     # settings.engines.speech_runtime.gpu
@@ -74,7 +77,7 @@ def _japanese_dictionary() -> JapaneseDictionaryInfo | None:
 
 
 def _info() -> SpeechRuntimeInfo:
-    from ..engines.audiocpp import release
+    from ..engines.audiocpp import dev_build, release
     from ..engines.audiocpp.runtime import (
         _hardware,
         _settings,
@@ -90,7 +93,8 @@ def _info() -> SpeechRuntimeInfo:
 
     exe = installed_exe()
     tag = installed_tag() if exe is not None else None
-    asset = selected_asset() if exe is None else None
+    dev = dev_build.current()
+    asset = selected_asset() if exe is None and dev is None else None
     srv = get_server("gpu")
     cpu = get_server("cpu")
     known = len(srv._run.models) if srv.is_running() and srv._run else 0
@@ -99,13 +103,22 @@ def _info() -> SpeechRuntimeInfo:
         gpus = [g.name for g in (getattr(_hardware(), "gpus", None) or [])]
     except Exception:  # noqa: BLE001 — no kit / detection failed → no list
         gpus = []
+    if dev is not None:
+        # The development build: its own version and backend, never an update.
+        version, update_to, backend, build = dev.version, None, dev.backend, None
+    else:
+        version = tag or release.TAG
+        update_to = release.TAG if tag is not None and tag != release.TAG else None
+        backend = backend_of(exe) if exe else (None if asset is None else
+                                               ("cuda" if asset.gpu.startswith("cuda") else asset.gpu))
+        build = exe.parent.name if exe else (asset.gpu if asset else None)
     return SpeechRuntimeInfo(
-        version=tag or release.TAG,
+        version=version,
         installed=exe is not None,
-        update_to=release.TAG if tag is not None and tag != release.TAG else None,
-        backend=backend_of(exe) if exe else (None if asset is None else
-                                             ("cuda" if asset.gpu.startswith("cuda") else asset.gpu)),
-        build=exe.parent.name if exe else (asset.gpu if asset else None),
+        update_to=update_to,
+        backend=backend,
+        build=build,
+        dev_source=dev.source if dev is not None else None,
         backend_setting=s.backend or "auto",
         backends=available_backends(),
         gpu=s.gpu,

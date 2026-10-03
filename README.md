@@ -41,8 +41,15 @@ git clone https://github.com/delebash/justvoice-new.git
 cd justvoice-new
 npm install
 cd server && pip install -e . && cd ..
-npm run tauri dev
+npm run dev
 ```
+
+`npm run dev` runs the speech runtime from our audio.cpp source when it is checked out beside
+this repo (`git clone -b jv https://github.com/delebash/audio.cpp ../audio.cpp`): it builds
+that checkout first — only what changed; the first build takes about 30 minutes — so the app
+always runs its latest code. That needs Visual Studio's C++ tools on Windows, plus the CUDA
+12.4 toolkit for an NVIDIA build (without it you get the CPU build). Without the checkout the
+app downloads the pinned release from the AI page as usual.
 
 ### Headless server (run on a remote box, hit from any browser)
 

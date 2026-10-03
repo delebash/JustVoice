@@ -112,7 +112,9 @@ questions in §5 come first):
   release, cut once the open gaps are done. The app's `release.FEATURES` placeholders
   (jv.2 / jv.3) are retargeted to its tag then.
 - That release needs two decisions at cut time: a new tag name, since jv.2 and jv.3 exist on
-  broken commits; and the CI additions (copy `libmecab` and `jieba/` into every build).
+  broken commits; and libmecab on macOS and Linux. `jieba/` (every platform) and Windows'
+  `libmecab.dll` now come from the fork's own build (`cmake/text_dictionaries.cmake`,
+  2026-10-03), so the release's bundles carry them with no CI step.
 
 **`jv` branch head:**
 - `fc55e1e6` (Hebrew, Russian, Chinese), pushed;
@@ -122,7 +124,14 @@ questions in §5 come first):
 **No CI runs** until the release (the user, 2026-10-03). A push to `jv` triggers none (checked):
 only tags and `workflow_dispatch` run `release.yml`.
 
-**Local builds (Windows):**
+**The dev app runs the checkout (since 2026-10-03, TASKS "`npm run dev` always runs the latest
+audio.cpp").** `npm run dev` builds `../audio.cpp` into `build/jv-dev` (only what changed) and
+the app runs that build, not a release (`scripts/audiocpp-dev.js`, `engines/audiocpp/dev_build.py`).
+The first run sets the folder up with the CUDA 12.4 recipe below (compute capability read from
+`nvidia-smi`), or the CPU build without the toolkit. Test through `npm run dev` — the manual
+builds below remain for reference.
+
+**Local builds (Windows), by hand:**
 - **CPU:** `scripts/build_windows.ps1 -Preset windows-cpu-release -Target audiocpp_server
   -VsInstall "E:\Program Files\Microsoft Visual Studio\18\Community"` → `build/windows-cpu-release`.
 - **CUDA 12.4** (for the RTX 2070 SUPER, sm_75). CUDA 12.4.1 is installed with nvcc, cudart,
@@ -145,8 +154,11 @@ only tags and `workflow_dispatch` run `release.yml`.
   - VS 2026's installed MSVC 14.44 is the VS 2022 toolset CI uses.
   - The first build takes about 30 min; incremental builds take minutes.
   - To run the server, put `CUDA_PATH\bin` on PATH.
-- **Next to the local server, for Japanese and Chinese** (not in git; the release's CI must do
-  the same):
+- **Next to the local server, for Japanese and Chinese.** Since 2026-10-03 (decided D3) the
+  fork's own build puts them there — `cmake/text_dictionaries.cmake` fetches them at configure
+  time (SHA-256 pinned) and copies them beside `audiocpp_server` / `audiocpp_cli`, locally and
+  in the release, whose bundle is the whole `bin/` folder. Windows has both; macOS and Linux get
+  jieba, and load the system libmecab until the release builds it there. The files:
   - `libmecab.dll` from fugashi 1.5.2's `cp312-win_amd64` wheel
     (`fugashi.libs/libmecab-d8ddc079….dll`; wheel sha256 `936d7101…`; MeCab BSD);
   - `jieba/jieba.dict.utf8` and `jieba/hmm_model.utf8` from cppjieba `8f171de` (MIT; sha256 as

@@ -45,7 +45,12 @@ FEATURES: dict[str, str] = {
 
 def pinned_has(feature: str) -> bool:
     """Whether the PINNED build has `feature` — what the app offers. The installed build may
-    still be older; `runtime.has_feature` answers for it."""
+    still be older; `runtime.has_feature` answers for it. Under `npm run dev` the app runs
+    our checkout's own build (`dev_build.py`), the fork's latest, which has every feature."""
+    from . import dev_build
+
+    if dev_build.current() is not None:
+        return feature in FEATURES
     first = FEATURES.get(feature)
     if first not in BUILDS_IN_ORDER or TAG not in BUILDS_IN_ORDER:
         return False

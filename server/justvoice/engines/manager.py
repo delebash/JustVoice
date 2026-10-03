@@ -346,9 +346,19 @@ def _install_audiocpp_runtime(
     build for this machine (the kit's verified acquisition), then eSpeak NG for Kokoro.
     Installing any engine installs it; a second engine finds it already there. Over an older
     pinned build it is the update: the old build runs until this finishes, then stops."""
-    from .audiocpp import espeak, release, runtime
+    from .audiocpp import dev_build, espeak, release, runtime
 
     emit = progress or (lambda phase, line: None)
+    if dev_build.current() is not None:
+        # `npm run dev` runs our checkout's own build — nothing to download but eSpeak NG.
+        emit("installing", "eSpeak NG (Kokoro's pronunciation)")
+        try:
+            espeak.install(engines_runtime_root())
+        except Exception as e:  # noqa: BLE001
+            raise InstallError(f"eSpeak NG install failed: {e}") from e
+        runtime.forget_installed()
+        emit("done", "speech runtime ready (development build)")
+        return
     last = {"mb": -1}
 
     def _prog(done: int, total: int | None) -> None:

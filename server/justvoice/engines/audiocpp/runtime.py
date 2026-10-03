@@ -12,7 +12,8 @@ deleting a model changes the list, which restarts a process on its next use (`en
 The servers run headless (`--no-ui`): audio.cpp's own web UI is never shown — ours is the UI.
 
 The binary's install is the kit's (`llm_runner.runner.binary.acquire_runtime` — the same
-stage → launch-verify → atomic swap llama.cpp gets); the pinned rows are `release.py`.
+stage → launch-verify → atomic swap llama.cpp gets); the pinned rows are `release.py`. Under
+`npm run dev` the server is our checkout's own build instead (`dev_build.py`).
 """
 
 from __future__ import annotations
@@ -32,7 +33,7 @@ from typing import Any, Callable
 
 import httpx
 
-from . import release
+from . import dev_build, release
 
 log = logging.getLogger(__name__)
 
@@ -164,6 +165,12 @@ def _find_installed(backend: str) -> tuple[Path | None, str | None]:
     tag and the build key only, so the pinned asset row finds an older tag's folder."""
     from llm_runner.runner.binary import installed_runtime_exe
 
+    if (dev := dev_build.current()) is not None:
+        # `npm run dev`: our checkout's build, whatever the backend setting. Nothing downloads
+        # it, so it counts as installed once eSpeak NG is here — Install fetches only that.
+        from . import espeak
+
+        return (dev.exe, dev_build.TAG) if espeak.paths(_runtime_root()) is not None else (None, None)
     asset = selected_asset(backend)
     if asset is None:
         return None, None
@@ -202,9 +209,12 @@ def installed_tag(backend: str | None = None) -> str | None:
 
 def has_feature(name: str, backend: str | None = None) -> bool:
     """Whether the installed build has `name` (`release.FEATURES`) — False when nothing is
-    installed or the build is older than the first one that has it."""
+    installed or the build is older than the first one that has it. A development build (the
+    fork's latest) has every one."""
     first = release.FEATURES.get(name)
     tag = installed_tag(backend)
+    if tag == dev_build.TAG:
+        return first is not None
     order = release.BUILDS_IN_ORDER
     if first is None or tag is None or tag not in order or first not in order:
         return False
@@ -237,7 +247,10 @@ def install(
 
 
 def backend_of(exe: Path) -> str:
-    """The audio.cpp backend for an installed exe's variant dir (`…/<tag>/<gpu>/`)."""
+    """The audio.cpp backend for an installed exe's variant dir (`…/<tag>/<gpu>/`), or the
+    development build's own (its CMake cache)."""
+    if dev_build.is_dev_exe(exe):
+        return dev_build.current().backend
     gpu = exe.parent.name
     return "cuda" if gpu.startswith("cuda") else gpu
 
@@ -335,8 +348,9 @@ class AudioCppServer:
             proc, job = spawn_child(popen, [str(exe), "--config", str(conf_path), "--no-ui"], out)
             self._run = _Running(proc, port, signature, log_path, {m.id: m for m in models}, job)
             self._wait_healthy()
+            dev = dev_build.current()
             log.info("audio.cpp %s (%s) up on :%d (pid %d, %s, %d threads, %d models)",
-                     release.TAG, self.placement, port, proc.pid, cfg["backend"], threads, len(models))
+                     dev.version if dev else release.TAG, self.placement, port, proc.pid, cfg["backend"], threads, len(models))
 
     def _wait_healthy(self, timeout: float = 60.0) -> None:
         run = self._run

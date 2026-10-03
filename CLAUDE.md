@@ -18,7 +18,7 @@ Only TTS and each app's feature catalog differ. A change in those repos lands he
 ```bash
 npm install
 cd server && pip install -e . && cd ..   # the speech runtime installs from the app
-npm run tauri dev                  # Tauri + Vite + Python sidecar (dev port 1430, HMR 1431)
+npm run dev                        # builds ../audio.cpp, then Tauri + Vite + Python sidecar (dev port 1430, HMR 1431)
 npm run tauri build                # production installer
 
 justvoice-server serve             # headless; same UI at /ui/
@@ -34,6 +34,18 @@ the speech cache. In a source checkout the runtime lands INSIDE `engines/audiocp
 separate: `pip install -e .` in a dev checkout, a frozen PyInstaller sidecar in a release.
 `docs/plans/2026-10-01-audiocpp-switch.md` is the record; `docs/engines.md` the user-facing
 half. Voice training (LoRA) was removed 2026-10-02 — no PyTorch anywhere.
+
+**`npm run dev` runs our audio.cpp checkout, not the release (since 2026-10-03).** Our fork
+(github.com/delebash/audio.cpp, branch `jv`) is checked out beside this repo at `../audio.cpp`,
+the way the kit sits at `../just-llm-runner`. `npm run dev` and `npm run tauri dev` go through
+`scripts/tauri.js`: it builds the checkout into `../audio.cpp/build/jv-dev` (only what changed;
+the first build sets the folder up — CUDA 12.4 when installed, about 30 min — `scripts/audiocpp-dev.js`),
+then starts the app with `JUSTVOICE_AUDIOCPP_BUILD` naming that build, which the server runs
+instead of the pinned release, with every feature on (`engines/audiocpp/dev_build.py`). A
+failed build stops `npm run dev`. The runtime row shows `audio.cpp dev · <commit>`. **Test the
+app this way** — never a private audio.cpp server with a scratch config. A packaged app, the
+headless `justvoice-server serve` and pytest run the pinned release. Record: TASKS "`npm run
+dev` always runs the latest audio.cpp".
 
 **The console script is `justvoice-server`, never `justvoice`.** The Tauri binary is
 `justvoice.exe`; giving both the same name makes Windows `CreateProcessW` resolve
