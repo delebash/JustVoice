@@ -56,6 +56,30 @@ def binaries() -> list[BinaryAsset]:
     ]
 
 
+def sixteen_bit(row: dict, path: str, size_bytes: int, *, dtype: str = "bf16",
+                source: dict | None = None, companions: list | None = None) -> dict:
+    """The 16-bit sibling of an 8-bit variant row (switch plan §5, gap 9): same model, same
+    capabilities, the original precision. Its id swaps the `-q8` tail for `-<dtype>`, its name
+    says "16-bit", its description says so, and it has no reference CPU speed of its own (the
+    8-bit row's would be wrong — a render measures this one). `source` replaces the default
+    one-file source (a multi-file source, another repo); `companions` replaces the companion
+    files (speech recognition's aligner)."""
+    name = row["name"]
+    name = f"{name[:-1]}, 16-bit)" if name.endswith(")") else f"{name} (16-bit)"
+    desc = row["description"].replace(" 8-bit weights.", "").rstrip()
+    out = {
+        **{k: v for k, v in row.items() if k != "cpu_realtime"},
+        "id": row["id"].removesuffix("-q8") + f"-{dtype}",
+        "name": name,
+        "description": f"{desc} 16-bit weights — a larger download that needs more memory.",
+        "sources": [source or model_source(path, size_bytes)],
+        "audiocpp": {**row["audiocpp"], "file": path},
+    }
+    if companions is not None:
+        out["audiocpp"]["companions"] = companions
+    return out
+
+
 def model_source(path: str, size_bytes: int, *, repo: str = MODEL_REPO,
                  revision: str = MODEL_REVISION) -> dict:
     """A manifest variant's `sources` row for one GGUF file in the pinned model repo —

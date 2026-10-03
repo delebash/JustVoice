@@ -34,6 +34,7 @@ ROW_VARIANT = {
     "qwen3-vd": ("qwen3", "qwen3-vd-1.7b-q8", {"delivery": {"instruct": "A gravel voice."}}),
     "kitten": ("kitten", "kitten-mini-0.8", {"voice_id": "kitten_leo"}),
     "pocket": ("pocket", "pocket-en-q8", {"voice_id": "pocket_alba"}),
+    "voxcpm2": ("voxcpm2", "voxcpm2-q8", {"audio_prompt_path": "/v/ref.wav"}),
 }
 
 # Where each knob lands in audio.cpp's request ("options.x" = inside options).
@@ -43,6 +44,7 @@ LANDS_AT = {
     "exaggeration": "options.exaggeration", "cfg_weight": "options.guidance_scale",
     "repetition_penalty": "options.repetition_penalty", "top_p": "options.top_p",
     "talker_top_k": "options.top_k", "talker_top_p": "options.top_p",
+    "cfg_value": "options.guidance_scale", "inference_timesteps": "options.num_inference_steps",
 }
 TOP_LEVEL = {"speed", "seed"}   # canonical Delivery fields / the request's own seed
 

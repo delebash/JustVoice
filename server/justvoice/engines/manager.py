@@ -1395,11 +1395,20 @@ class EngineManager:
                 prior = self._loaded.get(target_kind)
                 moving = (prior is not None and prior.manifest.id == engine_id
                           and getattr(prior, "placement", "gpu") != placement)
-                if prior and (prior.manifest.id != engine_id or moving):
+                # Another variant of the loaded engine is a different model: the slot
+                # serves whichever row its own /load set, so it must load again. Until
+                # 2026-10-02 this path relabelled the variant and returned, and the old
+                # model went on speaking under the new name (CustomVoice → Base, English
+                # → Spanish, 8-bit → 16-bit all kept the first model loaded).
+                switching = (prior is not None and prior.manifest.id == engine_id
+                             and variant not in (None, "", "auto")
+                             and self._current_variants.get(engine_id) not in (None, variant))
+                if prior and (prior.manifest.id != engine_id or moving or switching):
                     log.info(
                         "unloading %s engine %s before loading %s%s",
                         target_kind, prior.manifest.id, engine_id,
-                        f" on the {placement.upper()}" if moving else "",
+                        f" on the {placement.upper()}" if moving
+                        else f" as {variant}" if switching else "",
                     )
                     prior.terminate()
                     self._loaded.pop(target_kind, None)

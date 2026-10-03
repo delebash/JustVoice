@@ -13,7 +13,7 @@ None as unknown and lets the clip through), and — on the small sample measured
 recognition outside English, especially when no language is set (plan §8 D).
 """
 
-from ..audiocpp.release import model_source
+from ..audiocpp.release import model_source, sixteen_bit
 
 ID = "asr"
 NAME = "Speech recognition"
@@ -66,6 +66,20 @@ VARIANTS = [
         "cpu_realtime": 2.6,
     },
 ]
+
+# The 16-bit recogniser and aligner at the same pinned commit (gap 9; audio.cpp ships both as
+# f16); the 8-bit row stays the default.
+_ASR_F16 = "Qwen3-ASR-1.7B-GGUF/qwen3-asr-1.7b-f16.gguf"
+_ASR_F16_SIZE = 4_087_653_248
+_ALIGNER_F16 = "Qwen3-ForcedAligner-0.6B-GGUF/qwen3-forced-aligner-0.6b-f16.gguf"
+_ALIGNER_F16_SIZE = 1_840_097_696
+VARIANTS.append(sixteen_bit(
+    VARIANTS[0], _ASR_F16, _ASR_F16_SIZE, dtype="f16",
+    source={**model_source(_ASR_F16, _ASR_F16_SIZE), "files": [_ASR_F16, _ALIGNER_F16],
+            "size_bytes": _ASR_F16_SIZE + _ALIGNER_F16_SIZE},
+    companions=[{"role": "aligner", "family": "qwen3_forced_aligner", "task": "align",
+                 "file": _ALIGNER_F16}],
+))
 
 DEFAULT_VARIANT_ID = "qwen3-asr-1.7b-q8"
 

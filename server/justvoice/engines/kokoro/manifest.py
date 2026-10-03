@@ -15,7 +15,7 @@ Not yet back after the switch (plan §5): blended voices (audio.cpp takes no voi
 yet) and per-word IPA from lexicons (respellings still work).
 """
 
-from ..audiocpp.release import model_source
+from ..audiocpp.release import model_source, sixteen_bit
 
 ID = "kokoro"
 NAME = "Kokoro"
@@ -67,5 +67,7 @@ VARIANTS = [
         "cpu_realtime": 3.15,
     },
 ]
+# The 16-bit file at the same pinned commit (gap 9); the 8-bit row stays the default.
+VARIANTS.append(sixteen_bit(VARIANTS[0], "Kokoro-82M-GGUF/kokoro-82m-bf16.gguf", 211_954_816))
 
 DEFAULT_VARIANT_ID = "kokoro-82m-q8"

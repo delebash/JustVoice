@@ -866,6 +866,26 @@ def _pause_ms(line: RenderedLine, key: str) -> int | None:
         return None
 
 
+def _conform_pcm(pcm: bytes, sr: int, ch: int, to_sr: int, to_ch: int) -> bytes:
+    """16-bit interleaved PCM at (sr, ch) → (to_sr, to_ch): polyphase resampling
+    (scipy), mono duplicated to every channel or channels averaged down."""
+    if sr == to_sr and ch == to_ch:
+        return pcm
+    from math import gcd
+
+    from scipy.signal import resample_poly
+
+    x = np.frombuffer(pcm, dtype="<i2").astype(np.float32) / 32767.0
+    x = x[: len(x) // ch * ch].reshape(-1, ch)
+    if ch != to_ch:
+        mono = x.mean(axis=1, keepdims=True)
+        x = np.repeat(mono, to_ch, axis=1) if to_ch > 1 else mono
+    if sr != to_sr:
+        g = gcd(int(sr), int(to_sr))
+        x = resample_poly(x, int(to_sr) // g, int(sr) // g, axis=0)
+    return (np.clip(x, -1.0, 1.0) * 32767.0).astype("<i2").tobytes()
+
+
 def concat_lines(lines: list[RenderedLine], silence_ms: int = 250) -> RenderedLine:
     """Concatenate rendered lines with silence between them.
 
@@ -879,33 +899,30 @@ def concat_lines(lines: list[RenderedLine], silence_ms: int = 250) -> RenderedLi
     the `pause_after_ms` every import adapter parses — was stored and silently
     ignored.
 
-    Resamples mismatched sample-rate lines via numpy linear interpolation.
+    Lines from engines with different sample rates or channel counts are
+    brought to the chapter's highest rate and channel count before joining
+    (`_conform_pcm`), so no line loses quality. Until 2026-10-02 this
+    docstring said it resampled while the code appended a mismatched line raw
+    — harmless while every engine rendered 24 kHz mono, wrong the moment
+    VoxCPM2 (48 kHz) spoke one character in a chapter: half speed, an octave low.
     """
     if not lines:
         raise ValueError("no lines")
-    sr = lines[0].sample_rate
-    ch = lines[0].channels
+    sr = max(line.sample_rate for line in lines)
+    ch = max(line.channels for line in lines)
     out_pcm = io.BytesIO()
 
     def silence(ms: int) -> bytes:
         return b"\x00\x00" * (int((ms / 1000) * sr) * ch)
 
     for i, line in enumerate(lines):
-        if line.sample_rate != sr or line.channels != ch:
-            # Fallback: just append regardless; mastering layer can resample.
-            log.warning(
-                "concat: line %d has format mismatch (sr=%d, ch=%d); appending raw",
-                i,
-                line.sample_rate,
-                line.channels,
-            )
         if i > 0:
             after = _pause_ms(lines[i - 1], "pause_after")
             before = _pause_ms(line, "pause_before")
             gap = silence_ms if after is None and before is None else (after or 0) + (before or 0)
             if gap > 0:
                 out_pcm.write(silence(gap))
-        out_pcm.write(line.pcm)
+        out_pcm.write(_conform_pcm(line.pcm, line.sample_rate, line.channels, sr, ch))
     return RenderedLine(
         pcm=out_pcm.getvalue(),
         sample_rate=sr,

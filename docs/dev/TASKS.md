@@ -706,7 +706,9 @@ DECIDED: 2026-10-02 — Q1 (CI on our copy's repo to publish binaries): "q1 yes 
         when the first change needs C++, not before. "commit and push" — the switch, the training
         removal and CPU placement committed and pushed the same day.
 OPEN:   gaps, in order: switch plan §5 (Turbo/Nano cloning, blends, single-word IPA, training
-        rebuilt on the runtime, Chatterbox he/ja/ru/zh, our-copy fix for the aligner's seconds) —
+        rebuilt on the runtime, Chatterbox he/ja/ru/zh, our-copy fix for the aligner's seconds,
+        and — added 2026-10-02 — our-copy fix so VoxCPM2 gets the clip's transcript: the server
+        passes the clip as prompt audio when `reference_text` comes with it, gap 9 plan §6 C) —
         the CPU cloner (Pocket TTS) and Kokoro on the CPU landed with the item below; gap 8 (speed
         everywhere) and gap 4 (CustomVoice 0.6B, published + wired) shipped 2026-10-02
         (plan docs 2026-10-02-gap-8-speed.md, -gap-4-customvoice-0.6b.md) · Q1's CI when the
@@ -751,11 +753,26 @@ STATE:  DECIDED 2026-10-02 — "your rec on all 3 go" on the plan as presented
         engine; any change comes back to you with its numbers." · 3 VoxCPM2's row text: name
         "VoxCPM2", description "OpenBMB's 2B model, 30 languages: clones a voice from a short
         clip and its transcript, or designs one from a written description. Runs in the
-        audio.cpp speech runtime."
+        audio.cpp speech runtime." (Amended below: "and its transcript" dropped until our copy
+        of audio.cpp passes it.)
 NOT:    changing any default without coming back with numbers · VoxCPM2 in the setup tiers
         before it is measured.
-OPEN:   plan §3 A (16-bit rows; our 0.6B bf16 uploaded) · B (the comparison, fixes 3 and 4) ·
-        C (VoxCPM2) · D (gates + live).
+BUILT:  2026-10-02, uncommitted — plan §6: A 16-bit rows (14, our 0.6B bf16 published at repo
+        revision 5c14bf4); B the comparison on a real chapter (no 8-bit penalty on Kokoro,
+        Pocket, Qwen3; Chatterbox 16-bit read back better, 0.072 vs 0.108; Pocket pt/es drop
+        words at both precisions — fix 3 answered); C VoxCPM2 (clone + design + direction on
+        clones; brackets read as dashes; warm-up so memory is booked); D gates (server 927,
+        vitest 122, smoke all views, engines tab rendered). Fixed on the way: a second variant
+        of a loaded engine only relabelled the row (`manager.load`); a chapter mixing sample
+        rates appended the odd line raw (`concat_lines`).
+DECIDED: 2026-10-02 — "your rec on all 3 go, commit and push" on the three questions as shown:
+        1 "VoxCPM2's row text … My recommendation: drop 'and its transcript' until our fork fixes
+        it, which is a small C++ change I'd add to the C++ gaps." · 2 "Chatterbox: … the default
+        stays 8-bit … My recommendation: before switching (16-bit is 3.7 GB against 2.1 GB), run
+        a bigger test, three seeds over a full chapter." · 3 "Commit and push gap 9".
+OPEN:   the Chatterbox test — three seeds over the whole chapter, 8-bit against 16-bit; its
+        numbers go back to the user before any default changes · the VoxCPM2 transcript fix is a
+        C++ gap for our audio.cpp copy (listed on the audio.cpp item).
 GO:     given 2026-10-02 ("you have a go for all gaps" → "your rec on all 3 go")
 
 ### Speech models run on the CPU or the GPU — chosen per model, automatically, measured

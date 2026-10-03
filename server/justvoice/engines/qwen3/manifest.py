@@ -24,7 +24,7 @@ publishes CustomVoice at 1.7B only, so the official checkpoint was converted wit
 in docs/plans/2026-10-02-gap-4-customvoice-0.6b.md and that repo's README.
 """
 
-from ..audiocpp.release import model_source
+from ..audiocpp.release import model_source, sixteen_bit
 
 ID = "qwen3"
 NAME = "Qwen3-TTS"
@@ -67,12 +67,14 @@ def _variant(vid, name, path, size, quality, presets, description, *, task="tts"
 
 # Our conversion of Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice @ 85e237c (gap 4), pinned by commit.
 CV_06_REPO = "delebash/Qwen3-TTS-12Hz-0.6B-CustomVoice-GGUF"
-CV_06_REVISION = "030089f09bdd8e77b275b7ed7e503e2f24749922"
+CV_06_REVISION = "5c14bf487cbb232c08ca8644e569984d9f653a39"  # q8_0 + bf16 (gap 9)
 _CV_06_FILE = "qwen3-tts-12hz-0.6b-customvoice-q8_0.gguf"
 _CV_06_SIZE = 1_710_423_328
+_CV_06_BF16 = "qwen3-tts-12hz-0.6b-customvoice-bf16.gguf"
+_CV_06_BF16_SIZE = 2_157_313_376
 
 
-VARIANTS = [
+_EIGHT_BIT = [
     _variant("qwen3-cv-1.7b-q8", "Qwen3-TTS CustomVoice 1.7B",
              "Qwen3-TTS-12Hz-1.7B-CustomVoice-GGUF/qwen3-tts-12hz-1.7b-customvoice-q8_0.gguf",
              2_817_044_064, 92, 9,
@@ -97,6 +99,25 @@ VARIANTS = [
              2_816_988_960, 90, 0,
              "Invents a voice from a written description — no reference audio. Powers "
              "Design from words.", task="vdes", design=True),
+]
+_BY_ID = {r["id"]: r for r in _EIGHT_BIT}
+
+# Each checkpoint's 16-bit file at the same pinned commit (gap 9) — byte sizes from that
+# commit's tree. The 8-bit rows stay the defaults.
+VARIANTS = _EIGHT_BIT + [
+    sixteen_bit(_BY_ID["qwen3-cv-1.7b-q8"],
+                "Qwen3-TTS-12Hz-1.7B-CustomVoice-GGUF/qwen3-tts-12hz-1.7b-customvoice-bf16.gguf",
+                4_179_144_352),
+    sixteen_bit(_BY_ID["qwen3-cv-0.6b-q8"], _CV_06_BF16, _CV_06_BF16_SIZE,
+                source=model_source(_CV_06_BF16, _CV_06_BF16_SIZE, repo=CV_06_REPO,
+                                    revision=CV_06_REVISION)),
+    sixteen_bit(_BY_ID["qwen3-base-1.7b-q8"],
+                "Qwen3-TTS-12Hz-1.7B-Base-GGUF/qwen3-tts-12hz-1.7b-base-bf16.gguf", 4_203_158_464),
+    sixteen_bit(_BY_ID["qwen3-base-0.6b-q8"],
+                "Qwen3-TTS-12Hz-0.6B-Base-GGUF/qwen3-tts-12hz-0.6b-base-bf16.gguf", 2_516_154_496),
+    sixteen_bit(_BY_ID["qwen3-vd-1.7b-q8"],
+                "Qwen3-TTS-12Hz-1.7B-VoiceDesign-GGUF/qwen3-tts-12hz-1.7b-voicedesign-bf16.gguf",
+                4_179_089_248),
 ]
 
 # Plain Load (no variant picked) loads CustomVoice 1.7B.

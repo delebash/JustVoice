@@ -298,6 +298,40 @@ CAPABILITY_DETAILS: dict[str, EngineCapabilityDetail] = {
 }
 
 
+CAPABILITY_DETAILS["voxcpm2"] = EngineCapabilityDetail(
+    # ─── VoxCPM2 (audio.cpp `voxcpm2`, gap 9, 2026-10-02) ──────────────
+    # Clones from a clip and designs from a description; written direction reaches both as
+    # the parenthesised prefix. The clip's transcript does not reach the model through
+    # audio.cpp's server yet (manifest docstring), so no transcript field is offered.
+    engine_id="voxcpm2",
+    display_name="VoxCPM2",
+    supports_voice_cloning=True,
+    supports_clone_prompt_text=False,
+    supports_voice_design=True,
+    supports_instruct_freeform=True,
+    knobs=[
+        KnobSpec(
+            key="cfg_value", label="CFG",
+            min=1.0, max=5.0, step=0.1, default=2.0,
+            hint="How closely it follows the voice and the text. Higher = stricter.",
+        ),
+        KnobSpec(
+            key="inference_timesteps", label="Inference steps",
+            min=4, max=30, step=1, default=10, advanced=True,
+            hint="More steps = finer detail, slower.",
+        ),
+        _seed_knob(),
+    ],
+    inline_tags=[],
+    pitch_post_process=True,
+    notes=[
+        "Clones from a short clip, or designs a voice from a written description.",
+        "Written direction reaches a cloned voice too.",
+        "48 kHz output.",
+    ],
+)
+
+
 def lookup(engine_or_variant_id: str) -> EngineCapabilityDetail | None:
     """Look up capability detail by engine id OR variant id.
 

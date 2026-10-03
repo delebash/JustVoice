@@ -239,6 +239,9 @@ Every `engines/<id>/engine.py`, every engine venv, the uv/torch install machiner
 9. 16-bit model rows; new engines from the catalogue (VoxCPM2 first).
 10. Fix in our copy: the aligner's seconds at the input rate (§8, live run) — the slot's 16 kHz
     resample is the workaround until then.
+    Also in our copy (added 2026-10-02): pass a speech request's clip as VoxCPM2's prompt audio
+    when `reference_text` comes with it, so its transcript-guided cloning works through the
+    server ([gap 9 plan §6 C](2026-10-02-gap-9-16bit-and-voxcpm2.md)).
 11. Kokoro in a second runtime process on the CPU build, so it never costs the loaded LLM (Q3, §8 B).
 
 ## 6. Slices (the cut is one change; coded in this order)

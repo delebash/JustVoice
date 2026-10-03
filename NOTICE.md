@@ -31,8 +31,8 @@ This product incorporates, links against, or depends on the following third-part
 ## Model weights — attribution requirements
 
 JustVoice itself is free software, and every speech model it offers permits commercial use of what
-you produce with it. Kokoro-82M, KittenTTS Mini 0.8, Qwen3-TTS, Qwen3-ASR and Qwen3-ForcedAligner are
-Apache-2.0 and Chatterbox is MIT — no attribution requirement (see `LICENSES.md` → *Downloaded on
+you produce with it. Kokoro-82M, KittenTTS Mini 0.8, Qwen3-TTS, Qwen3-ASR, Qwen3-ForcedAligner and VoxCPM2
+are Apache-2.0 and Chatterbox is MIT — no attribution requirement (see `LICENSES.md` → *Downloaded on
 demand*). One carries a credit, shown with a ⚠ on its model rows in the app:
 
 - **Pocket TTS — CC BY 4.0, Kyutai** (added 2026-10-02; https://huggingface.co/kyutai/pocket-tts).
@@ -111,7 +111,10 @@ Copyright (c) 2001-2002 Enthought, Inc. 2003, SciPy Developers.   (scipy)
 - Upstream: https://huggingface.co/audio-cpp/audio.cpp-gguf at a pinned commit; each directory keeps
   its original model's licence (Kokoro-82M Apache-2.0 — hexgrad; KittenTTS Mini 0.8 Apache-2.0 —
   KittenML; Pocket TTS CC BY 4.0 — Kyutai, see *Model weights* above; Qwen3-TTS, Qwen3-ASR,
-  Qwen3-ForcedAligner Apache-2.0 — Qwen; Chatterbox MIT — Resemble AI).
+  Qwen3-ForcedAligner Apache-2.0 — Qwen; Chatterbox MIT — Resemble AI; VoxCPM2 Apache-2.0 —
+  OpenBMB).
+- Qwen3-TTS CustomVoice 0.6B comes from JustVoice's own conversion of Qwen's checkpoint (Apache-2.0,
+  changes stated on its page): https://huggingface.co/delebash/Qwen3-TTS-12Hz-0.6B-CustomVoice-GGUF
 - Downloaded by the user's app on demand; not redistributed by JustVoice.
 
 ### numpy (BSD-3-Clause)

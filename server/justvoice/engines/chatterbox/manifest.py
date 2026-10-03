@@ -15,7 +15,7 @@ of the model's 23 languages — gap 7). Resemble's PerTh watermark is not applie
 audio.cpp (user, 2026-10-01: "dont care about watermark").
 """
 
-from ..audiocpp.release import model_source
+from ..audiocpp.release import model_source, sixteen_bit
 
 ID = "chatterbox"
 NAME = "Chatterbox"
@@ -61,6 +61,10 @@ VARIANTS = [
         "audiocpp": {"family": "chatterbox", "task": "clon", "file": "Chatterbox-GGUF/chatterbox-q8_0.gguf"},
     },
 ]
+# The 16-bit file at the same pinned commit (gap 9; audio.cpp ships Chatterbox as f16, not
+# bf16); the 8-bit row stays the default.
+VARIANTS.append(sixteen_bit(VARIANTS[0], "Chatterbox-GGUF/chatterbox-f16.gguf", 3_744_360_386,
+                            dtype="f16"))
 
 DEFAULT_VARIANT_ID = "chatterbox-multilingual-v2-q8"
 

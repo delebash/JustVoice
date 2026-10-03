@@ -2,6 +2,20 @@
 
 ## v0.1.0
 
+- **VoxCPM2, a new engine (2026-10-02).** OpenBMB's 2B model clones a voice from
+  a short clip or designs one from a written description, in 30 languages, at
+  48 kHz — and written direction reaches its cloned voices, which no other engine
+  here does. About 1.3× real time on an 8 GB card. It does not speak text in
+  parentheses, so a line's own brackets are read as dashes
+  ([Engines → The catalog](engines.md#the-catalog))
+- **Every model has a 16-bit row (2026-10-02)** beside its 8-bit default — the
+  original precision, a larger download that needs more memory. On a real chapter
+  the two read back the same on Kokoro, Pocket TTS and Qwen3; Chatterbox's 16-bit
+  got a few short lines right that its 8-bit missed
+  ([Engines → 8-bit or 16-bit](engines.md#8-bit-or-16-bit))
+- **A chapter that mixes engines with different sample rates joins them at the
+  highest one (2026-10-02).** Until VoxCPM2 every engine spoke at 24 kHz, so this
+  never showed; a 48 kHz line would otherwise have played at half speed
 - **Qwen3-TTS CustomVoice 0.6B is back (2026-10-02).** The same nine directable
   speakers as the 1.7B in a 1.7 GB download that took about 1.35 GB of graphics
   memory once loaded on an 8 GB card. audio.cpp does not publish this size, so
@@ -10,6 +24,11 @@
   [delebash/Qwen3-TTS-12Hz-0.6B-CustomVoice-GGUF](https://huggingface.co/delebash/Qwen3-TTS-12Hz-0.6B-CustomVoice-GGUF);
   pick it on its row on AI Settings → Speech engines
   ([Engines → The catalog](engines.md#the-catalog))
+- **Loading another model of an engine that is already loaded now loads it
+  (2026-10-02).** Before, the row switched to "loaded" but the first model went
+  on speaking — choosing Qwen3-TTS Base while CustomVoice was loaded, or the
+  Spanish Pocket TTS model while the English one was, changed only the label.
+  Now the first model unloads and the one you chose loads.
 - **Fixes (2026-10-02).** Slider labels no longer print over each other
   (Generate's Speed read "sloweras written"). A chapter line spoken by a cloud
   voice now takes its sample rate from the audio the provider returns, instead of

@@ -258,6 +258,11 @@ Every variant is one pinned file (two for speech recognition) in
 (`MODEL_REPO` / `MODEL_REVISION`) — except `qwen3-cv-0.6b-q8`, our own conversion,
 pinned in `engines/qwen3/manifest.py` (`CV_06_REPO` / `CV_06_REVISION`, passed through
 `model_source(repo=, revision=)`; gap 4, `docs/plans/2026-10-02-gap-4-customvoice-0.6b.md`).
+**Every 8-bit row has a 16-bit sibling** (gap 9) built by `release.sixteen_bit(row, path,
+size, dtype=…)`: id `-q8` → `-bf16` (`-f16` for Chatterbox and speech recognition, which
+audio.cpp ships as f16), name "(…, 16-bit)", no `cpu_realtime` of its own, same capability
+row by the suffix walk; the 8-bit rows stay `DEFAULT_VARIANT_ID`. KittenTTS has none (its one
+file is unquantized). The table below lists the 8-bit rows.
 Sizes are the summed real bytes. **The
 variant is the unit, never the engine** — every trap below is a case of the
 engine-level flag disagreeing with the variant that loads.
@@ -270,6 +275,7 @@ engine-level flag disagreeing with the variant that loads.
 | | `qwen3-vd-1.7b-q8` | `qwen3_tts` · vdes | ✗ | 0 | **✓** | 10 | 2.82 GB |
 | **chatterbox** | `chatterbox-multilingual-v2-q8` | `chatterbox` · clon | **✓** | 0 | ✗ | **19** | 2.09 GB |
 | **asr** (STT) | `qwen3-asr-1.7b-q8` + companion `::aligner` (`qwen3_forced_aligner` · align) | `qwen3_asr` · asr | — | — | — | 30 | 3.60 GB |
+| **voxcpm2** | `voxcpm2-q8` | `voxcpm2` · tts (its only task in v0.9.0) | **✓** | 0 | **✓** | 30 | 2.96 GB |
 
 Kokoro's five Japanese voices are filtered out of `STATIC_VOICES` (the
 runtime's Kokoro needs MeCab/UniDic for Japanese). The variant ids are new at
@@ -294,6 +300,16 @@ knob through the mapping and fails if one doesn't come out the other side.
 | clip transcript | | | | | | ✓ `reference_text` (not with `xvector_only`) | |
 | language | voice's code (`KOKORO_LANGUAGE`) | English only | none — the model IS the language; another refuses by name | code | **name** (`QWEN_LANGUAGE`; `en` is rejected) | name | name |
 | `voice_vector` (blend) | **refuses** (422, named gap) | | | | | | |
+
+**voxcpm2** (gap 9, not a column above — its mapping is unlike the others): a clip →
+`voice_ref` (+ `reference_text`, which v0.9.0's server turns into the `reference_text`
+option but never pairs with prompt audio, so VoxCPM2 ignores it — a change for our copy of
+audio.cpp); `instruct` — a designed voice's description, a persona's spoken delivery, a line's
+direction — rides a `(…)` prefix on `input` (audio.cpp splits it off, the model is steered by
+it); a line's OWN parentheses become ` — ` dashes, because VoxCPM2 speaks nothing inside
+brackets; `cfg_value` → `options.guidance_scale`, `inference_timesteps` →
+`options.num_inference_steps`, `seed`. Neither a clip nor a description → refused by name.
+48 kHz output — `concat_lines` brings a chapter's lines to its highest rate (`_conform_pcm`).
 
 Everything NOT in that grid — `gain_db`, `pitch`, the effects chain, lexicons,
 `pause_before`/`pause_after` — is host-side and works on **all** of them, and so

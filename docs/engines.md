@@ -103,18 +103,25 @@ runtime's converter and published at
 (its page has the exact conversion and what was checked). No account is needed
 to download any of them.
 
-| Engine · model | Download | Languages | Clones | Preset voices | Weights licence |
+**Every model also has a 16-bit row** (since 2026-10-02) — the same model at
+its original precision, named "(16-bit)" on Speech engines, beside the 8-bit
+row. It is a larger download and needs more memory; the 8-bit row stays the
+default, and KittenTTS has no second row because it already ships unquantized.
+See [8-bit or 16-bit](#8-bit-or-16-bit) for what the difference measured.
+
+| Engine · model | Download (8-bit · 16-bit) | Languages | Clones | Preset voices | Weights licence |
 |---|---|---|---|---|---|
-| **Kokoro 82M** | 190 MB | 8 (American and British English, Mandarin, Spanish, French, Hindi, Italian, Brazilian Portuguese) | — | 49 | Apache-2.0 |
-| **KittenTTS Mini 0.8** | 302 MB | English | — | 8 | Apache-2.0 |
-| **Pocket TTS** — one model per language: English, German, Italian, Portuguese, Spanish | 258 MB each | 1 each | ✓ | 20 | CC-BY-4.0 |
-| **Qwen3-TTS CustomVoice 1.7B** | 2.8 GB | 10 | — | 9 | Apache-2.0 |
-| **Qwen3-TTS CustomVoice 0.6B** | 1.7 GB | 10 | — | 9 | Apache-2.0 |
-| **Qwen3-TTS Base 1.7B** | 2.7 GB | 10 | ✓ | — | Apache-2.0 |
-| **Qwen3-TTS Base 0.6B** | 2.0 GB | 10 | ✓ | — | Apache-2.0 |
-| **Qwen3-TTS VoiceDesign 1.7B** | 2.8 GB | 10 | — (designs a voice from words) | — | Apache-2.0 |
-| **Chatterbox Multilingual** | 2.1 GB | 19 | ✓ | — | MIT |
-| **Speech recognition — Qwen3-ASR 1.7B** | 3.6 GB (with its word aligner) | 30 | — | — | Apache-2.0 |
+| **Kokoro 82M** | 190 MB · 212 MB | 8 (American and British English, Mandarin, Spanish, French, Hindi, Italian, Brazilian Portuguese) | — | 49 | Apache-2.0 |
+| **KittenTTS Mini 0.8** | 302 MB (unquantized) | English | — | 8 | Apache-2.0 |
+| **Pocket TTS** — one model per language: English, German, Italian, Portuguese, Spanish | 258 MB · 350 MB each | 1 each | ✓ | 20 | CC-BY-4.0 |
+| **Qwen3-TTS CustomVoice 1.7B** | 2.8 GB · 4.2 GB | 10 | — | 9 | Apache-2.0 |
+| **Qwen3-TTS CustomVoice 0.6B** | 1.7 GB · 2.2 GB | 10 | — | 9 | Apache-2.0 |
+| **Qwen3-TTS Base 1.7B** | 2.7 GB · 4.2 GB | 10 | ✓ | — | Apache-2.0 |
+| **Qwen3-TTS Base 0.6B** | 2.0 GB · 2.5 GB | 10 | ✓ | — | Apache-2.0 |
+| **Qwen3-TTS VoiceDesign 1.7B** | 2.8 GB · 4.2 GB | 10 | — (designs a voice from words) | — | Apache-2.0 |
+| **Chatterbox Multilingual** | 2.1 GB · 3.7 GB | 19 | ✓ | — | MIT |
+| **VoxCPM2** | 3.0 GB · 4.8 GB | 30 | ✓ (and designs from words) | — | Apache-2.0 |
+| **Speech recognition — Qwen3-ASR 1.7B** | 3.6 GB · 5.9 GB (with its word aligner) | 30 | — | — | Apache-2.0 |
 | **External** (OpenAI-compatible) | — | — | varies | varies | depends on provider |
 
 Qwen3 speaks Chinese, English, Japanese, Korean, German, French, Russian,
@@ -134,6 +141,18 @@ can do with it:
   has no preset speakers. It ignores written direction.
 - **VoiceDesign** makes a voice from a written description ("a gravelly
   harbour-master, sixties, unhurried") and speaks the line in it.
+
+**VoxCPM2** (added 2026-10-02) is OpenBMB's 2B model. It clones a voice from a
+short clip, or designs one from a written description, in 30 languages, at
+48 kHz — and it is the one engine where **written direction reaches a cloned
+voice**: a persona's spoken delivery or a line's direction steers a clone the
+way it steers Qwen3 CustomVoice. Two things to know. It does not speak
+anything in parentheses — it reads brackets as direction — so JustVoice turns
+a line's own brackets into dashes ("He left (quietly) and…" is read as "He
+left — quietly — and…"). And it clones from the clip's sound alone for now:
+VoxCPM2 can also use the clip's transcript, but the speech runtime does not
+pass it on yet. It is a graphics-card model: about 1.3× real time on an 8 GB
+card, 0.2× on a CPU.
 
 **KittenTTS** is a small English model built to run without a graphics card,
 with eight preset voices: Bella, Luna, Rosie and Kiki (female), Jasper, Bruno,
@@ -171,6 +190,31 @@ German with English sounds.
   with a message until you have. Presets need no acceptance.
 - **The weights are CC-BY-4.0**, which permits commercial use; the credit it
   asks for is in NOTICE.md.
+### 8-bit or 16-bit
+
+Each model's 8-bit row is the default because it is smaller and needs less
+memory — on an 8 GB card it is what fits beside a language model. The 16-bit row
+is the same model at its original precision. On 2026-10-02 every engine read the
+same real chapter (30 lines and two long passages) at both precisions, and Qwen3's
+own recogniser read every take back:
+
+| Model | Words wrong, 8-bit / 16-bit | Lines more than 20 % wrong |
+|---|---|---|
+| Kokoro | 5.6 % / 5.6 % | 2 / 2 |
+| Pocket TTS, English | 6.2 % / 6.2 % | 2 / 2 |
+| Qwen3-TTS CustomVoice 1.7B | 9.9 % / 10.9 % | 6 / 5 |
+| Qwen3-TTS CustomVoice 0.6B | 9.0 % / 8.5 % | 4 / 3 |
+| Chatterbox Multilingual | 10.8 % / 7.2 % | 5 / 2 |
+
+Most of what reads as "wrong" is the recogniser spelling invented names its own
+way (Cael as "Kale"), which happens at both precisions. Kokoro, Pocket TTS and
+Qwen3 showed no 8-bit penalty: Qwen3's occasional long pause or garbled short line
+turned up at 16-bit as often as at 8-bit. **Chatterbox** is the exception so far —
+at 16-bit it got three short lines right that the 8-bit file did not ("You have it"
+came out as "Have it"). If a Chatterbox voice drops short words, try its 16-bit row.
+Pocket TTS's Portuguese and Spanish models drop words now and then at both
+precisions, so the 16-bit row does not fix that.
+
 ### How fast, and how much memory
 
 Measured on an RTX 2070 SUPER (8 GB) on 2026-10-01, rendering a whole novel
@@ -184,6 +228,7 @@ threads — on 2026-10-02:
 | Pocket TTS | — | English 3.9× presets · 4.1× cloning; German, Italian, Portuguese, Spanish 3.4–3.6× | — |
 | Qwen3-TTS CustomVoice 1.7B | 1.9× real time on CUDA · 1.7× on Vulkan | — | 3–7.8 GB while rendering |
 | Chatterbox Multilingual | 2.1× real time on CUDA | — | about 3.2 GB |
+| VoxCPM2 | 1.3–1.4× real time on CUDA (16-bit: about 1×) | 0.2× | about 2.9 GB loaded (16-bit: 4.9 GB) |
 | Qwen3-ASR 1.7B (recognition) | — | 2.6×, with the same accuracy | about 3–4 GB |
 
 "Real time" is seconds of audio per second of rendering: 2× renders an hour
@@ -250,6 +295,7 @@ Everything else is passed to the engine:
 | **KittenTTS** | ✗ | ✓ | ✗ | none (no seed — see below) |
 | **Pocket TTS** | ✓ | ✗ | ✗ | none |
 | **Chatterbox Multilingual** | ✓ | ✗ | ✗ | Exaggeration · CFG weight · Temperature · Repetition penalty · Top p |
+| **VoxCPM2** | ✓ | ✗ | **✓ direction, on a clone too; a description designs the voice** | CFG · Inference steps |
 | **Qwen3 CustomVoice** | ✗ | ✗ | **✓ instruction** | Temperature · Top k · Top p · Repetition penalty |
 | **Qwen3 Base** | ✓ | ✗ | ✗ | as above |
 | **Qwen3 VoiceDesign** | ✗ | ✗ | **✓ the description** | as above |
@@ -261,10 +307,11 @@ so it offers none.
 
 **Direction and identity pull against each other.** Written direction — the
 Delivery direction box, a persona's spoken delivery, a line's own direction —
-reaches Qwen3 CustomVoice and Qwen3 VoiceDesign. It does not reach a clone:
-Qwen3 Base and Pocket TTS clone but have no instruction input, and Chatterbox
-steers through Exaggeration and CFG weight rather than words. So "direct the performance in
-words" and "use this speaker's cloned voice" are a choice today — and that
+reaches Qwen3 CustomVoice, Qwen3 VoiceDesign and VoxCPM2. On every engine but
+VoxCPM2 it does not reach a clone: Qwen3 Base and Pocket TTS clone but have no
+instruction input, and Chatterbox steers through Exaggeration and CFG weight
+rather than words. So on those, "direct the performance in words" and "use this
+speaker's cloned voice" are a choice — VoxCPM2 is the engine that does both — and that
 includes a designed voice once you keep it, because keeping one turns it into
 a clone ([voices.md](voices.md#keeping-a-designed-voice-is-what-makes-it-one-voice)).
 

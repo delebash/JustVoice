@@ -118,3 +118,35 @@ def test_import_adapters_still_parse_pause_after_ms() -> None:
     from justvoice.imports.standard_schema import StandardLine
 
     assert "pause_after_ms" in StandardLine.model_fields
+
+
+# ── Lines from engines with different formats (2026-10-02) ──────────────
+
+
+def _tone(sr: int, ch: int, seconds: float = 1.0, hz: float = 440.0) -> RenderedLine:
+    import numpy as np
+
+    t = np.arange(int(sr * seconds)) / sr
+    mono = (0.3 * np.sin(2 * np.pi * hz * t) * 32767).astype("<i2")
+    return RenderedLine(pcm=np.repeat(mono, ch).tobytes(), sample_rate=sr, channels=ch,
+                        effective_delivery={})
+
+
+def test_a_chapter_mixing_rates_joins_at_the_highest_rate_and_keeps_every_lines_length() -> None:
+    """A 48 kHz VoxCPM2 line beside a 24 kHz line used to be appended raw — half speed,
+    an octave low. Both now play for their real length at the chapter's 48 kHz."""
+    import numpy as np
+
+    out = concat_lines([_tone(24000, 1), _tone(48000, 1)], silence_ms=250)
+    assert (out.sample_rate, out.channels) == (48000, 1)
+    assert round(len(out.pcm) / 2 / 48000, 3) == 2.25  # 1 s + 0.25 s gap + 1 s
+    # The upsampled 24 kHz tone is still 440 Hz, not 220.
+    first = np.frombuffer(out.pcm, dtype="<i2")[:48000].astype(np.float64)
+    peak_hz = np.argmax(np.abs(np.fft.rfft(first))) * 48000 / len(first)
+    assert abs(peak_hz - 440) < 2
+
+
+def test_a_stereo_line_makes_the_chapter_stereo() -> None:
+    out = concat_lines([_tone(24000, 1), _tone(24000, 2)], silence_ms=0)
+    assert (out.sample_rate, out.channels) == (24000, 2)
+    assert len(out.pcm) == 2 * 24000 * 2 * 2  # 2 s, stereo, 16-bit

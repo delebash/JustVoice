@@ -288,3 +288,36 @@ def test_16k_mono_goes_as_it_is():
 
     wav = _tone_wav(16000, 1.0)
     assert as_16k_mono(wav) is wav
+
+
+# ── VoxCPM2 (gap 9) ──────────────────────────────────────────────────────
+
+
+def test_voxcpm2_clones_from_the_clip_and_sends_direction_as_its_prefix():
+    req = to_speech_request(_row("voxcpm2", "voxcpm2-q8"), {
+        "voice_id": "v1", "text": "The lights came on.", "audio_prompt_path": "C:\\voices\\v1\\ref.wav",
+        "ref_text": "The reference words.", "delivery": {"instruct": "Whispered, (tired)"}})
+    assert req["voice_ref"] == "C:/voices/v1/ref.wav"
+    assert req["reference_text"] == "The reference words."
+    # Brackets inside the direction would end the tag early; they go.
+    assert req["input"] == "(Whispered, tired)The lights came on."
+
+
+def test_voxcpm2_designs_from_a_description_and_refuses_a_voice_with_neither():
+    req = to_speech_request(_row("voxcpm2", "voxcpm2-q8"), {
+        "text": "Hi.", "delivery": {"instruct": "A deep, slow, elderly man's voice"}})
+    assert req["input"] == "(A deep, slow, elderly man's voice)Hi." and "voice_ref" not in req
+    with pytest.raises(AudioCppError, match="neither a reference clip nor a description"):
+        to_speech_request(_row("voxcpm2", "voxcpm2-q8"), {"voice_id": "x", "text": "Hi."})
+
+
+def test_voxcpm2_speaks_a_lines_own_brackets_as_dashes():
+    """VoxCPM2 does not speak parenthesised text, anywhere in the line (measured 2026-10-02)."""
+    row = _row("voxcpm2", "voxcpm2-q8")
+    req = to_speech_request(row, {"text": "He left (quietly, without a word) and shut it.",
+                                  "audio_prompt_path": "a.wav"})
+    assert req["input"] == "He left — quietly, without a word — and shut it."
+    req = to_speech_request(row, {"text": "(Aside) He left.", "audio_prompt_path": "a.wav"})
+    assert req["input"] == "Aside — He left."
+    req = to_speech_request(row, {"text": "(Aside) He left.", "delivery": {"instruct": "Dry"}})
+    assert req["input"] == "(Dry)Aside — He left."

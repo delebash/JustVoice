@@ -34,8 +34,10 @@ def _row(engine: str, variant: str) -> dict:
 
 def test_qwen3_catalog_is_the_three_checkpoint_families() -> None:
     ids = {v.id for v in models_for("qwen3")}
-    assert ids == {"qwen3-cv-1.7b-q8", "qwen3-cv-0.6b-q8", "qwen3-base-1.7b-q8", "qwen3-base-0.6b-q8",
-                   "qwen3-vd-1.7b-q8"}
+    eight = {"qwen3-cv-1.7b-q8", "qwen3-cv-0.6b-q8", "qwen3-base-1.7b-q8", "qwen3-base-0.6b-q8",
+             "qwen3-vd-1.7b-q8"}
+    # Each checkpoint at 8-bit (the defaults) and its 16-bit sibling (gap 9).
+    assert ids == eight | {i.removesuffix("-q8") + "-bf16" for i in eight}
     for r in discover_engines()["qwen3"].module.VARIANTS:
         spec = r["audiocpp"]
         assert spec["family"] == "qwen3_tts"
@@ -72,7 +74,7 @@ def test_qwen3_voice_design_claim_is_backed() -> None:
     m = discover_engines()["qwen3"]
     assert m.capabilities.get("voice_design") is True
     design = [v for v in models_for("qwen3") if getattr(v, "voice_design", False)]
-    assert [v.id for v in design] == ["qwen3-vd-1.7b-q8"]
+    assert [v.id for v in design] == ["qwen3-vd-1.7b-q8", "qwen3-vd-1.7b-bf16"]
     req = to_speech_request(_row("qwen3", "qwen3-vd-1.7b-q8"),
                             {"text": "Hi.", "delivery": {"instruct": "A gravel voice."}})
     assert req["instructions"] == "A gravel voice."
@@ -83,7 +85,8 @@ def test_qwen3_voice_design_claim_is_backed() -> None:
 
 def test_chatterbox_catalog_is_multilingual_only_until_turbo_clones() -> None:
     """Turbo, Nano and v3 return with the gaps they wait on (switch plan §5)."""
-    assert {v.id for v in models_for("chatterbox")} == {"chatterbox-multilingual-v2-q8"}
+    assert {v.id for v in models_for("chatterbox")} == {"chatterbox-multilingual-v2-q8",
+                                                        "chatterbox-multilingual-v2-f16"}
     spec = _row("chatterbox", "chatterbox-multilingual-v2-q8")["audiocpp"]
     assert spec["family"] == "chatterbox" and spec["task"] == "clon"
 
@@ -119,10 +122,14 @@ def test_manifest_default_variants_exist_in_catalog() -> None:
 
 def test_speech_recognition_carries_its_aligner() -> None:
     v = models_for("asr")
-    assert [x.id for x in v] == ["qwen3-asr-1.7b-q8"]
-    spec = _row("asr", "qwen3-asr-1.7b-q8")["audiocpp"]
-    assert spec["family"] == "qwen3_asr" and spec["task"] == "asr"
-    assert [c["role"] for c in spec["companions"]] == ["aligner"]
+    assert [x.id for x in v] == ["qwen3-asr-1.7b-q8", "qwen3-asr-1.7b-f16"]
+    for vid, dtype in (("qwen3-asr-1.7b-q8", "q8_0"), ("qwen3-asr-1.7b-f16", "f16")):
+        spec = _row("asr", vid)["audiocpp"]
+        assert spec["family"] == "qwen3_asr" and spec["task"] == "asr"
+        assert [c["role"] for c in spec["companions"]] == ["aligner"]
+        # Each precision brings its own aligner, and the source fetches both files.
+        assert spec["file"].endswith(f"-{dtype}.gguf") and spec["companions"][0]["file"].endswith(f"-{dtype}.gguf")
+        assert set(_row("asr", vid)["sources"][0]["files"]) == {spec["file"], spec["companions"][0]["file"]}
 
 
 def test_hf_sources_pin_a_commit_not_a_branch() -> None:
@@ -145,7 +152,7 @@ def test_hf_sources_pin_a_commit_not_a_branch() -> None:
 def test_engine_kinds() -> None:
     kinds = {k: m.kind for k, m in discover_engines().items()}
     assert kinds == {"kokoro": "tts", "qwen3": "tts", "chatterbox": "tts", "asr": "stt",
-                     "kitten": "tts", "pocket": "tts"}
+                     "kitten": "tts", "pocket": "tts", "voxcpm2": "tts"}
 
 
 # ─── current_variant_id recording (user-hit 2026-06-12) ────────────────
@@ -288,6 +295,43 @@ def test_already_loaded_reload_keeps_resolved_variant(monkeypatch) -> None:
     assert mgr.current_variant_id("fake-tts") == "fake-default-v1"
 
 
+def test_loading_another_variant_of_the_loaded_engine_loads_it(monkeypatch) -> None:
+    """The slot speaks with whichever variant its own /load set. Until 2026-10-02 a second
+    variant of a loaded engine was only relabelled — the first model kept speaking under the
+    new name (found by the gap-9 8-bit vs 16-bit comparison: every "16-bit" render was the
+    8-bit model). Now the old slot goes and the new variant loads."""
+    from justvoice.engines import manager as mgr_mod
+
+    slots: list = []
+
+    class _CountingSlot(_FakeSlot):
+        def __init__(self, *a, **kw):
+            super().__init__(*a, **kw)
+            self.bodies: list = []
+            self.terminated = False
+            slots.append(self)
+
+        def post(self, path, json=None):
+            self.bodies.append((path, dict(json or {})))
+            return _FakeResp({"ok": True, "variant": (json or {}).get("variant")})
+
+        def terminate(self):
+            self.terminated = True
+
+    mgr = _fake_manager(monkeypatch)
+    monkeypatch.setattr(mgr_mod, "_new_slot", _CountingSlot)
+    mgr.load("fake-tts", device="auto", variant="fake-default-v1")
+    mgr.load("fake-tts", device="auto", variant="fake-other-v2")
+    assert len(slots) == 2 and slots[0].terminated, "the first variant's slot stayed loaded"
+    assert ("/load", {"variant": "fake-other-v2"}) in [(p, {"variant": b.get("variant")})
+                                                        for p, b in slots[1].bodies]
+    assert mgr.current_variant_id("fake-tts") == "fake-other-v2"
+    # The same variant again, or no variant at all, keeps the slot.
+    mgr.load("fake-tts", device="auto", variant="fake-other-v2")
+    mgr.load("fake-tts", device="auto")
+    assert len(slots) == 2
+
+
 def test_the_card_names_what_loaded_not_a_stale_request(monkeypatch) -> None:
     """A stored request can name a model the catalog no longer has (the
     dictation setting still saying "whisper-turbo" after the 2026-10-01 switch);
@@ -303,3 +347,28 @@ def test_the_card_names_what_loaded_not_a_stale_request(monkeypatch) -> None:
     monkeypatch.setattr(mgr_mod, "_new_slot", _ResolvingSlot)
     mgr.load("fake-tts", device="auto", variant="whisper-turbo")
     assert mgr.current_variant_id("fake-tts") == "fake-default-v1"
+
+
+# ── 16-bit rows (gap 9) ──────────────────────────────────────────────────
+
+
+def test_every_16_bit_row_is_its_8_bit_siblings_model_at_the_original_precision() -> None:
+    """Same capabilities, same languages and presets, its own file; never the default, and no
+    borrowed CPU speed (the 8-bit row's would be wrong). KittenTTS has no 16-bit file."""
+    seen = 0
+    for eid, m in discover_engines().items():
+        rows = {r["id"]: r for r in getattr(m.module, "VARIANTS", []) or []}
+        for vid, r in rows.items():
+            if not vid.endswith(("-bf16", "-f16")):
+                continue
+            seen += 1
+            sib = rows[vid.rsplit("-", 1)[0] + "-q8"]
+            for k in ("languages", "voice_cloning", "preset_voices", "weights_license"):
+                assert r.get(k) == sib.get(k), (vid, k)
+            assert {k: v for k, v in r["audiocpp"].items() if k not in ("file", "companions")} == \
+                   {k: v for k, v in sib["audiocpp"].items() if k not in ("file", "companions")}, vid
+            assert r["audiocpp"]["file"] != sib["audiocpp"]["file"]
+            assert r["audiocpp"]["file"] in r["sources"][0]["files"]
+            assert "16-bit" in r["name"] and "cpu_realtime" not in r
+            assert m.default_variant_id != vid
+    assert seen == 14  # kokoro 1 · pocket 5 · qwen3 5 (our 0.6B among them) · chatterbox 1 · asr 1 · voxcpm2 1

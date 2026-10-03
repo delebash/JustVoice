@@ -18,6 +18,7 @@ import base64
 import io
 import json
 import logging
+import re
 import tempfile
 import wave
 from pathlib import Path
@@ -272,6 +273,11 @@ class AudioCppSlot:
             elif spec["family"] == "qwen3_asr":
                 srv.transcribe({"model": self._row["id"], "audio": _silence_path(),
                                 "language": "English"})
+            elif spec["family"] == "voxcpm2":
+                # Designed, so it needs no clip. Without a warm-up the load measured nothing
+                # (197 → 197 MB) and the memory ledger booked 0 MB for a multi-GB model.
+                srv.speech({"model": self._row["id"], "input": "(A calm, clear voice)Ready.",
+                            "seed": 1})
         except AudioCppError as e:
             log.info("audio.cpp warm-up of %s skipped: %s", self._row["id"], e)
 
@@ -498,6 +504,36 @@ def to_speech_request(row: dict, body: dict) -> dict:
         temperature = delivery.get("temperature", knobs.get("temperature"))
         if temperature is not None:
             opts["temperature"] = float(temperature)
+        if opts:
+            req["options"] = opts
+        return req
+
+    if family == "voxcpm2":
+        # One model clones (the clip) and designs (a description). VoxCPM2 takes a description,
+        # or a line's direction on a clone, as a parenthesised prefix on the text, which
+        # audio.cpp splits off and does not speak (manifest docstring).
+        instruct = " ".join((delivery.get("instruct") or knobs.get("instruct") or "").split())
+        if body.get("audio_prompt_path"):
+            req["voice_ref"] = str(body["audio_prompt_path"]).replace("\\", "/")
+            if body.get("ref_text"):
+                # Reaches the model once our copy of audio.cpp passes the clip as prompt audio.
+                req["reference_text"] = body["ref_text"]
+        elif not instruct:
+            raise AudioCppError("VoxCPM2 speaks a cloned voice or a designed one — this voice has "
+                                "neither a reference clip nor a description")
+        # VoxCPM2 treats ANY parenthesised text as direction and does not speak it — mid-line
+        # too ("He left (quietly) and…" came back without "quietly", 2026-10-02). The line's
+        # own brackets become dashes so its words are spoken; only our tag uses brackets.
+        text = re.sub(r"\s*\(\s*|\s*\)\s*", " — ", req["input"])
+        text = re.sub(r"(?:\s*—\s*){2,}", " — ", text).strip(" —")
+        if instruct:
+            text = f"({instruct.replace('(', '').replace(')', '')}){text}"
+        req["input"] = text
+        opts: dict[str, Any] = {}
+        if knobs.get("cfg_value") is not None:
+            opts["guidance_scale"] = float(knobs["cfg_value"])
+        if knobs.get("inference_timesteps") is not None:
+            opts["num_inference_steps"] = int(knobs["inference_timesteps"])
         if opts:
             req["options"] = opts
         return req

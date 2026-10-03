@@ -79,14 +79,16 @@ publisher, when the user installs the speech runtime or downloads a model.
 |---|---|---|---|
 | **audio.cpp** (the speech runtime, prebuilt binaries — pinned `v0.9.0`) | Install speech runtime | `Apache-2.0` (Copyright 2026 ShugoAI LLC; the release ships no `NOTICE`) | no |
 | **eSpeak NG** (library + data, via the `espeakng-loader` 0.2.4 wheel — loader `MIT`) | Install speech runtime | `GPL-3.0` | no |
-| **Speech models** — GGUF files from `audio-cpp/audio.cpp-gguf` @ a pinned commit, each under its original model's licence | Download / first load | Kokoro-82M `Apache-2.0` · KittenTTS Mini 0.8 `Apache-2.0` · Pocket TTS `CC-BY-4.0` (its 20 presets `CC-BY-4.0` or `CC0-1.0` — NOTICE.md) · Qwen3-TTS, Qwen3-ASR, Qwen3-ForcedAligner `Apache-2.0` · Chatterbox `MIT` | no |
+| **Speech models** — GGUF files from `audio-cpp/audio.cpp-gguf` @ a pinned commit, each under its original model's licence | Download / first load | Kokoro-82M `Apache-2.0` · KittenTTS Mini 0.8 `Apache-2.0` · Pocket TTS `CC-BY-4.0` (its 20 presets `CC-BY-4.0` or `CC0-1.0` — NOTICE.md) · Qwen3-TTS, Qwen3-ASR, Qwen3-ForcedAligner `Apache-2.0` · Chatterbox `MIT` · VoxCPM2 `Apache-2.0` — and Qwen3-TTS CustomVoice 0.6B from our own conversion at `delebash/Qwen3-TTS-12Hz-0.6B-CustomVoice-GGUF`, `Apache-2.0` | no |
 
 Licences verified 2026-10-01: audio.cpp against the `LICENSE` in its release archive; the loader and
 eSpeak NG against their GitHub repositories (PyPI carries no licence metadata for the loader); each
 model directory against the licence table in the GGUF repository's README at the pinned commit,
 cross-checked against the upstream model cards. KittenTTS and Pocket TTS verified 2026-10-02 against
 their model cards, and Pocket TTS's presets against Kyutai's `kyutai/tts-voices` README — six of its
-26 presets are left out for non-commercial or unstated licences.
+26 presets are left out for non-commercial or unstated licences. VoxCPM2 verified 2026-10-02 against
+its upstream repository (`openbmb/VoxCPM2`, `apache-2.0`, not gated) and its README ("free for
+commercial use").
 
 **Why the GPL row does not relicense JustVoice.** GPL obligations attach to the *distribution* of a
 combined work, and JustVoice does not distribute eSpeak NG in any form. No JustVoice code links or

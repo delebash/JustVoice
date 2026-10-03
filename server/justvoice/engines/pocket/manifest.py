@@ -25,7 +25,7 @@ Left out: cosette (Expresso) and jean (EARS), both non-commercial; giovanni, lol
 rafael, whose recordings state no licence. Kyutai gives no gender for them, so none is set.
 """
 
-from ..audiocpp.release import MODEL_REPO, MODEL_REVISION
+from ..audiocpp.release import MODEL_REPO, MODEL_REVISION, sixteen_bit
 
 ID = "pocket"
 NAME = "Pocket TTS"
@@ -142,5 +142,17 @@ def _variant(code: str, folder: str, size: int, cpu_x: float | None) -> dict:
 
 
 VARIANTS = [_variant(*lang) for lang in _LANGUAGES]
+
+# Each language's 16-bit file at the same pinned commit (gap 9) — bytes from that commit's
+# tree; the presets are the same embedding files. The 8-bit rows stay the defaults.
+_BF16_BYTES = {"en": 219_096_064, "de": 219_096_544, "it": 219_096_800, "pt": 219_097_728,
+               "es": 219_097_600}
+for _code, _folder, _size, _cpu in _LANGUAGES:
+    _row8 = next(r for r in VARIANTS if r["id"] == f"pocket-{_code}-q8")
+    _gguf16 = f"PocketTTS-GGUF/{_folder}/pocket-tts-{_folder}-bf16.gguf"
+    _src8 = _row8["sources"][0]
+    VARIANTS.append(sixteen_bit(_row8, _gguf16, _BF16_BYTES[_code], source={
+        **_src8, "files": [_gguf16, *_src8["files"][1:]],
+        "size_bytes": _src8["size_bytes"] - _size + _BF16_BYTES[_code]}))
 
 DEFAULT_VARIANT_ID = "pocket-en-q8"
