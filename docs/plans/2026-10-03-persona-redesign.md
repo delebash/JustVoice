@@ -237,6 +237,61 @@ channel, age/accent/tone (they don't), misses VoxCPM2 / Turbo / Nano cloning and
 says clones take no direction (VoxCPM2 does), "Chatterbox has no speed control" (server
 time-stretch since gap 8).
 
+### 2.3 What each engine and model accepts, and what the app sends
+
+(Read-only research pass, 2026-10-03, on the dev build — every feature on. slot =
+`engines/audiocpp/slot.py`, cap = `engines/capability_details.py`, rc = `render_core.py`.)
+
+**How capabilities are keyed.** `CAPABILITY_DETAILS` is keyed by engine id (kokoro, kitten,
+pocket, chatterbox, qwen3, voxcpm2) or family id (chatterbox-multilingual / -turbo / -nano,
+qwen3-cv / -base / -vd) — never by size or precision; `lookup()` cuts `-suffix`es (`cap:435-455`;
+latent bug: `qwen3-asr-…` walks down to the Qwen3-TTS row). **A stored voice carries an engine
+but no model; a persona carries neither.** Tags, knobs and the Generate page follow whichever
+model is LOADED, not the voice being spoken (`rc:287-309`, `GenerateView.vue:123`) — a voice
+cloned for Turbo, rendered while Multilingual is loaded, loses its tags and gets other knobs. The
+Qwen3 mixed-model check runs for chapter renders only.
+
+**Shared plumbing (every engine)**: speed native on Kokoro/Kitten, a server time-stretch 0.5–2.0
+on the rest; pitch ±12 st and gain −24…+12 dB on the server; pauses at chapter joins only;
+**seed dropped in chapter renders** (ChapterLine has none); **language sent by no render** (only
+auditions, direct-mode lines, MCP); instruct composed for every engine (design description +
+persona/preset instruct + emotion + line direction) and then used or dropped per model; emotion
+becomes a `[tag]` only on Turbo/Nano; inline tags kept only where the rendering model lists them;
+respellings everywhere, IPA only on Kokoro.
+
+**Per model**
+| Model | Voices it can speak | Direction (words) | Word tags | Knobs it reads (besides pace/pitch/gain, done on the server) | Language |
+|---|---|---|---|---|---|
+| Kokoro 82M | 54 presets (9 languages); blends (4 strategies, `voice_pack`) | — | stripped | speed (native), seed (repeatable) | from the code or the voice; ja needs the dictionary; IPA lexicon |
+| Kitten Mini | 8 English presets | — | stripped | speed (native); seed sent but not repeatable | English |
+| Pocket (en/de/it/pt/es models) | 20 presets; clone from the clip alone (Kyutai terms) | — | stripped | seed (audio.cpp also reads temperature and more — not exposed) | one model per language; another language refused |
+| Qwen3 CustomVoice 1.7B / 0.6B | 9 presets; clips refused | ✓ `options.instruct` | stripped | temperature, top_k, top_p, repetition penalty, seed | 10, sent as names, default English |
+| Qwen3 Base 1.7B / 0.6B | clones only — transcript or "Skip the words"; frozen designed voices | **dropped** | stripped | same as CustomVoice | same |
+| Qwen3 VoiceDesign 1.7B | from a description (clip ignored) | merged INTO the description — **changes who speaks, not just how** | stripped | same | same |
+| Chatterbox Multilingual v2 | clones only (no transcript) | — | stripped (would be read as words) | temperature, exaggeration, CFG, repetition penalty, top_p, seed | 23; "en" uses the English model |
+| Chatterbox Turbo / Nano | clones only, clip > 5 s | — | **19 kept**: emotion angry, fear, happy, sarcastic, surprised, crying, whispering; register narration, dramatic, advertisement; non-verbal cough, laugh, chuckle, sigh, gasp, groan, sniff, clear throat, shush | temperature, top_p, top_k, repetition penalty, seed (no exaggeration / CFG) | English only |
+| VoxCPM2 | clones (+ transcript) or a description | ✓ as a `(…)` prefix, **on clones too** | stripped; `()` in the text become dashes | CFG, steps, seed (no temperature) | 30 listed, none sent |
+
+`Delivery.emotion` on Turbo/Nano: neutral → nothing; happy, angry, sarcastic → same tag; fearful →
+fear; whispered → whispering; sad, shouted, contemptuous can't be expressed.
+
+**Mismatches**
+- Advertised but dropped: seed in chapter renders (all engines); Generate's Temperature for
+  Kokoro, Kitten, Pocket, VoxCPM2 (and its 0–1 range vs the knobs' 0.05–2.0; Qwen refuses 0);
+  Generate's Seed for Kitten; emotion composed for every engine but dropped on Qwen3 Base, Kokoro,
+  Kitten, Pocket, Chatterbox Multilingual — nothing gates a persona's emotion; language on every
+  render (Qwen3 "English", Chatterbox "en" → its English model, Pocket's refusal never fires,
+  Kokoro blends always en-us); engine override; persona default delivery has no editor (and a
+  `pause_after_ms` key that isn't a Delivery field); the speed range (3.0 vs 2.0 vs the 2.0 clamp);
+  import has no "Skip the words".
+- Sent but not advertised: Kitten's seed; an `engine.instruct` fallback; VoxCPM2's parenthesis
+  rewrite; Qwen3 VoiceDesign's identity changing per line; Generate's temperature default (0.7)
+  differing from the models' (0.9 Qwen3, 0.8 Chatterbox).
+- Stale: Multilingual "19 languages" (23); Kokoro's variant languages omit ja; "49 voices / eight
+  languages" (54 / nine); "no min-p" (audio.cpp reads min_p).
+- Read by audio.cpp, not exposed (candidates): Chatterbox min_p, s3gen_cfg_rate; Qwen3 subtalker
+  sampling; Pocket temperature and more; VoxCPM2 min/max tokens.
+
 ### 2.4 Earlier rulings, and whether this check was run before
 
 (Read-only research pass over TASKS, design-decisions, IDEAS and the plans, 2026-10-03. User
@@ -335,9 +390,195 @@ today's app.
 
 ## 3. The design passes
 
-To come — each pass takes a new angle (the items; their interactions; my own claims; the checker;
-the neighbours not touched).
+### 3.0 The root problem, in one line
+
+A persona's options depend on the **model** that speaks it, and today nothing records that model:
+a voice records only its engine, a persona records neither, and every option follows whichever
+model happens to be loaded (§2.3). The mock never draws this either — its editor exists only for a
+Qwen3 CustomVoice persona (§2.1). So the redesign must make the model part of the persona, and
+build every card from that model's capabilities.
+
+### 3.1 Pass 1 — the items: what a persona is, and what each card shows per model
+
+**A persona = a voice + the model that speaks it + how it speaks.** (The 09-29 ruling: "a persona
+is the actual spoken voice adjusted with pitch speed and other settings".)
+
+**Which models can speak which voice** (from §2.2 / §2.3):
+| Voice kind | Models that can speak it |
+|---|---|
+| Built-in (preset) | exactly one: Kokoro's 54 → Kokoro; Kitten's 8 → Kitten; Pocket's 20 → the Pocket model of that language; Qwen3's 9 → Qwen3 CustomVoice (1.7B or 0.6B) |
+| Blended | Kokoro only |
+| Cloned / Imported (a clip) | any cloning model: Chatterbox Turbo, Nano (English, clip > 5 s), Chatterbox Multilingual, Qwen3 Base (needs the transcript or "Skip the words"), VoxCPM2, Pocket (Kyutai's terms) |
+| Designed, frozen (saved with its clip) | as a clip — any cloning model (today: Qwen3 Base) |
+| Designed, dynamic (a description, no clip) | Qwen3 VoiceDesign or VoxCPM2 |
+
+So the model is a real choice only for clips (cloned, imported, frozen designed) and dynamic
+designs; for built-in voices and blends it follows from the voice.
+
+**How each model can be directed** — one vocabulary for every screen (the mock has three):
+- **Written direction** — Qwen3 CustomVoice; VoxCPM2 (clones and designs); Qwen3 VoiceDesign, where
+  the words merge into the description, so **they change who speaks, not just how**.
+- **Tags** — Chatterbox Turbo and Nano: 7 emotions, 3 registers, 9 non-verbal sounds.
+- **Numbers only** — Kokoro, Kitten, Pocket, Chatterbox Multilingual, Qwen3 Base.
+
+**The editor's cards, built from the chosen model:**
+1. **Voice** — kind (Built-in · Cloned · Designed · Blended; "Trained LoRA" gone), then the voice
+   (every dropdown shows the voice's gender, per the 09-30 to-do). ▶ Raw.
+2. **Model** (new; the mock has none) — every model that can speak this voice, installed or not,
+   each with one line of what it gives ("Chatterbox Turbo — English · tags", "Chatterbox
+   Multilingual — 23 languages · exaggeration", "VoxCPM2 — written direction · 30 languages",
+   "Qwen3 Base — 10 languages · numbers only"). One possible model shows as text, not a choice. A
+   model the voice can't use shows why ("Turbo needs a clip longer than 5 s — this one is 4.2 s";
+   "Qwen3 Base needs the transcript or Skip the words"). The persona pins the model **family**;
+   its size and precision (1.7B / 0.6B, 8-bit / 16-bit) stay the engine's choice on AI Settings.
+   This replaces "Engine override", which nothing reads.
+3. **How it speaks** — Pace, Pitch, Gain, Pause before / after: done on the server, so every model
+   takes them and they survive a change of voice or model. Pace notes "time-stretched" on models
+   that don't pace themselves.
+4. **Direction** — the model's own kind:
+   - written-direction models: **Standing delivery** (the prose) + **Emotion**;
+   - Turbo / Nano: **Emotion** as its tag (and Register — see Q3);
+   - numbers-only models: the card is shown disabled with its reason ("Chatterbox Multilingual takes
+     no direction — use the numbers, or pick a model that does"), values kept.
+   - Qwen3 VoiceDesign (dynamic design): the card warns that these words change the voice itself.
+5. **Sampling** — exactly the model's own knobs, its own defaults and ranges: Qwen3 temperature,
+   top k, top p, repetition penalty; Chatterbox Multilingual temperature, exaggeration, CFG,
+   repetition penalty, top p; Turbo / Nano temperature, top k, top p, repetition penalty; VoxCPM2
+   CFG, steps; Kokoro / Kitten / Pocket none. **Seed** where the model repeats with it (not Kitten,
+   shown disabled with why).
+6. **Language** (new in the editor; the field exists and is dead) — limited to the model's
+   languages, defaulting from the voice; fixed and shown as text where the voice decides (Kokoro,
+   Pocket); Japanese notes the dictionary when it isn't installed.
+7. **Words** — the persona's lexicon (kept by the 09-29 ruling; the mock has none) and the note.
+8. **Effects** — the chain, as today.
+9. **Hear it** — the persona's own line through the same path a chapter renders.
+10. **This model** (the mock's "This engine") — languages, direction kind, clone, seed, with
+    "Compare models →".
+11. **Save** — Save, Save as new (a new persona), **Revert** and an unsaved mark (the mock has
+    neither).
+
+**The Personas index** (`_s9`), columns as drawn: ▶ (plays the persona, not the bare voice) ·
+Persona · Built on (voice + kind) · Model · Can be directed ("✓ written direction" / "✓ tags" /
+"✗ numbers only") · Shaped · Used by · ⋯ (Rename · Merge into… · Delete). Filters: engine/model,
+in use. An empty state.
+
+### 3.2 Pass 2 — interactions
+
+1. **Changing the model or voice.** Host-side values (pace, pitch, gain, pauses, effects, lexicon)
+   carry over. Model-specific values (sampling, exaggeration) are **kept per model**, so switching
+   back restores them and Turbo's top k never lands on Qwen3. Values the new model can't take stay,
+   shown disabled with the reason. The mock's banner generalises: "Changing this makes June's 61
+   lines stale. 18 carry a written direction — Chatterbox Turbo won't perform them."
+2. **Four render paths, four behaviours** (§2.2). The redesign promises that everything on the
+   persona reaches the audio, which is true only if **one resolver** turns a persona + a line into
+   a request for every path: Studio Render, a single line's re-render, the game export, Generate
+   with a persona, Cast's ▶, and the editor's Hear it. Otherwise what you hear in the editor isn't
+   what ships (already a finding: "the chapter you audition is paced differently from the one that
+   ships").
+3. **One engine resident at a time.** Pinning models means a book may need several (Turbo for one
+   persona, Qwen3 CustomVoice for another). Today a mixed Qwen3 cast is refused before render. With
+   pinned models, render must group lines by model and swap, instead of refusing. That is Render's
+   job (Slice 4), but the persona design creates the need.
+4. **The scene** stacks words and effects, never numbers or emotion (mock). Its words reach only
+   written-direction models — the mock's warning stays, computed from each persona's model.
+5. **The per-line override** (Slice 4): numbers in the closed hatch for every model; words only for
+   written-direction models; tags only for Turbo / Nano. The persona's model decides what a line
+   can carry, so Slice 4 builds on this.
+6. **Language end to end.** The persona's language must reach the request on every path (dead
+   today: Qwen3 is always "English", Chatterbox always "en" → its English model, Pocket's language
+   check never fires, Kokoro blends always en-us).
+7. **Seed end to end.** The persona's seed must reach the line's request (dead in chapter renders).
+8. **Designed voices.** Dynamic: the description is the identity; the seed keeps it steady (the
+   open ear test G); line direction reshapes it on Qwen3 VoiceDesign — said plainly. Frozen: a clip,
+   so any cloning model.
+9. **Cast.** ▶ should play the persona (today the bare voice). The persona card and the "directed"
+   tag read the persona's model, not "Engine override".
+10. **Export / import.** Project export writes no delivery or effects for personas today; the model
+    pin, language and per-model values must travel too. JustWrite's character sheet still fills the
+    speaker / note, never the delivery.
+11. **Scale.** A game has 50–500 personas: the index needs search and filters by model; the editor
+    must stay one screen.
+
+### 3.3 Pass 3 — my own claims, checked in the code (2026-10-03)
+
+- Persona `engine_override` has no reader in any render path (grep: only settings-level
+  `engine_overrides`, a different thing). ✓
+- Scene-mode `ChapterLine` carries no language and no seed (`render_chapter_api.py:256-266`). ✓
+- The slot defaults Qwen3 to "English" and Chatterbox to "en" (`slot.py:506, 573`). ✓
+- `PersonaStore.update` skips `None` (`storage/personas.py:225-233`) — clearing a field does
+  nothing. ✓
+- `VoiceRecord` has `engine` and no model field (`models.py:500`). ✓
+- Tags follow the loaded or default model, not the voice (`render_core.py:287-300`). ✓
+- Not checked by me (agent-reported, plausible, to confirm in the build plan): VoxCPM2 sends no
+  language; Kitten's seed doesn't repeat; Pocket reads temperature internally.
+
+### 3.4 Pass 4 — the checker: is every model and voice kind covered?
+
+Models: Kokoro, Kitten, Pocket (en/de/it/pt/es), Qwen3 CustomVoice 1.7B / 0.6B, Qwen3 Base 1.7B /
+0.6B, Qwen3 VoiceDesign 1.7B, Chatterbox Multilingual, Turbo, Nano, VoxCPM2 — each has a row in
+3.1's tables. Voice kinds: built-in, blended, cloned, imported, designed frozen, designed dynamic —
+each has a row. Direction kinds: written, tags, numbers — every model sits in exactly one (Qwen3
+VoiceDesign in "written", with its warning). Speech recognition is not a persona model. ✓
+
+### 3.5 Pass 5 — the neighbours not touched
+
+- **Voices page**: if clips may be spoken by any cloning model (Q2), its "engine" for a clone becomes
+  "made with"; the import's "Model that speaks as this clip" moves to the persona.
+- **Generate** ignores a persona's voice today; its fate is still open (absorbed or deleted).
+- **MCP speak** sends a language but no persona instruct.
+- **Effects menu**: Gain and Pitch shift duplicate the persona's Gain and Pitch (Q8).
+- **docs/personas.md / docs/voices.md** promise things the code doesn't do (§2.2) — rewritten with
+  the build.
+- **The persona API's PUT** wipes omitted fields and can't clear text — replaced by a patch with
+  explicit clears.
+
+### 3.6 Pass 6 — a fresh angle: the four workflows the app serves
+
+- A narrator on Kokoro: built-in voice → one model → numbers only. The editor shows How it speaks,
+  Language (fixed), Words, Effects; Direction disabled with its reason. ✓
+- An expressive character: Qwen3 CustomVoice (prose) or a clone on Turbo (tags) or VoxCPM2 (prose on
+  a clone). The Model card is where that choice is made and explained. ✓
+- A Spanish clone: Multilingual or VoxCPM2 (Turbo is English only — shown with why). ✓
+- A designed creature: dynamic (VoiceDesign / VoxCPM2) or frozen (any cloning model). ✓
+- 300 game NPCs: index filters, one-screen editor. ✓
+This pass found nothing new beyond 3.1–3.5. **Converged.**
 
 ## 4. Questions for the user
 
-To come.
+Each with a recommendation; nothing here is decided until answered.
+
+1. **Model pin.** The persona picks the model family that speaks its voice (only the ones that
+   can); size and precision stay on AI Settings; "Engine override" is deleted. *Rec: yes.*
+2. **Clips aren't tied to one engine.** A cloned, imported or frozen designed voice can be spoken by
+   any cloning model the persona picks; the Voices page shows what it was "made with". *Rec: yes —
+   the same timbre in English with tags (Turbo), in Spanish (Multilingual), or with written direction
+   (VoxCPM2).*
+3. **Emotion on Turbo.** The ruled cross-engine Emotion (9 words; on Turbo only happy, angry,
+   sarcastic, fearful → fear, whispered → whispering reach it) — or Turbo's own 7 + Register on a
+   Turbo persona. *Rec: keep the ruled 9 on the persona (survives a model change); Turbo's own extras
+   (surprised, crying, registers, non-verbal sounds) live on the line, in Slice 4's tags.*
+4. **Language.** The persona's language, limited to its model's, defaulting from the voice, sent on
+   every render. *Rec: yes.*
+5. **Per-model values** (sampling, exaggeration) kept per model so switching back restores them.
+   *Rec: yes.*
+6. **Unsupported controls** shown disabled with the reason, values kept (the mock's own rule).
+   *Rec: yes.*
+7. **One resolver** for every path, so the editor's Hear it, Cast's ▶, Studio Render, a line's
+   re-render, the game export and Generate-with-a-persona produce the same audio. *Rec: yes — part
+   of this redesign, since "everything reaches the audio" is its promise.*
+8. **Duplicates.** Drop Gain and Pitch shift from the effects menu (the persona's How it speaks is
+   the one place). *Rec: yes.*
+9. **The voice tuning page** (08-15: "i do want a voice tuning page…") vs the 09-29 persona that
+   holds pitch and speed. *Rec: the persona is the one place to tune; the "derived voice" stays an
+   idea.* Your call.
+10. **Delete** uncasts (built 09-29), not the mock's "refuses while she is cast". *Rec: keep
+    uncasting.*
+11. **Merge into…** moves the speakers cast to this persona onto the target, then deletes this one
+    (lines point at speakers now). *Rec: yes.*
+12. **The mock's stale parts** — "Trained LoRA", "Train a LoRA", LuxTTS out; Kitten, Pocket, VoxCPM2
+    in. *Rec: yes.*
+13. **Still open from before, not assumed here:** can a persona vary by scene ("i dont know yet");
+    Generate absorbed or deleted.
+
+After the answers: the build plan, with the blast-radius table (every caller of the persona model,
+the resolver's four paths, the API, Cast, Voices, export), then the build.
