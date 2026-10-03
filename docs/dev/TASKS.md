@@ -845,8 +845,14 @@ DECIDED: 2026-10-03 — "your rec on all go, commit and push" on the three as sh
         runtime. Chatterbox's kanji readings would then come from a different dictionary than
         the original's, so they'd be close but not identical." · 3 commit the JustVoice changes
         and the fork's gap 7 code, and push.
-OPEN:   gap 7 Q1/Q2 build → its app side; anything else, locally → ONE release with everything
-        (the feature table points at its tag) →
+        Committed + pushed 2026-10-03: JV fbf6823 (decisions 2–5, the gap 7 plan); our audio.cpp
+        fc55e1e6 (he, ru, zh). Found while building the decisions (plan §7): Q1's "no new files" was
+        wrong — both jieba copies read a dictionary from their own model's package, Chatterbox's
+        has none; MeCab 0.996 does not build on today's MSVC (three fixes in, still failing).
+        Asked: where Chinese segmentation's dictionary comes from; which MeCab (fork / fugashi's
+        prebuilt BSD DLL / patch 0.996); where the Japanese dictionary download lives in the UI.
+OPEN:   those three answers → Japanese and segmentation → the app side of gap 7; anything else,
+        locally → ONE release with everything (the feature table points at its tag) →
         the app: an installed older build keeps working and the runtime row offers "Update to
         v0.9.0-jv.1"; the pin moves to our release; VoxCPM2's row gets "and its transcript" and
         the transcript field back.

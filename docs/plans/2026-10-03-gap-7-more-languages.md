@@ -154,3 +154,31 @@ Research by a sub-agent; the key claims were re-checked in the code (marked ✓)
 
 **Waiting:** Q1 (segmentation), Q2 (Japanese), and the app side (the language list, the feature
 gate on the one release, docs) once those are answered.
+
+## 7. Decided, and what that turned up (2026-10-03)
+
+"your rec on all go, commit and push":
+- Q1: jieba.
+- Q2: one optional Japanese dictionary download (unidic-lite) shared by Kokoro and Chatterbox,
+  plus `libmecab.dll` shipped in our runtime.
+- Committed: our audio.cpp `fc55e1e6` (he, ru, zh). JustVoice `fbf6823`.
+
+**Q1's premise was wrong.** My recommendation said "no new files". But both jieba
+implementations in our copy read a dictionary embedded in their own model's package:
+- Kokoro's `g2p/zh.json` holds the frequency table and the HMM tables
+  (`g2p_multilingual.cpp:375-460`);
+- ZipVoice's `JiebaSegmenter(dict_path, …)` reads a jieba dict file from its package
+  (`zipvoice/jieba_segmenter.cpp:71-76`).
+
+The Chatterbox GGUF carries no jieba dictionary, so word splitting for Chinese needs one from
+somewhere. Asked again, with the options.
+
+**MeCab does not build as-is.** taku910/mecab master (0.996, 2013) fails under today's MSVC with
+the VS 2022 toolset:
+1. `WPATH_FORCE` is undefined on MSVC (`common.h`); patched.
+2. An ambiguous `operator<<` for `size_t` (`feature_index.cpp:356`); patched.
+3. `std::binary_function` is missing (`dictionary.cpp:68`), still with `/std:c++14
+   /D_HAS_AUTO_PTR_ETC=1`. Stopped there.
+
+Which MeCab we build, or ship prebuilt, is asked: a maintained fork, the prebuilt BSD
+`libmecab.dll` from fugashi's Windows wheel, or patching 0.996 through.
