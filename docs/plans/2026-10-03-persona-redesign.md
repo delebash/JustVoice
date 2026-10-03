@@ -139,6 +139,104 @@ Citations are to the source stashes (`build_mock.py` assembles them into `workbe
   (115 lines in 2 projects vs 61 lines, 1 speaker), Mara's clone missing from Voices, design
   commentary left in `_s8:3-7, 22-24`.
 
+### 2.2 The code today — what a persona is and what reaches the audio
+
+(Read-only research pass, 2026-10-03; file:line relative to the repo. The claims the design leans
+on are re-checked in §3's "my own claims" pass.)
+
+**The model** (`models.py:573-613`; table `personas`, `database/models.py:83-129`): id, name,
+voice_id (plain string, no FK), language (default "en"), avatar_path, **voice_instruct** ("the ONE
+field that changes the audio"), note (replaced `personality` 2026-09-29; never reaches an engine),
+**default_delivery** (an untyped dict, not validated against `Delivery`), effects_chain,
+lexicon_id, **engine_override**, llm_rewrite_enabled / llm_model (legacy; accepted, never stored),
+imported_from / imported_id, timestamps. `Delivery` (`models.py:1199-1224`): speed, emotion (9
+values), pitch, pause_before, pause_after, gain_db, instruct, temperature, seed, and `engine: dict`
+for engine-private knobs (style_prompt deleted 2026-08-17). `persona_channels` exists with an API
+and a renderer service, used by nothing. `RenderPreset.voice_id` points at personas, read by
+nothing.
+
+**The API** (`api/personas_api.py`): list, usage, usage-detail, create, get, put, delete (speakers
+SET NULL), compose and rewrite (need a note). Validation: name unique only — nothing checks the
+voice exists, voice/engine compatibility, engine_override, or the delivery shape. **PUT trap:**
+`PersonaStore.update` drops `None` values (`storage/personas.py:225-233`), so omitting
+default_delivery / effects_chain wipes them, omitting language resets it to "en", and sending
+`null` for a text field leaves it unchanged.
+
+**The editor** (`src/views/PersonasView.vue`): editable — name, language (free text), note, avatar
+path (shown nowhere), voice (every voice of every engine, no compatibility filter), engine
+override (every engine), lexicon, spoken delivery (`voice_instruct`), effects. **Default delivery
+can't be set at all**: "+ Edit" only toasts "Tune … on the Generate tab, then save as the persona
+default" (`:436-442`), and no such save exists; `VoiceParamsModal.vue` is orphaned. **Bug:
+clearing a field does nothing** — `x || null` (`:321-327`) meets the store's skip-None, so emptying
+Spoken delivery, Note, Engine override or Lexicon keeps the old value while it toasts "Persona
+saved". The ✓/✗ "takes direction" verdict (`:196-215`) is wrong twice: a VoxCPM2 clone gets ✗
+(slot sends instruct on clones, `slot.py:613-629`); a Qwen3 designed voice with a kept clip gets ✓
+(it renders on Base, which drops instruct, `slot.py:520-533`). Stale copy: "Slice 7 builds the
+editor", "Qwen3 is the only engine that takes instructions".
+
+**Four render paths, four different persona behaviours**
+- **A · Studio Render** (`render_chapter_api.py`; also M4B export, ACX QC): persona via block →
+  speaker; delivery = merge(preset > request > persona `default_delivery`) (`delivery_merge.py
+  :131-169`; the documented "Tier 1 engine defaults" is not implemented); instruct = designed-voice
+  description (clip-less only) + (delivery.instruct OR voice_instruct) + emotion + block.direction,
+  joined ". " (`delivery_merge.py:34-57`); effects persona then preset; lexicons book then persona;
+  **no language, no seed** (`ChapterLine`, `:256-266`).
+- **B · single-block render** (Lines ↻, Re-render changed, game voiceline export —
+  `export_voicelines.py:130-170`): raw `default_delivery` (no merge, flat engine knobs dropped);
+  **drops voice_instruct, direction, emotion→instruct and the design description** — a clip-less
+  designed voice fails outright (`slot.py:516-518, 619-621`); writes the same cache scope as A
+  with a different delivery.
+- **C · old Chapters page regenerate** (`ChapterView.vue:304-381`): the voice and the project
+  lexicon only; the audio is discarded, yet it toasts "regenerated".
+- **D · Generate** (`generate_api.py`; also MCP speak and the Voices audition): **ignores the
+  persona's voice** (the voice is Generate's own pick); merges default_delivery; instruct without
+  line direction; no Turbo emotion tag.
+
+**What each persona field reaches** (slot = `to_speech_request`, `slot.py:462-639`)
+| Field | Reaches |
+|---|---|
+| voice | A, B, C, MCP — not Generate. Clip → `audio_prompt_path` + `ref_text` + `xvector_only`; blend → `voice_vector` (`render_core.py:230-266`) |
+| voice_instruct | A and D only. Qwen3 CustomVoice `options.instruct`; Qwen3 VoiceDesign after the description; VoxCPM2 `(…)` prefix on clones AND designs. Dropped: Qwen3 Base, Kokoro, Kitten, Pocket, Chatterbox, Turbo/Nano |
+| speed | native on Kokoro/Kitten; every other engine a server time-stretch 0.5–2.0 (`render_core.py:410-438`) — A, B, D |
+| pitch | server pitch-shift ±12 st on every engine — A, B, D |
+| gain_db | server gain −24…+12 on every engine — A, B, D |
+| pause_before / after | A only, at join time (`render_core.py:926-933`) |
+| temperature | Qwen3, Chatterbox, Turbo; ignored by Kokoro, Kitten, Pocket, VoxCPM2 |
+| emotion | folded into instruct (A, D) → Qwen3 CustomVoice / VoiceDesign, VoxCPM2; a Turbo `[tag]` (A, B). **No UI sets emotion on a persona or a line** — only Generate's picker |
+| seed | only Generate's managed path; dead in A and B |
+| engine knobs | Qwen3 talker_top_k / top_p / repetition_penalty / temperature; Chatterbox exaggeration, cfg_weight, repetition_penalty, top_p; Turbo repetition_penalty, top_p, top_k; VoxCPM2 cfg_value, inference_timesteps — A and D |
+| effects | A, B, D |
+| lexicon | A and B server-side; Generate via the client; not C or MCP. `Lexicon.persona_id` never read |
+| **language** | **dead in every render path but MCP speak** — Qwen3 is told "English" (`slot.py:506`), Chatterbox "en" (`:573`); the voice's language isn't passed either (only auditions read it) |
+| **engine_override** | **dead** — the engine always comes from the voice (`render_core.py:53-76`); Cast even shows it as the engine (`StudioCast.vue:68`) |
+| note | Compose / Rewrite / Smart-assign only |
+Project export writes no default_delivery or effects_chain for personas (`project_export_api.py
+:131-147`).
+
+**Voices** (`models.py:454-514`): kinds preset, cloned, designed, imported, blended ("lora"
+removed). A stored voice has engine (fixed at creation), source, name, language, gender,
+design_prompt, transcript, xvector_only, blend_recipe, embedding — no effects, channel, age, accent
+or tone. A designed voice saved from an audition is frozen (its preview becomes `ref.wav`); "clip
+wins" — a designed voice with a clip renders as a clone (`render_core.py:79-125`). The `Voice` DTO
+can't tell a kept-clip designed voice apart. The server never checks an engine can clone or design.
+Per engine: Kokoro presets + blends (blends only Kokoro, `voice_pack`); Qwen3 preset → CustomVoice,
+clip → Base (needs transcript or x-vector-only), clip-less design → VoiceDesign; Kitten presets
+(unknown → "Leo"); Pocket clip (terms) or preset (unknown → "alba"), line language must match the
+model; Chatterbox Multilingual clip required; Turbo / Nano clip required, English only; VoxCPM2 clip
+or instruct required. Only path A checks the loaded checkpoint matches the voices up front.
+
+**Cast** (`StudioCast.vue`): click a persona to cast, click again to uncast; new speakers auto-cast
+by unique name; Smart-assign; Clear cast; Add Narrator. "Pace, pitch, gain, delivery, effects — all
+of it lives there" (`:598-601`) — untrue today. ▶ plays the bare voice, not the persona. Its
+"directed" tag has the editor's wrong heuristic and reads engine_override.
+
+**Docs vs code**: `docs/personas.md` promises engine override works (dead), default delivery is
+settable (not), "everything reaches the synthesizer" (not on B/C, not language), "only Qwen3 reads
+it" (VoxCPM2 too), undo restores (cast isn't). `docs/voices.md` claims voices carry effects,
+channel, age/accent/tone (they don't), misses VoxCPM2 / Turbo / Nano cloning and VoxCPM2 design,
+says clones take no direction (VoxCPM2 does), "Chatterbox has no speed control" (server
+time-stretch since gap 8).
+
 ## 3. The design passes
 
 To come — each pass takes a new angle (the items; their interactions; my own claims; the checker;
