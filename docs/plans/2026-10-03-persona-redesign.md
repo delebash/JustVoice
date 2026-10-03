@@ -237,6 +237,102 @@ channel, age/accent/tone (they don't), misses VoxCPM2 / Turbo / Nano cloning and
 says clones take no direction (VoxCPM2 does), "Chatterbox has no speed control" (server
 time-stretch since gap 8).
 
+### 2.4 Earlier rulings, and whether this check was run before
+
+(Read-only research pass over TASKS, design-decisions, IDEAS and the plans, 2026-10-03. User
+quotes exact, typos kept.)
+
+**Was this check run before? Partly — on 2026-08-17, under premises that have since moved.**
+`2026-08-15-voice-workflow-redesign.md` §10 "where the knobs live" (`:2652-2792`) answered the
+user's question "…does persona get all the knobs and settings and you test it there then assign
+that persona, the knobs settings ect depend on engine, can the same persona speak in different
+voices like one sentence is cheerful next same person but angry…" with three layers (voice,
+persona, line): "the persona should hold only what survives a recast"; "engine-specific knobs
+belong to the casting"; `engine_override` flagged as "a persona reaching past its instrument"
+(`:2746-2748`). It was discussed, not built, and two calls were left open (§10.7: a
+`blocks.emotion` column; Generate absorbed or deleted). Since then: the 2026-09-29 split made the
+persona the finished spoken voice including engine and pitch; the audio.cpp switch replaced the
+engines (Kitten, Pocket, VoxCPM2 added; LuxTTS gone; Turbo / Nano back); training was removed;
+speed became host-side on every engine (gap 8); VoxCPM2 clones take direction. TASKS' engine
+override finding (2026-10-02) defers to "the model pin the persona review will propose" — **that
+review exists nowhere in writing.** So the engine-and-model question was never designed against
+today's app.
+
+**The rulings that bind the redesign** (chronological; full citations in the research notes)
+- 2026-06 (archived, still true): "No automatic LLM rewrite at render. Manuscript words are
+  sacred." (`design-decisions.md:119-129`).
+- 2026-08-15: personas are the reusable entity ("i think i like havibng it as a persona for reuse
+  as a saved persona"); Kokoro never clones ("kokoro does not do cloning"); English clones go to
+  Turbo, other languages to Multilingual ("language branch might be better"); "dont take easy way
+  out just becuase we have something coded". Field split built: `voice_instruct` is the only text
+  that reaches the synth; `bio` deleted. **Two binding constraints:** "but i do want a voice
+  tuning page this is part of creating a new voice for a persona to consume" (do not remove voice
+  tuning from the voice); "damint we want a voice designer we have qwen and other tts that do that
+  why would you drop it" (keep the Voice Designer). The cast surface must scale to 50–500 game
+  NPCs ("jv is not just pipeline for book … that is why we have project types").
+- 2026-08-15/16 (walking the mock): tuning in two places, not four ("again i am confused we have
+  tunning on 4 different places chapter cast workbench persona, why" → "yes"); the line's numbers
+  collapse into a closed "⚙ Override the numbers for this line" hatch, direction (words) is the
+  per-line tool; never "character"; Script does one thing only.
+- 2026-08-17: style_prompt deleted; emotion is the cross-engine direction control ("go and wire
+  emotion"); NOT mapping `sad`→`[crying]`; the composition order is fixed: persona
+  `voice_instruct` → emotion → line direction, most specific last, an explicit preset / request
+  instruct taking the base slot. The persona-vs-voice argument (§8.22): a persona earns its place
+  by surviving a recast. **Open since then:** "can a character's persona vary by scene, or is it
+  one per character?" — "i dont know yet" ("Nothing may assume either answer").
+- 2026-08-19/21: voice acquisition — Cloned · Designed · Imported · Blended (· Trained, now gone),
+  "NOT a Preset tab"; blend strategies reinstated ("no it wasnt you decided that…"), Kokoro only;
+  imports pick "Model that speaks as this clip".
+- 2026-08-22: designed voices "same as alexandria" — frozen (Designer → save → clone) and dynamic
+  (per-line design) both kept; clip wins; a clip-less design composes its description FIRST, then
+  `voice_instruct`, emotion, line direction; a mixed Qwen3-variant cast is refused before render.
+- 2026-09-27: presets die ("2 presets die"; NOT "Render presets, in any form") — the excision
+  (Slice 5) and removing the preset delivery tier (item K, which still wins the merge) have no go.
+- 2026-09-29: no built-in personas; **the split** — "a voice is all tied to a persona you set voice
+  pitch engine in persona … a persona is the actual spoken voice adjusted with pitch speed and
+  other settings"; "i think persona is the single point for an actual spoken voice that is then
+  assigned to cast"; "the mock already has it correct, persona on right, cast on left assign cast a
+  persona". Persona = voice + engine + speed, pitch, gain, direction, effects, lexicon, note;
+  speaker = a person in one book; one persona plays many speakers; render goes line → speaker →
+  persona → voice. Persona names unique across the library. Unknown `[word]` tags are dropped at
+  render.
+- 2026-09-30: book lexicon first, then the persona's; gender and pronouns with this redesign —
+  personas get NO gender field, speakers get Pronouns.
+- 2026-10-01/02: the four persona findings open (language, seed, engine override, unsettable
+  pace/pitch/gain); training removed; speed on every engine (gap 8).
+- 2026-10-03: "Skip the words" stored on the voice; Turbo / Nano clone again; personas before
+  Slice 4; the whole redesign per the mock.
+
+**Conflicts a redesign must not inherit silently**
+1. `2026-08-17-voice-model.md` claims to win over the redesign doc, but no user approval of it is
+   recorded and several of its "decided" items contradict TASKS or the code (emotion "deleted" —
+   it is wired; per-scene "not a question" — still open; "knobs all on the persona" vs the
+   unrevoked "voice tuning page" constraint, which the 09-29 words partly answer — **ask**).
+2. "No per-line voice override" was proposed, never ruled.
+3. "A cast row IS a persona" is void since the split.
+4. The mock vs built rulings: no lexicon / note / language field in `_s7`; "Trained LoRA"; delete
+   "refuses while she is cast" (built: delete uncasts); "Merge into… her lines move across"
+   (lines point at speakers now).
+5. Moved facts: speed is host-side; VoxCPM2 clones take direction; training gone; Kitten, Pocket,
+   VoxCPM2 added; Qwen3 CustomVoice 0.6B takes instruct in audio.cpp (not checked by ear).
+
+**Open questions on record that touch personas**
+1. The design check itself (2026-10-03).
+2. Can a persona vary by scene? ("i dont know yet")
+3. Slice 4 D2 / D3 / D6: "Spoken by" per line; where the per-line number override is stored; the
+   scene layer vs presets.
+4. Language: which wins — persona, voice or book?
+5. Seed: resolve the delivery's seed into the line's seed.
+6. Engine override: remove it, or replace it with a model pin (the review never written).
+7. Frozen designed voices still say "✓ takes direction" — expose `has_ref_clip`?
+8. A `blocks.emotion` column (per-line emotion is not built).
+9. Generate: absorbed or deleted?
+10. The workbench knob panel vs voice tuning on the voice ("argued, not ruled").
+11. Gender / pronouns: two checks, then a plan.
+12. Cast on Overview ("3 not sure"); lexicon previews and IPA; the designed-voice seed ear test;
+    auto variant swap; MCP speak and `voice_instruct`; "Copy a cast"; the 09-29 offered Cast
+    additions — none ruled.
+
 ## 3. The design passes
 
 To come — each pass takes a new angle (the items; their interactions; my own claims; the checker;
