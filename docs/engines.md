@@ -73,8 +73,9 @@ The runtime is pinned to one build of JustVoice's copy of audio.cpp — today
 transcript, and speech recognition's word times are right for audio at any
 sample rate. When a JustVoice update moves to a newer build, the build you have
 keeps working and the row offers **Update to** the new version. Clicking it
-downloads the new build and unloads whatever was loaded — load it again to use
-it. Your downloaded models stay.
+downloads the new build — the bar shows how far along it is — and unloads
+whatever was loaded; load it again to use it. The older build is then deleted
+(about 2 GB for a CUDA build); your downloaded models stay.
 
 **Two slots, at most two processes.** The runtime holds at most one speech model
 and one speech-recognition model at a time — the same two slots as before.

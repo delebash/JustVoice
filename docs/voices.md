@@ -116,7 +116,8 @@ appears for Qwen3 Base: it listens to your clip *while reading those
 words*, so a word-for-word transcript gives a truer copy. Qwen3 Base needs
 one of two things: the transcript, or the **Skip the words** checkbox, which
 clones from the voice's fingerprint without any words — faster to set up, less
-exact. With neither, ▶ Play stops and says so. VoxCPM2 shows the field too and
+exact. A voice saved with **Skip the words** keeps it, so its renders clone the
+same way. With neither, ▶ Play stops and says so. VoxCPM2 shows the field too and
 clones from the clip alone when it is empty. Chatterbox copies the sound alone,
 so that field doesn't appear there.
 

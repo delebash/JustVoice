@@ -804,7 +804,49 @@ BUILT:  2026-10-03 — the "—" fix: VoicesView sends a transcript only when ty
         commits). Fixed in faf1ee03; both runs cancelled, NOTHING PUBLISHED for jv.2/jv.3; dry run
         37123528985 of faf1ee03 (gaps 1–3 + the fix) on every platform. Asked: how to re-release
         (the pushed tags point at the broken commits).
-OPEN:   re-release →
+DECIDED: 2026-10-03 — "your rec on all go, start gap 7, no more ci runs for now, download and
+        install the correct cuda kit" on the recs as shown: re-release C — "Skip separate jv.2 and
+        jv.3 releases, finish the next gaps locally, then make one release with everything. The
+        app's feature table would then point at that single tag." · the running dry run "costs you
+        nothing to let it finish … I won't start any more." · 2 "Change the Qwen3 Base refusal to
+        say 'tick Skip the words', matching the checkbox's real label." · 3 "Store the x-vector
+        choice on a saved voice, so a Qwen3 Base voice saved from an x-vector audition can
+        render." · 4 "Show download progress on the runtime install … I'd find where the
+        download's byte count is dropped and report it to the bar, likely in the kit." · 5
+        "Delete the old 2 GB build after a successful update." · the CUDA toolkit installed here
+        so audio.cpp builds for the GPU locally (users never need it — the release carries the
+        CUDA runtime DLLs). Not covered: a dev-only override pointing the app at a local build
+        (offered as "if you want", not recommended) — asked if needed.
+BUILT:  2026-10-03, uncommitted (no commit named in that go) — 2 the refusal says "…or tick Skip
+        the words."; 3 `VoiceRecord.xvector_only` (JSON manifest field, default False — old voices
+        unaffected), set by a direct clone (`CloneVoiceRequest.xvector_only`, sent by VoicesView
+        when ticked) and by a saved audition, read by `voice_synth_fields` (render, Generate, row
+        preview); 4 the runtime install passes the kit's byte progress to the job (`on_bytes`
+        through `mgr.install` → `_install_audiocpp_runtime`) — unit-tested, not watched live; 5
+        `_remove_replaced_build` deletes the build an update replaced (only that backend's; the
+        release folder once empty; path-guarded under the runtime root) — and removed today's
+        leftover v0.9.0/cuda12 (2 GB; v0.9.0/vulkan kept, nothing replaced it). engines.md,
+        voices.md, whats-new. CUDA 12.4.1 toolkit installed here (nvcc, cudart, cuBLAS, cuFFT,
+        thrust, NVRTC; no driver — 610.88 stays), building with the VS 2022 toolset 14.44 that
+        VS 2026 already had, as CI does; card stays on the cuda12 build (Turing; CUDA 13 dropped
+        only pre-Turing — 12 vs 13 on this card is a measurable question, both builds in jv.1).
+        Gap 7 — plan + record docs/plans/2026-10-03-gap-7-more-languages.md: our audio.cpp
+        (uncommitted) adds he, ru, zh (Cangjie from the GGUF's own table); live on the local CUDA
+        build ru read back one word off, zh exact, he rendered (ear). Asked: Q1 Chinese word
+        segmentation (lean jieba, already in our copy), Q2 Japanese (lean one optional unidic-lite
+        download + libmecab.dll in our release, shared by Kokoro and Chatterbox).
+        Gap 1 GPU numbers (local CUDA build): Turbo q8 1.75 GB loaded / 2.3 GB peak / 2.9× real
+        time; f16 2.2 / 2.8 GB / 2.8×; Nano q8 1.05 / 1.6 GB / 4.8×; f16 1.3 / 1.6 GB / 4.7×.
+DECIDED: 2026-10-03 — "your rec on all go, commit and push" on the three as shown: 1 "Chinese word
+        breaks … My recommendation is to reuse the word splitter (jieba) already in our audio.cpp:
+        close to the original, no new files." · 2 "Japanese, for both Chatterbox and Kokoro's five
+        Japanese voices. My recommendation is one optional 'Japanese dictionary' download, about
+        250 MB, BSD-licensed, shared by both, plus a small library (libmecab.dll) shipped in our
+        runtime. Chatterbox's kanji readings would then come from a different dictionary than
+        the original's, so they'd be close but not identical." · 3 commit the JustVoice changes
+        and the fork's gap 7 code, and push.
+OPEN:   gap 7 Q1/Q2 build → its app side; anything else, locally → ONE release with everything
+        (the feature table points at its tag) →
         the app: an installed older build keeps working and the runtime row offers "Update to
         v0.9.0-jv.1"; the pin moves to our release; VoxCPM2's row gets "and its transcript" and
         the transcript field back.

@@ -81,13 +81,29 @@ def test_the_runtime_row_offers_the_update(tags, monkeypatch):
 
 
 @pytest.mark.parametrize("was, stops", [("v9-old", True), ("v9-new", False), (None, False)])
-def test_an_update_stops_the_old_processes_and_a_fresh_install_does_not(monkeypatch, was, stops):
+def test_an_update_stops_the_old_processes_and_a_fresh_install_does_not(monkeypatch, tmp_path, was, stops):
+    """An update also deletes the build it replaced (decided 2026-10-03) — only that one: the
+    older release's other backend keeps working until it is updated."""
     from justvoice.engines import manager as mgr_mod
     from justvoice.engines.audiocpp import espeak
 
+    old = tmp_path / "v9-old" / "cuda12"
+    other = tmp_path / "v9-old" / "vulkan"
+    for d in (old, other, tmp_path / "v9-new" / "cuda12"):
+        d.mkdir(parents=True)
+        (d / "audiocpp_server.exe").write_bytes(b"x")
+    monkeypatch.setattr(runtime, "_runtime_root", lambda: tmp_path)
     monkeypatch.setattr(release, "TAG", "v9-new")
     monkeypatch.setattr(runtime, "installed_tag", lambda backend=None: was)
-    monkeypatch.setattr(runtime, "install", lambda **kw: Path("x"))
+    monkeypatch.setattr(runtime, "installed_exe", lambda backend=None: (
+        tmp_path / (was or "v9-new") / "cuda12" / "audiocpp_server.exe"))
+    bytes_seen: list = []
+
+    def fake_install(**kw):
+        kw["on_progress"](5, 10)
+        return Path("x")
+
+    monkeypatch.setattr(runtime, "install", fake_install)
     monkeypatch.setattr(espeak, "install", lambda root: (Path("a"), Path("b")))
     stopped: list = []
     monkeypatch.setattr(runtime, "shutdown_server", lambda placement=None: stopped.append("server"))
@@ -100,8 +116,11 @@ def test_an_update_stops_the_old_processes_and_a_fresh_install_does_not(monkeypa
             stopped.append(f"unload {kind}")
 
     monkeypatch.setattr(mgr_mod, "get_manager", lambda: _Mgr())
-    mgr_mod._install_audiocpp_runtime()
+    mgr_mod._install_audiocpp_runtime(on_bytes=lambda done, total: bytes_seen.append((done, total)))
     assert stopped == (["unload tts", "server"] if stops else [])
+    assert bytes_seen == [(5, 10)]                       # the job gets the download's bytes
+    assert old.exists() is not stops                     # the replaced build goes on an update
+    assert other.exists() and (tmp_path / "v9-new" / "cuda12").exists()
 
 
 def test_voxcpm2s_transcript_follows_the_pin(monkeypatch):
@@ -142,7 +161,7 @@ def test_qwen3_base_without_either_is_refused_by_name():
     from justvoice.engines.audiocpp.slot import AudioCppError, to_speech_request
 
     with pytest.raises(AudioCppError, match="Qwen3 Base needs what the clip says — type the transcript, or "
-                                            "tick x-vector only."):
+                                            "tick Skip the words."):
         to_speech_request(_qwen_base_row(), {"text": "Hi.", "audio_prompt_path": "C:/v/ref.wav"})
 
 
@@ -169,4 +188,39 @@ def test_a_cloned_audition_needs_no_transcript_and_sends_none(monkeypatch, tmp_p
     assert sent and "ref_text" not in sent[0] and sent[0]["audio_prompt_path"]
     saved = client.post(f"/v1/voices/preview/{r.json()['preview_id']}/save", json={"name": "No words"})
     assert saved.status_code in (200, 201), saved.text
-    assert not saved.json().get("transcript")
+    from justvoice.app_state import get_state
+
+    stored = get_state().voices.get(saved.json()["voice_id"])
+    assert stored is not None and stored.transcript is None
+
+
+def test_a_saved_voice_keeps_skip_the_words(monkeypatch, tmp_path):
+    """The x-vector choice is stored on the voice — from a direct clone and from a saved
+    audition — so its renders take the mode its audition did (decided 2026-10-03)."""
+    import base64
+
+    from fastapi.testclient import TestClient
+
+    from justvoice.app import create_app
+    from justvoice.app_state import get_state
+    from justvoice.engines import manager as mgr_mod
+    from justvoice.render_core import voice_synth_fields
+
+    client = TestClient(create_app(data_dir=tmp_path), raise_server_exceptions=False)
+    clip = base64.b64encode(b"RIFF....WAVE").decode()
+    r = client.post("/v1/voices/clone", json={"engine": "qwen3", "name": "Fingerprint", "ref_wav_b64": clip,
+                                              "xvector_only": True})
+    assert r.status_code == 201, r.text
+    state = get_state()
+    fields = voice_synth_fields(state, state.voices.get(r.json()["id"]))
+    assert fields["xvector_only"] is True and "ref_text" not in fields
+
+    mgr = mgr_mod.get_manager()
+    monkeypatch.setattr(mgr, "current_for", lambda kind: "qwen3")
+    monkeypatch.setattr(mgr, "synth", lambda engine_id, body: (bytes(4800), {"sample_rate": 24000, "channels": 1}))
+    r = client.post("/v1/voices/preview", json={"engine": "qwen3", "source": "cloned", "ref_wav_b64": clip,
+                                                "preview_text": "Hello.", "xvector_only": True})
+    assert r.status_code == 200, r.text
+    saved = client.post(f"/v1/voices/preview/{r.json()['preview_id']}/save", json={"name": "Audition"})
+    assert saved.status_code in (200, 201), saved.text
+    assert state.voices.get(saved.json()["voice_id"]).xvector_only is True

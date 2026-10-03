@@ -443,6 +443,7 @@ async def save_preview(
         language=payload.get("language") or "en",
         gender=body.gender,
         transcript=transcript,
+        xvector_only=bool(payload.get("xvector_only")) and entry.source in ("cloned", "imported"),
         design_prompt=payload.get("prompt"),
         sample_count=0,
         blend_recipe=(

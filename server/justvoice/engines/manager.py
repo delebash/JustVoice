@@ -321,6 +321,7 @@ def install_engine(
     manifest: EngineManifest,
     progress: Callable[[str, str | None], None] | None = None,
     cancel_check: Callable[[], bool] | None = None,
+    on_bytes: Callable[[int, int | None], None] | None = None,
 ) -> None:
     """Install an engine — which, since the 2026-10-01 switch, means installing the
     ONE speech runtime every engine shares (idempotent: a second engine finds it there).
@@ -333,12 +334,13 @@ def install_engine(
             f"{manifest.id} does not support {_current_os_label()} — "
             f"the manifest declares {', '.join(manifest.supported_oses)}."
         )
-    _install_audiocpp_runtime(progress, cancel_check)
+    _install_audiocpp_runtime(progress, cancel_check, on_bytes)
 
 
 def _install_audiocpp_runtime(
     progress: Callable[[str, str | None], None] | None = None,
     cancel_check: Callable[[], bool] | None = None,
+    on_bytes: Callable[[int, int | None], None] | None = None,
 ) -> None:
     """Install the ONE speech runtime every audio.cpp engine shares: the pinned server
     build for this machine (the kit's verified acquisition), then eSpeak NG for Kokoro.
@@ -350,6 +352,8 @@ def _install_audiocpp_runtime(
     last = {"mb": -1}
 
     def _prog(done: int, total: int | None) -> None:
+        if on_bytes is not None:
+            on_bytes(done, total)   # the job's bytes — the runtime row's bar (decided 2026-10-03)
         mb = done // (1024 * 1024)
         if mb // 16 != last["mb"]:
             last["mb"] = mb // 16
@@ -359,6 +363,7 @@ def _install_audiocpp_runtime(
     emit("downloading", "speech runtime (audio.cpp)")
     # An older pinned build still runs until this finishes (the runtime row's "Update to …").
     was = runtime.installed_tag()
+    replaced = runtime.installed_exe() if was is not None and was != release.TAG else None
     try:
         runtime.install(on_progress=_prog, cancel_check=cancel_check)
     except Exception as e:  # noqa: BLE001 — every failure is the install's answer
@@ -382,7 +387,39 @@ def _install_audiocpp_runtime(
                 mgr.unload(kind)
         runtime.shutdown_server()
         log.info("speech runtime updated %s → %s; both processes stopped", was, release.TAG)
+        if replaced is not None:
+            _remove_replaced_build(replaced.parent, was)
     emit("done", "speech runtime ready")
+
+
+def _remove_replaced_build(build_dir: Path, tag: str) -> None:
+    """After an update the older build is never run again, so its folder goes — 2 GB for a CUDA
+    build (decided 2026-10-03). Only the build the update replaced: another backend's build of
+    that release keeps working until it is updated. The release's folder goes once empty."""
+    from .audiocpp import runtime
+
+    root = runtime._runtime_root().resolve()
+    build_dir = build_dir.resolve()
+    if build_dir.parent.name != tag or root not in build_dir.parents:
+        log.warning("not removing %s: not an older speech runtime build under %s", build_dir, root)
+        return
+    for attempt in range(5):
+        try:
+            shutil.rmtree(build_dir)
+            break
+        except FileNotFoundError:
+            break
+        except OSError as e:
+            if attempt == 4:   # the stopped process can hold its DLLs for a moment
+                log.warning("could not remove the older speech runtime %s: %s", build_dir, e)
+                return
+            time.sleep(1)
+    log.info("removed the older speech runtime build %s", build_dir)
+    try:
+        if not any(build_dir.parent.iterdir()):
+            build_dir.parent.rmdir()
+    except OSError:
+        pass
 
 
 # ─── Manager ──────────────────────────────────────────────────────────
@@ -1250,11 +1287,12 @@ class EngineManager:
         engine_id: str,
         progress: Callable[[str, str | None], None] | None = None,
         cancel_check: Callable[[], bool] | None = None,
+        on_bytes: Callable[[int, int | None], None] | None = None,
     ) -> None:
         m = self.get_manifest(engine_id)
         if m is None:
             raise InstallError(f"unknown engine: {engine_id}")
-        install_engine(m, progress=progress, cancel_check=cancel_check)
+        install_engine(m, progress=progress, cancel_check=cancel_check, on_bytes=on_bytes)
 
     def uninstall(self, engine_id: str) -> dict:
         """Delete every downloaded model of this engine (its speech-cache folder),

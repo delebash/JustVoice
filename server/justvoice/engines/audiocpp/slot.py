@@ -515,7 +515,7 @@ def to_speech_request(row: dict, body: dict) -> dict:
                 req["reference_text"] = body["ref_text"]
             else:
                 raise AudioCppError("Qwen3 Base needs what the clip says — type the transcript, or "
-                                    "tick x-vector only.")
+                                    "tick Skip the words.")
         else:
             if spec.get("clone"):
                 raise AudioCppError("the Base model is clone-only — this voice needs a reference clip")

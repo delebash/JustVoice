@@ -99,7 +99,10 @@ def spawn_managed_install(state: AppState, engine_id: str) -> str:
             def cancel_check() -> bool:
                 return _is_cancelled(job_id)
 
-            mgr.install(engine_id, progress=progress, cancel_check=cancel_check)
+            mgr.install(engine_id, progress=progress, cancel_check=cancel_check,
+                        on_bytes=lambda done, tot: state.job_update(
+                            job_id, phase="downloading",
+                            bytes_downloaded=done, bytes_total=tot or 0))
             state.job_update(job_id, phase="completed")
             state.job_append_log(job_id, "[completed] install finished successfully")
         except Exception as e:

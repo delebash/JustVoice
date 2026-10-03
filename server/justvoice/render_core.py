@@ -259,6 +259,8 @@ def voice_synth_fields(state: AppState, stored) -> dict:
         out["audio_prompt_path"] = prompt
         if getattr(stored, "transcript", None):
             out["ref_text"] = stored.transcript
+        if getattr(stored, "xvector_only", False):
+            out["xvector_only"] = True   # Qwen3 Base's "Skip the words", as auditioned
     if stored.source == "blended" and getattr(stored, "embedding", None):
         out["voice_vector"] = list(stored.embedding)
     return out

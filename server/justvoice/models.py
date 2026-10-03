@@ -504,6 +504,9 @@ class VoiceRecord(BaseModel):
     gender: str | None = None
     design_prompt: str | None = None
     transcript: str | None = None
+    # Qwen3 Base: clone from the speaker vector alone ("Skip the words"), kept so the voice's
+    # renders take the mode its audition did (decided 2026-10-03).
+    xvector_only: bool = False
     sample_count: int = 0
     blend_recipe: BlendRecipe | None = None
     embedding: list[float] | None = None
@@ -544,6 +547,7 @@ class CloneVoiceRequest(BaseModel):
     language: str = "en-US"
     gender: str | None = None
     transcript: str | None = None
+    xvector_only: bool = False   # Qwen3 Base's "Skip the words"
 
 
 class DesignVoiceRequest(BaseModel):

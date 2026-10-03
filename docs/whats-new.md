@@ -8,7 +8,12 @@
   is no transcript: VoxCPM2 and Chatterbox clone from the sound alone, and Qwen3
   Base asks for the transcript or **Skip the words**, by name. **Skip the words**
   works again on Qwen3 Base — it had not reached the speech runtime since the
-  2026-10-01 switch ([Voices → What each model asks for](voices.md#what-each-model-asks-for))
+  2026-10-01 switch — and a voice saved with it keeps it for its renders
+  ([Voices → What each model asks for](voices.md#what-each-model-asks-for))
+- **Updating the speech runtime shows its progress and cleans up (2026-10-03).**
+  The bar on the runtime row fills as the new build downloads, and the build it
+  replaces is deleted afterwards — about 2 GB for a CUDA build
+  ([Engines → The speech runtime](engines.md#the-speech-runtime))
 - **JustVoice's own build of the speech runtime (2026-10-03).** The runtime now
   comes from [JustVoice's copy of audio.cpp](https://github.com/delebash/audio.cpp),
   so fixes no longer wait on upstream. The first build, v0.9.0-jv.1, lets

@@ -150,6 +150,7 @@ async def clone_voice(body: CloneVoiceRequest) -> Voice:
         language=body.language,
         gender=body.gender,
         transcript=body.transcript,
+        xvector_only=body.xvector_only,
         sample_count=0,
         created_at=now,
         updated_at=now,

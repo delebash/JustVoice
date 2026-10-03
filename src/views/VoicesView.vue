@@ -1535,6 +1535,7 @@ async function submit() {
       body = {
         engine, name, ref_wav_b64, language: selectedLanguage.value || "en-US",
         ...(cloneTranscript.value.trim() ? { transcript: cloneTranscript.value.trim() } : {}),
+        ...(supportsXvector.value && xvectorOnly.value ? { xvector_only: true } : {}),
       };
       await api.request("/v1/voices/clone", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       pushToast({ message: `Voice "${name}" cloned.` });
