@@ -120,6 +120,38 @@ def spawn_managed_install(state: AppState, engine_id: str) -> str:
     return job_id
 
 
+def spawn_japanese_dictionary_install(state: AppState) -> str:
+    """Kick off the optional Japanese dictionary's download (gap 7). Returns the job_id; the
+    runtime row's bar polls it like an engine install."""
+    from .engines.audiocpp import japanese
+    from .engines.manager import install_japanese_dictionary
+
+    job_id = "install-japanese-dictionary"
+    _clear_cancel(job_id)
+    state.job_set(job_id, JobStatus(job_id=job_id, engine_id="japanese-dictionary", model_variant=japanese.VERSION,
+                                    phase="connecting", bytes_downloaded=0,
+                                    bytes_total=japanese.DOWNLOAD_BYTES).model_dump())
+
+    def worker() -> None:
+        try:
+            install_japanese_dictionary(
+                on_bytes=lambda done, tot: state.job_update(job_id, phase="downloading", bytes_downloaded=done,
+                                                            bytes_total=tot or japanese.DOWNLOAD_BYTES),
+                cancel_check=lambda: _is_cancelled(job_id))
+            state.job_update(job_id, phase="completed")
+            state.job_append_log(job_id, "[completed] Japanese dictionary installed")
+        except Exception as e:  # noqa: BLE001 — every failure is the job's answer
+            log.exception("Japanese dictionary install failed")
+            err = "cancelled by user" if type(e).__name__ == "DownloadCancelled" else str(e)
+            state.job_update(job_id, phase="failed", error=err)
+            state.job_append_log(job_id, f"[failed] {err}")
+        finally:
+            _clear_cancel(job_id)
+
+    threading.Thread(target=worker, daemon=True).start()
+    return job_id
+
+
 def spawn_prefetch(
     state: AppState,
     engine_id: str,

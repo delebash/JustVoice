@@ -28,6 +28,13 @@ log = logging.getLogger(__name__)
 router = APIRouter(tags=["engines"])
 
 
+class JapaneseDictionaryInfo(BaseModel):
+    installed: bool
+    version: str
+    size_bytes: int                  # on disk once installed
+    download_bytes: int
+
+
 class SpeechRuntimeInfo(BaseModel):
     runtime: str = "audio.cpp"
     version: str                     # the installed release, else the pinned one
@@ -51,6 +58,19 @@ class SpeechRuntimeInfo(BaseModel):
     cpu_min_realtime: float = 2.0    # Auto's bar for the CPU
     cpu_running: bool = False
     cpu_pid: int | None = None
+    # The optional Japanese dictionary (gap 7) — None while the pinned runtime cannot use it.
+    japanese_dictionary: JapaneseDictionaryInfo | None = None
+
+
+def _japanese_dictionary() -> JapaneseDictionaryInfo | None:
+    from ..engines.audiocpp import japanese, release
+    from ..engines.manager import engines_runtime_root
+
+    if not release.pinned_has("japanese"):
+        return None
+    return JapaneseDictionaryInfo(installed=japanese.dictionary_dir(engines_runtime_root()) is not None,
+                                  version=japanese.VERSION, size_bytes=japanese.INSTALLED_BYTES,
+                                  download_bytes=japanese.DOWNLOAD_BYTES)
 
 
 def _info() -> SpeechRuntimeInfo:
@@ -99,7 +119,19 @@ def _info() -> SpeechRuntimeInfo:
         cpu_min_realtime=s.cpu_min_realtime,
         cpu_running=cpu.is_running(),
         cpu_pid=cpu.pid,
+        japanese_dictionary=_japanese_dictionary(),
     )
+
+
+@router.post("/v1/speech-runtime/japanese-dictionary", status_code=202)
+def install_japanese_dictionary() -> dict:
+    """Start the Japanese dictionary's download; poll /v1/jobs/{job_id}."""
+    from ..engines.audiocpp import release
+    from ..installer import spawn_japanese_dictionary_install
+
+    if not release.pinned_has("japanese"):
+        raise bad_request("this speech runtime cannot read Japanese yet")
+    return {"job_id": spawn_japanese_dictionary_install(get_state())}
 
 
 # Plain `def`: hardware detection shells out once, and a PUT waits for the server to

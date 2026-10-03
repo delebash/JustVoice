@@ -36,7 +36,11 @@ FEATURES: dict[str, str] = {
     "voice_pack": "v0.9.0-jv.2",   # Kokoro blends (gap 2)
     "inline_ipa": "v0.9.0-jv.2",   # Kokoro "[word](/phonemes/)" — a lexicon's IPA (gap 3)
     "turbo_clone": "v0.9.0-jv.3",  # Chatterbox Turbo / Nano clone a voice (gap 1)
+    "chatterbox_he_ru_zh": "v0.9.0-jv.3",   # Chatterbox in Hebrew, Russian, Chinese (gap 7)
+    "japanese": "v0.9.0-jv.3",     # Kokoro's Japanese voices, Chatterbox Japanese (gap 7)
 }
+# One release carries everything built since jv.1 (decided 2026-10-03); its tag replaces these
+# placeholders when it is cut.
 
 
 def pinned_has(feature: str) -> bool:

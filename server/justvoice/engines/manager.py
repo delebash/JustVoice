@@ -380,16 +380,39 @@ def _install_audiocpp_runtime(
         # An update: the processes still run the older build. Free the speech slots (their
         # bookings go with them) and stop both, so the next load starts the pinned build —
         # the same as changing the backend (speech_runtime_api.set_speech_runtime).
-        mgr = get_manager()
-        for kind in ("tts", "stt"):
-            slot = mgr.loaded_for(kind)
-            if slot is not None and getattr(slot.manifest, "uses_audiocpp", False):
-                mgr.unload(kind)
-        runtime.shutdown_server()
+        stop_speech_runtime()
         log.info("speech runtime updated %s → %s; both processes stopped", was, release.TAG)
         if replaced is not None:
             _remove_replaced_build(replaced.parent, was)
     emit("done", "speech runtime ready")
+
+
+def stop_speech_runtime() -> None:
+    """Free every speech slot the runtime holds (their bookings go with them) and stop both of
+    its processes, so the next load starts it again — after an update, or once the Japanese
+    dictionary is installed (the processes read its folder when they start)."""
+    from .audiocpp import runtime
+
+    mgr = get_manager()
+    for kind in ("tts", "stt"):
+        slot = mgr.loaded_for(kind)
+        if slot is not None and getattr(slot.manifest, "uses_audiocpp", False):
+            mgr.unload(kind)
+    runtime.shutdown_server()
+
+
+def install_japanese_dictionary(
+    on_bytes: Callable[[int, int | None], None] | None = None,
+    cancel_check: Callable[[], bool] | None = None,
+) -> Path:
+    """The optional Japanese dictionary (gap 7), then a runtime restart if it was running, so
+    the processes start again with its folder."""
+    from .audiocpp import japanese, runtime
+
+    root = japanese.install(engines_runtime_root(), on_progress=on_bytes, cancel_check=cancel_check)
+    if runtime.get_server("gpu").is_running() or runtime.get_server("cpu").is_running():
+        stop_speech_runtime()
+    return root
 
 
 def _remove_replaced_build(build_dir: Path, tag: str) -> None:

@@ -446,6 +446,19 @@ def _silence_path() -> str:
 # ─── Our request → audio.cpp's (plan §3.4) ──────────────────────────────────
 
 
+JAPANESE_DICTIONARY_MISSING = "Japanese needs the Japanese dictionary — install it on AI Settings → Speech engines."
+
+
+def _require_japanese_dictionary() -> None:
+    """Kokoro's Japanese voices and Chatterbox in Japanese read MeCab's UniDic dictionary — the
+    optional download on the runtime row (gap 7); without it, refused by name."""
+    from . import japanese
+    from ..manager import engines_runtime_root
+
+    if japanese.dictionary_dir(engines_runtime_root()) is None:
+        raise AudioCppError(JAPANESE_DICTIONARY_MISSING)
+
+
 def to_speech_request(row: dict, body: dict) -> dict:
     """A manager synth body (`SynthRequest` as a dict) → `/v1/audio/speech` JSON."""
     spec = row["audiocpp"]
@@ -465,6 +478,8 @@ def to_speech_request(row: dict, body: dict) -> dict:
         req["voice"] = voice
         req["language"] = KOKORO_LANGUAGE.get(lang or voice_lang,
                                               KOKORO_LANGUAGE.get((lang or voice_lang).split("-")[0], "en-us"))
+        if voice_lang.startswith("ja") and not body.get("voice_pack_path"):
+            _require_japanese_dictionary()
         if delivery.get("ipa_map"):
             # A lexicon's IPA: the words it covers ride as "[word](/phonemes/)" (gap 3). The host
             # sends an ipa_map only when the installed runtime splices (render_core).
@@ -556,6 +571,8 @@ def to_speech_request(row: dict, body: dict) -> dict:
             raise AudioCppError("Chatterbox speaks only cloned voices — this voice has no reference clip")
         req["voice_ref"] = str(body["audio_prompt_path"]).replace("\\", "/")
         req["language"] = (lang.split("-")[0] or "en")
+        if req["language"] == "ja":
+            _require_japanese_dictionary()
         opts = {}
         for ours, theirs in (("exaggeration", "exaggeration"), ("cfg_weight", "guidance_scale"),
                              ("repetition_penalty", "repetition_penalty"), ("top_p", "top_p")):

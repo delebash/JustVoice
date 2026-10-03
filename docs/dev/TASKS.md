@@ -851,8 +851,24 @@ DECIDED: 2026-10-03 — "your rec on all go, commit and push" on the three as sh
         has none; MeCab 0.996 does not build on today's MSVC (three fixes in, still failing).
         Asked: where Chinese segmentation's dictionary comes from; which MeCab (fork / fugashi's
         prebuilt BSD DLL / patch 0.996); where the Japanese dictionary download lives in the UI.
-OPEN:   those three answers → Japanese and segmentation → the app side of gap 7; anything else,
-        locally → ONE release with everything (the feature table points at its tag) →
+DECIDED: 2026-10-03 — "your rec go" on the three as shown: 1 "(a) Ship jieba's dictionary (MIT,
+        a few MB) as a data file beside the runtime." · 2 "(a) Use the prebuilt libmecab.dll from
+        fugashi's Windows package on PyPI (BSD; fugashi is the MeCab wrapper Kokoro's own pipeline
+        uses)" for now, "and (c) once our release build needs to compile it on every platform"
+        (keep patching 0.996) · 3 "(a) Its own row under the Speech runtime row on AI Settings →
+        Speech engines: 'Japanese dictionary · 250 MB · Install', with a progress bar. Japanese
+        lines that need it would be refused with a message pointing there." (No commit named.)
+BUILT:  2026-10-03, committed + pushed (our audio.cpp 6a2bb4c5; JV the same turn) — gap 7 plan
+        §8: our audio.cpp (jieba moved to the framework,
+        a shared MeCab helper, Kokoro + Chatterbox Japanese, Chatterbox Chinese word breaks); live
+        on the local CUDA build every Japanese and Chinese render read back exactly. The app: the
+        Japanese dictionary (unidic-lite, its own row under the runtime row, a job, the runtime's
+        AUDIOCPP_UNIDIC_DIR, refusals by name), gated on the pin; the row checked live in the real
+        UI (install 6 s, 260 MB on disk).
+OPEN:   ONE release with everything (new tag name — jv.2/jv.3 exist on broken commits; the feature
+        table points at its tag; CI adds libmecab + jieba/ to every build; NOTICE/LICENSES;
+        engines.md/whats-new; live in-app checks) → gap 5 (training rebuild) is the remaining gap.
+        Local build recipe + release state: docs/plans/2026-10-02-our-audiocpp-copy.md §6.
         the app: an installed older build keeps working and the runtime row offers "Update to
         v0.9.0-jv.1"; the pin moves to our release; VoxCPM2's row gets "and its transcript" and
         the transcript field back.

@@ -29,10 +29,16 @@ function friendlyJobPhase(detail) {
  * engine-wide install).
  */
 export function ttsJobChannel(api, engineId, startBody = {}) {
+  return jobChannel(api, `/v1/engines/${engineId}/install`, startBody);
+}
+
+/** The same channel over any POST that answers { job_id } — the Japanese dictionary's
+ *  download (gap 7) polls /v1/jobs/{id} exactly like an engine install. */
+export function jobChannel(api, startPath, startBody = {}) {
   let jobId = null;
   return {
     start: async () => {
-      const accepted = await api.request(`/v1/engines/${engineId}/install`, {
+      const accepted = await api.request(startPath, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(startBody),
@@ -63,6 +69,11 @@ export function ttsJobChannel(api, engineId, startBody = {}) {
 /** A ready task for one engine install / variant download. */
 export function makeEngineDownloadTask(api, engineId, startBody = {}) {
   return createDownloadTask(ttsJobChannel(api, engineId, startBody));
+}
+
+/** A ready task for any job-backed download (`jobChannel`). */
+export function makeJobDownloadTask(api, startPath, startBody = {}) {
+  return createDownloadTask(jobChannel(api, startPath, startBody));
 }
 
 // ── Loading an engine's weights ──────────────────────────────────────────────

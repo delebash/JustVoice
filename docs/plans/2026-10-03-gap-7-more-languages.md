@@ -182,3 +182,68 @@ the VS 2022 toolset:
 
 Which MeCab we build, or ship prebuilt, is asked: a maintained fork, the prebuilt BSD
 `libmecab.dll` from fugashi's Windows wheel, or patching 0.996 through.
+
+## 8. Japanese and Chinese word breaks — built (2026-10-03, "your rec go")
+
+Decided:
+- the jieba dictionary ships as a data file beside the runtime;
+- `libmecab.dll` comes from fugashi's prebuilt Windows wheel for now;
+- the Japanese dictionary gets its own row under the runtime row.
+
+**Our audio.cpp `6a2bb4c5` (on `jv`, pushed):**
+- **jieba moved** from `community_models/zipvoice/` into the shared text framework
+  (`engine::text::JiebaSegmenter`). ZipVoice's behaviour is unchanged, and Chatterbox uses it too.
+- **A shared MeCab helper** (`framework/text/mecab.{h,cpp}`):
+  - it finds UniDic in the package's own `unidic/`, else in `AUDIOCPP_UNIDIC_DIR`;
+  - it loads libmecab as Kokoro already did (`AUDIOCPP_MECAB_LIBRARY`, else beside the
+    executable).
+- **Kokoro** reads the dictionary through the helper.
+- **Chatterbox Japanese:** each kanji token becomes its UniDic `kana` reading (field 17) in
+  hiragana, with upstream's space-before-は/へ rule; MeCab reads the text before NFKD.
+- **Chatterbox Chinese:** jieba splits the words before the Cangjie step. Its dictionary is
+  cppjieba's at commit `8f171de` (MIT, SHA-256 as ZipVoice's export script pins it), read from
+  `jieba/` beside the runtime or `AUDIOCPP_JIEBA_DIR`. Without it the words are not split, as
+  upstream does without pkuseg.
+
+**Checked live** on our local CUDA build, with `libmecab.dll` from fugashi 1.5.2's win_amd64
+wheel (sha256-verified from PyPI) and unidic-lite 1.0.8. Qwen3-ASR read back the line
+"今日は東京の天気がとても良いので、母と一緒に公園へ行きました。":
+- **exact** on Kokoro `jf_alpha`, `jm_kumo` and cloned Chatterbox;
+- Chatterbox Chinese with jieba: **exact**;
+- without the dictionary, both refuse by name.
+
+**The app (JustVoice, committed with this record):**
+- `engines/audiocpp/japanese.py`: unidic-lite, pinned and sha256-checked. It keeps only the
+  dictionary folder and its licences, in `<runtime root>/audiocpp/unidic-lite-1.0.8/`, and
+  `runtime._child_env()` names that folder to the runtime in `AUDIOCPP_UNIDIC_DIR`.
+- `POST /v1/speech-runtime/japanese-dictionary` starts a job; installing restarts the runtime if
+  it is running. The runtime row's info carries `japanese_dictionary`.
+- The row on AI Settings → Speech engines copies the runtime row's precedent (`.ev-group`):
+  "Japanese dictionary · UniDic 1.0.8 · For Kokoro's Japanese voices and Chatterbox in Japanese ·
+  not installed · 248 MB · Install", with the DownloadBar.
+- The slot refuses a Japanese line until the dictionary is installed: "Japanese needs the Japanese
+  dictionary — install it on AI Settings → Speech engines."
+- Gated on the pin:
+  - `FEATURES["japanese"]` and `["chatterbox_he_ru_zh"]`, placeholders until the one release's
+    tag;
+  - Chatterbox's list grows to 23 languages, and its name follows ("Chatterbox Multilingual (23
+    languages)");
+  - Kokoro's 5 Japanese voices return (54).
+- `jobChannel` generalises the engine-install channel, so the dictionary reuses the kit's task
+  and bar.
+- Tests: `tests/test_japanese_dictionary.py`.
+
+**Checked live** through a server whose pin was set to jv.3 for that process only:
+- the row renders as above, in line with the runtime row (same x and width, no horizontal
+  overflow, no page errors);
+- Install, clicked in the real UI, showed the bar and finished in 6 s;
+- 260,469,742 bytes landed, the dictionary plus its licences, with no archive or staging folder
+  left.
+
+**Left for the one release:**
+- CI copies `libmecab` (fugashi's wheel on each platform, BSD) and `jieba/` (cppjieba
+  `8f171de`, MIT) into every build.
+- NOTICE / LICENSES rows for MeCab, UniDic and the jieba dictionary.
+- engines.md and whats-new for the four Chatterbox languages, Kokoro's Japanese voices and the
+  dictionary row.
+- Live renders through the app once the runtime carries Japanese.

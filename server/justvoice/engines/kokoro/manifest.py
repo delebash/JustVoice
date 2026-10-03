@@ -45,9 +45,10 @@ REQUIREMENTS = {
 
 from .voices import preset_voices_as_dicts as _preset_voices_as_dicts  # noqa: E402
 
-# The five Japanese voices need MeCab + UniDic, which the release GGUF lacks — offered
-# again when that lands (plan §5, gap 7). 49 of the 54 speak today.
-STATIC_VOICES = [v for v in _preset_voices_as_dicts() if v.get("language") != "ja"]
+# The five Japanese voices need MeCab + UniDic: MeCab ships in our runtime, UniDic is the optional
+# Japanese dictionary on the runtime row (gap 7). Offered once the pinned runtime reads Japanese;
+# a line in one of them is refused by name until the dictionary is installed.
+STATIC_VOICES = [v for v in _preset_voices_as_dicts() if pinned_has("japanese") or v.get("language") != "ja"]
 
 VARIANTS = [
     {

@@ -23,8 +23,19 @@ ID = "chatterbox"
 NAME = "Chatterbox"
 
 SUPPORTED_OSES = ["windows", "linux", "macos"]
+
+# audio.cpp's core Chatterbox languages (model_specs/chatterbox.json, v0.9.0).
+_LANGS = ["ar", "da", "de", "el", "en", "es", "fi", "fr", "hi", "it", "ko", "ms", "nl",
+          "no", "pl", "pt", "sv", "sw", "tr"]
+# Gap 7 (docs/plans/2026-10-03-gap-7-more-languages.md): Hebrew, Russian and Chinese in our
+# audio.cpp; Japanese too, with the optional Japanese dictionary.
+if pinned_has("chatterbox_he_ru_zh"):
+    _LANGS = sorted([*_LANGS, "he", "ru", "zh"])
+if pinned_has("japanese"):
+    _LANGS = sorted([*_LANGS, "ja"])
+
 DESCRIPTION = (
-    "Resemble AI's open-source cloning TTS. Multilingual: 500M parameters, 19 languages, "
+    f"Resemble AI's open-source cloning TTS. Multilingual: 500M parameters, {len(_LANGS)} languages, "
     "zero-shot voice cloning, per-line exaggeration / CFG / temperature. Runs in the "
     "audio.cpp speech runtime."
 )
@@ -45,14 +56,11 @@ REQUIREMENTS = {
     "gpu_runtimes": ["cuda", "vulkan", "metal", "cpu"],
 }
 
-# audio.cpp's core Chatterbox languages (model_specs/chatterbox.json, v0.9.0).
-_LANGS = ["ar", "da", "de", "el", "en", "es", "fi", "fr", "hi", "it", "ko", "ms", "nl",
-          "no", "pl", "pt", "sv", "sw", "tr"]
 
 VARIANTS = [
     {
         "id": "chatterbox-multilingual-v2-q8",
-        "name": "Chatterbox Multilingual (19 languages)",
+        "name": f"Chatterbox Multilingual ({len(_LANGS)} languages)",
         "description": "Zero-shot cloning from a reference clip, with exaggeration and CFG "
                        "per line. 8-bit weights.",
         "languages": list(_LANGS),

@@ -99,3 +99,64 @@ questions in §5 come first):
    testable, and they prove the whole chain (fork → build → release → pin) before the bigger gaps.
 4. **The app's 16 kHz resample for the aligner** once our build ships: keep or remove. Rec: keep
    until no install can still be on upstream's v0.9.0 — it is harmless and covers that case.
+
+## 6. State after 2026-10-03, and how to build locally
+
+**Releases:**
+- `v0.9.0-jv.1` is published: tag at `adedc094`, run 37104734208, 2026-10-03 09:09Z. The app is
+  pinned to it (JV `806c7a6`).
+- Tags `v0.9.0-jv.2` (`42db68d9`) and `v0.9.0-jv.3` (`3865d245`) were pushed, but both release
+  runs failed on macOS and were cancelled. Nothing is published for them. The cause was
+  `std::to_string` of a 128-bit file time (fixed in `faf1ee03`).
+- Decided 2026-10-03: no separate jv.2 / jv.3. Everything built since jv.1 goes into **one**
+  release, cut once the open gaps are done. The app's `release.FEATURES` placeholders
+  (jv.2 / jv.3) are retargeted to its tag then.
+- That release needs two decisions at cut time: a new tag name, since jv.2 and jv.3 exist on
+  broken commits; and the CI additions (copy `libmecab` and `jieba/` into every build).
+
+**`jv` branch head:**
+- `fc55e1e6` (Hebrew, Russian, Chinese), pushed;
+- then `6a2bb4c5` (Japanese for Kokoro and Chatterbox; jieba word breaks for Chatterbox; gap 7
+  §8), pushed 2026-10-03.
+
+**No CI runs** until the release (the user, 2026-10-03). A push to `jv` triggers none (checked):
+only tags and `workflow_dispatch` run `release.yml`.
+
+**Local builds (Windows):**
+- **CPU:** `scripts/build_windows.ps1 -Preset windows-cpu-release -Target audiocpp_server
+  -VsInstall "E:\Program Files\Microsoft Visual Studio\18\Community"` → `build/windows-cpu-release`.
+- **CUDA 12.4** (for the RTX 2070 SUPER, sm_75). CUDA 12.4.1 is installed with nvcc, cudart,
+  cuBLAS, cuFFT, thrust and NVRTC, and no driver. This mirrors `release.yml`'s windows-cuda job.
+  From a cmd prompt:
+
+  ```
+  call "E:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvarsall.bat" x64 -vcvars_ver=14.44
+  set "CUDA_PATH=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.4"
+  set "PATH=%CUDA_PATH%\bin;%PATH%"
+  cmake -S . -B build\windows-cuda12-local -G Ninja -DCMAKE_BUILD_TYPE=Release ^
+    -DENGINE_ENABLE_CUDA=ON -DENGINE_ENABLE_OPENMP=OFF -DGGML_OPENMP=OFF ^
+    -DENGINE_ENABLE_CUDA_GRAPHS=ON -DENGINE_ENABLE_VULKAN=OFF -DENGINE_ENABLE_METAL=OFF ^
+    -DENGINE_ENABLE_LLAMAFILE=ON -DENGINE_ENABLE_NATIVE_CPU=ON -DENGINE_BUILD_TESTS=OFF ^
+    -DENGINE_ENABLE_CPU_ALL_VARIANTS=OFF "-DCMAKE_CUDA_ARCHITECTURES=75" ^
+    -DAUDIOCPP_BUILD_NATIVE_MODEL_MANAGER=ON "-DCUDAToolkit_ROOT=%CUDA_PATH%"
+  cmake --build build\windows-cuda12-local --config Release -j %NUMBER_OF_PROCESSORS% --target audiocpp_server audiocpp_cli
+  ```
+
+  - VS 2026's installed MSVC 14.44 is the VS 2022 toolset CI uses.
+  - The first build takes about 30 min; incremental builds take minutes.
+  - To run the server, put `CUDA_PATH\bin` on PATH.
+- **Next to the local server, for Japanese and Chinese** (not in git; the release's CI must do
+  the same):
+  - `libmecab.dll` from fugashi 1.5.2's `cp312-win_amd64` wheel
+    (`fugashi.libs/libmecab-d8ddc079….dll`; wheel sha256 `936d7101…`; MeCab BSD);
+  - `jieba/jieba.dict.utf8` and `jieba/hmm_model.utf8` from cppjieba `8f171de` (MIT; sha256 as
+    `tools/community_models/export_zipvoice_zh_dict.py` pins them).
+  - Japanese also needs `AUDIOCPP_UNIDIC_DIR` → unidic-lite 1.0.8's `dicdir`. The app sets it once
+    the dictionary row has installed it.
+- **MeCab from source does not build as-is** with today's MSVC (gap 7 plan §7), hence fugashi's
+  DLL for now. Patching 0.996 through is for when the release builds every platform.
+- **Test harnesses** (scratch, re-creatable from the plans):
+  - a server config with `"backend": "cuda"` and models by path, then POST `/v1/audio/speech`
+    with `voice_ref` for clones;
+  - Qwen3-ASR read-back through `/v1/audio/transcriptions`;
+  - speaker similarity from Resemble's voice encoder ported to numpy (gap 1 plan §6).

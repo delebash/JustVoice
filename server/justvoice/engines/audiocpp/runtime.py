@@ -52,6 +52,19 @@ _HW = None
 _INSTALLED: dict[str, Path | None] = {}
 
 
+def _child_env() -> dict[str, str]:
+    """The server's environment: who started it (`engines/leftovers.py` reads it to stop a server
+    whose parent is gone), and the optional Japanese dictionary's folder when it is installed —
+    MeCab reads UniDic from AUDIOCPP_UNIDIC_DIR (gap 7)."""
+    from . import japanese
+
+    env = {**os.environ, "JUSTVOICE_SERVER_PID": str(os.getpid())}
+    env.pop("AUDIOCPP_UNIDIC_DIR", None)
+    if (dictionary := japanese.dictionary_dir(_runtime_root())) is not None:
+        env["AUDIOCPP_UNIDIC_DIR"] = str(dictionary)
+    return env
+
+
 def _hardware():
     """The kit's hardware snapshot, once per process (detection shells out to nvidia-smi)."""
     global _HW
@@ -310,7 +323,7 @@ class AudioCppServer:
             out = open(log_path, "ab")  # noqa: SIM115 — owned by the child for its lifetime
             # Who started it — `engines/leftovers.py` reads this to stop a server whose
             # parent is gone (a hard-killed app must not leave a model in VRAM).
-            env = {**os.environ, "JUSTVOICE_SERVER_PID": str(os.getpid())}
+            env = _child_env()
             # The kit's one spawn seam: on Windows the child goes into a kill-on-close
             # Job Object, so it dies WITH this process however this process dies (the
             # Python engines watched their server; audio.cpp does not), and a freshly

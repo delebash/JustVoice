@@ -40,8 +40,8 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import { useApi } from "../stores/api.js";
-import { DownloadBar, UiButton, confirmDialog, openExternal, openPath, promptDialog, pushToast } from "@delebash/llm-ui";
-import { makeEngineDownloadTask, makeEngineLoadTask } from "../services/ttsJobChannel.js";
+import { DownloadBar, UiButton, confirmDialog, fmtBytes, openExternal, openPath, promptDialog, pushToast } from "@delebash/llm-ui";
+import { makeEngineDownloadTask, makeEngineLoadTask, makeJobDownloadTask } from "../services/ttsJobChannel.js";
 // The row's three-dot menu — reka-ui's DropdownMenu, the same import shape
 // as the kit's LuModelCatalog (the portal escapes the group's overflow clip).
 import {
@@ -258,6 +258,26 @@ async function installRuntime() {
     for (const e of engines.value) delete variants[e.id];
     await Promise.all([refresh(), refreshRuntime()]);
     delete dlTasks[RUNTIME_KEY]; delete taskKind[RUNTIME_KEY];
+  } catch {
+    // The bar carries the error (failed lingers until dismissed).
+  }
+}
+// The optional Japanese dictionary (gap 7, decided 2026-10-03): its own row under the runtime
+// row, in the runtime row's grammar. Kokoro's Japanese voices and Chatterbox in Japanese read it;
+// a Japanese line without it is refused with a message pointing here. Installing it restarts the
+// speech runtime if it is running, so the next load reads it.
+const JA_KEY = "__japanese-dictionary";
+async function installJapaneseDictionary() {
+  clearTerminalTask(JA_KEY);
+  const task = makeJobDownloadTask(api, "/v1/speech-runtime/japanese-dictionary", {});
+  dlTasks[JA_KEY] = task;
+  try {
+    await task.start();
+    if (task.state !== "done") return;  // error/cancelled — the bar says which
+    pushToast({ message: "Japanese dictionary installed.", kind: "success", duration: 4000 });
+    window.dispatchEvent(new Event("jv:health-refresh"));  // the runtime restarted
+    await refreshRuntime();
+    delete dlTasks[JA_KEY]; delete taskKind[JA_KEY];
   } catch {
     // The bar carries the error (failed lingers until dismissed).
   }
@@ -771,6 +791,28 @@ onBeforeUnmount(() => {
           <span>of {{ runtime.physical_cores }} cores</span>
         </template>
       </div>
+    </div>
+
+    <!-- The optional Japanese dictionary (gap 7) — precedent: the runtime row just above
+         (.ev-group: name · version · description · status + the one verb, DownloadBar under). -->
+    <div v-if="runtime && engines.length && runtime.japanese_dictionary" class="ev-group">
+      <div class="ev-ghead">
+        <span class="nm">Japanese dictionary</span><span class="id">UniDic {{ runtime.japanese_dictionary.version }}</span>
+        <span class="desc" title="MeCab's UniDic dictionary — how the runtime reads Japanese text">For Kokoro's Japanese voices and Chatterbox in Japanese</span>
+        <span class="gsum">
+          <template v-if="dlTasks[JA_KEY]?.state !== 'running'">
+            <span v-if="!runtime.japanese_dictionary.installed" class="ev-badge none">not installed</span>
+            <span class="meta">{{ fmtBytes(runtime.japanese_dictionary.size_bytes) }}</span>
+            <UiButton v-if="!runtime.japanese_dictionary.installed" intent="primary" size="small"
+              label="Install" :disabled="!runtime.installed"
+              :title="`Downloads ${fmtBytes(runtime.japanese_dictionary.download_bytes)} and unpacks it. The speech runtime restarts if it is running.`"
+              @click.stop="installJapaneseDictionary" />
+          </template>
+          <span v-else class="meta">working…</span>
+        </span>
+      </div>
+      <DownloadBar v-if="dlTasks[JA_KEY]?.state" :task="dlTasks[JA_KEY]"
+        :title="`Japanese dictionary · UniDic ${runtime.japanese_dictionary.version}`" />
     </div>
 
     <!-- capability sections (speech only) -->
