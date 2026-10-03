@@ -20,6 +20,7 @@ from justvoice.engines.audiocpp.runtime import AudioCppError
 from justvoice.engines.audiocpp.slot import QWEN_LANGUAGE, to_speech_request
 from justvoice.engines.manager import discover_engines
 from justvoice.engines.model_catalog import models_for
+from justvoice.engines.qwen3 import manifest as qwen3_manifest
 
 _QWEN_LANGS_10 = ["zh", "en", "ja", "ko", "de", "fr", "ru", "pt", "es", "it"]
 
@@ -33,7 +34,8 @@ def _row(engine: str, variant: str) -> dict:
 
 def test_qwen3_catalog_is_the_three_checkpoint_families() -> None:
     ids = {v.id for v in models_for("qwen3")}
-    assert ids == {"qwen3-cv-1.7b-q8", "qwen3-base-1.7b-q8", "qwen3-base-0.6b-q8", "qwen3-vd-1.7b-q8"}
+    assert ids == {"qwen3-cv-1.7b-q8", "qwen3-cv-0.6b-q8", "qwen3-base-1.7b-q8", "qwen3-base-0.6b-q8",
+                   "qwen3-vd-1.7b-q8"}
     for r in discover_engines()["qwen3"].module.VARIANTS:
         spec = r["audiocpp"]
         assert spec["family"] == "qwen3_tts"
@@ -43,8 +45,9 @@ def test_qwen3_catalog_is_the_three_checkpoint_families() -> None:
 
 def test_qwen3_cloning_flag_is_per_checkpoint_family() -> None:
     by_id = {v.id: v for v in models_for("qwen3")}
-    assert by_id["qwen3-cv-1.7b-q8"].voice_cloning is False      # presets, no clone
-    assert by_id["qwen3-cv-1.7b-q8"].preset_voices == 9
+    for cv in ("qwen3-cv-1.7b-q8", "qwen3-cv-0.6b-q8"):
+        assert by_id[cv].voice_cloning is False                   # presets, no clone
+        assert by_id[cv].preset_voices == 9
     for base in ("qwen3-base-1.7b-q8", "qwen3-base-0.6b-q8"):
         assert by_id[base].voice_cloning is True
         assert by_id[base].preset_voices == 0
@@ -134,7 +137,8 @@ def test_hf_sources_pin_a_commit_not_a_branch() -> None:
                 rev = str(src.get("revision") or "")
                 if not re.fullmatch(r"[0-9a-f]{40}", rev):
                     loose.append(f"{eid}/{variant.get('id')}: {rev!r}")
-                assert src.get("hf_repo") == release.MODEL_REPO, variant["id"]
+                # audio.cpp's own repo, or our conversion of a model it does not publish (gap 4).
+                assert src.get("hf_repo") in {release.MODEL_REPO, qwen3_manifest.CV_06_REPO}, variant["id"]
     assert not loose, f"these HF sources do not pin a full commit sha: {loose}"
 
 

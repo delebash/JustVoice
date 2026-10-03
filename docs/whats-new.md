@@ -2,6 +2,26 @@
 
 ## v0.1.0
 
+- **Qwen3-TTS CustomVoice 0.6B is back (2026-10-02).** The same nine directable
+  speakers as the 1.7B in a 1.7 GB download that took about 1.35 GB of graphics
+  memory once loaded on an 8 GB card. audio.cpp does not publish this size, so
+  JustVoice converted Qwen's official checkpoint with the speech runtime's own
+  converter and publishes it at
+  [delebash/Qwen3-TTS-12Hz-0.6B-CustomVoice-GGUF](https://huggingface.co/delebash/Qwen3-TTS-12Hz-0.6B-CustomVoice-GGUF);
+  pick it on its row on AI Settings → Speech engines
+  ([Engines → The catalog](engines.md#the-catalog))
+- **Fixes (2026-10-02).** Slider labels no longer print over each other
+  (Generate's Speed read "sloweras written"). A chapter line spoken by a cloud
+  voice now takes its sample rate from the audio the provider returns, instead of
+  assuming 24 kHz
+- **Speed works on every engine (2026-10-02).** Speed — Generate's slider, a
+  persona's default, a render preset's pace, a line's own setting — used to reach
+  only Kokoro and KittenTTS; Qwen3-TTS, Chatterbox and Pocket TTS ignored it. Those
+  two still pace themselves; for every other engine JustVoice now time-stretches the
+  finished line and keeps its pitch. Lines that were cached at a speed the engine
+  ignored render again once. Generate's **Pitch** and **Gain**, which did nothing on
+  that page (they worked in chapters), now apply there too
+  ([Generate → the primary controls](generate.md))
 - **Speech models run on the graphics card or the CPU, chosen per model (2026-10-02).**
   Each model row on AI Settings → Speech engines now says where it runs and why, with
   an **Auto · GPU · CPU** choice. Auto keeps a model on the graphics card when nothing

@@ -705,20 +705,58 @@ DECIDED: 2026-10-02 — Q2: "q2 remove traingin and rebuild" → "go on both rem
 DECIDED: 2026-10-02 — Q1 (CI on our copy's repo to publish binaries): "q1 yes but not now" — yes,
         when the first change needs C++, not before. "commit and push" — the switch, the training
         removal and CPU placement committed and pushed the same day.
-OPEN:   gaps, in order: switch plan §5 (Turbo/Nano cloning, blends, single-word IPA, CustomVoice
-        0.6B, training rebuilt on the runtime, Chatterbox he/ja/ru/zh, our-copy fix for the
-        aligner's seconds) — the CPU cloner (Pocket TTS) and Kokoro on the CPU landed with the item
-        below · Q1's CI when the first C++ gap starts.
-        NEXT (asked 2026-10-02, awaiting the user's pick + go): the user said "continue with the
-        current conversion in jv". Presented: no C++ needed — gap 8 speed on every engine
-        (host-side time-stretch; today Speed reaches only Kokoro and KittenTTS), gap 4 Qwen3
-        CustomVoice 0.6B (convert with audiocpp_gguf), gap 9 16-bit rows / new engines (VoxCPM2
-        first); needs C++ (Q1, "not now") — gaps 1, 2, 3, 7, 10 and the training rebuild (5).
-        Lean: gap 8 first, gap 4 second. Gates on the switch's final tree: ruff
-        clean, server 894 passed, vitest 122 passed, biome clean, vite build, smoke 14/14 views
-        zero JS errors on the real data dir, kit binary 37 + spawn 6 passed; the runtime row was
-        screenshotted and measured.
-GO:     needed, per step
+OPEN:   gaps, in order: switch plan §5 (Turbo/Nano cloning, blends, single-word IPA, training
+        rebuilt on the runtime, Chatterbox he/ja/ru/zh, our-copy fix for the aligner's seconds) —
+        the CPU cloner (Pocket TTS) and Kokoro on the CPU landed with the item below; gap 8 (speed
+        everywhere) and gap 4 (CustomVoice 0.6B, published + wired) shipped 2026-10-02
+        (plan docs 2026-10-02-gap-8-speed.md, -gap-4-customvoice-0.6b.md) · Q1's CI when the
+        first C++ gap starts.
+        Presented 2026-10-02 after "continue with the current conversion in jv": no C++ needed —
+        gap 8 speed on every engine (host-side time-stretch; today Speed reaches only Kokoro and
+        KittenTTS), gap 4 Qwen3 CustomVoice 0.6B (convert with audiocpp_gguf), gap 9 16-bit rows /
+        new engines (VoxCPM2 first); needs C++ (Q1, "not now") — gaps 1, 2, 3, 7, 10 and the
+        training rebuild (5). Lean: gap 8 first, gap 4 second. Gates on the switch's final tree:
+        ruff clean, server 894 passed, vitest 122 passed, biome clean, vite build, smoke 14/14
+        views zero JS errors on the real data dir, kit binary 37 + spawn 6 passed; the runtime row
+        was screenshotted and measured.
+DECIDED: 2026-10-02 — the gaps: "your rec go" (the rec as shown: "Gap 8: Speed on every engine,
+        done by time-stretching on our side. Today Speed only works on Kokoro and KittenTTS. This
+        is my pick for first." · "Gap 4: Qwen3 CustomVoice 0.6B, converted with audiocpp_gguf. My
+        pick for second.") → "continue with gap 8" → "you have a go for all gaps". Order as
+        answered: 8 → 4 → 9, then the C++ gaps 1, 2, 3, 7, 10, then 5 (the training rebuild, its
+        own item). 6 (Pocket TTS) and 11 (Kokoro on the CPU) already landed. Still asked first
+        under this go: creating our audio.cpp repo on GitHub (fork or copy, name, public or
+        private) before gap 1; any gap in a gap's decision text; commit and push.
+DECIDED: 2026-10-02 — "all 4 , fork repo, public, your rec on all go". The four fixes as listed:
+        "1. Slider end-labels collide ("sloweras written"). Fix it in the kit's UiSlider, so every
+        app gets it. 2. Chapter renders through cloud voices use the placeholder 24000 sample
+        rate. Read it from the WAV header, as Generate now does. 3. Pocket's dropped words in
+        Portuguese and Spanish. Rerun them at 16-bit as part of gap 9. 4. The 8-bit vs 16-bit
+        long-passage comparison. Also part of gap 9." The repo (Q1, now): a GitHub fork of
+        0xShug0/audio.cpp under delebash, public, name kept `audio.cpp` (rec); GitHub Actions in
+        the fork build and publish our binaries; the runtime pin moves to our releases when the
+        first C++ change ships (rec). Order as answered: gap 4 → the four fixes → gap 9 → the fork
+        and its build pipeline → the C++ gaps.
+        Fixes 1 and 2 shipped 2026-10-02 with gaps 8 and 4 (kit `UiSlider` mark layout; the
+        chapter render reads a cloud voice's WAV header). Fixes 3 and 4 ride gap 9.
+        NEXT: gap 9 (with fixes 3 and 4 — its item below), then the fork.
+GO:     given 2026-10-02 for every gap ("you have a go for all gaps"); decision-text gaps,
+        commit and push still asked
+
+### 16-bit rows, the 8-bit vs 16-bit test, and VoxCPM2 (gap 9, with fixes 3 and 4)
+STATE:  DECIDED 2026-10-02 — "your rec on all 3 go" on the plan as presented
+        (docs/plans/2026-10-02-gap-9-16bit-and-voxcpm2.md — READ IT before coding): 1 "Which
+        models get a 16-bit row? … all of them, except KittenTTS, which is already unquantized."
+        · 2 "Defaults after the comparison? … keep 8-bit unless the test shows a real gap on an
+        engine; any change comes back to you with its numbers." · 3 VoxCPM2's row text: name
+        "VoxCPM2", description "OpenBMB's 2B model, 30 languages: clones a voice from a short
+        clip and its transcript, or designs one from a written description. Runs in the
+        audio.cpp speech runtime."
+NOT:    changing any default without coming back with numbers · VoxCPM2 in the setup tiers
+        before it is measured.
+OPEN:   plan §3 A (16-bit rows; our 0.6B bf16 uploaded) · B (the comparison, fixes 3 and 4) ·
+        C (VoxCPM2) · D (gates + live).
+GO:     given 2026-10-02 ("you have a go for all gaps" → "your rec on all 3 go")
 
 ### Speech models run on the CPU or the GPU — chosen per model, automatically, measured
 STATE:  DECIDED 2026-10-02 as direction, first steps under go. The user: "do others run well on cpu

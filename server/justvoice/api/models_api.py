@@ -10,9 +10,10 @@ returned. A no-choice install resolves through
 Every speech model lives in the speech cache (`speech_cache.py`). Until the
 2026-10-01 switch a model could also count as downloaded from an engine's own
 legacy folder or a Hugging Face cache; both probes went with the per-engine
-environments — and the HF one would now be wrong outright, because every
-variant comes from the one `audio-cpp/audio.cpp-gguf` repository, so one cached
-file would have marked them all downloaded."""
+environments — and the HF one would now be wrong outright, because nearly every
+variant comes from the one `audio-cpp/audio.cpp-gguf` repository (CustomVoice
+0.6B from our own conversion), so one cached file would have marked them all
+downloaded."""
 
 from __future__ import annotations
 

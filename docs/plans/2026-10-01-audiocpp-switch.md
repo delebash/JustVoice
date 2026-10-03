@@ -138,7 +138,7 @@ measured footprint, as today).
 |---|---|---|---|
 | voice | `voice` = preset id | `options.speaker` (CustomVoice) · `voice_ref` + `reference_text` (Base) · `instructions` (VoiceDesign) | `voice_ref` (+ `reference_text`) |
 | language | voice prefix code (`en-us` …) | **a name** (`English`; `en` is rejected) | code (`en`, `de` …) |
-| speed | `speed` | — (host-side, later) | — |
+| speed | `speed` | — (host-side stretch, gap 8, built 2026-10-02) | — (same) |
 | temperature / sampling | — | `options.temperature`, `top_k`, `top_p`, `repetition_penalty`, `do_sample`, subtalker_* | `options.temperature`, `top_p`, `repetition_penalty` |
 | instruct (persona + line) | — | `options.instruct` | — |
 | exaggeration / cfg | — | — | `options.exaggeration`, `options.guidance_scale` (per request — verified) |
@@ -227,12 +227,15 @@ Every `engines/<id>/engine.py`, every engine venv, the uv/torch install machiner
 2. Kokoro blends — fork: a voice-vector input.
 3. Single-word IPA from lexicons — fork: a text+IPA splice (eSpeak stays out of our MIT server).
 4. Qwen3 CustomVoice 0.6B — our conversion with `audiocpp_gguf` from the official checkpoint.
+   **Converted and published 2026-10-02** (huggingface.co/delebash/Qwen3-TTS-12Hz-0.6B-CustomVoice-GGUF)
+   and wired as `qwen3-cv-0.6b-q8` — [`2026-10-02-gap-4-customvoice-0.6b.md`](2026-10-02-gap-4-customvoice-0.6b.md).
 5. Training — removed 2026-10-02 (Q2); rebuilt on the speech runtime as its own item. Rendering
    a trained voice means merging each LoRA into its base and converting (no C++); written
    direction on a trained voice needs the fork.
 6. The CPU cloner — MOSS-TTS-Nano, ZipVoice or a LuxTTS port, chosen by ear.
 7. Chatterbox Hebrew, Japanese, Russian, Chinese; Kokoro Japanese.
 8. Host-side speed (time-stretch) for engines without a native speed — already a dependency.
+   **Built 2026-10-02** — [`2026-10-02-gap-8-speed.md`](2026-10-02-gap-8-speed.md).
 9. 16-bit model rows; new engines from the catalogue (VoxCPM2 first).
 10. Fix in our copy: the aligner's seconds at the input rate (§8, live run) — the slot's 16 kHz
     resample is the workaround until then.

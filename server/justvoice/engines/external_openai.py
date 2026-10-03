@@ -35,6 +35,7 @@ class ExternalOpenAiTtsBackend:
             supported_runtimes=["http"],
             supports_cloning=False,
             supports_streaming=False,
+            supports_speed=True,  # sent as `speed` on /v1/audio/speech below
         )
         self._base_url = base_url.rstrip("/")
         self._api_key = api_key

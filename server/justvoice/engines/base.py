@@ -74,6 +74,9 @@ class EngineMeta:
     supports_paralinguistic_tags: bool = False
     supports_voice_design: bool = False
     supports_instruct_field: bool = False
+    # The provider takes a speed itself; without it the server time-stretches
+    # the finished line (switch plan §5, gap 8).
+    supports_speed: bool = False
 
 
 @runtime_checkable

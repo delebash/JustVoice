@@ -3,7 +3,8 @@
 Single source of truth for the per-line render pipeline used by
 both `/v1/generate` (one line) and `/v1/render_chapter` (many).
 Handles: cache lookup, lexicon substitution, engine auto-load,
-synthesize, gain-db PCM scaling, cache store.
+synthesize, speed / gain / pitch on the finished line (`apply_line_delivery`),
+cache store.
 
 Phase 3 lift: long-text inputs (> settings.generation.max_chunk_chars)
 go through the chunked path (audio/chunked.py — upstream MIT lift) so
@@ -27,8 +28,9 @@ from .audio.chunked import (
     concatenate_audio_chunks,
     split_text_into_chunks,
 )
+from .audio.dsp import STRETCH_RANGE, time_stretch
 from .audio.effects import apply_effects_chain, effects_chain_hash
-from .audio.wav import strip_wav_header, write_wav_container
+from .audio.wav import parse_wav_header, strip_wav_header, write_wav_container
 from .cache import CacheKeyBuilder, pack_pcm_with_format, unpack_pcm_with_format
 from .delivery import apply_gain_db, canonical_json
 from .engines.base import SynthRequest
@@ -397,6 +399,85 @@ def _supports_phoneme_input(engine_id: str) -> bool:
         return False
 
 
+def speed_native(state: AppState, engine_id: str) -> bool:
+    """Whether this engine's model paces itself (Kokoro, KittenTTS, the
+    OpenAI-compatible provider). Every other engine renders at its own pace
+    and the server time-stretches the finished line (switch plan §5, gap 8)."""
+    registry = getattr(state, "engines", None)
+    engine = registry.get(engine_id) if registry is not None else None
+    if engine is not None:
+        return bool(getattr(engine.meta, "supports_speed", False))
+    try:
+        from .engines.capability_details import lookup
+
+        cap = lookup(engine_id)
+        return bool(cap and cap.speed_native)
+    except Exception:  # noqa: BLE001 — capability table unavailable → the server stretches
+        return False
+
+
+def server_speed(delivery: dict[str, Any], native: bool) -> float | None:
+    """The factor the server stretches a finished line by, or None when the
+    model paced it or the line is at its own pace."""
+    if native or delivery.get("speed") is None:
+        return None
+    try:
+        factor = float(delivery["speed"])
+    except (TypeError, ValueError):
+        return None
+    lo, hi = STRETCH_RANGE
+    factor = max(lo, min(hi, factor))
+    return None if abs(factor - 1.0) < 1e-6 else factor
+
+
+def _key_delivery(delivery: dict[str, Any], native: bool) -> dict[str, Any]:
+    """The delivery the cache key hashes. A line the server stretches carries
+    a marker: until gap 8 the same delivery rendered unstretched on these
+    engines, and those cached entries must not be served as the new audio."""
+    return {**delivery, "speed_by": "server"} if server_speed(delivery, native) else delivery
+
+
+def _stretch_pcm(pcm: bytes, sample_rate: int, channels: int, factor: float) -> bytes:
+    """Time-stretch interleaved 16-bit PCM; the length becomes n / factor."""
+    ch = max(1, int(channels))
+    samples = np.frombuffer(pcm, dtype="<i2").astype(np.float32) / 32767.0
+    n = len(samples) // ch
+    stretched = time_stretch(samples[: n * ch].reshape(n, ch).T, int(sample_rate), factor=factor)
+    return (np.clip(stretched.T.reshape(-1), -1.0, 1.0) * 32767.0).astype("<i2").tobytes()
+
+
+def apply_line_delivery(
+    pcm: bytes, sample_rate: int, channels: int, delivery: dict[str, Any], *, speed_native: bool,
+) -> bytes:
+    """What the server does to a finished line from its delivery: Speed (when
+    the model did not pace itself), then Gain, then Pitch. One function for a
+    chapter render and Generate, so the same settings sound the same from
+    both — Generate applied none of the three until 2026-10-02 (gap 8 plan §4).
+    The effects chain is not here: it sits on top of the finished line and
+    each caller applies it after this."""
+    factor = server_speed(delivery, speed_native)
+    if factor:
+        pcm = _stretch_pcm(pcm, sample_rate, channels, factor)
+
+    if delivery.get("gain_db"):
+        gain = max(-24.0, min(12.0, float(delivery["gain_db"])))
+        pcm = apply_gain_db(pcm, gain)
+
+    # `capability_details` advertises pitch_post_process on every engine that
+    # has no native transposer, and nothing ever applied the value until the
+    # 2026-08-17 audit: no engine reads `delivery.pitch`. Before the effects
+    # chain, because pitch is part of how the line was spoken.
+    if delivery.get("pitch"):
+        semitones = max(-12.0, min(12.0, float(delivery["pitch"])))
+        if semitones:
+            shifted = apply_effects_chain(
+                write_wav_container(pcm, sample_rate, channels),
+                [{"type": "pitch_shift", "params": {"semitones": semitones}}],
+            )
+            pcm = strip_wav_header(shifted)
+    return pcm
+
+
 def line_lexicons(book_lexicon_id: str | None, persona_lexicon_id: str | None) -> list[str]:
     """The lexicons one line is read with, in order: the book's (Overview →
     Pronunciation lexicon), then the lexicon of the persona that speaks it.
@@ -544,7 +625,7 @@ def probe_line_cached(
         .with_text(effective_text)
         .with_language(language)
         .with_seed(seed)
-        .with_delivery_json(canonical_json(delivery))
+        .with_delivery_json(canonical_json(_key_delivery(delivery, speed_native(state, engine_id))))
         .with_effects_chain(effects_chain_hash(effects))
         .finish()
     )
@@ -627,6 +708,7 @@ def render_line(
     # which lexicons were attached. It held their ids until 2026-09-30, so
     # choosing a lexicon on Overview re-rendered every line of the book.
     cache_enabled = use_cache and settings.cache.enabled
+    native = speed_native(state, engine_id)
     cache_key = (
         CacheKeyBuilder()
         .with_engine(engine_id, VERSION)
@@ -634,7 +716,7 @@ def render_line(
         .with_text(effective_text)
         .with_language(language)
         .with_seed(seed)
-        .with_delivery_json(canonical_json(delivery))
+        .with_delivery_json(canonical_json(_key_delivery(delivery, native)))
         .with_effects_chain(effects_chain_hash(effects))
         .finish()
     )
@@ -670,8 +752,14 @@ def render_line(
                     seed=seed,
                 )
             )
-            piece_pcm = strip_wav_header(out.bytes) if out.is_wav_container else out.bytes
-            return piece_pcm, out.sample_rate, out.channels
+            if not out.is_wav_container:
+                return out.bytes, out.sample_rate, out.channels
+            # A provider's WAV header is authoritative — its `sample_rate` is a
+            # placeholder (external_openai.py). Read from it here until
+            # 2026-10-02, a 44.1 kHz WAV would have been labelled 24 kHz and
+            # played back slowed and lowered.
+            fmt, offset, size = parse_wav_header(out.bytes)
+            return out.bytes[offset:offset + size], fmt.sample_rate, fmt.channels
     else:
         from .engines.manager import get_manager
 
@@ -738,27 +826,9 @@ def render_line(
         except Exception as e:
             raise internal(f"engine synthesize: {e}")
 
-    # Post-render gain
-    if delivery.get("gain_db"):
-        gain = float(delivery["gain_db"])
-        gain = max(-24.0, min(12.0, gain))
-        pcm = apply_gain_db(pcm, gain)
-
-    # Post-render pitch. `capability_details` advertises pitch_post_process
-    # on every engine that has no native transposer, and GenerateView enables
-    # its pitch slider on that flag — but nothing ever applied the value: no
-    # engine reads `delivery.pitch` and the host did not either, so the
-    # control was inert everywhere (2026-08-17 audit). Applied here, before
-    # the effects chain, because pitch is part of how the line was spoken
-    # while the chain sits on top of the finished line.
-    if delivery.get("pitch"):
-        semitones = max(-12.0, min(12.0, float(delivery["pitch"])))
-        if semitones:
-            shifted = apply_effects_chain(
-                write_wav_container(pcm, out_sample_rate, out_channels),
-                [{"type": "pitch_shift", "params": {"semitones": semitones}}],
-            )
-            pcm = strip_wav_header(shifted)
+    # Speed (when the model did not pace itself), gain, pitch — the same
+    # function Generate calls.
+    pcm = apply_line_delivery(pcm, out_sample_rate, out_channels, delivery, speed_native=native)
 
     # Effects chain, after gain (gain is part of the delivery this line was
     # spoken with; the chain sits on top of the finished line). Same function

@@ -12,6 +12,7 @@ from justvoice.engines.audiocpp.runtime import AudioCppError, ModelEntry
 from justvoice.engines.audiocpp.slot import to_speech_request
 from justvoice.engines.capability_details import lookup
 from justvoice.engines.manager import discover_engines
+from justvoice.engines.qwen3 import manifest as qwen3_manifest
 
 
 def _row(engine: str, variant: str) -> dict:
@@ -29,8 +30,11 @@ def test_every_switched_engine_runs_on_audiocpp(engine):
     assert m.default_variant_id in {r["id"] for r in m.module.VARIANTS}
     for r in m.module.VARIANTS:
         src = r["sources"][0]
-        assert src["hf_repo"] == release.MODEL_REPO
-        assert src["revision"] == release.MODEL_REVISION          # a commit, never a branch
+        # audio.cpp's own repo, or our conversion of a model it does not publish (gap 4).
+        pinned = {release.MODEL_REPO: release.MODEL_REVISION,
+                  qwen3_manifest.CV_06_REPO: qwen3_manifest.CV_06_REVISION}
+        assert src["hf_repo"] in pinned
+        assert src["revision"] == pinned[src["hf_repo"]]          # a commit, never a branch
         assert r["audiocpp"]["file"] in src["files"]
 
 
@@ -73,8 +77,9 @@ def test_kokoro_maps_voice_language_speed_and_seed():
                    "language": "en-gb", "speed": 1.1}
 
 
-def test_qwen3_customvoice_takes_speaker_instruct_and_a_language_name():
-    req = to_speech_request(_row("qwen3", "qwen3-cv-1.7b-q8"), {
+@pytest.mark.parametrize("variant", ["qwen3-cv-1.7b-q8", "qwen3-cv-0.6b-q8"])
+def test_qwen3_customvoice_takes_speaker_instruct_and_a_language_name(variant):
+    req = to_speech_request(_row("qwen3", variant), {
         "voice_id": "Ryan", "text": "Hi.", "language": "en-US",
         "delivery": {"instruct": "Whisper it.", "temperature": 0.7,
                      "engine": {"talker_top_k": 40, "repetition_penalty": 1.1}}})
@@ -93,9 +98,10 @@ def test_qwen3_base_clones_from_the_clip_and_its_transcript():
 
 
 def test_qwen3_refuses_the_wrong_family_by_name():
-    with pytest.raises(AudioCppError, match="cannot clone"):
-        to_speech_request(_row("qwen3", "qwen3-cv-1.7b-q8"),
-                          {"voice_id": "x", "text": "Hi.", "audio_prompt_path": "a.wav"})
+    for cv in ("qwen3-cv-1.7b-q8", "qwen3-cv-0.6b-q8"):
+        with pytest.raises(AudioCppError, match="cannot clone"):
+            to_speech_request(_row("qwen3", cv),
+                              {"voice_id": "x", "text": "Hi.", "audio_prompt_path": "a.wav"})
     with pytest.raises(AudioCppError, match="clone-only"):
         to_speech_request(_row("qwen3", "qwen3-base-1.7b-q8"), {"voice_id": "Ryan", "text": "Hi."})
 

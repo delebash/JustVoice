@@ -138,6 +138,7 @@ const engineCaps = computed(() => {
     inline_tags: [],
     pitch_native_st_range: null,
     pitch_post_process: false,
+    speed_native: false,
     notes: [],
   };
 });
@@ -173,6 +174,11 @@ const pitchNative            = computed(() => engineCaps.value.pitch_native_st_r
 const pitchPostProcess       = computed(() => engineCaps.value.pitch_post_process);
 const pitchMin               = computed(() => pitchNative.value?.[0] ?? -12);
 const pitchMax               = computed(() => pitchNative.value?.[1] ?? 12);
+// Speed works on every engine: Kokoro and KittenTTS pace themselves, the
+// server time-stretches the rest. No hint without a capability row — the UI
+// cannot tell which side an engine it knows nothing about is on.
+const hasCapabilityRow       = computed(() => !!engineCaps.value.engine_id);
+const speedNative            = computed(() => engineCaps.value.speed_native);
 const supportsTemperature    = computed(() => hasKnob("temperature") || hasKnob("talker_temperature"));
 const supportsSeed           = computed(() => hasKnob("seed"));
 
@@ -879,6 +885,8 @@ onActivated(() => {
                 aria-label="Speed" />
               <span class="jv-muted">×</span>
             </div>
+            <span v-if="hasCapabilityRow && speedNative" class="ui-field__hint">Native — the engine paces itself.</span>
+            <span v-else-if="hasCapabilityRow" class="ui-field__hint">Post-process — the rendered audio is time-stretched, pitch kept.</span>
           </UiField>
           <UiField layout="block">
             <template #label>

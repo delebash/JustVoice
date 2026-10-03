@@ -255,14 +255,17 @@ loads them; there is no per-engine program. **Cloning is not Chatterbox-only.**
 
 Every variant is one pinned file (two for speech recognition) in
 `audio-cpp/audio.cpp-gguf` at the commit in `engines/audiocpp/release.py`
-(`MODEL_REPO` / `MODEL_REVISION`). Sizes are the summed real bytes. **The
+(`MODEL_REPO` / `MODEL_REVISION`) — except `qwen3-cv-0.6b-q8`, our own conversion,
+pinned in `engines/qwen3/manifest.py` (`CV_06_REPO` / `CV_06_REVISION`, passed through
+`model_source(repo=, revision=)`; gap 4, `docs/plans/2026-10-02-gap-4-customvoice-0.6b.md`).
+Sizes are the summed real bytes. **The
 variant is the unit, never the engine** — every trap below is a case of the
 engine-level flag disagreeing with the variant that loads.
 
 | Engine | Variant | audio.cpp family · task | Clones | Presets | Designs | Langs | Download |
 |---|---|---|---|---|---|---|---|
 | **kokoro** | `kokoro-82m-q8` | `kokoro_tts` · tts | ✗ | **49** | ✗ | 8 | 190 MB |
-| **qwen3** | `qwen3-cv-1.7b-q8` | `qwen3_tts` · tts | ✗ | **9** | ✗ | 10 | 2.82 GB |
+| **qwen3** | `qwen3-cv-1.7b-q8` / `qwen3-cv-0.6b-q8` | `qwen3_tts` · tts | ✗ | **9** | ✗ | 10 | 2.82 / 1.71 GB |
 | | `qwen3-base-1.7b-q8` / `qwen3-base-0.6b-q8` | `qwen3_tts` · tts (`clone: True`) | **✓** | 0 | ✗ | 10 | 2.70 / 1.99 GB |
 | | `qwen3-vd-1.7b-q8` | `qwen3_tts` · vdes | ✗ | 0 | **✓** | 10 | 2.82 GB |
 | **chatterbox** | `chatterbox-multilingual-v2-q8` | `chatterbox` · clon | **✓** | 0 | ✗ | **19** | 2.09 GB |
@@ -293,15 +296,19 @@ knob through the mapping and fails if one doesn't come out the other side.
 | `voice_vector` (blend) | **refuses** (422, named gap) | | | | | | |
 
 Everything NOT in that grid — `gain_db`, `pitch`, the effects chain, lexicons,
-`pause_before`/`pause_after` — is host-side and works on **all** of them. See
+`pause_before`/`pause_after` — is host-side and works on **all** of them, and so
+does `speed` on the engines the grid leaves blank (the server stretches). See
 §5's delivery matrix for where each is applied. Same seed + text + settings →
 the same audio on Kokoro, Qwen3 and Chatterbox (measured 2026-10-01) and Pocket
 TTS (2026-10-02); not on KittenTTS.
 
 Three facts this grid exists to keep visible:
 
-- **`speed` reaches one engine.** A host-side time-stretch would move it into
-  the always-works set (switch plan §5).
+- **`speed` reaches two models; the server paces the rest.** Kokoro and
+  KittenTTS take it (capability row `speed_native=True`); for every other
+  engine `render_core.apply_line_delivery` time-stretches the finished line
+  (`audio/dsp.time_stretch`, Signalsmith, pitch kept; 0.5–2.0×). Gap 8 of the
+  switch plan, built 2026-10-02 — `docs/plans/2026-10-02-gap-8-speed.md`.
 - **Prose direction reaches the two checkpoints that cannot clone.** Qwen3 Base
   has no instruction input. "Direct in words" and "use this speaker's cloned
   voice" are a choice today; a LoRA on Base was the way to have both, and
@@ -670,15 +677,18 @@ preset_effects)`.
 `render_core.render_line` passes the whole `delivery` dict to the manager, and the
 slot maps it onto audio.cpp's request (`engines/audiocpp/slot.py:
 to_speech_request`, per family — §3b). **The host-applied fields work on every
-engine; everything else is engine-specific.**
+engine; everything else is engine-specific.** Speed, gain and pitch are applied
+to the finished line by one function, `render_core.apply_line_delivery`, which
+`/v1/generate` calls too (`generate_api._finish_line`) — until 2026-10-02
+Generate applied none of the three.
 
 | Field | Applied by | Works on |
 |---|---|---|
-| `gain_db` | **host** — post-render `apply_gain_db`, clamped to [−24, +12] (`render_core.py:343-346`) | **every engine** |
-| `pitch` | **host** — post-render `pitch_shift` effect, clamped ±12 st. **Wired 2026-08-17**; before that it was read by nobody | **every engine** |
-| effects chain | **host** — `apply_effects_chain`, after gain and pitch | **every engine** |
+| `speed` | **engine** where the model paces itself (capability `speed_native`: Kokoro, KittenTTS; registry `EngineMeta.supports_speed`: the OpenAI-compatible provider) — else **host**, `time_stretch` on the finished line, clamped [0.5, 2.0]. A stretched line's cache key carries `speed_by: server` (`_key_delivery`) so entries cached while speed was ignored re-render | **every engine** (2026-10-02) |
+| `gain_db` | **host** — `apply_gain_db`, clamped to [−24, +12], after speed | **every engine** |
+| `pitch` | **host** — `pitch_shift` effect, clamped ±12 st, after gain. **Wired 2026-08-17**; before that it was read by nobody | **every engine** |
+| effects chain | **host** — `apply_effects_chain`, after speed, gain and pitch | **every engine** |
 | lexicons | **host** — `_apply_lexicons` substitutes text before synth; an IPA entry would ride `delivery.ipa_map` to an engine that takes phonemes, and none does on the runtime (`phoneme_override: False` everywhere), so its respelling is used | respellings: **every engine** |
-| `speed` | engine | **kokoro** only (`speed`) |
 | `instruct` | engine | **qwen3 CustomVoice** (`options.instruct`) and **VoiceDesign** (`instructions`, the description). Composed by `delivery_merge.compose_instruct` from persona `voice_instruct` → `emotion` → `Block.direction`, most specific last, a lone hint verbatim. Both render paths use that one function since 2026-08-17; before it, `/v1/generate` composed nothing |
 | ~~`style_prompt`~~ | — | **Deleted 2026-08-17.** A second prose field against `instruct`'s "this line", concatenated into it by the adapter one line before the model saw them. Qwen has one slot; the standing-vs-this-line axis is persona-vs-line, which already exists |
 | `temperature` | engine | **chatterbox**, **qwen3** (`options.temperature`) |
@@ -688,11 +698,10 @@ engine; everything else is engine-specific.**
 | `pause_before` / `pause_after` | **host** | **Wired 2026-08-17** — `concat_lines` uses them per join. Blank = the project gap; a value replaces it; both sides of a join add. `0` is a deliberate butt-join |
 
 **Design consequence, and it is a big one:** tuning does **not** move cleanly with
-a persona across a change of voice or engine. The **host-side half — gain, pitch, effects,
-lexicon, pauses — always survives**. The **engine half — speed, instruct,
-temperature — survives only if the new engine happens to honour it.** Move a
-persona's voice from Kokoro to Chatterbox and its `speed` silently stops doing
-anything.
+a persona across a change of voice or engine. The **host-side half — speed, gain, pitch,
+effects, lexicon, pauses — always survives** (speed since 2026-10-02: a model that
+paces itself takes it, the server stretches for the rest). The **engine half —
+instruct, temperature — survives only if the new engine happens to honour it.**
 
 `emotion` is meant to be the exception and is why it is an enum rather than
 prose: it compiles into instruct prose for one family and into a token for an

@@ -98,6 +98,7 @@ CAPABILITY_DETAILS: dict[str, EngineCapabilityDetail] = {
         inline_tags=[],
         pitch_native_st_range=None,
         pitch_post_process=True,  # the server can pitch-shift the output WAV
+        speed_native=True,
         notes=[
             "Pitch shift is post-process (the server shifts the rendered audio).",
             "The same seed gives the same audio.",
@@ -115,6 +116,7 @@ CAPABILITY_DETAILS: dict[str, EngineCapabilityDetail] = {
         inline_tags=[],
         pitch_native_st_range=None,
         pitch_post_process=True,
+        speed_native=True,
         notes=[
             "Eight English preset voices, made for the CPU.",
             "The same seed does not repeat the same audio.",

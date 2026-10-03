@@ -1019,6 +1019,11 @@ class EngineCapabilityDetail(BaseModel):
     pitch_native_st_range: list[int] | None = None  # [min, max] semitones
     pitch_post_process: bool = False
 
+    # Speed — true when the model paces itself (Kokoro, KittenTTS take a
+    # speed). Every other engine renders at its own pace and the server
+    # time-stretches the finished line (switch plan §5, gap 8).
+    speed_native: bool = False
+
     # Free-form notes for the UI to display under the capability banner.
     notes: list[str] = []
 

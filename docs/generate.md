@@ -55,9 +55,11 @@ repeating the numbers: Speed reads *slower · as written · faster*, Gain reads
 *quieter · unchanged · louder*. The six **primary controls** are universal across
 engines:
 
-- **Speed** — 0.5–2.0× pacing multiplier. Honoured natively by **Kokoro**; the other engines ignore it.
+- **Speed** — 0.5–2.0× pacing multiplier, **on every engine**. **Kokoro** and **KittenTTS** pace themselves — the model reads faster or slower. Every other engine (Qwen3-TTS, Chatterbox, Pocket TTS, and cloud voices that take no speed) speaks at its own pace and the server then time-stretches the finished line, keeping its pitch. The hint under the slider says which: *Native — the engine paces itself.* or *Post-process — the rendered audio is time-stretched, pitch kept.* Until 2026-10-02 only Kokoro and KittenTTS honoured Speed, and the rest ignored it.
 - **Pitch** — semitones, **post-process on every engine**. The rendered audio is pitch-shifted after synthesis, so it works the same everywhere. No engine transposes natively.
 - **Gain** — output WAV amplitude in dB. Applied by the server, so it works on every engine.
+
+Speed, Pitch and Gain are applied by the same server code here and in a chapter render, so a setting sounds the same from both. Until 2026-10-02 Generate applied none of the three — Pitch and Gain did nothing on this page, though they worked in chapters.
 - **Temperature** — sampling variance (engine-specific range)
 - **Pause before → after** — silence in ms around this line. Blank means "use the project's gap"; a value replaces it for that join, and a line's `pause after` plus the next line's `pause before` add together. **0 is a deliberate butt-join**, not "unset".
 - **Seed** — `🎲 randomize` button next to it
@@ -90,7 +92,7 @@ Below the primary controls, the form auto-renders any extra knobs the engine dec
 
 - **Chatterbox Multilingual** — `Exaggeration`, `CFG weight`; advanced `Repetition penalty`, `Top p`
 - **Qwen3** (every model) — advanced `Top k`, `Top p`, `Repetition penalty`
-- **Kokoro** — none beyond Speed
+- **Kokoro**, **KittenTTS** — none beyond Speed, which these two take natively
 
 Every engine takes a Seed: the same seed, text and settings give the same audio.
 

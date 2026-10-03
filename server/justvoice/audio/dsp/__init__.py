@@ -101,6 +101,42 @@ def pitch_shift(x: np.ndarray, sr: int, *, semitones: float = 0.0) -> np.ndarray
     return out
 
 
+#: The speed range the server stretches over — Generate's Speed slider.
+STRETCH_RANGE = (0.5, 2.0)
+
+
+def time_stretch(x: np.ndarray, sr: int, *, factor: float = 1.0) -> np.ndarray:
+    """Change the pace by `factor` (2.0 = twice as fast), keeping pitch, via
+    Signalsmith Stretch (MIT) — the same library as `pitch_shift`.
+
+    NOT an effect, and deliberately not in `EFFECTS`: the output is
+    `n / factor` samples long, which breaks contract 2 above. It is the
+    server's half of a line's Speed for engines whose model does not pace
+    itself (switch plan §5, gap 8), applied to the finished line before
+    anything downstream reads its length.
+
+    A missing package passes the audio through unchanged, logged at ERROR,
+    as `pitch_shift` does.
+    """
+    lo, hi = STRETCH_RANGE
+    factor = max(lo, min(hi, float(factor)))
+    if abs(factor - 1.0) < 1e-6:
+        return x
+    try:
+        import python_stretch as ps
+    except ImportError:
+        log.error(
+            "speed: time_stretch needs the 'python-stretch' package, which is not "
+            "installed — audio passed through at its own pace. Install it: pip install python-stretch"
+        )
+        return x
+
+    stretch = ps.Signalsmith.Stretch()
+    stretch.preset(int(x.shape[0]), int(sr))
+    stretch.setTimeFactor(factor)
+    return np.ascontiguousarray(stretch.process(np.ascontiguousarray(x, dtype=np.float32)))
+
+
 #: Chain `type` string -> effect callable. `effects.py` resolves against this
 #: and skips anything it does not recognise, exactly as before.
 EFFECTS = {
@@ -118,6 +154,7 @@ EFFECTS = {
     "eq_high": high_shelf,
 }
 
-__all__ = ["EFFECTS", "DSP_VERSION", "gain", "distortion", "pitch_shift",
+__all__ = ["EFFECTS", "DSP_VERSION", "STRETCH_RANGE", "gain", "distortion", "pitch_shift",
+           "time_stretch",
            "reverb", "chorus", "compressor", "delay",
            "highpass", "lowpass", "low_shelf", "peak", "high_shelf"]

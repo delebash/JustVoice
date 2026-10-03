@@ -95,7 +95,13 @@ itself never ships it.
 ## The catalog
 
 Every model is an 8-bit file pinned to one commit of
-[audio-cpp/audio.cpp-gguf](https://huggingface.co/audio-cpp/audio.cpp-gguf).
+[audio-cpp/audio.cpp-gguf](https://huggingface.co/audio-cpp/audio.cpp-gguf) —
+except Qwen3-TTS CustomVoice 0.6B, which audio.cpp does not publish. That one is
+JustVoice's own conversion of Qwen's official checkpoint, made with the speech
+runtime's converter and published at
+[delebash/Qwen3-TTS-12Hz-0.6B-CustomVoice-GGUF](https://huggingface.co/delebash/Qwen3-TTS-12Hz-0.6B-CustomVoice-GGUF)
+(its page has the exact conversion and what was checked). No account is needed
+to download any of them.
 
 | Engine · model | Download | Languages | Clones | Preset voices | Weights licence |
 |---|---|---|---|---|---|
@@ -103,6 +109,7 @@ Every model is an 8-bit file pinned to one commit of
 | **KittenTTS Mini 0.8** | 302 MB | English | — | 8 | Apache-2.0 |
 | **Pocket TTS** — one model per language: English, German, Italian, Portuguese, Spanish | 258 MB each | 1 each | ✓ | 20 | CC-BY-4.0 |
 | **Qwen3-TTS CustomVoice 1.7B** | 2.8 GB | 10 | — | 9 | Apache-2.0 |
+| **Qwen3-TTS CustomVoice 0.6B** | 1.7 GB | 10 | — | 9 | Apache-2.0 |
 | **Qwen3-TTS Base 1.7B** | 2.7 GB | 10 | ✓ | — | Apache-2.0 |
 | **Qwen3-TTS Base 0.6B** | 2.0 GB | 10 | ✓ | — | Apache-2.0 |
 | **Qwen3-TTS VoiceDesign 1.7B** | 2.8 GB | 10 | — (designs a voice from words) | — | Apache-2.0 |
@@ -120,7 +127,9 @@ can do with it:
 
 - **CustomVoice** ships 9 preset speakers (Vivian, Serena, Uncle Fu, Dylan,
   Eric, Ryan, Aiden, Ono Anna, Sohee) and takes a plain-English instruction to
-  steer their style and emotion. It **cannot clone**.
+  steer their style and emotion. It **cannot clone**. It comes in two sizes
+  with the same speakers: 1.7B, and 0.6B — a 1.7 GB download instead of 2.8 GB
+  that needs less graphics memory.
 - **Base** clones from a 3–10 second reference clip and its transcript, and
   has no preset speakers. It ignores written direction.
 - **VoiceDesign** makes a voice from a written description ("a gravelly
@@ -222,11 +231,12 @@ runtime row.
 ## What each engine can be tuned with
 
 Two things decide which controls you get: **which engine is loaded**, and
-**which of its models**. Four settings are applied by JustVoice itself, so they
-work the same on every engine:
+**which of its models**. Five settings are applied by JustVoice itself, so they
+work on every engine:
 
 | Always available | What it does |
 |---|---|
+| **Speed** | pacing, 0.5–2.0×. Kokoro and KittenTTS pace themselves (the model reads faster or slower); for every other engine JustVoice time-stretches the finished line and keeps its pitch. Before 2026-10-02 the other engines ignored Speed |
 | **Gain** | output level in dB, clamped to −24…+12 |
 | **Pitch** | semitone shift of the rendered audio |
 | **Effects chain** | reverb, EQ, compressor, delay and the rest |
@@ -234,7 +244,7 @@ work the same on every engine:
 
 Everything else is passed to the engine:
 
-| Model | Clones | Speed | Written direction | Engine controls |
+| Model | Clones | Paces itself (else stretched) | Written direction | Engine controls |
 |---|---|---|---|---|
 | **Kokoro** | ✗ | ✓ | ✗ | none |
 | **KittenTTS** | ✗ | ✓ | ✗ | none (no seed — see below) |
@@ -295,7 +305,6 @@ rendering something else in its place.
 - **Exact pronunciations (IPA) in a lexicon.** A lexicon entry with both an
   IPA pronunciation and a respelling now uses the respelling; an entry with
   only IPA has no effect until this returns.
-- **Qwen3-TTS CustomVoice 0.6B** — the smaller preset-speaker model.
 - **A confidence score from speech recognition.** The old recogniser
   reported how sure it was of each transcript; the new one does not.
 

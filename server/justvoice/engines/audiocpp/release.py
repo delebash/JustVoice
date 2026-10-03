@@ -56,8 +56,10 @@ def binaries() -> list[BinaryAsset]:
     ]
 
 
-def model_source(path: str, size_bytes: int) -> dict:
+def model_source(path: str, size_bytes: int, *, repo: str = MODEL_REPO,
+                 revision: str = MODEL_REVISION) -> dict:
     """A manifest variant's `sources` row for one GGUF file in the pinned model repo —
-    the shape `speech_cache.fetch_hf_variant` already downloads."""
-    return {"hf_repo": MODEL_REPO, "revision": MODEL_REVISION,
+    the shape `speech_cache.fetch_hf_variant` already downloads. `repo` / `revision`
+    name another pinned repo for a model audio.cpp does not publish (our own conversions)."""
+    return {"hf_repo": repo, "revision": revision,
             "size_bytes": size_bytes, "files": [path]}
