@@ -2017,7 +2017,10 @@ BUILT:  P5 (2026-10-03) — the Personas list as the mock `_s9`: ▶ plays the p
         `services/personaFacts.js` (the page uses it too). Gates: ruff, server 1009 passed,
         vitest 127, biome (JV + kit files), vite build, smoke on the real data dir, the list
         checked headless (filters, the open hint list, the ⋯ menu: zero JS errors, no
-        overflow); JW build:vite + vitest 592 with the kit changes.
+        overflow); JW build:vite + vitest 592 with the kit changes. Real app (`npm run dev`,
+        audio.cpp dev 6d1825eb, the real data dir) for P4+P5: the list's ▶ got 409 → "Load
+        Kokoro?" → Load & play → a 3.75 s WAV; the persona's page Listen → a 3.75 s WAV;
+        zero JS errors; app closed after (no process left, VRAM back at baseline).
 GO:     given 2026-10-03 for P1–P8 and P9's checks; P9's data reset asks first
 
 ### FINDING — language never reaches Chatterbox or Qwen3: every render on them is told English
