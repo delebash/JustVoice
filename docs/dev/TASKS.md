@@ -1905,6 +1905,26 @@ GO:     given 2026-09-28 for the record + the mock; 2026-09-29 for the measureme
         prompt-rule measurement, the third book and the chapter's rows | needed for app code,
         the prompt change, the six items
 
+### Mocks are built in the app — real kit components, fake data, no server; personas first
+STATE:  DECIDED 2026-10-04 — "go with 2, redo the persona mock first". Option 2 as presented:
+        "Mocks are built in the app itself. A mock screen is a Vue page with the real kit
+        components and fake data, and no server. That's what the mock rule already asks for:
+        'production minus the plumbing'. Whatever the mock shows is exactly what ships, because
+        it's the same code."
+WHY:    the HTML mock shares only the tokens with the app (`docs/plans/mock/README.md:39`); every
+        control is its own CSS in `_head.html` (.box .num .btn .radio .tag .kb on 574 lines of
+        `workbench-mock.html`; ui-input/ui-field/ui-slider/ui-button/jv-card/jv-knobs on 0). A
+        screen built with the real controls can't look like it, and the persona editor didn't:
+        How it speaks has knobs one per row (mock: 3 across), text boxes capped at 60ch (mock:
+        card-wide), equal columns (mock: 1.5 : 1). Found by the user 2026-10-04.
+NOT:    option 1 — the HTML mock linking the real stylesheets; hand-written markup can drift back.
+OPEN:   redo the persona mock — the index (`_s9`) and the editor (`_s7`), drawn as
+        `docs/plans/2026-10-03-persona-redesign.md` §6.1 — as Vue pages; then make
+        `PersonaEditorView.vue` match it. Asked first (2026-10-04): does the mock's look beat the
+        size-to-content / 60ch rule on these pages; where the mock pages live; what happens to
+        the HTML mock's `_s7`/`_s9`.
+GO:     given 2026-10-04 for option 2 and the persona mock; the three questions come first
+
 ### FINDING — a persona's pace, pitch and gain can't be edited anywhere in the app
 STATE:  FINDING — code-verified 2026-09-30 (found by the mock-vs-app comparison). The persona
         editor's "+ Edit" beside the delivery chips only toasts "Edit delivery in Generate · Tune
