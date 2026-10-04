@@ -1941,8 +1941,13 @@ BUILT:  2026-10-04 — the persona mock in the app: `src/mock/` (`MockPersonasVi
         Then "a" (2026-10-04): the rest of the HTML mock is FROZEN — no more edits; it stays only
         as the picture of screens not yet redone, each drawn fresh in the app when its work starts
         (record §2 item 4). `_s8` stays as drawn.
-OPEN:   the user's review of the mock; then `PersonaEditorView.vue`, `PersonasView.vue` and
-        `VoicesView.vue` change to match (each a slice with its blast-radius table).
+        Review so far (2026-10-04): "change word raw to play" — ▶ Raw is ▶ Play (mock done;
+        the real page gets it when it is matched).
+OPEN:   the rest of the user's review of the mock; then `PersonaEditorView.vue`,
+        `PersonasView.vue` and `VoicesView.vue` change to match (each a slice with its
+        blast-radius table).
+        LATER — the user: "dont do it know add to list": mock in the app the Voices page as the
+        library only (answer A) and Cast's persona list.
 GO:     given 2026-10-04 for option 2, the persona mock and the answers above; the real pages
         wait for the user's review of the mock
 

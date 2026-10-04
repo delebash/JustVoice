@@ -599,7 +599,7 @@ watch([() => draft.value?.name, isNew], publishCrumbs, { immediate: true });
                     :placeholder="kindEmptyHint || 'Pick a voice'" :disabled="!voiceOptions.length"
                     @update:model-value="pickVoice" />
                 </UiField>
-                <UiButton intent="secondary" label="▶ Raw" :loading="rawBusy" :disabled="!voice"
+                <UiButton intent="secondary" label="▶ Play" :loading="rawBusy" :disabled="!voice"
                   title="Play the voice on its own, before this page changes anything" @click="playRaw" />
                 <UiButton v-if="MAKER_LABEL[kind]" intent="secondary" :label="MAKER_LABEL[kind]"
                   :disabled="maker === kind" @click="openMaker(kind)" />

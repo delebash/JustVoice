@@ -112,6 +112,12 @@ The answer as shown: *"I agree. It's a better design than my round trip to Voice
   not a new survey (the user, 2026-10-04: "i know we have fully researched what each ening is
   capable of many times did you forget again?").
 
+**From the review of the mock** (2026-10-04)
+- "change word raw to play" — the voice's own button on the Voice card reads **▶ Play**, not
+  ▶ Raw (it still plays the voice on its own, before the persona shapes it).
+- "dont do it know add to list" — the Voices page as the library only (answer A) and Cast's
+  persona list are mocked in the app later, not now (TASKS).
+
 ## 4. Order
 
 1. Read the 12 Alexandria screenshots, `2026-08-15-voice-workflow-redesign.md` §5 and §9.3, and
