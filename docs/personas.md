@@ -181,7 +181,7 @@ Kokoro's take none — so this is the choice to make first:
 | Built-in | The models' own voices — Kokoro's `af_heart`, Qwen3 CustomVoice's Sohee | AI Settings → Speech engines, by installing a model |
 | Clone from audio | Voices cloned from a recording, and imported ones | This page — [New clone](#new-clone) |
 | Design from words | Voices designed from a description, with or without a kept clip | This page — [New design](#new-design) |
-| Blend | Kokoro blends of two or more voices | [Voices → Blend](voices.md) |
+| Blend | Kokoro blends of two or more voices | This page — [New blend](#new-blend) |
 | Trained LoRA | Off: *Needs voice training, which isn't rebuilt yet.* | — |
 
 A *Made by* choice that can't be directed the way you picked is off, and says
@@ -225,9 +225,9 @@ falls back to the voice's own when it doesn't.
 
 ### Making a voice on this page
 
-A persona makes its own voice. Pick **Clone from audio** or **Design from
-words** under *Made by* and its fields — **New clone**, **New design** — open
-at the top of the right column, beside the list
+A persona makes its own voice. Pick **Clone from audio**, **Design from
+words** or **Blend** under *Made by* and its fields — **New clone**, **New
+design**, **New blend** — open at the top of the right column, beside the list
 they fill — there is no button to find. Pick **Built-in** and nothing opens:
 built-in voices come with their models. What you make is saved to
 [Voices](voices.md) the moment you press **💾 Keep**, so another persona can
@@ -299,6 +299,37 @@ design models take written direction — so that button is off and says so, and
 its words show under the list with **Start from this one**, which copies them
 into New design as a copy to change and keep under a new name (it opens as
 *Harbour-master (2)*).
+
+#### New blend
+
+A blend is a voice made out of Kokoro's own voices — a Kokoro voice is a block
+of numbers describing how it sounds, so voices can be arithmetic on each
+other. Blends take no direction (Kokoro takes none), so *Blend* is off under
+**Written direction** and **Tags**. **Language** and **Gender** filters sit
+above the pickers, and every picker names a voice as *Bella · American English
+· Female*. Four ways, each making an ordinary voice:
+
+- **Blend — a mix.** Pick 2 to 5 voices and give each a weight. What matters
+  is the ratio, not the size — 1 beside 0.5 is the same mix as 0.6 beside 0.3 —
+  so each row shows the **share** it really contributes.
+- **Extrapolate — make a voice more itself.** One voice and an **Intensity**:
+  `average + k × (voice − average)`. 0 is the average voice, 1 the voice as it
+  is, above 1 its own qualities exaggerated; past about 1.5 it leaves what the
+  model was trained on and can break up.
+- **Vector math — voice arithmetic.** Voices to **add** (traits you want) and
+  to **subtract** (traits you don't): *Michael + Heart − Sarah* is roughly
+  "Heart, but male". Not divided by the total — the size of the answer is part
+  of the answer.
+- **Recombine — one voice's sound, another's delivery.** The first half of a
+  Kokoro voice is its **timbre**, the second its **prosody** (rhythm, pacing,
+  intonation): pick **Timbre from** one voice and **Prosody from** another. Tick
+  **Cut somewhere other than the timbre/prosody seam** to set each segment's
+  range yourself; the segments must cover 0% to 100%.
+
+A blend's language comes from the voices you mixed. **▶ Preview** speaks the
+Hear it line with the mix as this persona; **💾 Keep** saves it. (Blends need
+the speech runtime's next release to be heard — see
+[Engines → Not available yet](engines.md#not-available-yet).)
 
 ### Hear it
 

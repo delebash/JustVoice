@@ -37,6 +37,7 @@ import {
   UiSlider, UiTag, UiTextarea, confirmDialog, languageName, pushToast, saveBlob,
 } from "@delebash/llm-ui";
 import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
+import PersonaBlendMaker from "../components/PersonaBlendMaker.vue";
 import PersonaCloneMaker from "../components/PersonaCloneMaker.vue";
 import PersonaDesignMaker from "../components/PersonaDesignMaker.vue";
 import SlashTagMenu from "../components/SlashTagMenu.vue";
@@ -337,7 +338,7 @@ watch(kind, () => { modelFilter.value = ""; designFrom.value = null; makerKey.va
 // part of the persona") — picking a kind that is made shows its maker at the
 // top of the right column; only then. Keep saves the voice to Voices at once
 // and this persona takes it.
-const MAKERS = ["clone", "design"];
+const MAKERS = ["clone", "design", "blend"];
 const maker = computed(() => (MAKERS.includes(kind.value) ? kind.value : null));
 const makerKey = ref(0);   // a new key = a fresh, empty maker
 // A kept voice is fixed (decided 2026-10-04); its words start a new design.
@@ -372,7 +373,7 @@ const kindEmptyHint = computed(() => {
     builtin: "No built-in voices — install a speech model on AI Settings → Speech engines.",
     clone: "No cloned voices yet — make one on the right.",
     design: "No designed voices yet — make one on the right.",
-    blend: "No blends yet — make one on Voices → Blend.",
+    blend: "No blends yet — make one on the right.",
   }[kind.value] || "";
 });
 
@@ -1019,6 +1020,8 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
           <PersonaDesignMaker v-else-if="maker === 'design'" :key="`design-${makerKey}`" :rows="caps"
             :engines="enginesStore.items" :direction="directionFilter" :persona="draftPayload"
             :hear-text="hearText" :note="draft.note" :start-from="designFrom" @kept="onKept" />
+          <PersonaBlendMaker v-else-if="maker === 'blend'" :key="`blend-${makerKey}`" :voices="voices"
+            :persona="draftPayload" :hear-text="hearText" @kept="onKept" />
           <div class="jv-card jv-card--soft">
             <div class="jv-card__header"><h3 class="jv-card__title">{{ draft.name || "New persona" }}</h3></div>
             <div class="jv-card__body">
