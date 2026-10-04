@@ -44,6 +44,16 @@ export function modelOptions(field) {
     .sort((a, b) => a.label.localeCompare(b.label));
 }
 
+/** Only the models whose voices can be directed this way ("" = any). */
+export function forDirection(options, direction) {
+  return direction ? options.filter((o) => directedByOf(o.value) === direction) : options;
+}
+
+/** The first model of `order` the list offers — a maker's starting pick. */
+export function preferred(options, order) {
+  return order.find((id) => options.some((o) => o.value === id)) || options[0]?.value || "";
+}
+
 /** What a voice made on this model keeps — said where the model is picked. */
 export const MODEL_NOTE = {
   "chatterbox-turbo": "Takes tags — [fear] [sigh] — not written direction. English only; the clip must be longer than 5 seconds.",

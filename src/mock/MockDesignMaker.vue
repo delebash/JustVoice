@@ -17,14 +17,15 @@
 import { computed, ref } from "vue";
 import { UiButton, UiChip, UiField, UiInput, UiSelect, UiTextarea, pushToast } from "@delebash/llm-ui";
 import { capabilities, keepVoice, silentWav, wait } from "./personaMock.js";
-import { MODEL_NOTE, engineOf, languageOptionsFor, modelOptions } from "./mockMakers.js";
+import { MODEL_NOTE, engineOf, forDirection, languageOptionsFor, modelOptions, preferred } from "./mockMakers.js";
 
 const props = defineProps({
   personaName: { type: String, default: "" },
   note: { type: String, default: "" },
   startFrom: { type: Object, default: null },   // a kept design to copy: {name, design_prompt, model}
+  direction: { type: String, default: "" },     // the persona page's "How it can be directed"
 });
-const emit = defineEmits(["kept", "close"]);
+const emit = defineEmits(["kept"]);
 
 const DESIGN_NOTE = {
   "qwen3-vd": MODEL_NOTE["qwen3-vd"],
@@ -63,8 +64,13 @@ async function runPreview() {
 const chosenTake = computed(() => takes.value.find((t) => t.n === chosen.value) || null);
 
 // ── Keep ────────────────────────────────────────────────────────────────
-const cloneOptions = computed(() => modelOptions("supports_voice_cloning"));
-const cloneModel = ref("voxcpm2");
+const cloneOptions = computed(() => forDirection(modelOptions("supports_voice_cloning"), props.direction));
+const cloneModel = ref(preferred(cloneOptions.value, ["voxcpm2", "chatterbox-turbo", "chatterbox-multilingual", "qwen3-base", "pocket"]));
+// Both design models take written direction, so a voice kept as its description
+// does too; asked for tags or sliders only, keep a take on such a model instead.
+const descriptionOff = computed(() => (props.direction && props.direction !== "words"
+  ? "Qwen3 VoiceDesign and VoxCPM2 take written direction — keep a take on a model below instead."
+  : ""));
 function base(fields) {
   return {
     source: "designed", name: name.value.trim(), gender: "",
@@ -73,7 +79,7 @@ function base(fields) {
   };
 }
 function keepDescription() {
-  if (blocker.value || !name.value.trim()) return;
+  if (blocker.value || descriptionOff.value || !name.value.trim()) return;
   const v = keepVoice(base({ engine: engineOf(model.value), model: model.value }));
   pushToast({ kind: "success", message: `Voice "${v.name}" saved to Voices.` });
   emit("kept", v);
@@ -90,7 +96,6 @@ function keepTake() {
   <div class="jv-card">
     <div class="jv-card__header">
       <h3 class="jv-card__title">New design</h3>
-      <UiButton intent="ghost" size="small" label="✕" title="Close without keeping" @click="emit('close')" />
     </div>
     <div class="jv-card__body jv-col">
       <div class="jv-field-row">
@@ -132,9 +137,9 @@ function keepTake() {
 
       <div class="jv-col">
         <div class="jv-col jv-col--start">
-          <UiButton intent="primary" label="💾 Keep as a description" :disabled="!!blocker || !name.trim()"
-            :title="name.trim() ? '' : 'Give the voice a name'" @click="keepDescription" />
-          <p class="jv-hint">Every line is spoken from these words. It can shift a little between lines.</p>
+          <UiButton intent="primary" label="💾 Keep as a description" :disabled="!!blocker || !!descriptionOff || !name.trim()"
+            :title="descriptionOff || (name.trim() ? '' : 'Give the voice a name')" @click="keepDescription" />
+          <p class="jv-hint">{{ descriptionOff || "Every line is spoken from these words. It can shift a little between lines." }}</p>
         </div>
         <div class="jv-col jv-col--start">
           <div class="jv-field-row">

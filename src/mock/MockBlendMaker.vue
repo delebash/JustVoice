@@ -16,7 +16,7 @@ import { keepVoice, silentWav, store, wait } from "./personaMock.js";
 const props = defineProps({
   personaName: { type: String, default: "" },
 });
-const emit = defineEmits(["kept", "close"]);
+const emit = defineEmits(["kept"]);
 
 const STRATEGIES = [
   { value: "blend", label: "Blend" },
@@ -135,7 +135,6 @@ function keep() {
   <div class="jv-card">
     <div class="jv-card__header">
       <h3 class="jv-card__title">New blend</h3>
-      <UiButton intent="ghost" size="small" label="✕" title="Close without keeping" @click="emit('close')" />
     </div>
     <div class="jv-card__body jv-col">
       <p class="jv-hint">Blends mix Kokoro's own voices.</p>

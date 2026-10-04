@@ -9,11 +9,17 @@
     · the mock's look (`_s7`), which beats size-to-content on this page —
       knobs three across with the slider filling its cell, text boxes as wide
       as their card, the left column 1.5 × the right;
-    · a persona makes its own voice (§3): Clone, Design and Blend open their
-      maker right here; Keep saves the voice to Voices and this persona speaks
+    · a persona makes its own voice (§3): picking Clone, Design or Blend
+      shows that maker's fields at the top of the right column — no ＋ New button (the user,
+      2026-10-04: "instead of displaying new buttton when selected you show the
+      actual fields"); Keep saves the voice to Voices and this persona speaks
       with it;
-    · a Language filter on the voice list, beside Can be directed, Model and
-      Gender.
+    · what a voice can do comes first — "How it can be directed" (Written
+      direction · Tags · Sliders only), always in view — and how it was made
+      second; every voice in the list says what it can do; the makers offer
+      only the models that match (the user, 2026-10-04: "there needs to be a
+      bette way to identify a voice that can do direction and words");
+    · a Language filter on the voice list, beside Model and Gender.
   Everything else is the persona redesign as built (plan 2026-10-03 §6.1).
 -->
 <script setup>
@@ -125,10 +131,42 @@ function onKindBlocked(opt) {
   pushToast({ kind: "info", message: opt.title || "Not available yet." });
 }
 
+// What a voice can do comes first: the three direction kinds, always in view,
+// each with its one-line example and how many voices can do it.
+const directionFilter = ref("");
+const DIRECTION_WORD = { words: "written direction", tags: "tags", sliders: "sliders only" };
+const DIRECTION_EXAMPLE = { words: "describe it", tags: "[fear] [sigh]", sliders: "pace, pitch, gain" };
+const directionChoices = computed(() => DIRECTION_OPTIONS.map((o) => {
+  const n = voices.value.filter((v) => !o.value || v.directed_by === o.value).length;
+  return {
+    value: o.value,
+    label: `${o.value ? o.label : "Any"} (${n})`,
+    sublabel: o.value ? DIRECTION_EXAMPLE[o.value] : "every voice",
+  };
+}));
+
+// How it was made comes second. A kind is off when nothing of it can be
+// directed this way and its maker can't make one that can: a clone or a kept
+// take can land on a model of any kind; built-ins are fixed; blends are Kokoro's.
+const CAN_MAKE = { clone: ["words", "tags", "sliders"], design: ["words", "tags", "sliders"], blend: ["sliders"] };
+const OFF_REASON = {
+  builtin: { tags: "No built-in voice takes tags — Chatterbox Turbo and Nano voices are clones." },
+  blend: {
+    words: "Blends are Kokoro's — they take no written direction.",
+    tags: "Blends are Kokoro's — they take no tags.",
+  },
+};
+const kindOptions = computed(() => KINDS.map((k) => {
+  const d = directionFilter.value;
+  if (k.disabled || !d) return k;
+  const has = voices.value.some((v) => kindOf(v) === k.value && v.directed_by === d);
+  if (has || (CAN_MAKE[k.value] || []).includes(d)) return k;
+  return { ...k, disabled: true, title: OFF_REASON[k.value]?.[d] || "Nothing of this kind can be directed this way." };
+}));
+
 // The filters beside the list — and Language (the user, 2026-10-04: "so if i
 // only want to see japanese voices i can do that"), by the voice's own
 // language, as its label names it.
-const directionFilter = ref("");
 const modelFilter = ref("");
 const genderFilter = ref("");
 const languageFilter = ref("");
@@ -169,45 +207,55 @@ const shownVoices = computed(() => voicesOfKind.value.filter((v) =>
   && (!genderFilter.value || voiceGender(v) === genderFilter.value)
   && (!languageFilter.value || baseLang(v.language) === languageFilter.value)));
 
-const voiceOptions = computed(() => shownVoices.value.map((v) => ({ value: v.id, label: voiceLabel(v) })));
+// Every voice says what it can do, so the list reads without a filter set.
+const voiceOptions = computed(() => shownVoices.value.map((v) => ({
+  value: v.id,
+  label: `${voiceLabel(v)} · ${DIRECTION_WORD[v.directed_by] || "sliders only"}`,
+})));
 const voiceSelectValue = computed(() =>
   shownVoices.value.some((v) => v.id === draft.value?.voice_id) ? draft.value.voice_id : "");
-const MAKER_LABEL = { clone: "＋ New clone", design: "＋ New design", blend: "＋ New blend" };
 const kindEmptyHint = computed(() => {
   if (shownVoices.value.length) return "";
   if (voicesOfKind.value.length) return "No voice of this kind matches these filters.";
   return {
     builtin: "No built-in voices — install a speech model on AI Settings → Speech engines.",
-    clone: "No cloned voices yet — make one with ＋ New clone.",
-    design: "No designed voices yet — make one with ＋ New design.",
-    blend: "No blends yet — make one with ＋ New blend.",
+    clone: "No cloned voices yet — make one on the right.",
+    design: "No designed voices yet — make one on the right.",
+    blend: "No blends yet — make one on the right.",
   }[kind.value] || "";
 });
 
 // ── Making a voice, here (decided 2026-10-04) ───────────────────────────
-const maker = ref(null);        // clone · design · blend
-const designFrom = ref(null);   // a kept design to start a copy from
-const makerKey = ref(0);
-function openMaker(k, from = null) {
-  designFrom.value = from;
-  maker.value = k;
+// Picking Clone, Design or Blend shows its maker's fields under the list —
+// only then; Built-in shows none.
+const MAKERS = ["clone", "design", "blend"];
+const maker = computed(() => (MAKERS.includes(kind.value) ? kind.value : null));
+const designFrom = ref(null);   // a kept design whose words start the maker
+const makerKey = ref(0);        // a new key = a fresh, empty maker
+function startFromThis() {
+  designFrom.value = voice.value;
   makerKey.value += 1;
 }
-function closeMaker() {
-  maker.value = null;
-  designFrom.value = null;
-}
 function onKept(v) {
-  closeMaker();
-  directionFilter.value = "";
+  designFrom.value = null;
+  makerKey.value += 1;
   modelFilter.value = "";
   genderFilter.value = "";
   languageFilter.value = "";
   pickVoice(v.id);
 }
-watch(kind, (k) => {
+watch(kind, () => {
   modelFilter.value = "";
-  if (maker.value && maker.value !== k) closeMaker();
+  designFrom.value = null;
+  makerKey.value += 1;
+});
+// A kind that can't be directed this way gives way to the first that can,
+// and the open maker starts again with the matching models.
+watch(directionFilter, () => {
+  if (kindOptions.value.find((o) => o.value === kind.value)?.disabled) {
+    kind.value = kindOptions.value.find((o) => !o.disabled)?.value || "builtin";
+  }
+  makerKey.value += 1;
 });
 
 const voiceChange = ref(null);
@@ -509,7 +557,7 @@ function load() {
   if (!id) return;
   missing.value = false;
   voiceChange.value = null;
-  closeMaker();
+  designFrom.value = null;
   if (id === "new") {
     saved.value = null;
     draft.value = blank();
@@ -576,13 +624,13 @@ watch([() => draft.value?.name, isNew], publishCrumbs, { immediate: true });
           <div class="jv-card">
             <div class="jv-card__header"><h3 class="jv-card__title">Voice</h3></div>
             <div class="jv-card__body jv-col">
-              <div class="jv-inline-row">
-                <UiSegmented v-model="kind" :options="KINDS" size="small" aria-label="Kind of voice" @blocked="onKindBlocked" />
-              </div>
+              <UiField label="How it can be directed" layout="block">
+                <UiSegmented v-model="directionFilter" :options="directionChoices" size="small" aria-label="How it can be directed" />
+              </UiField>
+              <UiField label="Made by" layout="block">
+                <UiSegmented v-model="kind" :options="kindOptions" size="small" aria-label="Made by" @blocked="onKindBlocked" />
+              </UiField>
               <div class="jv-field-row">
-                <UiField label="Can be directed" layout="block">
-                  <UiSelect v-model="directionFilter" :options="DIRECTION_OPTIONS" width="id" />
-                </UiField>
                 <UiField label="Model" layout="block">
                   <UiSelect v-model="modelFilter" :options="modelOptions" width="name" />
                 </UiField>
@@ -601,15 +649,13 @@ watch([() => draft.value?.name, isNew], publishCrumbs, { immediate: true });
                 </UiField>
                 <UiButton intent="secondary" label="▶ Play" :loading="rawBusy" :disabled="!voice"
                   title="Play the voice on its own, before this page changes anything" @click="playRaw" />
-                <UiButton v-if="MAKER_LABEL[kind]" intent="secondary" :label="MAKER_LABEL[kind]"
-                  :disabled="maker === kind" @click="openMaker(kind)" />
               </div>
               <p v-if="kindEmptyHint" class="jv-hint">{{ kindEmptyHint }}</p>
-              <div v-if="voice?.source === 'designed' && voice.design_prompt" class="jv-inline-row">
+              <div v-if="kind === 'design' && voice?.source === 'designed' && voice.design_prompt" class="jv-inline-row">
                 <span class="jv-hint">“{{ voice.design_prompt }}”</span>
-                <UiButton intent="ghost" size="small" label="＋ New design from this one"
-                  title="A kept voice doesn't change — start a copy to change its words"
-                  @click="kind = 'design'; openMaker('design', voice)" />
+                <UiButton intent="ghost" size="small" label="Start from this one"
+                  title="A kept voice doesn't change — copy its words into the new design on the right"
+                  @click="startFromThis" />
               </div>
               <div v-if="voice" class="jv-inline-row">
                 <UiField label="Speaks" layout="block" :hint="languageNote">
@@ -624,15 +670,9 @@ watch([() => draft.value?.name, isNew], publishCrumbs, { immediate: true });
                 </template>
               </div>
               <p v-if="locked && !maker" class="jv-hint">Pick a voice first — everything below depends on its model.</p>
+              <p v-else-if="locked" class="jv-hint">Pick a voice, or make one on the right — everything below depends on its model.</p>
             </div>
           </div>
-
-          <MockCloneMaker v-if="maker === 'clone'" :key="`c${makerKey}`" :persona-name="draft.name"
-            @kept="onKept" @close="closeMaker" />
-          <MockDesignMaker v-else-if="maker === 'design'" :key="`d${makerKey}`" :persona-name="draft.name"
-            :note="draft.note" :start-from="designFrom" @kept="onKept" @close="closeMaker" />
-          <MockBlendMaker v-else-if="maker === 'blend'" :key="`b${makerKey}`" :persona-name="draft.name"
-            @kept="onKept" @close="closeMaker" />
 
           <!-- Hear it — the same path a chapter renders with; the makers' Preview speaks this line. -->
           <div class="jv-card" :class="{ 'persona-editor__locked': locked && !maker }" :aria-disabled="(locked && !maker) || undefined">
@@ -796,6 +836,16 @@ watch([() => draft.value?.name, isNew], publishCrumbs, { immediate: true });
         </div>
 
         <div class="jv-split__col">
+          <!-- The maker for the kind picked on the left (Clone, Design, Blend) —
+               on the right, beside the list it fills (the user, 2026-10-04: "you
+               have sapce on the right why dont you put the new desing and
+               dynamoic fields on the right"). -->
+          <MockCloneMaker v-if="maker === 'clone'" :key="`c${makerKey}`" :persona-name="draft.name"
+            :direction="directionFilter" @kept="onKept" />
+          <MockDesignMaker v-else-if="maker === 'design'" :key="`d${makerKey}`" :persona-name="draft.name"
+            :note="draft.note" :start-from="designFrom" :direction="directionFilter" @kept="onKept" />
+          <MockBlendMaker v-else-if="maker === 'blend'" :key="`b${makerKey}`" :persona-name="draft.name"
+            @kept="onKept" />
           <div class="jv-card jv-card--soft">
             <div class="jv-card__header"><h3 class="jv-card__title">{{ draft.name || "New persona" }}</h3></div>
             <div class="jv-card__body">

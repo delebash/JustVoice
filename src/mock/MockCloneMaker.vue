@@ -16,12 +16,13 @@ import {
   DownloadBar, UiButton, UiCheckbox, UiField, UiInput, UiSelect, UiTag, UiTextarea, fmtBytes, pushToast,
 } from "@delebash/llm-ui";
 import { CAPTURES, capabilities, keepVoice, modelStatus, silentWav, statusOf, terms, termsAccepted, wait } from "./personaMock.js";
-import { MODEL_NOTE, engineOf, fmtLength, languageOptionsFor, modelOptions } from "./mockMakers.js";
+import { MODEL_NOTE, engineOf, fmtLength, forDirection, languageOptionsFor, modelOptions, preferred } from "./mockMakers.js";
 
 const props = defineProps({
   personaName: { type: String, default: "" },
+  direction: { type: String, default: "" },   // the persona page's "How it can be directed"
 });
-const emit = defineEmits(["kept", "close"]);
+const emit = defineEmits(["kept"]);
 
 // ── The clip ────────────────────────────────────────────────────────────
 const clip = ref(null);   // {name, bytes, seconds, snr}
@@ -109,8 +110,8 @@ const noiseCheck = computed(() => {
 });
 
 // ── The model ───────────────────────────────────────────────────────────
-const options = computed(() => modelOptions("supports_voice_cloning"));
-const model = ref("chatterbox-turbo");
+const options = computed(() => forDirection(modelOptions("supports_voice_cloning"), props.direction));
+const model = ref(preferred(options.value, ["chatterbox-turbo", "voxcpm2", "chatterbox-multilingual", "qwen3-base", "pocket"]));
 const row = computed(() => capabilities[model.value] || null);
 const engine = computed(() => engineOf(model.value));
 const engineTerms = computed(() => terms[engine.value] || null);
@@ -187,7 +188,6 @@ function keep() {
   <div class="jv-card">
     <div class="jv-card__header">
       <h3 class="jv-card__title">New clone</h3>
-      <UiButton intent="ghost" size="small" label="✕" title="Close without keeping" @click="emit('close')" />
     </div>
     <div class="jv-card__body jv-col">
       <div v-if="termsPending" class="jv-banner jv-banner--info">
