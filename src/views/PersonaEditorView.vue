@@ -34,6 +34,7 @@ import SlashTagMenu from "../components/SlashTagMenu.vue";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";
 import { handleTermsRefusal } from "../services/engineTerms.js";
 import { openProjectInStudio } from "../services/openProject.js";
+import { DIRECTION_OPTIONS, VOICE_KINDS as KINDS, voiceKind as kindOf } from "../services/personaFacts.js";
 import { auditionVoice } from "../services/voiceAudition.js";
 import { voiceGender, voiceGenderWord } from "../services/voiceGender.js";
 import { useActiveProject } from "../stores/activeProject.js";
@@ -203,30 +204,14 @@ const notLoaded = computed(() => {
   return !!engine.current_variant_id && modelOfVariant(engine.current_variant_id) !== model.value;
 });
 
-// The kind radios — how a voice was made. They filter the list.
-const KINDS = [
-  { value: "builtin", label: "Built-in" },
-  { value: "clone", label: "Clone from audio" },
-  { value: "design", label: "Design from words" },
-  { value: "blend", label: "Blend" },
-  { value: "lora", label: "Trained LoRA", disabled: true, title: "Needs voice training, which isn't rebuilt yet." },
-];
-function kindOf(v) {
-  return { preset: "builtin", cloned: "clone", imported: "clone", designed: "design", blended: "blend" }[v?.source] || "builtin";
-}
+// The kind radios (KINDS) — how a voice was made. They filter the list.
 const kind = ref("builtin");
 function onKindBlocked(opt) {
   pushToast({ kind: "info", message: opt.title || "Not available yet." });
 }
 
 // Filters beside the list (decided 2026-10-03: "some way for the user to
-// filter out what types of voices they want to use").
-const DIRECTION_OPTIONS = [
-  { value: "", label: "Any direction" },
-  { value: "words", label: "Written direction — describe it: clipped, world-weary" },
-  { value: "tags", label: "Tags — pick from the model's list: [fear] [sigh]" },
-  { value: "sliders", label: "Sliders only — pace, pitch, gain, no words" },
-];
+// filter out what types of voices they want to use"); DIRECTION_OPTIONS.
 const directionFilter = ref("");
 const modelFilter = ref("");
 const genderFilter = ref("");

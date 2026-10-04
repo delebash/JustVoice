@@ -684,8 +684,21 @@ class Persona(BaseModel):
     updated_at: datetime
 
 
+class PersonaView(Persona):
+    """A persona as the API shows it: the stored persona plus what its voice
+    makes of it (2026-10-03, the persona redesign) — the model that speaks it,
+    that model's name, how it can be directed (`words` · `tags` · `sliders`)
+    and the language the persona actually speaks. Read-only; one answer for
+    the Personas list, Cast and the persona's page."""
+
+    model: str | None = None
+    model_name: str | None = None
+    directed_by: str | None = None
+    speaks: str | None = None
+
+
 class PersonaList(BaseModel):
-    personas: list[Persona]
+    personas: list[PersonaView]
 
 
 class CreatePersonaRequest(BaseModel):
@@ -749,6 +762,10 @@ class PersonaPreviewRequest(BaseModel):
     # One-off delivery on top of the persona's (Compare settings: a knob's
     # three values). Same shape as a line override in Slice 4.
     delivery: dict[str, Any] | None = None
+    # False: refuse with `engine_not_loaded:<engine>` instead of loading the
+    # voice's model, so a ▶ in a list can ask first (the voice ▶'s contract).
+    # The editor's Listen loads — its page already says the first listen will.
+    auto_load: bool = True
 
 
 class MergePersonaRequest(BaseModel):

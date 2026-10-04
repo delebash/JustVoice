@@ -41,18 +41,49 @@ the **persona**, because they belong to the voice.
 
 ## The list
 
-The Personas page lists your library with filter chips (**All · Used · Unused ·
-By project**), a search box that matches a persona's name or its note, and one
-row per persona:
+The Personas page lists your library, one row per persona:
 
 | Column | Shows |
 |---|---|
+| ▶ | Plays the persona speaking the stock line in its language — its voice, model, pace, pitch, gain, direction and effects, through the same path a chapter renders. If its model isn't loaded it asks first: *Load Kokoro?* (with **Always auto-load** once it has loaded, the same choice Voices offers). One compact player above the list serves every row |
 | Persona | Its name, and the start of its note |
-| Voice | The voice it's built on, or *no voice yet* |
+| Built on | The voice it's built on and how that voice was made: `Sohee built-in`, `Mara clone`, `Old Crow design`, `Warm mix blend`. *No voice yet* when none is picked, *voice missing* when its voice was deleted |
+| Model | The model that speaks its voice: `Qwen3-TTS CustomVoice`, `Kokoro` |
+| Can be directed | **✓ written direction**, **✓ 19 tags** (the model's own tags) or **sliders only** — see [Voice](#voice) for what each means |
+| Speaks | The language it speaks: `Korean`, `British English` |
+| Shaped | What it does to its voice: `1.05× · −1.0 dB · 2 effects`, `0.92× · −3 st · reverb`. *as the voice* when it changes nothing |
 | Used by | Who it plays, as *speaker — book*: `June — Stillwater`. The same speaker name in several books reads `Narrator — Stillwater · Emberfall`. A persona that plays no one reads **— not used yet —** |
+| ⋯ | **✎ Edit**, **✏️ Rename**, **🔗 Merge into…**, **🗑 Delete** |
 
-Click a row, or its **Edit**, to open that persona's page. **＋ New persona**
-opens a blank one.
+Click a row to open that persona's page. **＋ New persona** opens a blank one.
+
+**Filters** above the list narrow it, and combine:
+
+- **Search personas…** matches a persona's name or its note.
+- **Model** — the models your personas use, each with its count: *Kokoro (9)*.
+- **Can be directed** — Any direction · Written direction · Tags · Sliders only.
+  The open list shows each one's example (*describe it: clipped, world-weary* ·
+  *pick from the model's list: [fear] [sigh]* · *pace, pitch, gain — no words*).
+- **Languages** — the languages your personas speak, with counts.
+- **Used** — All · In use · Unused · *In* each book (*In The Ninth Facet*).
+
+When nothing matches, **Clear filters** puts them all back. With no personas at
+all the page says *No personas yet* and offers **＋ Create your first
+persona**.
+
+### Rename and Merge into…
+
+**✏️ Rename** asks for the new name and changes it everywhere the persona
+plays — Cast, *Used by*, Generate. Names stay unique (see [Names](#names)).
+
+**🔗 Merge into…** folds one persona into another, for when two personas have
+become the same voice. Pick the persona to keep: every speaker the merged one
+plays, in every book, is played by the kept one from then on; its own
+lexicons, its generations and its MCP bindings move too; then the merged
+persona is deleted. The kept persona keeps its own voice and settings — the
+merged one's are not copied over. The toast says how many speakers moved:
+*Gruff dockhand merged into Gravel old man — 2 speakers moved.* Merging can't
+be undone.
 
 ### Names
 
@@ -77,7 +108,7 @@ speaker of that name matches neither and arrives uncast; rename one to fix it.)
 
 ### Deleting
 
-**Delete** on a row asks first. If the persona plays anyone, the confirmation
+**⋯ → 🗑 Delete** on a row asks first. If the persona plays anyone, the confirmation
 says who: *"It plays Nettle (The Ninth Facet) — that speaker loses its
 persona."* The speakers stay in their books and keep their lines, but they have
 no persona until Cast gives them another. A chapter won't render while any of

@@ -130,9 +130,14 @@ Deleting a book deletes its speakers.
 - **Personas are library-level for persistence** — book 2 casts book 1's
   personas and they sound identical; the same persona can speak in an audiobook
   and a game.
-- `PersonasView.vue`: the list — cross-project filters (All / Used / Unused / By
-  project), a **Used by** column, ticks + *Delete N selected*. A row opens the
-  persona's page.
+- `PersonasView.vue`: the list (P5, mock `_s9`) — ▶ (`auditionPersona` →
+  `POST /v1/personas/preview` with `auto_load:false`, so it asks first) · Persona ·
+  Built on · Model · Can be directed · Speaks · Shaped · Used by · ⋯ (Edit, Rename,
+  Merge into…, Delete); filters search / model / can be directed / language / usage
+  (All · In use · Unused · each book); ticks + *Delete N selected*. Model, direction
+  kind and language come from the persona read itself (`PersonaView`: `model`,
+  `model_name`, `directed_by`, `speaks`), the answer Cast and the page share; the
+  vocabulary lives in `services/personaFacts.js`. A row opens the persona's page.
 - `PersonaEditorView.vue` (2026-10-03, the redesign's P4): cards Persona (name,
   note) · Voice (kind radios filter the list; Can be directed / Model / Gender
   filters; ▶ Raw; Speaks) · Hear it (`POST /v1/personas/preview` with the unsaved

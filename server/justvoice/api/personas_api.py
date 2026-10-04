@@ -20,6 +20,7 @@ from ..models import (
     Persona,
     PersonaDelivery,
     PersonaList,
+    PersonaView,
     PersonaPreviewRequest,
     UpdatePersonaRequest,
 )
@@ -30,7 +31,32 @@ router = APIRouter(tags=["personas"])
 
 @router.get("/v1/personas", response_model=PersonaList)
 async def list_personas() -> PersonaList:
-    return PersonaList(personas=get_state().personas.list())
+    st = get_state()
+    seen: dict = {}
+    return PersonaList(personas=[_view(st, p, seen) for p in st.personas.list()])
+
+
+def _view(st, persona: Persona, seen: dict | None = None) -> PersonaView:
+    """The persona plus its voice's facts (`PersonaView`). `seen` caches each
+    voice's model across a list — many personas share one voice."""
+    from ..persona_render import persona_language
+    from ..voice_model import voice_language, voice_model
+
+    seen = {} if seen is None else seen
+    vid = persona.voice_id
+    if vid and vid not in seen:
+        try:
+            seen[vid] = (voice_model(st, vid), voice_language(st, vid))
+        except Exception:  # noqa: BLE001 — a voice nothing owns any more shows no facts
+            seen[vid] = (None, None)
+    vm, own = seen.get(vid, (None, None)) if vid else (None, None)
+    return PersonaView(
+        **persona.model_dump(),
+        model=vm.model if vm else None,
+        model_name=vm.name if vm else None,
+        directed_by=vm.directed_by if vm else None,
+        speaks=persona_language(persona, vm, own) if vm else None,
+    )
 
 
 class PersonaSpeakerUsage(BaseModel):
@@ -202,10 +228,11 @@ def _checked_delivery(delivery: PersonaDelivery) -> PersonaDelivery:
     return delivery
 
 
-@router.post("/v1/personas", response_model=Persona, status_code=201)
-async def create_persona(body: CreatePersonaRequest) -> Persona:
+@router.post("/v1/personas", response_model=PersonaView, status_code=201)
+async def create_persona(body: CreatePersonaRequest) -> PersonaView:
     voice_id = _checked_voice(body.voice_id)
-    return get_state().personas.create(
+    st = get_state()
+    return _view(st, st.personas.create(
         _persona_name(body.name),
         voice_id,
         _checked_delivery(body.default_delivery),
@@ -217,19 +244,20 @@ async def create_persona(body: CreatePersonaRequest) -> Persona:
         avatar_path=body.avatar_path,
         note=body.note,
         effects_chain=body.effects_chain,
-    )
+    ))
 
 
-@router.get("/v1/personas/{id}", response_model=Persona)
-async def get_persona(id: str) -> Persona:
-    p = get_state().personas.get(id)
+@router.get("/v1/personas/{id}", response_model=PersonaView)
+async def get_persona(id: str) -> PersonaView:
+    st = get_state()
+    p = st.personas.get(id)
     if not p:
         raise not_found(f"persona {id}")
-    return p
+    return _view(st, p)
 
 
-@router.patch("/v1/personas/{id}", response_model=Persona)
-async def update_persona(id: str, body: UpdatePersonaRequest) -> Persona:
+@router.patch("/v1/personas/{id}", response_model=PersonaView)
+async def update_persona(id: str, body: UpdatePersonaRequest) -> PersonaView:
     """Change what was sent: a field left out stays, a field sent as null is
     cleared (2026-10-03 — this replaced a PUT that could not clear)."""
     current = get_state().personas.get(id)
@@ -255,7 +283,7 @@ async def update_persona(id: str, body: UpdatePersonaRequest) -> Persona:
     p = get_state().personas.update(id, **fields)
     if not p:
         raise not_found(f"persona {id}")
-    return p
+    return _view(get_state(), p)
 
 
 @router.delete("/v1/personas/{id}")
@@ -329,6 +357,14 @@ async def preview_persona(body: PersonaPreviewRequest) -> Response:
     if problems:
         raise bad_request("; ".join(problems))
     plan = plan_line(st, persona, text=" ", direction=body.direction, request_delivery=body.delivery)
+    if not body.auto_load:
+        from ..engines.manager import get_manager
+        from ..voice_model import is_model_loaded, voice_model
+
+        vm = voice_model(st, plan.voice)
+        if (vm is not None and get_manager().get_manifest(vm.engine_id) is not None
+                and not is_model_loaded(vm.engine_id, vm.model)):
+            raise conflict(f"engine_not_loaded:{vm.engine_id}")
     text = body.text.strip() or stock_line(plan.language)
     plan.text = text
 

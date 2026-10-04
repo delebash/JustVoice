@@ -2002,6 +2002,22 @@ BUILT:  P4 (2026-10-03) — the persona's page, `/personas/:id` (`new` = blank;
         Gates: ruff, server 1007 passed, vitest 127, biome, vite build, smoke on the real
         data dir, the page checked headless (new / Kokoro / Qwen3: zero JS errors, no
         overflow), JW builds with the kit change.
+BUILT:  P5 (2026-10-03) — the Personas list as the mock `_s9`: ▶ plays the persona (stock
+        line through `POST /v1/personas/preview`, now `auto_load:false` → asks first, the
+        shared `auditionPersona` door) · Persona · Built on (voice + built-in/clone/design/
+        blend) · Model · Can be directed (✓ written direction / ✓ N tags / sliders only) ·
+        Speaks · Shaped ("1.05× · −1.0 dB · 2 effects") · Used by · ⋯ (Edit, Rename, Merge
+        into…, Delete); filters search · model · can be directed · language · usage (All ·
+        In use · Unused · In <book>, call 7); Clear filters; empty state; ticks + Delete N
+        selected kept. Server: every persona read is a `PersonaView` (model, model_name,
+        directed_by, speaks — the one answer for the list, Cast and the page). Delete keeps
+        the 2026-09-29 ruling (asks, speakers lose the persona) over the mock's "refuses".
+        Kit: `UiSelect` options take a `hint` (open list only) and `title`/`aria-label`
+        reach the trigger (they reached no element before). Vocabulary in
+        `services/personaFacts.js` (the page uses it too). Gates: ruff, server 1009 passed,
+        vitest 127, biome (JV + kit files), vite build, smoke on the real data dir, the list
+        checked headless (filters, the open hint list, the ⋯ menu: zero JS errors, no
+        overflow); JW build:vite + vitest 592 with the kit changes.
 GO:     given 2026-10-03 for P1–P8 and P9's checks; P9's data reset asks first
 
 ### FINDING — language never reaches Chatterbox or Qwen3: every render on them is told English

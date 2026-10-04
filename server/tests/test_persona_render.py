@@ -226,9 +226,36 @@ def test_an_empty_line_speaks_the_stock_line_in_the_personas_language(client, mo
     assert seen[-1]["text"] == persona_render.STOCK_LINES["ja"]
 
 
+def test_a_list_play_asks_before_loading_the_model(client, monkeypatch):
+    from justvoice import voice_model
+
+    seen = _capture_render(monkeypatch)
+    monkeypatch.setattr(voice_model, "is_model_loaded", lambda engine_id, model: False)
+    pid = client.post("/v1/personas", json={"name": "Warm", "voice_id": "af_heart"}).json()["id"]
+    r = client.post("/v1/personas/preview", json={"persona_id": pid, "auto_load": False})
+    assert r.status_code == 409 and "engine_not_loaded:kokoro" in r.json()["detail"]
+    assert not seen
+    monkeypatch.setattr(voice_model, "is_model_loaded", lambda engine_id, model: True)
+    assert client.post("/v1/personas/preview", json={"persona_id": pid, "auto_load": False}).status_code == 200
+
+
 def test_listen_needs_a_voice(client):
     r = client.post("/v1/personas/preview", json={"persona": {"name": "Blank"}, "text": "Hi"})
     assert r.status_code == 400 and "Pick a voice first" in r.json()["detail"]
+
+
+def test_a_persona_read_carries_its_voices_model_and_what_it_speaks(client):
+    # One answer for the Personas list, Cast and the persona's page.
+    a = client.post("/v1/personas", json={"name": "June", "voice_id": "Sohee", "language": "en"}).json()
+    assert a["model"] == "qwen3-cv" and a["directed_by"] == "words" and a["speaks"] == "en"
+    assert "CustomVoice" in a["model_name"]
+    b = client.post("/v1/personas", json={"name": "Warm", "voice_id": "af_heart"}).json()["id"]
+    listed = {p["id"]: p for p in client.get("/v1/personas").json()["personas"]}
+    assert listed[b]["model"] == "kokoro" and listed[b]["directed_by"] == "sliders"
+    assert listed[b]["speaks"].startswith("en")
+    blank = client.post("/v1/personas", json={"name": "Blank"}).json()
+    assert blank["model"] is None and blank["speaks"] is None
+    assert client.patch(f"/v1/personas/{a['id']}", json={"note": "Dry"}).json()["model"] == "qwen3-cv"
 
 
 def test_the_stock_line_is_in_the_asked_language_else_english(client):

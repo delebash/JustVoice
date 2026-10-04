@@ -1,45 +1,55 @@
 <!-- SPDX-License-Identifier: MIT -->
 <!--
   PersonasView — the library of finished voices (2026-09-29: speakers and
-  personas are two things).
+  personas are two things; 2026-10-03: the persona redesign, mock `_s9`).
 
   A persona is a finished spoken voice: a voice (which carries the model that
   speaks it), plus pace, pitch, gain, direction, effects and lexicon, and a
-  short note on how it sounds. The PEOPLE in a book are its speakers (Studio · Discover finds
-  them, Cast gives each one a persona); one persona can play many speakers.
-  So a persona has no "Also called" and no character sheet — those moved to
-  the speaker — and personas have no name rule: "Used by" (speaker — book)
-  tells two of the same name apart.
+  short note on how it sounds. The PEOPLE in a book are its speakers (Studio ·
+  Discover finds them, Cast gives each one a persona); one persona can play
+  many speakers.
 
-  The library list: filter chips (All / Used / Unused / By project), who each
-  persona plays, and ticks + "Delete N selected". A row, Edit and ＋ New
-  persona open the persona's own page (PersonaEditorView, /personas/:id —
-  the persona redesign, 2026-10-03); the dialog editor that lived here went
-  with it.
+  The list, as the mock draws it: ▶ (the persona speaking, not the bare
+  voice) · Persona · Built on · Model · Can be directed · Speaks · Shaped ·
+  Used by · ⋯ (Rename · Merge into… · Delete). Filters: search, model, can be
+  directed, language, usage (All · In use · Unused · each book). The ticks and
+  "Delete N selected" (ruled 2026-09-29) stay. A row, ＋ New persona and the
+  empty state open the persona's own page (PersonaEditorView, /personas/:id).
+  The model, direction kind and language come from the server's persona read
+  (`PersonaView`) — the same answer Cast and the page show.
 -->
 <script setup>
 import { computed, onActivated, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
+import {
+  DropdownMenuContent, DropdownMenuItem, DropdownMenuPortal,
+  DropdownMenuRoot, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "reka-ui";
+import {
+  EmptyState, UiButton, UiCheckbox, UiInput, UiSelect, UiTable, UiTag,
+  confirmDialog, languageName, promptDialog, pushToast,
+} from "@delebash/llm-ui";
+import { handleTermsRefusal } from "../services/engineTerms.js";
+import { DIRECTION_OPTIONS, directionCell, tagCount, voiceKindWord } from "../services/personaFacts.js";
+import { auditionPersona } from "../services/voiceAudition.js";
 import { useApi } from "../stores/api.js";
-import { pushToast } from "@delebash/llm-ui";
-import { confirmDialog } from "@delebash/llm-ui";
-import { UiButton, UiCheckbox, UiInput, UiSelect, UiTable } from "@delebash/llm-ui";
-import { EmptyState } from "@delebash/llm-ui";
 import { usePersonasStore } from "../stores/personas.js";
-import { useVoicesStore } from "../stores/voices.js";
 import { useProjectsStore } from "../stores/projects.js";
+import { useVoicesStore } from "../stores/voices.js";
 
-// Kit grid in the JustVoice look (`jv-table-look`); sorting comes with it,
-// which matters here — "which project uses this persona most" was unanswerable
-// without re-reading the whole list.
+// Kit grid in the JustVoice look (`jv-table-look`); sorting comes with it.
+const NARROW = { width: "1%", whiteSpace: "nowrap" };
 const PERSONA_COLUMNS = [
-  { id: "pick", header: "", headerStyle: { width: "1%" }, cellStyle: { width: "1%" } },
+  { id: "pick", header: "", headerStyle: NARROW, cellStyle: NARROW },
+  { id: "play", header: "", headerStyle: NARROW, cellStyle: NARROW },
   { id: "name", accessorKey: "name", header: "Persona", sortable: true },
-  { id: "voice", header: "Voice" },
+  { id: "built", header: "Built on", cellStyle: { whiteSpace: "nowrap" } },
+  { id: "model", accessorKey: "model_name", header: "Model", sortable: true, cellStyle: { whiteSpace: "nowrap" } },
+  { id: "directed", header: "Can be directed", cellStyle: { whiteSpace: "nowrap" } },
+  { id: "speaks", header: "Speaks", cellStyle: { whiteSpace: "nowrap" } },
+  { id: "shaped", header: "Shaped", cellStyle: { whiteSpace: "nowrap" } },
   { id: "used", header: "Used by" },
-  { id: "actions", header: "Actions",
-    headerStyle: { width: "150px", textAlign: "right" },
-    cellStyle: { textAlign: "right", whiteSpace: "nowrap" } },
+  { id: "more", header: "", headerStyle: NARROW, cellStyle: { ...NARROW, textAlign: "right" } },
 ];
 const api = useApi();
 
@@ -50,11 +60,12 @@ const personasStore = usePersonasStore();
 const voicesStore = useVoicesStore();
 const projectsStore = useProjectsStore();
 const personas = computed(() => personasStore.items);
-const voices = computed(() => voicesStore.items);
-const projects = computed(() => projectsStore.items);
+const voiceById = computed(() => Object.fromEntries(voicesStore.items.map((v) => [v.id, v])));
 // {persona_id: [{project_id, project_name, speaker_id, speaker_name, lines}]} —
 // the speakers each persona plays. Per-view, not shared.
 const usage = ref({});
+// Capability rows by model — for the number of tags a tag model lists.
+const caps = ref({});
 const loading = ref(false);
 
 // One persona is edited on its own page; `new` opens a blank one.
@@ -63,26 +74,64 @@ function openPersona(id) {
   router.push({ name: "persona", params: { id } });
 }
 
-const FILTERS = ["all", "used", "unused", "by-project"];
-const filter = ref("all");
-const filterProjectId = ref("");
+// ── Filters ─────────────────────────────────────────────────────────────
 const search = ref("");
+const modelFilter = ref("");
+const directionFilter = ref("");
+const languageFilter = ref("");
+// All · In use · Unused · one book (plan §6.2 call 7: "By project" folds in).
+const usageFilter = ref("");
+
+function counted(values, label) {
+  const counts = new Map();
+  for (const v of values) if (v) counts.set(v, (counts.get(v) || 0) + 1);
+  return [...counts].map(([value, n]) => ({ value, label: `${label(value)} (${n})` }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+}
+const modelOptions = computed(() => {
+  const names = Object.fromEntries(personas.value.map((p) => [p.model, p.model_name || p.model]));
+  return [{ value: "", label: "All models" }, ...counted(personas.value.map((p) => p.model), (m) => names[m])];
+});
+const languageOptions = computed(() => [
+  { value: "", label: "All languages" },
+  ...counted(personas.value.map((p) => p.speaks), (c) => languageName(c) || c),
+]);
+const usageOptions = computed(() => {
+  const books = new Map();
+  for (const list of Object.values(usage.value)) for (const u of list) books.set(u.project_id, u.project_name);
+  return [
+    { value: "", label: "All" },
+    { value: "used", label: "In use" },
+    { value: "unused", label: "Unused" },
+    ...[...books].sort((a, b) => a[1].localeCompare(b[1])).map(([id, name]) => ({ value: `book:${id}`, label: `In ${name}` })),
+  ];
+});
 
 const filteredPersonas = computed(() => {
   let list = personas.value;
-  if (filter.value === "used") list = list.filter((p) => (usage.value[p.id] || []).length > 0);
-  if (filter.value === "unused") list = list.filter((p) => !(usage.value[p.id] || []).length);
-  if (filter.value === "by-project" && filterProjectId.value) {
-    list = list.filter((p) =>
-      (usage.value[p.id] || []).some((u) => u.project_id === filterProjectId.value),
-    );
+  if (modelFilter.value) list = list.filter((p) => p.model === modelFilter.value);
+  if (directionFilter.value) list = list.filter((p) => p.directed_by === directionFilter.value);
+  if (languageFilter.value) list = list.filter((p) => p.speaks === languageFilter.value);
+  const u = usageFilter.value;
+  if (u === "used") list = list.filter((p) => usageCount(p.id) > 0);
+  if (u === "unused") list = list.filter((p) => !usageCount(p.id));
+  if (u.startsWith("book:")) {
+    const book = u.slice(5);
+    list = list.filter((p) => (usage.value[p.id] || []).some((x) => x.project_id === book));
   }
   const q = search.value.trim().toLowerCase();
   if (q) list = list.filter((p) =>
     (p.name || "").toLowerCase().includes(q) || (p.note || "").toLowerCase().includes(q));
   return list;
 });
+const filtering = computed(() => !!(search.value.trim() || modelFilter.value || directionFilter.value
+  || languageFilter.value || usageFilter.value));
+function clearFilters() {
+  search.value = ""; modelFilter.value = ""; directionFilter.value = "";
+  languageFilter.value = ""; usageFilter.value = "";
+}
 
+// ── Cells ───────────────────────────────────────────────────────────────
 function usageCount(personaId) {
   return (usage.value[personaId] || []).length;
 }
@@ -99,6 +148,106 @@ function usedBy(personaId) {
 // "Nettle (The Ninth Facet)" — who loses this persona when it goes.
 function playsText(personaId) {
   return (usage.value[personaId] || []).map((u) => `${u.speaker_name} (${u.project_name})`).join(", ");
+}
+function directed(p) {
+  return directionCell(p.directed_by, tagCount(caps.value[p.model]));
+}
+// "1.05× · −1.0 dB · 2 effects" — what the persona does to its voice.
+function signed(n, digits) {
+  const s = Math.abs(n).toFixed(digits);
+  return n > 0 ? `+${s}` : n < 0 ? `−${s}` : s;
+}
+function shaped(p) {
+  const d = p.default_delivery || {};
+  const bits = [];
+  if (d.speed !== null && d.speed !== undefined) bits.push(`${Number(d.speed).toFixed(2)}×`);
+  if (d.pitch) bits.push(`${signed(Number(d.pitch), 0)} st`);
+  if (d.gain_db) bits.push(`${signed(Number(d.gain_db), 1)} dB`);
+  const fx = p.effects_chain || [];
+  if (fx.length === 1) bits.push(fx[0].type || "1 effect");
+  else if (fx.length > 1) bits.push(`${fx.length} effects`);
+  return bits.join(" · ");
+}
+
+// ── ▶ — the persona speaking its stock line ──────────────────────────────
+// Through the path a chapter renders with; asks before loading a model, as
+// every ▶ does. One compact player above the table serves every row.
+const playingId = ref(null);
+const audition = ref(null); // {url, name, model}
+async function play(p) {
+  if (!p.voice_id || playingId.value) return;
+  playingId.value = p.id;
+  try {
+    const blob = await auditionPersona(api, p);
+    if (blob instanceof Blob) {
+      if (audition.value?.url) URL.revokeObjectURL(audition.value.url);
+      audition.value = { url: URL.createObjectURL(blob), name: p.name, model: p.model_name || "" };
+    }
+  } catch (e) {
+    if (!handleTermsRefusal(e)) pushToast({ kind: "error", message: `Couldn't play ${p.name}: ${e?.message || e}` });
+  } finally {
+    playingId.value = null;
+  }
+}
+
+// ── ⋯ Rename · Merge into… · Delete ─────────────────────────────────────
+async function rename(p) {
+  const name = (await promptDialog({
+    title: `Rename ${p.name}`,
+    label: "Name",
+    defaultValue: p.name,
+    message: "The new name shows everywhere this persona plays — Cast, Used by, Generate.",
+    confirmLabel: "Rename",
+  }))?.trim();
+  if (!name || name === p.name) return;
+  try {
+    await api.request(`/v1/personas/${p.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }),
+    });
+    await loadAll();
+    pushToast({ kind: "success", message: `Renamed to ${name}.` });
+  } catch (e) {
+    pushToast({ kind: "error", message: `Rename failed: ${e?.message || e}` });
+  }
+}
+
+async function merge(p) {
+  const others = personas.value.filter((x) => x.id !== p.id);
+  if (!others.length) {
+    pushToast({ kind: "info", message: "There's no other persona to merge into." });
+    return;
+  }
+  const plays = usageCount(p.id) ? ` It plays ${playsText(p.id)}.` : " It plays no one yet.";
+  const choice = await promptDialog({
+    title: `Merge ${p.name} into…`,
+    message: `Every speaker ${p.name} plays is played by the persona you pick, and ${p.name} is deleted.`
+      + `${plays} The persona you pick keeps its own voice and settings.`,
+    fields: [{
+      key: "into",
+      label: "Merge into",
+      type: "select",
+      defaultValue: others[0].id,
+      options: others.map((x) => ({ value: x.id, label: x.model_name ? `${x.name} · ${x.model_name}` : x.name })),
+    }],
+    confirmLabel: "Merge",
+    danger: true,
+  });
+  const into = choice?.into;
+  if (!into) return;
+  try {
+    const r = await api.request(`/v1/personas/${p.id}/merge`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ into }),
+    });
+    await loadAll();
+    const n = r?.speakers || 0;
+    pushToast({
+      kind: "success",
+      message: `${p.name} merged into ${r?.into_name || "the persona"}`
+        + (n ? ` — ${n} speaker${n === 1 ? "" : "s"} moved.` : "."),
+    });
+  } catch (e) {
+    pushToast({ kind: "error", message: `Merge failed: ${e?.message || e}` });
+  }
 }
 
 // Tick several personas and delete them at once (decided 2026-09-29). Each
@@ -147,28 +296,27 @@ async function removePicked() {
   });
 }
 
-// Reload everything: the shared stores + the per-view usage map. Called on
-// mount and after every persona mutation so the change propagates to all
-// consumers.
+// Reload everything: the shared stores, the per-view usage map and the
+// capability rows. Called on mount, on coming back to the list, and after
+// every persona mutation so the change propagates to all consumers.
 async function loadAll() {
-  loading.value = true;
+  loading.value = !personas.value.length;
   try {
-    const [, , , uRes] = await Promise.all([
+    const [, , , uRes, cRes] = await Promise.all([
       personasStore.reload(),
       voicesStore.reload(),
       projectsStore.reload(),
       api.safeRequest("/v1/personas/usage", { usage: {} }),
+      api.safeRequest("/v1/engines/capabilities", { engines: {} }),
     ]);
     usage.value = uRes?.usage ?? {};
-    // No auto-select: the card grid is the landing view; clicking a
-    // card drills into the editor (grid pattern, user decision 2026-06-12).
+    caps.value = cRes?.engines ?? {};
   } finally {
     loading.value = false;
   }
 }
 
-// Single delete path — called from each list row (Delete lives on the
-// row, NOT the editor footer, per G-PERSONA-4). Keeps the snapshot Undo.
+// Single delete path — called from each row's ⋯. Keeps the snapshot Undo.
 async function removePersona(p) {
   const ok = await confirmDialog({
     title: "Delete persona?",
@@ -240,39 +388,36 @@ onActivated(() => { if (mounted) loadAll(); mounted = true; });
 <template>
   <div class="personas">
     <div class="jv-lib-toolbar">
-      <UiInput v-model="search" placeholder="Search personas…" size="small" width="name" />
-      <!-- Library-mode filter chips: All / Used / Unused / By project.
-           Cross-project Personas are the model — these help find them. -->
-      <button
-        v-for="f in FILTERS"
-        :key="f"
-        type="button"
-        class="jv-chip-card personas__chip"
-        :class="{ 'personas__chip--active': filter === f }"
-        @click="filter = f"
-      >{{ f === 'by-project' ? 'By project' : (f.charAt(0).toUpperCase() + f.slice(1)) }}</button>
-      <UiSelect
-        v-if="filter === 'by-project'"
-        width="name"
-        v-model="filterProjectId"
-        placeholder="— pick a project —"
-        :options="projects" option-label="name" option-value="id"
-      />
+      <UiInput v-model="search" placeholder="Search personas…" size="small" width="id" />
+      <UiSelect v-model="modelFilter" :options="modelOptions" width="id" aria-label="Model"
+        title="Show only personas on one model" />
+      <UiSelect v-model="directionFilter" :options="DIRECTION_OPTIONS" width="id" aria-label="Can be directed"
+        title="Show only personas that can be directed one way" />
+      <UiSelect v-model="languageFilter" :options="languageOptions" width="id" aria-label="Speaks"
+        title="Show only personas that speak one language" />
+      <UiSelect v-model="usageFilter" :options="usageOptions" width="id" aria-label="Used"
+        title="In use, unused, or in one book" />
       <span class="jv-spacer" />
-      <UiButton intent="primary" size="small" label="+ New persona" @click="openPersona('new')" />
+      <UiButton intent="primary" size="small" label="＋ New persona" @click="openPersona('new')" />
+    </div>
+
+    <!-- Compact player — one in-flow player above the table serves every ▶
+         (the ruling 2026-08-15: playback is compact and in place). -->
+    <div v-if="audition" class="jv-inline-row personas__audition">
+      <span class="jv-muted">▶ <strong>{{ audition.name }}</strong><template v-if="audition.model"> · {{ audition.model }}</template></span>
+      <audio :src="audition.url" controls autoplay class="jv-audio-inline" />
     </div>
 
     <div v-if="loading" class="jv-muted personas__empty">Loading…</div>
     <EmptyState
-      v-else-if="!filteredPersonas.length && !personas.length"
+      v-else-if="!personas.length"
       icon="Sparkle"
       title="No personas yet"
       message="A persona is a finished spoken voice — a voice, which carries the model that speaks it, plus pace, pitch, gain, direction and effects. Cast gives one to each speaker in a book, and one persona can play many."
-      action-label="+ Create your first persona"
+      action-label="＋ Create your first persona"
       @action="openPersona('new')"
     />
-    <!-- One empty state, owned by the grid; `row-hover` carries the pointer
-         cursor and the row tint that two scoped rules used to do by hand. -->
+    <!-- `row-hover` carries the pointer cursor and the row tint. -->
     <UiTable v-else class="jv-table-look" :data="filteredPersonas" :columns="PERSONA_COLUMNS"
       data-key="id" row-hover @row-click="({ data }) => openPersona(data.id)">
       <template #head-pick>
@@ -285,25 +430,67 @@ onActivated(() => { if (mounted) loadAll(); mounted = true; });
             @update:model-value="(v) => (picked = { ...picked, [row.id]: v })" />
         </span>
       </template>
+      <template #play="{ row }">
+        <span @click.stop>
+          <UiButton intent="ghost" size="small" label="▶" :loading="playingId === row.id"
+            :disabled="!row.voice_id || (!!playingId && playingId !== row.id)"
+            :title="row.voice_id ? `Hear ${row.name} speak` : 'No voice yet'" @click="play(row)" />
+        </span>
+      </template>
       <template #name="{ row }">
         <span class="personas__card-avatar personas__avatar-sm" :style="{ background: colorFor(row.name) }">{{ (row.name || "?").charAt(0).toUpperCase() }}</span>
         <strong>{{ row.name }}</strong>
         <div v-if="row.note" class="jv-muted personas__row-sub">{{ row.note.slice(0, 70) }}{{ row.note.length > 70 ? "…" : "" }}</div>
       </template>
-      <template #voice="{ row }">
-        <span class="jv-muted">{{ voices.find((v) => v.id === row.voice_id)?.name || (row.voice_id || "no voice yet") }}</span>
+      <template #built="{ row }">
+        <template v-if="voiceById[row.voice_id]">
+          {{ voiceById[row.voice_id].name }} <span class="jv-hint">{{ voiceKindWord(voiceById[row.voice_id]) }}</span>
+        </template>
+        <span v-else-if="row.voice_id" class="jv-muted" title="This voice isn't in the library any more">voice missing</span>
+        <span v-else class="jv-muted">no voice yet</span>
+      </template>
+      <template #model="{ row }">
+        <span v-if="row.model_name">{{ row.model_name }}</span>
+        <span v-else class="jv-muted">—</span>
+      </template>
+      <template #directed="{ row }">
+        <UiTag v-if="row.directed_by" :intent="directed(row).intent" :title="directed(row).title">{{ directed(row).label }}</UiTag>
+        <span v-else class="jv-muted">—</span>
+      </template>
+      <template #speaks="{ row }">
+        <span v-if="row.speaks">{{ languageName(row.speaks) || row.speaks }}</span>
+        <span v-else class="jv-muted">—</span>
+      </template>
+      <template #shaped="{ row }">
+        <span class="jv-hint">{{ shaped(row) || "as the voice" }}</span>
       </template>
       <template #used="{ row }">
         <span v-if="usageCount(row.id)" class="jv-muted personas__books">{{ usedBy(row.id) }}</span>
         <span v-else class="jv-muted" title="No speaker in any book has this persona">— not used yet —</span>
       </template>
-      <template #actions="{ row }">
-        <div class="jv-table__actions" @click.stop>
-          <UiButton intent="ghost" size="small" label="Edit" @click="openPersona(row.id)" />
-          <UiButton intent="danger-outline" size="small" label="Delete" @click="removePersona(row)" />
-        </div>
+      <template #more="{ row }">
+        <span @click.stop>
+          <!-- The row menu — reka's DropdownMenu, the Speech engines rows'
+               pattern (`.ev-kebab` / `.ev-menu`); the portal escapes the
+               table's overflow. -->
+          <DropdownMenuRoot>
+            <DropdownMenuTrigger class="ev-kebab" aria-label="Persona actions" title="Persona actions">⋯</DropdownMenuTrigger>
+            <DropdownMenuPortal>
+              <DropdownMenuContent class="ev-menu" align="end" :side-offset="4" :collision-padding="8">
+                <DropdownMenuItem class="ev-menu-item" @select="openPersona(row.id)">✎ Edit</DropdownMenuItem>
+                <DropdownMenuItem class="ev-menu-item" @select="rename(row)">✏️ Rename</DropdownMenuItem>
+                <DropdownMenuItem class="ev-menu-item" :disabled="personas.length < 2" @select="merge(row)">🔗 Merge into…</DropdownMenuItem>
+                <DropdownMenuSeparator class="ev-menu-sep" />
+                <DropdownMenuItem class="ev-menu-item danger" @select="removePersona(row)">🗑 Delete</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenuPortal>
+          </DropdownMenuRoot>
+        </span>
       </template>
-      <template #empty>No personas match this filter.</template>
+      <template #empty>
+        No persona matches these filters.
+        <UiButton v-if="filtering" intent="ghost" size="small" label="Clear filters" @click="clearFilters" />
+      </template>
     </UiTable>
     <div v-if="!loading && filteredPersonas.length" class="jv-inline-row personas__bulk">
       <UiButton intent="danger-outline" size="small" :disabled="!pickedPersonas.length || bulkDeleting"
@@ -319,19 +506,6 @@ onActivated(() => { if (mounted) loadAll(); mounted = true; });
 .personas {
   display: flex;
   flex-direction: column;
-}
-
-.personas__chip {
-  font-size: 11px;
-  padding: 4px 10px;
-  cursor: pointer;
-  user-select: none;
-  border: 1px solid var(--border-soft);
-}
-.personas__chip--active {
-  background: var(--accent);
-  color: var(--surface);
-  border-color: var(--accent);
 }
 
 .personas__empty {
@@ -355,7 +529,7 @@ onActivated(() => { if (mounted) loadAll(); mounted = true; });
 /* The row's cursor and hover tint come from UiTable's `row-hover`. */
 .personas__row-sub { font-size: 12.5px; margin-left: 36px; }
 .personas__avatar-sm { width: 26px; height: 26px; font-size: 12px; vertical-align: middle; margin-right: 8px; }
-.personas__books { display: inline-block; max-width: 48ch; }
+.personas__books { display: inline-block; max-width: 40ch; }
 .personas__bulk { gap: 8px; align-items: center; margin-top: 10px; }
-
+.personas__audition { gap: 10px; align-items: center; margin-bottom: 8px; }
 </style>

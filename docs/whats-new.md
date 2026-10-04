@@ -2,6 +2,16 @@
 
 ## v0.1.0
 
+- **The Personas list shows how each persona sounds (2026-10-03).** New
+  columns: **Built on** (the voice and how it was made), **Model**, **Can be
+  directed** (written direction, the model's tags, or sliders only), **Speaks**
+  and **Shaped** (`1.05× · −1.0 dB · 2 effects`). **▶** plays the persona
+  itself — not just its voice — asking before it loads a model. Filters for
+  model, direction, language and use (All · In use · Unused · each book)
+  replace the All / Used / Unused / By project chips. Each row's **⋯** has
+  Edit, Rename, **Merge into…** (fold one persona into another — its speakers,
+  lexicons and takes move) and Delete
+  ([Personas → The list](personas.md#the-list))
 - **Each persona has its own page (2026-10-03).** A row on the Personas list,
   **＋ New persona** and Cast's **Edit their persona →** open *Personas ›
   June*: pick the kind of voice (Built-in · Clone from audio · Design from
