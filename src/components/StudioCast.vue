@@ -36,6 +36,7 @@ import { readPref, writePref } from "../services/prefs.js";
 import { handleTermsRefusal } from "../services/engineTerms.js";
 import { DIRECTION_OPTIONS, directionCell, sameLanguage, tagCount } from "../services/personaFacts.js";
 import { auditionPersona } from "../services/voiceAudition.js";
+import { voiceGenderWord } from "../services/voiceGender.js";
 
 const props = defineProps({
   project: { type: Object, required: true },
@@ -407,13 +408,19 @@ async function smartAssign() {
         signal: task.signal,
         body: JSON.stringify({
           characters: people.map((s) => ({ id: s.id, name: s.name, description: s.description, aliases: s.aliases || [] })),
-          voices: props.personas.map((p) => ({
-            id: p.id,
-            name: p.name,
-            gender: voiceById.value[p.voice_id]?.gender || null,
-            language: p.language || null,
-            tone: p.note || null,
-          })),
+          // The one gender answer (your override, the voice's own, its id or
+          // first name — services/voiceGender.js) and the language the persona
+          // really speaks (the server's `speaks`), as every page shows them.
+          voices: props.personas.map((p) => {
+            const word = voiceGenderWord(voiceById.value[p.voice_id]);
+            return {
+              id: p.id,
+              name: p.name,
+              gender: word && word !== "?" ? word.toLowerCase() : null,
+              language: p.speaks || p.language || null,
+              tone: p.note || null,
+            };
+          }),
         }),
       });
       let count = 0;

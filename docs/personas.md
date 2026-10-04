@@ -453,8 +453,8 @@ sounds without you asking.
 ## Smart-assign
 
 **✨ Smart-assign** on Studio · Cast sends the book's speakers, the narrator
-aside (name, *Also called*, *Who they are*), and your personas (name, voice gender, language, note)
-to your language model, which proposes a persona for each speaker. The matches
+aside (name, *Also called*, *Who they are*), and your personas (name, the voice's gender as every
+page shows it, the language the persona speaks, note) to your language model, which proposes a persona for each speaker. The matches
 apply straight away. It is a starting point, so listen to each assignment before
 rendering and change any you disagree with by clicking another persona.
 

@@ -2064,6 +2064,13 @@ BUILT:  P8 (2026-10-04) — the Turbo tag check: `server/scripts/turbo_tag_check
         for Turbo AND Nano: **19/19 pass on both — the tag list is unchanged.** Record +
         what it does and doesn't prove: `docs/plans/2026-10-04-turbo-tag-check.md`. Two
         engine bugs found on the way, filed below as their own FINDING (not fixed — no go).
+CHECKED: P9's two checks (2026-10-04) — JustWrite's `pronouns` is dropped on import (gender
+        rides in the voice hint inside Who they are); attribution and Smart-assign each
+        already have an empty `pronouns` slot. Findings, the proposed build and its blast
+        radius: `docs/plans/2026-09-30-voice-gender-and-pronouns.md` §3. Also fixed: Cast's
+        Smart-assign sent the voice's stored gender and the persona's saved language — now
+        the shared gender answer and the language it speaks (`p.speaks`).
+OPEN:   P9's build — waits on the user: the `pronouns` column needs a data reset.
 GO:     given 2026-10-03 for P1–P8 and P9's checks; P9's data reset asks first
 
 ### FINDING — after a model swap, speech recognition stays booked and every transcription is refused
