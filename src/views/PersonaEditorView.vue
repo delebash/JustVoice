@@ -6,16 +6,23 @@
 
   A persona is a finished spoken voice: a voice — which carries the model that
   speaks it — plus everything about how it speaks. So the page is built from
-  the voice's model:
-    · Voice — the kind radios (how a voice was made) FILTER the list; beside it
-      Can be directed / Model / Gender filters; each option names its model.
-      The model is never picked on its own: it comes with the voice.
+  the voice's model, laid out as the in-app mock draws it (src/mock/, approved
+  2026-10-04: "mock looks good, go ahead and code it" — plan
+  docs/plans/2026-10-04-persona-voice-making.md): knobs three across, text
+  boxes as wide as their card, the left column 1.5 × the right.
+    · Voice — what a voice can do comes first ("How it can be directed":
+      Written direction · Tags · Sliders only, always in view), how it was made
+      second ("Made by" — a kind with nothing that can be directed that way is
+      off with its reason); Model / Gender / Language beside the list; every
+      option names its model and what it can do. The model is never picked on
+      its own: it comes with the voice.
     · Hear it — the line through the same resolver a chapter renders with.
     · How it speaks — pace, pitch, gain, pauses (every model); direction in
       the model's own kind (written direction + emotion, or Turbo's tags, or
       none — shown off with the reason); effects; lexicon.
     · Sampling — exactly the model's own knobs and seed, kept per model.
-    · Save — Save, Save as new, Revert, Blend, Train a LoRA (off).
+    · Save — Save, Revert, Save as new, Train a LoRA (off). Blend is a kind
+      of voice now, not a button here.
   The right column: a summary, This model, Used by.
 
   A control the current model can't honour is shown, disabled, with its
@@ -140,11 +147,16 @@ const usage = ref(null);         // {speakers, total_lines, directed_lines}
 // Opened from Cast's ＋ New persona (`?project=<id>&for=<speaker id>`): Save
 // gives the new persona to that speaker and goes back to the book's Cast.
 const castFor = ref(null);       // {project, speaker} — speaker may be null
+const effectLabels = ref({});    // effect type → its name ("eq_low" → "EQ — Low shelf")
 
 async function loadCaps() {
   const r = await api.safeRequest("/v1/engines/capabilities", { engines: {} });
   caps.value = r?.engines || {};
   emotionValues.value = r?.emotion_values || [];
+}
+async function loadEffectLabels() {
+  const r = await api.safeRequest("/v1/effects/catalog", { effects: [] });
+  effectLabels.value = Object.fromEntries((r?.effects || []).map((e) => [e.type, e.label]));
 }
 
 async function load() {
@@ -155,7 +167,7 @@ async function load() {
   try {
     await Promise.all([
       voicesStore.ensureLoaded(), enginesStore.ensureLoaded(), lexiconsStore.ensureLoaded(),
-      projectsStore.ensureLoaded(), loadCaps(),
+      projectsStore.ensureLoaded(), loadCaps(), loadEffectLabels(),
     ]);
     if (id === "new") {
       saved.value = null;
@@ -234,11 +246,54 @@ function onKindBlocked(opt) {
   pushToast({ kind: "info", message: opt.title || "Not available yet." });
 }
 
-// Filters beside the list (decided 2026-10-03: "some way for the user to
-// filter out what types of voices they want to use"); DIRECTION_OPTIONS.
+// What a voice can do comes first (the user, 2026-10-04: "there needs to be a
+// bette way to identify a voice that can do direction and words") — the three
+// direction kinds, always in view, each with its example and a count.
 const directionFilter = ref("");
+const DIRECTION_WORD = { words: "written direction", tags: "tags", sliders: "sliders only" };
+const DIRECTION_EXAMPLE = { words: "describe it", tags: "[fear] [sigh]", sliders: "pace, pitch, gain" };
+const directionChoices = computed(() => DIRECTION_OPTIONS.map((o) => {
+  const n = voices.value.filter((v) => !o.value || v.directed_by === o.value).length;
+  return {
+    value: o.value,
+    label: `${o.value ? o.label : "Any"} (${n})`,
+    sublabel: o.value ? DIRECTION_EXAMPLE[o.value] : "every voice",
+  };
+}));
+
+// How it was made comes second. A kind is off when nothing of it can be
+// directed this way and nothing can make one that can: a clone, or a design's
+// kept take, can land on a model of any kind; built-ins are fixed; blends are
+// Kokoro's.
+const CAN_MAKE = { clone: ["words", "tags", "sliders"], design: ["words", "tags", "sliders"], blend: ["sliders"] };
+const OFF_REASON = {
+  builtin: { tags: "No built-in voice takes tags — Chatterbox Turbo and Nano voices are clones." },
+  blend: {
+    words: "Blends are Kokoro's — they take no written direction.",
+    tags: "Blends are Kokoro's — they take no tags.",
+  },
+};
+const kindOptions = computed(() => KINDS.map((k) => {
+  const d = directionFilter.value;
+  if (k.disabled || !d) return k;
+  const has = voices.value.some((v) => kindOf(v) === k.value && v.directed_by === d);
+  if (has || (CAN_MAKE[k.value] || []).includes(d)) return k;
+  return { ...k, disabled: true, title: OFF_REASON[k.value]?.[d] || "Nothing of this kind can be directed this way." };
+}));
+// A kind that can't be directed this way gives way to the first that can.
+watch(directionFilter, () => {
+  if (kindOptions.value.find((o) => o.value === kind.value)?.disabled) {
+    kind.value = kindOptions.value.find((o) => !o.disabled)?.value || "builtin";
+  }
+});
+
+// Filters beside the list — Model, Gender, and Language (the user, 2026-10-04:
+// "so if i only want to see japanese voices i can do that"), by the voice's own
+// language, as its label names it.
 const modelFilter = ref("");
 const genderFilter = ref("");
+const languageFilter = ref("");
+const baseLang = (code) => String(code || "").split(/[-_]/)[0].toLowerCase();
 
 const voicesOfKind = computed(() => voices.value.filter((v) => kindOf(v) === kind.value));
 const modelOptions = computed(() => {
@@ -253,6 +308,18 @@ const modelOptions = computed(() => {
     ...[...counts].sort((a, b) => a[1].name.localeCompare(b[1].name)).map(([m, c]) => ({ value: m, label: `${c.name} (${c.n})` })),
   ];
 });
+const languageFilterOptions = computed(() => {
+  const counts = new Map();
+  for (const v of voicesOfKind.value) {
+    const c = baseLang(v.language);
+    if (c) counts.set(c, (counts.get(c) || 0) + 1);
+  }
+  return [
+    { value: "", label: "All languages" },
+    ...[...counts].map(([c, n]) => ({ value: c, label: `${languageName(c) || c} (${n})` }))
+      .sort((a, b) => a.label.localeCompare(b.label)),
+  ];
+});
 const GENDER_OPTIONS = [
   { value: "", label: "Any gender" }, { value: "F", label: "Female" },
   { value: "M", label: "Male" }, { value: "N", label: "Neutral" },
@@ -260,10 +327,15 @@ const GENDER_OPTIONS = [
 const shownVoices = computed(() => voicesOfKind.value.filter((v) =>
   (!directionFilter.value || v.directed_by === directionFilter.value)
   && (!modelFilter.value || v.model === modelFilter.value)
-  && (!genderFilter.value || voiceGender(v) === genderFilter.value)));
+  && (!genderFilter.value || voiceGender(v) === genderFilter.value)
+  && (!languageFilter.value || baseLang(v.language) === languageFilter.value)));
 watch(kind, () => { modelFilter.value = ""; });
 
-const voiceOptions = computed(() => shownVoices.value.map((v) => ({ value: v.id, label: voiceLabel(v) })));
+// Every voice says what it can do, so the list reads without a filter set.
+const voiceOptions = computed(() => shownVoices.value.map((v) => ({
+  value: v.id,
+  label: `${voiceLabel(v)} · ${DIRECTION_WORD[v.directed_by] || "sliders only"}`,
+})));
 const voiceSelectValue = computed(() =>
   shownVoices.value.some((v) => v.id === draft.value?.voice_id) ? draft.value.voice_id : "");
 const kindEmptyHint = computed(() => {
@@ -336,6 +408,11 @@ const speaksLabel = computed(() => {
 });
 
 // ── How it speaks ───────────────────────────────────────────────────────
+const SHAPE_KNOBS = [
+  { key: "speed", label: "Pace", min: 0.5, max: 2, step: 0.05, neutral: 1, unit: "×", reset: "Back to the voice's own pace" },
+  { key: "pitch", label: "Pitch", min: -12, max: 12, step: 1, neutral: 0, unit: "st", reset: "Back to the voice's own pitch" },
+  { key: "gain_db", label: "Gain", min: -12, max: 12, step: 0.5, neutral: 0, unit: "dB", reset: "Back to the voice's own level" },
+];
 function shared(key, fallback) {
   const v = draft.value?.default_delivery?.[key];
   return v === null || v === undefined ? fallback : Number(v);
@@ -631,7 +708,8 @@ const summary = computed(() => {
   if (pitch) bits.push(`${pitch > 0 ? "+" : ""}${pitch} st`);
   return bits.join(" · ");
 });
-const effectNames = computed(() => (draft.value?.effects_chain || []).map((e) => e.type).filter(Boolean));
+const effectNames = computed(() => (draft.value?.effects_chain || [])
+  .map((e) => effectLabels.value[e.type] || e.type).filter(Boolean));
 const usedBy = computed(() => usage.value?.speakers || []);
 const usedBooks = computed(() => [...new Map(usedBy.value.map((u) => [u.project_id, u.project_name]))]);
 function openCast(projectId) {
@@ -651,7 +729,7 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
       <!-- The header pills (mock: voice · model, used by N). -->
       <div class="jv-inline-row persona-editor__pills">
         <UiTag v-if="voice" intent="secondary">{{ voice.name }} · <strong>{{ modelName }}</strong></UiTag>
-        <UiTag v-if="speaksLabel" intent="secondary">{{ speaksLabel }}</UiTag>
+        <UiTag v-if="voice && speaksLabel" intent="secondary">{{ speaksLabel }}</UiTag>
         <UiTag v-if="usedBy.length" intent="secondary">used by <strong>{{ plural(usedBy.length, "speaker") }}</strong></UiTag>
         <UiTag v-if="dirty" intent="accent2">Unsaved changes</UiTag>
       </div>
@@ -669,37 +747,44 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
         This persona's voice isn't available any more — pick another one below.
       </div>
 
-      <div class="jv-split">
+      <div class="jv-split jv-split--wide-left">
         <div class="jv-split__col">
           <!-- Persona: its name and the note the AI reads. -->
           <div class="jv-card">
             <div class="jv-card__header"><h3 class="jv-card__title">Persona</h3></div>
-            <div class="jv-card__body jv-col jv-col--start">
-              <UiField label="Name" layout="block">
-                <UiInput v-model="draft.name" width="name" placeholder="e.g. Narrator (warm)" />
-              </UiField>
+            <div class="jv-card__body jv-col">
+              <div class="jv-inline-row">
+                <UiField label="Name" layout="block">
+                  <UiInput v-model="draft.name" width="name" placeholder="e.g. Narrator (warm)" />
+                </UiField>
+              </div>
               <UiField label="Note on how it sounds" layout="block"
                 hint="Read by Compose, Rewrite and Smart-assign. Never heard.">
-                <UiTextarea v-model="draft.note" class="persona-editor__prose" :rows="2"
+                <UiTextarea v-model="draft.note" :rows="2"
                   placeholder="Warm and unhurried, a little gravel at the bottom of the range." />
               </UiField>
             </div>
           </div>
 
-          <!-- Voice: kind → filters → a voice that names its model. -->
+          <!-- Voice: what it can do → how it was made → filters → a voice that names its model. -->
           <div class="jv-card">
             <div class="jv-card__header"><h3 class="jv-card__title">Voice</h3></div>
-            <div class="jv-card__body jv-col jv-col--start">
-              <UiSegmented v-model="kind" :options="KINDS" size="small" aria-label="Kind of voice" @blocked="onKindBlocked" />
+            <div class="jv-card__body jv-col">
+              <UiField label="How it can be directed" layout="block">
+                <UiSegmented v-model="directionFilter" :options="directionChoices" size="small" aria-label="How it can be directed" />
+              </UiField>
+              <UiField label="Made by" layout="block">
+                <UiSegmented v-model="kind" :options="kindOptions" size="small" aria-label="Made by" @blocked="onKindBlocked" />
+              </UiField>
               <div class="jv-field-row">
-                <UiField label="Can be directed" layout="block">
-                  <UiSelect v-model="directionFilter" :options="DIRECTION_OPTIONS" width="name" />
-                </UiField>
                 <UiField label="Model" layout="block">
                   <UiSelect v-model="modelFilter" :options="modelOptions" width="name" />
                 </UiField>
                 <UiField label="Gender" layout="block">
                   <UiSelect v-model="genderFilter" :options="GENDER_OPTIONS" width="id" />
+                </UiField>
+                <UiField label="Language" layout="block">
+                  <UiSelect v-model="languageFilter" :options="languageFilterOptions" width="id" />
                 </UiField>
               </div>
               <div class="jv-field-row">
@@ -708,14 +793,16 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
                     :placeholder="kindEmptyHint || 'Pick a voice'" :disabled="!voiceOptions.length"
                     @update:model-value="pickVoice" />
                 </UiField>
-                <UiButton intent="secondary" label="▶ Raw" :loading="rawBusy" :disabled="!voice"
+                <UiButton intent="secondary" label="▶ Play" :loading="rawBusy" :disabled="!voice"
                   title="Play the voice on its own, before this page changes anything" @click="playRaw" />
               </div>
               <p v-if="kindEmptyHint" class="jv-hint">{{ kindEmptyHint }}</p>
-              <UiField v-if="voice" label="Speaks" layout="block" :hint="languageNote">
-                <span v-if="languageFixed" class="persona-editor__fixed">{{ languageName(effectiveLanguage) || effectiveLanguage }}</span>
-                <UiSelect v-else v-model="draft.language" :options="languageOptions" width="name" />
-              </UiField>
+              <div v-if="voice" class="jv-inline-row">
+                <UiField label="Speaks" layout="block" :hint="languageNote">
+                  <span v-if="languageFixed" class="persona-editor__fixed">{{ languageName(effectiveLanguage) || effectiveLanguage }}</span>
+                  <UiSelect v-else v-model="draft.language" :options="languageOptions" width="name" />
+                </UiField>
+              </div>
               <div v-if="voiceChange" class="jv-banner jv-banner--warn">
                 Changing this makes {{ draft.name || "this persona" }}'s <strong>{{ plural(voiceChange.lines, "line") }}</strong> stale.
                 <template v-if="voiceChange.lost && voiceChange.directed">
@@ -729,12 +816,12 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
           <!-- Hear it — the same path a chapter renders with. -->
           <div class="jv-card" :class="{ 'persona-editor__locked': locked }" :aria-disabled="locked || undefined">
             <div class="jv-card__header"><h3 class="jv-card__title">Hear it</h3></div>
-            <div class="jv-card__body jv-col jv-col--start">
-              <UiTextarea ref="hearBox" v-model="hearText" class="persona-editor__prose" :rows="2"
+            <div class="jv-card__body jv-col">
+              <UiTextarea ref="hearBox" v-model="hearText" :rows="2"
                 placeholder="Type a line — or leave it empty to hear the stock line." />
               <SlashTagMenu :tag-sets="tagSets" :open="tagMenuOpen" :anchor="tagAnchor" query=""
                 @insert="insertTag" @close="tagMenuOpen = false" />
-              <div class="jv-inline-row persona-editor__actions">
+              <div class="jv-inline-row">
                 <UiButton intent="primary" label="▶ Listen" :loading="hearBusy" :disabled="locked" @click="listen" />
                 <UiButton intent="secondary" label="↻ Stock line" :disabled="locked" @click="stockLine" />
                 <UiButton intent="ghost" label="🏷️ Insert tag…" :disabled="locked || !tagSets.length"
@@ -743,62 +830,54 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
                 <span class="jv-spacer" />
                 <UiButton intent="ghost" label="⤓ WAV" :disabled="!audio" @click="saveWav" />
               </div>
-              <div v-if="audio" class="persona-editor__player">
+              <div v-if="audio" class="jv-col">
                 <span class="jv-hint">{{ audio.label }}</span>
                 <audio :src="audio.url" controls autoplay class="jv-audio-inline" />
               </div>
             </div>
           </div>
 
-          <!-- How it speaks — every model takes the numbers; direction is the model's own kind. -->
+          <!-- How it speaks — the numbers on every model; direction in the model's own kind. -->
           <div class="jv-card" :class="{ 'persona-editor__locked': locked }" :aria-disabled="locked || undefined">
             <div class="jv-card__header"><h3 class="jv-card__title">How it speaks</h3></div>
-            <div class="jv-card__body jv-col jv-col--start">
-              <div class="jv-knobs">
-                <div class="jv-knobs__row">
-                  <label class="jv-knobs__label">Pace</label>
-                  <UiSlider :model-value="shared('speed', 1)" :min="0.5" :max="2" :step="0.05" width="short"
-                    aria-label="Pace" @update:model-value="(v) => setShared('speed', v)" />
-                  <span class="jv-knobs__unit">×</span>
-                  <UiButton intent="ghost" size="small" label="↺" :disabled="shared('speed', null) === null"
-                    title="Back to the voice's own pace" @click="setShared('speed', null)" />
+            <div class="jv-card__body jv-col">
+              <div class="jv-knob-grid">
+                <div v-for="k in SHAPE_KNOBS" :key="k.key" class="jv-knob-grid__knob">
+                  <div class="jv-knob-grid__head">
+                    <label class="jv-knob-grid__label">{{ k.label }}</label>
+                    <UiButton intent="ghost" size="small" label="↺" :disabled="shared(k.key, null) === null"
+                      :title="k.reset" @click="setShared(k.key, null)" />
+                  </div>
+                  <div class="jv-knob-grid__row">
+                    <UiSlider :model-value="shared(k.key, k.neutral)" :min="k.min" :max="k.max" :step="k.step"
+                      width="full" :aria-label="k.label" @update:model-value="(v) => setShared(k.key, v)" />
+                    <span class="jv-knob-grid__unit">{{ k.unit }}</span>
+                  </div>
                 </div>
-                <div class="jv-knobs__row">
-                  <label class="jv-knobs__label">Pitch</label>
-                  <UiSlider :model-value="shared('pitch', 0)" :min="-12" :max="12" :step="1" width="short"
-                    aria-label="Pitch" @update:model-value="(v) => setShared('pitch', v)" />
-                  <span class="jv-knobs__unit">st</span>
-                  <UiButton intent="ghost" size="small" label="↺" :disabled="shared('pitch', null) === null"
-                    title="Back to the voice's own pitch" @click="setShared('pitch', null)" />
-                </div>
-                <div class="jv-knobs__row">
-                  <label class="jv-knobs__label">Gain</label>
-                  <UiSlider :model-value="shared('gain_db', 0)" :min="-12" :max="12" :step="0.5" width="short"
-                    aria-label="Gain" @update:model-value="(v) => setShared('gain_db', v)" />
-                  <span class="jv-knobs__unit">dB</span>
-                  <UiButton intent="ghost" size="small" label="↺" :disabled="shared('gain_db', null) === null"
-                    title="Back to the voice's own level" @click="setShared('gain_db', null)" />
+                <div class="jv-knob-grid__knob">
+                  <div class="jv-knob-grid__head"><label class="jv-knob-grid__label">Pause before → after</label></div>
+                  <div class="jv-knob-grid__row">
+                    <UiNumber :model-value="draft.default_delivery.pause_before" :min="0" :max="10000" :step="50"
+                      width="num" size="small" placeholder="—" aria-label="Pause before"
+                      @update:model-value="(v) => setShared('pause_before', v)" />
+                    <span class="jv-knob-grid__unit">→</span>
+                    <UiNumber :model-value="draft.default_delivery.pause_after" :min="0" :max="10000" :step="50"
+                      width="num" size="small" placeholder="—" aria-label="Pause after"
+                      @update:model-value="(v) => setShared('pause_after', v)" />
+                    <span class="jv-knob-grid__unit">ms</span>
+                  </div>
                 </div>
               </div>
-              <p v-if="voice && !paceNative" class="jv-hint">
-                Pace is time-stretched after {{ modelName }} speaks — it doesn't pace itself.
-              </p>
-              <div class="jv-field-row">
-                <UiField label="Pause before" layout="block">
-                  <UiNumber :model-value="draft.default_delivery.pause_before" :min="0" :max="10000" :step="50"
-                    width="id" placeholder="—" @update:model-value="(v) => setShared('pause_before', v)" />
-                </UiField>
-                <UiField label="Pause after" layout="block">
-                  <UiNumber :model-value="draft.default_delivery.pause_after" :min="0" :max="10000" :step="50"
-                    width="id" placeholder="—" @update:model-value="(v) => setShared('pause_after', v)" />
-                </UiField>
-              </div>
-              <p class="jv-hint">Pauses in milliseconds. Empty = the project's gap between lines.</p>
+              <p v-if="voice && !paceNative" class="jv-hint">Pace is time-stretched after {{ modelName }} speaks — it doesn't pace itself.</p>
+              <p class="jv-hint">An empty pause is the book's own gap between lines.</p>
 
-              <UiField label="Standing delivery" layout="block"
-                :hint="directionReason || 'A line\'s own direction is added after this.'">
-                <UiTextarea v-model="draft.voice_instruct" class="persona-editor__prose" :rows="2"
-                  :disabled="!!directionReason"
+              <UiField layout="block" :hint="directionReason || 'A line\'s own direction is added after this.'">
+                <template #label>
+                  <span class="jv-field-label-row">Standing delivery
+                    <UiTag v-if="voice" :intent="directedBy === 'words' ? 'success' : 'secondary'">{{ directedBy === 'words' ? '✓' : '✗' }} {{ modelName }}</UiTag>
+                  </span>
+                </template>
+                <UiTextarea v-model="draft.voice_instruct" :rows="2" :disabled="!!directionReason"
                   placeholder="Clipped, world-weary. Dry wit. Boston accent under stress." />
               </UiField>
               <p v-if="isVoiceDesign" class="jv-banner jv-banner--warn">
@@ -806,11 +885,11 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
               </p>
               <div class="jv-field-row">
                 <UiField :label="emotionTagSet ? `Emotion — ${modelName}'s own tags` : 'Emotion'" layout="block">
-                  <UiSelect v-model="emotion" width="name" :disabled="!emotionChoices.length"
+                  <UiSelect v-model="emotion" width="id" :disabled="!emotionChoices.length"
                     :options="[{ value: '', label: '— none —' }, ...emotionChoices.map((e) => ({ value: e, label: emotionTagSet ? `[${e}]` : e }))]" />
                 </UiField>
                 <UiField v-if="registerTagSet" label="Register" layout="block">
-                  <UiSelect v-model="registerTag" width="name"
+                  <UiSelect v-model="registerTag" width="id"
                     :options="[{ value: '', label: '— none —' }, ...registerTagSet.tags.map((t) => ({ value: t, label: `[${t}]` }))]" />
                 </UiField>
               </div>
@@ -819,17 +898,19 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
               </p>
               <p v-else-if="!emotionChoices.length && voice" class="jv-hint">{{ modelName }} takes no emotion.</p>
 
-              <UiField label="Effects" layout="block">
-                <div class="jv-inline-row">
-                  <UiTag v-for="(name, i) in effectNames" :key="i" intent="secondary">{{ name }}</UiTag>
-                  <span v-if="!effectNames.length" class="jv-hint">None.</span>
-                  <UiButton intent="ghost" size="small" label="＋ Edit" @click="effectsOpen = true" />
-                </div>
-              </UiField>
-              <UiField label="Lexicon" layout="block"
-                hint="Read on this persona's lines, after the book's lexicon. The book's wins on the same word.">
-                <UiSelect v-model="draft.lexicon_id" :options="lexiconOptions" width="name" />
-              </UiField>
+              <div class="jv-field-row">
+                <UiField label="Effects" layout="block">
+                  <div class="jv-inline-row">
+                    <UiTag v-for="(name, i) in effectNames" :key="i" intent="secondary">{{ name }}</UiTag>
+                    <span v-if="!effectNames.length" class="jv-hint">None.</span>
+                    <UiButton intent="ghost" size="small" label="＋ Edit" @click="effectsOpen = true" />
+                  </div>
+                </UiField>
+                <UiField label="Lexicon" layout="block">
+                  <UiSelect v-model="draft.lexicon_id" :options="lexiconOptions" width="name" />
+                </UiField>
+              </div>
+              <p class="jv-hint">The lexicon is read on this persona's lines, after the book's. The book's wins on the same word.</p>
             </div>
           </div>
 
@@ -839,54 +920,55 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
               <h3 class="jv-card__title">Sampling</h3>
               <span v-if="voice" class="jv-hint">{{ modelName }}</span>
             </div>
-            <div class="jv-card__body jv-col jv-col--start">
-              <div v-if="knobs.length" class="jv-knobs">
-                <div v-for="k in knobs" :key="k.key" class="jv-knobs__row">
-                  <label class="jv-knobs__label" :title="k.hint">{{ k.label }}</label>
-                  <UiSlider :model-value="knobValue(k)" :min="k.min" :max="k.max" :step="k.step" width="short"
-                    :aria-label="k.label" @update:model-value="(v) => setKnob(k, v)" />
-                  <span class="jv-knobs__unit">{{ k.unit }}</span>
-                  <UiButton intent="ghost" size="small" label="↺"
-                    :disabled="ms()?.knobs?.[k.key] === undefined"
-                    :title="`Back to the model default (${k.default})`" @click="resetKnob(k)" />
+            <div class="jv-card__body jv-col">
+              <div class="jv-knob-grid">
+                <div v-for="k in knobs" :key="k.key" class="jv-knob-grid__knob">
+                  <div class="jv-knob-grid__head">
+                    <label class="jv-knob-grid__label" :title="k.hint">{{ k.label }}</label>
+                    <UiButton intent="ghost" size="small" label="↺" :disabled="ms()?.knobs?.[k.key] === undefined"
+                      :title="`Back to the model default (${k.default})`" @click="resetKnob(k)" />
+                  </div>
+                  <div class="jv-knob-grid__row">
+                    <UiSlider :model-value="knobValue(k)" :min="k.min" :max="k.max" :step="k.step" width="full"
+                      :aria-label="k.label" @update:model-value="(v) => setKnob(k, v)" />
+                    <span v-if="k.unit" class="jv-knob-grid__unit">{{ k.unit }}</span>
+                  </div>
+                </div>
+                <div v-if="voice" class="jv-knob-grid__knob">
+                  <div class="jv-knob-grid__head"><label class="jv-knob-grid__label">Seed</label></div>
+                  <div class="jv-knob-grid__row">
+                    <UiNumber v-model="seed" :min="0" :max="2000000000" :step="1" width="id" size="small"
+                      placeholder="random" :disabled="!seedSupported" :use-grouping="false" aria-label="Seed" />
+                    <UiButton intent="ghost" size="small" label="🎲" title="A new seed" :disabled="!seedSupported" @click="rollSeed" />
+                  </div>
                 </div>
               </div>
-              <p v-else-if="voice" class="jv-hint">{{ modelName }} has no sampling settings.</p>
-              <div class="jv-field-row">
-                <UiField label="Seed" layout="block">
-                  <UiNumber v-model="seed" :min="0" :max="2000000000" :step="1" width="id"
-                    placeholder="random" :disabled="!seedSupported" :use-grouping="false" />
-                </UiField>
-                <UiButton intent="ghost" label="🎲" title="A new seed" :disabled="!seedSupported" @click="rollSeed" />
-              </div>
-              <p class="jv-hint">
-                {{ seedSupported ? "The same seed gives the same take. Empty = a new one each time." : `${modelName || "This model"} doesn't repeat with a seed.` }}
+              <p v-if="voice && !knobs.length && !seedSupported" class="jv-hint">{{ modelName }} has no sampling settings.</p>
+              <p v-if="voice" class="jv-hint">
+                {{ seedSupported ? "The same seed gives the same take. Empty = a new one each time." : `${modelName} doesn't repeat with a seed.` }}
               </p>
-              <UiButton intent="secondary" label="⚖️ Compare settings…" :disabled="locked" @click="openCompare" />
+              <div class="jv-inline-row">
+                <UiButton intent="secondary" label="⚖️ Compare settings…" :disabled="locked" @click="openCompare" />
+              </div>
             </div>
           </div>
 
           <!-- Save. -->
           <div class="jv-card">
             <div class="jv-card__header"><h3 class="jv-card__title">Save</h3></div>
-            <div class="jv-card__body jv-col jv-col--start">
-              <div class="jv-inline-row persona-editor__actions">
-                <UiButton intent="primary" label="💾 Save" :loading="saving"
-                  :disabled="!dirty || !draft.name.trim()"
+            <div class="jv-card__body jv-col">
+              <div class="jv-field-row">
+                <UiButton intent="primary" label="💾 Save" :loading="saving" :disabled="!dirty || !draft.name.trim()"
                   :title="draft.name.trim() ? '' : 'A persona needs a name'" @click="save" />
                 <UiButton intent="secondary" label="↺ Revert" :disabled="!dirty" @click="revert" />
-              </div>
-              <div v-if="!isNew" class="jv-field-row">
-                <UiField label="Save as a new persona" layout="block">
-                  <UiInput v-model="saveAsName" width="name" placeholder="e.g. Narrator (softer)" />
-                </UiField>
-                <UiButton intent="secondary" label="＋ Save as new" :disabled="!saveAsName.trim()" @click="saveAsNew" />
-              </div>
-              <div class="jv-inline-row persona-editor__actions">
-                <UiButton intent="ghost" label="🔀 Blend" title="Make a voice out of other voices — Voices → Blend"
-                  @click="router.push({ name: 'voices', query: { tab: 'blended' } })" />
-                <UiButton intent="ghost" label="🧪 Train a LoRA" disabled
-                  title="Needs voice training, which isn't rebuilt yet." />
+                <template v-if="!isNew">
+                  <UiField label="Save as a new persona" layout="block">
+                    <UiInput v-model="saveAsName" width="name" placeholder="e.g. June (softer)" />
+                  </UiField>
+                  <UiButton intent="secondary" label="＋ Save as new" :disabled="!saveAsName.trim()" @click="saveAsNew" />
+                </template>
+                <span class="jv-spacer" />
+                <UiButton intent="ghost" label="🧪 Train a LoRA" disabled title="Needs voice training, which isn't rebuilt yet." />
               </div>
             </div>
           </div>
@@ -915,7 +997,7 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
                   <UiTag :intent="row?.supports_voice_cloning ? 'success' : 'secondary'">{{ row?.supports_voice_cloning ? '✓' : '✗' }} cloning</UiTag>
                   <UiTag :intent="seedSupported ? 'success' : 'secondary'">{{ seedSupported ? '✓' : '✗' }} seed</UiTag>
                 </div>
-                <div v-if="tagSets.length" class="persona-editor__taglist">
+                <div v-if="tagSets.length" class="jv-col">
                   <div v-for="set in tagSets" :key="set.category" class="jv-hint">
                     <strong>{{ set.label }}:</strong> {{ set.tags.map((t) => `[${t}]`).join(" ") }}
                   </div>
@@ -952,20 +1034,20 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
 
     <AppModal v-if="compareOpen" eyebrow="Compare settings" :title="draft?.name || 'This persona'"
       :max-width="'640px'" dismissable @close="compareOpen = false">
-      <div class="jv-col jv-col--start persona-editor__compare">
+      <div class="jv-col jv-col--start">
         <p class="jv-hint">Pick a setting and three values, then hear the same line three ways.</p>
         <div class="jv-field-row">
           <UiField label="Setting" layout="block">
-            <UiSelect v-model="compareKey" :options="compareOptions" width="name" />
+            <UiSelect v-model="compareKey" :options="compareOptions" width="id" />
           </UiField>
           <UiField v-for="(v, i) in compareValues" :key="i" :label="`Value ${i + 1}`" layout="block">
             <UiNumber :model-value="v" :min="compareSpec(compareKey).min" :max="compareSpec(compareKey).max"
-              :step="compareSpec(compareKey).step" width="id"
+              :step="compareSpec(compareKey).step" width="num"
               @update:model-value="(x) => (compareValues = compareValues.map((y, j) => (j === i ? x : y)))" />
           </UiField>
         </div>
         <UiButton intent="primary" label="▶ Hear all three" :loading="compareBusy" @click="runCompare" />
-        <div v-for="r in compareResults" :key="r.value" class="persona-editor__player">
+        <div v-for="r in compareResults" :key="r.value" class="jv-inline-row">
           <span class="jv-hint">{{ compareOptions.find((o) => o.value === compareKey)?.label }} {{ r.value }}</span>
           <audio :src="r.url" controls class="jv-audio-inline" />
           <UiButton intent="ghost" size="small" label="Use this" @click="useCompared(r.value)" />
@@ -981,15 +1063,10 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
 
 <style scoped>
 .persona-editor { display: flex; flex-direction: column; gap: 12px; }
-.persona-editor__pills { gap: 6px; flex-wrap: wrap; }
-.persona-editor__prose { max-width: 60ch; }
-.persona-editor__actions { gap: 8px; flex-wrap: wrap; align-items: center; }
-.persona-editor__player { display: flex; flex-direction: column; gap: 4px; }
+.persona-editor__pills { gap: 6px; }
 .persona-editor__fixed { font-size: 13.5px; }
 .persona-editor__summary { margin: 0 0 6px; font-weight: 600; }
-.persona-editor__tags { gap: 6px; flex-wrap: wrap; }
-.persona-editor__taglist { display: flex; flex-direction: column; gap: 2px; }
-.persona-editor__compare { gap: 10px; }
+.persona-editor__tags { gap: 6px; }
 /* A blank persona: only the Voice card is live until a voice is picked —
    everything below depends on its model (plan §6.2, improvement 4). */
 .persona-editor__locked { opacity: 0.5; pointer-events: none; }

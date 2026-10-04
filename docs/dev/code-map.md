@@ -138,9 +138,12 @@ Deleting a book deletes its speakers.
   kind and language come from the persona read itself (`PersonaView`: `model`,
   `model_name`, `directed_by`, `speaks`), the answer Cast and the page share; the
   vocabulary lives in `services/personaFacts.js`. A row opens the persona's page.
-- `PersonaEditorView.vue` (2026-10-03, the redesign's P4): cards Persona (name,
-  note) · Voice (kind radios filter the list; Can be directed / Model / Gender
-  filters; ▶ Raw; Speaks) · Hear it (`POST /v1/personas/preview` with the unsaved
+- `PersonaEditorView.vue` (2026-10-03, the redesign's P4; laid out as the in-app
+  mock `src/mock/MockPersonaEditorView.vue` 2026-10-04 — `.jv-split--wide-left`,
+  `.jv-knob-grid`): cards Persona (name, note) · Voice ("How it can be directed"
+  first, "Made by" second — a kind that can't be directed that way is off; Model /
+  Gender / Language filters; each option ends with what it can do; ▶ Play;
+  Speaks) · Hear it (`POST /v1/personas/preview` with the unsaved
   draft; stock line; the model's tags via `SlashTagMenu`) · How it speaks (pace,
   pitch, gain, pauses; standing delivery + emotion, or Turbo's emotion + register
   tags, by `directed_by`; effects; lexicon) · Sampling (the model's own knobs,

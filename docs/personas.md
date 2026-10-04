@@ -51,7 +51,7 @@ The Personas page lists your library, one row per persona:
 | Model | The model that speaks its voice: `Qwen3-TTS CustomVoice`, `Kokoro` |
 | Can be directed | **✓ written direction**, **✓ 19 tags** (the model's own tags) or **sliders only** — see [Voice](#voice) for what each means |
 | Speaks | The language it speaks: `Korean`, `British English` |
-| Shaped | What it does to its voice: `1.05× · −1.0 dB · 2 effects`, `0.92× · −3 st · reverb`. *as the voice* when it changes nothing |
+| Shaped | What it does to its voice: `1.05× · −1.0 dB · 2 effects`, `0.92× · −3 st · Reverb`. *as the voice* when it changes nothing |
 | Used by | Who it plays, as *speaker — book*: `June — Stillwater`. The same speaker name in several books reads `Narrator — Stillwater · Emberfall`. A persona that plays no one reads **— not used yet —** |
 | ⋯ | **✎ Edit**, **✏️ Rename**, **🔗 Merge into…**, **🗑 Delete** |
 
@@ -137,8 +137,8 @@ memory a banner says so: *Qwen3-TTS CustomVoice isn't loaded. The first listen
 swaps it in — about a minute.* If the persona's voice has been deleted, a red
 banner asks you to pick another.
 
-The page is a column of cards, with a summary, **This model** and **Used by**
-beside them. On a new persona only **Persona** and **Voice** are live: every
+The page is two columns: the cards you edit on the left — the wider one — and
+a summary, **This model** and **Used by** on the right. On a new persona only **Persona** and **Voice** are live: every
 card below them depends on the voice's model, so they open once a voice is
 picked (*Pick a voice first — everything below depends on its model*).
 
@@ -161,9 +161,22 @@ separate engine or model field — pick the voice and the model comes with it.
 (An *Engine override* field sat on the old editor until 2026-10-03; nothing
 read it.)
 
-**The kind** comes first. It filters the voice list to voices made one way:
+**What a voice can do comes first.** *How it can be directed* is always in
+view — four choices, each with its example and how many of your voices can do
+it, for example **Any (91)** · **Written direction (9)** *describe it* ·
+**Tags (0)** *[fear] [sigh]* · **Sliders only (82)** *pace, pitch, gain*. "Built-in" alone
+says nothing about this — Qwen3 CustomVoice's built-ins take written direction,
+Kokoro's take none — so this is the choice to make first:
 
-| Kind | Lists | Made on |
+| Choice | What you do | Example | Models |
+|---|---|---|---|
+| Written direction | describe it in words | *Clipped, world-weary. Dry wit.* | Qwen3 CustomVoice, VoxCPM2 (its clones too), Qwen3 VoiceDesign (the words reshape the voice) |
+| Tags | pick from the model's own list | `[fear]` … `[sigh]` | Chatterbox Turbo, Chatterbox Nano |
+| Sliders only | pace, pitch, gain — no words | Pace 1.05×, Pitch −2 st | Kokoro, KittenTTS, Pocket TTS, Chatterbox Multilingual, Qwen3 Base |
+
+**How it was made comes second.** *Made by* lists the voices made one way:
+
+| Made by | Lists | Made on |
 |---|---|---|
 | Built-in | The models' own voices — Kokoro's `af_heart`, Qwen3 CustomVoice's Sohee | AI Settings → Speech engines, by installing a model |
 | Clone from audio | Voices cloned from a recording, and imported ones | [Voices → Clone](voices.md) |
@@ -171,25 +184,29 @@ read it.)
 | Blend | Kokoro blends of two or more voices | [Voices → Blend](voices.md) |
 | Trained LoRA | Off: *Needs voice training, which isn't rebuilt yet.* | — |
 
+A *Made by* choice that can't be directed the way you picked is off, and says
+why when you click it. Under **Tags**: *No built-in voice takes tags — Chatterbox
+Turbo and Nano voices are clones*, and *Blends are Kokoro's — they take no
+tags.* Under **Written direction**, Blend is off the same way. If the choice you
+were on goes off, the page moves to the first one that can. A clone or a
+design's kept clip can be on a model of any kind, so those stay on.
+
 **Three filters** sit beside the list:
-
-- **Can be directed** — how the voice's model can be told how to speak:
-
-  | Choice | What you do | Example | Models |
-  |---|---|---|---|
-  | Written direction | describe it in words | *Clipped, world-weary. Dry wit.* | Qwen3 CustomVoice, VoxCPM2 (its clones too), Qwen3 VoiceDesign (the words reshape the voice) |
-  | Tags | pick from the model's own list | `[fear]` … `[sigh]` | Chatterbox Turbo, Chatterbox Nano |
-  | Sliders only | pace, pitch, gain — no words | Pace 1.05×, Pitch −2 st | Kokoro, KittenTTS, Pocket TTS, Chatterbox Multilingual, Qwen3 Base |
 
 - **Model** — the models with voices of this kind, each with its count:
   *Qwen3-TTS CustomVoice (9)*.
 - **Gender** — Any · Female · Male · Neutral. A voice's gender is worked out the
   same way everywhere: your own override first (Voices → click the letter), then
   what the voice says about itself, then the voice's id or first name.
+- **Language** — the voice's own language, the one its name in the list shows:
+  pick **Japanese (6)** to see only Japanese voices. English covers American
+  and British English alike.
 
-Each voice reads *name · gender · language · model*: `Sohee · Female · Korean ·
-Qwen3-TTS CustomVoice`. **▶ Raw** plays the voice on its own, before anything
-on this page shapes it; if its model isn't loaded it asks before loading it.
+Each voice reads *name · gender · language · model · what it can do*:
+`Sohee · Female · Korean · Qwen3-TTS CustomVoice · written direction`,
+`Heart · Female · American English · Kokoro · sliders only`. **▶ Play** plays
+the voice on its own, before anything on this page shapes it; if its model
+isn't loaded it asks before loading it.
 
 **Speaks** is the language this persona speaks. It starts as the voice's own
 language. Where the voice or its model allows only one (a Kokoro voice,
@@ -223,8 +240,9 @@ of its nineteen. On a model with no tags the button is off and says so.
 
 ### How it speaks
 
-**Pace, Pitch and Gain** apply to every model. Each is a slider with a number
-beside it, and **↺** puts it back to the voice's own:
+**Pace, Pitch and Gain** apply to every model. They sit three across, each a
+slider with its number and unit, and the **↺** at the right of its name puts it
+back to the voice's own:
 
 | Setting | Range | Example |
 |---|---|---|
@@ -236,8 +254,8 @@ Some models pace themselves and some don't. On one that doesn't, the page says
 *Pace is time-stretched after Qwen3-TTS CustomVoice speaks — it doesn't pace
 itself.*
 
-**Pause before** and **Pause after** are in milliseconds. Empty uses the
-project's gap between lines.
+**Pause before → after** is two numbers in milliseconds, for example `0 → 250
+ms`. An empty pause is the book's own gap between lines.
 
 **Direction** depends on the model:
 
@@ -262,8 +280,8 @@ project's gap between lines.
   reason: *Kokoro takes no direction — shape it with the numbers, or pick a
   voice on a model that takes direction.*
 
-**Effects** shows the chain as chips (`reverb`, `eq`); **＋ Edit** opens the
-effects editor. Effects run after the voice speaks.
+**Effects** shows the chain as chips, by name (`Reverb`, `EQ — Low shelf`);
+**＋ Edit** opens the effects editor. Effects run after the voice speaks.
 
 **Lexicon** is a lexicon for this persona only (for example, street slang for
 one voice). It is read on every line this persona speaks, after the book's own
@@ -274,10 +292,10 @@ that the engine can use, the book's wins. See
 ### Sampling
 
 Titled with the model, this card shows **exactly that model's own sampling
-settings**, with its own defaults and ranges — Temperature, Top k, Top p and
-Repetition penalty on Qwen3 CustomVoice; others on other models. **↺** puts one
-back to the model's default. A model with none says *Kokoro has no sampling
-settings.*
+settings**, three across, with its own defaults and ranges — Temperature, Top k,
+Top p and Repetition penalty on Qwen3 CustomVoice; others on other models.
+**↺** puts one back to the model's default. A model with none and no seed says
+*KittenTTS has no sampling settings.*
 
 **Seed** makes a take repeatable: the same seed gives the same take, and empty
 gives a new one each time. **🎲** picks a new seed. On a model that doesn't
@@ -307,8 +325,9 @@ save.
 type, with everything on the page, and opens it; the persona you started from
 stays as it was saved: *Saved as a new persona. June is untouched.*
 
-**🔀 Blend** opens Voices → Blend, to make a new voice out of others. **🧪 Train
-a LoRA** is off until voice training is rebuilt.
+**🧪 Train a LoRA** is off until voice training is rebuilt. (The **🔀 Blend**
+button that sat here went on 2026-10-04: a blend is a kind of voice under
+*Made by*.)
 
 Clearing a field and saving clears it (until 2026-10-03, emptying the delivery,
 the note or the lexicon kept the old value while the page said it was saved).

@@ -66,6 +66,8 @@ const voiceById = computed(() => Object.fromEntries(voicesStore.items.map((v) =>
 const usage = ref({});
 // Capability rows by model — for the number of tags a tag model lists.
 const caps = ref({});
+// Effect type → its name ("eq_mid" → "EQ — Mid peak"), for the Shaped column.
+const effectLabels = ref({});
 const loading = ref(false);
 
 // One persona is edited on its own page; `new` opens a blank one.
@@ -164,7 +166,7 @@ function shaped(p) {
   if (d.pitch) bits.push(`${signed(Number(d.pitch), 0)} st`);
   if (d.gain_db) bits.push(`${signed(Number(d.gain_db), 1)} dB`);
   const fx = p.effects_chain || [];
-  if (fx.length === 1) bits.push(fx[0].type || "1 effect");
+  if (fx.length === 1) bits.push(effectLabels.value[fx[0].type] || fx[0].type || "1 effect");
   else if (fx.length > 1) bits.push(`${fx.length} effects`);
   return bits.join(" · ");
 }
@@ -302,15 +304,17 @@ async function removePicked() {
 async function loadAll() {
   loading.value = !personas.value.length;
   try {
-    const [, , , uRes, cRes] = await Promise.all([
+    const [, , , uRes, cRes, fRes] = await Promise.all([
       personasStore.reload(),
       voicesStore.reload(),
       projectsStore.reload(),
       api.safeRequest("/v1/personas/usage", { usage: {} }),
       api.safeRequest("/v1/engines/capabilities", { engines: {} }),
+      api.safeRequest("/v1/effects/catalog", { effects: [] }),
     ]);
     usage.value = uRes?.usage ?? {};
     caps.value = cRes?.engines ?? {};
+    effectLabels.value = Object.fromEntries((fRes?.effects || []).map((e) => [e.type, e.label]));
   } finally {
     loading.value = false;
   }
