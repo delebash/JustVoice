@@ -594,16 +594,6 @@ class DesignVoiceRequest(BaseModel):
     gender: str | None = None
 
 
-class ImportVoiceRequest(BaseModel):
-    engine: str
-    model: str | None = None
-    name: str
-    wav_b64: str
-    language: str = "en-US"
-    gender: str | None = None
-    transcript: str | None = None
-
-
 class CopyVoiceRequest(BaseModel):
     """POST /v1/voices/{id}/copy — the same clip as a new voice on another
     model ("Copy to another model…", 2026-10-03): Marius on Turbo in English,

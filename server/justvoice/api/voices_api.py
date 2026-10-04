@@ -25,7 +25,6 @@ from ..models import (
     CloneVoiceRequest,
     CopyVoiceRequest,
     DesignVoiceRequest,
-    ImportVoiceRequest,
     UpdateVoiceRequest,
     Voice,
     VoiceList,
@@ -239,35 +238,6 @@ async def design_voice(body: DesignVoiceRequest) -> Voice:
         updated_at=now,
     )
     created = st.voices.create(rec)
-    return _stored_to_dto(created)
-
-
-@router.post(
-    "/v1/voices/import", response_model=Voice, status_code=201, summary="Import an existing audio clip as a voice"
-)
-async def import_voice(body: ImportVoiceRequest) -> Voice:
-    st = get_state()
-    try:
-        wav_bytes = base64.b64decode(body.wav_b64)
-    except Exception as e:
-        raise bad_request(f"invalid base64: {e}")
-    model = _model_for(body.engine, body.model, "clone")
-    now = datetime.now(timezone.utc)
-    rec = VoiceRecord(
-        id="",
-        engine=body.engine,
-        model=model,
-        source="imported",
-        name=body.name,
-        language=body.language,
-        gender=body.gender,
-        transcript=body.transcript,
-        sample_count=0,
-        created_at=now,
-        updated_at=now,
-    )
-    created = st.voices.create(rec)
-    st.voices.write_ref_wav(created.id, wav_bytes)
     return _stored_to_dto(created)
 
 

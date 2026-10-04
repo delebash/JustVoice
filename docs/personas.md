@@ -263,8 +263,12 @@ Turbo and Nano; under **Sliders only**, Chatterbox Multilingual, Qwen3 Base and
 Pocket TTS. The line under it says what a voice on that model keeps — for
 example *Takes written direction, on a clone too* (VoxCPM2) or *Written
 direction is dropped: the clip is the whole voice* (Qwen3 Base). A model that
-isn't loaded loads on the first preview, about a minute. Pocket TTS clones only
-after you accept Kyutai's terms, shown right there with **Accept**.
+isn't loaded loads on the first preview, about a minute. Pocket TTS clones on
+the CPU — about four times faster than real time on an 8-core machine — so it
+is the one to pick without a graphics card, or with one the AI model is using;
+each language is its own Pocket TTS model. It clones only after you accept
+Kyutai's terms (no cloning a voice without that person's consent, nothing
+deceptive), shown right there with **Accept**, once per install.
 
 **What's said in the recording** appears for the models that read it (Qwen3
 Base, VoxCPM2): a word-for-word match gives a truer copy. Qwen3 Base can also
@@ -280,7 +284,11 @@ Describe a voice in words and a design model invents it — no recording.
 **Describe the voice** — age, accent, texture, pace, mood, *"a gravel-voiced
 harbour-master in his seventies, unhurried"*. **↧ Start from the note** copies
 this persona's note in, to edit; it never happens on its own. The model is
-**Qwen3 VoiceDesign** or **VoxCPM2**.
+**Qwen3 VoiceDesign** (a separate 2.8 GB download from Qwen3's CustomVoice and
+Base, 1.7B only) or **VoxCPM2**. A design model invents a speaker afresh on
+every call — ask twice for the same description and you get two different
+people — which is why keeping a take matters for a voice that must stay one
+person through a book.
 
 Each **▶ Preview** is a new take — **Take 1**, **Take 2**… — spoken as this
 persona; pick the one you like. Then keep it one of two ways:

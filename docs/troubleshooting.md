@@ -44,7 +44,7 @@ voice for now. See [Engines → Not available yet](engines.md#not-available-yet)
 
 **A Pocket TTS clone stops with "… only after you accept Kyutai's terms".**
 Pocket TTS clones only once you have accepted Kyutai's terms for it, on this
-install. Open Voices → Clone with Pocket TTS chosen, or the Pocket TTS row on AI
+install. Open a persona's page, pick *Clone from audio* and Pocket TTS, or the Pocket TTS row on AI
 Settings → Speech engines, read the terms and click **Accept**. Its preset
 voices never need it. See [Engines → The catalog](engines.md#the-catalog).
 

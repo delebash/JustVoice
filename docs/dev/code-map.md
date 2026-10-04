@@ -147,8 +147,19 @@ Deleting a book deletes its speakers.
   draft; stock line; the model's tags via `SlashTagMenu`) · How it speaks (pace,
   pitch, gain, pauses; standing delivery + emotion, or Turbo's emotion + register
   tags, by `directed_by`; effects; lexicon) · Sampling (the model's own knobs,
-  seed, Compare settings…) · Save; right column summary · This model · Used by.
-  Model-specific values are stored per model under `default_delivery.models`.
+  seed, Compare settings…) · Save; right column: the maker for the kind picked
+  (below) · summary · This model · Used by. Model-specific values are stored per
+  model under `default_delivery.models`.
+- The voice makers (2026-10-04 — a persona makes its own voice; Voices is the
+  library only): `components/PersonaCloneMaker.vue` (clip from drop / URL /
+  browse / record / capture; `POST /v1/voices/clip-check`; Keep =
+  `POST /v1/voices/clone`), `PersonaDesignMaker.vue` (takes; Keep as a description
+  = `POST /v1/voices/design`, Keep a take = `POST /v1/voices/preview/{id}/save`
+  with `model`), `PersonaBlendMaker.vue` (the four ways; Keep =
+  `POST /v1/voices/blend`). Each previews through
+  `POST /v1/personas/preview-candidate` — the persona's own path
+  (`persona_render.plan_line` with a `Candidate`, `render_core.prepare_line_text`,
+  `shape_line_pcm`). Shared helpers: `services/voiceMakers.js`.
 
 ### The direction of assignment — do not get this backwards
 
@@ -183,7 +194,6 @@ and none of them takes or touches a persona:**
 |---|---|---|
 | Clone from audio | `POST /v1/voices/clone` (`voices_api.py:132`) | `Voice` |
 | Design from prose | `POST /v1/voices/design` (`voices_api.py:161`) | `Voice` |
-| Import `.justvoice.zip` | `POST /v1/voices/import` (`voices_api.py:183`) | `Voice` |
 | Blend | `POST /v1/voices/blend` (`voices_api.py`) | `Voice` — needs ≥ 2 `source_voice_ids` |
 
 **A `VoiceRecord` carries no tuning at all** (`models.py:446`): `id · engine ·
@@ -879,7 +889,7 @@ exposes queue depth or the current engine.**
 | `StudioView` | ~1440 (2026-09-29) | The production steps' container. Cast moved out to `components/StudioCast.vue` with the speakers/personas split (it was 3132 lines with the old Cast and its voice library inside). See below. |
 | `SettingsView` | 2099 | Workspace focus · connection · headless access · tokens · data location · disk · server bind · cache · limits · local model paths · generation pipeline (incl. the default voice language) · testing/danger zone |
 | `ChapterView` | 1481 | The chapter **list** (columns **Chapter · Words · Est. audio · Script · Render**, filter chips, add/move/rename/delete, *Open in Studio ➜*) **and** the per-chapter block editor with takes (`＋ Generate first take`, set-default, regenerate, delete take) |
-| `VoicesView` | ~2550 | The voice library and its Clone / Design / Import / Blend tabs. Columns **Name · Gender · Type · Model · Speaks · Can be directed · Used by · ⋯** (2026-10-03, persona build P6); ⋯ = New persona from this voice · Copy to another model… (`POST /v1/voices/{id}/copy`) · Delete. Filters: engine, language, gender, can be directed, type |
+| `VoicesView` | ~1000 | The voice library — only that since 2026-10-04 (voices are made on a persona's page, see §1). Columns **Name · Gender · Type · Model · Speaks · Can be directed · Used by · ⋯** (2026-10-03, persona build P6); ⋯ = New persona from this voice · Copy to another model… (`POST /v1/voices/{id}/copy`) · Delete. Filters: engine, language, gender, can be directed, type |
 | `GenerateView` | 1282 | One-off synth: voice, text, seed + randomize, **delivery overlay**, insert tag, Rewrite, Compose, lexicon view, and a **history** of takes/favorites/retry |
 | `ProjectsView` | 950 | Project list (**Project · Kind · Structure · Last opened**) + detail expansion with scenes (**# · Title · Blocks · Duration · Status**), `＋ Add personas`, *Open in Studio ➜* |
 | `PersonasView` | ~360 | The persona library list — see §1 |

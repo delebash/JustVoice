@@ -187,8 +187,8 @@ German with English sounds.
   Pocket TTS from audio.cpp's copy, which needs no sign-in. Kyutai, who made it,
   asks everyone who clones with it to accept their prohibited-use terms — no
   cloning a voice without that person's consent, nothing deceptive, nothing
-  presented as a genuine recording of a real person. The Clone tab shows the
-  terms with an **Accept** button when Pocket TTS is the chosen model, the
+  presented as a genuine recording of a real person. A persona's New clone shows
+  the terms with an **Accept** button when Pocket TTS is the chosen model, the
   Pocket TTS row on Speech engines has **Read and accept**, and a Pocket TTS
   clone asked for anywhere else (a chapter, Generate, JustWrite, the API) stops
   with a message until you have. Presets need no acceptance.

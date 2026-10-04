@@ -44,7 +44,7 @@ deleted 2026-06-23 and there is no local `components/ui/` directory. What follow
 | `.jv-split--wide-left` | an editor beside its summary — the left column 1.5 × the right (the persona page, mock `_s7`; 2026-10-04); stacks below 1100px like `.jv-split` |
 | `.jv-knob-grid` (+ `__knob`, `__head`, `__label`, `__row`, `__unit`) | knobs three across: label above (its ↺ at the head's right end), the `UiSlider width="full"` filling its cell, the unit after; narrows the kit's number box through its `--w-num` token. The persona page's How it speaks and Sampling (2026-10-04, where the mock's look was ruled to beat size-to-content). `.jv-knobs` stays the one-per-row shape elsewhere |
 | `.jv-field-label-row` | a block field's label with something at its right end — the tag naming the model that reads the field, or a quiet action on it |
-| `.jv-drop` (+ `--active`, `--filled`, `__row`) | a drop box for a recording: drag it in, paste a URL, browse, record (born on Voices → Clone; promoted 2026-10-04 for the persona's clone maker) |
+| `.jv-drop` (+ `--active`, `--filled`, `__row`) | a drop box for a recording: drag it in, paste a URL, browse, record (born on Voices → Clone; promoted 2026-10-04 when the clone maker moved to the persona's page — `PersonaCloneMaker.vue`) |
 | `.jv-field-row` | a row of block-labelled fields with a trailing action, bottom-aligned structurally (strips the kit's `.ui-field` margin — never re-align with per-view nudges) |
 | `.jv-col--start` / `.jv-stretch` | card-body children keep content width / one child opts back into full width |
 | `.jv-hint` | one quiet line under a row or field — cost or requirement of the choice above. **12.5px floor** (2026-08-21 "stop using small text"): no user-facing text renders smaller |
