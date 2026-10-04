@@ -1921,13 +1921,25 @@ DECIDED: 2026-10-03, the order — "we need to do the persona first that is befo
 DECIDED: 2026-10-03, the scope — "whole redesign per mock" (the index `_s9` and the persona
         editor `workbench` / `_s7`, carrying "Voice gender in every voice dropdown, and speaker
         pronouns").
+DECIDED: 2026-10-03, follow the mock — "we did the mock on purpos and you are ignoring it" (after
+        "…so where do you pick engine or model, i dont think you thougth this through"). Read as:
+        the kind radios, then a voice that names its model; the model is set where the voice is
+        made, not on the persona (doc §5.2). The review's persona Model card and its Q1, Q2, Q12
+        are withdrawn (§5.3).
+DECIDED: 2026-10-03, Built-in stays one radio; the need is a direction filter — "The mock's
+        Built-in radio already covers Qwen3 CustomVoice's speakers, what we need is a way to
+        determine if user can direct voice either wither words or like chatterbox with specific
+        works, so built in means kokoro which you cant do anything with but also qwen3 custom
+        which takes directions, so some way for the user to filter out what types of voices they
+        want to use". The proposal for it is doc §5.5 (not decided).
 OPEN:   the design check the user asked for first, the same day: "did we rethink on the persona
         to make sure we have it designed correctly whihc it changing options on engine nad model
         selection, think on the desing nad make sure it is correct and accounts for voice desing
         clone, regular and models that take direction like qwen and thos that take workds like
         chatterbox, think on it several times". No code until that review is shown and approved.
         The review and its facts are saved in docs/plans/2026-10-03-persona-redesign.md ("make
-        sure yyou save thsi info").
+        sure yyou save thsi info"; "save all this info we keep redoing research") — read §5
+        first; §5.6 holds the open questions.
 GO:     needed
 
 ### FINDING — language never reaches Chatterbox or Qwen3: every render on them is told English

@@ -1,8 +1,12 @@
 # The Personas redesign — design check before any code
 
-**Status:** research in progress (2026-10-03). No code until the review in this doc is shown and
+**Status:** review in progress (2026-10-03). No code until the review in this doc is shown and
 approved. Tracker: docs/dev/TASKS.md, FINDING "a persona's pace, pitch and gain can't be edited
 anywhere in the app".
+
+**Read §5 first.** It corrects §3 and §4 (the user: "we did the mock on purpos and you are ignoring
+it"), records a second review of the mock, and holds the open questions. §2 holds the facts — don't
+redo that research; re-check only a cited line you are about to rely on.
 
 ## 1. What is decided
 
@@ -390,6 +394,10 @@ today's app.
 
 ## 3. The design passes
 
+> **Superseded in part by §5 (2026-10-03, later).** The mock puts the model on the voice, not the
+> persona: 3.0's "make the model part of the persona" and 3.1's **Model card** are withdrawn
+> (§5.3). The rest stands unless §5.3 names it.
+
 ### 3.0 The root problem, in one line
 
 A persona's options depend on the **model** that speaks it, and today nothing records that model:
@@ -545,6 +553,9 @@ This pass found nothing new beyond 3.1–3.5. **Converged.**
 
 ## 4. Questions for the user
 
+> **Replaced by §5.6.** Q1, Q2 and Q12 are withdrawn; Q3, Q4, Q8 and Q9 went against the mock
+> (§5.3); Q5, Q6, Q7, Q10, Q11 and Q13 still stand.
+
 Each with a recommendation; nothing here is decided until answered.
 
 1. **Model pin.** The persona picks the model family that speaks its voice (only the ones that
@@ -582,3 +593,208 @@ Each with a recommendation; nothing here is decided until answered.
 
 After the answers: the build plan, with the blast-radius table (every caller of the persona model,
 the resolver's four paths, the API, Cast, Voices, export), then the build.
+
+## 5. The mock re-read, and the direction filter (2026-10-03, later)
+
+Saved at the user's word: "save all this info we keep redoing research".
+
+### 5.1 What the user said (verbatim, typos kept)
+
+1. On §3–§4: "the mock has choices like alexandria, clone blend design it should have custom voice
+   for qwen lora these options determine what voices are available and what models can be selected
+   if you choos clone you only get clone models, so where do you pick engine or model, i dont think
+   you thougth this through"
+2. "we did the mock on purpos and you are ignoring it"
+3. To a second reviewer (Fable): "think on what opus said about the persona design look at the mock
+   see if we are missing anything or anything can be improved"
+4. "The mock's Built-in radio already covers Qwen3 CustomVoice's speakers, what we need is a way to
+   determine if user can direct voice either wither words or like chatterbox with specific works, so
+   built in means kokoro which you cant do anything with but also qwen3 custom which takes
+   directions, so some way for the user to filter out what types of voices they want to use and save
+   all this info we keep redoing research"
+
+Read as: item 4 answers 5.4's question 1 — no separate "Custom voice" radio; Built-in stays as
+drawn, and the missing piece is a filter on how a voice can be directed (5.5).
+
+### 5.2 Where the mock sets the engine and model — the answer to "where do you pick"
+
+You never pick an engine or a model on its own. The editor's Voice card is the kind radios
+(`_s7:13-18`: Built-in · Clone from audio · Design from words · Blend · Trained LoRA), then one
+voice list whose every option names its model ("Sohee — qwen3 CustomVoice · ko", "Heart — kokoro ·
+en-US", "Marius — chatterbox Turbo · cloned", `_s7:19-24`). The written record is
+`2026-08-15-voice-workflow-redesign.md` §2.3 (`:247-254`): "pick the *kind* … which fixes the
+engine; then the specific voice", and "Choosing a voice is choosing an engine". The model is set
+once, where the voice is made:
+
+| Kind | Where the model is set |
+|---|---|
+| Built-in | the preset belongs to one model |
+| Clone (and import) | New voice › Clone, its Engine list (`_s8:43-44`); import's "Model that speaks as this clip" |
+| Design | the model it is designed on (`_s7:16`: "Needs the Qwen3 VoiceDesign model") |
+| Blend | "Same engine family only" (`_s8:27`) — Kokoro |
+| Trained LoRA | the Base list on Train (`_s8:55`) — off until gap 5 rebuilds training |
+
+A kind that can't be used yet is shown off with its reason, the way `_s7:16` draws Design.
+
+**The code breaks this** (verified 2026-10-03):
+- A voice stores its engine, never its model: `VoiceRecord` (`models.py:498-514`) has `engine` and
+  no model or variant. The Voices page offers Turbo and Multilingual as separate rows
+  (`VoicesView.vue:1382-1393`) but sends only the engine id (`:600`, `:1529`), and
+  `voices_api.py:147` stores it. So "Marius — chatterbox Turbo" can't be told apart from a
+  Multilingual clone; tags and knobs follow whichever model is loaded (`render_core.py:287-309`).
+- A designed voice saved with its clip renders on Qwen3 Base, not VoiceDesign
+  (`render_core.py:180-181`), and nothing records that either.
+
+So the fix is data: **store the model on the voice**, set at the one place per kind above. The
+persona editor needs no model picker.
+
+### 5.3 Withdrawn from §3 and §4
+
+- 3.0's "make the model part of the persona", 3.1's **Model card**, and §4 Q1 (model pin on the
+  persona) — the mock puts the model on the voice.
+- §4 Q2 (clips not tied to one engine) — the mock ties a clone to the model it was made for.
+  Restated as 5.4 Q2.
+- §4 Q12 — LoRA stays as a kind, shown off until gap 5.
+- §4 Q3 (emotion on the persona) and Q4 (language on the persona) went against the mock — restated
+  as 5.4 Q4 and Q3.
+- §4 Q8 (drop Gain and Pitch shift from effects) — the mock's Add effect has both.
+- §4 Q9 (voice tuning page) — the mock answers it: "A voice is raw" (`_s6:31`); §8.22 of the
+  redesign doc left at most a measured Calibrate on the voice (not drawn, not built).
+
+### 5.4 The second review (Fable, 2026-10-03) — the mock against §3–§4
+
+**Where §3–§4 went against the mock**
+- Emotion on the persona — the editor has none; emotion is per line (the tags modal,
+  `_interactions.py:130-157`).
+- Language on the persona — the mock sets language on the book (`_s1:14`) and shows what each
+  voice speaks (`_s6`, the Speaks column).
+- Dropping Gain and Pitch shift from effects — the mock's Add effect has both
+  (`_interactions.py:104-107`).
+- A voice tuning page — "A voice is raw" (`_s6:31`); the 09-29 ruling says the same.
+- A separate Direction card and a Model column — the mock keeps Standing delivery inside How it
+  speaks (`_s7:48-51`); its Engine column already shows the model (`_s9:19, 26`).
+- Dropped from 3.1's card list though drawn: the summary card (`_s7:82-84`), Used by with "Open
+  Cast →" (`:94-96`), the "Qwen3 isn't loaded" banner (`:7`), Compare settings (`:68-69`), Stock
+  line and WAV (`:32-34`), the Blend and Train a LoRA buttons (`:77-78`).
+
+**What the mock doesn't answer** (to draw before code)
+- The radios don't filter: with Built-in on, the list still shows the Marius clone (`_s7:14, 24`;
+  `pickRadio` only moves the highlight, `_interactions.py:238-242`). What Clone, Design, Blend and
+  LoRA list is not drawn.
+- One persona is drawn — a Qwen3 CustomVoice built-in. Not drawn: Turbo (tags); Kokoro, Kitten,
+  Pocket (numbers only); Chatterbox Multilingual (exaggeration, CFG); a Qwen3 Base clone (direction
+  dropped); VoxCPM2 (direction works on a clone); a live designed voice.
+- Stale engines: LuxTTS is gone; Kitten, Pocket, VoxCPM2 and Nano are missing (`_s13`,
+  `_s8:11, 43-44`). Three sentences are now false: "only Qwen3 CustomVoice reads prose" (`_s7:27`,
+  `_s12:31`); "a clone … always loses written direction" (`_s8:12-14`); "Qwen3 is the only engine
+  that does this" (`_s8:24`) — VoxCPM2 takes direction on clones and designs
+  (`slot.py:609-628`, `capability_details.py:393-417`).
+- One clip on two models (Marius in English on Turbo, in Spanish on Multilingual).
+- Where a designed voice saved with its clip is listed: under Clone, as Alexandria does (its Clone
+  list groups "Designed Voices", `2026-08-22-voice-modes-truth-and-parity.md:125-128`), or under
+  Design.
+- States: a blank new persona ("New persona" opens June, `_s9:12`), a deleted voice, a model not
+  installed, unsaved changes, an empty index.
+- Ruled after the mock was drawn: the note; delete uncasts; merge moves speakers; gender in voice
+  labels with a gender filter (`2026-09-30-voice-gender-and-pronouns.md`).
+- Mock bugs: Voices' ⋯ opens "Persona actions" (`_s6:38`); `_s8:3-7` is design commentary about a
+  "Save as a new voice" that no longer exists.
+
+**Code facts the design depends on** (verified 2026-10-03)
+- Render presets beat the persona's numbers: preset > request > persona
+  (`delivery_merge.py:139-140`). A chapter rendered with a preset ignores the persona's Pace, Pitch
+  and Gain.
+- Chapter renders group lines by engine, not by model (`render_chapter_api.py:506`); a mixed Qwen3
+  cast is refused (`:495`); Chatterbox speaks with whichever model is loaded. With the model on the
+  voice, grouping has to go by model.
+- A book stores no language: `projects` has no language column; an import puts it in
+  `metadata_json` and nothing reads it (`projects_api.py:650-653`).
+- Cast's ▶ plays the bare voice, not the persona (`StudioCast.vue:433`).
+
+**Improvements proposed** (all keep the mock's layout; none decided)
+1. The radios filter the voice list; beside it, a model filter limited to that kind's models — the
+   same "All engines" filter the index, Cast and Voices draw (`_s9:7-8`, `_s3:79-80`, `_s6:7-8`).
+2. Voices ⋯ → "Copy to another model…": the same clip becomes a second voice on another clone
+   model, checked against what that model needs (Turbo a clip over 5 s; Qwen3 Base a transcript or
+   Skip the words).
+3. Voices ⋯ → "New persona from this voice" — promised by the `_s6` toast, drawn nowhere.
+4. A blank persona shows only the Voice card live; the rest unlocks once a voice is picked.
+5. Cast gets "＋ New persona" that comes back with it assigned; today only the empty-library
+   message links to Personas (`StudioCast.vue:617-619`).
+
+**Its questions, with its recommendations**
+1. A separate "Custom voice" radio for Qwen3's nine speakers? — **answered by the user (5.1 item
+   4): no. Built-in stays; the need is a direction filter (5.5).**
+2. One clip on two models: (a) as the mock — a clone belongs to the model it was made for, and
+   "Copy to another model…" makes the second; (b) the persona picks the model. *Rec: (a) — you
+   audition a clone on its model before saving, so what you heard is what renders.*
+3. Language: the book's language on every line, the voice shows what it speaks, Cast warns on a
+   mismatch, no persona field. *Rec: yes.*
+4. Emotion: none on the persona, as drawn; per-line emotion stays a Slice 4 question. *Rec: yes.*
+5. Presets: take the preset's numbers out of the merge with this work, so the persona's sliders
+   always count. Presets are ruled to die; the removal has no go. *Rec: yes.*
+
+**Opus's view of it** (2026-10-03): agrees on every point above. Two notes: a book language is new
+data (no column today), and dropping the persona's `language` field is a removal, so 5.4 Q3 covers
+both; "Copy to another model…" also keeps the direction filter (5.5) honest, because each copy
+has one model and therefore one answer.
+
+### 5.5 The direction filter — the user's requirement (5.1 item 4)
+
+The radios say how a voice was **made**. They don't say how it can be **directed**, and each kind
+mixes the answers: Built-in holds Kokoro (numbers only) and Qwen3 CustomVoice (written direction);
+Clone holds Turbo (tags), VoxCPM2 (written direction) and Multilingual (numbers only). Direction is
+a second axis, and it depends on the voice **and the model it speaks on**:
+
+| Voice | Model | Can be directed |
+|---|---|---|
+| Built-in, Kokoro's 54; a blend | Kokoro | numbers only |
+| Built-in, Kitten's 8 | Kitten | numbers only |
+| Built-in, Pocket's 20 | Pocket | numbers only |
+| Built-in, Qwen3's 9 | Qwen3 CustomVoice 1.7B / 0.6B | written direction (0.6B not checked by ear) |
+| Clone / import | Chatterbox Turbo, Nano | tags, set per line — 7 emotions, 3 registers, 9 sounds |
+| Clone / import | Chatterbox Multilingual | numbers only |
+| Clone / import | Qwen3 Base | numbers only — direction is dropped |
+| Clone / import | Pocket | numbers only |
+| Clone / import | VoxCPM2 | written direction |
+| Design, saved with its clip | Qwen3 Base | numbers only |
+| Design, live (no clip) | Qwen3 VoiceDesign | written direction — it reshapes the voice itself |
+| Design | VoxCPM2 | written direction |
+| Trained LoRA | gap 5 | before removal: Qwen3 Base + adapter took written direction; Turbo + adapter kept its tags (TASKS "THE VOICES ACQUISITION BUILD", `:1269-1275`) |
+
+Sources: §2.3's table; `capability_details.py` (`supports_instruct_freeform` per row, Turbo's
+`inline_tags`); `slot.py:609-628`; `render_core.py:164-188`.
+
+"Numbers only" is not "nothing": pace, pitch, gain, pauses, effects and the lexicon work on every
+model (§2.3).
+
+**It needs 5.2's fix first.** A clone's row depends on its model, and a voice stores none — today
+a Chatterbox clone can't be told apart as Turbo (tags) or Multilingual (numbers only), so no filter
+could be right.
+
+**Proposal (not decided):**
+- The server works out one value per voice — written direction · tags · numbers only — from the
+  voice's kind, whether it has a clip, and its model, and sends it with every voice. One answer
+  for every screen, the way the 09-30 to-do gives gender one service.
+- It replaces today's two guesses: the persona editor's verdict (wrong for VoxCPM2 clones and for
+  Qwen3 designs with a clip, §2.2) and Cast's "directed" tag.
+- One vocabulary everywhere — the mock has three (§2.1).
+- A "Can be directed" filter beside the voice list in the persona editor, next to the kind radios;
+  the same filter on Voices, the Personas index and Cast's persona list, where the mock already
+  shows the column or tag but no filter (`_s6:28`, `_s9:19`, `_s3:87`).
+- Labels: the mock's own words — "Written direction" · "Tags" · "Numbers only" — asked, not
+  assumed.
+
+### 5.6 Open questions now (replaces §4)
+
+1. The direction filter (5.5): build it as proposed, with those labels?
+2. One clip on two models (5.4 Q2): (a) copy, or (b) the persona picks.
+3. Language (5.4 Q3).
+4. Emotion (5.4 Q4).
+5. Presets out of the merge (5.4 Q5).
+6. §4 Q5, Q6, Q7, Q10, Q11 — recommendations unchanged.
+7. Still open from before, not assumed: can a persona vary by scene; Generate absorbed or deleted.
+
+Recommended next step (not decided): redraw the mock's persona screens — working radios and
+filters, one state per model, today's engines — and publish to the same link for the user to walk;
+then the build plan with the blast-radius table.
