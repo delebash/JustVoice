@@ -2162,6 +2162,28 @@ WHY:    loading Chatterbox Nano after Turbo restarted the shared audio.cpp proce
 OPEN:   both — the fix needs a go (likely: when a runtime restart drops a co-resident
         model, release its booking; and/or let `make_room` clear a stale booking of the
         engine being loaded).
+        Root cause and every trigger (2026-10-04 audit): the stale booking is
+        `docs/plans/2026-10-04-audiocpp-switch-audit.md` §5 C1–C2 (any first download
+        restarts the shared process, not only a model swap); the refused first load is §5 B2.
+
+### audio.cpp switch audit: Qwen3's memory is line length, plus 13 ranked findings and 5 design changes
+STATE:  FINDING — audited 2026-10-04 at the user's word ("do a deep audit and recommend
+        anything you would change … think on it adversiarlly nad review the code").
+        Record, with every cite and measurement: docs/plans/2026-10-04-audiocpp-switch-audit.md.
+WHY:    Measured on the app's own runtime: peak memory grows with line length on every
+        engine (VoiceDesign 752 chars: 7,122 MB whole, 3,976 MB split at 200, same speed);
+        the host sends up to 800 chars whole; a clone's reference clip is re-processed every
+        line. The memory check prices any Qwen3 model by the worst reading of all of them and
+        downloads + unloads the AI model before refusing. Kokoro and Kitten load a system
+        eSpeak NG, never the one the app downloads (wrong option name).
+NOT:    "use the median reading" (my first fix) — withdrawn: the high readings are real peaks.
+        Running VoiceDesign on the CPU — not needed.
+OPEN:   every fix needs its own go, with its blast-radius table first. Proposed order:
+        (1) per-model split size + memory-check rewrite; (2) the eSpeak option name;
+        (3) stale bookings and runtime restarts; then the rest of the record's list.
+        Also open: testing mem_saver / flash attention / 16-bit decoder weights on Qwen3
+        (needs a temporary runtime config change), and a listening check on split joins.
+GO:     needed
 
 ### FINDING — at 1440 px the title bar cuts "Personas › June" to "P.."
 STATE:  FINDING — seen 2026-10-04 in screenshots of the running app (`npm run dev`), on the real

@@ -1,0 +1,508 @@
+<!-- SPDX-License-Identifier: MIT -->
+# The audio.cpp switch, audited — 2026-10-04
+
+An adversarial review of every decision in the switch to audio.cpp
+(`2026-10-01-audiocpp-switch.md`, `2026-10-02-cpu-placement.md`, `2026-10-02-our-audiocpp-copy.md`,
+the gap docs), of the code it landed in, and of why Qwen3 needs so much memory. **Read this before
+fixing anything in `engines/audiocpp/`, `engines/manager.py` or the fork** — the measurements and
+the source reading here should not be redone.
+
+Nothing was fixed by this audit. Every fix in §11 needs its own go, with its blast-radius table.
+
+How each claim was checked is marked: **[me]** read or tested by the auditor in this session ·
+**[agent+data]** found by a review agent and checked against outside data (PyPI, GitHub, git) ·
+**[agent]** found by a review agent reading code, not re-checked · **[inferred]** reasoned, not
+measured. JustVoice paths are relative to the repo; audio.cpp paths are in `../audio.cpp` (branch
+`jv`).
+
+## 1. What the user said (verbatim, typos kept)
+
+1. "rethink the qwen3 design with wrds i am sure we can get it to run fine on this card, verify
+   what opus did and think of a solution"
+2. "how can voice design being only 1.7b params not work fine on this card" · "the file tensor is
+   only 3.83 gig something is wrong"
+3. "i want you to do a review of all the deciisons opus has mad on the swtich to audio cpp do a deep
+   audit and recommend anything you would change including what you just found, think on it
+   adversiarlly nad review the code"
+4. "something to test and think about the 7.8gb peak, what caused it?  to mean the individual
+   speaking lines are not that long so why do we need to keep so much in memory, is it performance,
+   can we do better memory managment or cache, something to look into for all speech engines"
+5. "i dont know what all config options we have … same for any of our engines we should expose all
+   options possible so we can tweak for maximum perfomance memory and accuracy and even change
+   dynamically as needed,   you can do any testing you need to help diagnose the problem and find a
+   good fix"
+6. "i theink the audo cpp has line splitting option in its gui, are we already using or exposing
+   all those options as needed?"
+7. "i thought all audio was being hnadled direcly by audio cpp, so we are still passing from our
+   javascript gui to our server to audio cpp?"
+8. "can we design it better? think of this as part or your audit process"
+
+## 2. Bottom line
+
+- **Qwen3 VoiceDesign runs on the 8 GB card.** The 7.8 GB peak is not the model: memory during
+  generation grows with the length of the line, and our server sends up to 800 characters whole.
+  Split at 200 characters, a 752-character VoiceDesign line peaks at 3,976 MB instead of 7,122 MB,
+  at the same speed (§3).
+- **A clone's reference clip is re-processed with every line.** A 15.5 s clip with its words puts a
+  14-character line at 5,407 MB. Splitting does not help; a shorter clip or sound-only cloning does.
+- **The switch works, and its request mapping is mostly right**, but three parts are weak by design:
+  memory bookkeeping (§5 B), hand-copied options (§5 D, §7) and process restarts (§5 C). One finding
+  blocks every other machine: Kokoro and Kitten load a system eSpeak NG, never the one the app
+  downloads (§5 A1).
+
+## 3. Memory — measured
+
+### 3.1 How
+
+On the app's own runtime (`npm run dev`, our audio.cpp checkout's CUDA build, RTX 2070 SUPER 8 GB,
+Windows 11), talking to its GPU process directly with **no model loaded through the app's manager**
+— so nothing was written to the measurement store (checked: no rows after the tests). The AI model
+was unloaded throughout. Card-wide `nvidia-smi memory.used` sampled every 100 ms; the process's own
+dedicated memory read at each step (the kit's `process_tree_device_mem_mb`). Every model started
+from an empty process (`unload_all_models`), spoke four lines in order, then the short one again.
+Same seed. The clone clip was 15.5 s of Kokoro speech with its transcript.
+
+Lines: **short** 14 characters · **medium** 138 · **long** 383 · **xlong** 752 (the host's
+`max_chunk_chars` is 800, `models.py:113`).
+
+### 3.2 Peak above idle, MB (process memory after the line in brackets)
+
+| Model (8-bit) | short | medium | long | xlong | short again |
+|---|---|---|---|---|---|
+| Kokoro (190 MB file) | 609 (609) | 1,693 (1,693) | 2,721 (1,787) | 2,735 (2,167) | 2,169 (613) |
+| Qwen3 CustomVoice 1.7B (2.7 GB file) | 2,528 (2,619) | 3,366 (3,469) | 5,284 (3,879) | 6,872 (4,817) | 4,562 (3,089) |
+| Qwen3 VoiceDesign 1.7B | 2,356 (2,445) | 3,312 (3,413) | 5,988 (5,275) | **7,122** (6,249) | 6,144 (2,843) |
+| Qwen3 Base 1.7B, clone, clip + words | 5,407 (5,523) | 7,135 (6,059) | 7,143 (4,109) | 7,121 (3,750) | 5,249 (4,210) |
+| Chatterbox Multilingual | 1,758 (1,859) | 2,462 (2,325) | 2,898 (2,049) | 3,480 (2,205) | 2,104 (1,861) |
+| Chatterbox Turbo | 1,812 (1,915) | 2,170 (2,063) | 2,812 (1,993) | 2,856 (2,035) | 1,932 (1,915) |
+| VoxCPM2 | 4,160 (2,939) | 4,608 (2,939) | 6,418 (2,939) | 6,438 (2,939) | 4,000 (2,939) |
+
+Audio made / time taken for the xlong line: Kokoro 45.0 s / 3.6 s · Qwen3 CV 56.0 / 28.6 · VD 44.8 /
+27.1 · Base 43.1 / 25.5 · Chatterbox 44.0 / 22.5 · Turbo 43.0 / 15.0 · VoxCPM2 36.5 / 23.4.
+After `unload_all_models` the process read 103–105 MB every time.
+
+### 3.3 With the runtime's own splitting (`options.text_chunk_size`), and sound-only cloning
+
+| Run | medium | long | xlong |
+|---|---|---|---|
+| VoiceDesign, split at 200 | 3,278 | 3,348 | **3,976** (48.4 s of audio in 23.9 s) |
+| VoiceDesign, split at 120 | — | — | 3,100 (48.2 s in 25.8 s) |
+| Base clone, sound only (`x_vector_only_mode`) | 3,243 | 4,983 | — (short: 2,219) |
+| Base clone, clip + words, split at 200 | 6,084 | — | 7,300 |
+| VoxCPM2, split at 200 | — | 4,624 | 5,230 |
+| Kokoro, split at 120 | — | 1,248 | 1,235 |
+
+### 3.4 What it shows
+
+1. Peak memory grows with line length on every engine. Chatterbox and Turbo stay lowest because
+   audio.cpp already splits them at 128 characters internally.
+2. Splitting costs no speed (VoiceDesign xlong: 27.1 s whole, 23.9 s split at 200).
+3. For a clone made from a clip and its words, the clip dominates: it is in the prompt and decoded
+   again with every line (and every piece), so splitting does nothing. Sound-only removes it.
+4. Unloading frees the memory. A process never went above ~105 MB after an unload.
+5. Memory held after a line follows that line's length until the next line resizes it (VoiceDesign
+   held 6,249 MB after the xlong line, 2,843 MB after the next short one). VoxCPM2 releases to
+   2,939 MB after every line.
+6. Near 7.6–7.7 GB the card was full (8,192 MB with ~450 MB held by Windows); Windows may spill to
+   shared memory there instead of failing — not measured.
+
+### 3.5 Cause, read from the audio.cpp source  [agent, code; sizes inferred]
+
+- **Codec decoder (the audio decoder).** Sized by the line's frames, up to 325 (300 + 25 of left
+  context, `src/models/qwen3_tts/tokenizer_speech_decoder.cpp:47-48`, loop 1199-1257). On CUDA its
+  convolutions build an "im2col" copy in the weight's type, 32-bit (`external/ggml/src/ggml.c:4880`,
+  `include/engine/models/qwen3_tts/session.h:74`); the last stage with a 7-tap kernel is about
+  5.2 MB per frame. When the length changes, the new graph is built **before** the old is freed
+  (`tokenizer_speech_decoder.cpp:1229-1237`) — two buffers for a moment. `qwen3_asr` avoids exactly
+  this (`src/models/qwen3_asr/thinker.cpp` ~788-792).
+- **Talker prefill.** Built for the exact prompt length with `ggml_backend_alloc_ctx_tensors`
+  (`talker.cpp:963`), which gives every intermediate tensor of all 28 layers its own memory, no
+  reuse (`external/ggml/src/ggml-alloc.c:1180-1196`). Rebuilt for nearly every line; kept between
+  requests. A clone's prompt includes the reference frames (`talker.cpp:582-621`).
+- **Clones decode the reference together with the new audio**, then trim it
+  (`session.cpp:494-498`, `tokenizer_speech_decoder.cpp:1267-1301`).
+- **KV cache** is 32-bit, starts at 128 frames and doubles up to the request's `max_tokens`
+  (`talker.cpp:57, 1741-1750`); never shrinks unless `mem_saver`. Nothing is pre-sized for
+  `max_new_tokens` (8192 in the model's `generation_config.json`).
+- **Two CUDA backends per Qwen3 session** (talker's own at `talker.cpp:836`, the session's), each
+  with a pool that only grows until the backend is freed (`ggml-cuda.cu:484-590`).
+- **Upstream sees the same**: `docs/reports/gguf_q8_performance.md` reports 6,397 MiB peak for
+  Qwen3 8-bit in a long session and 8,138 MiB long-form.
+- **Other families**: Chatterbox T3 uses the same no-reuse allocation (`t3_runtime.h:824, 1145`)
+  but `max_new_tokens` 384 and 128-character pieces; its `mem_saver` is broader than Qwen3's.
+  VoxCPM2 builds its step graphs up front with a 32-bit KV for `max_length` 8192
+  (`generator.cpp:1212-1218`). `qwen3_asr` allocates per request and drops old graphs first.
+
+### 3.6 Ways to cut the peak
+
+**No C++ change** (request or config):
+
+| Lever | Where | Measured / expected |
+|---|---|---|
+| Split long lines — per model, in our host (it crossfades) or `options.text_chunk_size` (the runtime hard-joins) | `render_core.py:747-770`; `chunking.cpp:579-590` | VoiceDesign xlong 7,122 → 3,976 (200) → 3,100 (120) **[me]** |
+| Short reference clips (5–8 s) or sound-only for Qwen3 Base | `slot.py:520-533` | sound-only short line 5,407 → 2,219 **[me]** |
+| `qwen3_tts.mem_saver` session option | `session.cpp:120-125` | drops the KV between lines; not tested |
+| `qwen3_tts.perf_mode=flash_attention` (8-bit only) | `session.cpp:127-138` | −10–25 % of prefill **[inferred]**; not tested |
+| `qwen3_tts.conv_weight_type=f16` | `session.cpp:277-280` | halves the im2col **[inferred]**; needs a listening check |
+| Per-request `max_tokens` | `session.cpp:34-39` | bounds a runaway line |
+
+**In our fork**:
+
+| Change | Where | Expected |
+|---|---|---|
+| Free the old decoder graph before building the new one | `tokenizer_speech_decoder.cpp:1225-1238` | removes the transient duplicate, up to ~2.4 GB off the peak; trivial |
+| Prefill through `ggml_gallocr` (or free it after each prefill) | `talker.cpp:919-975, 1867-1883` | most of 0.8–2.7 GB; the same change saved 5 GiB on another model (`docs/reports/higgs_cuda_prefill_memory.md`) |
+| Decoder chunk size as a session option | `tokenizer_speech_decoder.cpp:47` | decoder memory ∝ chunk |
+| Don't decode the reference with every line (cache it) | `session.cpp:494-498` | removes the clone penalty |
+| Avoid im2col on CUDA (per-tap path, or `ggml_conv_2d_direct`) | `conv_modules.cpp:196-259, 545-558` | ~1.5 GB off the decoder |
+| `mem_saver` also releases the decoder and prefill graphs | `session.cpp:193-223` | resident between lines ~2.5 GB |
+| Log each graph's buffer size | — | measurement |
+
+### 3.7 Earlier evidence that agrees
+
+- Switch record §8 A: Qwen3 CustomVoice "VRAM peak 7.8 GB, ends 4.0 GB … swings 3–5 GB line to
+  line"; R10 moved Qwen3 1.7B to the 12 GB tier on that number instead of asking why.
+- The measurement store (`model_measurements`, this machine): `tts:qwen3:qwen3-cv-1.7b-q8` 15
+  loads, 105–5,434 MB, median 3,115; `qwen3-cv-0.6b-q8` 12 loads, 105–6,249 MB;
+  `kokoro-82m-q8` 567 → 2,635 MB within 20 seconds of speaking. The highs are real peaks of long
+  lines; the 105 MB lows are a process with nothing loaded yet (§5 B3).
+
+### 3.8 Limits of the measurement
+
+One card, CUDA only (no Vulkan, CPU, Metal). 100 ms sampling can miss a very short spike (the
+transient double buffer). Speech recognition, Pocket and Kitten were not measured. The three
+session options were not tested — they need a runtime config change. Nobody listened to the split
+joins.
+
+## 4. Corrections to what was said earlier in the session
+
+- **"VoiceDesign is 24 MB short of fitting"** — the arithmetic was right (6,249 + 1,024 margin
+  against 7,249 free); the premise was wrong: 6,249 MB was not VoiceDesign's reading (§5 B1).
+- **"It refuses before downloading, so nothing was downloaded"** — false. The download runs before
+  the memory check (`manager.py:1437-1439`, check at 1459-1465); the 2.7 GB VoiceDesign file was
+  fetched on the first attempt. Each refused attempt had also already unloaded the AI model
+  (log 12:37:29: "evict LRU gemma … — loading qwen3", refusal 0.9 s later).
+- **"Run it on the CPU"** — not needed.
+- **The auditor's own first answer** — "the 6,249 MB reading is unreliable; price by the median
+  (~3.1 GB)" — withdrawn. The reading was a real peak of a long line; pricing by the median would
+  admit Qwen3 beside something else and run out mid-line.
+
+## 5. Findings
+
+### A — blocks other machines
+
+**A1. Kokoro and Kitten never use the eSpeak NG the app downloads. [me + agent]**
+`slot.py:124-128` passes `espeak_library_path` / `espeak_data_path` as session options with no
+family prefix. Kitten reads only `kitten_tts.espeak_library_path` (`kitten_tts/session.cpp:73-75`);
+Kokoro reads no session option at all, only the environment variables `AUDIOCPP_ESPEAK_LIBRARY` /
+`AUDIOCPP_ESPEAK_DATA` (`kokoro_tts/g2p_multilingual.cpp:92-103`), which `runtime._child_env` never
+sets. Unprefixed keys are ignored, not rejected (`spec_backed_model.h:53`). On this machine both
+runtime processes loaded `C:\Program Files\eSpeak NG\libespeak-ng.dll` — a system install (checked
+by listing the processes' modules). On a machine without it the loader falls to
+`"espeak-ng.dll","libespeak-ng.dll"` by name (`espeak_phonemizer.cpp:78-93`) and nothing ships
+beside the exe. `server/tests/test_audiocpp_switch.py:140-143` asserts the unprefixed key.
+
+**A2. Linux x86_64 cannot finish installing the runtime. [agent+data]**
+`espeak.py:42` picks the tag `manylinux_2_17_x86_64` and `:67` looks for a file ending
+`-{tag}.whl`; PyPI's file is `…-manylinux_2_17_x86_64.manylinux2014_x86_64.whl`. The binary
+installs first (`manager.py:378`), then eSpeak raises (`:385-387`).
+
+### B — memory and placement
+
+**B1. The memory check prices a model by another model's worst reading. [me]**
+`manager.py:901-927` takes the maximum of every "load" row of every variant of the engine. Qwen3
+VoiceDesign (never measured) was priced at 6,249 MB, a reading taken on CustomVoice 0.6B. Every
+Qwen3 load on this machine is priced at 6,249 + 1,024, so it passes only when under ~920 MB of the
+card is in use. Auto placement uses a different lookup, the newest row of the exact variant
+(`:640-653`) — 105 MB for three Qwen3 variants. The two disagree, so Auto unloads the AI model
+("never measured") and the check then refuses.
+
+**B2. A refusal does not leave the world as it was. [me]**
+Order in `load`: placement → download the variant (`:1437-1439`) → unload the AI model
+(`:1456-1458`) → memory check (`:1459-1465`). `_unload_ai_model` also returns without waiting for
+the memory to drain, so the check can read "only 4,101 MB free" a moment later (the turbo-tag-check
+"first Turbo load refused" finding). **[agent]**
+
+**B3. Three families never load on Load. [agent; me for the 105 MB rows]**
+The config is `lazy_load` (`runtime.py:320`); `_warm` (`slot.py:277-306`) has no branch for
+Chatterbox Multilingual, Qwen3 Base or VoiceDesign, so Load books and records only the bare
+process — the 105 MB rows. VoiceDesign needs no clip, so it could warm. The gap-9 fix did this for
+VoxCPM2 only.
+
+**B4. Load reports success when the warm-up failed. [agent]**
+`slot.py:272-273` sets loaded before `_warm`; `:305-306` swallows any `AudioCppError` at info
+level. Out of memory or a bad file becomes a successful Load; the failure shows on the first line.
+
+**B5. Switching size within a loaded engine skips the memory check. [agent]**
+`manager.py:1459-1460` skips admission when the same engine holds the slot; since the gap-9 fix a
+variant switch is a full new load (`:1488-1502`). CustomVoice 0.6B → 1.7B beside the AI model loads
+into a full card.
+
+**B6. 16-bit rows can throw the AI model off the card. [agent]**
+`release.py:107` drops `cpu_realtime` from every 16-bit row, so Kokoro, Pocket and speech
+recognition at 16-bit have no CPU speed and `placement_for` returns "the AI model makes room"
+(`manager.py:716-719`) — a 212 MB Kokoro load unloads a 6.8 GB model.
+
+**B7. One slow CPU reading locks a model off the CPU for good. [agent]**
+A speed is recorded only while the model runs on the CPU (`manager.py:746`), newest wins
+(`:631-634`); under 2× it is never placed there again, so never re-measured. Speech recognition
+measured 2.06× live.
+
+**B8. Each kind's "share" of the shared process is arithmetic, not measurement. [me]**
+`_own_share_mb` (`manager.py:877-899`) is the process total less the other kind's *booking* — a
+high-water mark that may be stale. Rows recorded this way range 105–6,249 MB for one model, and are
+stored as "measured" evidence (`:1583`, `:1115`). The switch record's R7 put the cost at "~300 MB
+on whichever loaded first".
+
+**B9. On Macs and integrated graphics the placement reason is wrong. [agent]**
+`_ai_model_on_card` is False whenever memory isn't discrete (`manager.py:663-664`): always "nothing
+else is on the graphics card", never the CPU.
+
+### C — the runtime's life
+
+**C1. After a restart, the other kind's model is gone but stays booked. [agent; mechanism read by me]**
+`ensure()` restarts with no callback (`runtime.py:325-327`). The slot is dead by pid
+(`slot.py:227`) but `_loaded[kind]` is never popped — `loaded_for` only hides it
+(`manager.py:540-543`) — and bookings are released only at `:1348, 1500, 1550, 1609, 1657`. The
+reload then counts its own stale booking and excludes it from eviction
+(`make_room(exclude="stt:asr")`, `:992`). This is the "speech recognition stays booked" finding;
+`status()` shows no Unload for a dead slot, so only an app restart clears it.
+
+**C2. Any change to what is downloaded restarts the shared process. [agent; me for the config]**
+The signature holds every installed model (`runtime.py:318-323`, `slot.py:137-147`). The first load
+of any new model downloads it and restarts the process, killing the other kind's model and any line
+in flight (`stop()` ignores the other kind's activity lock). Seen live: the config lacked
+VoiceDesign until the next load restarted the process.
+
+**C3. Load, Unload, Cancel and Uninstall run on the event loop. [me for Load; agent for the rest]**
+`engines_models_api.py:66-79` `async def load_engine` calls `mgr.load(...)` directly — the
+download, the spawn and the warm-up. Progress polls, Cancel and `/v1/shutdown` queue behind it.
+Cancel is processed after the load returns and then leaves the booking with no slot
+(`manager.py:1277-1285` never releases it).
+
+**C4. Shutdown can deadlock against a load. [agent]**
+`load` holds `self._lock` across `spawn` → `installed_entries()` → `get_manager()` →
+`_manager_lock` (`slot.py:140`, `manager.py:1819`); `shutdown_manager` holds `_manager_lock` and
+needs `self._lock` (`:1831-1834`).
+
+**C5. A crash mid-line surfaces a raw error and cleans nothing. [agent]**
+`slot.post` catches only `AudioCppError` (`slot.py:258`); httpx transport errors pass through.
+No watchdog; the booking stays (C1); no crash-loop guard.
+
+**C6. Off Windows the runtime can outlive the app. [agent]**
+The Job Object is Windows-only (kit `process.py:855-856`). Clean shutdown waits for a line (up to
+900 s) and the unloads; Tauri kills the server after 15 s (`lib.rs:58-59, 242-256`); the sweep runs
+only at the next start.
+
+**C7. Locks are held across long calls; two paths terminate without the activity lock. [agent]**
+`manager.py:1477-1519` (terminate 120 s + spawn 60 s under both locks); `uninstall` (`:1338-1343`)
+and `request_cancel_load` (`:1274-1285`) can unload under a line in flight.
+
+**C8. Smaller. [agent]** `_wait_healthy` timing out leaves a live process recorded as running
+(`runtime.py:325-326`); `srv._run` is read without the lock; `_raise_for` raises AttributeError on
+an `{"error": "text"}` body (`:416-419`); two servers on one data dir share the config and log
+file names (`:329-333`).
+
+### D — requests and options that are silently wrong
+
+**D1. An empty seed is not random on four families. [me for Kokoro; agent for the rest]**
+Kokoro, live: no seed twice gave identical audio; a seeded line then an unseeded one repeated the
+seeded audio; seed 0 is a literal seed. The session picks one seed and replaces it only when a
+seed arrives (`kokoro_tts/session.cpp:112, 566-573`); `slot.py:284-285` warms with seed 1. Same
+pattern in Kitten (`session.cpp:98, 225-232`); Turbo falls to a fixed seed when 0 or missing
+(`t3_turbo_component.cpp:141`); VoxCPM2 defaults to 1234 (`voxcpm2/types.h:24`). The app says
+"Empty = a new one each time" and "0 = random" (`capability_details.py:50-51`). Qwen3, Chatterbox
+and Pocket are random per request.
+
+**D2. Kitten's "does not repeat with a seed" is not what the code does. [agent]**
+`kitten_tts/decoder.cpp:1029` re-seeds every decode. Worth re-measuring; Kitten may be able to
+offer a seed.
+
+**D3. Chatterbox's repetition penalty shows 2.0 and 1.2 is used. [me]**
+`capability_details.py:173, 203` `default=2.0`; `chatterbox/tts.h:23` `1.2f`; Generate omits a knob
+left at its shown default (`GenerateView.vue:473-483`).
+
+**D4. Generate's temperature 0 breaks three families. [agent]**
+Slider minimum 0 (`GenerateView.vue:938`). Qwen3 throws "temperature must be positive"
+(`qwen3_tts/session.cpp:67-68`); Chatterbox divides by it (`t3_component.cpp:621-623`); Turbo
+treats 0 as 1.0 (`t3_turbo_component.cpp:243`). The slider's default 0.7 is never sent, so the
+engine's own (0.9 / 0.8) is used while the screen says 0.7.
+
+**D5. audio.cpp re-splits our pieces with hard joins. [agent]**
+Internal budgets: Chatterbox and Turbo 128 characters, Kokoro 240, Kitten 400, VoxCPM2 2,048,
+Qwen3 8,192; pieces are concatenated with no crossfade (`framework/runtime/session.cpp:195-206`).
+Our host sends up to 800 with a crossfade that then never applies inside. A multi-word Turbo tag
+(`[clear throat]`) or a Kokoro inline `[two words](/…/)` can be cut at a boundary.
+
+**D6. Qwen3 tags a missing or unsupported language as English, not Auto. [agent]**
+`slot.py:506`; audio.cpp defaults empty to "Auto" (`session.cpp:569`), which also picks a
+CustomVoice speaker's dialect (`talker.cpp:445-446`).
+
+**D7. Recognition and alignment languages. [agent]** `slot.py:359-361` sends raw codes for the 20
+recognition languages outside `QWEN_LANGUAGE` (the prompt wants names); `:377-379` sends "English"
+to the aligner for anything else, so Cantonese is aligned as spaced words.
+
+**D8. Errors lose their kind. [agent]** audio.cpp answers 400 / 503 `insufficient_memory` / 503
+`server_busy` / 500 (`runtime.cpp:1271-1292`); `runtime.py:417-420` keeps only the message and
+`slot.py:258-259` makes every one a 500. The runtime's own memory guard is off
+(`min_free_memory_mb=0`); a CUDA allocation failure mid-line aborts the process.
+
+**D9. Dead or wrong smaller mappings. [agent]** Kokoro `options.phonemes` can never reach the model
+(`slot.py:499-500`; the server stringifies arrays) — dead today. Qwen3 `top_p` 0 means "off"
+(`talker.cpp:1243`) while the slider allows it. `AudioCppSlot.post` ignores its `timeout`
+(`slot.py:244`); transcription is fixed at 600 s (`runtime.py:427`), so a recording over ~20
+minutes on the CPU times out.
+
+### E — gates, releases, installs
+
+**E1. Three features are never checked against the installed build. [agent]**
+`has_feature` is called only for `voice_pack`, `turbo_clone` (`slot.py:318, 325`) and `inline_ipa`
+(`render_core.py:343`). `japanese`, `chatterbox_he_ru_zh` and `voxcpm2_transcript` are offered from
+the pin alone. Today a v0.9.0 install is offered "clip and its transcript" for VoxCPM2 and ignores
+the transcript silently.
+
+**E2. The placeholder tags do not hold the code they name. [me, git]**
+`fc55e1e6` (he/ru/zh), `6a2bb4c5` (Japanese), `6d1825eb` (libmecab/jieba staging) and `faf1ee03`
+(macOS fix) are not ancestors of `v0.9.0-jv.3`; `3865d245` (Turbo cloning) is. Known — one release
+with a new tag is pending — but `release.py:33-41` must be retargeted with it, and `PREVIOUS_TAGS`
+(`:28`) extended by hand or every install reads "not installed".
+
+**E3. The persona page's Blend maker is not gated. [agent; a regression from 2026-10-04]**
+The old Voices tab was blocked when no model could blend; `PersonaBlendMaker.vue` checks nothing
+and `voice_model.can("kokoro","blend")` is always true (`voice_model.py:198`). On a build pinned to
+jv.1 a blend saves and then every preview and render gets 409 "need the speech runtime update"
+(`slot.py:318-320`) while no update is offered (`speech_runtime_api.py:111`).
+
+**E4. Turbo voices made under `npm run dev` change model in a packaged app. [agent]**
+There Turbo is not one of Chatterbox's families, so `model_for_stored` falls back to Multilingual
+(`voice_model.py:248-253`); tags are stripped with no message.
+
+**E5. The "install the runtime first" dialog can never show. [agent]**
+`voice_preview_api.py:714, 746` test `m.isolation == "venv"`; it is always "audiocpp"
+(`manager.py:185`).
+
+**E6. The runtime download has no checksum and cannot resume. [agent]**
+`release.py:66-71` rows are URLs on a mutable tag; kit `binary.py:554-556` only launch-verifies;
+staging is wiped at the start and end (`:533-534, 576-579`). Install never passes `force`, so a
+build with a quarantined DLL cannot be repaired from the app. Model files are checked by size only
+(`speech_cache.py:61-76, 167-173`) and two fetches of one variant race.
+
+**E7. Smaller. [agent]** CPU builds are not the portable ones (`release.py:88, 90`; audio.cpp issue
+#352, old CPUs). The dev build silently stays CPU-only when the CUDA toolkit was missing at its
+first configure (`audiocpp-dev.js:116-120, 172`). Auto looks for exactly one build
+(`runtime.py:174-181`), no fallback. The memory ledger ignores the configured GPU index. A loaded
+model can be deleted on Linux/macOS (`models_api.py:145-166`).
+
+### F — leaks, hardcoded values, leftovers, stale docs
+
+- **Temp files**: every clone preview leaves its clip in the temp folder
+  (`voice_preview_api.py:287-294`; the persona page's new preview uses the same function); an
+  oversize capture upload leaks up to 200 MB (`captures_api.py:150-157`); blend packs pile up
+  (`slot.py:96-101`); the runtime logs are never rotated (`runtime.py:336`). **[agent]**
+- **Hardcoded, arguably settings**: GPU process threads 4 (`runtime.py:315`) **[me]**; health wait
+  60 s; request timeouts 900 / 600 / 600 / 120 s (`:422-448`); probe TTL 2 s (`manager.py:77`);
+  eviction drain wait 4 s (`:999`); Voice engine setup's 7 GB / 11 GB tiers
+  (`QuickSetup.vue:50-89`). `cpu_min_realtime` and, on a CPU build, `cpu_threads` have no screen
+  (`SpeechEnginesTab.vue:792`). **[agent]**
+- **Leftovers**: "install + load 'whisper'" errors (`manager.py:1735-1736, 1757-1758`); a dead
+  `chat()` (`:1709-1722`); `NOT_ENGINES` names that don't exist (`:69-70`); torch / DirectML / MLX
+  probes that make Settings show "directml" on AMD and Intel Windows (`system_info.py:85-111`,
+  `SettingsView.vue:464`); "training" in a user-visible description (`asr/manifest.py:24-25`);
+  `capabilities.js:84-88` and its test use the dead id `chatterbox-turbo-v1`. **[agent]**
+- **Stale docs**: engines.md:66 says the CUDA build is a 461 MB download — the cudart archive adds
+  607 MB **[agent+data]**; engines.md:22-23 (every engine repeats with a seed), :102 (every model
+  8-bit), :258-271 (the Auto order), :348-350, :444-445, :496, :62/:502 (Linux); voices.md:18, :51,
+  :52, :198-199; gpu.md:12 and quick-setup.md:90 (DirectML); `capability_details.py:212` and
+  `QuickSetup.vue:70` ("19 languages"); `kokoro/manifest.py:24-27` ("49 … eight languages");
+  code-map.md:740, :766-774. **[agent]**
+
+## 6. Design — what should change
+
+The shape (screens → our server → audio.cpp) is right: the server owns personas, lexicons,
+splitting, the cache, effects and projects, and audio.cpp has no sign-in, so the screens should not
+call it. What is weak is how the middle layer treats the runtime.
+
+1. **Bound the work, then price it.** A split size per model (a setting with a per-model default),
+   applied by our host so its crossfade is the only join — never larger than the runtime's own
+   internal budget (D5). Then a model's peak is predictable, and a load is priced from that
+   model's own measured load size and measured full-piece peak — never another model's (B1).
+2. **Let the runtime report its own memory.** A small fork change: per-model memory in
+   `/v1/models` (or a stats endpoint) and each graph's buffer size in the log. That replaces the
+   share arithmetic (B8) and the 105 MB rows (B3).
+3. **One options table whose truth is the runtime.** A fork endpoint that lists each model's
+   request and session options with their defaults and ranges; the app's knobs and its request
+   mapping are generated from it, and everything is exposed (advanced ones folded). Hand-copied
+   options are how A1, D3 and D9 happened, and most families ignore an unknown name silently.
+4. **A process that doesn't restart under you.** List every catalog model in the config up front
+   (to check: audio.cpp must accept an entry whose file isn't there yet) so a download changes
+   nothing; give restarts one owner that drops dead slots and their bookings (C1, C2); take the
+   long calls off the event loop (C3).
+5. **Say what happened.** Keep the runtime's error kind end to end (D8); a Load is a success only
+   when the model is in memory (B3, B4); a refusal changes nothing (B2).
+
+## 7. Options the runtime reads that the app doesn't expose  [agent]
+
+| Engine | Not exposed | Where it is read |
+|---|---|---|
+| Qwen3 | `max_tokens`, `do_sample`, `subtalker_temperature / top_k / top_p / dosample`; session `mem_saver`, `perf_mode`, `conv_weight_type`, `voice_prompt_cache_slots` | `qwen3_tts/session.cpp:34-60, 120-160, 271-292` |
+| Chatterbox | `min_p` (default 0.05 — the capability note says there is none), `max_tokens` (384); session `mem_saver` | `chatterbox/session.cpp:47-66`, `tts.cpp:209-255` |
+| Pocket | `temperature` (0.7), `noise_clamp`, `eos_threshold`, `frames_after_eos`, `max_tokens` | `pocket_tts/session.cpp:139-175` |
+| VoxCPM2 | `min_tokens`, `max_tokens`, `retry_badcase*`; session `mem_saver`, `audiovae_latent_capacity` | `voxcpm2/session.cpp:285-298` |
+| Kokoro, Kitten | `text_chunk_mode`, `text_chunk_size` | request contract |
+| Every model | `text_chunk_size` / `chunk_size` | `framework/text/chunking.cpp:579-590` |
+| The server | `max_loaded_models` (we pass 0), `idle_unload_ms`, `min_free_memory_mb`, `busy_timeout_ms` (300 s default) | `app/server/config.h:86-105` |
+
+The model's own defaults (Qwen3 `generation_config.json`): `do_sample` true, temperature 0.9,
+top_k 50, top_p 1.0, repetition_penalty 1.05, the same four for the sub-talker, `max_new_tokens`
+8192 (~11 minutes of audio at 12.5 frames a second). `config.json` is the model's structure (28
+talker layers, 16 codebooks), not tuning.
+
+## 8. The switch's decisions, checked  [agent]
+
+Built as written and clean: the two processes (GPU + CPU) and their settings; per-model
+Auto/GPU/CPU; Pocket's terms gate and one-model-per-language refusal; Kitten without a seed; the
+fork, its tags and "the older build keeps working"; `npm run dev` on the checkout; the replaced
+build's deletion; CustomVoice 0.6B; host-side speed; the 16-bit rows; the variant-switch reload;
+VoxCPM2's warm-up and brackets; Turbo/Nano behind their gate and their 19 tags; inline IPA.
+
+Built, with a problem: Auto's order (B2, B5, B6, B7, B9); "a model never measured counts as not
+fitting" (B6); Voice engine setup reads static text, not the same numbers (`QuickSetup.vue:50-89`);
+blends "so no one is offered a blend that cannot play" (E3); more languages (E1); R7's shares (B8);
+R10's 12 GB tier for Qwen3 (§3 — the peak is line length).
+
+## 9. Checked clean
+
+Every endpoint and body shape the app sends exists and is parsed as sent; `seed` reaches every
+family; Qwen3 `instructions` → `instruction`; all `KOKORO_LANGUAGE` codes; `voice_pack`; the inline
+IPA markup; all 23 Chatterbox languages on the `jv` branch; unload frees a model's backend (and
+measured: back to ~105 MB). Loopback-only; ephemeral port; Windows Job Object; atomic,
+launch-verified install; eSpeak and UniDic pinned by SHA; model files pinned to a commit, resumable,
+`files.json` written last; the leftovers sweep cannot kill another JustVoice's runtime; a frozen app
+ignores the dev-build variable; every release asset name exists in the published jv.1.
+
+## 10. Not verified, not tested
+
+- A1 on a machine without eSpeak NG installed (the failure itself); A2 on Linux.
+- C4's deadlock and D4's Chatterbox output (code only).
+- `mem_saver`, flash attention and 16-bit decoder weights on Qwen3 (need a config change).
+- Whether audio.cpp accepts a config entry whose file is missing (§6 item 4).
+- How the splits sound, and whether VoiceDesign's voice holds across pieces.
+- Vulkan, CPU and Metal builds; speech recognition, Pocket and Kitten memory.
+
+## 11. Proposed fix order (each needs its own go, with its blast-radius table)
+
+1. Per-model split size + the memory-check rewrite (§6 item 1; B1, B2, B5) — makes Qwen3 usable
+   on an 8 GB card.
+2. The eSpeak option name (A1), and the Linux wheel name (A2).
+3. Stale bookings and restarts (C1, C2), Load off the event loop (C3).
+4. Load means loaded (B3, B4); seeds (D1); the repetition-penalty default and temperature 0
+   (D3, D4); the Blend gate (E3).
+5. The fork: free the old decoder graph first, prefill reuse, memory reporting, the options
+   endpoint (§3.6, §6 items 2–3) — with the pending release.
+6. The rest of §5, group F included.
+
+## 12. What the tests did to the app
+
+Restarted the GPU runtime once (a Chatterbox load, then an unload); unloaded Kokoro and loaded it
+again at the end. No setting, repo file or measurement row was changed. The harness is a scratch
+script (`memtest.py`), not in the repo.
