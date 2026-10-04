@@ -300,6 +300,34 @@ def _apply_emotion_tag(text: str, delivery: dict[str, Any], tagset: Any | None) 
     return f"{tagset.syntax.format(value=tag)} {text}"
 
 
+def _apply_lead_tags(text: str, delivery: dict[str, Any], model: str | None) -> str:
+    """A tag model's own tags for the whole line — `delivery.tags`, a
+    persona's emotion and register on Chatterbox Turbo / Nano (2026-10-03) —
+    at the start of the line, each once, and only the tags the model lists.
+    A tag the line already carries is not added again."""
+    wanted = delivery.get("tags") or []
+    if not wanted:
+        return text
+    row = _model_row(model)
+    if row is None:
+        return text
+    known = {
+        t.lower(): tagset
+        for tagset in row.inline_tags
+        if (tagset.syntax or "").startswith("[")
+        for t in tagset.tags
+    }
+    lead: list[str] = []
+    for tag in wanted:
+        tagset = known.get(str(tag).lower())
+        if tagset is None:
+            continue
+        token = tagset.syntax.format(value=tag)
+        if token not in lead and token not in text:
+            lead.append(token)
+    return f"{' '.join(lead)} {text}" if lead else text
+
+
 def _supports_phoneme_input(model: str) -> bool:
     """Whether this model can pronounce a word from IPA NOW: its capability row says so (the
     pinned runtime splices it — Kokoro, gap 3) and the INSTALLED runtime is new enough. On an
@@ -534,6 +562,7 @@ def probe_line_cached(
         delivery = {**delivery, "ipa_map": ipa_map}
     # After the lexicon, never before — a lexicon entry must not be able to
     # rewrite the inside of a tag we just generated.
+    effective_text = _apply_lead_tags(effective_text, delivery, model)
     effective_text = _apply_emotion_tag(effective_text, delivery, _emotion_tagset(model))
     key = (
         CacheKeyBuilder()
@@ -615,6 +644,7 @@ def render_line(
     # Kept in lockstep with `probe_line_cached` — the two derive the same key
     # and any transform added to one has to land in the other or the probe
     # starts lying about what is cached.
+    effective_text = _apply_lead_tags(effective_text, delivery, model)
     effective_text = _apply_emotion_tag(effective_text, delivery, _emotion_tagset(model))
 
     # Cache lookup. The key holds what the lexicons CHANGED in this line — the

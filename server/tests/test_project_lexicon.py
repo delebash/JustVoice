@@ -418,7 +418,7 @@ def _book(client):
     slang = _post(client, "/v1/lexicons", {
         "name": "Crow's slang", "entries": [{"grapheme": "Harbek", "alias": "AR-bek"}],
     })["id"]
-    persona = _post(client, "/v1/personas", {"name": "Gravel", "voice_id": "v1", "lexicon_id": slang})["id"]
+    persona = _post(client, "/v1/personas", {"name": "Gravel", "voice_id": "af_heart", "lexicon_id": slang})["id"]
     crow = _post(client, f"/v1/projects/{pid}/speakers", {"name": "Old Crow", "persona_id": persona})["id"]
     scene = _post(client, f"/v1/projects/{pid}/scenes", {"title": "One"})["id"]
     said = _post(client, f"/v1/scenes/{scene}/blocks", {

@@ -126,7 +126,7 @@ def _cast_everything(client, pid: str) -> None:
     """Give every block a speaker played by a persona that has a voice, so the
     project is genuinely render-ready. Imported prose names no speakers at all,
     and QC reports that as not-ready now rather than measuring around it."""
-    r = client.post("/v1/personas", json={"name": "Reader", "voice_id": "voice-x"})
+    r = client.post("/v1/personas", json={"name": "Reader", "voice_id": "af_heart"})
     assert r.status_code in (200, 201), r.text
     persona_id = r.json()["id"]
     r = client.post(f"/v1/projects/{pid}/speakers", json={"name": "Reader", "persona_id": persona_id})

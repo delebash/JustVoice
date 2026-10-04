@@ -95,7 +95,7 @@ class Persona(Base):
       * `note` — a short note on how it sounds, for people and for Compose /
         Rewrite on Generate (which has no book). It never reaches the synth.
 
-    Made on the Personas page, or migrated from a voice profile.
+    Made on the Personas page.
     """
 
     __tablename__ = "personas"
@@ -114,12 +114,12 @@ class Persona(Base):
     # by Smart-assign, never by an engine. (Replaced `personality`, the
     # character sheet, 2026-09-29 — who a person is lives on the Speaker now.)
     note = Column(Text, nullable=True)
-    # Tier-2 delivery overlay (JSON-serialized Delivery shape).
+    # How it speaks (JSON-serialized PersonaDelivery: pace, pitch, gain,
+    # pauses, and per model its emotion, register, knobs and seed).
     default_delivery = Column(Text, nullable=True)
     # Pedalboard effects chain (JSON array of {type, params}) — how this
     # persona always sounds; runs after the TTS on every line it speaks.
     effects_chain = Column(Text, nullable=True)
-    engine_override = Column(String, nullable=True)
     lexicon_id = Column(String, ForeignKey("lexicons.id", ondelete="SET NULL"), nullable=True)
     # Provenance — where did this persona come from?
     imported_from = Column(String, nullable=True)  # "justwrite" | "manual" | "unreal" | "voice_profile"

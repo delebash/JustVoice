@@ -49,13 +49,21 @@ stay on the persona** — they belong to the voice.
 |---|---|
 | `name`, `language`, `avatar_path` | identity. `name` is unique across the library (case and extra spaces aside) and never blank — `personas_api._persona_name` |
 | `voice_id` | the instrument. **Not** an FK — voices are JSON manifests, the column carries the id verbatim |
-| `voice_instruct` | the spoken-delivery instruction. **The only persona text that reaches the synth.** Composed into `delivery.instruct` and consumed by **Qwen3 CustomVoice** (and VoiceDesign, after a designed voice's description) — Qwen3 Base has no instruction input, and Kokoro and Chatterbox take none (§3b) |
+| `voice_instruct` | the spoken-delivery instruction. **The only persona text that reaches the synth.** Composed into `delivery.instruct` by `persona_render.plan_line` and consumed by **Qwen3 CustomVoice**, VoiceDesign (after a designed voice's description) and **VoxCPM2** (clones too) — Qwen3 Base has no instruction input, and Kokoro, Kitten, Pocket and Chatterbox take none (§3b) |
 | `note` | a short note on how it sounds (replaced `personality`, the character sheet, 2026-09-29). Read by Generate's Compose / Rewrite (`personas_api._require_persona_with_note` refuses without one) and by Smart-assign as the persona's `tone`. **Never reaches the synth** |
-| `default_delivery` | JSON `Delivery` — speed, pitch, gain, etc. |
+| `default_delivery` | JSON `PersonaDelivery` (2026-10-03) — speed, pitch, gain_db, pause_before/after for every model, and `models[<capability row id>]` = `{knobs, seed, emotion, register_tag}` kept per model. Validated against each model (`persona_render.check_delivery`) |
 | `effects_chain` | JSON array of `{type, params}` |
-| `engine_override` | force an engine regardless of the voice's default |
 | `lexicon_id` | FK → `lexicons`, `ondelete=SET NULL` — read on the lines of every speaker the persona plays, after the book's lexicon (`render_core.line_lexicons`) |
-| `imported_from` / `imported_id` | provenance: `manual` · `voice_profile` (`migrate_profiles.py`). No import makes a persona any more |
+| `imported_from` / `imported_id` | provenance: `manual` · `voice_profile` (the Profile→Persona one-shot, deleted 2026-10-03). No import makes a persona any more |
+
+**One resolver** (`persona_render.plan_line`, 2026-10-03): persona + line →
+voice, model, text, language, delivery (shared values + that model's own,
+direction composed most specific last), seed, effects, lexicons. Called by the
+chapter render (`_resolve_scene_to_lines`), the single-block door
+(`export_voicelines._render_block_production` — Lines ↻, takes, render jobs,
+the game export), `POST /v1/personas/preview` (the editor, Cast ▶) and Generate
+with a persona (and so MCP speak). The persona's `engine_override` left the
+same day — nothing read it; the model comes from the voice (`voice_model.py`).
 
 **What lives on a Speaker** (`database/models.py:198-228`): `project_id` ·
 `name` · `aliases` (JSON — *Also called*) · `description` (*Who they are*, read by
@@ -146,11 +154,10 @@ Verified end to end:
 `speaker_id` only and `Speaker` has `persona_id` only. So there is nothing to
 delete — the rule holds in the data.
 
-**What breaks the "one place" rule is one real leftover:**
-**`Persona.engine_override`** is a second lever on what comes out, sitting
-beside `voice_id`. (`RenderPreset.voice_id`, a misnamed foreign key onto
-personas that could block deleting one, went with render presets on
-2026-10-03.)
+**Nothing breaks the "one place" rule any more:** `Persona.engine_override`
+(a second lever beside `voice_id` that nothing read) and `RenderPreset.voice_id`
+(a misnamed foreign key onto personas that could block deleting one) both left
+on 2026-10-03.
 
 ### Where a voice is MADE — every door produces a `Voice`, never a persona
 

@@ -116,16 +116,6 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     except Exception as e:
         log.warning("render-job boot sweep failed: %s", e)
 
-    # One-shot Profile → Persona migration (Slice 1 of the Profile-kill
-    # rollout per the approved plan). Materializes an orphan Persona
-    # record for every VoiceProfile row. Idempotent; runs until the
-    # VoiceProfile table is dropped in Slice 4.
-    from .database import session as _db_session
-    from .database.migrate_profiles import migrate_voice_profiles_to_personas
-
-    if _db_session.engine is not None:
-        migrate_voice_profiles_to_personas(_db_session.engine, state.personas)
-
     _register_existing_engines(state, data_dir)
     _register_external_engines(state)
     # LLM provider REGISTRY boot moved below install_llm (convergence part 2,

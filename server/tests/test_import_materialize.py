@@ -108,7 +108,7 @@ def test_legacy_persona_files_import_once(tmp_db, tmp_path):
     store = PersonaStore(tmp_path, session_factory=session_factory)
     p = store.get("persona_legacy1")
     assert p is not None and p.name == "Old Crow"
-    assert p.default_delivery == {"speed": 0.97}
+    assert p.default_delivery.speed == 0.97
     assert not (pdir / "persona_legacy1.json").exists()
     assert (pdir / "persona_legacy1.json.migrated").exists()
 

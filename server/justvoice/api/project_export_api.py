@@ -139,7 +139,11 @@ async def export_project(
                         "voice_id": persona.voice_id,
                         "voice_instruct": persona.voice_instruct,
                         "note": persona.note,
-                        "engine_override": persona.engine_override,
+                        # How it speaks — pace, pitch, gain, pauses and each
+                        # model's own settings — and its effects (2026-10-03:
+                        # the export used to leave both out).
+                        "default_delivery": persona.default_delivery.model_dump(exclude_none=True),
+                        "effects_chain": persona.effects_chain,
                         "lexicon_id": persona.lexicon_id,
                     },
                     indent=2,

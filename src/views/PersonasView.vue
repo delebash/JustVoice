@@ -246,7 +246,6 @@ function bufferFor(persona) {
     avatar_path: persona.avatar_path ?? "",
     voice_instruct: persona.voice_instruct ?? "",
     note: persona.note ?? "",
-    engine_override: persona.engine_override ?? "",
     lexicon_id: persona.lexicon_id ?? "",
     default_delivery: { ...(persona.default_delivery ?? {}) },
     effects_chain: [...(persona.effects_chain ?? [])],
@@ -268,7 +267,7 @@ function markDirty() { dirty.value = true; }
 function blankDraft() {
   return {
     id: null, name: "", voice_id: "", language: "en", avatar_path: "",
-    voice_instruct: "", note: "", engine_override: "", lexicon_id: "",
+    voice_instruct: "", note: "", lexicon_id: "",
     default_delivery: {}, effects_chain: [],
     llm_rewrite_enabled: false, llm_model: "qwen-1.7b-local",
   };
@@ -314,19 +313,18 @@ function openCast(projectId) {
 
 async function savePersona() {
   if (!draft.value) return;
+  // Every field is sent; an emptied one goes as null, which CLEARS it
+  // (PATCH, 2026-10-03 — the PUT this replaced could not clear a field).
   const body = {
     name: draft.value.name,
-    voice_id: draft.value.voice_id,
-    language: draft.value.language || "en",
+    voice_id: draft.value.voice_id || null,
+    language: draft.value.language || null,
     avatar_path: draft.value.avatar_path || null,
     voice_instruct: draft.value.voice_instruct || null,
     note: draft.value.note || null,
     default_delivery: draft.value.default_delivery,
     effects_chain: draft.value.effects_chain || [],
-    engine_override: draft.value.engine_override || null,
     lexicon_id: draft.value.lexicon_id || null,
-    llm_rewrite_enabled: draft.value.llm_rewrite_enabled,
-    llm_model: draft.value.llm_model || null,
   };
   const isNew = creating.value;
   try {
@@ -338,7 +336,7 @@ async function savePersona() {
       });
     } else {
       await api.request(`/v1/personas/${draft.value.id}`, {
-        method: "PUT",
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
@@ -391,7 +389,6 @@ async function removePersona(p) {
                 default_delivery: snapshot.default_delivery || {},
                 effects_chain: snapshot.effects_chain || [],
                 lexicon_id: snapshot.lexicon_id,
-                engine_override: snapshot.engine_override,
               }),
             });
             await loadAll();
@@ -441,11 +438,24 @@ function openDeliveryHint() {
   });
 }
 
+// The shared values only (pace, pitch, gain, pauses) — a model's own
+// settings live under `models` and get their own editor in the persona
+// redesign's P4.
+const deliveryChips = computed(() => {
+  const d = draft.value?.default_delivery || {};
+  return Object.fromEntries(
+    ["speed", "pitch", "gain_db", "pause_before", "pause_after"]
+      .filter((k) => d[k] !== null && d[k] !== undefined)
+      .map((k) => [k, d[k]]),
+  );
+});
+
 function deliveryChipLabel(key) {
   return ({
     speed: "Speed",
     pitch: "Pitch",
-    pause_after_ms: "Pause after",
+    pause_before: "Pause before",
+    pause_after: "Pause after",
     gain_db: "Gain",
     temperature: "Temperature",
     emotion: "Emotion",
@@ -456,7 +466,7 @@ function deliveryChipValue(key, value) {
   if (value == null) return "—";
   if (key === "speed") return `${Number(value).toFixed(2)}×`;
   if (key === "pitch") return `${value > 0 ? "+" : ""}${value} st`;
-  if (key === "pause_after_ms") return `${value} ms`;
+  if (key === "pause_before" || key === "pause_after") return `${value} ms`;
   if (key === "gain_db") return `${value > 0 ? "+" : ""}${value} dB`;
   return String(value);
 }
@@ -617,12 +627,6 @@ onMounted(async () => {
               :options="[{ value: '', label: '— no voice yet (cast later) —' }, ...voices.map((v) => ({ value: v.id, label: `${v.name} (${v.engine})` }))]" />
           </label>
 
-          <label class="personas__field">
-            <span>Engine override</span>
-            <UiSelect width="name" v-model="draft.engine_override" @update:model-value="markDirty"
-              :options="[{ value: '', label: '(use voice default)' }, ...engines.map((e) => ({ value: e.id, label: e.name || e.id }))]" />
-          </label>
-
           <!-- Not an override (2026-09-30): the book's lexicon is read first and
                wins on the same word; this one adds on this persona's lines. -->
           <label class="personas__field">
@@ -665,11 +669,11 @@ onMounted(async () => {
           <div class="personas__field personas__field--wide">
             <span>Default delivery overlay (Tier-2)</span>
             <div class="personas__chips">
-              <span v-if="!Object.keys(draft.default_delivery || {}).length" class="jv-muted">
+              <span v-if="!Object.keys(deliveryChips).length" class="jv-muted">
                 No defaults set — uses the engine + voice defaults at render time.
               </span>
               <span
-                v-for="(value, key) in draft.default_delivery"
+                v-for="(value, key) in deliveryChips"
                 :key="key"
                 class="jv-chip-card personas__chip-display"
               >

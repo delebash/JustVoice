@@ -26,7 +26,7 @@ from typing import Any, Literal, get_args
 from llm_runner.llm.schema import (
     LLMProviderConfig,
 )
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 # ─── Common / system ────────────────────────────────────────────────────
 
@@ -600,6 +600,48 @@ class CopyVoiceRequest(BaseModel):
 # ─── Personas ───────────────────────────────────────────────────────────
 
 
+class PersonaModelSettings(BaseModel):
+    """What a persona sets that only one MODEL understands (2026-10-03) —
+    kept per model, so switching a persona to another model and back
+    restores them, and Turbo's top-k never lands on Qwen3 (plan §6.2 Q5).
+
+    `emotion` is in the model's own vocabulary: one of the app's nine
+    (`Emotion`) on a model that takes written direction, or one of the
+    model's emotion TAGS on a tag model (Chatterbox Turbo / Nano's seven).
+    `register_tag` is a tag model's register (Turbo's narration / dramatic /
+    advertisement; "register" itself is taken by pydantic). Both are put at the start of every line the persona
+    speaks; a line overrides them (Studio Render, Slice 4).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    # The model's own sampling knobs, keyed as its capability row names them
+    # (talker_temperature, exaggeration, top_k, cfg_value …).
+    knobs: dict[str, float] = {}
+    seed: int | None = None
+    emotion: str | None = None
+    register_tag: str | None = None
+
+
+class PersonaDelivery(BaseModel):
+    """How a persona speaks, on top of its voice (2026-10-03, plan §6.1).
+
+    Pace, pitch, gain and the pauses are done on the server, so every model
+    takes them and they survive a change of voice or model. Everything a
+    model understands only for itself lives under `models[<model id>]`.
+    Extra keys from before this shape are ignored on read (no migrations —
+    the editor never wrote any)."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    speed: float | None = Field(default=None, ge=0.5, le=2.0)
+    pitch: float | None = Field(default=None, ge=-12.0, le=12.0)
+    gain_db: float | None = Field(default=None, ge=-12.0, le=12.0)
+    pause_before: int | None = Field(default=None, ge=0, le=10000)
+    pause_after: int | None = Field(default=None, ge=0, le=10000)
+    models: dict[str, PersonaModelSettings] = {}
+
+
 class Persona(BaseModel):
     """A finished spoken voice — the library's unit (2026-09-29 split). It
     plays speakers; who a person in a book IS lives on the `Speaker`."""
@@ -621,14 +663,15 @@ class Persona(BaseModel):
     # A short note on how it sounds. Read by Compose / Rewrite on Generate and
     # by Smart-assign; never by an engine — that is `voice_instruct`'s job.
     note: str | None = None
-    # The persona's delivery defaults; a request's own delivery sits on top.
-    # JSON dict matching the Delivery shape (speed / pitch / gain_db / etc).
-    default_delivery: dict[str, Any] = {}
+    # How it speaks — pace, pitch, gain, pauses, and per model its emotion,
+    # register, sampling knobs and seed (`PersonaDelivery`). A request's own
+    # delivery sits on top. (The persona's engine override was read by
+    # nothing and left 2026-10-03: the model comes from the voice.)
+    default_delivery: PersonaDelivery = PersonaDelivery()
     # Effects chain — applied after TTS produces WAV (see audio/dsp/). List
     # of {type, params} dicts; runs on every line this persona speaks.
     effects_chain: list[dict[str, Any]] = []
     lexicon_id: str | None = None
-    engine_override: str | None = None
     # Legacy rewrite-toggle fields. Kept on disk for backwards-compatibility
     # with existing persona JSON files. The actual Rewrite affordance becomes
     # an explicit button on Generate / Studio Script tab (Slice 3) — these
@@ -648,17 +691,71 @@ class PersonaList(BaseModel):
 class CreatePersonaRequest(BaseModel):
     name: str
     voice_id: str | None = None
-    language: str = "en"
+    # Left out = the voice's own language (or "en" with no voice yet).
+    language: str | None = None
     avatar_path: str | None = None
     voice_instruct: str | None = None
     note: str | None = None
-    default_delivery: dict[str, Any] = {}
+    default_delivery: PersonaDelivery = PersonaDelivery()
     effects_chain: list[dict[str, Any]] = []
     lexicon_id: str | None = None
-    engine_override: str | None = None
     # Legacy — see Persona model
     llm_rewrite_enabled: bool = False
     llm_model: str | None = None
+
+
+class UpdatePersonaRequest(BaseModel):
+    """PATCH /v1/personas/{id} — a field left out is unchanged; a field sent
+    as null is CLEARED (2026-10-03). Until then the only update was a PUT
+    whose store skipped None, so emptying Spoken delivery, the note or the
+    lexicon kept the old value while the page said "Persona saved"."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | None = None
+    voice_id: str | None = None
+    language: str | None = None
+    avatar_path: str | None = None
+    voice_instruct: str | None = None
+    note: str | None = None
+    default_delivery: PersonaDelivery | None = None
+    effects_chain: list[dict[str, Any]] | None = None
+    lexicon_id: str | None = None
+
+
+class PersonaDraft(BaseModel):
+    """A persona as the editor holds it, saved or not — what a Listen
+    renders. Every field optional: a draft with no name can still be heard."""
+
+    name: str = ""
+    voice_id: str | None = None
+    language: str | None = None
+    voice_instruct: str | None = None
+    default_delivery: PersonaDelivery = PersonaDelivery()
+    effects_chain: list[dict[str, Any]] = []
+    lexicon_id: str | None = None
+
+
+class PersonaPreviewRequest(BaseModel):
+    """POST /v1/personas/preview — hear a persona speak a line, through the
+    same resolver a chapter renders with. Send `persona` (the editor's
+    unsaved draft) or `persona_id` (a saved one: Cast's ▶, the index ▶)."""
+
+    persona_id: str | None = None
+    persona: PersonaDraft | None = None
+    text: str = Field(default="", max_length=2000)
+    # A line's own direction, as a chapter line would carry it (Compare).
+    direction: str | None = None
+    # One-off delivery on top of the persona's (Compare settings: a knob's
+    # three values). Same shape as a line override in Slice 4.
+    delivery: dict[str, Any] | None = None
+
+
+class MergePersonaRequest(BaseModel):
+    """POST /v1/personas/{id}/merge — "Merge into…" (decided 2026-10-03):
+    every speaker this persona plays moves to `into`, then this one goes."""
+
+    into: str
 
 
 # ─── Speakers — the people in one book ──────────────────────────────────
@@ -1243,6 +1340,11 @@ class Delivery(BaseModel):
     # Qwen3 talker) read `delivery.temperature` directly. Engines
     # that don't (Kokoro, etc.) ignore it.
     temperature: float | None = None
+    # A tag model's own tags for the whole line (Chatterbox Turbo / Nano:
+    # its emotion and register, e.g. ["fear", "dramatic"]) — put at the
+    # start of the line by render_core, kept only where the model lists
+    # them. The persona's, from PersonaModelSettings (2026-10-03).
+    tags: list[str] | None = None
     # Per-render RNG seed. Top-level GenerateRequest.seed remains the
     # canonical field; this delivery-level seed is honored so the UI
     # can send a single Delivery object without splitting fields.

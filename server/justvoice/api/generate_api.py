@@ -21,7 +21,7 @@ from ..audio.chunked import (
     concatenate_audio_chunks,
     split_text_into_chunks,
 )
-from ..audio.effects import apply_effects_chain, chain_entries
+from ..audio.effects import apply_effects_chain
 from ..audio.wav import parse_wav_header, strip_wav_header, write_wav_container
 from ..delivery_merge import compose_instruct, merge_delivery
 from ..engines.base import SynthRequest
@@ -51,22 +51,6 @@ def _finish_line(
         speed_native=speed_native(get_state(), engine_id, model),
     )
     return apply_effects_chain(write_wav_container(pcm, sample_rate, channels), effects)
-
-
-def _resolve_effects_chain(req: GenerateRequest) -> list[dict]:
-    """The effects chain for this render: the persona's.
-
-    Returns an empty list when no effects apply. Caller passes the result
-    to `apply_effects_chain(wav_bytes, chain)` after TTS.
-    """
-    st = get_state()
-    persona_chain: list[dict] = []
-    if req.persona_id:
-        persona = st.personas.get(req.persona_id)
-        if persona is not None:
-            persona_chain = persona.effects_chain or []
-
-    return chain_entries(persona_chain)
 
 
 def _read_through_lexicons(st, engine_id: str, req: GenerateRequest) -> tuple[GenerateRequest, dict]:
@@ -279,60 +263,64 @@ async def _generate_via_manager(
     req, ipa_map = _read_through_lexicons(st, engine_id, req)
     max_chunk_chars, crossfade_ms = _chunking_params(st.settings.get())
     request_delivery = req.delivery.model_dump(exclude_none=True) if req.delivery else {}
-    # The persona's delivery, then the request's on top.
-    persona_overlay = None
-    persona_instruct: str | None = None
-    if req.persona_id:
-        persona = st.personas.get(req.persona_id)
-        if persona is not None:
-            persona_overlay = persona.default_delivery or {}
-            persona_instruct = (persona.voice_instruct or "").strip() or None
+    persona = st.personas.get(req.persona_id) if req.persona_id else None
+    language = req.language
+    if persona is not None:
+        # The persona's settings through the ONE resolver the chapter render
+        # uses (persona_render.plan_line, 2026-10-03), on the voice Generate
+        # is speaking: that model's own knobs, emotion or tags and seed, the
+        # direction composed, its language and effects. The request sits on
+        # top. (Its lexicon is the one the request names — Generate sends the
+        # persona's.)
+        from ..persona_render import plan_line
 
-    delivery = merge_delivery(request_delivery, tier2_overlay=persona_overlay)
-    # Persona.voice_instruct → delivery.instruct: a spoken-delivery
-    # instruction, not an LLM rewrite. Engines that declare
-    # supports_instruct_freeform (Qwen3-TTS today) consume
-    # delivery["instruct"] at synth time; engines that don't, ignore it.
-    # An explicit instruct in the request wins the base slot over
-    # the persona's. The persona's `personality` (the character sheet) is
-    # NOT read here — that is the whole point of the 2026-08-15 split.
-    #
-    # `emotion` rides on the end through the same composer the chapter
-    # path uses. Until 2026-08-17 only that path composed, so an emotion
-    # set here reached nothing at all.
-    #
-    # A clip-less DESIGNED voice leads: its description is the identity,
-    # not direction, and the VoiceDesign checkpoint has nothing else to
-    # go on (2026-08-22 — same seam as the chapter path, so one button
-    # cannot sound different from the other).
-    composed = compose_instruct(
-        _voice_design_instruct(req.voice),
-        delivery.get("instruct") or persona_instruct,
-        delivery.get("emotion"),
-    )
-    if composed:
-        delivery["instruct"] = composed
+        plan = plan_line(st, persona, text=req.text, request_delivery=request_delivery, voice=req.voice)
+        delivery = plan.delivery
+        effects = plan.effects
+        language = req.language or plan.language
+        persona_seed = plan.seed
+    else:
+        delivery = merge_delivery(request_delivery)
+        # `emotion` rides on the end through the same composer the chapter
+        # path uses. A clip-less DESIGNED voice leads: its description is
+        # the identity, not direction, and the VoiceDesign checkpoint has
+        # nothing else to go on (2026-08-22 — same seam as the chapter path,
+        # so one button cannot sound different from the other).
+        composed = compose_instruct(
+            _voice_design_instruct(req.voice),
+            delivery.get("instruct"),
+            delivery.get("emotion"),
+        )
+        if composed:
+            delivery["instruct"] = composed
+        effects = []
+        persona_seed = delivery.pop("seed", None)
     if ipa_map:
         delivery["ipa_map"] = ipa_map
-    # Effects chain (Slice 6) — the persona's.
-    effects = _resolve_effects_chain(req)
+    # A tag model's own tags for the line, then the emotion's tag — the
+    # chapter render's own steps (render_core), so Generate's Turbo line says
+    # its [fear] too. Generate applied neither until 2026-10-03.
+    from ..render_core import _apply_emotion_tag, _apply_lead_tags, _emotion_tagset
+
+    text_out = _apply_emotion_tag(_apply_lead_tags(req.text, delivery, model), delivery, _emotion_tagset(model))
+    req = req.model_copy(update={"text": text_out})
 
     def _synth_one(text: str, chunk_seed: int | None):
         body = {
             "voice_id": req.voice,
             "text": text,
-            "language": req.language,
+            "language": language,
             "delivery": delivery,
             "seed": chunk_seed,
             **(voice_fields or {}),
         }
         return mgr.synth(engine_id, body)
 
-    # Seed resolution: delivery.seed (the UI's authoritative location
-    # since it lives next to other per-render knobs) overrides the
-    # top-level req.seed. Either path produces the same per-chunk
-    # seed math below.
-    effective_seed = delivery.get("seed") if delivery.get("seed") is not None else req.seed
+    # Seed resolution: the delivery's seed (the UI's authoritative location
+    # since it lives next to other per-render knobs, or the persona's for
+    # this model) overrides the top-level req.seed. Either path produces the
+    # same per-chunk seed math below.
+    effective_seed = persona_seed if persona_seed is not None else req.seed
 
     def _do() -> Response:
         try:
@@ -404,28 +392,31 @@ def _generate_via_inprocess(engine_id: str, req: GenerateRequest) -> Response:
 
     max_chunk_chars, crossfade_ms = _chunking_params(st.settings.get())
     request_delivery = req.delivery.model_dump(exclude_none=True) if req.delivery else {}
-    persona_overlay = None
-    persona_instruct: str | None = None
-    if req.persona_id:
-        persona = st.personas.get(req.persona_id)
-        if persona is not None:
-            persona_overlay = persona.default_delivery or {}
-            persona_instruct = (persona.voice_instruct or "").strip() or None
+    persona = st.personas.get(req.persona_id) if req.persona_id else None
+    if persona is not None:
+        # Same resolver as the managed path and the chapter render.
+        from ..persona_render import plan_line
 
-    delivery = merge_delivery(request_delivery, tier2_overlay=persona_overlay)
-    # Same cascade as the non-streaming path: a clip-less designed
-    # voice's description first, then the persona's spoken instruction
-    # under whatever was asked for, then the emotion.
-    composed = compose_instruct(
-        _voice_design_instruct(req.voice),
-        delivery.get("instruct") or persona_instruct,
-        delivery.get("emotion"),
-    )
-    if composed:
-        delivery["instruct"] = composed
+        plan = plan_line(st, persona, text=req.text, request_delivery=request_delivery, voice=req.voice)
+        delivery = plan.delivery
+        effects = plan.effects
+        if req.language is None:
+            req = req.model_copy(update={"language": plan.language})
+    else:
+        delivery = merge_delivery(request_delivery)
+        # Same cascade as the non-streaming path: a clip-less designed
+        # voice's description first, then whatever was asked for, then the
+        # emotion.
+        composed = compose_instruct(
+            _voice_design_instruct(req.voice),
+            delivery.get("instruct"),
+            delivery.get("emotion"),
+        )
+        if composed:
+            delivery["instruct"] = composed
+        effects = []
     if ipa_map:
         delivery["ipa_map"] = ipa_map
-    effects = _resolve_effects_chain(req)
 
     def _synth_one(text: str, chunk_seed: int | None):
         synth_req = SynthRequest(

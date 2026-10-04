@@ -337,6 +337,7 @@ def _run_job(job_id: str) -> None:
                     speaker_id=block.speaker_id,
                     persona_id=persona.id if persona is not None else None,
                     text=block.text,
+                    direction=block.direction,
                 )
                 persona_data = (
                     SimpleNamespace(id=persona.id, name=persona.name)

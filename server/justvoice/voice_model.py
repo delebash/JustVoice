@@ -312,6 +312,31 @@ def voice_model(state: Any, voice_id: str | None) -> VoiceModel | None:
     return describe(state, engine_id, model_for_preset(engine_id), _preset_language(engine_id, voice_id))
 
 
+def voice_language(state: Any, voice_id: str | None) -> str | None:
+    """The language a voice itself is in — a stored voice's own, a preset's
+    catalog language — or None for a voice nothing owns."""
+    if not voice_id:
+        return None
+    store = getattr(state, "voices", None)
+    stored = store.get(voice_id) if store is not None else None
+    if stored is not None:
+        return getattr(stored, "language", None)
+    from .render_core import _resolve_engine_for_voice
+
+    try:
+        engine_id = _resolve_engine_for_voice(state, voice_id)
+    except AttributeError:
+        # A duck-typed state carrying only the stores its caller touches
+        # (the chapter resolver's tests) — nothing to look the voice up in.
+        return None
+    if engine_id is None:
+        return None
+    engine = _registry_engine(state, engine_id)
+    if engine is not None:
+        return next((getattr(p, "language", None) for p in engine.voices() if p.id == voice_id), None)
+    return _preset_language(engine_id, voice_id)
+
+
 def _preset_language(engine_id: str, voice_id: str) -> str | None:
     try:
         m = _manager().get_manifest(engine_id)

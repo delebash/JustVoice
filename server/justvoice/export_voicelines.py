@@ -128,42 +128,41 @@ def _book_lexicon_id(scene_id: str) -> str | None:
 
 
 def _render_block_production(state, persona, block) -> bytes:
-    """One block → one WAV through the production render path."""
+    """One block → one WAV through the production render path.
+
+    The same resolver the chapter render uses (persona_render.plan_line,
+    2026-10-03): the persona's voice and model settings, the direction —
+    its standing delivery, emotion and the block's own — its language and
+    seed, its effects, and the book's lexicon then its own. Until then this
+    door sent the persona's raw delivery and dropped the direction, so a
+    Lines ↻, a take or the game export spoke differently from the chapter.
+    """
     from .audio.wav import write_wav_container
     from .errors import bad_request
-    from .render_core import line_lexicons, render_line
+    from .persona_render import plan_line
+    from .render_core import render_line
 
-    # Mirrors render_chapter's scene mode: the persona that plays the line's
-    # speaker contributes voice + tier-2 delivery + lexicon, and the book's
-    # own lexicon is read first (2026-09-30 — this door read only the
-    # persona's, so a Lines ↻ and the chapter audio could say a name two ways).
-    voice = None
-    delivery = None
-    effects: list[dict] = []
-    persona_lexicon = None
-    if persona is not None:
-        store_p = state.personas.get(persona.id)
-        if store_p is not None:
-            voice = store_p.voice_id or None
-            delivery = dict(store_p.default_delivery or {}) or None
-            # A persona's effects chain is part of how it sounds — the game
-            # export ships the same voice the studio auditions. (Mastering is
-            # the part game exports skip.)
-            effects = list(store_p.effects_chain or [])
-            persona_lexicon = store_p.lexicon_id
-    if not voice:
+    store_p = state.personas.get(persona.id) if persona is not None else None
+    if store_p is None or not store_p.voice_id:
         who = f"the persona {persona.name}" if persona is not None else "no persona"
         raise bad_request(
             f"line {block.id} has no voice ({who}) — give every speaker a persona with a voice "
             f"before exporting"
         )
+    plan = plan_line(
+        state, store_p, text=block.text,
+        direction=getattr(block, "direction", None),
+        book_lexicon=_book_lexicon_id(block.scene_id),
+    )
     rl = render_line(
         state,
-        voice=voice,
-        text=block.text,
-        delivery=delivery,
-        lexicons=line_lexicons(_book_lexicon_id(block.scene_id), persona_lexicon),
-        effects=effects,
+        voice=plan.voice,
+        text=plan.text,
+        language=plan.language,
+        delivery=plan.delivery,
+        seed=plan.seed,
+        lexicons=plan.lexicons,
+        effects=plan.effects,
         cache_scope=f"scene:{block.scene_id}",
         use_cache=True,
     )

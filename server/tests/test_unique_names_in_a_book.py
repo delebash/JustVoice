@@ -64,17 +64,17 @@ def test_a_persona_must_have_a_name(client):
         r = client.post("/v1/personas", json={"name": blank})
         assert r.status_code == 400 and "needs a name" in r.json()["detail"]
     pid = client.post("/v1/personas", json={"name": "Warm"}).json()["id"]
-    assert client.put(f"/v1/personas/{pid}", json={"name": " "}).status_code == 400
+    assert client.patch(f"/v1/personas/{pid}", json={"name": " "}).status_code == 400
 
 
 def test_a_persona_rename_is_refused_into_a_taken_name(client):
     warm = client.post("/v1/personas", json={"name": "Warm"}).json()["id"]
     client.post("/v1/personas", json={"name": "Crisp"})
-    r = client.put(f"/v1/personas/{warm}", json={"name": "CRISP"})
+    r = client.patch(f"/v1/personas/{warm}", json={"name": "CRISP"})
     assert r.status_code == 409 and '"Crisp"' in r.json()["detail"]
     # Its own name, in another case, is not a clash.
-    assert client.put(f"/v1/personas/{warm}", json={"name": "WARM"}).json()["name"] == "WARM"
-    assert client.put("/v1/personas/persona_nope", json={"name": "Other"}).status_code == 404
+    assert client.patch(f"/v1/personas/{warm}", json={"name": "WARM"}).json()["name"] == "WARM"
+    assert client.patch("/v1/personas/persona_nope", json={"name": "Other"}).status_code == 404
 
 
 def test_a_rename_is_refused_when_the_book_has_that_name(client):

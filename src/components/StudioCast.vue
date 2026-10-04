@@ -65,7 +65,12 @@ const selected = computed(() => props.speakers.find((s) => s.id === selectedId.v
 
 // ── What a speaker's cast says ───────────────────────────────────────────
 const personaOf = (s) => (s?.persona_id ? personaById.value[s.persona_id] || null : null);
-const personaEngine = (p) => (p ? p.engine_override || voiceById.value[p.voice_id]?.engine || "" : "");
+// The model that speaks a persona is its voice's (2026-10-03 — the
+// persona's engine override was read by nothing and left).
+const personaEngine = (p) => {
+  const v = p ? voiceById.value[p.voice_id] : null;
+  return v ? v.model_name || v.engine || "" : "";
+};
 const plural = (n, word) => `${n.toLocaleString()} ${word}${n === 1 ? "" : "s"}`;
 // The mock's line under each card: "June · qwen3 · 61 lines", or what blocks it.
 function castLine(s) {

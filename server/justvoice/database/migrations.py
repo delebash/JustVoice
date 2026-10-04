@@ -47,7 +47,6 @@ def run_migrations(engine) -> None:
     # Add per-table migrations here as the schema evolves. Each must be
     # idempotent — safe to run on a fresh DB AND on an upgraded one.
     _migrate_generations_ok_status(engine, inspector, tables)
-    _migrate_voice_profiles_personality(engine, inspector, tables)
     _migrate_drop_voice_profile_tables(engine, inspector, tables)
     _migrate_blocks_extraction_telemetry(engine, inspector, tables)
     _migrate_mcp_bindings_persona(engine, inspector, tables)
@@ -88,23 +87,6 @@ def _migrate_generations_ok_status(engine, inspector, tables: set[str]) -> None:
         )
 
 
-def _migrate_voice_profiles_personality(engine, inspector, tables: set[str]) -> None:
-    """Adds `personality TEXT` + `default_delivery TEXT` to voice_profiles.
-
-    Kept idempotent so older databases finish their column add BEFORE
-    the Profile→Persona migration in migrate_profiles.py reads them.
-    Becomes a no-op (table missing) after the table-drop migration
-    below runs once.
-    """
-    if "voice_profiles" not in tables:
-        return
-    columns = _get_columns(inspector, "voice_profiles")
-    if "personality" not in columns:
-        _add_column(engine, "voice_profiles", "personality TEXT", "personality")
-    if "default_delivery" not in columns:
-        _add_column(engine, "voice_profiles", "default_delivery TEXT", "default_delivery")
-
-
 def _migrate_blocks_extraction_telemetry(engine, inspector, tables: set[str]) -> None:
     """Add extraction_confidence FLOAT + source TEXT to blocks (Phase 3 /
     Slice 2). Populated when blocks land via POST /v1/scenes/{id}/analyze.
@@ -122,9 +104,8 @@ def _migrate_blocks_extraction_telemetry(engine, inspector, tables: set[str]) ->
 def _migrate_drop_voice_profile_tables(engine, inspector, tables: set[str]) -> None:
     """Drop voice_profiles, profile_samples, profile_channels (Slice 4).
 
-    Runs AFTER `_migrate_personas_absorb_profile_fields` AND AFTER the
-    one-shot Profile→Persona data migration in `migrate_profiles.py` has
-    a chance to read voice_profiles at AppState init.
+    The one-shot Profile→Persona data migration that once read these tables
+    first was deleted 2026-10-03 (its era is extinct — no-migrations rule).
 
     The personas.voice_profile_id + personas.personality_enabled columns
     are LEFT IN PLACE as dead null residue. Dropping them via

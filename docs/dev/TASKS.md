@@ -1968,6 +1968,18 @@ BUILT:  P2 (2026-10-03) — render presets removed everywhere: the table model, 
         page and every mention (history lines kept). The user's DB keeps its
         render_presets table and the suggest prompt row until the next reset (no
         migrations). Gates: ruff, server suite, vitest 122, biome, vite build, smoke 14/14.
+BUILT:  P3 (2026-10-03) — the persona's data and the one resolver: `PersonaDelivery`
+        (pace/pitch/gain/pauses shared; per model knobs, seed, emotion, register_tag),
+        validated per model; `persona_render.plan_line` used by the chapter render, the
+        single-block door (Lines ↻, takes, render jobs, game export), `POST
+        /v1/personas/preview` (draft or saved; stock line in the persona's language) and
+        Generate/MCP with a persona; language + seed reach every render; tag models' tags
+        lead the line (Generate too); `PATCH /v1/personas/{id}` (null clears) replaces PUT;
+        language validated against the voice's model; `POST /v1/personas/{id}/merge`; the
+        book's language on the project API; the full persona in the project export;
+        `engine_override` and the extinct `migrate_profiles.py` (+ its column migration)
+        removed; Generate's persona pick switches its voice (call 6). The UI for all of
+        it is P4–P7; PersonasView only moved to PATCH meanwhile.
 GO:     given 2026-10-03 for P1–P8 and P9's checks; P9's data reset asks first
 
 ### FINDING — language never reaches Chatterbox or Qwen3: every render on them is told English

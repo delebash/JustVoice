@@ -278,6 +278,25 @@ const showLexiconPreview = ref(false);
 // entries and populate the attached lexicon. When the user clears the
 // persona or picks one without a lexicon, drop back to the empty state.
 let lexiconFetchSeq = 0;
+// Picking a persona speaks it in its own voice (2026-10-03, persona redesign
+// call 6) — the server applies the persona's settings to whatever voice is
+// picked, so leaving Generate's old voice in place played the persona's
+// settings on someone else. The voice stays changeable. A voice on an engine
+// that isn't loaded can't be picked here; the toast says why.
+watch(selectedPersona, (p, before) => {
+  if (!p?.voice_id || p.id === before?.id) return;
+  if (availableVoices.value.some((v) => v.id === p.voice_id)) {
+    voice.value = p.voice_id;
+    return;
+  }
+  const v = voices.value.find((x) => x.id === p.voice_id);
+  pushToast({
+    kind: "info",
+    message: v
+      ? `${p.name} speaks with ${v.name} on ${v.model_name || v.engine}, which isn't loaded — load it on AI Settings → Speech engines to hear ${p.name} here.`
+      : `${p.name}'s voice isn't available any more — pick one on the Personas page.`,
+  });
+});
 watch(selectedPersona, async (p) => {
   const lexId = p?.lexicon_id;
   if (!lexId) { attachedLexicon.value = null; return; }

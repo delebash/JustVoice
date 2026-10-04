@@ -6,15 +6,23 @@ means the speakers it plays, in which books."""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ..app_state import get_state
 from ..database import get_db
-from ..database.models import Project, Speaker
+from ..database.models import Generation, Lexicon, MCPBinding, Project, Speaker
 from ..errors import bad_request, conflict, not_found
-from ..models import CreatePersonaRequest, Persona, PersonaList
+from ..models import (
+    CreatePersonaRequest,
+    MergePersonaRequest,
+    Persona,
+    PersonaDelivery,
+    PersonaList,
+    PersonaPreviewRequest,
+    UpdatePersonaRequest,
+)
 from .extraction_api import RunUsage
 
 router = APIRouter(tags=["personas"])
@@ -118,18 +126,67 @@ def _persona_name(name: str | None, *, besides: str | None = None) -> str:
     return clean
 
 
+def _checked_language(voice_id: str | None, language: str | None, *, keep_if_spoken: str | None = None) -> str:
+    """The language a persona on `voice_id` is saved with (2026-10-03).
+
+    Asked for → it must be one the voice's model speaks. Not asked for → the
+    language it had (`keep_if_spoken`) if the voice still speaks it, else
+    the voice's own. Where the voice or model allows one language (a Kokoro
+    voice, Kitten, Turbo) that is the only answer."""
+    from ..voice_model import speaks_language, voice_language, voice_model
+
+    st = get_state()
+    vm = voice_model(st, voice_id) if voice_id else None
+    if vm is None:
+        return (language or keep_if_spoken or "en").strip() or "en"
+    if language:
+        if vm.speaks and not speaks_language(vm, language):
+            spoken = ", ".join(vm.speaks)
+            raise bad_request(
+                f"{vm.name} can't speak {language} with this voice — it speaks {spoken}."
+            )
+        return language
+    if len(vm.speaks) == 1:
+        return vm.speaks[0]
+    if keep_if_spoken and speaks_language(vm, keep_if_spoken):
+        return keep_if_spoken
+    own = voice_language(st, voice_id)
+    if own and (not vm.speaks or speaks_language(vm, own)):
+        return own
+    return vm.speaks[0] if vm.speaks else (own or "en")
+
+
+def _checked_voice(voice_id: str | None) -> str | None:
+    from ..voice_model import voice_model
+
+    if not voice_id:
+        return None
+    if voice_model(get_state(), voice_id) is None:
+        raise bad_request("That voice doesn't exist any more — pick another one.")
+    return voice_id
+
+
+def _checked_delivery(delivery: PersonaDelivery) -> PersonaDelivery:
+    from ..persona_render import check_delivery
+
+    problems = check_delivery(delivery)
+    if problems:
+        raise bad_request("; ".join(problems))
+    return delivery
+
+
 @router.post("/v1/personas", response_model=Persona, status_code=201)
 async def create_persona(body: CreatePersonaRequest) -> Persona:
+    voice_id = _checked_voice(body.voice_id)
     return get_state().personas.create(
         _persona_name(body.name),
-        body.voice_id,
-        body.default_delivery,
+        voice_id,
+        _checked_delivery(body.default_delivery),
         voice_instruct=body.voice_instruct,
-        engine_override=body.engine_override,
         lexicon_id=body.lexicon_id,
         llm_rewrite_enabled=body.llm_rewrite_enabled,
         llm_model=body.llm_model,
-        language=body.language,
+        language=_checked_language(voice_id, body.language),
         avatar_path=body.avatar_path,
         note=body.note,
         effects_chain=body.effects_chain,
@@ -144,25 +201,31 @@ async def get_persona(id: str) -> Persona:
     return p
 
 
-@router.put("/v1/personas/{id}", response_model=Persona)
-async def update_persona(id: str, body: CreatePersonaRequest) -> Persona:
-    if get_state().personas.get(id) is None:
+@router.patch("/v1/personas/{id}", response_model=Persona)
+async def update_persona(id: str, body: UpdatePersonaRequest) -> Persona:
+    """Change what was sent: a field left out stays, a field sent as null is
+    cleared (2026-10-03 — this replaced a PUT that could not clear)."""
+    current = get_state().personas.get(id)
+    if current is None:
         raise not_found(f"persona {id}")
-    p = get_state().personas.update(
-        id,
-        name=_persona_name(body.name, besides=id),
-        voice_id=body.voice_id,
-        default_delivery=body.default_delivery,
-        voice_instruct=body.voice_instruct,
-        engine_override=body.engine_override,
-        lexicon_id=body.lexicon_id,
-        llm_rewrite_enabled=body.llm_rewrite_enabled,
-        llm_model=body.llm_model,
-        language=body.language,
-        avatar_path=body.avatar_path,
-        note=body.note,
-        effects_chain=body.effects_chain,
-    )
+    sent = body.model_fields_set
+    fields: dict = {}
+    if "name" in sent:
+        fields["name"] = _persona_name(body.name, besides=id)
+    if "voice_id" in sent:
+        fields["voice_id"] = _checked_voice(body.voice_id)
+    voice_id = fields.get("voice_id", current.voice_id)
+    if "language" in sent or "voice_id" in sent:
+        fields["language"] = _checked_language(
+            voice_id, body.language if "language" in sent else None, keep_if_spoken=current.language,
+        )
+    if "default_delivery" in sent:
+        fields["default_delivery"] = _checked_delivery(body.default_delivery or PersonaDelivery())
+    for key in ("avatar_path", "voice_instruct", "note", "effects_chain", "lexicon_id"):
+        if key in sent:
+            value = getattr(body, key)
+            fields[key] = value.strip() or None if isinstance(value, str) else value
+    p = get_state().personas.update(id, **fields)
     if not p:
         raise not_found(f"persona {id}")
     return p
@@ -179,6 +242,81 @@ async def delete_persona(id: str) -> dict:
     if not get_state().personas.delete(id):
         raise not_found(f"persona {id}")
     return {"deleted": True}
+
+
+@router.post("/v1/personas/{id}/merge")
+async def merge_persona(id: str, body: MergePersonaRequest, db: Session = Depends(get_db)) -> dict:
+    """"Merge into…" (decided 2026-10-03): every speaker this persona plays
+    is played by `into` from now on, and this persona goes. Its
+    persona-scoped lexicons, its generations and its MCP bindings move too;
+    its own settings do not — the persona merged into keeps its own."""
+    st = get_state()
+    source = st.personas.get(id)
+    if source is None:
+        raise not_found(f"persona {id}")
+    if body.into == id:
+        raise bad_request("A persona can't be merged into itself.")
+    target = st.personas.get(body.into)
+    if target is None:
+        raise not_found(f"persona {body.into}")
+    moved = db.query(Speaker).filter(Speaker.persona_id == id).update(
+        {Speaker.persona_id: target.id}, synchronize_session=False)
+    db.query(Lexicon).filter(Lexicon.persona_id == id).update(
+        {Lexicon.persona_id: target.id}, synchronize_session=False)
+    db.query(Generation).filter(Generation.persona_id == id).update(
+        {Generation.persona_id: target.id}, synchronize_session=False)
+    db.query(MCPBinding).filter(MCPBinding.persona_id == id).update(
+        {MCPBinding.persona_id: target.id}, synchronize_session=False)
+    db.commit()
+    st.personas.delete(id)
+    return {"merged": True, "into": target.id, "into_name": target.name, "speakers": moved}
+
+
+@router.post(
+    "/v1/personas/preview",
+    summary="Hear a persona speak a line — the editor's unsaved draft or a saved one",
+    responses={200: {"content": {"audio/wav": {}}}},
+)
+async def preview_persona(body: PersonaPreviewRequest) -> Response:
+    """The persona editor's Listen and Compare, Cast's ▶ and the index's ▶
+    (2026-10-03). Renders through `persona_render.plan_line` — the resolver
+    the chapter render uses — so what you hear here is what the chapter
+    contains. An empty line speaks the stock line in the persona's language."""
+    from ..persona_render import check_delivery, plan_line, stock_line
+    from ..render_core import pcm_to_wav, render_line
+    from ..synth_scheduler import get_scheduler
+    from ..voice_model import model_key
+
+    st = get_state()
+    if body.persona is not None:
+        persona = body.persona
+    elif body.persona_id:
+        persona = st.personas.get(body.persona_id)
+        if persona is None:
+            raise not_found(f"persona {body.persona_id}")
+    else:
+        raise bad_request("Send the persona to hear: persona or persona_id.")
+    if not persona.voice_id:
+        raise bad_request("Pick a voice first — a persona with no voice has nothing to speak with.")
+    problems = check_delivery(persona.default_delivery)
+    if problems:
+        raise bad_request("; ".join(problems))
+    plan = plan_line(st, persona, text=" ", direction=body.direction, request_delivery=body.delivery)
+    text = body.text.strip() or stock_line(plan.language)
+    plan.text = text
+
+    def _do() -> bytes:
+        rl = render_line(
+            st, voice=plan.voice, text=plan.text, language=plan.language,
+            delivery=plan.delivery, seed=plan.seed, lexicons=plan.lexicons,
+            effects=plan.effects, cache_scope="persona-preview", use_cache=True,
+        )
+        return pcm_to_wav(rl)
+
+    handle = get_scheduler().submit([(model_key(st, plan.voice), _do)], interactive=True)
+    await handle.wait_async()
+    handle.raise_if_failed()
+    return Response(content=handle.items[0].result, media_type="audio/wav")
 
 
 class ComposeResponse(BaseModel):

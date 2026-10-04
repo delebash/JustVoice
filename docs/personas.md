@@ -102,7 +102,7 @@ The header shows **Used in N projects** when the persona plays anyone.
 | Field | Used for |
 |---|---|
 | Name | How the persona shows on Cast, in *Used by*, and in Generate's persona list. |
-| Language | The persona's language tag. |
+| Language | The language this persona speaks. It starts as its voice's own language. Where the voice's model can speak others (Qwen3, Chatterbox Multilingual, VoxCPM2, Pocket TTS) you can pick another of them — one Qwen3 speaker can be an English persona and a Korean one. Where the voice or model allows only one (a Kokoro voice, KittenTTS, Chatterbox Turbo) that one is used whatever is typed. A language the model can't speak is refused on Save: *Qwen3-TTS CustomVoice can't speak tlh with this voice — it speaks zh, en, ja, ko, de, fr, ru, pt, es, it.* Every render of a line this persona plays is sent in this language. |
 | Note on how it sounds | A sentence or two about the voice, for example *"Warm and unhurried, a little gravel at the bottom of the range."* **Never heard**: Compose and Rewrite on the Generate page read it, and so does Smart-assign when it matches speakers to personas. |
 | Avatar path | Optional. |
 
@@ -112,12 +112,27 @@ Everything in this half reaches the synthesizer.
 
 | Field | Used for |
 |---|---|
-| Voice | Which TTS voice speaks. |
-| Engine override | Makes this persona use a different engine from its voice's own. |
+| Voice | Which TTS voice speaks. The voice decides the model too — every voice knows the model it was made for ([Voices](voices.md#every-voice-knows-the-model-that-speaks-it)). (An *Engine override* field sat here until 2026-10-03; nothing read it.) |
 | Lexicon | A lexicon for this persona only (for example, street slang for one voice). It is read on every line this persona speaks, after the book's own lexicon — and only on those lines. Where both have an entry for the same word that the engine can use, the book's wins. See [Lexicons](lexicons.md#which-lexicons-a-line-is-read-with). |
 | Spoken delivery | The `instruct` / style prompt for engines that take direction: how a line is *performed*. |
-| Default delivery overlay | Speed / pitch / gain / pause defaults for this voice (Tier-2). |
+| Default delivery | Pace, pitch, gain and the pauses before and after a line, for every model — plus, per model, its own emotion (or tags, on Chatterbox Turbo), sampling settings and seed, kept per model so switching a persona's voice to another model and back restores them. |
 | Effects chain | Reverb, EQ and compression, applied after the TTS renders. |
+
+Clearing a field and saving clears it (until 2026-10-03, emptying Spoken
+delivery, the note or the lexicon kept the old value while the page said
+*Persona saved*).
+
+### One persona, one sound, everywhere
+
+Every way a persona is heard builds its request the same way: a chapter
+render, a line's ↻ re-render, a take, the game voice-line export, Generate with
+the persona picked and MCP's speak with a persona. Each gets the persona's
+voice and model, its pace, pitch, gain and pauses, its model's own settings
+and seed, its spoken delivery joined with the emotion and the line's own
+direction, its language, its effects, and the book's lexicon then its own.
+Until 2026-10-03 a line's re-render and the game export left out the spoken
+delivery and the line's direction, and no render sent the persona's language or
+seed.
 
 ### Used by
 
@@ -133,13 +148,15 @@ speakers in several books there is one button per book: **Open Stillwater Cast
 *"Clipped, world-weary noir delivery. Dry wit. Boston accent in stressful
 moments."* or *"Eager, optimistic, ends sentences with rising intonation."*
 
-**Only Qwen3-TTS reads it — CustomVoice and VoiceDesign.** On CustomVoice it
-arrives as the model's instruction when JustVoice renders a line this persona
-plays, and the model uses it to adjust *delivery* (pacing, intonation, vocal
-warmth) without changing the manuscript words. On a designed voice with no kept
-clip it is added after the voice's description. Every other engine ignores the
-field: Kokoro, Chatterbox, and Qwen3 **Base**, which clones voices and has no
-instruction input.
+**Qwen3-TTS (CustomVoice and VoiceDesign) and VoxCPM2 read it.** On Qwen3
+CustomVoice it arrives as the model's instruction when JustVoice renders a line
+this persona plays, and the model uses it to adjust *delivery* (pacing,
+intonation, vocal warmth) without changing the manuscript words. On a designed
+voice with no kept clip it is added after the voice's description — and on
+VoiceDesign the words reshape the voice itself, not just how it speaks. VoxCPM2
+reads it on its cloned voices too. Every other model ignores the field: Kokoro,
+KittenTTS, Pocket TTS, Chatterbox, and Qwen3 **Base**, which clones voices and
+has no instruction input.
 
 The editor tells you which case you're in. A line under the box names the
 engine this persona's voice uses and says whether it takes direction. Trust

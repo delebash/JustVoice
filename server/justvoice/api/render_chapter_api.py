@@ -20,22 +20,19 @@ from fastapi import APIRouter, Response
 from pydantic import BaseModel
 
 from ..app_state import get_state
-from ..audio.effects import chain_entries
 from ..audio.wav import write_wav_container
 from ..database.models import Block, Project, Scene, Speaker
 from ..database import session as _db_session
 from ..database.session import SessionLocal
-from ..delivery_merge import compose_instruct, merge_delivery
 from ..errors import bad_request, internal, not_found
 from ..extraction.tags import left_out_blocks
 from ..mastering import have_ffmpeg, master, master_to_wav, resolve_master_target
 from ..models import ChapterLine, Delivery, RenderChapterRequest
+from ..persona_render import plan_line
 from ..render_core import (
     concat_lines,
-    line_lexicons,
     probe_line_cached,
     render_line,
-    voice_design_instruct_for_id,
 )
 from ..synth_scheduler import warm_lines
 
@@ -96,8 +93,10 @@ def _resolve_scene_to_lines(
 ) -> list[ChapterLine]:
     """Resolve a scene's blocks → ChapterLines: block → speaker → persona.
 
-    Each block becomes one ChapterLine. The persona contributes voice,
-    delivery, voice_instruct (→ delivery.instruct), effects and lexicon.
+    Each block becomes one ChapterLine, planned by the one resolver every
+    render path shares (`persona_render.plan_line`): the persona's voice,
+    its delivery with that voice's model's own settings, the direction,
+    its language and seed, its effects and lexicon.
 
     Each line carries its OWN lexicons (`ChapterLine.lexicons`): the book's,
     then the persona's that speaks it. Until 2026-09-30 this returned one
@@ -154,9 +153,6 @@ def _resolve_scene_to_lines(
                 continue
 
             voice_id: str | None = None
-            tier2: dict = {}
-            instruct: str | None = None
-            persona_effects: list[dict] = []
             persona = None
 
             speaker = speakers.get(block.speaker_id) if block.speaker_id else None
@@ -164,9 +160,6 @@ def _resolve_scene_to_lines(
                 persona = st.personas.get(speaker.persona_id)
                 if persona is not None:
                     voice_id = persona.voice_id
-                    tier2 = persona.default_delivery or {}
-                    instruct = (persona.voice_instruct or "").strip() or None
-                    persona_effects = persona.effects_chain or []
 
             if not voice_id:
                 # No persona / no voice. DEBUG, not WARNING: this resolver
@@ -191,58 +184,39 @@ def _resolve_scene_to_lines(
                 log.debug("scene resolve: block %s has no voice — excluded", block.id)
                 continue
 
-            merged = merge_delivery({}, tier2_overlay=tier2)
-            # `Block.direction` is the per-line performance note — the column's
-            # own docstring calls it "Emotion/style hint passed through to the
-            # engine's instruct field", the Chapters "+ direction" button
-            # writes it, and every import adapter lands its emotion/style
-            # column there (projects_api._materialize_standard). It reached no
-            # render path until 2026-08-17: the column was written, returned,
-            # exported and preserved across splits, and then dropped here.
-            #
-            # It APPENDS to the persona's voice_instruct rather than replacing
-            # it — the persona says who they are, the line says how this one
-            # is delivered. `delivery.emotion` is the same kind of hint from
-            # the delivery side, so it composes the same way; it had no reader
-            # at all before this.
-            # An explicit instruct in the delivery wins the base slot over the
-            # persona's, as it always has; the line's own note still rides on
-            # the end. Most specific last: persona → delivery → this line.
-            #
-            # A clip-less DESIGNED voice goes in FRONT of all of it: the
-            # description is not direction, it is the identity, and on the
-            # VoiceDesign checkpoint it is the only thing that says who is
-            # speaking (2026-08-22 — before this a saved designed voice
-            # contributed nothing to a render and the engine refused the line
-            # outright whenever the persona's own field was empty). A designed
-            # voice with a frozen clip returns None here and clones instead.
-            composed = compose_instruct(
-                voice_design_instruct_for_id(st, voice_id),
-                merged.get("instruct") or instruct,
-                merged.get("emotion"),
-                (block.direction or "").strip() or None,
+            # The ONE resolver every render path shares (persona_render.py,
+            # 2026-10-03): the persona's voice and its model, its delivery
+            # with that model's own settings (emotion or tags, knobs, seed),
+            # the direction composed most specific last — a clip-less
+            # designed voice's description, the persona's standing delivery,
+            # its emotion, then this line's own `Block.direction` — its
+            # language, its effects, and the book's lexicon then its own.
+            # Until then this door built its own copy, and a line's re-render
+            # built a different one.
+            plan = plan_line(
+                st, persona, text=block.text,
+                direction=block.direction, book_lexicon=book_lexicon,
             )
-            if composed:
-                merged["instruct"] = composed
+            delivery = dict(plan.delivery)
 
             # Per-line silence. Imports carry `pause_after_ms` (documented in
             # every adapter and in docs/import-and-export.md) and it is kept on
-            # the block's metadata; the delivery's own pause_before/pause_after
+            # the block's metadata; the persona's own pause_before/pause_after
             # win when set. concat_lines applies these — before 2026-08-17 it
             # used one fixed project gap and these values did nothing.
             block_pause = _block_pause_after(block)
-            if block_pause is not None and merged.get("pause_after") is None:
-                merged["pause_after"] = block_pause
+            if block_pause is not None and delivery.get("pause_after") is None:
+                delivery["pause_after"] = block_pause
 
             lines.append(
                 ChapterLine(
-                    voice=voice_id,
-                    text=block.text,
-                    delivery=Delivery(**{k: v for k, v in merged.items() if k in Delivery.model_fields}),
-                    # The persona's chain — the same one the single-line path
-                    # applies.
-                    effects=chain_entries(persona_effects) or None,
-                    lexicons=line_lexicons(book_lexicon, persona.lexicon_id) or None,
+                    voice=plan.voice,
+                    text=plan.text,
+                    language=plan.language,
+                    delivery=Delivery(**{k: v for k, v in delivery.items() if k in Delivery.model_fields}),
+                    seed=plan.seed,
+                    effects=plan.effects or None,
+                    lexicons=plan.lexicons or None,
                 )
             )
 

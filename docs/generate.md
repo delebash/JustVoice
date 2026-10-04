@@ -20,7 +20,7 @@ Below the textarea is a row of chip cards. Each chip selects one input:
 | 🎙️ Voice | Pick from the currently-loaded engine's voices. Disabled when no engine is loaded — see the "No engine loaded" banner. |
 | 🧠 Engine | Shows which TTS engine is loaded. Switch via [engines.md](engines.md). |
 | 🗣️ Lang | Language hint for engines that support per-call language switching (Chatterbox-Multilingual, Qwen3). |
-| 👤 Persona | Pick a [persona](personas.md) — wraps voice + delivery defaults + effects + the spoken-delivery instruction. (It was called "profile" before personas absorbed that entity.) |
+| 👤 Persona | Pick a [persona](personas.md) — wraps voice + delivery defaults + effects + the spoken-delivery instruction. **Picking one switches the voice to the persona's own** (2026-10-03), so what you hear is the persona; you can still change the voice after. If the persona's voice is on an engine that isn't loaded, a note says so and names it. Its language, emotion or tags and seed come with it, through the same path a chapter render uses. (It was called "profile" before personas absorbed that entity.) |
 | 🎛️ Effects | Apply a saved effects chain to the output. |
 | 🔁 Autoplay | Auto-play the result on render. |
 

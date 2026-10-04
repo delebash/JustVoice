@@ -2,6 +2,16 @@
 
 ## v0.1.0
 
+- **A persona sounds the same everywhere, in its own language (2026-10-03).**
+  A line's ↻ re-render, a take and the game voice-line export now send the
+  persona's spoken delivery and the line's own direction, as a chapter render
+  does; every render sends the persona's language and seed; picking a persona
+  on Generate switches to its voice. A persona's language starts as its voice's
+  own and can be any language the voice's model speaks — one it can't speak is
+  refused on Save. Clearing a persona field and saving now clears it. The
+  persona's *Engine override* field is gone: nothing read it, and the model
+  comes from the voice
+  ([Personas → One persona, one sound, everywhere](personas.md#one-persona-one-sound-everywhere))
 - **Render presets are gone (2026-10-03).** The Presets page, the Render step's
   per-chapter **Render preset** column and its **💡 Suggest** button are removed
   ("presets die", decided 2026-09-27). A preset was laid over every persona in a

@@ -64,6 +64,10 @@ class ProjectResponse(BaseModel):
     default_lexicon_id: Optional[str]
     mastering_preset: Optional[str]
     imported_from: Optional[str]
+    # The book's language (2026-10-03): what its text is written in, so Cast
+    # can say when a persona speaks another. Kept in the project's metadata,
+    # where an import already wrote it. None = not set.
+    language: Optional[str] = None
     scene_count: int = 0
     # Names Discover was told to ignore here (2026-09-27, fix 4).
     discover_ignored: list[str] = []
@@ -72,12 +76,14 @@ class ProjectResponse(BaseModel):
 
     @classmethod
     def from_orm(cls, row: Project, scene_count: int = 0) -> "ProjectResponse":
+        metadata = json.loads(row.metadata_json or "{}")
         return cls(
             id=row.id,
             name=row.name,
             description=row.description,
             project_type=row.project_type,  # type: ignore
-            metadata=json.loads(row.metadata_json or "{}"),
+            metadata=metadata,
+            language=(metadata.get("language") or None) if isinstance(metadata, dict) else None,
             default_lexicon_id=row.default_lexicon_id,
             mastering_preset=row.mastering_preset,
             imported_from=row.imported_from,
@@ -160,6 +166,8 @@ class CreateProjectRequest(BaseModel):
     metadata: dict = Field(default_factory=dict)
     default_lexicon_id: Optional[str] = None
     mastering_preset: Optional[str] = None
+    # The book's language (New project's Language), e.g. "en" or "ja".
+    language: Optional[str] = None
 
 
 class UpdateProjectRequest(BaseModel):
@@ -168,6 +176,8 @@ class UpdateProjectRequest(BaseModel):
     metadata: Optional[dict] = None
     default_lexicon_id: Optional[str] = None
     mastering_preset: Optional[str] = None
+    # Overview's Language. Left out = unchanged; null = not set.
+    language: Optional[str] = None
 
 
 class CreateSceneRequest(BaseModel):
@@ -240,11 +250,14 @@ async def list_projects(
 async def create_project(
     body: CreateProjectRequest, db: Session = Depends(get_db)
 ) -> ProjectResponse:
+    metadata = dict(body.metadata)
+    if body.language:
+        metadata["language"] = body.language.strip()
     p = Project(
         name=body.name,
         description=body.description,
         project_type=body.project_type,
-        metadata_json=json.dumps(body.metadata),
+        metadata_json=json.dumps(metadata),
         default_lexicon_id=body.default_lexicon_id,
         mastering_preset=body.mastering_preset or kind_master(body.project_type),
     )
@@ -287,6 +300,17 @@ async def update_project(
         p.default_lexicon_id = lexicon_id
     if body.mastering_preset is not None:
         p.mastering_preset = body.mastering_preset
+    if "language" in body.model_fields_set:
+        try:
+            metadata = json.loads(p.metadata_json or "{}")
+        except ValueError:
+            metadata = {}
+        language = (body.language or "").strip()
+        if language:
+            metadata["language"] = language
+        else:
+            metadata.pop("language", None)
+        p.metadata_json = json.dumps(metadata)
     db.commit()
     db.refresh(p)
     return ProjectResponse.from_orm(p)

@@ -26,7 +26,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from threading import RLock
 
-from ..models import Persona
+from ..models import Persona, PersonaDelivery
 from ..paths import personas_root
 
 log = logging.getLogger(__name__)
@@ -34,6 +34,18 @@ log = logging.getLogger(__name__)
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _dump_delivery(delivery: PersonaDelivery) -> str | None:
+    """The stored form: only what is set, or NULL for nothing."""
+    data = delivery.model_dump(exclude_none=True)
+    data["models"] = {
+        k: v for k, v in (data.get("models") or {}).items()
+        if any(val not in (None, {}, "") for val in v.values())
+    }
+    if not data["models"]:
+        data.pop("models")
+    return json.dumps(data) if data else None
 
 
 def _row_to_persona(row) -> Persona:
@@ -54,10 +66,9 @@ def _row_to_persona(row) -> Persona:
         avatar_path=row.avatar_path,
         voice_instruct=row.voice_instruct,
         note=row.note,
-        default_delivery=_loads(row.default_delivery, {}),
+        default_delivery=PersonaDelivery.model_validate(_loads(row.default_delivery, {})),
         effects_chain=_loads(row.effects_chain, []),
         lexicon_id=row.lexicon_id,
-        engine_override=row.engine_override,
         imported_from=row.imported_from,
         imported_id=row.imported_id,
         created_at=row.created_at or _now(),
@@ -133,10 +144,9 @@ class PersonaStore:
             avatar_path=p.avatar_path,
             voice_instruct=p.voice_instruct,
             note=p.note,
-            default_delivery=json.dumps(p.default_delivery) if p.default_delivery else None,
+            default_delivery=_dump_delivery(p.default_delivery),
             effects_chain=json.dumps(p.effects_chain) if p.effects_chain else None,
             lexicon_id=p.lexicon_id,
-            engine_override=p.engine_override,
             imported_from=p.imported_from,
             imported_id=p.imported_id,
             created_at=p.created_at,
@@ -173,9 +183,8 @@ class PersonaStore:
         self,
         name: str,
         voice_id: str | None = None,
-        default_delivery: dict | None = None,
+        default_delivery: PersonaDelivery | dict | None = None,
         voice_instruct: str | None = None,
-        engine_override: str | None = None,
         lexicon_id: str | None = None,
         llm_rewrite_enabled: bool = False,  # accepted, not persisted (legacy)
         llm_model: str | None = None,  # accepted, not persisted (legacy)
@@ -198,10 +207,9 @@ class PersonaStore:
                 avatar_path=avatar_path,
                 voice_instruct=voice_instruct,
                 note=note,
-                default_delivery=default_delivery or {},
+                default_delivery=PersonaDelivery.model_validate(default_delivery or {}),
                 effects_chain=effects_chain or [],
                 lexicon_id=lexicon_id,
-                engine_override=engine_override,
                 llm_rewrite_enabled=llm_rewrite_enabled,
                 llm_model=llm_model,
                 imported_from=imported_from,
@@ -223,14 +231,22 @@ class PersonaStore:
             return persona
 
     def update(self, id: str, **fields) -> Persona | None:
-        """Patch semantics preserved from the file store: None values are
-        ignored (clear a string field by sending '')."""
+        """Set exactly the fields given — a None CLEARS that field (2026-10-03).
+
+        The caller sends only what changed (PATCH: a field left out is not
+        passed at all). Until 2026-10-03 None was skipped, so the editor could
+        not empty a field: Spoken delivery, the note or the lexicon kept the
+        old value while the page said "Persona saved"."""
         with self._lock:
             current = self.get(id)
             if current is None:
                 return None
             data = current.model_dump()
-            data.update({k: v for k, v in fields.items() if v is not None})
+            data.update(fields)
+            if data.get("default_delivery") is None:
+                data["default_delivery"] = {}
+            if data.get("effects_chain") is None:
+                data["effects_chain"] = []
             data["updated_at"] = _now().isoformat()
             new = Persona.model_validate(data)
 
@@ -249,14 +265,11 @@ class PersonaStore:
                 row.avatar_path = new.avatar_path
                 row.voice_instruct = new.voice_instruct
                 row.note = new.note
-                row.default_delivery = (
-                    json.dumps(new.default_delivery) if new.default_delivery else None
-                )
+                row.default_delivery = _dump_delivery(new.default_delivery)
                 row.effects_chain = (
                     json.dumps(new.effects_chain) if new.effects_chain else None
                 )
                 row.lexicon_id = new.lexicon_id
-                row.engine_override = new.engine_override
                 row.imported_from = new.imported_from
                 row.imported_id = new.imported_id
                 row.updated_at = new.updated_at

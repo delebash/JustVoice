@@ -14,8 +14,8 @@ after. The settings list itself is left in place as dormant legacy data — an o
 settings.json downgrade still has its providers — but NOTHING reads it anymore:
 the registry boots from the DB store and the shared router writes it.
 
-Follows the `database/migrate_profiles.py` precedent (the VoiceProfile→Persona
-one-shot).
+Followed the precedent of the VoiceProfile→Persona one-shot
+(`database/migrate_profiles.py`, deleted 2026-10-03 with its era).
 """
 
 from __future__ import annotations
