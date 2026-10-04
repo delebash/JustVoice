@@ -1955,9 +1955,14 @@ BUILT:  slice 1 `90dc4c2` — the persona page laid out as the mock; direction f
         clip's length and noise margin, warning under 25 dB; (4) the import endpoint is deleted
         with its tests — "keep the clip as it is" saves through Clone; (5) Voices' empty state
         says to make a voice on a persona's page.
-OPEN:   server (1–4 + voices send their design description) → clone maker on the persona page →
-        design maker → blend maker → Voices library only + docs/voices.md; each a slice with its
-        blast-radius table, committed on its own.
+BUILT:  2026-10-04 — server `17b89a9` (POST /v1/personas/preview-candidate; a design take kept
+        on any clone model; POST /v1/voices/clip-check; design_prompt on Voice; render_line and
+        the cache probe share prepare_line_text) · New clone `51aa412` · New design `583b14a` ·
+        New blend `802b704` · Voices library only + /v1/voices/import deleted `7552479`. Checked:
+        server 1017/1017, unit 132/132, smoke 13/13; the makers driven on the real data — a
+        real ▶ Preview and 💾 Keep wait on the app's restart (its server predated them).
+OPEN:   the live Preview + Keep check on each maker, after restarting the app (go given
+        2026-10-04; test voices deleted after).
         LATER — the user: "dont do it know add to list": mock in the app the Voices page as the
         library only (answer A) and Cast's persona list.
 GO:     given 2026-10-04 for option 2, the persona mock and the answers above; the real pages
@@ -2153,6 +2158,22 @@ WHY:    loading Chatterbox Nano after Turbo restarted the shared audio.cpp proce
 OPEN:   both — the fix needs a go (likely: when a runtime restart drops a co-resident
         model, release its booking; and/or let `make_room` clear a stale booking of the
         engine being loaded).
+
+### FINDING — the smoke gate's second server warm-loads the LLM beside the running app
+STATE:  FINDING — seen 2026-10-04 (persona voice makers, slice 2–6 checks). CLAUDE.md's gate
+        recipe starts `justvoice-server serve --port 8741 --data-dir src-tauri/target/debug/data`
+        — the app's own data dir, where warm-on-boot is on. Opening its UI (`npm run smoke`, or
+        any browser on :8741/ui/) loads the default chat model (gemma-4-26b-a4b-qat) in a SECOND
+        llama-server while the app's is up: the 8741 log shows "load gemma… (trigger=api)", then
+        "router child … OOM (failed) — raising n-cpu-moe to 25 + reload". The smoke clicks the
+        splash's "Continue without waiting"; the load carries on. Stopping the 8741 server ended
+        its llama-server; nothing was left behind.
+WHY:    two copies of the same model contend for one 8 GB card — the app's own loads can fail
+        while a gate runs.
+OPEN:   needs a go — e.g. a gate server that never warms (a flag, or its own data dir with the
+        app's DB copied in), or run the smoke against the app's own server when it is up
+        (`JV_BASE=http://127.0.0.1:17494`, which serves the same `dist/` — done for slice 6).
+GO:     needed
 
 ### FINDING — at 1440 px the title bar cuts "Personas › June" to "P.."
 STATE:  FINDING — seen 2026-10-04 in screenshots of the running app (`npm run dev`), on the real
