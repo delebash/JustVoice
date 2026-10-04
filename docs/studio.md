@@ -58,6 +58,12 @@ shows no count because nothing records an export.
 
 - **Title** and **Description**.
 - **Author** — written into the M4B you export as its author.
+- **Language** — what the book is written in: **Not set**, or one of the
+  languages your voices' models speak (*English*, *Japanese*, *Korean* …). A
+  book imported with a language keeps it (*American English*). When it's set,
+  Cast warns on any speaker whose persona speaks another language
+  ([below](#the-speakers-left)); when it isn't, Cast checks nothing. New project
+  asks for it too, and you can change it here at any time.
 - **Kind** — shown, not editable; it is fixed when the project is created.
 - **Mastering target** — what every render is mastered to, and what Export
   checks against. A new project starts on its kind's target — ACX for an
@@ -640,10 +646,14 @@ Each speaker's card shows:
   book: the one who had the role stays in the cast as an ordinary speaker, the
   narration Analyze decided moves to the new narrator, and lines you set
   yourself stay where you put them;
-- what plays them: **Persona · engine · 61 lines** when a persona with a voice
-  plays them. Otherwise it says what blocks them, in amber: **⚠ no persona · 22
+- what plays them: **Persona · model · 61 lines** when a persona with a voice
+  plays them (*June · Qwen3-TTS CustomVoice · 61 lines*). Otherwise it says what blocks them, in amber: **⚠ no persona · 22
   lines blocked**, or **⚠ Harbek (warm) has no voice · 22 lines blocked** when
   their persona has no voice yet. A speaker with no persona has a dashed edge;
+- when the book's **Language** is set (Overview) and their persona speaks
+  another, a second amber line says so: **⚠ speaks Korean — the book is
+  English**. Every line that speaker has is sent in the persona's language, so
+  this is the place to catch a Korean persona cast in an English book;
 - **✕** (on hover) removes the speaker from the book. It asks first — *Remove
   Harbek from the cast? 22 lines will have no speaker.* — because their lines go
   back to no speaker ([Removing a speaker](#removing-a-speaker)). The persona
@@ -676,25 +686,32 @@ leave it (or press Enter in a one-line field):
 
 ### The personas (right)
 
-**Personas** lists your whole library, with its count. Above the list, *"Select
-a speaker, then click a persona to assign it."* **Search by name or tone…**
-matches a persona's name or its note, and the engine dropdown shows one engine's
-personas (it remembers your choice).
+**Personas** lists your whole library, with its count, and **＋ New persona**.
+Above the list, *"Select a speaker, then click a persona to assign it."*
+**Search by name or tone…** matches a persona's name or its note. Three filters
+narrow the list, the same ones the Personas page has: **model** (*Kokoro (9)* —
+remembered), **can be directed** (written direction · tags · sliders only) and
+**language** (*British English (2)*).
 
 Each row shows:
 
-- the persona's name, and the voice it's built on with its engine (*Sohee ·
-  qwen3*), or *no voice*;
+- the persona's name, then its voice, model and language (*Sohee · Qwen3-TTS
+  CustomVoice · Korean*), or *no voice*;
 - **✓ June, Marius** — who in this book it already plays;
-- whether it can be directed, the same verdict as the Personas editor: **✓
-  written** (the engine performs written direction and the voice isn't a
-  clone), **tags** (the engine takes inline tags like `[sigh]`, not written
-  direction), **✗ none** (numbers and effects only) or **no voice**;
-- **▶** plays its voice. This is the voice's own sample, not a line from your
-  script, and it plays without the persona's delivery settings or effects. If
-  its engine isn't loaded, JustVoice asks before loading it (*Load qwen3?*),
-  and once it has loaded offers **Always auto-load**;
+- whether it can be directed, the same words as the Personas page: **✓ written
+  direction**, **✓ 19 tags** (the model's own tags) or **sliders only** (pace,
+  pitch and gain — no words), or **no voice**;
+- **▶** plays the persona — its voice speaking the stock line in its language,
+  with its pace, pitch, gain, direction and effects, through the same path a
+  chapter renders. If its model isn't loaded, JustVoice asks before loading it
+  (*Load Kokoro?*), and once it has loaded offers **Always auto-load**;
 - **✎** opens the persona's own page.
+
+**＋ New persona** opens a blank persona. With a speaker selected, the page says
+*For Harbek in Stillwater — Save gives Harbek this persona and takes you back to
+Cast*; Save does exactly that (*Old Crow created and given to Harbek.*). With no
+speaker selected, Save brings you back to Cast with the new persona in the
+list.
 
 Click a row to give that persona to the selected speaker (*Assigned Gruff
 dockhand to Harbek.*). Click the persona that already plays them to take it
@@ -703,7 +720,7 @@ speaker is selected.
 
 The foot of the list: *"Two speakers can share one persona — change it once and
 both change."* With no personas yet, the list says **No personas yet** and
-**Open Personas** takes you there to make one.
+offers **＋ New persona**.
 
 ## Render
 

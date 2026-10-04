@@ -73,3 +73,28 @@ export function voiceKind(voice) {
 export function voiceKindWord(voice) {
   return KIND_WORD[voiceKind(voice)];
 }
+
+// ── The book's language (decided 2026-10-03: "so Cast can warn on a
+// mismatch") ──────────────────────────────────────────────────────────────
+const baseLang = (code) => String(code || "").split(/[-_]/)[0].toLowerCase();
+
+/** Same language, region aside: "en-GB" and "en" match; "ko" and "en" don't. */
+export function sameLanguage(a, b) {
+  return !!a && !!b && baseLang(a) === baseLang(b);
+}
+
+/** The languages a book can be set to: every language your voices' models
+ *  speak, by its plain name ("English", not "American English"), plus the
+ *  book's own when it's something else (an import may have set it). */
+export function bookLanguageOptions(voices, current = "") {
+  const codes = new Set();
+  for (const v of voices || []) {
+    for (const c of v.speaks?.length ? v.speaks : [v.language]) if (c) codes.add(baseLang(c));
+  }
+  if (current) codes.add(current);
+  return [
+    { value: "", label: "Not set" },
+    ...[...codes].map((c) => ({ value: c, label: languageName(c) || c }))
+      .sort((a, b) => a.label.localeCompare(b.label)),
+  ];
+}

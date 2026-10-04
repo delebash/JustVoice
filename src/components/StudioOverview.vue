@@ -46,6 +46,8 @@ import { useCopy } from "../services/copy.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useLexiconsStore } from "../stores/lexicons.js";
+import { useVoicesStore } from "../stores/voices.js";
+import { bookLanguageOptions } from "../services/personaFacts.js";
 import { lexiconChoices } from "../views/studioLexicon.js";
 import { stepStatus } from "../views/studioStatus.js";
 
@@ -68,6 +70,11 @@ function refreshLexicons() {
 }
 onMounted(refreshLexicons);
 onActivated(refreshLexicons);
+// The book's language (2026-10-03): offered from the languages your voices'
+// models speak; Cast warns when a persona speaks another one.
+const voicesStore = useVoicesStore();
+onMounted(() => voicesStore.ensureLoaded());
+const languageOptions = computed(() => bookLanguageOptions(voicesStore.items, props.project.language || ""));
 watch(() => props.project.default_lexicon_id, (id) => {
   if (id && !lexiconsStore.byId(id)) refreshLexicons();
 });
@@ -156,6 +163,9 @@ function commitDescription() {
 }
 function commitMastering(v) {
   if ((v || "") !== (props.project.mastering_preset || "")) patch({ mastering_preset: v || "" });
+}
+function commitLanguage(v) {
+  if ((v || "") !== (props.project.language || "")) patch({ language: v || null });
 }
 function commitLexicon(v) {
   if ((v || "") !== (props.project.default_lexicon_id || "")) patch({ default_lexicon_id: v || null });
@@ -266,6 +276,11 @@ async function deleteProject() {
           </UiField>
           <UiField label="Description" layout="block">
             <UiTextarea v-model="editDescription" width="prose" :rows="3" placeholder="What this project is" @blur="commitDescription" />
+          </UiField>
+          <UiField label="Language" layout="block"
+            hint="What the book is written in. Cast warns when a speaker's persona speaks another language.">
+            <UiSelect :model-value="project.language || ''" width="id" :options="languageOptions"
+              aria-label="Language" @update:model-value="commitLanguage" />
           </UiField>
           <UiField label="Kind" layout="block" hint="Set when the project is created.">
             <UiTag intent="ghost">{{ KIND_LABEL[project.project_type] || project.project_type }}</UiTag>

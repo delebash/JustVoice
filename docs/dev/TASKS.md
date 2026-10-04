@@ -2038,6 +2038,22 @@ BUILT:  P6 (2026-10-03) — Voices: columns Model (the voice's model name, local
         and the ⋯ → New persona path checked headless (zero JS errors, no overflow). No
         server change (suite last run at P5: 1009 passed). Not exercised: Copy to another
         model in the browser — the real library has no cloned voice (server-tested in P1).
+BUILT:  P7 (2026-10-03) — Cast: persona rows read the server's answer (voice · model ·
+        language; ✓ written direction / ✓ N tags / sliders only), filters model
+        (remembered, new pref key) · can be directed · language; ▶ plays the persona
+        (`auditionPersona`, asks before loading); ＋ New persona in the library head and the
+        empty state → `/personas/new?project=&for=` — the page says "For Harbek in
+        Stillwater — Save gives Harbek this persona and takes you back to Cast", and Save
+        does (PATCH speaker, back to Cast); a card's ⚠ line when its persona speaks another
+        language than the book. The book's Language on Overview (PATCH, "Not set" =
+        no check) and New project (beside the name), offered from the languages your
+        voices' models speak (`personaFacts.bookLanguageOptions`). Docs: studio.md (Cast
+        rows, filters, ▶, ＋ New persona, the warning; Overview Language), projects.md,
+        keyboard-shortcuts.md, whats-new, code-map. Gates: vitest 132 (+ personaFacts
+        tests), biome, vite build, smoke on the real data dir; Cast, the New persona
+        hand-off banner, Overview and New project checked headless (zero JS errors). No
+        server change. Not exercised in the browser: Save on the hand-off (it would write
+        a persona and recast a speaker in your real book) — read-only checks only.
 GO:     given 2026-10-03 for P1–P8 and P9's checks; P9's data reset asks first
 
 ### FINDING — language never reaches Chatterbox or Qwen3: every render on them is told English

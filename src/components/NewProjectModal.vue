@@ -12,7 +12,9 @@
 //   import  — user chose to create from a file instead (caller opens ImportModal)
 
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
-import { UiButton, UiInput, AppModal } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiSelect, AppModal } from "@delebash/llm-ui";
+import { bookLanguageOptions } from "../services/personaFacts.js";
+import { useVoicesStore } from "../stores/voices.js";
 
 const props = defineProps({
   // Preselect a kind (Home's Start-something pills hand this over).
@@ -56,6 +58,14 @@ const KINDS = [
 const selected = ref(props.initialKind && KINDS.some((k) => k.id === props.initialKind) ? props.initialKind : "audiobook");
 const name = ref("");
 const nameInput = ref(null);
+// The book's language (2026-10-03) — what it's written in; Cast warns when a
+// persona speaks another. Optional: set it later on Studio · Overview.
+const voicesStore = useVoicesStore();
+voicesStore.ensureLoaded();
+const language = ref("");
+// Beside the name with no label of its own, so the unset choice says what it is.
+const languageOptions = computed(() => bookLanguageOptions(voicesStore.items)
+  .map((o) => (o.value ? o : { ...o, label: "Language — not set" })));
 
 const canCreate = computed(() => !!name.value.trim());
 
@@ -72,7 +82,7 @@ function pick(id) {
 
 function create() {
   if (!canCreate.value) return;
-  emit("create", { name: name.value.trim(), project_type: selected.value });
+  emit("create", { name: name.value.trim(), project_type: selected.value, language: language.value || null });
 }
 
 function onKey(e) {
@@ -145,6 +155,9 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
         placeholder="Project name…"
         @keydown.enter.stop.prevent="create"
       />
+      <UiSelect v-model="language" width="id" :options="languageOptions" aria-label="Language"
+        title="What it's written in — Cast warns when a persona speaks another language. You can set it later on Overview."
+        placeholder="Language" />
       <span class="jv-spacer" />
       <UiButton intent="primary" :disabled="!canCreate" @click="create">Create project ➜</UiButton>
     </template>

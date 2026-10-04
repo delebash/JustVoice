@@ -41,7 +41,7 @@ See [Studio → Script](studio.md#a-chapter).
 | Keys | Action |
 |---|---|
 | Click a persona (with a speaker selected) | Assign it to the selected speaker. Clicking the persona that already plays them takes it away |
-| Click ▶ on a persona row | On Cast, play its voice's sample; on the Personas page, hear the persona speak the stock line — a compact player opens in place |
+| Click ▶ on a persona row | Hear the persona speak the stock line (Cast and the Personas page alike) — a compact player opens in place |
 | Click ✎ on a persona row | Open that persona's own page |
 
 See [Studio → Cast](studio.md#cast).

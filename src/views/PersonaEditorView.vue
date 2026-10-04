@@ -34,6 +34,7 @@ import SlashTagMenu from "../components/SlashTagMenu.vue";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";
 import { handleTermsRefusal } from "../services/engineTerms.js";
 import { openProjectInStudio } from "../services/openProject.js";
+import { projectsService } from "../services/projects.js";
 import { DIRECTION_OPTIONS, VOICE_KINDS as KINDS, voiceKind as kindOf, voiceLabel } from "../services/personaFacts.js";
 import { auditionVoice } from "../services/voiceAudition.js";
 import { voiceGender } from "../services/voiceGender.js";
@@ -136,6 +137,9 @@ const dirty = computed(() => {
 const caps = ref({});            // capability rows, keyed by model or engine id
 const emotionValues = ref([]);   // the app's nine
 const usage = ref(null);         // {speakers, total_lines, directed_lines}
+// Opened from Cast's ＋ New persona (`?project=<id>&for=<speaker id>`): Save
+// gives the new persona to that speaker and goes back to the book's Cast.
+const castFor = ref(null);       // {project, speaker} — speaker may be null
 
 async function loadCaps() {
   const r = await api.safeRequest("/v1/engines/capabilities", { engines: {} });
@@ -160,6 +164,16 @@ async function load() {
       if (voice && voices.value.some((v) => v.id === voice)) pickVoice(voice);
       opened.value = copyOf(draft.value);
       usage.value = null;
+      castFor.value = null;
+      const project = projectsStore.items.find((p) => p.id === String(route.query.project || ""));
+      if (project) {
+        let speaker = null;
+        if (route.query.for) {
+          const r = await api.safeRequest(`/v1/projects/${project.id}/speakers`, { speakers: [] });
+          speaker = (r?.speakers || []).find((s) => s.id === String(route.query.for)) || null;
+        }
+        castFor.value = { project, speaker };
+      }
     } else {
       const p = await api.safeRequest(`/v1/personas/${id}`, null);
       if (!p) { missing.value = true; draft.value = null; return; }
@@ -176,8 +190,8 @@ async function load() {
 // `new?voice=<id>` (Voices' "New persona from this voice") opens a blank
 // persona on that voice; the page is KeepAlive-cached, so a second visit with
 // another voice reloads too.
-watch([personaId, () => route.query.voice], ([id, v], [before, vBefore] = []) => {
-  if (id && (id !== before || (id === "new" && v !== vBefore))) load();
+watch([personaId, () => route.query.voice, () => route.query.for], ([id, v, f], [before, vBefore, fBefore] = []) => {
+  if (id && (id !== before || (id === "new" && (v !== vBefore || f !== fBefore)))) load();
 }, { immediate: true });
 onActivated(() => { enginesStore.reload?.(); });
 
@@ -537,6 +551,19 @@ async function save() {
       });
       saved.value = p;
       draft.value = fromPersona(p);
+      const back = castFor.value;
+      if (back) {
+        // Back to the book's Cast, with the new persona given to the speaker.
+        if (back.speaker) await projectsService.updateSpeaker(back.speaker.id, { persona_id: p.id });
+        await personasStore.reload();
+        pushToast({
+          kind: "success",
+          message: back.speaker ? `${p.name} created and given to ${back.speaker.name}.` : `${p.name} created.`,
+        });
+        castFor.value = null;
+        openProjectInStudio(activeProject, back.project, "cast");
+        return;
+      }
       await personasStore.reload();
       pushToast({ kind: "success", message: `${p.name} created.` });
       router.replace({ name: "persona", params: { id: p.id } });
@@ -627,6 +654,13 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
         <UiTag v-if="speaksLabel" intent="secondary">{{ speaksLabel }}</UiTag>
         <UiTag v-if="usedBy.length" intent="secondary">used by <strong>{{ plural(usedBy.length, "speaker") }}</strong></UiTag>
         <UiTag v-if="dirty" intent="accent2">Unsaved changes</UiTag>
+      </div>
+      <div v-if="castFor" class="jv-banner">
+        <template v-if="castFor.speaker">
+          For <strong>{{ castFor.speaker.name }}</strong> in {{ castFor.project.name }} — Save gives
+          {{ castFor.speaker.name }} this persona and takes you back to Cast.
+        </template>
+        <template v-else>Save takes you back to {{ castFor.project.name }}'s Cast.</template>
       </div>
       <div v-if="voice && notLoaded" class="jv-banner jv-banner--warn">
         <strong>{{ modelName }} isn't loaded.</strong> The first listen swaps it in — about a minute.

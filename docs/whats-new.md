@@ -2,6 +2,14 @@
 
 ## v0.1.0
 
+- **A book has a language, and Cast checks it (2026-10-03).** Set it on New
+  project or Studio · Overview; a speaker whose persona speaks another language
+  shows **⚠ speaks Korean — the book is English** on their card. Cast's persona
+  list reads each persona's model, language and how it can be directed (the
+  Personas page's words), filters by all three, and **▶ plays the persona**,
+  not just its voice. **＋ New persona** on Cast opens a blank persona and,
+  on Save, comes back with it given to the selected speaker
+  ([Studio → Cast](studio.md#cast))
 - **Voices shows what each voice can do (2026-10-03).** New columns: **Model**
   (the model that speaks it, not just its engine), **Speaks** (its language,
   with **+N** when its model speaks more), **Can be directed** and **Used by**

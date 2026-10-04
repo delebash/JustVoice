@@ -123,9 +123,9 @@ function createBlank() {
   showNewProject.value = true;
 }
 
-async function onCreateProject({ name, project_type }) {
+async function onCreateProject({ name, project_type, language }) {
   try {
-    const created = await projectsService.create({ name, project_type, metadata: {} });
+    const created = await projectsService.create({ name, project_type, language, metadata: {} });
     showNewProject.value = false;
     await refresh();
     landOnOverview(projects.value.find((p) => p.id === created.id));

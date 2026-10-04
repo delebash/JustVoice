@@ -4,32 +4,38 @@
 
   A SPEAKER is a person in this book: a name, the other names the text uses
   ("Also called") and who they are — what Discover finds and Script gives
-  lines to. A PERSONA is a finished spoken voice from the library: a voice and
-  its engine plus speed, pitch, gain, direction and effects. Cast gives each
+  lines to. A PERSONA is a finished spoken voice from the library: a voice
+  (which carries its model) plus pace, pitch, gain, direction and effects. Cast gives each
   speaker a persona, and one persona can play many speakers — change it once and
   all of them change. This is the mock's Cast (docs/plans/mock/_s3.html):
   speakers on the left, personas on the right.
 
   Until 2026-09-29 one persona row was both the person and the sound, so this
   screen assigned VOICES to personas. That is gone: a persona's voice and
-  settings are edited on the Personas page ("Edit their persona →").
+  settings are edited on its own page ("Edit their persona →").
+
+  Each persona row reads the server's persona answer (2026-10-03, persona
+  build P7): its model, how it can be directed and the language it speaks —
+  the same words as the Personas page. ▶ plays the persona itself. A card
+  warns when its persona speaks another language than the book.
 
   Removing a speaker deletes it from the book and its lines go back to No
   speaker, so it asks first, naming the lines (decided 2026-09-29).
   Smart-assign applies its matches straight away, as it always has.
 -->
 <script setup>
-import { computed, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import {
   EmptyState, UiButton, UiCheckbox, UiInput, UiSelect, UiTable, UiTag, UiTextarea,
-  confirmDialog, promptDialog, pushToast, withAiTask,
+  confirmDialog, languageName, promptDialog, pushToast, withAiTask,
 } from "@delebash/llm-ui";
 import { useApi } from "../stores/api.js";
 import { projectsService } from "../services/projects.js";
 import { readPref, writePref } from "../services/prefs.js";
 import { handleTermsRefusal } from "../services/engineTerms.js";
-import { auditionVoice } from "../services/voiceAudition.js";
+import { DIRECTION_OPTIONS, directionCell, sameLanguage, tagCount } from "../services/personaFacts.js";
+import { auditionPersona } from "../services/voiceAudition.js";
 
 const props = defineProps({
   project: { type: Object, required: true },
@@ -66,12 +72,9 @@ const selected = computed(() => props.speakers.find((s) => s.id === selectedId.v
 
 // ── What a speaker's cast says ───────────────────────────────────────────
 const personaOf = (s) => (s?.persona_id ? personaById.value[s.persona_id] || null : null);
-// The model that speaks a persona is its voice's (2026-10-03 — the
-// persona's engine override was read by nothing and left).
-const personaEngine = (p) => {
-  const v = p ? voiceById.value[p.voice_id] : null;
-  return v ? v.model_name || v.engine || "" : "";
-};
+// The model that speaks a persona is its voice's — the server's persona answer
+// carries its name (2026-10-03).
+const personaEngine = (p) => p?.model_name || "";
 const plural = (n, word) => `${n.toLocaleString()} ${word}${n === 1 ? "" : "s"}`;
 // The mock's line under each card: "June · qwen3 · 61 lines", or what blocks it.
 function castLine(s) {
@@ -81,6 +84,14 @@ function castLine(s) {
   }
   const why = p ? `⚠ ${p.name} has no voice` : "⚠ no persona";
   return { ok: false, text: s.lines ? `${why} · ${plural(s.lines, "line")} blocked` : why };
+}
+// "⚠ speaks Korean — the book is English" (decided 2026-10-03: "so Cast can
+// warn on a mismatch"). Nothing when the book's language isn't set.
+function languageWarning(s) {
+  const p = personaOf(s);
+  const book = props.project?.language;
+  if (!p?.speaks || !book || sameLanguage(p.speaks, book)) return "";
+  return `⚠ speaks ${languageName(p.speaks) || p.speaks} — the book is ${languageName(book) || book}`;
 }
 const unassigned = computed(() => listed.value.filter((s) => !s.persona_id).length);
 // "40 lines can't render until Harbek and Renn have a persona."
@@ -134,23 +145,32 @@ function roleLine(s) {
 
 // ── The persona library (right) ──────────────────────────────────────────
 const personaQuery = ref("");
-const personaEngineFilter = ref(readPref("studioPersonaEngineFilter", ""));
-watch(personaEngineFilter, (v) => { writePref("studioPersonaEngineFilter", v || ""); });
-const engineOptions = computed(() => {
-  const counts = {};
-  for (const p of props.personas) {
-    const e = personaEngine(p);
-    if (e) counts[e] = (counts[e] || 0) + 1;
-  }
-  return [
-    { value: "", label: "All engines" },
-    ...Object.keys(counts).sort().map((e) => ({ value: e, label: `${e} (${counts[e]})` })),
-  ];
+// Model, can be directed, language — the Personas page's filters. The model
+// choice is remembered (the engine choice it replaced stays unread in prefs).
+const personaModelFilter = ref(readPref("studioPersonaModelFilter", ""));
+watch(personaModelFilter, (v) => { writePref("studioPersonaModelFilter", v || ""); });
+const personaDirectionFilter = ref("");
+const personaLanguageFilter = ref("");
+function counted(values, label) {
+  const counts = new Map();
+  for (const v of values) if (v) counts.set(v, (counts.get(v) || 0) + 1);
+  return [...counts].map(([value, n]) => ({ value, label: `${label(value)} (${n})` }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+}
+const modelOptions = computed(() => {
+  const names = Object.fromEntries(props.personas.map((p) => [p.model, p.model_name || p.model]));
+  return [{ value: "", label: "All models" }, ...counted(props.personas.map((p) => p.model), (m) => names[m])];
 });
+const languageOptions = computed(() => [
+  { value: "", label: "All languages" },
+  ...counted(props.personas.map((p) => p.speaks), (c) => languageName(c) || c),
+]);
 const shownPersonas = computed(() => {
   const q = personaQuery.value.trim().toLowerCase();
   return props.personas
-    .filter((p) => !personaEngineFilter.value || personaEngine(p) === personaEngineFilter.value)
+    .filter((p) => !personaModelFilter.value || p.model === personaModelFilter.value)
+    .filter((p) => !personaDirectionFilter.value || p.directed_by === personaDirectionFilter.value)
+    .filter((p) => !personaLanguageFilter.value || p.speaks === personaLanguageFilter.value)
     .filter((p) => !q || (p.name || "").toLowerCase().includes(q) || (p.note || "").toLowerCase().includes(q));
 });
 // Who in this book each persona plays — "✓ June, Marius".
@@ -161,21 +181,24 @@ const playsHere = computed(() => {
   }
   return out;
 });
-// Can it be directed? The Personas page's verdict: written direction needs an
-// engine with an instruct field AND a voice that isn't a clone (a clone renders
-// on a checkpoint that drops it); otherwise tags if the engine takes them.
+// Can it be directed? The server's answer for the persona's voice and model
+// (`directed_by`), in the Personas page's words.
+const caps = ref({});
+onMounted(async () => {
+  const r = await api.safeRequest("/v1/engines/capabilities", { engines: {} });
+  caps.value = r?.engines || {};
+});
 function directed(p) {
-  const voice = voiceById.value[p.voice_id];
-  if (!voice) return { intent: "secondary", label: "no voice", title: "This persona has no voice yet — pick one on the Personas page." };
-  const caps = engineById.value[personaEngine(p)]?.capabilities || [];
-  const clone = voice.source === "cloned" || voice.source === "imported";
-  if (caps.includes("instruct_field") && !clone) {
-    return { intent: "success", label: "✓ written", title: "This engine performs written direction." };
-  }
-  if (caps.includes("paralinguistic_tags")) {
-    return { intent: "accent2", label: "tags", title: "This engine takes inline tags like [sigh], not written direction." };
-  }
-  return { intent: "secondary", label: "✗ none", title: "This engine takes no direction — numbers and effects only." };
+  if (!p.voice_id) return { intent: "secondary", label: "no voice", title: "This persona has no voice yet — pick one on its page." };
+  return directionCell(p.directed_by, tagCount(caps.value[p.model]));
+}
+
+// ＋ New persona — opens a blank persona; Save brings you back here with it
+// given to the selected speaker (decided 2026-10-03).
+function newPersona() {
+  const query = { project: props.project.id };
+  if (selected.value) query.for = selected.value.id;
+  router.push({ name: "persona", params: { id: "new" }, query });
 }
 
 // ── Actions ─────────────────────────────────────────────────────────────
@@ -423,21 +446,21 @@ async function smartAssign() {
   }
 }
 
-// ▶ plays the persona's voice sample in the compact audition player above the
-// card. Same ask-before-load contract as the Voices page (a play never loads an
-// engine behind your back); shares its "Always auto-load" pref.
+// ▶ plays the persona — its stock line through the path a chapter renders
+// with — in the compact audition player above the card. Same ask-before-load
+// contract as every ▶ (a play never loads a model behind your back); shares
+// the "Always auto-load" pref.
 const previewing = ref(null);
 const audition = ref(null); // { url, name, engine }
 async function play(p) {
-  const voice = voiceById.value[p.voice_id];
-  if (!voice || previewing.value) return;
+  if (!p.voice_id || previewing.value) return;
   previewing.value = p.id;
   try {
     // The shared door: asks before loading a model, as everywhere else.
-    const blob = await auditionVoice(api, voice);
+    const blob = await auditionPersona(api, p);
     if (blob instanceof Blob) {
       if (audition.value?.url) URL.revokeObjectURL(audition.value.url);
-      audition.value = { url: URL.createObjectURL(blob), name: p.name, engine: voice.engine || "" };
+      audition.value = { url: URL.createObjectURL(blob), name: p.name, engine: p.model_name || "" };
     }
   } catch (e) {
     if (handleTermsRefusal(e)) return;
@@ -490,6 +513,7 @@ const GAME_COLUMNS = [
                 <UiCheckbox :model-value="true" disabled label="Narrator" />
               </span>
               <div class="studio-cast__as" :class="castLine(narrator).ok ? 'studio-cast__as--ok' : 'studio-cast__as--none'">{{ castLine(narrator).text }}</div>
+              <div v-if="languageWarning(narrator)" class="studio-cast__as studio-cast__as--none">{{ languageWarning(narrator) }}</div>
             </div>
           </article>
           <button v-else type="button" class="studio-cast__narrator-empty" :disabled="busy"
@@ -534,6 +558,7 @@ const GAME_COLUMNS = [
             <template #role="{ row }"><span class="jv-muted studio-cast__table-role">{{ roleLine(row) }}</span></template>
             <template #persona="{ row }">
               <span :class="castLine(row).ok ? 'studio-cast__as--ok' : 'studio-cast__as--none'">{{ castLine(row).text }}</span>
+              <div v-if="languageWarning(row)" class="studio-cast__as--none">{{ languageWarning(row) }}</div>
             </template>
             <template #actions="{ row }">
               <button type="button" class="jv-rowact jv-rowact--danger" title="Remove from the cast — asks first" @click.stop="removeSpeaker(row)">✕</button>
@@ -555,6 +580,7 @@ const GAME_COLUMNS = [
                     @update:model-value="(v) => v && setNarrator(s)" />
                 </span>
                 <div class="studio-cast__as" :class="castLine(s).ok ? 'studio-cast__as--ok' : 'studio-cast__as--none'">{{ castLine(s).text }}</div>
+                <div v-if="languageWarning(s)" class="studio-cast__as studio-cast__as--none">{{ languageWarning(s) }}</div>
               </div>
             </article>
           </div>
@@ -597,15 +623,23 @@ const GAME_COLUMNS = [
         <div class="studio-cast__library-head">
           <strong>Personas</strong>
           <span class="jv-hint">{{ personas.length }}</span>
+          <span class="jv-spacer" />
+          <UiButton intent="secondary" size="small" label="＋ New persona"
+            :title="selected ? `Make a persona — Save gives it to ${selected.name} and brings you back` : 'Make a persona — Save brings you back here'"
+            @click="newPersona" />
         </div>
         <EmptyState v-if="!personas.length" icon="Sparkle" title="No personas yet" compact
-          message="A persona is a finished voice — a voice and how it's spoken. Make one on the Personas page, then assign it here."
-          action-label="Open Personas" @action="router.push({ name: 'personas' })" />
+          message="A persona is a finished voice — a voice and how it's spoken. Make one, then assign it here."
+          action-label="＋ New persona" @action="newPersona" />
         <template v-else>
           <div class="studio-cast__picking">Select a speaker, then click a persona to assign it.</div>
           <div class="studio-cast__filter">
             <UiInput v-model="personaQuery" type="search" size="small" width="name" placeholder="Search by name or tone…" />
-            <UiSelect v-model="personaEngineFilter" width="name" title="Show only personas on one engine" :options="engineOptions" />
+            <UiSelect v-model="personaModelFilter" width="id" title="Show only personas on one model" aria-label="Model" :options="modelOptions" />
+            <UiSelect v-model="personaDirectionFilter" width="id" title="Show only personas that can be directed one way"
+              aria-label="Can be directed" :options="DIRECTION_OPTIONS" />
+            <UiSelect v-model="personaLanguageFilter" width="id" title="Show only personas that speak one language"
+              aria-label="Speaks" :options="languageOptions" />
           </div>
           <div class="studio-cast__rows">
             <div v-if="!shownPersonas.length" class="jv-muted studio-cast__rows-empty">No personas match this filter.</div>
@@ -617,13 +651,13 @@ const GAME_COLUMNS = [
                 <span class="studio-cast__prow-avatar" :style="{ background: colorFor(p.name) }">{{ (p.name || "?").charAt(0).toUpperCase() }}</span>
                 <span class="studio-cast__prow-text">
                   <strong class="studio-cast__prow-name">{{ p.name }}</strong>
-                  <span class="studio-cast__prow-meta">{{ [voiceById[p.voice_id]?.name, personaEngine(p)].filter(Boolean).join(" · ") || "no voice" }}</span>
+                  <span class="studio-cast__prow-meta">{{ [voiceById[p.voice_id]?.name, personaEngine(p), languageName(p.speaks)].filter(Boolean).join(" · ") || "no voice" }}</span>
                   <span v-if="playsHere[p.id]" class="studio-cast__prow-plays">✓ {{ playsHere[p.id] }}</span>
                 </span>
               </button>
               <UiTag :intent="directed(p).intent" :title="directed(p).title">{{ directed(p).label }}</UiTag>
               <button type="button" class="jv-rowact" :disabled="!p.voice_id || !!previewing"
-                :title="p.voice_id ? 'Play its voice' : 'No voice yet'" @click="play(p)">{{ previewing === p.id ? "⏳" : "▶" }}</button>
+                :title="p.voice_id ? `Hear ${p.name} speak` : 'No voice yet'" @click="play(p)">{{ previewing === p.id ? "⏳" : "▶" }}</button>
               <button type="button" class="jv-rowact" title="Edit this persona" @click="editPersona(p.id)">✎</button>
             </div>
           </div>

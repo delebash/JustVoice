@@ -19,6 +19,11 @@ voicelines ZIP), and the terminology (chapters / quests / segments). Kinds:
 is the same for all — a project holds scenes, scenes hold blocks — so nothing is
 lost if your project outgrows its kind.
 
+Beside the name, **Language** sets what the book is written in — any language
+your voices' models speak, or *Language — not set*. Cast uses it to warn when a
+speaker's persona speaks another language; you can set or change it later on
+Studio · [Overview](studio.md#overview).
+
 ## Where the settings went
 
 The row used to expand into a detail pane. Everything it held moved:
