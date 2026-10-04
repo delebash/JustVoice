@@ -194,6 +194,8 @@ server), and **accessibility users** (real-time TTS, screen-reader integration �
 
 ## Where to look
 
+**Before researching anything — reading code to answer a question, measuring, briefing an agent — read the subject's section of `docs/dev/RESEARCH.md`** (what is already known, with the proof; the family rule, 2026-10-04). Research isn't done until its facts land there.
+
 | For | Read |
 |---|---|
 | The JustWrite ↔ JustVoice boundary | `docs/dev/design-decisions.md` §3 (archived original: `docs/plans/archive/CONTRACT.md`) |

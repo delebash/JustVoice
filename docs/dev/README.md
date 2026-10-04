@@ -14,7 +14,9 @@ FEATURES roots — lives in `../plans/archive/`):
 1. **`../../CLAUDE.md`** — the working rules and pointers.
 2. **`TASKS.md`** — the live tracker (the F-arc convergence sequence, the open
    product questions extracted from the freeze, repo hygiene). **`IDEAS.md`** —
-   the backlog incl. the deferred-v1.1+ list.
+   the backlog incl. the deferred-v1.1+ list. **`RESEARCH.md`** — what is already
+   known, by subject, with the proof (the speech runtime and its memory so far);
+   read its section before researching anything (the family rule, 2026-10-04).
 3. **`design-decisions.md`** — THE distilled design record: product shape (five
    use cases, type-discriminated projects), locked stack decisions as CURRENT
    truth, the JV↔JW boundary rules, convergence outcomes, and the
