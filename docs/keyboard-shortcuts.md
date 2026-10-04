@@ -42,7 +42,7 @@ See [Studio → Script](studio.md#a-chapter).
 |---|---|
 | Click a persona (with a speaker selected) | Assign it to the selected speaker. Clicking the persona that already plays them takes it away |
 | Click ▶ on a persona row | Play its voice's sample — a compact player opens in place |
-| Click ✎ on a persona row | Open that persona on the Personas page |
+| Click ✎ on a persona row | Open that persona's own page |
 
 See [Studio → Cast](studio.md#cast).
 

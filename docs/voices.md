@@ -60,7 +60,7 @@ voices need a dictionary the runtime does not ship yet. See
 
 ### Which of them take written direction
 
-Written direction — a persona's **Spoken delivery** text, a line's **+
+Written direction — a persona's **Standing delivery** text, a line's **+
 direction** note — only reaches models that have somewhere to put it. Whether
 yours does depends on the voice type as much as the engine, because a voice
 made from a recording is rendered by a different checkpoint than one made

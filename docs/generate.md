@@ -68,7 +68,7 @@ Speed, Pitch and Gain are applied by the same server code here and in a chapter 
 
 A textarea for describing how the line goes, in your own words — *"clipped, world-weary, dry"*. Shown always, but live ONLY when the loaded model accepts a freeform instruction, which today is **Qwen3-TTS CustomVoice and VoiceDesign** (Qwen3 Base clones and takes no instruction). On VoiceDesign the instruction is the voice description itself. The pill in the label flips between `disabled · requires Qwen3-TTS` (ghost) and `free-form` (green).
 
-At render time this is joined with the persona's **Spoken delivery** and the line's own **direction** into the single instruction the engine receives, most specific last. See [personas.md](personas.md).
+At render time this is joined with the persona's **Standing delivery** and the line's own **direction** into the single instruction the engine receives, most specific last. See [personas.md](personas.md).
 
 ### Emotion
 
@@ -76,7 +76,7 @@ A dropdown of nine labels: *neutral · happy · sad · angry · fearful · whisp
 
 It is a list rather than a sentence for one reason: **it is the only delivery control with a cross-engine meaning.** Prose can only be handed to an engine that reads prose, but a label can be compiled two different ways, so the same choice survives recasting a speaker onto a persona on a different engine.
 
-- **Engines that read prose** (Qwen3-TTS CustomVoice and VoiceDesign) get the label folded into the instruction, alongside the persona's spoken delivery and the line's direction.
+- **Engines that read prose** (Qwen3-TTS CustomVoice and VoiceDesign) get the label folded into the instruction, alongside the persona's standing delivery and the line's direction.
 - **Engines with an emotion vocabulary** get their own token prefixed to the line instead. Chatterbox Turbo was that engine — pick *fearful* and it rendered `[fear] Who's there?` — and it is not available on the speech runtime yet (see [Engines → Not available yet](engines.md#not-available-yet)), so no engine takes emotion this way today.
 - **Every other engine** (Kokoro, Chatterbox Multilingual, Qwen3 Base) has no way to express it. The field is disabled and says so, rather than accepting a value it would drop.
 

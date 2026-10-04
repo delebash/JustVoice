@@ -1980,6 +1980,28 @@ BUILT:  P3 (2026-10-03) — the persona's data and the one resolver: `PersonaDel
         `engine_override` and the extinct `migrate_profiles.py` (+ its column migration)
         removed; Generate's persona pick switches its voice (call 6). The UI for all of
         it is P4–P7; PersonasView only moved to PATCH meanwhile.
+BUILT:  P4 (2026-10-03) — the persona's page, `/personas/:id` (`new` = blank;
+        `PersonaEditorView.vue`): Persona (name, note) · Voice (kind radios Built-in /
+        Clone / Design / Blend / Trained LoRA off; Can be directed / Model / Gender
+        filters; "Sohee · Female · Korean · Qwen3-TTS CustomVoice"; ▶ Raw; Speaks fixed or
+        the model's list; stale + lost-direction warning from `usage-detail.directed_lines`)
+        · Hear it (Listen via `/v1/personas/preview` with the unsaved draft, ↻ Stock line
+        via `GET /v1/personas/stock-line`, Insert tag via `SlashTagMenu`, ⤓ WAV) · How it
+        speaks (Pace/Pitch/Gain in the new canonical `.jv-knobs`, pauses, standing delivery
+        + emotion / Turbo emotion + register / off with the reason, VD warning, effects,
+        lexicon) · Sampling (the model's own knobs, seed + 🎲, Compare settings…) · Save
+        (Save, Revert, Save as new, Blend → Voices, Train a LoRA off) · right column
+        summary, This model, Used by; locked cards until a voice; leave-unsaved confirm;
+        the not-loaded banner. The list's row / Edit / ＋ New persona and Cast's ✎ / Edit
+        their persona → open it; the list's dialog editor and the orphan
+        `VoiceParamsModal.vue` deleted; sub-pages hide the rail item's lede. Shared:
+        `services/voiceGender.js` (one gender answer, Voices uses it), `voiceAudition.js`
+        (▶ with ask-before-load); kit `UiSegmented` gained per-option `disabled`/`title`
+        + `blocked`. "Spoken delivery" renamed "Standing delivery" in the UI and docs.
+        Docs: personas.md "The persona's page" (rewritten), neighbours, whats-new.
+        Gates: ruff, server 1007 passed, vitest 127, biome, vite build, smoke on the real
+        data dir, the page checked headless (new / Kokoro / Qwen3: zero JS errors, no
+        overflow), JW builds with the kit change.
 GO:     given 2026-10-03 for P1–P8 and P9's checks; P9's data reset asks first
 
 ### FINDING — language never reaches Chatterbox or Qwen3: every render on them is told English

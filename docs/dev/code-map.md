@@ -118,8 +118,8 @@ Deleting a book deletes its speakers.
 
 - **Cast is a book-level edit.** Clicking a persona on Cast PATCHes
   `speakers.persona_id` (`StudioCast.vue` `assign()`); it never writes the
-  persona. The persona's voice and settings are edited on the Personas page —
-  Cast's *Edit their persona →* opens it there (`/personas?open=<id>`), and it
+  persona. The persona's voice and settings are edited on its own page —
+  Cast's *Edit their persona →* opens it (`/personas/<id>`), and it
   **follows the persona into every book that uses it**. The Personas page shows
   that reach as **Used by** (speaker — book) and a *Used by* panel with each
   speaker's line count.
@@ -130,10 +130,17 @@ Deleting a book deletes its speakers.
 - **Personas are library-level for persistence** — book 2 casts book 1's
   personas and they sound identical; the same persona can speak in an audiobook
   and a game.
-- `PersonasView.vue`: cross-project filters (All / Used / Unused / By project), a
-  **Used by** column, the *Used by* panel with *Open Cast →*, and an editor whose
-  **"How they sound"** section is voice · engine override · lexicon (read after the book's) ·
-  spoken delivery, plus **Note on how it sounds** ("it never changes the audio").
+- `PersonasView.vue`: the list — cross-project filters (All / Used / Unused / By
+  project), a **Used by** column, ticks + *Delete N selected*. A row opens the
+  persona's page.
+- `PersonaEditorView.vue` (2026-10-03, the redesign's P4): cards Persona (name,
+  note) · Voice (kind radios filter the list; Can be directed / Model / Gender
+  filters; ▶ Raw; Speaks) · Hear it (`POST /v1/personas/preview` with the unsaved
+  draft; stock line; the model's tags via `SlashTagMenu`) · How it speaks (pace,
+  pitch, gain, pauses; standing delivery + emotion, or Turbo's emotion + register
+  tags, by `directed_by`; effects; lexicon) · Sampling (the model's own knobs,
+  seed, Compare settings…) · Save; right column summary · This model · Used by.
+  Model-specific values are stored per model under `default_delivery.models`.
 
 ### The direction of assignment — do not get this backwards
 
@@ -845,12 +852,12 @@ exposes queue depth or the current engine.**
 
 ---
 
-## 6. The surfaces — 18 routes, 25 views
+## 6. The surfaces — 17 routes, 24 views
 
 `src/router/index.js`. Real routes:
 
 `/home · /projects · /chapter · /lines · /studio · /stories · /generate ·
-/captures · /voices · /personas · /lexicons · /effects · /presets · /ai ·
+/captures · /voices · /personas · /personas/:id · /lexicons · /effects · /ai ·
 /importreview · /labs · /settings` (+ `/` → `/home`, `/overview` → `/home`,
 `/engines` → `/ai?tab=speech-engines`, unknown → `/home`).
 
@@ -867,7 +874,8 @@ exposes queue depth or the current engine.**
 | `VoicesView` | 1302 | The voice library. Columns **Name · Gender · Type · Engine · Lang · Samples · Gens · Effects · Channel · Cast as**. Actions: Guess unknown genders · Import .justvoice.zip · Clone new voice · Blend with… Plus the **voice inspector** behind a row interaction |
 | `GenerateView` | 1282 | One-off synth: voice, text, seed + randomize, **delivery overlay**, insert tag, Rewrite, Compose, lexicon view, and a **history** of takes/favorites/retry |
 | `ProjectsView` | 950 | Project list (**Project · Kind · Structure · Last opened**) + detail expansion with scenes (**# · Title · Blocks · Duration · Status**), `＋ Add personas`, *Open in Studio ➜* |
-| `PersonasView` | 695 | The persona library — see §1 |
+| `PersonasView` | ~360 | The persona library list — see §1 |
+| `PersonaEditorView` | ~970 | One persona's page, `/personas/:id` (`new` = blank; `meta.nav` keeps the rail on Personas) — see §1 |
 | `LexiconsView` | 632 | Pronunciation dictionaries |
 | `HomeView` | 561 | Empty hero *"What are you making?"* · Continue/Resume card · live tasks · engine status **with VRAM** + Unload/Switch · recent generations with inline replay |
 | `CapturesView` | 409 | Dictation captures, refined vs raw transcript, pin, retranscribe |
@@ -942,7 +950,7 @@ Verified 2026-08-15/16. **None of it is fixed.** Also filed in `TASKS.md`.
 2. ~~**Engine-private knobs never reach an engine.**~~ **FIXED 2026-08-17.**
    Engines read their knobs from the `delivery.engine` subdict
    (`qwen3/engine.py:154`, `chatterbox/engine.py:185-206`,
-   `moss_tts/engine.py:114`) while `VoiceParamsModal.vue` saved the capability
+   `moss_tts/engine.py:114`) while `VoiceParamsModal.vue` (deleted 2026-10-03, an orphan) saved the capability
    schema's keys **flat**, and nothing bridged the two — so exaggeration,
    cfg_weight, repetition_penalty, min_p, t_shift and the rest had never done
    anything at render. `nest_engine_keys()` in `delivery_merge.py` now

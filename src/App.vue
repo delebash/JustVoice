@@ -55,7 +55,7 @@ const VIEWS = [
   // baked into it ("Kokoro 54 + Qwen 9") — numbers that go stale the moment
   // an engine ships a voice, and which the type filters show anyway.
   { id: "voices",    lane: "library", label: "Voices",    icon: "🎙️", lede: "" },
-  { id: "personas",  lane: "library", label: "Personas",  icon: "🎭", lede: "Finished voices. Each persona is a voice and its engine, plus speed, pitch, gain, spoken direction, effects, a lexicon override and a short note on how it sounds. Cast gives one to each speaker in a book, and one persona can play many speakers, in any book. Filter by usage in the library list.", visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
+  { id: "personas",  lane: "library", label: "Personas",  icon: "🎭", lede: "Finished voices. Each persona is a voice — which carries the model that speaks it — plus pace, pitch, gain, direction, effects, a lexicon and a short note on how it sounds. Cast gives one to each speaker in a book, and one persona can play many speakers, in any book.", visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
   { id: "lexicons",  lane: "library", label: "Lexicons",  icon: "📚", lede: "Pronunciation dictionaries. Force \"Beauchamp\" → \"BEE-chum\", domain words → consistent phoneme-level pronunciation across a whole book. Per-persona override.", visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
   { id: "effects",   lane: "library", label: "Effects",   icon: "🎛️", lede: "Pedalboard-backed effects chain. Apply non-destructively — creates a new generation version that preserves the original. 8 types · 4 built-in presets + custom.", visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
   // (The Voice engines page left the sidebar in the parity batch, 2026-08-06 —
@@ -161,7 +161,9 @@ const HELP_SLUG_BY_VIEW = {
 // redirects. App.vue only decides which routes SHOW in the sidebar.
 const router = useRouter();
 const route = useRoute();
-const view = computed(() => route.name || "home");
+// A sub-page names the rail item it belongs to (`meta.nav` — the persona
+// editor belongs to Personas), so the rail, the title and help follow it.
+const view = computed(() => route.meta?.nav || route.name || "home");
 function goView(id) { if (id && route.name !== id) router.push(`/${id}`); }
 
 const health = ref(null);
@@ -247,6 +249,9 @@ const stateLedeOverride = computed(() => null);
 // ledes stay plain strings in VIEWS; state overrides may carry a link.
 const effectiveLede = computed(() => {
   if (stateLedeOverride.value) return stateLedeOverride.value;
+  // A sub-page carries its own header (the persona editor); the rail item's
+  // lede describes the list, not the page.
+  if (route.meta?.nav) return null;
   const s = currentView.value?.lede || "";
   return s ? { text: s } : null;
 });

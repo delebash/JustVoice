@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from ..app_state import get_state
 from ..database import get_db
-from ..database.models import Generation, Lexicon, MCPBinding, Project, Speaker
+from ..database.models import Block, Generation, Lexicon, MCPBinding, Project, Speaker
 from ..errors import bad_request, conflict, not_found
 from ..models import (
     CreatePersonaRequest,
@@ -83,6 +83,10 @@ class PersonaUsageDetailResponse(BaseModel):
     persona_id: str
     speakers: list[PersonaSpeakerUsage]
     total_lines: int
+    # Of those lines, how many carry a written direction of their own — what
+    # the editor warns about when a new voice's model can't perform it
+    # ("18 carry a written direction — Chatterbox Turbo won't perform them").
+    directed_lines: int = 0
 
 
 @router.get(
@@ -98,11 +102,34 @@ async def persona_usage_detail(
         raise not_found(f"persona {persona_id}")
     speakers = _usage(db, persona_id).get(persona_id, [])
     speakers.sort(key=lambda u: -u.lines)
+    directed = 0
+    if speakers:
+        directed = (
+            db.query(Block)
+            .filter(Block.speaker_id.in_([u.speaker_id for u in speakers]))
+            .filter(Block.direction.isnot(None), Block.direction != "")
+            .count()
+        )
     return PersonaUsageDetailResponse(
         persona_id=persona_id,
         speakers=speakers,
         total_lines=sum(u.lines for u in speakers),
+        directed_lines=directed,
     )
+
+
+class StockLineResponse(BaseModel):
+    language: str | None
+    text: str
+
+
+@router.get("/v1/personas/stock-line", response_model=StockLineResponse)
+async def persona_stock_line(language: str | None = None) -> StockLineResponse:
+    """The persona editor's "↻ Stock line" — one sentence in the persona's
+    language where one is written, else English (persona_render.STOCK_LINES)."""
+    from ..persona_render import stock_line
+
+    return StockLineResponse(language=language, text=stock_line(language))
 
 
 def _persona_name(name: str | None, *, besides: str | None = None) -> str:

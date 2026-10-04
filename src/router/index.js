@@ -25,6 +25,15 @@ const routes = [
   // ── Library ───────────────────────────────────────────────────────
   { path: "/voices", name: "voices", component: () => import("../views/VoicesView.vue") },
   { path: "/personas", name: "personas", component: () => import("../views/PersonasView.vue") },
+  // One persona on its own page (2026-10-03, the persona redesign — mock
+  // `workbench`). `/personas/new` opens a blank one. `meta.nav` keeps the
+  // rail on Personas.
+  {
+    path: "/personas/:id",
+    name: "persona",
+    component: () => import("../views/PersonaEditorView.vue"),
+    meta: { nav: "personas" },
+  },
   { path: "/lexicons", name: "lexicons", component: () => import("../views/LexiconsView.vue") },
   { path: "/effects", name: "effects", component: () => import("../views/EffectsView.vue") },
   // The Voice engines page died in the parity batch (2026-08-06) — engines live

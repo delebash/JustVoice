@@ -2,6 +2,20 @@
 
 ## v0.1.0
 
+- **Each persona has its own page (2026-10-03).** A row on the Personas list,
+  **＋ New persona** and Cast's **Edit their persona →** open *Personas ›
+  June*: pick the kind of voice (Built-in · Clone from audio · Design from
+  words · Blend), filter the voices by how they **can be directed** (written
+  direction, tags, or sliders only), by model and by gender, and see each one
+  as *Sohee · Female · Korean · Qwen3-TTS CustomVoice*. **▶ Listen** plays your
+  unsaved changes through the same path a chapter renders; **⚖️ Compare
+  settings…** hears one line three ways. Pace, pitch, gain and pauses are on
+  every persona; written direction and emotion, or Chatterbox Turbo's emotion
+  and register tags, show only where the voice's model takes them; the
+  **Sampling** card shows exactly the model's own settings and seed, kept per
+  model. **Spoken delivery** is now called **Standing delivery**. The dialog
+  editor on the Personas list is gone
+  ([Personas → The persona's page](personas.md#the-personas-page))
 - **A persona sounds the same everywhere, in its own language (2026-10-03).**
   A line's ↻ re-render, a take and the game voice-line export now send the
   persona's spoken delivery and the line's own direction, as a chapter render

@@ -3,44 +3,31 @@
   PersonasView — the library of finished voices (2026-09-29: speakers and
   personas are two things).
 
-  A persona is a finished spoken voice: a voice and its engine, plus speed,
-  pitch, gain, spoken direction, effects and lexicon, and a short note on how
-  it sounds. The PEOPLE in a book are its speakers (Studio · Discover finds
+  A persona is a finished spoken voice: a voice (which carries the model that
+  speaks it), plus pace, pitch, gain, direction, effects and lexicon, and a
+  short note on how it sounds. The PEOPLE in a book are its speakers (Studio · Discover finds
   them, Cast gives each one a persona); one persona can play many speakers.
   So a persona has no "Also called" and no character sheet — those moved to
   the speaker — and personas have no name rule: "Used by" (speaker — book)
   tells two of the same name apart.
 
-  Layout:
-    Left:  library list with filter chips (All / Used / Unused / By project),
-           who each persona plays, and ticks + "Delete N selected".
-    Right: rich editor for the selected persona. Cast's "Edit their persona →"
-           opens one here (`?open=<id>`).
-
-  Persona vs Voice: Voice is the TTS artifact (engine preset or cloned WAV).
-  Persona USES a voice and adds a spoken-delivery instruction, delivery
-  overrides, effects and a lexicon override. No Profile layer in between.
-
-  "How they sound" holds everything that reaches the synth (2026-08-15). The
-  note on how it sounds is read by Compose, Rewrite and Smart-assign — never
-  heard.
+  The library list: filter chips (All / Used / Unused / By project), who each
+  persona plays, and ticks + "Delete N selected". A row, Edit and ＋ New
+  persona open the persona's own page (PersonaEditorView, /personas/:id —
+  the persona redesign, 2026-10-03); the dialog editor that lived here went
+  with it.
 -->
 <script setup>
-import { computed, onMounted, ref, watch, nextTick } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { computed, onActivated, onMounted, ref } from "vue";
+import { useRouter } from "vue-router";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "@delebash/llm-ui";
 import { confirmDialog } from "@delebash/llm-ui";
-import { UiButton, UiCheckbox, UiInput, UiTextarea, UiTag, UiSelect, AppModal, UiTable } from "@delebash/llm-ui";
+import { UiButton, UiCheckbox, UiInput, UiSelect, UiTable } from "@delebash/llm-ui";
 import { EmptyState } from "@delebash/llm-ui";
-import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
 import { usePersonasStore } from "../stores/personas.js";
 import { useVoicesStore } from "../stores/voices.js";
-import { useEnginesStore } from "../stores/engines.js";
-import { useLexiconsStore } from "../stores/lexicons.js";
 import { useProjectsStore } from "../stores/projects.js";
-import { useActiveProject } from "../stores/activeProject.js";
-import { openProjectInStudio } from "../services/openProject.js";
 
 // Kit grid in the JustVoice look (`jv-table-look`); sorting comes with it,
 // which matters here — "which project uses this persona most" was unanswerable
@@ -56,45 +43,30 @@ const PERSONA_COLUMNS = [
 ];
 const api = useApi();
 
-// All five lists come from shared stores (single source of truth).
-// Mutations here call loadAll() which reload()s the stores, so every
-// other view (Chapters, Studio, Generate, …) reflects the change.
+// The lists come from shared stores (single source of truth). Mutations
+// here call loadAll() which reload()s the stores, so every other view
+// (Chapters, Studio, Generate, …) reflects the change.
 const personasStore = usePersonasStore();
 const voicesStore = useVoicesStore();
-const enginesStore = useEnginesStore();
-const lexiconsStore = useLexiconsStore();
 const projectsStore = useProjectsStore();
 const personas = computed(() => personasStore.items);
 const voices = computed(() => voicesStore.items);
-const engines = computed(() => enginesStore.items);
-const lexicons = computed(() => lexiconsStore.items);
 const projects = computed(() => projectsStore.items);
 // {persona_id: [{project_id, project_name, speaker_id, speaker_name, lines}]} —
 // the speakers each persona plays. Per-view, not shared.
 const usage = ref({});
-const selectedId = ref(null);
-// `creating` opens the editor dialog for a brand-new (unsaved) persona —
-// one surface, not a prompt-then-dialog (G-PERSONA-1). Save commits it.
-const creating = ref(false);
-const nameInput = ref(null);  // autofocus target on open
 const loading = ref(false);
+
+// One persona is edited on its own page; `new` opens a blank one.
+const router = useRouter();
+function openPersona(id) {
+  router.push({ name: "persona", params: { id } });
+}
 
 const FILTERS = ["all", "used", "unused", "by-project"];
 const filter = ref("all");
 const filterProjectId = ref("");
 const search = ref("");
-
-// Editable buffer for the selected persona — committed via "Save".
-const draft = ref(null);
-const dirty = ref(false);
-// Declared BEFORE the immediate selectedPersona watch below — it calls
-// loadUsageDetail on first run, which writes these (TDZ crash if later).
-const usageDetail = ref(null);
-const usageDetailBusy = ref(false);
-
-const selectedPersona = computed(() =>
-  personas.value.find((p) => p.id === selectedId.value) ?? null,
-);
 
 const filteredPersonas = computed(() => {
   let list = personas.value;
@@ -113,10 +85,6 @@ const filteredPersonas = computed(() => {
 
 function usageCount(personaId) {
   return (usage.value[personaId] || []).length;
-}
-// The books a persona is in, by name, each once.
-function booksOf(personaId) {
-  return [...new Set((usage.value[personaId] || []).map((u) => u.project_name).filter(Boolean))];
 }
 // "Used by", as the mock: "June — Stillwater", one speaker name across books
 // as "Narrator — Stillwater · Emberfall".
@@ -179,52 +147,15 @@ async function removePicked() {
   });
 }
 
-// Live verdict for the draft's voice — does the spoken-delivery text
-// actually reach the TTS as an instruct/style prompt at render time?
-//
-// The engine's own flag is not the whole answer, because it is a union
-// across that engine's checkpoints and a CLONE renders on a different one.
-// Qwen3 is the only engine declaring instruct_field, and it clones on its
-// Base checkpoint, which drops instruct entirely — upstream's
-// `generate_voice_clone` has no such parameter, so there is nowhere for the
-// text to go (capability_details' "qwen3-base" row says
-// supports_instruct_freeform: False, and docs/voices.md says it in prose).
-// Until 2026-08-22 this said "✓ Qwen3-TTS takes direction" for a cloned
-// voice, which was simply false. If a future instruct-capable engine keeps
-// direction through its clone path, this needs to become per-engine rather
-// than per-source.
-const instructStatus = computed(() => {
-  if (!draft.value) return null;
-  const voice = voices.value.find((v) => v.id === draft.value.voice_id);
-  if (!voice) {
-    return { ok: false, text: "No voice cast yet — whether this reaches the TTS depends on the engine you pick." };
-  }
-  const eng = engines.value.find((e) => e.id === voice.engine);
-  const name = eng?.name || voice.engine;
-  const supports = (eng?.capabilities || []).includes("instruct_field");
-  if (!supports) {
-    return { ok: false, text: `✗ ${name} doesn't take direction — it ignores this text entirely.` };
-  }
-  if (voice.source === "cloned" || voice.source === "imported") {
-    return {
-      ok: false,
-      text: `✗ ${name} takes direction, but this voice is a clone — its identity comes from the recording and written direction is dropped.`,
-    };
-  }
-  return { ok: true, text: `✓ ${name} takes direction — it performs this text when rendering.` };
-});
-
-// Reload everything: the five shared stores + the per-view usage map.
-// Called on mount and after every persona mutation so the change
-// propagates to all consumers.
+// Reload everything: the shared stores + the per-view usage map. Called on
+// mount and after every persona mutation so the change propagates to all
+// consumers.
 async function loadAll() {
   loading.value = true;
   try {
-    const [, , , , , uRes] = await Promise.all([
+    const [, , , uRes] = await Promise.all([
       personasStore.reload(),
       voicesStore.reload(),
-      enginesStore.reload(),
-      lexiconsStore.reload(),
       projectsStore.reload(),
       api.safeRequest("/v1/personas/usage", { usage: {} }),
     ]);
@@ -233,119 +164,6 @@ async function loadAll() {
     // card drills into the editor (grid pattern, user decision 2026-06-12).
   } finally {
     loading.value = false;
-  }
-}
-
-function bufferFor(persona) {
-  if (!persona) return null;
-  return {
-    id: persona.id,
-    name: persona.name ?? "",
-    voice_id: persona.voice_id ?? "",
-    language: persona.language ?? "en",
-    avatar_path: persona.avatar_path ?? "",
-    voice_instruct: persona.voice_instruct ?? "",
-    note: persona.note ?? "",
-    lexicon_id: persona.lexicon_id ?? "",
-    default_delivery: { ...(persona.default_delivery ?? {}) },
-    effects_chain: [...(persona.effects_chain ?? [])],
-    // Legacy fields kept on disk; not surfaced in the UI now that Rewrite
-    // is an explicit Generate-tab button. Round-tripped on save.
-    llm_rewrite_enabled: !!persona.llm_rewrite_enabled,
-    llm_model: persona.llm_model ?? "qwen-1.7b-local",
-  };
-}
-
-watch(selectedPersona, (p) => {
-  draft.value = bufferFor(p);
-  dirty.value = false;
-  loadUsageDetail(p?.id || null);
-}, { immediate: true });
-
-function markDirty() { dirty.value = true; }
-
-function blankDraft() {
-  return {
-    id: null, name: "", voice_id: "", language: "en", avatar_path: "",
-    voice_instruct: "", note: "", lexicon_id: "",
-    default_delivery: {}, effects_chain: [],
-    llm_rewrite_enabled: false, llm_model: "qwen-1.7b-local",
-  };
-}
-
-// Open the editor directly on a blank draft (no prompt, no premature
-// POST) and focus the name field. Save commits the create (G-PERSONA-1).
-function createBlank() {
-  draft.value = blankDraft();
-  dirty.value = false;
-  creating.value = true;
-  usageDetail.value = null;  // a new persona has no usage to show
-  nextTick(() => nameInput.value?.focus());
-}
-
-// Single close path for the editor dialog — used by Save (on success),
-// Cancel, the ✕, and backdrop click. Resets create state + draft.
-function closeEditor() {
-  creating.value = false;
-  selectedId.value = null;
-  draft.value = null;
-  // Opened from Cast (?open=<id>): drop it, so the same persona opens again.
-  if (route.query.open) router.replace({ query: {} });
-}
-
-// Cast's "Edit their persona →" opens one persona here (2026-09-29).
-const route = useRoute();
-const router = useRouter();
-function openFromRoute() {
-  const id = route.query.open;
-  if (id && personas.value.some((p) => p.id === id)) selectedId.value = id;
-}
-watch(() => route.query.open, openFromRoute);
-
-// "Open Cast →" on a speaker this persona plays — that book's Cast step.
-const activeProject = useActiveProject();
-function openCast(projectId) {
-  const project = projects.value.find((pr) => pr.id === projectId);
-  if (!project) return;
-  closeEditor();
-  openProjectInStudio(activeProject, project, "cast");
-}
-
-async function savePersona() {
-  if (!draft.value) return;
-  // Every field is sent; an emptied one goes as null, which CLEARS it
-  // (PATCH, 2026-10-03 — the PUT this replaced could not clear a field).
-  const body = {
-    name: draft.value.name,
-    voice_id: draft.value.voice_id || null,
-    language: draft.value.language || null,
-    avatar_path: draft.value.avatar_path || null,
-    voice_instruct: draft.value.voice_instruct || null,
-    note: draft.value.note || null,
-    default_delivery: draft.value.default_delivery,
-    effects_chain: draft.value.effects_chain || [],
-    lexicon_id: draft.value.lexicon_id || null,
-  };
-  const isNew = creating.value;
-  try {
-    if (isNew) {
-      await api.request("/v1/personas", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-    } else {
-      await api.request(`/v1/personas/${draft.value.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-    }
-    await loadAll();
-    closeEditor();  // dialog Save closes on success (G-PERSONA-2)
-    pushToast({ kind: "success", title: isNew ? "Persona created" : "Persona saved" });
-  } catch (e) {
-    pushToast({ kind: "error", title: "Save failed", description: String(e?.message ?? e) });
   }
 }
 
@@ -366,7 +184,6 @@ async function removePersona(p) {
   const personaName = snapshot.name || "Persona";
   try {
     await api.request(`/v1/personas/${snapshot.id}`, { method: "DELETE" });
-    if (selectedId.value === snapshot.id) closeEditor();
     await loadAll();
     pushToast({
       kind: "success",
@@ -404,73 +221,6 @@ async function removePersona(p) {
   }
 }
 
-const effectsEditorOpen = ref(false);
-
-function openEffectsEditor() {
-  effectsEditorOpen.value = true;
-}
-
-async function loadUsageDetail(personaId) {
-  if (!personaId) {
-    usageDetail.value = null;
-    return;
-  }
-  usageDetailBusy.value = true;
-  try {
-    const r = await api.safeRequest(`/v1/personas/${personaId}/usage-detail`, null);
-    usageDetail.value = r;
-  } finally {
-    usageDetailBusy.value = false;
-  }
-}
-
-function onEffectsSaved(newChain) {
-  draft.value.effects_chain = newChain;
-  effectsEditorOpen.value = false;
-  markDirty();
-}
-
-function openDeliveryHint() {
-  pushToast({
-    kind: "info",
-    title: "Edit delivery in Generate",
-    description: "Tune Speed / Pitch / Pause-after on the Generate tab, then save as the persona default.",
-  });
-}
-
-// The shared values only (pace, pitch, gain, pauses) — a model's own
-// settings live under `models` and get their own editor in the persona
-// redesign's P4.
-const deliveryChips = computed(() => {
-  const d = draft.value?.default_delivery || {};
-  return Object.fromEntries(
-    ["speed", "pitch", "gain_db", "pause_before", "pause_after"]
-      .filter((k) => d[k] !== null && d[k] !== undefined)
-      .map((k) => [k, d[k]]),
-  );
-});
-
-function deliveryChipLabel(key) {
-  return ({
-    speed: "Speed",
-    pitch: "Pitch",
-    pause_before: "Pause before",
-    pause_after: "Pause after",
-    gain_db: "Gain",
-    temperature: "Temperature",
-    emotion: "Emotion",
-    instruct: "Direction",
-  })[key] || key;
-}
-function deliveryChipValue(key, value) {
-  if (value == null) return "—";
-  if (key === "speed") return `${Number(value).toFixed(2)}×`;
-  if (key === "pitch") return `${value > 0 ? "+" : ""}${value} st`;
-  if (key === "pause_before" || key === "pause_after") return `${value} ms`;
-  if (key === "gain_db") return `${value > 0 ? "+" : ""}${value} dB`;
-  return String(value);
-}
-
 // Same avatar palette/hash as the Studio cast cards — one name, one colour,
 // everywhere.
 const AVATAR_COLORS = ["#3a7d63", "#7c5cbf", "#b3552e", "#2e7d8a", "#a8763e", "#947b2f", "#c98aa7", "#5b7a99", "#b04a3e"];
@@ -480,271 +230,88 @@ function colorFor(name) {
   return AVATAR_COLORS[h % AVATAR_COLORS.length];
 }
 
-onMounted(async () => {
-  await loadAll();
-  openFromRoute();
-});
+onMounted(loadAll);
+// Back from a persona's page (views are KeepAlive-cached): what it saved,
+// renamed or merged shows at once.
+let mounted = false;
+onActivated(() => { if (mounted) loadAll(); mounted = true; });
 </script>
 
 <template>
   <div class="personas">
-    <!-- ── Card grid (nothing selected) ─────────────────────────────── -->
-    <template v-if="!draft">
-      <div class="jv-lib-toolbar">
-        <UiInput v-model="search" placeholder="Search personas…" size="small" width="name" />
-        <!-- Library-mode filter chips: All / Used / Unused / By project.
-             Cross-project Personas are the model — these help find them. -->
-        <button
-          v-for="f in FILTERS"
-          :key="f"
-          type="button"
-          class="jv-chip-card personas__chip"
-          :class="{ 'personas__chip--active': filter === f }"
-          @click="filter = f"
-        >{{ f === 'by-project' ? 'By project' : (f.charAt(0).toUpperCase() + f.slice(1)) }}</button>
-        <UiSelect
-          v-if="filter === 'by-project'"
-          width="name"
-          v-model="filterProjectId"
-          placeholder="— pick a project —"
-          :options="projects" option-label="name" option-value="id"
-        />
-        <span class="jv-spacer" />
-        <UiButton intent="primary" size="small" label="+ New persona" @click="createBlank" />
-      </div>
-
-      <div v-if="loading" class="jv-muted personas__empty">Loading…</div>
-      <EmptyState
-        v-else-if="!filteredPersonas.length && !personas.length"
-        icon="Sparkle"
-        title="No personas yet"
-        message="A persona is a finished spoken voice — a voice and its engine, plus speed, pitch, gain, direction and effects. Cast gives one to each speaker in a book, and one persona can play many."
-        action-label="+ Create your first persona"
-        @action="createBlank"
+    <div class="jv-lib-toolbar">
+      <UiInput v-model="search" placeholder="Search personas…" size="small" width="name" />
+      <!-- Library-mode filter chips: All / Used / Unused / By project.
+           Cross-project Personas are the model — these help find them. -->
+      <button
+        v-for="f in FILTERS"
+        :key="f"
+        type="button"
+        class="jv-chip-card personas__chip"
+        :class="{ 'personas__chip--active': filter === f }"
+        @click="filter = f"
+      >{{ f === 'by-project' ? 'By project' : (f.charAt(0).toUpperCase() + f.slice(1)) }}</button>
+      <UiSelect
+        v-if="filter === 'by-project'"
+        width="name"
+        v-model="filterProjectId"
+        placeholder="— pick a project —"
+        :options="projects" option-label="name" option-value="id"
       />
-      <!-- One empty state, owned by the grid; `row-hover` carries the pointer
-           cursor and the row tint that two scoped rules used to do by hand. -->
-      <UiTable v-else class="jv-table-look" :data="filteredPersonas" :columns="PERSONA_COLUMNS"
-        data-key="id" row-hover @row-click="({ data }) => (selectedId = data.id)">
-        <template #head-pick>
-          <UiCheckbox :model-value="allPicked" :disabled="!filteredPersonas.length || bulkDeleting"
-            :title="allPicked ? 'Untick every persona shown' : 'Tick every persona shown'" @update:model-value="pickAll" />
-        </template>
-        <template #pick="{ row }">
-          <span @click.stop>
-            <UiCheckbox :model-value="!!picked[row.id]" :disabled="bulkDeleting"
-              @update:model-value="(v) => (picked = { ...picked, [row.id]: v })" />
-          </span>
-        </template>
-        <template #name="{ row }">
-          <span class="personas__card-avatar personas__avatar-sm" :style="{ background: colorFor(row.name) }">{{ (row.name || "?").charAt(0).toUpperCase() }}</span>
-          <strong>{{ row.name }}</strong>
-          <div v-if="row.note" class="jv-muted personas__row-sub">{{ row.note.slice(0, 70) }}{{ row.note.length > 70 ? "…" : "" }}</div>
-        </template>
-        <template #voice="{ row }">
-          <span class="jv-muted">{{ voices.find((v) => v.id === row.voice_id)?.name || (row.voice_id || "no voice yet") }}</span>
-        </template>
-        <template #used="{ row }">
-          <span v-if="usageCount(row.id)" class="jv-muted personas__books">{{ usedBy(row.id) }}</span>
-          <span v-else class="jv-muted" title="No speaker in any book has this persona">— not used yet —</span>
-        </template>
-        <template #actions="{ row }">
-          <div class="jv-table__actions" @click.stop>
-            <UiButton intent="ghost" size="small" label="Edit" @click="selectedId = row.id" />
-            <UiButton intent="danger-outline" size="small" label="Delete" @click="removePersona(row)" />
-          </div>
-        </template>
-        <template #empty>No personas match this filter.</template>
-      </UiTable>
-      <div v-if="!loading && filteredPersonas.length" class="jv-inline-row personas__bulk">
-        <UiButton intent="danger-outline" size="small" :disabled="!pickedPersonas.length || bulkDeleting"
-          :loading="bulkDeleting"
-          :label="pickedPersonas.length ? `Delete ${pickedPersonas.length} selected` : 'Delete selected'"
-          @click="removePicked" />
-        <span class="jv-hint">{{ pickedPersonas.length ? `${pickedPersonas.length} ticked` : "Tick personas to delete several at once." }}</span>
-      </div>
-    </template>
+      <span class="jv-spacer" />
+      <UiButton intent="primary" size="small" label="+ New persona" @click="openPersona('new')" />
+    </div>
 
-    <!-- ── Editor dialog (consolidated pattern 2026-06-12) ───────────── -->
-    <AppModal
-      v-else
-      :eyebrow="creating ? 'New persona' : 'Persona'"
-      :title="draft.name || '(unnamed)'"
-      :max-width="'820px'"
-      dismissable
-      @close="closeEditor"
-    >
-      <template #header-extra>
-        <UiTag intent="accent2" v-if="dirty">Unsaved changes</UiTag>
-        <UiTag v-if="selectedPersona?.imported_from" intent="ghost">
-          imported from {{ selectedPersona.imported_from }}
-        </UiTag>
-        <UiTag v-if="usageCount(draft.id) > 0" intent="success">
-          Used in {{ booksOf(draft.id).length }} project{{ booksOf(draft.id).length === 1 ? '' : 's' }}
-        </UiTag>
-      </template>
-        <div class="personas__grid">
-          <label class="personas__field">
-            <span>Name</span>
-            <UiInput ref="nameInput" width="name" v-model="draft.name" @input="markDirty" />
-          </label>
-
-          <label class="personas__field">
-            <span>Language</span>
-            <UiInput width="token" v-model="draft.language" @input="markDirty" placeholder="en" />
-          </label>
-
-          <!-- Option A (2026-09-29): who a PERSON is lives on the speaker; the
-               persona keeps a short note on how it sounds. Compose and Rewrite
-               on Generate have no book, so they read this; so does Smart-assign
-               when it matches speakers to personas. -->
-          <label class="personas__field personas__field--wide">
-            <span>Note on how it sounds</span>
-            <UiTextarea
-              class="personas__prose"
-              v-model="draft.note"
-              :rows="2"
-              placeholder="Warm and unhurried, a little gravel at the bottom of the range."
-              @input="markDirty"
-            />
-            <p class="jv-muted personas__hint">
-              Read by Compose and Rewrite on the Generate page and by Smart-assign — it never
-              changes the audio.
-            </p>
-          </label>
-
-          <label class="personas__field">
-            <span>Avatar path</span>
-            <UiInput width="path" v-model="draft.avatar_path" @input="markDirty" placeholder="(optional)" />
-          </label>
-
-          <!-- ── How they sound: everything below reaches the synth ────── -->
-          <h4 class="jv-section__title personas__section">How they sound</h4>
-
-          <label class="personas__field">
-            <span>Voice</span>
-            <UiSelect width="name" v-model="draft.voice_id" @update:model-value="markDirty"
-              :options="[{ value: '', label: '— no voice yet (cast later) —' }, ...voices.map((v) => ({ value: v.id, label: `${v.name} (${v.engine})` }))]" />
-          </label>
-
-          <!-- Not an override (2026-09-30): the book's lexicon is read first and
-               wins on the same word; this one adds on this persona's lines. -->
-          <label class="personas__field">
-            <span>Lexicon</span>
-            <UiSelect width="name" v-model="draft.lexicon_id" @update:model-value="markDirty"
-              :options="[{ value: '', label: 'None' }, ...lexicons.map((lx) => ({ value: lx.id, label: lx.name }))]" />
-            <p class="jv-muted personas__hint">
-              Read on this persona's lines, after the book's lexicon. The book's wins on the same word.
-            </p>
-          </label>
-
-          <label class="personas__field personas__field--wide">
-            <!-- Said "Qwen3, LuxTTS" until 2026-08-17. LuxTTS reads no
-                 instruct field — its adapter never mentions one and its
-                 manifest declares instruct_field: False — so the label was
-                 promising delivery control the engine cannot perform, while
-                 the live verdict directly below it said the opposite. -->
-            <span>Spoken delivery (Qwen3 is the only engine that takes instructions)</span>
-            <UiTextarea
-              class="personas__textarea"
-              v-model="draft.voice_instruct"
-              placeholder="Clipped, world-weary noir delivery. Dry wit. Boston accent in stressful moments. Never overshares."
-              @input="markDirty"
-            />
-            <p class="jv-muted personas__hint">
-              How the line is performed. Passed to instruct-capable engines as
-              the <code>instruct</code> field at render time, joined with this
-              line's own direction; other engines ignore it.
-              <strong>Never an LLM rewrite of the
-              manuscript</strong> — the Rewrite button is the explicit tool
-              for that.
-            </p>
-            <!-- Live verdict for THIS persona's engine (user ask: "how do
-                 I know what TTS takes input from these fields"). -->
-            <p v-if="instructStatus" class="personas__hint" :class="instructStatus.ok ? 'personas__instruct-ok' : 'jv-muted'">
-              {{ instructStatus.text }}
-            </p>
-          </label>
-
-          <div class="personas__field personas__field--wide">
-            <span>Default delivery overlay (Tier-2)</span>
-            <div class="personas__chips">
-              <span v-if="!Object.keys(deliveryChips).length" class="jv-muted">
-                No defaults set — uses the engine + voice defaults at render time.
-              </span>
-              <span
-                v-for="(value, key) in deliveryChips"
-                :key="key"
-                class="jv-chip-card personas__chip-display"
-              >
-                {{ deliveryChipLabel(key) }}: <strong>{{ deliveryChipValue(key, value) }}</strong>
-              </span>
-              <UiButton intent="ghost" size="small" label="+ Edit" @click="openDeliveryHint" />
-            </div>
-          </div>
-
-          <div class="personas__field personas__field--wide">
-            <span>Effects chain</span>
-            <div class="personas__chips">
-              <span v-if="!(draft.effects_chain || []).length" class="jv-muted">
-                No effects. Reverb, EQ, compressor, pitch shift, etc. apply after TTS — Slice 7 builds the editor.
-              </span>
-              <span
-                v-for="(ef, i) in draft.effects_chain"
-                :key="i"
-                class="jv-chip-card personas__chip-display"
-              >
-                {{ ef.type || '?' }}
-              </span>
-              <UiButton intent="ghost" size="small" label="+ Edit chain" @click="openEffectsEditor" />
-            </div>
-          </div>
-
-        </div>
-
-        <!-- Used by — the speakers this persona plays (mock: "🎭 June —
-             Stillwater · 61 lines", then Open Cast →). -->
-        <template v-if="usageDetail?.speakers?.length">
-          <div class="jv-divider" />
-          <section class="personas__used-by">
-            <h4 class="jv-section__title">
-              Used by
-              <UiTag intent="ghost">{{ usageDetail.total_lines }} line{{ usageDetail.total_lines === 1 ? "" : "s" }}</UiTag>
-            </h4>
-            <div class="personas__chips">
-              <UiTag v-for="u in usageDetail.speakers" :key="u.speaker_id" intent="ghost">
-                🎭 {{ u.speaker_name }} — {{ u.project_name }} · {{ u.lines }} line{{ u.lines === 1 ? "" : "s" }}
-              </UiTag>
-            </div>
-            <div class="personas__chips personas__used-by-open">
-              <UiButton v-for="b in [...new Map(usageDetail.speakers.map((u) => [u.project_id, u.project_name]))]"
-                :key="b[0]" intent="secondary" size="small"
-                :label="new Set(usageDetail.speakers.map((u) => u.project_id)).size > 1 ? `Open ${b[1]} Cast →` : 'Open Cast →'"
-                @click="openCast(b[0])" />
-            </div>
-          </section>
-        </template>
-
-
-      <!-- Dialog footer = Save + Cancel (G-PERSONA-4). Delete lives on
-           each list row, not here, so it's never a neighbour to Save. -->
-      <template #footer>
-        <span class="jv-spacer" />
-        <UiButton intent="secondary" label="Cancel" @click="closeEditor" />
-        <UiButton intent="primary" label="Save" :disabled="!dirty || !draft.name.trim()"
-          :title="draft.name.trim() ? '' : 'A persona needs a name'" @click="savePersona" />
-      </template>
-    </AppModal>
-
-    <!-- Effects chain editor — opens from the Effects chain row above. -->
-    <EffectsChainEditorModal
-      v-if="draft"
-      :open="effectsEditorOpen"
-      v-model="draft.effects_chain"
-      :context-label="draft.name || 'Persona'"
-      @save="onEffectsSaved"
-      @cancel="effectsEditorOpen = false"
+    <div v-if="loading" class="jv-muted personas__empty">Loading…</div>
+    <EmptyState
+      v-else-if="!filteredPersonas.length && !personas.length"
+      icon="Sparkle"
+      title="No personas yet"
+      message="A persona is a finished spoken voice — a voice, which carries the model that speaks it, plus pace, pitch, gain, direction and effects. Cast gives one to each speaker in a book, and one persona can play many."
+      action-label="+ Create your first persona"
+      @action="openPersona('new')"
     />
+    <!-- One empty state, owned by the grid; `row-hover` carries the pointer
+         cursor and the row tint that two scoped rules used to do by hand. -->
+    <UiTable v-else class="jv-table-look" :data="filteredPersonas" :columns="PERSONA_COLUMNS"
+      data-key="id" row-hover @row-click="({ data }) => openPersona(data.id)">
+      <template #head-pick>
+        <UiCheckbox :model-value="allPicked" :disabled="!filteredPersonas.length || bulkDeleting"
+          :title="allPicked ? 'Untick every persona shown' : 'Tick every persona shown'" @update:model-value="pickAll" />
+      </template>
+      <template #pick="{ row }">
+        <span @click.stop>
+          <UiCheckbox :model-value="!!picked[row.id]" :disabled="bulkDeleting"
+            @update:model-value="(v) => (picked = { ...picked, [row.id]: v })" />
+        </span>
+      </template>
+      <template #name="{ row }">
+        <span class="personas__card-avatar personas__avatar-sm" :style="{ background: colorFor(row.name) }">{{ (row.name || "?").charAt(0).toUpperCase() }}</span>
+        <strong>{{ row.name }}</strong>
+        <div v-if="row.note" class="jv-muted personas__row-sub">{{ row.note.slice(0, 70) }}{{ row.note.length > 70 ? "…" : "" }}</div>
+      </template>
+      <template #voice="{ row }">
+        <span class="jv-muted">{{ voices.find((v) => v.id === row.voice_id)?.name || (row.voice_id || "no voice yet") }}</span>
+      </template>
+      <template #used="{ row }">
+        <span v-if="usageCount(row.id)" class="jv-muted personas__books">{{ usedBy(row.id) }}</span>
+        <span v-else class="jv-muted" title="No speaker in any book has this persona">— not used yet —</span>
+      </template>
+      <template #actions="{ row }">
+        <div class="jv-table__actions" @click.stop>
+          <UiButton intent="ghost" size="small" label="Edit" @click="openPersona(row.id)" />
+          <UiButton intent="danger-outline" size="small" label="Delete" @click="removePersona(row)" />
+        </div>
+      </template>
+      <template #empty>No personas match this filter.</template>
+    </UiTable>
+    <div v-if="!loading && filteredPersonas.length" class="jv-inline-row personas__bulk">
+      <UiButton intent="danger-outline" size="small" :disabled="!pickedPersonas.length || bulkDeleting"
+        :loading="bulkDeleting"
+        :label="pickedPersonas.length ? `Delete ${pickedPersonas.length} selected` : 'Delete selected'"
+        @click="removePicked" />
+      <span class="jv-hint">{{ pickedPersonas.length ? `${pickedPersonas.length} ticked` : "Tick personas to delete several at once." }}</span>
+    </div>
   </div>
 </template>
 
@@ -773,14 +340,6 @@ onMounted(async () => {
   text-align: center;
 }
 
-.personas__card {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 14px 16px;
-  cursor: pointer;
-}
-.personas__card:hover { border-color: var(--accent-line); }
 .personas__card-avatar {
   width: 36px;
   height: 36px;
@@ -792,63 +351,11 @@ onMounted(async () => {
   justify-content: center;
   flex: none;
 }
-.personas__card-main { flex: 1; min-width: 0; }
-.personas__card-row { display: flex; align-items: center; gap: 8px; }
-.personas__card-row strong { flex: 1; font-size: 14.5px; }
-.personas__card-meta { font-size: 11.5px; margin-top: 3px; }
 
 /* The row's cursor and hover tint come from UiTable's `row-hover`. */
 .personas__row-sub { font-size: 12.5px; margin-left: 36px; }
 .personas__avatar-sm { width: 26px; height: 26px; font-size: 12px; vertical-align: middle; margin-right: 8px; }
 .personas__books { display: inline-block; max-width: 48ch; }
 .personas__bulk { gap: 8px; align-items: center; margin-top: 10px; }
-
-.personas__grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px 24px;
-}
-.personas__field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.personas__field > span {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--ink-3);
-  font-weight: 600;
-}
-.personas__field--wide { grid-column: 1 / -1; }
-
-/* Section heading inside the editor grid — the sound/prose divide. */
-.personas__section {
-  grid-column: 1 / -1;
-  margin: 8px 0 0;
-  padding-top: 12px;
-  border-top: 1px solid var(--line);
-}
-
-.personas__prose { max-width: 60ch; }
-.personas__used-by { display: flex; flex-direction: column; gap: 8px; }
-.personas__used-by-open { margin-top: 2px; }
-
-.personas__textarea {
-  min-height: 100px;
-  font-family: inherit;
-  resize: vertical;
-}
-
-.personas__hint { font-size: 11.5px; margin: 0; }
-.personas__instruct-ok { color: var(--accent-ink); font-weight: 600; }
-
-.personas__chips {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-.personas__chip-display { font-size: 13px; }
 
 </style>

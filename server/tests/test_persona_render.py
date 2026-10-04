@@ -231,6 +231,30 @@ def test_listen_needs_a_voice(client):
     assert r.status_code == 400 and "Pick a voice first" in r.json()["detail"]
 
 
+def test_the_stock_line_is_in_the_asked_language_else_english(client):
+    r = client.get("/v1/personas/stock-line", params={"language": "ja"})
+    assert r.status_code == 200 and r.json()["text"] == persona_render.STOCK_LINES["ja"]
+    assert client.get("/v1/personas/stock-line", params={"language": "xx"}).json()["text"] == persona_render.STOCK_LINES["en"]
+    assert client.get("/v1/personas/stock-line").json()["text"] == persona_render.STOCK_LINES["en"]
+
+
+def test_usage_counts_the_lines_that_carry_their_own_direction(client):
+    # The editor's warning when a new voice's model can't perform written
+    # direction: "18 carry a written direction — Chatterbox Turbo won't perform them."
+    a = client.post("/v1/personas", json={"name": "June", "voice_id": "Sohee"}).json()["id"]
+    pid = client.post("/v1/projects", json={"name": "Book", "project_type": "audiobook"}).json()["id"]
+    sid = client.post(f"/v1/projects/{pid}/speakers", json={"name": "June", "persona_id": a}).json()["id"]
+    scene = client.post(f"/v1/projects/{pid}/scenes", json={"title": "One"}).json()["id"]
+    for i, direction in enumerate(["sharp", None, "", "whispered"]):
+        r = client.post(f"/v1/scenes/{scene}/blocks", json={
+            "position": i, "text": f"Line {i}.", "speaker_id": sid, "direction": direction})
+        assert r.status_code == 201, r.text
+    client.post(f"/v1/scenes/{scene}/blocks", json={"position": 9, "text": "Someone else.", "direction": "loud"})
+    r = client.get(f"/v1/personas/{a}/usage-detail")
+    assert r.status_code == 200, r.text
+    assert r.json()["total_lines"] == 4 and r.json()["directed_lines"] == 2
+
+
 # ── The book's language ───────────────────────────────────────────────────
 
 def test_a_book_keeps_its_language_and_can_clear_it(client):

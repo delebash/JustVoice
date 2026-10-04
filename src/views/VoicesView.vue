@@ -1,12 +1,14 @@
 <!-- SPDX-License-Identifier: MIT -->
 <script setup>
 import { ref, onMounted, onActivated, computed, watch, nextTick } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { useApi } from "../stores/api.js";
 import { pushToast, serverUrl as apiPath } from "@delebash/llm-ui";
 import { confirmDialog } from "@delebash/llm-ui";
 import { readPref, writePref } from "../services/prefs.js";
 import { capableRows, rowOptions, variantToLoad } from "../services/capabilities.js";
 import { voiceRowState } from "../services/voiceGrid.js";
+import { savePresetGenderOverride, voiceGender } from "../services/voiceGender.js";
 import { UiButton, UiInput, UiTextarea, UiField, UiTag, UiChip, UiSelect, UiCheckbox, UiSegmented, UiSlider, UiTable } from "@delebash/llm-ui";
 // Language CODE → the name a person reads ("en-US" → American English).
 // Kit-side, because every app in the family shows a language somewhere.
@@ -39,60 +41,13 @@ const enginesStore = useEnginesStore();
 const voices = computed(() => voicesStore.items);
 const engines = computed(() => enginesStore.items);
 
-// ── Gender auto-detect + click-cycle override (lift #85). ─────────────
-//
-// Auto-detect rules:
-//   - OpenAI voices: built-in canon (Alloy/Echo/Fable/Onyx/Nova/Shimmer + Ash/Coral/Sage/Verse/Ballad)
-//   - Kokoro voices: parse <region><gender>_<name> (af_alloy = American Female, bm_george = British Male)
-//   - Cloned / freeform: first-name dictionary; ambiguous names left unset
-const OPENAI_VOICE_GENDER = {
-  alloy:"N", echo:"M", fable:"M", onyx:"M", nova:"F", shimmer:"F",
-  ash:"M", coral:"F", sage:"N", verse:"M", ballad:"M",
-};
-const FIRST_NAME_GENDER = {
-  // Female-leaning
-  sarah:"F", emma:"F", lily:"F", maya:"F", anna:"F", mara:"F", lisa:"F", rachel:"F", chloe:"F", hannah:"F", grace:"F", sophia:"F", olivia:"F", emily:"F", isabella:"F", ava:"F", mia:"F", abigail:"F", nicole:"F", katie:"F", laura:"F",
-  // Male-leaning
-  michael:"M", james:"M", john:"M", robert:"M", david:"M", peter:"M", paul:"M", george:"M", thomas:"M", chris:"M", brian:"M", scott:"M", mark:"M", jack:"M", henry:"M", oliver:"M", tom:"M", andrew:"M", daniel:"M",
-  // Ambiguous — deliberately omitted: alex, jamie, sam, riley, charlie, taylor, jordan, robin, casey
-};
-function autoDetectGender(v) {
-  if (v.gender_user_override) return v.gender_user_override;
-  if (v.source === "preset") {
-    const o = loadPresetGenderOverrides()[v.id];
-    if (o) return o;
-  }
-  if (v.gender) return v.gender;
-  if (v.engine === "openai" || v.engine?.startsWith("openai")) {
-    const m = OPENAI_VOICE_GENDER[v.name?.toLowerCase()];
-    if (m) return m;
-  }
-  if (v.engine === "kokoro") {
-    // af_alloy → American Female; bm_george → British Male. The ID
-    // carries the convention — the display name ('Alloy') doesn't.
-    const m = /^[a-z]([fm])_/.exec((v.id || v.name || "").toLowerCase());
-    if (m) return m[1] === "f" ? "F" : "M";
-  }
-  // Cloned / freeform voices — match leading first-name token (sarah.wav, michael.wav).
-  const first = v.name?.toLowerCase()?.split(/[\s._-]/)[0];
-  if (first && FIRST_NAME_GENDER[first]) return FIRST_NAME_GENDER[first];
-  return "?";
-}
-
+// ── Gender: the shared service (services/voiceGender.js — one answer for
+// every screen, 2026-10-03) + this page's click-cycle override (lift #85).
 const GENDER_CYCLE = ["?", "F", "M", "N", ""];
 
-// Preset voices ship with the engine — no stored record to PATCH, so
-// their overrides persist in the server-backed renderer prefs. Stored
+// Preset voices ship with the engine — no stored record to PATCH, so their
+// overrides persist in the renderer prefs (the service's save door). Stored
 // voices persist via PATCH /v1/voices/{id}.
-function loadPresetGenderOverrides() {
-  const m = readPref("presetGenderOverrides", {});
-  return m && typeof m === "object" ? m : {};
-}
-function savePresetGenderOverride(id, gender) {
-  const map = { ...loadPresetGenderOverrides() };
-  if (gender) map[id] = gender; else delete map[id];
-  writePref("presetGenderOverrides", map);
-}
 
 // ── LLM gender guess (F1 Phase 3, ruling 2: EXPLICIT button, never auto) ──
 // Sends only the voices the dictionary left at "?" to the voice_gender
@@ -100,7 +55,7 @@ function savePresetGenderOverride(id, gender) {
 // (pref override for presets, PATCH for stored voices).
 const genderGuessBusy = ref(false);
 async function guessUnknownGenders() {
-  const unknown = voices.value.filter((v) => autoDetectGender(v) === "?").slice(0, 60);
+  const unknown = voices.value.filter((v) => voiceGender(v) === "?").slice(0, 60);
   if (!unknown.length) {
     pushToast({ message: "Nothing to guess — every voice already has a gender.", duration: 3500 });
     return;
@@ -155,7 +110,7 @@ async function guessUnknownGenders() {
 }
 
 async function cycleGender(v) {
-  const cur = autoDetectGender(v);
+  const cur = voiceGender(v);
   const idx = GENDER_CYCLE.indexOf(cur);
   const next = GENDER_CYCLE[(idx + 1) % GENDER_CYCLE.length];
   v.gender_user_override = next || null;
@@ -299,7 +254,7 @@ const voiceRows = computed(() =>
   filteredVoices.value.map((v) => ({
     ...v,
     _lang: languageName(v.language) || v.language || "",
-    _gender: autoDetectGender(v) || "",
+    _gender: voiceGender(v) || "",
   })),
 );
 
@@ -776,6 +731,22 @@ function setAcquireTab(id) {
   selectedRowId.value = row?.rowId || "";
   selectedEngine.value = row?.engine.id || defaultEngine.value;
 }
+// A door into one tab — the persona editor's 🔀 Blend opens `#voices?tab=blended`
+// (2026-10-03). The query is consumed so a later visit lands on the library.
+const route = useRoute();
+const router = useRouter();
+function consumeTabQuery() {
+  const tab = route.query.tab;
+  if (tab && PAGE_TABS.some((t) => t.id === tab)) {
+    setAcquireTab(String(tab));
+    router.replace({ query: {} });
+  }
+}
+// After setup (onMounted), never during it: setAcquireTab reads state declared
+// further down. The watch covers the kept-alive view being opened again.
+watch(() => route.query.tab, consumeTabQuery);
+onMounted(consumeTabQuery);
+
 // The rows arrive from the server, so a tab can be open before there is
 // anything to pick. Seed the moment they land.
 watch(activeCapableRows, (rows) => {
@@ -1345,14 +1316,10 @@ const blendGenderOptions = computed(() => {
   ];
 });
 
-/** The gender word behind the grid's one-letter chip, so the filter and
+/** The gender key behind the grid's one-letter chip, so the filter and
  *  the chip can never disagree about what a voice is. */
 function voiceGenderWord(v) {
-  const g = (autoDetectGender(v) || "").toLowerCase();
-  if (g.startsWith("f")) return "female";
-  if (g.startsWith("m")) return "male";
-  if (g.startsWith("n")) return "neutral";
-  return "";
+  return { F: "female", M: "male", N: "neutral" }[voiceGender(v)] || "";
 }
 
 const engineVoiceOptions = computed(() =>
@@ -1994,9 +1961,9 @@ function voiceTypeVariant(source) {
             <div class="jv-card__header">
               <h3 class="jv-card__title">{{ selectedRow?.row?.display_name || "Model" }} settings</h3>
             </div>
-            <div class="jv-card__body voices-view__knobs">
-            <div v-for="k in engineKnobs" :key="k.key" class="voices-view__knob">
-              <label class="voices-view__knob-label" :title="k.hint">{{ k.label }}</label>
+            <div class="jv-card__body jv-knobs">
+            <div v-for="k in engineKnobs" :key="k.key" class="jv-knobs__row">
+              <label class="jv-knobs__label" :title="k.hint">{{ k.label }}</label>
               <!-- One control, not a range wired by hand to a number box:
                    UiSlider owns both halves (the number stays editable, which
                    is how you hit an exact 0.35). -->
@@ -2007,7 +1974,7 @@ function voiceTypeVariant(source) {
                 :aria-label="k.label"
                 @update:modelValue="knobValues = { ...knobValues, [k.key]: Number($event) }"
               />
-              <span class="voices-view__knob-unit">{{ k.unit }}</span>
+              <span class="jv-knobs__unit">{{ k.unit }}</span>
               <UiButton
                 intent="ghost" size="small" label="↺"
                 :disabled="Number(knobValues[k.key]) === Number(k.default)"
@@ -2209,10 +2176,10 @@ function voiceTypeVariant(source) {
         <button
           type="button"
           class="voices-view__gender-chip"
-          :data-gender="autoDetectGender(row)"
-          :title="`Gender: ${autoDetectGender(row) || 'unset'} — click to cycle ? → F → M → N → unset`"
+          :data-gender="voiceGender(row)"
+          :title="`Gender: ${voiceGender(row) || 'unset'} — click to cycle ? → F → M → N → unset`"
           @click.stop="cycleGender(row)"
-        >{{ (autoDetectGender(row) || "?").charAt(0).toUpperCase() }}</button>
+        >{{ (voiceGender(row) || "?").charAt(0).toUpperCase() }}</button>
       </template>
 
       <template #source="{ row }">
@@ -2402,26 +2369,6 @@ function voiceTypeVariant(source) {
 .voices-view__drop input[type="file"] { display: none; }
 /* Per-model controls: label, slider, number, unit, reset — every one the
    model takes, none folded away. The card provides the frame. */
-/* One knob per row on a grid: label / track / number / unit / reset.
-   The track is the continuous control — it takes the row's spare width
-   (a wider track is finer control, the way the mock and the Qwen demo
-   draw sliders); everything else is content-sized. */
-.voices-view__knobs {
-  display: grid;
-  /* label · slider (track + its own number box) · unit · reset. Every column
-     is content-sized: UiSlider carries its own width, so nothing here stretches
-     to the card and the row ends where the reset button ends. Was five columns
-     with a `minmax(160px, 1fr)` track, from when the range and the number were
-     two separate controls wired together by hand. */
-  grid-template-columns: max-content max-content max-content max-content;
-  gap: 8px 12px;
-  align-items: center;
-  justify-content: start;
-}
-.voices-view__knob { display: contents; }
-.voices-view__knob-label { font-size: 12px; color: var(--ink-2); }
-.voices-view__knob-unit { font-size: 11.5px; color: var(--ink-3); min-width: 22px; }
-
 .voices-view__result-box {
   width: 100%;
   min-height: 64px;

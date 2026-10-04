@@ -669,9 +669,10 @@ leave it (or press Enter in a one-line field):
 - **Who they are** — *"Read by Discover, Smart-assign and Rewrite in character.
   Never heard."* Discover reads its first line; Script's line-by-line
   attribution does not read it. An import fills it from the book.
-- **Edit their persona →** opens the persona that plays them on the Personas
-  page — *"Pace, pitch, gain, delivery, effects — all of it lives there."* It
-  is off until they have a persona.
+- **Edit their persona →** opens the page of the persona that plays them
+  (*Personas › Gruff dockhand*) — *"Pace, pitch, gain, delivery, effects — all
+  of it lives there."* It is off until they have a persona. See
+  [Personas → The persona's page](personas.md#the-personas-page).
 
 ### The personas (right)
 
@@ -693,7 +694,7 @@ Each row shows:
   script, and it plays without the persona's delivery settings or effects. If
   its engine isn't loaded, JustVoice asks before loading it (*Load qwen3?*),
   and once it has loaded offers **Always auto-load**;
-- **✎** opens the persona on the Personas page.
+- **✎** opens the persona's own page.
 
 Click a row to give that persona to the selected speaker (*Assigned Gruff
 dockhand to Harbek.*). Click the persona that already plays them to take it

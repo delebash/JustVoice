@@ -29,6 +29,7 @@ import { useApi } from "../stores/api.js";
 import { projectsService } from "../services/projects.js";
 import { readPref, writePref } from "../services/prefs.js";
 import { handleTermsRefusal } from "../services/engineTerms.js";
+import { auditionVoice } from "../services/voiceAudition.js";
 
 const props = defineProps({
   project: { type: Object, required: true },
@@ -432,30 +433,8 @@ async function play(p) {
   if (!voice || previewing.value) return;
   previewing.value = p.id;
   try {
-    const always = readPref("autoLoadEngine") === "always";
-    let blob;
-    try {
-      blob = await api.request(`/v1/voices/${voice.id}/preview?auto_load=${always}`, { method: "POST" });
-    } catch (e) {
-      const m = String(e?.message || "").match(/engine_not_loaded:([\w.-]+)/);
-      if (!m) throw e;
-      const engineId = m[1];
-      const ok = await confirmDialog({
-        title: `Load ${engineId}?`,
-        message: `"${voice.name}" needs the ${engineId} engine, which isn't loaded. Load it now to preview? The first load can take ~25–55 s; after that previews are instant.`,
-        confirmLabel: "Load & preview",
-      });
-      if (!ok) return;
-      pushToast({ message: `Loading ${engineId}… this can take up to a minute.`, kind: "info" });
-      blob = await api.request(`/v1/voices/${voice.id}/preview?auto_load=true`, { method: "POST" });
-      pushToast({
-        message: `${engineId} loaded.`,
-        kind: "success",
-        action: { label: "Always auto-load", fn: () => writePref("autoLoadEngine", "always") },
-      });
-      // The topbar pill and the Engines page track loads from anywhere.
-      window.dispatchEvent(new Event("jv:health-refresh"));
-    }
+    // The shared door: asks before loading a model, as everywhere else.
+    const blob = await auditionVoice(api, voice);
     if (blob instanceof Blob) {
       if (audition.value?.url) URL.revokeObjectURL(audition.value.url);
       audition.value = { url: URL.createObjectURL(blob), name: p.name, engine: voice.engine || "" };
@@ -469,7 +448,7 @@ async function play(p) {
 }
 
 function editPersona(personaId) {
-  router.push({ name: "personas", query: { open: personaId } });
+  router.push({ name: "persona", params: { id: personaId } });
 }
 
 // A game sheet keeps its table (hundreds of speakers); prose kinds get cards.
