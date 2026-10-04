@@ -18,6 +18,8 @@ from ..engines.llm.run import run_feature
 from ..engines.manager import get_manager
 from ..errors import bad_request, not_found, not_implemented
 from ..models import (
+    ClipCheckRequest,
+    ClipCheckResponse,
     BlendRecipe,
     BlendVoiceRequest,
     CloneVoiceRequest,
@@ -55,6 +57,7 @@ def _stored_to_dto(rec: VoiceRecord) -> Voice:
         name=rec.name,
         language=rec.language,
         gender=rec.gender or "",
+        design_prompt=rec.design_prompt if rec.source == "designed" else None,
         **_facts(vm),
     )
 
@@ -157,6 +160,30 @@ async def delete_voice(id: str) -> dict:
     if not st.voices.delete(id):
         raise not_found(f"voice {id}")
     return {"deleted": True}
+
+
+@router.post(
+    "/v1/voices/clip-check", response_model=ClipCheckResponse,
+    summary="How long a clip is, and how far its speech stands above its noise",
+)
+async def clip_check(body: ClipCheckRequest) -> ClipCheckResponse:
+    """The persona page's clone maker checks a clip before it is kept
+    (2026-10-04): the page decodes it to WAV, this measures it."""
+    from ..audio.analyzer import noise_margin_db
+    from ..audio.wav import parse_wav_header
+
+    try:
+        raw = base64.b64decode(body.wav_b64)
+        fmt, offset, size = parse_wav_header(raw)
+    except Exception as e:  # noqa: BLE001 — anything unreadable is the caller's to fix
+        raise bad_request(f"not a WAV clip: {e}")
+    if fmt.bits_per_sample != 16:
+        raise bad_request("send the clip as 16-bit PCM WAV")
+    pcm = raw[offset:offset + size]
+    return ClipCheckResponse(
+        seconds=round(fmt.duration_sec, 2),
+        noise_margin_db=noise_margin_db(pcm, fmt.sample_rate, fmt.channels),
+    )
 
 
 @router.post(

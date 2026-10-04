@@ -47,6 +47,30 @@ def _compute_loudness(pcm_bytes: bytes) -> LoudnessStats:
     )
 
 
+def noise_margin_db(pcm_bytes: bytes, sample_rate: int, channels: int) -> float | None:
+    """How far a clip's speech stands above its noise, in dB: the loud end of
+    its 20 ms frames (90th percentile) against the quiet end (10th) — the
+    pauses between words, where only the room is heard. A clean clip reads
+    40 dB and more; under 25 a clone copies the hiss (Alexandria's own floor).
+    None for a clip under half a second, or one that is all silence."""
+    samples = np.frombuffer(pcm_bytes, dtype="<i2").astype(np.float64)
+    if channels > 1:
+        usable = len(samples) - len(samples) % channels
+        samples = samples[:usable].reshape(-1, channels).mean(axis=1)
+    frame = max(1, int(sample_rate * 0.02))
+    count = len(samples) // frame
+    if count < 25:
+        return None
+    frames = samples[: count * frame].reshape(count, frame)
+    rms = np.sqrt(np.mean(frames * frames, axis=1))
+    rms = np.maximum(rms, 1.0)  # one LSB: digital silence reads as -90 dBFS, not -inf
+    db = 20.0 * np.log10(rms / 32767.0)
+    loud, quiet = float(np.percentile(db, 90)), float(np.percentile(db, 10))
+    if loud <= -89.0:
+        return None
+    return round(loud - quiet, 1)
+
+
 def analyze(buf: bytes) -> AudioAnalysis:
     fmt, data_off, data_size = parse_wav_header(buf)
     pcm = buf[data_off : data_off + data_size]

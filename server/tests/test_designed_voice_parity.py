@@ -196,7 +196,11 @@ def test_both_render_doors_put_the_description_first() -> None:
     assert "plan_line(" in inspect.getsource(render_chapter_api)
     resolver = inspect.getsource(persona_render)
     composed = resolver.split("composed = compose_instruct(", 1)[1]
-    assert composed.lstrip().startswith("voice_design_instruct_for_id(state, voice_id)")
+    # The description leads — a saved voice's, or an unsaved design's on the
+    # persona page (2026-10-04: `design` is one or the other).
+    assert composed.lstrip().startswith("design,")
+    assert "design = voice_design_instruct_for_id(state, voice_id)" in resolver
+    assert "design = candidate.design_prompt" in resolver
 
     generate = inspect.getsource(generate_api)
     assert generate.count("_voice_design_instruct(req.voice)") == 2

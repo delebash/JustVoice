@@ -550,20 +550,10 @@ def probe_line_cached(
     if _engine_takes_tags(state, engine_id) is None:
         return None
     model = _line_model(state, voice, engine_id)
-    effective_text = performable_text(state, engine_id, model, text)
-    effective_text, ipa_map = _apply_lexicons(
-        effective_text, lexicons, state,
-        ipa_capable=_supports_phoneme_input(model),
-    )
-    if ipa_map:
-        # Rides delivery so it reaches the engine AND enters the cache key
-        # (with_delivery_json below) — a changed pronunciation is a
-        # different render.
-        delivery = {**delivery, "ipa_map": ipa_map}
-    # After the lexicon, never before — a lexicon entry must not be able to
-    # rewrite the inside of a tag we just generated.
-    effective_text = _apply_lead_tags(effective_text, delivery, model)
-    effective_text = _apply_emotion_tag(effective_text, delivery, _emotion_tagset(model))
+    # The same preparation render_line runs (prepare_line_text) — one function,
+    # so the probe can't drift from the render. An IPA map rides the delivery
+    # so it enters the key: a changed pronunciation is a different render.
+    effective_text, delivery = prepare_line_text(state, engine_id, model, text, delivery, lexicons)
     key = (
         CacheKeyBuilder()
         .with_engine(engine_id, VERSION)
@@ -579,6 +569,53 @@ def probe_line_cached(
     if not settings.cache.enabled or cache is None:
         return False
     return cache.has(cache_scope, key)
+
+
+def prepare_line_text(
+    state: AppState,
+    engine_id: str,
+    model: str | None,
+    text: str,
+    delivery: dict[str, Any],
+    lexicons: list[str],
+) -> tuple[str, dict[str, Any]]:
+    """The text a model is sent for one line, and the delivery that goes with it:
+    tags the model can't perform go, the lexicons respell (as IPA where the
+    model reads it), then the lead and emotion tags. `render_line` and the
+    persona page's preview of an unsaved voice share it (2026-10-04), so a
+    voice heard before it is kept is prepared exactly as a chapter would be."""
+    effective_text = performable_text(state, engine_id, model, text)
+    effective_text, ipa_map = _apply_lexicons(
+        effective_text, lexicons, state,
+        ipa_capable=_supports_phoneme_input(model),
+    )
+    if ipa_map:
+        delivery = {**delivery, "ipa_map": ipa_map}
+    # After the lexicon, never before — a lexicon entry must not be able to
+    # rewrite the inside of a tag we just generated.
+    effective_text = _apply_lead_tags(effective_text, delivery, model)
+    effective_text = _apply_emotion_tag(effective_text, delivery, _emotion_tagset(model))
+    return effective_text, delivery
+
+
+def shape_line_pcm(
+    pcm: bytes,
+    sample_rate: int,
+    channels: int,
+    delivery: dict[str, Any],
+    *,
+    speed_native: bool,
+    effects: list[dict],
+) -> bytes:
+    """What a persona does to a line once the model has spoken it: speed (when
+    the model did not pace itself), gain, pitch, then the effects chain on top
+    of the finished line. Shared by `render_line` and the persona page's
+    preview of an unsaved voice — one implementation, one sound."""
+    pcm = apply_line_delivery(pcm, sample_rate, channels, delivery, speed_native=speed_native)
+    if effects:
+        wet = apply_effects_chain(write_wav_container(pcm, sample_rate, channels), effects)
+        pcm = strip_wav_header(wet)
+    return pcm
 
 
 def render_line(
@@ -632,20 +669,12 @@ def render_line(
     # The model the voice speaks on (voice_model.py): its tags, its emotion
     # tags, its pacing and the variant loaded below all follow it.
     model = _line_model(state, voice, engine_id)
-    # Every [tag] this model can't perform goes (performable_text) — kept in
-    # lockstep with probe_line_cached, which derives the same text.
-    effective_text = performable_text(state, engine_id, model, text)
-    effective_text, ipa_map = _apply_lexicons(
-        effective_text, lexicons, state,
-        ipa_capable=_supports_phoneme_input(model),
-    )
-    if ipa_map:
-        delivery = {**delivery, "ipa_map": ipa_map}
-    # Kept in lockstep with `probe_line_cached` — the two derive the same key
-    # and any transform added to one has to land in the other or the probe
-    # starts lying about what is cached.
-    effective_text = _apply_lead_tags(effective_text, delivery, model)
-    effective_text = _apply_emotion_tag(effective_text, delivery, _emotion_tagset(model))
+    # Every [tag] this model can't perform goes, the lexicons respell, the
+    # lead and emotion tags go on (prepare_line_text). Kept in lockstep with
+    # `probe_line_cached` — the two derive the same key and any transform added
+    # to one has to land in the other or the probe starts lying about what is
+    # cached.
+    effective_text, delivery = prepare_line_text(state, engine_id, model, text, delivery, lexicons)
 
     # Cache lookup. The key holds what the lexicons CHANGED in this line — the
     # respelt text, and the IPA for its own words (in the delivery) — never
@@ -777,17 +806,9 @@ def render_line(
             raise internal(f"engine synthesize: {e}")
 
     # Speed (when the model did not pace itself), gain, pitch — the same
-    # function Generate calls.
-    pcm = apply_line_delivery(pcm, out_sample_rate, out_channels, delivery, speed_native=native)
-
-    # Effects chain, after gain (gain is part of the delivery this line was
-    # spoken with; the chain sits on top of the finished line). Same function
-    # the single-line path calls — one implementation, one sound.
-    if effects:
-        wet = apply_effects_chain(
-            write_wav_container(pcm, out_sample_rate, out_channels), effects
-        )
-        pcm = strip_wav_header(wet)
+    # function Generate calls — then the effects chain on top of the finished
+    # line (shape_line_pcm).
+    pcm = shape_line_pcm(pcm, out_sample_rate, out_channels, delivery, speed_native=native, effects=effects)
 
     # Cache write
     if cache_enabled and cache is not None:

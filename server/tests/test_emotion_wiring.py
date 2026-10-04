@@ -34,6 +34,7 @@ from justvoice.models import EMOTION_VALUES, Delivery, Emotion, EngineCapability
 from justvoice.render_core import (
     _apply_emotion_tag,
     _emotion_tagset,
+    prepare_line_text,
     probe_line_cached,
     render_line,
 )
@@ -177,10 +178,14 @@ def test_the_cache_probe_applies_every_transform_the_render_does() -> None:
     probe report a hit that the render will miss."""
     probe = inspect.getsource(probe_line_cached)
     render = inspect.getsource(render_line)
+    # Since 2026-10-04 both run ONE function, `prepare_line_text` (shared with
+    # the persona page's preview of an unsaved voice), so they can't drift.
+    assert "prepare_line_text(" in probe, "probe_line_cached doesn't run prepare_line_text"
+    assert "prepare_line_text(" in render, "render_line doesn't run prepare_line_text"
+    prepare = inspect.getsource(prepare_line_text)
     # The tag drop is `performable_text` since 2026-09-29 (was a bare strip_tags).
-    for transform in ("performable_text", "_apply_lexicons", "_apply_emotion_tag"):
-        assert transform in probe, f"{transform} missing from probe_line_cached"
-        assert transform in render, f"{transform} missing from render_line"
+    for transform in ("performable_text", "_apply_lexicons", "_apply_lead_tags", "_apply_emotion_tag"):
+        assert transform in prepare, f"{transform} missing from prepare_line_text"
 
 
 # ── style_prompt is gone from the schema, not merely hidden ────────────

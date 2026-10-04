@@ -89,6 +89,11 @@ class VoicePreviewResponse(BaseModel):
 class PromotePreviewRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=120)
     gender: Optional[str] = None
+    # A design's take kept on another model (decided 2026-10-04): the take
+    # becomes the clip of a voice on this clone model — VoxCPM2, Chatterbox
+    # Turbo or Nano, Multilingual, Qwen3 Base, Pocket — and the voice stays a
+    # design with its description. Left out = the model it was heard on.
+    model: Optional[str] = None
 
 
 # ── LRU cache ────────────────────────────────────────────────────────────
@@ -207,15 +212,9 @@ def _resolve_blend(body: "VoicePreviewRequest", state) -> "tuple[list[float], st
 # ── Endpoints ────────────────────────────────────────────────────────────
 
 
-@router.post("/v1/voices/preview", response_model=VoicePreviewResponse)
-async def preview_voice(body: VoicePreviewRequest) -> VoicePreviewResponse:
-    """Generate a short audition clip without persisting the voice.
-
-    Returns a preview_id that can be passed to
-    POST /v1/voices/preview/{id}/save within 10 minutes to promote the
-    candidate to a persistent Voice.
-    """
-    # Validate per-source inputs.
+def validate_candidate(body: VoicePreviewRequest) -> None:
+    """Refuse a candidate missing what its source needs: a clip, a
+    description, or the voices of a blend."""
     if body.source in ("cloned", "imported"):
         if not body.ref_wav_b64:
             raise bad_request("ref_wav_b64 required for cloned/imported preview")
@@ -240,12 +239,10 @@ async def preview_voice(body: VoicePreviewRequest) -> VoicePreviewResponse:
             if not body.weights or len(body.weights) != len(body.source_voice_ids):
                 raise bad_request("weights must match length of source_voice_ids")
 
-    # Render the preview WAV. For v1 we delegate to the existing engine
-    # registry's synthesize() — the engine performs the actual voice
-    # cloning / blending / design work.
-    from ..app_state import get_state
 
-    state = get_state()
+def candidate_engine(body: VoicePreviewRequest, state):
+    """The registry engine a candidate renders on (None for a managed engine,
+    whose model this checks and fixes in `body.model`)."""
     # Registry backends (external providers) keep the direct path; managed
     # plugin engines route via the manager through the scheduler (§7d of the
     # 2026-08-08 plan — the registry never holds them, so the old lookup
@@ -269,16 +266,21 @@ async def preview_voice(body: VoicePreviewRequest) -> VoicePreviewResponse:
         except ValueError as e:
             raise bad_request(str(e))
     # Lazy-load a registry engine if needed (managed engines load inside
-    # the scheduled call below).
+    # the scheduled call).
     if engine is not None and not engine.ready():
         try:
             engine.load("auto", None)
         except Exception as e:
             raise bad_request(f"engine '{body.engine}' failed to load for preview: {e}")
+    return engine
 
-    # Build a synth request that doesn't go through the project pipeline.
-    from ..engines.base import SynthRequest
 
+def candidate_voice_fields(body: VoicePreviewRequest, state) -> "tuple[dict, str | None]":
+    """What a candidate contributes to the engine call besides the text — the
+    same fields a SAVED voice contributes through
+    `render_core.voice_synth_fields` — and, for a blend, the language its
+    sources speak. A design's description is not here: it is the instruct,
+    composed by the caller."""
     # For cloned/imported, decode the ref WAV into a temp file the engine
     # can read as an audio prompt.
     audio_prompt_path: Optional[str] = None
@@ -291,40 +293,38 @@ async def preview_voice(body: VoicePreviewRequest) -> VoicePreviewResponse:
         tmp.close()
         audio_prompt_path = tmp.name
 
-    from ..audio.wav import write_wav_container
-
-    # What this candidate contributes to the engine call, per source — the
-    # same fields a SAVED voice contributes through
-    # `render_core.voice_synth_fields`. Wired 2026-08-19: before this, a
-    # blended or designed audition passed nothing but `__preview__` and the
-    # engine rendered its default voice, so every candidate sounded alike.
-    delivery = dict(body.delivery or {})
+    # Wired 2026-08-19: before this, a blended or designed audition passed
+    # nothing but `__preview__` and the engine rendered its default voice, so
+    # every candidate sounded alike.
     extra: dict = {}
+    language: str | None = None
     if audio_prompt_path:
         extra["audio_prompt_path"] = audio_prompt_path
         if body.xvector_only:
             extra["xvector_only"] = True
         elif body.transcript:
             extra["ref_text"] = body.transcript
-    elif body.source == "designed":
-        # The description IS the instruct for a design checkpoint; a line's
-        # own direction would append to it exactly as it does at render.
-        delivery["instruct"] = " ".join(
-            x for x in (body.prompt, delivery.get("instruct")) if x
-        )
     elif body.source == "blended":
-        vector, lang = _resolve_blend(body, state)
+        vector, language = _resolve_blend(body, state)
         extra["voice_vector"] = vector
-        if lang is not None:
-            body.language = lang
+    return extra, language
+
+
+async def synth_candidate(
+    body: VoicePreviewRequest, engine, *, text: str, language: str | None,
+    delivery: dict, seed: int | None, extra: dict,
+) -> "tuple[bytes, int, int]":
+    """Speak `text` with a candidate voice: a WAV, its sample rate, its channels."""
+    from ..audio.wav import write_wav_container
+    from ..engines.base import SynthRequest
 
     if engine is not None:
         req = SynthRequest(
             voice_id="__preview__",
-            text=body.preview_text,
-            language=body.language,
+            text=text,
+            language=language,
             delivery=delivery,
-            seed=body.seed,
+            seed=seed,
             **extra,
         )
         try:
@@ -348,15 +348,15 @@ async def preview_voice(body: VoicePreviewRequest) -> VoicePreviewResponse:
         from ..voice_model import ensure_model_loaded
 
         def _do() -> tuple[bytes, int, int]:
-            ensure_model_loaded(body.engine, body.model or body.engine, body.language)
+            ensure_model_loaded(body.engine, body.model or body.engine, language)
             audio_bytes, meta = mgr.synth(
                 body.engine,
                 {
                     "voice_id": "__preview__",
-                    "text": body.preview_text,
-                    "language": body.language,
+                    "text": text,
+                    "language": language,
                     "delivery": delivery,
-                    "seed": body.seed,
+                    "seed": seed,
                     **extra,
                 },
             )
@@ -375,20 +375,50 @@ async def preview_voice(body: VoicePreviewRequest) -> VoicePreviewResponse:
                 raise handle.error.api_error() from handle.error
             raise bad_request(f"preview synthesize failed: {handle.error}")
         wav_bytes, sample_rate, channels = handle.items[0].result
+    return wav_bytes, sample_rate, channels
 
-    duration_sec = len(wav_bytes) / (sample_rate * channels * 2)
 
-    entry = _PreviewEntry(
-        source=body.source,
-        payload=body.model_dump(),
-        wav_bytes=wav_bytes,
+async def store_candidate(source: VoicePreviewSource, payload: dict, wav_bytes: bytes) -> "tuple[str, float]":
+    """Hold a heard candidate for 10 minutes so it can be saved; its id and
+    when it lapses."""
+    entry = _PreviewEntry(source=source, payload=payload, wav_bytes=wav_bytes)
+    return await _store_preview(entry), entry.expires_at
+
+
+@router.post("/v1/voices/preview", response_model=VoicePreviewResponse)
+async def preview_voice(body: VoicePreviewRequest) -> VoicePreviewResponse:
+    """Generate a short audition clip without persisting the voice.
+
+    Returns a preview_id that can be passed to
+    POST /v1/voices/preview/{id}/save within 10 minutes to promote the
+    candidate to a persistent Voice.
+    """
+    from ..app_state import get_state
+
+    validate_candidate(body)
+    state = get_state()
+    engine = candidate_engine(body, state)
+    extra, blend_language = candidate_voice_fields(body, state)
+    if blend_language is not None:
+        body.language = blend_language
+    delivery = dict(body.delivery or {})
+    if body.source == "designed":
+        # The description IS the instruct for a design checkpoint; a line's
+        # own direction would append to it exactly as it does at render.
+        delivery["instruct"] = " ".join(
+            x for x in (body.prompt, delivery.get("instruct")) if x
+        )
+    wav_bytes, sample_rate, channels = await synth_candidate(
+        body, engine, text=body.preview_text, language=body.language,
+        delivery=delivery, seed=body.seed, extra=extra,
     )
-    preview_id = await _store_preview(entry)
+    duration_sec = len(wav_bytes) / (sample_rate * channels * 2)
+    preview_id, expires_at = await store_candidate(body.source, body.model_dump(), wav_bytes)
     return VoicePreviewResponse(
         wav_b64=base64.b64encode(wav_bytes).decode("ascii"),
         duration_sec=duration_sec,
         preview_id=preview_id,
-        expires_at=entry.expires_at,
+        expires_at=expires_at,
     )
 
 
@@ -449,10 +479,23 @@ async def save_preview(
     if entry.source == "designed":
         transcript = payload.get("preview_text") or transcript
 
+    # A design's take kept on another clone model (2026-10-04).
+    engine_id = payload.get("engine", "")
+    model = payload.get("model")
+    if body.model and body.model != model:
+        if entry.source != "designed":
+            raise bad_request("Only a design's take can be kept on another model.")
+        from .. import voice_model as vmod
+
+        other = vmod.engine_of_model(body.model)
+        if other is None or not vmod.can(body.model, "clone"):
+            raise bad_request(f"{vmod.model_name(body.model)} can't speak a voice from its clip.")
+        engine_id, model = other, body.model
+
     record = VoiceRecord(
         id="",
-        engine=payload.get("engine", ""),
-        model=payload.get("model"),
+        engine=engine_id,
+        model=model,
         source=entry.source,
         name=body.name,
         language=payload.get("language") or "en",

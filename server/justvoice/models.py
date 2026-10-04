@@ -534,6 +534,26 @@ class Voice(BaseModel):
     model_name: str = ""
     directed_by: str = ""
     speaks: list[str] = []
+    # A designed voice's description — what it speaks from (no clip) or was
+    # designed from (a kept take). The persona page's "Start from this one"
+    # copies it into a new design (2026-10-04); Voices' gender guess reads it.
+    design_prompt: str | None = None
+
+
+class ClipCheckRequest(BaseModel):
+    """POST /v1/voices/clip-check — a clip about to be cloned, decoded to WAV
+    by the page (it reads every format the drop box takes)."""
+
+    wav_b64: str
+
+
+class ClipCheckResponse(BaseModel):
+    """How long the clip is, and how far its speech stands above its noise
+    in dB (None when the clip is too short or silent to tell). The persona
+    page warns under 10 s, over 2 minutes, and under 25 dB (2026-10-04)."""
+
+    seconds: float
+    noise_margin_db: float | None = None
 
 
 class VoiceList(BaseModel):

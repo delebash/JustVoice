@@ -7,7 +7,7 @@ means the speakers it plays, in which books."""
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from ..app_state import get_state
@@ -19,12 +19,14 @@ from ..models import (
     MergePersonaRequest,
     Persona,
     PersonaDelivery,
+    PersonaDraft,
     PersonaList,
     PersonaView,
     PersonaPreviewRequest,
     UpdatePersonaRequest,
 )
 from .extraction_api import RunUsage
+from .voice_preview_api import VoicePreviewRequest, VoicePreviewResponse
 
 router = APIRouter(tags=["personas"])
 
@@ -380,6 +382,77 @@ async def preview_persona(body: PersonaPreviewRequest) -> Response:
     await handle.wait_async()
     handle.raise_if_failed()
     return Response(content=handle.items[0].result, media_type="audio/wav")
+
+
+class PersonaCandidatePreviewRequest(BaseModel):
+    """POST /v1/personas/preview-candidate — hear a voice not kept yet (a
+    clip, a description or a blend, as the persona page's makers hold it)
+    spoken as this persona: its language, standing delivery, emotion,
+    lexicon, pace, pitch, gain and effects (decided 2026-10-04: "design the
+    voice you want and test it all in one page")."""
+
+    persona: PersonaDraft
+    candidate: VoicePreviewRequest
+    text: str = Field(default="", max_length=2000)
+
+
+@router.post(
+    "/v1/personas/preview-candidate",
+    response_model=VoicePreviewResponse,
+    summary="Hear a voice not kept yet, spoken as this persona",
+)
+async def preview_persona_candidate(body: PersonaCandidatePreviewRequest) -> VoicePreviewResponse:
+    """The candidate is planned by `persona_render.plan_line` and its text
+    prepared by `render_core.prepare_line_text`, as a chapter line would be;
+    the model speaks it; the take, as spoken, is held for 10 minutes (Keep
+    saves it — `/v1/voices/preview/{id}/save`); what comes back is that take
+    shaped by the persona (`render_core.shape_line_pcm`): pace, pitch, gain
+    and effects."""
+    import base64
+
+    from ..audio.wav import parse_wav_header, write_wav_container
+    from ..persona_render import Candidate, check_delivery, plan_line, stock_line
+    from ..render_core import prepare_line_text, shape_line_pcm, speed_native
+    from ..voice_model import describe
+    from . import voice_preview_api as vp
+
+    st = get_state()
+    cand = body.candidate
+    vp.validate_candidate(cand)
+    engine = vp.candidate_engine(cand, st)
+    problems = check_delivery(body.persona.default_delivery)
+    if problems:
+        raise bad_request("; ".join(problems))
+    model = cand.model or cand.engine
+    vm = describe(st, cand.engine, model, cand.language)
+    design = None
+    if cand.source == "designed":
+        design = (cand.prompt or "").strip() or None
+    plan = plan_line(st, body.persona, text=" ", candidate=Candidate(vm, design, cand.language))
+    text = body.text.strip() or stock_line(plan.language)
+    extra, blend_language = vp.candidate_voice_fields(cand, st)
+    language = blend_language or plan.language
+    prepared, delivery = prepare_line_text(st, cand.engine, model, text, plan.delivery, plan.lexicons)
+    wav, sample_rate, channels = await vp.synth_candidate(
+        cand, engine, text=prepared, language=language, delivery=delivery, seed=plan.seed, extra=extra,
+    )
+    # The take as the model spoke it — what Keep saves; a design's take keeps
+    # the words it speaks as its transcript.
+    payload = cand.model_dump()
+    payload["preview_text"] = text
+    payload["language"] = language
+    preview_id, expires_at = await vp.store_candidate(cand.source, payload, wav)
+    _fmt, offset, size = parse_wav_header(wav)
+    pcm = shape_line_pcm(
+        wav[offset:offset + size], sample_rate, channels, delivery,
+        speed_native=speed_native(st, cand.engine, model), effects=plan.effects,
+    )
+    return VoicePreviewResponse(
+        wav_b64=base64.b64encode(write_wav_container(pcm, sample_rate, channels)).decode("ascii"),
+        duration_sec=len(pcm) / (sample_rate * channels * 2),
+        preview_id=preview_id,
+        expires_at=expires_at,
+    )
 
 
 class ComposeResponse(BaseModel):

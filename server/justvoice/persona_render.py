@@ -187,6 +187,18 @@ def persona_language(persona, vm, own: str | None = None) -> str | None:
     return vm.speaks[0] if vm.speaks else chosen
 
 
+@dataclass(frozen=True)
+class Candidate:
+    """An unsaved voice heard through a persona — the persona page's Clone,
+    Design and Blend makers (2026-10-04): the model it would speak on
+    (`voice_model.describe`), its description when it is a design, and its own
+    language."""
+
+    vm: Any
+    design_prompt: str | None = None
+    language: str | None = None
+
+
 def plan_line(
     state: Any,
     persona,
@@ -196,11 +208,13 @@ def plan_line(
     book_lexicon: str | None = None,
     request_delivery: dict[str, Any] | None = None,
     voice: str | None = None,
+    candidate: Candidate | None = None,
 ) -> LinePlan:
     """The request one line spoken by `persona` renders with.
 
     `voice` overrides the persona's (Generate speaking a persona's settings
-    on its own voice pick); `request_delivery` sits on top of the persona's
+    on its own voice pick); `candidate` stands in for a voice not saved yet
+    (the plan's `voice` is then None); `request_delivery` sits on top of the persona's
     delivery (a Compare value, a line's override in Slice 4); `direction` is
     the line's own written direction, added after the persona's.
 
@@ -212,8 +226,16 @@ def plan_line(
     from .render_core import line_lexicons, voice_design_instruct_for_id
     from .voice_model import voice_language, voice_model
 
-    voice_id = voice or getattr(persona, "voice_id", None) or None
-    vm = voice_model(state, voice_id) if voice_id else None
+    if candidate is not None:
+        voice_id = None
+        vm = candidate.vm
+        design = candidate.design_prompt
+        own_language = candidate.language
+    else:
+        voice_id = voice or getattr(persona, "voice_id", None) or None
+        vm = voice_model(state, voice_id) if voice_id else None
+        design = voice_design_instruct_for_id(state, voice_id)
+        own_language = voice_language(state, voice_id)
     model = vm.model if vm is not None else None
 
     persona_delivery, tags, seed = model_settings(persona, model)
@@ -228,7 +250,7 @@ def plan_line(
 
     standing = (getattr(persona, "voice_instruct", None) or "").strip() or None
     composed = compose_instruct(
-        voice_design_instruct_for_id(state, voice_id),
+        design,
         delivery.get("instruct") or standing,
         delivery.get("emotion"),
         (direction or "").strip() or None,
@@ -240,7 +262,7 @@ def plan_line(
         voice=voice_id,
         model=model,
         text=text,
-        language=persona_language(persona, vm, voice_language(state, voice_id)),
+        language=persona_language(persona, vm, own_language),
         delivery=delivery,
         seed=seed,
         effects=chain_entries(getattr(persona, "effects_chain", None)),
