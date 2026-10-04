@@ -2123,6 +2123,26 @@ OPEN:   both — the fix needs a go (likely: when a runtime restart drops a co-r
         model, release its booking; and/or let `make_room` clear a stale booking of the
         engine being loaded).
 
+### FINDING — voice and project files: an export with no import, a bundle with no UI, and three smaller slips
+STATE:  FINDING — code-verified 2026-10-04 (the persona-mock research, plan
+        `2026-10-04-persona-voice-making.md` §4 step 1).
+WHY:    1. "📦 Export .justvoice.zip" (`StudioOverview.vue:321`) is the PROJECT export
+        (`project_export_api.py:47`); nothing reads it back — the only zip import is EPUB/DOCX
+        (`imports/adapters/book_prose.py:69-74`) — yet `docs/import-and-export.md:441` says
+        "Import via Projects → '+ Import → .justvoice.zip'".
+        2. The voice file is `.jvvoice.zip` (`voice_bundle.py:66`; `voice_bundle_api.py:27`,
+        `:43-71`): no UI calls it, and it carries neither `model` nor `xvector_only`, so a
+        Turbo clone comes back as Multilingual (`voice_model.py:252-253`).
+        3. `VoicesView.vue:88` sends `v.design_prompt` to the gender guess; the `Voice` DTO
+        (`models.py:521-536`) has no such field, so a designed voice's description never
+        reaches it.
+        4. The persona page's Effects chips print the raw type id ("eq_low"), not the
+        catalog's label ("EQ — Low shelf") — `PersonaEditorView.vue:634`.
+        5. No clip is checked before cloning — no length, no noise — client
+        (`VoicesView.vue:1484-1492`) or server.
+OPEN:   each needs a go.
+GO:     needed
+
 ### FINDING — language never reaches Chatterbox or Qwen3: every render on them is told English
 STATE:  FINDING — code-verified 2026-10-01 (found by the persona review). Added to this list at
         the user's word: "add your persona bugs to list to be fixed". Chapter renders build each
