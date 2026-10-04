@@ -1963,8 +1963,10 @@ BUILT:  2026-10-04 — server `17b89a9` (POST /v1/personas/preview-candidate; a 
         New clone on Turbo (a 15.5 s Kokoro clip; the take transcribes back "Mind the rope. The
         tide is turning."), New design on VoxCPM2 (a take kept as its clip), New blend
         (Heart + Michael) — each previewed, kept, taken by the persona; the three test voices
-        deleted after. Not driven live: Keep as a description, and Qwen3 VoiceDesign (not on
-        disk — a 2.7 GB download).
+        deleted after; then "go on all": Keep as a description on VoxCPM2, live too (deleted
+        after). Qwen3 VoiceDesign was refused by the memory check before any download: it wants
+        ~6249 MB + a 1024 MB margin, and this 8 GB card has 7249 MB free with nothing resident
+        — the user was asked whether to try it on the CPU.
         LATER — the user: "dont do it know add to list": mock in the app the Voices page as the
         library only (answer A) and Cast's persona list.
 GO:     given 2026-10-04 for option 2, the persona mock and the answers above; the real pages
@@ -2160,22 +2162,6 @@ WHY:    loading Chatterbox Nano after Turbo restarted the shared audio.cpp proce
 OPEN:   both — the fix needs a go (likely: when a runtime restart drops a co-resident
         model, release its booking; and/or let `make_room` clear a stale booking of the
         engine being loaded).
-
-### FINDING — the smoke gate's second server warm-loads the LLM beside the running app
-STATE:  FINDING — seen 2026-10-04 (persona voice makers, slice 2–6 checks). CLAUDE.md's gate
-        recipe starts `justvoice-server serve --port 8741 --data-dir src-tauri/target/debug/data`
-        — the app's own data dir, where warm-on-boot is on. Opening its UI (`npm run smoke`, or
-        any browser on :8741/ui/) loads the default chat model (gemma-4-26b-a4b-qat) in a SECOND
-        llama-server while the app's is up: the 8741 log shows "load gemma… (trigger=api)", then
-        "router child … OOM (failed) — raising n-cpu-moe to 25 + reload". The smoke clicks the
-        splash's "Continue without waiting"; the load carries on. Stopping the 8741 server ended
-        its llama-server; nothing was left behind.
-WHY:    two copies of the same model contend for one 8 GB card — the app's own loads can fail
-        while a gate runs.
-OPEN:   needs a go — e.g. a gate server that never warms (a flag, or its own data dir with the
-        app's DB copied in), or run the smoke against the app's own server when it is up
-        (`JV_BASE=http://127.0.0.1:17494`, which serves the same `dist/` — done for slice 6).
-GO:     needed
 
 ### FINDING — at 1440 px the title bar cuts "Personas › June" to "P.."
 STATE:  FINDING — seen 2026-10-04 in screenshots of the running app (`npm run dev`), on the real

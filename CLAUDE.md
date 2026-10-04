@@ -67,6 +67,23 @@ JV_BASE=http://127.0.0.1:8741 npm run smoke            # drives every view, asse
 `JV_BASE` overrides the base URL — pass it, because the script's own default is
 17494, not 8741. `scripts/smoke_gui.js` screenshots tabs.
 
+**If the app is running, gate against IT — never start the 8741 server beside
+it** (2026-10-04). The 8741 server opens the app's own data dir, where
+warm-on-boot is on, so the moment the smoke (or any browser) loads its UI it
+loads the default chat model into a SECOND llama-server — two copies of gemma on
+one 8 GB card; on 2026-10-04 it ran out of memory and fell back to the CPU. The
+app's sidecar serves the same freshly built `dist/` at `/ui/`, so:
+
+```bash
+npm run build:vite
+JV_BASE=http://127.0.0.1:17494 npm run smoke           # the running app's own server
+```
+
+Use the 8741 recipe above only when the app is closed — then nothing competes
+for the card. Either way the gate reads the app's database; a running app just
+also runs the server code it was started with, so restart it after server edits
+before trusting a server-backed check.
+
 **`--data-dir` is not optional in development.** There are two data roots in a
 source checkout and they are NOT the same database. The desktop shell resolves
 `exe_dir()/data`, which in `tauri dev` is `src-tauri/target/debug/data`, and
