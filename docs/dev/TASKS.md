@@ -2259,9 +2259,24 @@ OPEN:   `model_management`, Qwen3's memory fixes and every jv.2/jv.3 feature rea
         app only with the next audio.cpp release (its tag still needs the user's word; E2's
         placeholder retarget goes with it). The user's ear on the listening files: description
         voices' split size (VoiceDesign, VoxCPM2 descriptions), the clone trim, Qwen3's
-        16-bit decoder weights (measured: audit §13.4). A question for the user: Voice engine
-        setup still puts Qwen3 in the 12 GB tier (from its 7.8 GB whole-line peak) though it
-        now fits 8 GB at 200-character pieces (audit §13.5, Not done).
+        16-bit decoder weights (measured: audit §13.4).
+DECIDED: 2026-10-04, after step 5 — the user: "your rec all go" on the three as shown:
+        1 "The audio.cpp release tag. A packaged app gets runtime-side model registration,
+        Qwen3's memory fixes and every feature after jv.1 only with that release. The release
+        file's placeholder version names (they don't match what the release will contain) get
+        corrected along with it. Lean: cut it now; everything it needs is in our copy."
+        2 "The listening files in the scratchpad listening/ folder: split vs whole for described
+        voices, the clone trim, and 16-bit decoder weights. Lean: listen before any default
+        changes." 3 "Voice engine setup still puts Qwen3 in the 12 GB tier. That came from its
+        7.8 GB whole-line peak; with 200-character pieces it now fits on an 8 GB card. Lean:
+        move it to the 8 GB tier, noting that it and the AI model take turns on the card."
+        Found before cutting 1: the release item's own OPEN lists two choices still to make at
+        cut time — the tag name, and libmecab on macOS/Linux (only Windows gets it from our
+        build). "Everything it needs is in our copy" missed the second; both asked. Checked
+        for the question: fugashi 1.5.2's wheels carry libmecab (0.996, BSD) for macOS arm64 and
+        universal2 and Linux x86_64 and aarch64, as its Windows wheel does. And 3 leaves the
+        12 GB+ tier with nothing of its own (8 GB would be Kokoro, Pocket, Chatterbox and Qwen3,
+        5.4 GB) — asked too. 2 needs nothing built: the defaults stay until the user listens.
 GO:     given 2026-10-04 ("go and your rec for the audit fixes")
 
 ### FINDING — at 1440 px the title bar cuts "Personas › June" to "P.."
