@@ -1959,10 +1959,12 @@ BUILT:  2026-10-04 — server `17b89a9` (POST /v1/personas/preview-candidate; a 
         on any clone model; POST /v1/voices/clip-check; design_prompt on Voice; render_line and
         the cache probe share prepare_line_text) · New clone `51aa412` · New design `583b14a` ·
         New blend `802b704` · Voices library only + /v1/voices/import deleted `7552479`. Checked:
-        server 1017/1017, unit 132/132, smoke 13/13; the makers driven on the real data — a
-        real ▶ Preview and 💾 Keep wait on the app's restart (its server predated them).
-OPEN:   the live Preview + Keep check on each maker, after restarting the app (go given
-        2026-10-04; test voices deleted after).
+        server 1017/1017, unit 132/132, smoke 13/13. Live on the restarted app (2026-10-04):
+        New clone on Turbo (a 15.5 s Kokoro clip; the take transcribes back "Mind the rope. The
+        tide is turning."), New design on VoxCPM2 (a take kept as its clip), New blend
+        (Heart + Michael) — each previewed, kept, taken by the persona; the three test voices
+        deleted after. Not driven live: Keep as a description, and Qwen3 VoiceDesign (not on
+        disk — a 2.7 GB download).
         LATER — the user: "dont do it know add to list": mock in the app the Voices page as the
         library only (answer A) and Cast's persona list.
 GO:     given 2026-10-04 for option 2, the persona mock and the answers above; the real pages
