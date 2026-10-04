@@ -4,7 +4,12 @@ import { ref, onMounted, onActivated, computed, watch, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useApi } from "../stores/api.js";
 import { pushToast, serverUrl as apiPath } from "@delebash/llm-ui";
-import { confirmDialog } from "@delebash/llm-ui";
+import { confirmDialog, promptDialog } from "@delebash/llm-ui";
+import {
+  DropdownMenuContent, DropdownMenuItem, DropdownMenuPortal,
+  DropdownMenuRoot, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "reka-ui";
+import { DIRECTION_OPTIONS, directionCell, tagCount } from "../services/personaFacts.js";
 import { readPref, writePref } from "../services/prefs.js";
 import { capableRows, rowOptions, variantToLoad } from "../services/capabilities.js";
 import { voiceRowState } from "../services/voiceGrid.js";
@@ -28,6 +33,7 @@ import { makeEngineLoadTask } from "../services/ttsJobChannel.js";
 // An engine's own terms (Pocket TTS — Kyutai's, before the first clone; decided 2026-10-02).
 import { acceptEngineTerms, handleTermsRefusal } from "../services/engineTerms.js";
 import { useVoicesStore } from "../stores/voices.js";
+import { usePersonasStore } from "../stores/personas.js";
 import { runAiEndpoint } from "@delebash/llm-ui";
 import { useEnginesStore } from "../stores/engines.js";
 
@@ -39,6 +45,18 @@ const api = useApi();
 const voicesStore = useVoicesStore();
 const enginesStore = useEnginesStore();
 const voices = computed(() => voicesStore.items);
+// The personas built on each voice — Voices' "Used by" (the persona redesign,
+// 2026-10-03: a voice is raw; a persona is how it speaks).
+const personasStore = usePersonasStore();
+const personasByVoice = computed(() => {
+  const m = {};
+  for (const p of personasStore.items) {
+    if (!p.voice_id) continue;
+    if (!m[p.voice_id]) m[p.voice_id] = [];
+    m[p.voice_id].push(p);
+  }
+  return m;
+});
 const engines = computed(() => enginesStore.items);
 
 // ── Gender: the shared service (services/voiceGender.js — one answer for
@@ -206,6 +224,9 @@ function needsInstall(v) {
 // them; only the controls were missing.
 const langFilter = ref("all");
 const genderFilter = ref("all");
+// How a voice's model can be directed (decided 2026-10-03: "some way for the
+// user to filter out what types of voices they want to use").
+const directionFilter = ref("");
 
 const langFilterOptions = computed(() => {
   const counts = new Map();
@@ -240,6 +261,7 @@ const filteredVoices = computed(() => {
   if (langFilter.value !== "all") list = list.filter((v) => v.language === langFilter.value);
   if (genderFilter.value !== "all")
     list = list.filter((v) => (voiceGenderWord(v) || "unset") === genderFilter.value);
+  if (directionFilter.value) list = list.filter((v) => v.directed_by === directionFilter.value);
   if (search.value.trim()) {
     const q = search.value.trim().toLowerCase();
     list = list.filter((v) => (v.name || "").toLowerCase().includes(q) || (v.id || "").toLowerCase().includes(q));
@@ -255,6 +277,7 @@ const voiceRows = computed(() =>
     ...v,
     _lang: languageName(v.language) || v.language || "",
     _gender: voiceGender(v) || "",
+    _model: v.model_name || v.engine || "",
   })),
 );
 
@@ -270,8 +293,10 @@ const VOICE_COLUMNS = [
     headerStyle: { width: "auto", minWidth: "240px" } },
   { id: "_gender", accessorKey: "_gender", header: "Gender", sortable: true, headerStyle: FIT, cellStyle: FIT },
   { id: "source", accessorKey: "source", header: "Type", sortable: true, headerStyle: FIT, cellStyle: FIT },
-  { id: "engine", accessorKey: "engine", header: "Engine", sortable: true, headerStyle: FIT, cellStyle: FIT },
-  { id: "_lang", accessorKey: "_lang", header: "Language", sortable: true, headerStyle: FIT, cellStyle: FIT },
+  { id: "engine", accessorKey: "_model", header: "Model", sortable: true, headerStyle: FIT, cellStyle: FIT },
+  { id: "_lang", accessorKey: "_lang", header: "Speaks", sortable: true, headerStyle: FIT, cellStyle: FIT },
+  { id: "directed", accessorKey: "directed_by", header: "Can be directed", sortable: true, headerStyle: FIT, cellStyle: FIT },
+  { id: "used", header: "Used by" },
   { id: "actions", header: "", headerStyle: FIT, cellStyle: FIT },
 ];
 
@@ -463,8 +488,81 @@ async function refresh() {
   await Promise.all([
     voicesStore.reload(),
     enginesStore.reload(),
+    personasStore.reload(),
     loadCapabilities(),
   ]);
+}
+
+// ── ⋯ New persona from this voice · Copy to another model… ─────────────
+function newPersonaFrom(voice) {
+  router.push({ name: "persona", params: { id: "new" }, query: { voice: voice.id } });
+}
+
+/** A clip can be spoken by another model as a second voice (decided
+ *  2026-10-03: a clone belongs to the model it was made for). */
+function hasClip(voice) {
+  return voice.source === "cloned" || voice.source === "imported" || voice.source === "designed";
+}
+async function copyToModel(voice) {
+  const targets = rowOptions(capabilityRows.value, engines.value, "supports_voice_cloning")
+    .filter((o) => o.value !== voice.model);
+  if (!targets.length) {
+    pushToast({ kind: "info", message: "No other model here can clone a voice." });
+    return;
+  }
+  const picked = await promptDialog({
+    title: `Copy ${voice.name} to another model`,
+    message: `The same clip becomes a second voice, spoken by the model you pick — `
+      + `"${voice.name}" stays as it is on ${voice.model_name || voice.engine}.`,
+    fields: [
+      { key: "model", label: "Model", type: "select", defaultValue: targets[0].value, options: targets },
+      { key: "name", label: "Name", optional: true, placeholder: `${voice.name} (the model's name)` },
+    ],
+    confirmLabel: "Copy",
+  });
+  if (!picked?.model) return;
+  const body = { model: picked.model, name: (picked.name || "").trim() || null };
+  try {
+    const made = await postCopy(voice, body);
+    if (made) {
+      await refresh();
+      pushToast({ kind: "success", message: `${made.name} added — ${made.model_name || made.engine}.` });
+    }
+  } catch (e) {
+    if (!handleTermsRefusal(e)) pushToast({ kind: "error", message: `Copy failed: ${e?.message || e}` });
+  }
+}
+/** POST the copy; when the model needs the clip's words and the voice has
+ *  none (Qwen3 Base), ask for them — or Skip the words — and try once more. */
+async function postCopy(voice, body) {
+  const send = (b) => api.request(`/v1/voices/${voice.id}/copy`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b),
+  });
+  try {
+    return await send(body);
+  } catch (e) {
+    if (!/needs the words the clip says/.test(String(e?.message || ""))) throw e;
+    const words = await promptDialog({
+      title: "What does the clip say?",
+      message: `${voice.name} has no words saved with its clip, and the model you picked clones `
+        + "from them. Type what the clip says, or skip the words and clone from the sound alone.",
+      fields: [
+        { key: "how", label: "Clone from", type: "select", defaultValue: "words", options: [
+          { value: "words", label: "The clip's words — type them below" },
+          { value: "skip", label: "Skip the words — the sound alone" },
+        ] },
+        { key: "transcript", label: "What the clip says", type: "textarea", rows: 3, optional: true },
+      ],
+      confirmLabel: "Copy",
+    });
+    if (!words) return null;
+    if (words.how === "skip") return send({ ...body, xvector_only: true });
+    if (!(words.transcript || "").trim()) {
+      pushToast({ kind: "info", message: "Type what the clip says, or pick Skip the words." });
+      return null;
+    }
+    return send({ ...body, transcript: words.transcript.trim() });
+  }
 }
 
 const orphanIds = computed(() => {
@@ -472,18 +570,23 @@ const orphanIds = computed(() => {
   return voices.value.filter((v) => !ids.has(v.engine)).map((v) => v.id);
 });
 
-async function deleteVoice(id) {
+async function deleteVoice(voice) {
+  const used = (personasByVoice.value[voice.id] || []).map((p) => p.name);
   const ok = await confirmDialog({
     title: "Delete voice?",
-    message: `Voice "${id}" will be permanently removed.`,
+    message: `"${voice.name}" will be permanently removed.`
+      + (used.length
+        ? ` It's the voice of ${used.join(", ")} — ${used.length === 1 ? "that persona needs" : "those personas need"} another voice before ${used.length === 1 ? "it" : "they"} can speak.`
+        : ""),
     danger: true,
     confirmLabel: "Delete",
   });
   if (!ok) return;
+  const id = voice.id;
   try {
     await api.request(`/v1/voices/${id}`, { method: "DELETE" });
     await refresh();
-    pushToast({ message: `Voice "${id}" deleted.` });
+    pushToast({ message: `"${voice.name}" deleted.` });
   } catch (e) {
     pushToast({ message: `Delete failed: ${e.message || e}`, kind: "error" });
   }
@@ -1607,6 +1710,13 @@ function voiceTypeVariant(source) {
       title="Show only voices of one gender"
       width="id"
     />
+    <UiSelect
+      v-model="directionFilter"
+      :options="DIRECTION_OPTIONS"
+      title="Show only voices whose model can be directed one way"
+      aria-label="Can be directed"
+      width="id"
+    />
     <UiChip
       as="a"
       :selected="!!loadedTtsEngine"
@@ -2187,7 +2297,7 @@ function voiceTypeVariant(source) {
       </template>
 
       <template #engine="{ row }">
-        <span class="jv-mono jv-muted">{{ row.engine }}</span>
+        <span class="jv-muted" :title="`Engine: ${row.engine}`">{{ row._model }}</span>
         <span
           v-if="voiceLocality(row) === 'local'"
           class="jv-locality jv-locality--local"
@@ -2213,18 +2323,40 @@ function voiceTypeVariant(source) {
       <!-- The full name, never the code: "American English", not "en-US". -->
       <template #_lang="{ row }">
         <span class="jv-muted">{{ row._lang }}</span>
+        <span v-if="(row.speaks || []).length > 1" class="jv-hint voices-view__more"
+          :title="`On ${row._model} this voice can also speak: ${row.speaks.map((c) => languageName(c) || c).join(', ')}`"
+        > +{{ row.speaks.length - 1 }}</span>
+      </template>
+
+      <template #directed="{ row }">
+        <UiTag v-if="row.directed_by" :intent="directionCell(row.directed_by, tagCount(capabilityRows[row.model])).intent"
+          :title="directionCell(row.directed_by).title">{{ directionCell(row.directed_by, tagCount(capabilityRows[row.model])).label }}</UiTag>
+      </template>
+
+      <template #used="{ row }">
+        <span v-if="personasByVoice[row.id]?.length" class="jv-muted"
+          :title="personasByVoice[row.id].map((p) => p.name).join(', ')">
+          🎭 {{ personasByVoice[row.id].slice(0, 2).map((p) => p.name).join(", ") }}<template v-if="personasByVoice[row.id].length > 2"> +{{ personasByVoice[row.id].length - 2 }}</template>
+        </span>
+        <span v-else class="jv-hint">— unused —</span>
       </template>
 
       <template #actions="{ row }">
         <span class="jv-table__actions">
-          <UiButton
-            v-if="row.source !== 'preset'"
-            intent="danger-outline"
-            size="small"
-            label="✕"
-            :title="`Delete ${row.name}`"
-            @click="deleteVoice(row.id)"
-          />
+          <!-- The row menu — the Speech engines rows' pattern (`.ev-kebab`). -->
+          <DropdownMenuRoot>
+            <DropdownMenuTrigger class="ev-kebab" aria-label="Voice actions" :title="`${row.name} — actions`">⋯</DropdownMenuTrigger>
+            <DropdownMenuPortal>
+              <DropdownMenuContent class="ev-menu" align="end" :side-offset="4" :collision-padding="8">
+                <DropdownMenuItem class="ev-menu-item" @select="newPersonaFrom(row)">🎭 New persona from this voice</DropdownMenuItem>
+                <DropdownMenuItem v-if="hasClip(row)" class="ev-menu-item" @select="copyToModel(row)">⧉ Copy to another model…</DropdownMenuItem>
+                <template v-if="row.source !== 'preset'">
+                  <DropdownMenuSeparator class="ev-menu-sep" />
+                  <DropdownMenuItem class="ev-menu-item danger" @select="deleteVoice(row)">🗑 Delete</DropdownMenuItem>
+                </template>
+              </DropdownMenuContent>
+            </DropdownMenuPortal>
+          </DropdownMenuRoot>
         </span>
       </template>
     </UiTable>

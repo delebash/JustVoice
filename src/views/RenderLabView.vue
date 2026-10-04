@@ -14,6 +14,7 @@ import { pushToast } from "@delebash/llm-ui";
 import { handleTermsRefusal } from "../services/engineTerms.js";
 import { UiButton, UiInput, UiTextarea, UiToggle, UiTag, UiSelect } from "@delebash/llm-ui";
 import { useVoicesStore } from "../stores/voices.js";
+import { voiceLabel } from "../services/personaFacts.js";
 
 const api = useApi();
 const voicesStore = useVoicesStore();
@@ -154,7 +155,7 @@ onMounted(loadVoices);
         <label class="renderlab__field">
           <span class="jv-eyebrow">Voice</span>
           <UiSelect v-model="selectedVoiceId" width="name"
-            :options="voices.map((v) => ({ value: v.id, label: `${v.name} (${v.engine})` }))" />
+            :options="voices.map((v) => ({ value: v.id, label: voiceLabel(v) }))" />
         </label>
         <label class="renderlab__field">
           <span class="jv-eyebrow">Sample sentence</span>

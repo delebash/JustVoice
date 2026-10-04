@@ -34,9 +34,9 @@ import SlashTagMenu from "../components/SlashTagMenu.vue";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";
 import { handleTermsRefusal } from "../services/engineTerms.js";
 import { openProjectInStudio } from "../services/openProject.js";
-import { DIRECTION_OPTIONS, VOICE_KINDS as KINDS, voiceKind as kindOf } from "../services/personaFacts.js";
+import { DIRECTION_OPTIONS, VOICE_KINDS as KINDS, voiceKind as kindOf, voiceLabel } from "../services/personaFacts.js";
 import { auditionVoice } from "../services/voiceAudition.js";
-import { voiceGender, voiceGenderWord } from "../services/voiceGender.js";
+import { voiceGender } from "../services/voiceGender.js";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useApi } from "../stores/api.js";
 import { useEnginesStore } from "../stores/engines.js";
@@ -122,9 +122,13 @@ function payload(d = draft.value) {
   };
 }
 
+// A new persona as it opened — blank, or on the voice Voices' "New persona
+// from this voice" picked — so leaving an untouched page doesn't ask.
+const opened = ref(null);
+const copyOf = (d) => JSON.parse(JSON.stringify(d));
 const dirty = computed(() => {
   if (!draft.value) return false;
-  const base = saved.value ? fromPersona(saved.value) : blank();
+  const base = saved.value ? fromPersona(saved.value) : (opened.value || blank());
   return JSON.stringify(payload(draft.value)) !== JSON.stringify(payload(base));
 });
 
@@ -154,6 +158,7 @@ async function load() {
       draft.value = blank();
       const voice = String(route.query.voice || "");
       if (voice && voices.value.some((v) => v.id === voice)) pickVoice(voice);
+      opened.value = copyOf(draft.value);
       usage.value = null;
     } else {
       const p = await api.safeRequest(`/v1/personas/${id}`, null);
@@ -168,7 +173,12 @@ async function load() {
   }
 }
 
-watch(personaId, (id, before) => { if (id && id !== before) load(); }, { immediate: true });
+// `new?voice=<id>` (Voices' "New persona from this voice") opens a blank
+// persona on that voice; the page is KeepAlive-cached, so a second visit with
+// another voice reloads too.
+watch([personaId, () => route.query.voice], ([id, v], [before, vBefore] = []) => {
+  if (id && (id !== before || (id === "new" && v !== vBefore))) load();
+}, { immediate: true });
 onActivated(() => { enginesStore.reload?.(); });
 
 // The title bar already says "Personas"; the crumb adds this one.
@@ -239,10 +249,6 @@ const shownVoices = computed(() => voicesOfKind.value.filter((v) =>
   && (!genderFilter.value || voiceGender(v) === genderFilter.value)));
 watch(kind, () => { modelFilter.value = ""; });
 
-function voiceLabel(v) {
-  return [v.name, voiceGenderWord(v), languageName(v.language) || v.language, v.model_name || v.engine]
-    .filter(Boolean).join(" · ");
-}
 const voiceOptions = computed(() => shownVoices.value.map((v) => ({ value: v.id, label: voiceLabel(v) })));
 const voiceSelectValue = computed(() =>
   shownVoices.value.some((v) => v.id === draft.value?.voice_id) ? draft.value.voice_id : "");
@@ -571,7 +577,7 @@ async function saveAsNew() {
   }
 }
 function revert() {
-  draft.value = saved.value ? fromPersona(saved.value) : blank();
+  draft.value = saved.value ? fromPersona(saved.value) : copyOf(opened.value || blank());
   voiceChange.value = null;
   if (voice.value) kind.value = kindOf(voice.value);
 }

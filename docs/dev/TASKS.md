@@ -2021,6 +2021,23 @@ BUILT:  P5 (2026-10-03) — the Personas list as the mock `_s9`: ▶ plays the p
         audio.cpp dev 6d1825eb, the real data dir) for P4+P5: the list's ▶ got 409 → "Load
         Kokoro?" → Load & play → a 3.75 s WAV; the persona's page Listen → a 3.75 s WAV;
         zero JS errors; app closed after (no process left, VRAM back at baseline).
+BUILT:  P6 (2026-10-03) — Voices: columns Model (the voice's model name, locality badges
+        kept) · Speaks (own language, "+N" when its model speaks more, the list on hover) ·
+        Can be directed · Used by (🎭 the personas built on it); a Can be directed filter;
+        the row's ✕ became ⋯ — 🎭 New persona from this voice (`/personas/new?voice=`),
+        ⧉ Copy to another model… (cloned/imported/designed: model + name, then the
+        clip's words or Skip the words when Qwen3 Base needs them — server checks by
+        name), 🗑 Delete (now by name, naming the personas that lose their voice). Every
+        voice dropdown — persona page, Generate, Chapters' regenerate prompt and picker,
+        Render Lab, Cache's Prune by voice — reads "Sohee · Female · Korean · Qwen3-TTS
+        CustomVoice" (`personaFacts.voiceLabel`; the one gender service was P4). The
+        persona page compares against how it opened, so a new persona from Voices left
+        untouched doesn't ask on leaving; `?voice=` reloads under KeepAlive. Docs:
+        voices.md (columns, the ⋯ menu, Copy to another model), whats-new, code-map.
+        Gates: ruff, vitest 127, biome, vite build, smoke on the real data dir, Voices
+        and the ⋯ → New persona path checked headless (zero JS errors, no overflow). No
+        server change (suite last run at P5: 1009 passed). Not exercised: Copy to another
+        model in the browser — the real library has no cloned voice (server-tested in P1).
 GO:     given 2026-10-03 for P1–P8 and P9's checks; P9's data reset asks first
 
 ### FINDING — language never reaches Chatterbox or Qwen3: every render on them is told English

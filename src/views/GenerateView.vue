@@ -19,6 +19,7 @@ const LEXICON_MATCH_COLUMNS = [
 import SlashTagMenu from "../components/SlashTagMenu.vue";
 import { useVoicesStore } from "../stores/voices.js";
 import { usePersonasStore } from "../stores/personas.js";
+import { voiceLabel } from "../services/personaFacts.js";
 
 const api = useApi();
 // voices + personas from shared stores; engines/current + capabilities
@@ -332,7 +333,7 @@ const EMOTIONS = computed(() => emotionTagSet.value?.tags || []);
 const voiceOptions = computed(() =>
   availableVoices.value.length === 0
     ? [{ label: "— no voices available —", value: "" }]
-    : availableVoices.value.map((v) => ({ label: v.name, value: v.id }))
+    : availableVoices.value.map((v) => ({ label: voiceLabel(v), value: v.id }))
 );
 
 const wordCount = computed(() => text.value.trim().split(/\s+/).filter(Boolean).length);

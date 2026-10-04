@@ -7,6 +7,18 @@
 // themselves come from the server: a voice's or persona's `directed_by`
 // (`words` · `tags` · `sliders`) and `model_name`.
 
+import { languageName } from "@delebash/llm-ui";
+import { voiceGenderWord } from "./voiceGender.js";
+
+/** Every voice dropdown's label (decided 2026-10-03): "Sohee · Female ·
+ *  Korean · Qwen3-TTS CustomVoice" — name, gender, the voice's own language
+ *  and the model that speaks it. */
+export function voiceLabel(v) {
+  if (!v) return "";
+  return [v.name, voiceGenderWord(v), languageName(v.language) || v.language, v.model_name || v.engine]
+    .filter((x) => x && x !== "?").join(" · ");
+}
+
 /** The "Can be directed" filter, each choice with its one-line example (the
  *  hint shows in the open list; the closed select shows the label). */
 export const DIRECTION_OPTIONS = [

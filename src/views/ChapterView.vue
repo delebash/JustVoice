@@ -20,6 +20,7 @@ import { UiButton, UiInput, UiTextarea, UiTag, UiChip, UiSelect, UiTable } from 
 // list is a computed rather than a constant.
 const NUM = { textAlign: "right", width: "1%", whiteSpace: "nowrap" };
 import LineageViewer from "../components/LineageViewer.vue";
+import { voiceLabel } from "../services/personaFacts.js";
 import { EmptyState } from "@delebash/llm-ui";
 
 const api = useApi();
@@ -221,7 +222,7 @@ const availableVoices = computed(() => {
 const voiceOptions = computed(() =>
   availableVoices.value.length === 0
     ? [{ label: "— no voices loaded —", value: "" }]
-    : availableVoices.value.map((v) => ({ label: `${v.name} — ${v.id}`, value: v.id }))
+    : availableVoices.value.map((v) => ({ label: voiceLabel(v), value: v.id }))
 );
 
 // Default voice for re-generation.
@@ -326,7 +327,7 @@ async function regenerateBlock(block) {
         label: "Voice",
         type: "select",
         defaultValue: regenVoice.value || availableVoices.value[0].id,
-        options: availableVoices.value.map((v) => ({ value: v.id, label: `${v.name} — ${v.id}` })),
+        options: availableVoices.value.map((v) => ({ value: v.id, label: voiceLabel(v) })),
       }],
       confirmLabel: "Regenerate",
     });

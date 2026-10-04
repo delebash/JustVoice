@@ -2,6 +2,15 @@
 
 ## v0.1.0
 
+- **Voices shows what each voice can do (2026-10-03).** New columns: **Model**
+  (the model that speaks it, not just its engine), **Speaks** (its language,
+  with **+N** when its model speaks more), **Can be directed** and **Used by**
+  (the personas built on it), and a **Can be directed** filter. Each row's
+  **⋯** has **New persona from this voice**, **Copy to another model…** (the
+  same clip as a second voice on another model, checked first for what that
+  model needs) and Delete, which now names the personas that lose their voice.
+  Every voice dropdown in the app reads *Sohee · Female · Korean · Qwen3-TTS
+  CustomVoice* ([Voices → Finding a voice](voices.md#finding-a-voice-in-the-library))
 - **The Personas list shows how each persona sounds (2026-10-03).** New
   columns: **Built on** (the voice and how it was made), **Model**, **Can be
   directed** (written direction, the model's tags, or sliders only), **Speaks**

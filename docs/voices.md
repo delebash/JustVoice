@@ -8,9 +8,9 @@ A voice belongs to the **model** that made it and cannot move to another one.
 That is not a limitation we chose: a voice is coordinates inside one model's
 learned space, so the numbers mean nothing to a different model. What *is*
 portable is the recording you cloned from — it is stored with the voice, so
-you can clone it again on another model. The result is a new voice, and it
-will sound a little different, because each model clones with its own
-character.
+you can clone it again on another model with **⋯ → Copy to another model…**
+([below](#copy-to-another-model)). The result is a new voice, and it will sound
+a little different, because each model clones with its own character.
 
 ### Every voice knows the model that speaks it
 
@@ -86,9 +86,46 @@ sees it, rather than read aloud.
 ### Finding a voice in the library
 
 The **Voices** tab is the library. Above it: a search box, then filters for
-**engine**, **language**, **gender** and voice **type**. Language reads as a
-name — *American English*, *British English*, *Chinese* — never as a code.
-Any column heading sorts the list.
+**engine**, **language**, **gender**, **can be directed** and voice **type**.
+Language reads as a name — *American English*, *British English*, *Chinese* —
+never as a code. Any column heading sorts the list.
+
+| Column | Shows |
+|---|---|
+| Name | ▶ plays the voice saying the test line, then the voice's name |
+| Gender | **F**, **M**, **N** or **?** — click it to set your own |
+| Type | preset, cloned, designed, imported or blended |
+| Model | The model that speaks it — *Kokoro*, *Qwen3-TTS CustomVoice*, *Chatterbox Multilingual* — with **LOCAL**, **ONLINE · METERED** or **NEEDS INSTALL** |
+| Speaks | The voice's own language. **+9** beside it means its model can also speak it in nine more; hover for the list. A persona built on it can speak any of them ([Personas → Voice](personas.md#voice)) |
+| Can be directed | **✓ written direction**, **✓ 19 tags** or **sliders only** — what a persona on this voice can be told (the same words as the Personas page) |
+| Used by | The personas built on it: *🎭 Narrator*, *🎭 June, Mara +1*. *— unused —* when none is |
+| ⋯ | The voice's menu, below |
+
+**Can be directed** narrows the list to voices whose model takes written
+direction (*describe it: clipped, world-weary*), tags (*pick from the model's
+list: [fear] [sigh]*), or neither (*sliders only — pace, pitch, gain*).
+
+Every list that offers a voice elsewhere — the persona's page, Generate, a
+chapter's *Regenerate with which voice?*, the Render Lab, the cache's **Prune by
+voice…** — names it the same way: *Sohee · Female · Korean · Qwen3-TTS CustomVoice*
+(name, gender, the voice's own language, its model).
+
+### The ⋯ menu
+
+- **🎭 New persona from this voice** opens a blank persona on this voice — the
+  way to start a persona from the library. A voice is raw; the persona is how
+  it speaks ([Personas](personas.md#the-personas-page)).
+- **⧉ Copy to another model…** — on a cloned, imported or designed voice.
+  Pick a model that can clone and, if you like, a name; the same clip becomes a
+  second voice spoken by that model, and the first stays as it is. Use it to
+  have one recording on Chatterbox Multilingual for Spanish and on Qwen3 Base
+  for English. What the target model needs is checked first, by name: Turbo and
+  Nano need a clip longer than 5 seconds; Qwen3 Base needs the words the clip
+  says, so when the voice has none saved you are asked to type them or pick
+  **Skip the words** (clone from the sound alone).
+- **🗑 Delete** — on any voice but a preset. If personas are built on it, the
+  confirmation names them: *It's the voice of June, Mara — those personas need
+  another voice before they can speak.*
 
 Each tab lists the engines that can do its job and what each one needs —
 **Install speech runtime** when the runtime every engine runs on is not
@@ -330,8 +367,9 @@ Two costs to know about:
 ## Voice tuning that sticks (Tier 2)
 
 To make a delivery setting **stick** to a voice, put it on the persona that
-uses it ([personas.md](personas.md) → "How they sound" → default delivery
-overlay); that is the Tier-2 layer every render reads.
+uses it — the persona's page, **How it speaks** and **Sampling**
+([Personas → How it speaks](personas.md#how-it-speaks)); every render reads
+it.
 
 Engine-private knobs used to be applied in preview but not on render,
 because the UI saved them flat and the adapters read them nested. That seam

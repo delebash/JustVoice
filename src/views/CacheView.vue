@@ -15,6 +15,7 @@ import { confirmDialog, promptDialog } from "@delebash/llm-ui";
 import { UiButton, UiTag, UiTable } from "@delebash/llm-ui";
 import { useVoicesStore } from "../stores/voices.js";
 import { useEnginesStore } from "../stores/engines.js";
+import { voiceLabel } from "../services/personaFacts.js";
 
 const api = useApi();
 const voicesStore = useVoicesStore();
@@ -157,7 +158,7 @@ async function pruneByVoice() {
       type: "select",
       defaultValue: voices.value[0]?.id ?? "",
       // Not the id — a cloned voice's is `voice_<32 hex>` (storage/voices.py:76).
-      options: voices.value.map((v) => ({ value: v.id, label: `${v.name} (${v.engine})` })),
+      options: voices.value.map((v) => ({ value: v.id, label: voiceLabel(v) })),
     }],
     confirmLabel: "Continue",
   });
