@@ -16,9 +16,13 @@ session. Moved here so it survives.
 **Mocks are built in the app now (2026-10-04).** This HTML mock shared only the app's tokens —
 every control here is its own CSS — so screens built with the real controls never looked like it.
 A new or redone screen is a Vue page in `src/mock/`, at `#/mock/...` under `npm run dev`
-(record: `../2026-10-04-persona-voice-making.md` §2). Screens move out of this file one by one;
-`nav()` sends a moved one to the app (`APP_MOCK` in `build_mock.py`). Moved so far: the Personas
-list (`personas`, was `_s9`) and the persona page (`workbench`, was `_s7`).
+(record: `../2026-10-04-persona-voice-making.md` §2).
+
+**This file is frozen (decided 2026-10-04): no more edits.** It stays only as the picture of
+screens not yet redone; each is drawn fresh in the app when its work starts. Already redone
+there: the Personas list (`personas`, was `_s9`) and the persona page (`workbench`, was `_s7`) —
+`nav()` sends those to the app (`APP_MOCK` in `build_mock.py`). Superseded but left as drawn:
+`_s8` (Voices › New voice) — making a voice moved into the persona page (2026-10-04, answer A).
 
 ## Open it
 
@@ -27,6 +31,8 @@ server, no build step. It is also published (private) at
 `https://claude.ai/code/artifact/534a16a2-af40-438b-a64d-34baaf31f838`.
 
 ## Change it
+
+Don't — it's frozen. How it was built, kept for reading git history:
 
 ```bash
 cd docs/plans/mock

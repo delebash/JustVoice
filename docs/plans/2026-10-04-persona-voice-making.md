@@ -42,6 +42,11 @@ The answers ("your rec"):
    packaged app.
 3. The HTML mock's `_s7` and `_s9` are deleted once the Vue ones exist; its other screens' links to
    them open the app's mock route instead.
+4. The rest of the HTML mock — "a" (2026-10-04), as presented: *"(a) Freeze it. No more edits. It
+   stays only as the picture of screens not yet redone (Render for Slice 4, Cast, Script, and so on),
+   and each one is drawn fresh in the app when its work starts. Anything new is drawn only in the
+   app."* Rejected: (b) delete it now; (c) redo all its screens in the app first. So `_s8` (Voices ›
+   New voice), superseded by answer A, stays as drawn.
 
 ## 3. A persona makes its own voice (the user's design, my answer approved)
 

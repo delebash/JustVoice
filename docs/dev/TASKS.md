@@ -1938,9 +1938,11 @@ BUILT:  2026-10-04 — the persona mock in the app: `src/mock/` (`MockPersonasVi
         of the HTML mock (its `nav()` opens the app's). Checked: flows driven on the running app
         (all pass, zero JS errors), side by side with `_s7` at 1440 px, smoke gate 13/13, unit
         132/132, the packaged build carries none of it.
+        Then "a" (2026-10-04): the rest of the HTML mock is FROZEN — no more edits; it stays only
+        as the picture of screens not yet redone, each drawn fresh in the app when its work starts
+        (record §2 item 4). `_s8` stays as drawn.
 OPEN:   the user's review of the mock; then `PersonaEditorView.vue`, `PersonasView.vue` and
-        `VoicesView.vue` change to match (each a slice with its blast-radius table). Also asked:
-        `_s8` (Voices › New voice) is orphaned in the HTML mock and contradicts answer A.
+        `VoicesView.vue` change to match (each a slice with its blast-radius table).
 GO:     given 2026-10-04 for option 2, the persona mock and the answers above; the real pages
         wait for the user's review of the mock
 
