@@ -2056,7 +2056,38 @@ BUILT:  P7 (2026-10-03) — Cast: persona rows read the server's answer (voice �
         a persona and recast a speaker in your real book) — read-only checks only. Real
         app (`npm run dev`) for P6+P7: Cast's ▶ → 409 → "Load & play" → the persona's
         3.75 s WAV; Voices lists 91 rows; zero JS errors; app closed after.
+BUILT:  P8 (2026-10-04) — the Turbo tag check: `server/scripts/turbo_tag_check.py` renders
+        one line on an UNSAVED Turbo clone (a Kokoro audition as the 7.5 s reference),
+        plain and with each of the 19 tags, one seed, then transcribes each through
+        `/v1/transcribe`; a tag passes when its word isn't heard and the audio differs
+        (same-seed floor 0.0). Run on the real app (`npm run dev`, our audio.cpp 6d1825eb)
+        for Turbo AND Nano: **19/19 pass on both — the tag list is unchanged.** Record +
+        what it does and doesn't prove: `docs/plans/2026-10-04-turbo-tag-check.md`. Two
+        engine bugs found on the way, filed below as their own FINDING (not fixed — no go).
 GO:     given 2026-10-03 for P1–P8 and P9's checks; P9's data reset asks first
+
+### FINDING — after a model swap, speech recognition stays booked and every transcription is refused
+STATE:  FINDING — seen live 2026-10-04 running the persona build's tag check (P8), mechanism
+        read in the code. Record: `docs/plans/2026-10-04-turbo-tag-check.md` "Found on the way".
+WHY:    loading Chatterbox Nano after Turbo restarted the shared audio.cpp process (runtime
+        pid 20228 → 24428), which took the resident speech recogniser down with it (memory in
+        use 5154 → 1625 MB). The arbiter kept `stt:asr` booked at 2756 MB, and from then on
+        every `POST /v1/transcribe` was refused — "not enough memory to load asr: it needs
+        ~4752 MB (+1024 MB safety margin) but only 5436 MB free of 8192 MB (measured, minus
+        what is booked) remain. Resident: stt:asr (2756 MB)" — with 677 MiB really in use.
+        `POST /v1/engines/unload {"kind":"stt"}` didn't clear it. In the code:
+        `manager._admit_memory` prices against the ledger (`free = total − max(used,
+        committed)`), and `make_room(…, exclude="stt:asr")` never evicts the booking of the
+        engine being loaded, so a stale booking under the same key can never go. Dictation
+        and Captures use the same door (`captures_api.ensure_stt_loaded`). Only an app
+        restart cleared it.
+        Second, seen once: the first Turbo load was refused 0.6 s after the arbiter began
+        evicting the language model ("evict LRU gemma-4-26b-a4b-qat (llm, 6825 MB) — loading
+        chatterbox" → "only 4101 MB free"); a retry seconds later loaded. The manager already
+        waits up to 4 s for an eviction to drain, so which path refused needs reading first.
+OPEN:   both — the fix needs a go (likely: when a runtime restart drops a co-resident
+        model, release its booking; and/or let `make_room` clear a stale booking of the
+        engine being loaded).
 
 ### FINDING — language never reaches Chatterbox or Qwen3: every render on them is told English
 STATE:  FINDING — code-verified 2026-10-01 (found by the persona review). Added to this list at
