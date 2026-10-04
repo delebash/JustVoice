@@ -1943,9 +1943,21 @@ BUILT:  2026-10-04 — the persona mock in the app: `src/mock/` (`MockPersonasVi
         (record §2 item 4). `_s8` stays as drawn.
         Review so far (2026-10-04): "change word raw to play" — ▶ Raw is ▶ Play (mock done;
         the real page gets it when it is matched).
-OPEN:   the rest of the user's review of the mock; then `PersonaEditorView.vue`,
-        `PersonasView.vue` and `VoicesView.vue` change to match (each a slice with its
-        blast-radius table).
+        Then the review (2026-10-04): what a voice can do comes first ("How it can be directed",
+        always in view), then "Made by"; picking Clone/Design/Blend shows its maker's fields at
+        the top of the right column, no ＋ New button (mock `8111c3b`); "mock looks good, go
+        ahead and code it".
+BUILT:  slice 1 `90dc4c2` — the persona page laid out as the mock; direction first; Language
+        filter; ▶ Play; effect names (page + list); docs/personas.md.
+        Then "your rec on all go" (2026-10-04) on: (1) a new voice is previewed through the
+        persona's own path (effects, lexicon) before it is kept; (2) a design take can be kept
+        on any clone model, staying a design with its description; (3) a server check measures a
+        clip's length and noise margin, warning under 25 dB; (4) the import endpoint is deleted
+        with its tests — "keep the clip as it is" saves through Clone; (5) Voices' empty state
+        says to make a voice on a persona's page.
+OPEN:   server (1–4 + voices send their design description) → clone maker on the persona page →
+        design maker → blend maker → Voices library only + docs/voices.md; each a slice with its
+        blast-radius table, committed on its own.
         LATER — the user: "dont do it know add to list": mock in the app the Voices page as the
         library only (answer A) and Cast's persona list.
 GO:     given 2026-10-04 for option 2, the persona mock and the answers above; the real pages
