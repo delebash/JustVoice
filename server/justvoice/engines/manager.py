@@ -398,8 +398,8 @@ def _install_audiocpp_runtime(
 
 
 def stop_speech_runtime() -> None:
-    """Free every speech slot the runtime holds (their bookings go with them) and stop both of
-    its processes, so the next load starts it again — after an update, or once the Japanese
+    """Free every speech slot the runtime holds (their bookings go with them) and stop all of
+    its processes, so the next load starts them again — after an update, or once the Japanese
     dictionary is installed (the processes read its folder when they start)."""
     from .audiocpp import runtime
 
@@ -420,7 +420,7 @@ def install_japanese_dictionary(
     from .audiocpp import japanese, runtime
 
     root = japanese.install(engines_runtime_root(), on_progress=on_bytes, cancel_check=cancel_check)
-    if runtime.get_server("gpu").is_running() or runtime.get_server("cpu").is_running():
+    if any(srv.is_running() for srv in runtime.servers()):
         stop_speech_runtime()
     return root
 
@@ -460,8 +460,8 @@ def _remove_replaced_build(build_dir: Path, tag: str) -> None:
 
 def _new_slot(m: EngineManifest, placement: str = "gpu") -> AudioCppSlot:
     """The slot a load fills: one model in the speech runtime's process for `placement`
-    ("gpu" | "cpu"). The one seam tests swap for a fake (it was the `EngineProcess` class
-    until 2026-10-01)."""
+    ("gpu" | "cpu") and the engine's kind. The one seam tests swap for a fake (it was the
+    `EngineProcess` class until 2026-10-01)."""
     from .audiocpp.slot import AudioCppSlot
 
     return AudioCppSlot(m, placement)
@@ -538,9 +538,28 @@ class EngineManager:
             self._loaded["tts"] = proc
 
     def loaded_for(self, kind: str) -> AudioCppSlot | None:
+        """The kind's loaded slot, or None. A slot whose model died with its process (a crash, a
+        restart) is dropped here WITH its booking — before 2026-10-04 it stayed booked, and a
+        reload of the same engine was refused against its own ghost (audit §5 C1)."""
         with self._lock:
             proc = self._loaded.get(kind)
-            return proc if proc and proc.is_alive() else None
+            if proc is None or proc.is_alive():
+                return proc
+            if getattr(proc, "is_dead", lambda: False)():
+                self._drop_dead_slot(kind, proc)
+            return None
+
+    def _drop_dead_slot(self, kind: str, proc) -> None:
+        """Forget a slot whose model is gone, and free its booking (self._lock held; the
+        arbiter's lock is a leaf — `make_room` never holds it while it evicts)."""
+        engine_id = proc.manifest.id
+        log.warning("the %s model %s is no longer loaded — its runtime process stopped",
+                    kind, engine_id)
+        self._loaded.pop(kind, None)
+        self._current_variants.pop(engine_id, None)
+        self._resolved_devices.pop(engine_id, None)
+        self._placement_reasons.pop(engine_id, None)
+        self._release_engine(kind, engine_id)
 
     def current_for(self, kind: str) -> str | None:
         proc = self.loaded_for(kind)
@@ -874,30 +893,6 @@ class EngineManager:
         self._probe_cache[key] = (now, val)
         return val
 
-    def _own_share_mb(self, kind: str, proc, total: int | None) -> int | None:
-        """One kind's share of a process another kind also lives in. audio.cpp serves
-        speech AND speech→text from ONE server, so its measured footprint holds both
-        models — booking the whole of it per kind counted the first model twice. Each
-        kind books the total less what the other kinds in that same process already
-        booked (the process's own overhead stays with whichever loaded first). A
-        process with one kind in it — every Python engine — is returned unchanged."""
-        if not total:
-            return total
-        pid = getattr(getattr(proc, "proc", None), "pid", None)
-        with self._lock:
-            others = [(k, p.manifest.id) for k, p in self._loaded.items()
-                      if k != kind and pid and getattr(getattr(p, "proc", None), "pid", None) == pid]
-        if not others:
-            return total
-        try:
-            from llm_runner.runner.arbiter import get_arbiter
-
-            arb = get_arbiter()
-            booked = sum(arb.reserved_mb(f"{k}:{eid}") or 0 for k, eid in others)
-        except Exception:  # noqa: BLE001 — no kit → nothing booked
-            booked = 0
-        return max(0, int(total) - int(booked)) or None
-
     def _prior_measured_mb(self, kind: str, engine_id: str) -> int:
         """The newest measured footprint of this engine on THIS box, from the
         shared measurement store (rows recorded by `_record_speech_load`
@@ -1085,7 +1080,8 @@ class EngineManager:
         if proc is None:
             return
         engine_id = proc.manifest.id
-        mb = self._own_share_mb(kind, proc, self._engine_proc_mb(proc, fresh=fresh))
+        # The kind's own process (audit §13.2): its whole measurement is this model's.
+        mb = self._engine_proc_mb(proc, fresh=fresh)
         if not mb:
             return
         try:
@@ -1273,7 +1269,8 @@ class EngineManager:
         engine's model if it was already in the runtime."""
         with self._lock:
             self._cancel_load_requests.add(engine_id)
-            # Find this engine across all kind slots and terminate it.
+            # Find this engine across all kind slots and terminate it — and free its booking,
+            # which used to outlive the cancelled slot (audit §5 C3).
             for kind, proc in list(self._loaded.items()):
                 if proc.manifest.id == engine_id:
                     try:
@@ -1282,6 +1279,9 @@ class EngineManager:
                         pass
                     self._loaded.pop(kind, None)
                     self._current_variants.pop(engine_id, None)
+                    self._resolved_devices.pop(engine_id, None)
+                    self._placement_reasons.pop(engine_id, None)
+                    self._release_engine(kind, engine_id)
                     return True
         return False
 
@@ -1549,6 +1549,20 @@ class EngineManager:
                 # releases is a lying ledger) is worth the belt.
                 self._release_engine(target_kind, engine_id)
                 raise RuntimeError(f"engine load failed: {r.text}")
+            if effective_cancel():
+                # Cancelled while the model came in — Load no longer holds the server's event
+                # loop, so a Cancel lands mid-load now (audit §13.2). Unload it before anything
+                # is booked for it; `request_cancel_load` may already have dropped the slot.
+                with self._activity(target_kind), self._lock:
+                    try:
+                        proc.terminate()
+                    except Exception:  # noqa: BLE001 — already gone is fine
+                        pass
+                    if self._loaded.get(target_kind) is proc:
+                        self._loaded.pop(target_kind, None)
+                    self._resolved_devices.pop(engine_id, None)
+                self._release_engine(target_kind, engine_id)
+                raise RuntimeError("cancelled by user")
             # Record what actually LOADED: the slot answers with the variant it
             # resolved, which differs from the request when the request names a
             # model the catalog no longer has (a stored "whisper-turbo" dictation
@@ -1576,8 +1590,9 @@ class EngineManager:
             # measurable at all → no booking — the strip says "not measured
             # yet" rather than displaying an invention.
             if books:
-                measured = self._own_share_mb(target_kind, proc,
-                                              self._engine_proc_mb(proc, fresh=True))
+                # Each kind has its own process (audit §13.2), so the process's measured
+                # memory is this model's alone — no share of another kind's to subtract.
+                measured = self._engine_proc_mb(proc, fresh=True)
                 if measured:
                     self._reserve_engine(m, target_kind, measured, "measured")
                     self._record_speech_load(

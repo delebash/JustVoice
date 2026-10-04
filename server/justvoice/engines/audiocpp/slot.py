@@ -32,6 +32,7 @@ from .runtime import (
     configured_gpu,
     cpu_threads,
     get_server,
+    has_feature,
     installed_exe,
 )
 
@@ -119,13 +120,14 @@ def _entries_for(manifest, row: dict) -> list[ModelEntry]:
     spec = row["audiocpp"]
     vdir = variant_dir(_data_dir(), manifest.id, row["id"])
     opts = dict(spec.get("session_options") or {})
-    # The eSpeak NG phonemizer the runtime install fetched — Kokoro's and KittenTTS's
-    # text frontends both read it.
-    if spec["family"] in ESPEAK_FAMILIES:
+    # The eSpeak NG phonemizer the runtime install fetched. KittenTTS reads it from its own
+    # prefixed session options; Kokoro reads only the runtime's environment
+    # (`runtime._child_env`) and would refuse a session option it doesn't know.
+    if spec["family"] in ESPEAK_SESSION_FAMILIES:
         found = espeak.paths(engines_runtime_root())
         if found:
-            opts["espeak_library_path"] = str(found[0])
-            opts["espeak_data_path"] = str(found[1])
+            opts[f"{spec['family']}.espeak_library_path"] = str(found[0])
+            opts[f"{spec['family']}.espeak_data_path"] = str(found[1])
     out = [ModelEntry(row["id"], spec["family"], spec["task"], str(vdir / spec["file"]),
                       tuple(sorted(opts.items())))]
     for comp in spec.get("companions") or []:
@@ -134,20 +136,33 @@ def _entries_for(manifest, row: dict) -> list[ModelEntry]:
     return out
 
 
-def installed_entries() -> list[ModelEntry]:
-    """Every model on disk across every engine — the server config's list."""
+def installed_entries(kind: str) -> list[ModelEntry]:
+    """Every model of `kind` ("tts" | "stt") on disk — the config's list for a build that
+    can't register models at run time (`managed_runtime`)."""
     from ...speech_cache import variant_on_disk
     from ..manager import get_manager
 
     out: list[ModelEntry] = []
     for m in get_manager().manifests().values():
+        if m.kind != kind:
+            continue
         for row in getattr(m.module, "VARIANTS", []) or []:
             if row.get("audiocpp") and variant_on_disk(_data_dir(), m.id, row["id"]):
                 out.extend(_entries_for(m, row))
     return out
 
 
-ESPEAK_FAMILIES = ("kokoro_tts", "kitten_tts")
+def managed_runtime() -> bool:
+    """Whether the installed build registers models at run time (`model_management`, our
+    fork — audit 2026-10-04 §13.2): its processes start with no models and nothing downloaded
+    or deleted restarts them."""
+    return has_feature("model_management")
+
+
+# The families that take eSpeak NG's paths as session options (audio.cpp
+# community_models/kitten_tts/session.cpp:74 — `kitten_tts.espeak_library_path` /
+# `kitten_tts.espeak_data_path`). Kokoro is not one: it reads the environment.
+ESPEAK_SESSION_FAMILIES = ("kitten_tts",)
 
 
 def effective_placement(placement: str) -> str:
@@ -159,20 +174,22 @@ def effective_placement(placement: str) -> str:
     return placement
 
 
-def ensure_server(placement: str = "gpu"):
-    """The running server for `placement` ("gpu" | "cpu"). The CPU process runs the
-    installed build with `backend: cpu` — measured at 0 MB of graphics memory — at the
-    CPU-threads setting (docs/plans/2026-10-02-cpu-placement.md §8)."""
+def ensure_server(placement: str = "gpu", kind: str = "tts"):
+    """The running server for `placement` ("gpu" | "cpu") and `kind` ("tts" | "stt"). The CPU
+    process runs the installed build with `backend: cpu` — measured at 0 MB of graphics
+    memory — at the CPU-threads setting (docs/plans/2026-10-02-cpu-placement.md §8)."""
     exe = installed_exe()
     if exe is None:
         raise RuntimeError("the speech runtime (audio.cpp) is not installed — install it on the AI page")
     placement = effective_placement(placement)
-    srv = get_server(placement)
+    srv = get_server(placement, kind)
+    managed = managed_runtime()
+    models = [] if managed else installed_entries(kind)
     if placement == "cpu":
-        srv.ensure(exe, installed_entries(), data_dir=_data_dir(), device=configured_gpu(),
-                   threads=cpu_threads(), backend="cpu")
+        srv.ensure(exe, models, data_dir=_data_dir(), device=configured_gpu(),
+                   threads=cpu_threads(), backend="cpu", managed=managed)
     else:
-        srv.ensure(exe, installed_entries(), data_dir=_data_dir(), device=configured_gpu())
+        srv.ensure(exe, models, data_dir=_data_dir(), device=configured_gpu(), managed=managed)
     return srv
 
 
@@ -203,6 +220,8 @@ class AudioCppSlot:
     def __init__(self, manifest, placement: str = "gpu"):
         self.manifest = manifest
         self.placement = effective_placement(placement)
+        # Speech and speech recognition each have their own process (audit §13.2).
+        self.kind = "stt" if manifest.kind == "stt" else "tts"
         self.proc = None            # the server's Popen — its pid is what VRAM probes read
         self.port: int | None = None
         self._row: dict | None = None
@@ -212,24 +231,33 @@ class AudioCppSlot:
         self.speed_recorded = False
 
     def _srv(self):
-        return get_server(self.placement)
+        return get_server(self.placement, self.kind)
 
     # -- lifecycle (manager.EngineProcess) --
 
     def spawn(self) -> None:
-        srv = ensure_server(self.placement)
+        srv = ensure_server(self.placement, self.kind)
         self.proc = srv._run.proc
         self.port = srv._run.port
         self._generation = srv._run.proc.pid
 
     def is_alive(self) -> bool:
         srv = self._srv()
-        return (self._loaded and srv.is_running() and srv._run.proc.pid == self._generation)
+        return (self._loaded and srv.is_running() and srv.pid == self._generation)
+
+    def is_dead(self) -> bool:
+        """It had loaded, and the process holding its model is gone or replaced — the model
+        went with it. A slot still loading is not dead."""
+        return self._loaded and not self.is_alive()
 
     def terminate(self) -> None:
-        if self._row is not None and self._srv().is_running():
+        srv = self._srv()
+        if self._row is not None and srv.is_running() and srv.pid == self._generation:
+            ids = [e.id for e in _entries_for(self.manifest, self._row)]
+            if srv.managed:
+                ids = [i for i in ids if srv.has_model(i)]
             try:
-                self._srv().unload([e.id for e in _entries_for(self.manifest, self._row)])
+                srv.unload(ids)
             except AudioCppError as e:
                 log.warning("audio.cpp unload of %s failed: %s", self._row["id"], e)
         self._loaded = False
@@ -264,9 +292,15 @@ class AudioCppSlot:
         row = variant_spec(self.manifest, body.get("variant"))
         if row is None:
             return _err(400, f"{self.manifest.name} has no audio.cpp model for {body.get('variant')!r}")
-        srv = ensure_server(self.placement)
-        if not srv.has_model(row["id"]):
+        from ...speech_cache import variant_on_disk
+
+        if not variant_on_disk(_data_dir(), self.manifest.id, row["id"]):
             return _err(400, f"{row.get('name', row['id'])} is not downloaded — download it on the AI page")
+        srv = ensure_server(self.placement, self.kind)
+        if srv.managed:
+            # Registered and loaded now — a Load means loaded. Companions (the aligner)
+            # register on their first use, as they loaded lazily before.
+            srv.register(_entries_for(self.manifest, row)[0])
         self._row = row
         self.proc, self.port, self._generation = srv._run.proc, srv._run.port, srv._run.proc.pid
         self._loaded = True
@@ -375,8 +409,12 @@ class AudioCppSlot:
         wav = (Path(body["audio_path"]).read_bytes() if body.get("audio_path")
                else base64.b64decode(body.get("wav_b64") or ""))
         lang = (body.get("language") or "en").split("-")[0].lower()
-        out = self._srv().align(f"{self._row['id']}::aligner", as_16k_mono(wav), body.get("text") or "",
-                                 QWEN_LANGUAGE.get(lang, "English"))
+        srv = self._srv()
+        aligner_id = f"{self._row['id']}::aligner"
+        if srv.managed and not srv.has_model(aligner_id):
+            srv.register(next(e for e in _entries_for(self.manifest, self._row) if e.id == aligner_id))
+        out = srv.align(aligner_id, as_16k_mono(wav), body.get("text") or "",
+                        QWEN_LANGUAGE.get(lang, "English"))
         words = [{"word": w.get("word", ""), "start": float(w.get("start", 0.0)),
                   "end": float(w.get("end", 0.0))} for w in out.get("words") or []]
         return _Resp(200, payload={"words": words})

@@ -371,12 +371,13 @@ class _FakeServer:
 
 def _pocket_slot(monkeypatch, accepted: bool):
     srv = _FakeServer()
-    monkeypatch.setattr(slot, "get_server", lambda placement="gpu": srv)
+    monkeypatch.setattr(slot, "get_server", lambda placement="gpu", kind="tts": srv)
     monkeypatch.setattr(slot, "terms_accepted", lambda eid: accepted)
     monkeypatch.setattr(slot.AudioCppSlot, "is_alive", lambda self: True)
     s = slot.AudioCppSlot.__new__(slot.AudioCppSlot)
     s.manifest = mgr_mod.discover_engines()["pocket"]
     s.placement = "cpu"
+    s.kind = "tts"
     s._row = _row("pocket", "pocket-en-q8")
     return s, srv
 
@@ -399,12 +400,20 @@ def test_an_accepted_pocket_clone_renders(monkeypatch):
 # ─── the two processes ──────────────────────────────────────────────────────
 
 
-def test_each_placement_has_its_own_process_files():
+def test_each_placement_and_kind_has_its_own_process_files():
+    # Speech and speech recognition each get a process per placement (audit 2026-10-04 §13.2);
+    # the speech processes keep the names they always had.
     gpu, cpu = runtime.get_server("gpu"), runtime.get_server("cpu")
-    assert gpu is not cpu and runtime.get_server("cpu") is cpu
+    gpu_stt, cpu_stt = runtime.get_server("gpu", "stt"), runtime.get_server("cpu", "stt")
+    assert len({id(s) for s in (gpu, cpu, gpu_stt, cpu_stt)}) == 4
+    assert runtime.get_server("cpu") is cpu and runtime.get_server("gpu", "stt") is gpu_stt
     assert gpu._file_stem() == "audiocpp-server" and cpu._file_stem() == "audiocpp-server-cpu"
+    assert gpu_stt._file_stem() == "audiocpp-server-stt"
+    assert cpu_stt._file_stem() == "audiocpp-server-cpu-stt"
     with pytest.raises(ValueError):
         runtime.get_server("npu")
+    with pytest.raises(ValueError):
+        runtime.get_server("gpu", "llm")
 
 
 def test_cpu_threads_default_to_the_physical_cores(monkeypatch):
@@ -423,16 +432,22 @@ def test_the_cpu_process_runs_the_same_build_on_the_cpu(monkeypatch, tmp_path):
 
     class _Srv:
         def ensure(self, exe, models, **kw):
-            seen.update(kw, exe=exe)
+            seen.update(kw, exe=exe, models=models)
 
     exe = Path("C:/rt/audiocpp/v0.9.0/cuda12/audiocpp_server.exe")
     monkeypatch.setattr(slot, "installed_exe", lambda backend=None: exe)
-    monkeypatch.setattr(slot, "get_server", lambda placement="gpu": _Srv())
-    monkeypatch.setattr(slot, "installed_entries", lambda: [])
+    monkeypatch.setattr(slot, "get_server", lambda placement="gpu", kind="tts": _Srv())
+    monkeypatch.setattr(slot, "installed_entries", lambda kind: [f"{kind}-models"])
+    monkeypatch.setattr(slot, "managed_runtime", lambda: False)
     monkeypatch.setattr(slot, "_data_dir", lambda: tmp_path)
     monkeypatch.setattr(slot, "cpu_threads", lambda: 8)
     slot.ensure_server("cpu")
     assert seen["backend"] == "cpu" and seen["threads"] == 8 and seen["exe"] == exe
+    # A build that can't register models lists its kind's own; one that can lists none.
+    assert seen["models"] == ["tts-models"] and seen["managed"] is False
+    monkeypatch.setattr(slot, "managed_runtime", lambda: True)
+    slot.ensure_server("cpu", "stt")
+    assert seen["models"] == [] and seen["managed"] is True
 
 
 # ─── the API ────────────────────────────────────────────────────────────────

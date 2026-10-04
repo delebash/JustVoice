@@ -2,6 +2,23 @@
 
 ## v0.1.0
 
+- **Downloading a model no longer stops the other one (2026-10-04).** Speech
+  and speech recognition each run in a process of their own, so downloading or
+  deleting a model never touches the other's — before, the first download of
+  any model restarted the runtime and silently unloaded the speech-recognition
+  model, which then couldn't load again until the app restarted ("not enough
+  memory … Resident: stt:asr"). A model whose process stops is no longer left
+  holding memory it doesn't use. **Cancel** on a model load now answers at
+  once, even mid-load, and the app stays responsive while a model loads. From
+  the speech runtime's next release (the build `npm run dev` makes has it
+  already), a newly downloaded model also joins its own process without
+  restarting it ([Speech engines](engines.md))
+- **Kokoro and KittenTTS use the eSpeak NG the app installs (2026-10-04).**
+  They read text through eSpeak NG, which installing the speech runtime
+  downloads — but they were never told where it was, so they used another
+  copy installed on the computer, and failed on a computer without one. They
+  now use the app's own copy. On Linux (x86_64) installing the runtime now
+  finishes; it stopped at eSpeak NG before ([Speech engines](engines.md))
 - **A book has a language, and Cast checks it (2026-10-03).** Set it on New
   project or Studio · Overview; a speaker whose persona speaks another language
   shows **⚠ speaks Korean — the book is English** on their card. Cast's persona

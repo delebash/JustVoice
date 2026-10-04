@@ -2,8 +2,12 @@
 """eSpeak NG for audio.cpp's Kokoro — fetched onto this machine, never shipped by us.
 
 audio.cpp's Kokoro phonemizes English, Spanish, French, Hindi, Italian and Portuguese
-with eSpeak NG, which it loads as a shared library from a path we pass
-(`espeak_library_path` / `espeak_data_path` session options). eSpeak NG is GPL-3.0, so
+with eSpeak NG, and KittenTTS phonemizes English with it, each loading it as a shared
+library from a path we pass: Kokoro reads the runtime's environment
+(`AUDIOCPP_ESPEAK_LIBRARY` / `AUDIOCPP_ESPEAK_DATA`, set by `runtime._child_env`), KittenTTS
+its own session options (`kitten_tts.espeak_library_path` / `…_data_path`, set by
+`slot._entries_for`). Without them each falls back to whatever eSpeak NG the system path
+finds, or fails. eSpeak NG is GPL-3.0, so
 JustVoice (MIT) never bundles it: like the Kokoro venv did before the cut, the user's
 machine downloads it from PyPI — the `espeakng-loader` wheel, which carries the library
 and its data — and only audio.cpp's process loads it.
@@ -42,6 +46,16 @@ def _wheel_tag() -> str:
     return "manylinux_2_28_aarch64" if arm else "manylinux_2_17_x86_64"
 
 
+def wheel_matches(filename: str, tag: str) -> bool:
+    """Whether a wheel file serves `tag`. A wheel's last name field can carry several
+    platform tags joined by dots — PyPI's Linux x86_64 file for 0.2.4 is
+    `…-manylinux_2_17_x86_64.manylinux2014_x86_64.whl`, which an exact suffix match missed,
+    so the runtime install could never finish on Linux x86_64 (audit 2026-10-04 §5 A2)."""
+    if not filename.endswith(".whl"):
+        return False
+    return tag in filename.removesuffix(".whl").rsplit("-", 1)[-1].split(".")
+
+
 def home(runtime_root: Path) -> Path:
     return runtime_root / "audiocpp" / f"espeak-ng-{VERSION}"
 
@@ -64,7 +78,7 @@ def install(runtime_root: Path) -> tuple[Path, Path]:
     tag = _wheel_tag()
     meta = json.loads(urllib.request.urlopen(
         f"https://pypi.org/pypi/espeakng-loader/{VERSION}/json", timeout=60).read())
-    entry = next((u for u in meta["urls"] if u["filename"].endswith(f"-{tag}.whl")), None)
+    entry = next((u for u in meta["urls"] if wheel_matches(u["filename"], tag)), None)
     if entry is None:
         raise RuntimeError(f"eSpeak NG {VERSION} has no build for {tag}")
     blob = urllib.request.urlopen(entry["url"], timeout=300).read()

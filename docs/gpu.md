@@ -76,9 +76,9 @@ never internal bookkeeping:
   loaded, otherwise the loaded model's name and its real, measured memory
   take (or **on CPU** when the model is placed on the CPU, which holds no VRAM
   on a discrete card — see [Engines → Where each model runs](engines.md#where-each-model-runs--the-graphics-card-or-the-cpu)).
-  Two slots in the same runtime process split its footprint, so the second
-  slot's number is what loading its model *added* — the process's whole
-  footprint is never counted twice.
+  Each slot runs in a process of its own, so its number is that process's
+  measured memory — its model plus the process's own share (about 100 MB on
+  the card); nothing is counted twice.
   The very first time an engine loads on your machine the cell says **not
   measured yet** for a moment: JustVoice attaches no number to a load it has
   never observed — it measures the engine process itself as soon as the load

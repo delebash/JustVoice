@@ -402,10 +402,10 @@ variant row carries an `audiocpp` block.
 |---|---|---|
 | pinned release | `release.py` | `TAG` (`v0.9.0`), the `BinaryAsset` rows per platform/GPU (Windows cuda12 + cudart 12.4, cuda13 + cudart 13.3, vulkan, cpu; Linux vulkan, cpu; macOS metal), `MODEL_REPO`/`MODEL_REVISION`, `model_source()` |
 | install | `runtime.install()` → kit `llm_runner.runner.binary.acquire_runtime` | staged download → launch-verify (`--no-ui --max-loaded-models 0 --version`) → atomic swap into `<engines_runtime_root>/audiocpp/<tag>/<gpu>/`; `installed_exe()` is cached, `forget_installed()` drops it |
-| eSpeak NG | `espeak.py` | fetches the `espeakng-loader` 0.2.4 wheel for this platform from PyPI, checks its pinned sha256, unpacks the library + `espeak-ng-data` into `<root>/audiocpp/espeak-ng-0.2.4/`; its paths ride Kokoro's `session_options` |
+| eSpeak NG | `espeak.py` | fetches the `espeakng-loader` 0.2.4 wheel for this platform from PyPI (`wheel_matches`: any one of a name's platform tags), checks its pinned sha256, unpacks the library + `espeak-ng-data` into `<root>/audiocpp/espeak-ng-0.2.4/`. Kokoro reads its paths from the runtime's environment (`AUDIOCPP_ESPEAK_LIBRARY` / `_DATA`, `runtime._child_env`); KittenTTS from its own `kitten_tts.espeak_*` session options (`slot._entries_for`) |
 | backend choice | `runtime.configured_backend()/configured_gpu()` ← `settings.engines.speech_runtime` | `auto` = `select_runtime_asset` (the kit's GPU preference; cuda12 vs cuda13 by compute capability via `concrete_gpu`); a pinned backend that isn't installed reads as not installed |
-| the processes | `AudioCppServer.ensure()`, one per placement (`runtime.get_server("gpu" \| "cpu")`) | writes `<data_dir>/engines-runtime-config/audiocpp-server.json` — or `audiocpp-server-cpu.json` for the CPU process, the same build with `backend: cpu` at `speech_runtime.cpu_threads` (0 = physical cores) — (`lazy_load: true`, `max_loaded_models: 0`, every on-disk variant + its companions as `<id>::<role>`), restarts when that signature changes, spawns through the kit's `spawn_child` (Windows kill-on-close Job Object + virus-scanner retry) with `JUSTVOICE_SERVER_PID` set, `--no-ui`, log `<data_dir>/logs/audiocpp-server[-cpu].log`. A CPU-build runtime has only the CPU one (`slot.effective_placement`) |
-| a slot | `slot.AudioCppSlot(manifest, placement)` (`manager._new_slot`) | answers the manager's old engine-process calls against its placement's process: `/load` (model on disk? then warm it — audio.cpp is lazy), `/synth` (refuses a Pocket TTS reference clip with 403 `terms_required` until the manifest TERMS are accepted), `/transcribe`, `/align`, `terminate` = `unload_models` |
+| the processes | `AudioCppServer.ensure()`, one per placement AND kind (`runtime.get_server("gpu" \| "cpu", "tts" \| "stt")`, `runtime.servers()`; 2026-10-04 audit §13.2) | writes `<data_dir>/engines-runtime-config/audiocpp-server[-cpu][-stt].json` — the CPU process is the same build with `backend: cpu` at `speech_runtime.cpu_threads` (0 = physical cores). A build with `model_management` (`slot.managed_runtime()` ← `release.FEATURES`) starts with `"model_management": true` and no models; `slot._load` registers its model (`AudioCppServer.register` → `POST /v1/models/load`, loads now) and `_align` the aligner on first use, so nothing downloaded or deleted restarts it. An older build's config lists the kind's on-disk variants + companions as `<id>::<role>` (`installed_entries(kind)`, `lazy_load: true`). Restarts when the signature changes (exe, backend, device, threads, model list on an older build, the `AUDIOCPP_*` environment), spawns through the kit's `spawn_child` (Windows kill-on-close Job Object + virus-scanner retry) with `JUSTVOICE_SERVER_PID` set, `--no-ui`, log `<data_dir>/logs/audiocpp-server[-cpu][-stt].log`. A CPU-build runtime has only the CPU ones (`slot.effective_placement`) |
+| a slot | `slot.AudioCppSlot(manifest, placement)` (`manager._new_slot`) | answers the manager's old engine-process calls against its placement's and kind's process: `/load` (model on disk? register it on a managed process, then warm it), `is_dead()` (it had loaded and its process is gone — `manager.loaded_for` then drops it and its booking), `/synth` (refuses a Pocket TTS reference clip with 403 `terms_required` until the manifest TERMS are accepted), `/transcribe`, `/align`, `terminate` = `unload_models` |
 | the API | `api/speech_runtime_api.py` | `GET /v1/speech-runtime` (release, build, backend setting, builds for this OS, GPUs, running/pid); `PUT` saves backend/gpu, unloads the speech slots, stops the server |
 
 **Install = the runtime, once.** `install_engine()` (any engine) →
@@ -439,10 +439,14 @@ first real-time factor after each load (`_record_cpu_speed`, kit column
 `_resolve_device` = `backend_of(installed_exe())`; `_books_memory` books VRAM for
 anything but `cpu`.
 
-**Memory: each kind books its own share.** Speech and speech-recognition models
-live in ONE process, so the per-PID-tree probe sees both; the second kind's
-booking is the measurement less what the other kind in that pid already booked
-(`manager._own_share_mb`), so the first model is never counted twice.
+**Memory: each kind books its own process.** Speech and speech recognition run in
+processes of their own (2026-10-04, audit §13.2), so the per-PID-tree probe of a
+slot's process is that one model's memory plus the process's own ~100 MB. (Until
+then they shared one process and `manager._own_share_mb` subtracted the other
+kind's booking — a computed share that went wrong whenever that booking was stale.)
+A slot whose process died is dropped with its booking by `loaded_for`; Cancel frees
+its booking; the engine endpoints are plain `def` (FastAPI's thread pool), so a load
+never holds the event loop.
 
 **Alignment quirk.** audio.cpp v0.9.0's `/v1/audio/alignments` converts sample
 positions to seconds with the INPUT rate after resampling to 16 kHz, so a

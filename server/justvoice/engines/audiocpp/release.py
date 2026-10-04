@@ -38,6 +38,9 @@ FEATURES: dict[str, str] = {
     "turbo_clone": "v0.9.0-jv.3",  # Chatterbox Turbo / Nano clone a voice (gap 1)
     "chatterbox_he_ru_zh": "v0.9.0-jv.3",   # Chatterbox in Hebrew, Russian, Chinese (gap 7)
     "japanese": "v0.9.0-jv.3",     # Kokoro's Japanese voices, Chatterbox Japanese (gap 7)
+    # Models registered at run time without the WebUI's other endpoints — nothing downloaded or
+    # deleted restarts a process (audit 2026-10-04 §13.2). Older builds list their models.
+    "model_management": "v0.9.0-jv.3",
 }
 # One release carries everything built since jv.1 (decided 2026-10-03); its tag replaces these
 # placeholders when it is cut.

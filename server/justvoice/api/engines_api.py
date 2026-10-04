@@ -128,7 +128,7 @@ def _terms_accepted(engine_id: str) -> bool:
 
 
 @router.post("/v1/engines/{id}/terms", summary="Accept an engine's own terms")
-async def accept_engine_terms(id: str) -> dict:
+def accept_engine_terms(id: str) -> dict:
     """Record that the user accepted this engine's terms (manifest TERMS) — once per
     install. Pocket TTS refuses a render from a reference clip until then (decided
     2026-10-02: the server refuses; the Clone tab and the refusal show the terms)."""
@@ -158,7 +158,7 @@ def _current_id() -> str | None:
 
 
 @router.get("/v1/engines", response_model=EnginesListResponse, summary="Full engine catalog")
-async def list_engines() -> EnginesListResponse:
+def list_engines() -> EnginesListResponse:
     st = get_state()
     mgr = get_manager()
     cur = _current_id()
@@ -205,7 +205,7 @@ async def list_engines() -> EnginesListResponse:
     response_model=EngineCapabilitiesResponse,
     summary="Per-engine knob + inline-tag capability detail (drives Generate UI gating)",
 )
-async def list_engine_capabilities() -> EngineCapabilitiesResponse:
+def list_engine_capabilities() -> EngineCapabilitiesResponse:
     """Return the full per-engine capability detail map.
 
     Keys may be either engine ids (`kokoro`, `qwen3`) or variant ids
@@ -313,7 +313,7 @@ def _on_demand_claim() -> tuple[VramClaim | None, str | None]:
     response_model=EngineVramResponse,
     summary="The memory budget strip: arbiter snapshot + on-demand claim + eviction events",
 )
-async def get_engine_vram(events_since: int = 0) -> EngineVramResponse:
+def get_engine_vram(events_since: int = 0) -> EngineVramResponse:
     """The 2026-08-13 VRAM wiring (Q3/Q4): ONE endpoint reading the shared
     arbiter — total / committed / remaining for the box's budget pool
     (mem_arch says whether that pool is a card's VRAM or the one shared
@@ -330,6 +330,10 @@ async def get_engine_vram(events_since: int = 0) -> EngineVramResponse:
     # (detect shells out to nvidia-smi).
     mgr = get_manager()
     hw = mgr._hardware()
+    # A slot whose runtime process died goes, booking and all, BEFORE the snapshot — the strip
+    # showed a dead model's booking for one more poll otherwise (audit 2026-10-04 §13.2).
+    for kind in ("tts", "stt"):
+        mgr.loaded_for(kind)
     snap = arb.snapshot(hw) if hw is not None else arb.snapshot()
     claim, claim_reason = _on_demand_claim()
     # The measured pool state (the 2026-08-13 redesign — the strip shows
@@ -399,7 +403,7 @@ async def get_engine_vram(events_since: int = 0) -> EngineVramResponse:
 
 
 @router.get("/v1/engines/current", response_model=CurrentEngineResponse)
-async def get_current_engine() -> CurrentEngineResponse:
+def get_current_engine() -> CurrentEngineResponse:
     mgr = get_manager()
     cur = mgr.current_id() or get_state().engines.current()
     if cur is None:

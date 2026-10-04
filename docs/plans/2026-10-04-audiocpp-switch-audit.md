@@ -506,3 +506,165 @@ ignores the dev-build variable; every release asset name exists in the published
 Restarted the GPU runtime once (a Chatterbox load, then an unload); unloaded Kokoro and loaded it
 again at the end. No setting, repo file or measurement row was changed. The harness is a scratch
 script (`memtest.py`), not in the repo.
+
+## 13. The fixes — decided, and built step by step
+
+**Decided 2026-10-04** after a second review (Opus) of this audit: the user said "your rec for
+the audit fixes" and "go". The approved text — the design changes and the five-step order — is
+in TASKS, "audio.cpp switch audit", verbatim. §11 above was this audit's proposal; the decided
+order replaces it:
+
+1. eSpeak first. 2. The runtime's life — dynamic registration (`POST /v1/models/load`), one
+process per kind, Load off the server's main loop. 3. Bound the work, then price it honestly —
+per-model split size, the calibrated peak, refusal before any change. 4. Fork memory fixes —
+free the old decoder buffer first, trim the clip's context, the prefill memory. 5. Everything
+else in §5.
+
+The second review's corrections to this record live as facts in `docs/dev/RESEARCH.md` §1–2:
+the 7.6 GB readings are the card's ceiling (floors, not peaks) and depend on the line before;
+audio.cpp's own splitter cuts at a sentence end first, then a clause, then a space; audio.cpp
+can register a model with no restart; a kept Qwen3 design renders as a clone and decodes its
+whole clip with every line; an empty runtime process holds ~105 MB, not ~300.
+
+### 13.1 Step 1 — eSpeak NG reaches both phonemizers (A1), and Linux finds its wheel (A2)
+
+**What changed.** `runtime._child_env` sets `AUDIOCPP_ESPEAK_LIBRARY` / `AUDIOCPP_ESPEAK_DATA`
+for every runtime process (Kokoro reads only these) and drops inherited values; the three
+`AUDIOCPP_*` variables are now part of a process's signature, so installing or removing eSpeak
+NG or the Japanese dictionary starts it again with them. `slot._entries_for` gives KittenTTS its
+prefixed options (`kitten_tts.espeak_library_path` / `…_data_path`) and Kokoro none — Kokoro
+refuses a session option it doesn't know. `espeak.wheel_matches` matches any one platform tag
+of a wheel's name.
+
+**Blast radius** (greps run 2026-10-04, before the change):
+
+```
+$ grep -rn "espeak_library_path\|espeak_data_path\|AUDIOCPP_ESPEAK" server src scripts docs (not plans)
+server/justvoice/engines/audiocpp/espeak.py:6     docstring — rewritten
+server/justvoice/engines/audiocpp/slot.py:127-128 the unprefixed options — replaced
+server/tests/test_audiocpp_switch.py:140,143      a config-row test using the dead key — moved to Kitten's real key
+docs/dev/RESEARCH.md:133-135                      the fact — rewritten with "(was: …)"
+$ grep -rn "ESPEAK_FAMILIES\|espeak\.paths\|espeak\.install\|_wheel_tag\|_child_env" server
+espeak.py:36,64 (_wheel_tag) · runtime.py:56,173,339 · slot.py:124-125,150 · manager.py:356,385
+tests/test_japanese_dictionary.py:79,82 (_child_env, AUDIOCPP_UNIDIC_DIR)
+```
+
+| What changed | Callers / producers | Effect |
+|---|---|---|
+| `_child_env` gains two variables | `runtime.py:339` (the one spawn); `test_japanese_dictionary.py:79,82` | the dictionary test still passes — it checks only its own key |
+| the signature gains `env` | `AudioCppServer.ensure` only | one restart of each process on the first start after this change; afterwards only when eSpeak NG or the dictionary is installed or removed (manager.py:414-425 already stopped the runtime for the dictionary) |
+| `ESPEAK_FAMILIES` → `ESPEAK_SESSION_FAMILIES` | `slot.py:124` only (no other reader) | Kokoro's config rows lose two options it never read |
+| `install` matches with `wheel_matches` | `manager.py:356,385` (install, update) | every platform's file now matches exactly its own tag (test over PyPI's 6 names) |
+
+**Checked.** Tests: `test_kokoro_finds_our_espeak_through_the_runtimes_environment`,
+`test_kitten_gets_its_own_prefixed_espeak_options_and_kokoro_gets_none`,
+`test_every_platform_finds_its_espeak_wheel` (PyPI's six 0.2.4 file names, read 2026-10-04).
+Live, on the restarted app (`npm run dev`): Kokoro loaded (CPU process) with
+`engines\audiocpp\espeak-ng-0.2.4\espeak-ng.dll` among its modules — before, the system copy in
+`C:\Program Files\eSpeak NG\` — and its line, "The harbour-master counted the lanterns twice,
+then laughed.", read back word for word; KittenTTS (downloaded for this, 302 MB) loaded in the
+GPU process with the same DLL and spoke the line (6.1 s). Not checked: a machine with no system
+eSpeak NG at all; Linux.
+
+**Seen while checking — C1 live.** Loading KittenTTS (a first download) restarted the GPU
+process, which killed the resident speech recognition; its booking stayed, and the next
+transcription was refused: "not enough memory to load asr … Resident: stt:asr (2861 MB),
+tts:kitten (497 MB)". Step 2 removes the restart.
+
+### 13.2 Step 2 — the runtime's life: register models live, one process per kind, Load off the loop
+
+**The design.**
+
+- **Register models live, in our fork, without the WebUI's powers.** audio.cpp registers and
+  loads a model at run time through `POST /v1/models/load` — but only under `ui_management`,
+  which also opens its installer, a settable models root, model-package deletion, uploads and
+  directory browsing on the loopback port (no sign-in, no CORS headers: any local program, or a
+  web page that finds the random port with a simple cross-site POST, could use them). The fork
+  gains `model_management`: a config key that opens `/v1/models/load` and `/v1/models/unload`
+  and nothing else (`app/server/config.h`, `config.cpp`, `runtime.cpp`; `/health` reports it;
+  `tests/unittests/test_server_config.cpp` `test_model_management_alone`). A process started
+  with it has an empty model list; a Load registers its model, the aligner registers on the
+  first caption request (it loads lazily today too). Nothing downloaded or deleted changes a
+  process's signature any more, so nothing restarts it. Gated as a build feature
+  (`release.FEATURES["model_management"]`, first in the next release): `npm run dev` has it now;
+  a build without it keeps today's model-list config.
+- **One process per kind.** Speech and speech recognition each get their own process per
+  placement (up to four: `audiocpp-server[-cpu][-stt]`). A process's measured memory is then
+  its one model's, so `_own_share_mb` (R7's computed share) goes; a crash or restart in one
+  kind never takes the other's model. Cost: ~105 MB of graphics memory for the second process
+  when both kinds sit on the card (measured empty process, §3.2).
+- **A dead slot is dropped with its booking.** `loaded_for` finds a slot whose process is gone
+  (`AudioCppSlot.is_dead`: it had loaded, and its process is not the one running), drops it and
+  releases its booking — the stale `stt:asr (2861 MB)` of §13.1 can't stand. Cancel releases the
+  booking too, and a load cancelled while its model came in unloads it before booking anything.
+- **Load off the event loop.** Every engine endpoint that never awaits and calls the manager (or
+  deletes files) becomes a plain `def`, which FastAPI runs on its thread pool: load, cancel-load,
+  unload, uninstall, install (engines_models_api); terms, list, capabilities, VRAM strip,
+  current (engines_api); clear speech cache, delete model (models_api). Cancel and the progress
+  polls now answer during a load.
+
+**Blast radius** (greps run 2026-10-04, before the change):
+
+```
+$ grep -rn "get_server(" justvoice tests
+speech_runtime_api.py:98-99 · slot.py:174,219 · manager.py:423 · tests/test_cpu_placement.py:403-407
+$ grep -rn "ensure_server(" justvoice tests
+slot.py:224,271 · tests/test_cpu_placement.py:421,434
+$ grep -rn "shutdown_server(" justvoice tests      (system_api.py:40 is an unrelated endpoint name)
+speech_runtime_api.py:191,195 · manager.py:411,1839
+$ grep -rn "installed_entries(\|has_model(" justvoice tests
+slot.py:176,179 (installed_entries) · slot.py:272 (has_model)
+$ grep -rn "_own_share_mb" justvoice tests
+manager.py:1088,1579 · tests/test_audiocpp_switch.py:238-243
+$ grep -rn "\._run\b" justvoice (outside runtime.py)
+speech_runtime_api.py:100 · slot.py:225-231,275
+$ grep -rn "loaded_for(" justvoice
+captures_api.py:55 · engines_api.py:354 · speech_runtime_api.py:185 · manager.py:408,546,1415,1455,1713,1732,1754
+$ grep -rn "request_cancel_load" justvoice
+engines_models_api.py:112
+async def with no await that call the manager / delete files:
+engines_models_api.py:42,67,100,129,157 · engines_api.py:131,161,208,316,402 · models_api.py:116,146
+```
+
+| What changed | Callers / producers | Effect |
+|---|---|---|
+| `get_server(placement, kind="tts")`, servers keyed by both | speech_runtime_api `_info` (98-100), slot `_srv`/`ensure_server`, manager 423, test_cpu_placement 403-407 | default kind keeps every tts caller; `_info` reports the speech process, else recognition's, and counts both |
+| `ensure_server(placement, kind)`; managed config | slot `spawn`/`_load`; test_cpu_placement 421-434 | managed: empty model list, signature without models; else the kind's own models only |
+| `shutdown_server(placement=None, kind=None)` | speech_runtime_api 191,195; manager 411,1839 | stops every kind of that placement, as before |
+| `installed_entries(kind)` | slot `ensure_server` only | a kind's process lists only its models (the fallback path) |
+| `has_model` → on-disk check in the slot | slot `_load` only | the "not downloaded" refusal reads the speech cache in both modes |
+| `_own_share_mb` deleted | manager 1088,1579; its test | the whole process's measurement is the kind's own |
+| `loaded_for` drops a dead slot + booking | the 11 call sites above | every caller already treats None as "not loaded"; a dead slot now also loses its booking and its card state |
+| `request_cancel_load` releases the booking | engines_models_api 112 | no booking without a slot |
+| ten handlers `async def` → `def` | FastAPI only | same answers, run on the thread pool |
+
+**Checked.** C++: `server_config_test` passed in a CPU test build with the extended tests on
+(`../audio.cpp/build/jv-tests`, including the new `test_model_management_alone`). Python:
+`tests/test_runtime_life.py` (a managed process starts with no models and a download never
+restarts it; an older build lists its kind's models; a Load registers its model and the aligner
+registers on first use; a model not on disk is refused; a dead slot goes with its booking, a
+loading one stays; Cancel frees the booking; the memory strip never shows a dead model's booking
+— proven to fail without its fix; the twelve handlers are plain `def`), and the placement tests
+updated for per-kind processes. Live, on the restarted app (`npm run dev`, the fork rebuilt):
+
+- Kokoro and speech recognition loaded into `audiocpp-server-cpu` and `audiocpp-server-cpu-stt`,
+  each started with `"model_management": true` and no listed models.
+- A first download — `pocket-de-q8`, 246 MB — loaded with both processes keeping their ids
+  (15648, 1704); recognition transcribed the Kitten line again without reloading. Before (§13.1,
+  14:36) KittenTTS's first download restarted the GPU process (13372 → 25412) and killed
+  recognition.
+- A Cancel 3 s into a VoiceDesign load: the engine list answered in 8 ms and the Cancel in 3 ms
+  during the load, the load ended "cancelled by user" after 5 s, nothing was booked, the card
+  back to 574 MB.
+- VoiceDesign loaded (booked `tts:qwen3`, 1,913 MB measured — its own process); killing that
+  process dropped the slot ("the tts model qwen3 is no longer loaded — its runtime process
+  stopped") and its booking. The memory strip still showed the booking for one poll — it read
+  the bookings before the slots; fixed and tested.
+
+**Seen while checking — B1/B2 live again.** The first VoiceDesign attempt, with Gemma resident
+(7,345 MB on the card), unloaded Gemma and was then refused at 0.3 s: "needs ~6249 MB (+1024 MB
+safety margin) but only 1300 MB free" — the engine-wide maximum, and the eviction not yet
+drained. Step 3 fixes both. Gemma reloads itself the next time a feature asks for it.
+
+**Not checked:** a packaged app on the pinned jv.1 (no `model_management` — it keeps the listed
+config, now per kind); Linux and macOS; two loads of the two kinds at the same moment.

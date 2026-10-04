@@ -136,11 +136,75 @@ def test_chatterbox_needs_a_clip():
 
 
 def test_model_entry_writes_the_config_row():
-    e = ModelEntry("kokoro-82m-q8", "kokoro_tts", "tts", "C:/m/k.gguf",
-                   (("espeak_data_path", "C:/e/data"),))
-    assert e.to_config() == {"id": "kokoro-82m-q8", "family": "kokoro_tts", "task": "tts",
+    e = ModelEntry("kitten-mini-0.8", "kitten_tts", "tts", "C:/m/k.gguf",
+                   (("kitten_tts.espeak_data_path", "C:/e/data"),))
+    assert e.to_config() == {"id": "kitten-mini-0.8", "family": "kitten_tts", "task": "tts",
                              "mode": "offline", "path": "C:/m/k.gguf",
-                             "session_options": {"espeak_data_path": "C:/e/data"}}
+                             "session_options": {"kitten_tts.espeak_data_path": "C:/e/data"}}
+
+
+# ─── eSpeak NG reaches both phonemizers (audit 2026-10-04 §5 A1–A2) ──────────
+
+
+def _espeak_installed(root):
+    from justvoice.engines.audiocpp import espeak
+
+    home = espeak.home(root)
+    (home / "espeak-ng-data").mkdir(parents=True)
+    (home / "espeak-ng.dll").write_bytes(b"x")
+    return home / "espeak-ng.dll", home / "espeak-ng-data"
+
+
+def test_kokoro_finds_our_espeak_through_the_runtimes_environment(monkeypatch, tmp_path):
+    # Kokoro reads ONLY AUDIOCPP_ESPEAK_LIBRARY / _DATA (audio.cpp g2p_multilingual.cpp:92-93);
+    # without them it loads whatever eSpeak NG the system path finds.
+    from justvoice.engines.audiocpp import runtime
+
+    monkeypatch.setattr(runtime, "_runtime_root", lambda: tmp_path)
+    monkeypatch.setenv("AUDIOCPP_ESPEAK_LIBRARY", "C:/somewhere/else.dll")
+    env = runtime._child_env()
+    assert "AUDIOCPP_ESPEAK_LIBRARY" not in env and "AUDIOCPP_ESPEAK_DATA" not in env
+    lib, data = _espeak_installed(tmp_path)
+    env = runtime._child_env()
+    assert env["AUDIOCPP_ESPEAK_LIBRARY"] == str(lib)
+    assert env["AUDIOCPP_ESPEAK_DATA"] == str(data)
+
+
+def test_kitten_gets_its_own_prefixed_espeak_options_and_kokoro_gets_none(monkeypatch, tmp_path):
+    # Kitten reads `kitten_tts.espeak_*` (audio.cpp kitten_tts/session.cpp:74); Kokoro would
+    # refuse a session option it doesn't know, so it gets none.
+    from justvoice.engines.audiocpp import slot
+    from justvoice.engines import manager
+
+    lib, data = _espeak_installed(tmp_path)
+    monkeypatch.setattr(manager, "engines_runtime_root", lambda: tmp_path)
+    monkeypatch.setattr(slot, "_data_dir", lambda: tmp_path / "data")
+    kitten = discover_engines()["kitten"]
+    (entry,) = slot._entries_for(kitten, _row("kitten", "kitten-mini-0.8"))
+    assert dict(entry.session_options) == {"kitten_tts.espeak_library_path": str(lib),
+                                           "kitten_tts.espeak_data_path": str(data)}
+    kokoro = discover_engines()["kokoro"]
+    (entry,) = slot._entries_for(kokoro, _row("kokoro", "kokoro-82m-q8"))
+    assert not any("espeak" in k for k, _ in entry.session_options)
+
+
+@pytest.mark.parametrize("filename, tag", [
+    # PyPI's own file list for espeakng-loader 0.2.4, read 2026-10-04.
+    ("espeakng_loader-0.2.4-py3-none-macosx_10_12_x86_64.whl", "macosx_10_12_x86_64"),
+    ("espeakng_loader-0.2.4-py3-none-macosx_11_0_arm64.whl", "macosx_11_0_arm64"),
+    ("espeakng_loader-0.2.4-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+     "manylinux_2_17_x86_64"),
+    ("espeakng_loader-0.2.4-py3-none-manylinux_2_28_aarch64.whl", "manylinux_2_28_aarch64"),
+    ("espeakng_loader-0.2.4-py3-none-win_amd64.whl", "win_amd64"),
+    ("espeakng_loader-0.2.4-py3-none-win_arm64.whl", "win_arm64"),
+])
+def test_every_platform_finds_its_espeak_wheel(filename, tag):
+    from justvoice.engines.audiocpp import espeak
+
+    assert tag in espeak._SHA256
+    assert espeak.wheel_matches(filename, tag)
+    others = [t for t in espeak._SHA256 if t != tag]
+    assert not any(espeak.wheel_matches(filename, t) for t in others)
 
 
 def test_release_rows_pin_one_tag_and_ship_the_windows_cuda_runtime():
@@ -148,37 +212,6 @@ def test_release_rows_pin_one_tag_and_ship_the_windows_cuda_runtime():
     assert all(f"/{release.TAG}/" in r.asset_url for r in rows)
     win_cuda = [r for r in rows if r.platform == "windows" and r.gpu.startswith("cuda")]
     assert win_cuda and all(r.runtime_url and "cudart" in r.runtime_url for r in win_cuda)
-
-
-def test_two_kinds_in_one_server_each_book_only_their_own_share():
-    # audio.cpp serves speech AND speech→text from one process: the second kind's
-    # measurement holds the first kind's model too, which must not be booked twice.
-    from types import SimpleNamespace
-
-    from llm_runner.runner.arbiter import VramArbiter, set_arbiter
-    from llm_runner.runner.schema import GpuInfo, HardwareInfo
-
-    from justvoice.engines.manager import EngineManager
-
-    hw = HardwareInfo(os="Windows", platform="windows", cpu_cores=8, ram_mb=32768,
-                      gpus=[GpuInfo(vendor="NVIDIA", name="fake", vram_mb=8192)], runtimes={"cuda": True})
-    arb = VramArbiter(hardware_fn=lambda: hw)
-    set_arbiter(arb)
-    try:
-        mgr = EngineManager()
-        server = SimpleNamespace(pid=4242)
-        tts = SimpleNamespace(manifest=SimpleNamespace(id="kokoro"), proc=server)
-        stt = SimpleNamespace(manifest=SimpleNamespace(id="asr"), proc=server)
-        arb.reserve("tts:kokoro", 2500, kind="tts", evict_fn=lambda: None, source="measured")
-        mgr._loaded = {"tts": tts, "stt": stt}
-        assert mgr._own_share_mb("stt", stt, 6500) == 4000
-        mgr._loaded = {"tts": tts}                       # alone in its process → the whole number
-        assert mgr._own_share_mb("tts", tts, 2500) == 2500
-        other = SimpleNamespace(manifest=SimpleNamespace(id="whisper"), proc=SimpleNamespace(pid=99))
-        mgr._loaded = {"tts": tts, "stt": other}         # a different process is not subtracted
-        assert mgr._own_share_mb("stt", other, 2200) == 2200
-    finally:
-        set_arbiter(None)
 
 
 def test_an_audiocpp_engine_runs_where_the_runtime_runs(monkeypatch):

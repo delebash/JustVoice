@@ -39,7 +39,7 @@ def _is_managed(engine_id: str) -> bool:
 
 
 @router.post("/v1/engines/{id}/install", response_model=InstallResponse, status_code=202)
-async def install_engine(id: str, req: InstallRequest) -> InstallResponse:
+def install_engine(id: str, req: InstallRequest) -> InstallResponse:
     """Install an engine, or download one of its models.
 
     - `model_variant` given → spawn_prefetch: that model's file(s) into the
@@ -64,7 +64,7 @@ async def install_engine(id: str, req: InstallRequest) -> InstallResponse:
 
 
 @router.post("/v1/engines/{id}/load", response_model=LoadResponse)
-async def load_engine(id: str, req: LoadRequest) -> LoadResponse:
+def load_engine(id: str, req: LoadRequest) -> LoadResponse:
     st = get_state()
 
     if _is_managed(id):
@@ -97,7 +97,7 @@ async def load_engine(id: str, req: LoadRequest) -> LoadResponse:
 
 
 @router.post("/v1/engines/{id}/cancel-load")
-async def cancel_engine_load(id: str) -> dict:
+def cancel_engine_load(id: str) -> dict:
     """Signal an in-flight `POST /v1/engines/{id}/load` to abort. The
     load loop checks the cancel flag at safe points (between the model
     download, the runtime start, and the model warm-up) and raises
@@ -126,7 +126,7 @@ class UnloadRequest(BaseModel):
 
 
 @router.post("/v1/engines/unload", response_model=UnloadResponse)
-async def unload_engine(body: UnloadRequest | None = None) -> UnloadResponse:
+def unload_engine(body: UnloadRequest | None = None) -> UnloadResponse:
     st = get_state()
     mgr = get_manager()
     requested_kind = body.kind if body else None
@@ -154,7 +154,7 @@ async def unload_engine(body: UnloadRequest | None = None) -> UnloadResponse:
 
 
 @router.delete("/v1/engines/{id}", response_model=UninstallResponse)
-async def uninstall_engine_endpoint(id: str) -> UninstallResponse:
+def uninstall_engine_endpoint(id: str) -> UninstallResponse:
     """Delete every downloaded model of this engine (its speech-cache folder).
     The speech runtime is shared and stays. 409 when a file is still held open."""
     if _is_managed(id):

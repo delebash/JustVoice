@@ -12,8 +12,15 @@ isn't on PATH. Install it and restart the server; everything that muxes or
 masters audio depends on it.
 
 **A model load hangs or you loaded the wrong one.** Engine loads are
-cancellable — the Speech engines tab's load job has a Cancel; a cancelled load leaves
-the previous state intact.
+cancellable — the Speech engines tab's load job has a Cancel, and it answers at
+once, even mid-load; a cancelled load unloads whatever it had brought in and
+frees the memory it had reserved.
+
+**Speech recognition was refused "not enough memory" with itself listed as resident.**
+Before 2026-10-04 a model whose runtime process had stopped (downloading another
+model restarted it) stayed booked, so reloading it was refused against its own
+booking until the app restarted. A stopped model's booking is now freed the
+moment JustVoice notices, and downloading a model no longer restarts anything.
 
 **A model that loaded fine yesterday won't load today.** Something else may be
 holding the GPU memory it needs. The load's error message names any other

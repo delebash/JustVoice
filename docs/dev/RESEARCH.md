@@ -82,38 +82,53 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
 
 ### 1.1 The process and its life
 
-- One `audiocpp_server` per placement: **gpu** (the installed build's backend) and **cpu** (the
-  same build with `backend: cpu`); a CPU-only build runs only **cpu**. Each is started with a
-  generated config (`lazy_load: true`, `max_loaded_models: 0`) and `--no-ui`; the config lists
-  every installed model. — *code, 2026-10-04* · `engines/audiocpp/runtime.py:314-353`,
-  `slot.py:137-176`; switch §3.1, cpu-placement §8.
-- **Installing or deleting any model restarts that process on its next use**, and every model
-  in it dies — the other kind's too (speech and speech recognition share it). A design choice
-  at the cut, and the cause of the stale-booking bug. — *code + record, 2026-10-01 / 2026-10-04*
-  · switch §3.1 ("rewrites the config and restarts the process"); audit §5 C1–C2; TASKS
-  "speech recognition stays booked".
-- **audio.cpp can add and load a model with no restart**: `POST /v1/models/load` with `id`,
-  `family`, `task`, `path` and session options loads it at once; sending changed options to a
-  registered model reloads it with them. It needs `ui_management` (config key or
-  `--ui-management`), which needs a build with `AUDIOCPP_BUILD_NATIVE_MODEL_MANAGER` — on in our
-  release workflow and in the dev build. It also opens `/v1/ui/models/install` and `/delete` on
-  the loopback port. — *code, 2026-10-04; not tried live* · `../audio.cpp/app/server/runtime.cpp:1363-1421`,
-  `main.cpp:197-208`, `.github/workflows/release.yml:39`, `build/jv-dev/CMakeCache.txt:32`.
-- A model in a lazy config loads on its first request, not on Load. The slot's warm-up covers
-  Kokoro, Kitten, Pocket, Qwen3 CustomVoice, speech recognition, VoxCPM2 and Turbo — **not**
-  Chatterbox Multilingual, Qwen3 Base or Qwen3 VoiceDesign, which load (and book) on their first
-  line. — *code, 2026-10-04* · `slot.py:277-306`.
+- One `audiocpp_server` per placement AND kind: **gpu** (the installed build's backend) and
+  **cpu** (the same build with `backend: cpu`), each for speech (`tts`) and for speech recognition
+  (`stt`) — up to four, `audiocpp-server[-cpu][-stt]`; a CPU-only build runs only the cpu ones.
+  Each starts from a generated config and `--no-ui`. A build with our `model_management` starts
+  with no models and registers each on Load; an older build's config lists its kind's installed
+  models (`lazy_load: true`). (was: one process per placement holding both kinds and listing
+  every installed model — until 2026-10-04.) — *code + live, 2026-10-04* ·
+  `engines/audiocpp/runtime.py` `AudioCppServer`, `slot.py` `ensure_server`; audit §13.2.
+- **Downloading or deleting a model no longer restarts anything** on a build with
+  `model_management`: live, a first download (`pocket-de-q8`) loaded with both processes keeping
+  their ids, and speech recognition transcribed again without reloading. On an older build it
+  still restarts that kind's own process on its next load — never the other kind's. (was: any
+  first download restarted the shared process and killed the other kind's model — design choice
+  at the cut, switch §3.1 — until 2026-10-04.) — *live, 2026-10-04* · audit §13.1 (the old
+  behaviour, live), §13.2.
+- **Registering at run time without the WebUI's powers:** audio.cpp's `POST /v1/models/load`
+  (`id`, `family`, `task`, `path`, session options; loads at once; changed options reload the
+  model) was reachable only under `ui_management`, which also opens a settable models root,
+  model-package deletion, downloads, uploads and directory browsing on the loopback port with no
+  sign-in and no CORS headers. Our fork's `model_management` config key opens only
+  `/v1/models/load` and `/unload` (`/health` reports it). Both upstream v0.9.0 and our builds
+  are compiled with the model manager. — *code + C++ unit test + live, 2026-10-04* ·
+  `../audio.cpp/app/server/config.h`, `config.cpp`, `runtime.cpp` (`handle_model_load`),
+  `tests/unittests/test_server_config.cpp` `test_model_management_alone`; `release.py` FEATURES
+  `model_management`.
+- A model loads when it is registered, so on a `model_management` build Load means loaded for
+  every family. On an older build a lazy config loads a model on its first request: the slot's
+  warm-up covers Kokoro, Kitten, Pocket, Qwen3 CustomVoice, speech recognition, VoxCPM2 and
+  Turbo — **not** Chatterbox Multilingual, Qwen3 Base or Qwen3 VoiceDesign, which load (and
+  book) on their first line there. — *code, 2026-10-04* · `slot.py` `_load`, `_warm`.
 - A failed warm-up is logged at info and the load still reports success. — *agent, 2026-10-04*
   · `slot.py:272-273, 305-306`; audit §5 B4.
 - Unload frees the memory: after `/v1/tasks/unload_all_models` the gpu process held 103–105 MB
   every time. An empty process holds the same — the switch assumed ~300 MB (R7). — *measured,
   2026-10-04* · audit §3.2.
-- After a restart the old slot stays in `_loaded` (hidden by `loaded_for`) and keeps its
-  booking; Cancel drops the slot without releasing its booking. — *code, 2026-10-04* ·
-  `engines/manager.py:540-543, 1268-1286`; audit §5 C1, C3.
-- `POST /v1/engines/{id}/load` is an `async def` that calls the blocking `mgr.load` (download,
-  start, warm-up), so the server's event loop waits; unload, cancel and uninstall are the same
-  shape. — *code, 2026-10-04* · `api/engines_models_api.py:66-79, 99-169`.
+- A slot whose process died is dropped with its booking the next time anything asks for the
+  kind's slot (`loaded_for`, and the memory strip before it reads the bookings); Cancel frees its
+  booking, and a load cancelled while its model came in unloads it. Live: killing the GPU speech
+  process dropped `tts:qwen3 (1913 MB)`; a Cancel 3 s into a VoiceDesign load ended it with
+  nothing booked. (was: a dead slot stayed in `_loaded` with its booking, so a reload was refused
+  against its own ghost — until 2026-10-04.) — *code + live, 2026-10-04* · `engines/manager.py`
+  `loaded_for`, `_drop_dead_slot`, `request_cancel_load`; audit §13.2.
+- The engine endpoints run on FastAPI's thread pool (plain `def`): live, the engine list answered
+  in 8 ms and Cancel in 3 ms while a model loaded. (was: `async def` handlers calling the blocking
+  manager on the event loop, so Cancel and the progress polls waited for the load — until
+  2026-10-04.) — *code + live, 2026-10-04* · `api/engines_models_api.py`, `engines_api.py`,
+  `models_api.py`; `tests/test_runtime_life.py`.
 - On Windows the runtime runs in a kill-on-close Job Object and dies with our server however it
   dies; elsewhere nothing ties them, and a clean shutdown slower than Tauri's 15 s leaves it
   running until the next start's sweep. — *record (R15) + agent, 2026-10-04* · switch R15;
@@ -132,12 +147,15 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
   Pocket ignore it silently. — *agent, 2026-10-04* · audit §5 (group D).
 - **eSpeak NG:** Kokoro reads only the environment variables `AUDIOCPP_ESPEAK_LIBRARY` /
   `AUDIOCPP_ESPEAK_DATA`, else loads `espeak-ng.dll` / `libespeak-ng.dll` by name; Kitten reads
-  `kitten_tts.espeak_library_path` / `kitten_tts.espeak_data_path`. We pass unprefixed session
-  options, so neither uses the eSpeak NG the app downloads. This PC works only because
-  `C:\Program Files\eSpeak NG\` is on the machine PATH (both runtime processes had that DLL
-  loaded). — *code + process modules, 2026-10-04* · `../audio.cpp/src/models/kokoro_tts/g2p_multilingual.cpp:92-103`,
+  `kitten_tts.espeak_library_path` / `kitten_tts.espeak_data_path`; Kokoro refuses a session
+  option it doesn't know. We set the environment on every runtime process and Kitten's prefixed
+  options; live, both processes then loaded the app's `espeak-ng-0.2.4\espeak-ng.dll`, and
+  Kokoro's line read back word for word. (was: unprefixed session options that neither read,
+  so both loaded the system copy `C:\Program Files\eSpeak NG\` on this PC's PATH and would
+  fail elsewhere — until 2026-10-04.) — *code + process modules + measured, 2026-10-04* ·
+  `../audio.cpp/src/models/kokoro_tts/g2p_multilingual.cpp:92-103`,
   `src/community_models/kitten_tts/session.cpp:74`, `src/framework/text/espeak_phonemizer.cpp:71-93`;
-  ours `slot.py:118-128`; audit §5 A1.
+  ours `engines/audiocpp/runtime.py` `_child_env`, `slot.py` `_entries_for`; audit §13 step 1.
 - **Seeds:** random per request on Qwen3, Chatterbox and Pocket. Kokoro and Kitten keep the
   session's seed until a request sends one — Kokoro, measured: no seed twice gives identical
   audio, and an unseeded line repeats the last seed sent. Turbo: none or 0 = a fixed seed.
@@ -201,8 +219,11 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
   other three are offered from the pin alone. — *agent, 2026-10-04* · audit §5 E1.
 - The Windows CUDA download is the build archive plus a 607 MB CUDA-runtime archive (engines.md
   says 461 MB). — *agent, GitHub API, 2026-10-04* · audit §5 F.
-- On Linux x86_64 the eSpeak NG install looks for a wheel name PyPI doesn't publish, so the
-  runtime install can't finish there. — *agent, PyPI, 2026-10-04* · audit §5 A2.
+- eSpeak NG 0.2.4's wheels on PyPI: `macosx_10_12_x86_64`, `macosx_11_0_arm64`,
+  `manylinux_2_17_x86_64.manylinux2014_x86_64` (two tags in one name), `manylinux_2_28_aarch64`,
+  `win_amd64`, `win_arm64`. The install matches any one tag of a name. (was: an exact suffix
+  match that missed the Linux x86_64 file, so the runtime install couldn't finish there — until
+  2026-10-04.) — *web (PyPI JSON) + code, 2026-10-04* · `espeak.py` `wheel_matches`; audit §5 A2.
 - Model files come from `audio-cpp/audio.cpp-gguf` pinned at commit `7bf52723…`, checked by
   size only. — *code, 2026-10-04* · `release.py:60-61`; audit §5 E6.
 - `npm run dev` runs our checkout's build (`../audio.cpp/build/jv-dev`); on this card (Turing)
@@ -268,9 +289,10 @@ unloaded — audit §3.1 has the method.
 - A load runs placement → download → unload the AI model → memory check. A refusal leaves the
   download done and the AI model unloaded. — *code + live log, 2026-10-04* ·
   `manager.py:1437-1465`; audit §4, §5 B2.
-- Each kind books the process total less what the other kind booked (`_own_share_mb`, R7) — a
-  computed share, not a measurement. One variant's stored readings ranged 105–6,249 MB. —
-  *code + database, 2026-10-04* · `manager.py:877-899`; audit §5 B8.
+- Each kind books its own process's measured memory — its model plus ~100 MB of process. (was:
+  one shared process, each kind booking the total less the other kind's booking (`_own_share_mb`,
+  R7) — a computed share; one variant's stored readings ranged 105–6,249 MB — until 2026-10-04.)
+  — *code, 2026-10-04* · audit §5 B8, §13.2.
 - Switching variants inside a loaded engine skips the memory check. — *agent, 2026-10-04* ·
   `manager.py:1459-1460`; audit §5 B5.
 - 16-bit rows carry no CPU speed, so Auto never sends them to the CPU and the AI model makes

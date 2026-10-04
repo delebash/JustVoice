@@ -1,15 +1,20 @@
 # SPDX-License-Identifier: MIT
 """The audio.cpp server processes: install the pinned binary, run the servers, call them.
 
-Two processes at most, one per PLACEMENT (CPU placement, 2026-10-02 —
+One process per PLACEMENT and KIND — up to four. Placement (CPU placement, 2026-10-02 —
 docs/plans/2026-10-02-cpu-placement.md §8): "gpu" runs the installed build on its own
 backend (CUDA, Vulkan, Metal), "cpu" runs the SAME build with `backend: cpu` for the models
-placed on the CPU — measured at 0 MB of graphics memory. On a machine whose runtime is the
-CPU build only the "cpu" one runs. Each config lists every installed model (`lazy_load` —
-nothing loads until asked); WHICH model is resident, and where, is the engine manager's
-call, made with `unload()` the way it used to terminate an engine process. Installing or
-deleting a model changes the list, which restarts a process on its next use (`ensure`).
-The servers run headless (`--no-ui`): audio.cpp's own web UI is never shown — ours is the UI.
+placed on the CPU — measured at 0 MB of graphics memory; on a machine whose runtime is the CPU
+build only "cpu" runs. Kind (2026-10-04, audit §13.2): speech ("tts") and speech recognition
+("stt") each get their own process, so a process's measured memory is its one model's and a
+crash or restart in one never takes the other's model.
+
+WHICH model is resident is the engine manager's call. A build with `model_management` (our
+fork; `release.FEATURES`) starts with no models and `register()`s each one as it loads — so
+nothing downloaded or deleted ever restarts it. An older build's config lists its kind's
+installed models (`lazy_load` — nothing loads until asked), and installing or deleting one of
+them changes the list, which restarts that process on its next use (`ensure`). The servers run
+headless (`--no-ui`): audio.cpp's own web UI is never shown — ours is the UI.
 
 The binary's install is the kit's (`llm_runner.runner.binary.acquire_runtime` — the same
 stage → launch-verify → atomic swap llama.cpp gets); the pinned rows are `release.py`. Under
@@ -55,15 +60,27 @@ _INSTALLED: dict[str, Path | None] = {}
 
 def _child_env() -> dict[str, str]:
     """The server's environment: who started it (`engines/leftovers.py` reads it to stop a server
-    whose parent is gone), and the optional Japanese dictionary's folder when it is installed —
-    MeCab reads UniDic from AUDIOCPP_UNIDIC_DIR (gap 7)."""
-    from . import japanese
+    whose parent is gone); the eSpeak NG the runtime install fetched — Kokoro reads its library
+    and data ONLY from AUDIOCPP_ESPEAK_LIBRARY / AUDIOCPP_ESPEAK_DATA, and otherwise loads
+    whatever eSpeak NG the system path finds, or fails (audit 2026-10-04 §5 A1); and the optional
+    Japanese dictionary's folder when it is installed — MeCab reads UniDic from
+    AUDIOCPP_UNIDIC_DIR (gap 7). An inherited value is never passed on."""
+    from . import espeak, japanese
 
     env = {**os.environ, "JUSTVOICE_SERVER_PID": str(os.getpid())}
-    env.pop("AUDIOCPP_UNIDIC_DIR", None)
+    for key in _RUNTIME_ENV:
+        env.pop(key, None)
+    if (found := espeak.paths(_runtime_root())) is not None:
+        env["AUDIOCPP_ESPEAK_LIBRARY"] = str(found[0])
+        env["AUDIOCPP_ESPEAK_DATA"] = str(found[1])
     if (dictionary := japanese.dictionary_dir(_runtime_root())) is not None:
         env["AUDIOCPP_UNIDIC_DIR"] = str(dictionary)
     return env
+
+
+# The variables `_child_env` sets for the runtime — part of a process's signature, so a
+# change (eSpeak NG or the dictionary installed or removed) starts it again with them.
+_RUNTIME_ENV = ("AUDIOCPP_ESPEAK_LIBRARY", "AUDIOCPP_ESPEAK_DATA", "AUDIOCPP_UNIDIC_DIR")
 
 
 def _hardware():
@@ -284,6 +301,7 @@ class _Running:
     log_path: Path
     models: dict[str, ModelEntry] = field(default_factory=dict)
     job: Any = None              # the Windows kill-on-close Job Object handle (kit), or None
+    managed: bool = False        # models are registered at run time (`register`)
 
 
 class AudioCppError(RuntimeError):
@@ -297,30 +315,41 @@ def _free_port() -> int:
 
 
 class AudioCppServer:
-    """One server process — the "gpu" or the "cpu" placement. Thread-safe; every method
-    may start it."""
+    """One server process — a placement ("gpu" | "cpu") for one kind of model ("tts" speech |
+    "stt" speech recognition). Thread-safe; every method may start it."""
 
-    def __init__(self, placement: str = "gpu") -> None:
+    def __init__(self, placement: str = "gpu", kind: str = "tts") -> None:
         self.placement = placement
+        self.kind = kind
         self._lock = threading.RLock()
         self._run: _Running | None = None
 
     def _file_stem(self) -> str:
-        # The GPU process keeps the names it has always had.
-        return "audiocpp-server" if self.placement == "gpu" else f"audiocpp-server-{self.placement}"
+        # The GPU speech process keeps the names it has always had.
+        stem = "audiocpp-server" if self.placement == "gpu" else f"audiocpp-server-{self.placement}"
+        return stem if self.kind == "tts" else f"{stem}-{self.kind}"
 
     # -- lifecycle --
 
     def ensure(self, exe: Path, models: list[ModelEntry], *, data_dir: Path, device: int = 0,
-               threads: int = 4, backend: str | None = None) -> None:
-        """Running with exactly this model list (restart if it changed). `backend`
-        overrides the build's own (the "cpu" process runs a GPU build on the CPU)."""
+               threads: int = 4, backend: str | None = None, managed: bool = False) -> None:
+        """Running with this configuration (restart if it changed). `managed`: the build
+        registers models at run time (`model_management`), so the config lists none and
+        `register` adds each as it loads — what is downloaded or deleted never restarts the
+        process. Otherwise the config lists `models` and a change to that list restarts it.
+        `backend` overrides the build's own (the "cpu" process runs a GPU build on the CPU)."""
         cfg = {
             "host": "127.0.0.1", "backend": backend or backend_of(exe), "device": device,
             "threads": threads, "lazy_load": True, "max_loaded_models": 0,
-            "models": [m.to_config() for m in sorted(models, key=lambda m: m.id)],
+            "models": [] if managed else [m.to_config() for m in sorted(models, key=lambda m: m.id)],
         }
-        signature = json.dumps({"exe": str(exe), **cfg}, sort_keys=True)
+        if managed:
+            cfg["model_management"] = True
+        # Who started it — `engines/leftovers.py` reads this to stop a server whose parent is
+        # gone (a hard-killed app must not leave a model in VRAM).
+        env = _child_env()
+        signature = json.dumps({"exe": str(exe), **cfg,
+                                "env": {k: env.get(k) for k in _RUNTIME_ENV}}, sort_keys=True)
         with self._lock:
             if self._run and self._run.signature == signature and self._run.proc.poll() is None:
                 return
@@ -334,9 +363,6 @@ class AudioCppServer:
             log_path.parent.mkdir(parents=True, exist_ok=True)
             flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
             out = open(log_path, "ab")  # noqa: SIM115 — owned by the child for its lifetime
-            # Who started it — `engines/leftovers.py` reads this to stop a server whose
-            # parent is gone (a hard-killed app must not leave a model in VRAM).
-            env = _child_env()
             # The kit's one spawn seam: on Windows the child goes into a kill-on-close
             # Job Object, so it dies WITH this process however this process dies (the
             # Python engines watched their server; audio.cpp does not), and a freshly
@@ -346,11 +372,14 @@ class AudioCppServer:
             popen = functools.partial(subprocess.Popen, cwd=str(exe.parent),
                                       creationflags=flags, env=env)
             proc, job = spawn_child(popen, [str(exe), "--config", str(conf_path), "--no-ui"], out)
-            self._run = _Running(proc, port, signature, log_path, {m.id: m for m in models}, job)
+            self._run = _Running(proc, port, signature, log_path,
+                                 {} if managed else {m.id: m for m in models}, job, managed)
             self._wait_healthy()
             dev = dev_build.current()
-            log.info("audio.cpp %s (%s) up on :%d (pid %d, %s, %d threads, %d models)",
-                     dev.version if dev else release.TAG, self.placement, port, proc.pid, cfg["backend"], threads, len(models))
+            log.info("audio.cpp %s (%s %s) up on :%d (pid %d, %s, %d threads, %s)",
+                     dev.version if dev else release.TAG, self.placement, self.kind, port, proc.pid,
+                     cfg["backend"], threads,
+                     "models registered as they load" if managed else f"{len(models)} models")
 
     def _wait_healthy(self, timeout: float = 60.0) -> None:
         run = self._run
@@ -390,7 +419,22 @@ class AudioCppServer:
         return self._run.proc.pid if self.is_running() else None
 
     def has_model(self, model_id: str) -> bool:
+        """Listed in the config, or registered with a managed process."""
         return self._run is not None and model_id in self._run.models
+
+    @property
+    def managed(self) -> bool:
+        return self._run is not None and self._run.managed
+
+    def register(self, entry: ModelEntry, timeout: float = 600.0) -> None:
+        """Register `entry` with a managed process and load it now (`POST /v1/models/load` —
+        our fork's `model_management`). A registered model is loaded again if it was unloaded,
+        and reloaded with its new options if they changed."""
+        r = httpx.post(self._url("/v1/models/load"), json=entry.to_config(), timeout=timeout)
+        self._raise_for(r)
+        with self._lock:
+            if self._run is not None:
+                self._run.models[entry.id] = entry
 
     def log_tail(self, lines: int = 12) -> str:
         if self._run is None:
@@ -450,24 +494,34 @@ class AudioCppServer:
 
 
 PLACEMENTS = ("gpu", "cpu")
-_servers: dict[str, AudioCppServer] = {}
+KINDS = ("tts", "stt")
+_servers: dict[tuple[str, str], AudioCppServer] = {}
 _server_lock = threading.Lock()
 
 
-def get_server(placement: str = "gpu") -> AudioCppServer:
-    """The server for one placement ("gpu" | "cpu"), created on first use (not started)."""
+def get_server(placement: str = "gpu", kind: str = "tts") -> AudioCppServer:
+    """The server for one placement ("gpu" | "cpu") and kind ("tts" | "stt"), created on first
+    use (not started)."""
     if placement not in PLACEMENTS:
         raise ValueError(f"unknown placement {placement!r}")
+    if kind not in KINDS:
+        raise ValueError(f"unknown kind {kind!r}")
     with _server_lock:
-        srv = _servers.get(placement)
+        srv = _servers.get((placement, kind))
         if srv is None:
-            srv = _servers[placement] = AudioCppServer(placement)
+            srv = _servers[(placement, kind)] = AudioCppServer(placement, kind)
         return srv
 
 
-def shutdown_server(placement: str | None = None) -> None:
-    """Stop one placement's server, or both (None)."""
+def servers(placement: str | None = None) -> list[AudioCppServer]:
+    """Every server created so far for `placement` (None = all), speech first."""
     with _server_lock:
-        srvs = [s for p, s in _servers.items() if placement in (None, p)]
-    for srv in srvs:
-        srv.stop()
+        found = [s for (p, _k), s in _servers.items() if placement in (None, p)]
+    return sorted(found, key=lambda s: (s.placement, KINDS.index(s.kind)))
+
+
+def shutdown_server(placement: str | None = None, kind: str | None = None) -> None:
+    """Stop the servers of one placement and/or kind; None = every one."""
+    for srv in servers(placement):
+        if kind in (None, srv.kind):
+            srv.stop()

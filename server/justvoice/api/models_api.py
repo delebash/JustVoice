@@ -113,7 +113,7 @@ def set_model_placement(id: str, variant_id: str, body: PlacementBody) -> dict:
 
 
 @router.post("/v1/engines/speech-cache/clear")
-async def clear_speech_cache() -> dict:
+def clear_speech_cache() -> dict:
     """Delete every downloaded speech model (the whole speech cache) to
     reclaim disk — the Settings Disk-usage panel's per-store clear verb
     (phase ④), one grammar with the kit's LLM `models-cache/clear`. SAFE BY
@@ -143,7 +143,7 @@ async def clear_speech_cache() -> dict:
 
 
 @router.delete("/v1/engines/{id}/models/{variant_id}")
-async def delete_model(id: str, variant_id: str) -> dict:
+def delete_model(id: str, variant_id: str) -> dict:
     """Delete one model's downloaded file(s) — the per-model 'Delete downloaded
     model' verb. The engine and its other variants stay."""
     import shutil

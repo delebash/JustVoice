@@ -2178,12 +2178,47 @@ WHY:    Measured on the app's own runtime: peak memory grows with line length on
         eSpeak NG, never the one the app downloads (wrong option name).
 NOT:    "use the median reading" (my first fix) — withdrawn: the high readings are real peaks.
         Running VoiceDesign on the CPU — not needed.
-OPEN:   every fix needs its own go, with its blast-radius table first. Proposed order:
-        (1) per-model split size + memory-check rewrite; (2) the eSpeak option name;
-        (3) stale bookings and runtime restarts; then the rest of the record's list.
-        Also open: testing mem_saver / flash attention / 16-bit decoder weights on Qwen3
-        (needs a temporary runtime config change), and a listening check on split joins.
-GO:     needed
+DECIDED: 2026-10-04, after a second review (Opus) — the user: "your rec for the audit fixes"
+        + "go". The approved text, as shown:
+        Where I'd change Fable's design —
+        | List every catalog model up front | Use dynamic registration: no restarts, and
+          Load means loaded |
+        | A fork change to report each model's memory | One process per kind gives exact
+          numbers now; fork reporting becomes optional |
+        | Price a model from its full-piece peak | Same idea. On a model's first load, or
+          when its split size changes, warm up with a full-length piece and record that
+          peak. Placement and admission both use that one number, and a refusal happens
+          before any download or eviction |
+        | A split size per model | Same, plus a seed is always sent for description voices,
+          and their split default waits for the listening test |
+        | A fork endpoint listing options | Write option specs for our 7 families in the
+          fork, in the format Kokoro's spec already uses |
+        Fix order I'd use —
+        1. eSpeak, first. It is a few lines, and it breaks Kokoro (the default engine) on
+           every machine without a system eSpeak NG install, which is every user but you.
+        2. The runtime's life. Dynamic registration, one process per kind, Load off the
+           server's main loop. This one change fixes the stale booking, the restarts, false
+           Load results and the share arithmetic.
+        3. Bound the work, then price it honestly. Per-model split size, the calibrated
+           peak, refusal before any change. This is what makes Qwen3 usable.
+        4. Fork memory fixes. Free the old decoder buffer before building the new one, trim
+           the clip's context, fix the prefill memory. This is what makes kept Qwen3
+           designs affordable.
+        5. Everything else from Fable's list.
+        Each needs its own go, with a blast-radius table before any code.
+        The second review's facts and corrections: docs/dev/RESEARCH.md §1–2; the build
+        record per step: the audit doc §13.
+BUILT:  2026-10-04 — step 1 (eSpeak NG reaches Kokoro and KittenTTS; Linux finds its wheel)
+        and step 2 (models registered at run time through the fork's new `model_management`;
+        one process per kind; a dead slot dropped with its booking; Cancel frees its booking;
+        the engine endpoints off the event loop). Checked live on the restarted app — the
+        record, blast radius and results: audit §13.1–13.2.
+OPEN:   steps 3–5 (built in order; each step's blast-radius table goes in audit §13 before
+        its code). `model_management` reaches a packaged app only with the next audio.cpp
+        release (its tag still needs the user's word); until then the pinned jv.1 keeps the
+        listed config, now per kind. The listening test for description voices' split size;
+        testing mem_saver / flash attention / 16-bit decoder weights on Qwen3.
+GO:     given 2026-10-04 ("go and your rec for the audit fixes")
 
 ### FINDING — at 1440 px the title bar cuts "Personas › June" to "P.."
 STATE:  FINDING — seen 2026-10-04 in screenshots of the running app (`npm run dev`), on the real

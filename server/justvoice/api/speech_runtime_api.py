@@ -53,7 +53,7 @@ class SpeechRuntimeInfo(BaseModel):
     gpus: list[str] = []             # this machine's GPUs, by index
     running: bool = False
     pid: int | None = None
-    models_known: int = 0            # installed models the server may load
+    models_known: int = 0            # models the GPU processes list or have registered
     # The CPU process (CPU placement, 2026-10-02).
     cpu_threads: int = 0             # the setting; 0 = the physical core count
     cpu_threads_used: int = 0        # what the CPU process runs with
@@ -84,20 +84,22 @@ def _info() -> SpeechRuntimeInfo:
         available_backends,
         backend_of,
         cpu_threads,
-        get_server,
         installed_exe,
         installed_tag,
         physical_cores,
         selected_asset,
+        servers,
     )
 
     exe = installed_exe()
     tag = installed_tag() if exe is not None else None
     dev = dev_build.current()
     asset = selected_asset() if exe is None and dev is None else None
-    srv = get_server("gpu")
-    cpu = get_server("cpu")
-    known = len(srv._run.models) if srv.is_running() and srv._run else 0
+    # Speech and speech recognition run in processes of their own (audit 2026-10-04 §13.2);
+    # the row reports a placement's speech process, else its recognition one.
+    gpu = [s for s in servers("gpu") if s.is_running()]
+    cpu = [s for s in servers("cpu") if s.is_running()]
+    known = sum(len(s._run.models) for s in gpu if s._run)
     s = _settings()
     try:
         gpus = [g.name for g in (getattr(_hardware(), "gpus", None) or [])]
@@ -123,15 +125,15 @@ def _info() -> SpeechRuntimeInfo:
         backends=available_backends(),
         gpu=s.gpu,
         gpus=gpus,
-        running=srv.is_running(),
-        pid=srv.pid,
+        running=bool(gpu),
+        pid=gpu[0].pid if gpu else None,
         models_known=known,
         cpu_threads=s.cpu_threads,
         cpu_threads_used=cpu_threads(),
         physical_cores=physical_cores(),
         cpu_min_realtime=s.cpu_min_realtime,
-        cpu_running=cpu.is_running(),
-        cpu_pid=cpu.pid,
+        cpu_running=bool(cpu),
+        cpu_pid=cpu[0].pid if cpu else None,
         japanese_dictionary=_japanese_dictionary(),
     )
 

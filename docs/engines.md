@@ -77,13 +77,16 @@ downloads the new build — the bar shows how far along it is — and unloads
 whatever was loaded; load it again to use it. The older build is then deleted
 (about 2 GB for a CUDA build); your downloaded models stay.
 
-**Two slots, at most two processes.** The runtime holds at most one speech model
+**Two slots, a process for each.** The runtime holds at most one speech model
 and one speech-recognition model at a time — the same two slots as before.
-Loading a second speech model unloads the first. Models on the graphics card run
-in one process and models on the CPU in a second one, started only when a model
-is placed there; neither has a window of its own. Their logs are
-`logs/audiocpp-server.log` and `logs/audiocpp-server-cpu.log` in your data
-folder.
+Loading a second speech model unloads the first. Each slot runs in a process of
+its own — one on the graphics card and one on the CPU, each started only when a
+model is placed there — so up to four, none with a window of its own. Because
+they are separate, downloading or deleting a model never restarts the other
+slot's model, and if one process stops, the other slot's model stays loaded.
+Their logs are in your data folder: `logs/audiocpp-server.log` and
+`logs/audiocpp-server-cpu.log` (speech), `logs/audiocpp-server-stt.log` and
+`logs/audiocpp-server-cpu-stt.log` (speech recognition).
 
 - **CPU threads** — how many threads the models on the CPU compute with, next
   to the Backend select. It starts at your machine's physical core count, which
@@ -95,7 +98,8 @@ folder.
 **eSpeak NG.** Kokoro and KittenTTS read text through eSpeak NG, the open-source
 pronunciation library. Installing the runtime also downloads eSpeak NG
 (GPL-3.0) onto your machine from its published Python package; JustVoice
-itself never ships it.
+itself never ships it. Both models use that copy, even when another eSpeak NG
+is installed on the computer.
 
 ## The catalog
 
@@ -465,9 +469,8 @@ measured numbers instead of an out-of-memory crash. A model's first-ever load
 carries no number yet ("not measured yet") — it simply attempts, gets
 measured, and is remembered.
 
-Because one runtime holds both slots, the memory it uses is split between
-them: the speech-recognition cell shows what loading that model added, not
-the runtime's whole footprint a second time. The full story is in
+Each slot's cell shows its own process's measured memory: the model, plus the
+process's own share of the card (about 100 MB). The full story is in
 [GPU](gpu.md#the-shared-memory-budget).
 
 ### Cancelling an in-flight load

@@ -116,7 +116,7 @@ def test_the_runtime_row_says_it_is_the_dev_build(dev, monkeypatch):
         def is_running(self):
             return False
 
-    monkeypatch.setattr(runtime, "get_server", lambda placement="gpu": _Srv())
+    monkeypatch.setattr(runtime, "servers", lambda placement=None: [_Srv()])
     monkeypatch.setattr(runtime, "available_backends", lambda: ["cuda", "cpu"])
     monkeypatch.setattr(runtime, "_hardware", lambda: SimpleNamespace(gpus=[]))
     monkeypatch.setattr(runtime, "cpu_threads", lambda: 8)
