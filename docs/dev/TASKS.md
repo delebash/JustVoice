@@ -1924,12 +1924,13 @@ NOT:    option 1 — the HTML mock linking the real stylesheets; hand-written ma
         HTML mock's `_s7`/`_s9` are deleted once the Vue ones exist; Design carries both 08-22
         paths, a description on the persona (dynamic) and "Save as a voice" (frozen, cloned),
         after checking what the code sends VoiceDesign today.
-OPEN:   making a voice — reopened by the user: "i think the whole design should be part of the
-        persona, we can do all design in persona except lora training maybe". Waiting on the
-        answers to that. Then: read the 12 Alexandria screenshots + 08-15 §5/§9.3 + 08-22 record;
-        redo the persona mock (index `_s9`, editor `_s7`, plan §6.1) as Vue pages; then make
-        `PersonaEditorView.vue` match it.
-GO:     given 2026-10-04 for option 2, the persona mock and the answers above
+        Then "your rec on all go" (2026-10-04): a persona makes its own voice (Design, Clone,
+        Blend inline; LoRA off), Voices becomes the library, plus a Language filter on the voice
+        list — the text as shown and approved: `docs/plans/2026-10-04-persona-voice-making.md`.
+OPEN:   that doc's §4 order: research → the persona mock as Vue pages → side-by-side compare →
+        delete `_s7`/`_s9` → stop for review; then the real pages change to match.
+GO:     given 2026-10-04 for option 2, the persona mock and the answers above; the real pages
+        wait for the user's review of the mock
 
 ### FINDING — a persona's pace, pitch and gain can't be edited anywhere in the app
 STATE:  FINDING — code-verified 2026-09-30 (found by the mock-vs-app comparison). The persona
