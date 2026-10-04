@@ -1,7 +1,7 @@
 # The Personas redesign — design check before any code
 
-**Status:** review in progress (2026-10-03). No code until the review in this doc is shown and
-approved. Tracker: docs/dev/TASKS.md, FINDING "a persona's pace, pitch and gain can't be edited
+**Status:** BUILDING (2026-10-03, "your rec on all save the plan and go code") — the plan is §6;
+each slice's state is in TASKS. Tracker: docs/dev/TASKS.md, FINDING "a persona's pace, pitch and gain can't be edited
 anywhere in the app".
 
 **Read §5 first.** It corrects §3 and §4 (the user: "we did the mock on purpos and you are ignoring
@@ -798,3 +798,270 @@ could be right.
 Recommended next step (not decided): redraw the mock's persona screens — working radios and
 filters, one state per model, today's engines — and publish to the same link for the user to walk;
 then the build plan with the blast-radius table.
+
+## 6. The build plan — APPROVED 2026-10-03: "your rec on all save the plan and go code"
+
+The user chose to build now, so the mock redraw (5.6's recommended step) is skipped; this section
+carries the design the redraw would have drawn. **Read 6.1 before coding any slice; re-read it
+before every edit** (`check-plan-before-every-edit`).
+
+### 6.1 What a persona is, after this build
+
+**A persona is a finished spoken voice: a voice, which carries the model that speaks it, plus
+everything about how it speaks.** It lives in the library and plays any number of speakers in any
+book. Everything a persona can set is set on the persona; Studio's Render (Slice 4) overrides it
+per line (the user, 2026-10-03: "everthing should be able to to done on persona with slice 4 as
+override").
+
+**Three layers, one job each.**
+- **The voice** is raw (mock `_s6:31`, "A voice is raw"): a timbre and the model it was made for.
+  A built-in belongs to its model; a clone's model is picked when it is cloned (and "Copy to
+  another model…" makes a second voice on another model); a design's model is the one it was
+  designed on; a blend is Kokoro's.
+- **The persona** is how that voice speaks: its language, pace, pitch, gain and pauses, the
+  model's own direction (written direction and emotion, or tags, or nothing), the model's own
+  sampling settings and seed, effects, a lexicon, and a note.
+- **The line** (Slice 4, not this build) overrides any of it for one line.
+
+**What a persona can be directed with depends on its voice's model** — one vocabulary, shown and
+filterable everywhere (5.5):
+| Kind | What you do | Example | Models |
+|---|---|---|---|
+| Written direction | describe it in words | "Clipped, world-weary. Dry wit." | Qwen3 CustomVoice, VoxCPM2 (clones too), Qwen3 VoiceDesign (reshapes the voice) |
+| Tags | pick from the model's list | `[fear] … [sigh]` | Chatterbox Turbo, Nano |
+| Sliders only | pace, pitch, gain — no words | Pace 1.05×, Pitch −2 st | Kokoro, Kitten, Pocket, Chatterbox Multilingual, Qwen3 Base |
+
+**The editor** — a page, `Personas › June`, as the mock draws it (`_s7`), corrected:
+- **Header:** the crumb; a pill "Sohee · Qwen3 CustomVoice"; "Speaks Korean"; "used by 1 speaker";
+  the banner when the voice's model isn't loaded ("Qwen3 CustomVoice isn't loaded. The first
+  listen swaps it in — about a minute.").
+- **Persona** card (the mock has none; a new persona needs a name): Name; Note on how it sounds
+  ("Read by Compose, Rewrite and Smart-assign. Never heard.").
+- **Voice** card: the kind radios — Built-in · Clone from audio · Design from words · Blend ·
+  Trained LoRA (off: "Needs voice training, which isn't rebuilt yet."). They FILTER the voice list
+  (built-in = presets; clone = cloned and imported; design = designed, with or without a saved
+  clip; blend = blended). Beside the list: **Can be directed** (Any · Written direction · Tags ·
+  Sliders only, each with its one-line example), **Model** (the kind's models, with counts),
+  **Gender** (All · Female · Male · Neutral, the 09-30 to-do). Each option reads "Sohee · Female ·
+  Korean · Qwen3 CustomVoice". ▶ Raw plays the bare voice. **Speaks**: plain text where the voice
+  or model fixes it ("Speaks Japanese"); a list of the model's languages where it can speak more
+  than one, starting at the voice's own; "Speaks English · voice is Japanese" when they differ.
+  Changing the voice: "Changing this makes June's 61 lines stale." plus, when direction is lost,
+  "18 carry a written direction — Chatterbox Turbo won't perform them."
+- **Hear it**: a line box with the tag picker (the voice's model's tags; disabled with the reason
+  on a model with none); ▶ Listen (through the same path a chapter renders, with the unsaved
+  edits); ↻ Stock line; ⤓ WAV; the player.
+- **How it speaks**: Pace, Pitch, Gain, Pause before → after (every model; Pace notes
+  "time-stretched" on a model that doesn't pace itself); **Direction** — written-direction models:
+  Standing delivery ("A line's own direction is added after this.") + Emotion (the app's 9);
+  Turbo / Nano: Emotion (Turbo's own 7) + Register (3), set at the start of every line; sliders-only
+  models: shown disabled with the reason; Qwen3 VoiceDesign warns that the words reshape the
+  voice; Effects (chips + Edit); Lexicon.
+- **Sampling**, titled with the model: exactly the model's knobs with its own defaults and ranges,
+  Seed + 🎲 where the model repeats with a seed (Kitten: disabled with why); ⚖️ Compare settings…
+  (pick a knob and three values, hear the same line three ways).
+- **Save**: 💾 Save · name + ＋ Save as new · ↺ Revert · an "Unsaved changes" mark · 🔀 Blend
+  (opens Voices' Blend) · 🧪 Train a LoRA (disabled, as the LoRA radio).
+- **Right column**: the summary card; **This model** — ✓/✗ written direction, tags (listed), the
+  languages, cloning, seed, "Compare models →"; **Used by** — speakers, lines, "Open Cast →".
+- Unsupported values are kept, shown disabled with the reason (5.4/§4 Q6). Model-specific values
+  (emotion, register, sampling, seed) are kept per model, so switching back restores them (§4 Q5).
+
+**The index** (mock `_s9`): ▶ (plays the persona) · Persona · Built on (voice + kind) · Model ·
+Can be directed · Speaks · Shaped ("1.05× · −1.0 dB · 2 effects") · Used by · ⋯ (Rename · Merge
+into… · Delete). Filters: search, model, can be directed, language, usage (All · In use · Unused ·
+each book). New persona opens a blank editor. Empty state. The ticks and "Delete N selected" (ruled
+2026-09-29) stay.
+
+**Elsewhere**: Voices gets Can be directed, Speaks and Used by columns, the filter, and ⋯ "Copy to
+another model…" and "New persona from this voice". Cast's persona rows show the model, Speaks and
+the direction kind from the same server answer, ▶ plays the persona, "＋ New persona" comes back
+with it assigned, and a speaker's card warns when its persona speaks another language than the
+book. Overview and New project get the book's Language. Render presets are gone.
+
+**One path.** Every way a persona is heard — the editor's Listen and Compare, Cast's ▶, the index
+▶, a chapter render, a line's re-render, the game export, Generate with a persona, MCP speak with
+a persona — builds its request through one resolver, so they sound the same.
+
+### 6.2 The decisions, as presented and approved (2026-10-03, "your rec on all")
+
+From §4 (unchanged): Q5 per-model values kept per model; Q6 unsupported controls disabled with the
+reason, values kept; Q7 one resolver for every path; Q10 Delete uncasts; Q11 Merge into… moves the
+speakers to the target, then deletes this one.
+From 5.4: Q2 (a) — "a clone belongs to the model it was made for, and 'Copy to another model…'
+makes the second"; improvements 1–5 (radios filter + model filter; Copy to another model…; New
+persona from this voice; a blank persona shows only the Voice card live; Cast's ＋ New persona).
+From the tag answer: (1) labels with a one-line example, "Numbers only" renamed — "Written
+direction — describe it: *clipped, world-weary*", "Tags — pick from the model's list: *[fear]
+[sigh]*", "Sliders only — pace, pitch, gain, no words"; (2) one tag picker fed by the voice's model,
+in Render's line panel (Slice 4), the editor's Hear it box and its This engine card, disabled with
+the reason on a model with none; (3) "render each one on Turbo and listen before the app lists it.
+A tag that does nothing would be a broken promise in the list"; (4) on a Turbo voice the picker
+shows Turbo's own 19.
+From the language answer: (1) "start from the voice, and allow another language from the model's
+list where the model speaks several"; (2) a book language, "so Cast can warn on a mismatch"; (3)
+"Speaks …" in the editor, the Personas index (column + filter), Cast's persona list (with a
+filter) and every voice dropdown label next to gender; render sends the persona's language on
+every line.
+From the last answer: the user's "everthing should be able to to done on persona with slice 4 as
+override"; (1) a line's written direction keeps being added after the persona's, plus a "replace
+for this line" choice — Slice 4; (2) voice, effects and lexicon stay off the line — Slice 4; (3)
+presets: "(a) remove them with the persona work, as already ruled … Any presets in your data go
+with them."
+The mock's stale parts (§4 Q12 as revised in 5.3): LoRA stays a kind, off until gap 5; LuxTTS is
+gone; Kitten, Pocket, VoxCPM2 and Nano are in.
+
+**Calls this plan makes that no question named** — each is surfaced here; say if one is wrong:
+1. Designed voices are listed under "Design from words" whether or not they carry a saved clip
+   (the radios say how a voice was made); the option shows the model it speaks on (a saved clip →
+   Qwen3 Base).
+2. The editor's Name and Note sit on a "Persona" card at the top; the Lexicon sits in How it speaks.
+3. Shared across models: pace, pitch, gain, pauses, standing delivery, language, effects, lexicon.
+   Kept per model: emotion, register, sampling knobs, seed.
+4. Within a model family the size and precision stay AI Settings' choice: the render uses the
+   loaded variant if it is that family, else the user's default if it is, else an installed variant
+   of the family (same size first); none installed → the render refuses, naming the model to
+   install.
+5. A chapter whose personas need different models renders model by model (one swap per model),
+   replacing today's mixed-Qwen3 refusal.
+6. Generate: picking a persona switches Generate's voice to the persona's voice (it stays
+   changeable), so "Generate with a persona" is the persona.
+7. The index's usage filter folds today's "By project" into one list: All · In use · Unused ·
+   each book.
+8. The tag check is automated (I cannot listen): each tag is rendered on Turbo with and without
+   it; it passes when the tag's word is not heard (speech recognition) and the audio differs. A tag
+   that fails leaves the list.
+9. The book's language lives in the project's metadata (the import already writes it there), set
+   on Overview and New project; an unset book language warns nothing.
+10. Speaker pronouns (the 09-30 to-do) are the last slice: they need a new speakers column, which
+    without migrations means a data reset — asked before it is done.
+11. `database/migrate_profiles.py` (the one-shot Profile → Persona migration; its source table is
+    dropped by `_migrate_drop_voice_profile_tables`) is deleted with its boot call: it is the last
+    writer of `engine_override`, and extinct migrations are deleted (no-migrations rule).
+
+### 6.3 Slices (each committed and pushed on its own; the app works after each)
+
+**P1 · A voice knows its model** (server + Voices' create calls)
+- `VoiceRecord.model` (the capability row id: `kokoro`, `kitten`, `pocket`, `qwen3-cv`,
+  `qwen3-base`, `qwen3-vd`, `chatterbox-multilingual`, `chatterbox-turbo`, `chatterbox-nano`,
+  `voxcpm2`); one function `voice_model()` answers it for presets and for stored voices without one.
+- The `Voice` DTO ships `model`, `model_name`, `directed_by` (`words` · `tags` · `sliders`) and
+  `speaks` (the languages the model can speak this voice in) — one server answer.
+- Clone / design / import / blend take `model`; the Voices page sends the row it shows.
+- `render_line(…, model=)`: loads the right variant of the family (6.2 call 4); tags, emotion tags
+  and the capability row follow the voice's model, never the loaded one. The scheduler groups by
+  model. The Qwen3 family refusal and `qwen_family_*` go (call 5).
+- `POST /v1/voices/{id}/copy` — Copy to another model (checks what the target needs).
+
+**P2 · Render presets removed everywhere** (§4 Q8's old twin; 6.2 "presets (a)")
+- Server: the `RenderPreset` table model, `render_presets_api`, `preset_suggest_api`,
+  `seed_presets.py`, the seed rows, the `render_preset_suggest` feature (catalog, seed prompts,
+  migrate_prompts), the two `_migrate_render_presets_*` helpers, `data_admin`'s reseed, the preset
+  tier in `merge_delivery` and Generate, `preset_id` on requests, the "preset" mastering source,
+  `audio/effects.py`'s preset overlay. UI: `RenderPresetsView`, the `/presets` route and rail entry,
+  Render's preset column + 💡 Suggest, ChapterView's and ProjectsView's preset bits,
+  `services/projects.js`, `labTestData.js`. Tests and docs with them.
+
+**P3 · The persona's data and the one resolver** (server)
+- `Persona.default_delivery` becomes typed (`PersonaDelivery`: speed, pitch, gain_db,
+  pause_before, pause_after, `models: {model: {knobs, seed, emotion, register}}`), validated against
+  the model. `engine_override` removed everywhere (call 11). `PATCH /v1/personas/{id}` with explicit
+  clears replaces PUT (the clear-does-nothing bug).
+- `persona_render.py`: one resolver, persona + line → voice, model, text (Turbo tags), language,
+  delivery (instruct composed: design description → standing delivery → emotion → line direction),
+  seed, effects, lexicons. Used by the chapter render, the block render (Lines ↻, takes, game
+  export, render jobs), `POST /v1/personas/{id}/preview` (accepts unsaved edits; the editor,
+  Compare, Cast ▶, the index ▶), Generate with a persona, MCP speak with a persona.
+- Language and seed reach every render. The book's language: `GET/PATCH` project carries it.
+- `POST /v1/personas/{id}/merge` (Merge into…).
+
+**P4 · The persona editor page** (UI, 6.1) — route `/personas/:id` (and `/personas/new`); Cast's
+"Edit their persona →" opens it; the tag picker (the kit-backed `SlashTagMenu`, fed by the voice's
+model); Compare settings…; the orphaned `VoiceParamsModal.vue` deleted.
+
+**P5 · The Personas index** (UI, 6.1) — the mock's columns, filters, ⋯ menu, ▶, empty state.
+
+**P6 · Voices and gender** — one shared voice-gender service (today only `VoicesView` has it);
+every voice dropdown label "Name · Gender · Language · Model"; Voices' Can be directed / Speaks /
+Used by columns and filter; ⋯ Copy to another model…, New persona from this voice.
+
+**P7 · Cast and the book's language** — persona rows from the server's answer, filters (model,
+can be directed, language), ▶ plays the persona, ＋ New persona → back assigned, the language
+mismatch warning; Language on Overview and New project.
+
+**P8 · The Turbo tag check** (call 8) — a script that renders each of the 19 tags and records the
+result in `docs/plans/`; the tag list keeps only the passing ones.
+
+**P9 · Speaker pronouns** (call 10) — the 09-30 doc's two checks, then the field; asks first.
+
+Docs, in the slice that changes them (docs-good-not-short, with examples): `docs/personas.md`
+(rewritten), `docs/voices.md`, `docs/engines.md`, the Studio docs (Cast, Overview), `docs/generate.md`
+(presets gone), `docs/whats-new.md`.
+Gates per slice: `ruff check .` + `pytest` (server); `npm run test:unit`; biome; `npm run
+build:vite`; the smoke gate (`JV_BASE=http://127.0.0.1:8741`, `--data-dir
+src-tauri/target/debug/data`) for UI slices; then the real app through `npm run dev`.
+
+**Not in this build:** Render's line panel and every per-line override (Slice 4); can a persona
+vary by scene; Generate absorbed or deleted (only call 6 touches it); voice training (gap 5).
+
+### 6.4 Blast radius (greps pasted 2026-10-03, at plan time; each slice re-greps before it edits)
+
+**`render_line` callers** — `grep -rn "render_line(" server/justvoice src`:
+`api/render_chapter_api.py:528`, `:603` · `export_voicelines.py:160` · `synth_scheduler.py:250`.
+**`_resolve_engine_for_voice` callers** (model resolution joins it): `api/takes_api.py:293,310` ·
+`export_voicelines.py:179,206` · `render_core.py:168,610,679` · `render_jobs.py:292,328` ·
+`synth_scheduler.py:245,249`.
+**`qwen_family_*` / `QWEN_FAMILY_LABELS`** (deleted, call 5): `api/render_chapter_api.py:35,39,495,498`
+· `render_core.py:144-227` · tests `test_designed_voice_parity.py:43-45,211-301` ·
+`test_audiocpp_switch.py:48` · `test_pause_between_lines.py:29` · `test_project_lexicon.py:353`.
+**`merge_delivery` / `compose_instruct` callers** (preset tier removed; persona tier moves into the
+resolver): `api/generate_api.py:285,307,419,428` · `api/render_chapter_api.py:208,238`.
+**Capability-row followers** (switch from the loaded variant to the voice's model):
+`render_core.py:326,329,358,613,616,628,702,712` · `api/generate_api.py:91`.
+**Scheduler groupers** (key becomes the model): `api/generate_api.py:378` · `api/projects_api.py:988,
+1116,1143` · `api/render_chapter_api.py:524` · `api/takes_api.py:311` · `api/voice_preview_api.py:355`
+· `render_jobs.py:357` · `synth_scheduler.py:235,251`.
+**`default_delivery` readers / writers** (becomes typed): `api/generate_api.py:279,413` ·
+`api/personas_api.py:126,155` · `api/render_chapter_api.py:181` · `database/migrate_profiles.py:80,87`
+(deleted, call 11) · `database/models.py:119` · `export_voicelines.py:148` · `models.py:597,627` ·
+`src/components/VoiceParamsModal.vue:19` (orphan, deleted) · `src/views/PersonasView.vue:251,272,324,391,668,672`
+(rewritten). Producers today: only PersonasView (no editor — so stored values are `{}` or imports).
+**`voice_instruct` readers**: `api/generate_api.py:280,414` · `api/personas_api.py:127,156` ·
+`api/project_export_api.py:140` · `api/render_chapter_api.py:182` · `database/models.py:113` ·
+`models.py:590,625` · `src/views/PersonasView.vue` (rewritten).
+**`engine_override`** (removed): `api/personas_api.py:128,157` · `api/project_export_api.py:142` ·
+`database/migrate_profiles.py:89` · `database/models.py:123` · `models.py:603,630` ·
+`storage/personas.py:60,139,178,204,259` · `src/components/StudioCast.vue:68` ·
+`src/views/PersonasView.vue:249,271,326,394,622` · `docs/dev/code-map.md:56,156` (TASKS:1976 names
+the finding — closes with P3).
+**Persona HTTP callers** (PUT → PATCH): `src/views/PersonasView.vue:168,229,334,340,370,381,423` ·
+`src/views/SettingsView.vue:111,126,657,1019` (list/delete only) · `src/views/GenerateView.vue:373,405`
+(compose/rewrite) · `src/services/projects.js:146,149` (channels) · `src/stores/personas.js:22`.
+**Voice create callers** (gain `model`): `src/views/VoicesView.vue:1540,1544,1553,1564`.
+**Personas route links** (editor becomes a page): `src/components/StudioCast.vue:467,619` ·
+`src/router/index.js:27` · `src/views/HomeView.vue:269` · `src/views/GenerateView.vue:1076`.
+**Book language** today: written by the import only (`api/projects_api.py:652`), read by nothing.
+**Language at the slot** (what the persona's language reaches): `engines/audiocpp/slot.py:359-361`
+(Qwen3 names), `:377`, `:468-495` (Kokoro), `:506` (Qwen3 default English), `:553-555` (Pocket
+refuses another language), `:573-574` (Chatterbox).
+**Render presets** (P2) — `grep -rc -i "render_preset\|RenderPreset\|preset_id\|renderPreset"`,
+non-zero files (server/build is an untracked build dir, ignored): server `api/effect_presets_api.py`
+(9 — all `preset_id` of EFFECT presets, which stay), `api/generate_api.py` 5, `api/preset_suggest_api.py`
+10, `api/render_chapter_api.py` 15, `api/render_presets_api.py` 34, `app.py` 4 (2 are the LLM
+`DEFAULT_PRESET_ID`, which stays), `audio/effects.py` 1, `database/migrations.py` 23,
+`database/models.py` 6, `database/seed.py` 9, `database/__init__.py` 2, `data_admin.py` 4,
+`delivery_merge.py` 7, `engines/llm/migrate_prompts.py` 3 (2 are LLM engine presets, which stay),
+`feature_catalog.py` 1, `models.py` 4, `seed_feature_prompts.py` 2, `seed_presets.py` 4; tests
+`test_feature_prompts.py` 1, `test_persona_rewrite.py` 2, `test_render_chapter_scene_mode.py` 22,
+`test_render_presets.py` 23, `test_render_truth.py` 2, `test_voice_instruct.py` 6; src
+`components/EffectsChainEditorModal.vue` 1, `router/index.js` 1, `services/labTestData.js` 2,
+`services/projects.js` 1, `views/ChapterView.vue` 3, `views/RenderPresetsView.vue` 1,
+`views/StudioView.vue` 6; docs `dev/code-map.md` 6, `dev/CONCEPTS.md` 2, `dev/design-decisions.md` 1,
+`dev/TASKS.md` 3, `dev/ue-integration-design.md` 2, `generate.md` 1. JustWrite and the kit:
+`grep -rln "preset_id\|render_preset\|RenderPreset"` finds only the kit's LLM presets
+(`llm_runner/llm/*`) — a different thing, untouched.
+**Exceptions already living on these paths:** the read-only cache-stats probe resolves lines with
+`strict=False` (`render_chapter_api.py:432`) and must stay engine-load-free; the M4B export and
+ACX QC call `render_scene_to_wav` (strict / not strict); clip-wins for designed voices
+(`render_core.py:79-125`); Kokoro blends ride `voice_pack` (`render_core.py:264-265`); Pocket's
+refusal of another language (`slot.py:553-555`).

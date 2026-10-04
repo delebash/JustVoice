@@ -1932,15 +1932,21 @@ DECIDED: 2026-10-03, Built-in stays one radio; the need is a direction filter �
         works, so built in means kokoro which you cant do anything with but also qwen3 custom
         which takes directions, so some way for the user to filter out what types of voices they
         want to use". The proposal for it is doc §5.5 (not decided).
-OPEN:   the design check the user asked for first, the same day: "did we rethink on the persona
-        to make sure we have it designed correctly whihc it changing options on engine nad model
-        selection, think on the desing nad make sure it is correct and accounts for voice desing
-        clone, regular and models that take direction like qwen and thos that take workds like
-        chatterbox, think on it several times". No code until that review is shown and approved.
-        The review and its facts are saved in docs/plans/2026-10-03-persona-redesign.md ("make
-        sure yyou save thsi info"; "save all this info we keep redoing research") — read §5
-        first; §5.6 holds the open questions.
-GO:     needed
+DECIDED: 2026-10-03, the build — "your rec on all save the plan and go code". Every question in
+        doc §5.6 and the three answers after it (tags, language, everything-on-the-persona +
+        presets) took its recommendation; the questions as presented, with the user's own words,
+        are doc §6.2, and the design is §6.1 — read both before coding a slice. Language: "the
+        language the persona is in our cause the voice … we need to let user know this persona is
+        speaking japanese or engilish". Everything on the persona: "everthing should be able to to
+        done on persona with slice 4 as override". Presets: removed with this work (already ruled
+        2026-09-27, "2 presets die"). §6.2 also lists eleven calls the plan made that no question
+        named — surfaced for the user to overrule.
+OPEN:   the build, slices P1–P9 (doc §6.3): P1 a voice knows its model · P2 render presets
+        removed everywhere · P3 the persona's data and the one resolver · P4 the editor page ·
+        P5 the index · P6 Voices + gender · P7 Cast + the book's language · P8 the Turbo tag
+        check · P9 speaker pronouns (asks before its data reset). Blast radius: doc §6.4.
+        Not in it: Slice 4's per-line overrides, persona-by-scene, Generate's fate, gap 5.
+GO:     given 2026-10-03 for P1–P8 and P9's checks; P9's data reset asks first
 
 ### FINDING — language never reaches Chatterbox or Qwen3: every render on them is told English
 STATE:  FINDING — code-verified 2026-10-01 (found by the persona review). Added to this list at
