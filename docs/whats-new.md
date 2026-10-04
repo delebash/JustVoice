@@ -2,6 +2,15 @@
 
 ## v0.1.0
 
+- **Qwen3-TTS needs gigabytes less while it speaks (2026-10-04).** Three fixes
+  in our copy of the speech runtime: it no longer holds two copies of its audio
+  decoder's work while switching line lengths, its first pass over a line reuses
+  memory instead of holding every step at once, and a cloned voice no longer
+  decodes its whole reference clip again with every line. The same audio
+  (a clone's changes imperceptibly), the same speed, and up to 2.3 GB less at
+  the peak — a cloned voice's line now needs about 1.7 GB beyond the model
+  itself. In the version `npm run dev` builds now; in a packaged app with the
+  speech runtime's next release ([Engines → Long lines](engines.md#long-lines-and-what-a-model-costs))
 - **Qwen3-TTS fits an 8 GB card (2026-10-04).** A model's memory grows with the
   length of what it is given, and long lines went to it whole: a 752-character
   line peaked at about 7 GB. Each model now gets lines in pieces of its own

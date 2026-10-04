@@ -266,10 +266,19 @@ unloaded — audit §3.1 has the method.
   to line; Chatterbox peaked at 3.2 GB; Kokoro's RAM stayed at ~550 MB. — *measured,
   2026-10-01* · switch §8 A.
 - **Why (Qwen3, from the source):** the audio decoder's working memory scales with the line's
-  frames (up to 325) and includes a 7× im2col copy in 32-bit; a new decoder buffer is built
-  before the old one is freed; the talker's prefill gives every intermediate of all 28 layers
-  its own memory; the KV cache is 32-bit and only grows. Upstream's own report: 6,397 MiB peak
-  in a long session, 8,138 long-form. — *agent (code), 2026-10-04* · audit §3.5.
+  frames (up to 325) and includes a 7× im2col copy in 32-bit; the KV cache is 32-bit and only
+  grows. Upstream's own report: 6,397 MiB peak in a long session, 8,138 long-form. Two more
+  causes are FIXED in our fork (was: a new decoder buffer built before the old one was freed;
+  the talker's prefill giving every intermediate of all 28 layers its own memory; a clone
+  decoding its whole reference clip with every line — until 2026-10-04): byte-identical audio,
+  peak above the loaded model CustomVoice 3,208/4,358 → 2,538, VoiceDesign 3,286/4,886 → ~2,500,
+  Base clone 4,364/4,868 → 1,670 MB (the clone's trim moves its audio 2.69 dB log-spectral; two
+  takes are 19 dB apart). — *agent (code) + measured, 2026-10-04* · audit §3.5, §13.4.
+- **CustomVoice 1.7B's 752-character line in 200-character pieces, on the fixed build: 3,433 MB
+  above idle**, 48.9 s of audio in 23.9 s. Session options on that line: `mem_saver` changes
+  nothing (identical audio, same peak); `perf_mode=flash_attention` −194 MB, 9 % faster, a
+  different take; `conv_weight_type=f16` −492 MB, audio 2.04 dB away (close). — *measured,
+  2026-10-04* · audit §13.4.
 
 ### 2.2 Beside the AI model
 
@@ -297,10 +306,8 @@ unloaded — audit §3.1 has the method.
   unload, which now waits for the memory to drain. (was: download, then unload the AI model,
   then the check — a refusal left both done; a variant switch skipped the check — until
   2026-10-04.) — *code + tests, 2026-10-04* · audit §5 B2, B5, §13.3.
-- **A calibrated peak is read after the line, so it misses the moment two decoder buffers
-  coexist**: CustomVoice's 752-character line in 200-character pieces peaked about 5.1 GB above
-  idle on the card while its recorded price was 4,057 MB — until step 4 frees the old buffer
-  first. — *measured, 2026-10-04* · audit §13.3.
+- **A price belongs to the runtime build that measured it** (flag `runtime`); a new build
+  calibrates again, because a price only rises within a build. — *code, 2026-10-04* · audit §13.4.
 - Each kind books its own process's measured memory — its model plus ~100 MB of process. (was:
   one shared process, each kind booking the total less the other kind's booking (`_own_share_mb`,
   R7) — a computed share; one variant's stored readings ranged 105–6,249 MB — until 2026-10-04.)

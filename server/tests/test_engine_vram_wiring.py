@@ -704,16 +704,19 @@ def test_admission_still_prices_on_the_probe_when_the_probe_is_worse(monkeypatch
 def test_the_price_is_this_models_own_peak_at_its_piece_length(monkeypatch):
     """VoiceDesign was refused at 6,249 MB — a reading of CustomVoice 0.6B, the largest of ANY
     Qwen3 variant (audit §5 B1). The price is exactly this variant's `"peak"` readings, on this
-    machine and device, at the piece length it is given now — the largest of those."""
+    machine and device, at the piece length it is given now, by the runtime build running now —
+    the largest of those. (A new build recalibrates: the 2026-10-04 decoder fixes cut Qwen3's
+    peak by gigabytes, and a price only rises within a build.)"""
     import llm_runner.llm.stores as stores
     import llm_runner.runner.hardware as hardware
 
-    def flag(split):
-        return [SimpleNamespace(flagName="split_chars", flagValue=str(split))]
+    def flag(split, build):
+        return [SimpleNamespace(flagName="split_chars", flagValue=str(split)),
+                SimpleNamespace(flagName="runtime", flagValue=build)]
 
-    def row(model, mb, *, source="peak", machine="box", backend="cuda", split=200):
+    def row(model, mb, *, source="peak", machine="box", backend="cuda", split=200, build="dev · new"):
         return SimpleNamespace(modelId=model, machineKey=machine, vramModelMb=mb, source=source,
-                               backend=backend, switches=flag(split))
+                               backend=backend, switches=flag(split, build))
 
     rows = [
         row("tts:qwen3:qwen3-cv-0.6b-q8", 6249),                         # another variant
@@ -721,12 +724,16 @@ def test_the_price_is_this_models_own_peak_at_its_piece_length(monkeypatch):
         row("tts:qwen3:qwen3-vd-1.7b-q8", 9000, machine="other"),       # another machine
         row("tts:qwen3:qwen3-vd-1.7b-q8", 5100, backend="vulkan"),      # another device
         row("tts:qwen3:qwen3-vd-1.7b-q8", 7100, split=800),             # another piece length
+        row("tts:qwen3:qwen3-vd-1.7b-q8", 6800, build="dev · old"),     # another runtime build
         row("tts:qwen3:qwen3-vd-1.7b-q8", 3900),
         row("tts:qwen3:qwen3-vd-1.7b-q8", 3500),
     ]
     monkeypatch.setattr(stores, "get_model_measurement_store",
                         lambda: SimpleNamespace(list=lambda k: [r for r in rows if r.modelId == k]))
     monkeypatch.setattr(hardware, "current_machine_key", lambda: "box")
+    import justvoice.engines.manager as mgr_mod
+
+    monkeypatch.setattr(mgr_mod, "_runtime_build", lambda: "dev · new")
     mgr = EngineManager.__new__(EngineManager)
     monkeypatch.setattr(EngineManager, "effective_split", lambda self, e, v: 200)
     assert mgr._price_mb("tts", "qwen3", "qwen3-vd-1.7b-q8", "cuda") == 3900

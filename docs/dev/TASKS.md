@@ -2221,6 +2221,15 @@ DECIDED: 2026-10-04, after a second review (Opus) — the user: "your rec for th
             they are (host splitting would re-encode Chatterbox's clip for every piece).
         (3) VoiceDesign and VoxCPM2 description voices: one long line rendered whole and split,
             same seed, for the user to compare before their default is set.
+        2026-10-04, during step 5 — the user: "when the suit finishes yiou have a go on all
+        batches your recs on any fixes you find, dont run test until all batches are coded".
+        Step 5's batches as planned (5a requests: seeds, defaults, clamps, language names,
+        Kitten's seed · 5b gates and refusals: installed-build feature checks, the Blend
+        maker's gate, Turbo voices, the install-the-runtime dialog · 5c runtime robustness:
+        shutdown order, crashes mid-line, locks, error kinds · 5d placement: 16-bit CPU
+        speeds, a slow reading locking a model off the CPU, unified-memory Macs · 5e installs:
+        checksums, resume, repair, model-file verification · 5f leaks and leftovers · 5g
+        stale docs · 5h exposing every option), coded in full before any test runs.
 BUILT:  2026-10-04 — step 1 (eSpeak NG reaches Kokoro and KittenTTS; Linux finds its wheel)
         and step 2 (models registered at run time through the fork's new `model_management`;
         one process per kind; a dead slot dropped with its booking; Cancel frees its booking;
@@ -2230,11 +2239,17 @@ BUILT:  2026-10-04 — step 1 (eSpeak NG reaches Kokoro and KittenTTS; Linux fin
         calibrated on its first load; the memory check before any download or eviction;
         a description voice keeps one seed and the full length). Checked live with Gemma on
         the card: audit §13.3.
-OPEN:   steps 4–5 (built in order; each step's blast-radius table goes in audit §13 before
+        Step 4 (fork 8cdf1219, 8523b720: the decoder frees its old graph first, the prefill
+        reuses storage, a clone decodes only its clip's last 25 frames; a price belongs to
+        the runtime build that measured it). Byte-identical audio but the clone trim; Qwen3's
+        peaks down 0.7–2.3 GB: audit §13.4. Listening files for the user: scratchpad
+        `listening/` (README inside).
+OPEN:   step 5 (built in order; each step's blast-radius table goes in audit §13 before
         its code). `model_management` reaches a packaged app only with the next audio.cpp
         release (its tag still needs the user's word); until then the pinned jv.1 keeps the
-        listed config, now per kind. The listening test for description voices' split size;
-        testing mem_saver / flash attention / 16-bit decoder weights on Qwen3.
+        listed config, now per kind. The user's ear on the listening files: description
+        voices' split size (VoiceDesign, VoxCPM2 descriptions), the clone trim, Qwen3's
+        16-bit decoder weights (measured: audit §13.4).
 GO:     given 2026-10-04 ("go and your rec for the audit fixes")
 
 ### FINDING — at 1440 px the title bar cuts "Personas › June" to "P.."

@@ -458,6 +458,18 @@ def _remove_replaced_build(build_dir: Path, tag: str) -> None:
 # ─── Manager ──────────────────────────────────────────────────────────
 
 
+def _runtime_build() -> str:
+    """The speech runtime build a measurement belongs to: the installed release's tag, or
+    `npm run dev`'s own build ("dev · <commit>"). "" when there is none."""
+    try:
+        from .audiocpp import dev_build, runtime
+
+        dev = dev_build.current()
+        return dev.version if dev is not None else (runtime.installed_tag() or "")
+    except Exception:  # noqa: BLE001 — bare tests
+        return ""
+
+
 def _new_slot(m: EngineManifest, placement: str = "gpu") -> AudioCppSlot:
     """The slot a load fills: one model in the speech runtime's process for `placement`
     ("gpu" | "cpu") and the engine's kind. The one seam tests swap for a fake (it was the
@@ -694,7 +706,10 @@ class EngineManager:
         """What loading exactly this model on `device` takes, measured on this machine at the
         piece length it is given now: the largest `"peak"` reading of this variant (its
         calibrated first load, and any line that went higher since). 0 = never measured
-        there. Placement and the memory check both ask this one function.
+        there. Placement and the memory check both ask this one function. Only readings of the
+        runtime build running now count: a new build can change what a model takes (the
+        2026-10-04 decoder fixes cut Qwen3's by gigabytes), and a price only ever rises within
+        a build, so the first load on a new build calibrates again.
 
         Until 2026-10-04 the check took the largest load reading of ANY variant of the engine
         and placement the newest of this one, from one process both kinds shared: VoiceDesign
@@ -706,13 +721,13 @@ class EngineManager:
             from llm_runner.runner.hardware import current_machine_key
 
             mk = current_machine_key()
-            split = str(self.effective_split(engine_id, variant))
+            want = {"split_chars": str(self.effective_split(engine_id, variant)),
+                    "runtime": _runtime_build()}
             best = 0
             for row in get_model_measurement_store().list(self._measure_id(kind, engine_id, variant)):
+                flags = {f.flagName: f.flagValue for f in (row.switches or [])}
                 if (row.machineKey == mk and row.source == "peak" and (row.backend or "") == device
-                        and row.vramModelMb > 0
-                        and any(f.flagName == "split_chars" and f.flagValue == split
-                                for f in (row.switches or []))):
+                        and row.vramModelMb > 0 and all(flags.get(k) == v for k, v in want.items())):
                     best = max(best, int(row.vramModelMb))
             return best
         except Exception:  # noqa: BLE001 — bare tests / store not wired
@@ -1083,7 +1098,8 @@ class EngineManager:
         """Persist a measured peak as a `"peak"` row in the shared measurement store (id
         `kind:engine:variant`, kind-tagged tts/stt, backend = the device, flag `split_chars` =
         the piece length it was measured at) — what `_price_mb` reads on the next load. Keeps
-        the newest 5 per device and length. Best-effort: persistence must never fail a load.
+        the newest 5 per length and runtime build (flag `runtime`). Best-effort: persistence
+        must never fail a load.
 
         (Until 2026-10-04 these were `"load"` rows of a process both kinds shared — a computed
         share; they are never read again, audit §13.3.)"""
@@ -1096,14 +1112,16 @@ class EngineManager:
             model_id = self._measure_id(kind, m.id, variant)
             mk = current_machine_key()
             split = str(self.effective_split(m.id, variant))
+            build = _runtime_build()
             store.record(
                 model_id, machine_key=mk, source="peak",
-                label=f"speech peak ({device}, pieces of {split} characters)",
+                label=f"speech peak ({device}, pieces of {split} characters, {build})",
                 tokens_per_sec=0.0, vram_total_mb=0, at=int(time.time() * 1000),
-                rows=[MeasurementFlag(flagName="split_chars", flagValue=split)],
+                rows=[MeasurementFlag(flagName="split_chars", flagValue=split),
+                      MeasurementFlag(flagName="runtime", flagValue=build)],
                 vram_model_mb=int(mb), kind="stt" if kind == "stt" else "tts", backend=device,
             )
-            store.prune_load_rows(model_id, mk, {"split_chars"}, keep=5, source="peak")
+            store.prune_load_rows(model_id, mk, {"split_chars", "runtime"}, keep=5, source="peak")
         except Exception:  # noqa: BLE001
             log.debug("speech peak persist failed for %s", m.id, exc_info=True)
 

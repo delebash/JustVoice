@@ -760,3 +760,54 @@ the cache probe agrees). Server suite 1052 passed, ruff clean. Live, Gemma 4 26B
 - Unloaded and loaded again: priced, no calibration, 8 s, booked at its price.
 - Gemma loaded again, then CustomVoice: placement "no usable speed on the CPU, so the AI model
   makes room"; the memory check evicted Gemma itself and the load took 10.6 s, booked 4,057 MB.
+
+### 13.4 Step 4 — the fork's memory fixes
+
+**What changed** (our audio.cpp, branch `jv`):
+
+- `8cdf1219` — the Qwen3 speech decoder frees its old graph before it builds the replacement
+  (`tokenizer_speech_decoder.cpp`; qwen3_asr's thinker already did); the talker's prefill
+  allocates through `ggml_gallocr`, reusing intermediate storage after each tensor's last
+  consumer, with the inputs, logits, last hidden state and every layer's K/V — and what they
+  are views of — marked to survive (`talker.cpp`; the Higgs prefill change,
+  `docs/reports/higgs_cuda_prefill_memory.md`).
+- `8523b720` — a clone decodes only its reference's last 25 frames (`kLeftContextCodes`) with
+  the new audio, not the whole clip — the left context the chunked decode already gives every
+  chunk after the first.
+- JustVoice: a price belongs to the runtime build that measured it (flag `runtime` on
+  `"peak"` rows, `manager._runtime_build`), so a new build recalibrates — a price only rises
+  within a build, and these fixes made every old Qwen3 price gigabytes too high.
+
+**Blast radius.** C++: `Qwen3SpeechTokenizerDecoderRuntime::decode` / `decode_and_trim_reference`
+(callers: the Qwen3 session's decode step only) and `TalkerPrefillGraph` (built in the talker's
+prefill only) — no API, no option, no other family touched. JustVoice:
+`_price_mb` / `_record_speech_load` (the callers in §13.3's table); the test of the price.
+
+**Checked** — RTX 2070 SUPER 8 GB, CUDA 12.4, Q8_0 1.7B models, seed 42, the same request
+sequence before and after each build (`scratchpad ab_qwen3.py`; the sequence itself is
+reproducible run to run, hash for hash):
+
+| Render (peak above the loaded model) | before | 8cdf1219 | 8523b720 | audio |
+|---|---|---|---|---|
+| CustomVoice, 1st / 2nd | 3,208 / 4,358 MB | 2,525 / 2,525 | 2,538 / 2,538 | byte-identical throughout |
+| VoiceDesign, 1st / 2nd | 3,286 / 4,886 MB | 2,486 / 2,562 | 2,471 / 2,548 | byte-identical throughout |
+| Base clone (15.5 s clip), 1st / 2nd | 4,364 / 4,868 MB | 2,661 / 2,661 | 1,670 / 1,670 | identical at 8cdf1219; the trim moves it 2.69 dB (log-spectral; two takes of one line: 19.13 dB), same length, read back word for word |
+
+The same speed throughout (8.3–10.1 s per line). CustomVoice's 752-character line in 200-character
+pieces, the host's way: 3,433 MB above idle (step 3, before these fixes: ~5,100), 48.9 s of audio
+in 23.9 s. Its session options, measured on that line:
+
+| `qwen3_tts.*` | peak above idle | time | audio vs plain |
+|---|---|---|---|
+| (none) | 3,433 MB | 23.9 s | — |
+| `mem_saver=true` | 3,443 MB | 22.5 s | identical (0.00 dB) |
+| `perf_mode=flash_attention` | 3,239 MB | 21.7 s | a different take (20.16 dB) |
+| `conv_weight_type=f16` | 2,941 MB | 22.4 s | 2.04 dB — close |
+
+None becomes a default without the user's ear (`conv_weight_type=f16` is the candidate); they
+become per-model options in step 5. **Listening files** (scratchpad `listening/`, README inside):
+VoiceDesign and a VoxCPM2 description whole vs in 200-character pieces (step 3, rec 3), the clone
+whole-clip vs trimmed decode, CustomVoice's decoder 32 vs 16-bit.
+
+**Not checked:** Vulkan, CPU and Metal builds of these changes; the packaged app gets them only
+with the next release (its tag still needs the user's word).
