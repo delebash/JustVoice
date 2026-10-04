@@ -290,8 +290,9 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
 - **libmecab (Japanese) per platform:** our build fetches it only on Windows (fugashi 1.5.2's
   `win_amd64` wheel, `fugashi.libs/libmecab-*.dll`); macOS and Linux load the system libmecab.
   fugashi 1.5.2's cp312 wheels carry libmecab 0.996 (BSD, `LICENSE.mecab`) on every platform:
-  macOS `fugashi/.dylibs/libmecab.2.dylib` (arm64 and universal2), Linux
-  `fugashi.libs/libmecab-608f3a6a.so.2.0.0` (manylinux2014 aarch64; x86_64 the same layout). —
+  macOS `fugashi/.dylibs/libmecab.2.dylib` (arm64, x86_64 and universal2), Linux
+  `fugashi.libs/libmecab-<hash>.so.2.0.0` (manylinux2014 x86_64 `eada4a80`, aarch64
+  `608f3a6a` — the name carries auditwheel's hash, so a copy must be renamed). —
   *web (PyPI) + wheel contents, 2026-10-04* · `../audio.cpp/cmake/text_dictionaries.cmake:6-79`.
 - `npm run dev` runs our checkout's build (`../audio.cpp/build/jv-dev`); on this card (Turing)
   CUDA graphs are disabled by ggml. — *code + runtime log, 2026-10-04*.
