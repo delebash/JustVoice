@@ -38,6 +38,7 @@ import {
 } from "@delebash/llm-ui";
 import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
 import PersonaCloneMaker from "../components/PersonaCloneMaker.vue";
+import PersonaDesignMaker from "../components/PersonaDesignMaker.vue";
 import SlashTagMenu from "../components/SlashTagMenu.vue";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";
 import { handleTermsRefusal } from "../services/engineTerms.js";
@@ -330,16 +331,23 @@ const shownVoices = computed(() => voicesOfKind.value.filter((v) =>
   && (!modelFilter.value || v.model === modelFilter.value)
   && (!genderFilter.value || voiceGender(v) === genderFilter.value)
   && (!languageFilter.value || baseLang(v.language) === languageFilter.value)));
-watch(kind, () => { modelFilter.value = ""; makerKey.value += 1; });
+watch(kind, () => { modelFilter.value = ""; designFrom.value = null; makerKey.value += 1; });
 
 // ── Making a voice, here (decided 2026-10-04: "the whole design should be
 // part of the persona") — picking a kind that is made shows its maker at the
 // top of the right column; only then. Keep saves the voice to Voices at once
 // and this persona takes it.
-const MAKERS = ["clone"];
+const MAKERS = ["clone", "design"];
 const maker = computed(() => (MAKERS.includes(kind.value) ? kind.value : null));
 const makerKey = ref(0);   // a new key = a fresh, empty maker
+// A kept voice is fixed (decided 2026-10-04); its words start a new design.
+const designFrom = ref(null);
+function startFromThis() {
+  designFrom.value = voice.value;
+  makerKey.value += 1;
+}
 async function onKept(v) {
+  designFrom.value = null;
   makerKey.value += 1;
   modelFilter.value = "";
   genderFilter.value = "";
@@ -363,7 +371,7 @@ const kindEmptyHint = computed(() => {
   return {
     builtin: "No built-in voices — install a speech model on AI Settings → Speech engines.",
     clone: "No cloned voices yet — make one on the right.",
-    design: "No designed voices yet — make one on Voices → Design.",
+    design: "No designed voices yet — make one on the right.",
     blend: "No blends yet — make one on Voices → Blend.",
   }[kind.value] || "";
 });
@@ -816,6 +824,12 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
                   title="Play the voice on its own, before this page changes anything" @click="playRaw" />
               </div>
               <p v-if="kindEmptyHint" class="jv-hint">{{ kindEmptyHint }}</p>
+              <div v-if="kind === 'design' && voice?.source === 'designed' && voice.design_prompt" class="jv-inline-row">
+                <span class="jv-hint">“{{ voice.design_prompt }}”</span>
+                <UiButton intent="ghost" size="small" label="Start from this one"
+                  title="A kept voice doesn't change — copy its words into the new design on the right"
+                  @click="startFromThis" />
+              </div>
               <div v-if="voice" class="jv-inline-row">
                 <UiField label="Speaks" layout="block" :hint="languageNote">
                   <span v-if="languageFixed" class="persona-editor__fixed">{{ languageName(effectiveLanguage) || effectiveLanguage }}</span>
@@ -1002,6 +1016,9 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
           <PersonaCloneMaker v-if="maker === 'clone'" :key="`clone-${makerKey}`" :rows="caps"
             :engines="enginesStore.items" :direction="directionFilter" :persona="draftPayload"
             :hear-text="hearText" @kept="onKept" />
+          <PersonaDesignMaker v-else-if="maker === 'design'" :key="`design-${makerKey}`" :rows="caps"
+            :engines="enginesStore.items" :direction="directionFilter" :persona="draftPayload"
+            :hear-text="hearText" :note="draft.note" :start-from="designFrom" @kept="onKept" />
           <div class="jv-card jv-card--soft">
             <div class="jv-card__header"><h3 class="jv-card__title">{{ draft.name || "New persona" }}</h3></div>
             <div class="jv-card__body">

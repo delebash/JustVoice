@@ -180,7 +180,7 @@ Kokoro's take none — so this is the choice to make first:
 |---|---|---|
 | Built-in | The models' own voices — Kokoro's `af_heart`, Qwen3 CustomVoice's Sohee | AI Settings → Speech engines, by installing a model |
 | Clone from audio | Voices cloned from a recording, and imported ones | This page — [New clone](#new-clone) |
-| Design from words | Voices designed from a description, with or without a kept clip | [Voices → Design](voices.md) |
+| Design from words | Voices designed from a description, with or without a kept clip | This page — [New design](#new-design) |
 | Blend | Kokoro blends of two or more voices | [Voices → Blend](voices.md) |
 | Trained LoRA | Off: *Needs voice training, which isn't rebuilt yet.* | — |
 
@@ -225,8 +225,9 @@ falls back to the voice's own when it doesn't.
 
 ### Making a voice on this page
 
-A persona makes its own voice. Pick **Clone from audio** under *Made by* and
-the **New clone** fields open at the top of the right column, beside the list
+A persona makes its own voice. Pick **Clone from audio** or **Design from
+words** under *Made by* and its fields — **New clone**, **New design** — open
+at the top of the right column, beside the list
 they fill — there is no button to find. Pick **Built-in** and nothing opens:
 built-in voices come with their models. What you make is saved to
 [Voices](voices.md) the moment you press **💾 Keep**, so another persona can
@@ -272,6 +273,32 @@ Base, VoxCPM2): a word-for-word match gives a truer copy. Qwen3 Base can also
 **💾 Keep** saves the clip as a voice under the name you give it — after
 listening, or straight away: *Listen first, or keep the clip as it is — either
 way it's saved to Voices.*
+
+#### New design
+
+Describe a voice in words and a design model invents it — no recording.
+**Describe the voice** — age, accent, texture, pace, mood, *"a gravel-voiced
+harbour-master in his seventies, unhurried"*. **↧ Start from the note** copies
+this persona's note in, to edit; it never happens on its own. The model is
+**Qwen3 VoiceDesign** or **VoxCPM2**.
+
+Each **▶ Preview** is a new take — **Take 1**, **Take 2**… — spoken as this
+persona; pick the one you like. Then keep it one of two ways:
+
+| Keep | What the voice is | On every line |
+|---|---|---|
+| **💾 Keep as a description** | the words themselves | spoken from them again, so it can shift a little between lines; takes written direction on top |
+| **📌 Keep take N**, *Spoken by* a model you pick | that take, as its clip, on the model you pick (VoxCPM2, Chatterbox Turbo or Nano, Multilingual, Qwen3 Base, Pocket TTS) | the same voice every time; it takes what that model takes — written direction on VoxCPM2, tags on Turbo and Nano, none on the rest |
+
+Either way the voice stays a design and keeps its description. Under
+**Tags** or **Sliders only** the description can't be kept as it is — both
+design models take written direction — so that button is off and says so, and
+*Spoken by* lists only the models that match.
+
+**A kept voice doesn't change.** Pick a design under *Design from words* and
+its words show under the list with **Start from this one**, which copies them
+into New design as a copy to change and keep under a new name (it opens as
+*Harbour-master (2)*).
 
 ### Hear it
 
