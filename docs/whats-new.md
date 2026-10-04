@@ -2,6 +2,44 @@
 
 ## v0.1.0
 
+- **More of each speech model's settings (2026-10-04).** New advanced knobs:
+  Chatterbox's **Min p** and **Decoder CFG**, Qwen3's three **Detail** settings
+  for the part of the model that fills in each frame's finer audio, and
+  VoxCPM2's **Tries on a runaway** and **Runaway limit**. Each starts at the
+  runtime's own default. Qwen3-TTS models also get **Options** on their row on
+  Speech engines — **Attention** (flash attention: about 9 % faster and 0.2 GB
+  less, 8-bit models only) and **Decoder weights** (16-bit: about 0.5 GB less)
+  ([Engines → What each engine can be tuned with](engines.md#what-each-engine-can-be-tuned-with))
+- **Takes, seeds and settings say what they do (2026-10-04).** An empty seed is a
+  new take on every engine — Kokoro used to repeat its last one, VoxCPM2 and
+  Chatterbox Turbo a fixed one. Generate's **Temperature** starts at the loaded
+  model's own default and never reaches 0, which Qwen3 refused and Chatterbox
+  broke on; Chatterbox's **Repetition penalty** shows the 1.2 it uses, not 2.0. A
+  Qwen3 line with no language, or one it doesn't speak, lets the model pick
+  instead of reading it as English, and speech recognition gets each language's
+  name and gives a long recording the time it needs
+  ([Generate → Delivery overlay](generate.md#delivery-overlay))
+- **The speech runtime installs and recovers more safely (2026-10-04).** Every
+  runtime file is checked against its published checksum before it is unpacked,
+  a stopped download resumes, and **Reinstall** on the runtime row fetches it
+  again for a runtime that won't start. Each model file is checked against its
+  repository's checksum. The CPU build is the portable one, for older
+  processors. A line that needs a newer runtime says what it needs and whether an
+  update brings it; the persona page's **Blend** is off until the runtime can
+  play a blend (before, one saved and never played). Errors keep their kind — a
+  busy or out-of-memory runtime is not reported as a broken request — and a
+  runtime that stops mid-line says so with the end of its log
+  ([Engines → The speech runtime](engines.md#the-speech-runtime),
+  [Troubleshooting](troubleshooting.md))
+- **Where a model runs, and what it leaves behind (2026-10-04).** Auto's CPU
+  check uses the best of a model's last five speeds at the current thread count,
+  so one slow line no longer keeps it off the CPU for good; the 16-bit Kokoro and
+  Pocket TTS rows have CPU speeds of their own; on a Mac, models stay on the
+  graphics and the row says why. A clone's preview clip, an oversized upload and
+  old blend files no longer pile up in temporary folders, and the runtime's logs
+  roll over at 10 MB. The runtime's start and request time limits and its
+  graphics process's threads are settings now
+  ([Settings reference](settings-reference.md))
 - **Qwen3-TTS needs gigabytes less while it speaks (2026-10-04).** Three fixes
   in our copy of the speech runtime: it no longer holds two copies of its audio
   decoder's work while switching line lengths, its first pass over a line reuses

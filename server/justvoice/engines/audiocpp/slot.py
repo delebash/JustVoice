@@ -18,8 +18,11 @@ import base64
 import io
 import json
 import logging
+import os
+import random
 import re
 import tempfile
+import threading
 import wave
 from pathlib import Path
 from typing import Any
@@ -34,6 +37,7 @@ from .runtime import (
     get_server,
     has_feature,
     installed_exe,
+    request_timeout,
 )
 
 log = logging.getLogger(__name__)
@@ -41,6 +45,18 @@ log = logging.getLogger(__name__)
 # Qwen3 takes language NAMES ("en" is rejected by audio.cpp — measured 2026-10-01).
 QWEN_LANGUAGE = {"zh": "Chinese", "en": "English", "ja": "Japanese", "ko": "Korean", "de": "German",
                  "fr": "French", "ru": "Russian", "pt": "Portuguese", "es": "Spanish", "it": "Italian"}
+# Qwen3-ASR's 30 languages, by the names its prompt takes (the model card,
+# huggingface.co/Qwen/Qwen3-ASR-1.7B, read 2026-10-04: `language="English"`, never a code). Until
+# 2026-10-04 the twenty outside QWEN_LANGUAGE went as raw codes ("language ar"), and the aligner
+# was told "English" for them — so Cantonese was aligned as space-separated words (audit §5 D7).
+ASR_LANGUAGE = {**QWEN_LANGUAGE, "yue": "Cantonese", "ar": "Arabic", "id": "Indonesian", "th": "Thai",
+                "vi": "Vietnamese", "tr": "Turkish", "hi": "Hindi", "ms": "Malay", "nl": "Dutch",
+                "sv": "Swedish", "da": "Danish", "fi": "Finnish", "pl": "Polish", "cs": "Czech",
+                "fil": "Filipino", "fa": "Persian", "el": "Greek", "ro": "Romanian", "hu": "Hungarian",
+                "mk": "Macedonian"}
+# The lowest temperature / top-p sent (audit §5 D4): Qwen3 refuses 0, Chatterbox divides by it,
+# Turbo reads 0 as 1.0, and Qwen3 reads a top-p of 0 as "no filter".
+_MIN_SAMPLING = 0.05
 # Kokoro's text frontend codes (audio.cpp `--language`), from our catalog's tags.
 KOKORO_LANGUAGE = {"en-us": "en-us", "en": "en-us", "en-gb": "en-gb", "ja": "ja", "zh": "zh", "es": "es",
                    "fr": "fr-fr", "hi": "hi", "it": "it", "pt-br": "pt-br", "pt": "pt-br"}
@@ -94,13 +110,25 @@ def write_voice_pack(vector) -> Path:
     if arr.size == 0 or arr.size % 256:
         raise AudioCppError(f"a blended voice has {arr.size} values — Kokoro's are rows × 256")
     raw = arr.tobytes()
-    out = _data_dir() / "cache" / "kokoro-voice-packs" / f"{hashlib.sha1(raw).hexdigest()}.bin"
-    if not out.is_file():
-        out.parent.mkdir(parents=True, exist_ok=True)
-        tmp = out.with_suffix(".tmp")
-        tmp.write_bytes(raw)
-        tmp.replace(out)
+    folder = _data_dir() / "cache" / "kokoro-voice-packs"
+    out = folder / f"{hashlib.sha1(raw).hexdigest()}.bin"
+    if out.is_file():
+        out.touch()                          # in use: newest
+        return out
+    folder.mkdir(parents=True, exist_ok=True)
+    # A name of its own per writer: two renders of the same blend at once shared one ".tmp".
+    tmp = folder / f"{out.stem}.{os.getpid()}-{threading.get_ident()}.tmp"
+    tmp.write_bytes(raw)
+    tmp.replace(out)
+    # Every blend auditioned left a pack for good (audit §5 F). A pack is rebuilt from its voice
+    # whenever it is needed, so only the newest are kept.
+    packs = sorted(folder.glob("*.bin"), key=lambda p: p.stat().st_mtime, reverse=True)
+    for old in packs[_VOICE_PACKS_KEPT:]:
+        old.unlink(missing_ok=True)
     return out
+
+
+_VOICE_PACKS_KEPT = 200
 
 
 def variant_spec(manifest, variant_id: str | None) -> dict | None:
@@ -120,6 +148,10 @@ def _entries_for(manifest, row: dict) -> list[ModelEntry]:
     spec = row["audiocpp"]
     vdir = variant_dir(_data_dir(), manifest.id, row["id"])
     opts = dict(spec.get("session_options") or {})
+    # The options the user set on the model's row (audit §13.5, 5h).
+    from .runtime_options import session_options_for
+
+    opts.update(session_options_for(manifest.id, row))
     # The eSpeak NG phonemizer the runtime install fetched. KittenTTS reads it from its own
     # prefixed session options; Kokoro reads only the runtime's environment
     # (`runtime._child_env`) and would refuse a session option it doesn't know.
@@ -163,6 +195,53 @@ def managed_runtime() -> bool:
 # community_models/kitten_tts/session.cpp:74 — `kitten_tts.espeak_library_path` /
 # `kitten_tts.espeak_data_path`). Kokoro is not one: it reads the environment.
 ESPEAK_SESSION_FAMILIES = ("kitten_tts",)
+
+
+# What each build feature makes possible, as a refusal names it (release.FEATURES).
+_FEATURE_WORDS = {
+    "voice_pack": "Blended voices",
+    "inline_ipa": "A lexicon's pronunciations on Kokoro",
+    "turbo_clone": "Chatterbox Turbo and Nano voices",
+    "chatterbox_he_ru_zh": "Chatterbox in Hebrew, Russian and Chinese",
+    "japanese": "Japanese speech",
+    "voxcpm2_transcript": "A VoxCPM2 clone's transcript",
+}
+
+
+def features_needed(row: dict, body: dict) -> list[str]:
+    """The build features a synth of this line needs (`release.FEATURES`)."""
+    family = row["audiocpp"]["family"]
+    lang = (body.get("language") or "").split("-")[0].lower()
+    out: list[str] = []
+    if body.get("voice_vector"):
+        out.append("voice_pack")
+    if family == "chatterbox_turbo":
+        out.append("turbo_clone")
+    if family == "kokoro_tts":
+        from ..kokoro.voices import VOICES
+
+        voice_lang = next((lg for vid, _n, lg, _g in VOICES if vid == body.get("voice_id")), "")
+        if (lang or voice_lang.lower()).startswith("ja"):
+            out.append("japanese")
+    if family == "chatterbox":
+        if lang in ("he", "ru", "zh"):
+            out.append("chatterbox_he_ru_zh")
+        elif lang == "ja":
+            out.append("japanese")
+    if family == "voxcpm2" and body.get("audio_prompt_path") and body.get("ref_text"):
+        out.append("voxcpm2_transcript")
+    return out
+
+
+def feature_refusal(feature: str) -> str:
+    """Why a line can't be spoken on the installed build — an update to offer when the pinned
+    build has the feature, else that this version doesn't have it yet. Until 2026-10-04 every
+    refusal said "Update it on AI Settings" even when no update existed (audit §5 E3)."""
+    words = _FEATURE_WORDS.get(feature, feature)
+    if release.pinned_has(feature):
+        return (f"{words} — this needs the speech runtime update. Update it on AI Settings → "
+                "Speech engines.")
+    return f"{words} — this isn't in this version's speech runtime yet."
 
 
 def effective_placement(placement: str) -> str:
@@ -284,7 +363,9 @@ class AudioCppSlot:
                 return _Resp(200, payload={})
             return _err(501, f"{self.manifest.name} has no {path} in audio.cpp")
         except AudioCppError as e:
-            return _err(500, str(e))
+            # audio.cpp's own status survives — out of memory and busy are 503, a bad request 400
+            # (audit §5 D8).
+            return _err(e.status if 400 <= e.status < 600 else 500, str(e))
 
     # -- /load --
 
@@ -360,21 +441,15 @@ class AudioCppSlot:
     def _synth(self, body: dict) -> _Resp:
         if not self.is_alive() or self._row is None:
             return _err(409, f"{self.manifest.name} is not loaded")
+        if body.get("voice_vector") and self._row["audiocpp"]["family"] != "kokoro_tts":
+            return _err(422, f"{self.manifest.name} has no blended voices — blends are Kokoro's")
+        # What this line needs from the INSTALLED build (the CPU process runs the same one), each
+        # refused by name before audio.cpp fails inside or ignores it (audit §5 E1).
+        for feature in features_needed(self._row, body):
+            if not has_feature(feature):
+                return _err(409, feature_refusal(feature))
         if body.get("voice_vector"):
-            if self._row["audiocpp"]["family"] != "kokoro_tts":
-                return _err(422, f"{self.manifest.name} has no blended voices — blends are Kokoro's")
-            from .runtime import has_feature
-
-            if not has_feature("voice_pack"):   # the CPU process runs the same build
-                return _err(409, "Blended voices need the speech runtime update — Update it on "
-                                 "AI Settings → Speech engines.")
             body = {**body, "voice_pack_path": str(write_voice_pack(body["voice_vector"]))}
-        if self._row["audiocpp"]["family"] == "chatterbox_turbo":
-            from .runtime import has_feature
-
-            if not has_feature("turbo_clone"):   # an older build refuses the clip inside
-                return _err(409, f"{self._row.get('name', 'Chatterbox Turbo')} voices need the speech "
-                                 "runtime update — Update it on AI Settings → Speech engines.")
         terms = getattr(self.manifest.module, "TERMS", None)
         if (terms and terms.get("gates") == "cloning" and body.get("audio_prompt_path")
                 and not terms_accepted(self.manifest.id)):
@@ -395,9 +470,10 @@ class AudioCppSlot:
     def _audio_path(self, body: dict) -> tuple[str, bool]:
         if body.get("audio_path"):
             return str(body["audio_path"]).replace("\\", "/"), False
+        raw = base64.b64decode(body.get("wav_b64") or "")   # before the file: a bad upload leaves none
         tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
-        tmp.write(base64.b64decode(body.get("wav_b64") or ""))
-        tmp.close()
+        with tmp:
+            tmp.write(raw)
         return tmp.name.replace("\\", "/"), True
 
     def _transcribe(self, body: dict) -> _Resp:
@@ -407,9 +483,9 @@ class AudioCppSlot:
         try:
             req = {"model": self._row["id"], "audio": path}
             lang = (body.get("language") or "").split("-")[0].lower()
-            if lang:
-                req["language"] = QWEN_LANGUAGE.get(lang, lang)
-            out = self._srv().transcribe(req)
+            if lang in ASR_LANGUAGE:
+                req["language"] = ASR_LANGUAGE[lang]      # anything else: detected
+            out = self._srv().transcribe(req, timeout=_transcribe_timeout(path))
         finally:
             if temp:
                 Path(path).unlink(missing_ok=True)
@@ -430,10 +506,23 @@ class AudioCppSlot:
         if srv.managed and not srv.has_model(aligner_id):
             srv.register(next(e for e in _entries_for(self.manifest, self._row) if e.id == aligner_id))
         out = srv.align(aligner_id, as_16k_mono(wav), body.get("text") or "",
-                        QWEN_LANGUAGE.get(lang, "English"))
+                        ASR_LANGUAGE.get(lang, "English"))
         words = [{"word": w.get("word", ""), "start": float(w.get("start", 0.0)),
                   "end": float(w.get("end", 0.0))} for w in out.get("words") or []]
         return _Resp(200, payload={"words": words})
+
+
+def _transcribe_timeout(path: str) -> float:
+    """How long a transcription may take: the request timeout setting, or three times the
+    recording — speech recognition runs at about 2x real time on the CPU, so a fixed 600 s
+    timed out recordings longer than ~20 minutes (audit §5 D9)."""
+    floor = request_timeout()
+    try:
+        with wave.open(path) as w:
+            seconds = w.getnframes() / float(w.getframerate() or 1)
+    except Exception:  # noqa: BLE001 — not a WAV the stdlib reads: the floor
+        return floor
+    return max(floor, 3.0 * seconds)
 
 
 ALIGN_RATE = 16_000   # the rate audio.cpp's Qwen3 aligner works at
@@ -558,8 +647,12 @@ def to_speech_request(row: dict, body: dict) -> dict:
     knobs = delivery.get("engine") or {}
     lang = (body.get("language") or "").lower()
     req: dict[str, Any] = {"model": row["id"], "input": body.get("text") or ""}
-    if body.get("seed") is not None:
-        req["seed"] = int(body["seed"])
+    # No seed — or 0, which the seed control calls random — is a new take each time. audio.cpp's
+    # own "no seed" is not random everywhere: Kokoro and Kitten keep the session's seed, Turbo a
+    # fixed one, VoxCPM2 1234 (audit §5 D1), so a random one is sent. A description voice never
+    # arrives here without one (render_core.description_seed).
+    seed = body.get("seed")
+    req["seed"] = int(seed) if seed not in (None, 0, "0", "") else random.randrange(1, 2**31)
 
     if family == "kokoro_tts":
         from ..kokoro.voices import VOICES
@@ -587,22 +680,30 @@ def to_speech_request(row: dict, body: dict) -> dict:
                                 "af_heart")
         if delivery.get("speed"):
             req["speed"] = float(delivery["speed"])
-        if delivery.get("phonemes"):
-            opts["phonemes"] = [str(delivery["phonemes"])]
         if opts:
             req["options"] = opts
         return req
 
     if family == "qwen3_tts":
-        req["language"] = QWEN_LANGUAGE.get(lang.split("-")[0] or "en", "English")
+        # A language Qwen3 doesn't speak goes as "Auto" (it detects, and a CustomVoice speaker
+        # keeps its own dialect) — not "English", which forced the English token (audit §5 D6).
+        base = lang.split("-")[0] or "en"
+        req["language"] = QWEN_LANGUAGE.get(base, "Auto")
         opts: dict[str, Any] = {}
         temperature = delivery.get("temperature", knobs.get("talker_temperature"))
         for ours, theirs, cast in (("talker_top_k", "top_k", int), ("talker_top_p", "top_p", float),
-                                   ("repetition_penalty", "repetition_penalty", float)):
+                                   ("repetition_penalty", "repetition_penalty", float),
+                                   ("subtalker_temperature", "subtalker_temperature", float),
+                                   ("subtalker_top_k", "subtalker_top_k", int),
+                                   ("subtalker_top_p", "subtalker_top_p", float)):
             if knobs.get(ours) is not None:
                 opts[theirs] = cast(knobs[ours])
         if temperature is not None:
-            opts["temperature"] = float(temperature)
+            opts["temperature"] = max(_MIN_SAMPLING, float(temperature))
+        # A top-p of 0 is "no filter" and a sampling temperature of 0 is refused (audit §5 D4, D9).
+        for key in ("top_p", "subtalker_top_p", "subtalker_temperature"):
+            if key in opts:
+                opts[key] = max(_MIN_SAMPLING, opts[key])
         instruct = (delivery.get("instruct") or knobs.get("instruct") or "").strip()
         if spec["task"] == "vdes":
             if not instruct:
@@ -666,12 +767,13 @@ def to_speech_request(row: dict, body: dict) -> dict:
             _require_japanese_dictionary()
         opts = {}
         for ours, theirs in (("exaggeration", "exaggeration"), ("cfg_weight", "guidance_scale"),
-                             ("repetition_penalty", "repetition_penalty"), ("top_p", "top_p")):
+                             ("repetition_penalty", "repetition_penalty"), ("top_p", "top_p"),
+                             ("min_p", "min_p"), ("s3gen_cfg_rate", "s3gen_cfg_rate")):
             if knobs.get(ours) is not None:
                 opts[theirs] = float(knobs[ours])
         temperature = delivery.get("temperature", knobs.get("temperature"))
         if temperature is not None:
-            opts["temperature"] = float(temperature)
+            opts["temperature"] = max(_MIN_SAMPLING, float(temperature))
         if opts:
             req["options"] = opts
         return req
@@ -692,7 +794,7 @@ def to_speech_request(row: dict, body: dict) -> dict:
             opts["top_k"] = int(knobs["top_k"])
         temperature = delivery.get("temperature", knobs.get("temperature"))
         if temperature is not None:
-            opts["temperature"] = float(temperature)
+            opts["temperature"] = max(_MIN_SAMPLING, float(temperature))
         if opts:
             req["options"] = opts
         return req
@@ -723,6 +825,10 @@ def to_speech_request(row: dict, body: dict) -> dict:
             opts["guidance_scale"] = float(knobs["cfg_value"])
         if knobs.get("inference_timesteps") is not None:
             opts["num_inference_steps"] = int(knobs["inference_timesteps"])
+        if knobs.get("retry_badcase_max_times") is not None:
+            opts["retry_badcase_max_times"] = max(1, int(knobs["retry_badcase_max_times"]))
+        if knobs.get("retry_badcase_ratio_threshold") is not None:
+            opts["retry_badcase_ratio_threshold"] = float(knobs["retry_badcase_ratio_threshold"])
         if opts:
             req["options"] = opts
         return req

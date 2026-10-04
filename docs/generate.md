@@ -60,9 +60,13 @@ engines:
 - **Gain** — output WAV amplitude in dB. Applied by the server, so it works on every engine.
 
 Speed, Pitch and Gain are applied by the same server code here and in a chapter render, so a setting sounds the same from both. Until 2026-10-02 Generate applied none of the three — Pitch and Gain did nothing on this page, though they worked in chapters.
-- **Temperature** — sampling variance (engine-specific range)
+- **Temperature** — sampling variance. The slider starts at the loaded model's own
+  default (Qwen3 0.9, Chatterbox 0.8), marked *default*, and its range is that model's; a
+  value is sent only when you move it off the default. It never goes below 0.05 — at 0
+  Qwen3 refuses the line and Chatterbox breaks. Until 2026-10-04 it showed 0.7 while the
+  model used its own default, and it reached 0.
 - **Pause before → after** — silence in ms around this line. Blank means "use the project's gap"; a value replaces it for that join, and a line's `pause after` plus the next line's `pause before` add together. **0 is a deliberate butt-join**, not "unset".
-- **Seed** — `🎲 randomize` button next to it
+- **Seed** — `🎲 randomize` button next to it. Empty or 0 gives a new take every time
 
 ### Delivery direction (free-form)
 
@@ -84,17 +88,20 @@ When an engine with a vocabulary is loaded, the list is filtered to what it can 
 
 The vocabulary comes from `/v1/engines/capabilities` rather than being typed into the UI, so the picker cannot drift from what the server accepts.
 
-**Emotion is not the same as an inline tag.** Emotion is the state the whole line is spoken in, so it is a field. A non-verbal sound happens at a *moment*, so it is typed where you want it — `/` in the textarea, or the **🏷️ Insert tag** button. No engine takes inline tags on the speech runtime today (Chatterbox Turbo, which did, is not available yet), so both list nothing, and bracketed text you type yourself is removed before the model sees it — never read out as a word.
+**Emotion is not the same as an inline tag.** Emotion is the state the whole line is spoken in, so it is a field. A non-verbal sound happens at a *moment*, so it is typed where you want it — `/` in the textarea, or the **🏷️ Insert tag** button. Only Chatterbox Turbo and Nano take inline tags — in a packaged app from the speech runtime's next release (the build `npm run dev` makes has them); with any other model loaded both list nothing, and bracketed text you type yourself is removed before the model sees it — never read out as a word.
 
 ### Engine-specific knobs
 
 Below the primary controls, the form auto-renders any extra knobs the engine declares in its capability manifest (`server/justvoice/engines/capability_details.py`). For example:
 
-- **Chatterbox Multilingual** — `Exaggeration`, `CFG weight`; advanced `Repetition penalty`, `Top p`
-- **Qwen3** (every model) — advanced `Top k`, `Top p`, `Repetition penalty`
+- **Chatterbox Multilingual** — `Exaggeration`, `CFG weight`; advanced `Repetition penalty`, `Top p`, `Min p`, `Decoder CFG`
+- **Qwen3** (every model) — advanced `Top k`, `Top p`, `Repetition penalty`, `Detail temperature`, `Detail top k`, `Detail top p`
+- **VoxCPM2** — `CFG`; advanced `Inference steps`, `Tries on a runaway`, `Runaway limit`
 - **Kokoro**, **KittenTTS** — none beyond Speed, which these two take natively
 
-Every engine takes a Seed: the same seed, text and settings give the same audio.
+Every engine but KittenTTS takes a Seed: the same seed, text and settings give the same
+audio, and an empty seed gives a new take each time (on every engine since 2026-10-04 —
+Kokoro used to repeat its last seed, and VoxCPM2 and Chatterbox Turbo a fixed one).
 
 Each knob renders as a paired slider + number input, just like the primary controls. Non-advanced knobs appear in the main grid; advanced knobs live behind a collapsible `⚙ Show advanced knobs (N)` details block. Values only ship to the API when they differ from the engine's default — no payload noise.
 

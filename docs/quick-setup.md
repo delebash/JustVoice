@@ -87,6 +87,6 @@ doesn't make it re-pop on an install you already set up.
 
 ## Troubleshooting
 
-- **Detection shows "CPU only" but you have a GPU** — check Settings → GPU. If JustVoice doesn't detect a runtime (CUDA / Metal / DirectML), your driver may need to be reinstalled or the runtime isn't on your PATH. Pick the tier manually for now.
+- **Detection shows "CPU only" but you have a GPU** — check Settings → GPU. If JustVoice doesn't detect a runtime (CUDA / Metal / Vulkan), your graphics driver may need to be reinstalled. Pick the tier manually for now.
 - **The speech runtime fails to install** — the bar shows the error; most often it is the download. Retry from **Install speech runtime** on the AI page's Speech engines tab. See [GPU](gpu.md#troubleshooting).
 - **AI features answer 501** — the text-AI model isn't set up; that's the other wizard: AI Settings → Run LLM engine setup.

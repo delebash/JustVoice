@@ -34,7 +34,7 @@ from .audio.wav import parse_wav_header, strip_wav_header, write_wav_container
 from .cache import CacheKeyBuilder, pack_pcm_with_format, unpack_pcm_with_format
 from .delivery import apply_gain_db, canonical_json
 from .engines.base import SynthRequest
-from .engines.manager import TermsRequired
+from .engines.manager import EngineRequestError, TermsRequired
 from .errors import bad_request, internal, not_found
 from .inline_tags import strip as strip_tags
 from .version import VERSION
@@ -833,7 +833,7 @@ def render_line(
         for piece in chunks:
             try:
                 piece_pcm, piece_sr, piece_ch = _synth_piece(piece)
-            except TermsRequired as e:
+            except (TermsRequired, EngineRequestError) as e:
                 raise e.api_error() from e
             except Exception as e:
                 raise internal(f"engine synthesize (chunked): {e}")
@@ -849,7 +849,7 @@ def render_line(
     else:
         try:
             pcm, out_sample_rate, out_channels = _synth_piece(effective_text)
-        except TermsRequired as e:
+        except (TermsRequired, EngineRequestError) as e:
             raise e.api_error() from e
         except Exception as e:
             raise internal(f"engine synthesize: {e}")

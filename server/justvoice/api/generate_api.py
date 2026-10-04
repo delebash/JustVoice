@@ -25,7 +25,7 @@ from ..audio.effects import apply_effects_chain
 from ..audio.wav import parse_wav_header, strip_wav_header, write_wav_container
 from ..delivery_merge import compose_instruct, merge_delivery
 from ..engines.base import SynthRequest
-from ..engines.manager import TermsRequired, get_manager
+from ..engines.manager import EngineRequestError, TermsRequired, get_manager
 from ..errors import bad_request, internal, not_found
 from ..models import GenerateRequest
 
@@ -351,7 +351,8 @@ async def _generate_via_manager(
             for i, piece in enumerate(chunks):
                 # Vary seed per chunk to avoid correlated RNG artefacts while
                 # staying deterministic for (text, seed) reproducibility.
-                chunk_seed = (effective_seed + i) if effective_seed is not None and not describe                     else effective_seed
+                chunk_seed = ((effective_seed + i) if effective_seed is not None and not describe
+                              else effective_seed)
                 audio_bytes, meta = _synth_one(piece, chunk_seed)
                 sample_rate = meta.get("sample_rate") or sample_rate
                 channels = meta.get("channels") or channels
@@ -361,7 +362,7 @@ async def _generate_via_manager(
             pcm_int16 = (np.clip(merged, -1.0, 1.0) * 32767.0).astype("<i2").tobytes()
             wav_bytes = _finish_line(pcm_int16, sample_rate, channels, delivery, engine_id, effects, model)
             return Response(content=wav_bytes, media_type="audio/wav")
-        except TermsRequired as e:
+        except (TermsRequired, EngineRequestError) as e:
             raise e.api_error() from e
         except Exception as e:
             raise internal(f"engine synthesize: {e}")

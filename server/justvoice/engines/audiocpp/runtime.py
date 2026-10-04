@@ -140,6 +140,21 @@ def cpu_threads() -> int:
     return n if n > 0 else physical_cores()
 
 
+def gpu_threads() -> int:
+    """settings.engines.speech_runtime.gpu_threads — the graphics-card process's CPU threads."""
+    return max(1, int(_settings().gpu_threads or 4))
+
+
+def start_timeout() -> float:
+    """settings.engines.speech_runtime.start_timeout_s — a process's longest start."""
+    return float(_settings().start_timeout_s or 60.0)
+
+
+def request_timeout() -> float:
+    """settings.engines.speech_runtime.request_timeout_s — one request's longest run."""
+    return float(_settings().request_timeout_s or 900.0)
+
+
 def cpu_min_realtime() -> float:
     """Auto's bar for the CPU — seconds of audio per second of work (decided: 2×)."""
     return float(_settings().cpu_min_realtime or 2.0)
@@ -305,7 +320,14 @@ class _Running:
 
 
 class AudioCppError(RuntimeError):
-    """An audio.cpp request failed; the message is the server's own words."""
+    """An audio.cpp request failed; the message is the server's own words. `status` is its HTTP
+    status — 503 for out of memory or busy, 400 for a bad request, 500 otherwise — and 503 when
+    the process stopped answering. Until 2026-10-04 every failure became a 500 and a dropped
+    connection escaped as a raw httpx error (audit §5 C5, D8)."""
+
+    def __init__(self, message: str, status: int = 500):
+        super().__init__(message)
+        self.status = status
 
 
 def _free_port() -> int:
@@ -332,12 +354,16 @@ class AudioCppServer:
     # -- lifecycle --
 
     def ensure(self, exe: Path, models: list[ModelEntry], *, data_dir: Path, device: int = 0,
-               threads: int = 4, backend: str | None = None, managed: bool = False) -> None:
+               threads: int | None = None, backend: str | None = None,
+               managed: bool = False) -> None:
         """Running with this configuration (restart if it changed). `managed`: the build
         registers models at run time (`model_management`), so the config lists none and
         `register` adds each as it loads — what is downloaded or deleted never restarts the
         process. Otherwise the config lists `models` and a change to that list restarts it.
-        `backend` overrides the build's own (the "cpu" process runs a GPU build on the CPU)."""
+        `backend` overrides the build's own (the "cpu" process runs a GPU build on the CPU).
+        `threads`: the setting's `gpu_threads` when not given."""
+        if threads is None:
+            threads = gpu_threads()
         cfg = {
             "host": "127.0.0.1", "backend": backend or backend_of(exe), "device": device,
             "threads": threads, "lazy_load": True, "max_loaded_models": 0,
@@ -361,6 +387,7 @@ class AudioCppServer:
             conf_path.write_text(json.dumps({**cfg, "port": port}, indent=1), encoding="utf-8")
             log_path = data_dir / "logs" / f"{self._file_stem()}.log"
             log_path.parent.mkdir(parents=True, exist_ok=True)
+            _rotate_log(log_path)
             flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
             out = open(log_path, "ab")  # noqa: SIM115 — owned by the child for its lifetime
             # The kit's one spawn seam: on Windows the child goes into a kill-on-close
@@ -374,14 +401,21 @@ class AudioCppServer:
             proc, job = spawn_child(popen, [str(exe), "--config", str(conf_path), "--no-ui"], out)
             self._run = _Running(proc, port, signature, log_path,
                                  {} if managed else {m.id: m for m in models}, job, managed)
-            self._wait_healthy()
+            try:
+                self._wait_healthy()
+            except AudioCppError:
+                # Never leave a process that didn't come up recorded as running — the next
+                # `ensure` with the same signature took it for healthy (audit §5 C8).
+                self.stop()
+                raise
             dev = dev_build.current()
             log.info("audio.cpp %s (%s %s) up on :%d (pid %d, %s, %d threads, %s)",
                      dev.version if dev else release.TAG, self.placement, self.kind, port, proc.pid,
                      cfg["backend"], threads,
                      "models registered as they load" if managed else f"{len(models)} models")
 
-    def _wait_healthy(self, timeout: float = 60.0) -> None:
+    def _wait_healthy(self, timeout: float | None = None) -> None:
+        timeout = start_timeout() if timeout is None else timeout
         run = self._run
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
@@ -426,12 +460,11 @@ class AudioCppServer:
     def managed(self) -> bool:
         return self._run is not None and self._run.managed
 
-    def register(self, entry: ModelEntry, timeout: float = 600.0) -> None:
+    def register(self, entry: ModelEntry, timeout: float | None = None) -> None:
         """Register `entry` with a managed process and load it now (`POST /v1/models/load` —
         our fork's `model_management`). A registered model is loaded again if it was unloaded,
         and reloaded with its new options if they changed."""
-        r = httpx.post(self._url("/v1/models/load"), json=entry.to_config(), timeout=timeout)
-        self._raise_for(r)
+        self._post("/v1/models/load", json=entry.to_config(), timeout=timeout or request_timeout())
         with self._lock:
             if self._run is not None:
                 self._run.models[entry.id] = entry
@@ -440,7 +473,10 @@ class AudioCppServer:
         if self._run is None:
             return ""
         try:
-            text = self._run.log_path.read_text(encoding="utf-8", errors="replace")
+            with open(self._run.log_path, "rb") as f:          # the end only, never the whole log
+                f.seek(0, os.SEEK_END)
+                f.seek(max(0, f.tell() - 65536))
+                text = f.read().decode("utf-8", errors="replace")
         except OSError:
             return ""
         keep = [ln for ln in text.splitlines() if "SERVER_HTTP_DEBUG" not in ln and "TIMING" not in ln]
@@ -458,40 +494,66 @@ class AudioCppServer:
         if r.status_code < 400:
             return
         try:
-            msg = r.json().get("error", {}).get("message") or r.text
+            body = r.json()
         except ValueError:
-            msg = r.text
-        raise AudioCppError(msg[:500])
+            body = None
+        err = body.get("error") if isinstance(body, dict) else None
+        # `error` is an object with a message — or, from some handlers, a bare string.
+        msg = (err.get("message") if isinstance(err, dict) else err) or r.text
+        raise AudioCppError(str(msg)[:500], status=r.status_code)
 
-    def speech(self, body: dict, timeout: float = 900.0) -> tuple[bytes, dict]:
-        r = httpx.post(self._url("/v1/audio/speech"), json=body, timeout=timeout)
+    def _post(self, path: str, *, timeout: float, **kw) -> httpx.Response:
+        """POST to the running process; a dropped connection or a timeout is an AudioCppError
+        (503) that names it and carries the log's last lines."""
+        try:
+            r = httpx.post(self._url(path), timeout=timeout, **kw)
+        except httpx.TimeoutException as e:
+            raise AudioCppError(f"the speech runtime did not answer within {timeout:.0f} s", status=503) from e
+        except httpx.TransportError as e:
+            tail = self.log_tail(4)
+            raise AudioCppError(f"the speech runtime stopped answering ({type(e).__name__})"
+                                + (f": {tail}" if tail else ""), status=503) from e
         self._raise_for(r)
+        return r
+
+    def speech(self, body: dict, timeout: float | None = None) -> tuple[bytes, dict]:
+        r = self._post("/v1/audio/speech", json=body, timeout=timeout or request_timeout())
         return r.content, dict(r.headers)
 
-    def transcribe(self, body: dict, timeout: float = 600.0) -> dict:
-        r = httpx.post(self._url("/v1/audio/transcriptions/details"), json=body, timeout=timeout)
-        self._raise_for(r)
-        return r.json()
+    def transcribe(self, body: dict, timeout: float | None = None) -> dict:
+        return self._post("/v1/audio/transcriptions/details", json=body,
+                          timeout=timeout or request_timeout()).json()
 
-    def align(self, model: str, wav: bytes, text: str, language: str, timeout: float = 600.0) -> dict:
-        r = httpx.post(self._url("/v1/audio/alignments"),
-                       data={"model": model, "text": text, "language": language},
-                       files={"file": ("audio.wav", wav, "audio/wav")}, timeout=timeout)
-        self._raise_for(r)
-        return r.json()
+    def align(self, model: str, wav: bytes, text: str, language: str,
+              timeout: float | None = None) -> dict:
+        return self._post("/v1/audio/alignments",
+                          data={"model": model, "text": text, "language": language},
+                          files={"file": ("audio.wav", wav, "audio/wav")},
+                          timeout=timeout or request_timeout()).json()
 
     def unload(self, model_ids: list[str]) -> None:
         if not self.is_running() or not model_ids:
             return
-        r = httpx.post(self._url("/v1/tasks/unload_models"), json={"model_ids": model_ids}, timeout=120)
-        self._raise_for(r)
+        self._post("/v1/tasks/unload_models", json={"model_ids": model_ids}, timeout=120)
 
     def unload_all(self) -> None:
         if not self.is_running():
             return
-        r = httpx.post(self._url("/v1/tasks/unload_all_models"), timeout=120)
-        self._raise_for(r)
+        self._post("/v1/tasks/unload_all_models", timeout=120)
 
+
+_LOG_ROTATE_BYTES = 10 * 1024 * 1024
+
+
+def _rotate_log(log_path: Path) -> None:
+    """A log over 10 MB becomes `<name>.1.log` (replacing the one before) as its process starts;
+    the logs grew without end across every start (audit 2026-10-04 §5 F). A log another process
+    still holds is left for the next start."""
+    try:
+        if log_path.is_file() and log_path.stat().st_size > _LOG_ROTATE_BYTES:
+            log_path.replace(log_path.with_suffix(".1.log"))
+    except OSError:
+        pass
 
 PLACEMENTS = ("gpu", "cpu")
 KINDS = ("tts", "stt")

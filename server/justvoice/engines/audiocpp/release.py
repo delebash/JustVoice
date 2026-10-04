@@ -5,9 +5,9 @@ Both pinned: a binary or a model file is a fact about a COMMIT, not a branch. A 
 deliberate change here, re-checked against the release's own asset list and the model
 repo's tree (sizes below are the bytes that commit serves).
 
-audio.cpp is Apache-2.0 (LICENSE ships inside every archive). The cut runs the upstream
-release unchanged; our own copy of the repo takes over when the first change needs C++
-(plan §3.1, §5).
+audio.cpp is Apache-2.0 (LICENSE ships inside every archive). The app runs our own copy's
+releases (github.com/delebash/audio.cpp, branch `jv`, tags `v0.9.0-jv.N`) since 2026-10-03;
+`npm run dev` runs that checkout's own build instead (`dev_build.py`).
 """
 
 from __future__ import annotations
@@ -66,11 +66,31 @@ MODEL_REVISION = "7bf52723f5a95b6cec53ea905fd10eca1c8b942e"
 SERVER_EXE = "audiocpp_server.exe" if sys.platform == "win32" else "audiocpp_server"
 
 
+# The pinned release's archives, by their published sha256 (GitHub's asset digests for
+# v0.9.0-jv.1, read 2026-10-04). The kit refuses a download that doesn't match, before anything
+# is unpacked — the rows were URLs only, on a tag that could be re-uploaded (audit §5 E6). A new
+# TAG brings its own; an archive missing here is launch-verified only.
+SHA256: dict[str, str] = {
+    "audio-v0.9.0-jv.1-bin-windows-x64-cuda12.4.zip": "e3052d950e995e795d7ef89b157d19fa02c58865db738c1538851efeaa5de7de",
+    "audio-v0.9.0-jv.1-cudart-windows-x64-cuda12.4.zip": "8f5e2eae8911a80040fd74069ac0c832ee75b648c14b1aaa7611db68a4bcf9a4",
+    "audio-v0.9.0-jv.1-bin-windows-x64-cuda13.3.zip": "67c7dee75bf4a3d9e1ab5579dd7dfc404c7fcc6d10d16270cdf5b92b2e03b58a",
+    "audio-v0.9.0-jv.1-cudart-windows-x64-cuda13.3.zip": "df4161f1d5417c7112c19d0a1aa872887c740f18418fe10ae4dafb66b6ccc3ec",
+    "audio-v0.9.0-jv.1-bin-windows-x64-vulkan.zip": "b4024c19819dcc3b3e2cec0ea880d15891bffb0a6a178c65bad639a961331fcd",
+    "audio-v0.9.0-jv.1-bin-windows-x64-cpu-portable.zip": "865f8891bd3f8b167949b0622ad72cf51d188e866e303d7e5491b6f643373021",
+    "audio-v0.9.0-jv.1-bin-ubuntu-x64-vulkan.tar.gz": "3579e7878bb05e40e921f05e47f8fc746c4e3deae3d242ab2d5474860d6d1a86",
+    "audio-v0.9.0-jv.1-bin-ubuntu-x64-cpu-portable.tar.gz": "999b70360f51b3f1ebf5dede5c25a5c26432b81c4dc16df12a0f9eb0b6839ffd",
+    "audio-v0.9.0-jv.1-bin-macos-arm64-metal.tar.gz": "00d307ade8d08fae6e2e10328e42e341812988a1d4ed358ad3fd35e73bd8c5f1",
+    "audio-v0.9.0-jv.1-bin-macos-x64-metal.tar.gz": "13b06956cdaf975456e13c9eb17eb0a57f65c7a550cec8424d500de711533f31",
+}
+
+
 def _row(platform: str, gpu: str, archive: str, runtime: str | None = None) -> BinaryAsset:
     return BinaryAsset(
         platform=platform, gpu=gpu, server_exe=SERVER_EXE,
         asset_url=f"{_DL}/{archive}",
         runtime_url=f"{_DL}/{runtime}" if runtime else None,
+        sha256=SHA256.get(archive),
+        runtime_sha256=SHA256.get(runtime) if runtime else None,
     )
 
 
@@ -80,7 +100,9 @@ def binaries() -> list[BinaryAsset]:
     Windows CUDA builds ship their CUDA runtime DLLs separately (the cudart archive is
     unpacked beside the exe). CUDA 13.3 is the Blackwell build (the kit's chip rule picks
     it for compute capability ≥ 10). Linux has no general CUDA archive — NVIDIA boxes run
-    the Vulkan build, as llama.cpp does. macOS ships one Metal build per CPU arch."""
+    the Vulkan build, as llama.cpp does. macOS ships one Metal build per CPU arch. The CPU
+    builds are the PORTABLE ones: the plain build assumes this CPU's newest instructions and
+    exits at start on an older one (audio.cpp issue #352; audit §5 E7)."""
     mac_arch = "arm64" if _platform.machine().lower() in ("arm64", "aarch64") else "x64"
     return [
         _row("windows", "cuda12", f"audio-{TAG}-bin-windows-x64-cuda12.4.zip",
@@ -88,9 +110,9 @@ def binaries() -> list[BinaryAsset]:
         _row("windows", "cuda13", f"audio-{TAG}-bin-windows-x64-cuda13.3.zip",
              f"audio-{TAG}-cudart-windows-x64-cuda13.3.zip"),
         _row("windows", "vulkan", f"audio-{TAG}-bin-windows-x64-vulkan.zip"),
-        _row("windows", "cpu", f"audio-{TAG}-bin-windows-x64-cpu.zip"),
+        _row("windows", "cpu", f"audio-{TAG}-bin-windows-x64-cpu-portable.zip"),
         _row("linux", "vulkan", f"audio-{TAG}-bin-ubuntu-x64-vulkan.tar.gz"),
-        _row("linux", "cpu", f"audio-{TAG}-bin-ubuntu-x64-cpu.tar.gz"),
+        _row("linux", "cpu", f"audio-{TAG}-bin-ubuntu-x64-cpu-portable.tar.gz"),
         _row("macos", "metal", f"audio-{TAG}-bin-macos-{mac_arch}-metal.tar.gz"),
     ]
 

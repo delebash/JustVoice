@@ -73,45 +73,11 @@ def _cpu_name() -> str:
 
 
 def _detect_runtimes(base: dict[str, bool] | None = None) -> dict[str, bool]:
-    """JustVoice's runtime matrix, layered on the runner's base detection.
-
-    The runner already reports `cuda` (via nvidia-smi) and `metal`; we add
-    the platform extras it doesn't model and override `cuda`/`mps` with
-    torch's authoritative signal when torch is importable.
-    """
-    runtimes: dict[str, bool] = {"cpu": True}
-    if base:
-        runtimes.update(base)
-    if sys.platform == "darwin":
-        runtimes.setdefault("metal", True)
-        runtimes["coreml"] = True
-        runtimes["mlx"] = True
-    if sys.platform == "win32":
-        runtimes["directml"] = True
-    if sys.platform.startswith("linux"):
-        # ROCm: rocm-smi answering is the practical signal (mirrors the
-        # nvidia-smi probe for CUDA). PyTorch ships no Windows ROCm wheels,
-        # so this is Linux-only by construction. UNMEASURED on real AMD
-        # hardware here.
-        try:
-            _r = subprocess.run(
-                ["rocm-smi", "--showid"],
-                capture_output=True, timeout=5,
-            )
-            if _r.returncode == 0 and _r.stdout.strip():
-                runtimes["rocm"] = True
-        except Exception:
-            pass
-    # torch, if present, is the most accurate CUDA / MPS signal.
-    try:
-        import torch  # type: ignore
-
-        runtimes["cuda"] = torch.cuda.is_available()
-        if hasattr(torch.backends, "mps"):
-            runtimes["mps"] = torch.backends.mps.is_available()
-    except ImportError:
-        pass
-    return runtimes
+    """The compute runtimes this machine has — the kit's detection (`cuda`, `vulkan`, `rocm`,
+    `metal`) plus `cpu`. The torch, DirectML, Core ML and MLX probes went with the Python
+    engines: nothing here runs on them, and "directml" showed as the backend on every AMD and
+    Intel Windows machine (audit 2026-10-04 §5 F)."""
+    return {"cpu": True, **(base or {})}
 
 
 def _detect_ffmpeg() -> dict | None:

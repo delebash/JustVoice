@@ -57,7 +57,7 @@ def install_engine(id: str, req: InstallRequest) -> InstallResponse:
                 raise not_found(str(e))
             return InstallResponse(engine_id=id, model_variant=req.model_variant, job_id=job_id)
         # Engine-wide setup: the speech runtime every engine shares.
-        job_id = spawn_managed_install(st, id)
+        job_id = spawn_managed_install(st, id, repair=req.repair)
         return InstallResponse(engine_id=id, model_variant="managed", job_id=job_id)
 
     raise not_found(f"Unknown engine: {id}")

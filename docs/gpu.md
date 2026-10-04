@@ -9,7 +9,8 @@ it right on most machines. **Settings → GPU** shows what the machine reports.
 ## What you'll see on Settings → GPU
 
 - **Backend** — the best compute runtime the machine reports (`cuda` / `metal` /
-  `directml` / `rocm` / `cpu`). This is detection, not a setting.
+  `rocm` / `vulkan` / `cpu`). This is detection, not a setting — the speech runtime's
+  own build is chosen under Backend on the Speech engines tab (below).
 - **Device** — vendor, model and driver of the first GPU.
 - **VRAM total / used** — measured, the same number `nvidia-smi` or Task Manager shows.
 

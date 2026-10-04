@@ -70,11 +70,11 @@ def _info_from_manifest(manifest: EngineManifest, status: str) -> EngineInfo:
         for k, enabled in caps.items()
         if enabled and k in _CAPABILITY_TO_FEATURE
     ]
-    # Implicit GPU accel for any engine declaring CUDA / MPS / Metal in
+    # Implicit GPU accel for any engine declaring a GPU build of the speech runtime in
     # gpu_runtimes — implicit GPU support if any GPU runtime is listed.
     req = manifest.requirements
     runtimes = req.get("gpu_runtimes", []) or []
-    if any(r in ("cuda", "mps", "metal", "directml", "xpu", "coreml") for r in runtimes) and "gpu_accel" not in feature_list:
+    if any(r in ("cuda", "vulkan", "metal") for r in runtimes) and "gpu_accel" not in feature_list:
         feature_list.append("gpu_accel")
 
     mgr = get_manager()
@@ -236,8 +236,25 @@ def list_engine_capabilities() -> EngineCapabilitiesResponse:
         or any(vid.startswith(f"{key}-") for vid in visible_variants)
     }
     return EngineCapabilitiesResponse(
-        engines=rows, emotion_values=list(EMOTION_VALUES)
+        engines={k: _as_installed(v) for k, v in rows.items()}, emotion_values=list(EMOTION_VALUES)
     )
+
+
+def _as_installed(detail):
+    """A row's build-gated flags as the INSTALLED speech runtime has them — the rows follow the
+    pinned build, and an install still on an older one can't play blends or splice a lexicon's
+    IPA. The persona page offered a blend that saved and then never played (audit §5 E3)."""
+    from ..engines.audiocpp.runtime import has_feature
+
+    update = {}
+    if detail.supports_voice_blending and not has_feature("voice_pack"):
+        update["supports_voice_blending"] = False
+    if detail.supports_phoneme_input and not has_feature("inline_ipa"):
+        update["supports_phoneme_input"] = False
+    if detail.engine_id == "voxcpm2" and detail.supports_clone_prompt_text \
+            and not has_feature("voxcpm2_transcript"):
+        update["supports_clone_prompt_text"] = False
+    return detail.model_copy(update=update) if update else detail
 
 
 @router.get(

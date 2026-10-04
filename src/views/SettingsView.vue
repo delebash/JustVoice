@@ -461,7 +461,7 @@ async function loadGpuInfo() {
   const runtimes = Object.entries(r.runtimes || {})
     .filter(([, ok]) => ok)
     .map(([k]) => k);
-  const active = runtimes.find((r2) => ["cuda", "metal", "coreml", "directml", "rocm", "mlx"].includes(r2)) || "cpu";
+  const active = runtimes.find((r2) => ["cuda", "metal", "rocm", "vulkan"].includes(r2)) || "cpu";
   gpuInfo.value = { active_backend: active, runtimes, gpus: r.gpus || [] };
 }
 

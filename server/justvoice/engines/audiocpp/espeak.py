@@ -70,10 +70,11 @@ def paths(runtime_root: Path) -> tuple[Path, Path] | None:
     return None
 
 
-def install(runtime_root: Path) -> tuple[Path, Path]:
-    """Fetch and unpack the pinned wheel's library + data (idempotent)."""
+def install(runtime_root: Path, force: bool = False) -> tuple[Path, Path]:
+    """Fetch and unpack the pinned wheel's library + data (idempotent; `force` fetches it again —
+    the runtime row's Reinstall)."""
     got = paths(runtime_root)
-    if got:
+    if got and not force:
         return got
     tag = _wheel_tag()
     meta = json.loads(urllib.request.urlopen(

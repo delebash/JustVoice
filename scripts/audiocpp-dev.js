@@ -166,6 +166,12 @@ export function prepareAudioCppDevBuild() {
   const vs = WIN ? visualStudio() : null;
   if (existsSync(EXE)) stopLeftovers();
   const cuda = existsSync(join(BUILD, "CMakeCache.txt")) ? configuredCuda() : configure(vs);
+  if (!cuda && WIN && cudaToolkit() && vs?.toolset) {
+    // Configured once as a CPU build (no CUDA toolkit or MSVC toolset then) — it never
+    // reconfigures, so every model would run on the CPU (audit 2026-10-04 §5 E7).
+    console.warn(`[audio.cpp] build/jv-dev is a CPU build, but CUDA ${CUDA_VERSION} is installed now — `
+      + `delete ${BUILD} to rebuild it for the graphics card (about 30 minutes).`);
+  }
   const t0 = Date.now();
   run(["cmake", "--build", BUILD, "--target", "audiocpp_server"], { vs, cuda });
   if (cuda && WIN) copyCudaRuntime(cuda);

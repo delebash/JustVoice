@@ -158,8 +158,10 @@ def test_cpu_speed_reads_this_machine_before_the_reference(monkeypatch):
     monkeypatch.setattr("llm_runner.llm.stores.get_model_measurement_store", lambda: store)
     monkeypatch.setattr("llm_runner.runner.hardware.current_machine_key", lambda: "box")
     assert mgr.cpu_speed("tts", "kokoro", "kokoro-82m-q8") == (3.15, False)
+    monkeypatch.setattr(runtime, "cpu_threads", lambda: 8)
     rows.append(SimpleNamespace(modelId="tts:kokoro:kokoro-82m-q8", machineKey="box",
-                                source="speed", backend="cpu", realtimeX=2.4))
+                                source="speed", backend="cpu", realtimeX=2.4,
+                                switches=[SimpleNamespace(flagName="threads", flagValue="8")]))
     assert mgr.cpu_speed("tts", "kokoro", "kokoro-82m-q8") == (2.4, True)
     # Another machine's number is not this one's.
     rows[0].machineKey = "other"

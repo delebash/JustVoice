@@ -15,6 +15,7 @@ import json
 import logging
 import time
 import uuid
+from pathlib import Path
 from typing import Optional, Literal
 
 from cachetools import TTLCache
@@ -275,6 +276,33 @@ def candidate_engine(body: VoicePreviewRequest, state):
     return engine
 
 
+_CANDIDATE_CLIP_HOURS = 1.0
+
+
+def _candidate_clip(raw: bytes) -> Path:
+    """An unsaved voice's clip as a file the runtime can read — in a folder of its own, where
+    clips older than an hour are cleared on the next write. Every clone preview left its clip
+    in the temp folder for good (audit 2026-10-04 §5 F); deleting it right after the render
+    would break a streamed preview, whose later pieces read the same file."""
+    import tempfile
+
+    folder = Path(tempfile.gettempdir()) / "justvoice-candidate-clips"
+    folder.mkdir(parents=True, exist_ok=True)
+    cutoff = time.time() - _CANDIDATE_CLIP_HOURS * 3600
+    for old in folder.glob("*.wav"):
+        try:
+            if old.stat().st_mtime < cutoff:
+                old.unlink()
+        except OSError:
+            pass
+    out = folder / f"{hashlib.sha1(raw).hexdigest()}.wav"
+    if not out.is_file():
+        out.write_bytes(raw)
+    else:
+        out.touch()
+    return out
+
+
 def candidate_voice_fields(body: VoicePreviewRequest, state) -> "tuple[dict, str | None]":
     """What a candidate contributes to the engine call besides the text — the
     same fields a SAVED voice contributes through
@@ -285,13 +313,7 @@ def candidate_voice_fields(body: VoicePreviewRequest, state) -> "tuple[dict, str
     # can read as an audio prompt.
     audio_prompt_path: Optional[str] = None
     if body.source in ("cloned", "imported") and body.ref_wav_b64:
-        import tempfile
-
-        raw = base64.b64decode(body.ref_wav_b64)
-        tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
-        tmp.write(raw)
-        tmp.close()
-        audio_prompt_path = tmp.name
+        audio_prompt_path = str(_candidate_clip(base64.b64decode(body.ref_wav_b64)))
 
     # Wired 2026-08-19: before this, a blended or designed audition passed
     # nothing but `__preview__` and the engine rendered its default voice, so
@@ -711,7 +733,7 @@ def _resolve_audition_target(voice_id: str, auto_load: bool):
         engine_id = ticket["engine_id"]
         m = mgr.get_manifest(engine_id)
         if m is not None:
-            if m.isolation == "venv" and not m.is_installed:
+            if not m.is_installed:
                 raise conflict(f"engine_not_installed:{engine_id}")
             if mgr.current_id() != engine_id:
                 if not auto_load:
@@ -737,16 +759,19 @@ def _resolve_audition_target(voice_id: str, auto_load: bool):
 
     owner = _find_managed_voice_owner(voice_id)
     if owner is not None:
+        m = mgr.get_manifest(owner)
+        if m is not None and not m.is_installed:
+            raise conflict(f"engine_not_installed:{owner}")
         _ready(owner)
         return ("managed", owner, None)
 
     static_owner = _find_static_voice_owner(voice_id)
     if static_owner is not None:
         m = mgr.get_manifest(static_owner)
-        if m is not None and m.isolation == "venv" and not m.is_installed:
-            # Isolated engine with no venv yet — a raw 500 told the user
-            # nothing (user-hit on an isolated engine's preview). The UI
-            # maps this to an "install it in Engines" dialog.
+        if m is not None and not m.is_installed:
+            # The speech runtime isn't installed yet — a raw 500 told the user nothing. The UI
+            # maps this to an "install it in Engines" dialog. (It tested `isolation == "venv"`,
+            # never true since the 2026-10-01 switch, so the dialog could not show.)
             raise conflict(f"engine_not_installed:{static_owner}")
         _ready(static_owner)
         return ("managed", static_owner, None)

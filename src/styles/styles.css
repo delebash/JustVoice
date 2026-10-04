@@ -1894,6 +1894,8 @@ section.block > h3 {
    Indented to the model name; the row above gives up its rule so the two read as one. */
 .ev-model:has(+ .ev-mplace){border-bottom:0;padding-bottom:4px}
 .ev-mplace{display:flex;align-items:center;gap:8px;padding:0 16px 10px 37px;font-size:12.5px;color:var(--ink-3);border-bottom:1px solid var(--line)}
+/* A model's second line (its runtime options) sits under the first with one border. */
+.ev-mplace:has(+ .ev-mplace){border-bottom:0;padding-bottom:4px}
 .ev-mplace.dim{opacity:.55}
 .ev-mplace__why{color:var(--ink-2);min-width:0;max-width:80ch}
 .ev-danger{color:#b04a3e !important}

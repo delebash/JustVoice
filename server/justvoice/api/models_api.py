@@ -22,8 +22,8 @@ from typing import Literal
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from ..engines.model_catalog import models_for
-from ..errors import conflict, not_found
+from ..engines.model_catalog import _variant_rows, models_for
+from ..errors import bad_request, conflict, not_found
 from ..models import ModelsListResponse
 
 router = APIRouter(tags=["engines"])
@@ -72,6 +72,13 @@ def list_models(id: str) -> ModelsListResponse:
             # resolved HERE so the layout knowledge stays server-side.
             v.local_dir = str(variant_dir(st.data_dir, id, v.id))
     _annotate_placement(id, variants)
+    from ..engines.audiocpp.runtime_options import describe
+    from ..models import RuntimeOption
+
+    rows = {r["id"]: r for r in _variant_rows(id)}
+    for v in variants:
+        if v.id in rows:
+            v.runtime_options = [RuntimeOption(**o) for o in describe(id, rows[v.id])]
     return ModelsListResponse(engine_id=id, variants=variants)
 
 
@@ -110,6 +117,49 @@ def set_model_placement(id: str, variant_id: str, body: PlacementBody) -> dict:
     return {"engine_id": id, "variant_id": variant_id, "placement": body.placement,
             "runs_on": runs_on, "runs_on_reason": why, "loaded": loaded,
             "moves": bool(loaded and now != runs_on)}
+
+
+class RuntimeOptionsBody(BaseModel):
+    options: dict[str, str]
+
+
+@router.put("/v1/engines/{id}/models/{variant_id}/runtime-options")
+def set_model_runtime_options(id: str, variant_id: str, body: RuntimeOptionsBody) -> dict:
+    """A model's speech-runtime options (`engines/audiocpp/runtime_options.py`) — saved per
+    model in `engine_overrides[id].runtime_options`; a value at its default is dropped. The
+    runtime reads them when the model loads, so a loaded model whose options changed is
+    unloaded here, and the answer's `reload` asks the caller to load it again."""
+    from ..app_state import get_state
+    from ..engines.audiocpp.runtime_options import describe, validate
+    from ..engines.manager import get_manager
+    from ..models import EngineOverrides
+
+    mgr = get_manager()
+    m = mgr.get_manifest(id)
+    if m is None:
+        raise not_found(f"engine {id}")
+    row = next((r for r in _variant_rows(id) if r.get("id") == variant_id), None)
+    if row is None:
+        raise not_found(f"variant {variant_id} on engine {id}")
+    try:
+        values = validate(row, body.options)
+    except ValueError as e:
+        raise bad_request(str(e)) from e
+    store = get_state().settings
+    cur = store.get()
+    ov = cur.engines.engine_overrides.get(id) or EngineOverrides()
+    changed = (ov.runtime_options.get(variant_id) or {}) != values
+    if values:
+        ov.runtime_options[variant_id] = values
+    else:
+        ov.runtime_options.pop(variant_id, None)
+    cur.engines.engine_overrides[id] = ov
+    store.set(cur)
+    loaded = mgr.status(id) == "loaded" and mgr.current_variant_id(id) == variant_id
+    if loaded and changed:
+        mgr.unload(m.kind)
+    return {"engine_id": id, "variant_id": variant_id,
+            "runtime_options": describe(id, row), "reload": bool(loaded and changed)}
 
 
 @router.post("/v1/engines/speech-cache/clear")
@@ -157,6 +207,14 @@ def delete_model(id: str, variant_id: str) -> dict:
     st = get_state()
     if not variant_on_disk(st.data_dir, id, variant_id):
         raise not_found(f"{variant_id} has no downloaded files")
+    from ..engines.manager import get_manager
+
+    mgr = get_manager()
+    m = mgr.get_manifest(id)
+    if m is not None and mgr.current_for(m.kind) == id and mgr.current_variant_id(id) == variant_id:
+        # Windows refuses to delete a file the runtime holds; Linux and macOS deleted it under the
+        # loaded model, which then vanished at its next restart (audit §5 E7).
+        raise conflict(f"{variant_id} is loaded — unload it, then delete its files")
     vdir = variant_dir(st.data_dir, id, variant_id)
     shutil.rmtree(vdir, ignore_errors=True)
     if vdir.exists():

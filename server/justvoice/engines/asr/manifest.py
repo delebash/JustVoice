@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""Manifest for speech recognition — dictation, clone transcripts, captions, training prep.
+"""Manifest for speech recognition — dictation, clone transcripts, captions.
 
 Replaced Whisper at the 2026-10-01 switch (docs/plans/2026-10-01-audiocpp-switch.md) —
 user: "as long as qwen asr is as good as whisper we can drop whisper". Measured on 197
@@ -8,8 +8,7 @@ Whisper turbo (4.3% against 5.8% on human speech). Each variant carries Qwen3's 
 aligner as a companion file, so captions get word times for the KNOWN text (Whisper's
 alignment path had stopped working on this build).
 
-What it does not give: a confidence score (the training prep's confidence gate reads
-None as unknown and lets the clip through), and — on the small sample measured — weaker
+What it does not give: a confidence score, and — on the small sample measured — weaker
 recognition outside English, especially when no language is set (plan §8 D).
 """
 
@@ -21,8 +20,8 @@ KIND = "stt"
 
 SUPPORTED_OSES = ["windows", "linux", "macos"]
 DESCRIPTION = (
-    "Turns speech into text for dictation, clone transcripts, training clips and "
-    "captions (with word timings). Runs in the audio.cpp speech runtime."
+    "Turns speech into text for dictation, clone transcripts and captions (with word "
+    "timings). Runs in the audio.cpp speech runtime."
 )
 LICENSE = "Apache-2.0"
 

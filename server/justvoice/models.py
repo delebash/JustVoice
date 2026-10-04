@@ -66,7 +66,7 @@ class SystemInfo(BaseModel):
     gpus: list[GpuInfo] = []
     runtimes: dict[str, bool] = Field(
         default_factory=dict,
-        description="Detected runtime availability: cuda / metal / coreml / directml / rocm / mlx / cpu",
+        description="Detected runtime availability: cuda / vulkan / rocm / metal / cpu",
     )
     ffmpeg: dict[str, Any] | None = None
     # Server's data directory — lets the desktop shell open on-disk
@@ -258,6 +258,10 @@ class EngineOverrides(BaseModel):
     # manifest row), and none at all = `generation.max_chunk_chars`. Bounds the model's working
     # memory, which grows with the line; the price a load is checked against is measured at it.
     split_chars: dict[str, int] = {}
+    # The speech runtime's per-model options the user set — variant id → {option: value}, only
+    # values other than the default (audit 2026-10-04 §13.5; what is offered and why:
+    # `engines/audiocpp/runtime_options.py`). Passed as session options when the model loads.
+    runtime_options: dict[str, dict[str, str]] = {}
     # When the user accepted the engine's own terms (the manifest's TERMS — Pocket
     # TTS: Kyutai's prohibited-use terms, which gate cloning). ISO-8601; None = not
     # accepted, and the gated use is refused.
@@ -283,6 +287,13 @@ class SpeechRuntimeSettings(BaseModel):
     # "Fast enough on the CPU" for Auto: a model runs there only when it speaks at
     # least this many seconds of audio per second of work (decided 2026-10-02: 2×).
     cpu_min_realtime: float = 2.0
+    # The graphics-card process's CPU threads — its work off the card (text, sampling).
+    gpu_threads: int = 4
+    # How long a process may take to come up before its start counts as failed.
+    start_timeout_s: float = 60.0
+    # How long one request may run — a line, a model load. A transcription gets at least
+    # three times its recording's length on top (recognition runs ~2× real time on the CPU).
+    request_timeout_s: float = 900.0
 
 
 class ExternalEngineConfig(BaseModel):
@@ -1208,6 +1219,22 @@ class ModelFile(BaseModel):
     size_bytes: int
 
 
+class RuntimeOptionChoice(BaseModel):
+    value: str
+    label: str
+
+
+class RuntimeOption(BaseModel):
+    """One of a model's speech-runtime options, as its row on Speech engines shows it."""
+
+    key: str          # the runtime's session-option name, e.g. "qwen3_tts.perf_mode"
+    label: str
+    hint: str = ""
+    default: str
+    value: str        # what this model loads with
+    choices: list[RuntimeOptionChoice] = []
+
+
 class ModelVariant(BaseModel):
     # No vram_mb here (2026-08-14, the measured redesign): a variant's memory
     # footprint is MEASURED at load time, never declared in a catalog row.
@@ -1253,6 +1280,8 @@ class ModelVariant(BaseModel):
     # Ryzen 7 5700X, 8 threads). None = never measured — the CPU is not offered by Auto.
     cpu_realtime: float | None = None
     cpu_realtime_here: bool = False
+    # The speech runtime's options this model takes, with their values (empty = none offered).
+    runtime_options: list[RuntimeOption] = []
 
 
 class ModelsListResponse(BaseModel):
@@ -1262,6 +1291,10 @@ class ModelsListResponse(BaseModel):
 
 class InstallRequest(BaseModel):
     model_variant: str | None = None
+    # Download the speech runtime (and eSpeak NG) again over the installed one — the runtime
+    # row's Reinstall, for a build that won't start or a file an antivirus took. Without it an
+    # install found the broken build "already there" and changed nothing (audit §5 E6).
+    repair: bool = False
 
 
 class InstallResponse(BaseModel):

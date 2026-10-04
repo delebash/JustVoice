@@ -85,9 +85,15 @@ class _Slot(slot.AudioCppSlot):
 
 
 def test_an_older_runtime_refuses_turbo_by_name(monkeypatch):
+    from justvoice.engines.audiocpp import release
+
     monkeypatch.setattr(runtime, "has_feature", lambda name, backend=None: False)
+    monkeypatch.setattr(release, "pinned_has", lambda f: True)
     r = _Slot()._synth({"text": "Hi.", "audio_prompt_path": "C:/v.wav"})
     assert r.status_code == 409 and "speech runtime update" in r.json()["detail"]
+    monkeypatch.setattr(release, "pinned_has", lambda f: False)
+    r = _Slot()._synth({"text": "Hi.", "audio_prompt_path": "C:/v.wav"})
+    assert r.status_code == 409 and "Chatterbox Turbo and Nano voices" in r.json()["detail"]
 
 
 def test_a_load_warms_the_built_in_voice():

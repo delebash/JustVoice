@@ -811,3 +811,226 @@ whole-clip vs trimmed decode, CustomVoice's decoder 32 vs 16-bit.
 
 **Not checked:** Vulkan, CPU and Metal builds of these changes; the packaged app gets them only
 with the next release (its tag still needs the user's word).
+
+### 13.5 Step 5 — everything else: requests, gates, errors, placement, installs, leaks, options
+
+**Decided** 2026-10-04: "your rec on all go no need for go on each step complete all fixes";
+during the step: "when the suit finishes yiou have a go on all batches your recs on any fixes
+you find, dont run test until all batches are coded". The eight batches as listed in TASKS were
+coded in full before any test ran.
+
+**What changed, by batch.**
+
+- **5a — requests (D1, D3, D4, D6, D7, D9).** No seed, or 0, sends a random one: audio.cpp's own
+  "no seed" repeated on Kokoro, Kitten, Turbo and VoxCPM2. Temperatures and top-p are floored at
+  0.05 in the knobs and in the request mapping (Qwen3 refused 0, Chatterbox divided by it, a
+  top-p of 0 is "no filter"); Generate's Temperature slider takes the loaded model's own knob —
+  its default (marked *default*) and range — instead of showing 0.7 and sending nothing.
+  Chatterbox's repetition penalty defaults to 1.2, what it uses. A Qwen3 line with no language
+  it speaks goes as "Auto", not "English". Speech recognition and the aligner get the language's
+  name for all 30 Qwen3-ASR languages (`ASR_LANGUAGE`), detection for anything else; a
+  transcription's timeout is the request limit or three times its length. Kokoro's dead
+  `phonemes` mapping went.
+- **5b — gates (E1, E3, E4, E5).** Every build feature a line needs (`features_needed`) is checked
+  against the INSTALLED build, and the refusal says whether an update brings it
+  (`feature_refusal`: "… — this needs the speech runtime update" only when the pin has it, else
+  "… — this isn't in this version's speech runtime yet"). The capability rows answer per install
+  (`_as_installed`), so the persona page's Blend is off until the runtime can play a blend. A
+  stored Turbo voice keeps its model (`model_for_stored` keeps any model with a capability row)
+  and a model missing from the catalog is refused by name (`ModelUnavailable`). The voice
+  preview's "install the runtime first" test reads `is_installed`, not the dead `isolation ==
+  "venv"`.
+- **5c — the runtime's errors and locks (C4–C8, D8).** `AudioCppError` carries the runtime's
+  status (a bare-string `error` body included); a timeout or a dropped connection is a 503 naming
+  the limit or quoting the log's end; `EngineRequestError` takes the status to the API, so busy
+  and out of memory are 503, a bad request 400. A process that didn't come up healthy is stopped,
+  not recorded as running. Uninstall waits for the kind's line in flight. `shutdown_manager`
+  stops the runtime first and swaps the manager out without holding `_manager_lock` across the
+  unloads — the deadlock (C4) and the 15-minute clean exit (C6) both go.
+- **5d — placement (B6, B7, B9).** `cpu_speed` is the best of the newest five readings at the
+  current CPU-thread count (the `threads` flag; a reading without it no longer counts). The
+  16-bit Kokoro and Pocket TTS rows carry reference CPU speeds measured the same way as their
+  8-bit rows (Kokoro bf16 2.61×; Pocket English 3.11, Spanish 3.02, Portuguese 2.85; German and
+  Italian unmeasured). A machine whose graphics share its memory places on the graphics and says
+  why.
+- **5e — installs (E6, E7).** The pinned release's archives carry their published sha256
+  (GitHub's asset digests, read 2026-10-04); the kit refuses and deletes a mismatch before
+  unpacking, downloads into `<build>/.downloads/` so a stopped download resumes, and deletes the
+  archives (and the folder, when empty) after the swap. **Reinstall** on the runtime row
+  (`InstallRequest.repair` → `force`) fetches the runtime and eSpeak NG again; hidden under
+  `npm run dev`. A model file whose LFS oid is a sha256 is checked against it after download and
+  deleted on a mismatch; two fetches of one variant are serialized. The CPU rows are the
+  portable builds. A loaded model can't be deleted on any OS. The dev script warns when the
+  checkout's build is CPU-only.
+- **5f — leaks, hardcoded values, leftovers (F).** Candidate clone clips go to
+  `<temp>/justvoice-candidate-clips/`, named by content and cleared after an hour (a streamed
+  preview reads the same file for every piece, so it can't be deleted right after the render);
+  an oversized transcription upload is deleted however the request ends; blend packs are
+  touched on reuse, written under a per-writer temp name, and only the newest 200 kept; a
+  decode failure leaves no temp file; a log over 10 MB becomes `….1.log` at its process's next
+  start (`_rotate_log`), and `log_tail` reads only the last 64 KB. `speech_runtime.gpu_threads`
+  (4), `start_timeout_s` (60) and `request_timeout_s` (900) are settings; the runtime row's PUT
+  keeps a field it doesn't send (it rebuilt the setting from four fields and would have wiped
+  them), and a `gpu_threads` change restarts the graphics process. The whisper errors, the dead
+  `chat()` and `clone()`, the dead `NOT_ENGINES` names, the torch / DirectML / Core ML / MLX
+  probes ("directml" showed as the backend on AMD and Intel Windows), "training" in the
+  recognition model's text, `chatterbox-turbo-v1` in `capabilities.js` and its test, and the dead
+  `scripts/shot_uninstall_toast.js` went.
+- **5g — stale docs (F).** engines.md (the seed claim, download sizes with the CUDA libraries, the
+  8-bit claim, Auto's order and its CPU speeds, Not available yet, every engine on every OS,
+  Linux ARM, the checks on arrival), voices.md, gpu.md, quick-setup.md, generate.md,
+  personas.md, troubleshooting.md, settings-reference.md, code-map.md, whats-new.md. The counts
+  that follow the pin are computed: Kokoro's voices and languages from the voices it offers,
+  Chatterbox's languages from its row (the "19 languages" note and Voice engine setup's blurb).
+- **5h — options (§7). The recommendation changed** from fork specs to a verified catalog in
+  the app: the fork's specs list options for Kokoro only, and an options endpoint (§6 item 3)
+  is fork work for a later release. Each option was read in our copy's source with its default
+  and range. New request knobs: Chatterbox `min_p` (0.05) and `s3gen_cfg_rate` (0.7, "Decoder
+  CFG" — the flow decoder's CFG; it does nothing on Turbo's meanflow decoder, so Turbo has no
+  such knob); Qwen3 `subtalker_temperature` / `subtalker_top_k` / `subtalker_top_p` (0.9 / 50 /
+  1.0, "Detail …"); VoxCPM2 `retry_badcase_max_times` (3) and `retry_badcase_ratio_threshold`
+  (6.0 — it is also the cap on a take's length, text tokens × ratio + 10). Every one is
+  advanced and starts at the runtime's own default, so nothing changes until moved. Per-model
+  runtime options (session options, read at load) live on the model row: Qwen3's `perf_mode`
+  (off / flash_attention — 8-bit rows only, the runtime refuses it on 16-bit weights) and
+  `conv_weight_type` (f32 / f16), the two measured to matter; saved in
+  `engine_overrides[id].runtime_options[variant]`, passed by `_entries_for` at registration; a
+  change unloads a loaded model and the row loads it again.
+
+**Not done, and why.**
+
+- Max-token knobs (Chatterbox `max_tokens` 384, Turbo `max_new_tokens` 1000, VoxCPM2
+  `min_tokens` / `max_tokens`): the models' positional caps weren't checked, and a cap set too
+  high fails the line.
+- Pocket TTS's `temperature`, `noise_clamp` and `eos_threshold` are read only by a voice-state
+  preparation request, not by `/v1/audio/speech` (`build_generation_request` applies only
+  `frames_after_eos`, `max_tokens` and `text_chunk_size`) — so they are not offered.
+- Qwen3 `mem_saver`: measured to change nothing on the fixed build. Chatterbox and VoxCPM2
+  session options: unmeasured.
+- The runtime reporting its own memory (§6 item 2) and the options endpoint (§6 item 3): fork
+  work, for the release after the pending one.
+- Hardcoded still: the probe TTL (2 s), the eviction drain wait (4 s). Voice engine setup's
+  tiers still put Qwen3 in the 12 GB tier, from the 7.8 GB whole-line peak; at 200-character
+  pieces on the fixed build it fits 8 GB — whether to move it is a product decision.
+- E2 (the placeholder tags `release.py` names) is fixed with the pending release.
+
+**Blast radius** (greps run 2026-10-04 after the code and before any test, as the user asked
+the batches to be coded first; 5a's while it was coded):
+
+```
+$ grep -rn "to_speech_request(" justvoice server/tests
+engines/audiocpp/slot.py:399,578 · tests/test_audiocpp_switch.py:77,86,96,107,110,114,118,122,131,334,344,348,354,357,359 · tests/test_cpu_placement.py:325,332,333,340,342 · tests/test_engine_knob_wiring.py:83 · tests/test_japanese_dictionary.py:100,102,104,107,108 · tests/test_kokoro_blends.py:119 · tests/test_kokoro_ipa.py:59 · tests/test_runtime_update.py:154,156,165 · tests/test_turbo_cloning.py:59,70 · tests/test_variant_wiring.py:78,107,111
+$ grep -rn "QWEN_LANGUAGE" justvoice server/tests
+engines/audiocpp/slot.py:43,47,49,627 · tests/test_variant_wiring.py:20,67
+$ grep -rn "ASR_LANGUAGE" justvoice server/tests
+engines/audiocpp/slot.py:49,423,424,446
+$ grep -rn "_seed_knob()" justvoice server/tests
+engines/capability_details.py:47,81,102,140,185,215,248,421
+$ grep -rn ""phonemes"" justvoice server/tests
+(no match)
+$ grep -rn "_transcribe_timeout\|def transcribe(" justvoice server/tests
+api/captures_api.py:143 · engines/audiocpp/runtime.py:471 · engines/audiocpp/slot.py:425,452 · engines/manager.py:1830 · tests/test_runtime_life.py:109 · tests/test_split_and_calibration.py:161
+$ grep -rn "temperature" src/views/GenerateView.vue
+(no match)
+$ git grep -n "feature_refusal\(|features_needed\(" -- server src
+engines/audiocpp/slot.py:211,236,448,450
+$ git grep -n "has_feature\(" -- server
+api/engines_api.py:250,252,255 · engines/audiocpp/runtime.py:242 · engines/audiocpp/slot.py:191,449 · render_core.py:380 · tests/test_audiocpp_dev_build.py:82,84 · tests/test_kokoro_blends.py:103 · tests/test_turbo_cloning.py:25
+$ git grep -n "model_for_stored\(|ensure_model_loaded\(" -- server
+api/generate_api.py:198 · api/voice_preview_api.py:373,756 · api/voices_api.py:51 · render_core.py:793 · voice_model.py:233,299,431
+$ git grep -n "is_installed" -- justvoice/api/voice_preview_api.py
+api/voice_preview_api.py:736,763,771
+$ git grep -n "_as_installed\(|supports_voice_blending" -- server src
+api/engines_api.py:239,243,250,251 · engines/base.py:102 · engines/blending.py:38 · engines/capability_details.py:134 · models.py:1178 · voice_model.py:196,198 · src/mock/liveSnapshot.json:35,60,85,165,245,371,440,509,578,647,694,820 · src/views/PersonaEditorView.vue:281
+$ git grep -n "canBlend" -- src
+src/views/PersonaEditorView.vue:281,284
+$ git grep -n "EngineRequestError" -- server
+api/generate_api.py:28,365 · engines/manager.py:285,1863 · render_core.py:37,836,852
+$ git grep -n "\._post\(|def _post" -- server
+engines/audiocpp/runtime.py:467,505,520,524,529,537,542 · tests/test_project_lexicon.py:400
+$ git grep -n "shutdown_manager\(" -- server
+app.py:357 · engines/manager.py:1980 · tests/conftest.py:50,58
+$ git grep -n "cpu_speed\(|_record_cpu_speed\(" -- server
+api/models_api.py:43 · engines/manager.py:696,853,915,1864,1897 · tests/test_cpu_placement.py:160,165,168,169,285
+$ git grep -n "_card_is_its_own_memory|cpu_realtime"\]" -- server
+engines/kokoro/manifest.py:85 · engines/manager.py:794,859 · engines/pocket/manifest.py:140,163 · tests/test_cpu_placement.py:470
+$ git grep -n "install_engine\(|spawn_managed_install\(|\.install\(" -- justvoice
+api/engines_models_api.py:42,60 · engines/manager.py:191,353,396,418,427,465,1478 · installer.py:55,58,102
+$ git grep -n "InstallRequest|repair" -- justvoice src/components/SpeechEnginesTab.vue src/services
+api/engines_models_api.py:24,42,60 · delivery_merge.py:78 · engines/manager.py:389 · installer.py:55,102 · models.py:1292,1297 · src/components/SpeechEnginesTab.vue:248,250,253,262,264,270,274
+$ git grep -n "fetch_hf_variant\(|_verify_lfs_sha256" -- server
+engines/manager.py:1401 · installer.py:217 · speech_cache.py:116,136,149,165,230 · tests/test_speech_cache.py:62,84,90,104,120
+$ git grep -n "espeak\.install\(" -- server
+engines/manager.py:396,427
+$ git grep -n "def delete_model|/models/\{variant_id\}"" -- justvoice
+api/models_api.py:195,196
+$ git grep -n "candidate_voice_fields\(|_candidate_clip\(" -- server
+api/personas_api.py:433 · api/voice_preview_api.py:282,306,316,423
+$ git grep -n "write_voice_pack\(|_VOICE_PACKS_KEPT" -- server
+engines/audiocpp/slot.py:102,126,131,452 · tests/test_kokoro_blends.py:127,128,131
+$ git grep -n "_audio_path\(" -- server
+engines/audiocpp/slot.py:470,482 · tests/test_takes.py:417
+$ git grep -n "log_tail\(|_rotate_log\(" -- server
+engines/audiocpp/runtime.py:390,423,430,472,513,548
+$ git grep -n "_detect_runtimes\(|directml|coreml" -- server src
+api/engines_api.py:77 · engines/manager.py:952 · models.py:69 · system_info.py:35,75,78
+$ git grep -n "NOT_ENGINES|def chat\(|def clone\(" -- justvoice
+engines/base.py:104 · engines/manager.py:70,238
+$ git grep -n "gpu_threads|start_timeout|request_timeout" -- justvoice src
+api/speech_runtime_api.py:173,174,175,189,198,209,212 · engines/audiocpp/runtime.py:143,144,145,148,149,150,153,154,155,364,366,418,467,520,525,532 · engines/audiocpp/slot.py:40,519 · models.py:291,293,296
+$ git grep -n "SpeechRuntimeSettings\(" -- server
+engines/audiocpp/runtime.py:112 · models.py:271,329 · tests/test_cpu_placement.py:425,427
+$ git grep -n "_VOICES_TEXT|_LANGUAGES" -- justvoice/engines/kokoro
+engines/kokoro/manifest.py:50,51,54,62,63
+$ git grep -n "_CHATTERBOX_VARIANTS" -- server
+engines/capability_details.py:24,255
+$ git grep -n "runtime_options" -- justvoice src
+api/models_api.py:75,81,127,128,129,133,151,153,155,162 · engines/audiocpp/slot.py:152 · models.py:263,264,1284 · src/components/SpeechEnginesTab.vue:374,981,983
+$ git grep -n "_entries_for\(" -- server
+engines/audiocpp/slot.py:144,183,335,384,507 · tests/test_audiocpp_switch.py:185,189
+$ git grep -n "subtalker_|min_p|s3gen_cfg_rate|retry_badcase" -- justvoice
+delivery_merge.py:72 · engines/audiocpp/slot.py:696,697,698,704,771,828,829,830,831 · engines/capability_details.py:86,91,95,108,113,462,468 · models.py:1161
+```
+
+| What changed | Callers / producers | Effect |
+|---|---|---|
+| `to_speech_request`: random seed for none/0, floors, Auto, the new knobs | slot `_synth` only (`slot.py:399`); every family's tests above | a new take per request; nothing else in a request changes unless a new knob is moved |
+| `feature_refusal` / `features_needed`; `_as_installed` | slot `_synth`, `_align`; `engines_api` capabilities list → PersonaEditorView `canBlend` | a missing feature refuses by name; the Blend maker reads the installed build |
+| `model_for_stored`, `ensure_model_loaded` | generate_api 198, voice_preview_api 373/756, voices_api 51, render_core 793 | a Turbo voice keeps Turbo; an unknown model is refused by name instead of loading another |
+| `AudioCppError.status`, `_post`, `EngineRequestError` | every runtime call (`runtime.py` 467–542); manager synth 1863 → render_core 836/852, generate_api 365 | statuses kept end to end |
+| `shutdown_manager` order | app.py 357, conftest 50/58 | the runtime stops first; no lock across the unloads |
+| `cpu_speed` best-of-5 at these threads | models_api 43, manager 853 (placement), 1864/1897 (recording) | readings without the `threads` flag no longer count — a model re-measures once |
+| `install(…, force)`, `InstallRequest.repair`, kit checksums and `.downloads/` | engines_models_api 42/60 → installer 55/102 → manager 353–465; the runtime row | Reinstall; refused mismatches; resumable runtime downloads |
+| `_verify_lfs_sha256`, `_fetch_lock` | manager 1401, installer 217 (both through `fetch_hf_variant`) | each model file checked once after download |
+| `_candidate_clip`, `write_voice_pack`, `_audio_path`, `_rotate_log`, `log_tail` | voice_preview_api 306/316 (+ personas_api 433 via `candidate_voice_fields`); slot 452; slot 470/482; runtime 390/423 | files cleared; logs bounded |
+| `SpeechRuntimeSettings` + the PUT's merge | runtime `_settings`; speech_runtime_api; SpeechEnginesTab `setRuntime` | three new settings; an unsent field kept |
+| `_detect_runtimes` | system_info 35 → SettingsView 464 | "directml" no longer shown |
+| `runtime_options` | models_api list + PUT; slot `_entries_for` 144 (registration: 183, 335, 384, 507); SpeechEnginesTab | per-model session options, read at load |
+
+**Checked.** Tests: `tests/test_audit_step5.py` (31 — every batch), the kit's three checksum and
+resume tests (`tests/test_binary.py`), and the updated expectations in `test_audiocpp_switch`,
+`test_cpu_placement`, `test_engine_knob_wiring` (every new knob reaches the request),
+`test_kokoro_blends`, `test_turbo_cloning`, `test_variant_wiring`, `test_runtime_update`,
+`test_audiocpp_dev_build`. The first full run found 14 failures, all expectations the batches
+changed on purpose (the knob table, the refusal wording on a pin without the feature, 16-bit CPU
+speeds, the eSpeak fakes' `force`); fixed — the final run: 1083 passed, ruff clean. Renderer: vitest 132 passed, Biome clean, `build:vite`
+built, the smoke gate on the running app passed every view with zero JS errors. Live, on the
+restarted app (`npm run dev`, our checkout `8523b720`):
+
+- `/v1/system/info` runtimes: cpu, cuda, vulkan — no directml.
+- The runtime row's PUT of its four fields left `gpu_threads`, `start_timeout_s` and
+  `request_timeout_s` as they were.
+- Kokoro `af_heart`, the same line: no seed twice → two takes; seed 0 twice → two takes; seed
+  1234 twice → the same take.
+- Qwen3 CustomVoice 0.6B with Ryan, seed 77: Exact gave take `26cf8a69…` twice; Flash attention
+  (the save asked for a reload) gave `39eac73c…` twice; Exact again gave `26cf8a69…` — the option
+  reaches the model at registration, and changing it reloads. Left at Exact.
+- Speech engines: every Qwen3 row has its Options line — Attention and Decoder weights on the
+  8-bit rows (Base 1.7B's file is `…-q8_0_v2.gguf`, so the 8-bit test reads the row id), Decoder
+  weights alone on the 16-bit ones; the selects measured 180 px each (they were 280 px at the
+  first build, cut to the `id` width). Generate's Temperature slider showed its *steady*,
+  *default* and *varied* marks, at 0.8; no JS errors on either page.
+
+**Not checked:** Vulkan, CPU and Metal builds; the Reinstall button and a checksum mismatch
+against the real release (unit tests only); log rotation at 10 MB on a live process; the
+persona page's Blend gate on an install without blends (`npm run dev` has every feature).

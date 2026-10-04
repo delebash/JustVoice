@@ -48,6 +48,12 @@ LANDS_AT = {
     "talker_top_k": "options.top_k", "talker_top_p": "options.top_p",
     "top_k": "options.top_k",
     "cfg_value": "options.guidance_scale", "inference_timesteps": "options.num_inference_steps",
+    # Audit 2026-10-04 §7 / §13.5 (5h): options audio.cpp reads that the app now offers.
+    "min_p": "options.min_p", "s3gen_cfg_rate": "options.s3gen_cfg_rate",
+    "subtalker_temperature": "options.subtalker_temperature",
+    "subtalker_top_k": "options.subtalker_top_k", "subtalker_top_p": "options.subtalker_top_p",
+    "retry_badcase_max_times": "options.retry_badcase_max_times",
+    "retry_badcase_ratio_threshold": "options.retry_badcase_ratio_threshold",
 }
 TOP_LEVEL = {"speed", "seed"}   # canonical Delivery fields / the request's own seed
 

@@ -2244,12 +2244,24 @@ BUILT:  2026-10-04 — step 1 (eSpeak NG reaches Kokoro and KittenTTS; Linux fin
         the runtime build that measured it). Byte-identical audio but the clone trim; Qwen3's
         peaks down 0.7–2.3 GB: audit §13.4. Listening files for the user: scratchpad
         `listening/` (README inside).
-OPEN:   step 5 (built in order; each step's blast-radius table goes in audit §13 before
-        its code). `model_management` reaches a packaged app only with the next audio.cpp
-        release (its tag still needs the user's word); until then the pinned jv.1 keeps the
-        listed config, now per kind. The user's ear on the listening files: description
+        Step 5, batches 5a–5h, coded in full before any test as asked: requests (a random seed
+        for none/0, floors at 0.05, Auto for Qwen3, language names for recognition), gates
+        (installed-build feature checks, the Blend maker, Turbo voices, the runtime dialog),
+        the runtime's errors and locks, placement (best-of-5 CPU speeds, 16-bit CPU speeds,
+        unified memory), installs (checksums, resume, Reinstall, model-file checks, portable
+        CPU builds), leaks and leftovers (temp clips, uploads, blend packs, log rotation, three
+        timeouts/threads as settings, the dead probes and code), stale docs, and options
+        (Chatterbox min-p and decoder CFG, Qwen3's sub-talker, VoxCPM2's runaway settings,
+        Qwen3's per-model Attention and Decoder weights). 5h's rec changed from fork specs to
+        a verified catalog in the app (audit §13.5). Record, blast radius and live checks:
+        audit §13.5.
+OPEN:   `model_management`, Qwen3's memory fixes and every jv.2/jv.3 feature reach a packaged
+        app only with the next audio.cpp release (its tag still needs the user's word; E2's
+        placeholder retarget goes with it). The user's ear on the listening files: description
         voices' split size (VoiceDesign, VoxCPM2 descriptions), the clone trim, Qwen3's
-        16-bit decoder weights (measured: audit §13.4).
+        16-bit decoder weights (measured: audit §13.4). A question for the user: Voice engine
+        setup still puts Qwen3 in the 12 GB tier (from its 7.8 GB whole-line peak) though it
+        now fits 8 GB at 200-character pieces (audit §13.5, Not done).
 GO:     given 2026-10-04 ("go and your rec for the audit fixes")
 
 ### FINDING — at 1440 px the title bar cuts "Personas › June" to "P.."

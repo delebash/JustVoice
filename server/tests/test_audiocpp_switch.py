@@ -64,10 +64,12 @@ def test_the_aligner_rides_with_speech_recognition():
     assert comp["role"] == "aligner" and comp["file"] in row["sources"][0]["files"]
 
 
-def test_turbo_has_its_own_row_again_and_multilingual_has_no_min_p():
-    # Gap 1 (docs/plans/2026-10-03-gap-1-turbo-cloning.md): Turbo clones on our audio.cpp.
-    assert lookup("chatterbox-turbo-v1").engine_id == "chatterbox-turbo"
-    assert "min_p" not in {k.key for k in lookup("chatterbox-multilingual").knobs}
+def test_turbo_has_its_own_row_again_and_only_multilingual_has_min_p():
+    # Gap 1 (docs/plans/2026-10-03-gap-1-turbo-cloning.md): Turbo clones on our audio.cpp. Min-p
+    # is read by audio.cpp's Multilingual per request (audit 2026-10-04 §7) and ignored by Turbo.
+    assert lookup("chatterbox-turbo-q8").engine_id == "chatterbox-turbo"
+    assert "min_p" in {k.key for k in lookup("chatterbox-multilingual").knobs}
+    assert "min_p" not in {k.key for k in lookup("chatterbox-turbo").knobs}
 
 
 # ─── request mapping ─────────────────────────────────────────────────────────
@@ -250,7 +252,8 @@ def test_the_runtime_row_reads_and_saves_its_backend(tmp_path, monkeypatch):
     r = c.put("/v1/speech-runtime", json={"backend": "vulkan", "gpu": 0})
     assert r.status_code == 200 and r.json()["backend_setting"] == "vulkan"
     assert c.get("/v1/settings").json()["engines"]["speech_runtime"] == {
-        "backend": "vulkan", "gpu": 0, "cpu_threads": 0, "cpu_min_realtime": 2.0}
+        "backend": "vulkan", "gpu": 0, "cpu_threads": 0, "cpu_min_realtime": 2.0,
+        "gpu_threads": 4, "start_timeout_s": 60.0, "request_timeout_s": 900.0}
 
 
 def test_the_runtime_row_saves_the_cpu_process_threads_without_touching_the_build(tmp_path, monkeypatch):

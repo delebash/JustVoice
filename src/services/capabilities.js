@@ -79,13 +79,11 @@ export function rowOptions(rows, engines, field) {
  * when nothing matches so the server falls back to its own default. Never
  * derive it from the row id alone: a capability row id names a checkpoint
  * FAMILY ("chatterbox-turbo", "qwen3-base"), while a loadable variant id
- * carries a build suffix ("chatterbox-turbo-v1", "qwen3-base-0.6b").
+ * carries a build suffix ("chatterbox-turbo-q8", "qwen3-base-0.6b-q8").
  *
- * That distinction is not cosmetic. `chatterbox/engine.py` selects its model
- * class with `variant == "chatterbox-turbo-v1"`, so passing the family id
- * "chatterbox-turbo" silently loads the MULTILINGUAL class instead — the wrong
- * model, with no error. The first cut of this function returned `row.rowId`
- * whenever `isVariant` was true and would have done exactly that.
+ * That distinction is not cosmetic: no catalog row has a family id, so sending
+ * one loads nothing the user picked. The first cut of this function returned
+ * `row.rowId` whenever `isVariant` was true and did exactly that.
  *
  * Same resolution order the Size hint and the language list already use:
  * an explicit Size choice wins, else the family's first build.

@@ -19,8 +19,8 @@ measured on the same lines, seeds and settings before switching — see
 - **Speed.** Qwen3 renders about 7× faster (2.0× real time against 0.26×),
   Chatterbox about 2× (2.1× against 0.9×), and models load in seconds rather
   than half a minute.
-- **The same seed gives the same audio** on every engine. Before, only Qwen3
-  repeated itself.
+- **The same seed gives the same audio** on every engine but KittenTTS.
+  Before, only Qwen3 repeated itself.
 - **One install instead of five.** No Python environments, no PyTorch
   download, nothing to rebuild when you move the install folder.
 
@@ -63,10 +63,20 @@ The builds audio.cpp publishes, and what each costs to download:
 | macOS | Metal |
 | Any machine, no usable GPU | CPU |
 
-The Windows CUDA 12.4 build is a 461 MB download (about 2 GB once unpacked)
-and the Vulkan build 60 MB — the two measured here; the CUDA builds are larger
-because they carry NVIDIA's libraries. Vulkan also runs on NVIDIA cards, more
-slowly than CUDA.
+The Windows CUDA 12.4 build is a 461 MB download plus 607 MB of NVIDIA's CUDA
+runtime libraries (about 2 GB once unpacked), the CUDA 13.3 build 273 MB plus
+575 MB, and the Vulkan build 60 MB — the files of v0.9.0-jv.1. Vulkan also
+runs on NVIDIA cards, more slowly than CUDA. The CPU build is the portable one,
+which also runs on older processors (the other CPU build stops at start on a
+processor without the newest instructions).
+
+Every file of the runtime is checked against the checksum published with its
+release before anything is unpacked, and a download that stops resumes where
+it stopped on the next attempt. **Reinstall** on the runtime row downloads the
+runtime and eSpeak NG again over the installed ones — for a runtime that won't
+start, or a file an antivirus took. The speech models unload while it runs and
+load again on their next use; your downloaded models stay. (Under `npm run dev`
+the app runs the build it made itself, so the row has no Reinstall.)
 
 The runtime is pinned to one build of JustVoice's copy of audio.cpp — today
 **v0.9.0-jv.1**, audio.cpp v0.9.0 with two fixes: VoxCPM2 uses a clip's
@@ -86,7 +96,9 @@ they are separate, downloading or deleting a model never restarts the other
 slot's model, and if one process stops, the other slot's model stays loaded.
 Their logs are in your data folder: `logs/audiocpp-server.log` and
 `logs/audiocpp-server-cpu.log` (speech), `logs/audiocpp-server-stt.log` and
-`logs/audiocpp-server-cpu-stt.log` (speech recognition).
+`logs/audiocpp-server-cpu-stt.log` (speech recognition). A log over 10 MB is
+kept as `….1.log` the next time its process starts, so the logs don't grow
+without end.
 
 - **CPU threads** — how many threads the models on the CPU compute with, next
   to the Backend select. It starts at your machine's physical core count, which
@@ -103,7 +115,7 @@ is installed on the computer.
 
 ## The catalog
 
-Every model is an 8-bit file pinned to one commit of
+Every model's default row is an 8-bit file pinned to one commit of
 [audio-cpp/audio.cpp-gguf](https://huggingface.co/audio-cpp/audio.cpp-gguf) —
 except Qwen3-TTS CustomVoice 0.6B, which audio.cpp does not publish. That one is
 JustVoice's own conversion of Qwen's official checkpoint, made with the speech
@@ -260,7 +272,9 @@ three times faster than real time and takes nothing from the card.
 **Auto** decides at each load, in this order:
 
 1. **The graphics card** when nothing else is on it — or when this model's
-   graphics memory, measured on your machine, fits beside the AI model.
+   graphics memory, measured on your machine, fits beside the AI model (its
+   peak at the length it speaks in — see
+   [Long lines](#long-lines-and-what-a-model-costs)).
 2. **Otherwise the CPU**, if the model speaks at least **2× real time** there.
 3. **Otherwise the graphics card, with the AI model unloaded first.** A toast
    names what was unloaded; the AI model loads itself back the next time a
@@ -268,11 +282,17 @@ three times faster than real time and takes nothing from the card.
 
 A model that has never run on your card has no measured size yet, so while an
 AI model is on the card it counts as not fitting — nothing is ever guessed.
-"Fast enough" uses the speed measured on your machine; until a model's first
-line on your CPU records one, Auto uses the speed measured on the reference
-machine above. A model with no CPU speed at all — Qwen3-TTS, Chatterbox — is
+"Fast enough" uses the best of the last five speeds measured on your machine
+at the current CPU threads, so one slow line — a busy moment — doesn't keep a
+model off the CPU for good; until a model's first line on your CPU records one,
+Auto uses the speed measured on the reference machine above (the 16-bit Kokoro
+and Pocket TTS rows have their own). A model with no CPU speed at all — Qwen3-TTS, Chatterbox — is
 never sent to the CPU by Auto; on the CPU they run several times slower than
 real time.
+
+On a Mac, or any machine whose graphics share the computer's memory, Auto
+keeps every model on the graphics and says why: moving one to the CPU would
+free nothing.
 
 **GPU** and **CPU** pin the model there, whatever Auto would do. Changing a
 loaded model's place reloads it in its new place. A machine whose speech
@@ -303,16 +323,44 @@ Everything else is passed to the engine:
 | **Kokoro** | ✗ | ✓ | ✗ | none |
 | **KittenTTS** | ✗ | ✓ | ✗ | none (no seed — see below) |
 | **Pocket TTS** | ✓ | ✗ | ✗ | none |
-| **Chatterbox Multilingual** | ✓ | ✗ | ✗ | Exaggeration · CFG weight · Temperature · Repetition penalty · Top p |
-| **VoxCPM2** | ✓ | ✗ | **✓ direction, on a clone too; a description designs the voice** | CFG · Inference steps |
-| **Qwen3 CustomVoice** | ✗ | ✗ | **✓ instruction** | Temperature · Top k · Top p · Repetition penalty |
+| **Chatterbox Multilingual** | ✓ | ✗ | ✗ | Exaggeration · CFG weight · Temperature · Repetition penalty · Top p · Min p · Decoder CFG |
+| **VoxCPM2** | ✓ | ✗ | **✓ direction, on a clone too; a description designs the voice** | CFG · Inference steps · Tries on a runaway · Runaway limit |
+| **Qwen3 CustomVoice** | ✗ | ✗ | **✓ instruction** | Temperature · Top k · Top p · Repetition penalty · Detail temperature · Detail top k · Detail top p |
 | **Qwen3 Base** | ✓ | ✗ | ✗ | as above |
 | **Qwen3 VoiceDesign** | ✗ | ✗ | **✓ the description** | as above |
 
 Every engine but KittenTTS takes a **seed**: the same seed, text and settings
 give the same audio (measured on Kokoro, Qwen3 and Chatterbox on 2026-10-01 and
 on Pocket TTS on 2026-10-02). KittenTTS gave different audio for the same seed,
-so it offers none.
+so it offers none. Leave the seed empty — or 0 — and every take gets a new one,
+on every engine. Until 2026-10-04 an empty seed on Kokoro repeated the last
+seed it was sent, and VoxCPM2 and Chatterbox Turbo used a fixed one, so a new
+take there came out the same.
+
+Added 2026-10-04, all under the advanced knobs: Chatterbox's **Min p** (drops
+sounds less likely than that share of the likeliest; 0.05, 0 = off) and
+**Decoder CFG** (how closely the audio decoder holds to the cloned voice; 0.7);
+Qwen3's three **Detail** settings, for the sub-talker that fills in each frame's
+finer audio after the main model picks it (0.9, 50, 1.0); and VoxCPM2's
+**Tries on a runaway** and **Runaway limit** — a take that runs far longer than
+its text is cut and made again, up to 3 tries in all by default. Each starts at
+the runtime's own default, so leaving it alone changes nothing. Pocket TTS's
+temperature and end-of-speech settings are read only when its voice is
+prepared, not per line, so they aren't offered.
+
+**Options on a model's row.** A few settings are read when a model loads rather
+than per line, so they live on its row on Speech engines, under **Runs on**.
+Qwen3-TTS has two, measured on CustomVoice 1.7B:
+
+- **Attention** — *Exact* or *Flash attention*: about 9 % faster and 0.2 GB
+  less at the peak, and the same seed gives a different take. 8-bit models
+  only; the runtime refuses it on 16-bit weights.
+- **Decoder weights** — *32-bit* or *16-bit*: about 0.5 GB less at the peak, and
+  the audio changes very slightly.
+
+Changing one on a loaded model reloads it. They are saved per model in
+`settings.engines.engine_overrides[engine].runtime_options[model]` (see
+[Settings reference](settings-reference.md)).
 
 **Direction and identity pull against each other.** Written direction — the
 Delivery direction box, a persona's standing delivery, a line's own direction —
@@ -338,6 +386,10 @@ engines have no way to take it.
 
 **Language.** The line's language goes to the engine in the form it expects —
 Qwen3 wants the language's name, the others a code — so you never type either.
+A line with no language, or one Qwen3 doesn't speak, goes to it as *Auto*: it
+picks the language itself (until 2026-10-04 it was read as English). Speech
+recognition is given the language's name too, and detects the language itself
+for one it doesn't know.
 Pocket TTS takes no language: its loaded model is the language, and a line in
 another one is refused by name.
 
@@ -347,7 +399,12 @@ These worked before the 2026-10-01 switch and do not yet run on the speech
 runtime. Each returns when the runtime learns to do it; the order is in
 [the switch record](plans/2026-10-01-audiocpp-switch.md#5-after-the-cut--the-gaps-in-order).
 A request that needs one of them stops with a message naming it, rather than
-rendering something else in its place.
+rendering something else in its place. The first five are built into
+JustVoice's copy of the runtime and arrive with its next release — the build
+`npm run dev` makes has them now. Until then the message says *"… isn't in this
+version's speech runtime yet"*; once a JustVoice update pins that release, a
+runtime you haven't updated says *"… needs the speech runtime update"*, and
+**Update to** on the runtime row brings it.
 
 - **Chatterbox Turbo**, with its 19 inline tags (`[laugh]`, `[sigh]`,
   `[whispering]` …). The runtime has Turbo but cannot yet clone with it, and
@@ -520,8 +577,8 @@ file and process work, so they live on the row that owns them.
 
 ## Which engines run on your operating system
 
-All four run on Windows, Linux and macOS — the runtime is built for each. What
-differs is the backend:
+Every engine runs on Windows, Linux and macOS — the runtime is built for
+each. What differs is the backend:
 
 | | NVIDIA | AMD / Intel graphics | Apple Silicon | CPU only |
 |---|:--:|:--:|:--:|:--:|
@@ -531,7 +588,8 @@ differs is the backend:
 
 Windows with an AMD or Intel GPU is now accelerated for every engine — before
 the switch only Kokoro was. Linux NVIDIA users run the Vulkan build, because
-audio.cpp publishes no Linux CUDA build.
+audio.cpp publishes no Linux CUDA build. The Linux builds are for x86-64 only:
+there is none for Linux on ARM yet.
 
 ## Where model files live — the speech cache
 
@@ -543,6 +601,10 @@ upstream checksum id.
 
 - **Downloads resume.** A dropped connection resumes past the completed chunks
   on the next attempt.
+- **Checked on arrival.** Each model file is checked against the checksum its
+  repository publishes for it; a file that doesn't match is deleted and the
+  download stops saying so. Two downloads of the same model never run at once
+  (they used to, and the second deleted what the first had just finished).
 - **"Downloaded" means downloaded.** A model only counts as on disk when every
   file in its record is present at its recorded size. A half-fetched folder
   never shows a Load button.

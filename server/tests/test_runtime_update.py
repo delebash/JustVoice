@@ -104,7 +104,7 @@ def test_an_update_stops_the_old_processes_and_a_fresh_install_does_not(monkeypa
         return Path("x")
 
     monkeypatch.setattr(runtime, "install", fake_install)
-    monkeypatch.setattr(espeak, "install", lambda root: (Path("a"), Path("b")))
+    monkeypatch.setattr(espeak, "install", lambda root, force=False: (Path("a"), Path("b")))
     stopped: list = []
     monkeypatch.setattr(runtime, "shutdown_server", lambda placement=None: stopped.append("server"))
 

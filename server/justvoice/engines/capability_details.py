@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from ..models import EngineCapabilityDetail, InlineTagSet, KnobSpec
 from .audiocpp.release import pinned_has
+from .chatterbox.manifest import VARIANTS as _CHATTERBOX_VARIANTS
 
 
 # Shared knob definitions — reused across engines that accept the same
@@ -45,10 +46,12 @@ def _speed_knob(default: float = 1.0) -> KnobSpec:
 
 
 def _seed_knob() -> KnobSpec:
+    # 0 (or empty) is a new take each time: the request mapping sends a random seed for it —
+    # audio.cpp's own "no seed" repeated for Kokoro, Kitten, Turbo and VoxCPM2 (audit §5 D1).
     return KnobSpec(
         key="seed", label="Seed",
         min=0, max=2_000_000_000, step=1, default=0,
-        hint="Lock deterministic generation. 0 = random.",
+        hint="The same seed repeats the same take. 0 = a new take each time.",
         advanced=True,
     )
 
@@ -68,14 +71,49 @@ def _qwen_sampling_knobs() -> list[KnobSpec]:
             min=1, max=100, step=1, default=50, advanced=True,
         ),
         KnobSpec(
+            # Not 0: Qwen3 reads a top-p of 0 as "no filter" (audit §5 D9).
             key="talker_top_p", label="Top p",
-            min=0.0, max=1.0, step=0.01, default=1.0, advanced=True,
+            min=0.05, max=1.0, step=0.01, default=1.0, advanced=True,
         ),
         KnobSpec(
             key="repetition_penalty", label="Repetition penalty",
             min=1.0, max=4.0, step=0.05, default=1.05, advanced=True,
         ),
+        # The sub-talker fills in each frame's finer audio codes after the talker picks the
+        # first; audio.cpp samples it with its own three settings, defaults from the model's
+        # generation_config.json (../audio.cpp/include/engine/models/qwen3_tts/types.h).
+        KnobSpec(
+            key="subtalker_temperature", label="Detail temperature",
+            min=0.05, max=2.0, step=0.05, default=0.9, advanced=True,
+            hint="Sampling variance for the finer audio detail (the sub-talker).",
+        ),
+        KnobSpec(
+            key="subtalker_top_k", label="Detail top k",
+            min=1, max=100, step=1, default=50, advanced=True,
+        ),
+        KnobSpec(
+            key="subtalker_top_p", label="Detail top p",
+            min=0.05, max=1.0, step=0.01, default=1.0, advanced=True,
+        ),
         _seed_knob(),
+    ]
+
+
+def _chatterbox_extra_knobs() -> list[KnobSpec]:
+    """Two more settings audio.cpp's Chatterbox reads per request
+    (../audio.cpp/src/models/chatterbox/session.cpp, defaults in tts.h) — the app offered
+    neither and said it had no min-p (audit 2026-10-04 §7)."""
+    return [
+        KnobSpec(
+            key="min_p", label="Min p", min=0.0, max=0.5, step=0.01, default=0.05,
+            advanced=True,
+            hint="Drops sounds less likely than this share of the likeliest. 0 = off.",
+        ),
+        KnobSpec(
+            key="s3gen_cfg_rate", label="Decoder CFG", min=0.0, max=1.5, step=0.05,
+            default=0.7, advanced=True,
+            hint="How closely the audio decoder holds to the cloned voice.",
+        ),
     ]
 
 
@@ -148,9 +186,9 @@ CAPABILITY_DETAILS: dict[str, EngineCapabilityDetail] = {
     # ─── Chatterbox (audio.cpp `chatterbox`, since the 2026-10-01 switch) ─
     # The engine-level row is the fallback; the Multilingual row below is what
     # every shipped variant resolves to. audio.cpp's Chatterbox takes
-    # temperature, exaggeration, CFG (its `guidance_scale`), repetition penalty
-    # and top-p per request — no min-p, which the PyTorch engine had. Turbo
-    # and Nano have rows of their own below (gap 1).
+    # temperature, exaggeration, CFG (its `guidance_scale`), repetition penalty,
+    # top-p, min-p and the decoder's CFG rate per request. Turbo and Nano have rows
+    # of their own below (gap 1).
     "chatterbox": EngineCapabilityDetail(
         engine_id="chatterbox",
         display_name="Chatterbox",
@@ -169,14 +207,17 @@ CAPABILITY_DETAILS: dict[str, EngineCapabilityDetail] = {
                 hint="Text adherence. Lower = looser pacing; higher = strict.",
             ),
             KnobSpec(
+                # 1.2 is what audio.cpp and upstream (mtl_tts.py, master) use; the knob
+                # said 2.0 and sent nothing at its default (audit §5 D3).
                 key="repetition_penalty", label="Repetition penalty",
-                min=1.0, max=4.0, step=0.1, default=2.0,
+                min=1.0, max=4.0, step=0.1, default=1.2,
                 advanced=True,
             ),
             KnobSpec(
-                key="top_p", label="Top p", min=0.0, max=1.0, step=0.01,
+                key="top_p", label="Top p", min=0.05, max=1.0, step=0.01,
                 default=1.0, advanced=True,
             ),
+            *_chatterbox_extra_knobs(),
             _seed_knob(),
         ],
         pitch_post_process=True,
@@ -199,17 +240,20 @@ CAPABILITY_DETAILS: dict[str, EngineCapabilityDetail] = {
                 hint="Text adherence. Lower = looser pacing; higher = strict.",
             ),
             KnobSpec(
+                # 1.2: audio.cpp's and upstream's (audit §5 D3).
                 key="repetition_penalty", label="Repetition penalty",
-                min=1.0, max=4.0, step=0.1, default=2.0, advanced=True,
+                min=1.0, max=4.0, step=0.1, default=1.2, advanced=True,
             ),
             KnobSpec(
-                key="top_p", label="Top p", min=0.0, max=1.0, step=0.01,
+                key="top_p", label="Top p", min=0.05, max=1.0, step=0.01,
                 default=1.0, advanced=True,
             ),
+            *_chatterbox_extra_knobs(),
             _seed_knob(),
         ],
         pitch_post_process=True,
-        notes=["19 languages. For language transfer, set cfg_weight=0 (Resemble docs).",
+        notes=[f"{len(_CHATTERBOX_VARIANTS[0]['languages'])} languages. For language transfer, "
+               "set cfg_weight=0 (Resemble docs).",
                "The same seed gives the same audio."],
     ),
 
@@ -232,7 +276,7 @@ CAPABILITY_DETAILS: dict[str, EngineCapabilityDetail] = {
                 min=1.0, max=4.0, step=0.1, default=1.2, advanced=True,
             ),
             KnobSpec(
-                key="top_p", label="Top p", min=0.0, max=1.0, step=0.01,
+                key="top_p", label="Top p", min=0.05, max=1.0, step=0.01,
                 default=0.95, advanced=True,
             ),
             KnobSpec(
@@ -411,6 +455,20 @@ CAPABILITY_DETAILS["voxcpm2"] = EngineCapabilityDetail(
             key="inference_timesteps", label="Inference steps",
             min=4, max=30, step=1, default=10, advanced=True,
             hint="More steps = finer detail, slower.",
+        ),
+        # A take that runs far longer than its text — a "runaway" — is cut and made again
+        # (../audio.cpp/src/models/voxcpm2/generator.cpp; defaults in types.h, audit §7).
+        KnobSpec(
+            key="retry_badcase_max_times", label="Tries on a runaway",
+            min=1, max=10, step=1, default=3, advanced=True,
+            hint="A take that runs too long for its text is made again, up to this many "
+                 "tries in all.",
+        ),
+        KnobSpec(
+            key="retry_badcase_ratio_threshold", label="Runaway limit",
+            min=2.0, max=12.0, step=0.5, default=6.0, advanced=True,
+            hint="How long a take may run for its text before it is cut and tried again. "
+                 "Lower cuts sooner; too low cuts real speech.",
         ),
         _seed_knob(),
     ],

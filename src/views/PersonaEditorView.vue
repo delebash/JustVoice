@@ -276,8 +276,15 @@ const OFF_REASON = {
     tags: "Blends are Kokoro's — they take no tags.",
   },
 };
+// A blend can be heard only when the installed speech runtime can play one (the capability
+// rows say so per install, audit 2026-10-04 §5 E3) — it used to save and then never play.
+const canBlend = computed(() => Object.values(caps.value).some((r) => r?.supports_voice_blending));
 const kindOptions = computed(() => KINDS.map((k) => {
   const d = directionFilter.value;
+  if (k.value === "blend" && Object.keys(caps.value).length && !canBlend.value) {
+    return { ...k, disabled: true,
+      title: "Blends need a speech runtime that can play them — update it on AI Settings → Speech engines when an update is offered." };
+  }
   if (k.disabled || !d) return k;
   const has = voices.value.some((v) => kindOf(v) === k.value && v.directed_by === d);
   if (has || (CAN_MAKE[k.value] || []).includes(d)) return k;

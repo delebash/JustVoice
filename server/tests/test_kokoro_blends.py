@@ -142,8 +142,16 @@ class _Slot(slot.AudioCppSlot):
 
 
 def test_an_older_runtime_refuses_a_blend_by_name(monkeypatch):
+    from justvoice.engines.audiocpp import release
+
     monkeypatch.setattr(runtime, "has_feature", lambda name, backend=None: False)
+    # The pin has blends: an update brings them. It doesn't: this version can't (audit §5 E3).
+    monkeypatch.setattr(release, "pinned_has", lambda f: True)
     r = _Slot("kokoro_tts")._synth({"voice_vector": [0.0] * 256, "text": "Hi."})
     assert r.status_code == 409 and "speech runtime update" in r.json()["detail"]
+    monkeypatch.setattr(release, "pinned_has", lambda f: False)
+    r = _Slot("kokoro_tts")._synth({"voice_vector": [0.0] * 256, "text": "Hi."})
+    assert r.status_code == 409 and "Blended voices" in r.json()["detail"]
+    assert "isn't in this version" in r.json()["detail"]
     r = _Slot("qwen3_tts")._synth({"voice_vector": [0.0] * 256, "text": "Hi."})
     assert r.status_code == 422 and "blends are Kokoro's" in r.json()["detail"]

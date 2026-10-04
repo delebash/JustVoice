@@ -187,7 +187,10 @@ Kokoro's take none — so this is the choice to make first:
 A *Made by* choice that can't be directed the way you picked is off, and says
 why when you click it. Under **Tags**: *No built-in voice takes tags — Chatterbox
 Turbo and Nano voices are clones*, and *Blends are Kokoro's — they take no
-tags.* Under **Written direction**, Blend is off the same way. If the choice you
+tags.* Under **Written direction**, Blend is off the same way. Blend is also off
+while the installed speech runtime can't play a blend: *Blends need a speech runtime
+that can play them — update it on AI Settings → Speech engines when an update is
+offered.* (Before 2026-10-04 a blend saved and then never played.) If the choice you
 were on goes off, the page moves to the first one that can. A clone or a
 design's kept clip can be on a model of any kind, so those stay on.
 

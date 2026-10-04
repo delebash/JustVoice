@@ -52,7 +52,7 @@ def _clear_cancel(job_id: str) -> None:
         _CANCEL_EVENTS.pop(job_id, None)
 
 
-def spawn_managed_install(state: AppState, engine_id: str) -> str:
+def spawn_managed_install(state: AppState, engine_id: str, repair: bool = False) -> str:
     """Background install for an engine — the shared speech runtime.
 
     Runs `engines.manager.EngineManager.install()` on a worker thread; mirrors
@@ -99,7 +99,7 @@ def spawn_managed_install(state: AppState, engine_id: str) -> str:
             def cancel_check() -> bool:
                 return _is_cancelled(job_id)
 
-            mgr.install(engine_id, progress=progress, cancel_check=cancel_check,
+            mgr.install(engine_id, progress=progress, cancel_check=cancel_check, force=repair,
                         on_bytes=lambda done, tot: state.job_update(
                             job_id, phase="downloading",
                             bytes_downloaded=done, bytes_total=tot or 0))

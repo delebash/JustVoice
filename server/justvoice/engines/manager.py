@@ -65,9 +65,9 @@ def engines_runtime_root() -> Path:
     return default_data_dir() / "engines-runtime"
 
 
-# Folder names that aren't engines — skip during discovery.
-NOT_ENGINES = {"__pycache__", "__init__", "base", "catalog", "factory", "registry", "model_catalog",
-               "kokoro_voices", "_torch_helpers", "external_openai", "audiocpp"}
+# Folder names that aren't engines — skip during discovery. A folder without a manifest.py
+# is skipped anyway; the runtime's own folder is named so it never reads as one.
+NOT_ENGINES = {"audiocpp"}
 
 # The speech measured currency (the 2026-08-13/14 redesign, amended —
 # docs/plans/2026-08-13-speech-catalog-redesign.md §10). The probes can
@@ -282,6 +282,39 @@ class TermsRequired(RuntimeError):
                         extra={"engine": self.engine_id})
 
 
+class EngineRequestError(RuntimeError):
+    """A speech request the runtime refused or failed, with its status: 503 (out of memory, busy,
+    or the runtime stopped answering), 400 (a request it can't take), 409 (a build feature the
+    installed runtime lacks), 500 otherwise. The API answers with the same status instead of a
+    500 for everything (audit 2026-10-04 §5 D8)."""
+
+    def __init__(self, status: int, message: str):
+        super().__init__(message)
+        self.status = status
+
+    def api_error(self):
+        from ..errors import ApiError, bad_request, conflict, internal, service_unavailable
+
+        if self.status == 503:
+            return service_unavailable(str(self))
+        if self.status == 409:
+            return conflict(str(self))
+        if 400 <= self.status < 500:
+            return bad_request(str(self)) if self.status != 404 else ApiError(404, "not-found", "Not found", str(self))
+        return internal(str(self))
+
+
+def _engine_detail(r) -> str:
+    """The message inside a slot's error answer (`{"detail": …}`), else its text."""
+    try:
+        payload = r.json()
+    except Exception:  # noqa: BLE001
+        payload = None
+    if isinstance(payload, dict) and payload.get("detail"):
+        return str(payload["detail"])
+    return r.text
+
+
 def _wav_seconds(data: bytes) -> float | None:
     """A WAV's duration from its RIFF header — data bytes / byte rate, so any sample
     format reads. None when the bytes are not a WAV this can walk."""
@@ -322,6 +355,7 @@ def install_engine(
     progress: Callable[[str, str | None], None] | None = None,
     cancel_check: Callable[[], bool] | None = None,
     on_bytes: Callable[[int, int | None], None] | None = None,
+    force: bool = False,
 ) -> None:
     """Install an engine — which, since the 2026-10-01 switch, means installing the
     ONE speech runtime every engine shares (idempotent: a second engine finds it there).
@@ -334,13 +368,15 @@ def install_engine(
             f"{manifest.id} does not support {_current_os_label()} — "
             f"the manifest declares {', '.join(manifest.supported_oses)}."
         )
-    _install_audiocpp_runtime(progress, cancel_check, on_bytes)
+    _install_audiocpp_runtime(progress, cancel_check, on_bytes, force=force)
 
 
 def _install_audiocpp_runtime(
     progress: Callable[[str, str | None], None] | None = None,
     cancel_check: Callable[[], bool] | None = None,
     on_bytes: Callable[[int, int | None], None] | None = None,
+    *,
+    force: bool = False,
 ) -> None:
     """Install the ONE speech runtime every audio.cpp engine shares: the pinned server
     build for this machine (the kit's verified acquisition), then eSpeak NG for Kokoro.
@@ -349,11 +385,15 @@ def _install_audiocpp_runtime(
     from .audiocpp import dev_build, espeak, release, runtime
 
     emit = progress or (lambda phase, line: None)
+    if force:
+        # A repair replaces the build the processes are running — stop them first (Windows won't
+        # replace an exe in use); the next load starts the fresh one.
+        stop_speech_runtime()
     if dev_build.current() is not None:
         # `npm run dev` runs our checkout's own build — nothing to download but eSpeak NG.
         emit("installing", "eSpeak NG (Kokoro's pronunciation)")
         try:
-            espeak.install(engines_runtime_root())
+            espeak.install(engines_runtime_root(), force=force)
         except Exception as e:  # noqa: BLE001
             raise InstallError(f"eSpeak NG install failed: {e}") from e
         runtime.forget_installed()
@@ -375,25 +415,28 @@ def _install_audiocpp_runtime(
     was = runtime.installed_tag()
     replaced = runtime.installed_exe() if was is not None and was != release.TAG else None
     try:
-        runtime.install(on_progress=_prog, cancel_check=cancel_check)
+        runtime.install(on_progress=_prog, cancel_check=cancel_check, force=force)
     except Exception as e:  # noqa: BLE001 — every failure is the install's answer
         if "cancel" in str(e).lower() or type(e).__name__ == "DownloadCancelled":
             raise InstallError("cancelled by user") from e
         raise InstallError(f"speech runtime install failed: {e}") from e
-    emit("installing", "eSpeak NG (Kokoro's pronunciation)")
-    try:
-        espeak.install(engines_runtime_root())
-    except Exception as e:  # noqa: BLE001
-        raise InstallError(f"eSpeak NG install failed: {e}") from e
     runtime.forget_installed()
-    if was is not None and was != release.TAG:
-        # An update: the processes still run the older build. Free the speech slots (their
-        # bookings go with them) and stop both, so the next load starts the pinned build —
-        # the same as changing the backend (speech_runtime_api.set_speech_runtime).
-        stop_speech_runtime()
-        log.info("speech runtime updated %s → %s; both processes stopped", was, release.TAG)
-        if replaced is not None:
-            _remove_replaced_build(replaced.parent, was)
+    try:
+        emit("installing", "eSpeak NG (Kokoro's pronunciation)")
+        try:
+            espeak.install(engines_runtime_root(), force=force)
+        except Exception as e:  # noqa: BLE001
+            raise InstallError(f"eSpeak NG install failed: {e}") from e
+    finally:
+        if was is not None and was != release.TAG:
+            # An update: the processes still run the older build. Free the speech slots (their
+            # bookings go with them) and stop them all, so the next load starts the pinned
+            # build — the same as changing the backend. In `finally`: the new build is in place
+            # even when eSpeak NG then fails, and the old one must not run on (audit §5 E6).
+            stop_speech_runtime()
+            log.info("speech runtime updated %s → %s; its processes stopped", was, release.TAG)
+            if replaced is not None:
+                _remove_replaced_build(replaced.parent, was)
     emit("done", "speech runtime ready")
 
 
@@ -652,17 +695,32 @@ class EngineManager:
 
     def cpu_speed(self, kind: str, engine_id: str, variant: str | None) -> tuple[float | None, bool]:
         """(seconds of audio per second of work on the CPU, measured on THIS machine?).
-        The newest speed this machine recorded for the model, else the manifest's reference
-        figure (§6), else (None, False) — never offered to the CPU by Auto."""
+        The best of the newest 5 speeds this machine recorded for the model at the CPU-threads
+        setting in force now, else the manifest's reference figure (§6), else (None, False) —
+        never offered to the CPU by Auto.
+
+        Until 2026-10-04 the newest reading alone decided, and a model only records a speed
+        while it runs on the CPU: one slow line (the CPU busy with something else) kept it off
+        the CPU for good, and a changed thread count never cleared it (audit §5 B7)."""
         try:
             from llm_runner.llm.stores import get_model_measurement_store
             from llm_runner.runner.hardware import current_machine_key
 
+            from .audiocpp.runtime import cpu_threads
+
             mk = current_machine_key()
+            threads = str(cpu_threads())
+            seen = []
             for row in get_model_measurement_store().list(f"{kind}:{engine_id}:{variant or ''}"):
+                flags = {f.flagName: f.flagValue for f in (row.switches or [])}
                 if (row.machineKey == mk and row.source == "speed" and (row.backend or "") == "cpu"
-                        and float(getattr(row, "realtimeX", 0) or 0) > 0):
-                    return float(row.realtimeX), True
+                        and float(getattr(row, "realtimeX", 0) or 0) > 0
+                        and flags.get("threads") == threads):
+                    seen.append(float(row.realtimeX))
+                    if len(seen) == 5:
+                        break
+            if seen:
+                return max(seen), True
         except Exception:  # noqa: BLE001 — bare tests / store not wired
             pass
         ref = (self._variant_row(self.get_manifest(engine_id), variant) or {}).get("cpu_realtime")
@@ -733,6 +791,16 @@ class EngineManager:
         except Exception:  # noqa: BLE001 — bare tests / store not wired
             return 0
 
+    def _card_is_its_own_memory(self) -> bool:
+        """A discrete graphics card (its own memory) — or unknown, which reads as one."""
+        hw = self._hardware()
+        try:
+            from llm_runner.runner.hardware import mem_arch
+
+            return hw is None or mem_arch(hw) == "discrete"
+        except Exception:  # noqa: BLE001 — no kit
+            return True
+
     def _ai_model_on_card(self) -> bool:
         """Is an AI model holding the graphics card now? A sleeping one holds nothing (the
         runner idle-unloaded it); the tiny pinned embedder is not the AI model."""
@@ -788,6 +856,11 @@ class EngineManager:
             return "gpu", "your choice", False
         if choice == "cpu":
             return "cpu", "your choice" + (f" — {speed}" if speed else ""), False
+        if not self._card_is_its_own_memory():
+            # A Mac or integrated graphics: the GPU uses the same memory as the CPU, so running on
+            # the CPU would free none of it. The reason said "nothing else is on the graphics
+            # card" even with the AI model loaded (audit §5 B9).
+            return "gpu", "the graphics share this machine's memory, so the CPU would free none of it", False
         if not self._ai_model_on_card():
             return "gpu", "nothing else is on the graphics card", False
         prior = self._price_mb(kind, m.id, variant, backend_of(exe) if exe is not None else None)
@@ -852,13 +925,18 @@ class EngineManager:
         with self._lock:
             variant = self._current_variants.get(engine_id) or ""
         try:
+            from llm_runner.llm.model_measurements_api import MeasurementFlag
             from llm_runner.llm.stores import get_model_measurement_store
             from llm_runner.runner.hardware import current_machine_key
 
+            from .audiocpp.runtime import cpu_threads
+
+            threads = str(cpu_threads())
             get_model_measurement_store().record(
                 f"{kind}:{engine_id}:{variant}", machine_key=current_machine_key(),
-                source="speed", label="CPU real-time factor", tokens_per_sec=0.0,
-                vram_total_mb=0, at=int(time.time() * 1000), rows=[],
+                source="speed", label=f"CPU real-time factor ({threads} threads)", tokens_per_sec=0.0,
+                vram_total_mb=0, at=int(time.time() * 1000),
+                rows=[MeasurementFlag(flagName="threads", flagValue=threads)],
                 kind="stt" if kind == "stt" else "tts",
                 realtime_x=round(audio_s / wall_s, 2), backend="cpu",
             )
@@ -871,8 +949,8 @@ class EngineManager:
         managed load books its measured footprint into the pool ledger; on
         discrete boxes only a device-resolved load holds VRAM (cpu is free —
         its RAM is display-only, §8.18). "cuda" in Q2's ruling means "a GPU
-        device": kokoro's directml/coreml arms hold device memory the same
-        way, so any non-cpu resolve books on discrete too."""
+        device": a Vulkan or Metal build holds device memory the same way,
+        so any non-cpu resolve books on discrete too."""
         hw = self._hardware()
         if hw is None:
             return False
@@ -902,25 +980,14 @@ class EngineManager:
             except Exception:  # noqa: BLE001
                 return 1024
 
-    # ── The measured currency (the 2026-08-13/14 redesign, amended) ───────
-    # The declared `vram_min_mb` died first (scaffold-invented fiction: 350M
-    # turbo booked 4096); the ESTIMATE ladder that replaced it died the next
-    # day (plan doc §10): run against real engines it priced turbo at
-    # 4,455 MB — WORSE than the deleted number — because repos ship
-    # alternative checkpoints that never co-load; a file's size is a fact,
-    # a file's size predicting VRAM is a model with unpriced error terms.
-    # The chain now: a PRIOR MEASURED footprint of this engine on this box
-    # admits AND books early (covering the seconds between admission and the
-    # post-load true-up); a FIRST-EVER load gets NO arithmetic — no invented
-    # number, no eviction on its behalf: attempt, measure, book, persist
-    # ("not measured yet" until the probe lands). Measurement is per-PID
-    # over the engine's process TREE — tree, because Windows venv pythons
-    # are launcher SHIMS whose child holds the memory (proven live: 4 MB at
-    # the Popen pid, 1131 MB at its child); per-PID rather than a device
-    # delta, because JV loads don't serialize under the runner's router
-    # lock — a concurrent runner load would cross-charge a delta. The delta
-    # survives only as the last-resort fallback on boxes with no
-    # per-process arm (AMD Linux), labeled "computed", never persisted.
+    # ── The measured currency ──────────────────────────────────────────────
+    # No number here is declared or estimated: a model's price is what it was MEASURED to take
+    # on this machine (`_price_mb` — its calibrated first load, at the piece length it is given,
+    # on the runtime build running now; audit 2026-10-04 §13.3). A model never measured there
+    # loads without an eviction on its behalf and is measured. A reading is per process (the
+    # slot's runtime process), not a device delta, because a concurrent LLM load would
+    # cross-charge a delta; the delta survives only as the fallback on boxes with no per-process
+    # reading (AMD Linux), labeled "computed" and never stored.
 
     def pool_used_mb(self, *, fresh: bool = False) -> int | None:
         """Measured used memory of the budget pool — THE kit's cached door.
@@ -940,10 +1007,9 @@ class EngineManager:
             return None
 
     def _engine_proc_mb(self, proc: AudioCppSlot, *, fresh: bool = True) -> int | None:
-        """Measured memory held by the slot's process — its process TREE
-        (pid + descendants, summed: Windows venv pythons are launcher shims
-        whose CHILD holds the memory; the single-pid probe read 4 MB where
-        the child held 1131): dedicated device memory on discrete boxes
+        """Measured memory held by the slot's process — its process tree (pid + descendants,
+        summed; the Python engines ran behind launcher shims, the audio.cpp process holds its
+        own): dedicated device memory on discrete boxes
         (per-PID — exact attribution even while the runner loads
         concurrently; on Windows-WDDM the GPU Process Memory counter arm,
         where nvidia-smi answers N/A), resident set on one-pool boxes (UMA:
@@ -1404,11 +1470,12 @@ class EngineManager:
         progress: Callable[[str, str | None], None] | None = None,
         cancel_check: Callable[[], bool] | None = None,
         on_bytes: Callable[[int, int | None], None] | None = None,
+        force: bool = False,
     ) -> None:
         m = self.get_manifest(engine_id)
         if m is None:
             raise InstallError(f"unknown engine: {engine_id}")
-        install_engine(m, progress=progress, cancel_check=cancel_check, on_bytes=on_bytes)
+        install_engine(m, progress=progress, cancel_check=cancel_check, on_bytes=on_bytes, force=force)
 
     def uninstall(self, engine_id: str) -> dict:
         """Delete every downloaded model of this engine (its speech-cache folder),
@@ -1418,12 +1485,16 @@ class EngineManager:
         if m is None:
             raise InstallError(f"unknown engine: {engine_id}")
         freed = []
-        with self._lock:
-            for kind, proc in list(self._loaded.items()):
-                if proc.manifest.id == engine_id:
+        for kind in ("tts", "stt"):
+            # The activity lock first: never unload a model under a line it is speaking (audit
+            # §5 C7 — uninstall took only the manager's lock).
+            with self._activity(kind), self._lock:
+                proc = self._loaded.get(kind)
+                if proc is not None and proc.manifest.id == engine_id:
                     proc.terminate()
                     self._loaded.pop(kind, None)
                     freed.append(kind)
+        with self._lock:
             self._current_variants.pop(engine_id, None)
             self._resolved_devices.pop(engine_id, None)
         # The booking goes with the memory, as on every other unload path.
@@ -1789,7 +1860,7 @@ class EngineManager:
             if (payload or {}).get("code") == "terms_required":
                 raise TermsRequired(engine_id, payload.get("detail") or "accept the engine's terms first")
         if r.status_code != 200:
-            raise RuntimeError(f"engine synth failed: {r.text}")
+            raise EngineRequestError(r.status_code, f"engine synth failed: {_engine_detail(r)}")
         self._record_cpu_speed(kind, proc, _wav_seconds(r.content or b""), wall)
         # Mirror the engine's audio headers back through to the host caller.
         sample_rate = r.headers.get("X-JustVoice-Sample-Rate")
@@ -1802,31 +1873,6 @@ class EngineManager:
             "is_wav_container": is_wav,
         }
 
-    def clone(self, engine_id: str, body: dict) -> dict:
-        m = self.get_manifest(engine_id)
-        with self._activity(m.kind if m else "tts"):
-            proc = self._require_current(engine_id)
-            r = proc.post("/clone", json=body)
-        self.bump_engine_reservation_async(m.kind if m else "tts")
-        if r.status_code != 200:
-            raise RuntimeError(f"engine clone failed: {r.text}")
-        return r.json()
-
-    def chat(self, body: dict, *, timeout: float = 300.0) -> str:
-        """Chat completion via the loaded llm-slot engine (G1 wiring).
-        body matches the shim's ChatBody: prompt/system/max_tokens/
-        temperature/examples."""
-        proc = self.loaded_for("llm")
-        if proc is None:
-            raise RuntimeError(
-                "no local LLM engine loaded — install + load 'qwen3-llm' on "
-                "the Engines tab, or configure an external provider"
-            )
-        r = proc.post("/chat", json=body, timeout=timeout)
-        if r.status_code != 200:
-            raise RuntimeError(f"engine chat failed: {r.text}")
-        return r.json().get("text", "")
-
     def transcribe(self, body: dict, *, timeout: float = 600.0) -> str:
         """Transcription via the loaded stt-slot engine (G2 wiring).
         body matches the shim's TranscribeBody: wav_b64/audio_path/language.
@@ -1838,8 +1884,8 @@ class EngineManager:
             proc = self.loaded_for("stt")
             if proc is None:
                 raise RuntimeError(
-                    "no STT engine loaded — install + load 'whisper' on the "
-                    "Engines tab first"
+                    "no speech recognition model is loaded — download and load one on "
+                    "the AI page's Speech engines tab"
                 )
             t0 = time.perf_counter()
             r = proc.post("/transcribe", json=body, timeout=timeout)
@@ -1860,8 +1906,8 @@ class EngineManager:
             proc = self.loaded_for("stt")
             if proc is None:
                 raise RuntimeError(
-                    "no STT engine loaded — install + load 'whisper' on the "
-                    "Engines tab first"
+                    "no speech recognition model is loaded — download and load one on "
+                    "the AI page's Speech engines tab"
                 )
             r = proc.post("/align", json=body, timeout=timeout)
         self.bump_engine_reservation_async("stt")
@@ -1932,14 +1978,19 @@ def get_manager() -> EngineManager:
 
 
 def shutdown_manager() -> None:
-    """Called on JustVoice server shutdown — unload every slot and stop the runtime."""
+    """Called on JustVoice server shutdown — stop the runtime, then let the slots go.
+
+    The runtime's processes stop FIRST: that frees every model at once and ends any line in
+    flight. Until 2026-10-04 each slot was unloaded first — waiting for a line in flight (up to
+    15 minutes) and an HTTP unload each — which made a clean exit slower than the desktop shell
+    waits (15 s); off Windows the runtime then outlived the app (audit §5 C6). And the unload
+    ran holding `_manager_lock` while a load could hold the manager's lock and wait for
+    `_manager_lock` (the runtime's model list asks `get_manager`) — a deadlock (§5 C4)."""
     global _manager
-    with _manager_lock:
-        if _manager is None:
-            return
-        _manager.unload()
-        _manager = None
-    # The one audio.cpp server goes with us, whatever was loaded in it.
     from .audiocpp.runtime import shutdown_server
 
     shutdown_server()
+    with _manager_lock:
+        mgr, _manager = _manager, None
+    if mgr is not None:
+        mgr.unload()        # the processes are gone: this releases bookings and forgets slots

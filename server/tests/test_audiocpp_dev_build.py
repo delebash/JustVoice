@@ -134,7 +134,7 @@ def test_install_fetches_only_espeak(dev, monkeypatch):
 
     calls: list = []
     monkeypatch.setattr(runtime, "install", lambda **kw: calls.append("binary"))
-    monkeypatch.setattr(espeak, "install", lambda root: calls.append("espeak"))
+    monkeypatch.setattr(espeak, "install", lambda root, force=False: calls.append("espeak"))
     monkeypatch.setattr(mgr_mod, "_remove_replaced_build", lambda *a: calls.append("remove"))
     mgr_mod._install_audiocpp_runtime()
     assert calls == ["espeak"]

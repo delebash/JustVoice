@@ -82,7 +82,8 @@ const pitch = ref(0);
 const gain = ref(0);
 const pauseBefore = ref(0);
 const pauseAfter = ref(0);
-const temperature = ref(0.7);
+// Follows the loaded model's own temperature knob (default, range) — see the watch below.
+const temperature = ref(0.8);
 const seed = ref("random");
 const instruct = ref("");
 const autoplay = ref(true);
@@ -106,7 +107,7 @@ const capabilityMap = ref({});  // { engine_id: EngineCapabilityDetail }
 // The LOADED VARIANT's row wins over the engine's (the §4 cloning ruling's
 // second half, phase ③): with Turbo loaded, "chatterbox" alone would serve
 // Multilingual's knob set — wrong tags, wrong sliders. Manifest variant ids
-// carry a version tail ("chatterbox-turbo-v1") the capability map doesn't,
+// carry a build tail ("chatterbox-turbo-q8") the capability map doesn't,
 // so each candidate walks its "-" suffixes off until a row matches.
 function lookupCapability(engineId, variantId) {
   for (const id of [variantId, engineId]) {
@@ -181,6 +182,15 @@ const pitchMax               = computed(() => pitchNative.value?.[1] ?? 12);
 const hasCapabilityRow       = computed(() => !!engineCaps.value.engine_id);
 const speedNative            = computed(() => engineCaps.value.speed_native);
 const supportsTemperature    = computed(() => hasKnob("temperature") || hasKnob("talker_temperature"));
+// The model's own temperature knob: its default is what the model uses when nothing is sent
+// (Qwen3 0.9, Chatterbox and Turbo 0.8), so the slider starts there and sends a value only when
+// moved off it. It showed 0.7 and sent nothing there, so the screen and the audio disagreed, and
+// it reached 0, which Qwen3 refuses and Chatterbox divides by (audit 2026-10-04 §5 D4).
+const temperatureKnob        = computed(() =>
+  engineCaps.value.knobs?.find((k) => k.key === "temperature" || k.key === "talker_temperature") || null,
+);
+const temperatureDefault     = computed(() => temperatureKnob.value?.default ?? 0.8);
+watch(temperatureDefault, (v) => { temperature.value = v; }, { immediate: true });
 const supportsSeed           = computed(() => hasKnob("seed"));
 
 // ── Emotion ──────────────────────────────────────────────────────────
@@ -463,7 +473,7 @@ function buildDelivery() {
   if (Math.abs(gain.value) > 0.001) d.gain_db = gain.value;
   if (pauseBefore.value > 0) d.pause_before = pauseBefore.value;
   if (pauseAfter.value > 0) d.pause_after = pauseAfter.value;
-  if (Math.abs(temperature.value - 0.7) > 0.001) d.temperature = temperature.value;
+  if (Math.abs(temperature.value - temperatureDefault.value) > 0.001) d.temperature = temperature.value;
   if (seed.value && seed.value !== "random") d.seed = Number(seed.value) || seed.value;
   if (instruct.value.trim()) d.instruct = instruct.value.trim();
   // Sent whenever it is set and the engine can express it. The server
@@ -935,8 +945,11 @@ onActivated(() => {
           <UiField layout="block">
             <template #label>Temperature</template>
             <div class="generate-view__paired">
-              <UiSlider v-model="temperature" :min="0" :max="1" :step="0.05" width="regular"
-                :marks="[{ value: 0, label: 'steady' }, { value: 1, label: 'varied' }]"
+              <UiSlider v-model="temperature" :min="temperatureKnob?.min ?? 0.05"
+                :max="temperatureKnob?.max ?? 2" :step="0.05" width="regular"
+                :marks="[{ value: temperatureKnob?.min ?? 0.05, label: 'steady' },
+                         { value: temperatureDefault, label: 'default' },
+                         { value: temperatureKnob?.max ?? 2, label: 'varied' }]"
                 aria-label="Temperature" />
             </div>
           </UiField>

@@ -247,7 +247,10 @@ def model_for_stored(state: Any, stored: Any) -> str:
         return "qwen3-base" if _has_clip(state, stored) else "qwen3-vd"
     families = models_of_engine(engine_id)
     model = getattr(stored, "model", None)
-    if model and (not families or model in families):
+    # A model this build's catalog doesn't offer (Turbo before its release) is kept, so the
+    # load refuses it by name — never quietly spoken by another model (audit §5 E4). Only a
+    # name no capability row knows (a family that no longer exists) falls through.
+    if model and (not families or model in families or _capability(model) is not None):
         return model
     need = "design" if stored.source == "designed" and not _has_clip(state, stored) else "clone"
     return _default_model(engine_id, need=need) or engine_id
@@ -434,6 +437,10 @@ def ensure_model_loaded(engine_id: str, model: str, language: str | None = None)
     kind = _kind(engine_id)
     rows = _family_rows(engine_id, model)
     if not rows:
+        if model != engine_id and models_of_engine(engine_id):
+            # The engine has a catalog and this model isn't in it (audit §5 E4).
+            raise ModelUnavailable(f"{model_name(model)} — this isn't in this version's speech "
+                                   "runtime yet, so its voices can't be spoken")
         if mgr.current_for(kind) != engine_id:
             mgr.load(engine_id, device="auto")
         return

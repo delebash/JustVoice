@@ -67,7 +67,7 @@ const TIER_RECIPES = {
   },
   vram8: {
     label: "8 GB tier",
-    blurb: "Kokoro and Pocket TTS on the CPU, plus Chatterbox Multilingual on the graphics card for cloning in 19 languages.",
+    blurb: "Kokoro and Pocket TTS on the CPU, plus Chatterbox Multilingual on the graphics card for cloning beyond English.",
     ttsEngineIds: ["kokoro", "pocket", "chatterbox"],
     runsOn: { kokoro: "cpuBesideAi", pocket: "cpuBesideAi", chatterbox: "gpu" },
     estimatedDownloadGb: 2.5,

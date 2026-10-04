@@ -21,10 +21,6 @@ ID = "kokoro"
 NAME = "Kokoro"
 
 SUPPORTED_OSES = ["windows", "linux", "macos"]
-DESCRIPTION = (
-    "Kokoro-82M — 49 preset voices in eight languages, fast on any machine. Runs in the "
-    "audio.cpp speech runtime from one 190 MB model file."
-)
 LICENSE = "Apache-2.0"
 
 CAPABILITIES = {
@@ -49,13 +45,22 @@ from .voices import preset_voices_as_dicts as _preset_voices_as_dicts  # noqa: E
 # Japanese dictionary on the runtime row (gap 7). Offered once the pinned runtime reads Japanese;
 # a line in one of them is refused by name until the dictionary is installed.
 STATIC_VOICES = [v for v in _preset_voices_as_dicts() if pinned_has("japanese") or v.get("language") != "ja"]
+# Counted from the voices offered, so the text follows the pin (it said "49 … eight languages"
+# by hand, which the Japanese voices make wrong — audit §5 F).
+_LANGUAGES = list(dict.fromkeys(v["language"] for v in STATIC_VOICES))
+_VOICES_TEXT = f"{len(STATIC_VOICES)} preset voices in {len(_LANGUAGES)} languages"
+
+DESCRIPTION = (
+    f"Kokoro-82M — {_VOICES_TEXT}, fast on any machine. Runs in the audio.cpp speech runtime "
+    "from one 190 MB model file."
+)
 
 VARIANTS = [
     {
         "id": "kokoro-82m-q8",
         "name": "Kokoro 82M",
-        "description": "49 preset voices in eight languages. 8-bit weights.",
-        "languages": ["en-US", "en-GB", "zh", "es", "fr", "hi", "it", "pt-BR"],
+        "description": f"{_VOICES_TEXT}. 8-bit weights.",
+        "languages": _LANGUAGES,
         "voice_cloning": False,
         "preset_voices": len(STATIC_VOICES),
         "quality": 95,
@@ -74,5 +79,9 @@ VARIANTS = [
 ]
 # The 16-bit file at the same pinned commit (gap 9); the 8-bit row stays the default.
 VARIANTS.append(sixteen_bit(VARIANTS[0], "Kokoro-82M-GGUF/kokoro-82m-bf16.gguf", 211_954_816))
+# Its own CPU speed on the reference machine (Ryzen 7 5700X, 8 threads, af_heart, five short
+# lines, 2026-10-04 — the 8-bit row measured 2.60x the same way; a stricter method than its 3.15).
+# Without one, Auto never offered the 16-bit row the CPU (audit §5 B6).
+VARIANTS[-1]["cpu_realtime"] = 2.61
 
 DEFAULT_VARIANT_ID = "kokoro-82m-q8"

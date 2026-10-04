@@ -245,21 +245,33 @@ async function refreshRuntime() {
 }
 // Install, or — over an older pinned build — update: the same job (the server installs the
 // pinned build and, after an update, stops the old processes so the next load starts it).
-async function installRuntime() {
+// `repair` downloads it again over the installed one — Reinstall, for a build that won't start
+// or a file an antivirus took (audit 2026-10-04 §5 E6).
+async function installRuntime(repair = false) {
   const first = engines.value[0];
   if (!first) return;
-  const updateTo = runtime.value?.installed ? runtime.value.update_to : null;
+  if (repair) {
+    const ok = await confirmDialog({
+      title: "Reinstall the speech runtime?",
+      message: "It downloads the speech runtime and eSpeak NG again and replaces the installed ones. "
+        + "The speech models unload while it does; they load again on their next use.",
+      confirmLabel: "Reinstall",
+    });
+    if (!ok) return;
+  }
+  const updateTo = runtime.value?.installed && !repair ? runtime.value.update_to : null;
   clearTerminalTask(RUNTIME_KEY);
-  const task = makeEngineDownloadTask(api, first.id, {});
+  const task = makeEngineDownloadTask(api, first.id, repair ? { repair: true } : {});
   dlTasks[RUNTIME_KEY] = task;
   try {
     await task.start();
     if (task.state !== "done") return;  // error/cancelled — the bar says which
     pushToast({
-      message: updateTo ? `Speech runtime updated to ${updateTo}.` : "Speech runtime installed.",
+      message: repair ? "Speech runtime reinstalled."
+        : updateTo ? `Speech runtime updated to ${updateTo}.` : "Speech runtime installed.",
       kind: "success", duration: 4000,
     });
-    if (updateTo) window.dispatchEvent(new Event("jv:health-refresh"));  // the slots were freed
+    if (updateTo || repair) window.dispatchEvent(new Event("jv:health-refresh"));  // the slots were freed
     for (const e of engines.value) delete variants[e.id];
     await Promise.all([refresh(), refreshRuntime()]);
     delete dlTasks[RUNTIME_KEY]; delete taskKind[RUNTIME_KEY];
@@ -293,7 +305,7 @@ async function setRuntime(patch) {
     runtime.value = await api.request("/v1/speech-runtime", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      // Every field, every time: a PUT replaces the setting.
+      // Every field this row shows, every time; the server keeps a field left out.
       body: JSON.stringify({
         backend: cur.backend_setting || "auto", gpu: cur.gpu || 0,
         cpu_threads: cur.cpu_threads || 0, cpu_min_realtime: cur.cpu_min_realtime || 2,
@@ -352,6 +364,27 @@ async function setPlacement(e, v, placement) {
     if (r?.moves) await runLoad(e, v.id);
   } catch (err) {
     pushToast({ message: `Couldn't change where ${v.name} runs: ${err?.message || err}`, kind: "error" });
+  }
+}
+
+// The speech runtime's per-model options (audit 2026-10-04 §13.5): saved per model. The
+// runtime reads them at load, so the server unloads a loaded model whose options changed
+// and it is loaded again here, on the row's own bar.
+async function setRuntimeOption(e, v, key, value) {
+  const cur = Object.fromEntries((v.runtime_options || []).map((o) => [o.key, o.value]));
+  if (cur[key] === value) return;
+  try {
+    const r = await api.request(
+      `/v1/engines/${encodeURIComponent(e.id)}/models/${encodeURIComponent(v.id)}/runtime-options`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ options: { ...cur, [key]: value } }),
+      });
+    delete variants[e.id];
+    await refresh();
+    if (r?.reload) await runLoad(e, v.id);
+  } catch (err) {
+    pushToast({ message: `Couldn't change ${v.name}'s options: ${err?.message || err}`, kind: "error" });
   }
 }
 
@@ -764,11 +797,14 @@ onBeforeUnmount(() => {
             <UiButton v-if="!runtime.installed" intent="primary" size="small"
               label="Install speech runtime" :disabled="!runtime.backend"
               title="One-time: downloads the speech runtime for this machine. Models download separately."
-              @click.stop="installRuntime" />
+              @click.stop="installRuntime()" />
             <UiButton v-else-if="runtime.update_to" intent="primary" size="small"
               :label="`Update to ${runtime.update_to}`"
               title="Downloads the newer speech runtime. The one installed keeps working until the download finishes; the speech models then load again on their next use."
-              @click.stop="installRuntime" />
+              @click.stop="installRuntime()" />
+            <UiButton v-else-if="!runtime.dev_source" intent="ghost" size="small" label="Reinstall"
+              title="Downloads the speech runtime again and replaces the installed one — for a runtime that won't start. Your models stay."
+              @click.stop="installRuntime(true)" />
           </template>
           <span v-else class="meta">working…</span>
         </span>
@@ -939,6 +975,19 @@ onBeforeUnmount(() => {
               title="Auto picks from what was measured on this machine: the graphics card when nothing else is on it or the model fits beside the AI model, else the CPU when the model is fast enough there."
               @update:modelValue="(p) => setPlacement(e, v, p)" />
             <span class="ev-mplace__why">{{ placeText(e, v) }}</span>
+          </div>
+          <!-- The speech runtime's options for this model (audit 2026-10-04 §13.5): only
+               those whose effect was measured; read when the model loads. -->
+          <div v-if="v.runtime_options?.length" class="ev-mplace" :class="{ dim: osBlocked(e) }"
+            :data-variant-options="v.id">
+            <template v-for="o in v.runtime_options" :key="o.key">
+              {{ o.label }}
+              <UiSelect :modelValue="o.value" width="id" size="small" :options="o.choices"
+                :title="o.hint"
+                :disabled="busyAnywhere(e.id, v.id) || osBlocked(e)"
+                @update:modelValue="(val) => setRuntimeOption(e, v, o.key, val)" />
+            </template>
+            <span class="ev-mplace__why">Read when the model loads — a change reloads it.</span>
           </div>
           </template>
 

@@ -757,7 +757,7 @@ Generate applied none of the three.
 | `temperature` | engine | **chatterbox**, **qwen3** (`options.temperature`) |
 | `engine.*` subdict | engine | chatterbox · qwen3 (§3b's mapping). **Fixed 2026-08-17** — `nest_engine_keys()` in `delivery_merge.py` moves flat capability keys into `engine` before the merge, so the UI's flat save now arrives nested |
 | `seed` | host | `delivery.seed` wins over `req.seed` — a deliberate override |
-| `emotion` | **host, two ways** | **The only cross-engine direction control.** An enum compiles where prose cannot: composed into `instruct` for prose engines (Qwen3 CustomVoice / VoiceDesign), and compiled into a token by `render_core._apply_emotion_tag` for engines whose capability row declares an `inline_tags` set with `category="emotion"` and a `value_map` — that was Chatterbox Turbo, which is not on the runtime yet, so **no row declares one today**. Variant-precise via `manager.current_variant_id`. Applied after the lexicon and mirrored in `probe_line_cached`, or the cache probe lies. Had **no writer in `src/` at all** until 2026-08-17 |
+| `emotion` | **host, two ways** | **The only cross-engine direction control.** An enum compiles where prose cannot: composed into `instruct` for prose engines (Qwen3 CustomVoice / VoiceDesign), and compiled into a token by `render_core._apply_emotion_tag` for engines whose capability row declares an `inline_tags` set with `category="emotion"` and a `value_map` — Chatterbox Turbo and Nano (their rows declare one), which a packaged app offers from the speech runtime's next release (`turbo_clone`; `npm run dev` has them now). Variant-precise via `manager.current_variant_id`. Applied after the lexicon and mirrored in `probe_line_cached`, or the cache probe lies. Had **no writer in `src/` at all** until 2026-08-17 |
 | `pause_before` / `pause_after` | **host** | **Wired 2026-08-17** — `concat_lines` uses them per join. Blank = the project gap; a value replaces it; both sides of a join add. `0` is a deliberate butt-join |
 
 **Design consequence, and it is a big one:** tuning does **not** move cleanly with
@@ -786,12 +786,23 @@ request** (`test_every_declared_knob_reaches_the_runtime`).
 | Capability row | Knobs | audio.cpp request |
 |---|---|---|
 | `kokoro` | speed · seed | `speed` · `seed` |
-| `chatterbox` / `chatterbox-multilingual` | temperature · exaggeration · cfg_weight · repetition_penalty · top_p · seed | `options.temperature` · `options.exaggeration` · `options.guidance_scale` · `options.repetition_penalty` · `options.top_p` · `seed` (exaggeration and guidance verified to take effect per request, no reload) |
-| `qwen3` / `qwen3-cv` / `qwen3-base` / `qwen3-vd` | talker_temperature · talker_top_k · talker_top_p · repetition_penalty · seed | `options.temperature` · `options.top_k` · `options.top_p` · `options.repetition_penalty` · `seed` |
+| `kitten` | speed (no seed — the same seed does not repeat) | `speed` |
+| `pocket` | seed | `seed` |
+| `chatterbox` / `chatterbox-multilingual` | temperature · exaggeration · cfg_weight · repetition_penalty · top_p · min_p · s3gen_cfg_rate · seed | `options.temperature` · `options.exaggeration` · `options.guidance_scale` · `options.repetition_penalty` · `options.top_p` · `options.min_p` · `options.s3gen_cfg_rate` · `seed` (exaggeration and guidance verified to take effect per request, no reload) |
+| `chatterbox-turbo` / `chatterbox-nano` | temperature · repetition_penalty · top_p · top_k · seed | `options.temperature` · `options.repetition_penalty` · `options.top_p` · `options.top_k` · `seed` |
+| `qwen3` / `qwen3-cv` / `qwen3-base` / `qwen3-vd` | talker_temperature · talker_top_k · talker_top_p · repetition_penalty · subtalker_temperature · subtalker_top_k · subtalker_top_p · seed | `options.temperature` · `options.top_k` · `options.top_p` · `options.repetition_penalty` · `options.subtalker_*` · `seed` |
+| `voxcpm2` | cfg_value · inference_timesteps · retry_badcase_max_times · retry_badcase_ratio_threshold · seed | `options.guidance_scale` · `options.num_inference_steps` · `options.retry_badcase_*` · `seed` |
 
-Min-p (Chatterbox) left at the switch — the runtime takes no such option. The
-rows for Chatterbox Turbo / Nano, LuxTTS, MOSS-TTSD, TADA and the macOS MLX
-Qwen3 builds went with those engines.
+Every `seed` is a random one when none is set (or 0) — audio.cpp's own "no seed" repeats on
+Kokoro, Kitten, Turbo and VoxCPM2 (audit 2026-10-04 §5 D1). Temperatures and top-p values are
+floored at 0.05 (Qwen3 refuses 0, Chatterbox divides by it, a top-p of 0 is "no filter"). Min-p
+was dropped at the switch on a wrong reading — the runtime takes it — and came back 2026-10-04.
+The rows for LuxTTS, MOSS-TTSD, TADA and the macOS MLX Qwen3 builds went with those engines.
+
+Settings read at LOAD rather than per line are not knobs: a model row's **runtime options**
+(`engines/audiocpp/runtime_options.py` — only options whose effect was measured; today Qwen3's
+`perf_mode` and `conv_weight_type`) are saved in `engine_overrides[id].runtime_options[variant]`
+and passed as session options by `slot._entries_for` when the model registers.
 
 The 2026-08-17 audit below was made against the Python adapters the switch
 removed; it stays as the record of what the declarations got wrong then.

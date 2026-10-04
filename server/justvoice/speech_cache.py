@@ -29,7 +29,9 @@ Design points, each deliberate:
 
 from __future__ import annotations
 
+import hashlib
 import logging
+import threading
 import time
 from pathlib import Path
 from typing import Any, Callable
@@ -127,6 +129,48 @@ def fetch_hf_variant(
     every file of every source, against the RESOLVED real total. Raises the
     kit's DownloadCancelled on cancel; already-present files at the right
     size are skipped (resume/idempotent). Returns the written manifest."""
+    # One fetch per variant at a time: a Download and a Load of the same model (or two loads)
+    # used to download the same file at once, the second deleting what the first had just
+    # finished (audit 2026-10-04 §5 E6).
+    with _fetch_lock(engine_id, variant_id):
+        return _fetch_hf_variant(data_dir, engine_id, variant_id, sources,
+                                 on_progress=on_progress, cancel_check=cancel_check)
+
+
+_FETCH_LOCKS: dict[str, Any] = {}
+_FETCH_LOCKS_GUARD = threading.Lock()
+
+
+def _fetch_lock(engine_id: str, variant_id: str):
+    with _FETCH_LOCKS_GUARD:
+        return _FETCH_LOCKS.setdefault(f"{engine_id}/{variant_id}", threading.Lock())
+
+
+def _verify_lfs_sha256(path: Path, oid: str | None) -> None:
+    """A large file's oid on Hugging Face is the sha256 of its content: check it, and refuse
+    (and delete) a file that doesn't match. A git blob's oid (40 hex) is not a content hash
+    of the file, so it is not checked. Files were checked by size only until 2026-10-04."""
+    if not oid or len(oid) != 64:
+        return
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for block in iter(lambda: f.read(1 << 20), b""):
+            h.update(block)
+    if h.hexdigest().lower() != oid.lower():
+        path.unlink(missing_ok=True)
+        raise RuntimeError(f"{path.name} does not match its published checksum — it was deleted; "
+                           "download it again")
+
+
+def _fetch_hf_variant(
+    data_dir: Path,
+    engine_id: str,
+    variant_id: str,
+    sources: list[dict[str, Any]],
+    *,
+    on_progress: Callable[[int, int], None] | None = None,
+    cancel_check: Callable[[], bool] | None = None,
+) -> dict[str, Any]:
     from llm_runner.runner.download import stream_download
     from llm_runner.runner.models import (
         _entry_oid,
@@ -183,6 +227,7 @@ def fetch_hf_variant(
                 headers=headers,
                 **kwargs,
             )
+            _verify_lfs_sha256(dest, _entry_oid(e))
             done += size
             if on_progress:
                 on_progress(done, total)

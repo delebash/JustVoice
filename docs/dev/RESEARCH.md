@@ -112,8 +112,8 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
   warm-up covers Kokoro, Kitten, Pocket, Qwen3 CustomVoice, speech recognition, VoxCPM2 and
   Turbo — **not** Chatterbox Multilingual, Qwen3 Base or Qwen3 VoiceDesign, which load (and
   book) on their first line there. — *code, 2026-10-04* · `slot.py` `_load`, `_warm`.
-- A failed warm-up is logged at info and the load still reports success. — *agent, 2026-10-04*
-  · `slot.py:272-273, 305-306`; audit §5 B4.
+- A failed warm-up fails the load. (was: logged at info, and the load reported success — until
+  2026-10-04.) — *code + tests, 2026-10-04* · `slot.py` `_warm`; audit §5 B4, §13.3.
 - Unload frees the memory: after `/v1/tasks/unload_all_models` the gpu process held 103–105 MB
   every time. An empty process holds the same — the switch assumed ~300 MB (R7). — *measured,
   2026-10-04* · audit §3.2.
@@ -130,12 +130,25 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
   2026-10-04.) — *code + live, 2026-10-04* · `api/engines_models_api.py`, `engines_api.py`,
   `models_api.py`; `tests/test_runtime_life.py`.
 - On Windows the runtime runs in a kill-on-close Job Object and dies with our server however it
-  dies; elsewhere nothing ties them, and a clean shutdown slower than Tauri's 15 s leaves it
-  running until the next start's sweep. — *record (R15) + agent, 2026-10-04* · switch R15;
-  audit §5 C6.
-- audio.cpp answers 400, 503 `insufficient_memory`, 503 `server_busy` or 500; we keep only the
-  message and turn every one into a 500. Its own free-memory guard is off
-  (`min_free_memory_mb` 0). — *agent, 2026-10-04* · audit §5 D8.
+  dies; elsewhere nothing ties them. A clean shutdown stops the runtime FIRST, then lets the
+  slots go, so it no longer waits for a line in flight. (was: each slot unloaded first — up to
+  15 minutes for a line, longer than Tauri's 15 s, so off Windows the runtime outlived the app;
+  and under `_manager_lock`, a deadlock against a load — until 2026-10-04.) — *record (R15) +
+  code, 2026-10-04* · switch R15; `manager.py` `shutdown_manager`; audit §5 C4, C6, §13.5.
+- audio.cpp answers 400, 503 `insufficient_memory`, 503 `server_busy` or 500 (an `error` that is
+  an object with a message, or from some handlers a bare string). We keep the status end to end
+  — `AudioCppError.status` → `EngineRequestError` → the API — and a timeout or a dropped
+  connection is a 503 naming the limit or quoting the log's end. (was: only the message, every
+  one a 500, and a string `error` body raised AttributeError — until 2026-10-04.) Its own
+  free-memory guard is off (`min_free_memory_mb` 0). — *code + tests, 2026-10-04* ·
+  `runtime.py` `_raise_for`, `_post`; audit §5 C8, D8, §13.5.
+- A runtime log over 10 MB becomes `<name>.1.log` at its process's next start, and an error
+  quotes only the log's last 64 KB. (was: never rotated, and read whole for every error —
+  until 2026-10-04.) — *code + tests, 2026-10-04* · `runtime.py` `_rotate_log`, `log_tail`.
+- The start limit (60 s), one request's limit (900 s) and the graphics process's CPU threads (4)
+  are settings: `speech_runtime.start_timeout_s`, `request_timeout_s`, `gpu_threads`. A
+  transcription gets the request limit or three times its length. — *code, 2026-10-04* ·
+  `models.py` `SpeechRuntimeSettings`; `slot.py` `_transcribe_timeout`; audit §5 D9, F.
 
 ### 1.2 Requests, options and defaults
 
@@ -161,25 +174,59 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
   audio, and an unseeded line repeats the last seed sent. Turbo: none or 0 = a fixed seed.
   VoxCPM2: none = 1234. Seed 0 is a literal seed everywhere. — *measured (Kokoro) + agent,
   2026-10-04* · audit §5 D1.
+- **The app sends a random seed when none is set, or 0**, so "no seed" is a new take on every
+  family. (was: nothing sent — Kokoro, Kitten, Turbo and VoxCPM2 repeated — until 2026-10-04.)
+  — *code + tests, 2026-10-04* · `slot.py` `to_speech_request`; audit §13.5.
 - **Defaults inside audio.cpp:** Qwen3 temperature 0.9, top-k 50, top-p 1.0, repetition 1.05,
   `max_new_tokens` 8192 (the model's own `generation_config.json`); Chatterbox temperature 0.8,
   repetition 1.2, min-p 0.05, top-p 1.0 (upstream `mtl_tts.py` on master says the same); Turbo
   0.8 / top-p 0.95 / top-k 1000 / 1.2; VoxCPM2 guidance 2.0, 10 steps. Our Chatterbox knob shows
-  2.0 and 1.2 is used. — *code + web, 2026-10-04* · `../audio.cpp/include/engine/models/chatterbox/tts.h:22-25`,
+  1.2 (was: 2.0, while 1.2 was used — until 2026-10-04). — *code + web, 2026-10-04* · `../audio.cpp/include/engine/models/chatterbox/tts.h:22-25`,
   `capability_details.py:173, 203`; audit §5 D3, §7.
 - Temperature 0: Qwen3 refuses it, Chatterbox divides by it, Turbo treats it as 1.0. Qwen3
-  top-p 0 turns the filter off. — *agent, 2026-10-04* · audit §5 D4, D9.
+  top-p 0 turns the filter off. The app floors every temperature and top-p at 0.05, in the knobs
+  and the request mapping. — *agent + code, 2026-10-04* · audit §5 D4, D9, §13.5.
 - **audio.cpp splits a request's text itself:** budgets Chatterbox and Turbo 128 characters,
   Kokoro 240, Kitten 400, VoxCPM2 2,048, Qwen3 8,192; `options.text_chunk_size` overrides. It cuts
   at a sentence end, then a clause, then a space, and joins the pieces with no crossfade. Our
   host splits above `max_chunk_chars` (800) at sentence ends with a 50 ms crossfade. — *code,
   2026-10-04* · `../audio.cpp/src/framework/text/chunking.cpp:332-397`; `render_core.py:774-797`;
   audit §5 D5.
-- Options the runtime reads that the app doesn't expose, per engine — audit §7. Only Kokoro's
-  model spec lists its options (`model_specs/kokoro_tts.json`: request, session, load); the
-  Qwen3, Chatterbox, VoxCPM2 and Pocket specs list none. — *code, 2026-10-04*.
-- Qwen3: a missing or unsupported language is sent as "English"; audio.cpp's own default is
-  "Auto". — *agent, 2026-10-04* · `slot.py:506`; audit §5 D6.
+- Options the runtime reads, per engine — audit §7. Only Kokoro's model spec lists its options
+  (`model_specs/kokoro_tts.json`: request, session, load); the Qwen3, Chatterbox, VoxCPM2 and
+  Pocket specs list none. — *code, 2026-10-04*.
+- **Chatterbox reads per request** `min_p` (0.05), `s3gen_cfg_rate` (0.7, the flow decoder's
+  CFG), `max_tokens` (384), `do_sample`, `stop_on_eos`, `greedy`. Turbo's meanflow decoder
+  ignores `s3gen_cfg_rate`. (was: "the runtime takes no min-p", the switch's reading — until
+  2026-10-04.) — *code, 2026-10-04* · `../audio.cpp/src/models/chatterbox/session.cpp:45-80`,
+  `include/engine/models/chatterbox/tts.h:19-32`, `s3gen_inference.cpp:541-545`.
+- **Qwen3 reads per request** `subtalker_temperature` / `subtalker_top_k` / `subtalker_top_p`
+  (0.9 / 50 / 1.0 — the sub-talker that fills in each frame's finer codes), `subtalker_do_sample`,
+  `do_sample`, `max_tokens`. Session: `qwen3_tts.perf_mode` `off` | `flash_attention` (refused on
+  anything but Q8_0 weights), `qwen3_tts.conv_weight_type` `native` | `f32` | `f16`. — *code,
+  2026-10-04* · `../audio.cpp/src/models/qwen3_tts/session.cpp:29-90, 127-136, 184-191, 277-296`,
+  `include/engine/models/qwen3_tts/types.h:24-33`.
+- **VoxCPM2 reads per request** `min_tokens` (2), `max_tokens` (4096; 0 = the model's
+  `max_length`), `retry_badcase` (on), `retry_badcase_max_times` (3 tries in all),
+  `retry_badcase_ratio_threshold` (6.0). The ratio is also the length cap: a take stops at text
+  tokens × ratio + 10 patches, and one that reaches the ratio is made again. Streaming needs
+  `retry_badcase` off. — *code, 2026-10-04* · `../audio.cpp/src/models/voxcpm2/session.cpp:595-660`,
+  `generator.cpp:89-107, 1236-1260`, `include/engine/models/voxcpm2/types.h:17-23`.
+- **Pocket TTS's speech request applies only** `frames_after_eos`, `max_tokens` and
+  `text_chunk_size`; `temperature` (0.7), `noise_clamp` (−1) and `eos_threshold` (−4) are read
+  only by a voice-state preparation request. — *code, 2026-10-04* ·
+  `../audio.cpp/src/models/pocket_tts/session.cpp:135-191`.
+- **What the app exposes of these** (since 2026-10-04): Chatterbox `min_p` and `s3gen_cfg_rate`;
+  Qwen3's three sub-talker settings; VoxCPM2's two runaway settings — advanced knobs at the
+  runtime's defaults; Qwen3's `perf_mode` (8-bit rows) and `conv_weight_type` as per-model
+  runtime options on the model row, passed at registration. Max-token caps are not offered (the
+  models' positional limits unchecked). — *code + tests, 2026-10-04* · `capability_details.py`,
+  `engines/audiocpp/runtime_options.py`; audit §13.5.
+- Qwen3: a missing or unsupported language goes as "Auto", audio.cpp's own default. (was:
+  "English" — until 2026-10-04.) Speech recognition and the aligner get the language's name for
+  all 30 Qwen3-ASR languages, detection for anything else. (was: raw codes for the 20 outside
+  `QWEN_LANGUAGE`, and "English" to the aligner — until 2026-10-04.) — *code + tests,
+  2026-10-04* · `slot.py` `QWEN_LANGUAGE`, `ASR_LANGUAGE`; audit §5 D6, D7, §13.5.
 - A Qwen3 clone decodes the **whole** reference clip again with every line, then trims it; the
   decoder works in 300-frame chunks with 25 frames of left context. — *code, 2026-10-04* ·
   `../audio.cpp/src/models/qwen3_tts/tokenizer_speech_decoder.cpp:47-48, 1267-1292`.
@@ -215,17 +262,31 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
 - The tag `v0.9.0-jv.3` holds Turbo cloning (`3865d245`) but **not** Hebrew/Russian/Chinese
   (`fc55e1e6`), Japanese (`6a2bb4c5`), the libmecab/jieba staging (`6d1825eb`) or the macOS fix
   (`faf1ee03`). — *git, 2026-10-04* · audit §5 E2.
-- Only `voice_pack`, `turbo_clone` and `inline_ipa` are checked against the INSTALLED build; the
-  other three are offered from the pin alone. — *agent, 2026-10-04* · audit §5 E1.
-- The Windows CUDA download is the build archive plus a 607 MB CUDA-runtime archive (engines.md
-  says 461 MB). — *agent, GitHub API, 2026-10-04* · audit §5 F.
+- Every build feature a line needs is checked against the INSTALLED build, and the refusal
+  offers an update only when the pin has the feature. (was: only `voice_pack`, `turbo_clone` and
+  `inline_ipa` were checked; the other three were offered from the pin alone — until
+  2026-10-04.) — *code + tests, 2026-10-04* · `slot.py` `features_needed`, `feature_refusal`;
+  audit §5 E1, §13.5.
+- v0.9.0-jv.1's Windows archives: CUDA 12.4 461 MB + its CUDA runtime 607 MB; CUDA 13.3 273 MB +
+  575 MB; Vulkan 60 MB; CPU (portable) 26 MB. Linux: x86-64 only (Vulkan, CPU, a Colab CUDA
+  build); macOS: Metal for arm64 and x64. — *GitHub API, 2026-10-04* · release v0.9.0-jv.1.
+- Each pinned archive carries its published sha256 (GitHub's asset digest); the kit refuses and
+  deletes a mismatch before unpacking, downloads into `<build>/.downloads/` so a stopped download
+  resumes, and deletes the archives after the swap. The CPU rows are the portable builds (the
+  plain one exits on a CPU without the newest instructions, audio.cpp #352). (was: URLs only on
+  a re-uploadable tag, launch-verified; archives inside staging, wiped every attempt; the plain
+  CPU build — until 2026-10-04.) — *code + tests, 2026-10-04* · `release.py` `SHA256`; kit
+  `runner/binary.py` `_stage_and_swap`; audit §5 E6, E7, §13.5.
 - eSpeak NG 0.2.4's wheels on PyPI: `macosx_10_12_x86_64`, `macosx_11_0_arm64`,
   `manylinux_2_17_x86_64.manylinux2014_x86_64` (two tags in one name), `manylinux_2_28_aarch64`,
   `win_amd64`, `win_arm64`. The install matches any one tag of a name. (was: an exact suffix
   match that missed the Linux x86_64 file, so the runtime install couldn't finish there — until
   2026-10-04.) — *web (PyPI JSON) + code, 2026-10-04* · `espeak.py` `wheel_matches`; audit §5 A2.
-- Model files come from `audio-cpp/audio.cpp-gguf` pinned at commit `7bf52723…`, checked by
-  size only. — *code, 2026-10-04* · `release.py:60-61`; audit §5 E6.
+- Model files come from `audio-cpp/audio.cpp-gguf` pinned at commit `7bf52723…`. A file whose
+  LFS oid is a sha256 is checked against it after download and deleted on a mismatch; two
+  fetches of one model are serialized. (was: size only, and two fetches raced — until
+  2026-10-04.) — *code + tests, 2026-10-04* · `release.py` `MODEL_REVISION`; `speech_cache.py`
+  `_verify_lfs_sha256`, `_fetch_lock`; audit §5 E6.
 - `npm run dev` runs our checkout's build (`../audio.cpp/build/jv-dev`); on this card (Turing)
   CUDA graphs are disabled by ggml. — *code + runtime log, 2026-10-04*.
 
@@ -312,8 +373,16 @@ unloaded — audit §3.1 has the method.
   one shared process, each kind booking the total less the other kind's booking (`_own_share_mb`,
   R7) — a computed share; one variant's stored readings ranged 105–6,249 MB — until 2026-10-04.)
   — *code, 2026-10-04* · audit §5 B8, §13.2.
-- 16-bit rows carry no CPU speed, so Auto never sends them to the CPU and the AI model makes
-  room. — *agent, 2026-10-04* · `release.py:107`; audit §5 B6.
+- A model's CPU speed is the best of the newest five readings at the current CPU-thread count;
+  the 16-bit Kokoro and Pocket TTS (English, Spanish, Portuguese) rows carry their own reference
+  speeds (Kokoro bf16 2.61×, Pocket 3.11 / 3.02 / 2.85×, measured like their 8-bit rows: 2.60
+  and 2.91×). (was: the newest reading alone, any thread count — one slow line kept a model off
+  the CPU for good; 16-bit rows had no speed, so Auto unloaded the AI model for a 212 MB Kokoro —
+  until 2026-10-04.) — *code + measured, 2026-10-04* · `manager.py` `cpu_speed`; audit §5 B6,
+  B7, §13.5.
+- On a machine whose graphics share its memory, Auto places on the graphics and says the CPU
+  would free nothing. (was: always "nothing else is on the graphics card" — until 2026-10-04.) —
+  *code, 2026-10-04* · `manager.py` `_card_is_its_own_memory`; audit §5 B9.
 - The safety margin is 1,024 MB (the kit's setting; the manager falls back to the same). —
   *code, 2026-10-04* · `manager.py:800-803`.
 

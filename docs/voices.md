@@ -15,8 +15,9 @@ a little different, because each model clones with its own character.
 ### Every voice knows the model that speaks it
 
 One engine can hold several models, and they are not interchangeable.
-Chatterbox is **Multilingual** (23 languages, no tags) and, once our speech
-runtime ships them, **Turbo** and **Nano** (English, 19 inline tags); Qwen3 is
+Chatterbox is **Multilingual** (19 languages, 23 with the speech runtime's next release; no tags)
+and, once that release ships them, **Turbo** and **Nano** (English, 19 inline
+tags); Qwen3 is
 **CustomVoice** (its nine speakers), **Base** (clones) and **VoiceDesign**
 (designed voices). So a voice remembers the model it was made for, and every
 render loads *that* model:
@@ -48,8 +49,8 @@ the library, for any persona to use.
 
 | Type | What it is | Made |
 |---|---|---|
-| **Preset** | Ships with the model. Nothing to make. | Comes with Kokoro (54), Pocket TTS (20), KittenTTS (8), Qwen3 **CustomVoice** (9) |
-| **Cloned** | Learned from a recording of someone speaking. | [New clone](personas.md#new-clone) — Chatterbox Multilingual, Turbo, Nano, Pocket TTS, Qwen3 **Base**, VoxCPM2 |
+| **Preset** | Ships with the model. Nothing to make. | Comes with Kokoro (49; 54 with the speech runtime's next release), Pocket TTS (20), KittenTTS (8), Qwen3 **CustomVoice** (9) |
+| **Cloned** | Learned from a recording of someone speaking. | [New clone](personas.md#new-clone) — Chatterbox Multilingual, Pocket TTS, Qwen3 **Base**, VoxCPM2; Chatterbox Turbo and Nano with the speech runtime's next release |
 | **Designed** | Invented from a written description — no recording. | [New design](personas.md#new-design) — Qwen3 **VoiceDesign**, VoxCPM2 |
 | **Imported** | A clip kept as it was, before 2026-10-04. | New clones replace it: **Keep** without listening first does the same |
 | **Blended** | Made out of Kokoro's own voices — mixed, exaggerated, added and subtracted, or spliced. | [New blend](personas.md#new-blend) |
@@ -195,8 +196,8 @@ sends:
 - `cfg_weight` — 0.0–1.0, default **0.5**. Lower loosens pacing, higher holds to the text. Set it to 0 when speaking a language other than the reference clip's.
 - `temperature` — default **0.8**. Lower is consistent, higher gives richer prosody.
 
-Chatterbox has **no speed control** — neither variant takes one. Use pitch and
-the effects chain, or an engine that does (Kokoro).
+Chatterbox doesn't pace itself: **Speed** time-stretches its finished line and
+keeps the pitch, as on every engine but Kokoro and KittenTTS.
 
 See [engines.md](engines.md) for which params each engine supports.
 

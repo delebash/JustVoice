@@ -44,10 +44,16 @@ it from the **Speech runtime** row at the top of **AI Settings → Speech
 engines** — once, for every engine. See
 [Engines → The speech runtime](engines.md#the-speech-runtime).
 
-**A render stops with "… not available yet on the new speech runtime".** The
-line's voice is a **blended** voice, and the speech runtime cannot render one
-yet. Give the speaker's persona a different
-voice for now. See [Engines → Not available yet](engines.md#not-available-yet).
+**A render stops with "… this isn't in this version's speech runtime yet".**
+The line needs something the speech runtime this JustVoice runs doesn't have —
+a blended voice, a lexicon's pronunciation on Kokoro, a Chatterbox Turbo or Nano
+voice, Japanese, or Chatterbox in Hebrew, Russian or Chinese. They come with the
+speech runtime's next release. Give the speaker's persona a different voice for
+now. See [Engines → Not available yet](engines.md#not-available-yet).
+
+**A render stops with "… this needs the speech runtime update".** This
+JustVoice can speak the line, but the speech runtime you have installed is
+older. Click **Update to** on the runtime row of AI Settings → Speech engines.
 
 **A Pocket TTS clone stops with "… only after you accept Kyutai's terms".**
 Pocket TTS clones only once you have accepted Kyutai's terms for it, on this
@@ -80,7 +86,24 @@ loaded one.
 own log; the whole log is `logs/audiocpp-server.log` in your data folder. A
 build that doesn't suit the machine (for example the CUDA build after a
 graphics-driver problem) can be swapped for another on the runtime row's
-**Backend** select — see [GPU](gpu.md#which-build-the-runtime-uses).
+**Backend** select — see [GPU](gpu.md#which-build-the-runtime-uses). If a file
+of the runtime went missing or an antivirus took one, **Reinstall** on the same
+row downloads it again. A slow machine that needs longer than a minute to start
+it can be given more in `speech_runtime.start_timeout_s`
+([Settings reference](settings-reference.md)).
+
+**A line stops with "the speech runtime did not answer within 900 s".** One
+request — a line, or a model load — ran longer than the limit. On a slow CPU a
+very long line can; split it, or raise `speech_runtime.request_timeout_s`
+([Settings reference](settings-reference.md)). A transcription always gets at
+least three times its recording's length.
+
+**A line stops with "the speech runtime stopped answering".** The runtime
+process ended mid-line — most often the graphics card ran out of memory. The
+message quotes the end of its log. The next line starts it again; if it keeps
+happening, give the model a shorter piece length
+([Engines → Long lines](engines.md#long-lines-and-what-a-model-costs)) or run
+it on the CPU.
 
 **Restore finished but something looks off.** A restore (Settings → Backups →
 Import backup…) replaces the data live and reloads the app. If a view still

@@ -355,7 +355,9 @@ def test_the_card_names_what_loaded_not_a_stale_request(monkeypatch) -> None:
 
 def test_every_16_bit_row_is_its_8_bit_siblings_model_at_the_original_precision() -> None:
     """Same capabilities, same languages and presets, its own file; never the default, and no
-    borrowed CPU speed (the 8-bit row's would be wrong). KittenTTS has no 16-bit file."""
+    borrowed CPU speed (the 8-bit row's would be wrong) — a 16-bit row's own is measured
+    (audit 2026-10-04 §5 B6: Kokoro, Pocket English / Spanish / Portuguese). KittenTTS has no
+    16-bit file."""
     seen = 0
     for eid, m in discover_engines().items():
         rows = {r["id"]: r for r in getattr(m.module, "VARIANTS", []) or []}
@@ -370,6 +372,7 @@ def test_every_16_bit_row_is_its_8_bit_siblings_model_at_the_original_precision(
                    {k: v for k, v in sib["audiocpp"].items() if k not in ("file", "companions")}, vid
             assert r["audiocpp"]["file"] != sib["audiocpp"]["file"]
             assert r["audiocpp"]["file"] in r["sources"][0]["files"]
-            assert "16-bit" in r["name"] and "cpu_realtime" not in r
+            assert "16-bit" in r["name"]
+            assert r.get("cpu_realtime") is None or r["cpu_realtime"] != sib.get("cpu_realtime"), vid
             assert m.default_variant_id != vid
     assert seen == 14  # kokoro 1 · pocket 5 · qwen3 5 (our 0.6B among them) · chatterbox 1 · asr 1 · voxcpm2 1

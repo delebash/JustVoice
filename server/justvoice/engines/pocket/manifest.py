@@ -147,6 +147,11 @@ VARIANTS = [_variant(*lang) for lang in _LANGUAGES]
 # tree; the presets are the same embedding files. The 8-bit rows stay the defaults.
 _BF16_BYTES = {"en": 219_096_064, "de": 219_096_544, "it": 219_096_800, "pt": 219_097_728,
                "es": 219_097_600}
+# The 16-bit rows' own CPU speed on the reference machine (Ryzen 7 5700X, 8 threads, alba, five
+# short English lines, 2026-10-04 — the English 8-bit row measured 2.91x the same way, a stricter
+# method than its 3.9). German and Italian at 16 bits are not measured yet; until a render on
+# the CPU measures them, Auto doesn't offer them the CPU (audit §5 B6).
+_BF16_CPU = {"en": 3.11, "es": 3.02, "pt": 2.85}
 for _code, _folder, _size, _cpu in _LANGUAGES:
     _row8 = next(r for r in VARIANTS if r["id"] == f"pocket-{_code}-q8")
     _gguf16 = f"PocketTTS-GGUF/{_folder}/pocket-tts-{_folder}-bf16.gguf"
@@ -154,5 +159,7 @@ for _code, _folder, _size, _cpu in _LANGUAGES:
     VARIANTS.append(sixteen_bit(_row8, _gguf16, _BF16_BYTES[_code], source={
         **_src8, "files": [_gguf16, *_src8["files"][1:]],
         "size_bytes": _src8["size_bytes"] - _size + _BF16_BYTES[_code]}))
+    if _code in _BF16_CPU:
+        VARIANTS[-1]["cpu_realtime"] = _BF16_CPU[_code]
 
 DEFAULT_VARIANT_ID = "pocket-en-q8"

@@ -170,30 +170,44 @@ def set_speech_runtime(body: SpeechRuntimeSettings) -> SpeechRuntimeInfo:
         raise bad_request("cpu_threads must be 0 (the physical core count) or more")
     if body.cpu_min_realtime <= 0:
         raise bad_request("cpu_min_realtime must be more than 0")
+    if body.gpu_threads < 1:
+        raise bad_request("gpu_threads must be 1 or more")
+    if body.start_timeout_s <= 0 or body.request_timeout_s <= 0:
+        raise bad_request("the timeouts must be more than 0 seconds")
     store = get_state().settings
     cur = store.get()
     old = cur.engines.speech_runtime
-    new = SpeechRuntimeSettings(backend=backend, gpu=body.gpu, cpu_threads=body.cpu_threads,
-                                cpu_min_realtime=body.cpu_min_realtime)
+    # A field the request leaves out keeps its value — the runtime row sends only what it shows,
+    # and a value set through PATCH /v1/settings must survive the row's next change.
+    new = old.model_copy(update={**body.model_dump(include=body.model_fields_set), "backend": backend})
     if old != new:
         cur.engines.speech_runtime = new
         store.set(cur)
         mgr = get_manager()
         build_changed = (old.backend, old.gpu) != (new.backend, new.gpu)
         threads_changed = old.cpu_threads != new.cpu_threads
+        gpu_threads_changed = old.gpu_threads != new.gpu_threads
         # Free the slots whose process stops (their bookings go with them), then stop
         # it — the next load starts it again with the new setting.
         for kind in ("tts", "stt"):
             slot = mgr.loaded_for(kind)
             if slot is None or not getattr(slot.manifest, "uses_audiocpp", False):
                 continue
-            if build_changed or (threads_changed and getattr(slot, "placement", "gpu") == "cpu"):
+            on = getattr(slot, "placement", "gpu")
+            if (build_changed or (threads_changed and on == "cpu")
+                    or (gpu_threads_changed and on == "gpu")):
                 mgr.unload(kind)
         if build_changed:
             shutdown_server()
             forget_installed()
             log.info("speech runtime set to %s (gpu %d); both processes stopped", backend, body.gpu)
-        elif threads_changed:
-            shutdown_server("cpu")
-            log.info("speech runtime CPU threads set to %d; the CPU process stopped", new.cpu_threads)
+        else:
+            if threads_changed:
+                shutdown_server("cpu")
+                log.info("speech runtime CPU threads set to %d; the CPU process stopped",
+                         new.cpu_threads)
+            if gpu_threads_changed:
+                shutdown_server("gpu")
+                log.info("speech runtime GPU-process threads set to %d; the GPU process stopped",
+                         new.gpu_threads)
     return _info()

@@ -147,15 +147,18 @@ async def transcribe(
     """Stateless transcription — upload audio, get text. No Capture row."""
     import tempfile
 
-    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
-        total = 0
-        while chunk := await file.read(_UPLOAD_CHUNK):
-            total += len(chunk)
-            if total > _MAX_UPLOAD_MB * 1024 * 1024:
-                raise bad_request(f"upload exceeds {_MAX_UPLOAD_MB} MB")
-            tmp.write(chunk)
-        tmp_path = Path(tmp.name)
+    tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
+    tmp_path = Path(tmp.name)
     try:
+        # The file is deleted however this ends — an oversized upload used to be refused from
+        # inside the `with`, before the path was known, leaving up to 200 MB behind (audit §5 F).
+        with tmp:
+            total = 0
+            while chunk := await file.read(_UPLOAD_CHUNK):
+                total += len(chunk)
+                if total > _MAX_UPLOAD_MB * 1024 * 1024:
+                    raise bad_request(f"upload exceeds {_MAX_UPLOAD_MB} MB")
+                tmp.write(chunk)
         return {"text": _stt_transcribe(str(tmp_path), language), "language": language}
     finally:
         tmp_path.unlink(missing_ok=True)
