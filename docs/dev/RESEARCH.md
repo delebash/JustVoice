@@ -282,19 +282,29 @@ unloaded — audit §3.1 has the method.
 
 ### 2.3 The booking (admission and placement)
 
-- The memory check before a load prices it at the **largest** load reading of **any** variant
-  of the engine; since 2026-10-01 only variants the catalog still offers count. Auto placement
-  uses the **newest** reading of the **exact** variant. The two disagree. — *code, 2026-10-04*
-  · `engines/manager.py:901-927` vs `640-653`; switch §8 live; audit §5 B1.
-- A load runs placement → download → unload the AI model → memory check. A refusal leaves the
-  download done and the AI model unloaded. — *code + live log, 2026-10-04* ·
-  `manager.py:1437-1465`; audit §4, §5 B2.
+- **The price of a load is exactly that model's own measured peak**, on this machine and
+  device, at the piece length it is given (`"peak"` rows, flag `split_chars`); placement and
+  the memory check both read it (`_price_mb`). A model with no price on the card calibrates on
+  its first load: its warm-up is a full-length piece. Live (gemma resident): Qwen3 CustomVoice
+  1.7B's first load unloaded gemma, calibrated at 200 characters and recorded 4,057 MB in 17 s;
+  its next load beside a freshly loaded gemma was admitted by evicting gemma and took 10.6 s.
+  (was: the check took the largest load reading of ANY variant of the engine — VoiceDesign was
+  priced at CustomVoice 0.6B's 6,249 MB — and placement the newest of the exact one, from a
+  shared process — until 2026-10-04.) — *code + live, 2026-10-04* · `engines/manager.py`
+  `_price_mb`, `effective_split`; audit §5 B1, §13.3.
+- **A load is checked before anything changes**: placement → the memory check (crediting the
+  same-kind occupant it replaces; variant switches included) → the download → Auto's AI-model
+  unload, which now waits for the memory to drain. (was: download, then unload the AI model,
+  then the check — a refusal left both done; a variant switch skipped the check — until
+  2026-10-04.) — *code + tests, 2026-10-04* · audit §5 B2, B5, §13.3.
+- **A calibrated peak is read after the line, so it misses the moment two decoder buffers
+  coexist**: CustomVoice's 752-character line in 200-character pieces peaked about 5.1 GB above
+  idle on the card while its recorded price was 4,057 MB — until step 4 frees the old buffer
+  first. — *measured, 2026-10-04* · audit §13.3.
 - Each kind books its own process's measured memory — its model plus ~100 MB of process. (was:
   one shared process, each kind booking the total less the other kind's booking (`_own_share_mb`,
   R7) — a computed share; one variant's stored readings ranged 105–6,249 MB — until 2026-10-04.)
   — *code, 2026-10-04* · audit §5 B8, §13.2.
-- Switching variants inside a loaded engine skips the memory check. — *agent, 2026-10-04* ·
-  `manager.py:1459-1460`; audit §5 B5.
 - 16-bit rows carry no CPU speed, so Auto never sends them to the CPU and the AI model makes
   room. — *agent, 2026-10-04* · `release.py:107`; audit §5 B6.
 - The safety margin is 1,024 MB (the kit's setting; the manager falls back to the same). —

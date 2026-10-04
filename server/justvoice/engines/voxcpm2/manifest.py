@@ -69,6 +69,10 @@ VARIANTS = [
         "weights_license": "Apache-2.0",
         "sources": [model_source(_Q8, 2_955_000_480)],
         "audiocpp": {"family": "voxcpm2", "task": "tts", "file": _Q8},
+        # The longest piece a line reaches the model in (audit 2026-10-04 §13.3): 752
+        # characters peaked at 6,438 MB whole, 5,230 MB in 200-character pieces. A description
+        # voice keeps the full length until its own size is decided by ear.
+        "split_chars": 200,
     },
 ]
 VARIANTS.append(sixteen_bit(VARIANTS[0], "VoxCPM2-GGUF/voxcpm2-bf16.gguf", 4_772_288_288))

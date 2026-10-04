@@ -656,20 +656,67 @@ class EngineManager:
         ref = (self._variant_row(self.get_manifest(engine_id), variant) or {}).get("cpu_realtime")
         return (float(ref), False) if ref else (None, False)
 
-    def _prior_gpu_mb(self, kind: str, engine_id: str, variant: str | None) -> int:
-        """This model's newest measured graphics-memory size on this machine (the load
-        footprint rows); 0 = never measured on the card."""
+    # ── The price: what a model takes, measured, at the length it is given (audit §13.3) ──
+
+    def split_chars_for(self, engine_id: str, variant: str | None) -> int | None:
+        """The longest piece a line reaches this model in: the user's size for it
+        (`engine_overrides[id].split_chars[variant]`), else the catalog's (`split_chars` on the
+        variant row), else None — no bound of its own. `line_split_chars` puts it under
+        `generation.max_chunk_chars`."""
+        try:
+            from ..app_state import get_state
+
+            ov = get_state().settings.get().engines.engine_overrides.get(engine_id)
+            mine = int((ov.split_chars.get(variant or "") if ov else 0) or 0)
+            if mine > 0:
+                return mine
+        except Exception:  # noqa: BLE001 — no state (bare tests / mid-boot) → the catalog's
+            pass
+        row = self._variant_row(self.get_manifest(engine_id), variant) or {}
+        return int(row["split_chars"]) if row.get("split_chars") else None
+
+    def effective_split(self, engine_id: str, variant: str | None) -> int:
+        """The piece length this model actually gets — its split size under the global cap —
+        and the one its price is measured at."""
+        from ..audio.chunked import DEFAULT_MAX_CHUNK_CHARS
+
+        cap = DEFAULT_MAX_CHUNK_CHARS
+        try:
+            from ..app_state import get_state
+
+            cap = int(get_state().settings.get().generation.max_chunk_chars or cap)
+        except Exception:  # noqa: BLE001
+            pass
+        split = self.split_chars_for(engine_id, variant)
+        return min(cap, split) if split else cap
+
+    def _price_mb(self, kind: str, engine_id: str, variant: str | None, device: str | None) -> int:
+        """What loading exactly this model on `device` takes, measured on this machine at the
+        piece length it is given now: the largest `"peak"` reading of this variant (its
+        calibrated first load, and any line that went higher since). 0 = never measured
+        there. Placement and the memory check both ask this one function.
+
+        Until 2026-10-04 the check took the largest load reading of ANY variant of the engine
+        and placement the newest of this one, from one process both kinds shared: VoiceDesign
+        was priced at CustomVoice 0.6B's 6,249 MB while placement read 105 MB (audit §5 B1)."""
+        if not device:
+            return 0
         try:
             from llm_runner.llm.stores import get_model_measurement_store
             from llm_runner.runner.hardware import current_machine_key
 
             mk = current_machine_key()
-            for row in get_model_measurement_store().list(f"{kind}:{engine_id}:{variant or ''}"):
-                if row.machineKey == mk and row.source == "load" and row.vramModelMb > 0:
-                    return int(row.vramModelMb)
-        except Exception:  # noqa: BLE001
-            pass
-        return 0
+            split = str(self.effective_split(engine_id, variant))
+            best = 0
+            for row in get_model_measurement_store().list(self._measure_id(kind, engine_id, variant)):
+                if (row.machineKey == mk and row.source == "peak" and (row.backend or "") == device
+                        and row.vramModelMb > 0
+                        and any(f.flagName == "split_chars" and f.flagValue == split
+                                for f in (row.switches or []))):
+                    best = max(best, int(row.vramModelMb))
+            return best
+        except Exception:  # noqa: BLE001 — bare tests / store not wired
+            return 0
 
     def _ai_model_on_card(self) -> bool:
         """Is an AI model holding the graphics card now? A sleeping one holds nothing (the
@@ -728,7 +775,7 @@ class EngineManager:
             return "cpu", "your choice" + (f" — {speed}" if speed else ""), False
         if not self._ai_model_on_card():
             return "gpu", "nothing else is on the graphics card", False
-        prior = self._prior_gpu_mb(kind, m.id, variant)
+        prior = self._price_mb(kind, m.id, variant, backend_of(exe) if exe is not None else None)
         free = self._free_card_mb(kind, m.id) if prior else None
         if prior and free is not None and prior <= free:
             return "gpu", f"it fits beside the AI model ({prior} MB)", False
@@ -748,9 +795,28 @@ class EngineManager:
             from llm_runner.runner.hardware import budget_total_mb
 
             total = int(budget_total_mb(hw)) if hw is not None else 0
-            if total > 0:
-                get_arbiter().make_room(total, protected_kinds=("tts", "stt"), hardware=hw,
-                                        reason=f"loading {engine_id}")
+            if total <= 0:
+                return
+            arb = get_arbiter()
+
+            def _llm_mb() -> int:
+                return sum(int(r.get("vram_mb") or 0) for r in arb.snapshot(hw).get("reservations") or []
+                           if r.get("kind") == "llm" and not r.get("asleep"))
+
+            before_llm, before_used = _llm_mb(), self.pool_used_mb(fresh=True)
+            arb.make_room(total, protected_kinds=("tts", "stt"), hardware=hw,
+                          reason=f"loading {engine_id}")
+            freed = before_llm - _llm_mb()
+            # An unloaded model's memory drains over a second or two. Wait for the card to
+            # show it before the load reads the card — the first Turbo and VoiceDesign loads
+            # were refused "only 4,101 MB free" with the AI model already gone (audit §5 B2).
+            if freed > 0 and before_used is not None:
+                deadline = time.monotonic() + 6.0
+                while time.monotonic() < deadline:
+                    used = self.pool_used_mb(fresh=True)
+                    if used is None or used <= before_used - freed * 0.8:
+                        break
+                    time.sleep(0.4)
         except Exception:  # noqa: BLE001 — no kit → nothing to unload
             log.debug("AI-model unload before %s unavailable", engine_id, exc_info=True)
 
@@ -893,36 +959,8 @@ class EngineManager:
         self._probe_cache[key] = (now, val)
         return val
 
-    def _prior_measured_mb(self, kind: str, engine_id: str) -> int:
-        """The newest measured footprint of this engine on THIS box, from the
-        shared measurement store (rows recorded by `_record_speech_load`
-        under `kind:engine:variant` ids). Across variants the MAX wins —
-        conservative until the exact variant has its own row. 0 = no
-        evidence yet.
-
-        Only rows for a variant the catalog STILL offers count. A footprint
-        measured on a model the engine no longer has says nothing about the one
-        that replaced it — every pre-2026-10-01 row is a PyTorch engine's, and
-        Qwen3's 7.1 GB from that era refused the 8-bit GGUF outright on an 8 GB
-        card (measured live 2026-10-01)."""
-        try:
-            from llm_runner.llm.stores import get_model_measurement_store
-            from llm_runner.runner.hardware import current_machine_key
-
-            from .model_catalog import models_for
-
-            mk = current_machine_key()
-            live = {f"{kind}:{engine_id}:{v.id}" for v in models_for(engine_id)}
-            best = 0
-            for row in get_model_measurement_store().list(None):
-                if row.modelId in live and row.machineKey == mk and row.vramModelMb > 0:
-                    best = max(best, int(row.vramModelMb))
-            return best
-        except Exception:  # noqa: BLE001 — bare tests / store not wired
-            return 0
-
     def _admit_memory(self, m: EngineManifest, kind: str, engine_id: str,
-                      needed_mb: int) -> None:
+                      needed_mb: int, credit_mb: int = 0) -> None:
         """Budget admission for a booking load whose PRIOR MEASURED footprint
         is known (the amended §10 chain — a first-ever load skips admission
         entirely: no invented number may evict anything). Prices on MEASURED
@@ -934,7 +972,12 @@ class EngineManager:
         back to the ledger-remaining arithmetic (the wiring's original
         behavior). Runs with NO manager locks held (cross-app lock-order
         rule); busy kinds are protected inside `make_room`; a refusal is
-        HONEST and leaves the world exactly as it was."""
+        HONEST and leaves the world exactly as it was.
+
+        `credit_mb`: what the kind's current occupant gives back when this load replaces it
+        (its booking) — counted as free, so replacing a speech model never evicts the AI model
+        in place of the speech model that is going anyway, and a variant switch is checked
+        against what it really adds (audit 2026-10-04 §13.3, §5 B5)."""
         needed = int(needed_mb)
         if needed <= 0:
             return
@@ -957,7 +1000,7 @@ class EngineManager:
             log.debug("sleeping-set reconcile unavailable at the speech door", exc_info=True)
         hw = self._hardware()
         margin = self._safety_margin_mb()
-        want = needed + margin
+        want = max(0, needed + margin - max(0, int(credit_mb)))
         used = self.pool_used_mb(fresh=True)
         total = 0
         if hw is not None:
@@ -1037,24 +1080,36 @@ class EngineManager:
 
     def _record_speech_load(self, m: EngineManifest, kind: str,
                             variant: str | None, mb: int, device: str) -> None:
-        """Persist a measured footprint as a source='load' row in the shared
-        measurement store (id `kind:engine:variant`, kind-tagged tts/stt) —
-        the evidence the estimate ladder reads on the next load. Best-effort:
-        persistence must never fail a load."""
+        """Persist a measured peak as a `"peak"` row in the shared measurement store (id
+        `kind:engine:variant`, kind-tagged tts/stt, backend = the device, flag `split_chars` =
+        the piece length it was measured at) — what `_price_mb` reads on the next load. Keeps
+        the newest 5 per device and length. Best-effort: persistence must never fail a load.
+
+        (Until 2026-10-04 these were `"load"` rows of a process both kinds shared — a computed
+        share; they are never read again, audit §13.3.)"""
         try:
+            from llm_runner.llm.model_measurements_api import MeasurementFlag
             from llm_runner.llm.stores import get_model_measurement_store
             from llm_runner.runner.hardware import current_machine_key
 
-            get_model_measurement_store().record(
-                f"{kind}:{m.id}:{variant or ''}".rstrip(":"),
-                machine_key=current_machine_key(), source="load",
-                label=f"speech load footprint ({device})",
-                tokens_per_sec=0.0, vram_total_mb=0,
-                at=int(time.time() * 1000), rows=[],
-                vram_model_mb=int(mb), kind="stt" if kind == "stt" else "tts",
+            store = get_model_measurement_store()
+            model_id = self._measure_id(kind, m.id, variant)
+            mk = current_machine_key()
+            split = str(self.effective_split(m.id, variant))
+            store.record(
+                model_id, machine_key=mk, source="peak",
+                label=f"speech peak ({device}, pieces of {split} characters)",
+                tokens_per_sec=0.0, vram_total_mb=0, at=int(time.time() * 1000),
+                rows=[MeasurementFlag(flagName="split_chars", flagValue=split)],
+                vram_model_mb=int(mb), kind="stt" if kind == "stt" else "tts", backend=device,
             )
+            store.prune_load_rows(model_id, mk, {"split_chars"}, keep=5, source="peak")
         except Exception:  # noqa: BLE001
-            log.debug("speech load-footprint persist failed for %s", m.id, exc_info=True)
+            log.debug("speech peak persist failed for %s", m.id, exc_info=True)
+
+    @staticmethod
+    def _measure_id(kind: str, engine_id: str, variant: str | None) -> str:
+        return f"{kind}:{engine_id}:{variant or ''}".rstrip(":")
 
     def bump_engine_reservation_async(self, kind: str) -> None:
         """Fire-and-forget high-water bump for the synthesis/transcription hot
@@ -1111,6 +1166,16 @@ class EngineManager:
                     self._record_speech_load(m, kind, variant, mb, device)
         except Exception:  # noqa: BLE001
             pass
+
+    @staticmethod
+    def _booking_mb(key: str) -> int:
+        """What `key` holds booked now (0 = nothing, or no kit)."""
+        try:
+            from llm_runner.runner.arbiter import get_arbiter
+
+            return int(get_arbiter().reserved_mb(key) or 0)
+        except Exception:  # noqa: BLE001
+            return 0
 
     def _release_engine(self, kind: str, engine_id: str) -> None:
         """Drop the booking (idempotent — `make_room` releases evicted rows
@@ -1421,11 +1486,8 @@ class EngineManager:
             from .audiocpp.slot import effective_placement
 
             placement = effective_placement(placement)
-            # Phase ② (plan doc §12): make the planned variant's files LOCAL
-            # before the runtime is (re)started with them — network leaves the load path.
-            # Skipped when this engine already holds the slot with the same
-            # (or unspecified) variant in the same place: that path early-returns below
-            # and must never trigger a fetch.
+            # This engine already holds the slot with the same (or unspecified) variant in
+            # the same place: that path early-returns below and must never fetch or check.
             _already = (
                 cur0 is not None and cur0.manifest.id == engine_id
                 and cur0.is_alive()
@@ -1433,36 +1495,39 @@ class EngineManager:
                 and (variant in (None, "", "auto")
                      or self._current_variants.get(engine_id) == variant)
             )
+
+            # Refuse before changing anything (audit 2026-10-04 §13.3, §5 B2). The device, the
+            # price and the memory check come FIRST — before a file is fetched or the AI model
+            # is unloaded — so a refused load leaves no download and no eviction behind. The
+            # price is exactly this model's measured peak at the piece length it will be given
+            # (`_price_mb`); a known one admits and books EARLY, so the ledger covers the
+            # seconds until the post-load true-up. The check credits what the kind's current
+            # occupant gives back when it is replaced — so a variant switch is checked too
+            # (§5 B5) and replacing a speech model never evicts the AI model in its place. A
+            # model never measured here gets no arithmetic: it loads, calibrates, is measured.
+            device = "cpu" if placement == "cpu" else self._resolve_device(m, device)
+            books = self._books_memory(device)
+            price = (self._price_mb(target_kind, engine_id, planned, device)
+                     if books and not _already else 0)
+            if price > 0:
+                credit = (self._booking_mb(f"{target_kind}:{cur0.manifest.id}")
+                          if cur0 is not None else 0)
+                self._admit_memory(m, target_kind, engine_id, price, credit_mb=credit)
+                self._reserve_engine(m, target_kind, price, "measured")
+                early_mb = price
+            # Phase ② (plan doc §12): the planned variant's files are LOCAL before the runtime
+            # is told about them — network leaves the load path.
             local_dir = None
             if not _already:
                 local_dir = self._ensure_variant_local(
                     m, planned, progress, effective_cancel)
-
-            # The 2026-08-13 VRAM wiring (step 3): resolve the device at the ONE
-            # load door and pass it down explicitly — the engine subprocess never
-            # runs its own hidden greedy-cuda again. Admission (amended §10):
-            # only a PRIOR MEASURED footprint on this box admits — and it books
-            # EARLY, so the ledger covers the seconds between admission and the
-            # post-200 true-up (a concurrent runner load can no longer admit
-            # into the same memory). A FIRST-EVER load gets no arithmetic: no
-            # admission, no invented number, no eviction on its behalf. A
-            # refused admission leaves the world exactly as it was (the prior
-            # engine keeps running); if an occupant must die to make room,
-            # `make_room` evicts it through our own evictor. Skipped when this
-            # very engine already holds the slot (it is resident and reserved).
-            device = "cpu" if placement == "cpu" else self._resolve_device(m, device)
-            books = self._books_memory(device)
-            cur = self.loaded_for(target_kind)
-            if unload_ai and not _already:
-                # Auto's third step, for a model never measured on the card (decision 1).
+            if unload_ai and not _already and not price:
+                # Auto's third step, for a model never measured on the card (decision 1); it
+                # waits for the AI model's memory to drain before the load reads the card.
                 self._unload_ai_model(engine_id)
-            if books and not (cur is not None and cur.manifest.id == engine_id
-                              and getattr(cur, "placement", "gpu") == placement):
-                prior = self._prior_measured_mb(target_kind, engine_id)
-                if prior > 0:
-                    self._admit_memory(m, target_kind, engine_id, prior)
-                    self._reserve_engine(m, target_kind, prior, "measured")
-                    early_mb = prior
+            # A load with no price on the card measures one: its warm-up is a full-length
+            # piece, and what the process holds after it is this model's peak (§13.3).
+            calibrate = books and not _already and not price
             # The device-delta fallback's BEFORE snapshot (boxes with no
             # per-process probe arm, e.g. AMD Linux) — taken after admission's
             # settle loop so an evicted victim's drain isn't charged to this
@@ -1536,8 +1601,11 @@ class EngineManager:
             # makes the engine load plain local files; None = its legacy way.
             if progress:
                 progress("loading_weights", f"loading {engine_id} weights")
-            r = proc.post("/load", json={"device": device, "variant": variant,
-                                         "model_dir": local_dir})
+            r = proc.post("/load", json={
+                "device": device, "variant": variant, "model_dir": local_dir,
+                # A full-length warm-up piece when this model has no price on the card yet.
+                "calibrate_chars": self.effective_split(engine_id, variant) if calibrate else 0,
+            })
             if r.status_code != 200:
                 log.warning("engine %s /load failed: %s", engine_id, r.text[:400])
                 with self._activity(target_kind), self._lock:
@@ -1580,25 +1648,30 @@ class EngineManager:
                 )
                 self._resolved_devices[engine_id] = device
                 self._placement_reasons[engine_id] = why
-            # Book the CONFIRMED load at its MEASURED footprint — the per-PID
-            # TREE probe (launcher shims: the child holds the memory), so a
-            # concurrent runner load can't cross-charge. Probe miss on a box
-            # with no per-process arm (AMD Linux) → the device-wide delta
-            # across the load, honestly "computed" and never persisted as
-            # evidence (a concurrent load could pollute it); an engine with
-            # an EARLY prior-measured booking keeps that instead. Nothing
-            # measurable at all → no booking — the strip says "not measured
-            # yet" rather than displaying an invention.
+            # Book the CONFIRMED load at its MEASURED footprint — the per-PID TREE probe of the
+            # kind's own process (audit §13.2), so nothing of another kind's is in it and a
+            # concurrent runner load can't cross-charge. A known price stays the booking's floor
+            # (the warm-up of a priced load is a short line, so what it measures is below the
+            # peak a full piece reaches). What is RECORDED as this model's peak (§13.3): a
+            # calibrated load's measurement (its warm-up was a full-length piece), or any
+            # measurement above the price. A clip-only family's first load can't calibrate —
+            # its lines record the peaks (the high-water bump). Probe miss on a box with no
+            # per-process arm (AMD Linux) → the device-wide delta across the load, honestly
+            # "computed" and never persisted; an EARLY booking keeps the price instead. Nothing
+            # measurable at all → no booking — the strip says "not measured yet".
             if books:
-                # Each kind has its own process (audit §13.2), so the process's measured
-                # memory is this model's alone — no share of another kind's to subtract.
                 measured = self._engine_proc_mb(proc, fresh=True)
+                try:
+                    calibrated = bool((r.json() or {}).get("calibrated"))
+                except Exception:  # noqa: BLE001 — a fake/legacy answer without a body
+                    calibrated = False
                 if measured:
-                    self._reserve_engine(m, target_kind, measured, "measured")
-                    self._record_speech_load(
-                        m, target_kind, self._current_variants.get(engine_id),
-                        measured, device,
-                    )
+                    self._reserve_engine(m, target_kind, max(measured, early_mb), "measured")
+                    if calibrated or (early_mb and measured > early_mb):
+                        self._record_speech_load(
+                            m, target_kind, self._current_variants.get(engine_id),
+                            measured, device,
+                        )
                 elif not early_mb:
                     after = self.pool_used_mb(fresh=True)
                     delta = (

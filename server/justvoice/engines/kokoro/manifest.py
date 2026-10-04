@@ -66,6 +66,10 @@ VARIANTS = [
         # (Ryzen 7 5700X, 8 threads, 2026-10-02) until a render measures this one
         # (docs/plans/2026-10-02-cpu-placement.md §6).
         "cpu_realtime": 3.15,
+        # The longest piece a line reaches the model in — audio.cpp's own Kokoro budget, so it
+        # never re-splits a piece with a hard join (audit 2026-10-04 §13.3); a 240-character
+        # piece peaked at about 2,700 MB on the card.
+        "split_chars": 240,
     },
 ]
 # The 16-bit file at the same pinned commit (gap 9); the 8-bit row stays the default.

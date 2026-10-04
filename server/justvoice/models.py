@@ -253,6 +253,11 @@ class EngineOverrides(BaseModel):
     # (The per-engine `device` choice that left with the per-engine environments on
     # 2026-10-01 was one setting for every model; this is per model.)
     placements: dict[str, Literal["auto", "gpu", "cpu"]] = {}
+    # The longest piece a line reaches each model in — variant id → characters (audit
+    # 2026-10-04 §13.3). A variant not listed uses its catalog default (`split_chars` on the
+    # manifest row), and none at all = `generation.max_chunk_chars`. Bounds the model's working
+    # memory, which grows with the line; the price a load is checked against is measured at it.
+    split_chars: dict[str, int] = {}
     # When the user accepted the engine's own terms (the manifest's TERMS — Pocket
     # TTS: Kyutai's prohibited-use terms, which gate cloning). ISO-8601; None = not
     # accepted, and the gated use is refused.

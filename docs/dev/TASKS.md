@@ -2208,12 +2208,29 @@ DECIDED: 2026-10-04, after a second review (Opus) — the user: "your rec for th
         Each needs its own go, with a blast-radius table before any code.
         The second review's facts and corrections: docs/dev/RESEARCH.md §1–2; the build
         record per step: the audit doc §13.
+        2026-10-04, after steps 1–2 — the user: "your rec on all go no need for go on each
+        step complete all fixes". The recs approved with it, as shown:
+        (1) Step 3 as designed — refuse before changing anything (the memory check runs
+            before any download or unload; one price for placement and the check: the exact
+            model's own measured peak); a full-length warm-up line on a model's first load
+            records its real peak (about 5–10 s once per model, then saved); a split size per
+            model (a catalog default you can override per model); a fixed seed sent for a
+            description voice that has none.
+        (2) Default split sizes: Qwen3 CustomVoice and Base 200 characters, VoxCPM2 200,
+            Kokoro 240 (its own internal limit); Chatterbox, Turbo, Pocket and Kitten stay as
+            they are (host splitting would re-encode Chatterbox's clip for every piece).
+        (3) VoiceDesign and VoxCPM2 description voices: one long line rendered whole and split,
+            same seed, for the user to compare before their default is set.
 BUILT:  2026-10-04 — step 1 (eSpeak NG reaches Kokoro and KittenTTS; Linux finds its wheel)
         and step 2 (models registered at run time through the fork's new `model_management`;
         one process per kind; a dead slot dropped with its booking; Cancel frees its booking;
         the engine endpoints off the event loop). Checked live on the restarted app — the
         record, blast radius and results: audit §13.1–13.2.
-OPEN:   steps 3–5 (built in order; each step's blast-radius table goes in audit §13 before
+        Step 3 (a split size per model; the price = exactly that model's measured peak,
+        calibrated on its first load; the memory check before any download or eviction;
+        a description voice keeps one seed and the full length). Checked live with Gemma on
+        the card: audit §13.3.
+OPEN:   steps 4–5 (built in order; each step's blast-radius table goes in audit §13 before
         its code). `model_management` reaches a packaged app only with the next audio.cpp
         release (its tag still needs the user's word); until then the pinned jv.1 keeps the
         listed config, now per kind. The listening test for description voices' split size;

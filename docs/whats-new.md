@@ -2,6 +2,16 @@
 
 ## v0.1.0
 
+- **Qwen3-TTS fits an 8 GB card (2026-10-04).** A model's memory grows with the
+  length of what it is given, and long lines went to it whole: a 752-character
+  line peaked at about 7 GB. Each model now gets lines in pieces of its own
+  length — 200 characters for Qwen3-TTS CustomVoice and Base and VoxCPM2, 240
+  for Kokoro — joined with a crossfade, at the same speed. What a model costs is
+  measured for exactly that model at that length (its first load on the card
+  speaks one full-length warm-up piece), and a load is checked against it before
+  anything happens: a load that can't fit no longer downloads the model or
+  unloads the AI model first. A voice made from words now keeps one voice — the
+  same seed on every piece and line ([Engines → Long lines](engines.md#long-lines-and-what-a-model-costs))
 - **Downloading a model no longer stops the other one (2026-10-04).** Speech
   and speech recognition each run in a process of their own, so downloading or
   deleting a model never touches the other's — before, the first download of

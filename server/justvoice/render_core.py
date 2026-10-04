@@ -125,6 +125,43 @@ def voice_design_instruct(state: AppState, stored) -> str | None:
     return (getattr(stored, "design_prompt", None) or "").strip() or None
 
 
+def is_description_voice(state: AppState, voice_id: str | None) -> bool:
+    """A voice drawn from its written description on every request — designed, no clip
+    (`voice_design_instruct`'s clip-wins rule)."""
+    return voice_design_instruct_for_id(state, voice_id) is not None
+
+
+def description_seed(voice_id: str) -> int:
+    """The seed a description voice speaks with when none is set (audit 2026-10-04 §13.3).
+
+    Its voice is drawn from the description on every request, so with a random seed each line
+    — and each piece of a long line — came out as a different person. A fixed seed per voice
+    makes it one voice; a persona's own seed still wins. Stable across runs (crc32 of the id)."""
+    import zlib
+
+    return zlib.crc32(voice_id.encode("utf-8")) & 0x7FFFFFFF
+
+
+def line_split_chars(state: AppState, engine_id: str, voice: str | None) -> int:
+    """The longest piece a line goes to its model in: the model's split size (the user's per
+    model, else the catalog's — `EngineManager.split_chars_for`) under
+    `generation.max_chunk_chars`, which a model with none gets. A description voice keeps
+    `max_chunk_chars` until its own size is decided by ear (§13.3). The host splits at
+    sentence ends and crossfades; a piece under audio.cpp's own budget is never re-split with
+    its hard join (audit §5 D5)."""
+    cap = int(getattr(state.settings.get().generation, "max_chunk_chars", DEFAULT_MAX_CHUNK_CHARS))
+    if is_description_voice(state, voice):
+        return cap
+    try:
+        from .engines.manager import get_manager
+
+        mgr = get_manager()
+        split = mgr.split_chars_for(engine_id, mgr.current_variant_id(engine_id))
+    except Exception:  # noqa: BLE001 — a registry engine / bare tests: no split of its own
+        split = None
+    return min(cap, split) if split else cap
+
+
 def voice_design_instruct_for_id(state: AppState, voice_id: str | None) -> str | None:
     """`voice_design_instruct` by voice id — the form the compose sites want,
     since they hold an id and a missing/preset voice must be a quiet None.
@@ -554,6 +591,11 @@ def probe_line_cached(
     # so the probe can't drift from the render. An IPA map rides the delivery
     # so it enters the key: a changed pronunciation is a different render.
     effective_text, delivery = prepare_line_text(state, engine_id, model, text, delivery, lexicons)
+    # A description voice speaks with a fixed seed when none is set — one voice, not a new one
+    # per line (§13.3). Before the cache key, so the key holds the seed the audio was made with
+    # (the probe and the render apply it alike).
+    if seed is None and voice and is_description_voice(state, voice):
+        seed = description_seed(voice)
     key = (
         CacheKeyBuilder()
         .with_engine(engine_id, VERSION)
@@ -675,6 +717,11 @@ def render_line(
     # to one has to land in the other or the probe starts lying about what is
     # cached.
     effective_text, delivery = prepare_line_text(state, engine_id, model, text, delivery, lexicons)
+    # A description voice speaks with a fixed seed when none is set — one voice, not a new one
+    # per line (§13.3). Before the cache key, so the key holds the seed the audio was made with
+    # (the probe and the render apply it alike).
+    if seed is None and voice and is_description_voice(state, voice):
+        seed = description_seed(voice)
 
     # Cache lookup. The key holds what the lexicons CHANGED in this line — the
     # respelt text, and the IPA for its own words (in the delivery) — never
@@ -773,7 +820,9 @@ def render_line(
     # Phase 3: chunked generation for long-form input. Below the threshold,
     # use the single-shot fast path. Above, split at sentence boundaries +
     # crossfade-blend the per-chunk audio.
-    max_chunk_chars = int(getattr(settings.generation, "max_chunk_chars", DEFAULT_MAX_CHUNK_CHARS))
+    # Each model's own piece length (audit 2026-10-04 §13.3) — its working memory grows with
+    # the line, and the price its load was checked against was measured at this length.
+    max_chunk_chars = line_split_chars(state, engine_id, voice)
     crossfade_ms = int(getattr(settings.generation, "crossfade_ms", 50))
 
     if len(effective_text) > max_chunk_chars:

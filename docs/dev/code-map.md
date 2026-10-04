@@ -426,18 +426,34 @@ gitignored), `<data_dir>/engines-runtime` frozen.
 variant)` → (`"gpu"` | `"cpu"`, the reason the row says, unload-the-AI-model?):
 a CPU-build runtime → cpu; the user's `engine_overrides[id].placements[variant]`
 → that; else Auto — gpu when no un-slept, unpinned `llm` reservation is on the
-card (`_ai_model_on_card`) or the variant's newest measured `load` footprint
+card (`_ai_model_on_card`) or the variant's price (`_price_mb` — below)
 fits `_free_card_mb`; else cpu when `cpu_speed` (newest `source="speed"`,
 `backend="cpu"` row on this machine, else the manifest variant's `cpu_realtime`
 reference) ≥ `speech_runtime.cpu_min_realtime`; else gpu, and when the size was
 never measured `_unload_ai_model` runs `make_room(total, protected tts/stt)`
-first (the kit's eviction event → the app's toast). `load()` resolves it before
-anything moves, reloads a loaded model whose place changed, and records the
+(the kit's eviction event → the app's toast) and waits for the memory to drain.
+`load()` resolves it before anything moves, reloads a loaded model whose place changed, and records the
 reason (`placement_reason_for`); `synth`/`transcribe` on a CPU slot record the
 first real-time factor after each load (`_record_cpu_speed`, kit column
 `realtime_x`). The device is then `cpu` for a CPU placement, else
 `_resolve_device` = `backend_of(installed_exe())`; `_books_memory` books VRAM for
 anything but `cpu`.
+
+**The price and the order of a load** (2026-10-04, audit §13.3). A variant may
+carry `split_chars` (Qwen3 CustomVoice/Base 200, VoxCPM2 200, Kokoro 240); the user's
+`engine_overrides[id].split_chars[variant]` wins; `manager.effective_split` caps it at
+`generation.max_chunk_chars`, and `render_core.line_split_chars` sends a line in pieces of
+it (chapter render and Generate) — a description voice (`is_description_voice`) keeps the
+cap and, with no seed, `description_seed(voice)`. `_price_mb(kind, engine, variant,
+device)` = the largest `"peak"` measurement row of exactly that variant on this machine and
+device at its effective split (flag `split_chars`, kept 5 per fingerprint by
+`_record_speech_load`). `load()`: placement → `_admit_memory(price, credit_mb=the
+same-kind occupant's booking)` + an early booking at the price → `_ensure_variant_local`
+→ `_unload_ai_model` (unpriced Auto loads only) → spawn → `/load` with `calibrate_chars`
+(unpriced loads on the card: `slot._warm` speaks `CALIBRATION_TEXT` cut to that length,
+never past `_FAMILY_BUDGET`; speech recognition 30 s of silence) → book
+`max(measured, price)`, record a peak when it calibrated or measured above the price. The
+high-water bump records higher readings after lines.
 
 **Memory: each kind books its own process.** Speech and speech recognition run in
 processes of their own (2026-10-04, audit §13.2), so the per-PID-tree probe of a

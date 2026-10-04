@@ -54,15 +54,25 @@ REQUIREMENTS = {
 _LANGS = ["zh", "en", "ja", "ko", "de", "fr", "ru", "pt", "es", "it"]
 
 
+# The longest piece a line reaches the model in (audit 2026-10-04 §13.3). Qwen3's working memory
+# grows with the line: 752 characters peaked at 7,122 MB on VoiceDesign whole and 3,976 MB in
+# 200-character pieces, at the same speed (§3.3). VoiceDesign's own size waits for a listening
+# test — its voice is drawn from the description on every piece.
+SPLIT_CHARS = 200
+
+
 def _variant(vid, name, path, size, quality, presets, description, *, task="tts",
-             cloning=False, design=False, source=None):
-    return {
+             cloning=False, design=False, source=None, split=SPLIT_CHARS):
+    row = {
         "id": vid, "name": name, "description": description,
         "languages": list(_LANGS), "voice_cloning": cloning, "voice_design": design,
         "preset_voices": presets, "quality": quality, "weights_license": "Apache-2.0",
         "sources": [source or model_source(path, size)],
         "audiocpp": {"family": "qwen3_tts", "task": task, "file": path, "clone": cloning},
     }
+    if split:
+        row["split_chars"] = split
+    return row
 
 
 # Our conversion of Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice @ 85e237c (gap 4), pinned by commit.
@@ -98,7 +108,7 @@ _EIGHT_BIT = [
              "Qwen3-TTS-12Hz-1.7B-VoiceDesign-GGUF/qwen3-tts-12hz-1.7b-voicedesign-q8_0.gguf",
              2_816_988_960, 90, 0,
              "Invents a voice from a written description — no reference audio. Powers "
-             "Design from words.", task="vdes", design=True),
+             "Design from words.", task="vdes", design=True, split=None),
 ]
 _BY_ID = {r["id"]: r for r in _EIGHT_BIT}
 

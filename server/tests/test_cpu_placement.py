@@ -105,7 +105,7 @@ def test_auto_keeps_a_fast_model_off_the_card_beside_the_ai_model(monkeypatch, a
 def test_a_measured_size_that_fits_stays_on_the_card(monkeypatch, arb):
     mgr = _mgr(monkeypatch)
     _ai_on_card(arb, mb=5000)
-    monkeypatch.setattr(EngineManager, "_prior_gpu_mb", lambda self, k, e, v: 600)
+    monkeypatch.setattr(EngineManager, "_price_mb", lambda self, k, e, v, d=None: 600)
     where, why, unload = mgr.placement_for(mgr.get_manifest("kokoro"), "tts", "kokoro-82m-q8")
     assert (where, unload) == ("gpu", False) and "fits beside the AI model (600 MB)" in why
 
@@ -126,7 +126,7 @@ def test_a_measured_size_that_does_not_fit_goes_through_admission(monkeypatch, a
     unload."""
     mgr = _mgr(monkeypatch)
     _ai_on_card(arb)
-    monkeypatch.setattr(EngineManager, "_prior_gpu_mb", lambda self, k, e, v: 3200)
+    monkeypatch.setattr(EngineManager, "_price_mb", lambda self, k, e, v, d=None: 3200)
     where, _why, unload = mgr.placement_for(mgr.get_manifest("chatterbox"), "tts",
                                             "chatterbox-multilingual-v2-q8")
     assert (where, unload) == ("gpu", False)

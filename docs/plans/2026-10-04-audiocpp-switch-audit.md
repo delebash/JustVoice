@@ -668,3 +668,95 @@ drained. Step 3 fixes both. Gemma reloads itself the next time a feature asks fo
 
 **Not checked:** a packaged app on the pinned jv.1 (no `model_management` — it keeps the listed
 config, now per kind); Linux and macOS; two loads of the two kinds at the same moment.
+
+### 13.3 Step 3 — bound the work, then price it honestly
+
+**Decided** 2026-10-04: "your rec on all go no need for go on each step complete all fixes",
+with the three recs as shown (TASKS, verbatim): step 3 as designed; split sizes Qwen3 CustomVoice
+and Base 200, VoxCPM2 200, Kokoro 240, the rest unchanged; description voices wait for a
+listening test.
+
+**The design.**
+
+- **A split size per model.** A variant row may carry `split_chars` (a catalog fact: the piece
+  length that bounds its working memory); the user overrides it per model in
+  `engines.engine_overrides[id].split_chars[variant]` (PATCH /v1/settings). A line goes to the
+  model in pieces of at most `min(generation.max_chunk_chars, split)` — the host's
+  sentence-first splitter and its crossfade, so for Qwen3, VoxCPM2 and Kokoro audio.cpp's own
+  hard-joined splitting never runs (pieces stay under its budgets). Defaults: every Qwen3
+  CustomVoice and Base row 200, VoxCPM2 200, Kokoro 240; VoiceDesign, Chatterbox, Turbo, Nano,
+  Pocket, Kitten none. `render_core.line_split_chars` is the one helper (chapter render and
+  Generate).
+- **A description voice** (designed, no clip — `voice_design_instruct`) keeps
+  `max_chunk_chars` until its own split is decided by ear, and when no seed is set gets a fixed
+  one derived from its id (`description_seed`), the same for every piece — its voice is drawn
+  from the description on every request, so a random seed per piece or per line drew a
+  different voice. Generate gave every piece `seed + i`; a description voice now keeps one.
+- **One price, the exact model's own.** `_price_mb(kind, engine, variant, device)` = the largest
+  `"peak"` reading of exactly this variant on this machine and device at its current split
+  (the kit's measurement store, flag `split_chars`; keep 5 per fingerprint). Placement ("fits
+  beside the AI model") and the memory check both ask it. `_prior_measured_mb` (the engine-wide
+  maximum, B1) and `_prior_gpu_mb` go. The old `"load"` rows (shared-process shares) are never
+  read again.
+- **The calibrated peak.** A load with no price for the card warms up with a full-length piece
+  (`slot.CALIBRATION_TEXT` cut at a sentence end to `min(split, the family's own budget)`;
+  speech recognition gets 30 s of silence) and the measured process memory after it is recorded
+  as the price. A family that needs a clip to speak (Chatterbox Multilingual, Qwen3 Base) can't
+  calibrate at load; its first real lines record peaks (the high-water bump), and those price it
+  from then on. A known price books early and stays the floor of the booking; a higher reading
+  after any line raises it and is recorded.
+- **Refuse before changing anything.** Order in `load`: placement → the memory check (priced
+  loads; it credits what the same-kind occupant gives back when it is replaced, so loading a
+  speech model never evicts the AI model in place of the speech model it replaces, and a
+  variant switch is checked too, B5) → download the files → unload the AI model (Auto's third
+  step, unpriced loads only) and wait for its memory to drain → start and load. A refusal
+  leaves no download and no eviction behind (B2).
+
+**Blast radius** (greps run 2026-10-04, before the change):
+
+```
+$ grep -rn "_prior_measured_mb" justvoice tests
+manager.py:896,1461 · tests/test_engine_local_load.py:66 · tests/test_engine_vram_wiring.py:115,211,242,389,403,420,435,458,614,689,691
+$ grep -rn "_prior_gpu_mb" justvoice tests
+manager.py:659,731 · tests/test_cpu_placement.py:108,129
+$ grep -rn "_record_speech_load" justvoice tests
+manager.py:1038,1111,1598 · tests/test_engine_local_load.py:68 · tests/test_engine_vram_wiring.py:117,183,260,318
+$ grep -rn "placement_for(" justvoice tests
+api/models_api.py:48,107 · manager.py:1420 · tests/test_cpu_placement.py:85-150
+$ grep -rn "_admit_memory(\|_unload_ai_model(\|_ensure_variant_local(" justvoice tests
+manager.py:924,1463 · manager.py:740,1458 · tests/test_cpu_placement.py:248 · manager.py:1208,1438 · tests/test_engine_local_load.py:103,105,135
+$ grep -rn "max_chunk_chars\|split_text_into_chunks(" justvoice
+api/generate_api.py:77-80,264,327,337,393,432,449 · render_core.py:776-780 · models.py:113 · api/voice_preview_api.py:894 (audition pieces — unchanged)
+$ grep -rn "class EngineOverrides\|\.placements" justvoice
+models.py:238 · api/models_api.py:85,102,104 · manager.py:616,632
+$ grep -rn "_warm" justvoice tests
+slot.py:307,311 · tests/test_turbo_cloning.py:95
+```
+
+| What changed | Callers / producers | Effect |
+|---|---|---|
+| `_price_mb` replaces `_prior_measured_mb` and `_prior_gpu_mb` | manager `load`, `placement_for`; models_api 48,107 (through `placement_for`); the tests above | an exact-variant, per-device, per-split price; tests' fakes renamed |
+| `_record_speech_load` writes `"peak"` rows with the split flag | manager `load` and the high-water bump | the price's only producer; old `"load"` rows stay unread |
+| `load` reordered, admission credits the same-kind occupant, variant switches checked | every load caller (manager §7 table of the switch record) | a refused load downloads and evicts nothing |
+| `line_split_chars`, `description_seed` | render_core `render_line`, generate_api `_synth_managed` | Qwen3/VoxCPM2/Kokoro lines go in shorter pieces; description voices keep one seed |
+| `EngineOverrides.split_chars` | settings only (PATCH /v1/settings) | a new optional field; no reset needed |
+| slot `_warm(calibrate)`; `/load` answers `calibrated` | slot `_load`; test_turbo_cloning 95 | a first load on the card takes one full-length line longer |
+
+**Checked.** Tests: the price (`test_the_price_is_this_models_own_peak_at_its_piece_length`),
+the load order (a refused load downloads and unloads nothing; an unpriced load fetches first
+and unloads the AI model after; a variant switch is checked against what it adds; a known
+price is the booking's floor and a higher reading is recorded; the occupant credit; the drain
+wait), calibration (a full-length warm-up per family, capped at audio.cpp's own budget;
+VoiceDesign warms from words; clip-only families can't; recognition gets 30 s; a failed warm-up
+fails the load), the split size (the user's, then the catalog's, under the cap) and the render
+(pieces of the model's length; a description voice keeps one seed and the full length, and
+the cache probe agrees). Server suite 1052 passed, ruff clean. Live, Gemma 4 26B on the card:
+
+- Qwen3 CustomVoice 1.7B, never measured: Auto unloaded Gemma, the load calibrated at 200
+  characters and recorded 4,057 MB (CUDA) in 17 s.
+- A 752-character line with Ryan: 56.3 s of audio in 28.7 s; the card peaked at 6,152 MB, about
+  5.1 GB above idle — above the 4,057 MB price: the transient second decoder buffer the
+  post-line reading cannot see. Step 4 frees the old buffer first.
+- Unloaded and loaded again: priced, no calibration, 8 s, booked at its price.
+- Gemma loaded again, then CustomVoice: placement "no usable speed on the CPU, so the AI model
+  makes room"; the memory check evicted Gemma itself and the load took 10.6 s, booked 4,057 MB.

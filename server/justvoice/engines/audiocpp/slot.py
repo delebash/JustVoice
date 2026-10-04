@@ -304,40 +304,56 @@ class AudioCppSlot:
         self._row = row
         self.proc, self.port, self._generation = srv._run.proc, srv._run.port, srv._run.proc.pid
         self._loaded = True
-        self._warm()
-        return _Resp(200, payload={"ok": True, "variant": row["id"],
+        calibrated = self._warm(int(body.get("calibrate_chars") or 0))
+        return _Resp(200, payload={"ok": True, "variant": row["id"], "calibrated": calibrated,
                                    "voices": list(self.manifest.static_voices)})
 
-    def _warm(self) -> None:
-        """Bring the model into memory now, so a Load means loaded (audio.cpp is lazy).
-        Families that need a reference clip warm on their first real line instead."""
+    def _warm(self, calibrate_chars: int = 0) -> bool:
+        """Speak once now, so a Load means loaded and its memory is measured — audio.cpp loads
+        lazily on a build without `model_management`, and allocates a model's working buffers
+        on its first line on any build. `calibrate_chars` > 0: this model has no price on the
+        card yet, so the warm-up is a FULL-LENGTH piece (`CALIBRATION_TEXT` cut to that length,
+        never longer than audio.cpp's own budget for the family; speech recognition gets its
+        30 s chunk of silence) and what the process holds after it is this model's peak (audit
+        2026-10-04 §13.3). Returns whether it calibrated. A family that speaks only from a clip
+        (Chatterbox Multilingual, Qwen3 Base) warms on its first real line instead.
+
+        A failure fails the Load with audio.cpp's own words — until 2026-10-04 it was logged
+        and the Load said ready (audit §5 B4)."""
         spec = self._row["audiocpp"]
-        srv = self._srv()
-        try:
-            if spec["family"] == "kokoro_tts":
-                srv.speech({"model": self._row["id"], "input": "Ready.", "voice": "af_heart",
-                            "language": "en-us", "seed": 1})
-            elif spec["family"] == "kitten_tts":
-                srv.speech({"model": self._row["id"], "input": "Ready.", "voice": "Leo"})
-            elif spec["family"] == "pocket_tts":
-                srv.speech({"model": self._row["id"], "input": "Ready.", "voice": "alba", "seed": 1})
-            elif spec["family"] == "qwen3_tts" and spec["task"] == "tts" and not spec.get("clone"):
-                srv.speech({"model": self._row["id"], "input": "Ready.", "language": "English",
-                            "seed": 1, "options": {"speaker": "Ryan"}})
-            elif spec["family"] == "qwen3_asr":
-                srv.transcribe({"model": self._row["id"], "audio": _silence_path(),
-                                "language": "English"})
-            elif spec["family"] == "voxcpm2":
-                # Designed, so it needs no clip. Without a warm-up the load measured nothing
-                # (197 → 197 MB) and the memory ledger booked 0 MB for a multi-GB model.
-                srv.speech({"model": self._row["id"], "input": "(A calm, clear voice)Ready.",
-                            "seed": 1})
-            elif spec["family"] == "chatterbox_turbo":
-                # The app offers Turbo's cloned voices only, but its built-in voice needs no
-                # clip, so a Load books its memory now rather than on the first line.
-                srv.speech({"model": self._row["id"], "input": "Ready.", "seed": 1})
-        except AudioCppError as e:
-            log.info("audio.cpp warm-up of %s skipped: %s", self._row["id"], e)
+        family, task = spec["family"], spec["task"]
+        n = min(calibrate_chars, _FAMILY_BUDGET.get(family, calibrate_chars)) if calibrate_chars else 0
+        text = calibration_text(n) if n else "Ready."
+        model, srv = self._row["id"], self._srv()
+        if family == "kokoro_tts":
+            srv.speech({"model": model, "input": text, "voice": "af_heart", "language": "en-us",
+                        "seed": 1})
+        elif family == "kitten_tts":
+            srv.speech({"model": model, "input": text, "voice": "Leo"})
+        elif family == "pocket_tts":
+            srv.speech({"model": model, "input": text, "voice": "alba", "seed": 1})
+        elif family == "qwen3_tts" and task == "vdes":
+            # Designed from words, so it needs no clip (it had no warm-up until 2026-10-04).
+            srv.speech({"model": model, "input": text, "language": "English", "seed": 1,
+                        "instructions": "A calm, clear narrator."})
+        elif family == "qwen3_tts" and task == "tts" and not spec.get("clone"):
+            srv.speech({"model": model, "input": text, "language": "English", "seed": 1,
+                        "options": {"speaker": "Ryan"}})
+        elif family == "qwen3_asr":
+            seconds = _CALIBRATION_AUDIO_S if calibrate_chars else 1 / 3
+            srv.transcribe({"model": model, "language": "English", "audio": _silence_path(seconds)})
+            return bool(calibrate_chars)
+        elif family == "voxcpm2":
+            # Designed, so it needs no clip. Without a warm-up the load measured nothing
+            # (197 -> 197 MB) and the memory ledger booked 0 MB for a multi-GB model.
+            srv.speech({"model": model, "input": f"(A calm, clear voice){text}", "seed": 1})
+        elif family == "chatterbox_turbo":
+            # The app offers Turbo's cloned voices only, but its built-in voice needs no
+            # clip, so a Load books its memory now rather than on the first line.
+            srv.speech({"model": model, "input": text, "seed": 1})
+        else:
+            return False
+        return bool(n)
 
     # -- /synth --
 
@@ -464,21 +480,58 @@ def as_16k_mono(wav: bytes) -> bytes:
     return write_wav_container(pcm, ALIGN_RATE, 1)
 
 
-_SILENCE: str | None = None
+_SILENCE: dict[int, str] = {}
 
 
-def _silence_path() -> str:
-    """A third of a second of 16 kHz silence — the recogniser's warm-up input."""
-    global _SILENCE
-    if _SILENCE is None or not Path(_SILENCE).is_file():
-        f = Path(tempfile.gettempdir()) / "justvoice-audiocpp-warmup.wav"
+def _silence_path(seconds: float = 1 / 3) -> str:
+    """`seconds` of 16 kHz silence — the recogniser's warm-up input (a third of a second) or
+    its calibration (its 30 s chunk). One file per length, written once per run."""
+    frames = int(seconds * 16000)
+    path = _SILENCE.get(frames)
+    if path is None or not Path(path).is_file():
+        f = Path(tempfile.gettempdir()) / f"justvoice-audiocpp-silence-{frames}.wav"
         with wave.open(str(f), "wb") as w:
             w.setnchannels(1)
             w.setsampwidth(2)
             w.setframerate(16000)
-            w.writeframes(b"\x00\x00" * 5333)
-        _SILENCE = str(f).replace("\\", "/")
-    return _SILENCE
+            w.writeframes(b"\x00\x00" * frames)
+        path = _SILENCE[frames] = str(f).replace("\\", "/")
+    return path
+
+
+# What a calibrating warm-up speaks (audit 2026-10-04 §13.3): ordinary narration, cut at a
+# sentence end to the piece length the model is given — what its working memory reaches.
+CALIBRATION_TEXT = (
+    "The ferry was late again, and nobody on the quay looked surprised. Marius set the lamp on "
+    "the table and counted the doors until the ninth. The fog came in over the pier before "
+    "either of them said a word, and the harbour went quiet. June leaned against the doorframe "
+    "with her arms crossed, watching the last of the light drain out of the sky, and said "
+    "nothing at all for a long while. When she finally spoke, it was to ask about the boats, "
+    "and whether the tide had turned, and whether anyone had thought to bring the lanterns in "
+    "from the far end of the pier. Nobody had. The boy went, grumbling, and came back with three "
+    "of them swinging from one hand and his collar turned up against the damp, and set them "
+    "down in a row by the door without being told. Outside, the bell on the channel buoy rang "
+    "twice and then fell silent, as if it too were waiting to see what the night would bring."
+)
+# audio.cpp's own piece budget for a family, in characters — it splits longer input itself, so
+# a calibrating piece is never longer (Chatterbox and Turbo session.cpp, Kokoro and Kitten
+# frontends; audit §5 D5).
+_FAMILY_BUDGET = {"chatterbox": 128, "chatterbox_turbo": 128, "kokoro_tts": 240, "kitten_tts": 400}
+# Speech recognition is calibrated with its own chunk of audio (`audio_chunk_seconds`, 30 s).
+_CALIBRATION_AUDIO_S = 30.0
+
+
+def calibration_text(chars: int) -> str:
+    """`CALIBRATION_TEXT` cut at a word to as close to `chars` characters as it goes — the
+    memory follows the length, so a piece cut short at a sentence end would under-measure."""
+    if chars >= len(CALIBRATION_TEXT):
+        return CALIBRATION_TEXT
+    n = max(40, chars)
+    head = CALIBRATION_TEXT[:n]
+    if CALIBRATION_TEXT[n:n + 1] != " ":
+        head = head.rsplit(" ", 1)[0]          # never half a word
+    head = head.rstrip(" ,;.")
+    return head + "." if len(head) < n else head[:-1] + "."
 
 
 # ─── Our request → audio.cpp's (plan §3.4) ──────────────────────────────────

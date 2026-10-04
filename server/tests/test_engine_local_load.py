@@ -63,8 +63,8 @@ def _mgr(monkeypatch, manifest):
     monkeypatch.setattr(EngineManager, "_resolve_device", lambda self, m, requested: "cpu")
     monkeypatch.setattr(EngineManager, "pool_used_mb",
                         lambda self, *, fresh=False: None)
-    monkeypatch.setattr(EngineManager, "_prior_measured_mb",
-                        lambda self, kind, engine_id: 0)
+    monkeypatch.setattr(EngineManager, "_price_mb",
+                        lambda self, kind, engine_id, variant=None, device=None: 0)
     monkeypatch.setattr(EngineManager, "_record_speech_load",
                         lambda self, m, kind, variant, mb, device: None)
     mgr = mgr_mod.EngineManager()

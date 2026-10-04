@@ -121,7 +121,9 @@ When there are tags: filter by typing, ↑↓ to navigate, Enter / Tab to insert
 
 ## Auto-chunking
 
-Long text (> `settings.generation.max_chunk_chars`, default 800) gets split at sentence boundaries, rendered per-chunk, and crossfade-concatenated. You don't need to do anything — the server detects long input and switches paths automatically.
+Long text gets split at sentence boundaries, rendered per piece, and crossfade-joined. You don't need to do anything — the server detects long input and switches paths automatically.
+
+How long a piece may be depends on the model. A model's memory grows with the length of what it is given, so each model has its own piece length: **200 characters** for Qwen3-TTS CustomVoice and Base and for VoxCPM2, **240** for Kokoro (its own limit), and `settings.generation.max_chunk_chars` (default 800) for the rest — and that setting caps them all. You can change a model's length in `settings.engines.engine_overrides[engine].split_chars[model]` (see [Engines → Long lines](engines.md#long-lines-and-what-a-model-costs)).
 
 Voice auditions on the Voices page use the same splitter at a much smaller
 granularity (`settings.generation.stream_piece_chars`, default 200): each
@@ -132,6 +134,8 @@ join with the same crossfade as the long-form path.
 The splitter knows about abbreviations (`Mr.`, `Dr.`, `e.g.`), decimal numbers, CJK sentence-end punctuation (`。！？`), and treats `[bracket]` paralinguistic tags as atomic (never split inside one).
 
 Per-chunk seeds are deterministically varied (`seed + chunk_index`) so the same `(text, seed)` pair always produces the same output, while artefact correlation across chunks stays low.
+
+A **voice made from words** (designed, with no clip — VoiceDesign, or a VoxCPM2 description) is the exception. Its voice is drawn from the description every time it speaks, so it gets the same seed for every piece, and when no seed is set it gets a fixed one of its own instead of a random one; otherwise each piece, and each line, would come out as a different person. It is also sent at the full `max_chunk_chars` length for now — whether splitting it changes how it sounds is waiting on a listening test.
 
 ## In-flight status strip + status panel
 

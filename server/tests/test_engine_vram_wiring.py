@@ -112,8 +112,8 @@ def _mgr(monkeypatch, hw, manifest):
     # rows, no persistence.
     monkeypatch.setattr(EngineManager, "pool_used_mb",
                         lambda self, *, fresh=False: None)
-    monkeypatch.setattr(EngineManager, "_prior_measured_mb",
-                        lambda self, kind, engine_id: 0)
+    monkeypatch.setattr(EngineManager, "_price_mb",
+                        lambda self, kind, engine_id, variant=None, device=None: 0)
     monkeypatch.setattr(EngineManager, "_record_speech_load",
                         lambda self, m, kind, variant, mb, device: None)
     mgr = mgr_mod.EngineManager()
@@ -172,11 +172,26 @@ def test_first_load_books_nothing_when_nothing_measurable(monkeypatch, arb_env):
 
 def test_load_true_up_books_the_measured_number(monkeypatch, arb_env):
     """The core of the redesign: the per-PID-tree probe books the real
-    footprint the moment the load confirms — source='measured', persisted
-    as the evidence the next load's admission reads."""
+    footprint the moment the load confirms — source='measured'. A model with no
+    price yet is asked to calibrate (a full-length warm-up, audit §13.3); what it
+    measures after that is persisted as its peak, the price the next load reads."""
     arb = arb_env(_discrete())
     recorded = []
+    bodies = []
+
+    class _CalibratingProc(_Proc):
+        def post(self, path, json=None, timeout=None):
+            if path == "/load":
+                bodies.append(json)
+                calibrated = bool((json or {}).get("calibrate_chars"))
+                return SimpleNamespace(status_code=200, text="",
+                                       json=lambda: {"ok": True, "voices": [], "calibrated": calibrated})
+            return super().post(path, json=json, timeout=timeout)
+
+    from justvoice.engines import manager as mgr_mod
+
     mgr = _mgr(monkeypatch, _discrete(), _manifest())
+    monkeypatch.setattr(mgr_mod, "_new_slot", _CalibratingProc)
     monkeypatch.setattr(EngineManager, "_engine_proc_mb",
                         lambda self, proc, *, fresh=True: 1234)
     monkeypatch.setattr(
@@ -184,10 +199,28 @@ def test_load_true_up_books_the_measured_number(monkeypatch, arb_env):
         lambda self, m, kind, variant, mb, device: recorded.append((m.id, kind, mb)),
     )
     mgr.load("eng", device="auto")
+    assert bodies[0]["calibrate_chars"] > 0
     row = arb.reservation_of("tts:eng")
     assert row == {"vram_mb": 1234, "source": "measured", "kind": "tts",
                    "pinned": False, "asleep": False}
     assert recorded == [("eng", "tts", 1234)]
+
+
+def test_a_load_that_could_not_calibrate_is_booked_but_never_priced(monkeypatch, arb_env):
+    """A clip-only family (Chatterbox Multilingual, Qwen3 Base) can't speak a warm-up
+    line: its post-load number is the weights alone, not a peak — booked, never recorded
+    as one (its lines record the peaks)."""
+    arb = arb_env(_discrete())
+    recorded = []
+    mgr = _mgr(monkeypatch, _discrete(), _manifest())
+    monkeypatch.setattr(EngineManager, "_engine_proc_mb",
+                        lambda self, proc, *, fresh=True: 900)
+    monkeypatch.setattr(
+        EngineManager, "_record_speech_load",
+        lambda self, m, kind, variant, mb, device: recorded.append(mb),
+    )
+    mgr.load("eng", device="auto")
+    assert arb.reservation_of("tts:eng")["vram_mb"] == 900 and recorded == []
 
 
 def test_prior_measured_admits_and_books_early(monkeypatch, arb_env):
@@ -208,8 +241,8 @@ def test_prior_measured_admits_and_books_early(monkeypatch, arb_env):
 
     mgr = _mgr(monkeypatch, _discrete(), _manifest())
     monkeypatch.setattr(mgr_mod, "_new_slot", _EarlyProc)
-    monkeypatch.setattr(EngineManager, "_prior_measured_mb",
-                        lambda self, kind, engine_id: 1500)
+    monkeypatch.setattr(EngineManager, "_price_mb",
+                        lambda self, kind, engine_id, variant=None, device=None: 1500)
     mgr.load("eng", device="auto")
     assert seen_at_post and seen_at_post[0] is not None
     assert seen_at_post[0]["vram_mb"] == 1500
@@ -239,8 +272,8 @@ def test_failed_load_releases_the_early_booking(monkeypatch, arb_env):
 
     mgr = _mgr(monkeypatch, _discrete(), _manifest())
     monkeypatch.setattr(mgr_mod, "_new_slot", _FailProc)
-    monkeypatch.setattr(EngineManager, "_prior_measured_mb",
-                        lambda self, kind, engine_id: 1500)
+    monkeypatch.setattr(EngineManager, "_price_mb",
+                        lambda self, kind, engine_id, variant=None, device=None: 1500)
     with pytest.raises(RuntimeError, match="engine load failed"):
         mgr.load("eng", device="auto")
     assert arb.reservation_of("tts:eng") is None
@@ -386,8 +419,8 @@ def test_admission_refuses_honestly_when_nothing_is_evictable(monkeypatch, arb_e
     arb = arb_env(_discrete(vram_mb=8192))
     arb.reserve("llm:pinned-chat", 7000, pinned=True, kind="llm")
     mgr = _mgr(monkeypatch, _discrete(vram_mb=8192), _manifest())
-    monkeypatch.setattr(EngineManager, "_prior_measured_mb",
-                        lambda self, kind, engine_id: 4096)
+    monkeypatch.setattr(EngineManager, "_price_mb",
+                        lambda self, kind, engine_id, variant=None, device=None: 4096)
     with pytest.raises(RuntimeError, match="not enough memory"):
         mgr.load("eng", device="auto")
     # The world is exactly as it was: no slot occupant, no booking.
@@ -400,8 +433,8 @@ def test_admission_evicts_the_idle_llm(monkeypatch, arb_env):
     evicted = []
     arb.reserve("chat", 7000, kind="llm", evict_fn=lambda: evicted.append("chat"))
     mgr = _mgr(monkeypatch, _discrete(vram_mb=8192), _manifest())
-    monkeypatch.setattr(EngineManager, "_prior_measured_mb",
-                        lambda self, kind, engine_id: 4096)
+    monkeypatch.setattr(EngineManager, "_price_mb",
+                        lambda self, kind, engine_id, variant=None, device=None: 4096)
     mgr.load("eng", device="auto")
     assert evicted == ["chat"]
     assert arb.reservation_of("chat") is None
@@ -417,8 +450,8 @@ def test_admission_never_evicts_a_busy_kind(monkeypatch, arb_env):
     arb.reserve("chat", 7000, kind="llm", evict_fn=lambda: None)
     arb.busy_begin("llm")
     mgr = _mgr(monkeypatch, _discrete(vram_mb=8192), _manifest())
-    monkeypatch.setattr(EngineManager, "_prior_measured_mb",
-                        lambda self, kind, engine_id: 4096)
+    monkeypatch.setattr(EngineManager, "_price_mb",
+                        lambda self, kind, engine_id, variant=None, device=None: 4096)
     with pytest.raises(RuntimeError, match="busy: llm"):
         mgr.load("eng", device="auto")
     assert arb.reservation_of("chat") is not None
@@ -432,8 +465,8 @@ def test_admission_on_measured_free_sees_foreign_usage(monkeypatch, arb_env):
     the refusal quotes the measured number."""
     arb_env(_discrete(vram_mb=8192))
     mgr = _mgr(monkeypatch, _discrete(vram_mb=8192), _manifest())
-    monkeypatch.setattr(EngineManager, "_prior_measured_mb",
-                        lambda self, kind, engine_id: 4096)
+    monkeypatch.setattr(EngineManager, "_price_mb",
+                        lambda self, kind, engine_id, variant=None, device=None: 4096)
     monkeypatch.setattr(EngineManager, "pool_used_mb",
                         lambda self, *, fresh=False: 7000)
     with pytest.raises(RuntimeError, match=r"free of 8192 MB \(measured, minus what is booked\)"):
@@ -455,8 +488,8 @@ def test_admission_on_measured_free_evicts_then_settles(monkeypatch, arb_env):
     monkeypatch.setattr(EngineManager, "pool_used_mb",
                         lambda self, *, fresh=False: seq.pop(0) if seq else 600)
     mgr = _mgr(monkeypatch, _discrete(vram_mb=8192), _manifest())
-    monkeypatch.setattr(EngineManager, "_prior_measured_mb",
-                        lambda self, kind, engine_id: 2000)
+    monkeypatch.setattr(EngineManager, "_price_mb",
+                        lambda self, kind, engine_id, variant=None, device=None: 2000)
     mgr.load("eng", device="auto")
     assert evicted == ["chat"]
     assert arb.reservation_of("tts:eng")["vram_mb"] == 2000
@@ -611,8 +644,8 @@ def _admission_mgr(monkeypatch, arb, *, prior_mb, used_mb):
     from justvoice.engines import manager as mgr_mod
 
     mgr = _mgr(monkeypatch, _discrete(), _manifest())
-    monkeypatch.setattr(EngineManager, "_prior_measured_mb",
-                        lambda self, kind, engine_id: prior_mb)
+    monkeypatch.setattr(EngineManager, "_price_mb",
+                        lambda self, kind, engine_id, variant=None, device=None: prior_mb)
     monkeypatch.setattr(EngineManager, "pool_used_mb",
                         lambda self, *, fresh=False: used_mb)
     monkeypatch.setattr(EngineManager, "_safety_margin_mb", staticmethod(lambda: 1024))
@@ -665,27 +698,134 @@ def test_admission_still_prices_on_the_probe_when_the_probe_is_worse(monkeypatch
     assert arb.reservation_of("tts:eng") is None
 
 
-# ─── prior evidence must be about a model the engine still has ────────────
+# ─── the price: exactly this model's own peaks (audit 2026-10-04 §13.3) ────
 
 
-def test_a_prior_measurement_counts_only_for_a_live_catalog_variant(monkeypatch):
-    """A footprint measured on a model the catalog no longer offers says nothing
-    about its replacement: the PyTorch Qwen3's 7.1 GB (pre-2026-10-01) refused the
-    8-bit GGUF outright on an 8 GB card. Rows for live variants still count, the
-    largest winning."""
+def test_the_price_is_this_models_own_peak_at_its_piece_length(monkeypatch):
+    """VoiceDesign was refused at 6,249 MB — a reading of CustomVoice 0.6B, the largest of ANY
+    Qwen3 variant (audit §5 B1). The price is exactly this variant's `"peak"` readings, on this
+    machine and device, at the piece length it is given now — the largest of those."""
     import llm_runner.llm.stores as stores
     import llm_runner.runner.hardware as hardware
 
+    def flag(split):
+        return [SimpleNamespace(flagName="split_chars", flagValue=str(split))]
+
+    def row(model, mb, *, source="peak", machine="box", backend="cuda", split=200):
+        return SimpleNamespace(modelId=model, machineKey=machine, vramModelMb=mb, source=source,
+                               backend=backend, switches=flag(split))
+
     rows = [
-        SimpleNamespace(modelId="tts:qwen3:qwen3-cv-1.7b", machineKey="box", vramModelMb=7115),
-        SimpleNamespace(modelId="tts:qwen3", machineKey="box", vramModelMb=6900),
-        SimpleNamespace(modelId="tts:qwen3:qwen3-base-0.6b-q8", machineKey="box", vramModelMb=3100),
-        SimpleNamespace(modelId="tts:qwen3:qwen3-cv-1.7b-q8", machineKey="other", vramModelMb=9000),
+        row("tts:qwen3:qwen3-cv-0.6b-q8", 6249),                         # another variant
+        row("tts:qwen3:qwen3-vd-1.7b-q8", 6000, source="load"),         # an old shared-process share
+        row("tts:qwen3:qwen3-vd-1.7b-q8", 9000, machine="other"),       # another machine
+        row("tts:qwen3:qwen3-vd-1.7b-q8", 5100, backend="vulkan"),      # another device
+        row("tts:qwen3:qwen3-vd-1.7b-q8", 7100, split=800),             # another piece length
+        row("tts:qwen3:qwen3-vd-1.7b-q8", 3900),
+        row("tts:qwen3:qwen3-vd-1.7b-q8", 3500),
     ]
     monkeypatch.setattr(stores, "get_model_measurement_store",
-                        lambda: SimpleNamespace(list=lambda _k: rows))
+                        lambda: SimpleNamespace(list=lambda k: [r for r in rows if r.modelId == k]))
     monkeypatch.setattr(hardware, "current_machine_key", lambda: "box")
     mgr = EngineManager.__new__(EngineManager)
-    assert mgr._prior_measured_mb("tts", "qwen3") == 3100
-    rows.append(SimpleNamespace(modelId="tts:qwen3:qwen3-cv-1.7b-q8", machineKey="box", vramModelMb=6400))
-    assert mgr._prior_measured_mb("tts", "qwen3") == 6400
+    monkeypatch.setattr(EngineManager, "effective_split", lambda self, e, v: 200)
+    assert mgr._price_mb("tts", "qwen3", "qwen3-vd-1.7b-q8", "cuda") == 3900
+    assert mgr._price_mb("tts", "qwen3", "qwen3-cv-1.7b-q8", "cuda") == 0     # never measured
+    assert mgr._price_mb("tts", "qwen3", "qwen3-vd-1.7b-q8", None) == 0       # no card
+    monkeypatch.setattr(EngineManager, "effective_split", lambda self, e, v: 800)
+    assert mgr._price_mb("tts", "qwen3", "qwen3-vd-1.7b-q8", "cuda") == 7100
+
+
+# ─── refuse before changing anything (audit 2026-10-04 §13.3, §5 B2/B5) ───
+
+
+def test_a_refused_load_downloads_nothing_and_unloads_nothing(monkeypatch, arb_env):
+    arb = arb_env(_discrete())
+    mgr = _mgr(monkeypatch, _discrete(), _manifest())
+    calls = []
+    monkeypatch.setattr(EngineManager, "_price_mb", lambda self, k, e, v=None, d=None: 9000)
+    monkeypatch.setattr(EngineManager, "_ensure_variant_local",
+                        lambda self, *a, **k: calls.append("download"))
+    monkeypatch.setattr(EngineManager, "_unload_ai_model", lambda self, e: calls.append("unload ai"))
+    monkeypatch.setattr(EngineManager, "placement_for", lambda self, m, k, v: ("gpu", "test", True))
+    with pytest.raises(RuntimeError, match="not enough memory"):
+        mgr.load("eng", device="auto")
+    assert calls == [] and arb.reservation_of("tts:eng") is None
+
+
+def test_an_unpriced_load_fetches_first_and_unloads_the_ai_model_after(monkeypatch, arb_env):
+    arb_env(_discrete())
+    mgr = _mgr(monkeypatch, _discrete(), _manifest())
+    calls = []
+    monkeypatch.setattr(EngineManager, "_ensure_variant_local",
+                        lambda self, *a, **k: calls.append("download"))
+    monkeypatch.setattr(EngineManager, "_unload_ai_model", lambda self, e: calls.append("unload ai"))
+    monkeypatch.setattr(EngineManager, "placement_for", lambda self, m, k, v: ("gpu", "test", True))
+    mgr.load("eng", device="auto")
+    assert calls == ["download", "unload ai"]
+
+
+def test_a_variant_switch_is_checked_against_what_it_adds(monkeypatch, arb_env):
+    arb = arb_env(_discrete())
+    mgr = _mgr(monkeypatch, _discrete(), _manifest())
+    monkeypatch.setattr(EngineManager, "_engine_proc_mb", lambda self, proc, *, fresh=True: 3000)
+    mgr.load("eng", device="auto", variant="v1")
+    assert arb.reservation_of("tts:eng")["vram_mb"] == 3000
+    seen = {}
+
+    def admit(self, m, kind, engine_id, needed_mb, credit_mb=0):
+        seen.update(needed=needed_mb, credit=credit_mb)
+
+    monkeypatch.setattr(EngineManager, "_admit_memory", admit)
+    monkeypatch.setattr(EngineManager, "_price_mb",
+                        lambda self, k, e, v=None, d=None: 5000 if v == "v2" else 0)
+    mgr.load("eng", device="auto", variant="v2")
+    assert seen == {"needed": 5000, "credit": 3000}
+
+
+def test_a_known_price_is_the_floor_and_a_higher_reading_is_recorded(monkeypatch, arb_env):
+    arb = arb_env(_discrete())
+    mgr = _mgr(monkeypatch, _discrete(), _manifest())
+    recorded = []
+    monkeypatch.setattr(EngineManager, "_record_speech_load",
+                        lambda self, m, kind, variant, mb, device: recorded.append(mb))
+    monkeypatch.setattr(EngineManager, "_price_mb", lambda self, k, e, v=None, d=None: 4000)
+    monkeypatch.setattr(EngineManager, "_engine_proc_mb", lambda self, proc, *, fresh=True: 3000)
+    mgr.load("eng", device="auto")
+    assert arb.reservation_of("tts:eng")["vram_mb"] == 4000 and recorded == []
+    mgr.unload("tts")
+    monkeypatch.setattr(EngineManager, "_engine_proc_mb", lambda self, proc, *, fresh=True: 5000)
+    mgr.load("eng", device="auto")
+    assert arb.reservation_of("tts:eng")["vram_mb"] == 5000 and recorded == [5000]
+
+
+def test_admission_credits_what_the_replaced_occupant_gives_back(monkeypatch, arb_env):
+    arb = arb_env(_discrete())
+    mgr = _mgr(monkeypatch, _discrete(), _manifest())
+    monkeypatch.setattr(EngineManager, "pool_used_mb", lambda self, *, fresh=False: 4000)
+    monkeypatch.setattr(EngineManager, "_safety_margin_mb", staticmethod(lambda: 1024))
+    arb.reserve("tts:kokoro", 3000, kind="tts", evict_fn=None, source="measured")
+    with pytest.raises(RuntimeError, match="not enough memory"):
+        mgr._admit_memory(_manifest(), "tts", "eng", 4000)
+    mgr._admit_memory(_manifest(), "tts", "eng", 4000, credit_mb=3000)     # admitted
+
+
+def test_unloading_the_ai_model_waits_for_its_memory_to_drain(monkeypatch, arb_env):
+    import justvoice.engines.manager as mgr_mod
+
+    arb = arb_env(_discrete())
+    mgr = _mgr(monkeypatch, _discrete(), _manifest())
+    arb.reserve("llm:gemma", 6800, kind="llm", evict_fn=lambda: None, source="measured")
+    readings = iter([7300, 7300, 7300, 500, 500])
+    seen = []
+
+    def used(self, *, fresh=False):
+        value = next(readings, 500)
+        seen.append(value)
+        return value
+
+    monkeypatch.setattr(EngineManager, "pool_used_mb", used)
+    monkeypatch.setattr(mgr_mod.time, "sleep", lambda s: None)
+    mgr._unload_ai_model("qwen3")
+    assert arb.reservation_of("llm:gemma") is None
+    assert seen[-1] == 500 and len(seen) == 4      # it waited until the card showed it

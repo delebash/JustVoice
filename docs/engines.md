@@ -465,9 +465,33 @@ with its real memory take, the language model, and other apps. For a model
 JustVoice has measured before on this machine: if the pool is short, it frees
 the least-recently-used *idle* model and toasts what it unloaded; if
 everything resident is busy, the load refuses with a message quoting the
-measured numbers instead of an out-of-memory crash. A model's first-ever load
-carries no number yet ("not measured yet") — it simply attempts, gets
-measured, and is remembered.
+measured numbers instead of an out-of-memory crash. The check runs before
+anything else happens, so a refused load has downloaded nothing and unloaded
+nothing. A model's first-ever load on the graphics card carries no number yet
+("not measured yet"): it loads, measures itself (below), and is remembered.
+
+#### Long lines, and what a model costs
+
+A speech model's memory is not just its file: while it speaks it builds working
+buffers that grow with the length of what it is given. On an 8 GB card, Qwen3-TTS
+VoiceDesign speaking a 752-character line whole peaked at about 7.1 GB; the same
+line in 200-character pieces peaked at about 4 GB, and finished no slower.
+
+So each model is given lines in pieces of its own length — **200 characters**
+for Qwen3-TTS CustomVoice and Base and for VoxCPM2, **240** for Kokoro, and the
+general limit (`generation.max_chunk_chars`, 800) for the others. Pieces are cut
+at sentence ends and joined with a short crossfade. A model's length can be
+changed in `settings.engines.engine_overrides[engine].split_chars[model]`. A
+voice made from words keeps the full length for now (see
+[Generate → Auto-chunking](generate.md#auto-chunking)).
+
+What a model costs is measured at that length, on your machine, for exactly that
+model — the 8-bit and 16-bit files and each size count separately. The first
+time a model loads on the graphics card it speaks one full-length piece as its
+warm-up (a few seconds more, once) and what it holds afterwards is remembered as
+its cost. Models that can only speak from a clip (Chatterbox Multilingual,
+Qwen3-TTS Base) measure themselves on their first real lines instead. The cost
+only goes up after that: a line that takes more is remembered too.
 
 Each slot's cell shows its own process's measured memory: the model, plus the
 process's own share of the card (about 100 MB). The full story is in

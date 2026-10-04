@@ -261,7 +261,12 @@ async def _generate_via_manager(
     # (decided 2026-09-29) — Generate used to send the text untouched, so
     # Kokoro read "[warm]" aloud as "warm". Then the lexicons (2026-09-30).
     req, ipa_map = _read_through_lexicons(st, engine_id, req)
-    max_chunk_chars, crossfade_ms = _chunking_params(st.settings.get())
+    from ..render_core import description_seed, is_description_voice, line_split_chars
+
+    _cap, crossfade_ms = _chunking_params(st.settings.get())
+    # Each model's own piece length (audit 2026-10-04 §13.3), as in a chapter render.
+    max_chunk_chars = line_split_chars(st, engine_id, req.voice)
+    describe = is_description_voice(st, req.voice)
     request_delivery = req.delivery.model_dump(exclude_none=True) if req.delivery else {}
     persona = st.personas.get(req.persona_id) if req.persona_id else None
     language = req.language
@@ -321,6 +326,11 @@ async def _generate_via_manager(
     # this model) overrides the top-level req.seed. Either path produces the
     # same per-chunk seed math below.
     effective_seed = persona_seed if persona_seed is not None else req.seed
+    # A description voice is drawn from its description on every request: with no seed set it
+    # gets its fixed one, and every piece of a long line keeps it — `seed + i` per piece drew
+    # a different voice for each (§13.3).
+    if effective_seed is None and describe:
+        effective_seed = description_seed(req.voice)
 
     def _do() -> Response:
         try:
@@ -341,7 +351,7 @@ async def _generate_via_manager(
             for i, piece in enumerate(chunks):
                 # Vary seed per chunk to avoid correlated RNG artefacts while
                 # staying deterministic for (text, seed) reproducibility.
-                chunk_seed = (effective_seed + i) if effective_seed is not None else None
+                chunk_seed = (effective_seed + i) if effective_seed is not None and not describe                     else effective_seed
                 audio_bytes, meta = _synth_one(piece, chunk_seed)
                 sample_rate = meta.get("sample_rate") or sample_rate
                 channels = meta.get("channels") or channels
