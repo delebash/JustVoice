@@ -37,6 +37,7 @@ import {
   UiSlider, UiTag, UiTextarea, confirmDialog, languageName, pushToast, saveBlob,
 } from "@delebash/llm-ui";
 import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
+import PersonaCloneMaker from "../components/PersonaCloneMaker.vue";
 import SlashTagMenu from "../components/SlashTagMenu.vue";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";
 import { handleTermsRefusal } from "../services/engineTerms.js";
@@ -329,7 +330,25 @@ const shownVoices = computed(() => voicesOfKind.value.filter((v) =>
   && (!modelFilter.value || v.model === modelFilter.value)
   && (!genderFilter.value || voiceGender(v) === genderFilter.value)
   && (!languageFilter.value || baseLang(v.language) === languageFilter.value)));
-watch(kind, () => { modelFilter.value = ""; });
+watch(kind, () => { modelFilter.value = ""; makerKey.value += 1; });
+
+// ── Making a voice, here (decided 2026-10-04: "the whole design should be
+// part of the persona") — picking a kind that is made shows its maker at the
+// top of the right column; only then. Keep saves the voice to Voices at once
+// and this persona takes it.
+const MAKERS = ["clone"];
+const maker = computed(() => (MAKERS.includes(kind.value) ? kind.value : null));
+const makerKey = ref(0);   // a new key = a fresh, empty maker
+async function onKept(v) {
+  makerKey.value += 1;
+  modelFilter.value = "";
+  genderFilter.value = "";
+  languageFilter.value = "";
+  await voicesStore.reload();
+  pickVoice(v.id);
+}
+// The persona as the makers' preview speaks it — the page's draft, unsaved.
+const draftPayload = computed(() => (draft.value ? payload() : null));
 
 // Every voice says what it can do, so the list reads without a filter set.
 const voiceOptions = computed(() => shownVoices.value.map((v) => ({
@@ -343,7 +362,7 @@ const kindEmptyHint = computed(() => {
   if (voicesOfKind.value.length) return "No voice of this kind matches these filters.";
   return {
     builtin: "No built-in voices — install a speech model on AI Settings → Speech engines.",
-    clone: "No cloned voices yet — make one on Voices → Clone.",
+    clone: "No cloned voices yet — make one on the right.",
     design: "No designed voices yet — make one on Voices → Design.",
     blend: "No blends yet — make one on Voices → Blend.",
   }[kind.value] || "";
@@ -809,12 +828,13 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
                   <strong>{{ voiceChange.directed }} carry a written direction</strong> — {{ voiceChange.lost }} won't perform them.
                 </template>
               </div>
-              <p v-if="locked" class="jv-hint">Pick a voice first — everything below depends on its model.</p>
+              <p v-if="locked && !maker" class="jv-hint">Pick a voice first — everything below depends on its model.</p>
+              <p v-else-if="locked" class="jv-hint">Pick a voice, or make one on the right — everything below depends on its model.</p>
             </div>
           </div>
 
-          <!-- Hear it — the same path a chapter renders with. -->
-          <div class="jv-card" :class="{ 'persona-editor__locked': locked }" :aria-disabled="locked || undefined">
+          <!-- Hear it — the same path a chapter renders with; a maker's Preview speaks its line. -->
+          <div class="jv-card" :class="{ 'persona-editor__locked': locked && !maker }" :aria-disabled="(locked && !maker) || undefined">
             <div class="jv-card__header"><h3 class="jv-card__title">Hear it</h3></div>
             <div class="jv-card__body jv-col">
               <UiTextarea ref="hearBox" v-model="hearText" :rows="2"
@@ -975,6 +995,13 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
         </div>
 
         <div class="jv-split__col">
+          <!-- The maker for the kind picked on the left — on the right, beside
+               the list it fills (the user, 2026-10-04: "you have sapce on the
+               right why dont you put the new desing and dynamoic fields on the
+               right"). -->
+          <PersonaCloneMaker v-if="maker === 'clone'" :key="`clone-${makerKey}`" :rows="caps"
+            :engines="enginesStore.items" :direction="directionFilter" :persona="draftPayload"
+            :hear-text="hearText" @kept="onKept" />
           <div class="jv-card jv-card--soft">
             <div class="jv-card__header"><h3 class="jv-card__title">{{ draft.name || "New persona" }}</h3></div>
             <div class="jv-card__body">

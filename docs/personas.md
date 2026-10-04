@@ -179,7 +179,7 @@ Kokoro's take none — so this is the choice to make first:
 | Made by | Lists | Made on |
 |---|---|---|
 | Built-in | The models' own voices — Kokoro's `af_heart`, Qwen3 CustomVoice's Sohee | AI Settings → Speech engines, by installing a model |
-| Clone from audio | Voices cloned from a recording, and imported ones | [Voices → Clone](voices.md) |
+| Clone from audio | Voices cloned from a recording, and imported ones | This page — [New clone](#new-clone) |
 | Design from words | Voices designed from a description, with or without a kept clip | [Voices → Design](voices.md) |
 | Blend | Kokoro blends of two or more voices | [Voices → Blend](voices.md) |
 | Trained LoRA | Off: *Needs voice training, which isn't rebuilt yet.* | — |
@@ -222,6 +222,56 @@ can't take written direction and some of those lines carry a direction of their
 own, it adds how many: *18 carry a written direction — Chatterbox Turbo won't
 perform them.* The language stays when the new voice's model speaks it, and
 falls back to the voice's own when it doesn't.
+
+### Making a voice on this page
+
+A persona makes its own voice. Pick **Clone from audio** under *Made by* and
+the **New clone** fields open at the top of the right column, beside the list
+they fill — there is no button to find. Pick **Built-in** and nothing opens:
+built-in voices come with their models. What you make is saved to
+[Voices](voices.md) the moment you press **💾 Keep**, so another persona can
+use it too; this persona takes it at once (save the persona to keep that).
+
+**▶ Preview** speaks the line in **Hear it** below with the voice you are
+making — as *this persona* speaks: its language, standing delivery, emotion,
+lexicon, pace, pitch, gain and effects, through the same steps a chapter line
+goes through. So you hear the finished persona before anything is kept.
+
+#### New clone
+
+**The clip.** Drag a recording into the box, paste an audio URL (it fetches
+itself once you stop typing), **Browse…** for a file, **🎙 Record** one here,
+or pick **one of your captures** — a capture fills in *What's said in the
+recording* with its own transcript. 10 seconds to 2 minutes of one person
+speaking, as WAV, MP3, M4A, FLAC or OGG.
+
+The clip is checked as soon as it is in:
+
+| Check | Fine | Warns |
+|---|---|---|
+| Length | `✓ 0:47 long` | `⚠ 0:08 — under 10 s; the copy comes out thin`, `⚠ 2:31 — over 2 minutes; trim it to one clean stretch` |
+| Noise | `✓ clean — 41 dB above the noise` | `⚠ noisy — 18 dB above the noise; the copy will carry it` (under 25 dB) |
+
+The noise figure is how far the speech stands above the quiet between words,
+where only the room is heard. A warning is advice — you can still keep the
+clip.
+
+**The model** is one of the cloning models that match *How it can be
+directed*: under **Written direction**, VoxCPM2; under **Tags**, Chatterbox
+Turbo and Nano; under **Sliders only**, Chatterbox Multilingual, Qwen3 Base and
+Pocket TTS. The line under it says what a voice on that model keeps — for
+example *Takes written direction, on a clone too* (VoxCPM2) or *Written
+direction is dropped: the clip is the whole voice* (Qwen3 Base). A model that
+isn't loaded loads on the first preview, about a minute. Pocket TTS clones only
+after you accept Kyutai's terms, shown right there with **Accept**.
+
+**What's said in the recording** appears for the models that read it (Qwen3
+Base, VoxCPM2): a word-for-word match gives a truer copy. Qwen3 Base can also
+**Skip the words** and clone from the sound alone.
+
+**💾 Keep** saves the clip as a voice under the name you give it — after
+listening, or straight away: *Listen first, or keep the clip as it is — either
+way it's saved to Voices.*
 
 ### Hear it
 
