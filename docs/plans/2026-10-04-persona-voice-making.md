@@ -93,6 +93,20 @@ The answer as shown: *"I agree. It's a better design than my round trip to Voice
 - Model Size stays AI Settings' choice, not the persona's (10-03 §6.2 call 4) — Qwen's demo puts
   it on every tab; we don't.
 
+**Corrected and decided after the research** ("your rec on all go", 2026-10-04, the second time)
+- C was wrong as asked: `.justvoice.zip` is the PROJECT export (and nothing imports it — TASKS
+  FINDING "voice and project files"). The Voices page's Import tab keeps an audio clip as it is,
+  as a voice — a clone without the listen-first step. Decided: **it folds into the persona's
+  Clone maker** as "keep the clip as it is", so there is one maker per kind and Voices is the
+  library only.
+- **The clone maker shows the clip's length and how noisy it is.** Length is read from the file;
+  noise needs new server code (none exists — the same FINDING, item 5).
+- **A description-only design is saved when you press Keep**, like every other maker (B).
+- **A kept voice is fixed**, as clones already are; "＋ New design from this one" starts a copy.
+- The engine facts the mock shows come from plan `2026-10-03-persona-redesign.md` §2.3 and §5,
+  not a new survey (the user, 2026-10-04: "i know we have fully researched what each ening is
+  capable of many times did you forget again?").
+
 ## 4. Order
 
 1. Read the 12 Alexandria screenshots, `2026-08-15-voice-workflow-redesign.md` §5 and §9.3, and

@@ -1927,6 +1927,9 @@ NOT:    option 1 — the HTML mock linking the real stylesheets; hand-written ma
         Then "your rec on all go" (2026-10-04): a persona makes its own voice (Design, Clone,
         Blend inline; LoRA off), Voices becomes the library, plus a Language filter on the voice
         list — the text as shown and approved: `docs/plans/2026-10-04-persona-voice-making.md`.
+        Then "your rec on all go" again (2026-10-04): Import folds into Clone; the clone maker
+        shows length + noise; a description-only design is saved on Keep; a kept voice is
+        fixed — same doc, §3 "Corrected and decided".
 OPEN:   that doc's §4 order: research → the persona mock as Vue pages → side-by-side compare →
         delete `_s7`/`_s9` → stop for review; then the real pages change to match.
 GO:     given 2026-10-04 for option 2, the persona mock and the answers above; the real pages
