@@ -2053,7 +2053,9 @@ BUILT:  P7 (2026-10-03) — Cast: persona rows read the server's answer (voice �
         tests), biome, vite build, smoke on the real data dir; Cast, the New persona
         hand-off banner, Overview and New project checked headless (zero JS errors). No
         server change. Not exercised in the browser: Save on the hand-off (it would write
-        a persona and recast a speaker in your real book) — read-only checks only.
+        a persona and recast a speaker in your real book) — read-only checks only. Real
+        app (`npm run dev`) for P6+P7: Cast's ▶ → 409 → "Load & play" → the persona's
+        3.75 s WAV; Voices lists 91 rows; zero JS errors; app closed after.
 GO:     given 2026-10-03 for P1–P8 and P9's checks; P9's data reset asks first
 
 ### FINDING — language never reaches Chatterbox or Qwen3: every render on them is told English
