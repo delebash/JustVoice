@@ -123,17 +123,6 @@ export function voiceGenderBlock(rows) {
     .join("\n");
 }
 
-// render_preset_suggest {{presets}} — mirrors preset_suggest_api's list
-// ("  - Name — description").
-async function presetsBlock() {
-  const r = await api().request("/v1/presets");
-  const rows = r?.presets || [];
-  if (!rows.length) throw new Error("No render presets yet — create some on the Render Presets tab.");
-  return rows
-    .map((p) => `  - ${p.name}${p.description ? ` — ${p.description}` : ""}`)
-    .join("\n");
-}
-
 // show_notes {{script}} — mirrors projects_api's show-notes builder
 // ("## Title" + "WHO: text" per block, NARRATION when unassigned).
 async function scriptOf(projectId) {
@@ -199,16 +188,6 @@ export const LAB_TEST_SOURCES = [
     },
   },
   {
-    id: "presets",
-    label: "render presets",
-    kind: "presets",
-    async list() {
-      const r = await api().request("/v1/presets").catch(() => null);
-      const n = (r?.presets || []).length;
-      return n ? [{ id: "all", label: `All render presets (${n})` }] : [];
-    },
-  },
-  {
     id: "script",
     label: "script",
     kind: "script",
@@ -243,12 +222,6 @@ export const LAB_TEST_ACTIONS = {
   voice_gender: {
     pickers: [
       { source: "voices", fill: async () => ({ voices: voiceGenderBlock(await allVoices()) }) },
-    ],
-  },
-  render_preset_suggest: {
-    pickers: [
-      { source: "presets", fill: async () => ({ presets: await presetsBlock() }) },
-      { source: "chapters", fill: async (id) => ({ chapter_text: await chapterProse(id) }) },
     ],
   },
   show_notes: {

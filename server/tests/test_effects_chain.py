@@ -14,13 +14,11 @@ from __future__ import annotations
 import io
 import wave
 
-import pytest
 
 from justvoice.audio.effects import (
     apply_effects_chain,
+    chain_entries,
     effects_chain_hash,
-    parse_chain,
-    resolve_chain,
 )
 
 
@@ -146,17 +144,9 @@ def test_chain_hash_changes_when_the_dsp_version_does() -> None:
 # ── chain resolution (unchanged behaviour, guarded) ──────────────────────
 
 
-def test_preset_layers_on_top_of_persona() -> None:
-    persona = [{"type": "gain", "params": {"gain_db": 1.0}}]
-    preset = [{"type": "reverb", "params": {}}]
-    assert resolve_chain(persona, preset) == persona + preset
-
-
-@pytest.mark.parametrize("blob", [None, "", "not json", "{}", 42])
-def test_parse_chain_never_raises_on_junk(blob) -> None:
-    assert parse_chain(blob) == []
-
-
-def test_parse_chain_accepts_json_and_lists() -> None:
-    assert parse_chain('[{"type":"gain","params":{"gain_db":2}}]')[0]["type"] == "gain"
-    assert parse_chain([{"type": "gain"}])[0]["type"] == "gain"
+def test_a_stored_chain_keeps_only_its_entries() -> None:
+    """A persona's chain runs alone since render presets were removed
+    (2026-10-03); anything in it that isn't an entry is skipped."""
+    persona = [{"type": "gain", "params": {"gain_db": 1.0}}, "junk", None]
+    assert chain_entries(persona) == [{"type": "gain", "params": {"gain_db": 1.0}}]
+    assert chain_entries(None) == []

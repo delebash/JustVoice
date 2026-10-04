@@ -34,7 +34,7 @@ Top toolbar:
 
 - **Speaker** — the line's speaker, shown as a tag. Who speaks each line is set in [Studio · Script](studio.md); who plays each speaker in [Studio · Cast](studio.md#cast).
 - **Text** — the block content. Editable inline.
-- **Delivery override** — per-block delivery tweaks (volume nudge, pause-before, emotion). Tier-3 in the [3-tier merge](render-presets.md#where-a-preset-sits-in-the-precedence).
+- **Delivery override** — per-block delivery tweaks (volume nudge, pause-before, emotion), on top of the persona's own settings.
 - **Takes carousel** — `← Take 3 of 7 →` arrows + dropdown with timestamps. Click any take to switch the default.
 - **Audio player** — plays the current default take, inline on the block itself.
 - **Actions row** — Regenerate / Set as default / Compare / Delete (two-step confirm).
@@ -45,9 +45,9 @@ Top toolbar:
 When you click **Render chapter**:
 
 1. JustVoice walks each block in order.
-2. For each block: finds its speaker and the persona that plays them, then applies the book's lexicon, then that persona's → its delivery defaults → the block's delivery override → renders via the engine → runs the persona's **effects chain** (with the scene's render preset layered on top).
+2. For each block: finds its speaker and the persona that plays them, then applies the book's lexicon, then that persona's → its delivery defaults → the block's delivery override → renders via the engine → runs the persona's **effects chain**.
 3. Concatenates the per-block WAVs with crossfade (per `settings.generation.crossfade_ms`).
-4. Applies the mastering target — resolved from the render preset, else the project, else the project kind (ACX for audiobooks; see [mastering.md](mastering.md#which-preset-a-render-uses)).
+4. Applies the mastering target — the project's, else the project kind's (ACX for audiobooks; see [mastering.md](mastering.md#which-preset-a-render-uses)).
 5. Emits one WAV.
 
 Long blocks auto-chunk at sentence boundaries (same path as `/v1/generate`).
@@ -85,7 +85,7 @@ Each persona that plays a speaker can set:
 
 A persona that plays several speakers brings the same settings to all of them.
 
-These overrides feed Tier-2 of the [3-tier merge](render-presets.md#where-a-preset-sits-in-the-precedence).
+A line's own override sits on top of these.
 
 ## Audio export
 

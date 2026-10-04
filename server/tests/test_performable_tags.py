@@ -11,7 +11,6 @@ back to the show. Warm, it is good to have you here.").
 
 from __future__ import annotations
 
-from types import SimpleNamespace
 
 from justvoice import render_core
 from justvoice.inline_tags import strip

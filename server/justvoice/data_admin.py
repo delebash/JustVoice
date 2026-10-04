@@ -139,11 +139,10 @@ def run_factory_reset() -> int:
         db_session.SessionLocal = None
         db_session._db_path = None
         db_session.init_db(data_dir)
-        from .database.seed import seed_builtin_effect_presets, seed_builtin_render_presets
+        from .database.seed import seed_builtin_effect_presets
         from .llm_bootstrap import reseed_shared_llm
         if file_recreated:
             seed_builtin_effect_presets()
-            seed_builtin_render_presets()
             # The SAME file carries the shared LLM tables — re-wire storage at
             # the NEW session factory + re-seed BOTH sets (the family's
             # dual-table reset lesson; JV's warm-OFF default re-applies).
@@ -167,10 +166,9 @@ def run_factory_reset() -> int:
             conn.commit()
         Base.metadata.create_all(bind=bind)
         run_migrations(bind)
-        from .database.seed import seed_builtin_effect_presets, seed_builtin_render_presets
+        from .database.seed import seed_builtin_effect_presets
         from .llm_bootstrap import reseed_shared_llm
         seed_builtin_effect_presets()
-        seed_builtin_render_presets()
         # Dropped-in-place path: the shared tables were dropped with the rest —
         # recreate + reseed them on the same bind.
         reseed_shared_llm(bind, db_session.SessionLocal)

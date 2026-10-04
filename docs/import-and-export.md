@@ -341,8 +341,7 @@ To save the file outside the app:
 ### Chapter render → mastered WAV
 
 Chapter renders apply mastering before emitting WAV, and you don't choose the
-target per render — it is resolved from the scene's render preset, else the
-project, else the project kind (see
+target per render — it is the project's, else the project kind's (see
 [mastering.md](mastering.md#which-preset-a-render-uses)):
 
 - **ACX** — -20.0 LUFS, true peak -3.5 dBFS: centred inside Audible's
@@ -438,7 +437,6 @@ The Projects tab's **Export project** action produces a `.justvoice.zip` archive
   that plays them, the narrator role) and the personas that play them (`personas/<id>.json`);
   the archive's `manifest.json` counts both (`speaker_count`, `persona_count`)
 - Lexicons used
-- Render presets
 
 Useful for handing a project to a collaborator, archiving a finished book, or moving between machines. Import via Projects → "+ Import → .justvoice.zip".
 

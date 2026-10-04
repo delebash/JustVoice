@@ -22,7 +22,7 @@ from types import SimpleNamespace
 from justvoice.api import render_chapter_api
 from justvoice.api.projects_api import _materialize_standard
 from justvoice.api.smart_assign_api import SmartAssignCharacter, _format_characters
-from justvoice.database.models import Block, Persona as PersonaRow, Project, RenderPreset, Scene
+from justvoice.database.models import Block, Project, Scene
 from justvoice.imports.standard_schema import (
     StandardCharacter,
     StandardImport,
@@ -60,16 +60,12 @@ def _state(persona: Persona):
     return SimpleNamespace(personas=_Personas())
 
 
-def _scene_with_one_block(session_factory, *, seed_persona_row: bool = False):
+def _scene_with_one_block(session_factory):
     db = session_factory()
     db.add(Project(id="proj-1", name="Book", project_type="audiobook"))
     db.flush()
     db.add(Scene(id="scene-1", project_id="proj-1", position=0, title="Chapter 1"))
     db.flush()
-    if seed_persona_row:
-        # RenderPreset.voice_id is an FK onto personas.
-        db.add(PersonaRow(id="persona-mara", name="Mara", voice_id="voice-mara"))
-        db.flush()
     from tests.speaker_fixtures import speaker_played_by
 
     db.add(Block(scene_id="scene-1", position=0, text="The fog came in.",
@@ -78,10 +74,8 @@ def _scene_with_one_block(session_factory, *, seed_persona_row: bool = False):
     db.close()
 
 
-def _resolve(persona, preset_id=None):
-    lines = render_chapter_api._resolve_scene_to_lines(
-        scene_id="scene-1", preset_id=preset_id, st=_state(persona)
-    )
+def _resolve(persona):
+    lines = render_chapter_api._resolve_scene_to_lines(scene_id="scene-1", st=_state(persona))
     return lines[0].delivery.model_dump(exclude_none=True) if lines[0].delivery else {}
 
 
@@ -112,37 +106,6 @@ def test_sheet_alone_leaves_the_instruct_unset(tmp_db, monkeypatch):  # noqa: F8
     delivery = _resolve(_persona(voice_instruct=None, personality=SHEET))
 
     assert "instruct" not in delivery
-
-
-# ─── 3. An explicit instruct still wins ─────────────────────────────────
-
-
-def test_explicit_instruct_beats_the_personas(tmp_db, monkeypatch):  # noqa: F811
-    import json
-
-    session_factory, _engine = tmp_db
-    monkeypatch.setattr(render_chapter_api, "SessionLocal", session_factory)
-    _scene_with_one_block(session_factory, seed_persona_row=True)
-
-    db = session_factory()
-    db.add(
-        RenderPreset(
-            id="preset-acx",
-            name="ACX",
-            voice_id="persona-mara",
-            delivery_json=json.dumps({"instruct": "From the preset."}),
-            master="acx",
-            lexicons_json="[]",
-        )
-    )
-    db.commit()
-    db.close()
-
-    delivery = _resolve(
-        _persona(voice_instruct=INSTRUCT, personality=SHEET), preset_id="preset-acx"
-    )
-
-    assert delivery.get("instruct") == "From the preset."
 
 
 # ─── 4. An import fills the sheet, never the instruct ───────────────────

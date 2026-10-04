@@ -21,7 +21,7 @@ from ..audio.chunked import (
     concatenate_audio_chunks,
     split_text_into_chunks,
 )
-from ..audio.effects import apply_effects_chain, parse_chain, resolve_chain
+from ..audio.effects import apply_effects_chain, chain_entries
 from ..audio.wav import parse_wav_header, strip_wav_header, write_wav_container
 from ..delivery_merge import compose_instruct, merge_delivery
 from ..engines.base import SynthRequest
@@ -53,8 +53,8 @@ def _finish_line(
     return apply_effects_chain(write_wav_container(pcm, sample_rate, channels), effects)
 
 
-def _resolve_effects_chain(req: GenerateRequest, db) -> list[dict]:
-    """Resolve the effects chain for this render: persona → preset overlay.
+def _resolve_effects_chain(req: GenerateRequest) -> list[dict]:
+    """The effects chain for this render: the persona's.
 
     Returns an empty list when no effects apply. Caller passes the result
     to `apply_effects_chain(wav_bytes, chain)` after TTS.
@@ -66,15 +66,7 @@ def _resolve_effects_chain(req: GenerateRequest, db) -> list[dict]:
         if persona is not None:
             persona_chain = persona.effects_chain or []
 
-    preset_chain: list[dict] = []
-    if req.preset_id:
-        from ..database.models import RenderPreset
-
-        preset = db.query(RenderPreset).filter(RenderPreset.id == req.preset_id).first()
-        if preset is not None:
-            preset_chain = parse_chain(preset.effects_chain)
-
-    return resolve_chain(persona_chain, preset_chain)
+    return chain_entries(persona_chain)
 
 
 def _read_through_lexicons(st, engine_id: str, req: GenerateRequest) -> tuple[GenerateRequest, dict]:
@@ -287,9 +279,7 @@ async def _generate_via_manager(
     req, ipa_map = _read_through_lexicons(st, engine_id, req)
     max_chunk_chars, crossfade_ms = _chunking_params(st.settings.get())
     request_delivery = req.delivery.model_dump(exclude_none=True) if req.delivery else {}
-    # 3-tier voice tuning merge (#88): preset > request > persona defaults.
-    # Resolve persona.default_delivery via the JSON PersonaStore and pass
-    # it as `tier2_overlay`.
+    # The persona's delivery, then the request's on top.
     persona_overlay = None
     persona_instruct: str | None = None
     if req.persona_id:
@@ -298,44 +288,34 @@ async def _generate_via_manager(
             persona_overlay = persona.default_delivery or {}
             persona_instruct = (persona.voice_instruct or "").strip() or None
 
-    from ..database.session import SessionLocal
-    db = SessionLocal()
-    try:
-        delivery = merge_delivery(
-            request_delivery,
-            req.preset_id,
-            db,
-            tier2_overlay=persona_overlay,
-        )
-        # Persona.voice_instruct → delivery.instruct: a spoken-delivery
-        # instruction, not an LLM rewrite. Engines that declare
-        # supports_instruct_freeform (Qwen3-TTS today) consume
-        # delivery["instruct"] at synth time; engines that don't, ignore it.
-        # An explicit instruct in the request/preset wins the base slot over
-        # the persona's. The persona's `personality` (the character sheet) is
-        # NOT read here — that is the whole point of the 2026-08-15 split.
-        #
-        # `emotion` rides on the end through the same composer the chapter
-        # path uses. Until 2026-08-17 only that path composed, so an emotion
-        # set here reached nothing at all.
-        #
-        # A clip-less DESIGNED voice leads: its description is the identity,
-        # not direction, and the VoiceDesign checkpoint has nothing else to
-        # go on (2026-08-22 — same seam as the chapter path, so one button
-        # cannot sound different from the other).
-        composed = compose_instruct(
-            _voice_design_instruct(req.voice),
-            delivery.get("instruct") or persona_instruct,
-            delivery.get("emotion"),
-        )
-        if composed:
-            delivery["instruct"] = composed
-        if ipa_map:
-            delivery["ipa_map"] = ipa_map
-        # Effects chain (Slice 6) — cascaded persona → preset.
-        effects = _resolve_effects_chain(req, db)
-    finally:
-        db.close()
+    delivery = merge_delivery(request_delivery, tier2_overlay=persona_overlay)
+    # Persona.voice_instruct → delivery.instruct: a spoken-delivery
+    # instruction, not an LLM rewrite. Engines that declare
+    # supports_instruct_freeform (Qwen3-TTS today) consume
+    # delivery["instruct"] at synth time; engines that don't, ignore it.
+    # An explicit instruct in the request wins the base slot over
+    # the persona's. The persona's `personality` (the character sheet) is
+    # NOT read here — that is the whole point of the 2026-08-15 split.
+    #
+    # `emotion` rides on the end through the same composer the chapter
+    # path uses. Until 2026-08-17 only that path composed, so an emotion
+    # set here reached nothing at all.
+    #
+    # A clip-less DESIGNED voice leads: its description is the identity,
+    # not direction, and the VoiceDesign checkpoint has nothing else to
+    # go on (2026-08-22 — same seam as the chapter path, so one button
+    # cannot sound different from the other).
+    composed = compose_instruct(
+        _voice_design_instruct(req.voice),
+        delivery.get("instruct") or persona_instruct,
+        delivery.get("emotion"),
+    )
+    if composed:
+        delivery["instruct"] = composed
+    if ipa_map:
+        delivery["ipa_map"] = ipa_map
+    # Effects chain (Slice 6) — the persona's.
+    effects = _resolve_effects_chain(req)
 
     def _synth_one(text: str, chunk_seed: int | None):
         body = {
@@ -432,30 +412,20 @@ def _generate_via_inprocess(engine_id: str, req: GenerateRequest) -> Response:
             persona_overlay = persona.default_delivery or {}
             persona_instruct = (persona.voice_instruct or "").strip() or None
 
-    from ..database.session import SessionLocal
-    db = SessionLocal()
-    try:
-        delivery = merge_delivery(
-            request_delivery,
-            req.preset_id,
-            db,
-            tier2_overlay=persona_overlay,
-        )
-        # Same cascade as the non-streaming path: a clip-less designed
-        # voice's description first, then the persona's spoken instruction
-        # under whatever was asked for, then the emotion.
-        composed = compose_instruct(
-            _voice_design_instruct(req.voice),
-            delivery.get("instruct") or persona_instruct,
-            delivery.get("emotion"),
-        )
-        if composed:
-            delivery["instruct"] = composed
-        if ipa_map:
-            delivery["ipa_map"] = ipa_map
-        effects = _resolve_effects_chain(req, db)
-    finally:
-        db.close()
+    delivery = merge_delivery(request_delivery, tier2_overlay=persona_overlay)
+    # Same cascade as the non-streaming path: a clip-less designed
+    # voice's description first, then the persona's spoken instruction
+    # under whatever was asked for, then the emotion.
+    composed = compose_instruct(
+        _voice_design_instruct(req.voice),
+        delivery.get("instruct") or persona_instruct,
+        delivery.get("emotion"),
+    )
+    if composed:
+        delivery["instruct"] = composed
+    if ipa_map:
+        delivery["ipa_map"] = ipa_map
+    effects = _resolve_effects_chain(req)
 
     def _synth_one(text: str, chunk_seed: int | None):
         synth_req = SynthRequest(

@@ -706,11 +706,11 @@ both change."* With no personas yet, the list says **No personas yet** and
 
 ## Render
 
-Batch-render the project scene by scene. Each scene can bind a **render preset**
-(see [Presets](render-presets.md)) so a chapter or quest keeps one locked sound;
-**Suggest** proposes a preset per scene. The progress panel shows per-scene
-status, and the render cache means an unchanged line costs nothing to re-render
-— cache hits are reported as such.
+Batch-render the project scene by scene. Every line sounds the way its
+persona is set up — there is no per-chapter preset laid over it (render presets
+were removed on 2026-10-03, so a persona's pace, pitch and gain always count).
+The progress panel shows per-scene status, and the render cache means an
+unchanged line costs nothing to re-render — cache hits are reported as such.
 
 Lines are joined with **Pause between lines** (Settings → Generation pipeline,
 600 ms by default) — the same pause in Render, in the exported audiobook and in
@@ -785,10 +785,9 @@ cast already is.
 Three things happen to every line, in this order:
 
 1. **The voice speaks it** — the voice of the persona that plays the line's
-   speaker, its delivery settings, and the render preset's overlay on top.
+   speaker, with its delivery settings.
 2. **The persona's effects chain runs** — reverb, EQ, compression, whatever
-   you built in the persona's effects editor, with the render preset's chain
-   layered after it. This is the same processing the single-line preview
+   you built in the persona's effects editor. This is the same processing the single-line preview
    applies, so what you auditioned is what the chapter contains. (Chapter
    renders skipped effects entirely until 2026-08-15: the editor saved them
    and only single-line previews ever played them.)
@@ -804,9 +803,8 @@ The pill at the top of the Render tab names the mastering target these
 renders apply, and where that choice came from. JustVoice picks it in this
 order, first answer wins:
 
-1. the render preset bound to the scene, if it names a master target,
-2. the project's own mastering target (Studio · **Overview**),
-3. the default for the project kind — **audiobook → ACX**, **podcast →
+1. the project's own mastering target (Studio · **Overview**),
+2. the default for the project kind — **audiobook → ACX**, **podcast →
    podcast**, and **game voicelines → none** (a game engine wants the raw
    line to run through its own audio bus), **custom → none**.
 

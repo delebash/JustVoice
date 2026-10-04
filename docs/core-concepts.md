@@ -16,7 +16,7 @@ The terminology helper (`useCopy()`) renders the right word automatically based 
 
 ## Project
 
-The top-level container. Has a `project_type` (audiobook / game_voicelines / podcast / custom), an `imported_from` provenance tag, a default mastering preset, and an optional default render preset. Its **speakers** live here — the people in it (see below).
+The top-level container. Has a `project_type` (audiobook / game_voicelines / podcast / custom), an `imported_from` provenance tag, and a default mastering preset. Its **speakers** live here — the people in it (see below).
 
 ## Speaker
 

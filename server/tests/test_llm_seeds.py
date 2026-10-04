@@ -36,10 +36,11 @@ def test_all_actions_seed_as_shared_rows(tmp_path):
     rows = _shared_rows()
     for key in DEFAULT_FEATURE_PROMPTS:
         assert key in rows, f"missing shared row {key}"
-    # 13 actions over 10 features (the refine ×4 composition + attribution's
+    # 12 actions over 9 features (the refine ×4 composition + attribution's
     # two routes + discovery as its own speaker_discovery feature; Reasoned
-    # died in the tier-debris cleanup 2026-08-07).
-    assert len(DEFAULT_FEATURE_PROMPTS) == 13
+    # died in the tier-debris cleanup 2026-08-07, render_preset_suggest with
+    # render presets 2026-10-03).
+    assert len(DEFAULT_FEATURE_PROMPTS) == 12
     assert rows["refine.base"].user_template == "{{transcript}}"
     assert "{{speakers}}" in rows["speaker_attribution.guided"].user_template
     assert rows["smart_assign"].json_mode is True

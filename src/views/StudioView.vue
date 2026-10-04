@@ -23,7 +23,7 @@ import { computed, onActivated, onBeforeUnmount, onMounted, ref, watch } from "v
 import { useApi } from "../stores/api.js";
 // Task lifecycles ride the kit runners (AI-call convention, app-structure §8);
 // the store import remains for READS only (per-scene bars, taskForScene).
-import { runAiEndpoint, useAiTasksStore, withAiTask } from "@delebash/llm-ui";
+import { useAiTasksStore, withAiTask } from "@delebash/llm-ui";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";
 import { isStepFor, stepsFor } from "./studioSteps.js";
 import { blockStats, projectState } from "./studioStatus.js";
@@ -175,9 +175,8 @@ function openScript({ sceneId = null, focus = null, filter = null } = {}) {
   tab.value = "script";
 }
 
-// Render tab state (Phase 6 / Slice 1)
-const renderPresets = ref([]);
-const scenePresetSelections = ref({});  // {sceneId: presetId}
+// Render tab state (Phase 6 / Slice 1). The per-chapter render preset and
+// its 💡 Suggest left with render presets (2026-10-03: "presets die").
 const sceneSelectedForRender = ref({});  // {sceneId: bool}
 const renderBusyScene = ref(null);
 
@@ -193,7 +192,6 @@ const renderGate = computed(() => {
   }
   return { ok: true, reason: "" };
 });
-const suggestBusyScene = ref(null);
 const sceneBlockCounts = ref({});  // {sceneId: count of blocks}
 // {sceneId: blockStats(blocks)} — spoken lines, unplaced lines, lines per
 // persona. Read from the same per-chapter block fetch as the two above; the
@@ -491,57 +489,8 @@ async function loadScenesForProject(projectId) {
         } catch { /* tolerated */ }
       }),
     );
-    // Load render presets — global + project-scoped.
-    const presets = await api.safeRequest(`/v1/presets`, { presets: [] });
-    renderPresets.value = (presets?.presets || []).filter(
-      (p) => !p.project_id || p.project_id === projectId,
-    );
   } catch {
     scenes.value = [];
-  }
-}
-
-function presetOptions() {
-  return [
-    { label: "— none —", value: "" },
-    ...renderPresets.value.map((p) => ({ label: p.name, value: p.id })),
-  ];
-}
-
-async function suggestPresetFor(scene) {
-  suggestBusyScene.value = scene.id;
-  try {
-    // The kit runner owns the task (row + seconds + tokens + cancel).
-    const r = await runAiEndpoint({
-      request: (p, o) => api.request(p, o),
-      path: `/v1/llm/preset-suggest`,
-      body: { scene_id: scene.id },
-      task: {
-        feature: "preset-suggest",
-        label: `Preset suggest · ${scene.title || "chapter"}`,
-        onRetry: () => suggestPresetFor(scene),
-      },
-    });
-    if (r?.preset_id) {
-      scenePresetSelections.value = { ...scenePresetSelections.value, [scene.id]: r.preset_id };
-      pushToast({
-        message: `Suggested "${r.preset_name}" — ${r.reason || "no reason given"}`,
-        kind: "success",
-        duration: 4500,
-      });
-    } else if (r?.note) {
-      pushToast({ message: r.note, kind: "warning", duration: 5000 });
-    }
-  } catch (e) {
-    if (!/abort/i.test(String(e?.message || ""))) pushToast({
-      message: e?.message?.includes("501") || e?.status === 501
-        ? "Suggest unavailable — wire an LLM provider in Engines → LLM tab."
-        : `Suggest failed: ${e?.message || e}`,
-      kind: "warning",
-      duration: 6000,
-    });
-  } finally {
-    suggestBusyScene.value = null;
   }
 }
 
@@ -643,10 +592,7 @@ async function renderScene(scene, { check = true } = {}) {
       onRetry: () => renderScene(scene),
       meta: { sceneId: scene.id, projectId: selectedProjectId.value },
     }, async (task) => {
-      const body = {
-        scene_id: scene.id,
-        preset_id: scenePresetSelections.value[scene.id] || null,
-      };
+      const body = { scene_id: scene.id };
       let audio;
       try {
         audio = await api.request("/v1/render_chapter", {
@@ -753,7 +699,6 @@ const masterPillTitle = computed(() => {
     return "ffmpeg is not installed, so chapters render without mastering. Install ffmpeg and restart the server.";
   }
   const where = {
-    preset: "from the render preset",
     project: "set on this project",
     kind: "the default for this project kind",
     request: "asked for by this render",
@@ -1125,7 +1070,6 @@ watch(selectedProjectId, (id) => {
               <th>{{ copy.chapter.singular }}</th>
               <th>{{ copy.line.plural }}</th>
               <th title="Lines served from the render cache — unchanged since last render">Cached</th>
-              <th>Render preset</th>
               <th>Check</th>
               <th></th>
             </tr>
@@ -1149,25 +1093,9 @@ watch(selectedProjectId, (id) => {
                   <template v-else>—</template>
                 </td>
                 <td>
-                  <UiSelect
-                    :model-value="scenePresetSelections[s.id] || ''"
-                    width="id"
-                    :options="presetOptions()"
-                    @update:model-value="(v) => scenePresetSelections = { ...scenePresetSelections, [s.id]: v }"
-                  />
-                </td>
-                <td>
                   <UiTag :intent="checkState(s.id).intent" :title="checkState(s.id).title || ''">{{ checkState(s.id).label }}</UiTag>
                 </td>
                 <td class="studio__render-actions">
-                  <UiButton
-                    intent="ghost"
-                    size="small"
-                    :loading="suggestBusyScene === s.id"
-                    :disabled="suggestBusyScene === s.id"
-                    label="💡 Suggest"
-                    @click="suggestPresetFor(s)"
-                  />
                   <UiButton
                     intent="secondary"
                     size="small"

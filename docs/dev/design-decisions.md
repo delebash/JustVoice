@@ -68,15 +68,11 @@ integration decisions record (2026-07-15) is executed history at
   cross-language source of truth; additions are non-breaking, removals/shape changes
   are major bumps. (The freeze-era CI OpenAPI-snapshot claim is UNVERIFIED — no
   `openapi.json` / `test_contract.py` found; tracked.)
-- **Three-tier voice tuning precedence** — code-verbatim from
-  `server/justvoice/delivery_merge.py` (corrected 2026-08-04; the archived
-  CONTRACT's ordering was wrong): Tier 1 (lowest) engine defaults from
-  CAPABILITY_DETAILS → Tier 2 the persona overlay, caller-resolved (was
-  `VoiceProfile.default_delivery` until the Profile-kill; corrected 2026-08-06 —
-  the code at `delivery_merge.py:79` had it right) → Tier 3 (highest)
-  `RenderPreset.delivery_overlay` OR `request.delivery` — one shared top tier.
-  Dict-deep merge incl. `delivery.engine.*`; called identically from
-  `/v1/generate` and chapter render.
+- **Voice tuning precedence** — code-verbatim from
+  `server/justvoice/delivery_merge.py`: the persona's delivery, then
+  `request.delivery` on top (render presets sat above both until they were
+  removed, 2026-10-03). Dict-deep merge incl. `delivery.engine.*`; called
+  identically from `/v1/generate` and chapter render.
 - **Channel bindings are PERSONA-level** — `/v1/personas/{id}/channels`
   (`api/channels_api.py`); the freeze's profile-level design shipped differently.
 - GPU: the speech runtime downloads per machine in the build that suits it (CUDA /
@@ -174,4 +170,4 @@ integration decisions record (2026-07-15) is executed history at
 | channels bind to profiles | channels bind to **personas** |
 | `/v1/render_jobs*`, `/v1/generate_async`, per-gen stream/cancel | `/v1/render_chapter`, `/v1/render/cache-stats`, `/v1/generate/{id}/status` |
 | `/v1/effects/available`·`/presets`, `/v1/cache` GET+DELETE, `/v1/training_jobs*`, `/v1/unreal/voicelines/*`, `/v1/health/filesystem` | `/v1/effects/catalog`·`/v1/effect-presets`, `/v1/cache/stats·clear·recent`, no training (`/v1/train*` removed 2026-10-02), `/v1/projects/{id}/export_voicelines`, `/v1/system/info` |
-| — (absent from the freeze) | `/v1/voices/design`, scene analyze/discover-speakers, `/v1/llm/smart-assign`·`preset-suggest`, project qc/show-notes/narrator/corrections, `/v1/extraction/*`, `/v1/prefs`, `/v1/logs/tail` (`/v1/feature-pins` came and went — dropped with F1 Phase 2) |
+| — (absent from the freeze) | `/v1/voices/design`, scene analyze/discover-speakers, `/v1/llm/smart-assign`, project qc/show-notes/narrator/corrections, `/v1/extraction/*`, `/v1/prefs`, `/v1/logs/tail` (`/v1/feature-pins` came and went — dropped with F1 Phase 2) |

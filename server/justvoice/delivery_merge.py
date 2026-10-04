@@ -1,15 +1,11 @@
 # SPDX-License-Identifier: MIT
-"""3-tier voice tuning merge (task #88).
+"""Voice tuning merge: the persona's delivery, then the request's on top.
 
-Tier 1 (lowest precedence) — Engine defaults from CAPABILITY_DETAILS.
-Tier 2                     — the persona overlay (caller-resolved; was
-                             VoiceProfile.default_delivery before the Profile-kill).
-Tier 3 (highest precedence)— RenderPreset.delivery_overlay OR request.delivery.
-
-`merge_delivery()` collapses these into one effective delivery dict that
-the engine receives. Higher-precedence dicts win on key conflict; missing
-keys fall through. Engine-specific subdicts (`delivery.engine.*`) merge at
-the inner-key level too.
+`merge_delivery()` collapses the two into one effective delivery dict that
+the engine receives. The request wins on key conflict; missing keys fall
+through. Engine-specific subdicts (`delivery.engine.*`) merge at the
+inner-key level too. (A render preset sat on top of both until render
+presets were removed, 2026-10-03 — "presets die".)
 
 Why a dedicated module: the merge is called from BOTH /v1/generate (single-
 line) AND /v1/chapters/render (chapter batch), and the tier ordering must
@@ -22,10 +18,6 @@ from __future__ import annotations
 import json
 import logging
 from typing import Optional
-
-from sqlalchemy.orm import Session
-
-from .database.models import RenderPreset
 
 
 logger = logging.getLogger("justvoice.delivery-merge")
@@ -70,8 +62,8 @@ def _decode_json_dict(raw: Optional[str]) -> dict:
 def nest_engine_keys(delivery: dict) -> dict:
     """Move engine-private keys out of the top level and into `engine`.
 
-    Every UI that writes delivery — `VoiceParamsModal.vue`, Generate's
-    sliders, render presets — saves the capability schema's keys **flat**
+    Every UI that writes delivery — the persona editor, Generate's
+    sliders — saves the capability schema's keys **flat**
     (`{"exaggeration": 0.7}`), because that is the shape the knob schema
     itself has. Every engine adapter reads them **nested**
     (`delivery["engine"]["exaggeration"]`, see `chatterbox/engine.py`,
@@ -83,8 +75,7 @@ def nest_engine_keys(delivery: dict) -> dict:
     gain_db) ever worked.
 
     Fixing it here rather than in each UI means one seam, and it also
-    repairs deliveries **already stored flat** in `personas.default_delivery`
-    and `render_presets.delivery_json`.
+    repairs deliveries **already stored flat** in `personas.default_delivery`.
 
     An explicit `engine` subdict still wins: a key present in both places
     keeps the nested value, since that is the one the caller wrote
@@ -130,40 +121,14 @@ def _deep_merge(base: dict, overlay: dict) -> dict:
 
 def merge_delivery(
     request_delivery: Optional[dict],
-    preset_id: Optional[str],
-    db: Session,
     tier2_overlay: Optional[dict] = None,
 ) -> dict:
-    """Collapse the 3 tiers into a single effective delivery dict.
+    """The persona's delivery (`tier2_overlay`, caller-resolved), then the
+    request's on top — one effective delivery dict, or {} for neither.
 
-    Precedence (highest first):
-      preset.delivery > request.delivery > tier2_overlay (persona)
-
-    Caller is responsible for resolving persona.default_delivery from
-    PersonaStore and passing it as `tier2_overlay`. The legacy
-    profile_id lookup was removed in Slice 4 of the Profile-kill rollout.
-
-    Returns the merged delivery dict (or empty {} if nothing supplied).
+    Each is normalised FIRST, so a flat `exaggeration` in the persona and a
+    nested one in the request land in the same place and the request still
+    wins.
     """
-    # Tier 2 — persona overlay (caller-resolved)
-    tier2: dict = tier2_overlay or {}
-
-    # Tier 3a — request.delivery (set by the caller per-request)
-    tier3a: dict = request_delivery or {}
-
-    # Tier 3b — render preset (project- or global-scoped)
-    tier3b: dict = {}
-    if preset_id:
-        preset = db.query(RenderPreset).filter(RenderPreset.id == preset_id).first()
-        if preset and preset.delivery_json:
-            tier3b = _decode_json_dict(preset.delivery_json)
-        elif not preset:
-            logger.warning("merge_delivery: preset %s not found, skipping Tier-3 preset", preset_id)
-
-    # Merge bottom-up. Each tier is normalised FIRST, so a flat
-    # `exaggeration` in the persona and a nested one in the preset land in
-    # the same place and the precedence above still decides the winner.
-    merged = _deep_merge({}, nest_engine_keys(tier2))
-    merged = _deep_merge(merged, nest_engine_keys(tier3a))
-    merged = _deep_merge(merged, nest_engine_keys(tier3b))
-    return merged
+    merged = _deep_merge({}, nest_engine_keys(tier2_overlay or {}))
+    return _deep_merge(merged, nest_engine_keys(request_delivery or {}))

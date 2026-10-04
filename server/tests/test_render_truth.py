@@ -29,7 +29,7 @@ import justvoice.engines.manager as manager_module
 from justvoice.api import render_chapter_api
 from justvoice.app import create_app
 from justvoice.audio.effects import effects_chain_hash
-from justvoice.database.models import Block, Project, RenderPreset, Scene
+from justvoice.database.models import Block, Project, Scene
 from justvoice.mastering import resolve_master_target
 from justvoice.models import Persona
 from justvoice.render_core import RenderedLine, probe_line_cached, render_line
@@ -211,33 +211,9 @@ def test_scene_lines_carry_the_persona_chain(tmp_db, monkeypatch):  # noqa: F811
     db.close()
 
     lines = render_chapter_api._resolve_scene_to_lines(
-        "scene-1", None, _state_with({"p1": _persona("p1", effects=GAIN_UP)}),
+        "scene-1", _state_with({"p1": _persona("p1", effects=GAIN_UP)}),
     )
     assert lines[0].effects == GAIN_UP
-
-
-def test_preset_chain_overlays_the_persona_chain(tmp_db, monkeypatch):  # noqa: F811
-    session_factory, _engine = tmp_db
-    monkeypatch.setattr(render_chapter_api, "SessionLocal", session_factory)
-    db = session_factory()
-    _seed_scene(db)
-    import json
-
-    from justvoice.database.models import Persona as PersonaRow
-
-    db.add(PersonaRow(id="p1", name="P", voice_id="voice-1"))
-    db.add(RenderPreset(
-        id="pr-1", name="Room", voice_id="p1", delivery_json="{}",
-        effects_chain=json.dumps(GAIN_DOWN), lexicons_json="[]",
-    ))
-    db.commit()
-    db.close()
-
-    lines = render_chapter_api._resolve_scene_to_lines(
-        "scene-1", "pr-1", _state_with({"p1": _persona("p1", effects=GAIN_UP)}),
-    )
-    # Cascade order: persona first, preset on top.
-    assert lines[0].effects == GAIN_UP + GAIN_DOWN
 
 
 def test_no_chain_leaves_the_line_alone(tmp_db, monkeypatch):  # noqa: F811
@@ -248,7 +224,7 @@ def test_no_chain_leaves_the_line_alone(tmp_db, monkeypatch):  # noqa: F811
     db.close()
 
     lines = render_chapter_api._resolve_scene_to_lines(
-        "scene-1", None, _state_with({"p1": _persona("p1")}),
+        "scene-1", _state_with({"p1": _persona("p1")}),
     )
     assert lines[0].effects is None
 
@@ -270,14 +246,10 @@ def test_kind_defaults(kind, expected):
     assert resolve_master_target(project_type=kind) == (expected, "kind")
 
 
-def test_precedence_request_beats_preset_beats_project_beats_kind():
+def test_precedence_request_beats_project_beats_kind():
     assert resolve_master_target(
-        requested="youtube", preset_master="podcast",
-        project_master="inaudio", project_type="audiobook",
+        requested="youtube", project_master="inaudio", project_type="audiobook",
     ) == ("youtube", "request")
-    assert resolve_master_target(
-        preset_master="podcast", project_master="inaudio", project_type="audiobook",
-    ) == ("podcast", "preset")
     assert resolve_master_target(
         project_master="inaudio", project_type="audiobook",
     ) == ("inaudio", "project")
@@ -287,7 +259,6 @@ def test_none_is_an_answer_not_a_gap():
     """"none" means ship it raw and STOPS the search — otherwise turning
     mastering off on an audiobook would silently fall through to ACX."""
     assert resolve_master_target(requested="none", project_type="audiobook") == (None, "request")
-    assert resolve_master_target(preset_master="none", project_type="audiobook") == (None, "preset")
     assert resolve_master_target(project_master="none", project_type="audiobook") == (None, "project")
 
 

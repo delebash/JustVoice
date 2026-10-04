@@ -1958,6 +1958,16 @@ BUILT:  P1 (2026-10-03) — a voice knows its model: `server/justvoice/voice_mod
         test_cpu_placement made hermetic (a full suite run downloaded 2.3 GB of real models when
         an earlier test's app state lingered — pre-existing). Gates: ruff, server 1003 passed,
         vitest 122, biome, vite build, smoke 15/15 on the real data dir.
+BUILT:  P2 (2026-10-03) — render presets removed everywhere: the table model, `/v1/presets`,
+        `/v1/llm/preset-suggest` and its LLM feature (catalog, seed prompt, preset ref, Lab
+        sample, Lab fill), the built-in seed and reseed, the two render_presets migrations
+        and `generations.preset_id`, the preset tier of the delivery merge, Generate, the
+        chapter render and the mastering target, the Presets page + route + rail entry,
+        Render's preset column + 💡 Suggest, Render Lab's "Save as preset", the scripts'
+        PRESETS entries, `parse_chain`/`resolve_chain` (→ `chain_entries`), the user docs'
+        page and every mention (history lines kept). The user's DB keeps its
+        render_presets table and the suggest prompt row until the next reset (no
+        migrations). Gates: ruff, server suite, vitest 122, biome, vite build, smoke 14/14.
 GO:     given 2026-10-03 for P1–P8 and P9's checks; P9's data reset asks first
 
 ### FINDING — language never reaches Chatterbox or Qwen3: every render on them is told English

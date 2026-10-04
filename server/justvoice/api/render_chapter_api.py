@@ -2,12 +2,11 @@
 
 Two modes:
   * Direct mode — `lines[]` passed literally (legacy adapter use).
-  * Scene mode — `scene_id` (+ optional `preset_id`) passed; the server
-    resolves blocks → speakers → personas → lines internally (the speaker is
-    who says the line, the persona plays them — 2026-09-29). The persona
-    contributes voice_id, default_delivery (tier-2), voice_instruct (→
-    delivery.instruct for engines that consume it), and lexicon_id. The
-    preset overlays on top (tier-3). A speaker's "Who they are" never reaches
+  * Scene mode — `scene_id` passed; the server resolves blocks → speakers →
+    personas → lines internally (the speaker is who says the line, the
+    persona plays them — 2026-09-29). The persona contributes voice_id,
+    default_delivery, voice_instruct (→ delivery.instruct for engines that
+    consume it), its effects and lexicon_id. A speaker's "Who they are" never reaches
     this path. Each line is read with the book's lexicon, then its own
     persona's (render_core.line_lexicons, 2026-09-30).
 """
@@ -21,9 +20,9 @@ from fastapi import APIRouter, Response
 from pydantic import BaseModel
 
 from ..app_state import get_state
-from ..audio.effects import parse_chain, resolve_chain
+from ..audio.effects import chain_entries
 from ..audio.wav import write_wav_container
-from ..database.models import Block, Project, RenderPreset, Scene, Speaker
+from ..database.models import Block, Project, Scene, Speaker
 from ..database import session as _db_session
 from ..database.session import SessionLocal
 from ..delivery_merge import compose_instruct, merge_delivery
@@ -91,7 +90,6 @@ def _block_pause_after(block) -> int | None:
 
 def _resolve_scene_to_lines(
     scene_id: str,
-    preset_id: str | None,
     st,
     *,
     strict: bool = False,
@@ -99,8 +97,7 @@ def _resolve_scene_to_lines(
     """Resolve a scene's blocks → ChapterLines: block → speaker → persona.
 
     Each block becomes one ChapterLine. The persona contributes voice,
-    tier-2 delivery overlay, voice_instruct (→ delivery.instruct), and
-    lexicon. The preset (tier-3) overlays on top via merge_delivery.
+    delivery, voice_instruct (→ delivery.instruct), effects and lexicon.
 
     Each line carries its OWN lexicons (`ChapterLine.lexicons`): the book's,
     then the persona's that speaks it. Until 2026-09-30 this returned one
@@ -145,15 +142,6 @@ def _resolve_scene_to_lines(
             leave_out_tags = False
         tags_left_out = left_out_blocks(blocks) if leave_out_tags else set()
         book_lexicon = getattr(project, "default_lexicon_id", None)
-
-        preset = None
-        preset_effects: list[dict] = []
-        if preset_id:
-            preset = db.query(RenderPreset).filter(RenderPreset.id == preset_id).first()
-            if preset is None:
-                log.warning("render_chapter: preset %s not found, ignoring", preset_id)
-            else:
-                preset_effects = parse_chain(preset.effects_chain)
 
         lines: list[ChapterLine] = []
         skipped = 0
@@ -203,12 +191,7 @@ def _resolve_scene_to_lines(
                 log.debug("scene resolve: block %s has no voice — excluded", block.id)
                 continue
 
-            merged = merge_delivery(
-                request_delivery={},
-                preset_id=preset_id,
-                db=db,
-                tier2_overlay=tier2,
-            )
+            merged = merge_delivery({}, tier2_overlay=tier2)
             # `Block.direction` is the per-line performance note — the column's
             # own docstring calls it "Emotion/style hint passed through to the
             # engine's instruct field", the Chapters "+ direction" button
@@ -222,9 +205,9 @@ def _resolve_scene_to_lines(
             # is delivered. `delivery.emotion` is the same kind of hint from
             # the delivery side, so it composes the same way; it had no reader
             # at all before this.
-            # An explicit instruct (preset or request) wins the base slot over
-            # the persona's, as it always has; the line's own note still rides
-            # on the end. Most specific last: persona → delivery → this line.
+            # An explicit instruct in the delivery wins the base slot over the
+            # persona's, as it always has; the line's own note still rides on
+            # the end. Most specific last: persona → delivery → this line.
             #
             # A clip-less DESIGNED voice goes in FRONT of all of it: the
             # description is not direction, it is the identity, and on the
@@ -256,9 +239,9 @@ def _resolve_scene_to_lines(
                     voice=voice_id,
                     text=block.text,
                     delivery=Delivery(**{k: v for k, v in merged.items() if k in Delivery.model_fields}),
-                    # Same cascade the single-line path uses: the persona's
-                    # chain, then the preset's on top.
-                    effects=resolve_chain(persona_effects, preset_effects) or None,
+                    # The persona's chain — the same one the single-line path
+                    # applies.
+                    effects=chain_entries(persona_effects) or None,
                     lexicons=line_lexicons(book_lexicon, persona.lexicon_id) or None,
                 )
             )
@@ -317,12 +300,12 @@ def _lexicons_for(line: ChapterLine, request_lexicons: list[str] | None = None) 
 
 
 def _scene_master_target(
-    scene_id: str, preset_id: str | None, requested: str | None,
+    scene_id: str, requested: str | None,
 ) -> tuple[str | None, str]:
     """The mastering preset a scene render applies, and why.
 
-    Walks request → the render preset's `master` → the project's
-    `mastering_preset` → the project kind's default. One door, so the Render
+    Walks request → the project's `mastering_preset` → the project kind's
+    default. One door, so the Render
     tab's pill, the render itself and the ACX QC measurement can never
     disagree about what is being applied.
     """
@@ -333,13 +316,8 @@ def _scene_master_target(
             db.query(Project).filter(Project.id == scene.project_id).first()
             if scene is not None else None
         )
-        preset_master = None
-        if preset_id:
-            row = db.query(RenderPreset).filter(RenderPreset.id == preset_id).first()
-            preset_master = getattr(row, "master", None) if row is not None else None
         return resolve_master_target(
             requested=requested,
-            preset_master=preset_master,
             project_master=getattr(project, "mastering_preset", None),
             project_type=getattr(project, "project_type", None),
         )
@@ -427,7 +405,7 @@ async def render_cache_stats(project_id: str) -> RenderCacheStatsResponse:
     grand_total = grand_cached = 0
     for scene in scenes:
         try:
-            lines = _resolve_scene_to_lines(scene.id, None, st)
+            lines = _resolve_scene_to_lines(scene.id, st)
         except Exception:
             out.append(SceneCacheStats(scene_id=scene.id, title=scene.title or "", total=0, cached=0))
             continue
@@ -466,9 +444,7 @@ async def render_chapter(req: RenderChapterRequest) -> Response:
     # Scene mode — resolve blocks → personas → lines on the server.
     cache_scope = req.cache_scope
     if req.scene_id and not req.lines:
-        lines = _resolve_scene_to_lines(
-            req.scene_id, req.preset_id, st, strict=True,
-        )
+        lines = _resolve_scene_to_lines(req.scene_id, st, strict=True)
         # Scene renders share one per-scene cache scope with the QC/M4B
         # assembly path (render_scene_to_wav) and the cache-stats probe —
         # otherwise the same audio caches twice and the banner lies.
@@ -516,12 +492,12 @@ async def render_chapter(req: RenderChapterRequest) -> Response:
         gap = st.settings.get().generation.pause_between_lines_ms
     combined = concat_lines(rendered, silence_ms=gap)
 
-    # Scene mode: the server decides the mastering target (request → preset →
-    # project → kind) and returns a WAV monitor. Studio has never sent a
+    # Scene mode: the server decides the mastering target (request → project →
+    # kind) and returns a WAV monitor. Studio has never sent a
     # `master` field, so before 2026-08-15 an audiobook chapter came back as
     # raw TTS output while the Render tab's pill claimed ACX was applied.
     if req.scene_id and not req.lines:
-        target, source = _scene_master_target(req.scene_id, req.preset_id, req.master)
+        target, source = _scene_master_target(req.scene_id, req.master)
         wav, applied, fallback = _master_scene_pcm(combined, target)
         headers = {
             "X-Master-Preset": applied or "none",
@@ -581,7 +557,7 @@ def render_scene_to_wav(st, scene_id: str, *, strict: bool = True, master: bool 
     and refusing the whole book because chapter 40 isn't cast yet would
     make it useless for the entire middle of a production.
     """
-    lines = _resolve_scene_to_lines(scene_id, None, st, strict=strict)
+    lines = _resolve_scene_to_lines(scene_id, st, strict=strict)
     rendered = []
     for line in lines:
         rl = render_line(
@@ -599,7 +575,7 @@ def render_scene_to_wav(st, scene_id: str, *, strict: bool = True, master: bool 
         rendered.append(rl)
     # The same gap Studio's Render uses (was a hardcoded 600 until 2026-09-29).
     combined = concat_lines(rendered, silence_ms=st.settings.get().generation.pause_between_lines_ms)
-    target = _scene_master_target(scene_id, None, None)[0] if master else None
+    target = _scene_master_target(scene_id, None)[0] if master else None
     wav, _applied, _fallback = _master_scene_pcm(combined, target)
     return wav
 
@@ -607,7 +583,7 @@ def render_scene_to_wav(st, scene_id: str, *, strict: bool = True, master: bool 
 class MasterTargetResponse(BaseModel):
     project_id: str
     preset: str | None            # null = renders stay raw
-    source: str                   # request | preset | project | kind
+    source: str                   # request | project | kind
     ffmpeg: bool
     targets: dict | None = None   # the preset's real numbers, when one applies
 
@@ -618,7 +594,7 @@ class MasterTargetResponse(BaseModel):
     summary="Which mastering preset this project's renders apply, and why",
 )
 async def render_master_target(
-    project_id: str, preset_id: str | None = None,
+    project_id: str,
 ) -> MasterTargetResponse:
     """What the Render tab's mastering pill reads.
 
@@ -633,12 +609,7 @@ async def render_master_target(
         project = db.query(Project).filter(Project.id == project_id).first()
         if project is None:
             raise not_found(f"project {project_id}")
-        preset_master = None
-        if preset_id:
-            row = db.query(RenderPreset).filter(RenderPreset.id == preset_id).first()
-            preset_master = getattr(row, "master", None) if row is not None else None
         target, source = resolve_master_target(
-            preset_master=preset_master,
             project_master=project.mastering_preset,
             project_type=project.project_type,
         )

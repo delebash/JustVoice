@@ -68,7 +68,6 @@ def _old_seed_defaults() -> dict:
     from ...extraction.identify import IDENTIFY_SYSTEM
     from ...extraction.prompts import DIRECT_SYSTEM, GUIDED_SYSTEM
     from ...seed_feature_prompts import (
-        _PRESET_SUGGEST_SYSTEM,
         _SHOW_NOTES_SYSTEM,
         _SMART_ASSIGN_SYSTEM,
     )
@@ -76,8 +75,6 @@ def _old_seed_defaults() -> dict:
     return {
         "smart_assign": {"system": _SMART_ASSIGN_SYSTEM, "user_template": "",
                          "temperature": 0.2, "think": False},
-        "render_preset_suggest": {"system": _PRESET_SUGGEST_SYSTEM, "user_template": "",
-                                  "temperature": 0.0, "think": False},
         "show_notes": {"system": _SHOW_NOTES_SYSTEM, "user_template": "",
                        "temperature": 0.4, "think": False},
         "speaker_attribution.guided": {"system": GUIDED_SYSTEM,

@@ -156,18 +156,21 @@ Picking a kind at project creation sets:
 | Term | What it is | Where |
 |---|---|---|
 | **Mastering preset** | Loudness/peak/format target: `acx`, `inaudio`, `podcast`, `youtube`. Default chosen by project kind; operator-tunable via settings. | `MasterPreset(Settings)` in `models.py`, applied by `mastering.py` (ffmpeg) |
-| **Render preset** | Tier 3 of the delivery cascade — bundles voice/master/effects-chain overrides for a render job. Cascade: **render preset (T3) > persona `default_delivery` (T2) > engine defaults (T1)**; T3-beats-T2 covered by `test_render_chapter_scene_mode.py`. | `/v1/presets` CRUD, `RenderPresetsView.vue`, `delivery_merge.py` |
+| **Render preset** | REMOVED 2026-10-03 ("presets die", ruled 2026-09-27). Was a bundle of delivery / master / effects overrides laid over every persona in a chapter, which silently beat the persona's own pace, pitch and gain. A chapter's own sound returns with Studio's scene layer, which only adds (words, effects), never overwrites. | — |
 | **Preset voice** | A voice *type* (vs cloned/blended/trained): engine built-ins like Kokoro `af_heart`. | `VOICE_TYPES` in `models.py` |
 
 Resolved 2026-06-12: mastering presets are **targets** in all UI copy
 (ACX target, podcast target) — Settings → Mastering "Active target",
-Audio Tools "Apply a mastering target", project meta "Mastering target",
-render-preset cards "Master target". "Preset" stays with the
-render-preset library, and "preset voice" reads as a plain adjective.
+Audio Tools "Apply a mastering target", project meta "Mastering target".
+"Preset" stays with effect chains, and "preset voice" reads as a plain
+adjective.
 API field names (`mastering_preset`, `master`) are unchanged — the
 rename is presentation-level only.
 
-### Render preset vs Persona (user question, 2026-06-12)
+### Render preset vs Persona (user question, 2026-06-12) — HISTORY
+
+Render presets were removed on 2026-10-03; this is kept as the record of
+why they once existed beside personas.
 
 Both carry a delivery dict + an effects chain, which makes them LOOK
 merged. They are deliberately separate layers of the same cascade:
@@ -263,10 +266,10 @@ costs specific features, and the UI says exactly which.
   connect; otherwise add any OpenAI-compatible endpoint + key, or skip.
   This sets the default provider for the per-feature bindings that already
   exist in settings (`LLMBinding` in `models.py` — speaker_attribution,
-  smart_assign, render_preset_suggest, compose, persona_rewrite; QuickSetup
+  smart_assign, compose, persona_rewrite; QuickSetup
   pre-fills per hardware tier).
   **Graceful degradation when skipped:** Script becomes manual speaker
-  assignment, Smart-assign hides, preset-suggest hides — each spot shows a
+  assignment, Smart-assign hides — each spot shows a
   "connect an LLM" hint deep-linking to setup. Audiobook EPUB flow is the
   big loser without one; games/podcasts barely notice (their sources name
   speakers).

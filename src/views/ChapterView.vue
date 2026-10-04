@@ -345,12 +345,6 @@ async function regenerateBlock(block) {
     }, async (task) => {
       // Regen inherits the project's default lexicon so pronunciation
       // overrides for this chapter don't silently drop on a re-roll.
-      // preset_id is NOT inherited automatically — project.metadata
-      // .render_preset is a UI enum, not a render_presets.id, and the
-      // last-used preset isn't persisted on the block or scene. If
-      // preset inheritance becomes a need, plumb it from the block's
-      // most recent Generation.preset_id (server-side join, since
-      // TakeResponse currently only exposes generation_id).
       const body = {
         lines: [{ voice, text: block.text }],
         between_lines: { silence_ms: 0 },

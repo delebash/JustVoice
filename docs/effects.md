@@ -30,22 +30,17 @@ JustVoice has an effects chain: 10 effect types, 4 built-in presets, custom pres
 
 Applying an effects chain to a take produces a **new take version** with effects baked in. The original take survives, and `source_take_id` links them. Revert by setting the source take as default. See [take-versioning.md](take-versioning.md).
 
-## Where a chain lives — two places, and they stack
+## Where a chain lives — on the persona
 
-A chain belongs to a **persona** or to a **render preset**, and nothing else
-carries one:
+A chain belongs to a **persona**, and nothing else carries one: it is how that
+voice always sounds — Old Crow over a CB radio, a giant always thick. Every
+line of every speaker that persona plays gets it, in every render.
 
-- **The persona's chain** is how that voice always sounds — Old Crow over a CB
-  radio, a giant always thick. Every line of every speaker that persona plays
-  gets it, in every render.
-- **The render preset's chain** is how a *scene* sounds, and it layers **on top
-  of** the persona's: persona first, scene colour after. Bind the preset to a
-  scene in Studio · Render.
-
-Both run, in that order. This is not a "lowest set value wins" cascade, and
-there is no per-voice, per-project or per-chapter chain — earlier versions of
-this page described a four-layer merge that the code never had. A **voice** is
-the TTS artifact; the styling lives on the persona that speaks with it.
+There is no per-voice, per-project or per-chapter chain. A **voice** is the TTS
+artifact; the styling lives on the persona that speaks with it. (Render presets
+carried a second chain layered on top until they were removed on 2026-10-03; a
+chapter's own sound — a flashback's reverb, say — comes back with Studio's
+scene layer.)
 
 ## Where a chain runs
 

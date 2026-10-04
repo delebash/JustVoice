@@ -42,9 +42,8 @@ from .models import (
     MCPBinding,
     # Captures (dictation)
     Capture,
-    # Effects + render presets (v1.0 from gap-decision workflow)
+    # Effects (v1.0 from gap-decision workflow)
     EffectPreset,
-    RenderPreset,
     # Webhooks (v1.0 from gap-decision workflow)
     Webhook,
     # Speaker-attribution correction memory (Phase 5)
@@ -80,7 +79,6 @@ __all__ = [
     "MCPBinding",
     "Capture",
     "EffectPreset",
-    "RenderPreset",
     "Webhook",
     "SpeakerCorrection",
     "Pref",

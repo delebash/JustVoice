@@ -1005,7 +1005,7 @@ async def project_qc(project_id: str, db: Session = Depends(get_db)) -> ProjectQ
         """The refusal a real render would raise, as a note instead. Same
         door, so QC can never disagree with what export will do."""
         try:
-            _resolve_scene_to_lines(scene_id, None, st, strict=True)
+            _resolve_scene_to_lines(scene_id, st, strict=True)
             return None
         except ApiError as e:
             return str(e.detail)
@@ -1049,7 +1049,7 @@ async def project_qc(project_id: str, db: Session = Depends(get_db)) -> ProjectQ
     from ..mastering import have_ffmpeg as _have_ffmpeg
     from .render_chapter_api import _scene_master_target
 
-    target = _scene_master_target(scenes[0].id, None, None)[0] if scenes else None
+    target = _scene_master_target(scenes[0].id, None)[0] if scenes else None
     mastered = bool(target) and _have_ffmpeg()
     qc_note = None
     if target and not mastered:

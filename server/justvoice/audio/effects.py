@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: MIT
 """Effects pipeline (Slice 6 of the Profile-kill plan).
 
-The render path cascades:
+The render path runs the persona's chain on every line it speaks:
 
-  Persona.effects_chain  →  RenderPreset.effects_chain (overlay)  →  TTS WAV
+  TTS WAV  →  Persona.effects_chain  →  the line's audio
 
 `apply_effects_chain()` is the public entrypoint. Given the WAV bytes
 produced by the engine and a (possibly empty) chain spec, it returns a
@@ -96,24 +96,10 @@ def _build_plugins(chain: list[dict]) -> list:
     return plugins
 
 
-def resolve_chain(
-    persona_chain: list[dict] | None,
-    preset_chain: list[dict] | None,
-) -> list[dict]:
-    """Cascade order (lowest precedence first): persona → preset.
-
-    Both are appended in order — the chain reads left-to-right at render
-    time. The preset's effects layer ON TOP of the persona's; if you want
-    a preset to REPLACE the persona chain, leave the preset chain blank
-    in the editor and the persona's chain runs alone, OR use a wrap effect
-    upstream.
-    """
-    out: list[dict] = []
-    if persona_chain:
-        out.extend(p for p in persona_chain if isinstance(p, dict))
-    if preset_chain:
-        out.extend(p for p in preset_chain if isinstance(p, dict))
-    return out
+def chain_entries(chain: list[dict] | None) -> list[dict]:
+    """The usable entries of a stored chain, in order (a chain is a list of
+    `{type, params}` dicts; anything else in it is skipped)."""
+    return [p for p in (chain or []) if isinstance(p, dict)]
 
 
 def apply_effects_chain(wav_bytes: bytes, chain: list[dict]) -> bytes:
@@ -210,22 +196,3 @@ def effects_chain_hash(chain: list[dict] | None) -> str:
     payload = json.dumps(chain, sort_keys=True, separators=(",", ":"))
     payload = f"{DSP_VERSION}|{payload}"
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
-
-
-def parse_chain(blob: str | list | None) -> list[dict]:
-    """Tolerant parser — accept JSON string OR already-decoded list.
-
-    Returns [] on any malformation.
-    """
-    if not blob:
-        return []
-    if isinstance(blob, list):
-        return [e for e in blob if isinstance(e, dict)]
-    if isinstance(blob, str):
-        try:
-            v = json.loads(blob)
-        except (json.JSONDecodeError, TypeError):
-            return []
-        if isinstance(v, list):
-            return [e for e in v if isinstance(e, dict)]
-    return []

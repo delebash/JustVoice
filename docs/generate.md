@@ -139,7 +139,7 @@ Hitting ▶ Generate pushes an accent-tinted progress strip into the top of the 
 
 Two kinds of work appear there, and only these two:
 
-- **Anything that queries a language model** — Compose, Persona rewrite, Speaker attribution, Smart assign, ACX QC, Render-preset suggest, Show notes, Voice gender. This is what the strip exists for, and it is the same queue JustWrite and the docs generator use for their own AI features.
+- **Anything that queries a language model** — Compose, Persona rewrite, Speaker attribution, Smart assign, ACX QC, Show notes, Voice gender. This is what the strip exists for, and it is the same queue JustWrite and the docs generator use for their own AI features.
 - **Long TTS renders** — this view's ▶ Generate, a chapter render, Lines → *Re-render changed*, and a Studio scene render.
 
 What does **not** appear there: installing an engine, downloading a model, and loading a model all report on their own row in the Speech engines tab (see [Engines](engines.md#cancelling-an-in-flight-load)). That is file and process work rather than model queries, and putting them in this queue only buried the runs you actually wanted to watch.
@@ -209,7 +209,6 @@ Click a take to see its lineage via the [take versioning](take-versioning.md) ch
 | Delivery direction | `delivery.instruct` |
 | Emotion | `delivery.emotion` — folded into the instruction for Qwen3 CustomVoice and VoiceDesign |
 | Engine-specific knobs (advanced + primary) | `delivery.engine.{key}` — only sent when changed from default |
-| Render preset (no UI yet) | `preset_id` |
 | Lexicon attach | `lexicons: ["lex_id"]` |
 
 All endpoints documented in Settings → API reference card.

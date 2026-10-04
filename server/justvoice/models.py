@@ -621,13 +621,11 @@ class Persona(BaseModel):
     # A short note on how it sounds. Read by Compose / Rewrite on Generate and
     # by Smart-assign; never by an engine — that is `voice_instruct`'s job.
     note: str | None = None
-    # Tier-2 delivery overlay defaults (3-tier voice tuning per task #88):
-    #   render_preset (Tier 3) > persona.default_delivery (Tier 2) > engine (Tier 1).
+    # The persona's delivery defaults; a request's own delivery sits on top.
     # JSON dict matching the Delivery shape (speed / pitch / gain_db / etc).
     default_delivery: dict[str, Any] = {}
     # Effects chain — applied after TTS produces WAV (see audio/dsp/). List
-    # of {type, params} dicts. Cascade order: persona → render preset (overlay)
-    # → per-block override. Wired in Slice 6.
+    # of {type, params} dicts; runs on every line this persona speaks.
     effects_chain: list[dict[str, Any]] = []
     lexicon_id: str | None = None
     engine_override: str | None = None
@@ -1263,12 +1261,8 @@ class GenerateRequest(BaseModel):
     lexicons: list[str] = []
     cache_scope: str = "default"
     cache: bool = True
-    # Tier-2 voice tuning — persona.default_delivery resolves via PersonaStore
-    # at render time.
+    # The persona's delivery, effects and lexicon ride under the request's.
     persona_id: str | None = None
-    # Tier-3 render preset (task #88) — if set, preset overrides request +
-    # persona delivery. Highest precedence in the 3-tier merge.
-    preset_id: str | None = None
 
 
 class ChapterLine(BaseModel):
@@ -1277,8 +1271,8 @@ class ChapterLine(BaseModel):
     language: str | None = None
     delivery: Delivery | None = None
     seed: int | None = None
-    # Resolved effects chain for this line (persona → render preset). Scene
-    # mode fills it from the block's persona; direct-mode callers may pass
+    # The effects chain for this line (its persona's). Scene mode fills it
+    # from the block's persona; direct-mode callers may pass
     # one. Part of the render cache key — see render_core.render_line.
     effects: list[dict] | None = None
     # The lexicons this line is read with, in order (render_core.line_lexicons:
@@ -1296,12 +1290,10 @@ class BetweenLines(BaseModel):
 class RenderChapterRequest(BaseModel):
     # Direct mode: pass `lines[]` literally (the legacy path — JustWrite
     # adapter, single-chapter renders from CLI, etc.).
-    # Scene mode: pass `scene_id` (+ optional `preset_id`); the server
-    # resolves blocks → personas → lines internally. `lines` may be omitted
-    # in scene mode.
+    # Scene mode: pass `scene_id`; the server resolves blocks → personas →
+    # lines internally. `lines` may be omitted in scene mode.
     lines: list[ChapterLine] = []
     scene_id: str | None = None
-    preset_id: str | None = None
     between_lines: BetweenLines = BetweenLines()
     master: Literal["acx", "inaudio", "podcast", "youtube", "none"] | None = None
     title: str | None = None

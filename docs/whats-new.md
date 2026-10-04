@@ -2,6 +2,15 @@
 
 ## v0.1.0
 
+- **Render presets are gone (2026-10-03).** The Presets page, the Render step's
+  per-chapter **Render preset** column and its **💡 Suggest** button are removed
+  ("presets die", decided 2026-09-27). A preset was laid over every persona in a
+  chapter and silently beat the persona's own pace, pitch and gain; now every line
+  sounds the way its persona is set up, and the mastering target is the
+  project's (Studio · Overview). Presets saved before stay in your data file,
+  unused, until your next reset. A chapter's own sound — a flashback's reverb —
+  comes back with Studio's scene layer
+  ([Studio → Render](studio.md#render))
 - **Every voice knows its model, and a mixed cast renders (2026-10-03).** A
   voice now remembers the model it was made for — a Qwen3 speaker is
   CustomVoice, a clone is the model you picked when you cloned it — and every

@@ -13,7 +13,7 @@ land FIRST (engines/llm/migrate_prompts.py) so edits win over these defaults.
 
 Placeholder style is the shared renderer's `{{var}}` (fail-loud on absence).
 The attribution user template converts the old single-brace `.replace` tokens;
-the previously code-built user messages (smart_assign, preset_suggest,
+the previously code-built user messages (smart_assign,
 show_notes, identify, compose, persona_rewrite) become templates here, with
 their callers passing the SAME formatted blocks as variables.
 
@@ -44,20 +44,6 @@ object mapping characterId -> voiceId. Match on age, gender, tone, and
 accent. Do not invent ids. If no voice fits, omit that character.
 
 Return only the JSON object. No prose, no preamble.
-"""
-
-_PRESET_SUGGEST_SYSTEM = """You classify a book chapter's tone and pick the best-fit
-render preset from a list.
-
-Return JSON only:
-
-  {"preset": "<exact preset name from the list>", "reason": "<one sentence>"}
-
-Rules:
-  - The preset value MUST match a name from the provided list exactly.
-  - If no preset fits, return {"preset": "", "reason": "..."} — don't
-    invent presets.
-  - Reply with the JSON object only. No prose, no preamble.
 """
 
 _SHOW_NOTES_SYSTEM = """You write podcast show notes. Given a transcript-style
@@ -185,19 +171,6 @@ Manuscript text:
 
 Available voices:
 {{personas}}
-
-Return only the JSON object.""",
-        "json_mode": True,
-    },
-    "render_preset_suggest": {
-        "feature": "render_preset_suggest",
-        "description": "Reads a chapter's mood and picks which of your render presets fits it — the 💡 Suggest button.",
-        "system": _PRESET_SUGGEST_SYSTEM,
-        "user_template": """Available presets:
-{{presets}}
-
-Chapter text:
-{{chapter_text}}
 
 Return only the JSON object.""",
         "json_mode": True,

@@ -142,9 +142,7 @@ def collect_project_line_kwargs(
     out: list[dict] = []
     for sc in project_scenes(project_id):
         try:
-            lines = _resolve_scene_to_lines(
-                sc.id, None, state, strict=not skip_unrenderable
-            )
+            lines = _resolve_scene_to_lines(sc.id, state, strict=not skip_unrenderable)
         except Exception:
             if skip_unrenderable:
                 continue

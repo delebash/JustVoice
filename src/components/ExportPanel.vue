@@ -191,7 +191,7 @@ async function copyShowNotes() {
         </ul>
         <div class="jv-banner" :class="exportQc.all_ok ? 'jv-banner--info' : 'jv-banner--warn'" style="margin-top:10px;font-size:12px">
           {{ exportQc.all_ok
-            ? "Measured checks pass. Mastering chain: project target — duplicate under Render Presets to tweak."
+            ? "Measured checks pass. Mastering chain: the project's target — change it on Overview."
             : "Some chapters are out of spec — fix levels in Studio · Render, then re-check." }}
         </div>
       </template>

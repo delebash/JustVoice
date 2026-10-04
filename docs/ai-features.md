@@ -1,8 +1,7 @@
 # AI features — routing, prompts & the AI Settings area
 
 JustVoice's text-AI features (speaker attribution, smart assign, persona
-compose/rewrite, preset suggest, show notes, dictation cleanup, voice-gender
-guess) all run on the **shared AI stack** — the same providers, model catalog,
+compose/rewrite, show notes, dictation cleanup, voice-gender guess) all run on the **shared AI stack** — the same providers, model catalog,
 routing and prompt system as the rest of the family. The surface for all of it
 is the **AI Settings** page in the sidebar.
 
@@ -14,7 +13,6 @@ is the **AI Settings** page in the sidebar.
 | **Persona rewrite** | Rewrites the current text in a persona's voice, or a line in its speaker's character (preview-then-accept) | Generate view → ✏️ Rewrite · Studio Script → right-click a spoken line's text |
 | **Speaker attribution** | Extracts who says what and what they say; its Find new speakers row lists the people a chapter names | Studio Script tab → Analyze · Studio Discover → Scan |
 | **Smart-assign** | Matches each speaker in a book to a persona | Studio Cast tab → Smart-assign |
-| **Render preset suggest** | Classifies a chapter's tone and picks the best render preset | Studio Render tab → 💡 Suggest |
 | **Show notes** | Chapter summaries for podcast descriptions | Projects → Show notes |
 | **Dictation cleanup** | Raw speech → clean text before paste | Captures — runs after a dictation when auto-refine is on |
 | **Voice gender guess** | Labels fetched voices the built-in dictionary doesn't know | Voices → ✨ Guess unknown genders (only when you click) |
@@ -337,7 +335,7 @@ recorded in the panel's Recent list with its token counts. A failed run
 shows its error right in the column, badges the AI-tasks button until you
 open the panel, and keeps its error in the panel until you dismiss it — so
 errors don't vanish before you read them. The same strip follows every AI
-button in the app: Studio's Analyze, Smart-assign, 💡 Suggest, Show notes,
+button in the app: Studio's Analyze, Smart-assign, Show notes,
 the persona 🎲/✏️ buttons, and the voice ✨ gender guess.
 
 The **Find new speakers** row's Lab runs the discovery scan instead — the
@@ -365,9 +363,6 @@ fakes:
   at the raw output instead of pretending.
 - **Voice gender guess**: *Insert from voices…* fills the box with
   `- Name — description` lines, the exact format the ✨ button sends.
-- **Render preset suggest**: one picker inserts your render-preset list,
-  another inserts a chapter's text — the two inputs the 💡 Suggest button
-  composes.
 - **Show notes**: *Insert from script…* builds a project's script the way
   production does — `## Chapter title` headings with `SPEAKER: line` rows,
   NARRATION where no one is assigned.
@@ -395,8 +390,8 @@ with thinking on. That one was measured: on two sample novels the built-in
 Gemma got 928 of 940 lines right without thinking and 937 with it, and the
 one mistake it kept repeating went away — at about 1.7 times the time per
 chapter. Everything else — dictation cleanup, Discover's Find new speakers,
-Smart-assign, Compose, Rewrite, Show notes, Preset suggest, the voice
-gender guess — ships off. The effort level sets how MUCH a thinking run
+Smart-assign, Compose, Rewrite, Show notes, the voice gender guess — ships
+off. The effort level sets how MUCH a thinking run
 reasons — lower is a shorter hidden pass and a faster answer. To trade
 accuracy for speed on attribution, turn thinking off on Reasoned
 extraction.

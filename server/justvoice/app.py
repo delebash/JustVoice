@@ -42,7 +42,6 @@ from .api import (
     engines_api,
     extraction_api,
     prefs_api,
-    preset_suggest_api,
     refine_lab_api,
     smart_assign_api,
     engine_sources_api,
@@ -63,7 +62,6 @@ from .api import (
     projects_api,
     render_chapter_api,
     render_jobs_api,
-    render_presets_api,
     server_auth_api,
     settings_api,
     speech_runtime_api,
@@ -285,7 +283,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
         # reason — "JV has no CSRF/origin middleware" — closed 2026-08-08 when
         # csrf.py landed; flipping the flag is a separate product decision.)
     )
-    # Workspace SEEDING — effect/render presets, JV's warm-OFF default, the
+    # Workspace SEEDING — effect presets, JV's warm-OFF default, the
     # legacy-prompt/provider migrations, the shared LLM seed, and the provider
     # registry boot — lives in database/seed.py::seed_workspace(), called by
     # serve.py AFTER create_app (the family call-site, target-tree P6, with
@@ -333,7 +331,6 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 
     # Phase 4a addendum (gap-decision workflow v1.0 endpoints)
     app.include_router(webhooks_api.router)
-    app.include_router(render_presets_api.router)
     app.include_router(bulk_delete_api.router)
     app.include_router(voice_preview_api.router)
     app.include_router(project_export_api.router)
@@ -342,7 +339,6 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app.include_router(extraction_api.router)
     app.include_router(refine_lab_api.router)
     app.include_router(smart_assign_api.router)
-    app.include_router(preset_suggest_api.router)
 
     # MCP server — justvoice.speak / list_voices / list_personas for local
     # AI agents, mounted at /mcp (Streamable HTTP). Must mount before the

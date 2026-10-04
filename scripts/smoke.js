@@ -35,7 +35,7 @@ const BASE = process.env.JV_BASE || "http://127.0.0.1:17494/";
 // live under AI Settings → Speech engines now); AI SETTINGS replaces it here.
 const TABS = [
   "HOME", "PROJECTS", "CHAPTERS", "STUDIO", "GENERATE", "CAPTURES",
-  "VOICES", "PERSONAS", "LEXICONS", "EFFECTS", "PRESETS", "AI SETTINGS",
+  "VOICES", "PERSONAS", "LEXICONS", "EFFECTS", "AI SETTINGS",
   "LABS", "SETTINGS",
 ];
 

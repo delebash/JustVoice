@@ -134,9 +134,9 @@ function wireKit(app) {
   // The Lab's fill-from-app doors (Part 4, 2026-08-06 — the kit's
   // configureTestData seam, off by default; JW's registration is the donor):
   // chapters/cast → attribution + identify, cast/voices → smart-assign,
-  // voices → gender guess, presets + chapters → preset-suggest, script →
-  // show notes, personas → compose/rewrite. Every fill emits the SAME block
-  // the production caller sends (labTestData.js names each source of truth).
+  // voices → gender guess, script → show notes, personas → compose/rewrite.
+  // Every fill emits the SAME block the production caller sends
+  // (labTestData.js names each source of truth).
   configureTestData({ sources: LAB_TEST_SOURCES, actions: LAB_TEST_ACTIONS });
   // installLlmUi fed `resolveBase` to the shared transport; the bearer token is
   // JV's own layer on top (thin-client `jt:server` mode authenticates).

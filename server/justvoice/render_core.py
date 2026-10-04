@@ -567,8 +567,7 @@ def render_line(
 ) -> RenderedLine:
     """Render one line.
 
-    `effects` is the RESOLVED chain (persona → render preset, cascaded by
-    `audio.effects.resolve_chain`) for this line. It is applied to the audio
+    `effects` is the chain of the persona that speaks this line. It is applied to the audio
     here and it is part of the cache key, so two lines that differ only in
     their chain never share an entry — and editing a persona's chain
     invalidates exactly the blocks that persona speaks. Chapter renders left

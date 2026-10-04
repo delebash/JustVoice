@@ -12,7 +12,6 @@ import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "@delebash/llm-ui";
 import { handleTermsRefusal } from "../services/engineTerms.js";
-import { promptDialog } from "@delebash/llm-ui";
 import { UiButton, UiInput, UiTextarea, UiToggle, UiTag, UiSelect } from "@delebash/llm-ui";
 import { useVoicesStore } from "../stores/voices.js";
 
@@ -138,34 +137,6 @@ async function runAll() {
   }
 }
 
-async function saveAsPreset(cell) {
-  // Was triple-broken: native prompt() (banned — null in the Tauri
-  // webview), `delivery_json`/`lexicons_json` (the API takes `delivery`
-  // dicts), and a VOICE id in voice_id (which is a persona FK). Saves a
-  // delivery-only preset now — the lab tunes delivery, not casting.
-  const name = (await promptDialog({
-    title: "Save as render preset",
-    message: `Name the preset for ${cell.key}:`,
-    placeholder: "e.g. Narration — slow + warm",
-  }))?.trim();
-  if (!name) return;
-  try {
-    await api.request("/v1/presets", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name,
-        voice_id: null,
-        delivery: cell.params || {},
-        lexicons: [],
-      }),
-    });
-    pushToast({ message: `Saved "${name}" as render preset.`, kind: "success" });
-  } catch (e) {
-    pushToast({ message: `Save preset failed: ${e?.message || e}`, kind: "error" });
-  }
-}
-
 onMounted(loadVoices);
 </script>
 
@@ -242,7 +213,6 @@ onMounted(loadVoices);
           <p v-else-if="c.status === 'failed'" class="renderlab__cell-error">{{ c.error }}</p>
           <p v-else class="jv-muted renderlab__cell-pending">— pending —</p>
           <footer class="renderlab__cell-actions" v-if="c.status === 'done'">
-            <UiButton intent="ghost" size="small" label="Save as preset" @click="saveAsPreset(c)" />
           </footer>
         </article>
       </div>

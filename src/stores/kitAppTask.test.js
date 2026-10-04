@@ -64,7 +64,7 @@ describe("withAiTask", () => {
     const boom = new Error("Scene has no blocks to classify — analyze + apply first.");
     boom.status = 400;
     await expect(
-      withAiTask({ feature: "preset-suggest", label: "Suggest", lingerMs: {} }, async () => {
+      withAiTask({ feature: "show-notes", label: "Show notes", lingerMs: {} }, async () => {
         throw boom;
       }),
     ).rejects.toBe(boom);

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 """Shared-LLM boot/reseed helpers used by BOTH create_app and factory-reset.
 
-JV's SQLite file carries TWO seed sets — its own (effect/render presets) and
+JV's SQLite file carries TWO seed sets — its own (effect presets) and
 the shared stack's (prompt rows, presets, providers, runner settings). A
 factory reset deletes the file, so the shared half must be re-wired and
 re-seeded too (the family's dual-table reset lesson): storage re-pointed at

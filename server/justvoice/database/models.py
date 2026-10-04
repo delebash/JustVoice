@@ -14,8 +14,7 @@ Convention:
   integers, no risk of leaking sequence size in logs.
 - Foreign keys use ON DELETE CASCADE where the child has no meaning without
   its parent (e.g. samples for a deleted voice). RESTRICT where the child
-  references a long-lived parent that shouldn't be silently nulled
-  (e.g. a render preset's voice_id).
+  references a long-lived parent that shouldn't be silently nulled.
 - JSON-shaped columns store a serialized payload as TEXT. SQLite has a
   native JSON1 extension but we don't depend on it for portability.
 - All datetimes are stored in UTC.
@@ -117,8 +116,8 @@ class Persona(Base):
     note = Column(Text, nullable=True)
     # Tier-2 delivery overlay (JSON-serialized Delivery shape).
     default_delivery = Column(Text, nullable=True)
-    # Pedalboard effects chain (JSON array of {type, params}). Cascade order:
-    # persona → render preset (overlay) → per-block override. Wired in Slice 6.
+    # Pedalboard effects chain (JSON array of {type, params}) — how this
+    # persona always sounds; runs after the TTS on every line it speaks.
     effects_chain = Column(Text, nullable=True)
     engine_override = Column(String, nullable=True)
     lexicon_id = Column(String, ForeignKey("lexicons.id", ondelete="SET NULL"), nullable=True)
@@ -316,8 +315,6 @@ class Generation(Base):
     is_favorited = Column(Boolean, default=False, nullable=False)
     # "manual" | "chapter_render" | "mcp_speak" | "dictate_replay"
     source = Column(String, nullable=False, default="manual")
-    # Which render preset (if any) produced this generation; null for ad-hoc
-    preset_id = Column(String, ForeignKey("render_presets.id", ondelete="SET NULL"), nullable=True)
     effects_chain = Column(Text, nullable=True)
     cache_key = Column(String, nullable=True)
     created_at = Column(DateTime, default=_utcnow)
@@ -517,7 +514,7 @@ class Capture(Base):
     created_at = Column(DateTime, default=_utcnow)
 
 
-# ── Effects + render presets ──────────────────────────────────────────────
+# ── Effects ──────────────────────────────────────────────
 
 
 class EffectPreset(Base):
@@ -544,58 +541,6 @@ class EffectPreset(Base):
 # stays so pre-rename DBs still feed that path.)
 
 
-class RenderPreset(Base):
-    """Named bundle of voice + delivery + master target + lexicons. Lets the
-    audiobook producer lock ACX consistency across 30 chapters, or the
-    game-dev lock per-character reproducibility across 200 NPCs.
-
-    Unique (project_id, name) — global presets share namespace via null=='''.
-    See DESIGN_FREEZE.md §4.13 + §3.x render-preset decision.
-    """
-
-    __tablename__ = "render_presets"
-
-    id = Column(String, primary_key=True, default=_uuid)
-    name = Column(String, nullable=False)
-    project_id = Column(String, ForeignKey("projects.id", ondelete="CASCADE"), nullable=True)
-    # After Slice 4 of the Profile-kill rollout the preset binds to a
-    # Persona, not the dropped VoiceProfile. ondelete RESTRICT prevents
-    # deleting a Persona that has render presets bound to it.
-    # NULLABLE (2026-06-12): a preset is a reusable delivery/effects/master
-    # STYLE — the voice binding is optional. Delivery-only presets (incl.
-    # the 4 built-ins) carry no persona; the block/request supplies the
-    # voice at render time. This is what keeps Preset distinct from
-    # Persona: persona = WHO speaks (T2 baseline), preset = HOW this
-    # render sounds (T3 overlay).
-    voice_id = Column(String, ForeignKey("personas.id", ondelete="RESTRICT"), nullable=True)
-    # JSON: Delivery shape
-    delivery_json = Column(Text, nullable=False, default="{}")
-    # Per-preset effects chain (Slice 6) — overlays the persona's chain
-    # at render time. JSON list of {type, params} dicts.
-    effects_chain = Column(Text, nullable=True)
-    # "acx" | "inaudio" | "podcast" | "youtube" | "none" | None
-    master = Column(String, nullable=True)
-    # JSON list of lexicon IDs
-    lexicons_json = Column(Text, nullable=False, default="[]")
-    seed = Column(Integer, nullable=True)
-    cache_scope = Column(String, nullable=False, default="default")
-    description = Column(Text, nullable=True)
-    # Seeded by database/seed.py (Narration / Dramatic Dialogue / Quiet
-    # Reflection / Action — task #88). Built-ins are editable; the flag
-    # only drives the UI badge + reseed-if-missing on boot.
-    is_builtin = Column(Boolean, default=False, nullable=False)
-    created_at = Column(DateTime, default=_utcnow)
-    updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
-
-
-# Name must be unique within project_id scope; treat null as '' for the index.
-# SQLite supports expression-based unique indexes.
-Index(
-    "ix_render_presets_unique_name_per_project",
-    RenderPreset.project_id,
-    RenderPreset.name,
-    unique=True,
-)
 
 
 # ── Webhooks ──────────────────────────────────────────────────────────────

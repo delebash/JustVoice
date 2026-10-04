@@ -9,7 +9,7 @@ the JSON CONTRACT stays on the action (`seed_feature_prompts.py`).
 
 Temperatures are TODAY'S measured values lifted off the retiring per-row /
 hardcoded call sites (behavior-preserving migration, F1 Phase 2 2026-08-05):
-attribution & friends 0.2 · preset-suggest 0.0 · show-notes 0.4 · compose 0.9
+attribution & friends 0.2 · show-notes 0.4 · compose 0.9
 (was hardcoded at personas_api.py:270 — ruling 9 moves it onto the preset) ·
 persona-rewrite 0.6 · refine 0.2. NO max_tokens anywhere (caps ruling
 2026-08-07: no formulas, no seeded numbers — empty = uncapped, JW's model;
@@ -191,7 +191,6 @@ DEFAULT_FEATURE_PRESETS: dict[str, str] = {
     "speaker_attribution.identify": "p_extract",
     "smart_assign": "p_extract",
     # Deterministic classification
-    "render_preset_suggest": "p_classify",
     "voice_gender": "p_classify",
     # Grounded summary
     "show_notes": "p_notes",
@@ -248,16 +247,7 @@ DEFAULT_TEST_SAMPLES: list[dict] = [
                    '- id="v_reed", name="Reed" — neutral mid male\n'
                    '- id="v_lark", name="Lark" — warm adult female',
      }},
-    {"actions": ["render_preset_suggest"], "label": "Storm chapter",
-     "variables": {
-         "presets": "  - Narration — even, steady long-form narration\n"
-                    "  - Dramatic Dialogue — heightened, emotional character dialogue\n"
-                    "  - Quiet Reflection — soft, slow, introspective passages\n"
-                    "  - Action — fast, urgent sequences",
-         "chapter_text": "The first wave took the rail off the pier. Mara ran, the "
-                         "lantern dead in her hand, counting doors until the ninth — "
-                         "and the ninth was already open.",
-     }},
+
     {"actions": ["show_notes"], "label": "Two-segment episode",
      "variables": {
          "script": "## The Ledger\n"

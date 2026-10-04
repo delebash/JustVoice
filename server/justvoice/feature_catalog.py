@@ -31,8 +31,6 @@ FEATURE_CATALOG: list[FeatureCatalogEntry] = [
                         hint="Bulk-assign detected speakers to personas.", group="Analysis"),
     FeatureCatalogEntry(key="show_notes", label="Show notes",
                         hint="Chapter summaries for podcast descriptions.", group="Analysis"),
-    FeatureCatalogEntry(key="render_preset_suggest", label="Render preset suggestion",
-                        hint="Suggest a render preset from the text's mood.", group="Analysis"),
     # The attribution restore (approved 2026-08-06): SPEAKER ATTRIBUTION is a
     # plain heading; its two routes (Guided · Direct) are routed cards under
     # it, with the app's "Auto" panel row first (main.js registers it). The

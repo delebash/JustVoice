@@ -6,8 +6,8 @@
   otherwise.
 
   Slice 7 of the Profile-kill plan / Effects v1 wiring. Lives standalone
-  so it can be reused from PersonasView, RenderPreset editor (Phase 6),
-  and the EffectsView preset library.
+  so it can be reused from the persona editor and the EffectsView preset
+  library.
 
   Backend pairings:
     GET /v1/effects/catalog      — per-effect parameter schemas
@@ -146,7 +146,7 @@ async function saveAsPreset() {
     });
     saveAsName.value = "";
     await loadPresetsIfNeeded();
-    pushToast({ message: `Saved "${name}" to the Effects page (chain presets — not Render Presets).`, kind: "success", duration: 6000 });
+    pushToast({ message: `Saved "${name}" to the Effects page as a chain preset.`, kind: "success", duration: 6000 });
   } catch (e) {
     pushToast({
       message: `Save preset failed: ${e?.message || e}`,

@@ -1507,8 +1507,8 @@ onMounted(() => {
         <div class="jv-card__header jv-inline-row">
           <!-- "Target", not "preset" — CONCEPTS §7: three things were
                called preset; loudness/peak/format specs are TARGETS
-               (ACX target, podcast target). "Preset" stays with the
-               render-preset library. -->
+               (ACX target, podcast target). Render presets are gone
+               (2026-10-03); "preset" stays with effect chains. -->
           <h3 class="jv-card__title jv-m0">Active target</h3>
           <span class="jv-spacer" />
           <UiTag intent="success">{{ masterPresetLabel }}</UiTag>

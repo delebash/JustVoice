@@ -323,7 +323,7 @@ def test_each_line_gets_the_books_lexicon_then_its_own_personas(tmp_db, monkeypa
     db.close()
 
     lines = render_chapter_api._resolve_scene_to_lines(
-        "scene-1", None, _personas(_persona("crow", lexicon_id="lex-crow"), _persona("narrator")),
+        "scene-1", _personas(_persona("crow", lexicon_id="lex-crow"), _persona("narrator")),
     )
     assert [line.lexicons for line in lines] == [
         ["lex-book", "lex-crow"],
@@ -340,7 +340,7 @@ def test_a_book_with_no_lexicon_keeps_only_the_personas(tmp_db, monkeypatch):  #
     db.close()
 
     lines = render_chapter_api._resolve_scene_to_lines(
-        "scene-1", None, _personas(_persona("crow", lexicon_id="lex-crow"), _persona("narrator")),
+        "scene-1", _personas(_persona("crow", lexicon_id="lex-crow"), _persona("narrator")),
     )
     assert [line.lexicons for line in lines] == [["lex-crow"], None]
 

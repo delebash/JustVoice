@@ -29,7 +29,7 @@ The row used to expand into a detail pane. Everything it held moved:
 | Description | Studio · **Overview** (new there) |
 | Export ZIP, Delete | Studio · **Overview** → *Also from here* / *Delete project* |
 | Cast pills and **+ Add personas** | Studio · **Cast** — the one place a book's speakers get their personas |
-| Render preset | gone — render presets are being retired |
+| Render preset | gone — render presets were removed on 2026-10-03 |
 | Webhook on complete | gone — nothing ever sent it; webhooks are set up in Settings |
 | The chapters subtable | the **Chapters** tab, and Studio's steps |
 

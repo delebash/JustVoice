@@ -165,10 +165,6 @@ on a line marked *"shouting over the wind"* sends the engine `gravel-voiced
 harbour-master, always weary. shouting over the wind`. A single hint passes
 through untouched; nothing reformats a note you wrote by hand.
 
-A render preset's `delivery.instruct` replaces the persona's in that first slot
-when both are set. That's useful for a chapter-specific delivery (whispered,
-intimate) without changing the persona's baseline. The line's direction still
-goes on the end.
 
 **Emotion is meant to be portable in a way this field is not.** Written
 direction only reaches Qwen3, but the nine-value Emotion label can also compile

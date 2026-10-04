@@ -88,9 +88,9 @@ absent; install it in the server environment. See [MCP server](mcp-server.md).
 (microphone permission, engine loaded, hotkey registered, …) — the failing one
 is named. Recordings under half a second are discarded by design.
 
-**A render sounds different from last week.** Check which render preset the
-scene binds (presets copy values at render time — editing a preset changes
-future renders only) and the project's mastering target. The
+**A render sounds different from last week.** Check the persona that plays
+the speaker (an edit to its pace, pitch, gain or effects changes every line it
+speaks) and the project's mastering target. The
 [QC report](projects.md) will name a loudness drift.
 
 **Generations pile up and disk fills.** Settings → cache for the render cache;

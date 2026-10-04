@@ -98,8 +98,6 @@ Same idea as C but FMOD instead of Wwise.
   "language": "en",
   "engine": "chatterbox",
   "voice_id": "chatterbox-female-3",
-  "render_preset_id": "preset_noir",
-  "render_preset_name": "Noir",
   "extraction_confidence": 1.0,
   "extraction_source": "tag",
   "produced_by": "justvoice@<version>",

@@ -73,7 +73,7 @@ If you're running a self-hosted TTS server (community-published OpenAI-compatibl
 
 ## What about feature routing?
 
-After registering one or more LLM providers, open **AI Settings → Routing by feature** to point specific features (Compose / Persona rewrite / Speaker attribution / Smart-assign / Render preset suggest / the rest) at specific provider+model presets. See `ai-features.md` for the routing model.
+After registering one or more LLM providers, open **AI Settings → Routing by feature** to point specific features (Compose / Persona rewrite / Speaker attribution / Smart-assign / the rest) at specific provider+model presets. See `ai-features.md` for the routing model.
 
 ## Troubleshooting
 

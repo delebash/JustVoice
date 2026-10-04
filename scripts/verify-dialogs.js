@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 //
 // verify-dialogs.js — behavioral verification of the library editor
-// dialogs (Personas / Render presets / Lexicons) by driving the REAL UI
+// dialogs (Personas / Lexicons) by driving the REAL UI
 // in a headless browser. This is the standing check for these dialogs:
 // it asserts the agreed contract — create opens the editor DIRECTLY (no
 // prompt-then-popup), Cancel discards, Save persists, built-ins are
@@ -30,9 +30,6 @@ function check(name, cond, detail = "") {
 }
 
 const api = {
-  async presets(page) {
-    return page.evaluate(async (b) => (await (await fetch(`${b}/v1/presets`)).json()).presets, BASE);
-  },
   async lexicons(page) {
     return page.evaluate(async (b) => (await (await fetch(`${b}/v1/lexicons`)).json()).lexicons, BASE);
   },
@@ -54,53 +51,6 @@ async function go(hash) {
 }
 const dlg = () => page.locator(".jv-overlay .jv-modal");
 async function shot(name) { await page.screenshot({ path: `${SHOTS}/${name}.png` }); }
-
-// ═══════════════ RENDER PRESETS ═══════════════
-await go("#presets");
-{
-  const before = (await api.presets(page)).length;
-  // create opens directly
-  await page.locator("button", { hasText: "+ New preset" }).click();
-  await page.waitForTimeout(400);
-  await shot("presets-1-create");
-  check("Presets: create opens editor directly", await dlg().isVisible());
-  check("Presets: title = 'New render preset'", (await dlg().locator(".jv-modal__title").innerText()) === "New render preset");
-  check("Presets: name field empty (no prompt-first)", (await dlg().locator(".jv-form-row", { hasText: "Name" }).locator("input").inputValue()) === "");
-  check("Presets: footer Save+Cancel", (await dlg().locator("footer button", { hasText: /^Save$/ }).count()) === 1 && (await dlg().locator("footer button", { hasText: /^Cancel$/ }).count()) === 1);
-  // cancel creates nothing
-  await dlg().locator("footer button", { hasText: /^Cancel$/ }).click();
-  await page.waitForTimeout(300);
-  check("Presets: Cancel on create persists nothing", (await api.presets(page)).length === before, `before=${before} after=${(await api.presets(page)).length}`);
-  // save persists
-  await page.locator("button", { hasText: "+ New preset" }).click();
-  await page.waitForTimeout(300);
-  await dlg().locator(".jv-form-row", { hasText: "Name" }).locator("input").fill("Verify Preset");
-  await dlg().locator("footer button", { hasText: /^Save$/ }).click();
-  await page.waitForTimeout(700);
-  const after = await api.presets(page);
-  check("Presets: Save persists (+1, right name)", after.length === before + 1 && after.some((p) => p.name === "Verify Preset"));
-  check("Presets: dialog closed after Save", (await dlg().count()) === 0);
-  // built-in read-only
-  const narration = page.locator("tbody tr", { hasText: "Narration" }).first();
-  check("Presets: built-in row Delete disabled", await narration.locator("button", { hasText: "Delete" }).isDisabled());
-  await narration.click();
-  await page.waitForTimeout(400);
-  await shot("presets-2-builtin-readonly");
-  check("Presets: built-in name field disabled", await dlg().locator(".jv-form-row", { hasText: "Name" }).locator("input").isDisabled());
-  check("Presets: built-in footer = Close (no Save)", (await dlg().locator("footer button", { hasText: /^Save$/ }).count()) === 0 && (await dlg().locator("footer button", { hasText: /^Close$/ }).count()) === 1);
-  await dlg().locator("footer button", { hasText: /^Close$/ }).click();
-  await page.waitForTimeout(300);
-  // edit existing: cancel discards, save persists
-  const userRow = page.locator("tbody tr", { hasText: "Verify Preset" }).first();
-  await userRow.click(); await page.waitForTimeout(300);
-  await dlg().locator(".jv-form-row", { hasText: "Name" }).locator("input").fill("CANCELLED");
-  await dlg().locator("footer button", { hasText: /^Cancel$/ }).click(); await page.waitForTimeout(500);
-  check("Presets: edit Cancel discards", (await api.presets(page)).some((p) => p.name === "Verify Preset"));
-  await userRow.click(); await page.waitForTimeout(300);
-  await dlg().locator(".jv-form-row", { hasText: "Name" }).locator("input").fill("Verify Preset 2");
-  await dlg().locator("footer button", { hasText: /^Save$/ }).click(); await page.waitForTimeout(600);
-  check("Presets: edit Save persists", (await api.presets(page)).some((p) => p.name === "Verify Preset 2"));
-}
 
 // ═══════════════ LEXICONS ═══════════════
 await go("#lexicons");

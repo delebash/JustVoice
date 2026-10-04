@@ -60,21 +60,20 @@ def kind_master(project_type: str | None) -> str:
 def resolve_master_target(
     *,
     requested: str | None = None,
-    preset_master: str | None = None,
     project_master: str | None = None,
     project_type: str | None = None,
 ) -> tuple[str | None, str]:
     """Which mastering preset applies, and where the answer came from.
 
-    Precedence, most specific first: the request → the render preset's
-    `master` → the project's `mastering_preset` → the project kind's
-    default. `"none"` at any level is a real answer meaning "ship it raw",
-    and stops the search. Returns `(preset_name_or_None, source)` where
-    source is one of request / preset / project / kind.
+    Precedence, most specific first: the request → the project's
+    `mastering_preset` → the project kind's default. `"none"` at any level
+    is a real answer meaning "ship it raw", and stops the search. Returns
+    `(preset_name_or_None, source)` where source is one of request /
+    project / kind. (A render preset's `master` sat between the request and
+    the project until render presets were removed, 2026-10-03.)
     """
     for value, source in (
         (requested, "request"),
-        (preset_master, "preset"),
         (project_master, "project"),
     ):
         if not value:

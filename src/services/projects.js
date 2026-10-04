@@ -96,22 +96,6 @@ export const projectsService = {
   },
 };
 
-export const renderPresetsService = {
-  list(projectId) {
-    const q = projectId !== undefined ? `?project_id=${encodeURIComponent(projectId)}` : "";
-    return withApi().get(`/v1/presets${q}`);
-  },
-  create(body) {
-    return withApi().post(`/v1/presets`, body);
-  },
-  update(id, body) {
-    return withApi().patch(`/v1/presets/${id}`, body);
-  },
-  remove(id) {
-    return withApi().del(`/v1/presets/${id}`);
-  },
-};
-
 export const takesService = {
   byBlock(blockId) {
     return withApi().get(`/v1/takes/by_block/${blockId}`);

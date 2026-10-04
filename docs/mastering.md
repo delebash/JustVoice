@@ -43,20 +43,19 @@ applies.
 
 JustVoice picks the target for you, most specific answer first:
 
-1. the **render preset** bound to the scene, if it names a master target,
-2. the **project's** mastering preset — Projects tab; audiobook projects
+1. the **project's** mastering preset — Studio · Overview; audiobook projects
    imported from a manuscript get **ACX** automatically,
-3. the **project kind's** default — audiobook → ACX, podcast → Podcast, game
+2. the **project kind's** default — audiobook → ACX, podcast → Podcast, game
    voicelines → none, custom → none.
 
 **None** at any level means exactly that, and stops the search — turning
 mastering off on an audiobook does not fall through to ACX.
 
 Until 2026-08-15 none of this ran: a chapter render only mastered when an API
-caller named a preset, Studio never named one, and the render preset's master
-target was stored and never read. There is still **no per-chapter override and
-no per-take re-master button**; a per-scene render preset is the finest grain
-there is.
+caller named a preset, and Studio never named one. There is **no per-chapter
+override and no per-take re-master button**: the project's target is the
+finest grain there is. (Render presets could name one per scene until they were
+removed on 2026-10-03.)
 
 A **chapter render** applies the processing and hands you a WAV — you are
 auditioning, and the .m4b export should encode once, at the end, not twice.

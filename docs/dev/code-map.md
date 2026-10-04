@@ -146,15 +146,11 @@ Verified end to end:
 `speaker_id` only and `Speaker` has `persona_id` only. So there is nothing to
 delete — the rule holds in the data.
 
-**What breaks the "one place" rule is two real leftovers:**
-
-1. **`RenderPreset.voice_id` is a column named `voice_id` that is a foreign key
-   to `personas.id`** (`database/models.py:570`). It is read by nothing at
-   render, and it is `ondelete="RESTRICT"`, so a dead misnamed field can block
-   deleting a persona. This is a literal second place a "voice" appears to be
-   set, and it is the naming collision behind much of the confusion.
-2. **`Persona.engine_override`** is a second lever on what comes out, sitting
-   beside `voice_id`.
+**What breaks the "one place" rule is one real leftover:**
+**`Persona.engine_override`** is a second lever on what comes out, sitting
+beside `voice_id`. (`RenderPreset.voice_id`, a misnamed foreign key onto
+personas that could block deleting one, went with render presets on
+2026-10-03.)
 
 ### Where a voice is MADE — every door produces a `Voice`, never a persona
 
@@ -228,7 +224,7 @@ podcast: show/episode/segment.
 | `speakers` | `project_id` · `name` · `aliases` · `description` · `persona_id` · `role_label` · `imported_from` / `imported_id` | the people in one book; `persona_id` is the cast (`SET NULL`). See §1 |
 | `personas` | see §1 | |
 | `lexicons` / `lexicon_entries` | `scope` = global \| project \| persona; `notation` default `phonetic` | |
-| `generations` | `block_id` · `persona_id` · `text` · `engine` · `seed` · `instruct` · `audio_path` · `status` · `ok_status` · `is_favorited` · `source` · `preset_id` · `effects_chain` · `cache_key` | one synth result |
+| `generations` | `block_id` · `persona_id` · `text` · `engine` · `seed` · `instruct` · `audio_path` · `status` · `ok_status` · `is_favorited` · `source` · `effects_chain` · `cache_key` | one synth result |
 | `takes` | `block_id` · `generation_id` · `source_take_id` · `is_default` · `label` | take versioning with lineage |
 | `generation_versions` | `generation_id` · `source_version_id` · `audio_path` · `effects_chain` · `is_default` | effect re-renders of one generation |
 | `render_jobs` / `render_job_blocks` | `scope` · `scope_ids_json` · counts · per-block `attempts` / `last_error` | resumable batch render |
@@ -236,7 +232,6 @@ podcast: show/episode/segment.
 | `channels` / `persona_channels` | `device_ids_json`; M2M to persona | per-persona output routing |
 | `captures` | `audio_path` · `transcript` · `raw_transcript` · `refinement_flags_json` · `pinned` | dictation |
 | `effect_presets` | `chain_json` · `is_builtin` · `sort_order` | named effect chains |
-| `render_presets` | `voice_id` (**FK → personas, `ondelete=RESTRICT`**) · `delivery_json` · `effects_chain` · `master` · `lexicons_json` · `seed` · `cache_scope` | see §7 |
 | `webhooks` | `events_json` · `secret_hash` · `log_tail_json` | |
 | `speaker_corrections` | `project_id` · `text_snippet` · `speaker_id` → speakers, `SET NULL` (`persona_id` until 2026-09-29, `character_id` until 2026-08-22) | fed back into attribution as `corrections` |
 | `mcp_bindings` | `client_id` · `persona_id` · `default_engine` | dictation clients |
@@ -870,7 +865,6 @@ exposes queue depth or the current engine.**
 | `HomeView` | 561 | Empty hero *"What are you making?"* · Continue/Resume card · live tasks · engine status **with VRAM** + Unload/Switch · recent generations with inline replay |
 | `CapturesView` | 409 | Dictation captures, refined vs raw transcript, pin, retranscribe |
 | `CompareView` | 358 | A/B two takes → metric deltas + verdict (inside Labs) |
-| `RenderPresetsView` | 325 | **Name · Persona · Master target · Delivery** |
 | `CacheView` | 310 | Total on disk · by scope · recent entries · clear |
 | `RenderLabView` | 296 | Settings sweep (inside Labs) |
 | `LinesView` | 292 | Game voicelines grid — **Line ID · Speaker · Text · Take**, Re-import CSV, Export VO zip |
@@ -911,7 +905,7 @@ active project so the title-bar switcher works while Studio is on screen.
 |---|---|---|
 | **Script** | *"Who speaks each line"* | The chapter grid (**Lines · Analyzed · Book says · AI decided · Flagged · No speaker**), then a chapter's table **Speaker · Decided by · Text · Confidence · Check**. Right-click a line's text → Rewrite preview |
 | **Cast** | *"Give each speaker a persona"* | Speaker cards + a **Personas** panel (*"Select a speaker, then click a persona to assign it."*). Actions: `＋ Add` (a speaker by name) · `✕ Clear cast` (*"Unassign personas from all N speakers. The speakers stay — only the persona links go."*) · `✨ Smart-assign` (applies at once). Game kind shows a table instead: **Speaker · Role · Persona** |
-| **Render** | *"Batch render + mastering"* | Table **# · Cached · Render preset · Check**. Select unrendered / Select all · Render · Cancel · Retry · Play · **Run ACX QC** · Suggest |
+| **Render** | *"Batch render + mastering"* | Table **# · Cached · Check**. Select unrendered / Select all · Render · Cancel · Retry · Play · **Run ACX QC** |
 | **Export** | *"Package + ACX checklist"* | Packaging (described in-code as a mock export screen) |
 
 ### Pinia stores
@@ -946,8 +940,7 @@ Verified 2026-08-15/16. **None of it is fixed.** Also filed in `TASKS.md`.
    cfg_weight, repetition_penalty, min_p, t_shift and the rest had never done
    anything at render. `nest_engine_keys()` in `delivery_merge.py` now
    normalises each tier before the merge, which also repairs deliveries
-   already stored flat in `personas.default_delivery` and
-   `render_presets.delivery_json`. `render_chapter_api`'s
+   already stored flat in `personas.default_delivery`. `render_chapter_api`'s
    `Delivery.model_fields` filter keeps them, because `engine` is itself a
    declared field.
 3. ~~**Kokoro speaks English whatever the voice claims.**~~ **FIXED 2026-10-01**
@@ -961,10 +954,8 @@ Verified 2026-08-15/16. **None of it is fixed.** Also filed in `TASKS.md`.
    is dropped by `_stored_to_dto`, `voices_api.py:32-40`) and **Gens**
    (`generation_count` — no such field anywhere) render "—", "Default" and "0"
    forever.
-5. **`RenderPreset` has two dead fields and a live lock.** `voice_id` and
-   `lexicons_json` are read by nothing at render. **`voice_id` is
-   `ondelete="RESTRICT"` against `personas`** — a dead field that can block
-   deleting a persona for a reason no screen can explain.
+5. ~~**`RenderPreset` has two dead fields and a live lock.**~~ **GONE
+   2026-10-03** with render presets ("presets die").
 6. **The synth scheduler has no UI** — see §5.
 7. **The analyze prompt gets id, name and aliases only** — see §4.
 8. **ChapterView offers "Generate first take" on speaker-less blocks** and prints
