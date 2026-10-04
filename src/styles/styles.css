@@ -1147,8 +1147,12 @@ progress {
   align-content: start;
   min-width: 0;
 }
+/* An editor beside its summary: the left column the wider, 1.5 : 1 (the
+   persona page, as mock `_s7` draws it — decided 2026-10-04). */
+.jv-split--wide-left { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
 @media (max-width: 1100px) {
-  .jv-split { grid-template-columns: minmax(0, 1fr); }
+  .jv-split,
+  .jv-split--wide-left { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* Banners + notes (preview L160-173) */
@@ -1167,6 +1171,49 @@ progress {
 .jv-knobs__row { display: contents; }
 .jv-knobs__label { font-size: 12.5px; color: var(--ink-2); }
 .jv-knobs__unit { font-size: 12.5px; color: var(--ink-3); min-width: 22px; }
+
+/* Knobs three across: label above, the slider filling its cell, its unit
+   after — the persona page's How it speaks and Sampling, as mock `_s7` draws
+   them (decided 2026-10-04: on the persona pages the mock's look beats
+   size-to-content). The head carries the knob's ↺ at its right end. */
+.jv-knob-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px 18px;
+  /* The kit's number-box width token: a knob's box holds "1.05", so the
+     track keeps the room (the mock's box is 54px; the kit's default 84px). */
+  --w-num: 60px;
+}
+.jv-knob-grid__knob { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.jv-knob-grid__head { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-height: 24px; }
+.jv-knob-grid__label { font-size: 12.5px; color: var(--ink-3); }
+.jv-knob-grid__row { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.jv-knob-grid__row > .ui-slider { flex: 1 1 auto; min-width: 0; }
+.jv-knob-grid__unit { font-size: 12.5px; color: var(--ink-3); min-width: 16px; }
+@media (max-width: 700px) {
+  .jv-knob-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* A block field's label with something at its right end — the tag that
+   says which model reads the field (mock `_s7`: "Standing delivery … ✓ qwen3"),
+   or a quiet action on it. */
+.jv-field-label-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+
+/* A drop box for a recording — drag it in, paste a URL, browse, record.
+   Born on Voices → Clone (`.voices-view__drop`); promoted 2026-10-04 when
+   the clone maker moved into the persona's page. */
+.jv-drop {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1.5px dashed var(--line-strong);
+  border-radius: var(--r-control);
+  background: var(--surface-2);
+}
+.jv-drop--active { border-color: var(--accent); background: var(--accent-soft); }
+.jv-drop--filled { padding: 10px 14px; }
+.jv-drop__row { display: flex; align-items: center; gap: 8px; width: 100%; flex-wrap: wrap; }
 
 .jv-banner {
   background: var(--surface-2);

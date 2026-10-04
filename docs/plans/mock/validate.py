@@ -37,7 +37,10 @@ for t, i in stack[:8]:
 routes = set(re.findall(r'<div class="route" id="r-([a-z0-9]+)"', html))
 targets = set(re.findall(r"nav\('([a-z0-9]+)'\)", html))
 out("2. ROUTES: %d -> %s" % (len(routes), " ".join(sorted(routes))))
-dangling = sorted(targets - routes)
+# Screens that moved into the app (2026-10-04) are opened there, not here.
+app = set(re.findall(r"(\w+): 'http://localhost:1430/#/mock/", html))
+out("   open in the app's mock: %s" % (", ".join(sorted(app)) if app else "none"))
+dangling = sorted(targets - routes - app)
 orphan = sorted(routes - targets - {"home"})
 out("   dangling nav targets: %s" % (", ".join(dangling) if dangling else "none"))
 out("   routes nothing links to: %s" % (", ".join(orphan) if orphan else "none"))

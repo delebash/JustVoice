@@ -1,0 +1,393 @@
+<!-- SPDX-License-Identifier: MIT -->
+<!--
+  The Personas list — the mock (dev only, #/mock/personas). Decided
+  2026-10-04: a mock is a page in the app, built from the kit's own components
+  on made-up data, so what it shows is what ships
+  (docs/plans/2026-10-04-persona-voice-making.md §2).
+
+  The same page as views/PersonasView.vue, with `personaMock.js` in place of
+  the server: ▶ · Persona · Built on · Model · Can be directed · Speaks ·
+  Shaped · Used by · ⋯. `#/mock/personas?empty` shows the page with no
+  personas at all.
+-->
+<script setup>
+import { computed, ref } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import {
+  DropdownMenuContent, DropdownMenuItem, DropdownMenuPortal,
+  DropdownMenuRoot, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "reka-ui";
+import {
+  EmptyState, UiButton, UiCheckbox, UiInput, UiSelect, UiTable, UiTag,
+  confirmDialog, languageName, promptDialog, pushToast,
+} from "@delebash/llm-ui";
+import { DIRECTION_OPTIONS, directionCell, tagCount, voiceKindWord } from "../services/personaFacts.js";
+import { capabilities, effectLabels, personaView, silentWav, store, wait } from "./personaMock.js";
+
+const NARROW = { width: "1%", whiteSpace: "nowrap" };
+const PERSONA_COLUMNS = [
+  { id: "pick", header: "", headerStyle: NARROW, cellStyle: NARROW },
+  { id: "play", header: "", headerStyle: NARROW, cellStyle: NARROW },
+  { id: "name", accessorKey: "name", header: "Persona", sortable: true },
+  { id: "built", header: "Built on", cellStyle: { whiteSpace: "nowrap" } },
+  { id: "model", accessorKey: "model_name", header: "Model", sortable: true, cellStyle: { whiteSpace: "nowrap" } },
+  { id: "directed", header: "Can be directed", cellStyle: { whiteSpace: "nowrap" } },
+  { id: "speaks", header: "Speaks", cellStyle: { whiteSpace: "nowrap" } },
+  { id: "shaped", header: "Shaped", cellStyle: { whiteSpace: "nowrap" } },
+  { id: "used", header: "Used by" },
+  { id: "more", header: "", headerStyle: NARROW, cellStyle: { ...NARROW, textAlign: "right" } },
+];
+
+const route = useRoute();
+const router = useRouter();
+const empty = computed(() => route.query.empty !== undefined);
+const personas = computed(() => (empty.value ? [] : store.personas.map(personaView)));
+const voiceById = computed(() => Object.fromEntries(store.voices.map((v) => [v.id, v])));
+const usage = computed(() => store.usage);
+
+function openPersona(id) {
+  router.push({ name: "mock-persona", params: { id } });
+}
+
+// ── Filters ─────────────────────────────────────────────────────────────
+const search = ref("");
+const modelFilter = ref("");
+const directionFilter = ref("");
+const languageFilter = ref("");
+const usageFilter = ref("");
+
+function counted(values, label) {
+  const counts = new Map();
+  for (const v of values) if (v) counts.set(v, (counts.get(v) || 0) + 1);
+  return [...counts].map(([value, n]) => ({ value, label: `${label(value)} (${n})` }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+}
+const modelOptions = computed(() => {
+  const names = Object.fromEntries(personas.value.map((p) => [p.model, p.model_name || p.model]));
+  return [{ value: "", label: "All models" }, ...counted(personas.value.map((p) => p.model), (m) => names[m])];
+});
+const languageOptions = computed(() => [
+  { value: "", label: "All languages" },
+  ...counted(personas.value.map((p) => p.speaks), (c) => languageName(c) || c),
+]);
+const usageOptions = computed(() => {
+  const books = new Map();
+  for (const list of Object.values(usage.value)) for (const u of list) books.set(u.project_id, u.project_name);
+  return [
+    { value: "", label: "All" },
+    { value: "used", label: "In use" },
+    { value: "unused", label: "Unused" },
+    ...[...books].sort((a, b) => a[1].localeCompare(b[1])).map(([id, name]) => ({ value: `book:${id}`, label: `In ${name}` })),
+  ];
+});
+
+const filteredPersonas = computed(() => {
+  let list = personas.value;
+  if (modelFilter.value) list = list.filter((p) => p.model === modelFilter.value);
+  if (directionFilter.value) list = list.filter((p) => p.directed_by === directionFilter.value);
+  if (languageFilter.value) list = list.filter((p) => p.speaks === languageFilter.value);
+  const u = usageFilter.value;
+  if (u === "used") list = list.filter((p) => usageCount(p.id) > 0);
+  if (u === "unused") list = list.filter((p) => !usageCount(p.id));
+  if (u.startsWith("book:")) {
+    const book = u.slice(5);
+    list = list.filter((p) => (usage.value[p.id] || []).some((x) => x.project_id === book));
+  }
+  const q = search.value.trim().toLowerCase();
+  if (q) list = list.filter((p) =>
+    (p.name || "").toLowerCase().includes(q) || (p.note || "").toLowerCase().includes(q));
+  return list;
+});
+const filtering = computed(() => !!(search.value.trim() || modelFilter.value || directionFilter.value
+  || languageFilter.value || usageFilter.value));
+function clearFilters() {
+  search.value = ""; modelFilter.value = ""; directionFilter.value = "";
+  languageFilter.value = ""; usageFilter.value = "";
+}
+
+// ── Cells ───────────────────────────────────────────────────────────────
+function usageCount(personaId) {
+  return (usage.value[personaId] || []).length;
+}
+function usedBy(personaId) {
+  const byName = new Map();
+  for (const u of usage.value[personaId] || []) {
+    if (!byName.has(u.speaker_name)) byName.set(u.speaker_name, []);
+    if (!byName.get(u.speaker_name).includes(u.project_name)) byName.get(u.speaker_name).push(u.project_name);
+  }
+  return [...byName].map(([name, books]) => `${name} — ${books.join(" · ")}`).join(", ");
+}
+function playsText(personaId) {
+  return (usage.value[personaId] || []).map((u) => `${u.speaker_name} (${u.project_name})`).join(", ");
+}
+function directed(p) {
+  return directionCell(p.directed_by, tagCount(capabilities[p.model]));
+}
+function signed(n, digits) {
+  const s = Math.abs(n).toFixed(digits);
+  return n > 0 ? `+${s}` : n < 0 ? `−${s}` : s;
+}
+function shaped(p) {
+  const d = p.default_delivery || {};
+  const bits = [];
+  if (d.speed !== null && d.speed !== undefined) bits.push(`${Number(d.speed).toFixed(2)}×`);
+  if (d.pitch) bits.push(`${signed(Number(d.pitch), 0)} st`);
+  if (d.gain_db) bits.push(`${signed(Number(d.gain_db), 1)} dB`);
+  const fx = p.effects_chain || [];
+  if (fx.length === 1) bits.push(effectLabels[fx[0].type] || fx[0].type || "1 effect");
+  else if (fx.length > 1) bits.push(`${fx.length} effects`);
+  return bits.join(" · ");
+}
+
+// ── ▶ ───────────────────────────────────────────────────────────────────
+const playingId = ref(null);
+const audition = ref(null);
+async function play(p) {
+  if (!p.voice_id || playingId.value) return;
+  playingId.value = p.id;
+  await wait();
+  if (audition.value?.url) URL.revokeObjectURL(audition.value.url);
+  audition.value = { url: URL.createObjectURL(silentWav(4)), name: p.name, model: p.model_name || "" };
+  playingId.value = null;
+}
+
+// ── ⋯ Rename · Merge into… · Delete ─────────────────────────────────────
+function stored(id) {
+  return store.personas.find((x) => x.id === id);
+}
+async function rename(p) {
+  const name = (await promptDialog({
+    title: `Rename ${p.name}`,
+    label: "Name",
+    defaultValue: p.name,
+    message: "The new name shows everywhere this persona plays — Cast, Used by, Generate.",
+    confirmLabel: "Rename",
+  }))?.trim();
+  if (!name || name === p.name) return;
+  stored(p.id).name = name;
+  pushToast({ kind: "success", message: `Renamed to ${name}.` });
+}
+
+async function merge(p) {
+  const others = personas.value.filter((x) => x.id !== p.id);
+  if (!others.length) {
+    pushToast({ kind: "info", message: "There's no other persona to merge into." });
+    return;
+  }
+  const plays = usageCount(p.id) ? ` It plays ${playsText(p.id)}.` : " It plays no one yet.";
+  const choice = await promptDialog({
+    title: `Merge ${p.name} into…`,
+    message: `Every speaker ${p.name} plays is played by the persona you pick, and ${p.name} is deleted.`
+      + `${plays} The persona you pick keeps its own voice and settings.`,
+    fields: [{
+      key: "into",
+      label: "Merge into",
+      type: "select",
+      defaultValue: others[0].id,
+      options: others.map((x) => ({ value: x.id, label: x.model_name ? `${x.name} · ${x.model_name}` : x.name })),
+    }],
+    confirmLabel: "Merge",
+    danger: true,
+  });
+  const into = choice?.into;
+  if (!into) return;
+  const moved = store.usage[p.id] || [];
+  store.usage[into] = [...(store.usage[into] || []), ...moved];
+  delete store.usage[p.id];
+  store.personas = store.personas.filter((x) => x.id !== p.id);
+  const n = moved.length;
+  pushToast({
+    kind: "success",
+    message: `${p.name} merged into ${stored(into)?.name || "the persona"}`
+      + (n ? ` — ${n} speaker${n === 1 ? "" : "s"} moved.` : "."),
+  });
+}
+
+const picked = ref({});
+const pickedPersonas = computed(() => filteredPersonas.value.filter((p) => picked.value[p.id]));
+const allPicked = computed(() =>
+  filteredPersonas.value.length > 0 && filteredPersonas.value.every((p) => picked.value[p.id]));
+function pickAll(on) {
+  picked.value = on ? Object.fromEntries(filteredPersonas.value.map((p) => [p.id, true])) : {};
+}
+function drop(ids) {
+  for (const id of ids) delete store.usage[id];
+  store.personas = store.personas.filter((x) => !ids.includes(x.id));
+}
+async function removePicked() {
+  const list = pickedPersonas.value;
+  if (!list.length) return;
+  const played = list.filter((p) => usageCount(p.id)).map((p) => playsText(p.id)).join(", ");
+  const n = list.reduce((sum, p) => sum + usageCount(p.id), 0);
+  const ok = await confirmDialog({
+    title: `Delete ${list.length} persona${list.length === 1 ? "" : "s"}?`,
+    message: `${list.map((p) => p.name).join(", ")}.`
+      + (n
+        ? ` ${n} speaker${n === 1 ? "" : "s"} lose${n === 1 ? "s" : ""} their persona and need${n === 1 ? "s" : ""} another in Cast before rendering: ${played}.`
+        : "")
+      + " Voices and lexicons are kept.",
+    danger: true,
+    confirmLabel: `Delete ${list.length}`,
+  });
+  if (!ok) return;
+  drop(list.map((p) => p.id));
+  picked.value = {};
+  pushToast({ kind: "success", message: `${list.length} persona${list.length === 1 ? "" : "s"} deleted.` });
+}
+
+async function removePersona(p) {
+  const ok = await confirmDialog({
+    title: "Delete persona?",
+    message: `"${p.name}" will be removed. Voice and lexicon are kept (only the binding is removed).`
+      + (usageCount(p.id) ? ` It plays ${playsText(p.id)} — ${usageCount(p.id) === 1 ? "that speaker loses its" : "those speakers lose their"} persona.` : ""),
+    danger: true,
+    confirmLabel: "Delete",
+  });
+  if (!ok) return;
+  const snapshot = JSON.parse(JSON.stringify(stored(p.id)));
+  const plays = store.usage[p.id];
+  drop([p.id]);
+  pushToast({
+    kind: "success",
+    message: `${p.name} deleted.`,
+    duration: 6000,
+    action: {
+      label: "Undo",
+      fn: () => {
+        store.personas.push(snapshot);
+        if (plays) store.usage[p.id] = plays;
+        pushToast({ kind: "success", message: `${p.name} restored.` });
+      },
+    },
+  });
+}
+
+const AVATAR_COLORS = ["#3a7d63", "#7c5cbf", "#b3552e", "#2e7d8a", "#a8763e", "#947b2f", "#c98aa7", "#5b7a99", "#b04a3e"];
+function colorFor(name) {
+  let h = 0;
+  for (const c of String(name || "?")) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return AVATAR_COLORS[h % AVATAR_COLORS.length];
+}
+</script>
+
+<template>
+  <div class="personas">
+    <div class="jv-lib-toolbar">
+      <UiInput v-model="search" placeholder="Search personas…" size="small" width="id" />
+      <UiSelect v-model="modelFilter" :options="modelOptions" width="id" aria-label="Model"
+        title="Show only personas on one model" />
+      <UiSelect v-model="directionFilter" :options="DIRECTION_OPTIONS" width="id" aria-label="Can be directed"
+        title="Show only personas that can be directed one way" />
+      <UiSelect v-model="languageFilter" :options="languageOptions" width="id" aria-label="Speaks"
+        title="Show only personas that speak one language" />
+      <UiSelect v-model="usageFilter" :options="usageOptions" width="id" aria-label="Used"
+        title="In use, unused, or in one book" />
+      <span class="jv-spacer" />
+      <UiButton intent="primary" size="small" label="＋ New persona" @click="openPersona('new')" />
+    </div>
+
+    <div v-if="audition" class="jv-inline-row personas__audition">
+      <span class="jv-muted">▶ <strong>{{ audition.name }}</strong><template v-if="audition.model"> · {{ audition.model }}</template></span>
+      <audio :src="audition.url" controls autoplay class="jv-audio-inline" />
+    </div>
+
+    <EmptyState
+      v-if="!personas.length"
+      icon="Sparkle"
+      title="No personas yet"
+      message="A persona is a finished spoken voice — a voice, which carries the model that speaks it, plus pace, pitch, gain, direction and effects. Cast gives one to each speaker in a book, and one persona can play many."
+      action-label="＋ Create your first persona"
+      @action="openPersona('new')"
+    />
+    <UiTable v-else class="jv-table-look" :data="filteredPersonas" :columns="PERSONA_COLUMNS"
+      data-key="id" row-hover @row-click="({ data }) => openPersona(data.id)">
+      <template #head-pick>
+        <UiCheckbox :model-value="allPicked" :disabled="!filteredPersonas.length"
+          :title="allPicked ? 'Untick every persona shown' : 'Tick every persona shown'" @update:model-value="pickAll" />
+      </template>
+      <template #pick="{ row }">
+        <span @click.stop>
+          <UiCheckbox :model-value="!!picked[row.id]"
+            @update:model-value="(v) => (picked = { ...picked, [row.id]: v })" />
+        </span>
+      </template>
+      <template #play="{ row }">
+        <span @click.stop>
+          <UiButton intent="ghost" size="small" label="▶" :loading="playingId === row.id"
+            :disabled="!row.model || (!!playingId && playingId !== row.id)"
+            :title="row.model ? `Hear ${row.name} speak` : 'No voice yet'" @click="play(row)" />
+        </span>
+      </template>
+      <template #name="{ row }">
+        <span class="personas__card-avatar personas__avatar-sm" :style="{ background: colorFor(row.name) }">{{ (row.name || "?").charAt(0).toUpperCase() }}</span>
+        <strong>{{ row.name }}</strong>
+        <div v-if="row.note" class="jv-muted personas__row-sub">{{ row.note.slice(0, 70) }}{{ row.note.length > 70 ? "…" : "" }}</div>
+      </template>
+      <template #built="{ row }">
+        <template v-if="voiceById[row.voice_id]">
+          {{ voiceById[row.voice_id].name }} <span class="jv-hint">{{ voiceKindWord(voiceById[row.voice_id]) }}</span>
+        </template>
+        <span v-else-if="row.voice_id" class="jv-muted" title="This voice isn't in the library any more">voice missing</span>
+        <span v-else class="jv-muted">no voice yet</span>
+      </template>
+      <template #model="{ row }">
+        <span v-if="row.model_name">{{ row.model_name }}</span>
+        <span v-else class="jv-muted">—</span>
+      </template>
+      <template #directed="{ row }">
+        <UiTag v-if="row.directed_by" :intent="directed(row).intent" :title="directed(row).title">{{ directed(row).label }}</UiTag>
+        <span v-else class="jv-muted">—</span>
+      </template>
+      <template #speaks="{ row }">
+        <span v-if="row.speaks">{{ languageName(row.speaks) || row.speaks }}</span>
+        <span v-else class="jv-muted">—</span>
+      </template>
+      <template #shaped="{ row }">
+        <span class="jv-hint">{{ shaped(row) || "as the voice" }}</span>
+      </template>
+      <template #used="{ row }">
+        <span v-if="usageCount(row.id)" class="jv-muted personas__books">{{ usedBy(row.id) }}</span>
+        <span v-else class="jv-muted" title="No speaker in any book has this persona">— not used yet —</span>
+      </template>
+      <template #more="{ row }">
+        <span @click.stop>
+          <DropdownMenuRoot>
+            <DropdownMenuTrigger class="ev-kebab" aria-label="Persona actions" title="Persona actions">⋯</DropdownMenuTrigger>
+            <DropdownMenuPortal>
+              <DropdownMenuContent class="ev-menu" align="end" :side-offset="4" :collision-padding="8">
+                <DropdownMenuItem class="ev-menu-item" @select="openPersona(row.id)">✎ Edit</DropdownMenuItem>
+                <DropdownMenuItem class="ev-menu-item" @select="rename(row)">✏️ Rename</DropdownMenuItem>
+                <DropdownMenuItem class="ev-menu-item" :disabled="personas.length < 2" @select="merge(row)">🔗 Merge into…</DropdownMenuItem>
+                <DropdownMenuSeparator class="ev-menu-sep" />
+                <DropdownMenuItem class="ev-menu-item danger" @select="removePersona(row)">🗑 Delete</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenuPortal>
+          </DropdownMenuRoot>
+        </span>
+      </template>
+      <template #empty>
+        No persona matches these filters.
+        <UiButton v-if="filtering" intent="ghost" size="small" label="Clear filters" @click="clearFilters" />
+      </template>
+    </UiTable>
+    <div v-if="filteredPersonas.length" class="jv-inline-row personas__bulk">
+      <UiButton intent="danger-outline" size="small" :disabled="!pickedPersonas.length"
+        :label="pickedPersonas.length ? `Delete ${pickedPersonas.length} selected` : 'Delete selected'"
+        @click="removePicked" />
+      <span class="jv-hint">{{ pickedPersonas.length ? `${pickedPersonas.length} ticked` : "Tick personas to delete several at once." }}</span>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.personas { display: flex; flex-direction: column; }
+.personas__card-avatar {
+  width: 36px; height: 36px; border-radius: 50%; color: #fff; font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
+}
+.personas__row-sub { font-size: 12.5px; margin-left: 36px; }
+.personas__avatar-sm { width: 26px; height: 26px; font-size: 12px; vertical-align: middle; margin-right: 8px; }
+.personas__books { display: inline-block; max-width: 40ch; }
+.personas__bulk { gap: 8px; align-items: center; margin-top: 10px; }
+.personas__audition { gap: 10px; align-items: center; margin-bottom: 8px; }
+</style>

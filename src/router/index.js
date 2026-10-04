@@ -6,6 +6,8 @@
 // routes SHOW in the nav — it does not replace the router.
 import { createRouter, createWebHashHistory } from "vue-router";
 
+import { mockRoutes } from "../mock/routes.js";
+
 const routes = [
   { path: "/", redirect: "/home" },
 
@@ -74,6 +76,9 @@ const routes = [
       return "/labs";
     },
   })),
+
+  // The design mocks — dev only (src/mock/routes.js).
+  ...(import.meta.env.DEV ? mockRoutes : []),
 
   // Unknown → Home.
   { path: "/:pathMatch(.*)*", redirect: "/home" },

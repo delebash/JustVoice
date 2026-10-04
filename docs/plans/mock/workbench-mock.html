@@ -1884,92 +1884,6 @@ tbody tr[onclick]:hover{background:var(--surface-2)}
     </div>
   </div></div>
 </div>
-<div class="route" id="r-personas">
-<div class="top"><span class="crumb">Personas</span><span class="pill">6</span>
-    <span class="pill live"><span class="dot"></span> Kokoro loaded</span></div>
-  <div class="body">
-
-    <div class="row">
-      <input class="box" style="max-width:200px" placeholder="Search personas…">
-      <select class="box" style="width:auto"><option>All engines</option><option>qwen3 (2)</option>
-        <option>kokoro (2)</option><option>chatterbox (2)</option></select>
-      <select class="box" style="width:auto"><option>All</option><option>In use</option>
-        <option>Unused</option></select>
-      <span style="flex:1"></span>
-      <button class="btn p" onclick="nav('workbench')">New persona</button>
-    </div>
-
-    <div class="card" style="padding:0;overflow:hidden">
-      <div class="tw"><table>
-        <thead><tr>
-          <th style="width:30px"></th><th>Persona</th><th style="width:170px">Built on</th>
-          <th style="width:132px">Engine</th><th style="width:160px">Can be directed</th>
-          <th style="width:150px">Shaped</th><th>Used by</th><th style="width:34px"></th></tr></thead>
-        <tbody>
-          <tr onclick="nav('workbench')" style="cursor:pointer;background:var(--accent-soft)">
-            <td><button class="btn s g" onclick="toast('Playing June…')">▶</button></td>
-            <td><b>June</b></td>
-            <td>Sohee <span class="hint">preset</span></td>
-            <td class="mono">qwen3 CV</td>
-            <td><span class="tag ok">✓ written direction</span></td>
-            <td class="hint">1.05× · −1.0 dB · 2 effects</td>
-            <td class="hint">June — Stillwater</td>
-            <td><span class="rt"><span onclick="openModal('rowmenu')">⋯</span></span></td></tr>
-
-          <tr onclick="nav('workbench')" style="cursor:pointer">
-            <td><button class="btn s g" onclick="toast('Playing Marius…')">▶</button></td>
-            <td><b>Marius</b></td>
-            <td>Marius <span class="hint">clone</span></td>
-            <td class="mono">chatterbox Turbo</td>
-            <td><span class="tag w">✓ 19 tags · ✗ prose</span></td>
-            <td class="hint">0.95× · +3.0 dB</td>
-            <td class="hint">Marius — Stillwater</td>
-            <td><span class="rt"><span onclick="openModal('rowmenu')">⋯</span></span></td></tr>
-
-          <tr onclick="nav('workbench')" style="cursor:pointer">
-            <td><button class="btn s g" onclick="toast('Playing Narrator (warm)…')">▶</button></td>
-            <td><b>Narrator (warm)</b></td>
-            <td>Heart <span class="hint">preset</span></td>
-            <td class="mono">kokoro</td>
-            <td><span class="tag no">✗ numbers only</span></td>
-            <td class="hint">1.00× · −2.0 dB · eq</td>
-            <td class="hint">Narrator — Stillwater · Emberfall</td>
-            <td><span class="rt"><span onclick="openModal('rowmenu')">⋯</span></span></td></tr>
-
-          <tr onclick="nav('workbench')" style="cursor:pointer">
-            <td><button class="btn s g" onclick="toast('Playing Mara (young)…')">▶</button></td>
-            <td><b>Mara (young)</b></td>
-            <td>Ono Anna <span class="hint">preset</span></td>
-            <td class="mono">qwen3 CV</td>
-            <td><span class="tag ok">✓ written direction</span></td>
-            <td class="hint">1.12× · +2 st</td>
-            <td class="hint">Mara (young) — Emberfall</td>
-            <td><span class="rt"><span onclick="openModal('rowmenu')">⋯</span></span></td></tr>
-
-          <tr onclick="nav('workbench')" style="cursor:pointer">
-            <td><button class="btn s g" onclick="toast('Playing Mara (old)…')">▶</button></td>
-            <td><b>Mara (old)</b></td>
-            <td>Mara <span class="hint">clone</span></td>
-            <td class="mono">chatterbox Turbo</td>
-            <td><span class="tag w">✓ 19 tags · ✗ prose</span></td>
-            <td class="hint">0.92× · −3 st · reverb</td>
-            <td class="hint">Mara — Emberfall</td>
-            <td><span class="rt"><span onclick="openModal('rowmenu')">⋯</span></span></td></tr>
-
-          <tr onclick="nav('workbench')" style="cursor:pointer">
-            <td><button class="btn s g" onclick="toast('Playing Gruff dockhand…')">▶</button></td>
-            <td><b>Gruff dockhand</b></td>
-            <td>Fenrir <span class="hint">preset</span></td>
-            <td class="mono">kokoro</td>
-            <td><span class="tag no">✗ numbers only</span></td>
-            <td class="hint">0.94× · −2 st</td>
-            <td class="hint">— not used yet —</td>
-            <td><span class="rt"><span onclick="openModal('rowmenu')">⋯</span></span></td></tr>
-        </tbody></table></div>
-    </div>
-
-      </div>
-</div>
 <div class="route" id="r-voices">
 <div class="top"><span class="crumb">Voices</span><span class="pill">64 · <b>3 hidden</b></span>
     <span class="pill live"><span class="dot"></span> Kokoro loaded</span></div>
@@ -2063,107 +1977,6 @@ tbody tr[onclick]:hover{background:var(--surface-2)}
     </div>
 
     
-  </div>
-</div>
-<div class="route" id="r-workbench">
-<div class="top"><span class="crumb">Personas › June</span>
-    <span class="pill">Sohee · <b>qwen3 CustomVoice</b></span>
-    <span class="pill"><span class="dot idle"></span> Kokoro loaded</span>
-    <span style="flex:1"></span>
-    <span class="pill">used by <b>1 speaker</b></span></div>
-  <div class="body">
-    <div class="bn w"><b>Qwen3 isn't loaded.</b> The first listen swaps it in — about a minute.</div>
-
-    <div class="split">
-      <div style="display:flex;flex-direction:column;gap:12px">
-
-        <div class="card"><div class="sh"><h4>Voice</h4></div>
-          <div class="radios" style="margin-bottom:9px">
-            <span class="radio on" onclick="pickRadio(this)"><span class="rd"></span>Built-in</span>
-            <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>Clone from audio</span>
-            <span class="radio off" onclick="toast('Needs the Qwen3 VoiceDesign model. Install it on the AI page.','warn')"><span class="rd"></span>Design from words ⤓</span>
-            <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>Blend</span>
-            <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>Trained LoRA</span></div>
-          <div class="row"><select class="box" style="flex:1">
-              <option>Sohee — qwen3 CustomVoice · ko</option>
-              <option>Ono Anna — qwen3 CustomVoice · ja</option>
-              <option>Ryan — qwen3 CustomVoice · en</option>
-              <option>Heart — kokoro · en-US</option>
-              <option>Marius — chatterbox Turbo · cloned</option></select>
-            <button class="btn s" onclick="toast('Playing Sohee on its own, before this page changes anything.')">▶ Raw</button></div>
-          <div class="bn w" style="margin-top:9px">Changing this makes June's <b>61 lines</b> stale.
-            <b>18 carry a written direction</b> — only Qwen3 CustomVoice reads prose.</div></div>
-
-        <div class="card"><div class="sh"><h4>Hear it</h4></div>
-          <textarea class="box t">The fog came in over the pier before either of them said a word.</textarea>
-          <div class="row" style="margin-top:8px"><button class="btn p" onclick="toast('Rendering…')">▶ Listen</button>
-            <button class="btn s" onclick="toast('Loaded the stock sample line.')">↻ Stock line</button>
-            <span style="flex:1"></span>
-            <button class="btn s g" onclick="toast('Saved june.wav')">⤓ WAV</button></div>
-          <div class="player" style="margin-top:9px"><button class="btn p s rnd" onclick="toast('Playing…')">▶</button>
-            <div class="bar"><b style="width:62%"></b></div><span class="mono hint">0:03 / 0:05</span></div></div>
-
-        <div class="card"><div class="sh"><h4>How it speaks</h4></div>
-          <div class="kb">
-            <div class="kn"><label class="hint">Pace</label><div class="kr">
-              <input type="range" min=".5" max="2" step=".05" value="1.05"><input class="num" value="1.05"><span class="u">×</span></div></div>
-            <div class="kn"><label class="hint">Pitch</label><div class="kr">
-              <input type="range" min="-12" max="12" value="0"><input class="num" value="0"><span class="u">st</span></div></div>
-            <div class="kn"><label class="hint">Gain</label><div class="kr">
-              <input type="range" min="-12" max="12" step=".5" value="-1"><input class="num" value="-1.0"><span class="u">dB</span></div></div>
-            <div class="kn"><label class="hint">Pause before → after</label><div class="kr">
-              <input class="num" value="0"><span class="u">→</span><input class="num" value="250"><span class="u">ms</span></div></div></div>
-          <div class="f" style="margin-top:12px"><label>Standing delivery
-            <span class="tag ok">✓ qwen3</span></label>
-            <textarea class="box t">Clipped, world-weary. Dry wit. Boston accent under stress.</textarea>
-            <span class="hint">A line's own direction is appended to this.</span></div>
-          <div class="f" style="margin-top:11px"><label>Effects</label>
-            <div class="row"><span class="tag">reverb</span><span class="tag">eq</span>
-              <button class="btn s g" onclick="nav('effects')">＋ Edit</button></div></div></div>
-
-        <div class="card"><div class="sh"><h4>Sampling</h4><span class="sub">qwen3</span></div>
-          <div class="kb">
-            <div class="kn"><label class="hint">Temperature</label><div class="kr">
-              <input type="range" min=".05" max="2" step=".05" value=".9"><input class="num" value="0.90"></div></div>
-            <div class="kn"><label class="hint">Top k</label><div class="kr">
-              <input type="range" min="1" max="100" value="50"><input class="num" value="50"></div></div>
-            <div class="kn"><label class="hint">Top p</label><div class="kr">
-              <input type="range" min="0" max="1" step=".01" value="1"><input class="num" value="1.00"></div></div>
-            <div class="kn"><label class="hint">Repetition penalty</label><div class="kr">
-              <input type="range" min="1" max="4" step=".05" value="1.05"><input class="num" value="1.05"></div></div>
-            <div class="kn"><label class="hint">Seed</label><div class="kr">
-              <input class="num" style="width:70px" value="random"><button class="btn s g" onclick="toast('New seed.')">🎲</button></div></div></div>
-          <div class="row" style="margin-top:10px">
-            <button class="btn s" onclick="toast('Pick a knob and three values to hear side by side.')">⚖️ Compare settings…</button></div></div>
-
-        <div class="card"><div class="sh"><h4>Save</h4></div>
-          <div class="row">
-            <button class="btn p" onclick="toast('Saved. 61 lines are now stale.','ok')">💾 Save</button>
-            <input class="box" style="max-width:190px" value="June (softer)">
-            <button class="btn" onclick="toast('Saved as a new persona. June is untouched.','ok')">＋ Save as new</button>
-            <span style="flex:1"></span>
-            <button class="btn s" onclick="nav('newvoice')">🔀 Blend</button>
-            <button class="btn s" onclick="nav('newvoice')">🧪 Train a LoRA</button></div></div>
-      </div>
-
-      <div style="display:flex;flex-direction:column;gap:12px">
-        <div class="stack"><h5>June</h5>
-          <div class="l">Sohee · qwen3 CV<span class="sp">·</span>1.05×<span class="sp">·</span>−1.0 dB<br>
-            <span class="lt">“Clipped, world-weary. Dry wit.” · reverb + eq</span></div></div>
-
-        <div class="card"><div class="sh"><h4>This engine</h4></div>
-          <div class="tags"><span class="tag ok">✓ written direction</span>
-            <span class="tag ok">✓ 10 languages</span>
-            <span class="tag no">✗ cloning</span>
-            <span class="tag no">✗ inline tags</span>
-            <span class="tag ok">✓ seed</span></div>
-          <button class="btn s" style="margin-top:9px" onclick="nav('engines')">Compare engines →</button></div>
-
-        <div class="card"><div class="sh"><h4>Used by</h4></div>
-          <div class="tags"><span class="tag">🎭 June — Stillwater · 61 lines</span></div>
-          <button class="btn s" style="margin-top:9px" onclick="nav('cast')">Open Cast →</button></div>
-      </div>
-    </div>
   </div>
 </div>
 <div class="route" id="r-newvoice">
@@ -3038,7 +2851,16 @@ var KIND = {
   podcast: '\uD83C\uDF99\uFE0F podcast'
 };
 
+// Screens that moved into the app itself (decided 2026-10-04: mocks are built
+// in the app — docs/plans/2026-10-04-persona-voice-making.md §2). They open
+// there, under `npm run dev`.
+var APP_MOCK = {
+  personas: 'http://localhost:1430/#/mock/personas',
+  workbench: 'http://localhost:1430/#/mock/personas/p_june'
+};
+
 function nav(route) {
+  if (APP_MOCK[route]) { window.open(APP_MOCK[route], '_blank'); return; }
   var el = document.getElementById('r-' + route);
   if (!el) return;
   document.querySelectorAll('.route').forEach(function (r) { r.classList.remove('on'); });

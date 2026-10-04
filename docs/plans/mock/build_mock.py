@@ -234,9 +234,7 @@ ROUTES = [
     ("cast",      inject_steps(linkify(stash(3)), "cast")),
     ("render",    inject_steps(linkify(stash(4)), "render")),
     ("export",    inject_steps(linkify(stash(5)), "export")),
-    ("personas",  linkify(stash(9))),
     ("voices",    linkify(stash(6))),
-    ("workbench", linkify(stash(7))),
     ("newvoice",  linkify(stash(8))),
     ("lexicons",  linkify(stash(10))),
     ("effects",   linkify(stash(11))),
@@ -252,7 +250,16 @@ var KIND = {
   podcast: '\\uD83C\\uDF99\\uFE0F podcast'
 };
 
+// Screens that moved into the app itself (decided 2026-10-04: mocks are built
+// in the app — docs/plans/2026-10-04-persona-voice-making.md §2). They open
+// there, under `npm run dev`.
+var APP_MOCK = {
+  personas: 'http://localhost:1430/#/mock/personas',
+  workbench: 'http://localhost:1430/#/mock/personas/p_june'
+};
+
 function nav(route) {
+  if (APP_MOCK[route]) { window.open(APP_MOCK[route], '_blank'); return; }
   var el = document.getElementById('r-' + route);
   if (!el) return;
   document.querySelectorAll('.route').forEach(function (r) { r.classList.remove('on'); });

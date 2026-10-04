@@ -250,8 +250,9 @@ const stateLedeOverride = computed(() => null);
 const effectiveLede = computed(() => {
   if (stateLedeOverride.value) return stateLedeOverride.value;
   // A sub-page carries its own header (the persona editor); the rail item's
-  // lede describes the list, not the page.
-  if (route.meta?.nav) return null;
+  // lede describes the list, not the page — unless the route is that list
+  // (`meta.lede`: the Personas mock, src/mock/routes.js).
+  if (route.meta?.nav && !route.meta?.lede) return null;
   const s = currentView.value?.lede || "";
   return s ? { text: s } : null;
 });

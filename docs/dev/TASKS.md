@@ -1930,8 +1930,17 @@ NOT:    option 1 — the HTML mock linking the real stylesheets; hand-written ma
         Then "your rec on all go" again (2026-10-04): Import folds into Clone; the clone maker
         shows length + noise; a description-only design is saved on Keep; a kept voice is
         fixed — same doc, §3 "Corrected and decided".
-OPEN:   that doc's §4 order: research → the persona mock as Vue pages → side-by-side compare →
-        delete `_s7`/`_s9` → stop for review; then the real pages change to match.
+BUILT:  2026-10-04 — the persona mock in the app: `src/mock/` (`MockPersonasView.vue`,
+        `MockPersonaEditorView.vue`, `MockCloneMaker.vue`, `MockDesignMaker.vue`,
+        `MockBlendMaker.vue`; data `personaMock.js` + `liveSnapshot.json`, the server's own
+        answers), dev-only routes `#/mock/personas[/:id]` (`src/mock/routes.js`); new classes
+        `.jv-split--wide-left` `.jv-knob-grid` `.jv-field-label-row` `.jv-drop`; `_s7`/`_s9` out
+        of the HTML mock (its `nav()` opens the app's). Checked: flows driven on the running app
+        (all pass, zero JS errors), side by side with `_s7` at 1440 px, smoke gate 13/13, unit
+        132/132, the packaged build carries none of it.
+OPEN:   the user's review of the mock; then `PersonaEditorView.vue`, `PersonasView.vue` and
+        `VoicesView.vue` change to match (each a slice with its blast-radius table). Also asked:
+        `_s8` (Voices › New voice) is orphaned in the HTML mock and contradicts answer A.
 GO:     given 2026-10-04 for option 2, the persona mock and the answers above; the real pages
         wait for the user's review of the mock
 
@@ -2125,6 +2134,13 @@ WHY:    loading Chatterbox Nano after Turbo restarted the shared audio.cpp proce
 OPEN:   both — the fix needs a go (likely: when a runtime restart drops a co-resident
         model, release its booking; and/or let `make_room` clear a stale booking of the
         engine being loaded).
+
+### FINDING — at 1440 px the title bar cuts "Personas › June" to "P.."
+STATE:  FINDING — seen 2026-10-04 in screenshots of the running app (`npm run dev`), on the real
+        `#/personas/new` and on the mock alike: the project, kind, master, model and LLM pills
+        take the bar and the title (`App.vue`'s `TitleBar` `#title` slot) shrinks to "P..".
+OPEN:   needs a go — not looked into beyond the screenshot.
+GO:     needed
 
 ### FINDING — voice and project files: an export with no import, a bundle with no UI, and three smaller slips
 STATE:  FINDING — code-verified 2026-10-04 (the persona-mock research, plan

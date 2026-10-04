@@ -1,0 +1,2440 @@
+{
+ "_source": "Live answers of the app's own server under npm run dev, 2026-10-04: /v1/engines/capabilities, /v1/voices (presets), /v1/engines (terms), /v1/effects/catalog. Model languages: /v1/engines/{id}/models.",
+ "capabilities": {
+  "kokoro": {
+   "display_name": "Kokoro",
+   "engine_id": "kokoro",
+   "knobs": [
+    {
+     "key": "speed",
+     "label": "Speed",
+     "min": 0.5,
+     "max": 3.0,
+     "step": 0.05,
+     "default": 1.0,
+     "unit": "×",
+     "hint": "Reading pace multiplier.",
+     "advanced": false
+    },
+    {
+     "key": "seed",
+     "label": "Seed",
+     "min": 0.0,
+     "max": 2000000000.0,
+     "step": 1.0,
+     "default": 0.0,
+     "unit": "",
+     "hint": "Lock deterministic generation. 0 = random.",
+     "advanced": true
+    }
+   ],
+   "inline_tags": [],
+   "speed_native": true,
+   "supports_voice_cloning": false,
+   "supports_voice_design": false,
+   "supports_voice_blending": true,
+   "supports_instruct_freeform": false,
+   "supports_clone_prompt_text": false,
+   "supports_xvector_only": false
+  },
+  "kitten": {
+   "display_name": "KittenTTS",
+   "engine_id": "kitten",
+   "knobs": [
+    {
+     "key": "speed",
+     "label": "Speed",
+     "min": 0.5,
+     "max": 3.0,
+     "step": 0.05,
+     "default": 1.0,
+     "unit": "×",
+     "hint": "Reading pace multiplier.",
+     "advanced": false
+    }
+   ],
+   "inline_tags": [],
+   "speed_native": true,
+   "supports_voice_cloning": false,
+   "supports_voice_design": false,
+   "supports_voice_blending": false,
+   "supports_instruct_freeform": false,
+   "supports_clone_prompt_text": false,
+   "supports_xvector_only": false
+  },
+  "pocket": {
+   "display_name": "Pocket TTS",
+   "engine_id": "pocket",
+   "knobs": [
+    {
+     "key": "seed",
+     "label": "Seed",
+     "min": 0.0,
+     "max": 2000000000.0,
+     "step": 1.0,
+     "default": 0.0,
+     "unit": "",
+     "hint": "Lock deterministic generation. 0 = random.",
+     "advanced": true
+    }
+   ],
+   "inline_tags": [],
+   "speed_native": false,
+   "supports_voice_cloning": true,
+   "supports_voice_design": false,
+   "supports_voice_blending": false,
+   "supports_instruct_freeform": false,
+   "supports_clone_prompt_text": false,
+   "supports_xvector_only": false
+  },
+  "chatterbox": {
+   "display_name": "Chatterbox",
+   "engine_id": "chatterbox",
+   "knobs": [
+    {
+     "key": "temperature",
+     "label": "Temperature",
+     "min": 0.05,
+     "max": 2.0,
+     "step": 0.05,
+     "default": 0.8,
+     "unit": "",
+     "hint": "Sampling variance. Lower = stable + robotic; higher = creative + wild.",
+     "advanced": false
+    },
+    {
+     "key": "exaggeration",
+     "label": "Exaggeration",
+     "min": 0.25,
+     "max": 2.0,
+     "step": 0.05,
+     "default": 0.5,
+     "unit": "",
+     "hint": "Expressiveness. 0.3–0.4 = flat narration. >1.0 = dramatic.",
+     "advanced": false
+    },
+    {
+     "key": "cfg_weight",
+     "label": "CFG weight",
+     "min": 0.0,
+     "max": 1.0,
+     "step": 0.05,
+     "default": 0.5,
+     "unit": "",
+     "hint": "Text adherence. Lower = looser pacing; higher = strict.",
+     "advanced": false
+    },
+    {
+     "key": "repetition_penalty",
+     "label": "Repetition penalty",
+     "min": 1.0,
+     "max": 4.0,
+     "step": 0.1,
+     "default": 2.0,
+     "unit": "",
+     "hint": "",
+     "advanced": true
+    },
+    {
+     "key": "top_p",
+     "label": "Top p",
+     "min": 0.0,
+     "max": 1.0,
+     "step": 0.01,
+     "default": 1.0,
+     "unit": "",
+     "hint": "",
+     "advanced": true
+    },
+    {
+     "key": "seed",
+     "label": "Seed",
+     "min": 0.0,
+     "max": 2000000000.0,
+     "step": 1.0,
+     "default": 0.0,
+     "unit": "",
+     "hint": "Lock deterministic generation. 0 = random.",
+     "advanced": true
+    }
+   ],
+   "inline_tags": [],
+   "speed_native": false,
+   "supports_voice_cloning": true,
+   "supports_voice_design": false,
+   "supports_voice_blending": false,
+   "supports_instruct_freeform": false,
+   "supports_clone_prompt_text": false,
+   "supports_xvector_only": false
+  },
+  "chatterbox-multilingual": {
+   "display_name": "Chatterbox Multilingual",
+   "engine_id": "chatterbox-multilingual",
+   "knobs": [
+    {
+     "key": "temperature",
+     "label": "Temperature",
+     "min": 0.05,
+     "max": 2.0,
+     "step": 0.05,
+     "default": 0.8,
+     "unit": "",
+     "hint": "Sampling variance. Lower = stable + robotic; higher = creative + wild.",
+     "advanced": false
+    },
+    {
+     "key": "exaggeration",
+     "label": "Exaggeration",
+     "min": 0.25,
+     "max": 2.0,
+     "step": 0.05,
+     "default": 0.5,
+     "unit": "",
+     "hint": "Expressiveness. 0.3–0.4 = flat narration. >1.0 = dramatic.",
+     "advanced": false
+    },
+    {
+     "key": "cfg_weight",
+     "label": "CFG weight",
+     "min": 0.0,
+     "max": 1.0,
+     "step": 0.05,
+     "default": 0.5,
+     "unit": "",
+     "hint": "Text adherence. Lower = looser pacing; higher = strict.",
+     "advanced": false
+    },
+    {
+     "key": "repetition_penalty",
+     "label": "Repetition penalty",
+     "min": 1.0,
+     "max": 4.0,
+     "step": 0.1,
+     "default": 2.0,
+     "unit": "",
+     "hint": "",
+     "advanced": true
+    },
+    {
+     "key": "top_p",
+     "label": "Top p",
+     "min": 0.0,
+     "max": 1.0,
+     "step": 0.01,
+     "default": 1.0,
+     "unit": "",
+     "hint": "",
+     "advanced": true
+    },
+    {
+     "key": "seed",
+     "label": "Seed",
+     "min": 0.0,
+     "max": 2000000000.0,
+     "step": 1.0,
+     "default": 0.0,
+     "unit": "",
+     "hint": "Lock deterministic generation. 0 = random.",
+     "advanced": true
+    }
+   ],
+   "inline_tags": [],
+   "speed_native": false,
+   "supports_voice_cloning": true,
+   "supports_voice_design": false,
+   "supports_voice_blending": false,
+   "supports_instruct_freeform": false,
+   "supports_clone_prompt_text": false,
+   "supports_xvector_only": false
+  },
+  "chatterbox-turbo": {
+   "display_name": "Chatterbox Turbo",
+   "engine_id": "chatterbox-turbo",
+   "knobs": [
+    {
+     "key": "temperature",
+     "label": "Temperature",
+     "min": 0.05,
+     "max": 2.0,
+     "step": 0.05,
+     "default": 0.8,
+     "unit": "",
+     "hint": "Sampling variance. Lower = stable + robotic; higher = creative + wild.",
+     "advanced": false
+    },
+    {
+     "key": "repetition_penalty",
+     "label": "Repetition penalty",
+     "min": 1.0,
+     "max": 4.0,
+     "step": 0.1,
+     "default": 1.2,
+     "unit": "",
+     "hint": "",
+     "advanced": true
+    },
+    {
+     "key": "top_p",
+     "label": "Top p",
+     "min": 0.0,
+     "max": 1.0,
+     "step": 0.01,
+     "default": 0.95,
+     "unit": "",
+     "hint": "",
+     "advanced": true
+    },
+    {
+     "key": "top_k",
+     "label": "Top k",
+     "min": 1.0,
+     "max": 2000.0,
+     "step": 1.0,
+     "default": 1000.0,
+     "unit": "",
+     "hint": "",
+     "advanced": true
+    },
+    {
+     "key": "seed",
+     "label": "Seed",
+     "min": 0.0,
+     "max": 2000000000.0,
+     "step": 1.0,
+     "default": 0.0,
+     "unit": "",
+     "hint": "Lock deterministic generation. 0 = random.",
+     "advanced": true
+    }
+   ],
+   "inline_tags": [
+    {
+     "category": "emotion",
+     "label": "Emotion",
+     "tags": [
+      "angry",
+      "fear",
+      "happy",
+      "sarcastic",
+      "surprised",
+      "crying",
+      "whispering"
+     ],
+     "syntax": "[{value}]",
+     "placement": "inline_anywhere",
+     "hint": "The state the line is spoken in. Place at the start of the line unless you want the shift mid-sentence.",
+     "value_map": {
+      "neutral": "",
+      "happy": "happy",
+      "angry": "angry",
+      "fearful": "fear",
+      "whispered": "whispering",
+      "sarcastic": "sarcastic"
+     }
+    },
+    {
+     "category": "register",
+     "label": "Register",
+     "tags": [
+      "narration",
+      "dramatic",
+      "advertisement"
+     ],
+     "syntax": "[{value}]",
+     "placement": "inline_anywhere",
+     "hint": "How the passage is read overall, rather than what the speaker feels.",
+     "value_map": null
+    },
+    {
+     "category": "paralinguistic",
+     "label": "Non-verbal",
+     "tags": [
+      "cough",
+      "laugh",
+      "chuckle",
+      "sigh",
+      "gasp",
+      "groan",
+      "sniff",
+      "clear throat",
+      "shush"
+     ],
+     "syntax": "[{value}]",
+     "placement": "inline_anywhere",
+     "hint": "Insert at the moment in the text where you want the sound.",
+     "value_map": null
+    }
+   ],
+   "speed_native": false,
+   "supports_voice_cloning": true,
+   "supports_voice_design": false,
+   "supports_voice_blending": false,
+   "supports_instruct_freeform": false,
+   "supports_clone_prompt_text": false,
+   "supports_xvector_only": false
+  },
+  "qwen3": {
+   "display_name": "Qwen3-TTS",
+   "engine_id": "qwen3",
+   "knobs": [
+    {
+     "key": "talker_temperature",
+     "label": "Temperature",
+     "min": 0.05,
+     "max": 2.0,
+     "step": 0.05,
+     "default": 0.9,
+     "unit": "",
+     "hint": "Sampling variance for the talker model.",
+     "advanced": false
+    },
+    {
+     "key": "talker_top_k",
+     "label": "Top k",
+     "min": 1.0,
+     "max": 100.0,
+     "step": 1.0,
+     "default": 50.0,
+     "unit": "",
+     "hint": "",
+     "advanced": true
+    },
+    {
+     "key": "talker_top_p",
+     "label": "Top p",
+     "min": 0.0,
+     "max": 1.0,
+     "step": 0.01,
+     "default": 1.0,
+     "unit": "",
+     "hint": "",
+     "advanced": true
+    },
+    {
+     "key": "repetition_penalty",
+     "label": "Repetition penalty",
+     "min": 1.0,
+     "max": 4.0,
+     "step": 0.05,
+     "default": 1.05,
+     "unit": "",
+     "hint": "",
+     "advanced": true
+    },
+    {
+     "key": "seed",
+     "label": "Seed",
+     "min": 0.0,
+     "max": 2000000000.0,
+     "step": 1.0,
+     "default": 0.0,
+     "unit": "",
+     "hint": "Lock deterministic generation. 0 = random.",
+     "advanced": true
+    }
+   ],
+   "inline_tags": [],
+   "speed_native": false,
+   "supports_voice_cloning": true,
+   "supports_voice_design": true,
+   "supports_voice_blending": false,
+   "supports_instruct_freeform": true,
+   "supports_clone_prompt_text": false,
+   "supports_xvector_only": false
+  },
+  "qwen3-cv": {
+   "display_name": "Qwen3-TTS CustomVoice",
+   "engine_id": "qwen3-cv",
+   "knobs": [
+    {
+     "key": "talker_temperature",
+     "label": "Temperature",
+     "min": 0.05,
+     "max": 2.0,
+     "step": 0.05,
+     "default": 0.9,
+     "unit": "",
+     "hint": "Sampling variance for the talker model.",
+     "advanced": false
+    },
+    {
+     "key": "talker_top_k",
+     "label": "Top k",
+     "min": 1.0,
+     "max": 100.0,
+     "step": 1.0,
+     "default": 50.0,
+     "unit": "",
+     "hint": "",
+     "advanced": true
+    },
+    {
+     "key": "talker_top_p",
+     "label": "Top p",
+     "min": 0.0,
+     "max": 1.0,
+     "step": 0.01,
+     "default": 1.0,
+     "unit": "",
+     "hint": "",
+     "advanced": true
+    },
+    {
+     "key": "repetition_penalty",
+     "label": "Repetition penalty",
+     "min": 1.0,
+     "max": 4.0,
+     "step": 0.05,
+     "default": 1.05,
+     "unit": "",
+     "hint": "",
+     "advanced": true
+    },
+    {
+     "key": "seed",
+     "label": "Seed",
+     "min": 0.0,
+     "max": 2000000000.0,
+     "step": 1.0,
+     "default": 0.0,
+     "unit": "",
+     "hint": "Lock deterministic generation. 0 = random.",
+     "advanced": true
+    }
+   ],
+   "inline_tags": [],
+   "speed_native": false,
+   "supports_voice_cloning": false,
+   "supports_voice_design": false,
+   "supports_voice_blending": false,
+   "supports_instruct_freeform": true,
+   "supports_clone_prompt_text": false,
+   "supports_xvector_only": false
+  },
+  "qwen3-base": {
+   "display_name": "Qwen3-TTS Base",
+   "engine_id": "qwen3-base",
+   "knobs": [
+    {
+     "key": "talker_temperature",
+     "label": "Temperature",
+     "min": 0.05,
+     "max": 2.0,
+     "step": 0.05,
+     "default": 0.9,
+     "unit": "",
+     "hint": "Sampling variance for the talker model.",
+     "advanced": false
+    },
+    {
+     "key": "talker_top_k",
+     "label": "Top k",
+     "min": 1.0,
+     "max": 100.0,
+     "step": 1.0,
+     "default": 50.0,
+     "unit": "",
+     "hint": "",
+     "advanced": true
+    },
+    {
+     "key": "talker_top_p",
+     "label": "Top p",
+     "min": 0.0,
+     "max": 1.0,
+     "step": 0.01,
+     "default": 1.0,
+     "unit": "",
+     "hint": "",
+     "advanced": true
+    },
+    {
+     "key": "repetition_penalty",
+     "label": "Repetition penalty",
+     "min": 1.0,
+     "max": 4.0,
+     "step": 0.05,
+     "default": 1.05,
+     "unit": "",
+     "hint": "",
+     "advanced": true
+    },
+    {
+     "key": "seed",
+     "label": "Seed",
+     "min": 0.0,
+     "max": 2000000000.0,
+     "step": 1.0,
+     "default": 0.0,
+     "unit": "",
+     "hint": "Lock deterministic generation. 0 = random.",
+     "advanced": true
+    }
+   ],
+   "inline_tags": [],
+   "speed_native": false,
+   "supports_voice_cloning": true,
+   "supports_voice_design": false,
+   "supports_voice_blending": false,
+   "supports_instruct_freeform": false,
+   "supports_clone_prompt_text": true,
+   "supports_xvector_only": true
+  },
+  "qwen3-vd": {
+   "display_name": "Qwen3-TTS VoiceDesign",
+   "engine_id": "qwen3-vd",
+   "knobs": [
+    {
+     "key": "talker_temperature",
+     "label": "Temperature",
+     "min": 0.05,
+     "max": 2.0,
+     "step": 0.05,
+     "default": 0.9,
+     "unit": "",
+     "hint": "Sampling variance for the talker model.",
+     "advanced": false
+    },
+    {
+     "key": "talker_top_k",
+     "label": "Top k",
+     "min": 1.0,
+     "max": 100.0,
+     "step": 1.0,
+     "default": 50.0,
+     "unit": "",
+     "hint": "",
+     "advanced": true
+    },
+    {
+     "key": "talker_top_p",
+     "label": "Top p",
+     "min": 0.0,
+     "max": 1.0,
+     "step": 0.01,
+     "default": 1.0,
+     "unit": "",
+     "hint": "",
+     "advanced": true
+    },
+    {
+     "key": "repetition_penalty",
+     "label": "Repetition penalty",
+     "min": 1.0,
+     "max": 4.0,
+     "step": 0.05,
+     "default": 1.05,
+     "unit": "",
+     "hint": "",
+     "advanced": true
+    },
+    {
+     "key": "seed",
+     "label": "Seed",
+     "min": 0.0,
+     "max": 2000000000.0,
+     "step": 1.0,
+     "default": 0.0,
+     "unit": "",
+     "hint": "Lock deterministic generation. 0 = random.",
+     "advanced": true
+    }
+   ],
+   "inline_tags": [],
+   "speed_native": false,
+   "supports_voice_cloning": false,
+   "supports_voice_design": true,
+   "supports_voice_blending": false,
+   "supports_instruct_freeform": true,
+   "supports_clone_prompt_text": false,
+   "supports_xvector_only": false
+  },
+  "voxcpm2": {
+   "display_name": "VoxCPM2",
+   "engine_id": "voxcpm2",
+   "knobs": [
+    {
+     "key": "cfg_value",
+     "label": "CFG",
+     "min": 1.0,
+     "max": 5.0,
+     "step": 0.1,
+     "default": 2.0,
+     "unit": "",
+     "hint": "How closely it follows the voice and the text. Higher = stricter.",
+     "advanced": false
+    },
+    {
+     "key": "inference_timesteps",
+     "label": "Inference steps",
+     "min": 4.0,
+     "max": 30.0,
+     "step": 1.0,
+     "default": 10.0,
+     "unit": "",
+     "hint": "More steps = finer detail, slower.",
+     "advanced": true
+    },
+    {
+     "key": "seed",
+     "label": "Seed",
+     "min": 0.0,
+     "max": 2000000000.0,
+     "step": 1.0,
+     "default": 0.0,
+     "unit": "",
+     "hint": "Lock deterministic generation. 0 = random.",
+     "advanced": true
+    }
+   ],
+   "inline_tags": [],
+   "speed_native": false,
+   "supports_voice_cloning": true,
+   "supports_voice_design": true,
+   "supports_voice_blending": false,
+   "supports_instruct_freeform": true,
+   "supports_clone_prompt_text": true,
+   "supports_xvector_only": false
+  },
+  "chatterbox-nano": {
+   "display_name": "Chatterbox Nano",
+   "engine_id": "chatterbox-nano",
+   "knobs": [
+    {
+     "key": "temperature",
+     "label": "Temperature",
+     "min": 0.05,
+     "max": 2.0,
+     "step": 0.05,
+     "default": 0.8,
+     "unit": "",
+     "hint": "Sampling variance. Lower = stable + robotic; higher = creative + wild.",
+     "advanced": false
+    },
+    {
+     "key": "repetition_penalty",
+     "label": "Repetition penalty",
+     "min": 1.0,
+     "max": 4.0,
+     "step": 0.1,
+     "default": 1.2,
+     "unit": "",
+     "hint": "",
+     "advanced": true
+    },
+    {
+     "key": "top_p",
+     "label": "Top p",
+     "min": 0.0,
+     "max": 1.0,
+     "step": 0.01,
+     "default": 0.95,
+     "unit": "",
+     "hint": "",
+     "advanced": true
+    },
+    {
+     "key": "top_k",
+     "label": "Top k",
+     "min": 1.0,
+     "max": 2000.0,
+     "step": 1.0,
+     "default": 1000.0,
+     "unit": "",
+     "hint": "",
+     "advanced": true
+    },
+    {
+     "key": "seed",
+     "label": "Seed",
+     "min": 0.0,
+     "max": 2000000000.0,
+     "step": 1.0,
+     "default": 0.0,
+     "unit": "",
+     "hint": "Lock deterministic generation. 0 = random.",
+     "advanced": true
+    }
+   ],
+   "inline_tags": [
+    {
+     "category": "emotion",
+     "label": "Emotion",
+     "tags": [
+      "angry",
+      "fear",
+      "happy",
+      "sarcastic",
+      "surprised",
+      "crying",
+      "whispering"
+     ],
+     "syntax": "[{value}]",
+     "placement": "inline_anywhere",
+     "hint": "The state the line is spoken in. Place at the start of the line unless you want the shift mid-sentence.",
+     "value_map": {
+      "neutral": "",
+      "happy": "happy",
+      "angry": "angry",
+      "fearful": "fear",
+      "whispered": "whispering",
+      "sarcastic": "sarcastic"
+     }
+    },
+    {
+     "category": "register",
+     "label": "Register",
+     "tags": [
+      "narration",
+      "dramatic",
+      "advertisement"
+     ],
+     "syntax": "[{value}]",
+     "placement": "inline_anywhere",
+     "hint": "How the passage is read overall, rather than what the speaker feels.",
+     "value_map": null
+    },
+    {
+     "category": "paralinguistic",
+     "label": "Non-verbal",
+     "tags": [
+      "cough",
+      "laugh",
+      "chuckle",
+      "sigh",
+      "gasp",
+      "groan",
+      "sniff",
+      "clear throat",
+      "shush"
+     ],
+     "syntax": "[{value}]",
+     "placement": "inline_anywhere",
+     "hint": "Insert at the moment in the text where you want the sound.",
+     "value_map": null
+    }
+   ],
+   "speed_native": false,
+   "supports_voice_cloning": true,
+   "supports_voice_design": false,
+   "supports_voice_blending": false,
+   "supports_instruct_freeform": false,
+   "supports_clone_prompt_text": false,
+   "supports_xvector_only": false
+  }
+ },
+ "emotion_values": [
+  "neutral",
+  "happy",
+  "sad",
+  "angry",
+  "fearful",
+  "whispered",
+  "shouted",
+  "sarcastic",
+  "contemptuous"
+ ],
+ "presets": [
+  {
+   "id": "kitten_bella",
+   "engine": "kitten",
+   "source": "preset",
+   "name": "Bella",
+   "language": "en-US",
+   "gender": "female",
+   "model": "kitten",
+   "model_name": "KittenTTS",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-US"
+   ]
+  },
+  {
+   "id": "kitten_jasper",
+   "engine": "kitten",
+   "source": "preset",
+   "name": "Jasper",
+   "language": "en-US",
+   "gender": "male",
+   "model": "kitten",
+   "model_name": "KittenTTS",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-US"
+   ]
+  },
+  {
+   "id": "kitten_luna",
+   "engine": "kitten",
+   "source": "preset",
+   "name": "Luna",
+   "language": "en-US",
+   "gender": "female",
+   "model": "kitten",
+   "model_name": "KittenTTS",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-US"
+   ]
+  },
+  {
+   "id": "kitten_bruno",
+   "engine": "kitten",
+   "source": "preset",
+   "name": "Bruno",
+   "language": "en-US",
+   "gender": "male",
+   "model": "kitten",
+   "model_name": "KittenTTS",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-US"
+   ]
+  },
+  {
+   "id": "kitten_rosie",
+   "engine": "kitten",
+   "source": "preset",
+   "name": "Rosie",
+   "language": "en-US",
+   "gender": "female",
+   "model": "kitten",
+   "model_name": "KittenTTS",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-US"
+   ]
+  },
+  {
+   "id": "kitten_hugo",
+   "engine": "kitten",
+   "source": "preset",
+   "name": "Hugo",
+   "language": "en-US",
+   "gender": "male",
+   "model": "kitten",
+   "model_name": "KittenTTS",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-US"
+   ]
+  },
+  {
+   "id": "kitten_kiki",
+   "engine": "kitten",
+   "source": "preset",
+   "name": "Kiki",
+   "language": "en-US",
+   "gender": "female",
+   "model": "kitten",
+   "model_name": "KittenTTS",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-US"
+   ]
+  },
+  {
+   "id": "kitten_leo",
+   "engine": "kitten",
+   "source": "preset",
+   "name": "Leo",
+   "language": "en-US",
+   "gender": "male",
+   "model": "kitten",
+   "model_name": "KittenTTS",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-US"
+   ]
+  },
+  {
+   "id": "af_alloy",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Alloy",
+   "language": "en-US",
+   "gender": "female",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-US"
+   ]
+  },
+  {
+   "id": "af_aoede",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Aoede",
+   "language": "en-US",
+   "gender": "female",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-US"
+   ]
+  },
+  {
+   "id": "af_bella",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Bella",
+   "language": "en-US",
+   "gender": "female",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-US"
+   ]
+  },
+  {
+   "id": "af_heart",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Heart",
+   "language": "en-US",
+   "gender": "female",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-US"
+   ]
+  },
+  {
+   "id": "af_jessica",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Jessica",
+   "language": "en-US",
+   "gender": "female",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-US"
+   ]
+  },
+  {
+   "id": "af_kore",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Kore",
+   "language": "en-US",
+   "gender": "female",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-US"
+   ]
+  },
+  {
+   "id": "af_nicole",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Nicole",
+   "language": "en-US",
+   "gender": "female",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-US"
+   ]
+  },
+  {
+   "id": "af_nova",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Nova",
+   "language": "en-US",
+   "gender": "female",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-US"
+   ]
+  },
+  {
+   "id": "af_river",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "River",
+   "language": "en-US",
+   "gender": "female",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-US"
+   ]
+  },
+  {
+   "id": "af_sarah",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Sarah",
+   "language": "en-US",
+   "gender": "female",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-US"
+   ]
+  },
+  {
+   "id": "af_sky",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Sky",
+   "language": "en-US",
+   "gender": "female",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-US"
+   ]
+  },
+  {
+   "id": "am_adam",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Adam",
+   "language": "en-US",
+   "gender": "male",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-US"
+   ]
+  },
+  {
+   "id": "am_echo",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Echo",
+   "language": "en-US",
+   "gender": "male",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-US"
+   ]
+  },
+  {
+   "id": "am_eric",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Eric",
+   "language": "en-US",
+   "gender": "male",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-US"
+   ]
+  },
+  {
+   "id": "am_fenrir",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Fenrir",
+   "language": "en-US",
+   "gender": "male",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-US"
+   ]
+  },
+  {
+   "id": "am_liam",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Liam",
+   "language": "en-US",
+   "gender": "male",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-US"
+   ]
+  },
+  {
+   "id": "am_michael",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Michael",
+   "language": "en-US",
+   "gender": "male",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-US"
+   ]
+  },
+  {
+   "id": "am_onyx",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Onyx",
+   "language": "en-US",
+   "gender": "male",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-US"
+   ]
+  },
+  {
+   "id": "am_puck",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Puck",
+   "language": "en-US",
+   "gender": "male",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-US"
+   ]
+  },
+  {
+   "id": "am_santa",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Santa",
+   "language": "en-US",
+   "gender": "male",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-US"
+   ]
+  },
+  {
+   "id": "bf_alice",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Alice (UK)",
+   "language": "en-GB",
+   "gender": "female",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-GB"
+   ]
+  },
+  {
+   "id": "bf_emma",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Emma (UK)",
+   "language": "en-GB",
+   "gender": "female",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-GB"
+   ]
+  },
+  {
+   "id": "bf_isabella",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Isabella (UK)",
+   "language": "en-GB",
+   "gender": "female",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-GB"
+   ]
+  },
+  {
+   "id": "bf_lily",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Lily (UK)",
+   "language": "en-GB",
+   "gender": "female",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-GB"
+   ]
+  },
+  {
+   "id": "bm_daniel",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Daniel (UK)",
+   "language": "en-GB",
+   "gender": "male",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-GB"
+   ]
+  },
+  {
+   "id": "bm_fable",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Fable (UK)",
+   "language": "en-GB",
+   "gender": "male",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-GB"
+   ]
+  },
+  {
+   "id": "bm_george",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "George (UK)",
+   "language": "en-GB",
+   "gender": "male",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-GB"
+   ]
+  },
+  {
+   "id": "bm_lewis",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Lewis (UK)",
+   "language": "en-GB",
+   "gender": "male",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-GB"
+   ]
+  },
+  {
+   "id": "ef_dora",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Dora (Spanish)",
+   "language": "es",
+   "gender": "female",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "es"
+   ]
+  },
+  {
+   "id": "em_alex",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Alex (Spanish)",
+   "language": "es",
+   "gender": "male",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "es"
+   ]
+  },
+  {
+   "id": "em_santa",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Santa (Spanish)",
+   "language": "es",
+   "gender": "male",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "es"
+   ]
+  },
+  {
+   "id": "ff_siwis",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Siwis (French)",
+   "language": "fr",
+   "gender": "female",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "fr"
+   ]
+  },
+  {
+   "id": "hf_alpha",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Alpha (Hindi)",
+   "language": "hi",
+   "gender": "female",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "hi"
+   ]
+  },
+  {
+   "id": "hf_beta",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Beta (Hindi)",
+   "language": "hi",
+   "gender": "female",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "hi"
+   ]
+  },
+  {
+   "id": "hm_omega",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Omega (Hindi)",
+   "language": "hi",
+   "gender": "male",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "hi"
+   ]
+  },
+  {
+   "id": "hm_psi",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Psi (Hindi)",
+   "language": "hi",
+   "gender": "male",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "hi"
+   ]
+  },
+  {
+   "id": "if_sara",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Sara (Italian)",
+   "language": "it",
+   "gender": "female",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "it"
+   ]
+  },
+  {
+   "id": "im_nicola",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Nicola (Italian)",
+   "language": "it",
+   "gender": "male",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "it"
+   ]
+  },
+  {
+   "id": "jf_alpha",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Alpha (Japanese)",
+   "language": "ja",
+   "gender": "female",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "ja"
+   ]
+  },
+  {
+   "id": "jf_gongitsune",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Gongitsune (Japanese)",
+   "language": "ja",
+   "gender": "female",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "ja"
+   ]
+  },
+  {
+   "id": "jf_nezumi",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Nezumi (Japanese)",
+   "language": "ja",
+   "gender": "female",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "ja"
+   ]
+  },
+  {
+   "id": "jf_tebukuro",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Tebukuro (Japanese)",
+   "language": "ja",
+   "gender": "female",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "ja"
+   ]
+  },
+  {
+   "id": "jm_kumo",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Kumo (Japanese)",
+   "language": "ja",
+   "gender": "male",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "ja"
+   ]
+  },
+  {
+   "id": "pf_dora",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Dora (Portuguese)",
+   "language": "pt-BR",
+   "gender": "female",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "pt-BR"
+   ]
+  },
+  {
+   "id": "pm_alex",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Alex (Portuguese)",
+   "language": "pt-BR",
+   "gender": "male",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "pt-BR"
+   ]
+  },
+  {
+   "id": "pm_santa",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Santa (Portuguese)",
+   "language": "pt-BR",
+   "gender": "male",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "pt-BR"
+   ]
+  },
+  {
+   "id": "zf_xiaobei",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Xiaobei (Mandarin)",
+   "language": "zh",
+   "gender": "female",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "zh"
+   ]
+  },
+  {
+   "id": "zf_xiaoni",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Xiaoni (Mandarin)",
+   "language": "zh",
+   "gender": "female",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "zh"
+   ]
+  },
+  {
+   "id": "zf_xiaoxiao",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Xiaoxiao (Mandarin)",
+   "language": "zh",
+   "gender": "female",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "zh"
+   ]
+  },
+  {
+   "id": "zf_xiaoyi",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Xiaoyi (Mandarin)",
+   "language": "zh",
+   "gender": "female",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "zh"
+   ]
+  },
+  {
+   "id": "zm_yunjian",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Yunjian (Mandarin)",
+   "language": "zh",
+   "gender": "male",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "zh"
+   ]
+  },
+  {
+   "id": "zm_yunxi",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Yunxi (Mandarin)",
+   "language": "zh",
+   "gender": "male",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "zh"
+   ]
+  },
+  {
+   "id": "zm_yunxia",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Yunxia (Mandarin)",
+   "language": "zh",
+   "gender": "male",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "zh"
+   ]
+  },
+  {
+   "id": "zm_yunyang",
+   "engine": "kokoro",
+   "source": "preset",
+   "name": "Yunyang (Mandarin)",
+   "language": "zh",
+   "gender": "male",
+   "model": "kokoro",
+   "model_name": "Kokoro",
+   "directed_by": "sliders",
+   "speaks": [
+    "zh"
+   ]
+  },
+  {
+   "id": "pocket_alba",
+   "engine": "pocket",
+   "source": "preset",
+   "name": "Alba",
+   "language": "en",
+   "gender": "",
+   "model": "pocket",
+   "model_name": "Pocket TTS",
+   "directed_by": "sliders",
+   "speaks": [
+    "en",
+    "de",
+    "it",
+    "pt",
+    "es"
+   ]
+  },
+  {
+   "id": "pocket_anna",
+   "engine": "pocket",
+   "source": "preset",
+   "name": "Anna",
+   "language": "en",
+   "gender": "",
+   "model": "pocket",
+   "model_name": "Pocket TTS",
+   "directed_by": "sliders",
+   "speaks": [
+    "en",
+    "de",
+    "it",
+    "pt",
+    "es"
+   ]
+  },
+  {
+   "id": "pocket_azelma",
+   "engine": "pocket",
+   "source": "preset",
+   "name": "Azelma",
+   "language": "en",
+   "gender": "",
+   "model": "pocket",
+   "model_name": "Pocket TTS",
+   "directed_by": "sliders",
+   "speaks": [
+    "en",
+    "de",
+    "it",
+    "pt",
+    "es"
+   ]
+  },
+  {
+   "id": "pocket_bill_boerst",
+   "engine": "pocket",
+   "source": "preset",
+   "name": "Bill Boerst",
+   "language": "en",
+   "gender": "",
+   "model": "pocket",
+   "model_name": "Pocket TTS",
+   "directed_by": "sliders",
+   "speaks": [
+    "en",
+    "de",
+    "it",
+    "pt",
+    "es"
+   ]
+  },
+  {
+   "id": "pocket_caro_davy",
+   "engine": "pocket",
+   "source": "preset",
+   "name": "Caro Davy",
+   "language": "en",
+   "gender": "",
+   "model": "pocket",
+   "model_name": "Pocket TTS",
+   "directed_by": "sliders",
+   "speaks": [
+    "en",
+    "de",
+    "it",
+    "pt",
+    "es"
+   ]
+  },
+  {
+   "id": "pocket_charles",
+   "engine": "pocket",
+   "source": "preset",
+   "name": "Charles",
+   "language": "en",
+   "gender": "",
+   "model": "pocket",
+   "model_name": "Pocket TTS",
+   "directed_by": "sliders",
+   "speaks": [
+    "en",
+    "de",
+    "it",
+    "pt",
+    "es"
+   ]
+  },
+  {
+   "id": "pocket_eponine",
+   "engine": "pocket",
+   "source": "preset",
+   "name": "Eponine",
+   "language": "en",
+   "gender": "",
+   "model": "pocket",
+   "model_name": "Pocket TTS",
+   "directed_by": "sliders",
+   "speaks": [
+    "en",
+    "de",
+    "it",
+    "pt",
+    "es"
+   ]
+  },
+  {
+   "id": "pocket_estelle",
+   "engine": "pocket",
+   "source": "preset",
+   "name": "Estelle",
+   "language": "en",
+   "gender": "",
+   "model": "pocket",
+   "model_name": "Pocket TTS",
+   "directed_by": "sliders",
+   "speaks": [
+    "en",
+    "de",
+    "it",
+    "pt",
+    "es"
+   ]
+  },
+  {
+   "id": "pocket_eve",
+   "engine": "pocket",
+   "source": "preset",
+   "name": "Eve",
+   "language": "en",
+   "gender": "",
+   "model": "pocket",
+   "model_name": "Pocket TTS",
+   "directed_by": "sliders",
+   "speaks": [
+    "en",
+    "de",
+    "it",
+    "pt",
+    "es"
+   ]
+  },
+  {
+   "id": "pocket_fantine",
+   "engine": "pocket",
+   "source": "preset",
+   "name": "Fantine",
+   "language": "en",
+   "gender": "",
+   "model": "pocket",
+   "model_name": "Pocket TTS",
+   "directed_by": "sliders",
+   "speaks": [
+    "en",
+    "de",
+    "it",
+    "pt",
+    "es"
+   ]
+  },
+  {
+   "id": "pocket_george",
+   "engine": "pocket",
+   "source": "preset",
+   "name": "George",
+   "language": "en",
+   "gender": "",
+   "model": "pocket",
+   "model_name": "Pocket TTS",
+   "directed_by": "sliders",
+   "speaks": [
+    "en",
+    "de",
+    "it",
+    "pt",
+    "es"
+   ]
+  },
+  {
+   "id": "pocket_jane",
+   "engine": "pocket",
+   "source": "preset",
+   "name": "Jane",
+   "language": "en",
+   "gender": "",
+   "model": "pocket",
+   "model_name": "Pocket TTS",
+   "directed_by": "sliders",
+   "speaks": [
+    "en",
+    "de",
+    "it",
+    "pt",
+    "es"
+   ]
+  },
+  {
+   "id": "pocket_javert",
+   "engine": "pocket",
+   "source": "preset",
+   "name": "Javert",
+   "language": "en",
+   "gender": "",
+   "model": "pocket",
+   "model_name": "Pocket TTS",
+   "directed_by": "sliders",
+   "speaks": [
+    "en",
+    "de",
+    "it",
+    "pt",
+    "es"
+   ]
+  },
+  {
+   "id": "pocket_marius",
+   "engine": "pocket",
+   "source": "preset",
+   "name": "Marius",
+   "language": "en",
+   "gender": "",
+   "model": "pocket",
+   "model_name": "Pocket TTS",
+   "directed_by": "sliders",
+   "speaks": [
+    "en",
+    "de",
+    "it",
+    "pt",
+    "es"
+   ]
+  },
+  {
+   "id": "pocket_mary",
+   "engine": "pocket",
+   "source": "preset",
+   "name": "Mary",
+   "language": "en",
+   "gender": "",
+   "model": "pocket",
+   "model_name": "Pocket TTS",
+   "directed_by": "sliders",
+   "speaks": [
+    "en",
+    "de",
+    "it",
+    "pt",
+    "es"
+   ]
+  },
+  {
+   "id": "pocket_michael",
+   "engine": "pocket",
+   "source": "preset",
+   "name": "Michael",
+   "language": "en",
+   "gender": "",
+   "model": "pocket",
+   "model_name": "Pocket TTS",
+   "directed_by": "sliders",
+   "speaks": [
+    "en",
+    "de",
+    "it",
+    "pt",
+    "es"
+   ]
+  },
+  {
+   "id": "pocket_paul",
+   "engine": "pocket",
+   "source": "preset",
+   "name": "Paul",
+   "language": "en",
+   "gender": "",
+   "model": "pocket",
+   "model_name": "Pocket TTS",
+   "directed_by": "sliders",
+   "speaks": [
+    "en",
+    "de",
+    "it",
+    "pt",
+    "es"
+   ]
+  },
+  {
+   "id": "pocket_peter_yearsley",
+   "engine": "pocket",
+   "source": "preset",
+   "name": "Peter Yearsley",
+   "language": "en",
+   "gender": "",
+   "model": "pocket",
+   "model_name": "Pocket TTS",
+   "directed_by": "sliders",
+   "speaks": [
+    "en",
+    "de",
+    "it",
+    "pt",
+    "es"
+   ]
+  },
+  {
+   "id": "pocket_stuart_bell",
+   "engine": "pocket",
+   "source": "preset",
+   "name": "Stuart Bell",
+   "language": "en",
+   "gender": "",
+   "model": "pocket",
+   "model_name": "Pocket TTS",
+   "directed_by": "sliders",
+   "speaks": [
+    "en",
+    "de",
+    "it",
+    "pt",
+    "es"
+   ]
+  },
+  {
+   "id": "pocket_vera",
+   "engine": "pocket",
+   "source": "preset",
+   "name": "Vera",
+   "language": "en",
+   "gender": "",
+   "model": "pocket",
+   "model_name": "Pocket TTS",
+   "directed_by": "sliders",
+   "speaks": [
+    "en",
+    "de",
+    "it",
+    "pt",
+    "es"
+   ]
+  },
+  {
+   "id": "Vivian",
+   "engine": "qwen3",
+   "source": "preset",
+   "name": "Vivian",
+   "language": "zh",
+   "gender": "female",
+   "model": "qwen3-cv",
+   "model_name": "Qwen3-TTS CustomVoice",
+   "directed_by": "words",
+   "speaks": [
+    "zh",
+    "en",
+    "ja",
+    "ko",
+    "de",
+    "fr",
+    "ru",
+    "pt",
+    "es",
+    "it"
+   ]
+  },
+  {
+   "id": "Serena",
+   "engine": "qwen3",
+   "source": "preset",
+   "name": "Serena",
+   "language": "zh",
+   "gender": "female",
+   "model": "qwen3-cv",
+   "model_name": "Qwen3-TTS CustomVoice",
+   "directed_by": "words",
+   "speaks": [
+    "zh",
+    "en",
+    "ja",
+    "ko",
+    "de",
+    "fr",
+    "ru",
+    "pt",
+    "es",
+    "it"
+   ]
+  },
+  {
+   "id": "Uncle_Fu",
+   "engine": "qwen3",
+   "source": "preset",
+   "name": "Uncle Fu",
+   "language": "zh",
+   "gender": "male",
+   "model": "qwen3-cv",
+   "model_name": "Qwen3-TTS CustomVoice",
+   "directed_by": "words",
+   "speaks": [
+    "zh",
+    "en",
+    "ja",
+    "ko",
+    "de",
+    "fr",
+    "ru",
+    "pt",
+    "es",
+    "it"
+   ]
+  },
+  {
+   "id": "Dylan",
+   "engine": "qwen3",
+   "source": "preset",
+   "name": "Dylan",
+   "language": "zh",
+   "gender": "male",
+   "model": "qwen3-cv",
+   "model_name": "Qwen3-TTS CustomVoice",
+   "directed_by": "words",
+   "speaks": [
+    "zh",
+    "en",
+    "ja",
+    "ko",
+    "de",
+    "fr",
+    "ru",
+    "pt",
+    "es",
+    "it"
+   ]
+  },
+  {
+   "id": "Eric",
+   "engine": "qwen3",
+   "source": "preset",
+   "name": "Eric",
+   "language": "zh",
+   "gender": "male",
+   "model": "qwen3-cv",
+   "model_name": "Qwen3-TTS CustomVoice",
+   "directed_by": "words",
+   "speaks": [
+    "zh",
+    "en",
+    "ja",
+    "ko",
+    "de",
+    "fr",
+    "ru",
+    "pt",
+    "es",
+    "it"
+   ]
+  },
+  {
+   "id": "Ryan",
+   "engine": "qwen3",
+   "source": "preset",
+   "name": "Ryan",
+   "language": "en",
+   "gender": "male",
+   "model": "qwen3-cv",
+   "model_name": "Qwen3-TTS CustomVoice",
+   "directed_by": "words",
+   "speaks": [
+    "zh",
+    "en",
+    "ja",
+    "ko",
+    "de",
+    "fr",
+    "ru",
+    "pt",
+    "es",
+    "it"
+   ]
+  },
+  {
+   "id": "Aiden",
+   "engine": "qwen3",
+   "source": "preset",
+   "name": "Aiden",
+   "language": "en",
+   "gender": "male",
+   "model": "qwen3-cv",
+   "model_name": "Qwen3-TTS CustomVoice",
+   "directed_by": "words",
+   "speaks": [
+    "zh",
+    "en",
+    "ja",
+    "ko",
+    "de",
+    "fr",
+    "ru",
+    "pt",
+    "es",
+    "it"
+   ]
+  },
+  {
+   "id": "Ono_Anna",
+   "engine": "qwen3",
+   "source": "preset",
+   "name": "Ono Anna",
+   "language": "ja",
+   "gender": "female",
+   "model": "qwen3-cv",
+   "model_name": "Qwen3-TTS CustomVoice",
+   "directed_by": "words",
+   "speaks": [
+    "zh",
+    "en",
+    "ja",
+    "ko",
+    "de",
+    "fr",
+    "ru",
+    "pt",
+    "es",
+    "it"
+   ]
+  },
+  {
+   "id": "Sohee",
+   "engine": "qwen3",
+   "source": "preset",
+   "name": "Sohee",
+   "language": "ko",
+   "gender": "female",
+   "model": "qwen3-cv",
+   "model_name": "Qwen3-TTS CustomVoice",
+   "directed_by": "words",
+   "speaks": [
+    "zh",
+    "en",
+    "ja",
+    "ko",
+    "de",
+    "fr",
+    "ru",
+    "pt",
+    "es",
+    "it"
+   ]
+  }
+ ],
+ "terms": {
+  "pocket": {
+   "owner": "Kyutai",
+   "title": "Kyutai's terms for Pocket TTS",
+   "text": "Prohibited use: Use of our model must comply with all applicable laws and regulations and must not result in, involve, or facilitate any illegal, harmful, deceptive, fraudulent, or unauthorized activity. Prohibited uses include, without limitation, voice impersonation or cloning without explicit and lawful consent; misinformation, disinformation, or deception (including fake news, fraudulent calls, or presenting generated content as genuine recordings of real people or events); and the generation of unlawful, harmful, libelous, abusive, harassing, discriminatory, hateful, or privacy-invasive content. We disclaim all liability for any non-compliant use.",
+   "url": "https://huggingface.co/kyutai/pocket-tts",
+   "gates": "cloning"
+  }
+ },
+ "effects": [
+  {
+   "type": "reverb",
+   "label": "Reverb"
+  },
+  {
+   "type": "distortion",
+   "label": "Distortion"
+  },
+  {
+   "type": "gain",
+   "label": "Gain"
+  },
+  {
+   "type": "compressor",
+   "label": "Compressor"
+  },
+  {
+   "type": "pitch_shift",
+   "label": "Pitch shift"
+  },
+  {
+   "type": "delay",
+   "label": "Delay"
+  },
+  {
+   "type": "highpass",
+   "label": "High-pass"
+  },
+  {
+   "type": "lowpass",
+   "label": "Low-pass"
+  },
+  {
+   "type": "eq_low",
+   "label": "EQ — Low shelf"
+  },
+  {
+   "type": "eq_mid",
+   "label": "EQ — Mid peak"
+  },
+  {
+   "type": "eq_high",
+   "label": "EQ — High shelf"
+  }
+ ],
+ "languages": {
+  "chatterbox-multilingual": [
+   "ar",
+   "da",
+   "de",
+   "el",
+   "en",
+   "es",
+   "fi",
+   "fr",
+   "he",
+   "hi",
+   "it",
+   "ja",
+   "ko",
+   "ms",
+   "nl",
+   "no",
+   "pl",
+   "pt",
+   "ru",
+   "sv",
+   "sw",
+   "tr",
+   "zh"
+  ],
+  "chatterbox-turbo": [
+   "en"
+  ],
+  "chatterbox-nano": [
+   "en"
+  ],
+  "voxcpm2": [
+   "ar",
+   "my",
+   "zh",
+   "da",
+   "nl",
+   "en",
+   "fi",
+   "fr",
+   "de",
+   "el",
+   "he",
+   "hi",
+   "id",
+   "it",
+   "ja",
+   "km",
+   "ko",
+   "lo",
+   "ms",
+   "no",
+   "pl",
+   "pt",
+   "ru",
+   "es",
+   "sw",
+   "sv",
+   "tl",
+   "th",
+   "tr",
+   "vi"
+  ],
+  "qwen3-cv": [
+   "zh",
+   "en",
+   "ja",
+   "ko",
+   "de",
+   "fr",
+   "ru",
+   "pt",
+   "es",
+   "it"
+  ],
+  "qwen3-base": [
+   "zh",
+   "en",
+   "ja",
+   "ko",
+   "de",
+   "fr",
+   "ru",
+   "pt",
+   "es",
+   "it"
+  ],
+  "qwen3-vd": [
+   "zh",
+   "en",
+   "ja",
+   "ko",
+   "de",
+   "fr",
+   "ru",
+   "pt",
+   "es",
+   "it"
+  ],
+  "pocket": [
+   "en",
+   "de",
+   "it",
+   "pt",
+   "es"
+  ],
+  "kitten": [
+   "en-US"
+  ]
+ }
+}

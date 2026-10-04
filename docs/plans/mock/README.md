@@ -13,6 +13,13 @@ happened: three different control totals were in circulation until 2026-08-22.
 Lived in a session scratchpad until 2026-08-17 and would have died with the
 session. Moved here so it survives.
 
+**Mocks are built in the app now (2026-10-04).** This HTML mock shared only the app's tokens —
+every control here is its own CSS — so screens built with the real controls never looked like it.
+A new or redone screen is a Vue page in `src/mock/`, at `#/mock/...` under `npm run dev`
+(record: `../2026-10-04-persona-voice-making.md` §2). Screens move out of this file one by one;
+`nav()` sends a moved one to the app (`APP_MOCK` in `build_mock.py`). Moved so far: the Personas
+list (`personas`, was `_s9`) and the persona page (`workbench`, was `_s7`).
+
 ## Open it
 
 `workbench-mock.html` — a single self-contained file. Open it in a browser; no
@@ -37,7 +44,7 @@ second artifact appears instead of the first updating.
 |---|---|
 | `build_mock.py` | assembles everything into `workbench-mock.html`. **Run after any edit.** Owns `ROUTES` (a screen is unreachable until it is listed there), `steps()`, `inject_steps()`, `linkify()`, `RAIL` and the page script |
 | `_head.html` | `<title>` + the whole `<style>` block; tokens copied from `src/styles/tokens.css` |
-| `_s1`–`_s13.html` | the original screen stashes, addressed as `stash(n)` |
+| `_s1`–`_s13.html` | the original screen stashes, addressed as `stash(n)` — `_s7` and `_s9` are gone (moved to the app) |
 | `_new_*.html` | the newer route screens — home, projects, chapters, lines, discover |
 | `_interactions.py` | modal/toast CSS, the modal markup, and the page JS (`openModal`, `toast`, `pickChip`, `selectAllCh`, `recalcAnalyze`, …) |
 | `wire.py`, `wire2.py`, `wire3.py` | the three sweeps that got it to zero dead controls. `wire3.py` is the backstop — it gives any remaining `<button>` without `onclick`/`disabled` a real action |
