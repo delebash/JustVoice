@@ -26,7 +26,6 @@ def _fakes(monkeypatch, pause_ms):
     settings = Settings()
     settings.generation.pause_between_lines_ms = pause_ms
     state = SimpleNamespace(settings=SimpleNamespace(get=lambda: settings))
-    monkeypatch.setattr(render_chapter_api, "qwen_family_conflicts", lambda st, voices: (None, []))
     monkeypatch.setattr(render_chapter_api, "get_state", lambda: state)
     line = ChapterLine(voice="v", text="Hello.")
     monkeypatch.setattr(render_chapter_api, "_resolve_scene_to_lines",

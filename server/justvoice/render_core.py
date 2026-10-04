@@ -141,92 +141,6 @@ def voice_design_instruct_for_id(state: AppState, voice_id: str | None) -> str |
     return voice_design_instruct(state, store.get(voice_id))
 
 
-# Qwen3 ships three checkpoints and only ONE is resident at a time (the
-# engine unloads to switch). Which one a voice needs is decided by how the
-# voice was made, not by anything the user picks at render time:
-#
-#   cv   CustomVoice — the 9 preset speakers. Cannot clone.
-#   base Base        — anything with a reference clip (cloned, imported,
-#                      frozen-designed).
-#   vd   VoiceDesign — a clip-less designed voice, rendered from prose.
-#
-# Mixing families in one cast cannot work in a single pass. Before
-# 2026-08-22 that surfaced as a per-line RuntimeError from deep inside the
-# engine ("the CustomVoice checkpoint cannot clone a voice") after the
-# render had already started — see `qwen_family_conflicts`.
-QWEN_FAMILY_LABELS = {
-    "cv": "CustomVoice",
-    "base": "Base",
-    "vd": "VoiceDesign",
-}
-
-
-def qwen_family_for_voice(state: AppState, voice_id: str) -> str | None:
-    """Which Qwen3 checkpoint family `voice_id` needs, or None if it is not
-    a Qwen3 voice (every other engine is single-checkpoint and unaffected)."""
-    try:
-        owner = _resolve_engine_for_voice(state, voice_id)
-    except AttributeError:
-        # Duck-typed state without the stores this walk needs — the preflight
-        # simply has nothing to check, which must never fail a render.
-        return None
-    if owner != "qwen3":
-        return None
-    store = getattr(state, "voices", None)
-    stored = store.get(voice_id) if store is not None else None
-    if stored is None:
-        # Not in the library, but qwen3 owns it — one of the 9 presets.
-        return "cv"
-    if resolve_audio_prompt_for_stored(state, stored):
-        return "base"
-    if stored.source == "designed":
-        return "vd"
-    if stored.source in ("cloned", "imported"):
-        # A clip-source voice whose file has gone missing. Base is still the
-        # family it belongs to; the render fails on the clip, not the variant.
-        return "base"
-    return "cv"
-
-
-def qwen_family_conflicts(
-    state: AppState, voice_ids
-) -> tuple[str | None, list[tuple[str, str]]]:
-    """Qwen3 voices in this cast that the loaded checkpoint cannot render.
-
-    Returns (loaded_variant_id, [(voice_id, needed_family), …]) — an empty
-    list means the render can go ahead. Compares against the variant that
-    will ACTUALLY be used: the one loaded, or the one `render_line` would
-    auto-load if nothing is. Both halves come back together so the caller
-    can name the loaded checkpoint in its refusal without asking twice.
-
-    Deliberately not an auto-swap. Swapping mid-render means unload + reload
-    per group, which on an 8 GB box is minutes of thrash the user did not
-    ask for; refusing up front with the list lets them split the cast or
-    load the right checkpoint themselves.
-    """
-    try:
-        from .engines.manager import get_manager
-
-        mgr = get_manager()
-        variant = mgr.current_variant_id("qwen3") or mgr.resolved_default_variant("qwen3")
-    except Exception:
-        # No manager (registry-backed test fakes) — nothing to check against.
-        return None, []
-    if not variant:
-        return None, []
-    # "qwen3-base-1.7b" / "qwen3-vd-1.7b-mlx" → the family segment.
-    parts = variant.split("-")
-    loaded_family = parts[1] if len(parts) > 2 else None
-    if loaded_family not in QWEN_FAMILY_LABELS:
-        return variant, []
-    conflicts: list[tuple[str, str]] = []
-    for vid in dict.fromkeys(voice_ids):  # de-dup, keep cast order
-        needed = qwen_family_for_voice(state, vid)
-        if needed is not None and needed != loaded_family:
-            conflicts.append((vid, needed))
-    return variant, conflicts
-
-
 def voice_synth_fields(state: AppState, stored) -> dict:
     """Everything a stored voice contributes to a synth request, keyed as
     the engine protocol expects. THE one place that knows how each voice
@@ -266,11 +180,41 @@ def voice_synth_fields(state: AppState, stored) -> dict:
     return out
 
 
-def _tags_supported(state: AppState, engine_id: str) -> bool | None:
-    """Does this engine keep paralinguistic tags? Registry backends answer
-    from meta; managed plugins from their manifest CAPABILITIES. None =
-    the engine exists nowhere (a render would 404)."""
-    engine = state.engines.get(engine_id)
+def _registry_engine(state: AppState, engine_id: str):
+    registry = getattr(state, "engines", None)
+    return registry.get(engine_id) if registry is not None else None
+
+
+def _line_model(state: AppState, voice: str, engine_id: str) -> str:
+    """The model `voice` speaks on — voice_model.py's one answer — or the
+    engine itself where nothing finer is known."""
+    from .voice_model import voice_model
+
+    vm = voice_model(state, voice)
+    return vm.model if vm is not None else engine_id
+
+
+def _model_row(model: str | None) -> Any | None:
+    """The capability row of exactly this model (family), or None.
+
+    Since 2026-10-03 every tag, emotion tag and knob follows the model the
+    VOICE speaks on (voice_model.py) — not the loaded variant, which is how a
+    Turbo clone rendered while Multilingual was loaded lost its tags. An exact
+    match only: a family must never fall through to its engine's row, or
+    Multilingual would inherit Turbo's tags."""
+    if not model:
+        return None
+    from .engines.capability_details import lookup
+
+    row = lookup(model)
+    return row if row is not None and row.engine_id == model else None
+
+
+def _engine_takes_tags(state: AppState, engine_id: str) -> bool | None:
+    """The engine-level answer, for an engine with no capability row of its
+    own (an online provider, a test's fake engine). None = the engine exists
+    nowhere (a render would 404)."""
+    engine = _registry_engine(state, engine_id)
     if engine is not None:
         return bool(engine.meta.supports_paralinguistic_tags)
     try:
@@ -284,50 +228,23 @@ def _tags_supported(state: AppState, engine_id: str) -> bool | None:
     return bool(manifest.capabilities.get("paralinguistic_tags"))
 
 
-def _capability_row(engine_id: str) -> Any | None:
-    """The capability row of the variant that will actually render (see
-    `_emotion_tagset` for why variant-precise), or None when there is none."""
-    from .engines.capability_details import lookup as lookup_capability
-
-    probe_ids: list[str] = []
-    try:
-        from .engines.manager import get_manager
-
-        mgr = get_manager()
-        probe_ids.append(mgr.current_variant_id(engine_id) or mgr.resolved_default_variant(engine_id))
-    except Exception:
-        # Registry backends and test fakes have no manager; the engine id is
-        # then the only thing to go on, which is correct for them.
-        pass
-    probe_ids.append(engine_id)
-    for pid in probe_ids:
-        if not pid:
-            continue
-        detail = lookup_capability(pid)
-        if detail is not None:
-            return detail
-    return None
-
-
-def performable_text(state: AppState, engine_id: str, text: str, tags_supported: bool | None = None) -> str:
-    """`text` with every `[tag]` this engine cannot perform removed (decided
+def performable_text(state: AppState, engine_id: str, model: str | None, text: str) -> str:
+    """`text` with every `[tag]` this model cannot perform removed (decided
     2026-09-29: "drop every [word] tag the chosen engine doesn't list, not
     only the ones the app recognises").
 
-    An engine that takes no tags loses them all. One that takes tags keeps
-    exactly the bracket tags its RENDERING variant lists — Chatterbox Turbo
-    keeps its vocabulary, Multilingual (one engine id, a tokenless variant)
-    keeps none. Without a capability row the parser's own set is kept, which
-    is what a tag engine got before. Shared by the chapter render, the cache
+    A model that takes no tags loses them all. One that takes tags keeps
+    exactly the bracket tags its capability row lists — Chatterbox Turbo
+    keeps its vocabulary, Multilingual (one engine, a tokenless model) keeps
+    none. Without a capability row the engine's own flag decides, and a tag
+    engine keeps the parser's own set. Shared by the chapter render, the cache
     probe and Generate, so all three speak the same words."""
     from .inline_tags import ATOMIC, SPANS
 
-    if tags_supported is None:
-        tags_supported = bool(_tags_supported(state, engine_id))
-    if not tags_supported:
-        return strip_tags(text)
-    row = _capability_row(engine_id)
+    row = _model_row(model) if _registry_engine(state, engine_id) is None else None
     if row is None:
+        if not _engine_takes_tags(state, engine_id):
+            return strip_tags(text)
         return strip_tags(text, keep=ATOMIC | SPANS)
     known = {
         t.lower()
@@ -335,35 +252,28 @@ def performable_text(state: AppState, engine_id: str, text: str, tags_supported:
         if (tagset.syntax or "").startswith("[")
         for t in tagset.tags
     }
-    return strip_tags(text, keep=known)
+    return strip_tags(text, keep=known) if known else strip_tags(text)
 
 
-def _emotion_tagset(engine_id: str) -> Any | None:
-    """The emotion tag set of the variant that will actually render, or None.
+def _emotion_tagset(model: str | None) -> Any | None:
+    """The emotion tag set of the model that speaks the line, or None.
 
-    `Delivery.emotion` has two possible expressions and the engine decides
-    which: engines that take freeform prose get it folded into `instruct` by
-    `delivery_merge.compose_instruct` up at the API layer, and engines with an
+    `Delivery.emotion` has two possible expressions and the model decides
+    which: models that take freeform prose get it folded into `instruct` by
+    `delivery_merge.compose_instruct` up at the API layer, and models with an
     emotion token vocabulary get it compiled into the text here. Today that
-    second group is Chatterbox **Turbo** alone.
+    second group is Chatterbox Turbo and Nano.
 
-    Variant-precise on purpose. Turbo and Multilingual are one engine id and
-    one adapter but two tokenizers — Multilingual has no such tokens and would
-    read `[angry]` aloud as a word. `capability_details.lookup()` already walks
-    variant ids down to their base row, so asking it about the LOADED variant
-    (or, when nothing is loaded yet, the one `render_line` would auto-load)
-    resolves Turbo's row for Turbo and Multilingual's tokenless row for
-    Multilingual.
+    Exactly the voice's model (`_model_row`): Turbo and Multilingual are one
+    engine and one adapter but two tokenizers — Multilingual has no such
+    tokens and would read `[angry]` aloud as a word.
     """
-    row = _capability_row(engine_id)
+    row = _model_row(model)
     if row is None:
         return None
     for tagset in row.inline_tags:
         if tagset.category == "emotion" and tagset.value_map:
             return tagset
-    # The row resolved and simply has no emotion vocabulary. Do NOT fall
-    # through to the base engine's row — that is how Multilingual would
-    # inherit Turbo's tags.
     return None
 
 
@@ -390,14 +300,14 @@ def _apply_emotion_tag(text: str, delivery: dict[str, Any], tagset: Any | None) 
     return f"{tagset.syntax.format(value=tag)} {text}"
 
 
-def _supports_phoneme_input(engine_id: str) -> bool:
-    """Whether this engine can pronounce a word from IPA NOW: its capability row says so (the
+def _supports_phoneme_input(model: str) -> bool:
+    """Whether this model can pronounce a word from IPA NOW: its capability row says so (the
     pinned runtime splices it — Kokoro, gap 3) and the INSTALLED runtime is new enough. On an
     older installed runtime an entry's respelling is used instead, as on an engine without IPA."""
     try:
         from .engines.capability_details import lookup
 
-        cap = lookup(engine_id)
+        cap = lookup(model)
         if not (cap and cap.supports_phoneme_input):
             return False
         from .engines.audiocpp.runtime import has_feature
@@ -407,18 +317,17 @@ def _supports_phoneme_input(engine_id: str) -> bool:
         return False
 
 
-def speed_native(state: AppState, engine_id: str) -> bool:
-    """Whether this engine's model paces itself (Kokoro, KittenTTS, the
-    OpenAI-compatible provider). Every other engine renders at its own pace
-    and the server time-stretches the finished line (switch plan §5, gap 8)."""
-    registry = getattr(state, "engines", None)
-    engine = registry.get(engine_id) if registry is not None else None
+def speed_native(state: AppState, engine_id: str, model: str | None = None) -> bool:
+    """Whether the model paces itself (Kokoro, KittenTTS, the OpenAI-compatible
+    provider). Every other model renders at its own pace and the server
+    time-stretches the finished line (switch plan §5, gap 8)."""
+    engine = _registry_engine(state, engine_id)
     if engine is not None:
         return bool(getattr(engine.meta, "supports_speed", False))
     try:
         from .engines.capability_details import lookup
 
-        cap = lookup(engine_id)
+        cap = lookup(model or engine_id)
         return bool(cap and cap.speed_native)
     except Exception:  # noqa: BLE001 — capability table unavailable → the server stretches
         return False
@@ -610,13 +519,13 @@ def probe_line_cached(
     engine_id = _resolve_engine_for_voice(state, voice)
     if engine_id is None:
         return None
-    tags_supported = _tags_supported(state, engine_id)
-    if tags_supported is None:
+    if _engine_takes_tags(state, engine_id) is None:
         return None
-    effective_text = performable_text(state, engine_id, text, tags_supported)
+    model = _line_model(state, voice, engine_id)
+    effective_text = performable_text(state, engine_id, model, text)
     effective_text, ipa_map = _apply_lexicons(
         effective_text, lexicons, state,
-        ipa_capable=_supports_phoneme_input(engine_id),
+        ipa_capable=_supports_phoneme_input(model),
     )
     if ipa_map:
         # Rides delivery so it reaches the engine AND enters the cache key
@@ -625,7 +534,7 @@ def probe_line_cached(
         delivery = {**delivery, "ipa_map": ipa_map}
     # After the lexicon, never before — a lexicon entry must not be able to
     # rewrite the inside of a tag we just generated.
-    effective_text = _apply_emotion_tag(effective_text, delivery, _emotion_tagset(engine_id))
+    effective_text = _apply_emotion_tag(effective_text, delivery, _emotion_tagset(model))
     key = (
         CacheKeyBuilder()
         .with_engine(engine_id, VERSION)
@@ -633,7 +542,7 @@ def probe_line_cached(
         .with_text(effective_text)
         .with_language(language)
         .with_seed(seed)
-        .with_delivery_json(canonical_json(_key_delivery(delivery, speed_native(state, engine_id))))
+        .with_delivery_json(canonical_json(_key_delivery(delivery, speed_native(state, engine_id, model))))
         .with_effects_chain(effects_chain_hash(effects))
         .finish()
     )
@@ -692,31 +601,29 @@ def render_line(
         if manifest is None:
             raise not_found(f"engine {engine_id}")
 
-    # Every [tag] this engine can't perform goes (performable_text) — kept in
+    # The model the voice speaks on (voice_model.py): its tags, its emotion
+    # tags, its pacing and the variant loaded below all follow it.
+    model = _line_model(state, voice, engine_id)
+    # Every [tag] this model can't perform goes (performable_text) — kept in
     # lockstep with probe_line_cached, which derives the same text.
-    tags_supported = (
-        bool(engine.meta.supports_paralinguistic_tags)
-        if engine is not None
-        else bool(manifest.capabilities.get("paralinguistic_tags"))
-    )
-    effective_text = performable_text(state, engine_id, text, tags_supported)
+    effective_text = performable_text(state, engine_id, model, text)
     effective_text, ipa_map = _apply_lexicons(
         effective_text, lexicons, state,
-        ipa_capable=_supports_phoneme_input(engine_id),
+        ipa_capable=_supports_phoneme_input(model),
     )
     if ipa_map:
         delivery = {**delivery, "ipa_map": ipa_map}
     # Kept in lockstep with `probe_line_cached` — the two derive the same key
     # and any transform added to one has to land in the other or the probe
     # starts lying about what is cached.
-    effective_text = _apply_emotion_tag(effective_text, delivery, _emotion_tagset(engine_id))
+    effective_text = _apply_emotion_tag(effective_text, delivery, _emotion_tagset(model))
 
     # Cache lookup. The key holds what the lexicons CHANGED in this line — the
     # respelt text, and the IPA for its own words (in the delivery) — never
     # which lexicons were attached. It held their ids until 2026-09-30, so
     # choosing a lexicon on Overview re-rendered every line of the book.
     cache_enabled = use_cache and settings.cache.enabled
-    native = speed_native(state, engine_id)
+    native = speed_native(state, engine_id, model)
     cache_key = (
         CacheKeyBuilder()
         .with_engine(engine_id, VERSION)
@@ -771,15 +678,21 @@ def render_line(
     else:
         from .engines.manager import get_manager
 
+        from .voice_model import ModelUnavailable, ensure_model_loaded
+
         mgr = get_manager()
-        if mgr.current_for(manifest.kind) != engine_id:
-            try:
-                mgr.load(engine_id, device="auto")
-            except Exception as e:
-                raise bad_request(
-                    f"engine '{engine_id}' failed to load on first use: {e}. "
-                    f"Load it on the Engines tab first, or POST /v1/engines/{engine_id}/load."
-                )
+        # The voice's own model, in the size AI Settings chose — a Turbo clone
+        # loads Turbo even while Multilingual is resident (2026-10-03). Pocket
+        # has one model per language, so the line's language picks it.
+        try:
+            ensure_model_loaded(engine_id, model, language)
+        except ModelUnavailable as e:
+            raise bad_request(str(e))
+        except Exception as e:
+            raise bad_request(
+                f"engine '{engine_id}' failed to load on first use: {e}. "
+                f"Load it on the Engines tab first, or POST /v1/engines/{engine_id}/load."
+            )
         voice_fields = voice_synth_fields(state, state.voices.get(voice))
 
         def _synth_piece(piece: str) -> tuple[bytes, int | None, int]:

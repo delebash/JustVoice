@@ -61,6 +61,12 @@ def _mgr(monkeypatch, build="cuda12"):
     monkeypatch.setattr(runtime, "installed_exe", lambda backend=None: exe)
     monkeypatch.setattr(slot, "installed_exe", lambda backend=None: exe)
     monkeypatch.setattr(EngineManager, "pool_used_mb", lambda self, *, fresh=False: None)
+    # A load fetches a missing model file into the app's speech cache — and an
+    # earlier test's app state lingers, so without this a full suite run
+    # downloaded Kokoro, Pocket and Chatterbox for real (2.3 GB, found
+    # 2026-10-03). These tests are about where a load runs, not the fetch.
+    monkeypatch.setattr(EngineManager, "_ensure_variant_local",
+                        lambda self, m, variant_id, progress, cancel_check: None)
     mgr = mgr_mod.EngineManager()
     mgr._hw_cache = _discrete()
     mgr._hw_detected = True

@@ -76,6 +76,7 @@ def test_loaded_engine_skips_the_gate(client, monkeypatch):
 
     mgr = mgr_mod.get_manager()
     monkeypatch.setattr(mgr, "current_id", lambda: "kokoro")
+    monkeypatch.setattr(mgr, "current_for", lambda kind: "kokoro")
 
     async def fake_via_manager(engine_id, req, voice_fields=None):
         return Response(content=b"RIFFfake", media_type="audio/wav")

@@ -289,7 +289,7 @@ def _refresh_counters(db, job_id: str) -> None:
 def _run_job(job_id: str) -> None:
     from .app_state import get_state
     from .export_voicelines import _render_block_production
-    from .render_core import _resolve_engine_for_voice
+    from .voice_model import model_key
     from .synth_scheduler import get_scheduler
 
     state = get_state()
@@ -325,7 +325,7 @@ def _run_job(job_id: str) -> None:
                     if store_p is not None:
                         voice = store_p.voice_id or None
                 engine_id = (
-                    _resolve_engine_for_voice(state, voice) if voice else None
+                    model_key(state, voice) if voice else None
                 ) or f"?voice:{voice}"
                 jb.status = "pending"
                 # Plain copies, not ORM instances: this session's commit

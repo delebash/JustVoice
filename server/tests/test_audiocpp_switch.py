@@ -45,9 +45,12 @@ def test_every_switched_variant_reaches_a_capability_row():
 
 
 def test_qwen3_family_still_reads_off_the_variant_id():
-    # render_core.qwen_family_conflicts splits the id: qwen3-<family>-…
+    # voice_model.model_of_variant walks the id down to its capability row:
+    # qwen3-<family>-<size>-<precision> → qwen3-<family>.
+    from justvoice.voice_model import model_of_variant
+
     ids = [r["id"] for r in discover_engines()["qwen3"].module.VARIANTS]
-    assert {i.split("-")[1] for i in ids} == {"cv", "base", "vd"}
+    assert {model_of_variant(i) for i in ids} == {"qwen3-cv", "qwen3-base", "qwen3-vd"}
 
 
 def test_kokoro_offers_only_voices_audiocpp_can_speak():

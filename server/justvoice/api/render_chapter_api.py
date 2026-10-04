@@ -32,11 +32,9 @@ from ..extraction.tags import left_out_blocks
 from ..mastering import have_ffmpeg, master, master_to_wav, resolve_master_target
 from ..models import ChapterLine, Delivery, RenderChapterRequest
 from ..render_core import (
-    QWEN_FAMILY_LABELS,
     concat_lines,
     line_lexicons,
     probe_line_cached,
-    qwen_family_conflicts,
     render_line,
     voice_design_instruct_for_id,
 )
@@ -486,27 +484,13 @@ async def render_chapter(req: RenderChapterRequest) -> Response:
             f"lines count {len(lines)} > limit {settings.limits.chapter_max_lines}"
         )
 
-    # Qwen3 holds one checkpoint at a time, so a cast that mixes preset,
-    # cloned and clip-less-designed voices cannot render in one pass. Say so
-    # HERE, naming each voice and what it needs — before a single line is
-    # synthesized. Until 2026-08-22 the first mismatched line failed deep in
-    # the engine with a message that named no voice, halfway through a
-    # chapter the user had already waited for.
-    loaded_variant, conflicts = qwen_family_conflicts(st, [line.voice for line in lines])
-    if conflicts:
-        listed = ", ".join(
-            f"{vid} needs {QWEN_FAMILY_LABELS[fam]}" for vid, fam in conflicts
-        )
-        raise bad_request(
-            f"this cast needs a Qwen3 checkpoint that is not loaded "
-            f"({loaded_variant} is): {listed}. Load the checkpoint these "
-            f"voices need, or render them as separate scenes."
-        )
-
-    # Warm the render cache engine-grouped through the scheduler (§7 of
+    # Warm the render cache model-grouped through the scheduler (§7 of
     # docs/plans/2026-08-08-vram-think.md): the loop below re-reads the
-    # cache with the SAME kwargs, so the warm changes engine-load count and
-    # order, never outcomes — its errors surface from the loop.
+    # cache with the SAME kwargs, so the warm changes model-load count and
+    # order, never outcomes — its errors surface from the loop. A cast whose
+    # voices need different models (a Turbo clone, a Qwen3 speaker, a
+    # Kokoro narrator) renders model by model, one swap each — until
+    # 2026-10-03 a cast mixing Qwen3's three checkpoints was refused.
     line_kwargs = [
         dict(
             voice=line.voice,

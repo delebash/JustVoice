@@ -217,6 +217,9 @@ def test_a_saved_voice_keeps_skip_the_words(monkeypatch, tmp_path):
 
     mgr = mgr_mod.get_manager()
     monkeypatch.setattr(mgr, "current_for", lambda kind: "qwen3")
+    # A clone is heard on Qwen3 Base (2026-10-03: the voice's model, not just
+    # its engine, has to be resident) — so the fake says Base is loaded.
+    monkeypatch.setattr(mgr, "current_variant_id", lambda engine_id: "qwen3-base-1.7b-q8")
     monkeypatch.setattr(mgr, "synth", lambda engine_id, body: (bytes(4800), {"sample_rate": 24000, "channels": 1}))
     r = client.post("/v1/voices/preview", json={"engine": "qwen3", "source": "cloned", "ref_wav_b64": clip,
                                                 "preview_text": "Hello.", "xvector_only": True})

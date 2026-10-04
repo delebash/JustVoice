@@ -920,8 +920,11 @@ gone; Kitten, Pocket, VoxCPM2 and Nano are in.
    Kept per model: emotion, register, sampling knobs, seed.
 4. Within a model family the size and precision stay AI Settings' choice: the render uses the
    loaded variant if it is that family, else the user's default if it is, else an installed variant
-   of the family (same size first); none installed → the render refuses, naming the model to
-   install.
+   of the family (same size first). **Amended while building P1:** none installed → the same pick
+   among the family's catalog rows, and the load fetches its file, as every first load already
+   does ("Load never installs a program … it does fetch a missing MODEL file", manager.load) —
+   refusing would have broken today's first-use behaviour. Pocket's language with no model of
+   its own still refuses by name.
 5. A chapter whose personas need different models renders model by model (one swap per model),
    replacing today's mixed-Qwen3 refusal.
 6. Generate: picking a persona switches Generate's voice to the persona's voice (it stays

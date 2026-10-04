@@ -1946,6 +1946,18 @@ OPEN:   the build, slices P1–P9 (doc §6.3): P1 a voice knows its model · P2 
         P5 the index · P6 Voices + gender · P7 Cast + the book's language · P8 the Turbo tag
         check · P9 speaker pronouns (asks before its data reset). Blast radius: doc §6.4.
         Not in it: Slice 4's per-line overrides, persona-by-scene, Generate's fate, gap 5.
+BUILT:  P1 (2026-10-03) — a voice knows its model: `server/justvoice/voice_model.py` (the one
+        answer: model, its name, directed_by words/tags/sliders, the languages it speaks);
+        `VoiceRecord.model`, set by clone/design/import/blend/preview-save; `POST
+        /v1/voices/{id}/copy` (Copy to another model — Turbo/Nano >5 s clip, Qwen3 Base needs
+        the words or Skip the words); renders, auditions and Generate load the voice's model
+        (size from AI Settings); tags/emotion tags follow the voice's model; the scheduler
+        groups by model, so a mixed cast renders model by model (the mixed-Qwen3 refusal and
+        `qwen_family_*` are gone); Import's picker lists models. Plan §6.2 call 4 amended (a
+        missing model is fetched on load, as before). Tests: test_voice_model.py (13) + rewrites;
+        test_cpu_placement made hermetic (a full suite run downloaded 2.3 GB of real models when
+        an earlier test's app state lingered — pre-existing). Gates: ruff, server 1003 passed,
+        vitest 122, biome, vite build, smoke 15/15 on the real data dir.
 GO:     given 2026-10-03 for P1–P8 and P9's checks; P9's data reset asks first
 
 ### FINDING — language never reaches Chatterbox or Qwen3: every render on them is told English

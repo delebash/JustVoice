@@ -4,13 +4,37 @@ A **voice** is what an engine speaks with. Every voice has a type, an engine
 it belongs to, gender / age / accent / tone descriptors, an optional effects
 chain, and an audio-output-channel routing.
 
-A voice belongs to the engine that made it and cannot move to another one.
+A voice belongs to the **model** that made it and cannot move to another one.
 That is not a limitation we chose: a voice is coordinates inside one model's
 learned space, so the numbers mean nothing to a different model. What *is*
 portable is the recording you cloned from — it is stored with the voice, so
-you can clone it again on another engine. The result is a new voice, and it
-will sound a little different, because each engine clones with its own
+you can clone it again on another model. The result is a new voice, and it
+will sound a little different, because each model clones with its own
 character.
+
+### Every voice knows the model that speaks it
+
+One engine can hold several models, and they are not interchangeable.
+Chatterbox is **Multilingual** (23 languages, no tags) and, once our speech
+runtime ships them, **Turbo** and **Nano** (English, 19 inline tags); Qwen3 is
+**CustomVoice** (its nine speakers), **Base** (clones) and **VoiceDesign**
+(designed voices). So a voice remembers the model it was made for, and every
+render loads *that* model:
+
+- **A built-in voice** belongs to its model — Sohee is Qwen3 CustomVoice,
+  Heart is Kokoro.
+- **A clone** belongs to the model you picked in the **Model** list when you
+  cloned it. A clone made on Chatterbox Multilingual renders on Multilingual
+  even if another Chatterbox model happens to be loaded — JustVoice loads
+  Multilingual for it first.
+- **A designed voice** is Qwen3 VoiceDesign while it has no kept clip, and
+  Qwen3 Base once you keep its clip ([below](#keeping-a-designed-voice-is-what-makes-it-one-voice)).
+- **A blend** is Kokoro's.
+
+The model's *size and precision* — Qwen3 1.7B or 0.6B, 8-bit or 16-bit — stay
+your choice on [AI Settings → Speech engines](engines.md): the render uses the
+size you loaded or set as default. Voices made before 2026-10-03 did not record
+a model; they render on their engine's default model that can speak them.
 
 ## The four ways to get a voice
 
@@ -171,7 +195,9 @@ to keep a clip around; to make a voice that can speak *new* lines, clone it.
 
 **Pick the model that speaks as this clip.** When an imported voice renders,
 its clip goes to that model as a cloning reference — so the picker offers
-cloning-capable models only, and defaults to your default TTS engine.
+cloning models only, one entry per model (Chatterbox Multilingual, Pocket TTS,
+Qwen3 Base, VoxCPM2 …), and defaults to your default TTS engine's. The voice
+keeps that model: an import made for Qwen3 Base renders on Base every time.
 
 ## Blend — make a voice out of other voices
 

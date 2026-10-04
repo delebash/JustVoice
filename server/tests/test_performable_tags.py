@@ -36,33 +36,28 @@ def test_strip_keeps_only_the_listed_tags():
     assert strip("[LAUGH] ha", keep={"laugh"}) == "[LAUGH] ha"
 
 
-def _row(*tagsets):
-    return SimpleNamespace(inline_tags=[SimpleNamespace(**t) for t in tagsets])
+def test_a_model_without_tags_loses_them_all():
+    assert render_core.performable_text(None, "kokoro", "kokoro", "Hi. [laugh] [warm] Bye.")         == "Hi.   Bye."
 
 
-def test_an_engine_without_tags_loses_them_all(monkeypatch):
-    monkeypatch.setattr(render_core, "_capability_row", lambda _e: _row(
-        {"syntax": "[{value}]", "tags": ["laugh"]}))
-    assert render_core.performable_text(None, "kokoro", "Hi. [laugh] [warm] Bye.", tags_supported=False) \
-        == "Hi.   Bye."
-
-
-def test_a_tag_engine_keeps_exactly_what_its_variant_lists(monkeypatch):
-    monkeypatch.setattr(render_core, "_capability_row", lambda _e: _row(
-        {"syntax": "[{value}]", "tags": ["laugh", "sigh"]},
-        {"syntax": "<|emotion:{value}|>", "tags": ["warm"]},   # not bracket syntax
-    ))
-    out = render_core.performable_text(None, "chatterbox", "[sigh] So. [warm] [laugh]", tags_supported=True)
+def test_a_tag_model_keeps_exactly_what_it_lists():
+    """Turbo's own vocabulary survives; a word it doesn't list goes."""
+    out = render_core.performable_text(None, "chatterbox", "chatterbox-turbo", "[sigh] So. [warm] [laugh]")
     assert out == "[sigh] So.  [laugh]"
 
 
-def test_a_tokenless_variant_of_a_tag_engine_keeps_none(monkeypatch):
-    """Chatterbox Multilingual: the engine declares tags (Turbo's), the
-    variant that renders has none — so none survive."""
-    monkeypatch.setattr(render_core, "_capability_row", lambda _e: _row())
-    assert render_core.performable_text(None, "chatterbox", "[laugh] Ha.", tags_supported=True) == " Ha."
+def test_a_tokenless_model_of_a_tag_engine_keeps_none():
+    """Chatterbox Multilingual: the same engine as Turbo, a model with no
+    tags — so none survive, whichever model happens to be loaded (the tags
+    follow the VOICE's model since 2026-10-03)."""
+    assert render_core.performable_text(None, "chatterbox", "chatterbox-multilingual", "[laugh] Ha.") == " Ha."
 
 
 def test_without_a_capability_row_a_tag_engine_keeps_the_parsers_set(monkeypatch):
-    monkeypatch.setattr(render_core, "_capability_row", lambda _e: None)
-    assert render_core.performable_text(None, "x", "[laugh] [warm] ok", tags_supported=True) == "[laugh]  ok"
+    monkeypatch.setattr(render_core, "_engine_takes_tags", lambda _s, _e: True)
+    assert render_core.performable_text(None, "x", "x", "[laugh] [warm] ok") == "[laugh]  ok"
+
+
+def test_without_a_capability_row_a_tagless_engine_keeps_none(monkeypatch):
+    monkeypatch.setattr(render_core, "_engine_takes_tags", lambda _s, _e: False)
+    assert render_core.performable_text(None, "x", "x", "[laugh] ok") == " ok"

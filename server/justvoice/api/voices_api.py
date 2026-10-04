@@ -21,6 +21,7 @@ from ..models import (
     BlendRecipe,
     BlendVoiceRequest,
     CloneVoiceRequest,
+    CopyVoiceRequest,
     DesignVoiceRequest,
     ImportVoiceRequest,
     UpdateVoiceRequest,
@@ -28,12 +29,25 @@ from ..models import (
     VoiceList,
     VoiceRecord,
 )
+from .. import voice_model as vmod
 from .extraction_api import RunUsage
 
 router = APIRouter(tags=["voices"])
 
 
+def _facts(vm: vmod.VoiceModel) -> dict:
+    """What speaks a voice, as every screen reads it (voice_model.py)."""
+    return {
+        "model": vm.model,
+        "model_name": vm.name,
+        "directed_by": vm.directed_by,
+        "speaks": list(vm.speaks),
+    }
+
+
 def _stored_to_dto(rec: VoiceRecord) -> Voice:
+    st = get_state()
+    vm = vmod.describe(st, rec.engine, vmod.model_for_stored(st, rec), rec.language)
     return Voice(
         id=rec.id,
         engine=rec.engine,
@@ -41,6 +55,36 @@ def _stored_to_dto(rec: VoiceRecord) -> Voice:
         name=rec.name,
         language=rec.language,
         gender=rec.gender or "",
+        **_facts(vm),
+    )
+
+
+def _preset_dto(st, engine_id: str, v: dict) -> Voice:
+    language = v.get("language", "en")
+    vm = vmod.describe(st, engine_id, vmod.model_for_preset(engine_id), language)
+    return Voice(
+        id=v.get("id"),
+        engine=engine_id,
+        source="preset",
+        name=v.get("name", v.get("id", "")),
+        language=language,
+        gender=v.get("gender", "") or "",
+        **_facts(vm),
+    )
+
+
+def _registry_dto(st, engine, p) -> Voice:
+    engine_id = engine.meta.engine_id
+    vm = vmod.describe(st, engine_id, engine_id, p.language)
+    return Voice(
+        id=p.id,
+        engine=engine_id,
+        source="preset",
+        name=p.name,
+        language=p.language,
+        gender=p.gender or "",
+        sample_url=p.sample_url,
+        **_facts(vm),
     )
 
 
@@ -54,31 +98,12 @@ async def list_voices() -> VoiceList:
     mgr = get_manager()
     for manifest in mgr.manifests().values():
         for v in manifest.static_voices:
-            out.append(
-                Voice(
-                    id=v.get("id"),
-                    engine=manifest.id,
-                    source="preset",
-                    name=v.get("name", v.get("id", "")),
-                    language=v.get("language", "en"),
-                    gender=v.get("gender", "") or "",
-                )
-            )
+            out.append(_preset_dto(st, manifest.id, v))
 
     # 2. Presets from in-process engines (currently only external-openai-tts).
     for engine in st.engines.all():
         for p in engine.voices():
-            out.append(
-                Voice(
-                    id=p.id,
-                    engine=engine.meta.engine_id,
-                    source="preset",
-                    name=p.name,
-                    language=p.language,
-                    gender=p.gender or "",
-                    sample_url=p.sample_url,
-                )
-            )
+            out.append(_registry_dto(st, engine, p))
 
     # 3. Stored (clones / designs / imports).
     for rec in st.voices.list():
@@ -89,23 +114,27 @@ async def list_voices() -> VoiceList:
 @router.get("/v1/voices/{id}", response_model=Voice, summary="Get one voice")
 async def get_voice(id: str) -> Voice:
     st = get_state()
-    # Check presets first
     for engine in st.engines.all():
         for p in engine.voices():
             if p.id == id:
-                return Voice(
-                    id=p.id,
-                    engine=engine.meta.engine_id,
-                    source="preset",
-                    name=p.name,
-                    language=p.language,
-                    gender=p.gender or "",
-                )
-    # Stored
+                return _registry_dto(st, engine, p)
     rec = st.voices.get(id)
     if rec:
         return _stored_to_dto(rec)
+    for manifest in get_manager().manifests().values():
+        for v in manifest.static_voices:
+            if v.get("id") == id:
+                return _preset_dto(st, manifest.id, v)
     raise not_found(f"voice {id}")
+
+
+def _model_for(engine: str, model: str | None, action: str) -> str:
+    """The model a new voice is stored with — the one asked for, checked
+    against the engine and what it can do, or the engine's default."""
+    try:
+        return vmod.check_model_for(engine, model, action)
+    except ValueError as e:
+        raise bad_request(str(e))
 
 
 @router.patch("/v1/voices/{id}", response_model=Voice, summary="Update a stored voice's metadata")
@@ -141,10 +170,12 @@ async def clone_voice(body: CloneVoiceRequest) -> Voice:
         wav_bytes = base64.b64decode(body.ref_wav_b64)
     except Exception as e:
         raise bad_request(f"invalid base64: {e}")
+    model = _model_for(body.engine, body.model, "clone")
     now = datetime.now(timezone.utc)
     rec = VoiceRecord(
         id="",
         engine=body.engine,
+        model=model,
         source="cloned",
         name=body.name,
         language=body.language,
@@ -165,10 +196,12 @@ async def clone_voice(body: CloneVoiceRequest) -> Voice:
 )
 async def design_voice(body: DesignVoiceRequest) -> Voice:
     st = get_state()
+    model = _model_for(body.engine, body.model, "design")
     now = datetime.now(timezone.utc)
     rec = VoiceRecord(
         id="",
         engine=body.engine,
+        model=model,
         source="designed",
         name=body.name,
         language=body.language,
@@ -191,10 +224,12 @@ async def import_voice(body: ImportVoiceRequest) -> Voice:
         wav_bytes = base64.b64decode(body.wav_b64)
     except Exception as e:
         raise bad_request(f"invalid base64: {e}")
+    model = _model_for(body.engine, body.model, "clone")
     now = datetime.now(timezone.utc)
     rec = VoiceRecord(
         id="",
         engine=body.engine,
+        model=model,
         source="imported",
         name=body.name,
         language=body.language,
@@ -206,6 +241,84 @@ async def import_voice(body: ImportVoiceRequest) -> Voice:
     )
     created = st.voices.create(rec)
     st.voices.write_ref_wav(created.id, wav_bytes)
+    return _stored_to_dto(created)
+
+
+# Chatterbox Turbo and Nano clone only from a clip longer than this (upstream's
+# own rule — docs/plans/2026-10-03-gap-1-turbo-cloning.md).
+_TURBO_MIN_CLIP_S = 5.0
+
+
+def _clip_seconds(path) -> float | None:
+    from ..audio.wav import parse_wav_header
+
+    try:
+        data = path.read_bytes()
+        fmt, _offset, size = parse_wav_header(data)
+    except Exception:  # noqa: BLE001 — not a PCM WAV we can measure
+        return None
+    frame = max(1, fmt.channels) * 2
+    return size / frame / max(1, fmt.sample_rate)
+
+
+@router.post(
+    "/v1/voices/{id}/copy", response_model=Voice, status_code=201,
+    summary="Copy a voice's clip to another model",
+)
+async def copy_voice(id: str, body: CopyVoiceRequest) -> Voice:
+    """"Copy to another model…" (decided 2026-10-03): a clone belongs to the
+    model it was made for, so the same clip on another model is a second
+    voice — Marius on Turbo for English with tags, and on Chatterbox
+    Multilingual for Spanish. What the target model needs is checked here,
+    by name, before anything is written."""
+    st = get_state()
+    src = st.voices.get(id)
+    if src is None:
+        raise not_found(f"voice {id}")
+    clip = st.voices.ref_wav_path(id)
+    if not clip.is_file():
+        raise bad_request(
+            f"{src.name} has no clip to copy — only a cloned, imported or saved designed "
+            "voice can be spoken by another model"
+        )
+    engine = vmod.engine_of_model(body.model)
+    if engine is None:
+        raise bad_request(f"{vmod.model_name(body.model)} isn't in this speech runtime")
+    if not vmod.can(body.model, "clone"):
+        raise bad_request(f"{vmod.model_name(body.model)} can't clone a voice")
+    name = vmod.model_name(body.model)
+    if body.model in ("chatterbox-turbo", "chatterbox-nano"):
+        secs = _clip_seconds(clip)
+        if secs is not None and secs <= _TURBO_MIN_CLIP_S:
+            raise bad_request(
+                f"{name} needs a clip longer than {_TURBO_MIN_CLIP_S:g} seconds — "
+                f"this one is {secs:.1f} s"
+            )
+    transcript = body.transcript if body.transcript is not None else src.transcript
+    xvector_only = body.xvector_only if body.xvector_only is not None else src.xvector_only
+    row = vmod._capability(body.model)
+    if row is not None and row.supports_xvector_only and not (transcript or "").strip() and not xvector_only:
+        raise bad_request(
+            f"{name} needs the words the clip says, or Skip the words — give one with the copy"
+        )
+    now = datetime.now(timezone.utc)
+    rec = VoiceRecord(
+        id="",
+        engine=engine,
+        model=body.model,
+        source=src.source if src.source in ("cloned", "imported", "designed") else "cloned",
+        name=(body.name or "").strip() or f"{src.name} ({name})",
+        language=src.language,
+        gender=src.gender,
+        design_prompt=src.design_prompt,
+        transcript=transcript,
+        xvector_only=bool(xvector_only) and bool(row and row.supports_xvector_only),
+        sample_count=0,
+        created_at=now,
+        updated_at=now,
+    )
+    created = st.voices.create(rec)
+    st.voices.write_ref_wav(created.id, clip.read_bytes())
     return _stored_to_dto(created)
 
 
@@ -441,6 +554,7 @@ async def blend_voices(req: BlendVoiceRequest) -> Voice:
     rec = VoiceRecord(
         id="",
         engine=req.engine,
+        model=_model_for(req.engine, req.model, "blend"),
         source="blended",
         name=req.name,
         language=lang,

@@ -50,6 +50,10 @@ def _client_pinned_language(body: "VoicePreviewRequest") -> bool:
 
 class VoicePreviewRequest(BaseModel):
     engine: str
+    # The model the candidate is heard on and saved for (capability row id,
+    # 2026-10-03) — Turbo and Multilingual are one engine and two models.
+    # Left out = the engine's default model that can make this kind of voice.
+    model: Optional[str] = None
     source: VoicePreviewSource
     ref_wav_b64: Optional[str] = None  # for cloned / imported
     transcript: Optional[str] = None  # for cloned / imported
@@ -254,6 +258,16 @@ async def preview_voice(body: VoicePreviewRequest) -> VoicePreviewResponse:
         manifest = get_manager().get_manifest(body.engine)
         if manifest is None:
             raise not_found(f"engine {body.engine}")
+    if engine is None:
+        # The model this candidate is heard on — and saved for (save_preview).
+        from .. import voice_model as vmod
+
+        action = "clone" if body.source in ("cloned", "imported") else (
+            "design" if body.source == "designed" else "blend")
+        try:
+            body.model = vmod.check_model_for(body.engine, body.model, action)
+        except ValueError as e:
+            raise bad_request(str(e))
     # Lazy-load a registry engine if needed (managed engines load inside
     # the scheduled call below).
     if engine is not None and not engine.ready():
@@ -330,11 +344,11 @@ async def preview_voice(body: VoicePreviewRequest) -> VoicePreviewResponse:
         from ..synth_scheduler import get_scheduler
 
         mgr = get_manager()
-        kind = manifest.kind
+
+        from ..voice_model import ensure_model_loaded
 
         def _do() -> tuple[bytes, int, int]:
-            if mgr.current_for(kind) != body.engine:
-                mgr.load(body.engine, device="auto")
+            ensure_model_loaded(body.engine, body.model or body.engine, body.language)
             audio_bytes, meta = mgr.synth(
                 body.engine,
                 {
@@ -438,6 +452,7 @@ async def save_preview(
     record = VoiceRecord(
         id="",
         engine=payload.get("engine", ""),
+        model=payload.get("model"),
         source=entry.source,
         name=body.name,
         language=payload.get("language") or "en",
@@ -662,8 +677,24 @@ def _resolve_audition_target(voice_id: str, auto_load: bool):
             return ("managed", engine_id, ticket["voice_fields"])
         return ("inprocess", engine_id, ticket["voice_fields"])
 
+    def _ready(engine_id: str) -> None:
+        """The voice's own model resident, or the client's load dialog."""
+        from ..voice_model import ModelUnavailable, ensure_model_loaded, is_model_loaded, voice_model
+
+        vm = voice_model(st, voice_id)
+        model = vm.model if vm is not None else engine_id
+        if is_model_loaded(engine_id, model):
+            return
+        if not auto_load:
+            raise conflict(f"engine_not_loaded:{engine_id}")
+        try:
+            ensure_model_loaded(engine_id, model, _audition_language(voice_id))
+        except ModelUnavailable as e:
+            raise bad_request(str(e))
+
     owner = _find_managed_voice_owner(voice_id)
     if owner is not None:
+        _ready(owner)
         return ("managed", owner, None)
 
     static_owner = _find_static_voice_owner(voice_id)
@@ -674,20 +705,14 @@ def _resolve_audition_target(voice_id: str, auto_load: bool):
             # nothing (user-hit on an isolated engine's preview). The UI
             # maps this to an "install it in Engines" dialog.
             raise conflict(f"engine_not_installed:{static_owner}")
-        if mgr.current_id() != static_owner:
-            if not auto_load:
-                raise conflict(f"engine_not_loaded:{static_owner}")
-            mgr.load(static_owner, device="auto")
+        _ready(static_owner)
         return ("managed", static_owner, None)
 
     stored = get_state().voices.get(voice_id)
     if stored:
         voice_fields = _voice_synth_fields(stored)
         if mgr.get_manifest(stored.engine):
-            if mgr.current_id() != stored.engine:
-                if not auto_load:
-                    raise conflict(f"engine_not_loaded:{stored.engine}")
-                mgr.load(stored.engine, device="auto")
+            _ready(stored.engine)
             return ("managed", stored.engine, voice_fields)
         engine = st.engines.get(stored.engine)
         if engine is None:

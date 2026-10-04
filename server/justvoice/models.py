@@ -498,6 +498,10 @@ class BlendRecipe(BaseModel):
 class VoiceRecord(BaseModel):
     id: str
     engine: str
+    # The model this voice was made for — the capability row id, e.g.
+    # "chatterbox-turbo" (2026-10-03). A voice saved before models were
+    # stored has none; `voice_model.model_for_stored` answers for it.
+    model: str | None = None
     source: StoredVoiceSource
     name: str
     language: str
@@ -522,6 +526,14 @@ class Voice(BaseModel):
     language: str
     gender: str = ""
     sample_url: str | None = None
+    # What speaks it, from `voice_model` — one server answer for every screen
+    # (2026-10-03): the model (capability row id) and its name, how it can be
+    # directed ("words" · "tags" · "sliders"), and the languages it can be
+    # spoken in on that model (one entry = fixed by the voice or the model).
+    model: str = ""
+    model_name: str = ""
+    directed_by: str = ""
+    speaks: list[str] = []
 
 
 class VoiceList(BaseModel):
@@ -542,6 +554,9 @@ class UpdateVoiceRequest(BaseModel):
 
 class CloneVoiceRequest(BaseModel):
     engine: str
+    # The model the clone is made for (capability row id); left out = the
+    # engine's default model that can clone.
+    model: str | None = None
     name: str
     ref_wav_b64: str
     language: str = "en-US"
@@ -552,6 +567,7 @@ class CloneVoiceRequest(BaseModel):
 
 class DesignVoiceRequest(BaseModel):
     engine: str
+    model: str | None = None
     name: str
     prompt: str
     language: str = "en-US"
@@ -560,11 +576,25 @@ class DesignVoiceRequest(BaseModel):
 
 class ImportVoiceRequest(BaseModel):
     engine: str
+    model: str | None = None
     name: str
     wav_b64: str
     language: str = "en-US"
     gender: str | None = None
     transcript: str | None = None
+
+
+class CopyVoiceRequest(BaseModel):
+    """POST /v1/voices/{id}/copy — the same clip as a new voice on another
+    model ("Copy to another model…", 2026-10-03): Marius on Turbo in English,
+    and again on Chatterbox Multilingual for Spanish."""
+
+    model: str
+    name: str | None = None
+    # Qwen3 Base clones from the clip's words or from the speaker vector
+    # alone; a copy may supply either when the source voice has neither.
+    transcript: str | None = None
+    xvector_only: bool | None = None
 
 
 # ─── Personas ───────────────────────────────────────────────────────────
@@ -1286,6 +1316,7 @@ class RenderChapterRequest(BaseModel):
 
 class BlendVoiceRequest(BaseModel):
     engine: str
+    model: str | None = None
     name: str
     # Weighted strategies (blend / extrapolate / vector). One id may be
     # blending.MEAN_SOURCE, which resolves to the pack's average voice.

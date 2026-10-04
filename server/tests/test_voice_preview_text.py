@@ -37,6 +37,7 @@ def synth_calls(monkeypatch):
     from justvoice.engines import manager as mgr_mod
 
     monkeypatch.setattr(mgr_mod.get_manager(), "current_id", lambda: "kokoro")
+    monkeypatch.setattr(mgr_mod.get_manager(), "current_for", lambda kind: "kokoro")
     # Kokoro moved to per-engine venv isolation (2026-08-19, the numpy>=2
     # clash) — is_installed now probes engines/kokoro/.venv, which no test
     # machine has. These tests exercise the audition surface, not install

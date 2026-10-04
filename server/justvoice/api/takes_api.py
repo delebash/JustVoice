@@ -290,7 +290,7 @@ async def render_block(block_id: str, db: Session = Depends(get_db)) -> TakeResp
     from ..database.models import Block
     from ..errors import not_found
     from ..export_voicelines import _render_block_production
-    from ..render_core import _resolve_engine_for_voice
+    from ..voice_model import model_key
     from ..render_jobs import persist_block_take
     from ..synth_scheduler import get_scheduler
     from ._speaker_helpers import persona_for_block
@@ -307,7 +307,7 @@ async def render_block(block_id: str, db: Session = Depends(get_db)) -> TakeResp
         store_p = state.personas.get(persona.id)
         if store_p is not None:
             voice = store_p.voice_id or None
-    engine_id = (_resolve_engine_for_voice(state, voice) if voice else None) or f"?voice:{voice}"
+    engine_id = model_key(state, voice) if voice else f"?voice:{voice}"
     handle = get_scheduler().submit(
         [(engine_id, lambda: _render_block_production(state, persona, block))],
         interactive=True,

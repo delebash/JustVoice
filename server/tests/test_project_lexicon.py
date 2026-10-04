@@ -350,7 +350,6 @@ def _capture_chapter_render(monkeypatch, lines):
     seen: list[list[str]] = []
     settings = Settings()
     state = SimpleNamespace(settings=SimpleNamespace(get=lambda: settings))
-    monkeypatch.setattr(render_chapter_api, "qwen_family_conflicts", lambda st, voices: (None, []))
     monkeypatch.setattr(render_chapter_api, "get_state", lambda: state)
     monkeypatch.setattr(render_chapter_api, "_resolve_scene_to_lines", lambda *a, **k: lines)
     monkeypatch.setattr(render_chapter_api, "render_line",

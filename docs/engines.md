@@ -400,6 +400,15 @@ disk shows **Download (N GB)** — download only; once its files are on disk
 the row shows **Load model**. A load of a model that is not downloaded yet
 downloads it first. Loading a model unloads the same slot's previous one.
 
+**A render loads the model each voice needs.** A voice remembers the model it
+was made for ([Voices → Every voice knows the model that speaks it](voices.md#every-voice-knows-the-model-that-speaks-it)),
+so hearing a Qwen3 speaker while Qwen3 Base is loaded loads CustomVoice first,
+and a chapter with voices on several models loads each in turn. The size and
+precision come from here: the model you loaded if it is the right one, else
+the one you **Set as default** if it is, else a downloaded build of that model
+(the same size first) — and if none is downloaded, the load downloads one, as
+any first load does. Pocket TTS picks its model by the line's language.
+
 The runtime never outlives JustVoice: closing the window stops it, and the
 server stops one left over from an earlier session when it starts — see
 [GPU → Engines left over from an earlier session](gpu.md#engines-left-over-from-an-earlier-session).

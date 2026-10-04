@@ -242,12 +242,12 @@ async def warm_lines(state, line_kwargs: list[dict]) -> None:
     """Warm the render cache for these render_line calls, engine-grouped.
     Each kwargs dict must be EXACTLY what the assembly loop will pass —
     same args, same cache key, guaranteed hit."""
-    from .render_core import _resolve_engine_for_voice, render_line
+    from .render_core import render_line
+    from .voice_model import model_key
 
     specs: list[tuple[str, Callable[[], Any]]] = []
     for kw in line_kwargs:
-        engine_id = _resolve_engine_for_voice(state, kw["voice"]) or f"?voice:{kw['voice']}"
-        specs.append((engine_id, lambda kw=kw: render_line(state, **kw)))
+        specs.append((model_key(state, kw["voice"]), lambda kw=kw: render_line(state, **kw)))
     await warm_specs(specs)
 
 

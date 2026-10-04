@@ -5,7 +5,7 @@ import { useApi } from "../stores/api.js";
 import { pushToast, serverUrl as apiPath } from "@delebash/llm-ui";
 import { confirmDialog } from "@delebash/llm-ui";
 import { readPref, writePref } from "../services/prefs.js";
-import { capableRows, engineOptionsFor, rowOptions, variantToLoad } from "../services/capabilities.js";
+import { capableRows, rowOptions, variantToLoad } from "../services/capabilities.js";
 import { voiceRowState } from "../services/voiceGrid.js";
 import { UiButton, UiInput, UiTextarea, UiField, UiTag, UiChip, UiSelect, UiCheckbox, UiSegmented, UiSlider, UiTable } from "@delebash/llm-ui";
 // Language CODE → the name a person reads ("en-US" → American English).
@@ -1009,7 +1009,8 @@ async function auditionCandidate() {
   clearCandidate();
   try {
     const body = {
-      engine: selectedEngine.value,
+      engine: acquireTab.value === "imported" ? (importModelEngine.value || selectedEngine.value) : selectedEngine.value,
+      model: newVoiceModel.value,
       source: acquireTab.value,
       preview_text: previewText.value.trim() || undefined,
       delivery: knobDelivery(),
@@ -1255,29 +1256,35 @@ function blendShare(idx) {
 }
 
 // Import: WHICH model speaks as this clip. Rendering an imported voice
-// sends its clip to the stamped engine as a clone reference, so the
-// stamp is a real decision — it used to be whatever engine happened to
-// be selected (an arbitrary bind, found 2026-08-20). Cloning-capable
-// engines only, because clone-reference synthesis is what an imported
-// voice does at render.
-const importEngine = ref("");
-// Until 2026-08-21 this passed the FIELD name into capableFor, which maps
-// CAPABILITY names — the lookup missed, the list was always empty, and
-// the picker sat dead ("model that speaks the clip drop down not
-// working"). The shared builder takes the field directly.
-const importEngineOptions = computed(() =>
-  engineOptionsFor(capabilityRows.value, engines.value, "supports_voice_cloning"),
+// sends its clip to that model as a clone reference, so the choice is a
+// real decision — it used to be whatever engine happened to be selected
+// (an arbitrary bind, found 2026-08-20). One option per MODEL since
+// 2026-10-03 (Chatterbox Turbo and Multilingual are one engine and two
+// models), and the voice stores the model it was made for.
+const importModel = ref("");
+const importModelOptions = computed(() =>
+  rowOptions(capabilityRows.value, engines.value, "supports_voice_cloning"),
+);
+const importModelEngine = computed(() =>
+  capableRows(capabilityRows.value, engines.value, "supports_voice_cloning")
+    .find((o) => o.rowId === importModel.value)?.engine.id || "",
 );
 // No `immediate`: the callback reads settingsDefaultEngine, declared
 // below — and at setup time the options are empty anyway (capabilities
 // arrive async and re-fire this watch).
-watch(importEngineOptions, (opts) => {
-  if (!opts.some((o) => o.value === importEngine.value)) {
-    importEngine.value =
+watch(importModelOptions, (opts) => {
+  if (!opts.some((o) => o.value === importModel.value)) {
+    importModel.value =
       opts.find((o) => o.value === settingsDefaultEngine.value)?.value
       || opts[0]?.value || "";
   }
 });
+
+/** The model the new voice is made for — the row the tab shows (a
+ *  capability row id IS a model), or Import's own pick. */
+const newVoiceModel = computed(() =>
+  (acquireTab.value === "imported" ? importModel.value : selectedRowId.value) || undefined,
+);
 
 // Settings → Generation "Default TTS engine" — preferred for create
 // flows; a loaded engine outranks it (no point spinning up a second).
@@ -1533,20 +1540,24 @@ async function submit() {
     if (acquireTab.value === "cloned") {
       const ref_wav_b64 = await fileToB64(cloneFile.value);
       body = {
-        engine, name, ref_wav_b64, language: selectedLanguage.value || "en-US",
+        engine, model: newVoiceModel.value, name, ref_wav_b64, language: selectedLanguage.value || "en-US",
         ...(cloneTranscript.value.trim() ? { transcript: cloneTranscript.value.trim() } : {}),
         ...(supportsXvector.value && xvectorOnly.value ? { xvector_only: true } : {}),
       };
       await api.request("/v1/voices/clone", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       pushToast({ message: `Voice "${name}" cloned.` });
     } else if (acquireTab.value === "designed") {
-      body = { engine, name, prompt: designPrompt.value.trim(), language: selectedLanguage.value || "en-US" };
+      body = {
+        engine, model: newVoiceModel.value, name, prompt: designPrompt.value.trim(),
+        language: selectedLanguage.value || "en-US",
+      };
       await api.request("/v1/voices/design", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       pushToast({ message: `Voice "${name}" designed.` });
     } else if (acquireTab.value === "imported") {
       const wav_b64 = await fileToB64(importFile.value);
       body = {
-        engine: importEngine.value || engine,
+        engine: importModelEngine.value || engine,
+        model: newVoiceModel.value,
         name, wav_b64, language: selectedLanguage.value || "en-US",
         ...(importTranscript.value.trim() ? { transcript: importTranscript.value.trim() } : {}),
       };
@@ -1555,7 +1566,7 @@ async function submit() {
     } else if (acquireTab.value === "blended") {
       const p = blendPayload();
       body = {
-        engine, name,
+        engine, model: newVoiceModel.value, name,
         strategy: p.strategy,
         source_voice_ids: p.ids,
         weights: p.weights,
@@ -2045,7 +2056,7 @@ function voiceTypeVariant(source) {
                   <UiInput v-model="voiceName" placeholder="e.g. Sarah" width="name" />
                 </UiField>
                 <UiField v-if="acquireTab === 'imported'" label="Model that speaks as this clip" layout="block">
-                  <UiSelect v-model="importEngine" :options="importEngineOptions" width="name" />
+                  <UiSelect v-model="importModel" :options="importModelOptions" width="name" />
                 </UiField>
                 <!-- Hidden on Blend: the mix inherits its sources' languages —
                      the endpoint derives them; this control never reached the

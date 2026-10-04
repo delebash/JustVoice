@@ -2,6 +2,15 @@
 
 ## v0.1.0
 
+- **Every voice knows its model, and a mixed cast renders (2026-10-03).** A
+  voice now remembers the model it was made for — a Qwen3 speaker is
+  CustomVoice, a clone is the model you picked when you cloned it — and every
+  render loads that model, in the size you chose on AI Settings. A chapter whose
+  voices need different models renders model by model instead of being refused
+  (the mixed-Qwen3 refusal is gone). Import's **Model that speaks as this clip**
+  lists models rather than engines
+  ([Voices → Every voice knows the model that speaks it](voices.md#every-voice-knows-the-model-that-speaks-it),
+  [Studio → One speech model at a time](studio.md#one-speech-model-at-a-time--a-mixed-cast-renders-model-by-model))
 - **An empty transcript stays empty (2026-10-03).** Auditioning a cloned voice
   without typing what the clip says sent a dash as its transcript, and saving the
   audition kept it, so Qwen3 Base read the clip as saying "—". Now an empty box

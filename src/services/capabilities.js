@@ -72,25 +72,6 @@ export function rowOptions(rows, engines, field) {
     .map(({ label, value }) => ({ label, value }));
 }
 
-/** One option per ENGINE (deduped) — value = engine id. For pickers that
- *  choose the engine itself (Import's "Model that speaks as this clip"). */
-export function engineOptionsFor(rows, engines, field) {
-  const seen = new Set();
-  const out = [];
-  for (const b of capableRows(rows, engines, field)) {
-    if (seen.has(b.engine.id)) continue;
-    seen.add(b.engine.id);
-    out.push({
-      name: b.engine.name || b.engine.id,
-      label: `${b.engine.name || b.engine.id}${statusSuffix(b.engine)}`,
-      value: b.engine.id,
-    });
-  }
-  return out
-    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }))
-    .map(({ label, value }) => ({ label, value }));
-}
-
 /**
  * The `model_variant` to send when loading the engine behind a capability row.
  *

@@ -38,6 +38,7 @@ def _samples_from_chunk_bytes(audio_bytes: bytes, is_wav: bool) -> np.ndarray:
 
 def _finish_line(
     pcm: bytes, sample_rate: int, channels: int, delivery: dict, engine_id: str, effects: list[dict],
+    model: str | None = None,
 ) -> bytes:
     """A finished line's PCM → the WAV Generate returns: Speed, Gain and Pitch
     through the chapter render's own function, then the effects chain. Until
@@ -46,7 +47,8 @@ def _finish_line(
     from ..render_core import apply_line_delivery, speed_native
 
     pcm = apply_line_delivery(
-        pcm, sample_rate, channels, delivery, speed_native=speed_native(get_state(), engine_id),
+        pcm, sample_rate, channels, delivery,
+        speed_native=speed_native(get_state(), engine_id, model),
     )
     return apply_effects_chain(write_wav_container(pcm, sample_rate, channels), effects)
 
@@ -85,11 +87,12 @@ def _read_through_lexicons(st, engine_id: str, req: GenerateRequest) -> tuple[Ge
     line on Generate was said one way and the same line in a chapter another.
     The book's lexicon is not added: Generate is not a line of a book.
     """
-    from ..render_core import _apply_lexicons, _supports_phoneme_input, performable_text
+    from ..render_core import _apply_lexicons, _line_model, _supports_phoneme_input, performable_text
 
+    model = _line_model(st, req.voice, engine_id)
     text, ipa_map = _apply_lexicons(
-        performable_text(st, engine_id, req.text), req.lexicons, st,
-        ipa_capable=_supports_phoneme_input(engine_id),
+        performable_text(st, engine_id, model, req.text), req.lexicons, st,
+        ipa_capable=_supports_phoneme_input(model),
     )
     return req.model_copy(update={"text": text}), ipa_map
 
@@ -166,6 +169,7 @@ async def generate(req: GenerateRequest) -> Response:
 
     managed_owner = _find_managed_voice_owner(req.voice)
     if managed_owner is not None:
+        _ensure_voice_model(st, managed_owner, req)
         return await _generate_via_manager(managed_owner, req)
 
     # Voice belongs to a managed engine that isn't the currently-loaded one?
@@ -181,6 +185,7 @@ async def generate(req: GenerateRequest) -> Response:
                 f"currently loaded. Load it on the Engines tab first, or pick a voice "
                 f"belonging to the loaded engine."
             )
+        _ensure_voice_model(st, static_owner, req)
         return await _generate_via_manager(static_owner, req)
 
     stored = st.voices.get(req.voice)
@@ -188,15 +193,8 @@ async def generate(req: GenerateRequest) -> Response:
         # Stored voice's engine — may be managed or in-process.
         voice_fields = _voice_synth_fields(stored)
         if mgr.get_manifest(stored.engine):
-            # Auto-load the managed engine if it's installed but not loaded.
-            if mgr.current_id() != stored.engine:
-                try:
-                    mgr.load(stored.engine, device="auto")
-                except Exception as e:
-                    raise bad_request(
-                        f"engine '{stored.engine}' failed to load on first use: {e}. "
-                        f"Click Load on the Engines tab first, or POST /v1/engines/{stored.engine}/load."
-                    )
+            # Auto-load the voice's model if it isn't the resident one.
+            _ensure_voice_model(st, stored.engine, req)
             return await _generate_via_manager(stored.engine, req, voice_fields=voice_fields)
         # In-process engine path falls through below.
         engine_id = stored.engine
@@ -211,6 +209,24 @@ async def generate(req: GenerateRequest) -> Response:
             raise not_found(f"voice {req.voice}")
 
     return _generate_via_inprocess(engine_id, req)
+
+
+def _ensure_voice_model(st, engine_id: str, req: GenerateRequest) -> None:
+    """Load the model the voice speaks on (voice_model.py) — a Qwen3 speaker
+    needs CustomVoice even while Base is resident, a Turbo clone needs Turbo.
+    The size AI Settings chose is kept."""
+    from ..render_core import _line_model
+    from ..voice_model import ModelUnavailable, ensure_model_loaded
+
+    try:
+        ensure_model_loaded(engine_id, _line_model(st, req.voice, engine_id), req.language)
+    except ModelUnavailable as e:
+        raise bad_request(str(e))
+    except Exception as e:
+        raise bad_request(
+            f"engine '{engine_id}' failed to load on first use: {e}. "
+            f"Click Load on the Engines tab first, or POST /v1/engines/{engine_id}/load."
+        )
 
 
 def _resolve_audio_prompt_for_stored(stored) -> str | None:
@@ -260,8 +276,11 @@ async def _generate_via_manager(
     generate route was passing long text in one shot, which truncates or
     hallucinates trailing noise on most engines).
     """
+    from ..render_core import _line_model
+
     mgr = get_manager()
     st = get_state()
+    model = _line_model(st, req.voice, engine_id)
     # Every [tag] this engine can't perform goes, as in a chapter render
     # (decided 2026-09-29) — Generate used to send the text untouched, so
     # Kokoro read "[warm]" aloud as "warm". Then the lexicons (2026-09-30).
@@ -342,7 +361,7 @@ async def _generate_via_manager(
                 pcm = strip_wav_header(audio_bytes) if meta.get("is_wav_container") else audio_bytes
                 wav_bytes = _finish_line(
                     pcm, meta.get("sample_rate") or 24000, meta.get("channels") or 1,
-                    delivery, engine_id, effects,
+                    delivery, engine_id, effects, model,
                 )
                 return Response(content=wav_bytes, media_type="audio/wav")
 
@@ -362,7 +381,7 @@ async def _generate_via_manager(
 
             merged = concatenate_audio_chunks(pcm_chunks, sample_rate, crossfade_ms=crossfade_ms)
             pcm_int16 = (np.clip(merged, -1.0, 1.0) * 32767.0).astype("<i2").tobytes()
-            wav_bytes = _finish_line(pcm_int16, sample_rate, channels, delivery, engine_id, effects)
+            wav_bytes = _finish_line(pcm_int16, sample_rate, channels, delivery, engine_id, effects, model)
             return Response(content=wav_bytes, media_type="audio/wav")
         except TermsRequired as e:
             raise e.api_error() from e

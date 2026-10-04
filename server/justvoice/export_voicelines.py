@@ -176,7 +176,7 @@ def collect_block_specs(state, project_id: str):
     Returns [] the moment an unvoiced block appears: the export loop raises
     on that block, so warming past it would render audio the export never
     reaches."""
-    from .render_core import _resolve_engine_for_voice
+    from .voice_model import model_key
 
     db = db_session.SessionLocal()
     try:
@@ -203,7 +203,7 @@ def collect_block_specs(state, project_id: str):
                         voice = store_p.voice_id or None
                 if not voice:
                     return []
-                engine_id = _resolve_engine_for_voice(state, voice) or f"?voice:{voice}"
+                engine_id = model_key(state, voice) if voice else f"?voice:{voice}"
                 specs.append(
                     (engine_id, lambda p=persona, b=block: _render_block_production(state, p, b))
                 )

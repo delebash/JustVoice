@@ -20,7 +20,9 @@ persona's own instruct field was empty.
 **E — a mixed cast failed per line.** Qwen3 keeps one checkpoint resident, so
 a cast mixing preset (CustomVoice), cloned (Base) and clip-less designed
 (VoiceDesign) voices cannot render in one pass. It used to discover this deep
-inside the engine, after the render had started, in a message naming no voice.
+inside the engine, after the render had started, in a message naming no voice;
+from 2026-08-22 the chapter refused up front; since 2026-10-03 every voice
+names its model (voice_model.py) and the chapter renders model by model.
 
 Also here: **C**, the paralinguistic-tag flag Qwen3 never earned.
 """
@@ -40,13 +42,11 @@ from justvoice.app_state import get_state
 from justvoice.database.seed import seed_workspace
 from justvoice.models import VoiceRecord
 from justvoice.render_core import (
-    QWEN_FAMILY_LABELS,
-    qwen_family_conflicts,
-    qwen_family_for_voice,
     voice_design_instruct,
     voice_design_instruct_for_id,
     voice_synth_fields,
 )
+from justvoice.voice_model import model_key, model_of_variant, voice_model
 
 SR = 24000
 
@@ -202,104 +202,51 @@ def test_both_render_doors_put_the_description_first() -> None:
         assert chunk.lstrip().startswith("_voice_design_instruct(req.voice)")
 
 
-# ── E — the cast/variant preflight ─────────────────────────────────────
+# ── E — every voice names its model ────────────────────────────────────
 
-def test_each_voice_names_the_checkpoint_it_needs(client) -> None:
+def test_each_voice_names_the_model_it_needs(client) -> None:
     state = get_state()
 
     designed = _store(state, design_prompt="a harbour-master")
-    assert qwen_family_for_voice(state, designed.id) == "vd"
+    assert voice_model(state, designed.id).model == "qwen3-vd"
 
     cloned = _store(state, source="cloned", name="Marius")
     state.voices.write_ref_wav(cloned.id, _wav())
-    assert qwen_family_for_voice(state, cloned.id) == "base"
+    assert voice_model(state, cloned.id).model == "qwen3-base"
 
     # A designed voice becomes a Base voice the moment it is frozen — the
-    # whole point of A, and the reason E has to run after it.
-    frozen = _store(state, design_prompt="a harbour-master", name="Frozen")
+    # whole point of A, and the reason E has to run after it. Clip wins over
+    # anything stored.
+    frozen = _store(state, design_prompt="a harbour-master", name="Frozen", model="qwen3-vd")
     state.voices.write_ref_wav(frozen.id, _wav())
-    assert qwen_family_for_voice(state, frozen.id) == "base"
+    assert voice_model(state, frozen.id).model == "qwen3-base"
 
 
-def test_a_non_qwen_voice_needs_no_checkpoint(client) -> None:
+def test_a_preset_speaks_on_its_own_model(client) -> None:
     state = get_state()
+    assert voice_model(state, "Sohee").model == "qwen3-cv"
     kokoro = _store(state, engine="kokoro", source="blended", name="Mix")
-    assert qwen_family_for_voice(state, kokoro.id) is None
-    # …and therefore never appears in a conflict list.
-    _, conflicts = qwen_family_conflicts(state, [kokoro.id])
-    assert conflicts == []
+    assert voice_model(state, kokoro.id).model == "kokoro"
 
 
-def test_a_mixed_cast_is_refused_before_any_line_is_rendered(client, monkeypatch) -> None:
+def test_a_mixed_cast_groups_by_model_instead_of_refusing(client) -> None:
+    """The scheduler's key is the model, so a chapter with a designed voice,
+    a clone and a Qwen3 speaker renders each model's lines together — one
+    swap per model — where it used to refuse the whole chapter."""
     state = get_state()
     designed = _store(state, design_prompt="a harbour-master", name="Designed")
     cloned = _store(state, source="cloned", name="Marius")
     state.voices.write_ref_wav(cloned.id, _wav())
-
-    from justvoice import render_core
-
-    class _Mgr:
-        def current_variant_id(self, _engine):
-            return "qwen3-cv-1.7b"
-
-        def resolved_default_variant(self, _engine):
-            return "qwen3-cv-1.7b"
-
-    monkeypatch.setattr(
-        "justvoice.engines.manager.get_manager", lambda: _Mgr(), raising=False
-    )
-    variant, conflicts = render_core.qwen_family_conflicts(
-        state, [designed.id, cloned.id]
-    )
-    assert variant == "qwen3-cv-1.7b"
-    assert dict(conflicts) == {designed.id: "vd", cloned.id: "base"}
-    # Every family in a conflict has a name a person can act on.
-    assert all(fam in QWEN_FAMILY_LABELS for _, fam in conflicts)
+    keys = {model_key(state, v) for v in (designed.id, cloned.id, "Sohee")}
+    assert keys == {"qwen3:qwen3-vd", "qwen3:qwen3-base", "qwen3:qwen3-cv"}
 
 
-def test_a_single_family_cast_passes(client, monkeypatch) -> None:
-    state = get_state()
-    a = _store(state, source="cloned", name="A")
-    b = _store(state, source="cloned", name="B")
-    for v in (a, b):
-        state.voices.write_ref_wav(v.id, _wav())
-
-    class _Mgr:
-        def current_variant_id(self, _engine):
-            return "qwen3-base-1.7b"
-
-        def resolved_default_variant(self, _engine):
-            return "qwen3-base-1.7b"
-
-    monkeypatch.setattr(
-        "justvoice.engines.manager.get_manager", lambda: _Mgr(), raising=False
-    )
-    from justvoice import render_core
-
-    _, conflicts = render_core.qwen_family_conflicts(state, [a.id, b.id])
-    assert conflicts == []
-
-
-def test_the_mlx_variants_resolve_to_the_same_families(client, monkeypatch) -> None:
+def test_the_mlx_variants_resolve_to_the_same_families() -> None:
     """`qwen3-vd-1.7b-mlx` is the VoiceDesign family like its torch twin —
     the suffix must not read as a fourth checkpoint that matches nothing."""
-    state = get_state()
-    designed = _store(state, design_prompt="a harbour-master")
-
-    class _Mgr:
-        def current_variant_id(self, _engine):
-            return "qwen3-vd-1.7b-mlx"
-
-        def resolved_default_variant(self, _engine):
-            return "qwen3-vd-1.7b-mlx"
-
-    monkeypatch.setattr(
-        "justvoice.engines.manager.get_manager", lambda: _Mgr(), raising=False
-    )
-    from justvoice import render_core
-
-    _, conflicts = render_core.qwen_family_conflicts(state, [designed.id])
-    assert conflicts == []
+    assert model_of_variant("qwen3-vd-1.7b-mlx") == "qwen3-vd"
+    assert model_of_variant("qwen3-base-0.6b-q8") == "qwen3-base"
+    assert model_of_variant("chatterbox-turbo-f16") == "chatterbox-turbo"
 
 
 # ── C — Qwen3 has no tag vocabulary ────────────────────────────────────
