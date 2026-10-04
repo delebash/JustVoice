@@ -1918,12 +1918,18 @@ WHY:    the HTML mock shares only the tokens with the app (`docs/plans/mock/READ
         How it speaks has knobs one per row (mock: 3 across), text boxes capped at 60ch (mock:
         card-wide), equal columns (mock: 1.5 : 1). Found by the user 2026-10-04.
 NOT:    option 1 — the HTML mock linking the real stylesheets; hand-written markup can drift back.
-OPEN:   redo the persona mock — the index (`_s9`) and the editor (`_s7`), drawn as
-        `docs/plans/2026-10-03-persona-redesign.md` §6.1 — as Vue pages; then make
-        `PersonaEditorView.vue` match it. Asked first (2026-10-04): does the mock's look beat the
-        size-to-content / 60ch rule on these pages; where the mock pages live; what happens to
-        the HTML mock's `_s7`/`_s9`.
-GO:     given 2026-10-04 for option 2 and the persona mock; the three questions come first
+        Then "your rec" (2026-10-04) on the questions: on the persona pages the mock's look beats
+        size-to-content / 60ch (knobs 3 across, sliders filling their cell, text boxes card-wide);
+        mock pages are a dev-only route (`#/mock/...` under `npm run dev`), never packaged; the
+        HTML mock's `_s7`/`_s9` are deleted once the Vue ones exist; Design carries both 08-22
+        paths, a description on the persona (dynamic) and "Save as a voice" (frozen, cloned),
+        after checking what the code sends VoiceDesign today.
+OPEN:   making a voice — reopened by the user: "i think the whole design should be part of the
+        persona, we can do all design in persona except lora training maybe". Waiting on the
+        answers to that. Then: read the 12 Alexandria screenshots + 08-15 §5/§9.3 + 08-22 record;
+        redo the persona mock (index `_s9`, editor `_s7`, plan §6.1) as Vue pages; then make
+        `PersonaEditorView.vue` match it.
+GO:     given 2026-10-04 for option 2, the persona mock and the answers above
 
 ### FINDING — a persona's pace, pitch and gain can't be edited anywhere in the app
 STATE:  FINDING — code-verified 2026-09-30 (found by the mock-vs-app comparison). The persona
