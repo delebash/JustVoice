@@ -505,6 +505,13 @@ its blast radius and the gaps.
   2026-10-05* · [`2026-10-05-five-small-findings.md`](../plans/2026-10-05-five-small-findings.md).
 - Only Kokoro speaks IPA (runtime v0.9.0-jv.4, `kokoro/manifest.py:33`); the capabilities row's
   `supports_phoneme_input` is the installed truth (`engines_api.py:252`). — *code, 2026-10-05*.
+- A second look at lines Analyze leaves blank — one extra model call per blank line, with the
+  end of the previous chapter and the start of the next — went 30/30, 0 wrong: The Ninth
+  Facet's unrevealed voice (Bigger Inside D39) found as Odeline Marran from the next chapter,
+  speakers not in the cast (Sedge ×5, the Speckled Band's driver ×3) kept unknown, 21 known
+  lines asked as if blank all right. ~5–15 s per blank line on a normal chapter, ~23 s on a
+  12.6 k-token one. Tested, not built. — *measured, 2026-10-05, the user's machine* ·
+  [`2026-10-05-second-look-test.md`](../plans/2026-10-05-second-look-test.md).
 - A persona can be saved with no delivery settings (`default_delivery` None — `POST /v1/personas`
   passes it through; Cast's batch makes them so); the project export writes `{}` for it. — *code
   + test, 2026-10-05* · `server/tests/test_project_export.py`. (was: the export crashed with a 500
