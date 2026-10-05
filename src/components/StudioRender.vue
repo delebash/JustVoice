@@ -24,6 +24,7 @@ import {
 import { useApi } from "../stores/api.js";
 import { useCopy } from "../services/copy.js";
 import { renderChapter } from "../services/renderRun.js";
+import PageTaskStrips from "./PageTaskStrips.vue";
 
 const props = defineProps({
   project: { type: Object, required: true },
@@ -252,6 +253,7 @@ function checkState(s) {
               :title="`Join every ${word.singular.toLowerCase()} that can render and measure RMS + peak against the ACX limits, after the master`"
               @click="runQc" />
           </div>
+          <PageTaskStrips :features="['acx-qc']" :meta="{ projectId: project.id }" />
 
           <UiTable class="jv-table-look studio-render__grid" :data="rows" :columns="COLUMNS" data-key="id" row-hover
             :full-width-row="(r) => (r.task ? 'studio-render__task-row' : false)"

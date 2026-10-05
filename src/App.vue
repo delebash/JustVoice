@@ -16,7 +16,7 @@ import LeftoverEnginesHelp from "./components/LeftoverEnginesHelp.vue";
 // An engine's own terms (Pocket TTS — Kyutai's, before the first clone): one dialog for the
 // whole app, opened by `jv:engine-terms` (services/engineTerms.js).
 import EngineTermsDialog from "./components/EngineTermsDialog.vue";
-import { AiSetupOffer, AiStatusButton, AiTaskStrip, BootModelLoad, HelpDrawer, HelpTrigger, LlmUiHosts, TitleBar, openExternal, pushToast, refreshRunnerModels, useAiTasksNav, useAiTasksStore, useModelApply, useRunnerModels, warmModelId } from "@delebash/llm-ui";
+import { AiSetupOffer, AiStatusButton, BootModelLoad, HelpDrawer, HelpTrigger, LlmUiHosts, TitleBar, openExternal, pushToast, refreshRunnerModels, useAiTasksNav, useAiTasksStore, useModelApply, useRunnerModels, warmModelId } from "@delebash/llm-ui";
 import { readPref, writePref } from "./services/prefs.js";
 
 // View components are lazy-loaded by the router (router/index.js); App.vue holds
@@ -629,10 +629,11 @@ onMounted(async () => {
             <a :href="effectiveLede.linkHash">{{ effectiveLede.linkLabel }}</a>.
           </template>
         </p>
-        <!-- Global task stack (kit strips). Inline-flagged tasks are skipped —
-             their surface (a Lab column, a modal) renders its own strip, and
-             one run must never show twice. -->
-        <AiTaskStrip v-for="task in tasks.visibleTasks.filter((t) => !t.inline)" :key="task.id" :task="task" />
+        <!-- No global task stack (decided 2026-10-05: a page shows only its own
+             tasks — it put a render on Voices and Smart-assign on Generate).
+             Each task's strip is on the page that started it
+             (PageTaskStrips.vue); the header's ✨ AI button and the AI Tasks
+             page show everything, as in JustWrite. -->
         <!-- Settings' "Run welcome again" emits `reset-onboarding`, and nothing
              was listening (2026-08-15): a route component renders through
              <component :is>, which binds no handlers, so the button was dead

@@ -1256,6 +1256,11 @@ progress {
 .jv-banner--danger { border-left-color: var(--danger);   background: var(--danger-bg); color: var(--danger-ink); }
 .jv-banner--info   { border-left-color: var(--info-blue); background: #eef4fb; }
 
+/* A page's own AI task strips (PageTaskStrips.vue, Studio's run banner) —
+   stacked under the control that started them. Each task shows on the page
+   that started it; there is no app-wide strip (2026-10-05). */
+.jv-task-strips { display: flex; flex-direction: column; gap: 8px; margin: 0 0 10px; }
+
 /* =========================================================
    .jv-install-strip — full-row progress block for engine setup +
    per-variant model Download. Replaces the tiny embedded mini-bar in

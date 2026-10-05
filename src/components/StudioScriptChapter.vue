@@ -35,7 +35,7 @@ import { useCopy } from "../services/copy.js";
 import { routeWords } from "../services/attribution.js";
 import { useKeptScroll } from "../composables/useKeptScroll.js";
 import { useAnalyzeModel } from "../composables/useAnalyzeModel.js";
-import { inRun, onChapterDone, queueChapters, runStripTask } from "../services/chapterRun.js";
+import { inRun, onChapterDone, queueChapters, runStripTask, stepRun } from "../services/chapterRun.js";
 import { addNarrator } from "../services/narrator.js";
 import NarratorNeeded from "./NarratorNeeded.vue";
 import {
@@ -166,10 +166,13 @@ const subline = computed(() => {
 });
 
 // ── The run (Re-analyze this chapter stays on the page) ──────────────────
-const runningHere = computed(() => inRun(props.project.id, props.sceneId));
+// Only Analyze: Discover's scans share the queue and show on Discover (2026-10-05).
+const runningHere = computed(() => inRun(props.project.id, props.sceneId, "analyze"));
+// Analyze's chapters queued behind Discover's scan.
+const analyzeWaits = computed(() => !!stepRun(props.project.id, "analyze")?.waiting);
 // This chapter's strip: its task running now, else its last one (2026-10-05 —
 // the first match could be a finished one while another ran).
-const runTask = computed(() => runStripTask(tasks, props.project.id, props.sceneId));
+const runTask = computed(() => runStripTask(tasks, props.project.id, "analyze", props.sceneId));
 // A book with narration needs a narrator before Analyze runs (2026-10-05) — the
 // same question Script's grid asks.
 const narratorAsk = ref(false);
@@ -582,7 +585,9 @@ const flagged = (ln) => (ln.flags || []).length > 0;
                 <template v-if="noModel">Analyze needs a language model. <a href="#/ai">Set one in AI Settings ➜</a></template>
                 <template v-else-if="onlyNarrator">Your cast has only the Narrator, so Analyze has nobody to choose from.
                   Find the speakers first — <a href="#studio" @click.prevent="emit('go', 'discover')">Discover ➜</a></template>
-                <template v-else-if="runningHere === 'queued'">Queued — starts after the current run.</template>
+                <template v-else-if="runningHere === 'queued'">{{ analyzeWaits
+                  ? "Queued — waiting for Discover to finish."
+                  : `Queued — starts after the ${word.plural.toLowerCase()} before it.` }}</template>
                 <template v-else>Works out who speaks each line, choosing from the cast. Narration is never sent
                   to the model. Lines you set are kept. Stays on this page.</template>
               </span>

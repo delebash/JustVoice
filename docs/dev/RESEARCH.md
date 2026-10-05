@@ -51,6 +51,7 @@ Subjects: [1 · Speech runtime](#1--speech-runtime-audiocpp) ·
 [4 · The app's view of the AI model](#4--the-apps-view-of-the-ai-model) ·
 [5 · The narrator and the chapter run](#5--the-narrator-and-the-chapter-run) ·
 [6 · The app stack: Electron, Node, phones](#6--the-app-stack-electron-node-phones) ·
+[7 · Where an AI task shows](#7--where-an-ai-task-shows) ·
 [Records not yet distilled](#records-not-yet-distilled)
 
 ---
@@ -525,10 +526,17 @@ decided 2026-10-05 and its blast radius.
   `narration_waiting` and is left out of `no_speaker` and `to_check` (was: counted as No speaker
   and To check on every line — The Ninth Facet's four chapters read 43 · 46 · 39 · 31 "no
   speaker", nearly all narration, until 2026-10-05). — *code, 2026-10-05* · `_chapter_script`.
-- Discover's scan and Script's Analyze share ONE run per book (`services/chapterRun.js`); each
-  chapter is an inline kit task (`speaker_identification` / `speaker_attribution`,
-  `meta.run`). The kit lists tasks oldest first and a finished one lingers, so the strip must
-  prefer the running task (`runStripTask`). — *code, 2026-10-05*.
+- Discover's scan and Script's Analyze share ONE queue per book (`services/chapterRun.js`) —
+  one model call, one chapter at a time; each chapter is an inline kit task
+  (`speaker_identification` / `speaker_attribution`, `meta.run`). The kit lists tasks oldest
+  first and a finished one lingers, so a strip must prefer the running task (`runStripTask`).
+  — *code, 2026-10-05*.
+- Each step has its own part of that queue (since 2026-10-05, [`2026-10-05-page-tasks.md`](../plans/2026-10-05-page-tasks.md)):
+  a chapter is queued once per step (`inRun(…, kind)`), each step counts its own batch
+  (`stepRun` — total, finished, its own time; a step queued behind the other is `waiting`),
+  and Cancel stops one step's chapters (`cancelRun(projectId, kind)`, one AbortController per
+  chapter). (was: one banner, one count and one Cancel for the whole queue, shown on both
+  pages.) — *code, 2026-10-05*.
 - Measured on The Ninth Facet (gemma 26B-A4B on the RTX 2070 SUPER, ~40–46 tokens/s): a Discover
   call ≈ 7 s per chapter (2,200–2,800 prompt tokens, 52–68 generated); an Analyze call ≈ 35–65 s
   per chapter (2,300–3,000 prompt tokens, 1,500–2,300 generated). — *measured, 2026-10-05* ·
@@ -607,6 +615,30 @@ kit's register §2.
   (`docs/dev/design-decisions.md:101-104`).
 - `justvoice-server serve` is argparse (`serve.py:14`); typer is only the dev `cli.py`.
 - The OpenAPI licence says Apache-2.0 (`server/justvoice/app.py:139`); the project is MIT.
+
+---
+
+## 7 · Where an AI task shows
+
+**Records:** [`2026-10-05-page-tasks.md`](../plans/2026-10-05-page-tasks.md) — the rule
+(decided 2026-10-05, "a page shows only its own tasks"), the table of each task's page, the
+blast radius.
+
+- Each task's strip is on the page that started it (`PageTaskStrips.vue` over
+  `services/pageTasks.js`, by feature and by the meta the page stamps). (was: `App.vue` showed
+  every non-inline task at the top of every page.) — *code, 2026-10-05*.
+- The kit's task panel (the ✨ button) lists every task whatever `inline` says; `inline` only
+  told a global stack to skip a task (`just-llm-runner/ui/src/stores/aiTasks.js`, start()).
+  — *code, 2026-10-05*.
+- JustWrite has no app-wide strip — 22 surfaces each mount `AiTaskStrip` for their own task;
+  docgen has one surface, no stack. — *code, 2026-10-05* · `grep -rln AiTaskStrip src`.
+- Engine installs, downloads and loads never used the AI task store (`useDownloadTask.js`
+  imports none); they report on their own rows. — *code, 2026-10-05*.
+- Smart-assign sends each speaker's pronouns and each persona's gender as its VOICE's gender
+  (`voiceGender.js`: your override on Voices, else the catalog's, else a guess from the id or
+  first name; "?" is sent as no gender). A persona has no gender field of its own. — *code,
+  2026-10-05* · `StudioCast.vue` (the smart-assign request). The server prompt's use of it was
+  not re-read.
 
 ---
 

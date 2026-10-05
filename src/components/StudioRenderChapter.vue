@@ -29,6 +29,7 @@ import { useApi } from "../stores/api.js";
 import { useCopy } from "../services/copy.js";
 import { useKeptScroll } from "../composables/useKeptScroll.js";
 import { mediaUrl, renderChapter, renderLines } from "../services/renderRun.js";
+import PageTaskStrips from "./PageTaskStrips.vue";
 
 const props = defineProps({
   project: { type: Object, required: true },
@@ -424,6 +425,7 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
               <span class="jv-hint">A new take for every line that can render. Old takes are kept.</span>
             </span>
           </div>
+          <PageTaskStrips :features="['render-lines', 'render-scene']" :meta="{ sceneId }" />
           <audio v-if="playing?.key === 'chapter'" :src="playing.url" controls autoplay class="jv-audio-inline" />
         </div>
       </div>

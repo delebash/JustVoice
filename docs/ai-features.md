@@ -336,9 +336,10 @@ carries the numbers (elapsed, words, tokens, tok/s); the run is also
 recorded in the panel's Recent list with its token counts. A failed run
 shows its error right in the column, badges the AI-tasks button until you
 open the panel, and keeps its error in the panel until you dismiss it — so
-errors don't vanish before you read them. The same strip follows every AI
-button in the app: Studio's Analyze, Smart-assign, Show notes,
-the persona 🎲/✏️ buttons, and the voice ✨ gender guess.
+errors don't vanish before you read them. The same strip shows under every AI
+button in the app, on that button's own page: Script's Analyze, Discover's
+scan, Smart-assign, Show notes, the persona 🎲/✏️ buttons, and the voice ✨
+gender guess.
 
 The **Find new speakers** row's Lab runs the discovery scan instead — the
 same prompt behind Studio's **Discover** step. It lists the people the text

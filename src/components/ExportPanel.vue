@@ -14,6 +14,7 @@
 <script setup>
 import { ref, computed, watch } from "vue";
 import { useApi } from "../stores/api.js";
+import PageTaskStrips from "./PageTaskStrips.vue";
 import { pushToast, saveBlob } from "@delebash/llm-ui";
 import { projectsService } from "../services/projects.js";
 import { useCopy } from "../services/copy.js";
@@ -121,6 +122,7 @@ async function generateShowNotes() {
       task: {
         feature: "show-notes",
         label: `Show notes · ${p.name || "project"}`,
+        meta: { projectId: p.id },
         onRetry: () => generateShowNotes(),
       },
     });
@@ -173,6 +175,7 @@ async function copyShowNotes() {
         <UiButton intent="secondary" :loading="exportBusy === 'zip'" :disabled="!!exportBusy" :label="`⬇ ${copy.chapter.singular} WAVs (zip)`" @click="exportChapterWavs" />
         <UiButton v-if="project.project_type === 'podcast'" intent="secondary" label="📝 Show notes" title="Draft episode show notes from the segments (LLM)" @click="generateShowNotes" />
       </div>
+      <PageTaskStrips :features="['show-notes']" :meta="{ projectId: project.id }" />
       <div v-if="showNotes" class="exportp__notes">
         <div class="exportp__h" style="margin-bottom:6px">
           <strong>Show notes</strong>

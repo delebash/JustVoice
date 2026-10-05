@@ -723,6 +723,98 @@ GO: needed.
 
 ## The next build
 
+### Cast, Render, Generate and the persona's gender — five answers (decided 2026-10-05)
+STATE:  DECIDED 2026-10-05 — "your rec on all go", on the five leans as shown. The user asked: "on
+        cast what do you think about create persona for each cast button … we also have an add
+        button for adding a speaker, what is the perpose of this … on renders shouldnt we be able to
+        change speaker like in script … i think we can remove the generate page as persona does all
+        that now, correct?" and "persona we dont have pronoun like we do in cast, how can we smart
+        assign a persona if we dont know what gender the persona is vs cast?" As shown:
+        1. "Not as a blind one-per-speaker button … Better: ＋ New persona for the N with none — one
+           per speaker who has no persona, named after them, each given a voice picked from the
+           speaker's description and gender, the way Smart-assign picks among existing personas."
+           Lean yes, "after I check what a persona needs" (what a persona needs before it can speak;
+           whether a voice is required on create).
+        2. Cast's ＋ Add stays — it is for someone Discover missed; Analyze can only choose from the
+           book's speakers. Its tooltip says when to use it: "Someone Discover missed: add them,
+           then Re-analyze or set their lines on Script."
+        3. "Render's line panel gets the same speaker picker as Script, saving through the same
+           request; the line then shows stale until it's rendered again." (D2 of 2026-10-04 was the
+           VOICE — read-only, "Change in Cast" — and stands.)
+        4. Generate is not removed yet: "compare the two pages feature by feature in code first.
+           Then remove Generate only if nothing is lost, and remove it everywhere." (Generate has:
+           any voice with no persona, the delivery overlay and slash tags, Compose and Rewrite,
+           attaching a lexicon, a download; it is also the "type a line, hear it" page for the
+           dictation and accessibility audiences.) The comparison is research under this go.
+        5. A persona gets no gender or pronoun field — its gender is its voice's (what Smart-assign
+           already sends). "The persona page should show the gender it gets from its voice, with a
+           link to change it on Voices," and a persona whose voice is "?" says so.
+WHY:    Smart-assign matches speakers' pronouns against personas' VOICE gender (RESEARCH §7); a
+        persona field could contradict its voice.
+NOT:    one persona per speaker with no voice; a persona gender field; removing Generate before the
+        comparison; Render's line choosing a voice per line (D2).
+OPEN:   all five, after the page-tasks build below.
+GO:     given 2026-10-05 ("your rec on all go")
+
+### A page shows only its own AI tasks, and the step's name leads
+STATE:  DECIDED 2026-10-05 — "your rec on all go", on the proposal and the four leans as shown. The
+        user first: "when i run anyalyze then switch to discover is see the anylyze progress bars …
+        it should not look like discover is running when script is or vice versa, this is true for
+        any ai tasks, you should not show an incorrect task running on a screen"; "the name is
+        anazlyze when the actauall menu item is script … be consistant"; and of Discover's run
+        banner and its chapter strip, "i like both". As shown:
+        "A page shows only its own tasks.
+        - Discover shows only scans, and Script only Analyze: banner, strip, row tags and counts.
+        - A Discover scan waiting behind Analyze shows as its own state, with no bar from the other
+          task: '🔍 Discover · 2 chapters — waiting for Script to finish'.
+        - A chapter can be queued once per step, so you can tick it on Discover while Script is
+          analyzing it.
+        - The app-wide strip goes. Each task shows on the page that started it. The header's ✨ AI
+          button (running count plus the task panel) and the AI Tasks page stay the places that show
+          everything."
+        "The step's name leads everywhere outside the page's own button. Banner: '📜 Script ·
+        analyzing 4 chapters' / '🔍 Discover · scanning 2 chapters'. Task labels (strip and AI
+        Tasks panel): 'Script · analyze · The Keystone' / 'Discover · scan · The Keystone'. The
+        buttons stay verbs on their own page, since the page title already names the step:
+        ✨ Analyze on Script, Scan on Discover."
+        The leans, all yes: 1 each page only its own step; a waiting scan says what it waits for —
+        one line, no bar · 2 drop the app-wide strip (App.vue:635); engine downloads and loads show
+        where you start them (AI Settings, or the page that asked for the engine) · 3 the step's
+        name leads · 4 one chapter in the queue once per step. Said with it: check whether
+        JustWrite has the same app-wide strip before planning 2 (the family law).
+        Then (the user: "why do have two progress bars, it looks like the ai progress shows the
+        same info with more info than the other"), DECIDED 2026-10-05 "your rec go", as shown:
+        "keep both, each saying only its own part. Banner: the batch only — '🔍 Discover ·
+        scanning 4 chapters · 1 of 4 done · 0:42 · about 2 min left', with the bar and Cancel.
+        Strip: this chapter's model call only — 'Discover · scan · The Keystone', with the prompt
+        reading, the tokens and Retry. The '2 of 4' comes out of it." Not one only: the strip comes
+        and goes with each chapter.
+WHY:    one queue per book is real — one model, one chapter at a time — but showing it whole on both
+        pages made Discover look busy while Script ran; App.vue:635 put every task with no page of
+        its own at the top of every page.
+NOT:    one banner for the whole queue on both pages; keeping the app-wide strip.
+BUILT:  2026-10-05 — plan + blast radius `docs/plans/2026-10-05-page-tasks.md`. `chapterRun.js`
+        (`inRun(…, kind)`, `stepRun`, `cancelRun(projectId, kind)`, per-step counts and failures,
+        one controller per chapter, labels "Script · analyze · …" / "Discover · scan · …", no
+        "n of N" in the strip; `runKind` deleted), `StudioRunBanner.vue` (`kind`; the batch; the
+        waiting line), Discover / Script / the chapter page; `App.vue` strip gone;
+        `PageTaskStrips.vue` + `services/pageTasks.js` on Render (ACX QC; the chapter page's
+        renders), Cast, Export, Generate, Lines, Voices. Named in the plan §1 as following from
+        "a page shows only its own": Cancel stops one step; a waiting step keeps its Cancel;
+        Delete stays blocked while either step reads the chapter. Docs: studio, generate,
+        ai-features, whats-new; RESEARCH §5, §7. Tested: Biome, vitest 145 (new queue tests),
+        build, family guard, smoke 15/15 on the running app. Live, on a throwaway copy of the demo
+        book (deleted after): Script's banner "📜 Script · analyzing 2 chapters", its strip
+        "Script · analyze · Brass Rank · 1,689 words in"; Discover meanwhile no banner, no strip,
+        the chapter being analyzed tickable; Scan → "🔍 Discover · 2 chapters — waiting for
+        Script to finish", no bar, rows "queued", for 40 s; then "scanning 2 chapters · 0 of 2
+        done · 0:00" (its own clock), the strip naming each chapter, "about 7 s left"; Voices had
+        no strip while Analyze ran (the title bar said "1 in flight"); Cancel on Script stopped
+        only Analyze and the scan ran. Not checked live: the strips on Render, Cast, Export,
+        Generate, Lines and Voices with a task of their own.
+OPEN:   none.
+GO:     given 2026-10-05 ("your rec on all go")
+
 ### A demo project opens like any new project — on its Overview, with the menu of its kind
 STATE:  DECIDED 2026-10-05 — "your rec go", on the fix as shown (report: after a database reset,
         the sample audiobook from the kind picker left Lines and Stories in the menu): "`onCreateDemo`

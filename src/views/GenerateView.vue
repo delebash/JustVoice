@@ -2,6 +2,7 @@
 <script setup>
 import { ref, reactive, onActivated, onMounted, computed, watch } from "vue";
 import { useApi } from "../stores/api.js";
+import PageTaskStrips from "../components/PageTaskStrips.vue";
 import { lexiconMatches } from "../services/lexiconPreview.js";
 import { pushToast, runAiEndpoint, withAiTask } from "@delebash/llm-ui";
 import { handleTermsRefusal } from "../services/engineTerms.js";
@@ -859,6 +860,8 @@ onActivated(() => {
         :title="busy ? 'Stop queued / running render' : 'No render in flight'"
       />
     </div>
+
+    <PageTaskStrips :features="['compose', 'persona-rewrite', 'generate']" />
 
     <p v-if="emptyVoiceReason" class="jv-banner jv-banner--warn">
       <template v-if="emptyVoiceReason.kind === 'no-engine'">

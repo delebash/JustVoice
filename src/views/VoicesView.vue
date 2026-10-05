@@ -3,6 +3,7 @@
 import { ref, onMounted, onActivated, computed, nextTick } from "vue";
 import { useRouter } from "vue-router";
 import { useApi } from "../stores/api.js";
+import PageTaskStrips from "../components/PageTaskStrips.vue";
 import { pushToast, serverUrl as apiPath } from "@delebash/llm-ui";
 import { confirmDialog, promptDialog } from "@delebash/llm-ui";
 import {
@@ -689,6 +690,7 @@ function voiceTypeVariant(source) {
       title="Ask the AI to label the voices the built-in dictionary doesn't know (the voice_gender feature — runs only when you click)"
       @click="guessUnknownGenders" />
   </div>
+  <PageTaskStrips :features="['voice-gender']" />
 
   <!-- ── The test line: one box, above the grid ───────────────────────── -->
   <div class="voices-view__bench">

@@ -2,6 +2,16 @@
 
 ## v0.1.0
 
+- **A page shows only its own AI tasks (2026-10-05).** Discover shows only its
+  scan and Script only its Analyze — banner, strip, rows and counts — so
+  Discover no longer looks busy while Script runs; a step queued behind the
+  other says *waiting for Script to finish* (or Discover), and its **Cancel**
+  stops only that step. A chapter Script is analyzing can be ticked on Discover.
+  The banner is the batch (*🔍 Discover · scanning 4 chapters · 1 of 4 done*),
+  the strip under it the chapter being read now (*Discover · scan · The
+  Keystone*). The strip that sat at the top of every page is gone: each task
+  shows on the page that started it, and the ✨ button in the title bar counts
+  everything ([Generate → In-flight status strip](generate.md#in-flight-status-strip--status-panel))
 - **A demo project opens like any new project (2026-10-05).** **＋ New project →
   a demo project** now opens the demo in Studio on its Overview, and the sidebar
   switches to its kind. Before, after a reset, the app stayed on Projects and

@@ -31,6 +31,7 @@ import {
   confirmDialog, languageName, promptDialog, pushToast, withAiTask,
 } from "@delebash/llm-ui";
 import { useApi } from "../stores/api.js";
+import PageTaskStrips from "./PageTaskStrips.vue";
 import { projectsService } from "../services/projects.js";
 import { readPref, writePref } from "../services/prefs.js";
 import { handleTermsRefusal } from "../services/engineTerms.js";
@@ -417,6 +418,7 @@ async function smartAssign() {
     const applied = await withAiTask({
       feature: "smart_assign",
       label: `Smart-assign · ${plural(people.length, "speaker")}`,
+      meta: { projectId: props.project.id },
       stats,
       onRetry: () => smartAssign(),
     }, async (task) => {
@@ -563,6 +565,7 @@ const GAME_COLUMNS = [
           <UiButton intent="primary" size="small" label="✨ Smart-assign" :loading="smartBusy" :disabled="smartBusy"
             title="Your language model proposes a persona for each speaker from who they are" @click="smartAssign" />
         </div>
+        <PageTaskStrips :features="['smart_assign']" :meta="{ projectId: project.id }" />
         <div v-if="castEngineNotice" class="jv-banner jv-banner--warn studio-cast__notice">{{ castEngineNotice }}</div>
 
         <div class="studio-cast__scroll">

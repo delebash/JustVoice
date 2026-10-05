@@ -23,9 +23,12 @@
 
   Scope is an inline grid (§8.7: never a modal) — a select-all checkbox in the
   header and one per chapter. The scan runs on the project's chapter run
-  (services/chapterRun.js, 2026-09-29) — the same run Script's Analyze uses, so
-  only one runs at a time and it survives leaving Studio. Each chapter is a kit
-  task, shown with the run's banner (StudioRunBanner.vue) and its Cancel.
+  (services/chapterRun.js, 2026-09-29) — the same queue Script's Analyze uses, so
+  only one chapter is read at a time and it survives leaving Studio. Each
+  chapter is a kit task, shown with the step's banner (StudioRunBanner.vue) and
+  its Cancel. This page shows only the scan (decided 2026-10-05): Analyze's
+  chapters are not tagged here, and a chapter Script is analyzing can be ticked
+  — it is scanned after.
 
   Speakers and personas are two things (2026-09-29): a name that is EXACTLY a
   persona in your library says so (In your library), and Add makes the speaker
@@ -43,8 +46,6 @@
   A book with narration needs a narrator (decided 2026-10-05): while it has
   none, the first row of Speakers found is Narrator — reads everything outside
   quote marks — New and ticked, with ＋ Add (Cast's Add Narrator; no Ignore).
-  The run banner is the shared StudioRunBanner.vue, and a chapter's row says
-  "analyzing…" when the run it is in is Script's Analyze.
 -->
 <script setup>
 import { computed, ref, watch } from "vue";
@@ -54,7 +55,7 @@ import {
 import { useApi } from "../stores/api.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { useCopy } from "../services/copy.js";
-import { chapterRunFor, failureOf, inRun, queueChapters, runKind } from "../services/chapterRun.js";
+import { chapterRunFor, failureOf, inRun, queueChapters } from "../services/chapterRun.js";
 import { addNarrator, hasNarrator } from "../services/narrator.js";
 import { foundSpeakers, isWaiting } from "../views/studioStatus.js";
 import StudioRunBanner from "./StudioRunBanner.vue";
@@ -93,16 +94,16 @@ watch(() => props.project?.id, () => {
 
 const plural = (n, word) => `${n.toLocaleString()} ${word}${n === 1 ? "" : "s"}`;
 
-// Where a chapter stands in the project's run: "scanning" (this one now),
-// "analyzing" (Script's Analyze has it now — the two share the run),
-// "queued", or a failure from this session's scans.
+// Where a chapter stands in the scan: "scanning" (this one now), "queued", or
+// a failure from this session's scans. Only the scan — Script's Analyze shows
+// on Script (2026-10-05).
 function rowState(scene) {
-  const where = inRun(props.project.id, scene.id);
-  if (where === "current") return runKind(props.project.id, scene.id) === "analyze" ? "analyzing" : "scanning";
+  const where = inRun(props.project.id, scene.id, "discover");
+  if (where === "current") return "scanning";
   if (where) return "queued";
-  return failureOf(props.project.id, scene.id)?.kind === "discover" ? "failed" : null;
+  return failureOf(props.project.id, scene.id, "discover") ? "failed" : null;
 }
-const failureText = (scene) => failureOf(props.project.id, scene.id)?.reason || "";
+const failureText = (scene) => failureOf(props.project.id, scene.id, "discover")?.reason || "";
 
 const chapterWord = computed(() => copy.value.chapter);
 const titleOf = (s) => s.title || `${chapterWord.value.singular} ${s.position + 1}`;
@@ -168,8 +169,8 @@ const scanning = computed(() => run.value?.current?.kind === "discover");
 watch(() => !!narratorRow.value, (has) => {
   if (has) picked.value = { ...picked.value, narrator: true };
 });
-// A chapter already in the run can't be queued again.
-const pickable = (s) => !inRun(props.project.id, s.id);
+// A chapter already in the scan can't be queued again (Analyze's can).
+const pickable = (s) => !inRun(props.project.id, s.id, "discover");
 const pickedScenes = computed(() => props.scenes.filter((s) => selected.value[s.id] && pickable(s)));
 const pickedLines = computed(() =>
   pickedScenes.value.reduce((n, s) => n + (props.linesByScene[s.id] || 0), 0));
@@ -452,7 +453,7 @@ async function ignore(c) {
           give a line to a speaker in this {{ copy.book.singular.toLowerCase() }}, so this step runs first.
         </p>
 
-        <StudioRunBanner :project="project" />
+        <StudioRunBanner :project="project" kind="discover" />
 
         <div v-if="!scenes.length" class="jv-banner">
           No {{ chapterWord.plural.toLowerCase() }} yet — add or import them in
@@ -467,15 +468,13 @@ async function ignore(c) {
             </template>
             <template #sel="{ row }">
               <UiCheckbox :model-value="!!selected[row.id] && pickable(row)" :disabled="!pickable(row)"
-                :title="pickable(row) ? '' : 'In the current run'"
+                :title="pickable(row) ? '' : 'Already in the scan'"
                 @update:model-value="(v) => toggleOne(row.id, v)" />
             </template>
             <template #title="{ row }"><strong>{{ titleOf(row) }}</strong></template>
             <template #lines="{ row }"><span class="jv-mono">{{ (linesByScene[row.id] || 0).toLocaleString() }}</span></template>
             <template #scanned="{ row }">
               <UiTag v-if="rowState(row) === 'scanning'" intent="solid">scanning…</UiTag>
-              <UiTag v-else-if="rowState(row) === 'analyzing'" intent="solid"
-                title="Script's Analyze has this chapter now — the two share one run">analyzing…</UiTag>
               <UiTag v-else-if="rowState(row) === 'queued'" intent="ghost">queued</UiTag>
               <template v-else-if="rowState(row) === 'failed'">
                 <UiTag intent="danger" :title="failureText(row)">failed</UiTag>

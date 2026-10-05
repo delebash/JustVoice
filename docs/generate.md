@@ -146,12 +146,14 @@ A **voice made from words** (designed, with no clip — VoiceDesign, or a VoxCPM
 
 ## In-flight status strip + status panel
 
-Hitting ▶ Generate pushes an accent-tinted progress strip into the top of the content area. It is the same shared strip every app in the family uses (`AiTaskStrip` from the shared UI kit), reading the shared task queue — a run keeps going even if you navigate away, and the strip follows you.
+Hitting ▶ Generate puts an accent-tinted progress strip under the Generate buttons. It is the same shared strip every app in the family uses (`AiTaskStrip` from the shared UI kit), reading the shared task queue — a run keeps going even if you navigate away.
 
-Two kinds of work appear there, and only these two:
+**A task's strip shows on the page that started it** (since 2026-10-05 — it used to sit at the top of every page, so a chapter render showed on Voices): Generate's on Generate, a chapter render on Render, Smart-assign on Cast, Show notes on Export, *Re-render changed* on Lines, the gender guess on Voices, and Discover's scan and Script's Analyze each on their own step. Anywhere else, the ✨ button in the title bar counts what is running and its panel lists everything.
 
-- **Anything that queries a language model** — Compose, Persona rewrite, Speaker attribution, Smart assign, ACX QC, Show notes, Voice gender. This is what the strip exists for, and it is the same queue JustWrite and the docs generator use for their own AI features.
-- **Long TTS renders** — this view's ▶ Generate, a chapter render, Lines → *Re-render changed*, and a Studio scene render.
+Two kinds of work get a strip, and only these two:
+
+- **Anything that queries a language model** — Compose, Persona rewrite, Script's Analyze, Discover's scan, Smart assign, Show notes, Voice gender. This is what the strip exists for, and it is the same queue JustWrite and the docs generator use for their own AI features.
+- **Long TTS renders** — this view's ▶ Generate, a chapter render, Lines → *Re-render changed*, and Render's line renders and ACX QC.
 
 What does **not** appear there: installing an engine, downloading a model, and loading a model all report on their own row in the Speech engines tab (see [Engines](engines.md#cancelling-an-in-flight-load)). That is file and process work rather than model queries, and putting them in this queue only buried the runs you actually wanted to watch.
 

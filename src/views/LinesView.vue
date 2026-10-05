@@ -12,6 +12,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
+import PageTaskStrips from "../components/PageTaskStrips.vue";
 import { withAiTask } from "@delebash/llm-ui";
 import { pushToast, saveBlob } from "@delebash/llm-ui";
 import { useActiveProject } from "../stores/activeProject.js";
@@ -153,6 +154,7 @@ async function rerenderChanged() {
     await withAiTask({
       feature: "chapter",
       label: `Re-render ${targets.length} changed line${targets.length === 1 ? "" : "s"}`,
+      meta: { projectId: selectedProjectId.value },
       onRetry: () => rerenderChanged(),
     }, async (task) => {
       const job = await api.request("/v1/render_jobs", {
@@ -265,6 +267,7 @@ watch(selectedProjectId, (id) => {
       <UiButton size="small" :disabled="rerendering" :label="`↻ Re-render ${staleLines.length} changed`" @click="rerenderChanged" />
       <span class="jv-muted">everything else stays cached</span>
     </div>
+    <PageTaskStrips :features="['chapter']" :meta="{ projectId: selectedProjectId }" />
 
     <div v-if="!selectedProject" class="jv-banner">
       Import a dialogue CSV (Projects → Import, or the kind picker) to get a game project — its lines appear here.

@@ -100,15 +100,17 @@ chapter. It creates nothing on its own.
    last read, and **Found** how many people it names, with how many of them are
    **new** (not in the cast yet).
 2. **Scan** reads them one at a time, one model call per chapter. A banner above
-   the chapters shows the run — *🔍 Discover · 4 chapters*, the chapter it is on,
-   how many are done, the time so far and about how long is left, with **Cancel**
-   — and under it the strip of the chapter being read now. Each row fills in as
-   its chapter finishes, so you can start on the results before a long scan ends.
-   Scanning a chapter again replaces its last scan. The scan shares one run of
-   chapters with Script's Analyze — the same banner shows on both pages, saying
-   which is running: if an Analyze is going, the scan **starts after** it, a
-   chapter already in the run can't be ticked, and a chapter Analyze has right
-   now says **analyzing…** rather than *scanning…*.
+   the chapters shows the scan as a whole — *🔍 Discover · scanning 4 chapters ·
+   1 of 4 done · 0:42 · about 2 min left*, its bar and **Cancel** — and under it
+   the strip of the chapter being read now: *Discover · scan · The Keystone*, the
+   model reading the prompt, then its words as they come, and **Retry** if that
+   chapter fails. Each row fills in as its chapter finishes, so you can start on
+   the results before a long scan ends. Scanning a chapter again replaces its
+   last scan. Discover and Script's Analyze take turns — the model reads one
+   chapter at a time — but each page shows only its own: start a scan while
+   Script is analyzing and it waits, saying *🔍 Discover · 2 chapters — waiting
+   for Script to finish*, then runs. A chapter Script is analyzing can still be
+   ticked here; it is scanned after. **Cancel** stops only the scan.
 3. **The narrator comes first.** A book with narration needs a narrator, and
    nothing makes one on its own — so while the book has none, the first row of
    **Speakers found** is **Narrator**: *reads everything outside quote marks*,
@@ -278,16 +280,18 @@ check" → tick all → Analyze re-runs exactly those.
 
 **Analyzing chapters.** Tick them and click **✨ Analyze N chapters**. They run
 one at a time, one model call per chapter (a long chapter is read in pieces —
-see below), and each row fills in as its chapter finishes. The run shows
-above the grid with the chapter it is on, how many are done, the time so far
-and — once one has finished — about how long is left, and the task strip
-below it shows that chapter's live progress. **Cancel** stops the run; the
-chapters already analyzed are kept.
+see below), and each row fills in as its chapter finishes. A banner above the
+grid shows the batch — *📜 Script · analyzing 4 chapters · 1 of 4 done · 0:42*,
+and once one has finished, about how long is left — with its bar and
+**Cancel**; the strip below it is the chapter being read now (*Script ·
+analyze · The Keystone*). **Cancel** stops Analyze; the chapters already
+analyzed are kept.
 
 **The run keeps going while you work elsewhere** — another step, another view.
-There is one run of chapters per project at a time, shared with Discover's
-scan: start one while another is going and it **starts after the current run**.
-A chapter already in the run can't be ticked again.
+Analyze and Discover's scan take turns, one chapter at a time: start one while
+the other is going and it waits — *📜 Script · 3 chapters — waiting for
+Discover to finish* — then runs. Each page shows only its own step's chapters,
+counts and Cancel. A chapter already queued to analyze can't be ticked again.
 
 **How the model reads.** The dropdown beside Analyze says how the model will
 read: *chosen for your model* (the default — JustVoice picks by the model's

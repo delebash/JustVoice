@@ -23,8 +23,9 @@
   A book with narration needs a narrator (decided 2026-10-05): ✨ Analyze on a
   book with none asks first (NarratorNeeded.vue), and a book analyzed before it
   had one shows one banner — its narration waiting — with ＋ Add Narrator; that
-  narration is not counted as No speaker or To check. The run banner is the
-  shared StudioRunBanner.vue (Discover shows the same one).
+  narration is not counted as No speaker or To check. The run banner is
+  StudioRunBanner.vue, showing only Analyze — Discover's scans share the queue
+  and show on Discover (decided 2026-10-05).
 -->
 <script setup>
 import { computed, ref, watch } from "vue";
@@ -39,7 +40,7 @@ import {
 import { useApi } from "../stores/api.js";
 import { useCopy } from "../services/copy.js";
 import { routeWords } from "../services/attribution.js";
-import { chapterRunFor, failureOf, inRun, queueChapters, runKind } from "../services/chapterRun.js";
+import { chapterRunFor, failureOf, inRun, queueChapters } from "../services/chapterRun.js";
 import { addNarrator, hasNarrator, narrationOf } from "../services/narrator.js";
 import NarratorNeeded from "./NarratorNeeded.vue";
 import StudioRunBanner from "./StudioRunBanner.vue";
@@ -72,7 +73,7 @@ const lower = (n, w = word.value) => (n === 1 ? w.singular : w.plural).toLowerCa
 
 // ── The run ──────────────────────────────────────────────────────────────
 // Its banner and strip are StudioRunBanner.vue; the grid reads where each
-// chapter stands in it.
+// chapter stands in Analyze's part of it — this page shows only Analyze.
 const run = computed(() => chapterRunFor(props.project.id));
 
 // ── The rows ─────────────────────────────────────────────────────────────
@@ -80,11 +81,11 @@ const sceneById = computed(() => Object.fromEntries(props.scenes.map((s) => [s.i
 const titleOf = (c) => `${c.position + 1} · ${c.title || `${word.value.singular} ${c.position + 1}`}`;
 
 function stateOf(c) {
-  const where = inRun(props.project.id, c.scene_id);
-  const failed = failureOf(props.project.id, c.scene_id);
+  const where = inRun(props.project.id, c.scene_id, "analyze");
+  const failed = failureOf(props.project.id, c.scene_id, "analyze");
   const out = new Set();
   if (where) out.add(where === "current" ? "running" : "queued");
-  if (!c.lines || c.no_dialogue_found || (failed && failed.kind === "analyze")) out.add("problem");
+  if (!c.lines || c.no_dialogue_found || failed) out.add("problem");
   if (c.analyzed || c.from_import) {
     if (c.to_check || (c.from_import && c.no_speaker)) out.add("check");
   } else if (c.lines) {
@@ -115,7 +116,7 @@ const shown = computed(() => (chip.value === "all" ? rows.value : rows.value.fil
 const ticked = ref({});
 watch(() => props.project.id, () => { ticked.value = {}; });
 // A chapter in the run, or with no text, can't be ticked.
-const canTick = (r) => !!r.lines && !inRun(props.project.id, r.scene_id);
+const canTick = (r) => !!r.lines && !inRun(props.project.id, r.scene_id, "analyze");
 const shownTickable = computed(() => shown.value.filter(canTick));
 const allShownTicked = computed(() => shownTickable.value.length > 0 && shownTickable.value.every((r) => ticked.value[r.id]));
 function tickShown(on) {
@@ -297,7 +298,7 @@ function startImport() {
   window.location.hash = "#projects";
 }
 function openRow(r, focus = null) {
-  if (!r.lines || inRun(props.project.id, r.scene_id) === "current") return;
+  if (!r.lines || inRun(props.project.id, r.scene_id, "analyze") === "current") return;
   if (!r.analyzed && !r.from_import) return;
   emit("open", r.scene_id, focus);
 }
@@ -317,7 +318,7 @@ function openRow(r, focus = null) {
           performed, and rendering it, come later.
         </p>
 
-        <StudioRunBanner :project="project" />
+        <StudioRunBanner :project="project" kind="analyze" />
 
         <div v-if="narrationWaiting && !hasNarrator(cast)" class="jv-banner jv-banner--warn studio-script__narrator">
           <span><strong>This book has no narrator</strong> — {{ narrationWaiting.toLocaleString() }} lines of narration
@@ -356,7 +357,7 @@ function openRow(r, focus = null) {
             <template #sel="{ row }">
               <span @click.stop>
                 <UiCheckbox :model-value="!!ticked[row.id] && canTick(row)" :disabled="!canTick(row)"
-                  :title="!row.lines ? 'No text to analyze' : inRun(project.id, row.scene_id) ? 'In the current run' : ''"
+                  :title="!row.lines ? 'No text to analyze' : inRun(project.id, row.scene_id, 'analyze') ? 'Already queued to analyze' : ''"
                   @update:model-value="(v) => (ticked = { ...ticked, [row.id]: v })" />
               </span>
             </template>
@@ -365,8 +366,8 @@ function openRow(r, focus = null) {
               <div v-if="row.no_dialogue_found" class="jv-hint studio-script__why">
                 Nothing in its text was read as speech, so every line went to the Narrator.
               </div>
-              <div v-else-if="failureOf(project.id, row.scene_id)?.kind === 'analyze'" class="jv-hint studio-script__why">
-                {{ failureOf(project.id, row.scene_id).reason }}
+              <div v-else-if="failureOf(project.id, row.scene_id, 'analyze')" class="jv-hint studio-script__why">
+                {{ failureOf(project.id, row.scene_id, 'analyze').reason }}
               </div>
             </template>
             <template #lines="{ row }">
@@ -374,9 +375,8 @@ function openRow(r, focus = null) {
               <span v-else class="jv-muted">—</span>
             </template>
             <template #analyzed="{ row }">
-              <UiTag v-if="inRun(project.id, row.scene_id) === 'current'" intent="solid">{{
-                runKind(project.id, row.scene_id) === "discover" ? "scanning…" : "analyzing…" }}</UiTag>
-              <UiTag v-else-if="inRun(project.id, row.scene_id) === 'queued'" intent="ghost">queued</UiTag>
+              <UiTag v-if="inRun(project.id, row.scene_id, 'analyze') === 'current'" intent="solid">analyzing…</UiTag>
+              <UiTag v-else-if="inRun(project.id, row.scene_id, 'analyze') === 'queued'" intent="ghost">queued</UiTag>
               <span v-else-if="!row.lines" class="jv-muted">no text yet</span>
               <template v-else>
                 <span v-if="row.analyzed_at" class="jv-muted" :title="new Date(row.analyzed_at).toLocaleString()">{{ ago(row.analyzed_at) }}</span>
@@ -384,10 +384,10 @@ function openRow(r, focus = null) {
                 <span v-else-if="row.from_import" class="jv-muted"
                   title="The script named its speakers, so there was nothing to analyze.">from the import</span>
                 <span v-else class="jv-muted">never</span>
-                <template v-if="failureOf(project.id, row.scene_id)?.kind === 'analyze'">
-                  <UiTag v-if="recut(failureOf(project.id, row.scene_id))" intent="danger"
-                    :title="failureOf(project.id, row.scene_id).reason">can't re-cut</UiTag>
-                  <UiTag v-else intent="danger" :title="failureOf(project.id, row.scene_id).reason">failed</UiTag>
+                <template v-if="failureOf(project.id, row.scene_id, 'analyze')">
+                  <UiTag v-if="recut(failureOf(project.id, row.scene_id, 'analyze'))" intent="danger"
+                    :title="failureOf(project.id, row.scene_id, 'analyze').reason">can't re-cut</UiTag>
+                  <UiTag v-else intent="danger" :title="failureOf(project.id, row.scene_id, 'analyze').reason">failed</UiTag>
                 </template>
                 <UiTag v-for="n in row.added_since" :key="n" intent="accent2"
                   :title="`Analyzed before ${n} joined the cast, and this ${word.singular.toLowerCase()}'s text names ${n} — Analyze could not choose ${n} then.`">{{ n }} added since</UiTag>
@@ -418,15 +418,15 @@ function openRow(r, focus = null) {
                 <UiButton v-if="!row.lines" intent="secondary" size="small" label="＋ Add text"
                   title="Paste its text" @click="addText(row)" />
                 <template v-else>
-                  <UiButton v-if="recut(failureOf(project.id, row.scene_id))" intent="secondary" size="small"
+                  <UiButton v-if="recut(failureOf(project.id, row.scene_id, 'analyze'))" intent="secondary" size="small"
                     label="Takes ➜" title="The takes recorded against this chapter's lines" @click="emit('go', 'render')" />
-                  <UiButton v-if="row.added_since?.length && !inRun(project.id, row.scene_id)" intent="primary" size="small"
+                  <UiButton v-if="row.added_since?.length && !inRun(project.id, row.scene_id, 'analyze')" intent="primary" size="small"
                     label="Re-analyze" :disabled="blocked"
                     :title="blocked ? '' : `Re-analyze ${row.title || ''} — lines you set are kept.`"
                     @click="analyze([row])" />
                   <UiButton intent="secondary" size="small" label="Review"
-                    :disabled="(!row.analyzed && !row.from_import) || inRun(project.id, row.scene_id) === 'current'"
-                    :title="inRun(project.id, row.scene_id) === 'current' ? 'Wait for it to finish'
+                    :disabled="(!row.analyzed && !row.from_import) || inRun(project.id, row.scene_id, 'analyze') === 'current'"
+                    :title="inRun(project.id, row.scene_id, 'analyze') === 'current' ? 'Wait for it to finish'
                       : (!row.analyzed && !row.from_import) ? 'Analyze it first'
                       : row.to_check ? 'Opens the chapter at its first line to check' : ''"
                     @click="openRow(row, row.to_check ? 'check' : null)" />
