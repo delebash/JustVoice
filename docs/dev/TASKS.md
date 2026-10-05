@@ -723,6 +723,35 @@ GO: needed.
 
 ## The next build
 
+### Leaving Tags puts Type back; voices with no gender stay; the voice-card mock goes (decided 2026-10-05)
+STATE:  DECIDED 2026-10-05 — "your rec on both go, delete the mock", on the two findings and the
+        mock question as shown:
+        "1. Picking Tags moves Type to Cloned, because no built-in voice takes tags. Type then stays
+        on Cloned when you go back to Any or Sliders only, so the list stays empty until you pick
+        Built-in again. My lean: when you leave Tags, Type should go back to what it was."
+        "2. 15 of the 91 built-in voices have no gender recorded (Female 38 + Male 38). They only
+        appear under Any gender. My lean: leave it. Each one's gender can be set on Voices by
+        clicking its letter."
+        "Still your call: keep or delete `#/mock/voice-card`, the side-by-side comparison that
+        still shows the rejected layout B."
+        Read as: "what it was" is the Type before the page moved it. A Type you pick yourself while
+        on Tags stays. Leaving Tags moves Type back the same way from any direction that moved it
+        (Written direction moves Blended the same way).
+WHY:    found by the live filter check of "The persona page's Voice box resets…" (A2: "Tags (0)"
+        moved Type to Cloned (0), then "Sliders only (0)" stayed on Cloned).
+NOT:    a gender guessed for the 15 — they stay under Any gender until set on Voices.
+BUILT:  2026-10-05 — `PersonaEditorView.vue` and its mock: the direction watch remembers the Type it
+        moved from (`kindMove`) and moves back; `fitFiltersToVoice()` forgets it. `#/mock/voice-card`
+        and `MockVoiceCardOptions.vue` deleted. Docs: personas, whats-new; the filters plan §6
+        (blast radius). Checked: Biome, build; live on the dev app, a new persona — Tags → Cloned,
+        Any → Built-in (91); Tags → Sliders only → Built-in; Tags → Written direction → Built-in
+        (9); Designed picked on Tags, then Any → stays Designed; a voice picked, then Tags → the box
+        empties, Any → Built-in with the box still empty (the reset rule); the mock — Blended,
+        Written direction → Built-in, Any → Blended. Page errors 0. Not run: the suites (the
+        user's word).
+OPEN:   none.
+GO:     given 2026-10-05
+
 ### The persona page's Voice box resets when a filter drops its voice; "Any language" (decided 2026-10-05)
 STATE:  DECIDED 2026-10-05 — "your rec go", on the plan and the two leans as shown (the user: "if i
         pick a voice a kokoro voice then change themodel dropdown to kittne nothing changes, you still
@@ -851,8 +880,8 @@ BUILT:  2026-10-05 — A: `PersonaEditorView.vue` and its mock back to the origi
         (the types table, Imported folded, the one-set note), engines, quick-setup, use-cases,
         troubleshooting, whats-new; the filters plan §3. Checked: Biome, build, the personaFacts
         test file (5). Not run: the suites (the user's word).
-OPEN:   the live look; the side-by-side mock `#/mock/voice-card` (B is rejected) — keep or remove,
-        the user's call.
+OPEN:   none — the live look checked 2026-10-05 ("The Voice card's lines" above); the side-by-side
+        mock `#/mock/voice-card` deleted the same day ("delete the mock").
 GO:     given 2026-10-05
 
 ### The persona page shows which version of its model speaks, and can change it (decided 2026-10-05)

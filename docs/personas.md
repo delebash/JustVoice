@@ -204,7 +204,9 @@ tags.* Under **Written direction**, Blended is off the same way. Blended is also
 off while the installed speech runtime can't play a blend: *Blends need a speech
 runtime that can play them — update it on AI Settings → Speech engines when an
 update is offered.* If the choice you were on goes off, the page moves to the
-first one that can. A clone or a design's kept clip can be on a model of any
+first one that can, and moves back when you leave that direction — pick
+**Tags** and *Type* goes to *Cloned*; go back to **Any** and it is *Built-in*
+again — unless you picked another *Type* in between. A clone or a design's kept clip can be on a model of any
 kind, so those stay on.
 
 **Three filters** sit under them — *These only narrow the list. Each counts the

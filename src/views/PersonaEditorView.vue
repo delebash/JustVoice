@@ -328,9 +328,20 @@ const kindOptions = computed(() => {
   });
 });
 // A kind that can't be directed this way gives way to the first that can.
+// It comes back when the direction lets it again (decided 2026-10-05: leaving
+// Tags left Type on Cloned, with an empty list) — unless you picked another
+// Type in between.
+const kindMove = { from: "", to: "" };
 watch(directionFilter, () => {
-  if (kindOptions.value.find((o) => o.value === kind.value)?.disabled) {
-    kind.value = kindOptions.value.find((o) => !o.disabled)?.value || "builtin";
+  const off = (k) => kindOptions.value.find((o) => o.value === k)?.disabled;
+  if (kind.value !== kindMove.to) kindMove.from = "";
+  if (kindMove.from && !off(kindMove.from)) {
+    kind.value = kindMove.from;
+    kindMove.from = "";
+  } else if (off(kind.value)) {
+    if (!kindMove.from) kindMove.from = kind.value;
+    kindMove.to = kindOptions.value.find((o) => !o.disabled)?.value || "builtin";
+    kind.value = kindMove.to;
   }
 });
 const modelNames = computed(() => Object.fromEntries(voices.value.map((v) => [v.model, v.model_name || v.model])));
@@ -412,6 +423,7 @@ watch([directionFilter, kind, modelFilter, genderFilter, languageFilter], () => 
 // Opening a persona, and Revert, set the filters so its voice is in the list:
 // Type to the voice's type, the rest to Any.
 function fitFiltersToVoice() {
+  kindMove.from = "";
   directionFilter.value = "";
   modelFilter.value = "";
   genderFilter.value = "";

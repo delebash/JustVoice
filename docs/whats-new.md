@@ -2,6 +2,10 @@
 
 ## v0.1.0
 
+- **Leaving Tags puts a persona's Type back (2026-10-05)** — Tags moves *Type*
+  to *Cloned* (no built-in voice takes tags); going back to Any or Sliders only
+  now returns it to *Built-in* instead of leaving an empty list
+  ([Personas → Voice](personas.md#voice))
 - **A persona's Voice box empties when a filter leaves its voice out
   (2026-10-05)** — pick a Kokoro voice, set *Model* to KittenTTS, and the box
   goes back to *Pick a voice* instead of keeping the Kokoro voice; **↺ Revert**

@@ -37,7 +37,7 @@ only), the clone and design makers.
 ## 3. The persona page's Voice card
 
 Built first as "Narrow the list → Voice → Or make a new one", with Made by gone as a filter; the
-user found it weird, compared both side by side (`#/mock/voice-card`), and chose **A** — the
+user found it weird, compared both side by side (`#/mock/voice-card`, deleted 2026-10-05 once A was built), and chose **A** — the
 original layout (How it can be directed · Made by · Model / Gender / Voice's language · Voice ·
 Version) with the synced filters and a line of words under each part (TASKS "The persona page's
 Voice card goes back to its original layout…"). The type words are one set since the same day:
@@ -74,4 +74,18 @@ uncesessary list"; §1's rule stands (options nothing fits stay hidden).
 | `voiceEmptyHint` loses "No other voice matches these filters." | `PersonaEditorView.vue:392,998,1011` · `MockPersonaEditorView.vue:212,634,645` | — |
 | The filters fit the voice on open and Revert | `kind.value =` before: `PersonaEditorView.vue:208` (open), `:333` (the direction watch, unchanged), `:887` (Revert); the mock `:183`, `:507`, `:562` | `watch(kind)` already cleared Model; `onKept` already cleared the three dropdown filters before picking the kept voice |
 | The voice-change warning compares with the saved voice | `voiceChange`: `PersonaEditorView.vue:405,421,854,886,1053-1056` (before the change) | Save (`:854`) and Revert (`:886`) clear it |
-| "All languages" → "Any language" | `PersonaEditorView.vue:348` · `MockPersonaEditorView.vue:198` · `PersonasView.vue:112` · `MockPersonasView.vue:84` · `StudioCast.vue:178` · `MockVoiceCardOptions.vue:65` · `VoicesView.vue:233` · `PersonaBlendMaker.vue:65` · `MockBlendMaker.vue:48` | no doc or test named it (`grep -rn "All languages" docs/*.md docs/dev/*.md scripts`) |
+| "All languages" → "Any language" | `PersonaEditorView.vue:348` · `MockPersonaEditorView.vue:198` · `PersonasView.vue:112` · `MockPersonasView.vue:84` · `StudioCast.vue:178` · `MockVoiceCardOptions.vue:65` (deleted since) · `VoicesView.vue:233` · `PersonaBlendMaker.vue:65` · `MockBlendMaker.vue:48` | no doc or test named it (`grep -rn "All languages" docs/*.md docs/dev/*.md scripts`) |
+
+## 6. Leaving Tags puts Type back; the voice-card mock goes (2026-10-05, later)
+
+The decision is TASKS "Leaving Tags puts Type back; voices with no gender stay; the voice-card mock
+goes" (verbatim, "your rec on both go, delete the mock"). Found by §5's live check: Tags moved
+Type to Cloned (no built-in voice takes tags), and going back to Any left it there, with an empty
+list. Now the direction watch remembers the Type it moved away from (`kindMove`) and moves back
+when the direction lets it — unless a Type was picked in between. The 15 built-in voices with no
+gender recorded stay under Any gender only (set one on Voices by clicking its letter).
+
+| Change | Callers / writers (greps run 2026-10-05) | Already on the path |
+|---|---|---|
+| `watch(directionFilter)` moves Type back | every writer of `kind`: `PersonaEditorView.vue:339,344` (this watch) · `:431` (`fitFiltersToVoice`, which now clears `kindMove.from` — from open `:208` and Revert `:918`) · the Type control's `v-model="kind"` (a pick of your own); the mock `:190,195`, `:273`, `:540`, `:595` | `watch(kind)` clears Model and gives the maker a fresh key on every move; the Voice box reset (§5) empties the box when the move leaves the voice out — going back does not bring it back |
+| `#/mock/voice-card` deleted | `src/mock/routes.js` (its route) · `MockVoiceCardOptions.vue` — its imports all shared (`MODEL_VERSIONS` with `MockPersonaEditorView.vue:42`; facets and personaFacts everywhere) | TASKS keeps the decision text that names it (verbatim) |
