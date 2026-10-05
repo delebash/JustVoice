@@ -128,6 +128,26 @@ function blankDraft() {
   return { name: "", scope: "global", project_id: null, persona_id: null, entries: [] };
 }
 
+// Which models speak an entry's IPA — read from the installed capabilities,
+// never hard-coded (decided 2026-10-05: Kokoro only since runtime v0.9.0-jv.4;
+// every other model reads the respelling).
+const ipaModels = ref([]);
+async function loadIpaModels() {
+  const r = await api.safeRequest("/v1/engines/capabilities", { engines: {} });
+  const names = Object.values(r?.engines || {})
+    .filter((row) => row?.supports_phoneme_input)
+    .map((row) => row.display_name || row.engine_id);
+  ipaModels.value = [...new Set(names)];
+}
+const ipaWho = computed(() => {
+  const n = ipaModels.value;
+  if (!n.length) return "no model speaks it";
+  return n.length === 1 ? `${n[0]} only` : n.join(", ");
+});
+const ipaTip = computed(() => (ipaModels.value.length
+  ? `Spoken as IPA by ${ipaModels.value.join(", ")}. Every other model reads the respelling — an entry with only IPA does nothing there.`
+  : "No installed model speaks IPA. Every model reads the respelling — an entry with only IPA does nothing."));
+
 async function refresh() {
   loading.value = true;
   try {
@@ -135,6 +155,7 @@ async function refresh() {
       lexiconsStore.reload(),
       projectsStore.reload(),
       personasStore.reload(),
+      loadIpaModels(),
     ]);
   } finally {
     loading.value = false;
@@ -579,13 +600,17 @@ onActivated(() => {
               placeholder="Beauchamp arrived at the Lumen Concern on the NYPD ferry. — Worcestershire sauce on his cuff."
             />
             <p v-if="previewResult" class="lex__preview-out">{{ previewResult }}</p>
+            <p v-if="previewResult.includes('「/')" class="jv-hint">「/…/」 is IPA — {{ ipaWho }}.</p>
           </div>
 
           <UiTable class="lex__table" :data="entryRows" :columns="ENTRY_COLUMNS" data-key="__i"
             :row-class="(row) => (editingEntryIndex === row.__i ? 'lex__row--editing' : '')">
             <template #grapheme="{ row }"><strong>{{ row.grapheme }}</strong></template>
             <template #pron="{ row }"><code class="jv-mono">{{ row.phoneme_ipa || row.alias || "—" }}</code></template>
-            <template #kind="{ row }">{{ row.phoneme_ipa ? "IPA" : "phonetic" }}</template>
+            <template #kind="{ row }">
+              <span v-if="row.phoneme_ipa" :title="ipaTip">IPA · {{ ipaWho }}</span>
+              <template v-else>phonetic</template>
+            </template>
             <template #actions="{ row }">
               <div class="lex__entry-actions">
                 <UiButton intent="ghost" size="small" label="Edit" title="Edit this entry in the form below" @click="startEditEntry(row, row.__i)" />

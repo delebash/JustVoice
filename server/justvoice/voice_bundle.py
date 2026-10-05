@@ -14,6 +14,12 @@ IS on its engine:
   * preset — NOT bundled: a preset ships with its engine — there is
     nothing of yours to carry.
 
+It also carries the model the voice was made for (the capability row id,
+e.g. "chatterbox-turbo") and Qwen3 Base's "skip the words" mode — until
+2026-10-05 it left both out, so an imported voice spoke on its engine's
+default model. A model this install doesn't know is kept by name and refused
+at load, as for any stored voice (`voice_model.model_for_stored`).
+
 Pure logic over a voices-store-shaped object — the API route stays thin
 and the round-trip pins run against a fake store.
 """
@@ -45,6 +51,8 @@ def build_bundle(voices_store, voice_id: str) -> tuple[bytes, str]:
     manifest = {
         "format": FORMAT,
         "engine": rec.engine,
+        "model": rec.model,
+        "xvector_only": rec.xvector_only,
         "source": rec.source,
         "name": rec.name,
         "language": rec.language,
@@ -110,6 +118,8 @@ def import_bundle(voices_store, payload: bytes, *, known_engines: set[str]) -> V
     rec = VoiceRecord(
         id="",
         engine=engine,
+        model=(m.get("model") or None),
+        xvector_only=bool(m.get("xvector_only")),
         source=source,
         name=m.get("name") or "Imported voice",
         language=m.get("language") or "en-US",

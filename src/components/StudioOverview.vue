@@ -204,7 +204,8 @@ function onReimported() {
 async function exportPackage() {
   try {
     const blob = await projectsService.exportZip(props.project.id);
-    await saveBlob(blob, `${(props.project.name || "project").replace(/\W+/g, "-")}.zip`,
+    // Named as the button says (decided 2026-10-05; it saved as <name>.zip).
+    await saveBlob(blob, `${(props.project.name || "project").replace(/\W+/g, "-")}.justvoice.zip`,
       { title: "Save project", filterName: "JustVoice project", filterExt: "zip" });
     pushToast({ kind: "success", title: "Project exported" });
   } catch (e) {

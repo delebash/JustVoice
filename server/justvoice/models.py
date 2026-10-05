@@ -367,8 +367,8 @@ class CapturesSettings(BaseModel):
     smart_cleanup: bool = True
     self_correction: bool = True
     preserve_technical: bool = True
-    allow_auto_paste: bool = True
-    default_playback_voice: str | None = None
+    # (allow_auto_paste and default_playback_voice went 2026-10-05 — nothing read
+    # them; the MCP default voice is mcp.default_voice.)
     hotkey_enabled: bool = False
     chord_push_to_talk_keys: list[str] = ["ControlRight", "ShiftRight"]
     chord_toggle_to_talk_keys: list[str] = ["ControlRight", "ShiftRight", "Space"]

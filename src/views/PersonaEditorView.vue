@@ -640,7 +640,8 @@ const lexiconOptions = computed(() => [
 ]);
 
 // The chosen lexicon's words in the line typed in Hear it — the count
-// Generate showed (moved here 2026-10-05, with Generate gone).
+// Generate showed (moved here 2026-10-05, with Generate gone). An IPA-only
+// entry counts only when the voice's model takes IPA (decided 2026-10-05).
 const lexiconEntries = ref([]);
 watch(() => draft.value?.lexicon_id, async (id) => {
   lexiconEntries.value = [];
@@ -649,7 +650,8 @@ watch(() => draft.value?.lexicon_id, async (id) => {
   if (draft.value?.lexicon_id === id) lexiconEntries.value = lex?.entries || [];
 }, { immediate: true });
 const lexiconApplies = computed(() =>
-  lexiconMatches(hearText.value, lexiconEntries.value).reduce((n, m) => n + m.count, 0));
+  lexiconMatches(hearText.value, lexiconEntries.value, { ipa: !!row.value?.supports_phoneme_input })
+    .reduce((n, m) => n + m.count, 0));
 
 // ── Hear it ─────────────────────────────────────────────────────────────
 const hearText = ref("");

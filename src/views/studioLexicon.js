@@ -24,8 +24,8 @@ export function lexiconChoices(lexicons, project) {
     ...all.filter((l) => l.scope === "project" && l.project_id === project?.id),
     ...all.filter((l) => (l.scope || "global") === "global"),
   ];
-  // …unless the project already points at it (a .justvoice.zip import can):
-  // a live choice must never read as None.
+  // …unless the project already points at it: a live choice must never read
+  // as None.
   const chosen = project?.default_lexicon_id || "";
   const current = all.find((l) => l.id === chosen);
   if (current && !listed.includes(current)) listed.push(current);

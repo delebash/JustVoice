@@ -17,7 +17,7 @@ JustVoice is a cross-platform voice-production studio. Five audiences share one 
 - **Producing an audiobook.** Import a manuscript via Projects → "+ Import…", choose JustWrite or CSV or SRT or Audacity Labels, and it opens in Studio on its Overview. Work the steps in order — Discover finds your speakers, Script works out who says each line, Cast gives each speaker a persona (a finished voice from your library), Render makes the audio.
 - **Voicing game dialogue.** Voices tab → **Clone** with a reference WAV (Chatterbox Multilingual or Qwen3-TTS Base). Then Projects → "+ Import…" with a CSV of dialogue rows (fixed headers: scene, character, text, delivery, pause_after_ms — only text is required; each `character` becomes a speaker), give each speaker a persona in Studio · Cast, and work the Lines tab.
 - **Recording a podcast script.** Projects → "+ New blank Project" → Project type "Podcast" → arrange voiced segments per chapter in Studio (the multi-track Stories timeline is planned, not built).
-- **Dictating with global hotkey.** Captures tab → confirm all 6 readiness gates pass → set the push-to-talk chord in Settings → Capture.
+- **Dictating.** The global hotkey and in-app recording aren't built yet — see [Dictation](dictation.md). Settings → Capture holds the capture language and the cleanup switches.
 
 ## Headless mode
 
@@ -30,7 +30,7 @@ The same UI is served at `http://localhost:17494/ui/`. Connect from any browser 
 ## Where things live
 
 - **Home.** Dashboard — intro band + quick-actions for each audience + the engine/voice catalogue, loaded engine status, in-flight render tasks, and recent generations.
-- **Settings.** Server URL, mastering preset (ACX / iAudio / Podcast / YouTube), generation defaults, capture hotkeys, MCP server, GPU diagnostics.
+- **Settings.** Server URL, mastering preset (ACX / iAudio / Podcast / YouTube), generation defaults, capture language and cleanup, MCP server, GPU diagnostics.
 - **Engines.** One speech runtime runs every voice engine and speech recognition; each engine is a set of model files you download from its row. See [engines.md](engines.md).
 - **Cache.** Disk-LRU render cache. Identical render of the same line costs nothing twice.
 - **System tray.** Right-click the JustVoice icon in your OS tray (Windows) / menu bar (macOS) for quick access to Show app, Show dictate, Engines, Captures, Settings, and Quit — all without bringing the main window to the foreground.

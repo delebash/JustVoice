@@ -17,6 +17,14 @@ import { onMounted, ref } from "vue";
 import { UiToggle, pushToast } from "@delebash/llm-ui";
 import { useApi } from "../../stores/api.js";
 
+// `intro` — the line above the switches; Settings → Capture gives its own
+// (or none), the Lab keeps this one.
+defineProps({
+  intro: {
+    type: String,
+    default: "Your Capture toggles — the same settings a real dictation uses. Flip one and the generated prompt below recomposes.",
+  },
+});
 const emit = defineEmits(["changed"]);
 const api = useApi();
 
@@ -62,10 +70,7 @@ onMounted(load);
 
 <template>
   <div class="rst">
-    <p class="rst__intro">
-      Your Capture toggles — the same settings a real dictation uses. Flip one
-      and the generated prompt below recomposes.
-    </p>
+    <p v-if="intro" class="rst__intro">{{ intro }}</p>
     <div v-for="r in ROWS" :key="r.key" class="rst__row">
       <UiToggle
         :model-value="flags[r.key]"

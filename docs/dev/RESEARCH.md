@@ -497,6 +497,17 @@ its blast radius and the gaps.
   (`extraction_api._lines_to_keep`), reading a hand-added line as its own paragraph. — *code,
   2026-10-05* · `server/tests/test_chapter_text.py` ·
   [`2026-10-05-chapter-text-edit.md`](../plans/2026-10-05-chapter-text-edit.md).
+- Dictation can't be started from the app: the shell's hotkey monitor
+  (`src-tauri/src/hotkey_monitor.rs`, `enable_hotkey` / `update_chord_bindings`) is never armed
+  by the renderer (`services/native.js:19`), the Captures tab's Record is off, and paste isn't
+  built; the server side works (`POST /v1/captures`). The server reads `captures.language` and
+  the three cleanup flags; Home's banner reads `hotkey_enabled` and the chord lists. — *code,
+  2026-10-05* · [`2026-10-05-five-small-findings.md`](../plans/2026-10-05-five-small-findings.md).
+- Only Kokoro speaks IPA (runtime v0.9.0-jv.4, `kokoro/manifest.py:33`); the capabilities row's
+  `supports_phoneme_input` is the installed truth (`engines_api.py:252`). — *code, 2026-10-05*.
+- The project export (`GET /v1/projects/{id}/export`) crashes on a persona with no saved
+  delivery (`project_export_api.py:146`) — the personas Cast's batch makes have none. — *measured
+  on the dev app, 2026-10-05* (not fixed; TASKS "Five small findings" OPEN).
 
 ---
 

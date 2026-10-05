@@ -444,7 +444,7 @@ would silently mismatch every line the moment the sheet was reordered.
 
 ### Project export (full project archive)
 
-The Projects tab's **Export project** action produces a `.justvoice.zip` archive:
+Studio → Overview → **📦 Export .justvoice.zip** (under *Also from here*) saves the project as one `<name>.justvoice.zip` archive:
 - All chapters' rendered WAVs
 - All takes (not just defaults — full history for re-roll archaeology)
 - The project's full SQLite snapshot
@@ -453,7 +453,7 @@ The Projects tab's **Export project** action produces a `.justvoice.zip` archive
   the archive's `manifest.json` counts both (`speaker_count`, `persona_count`)
 - Lexicons used
 
-Useful for handing a project to a collaborator, archiving a finished book, or moving between machines. Import via Projects → "+ Import → .justvoice.zip".
+Useful for archiving a finished book, or handing its audio and script to someone. **Nothing imports it back yet** — there is no "open a .justvoice.zip" in JustVoice; the archive is a backup you can unzip. Importing it is in the backlog.
 
 ### Single take → ZIP (with effects history)
 

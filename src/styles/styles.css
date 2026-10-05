@@ -472,11 +472,14 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
 }
 .jv-topbar .lu-titlebar-btn:hover:not(:disabled) { background: var(--surface-2); color: var(--ink); }
 .jv-topbar .lu-titlebar-btn:disabled { opacity: 0.32; cursor: default; }
+/* The page name keeps about 16 characters before anything else gives way
+   (decided 2026-10-05 — at 1440 px "Personas › June" read "P.." and Studio's
+   name vanished); the two model pills shrink first (below). */
 .jv-topbar .lu-titlebar-title {
   font-size: 24px;
   font-weight: 600;
   letter-spacing: -0.015em;
-  min-width: 0;
+  min-width: 12ch;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -646,7 +649,12 @@ button.jv-topbar__proj:hover { border-color: var(--accent); color: var(--accent-
   padding: 0 12px;
   margin-left: 12px;
   white-space: nowrap;
-  flex-shrink: 0;
+  /* Shrinks first when the bar is short of room, its name ending in "…" —
+     the full name is in its tooltip (decided 2026-10-05). */
+  flex-shrink: 100;
+  min-width: 68px;
+  max-width: 260px;
+  overflow: hidden;
   background: var(--accent-soft);
   border: 1px solid var(--accent-line);
   border-radius: var(--r-pill);
@@ -656,6 +664,11 @@ button.jv-topbar__proj:hover { border-color: var(--accent); color: var(--accent-
   font-weight: 500;
   cursor: pointer;
   transition: background 0.12s, border-color 0.12s;
+}
+.jv-topbar__engine-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .jv-topbar__engine-pill:hover {
   background: var(--accent);

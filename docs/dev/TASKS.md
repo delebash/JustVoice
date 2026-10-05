@@ -652,27 +652,6 @@ torch 2.7 pin actually installs, and the docstring records the year it
 claimed a venv it never had. Delete this item next sweep.
 GO:     done
 
-### Settings → Capture is a localStorage mock — its controls never reach the server
-
-STATE: FINDING — code-verified 2026-08-08 (found wiring the cleanup redesign's
-live toggles).
-WHY it matters: `SettingsView.vue:585-599` says it itself — "Persisted via
-PATCH /v1/settings when wired; for now uses localStorage"
-(`justvoice:capture_settings`). Every control on the card (STT model,
-refinement mode, language, auto-paste, playback voice) writes only
-localStorage; the SERVER's `captures.*` settings — the ones production reads —
-never change. Worse, "Refinement mode" is a single-choice select over what the
-server stores as THREE independent booleans (`smart_cleanup` /
-`self_correction` / `preserve_technical`) — the control cannot even express
-the real state. The cleanup card's pane toggles (2026-08-08) write the real
-flags, so the two surfaces can now visibly disagree. Violates the
-no-renderer-store law (the 2026-06-19 storage rewrite).
-NOT: fixed as a rider on the redesign build — un-go'd scope, recorded instead.
-OPEN: wire the card to PATCH `/v1/settings` (deep-merge proven), replace the
-mode select with the three real toggles, delete the localStorage shim — or
-strip the card to what's real.
-GO: needed.
-
 ### Seed a pronunciation lexicon from the imported book's proper nouns
 
 STATE: OPEN — your call. Raised and deliberately PULLED OUT of the 2026-08-08
@@ -722,6 +701,43 @@ OPEN: the design (where it lives, and whether a moved line keeps its
 GO: needed.
 
 ## The next build
+
+### Five small findings, fixed as recommended (decided 2026-10-05)
+STATE:  DECIDED 2026-10-05 — "your rec on all go", on the five as shown:
+        "1. The title bar cuts 'Personas › June' to 'P..'. The page name is the only item in the bar
+        allowed to shrink. The voice-engine and AI-model pills never shrink. Lean: the page name
+        keeps at least about 16 characters, and the two pills shrink first, ending in '…' with the
+        full name on hover."
+        "2. Settings → Capture saves nothing. Language, Refinement mode, Allow auto-paste, Default
+        playback voice and the Hotkeys card are never saved, and they don't even survive a reload.
+        The server only reads the language and three refine on/off switches. Lean: Wire Language
+        to the server. Replace the Refinement mode dropdown with the three real switches (the app
+        already has that control). Remove auto-paste, playback voice and the Hotkeys card, since
+        nothing stands behind them. Add 'global dictation hotkeys' to IDEAS, and fix the dictation
+        docs."
+        "3. IPA in lexicons. Kokoro speaks IPA again since runtime jv.4; no other model does. Lean:
+        The persona page counts IPA-only entries only when the voice's model takes IPA. Lexicons
+        labels IPA entries with the models that speak them ('Kokoro only'), worked out from the
+        model list rather than hard-coded. Fix the three doc lines that say no engine speaks IPA."
+        "4. Project export (Studio → Overview → 📦 Export .justvoice.zip). Nothing can import the
+        file back. It's saved as <name>.zip, and the docs put it on Projects and promise an
+        import. Lean: keep the export as a backup, save it as <name>.justvoice.zip, fix the docs,
+        and put 'import a project file' in IDEAS."
+        "5. Voice files. The server can export and import a single voice as a file, but no button
+        calls it, and the file leaves out the voice's model. Lean: add Export to a voice's menu on
+        Voices and Import voice… to its toolbar, and carry the model in the file."
+WHY:    the findings, checked against the code 2026-10-05 (the FINDING entries they replace).
+BUILT:  2026-10-05 — build, blast radius and live checks `docs/plans/2026-10-05-five-small-findings.md`
+        (styles.css + App.vue pills; SettingsView Capture + RefineSectionToggles `intro`,
+        CapturesSettings −2 fields; lexiconPreview `{ ipa }`, LexiconsView, PersonaEditorView;
+        StudioOverview + project_export_api names; voice_bundle model + VoicesView Export/Import).
+        Docs dictation, getting-started, lexicons, personas, import-and-export, studio, voices,
+        whats-new; IDEAS (hotkeys; project import). The old FINDING entries closed.
+OPEN:   the title bar at 1280 px still overflows (~150 px, as before) — the user asked "why isnt it
+        flex to grow snd shrink as needed"; shrinking everything in an order was offered, GO
+        needed. The project export crashes on personas with no saved delivery (plan §3) — found
+        while checking 4, not fixed, GO needed.
+GO:     given 2026-10-05
 
 ### A chapter's text can be edited from its row, and a chapter opens before Analyze (decided 2026-10-05)
 STATE:  DECIDED 2026-10-05 — "2 and your rec on others go" (the user: "i can click add text and get the
@@ -2968,56 +2984,6 @@ BUILT:  2026-10-05 — 1 and 2: `v0.9.0-jv.4` published and pinned, libmecab on 
         8 GB+ tier as suggested on this 8 GB card, every engine row on one line and the same
         width (measured), no JS errors.
 GO:     given 2026-10-04 ("go and your rec for the audit fixes")
-
-### FINDING — at 1440 px the title bar cuts "Personas › June" to "P.."
-STATE:  FINDING — seen 2026-10-04 in screenshots of the running app (`npm run dev`), on the real
-        `#/personas/new` and on the mock alike: the project, kind, master, model and LLM pills
-        take the bar and the title (`App.vue`'s `TitleBar` `#title` slot) shrinks to "P..".
-OPEN:   needs a go — not looked into beyond the screenshot.
-GO:     needed
-
-### FINDING — voice and project files: an export with no import, a bundle with no UI, and three smaller slips
-STATE:  FINDING — code-verified 2026-10-04 (the persona-mock research, plan
-        `2026-10-04-persona-voice-making.md` §4 step 1).
-WHY:    1. "📦 Export .justvoice.zip" (`StudioOverview.vue:321`) is the PROJECT export
-        (`project_export_api.py:47`); nothing reads it back — the only zip import is EPUB/DOCX
-        (`imports/adapters/book_prose.py:69-74`) — yet `docs/import-and-export.md:441` says
-        "Import via Projects → '+ Import → .justvoice.zip'".
-        2. The voice file is `.jvvoice.zip` (`voice_bundle.py:66`; `voice_bundle_api.py:27`,
-        `:43-71`): no UI calls it, and it carries neither `model` nor `xvector_only`, so a
-        Turbo clone comes back as Multilingual (`voice_model.py:252-253`).
-        3. `VoicesView.vue:88` sends `v.design_prompt` to the gender guess; the `Voice` DTO
-        (`models.py:521-536`) has no such field, so a designed voice's description never
-        reaches it.
-        4. The persona page's Effects chips print the raw type id ("eq_low"), not the
-        catalog's label ("EQ — Low shelf") — `PersonaEditorView.vue:634`.
-        5. No clip is checked before cloning — no length, no noise — client
-        (`VoicesView.vue:1484-1492`) or server.
-OPEN:   each needs a go.
-GO:     needed
-
-### FINDING — the lexicon previews still show IPA as if an engine spoke it
-STATE:  FINDING — code-verified 2026-10-01 (surfaced by the audio.cpp switch). Since the switch no
-        engine takes phonemes (`phoneme_override` False on every manifest), so the render uses an
-        entry's respelling and an IPA-only entry does nothing (`render_core._apply_lexicons`). The
-        previews (`services/lexiconPreview.js`, used by GenerateView and LexiconsView) still count
-        and display IPA entries as applied. docs/lexicons.md now says so in words.
-WHY:    a preview that promises a pronunciation the audio won't have.
-OPEN:   which engine a preview assumes — GenerateView knows the picked voice's engine;
-        LexiconsView has none (a lexicon is engine-free) · until IPA returns (switch plan §5.3),
-        mark IPA-only entries "not spoken yet"?
-GO:     needed
-
-### FINDING — Settings → Capture's fields are kept in the browser and never reach the server
-STATE:  FINDING — code-verified 2026-10-01 (surfaced while replacing its dead Whisper picker).
-        Refinement mode, capture language and auto-paste live in `localStorage`
-        (`SettingsView.vue`, `CAPTURE_KEY`) — the comment says "Persisted via PATCH /v1/settings
-        when wired; for now uses localStorage". The server's `settings.captures` (language,
-        stt_model, refinement flags) is what dictation reads. The switch removed the picker that
-        offered faster-whisper sizes the server never used; the rest predates it.
-WHY:    controls that look like settings and change nothing.
-OPEN:   wire them to `settings.captures` via PATCH, or remove them.
-GO:     needed
 
 ### Voice gender in every voice dropdown, and speaker pronouns — with the Personas redesign
 STATE:  DECIDED 2026-09-30 as a to-do — "add that as todo possbile wehn we do the redesign of

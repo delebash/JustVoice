@@ -570,7 +570,7 @@ onMounted(async () => {
           @click="goView('engines')"
         >
           <span class="jv-topbar__engine-icon">🔊</span>
-          {{ health.current_engine || "No voice engine" }}
+          <span class="jv-topbar__engine-name">{{ health.current_engine || "No voice engine" }}</span>
         </button>
         <button
           v-if="health"
@@ -583,7 +583,7 @@ onMounted(async () => {
           @click="goView('ai')"
         >
           <span class="jv-topbar__engine-icon">🧠</span>
-          {{ llmModel ? `${llmModel}${llmLoading ? " · loading" : ""}` : "No language model" }}
+          <span class="jv-topbar__engine-name">{{ llmModel ? `${llmModel}${llmLoading ? " · loading" : ""}` : "No language model" }}</span>
         </button>
 
         <!-- Status and server URL are TWO things, not one (user, 2026-08-08).

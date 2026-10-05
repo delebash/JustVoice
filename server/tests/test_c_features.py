@@ -238,6 +238,20 @@ def test_bundle_round_trip_carries_the_clip(tmp_path):
     assert store.ref_wav_path(back.id).is_file()
 
 
+def test_bundle_carries_the_model_and_skip_the_words(tmp_path):
+    # Until 2026-10-05 the file left the model out, so an imported Turbo
+    # clone spoke on the engine's default model.
+    from justvoice.voice_bundle import build_bundle, import_bundle
+
+    store = _FakeVoices(tmp_path)
+    v = store.create(_rec(model="chatterbox-turbo", xvector_only=True))
+    store.write_ref_wav(v.id, _wav())
+    payload, _ = build_bundle(store, v.id)
+    back = import_bundle(store, payload, known_engines={"chatterbox"})
+    assert back.model == "chatterbox-turbo"
+    assert back.xvector_only is True
+
+
 def test_bundle_refuses_missing_engine_with_the_reason(tmp_path):
     from justvoice.voice_bundle import build_bundle, import_bundle
 

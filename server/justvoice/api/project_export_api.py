@@ -228,7 +228,7 @@ async def export_project(
     bytes_out = buf.getvalue()
     slug = _slugify(project.name)
     ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    filename = f"{slug}-{ts}.zip"
+    filename = f"{slug}-{ts}.justvoice.zip"
     return StreamingResponse(
         iter([bytes_out]),
         media_type="application/zip",

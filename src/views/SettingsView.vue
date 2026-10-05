@@ -5,6 +5,7 @@ import { useApi } from "../stores/api.js";
 import { pushToast } from "@delebash/llm-ui";
 import { confirmDialog } from "@delebash/llm-ui";
 import { AppearancePanel, DataManagement, FAMILY_LABELS, LogsPanel, SettingsShell, UiButton, UiInput, UiToggle, UiField, UiCheckbox, UiTag, UiSelect, UpdatesPanel, UiTable, UiSlider, fmtBytes, refreshRunnerModels, renderHelpMarkdown, serverUrl, useAiTasksStore } from "@delebash/llm-ui";
+import RefineSectionToggles from "../components/lab/RefineSectionToggles.vue";
 import { loadDoc } from "../services/helpDocs.js";
 import { pickDirectory, storageGetRoot, storageRelocate } from "../services/native.js";
 import { useOnboarding } from "../stores/onboarding.js";
@@ -580,22 +581,34 @@ async function restartAndInstall() {
 // store (ui.appearance + ui.setAppearance, @delebash/llm-ui applyAppearance).
 // The Settings controls below bind straight to ui.appearance.
 
-// ── Capture / Dictation settings (preview parity — preview Capture sub-tab) ──
-// Mirrors the shape of settings.capture in the server-side Settings model.
-// Persisted via PATCH /v1/settings when wired; for now uses localStorage so
-// the UI is interactive immediately.
-const CAPTURE_KEY = "justvoice:capture_settings";
-const capture = ref({
-  llmModel: "1.7B",
-  refinementMode: "smart-cleanup",
-  language: "auto",
-  allowAutoPaste: true,
-  defaultPlaybackVoice: "",
-});
-try {
-  const raw = localStorage.getItem(CAPTURE_KEY);
-  if (raw) Object.assign(capture.value, JSON.parse(raw));
-} catch {}
+// ── Capture / Dictation — only what the server reads (decided 2026-10-05) ──
+// The capture language (captures.language), saved the moment it changes; the
+// three cleanup switches are RefineSectionToggles (captures.smart_cleanup /
+// self_correction / preserve_technical — AI Settings' Dictation cleanup card shows the
+// same ones). Until then this tab was a localStorage mock nothing read — a
+// refinement-mode dropdown, auto-paste, a playback voice and a hotkeys card
+// with fixed chords. Global hotkeys are an idea (docs/dev/IDEAS.md).
+const captureLanguage = ref("auto");
+async function loadCaptureLanguage() {
+  const s = await api.safeRequest("/v1/settings", null);
+  captureLanguage.value = s?.captures?.language || "auto";
+}
+async function saveCaptureLanguage(value) {
+  const before = captureLanguage.value;
+  captureLanguage.value = value;
+  try {
+    await api.request("/v1/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ captures: { language: value } }),
+    });
+    pushToast({ message: "Capture language saved.", duration: 2000 });
+  } catch (e) {
+    captureLanguage.value = before;
+    pushToast({ message: `Save failed: ${e?.message || e}`, kind: "error" });
+  }
+}
+onMounted(loadCaptureLanguage);
 
 // ── Mastering settings (preview parity — preview Mastering sub-tab) ─────
 // Six knobs per preset (LUFS / peak / noise floor / head silence / tail
@@ -1550,47 +1563,10 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- ─── Capture / Dictation · placeholder. ─── -->
-    <!-- ─── Capture / Dictation (preview parity, preview lines 1640-1662) ─── -->
+    <!-- ─── Capture / Dictation — only what the server reads (2026-10-05) ─── -->
     <div v-show="activeSub === 'capture'" class="jv-section">
       <div class="jv-card">
-        <div class="jv-card__header"><h3 class="jv-card__title">Hotkeys (ChordPicker)</h3></div>
-        <p class="jv-muted jv-hint jv-mb14">
-          Press-and-hold or toggle hotkeys for dictation. ChordPicker is a live keyboard combo editor —
-          press the chord, peak-set is captured, Esc/Tab pass through.
-        </p>
-        <div class="setting-row">
-          <div class="setting-row__head">
-            <div>
-              <div class="setting-row__title">Push-to-talk</div>
-              <div class="setting-row__desc">Hold the chord to record. Release to stop + transcribe.</div>
-            </div>
-            <div class="jv-row jv-gap6">
-              <span class="kbd">⌥</span><span class="kbd">⌘</span><span class="kbd">V</span>
-              <UiButton intent="ghost" size="small" label="Edit" />
-              <UiButton intent="ghost" size="small" label="Clear" />
-            </div>
-          </div>
-        </div>
-        <div class="setting-row">
-          <div class="setting-row__head">
-            <div>
-              <div class="setting-row__title">Toggle-to-talk</div>
-              <div class="setting-row__desc">Press once to start, press again to stop. Useful for long passages.</div>
-            </div>
-            <div class="jv-row jv-gap6">
-              <span class="kbd">⌥</span><span class="kbd">⌘</span><span class="kbd">D</span>
-              <UiButton intent="ghost" size="small" label="Edit" />
-              <UiButton intent="ghost" size="small" label="Clear" />
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div v-show="activeSub === 'capture'" class="jv-section">
-      <div class="jv-card">
-        <div class="jv-card__header"><h3 class="jv-card__title">Models</h3></div>
+        <div class="jv-card__header"><h3 class="jv-card__title">Dictation</h3></div>
         <div class="setting-row">
           <div class="setting-row__head">
             <div>
@@ -1618,22 +1594,14 @@ onMounted(() => {
         <div class="setting-row">
           <div class="setting-row__head">
             <div>
-              <div class="setting-row__title">Refinement mode</div>
+              <div class="setting-row__title">Cleanup</div>
               <div class="setting-row__desc">
-                smart-cleanup = punctuation + capitalization only. self-correction = also fixes likely misheard words.
-                preserve-technical = keep code-like tokens verbatim.
+                What the cleanup pass does to a transcript. Each switch saves at once, and the next
+                dictation uses it.
               </div>
             </div>
-            <UiSelect
-              v-model="capture.refinementMode"
-              width="name"
-              :options="[
-                { label: 'smart-cleanup', value: 'smart-cleanup' },
-                { label: 'self-correction', value: 'self-correction' },
-                { label: 'preserve-technical', value: 'preserve-technical' },
-              ]"
-            />
           </div>
+          <RefineSectionToggles intro="" />
         </div>
         <div class="setting-row">
           <div class="setting-row__head">
@@ -1642,8 +1610,9 @@ onMounted(() => {
               <div class="setting-row__desc">Language hint for speech recognition. "auto" detects per-recording.</div>
             </div>
             <UiSelect
-              v-model="capture.language"
+              :model-value="captureLanguage"
               width="name"
+              @update:model-value="saveCaptureLanguage"
               :options="[
                 { label: 'auto', value: 'auto' },
                 { label: 'English (en)', value: 'en' },
@@ -1655,42 +1624,13 @@ onMounted(() => {
             />
           </div>
         </div>
-      </div>
-    </div>
-
-    <div v-show="activeSub === 'capture'" class="jv-section">
-      <div class="jv-card">
-        <div class="jv-card__header"><h3 class="jv-card__title">Output</h3></div>
-        <div class="setting-row">
-          <div class="setting-row__head">
-            <div>
-              <div class="setting-row__title">Allow auto-paste</div>
-              <div class="setting-row__desc">
-                Paste transcription into the focused text field automatically. Requires Accessibility
-                permission on macOS (Privacy → Accessibility) and Input Monitoring for the hotkey.
-              </div>
-            </div>
-            <UiToggle v-model="capture.allowAutoPaste" aria-label="Allow auto-paste" />
-          </div>
-        </div>
-        <div class="setting-row">
-          <div class="setting-row__head">
-            <div>
-              <div class="setting-row__title">Default playback voice (MCP <code class="jv-mono">speak</code>)</div>
-              <div class="setting-row__desc">
-                Voice agents call <code class="jv-mono">justvoice.speak</code> with no voice arg. This is the
-                fallback profile they get.
-              </div>
-            </div>
-            <UiSelect v-model="capture.defaultPlaybackVoice" :options="[{ label: '(none — pick a profile)', value: '' }]" width="name" />
-          </div>
-        </div>
         <p class="jv-muted jv-note-xs jv-mt8">
           Captures live under <code class="jv-mono">~/.justvoice/captures/</code>. See the
           <a href="#captures">Captures tab</a> for the live recording list + 6-gate readiness checklist.
         </p>
       </div>
     </div>
+
 
     <!-- ─── MCP server — install snippets + tool listing (task #92) ─── -->
     <!-- ─── MCP server (preview parity, preview lines 1664-1715) ─── -->
@@ -1971,7 +1911,7 @@ onMounted(() => {
     </div>
 
     <!-- ─── Save ─── -->
-    <div v-show="['general','mastering','generation','capture','external','cache'].includes(activeSub)" class="jv-section">
+    <div v-show="['general','mastering','generation','external','cache'].includes(activeSub)" class="jv-section">
       <UiButton intent="primary" size="lg" @click="save">Save settings</UiButton>
     </div>
 

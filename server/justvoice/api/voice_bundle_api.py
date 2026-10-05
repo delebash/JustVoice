@@ -1,10 +1,9 @@
 # SPDX-License-Identifier: MIT
 """/v1/voices/{id}/bundle.zip + /v1/voices/bundle — voice portability (C4).
 
-Deliberately its OWN file, not an addition to voices_api.py: that file is
-held by the parallel Blend-tab session (user's wall, 2026-08-21), and the
-bundle doors don't touch anything it owns. The UI button lands after that
-session releases VoicesView — recorded in the tracker.
+Its own file, apart from voices_api.py (a 2026-08-21 split). Voices calls
+both since 2026-10-05: ⋯ → Export on a voice you made, ⤒ Import voice… in
+the toolbar.
 """
 
 from __future__ import annotations

@@ -2,12 +2,11 @@
 //
 // Lexicon preview — ONE truth for what a lexicon entry does to a line.
 //
-// Until 2026-08-21 the two previews contradicted each other AND the
-// renderer: GenerateView showed IPA-first (`phoneme_ipa || alias`),
-// LexiconsView alias-first (`alias || phoneme_ipa`), and the render
-// applied only the alias. Now that the render really does both
-// (render_core._apply_lexicons + engines/kokoro/ipa.py), the previews
-// mirror those exact semantics from one place:
+// Until 2026-08-21 the previews contradicted each other AND the renderer
+// (one IPA-first, one alias-first, the render alias-only). Now the render
+// does both (render_core._apply_lexicons; IPA through the speech runtime's
+// inline pronunciations, Kokoro only since runtime v0.9.0-jv.4), and the
+// previews — Lexicons and a persona's Hear it count — mirror it from here:
 //
 //   * alias        — replaces the TEXT, case-sensitive substring, on any
 //                    engine (render_core: `out.replace(grapheme, alias)`).
@@ -37,9 +36,14 @@ export function entryDisplay(entry) {
  * one row per grapheme, counted the way the pronunciation matcher counts
  * (case-insensitive word boundary).
  *
+ * `ipa` — does the line's model take IPA? When it doesn't, an IPA-only
+ * entry does nothing at render, so it isn't counted, and an entry with both
+ * counts as its respelling (decided 2026-10-05: the persona page counted
+ * IPA-only entries whatever the voice's model).
+ *
  * @returns {Array<{word, display, kind, count}>}
  */
-export function lexiconMatches(text, entries) {
+export function lexiconMatches(text, entries, { ipa = true } = {}) {
   if (!text) return [];
   const sorted = [...(entries || [])].sort(
     (a, b) => (b.grapheme?.length || 0) - (a.grapheme?.length || 0),
@@ -48,7 +52,8 @@ export function lexiconMatches(text, entries) {
   const matches = [];
   for (const e of sorted) {
     if (!e.grapheme) continue;
-    const display = entryDisplay(e);
+    const usable = ipa ? e : { ...e, phoneme_ipa: "" };
+    const display = entryDisplay(usable);
     if (!display) continue;
     const key = e.grapheme.toLowerCase();
     if (seen.has(key)) continue;
@@ -58,8 +63,8 @@ export function lexiconMatches(text, entries) {
     matches.push({
       word: e.grapheme,
       display,
-      kind: e.phoneme_ipa
-        ? (e.alias ? "spelling + pronunciation" : "pronunciation")
+      kind: usable.phoneme_ipa
+        ? (usable.alias ? "spelling + pronunciation" : "pronunciation")
         : "spelling",
       count: found.length,
     });

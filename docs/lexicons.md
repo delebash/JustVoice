@@ -34,8 +34,8 @@ An entry that can't do anything on the line's engine decides nothing, and the
 persona's is used instead:
 
 - a **blank row** — the book's lexicon only lists the name;
-- an **IPA-only entry** on an engine that can't take IPA — which is every
-  engine today (see [IPA entries reach the audio](#ipa-entries-reach-the-audio)).
+- an **IPA-only entry** on an engine that can't take IPA — every engine but
+  Kokoro (see [IPA entries reach the audio](#ipa-entries-reach-the-audio)).
 
 A respelling matches its exact spelling, so the book's "worcester" leaves
 "Worcester" to the persona's entry. A longer entry wins over a word inside it,
@@ -132,8 +132,12 @@ engine reads an entry's **respelling**: give the names that matter a respelling
 voice. An IPA-only entry changes nothing on an engine without phonemes.
 
 The live preview marks both: respellings replace the word, pronunciations
-show as 「/…/」 after it — the preview shows the IPA you've entered even
-though no engine speaks it yet.
+show as 「/…/」 after it, with a line under the preview saying which models
+speak IPA — *「/…/」 is IPA — Kokoro only.* The entries table says the same in
+its Kind column (*IPA · Kokoro only*; hover it for the rest). Both read the
+installed models' capabilities, so they follow the speech runtime you have.
+On a persona's page, the count of word replacements under **Lexicon** leaves
+out an IPA-only entry when the voice's model can't take IPA.
 
 ## Import + export
 
@@ -144,8 +148,8 @@ Lexicons round-trip as `.justlex.json` files. Import a JustWrite character lexic
 Different engines respect lexicons differently:
 
 - **Kokoro** reads text through eSpeak NG, a phoneme front-end, so respellings
-  steer it well. It took IPA entries directly before the 2026-10-01 switch (see
-  above).
+  steer it well, and it takes IPA entries directly — again since v0.9.0-jv.4 of
+  the speech runtime (see above).
 - **Chatterbox** is end-to-end neural; lexicons are applied as text-substitutions ("Beauchamp" → "BEE-chum") before tokenization.
 - **Qwen3-TTS** takes respellings only, like Chatterbox.
 

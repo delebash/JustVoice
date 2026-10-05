@@ -4,7 +4,7 @@ import { ref, onMounted, onActivated, computed, nextTick } from "vue";
 import { useRouter } from "vue-router";
 import { useApi } from "../stores/api.js";
 import PageTaskStrips from "../components/PageTaskStrips.vue";
-import { pushToast, serverUrl as apiPath } from "@delebash/llm-ui";
+import { pushToast, saveBlob, serverUrl as apiPath } from "@delebash/llm-ui";
 import { confirmDialog, promptDialog } from "@delebash/llm-ui";
 import {
   DropdownMenuContent, DropdownMenuItem, DropdownMenuPortal,
@@ -472,6 +472,39 @@ async function refresh() {
   ]);
 }
 
+// ── A voice as one file (decided 2026-10-05) — the server's bundle
+// (voice_bundle.py), which carries the voice's model since then: ⋯ → Export
+// on a voice you made, ⤒ Import voice… in the toolbar. A built-in ships with
+// its model, so it has no Export.
+const bundleInput = ref(null);
+async function exportVoice(row) {
+  try {
+    const blob = await api.requestBlob(`/v1/voices/${encodeURIComponent(row.id)}/bundle.zip`);
+    const safe = (row.name || "voice").replace(/[^\w\- ]+/g, "_").trim() || "voice";
+    await saveBlob(blob, `${safe}.jvvoice.zip`, { title: "Save voice", filterName: "JustVoice voice", filterExt: "zip" });
+    pushToast({ kind: "success", title: "Voice exported" });
+  } catch (e) {
+    pushToast({ kind: "error", title: "Export failed", description: String(e?.message ?? e) });
+  }
+}
+function chooseVoiceFile() {
+  bundleInput.value?.click();
+}
+async function importVoiceFile(ev) {
+  const file = ev.target.files?.[0];
+  ev.target.value = "";
+  if (!file) return;
+  const form = new FormData();
+  form.append("file", file);
+  try {
+    const v = await api.postForm("/v1/voices/bundle", form);
+    await refresh();
+    pushToast({ kind: "success", message: `${v.name} imported.` });
+  } catch (e) {
+    pushToast({ kind: "error", message: `Couldn't import that file: ${e?.message || e}` });
+  }
+}
+
 // ── ⋯ New persona from this voice · Copy to another model… ─────────────
 function newPersonaFrom(voice) {
   router.push({ name: "persona", params: { id: "new" }, query: { voice: voice.id } });
@@ -687,6 +720,10 @@ function voiceTypeVariant(kind) {
       label="✨ Guess unknown genders"
       title="Ask the AI to label the voices the built-in dictionary doesn't know (the voice_gender feature — runs only when you click)"
       @click="guessUnknownGenders" />
+    <UiButton intent="secondary" size="small" label="⤒ Import voice…"
+      title="A voice exported from JustVoice (.jvvoice.zip): its clip, description or blend, and its model"
+      @click="chooseVoiceFile" />
+    <input ref="bundleInput" type="file" accept=".zip,application/zip" hidden @change="importVoiceFile" />
   </div>
   <PageTaskStrips :features="['voice-gender']" />
 
@@ -832,6 +869,7 @@ function voiceTypeVariant(kind) {
               <DropdownMenuContent class="ev-menu" align="end" :side-offset="4" :collision-padding="8">
                 <DropdownMenuItem class="ev-menu-item" @select="newPersonaFrom(row)">🎭 New persona from this voice</DropdownMenuItem>
                 <DropdownMenuItem v-if="hasClip(row)" class="ev-menu-item" @select="copyToModel(row)">⧉ Copy to another model…</DropdownMenuItem>
+                <DropdownMenuItem v-if="row.source !== 'preset'" class="ev-menu-item" @select="exportVoice(row)">⤓ Export…</DropdownMenuItem>
                 <template v-if="row.source !== 'preset'">
                   <DropdownMenuSeparator class="ev-menu-sep" />
                   <DropdownMenuItem class="ev-menu-item danger" @select="deleteVoice(row)">🗑 Delete</DropdownMenuItem>

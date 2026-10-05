@@ -2,6 +2,20 @@
 
 ## v0.1.0
 
+- **Five small fixes (2026-10-05)** —
+  - the title bar keeps the page's name (about 16 characters) and shortens the
+    voice-engine and AI-model pills first, with the full name on hover;
+  - Settings → Capture saves: **Capture language** and the three **Cleanup**
+    switches go to the server; the controls that saved nothing (Refinement mode,
+    auto-paste, playback voice, the Hotkeys card) are gone
+    ([Dictation](dictation.md));
+  - IPA in lexicons says who speaks it — *IPA · Kokoro only* on Lexicons, and a
+    persona's word-replacement count skips IPA-only entries its model can't take
+    ([Lexicons](lexicons.md));
+  - the project export saves as `<name>.justvoice.zip`, and the docs no longer
+    promise an import;
+  - Voices gains **⋯ → ⤓ Export…** and **⤒ Import voice…**, and a voice file now
+    carries its model ([Voices](voices.md#the--menu))
 - **Edit a chapter's text from Script's grid (2026-10-05)** — **⋯ → ✎ Edit
   text** reopens the text you pasted or imported, before or after Analyze: lines
   you leave as they are keep their speaker and takes, changed paragraphs become

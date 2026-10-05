@@ -84,7 +84,8 @@ shows no count because nothing records an export.
   tags](#leaving-out-dialogue-tags).
 
 **Also from here:** **Re-import** merges a newer version of the source file into
-this project, and **Export .justvoice.zip** saves the whole project as one file.
+this project, and **Export .justvoice.zip** saves the whole project as one file
+— a backup or a hand-off; nothing imports it back yet.
 **Delete project** asks first, then removes the project and everything in it,
 its speakers included; takes, generations, personas, voices and lexicons are
 kept.

@@ -6,6 +6,22 @@ The holding pen for unscheduled JustVoice ideas — same charter as JW's
 
 ---
 
+- **2026-10-05 · Global dictation hotkeys, in-app recording, and paste into any field** —
+  the dictation pipeline works on the server (`POST /v1/captures` transcribes and cleans),
+  but nothing in the app starts a recording: the desktop shell has a hotkey monitor
+  (`src-tauri/src/hotkey_monitor.rs`, with `enable_hotkey` / `update_chord_bindings`)
+  that the renderer never calls, the Captures tab's **Record (soon)** is off, and
+  pasting the result isn't built. Settings → Capture's fake Hotkeys card, auto-paste
+  switch and playback voice were removed 2026-10-05 (TASKS "Five small findings").
+  The server keeps `captures.hotkey_enabled` and the two chord lists, which Home's
+  hotkey banner reads.
+
+- **2026-10-05 · Import a `.justvoice.zip` project** — Studio → Overview exports a
+  project archive (`project_export_api.py`: the chapters' WAVs, every take, the SQLite
+  snapshot, speakers, personas, lexicons), but no import adapter reads it
+  (`imports/adapters/justvoice_standard.py` takes JSON only). Kept as a backup on
+  2026-10-05; the docs stopped promising an import.
+
 - **2026-10-01 · New TTS engines: IndexTTS 2.5, FireRedTTS3, FireRedAudio and the
   2026 field** — researched 2026-09-30 at the user's ask; nothing started, nothing
   decided, nothing measured here. The full record, with sources, is

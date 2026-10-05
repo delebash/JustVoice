@@ -132,9 +132,22 @@ the cache's **Prune by voice…** — names it the same way: *Sohee · Female ·
   Nano need a clip longer than 5 seconds; Qwen3 Base needs the words the clip
   says, so when the voice has none saved you are asked to type them or pick
   **Skip the words** (clone from the sound alone).
+- **⤓ Export…** — on any voice but a built-in. Saves the voice as one file,
+  `<name>.jvvoice.zip`: its reference clip (a cloned or imported voice), its
+  description (a designed one) or its mixed vector (a blend), and the model it
+  was made for. A built-in ships with its model, so there is nothing of yours
+  to carry.
 - **🗑 Delete** — on any voice but a preset. If personas are built on it, the
   confirmation names them: *It's the voice of June, Mara — those personas need
   another voice before they can speak.*
+
+**⤒ Import voice…** (in the toolbar, at the right) reads a `.jvvoice.zip` back
+in as a new voice on the same model. It refuses, saying why, a file whose
+engine this install doesn't have (*install it first, then import again*), a
+blend for any engine but the one that mixed it, and a file missing what its
+voice is made of — a clone with no clip, a design with no description. (The
+file carries its model since 2026-10-05; one exported before then imports on
+its engine's default model.)
 
 ## Making a voice
 

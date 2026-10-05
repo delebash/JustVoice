@@ -450,7 +450,8 @@ one voice). It is read on every line this persona speaks, after the book's own
 lexicon — and only on those lines. Where both have an entry for the same word
 that the engine can use, the book's wins. Under it, the page counts how many
 of its words would be replaced in the line typed in **Hear it** — *2 word
-replacements would apply*. See
+replacements would apply*. An entry with only an IPA pronunciation counts only
+when the voice's model takes IPA (Kokoro). See
 [Lexicons](lexicons.md#which-lexicons-a-line-is-read-with).
 
 ### Sampling
