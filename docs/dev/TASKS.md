@@ -69,24 +69,23 @@ OPEN:   an absolute-import entry and the `bundle` extra in the recipe — or not
         Electron move ("The family moves to Electron…" below) retires PyInstaller first.
 GO:     needed.
 
-### FINDING — JustVoice's tray items, update check and "Open log file" do nothing
-STATE:  FINDING — code-verified 2026-10-05 (stack study §4.1).
-BUILT:  they read `window.__TAURI__` (`src/App.vue:425-437`; `src/views/SettingsView.vue:525-576`,
-        `:910-924`), which exists only with `withGlobalTauri` — set in no `tauri.conf.json`. So the
-        tray's Open settings / About / Copy URL do nothing, the updater always says "up to date",
-        and Open log file always says it needs the desktop app. No updater plugin is in any
-        `Cargo.toml`. JustWrite and docgen read `__TAURI_INTERNALS__`, which works.
-OPEN:   route them through the kit's shell door (`isTauriShell`, `services/native.js`) — or let
-        the Electron move's preload bridge replace them.
+### FINDING — JustVoice's update check always says "up to date"
+STATE:  FINDING — code-verified 2026-10-05 (stack study §4.1). The tray items and Settings' Open log
+        file, in the same finding, were fixed 2026-10-05 (the first item under "The next build").
+BUILT:  the updater UI reads `window.__TAURI__` (`src/views/SettingsView.vue:526`, `:554`, `:575`),
+        which exists only with `withGlobalTauri` — set in no `tauri.conf.json` — so it always says
+        "up to date". No updater plugin is in any `Cargo.toml`.
+OPEN:   an updater plugin and its UI through the kit's shell door — or let the Electron move's
+        updater replace it.
 GO:     needed.
 
-### FINDING — `docs/mastering.md` says the analyzer uses pyloudnorm; nothing imports it
-STATE:  FINDING — code-verified 2026-10-05 (stack study §2.2).
-BUILT:  `docs/mastering.md:19`. `server/pyproject.toml:27` declares pyloudnorm; no module or test
-        imports it. ACX QC uses the analyzer's RMS and peak (`export_audiobook.py:167-180`);
-        loudness is ffmpeg's `loudnorm` (`mastering.py:174-178`). Also declared and never
-        imported: `requests`, `rich`.
-OPEN:   correct the doc line; drop the three unused dependencies.
+### FINDING — the server declares `requests` and `rich`; none of its code imports them
+STATE:  FINDING — code-verified 2026-10-05 (stack study §2.2). The doc line (`docs/mastering.md`)
+        and `pyloudnorm`, in the same finding, were fixed 2026-10-05.
+BUILT:  `server/pyproject.toml:22-23`. No JustVoice module, test or script imports either. Both
+        still ship: the kit declares and imports `requests` (`llm_runner/runner/*.py`), and `typer`
+        pulls in `rich` — so NOTICE.md and LICENSES.md keep their rows either way.
+OPEN:   drop the two lines.
 GO:     needed.
 
 ### FINDING — the Kokoro "mean" blend changes in its last bits on every server restart
@@ -95,12 +94,6 @@ BUILT:  `_kokoro_pack` returns the voice names as `set(pack)` (`engines/blending
         `_kokoro_pack_mean` (`:227-238`) sums float32 voices in that order — which follows
         Python's per-process string hashing. Three seeds: 82 % of values differ, max 4.5e-8.
 OPEN:   sum in `voices.json` order (a list, not a set); the C++ port of the audio math must too.
-GO:     needed.
-
-### FINDING — JustVoice's OpenAPI says the licence is Apache-2.0; the project is MIT
-STATE:  FINDING — code-verified 2026-10-05.
-BUILT:  `server/justvoice/app.py:139` — `license_info={"name": "Apache-2.0", ...}`.
-OPEN:   MIT there.
 GO:     needed.
 
 ### FINDING — `synthetic_keys.rs` empties the clipboard after a paste and hard-codes the macOS V
@@ -112,162 +105,6 @@ BUILT:  `src-tauri/src/synthetic_keys.rs:290-307` clears the clipboard after the
 OPEN:   nothing in Rust (it goes with Tauri); the C++ dictation addon must save and restore the
         clipboard and look the V key up from the keyboard layout.
 GO:     needed.
-
-### `DatasetTab.vue` hand-rolls its JSON export — move it onto the kit's `saveBlob`
-STATE:  DECIDED 2026-09-19 — "your rec go" on: "replace the six hand-rolled
-        lines with saveBlob(blob, name, { filterName: "Dataset script",
-        filterExt: "json" }), exactly as ExportPanel.vue already does."
-WHY:    the family checker's one violation (predates today: `572a087`,
-        2026-08-21), and two real defects beside the rule: the object URL is
-        revoked in the same tick as click() (Safari/Firefox have aborted such
-        downloads — the kit waits 30 s), and the desktop app never gets the
-        native Save dialog `saveBlob` provides.
-NOT:    a local helper; a new kit door.
-BUILT:  2026-09-19 — `DatasetTab.vue` `exportJson` → `saveBlob` (title "Save
-        dataset script", filter json; failures toast, the ExportPanel
-        shape); `docs/voices.md` says where the file goes. `check-family`:
-        **no violations**; biome clean. Close (delete) at commit.
-GO:     given 2026-09-19.
-
-### Voice modes: Alexandria parity + the defect list — Opus executes from the plan doc
-STATE:  DECIDED 2026-08-22 — "i am not locking drift at desing time i want same
-        as alexandria" (both designed paths coexist: frozen Designer→save→clone
-        AND dynamic per-line design). The full session verification + per-item
-        specs: `docs/plans/2026-08-22-voice-modes-truth-and-parity.md` (§5).
-WHY:    Code-verified against upstream Qwen3-TTS + Alexandria clones, file by
-        file: our qwen3 engine is faithful; the gaps are host-side. Items:
-        A freeze bridge (save discards the designed WAV) · J design_prompt
-        never reaches render (stored designed voices inert) · C qwen tags flag
-        is false, promised translation never built · D docs/UI: clones ignore
-        direction · E variant preflight for mixed casts · F verify Custom
-        Voice UI path · G seed-stability ear test GATES Alder/Wren · K execute
-        the §3.6 preset-delivery excision (tier still WINS the merge) ·
-        I housekeeping (kit MTP message = kit TASKS).
-NOT:    retiring the dynamic designed mode (user reversed: parity, not
-        drift-lock) · auto variant swapping in E (later opt-in) · a qwen
-        tag-translation layer inside C (separate item if ever).
-BUILT:  2026-08-22 under "your rec update docs and go for coding" — A · J · E ·
-        C · D · I built + gated (741 pytest, 15/15 smoke, vite, ruff); F walked
-        and closed with nothing to fix (the Custom Voice path was already wired
-        end to end). Execution record, deviations and what NO gate covered:
-        plan doc §9. Nothing rendered by ear — see §9.6.
-        COMMITTED + PUSHED 2026-09-19 as `108caac` (with `6c7cf57` persona
-        sweep, `adfa3ea` smoke splash fix); every gate re-run fresh first —
-        plan doc §9.8.
-OPEN:   G (ear test, needs the user — still gates H) · H (blocked on G) ·
-        K (untouched; largest blast radius; the delivery tier still WINS the
-        merge) · one gap D does not name: after A, a designed voice WITH a
-        frozen clip renders as a clone and drops direction, but the frontend
-        cannot tell frozen from clip-less (`VoiceRecord` exposes no
-        "has ref.wav"), so the persona hint still says "✓ takes direction" for
-        it. Needs a decision — expose a computed field, or leave it to
-        docs/voices.md, which now carries it. NOT filled in by assumption.
-GO:     needed — per item, naming it.
-
-### The fresh-install speech clean — scope agreed, two answers still open
-STATE:  DECIDED 2026-08-22 — speech-only reset, shared LLM folder untouched:
-        (1) delete `engines/.uv-python` · (2) clear tts/stt measurement rows ·
-        (3) remove orphan `engines/pocket_tts/` · (4) assistant stops the
-        server (kill by PID/port after verifying llama-server parentage) ·
-        (5) delete JV's orphan `<data>/ai-cache` (24 GB, dead since the
-        shared-cache switch) · plus `engines/{5 engines}/{.venv,models}` and
-        `<data>/speech-cache`. Full manifest + evidence: plan doc §7.2-7.3.
-WHY:    Test the whole install cold: engine venv installs, model downloads,
-        QuickSetup shared-cache choice. Update check reads build-on-disk
-        (QC-25), so a DB wipe cannot make the shared engine misreport.
-NOT:    touching JW's ai-cache (197 GB) · `<data>/ai-runtime` (live, per-app
-        by design) · git-tracked source · kill-by-image-name.
-ANSWERED 2026-09-19 — *"wiped db for fresh install and backup alder and wren
-        first"*: wipe `justvoice.db` = YES · back up Alder+Wren before
-        anything is deleted = YES.
-        Then *"your rec on both, go"* (2026-09-19) on the two points the
-        answers left open: (1) backup destination =
-        `E:\Dev\Web\_backups\jv-alder-wren-2026-09-19\` — durable, outside
-        the data dir and outside the session scratchpad (temp, may be
-        cleaned; these are the only copies); (2) Alder+Wren STAY in
-        `<data>/justvoice/training/builder` — they do not affect what this
-        test checks (engine installs, model downloads, QuickSetup), and the
-        backup covers them.
-        CORRECTION to plan §7.3: the "3 user-added gemma catalog rows re-add
-        via UI" is wrong — they are JV's own seed (`seed_presets.py:56`
-        `JV_MODEL_CATALOG` → kit `seed_extra_catalog`, insert-if-missing,
-        `built_in=False` only because an app's seed shows as user rows), so a
-        wiped DB re-creates them on first start.
-BUILT:  2026-09-19 — backup DONE: both `project.json` copied to the
-        destination above, sha256 identical to the originals (Alder 33 rows,
-        Wren 33 rows). Pre-delete scan: nothing running; the only reparse
-        point in the whole delete set is a junction INSIDE `.uv-python`
-        pointing at its sibling there (both ends in the set); `pocket_tts/` =
-        3 cpython-312 `.pyc`, untracked; free on E: 1216.33 GB.
-        Claude Code's auto-mode classifier refused the delete, so the user ran
-        the same script by hand (`! pwsh … speech-clean.ps1`): all 15 targets
-        deleted, **44.66 GB freed** on E: (the ~19 GB the venvs report was
-        mostly hardlinks into `E:\UV_CACHE_DIR`, which stays). Verified after:
-        0 of 15 targets (+ db -wal/-shm) present · JW's ai-cache intact (414
-        files) · JV `ai-runtime` intact (62 files) · Alder+Wren originals and
-        backup both present, hashes equal · `E:\UV_CACHE_DIR` intact · git: 0
-        tracked files deleted · each engine's `state/` and `voices/` empty, so
-        no stale install marker survives.
-OPEN:   the fresh run itself — start the app, choose the SHARED model folder
-        in QuickSetup, install engines. Pass/fail: afterwards
-        `<data>/ai-cache` must NOT exist. Venv rebuilds link from the kept uv
-        cache, so Python packages will not re-download; CPython and every
-        model will.
-DECIDED 2026-09-29 — "do what you can without my intervention, then let me know the things
-        that i have to do, so run whtever test scenerious you can automate yourself, do a full
-        walkthrough and see how it works and let me know you have full permissions for
-        anything, go", on the recs as given:
-        1 "Push first … With your word I'll try once more. If it's blocked again, it needs
-          you to type `! git push origin main`."
-        2 "Then the fresh-install test, but start with a read-only look at `ai-cache` … what's
-          in it, how big it is and when it was written, without deleting anything. … Then the
-          test as written: open the app, choose the shared model folder in QuickSetup,
-          install the engines. Order: Kokoro first … Then the other four in the background:
-          Chatterbox, Qwen3, LuxTTS and Whisper. … Pass or fail gets recorded in the TASKS
-          entry."
-        3 "Then finish The Ninth Facet: Cast, then render The Keystone. … I make six personas
-          from Kokoro voices, one for the Narrator and one for each of the 5 speakers with
-          lines in The Keystone. The Narrator persona would be named 'Narrator' … The other
-          five get plain voice-style names … Smart-assign casts them … Then I render The
-          Keystone and check the audio exists and plays."
-        Plus a full walkthrough of the app, automated where it can be.
-RESULT 2026-09-29 — PASS, after one cleanup.
-        · Speech: all five engines installed through the app's own Install doors (venv ~20 s
-          each, linked from the kept uv cache; models 6-78 s) into `engines/<id>/.venv` and
-          `<data>/speech-cache` (11 GB). `ai-cache` untouched. First it FAILED on every engine —
-          "[WinError 193]" — see the uv FINDING below.
-        · LLM, checked on an EMPTY data folder (a scratch server, API only, deleted after, its
-          registry entry removed): first launch creates no `ai-cache` and downloads nothing (the
-          presets name the local runner with no model, so warm-on-boot is a no-op); it detects
-          JustWrite's cache as a shareable option; the choice applies at once when the engine is
-          idle. The 29 GB `<data>/ai-cache` here was the 2026-09-19 first session downloading
-          gemma BEFORE the shared folder was chosen (its two blobs = JustWrite's, same sha256
-          names and sizes; llama.cpp b10750 unused; nothing referenced it) — DELETED 2026-09-29,
-          28 GB freed, the model verified still running from JustWrite's cache. Pass condition
-          now holds: `<data>/ai-cache` does not exist.
-        · The Ninth Facet end to end on the real app: Discover + Analyze all four chapters,
-          Cast (six personas via the Personas page, Smart-assign, three more by hand), Render
-          all, ACX QC all_ok (RMS −20.1…−20.5, peak −3.5), M4B 36:29 with 4 named chapters;
-          Whisper transcribed the render back to the text. Game + podcast demos: speakers only,
-          voice-line manifest key `speaker`; both demo projects deleted after.
-GO:     GIVEN 2026-09-19 · and 2026-09-29 for the above.
-
-### The component-reuse sweep — DONE, and the git rule that came out of it
-STATE:  DECIDED 2026-08-21 — "what is your rec on settingshell vs tabstrip, and jv
-        subnav, it should default to prepareer" → "your rec do it all" → "go"
-WHY:    CLAUDE.md said "form primitives", so tables, sliders, progress bars and tab
-        strips were hand-rolled for months. The rule is widened; the sweep is done.
-NOT:    Adopt SettingsShell in Voices/Labs — it brings a scroller those jv-fill
-        views already own. Convert editable/headerless/bespoke tables — 4 stay,
-        each with a written reason. Keep LoRA on Training — overruled.
-BUILT:  JV `cb3e191`, kit `178dd32`. 22→4 hand-rolled tables, 10→0 raw sliders,
-        `.jv-subnav` deleted. Kit: UiSlider · UiTabStrip · UiTable `:row-class` ·
-        DownloadBar `:done-label` · createDownloadTask `armPhase`/`donePhase`.
-        JV: `.jv-table-look`. Record: `docs/plans/2026-08-21-blend-rework-and-
-        consistency-audit.md` §§17-23.
-        OPEN: nothing visual has been VERIFIED — the gate never moves a slider,
-        opens a dialog or expands a row (§23.4).
-GO:     given 2026-08-21
 
 ### THE GIT RULE — a bare `git commit` publishes the other session's staged work
 STATE:  FINDING — code-verified 2026-08-21 (it happened: `5465efa`)
@@ -283,279 +120,6 @@ BUILT:  n/a — this is a working rule: **always `git commit -F - -- <paths>`.**
         none appeared. Watch for `D ` (D in the INDEX column) in `git status`.
         OPEN: none — apply it on every commit while a second session runs.
 GO:     n/a
-
-### FINDING — the dev data dir: what is really in it, and a trap that re-arms itself
-STATE:  FINDING — measured 2026-08-22 ("clean it up" → "your rec go")
-WHY:    Two claims carried for a day were both wrong. The live root is NOT "~50 GB
-        of real user data": it is 45.7 GB re-downloadable HF model cache + 3.7 GB
-        regenerable speech cache, and the user's own content in it was a 495 KB DB
-        plus two 6 KB files — voices/personas/lexicons/generations held ZERO files.
-        `cargo clean` costs a re-download, not the work. And the stale `<repo>/data`
-        was NOT pure junk: it held the only copy of the Alder and Wren dataset-builder
-        projects (33 rows each), which a size-based read would have deleted.
-NOT:    Moving the live root out of `target/debug` — the user's call, item 4 of the
-        recommendation: the risk is a re-download, not data loss. Reinstalling the
-        global `justvoice-server` — it was already correct (`justvoice.serve:main`).
-BUILT:  `<repo>/data` DELETED (1.18 GB) after the two projects were copied across and
-        verified through `storage/dataset_builder.py`'s own `list_projects`.
-        **Deleting it re-armed the trap rather than removing it** — a headless run
-        with no `--data-dir` now CREATES a fresh empty one that looks healthy and is
-        still the wrong database. `--data-dir src-tauri/target/debug/data` stays
-        mandatory for the gate. Full record, all measurements, and the storage shape
-        of a builder project: `docs/plans/2026-08-22-data-dirs-and-disk-reclaim.md`.
-        OPEN: none here — the remaining piece is the kit's, see that repo's tracker.
-GO:     n/a
-
-### The LoRA tab is Alexandria-parity, and acceleration works on every roster engine
-
-STATE:  GO 2026-08-21 — *"go on table your rec go"* on the full decision
-        table, after *"i am sick of both you nad opus doing half a job, do
-        it right"* · *"this is crossplatform app and all hardware
-        acceleration should work for all modeles"* · *"yes ship adapters …
-        a and b"* · *"it does not have to be exactly like alexandria it
-        needs to fit our app, but you are lazy on words and features"* ·
-        *"stop using small text, do a good ui design use your ux plugins"*.
-        **BUILT 2026-08-21** — the full table, verbatim, lives in
-        `docs/plans/2026-08-21-lora-alexandria-parity-and-acceleration.md`
-        (§2), with the verification record (§4: 46 pins green, rendered
-        label assertions, screenshots) and the staged built-in voices (§2-E2:
-        Alder + Wren, ready to generate + train).
-WHY:    The first LoRA build ported mechanics but invented vocabulary
-        ("set" for Dataset) and dropped visible features (Upload ZIP, the
-        dataset list, Import/Export JSON, per-run Confidence/Min SNR,
-        built-ins); and Kokoro's CUDA/DirectML were declared-but-
-        unreachable — no door ever installed the accelerated onnxruntime.
-CORRECTION (2026-08-21, user's catch): *"Datasets are objects, not ZIP
-        files (your 2026-08-20 ruling)"* — **that was never the user's
-        ruling**; it was the assistant's design choice inside the broad
-        2026-08-20 go, mis-cited as the user's (same foul as the blend
-        mis-cite). Under "whatever your rec": folders server-side + ZIP
-        transport both ways, Alexandria-interchangeable.
-NOT:    Alexandria's jargon sentences in user copy (labels yes, "metadata
-        .jsonl + WAV chunks" in a lede no — user's words) · torch-DirectML
-        (upstream stalled; documented CPU on Windows AMD/Intel) · fake
-        BUILTIN_ADAPTERS entries before real weights are published ·
-        auto-running the Alder/Wren training on the user's live box.
-BUILT:  src/views/lora/* · api/training_api.py (upload/archive/builtin) ·
-        training_builtin.py · storage/training_datasets.py (build_zip/
-        import_zip) · training_prep.py (overrides) · render_core.py +
-        engines/kokoro/ipa.py (lexicon IPA, live at render) · kokoro
-        manifest ACCEL_INSTALL + manager accel step + coreml-auto +
-        provider pre-flight · styles.css (.jv-lede, 12.5px floor, the
-        never-defined utilities) · docs/voices.md · docs/engines.md accel
-        matrix · 12 new pins.
-        OPEN: sidecar restart before the new endpoints answer · unify the
-        two lexicon previews · train+publish Alder/Wren → fill
-        BUILTIN_ADAPTERS · timestamps build (research recorded, plan §3) ·
-        full gates + commit on the user's word only.
-GO:     given 2026-08-21
-
-### FINDING — engine loads that nobody announces: three doors skip jv:health-refresh
-STATE:  FINDING — code-verified 2026-08-20, from your report: *"kokor is
-loaded … but not showing loaded on voices … i bet you rolled your own
-again"*. Half right: DETECTION is one shared door (the engines Pinia store
-reloading on the `jv:health-refresh` event, `stores/engines.js:8-40`), and
-the server has ONE truth (`GET /v1/engines` said kokoro "loaded" while your
-page said not — verified live). The rot is three doors that CHANGE engine
-state without dispatching the event, so every other surface keeps its stale
-copy until an alt-tab (`App.vue` refreshes on visibilitychange — why the
-topbar looked right while the Voices page looked wrong).
-WHY:    the three silent doors —
-  1. `VoicesView.previewVoice` with the "Always auto-load" pref
-     (`VoicesView.vue:379-382`): ▶ on a preset loads the engine as a
-     side effect of `preview?auto_load=true`, dispatches NOTHING. This is
-     the exact case in your screenshots (Xiaobei playing, chip saying "no
-     engine loaded", Blend saying "Kokoro (not loaded)").
-  2. `VoicesView.loadEngine` (the acquire tabs' Load button): reloads its
-     OWN stores, never dispatches — the rest of the app stays stale.
-  3. `SpeechEnginesTab.unload` (~:340): refreshes its own list, no
-     dispatch (its sibling at ~:620 dispatches correctly).
-The dialog-confirmed auto-load path (`VoicesView.vue:404-411`) does it
-RIGHT — proof the contract exists and these are pure omissions.
-NOT:    a new detection mechanism — the store + event ARE the mechanism;
-the fix is making every state-changing door announce.
-PARTIAL (2026-08-21, "go" on the closure list): door 3 FIXED
-(`SpeechEnginesTab.unload` now dispatches like load :330 / unloadKind
-:620), and four MORE silent doors found in the new LoRA views were fixed
-the same day (TrainingTab Test Voice auto_load + per-clip transcribe,
-DatasetTab generate, PreparerTab run-end — each a whisper/design-engine
-auto-load the pill never heard about).
-OPEN:   doors 1-2 only (`VoicesView.previewVoice` ~:379 and
-`VoicesView.loadEngine`) — left DELIBERATELY: VoicesView.vue is owned by
-the parallel Blend session (user's word 2026-08-21, *"dont do anything on
-blend tab another session is working on that"*); each is a one-line
-dispatch, offered to that session in the cross-session handoff.
-GO:     given for doors outside VoicesView; VoicesView doors ride the
-Blend session
-
-### FINDING — a blend of non-English voices auditions as English
-STATE:  FINDING — code-verified 2026-08-20, from your report: *"blend doesnt
-work with other language"* (two Mandarin Kokoro presets, Chinese text,
-53 s of wrong-language audio).
-WHY:    Two facts, verified: (1) SAVING a blend derives its language
-correctly — unanimous across the source voices → that language, else the
-configured default (`voices_api.py:358-370`), so the saved voice is zh.
-(2) The pre-save AUDITION ("Hear it") sends
-`language: selectedLanguage.value || "en-US"` (`VoicesView.vue:818`) — and
-the Language dropdown was hidden on the Blend tab the same day (because it
-never reached the SAVED voice), which removed the only override. So every
-blend audition now forces en-US and Kokoro phonemizes Chinese text as
-English. My hide made this path strictly worse for non-English blends.
-NOT:    Resurrecting the dropdown — the audition should not need a control
-the save doesn't need.
-OPEN:   derive the AUDITION language the same way the save does — from the
-picked source voices (unanimous → that language, else the default), one
-rule behind both doors. Whether the SAVED blend then renders zh correctly
-end-to-end is untested — verify when fixing.
-OWNED:  by the parallel Blend session (user 2026-08-21: *"drop a4 and
-anything on blend tab"*) — this session verified it still stands
-(VoicesView.vue:821) and handed the fix path over cross-session.
-GO:     needed (theirs)
-
-### The engine roster: 4 TTS + 1 CPU cloner + 1 STT — TADA and MOSS marked, not deleted
-STATE:  DECIDED 2026-08-17 — *"your rec but dont remove them now you can mark
-them for removal and hide them if you want and ok oand the pcket tts swap"*.
-**THE FULL RESEARCH AND REASONING IS `docs/plans/2026-08-17-engine-roster-and-platform.md`
-— read it before re-deriving ANY engine fact. Do not redo that research.**
-WHY:    One rule produced the whole roster — *keep an engine only if it is the
-ONLY one that does something we need*. Nine variants collapse to six slots,
-each uniquely filled: Kokoro (ready voices, any hardware) · Chatterbox Turbo
-(cloning + 19 tags) · Chatterbox Multilingual (23 languages) · Qwen3 (prose
-direction + voice design — the only one) · **LuxTTS (cloning with no GPU —
-2026-08-22 reversal: Pocket TTS rejected over HF-gated cloning weights, LuxTTS
-keeps the slot, render-proven on the new stack; see the item below)** ·
-Whisper (STT). **29.60 GB** of download surface removed (default variants;
-37.28 GB counting Dia's second checkpoint) — summed from the manifests' own
-pinned `size_bytes`, table in the plan doc §1.
-NOT:    Deleting TADA and MOSS now — your explicit instruction. They keep
-working for anyone who installed them; they stop being offered.
-NOT:    Keeping MOSS for multi-speaker dialogue. That capability has **never
-been reachable** (see the finding below) and the architecture cannot use it —
-`Block.persona_id` is one persona per block and render is a per-line loop.
-NOT:    Dropping LuxTTS — the 2026-08-17 "measure Pocket first" gate fired and
-REVERSED the swap (2026-08-22): LuxTTS stays, Pocket goes. Kokoro is not a
-substitute (it cannot clone).
-BUILT:  Dia excised (§8.2 of the plan doc). OPEN: the mark-and-hide mechanism —
-a manifest deprecation flag → `EngineInfo` → UI badge + exclusion from
-QuickSetup tiers, same shape as the OS gate shipped the same day.
-GO:     given 2026-08-17 for mark-and-hide + the Pocket TTS swap
-
-### The environment migration + Pocket TTS reversal — Opus codes from the hand-off doc
-STATE:  DECIDED 2026-08-22. The 2026-08-17 swap is **REVERSED by the user**:
-*"i dont like requireing hf auth so pocket tts is out"* + *"no supertonic no
-pocket keep lux, verify lux works with our python and pytorch updgade"* —
-verification RAN and PASSED (LuxTTS clone render on Python 3.13 + torch
-2.9.1+cu128 CUDA, 2.39 s audio in 0.9 s, from the app's cached weights).
-The measurement gate fired exactly as designed: Pocket's CLONING weights are
-HF-gated (`kyutai/pocket-tts` gated:auto, anonymous 401 — presets ungated,
-3.2× realtime measured, but cloning was the slot). Supertonic 3 also
-rejected (no cloning in the OSS release). The wider decision — **ONE VENV
-PER ENGINE** (2026-08-22 rethink, user: *"576mb is not bad so if you still
-think per engine venvs is ok go with that"* — measured overhead ~576 MB via
-uv hardlinks; family-wide torch pin guards the 4.3 GB divergence case) on
-**Python 3.13**, **torch 2.13.0 + torchaudio 2.11.0** (proven band
-2.9.1→2.13.0; chatterbox also proven at its declared transformers 5.2.0),
-per-GPU-tier index cu126/cu130 via the kit rule, ROCm 7.2 Linux,
-AMD-Windows override path, shared venv + constraints.txt DELETED, peft
-arrives per-venv, UV_CACHE_DIR pinned, model revisions → SHAs, Pocket
-excised, packaging onedir + MAX_PATH fix, `check:engines` dev command —
-is specced step-by-step in
-**`docs/plans/2026-08-22-env-migration-implementation.md`** (read it whole
-before any edit; the WHY record is
-`docs/plans/2026-08-22-engine-environment-and-platform-research.md`).
-WHY:    User ruling: *"i expliciltly stated i want all working on crossplatfrom
-andd all acceleration this is a limitation i will not accepts"* — torch 2.6.0
-excluded RTX 50 (no cu128+ wheels) and ROCm 7.x; Python 3.12 caused the
-numpy<2 war. Every load-bearing combination was render-proven 2026-08-22.
-NOT:    TADA/MOSS un-marking or deletion (no word — they stay marked+hidden).
-NOT:    Roadmap items (`docs/dev/ROADMAP.md`) — explicitly out of this scope.
-NOT:    AMD-Windows auto-detect (documented override only; no hardware here).
-BUILT:  Slices 0–5 and 7–8, 2026-08-22.
-  · **Slice 0** — the one unproven combination: torch **2.13.0+cu126 renders
-    chatterbox on CUDA** (RTX 2070 SUPER, 2.48 s audio in 14.0 s, rms 0.1214,
-    transformers 5.2.0, numpy 2.5.2). PASS, so the pin stands at 2.13.0 /
-    torchaudio 2.11.0 + rocm7.2; the pre-decided 2.9.1 fallback was not taken.
-  · **Slice 1** — `_uv_env()`, cache + managed-python pinned beside the venvs,
-    passed at every uv spawn (`setdefault`, so a user's own var still wins).
-  · **Slice 2** — family torch pin in all four live manifests; the tier rule
-    now comes from the kit (`concrete_gpu`), cu126/cu130/rocm7.2 replacing the
-    dead cu124 and rocm6.2 indexes.
-  · **Slice 3** — per-engine venvs everywhere. `shared_venv.py`, `constraints.txt`,
-    `_install_engine_shared`, the shared branches and `SHARED_VENV_DIR` all
-    deleted; chatterbox onto its declared transformers 5.2.0 (keeping
-    `--no-deps`), numpy ceiling dropped; venvs now carry a **manifest
-    fingerprint** so a manifest that gains a package flips the row to
-    (re)Install — the peft class, closed; Uninstall on every engine row.
-    `test_engine_constraints.py` repurposed into the family-pin guard.
-  · **Slice 4** — Pocket TTS excised; code sweep returns empty.
-  · **Slice 5** — every live-roster HF source pinned to a full commit sha
-    (`server/scripts/harvest_revisions.py` harvests them; a test fails on any
-    unpinned live row). TADA/MOSS left at `main` — see the deferral below.
-  · **Slice 7** — engines.md, gpu.md, troubleshooting.md, quick-setup.md,
-    voices.md, code-map.md.
-  · **Slice 8** — `npm run check:engines` (drift · upstream · --test).
-  · **The 576 MB estimate, now measured — and it came in under.** All five
-    engines installed by the app. The venv folders REPORT 5,284 MB, but that
-    counts cache-shared bytes once per venv; deduped against the uv cache they
-    hardlink into, the five add **431 MB** (chatterbox 120 · luxtts 103 ·
-    qwen3 102 · whisper 94 · kokoro 14), against **18,750 MB** if nothing were
-    shared. Receipt: a 120 MB DLL inside chatterbox's venv has a link count of
-    5 — four venvs plus the cache entry, one copy on the drive. Docs, the
-    manifest comment, the guard test and `_uv_env` all carry both numbers now.
-  · **Corollary, learned the hard way:** deleting `.shared-venv` reclaimed
-    ~0.1 GB, not the 5.5 GB its folder size advertised — same reason. The
-    bytes live in the uv cache; the venv held links. `uv cache prune` is the
-    lever that actually reclaims, and it is the USER's cache (shared across
-    projects), so it is not something this app should run on its own.
-OPEN:   **Slice 6.2/6.3 — the packaging half, NOT done, needs your word.**
-Slice 6.1 IS done and it is the part that fixes the actual bug: engine state
-(venvs, models, uv cache) now roots at `<data_dir>/engines-runtime` when
-frozen, via `engines_runtime_root()`, so it no longer lands in a PyInstaller
-temp dir that the OS deletes on exit. What is left is `--onefile` →
-`--onedir` plus the `longPathAware` manifest. Both change the release
-pipeline, neither can be verified in this session (no PyInstaller build, no
-CI run), and `--onedir` is not a drop-in: Tauri's `externalBin` copies a
-single file, while onedir produces an exe **plus** an `_internal/` tree that
-must sit beside it — which is a bundling question with a different answer on
-macOS than on Windows. Recommendation: do it as its own change, where a
-release build can actually be run.
-OPEN:   Slice 9 — engine proof through the app (install → load → render each
-engine). Gates that could run in-session all pass.
-GO:     given 2026-08-22 — *"i want opus to code this so make doc that opus can
-follow without thinking too much to do all these changes we have discussed"*
-
-### DEFERRED from the environment migration (2026-08-22)
-STATE:  NOT STARTED. Three items the migration deliberately left.
-· **AMD-on-Windows auto-detect.** The override recipe is documented
-  (`docs/engines.md` → AMD on Windows); detection is not wired, because AMD's
-  Windows build needs a different torch (2.9.1) AND a different Python (3.12)
-  than the family pin, and there is no AMD hardware here to verify any of it.
-· **TADA / MOSS revision pins.** Both still say `"revision": "main"` on their
-  HF sources while every live engine names a commit. Left alone deliberately —
-  they are marked-for-removal and frozen; un-deprecating one means pinning it
-  (`server/scripts/harvest_revisions.py`).
-· **A per-engine interpreter health probe.** The shared venv had one
-  (`shared_venv_healthy`): it caught a venv whose base Python had been deleted
-  or upgraded, where every file is still on disk and the interpreter is dead.
-  It died with the shared venv and has no per-engine replacement, so that
-  narrow case now surfaces at Load instead of on the row. `npm run
-  check:engines --drift` reports it (`VENV BROKEN`).
-
-### FINDING — "✓ multi-speaker" is a false badge, true whatever happens to MOSS
-STATE:  FINDING — code-verified 2026-08-17. Raised by your question: *"moss tts
-what is multi speaker dialog when we identify 1 speaker per line do we need
-it?"* The answer turned out to be that we never had it.
-WHY:    `supports_multi_speaker=True` is served to the client and
-`GenerateView.vue:845` renders a green **"✓ multi-speaker"** tag. Nothing backs
-it. `speaker_prompts` exists in exactly two places repo-wide and **both are
-prose** — a note string (`capability_details.py:435`) and a comment
-(`models.py:906`). The adapter passes ONE `reference_audio`
-(`moss_tts/engine.py:108-115`), so `[S1]`/`[S2]` both render from the same clip.
-NOT:    Treating this as closed by removing MOSS. The badge is wrong today.
-OPEN:   either drop the claim or wire a speaker→clip map. Wiring it means a
-render call spanning blocks, per-speaker cast resolution and a new cache key —
-against **line-is-the-unit**, which is already decided.
-GO:     needed
 
 ### QuickSetup's tier recipe is hardcoded per engine, and it had drifted
 STATE:  FINDING — code-verified 2026-08-17, raised by you: *"doesnt quick setup
@@ -601,85 +165,12 @@ mentions inside other tracker items and dated plan docs are left as record.
 OPEN:   nothing.
 GO:     given 2026-08-17
 
-### Qwen3-TTS on macOS needs an ONNX variant, not a flag flip
-STATE:  OPEN — your call. Raised by you 2026-08-17: *"we have cross platform
-for qwen via qwen.cpp or Qwen3-TTS-ONNX not sure if onnx version reduces
-quality or not"*.
-WHY:    qwen3 is the ONLY engine that takes prose direction, so losing it on
-macOS loses a whole capability there, not just one engine.
-NOT:    Flipping `SUPPORTED_OSES` to include macOS — the adapter loads through
-transformers with a CUDA-specific dtype branch and no mps path; the claim
-would be false the moment anyone tried it.
-FACTS (web-verified 2026-08-17, do not redo): ONNX exports EXIST but are all
-COMMUNITY, not QwenLM — `romara-labs/Qwen3-TTS-12Hz-0.6B-Base-ONNX`,
-`xkos/Qwen3-TTS-12Hz-1.7B-ONNX`, `arubeh/qwen3-tts-12hz-1.7b-base-onnx` (the
-last one re-exported from PyTorch FP32, 9 components, self-described as
-parity-verified). CPU inference reported **5–10× slower than GPU** — batch
-work, not real-time. FP32 is the CPU precision; FP16 costs 9–13% overhead on
-CPU. Quality-vs-PyTorch is UNMEASURED by us.
-BUILT:  nothing. `qwen3/manifest.py` records the reasoning at SUPPORTED_OSES.
-OPEN:   a variant row + an onnxruntime load branch in `qwen3/engine.py`, then
-measure quality against the PyTorch checkpoint before it ships as equivalent.
-GO:     needed
-
-### Three device-picking defects found while wiring the OS gate — none fixed
-STATE:  FINDING — code-verified 2026-08-17. Found while doing the declarations;
-outside that go, so reported rather than touched.
-WHY:    Each one makes a platform claim the code does not honour, which is the
-same class of bug the OS gate itself was.
-NOT:    Fixing them inside the gate change — that go covered declarations and
-reachability only.
-BUILT:  n/a. The three:
-  1. `tada/engine.py:68` calls plain `pick_device()`, but `pick_device`'s own
-     docstring names TADA in the `force_cpu_on_mac` set. Chatterbox has an
-     override for exactly this; TADA never got one. (Moot while TADA excludes
-     macOS, live again the moment it doesn't.)
-  2. `chatterbox/engine.py:64-70` returns `"cpu"` on Darwin **before**
-     delegating, so it overrides an EXPLICIT operator device request too —
-     base `pick_device` honours `requested != "auto"` first, this never gets
-     the chance. An operator who sets mps deliberately silently gets cpu.
-  3. `tada/manifest.py`'s docstring says *"Per-engine venv makes that a
-     non-issue"* about its torch>=2.7 pin colliding with chatterbox's 2.6.0 —
-     but TADA declares no `ISOLATION`, so it defaults to **shared**, and
-     `shared_venv.py:207-211` skips torch steps. TADA gets 2.6.0.
-CLOSED (2026-08-21, "go" on the closure list): (1) FIXED —
-`tada/engine.py` now passes `force_cpu_on_mac=True` (moot while TADA
-excludes macOS, correct the moment it doesn't). (2) ALREADY FIXED by the
-2026-08-19 mps_patch change — verified: `_pick_device_chatterbox`
-delegates to `pick_device`, which honours an explicit request first.
-(3) FIXED — `tada/manifest.py` now declares `ISOLATION = "venv"` so its
-torch 2.7 pin actually installs, and the docstring records the year it
-claimed a venv it never had. Delete this item next sweep.
-GO:     done
-
-### Seed a pronunciation lexicon from the imported book's proper nouns
-
-STATE: OPEN — your call. Raised and deliberately PULLED OUT of the 2026-08-08
-JustWrite-zip build ("outside what you asked for, plus one unverified risk").
-WHY: a book's proper nouns are the pronunciation problem, and "pronunciation
-discipline" is a named audiobook differentiator (CLAUDE.md). JW hands over every
-character, location and object name for free in `book.json`; import could
-create the project lexicon pre-filled with them, pronunciation blank, as a
-worklist.
-NOT: folded into the zip build as a rider — un-go'd scope.
-CLOSED (2026-08-21, "do all of c"): the blocking question resolved first —
-an empty entry IS inert (the 2026-08-21 `_apply_lexicons` acts only on a
-non-empty alias or IPA), so the roster seeds safely. Built:
-`_materialize_lexicon` seeds every imported character name as a
-blank-pronunciation row (import's own entries win over blank seeds;
-"Narrator" skipped), PLUS the live scan —
-`POST /v1/projects/{id}/pronunciation-report` (`pronunciation.py` heuristic:
-capitalized where no sentence forced it, never seen lowercase, lexicon-
-covered subtracted) with the 🔎 button + add-chips in LexiconsView.
-Delete this item next sweep.
-GO: done.
-
 ### A scene break could carry a real pause instead of a glyph
 
 STATE: OPEN — your call. Noted 2026-08-08 during the JustWrite-zip build.
 WHY: JW's `* * *` is display-only, but the boundary it marks is real structured
 data (scene rows). In audio the equivalent is a longer silence, and
-`StandardLine.pause_after_ms` already exists (`standard_schema.py:51`).
+`StandardLine.pause_after_ms` already exists (`imports/standard_schema.py:57`).
 NOT: hardcoded in the adapter — that is exactly the "no hardcoded
 operator-tunable values" law.
 OPEN: add a settings knob (default scene-break pause, ms) and have the importer
@@ -692,8 +183,10 @@ STATE: DEFERRED by your ruling in the restore's decision 6 ("Defer split,
 merge and reorder"). Split and merge were BUILT 2026-09-30 (Script's "✎ Edit…"
 → "Split at the cursor", and "⇲ Merge" — `docs/plans/2026-09-30-script-
 leftovers.md`); reorder was left out of that plan and needs its own word.
-WHY it still matters: a line the segmenter put in the wrong order has no fix
-but deleting and re-adding it, and nothing on Script adds a line.
+WHY it still matters: a line the segmenter put in the wrong order can only be
+moved through ✎ Edit text on the chapter's row (since 2026-10-05), which makes
+the moved paragraph a new line — its speaker and takes don't follow it.
+(Corrected 2026-10-05: this said "nothing on Script adds a line".)
 NOT: built with split/merge — the 2026-09-30 plan said "Reorder isn't in this
 plan and needs its own word."
 OPEN: the design (where it lives, and whether a moved line keeps its
@@ -701,6 +194,68 @@ OPEN: the design (where it lives, and whether a moved line keeps its
 GO: needed.
 
 ## The next build
+
+### The demo cast for Render, a tracker sweep, and three small findings (decided 2026-10-05)
+STATE:  DECIDED 2026-10-05 — "reread docs and rules and your rec on 1 and 2 and 3 go", on the three
+        as shown (the user: "whats next"):
+        "1. Finish the demo so you can look at Render (Slice 4's last open item). 186 of the demo's
+        290 lines can't render yet, because the Narrator and Odeline Marran have no persona. Cast's
+        batch came back 'no voice matched' for exactly those two, out of nine, and I haven't looked
+        at why. If the batch can't place a narrator, every new book will hit the same wall. My
+        plan: find out why those two went unmatched (and fix it if it's a bug), cast them, then
+        render one chapter for you to listen to. My lean: this one."
+        "2. Clean up the tracker. Check each open entry against today's code and close the stale
+        ones, so 'what's next' stops listing work that's already gone. It's housekeeping, but
+        right now the tracker overstates what's open."
+        "3. Small, real fixes from the 'Waiting on your decision' list, each one or two lines: the
+        API documentation says the licence is Apache-2.0 when the project is MIT; docs/mastering.md
+        names a library nothing uses; the tray items and 'Open log file' do nothing."
+WHY:    Render is Slice 4's last look and the demo couldn't play; the tracker listed work that the
+        2026-10-01 audio.cpp switch and later builds had already ended.
+BUILT:  2026-10-05 —
+        1. Why the batch skipped them: Cast's batch reuses Smart-assign's prompt, which says "If no
+        voice fits, omit that character" (`seed_feature_prompts.py:46`), and the model omits a
+        speaker it has little to go on at random — no speaker in the book has pronouns. Replayed
+        against the app with the full cast, 5 runs: the Narrator skipped in 2, Old Sedge in all 5,
+        Odeline in none (she was skipped in the original run). Not fixed — how is your call (OPEN).
+        Cast through Cast's own batch: the Narrator → Echo, Odeline Marran → River (both Kokoro);
+        Old Sedge was offered Fable (UK) and left uncast. The Same Hour rendered through Render's
+        ▶ Render: 81/81 lines in about 4.5 min — Kokoro ran on the CPU beside the AI model (7.5 GB
+        of the card in use) and was swapped out for Kitten for Nettle's lines; the chapter joined
+        and mastered: about 9.6 min, RMS −21.1 dBFS, peak −3.5 dB. No page errors.
+        2. The tracker sweep — five read-only agents checked every entry against the code; their
+        evidence re-checked before any edit. Deleted 34 entries whose work is done or whose subject
+        is gone (the Python engines, venvs and uv, LoRA training, MOSS/TADA, Generate's badge, the
+        VRAM arbiter and speech-model-management records, fixed findings). Corrected the open lines
+        of 26 that stay (gaps 1/2/3/9 shipped in jv.4/jv.1, the D4 tooltip fixed in the kit, Slices
+        1+2 and the redesign entry, voice gender built, the analyze-prompt finding re-checked, the
+        Effects help line). Kept: finished decision records from 2026-10-01 on (code, docs and
+        CLAUDE.md point at them by title) and the persona redesign's record. RESEARCH: the licence
+        fact and `is_favorited`.
+        3. The OpenAPI licence is MIT (`app.py:139`, read live from `/openapi.json`);
+        `docs/mastering.md` names ffmpeg and the analyzer, and `pyloudnorm` is out of
+        `server/pyproject.toml` and LICENSES.md (`requests` and `rich` stay declared — they still
+        ship through the kit and typer; their FINDING remains); the tray's Open settings, About and
+        Copy server URL and Settings → Logs → Open log file go through the kit's shell door
+        (`App.vue`, `SettingsView.vue`). Live in the app window (UI Automation): Copy server URL put
+        `http://127.0.0.1:17494` on the clipboard with its toast; Open settings and About moved
+        Home → Settings; Open log file reached Windows, which asked which app opens `.log` (none is
+        set on this machine).
+OPEN:   how the batch should place a speaker it skipped — asked 2026-10-05. Not touched (not in the
+        go): the update check (its FINDING, above); Settings → Logs says logs are in
+        `~/.justvoice/logs/` (`SettingsView.vue:1823`) — they are in the data folder's `logs/`.
+GO:     given 2026-10-05
+
+### FINDING — after a restart the window can give up on its server before the server is up
+STATE:  FINDING — seen 2026-10-05 restarting `npm run dev`: the window showed "Can't reach the
+        JustVoice server" while the server answered; Retry loaded the app.
+BUILT:  `main.js:192` mounts ConnectionError when the kit's `checkServer()` fails, and that gives up
+        after 8 tries (about 7.5 s — `serverApi.js:203`); the screen's Retry reloads the page
+        (`ConnectionError.vue:25`), nothing retries on its own. Under `npm run dev` the sidecar took
+        longer than that to answer.
+OPEN:   keep probing while the screen shows (and boot when the server answers), or wait longer on a
+        desktop-shell start — the kit's call, for all three apps.
+GO:     needed.
 
 ### Analyze takes a second look at lines it leaves with no speaker, and offers to add who it finds (decided 2026-10-05)
 STATE:  DECIDED 2026-10-05 — "your rec go with the add them offer", on the build as shown after the
@@ -1187,7 +742,7 @@ BUILT:  2026-10-05 — 9 + 8 (the plan §4, blast radius there): `GenerateView.v
         1106 (the two favorite tests went), Biome, vitest 147, build, family guard, smoke 14/14. Live: no Generate in the rail;
         `#/generate` lands on Home; the Speak again hand-off filled Voices' test line; Cache and
         Settings without the favorite and the autoplay row.
-OPEN:   the `generations.is_favorited` column — DECIDED 2026-10-05: the user picked "1" ("Drop it
+        Then the `generations.is_favorited` column — DECIDED 2026-10-05: the user picked "1" ("Drop it
         now and reset your database?") and, on the plan as shown ("1. Drop is_favorited from the
         model and the code map's table. 2. Run the server tests. 3. Run the full reset on your
         running app. 4. Check that a render saves on the new database. 5. Reload the demo book.
@@ -1200,6 +755,7 @@ OPEN:   the `generations.is_favorited` column — DECIDED 2026-10-05: the user p
         reloaded through the first-run picker (focus Audiobook, Studio). The full server suite was
         stopped partway at the user's word. The reset re-seeded the AI settings — the LLM quick
         setup runs again.
+OPEN:   none (the column's step was built; the tracker sweep of 2026-10-05 moved it out of OPEN).
 GO:     given 2026-10-05 ("your rec on all go", "your rec go")
 
 ### A page shows only its own AI tasks, and the step's name leads
@@ -1366,7 +922,7 @@ OPEN:   none.
 GO:     given 2026-10-05 ("your rec go")
 
 ### `npm run dev` always runs the latest audio.cpp — the dev app on our checkout, no release
-STATE:  BUILT 2026-10-03 — one open finding (the tooltip, OPEN below).
+STATE:  BUILT 2026-10-03 — its one finding (the tooltip, below) was fixed in the kit the same day.
 BUILT:  our audio.cpp 6d1825eb (cmake/text_dictionaries.cmake, D3); JustVoice: scripts/tauri.js
         + scripts/audiocpp-dev.js (package.json `dev` / `tauri`), engines/audiocpp/dev_build.py,
         release.pinned_has / runtime / leftovers / the install job / the runtime info + row,
@@ -1382,10 +938,10 @@ CHECKED: the first `build/jv-dev` build took 681 s and compiled the fork's head 
         temporary lexicon, deleted). Hebrew rendered; Qwen3-ASR has no Hebrew, so it is for the
         ear. The row renders as D4, with the row's existing backend label "CUDA (NVIDIA)". Server
         990 passed, ruff clean, vitest 122/122, biome clean, smoke passed.
-OPEN:   the D4 tooltip on the disabled Backend choice never shows — the kit's UiSelect renders
-        Reka's SelectRoot (no element) as its root, so a `title` passed to it is dropped. Every
-        UiSelect tooltip is lost the same way (14 in JustVoice). The fix is in the kit (forward
-        attrs to the trigger) — needs a go, since it changes the kit for all three apps.
+OPEN:   none. The D4 tooltip on the disabled Backend choice was dropped by the kit's UiSelect (its
+        root, Reka's SelectRoot, renders no element); the kit fixed it 2026-10-03 (`58fc982`,
+        UiSelect puts `title` and `aria-label` on the trigger — `UiSelect.vue:38-41`, `:84`). Not
+        yet seen on screen on the disabled choice.
 ASKED:  "we need to fix it so when i run npm run dev it runs the app with the correct developmnet
         version of audio cpp just like your test server i should not have to do a release build
         so i can test the real app" · "the deve app should always ve running the latest dev
@@ -1502,14 +1058,11 @@ DECIDED: 2026-10-02 — Q2: "q2 remove traingin and rebuild" → "go on both rem
 DECIDED: 2026-10-02 — Q1 (CI on our copy's repo to publish binaries): "q1 yes but not now" — yes,
         when the first change needs C++, not before. "commit and push" — the switch, the training
         removal and CPU placement committed and pushed the same day.
-OPEN:   gaps, in order: switch plan §5 (Turbo/Nano cloning, blends, single-word IPA, training
-        rebuilt on the runtime, Chatterbox he/ja/ru/zh, our-copy fix for the aligner's seconds,
-        and — added 2026-10-02 — our-copy fix so VoxCPM2 gets the clip's transcript: the server
-        passes the clip as prompt audio when `reference_text` comes with it, gap 9 plan §6 C) —
-        the CPU cloner (Pocket TTS) and Kokoro on the CPU landed with the item below; gap 8 (speed
-        everywhere) and gap 4 (CustomVoice 0.6B, published + wired) shipped 2026-10-02
-        (plan docs 2026-10-02-gap-8-speed.md, -gap-4-customvoice-0.6b.md) · Q1's CI when the
-        first C++ gap starts.
+OPEN:   gap 5 only — training rebuilt on the runtime (TASKS "Our copy of audio.cpp"). Every
+        other gap shipped: 8 and 4 on 2026-10-02 (plan docs 2026-10-02-gap-8-speed.md,
+        -gap-4-customvoice-0.6b.md), 9 the same day, 10 and the VoxCPM2 transcript in our jv.1,
+        1, 2, 3 and 7 in jv.4 (`engines/audiocpp/release.py:27-44`); Q1's CI runs in the fork.
+        (Corrected 2026-10-05 by the tracker sweep — this line listed every gap as open.)
         Presented 2026-10-02 after "continue with the current conversion in jv": no C++ needed —
         gap 8 speed on every engine (host-side time-stretch; today Speed reaches only Kokoro and
         KittenTTS), gap 4 Qwen3 CustomVoice 0.6B (convert with audiocpp_gguf), gap 9 16-bit rows /
@@ -1538,7 +1091,7 @@ DECIDED: 2026-10-02 — "all 4 , fork repo, public, your rec on all go". The fou
         and its build pipeline → the C++ gaps.
         Fixes 1 and 2 shipped 2026-10-02 with gaps 8 and 4 (kit `UiSlider` mark layout; the
         chapter render reads a cloud voice's WAV header). Fixes 3 and 4 ride gap 9.
-        NEXT: gap 9 (with fixes 3 and 4 — its item below), then the fork.
+        Then gap 9 (with fixes 3 and 4) and the fork — both done 2026-10-02/03.
 GO:     given 2026-10-02 for every gap ("you have a go for all gaps"); decision-text gaps,
         commit and push still asked
 
@@ -1672,9 +1225,10 @@ BUILT:  2026-10-05 — the ONE release: `v0.9.0-jv.4` (our copy `f7d8140a`), pub
         Kokoro blend played (docs/plans/2026-10-02-our-audiocpp-copy.md §6; RESEARCH.md §1.4).
 OPEN:   gap 5 (training rebuild) is the remaining gap.
         Local build recipe + release state: docs/plans/2026-10-02-our-audiocpp-copy.md §6.
-        the app: an installed older build keeps working and the runtime row offers "Update to
-        v0.9.0-jv.1"; the pin moves to our release; VoxCPM2's row gets "and its transcript" and
-        the transcript field back.
+        (The app's side of the first release is built: the older build keeps working with an
+        update offer — `api/speech_runtime_api.py:43`; the pin is our v0.9.0-jv.4 —
+        `engines/audiocpp/release.py:27`; VoxCPM2 takes the clip's transcript —
+        `engines/voxcpm2/manifest.py:32`. Corrected 2026-10-05 by the tracker sweep.)
 GO:     given 2026-10-02 ("all 4 , fork repo, public, your rec on all go" · "you have a go for
         all gaps"); §5 asked
 
@@ -1686,8 +1240,8 @@ BUILT:  audio.cpp 86767dad on `jv` (the `voice_pack` request option, checked byt
         through our server build); the app (uncommitted): voices read from the Kokoro GGUF's
         embedded files, the slot sends `voice_pack`, an older runtime refuses by name; the
         capability follows the pin (on at v0.9.0-jv.2).
-OPEN:   ship v0.9.0-jv.2 (after jv.1) → move the pin → blends visible → voices.md / engines.md
-        in that commit → live check through the app.
+OPEN:   none — shipped in v0.9.0-jv.4, not jv.2 (`engines/audiocpp/release.py:40`); docs engines.md,
+        whats-new; a Kokoro blend played on the published build (RESEARCH §1.4).
 GO:     given 2026-10-02 ("you have a go for all gaps")
 
 ### A lexicon's IPA reaches Kokoro — inline pronunciations in our audio.cpp (gap 3)
@@ -1696,7 +1250,8 @@ STATE:  BUILT 2026-10-03 under "you have a go for all gaps" — plan + record:
 BUILT:  audio.cpp 42db68d9 on `jv` ("[word](/phonemes/)", checked through our server build:
         "Bochamp" → "Beecham"); the app (uncommitted): IPA → Kokoro symbols, the splice by the
         host's own matching rule, used only when the installed runtime has it.
-OPEN:   ships with v0.9.0-jv.2 (with gap 2) → pin move → lexicons.md / engines.md in that commit.
+OPEN:   none — shipped in v0.9.0-jv.4 (`engines/audiocpp/release.py:41`, `kokoro/manifest.py:33`);
+        docs lexicons.md, engines.md.
 GO:     given 2026-10-02 ("you have a go for all gaps")
 
 ### Chatterbox Turbo and Nano clone again — core Chatterbox's encoders in our audio.cpp (gap 1)
@@ -1723,8 +1278,9 @@ BUILT:  2026-10-03 — published (public, MIT, model cards + LICENSE): huggingfa
         local files); the fork's `jv` pushed (3865d245). The manifest rows (Turbo, Nano, 8-bit +
         f16) wait in chatterbox `PENDING_VARIANTS` until the pin has `turbo_clone`; the knob-wiring
         test reads them there.
-OPEN:   jv.3 → pin move → GPU measurements on the release build → docs (engines.md, whats-new,
-        NOTICE/LICENSES).
+OPEN:   none — shipped in v0.9.0-jv.4 (`engines/audiocpp/release.py:42`); docs engines.md,
+        whats-new, NOTICE, LICENSES. No separate measurement step: the app prices each runtime
+        build on its own first load (RESEARCH §2.3).
 GO:     given 2026-10-02 ("you have a go for all gaps") and 2026-10-03 ("your rec on all go,
         commit and push")
 
@@ -1756,8 +1312,8 @@ DECIDED: 2026-10-02 — "your rec on all 3 go, commit and push" on the three que
         The Chatterbox test ran 2026-10-02 (plan §6): the whole chapter × 3 seeds — 8-bit 10.8 %
         words wrong (19/150 lines > 20 %), 16-bit 11.2 % (18/150): level, the default stays 8-bit;
         engines.md / whats-new corrected (uncommitted).
-OPEN:   the VoxCPM2 transcript fix ships with our first audio.cpp release (the item above),
-        then the row text gets "and its transcript" back.
+OPEN:   none — the transcript fix shipped in our jv.1 (`engines/audiocpp/release.py:39`) and the
+        row says "and its transcript" again (`engines/voxcpm2/manifest.py:32`).
 GO:     given 2026-10-02 ("you have a go for all gaps" → "your rec on all 3 go")
 
 ### Speech models run on the CPU or the GPU — chosen per model, automatically, measured
@@ -1855,342 +1411,11 @@ BUILT:  step 4, 2026-10-02, UNCOMMITTED — docs/plans/2026-10-02-cpu-placement.
         data dir; kit 1,027 passed; JustWrite builds and its 592 unit tests pass with the kit change. Live with Gemma
         resident: Kokoro and speech recognition loaded on the CPU without moving the card; the
         Pocket gate refused then rendered; the test acceptance was cleared afterwards.
-OPEN:   Pocket TTS Portuguese and Spanish drop words (measured; documented) · speech recognition
-        at 2.06× here, just over the bar · old speech load rows carry the LLM's backend. Committed
-        and pushed 2026-10-02 ("commit and push").
+OPEN:   none. Recorded, not work: Pocket TTS Portuguese and Spanish drop words (the model's own;
+        docs/engines.md) · speech recognition measured 2.06× here, just over Auto's 2× bar. The
+        old speech load rows that carried the LLM's backend are no longer read
+        (`engines/manager.py:1170`). Committed and pushed 2026-10-02 ("commit and push").
 GO:     given 2026-10-02 for steps 1–3 (done), D4's measurement (done) and the step-4 build
-
-### THE 2026-08-20 VOICES FIX SESSION — layout delivered; fixes list approved "your rec"
-STATE:  DECIDED 2026-08-20 — *"forget it just fix jv layout for the voices try
-to do a professional job"* (delivered, rendered-verified) → *"do it go"* on
-{Preparer/Dataset-Builder design · blend strategies + sliders · TASKS
-correction · CustomVoice} → *"9 import voice for what engine"* (answered),
-*"8 yes"* (Dataset Builder / synthetic training data IS a JV workflow),
-*"13 no not until all work is done, i will tell you"* (NO gates, NO commit
-until the user says), *"your rec"* (the remaining fixes proceed per the
-recorded recommendations).
-**THE FULL RECORD, RESEARCH, SPECS AND RESUME STATE ARE
-`docs/plans/2026-08-20-voices-fixes-and-alexandria-train.md` — read it before
-touching Voices, Train, blending, or tokens. Do not redo its research.**
-WHY:    four sessions of layout complaints traced to hand-rolled per-view CSS,
-wrong density (comfy vs the mock), a kit-prop bug (UiTag label=) rendering
-empty pills app-wide, and a Train tab whose Alexandria parity was falsely
-recorded as built.
-NOT:    Recombine strategy (new server math, exploration toy) · restoring the
-page ledes · a Fetch button · gates before the user's word.
-BUILT:  canonical .jv-split/.jv-field-row/.jv-hint/.jv-col--start/.jv-stretch;
-compact density + solid focus ring (kit tokenization, default-preserving);
-fal-style reference group + self-fetching URL; Train pre-flight gates +
-Whisper transcribe + adapters table (server: TrainJob.epochs/sample_count,
-TrainingValidationSettings.max_clipping_ratio); UiTag sweep (6 views);
-TASKS corrections. OPEN: blend strategies template wiring (script half is in —
-plan doc §3) · import engine picker · hide Blend's dead Language dropdown ·
-duplicate display names + capabilities OS gate · mark-and-hide · Preparer ·
-Dataset Builder design pass · timestamps research · nav rail.
-GO:     given 2026-08-20 ("do it go" + "your rec"); gates/commit withheld.
-
-### THE STRUCTURAL RULINGS 12–16 — DECIDED 2026-08-15, specs in the plan doc §6
-
-Your words, in order: **"12 your rec, 13 your rec, 14, your rec, 15 what do you
-think and is stories only for podcast? 16 your rec"** → **"ok you rec add this
-to ideas so we can design the proper timeline"** (15) → **"your rec for the
-others go and code"** (12, 13, 14, 16). Each recommendation, as accepted:
-
-- **12 — Studio steps reorder to Script → Cast → Render → Export for PROSE
-  kinds; game keeps `[cast, render, export]`.** *(SUPERSEDED 2026-09-27: Overview
-  first, then Discover → Script → Cast → Render → Export; game Lines → Cast →
-  Render → Export — see "Build the mock's Studio in the app".)* WHY: the Script step is what
-  *creates* the cast — `runDiscoverSpeakers` → `promoteDiscovered`
-  (`StudioView.vue:1303-1351`) makes the personas and links them to the
-  project. Cast-first means opening a cast holding only the Narrator, leaving
-  to find the speakers, and coming back: a loop presented as a line. Game
-  lines arrive with speakers attached, so there is nothing to discover.
-  NOT: a signpost from Cast's empty state to Script — rejected as an admission
-  the rooms are ordered wrong.
-- **13 — Train becomes the fourth way to acquire a voice, inside Voices** —
-  beside clone / design / import (`VoicesView.vue:513-525`), NOT a moved tab.
-  You meet it when you want a voice, not as a separate destination. Labs keeps
-  Compare / Render lab / Audio. The long-running job keeps reporting through
-  the shared AI task strip.
-- **14 — REJECTED as posed: Lines does NOT fold into Studio's Render step.**
-  Lines is a structure view, not a render surface: stable line ids, derived
-  take status, and a CSV re-import that merges the writers' next sheet by line
-  id so only changed lines go stale (`LinesView.vue:218-225`). The real
-  duplication is **Chapters ↔ Lines** — two structure views answering one
-  question for different kinds. That comparison is the design pass worth doing;
-  it is NOT a build and has no go.
-- **16 — Effects + Presets consolidate near Render, resolution-first.** Item 2
-  made a render preset carry format + master target + effects chain, all three
-  live, so they are one decision wearing three tabs. NOT a tab merge: the
-  RESOLVED answer belongs at the point of render (Studio's Render step already
-  shows the master pill item 2 built), with Effects and Presets demoted to
-  library pages beneath it. Merging tabs without surfacing the resolution just
-  moves the guesswork.
-
-Specs: `docs/plans/2026-08-15-pipeline-truth-and-first-run.md` §6, rewritten
-from questions into build items in the same reply the rulings were given.
-Ruling 12 BUILT same day (`bb4366b`); 13's build and 16's surface half are
-SUPERSEDED into the voice-workbench plan below.
-
-### THE VOICES ACQUISITION BUILD — five tabs, kokoro-onnx, VoiceDesign, LoRA training
-
-STATE:  GO 2026-08-19 — *"build it go"*; tab set chosen the same day: *"Five
-tabs, no Preset"* (Cloned · Designed · Imported · Blended · Trained — names =
-the type filters). Training re-scoped mid-build by *"build train like
-alexandria … go and and look and figure out best way to do it"* and, on
-Chatterbox Turbo, *"you obviously thought you could do it or yo would not have
-mocked it"* — the mock's Train screen (Base: Chatterbox Turbo) is the spec.
-**BUILT 2026-08-19.** Gates green: ruff clean, 666 pytest passed, vite build,
-Playwright smoke (16 views, zero JS errors), and the five tabs driven in a
-real browser — Cloned offers 6 engines, Designed 1 (Qwen3 VoiceDesign),
-Blended 1 (Kokoro), Imported none (no gate), Trained 2 bases whose knobs
-seed from the verified per-engine defaults.
-WHY:    VoicesView's acquisition surface was a Chatterbox-only banner plus a
-details-fold whose Design and Blend buttons 400 on submit. Every dead path
-traced to exactly one missing piece, each verified upstream in code this
-session: Qwen Space `app.py` (VoiceDesign checkpoint + `generate_voice_design`),
-`kokoro-onnx` source (`create()` takes a raw style vector), Alexandria
-`train_lora.py` + `tts.py` (the whole LoRA loop and its inference), and
-gokhaneraslan/chatterbox-finetuning (LoRA on t3, author-verified stable on
-Turbo).
-DECIDED:
-- **Designed** = Qwen3 VoiceDesign variant `qwen3-vd-1.7b`
-  (`Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign`, 4,520,159,099 B summed from the HF
-  tree, 1.7B only) → `generate_voice_design`; the stored `design_prompt` feeds
-  the instruct slot. `/v1/voices/design` refuses with the way out when the
-  variant is absent.
-- **Blended** = Kokoro, on a runtime swap sherpa-onnx → `kokoro-onnx` 0.6.1
-  (MIT; `create(text, voice: str | ndarray)`) — instant audition, weighted
-  average only, slerp/lerp retired, recipe + vector on `VoiceRecord`.
-  **CORRECTION 2026-08-20, your words: "no it wasnt you decided that, i gave
-  you picture you ass" — "weighted average only" was MY design choice inside
-  the umbrella go, not your ruling, and I later miscited it to you as yours.
-  You showed the OfflineTTS/kokovoicelab strategy pictures. Strategies
-  reinstated under the 2026-08-20 "do it go" (see the strategies item).** The swap
-  also fixes the English-hardcoded-language finding (lang is per-call there)
-  and keeps the same 54-voice v1.0 pack (`voices-v1.0.bin` 28,214,398 B;
-  `kokoro-v1.0.onnx` 325,505,369 B).
-- **Trained** = LoRA, two engines day one. Qwen3 Base 1.7B/0.6B — Alexandria's
-  loop (MIT, attributed): PEFT on talker q/k/v/o, r32 α128, AdamW 5e-6, accum
-  8, bf16, best-loss checkpoint; inference = Base + adapter + x-vector prompt
-  from a saved ref sample + `instruct_ids`, so a trained voice takes written
-  direction. Chatterbox Turbo — gokhaneraslan (Apache-2.0, attributed): LoRA
-  on t3 (our adapter already reaches `model.t3.tfmr`); inference merges the
-  adapter on load; tags keep working. Per-engine subprocess trainers in the
-  engine's own env; speech engines unload first; progress as JSON lines into
-  the existing TrainJob registry; `/v1/train` + `storage/training_jobs.py`
-  finally get engines behind them.
-  **CORRECTION 2026-08-20: the line that stood here — "Dataset prep in-tab:
-  SNR / duration / clipping gates, Whisper auto-transcribe" — was FALSE as a
-  BUILT claim. Code-verified 2026-08-20: the trainer scripts gated durations
-  and emitted rejection reports (never shown in the UI); no SNR gate, no
-  clipping gate, no transcription existed anywhere in the train path.
-  Built for real 2026-08-20 under "do it go": pre-flight clip gates in-tab
-  via `POST /v1/analyze` against `settings.training.validation` (duration /
-  silence / new `max_clipping_ratio`), per-clip + all-clips Whisper
-  transcribe via `/v1/transcribe`, trainer drops surfaced on job rows, and
-  the Trained-adapters table (`TrainJob.epochs`/`sample_count` stamped at
-  enqueue).**
-- **Cloned** gains qwen3 `ref_text` (SynthRequest carries the stored
-  transcript to `generate_voice_clone`) and per-variant qwen3 capability rows
-  (kills CustomVoice's false clone tick — the tracked variant-aware item).
-- `supports_embedding_blending` renames `supports_voice_blending`; blending +
-  training flags join `EngineCapabilityDetail` per-variant;
-  `get_embedding` + `synthesize_with_embedding` retire (zero implementations —
-  blend lives engine-side).
-NOT:    a Preset tab — presets aren't acquired. NOT Chatterbox Multilingual
-training yet — same toolkit claims it, off until measured. NOT typed VRAM or
-wall-clock numbers anywhere — measured on first run or absent. NOT touching
-TADA / MOSS.
-CORRECTED 2026-08-19 (same session, your words): *"i wanted tabs voices,
-then all the other tabs, no new voices tab, you just did that on your own"*
-and *"voices should be tab with grid then all other tabs"*. The first build
-hid the five tabs behind a **+ New voice** toggle button I invented — the
-page looked unchanged until you clicked it. The tab strip is now the page's
-own: **Voices** (the grid) then Cloned / Designed / Imported / Blended /
-Trained, visible on load, no toggle. Tab choice is session state, not a
-saved pref (LabsView's precedent) so the page always opens on its library.
-INVENTIONS FOUND AND REMOVED (self-audit, your ask):
-  * the **+ New voice** toggle — never requested, and it hid the feature.
-  * *"~60 MB Python install"* in the Kokoro description — a figure with no
-    measurement behind it. Gone; the download size stays, summed from the
-    release's own bytes and stated in the same MiB the UI shows.
-  * kokoro's speed clamp at **2.0** while the declared Speed knob allows
-    **3.0** — a value the UI accepts, silently ignored. Now clamps to the
-    declared range.
-  * chatterbox `grad_accum=8`, which made the effective batch 8 against
-    upstream's 32 — a materially different training run. Now 1 x 32.
-  * two claims asserted without proof, softened to what is actually known:
-    that a trained voice sounds "much closer" than a clone, and that the
-    clone transcript "measurably improves" the result.
-  * docs listing only Qwen3 Base under Trained (Chatterbox Turbo ships too)
-    and dropping TADA / MOSS from Cloned (both still clone, both marked).
-NOT INVENTED, checked and kept: the espeak language codes kokoro-onnx gets
-(`lang` goes straight to `phonemizer.phonemize` on the espeak-ng backend, so
-they are real espeak voice codes) — with a note that the package documents
-only en-us/en-gb, so non-English is correct-by-construction, not heard.
-BUILT:  the tabs (`VoicesView.vue`, capability-driven via the shared
-`services/capabilities.js` resolver — a variant row always beats its engine's
-union row); `POST /v1/voices/blend` moved beside clone/design/import and
-computes host-side (`engines/blending.py`) so no engine process is needed;
-`phase5_api.py` renamed `training_api.py` (a plan-phase name was never an API
-name); the kokoro-onnx runtime swap incl. per-call language, the IPA bypass
-and instant blends; the qwen3 VoiceDesign variant + `generate_voice_design`
-branch; `ref_text` reaching Qwen3's clone call through a new
-`SynthRequest.ref_text`; the host-owned `training_runner.py` + two trainer
-scripts; TrainView rebuilt against the real request contract and moved into
-the Trained tab; docs/voices.md + docs/labs.md rewritten.
-FIXED EN ROUTE (each was a control that reached nothing):
-  * `POST /v1/voices/preview/{id}/save` returned `{"promoted": true, "note":
-    "route stub"}` and wrote NOTHING — a Save that reported success and lost
-    the voice. Now persists, stores the reference clip, and recomputes a
-    blend from its recipe.
-  * a blended or designed AUDITION passed only `__preview__`, so every
-    candidate rendered in the engine's default voice.
-  * TrainView sent `method` / `steps` / `qc` / `concurrent_jobs_limit`;
-    `TrainVoiceRequest` has none of those, so pydantic dropped all four.
-  * render / generate / audition each resolved only the reference clip, so a
-    blended or trained voice rendered as its bare id — one resolver now
-    (`render_core.voice_synth_fields`).
-  * Turbo's LoRA target modules are `c_attn / c_proj / c_fc / spkr_enc`, not
-    the llama-style names its sibling variants use: the wrong set would have
-    attached ZERO adapters while the loss still fell from `modules_to_save`.
-NOT:    a Preset tab (presets are not acquired). NOT Chatterbox Multilingual
-training (same toolkit claims it; off until measured). NOT typed VRAM or
-wall-clock numbers anywhere.
-COSTS:  Kokoro moves to its own venv (kokoro-onnx wants numpy>=2.0.2, the
-then-shared venv was pinned <2.0 by qwen3) and its model files change, so
-**Kokoro re-installs and re-downloads once**. *(The venv half of this cost was
-paid by the 2026-08-22 per-engine migration — `engines/kokoro/.venv` exists.
-The model-file half still stands.)* A sherpa-era model dir is detected and
-says so rather than failing deep inside np.load.
-OPEN:   **Chatterbox training has never been heard** — the recipe follows a
-working upstream one and every call is checked against the installed
-package's surface, but no adapter trained by that script has been listened
-to; the capability row says so in its notes. VoiceDesign identity stability
-across renders (two-render check, needs the checkpoint downloaded). Whether
-the qwen3 VoiceDesign download works end-to-end (its size is the summed HF
-tree, and the multi-file URL arm is new).
-
-### THE PLATFORM FOLLOW-ON — latest engines, every GPU, streamed auditions
-
-STATE:  GO 2026-08-19 — *"go for it all, also we have acceleration for each
-engine now, i am guesing this doesnt work based on the work we are doing
-verify that this works and works for all platforms a drop down in engines
-pages for acceleeration auto cuda cpu"*, riding the earlier same-day words
-*"get latest means get latest chatterbox"*, *"crossplatform with all gpu
-apple silicon supported… cuda apple silicone rocm ect"*, *"i should not have
-to install anything these engines are built in"*, and *"can we run chattebox
-in realtime?"*. Standing constraint: *"5 no gates until i say so"* — ruff /
-pytest / build / smoke NOT run for any of this; parse-checks and live-app
-verification only.
-DECIDED:
-- **Latest = pinned SHAs, bumped deliberately.** Chatterbox installs from
-  upstream master `5de7a54aa4e5e2baadb0182dde554908b48b85c2` (2026-07-21,
-  replaces PyPI 0.1.7): brings Multilingual **v3**
-  (`t3_mtl23ls_v3.safetensors`, 3,208,951,924 B) and **Nano**
-  (`ResembleAI/chatterbox-nano`, 1,942,108,236 B, Turbo architecture,
-  byte-identical tag vocabulary). Perth pinned `ce86c49d029f`; qwen3 git
-  overlay pinned `022e286b98fb`.
-- **Acceleration dropdown is dynamic**: options = auto + (manifest
-  `gpu_runtimes` ∩ `/v1/system/info` runtimes) + cpu, per engine per
-  machine. system_info gains rocm detection (rocm-smi, Linux); the manager's
-  torch installer gains the ROCm 6.2 wheel-index arm.
-- **Chatterbox on Apple GPU** via the known float32 fix
-  (`engines/chatterbox/mps_patch.py`, adapted from devnen's
-  `_patch_chatterbox_mps_float32`, attributed): applied in load() BEFORE the
-  model modules import; MPS load failure falls back to CPU; the blanket
-  Darwin→cpu forcing is gone; manifest declares mps.
-- **Qwen3 on Apple Silicon = the MLX arm** (roster doc 2026-08-17 §4's
-  recorded route): five `-mlx` variant rows (mlx-community **8-bit** exports,
-  sizes byte-exact from the HF trees — CV-1.7B 3,080,138,901 B, CV-0.6B
-  1,973,572,801 B, Base-1.7B 3,104,156,243 B, Base-0.6B 1,991,296,593 B,
-  VD-1.7B 3,080,138,280 B) through `mlx-audio>=0.5.0` (MIT, API verified in
-  its v0.5.0 source: `load_model` + self-routing `generate()`). Variant rows
-  and install steps carry an `"oses"` gate filtered at ONE door each
-  (`model_catalog._variant_rows`, `manifest.install_steps`); qwen3 ISOLATION
-  is per-OS — its macOS venv is mlx-audio only (mlx-audio needs
-  transformers>=5.14, chatterbox pins ==5.2.0 in its own venv — it read "the
-  shared venv" before the 2026-08-22 migration, and per-engine venvs are what
-  make that pin legal rather than a conflict). The
-  `-mlx` id SUFFIX keeps the capability suffix-walk on the right family row;
-  explicit full-id rows drop training on the MLX Base variants (the trainer
-  is PyTorch, Windows/Linux).
-- **Streaming phase 1 = host-side pipelining on the audition path.**
-  `GET /v1/voices/{id}/preview/stream` splits the line at sentence ends
-  (`settings.generation.stream_piece_chars`, default 200, Settings slider),
-  renders piece-by-piece through the SAME doors as POST /preview (routing
-  factored into `_resolve_audition_target` — one door, both endpoints), and
-  streams each piece as it finishes, crossfaded with the long-form math via
-  a held-back window. Shares the audition cache both ways. The row transport
-  tries the stream URL first; any failure (409, tokened remote, dead server)
-  falls back to the POST door and its dialogs. The `streaming_generation`
-  Feature flag is DELETED — no manifest ever declared it, and host-side
-  streaming is per-render, not per-engine (sweep clean).
-- ~~**Built-in means built at setup**: `spawn_shared_venv_setup` also builds
-  venv-isolated engines' venvs, so no per-engine Install moment;
-  `engines/constraints.txt` scoped to the SHARED venv only
-  (`use_constraints=False` for isolated installs — the numpy<2 ceiling was
-  exactly what blocked kokoro-onnx).~~ **DEAD 2026-08-22** — the per-engine
-  migration deleted all three symbols; `grep -rn "spawn_shared_venv_setup\|
-  use_constraints\|constraints.txt" server/justvoice --include=*.py` returns
-  nothing and `engines/constraints.txt` does not exist. Every engine now has
-  its own Install moment and its own venv, and the numpy<2 ceiling is gone
-  with the shared environment that imposed it.
-- Chatterbox conds cache keyed `(ref_audio, mtime_ns, exaggeration)` —
-  repeat renders of one voice skip prepare_conditionals.
-VERIFIED LIVE (user's real app, dev sidecar 17494, data dir
-`src-tauri/target/debug/data`):
-  * Windows catalog shows exactly the 5 torch qwen rows — no `-mlx` leak;
-    declared runtimes over the wire: kokoro cuda/coreml/directml/cpu →
-    dropdown Auto/CUDA/DirectML/CPU here; chatterbox cuda/mps/cpu/rocm and
-    qwen3 cuda/rocm/mlx → Auto/CUDA/CPU here. `/v1/system/info` runtimes on
-    this box: cpu/cuda/vulkan/directml.
-  * Streamed audition, 285-char 3-sentence line on `af_heart`: first bytes
-    at **2.2 s** (including the kokoro load), full 16.16 s WAV at 6.3 s —
-    playback can start ~4 s before the render ends. Same call again: **4 ms**
-    from cache with a real seekable header, byte-identical PCM. 409
-    `engine_not_loaded:` and 404 contracts intact for the client fallback.
-  * `stream_piece_chars` present in `GET /v1/settings` (PATCH door reaches it).
-UNMEASURED (declared in code where it matters): MPS, ROCm, MLX — no Apple or
-AMD hardware here; Nano/v3 never listened to; chatterbox-trained adapters
-never heard.
-NOT:    engine-native token streaming (chatterbox `generate_stream` /
-mlx-audio `stream=True`) — tracked below; MLX LoRA inference; Chatterbox
-Multilingual training.
-OPEN:   engine-native streaming as phase 2 (both surfaces exist upstream);
-first-Mac-run truth for the MPS patch and the MLX arm; Nano/v3 listening
-pass; a visual pass over the new Voices UI in a browser (Chrome extension
-was not connected this session; the smoke gate is paused by your word — the
-Tauri dev window has everything HMR-live).
-
-### ~~The smoke gate went red on a healthy app — the boot splash ate every click~~ — FIXED 2026-08-22
-
-STATE: FIXED. `scripts/smoke.js` now dismisses the boot splash, and the NAV-FAIL
-line no longer truncates away the reason.
-
-WHAT HAPPENED: on any data dir with `warmDefaultOnStartup: true` — which the
-real dev data dir has — `App.vue`'s `.splash` overlay is up while warm-on-boot
-loads the default local chat model (here `gemma-4-26b-a4b-qat`). It covers the
-app and intercepts every pointer event, so all 14 nav clicks timed out and the
-gate reported `SMOKE FAILED: 14 view(s) errored` on an app that was rendering
-perfectly, with zero console errors and a complete rail.
-
-**The app was never at fault, and neither was the kit** — `BootModelLoad` ships
-the escape ("Continue without waiting") and it was present the whole time. This
-is the same false-red family as the 2026-08-14 `.ui-modal-overlay` one that was
-"blamed on machine contention twice"; the splash is not a modal, so that Escape
-loop never touched it.
-
-WHY IT COST A FULL DIAGNOSIS: the NAV-FAIL log sliced Playwright's message at
-100 chars, which cut it off immediately before
-`<div class="splash"> intercepts pointer events` — the line that names the
-cause. Fourteen identical "Timeout 5000ms exceeded" lines that explained
-nothing. **That truncation is fixed too**: any interception line is now printed
-under the failure.
-
-NOT: waiting the splash out. Warming a 26B model takes minutes and is not what
-this gate measures — clicking the escape is what a user does.
 
 ### Build the mock's Studio in the app — Slices 1 + 2 (Overview, Discover)
 STATE:  DECIDED 2026-09-27 — "your rec go", on the plan presented that day (pasted below).
@@ -2337,13 +1562,13 @@ DECIDED 2026-09-28 — "go", on: "Overview mastering options: switch to what the
         offers: 'This kind's default (ACX)', 'None — raw', ACX, iAudio, Podcast, YouTube, with
         'Custom' gone. This is the wording still waiting on your approval. Say go only if you
         accept that wording." The mastering wording above stands as built; the mock matches it.
-OPEN:   the Personas work FIRST (decided 2026-10-03, "we need to do the persona first that is
-        before slice 4" — the FINDING "a persona's pace, pitch and gain can't be edited"), then
-        Slice 4 (Render owns direction/takes/Gen/Compare), Slice 5 (presets excision — ruled,
-        needs go). (Slice 3 was BUILT 2026-09-29, `86eb21d` — its entry is below.) The
-        Lexicon-on-Overview question was ANSWERED ("ok mark that as to be wired") and BUILT
-        2026-09-30: `docs/plans/2026-09-30-project-lexicon.md` (its §7 holds the closed item).
-        Game "1 · Lines" is unverified in the real app — the real data has no game project.
+OPEN:   Game "1 · Lines" is unverified in the real app — the real data has no game project.
+        (Corrected 2026-10-05 by the tracker sweep. Built since this line was written: the Personas
+        work — its FINDING "a persona's pace, pitch and gain can't be edited" — 2026-10-03; Slice 4,
+        2026-10-04, its own item below, which also built the three "Slice 4 ALSO" parts that
+        follow and Script's ＋ Add chapter / Rename · Move · Delete; Slice 5, render presets
+        removed 2026-10-03 (`ad93a61`); Slice 3, 2026-09-29 (`86eb21d`); the project lexicon,
+        2026-09-30: `docs/plans/2026-09-30-project-lexicon.md`. The notes below are the record.)
         Slice 4 ALSO moves "rewrite in character" off Script: it stays on Script as today's
         right-click until then (decided 2026-09-29, next item); Slice 4 builds it in Render's
         line panel and DELETES the Script right-click (`rewriteRow`, its modal, the
@@ -2358,10 +1583,9 @@ OPEN:   the Personas work FIRST (decided 2026-10-03, "we need to do the persona 
         Slice 4 ALSO builds "📕 Pronunciation" in the line panel right — the book's chosen
         lexicon, one made for the book if none (decided 2026-09-30, `2026-09-30-project-lexicon.md`
         §6 item 4) — and D4 carries stale-vs-re-render for lexicon edits (§6 item 7).
-        NEXT (2026-09-30, user "lets move to the next slice"): Slice 4 is researched, not planned —
-        `docs/plans/2026-09-30-mock-vs-app-and-slice-4.md` §3 (what exists, what the mock shows)
-        and §3.4 (D1–D8, the decisions to put to the user before any plan). Resume at its §4.
-GO:     given 2026-09-27 for Slices 1 + 2 and decisions 1-6 | needed for 3, 4, 5
+        (NEXT, 2026-09-30, "lets move to the next slice" — done: Slice 4 was planned and built,
+        `docs/plans/2026-10-04-slice-4-render.md`.)
+GO:     given 2026-09-27 for Slices 1 + 2 and decisions 1-6; 3, 4 and 5 under their own items
         Slice 3 was re-thought on 2026-09-28 — see the next item.
 
 ### Stillwater leaves the app — The Ninth Facet is the one example book (decided 2026-10-04)
@@ -2427,12 +1651,11 @@ BUILT:  2026-10-04 — the plan's §3, plus the three sites in its "found while 
         on the running app; live through the app with a throwaway book (removed after): states,
         takes with audio, override → stale, New take, ★ an old take → stale, the chapter playing a
         stale take's words, the book lexicon, and a deleted book's take files gone.
-OPEN:   your look at Render in the app. The demo is ready for it (2026-10-05, the user: "go ahead
-        and do 1 … get the demo"): Discover scanned all 5 chapters (4 new names left for you to
-        review — Old Sedge, the courier, the Warden …), Analyze ran on Bigger Inside, The Same
-        Hour and The Keystone, Cast's batch made 7 personas; Render: 290 lines, 104 ready, 186
-        can't render — the Narrator and Odeline Marran got "no voice matched — cast them
-        yourself", left for you. "fdsd" (your one-line test chapter) untouched.
+OPEN:   your look at Render in the app. The demo is ready for it (2026-10-05): every speaker but
+        Old Sedge has a persona — the Narrator (Echo) and Odeline Marran (River) were cast through
+        Cast's batch; The Same Hour is rendered (81/81 lines, joined and mastered: about 9.6 min,
+        RMS −21.1 dBFS, peak −3.5 dB). Left: Old Sedge (5 lines, all in Bigger Inside) has no
+        persona; "fdsd" (your one-line test chapter) untouched.
 GO:     given 2026-10-04 ("your rec on all go code it all")
 
 ### Studio Slice 3 — Script, redesigned against the 09-28 measurements (mock first)
@@ -2743,7 +1966,9 @@ BUILT:  2026-10-04 — server `17b89a9` (POST /v1/personas/preview-candidate; a 
         ~6249 MB + a 1024 MB margin, and this 8 GB card has 7249 MB free with nothing resident
         — the user was asked whether to try it on the CPU.
         LATER — the user: "dont do it know add to list": mock in the app the Voices page as the
-        library only (answer A) and Cast's persona list.
+        library only (answer A) and Cast's persona list. (Overtaken 2026-10-05: Voices and Cast's
+        persona list were redone without a mock — "no need to mock just do it go", TASKS "The
+        persona page's Voice card: pick a voice first, filters that narrow each other".)
 GO:     given 2026-10-04 for option 2, the persona mock and the answers above; the real pages
         wait for the user's review of the mock
 
@@ -3079,9 +2304,12 @@ STATE:  DECIDED 2026-09-30 as a to-do — "add that as todo possbile wehn we do 
 WHY:    a voice's gender is only visible on the Voices page; the attribution prompt has a
         pronouns slot that is always empty (`_resolve_cast` sends None).
 NOT:    a male/female "sex" dropdown on speakers; a gender field on personas.
-BUILT:  nothing. OPEN: the two checks in the doc's §2, then a plan — when the Personas page is
-        redesigned per the mock.
-GO:     needed
+BUILT:  with the persona redesign (P4, P6, P9 — 2026-10-03): one gender answer on every voice
+        dropdown (`services/voiceGender.js`); speaker Pronouns (`database/models.py:222`) on Cast,
+        sent to Analyze and Smart-assign. Discover proposing pronouns was left out on purpose
+        (the doc, "Not in it").
+OPEN:   none. (Corrected 2026-10-05 by the tracker sweep — this said "BUILT: nothing".)
+GO:     given with the persona redesign (2026-10-03)
 
 ### Slice 3's leftovers — edit, split and merge lines; speech marks; dialogue tags; the old Chapters page; one narrator rule
 STATE:  DECIDED 2026-09-30 — "finish slice 3 and related items", then "go" on the plan as
@@ -3226,17 +2454,6 @@ BUILT:  2026-09-29 — Studio Cast: a `UiCheckbox` "Narrator" on every card (the
         gone from `_chapter_script`; `ScriptFlag.check` loses "narrator"; the eval call; the
         Check question and both "what the columns mean" cards; tests; studio.md, personas.md,
         whats-new, code-map.
-GO:     given 2026-09-29
-
-### Download cancel: remove the partial files before the job says "cancelled"
-STATE:  DECIDED 2026-09-29 — "do it all your rec go". FINDING the same day: the flaky
-        `test_prefetch_cancel_via_http_endpoint` (1 in 15 under load) is a real ordering bug —
-        `installer.py` marks the job failed/"cancelled by user" and only then `rmtree`s the URL
-        partials, so a watcher sees "cancelled" while the files remain, and a download started
-        in that window could have its new files deleted. Rec: delete first, then mark.
-BUILT:  2026-09-29 — `installer.py` prefetch cancel: wipe (URL) / log (HF), then mark failed.
-        The test passed 20 of 20 after (no model running at the time; it had failed 1 in 15
-        with the model busy). The other "cancelled by user" paths delete nothing after marking.
 GO:     given 2026-09-29
 
 ### Discover missed Sherlock Holmes on The Speckled Band
@@ -3403,6 +2620,7 @@ BUILT:  2026-09-29 — 1: `create_project` makes no narrator; import calls `_ado
 FINDING 2026-09-29, at the live check: the two leftover Narrators (`e08979c7`, `46aec889`) were
         no longer in the library (13 → 11 personas). Nothing this session ran deletes a persona;
         the server log records only failed requests, so it cannot say who did. Asked the user.
+        (Settled since: the database was reset 2026-10-05; one Narrator persona is in it.)
 GO:     given 2026-09-29
 
 ### Personas: tick several and delete them at once
@@ -3569,36 +2787,6 @@ BUILT:  2026-09-29, JV `fd593f8` (pushed later that day). Server: `speakers` tab
         when a different speaker is selected, and a save updates only its own field.
 GO:     given 2026-09-29
 
-### ~~ACX mastering failed ACX~~ — FIXED 2026-09-29
-STATE:  FIXED on "do what you can without my intervention … go" (the walkthrough). Every
-        chapter mastered "acx" by this app came out out of spec: The Keystone measured −16.8
-        LUFS, RMS −17.11, peak −0.47, and the app's own ACX QC said fail.
-WHY:    `mastering._run_master` ran `dynaudnorm=g=15:p=0.95` AFTER `loudnorm`, so it
-        renormalised toward a 0.95 (−0.45 dB) peak and undid the preset. Since the first commit.
-BUILT:  `dynaudnorm` first, `loudnorm` last (same audio: −19.9 LUFS / −3.5 dBTP); live QC after:
-        all four chapters ok. `tests/test_mastering_chain.py` runs the real chain (fails on the old
-        order, passes on the new; skipped without ffmpeg). Docs mastering.md (chain order).
-GO:     given 2026-09-29
-
-### FINDING — the chapter you audition is paced differently from the one that ships
-STATE:  FINDING 2026-09-29 (walkthrough). Studio's Render (`POST /v1/render_chapter`) joins lines
-        with `BetweenLines.silence_ms = 250`; export and ACX QC (`render_scene_to_wav`) join them
-        with a hardcoded `600`. The Keystone: 505 s auditioned, 522 s exported.
-WHY:    Both are hardcoded, against the "no hardcoded operator-tunable values" invariant; and
-        what you listen to is not what ships.
-DECIDED 2026-09-29 — "your rec both go", on the rec as given: "one setting, Pause between
-        lines, default 600 ms, used by Studio's Render, export and ACX QC alike. It would sit in
-        Settings with the other render settings. A line's own pause from an import still
-        overrides it. Effect: what you audition matches what ships. Export stays exactly as it
-        is today; Studio's Render gets longer pauses."
-BUILT:  2026-09-29 — `GenerationSettings.pause_between_lines_ms = 600`; `BetweenLines.silence_ms`
-        is None by default (= the setting; a caller's value still wins); `render_chapter` and
-        `render_scene_to_wav` (export + QC) both read it. Settings → Generation pipeline:
-        "Pause between lines" slider (0-3000 ms). Tests `test_pause_between_lines.py` (both paths
-        take the setting; a sent value wins); the render_truth fake gained the setting. Live:
-        The Keystone's Render 505.19 s → 522.34 s = QC's figure; at 800 ms 532.14 s (+49 × 0.2 s);
-        set back to 600; QC all_ok. Docs studio.md (Render), settings-reference, whats-new.
-
 ### Persona names are unique across the library, and a persona must have a name
 STATE:  DECIDED 2026-09-29 — "go and your rec on the other fixes", on the user's "I thought we
         are not allowing duplicate names in persona? do you think we should allow dup or did we
@@ -3631,44 +2819,6 @@ BUILT:  2026-09-29 — `personas_api._persona_name` on POST and PUT: trims, refu
         app: blank → Save off; "narrator" and a rename into "steady BIG man" refused, nothing
         changed. Your 9 personas were already distinct. Full server suite 855 passed. Docs
         personas.md (Names), ai-features.md, code-map, whats-new.
-
-### FINDING — unknown inline tags are read aloud
-STATE:  FINDING 2026-09-29 (walkthrough). The podcast demo's first line ends "[warm]"
-        (`demo_projects.py:97`); no engine declares `warm`, and `inline_tags.strip` removes only
-        KNOWN tags, so it is spoken — Kokoro + Whisper: "Welcome back to the show. Warm, it is
-        good to have you here."
-DECIDED 2026-09-29 — "your rec both go", on the rec as given: "when rendering, drop every
-        [word] tag the chosen engine doesn't list, not only the ones the app recognises. A tag
-        the engine doesn't know can never be performed, only spoken. Tags an engine does know
-        ([sigh] on Chatterbox, for example) keep working. Also take [warm] out of the podcast
-        demo's text. One consequence: bracketed text like [sic] would also be silent. In
-        narration that's usually what you want."
-BUILT:  2026-09-29 — `inline_tags.strip(text, keep=…)` drops every bracket tag not in `keep`
-        (multi-word ones like `[clear throat]` too); `render_core.performable_text` keeps exactly
-        the bracket tags the RENDERING variant lists (`_capability_row`, shared with the emotion
-        path) — none for an engine without tags, none for tokenless Chatterbox Multilingual (the
-        code-map's "latent, not fixed" `[laugh]` gap closes with it). `render_line`,
-        `probe_line_cached` and both Generate paths call it (Generate used to send text
-        untouched). The podcast demo loses "[warm]". Tests `test_performable_tags.py`; the
-        lockstep guard in test_emotion_wiring names `performable_text`. Live: Kokoro +
-        "Welcome back to the show. [warm] It is good to have you here." → Whisper: "Welcome
-        back to the show. It is good to have you here." Docs engines.md, code-map, whats-new.
-
-### FINDING — every engine install failed under tauri dev: a 0-byte uv.exe
-STATE:  FINDING 2026-09-29 (walkthrough). Install → "[WinError 193] %1 is not a valid Win32
-        application". `src-tauri/target/debug/uv.exe` was a 0-byte placeholder left on 2026-07-29
-        (uv added as a Tauri sidecar in 2cf0924, removed in fcccd95); `cargo run` puts
-        `target/debug` first on PATH, so `engines/manager._check_uv_available` →
-        `shutil.which("uv")` found it. The file (untracked build output) was deleted; installs
-        then worked.
-DECIDED 2026-09-29 — "your rec on the other fixes": "skip an empty/non-runnable candidate
-        (probe `uv --version`) and name the bad file" (this entry's OPEN, as written).
-BUILT:  2026-09-29 — `engines/manager.py`: `_uv_runs` (non-empty and `--version` says uv),
-        `_path_uvs` (every uv on PATH, not only which()'s first), `_check_uv_available` skips a
-        candidate that doesn't run (logged) and, when none runs, says "uv was found but doesn't
-        run: <file> … delete it, or reinstall uv". Tests in test_uv_resolution.py (skip, name
-        the file, empty never counts). Checked for real: a 0-byte uv.exe first on PATH is
-        skipped and E:\UV_TOOL_DIR\uv.exe is used. Docs whats-new.
 
 ### Switching Studio steps keeps Script where you left it
 STATE:  DECIDED 2026-09-29 — "your rec go", on the user's "this is a spa and navigating a in a
@@ -3714,8 +2864,9 @@ BUILT:  2026-09-27, committed in JV `df15ecf`. `samples/the-ninth-facet/book.jso
         `_bundled_samples_dir` (`JUSTVOICE_SAMPLES_SRC` or repo-root `samples/`, mirroring JW's
         `demo_seed`) · test `test_the_audiobook_demo_is_the_ninth_facet_…` · docs/projects.md.
 OPEN:   packaged builds: `samples/` is outside the Python package, so a frozen sidecar needs
-        `JUSTVOICE_SAMPLES_SRC` pointed at a bundled copy — deferred, exactly as in JW. The
-        user's existing "Demo — Stillwater" project in the dev DB is NOT deleted (data; ask).
+        `JUSTVOICE_SAMPLES_SRC` pointed at a bundled copy — deferred, exactly as in JW (nothing sets
+        it yet; `demo_projects.py:28` is its only reader). The "Demo — Stillwater" project went with
+        the 2026-10-05 database reset.
 GO:     given 2026-09-27
 
 ### Redesign: Studio stays a container, a project opens on its Overview, presets die
@@ -3737,17 +2888,18 @@ NOT:    Dissolved Studio (Chapters · Cast · Render · Export as rail items). O
 BUILT:  mock only. `docs/plans/mock/_new_overview.html`, route `overview` in `build_mock.py`
         ROUTES, `openProject()` → `nav('overview')`. Published 2026-09-27 (version 21).
         App code: nothing. `ProjectsView.vue:534-656` is still the detail pane plus "Open in Studio".
-OPEN:   (4) cast on Overview is unruled; the mock shows only the Cast step's status row.
-        (The Dissolved toggle was deleted from the mock 2026-09-27: *"2 delete,"*.)
-        Presets excision in code (`RenderPresetsView.vue`, `/presets`, `RENDER_PRESETS` in
-        `ProjectsView.vue:162`, `metadata.render_preset`) has no go.
-GO:     given 2026-09-27 for the record and the mock | needed for app code and the presets excision
+OPEN:   none. (4) was settled by Slices 1 + 2: Overview links to Cast, no second editor
+        (`StudioOverview.vue:18`). The presets excision was built 2026-10-03 (persona build P2,
+        `ad93a61`). (The Dissolved toggle was deleted from the mock 2026-09-27: *"2 delete,"*.)
+GO:     given 2026-09-27 for the record and the mock; the app code under Slices 1 + 2 and the
+        persona build
 
 ### THE VOICE-WORKFLOW REDESIGN — the resume surface
 
-STATE: PARTLY BUILT (corrected 2026-09-30 — this line said "nothing built in app code"): Studio's
-Overview, Discover, Script and Cast match the mock; Render, Scene, New project and the library
-screens (Personas + its editor, Voices, Lexicons, Effects, Engines) do not, or only partly.
+STATE: PARTLY BUILT (corrected 2026-10-05): Studio's Overview, Discover, Script, Cast and Render
+(Slice 4, 2026-10-04) are built; Personas, the persona page and Voices were redone with the persona
+redesign (2026-10-03); Scene, New project, Lexicons, Effects and Engines were not. The HTML mock is
+frozen (2026-10-04, CLAUDE.md). The open questions further down are what remains.
 **Screen by screen, with what is missing: `docs/plans/2026-09-30-mock-vs-app-and-slice-4.md` §1.**
 **`docs/plans/2026-08-15-voice-workflow-redesign.md` §8 is THE resume surface** —
 the mock is the design, and §8 carries every ruling made while walking it, the
@@ -3965,49 +3117,6 @@ in it for the attribution work.
 GO: needed, per phase. (The workbench plan it used to defer to was closed
 2026-08-22 — the redesign doc is the surface now.)
 
-### ~~FINDING — Block.direction is stored, editable, and never rendered~~ — FIXED
-
-STATE: **FIXED 2026-08-17** under "go", together with the other two dead
-delivery paths. `render_chapter_api` composes **persona `voice_instruct` →
-`delivery.emotion` → this line's `direction`** into `delivery.instruct`, most
-specific last, **appending rather than replacing** — the persona says who they
-are, the line says how this one is delivered. An explicit preset/request
-instruct still wins the base slot, and a lone hint passes through verbatim so a
-hand-written instruct is never reformatted.
-
-Two more dead paths went with it:
-
-- **`Delivery.emotion`** had no reader at all; it now rides the same
-  composition. This also completes the IMPORT path — every adapter's
-  emotion/style column lands in `Block.direction`
-  (`projects_api._materialize_standard`) and stopped there.
-- **`Delivery.pause_before` / `pause_after`** were stored and ignored:
-  `concat_lines` used one fixed project gap. Each join now takes the previous
-  line's `pause_after` plus the next line's `pause_before`, falling back to the
-  project gap only when neither is set — blank means "as the project", `0`
-  means a deliberate butt-join. The producer side was broken too: every import
-  adapter parses `pause_after_ms` (`standard_schema.StandardLine`) and
-  `_materialize_standard` dropped it. It now rides on the block's metadata, so
-  **no schema change and no reset** were needed.
-
-Pinned by `server/tests/test_line_pause_and_direction.py` (13 tests). Gates
-green: ruff · **605 pytest** · biome · 69 vitest · vite build · smoke 16/16
-zero JS errors.
-DOCS: `docs/generate.md` (pause semantics), `docs/dev/code-map.md` §5 + findings
-1, 11, 12.
-
-ORIGINAL FINDING, kept as the record — code-verified 2026-08-15.
-`database/models.py:238` documents it
-as *"Emotion/style hint passed through to the engine's instruct field."* It is
-written (`projects_api.py:498`, `:536-537`), returned (`:140`), exported
-(`project_export_api.py:104`) and preserved across splits
-(`extraction_api.py:406`) — and `render_chapter_api.py` and `render_core.py`
-contain **zero** references to it. The "+ direction" button on the Chapters
-screen writes a column no render reads. Per-line direction is not a future
-feature; it is built and disconnected.
-GO: needed. Bears directly on the redesign — per-line direction is load-bearing
-in the new chapter surface.
-
 ### style_prompt is deleted; emotion becomes the cross-engine direction control
 
 STATE: DECIDED 2026-08-17 — *"so we should just remove style prompt and keep
@@ -4034,38 +3143,12 @@ chatterbox-turbo (**4 of 19 tags declared → all 19**, in three categories, wit
 (variant-precise via `manager.current_variant_id`, mirrored in
 `probe_line_cached`) · `GenerateView.vue` Emotion picker.
 Pinned by `server/tests/test_emotion_wiring.py` (25 tests).
-OPEN:   Turbo's other 16 tokens are declared from reserved ids and **never
-rendered here** — upstream names only three. `_tags_supported` is still
-engine-level, so a hand-typed `[laugh]` is not stripped for Multilingual, which
-has no such token. Per-line emotion needs a `blocks` column and is NOT built —
-today the line carries prose `direction`, the persona carries the emotion.
+OPEN:   per-line emotion needs a `blocks` column and is NOT built — today the
+line carries prose `direction`, the persona carries the emotion. (Corrected
+2026-10-05 by the tracker sweep: all 19 Turbo tags render on Turbo and Nano —
+`docs/plans/2026-10-04-turbo-tag-check.md`; tags are kept or stripped per model
+— `render_core.performable_text`; the Emotion picker is on the persona page now.)
 GO:     given 2026-08-17
-
-### Voice design — the call is already installed; it needs a variant row
-
-STATE: OPEN — your call. User 2026-08-17: *"we dont have the model but we need
-to add it, qwen does."* Researched and verified the same day.
-WHY:    Every manifest says `voice_design: False` and `POST /v1/voices/design`
-has nothing behind it. `Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign` is real, and
-`generate_voice_design(text, instruct, language, …)` is **already in the
-installed `qwen_tts`** in `engines/qwen3/.venv` (this said `engines/.shared-venv`
-until 2026-08-22; the per-engine migration deleted that path) — gated at
-`qwen3_tts_model.py:686` on `tts_model_type == "voice_design"`. **No new
-dependency.** What is missing: a variant row, the ~4.52 GB download, and one
-adapter branch.
-NOT:    Treating it as a call that returns a voice. It is **per-call
-synthesis** — description in, *audio* out, no embedding to store. Alexandria
-(also Qwen3-based) does the only thing that works: synthesize a reference,
-save the WAV, and assign the speaker as a **clone** of it. So the door is a
-four-step pipeline — describe → synthesize probe → save WAV → clone → `Voice`
-— and the result is a clone, inheriting the cloning engine's abilities, not
-Qwen's. Anything else re-derives this the hard way.
-BUILT:  nothing. Full record incl. the file list, the Alexandria quotes, and
-the three-routes-to-a-directable-voice table: redesign doc §9.
-OPEN:   the byte total needs one re-pull — the HF file list sums to
-4,520,159,099 but the API's own total differs by ~3 MB, and facts-only means
-neither is typed until they agree.
-GO:     needed
 
 ### FINDING — the synth scheduler has no UI at all
 
@@ -4085,138 +3168,18 @@ OPEN: surface it in the chapter render panel — *"waiting — Chatterbox is
 finishing 40 lines"*.
 GO: needed.
 
-### FINDING — 4 of the Voices table's 11 columns are wired to nothing
-
-STATE: FINDING — code-verified 2026-08-15 on the user's report *"the voices
-table today is wrong it has things like effects cast as even langauge like
-italian dont actually work"*. `GET /v1/voices` returns the `Voice` shape
-(`models.py:464-471`) — id · engine · source · name · language · gender ·
-sample_url. That is ALL of it. The table reads four fields that are not on
-that payload and do not exist server-side:
-
-- **Samples** → `v.sample_count`. Real on the STORED record
-  (`VoiceRecord.sample_count`, written by `storage/voices.py:94-96`) but
-  `_stored_to_dto` (`voices_api.py:32-40`) drops it. Renders `—` for presets
-  and `0` for everything else, permanently.
-- **Gens** → `v.generation_count`. No such field anywhere in
-  `server/justvoice`. Always `0`.
-- **Effects** → `v.default_effects`. Zero hits in the entire server. Always
-  `—`. Effects chains live on the PERSONA (`Persona.effects_chain`), never on
-  a voice.
-- **Channel** → `v.channel_id`. Voices have no channel. Audio-channel routing
-  is per-PERSONA (`PersonaChannel`, `database/models.py:67-77`). Always
-  `Default`.
-
-Real columns: Name, Gender (incl. the override paths), Type, Engine, Cast as
-(computed client-side from personas' `voice_id`), and the ▶ preview.
-
-### FINDING — every Kokoro voice speaks English, whatever language it claims
-
-STATE: FINDING — code-verified 2026-08-15, same report. Two separate causes,
-both provable:
-
-1. **The engine hardcodes the language.** `kokoro/engine.py:107` sets
-   `lang = "en-us" if lexicon else ""`, once, at LOAD, into
-   `OfflineTtsKokoroModelConfig(lang=…)`. `synth()` never touches language.
-   So Sara (Italian), Nicola (Italian) and every Japanese / Mandarin /
-   Spanish / French / Hindi / Portuguese preset is phonemized with English
-   rules on the multilingual model. The voice's own `language` tag
-   (`kokoro/voices.py`) is decoration.
-2. **The catalog is variant-blind.** `STATIC_VOICES` is the full 54-voice
-   multilingual list unconditionally (`kokoro/manifest.py:66`), and
-   `list_voices` (`voices_api.py:51-62`) iterates `manifest.static_voices`
-   with no check on which variant is installed. Install the English-only
-   `kokoro-en-v0_19` and the table still offers eight languages of voices.
-
-OPEN: (a) pass the voice's language per-synth (sherpa-onnx takes `lang` on
-the model config, so this may need a reload-per-language or a config rebuild —
-verify against sherpa-onnx before speccing); (b) filter the catalog by
-installed variant; (c) meanwhile say so in the UI rather than listing voices
-that cannot work.
-GO: needed. Bears directly on the workbench design — the new Voices index
-must not carry the four dead columns forward, and the workbench's "what this
-engine can do" panel is where the language truth belongs.
-
-### ~~FINDING — engine-private knobs are saved flat and reach no engine~~ — FIXED
-
-STATE: **FIXED 2026-08-17** under "go", as part of the full engine-knob sweep.
-Routed on the way OUT, as the open question below offered: `nest_engine_keys()`
-in `delivery_merge.py` normalises every tier before the merge, so a flat save
-arrives nested and deliveries ALREADY stored flat in
-`personas.default_delivery` / `render_presets.delivery_json` are repaired with
-no re-entry. `render_chapter_api`'s `Delivery.model_fields` filter keeps them
-because `engine` is itself a declared field. The audition panel and the render
-now agree.
-
-The same pass audited all nine capability rows against their adapters, with
-the installed packages introspected (they lived in `engines/.shared-venv` at
-the time; since the 2026-08-22 per-engine migration `chatterbox` is in
-`engines/chatterbox/.venv`, `zipvoice` in `engines/luxtts/.venv` and `qwen_tts`
-in `engines/qwen3/.venv`). Corrections: `min_p`/`top_p` now forwarded
-(chatterbox) · `num_inference_steps` → `num_steps`, which had pinned steps at
-4 forever (luxtts) · `max_ref_length` wired to `encode_prompt(duration=)`
-rather than dropped (luxtts) · `volume` removed, it is not a parameter
-(luxtts) · **`t_shift` is NOT pitch** — upstream ZipVoice defines it as the
-flow-matching schedule, domain (0, 1.0], default 0.5, so the −6..+6 semitone
-declaration and `pitch_native_st_range` were both wrong and are gone ·
-`cfg_scale`→`guidance_scale` and `speed_factor` removed, the adapter drives
-HF's Dia not nari-labs' (dia) · `max_new_tokens` declared (dia) ·
-`silence_duration` removed and its four real knobs declared (moss) · three
-fake sliders removed from tada, whose adapter reads no delivery at all ·
-`repetition_penalty` forwarded (qwen3) · turbo's hardcoded `top_k`/`top_p`
-declared and its `repetition_penalty` default corrected 2.0 → 1.2 ·
-`lookup()` now walks `-` suffixes so `chatterbox-turbo-v1` stops resolving to
-the base row. **`Delivery.pitch` was read by nobody and is now applied
-post-render as a `pitch_shift` effect**, making `pitch_post_process` true
-everywhere it is advertised.
-
-Pinned by `server/tests/test_engine_knob_wiring.py` (21 tests) — it fails the
-build in both directions: a declared knob with no adapter reader, or an
-adapter override with no declaration. Gates green: ruff · 595 pytest · biome ·
-69 vitest · vite build · smoke 16/16 zero JS errors.
-COST: nesting changes `canonical_json(delivery)`, which is the render cache
-key — lines rendered before this re-render once.
-DOCS: `docs/engines.md` gained the per-engine tuning matrix; `docs/generate.md`
-corrected (pitch is post-process on every engine, not native on LuxTTS);
-`docs/dev/code-map.md` §5 carries the declaration↔adapter matrix.
-
-STILL OPEN from this area, NOT fixed: TADA has no installed venv of its own
-(it read "is not in the shared venv" before the 2026-08-22 migration), so its
-upstream knob surface could not be introspected — re-add knobs there only
-alongside the adapter change that passes them. (The pause, direction and
-emotion gaps listed here are closed — see the two findings above and the
-emotion item below.)
-
-ORIGINAL FINDING, kept as the record — code-verified 2026-08-15 while building
-workbench Slice B.
-Every engine reads its own knobs from the `delivery.engine` SUBDICT
-(`qwen3/engine.py:154`, `chatterbox/engine.py:185-206`,
-`moss_tts/engine.py:114`). But `VoiceParamsModal.vue` saves the capability
-schema's keys FLAT into `persona.default_delivery`, `merge_delivery` merges
-them flat, and nothing anywhere nests them. So every engine-private override
-— exaggeration, cfg_weight, repetition_penalty, talker_temperature, top_k,
-top_p — has been silently doing nothing at render. Only the cross-engine
-Delivery fields (speed, pitch, gain_db, temperature, instruct, style_prompt)
-ever worked. `render_chapter_api` additionally filters merged keys to
-`Delivery.model_fields`, which would drop them a second time.
-The audition panel routes them correctly (`services/audition.js
-canonicalDelivery`), so a knob turned there is heard — which means the panel
-and the render currently disagree for those knobs.
-~~OPEN: route on the way IN (nest at save time in the persona editor) or on the
-way OUT (nest in `merge_delivery`).~~ Resolved: routed on the way OUT.
-
 ### FINDING — the analyze prompt gets id + name and nothing else
 
-STATE: FINDING — code-verified 2026-08-15. `_resolve_cast`
-(`extraction_api.py:145-167`) hardcodes role/gender/pronouns=None, aliases=[];
-`format_characters` (`extraction/prompts.py:82-97`) reads those empty fields.
-So production attribution has NEVER seen a persona description or alias —
-the fields exist for the Lab's typed cast only. Aliases squashed into prose
-by the JW import (`justwrite.py:129-139`) are invisible to attribution too.
-(The dead description key `_resolve_cast` used to ship went out with workbench
-Slice A; the hardcoded Nones are untouched — wiring them IS this item.)
-OPEN: wire `personality[:200]` + real aliases into the prompt — changes every
-analyze run's tokens and behavior, so it is a product call, not a cleanup.
+STATE: FINDING — code-verified 2026-08-15, re-checked 2026-10-05. `_resolve_cast`
+now sends each speaker's pronouns, aliases and description
+(`extraction_api.py:169-173`; role and gender stay None), but
+`format_characters` (`extraction/prompts.py:98-113`) prints id, name, role,
+gender, pronouns and aliases — never the description. So the main Analyze call
+has never seen who a speaker is; the second look does (`second_look.cast_lines`,
+2026-10-05). (Corrected 2026-10-05: this said aliases and pronouns never arrive.)
+OPEN: put the speaker's description (`description[:200]`) in the main prompt's
+cast list — changes every analyze run's tokens and behavior, so it is a product
+call, not a cleanup.
 GO: needed.
 
 ### THE 2026-08-15 PLAN — pipeline truth + first-run speech + Alexandria adoptions
@@ -4289,9 +3252,12 @@ redirect the plan:
   `mastered` / `note`; without ffmpeg it still runs and says the numbers are
   raw. New read-only endpoint `GET /v1/render/master-target` feeds the Studio
   pill, which no longer hard-codes ACX numbers.
-NEXT: items 3–6 (demo activation → setup lanes → Voices audition + TTS
-ensure-load → Generate dissolution), per-batch go. Items 12–16 stay OPEN
-RULINGS.
+NEXT (corrected 2026-10-05 by the tracker sweep): item 4 only — the setup
+lanes, never built; its spec predates the audio.cpp switch ("54 voices · 333
+MB", Turbo/Multilingual lanes), so it needs re-planning before a go. Items 3, 5
+and 6 are built (the demo lands on its Overview; Voices auditions your own
+text; Generate was removed 2026-10-05). Items 12–16 were ruled (the plan doc,
+line 8).
 FLAKE seen once, not reproduced: `test_prefetch_cancel_via_http_endpoint`
 failed in one full-suite run and passed alone, as a file, and in a clean
 full re-run. Untouched by this work; noted in case it recurs.
@@ -4312,757 +3278,6 @@ encoded, the global player) · `generate.md` (dead `profiles.md` /
 deep exhaustive audit — *"for now we are not doing jv harness or deep audit i
 want to finish all features and complete the jv llm runner conversion."*
 
-### VRAM: STOP AND THINK before any arbiter wiring
-
-STATE: the 2026-07-04 decision stands (one shared VRAM budget family-wide; an
-LLM **or** a TTS engine on the GPU, never both) — but the user ORDERED A STOP
-first, 2026-08-08: *"once done with those tasks we need to stop and think about
-vram, has that already been planned? some tts engines can run direclyt on cpu
-and dont need vram, same with some of our modles so we need to take that into
-consideration as well as the fact that we dont autoload the lmm model so how
-does a user know what they can and cannot load if llm model is not even
-selected or loaded, as we have it load on demand"*.
-WHY: the old item assumed the wiring was the remaining work; the user names two
-unplanned dimensions — CPU-resident engines/models that need NO budget, and the
-load-on-demand LLM meaning the budget's biggest consumer is invisible until it
-runs.
-BUILT: the arbiter itself, in the runner (`runner/arbiter.py`); JustVoice's
-`EngineManager.load()` neither reserves nor releases ("arbiter" appears nowhere
-in `server/`, verified 2026-08-08). The engines are OS subprocesses, not
-in-process (design-doc correction rides along).
-OPEN: the THINK is DELIVERED, then twice hardened by ordered adversarial
-passes — `docs/plans/2026-08-08-vram-think.md`. Pass 2 found the budgeted
-policy ALREADY RUNS in JV's process for the LLM (`lifecycle.py:491`), reversing
-Q1 to budgeted-from-the-start and cutting two overbuilt pieces. Pass 3 found
-the decisive structural fact: naive TTS reservations would CORRUPT the runner's
-`_admit` (it would "evict" a foreign key via router_unload no-op + release —
-the ledger lies, overcommit returns), so the wiring's PREREQUISITE is the
-kit-side eviction-executor seam (reservation kind + evict_fn + a shared
-make_room; `_admit` refactored onto it). Pass 3 also disproved pass 2's
-self-shrink assumption (the load fits against the FULL card and EVICTS —
-`lifecycle.py:1937` + `_admit`) and found the shipped in-runner precedent for
-Q2's policy shape (the #274 embed placement). The workflow pass (the user's
-"how does the flow work" question) added §4 + two more calls: Q6 — Quick Setup
-UNCHANGED (family-canon charter; TTS has no default-model concept, voices are
-the unit and engines follow them), but the 2026-08-05 warm-boot stopgap
-("TTS owns the GPU until F4's arbiter", main.js:208-214) comes back — rec:
-flip LLM warm-boot ON as the wiring's last step; Q7 — mixed-GPU-engine casts
-thrash full model loads per engine crossing (one-slot-per-kind +
-per-line auto-load, verified) — rec: chapter render synthesizes grouped by
-engine. Pass 4 verified the newest pieces in code: Q7's premise holds (the
-chapter render is collect-then-assemble, `render_chapter_api.py:250-264`, so
-grouping is just iteration order); Q6's mechanics corrected (warm is a per-DB
-SETTING — kit default ON, JV's `llm_bootstrap.py:34-36` seeds it 0; the flip
-reaches fresh DBs only, seeds-only rule); and Q8 found the deeper limiter —
-`synth()` is slot-coupled (`manager.py:1415-1417`), so CPU-kokoro + GPU-engine
-can never co-reside; multi-resident engines recorded as the later refactor,
-NOT built. make_room's busy protection also closes the pre-existing same-kind
-hole (loading LLM B could evict busy LLM A). Pass 5 produced ZERO design
-reversals and four wiring corrections (§5 of the doc — convergence): whisper
-IS the third kind and AUTO-LOADS today (`captures_api.py:48-60`, stt slot,
-1500 MB cuda-only manifest) so dictation's resident set is stt+llm at once;
-there are TWO engine-load doors and `render_core.render_line`'s direct
-`engine.load` would BYPASS arbitration — door unification onto
-`EngineManager.load()` is wiring prerequisite #2; `models_max`'s count cap
-must be kind-scoped or a TTS resident eats a llama.cpp child slot; TTS
-admission reuses the existing `safety_margin_mb` knob; and the claim line's
-two sources are verified (measurements record `vram_total_mb`; `compute_fit`
-prices an on-disk gguf). llm-busy lands in the KIT dispatch layer (JW inherits
-the protection free); tts/stt-busy at the manager chokes. Your calls on Q1–Q8
-are the gate. NO code before those decisions.
-DECIDED (2026-08-08, round 1 — user words verbatim: *"q1 your rec, q2 how does
-this work are you adding gui it sound good but how does it really work dont
-likme stuff that is hidden or hardocded, q3 your rec, q4 your rec, q5 i dont
-understnad your rec, q6 your rec, q7 this was suppored to already be done the
-grouping so that anything synthized by engine got grouped together, that is not
-just chapters but if you runn multople chapters it need to take wahter is being
-run or queed to be run and gourp it effectiantly, you need to think on this
-again and show me what you find, q8 your rec, no coding yet"*):
-**Q1 ✓** budgeted + never-evict-busy · **Q3 ✓** claim line + event-driven
-eviction toasts, no predictive warnings · **Q4 ✓** one budget strip on the
-Speech-engines tab, one endpoint · **Q6 ✓** warm-boot flip as the wiring's
-last step, seeds-only · **Q8 ✓** multi-resident engines recorded, NOT built.
-**Q2 OPEN** — mechanics re-explained (engine FACTS in manifests: cpu_adequate
-beside vram_min_mb/gpu_runtimes; the operator PREFERENCE is a real setting
-`engines.engine_overrides[id].device` auto|cuda|cpu with a Device select on
-each Speech-engines card; resolution in the ONE load door; resolved device +
-reservation always shown on card/strip/toast; today's hidden torch greedy-cuda
-is the thing being REMOVED) — DECIDED round 2, user: *"q2 ok"*.
-**Q5 OPEN** — re-explained (the admission's "how much does this engine need"
-number comes from the manifest's declared vram_min_mb; it is a first guess —
-the spawn OOM back-off is the real safety net; the NVML measure-after-load
-subsystem stays cut, parked in IDEAS) — DECIDED round 2, user: *"q5 your rec"*.
-**Q7 REOPENED and SWEPT** (go round 2: *"i did not mean to sotp that sweep …
-go and finis anwwering quesitns"*) — full findings + design in §7 of the plan
-doc. The short truth: NOTHING groups anywhere (all five multi-line producers
-verified sequential — scene render, M4B assembly, voiceline ZIP, the Lines
-CLIENT loop, singles; every one funnels through per-line
-`engine.load("auto")`); the user's "supposed to already be done" memory is
-RIGHT twice over — the design freeze shipped `RenderJob`/`RenderJobBlock`
-tables (`database/models.py:330-364`, DESIGN_FREEZE §3.7) with NO orchestrator
-ever built (exports-only, dead in every DB), and Decision 13 of the 2026-06-20
-shared-ai-stack plan promised job-level render/batch settings (parallel
-workers, sub-batching, batch seed) that have ZERO code hits; engine-grouping
-itself was never planned before this doc. Bonus debt found: Generation's
-active-status machine (queued|loading_model|generating) is set by NOBODY —
-both creators write "completed" directly, `active_tasks_api.py:51` filters on
-states that never occur. REC (awaits the word): Option B in §7 — ONE
-synthesis scheduler, engine-major across the whole pending pool; Stage 1 the
-in-process scheduler core replacing wiring step 7 (producers submit sets and
-wait; interactive singles jump at line boundaries); Stage 2 resurrect
-RenderJob as the persistent face (retry-failed, resume, Lines client loop
-retires). Sub-batching stays distinct (within-engine perf, IDEAS).
-PASS 2 (*"think on the desing again"*, same day — §7b of the plan doc): found
-a LIVE defect — the synth endpoints are async-def with sync bodies over sync
-httpx (`manager.py:999`), so a chapter render blocks the ENTIRE server (even
-accepting an Analyze; §4's mid-render story is impossible today — the
-scheduler is what makes it real); found the big simplification — the render
-cache is the hand-off (all producers verified `use_cache=True`, disk tier
-never auto-evicts, `cache.py:96-135`), so the scheduler is a WARM PASS with
-no result plumbing and assembly code unchanged; M4B needs WHOLE-submission
-grouping (per-chapter was insufficient even single-producer); drain policy
-concretized (oldest-pending-line engine first + pool-wide free-riding +
-interactive jumps at line boundaries, no knobs); and the freed loop FORCES
-all synthesis through the scheduler (the accidental serialization is the only
-thing preventing load-terminates-engine-mid-synth today; previews are a sixth
-synth door, `voice_preview_api.py:168`). Shape unchanged: Option B, two
-stages. One pass-1 claim corrected: cross-producer line-level interleave
-exists only between per-line-request flows; whole-request producers serialize
-accidentally by blocking the loop.
-PASS 3 (*"think on it again"*, same day — §7c): NO reversals. Three
-corrections: Stage 1 is INDEPENDENT of the VRAM wiring and REC'd to ship
-FIRST (the wiring's admission/busy plug into the scheduler's switch points
-afterward); the Lines re-render stays UNgrouped until Stage 2 (per-line
-requests = one-line sets — the named gap that makes Stage 2 debt, not
-polish); the synth funnel covers MANAGED engines only (external/remote-API
-singles stay direct — nothing to kill, nothing to group). Two alternatives
-rejected on record: the `def`-endpoints one-keyword freeze fix (creates the
-mid-synth kill race it cannot manage) and a manager synth/load lock (prevents
-the kill, buys no cooperation).
-PROCESS RULE (2026-08-08, mid-turn, verbatim): *"never do anycoding unless i
-give you exact word 'go' never do anyting research unless i give go"* — both
-gates are the literal word.
-Q7 DECIDED round 3, user verbatim: *"your rec go"* (2026-08-08, after pass 3)
-— Option B, scheduler-FIRST order. The go covers STAGE 1: the SynthScheduler
-(pool + worker thread + engine-major drain per §7b P2-4 + submit-and-wait +
-interactive jump), the managed-synth funnel (§7c P3-3 scope), and the manager
-per-kind guard as safety back-stop. Stage 2 (RenderJob resurrection) and the
-VRAM wiring each still need their own go.
-BUILD-PREP DISCOVERY (§7d of the plan doc): `render_line` has NO local-engine
-door — the registry it drives holds ONLY external cloud providers
-(`app.py:438`; managed adapters were never re-registered when engines became
-plugins), so chapter/M4B/QC/ZIP/Lines/take-re-roll 404 for EVERY local voice
-and only ever worked with cloud voices; the new-voice preview door breaks the
-same way (`voice_preview_api.py:134`); tests never caught it (fakes occupy
-the registry slot production leaves empty). Stage 1 opens with the managed
-bridge in render_core (= wiring step 2's render_core half, landing early).
-STAGE 1 BUILT 2026-08-08, gates green (ruff clean · 453 pytest, all passing):
-the managed bridge — `render_core.py` render_line/probe_line_cached route
-managed engines via the manager (registry branch stays first: external
-providers + test fakes untouched), tag-strip from manifest CAPABILITIES,
-cloned-voice reference WAV via `resolve_audio_prompt_for_stored` (moved to
-render_core, generate_api wraps it) · the scheduler — `synth_scheduler.py`
-(SynthScheduler + SetHandle + warm_lines/warm_specs, engine-major oldest-first
-free-riding drain, interactive jump, abort-on-first-error, cancel-withdraws) ·
-the guard — `engines/manager.py` per-kind `_activity` locks around
-synth/clone/transcribe and load/unload terminates (`_unload_kind` refactor) ·
-the conversions — render_chapter + QC + M4B (`collect_project_line_kwargs`,
-strict-mirroring, aborts warm if any scene refuses) + voiceline ZIP
-(`collect_block_specs`, [] on first unvoiced block) warm sets;
-render_block / generate-managed / managed new-voice preview are interactive
-singles through the one synth door; all five endpoints now await instead of
-blocking the event loop · tests — `test_synth_scheduler.py` (9),
-`test_render_managed_bridge.py` (7), `test_engine_activity_guard.py` (2).
-NOTE: built alongside the parallel Script-tab-restore session's work in the
-same tree (its strict=True refusal composes with the warm; the book-warm
-mirrors it). COMMITTED with Stage 2 + the Script-tab restore in `3a5a23d`
-(2026-08-09, user word "commit and push all").
-STAGE 2 GO GIVEN 2026-08-08, user verbatim: *"go"* (immediately after the
-Stage-1 report listing Stage 2 first among the open gos — the decided
-scheduler-first order's next step). Scope per §7 Finding 3 + §7c P3-2:
-resurrect `RenderJob`/`RenderJobBlock` as the persistent face — job API
-(create/status/cancel/resume), runner submits every block as its OWN
-one-item set so the pool groups engine-major while failures isolate
-per-block, per-block Generation+Take persistence identical to the single
-door, boot sweep marks interrupted jobs paused, resume re-runs
-failed+pending only, and the LinesView client loop retires onto one job
-POST + poll with real n/m on the kit task.
-STAGE 2 BUILT 2026-08-09, gates green (ruff · biome · 48 vitest · vite build ·
-smoke 15/15 zero JS errors · pytest FULL SUITE 469 passed, zero failures —
-both sessions' work green together): `render_jobs.py` (create_job
-scope project|scene|blocks · `persist_block_take` = THE one block-persistence
-shape, takes_api refactored onto it · runner submits each block as its own
-one-item set — engine-major grouping pool-wide, per-block failure isolation ·
-counters recomputed from rows so resume never lies · cancel withdraws pending
-at the line boundary via live handles · `sweep_stale_jobs` boot sweep wired in
-`app.py` after init) · `api/render_jobs_api.py` (POST create / GET
-?include_blocks / cancel / resume) · `LinesView.vue` re-render = one job POST
-+ 1s poll with real n/m, Cancel → job cancel, partial-failure toast, button
-disabled-not-spinning · `docs/lines.md` updated · `tests/test_render_jobs.py`
-(8: complete+persist, failure isolation, resume-only-unfinished,
-cancel-withdraws, boot sweep, empty scope, API roundtrip, unknown-ids).
-Composed live with the parallel Script-tab session's moving edits: warm
-mirrors QC's skip_unrenderable/strict split (collector grew the flag); their
-render_scene_to_wav strict= signature landed mid-build (two test stubs
-updated to `**kw`, their session then evolved the same tests further).
-COMMITTED + PUSHED as `3a5a23d` (2026-08-09, both sessions' work, final
-gates green on the settled tree; workflows verified disabled before/after).
-GO: Stages 1+2 BUILT · a job-list / resume UI surface beyond the Lines button
-was NOT ordered and is not built.
-DECIDED + GO 2026-08-13, user words verbatim: *"your rec go and go for the
-full vram phase"* — after the ordered re-think ("think on the design again
-including the new fit") and its adversarial cross-verification (Fable → Opus →
-Fable, every claim run in code). The rec approved, THE ONE-POOL RULING: **on
-one-pool boxes the ledger tracks POOL OCCUPANCY, not device placement.** Kit
-half: `process.py`'s one-pool booking clamp — whose own comment and whose own
-test (`test_arch_arm_one_pool_booking_never_exceeds_ledger`) both said "until
-Phase 4 makes the ledger arch-aware", a debt Phase 4 then never collected —
-changes ceiling from `max_vram_mb` (the iGPU carve-out: bookings of 0–128 MB,
-admission dead, claim line reading 0, `__overhead__` calibration poisoned) to
-`budget_total_mb` (the pool), the two carve-out-era test pins re-pinned to
-pool truth + a new real-booking pin. JV half: on one-pool boxes a managed
-engine load books its declared `vram_min_mb` WHICHEVER device it resolves
-(CPU and GPU are the same physical bytes there); discrete keeps
-cpu-resolves-books-nothing. "The full vram phase" = wiring steps 3–6 of
-`docs/plans/2026-08-08-vram-think.md` §6 as amended by the re-think: step 1
-(kit seam) and step 4's llm-busy half verified ALREADY BUILT during the fit
-redesign; the claim line comes from the kit's `preview_fit` four-arm resolver,
-never hand-rolled (P5-5's ladder is superseded); `declared_claim_fn` is DEAD
-plumbing (assigned once, read nowhere, and `preview_fit` can't resolve
-non-catalog ids anyway) — NOT used, left untouched, recorded as a gap; JV
-prices its engines from its OWN manifests; tts-busy lives at the scheduler
-worker (idle→active transitions), stt-busy at the manager's transcribe;
-`cpu_adequate: true` lands on kokoro (certain), luxtts stays UNFLAGGED until
-its real-time-on-CPU claim is verified, whisper stays cuda-declared (P5-1's
-per-variant refinement recorded, not built); warm-boot flip is the LAST step,
-seeds-only.
-BUILT 2026-08-13, same session as the go — full stamp in
-`docs/plans/2026-08-08-vram-think.md` §6 (STATUS STAMP 2). The pieces:
-KIT — the one-pool clamp fix (`process.py` ceiling → `budget_total_mb`) +
-two re-pins + the physics-equality pin (suite 847; steps 1 + 4-llm were
-already built there during the fit redesign). JV server — device policy /
-admission / declared reservation / release-on-every-exit in
-`engines/manager.py` (`_resolve_device` · `_books_memory` one-pool ruling ·
-`_admit_memory` no-locks-held (lock-order inversion avoided; a refused
-admission leaves the world untouched) · `_reserve_engine` source="declared"
-kind-mapped tts|stt · `_evict_for_arbiter` occupant-checked) + `cpu_adequate`
-on kokoro + `EngineOverrides.device` (models.py) + tts-busy at the scheduler
-worker's idle↔active transitions (`synth_scheduler.py`) + stt-busy at
-`transcribe` + `GET /v1/engines/vram` (`engines_api.py`: snapshot + the
-routed-default claim — routing store + production configs, NOT
-resolve_feature; preview_fit's four arms do the pricing; claim_reason
-distinguishes cloud-routed from not-configured) + `resolved_device` on
-EngineInfo. JV UI — the budget strip (VRAM/Memory label off mem_arch,
-provenance tooltip, busy chips), eviction-toast poller (4s, primed silently
-on mount), Device select per card (read-modify-write PATCH), resolved-device
-on the loaded badge, the client-guessed "est. VRAM" total replaced by ledger
-truth. Warm-boot: `apply_jv_warm_default` DELETED (seed.py + reseed path),
-`test_warm_default.py` re-pinned warm-ON-fresh / stored-choice-survives.
-Docs: `docs/gpu.md` "The shared memory budget" (real section) +
-`docs/engines.md` loading rewrite. Tests: `test_engine_vram_wiring.py` (17:
-device policy · booking both arches · slot-replacement release · honest
-refusal · idle-LLM eviction + event feed · never-evict-busy · evictor
-occupant check · scheduler/transcribe busy · the endpoint incl. the claim).
-GATES: kit ruff+847 · JV ruff+485 + vitest 48 + build + smoke 15 views zero
-JS errors · JW 128 + build · check-family 0 violations · verify-model-pick
-48. HONEST LIMITS, recorded: eviction toasts surface only while the
-Speech-engines tab polls (no app-global poller was ordered); a crashed
-engine's reservation lingers until its slot next loads/unloads
-(conservative, over-counts); clone singles are protected by the activity
-lock, not a busy flag (an evictor waits, then terminates); GPU-less
-CPU-only boxes still book 0 (recorded gap, serving-design.md).
-GO: BUILT — then SUPERSEDED IN PART the same day: the user's first live
-look at the strip (350M turbo showing 4 GB "in use") exposed the declared-
-pricing currency as invented scaffold data, and the ordered rethink
-replaced it with measured-first pricing + a strip that shows only reality
-(the Speech-engines convergence item below + `docs/plans/
-2026-08-13-speech-catalog-redesign.md`). The wiring's MACHINERY — device
-policy, admission seam, busy flags, eviction executor + toasts, endpoint,
-one-pool ruling — stands and is what the redesign builds on. The laptops
-walk (kit checkpoint) remains open, user-paced.
-
-### Speech-engines model management converges on the kit's download/load GUI + machinery
-
-STATE: ORDERED 2026-08-08, user words verbatim: *"the model download load
-unload for speech engines should be same gui desing and llm runner a download
-button thre dot menue, and all the other feature such as model loaded unloaded
-ect, can we resues any llm stuff i think that was in plane to resue the
-progress downloadeder since llm has download manager, think or resues instead
-of rewrite and wwe can consolidate, both speech engines nad llm runner
-download load and unload models we should be able to use same mechanisms"*.
-Think delivered same day: the 2026-06-20 cutover boundary DECIDED TTS/STT
-sections stay native while LLM went to llm-ui
-(`docs/plans/archive/2026-06-20-engines-llmui-cutover-boundary.md:234-235`) —
-this order revisits that boundary. Reuse has three layers: (1) GUI
-vocabulary — the kit card grammar (download button, three-dot overflow menu,
-loaded/unloaded state chip, inline progress row) applied to the
-Speech-engines cards; pure renderer, highest value, kit pieces that exist:
-`LuModelCatalog` (model rows with download/load/unload/state),
-`LuModelPicker`, `LuEngineInstallButton`/`LuEngineUpdateButton`,
-`LuRunnerBinaries`; (2) client task machinery — ALREADY shared since
-2026-08-08 (withAiTask + `setProgress(done,total,text)` + AiTaskStrip + the
-`bridgeJobProgress` install bridge in `SpeechEnginesTab.vue`); (3) the server
-download manager — a REAL open design question: the kit downloads
-ggufs/runner binaries with its own progress machinery, JV downloads HF
-snapshots + builds venvs via its own `/v1/engines/*` job system; whether one
-download manager can own both needs its own pass, no claim made.
-WHY: two model-management surfaces in one app answering the same verbs
-(download/load/unload/delete/progress) with different control vocabularies is
-exactly the divergence class the family convention exists to kill; reuse
-instead of rewrite is the standing law.
-NOT: moving TTS engines INTO the kit's runner/catalog (they are not llama.cpp
-children — the pool stays JV's); claiming the server halves are one system
-today (they are not).
-BUILT: nothing — think only.
-ORDERED ADDITIONS 2026-08-13 (user words verbatim, during the chatterbox
-download failure — WinError 1314, hub's cache-symlink fragility at load
-time): *"one of the tasks is to make the speech engine use the same
-interface and services of the llm runner, the download progressbar, re
-dowload, load unload, the three dot menu, ect."* · *"we should have the
-model catalog for each engine and so on"* · *"and the location we have data
-directory and ai-cache for llm why not have a tts version in same loacation,
-also we should have the same types of clear data directory ect"*. The
-failure is the argument for the SERVER half: the LLM never breaks because
-the kit downloads models as PLAIN FILES (progress/resume/per-file on-disk
-truth) and loads from disk — speech engines fetch through HF's cache
-machinery at load time inside the engine subprocess.
-THE FAILURE, diagnosed in code (2026-08-13, chatterbox-turbo first load):
-hub 0.36.2 has exactly two symlink sites — a per-directory PROBE and the
-real pointer creation that runs only when the probe said yes. Proven live
-in the shared venv unelevated: the probe honestly answers NO on this box
-and hub degrades to copying — which is how ~3.9 GB of turbo files landed
-as REAL files (all stamped 22:38, moved not linked; blobs/ held exactly 1
-orphan = the failed file's already-downloaded blob). The raise is a HOLE
-in hub's fallback: Windows delivers WinError 1314 as plain OSError while
-the symlink branch catches only PermissionError — so the one file whose
-process believed symlinks were supported crashed instead of degrading. A
-FRESH engine process re-probes honestly → RETRY completes the load (the
-missing file's blob is already on disk). UI contributor: `modelOnDisk`
-treats a non-empty folder as downloaded, so the partial snapshot skipped
-the download phase and the ENGINE fetched stragglers itself — per-file
-on-disk truth (the catalog's declared file list) kills this class.
-REJECTED SOLUTIONS (user, verbatim — so they stay rejected): Developer
-Mode ("no way a user needs to set developer mode") and
-HF_HUB_DISABLE_SYMLINKS ("no on the hf_hub disable symlinks, we download
-from hf all the time with the llm" — the LLM works because the kit
-streams plain files, never the hub cache layout; that is the CORRECT
-solution's shape, i.e. this item).
-FINDING (code-verified 2026-08-13): speech models live INSIDE the installed
-package tree — `ENGINES_DIR = Path(__file__).parent`, models at
-`engines/<id>/models/`, and the interpreters at `engines/<id>/.venv/` (this read
-"the shared venv at `engines/.shared-venv/`" until the 2026-08-22 per-engine
-migration deleted it; the finding itself is unaffected) — while
-the LLM's cache correctly lives at `<data_dir>/ai-cache` (app.py:221). An
-app upgrade/reinstall strands or nukes gigabytes; factory reset and the
-backups page cannot see them; `is_installed`/uninstall/prefetch all route
-through `models_dir`, so the relocation has ONE seam.
-FINDING 2 (user question + code-verified 2026-08-13): JV's default data dir
-is `AppData\Roaming\justvoice\justvoice\data` while JW's is
-`AppData\Local\JustWrite\JustWrite` — `paths.py` deliberately mimics the
-RETIRED Rust core's `ProjectDirs::from("dev","justvoice","justvoice")` so
-the June port found existing data; that rationale is dead (Rust core gone,
-pre-release reset rule). Its comment also lies ("Set roaming=False … we use
-Local" while the code passes roaming=True). REC: converge on the JW shape —
-`platformdirs.user_data_dir("JustVoice")` → Local\JustVoice\JustVoice; one
-function; JUSTVOICE_DATA_DIR/--data-dir unaffected; decide together with
-the speech-cache location (same resolved dir).
-REC (awaits the word): speech models move under the data dir beside
-ai-cache (e.g. `<data_dir>/speech-cache/<engine>/<variant>/`, per-variant
-pinned revision + declared file list, fetched by the KIT downloader —
-network leaves the load path entirely); kokoro's `model_dir_override` is
-the per-engine escape precedent; the venvs' location is decided at the
-design pass (rebuildable runtime, not user data); the data-management
-surface grows per-store clear verbs (LLM cache · speech cache · render
-cache) in one grammar. Pre-release no-migrations rule: the path change is
-a default change — existing files re-download or the user resets.
-DECIDED 2026-08-13 (late — the design pass RAN, triggered by the user
-loading 350M chatterbox-turbo and the budget strip showing 4 GB "in use";
-full record: `docs/plans/2026-08-13-speech-catalog-redesign.md`). The
-diagnosis: `vram_min_mb: 4096` was INVENTED in the 2026-06-08 scaffold
-(`de592a7`, git-blamed) — never sourced, never measured, same for every
-engine's declared number — and the wiring booked + displayed it. User words
-verbatim through the rethink: *"that makes no sense … what is using 4gb if
-the model is only 350mb"* · *"from a user perspective this is exptemely
-misleading"* · *"i dont like this booked reserver too confusing for user,
-we need to think of better way, poor design you did on this manager"* ·
-*"rethink this manager process i do not like it at all rethink this
-manifest too"* · *"why should this be any diffent then the way we load llm
-models and show what vram is used"* (answer verified in code: it
-shouldn't — kit `lifecycle.py` measures the before/after pool delta and
-reserves THAT, `source="measured"`; the speech wiring ported the declared
-arm without the ladder). THE RULINGS: **own catalog** (*"the speech can
-have its own catalog just reuse what makes sense to do and desing it so it
-feels similiar but taking into account what is different about speach"*) —
-grouped engine→variant rows built from kit primitives (DownloadBar, chip
-mapping, three-dot menu) with the identical verb set, NOT LuModelCatalog
-itself; **no quants / no model-card machinery** (variants are one fixed
-artifact each; add-by-link dies — engine code pins the catalog; "View on
-Hugging Face" replaces the card); **cloning distinction** (*"i would like
-a way to distingush between engines models that can do voice cloning vs
-not"*) — per-variant voice_cloning/preset_voices facts, first-class chips,
-filter row, consumers repointed (GenerateView.vue:61 reads engine-level
-today); **facts-only manifests** — vram_min_mb DELETED from the format,
-weight-file sizes verifiable from disk/HF-tree, per-variant languages/
-capabilities/license; **measured-first pricing** — probe the engine PID
-after load, reserve + display the measured number, estimate only before
-first load and LABELED; **admission on measured free**; **strip shows
-reality only** (used/free/per-row measured + "other apps"); **slots stay**.
-OPUS ADVERSARIAL PASS (user-ordered, both directions): 4 findings adopted —
-don't replace invented 4096 with quoted ~1.5 GB (only measurement counts;
-engine.py:107 loads the full pipeline, "350M" is the backbone alone);
-**raise-only high-water re-probe** at busy→idle (TTS allocates at
-generate(), not load — post-load delta alone would over-admit into render
-peak; torch's caching allocator makes the lazy probe forgiving);
-**per-process attribution** (Fable's amendment over a shared lock:
-query-compute-apps on Linux/NVIDIA, per-PID GPU Process Memory counters on
-Windows WDDM where nvidia-smi says N/A, RSS on one-pool; fallback
-device-delta labeled computed) kills the cross-charging race with
-concurrent LLM loads; **file-sizes-not-params** for the estimate;
-**TTL-cache the probes** (used_device_mem_mb calls detect() + nvidia-smi —
-never raw under a 4 s poll); **sequencing flip** — true-up FIRST (zero
-downloader dependency: sizes come from disk for installed engines).
-PHASES: ① measured true-up + strip truth + `vram_min_mb` deleted outright
-(GO GIVEN 2026-08-13, verbatim: *"save in docs in detail and go for
-coding"*; the deletion pulled forward from ② on the user's mid-build check
-*"vram_min_mb i thought this was inventied and not going to be used?"* —
-zero code readers, grep-receipted) · ② kit downloader
-generalization + speech-cache + facts-only manifests + load-from-local-
-paths (kills 1314; needs go) · ③ the catalog UI per the plan doc's anatomy
-(needs go) · ④ data-dir convergence on JW shape + per-store clear verbs +
-venv location (needs go).
-PHASE ① BUILT 2026-08-13/14 (same session; full inventory in the plan
-doc's §9): kit per-process probes (`process_device_mem_mb` — nvidia
-compute-apps arm + the vendor-neutral WDDM `GPU Process Memory` typeperf
-arm — and `process_rss_mb`; kit suite 851) · JV estimate ladder + measured-
-free admission (+settle loop, honest refusal quoting measured numbers) +
-per-PID true-up at the load door + raise-only high-water bumps
-(synth/clone/transcribe async + scheduler busy→idle fresh, daemon threads)
-+ measurement rows into the kit store (`tts:<engine>:<variant>`) ·
-`used_mb`/`other_mb` on the vram endpoint · the strip reworked to measured
-truth (used-of-total · Free · per-engine cells · Other apps · busy) ·
-`vram_min_mb` deleted from all seven manifests · wiring tests REWRITTEN
-(24 green) · gpu.md/engines.md updated.
-THEN THE SECOND RETHINK (user: *"rethink the desing if you are screwing
-this up mid code then what else in the desing did you nad opus get
-wrong??"*) + Opus's EMPIRICAL pass + Fable's live experiments — full
-record + the amended design in the plan doc's §10. The short truth: the
-estimator priced turbo at 4,455 MB (WORSE than the deleted 4,096 — turbo
-never loads `s3gen.safetensors`, 1 GB dead in the file sum); and the live
-CUDA-child experiment found THE LAUNCHER-SHIM BUG — uv's venv python.exe
-on Windows is a trampoline, the Popen pid is a 4 MB shim, the real
-interpreter is its CHILD (probing the child: device 1131 MB via the WDDM
-counter arm — the mechanism WORKS aimed right; as built it would book
-"computed" forever on discrete Windows and 4 MB on one-pool). ADOPTED:
-Opus's cut — the pre-load estimate DIES (first-ever load = no arithmetic,
-no number, attempt→measure→book→remember, "not measured yet" on
-strip/card; prior-measured loads admit AND book early). Platform answer:
-Windows all vendors ✓, Linux NVIDIA ✓, Linux AMD needs the device-delta
-fallback (must now be implemented — the estimate it fell back to is
-gone), Mac RSS-on-pool ✓ with the MPS-in-RSS caveat on the laptops-walk
-list. `recommend_for_vram` is the DOWNLOAD-variant picker
-(engines_models_api.py:99) — its invented numbers can't be zeroed without
-replacing the picker (manifest default variant, else smallest).
-THE AMENDED FIX SET: BUILT 2026-08-14 (as-built record item-by-item in
-plan doc §10's BUILT stamp): kit process-TREE probes (pid+descendants —
-psutil → wmic/CIM/ps table walk; nvidia set-query + per-pid WDDM counter
-arm; suite 858) · the pre-load estimate DELETED (prior-measured admits AND
-books EARLY with release-on-failure; first-ever load = no arithmetic,
-"not measured yet" on the strip, which now joins loaded engines with
-reservations) · device-delta fallback (computed, never persisted, never
-overrides an early prior booking) · the second nest DEAD (model_catalog
-vram_mb + ModelVariant field + fit dots + est. span + the
-/models/recommended endpoint deleted; picker replaced by
-default_variant_for over the manager's resolved default; legacy-gui
-repaired) · gpu.md "1–1.5 GB" struck · bump occupant re-check + booking
-CREATE when measurement first lands (policy-gated) · the kit booking-gap
-half (reserve computed at admission, true-up upserts; zero kit test
-changes) · junk files deleted · KFD idea recorded. Wiring tests REWRITTEN
-(29 green). Gates: kit ruff+858 · JV ruff+pytest+vitest 48+biome+build +
-THE RENDERER SMOKE (passed, zero JS errors).
-SPEED TABLES: CUT 2026-08-14 per the rec the go adopted (gpu.md CPU
-realtime factors + engines.md Speed column + GB→engine tiers — same
-invented-number class as vram_min_mb; honest qualitative split kept:
-Kokoro is built for CPU, the PyTorch cloning engines want a GPU).
-GO: given 2026-08-14, verbatim: *"go on everything your rec"* — covers
-THE AMENDED FIX SET (built, above), the speed-tables ruling (cut, above),
-and phases ② → ③ → ④ in order, recs governing open sub-decisions;
-stop-and-ask only where a genuine new user ruling appears. NEXT: phase ②
-IN PROGRESS — the build design + THE VERIFIED WEB FACTS are in plan doc
-§12 (read it first on resume): kit `select_repo_files` + JV
-`speech_cache.py` (plain files + files.json truth, kit downloader, no
-symlinks) are BUILT + TESTED (kit models 28 · JV speech-cache 6); the
-web pass verified every ENGINE-map repo real and exposed the old catalog
-rows for dia/moss/tada/luxtts as unwired fiction (real: Dia-1.6B-0626 ·
-OpenMOSS-Team/MOSS-TTSD-v0 · HumeAI tada-codec+tada-3b-ml ·
-YatharthS/LuxTTS); pinned per-variant file sets recorded (§12; raw trees
-in the session scratchpad hf-trees/). ②a+②b BUILT: spawn_prefetch + the manager load door acquire through
-speech_cache (fetch-before-spawn; `_hf_snapshot_to` + its symlink
-machinery DELETED; the old prefetch tests were also writing junk into
-the REPO models_dir — the "scaffold junk" mystery solved, pins now
-assert the repo tree stays clean) · plugin SDK v0.2.0 (`/load` carries
-`model_dir`, signature-aware pass-through, old SDKs ignore it
-gracefully; `_ensure_plugin_current` auto-refreshes stale venv installs
-at spawn) · ALL 8 engines grew local load doors (chatterbox
-from_local · whisper/qwen3/dia/moss from_pretrained(local dir) ·
-tada 3-source nested dirs incl. the Llama-tokenizer mirror, hub calls
-only on the legacy branch · luxtts model_path · kokoro model_dir
-override) · models_api on_disk = speech-cache truth first, then the
-PER-ENGINE legacy hub cache (models/hf/hub — the env-based probe was
-checking the wrong root) · Delete model handles both worlds ·
-docs (gpu.md 1314 entry = structural fix landed; engines.md speech-cache
-paragraph). ②c BUILT (PHASE ② COMPLETE): every manifest carries facts-only VARIANTS
-rows (languages · per-variant voice_cloning/preset_voices · weights
-license · pinned sources with verified files + real summed bytes — from
-the scratchpad `pinned-variant-files.txt`, all 16 repos + 2 HEAD-verified
-kokoro tarballs); model_catalog is a READER over manifests (the
-hand-typed nests + `_hf_placeholder` fakes died — four engines' rows had
-pointed at repos that never existed); resolve_source serves the pinned
-`files` + full multi-source list (an operator override honestly carries
-none — whole fork tree); the wire ModelVariant grew
-voice_cloning/preset_voices/weights_license/hf_repo/url;
-`disk_space_mb` excised end to end (manifests, wire Prerequisites,
-engines_api reader, dormant catalog rows, legacy-gui column); MOSS
-renamed to what actually loads (MOSS-TTSD v0 — "v1.5" never existed);
-kokoro/engines.md sizes corrected to verified downloads (multilingual is
-333 MB, not "~700"; turbo's real download is 3.0 GB, not "350 MB");
-variant-wiring pins STRENGTHENED to exact repo equality via hf_repo.
-Gates: full pytest 504 · vitest 48 · biome · build. Then ③ the catalog
-UI, then ④ locations + verbs.
-SESSION 2026-08-14 COMMIT INVENTORY (all pushed, JV workflows verified
-disabled_manually before AND after every JV push; both trees clean at
-session end): KIT `e173256` (process-TREE probes + the runner's early
-booking; suite 858) · KIT `ad5c66e` (select_repo_files + the
-hf_download_headers door; models tests 28) · JV `d00bb9c` (the amended
-fix set + the speed-tables cut; renderer smoke PASSED) · JV `bba5cc1`
-(②-groundwork: speech_cache.py + plan §12 + the verified web facts) ·
-JV `82d59fb` (②a wired + ②b: SDK 0.2.0, 8 local load doors, the
-fetch-before-spawn door; pytest 504) · JV `8f4463d` (②c facts-only
-manifests; pytest 504 · vitest 48). Cross-app kit gate: JW pytest 128
-green against the new kit. RESUME SURFACES for ③/④: plan doc §6 (the
-decided anatomy) + §13 (the grounded resume brief: what the wire serves,
-what SpeechEnginesTab already has, the kit primitives incl. the Reka
-DropdownMenu import shape from LuModelCatalog.vue:49, the
-GenerateView/voices capability repoint, ④'s scope, and the four carried
-open edges — kokoro's load-door tarball path still writes the legacy
-location · the dormant known_engines/spawn_install legacy registry is
-an excision candidate · is_installed heuristics could become
-cache-truth-driven · MPS-in-RSS stays on the laptops walk).
-PHASE ③ BUILT 2026-08-14 (the catalog UI, under the standing go — a
-RESHAPE of SpeechEnginesTab per §6/§13, not a new view): the variant
-rows grew the facts chips read straight off the ②c wire (language chip
-`en`/`N langs` with full-list hover · CLONING · PRESETS · N · the
-weights-licence chip with the kit's gold use-limited warn pattern
-retold honestly for JV — every bundled engine permits commercial
-output, so ⚠ means an OBLIGATION rides the licence, TADA's "Built with
-Llama" spelled out in the hover) · ONE merged filter row (rec under the
-go: §6's All · Cloning · Preset voices JOINED with the pre-existing
-TTS/STT kind chips — two side-by-side "All" chips would be worse;
-capability filters work on variant facts, auto-expand groups, drop
-engines with no matching variant) · the three-dot menu per row
-(reka-ui DropdownMenu, the LuModelCatalog import shape; canonical
-.ev-kebab/.ev-menu classes in styles.css since the portal escapes
-scoping): Re-download (delete + fresh fetch via the same job-channel
-task; also the legacy→speech-cache migration verb; disabled while
-loaded) · Open folder (desktop-only, the SettingsView log-opener
-precedent; the SERVER resolves the folder — ModelVariant grew
-`local_dir`, populated by models_api across all four arms speech-cache/
-per-engine hub/env hub/tarball, so the cache layout never leaks into
-the client) · View on Hugging Face (kit openExternal on v.hf_repo) ·
-Delete files (moved in from the old inline button; now honestly gated
-on_disk AND not loaded — deleting a resident model's files was always
-dubious) · `size · on disk` in the row meta · the per-row measured-
-memory hint on the LOADED row ("X GB measured" / "~X GB in memory" /
-"not measured yet" — joins the vram reservations exactly like the
-strip's speechRows; §13's story, not §6's pre-rethink "needs ~X GB").
-THE CAPABILITY REPOINT (the §4 cloning ruling's second half):
-GenerateView's lookupCapability now prefers the LOADED VARIANT's row
-and walks "-" suffixes off each candidate (manifest ids carry a version
-tail the capability map doesn't: chatterbox-turbo-v1 → chatterbox-turbo)
-— before this, a loaded Turbo served Multilingual's knob set (wrong
-sliders, missing paralinguistic tags). The voices flow's engine-level
-`capabilities` read was VERIFIED factually fine (no engine's variants
-differ on cloning) and left alone. Docs same change: engines.md "The
-catalog rows" section (chips · filters · licence semantics · the ⋯
-verbs) + generate.md loaded-variant note. GATES: ruff · full pytest 505
-(new pin: models list serves speech-cache local_dir) · biome 113 ·
-vitest 48 · build:vite · THE RENDERER SMOKE (all views, zero JS
-errors) · PLUS a targeted headless drive of the reshaped tab itself
-(smoke.js never clicks the sub-tab): chips render, first group expands
-to the §6 row anatomy exactly ("23 langs · CLONING · MIT"), the kebab
-menu opens with the honest verb set for a not-downloaded variant, the
-Cloning filter fans to 10 rows, zero JS errors, screenshots taken.
-Open edges: unchanged (the four above — kokoro tarball path and
-is_installed now explicitly ④'s). NEXT: phase ④ locations + verbs.
-PHASE ④ BUILT 2026-08-14 (the final phase — the redesign is COMPLETE):
-THE LOCATION converged on the JW shape — `default_data_dir()` = env
-else `Path(platformdirs.user_data_dir("JustVoice"))` (Windows
-%LOCALAPPDATA%\JustVoice\JustVoice · Local never Roaming; macOS
-~/Library/Application Support/JustVoice; Linux ~/.local/share/
-JustVoice), the Rust shell's `default_data_root` changed in lockstep
-(the old pair disagreed with each other); JUSTVOICE_DATA_DIR /
---data-dir / dataroot.txt untouched; NO migration (pre-release rule —
-env-var at the old folder, or fresh + backup). THE VERBS: the KIT
-`make_disk_router` grew `extra_buckets` ({name: dir} → measured,
-served under `extras`, counted into total; JW byte-identical when
-unused); JV mounts speechCache + renderCache; Settings → Storage →
-Disk usage = AI models cache · Speech models · Render cache · Engine
-spawn logs, each Clear in the ONE kit grammar (confirm-with-size,
-refuse-while-loaded); new POST /v1/engines/speech-cache/clear
-({ok:false, detail:"unload engines first"} while loaded; {ok:true,
-bytes}); render clear rides /v1/cache/clear, Labs → Cache stays the
-scoped surface. THE VENV RULING (rec under the go): venvs STAY with
-the runtime tree (engines/<id>/.venv + shared) — interpreter-bound
-rebuildable runtime, never user data; known edge recorded: admin-
-located installs can't write venvs (today's behavior, unchanged).
-THE KOKORO EDGE CONVERGED: `_ensure_variant_local` URL arm via new
-`installer.fetch_url_variant` (same primitives as the prefetch
-worker's job twin) → tarballs land in the SPEECH CACHE at the load
-door too; load door reordered acquisition-first (legacy
-_install_engine_shared model steps only when local_dir None and not
-installed); pre-④ engine-dir installs keep serving (legacy guard);
-`is_installed` learned cache truth (any_variant_on_disk) — prefetched
-shared engines read installed. DEFERRED BY REC: the known_engines/
-spawn_install excision — shares paths with the LIVE external-engine
-flow; its own verified pass, never a rider. DOCS: backups-and-data.md
-"Where your data lives" + "Disk usage" sections (the panel was
-undocumented before); engines.md links the whole-store clear.
-GATES: kit pytest 862 (extras pin) · JW pytest 128 (JW's repo-root
-.venv — bare F:\Python312 lacks the xdist its addopts want; kit-source
-resolution verified live in that venv) · JV ruff + full pytest 510
-(5 new pins) · biome 113 · vitest 48 · build:vite · cargo check · the
-renderer smoke (first run failed ALL views — resource contention with
-the concurrent full pytest, nothing rendered within timeouts; the
-immediate rerun passed everything, zero JS errors) · headless
-Settings drive verified the Disk-usage rows + /v1/disk/usage extras.
-REMAINING out of plan: the user's laptops walk (MPS-in-RSS).
-THE known_engines EXCISION — DONE 2026-08-14 (user: "go on all of it").
-It was a SECOND catalog beside engines/<id>/manifest.py, and every one of
-its seven ids had a real manifest — so `_is_managed()` returned first and
-NONE of its arms could run. Verified unreachable before cutting, not
-assumed: the /install legacy branch, the DELETE-engine legacy branch (which
-carried `uninstall_deps` → `pip_uninstall_engine_deps`, the one reader I had
-earlier called "live" — it is not, the managed branch returns above it), the
-engines list fallback loop, the /engines/current fallback loop, and the
-models_api existence guard. EXCISED: `known_engines()` + its 7 EngineInfo
-builders; `_enrich_legacy`; installer's `spawn_install`, `_missing_modules`,
-`_pip_install`, `_run_install`, `_register_engine_after_install`,
-`uninstall_engine`, `_pkg_name`, `_PKG_VERSION_RE`,
-`pip_uninstall_engine_deps` (installer.py 851 → 513 lines). KEPT
-deliberately: `compute_status` — it serves RUNTIME-registered external
-OpenAI-compatible engines, which have no manifest by design. `uninstall_deps`
-stays on the DELETE route as an accepted-and-ignored query flag (documented
-in the docstring) rather than a breaking signature change. Receipted sweep:
-zero references to any excised name in server/, src/, tests/ — only the
-tombstone comments and the plan-doc history. Gates: ruff · pytest 521 ·
-vitest 48 · build · smoke.
-2026-08-14 FOLLOW-UP RULINGS (user, verbatim, after seeing the built
-catalog live) + the same-day build:
-RULING 1: "i meant i wanted it to be like the llm catalog, meaning i
-want a download button not a load button with an arrow, also the
-storeage location is that supposed to be the same as jw, check you
-work you messed up things". RULING 2: "ai models cache is showing 0,
-i want the jv model catalog to feel and work similiarly to the shared
-llm runner catalog, do you understand, i undertand there are
-differences that need to be but it all should work the same clear
-cache for llm models clear cache for tts models ect". RULING 3:
-"server logs, database ect all 0 nothing works correctly". RULING 4:
-"dataroot.txt this should all be in the database and a seed file".
-THE STANDING PRINCIPLE these establish: the JV speech catalog FEELS
-AND WORKS like the shared LLM-runner catalog everywhere — verb split,
-cache rows, clear verbs — differing only where speech genuinely
-differs.
-AS BUILT: (1) THE VERB SPLIT — a not-on-disk model shows "Download
-(N GB)" (download only, the kit's 'available' shape); "Load model"
-appears once files are on disk; the one-step "⬇ Load (N GB)" died
-(loadButtonLabel deleted, runLoad is load-only now, downloadOnly is
-the download door). (2) THE STORAGE MESS-UP root-caused: the location
-CHANGE was correct (both apps double the name — Local\JustWrite\
-JustWrite ↔ Local\JustVoice\JustVoice) but the shell's FIRST-RUN
-POINTER LOCK (dataroot.txt, docgen §5 shape) had pinned the user's
-install to the old Roaming root, silently vetoing the new default —
-my ④ report claimed convergence without accounting for it. FIX per
-ruling 4's intent: the first-run lock is REMOVED (the default is
-computed, never persisted — no scattered state files); dataroot.txt
-now exists ONLY as the record of an explicit Change-folder
-(storage_relocate writes it); a pointer holding exactly the OLD
-default is residue of the removed lock → deleted on resolve, falls to
-the new default. The one datum that CANNOT live in the DB is the DB's
-own address — recorded as the bootstrap constraint answering ruling
-4's letter. (3) THE ALL-ZERO PANEL, two real faults: kit fmtBytes
-floored sub-MB to "0 MB" (a 484 KB database read as nothing) → now
-shows KB below 1 MB (kit-wide honest display, JW gets it too); and
-the Speech models bucket measured ONLY the new speech cache while the
-user's real gigabytes sit in the LEGACY per-engine stores → the kit
-extras hook grew list-of-roots buckets (summed per name), JV's
-speechCache bucket = speech-cache root + every manifest's models_dir,
-and /v1/engines/speech-cache/clear deletes across the same roots
-(voices/state untouched). AI models cache 0 was verified HONEST on
-the current root (post-reset, llama.cpp engine not reinstalled — no
-GGUFs on disk anywhere). TEST-SAFETY catch: the widened clear would
-have let the existing test rmtree the REPO-TREE engine models (a dev
-box's real legacy models) — the test now empties the manifest map,
-and the legacy arm is pinned against tmp dirs only.
-2026-08-14 THE DATA-LOCATION RULING (user, verbatim): *"none of the
-apps should have anything stored in C:\Users\danel\AppData\Local —
-absolutely no data for any of these apps should be stored anywhere but
-where the user has set the storage directory, which by default will be
-the install directory for the app, for now that is the debug directory
-for tauri"*, corrected immediately after: *"dont hardcode anything
-appdata is not band what is banned is anything that the user has not
-decided meaning the user chooses the data directory with default being
-same location as app is installed"*; and the standing law behind it:
-*"all that can be the same should be, this includes how data is
-stored"*.
-WHAT I GOT WRONG (recorded because the user has had to say it
-repeatedly): phase ④ "converged JV onto JW's shape" by reading an
-AppData FOLDER a headless test boot had created and taking it for JW's
-real location — JW's desktop shell has always run PORTABLE (`data/`
-beside the exe; the user's real JW data is in
-src-tauri/target/debug/data). The convergence target was residue, and
-"the two apps now match" was mistaken for the real goal: ONE shared
-implementation.
-AS BUILT (all three repos): the policy lives in the KIT —
-`llm_runner/platform/data_paths.py` `resolve_data_dir(app_name,
-env_var, source_root)`, ladder = the app's DATA_DIR env var (the
-user's choice; also how each shell hands down Change-folder) →
-`data/` in the install dir (frozen: beside the exe; source: beside the
-checkout root) → the OS app-data dir ONLY when the install dir is
-unwritable (read-only-install necessity, never a preference).
-`justvoice/paths.py` and `justwrite_server/paths.py` are now
-three-line callers (JW's platformdirs default was itself creating
-AppData\Local\JustWrite\JustWrite behind the user's back). BOTH Tauri
-shells implement the identical ladder in Rust (they resolve before the
-server exists) and BOTH lost the first-run pointer lock — writing the
-computed default into dataroot.txt is what pinned this install to
-Roaming and silently vetoed every later default; the pointer now
-records ONLY an explicit Change-folder, and one equal to a
-computed/former default is deleted as residue on resolve. `data/`
-gitignored in both apps.
-NORMATIVE DOC UPDATED: kit `docs/app-structure.md` §6 (the paths.py
-contract — it had said "platformdirs", which is what I followed) + §5
-(the shell's pointer rule). USER DOCS: JV backups-and-data.md "Where
-your data lives" rewritten (you decide; default = beside the app; the
-three overrides; the unwritable-install fallback; both apps behave
-identically); JW storage.md gained the headless half.
-GATES: kit ruff + pytest 872 (9 new data_paths pins: env-wins ·
-default-beside-app · blank-env-is-not-a-choice ·
-OS-dir-only-when-unwritable · frozen-lands-beside-exe ·
-probe-leaves-nothing · per-app-roots) · JV ruff + pytest 511 · JW
-pytest 128 + vitest 578 · JV biome + vitest 48 + build:vite · BOTH
-shells cargo check · JV renderer smoke (first run failed all views on
-contention with JW's concurrent suites; the quiet re-run passed
-everything, zero JS errors) · verified LIVE: JV headless default
-resolves to the checkout `data/`, an env var overrides it, and a full
-gate-server boot + smoke created NO AppData folder.
-CLEANUP: deleted `AppData\Local\JustVoice` (my own gate residue,
-verified file-empty first). The user's pre-④ Roaming data is untouched
-and reachable via JUSTVOICE_DATA_DIR. UNEXPLAINED, reported not
-guessed: `AppData\Local\JustWrite` also disappeared during this
-session — I ran no command against it, JW's tests all use tmp_path,
-and it held no files when first inspected; JW's real data (32 MB db,
-projects, ai-cache, book files) is verified intact in
-target/debug/data.
-
 ## Features the docs promise and the code does not do
 
 ### The YouTube master target is labelled AAC and encodes MP3
@@ -5079,15 +3294,20 @@ should say `audio/mpeg`. Docs currently describe the MP3 reality.
 GO: needed — it is a one-line change either way, but which line is a product
 call.
 
-### `effects.md`'s "apply a chain to a take → new take version" is unverified
+### The Effects page's help line still says "Pedalboard-backed" and "a new generation version"
 
-STATE: FINDING — noticed 2026-08-15 while correcting that page; NOT checked
+STATE: FINDING — re-checked 2026-10-05 by the tracker sweep: `docs/effects.md`'s
+section was cut (its *Non-destructive* section is current), but the app's own
+help line for the page wasn't — `src/App.vue:59`: "Pedalboard-backed effects
+chain. Apply non-destructively — creates a new generation version that
+preserves the original." Pedalboard was removed 2026-07-29, and a chain edit
+makes lines stale to render again. (Was: noticed 2026-08-15 while correcting that page; NOT checked
 against code. The take/generation rows do carry `effects_chain` columns, so it
 is plausible, but the page states a whole workflow (bake, `source_take_id`
 link, revert by setting the source take default) that nobody has traced. The
 rest of the page was corrected: chains live on personas and render presets
 only, they stack rather than override, and they now run on every render.
-OPEN: trace it, then keep or cut the section.
+OPEN: rewrite `App.vue:59`'s line from `docs/effects.md`'s *Non-destructive* section.
 GO: needed.
 
 ## Docs and repo debt
@@ -5188,42 +3408,5 @@ GO: needed.
   they are browser-driven, which was banned as an acceptance surface on
   2026-08-02.
 - **`capture.llm_model` is a dormant settings field** — decided KEEP. Its UI
-  picker is gone but the field stays (`models.py:330`).
-
-## VRAM wiring DEPENDENCY (2026-08-09): the fit redesign lands first
-
-The family fit redesign (`../just-llm-runner/docs/plans/2026-08-09-fit-redesign.md`)
-is the wiring's prerequisite: it fixes BOTH of the claim line's verified sources —
-the computed arm (compute_fit physics) and the measured arm (which does not exist
-today: `model_measurements.vram_total_mb` is the CARD total, not a footprint; the
-true-up dies in-memory — the redesign persists it as `vram_model_mb` + adds the
-claim resolver the strip consumes). Q1-Q8 rulings STAND untouched; the
-eviction-executor seam remains this repo's own prerequisite (disjoint functions,
-same lifecycle.py). Resume the wiring after the redesign's Phase 5.
-2026-08-13 consensus update (plan §13): claims carry `{vram_mb, ram_mb}` + a
-provenance source (measured|declared|computed — a manifest-priced TTS reservation
-must never read as live truth on the strip); RAM co-residency on DISCRETE boxes is
-priced but unbudgeted — DECIDED (plan §8.18): the strip DISPLAYS the RAM sum,
-never enforces it in v1 (mmap'd weights make a summed ledger over-count; enforcement
-only on evidence, mlock/no_mmap-keyed), and the display half is THIS repo's wiring
-work, not the kit's. CPU-adequate engines confirmed first-class (claim follows the
-resolved device → CPU = 0 VRAM).
-STATE STAMP 2026-08-13 (late): the redesign's BUILD PHASES ARE COMPLETE —
-Phases 0–7 BUILT + pushed (6 = the joint MoE solve + ncmoe-first shed; 7 =
-the uncurated-path gate + evidence-keyed ranking + the one-authority dev-doc
-story, now standing in the kit's `docs/dev/serving-design.md` fit section —
-read THAT for the current fit architecture, the plan for history) — THIS
-ITEM IS UNBLOCKED with no kit prerequisite left. What Phase 5 delivered for the wiring (full record in the kit
-tracker's fit item): the claim resolver lives in `preview_fit` (four arms:
-resident-live with §13.1 provenance on the arbiter snapshot → persisted-
-measured median over fingerprint-matched source='load' rows → physics computed
-with learned per-backend overhead → declared); claims are {vramMb, ramMb,
-source, matches} (RAM display-only §8.18); the arbiter snapshot is arch-aware
-(mem_arch, one-pool pools counted once — Phase 4) and each reservation row
-carries its source. CORRECTED 2026-08-13 (the re-think's code verification):
-`configure_service(declared_claim_fn=…)` is DEAD plumbing — assigned once,
-read nowhere, and `preview_fit` resolves catalog ids only, so it can never
-answer a foreign kind. JV does NOT register it; JV prices its engines from
-its OWN manifests (vram_min_mb · cpu_adequate · gpu_runtimes — Q2's facts)
-and the strip reads the resident snapshot + `preview_fit` claims for the LLM.
-GO GIVEN 2026-08-13 (see the VRAM item above for the decision record).
+  picker is gone but the field stays (`models.py:366`; its default still names
+  `qwen3-llm-0.6b`, an engine that no longer exists).

@@ -24,7 +24,6 @@ dependencies = [
     "psutil>=5.9",  # CPU/RAM detection in system_info (stdlib fallback exists)
     "sqlalchemy>=2.0",  # Phase 1.5: primary persistence layer (atomic JSON still used for settings.json only)
     "python-multipart>=0.0.18",  # multipart form parsing — backup/restore + /v1/projects/import
-    "pyloudnorm>=0.1",  # EBU R128 LUFS measurement for ACX mastering verification + analyzer
     "tenacity>=8.2",  # prebuilt retry (backoff + jitter) for the webhook dispatcher — replaces a hand-rolled ladder
     "cachetools>=7.0",  # prebuilt TTL/LRU caches (voice-preview + render hot tier); >=7 for TTLCache LRU-on-access
     # Effects DSP. `pedalboard` was removed 2026-07-29: it is GPL-3.0 (it

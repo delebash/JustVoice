@@ -16,7 +16,7 @@ import LeftoverEnginesHelp from "./components/LeftoverEnginesHelp.vue";
 // An engine's own terms (Pocket TTS — Kyutai's, before the first clone): one dialog for the
 // whole app, opened by `jv:engine-terms` (services/engineTerms.js).
 import EngineTermsDialog from "./components/EngineTermsDialog.vue";
-import { AiSetupOffer, AiStatusButton, BootModelLoad, HelpDrawer, HelpTrigger, LlmUiHosts, TitleBar, openExternal, pushToast, refreshRunnerModels, useAiTasksNav, useAiTasksStore, useModelApply, useRunnerModels, warmModelId } from "@delebash/llm-ui";
+import { AiSetupOffer, AiStatusButton, BootModelLoad, HelpDrawer, HelpTrigger, LlmUiHosts, TitleBar, isTauriShell, openExternal, pushToast, refreshRunnerModels, useAiTasksNav, useAiTasksStore, useModelApply, useRunnerModels, warmModelId } from "@delebash/llm-ui";
 import { readPref, writePref } from "./services/prefs.js";
 
 // View components are lazy-loaded by the router (router/index.js); App.vue holds
@@ -421,18 +421,23 @@ onMounted(async () => {
   // donor's generic entries were dead emits with ZERO listeners (audit
   // 2026-08-05) — these are the listeners. dictate/MCP stay JV-specific;
   // their wiring is JV feature work, parked per the standing sequence.
-  const tauriEvent = typeof window !== "undefined" ? window.__TAURI__?.event : null;
-  if (tauriEvent?.listen) {
-    tauriEvent.listen("tray:open-settings", () => goView("settings"));
-    tauriEvent.listen("tray:about", () => goView("settings"));
-    tauriEvent.listen("tray:copy-url", async (e) => {
-      try {
-        await navigator.clipboard.writeText(String(e.payload));
-        pushToast({ message: `Server URL copied — ${e.payload}`, duration: 4000 });
-      } catch {
-        pushToast({ message: "Copy failed", kind: "error" });
-      }
-    });
+  // The shell test is the kit's (`__TAURI_INTERNALS__`, JustWrite's shape):
+  // these read `window.__TAURI__` until 2026-10-05, which exists only with
+  // `withGlobalTauri` — set in no config — so not one of them ever ran. The
+  // dynamic import is gated because in a browser each listen() rejects.
+  if (isTauriShell()) {
+    import("@tauri-apps/api/event").then(({ listen }) => {
+      listen("tray:open-settings", () => goView("settings"));
+      listen("tray:about", () => goView("settings"));
+      listen("tray:copy-url", async (e) => {
+        try {
+          await navigator.clipboard.writeText(String(e.payload));
+          pushToast({ message: `Server URL copied — ${e.payload}`, duration: 4000 });
+        } catch {
+          pushToast({ message: "Copy failed", kind: "error" });
+        }
+      });
+    }).catch(() => {});
   }
 });
 </script>

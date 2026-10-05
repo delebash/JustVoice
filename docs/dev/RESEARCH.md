@@ -524,6 +524,11 @@ its blast radius and the gaps.
   ("Answers to Ode." links Odeline Marran to the "Ode" the next chapter names): without it, live
   Re-analyze left Bigger Inside's last line blank; with it, 3/3 + the live run found her. — *measured,
   2026-10-05* · `second_look.cast_lines` · plan §3.
+- A chapter render on the dev machine with the AI model loaded (7.5 GB of the 8 GB card in use):
+  The Same Hour, 81 lines (8 Kokoro voices, 1 Kitten) in about 4.5 min — Kokoro on the CPU, then
+  swapped out for Kitten ("unloading tts engine kokoro before loading kitten"); joined and mastered
+  to ACX: about 9.6 min, RMS −21.1 dBFS, peak −3.5 dB. — *measured, 2026-10-05* ·
+  `logs/justvoice.log` 16:51–16:55.
 - A persona can be saved with no delivery settings (`default_delivery` None — `POST /v1/personas`
   passes it through; Cast's batch makes them so); the project export writes `{}` for it. — *code
   + test, 2026-10-05* · `server/tests/test_project_export.py`. (was: the export crashed with a 500
@@ -627,8 +632,12 @@ kit's register §2.
   `list_audio_output_devices` / `play_audio_to_devices` are placeholders (`lib.rs:612-633`).
   No dictation feature runs today.
 - `window.__TAURI__` exists only with `withGlobalTauri`, which no config sets — so JustVoice's
-  tray listeners (`App.vue:425-437`), the updater UI (`SettingsView.vue:525-576`) and "Open log
-  file" (`SettingsView.vue:910-924`) never work. No updater plugin is in any `Cargo.toml`.
+  updater UI (`SettingsView.vue:525-576`) never works, and no updater plugin is in any
+  `Cargo.toml`. The tray listeners and "Open log file" go through the kit's `isTauriShell` /
+  `openPath` since 2026-10-05 and work (checked in the app window). (was: all three dead — until
+  2026-10-05.)
+- The app window's boot check (`checkServer`, 8 tries, about 7.5 s) can give up before the dev
+  sidecar answers; its screen only retries by Retry. — *live, 2026-10-05* · `main.js:192`.
 - Of JustVoice's 2,738 lines of Rust, 956 are `audio_capture/`, 312 `synthetic_keys.rs`, 290
   `hotkey_monitor.rs`, 120 `permissions.rs`.
 
@@ -662,7 +671,8 @@ kit's register §2.
 - JustWrite never calls JustVoice at runtime — the handoff is a book `.zip`
   (`docs/dev/design-decisions.md:101-104`).
 - `justvoice-server serve` is argparse (`serve.py:14`); typer is only the dev `cli.py`.
-- The OpenAPI licence says Apache-2.0 (`server/justvoice/app.py:139`); the project is MIT.
+- The OpenAPI licence says MIT (`server/justvoice/app.py:139`), as the project is. (was: Apache-2.0
+  — until 2026-10-05.)
 
 ---
 
@@ -682,6 +692,11 @@ blast radius.
   docgen has one surface, no stack. — *code, 2026-10-05* · `grep -rln AiTaskStrip src`.
 - Engine installs, downloads and loads never used the AI task store (`useDownloadTask.js`
   imports none); they report on their own rows. — *code, 2026-10-05*.
+- Cast's ＋ New persona batch reuses Smart-assign's prompt, which says "If no voice fits, omit
+  that character" (`seed_feature_prompts.py:46`); the model drops speakers it has little to go on,
+  at random. Replayed against the app on The Ninth Facet (no speaker has pronouns), full cast, 5
+  runs: the Narrator skipped in 2, Old Sedge in 5; three speakers alone, 4 runs: Old Sedge in 1.
+  — *measured, 2026-10-05, gemma 26B-A4B* · TASKS "The demo cast for Render…".
 - Smart-assign sends each speaker's pronouns and each persona's gender as its VOICE's gender
   (`voiceGender.js`: your override on Voices, else the catalog's, else a guess from the id or
   first name; "?" is sent as no gender). A persona has no gender field of its own. — *code,
@@ -698,11 +713,11 @@ blast radius.
   The full table: [`2026-10-05-cast-render-persona.md`](../plans/2026-10-05-cast-render-persona.md)
   §2. — *code, 2026-10-05*.
 - Generate was removed 2026-10-05 (its History and the ★ favorite with it); `/v1/generate`
-  stays — RenderLab, MCP and the API call it. The app's database keeps
-  `generations.is_favorited BOOLEAN NOT NULL` with no database default (`PRAGMA`/`sqlite_master`
-  read 2026-10-05), so the ORM column stays until a reset: dropping it from the model makes
-  every new generation's insert fail on that database. — *code + the database, 2026-10-05* ·
-  [`2026-10-05-cast-render-persona.md`](../plans/2026-10-05-cast-render-persona.md) §4.
+  stays — RenderLab, MCP and the API call it. `generations.is_favorited` is gone from the model
+  and the app's database (dropped and the database reset 2026-10-05). — *code, 2026-10-05* ·
+  [`2026-10-05-cast-render-persona.md`](../plans/2026-10-05-cast-render-persona.md) §4. (was: the
+  database kept `is_favorited BOOLEAN NOT NULL` with no default, so the ORM column had to stay
+  until a reset — true until the reset of 2026-10-05.)
 - A voice's model is a FAMILY (`qwen3-cv`, …); its size and precision (1.7B / 0.6B, 8-bit /
   16-bit) stay AI Settings' choice (persona redesign §6.2 call 4). A render picks the variant:
   the loaded one if it is this family, else the engine's default if it is, else an installed one

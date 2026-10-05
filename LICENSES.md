@@ -46,7 +46,6 @@ The project was GPL-3.0-or-later between 2026-06-08 and 2026-07-29, forced by ex
 | **cachetools** | `>=7.0` | `MIT` | ✓ | ✓ | https://github.com/tkem/cachetools |
 | **fastmcp** | `>=3.0,<4.0` | `Apache-2.0` | ✓ | ✓ | https://github.com/jlowin/fastmcp |
 | **llm-runner** (own repo, pinned SHA) | `git+…@e7d2f1c` | `MIT` | ✓ | ✓ | https://github.com/delebash/just-llm-runner |
-| **pyloudnorm** | `>=0.1` (Phase 2) | `MIT` | ✓ | ✓ | https://github.com/csteinmetz1/pyloudnorm |
 | **scipy** | `>=1.11` | `BSD-3-Clause` | ✓ | ✓ | https://github.com/scipy/scipy |
 | **python-stretch** (Signalsmith Stretch) | `>=0.3` | `MIT` | ✓ | ✓ | https://github.com/gregogiudici/python-stretch |
 | **pytest** | `>=8` (dev) | `MIT` | ✓ | ✓ | https://github.com/pytest-dev/pytest |

@@ -16,8 +16,9 @@ ACX is the strictest — Audible's QC requires every chapter between -23 LUFS an
 
 ## How it runs
 
-JustVoice uses **pyloudnorm** (EBU R128 LUFS) for measurement in the analyzer, and shells out to
-**ffmpeg** for the mastering chain itself (`loudnorm`, `dynaudnorm`, `highpass`, `aresample`).
+JustVoice shells out to **ffmpeg** for the mastering chain (`loudnorm` — EBU R128 loudness and
+true peak — `dynaudnorm`, `highpass`, `aresample`); the [ACX check](#acx-qc-report) measures each
+chapter's RMS and peak with the app's own analyzer.
 Mastering has never used the effects DSP — the two are independent paths. The
 ffmpeg chain, in order:
 

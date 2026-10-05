@@ -4,7 +4,7 @@ import { ref, computed, onActivated, onMounted, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "@delebash/llm-ui";
 import { confirmDialog } from "@delebash/llm-ui";
-import { AppearancePanel, DataManagement, FAMILY_LABELS, LogsPanel, SettingsShell, UiButton, UiInput, UiToggle, UiField, UiCheckbox, UiTag, UiSelect, UpdatesPanel, UiTable, UiSlider, fmtBytes, refreshRunnerModels, renderHelpMarkdown, serverUrl, useAiTasksStore } from "@delebash/llm-ui";
+import { AppearancePanel, DataManagement, FAMILY_LABELS, LogsPanel, SettingsShell, UiButton, UiInput, UiToggle, UiField, UiCheckbox, UiTag, UiSelect, UpdatesPanel, UiTable, UiSlider, canOpenPath, fmtBytes, openPath, refreshRunnerModels, renderHelpMarkdown, serverUrl, useAiTasksStore } from "@delebash/llm-ui";
 import RefineSectionToggles from "../components/lab/RefineSectionToggles.vue";
 import { loadDoc } from "../services/helpDocs.js";
 import { pickDirectory, storageGetRoot, storageRelocate } from "../services/native.js";
@@ -919,23 +919,22 @@ function dropToken(t) {
 // 2026-06-13, W4 revision: the ring dies with the process — a crash or
 // boot hang is exactly when logs are needed, so the server now writes
 // {data_dir}/logs/justvoice.log and exposes data_dir in system info).
+// The opener is the kit's (configureExternal's openPath, wired in main.js) —
+// it read `window.__TAURI__.shell` until 2026-10-05, which JustVoice never
+// has (no `withGlobalTauri`), so the button only ever said it needs the app.
 async function openLogFile() {
-  const tauri = typeof window !== "undefined" ? window.__TAURI__ : null;
-  if (!tauri?.shell?.open) {
-    pushToast({ message: "Open in OS file explorer requires the desktop app.", kind: "warning" });
+  if (!canOpenPath()) {
+    pushToast({ message: "Open log file requires the desktop app.", kind: "warning" });
     return;
   }
   const r = await api.safeRequest("/v1/system/info", null);
-  const logPath = r?.data_dir ? `${r.data_dir}/logs/justvoice.log` : null;
-  if (!logPath) {
+  const dir = r?.data_dir;
+  if (!dir) {
     pushToast({ message: "Couldn't locate the log file — check the server is running.", kind: "error" });
     return;
   }
-  try {
-    await tauri.shell.open(logPath);
-  } catch (e) {
-    pushToast({ message: `Couldn't open log: ${e?.message || e}`, kind: "error" });
-  }
+  const sep = dir.includes("\\") ? "\\" : "/";
+  openPath([dir.replace(/[\\/]+$/, ""), "logs", "justvoice.log"].join(sep));
 }
 onMounted(() => {
   loadGpuInfo();
