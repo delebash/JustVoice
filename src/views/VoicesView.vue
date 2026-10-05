@@ -10,7 +10,7 @@ import {
   DropdownMenuContent, DropdownMenuItem, DropdownMenuPortal,
   DropdownMenuRoot, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "reka-ui";
-import { DIRECTION_OPTIONS, directionCell, tagCount } from "../services/personaFacts.js";
+import { DIRECTION_OPTIONS, VOICE_KINDS, directionCell, tagCount, voiceKind, voiceKindLabel } from "../services/personaFacts.js";
 import { readPref, writePref } from "../services/prefs.js";
 import { rowOptions } from "../services/capabilities.js";
 import { voiceRowState } from "../services/voiceGrid.js";
@@ -146,11 +146,8 @@ const typeFilter = ref("all");
 
 const TYPE_FILTERS = [
   { id: "all",      label: "All" },
-  { id: "preset",   label: "Preset" },
-  { id: "cloned",   label: "Cloned" },
-  { id: "designed", label: "Designed" },
-  { id: "imported", label: "Imported" },
-  { id: "blended",  label: "Blended" },
+  // The one set of type words (personaFacts.VOICE_KINDS, 2026-10-05) — Imported is Cloned.
+  ...VOICE_KINDS.filter((k) => !k.disabled).map((k) => ({ id: k.value, label: k.label })),
 ];
 
 // Voice hiding DIED 2026-08-21 ("remove hidden on voices grid that
@@ -222,7 +219,7 @@ const directionFilter = ref("");
 const genderOf = (v) => voiceGenderWord(v) || "unset";
 const voiceFilters = computed(() => [
   { key: "engine", value: engineFilter.value, empty: "all", test: (v, x) => v.engine === x },
-  { key: "type", value: typeFilter.value, empty: "all", test: (v, x) => v.source === x },
+  { key: "type", value: typeFilter.value, empty: "all", test: (v, x) => voiceKind(v) === x },
   { key: "lang", value: langFilter.value, empty: "all", test: (v, x) => v.language === x },
   { key: "gender", value: genderFilter.value, empty: "all", test: (v, x) => genderOf(v) === x },
   { key: "direction", value: directionFilter.value, test: (v, x) => v.directed_by === x },
@@ -259,6 +256,7 @@ const voiceRows = computed(() =>
     _lang: languageName(v.language) || v.language || "",
     _gender: voiceGender(v) || "",
     _model: v.model_name || v.engine || "",
+    _type: voiceKindLabel(v),
   })),
 );
 
@@ -273,7 +271,7 @@ const VOICE_COLUMNS = [
   { id: "name", accessorKey: "name", header: "Name", sortable: true,
     headerStyle: { width: "auto", minWidth: "240px" } },
   { id: "_gender", accessorKey: "_gender", header: "Gender", sortable: true, headerStyle: FIT, cellStyle: FIT },
-  { id: "source", accessorKey: "source", header: "Type", sortable: true, headerStyle: FIT, cellStyle: FIT },
+  { id: "source", accessorKey: "_type", header: "Type", sortable: true, headerStyle: FIT, cellStyle: FIT },
   { id: "engine", accessorKey: "_model", header: "Model", sortable: true, headerStyle: FIT, cellStyle: FIT },
   { id: "_lang", accessorKey: "_lang", header: "Speaks", sortable: true, headerStyle: FIT, cellStyle: FIT },
   { id: "directed", accessorKey: "directed_by", header: "Can be directed", sortable: true, headerStyle: FIT, cellStyle: FIT },
@@ -293,7 +291,7 @@ function voiceRowClass(row) {
 const typeCounts = computed(() => ({
   all: facetTotal(voices.value || [], voiceFilters.value, "type"),
   ...facetCounts(voices.value || [], voiceFilters.value, "type",
-    TYPE_FILTERS.filter((f) => f.id !== "all").map((f) => f.id), (v, t) => v.source === t),
+    TYPE_FILTERS.filter((f) => f.id !== "all").map((f) => f.id), (v, t) => voiceKind(v) === t),
 }));
 
 // ── Voice preview (LRU-cached on backend). ──────────────────────────
@@ -618,15 +616,14 @@ function voiceGenderWord(v) {
 }
 
 // Voice type → UiTag intent mapping
-function voiceTypeVariant(source) {
-  // One distinct tint per type (v11): neutral / green / solid-green /
-  // gold / blue / violet — so the column reads at a glance.
+function voiceTypeVariant(kind) {
+  // One distinct tint per type (v11): neutral / green / solid-green / gold —
+  // so the column reads at a glance. Imported is Cloned since 2026-10-05.
   // Returns shared UiTag intents.
-  if (source === "preset") return "ghost";
-  if (source === "cloned") return "success";
-  if (source === "designed") return "solid";
-  if (source === "blended") return "accent2";
-  if (source === "imported") return "violet";
+  if (kind === "builtin") return "ghost";
+  if (kind === "clone") return "success";
+  if (kind === "design") return "solid";
+  if (kind === "blend") return "accent2";
   return "ghost";
 }
 
@@ -778,7 +775,7 @@ function voiceTypeVariant(source) {
       </template>
 
       <template #source="{ row }">
-        <UiTag :intent="voiceTypeVariant(row.source)" :value="row.source" />
+        <UiTag :intent="voiceTypeVariant(voiceKind(row))" :value="voiceKindLabel(row)" />
       </template>
 
       <template #engine="{ row }">
@@ -855,7 +852,7 @@ function voiceTypeVariant(source) {
       @action="$router && $router.push?.('#engines'); window.location.hash = '#engines'"
     />
     <p v-else class="jv-muted" style="padding: 24px 0; text-align: center; font-style: italic;">
-      No voices match "{{ search }}" or filter "{{ typeFilter }}".
+      No voices match "{{ search }}" or filter "{{ TYPE_FILTERS.find((f) => f.id === typeFilter)?.label || typeFilter }}".
     </p>
   </div>
 

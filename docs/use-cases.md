@@ -22,11 +22,11 @@ JustVoice serves five distinct audiences. Pick your primary at first launch — 
 
 **Flow**:
 1. **Import** a CSV of dialogue rows (`scene, character, text, delivery, pause_after_ms` — only `text` is required; include an `id`/`line_id`/`dialogue_id` column so re-imports merge by stable id). See [import-and-export.md](import-and-export.md). Each `character` in the sheet becomes one of the project's speakers.
-2. **Cast** — give each speaker a persona. Personas on cloned voices for the heroes, on preset voices for villagers — one "villager" persona can play them all.
+2. **Cast** — give each speaker a persona. Personas on cloned voices for the heroes, on built-in voices for villagers — one "villager" persona can play them all.
 3. **Render** — bulk render every line.
 4. **Export** — per-line WAVs grouped by scene plus a `manifest.json` of line metadata for Unreal import; an Unreal `.uplugin` bundle is planned.
 
-**Engine pick**: Kokoro (fast at scale, 49 preset voices) + Chatterbox Multilingual or Qwen3-TTS Base for protagonist clones.
+**Engine pick**: Kokoro (fast at scale, 49 built-in voices) + Chatterbox Multilingual or Qwen3-TTS Base for protagonist clones.
 
 ## 🎙️ Podcast production
 

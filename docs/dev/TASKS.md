@@ -723,6 +723,46 @@ GO: needed.
 
 ## The next build
 
+### The persona page's Voice card goes back to its original layout, with synced filters and words (decided 2026-10-05)
+STATE:  DECIDED 2026-10-05 — the user chose "A" from the two side by side (`#/mock/voice-card`):
+        "A = the original layout + dropdowns that sync … The real persona page currently looks like
+        B, so going with A means putting the page back to the original layout with the syncing
+        kept, plus the Version field … on the persona page and its mock"; then "maybe add so words
+        explaining how it works what the choices mean" and "go" on the words as shown:
+        How it can be directed — "What the voice's model takes to shape how it speaks. Written
+        direction: you describe it in words (Style Instructions). Tags: you pick from the model's
+        list, like [sigh]. Sliders only: pace, pitch and gain. This decides what How it speaks
+        offers below." · Made by — "How the voice was made. Built-in voices come with their model.
+        Clone, Design and Blend list the voices you've made, and open their maker on the right so
+        you can make a new one." · Model, Gender, Voice's language — "These only narrow the list.
+        Each counts the voices left by the others." · Voice — "The voice is what the persona keeps.
+        Its model comes with it." · Version — "Which size of the model speaks. It's set per model,
+        so every persona on it uses the same one."
+NOT:    B ("Narrow the list" box, Made by as a dropdown, a separate "Or make a new one" row).
+        Then DECIDED 2026-10-05 — "unify them go", on the lean as shown (the user: "in voices type you
+        have preset … is built in the same as preset, we need to be consistaqnt" and "what are the
+        different types of voices in the types field, we need to use same words on all screens"):
+        "one set of words on every screen, naming what the voice is: Built-in · Cloned · Designed ·
+        Blended. Imported folds into Cloned on Voices too, as on the persona page. The persona
+        page's Made by would read Built-in · Cloned · Designed · Blended, and still open the
+        matching maker. The makers keep their titles (New clone, New design, New blend). The same
+        words go in the Voices table's Type column and the docs." (Imported, checked: a clone that
+        came in from a voice file — it carries a reference clip, `voice_bundle.py`.) The approved
+        Made by hint follows the labels: "Cloned, Designed and Blended list the voices you've made…"
+BUILT:  2026-10-05 — A: `PersonaEditorView.vue` and its mock back to the original order with Made by
+        (counts, the off-with-reason rules, the blend runtime check) on the synced filters
+        (`services/facets.js`), the approved words under each part, Version beside the voice, the
+        count of voices in the list; the mocks share `MODEL_VERSIONS` (personaMock.js). The words:
+        `personaFacts.VOICE_KINDS` / `voiceKindWord` / new `voiceKindLabel`; Voices' chips (Imported
+        folded) and Type column; Speech engines' "Built-in voices" filter and BUILT-IN chip; Quick
+        setup; the terms dialog and the clone makers. Docs: personas (Voice rewritten to A), voices
+        (the types table, Imported folded, the one-set note), engines, quick-setup, use-cases,
+        troubleshooting, whats-new; the filters plan §3. Checked: Biome, build, the personaFacts
+        test file (5). Not run: the suites (the user's word).
+OPEN:   the live look; the side-by-side mock `#/mock/voice-card` (B is rejected) — keep or remove,
+        the user's call.
+GO:     given 2026-10-05
+
 ### The persona page shows which version of its model speaks, and can change it (decided 2026-10-05)
 STATE:  DECIDED 2026-10-05 — "yes i agree with surface in persona go", on the lean as shown (the
         user: "when we choose a voice how do we know what model size is choose like on qwen we can

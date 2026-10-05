@@ -24,8 +24,8 @@ describe("personaFacts — one vocabulary for voices and personas", () => {
 
   it("calls a voice by how it was made", () => {
     expect(voiceKindWord({ source: "preset" })).toBe("built-in");
-    expect(voiceKindWord({ source: "imported" })).toBe("clone");
-    expect(voiceKindWord({ source: "blended" })).toBe("blend");
+    expect(voiceKindWord({ source: "imported" })).toBe("cloned");
+    expect(voiceKindWord({ source: "blended" })).toBe("blended");
   });
 
   it("matches a language whatever its region", () => {

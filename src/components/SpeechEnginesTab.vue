@@ -613,7 +613,7 @@ const FILTERS = [
   { id: "tts", label: "TTS" },
   { id: "stt", label: "STT" },
   { id: "cloning", label: "Cloning" },
-  { id: "presets", label: "Preset voices" },
+  { id: "presets", label: "Built-in voices" },
 ];
 function variantMatchesFilter(v) {
   if (filterId.value === "cloning") return v.voice_cloning === true;
@@ -901,7 +901,7 @@ onBeforeUnmount(() => {
               <span v-if="v.voice_cloning === true" class="ev-cap clone"
                 title="Clones a voice from a short clean sample">CLONING</span>
               <span v-if="v.preset_voices > 0" class="ev-cap presets"
-                :title="`${v.preset_voices} ready-made voices — no sample needed`">PRESETS · {{ v.preset_voices }}</span>
+                :title="`${v.preset_voices} built-in voices — no sample needed`">BUILT-IN · {{ v.preset_voices }}</span>
               <span v-if="v.weights_license" class="ev-lic" :class="{ 'ev-lic--warn': licenseWarn(v) }"
                 :title="licenseTitle(v)"><template v-if="licenseWarn(v)">⚠ </template>{{ v.weights_license }}</span>
             </span>

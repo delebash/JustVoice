@@ -192,7 +192,7 @@ function keep() {
     <div class="jv-card__body jv-col">
       <div v-if="termsPending" class="jv-banner jv-banner--info">
         <strong>{{ engineTerms.title }}</strong>
-        <p class="jv-hint">{{ row.display_name }} clones a voice only after you accept {{ engineTerms.owner }}'s terms — once, on this install. Its preset voices need no acceptance.</p>
+        <p class="jv-hint">{{ row.display_name }} clones a voice only after you accept {{ engineTerms.owner }}'s terms — once, on this install. Its built-in voices need no acceptance.</p>
         <p class="jv-hint">{{ engineTerms.text }}</p>
         <UiButton intent="primary" size="small" :label="`Accept ${engineTerms.owner}'s terms`" @click="acceptTerms" />
       </div>

@@ -271,7 +271,7 @@ async function keep() {
     <div class="jv-card__body jv-col">
       <div v-if="termsPending" class="jv-banner jv-banner--info">
         <strong>{{ termsPending.terms.title }}</strong>
-        <p class="jv-hint">{{ termsPending.name }} clones a voice only after you accept {{ termsPending.terms.owner }}'s terms — once, on this install. Its preset voices need no acceptance.</p>
+        <p class="jv-hint">{{ termsPending.name }} clones a voice only after you accept {{ termsPending.terms.owner }}'s terms — once, on this install. Its built-in voices need no acceptance.</p>
         <p class="jv-hint">{{ termsPending.terms.text }}</p>
         <div class="jv-inline-row">
           <UiButton intent="primary" size="small" :loading="termsBusy" :label="`Accept ${termsPending.terms.owner}'s terms`" @click="acceptTerms" />

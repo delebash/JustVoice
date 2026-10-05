@@ -39,7 +39,7 @@ import MockBlendMaker from "./MockBlendMaker.vue";
 import MockCloneMaker from "./MockCloneMaker.vue";
 import MockDesignMaker from "./MockDesignMaker.vue";
 import {
-  LEXICONS, capabilities as caps, effectLabels, emotionValues, newId, silentWav, statusOf, store, wait,
+  LEXICONS, MODEL_VERSIONS, capabilities as caps, effectLabels, emotionValues, newId, silentWav, statusOf, store, wait,
 } from "./personaMock.js";
 
 const route = useRoute();
@@ -127,30 +127,36 @@ const directedBy = computed(() => voice.value?.directed_by || "");
 const locked = computed(() => !voice.value);
 const notLoaded = computed(() => !!voice.value && statusOf(model.value) !== "loaded");
 
-// The Voice card, as the page (decided 2026-10-05): "Narrow the list" — each
-// filter listing only what the others leave (services/facets.js) — then the
-// voice, then "Or make a new one". "Made by" is gone as a filter.
+// The Voice card, as the page (decided 2026-10-05, "A"): How it can be
+// directed and Made by first, then Model · Gender · Voice's language, then the
+// voice; each lists only what the others leave (services/facets.js).
 const directionFilter = ref("");
 const DIRECTION_WORD = { words: "written direction", tags: "tags", sliders: "sliders only" };
 const DIRECTION_EXAMPLE = { words: "describe it", tags: "[fear] [sigh]", sliders: "pace, pitch, gain" };
+const kind = ref("builtin");
+function onKindBlocked(opt) {
+  pushToast({ kind: "info", message: opt.title || "Not available yet." });
+}
+const CAN_MAKE = { clone: ["words", "tags", "sliders"], design: ["words", "tags", "sliders"], blend: ["sliders"] };
+const OFF_REASON = {
+  builtin: { tags: "No built-in voice takes tags — Chatterbox Turbo and Nano voices are clones." },
+  blend: {
+    words: "Blends are Kokoro's — they take no written direction.",
+    tags: "Blends are Kokoro's — they take no tags.",
+  },
+};
 const modelFilter = ref("");
 const genderFilter = ref("");
 const languageFilter = ref("");
 const baseLang = (c) => String(c || "").split(/[-_]/)[0].toLowerCase();
 const voiceFilters = computed(() => [
   { key: "direction", value: directionFilter.value, test: (v, d) => v.directed_by === d },
+  { key: "kind", value: kind.value, test: (v, k) => kindOf(v) === k },
   { key: "model", value: modelFilter.value, test: (v, m) => v.model === m },
   { key: "gender", value: genderFilter.value, test: (v, g) => voiceGender(v) === g },
   { key: "language", value: languageFilter.value, test: (v, c) => baseLang(v.language) === c },
 ]);
 const shownVoices = computed(() => narrowed(voices.value, voiceFilters.value));
-const anyFilter = computed(() => !!(directionFilter.value || modelFilter.value || genderFilter.value || languageFilter.value));
-function clearFilters() {
-  directionFilter.value = "";
-  modelFilter.value = "";
-  genderFilter.value = "";
-  languageFilter.value = "";
-}
 const directionChoices = computed(() => {
   const n = facetCounts(voices.value, voiceFilters.value, "direction", ["words", "tags", "sliders"],
     (v, d) => v.directed_by === d);
@@ -159,6 +165,23 @@ const directionChoices = computed(() => {
     label: `${o.value ? o.label : "Any"} (${o.value ? n[o.value] : facetTotal(voices.value, voiceFilters.value, "direction")})`,
     sublabel: o.value ? DIRECTION_EXAMPLE[o.value] : "every voice",
   }));
+});
+const kindOptions = computed(() => {
+  const n = facetCounts(voices.value, voiceFilters.value, "kind", ["builtin", "clone", "design", "blend"],
+    (v, k) => kindOf(v) === k);
+  const d = directionFilter.value;
+  return KINDS.map((k) => {
+    const opt = k.disabled ? k : { ...k, label: `${k.label} (${n[k.value] ?? 0})` };
+    if (k.disabled || !d) return opt;
+    const has = voices.value.some((v) => kindOf(v) === k.value && v.directed_by === d);
+    if (has || (CAN_MAKE[k.value] || []).includes(d)) return opt;
+    return { ...opt, disabled: true, title: OFF_REASON[k.value]?.[d] || "Nothing of this kind can be directed this way." };
+  });
+});
+watch(directionFilter, () => {
+  if (kindOptions.value.find((o) => o.value === kind.value)?.disabled) {
+    kind.value = kindOptions.value.find((o) => !o.disabled)?.value || "builtin";
+  }
 });
 const modelNames = computed(() => Object.fromEntries(voices.value.map((v) => [v.model, v.model_name || v.model])));
 const modelOptions = computed(() => [
@@ -176,8 +199,6 @@ const languageFilterOptions = computed(() => [
   ...facetOptions(voices.value, voiceFilters.value, "language",
     (v) => baseLang(v.language), (c, n) => `${languageName(c) || c} (${n})`),
 ]);
-
-// The persona's own voice stays in the box even when the filters hide it.
 const listedVoices = computed(() => {
   const cur = voice.value;
   return cur && !shownVoices.value.some((v) => v.id === cur.id) ? [cur, ...shownVoices.value] : shownVoices.value;
@@ -189,37 +210,38 @@ const voiceOptions = computed(() => listedVoices.value.map((v) => ({
 })));
 const voiceSelectValue = computed(() => voice.value?.id || "");
 const voiceEmptyHint = computed(() => {
-  if (!voices.value.length) return "No voices yet — install a speech model on AI Settings → Speech engines, or make one below.";
   if (shownVoices.value.length) return "";
-  return voice.value ? "No other voice matches these filters." : "No voice matches these filters — clear one, or make a new one below.";
+  if (voices.value.some((v) => kindOf(v) === kind.value)) {
+    return voice.value ? "No other voice matches these filters." : "No voice of this kind matches these filters.";
+  }
+  return {
+    builtin: "No built-in voices — install a speech model on AI Settings → Speech engines.",
+    clone: "No cloned voices yet — make one on the right.",
+    design: "No designed voices yet — make one on the right.",
+    blend: "No blends yet — make one on the right.",
+  }[kind.value] || "";
 });
+// The Version field, from the catalog's list (MODEL_VERSIONS).
+const versionOptions = computed(() => (MODEL_VERSIONS[voice.value?.model] || []).map((x) => ({ value: x, label: x })));
 
-// ── Making a voice, here — Clone · Design · Blend open their maker on the
-// right; the chosen one again closes it.
-const MAKE = KINDS.filter((k) => ["clone", "design", "blend"].includes(k.value));
-const makerKind = ref("");
-const maker = computed(() => makerKind.value || null);
+// ── Making a voice, here — a made kind under Made by opens its maker.
+const MAKERS = ["clone", "design", "blend"];
+const maker = computed(() => (MAKERS.includes(kind.value) ? kind.value : null));
 const designFrom = ref(null);   // a kept design whose words start the maker
 const makerKey = ref(0);        // a new key = a fresh, empty maker
-function toggleMaker(k) {
-  makerKind.value = makerKind.value === k ? "" : k;
-}
-watch(makerKind, (k) => {
-  if (k !== "design") designFrom.value = null;
-  makerKey.value += 1;
-});
+watch(kind, () => { modelFilter.value = ""; designFrom.value = null; makerKey.value += 1; });
 function startFromThis() {
   designFrom.value = voice.value;
-  makerKind.value = "design";
   makerKey.value += 1;
 }
 function onKept(v) {
   designFrom.value = null;
   makerKey.value += 1;
-  clearFilters();
+  modelFilter.value = "";
+  genderFilter.value = "";
+  languageFilter.value = "";
   pickVoice(v.id);
 }
-
 const voiceChange = ref(null);
 function pickVoice(id) {
   const v = voices.value.find((x) => x.id === id);
@@ -482,6 +504,7 @@ function saveAsNew() {
 function revert() {
   draft.value = saved.value ? fromPersona(saved.value) : copyOf(opened.value || blank());
   voiceChange.value = null;
+  if (voice.value) kind.value = kindOf(voice.value);
 }
 onBeforeRouteLeave(async () => {
   if (!dirty.value) return true;
@@ -536,6 +559,7 @@ function load() {
       directed_lines: list.reduce((n, u) => n + (u.directed || 0), 0),
     };
   }
+  kind.value = voice.value ? kindOf(voice.value) : "builtin";
 }
 watch(personaId, (id, before) => { if (id && id !== before) load(); }, { immediate: true });
 watch([() => draft.value?.name, isNew], publishCrumbs, { immediate: true });
@@ -580,29 +604,30 @@ watch([() => draft.value?.name, isNew], publishCrumbs, { immediate: true });
             </div>
           </div>
 
-          <!-- Voice: filters that narrow the list, then the voice, then "or make a new one". -->
+          <!-- Voice: what it can do → how it was made → filters → a voice that names its model, each with its words. -->
           <div class="jv-card">
             <div class="jv-card__header"><h3 class="jv-card__title">Voice</h3></div>
             <div class="jv-card__body jv-col">
-              <div class="persona-editor__narrow">
-                <span class="jv-eyebrow">Narrow the list</span>
-                <UiField label="How it can be directed" layout="block">
-                  <UiSegmented v-model="directionFilter" :options="directionChoices" size="small" aria-label="How it can be directed" />
+              <UiField label="How it can be directed" layout="block"
+                hint="What the voice's model takes to shape how it speaks. Written direction: you describe it in words (Style Instructions). Tags: you pick from the model's list, like [sigh]. Sliders only: pace, pitch and gain. This decides what How it speaks offers below.">
+                <UiSegmented v-model="directionFilter" :options="directionChoices" size="small" aria-label="How it can be directed" />
+              </UiField>
+              <UiField label="Made by" layout="block"
+                hint="How the voice was made. Built-in voices come with their model. Cloned, Designed and Blended list the voices you've made, and open their maker on the right so you can make a new one.">
+                <UiSegmented v-model="kind" :options="kindOptions" size="small" aria-label="Made by" @blocked="onKindBlocked" />
+              </UiField>
+              <div class="jv-field-row">
+                <UiField label="Model" layout="block">
+                  <UiSelect v-model="modelFilter" :options="modelOptions" width="name" />
                 </UiField>
-                <div class="jv-field-row">
-                  <UiField label="Model" layout="block">
-                    <UiSelect v-model="modelFilter" :options="modelOptions" width="name" />
-                  </UiField>
-                  <UiField label="Gender" layout="block">
-                    <UiSelect v-model="genderFilter" :options="genderOptions" width="id" />
-                  </UiField>
-                  <UiField label="Voice's language" layout="block">
-                    <UiSelect v-model="languageFilter" :options="languageFilterOptions" width="id" />
-                  </UiField>
-                  <span class="jv-hint persona-editor__count">{{ shownVoices.length }} voice{{ shownVoices.length === 1 ? "" : "s" }}</span>
-                  <UiButton intent="ghost" size="small" label="Clear" :disabled="!anyFilter" @click="clearFilters" />
-                </div>
+                <UiField label="Gender" layout="block">
+                  <UiSelect v-model="genderFilter" :options="genderOptions" width="id" />
+                </UiField>
+                <UiField label="Voice's language" layout="block">
+                  <UiSelect v-model="languageFilter" :options="languageFilterOptions" width="id" />
+                </UiField>
               </div>
+              <p class="jv-hint">These only narrow the list. Each counts the voices left by the others.</p>
               <div class="jv-field-row">
                 <UiField label="Voice" layout="block">
                   <UiSelect :model-value="voiceSelectValue" :options="voiceOptions" width="path"
@@ -611,16 +636,17 @@ watch([() => draft.value?.name, isNew], publishCrumbs, { immediate: true });
                 </UiField>
                 <UiButton intent="secondary" label="▶ Play" :loading="rawBusy" :disabled="!voice"
                   title="Play the voice on its own, before this page changes anything" @click="playRaw" />
+                <UiField v-if="versionOptions.length" label="Version" layout="block">
+                  <UiSelect :model-value="versionOptions[0].value" :options="versionOptions" width="name"
+                    :disabled="versionOptions.length < 2" />
+                </UiField>
               </div>
+              <p class="jv-hint">The voice is what the persona keeps. Its model comes with it.</p>
+              <p v-if="versionOptions.length" class="jv-hint"><strong>Version:</strong> Which size of the model speaks. It's set per
+                model, so every persona on it uses the same one.</p>
               <p v-if="voiceEmptyHint" class="jv-hint">{{ voiceEmptyHint }}</p>
-              <div class="jv-inline-row">
-                <span class="jv-hint">Or make a new one:</span>
-                <UiButton v-for="k in MAKE" :key="k.value" size="small"
-                  :intent="makerKind === k.value ? 'primary' : 'secondary'" :label="k.label"
-                  :title="makerKind === k.value ? 'Close the maker' : 'Opens on the right'"
-                  @click="toggleMaker(k.value)" />
-              </div>
-              <div v-if="voice?.source === 'designed' && voice.design_prompt" class="jv-inline-row">
+              <p v-else class="jv-hint">{{ shownVoices.length }} voice{{ shownVoices.length === 1 ? "" : "s" }} in the list.</p>
+              <div v-if="kind === 'design' && voice?.source === 'designed' && voice.design_prompt" class="jv-inline-row">
                 <span class="jv-hint">“{{ voice.design_prompt }}”</span>
                 <UiButton intent="ghost" size="small" label="Start from this one"
                   title="A kept voice doesn't change — copy its words into the new design on the right"
@@ -905,9 +931,7 @@ watch([() => draft.value?.name, isNew], publishCrumbs, { immediate: true });
 .persona-editor { display: flex; flex-direction: column; gap: 12px; }
 .persona-editor__pills { gap: 6px; }
 .persona-editor__fixed { font-size: 13.5px; }
-.persona-editor__narrow { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px;
-  border: 1px solid var(--line); border-radius: var(--r-control); background: var(--surface-2); }
-.persona-editor__count { align-self: flex-end; padding-bottom: 8px; }
+
 .persona-editor__summary { margin: 0 0 6px; font-weight: 600; }
 .persona-editor__tags { gap: 6px; }
 /* A blank persona: only the Voice card is live until a voice is picked

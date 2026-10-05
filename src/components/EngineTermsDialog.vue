@@ -53,7 +53,7 @@ onBeforeUnmount(() => window.removeEventListener(TERMS_EVENT, open));
     <p class="engine-terms__lede">
       JustVoice downloads {{ engine.name }} from a copy that needs no sign-in.
       {{ engine.terms.owner }}, who made it, asks everyone who clones voices with it to accept these terms.
-      Preset voices need no acceptance.
+      Built-in voices need no acceptance.
     </p>
     <div class="jv-banner engine-terms__text">{{ engine.terms.text }}</div>
     <p class="jv-hint">

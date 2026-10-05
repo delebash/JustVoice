@@ -36,11 +36,12 @@ only), the clone and design makers.
 
 ## 3. The persona page's Voice card
 
-*Narrow the list* (How it can be directed · Model · Gender · Voice's language, a count, Clear) →
-**Voice** (every voice, made ones too; the label names the model, how it can be directed and, if
-made, how) → *Or make a new one:* Clone · Design · Blend (open the maker on the right; the same
-button closes it; the direction filter goes with it). *Made by* is gone as a filter. The page's
-mock is the same.
+Built first as "Narrow the list → Voice → Or make a new one", with Made by gone as a filter; the
+user found it weird, compared both side by side (`#/mock/voice-card`), and chose **A** — the
+original layout (How it can be directed · Made by · Model / Gender / Voice's language · Voice ·
+Version) with the synced filters and a line of words under each part (TASKS "The persona page's
+Voice card goes back to its original layout…"). The type words are one set since the same day:
+Built-in · Cloned · Designed · Blended.
 
 ## 4. Blast radius (greps run 2026-10-05)
 

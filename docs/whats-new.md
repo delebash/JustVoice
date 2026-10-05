@@ -2,6 +2,11 @@
 
 ## v0.1.0
 
+- **One set of words for a voice's type (2026-10-05).** **Built-in · Cloned ·
+  Designed · Blended** on every screen — Voices' chips and Type column, a
+  persona's **Made by**, Speech engines, Quick setup. Voices said *Preset* and
+  listed *Imported* apart (an imported voice is a clone); the persona page said
+  *Clone from audio*, *Design from words* and *Blend* ([Voices](voices.md))
 - **A persona shows which version of its model speaks it (2026-10-05).**
   **Version** beside the voice — *1.7B*, *0.6B (16-bit)* — with *Speaks with
   Qwen3-TTS CustomVoice 1.7B · loaded* under it. Changing it sets that model's
@@ -12,9 +17,8 @@
   Render's chapter pages, each filter lists only what the others leave, with
   counts that match the list — *kokoro (54)* + Written direction, or *No speaker*
   + a speaker, no longer give an empty list. A choice nothing fits stays with
-  **(0)**. A persona's Voice card now reads *Narrow the list* → **Voice** → *Or
-  make a new one* (Clone · Design · Blend); *Made by* is gone as a filter, and
-  every voice, made ones too, is in the list ([Personas → Voice](personas.md#voice))
+  **(0)**. A persona's Voice card keeps its layout, and each part now carries a
+  line saying what it means ([Personas → Voice](personas.md#voice))
 - **Picking a voice on a persona's page sets what it speaks (2026-10-05).**
   **Speaks** becomes the new voice's own language — it used to keep the old one
   whenever the model could speak it, so an English voice left a persona speaking

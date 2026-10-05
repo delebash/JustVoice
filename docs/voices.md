@@ -40,19 +40,23 @@ a model; they render on their engine's default model that can speak them.
 
 The Voices page is the **library**: every voice you have, to find, hear,
 copy to another model, start a persona from, or delete. A new voice is made
-on a **persona's page** (since 2026-10-04): *Clone from audio*, *Design from
-words* or *Blend* under *Or make a new one* opens its fields right there — see
+on a **persona's page** (since 2026-10-04): *Cloned*, *Designed* or *Blended*
+under *Made by* opens its fields right there — see
 [Personas → Making a voice on this page](personas.md#making-a-voice-on-this-page).
 You hear it as that persona before you keep it, and once kept it is here, in
 the library, for any persona to use.
 
 | Type | What it is | Made |
 |---|---|---|
-| **Preset** | Ships with the model. Nothing to make. | Comes with Kokoro (54), Pocket TTS (20), KittenTTS (8), Qwen3 **CustomVoice** (9) |
-| **Cloned** | Learned from a recording of someone speaking. | [New clone](personas.md#new-clone) — Chatterbox Multilingual, Turbo, Nano, Pocket TTS, Qwen3 **Base**, VoxCPM2 |
+| **Built-in** | Ships with the model. Nothing to make. | Comes with Kokoro (54), Pocket TTS (20), KittenTTS (8), Qwen3 **CustomVoice** (9) |
+| **Cloned** | Learned from a recording of someone speaking — including a clip kept as it was before 2026-10-04, once listed apart as *Imported*. | [New clone](personas.md#new-clone) — Chatterbox Multilingual, Turbo, Nano, Pocket TTS, Qwen3 **Base**, VoxCPM2 |
 | **Designed** | Invented from a written description — no recording. | [New design](personas.md#new-design) — Qwen3 **VoiceDesign**, VoxCPM2 |
-| **Imported** | A clip kept as it was, before 2026-10-04. | New clones replace it: **Keep** without listening first does the same |
 | **Blended** | Made out of Kokoro's own voices — mixed, exaggerated, added and subtracted, or spliced. | [New blend](personas.md#new-blend) |
+
+These four are the words every screen uses for a voice's type — Voices' chips and Type
+column, a persona's **Made by**, and the label beside a voice everywhere (since 2026-10-05;
+Voices said *Preset* and listed *Imported* apart, the persona page *Clone from audio*,
+*Design from words* and *Blend*).
 
 Kokoro's five Japanese voices need the optional Japanese dictionary — see
 [Engines → The Japanese dictionary](engines.md#the-speech-runtime).
@@ -67,10 +71,10 @@ from a description:
 
 | Voice type | Takes written direction? |
 |---|---|
-| **Preset** (Qwen3 CustomVoice) | Yes |
+| **Built-in** (Qwen3 CustomVoice) | Yes |
 | **Designed**, no kept clip | Yes — and its description leads, with your direction added after |
 | **Designed**, kept clip | **No** — it is a clone now |
-| **Cloned** / **Imported** | **No** — the identity is the recording |
+| **Cloned** | **No** — the identity is the recording |
 | **Blended** (Kokoro) | No — Kokoro takes no direction at all |
 
 No voice type gives you a specific person's voice *and* line-by-line written

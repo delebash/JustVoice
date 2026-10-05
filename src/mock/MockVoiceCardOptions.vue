@@ -16,7 +16,7 @@ import { UiButton, UiField, UiSegmented, UiSelect, languageName } from "@delebas
 import { facetChoices, facetCounts, facetOptions, facetTotal, narrowed } from "../services/facets.js";
 import { DIRECTION_OPTIONS, VOICE_KINDS, voiceKind, voiceKindWord, voiceLabel } from "../services/personaFacts.js";
 import { voiceGender } from "../services/voiceGender.js";
-import { store } from "./personaMock.js";
+import { MODEL_VERSIONS, store } from "./personaMock.js";
 
 const voices = computed(() => store.voices);
 const DIRECTION_WORD = { words: "written direction", tags: "tags", sliders: "sliders only" };
@@ -25,14 +25,6 @@ const GENDER_WORD = { F: "Female", M: "Male", N: "Neutral" };
 const KIND_LABEL = { builtin: "Built-in", clone: "Cloned", design: "Designed", blend: "Blended" };
 const MAKE = VOICE_KINDS.filter((k) => ["clone", "design", "blend"].includes(k.value));
 const baseLang = (c) => String(c || "").split(/[-_]/)[0].toLowerCase();
-// The versions the catalog lists for these families (engines/<id>/manifest.py).
-const VERSIONS = {
-  "qwen3-cv": ["1.7B", "0.6B", "1.7B (16-bit)", "0.6B (16-bit)"],
-  "qwen3-base": ["1.7B (cloning)", "0.6B (cloning)", "1.7B (cloning, 16-bit)", "0.6B (cloning, 16-bit)"],
-  "qwen3-vd": ["1.7B", "1.7B (16-bit)"],
-  kokoro: ["82M"],
-};
-
 // One card's state and its filters — the two cards don't share them.
 function makeCard(withKindFilter) {
   const st = reactive({ direction: "", kind: withKindFilter ? "" : "builtin", model: "", gender: "", language: "", voice: "", maker: "" });
@@ -80,7 +72,7 @@ function makeCard(withKindFilter) {
           .filter(Boolean).join(" · "),
       }));
     }),
-    versions: computed(() => (VERSIONS[voice.value?.model] || []).map((x) => ({ value: x, label: x }))),
+    versions: computed(() => (MODEL_VERSIONS[voice.value?.model] || []).map((x) => ({ value: x, label: x }))),
     clear() { Object.assign(st, { direction: "", model: "", gender: "", language: "", kind: withKindFilter ? "" : st.kind }); },
   };
 }

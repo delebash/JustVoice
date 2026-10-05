@@ -52,17 +52,28 @@ export function tagCount(row) {
   return (row?.inline_tags || []).reduce((n, set) => n + (set.tags?.length || 0), 0);
 }
 
-/** The kind radios on the persona's page — how a voice was made. */
+/** How a voice was made — ONE set of words on every screen (decided 2026-10-05,
+ *  "unify them go"): Built-in · Cloned · Designed · Blended. Voices said Preset
+ *  and listed Imported apart; the persona page said Clone from audio, Design
+ *  from words, Blend. An imported voice is a clone that came in from a voice
+ *  file (it carries a reference clip), so it is Cloned. The persona page's
+ *  Made by row uses these labels too. */
 export const VOICE_KINDS = [
   { value: "builtin", label: "Built-in" },
-  { value: "clone", label: "Clone from audio" },
-  { value: "design", label: "Design from words" },
-  { value: "blend", label: "Blend" },
+  { value: "clone", label: "Cloned" },
+  { value: "design", label: "Designed" },
+  { value: "blend", label: "Blended" },
   { value: "lora", label: "Trained LoRA", disabled: true, title: "Needs voice training, which isn't rebuilt yet." },
 ];
 
 const KIND_OF_SOURCE = { preset: "builtin", cloned: "clone", imported: "clone", designed: "design", blended: "blend" };
-const KIND_WORD = { builtin: "built-in", clone: "clone", design: "design", blend: "blend" };
+const KIND_WORD = { builtin: "built-in", clone: "cloned", design: "designed", blend: "blended" };
+const KIND_LABEL = Object.fromEntries(VOICE_KINDS.map((k) => [k.value, k.label]));
+
+/** "Built-in" · "Cloned" · "Designed" · "Blended" — a voice's type as a column or chip shows it. */
+export function voiceKindLabel(voice) {
+  return KIND_LABEL[voiceKind(voice)];
+}
 
 /** builtin · clone · design · blend — from a voice's `source`. */
 export function voiceKind(voice) {

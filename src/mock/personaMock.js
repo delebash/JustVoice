@@ -157,6 +157,15 @@ const USAGE = {
   p_tom: [{ project_id: "b_ninth", project_name: "The Ninth Facet", speaker_id: "s_auberon", speaker_name: "Auberon Vasht", lines: 2, directed: 0 }],
 };
 
+/** The versions (size · precision) the catalog lists per model family
+ *  (engines/<id>/manifest.py), for the mocks' Version field. */
+export const MODEL_VERSIONS = {
+  "qwen3-cv": ["1.7B", "0.6B", "1.7B (16-bit)", "0.6B (16-bit)"],
+  "qwen3-base": ["1.7B (cloning)", "0.6B (cloning)", "1.7B (cloning, 16-bit)", "0.6B (cloning, 16-bit)"],
+  "qwen3-vd": ["1.7B", "1.7B (16-bit)"],
+  kokoro: ["82M"],
+};
+
 /** Which models are loaded or installed on this mock machine. */
 export const modelStatus = reactive({
   kokoro: "loaded",

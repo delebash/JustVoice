@@ -165,20 +165,14 @@ separate engine or model field — pick the voice and the model comes with it.
 (An *Engine override* field sat on the old editor until 2026-10-03; nothing
 read it.)
 
-**Pick the voice first.** **Voice** is the one choice on this card that is
-saved; everything under it only helps you find one. Every voice is in its list —
-the models' own, and the ones you made (cloned, designed, blended) — and each
-names its model and what it can do.
-
-**Narrow the list** sits under it. Each filter lists only what the others leave,
-with counts that match what the list will show, so no choice can empty it by
-surprise; **Clear** empties them all, and the count beside it says how many
-voices are left:
-
-- **How it can be directed** — four choices, each with its example and how many
-  voices can do it, for example **Any (91)** · **Written direction (9)**
-  *describe it* · **Tags (0)** *[fear] [sigh]* · **Sliders only (82)** *pace,
-  pitch, gain*. This is what decides what **How it speaks** offers below:
+**What a voice can do comes first.** *How it can be directed* is always in
+view — four choices, each with its example and how many voices can do it, for
+example **Any (91)** · **Written direction (9)** *describe it* · **Tags (0)**
+*[fear] [sigh]* · **Sliders only (82)** *pace, pitch, gain*. Under it: *What the
+voice's model takes to shape how it speaks. Written direction: you describe it
+in words (Style Instructions). Tags: you pick from the model's list, like
+[sigh]. Sliders only: pace, pitch and gain. This decides what How it speaks
+offers below.*
 
 | Choice | What you do | Example | Models |
 |---|---|---|---|
@@ -186,10 +180,39 @@ voices are left:
 | Tags | pick from the model's own list | `[fear]` … `[sigh]` | Chatterbox Turbo, Chatterbox Nano |
 | Sliders only | pace, pitch, gain — no words | Pace 1.05×, Pitch −2 st | Kokoro, KittenTTS, Pocket TTS, Chatterbox Multilingual, Qwen3 Base |
 
-- **Model** — the models with voices that fit the other filters, each with its
-  count: under **Written direction**, only *Qwen3-TTS CustomVoice (9)*. (Until
-  2026-10-05 it listed every model of the old *Made by* kind, so Written
-  direction still offered Kokoro, and picking it emptied the list.)
+**How it was made comes second.** *Made by* lists the voices of one type, with
+how many — **Built-in · Cloned · Designed · Blended**, the words every screen
+uses for a voice's type ([Voices](voices.md)). Under it: *How the voice was
+made. Built-in voices come with their model. Cloned, Designed and Blended list
+the voices you've made, and open their maker on the right so you can make a new
+one.*
+
+| Made by | Lists | Made on |
+|---|---|---|
+| Built-in | The models' own voices — Kokoro's `af_heart`, Qwen3 CustomVoice's Sohee | AI Settings → Speech engines, by installing a model |
+| Cloned | Voices cloned from a recording, imported ones too | This page — [New clone](#new-clone) |
+| Designed | Voices designed from a description, with or without a kept clip | This page — [New design](#new-design) |
+| Blended | Kokoro blends of two or more voices | This page — [New blend](#new-blend) |
+| Trained LoRA | Off: *Needs voice training, which isn't rebuilt yet.* | — |
+
+A *Made by* choice that can't be directed the way you picked is off, and says
+why when you click it. Under **Tags**: *No built-in voice takes tags — Chatterbox
+Turbo and Nano voices are clones*, and *Blends are Kokoro's — they take no
+tags.* Under **Written direction**, Blended is off the same way. Blended is also
+off while the installed speech runtime can't play a blend: *Blends need a speech
+runtime that can play them — update it on AI Settings → Speech engines when an
+update is offered.* If the choice you were on goes off, the page moves to the
+first one that can. A clone or a design's kept clip can be on a model of any
+kind, so those stay on.
+
+**Three filters** sit under them — *These only narrow the list. Each counts the
+voices left by the others*:
+
+- **Model** — the models with voices that fit everything else chosen, each with
+  its count: under **Written direction** and **Built-in**, only *Qwen3-TTS
+  CustomVoice (9)*. (Until 2026-10-05 it listed every model of the chosen *Made
+  by*, so Written direction still offered Kokoro, and picking it emptied the
+  list.)
 - **Gender** — Female · Male · Neutral, with counts. A voice's gender is worked
   out the same way everywhere: your own override first (Voices → click the
   letter), then what the voice says about itself, then the voice's id or first
@@ -199,19 +222,14 @@ voices are left:
   American and British English alike. It is not what the persona speaks — that
   is **Speaks**, below.
 
-A filter you chose that nothing fits any more stays in its list with **(0)**, so
-you can see it and change it. The persona's own voice stays in the **Voice** box
-even when the filters hide it, so a filter never makes the voice look unset.
+The direction and *Made by* counts follow the filters too. A choice that nothing
+fits any more stays in its list with **(0)**, so you can see it and change it.
+The persona's own voice stays in the **Voice** box even when the filters hide
+it, so a filter never makes the voice look unset; under the box, how many voices
+are in the list.
 
-**Or make a new one:** **Clone from audio** · **Design from words** · **Blend**
-open their maker at the top of the right column (the same button again closes
-it) — [New clone](#new-clone), [New design](#new-design),
-[New blend](#new-blend). The direction you narrowed to goes with it: under
-**Tags**, the clone maker offers the models that take tags. **Blend** is off
-while the installed speech runtime can't play a blend: *Blends need a speech
-runtime that can play them — update it on AI Settings → Speech engines when an
-update is offered.* (Until 2026-10-05 a *Made by* row sat here as a second
-filter, with each kind's own list.)
+**Voice** is the one choice the persona keeps — *The voice is what the persona
+keeps. Its model comes with it.*
 
 Each voice reads *name · gender · language · model · what it can do*:
 `Sohee · Female · Korean · Qwen3-TTS CustomVoice · written direction`,
@@ -219,8 +237,9 @@ Each voice reads *name · gender · language · model · what it can do*:
 the voice on its own, before anything on this page shapes it; if its model
 isn't loaded it asks before loading it.
 
-**Version** beside the voice is which size and precision of its model speaks
-it — *1.7B*, *0.6B (16-bit)* — and under it the page says what speaks right
+**Version** beside the voice — *Which size of the model speaks. It's set per
+model, so every persona on it uses the same one* — is which size and precision
+of its model speaks it — *1.7B*, *0.6B (16-bit)* — and under it the page says what speaks right
 now: *Speaks with Qwen3-TTS CustomVoice 1.7B · loaded*. A version is chosen per
 **model**, not per persona: picking one here makes it that model's default, the
 same as **Set as default** on AI Settings → Speech engines, so every persona on
@@ -256,11 +275,10 @@ old language whenever the new model could speak it.)
 
 ### Making a voice on this page
 
-A persona makes its own voice. **Clone from audio**, **Design from words** or
-**Blend** under *Or make a new one* opens its fields — **New clone**, **New
-design**, **New blend** — at the top of the right column, beside the list they
-fill; the same button again closes them. Built-in voices come with their
-models, so there is nothing to make for them. What you make is saved to
+A persona makes its own voice. Pick **Cloned**, **Designed** or **Blended**
+under *Made by* and its fields — **New clone**, **New design**, **New blend** —
+open at the top of the right column, beside the list they fill. Pick
+**Built-in** and nothing opens: built-in voices come with their models. What you make is saved to
 [Voices](voices.md) the moment you press **💾 Keep**, so another persona can
 use it too; this persona takes it at once (save the persona to keep that).
 
@@ -334,7 +352,7 @@ Either way the voice stays a design and keeps its description. Under
 design models take written direction — so that button is off and says so, and
 *Spoken by* lists only the models that match.
 
-**A kept voice doesn't change.** Pick a design under *Design from words* and
+**A kept voice doesn't change.** Pick a design under *Designed* and
 its words show under the list with **Start from this one**, which copies them
 into New design as a copy to change and keep under a new name (it opens as
 *Harbour-master (2)*).
@@ -480,8 +498,8 @@ type, with everything on the page, and opens it; the persona you started from
 stays as it was saved: *Saved as a new persona. June is untouched.*
 
 **🧪 Train a LoRA** is off until voice training is rebuilt. (The **🔀 Blend**
-button that sat here went on 2026-10-04: a blend is made under *Or make a new
-one*.)
+button that sat here went on 2026-10-04: a blend is a type of voice under
+*Made by*.)
 
 Clearing a field and saving clears it (until 2026-10-03, emptying the delivery,
 the note or the lexicon kept the old value while the page said it was saved).

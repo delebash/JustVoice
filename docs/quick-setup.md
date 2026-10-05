@@ -22,7 +22,7 @@ be, and the estimate below is that total.
 
 | Tier | VRAM range | Engines — and where each runs | Models to download (on first load) |
 |---|---|---|---|
-| **CPU / low VRAM** | <7 GB | Kokoro, KittenTTS and Pocket TTS — preset voices and cloning, all on the CPU | 0.8 GB |
+| **CPU / low VRAM** | <7 GB | Kokoro, KittenTTS and Pocket TTS — built-in voices and cloning, all on the CPU | 0.8 GB |
 | **8 GB+** | 7 GB and up | Kokoro and Pocket TTS on the CPU (keeps the card free for the AI model) + Chatterbox Multilingual and Qwen3-TTS on the graphics card | 5.4 GB |
 
 The sizes are each engine's default 8-bit model (Pocket TTS: English; Qwen3-TTS:

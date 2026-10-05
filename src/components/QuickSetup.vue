@@ -63,7 +63,7 @@ const RUNS_ON = {
 const TIER_RECIPES = {
   cpu: {
     label: "CPU / low VRAM",
-    blurb: "Kokoro, KittenTTS and Pocket TTS — preset voices and voice cloning, all on the CPU.",
+    blurb: "Kokoro, KittenTTS and Pocket TTS — built-in voices and voice cloning, all on the CPU.",
     ttsEngineIds: ["kokoro", "kitten", "pocket"],
     runsOn: { kokoro: "cpu", kitten: "cpu", pocket: "cpu" },
     estimatedDownloadGb: 0.8,
@@ -344,7 +344,7 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
             <div class="quick-setup__row-label">What happens next</div>
             <ol class="quick-setup__next">
               <li>The speech runtime downloads &amp; verifies (one-time)</li>
-              <li>Clone your voice from ~30 s of audio — or skip and use preset voices</li>
+              <li>Clone your voice from ~30 s of audio — or skip and use built-in voices</li>
               <li>Pick what you're making (audiobook · game · podcast) and import</li>
             </ol>
             <div class="jv-banner jv-banner--info quick-setup__note quick-setup__note--banner">

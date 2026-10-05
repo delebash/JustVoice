@@ -142,7 +142,7 @@ row. It is a larger download and needs more memory; the 8-bit row stays the
 default, and KittenTTS has no second row because it already ships unquantized.
 See [8-bit or 16-bit](#8-bit-or-16-bit) for what the difference measured.
 
-| Engine · model | Download (8-bit · 16-bit) | Languages | Clones | Preset voices | Weights licence |
+| Engine · model | Download (8-bit · 16-bit) | Languages | Clones | Built-in voices | Weights licence |
 |---|---|---|---|---|---|
 | **Kokoro 82M** | 190 MB · 212 MB | 9 (American and British English, Mandarin, Spanish, French, Hindi, Italian, Brazilian Portuguese, Japanese) | — | 54 | Apache-2.0 |
 | **KittenTTS Mini 0.8** | 302 MB (unquantized) | English | — | 8 | Apache-2.0 |
@@ -189,13 +189,13 @@ VoxCPM2 uses that too, as Qwen3 Base does. It is a graphics-card model: about 1.
 card, 0.2× on a CPU.
 
 **KittenTTS** is a small English model built to run without a graphics card,
-with eight preset voices: Bella, Luna, Rosie and Kiki (female), Jasper, Bruno,
+with eight built-in voices: Bella, Luna, Rosie and Kiki (female), Jasper, Bruno,
 Hugo and Leo (male). The same seed does not give it the same audio twice, so it
 offers no seed.
 
 **Pocket TTS** is Kyutai's small cloning model — the one that clones fast
 enough on a CPU. It clones from a short clip (no transcript needed) and speaks
-20 preset voices. Each language is its own model and its own download; the
+20 built-in voices. Each language is its own model and its own download; the
 presets speak whichever language's model is loaded, and a line in another
 language stops with a message naming the model to load, rather than reading
 German with English sounds.
@@ -221,7 +221,7 @@ German with English sounds.
   the terms with an **Accept** button when Pocket TTS is the chosen model, the
   Pocket TTS row on Speech engines has **Read and accept**, and a Pocket TTS
   clone asked for anywhere else (a chapter, a persona's Hear it, JustWrite, the API) stops
-  with a message until you have. Presets need no acceptance.
+  with a message until you have. Built-in voices need no acceptance.
 - **The weights are CC-BY-4.0**, which permits commercial use; the credit it
   asks for is in NOTICE.md.
 ### 8-bit or 16-bit
@@ -458,7 +458,7 @@ against 5.8 %) and rendered narration (8.6 % against 9.9 %).
   scale.
 - **Dictation playback** (MCP `speak` tool). Kokoro. Lowest latency.
 - **No graphics card, or a small one shared with an AI model.** Kokoro and
-  KittenTTS for preset voices, Pocket TTS for cloning — all three speak more
+  KittenTTS for built-in voices, Pocket TTS for cloning — all three speak more
   than three times faster than real time on an 8-core CPU.
 
 ## Loading and unloading
@@ -499,7 +499,7 @@ Each engine group expands into its model rows, and each row carries the model's
   multilingual ones (hover for the full list).
 - **Capability chips** — `CLONING` (clones a voice from a short clean sample)
   and `PRESETS · N` (ships N ready-made voices). The filter row above the list
-  (**All · TTS · STT · Cloning · Preset voices**) filters on exactly these
+  (**All · TTS · STT · Cloning · Built-in voices**) filters on exactly these
   facts.
 - **Licence chip** — the model's *weights* licence. Every bundled model
   permits selling your generated output.
