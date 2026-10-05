@@ -35,7 +35,7 @@ JustVoice serves five distinct audiences. Pick your primary at first launch — 
 **Flow**:
 1. **Import** a script (CSV, SRT, or write directly in JustVoice).
 2. **Cast** — give each speaker (hosts and guests) a persona.
-3. **Stories timeline** *(planned — the tab is a placeholder today; episodes work through Chapters + Studio)* — arrange voiced segments on a multi-track timeline. Add SFX, music beds via drag-drop. Trim, split, version-pin per clip.
+3. **Stories timeline** *(planned — the tab is a placeholder today; episodes work through Studio)* — arrange voiced segments on a multi-track timeline. Add SFX, music beds via drag-drop. Trim, split, version-pin per clip.
 4. **Render** — full episode mix-down. Podcast [mastering.md](mastering.md) preset (-16 LUFS).
 5. **Export** — MP3 / WAV.
 

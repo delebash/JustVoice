@@ -2,6 +2,11 @@
 
 ## v0.1.0
 
+- **A demo project opens like any new project (2026-10-05).** **＋ New project →
+  a demo project** now opens the demo in Studio on its Overview, and the sidebar
+  switches to its kind. Before, after a reset, the app stayed on Projects and
+  the sidebar kept every kind's tabs — Lines and Stories beside an audiobook
+  ([Projects → Demo projects](projects.md#demo-projects))
 - **A book with narration gets a narrator (2026-10-05).** Discover lists
   **Narrator** first among the speakers found, ticked, while the book has none;
   Script's **Analyze** asks for one before it runs (**＋ Add Narrator and

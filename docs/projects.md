@@ -1,8 +1,8 @@
 # Projects
 
 The project library — every audiobook, game voiceline set, and podcast in one
-table. One project is **active** at a time; the workflow tabs (Chapters, Lines,
-Studio) operate on it.
+table. One project is **active** at a time; the workflow tabs (Studio, and Lines
+for a game) operate on it.
 
 **Click a project to open it.** It opens in [Studio](studio.md), on its
 **Overview** — every project does, however you open it: from this list, from
@@ -36,20 +36,24 @@ The row used to expand into a detail pane. Everything it held moved:
 | Cast pills and **+ Add personas** | Studio · **Cast** — the one place a book's speakers get their personas |
 | Render preset | gone — render presets were removed on 2026-10-03 |
 | Webhook on complete | gone — nothing ever sent it; webhooks are set up in Settings |
-| The chapters subtable | the **Chapters** tab, and Studio's steps |
+| The chapters subtable | Studio · **Script**'s chapter grid, and Studio's steps |
 
 ## Demo projects
 
 **＋ New project → a demo project** creates a sample project of the kind you
 picked, so you can click through the whole flow before importing anything of
-your own. Deleting it touches nothing else.
+your own. It opens in Studio on its **Overview**, like any new project, and
+the sidebar switches to its kind — an audiobook demo shows no Lines or Stories.
+Deleting it touches nothing else.
 
 - **Audiobook** — *The Ninth Facet*, JustWrite's own sample novel: two parts,
   four chapters, eight people and plenty of dialogue, some tagged ("said
   Threll"), some not. It is imported exactly as your own JustWrite export
   would be, so its eight people arrive as the book's speakers — with no
   personas yet, unless your library has a persona of exactly one of their
-  names. It has no narrator until you add or pick one on Studio's Cast step.
+  names. It has no narrator until you add one — **Discover** lists
+  **Narrator** first among the speakers found, ticked, and Script's **Analyze**
+  asks for one — or pick one on Studio's Cast step.
   **Discover** shows the speakers it finds as *In the cast*; remove one there
   (it asks first) and its row turns *New*, ready to ＋ Add back.
 - **Game voicelines** — *Emberfall VO*, five lines with stable line ids.

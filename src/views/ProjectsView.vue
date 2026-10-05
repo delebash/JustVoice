@@ -134,9 +134,11 @@ async function onCreateProject({ name, project_type, language }) {
   }
 }
 
+// A demo opens like any new project (2026-10-05) — it skipped this, so after
+// a reset the focus stayed "unset" and the menu kept every kind's items.
 async function onCreateDemo(kind) {
   try {
-    await api.request("/v1/projects/demo", {
+    const run = await api.request("/v1/projects/demo", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ kind }),
@@ -144,6 +146,7 @@ async function onCreateDemo(kind) {
     showNewProject.value = false;
     await refresh();
     pushToast({ kind: "success", title: "Demo project loaded", description: "Explore freely — deleting it touches nothing else." });
+    landOnOverview(projects.value.find((p) => p.id === run?.project_id));
   } catch (e) {
     pushToast({ kind: "error", title: "Demo failed", description: String(e?.message ?? e) });
   }

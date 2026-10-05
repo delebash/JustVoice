@@ -723,6 +723,33 @@ GO: needed.
 
 ## The next build
 
+### A demo project opens like any new project — on its Overview, with the menu of its kind
+STATE:  DECIDED 2026-10-05 — "your rec go", on the fix as shown (report: after a database reset,
+        the sample audiobook from the kind picker left Lines and Stories in the menu): "`onCreateDemo`
+        takes the `project_id` the server already returns (`projects_api.py:1419`) and calls
+        `landOnOverview`, the same as create and import. Effect: the demo sets the focus to Audiobook
+        and opens The Ninth Facet on Studio's Overview, so the menu drops Lines and Stories right
+        away. Docs: `docs/projects.md` 'Demo projects' gets a line saying the demo opens on its
+        Overview." Plus the two doc corrections shown: `docs/projects.md:39` still sends the old
+        chapters subtable to "the Chapters tab" (deleted with Slice 4; chapters are on Studio's
+        Script); its demo paragraph says the book "has no narrator until you add or pick one on
+        Studio's Cast step" (since 2026-10-05 Discover proposes one too). The question, answered
+        with the lean: after "✨ a demo project", open the demo on its Overview the way create and
+        import do — one rule for every new project.
+WHY:    `onCreateDemo` (`ProjectsView.vue:137`) only created, refreshed and toasted; it skipped
+        `landOnOverview` (`:96`), so the focus stayed "unset" with no project open, and "unset"
+        lists Lines and Stories (`App.vue:43,45`).
+NOT:    staying on Projects and only setting the focus and the active project.
+BUILT:  2026-10-05 — `ProjectsView.vue` `onCreateDemo` → `landOnOverview`; docs `projects.md` (the
+        demo opens on its Overview, the narrator line, two "Chapters" references gone),
+        `use-cases.md` (the same), `whats-new.md`. Biome, vitest 142, build, smoke 15/15 on the
+        running app. Live on the running app: ✨ a demo project → `#/studio` on the new demo's
+        Overview, focus "audiobook", the demo active, no Lines or Stories in the sidebar; the demo
+        deleted after and the active project and focus put back. Not reproduced live: the "before"
+        (a project at boot is opened by `ensureActiveProjectDefault`, so only a reset shows it).
+OPEN:   none.
+GO:     given 2026-10-05 ("your rec go")
+
 ### A book with narration gets a narrator: Discover proposes it, Script asks for it
 STATE:  DECIDED 2026-10-05 — "your rec on all go", on the flow as shown (the user first: "if there
         is narration then we need a narrator, that is not an option … discover should propose a
