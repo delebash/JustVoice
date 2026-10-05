@@ -141,7 +141,7 @@ Deleting a book deletes its speakers.
 - `PersonaEditorView.vue` (2026-10-03, the redesign's P4; laid out as the in-app
   mock `src/mock/MockPersonaEditorView.vue` 2026-10-04 — `.jv-split--wide-left`,
   `.jv-knob-grid`): cards Persona (name, note) · Voice ("How it can be directed"
-  first, "Made by" second — a kind that can't be directed that way is off; Model /
+  first, "Type" (once "Made by") second — a kind that can't be directed that way is off; Model /
   Gender / Language filters; each option ends with what it can do; ▶ Play;
   Speaks) · How it speaks (pace, pitch, gain, pauses; Style Instructions +
   emotion, or Turbo's emotion + register tags, by `directed_by`; effects;

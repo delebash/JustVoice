@@ -723,6 +723,28 @@ GO: needed.
 
 ## The next build
 
+### Type, not Made by; Trained beside the other types; no LoRA button on Save (decided 2026-10-05)
+STATE:  DECIDED 2026-10-05 — "your rec on all go", on the three as shown (the user: "train a lora on
+        persona is down at the bottom of save, seems a strange place … maybe we change made by to
+        make or made by something to indicate you filter by type but also create new"):
+        "1. Drop the button from the Save card. A LoRA is another way to make a voice … it already
+        has a spot there [under Made by]. When training is rebuilt, picking it lists your trained
+        voices and opens a 'New LoRA' maker on the right, like the other three. 2. Rename Made by to
+        Type. That's the word Voices already uses for its column and chips … The line under it says
+        the second job: 'What type of voice. Built-in voices come with their model. Cloned,
+        Designed and Blended list the voices you've made, and open their maker on the right so you
+        can make a new one.' I'd keep the control itself as is; the line does the explaining. 3.
+        Rename Trained LoRA to Trained, so the row reads Built-in · Cloned · Designed · Blended ·
+        Trained. Its tooltip would still say what it is: 'LoRA training — not rebuilt yet'."
+BUILT:  2026-10-05 — `PersonaEditorView.vue` and its mock (label and aria "Type", the line as shown,
+        the Save card's LoRA button gone), `personaFacts.VOICE_KINDS` ("Trained", the tooltip), the
+        three makers' header comments; docs personas, voices, troubleshooting, code-map,
+        whats-new. Checked: Biome, build, the personaFacts test file; live on the dev app — "TYPE
+        Built-in (91) · Cloned (0) · Designed (0) · Blended (0) · Trained", its line, Trained's
+        tooltip, and the Save card "💾 Save · ↺ Revert". Not run: the suites (the user's word).
+OPEN:   none.
+GO:     given 2026-10-05
+
 ### The persona page's Voice card goes back to its original layout, with synced filters and words (decided 2026-10-05)
 STATE:  DECIDED 2026-10-05 — the user chose "A" from the two side by side (`#/mock/voice-card`):
         "A = the original layout + dropdowns that sync … The real persona page currently looks like

@@ -2,6 +2,10 @@
 
 ## v0.1.0
 
+- **A persona's "Made by" is now "Type" (2026-10-05)** — the word Voices uses —
+  with **Trained** beside Built-in, Cloned, Designed and Blended (off until voice
+  training is rebuilt), and **🧪 Train a LoRA** gone from Save
+  ([Personas → Voice](personas.md#voice))
 - **One set of words for a voice's type (2026-10-05).** **Built-in · Cloned ·
   Designed · Blended** on every screen — Voices' chips and Type column, a
   persona's **Made by**, Speech engines, Quick setup. Voices said *Preset* and

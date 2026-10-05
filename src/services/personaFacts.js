@@ -57,13 +57,13 @@ export function tagCount(row) {
  *  and listed Imported apart; the persona page said Clone from audio, Design
  *  from words, Blend. An imported voice is a clone that came in from a voice
  *  file (it carries a reference clip), so it is Cloned. The persona page's
- *  Made by row uses these labels too. */
+ *  Type row uses these labels too; Trained (LoRA) waits for training. */
 export const VOICE_KINDS = [
   { value: "builtin", label: "Built-in" },
   { value: "clone", label: "Cloned" },
   { value: "design", label: "Designed" },
   { value: "blend", label: "Blended" },
-  { value: "lora", label: "Trained LoRA", disabled: true, title: "Needs voice training, which isn't rebuilt yet." },
+  { value: "lora", label: "Trained", disabled: true, title: "LoRA training — not rebuilt yet" },
 ];
 
 const KIND_OF_SOURCE = { preset: "builtin", cloned: "clone", imported: "clone", designed: "design", blended: "blend" };

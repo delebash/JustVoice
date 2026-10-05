@@ -180,22 +180,23 @@ offers below.*
 | Tags | pick from the model's own list | `[fear]` … `[sigh]` | Chatterbox Turbo, Chatterbox Nano |
 | Sliders only | pace, pitch, gain — no words | Pace 1.05×, Pitch −2 st | Kokoro, KittenTTS, Pocket TTS, Chatterbox Multilingual, Qwen3 Base |
 
-**How it was made comes second.** *Made by* lists the voices of one type, with
+**How it was made comes second.** *Type* lists the voices of one type, with
 how many — **Built-in · Cloned · Designed · Blended**, the words every screen
-uses for a voice's type ([Voices](voices.md)). Under it: *How the voice was
-made. Built-in voices come with their model. Cloned, Designed and Blended list
+uses for a voice's type ([Voices](voices.md)), and *Trained*, off until voice
+training is rebuilt. Under it: *What type of voice. Built-in voices come with
+their model. Cloned, Designed and Blended list
 the voices you've made, and open their maker on the right so you can make a new
 one.*
 
-| Made by | Lists | Made on |
+| Type | Lists | Made on |
 |---|---|---|
 | Built-in | The models' own voices — Kokoro's `af_heart`, Qwen3 CustomVoice's Sohee | AI Settings → Speech engines, by installing a model |
 | Cloned | Voices cloned from a recording, imported ones too | This page — [New clone](#new-clone) |
 | Designed | Voices designed from a description, with or without a kept clip | This page — [New design](#new-design) |
 | Blended | Kokoro blends of two or more voices | This page — [New blend](#new-blend) |
-| Trained LoRA | Off: *Needs voice training, which isn't rebuilt yet.* | — |
+| Trained | Off: *LoRA training — not rebuilt yet.* When it is, its maker opens here like the others | — |
 
-A *Made by* choice that can't be directed the way you picked is off, and says
+A *Type* that can't be directed the way you picked is off, and says
 why when you click it. Under **Tags**: *No built-in voice takes tags — Chatterbox
 Turbo and Nano voices are clones*, and *Blends are Kokoro's — they take no
 tags.* Under **Written direction**, Blended is off the same way. Blended is also
@@ -222,7 +223,7 @@ voices left by the others*:
   American and British English alike. It is not what the persona speaks — that
   is **Speaks**, below.
 
-The direction and *Made by* counts follow the filters too. A choice that nothing
+The direction and *Type* counts follow the filters too. A choice that nothing
 fits any more stays in its list with **(0)**, so you can see it and change it.
 The persona's own voice stays in the **Voice** box even when the filters hide
 it, so a filter never makes the voice look unset; under the box, how many voices
@@ -276,7 +277,7 @@ old language whenever the new model could speak it.)
 ### Making a voice on this page
 
 A persona makes its own voice. Pick **Cloned**, **Designed** or **Blended**
-under *Made by* and its fields — **New clone**, **New design**, **New blend** —
+under *Type* and its fields — **New clone**, **New design**, **New blend** —
 open at the top of the right column, beside the list they fill. Pick
 **Built-in** and nothing opens: built-in voices come with their models. What you make is saved to
 [Voices](voices.md) the moment you press **💾 Keep**, so another persona can
@@ -497,9 +498,9 @@ save.
 type, with everything on the page, and opens it; the persona you started from
 stays as it was saved: *Saved as a new persona. June is untouched.*
 
-**🧪 Train a LoRA** is off until voice training is rebuilt. (The **🔀 Blend**
-button that sat here went on 2026-10-04: a blend is a type of voice under
-*Made by*.)
+(The **🔀 Blend** button that sat here went on 2026-10-04, and **🧪 Train a LoRA**
+on 2026-10-05: a blend, and a trained voice once training is rebuilt, are types
+of voice under *Type*.)
 
 Clearing a field and saving clears it (until 2026-10-03, emptying the delivery,
 the note or the lexicon kept the old value while the page said it was saved).

@@ -11,7 +11,7 @@
   docs/plans/2026-10-04-persona-voice-making.md): knobs three across, text
   boxes as wide as their card, the left column 1.5 × the right.
     · Voice — what a voice can do comes first ("How it can be directed"), how
-      it was made second ("Made by" — a made kind also opens its maker on the
+      it was made second ("Type" — a made type also opens its maker on the
       right); Model / Gender / Voice's language beside the list; each lists only
       what the others leave, with counts that match (decided 2026-10-05, "A");
       a short line under each part says what it means. The voice names its
@@ -24,7 +24,8 @@
     · Hear it — the line through the same resolver a chapter renders with;
       Rewrite and Compose. Right above Save, below everything that shapes the
       sound (decided 2026-10-05).
-    · Save — Save, Revert, Save as new, Train a LoRA (off). Blend is a kind
+    · Save — Save, Revert, Save as new. (Train a LoRA left 2026-10-05: Trained is a
+      Type, beside Cloned — where its maker opens once training is rebuilt.) Blend is a kind
       of voice now, not a button here.
   The right column: a summary, This model, Used by.
 
@@ -253,10 +254,10 @@ const notLoaded = computed(() => {
 
 // ── The Voice card — its original layout (decided 2026-10-04), with filters
 // that narrow each other (decided 2026-10-05, "A"): How it can be directed and
-// Made by first, then Model · Gender · Voice's language, then the voice. Each
+// Type (once "Made by") first, then Model · Gender · Voice's language, then the voice. Each
 // lists only what the others leave, with counts that match what the list will
 // show (services/facets.js) — Model and the voice's language were built from
-// Made by alone, so Written direction + Built-in still offered Kokoro (54).
+// Type alone, so Written direction + Built-in still offered Kokoro (54).
 
 // What a voice can do comes first (the user, 2026-10-04: "there needs to be a
 // bette way to identify a voice that can do direction and words") — each with
@@ -289,7 +290,7 @@ const genderFilter = ref("");
 const languageFilter = ref("");
 const baseLang = (code) => String(code || "").split(/[-_]/)[0].toLowerCase();
 
-// Every filter, for the shared rule; Made by always has a kind chosen.
+// Every filter, for the shared rule; Type always has a kind chosen.
 const voiceFilters = computed(() => [
   { key: "direction", value: directionFilter.value, test: (v, d) => v.directed_by === d },
   { key: "kind", value: kind.value, test: (v, k) => kindOf(v) === k },
@@ -975,9 +976,9 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
                 hint="What the voice's model takes to shape how it speaks. Written direction: you describe it in words (Style Instructions). Tags: you pick from the model's list, like [sigh]. Sliders only: pace, pitch and gain. This decides what How it speaks offers below.">
                 <UiSegmented v-model="directionFilter" :options="directionChoices" size="small" aria-label="How it can be directed" />
               </UiField>
-              <UiField label="Made by" layout="block"
-                hint="How the voice was made. Built-in voices come with their model. Cloned, Designed and Blended list the voices you've made, and open their maker on the right so you can make a new one.">
-                <UiSegmented v-model="kind" :options="kindOptions" size="small" aria-label="Made by" @blocked="onKindBlocked" />
+              <UiField label="Type" layout="block"
+                hint="What type of voice. Built-in voices come with their model. Cloned, Designed and Blended list the voices you've made, and open their maker on the right so you can make a new one.">
+                <UiSegmented v-model="kind" :options="kindOptions" size="small" aria-label="Type" @blocked="onKindBlocked" />
               </UiField>
               <div class="jv-field-row">
                 <UiField label="Model" layout="block">
@@ -1221,8 +1222,6 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
                   </UiField>
                   <UiButton intent="secondary" label="＋ Save as new" :disabled="!saveAsName.trim()" @click="saveAsNew" />
                 </template>
-                <span class="jv-spacer" />
-                <UiButton intent="ghost" label="🧪 Train a LoRA" disabled title="Needs voice training, which isn't rebuilt yet." />
               </div>
             </div>
           </div>

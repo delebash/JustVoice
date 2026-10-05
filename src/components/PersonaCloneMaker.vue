@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: MIT -->
 <!--
   New clone — on the persona's own page, at the top of the right column while
-  "Made by" is Clone from audio (decided 2026-10-04: "the whole design should
+  "Type" is Cloned (decided 2026-10-04: "the whole design should
   be part of the persona"; plan docs/plans/2026-10-04-persona-voice-making.md
   §3; the approved mock is src/mock/MockCloneMaker.vue).
 

@@ -41,7 +41,7 @@ a model; they render on their engine's default model that can speak them.
 The Voices page is the **library**: every voice you have, to find, hear,
 copy to another model, start a persona from, or delete. A new voice is made
 on a **persona's page** (since 2026-10-04): *Cloned*, *Designed* or *Blended*
-under *Made by* opens its fields right there — see
+under *Type* opens its fields right there — see
 [Personas → Making a voice on this page](personas.md#making-a-voice-on-this-page).
 You hear it as that persona before you keep it, and once kept it is here, in
 the library, for any persona to use.
@@ -54,7 +54,7 @@ the library, for any persona to use.
 | **Blended** | Made out of Kokoro's own voices — mixed, exaggerated, added and subtracted, or spliced. | [New blend](personas.md#new-blend) |
 
 These four are the words every screen uses for a voice's type — Voices' chips and Type
-column, a persona's **Made by**, and the label beside a voice everywhere (since 2026-10-05;
+column, a persona's **Type**, and the label beside a voice everywhere (since 2026-10-05;
 Voices said *Preset* and listed *Imported* apart, the persona page *Clone from audio*,
 *Design from words* and *Blend*).
 

@@ -128,7 +128,7 @@ const locked = computed(() => !voice.value);
 const notLoaded = computed(() => !!voice.value && statusOf(model.value) !== "loaded");
 
 // The Voice card, as the page (decided 2026-10-05, "A"): How it can be
-// directed and Made by first, then Model · Gender · Voice's language, then the
+// directed and Type first, then Model · Gender · Voice's language, then the
 // voice; each lists only what the others leave (services/facets.js).
 const directionFilter = ref("");
 const DIRECTION_WORD = { words: "written direction", tags: "tags", sliders: "sliders only" };
@@ -224,7 +224,7 @@ const voiceEmptyHint = computed(() => {
 // The Version field, from the catalog's list (MODEL_VERSIONS).
 const versionOptions = computed(() => (MODEL_VERSIONS[voice.value?.model] || []).map((x) => ({ value: x, label: x })));
 
-// ── Making a voice, here — a made kind under Made by opens its maker.
+// ── Making a voice, here — a made type under Type opens its maker.
 const MAKERS = ["clone", "design", "blend"];
 const maker = computed(() => (MAKERS.includes(kind.value) ? kind.value : null));
 const designFrom = ref(null);   // a kept design whose words start the maker
@@ -612,9 +612,9 @@ watch([() => draft.value?.name, isNew], publishCrumbs, { immediate: true });
                 hint="What the voice's model takes to shape how it speaks. Written direction: you describe it in words (Style Instructions). Tags: you pick from the model's list, like [sigh]. Sliders only: pace, pitch and gain. This decides what How it speaks offers below.">
                 <UiSegmented v-model="directionFilter" :options="directionChoices" size="small" aria-label="How it can be directed" />
               </UiField>
-              <UiField label="Made by" layout="block"
-                hint="How the voice was made. Built-in voices come with their model. Cloned, Designed and Blended list the voices you've made, and open their maker on the right so you can make a new one.">
-                <UiSegmented v-model="kind" :options="kindOptions" size="small" aria-label="Made by" @blocked="onKindBlocked" />
+              <UiField label="Type" layout="block"
+                hint="What type of voice. Built-in voices come with their model. Cloned, Designed and Blended list the voices you've made, and open their maker on the right so you can make a new one.">
+                <UiSegmented v-model="kind" :options="kindOptions" size="small" aria-label="Type" @blocked="onKindBlocked" />
               </UiField>
               <div class="jv-field-row">
                 <UiField label="Model" layout="block">
@@ -823,8 +823,6 @@ watch([() => draft.value?.name, isNew], publishCrumbs, { immediate: true });
                   </UiField>
                   <UiButton intent="secondary" label="＋ Save as new" :disabled="!saveAsName.trim()" @click="saveAsNew" />
                 </template>
-                <span class="jv-spacer" />
-                <UiButton intent="ghost" label="🧪 Train a LoRA" disabled title="Needs voice training, which isn't rebuilt yet." />
               </div>
             </div>
           </div>

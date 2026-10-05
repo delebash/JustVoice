@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: MIT -->
 <!--
   New design — on the persona's own page, at the top of the right column while
-  "Made by" is Design from words (decided 2026-10-04; plan
+  "Type" is Designed (decided 2026-10-04; plan
   docs/plans/2026-10-04-persona-voice-making.md §3; the approved mock is
   src/mock/MockDesignMaker.vue). Both of the 08-22 paths ("same as
   alexandria"):
