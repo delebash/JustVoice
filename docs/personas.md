@@ -144,7 +144,8 @@ banner asks you to pick another.
 The page is two columns: the cards you edit on the left — the wider one — and
 a summary, **This model** and **Used by** on the right. On a new persona only **Persona** and **Voice** are live: every
 card below them depends on the voice's model, so they open once a voice is
-picked (*Pick a voice first — everything below depends on its model*).
+picked — the line under the voice says so: *91 voices in the list. Its model
+decides everything below.*
 
 Leaving the page with unsaved changes asks first: *June has changes that
 aren't saved. They are lost if you leave.*
@@ -226,11 +227,13 @@ voices left by the others*:
 The direction and *Type* counts follow the filters too. A choice that nothing
 fits any more stays in its list with **(0)**, so you can see it and change it.
 The persona's own voice stays in the **Voice** box even when the filters hide
-it, so a filter never makes the voice look unset; under the box, how many voices
-are in the list.
+it, so a filter never makes the voice look unset.
 
-**Voice** is the one choice the persona keeps — *The voice is what the persona
-keeps. Its model comes with it.*
+**Voice** is the one choice the persona keeps. One line under it says how many
+voices are in the list and that its model decides everything below — *91 voices
+in the list. The voice's model decides everything below.* — or, when the filters
+leave none, that nothing matches. The card's explanatory lines wrap at one
+reading width.
 
 Each voice reads *name · gender · language · model · what it can do*:
 `Sohee · Female · Korean · Qwen3-TTS CustomVoice · written direction`,

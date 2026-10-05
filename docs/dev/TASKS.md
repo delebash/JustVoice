@@ -723,6 +723,26 @@ GO: needed.
 
 ## The next build
 
+### The Voice card's lines: one line under the voice, one reading width (decided 2026-10-05)
+STATE:  DECIDED 2026-10-05 — "your rec go", on the two as shown (the user, of "The voice is what the
+        persona keeps. Its model comes with it. / 91 voices in the list. / Pick a voice first —
+        everything below depends on its model.": "some duplication and wrapping, word this better
+        and and the other text stretches vs wraps"): "1. Replace the three lines with one — before a
+        voice is picked: '91 voices in the list. Its model decides everything below.' After: '91
+        voices in the list. The voice's model decides everything below.' When the filters leave
+        none, the line says that instead … 'The voice is what the persona keeps' goes; the Voice
+        label already says it. 2. Give every explanatory line on the card one reading width, about
+        60 characters, so they all wrap the same way and none stretch across the card."
+BUILT:  2026-10-05 — `PersonaEditorView.vue` and its mock (the one line; the two "Pick a voice…"
+        lines gone; `.persona-editor__voicecard` caps every hint at 30rem — in rem, since the field
+        hints' smaller font made 60ch narrower); docs personas. Also: Version's options now carry
+        their size (`versions_of` takes it from `model_catalog.models_for`; the raw rows had none).
+        Live after a restart: every line 420px wide; Version "1.7B · 2.6 GB" with "0.6B · 1.6 GB",
+        "1.7B (16-bit) · 3.9 GB", "0.6B (16-bit) · 2.0 GB"; "Speaks with Qwen3-TTS CustomVoice 1.7B ·
+        not loaded — the first Listen loads it."
+OPEN:   none.
+GO:     given 2026-10-05
+
 ### Type, not Made by; Trained beside the other types; no LoRA button on Save (decided 2026-10-05)
 STATE:  DECIDED 2026-10-05 — "your rec on all go", on the three as shown (the user: "train a lora on
         persona is down at the bottom of save, seems a strange place … maybe we change made by to
@@ -805,7 +825,7 @@ BUILT:  2026-10-05 — the plan `docs/plans/2026-10-05-cast-render-persona.md` �
         page says so and offers Load. Docs: personas, whats-new; RESEARCH §7. Checked: ruff, Biome,
         build. Not checked live: the route needs the app restarted (asked); no suites (the user's
         word).
-OPEN:   the live check, after a restart.
+OPEN:   none — checked live 2026-10-05 after a restart (see "The Voice card's lines" above).
 GO:     given 2026-10-05
 
 ### The persona page's Voice card: pick a voice first, filters that narrow each other (decided 2026-10-05)

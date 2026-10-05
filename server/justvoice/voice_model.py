@@ -505,6 +505,14 @@ def versions_of(state: Any, voice_id: str, language: str | None = None) -> dict[
         default = _manager().resolved_default_variant(vm.engine_id)
     except Exception:  # noqa: BLE001
         default = None
+    # The size the Speech engines page shows — the catalog computes it from the
+    # files; the raw rows carry none.
+    try:
+        from .engines.model_catalog import models_for
+
+        sizes = {m.id: m.size_mb for m in models_for(vm.engine_id)}
+    except Exception:  # noqa: BLE001
+        sizes = {}
     return {
         "engine_id": vm.engine_id,
         "model": vm.model,
@@ -513,7 +521,7 @@ def versions_of(state: Any, voice_id: str, language: str | None = None) -> dict[
         "loaded": loaded if rows else None,
         "default": default if model_of_variant(default) == vm.model else None,
         "versions": [
-            {"id": r["id"], "name": r.get("name") or r["id"], "size_mb": r.get("size_mb"),
+            {"id": r["id"], "name": r.get("name") or r["id"], "size_mb": sizes.get(r["id"]) or None,
              "on_disk": _on_disk(vm.engine_id, r["id"])}
             for r in rows
         ],

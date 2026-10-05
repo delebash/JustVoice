@@ -607,7 +607,7 @@ watch([() => draft.value?.name, isNew], publishCrumbs, { immediate: true });
           <!-- Voice: what it can do → how it was made → filters → a voice that names its model, each with its words. -->
           <div class="jv-card">
             <div class="jv-card__header"><h3 class="jv-card__title">Voice</h3></div>
-            <div class="jv-card__body jv-col">
+            <div class="jv-card__body jv-col persona-editor__voicecard">
               <UiField label="How it can be directed" layout="block"
                 hint="What the voice's model takes to shape how it speaks. Written direction: you describe it in words (Style Instructions). Tags: you pick from the model's list, like [sigh]. Sliders only: pace, pitch and gain. This decides what How it speaks offers below.">
                 <UiSegmented v-model="directionFilter" :options="directionChoices" size="small" aria-label="How it can be directed" />
@@ -641,11 +641,12 @@ watch([() => draft.value?.name, isNew], publishCrumbs, { immediate: true });
                     :disabled="versionOptions.length < 2" />
                 </UiField>
               </div>
-              <p class="jv-hint">The voice is what the persona keeps. Its model comes with it.</p>
+              <!-- One line under the voice (2026-10-05: three said "its model" twice). -->
+              <p v-if="voiceEmptyHint" class="jv-hint">{{ voiceEmptyHint }}</p>
+              <p v-else class="jv-hint">{{ shownVoices.length }} voice{{ shownVoices.length === 1 ? "" : "s" }} in the list.
+                {{ voice ? "The voice's model" : "Its model" }} decides everything below.</p>
               <p v-if="versionOptions.length" class="jv-hint"><strong>Version:</strong> Which size of the model speaks. It's set per
                 model, so every persona on it uses the same one.</p>
-              <p v-if="voiceEmptyHint" class="jv-hint">{{ voiceEmptyHint }}</p>
-              <p v-else class="jv-hint">{{ shownVoices.length }} voice{{ shownVoices.length === 1 ? "" : "s" }} in the list.</p>
               <div v-if="kind === 'design' && voice?.source === 'designed' && voice.design_prompt" class="jv-inline-row">
                 <span class="jv-hint">“{{ voice.design_prompt }}”</span>
                 <UiButton intent="ghost" size="small" label="Start from this one"
@@ -664,8 +665,6 @@ watch([() => draft.value?.name, isNew], publishCrumbs, { immediate: true });
                   <strong>{{ voiceChange.directed }} carry a written direction</strong> — {{ voiceChange.lost }} won't perform them.
                 </template>
               </div>
-              <p v-if="locked && !maker" class="jv-hint">Pick a voice first — everything below depends on its model.</p>
-              <p v-else-if="locked" class="jv-hint">Pick a voice, or make one on the right — everything below depends on its model.</p>
             </div>
           </div>
 
@@ -929,6 +928,11 @@ watch([() => draft.value?.name, isNew], publishCrumbs, { immediate: true });
 .persona-editor { display: flex; flex-direction: column; gap: 12px; }
 .persona-editor__pills { gap: 6px; }
 .persona-editor__fixed { font-size: 13.5px; }
+/* Every explanatory line on the Voice card wraps at one reading width (the
+   layout law: prose gets ~60ch) — the long ones ran the card's width. In rem,
+   not ch: the field hints use a smaller font, so 60ch came out narrower. */
+.persona-editor__voicecard .jv-hint,
+.persona-editor__voicecard :deep(.ui-field__hint) { max-width: 30rem; }
 
 .persona-editor__summary { margin: 0 0 6px; font-weight: 600; }
 .persona-editor__tags { gap: 6px; }
