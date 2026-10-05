@@ -702,6 +702,21 @@ GO: needed.
 
 ## The next build
 
+### The AI bar says "1,468 words", not "1,468 words in" (decided 2026-10-05)
+STATE:  DECIDED 2026-10-05 — "1", then "go" (the user: "in script analyze reading prompt 100% 7.5s
+        1,468 words in what is words in it seems to truncate … its the ai progress bar"), on the
+        two as shown: "1. '1,468 words': drop 'in'. 2. '1,468 words sent'. My lean: 1." — the
+        rename touching both places: Analyze's strip (`chapterRun.js:182`) and the kit guide's
+        example (`appTask.js:44`), so the next feature that copies the guide doesn't bring
+        "words in" back.
+WHY:    "words in" reads like a cut-off sentence; nothing was cut (the bar's items never clip).
+NOT:    2 — "1,468 words sent".
+BUILT:  2026-10-05 — `chapterRun.js:184`; the kit's `ui/src/services/appTask.js:44`. No user doc
+        named it. Checked: Biome, build; live — Analyze on a throwaway chapter (deleted after):
+        the bar read "Script · analyze · Words check (temporary) 0.0s 15 words".
+OPEN:   none.
+GO:     given 2026-10-05
+
 ### Five small findings, fixed as recommended (decided 2026-10-05)
 STATE:  DECIDED 2026-10-05 — "your rec on all go", on the five as shown:
         "1. The title bar cuts 'Personas › June' to 'P..'. The page name is the only item in the bar

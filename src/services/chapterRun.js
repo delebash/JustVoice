@@ -179,7 +179,9 @@ async function drain(projectId) {
             // This chapter only — the step's banner carries "n of N" (2026-10-05).
             feature: FEATURE.analyze,
             label: `Script · analyze · ${item.title}`,
-            stats: [`${text.split(/\s+/).length.toLocaleString()} words in`],
+            // "1,468 words" — the chapter's words sent; "words in" read like a
+            // cut-off sentence (decided 2026-10-05).
+            stats: [`${text.split(/\s+/).length.toLocaleString()} words`],
             inline: true,
             meta,
             signal: run.controller.signal,
