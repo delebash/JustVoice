@@ -142,8 +142,11 @@ async def export_project(
                         "note": persona.note,
                         # How it speaks — pace, pitch, gain, pauses and each
                         # model's own settings — and its effects (2026-10-03:
-                        # the export used to leave both out).
-                        "default_delivery": persona.default_delivery.model_dump(exclude_none=True),
+                        # the export used to leave both out). A persona with
+                        # none saved (Cast's batch makes them so) exports {} —
+                        # it crashed the whole export until 2026-10-05.
+                        "default_delivery": (persona.default_delivery.model_dump(exclude_none=True)
+                                             if persona.default_delivery else {}),
                         "effects_chain": persona.effects_chain,
                         "lexicon_id": persona.lexicon_id,
                     },

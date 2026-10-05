@@ -30,12 +30,12 @@ const PERSONA_COLUMNS = [
   { id: "pick", header: "", headerStyle: NARROW, cellStyle: NARROW },
   { id: "play", header: "", headerStyle: NARROW, cellStyle: NARROW },
   { id: "name", accessorKey: "name", header: "Persona", sortable: true },
-  { id: "built", header: "Built on", cellStyle: { whiteSpace: "nowrap" } },
+  { id: "built", accessorKey: "_built", header: "Built on", sortable: true, cellStyle: { whiteSpace: "nowrap" } },
   { id: "model", accessorKey: "model_name", header: "Model", sortable: true, cellStyle: { whiteSpace: "nowrap" } },
-  { id: "directed", header: "Can be directed", cellStyle: { whiteSpace: "nowrap" } },
-  { id: "speaks", header: "Speaks", cellStyle: { whiteSpace: "nowrap" } },
-  { id: "shaped", header: "Shaped", cellStyle: { whiteSpace: "nowrap" } },
-  { id: "used", header: "Used by" },
+  { id: "directed", accessorKey: "_directed", header: "Can be directed", sortable: true, cellStyle: { whiteSpace: "nowrap" } },
+  { id: "speaks", accessorKey: "_speaks", header: "Speaks", sortable: true, cellStyle: { whiteSpace: "nowrap" } },
+  { id: "shaped", accessorKey: "_shaped", header: "Shaped", sortable: true, cellStyle: { whiteSpace: "nowrap" } },
+  { id: "used", accessorKey: "_used", header: "Used by", sortable: true },
   { id: "more", header: "", headerStyle: NARROW, cellStyle: { ...NARROW, textAlign: "right" } },
 ];
 
@@ -96,6 +96,17 @@ const usageOptions = computed(() => {
 });
 
 const filteredPersonas = computed(() => narrowed(personas.value, personaFilters.value));
+// Every column sorts by what it shows (decided 2026-10-05 — only Persona and
+// Model did). The kit table sorts a column by a value on its row, so each
+// shown column gets one here.
+const personaRows = computed(() => filteredPersonas.value.map((p) => ({
+  ...p,
+  _built: voiceById.value[p.voice_id]?.name || (p.voice_id ? "voice missing" : ""),
+  _directed: p.directed_by ? directed(p).label : "",
+  _speaks: p.speaks ? languageName(p.speaks) || p.speaks : "",
+  _shaped: shaped(p) || "as the voice",
+  _used: usedBy(p.id),
+})));
 const filtering = computed(() => !!(search.value.trim() || modelFilter.value || directionFilter.value
   || languageFilter.value || usageFilter.value));
 function clearFilters() {
@@ -297,7 +308,7 @@ function colorFor(name) {
       action-label="＋ Create your first persona"
       @action="openPersona('new')"
     />
-    <UiTable v-else class="jv-table-look" :data="filteredPersonas" :columns="PERSONA_COLUMNS"
+    <UiTable v-else class="jv-table-look" :data="personaRows" :columns="PERSONA_COLUMNS"
       data-key="id" row-hover @row-click="({ data }) => openPersona(data.id)">
       <template #head-pick>
         <UiCheckbox :model-value="allPicked" :disabled="!filteredPersonas.length"

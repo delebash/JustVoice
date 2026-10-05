@@ -503,12 +503,15 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
    edge; the auto margin lives HERE, not on the button, because they are two
    controls now (user, 2026-08-08 — clicking the URL used to open the status
    panel). */
+/* When the bar is short of room, its parts give way in order (decided
+   2026-10-05, the user: "why isnt it flex to grow snd shrink as needed"): the
+   server URL first, then the project's name in its chip, then the two model
+   pills, the page name last. Flex shares the squeeze by weight, so the weights
+   are far apart: URL 10000 · project chip 1000 · pills 100 · title 1. The group
+   is layout-only (display: contents) so the status and the URL are the bar's
+   own items — the status keeps its width and the auto margin. */
 .jv-topbar__statusgroup {
-  margin-left: auto;
-  display: inline-flex;
-  align-items: center;
-  min-width: 0;
-  flex-shrink: 0;
+  display: contents;
 }
 .jv-topbar__status {
   display: inline-flex;
@@ -523,10 +526,11 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   border-radius: var(--r-pill);
   padding: 4px 10px;
   font-family: inherit;
-  /* Never wrap to a second line — the title's ellipsis absorbs the
-     squeeze instead (the topbar stays one line on every view). */
+  /* Never wrap to a second line, never shrink — the parts listed above the
+     status group give way instead (the topbar stays one line on every view). */
   white-space: nowrap;
   flex-shrink: 0;
+  margin-left: auto;
 }
 .jv-topbar__taskcount {
   color: var(--accent);
@@ -551,12 +555,19 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--ink-3);
-  margin-left: 4px;
-  padding: 4px 8px 4px 4px;
+  /* Margins, not side padding: squeezed to nothing it shows nothing (side
+     padding sits inside the clip and let one letter through). */
+  margin: 0 8px 0 8px;
+  padding: 4px 0;
   border-radius: var(--r-pill);
   text-decoration: none;
   white-space: nowrap;
   cursor: pointer;
+  /* Gives way first (the order above); its full address is in its tooltip. */
+  flex-shrink: 10000;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .jv-topbar__url:hover,
 .jv-topbar__url:focus-visible { color: var(--accent); text-decoration: underline; }
@@ -600,7 +611,9 @@ button.jv-topbar__proj:hover { border-color: var(--accent); color: var(--accent-
 }
 .jv-topbar__proj b { font-weight: 600; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
 
-.jv-topbar__switcher { position: relative; }
+/* The project chip gives way second: its name ends in "…", "PROJECT ▾" stays. */
+.jv-topbar__switcher { position: relative; display: flex; flex-shrink: 1000; min-width: 120px; }
+.jv-topbar__switcher .jv-topbar__proj { max-width: 100%; min-width: 0; }
 .jv-topbar__proj-chev { font-size: 9px; color: var(--ink-3); margin-left: 2px; }
 .jv-topbar__menu {
   position: absolute;

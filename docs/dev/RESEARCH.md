@@ -505,9 +505,10 @@ its blast radius and the gaps.
   2026-10-05* · [`2026-10-05-five-small-findings.md`](../plans/2026-10-05-five-small-findings.md).
 - Only Kokoro speaks IPA (runtime v0.9.0-jv.4, `kokoro/manifest.py:33`); the capabilities row's
   `supports_phoneme_input` is the installed truth (`engines_api.py:252`). — *code, 2026-10-05*.
-- The project export (`GET /v1/projects/{id}/export`) crashes on a persona with no saved
-  delivery (`project_export_api.py:146`) — the personas Cast's batch makes have none. — *measured
-  on the dev app, 2026-10-05* (not fixed; TASKS "Five small findings" OPEN).
+- A persona can be saved with no delivery settings (`default_delivery` None — `POST /v1/personas`
+  passes it through; Cast's batch makes them so); the project export writes `{}` for it. — *code
+  + test, 2026-10-05* · `server/tests/test_project_export.py`. (was: the export crashed with a 500
+  on such a persona — measured on the dev app until 2026-10-05.)
 
 ---
 

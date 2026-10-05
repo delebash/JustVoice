@@ -733,10 +733,30 @@ BUILT:  2026-10-05 — build, blast radius and live checks `docs/plans/2026-10-0
         StudioOverview + project_export_api names; voice_bundle model + VoicesView Export/Import).
         Docs dictation, getting-started, lexicons, personas, import-and-export, studio, voices,
         whats-new; IDEAS (hotkeys; project import). The old FINDING entries closed.
-OPEN:   the title bar at 1280 px still overflows (~150 px, as before) — the user asked "why isnt it
-        flex to grow snd shrink as needed"; shrinking everything in an order was offered, GO
-        needed. The project export crashes on personas with no saved delivery (plan §3) — found
-        while checking 4, not fixed, GO needed.
+        Then DECIDED 2026-10-05 — "your rec go", on the two as shown (the user: "why isnt it flex to
+        grow snd shrink as needed"):
+        "1. Should the title bar shrink everything as needed? In order: the server URL first, then
+        the project name in its chip ends in '…', then the pills, then the page name last. That
+        would also fix the overflow at 1280 px. My lean: yes."
+        "2. Should I fix the export crash? This isn't from today's change. 📦 Export .justvoice.zip
+        fails on The Ninth Facet with 'Export failed'. The 7 personas Cast created have no saved
+        delivery settings, and project_export_api.py:146 assumes they do. The fix is one line:
+        export empty settings when there are none. My lean: yes."
+        Then DECIDED 2026-10-05 — "fix it go", on the Personas list as shown (the user: "the voice
+        grid, dont we have a common ui grid commponnet that has sorting by name when you click on
+        lable? … i mean tthe persona grid … you keep rolling your own instead of using what we
+        already built"): "The Personas list is the shared kit table … It sorts when you click a
+        column label, but only on columns the page marks sortable and gives a value to sort by. The
+        Personas page does that for Persona and Model only. Built on, Can be directed, Speaks,
+        Shaped and Used by have neither, so clicking them does nothing. The fix belongs in that
+        column list, not in a new table: give each column a value and mark it sortable."
+        BUILT 2026-10-05 (the three): the title bar's order (styles.css — URL 10000 · project chip
+        1000 · pills 100 · title 1, the status group `display: contents`); the export's guard
+        (`project_export_api.py`, `test_project_export.py`); `personaRows` + five sortable columns
+        (PersonasView and its mock). Plan §1, §3, §4; docs personas, whats-new. Checked: measured
+        at 1280/1440/1920 (no overflow), the new test (fails without the guard), the Personas
+        headers clicked live on page and mock.
+OPEN:   none.
 GO:     given 2026-10-05
 
 ### A chapter's text can be edited from its row, and a chapter opens before Analyze (decided 2026-10-05)

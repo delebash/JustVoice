@@ -47,7 +47,7 @@ The Personas page lists your library, one row per persona:
 |---|---|
 | ▶ | Plays the persona speaking the stock line in its language — its voice, model, pace, pitch, gain, direction and effects, through the same path a chapter renders. If its model isn't loaded it asks first: *Load Kokoro?* (with **Always auto-load** once it has loaded, the same choice Voices offers). One compact player above the list serves every row |
 | Persona | Its name, and the start of its note |
-| Built on | The voice it's built on and how that voice was made: `Sohee built-in`, `Mara clone`, `Old Crow design`, `Warm mix blend`. *No voice yet* when none is picked, *voice missing* when its voice was deleted |
+| Built on | The voice it's built on and how that voice was made: `Sohee built-in`, `Mara cloned`, `Old Crow designed`, `Warm mix blended`. *No voice yet* when none is picked, *voice missing* when its voice was deleted |
 | Model | The model that speaks its voice: `Qwen3-TTS CustomVoice`, `Kokoro` |
 | Can be directed | **✓ written direction**, **✓ 19 tags** (the model's own tags) or **sliders only** — see [Voice](#voice) for what each means |
 | Speaks | The language it speaks: `Korean`, `British English` |
@@ -55,7 +55,10 @@ The Personas page lists your library, one row per persona:
 | Used by | Who it plays, as *speaker — book*: `Cael Ferren — The Ninth Facet`. The same speaker name in several books reads `Narrator — The Ninth Facet · Emberfall`. A persona that plays no one reads **— not used yet —** |
 | ⋯ | **✎ Edit**, **✏️ Rename**, **🔗 Merge into…**, **🗑 Delete** |
 
-Click a row to open that persona's page. **＋ New persona** opens a blank one.
+Click a column's label to sort the list by it, as it reads — click again for the
+other way. Every column but ▶ and ⋯ sorts (since 2026-10-05; only Persona and
+Model did). Click a row to open that persona's page. **＋ New persona** opens a
+blank one.
 
 **Filters** above the list narrow it, and combine:
 

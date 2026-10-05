@@ -12,10 +12,13 @@ facts re-read by hand); this doc is the build, its blast radius and what the liv
    pills shrink first (`flex-shrink: 100`, 68–260 px, the name in `.jv-topbar__engine-name` ending
    in "…", the full name already in their tooltips). Measured (`#/mock/personas/p_june`,
    `#/studio`): 1440 px — "Personas › June" whole, Studio's name cut at 190 px, pills 68 px, no
-   overflow; 1920 px — all whole. **Open:** 1280 px still overflows by ~150 px, as before the
-   change — the chips, the status and the URL don't shrink. The user asked "why isnt it flex to
-   grow snd shrink as needed"; shrinking everything in an order (URL → project chip → pills → page
-   name) was offered for a go.
+   overflow; 1920 px — all whole. Then (the user: "why isnt it flex to grow snd shrink as
+   needed", "your rec go") everything gives way in order — the URL first (`flex-shrink: 10000`,
+   margins not side padding, so squeezed to nothing it shows nothing), the project chip second
+   (`.jv-topbar__switcher`, 1000, floor 120 px: "PROJECT T… ▾"), the pills (100), the page name
+   last (1); the status group is `display: contents` so "Operational" keeps its width and the auto
+   margin. Measured: 1280 and 1440 px — URL 0, project chip 120, pills 68–172, page name ≥ 190,
+   no overflow; 1920 px — URL 145, chip 183, all whole.
 2. **Settings → Capture.** One **Dictation** card: Speech recognition and the cleanup model (links,
    as before), **Cleanup** — `RefineSectionToggles` (given an `intro` prop; the Lab keeps its line),
    **Capture language** — PATCH `captures.language` on change. Gone: the localStorage mock
@@ -62,8 +65,25 @@ Ferren (Kokoro) 2 for the same line; voice files — imported as `qwen3-vd`, on 
 offers `Bundle check _temporary_.jvvoice.zip`, the file carries `qwen3-vd`, a built-in has no
 Export.
 
-**Found, not fixed (no go): the project export crashes on The Ninth Facet** —
+**Found, then fixed ("your rec go"): the project export crashed on The Ninth Facet** —
 `project_export_api.py:146` calls `persona.default_delivery.model_dump()`, and the seven personas
 Cast's batch made have none (`None`): `GET /v1/projects/{id}/export` → 500 *'NoneType' object has
-no attribute 'model_dump'*, so Overview's button shows *Export failed*. The fix is one guard
-(`… if persona.default_delivery else {}`). The file name could not be checked live because of it.
+no attribute 'model_dump'*, so Overview's button showed *Export failed*. Fixed with one guard
+(`… if persona.default_delivery else {}`); `server/tests/test_project_export.py` pins it and the
+archive's name (failed without the guard, passes with it).
+
+## 4. Personas sorts by every column (2026-10-05, "fix it go")
+
+The Personas list is the kit's `UiTable` (`PersonasView.vue:423`); it sorts a column by an
+`accessorKey` on the row (no sort-function hook — `UiTable.vue:12`), and only Persona and Model
+had one. `personaRows` adds what each other column shows — `_built` (the voice's name), `_directed`
+(the tag's label), `_speaks` (the language's name), `_shaped` (the summary, or "as the voice"),
+`_used` (the *speaker — book* text) — and the five columns are `sortable`. The page and its mock.
+
+| Change | Callers / readers | Already on the path |
+|---|---|---|
+| `:data` is `personaRows` (filteredPersonas + sort values) | `PersonasView.vue:423`, `MockPersonasView.vue:300` | `filteredPersonas` still feeds tick-all, bulk delete and the empty state; row clicks use `data.id` |
+| five columns `sortable` + `accessorKey` | the two column lists | the cell slots unchanged |
+
+Checked live (page and mock): every header but ▶/⋯ is sortable, and Built on, Can be directed,
+Speaks and Used by sort by what they show; page errors 0.

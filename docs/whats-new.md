@@ -2,6 +2,13 @@
 
 ## v0.1.0
 
+- **The title bar gives way in order, the project export works, and Personas
+  sorts by any column (2026-10-05)** — short of room, the server address goes
+  first, then the project's name in its chip ends in "…", then the two model
+  pills, the page name last (at 1280 px nothing spills off any more); **📦
+  Export .justvoice.zip** no longer fails on a book whose personas were made by
+  Cast's **＋ New persona for the N with none**; and every Personas column sorts
+  when you click its label ([Personas → The list](personas.md#the-list))
 - **Five small fixes (2026-10-05)** —
   - the title bar keeps the page's name (about 16 characters) and shortens the
     voice-engine and AI-model pills first, with the full name on hover;
