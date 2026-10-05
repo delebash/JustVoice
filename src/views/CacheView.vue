@@ -3,7 +3,7 @@
   CacheView — disk-LRU render cache stats + granular prune actions.
   Two storage layers, two prune routes (wiring-audit W1, 2026-06-13):
   cache bins are hash-keyed so /v1/cache/clear honors ONLY scope + age
-  (and 400s on identity filters); by-voice / by-engine / unfavorited
+  (and 400s on identity filters); by-voice / by-engine
   operate on generations via DELETE /v1/generations, whose dry-run
   default lets the confirm dialog show the real count before deleting.
 -->
@@ -184,9 +184,6 @@ async function pruneByEngine() {
   const name = engines.value.find((e) => e.id === id)?.name ?? id;
   await pruneGenerations(`engine=${encodeURIComponent(id)}`, `engine "${name}"`);
 }
-async function pruneUnfavorited() {
-  await pruneGenerations("favorited=false", "unfavorited renders");
-}
 
 async function deleteEntry(id) {
   try {
@@ -245,12 +242,11 @@ onMounted(async () => {
         <UiButton intent="secondary" label="Prune > 30 days" @click="pruneOlderThan(30)" />
         <UiButton intent="secondary" label="Prune by voice…" @click="pruneByVoice" />
         <UiButton intent="secondary" label="Prune by engine…" @click="pruneByEngine" />
-        <UiButton intent="secondary" label="Prune unfavorited" @click="pruneUnfavorited" />
         <span class="jv-spacer" />
         <UiButton intent="danger-outline" :label="`Clear all (${totalSizeGb} GB · ${totalEntries} entries)`" @click="purgeAll" />
       </div>
       <p class="jv-muted cache-view__actions-hint">
-        Every action asks for confirmation first and shows exactly how many renders it will remove. Favorited (★) renders are never touched by "Prune unfavorited".
+        Every action asks for confirmation first and shows exactly how many renders it will remove.
       </p>
     </section>
 

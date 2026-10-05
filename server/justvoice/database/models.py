@@ -93,7 +93,7 @@ class Persona(Base):
         at synth time (Qwen3-TTS custom-voice); the rest ignore it. It is the
         ONLY field that changes what the audio sounds like.
       * `note` — a short note on how it sounds, for people and for Compose /
-        Rewrite on Generate (which has no book). It never reaches the synth.
+        Rewrite on the persona's page (no book there). It never reaches the synth.
 
     Made on the Personas page.
     """
@@ -110,7 +110,7 @@ class Persona(Base):
     voice_id = Column(String, nullable=True)
     # Spoken-delivery instruction (Qwen3 `instruct`).
     voice_instruct = Column(Text, nullable=True)
-    # A short note on how it sounds. Read by Compose / Rewrite on Generate and
+    # A short note on how it sounds. Read by Compose / Rewrite on the persona page and
     # by Smart-assign, never by an engine. (Replaced `personality`, the
     # character sheet, 2026-09-29 — who a person is lives on the Speaker now.)
     note = Column(Text, nullable=True)

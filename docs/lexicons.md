@@ -45,8 +45,8 @@ for the whole name even when the book has an IPA entry for "Vance".
 The same two lexicons are read everywhere a line is rendered: the chapter audio
 on Render, the M4B, the ACX check, captions, a game's **↻** on Lines, a render
 job and the voice-line export. A line sounds the same wherever it is rendered.
-**Generate** reads the lexicon of the persona you pick there — not a book's,
-because a line on Generate belongs to no book.
+A persona's **Hear it** reads that persona's lexicon — not a book's, because a
+line there belongs to no book.
 
 **A book-scoped lexicon that isn't chosen on Overview does nothing.** When you
 make one for a book that has none chosen yet — here, or by importing a

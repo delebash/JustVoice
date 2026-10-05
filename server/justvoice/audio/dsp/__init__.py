@@ -101,7 +101,7 @@ def pitch_shift(x: np.ndarray, sr: int, *, semitones: float = 0.0) -> np.ndarray
     return out
 
 
-#: The speed range the server stretches over — Generate's Speed slider.
+#: The speed range the server stretches over — a persona's pace and a line's own.
 STRETCH_RANGE = (0.5, 2.0)
 
 

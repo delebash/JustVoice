@@ -37,7 +37,6 @@ class BulkDeleteResult(BaseModel):
 async def bulk_delete_generations(
     voice_id: Optional[str] = None,
     engine: Optional[str] = None,
-    favorited: Optional[bool] = None,
     scope: Optional[str] = None,
     status: Optional[OkStatus] = None,
     older_than: Optional[datetime] = None,
@@ -54,12 +53,12 @@ async def bulk_delete_generations(
     """
     filters_present = any(
         v is not None
-        for v in (voice_id, engine, favorited, scope, status, older_than, chapter_id, project_id)
+        for v in (voice_id, engine, scope, status, older_than, chapter_id, project_id)
     )
     if not filters_present:
         raise bad_request(
             "At least one filter required to prevent accidental nuke-all. "
-            "Use voice_id / engine / favorited / scope / status / older_than / "
+            "Use voice_id / engine / scope / status / older_than / "
             "chapter_id / project_id."
         )
 
@@ -78,8 +77,6 @@ async def bulk_delete_generations(
         )
     if engine is not None:
         q = q.filter(Generation.engine == engine)
-    if favorited is not None:
-        q = q.filter(Generation.is_favorited == favorited)
     # scope is the cache_scope from the old storage layer; not in ORM yet —
     # accept it as a no-op for forward compat with the docs.
     if status is not None:

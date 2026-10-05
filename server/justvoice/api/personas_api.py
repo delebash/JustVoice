@@ -504,7 +504,7 @@ def _require_persona_with_note(persona_id: str):
 async def compose_with_note(id: str) -> ComposeResponse:
     """LLM-fills a line of dialogue in the persona's voice (its note).
 
-    Drives the Compose button in the Generate view's floating bar.
+    Drives 🎲 Compose in the persona page's Hear it (Generate's until 2026-10-05).
     Runs through the shared run path — the `compose` template row + its
     engine preset (F1 Phase 2; the pin-era routing died).
     """

@@ -334,11 +334,24 @@ JustVoice produces audio in three shapes, depending on what you're doing with it
 
 ### Single render → WAV
 
-Every `/v1/generate` call returns `audio/wav`. Playback is inline wherever you clicked it — the Generate tab's ▶ and the History card's ▶ both play in place, in the browser's own audio element.
+In the app, a persona's **Hear it** plays a typed line in place, and **⤓ WAV**
+saves it. Over the API, every `/v1/generate` call returns `audio/wav`:
+`curl -X POST -H "Content-Type: application/json" -d '...' /v1/generate > out.wav`.
 
-To save the file outside the app:
-- **Generate tab** — right-click the audio player → "Save audio as…"
-- **API** — `curl -X POST -H "Content-Type: application/json" -d '...' /v1/generate > out.wav`
+`/v1/generate` takes:
+
+| Field | What it is |
+|---|---|
+| `text` | the line |
+| `voice` | the voice id |
+| `persona_id` | optional — speaks it as that persona (its delivery, lexicon and effects) |
+| `seed` | optional |
+| `delivery.speed / pitch / gain_db / temperature / pause_before / pause_after` | the numbers, over the persona's |
+| `delivery.instruct` | a written direction (models that take one) |
+| `delivery.emotion` | folded into the instruction for Qwen3 CustomVoice and VoiceDesign |
+| `delivery.engine.{key}` | a model's own knobs |
+| `lexicons` | `["lexicon id", …]` |
+| `[tags]` inline in `text` | kept only for a model that lists them; any other `[tag]` is removed before rendering |
 
 ### Chapter render → mastered WAV
 

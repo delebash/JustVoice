@@ -586,7 +586,17 @@ onMounted(refresh);
 // Every app view runs under <KeepAlive> (App.vue), so onMounted fires
 // ONCE per session. Without this, coming back to Voices after loading an
 // engine elsewhere showed whatever was true the first time you opened it.
-onActivated(() => { void refresh(); });
+onActivated(() => { void refresh(); takeTestLine(); });
+// Captures' "Speak again" leaves its transcript here for the test line.
+function takeTestLine() {
+  try {
+    const line = window.sessionStorage?.getItem("jv.voices.testLine");
+    if (line == null) return;
+    window.sessionStorage.removeItem("jv.voices.testLine");
+    setPreviewText(line);
+  } catch { /* private mode */ }
+}
+onMounted(takeTestLine);
 // This view was the one surface that did NOT join the `jv:health-refresh`
 // contract — it refetched by hand, from its own load door only, so an engine
 // loaded anywhere else left the model picker stale until you left and came

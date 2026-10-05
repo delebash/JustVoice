@@ -476,8 +476,6 @@ onMounted(() => {
     <div class="jv-card home__recent">
       <div class="home__cardhead">
         <span class="home__eyebrow">Recent generations</span>
-        <span class="jv-spacer" />
-        <UiButton as="a" intent="ghost" size="small" href="#generate" title="Full history lives on Generate">all history ➜</UiButton>
       </div>
       <p v-if="!recentGenerations.length" class="jv-muted home__empty">Render something — your latest takes land here for one-click replay.</p>
       <template v-for="g in recentGenerations" :key="g.id">

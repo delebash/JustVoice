@@ -17,7 +17,7 @@ against their current README, file-level receipts in the session record
 3-band EQ (`audio/effects.py`), 4 factory presets (Robotic/Radio/Echo Chamber/Deep
 Voice, seeded) + user presets + persona→preset chain cascade with cache-keyed hash;
 async generation queue with pause-at-boundary + resume (`render_jobs_api.py`);
-multi-sample voice profiles (`storage/voices.py` samples/); takes with favorites AND
+multi-sample voice profiles (`storage/voices.py` samples/); takes with
 lineage; auto-chunk + crossfade (`render_core.py`); personas + compose +
 rewrite-in-character; captures + re-transcribe (Qwen3-ASR since 2026-10-01);
 delivery instruct; MCP (`justvoice.speak/transcribe/list_voices`); outbound

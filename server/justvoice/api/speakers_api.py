@@ -270,7 +270,7 @@ async def rewrite_as_speaker(
 ) -> SpeakerRewriteResponse:
     """Script's "Rewrite in character": the speaker's "Who they are" is the
     character (it moved off the persona 2026-09-29). Same `persona_rewrite`
-    template row as Generate's Rewrite, which reads a persona's note instead."""
+    template row as the persona page's Rewrite, which reads a persona's note instead."""
     from llm_runner.llm import LLMNotConfiguredError
 
     from ..engines.llm.run import run_feature

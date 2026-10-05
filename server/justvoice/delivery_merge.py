@@ -62,8 +62,8 @@ def _decode_json_dict(raw: Optional[str]) -> dict:
 def nest_engine_keys(delivery: dict) -> dict:
     """Move engine-private keys out of the top level and into `engine`.
 
-    Every UI that writes delivery — the persona editor, Generate's
-    sliders — saves the capability schema's keys **flat**
+    Every UI that writes delivery — the persona editor (and Generate's
+    sliders, until 2026-10-05) — saves the capability schema's keys **flat**
     (`{"exaggeration": 0.7}`), because that is the shape the knob schema
     itself has. Every engine adapter reads them **nested**
     (`delivery["engine"]["exaggeration"]`, see `chatterbox/engine.py`,

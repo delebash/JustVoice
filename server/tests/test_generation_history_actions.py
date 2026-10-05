@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: MIT
-"""History-row actions wired by the parity audit: favorite toggle +
-single-generation delete (the History table's ★ / ✕ buttons were
-decorative — no endpoints, no handlers)."""
+"""Single-generation delete, wired by the parity audit. (The ★ favorite and
+its toggle went with Generate's History, 2026-10-05.)"""
 
 from __future__ import annotations
 
@@ -31,19 +30,6 @@ def _make_generation(tmp_path) -> str:
         return gen.id
     finally:
         db.close()
-
-
-def test_favorite_toggle_roundtrip(client, tmp_path) -> None:
-    gen_id = _make_generation(tmp_path)
-
-    r = client.patch(f"/v1/generations/{gen_id}/favorite")
-    assert r.status_code == 200 and r.json()["is_favorited"] is True
-
-    rows = client.get("/v1/takes/recent").json()["takes"]
-    assert any(t["id"] == gen_id and t["is_favorited"] for t in rows)
-
-    r = client.patch(f"/v1/generations/{gen_id}/favorite")
-    assert r.json()["is_favorited"] is False
 
 
 def test_delete_generation_removes_row_and_audio(client, tmp_path) -> None:

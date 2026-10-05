@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""Per-engine capability details — drives the Generate UI's knob + tag gating.
+"""Per-engine capability details — drives the knob + tag gating (the persona page).
 
 This is the hand-authored interim data for task #89 (engine capability
 manifests). The data here is STATIC — pulled from upstream model cards
@@ -503,8 +503,8 @@ def lookup(engine_or_variant_id: str) -> EngineCapabilityDetail | None:
     # so "chatterbox-multilingual-v2-q8" has to reach "chatterbox-multilingual"
     # and "qwen3-base-1.7b-q8" has to reach "qwen3-base" before either falls
     # through to its engine row.
-    # `GenerateView.vue:lookupCapability` already walked suffixes; this is
-    # the same rule, server-side.
+    # (Generate's `lookupCapability` walked suffixes the same way, until
+    # Generate was removed 2026-10-05.)
     probe = engine_or_variant_id
     while "-" in probe:
         probe = probe.rsplit("-", 1)[0]

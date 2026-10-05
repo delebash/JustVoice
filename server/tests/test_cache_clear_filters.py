@@ -2,7 +2,7 @@
 """POST /v1/cache/clear filter honesty (wiring-audit W1).
 
 Before 2026-06-13 the endpoint read ONLY `scope`; the UI's filtered
-prunes (older_than_days / voice_id / engine / favorited) were silently
+prunes (older_than_days / voice_id / engine) were silently
 dropped, so "prune by voice" wiped the entire cache. Now: age + scope
 are honored, identity filters are rejected loudly (they belong to
 DELETE /v1/generations — see test_bulk_delete_filters.py).
@@ -109,7 +109,7 @@ def test_endpoint_rejects_identity_filters_and_destroys_nothing(client):
     cache = get_state()._render_cache
     cache.put("scene-1", "k1", b"a")
 
-    for params in ("voice_id=v1", "engine=kokoro", "favorited=false"):
+    for params in ("voice_id=v1", "engine=kokoro"):
         r = client.post(f"/v1/cache/clear?{params}")
         assert r.status_code == 400, params
         assert "/v1/generations" in r.json()["detail"]

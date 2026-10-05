@@ -396,7 +396,7 @@ it (`[cough]`, `[laugh]`, `[chuckle]`, `[sigh]`, `[gasp]`, `[groan]`, `[sniff]`,
 `[clear throat]`, `[shush]`). With any other model, bracketed markup is removed
 before the model sees it, so it is never read out as a word. The rule from
 2026-09-29 holds: **a tag the rendering engine doesn't list is dropped, never
-spoken**, in a chapter render and on Generate alike — including ordinary
+spoken**, in a chapter render and in a persona's **Hear it** alike — including ordinary
 bracketed text such as `[sic]`.
 
 **Chatterbox Turbo and Nano** are English-only Chatterbox models that clone from
@@ -559,7 +559,7 @@ voice made from words keeps the full length: split into 200-character pieces it
 drifted into a slightly different person from piece to piece, on Qwen3-TTS
 VoiceDesign and on VoxCPM2 alike (listened 2026-10-04), so it is spoken whole —
 which on VoiceDesign needs about 7 GB for a 752-character line (see
-[Generate → Auto-chunking](generate.md#auto-chunking)).
+[Long text, cut into pieces](#long-text-cut-into-pieces)).
 
 What a model costs is measured at that length, on your machine, for exactly that
 model — the 8-bit and 16-bit files and each size count separately. The first
@@ -572,6 +572,36 @@ only goes up after that: a line that takes more is remembered too.
 Each slot's cell shows its own process's measured memory: the model, plus the
 process's own share of the card (about 100 MB). The full story is in
 [GPU](gpu.md#the-shared-memory-budget).
+
+#### Long text, cut into pieces
+
+Long text is split at sentence boundaries, rendered per piece, and joined with a
+short crossfade. You don't need to do anything — the server sees long input and
+switches paths on its own.
+
+How long a piece may be depends on the model, as above: **200 characters** for
+Qwen3-TTS CustomVoice and Base and for VoxCPM2, **240** for Kokoro (its own
+limit), and `settings.generation.max_chunk_chars` (default 800) for the rest —
+and that setting caps them all.
+
+Voice auditions on the Voices page use the same splitter at a much smaller size
+(`settings.generation.stream_piece_chars`, default 200): each sentence-sized
+piece is sent to your player the moment it renders, so playback starts after the
+first piece instead of the whole render. Pieces join with the same crossfade.
+
+The splitter knows about abbreviations (`Mr.`, `Dr.`, `e.g.`), decimal numbers,
+CJK sentence-end punctuation (`。！？`), and treats `[bracket]` tags as one unit
+(never split inside one).
+
+Per-piece seeds vary deterministically (`seed + piece index`), so the same text
+and seed always give the same audio while artefacts don't line up across pieces.
+
+A **voice made from words** (designed, with no clip — VoiceDesign, or a VoxCPM2
+description) is the exception. Its voice is drawn from the description every
+time it speaks, so it gets the same seed for every piece, and when no seed is
+set it gets a fixed one of its own instead of a random one; otherwise each
+piece, and each line, would come out as a different person. It is also sent
+whole, at the full `max_chunk_chars` length (above).
 
 ### Cancelling an in-flight load
 

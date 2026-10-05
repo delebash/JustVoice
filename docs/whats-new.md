@@ -2,6 +2,13 @@
 
 ## v0.1.0
 
+- **Generate is gone (2026-10-05).** Everything it did lives elsewhere: a
+  persona's **Hear it** speaks a typed line with its pace, pitch, gain, tags and
+  lexicon, and has **✏️ Rewrite** and **🎲 Compose**; Voices' test line plays any
+  voice. Captures' **Speak again** opens Voices with the transcript in that test
+  line. Its History went too, with the ★ favorite (and Cache's *Prune
+  unfavorited*); Home's **Recent generations** stays. The server's `/v1/generate`
+  is unchanged ([Import and export → Single render](import-and-export.md#single-render--wav))
 - **New personas for a whole cast, and Rewrite and Compose on the persona page
   (2026-10-05).** Cast's **＋ New persona for the N with none** proposes a voice
   for each speaker with no persona — you see the list, hear each voice, untick
@@ -22,7 +29,7 @@
   the strip under it the chapter being read now (*Discover · scan · The
   Keystone*). The strip that sat at the top of every page is gone: each task
   shows on the page that started it, and the ✨ button in the title bar counts
-  everything ([Generate → In-flight status strip](generate.md#in-flight-status-strip--status-panel))
+  everything ([AI features → AI tasks](ai-features.md#ai-tasks--where-they-show-and-the-panel))
 - **A demo project opens like any new project (2026-10-05).** **＋ New project →
   a demo project** now opens the demo in Studio on its Overview, and the sidebar
   switches to its kind. Before, after a reset, the app stayed on Projects and
@@ -100,7 +107,6 @@
   Qwen3 line with no language, or one it doesn't speak, lets the model pick
   instead of reading it as English, and speech recognition gets each language's
   name and gives a long recording the time it needs
-  ([Generate → Delivery overlay](generate.md#delivery-overlay))
 - **The speech runtime installs and recovers more safely (2026-10-04).** Every
   runtime file is checked against its published checksum before it is unpacked,
   a stopped download resumes, and **Reinstall** on the runtime row fetches it
@@ -283,7 +289,6 @@
   finished line and keeps its pitch. Lines that were cached at a speed the engine
   ignored render again once. Generate's **Pitch** and **Gain**, which did nothing on
   that page (they worked in chapters), now apply there too
-  ([Generate → the primary controls](generate.md))
 - **Speech models run on the graphics card or the CPU, chosen per model (2026-10-02).**
   Each model row on AI Settings → Speech engines now says where it runs and why, with
   an **Auto · GPU · CPU** choice. Auto keeps a model on the graphics card when nothing
@@ -596,7 +601,7 @@
   error as the Speech engines page — and the **Size** dropdown now decides
   which weights are fetched ([Voices](voices.md#finding-a-voice-in-the-library))
 - Every slider says what its ends MEAN — *slower · as written · faster* — and
-  its number box can be typed into ([Generate](generate.md#delivery-overlay))
+  its number box can be typed into
 - One AI Settings console — text AI (providers + models) and speech (engines,
   self-hosted servers, cloud APIs) with per-feature routing and a live Lab
 - Multi-use Project model (audiobook / game voice lines / podcast / custom)

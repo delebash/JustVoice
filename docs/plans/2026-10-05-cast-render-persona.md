@@ -80,3 +80,25 @@ History. Its page also documents the AI task strip and panel (`generate.md`).
 | `updateSpeaker(… persona_id)` from the batch | `StudioCast.vue:220,459,579,588` · `PersonaEditorView.vue:750` | Studio re-reads speakers on `changed`; the batch reloads the personas store |
 | compose / rewrite get a second caller | `GenerateView.vue:404,436` · `PersonaEditorView.vue:576,597` | the endpoints read the saved note (`personas_api.py:500,542`) |
 | `lexiconMatches` gets a second caller | `GenerateView.vue:331` · `PersonaEditorView.vue:536` | — |
+
+## 4. Removing Generate (8, 9 — and "Speak again", the ★ favorite)
+
+Decided 2026-10-05 ("your rec go", TASKS): Generate goes everywhere — route, rail, docs —
+keeping the server's `/v1/generate` (RenderLab, MCP and the API use it); History goes; the ★
+favorite goes everywhere; "Autoplay on generate" (read by nothing) goes; Captures' **Speak
+again** opens Voices with the transcript in its test line. Generate's still-true help moves:
+the task strip and panel to `ai-features.md`, auto-chunking to `engines.md`, the API notes to
+`import-and-export.md`.
+
+**Not removed here — asked:** the `generations.is_favorited` column. The app's database has it
+`BOOLEAN NOT NULL` with no database default (read 2026-10-05, `src-tauri/target/debug/data/
+justvoice.db`, 0 rows starred); dropping it from the model makes every new render's insert fail
+on that database until a reset (no migrations, by rule).
+
+| Change | Callers / producers (pasted grep, 2026-10-05) | Already on the path |
+|---|---|---|
+| `GenerateView.vue` and `/generate` deleted | `router/index.js:23` · `App.vue:46` (rail), `:142` (help slug) · `i18n/locales/en.json:16` · `KeyboardCheatsheet.vue:27` · `CapturesView.vue:62-63` (Speak again) · `HomeView.vue:480` (all history ➜) · `scripts/smoke.js:39` · `e2e.js:30` · `shots.js:6` · `verify_all.js:2` · `snap-generate-final.js` · `snap-generate-sizes.js` · `snap-pause-seed.js` · `snap-range-render.js` · `snap-slider.js` | `/v1/generate` stays: `RenderLabView.vue:92` |
+| History + the ★ favorite | `takes_api.py:145,156,161,185,192-204` (row field, toggle) · `bulk_delete_api.py:40,57,62,81-82` (filter) · `cache_api.py:40,45,48,55,62` · `cache.py:140` · tests `test_generation_history_actions.py`, `test_bulk_delete_filters.py`, `test_cache_clear_filters.py` · `mcp-server.md:45` | `/v1/takes/recent` stays — Home's Recent generations reads it (`HomeView.vue:122`) |
+| "Autoplay on generate" | `models.py:132` · `SettingsView.vue:169,1433-1439` | settings ignore an unknown stored key (`GenerationSettings` has no `extra="forbid"`) |
+| copy that names Generate | `PersonasView.vue:201` · `seed_feature_prompts.py:187,193` · `personas_api.py:507` · `speakers_api.py:273` · `database/models.py:96,113` · `models.py:689,703,1120` · `capability_details.py:2,506` | seeds only — the user's next reset reseeds the descriptions |
+| docs | `generate.md` (deleted) · `ai-features.md:12,13,373` · `engines.md:399,562` · `getting-started.md:13` · `import-and-export.md:337,340` · `keyboard-shortcuts.md:12` · `lexicons.md:48-49` · `personas.md:152,537,543` · `settings-reference.md:19` · `whats-new.md` links | plans keep the name as history |

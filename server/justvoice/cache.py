@@ -137,7 +137,7 @@ class RenderCache:
         `scope` limits deletion to one scope directory; `older_than_days`
         limits it to files whose mtime is older than the cutoff. Entries
         are hash-keyed, so age and scope are the ONLY filters the cache
-        can honor — voice/engine/favorite pruning lives on the
+        can honor — voice/engine pruning lives on the
         generations layer (DELETE /v1/generations).
         """
         cutoff = (

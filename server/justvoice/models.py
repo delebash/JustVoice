@@ -129,7 +129,6 @@ class GenerationSettings(BaseModel):
     # BCP-47. Lived under `training` until training was removed (2026-10-02).
     default_voice_language: str = "en-US"
     normalize_audio: bool = True
-    autoplay_on_generate: bool = True
 
 
 class CorsSettings(BaseModel):
@@ -686,7 +685,7 @@ class Persona(BaseModel):
     # accept it ignore it. **Never an LLM rewrite of the manuscript** —
     # Rewrite is a separate explicit tool.
     voice_instruct: str | None = None
-    # A short note on how it sounds. Read by Compose / Rewrite on Generate and
+    # A short note on how it sounds. Read by Compose / Rewrite on the persona page and
     # by Smart-assign; never by an engine — that is `voice_instruct`'s job.
     note: str | None = None
     # How it speaks — pace, pitch, gain, pauses, and per model its emotion,
@@ -1117,7 +1116,7 @@ class CurrentEngineResponse(BaseModel):
 # INLINE TAGS does its tokenizer parse, and where in the text do they
 # need to go?" Driven by the per-engine verified-from-upstream research
 # captured in memory/reference_engine_capability_surface.md. Used by the
-# Generate view + the paralinguistic slash menu.
+# The persona page's Hear it + the paralinguistic slash menu.
 
 
 class KnobSpec(BaseModel):

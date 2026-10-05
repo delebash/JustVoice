@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 //
 // Engines store — single source of truth for the engine list as the
-// READ-ONLY consumers see it (Personas, Voices, Studio, Generate,
+// READ-ONLY consumers see it (Personas, Voices, Studio,
 // Home, etc.). See stores/projects.js + the rebuild plan doc.
 //
 // NOTE: EnginesView itself owns the install/load progress polling and

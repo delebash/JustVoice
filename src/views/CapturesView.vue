@@ -53,14 +53,15 @@ async function togglePin(c) {
   }
 }
 
-// "Speak again" — re-say the transcript through TTS: Generate, prefilled.
+// "Speak again" — re-say the transcript: Voices, with it in the test line,
+// where any voice can say it (decided 2026-10-05, when Generate went).
 function speakAgain(c) {
   if (!c?.transcript) {
     pushToast({ kind: "info", message: "No transcript on this capture." });
     return;
   }
-  try { window.sessionStorage?.setItem("jv.generate.prefill", JSON.stringify({ text: c.transcript })); } catch { /* ignore */ }
-  window.location.hash = "#generate";
+  try { window.sessionStorage?.setItem("jv.voices.testLine", c.transcript); } catch { /* ignore */ }
+  window.location.hash = "#voices";
 }
 
 const selectedCapture = computed(() =>
@@ -219,7 +220,7 @@ onMounted(() => {
           <button
             type="button"
             class="captures__pin"
-            title="Speak again — opens Generate with this transcript prefilled"
+            title="Speak again — opens Voices with this transcript in the test line"
             @click.stop="speakAgain(c)"
           >↺</button>
         </div>

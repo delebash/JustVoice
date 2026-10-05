@@ -26,7 +26,8 @@ import { readPref, writePref } from "./services/prefs.js";
 // surface this tab in the sidebar. The full set is:
 //   audiobook · game · podcast · dictation · accessibility · multiple · unset
 // Omit `visibleFor` to mean "always visible" (universal tabs: Home,
-// Generate, Voices, Personas, Engines, Settings).
+// Voices, Personas, Engines, Settings). Generate was removed 2026-10-05 —
+// a persona's page and Voices' test line speak a typed line.
 //
 // `lane` groups tabs in the sidebar (plan Q4 architecture):
 //   workflow — Do the work. Always-on for the current use case.
@@ -43,7 +44,6 @@ const VIEWS = [
   { id: "lines",     lane: "workflow", label: "Lines",      icon: "🎮", lede: "Every line of the game project — stable ids, speakers, derived take status. Re-import the writers\u2019 next sheet (only changed lines go stale), re-render exactly those, export per-line WAVs + manifest.", visibleFor: ["game", "multiple", "unset"] },
   { id: "studio",    lane: "workflow", label: "Studio",    icon: "🎬", lede: "A project's home. Overview holds its settings and shows where each step stands; then Discover finds the speakers your text names, Script works out who says each line, Cast gives each speaker a persona, Render makes the audio and Export packages it. A game project starts from its Lines instead — the sheet already says who speaks.", visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
   { id: "stories",   lane: "workflow", label: "Stories",   icon: "🎞️", lede: "Multi-track timeline editor. For podcasting, game-dialogue assembly, and per-chapter multi-voice arrangement.", visibleFor: ["game", "podcast", "multiple", "unset"] },
-  { id: "generate",  lane: "workflow", label: "Generate",  icon: "📝", lede: "Pick a voice. Type the line. Apply delivery overlay. The server renders it. Type / for paralinguistic tags." },
   // Always visible (queue item 11): dictation is a cross-cutting utility
   // for all five audiences — the focus gate made it vanish the moment an
   // audiobook project set workspace focus (user: "where is that?").
@@ -139,7 +139,6 @@ if (typeof document !== "undefined") {
 // Views without a dedicated doc fall back to getting-started.
 const HELP_SLUG_BY_VIEW = {
   home:     "getting-started",
-  generate: "generate",
   projects: "core-concepts",
   stories:  "stories",
   voices:   "voices",

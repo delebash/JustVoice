@@ -184,13 +184,13 @@ Return only the JSON object.""",
     # ── persona voice features ──────────────────────────────────────────────
     "compose": {
         "feature": "compose",
-        "description": "Writes a fresh line in a persona's voice, from its note on how it sounds — the 🎲 button on Generate.",
+        "description": "Writes a fresh line in a persona's voice, from its note on how it sounds — 🎲 Compose on a persona's page.",
         "system": _COMPOSE_SYSTEM,
         "user_template": "Compose a line.",
     },
     "persona_rewrite": {
         "feature": "persona_rewrite",
-        "description": "Rewrites a line in character — from the speaker's \"who they are\" in Script, or the persona's note on Generate. You see the result first and keep it or toss it.",
+        "description": "Rewrites a line in character — from the speaker's \"who they are\" on Render, or the persona's note on its page. You see the result first and keep it or toss it.",
         "system": _PERSONA_REWRITE_SYSTEM,
         "user_template": "{{text}}",
     },

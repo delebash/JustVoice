@@ -649,6 +649,12 @@ blast radius.
   and no History; Generate also plays a voice with no persona (Voices' test line does too).
   The full table: [`2026-10-05-cast-render-persona.md`](../plans/2026-10-05-cast-render-persona.md)
   §2. — *code, 2026-10-05*.
+- Generate was removed 2026-10-05 (its History and the ★ favorite with it); `/v1/generate`
+  stays — RenderLab, MCP and the API call it. The app's database keeps
+  `generations.is_favorited BOOLEAN NOT NULL` with no database default (`PRAGMA`/`sqlite_master`
+  read 2026-10-05), so the ORM column stays until a reset: dropping it from the model makes
+  every new generation's insert fail on that database. — *code + the database, 2026-10-05* ·
+  [`2026-10-05-cast-render-persona.md`](../plans/2026-10-05-cast-render-persona.md) §4.
 
 ---
 

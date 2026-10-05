@@ -149,8 +149,8 @@ aren't saved. They are lost if you leave.*
 
 | Field | Used for |
 |---|---|
-| Name | How the persona shows on Cast, in *Used by*, and in Generate's persona list. Required, and unique in your library (see [Names](#names)). |
-| Note on how it sounds | A sentence or two about the voice, for example *"Warm and unhurried, a little gravel at the bottom of the range."* **Never heard**: Compose and Rewrite on the Generate page read it, and so does Smart-assign when it matches speakers to personas. See [The note](#the-note-what-the-ai-reads-about-the-voice). |
+| Name | How the persona shows on Cast and in *Used by*. Required, and unique in your library (see [Names](#names)). |
+| Note on how it sounds | A sentence or two about the voice, for example *"Warm and unhurried, a little gravel at the bottom of the range."* **Never heard**: Compose and Rewrite in its Hear it read it, and so does Smart-assign when it matches speakers to personas. See [The note](#the-note-what-the-ai-reads-about-the-voice). |
 
 ### Voice
 
@@ -534,17 +534,16 @@ through untouched; nothing reformats a note you wrote by hand.
 app's nine labels and joins the instruction as a word. On Chatterbox Turbo it is
 one of Turbo's own seven tags and goes at the start of the line, with the
 Register tag. The persona keeps each model's choice, so a persona moved between
-the two keeps both. See [generate.md](generate.md).
+the two keeps both.
 
 ## The note: what the AI reads about the voice
 
 The note is for the language-model features, and nothing else reads it:
 
-- **Compose 🎲 and Rewrite ✏️ on the Generate page.** Generate has no book, so
-  there is no speaker to read. Both buttons use the chosen persona's note as the
-  voice to write in. Rewrite shows a preview; accept it to replace the textarea,
-  or discard it to keep the original. Both buttons are disabled until the
-  persona has a note. The server refuses with *"{name} has no note on how it
+- **Compose 🎲 and Rewrite ✏️ in the persona's Hear it.** A persona's page has
+  no book, so there is no speaker to read. Both use the persona's saved note as
+  the voice to write in. Rewrite shows a preview; use it to replace the line, or
+  keep the original. Both are off until the persona is saved with a note. The server refuses with *"{name} has no note on how it
   sounds — write one on the Personas page to use Compose / Rewrite."*
 - **Smart-assign on Cast** sends each persona's name, its voice's gender and
   language, and its note (as the persona's tone) to your language model, which

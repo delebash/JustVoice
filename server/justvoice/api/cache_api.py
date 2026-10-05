@@ -37,29 +37,27 @@ async def clear_cache(
     older_than_days: float | None = None,
     voice_id: str | None = None,
     engine: str | None = None,
-    favorited: str | None = None,
 ) -> dict:
     """Clear cached renders, optionally limited by scope and/or age.
 
     Cache entries are hash-keyed, so scope + age are the only filters the
-    cache layer can honor. voice_id / engine / favorited are DECLARED here
+    cache layer can honor. voice_id / engine are DECLARED here
     purely to reject them loudly: before 2026-06-13 they were silently
     dropped, which turned every filtered prune into a full wipe.
-    Voice/engine/favorite pruning operates on DELETE /v1/generations.
+    Voice/engine pruning operates on DELETE /v1/generations.
     """
     unsupported = {
         k: v
         for k, v in {
             "voice_id": voice_id,
             "engine": engine,
-            "favorited": favorited,
         }.items()
         if v is not None
     }
     if unsupported:
         raise bad_request(
             f"Unsupported cache filter(s) {sorted(unsupported)}: cache entries "
-            "are hash-keyed and carry no voice/engine/favorite identity. "
+            "are hash-keyed and carry no voice/engine identity. "
             "Use DELETE /v1/generations with these filters instead."
         )
     st = get_state()

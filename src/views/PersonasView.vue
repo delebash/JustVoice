@@ -198,7 +198,7 @@ async function rename(p) {
     title: `Rename ${p.name}`,
     label: "Name",
     defaultValue: p.name,
-    message: "The new name shows everywhere this persona plays — Cast, Used by, Generate.",
+    message: "The new name shows everywhere this persona plays — Cast and Used by.",
     confirmLabel: "Rename",
   }))?.trim();
   if (!name || name === p.name) return;

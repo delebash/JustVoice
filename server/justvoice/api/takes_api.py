@@ -142,7 +142,6 @@ class RecentTakeRow(BaseModel):
     take: Optional[str] = None
     effects: Optional[str] = None
     status: str
-    is_favorited: bool = False
     audio_url: Optional[str] = None
 
 
@@ -153,13 +152,13 @@ class RecentTakesResponse(BaseModel):
 @router.get(
     "/v1/takes/recent",
     response_model=RecentTakesResponse,
-    summary="Recent generations across the whole DB — drives Generate's History table",
+    summary="Recent generations across the whole DB — Home's Recent generations card",
 )
 async def list_recent_takes(limit: int = 20, db: Session = Depends(get_db)) -> RecentTakesResponse:
     """Last N generations regardless of block / project, newest first.
 
-    Returns a flat row shape so the Generate view's history card and a
-    future dedicated History tab can both consume the same payload.
+    A flat row shape for Home's Recent generations card. (Generate's History
+    table read it too, until Generate was removed 2026-10-05.)
     """
     rows = (
         db.query(Generation)
@@ -182,26 +181,10 @@ async def list_recent_takes(limit: int = 20, db: Session = Depends(get_db)) -> R
                 take=take_label,
                 effects=None,
                 status=r.status,
-                is_favorited=bool(r.is_favorited),
                 audio_url=f"/v1/generations/{r.id}/audio" if r.audio_path else None,
             )
         )
     return RecentTakesResponse(takes=out)
-
-
-@router.patch("/v1/generations/{generation_id}/favorite")
-async def toggle_generation_favorite(
-    generation_id: str, db: Session = Depends(get_db)
-) -> dict:
-    """Toggle the favorite star on a generation. Parity-audit wire-up:
-    `is_favorited` was serialized in recent rows but had no write path
-    (upstream tracks favorites with a toggle on the History surface)."""
-    gen = db.query(Generation).filter(Generation.id == generation_id).first()
-    if not gen:
-        raise not_found(f"generation {generation_id}")
-    gen.is_favorited = not bool(gen.is_favorited)
-    db.commit()
-    return {"id": generation_id, "is_favorited": bool(gen.is_favorited)}
 
 
 @router.delete("/v1/generations/{generation_id}")

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""DELETE /v1/generations — engine / favorited / persona-aware voice
+"""DELETE /v1/generations — engine / persona-aware voice
 filters (wiring-audit W1). The voice filter previously matched only the
 legacy profile_id column, silently missing every persona-era row.
 """
@@ -20,7 +20,7 @@ def client(tmp_path):
 
 def _seed(tmp_path):
     """Three generations: legacy voice row, persona-bound row, other-engine
-    favorited row. Returns their ids in that order."""
+    row. Returns their ids in that order."""
     from justvoice.database import get_db
     from justvoice.database.models import Generation, Persona
 
@@ -38,7 +38,6 @@ def _seed(tmp_path):
         )
         other = Generation(
             text="other", engine="tada", status="completed",
-            is_favorited=True,
         )
         db.add_all([legacy, persona_era, other])
         db.commit()
@@ -71,15 +70,6 @@ def test_engine_filter(client, tmp_path):
     assert r["deleted_count"] == 1
 
     assert _remaining_ids(client) == {legacy_id, persona_id}
-
-
-def test_favorited_false_preserves_favorites(client, tmp_path):
-    legacy_id, persona_id, other_id = _seed(tmp_path)
-
-    r = client.delete("/v1/generations?favorited=false&confirm=true").json()
-    assert r["deleted_count"] == 2
-
-    assert _remaining_ids(client) == {other_id}
 
 
 def test_no_filters_still_400s(client, tmp_path):

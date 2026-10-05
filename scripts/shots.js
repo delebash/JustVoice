@@ -3,7 +3,7 @@ import { chromium } from "playwright";
 
 const BASE = process.env.BASE || "http://localhost:1430";
 const OUT = process.env.OUT || "E:/Dev/Web/justvoice-new/scripts/_shots";
-const TABS = (process.env.TABS || "Engines,Settings,Generate,Voices").split(",");
+const TABS = (process.env.TABS || "Engines,Settings,Voices").split(",");
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });

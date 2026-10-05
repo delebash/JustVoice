@@ -9,8 +9,8 @@ is the **AI Settings** page in the sidebar.
 
 | Feature | What it does | When you use it |
 |---|---|---|
-| **Compose** | Writes a fresh line in a persona's voice from its note on how it sounds | Generate view → 🎲 Compose button |
-| **Persona rewrite** | Rewrites the current text in a persona's voice, or a line in its speaker's character (preview-then-accept) | Generate view → ✏️ Rewrite · Studio Render → a line's ✏️ Rewrite as *name* |
+| **Compose** | Writes a fresh line in a persona's voice from its note on how it sounds | A persona's page → Hear it → 🎲 Compose |
+| **Persona rewrite** | Rewrites the current text in a persona's voice, or a line in its speaker's character (preview-then-accept) | A persona's page → Hear it → ✏️ Rewrite · Studio Render → a line's ✏️ Rewrite as *name* |
 | **Speaker attribution** | Extracts who says what and what they say; its Find new speakers row lists the people a chapter names | Studio Script tab → Analyze · Studio Discover → Scan |
 | **Smart-assign** | Matches each speaker in a book to a persona | Studio Cast tab → Smart-assign |
 | **Show notes** | Chapter summaries for podcast descriptions | Projects → Show notes |
@@ -337,9 +337,8 @@ recorded in the panel's Recent list with its token counts. A failed run
 shows its error right in the column, badges the AI-tasks button until you
 open the panel, and keeps its error in the panel until you dismiss it — so
 errors don't vanish before you read them. The same strip shows under every AI
-button in the app, on that button's own page: Script's Analyze, Discover's
-scan, Smart-assign, Show notes, the persona 🎲/✏️ buttons, and the voice ✨
-gender guess.
+button in the app, on that button's own page — see
+[AI tasks](#ai-tasks--where-they-show-and-the-panel).
 
 The **Find new speakers** row's Lab runs the discovery scan instead — the
 same prompt behind Studio's **Discover** step. It lists the people the text
@@ -370,8 +369,8 @@ fakes:
   production does — `## Chapter title` headings with `SPEAKER: line` rows,
   NARRATION where no one is assigned.
 - **Compose / Rewrite**: *Insert from persona…* drops a persona's note on how
-  it sounds into the box, so you test with the same text Generate's 🎲 and ✏️
-  buttons use.
+  it sounds into the box, so you test with the same text a persona page's 🎲
+  and ✏️ buttons use.
 
 ## Thinking — one control, honest errors
 
@@ -428,6 +427,70 @@ if you want the reasoning pass shorter.
 project's script — an episode summary with segment beats you can paste into
 your feed. It routes through the `show_notes` action's preset like every other
 feature, and answers **501** with a clear message when no model is set up.
+
+## AI tasks — where they show, and the panel
+
+Every long-running job shows as a progress **strip** — the same shared strip
+every app in the family uses, reading one shared task queue, so a run keeps going
+when you move to another page. **A task's strip shows on the page that started
+it** (since 2026-10-05; it used to sit at the top of every page, so a chapter
+render showed on Voices): a chapter render and the ACX check on Render, Smart-
+assign and New personas on Cast, Show notes on Export, *Re-render changed* on
+Lines, the gender guess on Voices, Compose and Rewrite on a persona's page, and
+Discover's scan and Script's Analyze each on their own step. Anywhere else, the
+✨ button in the title bar counts what is running, and its panel lists
+everything.
+
+Two kinds of work get a strip, and only these two:
+
+- **Anything that asks a language model** — Compose, Rewrite, Script's Analyze,
+  Discover's scan, Smart-assign, New personas, Show notes, the gender guess. This
+  is what the strip exists for, and it is the same queue JustWrite and the docs
+  generator use for their own AI features.
+- **Long speech renders** — a chapter render, Render's line renders and ACX
+  check, and Lines' *Re-render changed*.
+
+Installing an engine, downloading a model and loading a model are not tasks:
+each reports on its own row on Speech engines (see
+[Engines](engines.md#cancelling-an-in-flight-load)).
+
+### A strip's life
+
+| State | Looks like | Goes away |
+|---|---|---|
+| running | animated ✨, elapsed seconds, the task's own numbers | — (**Cancel** while it runs) |
+| done | green ✓ and `done` | after 5 seconds |
+| failed | red ⚠, `failed` and the error | **never** on its own — ✕ it once you've read the error |
+| cancelled | grey ⊘ and `cancelled` | after 3 seconds |
+
+The numbers are what each job reports: characters, words and seconds of audio
+for a render; tokens and tokens per second for a language-model job. A batch
+(*Re-render changed*) also shows `done/total` with a real bar. A single call shows
+elapsed time only — the strip never invents a percentage for work that doesn't
+report one.
+
+The buttons: **Details** opens the panel; **Cancel** stops the actual request or
+batch, not just the display; **Retry** re-runs a finished job that can run again
+(also in the panel's Recent list, after the strip is gone); **✕** dismisses a
+finished strip. A failed task also turns the ✨ button red until you open the
+panel, so a failure can't slip past while you're on another page.
+
+### The AI tasks panel
+
+The panel slides in from the right — open it from a strip's **Details**, the ✨
+button in the title bar, or the ✨ AI tasks row in the sidebar. (The server status
+in the title bar — "Operational", and how many tasks are in flight — is status
+only, not a button.) It has two parts:
+
+- **Running** — a card per active task: elapsed time, its numbers, its own
+  Cancel, and **Cancel all** when more than one runs. A streaming language-model
+  task also shows a live / stalling / stuck dot, judged against that stream's own
+  pace.
+- **Recent** — tasks just finished, then the last 50 done, cancelled or failed,
+  each with its icon (✓ / ⊘ / ⚠), duration, numbers, the error when it failed,
+  and Retry where the job supports it. **🗑 Clear** clears the list.
+
+It closes on a click outside, Escape, or ✕ Close.
 
 ## Troubleshooting
 

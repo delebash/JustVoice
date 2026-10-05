@@ -40,7 +40,5 @@ like any other client.
 
 ## Generations from agents
 
-Audio generated over MCP is tagged with its source and **skips main-window
-autoplay** — an agent run never interrupts what you're listening to. The
-generations land in the library like any other, so you can review, favorite, or
-delete them normally.
+Audio generated over MCP is tagged with its source. The generations land in
+the library like any other, so you can review or delete them normally.

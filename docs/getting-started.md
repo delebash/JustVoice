@@ -10,7 +10,7 @@ JustVoice is a cross-platform voice-production studio. Five audiences share one 
 
 3. **Pick a voice.** Voices tab. Hit ▶ Preview on any row to audition.
 
-4. **Generate a line.** Generate tab. Type text. Click ▶ Generate. The Delivery overlay below the textarea lets you tune speed / pitch / gain / temperature, pick an **Emotion**, and — on Qwen3-TTS — write a delivery direction in your own words.
+4. **Hear a line.** On Voices, type your line in the test line above the list and ▶ any voice. To shape how it's said — pace, pitch, gain, an **Emotion**, and on Qwen3-TTS a direction in your own words — make it a persona (Personas → ＋ New persona) and use its **Hear it**.
 
 ## Common next steps
 

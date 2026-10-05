@@ -788,10 +788,29 @@ BUILT:  2026-10-05 — 1, 6, 7 (the plan §1): `services/newPersonas.js` (+ test
         Compose filled Hear it (its strip on the page), Rewrite showed original vs rewrite and
         "Use the rewrite" replaced the line; the Lexicon field said "2 word replacements would
         apply". Not checked live: the narrator in the batch (the throwaway book had none).
-OPEN:   9 — removing Generate waits on one answer: Captures' "Speak again" opens Generate with
-        the transcript filled in (`CapturesView.vue:56-63`), which the comparison missed. 8 (drop
-        History) goes with 9.
-GO:     given 2026-10-05 ("your rec on all go")
+        Then DECIDED 2026-10-05 — "your rec go", on the three as shown: "1. Captures' 'Speak again'
+        opens Generate with the transcript filled in … Lean: open Voices with the transcript in its
+        test line, which plays any voice without needing a persona. 2. The ★ favorite on a
+        generation lived only in Generate's History. Once History goes, its server call has no
+        caller. Remove it everywhere? Lean: yes. The 'Autoplay on generate' setting is already read
+        by nothing, so it goes with Generate. 3. Push the kit fix 038ed3f? Lean: yes."
+BUILT:  2026-10-05 — 9 + 8 (the plan §4, blast radius there): `GenerateView.vue`, its route, rail entry,
+        help slug, i18n label, cheatsheet group and five snapshot scripts deleted; smoke / e2e /
+        shots / verify_all lists; Captures' Speak again → Voices' test line (`jv.voices.testLine`);
+        Home's "all history ➜" gone; the ★ favorite gone (toggle endpoint, recent-row field, bulk
+        filter, cache param, Cache's "Prune unfavorited", tests); "Autoplay on generate" gone;
+        copy and seeds that named Generate. Docs: `generate.md` deleted — the task strip and panel
+        → ai-features "AI tasks", auto-chunking → engines "Long text, cut into pieces", the API
+        fields → import-and-export; getting-started, keyboard-shortcuts, lexicons, mcp-server,
+        personas, settings-reference, core-concepts, code-map, whats-new. Also the cheatsheet's
+        stale "Studio Script · Right-click → Rewrite" (gone since Slice 4). Tested: ruff, server
+        1106 (the two favorite tests went), Biome, vitest 147, build, family guard, smoke 14/14. Live: no Generate in the rail;
+        `#/generate` lands on Home; the Speak again hand-off filled Voices' test line; Cache and
+        Settings without the favorite and the autoplay row.
+OPEN:   the `generations.is_favorited` column — kept in the model, inert: the app's database has it
+        NOT NULL with no default, so dropping it now breaks every new render until a reset (put to
+        the user 2026-10-05).
+GO:     given 2026-10-05 ("your rec on all go", "your rec go")
 
 ### A page shows only its own AI tasks, and the step's name leads
 STATE:  DECIDED 2026-10-05 — "your rec on all go", on the proposal and the four leans as shown. The

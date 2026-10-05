@@ -57,10 +57,10 @@ describe("pageTasks", () => {
     const tasks = store([
       { id: "a", feature: "smart_assign", meta: { projectId: "p1" } },
       { id: "b", feature: "smart_assign", meta: { projectId: "p2" } },
-      { id: "c", feature: "generate", meta: {} },
+      { id: "c", feature: "show-notes", meta: {} },
     ]);
     expect(pageTasks(tasks, ["smart_assign"], { projectId: "p1" }).map((t) => t.id)).toEqual(["a"]);
-    expect(pageTasks(tasks, ["generate", "smart_assign"]).map((t) => t.id)).toEqual(["a", "b", "c"]);
+    expect(pageTasks(tasks, ["show-notes", "smart_assign"]).map((t) => t.id)).toEqual(["a", "b", "c"]);
   });
 });
 

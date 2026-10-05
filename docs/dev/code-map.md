@@ -50,7 +50,7 @@ stay on the persona** — they belong to the voice.
 | `name`, `language`, `avatar_path` | identity. `name` is unique across the library (case and extra spaces aside) and never blank — `personas_api._persona_name` |
 | `voice_id` | the instrument. **Not** an FK — voices are JSON manifests, the column carries the id verbatim |
 | `voice_instruct` | the spoken-delivery instruction. **The only persona text that reaches the synth.** Composed into `delivery.instruct` by `persona_render.plan_line` and consumed by **Qwen3 CustomVoice**, VoiceDesign (after a designed voice's description) and **VoxCPM2** (clones too) — Qwen3 Base has no instruction input, and Kokoro, Kitten, Pocket and Chatterbox take none (§3b) |
-| `note` | a short note on how it sounds (replaced `personality`, the character sheet, 2026-09-29). Read by Generate's Compose / Rewrite (`personas_api._require_persona_with_note` refuses without one) and by Smart-assign as the persona's `tone`. **Never reaches the synth** |
+| `note` | a short note on how it sounds (replaced `personality`, the character sheet, 2026-09-29). Read by the persona page's Compose / Rewrite (`personas_api._require_persona_with_note` refuses without one) and by Smart-assign as the persona's `tone`. **Never reaches the synth** |
 | `default_delivery` | JSON `PersonaDelivery` (2026-10-03) — speed, pitch, gain_db, pause_before/after for every model, and `models[<capability row id>]` = `{knobs, seed, emotion, register_tag}` kept per model. Validated against each model (`persona_render.check_delivery`) |
 | `effects_chain` | JSON array of `{type, params}` |
 | `lexicon_id` | FK → `lexicons`, `ondelete=SET NULL` — read on the lines of every speaker the persona plays, after the book's lexicon (`render_core.line_lexicons`) |
@@ -886,7 +886,7 @@ CustomVoice/VoiceDesign remains un-built and un-promised.
 - **`lookup()`** used `split("-")[0]`, so `chatterbox-turbo-v1` resolved to the
   **base** row — serving exaggeration/cfg_weight/min_p that Turbo defaults off,
   and hiding Turbo's paralinguistic tags. It now walks `-` suffixes one at a
-  time, the rule `GenerateView.vue:lookupCapability` already used.
+  time, the rule Generate's `lookupCapability` used (Generate removed 2026-10-05).
 
 **Cache impact:** nesting changes `canonical_json(delivery)`, which is the
 render cache key. Lines rendered before the fix will re-render once.
@@ -930,7 +930,6 @@ exposes queue depth or the current engine.**
 | `StudioView` | ~1440 (2026-09-29) | The production steps' container. Cast moved out to `components/StudioCast.vue` with the speakers/personas split (it was 3132 lines with the old Cast and its voice library inside). See below. |
 | `SettingsView` | 2099 | Workspace focus · connection · headless access · tokens · data location · disk · server bind · cache · limits · local model paths · generation pipeline (incl. the default voice language) · testing/danger zone |
 | `VoicesView` | ~1000 | The voice library — only that since 2026-10-04 (voices are made on a persona's page, see §1). Columns **Name · Gender · Type · Model · Speaks · Can be directed · Used by · ⋯** (2026-10-03, persona build P6); ⋯ = New persona from this voice · Copy to another model… (`POST /v1/voices/{id}/copy`) · Delete. Filters: engine, language, gender, can be directed, type |
-| `GenerateView` | 1282 | One-off synth: voice, text, seed + randomize, **delivery overlay**, insert tag, Rewrite, Compose, lexicon view, and a **history** of takes/favorites/retry |
 | `ProjectsView` | 950 | Project list (**Project · Kind · Structure · Last opened**) + detail expansion with scenes (**# · Title · Blocks · Duration · Status**), `＋ Add personas`, *Open in Studio ➜* |
 | `PersonasView` | ~360 | The persona library list — see §1 |
 | `PersonaEditorView` | ~970 | One persona's page, `/personas/:id` (`new` = blank; `meta.nav` keeps the rail on Personas) — see §1 |

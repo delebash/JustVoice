@@ -166,7 +166,7 @@ const settings = ref({
   models:    {},
   engines:   { default_tts_engine: "kokoro" },
   app:       { primary_use_case: "unset", secondary_use_cases: [], onboarding_shown: false },
-  generation:{ max_chunk_chars: 800, crossfade_ms: 50, stream_piece_chars: 200, pause_between_lines_ms: 600, normalize_audio: true, autoplay_on_generate: true },
+  generation:{ max_chunk_chars: 800, crossfade_ms: 50, stream_piece_chars: 200, pause_between_lines_ms: 600, normalize_audio: true },
 });
 const serverReachable = ref(false);
 
@@ -1423,20 +1423,6 @@ onMounted(() => {
               </div>
             </div>
             <UiToggle v-model="settings.generation.normalize_audio" @change="saveDebounced" aria-label="Normalize audio" />
-          </div>
-        </div>
-
-        <!-- Autoplay -->
-        <div class="setting-row">
-          <div class="setting-row__head">
-            <div>
-              <div class="setting-row__title">Autoplay on generate</div>
-              <div class="setting-row__desc">
-                Auto-play the result in the Generate tab as soon as a render completes. Disable
-                if you'd rather queue renders silently and listen later.
-              </div>
-            </div>
-            <UiToggle v-model="settings.generation.autoplay_on_generate" @change="saveDebounced" aria-label="Autoplay on generate" />
           </div>
         </div>
 

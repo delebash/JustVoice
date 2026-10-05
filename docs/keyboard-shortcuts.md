@@ -9,12 +9,6 @@ Press `?` from anywhere in the app (when no input is focused) to open the in-app
 | `?` | Open / close this cheatsheet |
 | `Esc` | Close any open modal, drawer, dropdown, or this cheatsheet |
 
-## Generate view
-
-| Keys | Action |
-|---|---|
-| `/` | Open the paralinguistic / SFX tag menu (the slash menu) in the textarea |
-
 ## Studio Script — a chapter
 
 These are an extra: everything is also a click, and **⌨ Shortcuts** on the page

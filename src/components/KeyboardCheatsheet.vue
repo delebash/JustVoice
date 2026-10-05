@@ -24,18 +24,6 @@ const GROUPS = [
     ],
   },
   {
-    title: "Generate",
-    items: [
-      { keys: ["/"], label: "Open paralinguistic tag menu (slash menu)" },
-    ],
-  },
-  {
-    title: "Studio Script",
-    items: [
-      { keys: ["Right-click"], label: "Rewrite a dialogue block in character (preview-then-accept)" },
-    ],
-  },
-  {
     title: "Studio Cast",
     items: [
       { keys: ["Click a persona"], label: "Assign it to the selected speaker" },
