@@ -559,7 +559,8 @@ const GAME_COLUMNS = [
           <strong>Speakers</strong>
           <span v-if="listed.length" class="jv-muted">{{ listed.length }} · {{ unassigned }} unassigned</span>
           <span class="jv-spacer" />
-          <UiButton intent="secondary" size="small" label="＋ Add" title="Add a speaker by name, then pick a persona" @click="addSpeaker" />
+          <UiButton intent="secondary" size="small" label="＋ Add"
+            title="Someone Discover missed: add them, then Re-analyze or set their lines on Script." @click="addSpeaker" />
           <UiButton intent="secondary" size="small" label="✕ Clear cast" :disabled="busy || !speakers.some((s) => s.persona_id)"
             title="Unassign every persona — the speakers stay" @click="clearCast" />
           <UiButton intent="primary" size="small" label="✨ Smart-assign" :loading="smartBusy" :disabled="smartBusy"

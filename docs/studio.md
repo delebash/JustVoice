@@ -666,10 +666,13 @@ narrator ([Personas → The Narrator](personas.md#the-narrator)).
 **Speakers** below it counts everyone else and how many have no persona yet
 (*4 · 2 unassigned*). Its head has three buttons:
 
-- **＋ Add** asks for a name and adds a speaker to the book. If your library
-  has a persona of exactly that name, the new speaker arrives cast with it;
-  otherwise pick a persona for them. Names are unique within a book, so a name
-  the book already has is refused.
+- **＋ Add** asks for a name and adds a speaker to the book — for someone
+  [Discover](#discover) missed. Analyze can only give a line to a speaker the
+  book has, so add them, then **Re-analyze** the chapters they speak in, or set
+  their lines yourself on Script (its speaker list has the whole cast). If your
+  library has a persona of exactly that name, the new speaker arrives cast with
+  it; otherwise pick a persona for them. Names are unique within a book, so a
+  name the book already has is refused.
 - **✕ Clear cast** asks first, then takes the persona away from every speaker:
   *"Unassign personas from all 5 speakers. The speakers stay — only the persona
   links go."*
@@ -844,9 +847,11 @@ Three things at the top work on the whole chapter:
 
 A row opens its line, under it:
 
-- **Spoken by** — the speaker, the persona that plays them and the persona's
-  model. Who speaks a line is decided in Script and Cast, not here: **Change in
-  Cast ➜**.
+- **Spoken by** — who says the line, with the same speaker list as Script's:
+  hear the wrong person and change it here. The line then reads *stale* — its
+  persona changed — until you render it again. Beside it, the persona that
+  plays that speaker and its model; which persona plays a speaker is Cast's:
+  **Change in Cast ➜**.
 - **⚙ Override the numbers for this line** — see
   [the line's own numbers](#a-lines-own-numbers).
 - **📕 Pronunciation** and **✏️ Rewrite as** *name* — see

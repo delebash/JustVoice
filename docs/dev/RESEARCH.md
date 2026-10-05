@@ -637,8 +637,18 @@ blast radius.
 - Smart-assign sends each speaker's pronouns and each persona's gender as its VOICE's gender
   (`voiceGender.js`: your override on Voices, else the catalog's, else a guess from the id or
   first name; "?" is sent as no gender). A persona has no gender field of its own. — *code,
-  2026-10-05* · `StudioCast.vue` (the smart-assign request). The server prompt's use of it was
-  not re-read.
+  2026-10-05* · `StudioCast.vue` (the smart-assign request). The server formats it as
+  `gender="…"` per voice (`smart_assign_api._format_voices`); the seeded prompt judges "age,
+  gender and tone" against "Available voices" (`seed_feature_prompts.py:165`).
+- `POST /v1/llm/smart-assign` is generic — `characters` + `voices` (id, name, gender, age,
+  accent, tone, language) → `{character_id: voice_id}` — so it can match speakers to library
+  VOICES as well as personas. A persona needs only a `name` to be created (`voice_id`
+  optional; with none its lines are *needs a voice*). — *code, 2026-10-05* ·
+  [`2026-10-05-cast-render-persona.md`](../plans/2026-10-05-cast-render-persona.md) §2.
+- Generate vs the persona page: the persona page has no Compose / Rewrite, no lexicon preview
+  and no History; Generate also plays a voice with no persona (Voices' test line does too).
+  The full table: [`2026-10-05-cast-render-persona.md`](../plans/2026-10-05-cast-render-persona.md)
+  §2. — *code, 2026-10-05*.
 
 ---
 

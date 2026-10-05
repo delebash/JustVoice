@@ -29,6 +29,7 @@ import { useApi } from "../stores/api.js";
 import { useCopy } from "../services/copy.js";
 import { useKeptScroll } from "../composables/useKeptScroll.js";
 import { mediaUrl, renderChapter, renderLines } from "../services/renderRun.js";
+import { speakerOptions as castChoices } from "../views/scriptReview.js";
 import PageTaskStrips from "./PageTaskStrips.vue";
 
 const props = defineProps({
@@ -94,6 +95,35 @@ const personaOf = (l) => personasById.value[speakerOf(l)?.persona_id] || null;
 const speakerName = (l) => speakerOf(l)?.name || "—";
 const firstName = (l) => speakerName(l).split(" ")[0];
 const isNarrator = (l) => speakerOf(l)?.role_label === "narrator";
+
+// ── Who says the line — the same picker as Script's (decided 2026-10-05) ──
+// So a wrong speaker heard while rendering is fixed on the spot. It saves
+// through Script's own request; the line then reads stale (its persona
+// changed) until it is rendered again. The VOICE stays Cast's (D2, 2026-10-04).
+const narratorId = computed(() => props.speakers.find((s) => s.role_label === "narrator")?.id || null);
+const speakerChoices = computed(() => castChoices(props.speakers.map((s) => ({
+  speaker_id: s.id, name: s.name, lines: lines.value.filter((l) => l.speaker_id === s.id).length,
+})), narratorId.value));
+const speakerBusy = reactive({});
+async function changeSpeaker(l, speakerId) {
+  if (!speakerId || speakerId === l.speaker_id) return;
+  // Script's rule: on a chapter Analyze never ran on, a speaker you give is not
+  // marked as yours — "corrected" would freeze it against every future Analyze.
+  const analyzed = !!props.scenes.find((sc) => sc.id === props.sceneId)?.metadata?.analyzed_at;
+  speakerBusy[l.block_id] = true;
+  try {
+    await api.request(`/v1/blocks/${l.block_id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(analyzed ? { speaker_id: speakerId, source: "corrected" } : { speaker_id: speakerId }),
+    });
+    await load();
+    emit("changed", { sceneId: props.sceneId });
+  } catch (e) {
+    pushToast({ kind: "error", message: `The speaker didn't change: ${e?.message || e}`, duration: 7000 });
+  } finally {
+    speakerBusy[l.block_id] = false;
+  }
+}
 function standingTags(l) {
   const p = personaOf(l);
   const m = p?.default_delivery?.models?.[p?.model] || {};
@@ -501,15 +531,17 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
               <div class="jv-linepanel__side">
                 <div class="jv-linepanel__field">
                   <span class="jv-eyebrow">Spoken by</span>
-                  <span v-if="personaOf(row.line)">
-                    <strong>{{ speakerName(row.line) }}</strong> — played by {{ personaOf(row.line).name }}
-                    <template v-if="personaOf(row.line).model_name"> · {{ personaOf(row.line).model_name }}</template> ·
-                    <a href="#" @click.prevent="emit('go', 'cast')">Change in Cast ➜</a>
+                  <span class="jv-inline-row">
+                    <UiSelect :model-value="row.line.speaker_id" width="name" :options="speakerChoices"
+                      placeholder="— no speaker —" :disabled="!!speakerBusy[row.line.block_id]"
+                      title="Who says this line — the same choice as Script's"
+                      @update:model-value="(v) => changeSpeaker(row.line, v)" />
+                    <span v-if="personaOf(row.line)">played by {{ personaOf(row.line).name }}<template
+                      v-if="personaOf(row.line).model_name"> · {{ personaOf(row.line).model_name }}</template> ·
+                      <a href="#" @click.prevent="emit('go', 'cast')">Change in Cast ➜</a></span>
+                    <span v-else-if="row.line.speaker_id" class="jv-muted">nobody plays them yet ·
+                      <a href="#" @click.prevent="emit('go', 'cast')">Cast them ➜</a></span>
                   </span>
-                  <span v-else-if="row.line.speaker_id">{{ speakerName(row.line) }} — nobody plays them yet ·
-                    <a href="#" @click.prevent="emit('go', 'cast')">Cast them ➜</a></span>
-                  <span v-else class="jv-muted">Nobody —
-                    <a href="#" @click.prevent="emit('go', 'script')">give it a speaker in Script ➜</a></span>
                 </div>
 
                 <div class="jv-linepanel__field">

@@ -753,7 +753,21 @@ WHY:    Smart-assign matches speakers' pronouns against personas' VOICE gender (
         persona field could contradict its voice.
 NOT:    one persona per speaker with no voice; a persona gender field; removing Generate before the
         comparison; Render's line choosing a voice per line (D2).
-OPEN:   all five, after the page-tasks build below.
+BUILT:  2026-10-05 — 2, 3, 5; record + blast radius `docs/plans/2026-10-05-cast-render-persona.md`.
+        2 `StudioCast.vue` tooltip; 3 `StudioRenderChapter.vue` (Script's `speakerOptions`, Script's
+        PATCH and its never-analyzed rule); 5 `PersonaEditorView.vue` (Gender · from its voice; the
+        "?" warning). Docs: studio (Cast, Render), personas. Biome, vitest 145, build, family guard,
+        smoke 15/15. Live on throwaway data (deleted after): a Bella persona read "Female · from
+        its voice", an Azelma one "Not known" with the warning; ＋ Add's tooltip as decided;
+        Render's picker listed Narrator first then the cast, and picking Auberon Vasht saved it
+        (needs a speaker → needs a voice). Not checked live: a rendered line going stale on a
+        speaker change (no voices were cast).
+        1 and 4 researched (the plan §2): a persona needs only a name; Smart-assign's endpoint
+        matches speakers to any "voices", so the batch can send library voices; Generate has
+        Compose, Rewrite, the lexicon preview and History that the persona page lacks.
+OPEN:   1 — the batch's details (which voices, names, a preview first, the narrator, the note);
+        4 — what moves before Generate goes (Compose + Rewrite, the lexicon preview, History).
+        Both put to the user 2026-10-05.
 GO:     given 2026-10-05 ("your rec on all go")
 
 ### A page shows only its own AI tasks, and the step's name leads

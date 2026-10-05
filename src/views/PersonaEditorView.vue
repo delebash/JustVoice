@@ -47,7 +47,7 @@ import { openProjectInStudio } from "../services/openProject.js";
 import { projectsService } from "../services/projects.js";
 import { DIRECTION_OPTIONS, VOICE_KINDS as KINDS, voiceKind as kindOf, voiceLabel } from "../services/personaFacts.js";
 import { auditionVoice } from "../services/voiceAudition.js";
-import { voiceGender } from "../services/voiceGender.js";
+import { voiceGender, voiceGenderWord } from "../services/voiceGender.js";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useApi } from "../stores/api.js";
 import { useEnginesStore } from "../stores/engines.js";
@@ -843,6 +843,17 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
                   <span v-if="languageFixed" class="persona-editor__fixed">{{ languageName(effectiveLanguage) || effectiveLanguage }}</span>
                   <UiSelect v-else v-model="draft.language" :options="languageOptions" width="name" />
                 </UiField>
+                <!-- A persona's gender is its voice's — no field of its own; it is
+                     what Smart-assign matches against a speaker's pronouns
+                     (decided 2026-10-05). -->
+                <UiField label="Gender" layout="block">
+                  <span class="persona-editor__fixed">{{ voiceGender(voice) === "?" ? "Not known" : voiceGenderWord(voice) }}
+                    <span class="jv-hint">· from its voice · <a href="#/voices">change it on Voices ➜</a></span></span>
+                </UiField>
+              </div>
+              <div v-if="voice && voiceGender(voice) === '?'" class="jv-banner jv-banner--warn">
+                Its voice's gender isn't known, so <strong>Smart-assign can't match {{ draft.name || "this persona" }}</strong>
+                to a speaker's pronouns. Set it on <a href="#/voices">Voices ➜</a> — click the voice's gender.
               </div>
               <div v-if="voiceChange" class="jv-banner jv-banner--warn">
                 Changing this makes {{ draft.name || "this persona" }}'s <strong>{{ plural(voiceChange.lines, "line") }}</strong> stale.

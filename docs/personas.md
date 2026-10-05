@@ -219,6 +219,13 @@ list of exactly those, so one Qwen3 speaker can be an English persona and a
 Korean one; when the two differ the page says *Speaks English · voice is
 Korean*. Every render of a line this persona plays is sent in this language.
 
+**Gender** beside it is the voice's: *Female · from its voice*. A persona has no
+gender of its own — it sounds like its voice — and this is what **Smart-assign**
+matches against a speaker's pronouns. Change it on [Voices](voices.md) by
+clicking the voice's gender. When the voice's gender isn't known, it says *Not
+known* and warns that Smart-assign can't match this persona to anyone's
+pronouns.
+
 **Changing the voice** of a persona that plays anyone warns that its lines go
 stale: *Changing this makes June's 61 lines stale.* When the new voice's model
 can't take written direction and some of those lines carry a direction of their
