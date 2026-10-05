@@ -19,6 +19,7 @@ import { UiButton, UiInput, UiTextarea, UiField, UiTag, UiChip, UiSelect, UiSlid
 // Language CODE → the name a person reads ("en-US" → American English).
 // Kit-side, because every app in the family shows a language somewhere.
 import { languageName, languageOptionsFrom } from "@delebash/llm-ui";
+import { facetChoices, facetCounts, facetOptions, facetTotal, narrowed } from "../services/facets.js";
 import { EmptyState } from "@delebash/llm-ui";
 // An engine's own terms (Pocket TTS — Kyutai's) refuse a clone until accepted.
 import { handleTermsRefusal } from "../services/engineTerms.js";
@@ -163,14 +164,14 @@ function setEngineFilter(id) {
   engineFilter.value = id;
   writePref("voicesEngineFilter", id);
 }
-const engineFilterOptions = computed(() => {
-  const counts = {};
-  for (const v of voices.value || []) counts[v.engine] = (counts[v.engine] || 0) + 1;
-  return [
-    { label: `All engines (${(voices.value || []).length})`, value: "all" },
-    ...Object.entries(counts).sort().map(([id, n]) => ({ label: `${id} (${n})`, value: id })),
-  ];
-});
+// Every filter here lists only what the others leave, with counts that match
+// the grid (decided 2026-10-05, services/facets.js): kokoro (54) + Written
+// direction used to be an empty grid. A remembered engine whose voices are
+// gone stays in the list with (0).
+const engineFilterOptions = computed(() => [
+  { label: `All engines (${facetTotal(voices.value || [], voiceFilters.value, "engine")})`, value: "all" },
+  ...facetOptions(voices.value || [], voiceFilters.value, "engine", (v) => v.engine, (id, n) => `${id} (${n})`),
+]);
 
 // Currently loaded TTS engine — surfaced in the toolbar (user ask: the
 // Voices page should say which engine previews will hit).
@@ -218,47 +219,37 @@ const genderFilter = ref("all");
 // user to filter out what types of voices they want to use").
 const directionFilter = ref("");
 
+const genderOf = (v) => voiceGenderWord(v) || "unset";
+const voiceFilters = computed(() => [
+  { key: "engine", value: engineFilter.value, empty: "all", test: (v, x) => v.engine === x },
+  { key: "type", value: typeFilter.value, empty: "all", test: (v, x) => v.source === x },
+  { key: "lang", value: langFilter.value, empty: "all", test: (v, x) => v.language === x },
+  { key: "gender", value: genderFilter.value, empty: "all", test: (v, x) => genderOf(v) === x },
+  { key: "direction", value: directionFilter.value, test: (v, x) => v.directed_by === x },
+  { key: "search", value: search.value.trim().toLowerCase(),
+    test: (v, q) => (v.name || "").toLowerCase().includes(q) || (v.id || "").toLowerCase().includes(q) },
+]);
+
 const langFilterOptions = computed(() => {
-  const counts = new Map();
-  for (const v of voices.value || []) {
-    const c = v.language || "";
-    if (c) counts.set(c, (counts.get(c) || 0) + 1);
-  }
-  return languageOptionsFrom(counts.keys(), {
-    allLabel: `All languages (${(voices.value || []).length})`,
-    counts,
+  const opts = facetOptions(voices.value || [], voiceFilters.value, "lang", (v) => v.language, (c) => c);
+  return languageOptionsFrom(opts.map((o) => o.value), {
+    allLabel: `All languages (${facetTotal(voices.value || [], voiceFilters.value, "lang")})`,
+    counts: new Map(opts.map((o) => [o.value, o.n])),
   });
 });
 
-const genderFilterOptions = computed(() => {
-  const counts = {};
-  for (const v of voices.value || []) {
-    const g = voiceGenderWord(v) || "unset";
-    counts[g] = (counts[g] || 0) + 1;
-  }
-  return [
-    { label: "Any gender", value: "all" },
-    ...Object.keys(counts)
-      .sort()
-      .map((g) => ({ label: `${g[0].toUpperCase()}${g.slice(1)} (${counts[g]})`, value: g })),
-  ];
-});
+const genderFilterOptions = computed(() => [
+  { label: "Any gender", value: "all" },
+  ...facetOptions(voices.value || [], voiceFilters.value, "gender", genderOf,
+    (g, n) => `${g[0].toUpperCase()}${g.slice(1)} (${n})`),
+]);
 
-const filteredVoices = computed(() => {
-  let list = voices.value || [];
-  if (engineFilter.value !== "all") list = list.filter((v) => v.engine === engineFilter.value);
-  if (typeFilter.value !== "all") list = list.filter((v) => v.source === typeFilter.value);
-  if (langFilter.value !== "all") list = list.filter((v) => v.language === langFilter.value);
-  if (genderFilter.value !== "all")
-    list = list.filter((v) => (voiceGenderWord(v) || "unset") === genderFilter.value);
-  if (directionFilter.value) list = list.filter((v) => v.directed_by === directionFilter.value);
-  if (search.value.trim()) {
-    const q = search.value.trim().toLowerCase();
-    list = list.filter((v) => (v.name || "").toLowerCase().includes(q) || (v.id || "").toLowerCase().includes(q));
-  }
+const directionFilterOptions = computed(() =>
+  facetChoices(voices.value || [], voiceFilters.value, "direction", DIRECTION_OPTIONS, (v, x) => v.directed_by === x));
+
+const filteredVoices = computed(() =>
   // Needs-install voices sink to the bottom — never first-in-list.
-  return [...list].sort((a, b) => needsInstall(a) - needsInstall(b));
-});
+  [...narrowed(voices.value || [], voiceFilters.value)].sort((a, b) => needsInstall(a) - needsInstall(b)));
 
 /** The rows UiTable renders. The display language rides along as a field so
  *  the column can sort by the NAME people read rather than by the code. */
@@ -298,12 +289,12 @@ function voiceRowClass(row) {
   return voiceRowState(row, orphanIds.value, playingVoice.value?.id || "");
 }
 
-const typeCounts = computed(() => {
-  const list = voices.value || [];
-  const cs = { all: list.length, preset: 0, cloned: 0, designed: 0, imported: 0, blended: 0 };
-  for (const v of list) if (cs[v.source] !== undefined) cs[v.source]++;
-  return cs;
-});
+// The type chips count what the other filters leave, like every filter here.
+const typeCounts = computed(() => ({
+  all: facetTotal(voices.value || [], voiceFilters.value, "type"),
+  ...facetCounts(voices.value || [], voiceFilters.value, "type",
+    TYPE_FILTERS.filter((f) => f.id !== "all").map((f) => f.id), (v, t) => v.source === t),
+}));
 
 // ── Voice preview (LRU-cached on backend). ──────────────────────────
 // ONE player for the page, and its transport renders inside the row you
@@ -671,7 +662,7 @@ function voiceTypeVariant(source) {
     />
     <UiSelect
       v-model="directionFilter"
-      :options="DIRECTION_OPTIONS"
+      :options="directionFilterOptions"
       title="Show only voices whose model can be directed one way"
       aria-label="Can be directed"
       width="id"

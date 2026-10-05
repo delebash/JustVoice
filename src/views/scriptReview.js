@@ -12,6 +12,8 @@
 // prev_speaker_id, metadata, …}. A "group" is one of its flag_groups:
 // {check, speaker, lines: [id], turns, other}.
 
+import { facetCounts, facetOptions } from "../services/facets.js";
+
 /** The PATCH fields a line is restored from — everything a change touches. */
 function snapshot(line) {
   return {
@@ -52,14 +54,33 @@ function passes(line, filter) {
   return true;
 }
 
-/** Each filter's count — a filter's number is the number of rows it shows. */
+/** Each filter's count — a filter's number is the number of rows it shows.
+ *  "All" counts a chapter's scene-break markers too, because it lists them
+ *  (until 2026-10-05 it skipped them, so "All 120" showed 120 + the breaks). */
 export function filterCounts(lines) {
   const out = { all: 0, check: 0, none: 0, changed: 0 };
   for (const ln of lines) {
-    if (ln.marker) continue;
     for (const f of FILTERS) if (passes(ln, f)) out[f] += 1;
   }
   return out;
+}
+
+/**
+ * The chips and the speaker filter, each counted under the other (decided
+ * 2026-10-05: filters narrow each other) — "No speaker 12" under a speaker used
+ * to show nothing, and a speaker's number was the chapter's, whatever the chip.
+ * → { chips: {all, check, none, changed}, speakers: {speakerId: n} }
+ */
+export function lineFacets(lines, { filter = "all", speaker = "all" } = {}) {
+  const fs = [
+    { key: "chip", value: filter, empty: "all", test: passes },
+    { key: "speaker", value: speaker, empty: "all", test: (ln, s) => ln.speaker_id === s },
+  ];
+  return {
+    chips: facetCounts(lines, fs, "chip", FILTERS, passes),
+    speakers: Object.fromEntries(
+      facetOptions(lines, fs, "speaker", (ln) => ln.speaker_id, (id) => id).map((o) => [o.value, o.n])),
+  };
 }
 
 /**

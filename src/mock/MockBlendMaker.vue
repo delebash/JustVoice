@@ -10,6 +10,7 @@ import { computed, ref } from "vue";
 import {
   UiButton, UiField, UiInput, UiSegmented, UiSelect, UiSlider, languageName, pushToast,
 } from "@delebash/llm-ui";
+import { facetOptions, facetTotal, narrowed } from "../services/facets.js";
 import { voiceGender } from "../services/voiceGender.js";
 import { keepVoice, silentWav, store, wait } from "./personaMock.js";
 
@@ -36,26 +37,23 @@ const strategy = ref("blend");
 const pack = computed(() => store.voices.filter((v) => v.model === "kokoro" && v.source === "preset"));
 const langFilter = ref("");
 const genderFilter = ref("");
-const langOptions = computed(() => {
-  const counts = new Map();
-  for (const v of pack.value) counts.set(v.language, (counts.get(v.language) || 0) + 1);
-  return [
-    { value: "", label: `All languages (${pack.value.length})` },
-    ...[...counts].map(([c, n]) => ({ value: c, label: `${languageName(c) || c} (${n})` }))
-      .sort((a, b) => a.label.localeCompare(b.label)),
-  ];
-});
 const GENDER_WORD = { F: "Female", M: "Male", N: "Neutral" };
-const genderOptions = computed(() => {
-  const counts = new Map();
-  for (const v of pack.value) {
-    const g = voiceGender(v);
-    if (GENDER_WORD[g]) counts.set(g, (counts.get(g) || 0) + 1);
-  }
-  return [{ value: "", label: "Any gender" }, ...[...counts].map(([g, n]) => ({ value: g, label: `${GENDER_WORD[g]} (${n})` }))];
-});
-const pickable = computed(() => pack.value.filter((v) =>
-  (!langFilter.value || v.language === langFilter.value) && (!genderFilter.value || voiceGender(v) === genderFilter.value)));
+// Language and gender each list only what the other leaves (decided
+// 2026-10-05, services/facets.js) — French + Male left every picker empty.
+const packFilters = computed(() => [
+  { key: "lang", value: langFilter.value, test: (v, c) => v.language === c },
+  { key: "gender", value: genderFilter.value, test: (v, g) => voiceGender(v) === g },
+]);
+const langOptions = computed(() => [
+  { value: "", label: `All languages (${facetTotal(pack.value, packFilters.value, "lang")})` },
+  ...facetOptions(pack.value, packFilters.value, "lang", (v) => v.language, (c, n) => `${languageName(c) || c} (${n})`),
+]);
+const genderOptions = computed(() => [
+  { value: "", label: "Any gender" },
+  ...facetOptions(pack.value, packFilters.value, "gender", (v) => (GENDER_WORD[voiceGender(v)] ? voiceGender(v) : ""),
+    (g, n) => `${GENDER_WORD[g] || g} (${n})`),
+]);
+const pickable = computed(() => narrowed(pack.value, packFilters.value));
 const voiceOptions = computed(() => [
   { value: "", label: "— pick a voice —" },
   ...pickable.value.map((v) => ({

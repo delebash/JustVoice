@@ -30,6 +30,7 @@ import {
   confirmDialog, languageName, promptDialog, pushToast,
 } from "@delebash/llm-ui";
 import { handleTermsRefusal } from "../services/engineTerms.js";
+import { facetChoices, facetOptions, narrowed } from "../services/facets.js";
 import { DIRECTION_OPTIONS, directionCell, tagCount, voiceKindWord } from "../services/personaFacts.js";
 import { auditionPersona } from "../services/voiceAudition.js";
 import { useApi } from "../stores/api.js";
@@ -84,48 +85,45 @@ const languageFilter = ref("");
 // All · In use · Unused · one book (plan §6.2 call 7: "By project" folds in).
 const usageFilter = ref("");
 
-function counted(values, label) {
-  const counts = new Map();
-  for (const v of values) if (v) counts.set(v, (counts.get(v) || 0) + 1);
-  return [...counts].map(([value, n]) => ({ value, label: `${label(value)} (${n})` }))
-    .sort((a, b) => a.label.localeCompare(b.label));
+// Each filter lists only what the others leave, with counts that match the
+// table (decided 2026-10-05, services/facets.js) — Kokoro + Tags, or a book
+// none of a model's personas plays in, used to be an empty table.
+function usedAs(p, u) {
+  if (u === "used") return usageCount(p.id) > 0;
+  if (u === "unused") return !usageCount(p.id);
+  return (usage.value[p.id] || []).some((x) => `book:${x.project_id}` === u);
 }
+const personaFilters = computed(() => [
+  { key: "model", value: modelFilter.value, test: (p, m) => p.model === m },
+  { key: "direction", value: directionFilter.value, test: (p, d) => p.directed_by === d },
+  { key: "language", value: languageFilter.value, test: (p, c) => p.speaks === c },
+  { key: "usage", value: usageFilter.value, test: usedAs },
+  { key: "search", value: search.value.trim().toLowerCase(),
+    test: (p, q) => (p.name || "").toLowerCase().includes(q) || (p.note || "").toLowerCase().includes(q) },
+]);
 const modelOptions = computed(() => {
   const names = Object.fromEntries(personas.value.map((p) => [p.model, p.model_name || p.model]));
-  return [{ value: "", label: "All models" }, ...counted(personas.value.map((p) => p.model), (m) => names[m])];
+  return [{ value: "", label: "All models" },
+    ...facetOptions(personas.value, personaFilters.value, "model", (p) => p.model, (m, n) => `${names[m] || m} (${n})`)];
 });
+const directionOptions = computed(() =>
+  facetChoices(personas.value, personaFilters.value, "direction", DIRECTION_OPTIONS, (p, d) => p.directed_by === d));
 const languageOptions = computed(() => [
   { value: "", label: "All languages" },
-  ...counted(personas.value.map((p) => p.speaks), (c) => languageName(c) || c),
+  ...facetOptions(personas.value, personaFilters.value, "language", (p) => p.speaks, (c, n) => `${languageName(c) || c} (${n})`),
 ]);
 const usageOptions = computed(() => {
   const books = new Map();
   for (const list of Object.values(usage.value)) for (const u of list) books.set(u.project_id, u.project_name);
-  return [
+  return facetChoices(personas.value, personaFilters.value, "usage", [
     { value: "", label: "All" },
     { value: "used", label: "In use" },
     { value: "unused", label: "Unused" },
     ...[...books].sort((a, b) => a[1].localeCompare(b[1])).map(([id, name]) => ({ value: `book:${id}`, label: `In ${name}` })),
-  ];
+  ], usedAs);
 });
 
-const filteredPersonas = computed(() => {
-  let list = personas.value;
-  if (modelFilter.value) list = list.filter((p) => p.model === modelFilter.value);
-  if (directionFilter.value) list = list.filter((p) => p.directed_by === directionFilter.value);
-  if (languageFilter.value) list = list.filter((p) => p.speaks === languageFilter.value);
-  const u = usageFilter.value;
-  if (u === "used") list = list.filter((p) => usageCount(p.id) > 0);
-  if (u === "unused") list = list.filter((p) => !usageCount(p.id));
-  if (u.startsWith("book:")) {
-    const book = u.slice(5);
-    list = list.filter((p) => (usage.value[p.id] || []).some((x) => x.project_id === book));
-  }
-  const q = search.value.trim().toLowerCase();
-  if (q) list = list.filter((p) =>
-    (p.name || "").toLowerCase().includes(q) || (p.note || "").toLowerCase().includes(q));
-  return list;
-});
+const filteredPersonas = computed(() => narrowed(personas.value, personaFilters.value));
 const filtering = computed(() => !!(search.value.trim() || modelFilter.value || directionFilter.value
   || languageFilter.value || usageFilter.value));
 function clearFilters() {
@@ -395,7 +393,7 @@ onActivated(() => { if (mounted) loadAll(); mounted = true; });
       <UiInput v-model="search" placeholder="Search personas…" size="small" width="id" />
       <UiSelect v-model="modelFilter" :options="modelOptions" width="id" aria-label="Model"
         title="Show only personas on one model" />
-      <UiSelect v-model="directionFilter" :options="DIRECTION_OPTIONS" width="id" aria-label="Can be directed"
+      <UiSelect v-model="directionFilter" :options="directionOptions" width="id" aria-label="Can be directed"
         title="Show only personas that can be directed one way" />
       <UiSelect v-model="languageFilter" :options="languageOptions" width="id" aria-label="Speaks"
         title="Show only personas that speak one language" />

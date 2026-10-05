@@ -723,6 +723,45 @@ GO: needed.
 
 ## The next build
 
+### The persona page's Voice card: pick a voice first, filters that narrow each other (decided 2026-10-05)
+STATE:  DECIDED 2026-10-05 — "check for other errors like this in the drop down filters and your rec
+        on 1 and 2 no need to mock just do it go", on the two as shown (the user first: "if i choose
+        written direction blend button is disableb but i can still see all models in model dropdwon
+        should i, how do the two work toeghter"):
+        "1. Make the filters narrow each other. Model and Voice's language list only what fits How it
+        can be directed and Made by, with counts that match what the list will show. The direction
+        counts follow Made by too. This is a fix to the current page and needs no redesign.
+        2. The Voice card redesign … Voice comes first. Direction, model, gender and voice's
+        language become one 'Narrow the list' row with a Clear. Made by becomes 'or make a new one:
+        Clone · Design · Blend'. Built-in is just the list." No mock (the user waived it).
+        Then — the user on the built card: "thats a weird design you have pick a voice above filters
+        that is weird" — and the audit of every other filter set (8 more with the same flaw), DECIDED
+        2026-10-05 "your rec on all go", on the three as shown: "1. Put the persona page's filters
+        back above Voice: Narrow the list → Voice → Or make a new one. 2. Fix all of 1–6 [Voices;
+        Cast's persona list; Personas list; the blend maker; Script's chapter page — line chips ×
+        speaker, and All N leaving out marker lines; Render's chapter page] with the shared rule —
+        each filter lists only what the others leave, and its counts match what the list will
+        show; an option nothing fits drops out, but the one you chose stays with (0) so you can
+        see it and change it (that also fixes the remembered-filter cases); one helper in
+        src/services/ that every page uses. 3. Bring the four mocks (persona page, Personas list,
+        blend maker, Render chapter) to the same code." No server suite (the user's standing word).
+WHY:    Model and Voice's language were built from Made by alone (`voicesOfKind`), so Written
+        direction + Built-in still offered Kokoro (54) — picking it emptied the list; the same
+        root cause on eight more screens.
+BUILT:  2026-10-05 — plan, audit and blast radius `docs/plans/2026-10-05-filters-narrow-each-other.md`.
+        `services/facets.js` (+ test); the persona page and its mock (Narrow the list → Voice → Or
+        make a new one; Made by gone as a filter); Voices; Cast's persona list; the Personas list
+        and its mock; the blend maker and its mock; Script's chapter page (`lineFacets`; All N
+        counts the scene breaks it lists — its pinned test rewritten); Render's chapter page and
+        its mock. Docs: personas, voices, studio, whats-new; RESEARCH §7. Checked: Biome, build,
+        family guard, the facet + scriptReview test files (36); live on the running app, read-only:
+        the persona card's order, Written direction → Model "Qwen3-TTS CustomVoice (9)" only, a
+        picked voice kept when filtered away, Clear → 91, Clone opens its maker; Voices under
+        Written direction → engine "qwen3 (9)", the type chips "All (9) · Preset (9)", 9 rows.
+        Not run: the unit and server suites (the user's word).
+OPEN:   none.
+GO:     given 2026-10-05
+
 ### The persona page: "Style Instructions", and Hear it just above Save (decided 2026-10-05)
 STATE:  DECIDED 2026-10-05 — the user: "persona page change Standing delivery to Style Instructions
         and add optional when it is optional, move the hear it block to above the save block as

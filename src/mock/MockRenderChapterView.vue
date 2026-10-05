@@ -18,6 +18,7 @@ import { useRoute, useRouter } from "vue-router";
 import {
   AppModal, UiButton, UiChip, UiInput, UiNumber, UiSelect, UiTable, UiTag, UiTextarea, pushToast,
 } from "@delebash/llm-ui";
+import { facetCounts, facetOptions, facetTotal, passesFilters } from "../services/facets.js";
 import { silentWav, wait } from "./personaMock.js";
 import {
   BOOK_LEXICON, PAUSE_BETWEEN_LINES_MS, SPEAKERS, addTake, avatarColor, counts, directedBy,
@@ -40,24 +41,32 @@ const next = computed(() => render.chapters[idx.value + 1] || null);
 const filter = ref("all");
 const speakerFilter = ref("all");
 watch(() => route.params.id, () => { filter.value = "all"; speakerFilter.value = "all"; open.value = null; });
-const CHIPS = computed(() => [
-  { id: "all", label: "All", n: c.value.all },
-  { id: "ready", label: "Ready", n: c.value.ready },
-  { id: "stale", label: "Stale", n: c.value.stale, tip: "Something the take was made from changed since — render it again when you choose" },
-  { id: "rendered", label: "Rendered", n: c.value.rendered },
-  { id: "blocked", label: "Can't render", n: c.value.blocked },
-]);
-const speakerOptions = computed(() => [
-  { value: "all", label: "Every speaker" },
-  ...SPEAKERS.filter((s) => lines.value.some((l) => l.speaker_id === s.id)).map((s) => ({ value: s.id, label: s.name })),
-]);
-function inFilter(l) {
+// The chips and the speaker filter, each counted under the other, as the page.
+const stateIs = (l, f) => {
   const s = lineState(l);
-  if (speakerFilter.value !== "all" && l.speaker_id !== speakerFilter.value) return false;
-  if (filter.value === "all") return true;
-  if (filter.value === "blocked") return s === "needs a speaker" || s === "needs a voice";
-  return s === filter.value;
-}
+  return f === "blocked" ? s === "needs a speaker" || s === "needs a voice" : s === f;
+};
+const lineFilters = computed(() => [
+  { key: "chip", value: filter.value, empty: "all", test: stateIs },
+  { key: "speaker", value: speakerFilter.value, empty: "all", test: (l, s) => l.speaker_id === s },
+]);
+const chipN = computed(() => ({
+  all: facetTotal(lines.value, lineFilters.value, "chip"),
+  ...facetCounts(lines.value, lineFilters.value, "chip", ["ready", "stale", "rendered", "blocked"], stateIs),
+}));
+const CHIPS = computed(() => [
+  { id: "all", label: "All", n: chipN.value.all },
+  { id: "ready", label: "Ready", n: chipN.value.ready },
+  { id: "stale", label: "Stale", n: chipN.value.stale, tip: "Something the take was made from changed since — render it again when you choose" },
+  { id: "rendered", label: "Rendered", n: chipN.value.rendered },
+  { id: "blocked", label: "Can't render", n: chipN.value.blocked },
+]);
+const speakerOptions = computed(() => {
+  const names = Object.fromEntries(SPEAKERS.map((s) => [s.id, s.name]));
+  return [{ value: "all", label: "Every speaker" },
+    ...facetOptions(lines.value, lineFilters.value, "speaker", (l) => l.speaker_id, (id, n) => `${names[id] || "—"} · ${n}`)];
+});
+const inFilter = (l) => passesFilters(l, lineFilters.value);
 const open = ref(null);   // the line whose panel is open
 const rows = computed(() => {
   const out = [];

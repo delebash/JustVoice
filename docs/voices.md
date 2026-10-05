@@ -40,8 +40,8 @@ a model; they render on their engine's default model that can speak them.
 
 The Voices page is the **library**: every voice you have, to find, hear,
 copy to another model, start a persona from, or delete. A new voice is made
-on a **persona's page** (since 2026-10-04): pick *Clone from audio*, *Design
-from words* or *Blend* under *Made by* and its fields open right there — see
+on a **persona's page** (since 2026-10-04): *Clone from audio*, *Design from
+words* or *Blend* under *Or make a new one* opens its fields right there — see
 [Personas → Making a voice on this page](personas.md#making-a-voice-on-this-page).
 You hear it as that persona before you keep it, and once kept it is here, in
 the library, for any persona to use.
@@ -88,6 +88,13 @@ Above the library: a search box, then filters for
 **engine**, **language**, **gender**, **can be directed** and voice **type**.
 Language reads as a name — *American English*, *British English*, *Chinese* —
 never as a code. Any column heading sorts the list.
+
+Each filter lists only what the others leave, with counts that match the list,
+so no choice empties it by surprise; a choice that nothing fits any more stays
+in its list with **(0)**, so you can see it and change it (since 2026-10-05). Under **Written direction**, for example, Engine
+offers only the engines whose voices take it, and the type chips count only
+those voices. An engine you chose earlier that has no voices now comes back
+as *engine (0)* instead of an empty list.
 
 | Column | Shows |
 |---|---|

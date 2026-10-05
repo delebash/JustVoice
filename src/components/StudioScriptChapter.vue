@@ -39,7 +39,7 @@ import { inRun, onChapterDone, queueChapters, runStripTask, stepRun } from "../s
 import { addNarrator } from "../services/narrator.js";
 import NarratorNeeded from "./NarratorNeeded.vue";
 import {
-  KEYS, applyLocally, checkQuestion, confidenceCell, confirm, decidedBy, editText, filterCounts,
+  KEYS, applyLocally, checkQuestion, confidenceCell, confirm, decidedBy, editText, filterCounts, lineFacets,
   keyAction, markOf, mergeState, move, nextToCheck, numberKeys, popUndo, pushUndo, setSpeaker,
   speakerOptions, swap, swapState, toCheck, visibleLines, wasBefore,
 } from "../views/scriptReview.js";
@@ -130,7 +130,10 @@ const speakers = computed(() => page.value?.speakers || []);
 const narratorId = computed(() => page.value?.narrator_id || null);
 const nameOf = (id) => speakers.value.find((s) => s.speaker_id === id)?.name || (id ? "someone removed" : "nobody");
 
+// The chapter's own counts (the no-speaker banner, Next to check), and the
+// chips and the speaker list each counted under the other (decided 2026-10-05).
 const counts = computed(() => filterCounts(lines.value));
+const facets = computed(() => lineFacets(lines.value, { filter: filter.value, speaker: speaker.value }));
 const shown = computed(() =>
   visibleLines(lines.value, { filter: filter.value, speaker: speaker.value, around: around.value }));
 
@@ -544,11 +547,18 @@ function rowClass(ln) {
   };
 }
 const speakerChoices = computed(() => speakerOptions(speakers.value, narratorId.value));
-const speakerFilterOptions = computed(() => [
-  { value: "all", label: "Every speaker" },
-  ...[...speakers.value].filter((s) => s.lines > 0).sort((a, b) => b.lines - a.lines)
-    .map((s) => ({ value: s.speaker_id, label: `${s.name} · ${s.lines}` })),
-]);
+// Each speaker counted under the chip (decided 2026-10-05); the one chosen
+// stays, with 0, when the chip leaves it no lines.
+const speakerFilterOptions = computed(() => {
+  const n = facets.value.speakers;
+  const ids = new Set(Object.keys(n));
+  if (speaker.value !== "all") ids.add(speaker.value);
+  return [
+    { value: "all", label: "Every speaker" },
+    ...[...ids].map((id) => ({ id, n: n[id] || 0 })).sort((a, b) => b.n - a.n)
+      .map(({ id, n: k }) => ({ value: id, label: `${nameOf(id)} · ${k}` })),
+  ];
+});
 const flagged = (ln) => (ln.flags || []).length > 0;
 </script>
 
@@ -632,13 +642,13 @@ const flagged = (ln) => (ln.flags || []).length > 0;
 
       <div class="jv-card studio-script-ch__lines">
         <div class="jv-inline-row studio-script-ch__bar">
-          <UiChip :selected="filter === 'all'" @click="filter = 'all'">All {{ counts.all }}</UiChip>
+          <UiChip :selected="filter === 'all'" @click="filter = 'all'">All {{ facets.chips.all }}</UiChip>
           <UiChip :selected="filter === 'check'" title="Flagged lines and lines with no speaker"
-            @click="filter = 'check'">To check {{ counts.check }}</UiChip>
-          <UiChip :selected="filter === 'none'" @click="filter = 'none'">No speaker {{ counts.none }}</UiChip>
+            @click="filter = 'check'">To check {{ facets.chips.check }}</UiChip>
+          <UiChip :selected="filter === 'none'" @click="filter = 'none'">No speaker {{ facets.chips.none }}</UiChip>
           <UiChip v-if="counts.changed" :selected="filter === 'changed'"
             title="Lines whose speaker the last Analyze changed"
-            @click="filter = 'changed'">Changed {{ counts.changed }}</UiChip>
+            @click="filter = 'changed'">Changed {{ facets.chips.changed }}</UiChip>
           <UiSelect v-model="speaker" width="name" :options="speakerFilterOptions" />
           <span class="jv-spacer" />
           <UiButton intent="secondary" size="small" label="Next to check ➜"

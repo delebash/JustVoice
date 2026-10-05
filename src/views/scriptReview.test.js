@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  applyLocally, checkQuestion, confidenceCell, confirm, decidedBy, editText, filterCounts, keyAction,
+  applyLocally, checkQuestion, confidenceCell, confirm, decidedBy, editText, filterCounts, lineFacets, keyAction,
   markOf, mergeState, move, nextToCheck, numberKeys, popUndo, pushUndo, setSpeaker, speakerOptions,
   swap, swapState, toCheck, visibleLines, wasBefore,
 } from "./scriptReview.js";
@@ -41,10 +41,20 @@ describe("filters", () => {
     expect(nextToCheck(lines, "d4", 1)).toBe("d1");
   });
 
-  it("a filter's number is the number of rows it shows, markers left out", () => {
-    expect(filterCounts(LINES)).toEqual({ all: 6, check: 4, none: 1, changed: 1 });
-    for (const f of ["check", "none", "changed"]) {
-      expect(visibleLines(LINES, { filter: f }).filter((l) => !l.marker)).toHaveLength(filterCounts(LINES)[f]);
+  it("a filter's number is the number of rows it shows — All counts the scene breaks it lists (2026-10-05)", () => {
+    expect(filterCounts(LINES)).toEqual({ all: 7, check: 4, none: 1, changed: 1 });
+    for (const f of ["all", "check", "none", "changed"]) {
+      expect(visibleLines(LINES, { filter: f })).toHaveLength(filterCounts(LINES)[f]);
+    }
+  });
+
+  it("counts the chips under the speaker, and each speaker under the chip (2026-10-05)", () => {
+    const { chips, speakers } = lineFacets(LINES, { filter: "none", speaker: "marius" });
+    for (const f of ["all", "check", "none", "changed"]) {
+      expect(visibleLines(LINES, { filter: f, speaker: "marius" })).toHaveLength(chips[f]);
+    }
+    for (const [id, n] of Object.entries(speakers)) {
+      expect(visibleLines(LINES, { filter: "none", speaker: id })).toHaveLength(n);
     }
   });
 

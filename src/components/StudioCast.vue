@@ -39,6 +39,7 @@ import { projectsService } from "../services/projects.js";
 import { readPref, writePref } from "../services/prefs.js";
 import { handleTermsRefusal } from "../services/engineTerms.js";
 import { DIRECTION_OPTIONS, directionCell, sameLanguage, tagCount } from "../services/personaFacts.js";
+import { facetChoices, facetOptions, narrowed } from "../services/facets.js";
 import { auditionPersona } from "../services/voiceAudition.js";
 import { voiceGenderWord } from "../services/voiceGender.js";
 
@@ -156,28 +157,28 @@ const personaModelFilter = ref(readPref("studioPersonaModelFilter", ""));
 watch(personaModelFilter, (v) => { writePref("studioPersonaModelFilter", v || ""); });
 const personaDirectionFilter = ref("");
 const personaLanguageFilter = ref("");
-function counted(values, label) {
-  const counts = new Map();
-  for (const v of values) if (v) counts.set(v, (counts.get(v) || 0) + 1);
-  return [...counts].map(([value, n]) => ({ value, label: `${label(value)} (${n})` }))
-    .sort((a, b) => a.label.localeCompare(b.label));
-}
+// Each filter lists only what the others leave (decided 2026-10-05,
+// services/facets.js) — Kokoro + Written direction was "No personas match this
+// filter." A remembered model with no personas left stays in the list with (0).
+const personaFilters = computed(() => [
+  { key: "model", value: personaModelFilter.value, test: (p, m) => p.model === m },
+  { key: "direction", value: personaDirectionFilter.value, test: (p, d) => p.directed_by === d },
+  { key: "language", value: personaLanguageFilter.value, test: (p, c) => p.speaks === c },
+  { key: "search", value: personaQuery.value.trim().toLowerCase(),
+    test: (p, q) => (p.name || "").toLowerCase().includes(q) || (p.note || "").toLowerCase().includes(q) },
+]);
 const modelOptions = computed(() => {
   const names = Object.fromEntries(props.personas.map((p) => [p.model, p.model_name || p.model]));
-  return [{ value: "", label: "All models" }, ...counted(props.personas.map((p) => p.model), (m) => names[m])];
+  return [{ value: "", label: "All models" },
+    ...facetOptions(props.personas, personaFilters.value, "model", (p) => p.model, (m, n) => `${names[m] || m} (${n})`)];
 });
+const directionOptions = computed(() =>
+  facetChoices(props.personas, personaFilters.value, "direction", DIRECTION_OPTIONS, (p, d) => p.directed_by === d));
 const languageOptions = computed(() => [
   { value: "", label: "All languages" },
-  ...counted(props.personas.map((p) => p.speaks), (c) => languageName(c) || c),
+  ...facetOptions(props.personas, personaFilters.value, "language", (p) => p.speaks, (c, n) => `${languageName(c) || c} (${n})`),
 ]);
-const shownPersonas = computed(() => {
-  const q = personaQuery.value.trim().toLowerCase();
-  return props.personas
-    .filter((p) => !personaModelFilter.value || p.model === personaModelFilter.value)
-    .filter((p) => !personaDirectionFilter.value || p.directed_by === personaDirectionFilter.value)
-    .filter((p) => !personaLanguageFilter.value || p.speaks === personaLanguageFilter.value)
-    .filter((p) => !q || (p.name || "").toLowerCase().includes(q) || (p.note || "").toLowerCase().includes(q));
-});
+const shownPersonas = computed(() => narrowed(props.personas, personaFilters.value));
 // Who in this book each persona plays — "✓ June, Marius".
 const playsHere = computed(() => {
   const out = {};
@@ -784,7 +785,7 @@ const GAME_COLUMNS = [
             <UiInput v-model="personaQuery" type="search" size="small" width="name" placeholder="Search by name or tone…" />
             <UiSelect v-model="personaModelFilter" width="id" title="Show only personas on one model" aria-label="Model" :options="modelOptions" />
             <UiSelect v-model="personaDirectionFilter" width="id" title="Show only personas that can be directed one way"
-              aria-label="Can be directed" :options="DIRECTION_OPTIONS" />
+              aria-label="Can be directed" :options="directionOptions" />
             <UiSelect v-model="personaLanguageFilter" width="id" title="Show only personas that speak one language"
               aria-label="Speaks" :options="languageOptions" />
           </div>

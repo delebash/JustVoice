@@ -655,6 +655,17 @@ blast radius.
   read 2026-10-05), so the ORM column stays until a reset: dropping it from the model makes
   every new generation's insert fail on that database. — *code + the database, 2026-10-05* ·
   [`2026-10-05-cast-render-persona.md`](../plans/2026-10-05-cast-render-persona.md) §4.
+- A voice's model is a FAMILY (`qwen3-cv`, …); its size and precision (1.7B / 0.6B, 8-bit /
+  16-bit) stay AI Settings' choice (persona redesign §6.2 call 4). A render picks the variant:
+  the loaded one if it is this family, else the engine's default if it is, else an installed one
+  of the family (same size and precision first), else the same pick among all of the family's
+  variants, and the load fetches it. The persona page does not show which. — *code,
+  2026-10-05* · `voice_model.variant_for_model` (`voice_model.py:372`).
+- Every multi-filter list follows one rule — each filter lists only what the others leave,
+  counts match, a chosen option nothing fits stays with (0) — through `services/facets.js`
+  (since 2026-10-05; the audit of every filter set and what broke:
+  [`2026-10-05-filters-narrow-each-other.md`](../plans/2026-10-05-filters-narrow-each-other.md)).
+  — *code, 2026-10-05*.
 
 ---
 

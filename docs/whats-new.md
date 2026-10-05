@@ -2,6 +2,14 @@
 
 ## v0.1.0
 
+- **Filters narrow each other (2026-10-05).** On Voices, Cast's persona list,
+  the Personas list, the blend maker, a persona's Voice card, and Script's and
+  Render's chapter pages, each filter lists only what the others leave, with
+  counts that match the list — *kokoro (54)* + Written direction, or *No speaker*
+  + a speaker, no longer give an empty list. A choice nothing fits stays with
+  **(0)**. A persona's Voice card now reads *Narrow the list* → **Voice** → *Or
+  make a new one* (Clone · Design · Blend); *Made by* is gone as a filter, and
+  every voice, made ones too, is in the list ([Personas → Voice](personas.md#voice))
 - **Picking a voice on a persona's page sets what it speaks (2026-10-05).**
   **Speaks** becomes the new voice's own language — it used to keep the old one
   whenever the model could speak it, so an English voice left a persona speaking

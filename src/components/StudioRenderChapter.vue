@@ -29,6 +29,7 @@ import { useApi } from "../stores/api.js";
 import { useCopy } from "../services/copy.js";
 import { useKeptScroll } from "../composables/useKeptScroll.js";
 import { mediaUrl, renderChapter, renderLines } from "../services/renderRun.js";
+import { facetCounts, facetOptions, facetTotal, passesFilters } from "../services/facets.js";
 import { speakerOptions as castChoices } from "../views/scriptReview.js";
 import PageTaskStrips from "./PageTaskStrips.vue";
 
@@ -147,25 +148,33 @@ const STATE_TAG = {
 // ── Filters ──────────────────────────────────────────────────────────
 const filter = ref("all");
 const speakerFilter = ref("all");
+// The chips and the speaker filter, each counted under the other (decided
+// 2026-10-05, services/facets.js) — the chips were the chapter's totals, so
+// "Stale 12" under one speaker showed 2, and "Can't render" + a speaker showed
+// nothing.
+const stateIs = (l, f) => (f === "blocked" ? BLOCKED.has(l.state) : l.state === f);
+const lineFilters = computed(() => [
+  { key: "chip", value: filter.value, empty: "all", test: stateIs },
+  { key: "speaker", value: speakerFilter.value, empty: "all", test: (l, s) => l.speaker_id === s },
+]);
+const chipN = computed(() => ({
+  all: facetTotal(lines.value, lineFilters.value, "chip"),
+  ...facetCounts(lines.value, lineFilters.value, "chip", ["ready", "stale", "rendered", "blocked"], stateIs),
+}));
 const CHIPS = computed(() => [
-  { id: "all", label: "All", n: counts.value.lines || 0 },
-  { id: "ready", label: "Ready", n: counts.value.ready || 0, tip: "Lines with no take yet" },
-  { id: "stale", label: "Stale", n: counts.value.stale || 0,
+  { id: "all", label: "All", n: chipN.value.all },
+  { id: "ready", label: "Ready", n: chipN.value.ready, tip: "Lines with no take yet" },
+  { id: "stale", label: "Stale", n: chipN.value.stale,
     tip: "Something the take was made from changed since — render it again when you choose" },
-  { id: "rendered", label: "Rendered", n: counts.value.rendered || 0 },
-  { id: "blocked", label: "Can't render", n: blocked.value },
+  { id: "rendered", label: "Rendered", n: chipN.value.rendered },
+  { id: "blocked", label: "Can't render", n: chipN.value.blocked },
 ]);
 const speakerOptions = computed(() => {
-  const seen = new Map();
-  for (const l of lines.value) if (l.speaker_id && !seen.has(l.speaker_id)) seen.set(l.speaker_id, speakerName(l));
-  return [{ value: "all", label: "Every speaker" }, ...[...seen].map(([value, label]) => ({ value, label }))];
+  const names = Object.fromEntries(lines.value.filter((l) => l.speaker_id).map((l) => [l.speaker_id, speakerName(l)]));
+  return [{ value: "all", label: "Every speaker" },
+    ...facetOptions(lines.value, lineFilters.value, "speaker", (l) => l.speaker_id, (id, n) => `${names[id] || "—"} · ${n}`)];
 });
-function inFilter(l) {
-  if (speakerFilter.value !== "all" && l.speaker_id !== speakerFilter.value) return false;
-  if (filter.value === "all") return true;
-  if (filter.value === "blocked") return BLOCKED.has(l.state);
-  return l.state === filter.value;
-}
+const inFilter = (l) => passesFilters(l, lineFilters.value);
 const open = ref(null);   // the block whose panel is open
 const rows = computed(() => {
   const out = [];

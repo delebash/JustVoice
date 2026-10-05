@@ -356,8 +356,9 @@ under a paragraph's last line.
 
 **Filters.** **All**, **To check** (marked lines and lines with no speaker),
 **No speaker**, and — after a re-analyze that changed anyone — **Changed**.
-Each chip's number is the number of rows it shows. The speaker dropdown beside
-them shows one speaker's lines. **Next to check ➜** jumps to the next marked or
+Each chip's number is the number of rows it shows — under the speaker you
+picked, and **All** counts the scene breaks it lists too. The speaker dropdown
+beside them shows one speaker's lines, each with how many the chip leaves. **Next to check ➜** jumps to the next marked or
 no-speaker line in reading order, and scrolls it into view. Past the last one it
 starts again from the top ("Back to the first line to check"), so with a single
 line to check it always takes you there. `Shift+N` goes the other way and wraps
@@ -752,7 +753,9 @@ Above the list, *"Select a speaker, then click a persona to assign it."*
 **Search by name or tone…** matches a persona's name or its note. Three filters
 narrow the list, the same ones the Personas page has: **model** (*Kokoro (9)* —
 remembered), **can be directed** (written direction · tags · sliders only) and
-**language** (*British English (2)*).
+**language** (*British English (2)*). Each lists only what the others and the
+search leave, with matching counts; a remembered model with no personas left
+shows as *(0)*.
 
 Each row shows:
 
@@ -839,7 +842,9 @@ One row per line that is heard: **Speaker**, **Text**, **How it's said**,
 listed — they are never heard.
 
 The chips show the lines in one state — **Ready**, **Stale**, **Rendered**,
-**Can't render** — and the dropdown beside them one speaker's lines. The
+**Can't render** — and the dropdown beside them one speaker's lines. Each counts
+under the other: with a speaker picked, the chips count that speaker's lines,
+and each speaker shows how many lines the chip leaves. The
 **Audio** cell plays a line's ★ take (with its length); on a stale line **↻**
 renders it again; on a ready line **▶ Gen** renders it. A line that can't render
 says where it is fixed: **Fix in Script**, **Cast** *name*, or **Give** *persona*
