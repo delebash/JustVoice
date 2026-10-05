@@ -34,15 +34,17 @@ import { computed, onActivated, ref, watch } from "vue";
 import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import {
   AppModal, EmptyState, UiButton, UiField, UiInput, UiNumber, UiSegmented, UiSelect,
-  UiSlider, UiTag, UiTextarea, confirmDialog, languageName, pushToast, saveBlob,
+  UiSlider, UiTag, UiTextarea, confirmDialog, languageName, pushToast, runAiEndpoint, saveBlob,
 } from "@delebash/llm-ui";
 import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
 import PersonaBlendMaker from "../components/PersonaBlendMaker.vue";
 import PersonaCloneMaker from "../components/PersonaCloneMaker.vue";
 import PersonaDesignMaker from "../components/PersonaDesignMaker.vue";
+import PageTaskStrips from "../components/PageTaskStrips.vue";
 import SlashTagMenu from "../components/SlashTagMenu.vue";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";
 import { handleTermsRefusal } from "../services/engineTerms.js";
+import { lexiconMatches } from "../services/lexiconPreview.js";
 import { openProjectInStudio } from "../services/openProject.js";
 import { projectsService } from "../services/projects.js";
 import { DIRECTION_OPTIONS, VOICE_KINDS as KINDS, voiceKind as kindOf, voiceLabel } from "../services/personaFacts.js";
@@ -521,6 +523,18 @@ const lexiconOptions = computed(() => [
   { value: "", label: "None" }, ...lexicons.value.map((l) => ({ value: l.id, label: l.name })),
 ]);
 
+// The chosen lexicon's words in the line typed in Hear it — the count
+// Generate showed (moved here 2026-10-05, with Generate gone).
+const lexiconEntries = ref([]);
+watch(() => draft.value?.lexicon_id, async (id) => {
+  lexiconEntries.value = [];
+  if (!id) return;
+  const lex = await api.safeRequest(`/v1/lexicons/${id}`, null);
+  if (draft.value?.lexicon_id === id) lexiconEntries.value = lex?.entries || [];
+}, { immediate: true });
+const lexiconApplies = computed(() =>
+  lexiconMatches(hearText.value, lexiconEntries.value).reduce((n, m) => n + m.count, 0));
+
 // ── Hear it ─────────────────────────────────────────────────────────────
 const hearText = ref("");
 const hearBusy = ref(false);
@@ -528,6 +542,73 @@ const audio = ref(null);   // {url, blob, label}
 function setAudio(blob, label) {
   if (audio.value?.url) URL.revokeObjectURL(audio.value.url);
   audio.value = { url: URL.createObjectURL(blob), blob, label };
+}
+
+// 🎲 Compose and ✏️ Rewrite, moved here from Generate (decided 2026-10-05).
+// Both read the persona's SAVED note on how it sounds (the server's
+// /v1/personas/{id}/compose and /rewrite), so they wait for a save.
+const savedNote = computed(() => (saved.value?.note || "").trim());
+const aiWhy = computed(() => {
+  if (isNew.value || !saved.value) return "Save the persona first — Compose and Rewrite read its saved note";
+  if (!savedNote.value) return "Write its note on how it sounds, and save, to use Compose and Rewrite";
+  if ((draft.value?.note || "").trim() !== savedNote.value) return "Save first — Compose and Rewrite read the saved note";
+  return "";
+});
+const composeBusy = ref(false);
+const rewriteBusy = ref(false);
+const rewritePreview = ref(null);   // { original, rewritten }
+function aiFailed(what, e) {
+  if (/abort/i.test(String(e?.message || ""))) return;
+  pushToast({
+    kind: "warning",
+    duration: 6000,
+    message: e?.status === 501 || e?.message?.includes("501")
+      ? `${what} needs a language model — set one in AI Settings.`
+      : `${what} failed: ${e?.message || e}`,
+  });
+}
+async function composeLine() {
+  if (aiWhy.value || composeBusy.value) return;
+  composeBusy.value = true;
+  try {
+    const r = await runAiEndpoint({
+      request: (path, o) => api.request(path, o),
+      path: `/v1/personas/${saved.value.id}/compose`,
+      task: { feature: "compose", label: `Compose · ${saved.value.name}`, meta: { personaId: saved.value.id },
+        onRetry: () => composeLine() },
+    });
+    if (r?.text) hearText.value = r.text;
+  } catch (e) {
+    aiFailed("Compose", e);
+  } finally {
+    composeBusy.value = false;
+  }
+}
+async function rewriteLine() {
+  if (aiWhy.value || rewriteBusy.value) return;
+  if (!hearText.value.trim()) {
+    pushToast({ kind: "info", message: "Type a line to rewrite first." });
+    return;
+  }
+  rewriteBusy.value = true;
+  try {
+    const r = await runAiEndpoint({
+      request: (path, o) => api.request(path, o),
+      path: `/v1/personas/${saved.value.id}/rewrite`,
+      body: { text: hearText.value },
+      task: { feature: "persona-rewrite", label: `Rewrite · ${saved.value.name}`, meta: { personaId: saved.value.id },
+        onRetry: () => rewriteLine() },
+    });
+    if (r?.rewritten) rewritePreview.value = { original: r.original, rewritten: r.rewritten };
+  } catch (e) {
+    aiFailed("Rewrite", e);
+  } finally {
+    rewriteBusy.value = false;
+  }
+}
+function acceptRewrite() {
+  if (rewritePreview.value) hearText.value = rewritePreview.value.rewritten;
+  rewritePreview.value = null;
 }
 function previewBody(text, extra = {}) {
   const p = payload();
@@ -880,9 +961,16 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
                 <UiButton intent="ghost" label="🏷️ Insert tag…" :disabled="locked || !tagSets.length"
                   :title="tagSets.length ? `${modelName}'s own tags` : `${modelName || 'This model'} takes no tags`"
                   @click="openTagMenu" />
+                <UiButton intent="ghost" label="✏️ Rewrite" :loading="rewriteBusy" :disabled="!!aiWhy || rewriteBusy"
+                  :title="aiWhy || 'Rewrite the line above in this persona\'s voice, from its note — you see it first'"
+                  @click="rewriteLine" />
+                <UiButton intent="ghost" label="🎲 Compose" :loading="composeBusy" :disabled="!!aiWhy || composeBusy"
+                  :title="aiWhy || 'A fresh line in this persona\'s voice, from its note on how it sounds'"
+                  @click="composeLine" />
                 <span class="jv-spacer" />
                 <UiButton intent="ghost" label="⤓ WAV" :disabled="!audio" @click="saveWav" />
               </div>
+              <PageTaskStrips v-if="saved" :features="['compose', 'persona-rewrite']" :meta="{ personaId: saved.id }" />
               <div v-if="audio" class="jv-col">
                 <span class="jv-hint">{{ audio.label }}</span>
                 <audio :src="audio.url" controls autoplay class="jv-audio-inline" />
@@ -959,7 +1047,8 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
                     <UiButton intent="ghost" size="small" label="＋ Edit" @click="effectsOpen = true" />
                   </div>
                 </UiField>
-                <UiField label="Lexicon" layout="block">
+                <UiField label="Lexicon" layout="block"
+                  :hint="draft.lexicon_id ? `${lexiconApplies} word replacement${lexiconApplies === 1 ? '' : 's'} would apply to the line in Hear it` : ''">
                   <UiSelect v-model="draft.lexicon_id" :options="lexiconOptions" width="name" />
                 </UiField>
               </div>
@@ -1094,6 +1183,23 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
       </div>
     </template>
 
+    <AppModal v-if="rewritePreview" eyebrow="✏️ Rewrite" :title="`In ${saved?.name || 'this persona'}'s voice`"
+      max-width="820px" dismissable @close="rewritePreview = null">
+      <div class="persona-editor__rewrite">
+        <div>
+          <span class="jv-eyebrow">Original</span>
+          <p>{{ rewritePreview.original }}</p>
+        </div>
+        <div>
+          <span class="jv-eyebrow">Rewritten</span>
+          <p><strong>{{ rewritePreview.rewritten }}</strong></p>
+        </div>
+      </div>
+      <template #footer>
+        <UiButton intent="secondary" label="Keep the original" @click="rewritePreview = null" />
+        <UiButton intent="primary" label="Use the rewrite" @click="acceptRewrite" />
+      </template>
+    </AppModal>
     <EffectsChainEditorModal v-if="draft" :open="effectsOpen" v-model="draft.effects_chain"
       :context-label="draft.name || 'Persona'" @save="onEffectsSaved" @cancel="effectsOpen = false" />
 
@@ -1130,6 +1236,8 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
 .persona-editor { display: flex; flex-direction: column; gap: 12px; }
 .persona-editor__pills { gap: 6px; }
 .persona-editor__fixed { font-size: 13.5px; }
+.persona-editor__rewrite { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.persona-editor__rewrite p { margin: 4px 0 0; max-width: 60ch; }
 .persona-editor__summary { margin: 0 0 6px; font-weight: 600; }
 .persona-editor__tags { gap: 6px; }
 /* A blank persona: only the Voice card is live until a voice is picked —

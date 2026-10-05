@@ -2,6 +2,17 @@
 
 ## v0.1.0
 
+- **New personas for a whole cast, and Rewrite and Compose on the persona page
+  (2026-10-05).** Cast's **＋ New persona for the N with none** proposes a voice
+  for each speaker with no persona — you see the list, hear each voice, untick
+  any — then makes and casts a persona per speaker, named after them
+  ([Studio → Cast](studio.md#cast)). The persona page's **Hear it** gained **✏️
+  Rewrite** and **🎲 Compose**, and its Lexicon field counts the words it would
+  replace in the typed line ([Personas → Hear it](personas.md#hear-it))
+- **Render changes a line's speaker; a persona shows its gender (2026-10-05).**
+  Render's **Spoken by** is Script's speaker list; the persona page shows the
+  gender it gets from its voice and warns when that isn't known (Smart-assign
+  can't match it); Cast's **＋ Add** says it's for someone Discover missed
 - **A page shows only its own AI tasks (2026-10-05).** Discover shows only its
   scan and Script only its Analyze — banner, strip, rows and counts — so
   Discover no longer looks busy while Script runs; a step queued behind the

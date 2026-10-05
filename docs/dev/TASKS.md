@@ -765,9 +765,32 @@ BUILT:  2026-10-05 — 2, 3, 5; record + blast radius `docs/plans/2026-10-05-cas
         1 and 4 researched (the plan §2): a persona needs only a name; Smart-assign's endpoint
         matches speakers to any "voices", so the batch can send library voices; Generate has
         Compose, Rewrite, the lexicon preview and History that the persona page lacks.
-OPEN:   1 — the batch's details (which voices, names, a preview first, the narrator, the note);
-        4 — what moves before Generate goes (Compose + Rewrite, the lexicon preview, History).
-        Both put to the user 2026-10-05.
+        Then DECIDED 2026-10-05 — "your rec on all go", on the nine questions and leans as shown:
+        1 "＋ New persona for the N with none": "1. Which voices does it choose from? Lean:
+          installed voices that speak the book's language. 2. What if a speaker's name is already a
+          persona in your library? Lean: cast them with that persona and make no new one. 3. Show
+          the proposals before creating anything (speaker → voice, ▶ to hear each, untick any, then
+          Create N personas)? Lean: yes, since this adds to your library. 4. Include the narrator
+          when it has no persona? Lean: yes. 5. What goes in each new persona's note on how it
+          sounds? Lean: leave it empty; that's yours to write."
+        4 Generate: "6. Move Rewrite and Compose into the persona page's Hear it? Lean: yes. 7. Show
+          on the persona page's Lexicon field how many entries apply to the typed line? Lean: yes.
+          8. Drop History? Lean: yes. Render keeps every take of a book's lines, and ⤓ WAV saves a
+          one-off. 9. Then remove Generate everywhere (route, rail, docs), and move its task-strip
+          help to ai-features.md? Lean: yes, keeping the server's /v1/generate."
+        And the boot splash finding ("Should I look into it?") — the kit's TASKS carries it.
+BUILT:  2026-10-05 — 1, 6, 7 (the plan §1): `services/newPersonas.js` (+ test), `CastNewPersonas.vue`,
+        `StudioCast.vue` (＋ New persona for the N with none), `PersonaEditorView.vue` (✏️ Rewrite,
+        🎲 Compose, the Lexicon count). Docs: studio Cast, personas Hear it / Lexicon, whats-new.
+        Biome, vitest 147, build, family guard, smoke 15/15. Live on throwaway data (deleted after):
+        "＋ New persona for the 8 with none" listed 7 matched voices and 1 "no voice matched";
+        unticking one → "Create 6 personas" made and cast exactly those 6; a noted persona's
+        Compose filled Hear it (its strip on the page), Rewrite showed original vs rewrite and
+        "Use the rewrite" replaced the line; the Lexicon field said "2 word replacements would
+        apply". Not checked live: the narrator in the batch (the throwaway book had none).
+OPEN:   9 — removing Generate waits on one answer: Captures' "Speak again" opens Generate with
+        the transcript filled in (`CapturesView.vue:56-63`), which the comparison missed. 8 (drop
+        History) goes with 9.
 GO:     given 2026-10-05 ("your rec on all go")
 
 ### A page shows only its own AI tasks, and the step's name leads

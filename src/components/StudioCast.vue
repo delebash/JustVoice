@@ -32,6 +32,9 @@ import {
 } from "@delebash/llm-ui";
 import { useApi } from "../stores/api.js";
 import PageTaskStrips from "./PageTaskStrips.vue";
+import CastNewPersonas from "./CastNewPersonas.vue";
+import { splitByName, voicesForBook } from "../services/newPersonas.js";
+import { usePersonasStore } from "../stores/personas.js";
 import { projectsService } from "../services/projects.js";
 import { readPref, writePref } from "../services/prefs.js";
 import { handleTermsRefusal } from "../services/engineTerms.js";
@@ -398,6 +401,17 @@ async function addNarrator() {
   }
 }
 
+// A speaker as the language model reads them — Smart-assign and New personas.
+const speakerForAi = (s) => ({
+  id: s.id, name: s.name, description: s.description, aliases: s.aliases || [], pronouns: s.pronouns || null,
+});
+// The one gender answer (your override, the voice's own, its id or first
+// name — services/voiceGender.js), lower-case; none when it isn't known.
+function genderForAi(v) {
+  const word = voiceGenderWord(v);
+  return word && word !== "?" ? word.toLowerCase() : null;
+}
+
 // Smart-assign: the language model matches each speaker (name and who they
 // are) to a persona (name, its voice's gender and language, its note on how
 // it sounds), and the matches apply straight away.
@@ -427,21 +441,16 @@ async function smartAssign() {
         headers: { "Content-Type": "application/json" },
         signal: task.signal,
         body: JSON.stringify({
-          characters: people.map((s) => ({ id: s.id, name: s.name, description: s.description, aliases: s.aliases || [],
-            pronouns: s.pronouns || null })),
-          // The one gender answer (your override, the voice's own, its id or
-          // first name — services/voiceGender.js) and the language the persona
-          // really speaks (the server's `speaks`), as every page shows them.
-          voices: props.personas.map((p) => {
-            const word = voiceGenderWord(voiceById.value[p.voice_id]);
-            return {
-              id: p.id,
-              name: p.name,
-              gender: word && word !== "?" ? word.toLowerCase() : null,
-              language: p.speaks || p.language || null,
-              tone: p.note || null,
-            };
-          }),
+          characters: people.map(speakerForAi),
+          // The persona's voice's gender and the language the persona really
+          // speaks (the server's `speaks`), as every page shows them.
+          voices: props.personas.map((p) => ({
+            id: p.id,
+            name: p.name,
+            gender: genderForAi(voiceById.value[p.voice_id]),
+            language: p.speaks || p.language || null,
+            tone: p.note || null,
+          })),
         }),
       });
       let count = 0;
@@ -495,6 +504,101 @@ async function play(p) {
     pushToast({ message: `Preview failed: ${e?.message || e}`, kind: "error", duration: 6000 });
   } finally {
     previewing.value = null;
+  }
+}
+
+// ＋ New persona for the N with none (decided 2026-10-05). Everyone with no
+// persona, the narrator too. A name that is already a persona in your library
+// is cast with it — no new one. The rest go to the language model with the
+// installed voices that speak the book's language (all of them when it isn't
+// set) — the same Smart-assign call, matched to VOICES — and the proposals are
+// shown before anything is made (CastNewPersonas.vue). A new persona is named
+// after its speaker, with that voice and an empty note.
+const personasStore = usePersonasStore();
+const withoutPersona = computed(() => props.speakers.filter((s) => !s.persona_id));
+const newAsk = ref(null);     // { byName, proposals } while the list is open
+const newBusy = ref(false);
+async function proposeNewPersonas() {
+  const people = withoutPersona.value;
+  if (!people.length || newBusy.value) return;
+  const { byName, rest } = splitByName(people, props.personas);
+  const book = props.project?.language;
+  const voices = voicesForBook(props.voices, book);
+  if (rest.length && !voices.length) {
+    pushToast({ kind: "warning", duration: 6000,
+      message: `No installed voice speaks ${languageName(book) || book} — install a speech model on AI Settings → Speech engines.` });
+    if (!byName.length) return;
+  }
+  let proposals = [];
+  if (rest.length && voices.length) {
+    newBusy.value = true;
+    try {
+      const assignments = await withAiTask({
+        feature: "smart_assign",
+        label: `New personas · ${plural(rest.length, "speaker")}`,
+        meta: { projectId: props.project.id },
+        stats: [plural(rest.length, "speaker"), plural(voices.length, "voice")],
+      }, async (task) => {
+        const r = await api.request("/v1/llm/smart-assign", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: task.signal,
+          body: JSON.stringify({
+            characters: rest.map(speakerForAi),
+            voices: voices.map((v) => ({
+              id: v.id, name: v.name, gender: genderForAi(v), language: v.language || null, tone: v.design_prompt || null,
+            })),
+          }),
+        });
+        return { result: r?.assignments || {}, usage: r?.usage };
+      });
+      proposals = rest.map((sp) => ({ speaker: sp, voice: voiceById.value[assignments[sp.id]] || null }));
+    } catch (e) {
+      pushToast({
+        kind: "warning",
+        duration: 6000,
+        message: e?.message?.includes("501") || e?.status === 501
+          ? "New personas need a language model — set one in AI Settings."
+          : `New personas failed: ${e?.message || e}`,
+      });
+      return;
+    } finally {
+      newBusy.value = false;
+    }
+  }
+  newAsk.value = { byName, proposals };
+}
+async function createNewPersonas(picked) {
+  const ask = newAsk.value;
+  if (!ask || newBusy.value) return;
+  newBusy.value = true;
+  let made = 0;
+  let cast = 0;
+  try {
+    for (const x of ask.byName) {
+      await projectsService.updateSpeaker(x.speaker.id, { persona_id: x.persona.id });
+      cast += 1;
+    }
+    for (const p of picked) {
+      const persona = await api.request("/v1/personas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: p.speaker.name, voice_id: p.voice.id }),
+      });
+      await projectsService.updateSpeaker(p.speaker.id, { persona_id: persona.id });
+      made += 1;
+    }
+    const said = [made ? `${plural(made, "new persona")} made and cast` : "",
+      cast ? `${plural(cast, "speaker")} cast with your persona of that name` : ""].filter(Boolean);
+    pushToast({ kind: "success", duration: 5000, message: `${said.join(" · ")}.` });
+    newAsk.value = null;
+  } catch (e) {
+    pushToast({ kind: "error", duration: 7000,
+      message: `Stopped after ${plural(made, "new persona")}: ${e?.message || e}` });
+  } finally {
+    newBusy.value = false;
+    await personasStore.reload();
+    emit("changed");
   }
 }
 
@@ -565,8 +669,15 @@ const GAME_COLUMNS = [
             title="Unassign every persona — the speakers stay" @click="clearCast" />
           <UiButton intent="primary" size="small" label="✨ Smart-assign" :loading="smartBusy" :disabled="smartBusy"
             title="Your language model proposes a persona for each speaker from who they are" @click="smartAssign" />
+          <UiButton v-if="withoutPersona.length" intent="secondary" size="small"
+            :label="`＋ New persona for the ${withoutPersona.length} with none`" :loading="newBusy && !newAsk"
+            :disabled="newBusy"
+            title="A persona for each speaker with none — named after them, with a voice your language model matches to who they are. You see the list first."
+            @click="proposeNewPersonas" />
         </div>
         <PageTaskStrips :features="['smart_assign']" :meta="{ projectId: project.id }" />
+        <CastNewPersonas v-if="newAsk" :by-name="newAsk.byName" :proposals="newAsk.proposals" :busy="newBusy"
+          @close="newAsk = null" @create="createNewPersonas" />
         <div v-if="castEngineNotice" class="jv-banner jv-banner--warn studio-cast__notice">{{ castEngineNotice }}</div>
 
         <div class="studio-cast__scroll">

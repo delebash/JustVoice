@@ -681,6 +681,16 @@ narrator ([Personas → The Narrator](personas.md#the-narrator)).
   which proposes a persona for each speaker. The matches apply at once. Change
   any you disagree with by clicking another persona. It needs a language model;
   without one it says so.
+- **＋ New persona for the N with none** (shown while anyone, the narrator
+  included, has no persona) makes them personas of their own. A speaker whose
+  name is already a persona in your library is simply cast with it. For the
+  rest, your language model matches each to a voice — from the installed voices
+  that speak the book's **Language** (every installed voice when it isn't set),
+  judging who they are against each voice's gender, language and description.
+  Nothing is made yet: a list shows each speaker → voice with **▶** to hear the
+  voice, and you untick any you'd rather cast yourself. **Create N personas**
+  then makes each ticked one a persona named after its speaker, with that voice
+  and an empty note on how it sounds (yours to write), and casts it.
 
 Each speaker's card shows:
 

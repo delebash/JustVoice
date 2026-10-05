@@ -362,6 +362,14 @@ at the cursor — on Chatterbox Turbo, `[laugh]`, `[sigh]`, `[fear]` and the res
 of its nineteen. On a model with no tags the button is off and says so.
 **⤓ WAV** saves what you last heard.
 
+**✏️ Rewrite** rewrites the line in the box in this persona's voice, from its note
+on how it sounds; you see the original and the rewrite side by side and choose
+**Use the rewrite** or **Keep the original**. **🎲 Compose** writes a fresh line
+in its voice into the box. Both ask your language model, both read the persona's
+**saved** note — so they wait until a persona with a note is saved, and say so —
+and each shows its progress under the buttons. (They were on Generate until
+2026-10-05.)
+
 ### How it speaks
 
 **Pace, Pitch and Gain** apply to every model. They sit three across, each a
@@ -408,7 +416,9 @@ ms`. An empty pause is the book's own gap between lines.
 **Lexicon** is a lexicon for this persona only (for example, street slang for
 one voice). It is read on every line this persona speaks, after the book's own
 lexicon — and only on those lines. Where both have an entry for the same word
-that the engine can use, the book's wins. See
+that the engine can use, the book's wins. Under it, the page counts how many
+of its words would be replaced in the line typed in **Hear it** — *2 word
+replacements would apply*. See
 [Lexicons](lexicons.md#which-lexicons-a-line-is-read-with).
 
 ### Sampling
