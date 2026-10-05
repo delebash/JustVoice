@@ -308,9 +308,11 @@ def test_flash_attention_is_offered_only_on_8bit_qwen3():
 
 def test_runtime_options_are_validated_and_defaults_dropped():
     row = _row("qwen3", "qwen3-cv-1.7b-q8")
+    # 16-bit is the app's default (heard as no different, 2026-10-04): only 32-bit is saved.
     assert runtime_options.validate(row, {"qwen3_tts.perf_mode": "off",
-                                          "qwen3_tts.conv_weight_type": "f16"}) == \
-        {"qwen3_tts.conv_weight_type": "f16"}
+                                          "qwen3_tts.conv_weight_type": "f32"}) == \
+        {"qwen3_tts.conv_weight_type": "f32"}
+    assert runtime_options.validate(row, {"qwen3_tts.conv_weight_type": "f16"}) == {}
     with pytest.raises(ValueError, match="must be one of"):
         runtime_options.validate(row, {"qwen3_tts.perf_mode": "turbo"})
     with pytest.raises(ValueError, match="no runtime option"):
@@ -323,7 +325,11 @@ def test_saved_runtime_options_ride_the_models_registration(monkeypatch, tmp_pat
                         lambda e, v: {"qwen3_tts.perf_mode": "flash_attention", "stale.key": "x"})
     monkeypatch.setattr(slot, "_data_dir", lambda: tmp_path)
     entry = slot._entries_for(discover_engines()["qwen3"], row)[0]
-    assert dict(entry.session_options) == {"qwen3_tts.perf_mode": "flash_attention"}
+    # 16-bit decoder weights ride by default — audio.cpp's own default is 32-bit.
+    assert dict(entry.session_options) == {"qwen3_tts.perf_mode": "flash_attention",
+                                           "qwen3_tts.conv_weight_type": "f16"}
+    monkeypatch.setattr(runtime_options, "saved_for", lambda e, v: {"qwen3_tts.conv_weight_type": "f32"})
+    assert dict(slot._entries_for(discover_engines()["qwen3"], row)[0].session_options) == {}
 
 
 def test_the_model_row_reads_and_saves_its_runtime_options(tmp_path, monkeypatch):
@@ -338,7 +344,7 @@ def test_the_model_row_reads_and_saves_its_runtime_options(tmp_path, monkeypatch
     v = next(v for v in c.get("/v1/engines/qwen3/models").json()["variants"]
              if v["id"] == "qwen3-cv-1.7b-q8")
     assert {o["key"]: o["value"] for o in v["runtime_options"]} == {
-        "qwen3_tts.perf_mode": "flash_attention", "qwen3_tts.conv_weight_type": "f32"}
+        "qwen3_tts.perf_mode": "flash_attention", "qwen3_tts.conv_weight_type": "f16"}
     ov = c.get("/v1/settings").json()["engines"]["engine_overrides"]["qwen3"]
     assert ov["runtime_options"] == {"qwen3-cv-1.7b-q8": {"qwen3_tts.perf_mode": "flash_attention"}}
     assert c.put(url, json={"options": {"qwen3_tts.perf_mode": "x"}}).status_code == 400

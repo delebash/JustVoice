@@ -73,8 +73,8 @@ shows no count because nothing records an export.
   one of this book's lexicons, or one of your reusable ones. Every line of the
   book is read with it, whoever says it, and it wins over a persona's lexicon
   when both have an entry for the same word that the engine can use. Choosing
-  one re-renders only the lines that
-  contain its words. **Open ➜** goes to the Lexicons page. See
+  one makes only the lines that contain its words
+  [stale](#stale-lines). **Open ➜** goes to the Lexicons page. See
   [Lexicons](lexicons.md#which-lexicons-a-line-is-read-with).
 - **Speech marks** — how the book marks speech: **Auto — from the text** (the
   default), **“Double”**, **‘Single’**, **«Guillemets»** or **„German“**. Every
@@ -291,6 +291,22 @@ answer must reach to be kept; below it the line is left with no speaker.
 
 A row opens its chapter. **Review** opens it at the first line to check.
 
+### Adding and arranging chapters
+
+Chapters are added, renamed, moved and deleted here (the Chapters page that
+did this was removed on 2026-10-04):
+
+- **＋ Add chapter** (beside the chips) adds one at the end. A chapter with no
+  text yet says *no text yet*, and its **＋ Add text** opens a box to paste it
+  into: each paragraph becomes a line, with no speaker until you **✨ Analyze**
+  it.
+- Each row's **⋯** menu has **✏️ Rename**, **↑ Move up**, **↓ Move down** and
+  **🗑 Delete**. Deleting asks first, and takes the chapter's lines and every
+  take rendered from them with it.
+- A book with no chapters at all offers **⬆ Import a manuscript…** (EPUB, DOCX,
+  Markdown or plain text, previewed before anything is added — it opens on
+  Projects) and **＋ Add chapter**.
+
 ### A chapter
 
 The chapter page is a table in reading order: **one row per line**, with a
@@ -385,14 +401,8 @@ missing** opens Discover — Analyze can only choose the book's speakers.
 **← Previous** and **Next chapter ➜** at the foot walk the book in order; the
 next one says how many lines it has to check.
 
-**Rewrite in character.** Right-click a spoken line's text to have the AI
-rewrite it as its speaker would say it. It reads the speaker's **Who they are**
-on Cast — not the persona's note — and refuses when that is empty: *Nettle has
-nothing under Who they are — write it on Cast to rewrite in character.* You see
-the rewrite before anything changes, and accepting replaces the line's text.
-
-Direction, takes and rendering are not on this page: Script decides who says
-what, and how it is performed is [Render](#render).
+Direction, takes, rendering and Rewrite in character are not on this page:
+Script decides who says what, and how it is performed is [Render](#render).
 
 ### The marks: where to read closely
 
@@ -584,8 +594,8 @@ under the table:
   - **Save** keeps the new words. **↶ Undo** puts the old ones back.
   - **Split at the cursor** cuts the line where the cursor is: the words after
     it become a new line straight below, with the same speaker. The first line
-    keeps any rendered takes — its words changed, so it re-renders — and the
-    new line has none.
+    keeps its takes — its words changed, so it is
+    [stale](#stale-lines) until you render it again — and the new line has none.
   - **Cancel** closes the editor unchanged.
 - **⇲ Merge** — tick two or more lines that sit next to each other. They become
   one line: their words joined with a space, with the first line's speaker. If
@@ -630,8 +640,8 @@ narrator ([Personas → The Narrator](personas.md#the-narrator)).
 - **✕ Clear cast** asks first, then takes the persona away from every speaker:
   *"Unassign personas from all 5 speakers. The speakers stay — only the persona
   links go."*
-- **✨ Smart-assign** sends the speakers (name, *Also called*, *Who they are*)
-  and your personas (name, voice gender, language, note) to your language model,
+- **✨ Smart-assign** sends the speakers (name, *Also called*, *Pronouns*, *Who
+  they are*) and your personas (name, voice gender, language, note) to your language model,
   which proposes a persona for each speaker. The matches apply at once. Change
   any you disagree with by clicking another persona. It needs a language model;
   without one it says so.
@@ -676,6 +686,11 @@ leave it (or press Enter in a one-line field):
 - **Also called** — the other names the text uses, separated by commas
   (*Sedge*). Discover counts these as this speaker, and Script's attribution
   matches *"said Sedge"* to them.
+- **Pronouns** — *Not set*, **he/him**, **she/her**, **they/them** or **it/its**:
+  *"Read by Script's Analyze — who "she said" can be — and by Smart-assign. Never
+  heard."* Saves when you pick one. With two people in a scene, *"she said"* can
+  only be the one who is *she*; Analyze is told each speaker's pronouns so it can
+  use that. A JustWrite import fills it from the character sheet.
 - **Who they are** — *"Read by Discover, Smart-assign and Rewrite in character.
   Never heard."* Discover reads its first line; Script's line-by-line
   attribution does not read it. An import fills it from the book.
@@ -708,8 +723,8 @@ Each row shows:
 - **✎** opens the persona's own page.
 
 **＋ New persona** opens a blank persona. With a speaker selected, the page says
-*For Harbek in Stillwater — Save gives Harbek this persona and takes you back to
-Cast*; Save does exactly that (*Old Crow created and given to Harbek.*). With no
+*For Cael Ferren in The Ninth Facet — Save gives Cael Ferren this persona and takes you
+back to Cast*; Save does exactly that (*Old Crow created and given to Cael Ferren.*). With no
 speaker selected, Save brings you back to Cast with the new persona in the
 list.
 
@@ -724,16 +739,154 @@ offers **＋ New persona**.
 
 ## Render
 
-Batch-render the project scene by scene. Every line sounds the way its
-persona is set up — there is no per-chapter preset laid over it (render presets
-were removed on 2026-10-03, so a persona's pace, pitch and gain always count).
-The progress panel shows per-scene status, and the render cache means an
-unchanged line costs nothing to re-render — cache hits are reported as such.
+Render turns each line into audio, and it is where you say how a line is
+spoken. Two pages, the way Script has two: a **chapter grid**, and a
+**chapter's lines**.
+
+**A take is a kept render of one line.** Every render of a line makes a new
+take, and nothing is overwritten. One take per line is the **★ take**: it is
+what the chapter plays and what the exported book ships. A line with no take is
+rendered when the chapter is.
+
+**Every line has a state**, in the same words everywhere in Studio:
+
+| State | What it means |
+|---|---|
+| **needs a speaker** | Script hasn't given the line a speaker. It can't render |
+| **needs a voice** | its speaker has no persona, or the persona has no voice. It can't render |
+| **ready** | it can render, and has no take yet |
+| **rendered** | its ★ take was made from what the line is now |
+| **stale** | something its ★ take was made from has changed since |
+
+Every line sounds the way its persona is set up — there is no per-chapter
+preset laid over it (render presets were removed on 2026-10-03, so a persona's
+pace, pitch and gain always count).
 
 Lines are joined with **Pause between lines** (Settings → Generation pipeline,
 600 ms by default) — the same pause in Render, in the exported audiobook and in
-ACX QC, so the chapter you audition is the chapter that ships. A line's own pause
-from an import (a script's `pause_after_ms`) still wins for that line.
+ACX QC, so the chapter you audition is the chapter that ships. A line's own
+pause wins for that line, whether it came from an import (a script's
+`pause_after_ms`) or from [the line's own numbers](#a-lines-own-numbers) — and,
+since 2026-10-04, it wins over the persona's own pause too.
+
+### The chapter grid
+
+One row per chapter: **Lines**, **Rendered** (the lines that have a take, of
+all of them, with tags for how many are *stale* and how many *can't render*),
+**Check** (the [ACX check](#the-acx-check)'s answer once it has run) and
+**▶ Render**. A row, or **Open ➜**, opens the chapter's lines.
+
+**▶ Render** on a chapter gives every line that has no take one, then joins the
+chapter from every line's ★ take and masters it. Stale lines keep their ★ take —
+render them again on the chapter's page when you choose. A progress row under
+the chapter shows how far it is, with **Cancel**; when it is done, **▶ Play**
+and **⬇ Download** (a WAV). Tick chapters and **▶ Render N chapters** renders
+them one after another; **Select unrendered** ticks every chapter with lines
+that have no take yet. **▶ Render all**, beside the mastering pill, does every
+chapter.
+
+### A chapter's lines
+
+One row per line that is heard: **Speaker**, **Text**, **How it's said**,
+**Status** and **Audio**. Lines a book leaves out (dialogue tags, when
+[that's on](#leaving-out-dialogue-tags)) and a podcast's music markers aren't
+listed — they are never heard.
+
+The chips show the lines in one state — **Ready**, **Stale**, **Rendered**,
+**Can't render** — and the dropdown beside them one speaker's lines. The
+**Audio** cell plays a line's ★ take (with its length); on a stale line **↻**
+renders it again; on a ready line **▶ Gen** renders it. A line that can't render
+says where it is fixed: **Fix in Script**, **Cast** *name*, or **Give** *persona*
+**a voice** (its page on Personas). A banner above the lines says the same for
+the whole chapter.
+
+Three things at the top work on the whole chapter:
+
+- **⚡ Render N ready** — a take for every line that has none.
+- **▶ Play chapter** — every line's ★ take in order, joined and mastered (a line
+  with no take is rendered first). Not while any line can't render — the hint
+  says why.
+- **↻ Re-render all** — a new take for every line that can render, made fresh
+  rather than from the render cache. Old takes are kept.
+
+A row opens its line, under it:
+
+- **Spoken by** — the speaker, the persona that plays them and the persona's
+  model. Who speaks a line is decided in Script and Cast, not here: **Change in
+  Cast ➜**.
+- **⚙ Override the numbers for this line** — see
+  [the line's own numbers](#a-lines-own-numbers).
+- **📕 Pronunciation** and **✏️ Rewrite as** *name* — see
+  [below](#pronunciation-and-rewrite-in-character).
+- **Takes** — see [below](#takes).
+
+### How it's said
+
+What a line can be told depends on the model of the persona that speaks it
+([Personas → Can be directed](personas.md)):
+
+- **A model that takes written direction** (Qwen3-TTS, VoxCPM2): the cell is a
+  box for the line's own direction — *Talking to the lamp, half amused.* It is
+  added after the persona's standing delivery, most specific last. Empty means
+  the line is said as the persona always speaks.
+- **A tag model** (Chatterbox Turbo and Nano): the persona's own tags, such as
+  *[sarcastic]*, shown read-only — they are set on the persona's page.
+- **Every other model** (Kokoro, Kitten, Pocket, Chatterbox Multilingual): it
+  takes no direction, and the cell says so. Its only per-line control is
+  [the line's own numbers](#a-lines-own-numbers).
+
+### A line's own numbers
+
+**⚙ Override the numbers for this line** opens four boxes: **Pace ×**, **Pitch
+st**, **Gain dB** and **Pause after ms**. Each shows the persona's value (or, for
+the pause, Settings → Generation's) until you type one; a value you type is for
+this line only and wins over the persona's. A line that sets any of them has a
+dot beside its speaker, and **Clear** puts them all back. Changing one makes
+the line stale.
+
+### Takes
+
+The line's takes are listed newest first, its ★ take marked **★ live**, each
+with its length, **▶** to play it, **★** to make it the one the chapter plays,
+and **🗑** to delete it (with its audio). The ★ take can't be deleted — star
+another first.
+
+- **↻ New take** reads the line again with a **new seed**, so you get a
+  different reading; the takes you have are kept, and the new one becomes ★. A
+  take made this way keeps its own seed. On a voice made from a description
+  (Qwen3 VoiceDesign, a VoxCPM2 description), a new seed can change who speaks,
+  not only how — the hint on the button says so.
+- **⚖️ Compare two** plays the ★ take against another and **Make B the ★ take**
+  if you prefer it.
+
+### Stale lines
+
+A line goes stale when something its ★ take was made from changes: its words
+(an edit in Script, a split, an accepted rewrite), its direction or its own
+numbers, its persona (voice, delivery, seed, effects), or a lexicon entry that
+changes how one of its words is said. A stale line **keeps playing its ★ take**
+— the chapter and the export use it — until you render it again: **↻** on the
+row, or **↻ Re-render all**. Nothing renders on its own. A take with **↻ New
+take**'s own seed stays rendered when the persona's seed changes; any other take
+goes stale. Studio · Export warns how many lines are stale, and ships them as
+they are if you go ahead.
+
+### Pronunciation and Rewrite in character
+
+**📕 Pronunciation** opens the book's lexicon on the Lexicons page
+(Overview → **Pronunciation lexicon**). A book with none gets one, named
+*"<book> names"*, chosen as the book's. Select a word in the line first and it
+arrives ready to add; otherwise you are asked which word, or can leave it
+empty just to open the lexicon. Saving an entry makes the lines with that word
+stale.
+
+**✏️ Rewrite as** *name* has the AI rewrite a spoken line as its speaker would
+say it. It reads the speaker's **Who they are** on Cast — not the persona's note
+— and refuses when that is empty: *Nettle has nothing under Who they are —
+write it on Cast to rewrite in character.* You see the rewrite first (**↻ Try
+again** asks for another); **Accept** replaces the line's text, and the line is
+stale until you render it. Narration can't be rewritten. (This was a right-click
+on Script's text until 2026-10-04.)
 
 ### What a chapter needs before it renders
 
@@ -811,9 +964,9 @@ Three things happen to every line, in this order:
    and only single-line previews ever played them.)
 3. **The chapter is mastered** — see below.
 
-Each line is cached on everything that shapes it, the effects chain included,
-so editing one persona's reverb re-renders the lines of the speakers it plays
-and leaves the rest of the chapter alone.
+A take records everything that shaped it, the effects chain included, so
+editing one persona's reverb makes the lines of the speakers it plays
+[stale](#stale-lines) and leaves the rest of the chapter alone.
 
 ### The mastering target
 
@@ -840,8 +993,9 @@ target applied.
 
 ### The ACX check
 
-**Run ACX QC** renders every chapter (cache-served when unchanged) and
-measures RMS and peak against the ACX limits. It measures the **mastered**
+**Run ACX QC** joins every chapter that can render from its lines' ★ takes
+(a line with no take is rendered, and kept as no take) and measures RMS and
+peak against the ACX limits. It measures the **mastered**
 chapter — the audio the export would ship — so a pass means the finished book
 passes. If ffmpeg is missing, QC still runs and tells you the numbers are for
 the raw render and not what the finished book would measure.

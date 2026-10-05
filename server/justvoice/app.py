@@ -62,6 +62,7 @@ from .api import (
     projects_api,
     render_chapter_api,
     render_jobs_api,
+    render_lines_api,
     server_auth_api,
     settings_api,
     speech_runtime_api,
@@ -115,6 +116,14 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
             log.info("render jobs: %d interrupted job(s) marked paused", swept)
     except Exception as e:
         log.warning("render-job boot sweep failed: %s", e)
+
+    # A take's audio goes with it (Studio Slice 4): generations whose take was
+    # deleted with its line, chapter or book — rows and files.
+    from .line_takes import sweep_orphan_takes_now
+
+    swept_takes = sweep_orphan_takes_now()
+    if swept_takes:
+        log.info("takes: %d orphaned take generation(s) removed", swept_takes)
 
     _register_existing_engines(state, data_dir)
     _register_external_engines(state)
@@ -294,6 +303,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     # Phase 4a backend (DESIGN_FREEZE §5)
     app.include_router(takes_api.router)
     app.include_router(render_jobs_api.router)
+    app.include_router(render_lines_api.router)
     app.include_router(channels_api.router)
     app.include_router(mcp_bindings_api.router)
     app.include_router(active_tasks_api.router)

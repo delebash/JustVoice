@@ -243,7 +243,7 @@ async function deleteProject() {
         <div class="jv-card__body">
           <p v-if="noText" class="jv-hint">
             No text yet — add or import {{ unit.plural.toLowerCase() }} in
-            <a href="#chapter">{{ unit.plural }}</a>, then come back here.
+            <a href="#studio" @click.prevent="emit('go', 'script')">Script</a>, then come back here.
           </p>
           <UiTable class="jv-table-look studio-overview__steps" :data="statusRows" :columns="STATUS_COLUMNS"
             data-key="key" row-hover @row-click="({ data }) => emit('go', data.key)">

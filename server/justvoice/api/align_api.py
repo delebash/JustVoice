@@ -101,14 +101,16 @@ def scene_captions(scene_id: str, format: str = "vtt") -> Response:
     if format not in ("vtt", "srt"):
         raise bad_request("format must be vtt or srt")
 
-    from .render_chapter_api import _resolve_scene_to_lines, render_scene_to_wav
+    from .render_chapter_api import _resolve_scene_to_lines, played_texts, render_scene_to_wav
 
     st = get_state()
     # No blanket except: the resolver already raises the honest answers
     # (404 for a missing scene, 400 for an empty one) — wrapping them as
     # "not found" masked real errors as missing scenes (review R5).
     lines = _resolve_scene_to_lines(scene_id, st, strict=False)
-    text = " ".join((line.text or "").strip() for line in lines if (line.text or "").strip())
+    # What the audio says: a line that plays its ★ take says the take's words
+    # (Studio Slice 4) — a stale take still says the old ones.
+    text = " ".join(t.strip() for t in played_texts(lines) if (t or "").strip())
     if not text:
         raise bad_request("this chapter has no renderable lines to caption")
 

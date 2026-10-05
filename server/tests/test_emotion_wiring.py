@@ -79,15 +79,17 @@ def test_trailing_punctuation_is_not_doubled_when_joining() -> None:
 def test_both_render_paths_compose_with_the_same_function() -> None:
     """The chapter path composed and the one-off path did not, so the same
     persona sounded different depending on which button was pressed."""
-    from justvoice import export_voicelines, persona_render
+    from justvoice import export_voicelines, line_takes, persona_render
     from justvoice.api import generate_api, render_chapter_api
 
     # One resolver composes for a persona (2026-10-03): the chapter render,
-    # the single line and Generate-with-a-persona all call it, and Generate
-    # composes the same way for a bare voice.
+    # the single line and Generate-with-a-persona all call it — the first two
+    # through line_takes.plan_block (Slice 4) — and Generate composes the same
+    # way for a bare voice.
     assert "compose_instruct" in inspect.getsource(persona_render)
-    assert "plan_line(" in inspect.getsource(render_chapter_api)
-    assert "plan_line(" in inspect.getsource(export_voicelines)
+    assert "plan_line(" in inspect.getsource(line_takes)
+    assert "plan_block(" in inspect.getsource(render_chapter_api)
+    assert "plan_block(" in inspect.getsource(export_voicelines)
     assert "plan_line(" in inspect.getsource(generate_api)
     assert "compose_instruct" in inspect.getsource(generate_api)
 

@@ -13,11 +13,22 @@
   same flag function the attribution eval scores, on ONE "analyzed" rule:
   Analyze has run on the chapter. A chapter whose speakers came with the
   import is "from the import" and is never flagged.
+
+  Chapters themselves are managed here (Studio Slice 4, D7, 2026-10-04 — the
+  old Chapters page was deleted): "＋ Add chapter" beside the chips, Rename ·
+  Move up · Move down · Delete in each row's ⋯ menu (Personas' ev-kebab menu),
+  and "＋ Add text" on a chapter with none — paste it, each paragraph a line.
+  With no chapters at all, the page offers Import and ＋ Add chapter (G6).
 -->
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
 import {
-  AiTaskStrip, UiButton, UiCheckbox, UiChip, UiProgress, UiSelect, UiTable, UiTag, useAiTasksStore,
+  DropdownMenuContent, DropdownMenuItem, DropdownMenuPortal,
+  DropdownMenuRoot, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "reka-ui";
+import {
+  AiTaskStrip, AppModal, EmptyState, UiButton, UiCheckbox, UiChip, UiProgress, UiSelect, UiTable, UiTag,
+  UiTextarea, confirmDialog, promptDialog, pushToast, useAiTasksStore,
 } from "@delebash/llm-ui";
 import { useApi } from "../stores/api.js";
 import { useCopy } from "../services/copy.js";
@@ -37,7 +48,7 @@ const props = defineProps({
   // The chip to open on ("check" from Overview's and Home's numbers).
   filter: { type: String, default: "all" },
 });
-const emit = defineEmits(["open", "go", "update:filter"]);
+const emit = defineEmits(["open", "go", "update:filter", "changed"]);
 
 const api = useApi();
 const copy = useCopy();
@@ -193,9 +204,97 @@ function ago(iso) {
 // Numbers only mean something once Analyze decided them (or the import did).
 const counted = (r) => r.analyzed && !r.no_dialogue_found;
 const recut = (f) => /re-cut/i.test(f?.reason || "");
-// Text is added in Chapters, not here.
-function addText() {
-  window.location.hash = "#chapter";
+// ── The chapters themselves (D7) ─────────────────────────────────────────
+const JSON_HEADERS = { "Content-Type": "application/json" };
+const ordered = computed(() => [...props.chapters].sort((a, b) => a.position - b.position));
+async function addChapter() {
+  const n = props.chapters.length;
+  const title = (await promptDialog({
+    title: `New ${word.value.singular.toLowerCase()}`,
+    label: "Title",
+    placeholder: `${word.value.singular} ${n + 1}`,
+    confirmLabel: "Add",
+  }))?.trim();
+  if (!title) return;
+  try {
+    await api.request(`/v1/projects/${props.project.id}/scenes`, {
+      method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ title, position: n }),
+    });
+    emit("changed");
+    pushToast({ kind: "success", message: `“${title}” added — paste its text with ＋ Add text.` });
+  } catch (e) {
+    pushToast({ kind: "error", message: `Couldn't add the ${word.value.singular.toLowerCase()}: ${e?.message || e}` });
+  }
+}
+async function rename(r) {
+  const title = (await promptDialog({
+    title: `Rename ${word.value.singular.toLowerCase()}`,
+    label: "Title",
+    defaultValue: r.title || "",
+    confirmLabel: "Rename",
+  }))?.trim();
+  if (!title || title === r.title) return;
+  await patchScene(r, { title });
+}
+function move(r, dir) {
+  const target = r.position + dir;
+  if (target < 0 || target >= props.chapters.length) return;
+  patchScene(r, { position: target });
+}
+async function patchScene(r, body) {
+  try {
+    await api.request(`/v1/scenes/${r.scene_id}`, { method: "PATCH", headers: JSON_HEADERS, body: JSON.stringify(body) });
+    emit("changed");
+  } catch (e) {
+    pushToast({ kind: "error", message: `Couldn't change the ${word.value.singular.toLowerCase()}: ${e?.message || e}` });
+  }
+}
+async function remove(r) {
+  const ok = await confirmDialog({
+    title: `Delete “${r.title || titleOf(r)}”?`,
+    message: r.lines
+      ? `Its ${r.lines.toLocaleString()} lines and every take rendered from them go with it — permanently.`
+      : "It has no text yet.",
+    danger: true,
+    confirmLabel: `Delete ${word.value.singular.toLowerCase()}`,
+  });
+  if (!ok) return;
+  try {
+    await api.request(`/v1/scenes/${r.scene_id}`, { method: "DELETE" });
+    emit("changed");
+  } catch (e) {
+    pushToast({ kind: "error", message: `Couldn't delete it: ${e?.message || e}` });
+  }
+}
+// ＋ Add text — paste a chapter's text; each paragraph becomes a line with no
+// speaker yet, for Analyze to attribute.
+const paste = ref(null);   // { row, text, busy }
+const paragraphs = computed(() => (paste.value?.text || "").split(/\n\s*\n/).map((t) => t.trim()).filter(Boolean));
+function addText(r) {
+  paste.value = { row: r, text: "", busy: false };
+}
+async function addLines() {
+  const { row } = paste.value;
+  const list = paragraphs.value;
+  paste.value.busy = true;
+  try {
+    for (let i = 0; i < list.length; i++) {
+      await api.request(`/v1/scenes/${row.scene_id}/blocks`, {
+        method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ position: i, text: list[i] }),
+      });
+    }
+    paste.value = null;
+    emit("changed");
+    pushToast({ kind: "success", message: `${list.length} lines added — ✨ Analyze works out who speaks each one.` });
+  } catch (e) {
+    paste.value.busy = false;
+    pushToast({ kind: "error", message: `Couldn't add the text: ${e?.message || e}` });
+  }
+}
+// Import opens on Projects, the way a new book starts.
+function startImport() {
+  try { window.sessionStorage?.setItem("jv.projects.openImport", "1"); } catch { /* private mode */ }
+  window.location.hash = "#projects";
 }
 function openRow(r, focus = null) {
   if (!r.lines || inRun(props.project.id, r.scene_id) === "current") return;
@@ -230,15 +329,22 @@ function openRow(r, focus = null) {
         </div>
         <AiTaskStrip v-if="runTask" :task="runTask" />
 
-        <div v-if="!rows.length" class="jv-banner">
-          No {{ word.plural.toLowerCase() }} yet — add or import them in
-          <a href="#chapter">{{ word.plural }}</a> first.
-        </div>
+        <EmptyState v-if="!rows.length" icon="Sparkle" :title="`No ${word.plural.toLowerCase()} yet`"
+          :message="`Import a manuscript — EPUB, DOCX, Markdown or plain text — and it splits into ${word.plural.toLowerCase()}, with a preview before anything is added. Or add a ${word.singular.toLowerCase()} and paste its text.`"
+          compact>
+          <template #actions>
+            <UiButton intent="primary" label="⬆ Import a manuscript…" @click="startImport" />
+            <UiButton intent="secondary" :label="`＋ Add ${word.singular.toLowerCase()}`" @click="addChapter" />
+          </template>
+        </EmptyState>
         <template v-else>
           <div class="jv-inline-row studio-script__chips">
             <UiChip v-for="c in CHIPS" :key="c.id" :selected="chip === c.id" :title="c.tip"
               @click="pickChip(c.id)">{{ c.label }} {{ chipCount(c.id) }}</UiChip>
             <span class="jv-hint">Select-all ticks only the {{ word.plural.toLowerCase() }} shown.</span>
+            <span class="jv-spacer" />
+            <UiButton intent="secondary" size="small" :label="`＋ Add ${word.singular.toLowerCase()}`"
+              :title="`A new ${word.singular.toLowerCase()} at the end — paste its text next`" @click="addChapter" />
           </div>
 
           <UiTable class="jv-table-look studio-script__grid" :data="shown" :columns="COLUMNS" data-key="id"
@@ -310,7 +416,7 @@ function openRow(r, focus = null) {
             <template #acts="{ row }">
               <span class="studio-script__acts" @click.stop>
                 <UiButton v-if="!row.lines" intent="secondary" size="small" label="＋ Add text"
-                  title="Paste or import its text first" @click="addText" />
+                  title="Paste its text" @click="addText(row)" />
                 <template v-else>
                   <UiButton v-if="recut(failureOf(project.id, row.scene_id))" intent="secondary" size="small"
                     label="Takes ➜" title="The takes recorded against this chapter's lines" @click="emit('go', 'render')" />
@@ -325,6 +431,21 @@ function openRow(r, focus = null) {
                       : row.to_check ? 'Opens the chapter at its first line to check' : ''"
                     @click="openRow(row, row.to_check ? 'check' : null)" />
                 </template>
+                <DropdownMenuRoot>
+                  <DropdownMenuTrigger class="ev-kebab" :aria-label="`${word.singular} actions`"
+                    :title="`${word.singular} actions`">⋯</DropdownMenuTrigger>
+                  <DropdownMenuPortal>
+                    <DropdownMenuContent class="ev-menu" align="end" :side-offset="4" :collision-padding="8">
+                      <DropdownMenuItem class="ev-menu-item" @select="rename(row)">✏️ Rename</DropdownMenuItem>
+                      <DropdownMenuItem class="ev-menu-item" :disabled="row.position === 0" @select="move(row, -1)">↑ Move up</DropdownMenuItem>
+                      <DropdownMenuItem class="ev-menu-item" :disabled="row.position >= ordered.length - 1"
+                        @select="move(row, 1)">↓ Move down</DropdownMenuItem>
+                      <DropdownMenuSeparator class="ev-menu-sep" />
+                      <DropdownMenuItem class="ev-menu-item danger" :disabled="inRun(project.id, row.scene_id) === 'current'"
+                        @select="remove(row)">🗑 Delete</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenuPortal>
+                </DropdownMenuRoot>
               </span>
             </template>
             <template #empty>No {{ word.plural.toLowerCase() }} in this view.</template>
@@ -395,6 +516,22 @@ function openRow(r, focus = null) {
         </dl>
       </div>
     </div>
+
+    <AppModal v-if="paste" eyebrow="＋ Add text" :title="titleOf(paste.row)" max-width="720px" dismissable
+      @close="paste = null">
+      <p class="jv-lede studio-script__paste-lede">
+        Paste the {{ word.singular.toLowerCase() }}'s text. Each paragraph becomes a line; ✨ Analyze then works out
+        who speaks each one.
+      </p>
+      <UiTextarea v-model="paste.text" :rows="12" :placeholder="`Paste the ${word.singular.toLowerCase()} text…`" />
+      <template #footer>
+        <span class="jv-hint">{{ paragraphs.length ? `${paragraphs.length} paragraph${paragraphs.length === 1 ? "" : "s"}` : "" }}</span>
+        <span class="jv-spacer" />
+        <UiButton intent="secondary" label="Cancel" @click="paste = null" />
+        <UiButton intent="primary" label="Add as lines" :loading="paste.busy" :disabled="!paragraphs.length || paste.busy"
+          @click="addLines" />
+      </template>
+    </AppModal>
   </section>
 </template>
 
@@ -406,6 +543,7 @@ function openRow(r, focus = null) {
 .studio-script__grid { margin: 0 0 12px; }
 .studio-script__grid :deep(.studio-script__row--open) { cursor: pointer; }
 .studio-script__why { max-width: 60ch; margin-top: 3px; }
-.studio-script__acts { display: inline-flex; gap: 6px; }
+.studio-script__acts { display: inline-flex; gap: 6px; align-items: center; }
+.studio-script__paste-lede { margin: 0 0 10px; }
 .studio-script__go { gap: 10px; align-items: center; flex-wrap: wrap; }
 </style>

@@ -15,6 +15,10 @@ single-block door (`persist_block_take`, shared with takes_api — one
 source, they must never drift). A job survives restart as rows: the boot
 sweep (`sweep_stale_jobs`) marks interrupted queued/running jobs "paused";
 `resume_job` re-enqueues only the blocks that aren't completed.
+
+Since Studio Slice 4 (2026-10-04) a take keeps its audio, the seed it was
+made with and its inputs key (line_takes.py), and becomes the line's ★ take.
+A job made with `fresh` renders past the render cache — "↻ Re-render all".
 """
 
 from __future__ import annotations
@@ -56,10 +60,19 @@ def _open_db():
 # ── the one block-persistence shape ──────────────────────────────────
 
 
-def persist_block_take(db, state, block, wav: bytes) -> Take:
-    """Generation + default Take for one rendered block — THE single
+def persist_block_take(db, state, block, rl, *, new_seed: bool = False) -> Take:
+    """Generation + the line's new ★ Take for one rendered block — THE single
     persistence shape, shared by POST /v1/blocks/{id}/render and the job
-    runner."""
+    runner. `rl` is the render (`render_core.RenderedLine`): its audio is kept
+    on disk, with the seed and inputs key it was made from, so the chapter can
+    play it and Render can tell when it goes stale (line_takes.py). The line's
+    other takes are kept and stop being ★ — nothing is overwritten.
+    `new_seed`: the take rolled its own seed (↻ New take)."""
+    from .audio.wav import write_wav_container
+    from .line_takes import CHAPTER_RENDER, NEW_TAKE
+    from .media_paths import store_media_path
+    from .paths import generations_root
+
     scene = db.query(Scene).filter(Scene.id == block.scene_id).first()
     # The persona that voiced it (line → speaker → persona); the job runner
     # hands a plain copy that already carries it.
@@ -67,6 +80,7 @@ def persist_block_take(db, state, block, wav: bytes) -> Take:
     if persona_id is None:
         found = persona_for_block(db, block)
         persona_id = found.id if found is not None else None
+    frame = 2 * max(1, rl.channels) * max(1, rl.sample_rate)
     gen = Generation(
         block_id=block.id,
         persona_id=persona_id,
@@ -74,12 +88,21 @@ def persist_block_take(db, state, block, wav: bytes) -> Take:
         chapter_id=block.scene_id,
         text=block.text,
         engine=state.engines.current() or "managed",
+        seed=rl.seed,
+        instruct=(getattr(block, "direction", None) or None),
+        cache_key=rl.inputs_key or None,
         status="completed",
-        source="chapter_render",
-        duration_sec=round((len(wav) - 44) / (2 * 16000), 3) if len(wav) > 44 else None,
+        source=NEW_TAKE if new_seed else CHAPTER_RENDER,
+        duration_sec=round(len(rl.pcm) / frame, 3),
     )
     db.add(gen)
     db.flush()
+    path = generations_root(state.data_dir) / f"{gen.id}.wav"
+    path.write_bytes(write_wav_container(rl.pcm, rl.sample_rate, rl.channels))
+    gen.audio_path = store_media_path(path)
+    db.query(Take).filter(Take.block_id == block.id, Take.is_default == True).update(  # noqa: E712
+        {"is_default": False}
+    )
     take = Take(block_id=block.id, generation_id=gen.id, is_default=True)
     db.add(take)
     db.commit()
@@ -114,16 +137,22 @@ def _expand_scope(db, project_id: str, scope: str, scope_ids: list[str]) -> list
     raise ValueError(f"unknown scope {scope!r}")
 
 
-def create_job(project_id: str, scope: str, scope_ids: list[str] | None) -> RenderJob:
+def create_job(
+    project_id: str, scope: str, scope_ids: list[str] | None, *, fresh: bool = False,
+) -> RenderJob:
     """Create the job + its per-block rows (all pending). A job with zero
-    renderable blocks is born completed — nothing to run."""
+    renderable blocks is born completed — nothing to run. `fresh` renders
+    every block past the render cache (kept with the ids, so a resumed job
+    keeps it)."""
     db = _open_db()
     try:
         block_ids = _expand_scope(db, project_id, scope, scope_ids or [])
         job = RenderJob(
             project_id=project_id,
             scope=scope,
-            scope_ids_json=json.dumps(scope_ids or []),
+            scope_ids_json=json.dumps(
+                {"ids": scope_ids or [], "fresh": True} if fresh else (scope_ids or [])
+            ),
             status="queued" if block_ids else "completed",
             total_blocks=len(block_ids),
         )
@@ -286,9 +315,17 @@ def _refresh_counters(db, job_id: str) -> None:
     )
 
 
+def _job_is_fresh(job) -> bool:
+    try:
+        opts = json.loads(job.scope_ids_json or "[]")
+    except ValueError:
+        return False
+    return isinstance(opts, dict) and bool(opts.get("fresh"))
+
+
 def _run_job(job_id: str) -> None:
     from .app_state import get_state
-    from .export_voicelines import _render_block_production
+    from .export_voicelines import render_block_take
     from .voice_model import model_key
     from .synth_scheduler import get_scheduler
 
@@ -302,6 +339,7 @@ def _run_job(job_id: str) -> None:
             if job is None:
                 return
             job.status = "running"
+            fresh = _job_is_fresh(job)
             if job.started_at is None:
                 job.started_at = _utcnow()
             work_rows = (
@@ -338,6 +376,7 @@ def _run_job(job_id: str) -> None:
                     persona_id=persona.id if persona is not None else None,
                     text=block.text,
                     direction=block.direction,
+                    metadata_json=block.metadata_json,
                 )
                 persona_data = (
                     SimpleNamespace(id=persona.id, name=persona.name)
@@ -356,7 +395,8 @@ def _run_job(job_id: str) -> None:
         handles = []
         for jb_id, block, persona, engine_id in work:
             h = scheduler.submit(
-                [(engine_id, lambda p=persona, b=block: _render_block_production(state, p, b))]
+                [(engine_id, lambda p=persona, b=block: render_block_take(
+                    state, p, b, use_cache=not fresh))]
             )
             handles.append((jb_id, block, h))
         with _state_lock:

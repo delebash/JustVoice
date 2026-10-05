@@ -271,6 +271,24 @@ async function saveField(field) {
     resetDraft(s, field);
   }
 }
+// Pronouns (persona build P9): read by Script's Analyze and Smart-assign, never heard.
+const PRONOUN_OPTIONS = [
+  { value: "", label: "Not set" },
+  { value: "he/him", label: "he/him" },
+  { value: "she/her", label: "she/her" },
+  { value: "they/them", label: "they/them" },
+  { value: "it/its", label: "it/its" },
+];
+async function savePronouns(value) {
+  const s = selected.value;
+  if (!s || (value || null) === (s.pronouns || null)) return;
+  try {
+    await projectsService.updateSpeaker(s.id, { pronouns: value || null });
+    emit("changed");
+  } catch (e) {
+    pushToast({ kind: "error", message: `Save failed: ${e?.message || e}` });
+  }
+}
 function blurOnEnter(e) {
   if (e.key === "Enter") e.target.blur();
 }
@@ -407,7 +425,8 @@ async function smartAssign() {
         headers: { "Content-Type": "application/json" },
         signal: task.signal,
         body: JSON.stringify({
-          characters: people.map((s) => ({ id: s.id, name: s.name, description: s.description, aliases: s.aliases || [] })),
+          characters: people.map((s) => ({ id: s.id, name: s.name, description: s.description, aliases: s.aliases || [],
+            pronouns: s.pronouns || null })),
           // The one gender answer (your override, the voice's own, its id or
           // first name — services/voiceGender.js) and the language the persona
           // really speaks (the server's `speaks`), as every page shows them.
@@ -606,6 +625,12 @@ const GAME_COLUMNS = [
               <span class="jv-eyebrow">Also called</span>
               <UiInput v-model="draft.aliases" width="path" @blur="saveField('aliases')" @keydown="blurOnEnter" />
               <span class="jv-hint">The other names the text uses, separated by commas.</span>
+            </div>
+            <div class="studio-cast__field">
+              <span class="jv-eyebrow">Pronouns</span>
+              <UiSelect :modelValue="selected.pronouns || ''" width="token" :options="PRONOUN_OPTIONS"
+                @update:modelValue="savePronouns" />
+              <span class="jv-hint">Read by Script's Analyze — who "she said" can be — and by Smart-assign. Never heard.</span>
             </div>
             <div class="studio-cast__field">
               <span class="jv-eyebrow">Who they are</span>

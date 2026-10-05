@@ -113,8 +113,10 @@ unzipped the file, a bare `book.json` imports too.
   `* * *` scene marks you see in JustWrite are never spoken — they are drawn on
   screen between scenes, not stored in the text.
 - **The speakers.** Every person in the book becomes a speaker in this book,
-  carrying its name, its aliases as **Also called**, and a **Who they are** built
-  from the one-line description and a casting hint from gender, age and role.
+  carrying its name, its aliases as **Also called**, its pronouns as
+  **Pronouns** (he/him, she/her, they/them or it/its; anything else is left
+  unset), and a **Who they are** built from the one-line description and a
+  casting hint from gender, age and role.
   Aliases earn their place: the same person gets addressed by different names
   through the prose, and attribution has to recognise every one of them.
 
@@ -433,8 +435,8 @@ The Projects tab's **Export project** action produces a `.justvoice.zip` archive
 - All chapters' rendered WAVs
 - All takes (not just defaults — full history for re-roll archaeology)
 - The project's full SQLite snapshot
-- The book's speakers (`speakers/<id>.json` — name, Also called, Who they are, the persona
-  that plays them, the narrator role) and the personas that play them (`personas/<id>.json`);
+- The book's speakers (`speakers/<id>.json` — name, Also called, Pronouns, Who they are, the
+  persona that plays them, the narrator role) and the personas that play them (`personas/<id>.json`);
   the archive's `manifest.json` counts both (`speaker_count`, `persona_count`)
 - Lexicons used
 

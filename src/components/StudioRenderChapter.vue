@@ -1,0 +1,672 @@
+<!-- SPDX-License-Identifier: MIT -->
+<!--
+  Studio · Render — one chapter's lines (Studio Slice 4, decided 2026-10-04;
+  docs/plans/2026-10-04-slice-4-render.md, drawn first as the in-app mock
+  src/mock/MockRenderChapterView.vue).
+
+  The line is the unit: Speaker · Text · How it's said · Status · Audio, the
+  status in §8.16's words (GET /v1/scenes/{id}/render_lines). "How it's said"
+  is written direction on a model that takes it, the persona's own standing
+  tags (read-only) on a tag model, and nothing on the rest. Opening a line
+  shows who speaks it (read-only — Cast decides, D2), its numbers behind the
+  closed ⚙ hatch (D3, stored in the line's metadata), 📕 Pronunciation (the
+  book's lexicon), ✏️ Rewrite in character (moved here from Script), and its
+  takes: every take is kept, and the ★ one is what the chapter plays and
+  exports (D4). A change to the line or to what it is made from marks it
+  stale; you choose when to render it again.
+
+  Shapes: the page head and verbs are Script's chapter page
+  (StudioScriptChapter.vue); the grid is the kit's UiTable in .jv-table-look
+  with a full-width row for the open line (.jv-linepanel, .jv-takes).
+-->
+<script setup>
+import { computed, reactive, ref, watch } from "vue";
+import {
+  AppModal, UiButton, UiChip, UiInput, UiNumber, UiSelect, UiTable, UiTag, UiTextarea,
+  promptDialog, pushToast,
+} from "@delebash/llm-ui";
+import { useApi } from "../stores/api.js";
+import { useCopy } from "../services/copy.js";
+import { useKeptScroll } from "../composables/useKeptScroll.js";
+import { mediaUrl, renderChapter, renderLines } from "../services/renderRun.js";
+
+const props = defineProps({
+  project: { type: Object, required: true },
+  sceneId: { type: String, required: true },
+  scenes: { type: Array, default: () => [] },
+  // The book's speakers (GET /v1/projects/{id}/speakers): name, persona_id, role_label.
+  speakers: { type: Array, default: () => [] },
+  // The persona library (PersonaView: model, model_name, directed_by, default_delivery).
+  personas: { type: Array, default: () => [] },
+  // Bumped by Studio when something it did changed these lines.
+  version: { type: Number, default: 0 },
+});
+const emit = defineEmits(["back", "open", "go", "changed"]);
+
+const api = useApi();
+const copy = useCopy();
+const word = computed(() => copy.value.chapter);
+const PAUSE_SETTING_MS = ref(600);
+
+// ── The page ─────────────────────────────────────────────────────────
+const page = ref(null);
+const loadError = ref("");
+async function load() {
+  const id = props.sceneId;
+  try {
+    const r = await api.request(`/v1/scenes/${id}/render_lines`);
+    if (id !== props.sceneId) return;
+    page.value = r;
+    loadError.value = "";
+  } catch (e) {
+    if (id === props.sceneId) loadError.value = String(e?.message || e);
+  }
+}
+async function loadPause() {
+  const s = await api.safeRequest("/v1/settings", null);
+  const ms = s?.generation?.pause_between_lines_ms;
+  if (Number.isFinite(ms)) PAUSE_SETTING_MS.value = ms;
+}
+
+const lines = computed(() => page.value?.lines || []);
+const counts = computed(() => page.value?.counts || {});
+const blocked = computed(() => (counts.value.needs_speaker || 0) + (counts.value.needs_voice || 0));
+const scene = computed(() => props.scenes.find((s) => s.id === props.sceneId) || null);
+const title = computed(() => {
+  const s = scene.value;
+  return s ? `${s.position + 1} · ${s.title || `${word.value.singular} ${s.position + 1}`}` : "";
+});
+const order = computed(() => [...props.scenes].sort((a, b) => a.position - b.position));
+const at = computed(() => order.value.findIndex((s) => s.id === props.sceneId));
+const prevChapter = computed(() => order.value[at.value - 1] || null);
+const nextChapter = computed(() => order.value[at.value + 1] || null);
+const chapterName = (s) => `${s.position + 1} · ${s.title || `${word.value.singular} ${s.position + 1}`}`;
+
+const root = ref(null);
+useKeptScroll(root);
+
+// ── Who speaks, and how their model is directed ──────────────────────
+const speakersById = computed(() => Object.fromEntries(props.speakers.map((s) => [s.id, s])));
+const personasById = computed(() => Object.fromEntries(props.personas.map((p) => [p.id, p])));
+const speakerOf = (l) => speakersById.value[l.speaker_id] || null;
+const personaOf = (l) => personasById.value[speakerOf(l)?.persona_id] || null;
+const speakerName = (l) => speakerOf(l)?.name || "—";
+const firstName = (l) => speakerName(l).split(" ")[0];
+const isNarrator = (l) => speakerOf(l)?.role_label === "narrator";
+function standingTags(l) {
+  const p = personaOf(l);
+  const m = p?.default_delivery?.models?.[p?.model] || {};
+  return [m.emotion, m.register_tag].filter(Boolean).map((t) => `[${t}]`);
+}
+const AVATAR = ["#5b7a99", "#c98aa7", "#3a7d63", "#8a6d3b", "#6a5acd", "#b07a2a", "#b3552e", "#4f6f6f", "#7a7a7a"];
+function avatarColor(id) {
+  let h = 0;
+  for (const ch of String(id || "")) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return AVATAR[h % AVATAR.length];
+}
+const fmt = (s) => {
+  const n = Math.max(0, Math.round(Number(s) || 0));
+  return `${Math.floor(n / 60)}:${String(n % 60).padStart(2, "0")}`;
+};
+const BLOCKED = new Set(["needs a speaker", "needs a voice"]);
+const STATE_TAG = {
+  rendered: "success", stale: "accent2", ready: "ghost", "needs a speaker": "danger", "needs a voice": "danger",
+};
+
+// ── Filters ──────────────────────────────────────────────────────────
+const filter = ref("all");
+const speakerFilter = ref("all");
+const CHIPS = computed(() => [
+  { id: "all", label: "All", n: counts.value.lines || 0 },
+  { id: "ready", label: "Ready", n: counts.value.ready || 0, tip: "Lines with no take yet" },
+  { id: "stale", label: "Stale", n: counts.value.stale || 0,
+    tip: "Something the take was made from changed since — render it again when you choose" },
+  { id: "rendered", label: "Rendered", n: counts.value.rendered || 0 },
+  { id: "blocked", label: "Can't render", n: blocked.value },
+]);
+const speakerOptions = computed(() => {
+  const seen = new Map();
+  for (const l of lines.value) if (l.speaker_id && !seen.has(l.speaker_id)) seen.set(l.speaker_id, speakerName(l));
+  return [{ value: "all", label: "Every speaker" }, ...[...seen].map(([value, label]) => ({ value, label }))];
+});
+function inFilter(l) {
+  if (speakerFilter.value !== "all" && l.speaker_id !== speakerFilter.value) return false;
+  if (filter.value === "all") return true;
+  if (filter.value === "blocked") return BLOCKED.has(l.state);
+  return l.state === filter.value;
+}
+const open = ref(null);   // the block whose panel is open
+const rows = computed(() => {
+  const out = [];
+  for (const l of lines.value) {
+    if (!inFilter(l)) continue;
+    out.push(l);
+    if (open.value === l.block_id) out.push({ block_id: `${l.block_id}__panel`, panel: true, line: l });
+  }
+  return out;
+});
+// A different chapter starts clean; the parent's version bump re-reads this one.
+watch(() => props.sceneId, () => {
+  page.value = null;
+  open.value = null;
+  filter.value = "all";
+  speakerFilter.value = "all";
+  load();
+}, { immediate: true });
+watch(() => props.version, load);
+loadPause();
+
+const NARROW = { width: "1%", whiteSpace: "nowrap" };
+const COLUMNS = [
+  { id: "open", header: "", headerStyle: NARROW, cellStyle: NARROW },
+  { id: "speaker", header: "Speaker", cellStyle: { whiteSpace: "nowrap" } },
+  { id: "text", header: "Text" },
+  { id: "said", header: "How it's said", headerStyle: { width: "26%" } },
+  { id: "status", header: "Status", headerStyle: NARROW, cellStyle: NARROW },
+  { id: "audio", header: "Audio", headerStyle: NARROW, cellStyle: { ...NARROW, textAlign: "right" } },
+];
+function saidText(l) {
+  if (BLOCKED.has(l.state)) return "—";
+  return `${personaOf(l)?.model_name || "This model"} takes no direction`;
+}
+
+// ── Saving a line ────────────────────────────────────────────────────
+async function patchBlock(l, body) {
+  try {
+    await api.request(`/v1/blocks/${l.block_id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+    });
+    await load();
+    emit("changed", { sceneId: props.sceneId });
+  } catch (e) {
+    pushToast({ kind: "error", message: `Couldn't save the line: ${e?.message || e}` });
+  }
+}
+function setDirection(l, v) {
+  const next = (v || "").trim();
+  if (next === (l.direction || "")) return;
+  patchBlock(l, { direction: next });
+}
+
+// ── Rendering ────────────────────────────────────────────────────────
+const busy = reactive({});      // block_id → true while its render runs
+async function renderOne(l, { newTake = false } = {}) {
+  busy[l.block_id] = true;
+  try {
+    await api.request(`/v1/blocks/${l.block_id}/render`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ new_take: newTake }),
+    });
+    await load();
+    if (open.value === l.block_id) await loadTakes(l.block_id);
+    emit("changed", { sceneId: props.sceneId });
+  } catch (e) {
+    pushToast({ kind: "error", message: `Render failed: ${e?.message || e}`, duration: 7000 });
+  } finally {
+    busy[l.block_id] = false;
+  }
+}
+const running = ref("");        // "ready" | "all" | "chapter" while a whole-chapter run goes
+async function runLines(which) {
+  running.value = which;
+  try {
+    await renderLines(api, { sceneId: props.sceneId, title: title.value, which, onProgress: () => load() });
+  } catch (e) {
+    if (e?.name !== "AbortError") pushToast({ kind: "error", message: `Render failed: ${e?.message || e}`, duration: 7000 });
+  } finally {
+    running.value = "";
+    await load();
+    emit("changed", { sceneId: props.sceneId });
+  }
+}
+const playing = ref(null);      // { key, url }
+async function playChapter() {
+  running.value = "chapter";
+  try {
+    const r = await renderChapter(api, {
+      sceneId: props.sceneId, projectId: props.project.id, title: title.value, onRetry: playChapter,
+    });
+    if (r?.url) playing.value = { key: "chapter", url: r.url };
+  } catch (e) {
+    if (e?.name !== "AbortError") pushToast({ kind: "error", message: `${e?.message || e}`, duration: 9000 });
+  } finally {
+    running.value = "";
+    await load();
+    emit("changed", { sceneId: props.sceneId });
+  }
+}
+function play(key, path) {
+  const url = mediaUrl(api, path);
+  if (url) playing.value = { key, url };
+}
+
+// ── Takes ────────────────────────────────────────────────────────────
+const takes = reactive({});     // block_id → [TakeResponse], newest first
+async function loadTakes(blockId) {
+  const r = await api.safeRequest(`/v1/takes/by_block/${blockId}`, { takes: [] });
+  takes[blockId] = r?.takes || [];
+}
+watch(open, (id) => { if (id) loadTakes(id); });
+function takeName(list, t) {
+  if (t.is_default) return "★ live";
+  return `take ${list.length - list.indexOf(t)}`;
+}
+async function makeLive(l, t) {
+  try {
+    await api.request(`/v1/takes/${t.id}/set_default`, { method: "POST" });
+    await Promise.all([load(), loadTakes(l.block_id)]);
+    emit("changed", { sceneId: props.sceneId });
+  } catch (e) {
+    pushToast({ kind: "error", message: `Couldn't choose that take: ${e?.message || e}` });
+  }
+}
+async function deleteTake(l, t) {
+  try {
+    await api.request(`/v1/takes/${t.id}`, { method: "DELETE" });
+    await Promise.all([load(), loadTakes(l.block_id)]);
+  } catch (e) {
+    pushToast({ kind: "error", message: `Couldn't delete the take: ${e?.message || e}` });
+  }
+}
+
+// Compare two takes of one line.
+const compare = ref(null);   // { line, b }
+function openCompare(l) {
+  const other = (takes[l.block_id] || []).find((t) => !t.is_default);
+  compare.value = { line: l, b: other?.id || "" };
+}
+const compareTakes = computed(() => (compare.value ? takes[compare.value.line.block_id] || [] : []));
+const compareOptions = computed(() => compareTakes.value.filter((t) => !t.is_default)
+  .map((t) => ({ value: t.id, label: `${takeName(compareTakes.value, t)} · ${fmt(t.seconds)}` })));
+const compareA = computed(() => compareTakes.value.find((t) => t.is_default) || null);
+const compareB = computed(() => compareTakes.value.find((t) => t.id === compare.value?.b) || null);
+
+// ── The numbers override (D3) — a closed hatch; a set value puts a dot on the row ──
+const hatch = reactive({});
+const overrideSet = (l) => Object.keys(l.override || {}).length > 0;
+function personaDefault(l, key) {
+  const d = personaOf(l)?.default_delivery || {};
+  if (key === "speed") return d.speed ?? 1;
+  if (key === "pitch") return d.pitch ?? 0;
+  if (key === "gain_db") return d.gain_db ?? 0;
+  return d.pause_after ?? PAUSE_SETTING_MS.value;
+}
+function setNum(l, key, v) {
+  const value = v === "" || v === null || v === undefined ? null : Number(v);
+  if ((l.override?.[key] ?? null) === value) return;
+  patchBlock(l, { line_override: { [key]: value } });
+}
+function clearOverride(l) {
+  patchBlock(l, { line_override: Object.fromEntries(Object.keys(l.override || {}).map((k) => [k, null])) });
+}
+
+// ── Rewrite in character (moved here from Script, decided 2026-09-29) ─
+const rewrite = ref(null);   // { line, text, busy, error }
+async function runRewrite() {
+  const r = rewrite.value;
+  if (!r) return;
+  r.busy = true;
+  r.error = "";
+  r.text = "";
+  try {
+    const out = await api.request(`/v1/speakers/${r.line.speaker_id}/rewrite`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: r.line.text }),
+    });
+    r.text = out?.text || out?.rewritten || "";
+    if (!r.text) r.error = "The model returned nothing — try again.";
+  } catch (e) {
+    r.error = `Rewrite failed: ${e?.message || e}`;
+  } finally {
+    r.busy = false;
+  }
+}
+function openRewrite(l) {
+  rewrite.value = { line: l, text: "", busy: true, error: "" };
+  runRewrite();
+}
+async function acceptRewrite() {
+  const { line, text } = rewrite.value;
+  rewrite.value = null;
+  await patchBlock(line, { text: text.trim() });
+}
+function rewriteTitle(l) {
+  if (!l.spoken) return "Rewrite only applies to spoken lines.";
+  if (!l.speaker_id || isNarrator(l)) return "Give this line a speaker first.";
+  return "Reads who they are on Cast, and offers the line in their words";
+}
+
+// ── 📕 Pronunciation — the book's lexicon, made if it has none ─────────
+async function pronounce(l) {
+  let word = "";
+  const sel = String(window.getSelection?.() || "").trim();
+  if (sel && sel.length <= 60 && (l.text || "").includes(sel)) word = sel;
+  else {
+    word = (await promptDialog({
+      title: "Fix a pronunciation",
+      message: "Which word or name is read wrong? Leave it empty to just open the book's lexicon.",
+      placeholder: "e.g. Halvorn",
+    }))?.trim() ?? null;
+    if (word === null) return;
+  }
+  try {
+    const lex = await api.request(`/v1/projects/${props.project.id}/lexicon`, { method: "POST" });
+    try {
+      window.sessionStorage?.setItem("jv.lexicon.prefill", JSON.stringify({ grapheme: word, lexiconId: lex.lexicon_id }));
+    } catch { /* private mode — the page still opens */ }
+    if (lex.created) pushToast({ kind: "info", message: `“${lex.name}” made — this book's lexicon (Overview → Pronunciation lexicon).` });
+    window.location.hash = "#lexicons";
+  } catch (e) {
+    pushToast({ kind: "error", message: `Couldn't open the book's lexicon: ${e?.message || e}` });
+  }
+}
+
+// ── What can't render, and where it is fixed ─────────────────────────
+function goPersona(id) {
+  window.location.hash = `#/personas/${id}`;
+}
+const blockedBanner = computed(() => {
+  const parts = [];
+  if (counts.value.needs_speaker) {
+    const n = counts.value.needs_speaker;
+    parts.push({ text: `${n} ${n === 1 ? "has" : "have"} no speaker`, link: "fix in Script", go: () => emit("go", "script") });
+  }
+  const seen = new Set();
+  for (const l of lines.value) {
+    if (l.state !== "needs a voice" || seen.has(l.speaker_id)) continue;
+    seen.add(l.speaker_id);
+    const p = personaOf(l);
+    parts.push(p
+      ? { text: `${p.name} (who plays ${speakerName(l)}) has no voice`, link: "fix on Personas",
+          go: () => goPersona(p.id) }
+      : { text: `${speakerName(l)} has no persona`, link: "fix in Cast", go: () => emit("go", "cast") });
+  }
+  return parts;
+});
+const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).join("; "));
+</script>
+
+<template>
+  <section ref="root" class="studio-render-ch">
+    <div class="jv-inline-row">
+      <UiButton intent="ghost" size="small" :label="`← All ${word.plural.toLowerCase()}`" @click="emit('back')" />
+    </div>
+
+    <div v-if="loadError && !page" class="jv-banner jv-banner--danger">Couldn't load this {{ word.singular.toLowerCase() }}: {{ loadError }}</div>
+
+    <template v-if="page">
+      <div class="jv-card">
+        <div class="jv-card__header">
+          <h3 class="jv-card__title">{{ title }}</h3>
+          <span class="jv-hint">{{ counts.lines }} lines · {{ counts.rendered }} rendered · {{ counts.stale }} stale ·
+            {{ counts.ready }} ready{{ blocked ? ` · ${blocked} can't render` : "" }}</span>
+        </div>
+        <div class="jv-card__body">
+          <p class="jv-lede">
+            Render turns each line into audio. Every take is kept, and the ★ one is what the
+            {{ word.singular.toLowerCase() }} plays and exports. Changing a line, or what it is made from, marks it
+            stale — it plays its ★ take until you render it again.
+          </p>
+          <div class="studio-render-ch__verbs">
+            <span class="studio-render-ch__verb">
+              <UiButton intent="primary" :disabled="!counts.ready || !!running" :loading="running === 'ready'"
+                :label="`⚡ Render ${counts.ready || 0} ready`" @click="runLines('ready')" />
+              <span class="jv-hint">Each line gets a take. Lines that can't render are left for you to fix.</span>
+            </span>
+            <span class="studio-render-ch__verb">
+              <UiButton intent="secondary" :disabled="!!blocked || !!running" :loading="running === 'chapter'"
+                :label="`▶ Play ${word.singular.toLowerCase()}`" @click="playChapter" />
+              <span class="jv-hint">{{ blocked ? `Not until every line can render — ${chapterBlockedWhy}.`
+                : `Every line's ★ take in order, ${PAUSE_SETTING_MS} ms apart. A line with no take is rendered first.` }}</span>
+            </span>
+            <span class="jv-spacer" />
+            <span class="studio-render-ch__verb">
+              <UiButton intent="secondary" :disabled="!(counts.rendered + counts.stale) || !!running"
+                :loading="running === 'all'" label="↻ Re-render all" @click="runLines('all')" />
+              <span class="jv-hint">A new take for every line that can render. Old takes are kept.</span>
+            </span>
+          </div>
+          <audio v-if="playing?.key === 'chapter'" :src="playing.url" controls autoplay class="jv-audio-inline" />
+        </div>
+      </div>
+
+      <div v-if="blockedBanner.length" class="jv-banner jv-banner--warn studio-render-ch__banner">
+        <span><strong>{{ blocked }} line{{ blocked === 1 ? " can't" : "s can't" }} render.</strong>{{ " " }}<template
+            v-for="(p, i) in blockedBanner" :key="i">{{ i ? " " : "" }}{{ p.text }} — <a href="#"
+            @click.prevent="p.go()">{{ p.link }}</a>.</template>
+        </span>
+      </div>
+
+      <div class="jv-card studio-render-ch__lines">
+        <div class="jv-inline-row studio-render-ch__bar">
+          <UiChip v-for="ch in CHIPS" :key="ch.id" :selected="filter === ch.id" :title="ch.tip || ''"
+            @click="filter = ch.id">{{ ch.label }} {{ ch.n }}</UiChip>
+          <UiSelect v-model="speakerFilter" width="name" :options="speakerOptions" />
+        </div>
+
+        <UiTable class="jv-table-look ui-table-top studio-render-ch__table" :data="rows" :columns="COLUMNS" data-key="block_id"
+          :full-width-row="(r) => (r.panel ? 'studio-render-ch__panel-row' : false)"
+          :row-class="(r) => ({ 'jv-row--selected': open === r.block_id })"
+          @row-click="({ data }) => { if (!data.panel) open = open === data.block_id ? null : data.block_id; }">
+          <template #open="{ row }"><span class="jv-muted">{{ open === row.block_id ? "⌃" : "⌄" }}</span></template>
+          <template #speaker="{ row }">
+            <span v-if="row.speaker_id" class="studio-render-ch__who">
+              <span class="studio-render-ch__av" :style="{ background: avatarColor(row.speaker_id) }">{{ speakerName(row)[0] }}</span>
+              {{ speakerName(row) }}
+              <span v-if="overrideSet(row)" class="studio-render-ch__dot" title="This line sets its own numbers" />
+            </span>
+            <span v-else class="jv-muted">— nobody —</span>
+          </template>
+          <template #text="{ row }"><span class="studio-render-ch__text">{{ row.text }}</span></template>
+          <template #said="{ row }">
+            <span @click.stop>
+              <UiInput v-if="personaOf(row)?.directed_by === 'words' && !BLOCKED.has(row.state)" size="small"
+                :model-value="row.direction" :placeholder="`as ${personaOf(row).name} always speaks`"
+                @blur="(e) => setDirection(row, e.target.value)" @keydown.enter="(e) => e.target.blur()" />
+              <span v-else-if="personaOf(row)?.directed_by === 'tags' && !BLOCKED.has(row.state)"
+                class="studio-render-ch__tags"
+                :title="`${personaOf(row).model_name} takes tags, not words — ${personaOf(row).name}'s own, set on the persona`">
+                <UiTag v-for="t in standingTags(row)" :key="t" intent="ghost">{{ t }}</UiTag>
+                <span v-if="!standingTags(row).length" class="jv-muted">no tags</span>
+              </span>
+              <span v-else class="jv-muted">{{ saidText(row) }}</span>
+            </span>
+          </template>
+          <template #status="{ row }"><UiTag :intent="STATE_TAG[row.state]">{{ row.state }}</UiTag></template>
+          <template #audio="{ row }">
+            <span class="studio-render-ch__audio" @click.stop>
+              <template v-if="row.live">
+                <UiButton intent="ghost" size="small" label="▶" :disabled="!row.live.audio_url"
+                  :title="row.live.audio_url ? `Play the ★ take (${fmt(row.live.seconds)})` : 'This take has no audio — render it again'"
+                  @click="play(row.live.take_id, row.live.audio_url)" />
+                <span class="jv-muted studio-render-ch__len">{{ fmt(row.live.seconds) }}</span>
+                <UiButton v-if="row.state === 'stale'" intent="secondary" size="small" label="↻" :loading="busy[row.block_id]"
+                  :disabled="!!running" title="Render it again — the old take is kept" @click="renderOne(row)" />
+              </template>
+              <UiButton v-else-if="row.state === 'ready'" intent="primary" size="small" label="▶ Gen"
+                :loading="busy[row.block_id]" :disabled="!!running" @click="renderOne(row)" />
+              <UiButton v-else-if="row.state === 'needs a speaker'" intent="secondary" size="small" label="Fix in Script"
+                title="Opens Script" @click="emit('go', 'script')" />
+              <UiButton v-else-if="!personaOf(row)" intent="secondary" size="small" :label="`Cast ${firstName(row)}`"
+                @click="emit('go', 'cast')" />
+              <UiButton v-else intent="secondary" size="small" :label="`Give ${personaOf(row).name} a voice`"
+                @click="goPersona(personaOf(row).id)" />
+            </span>
+            <audio v-if="playing && row.live && playing.key === row.live.take_id" :src="playing.url" autoplay
+              class="studio-render-ch__hidden" />
+          </template>
+
+          <template #full-row="{ row }">
+            <div class="jv-linepanel" @click.stop>
+              <div class="jv-linepanel__side">
+                <div class="jv-linepanel__field">
+                  <span class="jv-eyebrow">Spoken by</span>
+                  <span v-if="personaOf(row.line)">
+                    <strong>{{ speakerName(row.line) }}</strong> — played by {{ personaOf(row.line).name }}
+                    <template v-if="personaOf(row.line).model_name"> · {{ personaOf(row.line).model_name }}</template> ·
+                    <a href="#" @click.prevent="emit('go', 'cast')">Change in Cast ➜</a>
+                  </span>
+                  <span v-else-if="row.line.speaker_id">{{ speakerName(row.line) }} — nobody plays them yet ·
+                    <a href="#" @click.prevent="emit('go', 'cast')">Cast them ➜</a></span>
+                  <span v-else class="jv-muted">Nobody —
+                    <a href="#" @click.prevent="emit('go', 'script')">give it a speaker in Script ➜</a></span>
+                </div>
+
+                <div class="jv-linepanel__field">
+                  <UiButton intent="ghost" size="small"
+                    :label="`⚙ Override the numbers for this line — ${overrideSet(row.line) ? 'set' : 'not set'}`"
+                    @click="hatch[row.line.block_id] = !hatch[row.line.block_id]" />
+                  <template v-if="hatch[row.line.block_id]">
+                    <div class="jv-linepanel__nums">
+                      <label class="jv-linepanel__field"><span class="jv-eyebrow">Pace ×</span>
+                        <UiNumber size="small" width="token" :step="0.05" :min="0.5" :max="2"
+                          :model-value="row.line.override.speed ?? null" :placeholder="String(personaDefault(row.line, 'speed'))"
+                          @update:model-value="(v) => setNum(row.line, 'speed', v)" /></label>
+                      <label class="jv-linepanel__field"><span class="jv-eyebrow">Pitch st</span>
+                        <UiNumber size="small" width="token" :step="1" :min="-12" :max="12"
+                          :model-value="row.line.override.pitch ?? null" :placeholder="String(personaDefault(row.line, 'pitch'))"
+                          @update:model-value="(v) => setNum(row.line, 'pitch', v)" /></label>
+                      <label class="jv-linepanel__field"><span class="jv-eyebrow">Gain dB</span>
+                        <UiNumber size="small" width="token" :step="0.5" :min="-12" :max="12"
+                          :model-value="row.line.override.gain_db ?? null" :placeholder="String(personaDefault(row.line, 'gain_db'))"
+                          @update:model-value="(v) => setNum(row.line, 'gain_db', v)" /></label>
+                      <label class="jv-linepanel__field"><span class="jv-eyebrow">Pause after ms</span>
+                        <UiNumber size="small" width="token" :step="50" :min="0" :max="10000"
+                          :model-value="row.line.override.pause_after_ms ?? null"
+                          :placeholder="String(personaDefault(row.line, 'pause_after'))"
+                          @update:model-value="(v) => setNum(row.line, 'pause_after_ms', v)" /></label>
+                      <UiButton v-if="overrideSet(row.line)" intent="ghost" size="small" label="Clear" @click="clearOverride(row.line)" />
+                    </div>
+                    <span class="jv-hint">For this line only. Empty means as {{ personaOf(row.line)?.name || "its persona" }}
+                      — and the pause, as Settings → Generation.</span>
+                  </template>
+                </div>
+
+                <div class="jv-linepanel__row">
+                  <UiButton intent="secondary" size="small" label="📕 Pronunciation"
+                    title="Opens the book's lexicon — select a word in the line first to add it" @click="pronounce(row.line)" />
+                  <UiButton intent="secondary" size="small"
+                    :disabled="!row.line.spoken || !row.line.speaker_id || isNarrator(row.line)"
+                    :label="row.line.spoken && row.line.speaker_id && !isNarrator(row.line) ? `✏️ Rewrite as ${firstName(row.line)}` : '✏️ Rewrite in character'"
+                    :title="rewriteTitle(row.line)" @click="openRewrite(row.line)" />
+                </div>
+              </div>
+
+              <div class="jv-card jv-takes">
+                <div class="jv-takes__head"><strong>Takes</strong>
+                  <span class="jv-hint">{{ (takes[row.line.block_id] || []).length }} · nothing is overwritten</span></div>
+                <div v-for="t in takes[row.line.block_id] || []" :key="t.id" class="jv-takes__row">
+                  <UiTag :intent="t.is_default ? 'success' : 'ghost'">{{ takeName(takes[row.line.block_id], t) }}</UiTag>
+                  <span class="jv-takes__len">{{ fmt(t.seconds) }}</span>
+                  <span class="jv-takes__label">{{ t.new_seed ? "new seed" : "" }}{{ t.text && t.text !== row.line.text ? `${t.new_seed ? " · " : ""}earlier words` : "" }}</span>
+                  <UiButton intent="ghost" size="small" label="▶" :disabled="!t.audio_url" title="Play" @click="play(t.id, t.audio_url)" />
+                  <UiButton v-if="!t.is_default" intent="ghost" size="small" label="★"
+                    title="Make this the take the chapter plays" @click="makeLive(row.line, t)" />
+                  <UiButton v-if="!t.is_default" intent="ghost" size="small" label="🗑" title="Delete this take"
+                    @click="deleteTake(row.line, t)" />
+                </div>
+                <div v-if="!(takes[row.line.block_id] || []).length" class="jv-takes__row jv-muted">No takes yet.</div>
+                <audio v-if="playing && (takes[row.line.block_id] || []).some((t) => t.id === playing.key)" :src="playing.url"
+                  controls autoplay class="jv-audio-inline" />
+                <div class="jv-takes__foot">
+                  <UiButton intent="secondary" size="small" label="↻ New take"
+                    :disabled="BLOCKED.has(row.line.state) || !!running" :loading="busy[row.line.block_id]"
+                    :title="personaOf(row.line)?.directed_by === 'words'
+                      ? 'Reads the line again with a new seed — the takes you have are kept. On a voice made from a description, a new seed can change who speaks.'
+                      : 'Reads the line again with a new seed — the takes you have are kept'"
+                    @click="renderOne(row.line, { newTake: true })" />
+                  <UiButton intent="secondary" size="small" label="⚖️ Compare two"
+                    :disabled="(takes[row.line.block_id] || []).length < 2" @click="openCompare(row.line)" />
+                  <span class="jv-spacer" />
+                  <UiButton intent="ghost" size="small" label="✕ Close" @click="open = null" />
+                </div>
+              </div>
+            </div>
+          </template>
+          <template #empty>No lines in this view.</template>
+        </UiTable>
+
+        <p class="jv-hint studio-render-ch__foot">Lines are joined with {{ PAUSE_SETTING_MS }} ms of silence — Settings →
+          Generation. A line's own pause (⚙ Override) changes it after that line.</p>
+        <div class="jv-inline-row studio-render-ch__bar">
+          <UiButton intent="secondary" size="small" :label="`← Previous ${word.singular.toLowerCase()}`"
+            :disabled="!prevChapter" :title="prevChapter ? chapterName(prevChapter) : `This is the first ${word.singular.toLowerCase()}`"
+            @click="emit('open', prevChapter.id)" />
+          <span class="jv-spacer" />
+          <span v-if="nextChapter" class="jv-hint">Next: {{ chapterName(nextChapter) }}</span>
+          <UiButton intent="primary" size="small" :label="`Next ${word.singular.toLowerCase()} ➜`"
+            :disabled="!nextChapter" @click="emit('open', nextChapter.id)" />
+        </div>
+      </div>
+    </template>
+
+    <AppModal v-if="compare" :title="`Compare takes — line ${compare.line.n}`" max-width="560px" dismissable @close="compare = null">
+      <div class="studio-render-ch__compare">
+        <div class="jv-linepanel__field">
+          <span class="jv-eyebrow">A — ★ live</span>
+          <UiButton intent="secondary" size="small" label="▶ Play A" :disabled="!compareA?.audio_url"
+            @click="play(`cmp-${compareA.id}`, compareA.audio_url)" />
+        </div>
+        <div class="jv-linepanel__field">
+          <span class="jv-eyebrow">B</span>
+          <UiSelect v-model="compare.b" width="name" :options="compareOptions" placeholder="Pick a take…" />
+          <UiButton intent="secondary" size="small" label="▶ Play B" :disabled="!compareB?.audio_url"
+            @click="play(`cmp-${compareB.id}`, compareB.audio_url)" />
+        </div>
+      </div>
+      <audio v-if="playing && String(playing.key).startsWith('cmp-')" :src="playing.url" controls autoplay class="jv-audio-inline" />
+      <template #footer>
+        <UiButton intent="secondary" label="Close" @click="compare = null" />
+        <UiButton intent="primary" label="Make B the ★ take" :disabled="!compareB"
+          @click="makeLive(compare.line, compareB); compare = null" />
+      </template>
+    </AppModal>
+
+    <AppModal v-if="rewrite" eyebrow="Rewrite in character" :title="speakerName(rewrite.line)"
+      max-width="720px" dismissable @close="rewrite = null">
+      <div class="studio-render-ch__rewrite">
+        <div class="studio-render-ch__rewrite-field">
+          <span class="jv-eyebrow">Original</span>
+          <p class="studio-render-ch__quote">{{ rewrite.line.text }}</p>
+        </div>
+        <div class="studio-render-ch__rewrite-field">
+          <span class="jv-eyebrow">Rewritten</span>
+          <p v-if="rewrite.busy" class="jv-muted">Generating rewrite…</p>
+          <p v-else-if="rewrite.error" class="studio-render-ch__error">{{ rewrite.error }}</p>
+          <UiTextarea v-else v-model="rewrite.text" :rows="3" placeholder="Rewrite will appear here…" />
+        </div>
+        <span class="jv-hint">Accepting replaces the line's text. Its takes are kept, and it is stale until you render it again.</span>
+      </div>
+      <template #footer>
+        <UiButton intent="secondary" size="small" :disabled="rewrite.busy" label="↻ Try again" @click="runRewrite" />
+        <span class="jv-spacer" />
+        <UiButton intent="secondary" label="Discard" @click="rewrite = null" />
+        <UiButton intent="primary" label="Accept" :disabled="rewrite.busy || !rewrite.text.trim()" @click="acceptRewrite" />
+      </template>
+    </AppModal>
+  </section>
+</template>
+
+<style scoped>
+.studio-render-ch { display: flex; flex-direction: column; gap: 14px; }
+.studio-render-ch__verbs { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: flex-start; }
+.studio-render-ch__verb { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; max-width: 34ch; }
+.studio-render-ch__banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 0; }
+.studio-render-ch__lines { padding: 0; overflow: hidden; }
+.studio-render-ch__bar { gap: 8px; flex-wrap: wrap; align-items: center; padding: 11px 14px; }
+.studio-render-ch__foot { margin: 0; padding: 0 14px 11px; }
+.studio-render-ch__text { display: block; max-width: 60ch; }
+.studio-render-ch__who { display: inline-flex; align-items: center; gap: 7px; }
+.studio-render-ch__av { width: 20px; height: 20px; border-radius: 50%; color: #fff; font-size: 11px; font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.studio-render-ch__dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); display: inline-block; }
+.studio-render-ch__tags { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.studio-render-ch__audio { display: inline-flex; align-items: center; gap: 4px; }
+.studio-render-ch__len { font-variant-numeric: tabular-nums; font-size: 12.5px; }
+.studio-render-ch__hidden { display: none; }
+.studio-render-ch__compare { display: flex; gap: 24px; flex-wrap: wrap; margin-bottom: 10px; }
+.studio-render-ch__rewrite { display: flex; flex-direction: column; gap: 14px; }
+.studio-render-ch__rewrite-field { display: flex; flex-direction: column; gap: 4px; }
+.studio-render-ch__quote { margin: 0; padding: 10px 12px; background: var(--surface-2); border-radius: 6px; line-height: 1.5; }
+.studio-render-ch__error { margin: 0; color: var(--danger); }
+.studio-render-ch__table :deep(.ui-table-row) { cursor: pointer; }
+.studio-render-ch__table :deep(.studio-render-ch__panel-row) td { padding: 0; }
+</style>

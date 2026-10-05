@@ -20,7 +20,7 @@ The top-level container. Has a `project_type` (audiobook / game_voicelines / pod
 
 ## Speaker
 
-A person in one project: a **name**, the other names the text uses (**Also called**), and **Who they are** — what the AI reads for attribution and for rewriting in character, never heard. Discover finds speakers, Script gives lines to them, and Cast gives each one a **persona** to speak with. Names are unique within a project — adding or renaming into a clash is refused (an import keeps the source's people as they are). One speaker can be the project's **narrator**, who reads everything outside quote marks; no project gets one on its own. Deleting a project deletes its speakers.
+A person in one project: a **name**, the other names the text uses (**Also called**), their **Pronouns** (he/him, she/her, they/them, it/its, or not set), and **Who they are** — what the AI reads for attribution and for rewriting in character, never heard. Discover finds speakers, Script gives lines to them, and Cast gives each one a **persona** to speak with. Names are unique within a project — adding or renaming into a clash is refused (an import keeps the source's people as they are). One speaker can be the project's **narrator**, who reads everything outside quote marks; no project gets one on its own. Deleting a project deletes its speakers.
 
 ## Scene
 
@@ -28,11 +28,11 @@ A subdivision. Chapters for audiobooks, quests or dialogue sets for games, episo
 
 ## Block
 
-The smallest renderable unit. Holds the **text** that becomes audio, an optional **speaker_id** (who's speaking), and an optional **direction** (delivery hint — e.g. "with growing dread"). Auto-attribution from prose runs at the Block level via the Script tab — see [take-versioning.md](take-versioning.md) and [personas.md](personas.md).
+The smallest renderable unit. Holds the **text** that becomes audio, an optional **speaker_id** (who's speaking), and an optional **direction** (delivery hint — e.g. "with growing dread"). Auto-attribution from prose runs at the Block level via the Script tab — see [Studio → Script](studio.md#script) and [personas.md](personas.md).
 
 ## Take
 
-A rendered audio version of a Block. Multiple takes per Block; one is the **default** (rendered). Source-lineage chains preserved via `source_take_id` so you can see how Take 4 (with effects) came from Take 3 (regenerate) which came from Take 2 (original). See [take-versioning.md](take-versioning.md).
+A rendered audio version of a Block, kept with the seed and everything else it was made from. Every render makes a new take and nothing is overwritten; one take per Block is the **★ take**, the one the chapter plays and the export ships. When something the ★ take was made from changes, the Block is **stale** until you render it again. See [Studio → Render](studio.md#render).
 
 ## Voices, Personas, Lexicons — the three orthogonal layers
 

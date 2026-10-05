@@ -97,6 +97,7 @@ def ensure_speaker(
     imported_from: str | None = None,
     imported_id: str | None = None,
     unique: bool = False,
+    pronouns: str | None = None,
 ) -> tuple[Speaker, bool]:
     """Create-or-reuse a speaker in this book. Returns (speaker, created).
 
@@ -126,6 +127,7 @@ def ensure_speaker(
         description=(description or "").strip() or None,
         aliases=json.dumps(kept) if kept else None,
         persona_id=persona_named(db, clean),
+        pronouns=pronouns or None,
         imported_from=imported_from,
         imported_id=imported_id,
     )

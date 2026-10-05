@@ -4,13 +4,15 @@
 
   Package card (M4B + chapter-WAV zip) + honest ACX checklist (only
   measured items get ✓/✗; unmeasured say so) + show notes for podcasts.
-  Lifted out of ChapterView's fold-out panel (user decision 2026-06-12:
-  export lives as Studio step 4; Projects and Chapters link here).
+  Lifted out of the old Chapters page's fold-out panel (user decision
+  2026-06-12: export lives as a Studio step). The book ships each line's ★
+  take (Studio Slice 4, D4); lines whose take is stale still ship it, and the
+  checklist says how many (G3, 2026-10-04) — a warning, never a block.
 
   Props: project (ProjectResponse record) + scenes (list).
 -->
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast, saveBlob } from "@delebash/llm-ui";
 import { projectsService } from "../services/projects.js";
@@ -29,6 +31,17 @@ const exportQc = ref(null);
 const exportQcBusy = ref(false);
 const exportBusy = ref("");
 const showNotes = ref(null);
+
+// Stale lines ship their ★ take, made before the line changed (G3).
+const staleLines = ref(0);
+async function loadRenderState() {
+  const id = props.project?.id;
+  staleLines.value = 0;
+  if (!id) return;
+  const r = await api.safeRequest(`/v1/projects/${id}/render_state`, null);
+  if (id === props.project?.id) staleLines.value = r?.totals?.stale || 0;
+}
+watch(() => props.project?.id, loadRenderState, { immediate: true });
 
 const qcError = ref("");
 async function runExportQc() {
@@ -177,6 +190,11 @@ async function copyShowNotes() {
         <span class="jv-spacer" />
         <UiButton intent="ghost" size="small" :loading="exportQcBusy" label="↻ Re-check" title="Render every chapter (cache-served when unchanged) and measure RMS + peak against the ACX limits" @click="runExportQc" />
       </div>
+      <div v-if="staleLines" class="jv-banner jv-banner--warn exportp__stale">
+        <span><strong>{{ staleLines.toLocaleString() }} line{{ staleLines === 1 ? " is" : "s are" }} stale.</strong>
+          {{ staleLines === 1 ? "It ships its" : "They ship their" }} ★ take, made before the line changed. Render
+          {{ staleLines === 1 ? "it" : "them" }} again in Studio · Render, or export as they are.</span>
+      </div>
       <p v-if="exportQcBusy" class="jv-muted">Rendering + measuring {{ copy.chapter.plural.toLowerCase() }} — cached audio makes this fast…</p>
       <div v-else-if="qcError" class="jv-banner jv-banner--warn" style="font-size:12px">{{ qcError }}</div>
       <template v-else-if="exportQc">
@@ -217,6 +235,7 @@ async function copyShowNotes() {
 .exportp__actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
 .exportp__ckl { list-style: none; margin: 0; padding: 0; font-size: 13px; }
 .exportp__ckl li { padding: 5px 0; display: flex; gap: 8px; align-items: baseline; }
+.exportp__stale { margin-bottom: 10px; }
 .exportp__ckl .ok { color: var(--accent-ink); font-weight: 700; }
 .exportp__ckl .bad { color: var(--danger, #b04a3e); font-weight: 700; }
 .exportp__ckl .dim { color: var(--ink-3); }

@@ -136,8 +136,8 @@ def test_lexicon_entries_materialize_and_set_default(tmp_db, tmp_path):
     session_factory, _engine = tmp_db
     db = session_factory()
     try:
-        project, *_ = _materialize_standard(_standard("Stillwater", lexicon=True), db)
-        lex_id = _materialize_lexicon(_standard("Stillwater", lexicon=True), project, db)
+        project, *_ = _materialize_standard(_standard("The Ninth Facet", lexicon=True), db)
+        lex_id = _materialize_lexicon(_standard("The Ninth Facet", lexicon=True), project, db)
         db.commit()
         assert lex_id is not None
         assert project.default_lexicon_id == lex_id

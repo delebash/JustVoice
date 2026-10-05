@@ -32,7 +32,6 @@ nothing while you type or a dropdown is open.
 | `Space` | Tick or untick the line |
 | `[` / `]` | Previous / next chapter |
 | `Ctrl+Z` | Undo your last change |
-| Right-click a spoken line's text | Open the rewrite preview — the line rewritten as its speaker would say it, from their *Who they are*. Accept → replaces the line's text. Discard → the original stays |
 
 See [Studio → Script](studio.md#a-chapter).
 

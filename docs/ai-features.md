@@ -10,7 +10,7 @@ is the **AI Settings** page in the sidebar.
 | Feature | What it does | When you use it |
 |---|---|---|
 | **Compose** | Writes a fresh line in a persona's voice from its note on how it sounds | Generate view → 🎲 Compose button |
-| **Persona rewrite** | Rewrites the current text in a persona's voice, or a line in its speaker's character (preview-then-accept) | Generate view → ✏️ Rewrite · Studio Script → right-click a spoken line's text |
+| **Persona rewrite** | Rewrites the current text in a persona's voice, or a line in its speaker's character (preview-then-accept) | Generate view → ✏️ Rewrite · Studio Render → a line's ✏️ Rewrite as *name* |
 | **Speaker attribution** | Extracts who says what and what they say; its Find new speakers row lists the people a chapter names | Studio Script tab → Analyze · Studio Discover → Scan |
 | **Smart-assign** | Matches each speaker in a book to a persona | Studio Cast tab → Smart-assign |
 | **Show notes** | Chapter summaries for podcast descriptions | Projects → Show notes |
@@ -159,10 +159,12 @@ dropped, punctuation added, nothing answered back.
 Since 2026-09-29 a book's people and the voices that play them are two things,
 and each AI feature reads the half it needs:
 
-- **Speakers** are the people in one book — a name, **Also called**, and **Who
-  they are**. Discover finds them, Script's Analyze gives lines to them, and
-  Script's right-click *Rewrite in character* reads the line's speaker's **Who
-  they are** (`POST /v1/speakers/{id}/rewrite`; a speaker with nothing there is
+- **Speakers** are the people in one book — a name, **Also called**,
+  **Pronouns**, and **Who they are**. Discover finds them, Script's Analyze gives
+  lines to them (it is told each speaker's pronouns, so *"she said"* can only be
+  someone who is *she*), and
+  Render's *Rewrite in character* (a line's ✏️ Rewrite as *name*) reads the
+  line's speaker's **Who they are** (`POST /v1/speakers/{id}/rewrite`; a speaker with nothing there is
   refused with "*name* has nothing under Who they are — write it on Cast to
   rewrite in character.").
 - **Personas** are finished voices. Generate has no book, so its 🎲 Compose and
@@ -170,8 +172,8 @@ and each AI feature reads the half it needs:
   without one is refused: "*name* has no note on how it sounds — write one on
   the Personas page to use Compose / Rewrite."). The Compose and Rewrite prompts
   keep their `{{personality}}` variable; its value is the persona's note on
-  Generate and the speaker's Who they are on Script.
-- **Smart-assign** matches the book's speakers (name, Also called, Who they are)
+  Generate and the speaker's Who they are on Render.
+- **Smart-assign** matches the book's speakers (name, Also called, Pronouns, Who they are)
   to your personas (name, their voice's gender, language, and the note as
   `tone`), and applies its matches straight away — change any of them on Cast.
 
@@ -282,7 +284,7 @@ controls so you never have to invent test data:
   chapter's real prose in the passage box. The picker then shows what you
   inserted, so you can see which chapter is in the box; pick its top row to
   clear the label.
-- **Insert from cast…** lists your projects ("Speakers of Stillwater") and
+- **Insert from cast…** lists your projects ("Speakers of The Ninth Facet") and
   fills the Speakers box with that project's real speakers, one name per
   line.
 - **Sample** fills the passage AND the cast together with the built-in

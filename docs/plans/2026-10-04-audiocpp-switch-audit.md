@@ -1035,3 +1035,26 @@ restarted app (`npm run dev`, our checkout `8523b720`):
 **Not checked:** Vulkan, CPU and Metal builds; the Reinstall button and a checksum mismatch
 against the real release (unit tests only); log rotation at 10 MB on a live process; the
 persona page's Blend gate on an install without blends (`npm run dev` has every feature).
+
+### 13.6 The listening test — the user's verdicts, and what changed
+
+**Heard** 2026-10-04, four pairs, each the same line at the same seed (scratchpad `listening/`):
+"1 no it changes persons on the 200 slightly 2 person changes 3 no difference 4 cant tell a difference". Then: "your rec on all and all previous go code".
+
+| Pair | Verdict | What it means |
+|---|---|---|
+| Qwen3 VoiceDesign, a 752-character line whole vs in 200-character pieces | the person changes slightly in pieces | a voice made from words stays whole (as built in §13.3 — `render_core.line_split_chars` gives it `max_chunk_chars`); VoiceDesign then needs ~7 GB for such a line |
+| VoxCPM2 description, the same | the person changes | the same — it stays whole |
+| Qwen3 Base clone, the whole clip decoded vs its last 25 frames (fork `8523b720`, in v0.9.0-jv.4) | no difference | the trim stays |
+| Qwen3 CustomVoice, decoder weights 32-bit vs 16-bit (2.04 dB log-spectral apart, ~0.5 GB less) | can't tell a difference | **16-bit is the default**: `runtime_options` gains `runtime_default` (audio.cpp's own, f32, never sent) beside the app's `default` (f16); `session_options_for` sends every chosen value that isn't audio.cpp's own, so `qwen3_tts.conv_weight_type=f16` rides each Qwen3 registration unless 32-bit is chosen on the row |
+
+Blast radius of the default change:
+
+```
+$ git grep -n "session_options_for\|chosen_for\|runtime_options\.describe\|\bdescribe(" -- server/justvoice
+justvoice/engines/audiocpp/slot.py:152 (_entries_for, every registration) · justvoice/api/models_api.py (list_models, set_model_runtime_options — through describe)
+```
+
+A price measured with 32-bit weights stays the model's price until a higher reading — a 16-bit
+load's peak is lower, so the check errs on the safe side.
+

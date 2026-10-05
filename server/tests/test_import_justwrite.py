@@ -25,7 +25,7 @@ pytest_plugins = ["tests.conftest_db"]
 def test_zip_maps_chapters_in_order_with_prose_and_cast():
     raw = book_zip(
         book_json(
-            title="Stillwater",
+            title="The Ninth Facet",
             premise="A river town keeps its secrets.",
             characters=[
                 {
@@ -45,10 +45,10 @@ def test_zip_maps_chapters_in_order_with_prose_and_cast():
         )
     )
 
-    result = run_adapter("justwrite", raw, filename="Stillwater.zip")
+    result = run_adapter("justwrite", raw, filename="The Ninth Facet.zip")
 
     assert result.source == "justwrite"
-    assert result.project.name == "Stillwater"
+    assert result.project.name == "The Ninth Facet"
     assert result.project.kind == "audiobook"
     assert result.project.description == "A river town keeps its secrets."
 
@@ -162,7 +162,7 @@ def test_a_non_justwrite_json_is_rejected_and_names_the_right_adapter():
 def test_a_zip_without_book_json_is_rejected():
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w") as zf:
-        zf.writestr("Stillwater/notes.txt", "nope")
+        zf.writestr("The Ninth Facet/notes.txt", "nope")
 
     with pytest.raises(ApiError) as excinfo:
         run_adapter("justwrite", buf.getvalue(), filename="x.zip")

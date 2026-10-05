@@ -33,8 +33,10 @@ const BASE = process.env.JV_BASE || "http://127.0.0.1:17494/";
 // Sidebar tabs that should always be reachable for an audiobook project.
 // ENGINES left the nav with the 2026-08-06 sidebar fold (8b7e05a — engines
 // live under AI Settings → Speech engines now); AI SETTINGS replaces it here.
+// CHAPTERS left with Studio Slice 4 (2026-10-04) — chapters are managed in
+// Studio · Script, and their lines rendered in Studio · Render.
 const TABS = [
-  "HOME", "PROJECTS", "CHAPTERS", "STUDIO", "GENERATE", "CAPTURES",
+  "HOME", "PROJECTS", "STUDIO", "GENERATE", "CAPTURES",
   "VOICES", "PERSONAS", "LEXICONS", "EFFECTS", "AI SETTINGS",
   "LABS", "SETTINGS",
 ];

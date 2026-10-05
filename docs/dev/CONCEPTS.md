@@ -61,9 +61,9 @@ identical; the same persona can speak in an audiobook and a game project.
 
 Consequences worth keeping visible in UI:
 
-- One voice can back multiple personas (Old Crow voices Tom Harlan in
-  *Stillwater* and Guard Captain Hale in *Emberfall*), and with different
-  delivery per persona (the "Sarah" clone backs both the Stillwater
+- One voice can back multiple personas (Old Crow voices Brick Halvorn in
+  *The Ninth Facet* and Guard Captain Hale in *Emberfall*), and with different
+  delivery per persona (the "Sarah" clone backs both The Ninth Facet's
   Narrator and her podcast-host persona).
 - Since cast cards ARE personas, edits made on the Cast surface (voice,
   delivery) edit the persona — and therefore follow it to other projects.
@@ -113,7 +113,7 @@ user never sees Episodes, a game dev never sees Chapters. Three rules:
    Projects, Voices, Personas, Lexicons, Engines (Library); Compare
    (Tools). Shared machinery keeps shared vocabulary and never moves.
 2. **The menu follows the active project, not a global app mode.** Open
-   *Stillwater* → Chapters; switch to *Emberfall* → Lines. Slot position
+   *The Ninth Facet* → Chapters; switch to *Emberfall* → Lines. Slot position
    stays identical so muscle memory holds. One user can be all three
    audiences in the same week.
 3. **No project open → the slot disappears** (or shows generic "Project").

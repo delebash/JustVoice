@@ -26,7 +26,7 @@ def client(tmp_path):
     return TestClient(app, raise_server_exceptions=False)
 
 
-def _book(client, name="Stillwater"):
+def _book(client, name="The Ninth Facet"):
     r = client.post("/v1/projects", json={"name": name, "project_type": "audiobook"})
     assert r.status_code == 201, r.text
     return r.json()["id"]

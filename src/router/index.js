@@ -17,7 +17,6 @@ const routes = [
   // alignment (target-tree P8) — old #overview deep links keep landing.
   { path: "/overview", redirect: "/home" },
   { path: "/projects", name: "projects", component: () => import("../views/ProjectsView.vue") },
-  { path: "/chapter", name: "chapter", component: () => import("../views/ChapterView.vue") },
   { path: "/lines", name: "lines", component: () => import("../views/LinesView.vue") },
   { path: "/studio", name: "studio", component: () => import("../views/StudioView.vue") },
   { path: "/stories", name: "stories", component: () => import("../views/StoriesView.vue") },

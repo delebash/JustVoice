@@ -118,7 +118,7 @@ def test_import_fills_the_sheet_and_leaves_the_instruct_empty(tmp_db, tmp_path):
     session_factory, _engine = tmp_db
     standard = StandardImport(
         source="justwrite",
-        project=StandardProject(name="Stillwater", kind="audiobook"),
+        project=StandardProject(name="The Ninth Facet", kind="audiobook"),
         characters=[
             StandardCharacter(
                 id="mara",

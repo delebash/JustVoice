@@ -4,7 +4,7 @@
 // its Script tags. Pure, so it is tested without mounting Studio.
 //
 // HONEST COUNTS ONLY (2026-09-27, decision 2). Every number here comes from
-// data the project holds: the chapters' blocks, the cast, the render cache,
+// data the project holds: the chapters' blocks, the cast, each line's render state,
 // and each chapter's saved Discover scan (`scene.metadata.discover`, saved
 // since the "both" ruling the same day). Nothing records an export, so Export
 // shows no count — a number with no data behind it would be invented.
@@ -189,12 +189,14 @@ export const isWaiting = (r) => r.status === "new" || r.status === "library";
  * `stats` is {sceneId: blockStats}; `cast` is the book's speakers [{id, name,
  * aliases, ready, narrator}] — `ready` = played by a persona that has a voice;
  * `ignored` is the project's Discover ignore list; `personas` the library;
- * `cache` is the /v1/render/cache-stats body, or null before it loads;
+ * `render` is GET /v1/projects/{id}/render_state's `totals` (§8.16's counts:
+ * lines, needs_speaker, needs_voice, ready, rendered, stale — Studio Slice 4),
+ * or null before it loads;
  * `script` is GET /v1/projects/{id}/script's chapters (the flags are the
  * server's), or null before it loads; `running` counts chapters being analyzed.
  */
 export function projectState({
-  scenes = [], stats = {}, cast = [], ignored = [], personas = [], cache = null, script = null,
+  scenes = [], stats = {}, cast = [], ignored = [], personas = [], render = null, script = null,
   running = 0,
 }) {
   let lines = 0;
@@ -238,8 +240,10 @@ export function projectState({
     castReady: cast.length - notReady.length,
     speakersBesideNarrator: cast.filter((sp) => !sp.narrator).length,
     blocked,
-    rendered: cache ? cache.cached : null,
-    renderable: cache ? cache.total : null,
+    // Lines with a take (a stale one still plays), of the lines that can render.
+    rendered: render ? render.rendered + render.stale : null,
+    renderable: render ? render.ready + render.rendered + render.stale : null,
+    stale: render ? render.stale : 0,
   };
 }
 
@@ -301,7 +305,9 @@ export function stepStatus(key, state, unit) {
           : "Nothing can render yet",
         tag: state.renderable && state.rendered < state.renderable
           ? { intent: "accent2", label: `${(state.renderable - state.rendered).toLocaleString()} to go` }
-          : null,
+          : state.stale
+            ? { intent: "accent2", label: `${state.stale.toLocaleString()} stale` }
+            : null,
       };
     case "export":
       return { text: "M4B · WAVs · ACX check", tag: null };

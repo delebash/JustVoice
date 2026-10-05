@@ -137,8 +137,8 @@ function clearFilters() {
 function usageCount(personaId) {
   return (usage.value[personaId] || []).length;
 }
-// "Used by", as the mock: "June — Stillwater", one speaker name across books
-// as "Narrator — Stillwater · Emberfall".
+// "Used by", as the mock: "Cael Ferren — The Ninth Facet", one speaker name across books
+// as "Narrator — The Ninth Facet · Emberfall".
 function usedBy(personaId) {
   const byName = new Map();
   for (const u of usage.value[personaId] || []) {

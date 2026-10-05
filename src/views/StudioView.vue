@@ -16,19 +16,17 @@
 
   Phase 4 / Slice 1 — shell + Cast tab.
   Phase 4 / Slice 2 — Script tab + analyze + Smart-assign.
-  Phase 6      — Render tab (Studio Render slice).
+  Studio Slice 4 (2026-10-04) — Render is a chapter grid
+  (components/StudioRender.vue) that opens one chapter's lines
+  (components/StudioRenderChapter.vue); Rewrite in character moved there.
 -->
 <script setup>
-import { computed, onActivated, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onActivated, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
-// Task lifecycles ride the kit runners (AI-call convention, app-structure §8);
-// the store import remains for READS only (per-scene bars, taskForScene).
-import { useAiTasksStore, withAiTask } from "@delebash/llm-ui";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";
 import { isStepFor, stepsFor } from "./studioSteps.js";
 import { blockStats, projectState } from "./studioStatus.js";
 import { useCopy } from "../services/copy.js";
-import { unplacedBlocks } from "../services/attribution.js";
 import { chapterRunFor, onChapterDone } from "../services/chapterRun.js";
 import { pushToast } from "@delebash/llm-ui";
 import { useActiveProject } from "../stores/activeProject.js";
@@ -36,7 +34,7 @@ import { useProjectsStore } from "../stores/projects.js";
 import { usePersonasStore } from "../stores/personas.js";
 import { useVoicesStore } from "../stores/voices.js";
 import { useEnginesStore } from "../stores/engines.js";
-import { UiButton, UiTextarea, UiCheckbox, UiTag, UiSelect, AppModal } from "@delebash/llm-ui";
+import { UiButton, UiTag, UiSelect } from "@delebash/llm-ui";
 
 import ExportPanel from "../components/ExportPanel.vue";
 import StudioOverview from "../components/StudioOverview.vue";
@@ -44,11 +42,12 @@ import StudioDiscover from "../components/StudioDiscover.vue";
 import StudioCast from "../components/StudioCast.vue";
 import StudioScript from "../components/StudioScript.vue";
 import StudioScriptChapter from "../components/StudioScriptChapter.vue";
+import StudioRender from "../components/StudioRender.vue";
+import StudioRenderChapter from "../components/StudioRenderChapter.vue";
 import LinesView from "./LinesView.vue";
 
 const api = useApi();
 const activeProject = useActiveProject();
-const tasks = useAiTasksStore();
 const copy = useCopy();
 
 // Shared lists from stores (single source of truth). loadAll() reloads
@@ -72,77 +71,6 @@ const tab = ref("");
 // it to Overview a tick later.
 let requestedTab = null;
 const loading = ref(false);
-
-// Per-line right-click Rewrite (plan Q1 / LD3). Right-clicking a line's text
-// on Script's chapter page opens a preview modal where the LLM rewrites it in
-// character — from the speaker's "who they are" (2026-09-29). Accept → the
-// line's text is replaced; reject → nothing changes. It stays a right-click,
-// with no visible control, until Slice 4 moves it to Render's line panel and
-// deletes it here (§8.25).
-const rewriteModalOpen = ref(false);
-const rewriteLine = ref(null);     // {id, text, speaker_id} — the script line
-const rewriteOriginal = ref("");
-const rewritePreview = ref("");
-const rewriteBusy = ref(false);
-const rewriteError = ref("");
-
-function rewriteRow(line) {
-  if (!line) return;
-  // Only speech has a speaker to rewrite against.
-  if (!line.spoken) {
-    pushToast({ message: "Rewrite only applies to spoken lines.", kind: "info" });
-    return;
-  }
-  if (!line.speaker_id || line.speaker_id === narratorSpeaker.value?.id) {
-    pushToast({ message: "Give this line a speaker first.", kind: "info" });
-    return;
-  }
-  rewriteLine.value = { id: line.id, text: line.text, speaker_id: line.speaker_id };
-  rewriteOriginal.value = line.text;
-  rewritePreview.value = "";
-  rewriteError.value = "";
-  rewriteModalOpen.value = true;
-  runRewrite();
-}
-
-async function runRewrite() {
-  const line = rewriteLine.value;
-  if (!line) return;
-  rewriteBusy.value = true;
-  try {
-    const r = await api.request(`/v1/speakers/${line.speaker_id}/rewrite`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: line.text }),
-    });
-    rewritePreview.value = r?.text || r?.rewritten || "";
-    if (!rewritePreview.value) {
-      rewriteError.value = "LLM returned an empty rewrite.";
-    }
-  } catch (e) {
-    rewriteError.value = e?.message || String(e);
-  } finally {
-    rewriteBusy.value = false;
-  }
-}
-
-async function acceptRewrite() {
-  const line = rewriteLine.value;
-  rewriteModalOpen.value = false;
-  if (!line || !rewritePreview.value) return;
-  try {
-    // Straight onto the block — the chapter page re-reads it.
-    await api.request(`/v1/blocks/${line.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: rewritePreview.value }),
-    });
-    pushToast({ message: "Line rewritten.", kind: "success" });
-  } catch (e) {
-    pushToast({ message: `Couldn't save the rewrite: ${e?.message || e}`, kind: "error" });
-  }
-  scriptVersion.value += 1;
-}
 
 // Script (Slice 3, §8.24): the chapter grid, or one chapter's page.
 const scenes = ref([]);
@@ -175,17 +103,43 @@ function openScript({ sceneId = null, focus = null, filter = null } = {}) {
   tab.value = "script";
 }
 
-// Render tab state (Phase 6 / Slice 1). The per-chapter render preset and
-// its 💡 Suggest left with render presets (2026-10-03: "presets die").
-const sceneSelectedForRender = ref({});  // {sceneId: bool}
-const renderBusyScene = ref(null);
+// Render (Studio Slice 4): the chapter grid, or one chapter's lines.
+const renderSceneId = ref(null);     // the open chapter; null = the grid
+const renderGrid = ref(null);        // StudioRender — ▶ Render all runs through it
+const renderVersion = ref(0);        // bumped when Studio changed lines Render shows
+// GET /v1/projects/{id}/render_state — every chapter's counts in §8.16's words:
+// the grid, this strip's Render card and Overview's Render row.
+const renderState = ref(null);
+async function loadRenderState(projectId = selectedProjectId.value) {
+  if (!projectId) {
+    renderState.value = null;
+    return;
+  }
+  const r = await api.safeRequest(`/v1/projects/${projectId}/render_state`, null);
+  if (projectId === selectedProjectId.value) renderState.value = r;
+}
+function openRender({ sceneId = null } = {}) {
+  renderSceneId.value = sceneId;
+  tab.value = "render";
+}
+// Render changed lines (a take, a direction, a rewrite) — the counts follow,
+// and so does Script when a line's words changed.
+async function onRenderChanged() {
+  await loadRenderState();
+  scriptVersion.value += 1;
+}
+async function renderAllChapters() {
+  renderSceneId.value = null;
+  await nextTick();
+  renderGrid.value?.renderAll();
+}
 
-// Render gate (queue item 13): the buttons say WHY they're disabled
-// instead of failing later — no text → nothing to render; nobody played by a
-// persona with a voice → the server would refuse every line.
+// Render gate (queue item 13): the button says WHY it is disabled instead of
+// failing later — no text → nothing to render; nobody played by a persona
+// with a voice → the server would refuse every line.
 const renderGate = computed(() => {
   if (!scenes.value.some((s) => sceneBlockCounts.value[s.id])) {
-    return { ok: false, reason: "Nothing to render yet — chapters have no text. Import or paste in Chapters first." };
+    return { ok: false, reason: `Nothing to render yet — no ${copy.value.chapter.singular.toLowerCase()} has text. Add it in Script first.` };
   }
   if (!speakers.value.some(speakerReady)) {
     return { ok: false, reason: "Nobody is cast yet — give a speaker a persona with a voice in Cast first." };
@@ -197,32 +151,6 @@ const sceneBlockCounts = ref({});  // {sceneId: count of blocks}
 // persona. Read from the same per-chapter block fetch as the two above; the
 // Overview rolls it up (studioStatus.projectState).
 const sceneStats = ref({});
-
-// Per-scene task lookup so the render row can show a progress strip
-// driven by the shared kit task queue. visibleTasks keeps a finished
-// task in reach for its linger window (failed: until dismissed).
-function taskForScene(sceneId) {
-  return tasks.visibleTasks.find(
-    (t) => t.feature === "render-scene" && t.meta?.sceneId === sceneId,
-  ) || null;
-}
-function sceneTaskRunning(sceneId) {
-  const t = taskForScene(sceneId);
-  return !!t && tasks.isRunning(t.id);
-}
-// Kit statuses → the row's badge (the kit's "connecting" would read wrong
-// on a render — a single HTTP call streams nothing, so it never leaves
-// that phase while working).
-function sceneTaskBadge(sceneId) {
-  const t = taskForScene(sceneId);
-  if (!t) return null;
-  if (tasks.isRunning(t.id)) return { text: "rendering", intent: "solid" };
-  return {
-    done: { text: "done", intent: "success" },
-    error: { text: "failed", intent: "danger" },
-    cancelled: { text: "cancelled", intent: "accent2" },
-  }[t.status] || { text: t.status, intent: "ghost" };
-}
 
 // Numbered production steps (journeys contract): 1 · Cast → 2 · Script →
 // 3 · Render. Game projects skip Script — the CSV already says who
@@ -247,9 +175,10 @@ function stepBy(delta) {
 }
 
 // Live step-card subtitles (item 2; design contract = the JustWrite
-// Audio Studio screenshots): honest counts only — no fake progress.
-const renderedSceneCount = computed(() =>
-  (cacheStats.value?.scenes || []).filter((sc) => sc.total > 0 && sc.cached === sc.total).length);
+// Audio Studio screenshots): honest counts only — no fake progress. A chapter
+// is rendered when every line has a take, stale or not (Slice 4).
+const renderedSceneCount = computed(() => (renderState.value?.chapters || [])
+  .filter((c) => c.lines > 0 && c.rendered + c.stale === c.lines).length);
 // The Script card's live count — the thing the user went looking for and
 // found hardcoded ("the heading is in studio like render 0/4 rendered, the
 // script used to show this and now doesn't"). Same shape as Render's, on the
@@ -269,7 +198,7 @@ const overviewState = computed(() => projectState({
   })),
   ignored: selectedProject.value?.discover_ignored || [],
   personas: personas.value,
-  cache: cacheStats.value ? { total: cacheStats.value.total, cached: cacheStats.value.cached } : null,
+  render: renderState.value?.totals || null,
 }));
 
 // The book's speakers as Script's and Discover's pages read them — a cast of
@@ -305,7 +234,7 @@ const STEP_TITLES = {
   script: "Who speaks each line",
   lines: "The writers' sheet, line by line",
   cast: "Give each speaker a persona",
-  render: "Batch render + mastering",
+  render: "Every line's audio, and each chapter joined and mastered",
   export: "Package + ACX checklist",
 };
 
@@ -346,14 +275,13 @@ watch([selectedProject, () => tab.value], () => {
     return; // the assignment re-enters this watcher with a valid step
   }
   if (tab.value === "render") {
-    qcByScene.value = {};
-    loadCacheStats();
+    loadRenderState();
     loadMasterTarget();
   }
-  // Overview's Render row reads the same cache probe Render does, and its
-  // Script row the grid's rows.
+  // Overview's Render row reads the same counts Render does, and its Script
+  // row the grid's rows.
   if (tab.value === "overview" && selectedProject.value) {
-    loadCacheStats();
+    loadRenderState();
     loadProjectScript();
   }
 }, { immediate: true });
@@ -366,7 +294,8 @@ watch(selectedProjectId, (id, old) => {
   tab.value = requestedTab && isStepFor(selectedProject.value?.project_type, requestedTab)
     ? requestedTab : "overview";
   requestedTab = null;
-  cacheStats.value = null;
+  renderState.value = null;
+  renderSceneId.value = null;
 });
 
 // The title-bar switcher (and anything else) changes the app-wide active
@@ -394,10 +323,6 @@ const personaById = computed(() => Object.fromEntries(personas.value.map((p) => 
 function speakerReady(sp) {
   return !!personaById.value[sp.persona_id]?.voice_id;
 }
-
-// Per-scene inline playback for finished renders (the ruling 2026-08-15: the
-// global bottom bar died; playback is compact and in place).
-const scenePlay = ref(null); // { id, url } | null
 
 async function loadAll() {
   loading.value = true;
@@ -494,170 +419,6 @@ async function loadScenesForProject(projectId) {
   }
 }
 
-// ── The unplaced-lines blocker (restore decision 5) ──────────────────
-// A block with no speaker renders to nothing. The server used to drop those
-// in silence, so a line just went missing from the audiobook; it now refuses
-// the chapter. This is the same refusal one step earlier, where the fix is:
-// the offending lines, named, with the one-click way out.
-const unplacedModalOpen = ref(false);
-const unplacedFound = ref([]);   // [{scene, blocks:[block]}]
-const unplacedFixing = ref(false);
-const unplacedTotal = computed(() =>
-  unplacedFound.value.reduce((n, g) => n + g.blocks.length, 0));
-
-const unplacedUnanalyzed = computed(() =>
-  unplacedFound.value.filter((g) => !g.analyzed).map((g) => g.scene));
-
-/** True when every selected chapter can render. Otherwise opens the blocker. */
-async function passesSpeakerCheck(queue) {
-  await loadProjectScript();
-  const found = [];
-  for (const s of queue) {
-    const blocks = await sceneBlocks(s.id);
-    const missing = unplacedBlocks(blocks);
-    if (missing.length) {
-      found.push({ scene: s, blocks: missing, analyzed: !!scriptRow(s.id)?.analyzed });
-    }
-  }
-  if (!found.length) return true;
-  unplacedFound.value = found;
-  unplacedModalOpen.value = true;
-  return false;
-}
-
-async function assignUnplacedToNarrator() {
-  const narratorId = narratorSpeaker.value?.id;
-  if (!narratorId) {
-    pushToast({ message: "This book has no narrator to assign to — add one on Cast.", kind: "warning" });
-    return;
-  }
-  unplacedFixing.value = true;
-  let failed = 0;
-  try {
-    for (const group of unplacedFound.value) {
-      for (const block of group.blocks) {
-        try {
-          await api.request(`/v1/blocks/${block.id}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            // `corrected` freezes a row against every future re-analyze, so
-            // it is only honest where a run actually decided something and
-            // the user is overruling it. On a chapter that was never
-            // analyzed this button just means "one voice reads all of it" —
-            // writing `corrected` there would silently make attribution
-            // impossible for the whole chapter, forever, in one click.
-            body: JSON.stringify(
-              group.analyzed
-                ? { speaker_id: narratorId, source: "corrected" }
-                : { speaker_id: narratorId },
-            ),
-          });
-        } catch { failed += 1; }
-      }
-    }
-  } finally {
-    unplacedFixing.value = false;
-  }
-  unplacedModalOpen.value = false;
-  // Every chapter the fix touched, so the Overview's counts follow.
-  for (const group of unplacedFound.value) await refreshSceneMeta(group.scene.id);
-  await loadProjectScript();
-  pushToast({
-    message: failed
-      ? `Assigned those lines to ${narratorSpeaker.value.name}; ${failed} failed.`
-      : `Those lines now read as ${narratorSpeaker.value.name}. Render again.`,
-    kind: failed ? "warning" : "success",
-  });
-}
-
-async function renderScene(scene, { check = true } = {}) {
-  if (!sceneBlockCounts.value[scene.id]) {
-    pushToast({
-      message: `Nothing to render — this ${copy.value.chapter.singular.toLowerCase()} has no text. Add it in ${copy.value.chapter.plural}, then analyze it in Script.`,
-      kind: "info",
-    });
-    return;
-  }
-  if (check && !(await passesSpeakerCheck([scene]))) return;
-  renderBusyScene.value = scene.id;
-
-  // Standing rule (memory feedback_long_running_process_rule): every
-  // long-running operation surfaces as a task with cancel + retry. The kit
-  // runner owns the lifecycle; the callback keeps the blob/domain work.
-  let aborted = false;
-  try {
-    await withAiTask({
-      feature: "render-scene",
-      label: `${scene.title || copy.value.chapter.singular} → ${copy.value.chapter.singular.toLowerCase()} render`,
-      onRetry: () => renderScene(scene),
-      meta: { sceneId: scene.id, projectId: selectedProjectId.value },
-    }, async (task) => {
-      const body = { scene_id: scene.id };
-      let audio;
-      try {
-        audio = await api.request("/v1/render_chapter", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-          signal: task.signal,
-        });
-      } catch (e) {
-        aborted = task.signal.aborted;
-        throw e;
-      }
-      // /v1/render_chapter returns audio/wav (a Blob via api.request).
-      // Store the URL on the task and open the scene row's compact inline
-      // player (the ruling 2026-08-15: no global bottom bar — playback is
-      // compact and in place).
-      if (audio instanceof Blob) {
-        const blobUrl = URL.createObjectURL(audio);
-        const label = scene.title || `${copy.value.chapter.singular} ${scene.position + 1}`;
-        task.update({ result: { url: blobUrl, filename: `${label.replace(/[^a-z0-9_-]+/gi, "_")}.wav` } });
-        scenePlay.value = { id: scene.id, url: blobUrl };
-        pushToast({ message: `${label} render complete. Now playing.`, kind: "success" });
-      } else {
-        task.update({ result: audio });
-        pushToast({ message: `${scene.title || "Scene"} render complete.`, kind: "success" });
-      }
-    });
-  } catch (e) {
-    if (aborted) {
-      // The store's cancel() already marked the task.
-      pushToast({ message: `${scene.title || "Scene"} render cancelled.`, kind: "info" });
-    } else {
-      pushToast({ message: `Render failed: ${e?.message || e}`, kind: "error", duration: 7000 });
-    }
-  } finally {
-    renderBusyScene.value = null;
-    loadCacheStats();
-  }
-}
-
-// ── Render-tab cache stats + ACX QC (journeys Render contract) ───────
-const cacheStats = ref(null);   // {total, cached, scenes:[{scene_id,total,cached}]}
-// scene_id -> {ok, note, rms_ok, peak_ok, rms_dbfs, peak_dbfs, duration_s}.
-// `note` says why a chapter failed for a reason the numbers can't carry —
-// today, that it has lines with no speaker, so what was measured is not the
-// whole chapter.
-const qcByScene = ref({});
-const qcBusy = ref(false);
-
-async function loadCacheStats() {
-  cacheStats.value = null;
-  const pid = selectedProjectId.value;
-  if (!pid) return;
-  try {
-    const r = await api.request(`/v1/render/cache-stats?project_id=${pid}`);
-    // Switching project mid-probe must not land the old project's numbers.
-    if (selectedProjectId.value === pid) cacheStats.value = r;
-  } catch { /* no scenes yet — banner just hides */ }
-}
-const sceneCacheById = computed(() => {
-  const out = {};
-  for (const sc of cacheStats.value?.scenes || []) out[sc.scene_id] = sc;
-  return out;
-});
-
 // What the server will actually apply, from the server — {preset, source,
 // ffmpeg, targets}. This pill used to hard-code "ACX target · −20 LUFS ·
 // peak −3 dB · noise floor −60 dB" for every audiobook, three numbers typed
@@ -708,115 +469,6 @@ const masterPillTitle = computed(() => {
     : "Chapters render raw — no mastering target is set for this project.";
 });
 
-async function runQC() {
-  if (!selectedProjectId.value || qcBusy.value) return;
-  qcBusy.value = true;
-  let aborted = false;
-  try {
-    const r = await withAiTask({
-      feature: "acx-qc",
-      label: `ACX QC · ${selectedProject.value?.name || ""}`,
-      meta: { projectId: selectedProjectId.value },
-    }, async (task) => {
-      try {
-        return await api.request(`/v1/projects/${selectedProjectId.value}/qc`, { signal: task.signal });
-      } catch (e) {
-        aborted = task.signal.aborted;
-        throw e;
-      }
-    });
-    const map = {};
-    for (const c of r?.chapters || []) map[c.scene_id] = c;
-    qcByScene.value = map;
-    // QC now measures the MASTERED chapter — what the export ships. When it
-    // couldn't (no ffmpeg), it says so, and the pass/fail is about raw audio.
-    if (r?.note) {
-      pushToast({ message: r.note, kind: "warning", duration: 9000 });
-    } else {
-      pushToast({
-        message: r?.all_ok
-          ? `ACX QC: every chapter passes${r?.master_preset ? ` (measured after the ${r.master_preset} master)` : ""}.`
-          : "ACX QC: some chapters are out of spec — see the Check column.",
-        kind: r?.all_ok ? "success" : "info",
-        duration: 6000,
-      });
-    }
-    await loadCacheStats();
-  } catch (e) {
-    if (!aborted) {
-      pushToast({ message: `QC failed: ${e?.message || e}`, kind: "error", duration: 7000 });
-    }
-  } finally {
-    qcBusy.value = false;
-  }
-}
-
-async function renderAll() {
-  selectAllRenderable();
-  await renderSelected();
-}
-
-function checkState(sceneId) {
-  const t = taskForScene(sceneId);
-  if (t && tasks.isRunning(t.id)) return { intent: "info", label: "rendering…" };
-  const qc = qcByScene.value[sceneId];
-  if (qc) {
-    const numbers = `RMS ${qc.rms_dbfs?.toFixed?.(1)} dB · peak ${qc.peak_dbfs?.toFixed?.(1)} dB · ${Math.round(qc.duration_s || 0)}s`;
-    if (qc.ok) return { intent: "success", label: "✓ ACX pass", title: numbers };
-    // A chapter that isn't render-ready failed for a reason the loudness
-    // numbers don't carry — blaming "peak" for it would be a lie.
-    // Chapters' badge already calls this state "unassigned speakers" — one
-    // condition, one word, wherever it surfaces.
-    if (qc.note) return { intent: "danger", label: "✗ unassigned speakers", title: qc.note };
-    return { intent: "danger", label: `✗ ${!qc.rms_ok ? "RMS" : "peak"} out of spec`, title: numbers };
-  }
-  if (t?.status === "completed") return { intent: "success", label: "rendered" };
-  if (sceneSelectedForRender.value[sceneId]) return { intent: "ghost", label: "queued" };
-  return { intent: "ghost", label: "—" };
-}
-
-async function renderSelected() {
-  const queue = scenes.value.filter((s) => sceneSelectedForRender.value[s.id]);
-  if (!queue.length) {
-    pushToast({ message: "Select at least one scene to render.", kind: "info" });
-    return;
-  }
-  // One check for the whole queue, so the blocker opens once with every
-  // offending line in it instead of once per chapter.
-  if (!(await passesSpeakerCheck(queue))) return;
-  for (const s of queue) {
-    await renderScene(s, { check: false });
-  }
-}
-
-function selectAllRenderable() {
-  // Every scene with blocks — including rendered ones (those re-serve
-  // from cache). Used by ▶ Render all.
-  const next = {};
-  for (const s of scenes.value) {
-    if (sceneBlockCounts.value[s.id]) next[s.id] = true;
-  }
-  sceneSelectedForRender.value = next;
-}
-
-function selectAllUnrendered() {
-  // Scenes with blocks that the render cache does NOT fully cover —
-  // the everyday selection (user ask: 'do you mean select all
-  // unrendered?' — yes, now it does).
-  const next = {};
-  for (const s of scenes.value) {
-    if (!sceneBlockCounts.value[s.id]) continue;
-    const cs = sceneCacheById.value[s.id];
-    const fullyRendered = cs && cs.total > 0 && cs.cached === cs.total;
-    if (!fullyRendered) next[s.id] = true;
-  }
-  sceneSelectedForRender.value = next;
-}
-
-function selectedSceneCount() {
-  return Object.values(sceneSelectedForRender.value).filter(Boolean).length;
-}
-
 async function sceneBlocks(sceneId) {
   const r = await api.safeRequest(`/v1/scenes/${sceneId}/blocks`, []);
   return Array.isArray(r) ? r : (r?.blocks ?? []);
@@ -836,6 +488,7 @@ async function refreshSceneMeta(sceneId) {
   // The chapter can have been DELETED since we last looked.
   if (!scenes.value.some((s) => s.id === sceneId)) {
     if (scriptSceneId.value === sceneId) scriptSceneId.value = null;
+    if (renderSceneId.value === sceneId) renderSceneId.value = null;
     return;
   }
   sceneBlockCounts.value = { ...sceneBlockCounts.value, [sceneId]: blocks.length };
@@ -865,6 +518,14 @@ onBeforeUnmount(offChapterDone);
 async function onScriptChanged() {
   if (scriptSceneId.value) await refreshSceneMeta(scriptSceneId.value);
   await loadProjectScript();
+  renderVersion.value += 1;
+}
+
+// Script's grid added, renamed, moved or deleted a chapter, or pasted its
+// text (D7) — every count follows.
+async function onChaptersChanged() {
+  await loadScenesForProject(selectedProjectId.value);
+  await loadRenderState();
 }
 
 // Chapters workflow strip hands the target tab over (Cast/Script/Render/
@@ -955,10 +616,10 @@ watch(selectedProjectId, (id) => {
         <UiButton
           intent="secondary"
           size="small"
-          :disabled="renderBusyScene !== null || !renderGate.ok"
+          :disabled="!renderGate.ok"
           label="▶ Render all"
-          :title="renderGate.ok ? 'Queue every chapter that has blocks' : renderGate.reason"
-          @click="renderAll"
+          :title="renderGate.ok ? `Render every ${copy.chapter.singular.toLowerCase()}: each line with no take gets one, then it is joined and mastered` : renderGate.reason"
+          @click="renderAllChapters"
         />
       </template>
       <!-- Cast's actions live in its own Speakers head (StudioCast.vue), on
@@ -1014,155 +675,37 @@ watch(selectedProjectId, (id) => {
         :version="scriptVersion"
         @back="openScript({ sceneId: null })"
         @open="(id, focus) => openScript({ sceneId: id, focus })"
-        @go="(k) => (tab = k)" @changed="onScriptChanged"
-        @rewrite="rewriteRow" />
+        @go="(k) => (tab = k)" @changed="onScriptChanged" />
     </KeepAlive>
     <KeepAlive>
       <StudioScript v-if="tab === 'script' && selectedProject && !scriptSceneId"
         :project="selectedProject" :chapters="scriptChapters" :scenes="scenes"
         :cast="scriptCast" v-model:filter="scriptFilter"
-        @open="(id, focus) => openScript({ sceneId: id, focus })" @go="(k) => (tab = k)" />
+        @open="(id, focus) => openScript({ sceneId: id, focus })" @go="(k) => (tab = k)"
+        @changed="onChaptersChanged" />
     </KeepAlive>
 
-    <!-- ── Render tab — Phase 6 / Slice 1 ───────────────────────────── -->
-    <section v-if="tab === 'render'" class="studio__render">
-      <div v-if="!selectedProject" class="jv-banner">
-        Pick a {{ copy.book.singular.toLowerCase() }} above to render its {{ copy.chapter.plural.toLowerCase() }}.
-      </div>
-      <template v-else>
-        <header class="studio__render-toolbar">
-          <UiButton intent="secondary" size="small" label="Select unrendered" title="Select chapters the render cache doesn't fully cover" @click="selectAllUnrendered" />
-          <UiButton intent="ghost" size="small" label="Select all" title="Every chapter with text — rendered ones re-serve from cache" @click="selectAllRenderable" />
-          <span class="jv-muted">{{ selectedSceneCount() }} selected</span>
-          <span class="jv-spacer" />
-          <UiButton
-            intent="secondary"
-            size="small"
-            :loading="qcBusy"
-            :disabled="qcBusy"
-            label="🎧 Run ACX QC"
-            title="Render every chapter (cache-served when unchanged) and measure RMS + peak against the ACX limits"
-            @click="runQC"
-          />
-          <UiButton
-            intent="primary"
-            size="small"
-            :disabled="!selectedSceneCount() || renderBusyScene !== null || !renderGate.ok"
-            :label="`▶ Render selected (${selectedSceneCount()})`"
-            :title="renderGate.ok ? '' : renderGate.reason"
-            @click="renderSelected"
-          />
-          <span v-if="!renderGate.ok" class="jv-muted" style="font-size:11.5px">{{ renderGate.reason }}</span>
-        </header>
-
-        <!-- Cache banner — how much of the next render is free. -->
-        <div v-if="cacheStats && cacheStats.total" class="jv-banner studio__cache-banner" :class="cacheStats.cached ? 'jv-banner--info' : ''">
-          Cache: <strong>{{ cacheStats.cached }} of {{ cacheStats.total }}</strong>
-          {{ copy.line.plural.toLowerCase() }} unchanged since last render —
-          {{ cacheStats.cached ? `only ${cacheStats.total - cacheStats.cached} hit the engine` : "everything hits the engine on first render" }}.
-        </div>
-
-        <table class="jv-table studio__render-table">
-          <thead>
-            <tr>
-              <th class="studio__render-check"></th>
-              <th>#</th>
-              <th>{{ copy.chapter.singular }}</th>
-              <th>{{ copy.line.plural }}</th>
-              <th title="Lines served from the render cache — unchanged since last render">Cached</th>
-              <th>Check</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            <template v-for="(s, i) in scenes" :key="s.id">
-              <tr>
-                <td class="studio__render-check">
-                  <UiCheckbox
-                    :model-value="!!sceneSelectedForRender[s.id]"
-                    @change="sceneSelectedForRender = { ...sceneSelectedForRender, [s.id]: $event.target.checked }"
-                  />
-                </td>
-                <td class="jv-muted">{{ i + 1 }}</td>
-                <td>
-                  <strong>{{ s.title || `${copy.chapter.singular} ${s.position + 1}` }}</strong>
-                </td>
-                <td class="jv-mono">{{ sceneBlockCounts[s.id] || 0 }}</td>
-                <td class="jv-mono jv-muted">
-                  <template v-if="sceneCacheById[s.id]?.total">{{ sceneCacheById[s.id].cached }}/{{ sceneCacheById[s.id].total }}</template>
-                  <template v-else>—</template>
-                </td>
-                <td>
-                  <UiTag :intent="checkState(s.id).intent" :title="checkState(s.id).title || ''">{{ checkState(s.id).label }}</UiTag>
-                </td>
-                <td class="studio__render-actions">
-                  <UiButton
-                    intent="secondary"
-                    size="small"
-                    :loading="renderBusyScene === s.id"
-                    :disabled="renderBusyScene !== null && renderBusyScene !== s.id"
-                    label="▶ Render"
-                    @click="renderScene(s)"
-                  />
-                </td>
-              </tr>
-              <!-- Per-scene progress strip — appears below the row when
-                   a render task is in flight or lingering after its finish
-                   (kit queue; failed rows stay until dismissed). -->
-              <tr v-if="taskForScene(s.id)" class="studio__render-progress-row">
-                <td colspan="8" class="studio__render-progress-cell">
-                  <div class="studio__render-progress">
-                    <UiTag :intent="sceneTaskBadge(s.id).intent">{{ sceneTaskBadge(s.id).text }}</UiTag>
-                    <div class="studio__render-bar">
-                      <div
-                        class="studio__render-bar-fill"
-                        :class="{ 'studio__render-bar-fill--indeterminate': !taskForScene(s.id).progress && sceneTaskRunning(s.id) }"
-                        :style="taskForScene(s.id).progress?.total ? { width: ((taskForScene(s.id).progress.done / taskForScene(s.id).progress.total) * 100) + '%' } : {}"
-                      />
-                    </div>
-                    <span v-if="taskForScene(s.id).error" class="jv-muted" style="color: var(--danger); font-size: 11.5px;">
-                      {{ taskForScene(s.id).error }}
-                    </span>
-                    <UiButton
-                      v-if="sceneTaskRunning(s.id)"
-                      intent="danger-outline" size="small" label="Cancel"
-                      @click="tasks.cancel(taskForScene(s.id).id)"
-                    />
-                    <UiButton
-                      v-if="taskForScene(s.id).status === 'error' || taskForScene(s.id).status === 'cancelled'"
-                      intent="secondary" size="small" label="↻ Retry"
-                      @click="renderScene(s)"
-                    />
-                    <UiButton
-                      v-if="taskForScene(s.id).status === 'done' && taskForScene(s.id).result?.url"
-                      intent="ghost" size="small" label="▶ Play"
-                      title="Play here in the row"
-                      @click="scenePlay = { id: s.id, url: taskForScene(s.id).result.url }"
-                    />
-                    <UiButton
-                      as="a"
-                      v-if="taskForScene(s.id).status === 'done' && taskForScene(s.id).result?.url"
-                      :href="taskForScene(s.id).result.url"
-                      :download="taskForScene(s.id).result.filename || 'scene.wav'"
-                      intent="ghost" size="small"
-                      title="Download WAV"
-                    >⬇ Download</UiButton>
-                    <UiButton
-                      v-if="!sceneTaskRunning(s.id)"
-                      intent="ghost" size="small" label="✕"
-                      @click="tasks.dismiss(taskForScene(s.id).id)"
-                    />
-                  </div>
-                  <!-- Compact inline playback for the finished render (the
-                       ruling 2026-08-15: no global bottom bar). -->
-                  <audio v-if="scenePlay?.id === s.id" :src="scenePlay.url" controls autoplay class="jv-audio-inline" style="margin-top: 6px" />
-                </td>
-              </tr>
-            </template>
-          </tbody>
-        </table>
-      </template>
-    </section>
+    <!-- ── Render — the chapter grid, or one chapter's lines (Slice 4) ── -->
+    <div v-if="tab === 'render' && !selectedProject" class="jv-banner">
+      Pick a {{ copy.book.singular.toLowerCase() }} above to render its {{ copy.chapter.plural.toLowerCase() }}.
+    </div>
+    <!-- Kept alive like Script's pages: coming back finds the same page, filters,
+         open line and scroll. -->
+    <KeepAlive>
+      <StudioRenderChapter v-if="tab === 'render' && selectedProject && renderSceneId"
+        :project="selectedProject" :scene-id="renderSceneId" :scenes="scenes" :speakers="speakers"
+        :personas="personas" :version="renderVersion"
+        @back="openRender({ sceneId: null })" @open="(id) => openRender({ sceneId: id })"
+        @go="goStep" @changed="onRenderChanged" />
+    </KeepAlive>
+    <KeepAlive>
+      <StudioRender v-if="tab === 'render' && selectedProject && !renderSceneId" ref="renderGrid"
+        :project="selectedProject" :scenes="scenes" :render-state="renderState" :speakers="speakers"
+        :chapters="scriptChapters"
+        @open="(id) => openRender({ sceneId: id })"
+        @go="(k, arg) => (k === 'script' && arg?.sceneId ? openScript(arg) : goStep(k))"
+        @changed="onRenderChanged" />
+    </KeepAlive>
 
     <!-- ── Export tab — package + ACX checklist (mock export screen) ── -->
     <section v-if="tab === 'export'" class="studio__exportstep">
@@ -1172,93 +715,6 @@ watch(selectedProjectId, (id) => {
       <ExportPanel v-else :project="selectedProject" :scenes="scenes" />
     </section>
 
-    <!-- The render blocker (restore decision 5). A line nobody speaks used
-         to be dropped from the audio without a word; now the render stops
-         here and offers the one-click way out. -->
-    <AppModal
-      v-if="unplacedModalOpen"
-      eyebrow="Render stopped"
-      :title="`${unplacedTotal} line${unplacedTotal === 1 ? '' : 's'} have no speaker`"
-      :max-width="'720px'"
-      dismissable
-      @close="unplacedModalOpen = false"
-    >
-      <p class="jv-muted" style="margin: 0 0 12px">
-        These would be missing from the audio, so nothing is rendered until they
-        have a speaker. Send them all to the narrator, or fix them in Script.
-      </p>
-      <div v-for="group in unplacedFound" :key="group.scene.id" class="studio__unplaced-group">
-        <strong>{{ group.scene.title || `${copy.chapter.singular} ${group.scene.position + 1}` }}</strong>
-        <span class="jv-muted"> — {{ group.blocks.length }}</span>
-        <UiButton intent="ghost" size="small" label="Fix in Script ➜"
-          :title="`Opens this ${copy.chapter.singular.toLowerCase()} on its lines with no speaker, the first one selected`"
-          @click="unplacedModalOpen = false; openScript({ sceneId: group.scene.id, focus: 'none' })" />
-        <ul class="studio__unplaced-list">
-          <li v-for="b in group.blocks.slice(0, 8)" :key="b.id" class="jv-muted">{{ b.text }}</li>
-          <li v-if="group.blocks.length > 8" class="jv-muted">…and {{ group.blocks.length - 8 }} more</li>
-        </ul>
-      </div>
-      <template #footer>
-        <UiButton intent="secondary" label="Not now" @click="unplacedModalOpen = false" />
-        <UiButton
-          intent="primary"
-          :loading="unplacedFixing"
-          :disabled="unplacedFixing || !narratorSpeaker"
-          :label="`Assign all to ${narratorSpeaker ? narratorSpeaker.name : 'Narrator'}`"
-          :title="narratorSpeaker ? '' : 'This book has no narrator — add one on Cast'"
-          @click="assignUnplacedToNarrator"
-        />
-      </template>
-    </AppModal>
-
-    <!-- Per-block Rewrite preview (right-click on Script tab). -->
-    <AppModal
-      v-if="rewriteModalOpen"
-      eyebrow="Rewrite in character"
-      :title="rewriteLine ? (speakers.find((sp) => sp.id === rewriteLine.speaker_id)?.name || 'Line') : 'Line'"
-      :max-width="'720px'"
-      dismissable
-      @close="rewriteModalOpen = false"
-    >
-        <div style="display: flex; flex-direction: column; gap: 14px;">
-          <div>
-            <div class="jv-form-row__label" style="margin-bottom: 4px">Original</div>
-            <div style="padding: 10px 12px; background: var(--surface-2); border-radius: 6px; font-size: 13px; line-height: 1.5;">
-              {{ rewriteOriginal }}
-            </div>
-          </div>
-          <div>
-            <div class="jv-form-row__label" style="margin-bottom: 4px">Rewritten</div>
-            <div v-if="rewriteBusy" class="jv-muted" style="padding: 10px 12px;">Generating rewrite…</div>
-            <div v-else-if="rewriteError" class="jv-muted" style="padding: 10px 12px; color: var(--danger);">
-              {{ rewriteError }}
-            </div>
-            <UiTextarea
-              v-else
-              v-model="rewritePreview"
-              style="min-height: 100px;"
-              placeholder="Rewrite will appear here…"
-            />
-          </div>
-        </div>
-        <template #footer>
-          <UiButton
-            intent="secondary"
-            size="small"
-            :disabled="rewriteBusy"
-            label="↻ Try again"
-            @click="runRewrite"
-          />
-          <span class="jv-spacer" />
-          <UiButton intent="secondary" label="Discard" @click="rewriteModalOpen = false" />
-          <UiButton
-            intent="primary"
-            :disabled="rewriteBusy || !rewritePreview.trim()"
-            label="Accept"
-            @click="acceptRewrite"
-          />
-        </template>
-    </AppModal>
   </div>
 </template>
 
@@ -1305,67 +761,7 @@ watch(selectedProjectId, (id) => {
   flex: 1 1 0;
   min-height: 0;
 }
-/* ── Script — its pages style themselves (StudioScript*.vue) ─────── */
-
-.studio__unplaced-group { margin-bottom: 12px; font-size: 13px; }
-.studio__unplaced-list {
-  margin: 6px 0 0;
-  padding-left: 18px;
-  font-size: 12.5px;
-  line-height: 1.5;
-}
-.studio__unplaced-list li {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* ── Render tab ───────────────────────────────────────────────────── */
-.studio__render-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-.studio__render-table { font-size: 12.5px; }
-.studio__render-check { width: 32px; }
-.studio__render-actions {
-  display: flex;
-  gap: 6px;
-  white-space: nowrap;
-}
-
-/* Per-scene progress strip under the row when a render task is in flight. */
-.studio__render-progress-row { background: var(--surface-2); }
-.studio__render-progress-cell { padding: 6px 12px 8px; }
-.studio__render-progress {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.studio__render-bar {
-  flex: 1;
-  height: 4px;
-  background: var(--surface);
-  border-radius: 2px;
-  overflow: hidden;
-  position: relative;
-}
-.studio__render-bar-fill {
-  height: 100%;
-  background: var(--accent);
-  border-radius: 2px;
-  transition: width 0.18s ease-out;
-}
-.studio__render-bar-fill--indeterminate {
-  width: 36%;
-  position: absolute;
-  left: 0;
-  animation: studio-progress-indeterminate 1.4s ease-in-out infinite;
-}
-@keyframes studio-progress-indeterminate {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(280%); }
-}
+/* ── Script and Render — their pages style themselves (StudioScript*.vue,
+   StudioRender*.vue) ─────────────────────────────────────────────── */
 
 </style>

@@ -71,7 +71,7 @@ VARIANTS = [
         "audiocpp": {"family": "voxcpm2", "task": "tts", "file": _Q8},
         # The longest piece a line reaches the model in (audit 2026-10-04 §13.3): 752
         # characters peaked at 6,438 MB whole, 5,230 MB in 200-character pieces. A description
-        # voice keeps the full length until its own size is decided by ear.
+        # voice keeps the full length: split, it changed person (listened 2026-10-04).
         "split_chars": 200,
     },
 ]

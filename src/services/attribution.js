@@ -56,8 +56,8 @@ export function sourceChipClass(source) {
 // ── What counts as a line, and what counts as attributed ──────────────────
 // These four questions were being answered in three places with three
 // different rules, and they had already drifted: Studio called a chapter
-// analyzed when any block carried a pipeline `source`, ChapterView called it
-// attributed when every non-marker block had a speaker, and the render
+// analyzed when any block carried a pipeline `source`, the old Chapters page
+// called it attributed when every non-marker block had a speaker, and the render
 // resolver skipped markers and blank text that Studio's own "unplaced"
 // counter went on counting. The counters disagreed on screen.
 

@@ -52,7 +52,7 @@ The Personas page lists your library, one row per persona:
 | Can be directed | **✓ written direction**, **✓ 19 tags** (the model's own tags) or **sliders only** — see [Voice](#voice) for what each means |
 | Speaks | The language it speaks: `Korean`, `British English` |
 | Shaped | What it does to its voice: `1.05× · −1.0 dB · 2 effects`, `0.92× · −3 st · Reverb`. *as the voice* when it changes nothing |
-| Used by | Who it plays, as *speaker — book*: `June — Stillwater`. The same speaker name in several books reads `Narrator — Stillwater · Emberfall`. A persona that plays no one reads **— not used yet —** |
+| Used by | Who it plays, as *speaker — book*: `Cael Ferren — The Ninth Facet`. The same speaker name in several books reads `Narrator — The Ninth Facet · Emberfall`. A persona that plays no one reads **— not used yet —** |
 | ⋯ | **✎ Edit**, **✏️ Rename**, **🔗 Merge into…**, **🗑 Delete** |
 
 Click a row to open that persona's page. **＋ New persona** opens a blank one.
@@ -455,9 +455,9 @@ speaks, ✓/✗ cloning and ✓/✗ seed. **Compare models →** opens AI Settin
 Speech engines.
 
 **Used by** lists every speaker the persona plays as
-`🎭 June — Stillwater · 61 lines`, with the total line count beside the heading.
+`🎭 Cael Ferren — The Ninth Facet · 25 lines`, with the total line count beside the heading.
 **Open Cast →** takes you to that book's Cast step. When the persona plays
-speakers in several books there is one button per book: **Open Stillwater Cast
+speakers in several books there is one button per book: **Open The Ninth Facet Cast
 →**.
 
 ### One persona, one sound, everywhere
@@ -504,7 +504,8 @@ most specific last:
 
 1. this persona's **Standing delivery**
 2. the **Emotion** label, if one is set
-3. the line's own **direction**, from the Chapters editor's `+ direction` button
+3. the line's own **direction**, from its *How it's said* box in
+   [Studio · Render](studio.md#how-its-said)
 
 So a persona whose delivery reads *"gravel-voiced harbour-master, always weary"*
 on a line marked *"shouting over the wind"* sends the engine `gravel-voiced
@@ -532,9 +533,10 @@ The note is for the language-model features, and nothing else reads it:
   language, and its note (as the persona's tone) to your language model, which
   matches them against the speakers.
 
-**Rewrite in character** in Studio · Script is different. It rewrites a line as
+**Rewrite in character** in Studio · Render is different. It rewrites a line as
 the *speaker*, so it reads the speaker's *Who they are* on Cast, not the
-persona's note (see [Studio · Script](studio.md#script)).
+persona's note (see
+[Studio → Pronunciation and Rewrite in character](studio.md#pronunciation-and-rewrite-in-character)).
 
 Rewriting is always explicit and never happens at render time. The manuscript's
 words are only changed when you ask for a rewrite and accept it.
@@ -579,7 +581,8 @@ name if your library has one. See [Import & export](import-and-export.md).
 
 Everything the source knows about a person lands in the speaker's **Who they
 are**: the one-liner, then a `Voice hint:` block carrying gender, age and role.
-Its aliases become the speaker's **Also called**. Nothing is written into any
+Its aliases become the speaker's **Also called**, and its pronouns the speaker's
+**Pronouns** (he/him, she/her, they/them or it/its). Nothing is written into any
 persona's Standing delivery. *"female, age 34, protagonist"* is a casting hint, not
 a direction to the TTS, and guessing a direction would change how your book
 sounds without you asking.
@@ -587,7 +590,7 @@ sounds without you asking.
 ## Smart-assign
 
 **✨ Smart-assign** on Studio · Cast sends the book's speakers, the narrator
-aside (name, *Also called*, *Who they are*), and your personas (name, the voice's gender as every
+aside (name, *Also called*, *Pronouns*, *Who they are*), and your personas (name, the voice's gender as every
 page shows it, the language the persona speaks, note) to your language model, which proposes a persona for each speaker. The matches
 apply straight away. It is a starting point, so listen to each assignment before
 rendering and change any you disagree with by clicking another persona.

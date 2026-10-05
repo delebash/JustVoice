@@ -1063,6 +1063,25 @@ progress {
 .jv-table-look .ui-table tbody tr:last-child td { border-bottom: 0; }
 .jv-table-look .ui-table tbody tr:last-child td:first-child { border-bottom-left-radius: var(--r-card, 8px); }
 .jv-table-look .ui-table tbody tr:last-child td:last-child { border-bottom-right-radius: var(--r-card, 8px); }
+
+/* The panel that opens under one line of a table (Studio · Render's line, Slice 4, 2026-10-04):
+   the line's own controls on the left, its takes on the right. It sits in the table's
+   full-width row (UiTable :full-width-row), so the row keeps its place in reading order. */
+.jv-linepanel { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; padding: 12px 14px 14px; background: var(--surface-2); }
+.jv-linepanel__side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.jv-linepanel__field { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.jv-linepanel__row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.jv-linepanel__nums { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-end; }
+@media (max-width: 900px) { .jv-linepanel { grid-template-columns: 1fr; } }
+
+/* A line's takes — one row each, the live (★) one first; nothing is overwritten. */
+.jv-takes { padding: 0; overflow: hidden; align-self: start; }
+.jv-takes__head { display: flex; gap: 8px; align-items: baseline; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+.jv-takes__row { display: flex; gap: 10px; align-items: center; padding: 6px 12px; border-bottom: 1px solid var(--line); font-size: 12.5px; }
+.jv-takes__row:last-of-type { border-bottom: 0; }
+.jv-takes__len { font-variant-numeric: tabular-nums; color: var(--ink-2); min-width: 3.5ch; }
+.jv-takes__label { color: var(--ink-3); flex: 1; min-width: 0; }
+.jv-takes__foot { display: flex; gap: 8px; align-items: center; padding: 9px 12px; border-top: 1px solid var(--line); }
 /* Hover paints the CELLS, matching .jv-table. The kit paints the <tr>, which
    loses under `tbody td`'s own background, so `row-hover` alone reads as no
    hover at all once this look is on. */
@@ -1813,7 +1832,7 @@ section.block > h3 {
 /* ── Compact inline audio (canonical, promoted 2026-08-15) ──────────────
    THE playback surface after the global bottom bar died (user ruling:
    playback is compact and in place). Native <audio controls> rendered
-   where the action lives — promoted from ChapterView's scoped
+   where the action lives — promoted from the old Chapters page's scoped
    .chapter-view__audio, which this replaces. */
 .jv-audio-inline{width:100%;height:36px;display:block}
 .ev-rail{display:flex;align-items:center;background:var(--surface);border:1px solid var(--accent-line,#b8d2c3);border-radius:10px;margin-bottom:18px;overflow:hidden}

@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: MIT -->
 <!--
-  Import review — the mock's "Import — stillwater.epub" PAGE (user
+  Import review — the mock's import review PAGE (user
   decision 2026-06-12: the picker stays a small dialog; the RESULTS are
   a regular in-app page). Two-col: Detected structure (include
   checkboxes per chapter) · Import summary (+ speakers-found-later

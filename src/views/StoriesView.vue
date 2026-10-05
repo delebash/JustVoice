@@ -28,8 +28,8 @@
       </p>
       <p class="jv-muted">
         Until then, your imported episodes and their segments live in
-        <a href="#chapter">Episodes</a>, and rendering happens in
-        <a href="#studio">Studio</a>.
+        Studio · Script, and rendering happens in Studio · Render —
+        <a href="#studio">open Studio</a>.
       </p>
     </div>
   </div>

@@ -419,31 +419,36 @@ function runPreview() {
     : "";
 }
 
-// Fix-it loop handoff: Chapters/Studio flag a misread word → arrives here
-// prefilled. Open the first lexicon (or a new draft) with the grapheme seeded
-// into the entry form, ready for a pronunciation. Consumed after the first
-// refresh AND on every re-entry (kept-alive view; a mounted-only read fires
-// once per session — the second misread word of a session would arrive to
-// nothing). The flag keeps the re-entry path from racing the first load.
+// Fix-it loop handoff: Render's 📕 Pronunciation (Studio Slice 4) arrives here
+// with the book's lexicon — made for the book if it had none — and, when a
+// word was picked, that word seeded into the entry form, ready for a
+// pronunciation. Consumed after the first refresh AND on every re-entry
+// (kept-alive view; a mounted-only read fires once per session — the second
+// misread word of a session would arrive to nothing). The flag keeps the
+// re-entry path from racing the first load.
 let _lexiconsReady = false;
-function consumeLexiconPrefill() {
+async function consumeLexiconPrefill() {
+  let handoff = null;
   try {
     const raw = window.sessionStorage?.getItem("jv.lexicon.prefill");
-    if (raw) {
-      window.sessionStorage.removeItem("jv.lexicon.prefill");
-      const { grapheme } = JSON.parse(raw);
-      if (grapheme) {
-        if (lexicons.value.length) openEdit(lexicons.value[0]);
-        else createLexicon();
-        newGrapheme.value = grapheme;
-        pushToast({
-          message: `Fixing “${grapheme}” — spell it how it should sound, add it, then Save.`,
-          kind: "info",
-          duration: 8000,
-        });
-      }
-    }
-  } catch { /* ignore */ }
+    if (!raw) return;
+    window.sessionStorage.removeItem("jv.lexicon.prefill");
+    handoff = JSON.parse(raw);
+  } catch { return; }
+  const { grapheme, lexiconId } = handoff || {};
+  // A lexicon made a moment ago isn't in the list yet.
+  if (lexiconId && !lexicons.value.some((l) => l.id === lexiconId)) await refresh();
+  const target = lexicons.value.find((l) => l.id === lexiconId) || lexicons.value[0];
+  if (target) openEdit(target);
+  else createLexicon();
+  if (grapheme) {
+    newGrapheme.value = grapheme;
+    pushToast({
+      message: `Fixing “${grapheme}” — spell it how it should sound, add it, then Save.`,
+      kind: "info",
+      duration: 8000,
+    });
+  }
 }
 
 onMounted(async () => {
@@ -509,7 +514,7 @@ onActivated(() => {
     <AppModal v-if="dialogOpen && draft" :eyebrow="creating ? 'New lexicon' : 'Lexicon'" :title="draft.name || 'Untitled lexicon'" :max-width="'860px'" dismissable @close="closeDialog">
           <div class="lex__field">
             <label>Name</label>
-            <UiInput ref="nameInputEl" width="name" v-model="draft.name" placeholder="e.g. Stillwater proper names" @keydown.enter.prevent />
+            <UiInput ref="nameInputEl" width="name" v-model="draft.name" placeholder="e.g. The Ninth Facet names" @keydown.enter.prevent />
           </div>
 
           <div class="lex__field">
@@ -571,7 +576,7 @@ onActivated(() => {
             <UiInput
               width="prose"
               v-model="previewText"
-              placeholder="Beauchamp arrived in Stillwater on the NYPD ferry. — Worcestershire sauce on his cuff."
+              placeholder="Beauchamp arrived at the Lumen Concern on the NYPD ferry. — Worcestershire sauce on his cuff."
             />
             <p v-if="previewResult" class="lex__preview-out">{{ previewResult }}</p>
           </div>

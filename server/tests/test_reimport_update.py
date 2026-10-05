@@ -42,30 +42,41 @@ def _import(client, csv, project_id=None):
     return r.json()
 
 
+@pytest.fixture()
+def fake_speech(monkeypatch):
+    """The speech model, faked: render_line returns a short silence that
+    records the real inputs key (render_core.line_inputs_key), so a take made
+    through the production door reads "rendered" until its line changes —
+    Render's rule since Slice 4 (2026-10-04)."""
+    from justvoice.render_core import RenderedLine, line_inputs_key
+
+    def render_line(st, voice, text, **kw):
+        key = line_inputs_key(st, voice, text, language=kw.get("language"), delivery=kw.get("delivery"),
+                              seed=kw.get("seed"), lexicons=kw.get("lexicons"), effects=kw.get("effects"))
+        return RenderedLine(pcm=b"\x00\x00" * 160, sample_rate=16000, channels=1, effective_delivery={},
+                            inputs_key=key or "", seed=kw.get("seed"))
+
+    monkeypatch.setattr("justvoice.render_core.render_line", render_line)
+
+
+def _cast_everyone(client, pid):
+    """Each speaker played by a persona with a voice — a line can render only then."""
+    persona = client.post("/v1/personas", json={"name": "Gruff guard", "voice_id": "af_heart"}).json()["id"]
+    for sp in client.get(f"/v1/projects/{pid}/speakers").json()["speakers"]:
+        client.patch(f"/v1/speakers/{sp['id']}", json={"persona_id": persona})
+
+
 def _mark_rendered(client, pid, line_ids):
-    """Simulate renders: write Generation+Take rows w/ the block's text."""
-    from justvoice.database import session as db_session
-    from justvoice.database.models import Block, Generation, Take
-
-    db = db_session.SessionLocal()
-    try:
-        import json as _json
-
-        blocks = db.query(Block).all()
-        for b in blocks:
-            ref = _json.loads(b.metadata_json or "{}").get("source_ref")
-            if ref in line_ids:
-                g = Generation(block_id=b.id, text=b.text, engine="test", status="completed")
-                db.add(g)
-                db.flush()
-                db.add(Take(block_id=b.id, generation_id=g.id, is_default=True))
-        db.commit()
-    finally:
-        db.close()
+    """Render those lines through the one-line door (a take each)."""
+    for row in client.get(f"/v1/projects/{pid}/lines").json()["lines"]:
+        if row["line_id"] in line_ids:
+            r = client.post(f"/v1/blocks/{row['block_id']}/render")
+            assert r.status_code == 200, r.text
 
 
-def test_reimport_updates_in_place_and_derives_staleness(client):
+def test_reimport_updates_in_place_and_derives_staleness(client, fake_speech):
     pid = _import(client, CSV_V1)["project_id"]
+    _cast_everyone(client, pid)
     _mark_rendered(client, pid, {"Q01_A", "Q01_B", "Q02_A"})
 
     before = client.get(f"/v1/projects/{pid}/lines").json()
@@ -100,30 +111,19 @@ def test_update_requires_stable_ids(client):
     assert "stable line id" in r.text
 
 
-def test_block_render_clears_staleness(client, monkeypatch):
-    from justvoice.render_core import RenderedLine
-
+def test_block_render_clears_staleness(client, fake_speech):
     pid = _import(client, CSV_V1)["project_id"]
+    # Hale played by a persona with a voice, so the production renderer
+    # accepts the block (line → speaker → persona, 2026-09-29).
+    _cast_everyone(client, pid)
     _mark_rendered(client, pid, {"Q01_A"})
     # change the text via re-import v2 → Q01_A goes stale
     _import(client, CSV_V2, project_id=pid)
     lines = client.get(f"/v1/projects/{pid}/lines").json()["lines"]
     stale = next(r for r in lines if r["line_id"] == "Q01_A")
     assert stale["take_status"] == "stale"
+    assert stale["state"] == "stale"
 
-    # Hale played by a persona with a voice, so the production renderer
-    # accepts the block (line → speaker → persona, 2026-09-29).
-    speakers = client.get(f"/v1/projects/{pid}/speakers").json()["speakers"]
-    hale = next(sp for sp in speakers if sp["name"] == "Hale")
-    voice = client.post("/v1/personas", json={"name": "Gruff guard", "voice_id": "af_heart"}).json()["id"]
-    client.patch(f"/v1/speakers/{hale['id']}", json={"persona_id": voice})
-
-    monkeypatch.setattr(
-        "justvoice.render_core.render_line",
-        lambda st, voice, text, **kw: RenderedLine(
-            pcm=b"\x00\x00" * 160, sample_rate=16000, channels=1, effective_delivery={}
-        ),
-    )
     r = client.post(f"/v1/blocks/{stale['block_id']}/render")
     assert r.status_code == 200, r.text
     lines = client.get(f"/v1/projects/{pid}/lines").json()["lines"]

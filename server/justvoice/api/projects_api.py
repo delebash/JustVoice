@@ -35,6 +35,7 @@ from ..database.models import (
 )
 from ..errors import not_found, bad_request
 from ..app_state import get_state
+from ..line_takes import sweep_orphan_takes
 from ._speaker_helpers import adopt_book_narrator, ensure_speaker
 from ..mastering import kind_master
 from .extraction_api import RunUsage, project_ignored
@@ -210,6 +211,11 @@ class UpdateBlockRequest(BaseModel):
     speaker_id: Optional[str] = None
     direction: Optional[str] = None
     metadata: Optional[dict] = None
+    # Render's ⚙ hatch (Studio Slice 4, D3): the line's own speed, pitch,
+    # gain_db and pause_after_ms, merged into its metadata — a value sets it,
+    # null clears it, a field left out is kept (line_takes.merge_override).
+    # `metadata` replaces the whole JSON; this touches only those four.
+    line_override: Optional[dict] = None
     extraction_confidence: Optional[float] = None
     source: Optional[str] = None
     # A speaker change normally saves a fix the next Analyze learns from.
@@ -323,6 +329,7 @@ async def delete_project(project_id: str, db: Session = Depends(get_db)) -> dict
         raise not_found(f"project {project_id}")
     db.delete(p)
     db.commit()
+    sweep_orphan_takes(db)   # its takes' audio goes with them (Slice 4)
     return {"deleted": True}
 
 
@@ -396,12 +403,24 @@ async def update_scene(
 
 @router.delete("/v1/scenes/{scene_id}")
 async def delete_scene(scene_id: str, db: Session = Depends(get_db)) -> dict:
-    """Delete a chapter and its blocks/takes (FK cascade)."""
+    """Delete a chapter and its blocks/takes (FK cascade) — and the takes'
+    audio (Studio Slice 4). Script's ⋯ → Delete."""
     sc = db.query(Scene).filter(Scene.id == scene_id).first()
     if not sc:
         raise not_found(f"scene {scene_id}")
+    project_id, position = sc.project_id, sc.position
     db.delete(sc)
+    db.flush()
+    # The chapters after it move up, so the order stays dense and ⋯ Move
+    # (which swaps with the chapter at the target position) keeps working.
+    for later in (
+        db.query(Scene)
+        .filter(Scene.project_id == project_id, Scene.position > position)
+        .order_by(Scene.position)
+    ):
+        later.position -= 1
     db.commit()
+    sweep_orphan_takes(db)
     return {"deleted": True, "scene_id": scene_id}
 
 
@@ -489,6 +508,13 @@ async def update_block(
         b.direction = body.direction
     if body.metadata is not None:
         b.metadata_json = json.dumps(body.metadata)
+    if body.line_override is not None:
+        from ..line_takes import block_meta, merge_override
+
+        try:
+            b.metadata_json = json.dumps(merge_override(block_meta(b), body.line_override))
+        except ValueError as e:
+            raise bad_request(str(e))
     sent = body.model_fields_set
     if body.extraction_confidence is not None or "extraction_confidence" in sent:
         b.extraction_confidence = body.extraction_confidence
@@ -528,6 +554,7 @@ async def delete_block(block_id: str, db: Session = Depends(get_db)) -> dict:
     _drop_scene_source_text(db, b.scene_id)
     db.delete(b)
     db.commit()
+    sweep_orphan_takes(db)   # its takes' audio goes with them (Slice 4)
     return {"deleted": True}
 
 
@@ -631,6 +658,7 @@ async def merge_blocks(
     _renumber([blk for blk in ordered if blk not in gone])
     _drop_scene_source_text(db, scene_id)
     db.commit()
+    sweep_orphan_takes(db)   # the merged-away lines' takes' audio (Slice 4)
     db.refresh(keep)
     return BlockResponse.from_orm(keep)
 
@@ -701,6 +729,7 @@ def _materialize_standard(
             name=char.name,
             description=sheet or None,
             aliases=char.aliases,
+            pronouns=char.pronouns,
             imported_from=standard.source,
             imported_id=char.id,
         )
@@ -922,6 +951,7 @@ async def import_project(
             raise not_found(f"project {effective_project_id}")
         summary = _update_project_from_standard(standard, project, db)
         db.commit()
+        sweep_orphan_takes(db)   # removed lines' takes' audio (Slice 4)
         standard.project.id = project.id
         standard.warnings.append(
             "updated in place: "
@@ -1209,7 +1239,7 @@ def _update_project_from_standard(
         speaker, _created = ensure_speaker(
             db, project.id,
             name=char.name, description=sheet or None, aliases=char.aliases,
-            imported_from=standard.source, imported_id=char.id,
+            pronouns=char.pronouns, imported_from=standard.source, imported_id=char.id,
         )
         char_to_speaker_id[char.id] = speaker.id
 
@@ -1298,8 +1328,13 @@ class ProjectLineOut(BaseModel):
     scene_title: str | None
     speaker: str | None
     text: str
-    # "none" (never rendered) | "rendered" | "stale" (text changed since)
+    # "none" (no take, or it can't render yet) | "rendered" | "stale" — Render's
+    # rule (line_takes.py, G9 2026-10-04): stale = something the ★ take was
+    # made from changed since, not only its words.
     take_status: str
+    # §8.16's word for the line: needs a speaker · needs a voice · ready ·
+    # rendered · stale (None for a line that is not heard — a marker).
+    state: str | None = None
 
 
 class ProjectLinesResponse(BaseModel):
@@ -1311,35 +1346,28 @@ class ProjectLinesResponse(BaseModel):
 @router.get("/v1/projects/{project_id}/lines", response_model=ProjectLinesResponse)
 async def project_lines(project_id: str, db: Session = Depends(get_db)) -> ProjectLinesResponse:
     """Flat per-line view for the game Lines grid (mock #game/3).
-    take_status is DERIVED: stale = latest take's generation text differs
-    from the block's current text — no stored flag to drift."""
-    from ..database.models import Generation, Take
+    The state is Render's — the same function (line_takes.scene_lines, G9
+    2026-10-04): stale = something the ★ take was made from changed since.
+    Until then this grid compared the latest take's words only."""
+    from ..app_state import get_state
+    from ..line_takes import scene_lines
 
     if db.query(Project).filter(Project.id == project_id).first() is None:
         raise not_found(f"project {project_id}")
     scenes = (
         db.query(Scene).filter(Scene.project_id == project_id).order_by(Scene.position).all()
     )
+    st = get_state()
     out: list[ProjectLineOut] = []
     counts = {"none": 0, "rendered": 0, "stale": 0}
     for scene in scenes:
         rows = (
             db.query(Block).filter(Block.scene_id == scene.id).order_by(Block.position).all()
         )
+        states = {line["block_id"]: line["state"] for line in scene_lines(db, st, scene.id)["lines"]}
         for b in rows:
-            latest = (
-                db.query(Generation.text)
-                .join(Take, Take.generation_id == Generation.id)
-                .filter(Take.block_id == b.id)
-                .order_by(Take.created_at.desc())
-                .first()
-            )
-            if latest is None:
-                status = "none"
-            elif latest[0] == b.text:
-                status = "rendered"
-            else:
-                status = "stale"
+            state = states.get(b.id)
+            status = state if state in ("rendered", "stale") else "none"
             counts[status] += 1
             line_id = None
             if b.metadata_json:
@@ -1357,7 +1385,7 @@ async def project_lines(project_id: str, db: Session = Depends(get_db)) -> Proje
                     block_id=b.id, line_id=line_id,
                     scene_id=scene.id, scene_title=scene.title,
                     speaker=speaker[0] if speaker else None,
-                    text=b.text, take_status=status,
+                    text=b.text, take_status=status, state=state,
                 )
             )
     return ProjectLinesResponse(project_id=project_id, lines=out, counts=counts)

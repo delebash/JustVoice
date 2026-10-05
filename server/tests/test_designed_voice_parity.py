@@ -188,12 +188,14 @@ def test_both_render_doors_put_the_description_first() -> None:
     direction. Source-level, matching `test_emotion_wiring`'s convention,
     because composing correctly needs a loaded engine to observe end to end.
     """
-    from justvoice import persona_render
+    from justvoice import line_takes, persona_render
     from justvoice.api import generate_api, render_chapter_api
 
     # Every persona line is planned by the one resolver (2026-10-03); the
-    # chapter door calls it, and its compose call leads with the description.
-    assert "plan_line(" in inspect.getsource(render_chapter_api)
+    # chapter door calls it through line_takes.plan_block (Slice 4, the line's
+    # own numbers on top), and its compose call leads with the description.
+    assert "plan_block(" in inspect.getsource(render_chapter_api)
+    assert "plan_line(" in inspect.getsource(line_takes)
     resolver = inspect.getsource(persona_render)
     composed = resolver.split("composed = compose_instruct(", 1)[1]
     # The description leads — a saved voice's, or an unsaved design's on the

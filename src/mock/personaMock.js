@@ -55,7 +55,7 @@ const MADE_VOICES = [
 ];
 
 export const BOOKS = [
-  { id: "b_stillwater", name: "Stillwater", language: "en" },
+  { id: "b_ninth", name: "The Ninth Facet", language: "en" },
   { id: "b_emberfall", name: "Emberfall", language: "en" },
 ];
 
@@ -65,7 +65,7 @@ export const CAPTURES = [
 ];
 
 export const LEXICONS = [
-  { id: "lx_stillwater", name: "Stillwater names" },
+  { id: "lx_ninth", name: "The Ninth Facet names" },
   { id: "lx_emberfall", name: "Emberfall places" },
 ];
 
@@ -84,7 +84,7 @@ const PERSONAS = [
     note: "Tired but sharp; warm only with Marius.",
     default_delivery: { speed: 1.05, gain_db: -1, models: {} },
     effects_chain: [{ type: "reverb", params: {} }, { type: "eq_low", params: {} }],
-    lexicon_id: "lx_stillwater",
+    lexicon_id: "lx_ninth",
   }),
   persona("p_marius", {
     name: "Marius", voice_id: "v_marius", language: "en",
@@ -124,6 +124,11 @@ const PERSONAS = [
     name: "Old Tom", voice_id: "v_tom", language: "en",
     default_delivery: { speed: 0.9, models: {} },
   }),
+  persona("p_street", {
+    name: "Street kid", voice_id: "bf_lily", language: "en-GB",
+    note: "Quick and cheerful; gone before you finish the sentence.",
+    default_delivery: { speed: 1.1, models: {} },
+  }),
   persona("p_radio", {
     name: "Radio announcer", voice_id: "kitten_hugo", language: "en-US",
     default_delivery: { speed: 1.08, gain_db: 2, models: {} },
@@ -132,16 +137,24 @@ const PERSONAS = [
 
 // {persona id: [{project_id, project_name, speaker_id, speaker_name, lines, directed}]}
 const USAGE = {
-  p_june: [{ project_id: "b_stillwater", project_name: "Stillwater", speaker_id: "s_june", speaker_name: "June", lines: 61, directed: 18 }],
-  p_marius: [{ project_id: "b_stillwater", project_name: "Stillwater", speaker_id: "s_marius", speaker_name: "Marius", lines: 44, directed: 0 }],
+  p_june: [{ project_id: "b_ninth", project_name: "The Ninth Facet", speaker_id: "s_cael", speaker_name: "Cael Ferren", lines: 25, directed: 7 }],
+  p_marius: [{ project_id: "b_ninth", project_name: "The Ninth Facet", speaker_id: "s_iven", speaker_name: "Iven Sarraz", lines: 32, directed: 0 }],
+  p_dockhand: [{ project_id: "b_ninth", project_name: "The Ninth Facet", speaker_id: "s_brick", speaker_name: "Brick Halvorn", lines: 16, directed: 0 }],
   p_narrator: [
-    { project_id: "b_stillwater", project_name: "Stillwater", speaker_id: "s_narr1", speaker_name: "Narrator", lines: 212, directed: 0 },
+    { project_id: "b_ninth", project_name: "The Ninth Facet", speaker_id: "s_narr1", speaker_name: "Narrator", lines: 126, directed: 0 },
     { project_id: "b_emberfall", project_name: "Emberfall", speaker_id: "s_narr2", speaker_name: "Narrator", lines: 180, directed: 0 },
   ],
   p_mara_young: [{ project_id: "b_emberfall", project_name: "Emberfall", speaker_id: "s_mara_y", speaker_name: "Mara (young)", lines: 37, directed: 9 }],
-  p_mara_old: [{ project_id: "b_emberfall", project_name: "Emberfall", speaker_id: "s_mara", speaker_name: "Mara", lines: 52, directed: 0 }],
-  p_elena: [{ project_id: "b_emberfall", project_name: "Emberfall", speaker_id: "s_elena", speaker_name: "Elena", lines: 29, directed: 11 }],
-  p_tom: [{ project_id: "b_stillwater", project_name: "Stillwater", speaker_id: "s_tom", speaker_name: "Tom", lines: 8, directed: 0 }],
+  p_mara_old: [
+    { project_id: "b_ninth", project_name: "The Ninth Facet", speaker_id: "s_haldane", speaker_name: "Haldane Threll", lines: 6, directed: 0 },
+    { project_id: "b_emberfall", project_name: "Emberfall", speaker_id: "s_mara", speaker_name: "Mara", lines: 52, directed: 0 },
+  ],
+  p_elena: [
+    { project_id: "b_ninth", project_name: "The Ninth Facet", speaker_id: "s_odeline", speaker_name: "Odeline Marran", lines: 27, directed: 4 },
+    { project_id: "b_emberfall", project_name: "Emberfall", speaker_id: "s_elena", speaker_name: "Elena", lines: 29, directed: 11 },
+  ],
+  p_street: [{ project_id: "b_ninth", project_name: "The Ninth Facet", speaker_id: "s_nettle", speaker_name: "Nettle", lines: 19, directed: 0 }],
+  p_tom: [{ project_id: "b_ninth", project_name: "The Ninth Facet", speaker_id: "s_auberon", speaker_name: "Auberon Vasht", lines: 2, directed: 0 }],
 };
 
 /** Which models are loaded or installed on this mock machine. */

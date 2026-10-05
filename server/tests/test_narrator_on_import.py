@@ -115,7 +115,7 @@ def test_a_custom_import_adopts_its_own_narrator(client):
 def test_a_speaker_merely_called_narrator_is_not_the_narrator(client):
     """The role is the rule — Studio and Cast read only the role, and so does
     the server now; a name alone made the two disagree."""
-    pid = client.post("/v1/projects", json={"name": "Stillwater", "project_type": "audiobook"}).json()["id"]
+    pid = client.post("/v1/projects", json={"name": "The Ninth Facet", "project_type": "audiobook"}).json()["id"]
     r = client.post(f"/v1/projects/{pid}/speakers", json={"name": "Narrator"})
     assert r.status_code in (200, 201), r.text
     scene_id = client.post(f"/v1/projects/{pid}/scenes", json={"title": "One"}).json()["id"]

@@ -804,6 +804,11 @@ class MergePersonaRequest(BaseModel):
 # ─── Speakers — the people in one book ──────────────────────────────────
 
 
+# A speaker's pronouns (persona build P9, 2026-10-04) — read by Script's Analyze and
+# Smart-assign, never heard. Not set = None.
+Pronouns = Literal["he/him", "she/her", "they/them", "it/its"]
+
+
 class Speaker(BaseModel):
     """A person in one book (2026-09-29). The book's cast is its speakers;
     Cast gives each a persona. `lines` counts the lines they read."""
@@ -820,6 +825,7 @@ class Speaker(BaseModel):
     persona_name: str | None = None
     # "narrator" for the book's narrator.
     role_label: str | None = None
+    pronouns: Pronouns | None = None
     lines: int = 0
 
 
@@ -834,15 +840,18 @@ class CreateSpeakerRequest(BaseModel):
     # Left out = cast by an exact persona name when one exists (every new
     # speaker, decided 2026-09-29).
     persona_id: str | None = None
+    pronouns: Pronouns | None = None
 
 
 class UpdateSpeakerRequest(BaseModel):
-    """Left out = unchanged. `persona_id` sent as null = un-cast."""
+    """Left out = unchanged. `persona_id` sent as null = un-cast; `pronouns` sent as null =
+    not set."""
 
     name: str | None = Field(default=None, min_length=1, max_length=200)
     aliases: list[str] | None = None
     description: str | None = None
     persona_id: str | None = None
+    pronouns: Pronouns | None = None
 
 
 # ─── Lexicons ───────────────────────────────────────────────────────────
@@ -1446,6 +1455,9 @@ class ChapterLine(BaseModel):
     # the book's, then its speaker's persona's). Scene mode fills it; a
     # request's own `lexicons` follow it on every line.
     lexicons: list[str] | None = None
+    # Scene mode only: the line's block, so the chapter plays its ★ take when
+    # it has one (Studio Slice 4, 2026-10-04). Direct-mode callers leave it out.
+    block_id: str | None = None
 
 
 class BetweenLines(BaseModel):

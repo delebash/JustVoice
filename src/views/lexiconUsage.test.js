@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { lexiconUsedBy } from "./lexiconUsage.js";
 
 const PROJECTS = [
-  { id: "p1", name: "Stillwater", project_type: "audiobook", default_lexicon_id: "lx1" },
+  { id: "p1", name: "The Ninth Facet", project_type: "audiobook", default_lexicon_id: "lx1" },
   { id: "p2", name: "Emberfall", project_type: "game_voicelines", default_lexicon_id: "lx1" },
   { id: "p3", name: "Harbor Hour", project_type: "podcast", default_lexicon_id: null },
 ];
@@ -19,7 +19,7 @@ const PERSONAS = [
 
 describe("a lexicon's Used by", () => {
   it("lists the books it's chosen for, then the personas that use it", () => {
-    expect(lexiconUsedBy("lx1", PROJECTS, PERSONAS)).toEqual(["📖 Stillwater", "🎮 Emberfall", "🎭 June"]);
+    expect(lexiconUsedBy("lx1", PROJECTS, PERSONAS)).toEqual(["📖 The Ninth Facet", "🎮 Emberfall", "🎭 June"]);
     expect(lexiconUsedBy("lx2", PROJECTS, PERSONAS)).toEqual(["🎭 Gravel"]);
   });
 

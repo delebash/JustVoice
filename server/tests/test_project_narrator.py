@@ -54,7 +54,7 @@ def _speaker_of(client, sid, block_id):
 
 @pytest.mark.parametrize("kind", ["audiobook", "podcast", "game_voicelines", "custom"])
 def test_a_new_project_gets_no_narrator(client, kind):
-    pid = _create_project(client, "Stillwater", kind)
+    pid = _create_project(client, "The Ninth Facet", kind)
     assert _speakers(client, pid) == []
     assert client.get("/v1/personas").json()["personas"] == []
 

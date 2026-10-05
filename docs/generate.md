@@ -2,12 +2,12 @@
 
 The **Generate** tab renders one line of text to audio. Pick a voice, type the line, optionally apply delivery overlays, click ▶. The server returns audio bytes you can replay, favorite, or download.
 
-This is JustVoice's primary single-line interface — for batch chapter-style rendering, see [chapter.md](take-versioning.md).
+This is JustVoice's primary single-line interface — for a book's lines and chapters, see [Studio → Render](studio.md#render).
 
 ## When to use Generate
 
 - **Dictation users** — quick line synthesis, paste, send. Use the [MCP server](mcp-server.md) for agent-driven workflows.
-- **Game devs** — render dialogue lines one at a time during iteration. Use [chapter.md](take-versioning.md) for bulk export.
+- **Game devs** — render dialogue lines one at a time during iteration. Use [Lines](lines.md) for the whole sheet and its export.
 - **Audiobook producers** — preview how a persona sounds before committing to a full chapter render. Settings here flow into the chapter pipeline through the [persona](personas.md) that plays each speaker.
 - **Podcasters** — record a one-off intro / outro / ad-read. (The Stories timeline is a placeholder; there is nothing to drag it onto yet.)
 
@@ -28,7 +28,7 @@ The action buttons at the right end:
 - **✏️ Rewrite** — asks the LLM to rewrite the textarea text in the selected persona's voice, shown as a preview you accept or discard; nothing changes until you accept.
 - **🎲 Compose** — asks the LLM to write a fresh line into the textarea in the selected persona's voice.
 
-  Both read the persona's **Note on how it sounds** — Generate has no book, so there is no speaker's *Who they are* to read (who a person is lives on the book's speaker since 2026-09-29; Script's *Rewrite in character* reads that instead). Both are always visible and **disabled** when no persona is selected or its note is empty (the tooltip says so); a call without a note is refused with "*name* has no note on how it sounds — write one on the Personas page to use Compose / Rewrite." Both require an LLM service configured in Settings → External.
+  Both read the persona's **Note on how it sounds** — Generate has no book, so there is no speaker's *Who they are* to read (who a person is lives on the book's speaker since 2026-09-29; Render's *Rewrite in character* reads that instead). Both are always visible and **disabled** when no persona is selected or its note is empty (the tooltip says so); a call without a note is refused with "*name* has no note on how it sounds — write one on the Personas page to use Compose / Rewrite." Both require an LLM service configured in Settings → External.
 - **▶ Generate** — renders the textarea content. Disabled until a voice is picked.
 - **⏹ Stop** — cancels a queued/running render. Always visible; disabled when nothing is in flight.
 
@@ -142,7 +142,7 @@ The splitter knows about abbreviations (`Mr.`, `Dr.`, `e.g.`), decimal numbers, 
 
 Per-chunk seeds are deterministically varied (`seed + chunk_index`) so the same `(text, seed)` pair always produces the same output, while artefact correlation across chunks stays low.
 
-A **voice made from words** (designed, with no clip — VoiceDesign, or a VoxCPM2 description) is the exception. Its voice is drawn from the description every time it speaks, so it gets the same seed for every piece, and when no seed is set it gets a fixed one of its own instead of a random one; otherwise each piece, and each line, would come out as a different person. It is also sent at the full `max_chunk_chars` length for now — whether splitting it changes how it sounds is waiting on a listening test.
+A **voice made from words** (designed, with no clip — VoiceDesign, or a VoxCPM2 description) is the exception. Its voice is drawn from the description every time it speaks, so it gets the same seed for every piece, and when no seed is set it gets a fixed one of its own instead of a random one; otherwise each piece, and each line, would come out as a different person. It is also sent at the full `max_chunk_chars` length: split into 200-character pieces it drifted into a slightly different person from piece to piece (listened 2026-10-04, on Qwen3-TTS VoiceDesign and VoxCPM2), so it is spoken whole.
 
 ## In-flight status strip + status panel
 
@@ -192,8 +192,6 @@ The card at the bottom shows your last 10 generations across the whole DB:
 - ★ favorite
 - ↻ retry (re-render with the same args)
 - ✕ delete
-
-Click a take to see its lineage via the [take versioning](take-versioning.md) chain.
 
 ## Troubleshooting
 

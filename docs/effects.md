@@ -28,7 +28,10 @@ JustVoice has an effects chain: 10 effect types, 4 built-in presets, custom pres
 
 ## Non-destructive
 
-Applying an effects chain to a take produces a **new take version** with effects baked in. The original take survives, and `source_take_id` links them. Revert by setting the source take as default. See [take-versioning.md](take-versioning.md).
+A chain never changes audio you already have. Editing a persona's chain makes
+the lines its speakers say [stale](studio.md#stale-lines) in Studio · Render;
+rendering them again makes new takes, and the old ones are kept — star one
+back to return to it ([Studio → Takes](studio.md#takes)).
 
 ## Where a chain lives — on the persona
 
@@ -49,9 +52,9 @@ M4B, and the per-line game voiceline export. (Chapter renders skipped effects
 entirely until 2026-08-15 — the editor saved chains and only single-line
 previews played them, so the render that mattered came out dry.)
 
-Each rendered line is cached on its chain as well as its text and voice, so
-editing one persona's reverb re-renders the lines of the speakers it plays and
-leaves the rest of the chapter alone. Mastering is a separate, later pass — see
+Each take records its chain as well as its text and voice, so editing one
+persona's reverb makes the lines of the speakers it plays stale and leaves the
+rest of the chapter alone. Mastering is a separate, later pass — see
 [mastering.md](mastering.md).
 
 ## Custom presets

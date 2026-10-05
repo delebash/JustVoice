@@ -46,7 +46,7 @@ describe("pickAdapter", () => {
   });
 
   it("sends a JustWrite book.json to justwrite", () => {
-    const head = '{"project": {"title": "Stillwater"}, "parts": [], "scenes": {}}';
+    const head = '{"project": {"title": "The Ninth Facet"}, "parts": [], "scenes": {}}';
     expect(pick(".json", head)).toBe("justwrite");
   });
 

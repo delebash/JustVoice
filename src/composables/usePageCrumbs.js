@@ -7,7 +7,7 @@
 // cached view's watchers keep running after you navigate away. A
 // crumb-publishing view (Chapter/Books/Studio) watches shared-store
 // data; when another view reloads that store, the cached view's watcher
-// re-fires and re-publishes its stale crumb — leaking e.g. "Stillwater ›
+// re-fires and re-publishes its stale crumb — leaking e.g. "The Ninth Facet ›
 // Chapter 1" onto the Personas page. App.vue's clear-on-nav loses that
 // race.
 //

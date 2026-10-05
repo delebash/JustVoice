@@ -47,6 +47,7 @@ One fact per bullet, then *how it was checked and when*, then where the proof is
 
 Subjects: [1 · Speech runtime](#1--speech-runtime-audiocpp) ·
 [2 · Speech memory](#2--speech-memory-graphics-memory-and-the-booking) ·
+[3 · Render and takes](#3--render-and-takes) ·
 [Records not yet distilled](#records-not-yet-distilled)
 
 ---
@@ -92,7 +93,9 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
   `engines/audiocpp/runtime.py` `AudioCppServer`, `slot.py` `ensure_server`; audit §13.2.
 - **Downloading or deleting a model no longer restarts anything** on a build with
   `model_management`: live, a first download (`pocket-de-q8`) loaded with both processes keeping
-  their ids, and speech recognition transcribed again without reloading. On an older build it
+  their ids, and speech recognition transcribed again without reloading. Swapping the speech
+  model (Qwen3 → Chatterbox Turbo → Kokoro) with recognition loaded left both processes' pids and
+  recognition's one booking unchanged, and every transcription read back exactly (2026-10-04). On an older build it
   still restarts that kind's own process on its next load — never the other kind's. (was: any
   first download restarted the shared process and killed the other kind's model — design choice
   at the cut, switch §3.1 — until 2026-10-04.) — *live, 2026-10-04* · audit §13.1 (the old
@@ -247,6 +250,12 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
   *measured, 2026-10-01* · switch §8 C.
 - Splitting long lines costs no speed: Qwen3 VoiceDesign, 752 characters, 27.1 s whole, 23.9 s
   in 200-character pieces. — *measured, 2026-10-04* · audit §3.3.
+- **By ear (the user, 2026-10-04), same line, same seed:** a voice made from words split into
+  200-character pieces changes person slightly from piece to piece — Qwen3 VoiceDesign and a VoxCPM2
+  description alike — so description voices are spoken whole; a Qwen3 Base clone decoding only its
+  reference's last 25 frames sounds no different from decoding the whole clip; Qwen3 CustomVoice's
+  decoder at 16-bit weights can't be told from 32-bit (2.04 dB log-spectral apart), so 16-bit is
+  the default since. — *listened, 2026-10-04* · audit §13.6; "1 no it changes persons on the 200 slightly 2 person changes 3 no difference 4 cant tell a difference".
 - Chatterbox Multilingual drops `[laugh]` rather than speaking it. — *measured, 2026-10-01* ·
   switch §8 live.
 - v0.9.0's aligner gave seconds at the input rate (2/3 of real on 24 kHz); fixed in our build
@@ -411,6 +420,62 @@ unloaded — audit §3.1 has the method.
   *code, 2026-10-04* · `manager.py` `_card_is_its_own_memory`; audit §5 B9.
 - The safety margin is 1,024 MB (the kit's setting; the manager falls back to the same). —
   *code, 2026-10-04* · `manager.py:800-803`.
+
+---
+
+## 3 · Render and takes
+
+**Records** (newest last):
+[`2026-09-30-mock-vs-app-and-slice-4.md`](../plans/2026-09-30-mock-vs-app-and-slice-4.md) — the
+mock against the app, and Slice 4's research (§3) ·
+[`2026-10-04-slice-4-render.md`](../plans/2026-10-04-slice-4-render.md) — Slice 4's build plan,
+its blast radius and the gaps.
+
+- Both render doors — a chapter (`render_chapter_api._resolve_scene_to_lines`) and one line
+  (`export_voicelines.render_block_take`: a take, Lines ↻, the game export, render jobs) — plan
+  the line with the same `line_takes.plan_block` (over `persona_render.plan_line`, with the line's
+  own numbers as the request), then `render_core.render_line`. — *code, 2026-10-04* ·
+  `export_voicelines.py` (`render_block_take`); `render_chapter_api.py` (the resolver's loop).
+  (was: both called `plan_line` directly — until 2026-10-04.)
+- The chapter, the M4B export, the ACX check and captions play each line's ★ take where it has
+  one with audio on disk, and render the rest through the render cache; captions use the take's
+  own words. — *code, 2026-10-04* · `render_chapter_api.render_scene_lines(_async)`,
+  `played_texts`; `align_api.scene_captions`. (was: chapter audio never read a take — until
+  2026-10-04.)
+- A take keeps its audio (`generations/<id>.wav`, stored relative to the data folder), the seed
+  and inputs key it was made with (`Generation.seed`, `Generation.cache_key`), its direction
+  (`instruct`) and its real length, and becomes the line's only ★ take. — *code, 2026-10-04* ·
+  `render_jobs.persist_block_take`. (was: no audio, no seed or key, a 16 kHz length, and the old
+  default never cleared — until 2026-10-04.)
+- An MCP generation's length still assumes 16 kHz, 16-bit mono WAV. — *code, 2026-10-04* ·
+  `mcp/tools.py:217`.
+- A line is STALE when the inputs key of what it is made from now differs from its ★ take's key;
+  the key is the render cache's (`render_core._inputs_key`, one builder for the render, the probe
+  and the check). A ↻ New take take (`Generation.source` "new_take") is judged with its own seed,
+  any other with the persona's seed now. A take with no key or no audio reads stale. — *code,
+  2026-10-04* · `line_takes.take_is_current`.
+- Rendering a line again with nothing changed gives back the same audio — the render cache hits.
+  ↻ New take rolls a seed (`line_takes.roll_seed`) so the key misses; ↻ Re-render all renders
+  past the cache (a render job made with `fresh`). — *code, 2026-10-04* · `takes_api.render_block`;
+  `render_jobs._job_is_fresh`.
+- A deleted take's generation and file go with it: `DELETE /v1/takes/{id}` deletes both, and
+  `line_takes.sweep_orphan_takes` removes take generations left by a line, chapter, book or sheet
+  re-import delete (FK cascade takes the take; `Generation.block_id` is SET NULL), after those
+  deletes and at boot. — *code, 2026-10-04* · `projects_api.py` delete sites; `app.py` boot.
+  (was: rows outlived their takes — until 2026-10-04.)
+- `PATCH /v1/blocks/{id}` with `metadata` replaces the block's whole metadata JSON (which also
+  holds `prev_speaker_id`, `marker`, `pause_after_ms`); `line_override` merges only the line's
+  own numbers (speed, pitch, gain_db, pause_after_ms) into it. — *code, 2026-10-04* ·
+  `projects_api.update_block`; `line_takes.merge_override`.
+- A chapter's position PATCH swaps it with the chapter already at that position; deleting a
+  chapter moves the ones after it up. — *code, 2026-10-04* · `projects_api.update_scene`,
+  `delete_scene`.
+- A line's own pause after (imported `pause_after_ms`, or the ⚙ hatch) wins over its persona's.
+  — *code, 2026-10-04* · `line_takes.override_delivery` via `plan_block`. (was: the persona's
+  won — until 2026-10-04, decided G7.)
+- The Stories timeline is inert — it calls no API; the rail is its only door (the old Chapters
+  page's podcast "Open Timeline ➜" went with it, 2026-10-04). — *code, 2026-10-04* ·
+  `StoriesView.vue:17`.
 
 ---
 

@@ -66,7 +66,7 @@ await page.locator('.nav-item[data-tab="studio"]').click();
 await page.waitForTimeout(250);
 await page.locator("#proj-combo .combo-btn").click();
 await page.waitForTimeout(150);
-await page.locator("#proj-combo .combo-item", { hasText: "Stillwater" }).click();
+await page.locator("#proj-combo .combo-item", { hasText: "The Ninth Facet" }).click();
 await page.waitForTimeout(250);
 await page.locator(".studio-tab", { hasText: "Script" }).click();
 await page.waitForTimeout(250);

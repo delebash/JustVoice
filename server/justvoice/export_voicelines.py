@@ -10,7 +10,9 @@ The game build consumes audio BY LINE ID (mock #game/6, CONCEPTS §1):
 
 Rendering reuses the production scene resolution (persona → voice /
 delivery / lexicon, after the book's own lexicon), one line at a time so
-each WAV is exactly one block.
+each WAV is exactly one block. A line with a ★ take ships that take, and the
+manifest says the take's words (Studio Slice 4, D4 — the ★ take is what
+exports); the rest render as before.
 """
 
 from __future__ import annotations
@@ -59,6 +61,8 @@ def export_voicelines(state, project_id: str, *, render_block_fn=None) -> bytes:
     production uses render_core.render_line + the persona's delivery and the
     line's lexicons, matching the Studio render path.
     """
+    from .line_takes import played_takes, read_take_wav
+
     if render_block_fn is None:
         render_block_fn = _render_block_production
 
@@ -81,11 +85,21 @@ def export_voicelines(state, project_id: str, *, render_block_fn=None) -> bytes:
                     .order_by(Block.position)
                     .all()
                 )
+                takes = played_takes(db, [b.id for b in blocks])
                 for bi, block in enumerate(blocks):
                     speaker = db.get(Speaker, block.speaker_id) if block.speaker_id else None
                     persona = persona_for_block(db, block)
                     lid = _line_id(block, si, bi)
-                    wav = render_block_fn(state, persona, block)
+                    gen = takes.get(block.id)
+                    audio = read_take_wav(gen.audio_path) if gen is not None else None
+                    if audio is not None:
+                        from .audio.wav import write_wav_container
+
+                        wav = write_wav_container(*audio)
+                        text = gen.text or block.text
+                    else:
+                        wav = render_block_fn(state, persona, block)
+                        text = block.text
                     path = f"{group}/{lid}.wav"
                     zf.writestr(path, wav)
                     manifest.append(
@@ -93,10 +107,10 @@ def export_voicelines(state, project_id: str, *, render_block_fn=None) -> bytes:
                             "line_id": lid,
                             "scene": scene.title,
                             "speaker": speaker.name if speaker else None,
-                            "text": block.text,
+                            "text": text,
                             "file": path,
                             "duration_s": round(_wav_duration_s(wav), 3),
-                            "text_hash": hashlib.sha256(block.text.encode()).hexdigest()[:16],
+                            "text_hash": hashlib.sha256(text.encode()).hexdigest()[:16],
                         }
                     )
             zf.writestr(
@@ -127,19 +141,19 @@ def _book_lexicon_id(scene_id: str) -> str | None:
         db.close()
 
 
-def _render_block_production(state, persona, block) -> bytes:
-    """One block → one WAV through the production render path.
+def render_block_take(state, persona, block, *, seed: int | None = None, use_cache: bool = True):
+    """One block → one rendered line (`render_core.RenderedLine`) through the
+    production render path — what a take keeps (Studio Slice 4).
 
-    The same resolver the chapter render uses (persona_render.plan_line,
-    2026-10-03): the persona's voice and model settings, the direction —
-    its standing delivery, emotion and the block's own — its language and
-    seed, its effects, and the book's lexicon then its own. Until then this
-    door sent the persona's raw delivery and dropped the direction, so a
-    Lines ↻, a take or the game export spoke differently from the chapter.
+    The same plan the chapter render uses (line_takes.plan_block, over
+    persona_render.plan_line, 2026-10-03): the persona's voice and model
+    settings, the direction — its standing delivery, emotion and the block's
+    own — the line's own numbers, its language and seed, its effects, and the
+    book's lexicon then its own. `seed` is ↻ New take's own; `use_cache=False`
+    renders past the cache ("↻ Re-render all").
     """
-    from .audio.wav import write_wav_container
     from .errors import bad_request
-    from .persona_render import plan_line
+    from .line_takes import plan_block
     from .render_core import render_line
 
     store_p = state.personas.get(persona.id) if persona is not None else None
@@ -149,12 +163,8 @@ def _render_block_production(state, persona, block) -> bytes:
             f"line {block.id} has no voice ({who}) — give every speaker a persona with a voice "
             f"before exporting"
         )
-    plan = plan_line(
-        state, store_p, text=block.text,
-        direction=getattr(block, "direction", None),
-        book_lexicon=_book_lexicon_id(block.scene_id),
-    )
-    rl = render_line(
+    plan = plan_block(state, store_p, block, book_lexicon=_book_lexicon_id(block.scene_id), seed=seed)
+    return render_line(
         state,
         voice=plan.voice,
         text=plan.text,
@@ -164,8 +174,19 @@ def _render_block_production(state, persona, block) -> bytes:
         lexicons=plan.lexicons,
         effects=plan.effects,
         cache_scope=f"scene:{block.scene_id}",
-        use_cache=True,
+        use_cache=use_cache,
     )
+
+
+def _render_block_production(state, persona, block) -> bytes:
+    """One block → one WAV through the production render path (the game
+    export, Lines ↻): `render_block_take`, as a WAV. Until 2026-10-03 this
+    door sent the persona's raw delivery and dropped the direction, so a
+    Lines ↻, a take or the game export spoke differently from the chapter.
+    """
+    from .audio.wav import write_wav_container
+
+    rl = render_block_take(state, persona, block)
     return write_wav_container(rl.pcm, rl.sample_rate, rl.channels)
 
 
@@ -174,7 +195,8 @@ def collect_block_specs(state, project_id: str):
     whole-project warm set for the scheduler (§7 of the 2026-08-08 plan).
     Returns [] the moment an unvoiced block appears: the export loop raises
     on that block, so warming past it would render audio the export never
-    reaches."""
+    reaches. Lines that ship their ★ take need no render and aren't warmed."""
+    from .line_takes import played_takes
     from .voice_model import model_key
 
     db = db_session.SessionLocal()
@@ -193,7 +215,10 @@ def collect_block_specs(state, project_id: str):
                 .order_by(Block.position)
                 .all()
             )
+            taken = played_takes(db, [b.id for b in blocks])
             for block in blocks:
+                if block.id in taken:
+                    continue
                 persona = persona_for_block(db, block)
                 voice = None
                 if persona is not None:

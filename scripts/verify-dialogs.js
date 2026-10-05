@@ -85,13 +85,13 @@ await go("#lexicons");
   // create + name + 1 entry + Save persists
   await page.locator(".jv-lib-toolbar button", { hasText: "+ New lexicon" }).click(); await page.waitForTimeout(300);
   await dlg().locator(".lex__field", { hasText: "Name" }).locator("input").fill("Verify Lexicon");
-  await dlg().locator(".lex__entry-grid input").nth(0).fill("Stillwater");
+  await dlg().locator(".lex__entry-grid input").nth(0).fill("Halvorn");
   await dlg().locator(".lex__entry-grid input").nth(2).fill("still-water");
   await dlg().locator("button", { hasText: /Add entry/ }).click(); await page.waitForTimeout(150);
   await dlg().locator("footer button", { hasText: /^Save$/ }).click(); await page.waitForTimeout(700);
   await shot("lexicons-3-saved");
   let lex = (await api.lexicons(page)).find((l) => l.name === "Verify Lexicon");
-  check("Lexicons: Save persists (lexicon + 1 entry)", !!lex && (lex.entries || []).length === 1 && lex.entries[0].grapheme === "Stillwater", lex ? `${(lex.entries || []).length} entries` : "not found");
+  check("Lexicons: Save persists (lexicon + 1 entry)", !!lex && (lex.entries || []).length === 1 && lex.entries[0].grapheme === "Halvorn", lex ? `${(lex.entries || []).length} entries` : "not found");
   check("Lexicons: dialog closed after Save", (await dlg().count()) === 0);
   // per-entry delete: discard on Cancel
   const row = page.locator("tbody tr", { hasText: "Verify Lexicon" }).first();

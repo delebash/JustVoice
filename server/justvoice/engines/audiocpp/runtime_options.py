@@ -12,6 +12,11 @@ Measured on Qwen3-TTS CustomVoice 1.7B, a 752-character line in 200-character pi
 9 % faster, a different take for the same seed; `conv_weight_type=f16` 492 MB less, the audio
 2.04 dB (log-spectral) from the 32-bit take — close. `mem_saver` changed nothing there, so it
 is not offered.
+
+Each option has the app's `default` (what a model loads with when nothing is set) and audio.cpp's
+own `runtime_default` (never sent). They differ for Decoder weights: the user could not tell 16-bit
+from 32-bit by ear (2026-10-04, a CustomVoice line at the same seed), so 16-bit is the default and
+is sent to every Qwen3 model unless 32-bit is chosen on its row.
 """
 
 from __future__ import annotations
@@ -28,6 +33,7 @@ OFFERED: dict[str, list[dict[str, Any]]] = {
             "label": "Attention",
             "choices": [("off", "Exact"), ("flash_attention", "Flash attention")],
             "default": "off",
+            "runtime_default": "off",
             "only_8bit": True,
             "hint": "Flash attention: about 9 % faster and 0.2 GB less at the peak; the same "
                     "seed gives a different take.",
@@ -35,10 +41,11 @@ OFFERED: dict[str, list[dict[str, Any]]] = {
         {
             "key": "qwen3_tts.conv_weight_type",
             "label": "Decoder weights",
-            "choices": [("f32", "32-bit"), ("f16", "16-bit")],
-            "default": "f32",
+            "choices": [("f16", "16-bit"), ("f32", "32-bit")],
+            "default": "f16",
+            "runtime_default": "f32",
             "only_8bit": False,
-            "hint": "16-bit: about 0.5 GB less at the peak; the audio changes very slightly.",
+            "hint": "16-bit: about 0.5 GB less at the peak than 32-bit; no difference heard.",
         },
     ],
 }
@@ -67,17 +74,27 @@ def saved_for(engine_id: str, variant_id: str) -> dict[str, str]:
     return dict((ov.runtime_options.get(variant_id) or {}) if ov else {})
 
 
+def chosen_for(engine_id: str, row: dict) -> dict[str, str]:
+    """Every option the row takes, at the value it loads with: what the user saved, else the
+    app's default. A value saved for an option the row no longer offers is dropped."""
+    saved = saved_for(engine_id, row["id"])
+    out: dict[str, str] = {}
+    for o in offered_for(row):
+        value = saved.get(o["key"])
+        out[o["key"]] = value if value in {c for c, _l in o["choices"]} else o["default"]
+    return out
+
+
 def session_options_for(engine_id: str, row: dict) -> dict[str, str]:
-    """The saved values this model still takes — the ones `_entries_for` passes at registration.
-    A value saved for an option the row no longer offers is dropped, never sent."""
-    offered = {o["key"]: o for o in offered_for(row)}
-    return {k: v for k, v in saved_for(engine_id, row["id"]).items()
-            if k in offered and v in {c for c, _l in offered[k]["choices"]}}
+    """What `_entries_for` passes at registration: each chosen value that isn't audio.cpp's own
+    default (16-bit Decoder weights is sent unless 32-bit is chosen)."""
+    runtime_default = {o["key"]: o["runtime_default"] for o in offered_for(row)}
+    return {k: v for k, v in chosen_for(engine_id, row).items() if v != runtime_default[k]}
 
 
 def validate(row: dict, values: dict[str, str]) -> dict[str, str]:
-    """`values` checked against what the row offers; the defaults dropped (nothing set = the
-    runtime's own default). Raises ValueError naming the first bad key or value."""
+    """`values` checked against what the row offers; values at the app's default dropped (nothing
+    saved = the default). Raises ValueError naming the first bad key or value."""
     offered = {o["key"]: o for o in offered_for(row)}
     out: dict[str, str] = {}
     for key, value in values.items():
@@ -94,8 +111,8 @@ def validate(row: dict, values: dict[str, str]) -> dict[str, str]:
 
 def describe(engine_id: str, row: dict) -> list[dict[str, Any]]:
     """The row's offered options with their current values — the model row reads this."""
-    saved = session_options_for(engine_id, row)
+    chosen = chosen_for(engine_id, row)
     return [{"key": o["key"], "label": o["label"], "hint": o["hint"], "default": o["default"],
              "choices": [{"value": c, "label": lbl} for c, lbl in o["choices"]],
-             "value": saved.get(o["key"], o["default"])}
+             "value": chosen[o["key"]]}
             for o in offered_for(row)]

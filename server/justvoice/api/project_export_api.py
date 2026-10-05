@@ -122,6 +122,7 @@ async def export_project(
                         "description": sp.description,
                         "persona_id": sp.persona_id,
                         "role_label": sp.role_label,
+                        "pronouns": sp.pronouns,
                     },
                     indent=2,
                 ),

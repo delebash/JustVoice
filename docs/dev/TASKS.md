@@ -1665,6 +1665,73 @@ OPEN:   the Personas work FIRST (decided 2026-10-03, "we need to do the persona 
 GO:     given 2026-09-27 for Slices 1 + 2 and decisions 1-6 | needed for 3, 4, 5
         Slice 3 was re-thought on 2026-09-28 — see the next item.
 
+### Stillwater leaves the app — The Ninth Facet is the one example book (decided 2026-10-04)
+STATE:  DECIDED 2026-10-04 — the user: "why are you using still water that should not be used we
+        replaced with nineth facuet remove stillwater completly from app", then "1 go 2 your rec"
+        on the plan as shown: search the whole repo for every occurrence and show the list;
+        replace each with The Ninth Facet's real material (its chapters and its people); delete
+        `testdata/stillwater.epub` if nothing else needs it and point any test that uses it at The
+        Ninth Facet; rebuild the Render mock on The Ninth Facet. 2 — the frozen HTML mock in
+        `docs/plans/mock/` is left untouched ("leave it frozen").
+BUILT:  2026-10-04, committed with Slice 4 — the user docs (ai-features, CONCEPTS, code-map,
+        personas, studio), the renderer (usePageCrumbs, ImportReviewView, LexiconsView,
+        PersonasView and two vitest files), `scripts/preview_shots.js` and `verify-dialogs.js`,
+        13 server test files, `testdata/stillwater.epub` + its README deleted (nothing else used
+        it), and the Render mock rebuilt on The Ninth Facet (`src/mock/renderMock.js`,
+        `ninthFacetScript.json`). Records that keep the name as history: `docs/plans/*`, this
+        file's older entries, the frozen HTML mock.
+OPEN:   none.
+GO:     given 2026-10-04 ("1 go 2 your rec")
+
+### Studio Slice 4 — Render owns direction, takes, Gen and Compare (decided 2026-10-04)
+STATE:  DECIDED 2026-10-04 — the user: "your rec on all go code it all", on the seven decisions
+        as shown (research: `docs/plans/2026-09-30-mock-vs-app-and-slice-4.md` §3; D8 was answered
+        2026-10-03, personas first — built):
+        D1 · Pauses between lines — "keep the one global pause; the footer goes from the mock."
+        D2 · "Spoken by" per line — "no. The voice stays a read-only chip with 'Change in Cast',
+        as the redesign doc says."
+        D3 · A per-line number override (pace, pitch, gain, pause after), behind a closed "⚙
+        Override the numbers for this line" hatch — "yes, in Slice 4, stored with the line's
+        existing pause-after setting so no data reset is needed."
+        D4 · What the chapter plays — "the line's ★ chosen take is what the chapter plays and
+        exports; lines with no take render as today. That changes export, ACX check and
+        captions." And "a lexicon edit or a line change marks lines stale, and you choose when
+        to re-render, as the mock says. Today they just render again at the next chapter render."
+        D5 · Render's shape — "a chapter grid, today's table moved onto the kit's table, that
+        opens one chapter's line page, the way Script does. Keep Lines, Rendered, ▶ Render and
+        the ACX check per chapter; drop 'Cached' and 'Render preset'."
+        D6 · Scenes and presets — "the scene layer comes later, not in Slice 4. Slice 4 drops the
+        Render preset column, and Slice 5 (deleting presets everywhere, already ruled) follows
+        right after."
+        D7 · Adding, renaming, moving and deleting chapters — "on Script's chapter grid: '＋ Add
+        chapter', and Rename · Move · Delete on each row."
+        And the order as shown: "draw Slice 4's Render screen as an in-app mock first, per your
+        2026-10-04 rule, then write the build plan with its blast-radius table" — with the go to
+        code it all. Carried (decided earlier): Rewrite in character moves to Render's line panel
+        and Script's right-click is deleted; the old Chapters page (`ChapterView.vue`, `/chapter`)
+        is deleted; "📕 Pronunciation" opens the book's lexicon (made if none); states use §8.16's
+        words. Tests run once all of Slice 4's code is written (the user, 2026-10-04: "dont run
+        test util slice is done").
+BUILT:  the in-app mock — `#/mock/render` (the chapter grid), `#/mock/render/c1` (a chapter's lines),
+        `#/mock/script` (D7), files `src/mock/MockStudioView.vue`, `MockRenderGrid.vue`,
+        `MockRenderChapterView.vue`, `MockScriptGrid.vue`, `renderMock.js`; the plan with its blast
+        radius: `docs/plans/2026-10-04-slice-4-render.md`.
+        The gaps G1–G10: DECIDED 2026-10-04 — "your rec go", on the leans as shown (pasted
+        verbatim in the plan §5).
+BUILT:  2026-10-04 — the plan's §3, plus the three sites in its "found while building" table —
+        `line_takes.py`, `api/render_lines_api.py`, `components/StudioRender.vue` +
+        `StudioRenderChapter.vue`, `services/renderRun.js`; ChapterView, its route, rail item and
+        `stores/takes.js` deleted; Script's grid gained D7; docs (studio, lexicons, effects, lines,
+        core-concepts, generate, getting-started, ai-features, keyboard-shortcuts, personas,
+        whats-new; chapter.md and take-versioning.md deleted); RESEARCH §3 rewritten. Tested:
+        server 1106 passed (new `tests/test_line_takes.py`), vitest 136, Biome, build, smoke 15/15
+        on the running app; live through the app with a throwaway book (removed after): states,
+        takes with audio, override → stale, New take, ★ an old take → stale, the chapter playing a
+        stale take's words, the book lexicon, and a deleted book's take files gone.
+OPEN:   your look at Render in the app (it has nothing to render until the book is analyzed
+        and cast).
+GO:     given 2026-10-04 ("your rec on all go code it all")
+
 ### Studio Slice 3 — Script, redesigned against the 09-28 measurements (mock first)
 STATE:  DECIDED 2026-09-28. The user asked "think on the design again … is there feature
         functionality missing for the script processor better ui?"; the review was presented;
@@ -2142,34 +2209,28 @@ CHECKED: P9's two checks (2026-10-04) — JustWrite's `pronouns` is dropped on i
         radius: `docs/plans/2026-09-30-voice-gender-and-pronouns.md` §3. Also fixed: Cast's
         Smart-assign sent the voice's stored gender and the persona's saved language — now
         the shared gender answer and the language it speaks (`p.speaks`).
-OPEN:   P9's build — waits on the user: the `pronouns` column needs a data reset.
-GO:     given 2026-10-03 for P1–P8 and P9's checks; P9's data reset asks first
-
-### FINDING — after a model swap, speech recognition stays booked and every transcription is refused
-STATE:  FINDING — seen live 2026-10-04 running the persona build's tag check (P8), mechanism
-        read in the code. Record: `docs/plans/2026-10-04-turbo-tag-check.md` "Found on the way".
-WHY:    loading Chatterbox Nano after Turbo restarted the shared audio.cpp process (runtime
-        pid 20228 → 24428), which took the resident speech recogniser down with it (memory in
-        use 5154 → 1625 MB). The arbiter kept `stt:asr` booked at 2756 MB, and from then on
-        every `POST /v1/transcribe` was refused — "not enough memory to load asr: it needs
-        ~4752 MB (+1024 MB safety margin) but only 5436 MB free of 8192 MB (measured, minus
-        what is booked) remain. Resident: stt:asr (2756 MB)" — with 677 MiB really in use.
-        `POST /v1/engines/unload {"kind":"stt"}` didn't clear it. In the code:
-        `manager._admit_memory` prices against the ledger (`free = total − max(used,
-        committed)`), and `make_room(…, exclude="stt:asr")` never evicts the booking of the
-        engine being loaded, so a stale booking under the same key can never go. Dictation
-        and Captures use the same door (`captures_api.ensure_stt_loaded`). Only an app
-        restart cleared it.
-        Second, seen once: the first Turbo load was refused 0.6 s after the arbiter began
-        evicting the language model ("evict LRU gemma-4-26b-a4b-qat (llm, 6825 MB) — loading
-        chatterbox" → "only 4101 MB free"); a retry seconds later loaded. The manager already
-        waits up to 4 s for an eviction to drain, so which path refused needs reading first.
-OPEN:   both — the fix needs a go (likely: when a runtime restart drops a co-resident
-        model, release its booking; and/or let `make_room` clear a stale booking of the
-        engine being loaded).
-        Root cause and every trigger (2026-10-04 audit): the stale booking is
-        `docs/plans/2026-10-04-audiocpp-switch-audit.md` §5 C1–C2 (any first download
-        restarts the shared process, not only a model swap); the refused first load is §5 B2.
+DECIDED: 2026-10-04. On "what's next" the user answered, without a go: "1 persona page is good,
+        voices pages is good, what is casts persoan list. 2 data is reset you can test 3 what is
+        this? your rec on others" — the persona page and the Voices page approved as built. (I
+        took that as a go and coded P9 before being stopped — "i did not give a go on coding";
+        the work was kept uncommitted, "a".) The listening verdicts: "1 no it changes persons on
+        the 200 slightly 2 person changes 3 no difference 4 cant tell a difference". Then the go:
+        "your rec on all and all previous go code" — on the recs as shown: 16-bit decoder
+        weights the default for Qwen3; the four verdicts recorded and the listening item closed;
+        and the earlier recommendation "1, then 2 and 6, then Slice 4's decisions": P9's build as
+        proposed in `docs/plans/2026-09-30-voice-gender-and-pronouns.md` §3, a live re-check that
+        closes the speech-recognition booking FINDING, then Slice 4's D1–D8 put to the user.
+BUILT:  2026-10-04 — P9: a speaker's Pronouns (he/him · she/her · they/them · it/its · not set) on
+        Cast's selected-speaker card, the speakers API, a JustWrite import (the sheet's free text
+        mapped onto the four; anything else unset), Script's Analyze and Smart-assign (their
+        existing slots), and the project export. The dev database got the column by a one-off
+        ALTER TABLE (the user's reset predated it; no migration in code). Checked live on the
+        real Cast page: picking she/her saved it on the server, Not set cleared it; no JS errors.
+        Also closed under the same go: the FINDING "after a model swap, speech recognition stays
+        booked" — re-checked live: two speech-model swaps left the recognition process (pid
+        2984) and its single booking alone, and every transcription read back word for word.
+OPEN:   none — the persona redesign (P1–P9) is built.
+GO:     given 2026-10-03 for P1–P8 and P9's checks; 2026-10-04 for P9's build
 
 ### audio.cpp switch audit: Qwen3's memory is line length, plus 13 ranked findings and 5 design changes
 STATE:  FINDING — audited 2026-10-04 at the user's word ("do a deep audit and recommend
@@ -2262,9 +2323,8 @@ BUILT:  2026-10-04 — step 1 (eSpeak NG reaches Kokoro and KittenTTS; Linux fin
         audit §13.5.
 OPEN:   (`model_management`, Qwen3's memory fixes and every later feature reach a packaged app
         with v0.9.0-jv.4, published and pinned 2026-10-05; E2's placeholders retargeted with it.)
-        The user's ear on the listening files: description
-        voices' split size (VoiceDesign, VoxCPM2 descriptions), the clone trim, Qwen3's
-        16-bit decoder weights (measured: audit §13.4).
+        (The listening files, heard 2026-10-04 — "1 no it changes persons on the 200 slightly 2 person changes 3 no difference 4 cant tell a difference": description voices stay whole,
+        the clone trim stays, 16-bit decoder weights became Qwen3's default — audit §13.6.)
 DECIDED: 2026-10-04, after step 5 — the user: "your rec all go" on the three as shown:
         1 "The audio.cpp release tag. A packaged app gets runtime-side model registration,
         Qwen3's memory fixes and every feature after jv.1 only with that release. The release

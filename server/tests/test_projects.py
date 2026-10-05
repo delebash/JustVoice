@@ -60,7 +60,7 @@ def test_cast_assignment(db_session):
 def test_project_metadata_json_round_trip(db_session):
     """Per-type metadata (author/title for audiobook) survives a round-trip."""
     p = Project(
-        name="The Stillwater Heist",
+        name="The Ninth Facet",
         project_type="audiobook",
         metadata_json=json.dumps({"author": "D. Nash", "isbn": "978-..."}),
         mastering_preset="acx",

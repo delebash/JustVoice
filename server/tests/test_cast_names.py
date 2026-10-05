@@ -22,7 +22,7 @@ def client(tmp_path):
 
 
 def _project(client, kind: str = "audiobook") -> str:
-    r = client.post("/v1/projects", json={"name": "Stillwater", "project_type": kind})
+    r = client.post("/v1/projects", json={"name": "The Ninth Facet", "project_type": kind})
     assert r.status_code == 201, r.text
     return r.json()["id"]
 

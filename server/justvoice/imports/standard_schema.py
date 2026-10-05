@@ -43,6 +43,9 @@ class StandardCharacter(BaseModel):
     # Other names the source knows them by (JustWrite `aliases`) — become the
     # persona's aliases.
     aliases: list[str] = []
+    # "he/him" | "she/her" | "they/them" | "it/its", or None — the speaker's Pronouns
+    # (JustWrite's character sheet `pronouns`, persona build P9).
+    pronouns: str | None = None
 
 
 class StandardLine(BaseModel):

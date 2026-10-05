@@ -125,8 +125,8 @@ Deleting a book deletes its speakers.
   speaker's line count.
 - **One persona can play many speakers** ("Two speakers can share one persona —
   change it once and both change"), and **one voice can back many personas**,
-  with different delivery on each (`CONCEPTS.md` §2's *"Old Crow voices Tom
-  Harlan in Stillwater and Guard Captain Hale in Emberfall"*).
+  with different delivery on each (`CONCEPTS.md` §2's *"Old Crow voices Brick
+  Halvorn in The Ninth Facet and Guard Captain Hale in Emberfall"*).
 - **Personas are library-level for persistence** — book 2 casts book 1's
   personas and they sound identical; the same persona can speak in an audiobook
   and a game.
@@ -665,9 +665,19 @@ Discover's known list). Test this before blaming a model for poor attribution.
 
 ## 5. Render — the path and the cascade
 
-- **Single line:** `POST /v1/blocks/{block_id}/render` (`takes_api.py`) and
-  `POST /v1/generate`.
-- **Chapter:** `POST /v1/render_chapter` (`render_chapter_api.py`).
+- **Single line:** `POST /v1/blocks/{block_id}/render` (`takes_api.py`; body
+  `{new_take}` rolls a seed) and `POST /v1/generate`.
+- **Chapter:** `POST /v1/render_chapter` (`render_chapter_api.py`). Scene mode
+  plays each line's ★ take where it has one (`render_scene_lines`), the rest
+  through the cache — so do the M4B, ACX QC and captions (Studio Slice 4).
+- **Takes and line states** (Studio Slice 4, `docs/plans/2026-10-04-slice-4-render.md`):
+  `line_takes.py` is the rule — a take keeps its audio, seed and inputs key
+  (`render_core.line_inputs_key`, the cache key); stale = the key now ≠ the ★
+  take's; the line's own numbers live in its metadata (`plan_block` sends them
+  as `plan_line`'s request); `sweep_orphan_takes` removes a deleted take's
+  generation and file. `render_jobs.persist_block_take` is the one writer.
+  `api/render_lines_api.py`: `GET/POST /v1/scenes/{id}/render_lines`,
+  `GET /v1/projects/{id}/render_state`, `POST /v1/projects/{id}/lexicon`.
 - **Who voices a line:** line → speaker → persona → voice, everywhere —
   `_speaker_helpers.persona_for_block` for `render_jobs`, `takes_api` and
   `export_voicelines`; `render_chapter_api` resolves the same chain from the
@@ -919,7 +929,6 @@ exposes queue depth or the current engine.**
 |---|---|---|
 | `StudioView` | ~1440 (2026-09-29) | The production steps' container. Cast moved out to `components/StudioCast.vue` with the speakers/personas split (it was 3132 lines with the old Cast and its voice library inside). See below. |
 | `SettingsView` | 2099 | Workspace focus · connection · headless access · tokens · data location · disk · server bind · cache · limits · local model paths · generation pipeline (incl. the default voice language) · testing/danger zone |
-| `ChapterView` | 1481 | The chapter **list** (columns **Chapter · Words · Est. audio · Script · Render**, filter chips, add/move/rename/delete, *Open in Studio ➜*) **and** the per-chapter block editor with takes (`＋ Generate first take`, set-default, regenerate, delete take) |
 | `VoicesView` | ~1000 | The voice library — only that since 2026-10-04 (voices are made on a persona's page, see §1). Columns **Name · Gender · Type · Model · Speaks · Can be directed · Used by · ⋯** (2026-10-03, persona build P6); ⋯ = New persona from this voice · Copy to another model… (`POST /v1/voices/{id}/copy`) · Delete. Filters: engine, language, gender, can be directed, type |
 | `GenerateView` | 1282 | One-off synth: voice, text, seed + randomize, **delivery overlay**, insert tag, Rewrite, Compose, lexicon view, and a **history** of takes/favorites/retry |
 | `ProjectsView` | 950 | Project list (**Project · Kind · Structure · Last opened**) + detail expansion with scenes (**# · Title · Blocks · Duration · Status**), `＋ Add personas`, *Open in Studio ➜* |
@@ -959,17 +968,18 @@ active project so the title-bar switcher works while Studio is on screen.
 
 | Step | Where | What it is |
 |---|---|---|
-| **Overview** | `components/StudioOverview.vue` | Where-it-stands rows (`views/studioStatus.js`, pure + tested — counts from blocks, cast, the render cache and Script's grid rows; Script's two tags open the grid on "To check"), Continue, settings (title, author → M4B artist, description, kind, mastering target), re-import, .justvoice.zip, delete |
+| **Overview** | `components/StudioOverview.vue` | Where-it-stands rows (`views/studioStatus.js`, pure + tested — counts from blocks, cast, the render state and Script's grid rows; Script's two tags open the grid on "To check"), Continue, settings (title, author → M4B artist, description, kind, mastering target), re-import, .justvoice.zip, delete |
 | **Discover** | `components/StudioDiscover.vue` | Chapter grid (Found column) + Scan + Speakers found (status per person, chips All · New · In the cast · Ignored; Add / Ignore / Undo; In-the-cast rows *already in the cast* + Remove from cast; ticks → ＋ Add / Ignore / Remove N selected); Ignored and Already-in-the-cast each have a ✕ per name and Clear all (the cast's keeps the Narrator); every removal asks first |
 | **Cast** | `components/StudioCast.vue` | Speakers left (narrator card, cards with *also called*, Narrator tick, ✕ asks first, the ⚠ language-mismatch line against `project.language`; a game project gets a table), the selected speaker's Name / Also called / Who they are / *Edit their persona →*; personas right (search, model / can be directed / language filters, the server's `model_name` · `speaks` · `directed_by`, ▶ plays the persona via `auditionPersona`, ✎, ＋ New persona → `/personas/new?project=&for=` and back assigned), click to assign; ＋ Add · ✕ Clear cast · ✨ Smart-assign |
-| **Script** | `components/StudioScript.vue` (the chapter grid) · `components/StudioScriptChapter.vue` (one chapter) | The grid reads `GET /v1/projects/{id}/script` (Studio owns the fetch; Overview reads the same rows) and queues Analyze on `services/chapterRun.js` — one run of chapters per project, one kit task per chapter, module state so it survives leaving Studio. The chapter page reads `GET /v1/scenes/{id}/script` and re-reads after every change; its selection, keys, set / swap / confirm and undo stack are `views/scriptReview.js` (pure, unit-tested). Rewrite-in-character is still StudioView's modal, opened by the page's right-click (`@rewrite`) until Slice 4 moves it to Render |
+| **Script** | `components/StudioScript.vue` (the chapter grid) · `components/StudioScriptChapter.vue` (one chapter) | The grid reads `GET /v1/projects/{id}/script` (Studio owns the fetch; Overview reads the same rows) and queues Analyze on `services/chapterRun.js` — one run of chapters per project, one kit task per chapter, module state so it survives leaving Studio. The chapter page reads `GET /v1/scenes/{id}/script` and re-reads after every change; its selection, keys, set / swap / confirm and undo stack are `views/scriptReview.js` (pure, unit-tested). The grid also adds, renames, moves and deletes chapters and pastes a new chapter's text (D7, 2026-10-04) |
+| **Render** | `components/StudioRender.vue` (the chapter grid) · `components/StudioRenderChapter.vue` (one chapter's lines) | The grid reads `GET /v1/projects/{id}/render_state` (Studio owns the fetch; its step card and Overview read it) and runs chapters through `services/renderRun.js` (a render job for the ready lines, then `/v1/render_chapter`), ACX QC, the Render-stopped dialog. The line page reads `GET /v1/scenes/{id}/render_lines`: direction, the ⚙ numbers (`PATCH /v1/blocks/{id}` `line_override`), takes (`/v1/takes/*`), Compare, Rewrite in character, 📕 Pronunciation |
 | **Lines** (game) | `views/LinesView.vue` embedded with `:project-id` | the line grid, its own project picker hidden |
 
 | Step | Subtitle in the tab strip | What it does |
 |---|---|---|
-| **Script** | *"Who speaks each line"* | The chapter grid (**Lines · Analyzed · Book says · AI decided · Flagged · No speaker**), then a chapter's table **Speaker · Decided by · Text · Confidence · Check**. Right-click a line's text → Rewrite preview |
+| **Script** | *"Who speaks each line"* | The chapter grid (**Lines · Analyzed · Book says · AI decided · Flagged · No speaker**, ＋ Add chapter, ⋯ Rename · Move · Delete), then a chapter's table **Speaker · Decided by · Text · Confidence · Check** |
 | **Cast** | *"Give each speaker a persona"* | Speaker cards + a **Personas** panel (*"Select a speaker, then click a persona to assign it."*). Actions: `＋ Add` (a speaker by name) · `✕ Clear cast` (*"Unassign personas from all N speakers. The speakers stay — only the persona links go."*) · `✨ Smart-assign` (applies at once). Game kind shows a table instead: **Speaker · Role · Persona** |
-| **Render** | *"Batch render + mastering"* | Table **# · Cached · Check**. Select unrendered / Select all · Render · Cancel · Retry · Play · **Run ACX QC** |
+| **Render** | *"Every line's audio, and each chapter joined and mastered"* | The chapter grid **Lines · Rendered · Check · ▶ Render · Open** (Select unrendered · Run ACX QC · ▶ Render N), then a chapter's lines **Speaker · Text · How it's said · Status · Audio** with a line panel (Spoken by, ⚙ numbers, 📕 Pronunciation, ✏️ Rewrite, Takes) |
 | **Export** | *"Package + ACX checklist"* | Packaging (described in-code as a mock export screen) |
 
 ### Pinia stores
@@ -1022,9 +1032,8 @@ Verified 2026-08-15/16. **None of it is fixed.** Also filed in `TASKS.md`.
    2026-10-03** with render presets ("presets die").
 6. **The synth scheduler has no UI** — see §5.
 7. **The analyze prompt gets id, name and aliases only** — see §4.
-8. **ChapterView offers "Generate first take" on speaker-less blocks** and prints
-   raw block UUIDs (`b0e22b69`) at the user — the render path refuses a block
-   with no speaker, so the button cannot work.
+8. ~~**ChapterView offers "Generate first take" on speaker-less blocks.**~~
+   **GONE 2026-10-04** with the Chapters page (Studio Slice 4).
 9. **`StudioView.vue:257`'s step-order comment is stale** — see §6.
 10. ~~**`Delivery.pitch` is dead.**~~ **FIXED 2026-08-17.** No engine read it
     and the host never applied it, so every pitch slider in the app did

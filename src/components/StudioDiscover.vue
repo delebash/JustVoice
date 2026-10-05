@@ -408,7 +408,7 @@ async function ignore(c) {
 
         <div v-if="!scenes.length" class="jv-banner">
           No {{ chapterWord.plural.toLowerCase() }} yet — add or import them in
-          <a href="#chapter">{{ chapterWord.plural }}</a> first.
+          <a href="#studio" @click.prevent="emit('go', 'script')">Script</a> first.
         </div>
         <template v-else>
           <UiTable class="jv-table-look studio-discover__grid" :data="scenes" :columns="GRID_COLUMNS" data-key="id">

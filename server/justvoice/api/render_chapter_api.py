@@ -26,10 +26,11 @@ from ..database import session as _db_session
 from ..database.session import SessionLocal
 from ..errors import bad_request, internal, not_found
 from ..extraction.tags import left_out_blocks
+from ..line_takes import is_marker, plan_block, played_takes
 from ..mastering import have_ffmpeg, master, master_to_wav, resolve_master_target
 from ..models import ChapterLine, Delivery, RenderChapterRequest
-from ..persona_render import plan_line
 from ..render_core import (
+    RenderedLine,
     concat_lines,
     probe_line_cached,
     render_line,
@@ -50,39 +51,9 @@ log = logging.getLogger(__name__)
 router = APIRouter(tags=["generation"])
 
 
-def _is_marker(block) -> bool:
-    """A podcast music/ad direction line. Speaker-less by design — every
-    attribution check has to skip them (ChapterView.vue:586 does the same
-    read), or an episode with one reads as permanently unattributed."""
-    if not block.metadata_json:
-        return False
-    try:
-        return bool(json.loads(block.metadata_json).get("marker"))
-    except ValueError:
-        return False
-
-
-def _block_pause_after(block) -> int | None:
-    """The imported `pause_after_ms` for this block, if it has one.
-
-    Every import adapter parses `pause_after_ms` (CSV, SRT gaps, Audacity
-    labels) and `standard_schema.Line` carries it, but materialisation used to
-    drop it on the floor — a documented import field that reached nothing.
-    It lives on the block's metadata rather than in a new column so that
-    honouring it needs no schema change.
-    """
-    if not block.metadata_json:
-        return None
-    try:
-        raw = json.loads(block.metadata_json).get("pause_after_ms")
-    except ValueError:
-        return None
-    if raw is None:
-        return None
-    try:
-        return max(0, int(raw))
-    except (TypeError, ValueError):
-        return None
+# A podcast music/ad direction line — speaker-less by design, so every
+# attribution check skips it (line_takes.is_marker).
+_is_marker = is_marker
 
 
 def _resolve_scene_to_lines(
@@ -117,6 +88,9 @@ def _resolve_scene_to_lines(
     project has Overview's "Leave out dialogue tags" on (2026-09-30,
     extraction/tags.py) — here, so chapter audio, the M4B export and the
     captions all leave out the same lines.
+
+    Each line carries its `block_id`, so the chapter plays the line's ★ take
+    when it has one (Studio Slice 4, D4) — `render_scene_lines`.
 
     Raises if the scene has no blocks.
     """
@@ -184,29 +158,23 @@ def _resolve_scene_to_lines(
                 log.debug("scene resolve: block %s has no voice — excluded", block.id)
                 continue
 
-            # The ONE resolver every render path shares (persona_render.py,
-            # 2026-10-03): the persona's voice and its model, its delivery
-            # with that model's own settings (emotion or tags, knobs, seed),
-            # the direction composed most specific last — a clip-less
-            # designed voice's description, the persona's standing delivery,
-            # its emotion, then this line's own `Block.direction` — its
-            # language, its effects, and the book's lexicon then its own.
-            # Until then this door built its own copy, and a line's re-render
-            # built a different one.
-            plan = plan_line(
-                st, persona, text=block.text,
-                direction=block.direction, book_lexicon=book_lexicon,
-            )
+            # The ONE plan every render path shares (line_takes.plan_block over
+            # persona_render.plan_line, 2026-10-03): the persona's voice and
+            # its model, its delivery with that model's own settings (emotion
+            # or tags, knobs, seed), the direction composed most specific last
+            # — a clip-less designed voice's description, the persona's
+            # standing delivery, its emotion, then this line's own
+            # `Block.direction` — its language, its effects, and the book's
+            # lexicon then its own. Until then this door built its own copy,
+            # and a line's re-render built a different one.
+            #
+            # The line's own numbers (Slice 4's ⚙ hatch) sit on top and win —
+            # pace, pitch, gain and the pause after it. The pause is the
+            # `pause_after_ms` every import adapter writes (documented in
+            # docs/import-and-export.md); concat_lines applies it. Until
+            # 2026-10-04 a persona's own pause won over a line's (G7).
+            plan = plan_block(st, persona, block, book_lexicon=book_lexicon)
             delivery = dict(plan.delivery)
-
-            # Per-line silence. Imports carry `pause_after_ms` (documented in
-            # every adapter and in docs/import-and-export.md) and it is kept on
-            # the block's metadata; the persona's own pause_before/pause_after
-            # win when set. concat_lines applies these — before 2026-08-17 it
-            # used one fixed project gap and these values did nothing.
-            block_pause = _block_pause_after(block)
-            if block_pause is not None and delivery.get("pause_after") is None:
-                delivery["pause_after"] = block_pause
 
             lines.append(
                 ChapterLine(
@@ -217,6 +185,7 @@ def _resolve_scene_to_lines(
                     seed=plan.seed,
                     effects=plan.effects or None,
                     lexicons=plan.lexicons or None,
+                    block_id=block.id,
                 )
             )
 
@@ -260,6 +229,79 @@ def _resolve_scene_to_lines(
         return lines
     finally:
         db.close()
+
+
+def _line_kwargs(line: ChapterLine, cache_scope: str, request_lexicons: list[str] | None = None) -> dict:
+    """render_line's arguments for one chapter line."""
+    return dict(
+        voice=line.voice,
+        text=line.text,
+        language=line.language,
+        delivery=line.delivery.model_dump(exclude_none=True) if line.delivery else None,
+        seed=line.seed,
+        lexicons=_lexicons_for(line, request_lexicons),
+        effects=line.effects,
+        cache_scope=cache_scope,
+        use_cache=True,
+    )
+
+
+def _takes_for(lines: list[ChapterLine]) -> dict:
+    """{block_id: generation} — the lines that play their ★ take (D4)."""
+    ids = [line.block_id for line in lines if line.block_id]
+    if not ids:
+        return {}
+    db = _open_db()
+    try:
+        gens = played_takes(db, ids)
+        # Detached copies: read after this session closes.
+        return {bid: (g.id, g.audio_path, g.text) for bid, g in gens.items()}
+    finally:
+        db.close()
+
+
+def _take_line(line: ChapterLine, audio_path: str) -> RenderedLine | None:
+    """A line's ★ take as a rendered line, its pauses from the line as it is now
+    (they join takes; they are not in them)."""
+    from ..line_takes import read_take_wav
+
+    got = read_take_wav(audio_path)
+    if got is None:
+        return None
+    pcm, sr, ch = got
+    delivery = line.delivery.model_dump(exclude_none=True) if line.delivery else {}
+    return RenderedLine(pcm=pcm, sample_rate=sr, channels=ch, effective_delivery=delivery)
+
+
+async def render_scene_lines_async(st, lines: list[ChapterLine], kwargs: list[dict]) -> list[RenderedLine]:
+    """The chapter's lines as audio: a line's ★ take where it has one, the rest
+    rendered as before — through the cache, warmed model by model first."""
+    takes = _takes_for(lines)
+    played: dict[int, RenderedLine] = {}
+    for i, line in enumerate(lines):
+        if line.block_id in takes:
+            rl = _take_line(line, takes[line.block_id][1])
+            if rl is not None:
+                played[i] = rl
+    await warm_lines(st, [kw for i, kw in enumerate(kwargs) if i not in played])
+    return [played[i] if i in played else render_line(st, **kw) for i, kw in enumerate(kwargs)]
+
+
+def render_scene_lines(st, lines: list[ChapterLine], kwargs: list[dict]) -> list[RenderedLine]:
+    """`render_scene_lines_async` for the synchronous callers (export, QC, captions)."""
+    takes = _takes_for(lines)
+    out = []
+    for line, kw in zip(lines, kwargs):
+        rl = _take_line(line, takes[line.block_id][1]) if line.block_id in takes else None
+        out.append(rl if rl is not None else render_line(st, **kw))
+    return out
+
+
+def played_texts(lines: list[ChapterLine]) -> list[str]:
+    """What each line says in the chapter's audio — a take's own words where the
+    line plays one (a stale take still says its old words). Captions read it."""
+    takes = _takes_for(lines)
+    return [takes[line.block_id][2] if line.block_id in takes else line.text for line in lines]
 
 
 def _lexicons_for(line: ChapterLine, request_lexicons: list[str] | None = None) -> list[str]:
@@ -441,25 +483,10 @@ async def render_chapter(req: RenderChapterRequest) -> Response:
     # voices need different models (a Turbo clone, a Qwen3 speaker, a
     # Kokoro narrator) renders model by model, one swap each — until
     # 2026-10-03 a cast mixing Qwen3's three checkpoints was refused.
-    line_kwargs = [
-        dict(
-            voice=line.voice,
-            text=line.text,
-            language=line.language,
-            delivery=line.delivery.model_dump(exclude_none=True) if line.delivery else None,
-            seed=line.seed,
-            lexicons=_lexicons_for(line, req.lexicons),
-            effects=line.effects,
-            cache_scope=cache_scope,
-            use_cache=True,
-        )
-        for line in lines
-    ]
-    await warm_lines(st, line_kwargs)
-
-    rendered = []
-    for kw in line_kwargs:
-        rendered.append(render_line(st, **kw))
+    line_kwargs = [_line_kwargs(line, cache_scope, req.lexicons) for line in lines]
+    # Scene mode plays each line's ★ take where it has one (Studio Slice 4,
+    # D4); direct-mode lines carry no block and render as before.
+    rendered = await render_scene_lines_async(st, lines, line_kwargs)
 
     gap = req.between_lines.silence_ms
     if gap is None:
@@ -517,7 +544,8 @@ async def render_chapter(req: RenderChapterRequest) -> Response:
 def render_scene_to_wav(st, scene_id: str, *, strict: bool = True, master: bool = True) -> bytes:
     """Scene → chapter WAV bytes for audiobook assembly and ACX QC.
 
-    Same resolution + render path as scene-mode /v1/render_chapter. The
+    Same resolution + render path as scene-mode /v1/render_chapter: each
+    line's ★ take where it has one, the rest rendered through the cache. The
     project's mastering target is applied here, in the WAV domain, because
     both callers need it: the .m4b export ships this audio (one AAC
     generation at the mux, not a master-then-remux pair), and ACX QC has to
@@ -532,21 +560,9 @@ def render_scene_to_wav(st, scene_id: str, *, strict: bool = True, master: bool 
     make it useless for the entire middle of a production.
     """
     lines = _resolve_scene_to_lines(scene_id, st, strict=strict)
-    rendered = []
-    for line in lines:
-        rl = render_line(
-            st,
-            voice=line.voice,
-            text=line.text,
-            language=line.language,
-            delivery=line.delivery.model_dump(exclude_none=True) if line.delivery else None,
-            seed=line.seed,
-            lexicons=_lexicons_for(line),
-            effects=line.effects,
-            cache_scope=f"scene:{scene_id}",
-            use_cache=True,
-        )
-        rendered.append(rl)
+    # Each line's ★ take where it has one (Studio Slice 4, D4) — what the
+    # chapter plays is what ships and what QC measures.
+    rendered = render_scene_lines(st, lines, [_line_kwargs(line, f"scene:{scene_id}") for line in lines])
     # The same gap Studio's Render uses (was a hardcoded 600 until 2026-09-29).
     combined = concat_lines(rendered, silence_ms=st.settings.get().generation.pause_between_lines_ms)
     target = _scene_master_target(scene_id, None)[0] if master else None

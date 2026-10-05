@@ -2,7 +2,10 @@
 """/v1/takes — per-block take versioning for the audiobook re-roll workflow.
 
 Voicebox versions WHOLE generations; we version per-block so re-rendering
-paragraph 47 doesn't invalidate paragraph 48.
+paragraph 47 doesn't invalidate paragraph 48. Since Studio Slice 4
+(2026-10-04) a take keeps its audio, and the ★ (default) take is what the
+chapter plays — Render's line panel lists, plays, stars and deletes them here
+(line_takes.py holds the rules).
 """
 
 from __future__ import annotations
@@ -32,9 +35,29 @@ class TakeResponse(BaseModel):
     is_default: bool
     label: Optional[str]
     created_at: datetime
+    # From its generation (Slice 4): how long it is, where its audio plays
+    # from (None when it has none on disk), whether ↻ New take rolled its
+    # seed, and the words it says.
+    seconds: Optional[float] = None
+    audio_url: Optional[str] = None
+    new_seed: bool = False
+    text: Optional[str] = None
 
     class Config:
         from_attributes = True
+
+
+def _take_out(db, take) -> TakeResponse:
+    from ..line_takes import NEW_TAKE, has_audio
+
+    gen = db.query(Generation).filter(Generation.id == take.generation_id).first()
+    out = TakeResponse.model_validate(take)
+    if gen is not None:
+        out.seconds = gen.duration_sec
+        out.audio_url = f"/v1/generations/{gen.id}/audio" if has_audio(gen) else None
+        out.new_seed = gen.source == NEW_TAKE
+        out.text = gen.text
+    return out
 
 
 class TakeList(BaseModel):
@@ -55,7 +78,7 @@ async def list_takes_for_block(block_id: str, db: Session = Depends(get_db)) -> 
         .all()
     )
     default = next((r.id for r in rows if r.is_default), None)
-    return TakeList(takes=[TakeResponse.model_validate(r) for r in rows], default_take_id=default)
+    return TakeList(takes=[_take_out(db, r) for r in rows], default_take_id=default)
 
 
 @router.post("/v1/takes/{take_id}/set_default", response_model=TakeResponse)
@@ -70,7 +93,7 @@ async def set_default_take(take_id: str, db: Session = Depends(get_db)) -> TakeR
     take.is_default = True
     db.commit()
     db.refresh(take)
-    return TakeResponse.model_validate(take)
+    return _take_out(db, take)
 
 
 @router.patch("/v1/takes/{take_id}", response_model=TakeResponse)
@@ -82,7 +105,7 @@ async def update_take(take_id: str, body: UpdateTakeRequest, db: Session = Depen
         take.label = body.label
     db.commit()
     db.refresh(take)
-    return TakeResponse.model_validate(take)
+    return _take_out(db, take)
 
 
 @router.delete("/v1/takes/{take_id}")
@@ -92,7 +115,13 @@ async def delete_take(take_id: str, db: Session = Depends(get_db)) -> dict:
         raise not_found(f"take {take_id}")
     if take.is_default:
         raise bad_request("Cannot delete the default take; promote another take first.")
+    # Its audio goes with it (Slice 4): the generation row and its file.
+    from ..line_takes import TAKE_SOURCES, delete_generation
+
+    gen = db.query(Generation).filter(Generation.id == take.generation_id).first()
     db.delete(take)
+    if gen is not None and gen.source in TAKE_SOURCES:
+        delete_generation(db, gen)
     db.commit()
     return {"deleted": True}
 
@@ -278,18 +307,26 @@ async def get_generation_audio(generation_id: str, db: Session = Depends(get_db)
         filename=f"{generation_id}.wav",
     )
 
+class RenderBlockRequest(BaseModel):
+    # ↻ New take: render with a seed of its own, so the line is read afresh
+    # (the same seed gives the same audio, from the cache — G1, 2026-10-04).
+    new_take: bool = False
+
+
 @router.post("/v1/blocks/{block_id}/render", response_model=TakeResponse)
-async def render_block(block_id: str, db: Session = Depends(get_db)) -> TakeResponse:
+async def render_block(
+    block_id: str, body: Optional[RenderBlockRequest] = None, db: Session = Depends(get_db),
+) -> TakeResponse:
     """Render ONE block through the production path (line → speaker →
-    persona: voice + tier-2 delivery + lexicon) and persist Generation +
-    default Take —
-    the Lines grid's per-row ↻ and 'Re-render N changed' both call this.
-    Clears derived staleness because the new generation carries the
-    block's current text."""
+    persona: voice + tier-2 delivery + the line's own numbers + lexicon) and
+    keep it as the line's new ★ take — Render's ▶ Gen, ↻ and ↻ New take, and
+    the Lines grid's per-row ↻ and 'Re-render N changed'. The take records
+    what it was made from, so the line reads rendered until that changes."""
     from ..app_state import get_state
     from ..database.models import Block
     from ..errors import not_found
-    from ..export_voicelines import _render_block_production
+    from ..export_voicelines import render_block_take
+    from ..line_takes import roll_seed
     from ..voice_model import model_key
     from ..render_jobs import persist_block_take
     from ..synth_scheduler import get_scheduler
@@ -308,14 +345,16 @@ async def render_block(block_id: str, db: Session = Depends(get_db)) -> TakeResp
         if store_p is not None:
             voice = store_p.voice_id or None
     engine_id = model_key(state, voice) if voice else f"?voice:{voice}"
+    new_take = bool(body and body.new_take)
+    seed = roll_seed() if new_take else None
     handle = get_scheduler().submit(
-        [(engine_id, lambda: _render_block_production(state, persona, block))],
+        [(engine_id, lambda: render_block_take(state, persona, block, seed=seed))],
         interactive=True,
     )
     await handle.wait_async()
     handle.raise_if_failed()
-    wav = handle.items[0].result
+    rl = handle.items[0].result
 
-    take = persist_block_take(db, state, block, wav)
-    return TakeResponse.model_validate(take)
+    take = persist_block_take(db, state, block, rl, new_seed=new_take)
+    return _take_out(db, take)
 

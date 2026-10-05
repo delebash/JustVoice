@@ -369,8 +369,10 @@ Qwen3-TTS has two, measured on CustomVoice 1.7B:
 - **Attention** — *Exact* or *Flash attention*: about 9 % faster and 0.2 GB
   less at the peak, and the same seed gives a different take. 8-bit models
   only; the runtime refuses it on 16-bit weights.
-- **Decoder weights** — *32-bit* or *16-bit*: about 0.5 GB less at the peak, and
-  the audio changes very slightly.
+- **Decoder weights** — *16-bit* (the default) or *32-bit*. 16-bit takes about
+  0.5 GB less at the peak; at the same seed the two measure slightly apart, but in a
+  listening test no difference could be heard, so 16-bit became the default on
+  2026-10-04. Pick 32-bit on a model's row to go back.
 
 Changing one on a loaded model reloads it. They are saved per model in
 `settings.engines.engine_overrides[engine].runtime_options[model]` (see
@@ -553,7 +555,10 @@ for Qwen3-TTS CustomVoice and Base and for VoxCPM2, **240** for Kokoro, and the
 general limit (`generation.max_chunk_chars`, 800) for the others. Pieces are cut
 at sentence ends and joined with a short crossfade. A model's length can be
 changed in `settings.engines.engine_overrides[engine].split_chars[model]`. A
-voice made from words keeps the full length for now (see
+voice made from words keeps the full length: split into 200-character pieces it
+drifted into a slightly different person from piece to piece, on Qwen3-TTS
+VoiceDesign and on VoxCPM2 alike (listened 2026-10-04), so it is spoken whole —
+which on VoiceDesign needs about 7 GB for a 752-character line (see
 [Generate → Auto-chunking](generate.md#auto-chunking)).
 
 What a model costs is measured at that length, on your machine, for exactly that

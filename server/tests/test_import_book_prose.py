@@ -31,8 +31,8 @@ def _opf(spine_items: list[str]) -> str:
     return f"""<?xml version="1.0"?>
 <package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="uid">
   <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
-    <dc:title>Stillwater</dc:title>
-    <dc:creator>S. K. Holloway</dc:creator>
+    <dc:title>The Ninth Facet</dc:title>
+    <dc:creator>Tamsin Vale</dc:creator>
     <dc:language>en</dc:language>
   </metadata>
   <manifest>{manifest}</manifest>
@@ -88,7 +88,7 @@ def _make_docx(paras: list[tuple[str, str | None]], title: str | None = None) ->
 def test_epub_chapters_split_on_spine_with_titles():
     raw = _make_epub(
         {
-            "title.xhtml": _xhtml(None, ["Stillwater. By S. K. Holloway."]),
+            "title.xhtml": _xhtml(None, ["The Ninth Facet. By Tamsin Vale."]),
             "ch1.xhtml": _xhtml(
                 "The Lake House",
                 ["The lake held the fog all morning.", "Mara watched it burn off."],
@@ -98,12 +98,12 @@ def test_epub_chapters_split_on_spine_with_titles():
             ),
         }
     )
-    out = parse(raw, filename="stillwater.epub")
+    out = parse(raw, filename="the-ninth-facet.epub")
     assert out.source == "book_prose"
-    assert out.project.name == "Stillwater"
+    assert out.project.name == "The Ninth Facet"
     assert out.project.kind == "audiobook"
     assert out.project.language == "en"
-    assert out.project.description == "by S. K. Holloway"
+    assert out.project.description == "by Tamsin Vale"
     assert [s.title for s in out.scenes] == ["The Lake House", "What the Water Keeps"]
     assert [len(s.lines) for s in out.scenes] == [2, 1]
     assert out.scenes[0].lines[0].text == "The lake held the fog all morning."
@@ -142,10 +142,10 @@ def test_docx_headings_start_chapters():
             ("Old Debts", "Heading1"),
             ("Edith poured the tea.", None),
         ],
-        title="Stillwater",
+        title="The Ninth Facet",
     )
-    out = parse(raw, filename="stillwater.docx")
-    assert out.project.name == "Stillwater"
+    out = parse(raw, filename="the-ninth-facet.docx")
+    assert out.project.name == "The Ninth Facet"
     assert [s.title for s in out.scenes] == ["The Lake House", "Old Debts"]
     assert [len(s.lines) for s in out.scenes] == [2, 1]
 
@@ -304,11 +304,11 @@ def test_endpoint_multipart_dry_run_epub(db_session, tmp_path, monkeypatch):
     r = client.post(
         "/v1/projects/import",
         data={"source": "book_prose", "dry_run": "true"},
-        files={"file": ("stillwater.epub", raw, "application/epub+zip")},
+        files={"file": ("the-ninth-facet.epub", raw, "application/epub+zip")},
     )
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["committed"] is False and body["project_id"] is None
-    assert body["standard"]["project"]["name"] == "Stillwater"
+    assert body["standard"]["project"]["name"] == "The Ninth Facet"
     assert [s["title"] for s in body["standard"]["scenes"]] == ["One"]
     assert any("front matter" in w for w in body["warnings"])

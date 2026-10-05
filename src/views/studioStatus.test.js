@@ -46,10 +46,14 @@ describe("projectState", () => {
   const cast = [{ id: "nar", ready: true, narrator: true }, { id: "harbek", ready: false }];
 
   it("rolls chapters and speakers up, and counts lines blocked on a speaker no voiced persona plays", () => {
-    expect(projectState({ scenes, stats, cast, cache: { total: 11, cached: 5 } })).toEqual({
+    // Render's counts (GET /v1/projects/{id}/render_state totals): a stale line
+    // still has a take, so it counts as rendered; lines that can't render don't
+    // count toward what can.
+    const render = { lines: 14, needs_speaker: 2, needs_voice: 1, ready: 6, rendered: 3, stale: 2 };
+    expect(projectState({ scenes, stats, cast, render })).toEqual({
       chapters: 2, scanned: 0, proposed: 0, analyzed: 1, fromImport: 0, running: 0, flagged: 0,
       noSpeaker: 2, lines: 14, unplaced: 2, castTotal: 2, castReady: 1, speakersBesideNarrator: 1, blocked: 4,
-      rendered: 5, renderable: 11,
+      rendered: 5, renderable: 11, stale: 2,
     });
   });
 
@@ -62,7 +66,7 @@ describe("projectState", () => {
       .toMatchObject({ flagged: 4, noSpeaker: 2, running: 1 });
   });
 
-  it("leaves the render counts null until the cache has been read", () => {
+  it("leaves the render counts null until Render's counts have been read", () => {
     const s = projectState({ scenes, stats, cast });
     expect(s.rendered).toBeNull();
     expect(stepStatus("render", s, UNIT).text).toBe("Checking what is rendered…");
@@ -87,6 +91,10 @@ describe("stepStatus", () => {
     });
     expect(stepStatus("render", base, UNIT)).toEqual({
       text: "412 of 2,140 lines rendered", tag: { intent: "accent2", label: "1,728 to go" },
+    });
+    // Everything has a take, some stale: the tag says so.
+    expect(stepStatus("render", { ...base, rendered: 2140, stale: 9 }, UNIT)).toEqual({
+      text: "2,140 of 2,140 lines rendered", tag: { intent: "accent2", label: "9 stale" },
     });
   });
 

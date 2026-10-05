@@ -217,6 +217,9 @@ class Speaker(Base):
     persona_id = Column(String, ForeignKey("personas.id", ondelete="SET NULL"), nullable=True)
     # "narrator" for the book's narrator (one per book); null otherwise.
     role_label = Column(String, nullable=True)
+    # "he/him" | "she/her" | "they/them" | "it/its", or null — read by Script's Analyze (who
+    # "she said" can be) and Smart-assign; never heard (persona build P9, 2026-10-04).
+    pronouns = Column(String, nullable=True)
     # Provenance — a re-import merges on (imported_from, imported_id).
     imported_from = Column(String, nullable=True)
     imported_id = Column(String, nullable=True)

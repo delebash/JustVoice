@@ -167,10 +167,10 @@ const continueStatus = computed(() => {
   return bits.join(" · ");
 });
 
-// Mini workflow status for the Continue card — one cache-stats call +
-// one speakers call for the single continue project (cheap; no per-scene
-// block walks on Home). `castVoiced` counts speakers played by a persona
-// that has a voice.
+// Mini workflow status for the Continue card — one render-state call +
+// one speakers call for the single continue project (no per-scene block
+// walks on Home). A chapter is rendered when every line has a take (Studio
+// Slice 4). `castVoiced` counts speakers played by a persona that has a voice.
 const miniStatus = ref(null);  // { rendered, total, castTotal, castVoiced, noSpeaker }
 async function loadMiniStatus() {
   miniStatus.value = null;
@@ -178,9 +178,9 @@ async function loadMiniStatus() {
   if (!p) return;
   const out = { rendered: 0, total: 0, castTotal: 0, castVoiced: 0, noSpeaker: 0 };
   try {
-    const cs = await api.request(`/v1/render/cache-stats?project_id=${p.id}`);
-    out.total = (cs?.scenes || []).length;
-    out.rendered = (cs?.scenes || []).filter((sc) => sc.total > 0 && sc.cached === sc.total).length;
+    const rs = await api.request(`/v1/projects/${p.id}/render_state`);
+    out.total = (rs?.chapters || []).length;
+    out.rendered = (rs?.chapters || []).filter((c) => c.lines > 0 && c.rendered + c.stale === c.lines).length;
   } catch { /* zero-chapter projects 404 here — strip shows import-first */ }
   try {
     const c = await api.request(`/v1/projects/${p.id}/speakers`);

@@ -49,6 +49,7 @@ def _out(s: Speaker, names: dict[str, str], counts: dict[str, int]) -> SpeakerOu
         persona_id=s.persona_id,
         persona_name=names.get(s.persona_id) if s.persona_id else None,
         role_label=s.role_label,
+        pronouns=s.pronouns,
         lines=counts.get(s.id, 0),
     )
 
@@ -102,7 +103,7 @@ async def add_speaker(
         _persona_or_404(db, body.persona_id)
     speaker, _ = ensure_speaker(
         db, project_id, name=body.name, description=body.description,
-        aliases=body.aliases, unique=True,
+        aliases=body.aliases, unique=True, pronouns=body.pronouns,
     )
     if body.persona_id:
         speaker.persona_id = body.persona_id
@@ -115,8 +116,8 @@ async def add_speaker(
 async def update_speaker(
     speaker_id: str, body: UpdateSpeakerRequest, db: Session = Depends(get_db)
 ) -> SpeakerOut:
-    """Rename, "Also called", "Who they are", and the cast — the persona that
-    plays them (`persona_id: null` un-casts). A rename is refused when the
+    """Rename, "Also called", "Who they are", Pronouns (`null` = not set), and the cast — the
+    persona that plays them (`persona_id: null` un-casts). A rename is refused when the
     book already has a speaker by the new name."""
     s = db.get(Speaker, speaker_id)
     if s is None:
@@ -136,6 +137,8 @@ async def update_speaker(
         s.aliases = json.dumps(kept) if kept else None
     if "description" in sent:
         s.description = (body.description or "").strip() or None
+    if "pronouns" in sent:
+        s.pronouns = body.pronouns
     if "persona_id" in sent:
         if body.persona_id:
             _persona_or_404(db, body.persona_id)

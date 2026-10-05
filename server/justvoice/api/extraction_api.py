@@ -164,7 +164,8 @@ def _resolve_cast(scene_id: str, db: Session) -> list[dict]:
             "name": s.name,
             "role": None,
             "gender": None,
-            "pronouns": None,
+            # Cast's Pronouns (persona build P9) — who "she said" can be.
+            "pronouns": s.pronouns,
             # "Also called" — anchors.py and the attribution prompt read it.
             "aliases": speaker_aliases(s),
             # Who they are — one line of it is Discover's known list (fix 2).

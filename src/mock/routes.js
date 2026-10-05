@@ -22,4 +22,24 @@ export const mockRoutes = [
     component: () => import("./MockPersonaEditorView.vue"),
     meta: { nav: "personas" },
   },
+  // Studio Slice 4 (2026-10-04): Render's chapter grid, one chapter's lines,
+  // and Script's chapter grid with the chapter verbs (D7).
+  {
+    path: "/mock/render",
+    name: "mock-render",
+    component: () => import("./MockStudioView.vue"),
+    meta: { nav: "studio", lede: true, step: "render" },
+  },
+  {
+    path: "/mock/render/:id",
+    name: "mock-render-chapter",
+    component: () => import("./MockStudioView.vue"),
+    meta: { nav: "studio", lede: true, step: "render" },
+  },
+  {
+    path: "/mock/script",
+    name: "mock-script",
+    component: () => import("./MockStudioView.vue"),
+    meta: { nav: "studio", lede: true, step: "script" },
+  },
 ];

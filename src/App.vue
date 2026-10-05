@@ -40,7 +40,6 @@ const VIEWS = [
   // ─── Workflow lane ─────────────────────────────────────────────────
   { id: "home",      lane: "workflow", label: "Home",      icon: "🏠", lede: "" },
   { id: "projects",  lane: "workflow", label: "Projects",  icon: "📖", lede: "Multi-use Project library. Audiobooks, game voicelines, podcasts. Import a book from JustWrite, or scripts, line lists and subtitle files from other tools.", visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
-  { id: "chapter",   lane: "workflow", label: "Chapters",   icon: "📑", lede: "Multi-block chapter editor with per-block take versioning. Source-lineage chains preserved.", visibleFor: ["audiobook", "podcast", "multiple", "unset"] },
   { id: "lines",     lane: "workflow", label: "Lines",      icon: "🎮", lede: "Every line of the game project — stable ids, speakers, derived take status. Re-import the writers\u2019 next sheet (only changed lines go stale), re-render exactly those, export per-line WAVs + manifest.", visibleFor: ["game", "multiple", "unset"] },
   { id: "studio",    lane: "workflow", label: "Studio",    icon: "🎬", lede: "A project's home. Overview holds its settings and shows where each step stands; then Discover finds the speakers your text names, Script works out who says each line, Cast gives each speaker a persona, Render makes the audio and Export packages it. A game project starts from its Lines instead — the sheet already says who speaks.", visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
   { id: "stories",   lane: "workflow", label: "Stories",   icon: "🎞️", lede: "Multi-track timeline editor. For podcasting, game-dialogue assembly, and per-chapter multi-voice arrangement.", visibleFor: ["game", "podcast", "multiple", "unset"] },
@@ -88,13 +87,14 @@ function isVisibleFor(viewEntry, useCase) {
 
 // ── Per-kind nav vocabulary (journeys-preview KIND_NAV contract) ──────
 // When a project is open, the structure item swaps with its kind:
-// audiobook → Chapters · game → Lines · podcast → Episodes + Timeline.
+// game → Lines · podcast → Timeline. Chapters are managed in Studio · Script
+// (the Chapters page was deleted with Studio Slice 4, 2026-10-04).
 // A string = show with this label; false = hide for this kind.
 const KIND_STRUCT = {
-  audiobook: { chapter: "Chapters", lines: false, stories: false },
-  game:      { chapter: false,      lines: "Lines", stories: false },
-  podcast:   { chapter: "Episodes", lines: false, stories: "Timeline" },
-  text:      { chapter: "Chapters", lines: false, stories: false },
+  audiobook: { lines: false, stories: false },
+  game:      { lines: "Lines", stories: false },
+  podcast:   { lines: false, stories: "Timeline" },
+  text:      { lines: false, stories: false },
 };
 
 // The open project's kind also drives the visibleFor filtering — the
@@ -142,7 +142,6 @@ const HELP_SLUG_BY_VIEW = {
   generate: "generate",
   projects: "core-concepts",
   stories:  "stories",
-  chapter:  "take-versioning",
   voices:   "voices",
   personas: "personas",
   lexicons: "lexicons",
@@ -240,9 +239,9 @@ const currentHelpSlug = computed(() => HELP_SLUG_BY_VIEW[view.value] || "getting
 
 // State-aware lede override. Currently a no-op — the no-engine case is
 // already surfaced where it matters (Home's engine card, Studio's
-// header pill, Generate's inline banner, Chapters' regen-time prompt),
-// so the old "No engine in memory…" lede that fired across generate/
-// studio/chapter was redundant and noisy (user feedback 2026-06-13).
+// header pill, Generate's inline banner), so the old "No engine in
+// memory…" lede that fired across generate/studio was redundant and noisy
+// (user feedback 2026-06-13).
 // Kept as the hook for any future per-view state lede.
 const stateLedeOverride = computed(() => null);
 // Normalized lede shape: { text, linkLabel?, linkHash? }. Static view
@@ -261,7 +260,7 @@ const effectiveLede = computed(() => {
 // Universal tabs (no `visibleFor`) always render; conditional tabs only
 // appear when the user's use case is in the entry's allow-list. With a
 // project open, the project's kind takes over: the struct item swaps
-// (Chapters / Lines / Episodes+Timeline) and visibleFor filters against
+// (Lines / Timeline) and visibleFor filters against
 // the kind's vocabulary instead of the install-time focus.
 const effectiveUseCase = computed(() =>
   KIND_TO_USE_CASE[activeProject.kind] || onboarding.primaryUseCase || "unset",
@@ -274,7 +273,7 @@ const visibleViews = computed(() =>
   }),
 );
 
-// Sidebar label override per kind (Chapters → Episodes, Stories → Timeline).
+// Sidebar label override per kind (Stories → Timeline).
 function navLabel(v) {
   const struct = KIND_STRUCT[activeProject.kind];
   const override = struct?.[v.id];

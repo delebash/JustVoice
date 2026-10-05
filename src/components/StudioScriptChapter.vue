@@ -14,9 +14,8 @@
   Everything that decides what a row shows, what a key does and what a change
   sends lives in views/scriptReview.js (pure, unit-tested); the lines, their
   flags and the counts come from GET /v1/scenes/{id}/script and are re-read
-  after every change. Rewrite in character stays on the Text cell's
-  right-click until Slice 4 moves it to Render (the parent owns its modal).
-  Direction, takes and rendering are Render's, never Script's.
+  after every change. Rewrite in character, direction, takes and rendering are
+  Render's (StudioRenderChapter.vue's line panel, Slice 4), never Script's.
 
   A line's words are Script's (2026-09-30, docs/plans/2026-09-30-script-
   leftovers.md B1/B2): "✎ Edit…" on one ticked line opens its text with Save,
@@ -52,10 +51,10 @@ const props = defineProps({
   cast: { type: Array, default: () => [] },
   // Where to land: "check" (first line to check) · "none" (first line with no speaker).
   focus: { type: String, default: null },
-  // Bumped by the parent when it changed a line itself (a rewrite).
+  // Bumped by the parent when a line changed elsewhere (Render's rewrite).
   version: { type: Number, default: 0 },
 });
-const emit = defineEmits(["back", "open", "go", "changed", "rewrite"]);
+const emit = defineEmits(["back", "open", "go", "changed"]);
 
 const api = useApi();
 const copy = useCopy();
@@ -653,9 +652,7 @@ const flagged = (ln) => (ln.flags || []).length > 0;
               </div>
             </div>
             <template v-else>
-              <span class="studio-script-ch__text"
-                :title="row.spoken && row.speaker_id && row.speaker_id !== narratorId ? 'Right-click to rewrite this line in character' : ''"
-                @contextmenu.prevent="emit('rewrite', row)">{{ row.text }}</span>
+              <span class="studio-script-ch__text">{{ row.text }}</span>
               <UiTag v-if="row.left_out" intent="secondary"
                 title="Only says who spoke — Overview → Leave out dialogue tags is on, so the audio skips it">Left out</UiTag>
             </template>
@@ -706,8 +703,8 @@ const flagged = (ln) => (ln.flags || []).length > 0;
             title="Shows the lines either side of each line in view" @click="around = !around" />
         </div>
         <p class="jv-hint studio-script-ch__foot">Changing the speaker or the words of a rendered line makes it
-          stale — it re-renders, and its old take is kept. Merging deletes the takes of the lines joined onto the
-          first, and asks first.</p>
+          stale — it keeps playing its take until you render it again in Render, and its old takes are kept.
+          Merging deletes the takes of the lines joined onto the first, and asks first.</p>
         <div class="jv-inline-row studio-script-ch__bar">
           <UiButton intent="secondary" size="small" :label="`← Previous ${word.singular.toLowerCase()}`"
             :disabled="!prevChapter" :title="prevChapter ? chapterName(prevChapter) : `This is the first ${word.singular.toLowerCase()}`"

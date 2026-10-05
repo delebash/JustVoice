@@ -2,6 +2,33 @@
 
 ## v0.1.0
 
+- **Render works line by line, and keeps every take (2026-10-04).** Studio ·
+  Render is a chapter grid that opens a chapter's lines. Each line shows its
+  state — *needs a speaker*, *needs a voice*, *ready*, *rendered* or *stale* —
+  and how it is said: written direction on Qwen3-TTS and VoxCPM2, the persona's
+  tags on Chatterbox Turbo and Nano. Every render is a kept take with its audio;
+  the ★ take is what the chapter plays and the book ships. **↻ New take** reads
+  a line with a new seed, **⚖️ Compare two** plays two takes, and **⚙ Override the
+  numbers for this line** sets its own pace, pitch, gain and pause. A changed
+  line, persona or lexicon entry makes a line *stale* — it keeps its take until
+  you render it again, and Export says how many are stale. **📕 Pronunciation**
+  opens the book's lexicon (making one if the book has none), and **Rewrite in
+  character** moved here from Script's right-click
+  ([Studio → Render](studio.md#render))
+- **Chapters are added and arranged in Script (2026-10-04).** **＋ Add chapter**,
+  and **Rename · Move up · Move down · Delete** in each row's ⋯ menu; **＋ Add text**
+  pastes a new chapter's text. The Chapters page and its sidebar item are gone
+  ([Studio → Adding and arranging chapters](studio.md#adding-and-arranging-chapters))
+- **Qwen3-TTS uses 16-bit decoder weights by default (2026-10-04).** About 0.5 GB
+  less while it speaks; in a listening test at the same seed no difference could be
+  heard. Choose 32-bit under **Decoder weights** on a model's row to go back
+  ([Engines → Options on a model's row](engines.md#what-each-engine-can-be-tuned-with))
+- **Speakers have pronouns (2026-10-04).** The selected speaker's card on Studio ·
+  Cast has **Pronouns** — he/him, she/her, they/them, it/its or not set. Script's
+  Analyze is told each speaker's pronouns, so *"she said"* can only be someone who
+  is *she*, and Smart-assign reads them too; they are never heard. A JustWrite
+  import fills them from the character sheet, which until now dropped them
+  ([Studio → The selected speaker](studio.md#the-selected-speaker))
 - **Speech runtime v0.9.0-jv.4: everything built since the switch (2026-10-04).**
   Chatterbox Turbo and Nano clone voices again and read their 19 inline tags;
   Chatterbox speaks Hebrew, Russian, Chinese and Japanese (23 languages); Kokoro

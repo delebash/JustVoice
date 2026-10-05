@@ -35,8 +35,8 @@ def scene(scene_id: str, *paragraphs: str, title: str = "") -> Scene:
 
 def book_json(
     *,
-    title: str = "Stillwater",
-    author: str = "S. K. H.",
+    title: str = "The Ninth Facet",
+    author: str = "Tamsin Vale",
     premise: str = "",
     characters: list[dict[str, Any]] | None = None,
     chapters: list[Chapter] | None = None,
@@ -87,7 +87,7 @@ def book_json(
 def book_zip(
     snapshot: dict[str, Any] | None = None,
     *,
-    folder: str = "Stillwater",
+    folder: str = "The Ninth Facet",
     images: dict[str, bytes] | None = None,
 ) -> bytes:
     """The bytes JustWrite's export writes: `<folder>/book.json` next to a

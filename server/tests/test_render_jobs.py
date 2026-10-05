@@ -21,6 +21,7 @@ from fastapi.testclient import TestClient
 import justvoice.app_state as app_state_mod
 import justvoice.database.session as db_session_mod
 import justvoice.export_voicelines as ev
+import justvoice.media_paths as media_paths_mod
 from justvoice import render_jobs
 from justvoice.api import render_jobs_api
 from justvoice.database.models import (
@@ -32,6 +33,7 @@ from justvoice.database.models import (
     Scene,
     Take,
 )
+from justvoice.render_core import RenderedLine
 from llm_runner.platform import install_error_handlers
 
 pytest_plugins = ["tests.conftest_db"]
@@ -39,20 +41,31 @@ pytest_plugins = ["tests.conftest_db"]
 _TERMINAL = ("completed", "failed", "cancelled")
 
 
-def _fake_state():
+def _fake_state(data_dir):
     return SimpleNamespace(
         personas=SimpleNamespace(get=lambda pid: None),
         engines=SimpleNamespace(current=lambda: "fake-engine"),
         voices=SimpleNamespace(get=lambda vid: None),
+        data_dir=data_dir,
     )
 
 
+def _line(seed=None):
+    """A rendered line as render_block_take returns it (Slice 4): audio, the
+    seed and inputs key it was made from."""
+    return RenderedLine(pcm=b"\x00\x00" * 50, sample_rate=24000, channels=1, effective_delivery={},
+                        inputs_key="key-1", seed=seed)
+
+
 @pytest.fixture
-def job_env(tmp_db, monkeypatch):
-    """Point render_jobs at the test DB + a fake app state."""
+def job_env(tmp_db, monkeypatch, tmp_path):
+    """Point render_jobs at the test DB + a fake app state (with a data
+    folder, where a take's audio is kept)."""
     factory, _ = tmp_db
+    state = _fake_state(tmp_path)
     monkeypatch.setattr(db_session_mod, "SessionLocal", factory)
-    monkeypatch.setattr(app_state_mod, "get_state", _fake_state)
+    monkeypatch.setattr(app_state_mod, "get_state", lambda: state)
+    monkeypatch.setattr(media_paths_mod, "get_state", lambda: state)
     return factory
 
 
@@ -89,7 +102,7 @@ def _wait_terminal(job_id, timeout=10.0):
 def test_job_completes_and_persists_takes(job_env, monkeypatch):
     factory = job_env
     project_id, _, block_ids = _seed_project(factory, ["Line one.", "Line two."])
-    monkeypatch.setattr(ev, "_render_block_production", lambda st, p, b: b"\x00" * 100)
+    monkeypatch.setattr(ev, "render_block_take", lambda st, p, b, **kw: _line(seed=7))
 
     job = render_jobs.create_job(project_id, "blocks", block_ids)
     render_jobs.start_job(job.id)
@@ -109,20 +122,59 @@ def test_job_completes_and_persists_takes(job_env, monkeypatch):
         assert {g.source for g in gens} == {"chapter_render"}
         assert {g.engine for g in gens} == {"fake-engine"}
         assert db.query(Take).count() == 2
+        # A take keeps its audio, its seed and what it was made from, and its
+        # real length (Slice 4) — 50 frames at 24 kHz, not a 16 kHz guess.
+        from justvoice.media_paths import media_file
+
+        for g in gens:
+            assert g.audio_path and media_file(g.audio_path).is_file()
+            assert g.seed == 7 and g.cache_key == "key-1"
+            assert g.duration_sec == round(50 / 24000, 3)
     finally:
         db.close()
+
+
+def test_a_new_take_is_the_only_star(job_env, monkeypatch):
+    """Rendering a line again keeps the old take and makes the new one ★ —
+    the old default is cleared (it wasn't before Slice 4)."""
+    factory = job_env
+    project_id, _, block_ids = _seed_project(factory, ["Line one."])
+    monkeypatch.setattr(ev, "render_block_take", lambda st, p, b, **kw: _line())
+    for _ in range(2):
+        job = render_jobs.create_job(project_id, "blocks", block_ids)
+        render_jobs.start_job(job.id)
+        _wait_terminal(job.id)
+    db = factory()
+    try:
+        takes = db.query(Take).filter(Take.block_id == block_ids[0]).all()
+        assert len(takes) == 2
+        assert sum(t.is_default for t in takes) == 1
+    finally:
+        db.close()
+
+
+def test_a_fresh_job_renders_past_the_cache(job_env, monkeypatch):
+    """↻ Re-render all is a job made with `fresh`: every block renders with use_cache=False."""
+    factory = job_env
+    project_id, _, block_ids = _seed_project(factory, ["Line one."])
+    seen = []
+    monkeypatch.setattr(ev, "render_block_take", lambda st, p, b, **kw: seen.append(kw) or _line())
+    job = render_jobs.create_job(project_id, "blocks", block_ids, fresh=True)
+    render_jobs.start_job(job.id)
+    _wait_terminal(job.id)
+    assert seen == [{"use_cache": False}]
 
 
 def test_failed_block_is_isolated(job_env, monkeypatch):
     factory = job_env
     project_id, _, block_ids = _seed_project(factory, ["Fine.", "BOOM"])
 
-    def render(st, persona, block):
+    def render(st, persona, block, **kw):
         if block.text == "BOOM":
             raise RuntimeError("engine exploded")
-        return b"\x00" * 100
+        return _line()
 
-    monkeypatch.setattr(ev, "_render_block_production", render)
+    monkeypatch.setattr(ev, "render_block_take", render)
     job = render_jobs.create_job(project_id, "blocks", block_ids)
     render_jobs.start_job(job.id)
     s = _wait_terminal(job.id)
@@ -141,13 +193,13 @@ def test_resume_reruns_only_unfinished_blocks(job_env, monkeypatch):
     project_id, _, block_ids = _seed_project(factory, ["Fine.", "BOOM"])
     calls = []
 
-    def flaky(st, persona, block):
+    def flaky(st, persona, block, **kw):
         calls.append(block.text)
         if block.text == "BOOM" and calls.count("BOOM") == 1:
             raise RuntimeError("first attempt fails")
-        return b"\x00" * 100
+        return _line()
 
-    monkeypatch.setattr(ev, "_render_block_production", flaky)
+    monkeypatch.setattr(ev, "render_block_take", flaky)
     job = render_jobs.create_job(project_id, "blocks", block_ids)
     render_jobs.start_job(job.id)
     s = _wait_terminal(job.id)
@@ -174,12 +226,12 @@ def test_cancel_withdraws_queued_blocks(job_env, monkeypatch):
     entered = threading.Event()
     release = threading.Event()
 
-    def slow(st, persona, block):
+    def slow(st, persona, block, **kw):
         entered.set()
         release.wait(5)
-        return b"\x00" * 100
+        return _line()
 
-    monkeypatch.setattr(ev, "_render_block_production", slow)
+    monkeypatch.setattr(ev, "render_block_take", slow)
     job = render_jobs.create_job(project_id, "blocks", block_ids)
     render_jobs.start_job(job.id)
     assert entered.wait(5)
@@ -230,7 +282,7 @@ def test_empty_scope_completes_immediately(job_env):
 def test_api_roundtrip(job_env, monkeypatch):
     factory = job_env
     project_id, _, block_ids = _seed_project(factory, ["One.", "Two."])
-    monkeypatch.setattr(ev, "_render_block_production", lambda st, p, b: b"\x00" * 100)
+    monkeypatch.setattr(ev, "render_block_take", lambda st, p, b, **kw: _line())
 
     app = FastAPI()
     install_error_handlers(app, type_base="https://justvoice.dev/errors/")

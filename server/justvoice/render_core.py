@@ -48,6 +48,12 @@ class RenderedLine:
     sample_rate: int
     channels: int
     effective_delivery: dict[str, Any]
+    # What the audio was made from (`inputs_key`, the render cache's key) and
+    # the seed it was made with — a take records both, so Render can tell a
+    # line whose inputs changed since (stale) from one that still matches
+    # (Studio Slice 4, 2026-10-04). Empty for audio that was not rendered here.
+    inputs_key: str = ""
+    seed: int | None = None
 
 
 def _resolve_engine_for_voice(state: AppState, voice_id: str) -> str | None:
@@ -146,7 +152,8 @@ def line_split_chars(state: AppState, engine_id: str, voice: str | None) -> int:
     """The longest piece a line goes to its model in: the model's split size (the user's per
     model, else the catalog's — `EngineManager.split_chars_for`) under
     `generation.max_chunk_chars`, which a model with none gets. A description voice keeps
-    `max_chunk_chars` until its own size is decided by ear (§13.3). The host splits at
+    `max_chunk_chars`: split, it drifted into a different person from piece to piece (the
+    user's listening verdict, 2026-10-04 — audit §13.6). The host splits at
     sentence ends and crossfades; a piece under audio.cpp's own budget is never re-split with
     its hard join (audit §5 D5)."""
     cap = int(getattr(state.settings.get().generation, "max_chunk_chars", DEFAULT_MAX_CHUNK_CHARS))
@@ -596,21 +603,71 @@ def probe_line_cached(
     # (the probe and the render apply it alike).
     if seed is None and voice and is_description_voice(state, voice):
         seed = description_seed(voice)
-    key = (
+    key = _inputs_key(
+        engine_id, voice, effective_text, language, seed, delivery,
+        speed_native(state, engine_id, model), effects,
+    )
+    cache = getattr(state, "_render_cache", None)
+    if not settings.cache.enabled or cache is None:
+        return False
+    return cache.has(cache_scope, key)
+
+
+def _inputs_key(
+    engine_id: str,
+    voice: str,
+    effective_text: str,
+    language: str | None,
+    seed: int | None,
+    delivery: dict[str, Any],
+    native: bool,
+    effects: list[dict] | None,
+) -> str:
+    """THE key of what a line's audio is made from — the render cache's key,
+    and the one a take records (Studio Slice 4). One builder, so the render,
+    the cache probe and Render's stale check can never disagree."""
+    return (
         CacheKeyBuilder()
         .with_engine(engine_id, VERSION)
         .with_voice(voice)
         .with_text(effective_text)
         .with_language(language)
         .with_seed(seed)
-        .with_delivery_json(canonical_json(_key_delivery(delivery, speed_native(state, engine_id, model))))
-        .with_effects_chain(effects_chain_hash(effects))
+        .with_delivery_json(canonical_json(_key_delivery(delivery, native)))
+        .with_effects_chain(effects_chain_hash(effects or []))
         .finish()
     )
-    cache = getattr(state, "_render_cache", None)
-    if not settings.cache.enabled or cache is None:
-        return False
-    return cache.has(cache_scope, key)
+
+
+def line_inputs_key(
+    state: AppState,
+    voice: str,
+    text: str,
+    *,
+    language: str | None = None,
+    delivery: dict[str, Any] | None = None,
+    seed: int | None = None,
+    lexicons: list[str] | None = None,
+    effects: list[dict] | None = None,
+) -> str | None:
+    """The key `render_line` would give these inputs, without rendering or
+    loading anything — what Render compares a take's recorded key with to say
+    whether the line is stale. None when the voice can't be resolved."""
+    engine_id = _resolve_engine_for_voice(state, voice)
+    if engine_id is None:
+        return None
+    if _engine_takes_tags(state, engine_id) is None:
+        return None
+    model = _line_model(state, voice, engine_id)
+    effective_text, prepared = prepare_line_text(
+        state, engine_id, model, text, dict(delivery or {}), list(lexicons or []),
+    )
+    if seed is None and voice and is_description_voice(state, voice):
+        seed = description_seed(voice)
+    return _inputs_key(
+        engine_id, voice, effective_text, language, seed, prepared,
+        speed_native(state, engine_id, model), effects,
+    )
 
 
 def prepare_line_text(
@@ -729,24 +786,17 @@ def render_line(
     # choosing a lexicon on Overview re-rendered every line of the book.
     cache_enabled = use_cache and settings.cache.enabled
     native = speed_native(state, engine_id, model)
-    cache_key = (
-        CacheKeyBuilder()
-        .with_engine(engine_id, VERSION)
-        .with_voice(voice)
-        .with_text(effective_text)
-        .with_language(language)
-        .with_seed(seed)
-        .with_delivery_json(canonical_json(_key_delivery(delivery, native)))
-        .with_effects_chain(effects_chain_hash(effects))
-        .finish()
-    )
+    cache_key = _inputs_key(engine_id, voice, effective_text, language, seed, delivery, native, effects)
 
     cache = getattr(state, "_render_cache", None)
     if cache_enabled and cache is not None:
         cached = cache.get(cache_scope, cache_key)
         if cached:
             sr, ch, pcm = unpack_pcm_with_format(cached)
-            return RenderedLine(pcm=pcm, sample_rate=sr, channels=ch, effective_delivery=delivery)
+            return RenderedLine(
+                pcm=pcm, sample_rate=sr, channels=ch, effective_delivery=delivery,
+                inputs_key=cache_key, seed=seed,
+            )
 
     # Auto-load on first synthesize + the per-door synth call. Registry
     # backends keep their object door; managed engines load through the
@@ -868,6 +918,8 @@ def render_line(
         sample_rate=out_sample_rate,
         channels=out_channels,
         effective_delivery=delivery,
+        inputs_key=cache_key,
+        seed=seed,
     )
 
 

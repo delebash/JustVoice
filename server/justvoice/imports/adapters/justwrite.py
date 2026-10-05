@@ -126,6 +126,16 @@ def _voice_hint(c: dict[str, Any]) -> str | None:
     return ", ".join(p for p in parts if p) or None
 
 
+_PRONOUNS = {"he": "he/him", "she": "she/her", "they": "they/them", "it": "it/its"}
+
+
+def _pronouns(c: dict[str, Any]) -> str | None:
+    """The sheet's free-text `pronouns` ("he/him", "She/Her", "they") as one of the speaker's four
+    values; anything else is left unset rather than guessed. Gender stays in the voice hint."""
+    first = str(c.get("pronouns") or "").strip().lower().split("/")[0].strip()
+    return _PRONOUNS.get(first)
+
+
 def _notes(c: dict[str, Any]) -> str | None:
     """The character's one-liner, plus aliases — aliases matter for narration
     because the same person is addressed by several names in the prose."""
@@ -158,6 +168,7 @@ def parse(raw: bytes, *, filename: str | None = None) -> StandardImport:
             voice_hint=_voice_hint(c),
             notes=_notes(c),
             aliases=[str(a).strip() for a in (c.get("aliases") or []) if str(a).strip()],
+            pronouns=_pronouns(c),
         )
         for c in (doc.get("characters") or [])
         if isinstance(c, dict) and c.get("id")

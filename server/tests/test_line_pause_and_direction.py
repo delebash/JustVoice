@@ -83,16 +83,19 @@ def test_garbage_pause_values_fall_back_to_the_project_gap() -> None:
 
 
 def test_block_pause_after_is_read_off_the_metadata() -> None:
-    from justvoice.api.render_chapter_api import _block_pause_after
+    """An import's pause_after_ms is the line's own pause (line_takes, Slice 4) —
+    sent as the plan's request, so it wins over the persona's (G7)."""
+    from justvoice.line_takes import line_override, override_delivery
 
     class B:
         metadata_json = json.dumps({"source_ref": "x", "pause_after_ms": 750})
 
-    assert _block_pause_after(B()) == 750
+    assert line_override(B()) == {"pause_after_ms": 750}
+    assert override_delivery(B()) == {"pause_after": 750}
 
 
 def test_block_pause_after_is_none_when_absent_or_unparseable() -> None:
-    from justvoice.api.render_chapter_api import _block_pause_after
+    from justvoice.line_takes import line_override
 
     class NoMeta:
         metadata_json = None
@@ -106,10 +109,8 @@ def test_block_pause_after_is_none_when_absent_or_unparseable() -> None:
     class BadValue:
         metadata_json = json.dumps({"pause_after_ms": "soon"})
 
-    assert _block_pause_after(NoMeta()) is None
-    assert _block_pause_after(NoKey()) is None
-    assert _block_pause_after(Junk()) is None
-    assert _block_pause_after(BadValue()) is None
+    for b in (NoMeta(), NoKey(), Junk(), BadValue()):
+        assert "pause_after_ms" not in line_override(b)
 
 
 def test_import_adapters_still_parse_pause_after_ms() -> None:

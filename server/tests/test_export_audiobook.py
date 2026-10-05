@@ -62,9 +62,9 @@ def test_qc_flags_hot_and_quiet_chapters():
 
 
 def test_ffmetadata_cumulative_chapter_marks():
-    md = build_ffmetadata([_ch("One", 0.1, 2.0), _ch("Two", 0.1, 3.5)], "Stillwater", "S. K. H.")
+    md = build_ffmetadata([_ch("One", 0.1, 2.0), _ch("Two", 0.1, 3.5)], "The Ninth Facet", "Tamsin Vale")
     assert md.startswith(";FFMETADATA1")
-    assert "title=Stillwater" in md and "artist=S. K. H." in md
+    assert "title=The Ninth Facet" in md and "artist=Tamsin Vale" in md
     assert "START=0\nEND=2000\ntitle=One" in md
     assert "START=2000\nEND=5500\ntitle=Two" in md
 
@@ -83,7 +83,7 @@ def test_mux_m4b_builds_one_ffmpeg_call(tmp_path):
         Path(argv[-1]).write_bytes(b"m4b-bytes")
         return SimpleNamespace(returncode=0, stderr=b"")
 
-    out = mux_m4b([_ch("One", 0.1)], "Stillwater", None, run=fake_run)
+    out = mux_m4b([_ch("One", 0.1)], "The Ninth Facet", None, run=fake_run)
     assert out == b"m4b-bytes"
     argv = calls["argv"]
     assert argv[0] == "ffmpeg" and "-f" in argv
@@ -111,7 +111,7 @@ def client(tmp_path):
 def _seed(client) -> str:
     # A real JustWrite book.json — see tests/jw_fixtures.py.
     payload = book_json(
-        premise="by S. K. H.",
+        premise="by Tamsin Vale",
         chapters=[
             ("ch1", "One", [scene("scn1", "Hello.")]),
             ("ch2", "Two", [scene("scn2", "There.")]),
@@ -200,7 +200,7 @@ def test_export_m4b_with_stubbed_ffmpeg(client, monkeypatch):
     assert r.status_code == 200, r.text
     assert r.content == b"M4B!"
     assert r.headers["content-type"].startswith("audio/mp4")
-    assert "Stillwater.m4b" in r.headers.get("content-disposition", "")
+    assert "The_Ninth_Facet.m4b" in r.headers.get("content-disposition", "")
 
 
 def test_m4b_author_prefers_the_author_field():

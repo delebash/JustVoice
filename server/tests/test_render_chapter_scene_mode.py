@@ -420,7 +420,7 @@ def test_strict_names_a_speaker_no_persona_plays(tmp_db, monkeypatch):  # noqa: 
 def test_strict_ignores_markers(tmp_db, monkeypatch):  # noqa: F811
     """Podcast music/ad direction lines are speaker-less BY DESIGN
     (projects_api._materialize_standard). Counting them as unplaced would
-    refuse every marked episode forever — the bug ChapterView.vue:586
+    refuse every marked episode forever — the bug the old Chapters page
     already had to fix once on the attribution badge."""
     session_factory, _engine = tmp_db
     _patch_session(monkeypatch, session_factory)
