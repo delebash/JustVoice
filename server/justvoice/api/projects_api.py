@@ -32,6 +32,7 @@ from ..database import (
 from ..database.models import (
     Lexicon as DbLexicon,
     LexiconEntry as DbLexiconEntry,
+    Take,
 )
 from ..errors import not_found, bad_request
 from ..app_state import get_state
@@ -661,6 +662,132 @@ async def merge_blocks(
     sweep_orphan_takes(db)   # the merged-away lines' takes' audio (Slice 4)
     db.refresh(keep)
     return BlockResponse.from_orm(keep)
+
+
+# ── A chapter's text, edited from its row — Script's "✎ Edit text" (2026-10-05) ──
+#
+# TASKS "A chapter's text can be edited from its row, and a chapter opens
+# before Analyze". The chapter's lines open as one text, a paragraph each;
+# saving matches the new paragraphs to the old lines, in order. A line whose
+# words are unchanged keeps everything — its speaker, marks and takes. A
+# changed or new paragraph becomes a new line with no speaker (source
+# "manual", as ＋ Add text makes them), which Script counts "changed since"
+# until an Analyze decides it. A line that goes takes its takes with it; a
+# `dry_run` says how many lines with takes would go, so Script asks first.
+# Spacing never counts as a change.
+
+
+class ChapterTextResponse(BaseModel):
+    text: str
+
+
+class EditChapterTextRequest(BaseModel):
+    text: str
+    dry_run: bool = False
+
+
+class EditChapterTextResponse(BaseModel):
+    kept: int = 0
+    changed: int = 0
+    added: int = 0
+    removed: int = 0
+    # Lines with takes that would go — changed or removed.
+    takes_lost: int = 0
+
+
+def _text_paragraphs(text: str) -> list[str]:
+    return [p.strip() for p in re.split(r"\n\s*\n", text or "") if p.strip()]
+
+
+def _same_words(text: str) -> str:
+    return " ".join((text or "").split())
+
+
+def text_edit_plan(old: list[str], new: list[str]):
+    """How new paragraphs replace old lines, matched in order (difflib):
+    (steps, counts). `steps` is the chapter in its new order — ("keep", i) for
+    old line i, ("new", j) for paragraph j — with ("drop", i) at the place each
+    old line leaves; `counts` is {kept, changed, added, removed}."""
+    import difflib
+
+    sm = difflib.SequenceMatcher(None, [_same_words(t) for t in old],
+                                 [_same_words(t) for t in new], autojunk=False)
+    steps: list[tuple[str, int]] = []
+    counts = {"kept": 0, "changed": 0, "added": 0, "removed": 0}
+    for tag, i1, i2, j1, j2 in sm.get_opcodes():
+        if tag == "equal":
+            steps += [("keep", i) for i in range(i1, i2)]
+            counts["kept"] += i2 - i1
+            continue
+        steps += [("new", j) for j in range(j1, j2)]
+        steps += [("drop", i) for i in range(i1, i2)]
+        both = min(i2 - i1, j2 - j1)
+        counts["changed"] += both
+        counts["added"] += (j2 - j1) - both
+        counts["removed"] += (i2 - i1) - both
+    return steps, counts
+
+
+@router.get("/v1/scenes/{scene_id}/text", response_model=ChapterTextResponse)
+async def get_chapter_text(scene_id: str, db: Session = Depends(get_db)) -> ChapterTextResponse:
+    """The chapter's lines as one text, a paragraph each (a line's own blank
+    lines close up, so it stays one paragraph)."""
+    if not db.query(Scene).filter(Scene.id == scene_id).first():
+        raise not_found(f"scene {scene_id}")
+    blocks = db.query(Block).filter(Block.scene_id == scene_id).order_by(Block.position).all()
+    paras = [re.sub(r"\n\s*\n", "\n", b.text.strip()) for b in blocks if (b.text or "").strip()]
+    return ChapterTextResponse(text="\n\n".join(paras))
+
+
+@router.put("/v1/scenes/{scene_id}/text", response_model=EditChapterTextResponse)
+async def edit_chapter_text(
+    scene_id: str, body: EditChapterTextRequest, db: Session = Depends(get_db)
+) -> EditChapterTextResponse:
+    if not db.query(Scene).filter(Scene.id == scene_id).first():
+        raise not_found(f"scene {scene_id}")
+    paras = _text_paragraphs(body.text)
+    if not paras:
+        raise bad_request("A chapter needs some text. To remove it, use Delete.")
+    blocks = db.query(Block).filter(Block.scene_id == scene_id).order_by(Block.position).all()
+    worded = [b for b in blocks if (b.text or "").strip()]
+    # A line with no words isn't in the text; it stays after the line before it.
+    after: dict[str | None, list[Block]] = {}
+    prev = None
+    for b in blocks:
+        if (b.text or "").strip():
+            prev = b.id
+        else:
+            after.setdefault(prev, []).append(b)
+
+    steps, counts = text_edit_plan([b.text for b in worded], paras)
+    gone = [worded[i] for kind, i in steps if kind == "drop"]
+    lost = 0
+    if gone:
+        lost = (db.query(Take.block_id).filter(Take.block_id.in_([b.id for b in gone]))
+                .distinct().count())
+    out = EditChapterTextResponse(**counts, takes_lost=lost)
+    if body.dry_run or not (counts["changed"] or counts["added"] or counts["removed"]):
+        return out
+
+    ordered: list[Block] = list(after.get(None, []))
+    for kind, i in steps:
+        if kind == "new":
+            nb = Block(scene_id=scene_id, position=0, text=paras[i], source="manual")
+            db.add(nb)
+            ordered.append(nb)
+            continue
+        if kind == "keep":
+            ordered.append(worded[i])
+        ordered += after.get(worded[i].id, [])
+    for b in gone:
+        db.delete(b)
+    db.flush()
+    _renumber(ordered)
+    _drop_scene_source_text(db, scene_id)
+    db.commit()
+    if gone:
+        sweep_orphan_takes(db)   # the gone lines' takes' audio
+    return out
 
 
 # ── Multi-adapter import pipeline ─────────────────────────────────────────

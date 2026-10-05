@@ -260,6 +260,9 @@ A row can also carry a tag:
   the cast, and its text names them (their name or an *Also called* name).
   Analyze couldn't choose them then. **Re-analyze** on the row runs it again;
   lines you set are kept.
+- **N changed since** — lines added or changed with **✎ Edit text** (below)
+  since the last Analyze. They have no speaker until you re-analyze, so the row
+  offers **Re-analyze**; lines you set are kept.
 - **no dialogue found** — nothing in the text was read as speech, so every line
   went to the Narrator. Speech after a dash isn't read as dialogue, and neither
   are marks other than Overview → [Speech marks](#speech-marks) is set to.
@@ -274,7 +277,7 @@ A row can also carry a tag:
 
 **The chips** above the grid show the chapters in one state: **To check**
 (flagged lines, or lines with no speaker), **Not analyzed**, **Re-analyze**
-(someone was added since), **Needs attention** (failed, no text, no dialogue
+(someone was added since, or lines changed since), **Needs attention** (failed, no text, no dialogue
 found). The tick box in the header ticks **only the chapters shown**, so "To
 check" → tick all → Analyze re-runs exactly those.
 
@@ -305,7 +308,9 @@ answer must reach to be kept; below it the line is left with no speaker.
 - *Your cast has only the Narrator, so Analyze has nobody to choose from. Find
   the speakers first — Discover ➜*
 
-A row opens its chapter. **Review** opens it at the first line to check.
+A row opens its chapter — before Analyze too, so you can read a chapter you
+pasted or imported and fix its words first, then **✨ Analyze this chapter**
+there. **Review** opens it at the first line to check.
 
 ### Adding and arranging chapters
 
@@ -316,9 +321,19 @@ did this was removed on 2026-10-04):
   text yet says *no text yet*, and its **＋ Add text** opens a box to paste it
   into: each paragraph becomes a line, with no speaker until you **✨ Analyze**
   it.
-- Each row's **⋯** menu has **✏️ Rename**, **↑ Move up**, **↓ Move down** and
-  **🗑 Delete**. Deleting asks first, and takes the chapter's lines and every
-  take rendered from them with it.
+- Each row's **⋯** menu has **✎ Edit text**, **✏️ Rename**, **↑ Move up**,
+  **↓ Move down** and **🗑 Delete**. Deleting asks first, and takes the
+  chapter's lines and every take rendered from them with it.
+- **✎ Edit text** opens the chapter's text in the same box, one paragraph per
+  line, to fix a mistake at any time — before or after Analyze. **Save**
+  matches your paragraphs to the lines: a line you left as it is keeps its
+  speaker, its marks and its takes (spacing doesn't count as a change); a
+  changed or new paragraph becomes a new line with no speaker, and the row then
+  says *N changed since* and offers **Re-analyze**. A line whose paragraph you
+  changed or removed goes, and its takes with it — when any of them have takes,
+  Save asks first: *2 lines you changed or removed have takes. Saving deletes
+  those takes.* To fix one line and keep its speaker and takes, use **✎ Edit…**
+  on the chapter's page instead ([a line's words](#a-lines-words-edit-split-merge)).
 - A book with no chapters at all offers **⬆ Import a manuscript…** (EPUB, DOCX,
   Markdown or plain text, previewed before anything is added — it opens on
   Projects) and **＋ Add chapter**.

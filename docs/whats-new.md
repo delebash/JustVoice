@@ -2,6 +2,12 @@
 
 ## v0.1.0
 
+- **Edit a chapter's text from Script's grid (2026-10-05)** — **⋯ → ✎ Edit
+  text** reopens the text you pasted or imported, before or after Analyze: lines
+  you leave as they are keep their speaker and takes, changed paragraphs become
+  new lines and the row offers **Re-analyze**. A chapter now opens before
+  Analyze, so you can read it and fix its words first ([Studio → Adding and
+  arranging chapters](studio.md#adding-and-arranging-chapters))
 - **Leaving Tags puts a persona's Type back (2026-10-05)** — Tags moves *Type*
   to *Cloned* (no built-in voice takes tags); going back to Any or Sliders only
   now returns it to *Built-in* instead of leaving an empty list

@@ -1012,6 +1012,8 @@ def _chapter_script(
         changed=sum(1 for ln in out_lines if ln.changed),
         no_dialogue_found=analyzed and bool(speakable_rows) and not spoken_rows,
         added_since=added,
+        edited_since=(sum(1 for r in speakable_rows if r[0].source in (None, "manual"))
+                      if analyzed else 0),
     )
     return chapter, out_lines, groups
 

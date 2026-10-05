@@ -480,6 +480,23 @@ its blast radius and the gaps.
 - The Stories timeline is inert — it calls no API; the rail is its only door (the old Chapters
   page's podcast "Open Timeline ➜" went with it, 2026-10-04). — *code, 2026-10-04* ·
   `StoriesView.vue:17`.
+- A chapter line's language and seed come from the one resolver: `persona_render.plan_line` →
+  `ChapterLine(language=plan.language, seed=plan.seed)` (`render_chapter_api.py:183-185`). The
+  language is the persona's when its model speaks it, else the voice's own, else the model's
+  first (`persona_render.persona_language`, `:168`); the seed is the persona's for that model
+  (`model_settings`). The speech runtime sends both to every model — `slot.py:655` (the seed;
+  random when none), `:663` (Kokoro), `:691` (Qwen3's language names), `:765` (Chatterbox).
+  — *code, 2026-10-05* (was: "language never reaches Chatterbox or Qwen3" and "a persona's seed
+  is ignored when a chapter renders" — both true on the Python engines until the 2026-10-01
+  switch and the 2026-10-03 resolver; the two TASKS findings were closed 2026-10-05).
+- A chapter's text can be edited as a whole: `GET`/`PUT /v1/scenes/{id}/text`
+  (`projects_api.text_edit_plan`, difflib over whitespace-normalised lines). Unchanged lines keep
+  their id, speaker and takes; changed and new paragraphs are new `source="manual"` lines, which
+  `ScriptChapter.edited_since` counts on an analyzed chapter (an Analyze rewrites every line's
+  source but "corrected", so none are left after it). Analyze then keeps the lines
+  (`extraction_api._lines_to_keep`), reading a hand-added line as its own paragraph. — *code,
+  2026-10-05* · `server/tests/test_chapter_text.py` ·
+  [`2026-10-05-chapter-text-edit.md`](../plans/2026-10-05-chapter-text-edit.md).
 
 ---
 

@@ -1622,6 +1622,10 @@ class ScriptChapter(BaseModel):
     # Speakers added after this chapter was analyzed whose name (or "also
     # called" name) appears in its text.
     added_since: list[str] = Field(default_factory=list)
+    # Lines added or changed by hand since the last Analyze (✎ Edit text makes
+    # them with source "manual"; an Analyze decides every line it reads) —
+    # Script offers Re-analyze for them.
+    edited_since: int = 0
 
 
 class ProjectScript(BaseModel):

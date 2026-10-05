@@ -723,6 +723,36 @@ GO: needed.
 
 ## The next build
 
+### A chapter's text can be edited from its row, and a chapter opens before Analyze (decided 2026-10-05)
+STATE:  DECIDED 2026-10-05 — "2 and your rec on others go" (the user: "i can click add text and get the
+        past box, but once ok how do i open the textbox to edit text if i made amistake"; "i need to
+        be able to edit the chapter text i just added before i analuze it in case a made a mistake
+        in entering text in first place"; "why not just have chapter row edit instead of forcing a
+        delete and re add"), on the two as shown:
+        "A chapter's row should let you edit its text directly. It would go in the row's ⋯ menu as
+        ✎ Edit text, beside Rename, Move and Delete. It opens the same box as ＋ Add text, with the
+        chapter's current text in it, one paragraph per line, and Save rebuilds the lines from it."
+        "2. Edit text at any time, keeping every unchanged line. Lines whose text you didn't touch
+        keep their speaker, marks and takes. Changed or new paragraphs become new lines with no
+        speaker, and the row offers Re-analyze for them, as it already does for lines added since
+        the last Analyze. If you remove a paragraph whose line has takes, it asks before deleting it."
+        The other, my rec: "Let any chapter with lines open before Analyze. Its lines show with no
+        speaker. You fix the words with ✎ Edit…, Split and Merge, then click ✨ Analyze this
+        chapter on the same page. Imported chapters can be read and fixed first too."
+WHY:    a pasted chapter couldn't be opened until analyzed (`StudioScript.vue:302`, the grid's row
+        click), and the paste box never reopened — a typo meant Delete and add again.
+NOT:    1 — Edit text only until the chapter is analyzed. Reopening the paste box only on pasted
+        chapters ("✎ Edit text" in place of ＋ Add text until Analyze).
+BUILT:  2026-10-05 — plan, blast radius and checks `docs/plans/2026-10-05-chapter-text-edit.md`.
+        `GET`/`PUT /v1/scenes/{id}/text` (`projects_api.text_edit_plan`), `ScriptChapter.edited_since`;
+        `StudioScript.vue` (⋯ → ✎ Edit text, the box, "N changed since", Re-analyze, the row opens
+        before Analyze). Correction to the text as shown: Re-analyze "as it already does for lines
+        added since" — *added since* was about speakers; the lines' count is new. Docs: studio,
+        whats-new; RESEARCH §3. Checked: ruff, Biome, build, 3 server test files (38); live, on
+        throwaway chapters deleted after (plan §3). Not live: the takes confirm.
+OPEN:   none.
+GO:     given 2026-10-05
+
 ### Leaving Tags puts Type back; voices with no gender stay; the voice-card mock goes (decided 2026-10-05)
 STATE:  DECIDED 2026-10-05 — "your rec on both go, delete the mock", on the two findings and the
         mock question as shown:
@@ -2298,8 +2328,12 @@ BUILT:  2026-10-04 — the plan's §3, plus the three sites in its "found while 
         on the running app; live through the app with a throwaway book (removed after): states,
         takes with audio, override → stale, New take, ★ an old take → stale, the chapter playing a
         stale take's words, the book lexicon, and a deleted book's take files gone.
-OPEN:   your look at Render in the app (it has nothing to render until the book is analyzed
-        and cast).
+OPEN:   your look at Render in the app. The demo is ready for it (2026-10-05, the user: "go ahead
+        and do 1 … get the demo"): Discover scanned all 5 chapters (4 new names left for you to
+        review — Old Sedge, the courier, the Warden …), Analyze ran on Bigger Inside, The Same
+        Hour and The Keystone, Cast's batch made 7 personas; Render: 290 lines, 104 ready, 186
+        can't render — the Narrator and Odeline Marran got "no voice matched — cast them
+        yourself", left for you. "fdsd" (your one-line test chapter) untouched.
 GO:     given 2026-10-04 ("your rec on all go code it all")
 
 ### Studio Slice 3 — Script, redesigned against the 09-28 measurements (mock first)
@@ -2960,47 +2994,6 @@ WHY:    1. "📦 Export .justvoice.zip" (`StudioOverview.vue:321`) is the PROJEC
         5. No clip is checked before cloning — no length, no noise — client
         (`VoicesView.vue:1484-1492`) or server.
 OPEN:   each needs a go.
-GO:     needed
-
-### FINDING — language never reaches Chatterbox or Qwen3: every render on them is told English
-STATE:  FINDING — code-verified 2026-10-01 (found by the persona review). Added to this list at
-        the user's word: "add your persona bugs to list to be fixed". Chapter renders build each
-        line with no language (`render_chapter_api.py:256-266`) and pass `language=line.language`
-        (`:442`, `:514`, `:607`); Generate sends none (`GenerateView.vue:482-488`; it only shows
-        the voice's at `:778`). The engines then default: Chatterbox `req.language or "en"`
-        (`chatterbox/engine.py:274`), Qwen3 the same (`qwen3/engine.py:361-362`). So a German
-        clone on Chatterbox Multilingual, or Sohee / Ono Anna on Qwen3, is told English, and the
-        persona's own Language field (`models.py:604`) is never read at render. Kokoro is
-        unaffected — it falls back to its voice's language (`kokoro/engine.py:220`).
-WHY:    two of our three cloning engines are multilingual, and neither gets the language.
-OPEN:   which wins — the persona's language, the voice's, or the book's — then send it from
-        both doors (the chapter resolver and Generate).
-GO:     needed
-
-### FINDING — a persona's seed is ignored when a chapter renders
-STATE:  FINDING — code-verified 2026-10-01 (found by the persona review); added at the user's
-        word, as above. A seed saved in the persona's delivery stays inside `delivery`; the
-        chapter resolver never sets the line's own seed (`render_chapter_api.py:256-266`) and
-        renders pass `seed=line.seed` (`:444`, `:516`, `:609`), which is empty. The engines read
-        only that one (`chatterbox/engine.py:285`, `qwen3/engine.py:371`, `luxtts/engine.py:90`),
-        so every chapter render samples at random. Generate resolves the delivery's seed on its
-        managed-engine path (`generate_api.py:324`) but not on its in-process one (`:440`).
-WHY:    a seed is how a sampled voice (Chatterbox, Qwen3) is made to repeat itself.
-OPEN:   resolve the delivery's seed into the line's seed in the chapter resolver, and on
-        Generate's in-process path, the way `generate_api.py:324` already does.
-GO:     needed
-
-### FINDING — the persona's "Engine override" is read by nothing
-STATE:  FINDING — code-verified 2026-10-01 (found by the persona review); added at the user's
-        word, as above. The Personas editor offers it (`PersonasView.vue:620-624`) and it is
-        stored (`database/models.py:123`), but no render path reads it — `engine_override` has no
-        hit in `render_core.py`, `generate_api.py`, `delivery_merge.py`, `synth_scheduler.py`,
-        `render_jobs.py` or the exports. Cast does read it, as the persona's engine label
-        (`StudioCast.vue:67`), so setting it makes Cast show an engine the audio never uses.
-        Redesign doc §10.4 already flagged it: "a persona reaching past its instrument".
-WHY:    a control that changes nothing, and mislabels Cast when set.
-OPEN:   remove it everywhere (editor, Cast's label, API, export, column), or replace it with
-        the model pin the persona review will propose.
 GO:     needed
 
 ### FINDING — the lexicon previews still show IPA as if an engine spoke it

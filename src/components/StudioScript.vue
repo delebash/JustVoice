@@ -18,6 +18,10 @@
   old Chapters page was deleted): "＋ Add chapter" beside the chips, Rename ·
   Move up · Move down · Delete in each row's ⋯ menu (Personas' ev-kebab menu),
   and "＋ Add text" on a chapter with none — paste it, each paragraph a line.
+  "✎ Edit text" in the ⋯ menu reopens a chapter's text (2026-10-05): lines
+  left as they are keep everything; changed and new paragraphs become new
+  lines with no speaker, counted "changed since" until Re-analyze. A chapter
+  with lines opens before Analyze, so its words can be fixed first.
   With no chapters at all, the page offers Import and ＋ Add chapter (G6).
 
   A book with narration needs a narrator (decided 2026-10-05): ✨ Analyze on a
@@ -91,7 +95,7 @@ function stateOf(c) {
   } else if (c.lines) {
     out.add("never");
   }
-  if (c.added_since?.length) out.add("stale");
+  if (c.added_since?.length || c.edited_since) out.add("stale");
   return out;
 }
 const rows = computed(() => props.chapters.map((c) => ({ ...c, id: c.scene_id, states: stateOf(c) })));
@@ -268,11 +272,56 @@ async function remove(r) {
   }
 }
 // ＋ Add text — paste a chapter's text; each paragraph becomes a line with no
-// speaker yet, for Analyze to attribute.
-const paste = ref(null);   // { row, text, busy }
+// speaker yet, for Analyze to attribute. ✎ Edit text reopens it (decided
+// 2026-10-05): the server keeps every line left as it is (PUT /text).
+const paste = ref(null);   // { row, text, busy, edit, was }
 const paragraphs = computed(() => (paste.value?.text || "").split(/\n\s*\n/).map((t) => t.trim()).filter(Boolean));
 function addText(r) {
-  paste.value = { row: r, text: "", busy: false };
+  paste.value = { row: r, text: "", busy: false, edit: false };
+}
+async function editText(r) {
+  try {
+    const { text } = await api.request(`/v1/scenes/${r.scene_id}/text`);
+    paste.value = { row: r, text, was: text, busy: false, edit: true };
+  } catch (e) {
+    pushToast({ kind: "error", message: `Couldn't open the text: ${e?.message || e}` });
+  }
+}
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+async function saveText() {
+  const { row, text } = paste.value;
+  const put = (dryRun) => api.request(`/v1/scenes/${row.scene_id}/text`, {
+    method: "PUT", headers: JSON_HEADERS, body: JSON.stringify({ text, dry_run: dryRun }),
+  });
+  paste.value.busy = true;
+  try {
+    const plan = await put(true);
+    if (!plan.changed && !plan.added && !plan.removed) {
+      paste.value = null;
+      pushToast({ kind: "info", message: "Nothing changed." });
+      return;
+    }
+    if (plan.takes_lost) {
+      const ok = await confirmDialog({
+        title: "Delete their takes?",
+        message: `${plural(plan.takes_lost, "line")} you changed or removed ${plan.takes_lost === 1 ? "has" : "have"} takes. Saving deletes those takes.`,
+        danger: true,
+        confirmLabel: "Save and delete the takes",
+      });
+      if (!ok) { paste.value.busy = false; return; }
+    }
+    const done = await put(false);
+    paste.value = null;
+    emit("changed");
+    const bits = [done.changed && `${done.changed} changed`, done.added && `${done.added} added`,
+      done.removed && `${done.removed} removed`].filter(Boolean).join(", ");
+    pushToast({ kind: "success", message: `Saved — ${bits}. ${row.analyzed
+      ? "Re-analyze works out who speaks the new lines; lines you set are kept."
+      : "✨ Analyze works out who speaks each line."}` });
+  } catch (e) {
+    if (paste.value) paste.value.busy = false;
+    pushToast({ kind: "error", message: `Couldn't save the text: ${e?.message || e}` });
+  }
 }
 async function addLines() {
   const { row } = paste.value;
@@ -299,7 +348,7 @@ function startImport() {
 }
 function openRow(r, focus = null) {
   if (!r.lines || inRun(props.project.id, r.scene_id, "analyze") === "current") return;
-  if (!r.analyzed && !r.from_import) return;
+  // Before Analyze too (decided 2026-10-05), so its words can be fixed first.
   emit("open", r.scene_id, focus);
 }
 </script>
@@ -348,7 +397,7 @@ function openRow(r, focus = null) {
           </div>
 
           <UiTable class="jv-table-look studio-script__grid" :data="shown" :columns="COLUMNS" data-key="id"
-            row-hover :row-class="(r) => ({ 'studio-script__row--open': r.analyzed || r.from_import })"
+            row-hover :row-class="(r) => ({ 'studio-script__row--open': !!r.lines })"
             @row-click="({ data }) => openRow(data)">
             <template #head-sel>
               <UiCheckbox :model-value="allShownTicked" :disabled="!shownTickable.length"
@@ -391,6 +440,8 @@ function openRow(r, focus = null) {
                 </template>
                 <UiTag v-for="n in row.added_since" :key="n" intent="accent2"
                   :title="`Analyzed before ${n} joined the cast, and this ${word.singular.toLowerCase()}'s text names ${n} — Analyze could not choose ${n} then.`">{{ n }} added since</UiTag>
+                <UiTag v-if="row.edited_since" intent="accent2"
+                  :title="`${plural(row.edited_since, 'line')} added or changed with ✎ Edit text since the last Analyze, with no speaker yet. Re-analyze works out who speaks them; lines you set are kept.`">{{ row.edited_since }} changed since</UiTag>
                 <UiTag v-if="row.no_dialogue_found" intent="accent2"
                   title="Nothing in this chapter was read as speech. Speech after a dash isn't read as dialogue, and neither are marks other than Overview → Speech marks is set to.">no dialogue found</UiTag>
               </template>
@@ -420,7 +471,7 @@ function openRow(r, focus = null) {
                 <template v-else>
                   <UiButton v-if="recut(failureOf(project.id, row.scene_id, 'analyze'))" intent="secondary" size="small"
                     label="Takes ➜" title="The takes recorded against this chapter's lines" @click="emit('go', 'render')" />
-                  <UiButton v-if="row.added_since?.length && !inRun(project.id, row.scene_id, 'analyze')" intent="primary" size="small"
+                  <UiButton v-if="(row.added_since?.length || row.edited_since) && !inRun(project.id, row.scene_id, 'analyze')" intent="primary" size="small"
                     label="Re-analyze" :disabled="blocked"
                     :title="blocked ? '' : `Re-analyze ${row.title || ''} — lines you set are kept.`"
                     @click="analyze([row])" />
@@ -436,6 +487,9 @@ function openRow(r, focus = null) {
                     :title="`${word.singular} actions`">⋯</DropdownMenuTrigger>
                   <DropdownMenuPortal>
                     <DropdownMenuContent class="ev-menu" align="end" :side-offset="4" :collision-padding="8">
+                      <DropdownMenuItem class="ev-menu-item"
+                        :disabled="!row.lines || inRun(project.id, row.scene_id, 'analyze') === 'current'"
+                        @select="editText(row)">✎ Edit text</DropdownMenuItem>
                       <DropdownMenuItem class="ev-menu-item" @select="rename(row)">✏️ Rename</DropdownMenuItem>
                       <DropdownMenuItem class="ev-menu-item" :disabled="row.position === 0" @select="move(row, -1)">↑ Move up</DropdownMenuItem>
                       <DropdownMenuItem class="ev-menu-item" :disabled="row.position >= ordered.length - 1"
@@ -503,6 +557,9 @@ function openRow(r, focus = null) {
           <dt>added since</dt>
           <dd class="jv-muted">Analyzed before that speaker was added, and the text names them.
             Re-analyze it — lines you set are kept.</dd>
+          <dt>changed since</dt>
+          <dd class="jv-muted">Lines added or changed with ✎ Edit text since the last Analyze. They have no
+            speaker until you re-analyze — lines you set are kept.</dd>
           <dt>no dialogue found</dt>
           <dd class="jv-muted">Nothing in the text was read as speech, so every line went to the Narrator.
             Speech after a dash isn't read as dialogue. If the book marks speech another way than Overview →
@@ -517,9 +574,13 @@ function openRow(r, focus = null) {
       </div>
     </div>
 
-    <AppModal v-if="paste" eyebrow="＋ Add text" :title="titleOf(paste.row)" max-width="720px" dismissable
-      @close="paste = null">
-      <p class="jv-lede studio-script__paste-lede">
+    <AppModal v-if="paste" :eyebrow="paste.edit ? '✎ Edit text' : '＋ Add text'" :title="titleOf(paste.row)"
+      max-width="720px" dismissable @close="paste = null">
+      <p v-if="paste.edit" class="jv-lede studio-script__paste-lede">
+        Each paragraph is a line. Lines you leave as they are keep their speaker and takes; a changed or new
+        paragraph becomes a new line with no speaker{{ paste.row.analyzed ? " — Re-analyze works out who speaks it" : "" }}.
+      </p>
+      <p v-else class="jv-lede studio-script__paste-lede">
         Paste the {{ word.singular.toLowerCase() }}'s text. Each paragraph becomes a line; ✨ Analyze then works out
         who speaks each one.
       </p>
@@ -528,7 +589,9 @@ function openRow(r, focus = null) {
         <span class="jv-hint">{{ paragraphs.length ? `${paragraphs.length} paragraph${paragraphs.length === 1 ? "" : "s"}` : "" }}</span>
         <span class="jv-spacer" />
         <UiButton intent="secondary" label="Cancel" @click="paste = null" />
-        <UiButton intent="primary" label="Add as lines" :loading="paste.busy" :disabled="!paragraphs.length || paste.busy"
+        <UiButton v-if="paste.edit" intent="primary" label="Save" :loading="paste.busy"
+          :disabled="!paragraphs.length || paste.text === paste.was || paste.busy" @click="saveText" />
+        <UiButton v-else intent="primary" label="Add as lines" :loading="paste.busy" :disabled="!paragraphs.length || paste.busy"
           @click="addLines" />
       </template>
     </AppModal>
