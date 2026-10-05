@@ -15,9 +15,8 @@ a little different, because each model clones with its own character.
 ### Every voice knows the model that speaks it
 
 One engine can hold several models, and they are not interchangeable.
-Chatterbox is **Multilingual** (19 languages, 23 with the speech runtime's next release; no tags)
-and, once that release ships them, **Turbo** and **Nano** (English, 19 inline
-tags); Qwen3 is
+Chatterbox is **Multilingual** (23 languages, no tags), **Turbo** and **Nano**
+(English, 19 inline tags); Qwen3 is
 **CustomVoice** (its nine speakers), **Base** (clones) and **VoiceDesign**
 (designed voices). So a voice remembers the model it was made for, and every
 render loads *that* model:
@@ -49,14 +48,14 @@ the library, for any persona to use.
 
 | Type | What it is | Made |
 |---|---|---|
-| **Preset** | Ships with the model. Nothing to make. | Comes with Kokoro (49; 54 with the speech runtime's next release), Pocket TTS (20), KittenTTS (8), Qwen3 **CustomVoice** (9) |
-| **Cloned** | Learned from a recording of someone speaking. | [New clone](personas.md#new-clone) — Chatterbox Multilingual, Pocket TTS, Qwen3 **Base**, VoxCPM2; Chatterbox Turbo and Nano with the speech runtime's next release |
+| **Preset** | Ships with the model. Nothing to make. | Comes with Kokoro (54), Pocket TTS (20), KittenTTS (8), Qwen3 **CustomVoice** (9) |
+| **Cloned** | Learned from a recording of someone speaking. | [New clone](personas.md#new-clone) — Chatterbox Multilingual, Turbo, Nano, Pocket TTS, Qwen3 **Base**, VoxCPM2 |
 | **Designed** | Invented from a written description — no recording. | [New design](personas.md#new-design) — Qwen3 **VoiceDesign**, VoxCPM2 |
 | **Imported** | A clip kept as it was, before 2026-10-04. | New clones replace it: **Keep** without listening first does the same |
 | **Blended** | Made out of Kokoro's own voices — mixed, exaggerated, added and subtracted, or spliced. | [New blend](personas.md#new-blend) |
 
-Blends and Kokoro's five Japanese voices wait on the speech runtime's next
-release; see [Engines → Not available yet](engines.md#not-available-yet).
+Kokoro's five Japanese voices need the optional Japanese dictionary — see
+[Engines → The Japanese dictionary](engines.md#the-speech-runtime).
 
 ### Which of them take written direction
 

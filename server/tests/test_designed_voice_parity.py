@@ -257,16 +257,22 @@ def test_the_mlx_variants_resolve_to_the_same_families() -> None:
 
 # ── C — Qwen3 has no tag vocabulary ────────────────────────────────────
 
-def test_no_engine_claims_paralinguistic_tags_on_the_runtime() -> None:
-    """The flag decides whether `render_core` strips bracketed markup — True on
-    an engine that cannot read it puts `[laugh]` into the text, read aloud.
-    Qwen3 never had a tag vocabulary; Chatterbox Turbo, whose native syntax tags
-    ARE, is not on the speech runtime yet (switch plan §5), so no engine claims
-    them today."""
+def test_only_chatterbox_claims_paralinguistic_tags_and_only_turbo_keeps_them() -> None:
+    """The engine flag is the fallback for an engine with no capability row; True
+    on an engine that cannot read tags puts `[laugh]` into the text, read aloud.
+    Qwen3 never had a tag vocabulary. Chatterbox claims them once the pinned
+    runtime clones on Turbo (v0.9.0-jv.4) — and a voice's own model row still
+    decides: Turbo and Nano keep their 19 tags, Multilingual's row lists none,
+    so its lines are stripped (render_core.performable_text)."""
+    from justvoice.engines.audiocpp import release
+    from justvoice.engines.capability_details import lookup
     from justvoice.engines.manager import discover_engines
 
     for engine_id, m in discover_engines().items():
-        assert m.capabilities.get("paralinguistic_tags", False) is False, engine_id
+        claims = m.capabilities.get("paralinguistic_tags", False)
+        assert claims is (engine_id == "chatterbox" and release.pinned_has("turbo_clone")), engine_id
+    assert not lookup("chatterbox-multilingual").inline_tags
+    assert sum(len(t.tags) for t in lookup("chatterbox-turbo").inline_tags) == 19
 
 
 def test_stripping_removes_markup_qwen_would_have_spoken() -> None:

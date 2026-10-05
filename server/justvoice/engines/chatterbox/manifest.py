@@ -9,12 +9,13 @@ VRAM instead of 5.4.
 Clone-only: every Chatterbox voice is a reference clip the user brings. Exaggeration and
 CFG are set per line (verified 2026-10-01 — no model reload).
 
-Turbo and Nano come back with gap 1 (docs/plans/2026-10-03-gap-1-turbo-cloning.md): our
+Turbo and Nano came back with gap 1 (docs/plans/2026-10-03-gap-1-turbo-cloning.md): our
 audio.cpp clones on Turbo from a file we convert from Resemble's own checkpoint, published at
-TURBO_REPO / NANO_REPO. Their rows wait in PENDING_VARIANTS until the pinned runtime has
-`turbo_clone` (v0.9.0-jv.3). Not yet back: Hebrew, Japanese, Russian and Chinese (audio.cpp's
-Chatterbox speaks 19 of the model's 23 languages — gap 7). Resemble's PerTh watermark is not
-applied by audio.cpp (user, 2026-10-01: "dont care about watermark").
+TURBO_REPO / NANO_REPO. Their rows join VARIANTS when the pinned runtime has `turbo_clone`
+(v0.9.0-jv.4); on an older pin they wait in PENDING_VARIANTS. Hebrew, Russian and Chinese
+(`chatterbox_he_ru_zh`) and Japanese (`japanese`) join the 19 languages the same way (gap 7).
+Resemble's PerTh watermark is not applied by audio.cpp (user, 2026-10-01: "dont care about
+watermark").
 """
 
 from ..audiocpp.release import model_source, pinned_has, sixteen_bit
@@ -114,8 +115,8 @@ _NANO = _turbo_row(
     "boxes. Clones from a clip longer than 5 seconds. 8-bit weights.",
     78, NANO_REPO, NANO_REVISION, "chatterbox-nano-q8_0.gguf", 616_250_532)
 
-# Written and published, waiting for the pinned runtime to clone on Turbo; the capability rows
-# (`chatterbox-turbo`, `chatterbox-nano`) and the knob-wiring test already read them.
+# Offered once the pinned runtime clones on Turbo (`turbo_clone`); the capability rows
+# (`chatterbox-turbo`, `chatterbox-nano`) and the knob-wiring test read them either way.
 PENDING_VARIANTS = [
     _TURBO,
     sixteen_bit(_TURBO, "chatterbox-turbo-f16.gguf", 1_391_709_474, dtype="f16",

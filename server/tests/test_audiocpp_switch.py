@@ -30,9 +30,13 @@ def test_every_switched_engine_runs_on_audiocpp(engine):
     assert m.default_variant_id in {r["id"] for r in m.module.VARIANTS}
     for r in m.module.VARIANTS:
         src = r["sources"][0]
-        # audio.cpp's own repo, or our conversion of a model it does not publish (gap 4).
+        # audio.cpp's own repo, or our conversion of a model it does not publish (gap 4; Turbo
+        # and Nano, gap 1, offered from v0.9.0-jv.4).
+        from justvoice.engines.chatterbox import manifest as cb
+
         pinned = {release.MODEL_REPO: release.MODEL_REVISION,
-                  qwen3_manifest.CV_06_REPO: qwen3_manifest.CV_06_REVISION}
+                  qwen3_manifest.CV_06_REPO: qwen3_manifest.CV_06_REVISION,
+                  cb.TURBO_REPO: cb.TURBO_REVISION, cb.NANO_REPO: cb.NANO_REVISION}
         assert src["hf_repo"] in pinned
         assert src["revision"] == pinned[src["hf_repo"]]          # a commit, never a branch
         assert r["audiocpp"]["file"] in src["files"]
@@ -54,8 +58,9 @@ def test_qwen3_family_still_reads_off_the_variant_id():
 
 
 def test_kokoro_offers_only_voices_audiocpp_can_speak():
+    # Since v0.9.0-jv.4 the pinned runtime reads Japanese: all 54, the five Japanese among them.
     voices = discover_engines()["kokoro"].static_voices
-    assert len(voices) == 49 and not any(v["language"] == "ja" for v in voices)
+    assert len(voices) == 54 and sum(v["language"] == "ja" for v in voices) == 5
 
 
 def test_the_aligner_rides_with_speech_recognition():

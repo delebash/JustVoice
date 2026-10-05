@@ -77,5 +77,5 @@ def test_ipa_is_used_only_when_the_installed_runtime_splices(monkeypatch):
 def test_the_capability_follows_the_pin(monkeypatch):
     monkeypatch.setattr(release, "TAG", "v0.9.0")
     assert release.pinned_has("inline_ipa") is False
-    monkeypatch.setattr(release, "TAG", "v0.9.0-jv.2")
+    monkeypatch.setattr(release, "TAG", "v0.9.0-jv.4")
     assert release.pinned_has("inline_ipa") is True

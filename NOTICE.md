@@ -94,14 +94,38 @@ Copyright (c) 2001-2002 Enthought, Inc. 2003, SciPy Developers.   (scipy)
 
 - Upstream: https://github.com/0xShug0/audio.cpp. JustVoice runs its own build, from JustVoice's
   copy https://github.com/delebash/audio.cpp (a public fork, branch `jv`) — prebuilt release
-  archives made by the fork's release workflow, pinned `v0.9.0-jv.1` (upstream v0.9.0 plus
+  archives made by the fork's release workflow, pinned `v0.9.0-jv.4` (upstream v0.9.0 plus
   JustVoice's changes). Every file the copy changes says so in a first-line comment, with the date
   and what changed (Apache-2.0 §4(b)).
 - License: Apache-2.0, Copyright 2026 ShugoAI LLC
 - Downloaded onto the user's machine when they install the speech runtime; never bundled with or
   redistributed by JustVoice. Its release archive carries a `LICENSE` and no `NOTICE` file
-  (checked 2026-10-03 on v0.9.0-jv.1), so there is no §4(d) content to propagate. Re-check on
-  every pin bump.
+  (checked 2026-10-04 on v0.9.0-jv.4's macOS and Linux bundles), so there is no §4(d) content to
+  propagate. Re-check on every pin bump. Since jv.4 the archive also carries MeCab's library and
+  cppjieba's dictionaries, each with its own licence file (below).
+
+### MeCab (BSD-3-Clause) — Japanese readings, inside the speech runtime
+
+- Upstream: https://taku910.github.io/mecab/ — MeCab 0.996, as fugashi 1.5.2's prebuilt wheels
+  ship it (https://github.com/polm/fugashi); the runtime's build copies `libmecab` beside the
+  executable with its licence as `libmecab.LICENSE.txt`.
+- Copyright (c) 2001-2008, Taku Kudo; Copyright (c) 2004-2008, Nippon Telegraph and Telephone
+  Corporation. BSD-3-Clause.
+- Part of the speech runtime archive the user's machine downloads; not redistributed by JustVoice.
+
+### cppjieba's dictionaries (MIT) — Chinese word breaks, inside the speech runtime
+
+- Upstream: https://github.com/yanyiwu/cppjieba at commit `8f171de` — `jieba.dict.utf8` and
+  `hmm_model.utf8`, with its `LICENSE`, in the runtime's `jieba/` folder.
+- Part of the speech runtime archive; not redistributed by JustVoice.
+
+### The Japanese dictionary — unidic-lite (MIT) and UniDic (BSD-3-Clause)
+
+- Upstream: https://github.com/polm/unidic-lite 1.0.8 (Copyright 2020 Paul McCann, MIT), carrying
+  UniDic 2.1.2 (Copyright 2011-2017 The UniDic Consortium; offered under BSD, GPL or LGPL — taken
+  under BSD-3-Clause). Both licence files are unpacked with the dictionary.
+- Downloaded onto the user's machine from PyPI when they install the Japanese dictionary; never
+  bundled with or redistributed by JustVoice.
 
 ### eSpeak NG (GPL-3.0) — Kokoro's and KittenTTS's pronunciation library
 
@@ -120,6 +144,9 @@ Copyright (c) 2001-2002 Enthought, Inc. 2003, SciPy Developers.   (scipy)
   OpenBMB).
 - Qwen3-TTS CustomVoice 0.6B comes from JustVoice's own conversion of Qwen's checkpoint (Apache-2.0,
   changes stated on its page): https://huggingface.co/delebash/Qwen3-TTS-12Hz-0.6B-CustomVoice-GGUF
+- Chatterbox Turbo and Nano come from JustVoice's own conversions of Resemble AI's checkpoints
+  (MIT): https://huggingface.co/delebash/chatterbox-turbo-GGUF and
+  https://huggingface.co/delebash/chatterbox-nano-GGUF
 - Downloaded by the user's app on demand; not redistributed by JustVoice.
 
 ### numpy (BSD-3-Clause)

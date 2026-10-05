@@ -97,13 +97,14 @@ def test_no_kokoro_download_says_so(tmp_path):
 
 
 def test_features_follow_the_build_order(monkeypatch):
-    for tag, expect in (("v0.9.0", False), ("v0.9.0-jv.1", False), ("v0.9.0-jv.2", True), (None, False),
-                        ("v9-unknown", False)):
+    # jv.2 and jv.3 were never published; blends arrive in jv.4 (decided 2026-10-04).
+    for tag, expect in (("v0.9.0", False), ("v0.9.0-jv.1", False), ("v0.9.0-jv.2", False),
+                        ("v0.9.0-jv.4", True), (None, False), ("v9-unknown", False)):
         monkeypatch.setattr(runtime, "installed_tag", lambda backend=None, t=tag: t)
         assert runtime.has_feature("voice_pack") is expect, tag
     monkeypatch.setattr(release, "TAG", "v0.9.0")
     assert release.pinned_has("voice_pack") is False
-    monkeypatch.setattr(release, "TAG", "v0.9.0-jv.2")
+    monkeypatch.setattr(release, "TAG", "v0.9.0-jv.4")
     assert release.pinned_has("voice_pack") is True
 
 
@@ -145,6 +146,9 @@ def test_an_older_runtime_refuses_a_blend_by_name(monkeypatch):
     from justvoice.engines.audiocpp import release
 
     monkeypatch.setattr(runtime, "has_feature", lambda name, backend=None: False)
+    # The slot holds its own reference (`from .runtime import has_feature`): patch that one too,
+    # or the installed runtime answers — this passed only while jv.1 was installed.
+    monkeypatch.setattr(slot, "has_feature", lambda name, backend=None: False)
     # The pin has blends: an update brings them. It doesn't: this version can't (audit §5 E3).
     monkeypatch.setattr(release, "pinned_has", lambda f: True)
     r = _Slot("kokoro_tts")._synth({"voice_vector": [0.0] * 256, "text": "Hi."})

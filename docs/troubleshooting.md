@@ -44,16 +44,21 @@ it from the **Speech runtime** row at the top of **AI Settings → Speech
 engines** — once, for every engine. See
 [Engines → The speech runtime](engines.md#the-speech-runtime).
 
-**A render stops with "… this isn't in this version's speech runtime yet".**
-The line needs something the speech runtime this JustVoice runs doesn't have —
-a blended voice, a lexicon's pronunciation on Kokoro, a Chatterbox Turbo or Nano
-voice, Japanese, or Chatterbox in Hebrew, Russian or Chinese. They come with the
-speech runtime's next release. Give the speaker's persona a different voice for
-now. See [Engines → Not available yet](engines.md#not-available-yet).
-
 **A render stops with "… this needs the speech runtime update".** This
-JustVoice can speak the line, but the speech runtime you have installed is
-older. Click **Update to** on the runtime row of AI Settings → Speech engines.
+JustVoice can speak the line — a blended voice, a lexicon's pronunciation on
+Kokoro, a Chatterbox Turbo or Nano voice, Japanese, or Chatterbox in Hebrew,
+Russian or Chinese — but the speech runtime you have installed is older. Click
+**Update to** on the runtime row of AI Settings → Speech engines.
+
+**A render stops with "… this isn't in this version's speech runtime yet".**
+The line needs something this JustVoice's speech runtime doesn't have at all.
+Give the speaker's persona a different voice. See
+[Engines → Not available yet](engines.md#not-available-yet).
+
+**A Japanese line stops with "Japanese needs the Japanese dictionary".**
+Install the dictionary on its row under the runtime row of AI Settings →
+Speech engines (about 260 MB). See
+[Engines → The speech runtime](engines.md#the-speech-runtime).
 
 **A Pocket TTS clone stops with "… only after you accept Kyutai's terms".**
 Pocket TTS clones only once you have accepted Kyutai's terms for it, on this

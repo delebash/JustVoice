@@ -19,13 +19,14 @@ TURBO = {"id": "chatterbox-turbo-q8", "name": "Chatterbox Turbo (350M, English)"
          "audiocpp": {"family": "chatterbox_turbo", "task": "tts", "file": "t.gguf"}}
 
 
-def test_turbo_clone_is_the_third_build_of_ours(monkeypatch):
-    for tag, expect in (("v0.9.0", False), ("v0.9.0-jv.2", False), ("v0.9.0-jv.3", True), (None, False)):
+def test_turbo_clone_arrives_in_jv4(monkeypatch):
+    for tag, expect in (("v0.9.0", False), ("v0.9.0-jv.1", False), ("v0.9.0-jv.3", False),
+                        ("v0.9.0-jv.4", True), (None, False)):
         monkeypatch.setattr(runtime, "installed_tag", lambda backend=None, t=tag: t)
         assert runtime.has_feature("turbo_clone") is expect, tag
-    monkeypatch.setattr(release, "TAG", "v0.9.0-jv.2")
+    monkeypatch.setattr(release, "TAG", "v0.9.0-jv.1")
     assert release.pinned_has("turbo_clone") is False
-    monkeypatch.setattr(release, "TAG", "v0.9.0-jv.3")
+    monkeypatch.setattr(release, "TAG", "v0.9.0-jv.4")
     assert release.pinned_has("turbo_clone") is True
 
 
@@ -88,6 +89,9 @@ def test_an_older_runtime_refuses_turbo_by_name(monkeypatch):
     from justvoice.engines.audiocpp import release
 
     monkeypatch.setattr(runtime, "has_feature", lambda name, backend=None: False)
+    # The slot holds its own reference (`from .runtime import has_feature`): patch that one too,
+    # or the installed runtime answers — this passed only while jv.1 was installed.
+    monkeypatch.setattr(slot, "has_feature", lambda name, backend=None: False)
     monkeypatch.setattr(release, "pinned_has", lambda f: True)
     r = _Slot()._synth({"text": "Hi.", "audio_prompt_path": "C:/v.wav"})
     assert r.status_code == 409 and "speech runtime update" in r.json()["detail"]

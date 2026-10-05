@@ -117,7 +117,7 @@ def test_languages_and_voices_follow_the_pin(monkeypatch):
         monkeypatch.setattr(release, "TAG", "v0.9.0-jv.1")
         importlib.reload(cb), importlib.reload(kk)
         assert len(cb.VARIANTS[0]["languages"]) == 19 and len(kk.STATIC_VOICES) == 49
-        monkeypatch.setattr(release, "TAG", "v0.9.0-jv.3")
+        monkeypatch.setattr(release, "TAG", "v0.9.0-jv.4")
         importlib.reload(cb), importlib.reload(kk)
         assert {"he", "ru", "zh", "ja"} <= set(cb.VARIANTS[0]["languages"])
         assert cb.VARIANTS[0]["name"] == "Chatterbox Multilingual (23 languages)"
@@ -132,6 +132,6 @@ def test_the_runtime_row_offers_it_only_once_the_pin_reads_japanese(monkeypatch)
 
     monkeypatch.setattr(release, "TAG", "v0.9.0-jv.1")
     assert api._japanese_dictionary() is None
-    monkeypatch.setattr(release, "TAG", "v0.9.0-jv.3")
+    monkeypatch.setattr(release, "TAG", "v0.9.0-jv.4")
     info = api._japanese_dictionary()
     assert info.version == japanese.VERSION and info.size_bytes == japanese.INSTALLED_BYTES

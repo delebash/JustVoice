@@ -77,9 +77,12 @@ publisher, when the user installs the speech runtime or downloads a model.
 
 | Component | When it is fetched | SPDX license | Distributed by JustVoice |
 |---|---|---|---|
-| **audio.cpp** (the speech runtime, prebuilt binaries from JustVoice's copy, github.com/delebash/audio.cpp — pinned `v0.9.0-jv.1`) | Install speech runtime | `Apache-2.0` (Copyright 2026 ShugoAI LLC; the release ships no `NOTICE`) | no |
+| **audio.cpp** (the speech runtime, prebuilt binaries from JustVoice's copy, github.com/delebash/audio.cpp — pinned `v0.9.0-jv.4`) | Install speech runtime | `Apache-2.0` (Copyright 2026 ShugoAI LLC; the release ships no `NOTICE`) | no |
+| **MeCab** 0.996 (`libmecab`, Japanese readings — inside the runtime archive, from fugashi 1.5.2's wheels, with its `libmecab.LICENSE.txt`) | Install speech runtime | `BSD-3-Clause` | no |
+| **cppjieba's dictionaries** (`jieba/`, Chinese word breaks — inside the runtime archive, commit `8f171de`, with its `LICENSE`) | Install speech runtime | `MIT` | no |
+| **Japanese dictionary** — unidic-lite 1.0.8 (MIT) carrying UniDic 2.1.2 (offered under BSD, GPL or LGPL; taken under `BSD-3-Clause`), with its licence files | Install on the Japanese dictionary row | `MIT` + `BSD-3-Clause` | no |
 | **eSpeak NG** (library + data, via the `espeakng-loader` 0.2.4 wheel — loader `MIT`) | Install speech runtime | `GPL-3.0` | no |
-| **Speech models** — GGUF files from `audio-cpp/audio.cpp-gguf` @ a pinned commit, each under its original model's licence | Download / first load | Kokoro-82M `Apache-2.0` · KittenTTS Mini 0.8 `Apache-2.0` · Pocket TTS `CC-BY-4.0` (its 20 presets `CC-BY-4.0` or `CC0-1.0` — NOTICE.md) · Qwen3-TTS, Qwen3-ASR, Qwen3-ForcedAligner `Apache-2.0` · Chatterbox `MIT` · VoxCPM2 `Apache-2.0` — and Qwen3-TTS CustomVoice 0.6B from our own conversion at `delebash/Qwen3-TTS-12Hz-0.6B-CustomVoice-GGUF`, `Apache-2.0` | no |
+| **Speech models** — GGUF files from `audio-cpp/audio.cpp-gguf` @ a pinned commit, each under its original model's licence | Download / first load | Kokoro-82M `Apache-2.0` · KittenTTS Mini 0.8 `Apache-2.0` · Pocket TTS `CC-BY-4.0` (its 20 presets `CC-BY-4.0` or `CC0-1.0` — NOTICE.md) · Qwen3-TTS, Qwen3-ASR, Qwen3-ForcedAligner `Apache-2.0` · Chatterbox `MIT` · VoxCPM2 `Apache-2.0` — and Qwen3-TTS CustomVoice 0.6B from our own conversion at `delebash/Qwen3-TTS-12Hz-0.6B-CustomVoice-GGUF`, `Apache-2.0`; Chatterbox Turbo and Nano from our own conversions at `delebash/chatterbox-turbo-GGUF` and `delebash/chatterbox-nano-GGUF`, `MIT` | no |
 
 Licences verified 2026-10-01: audio.cpp against the `LICENSE` in its release archive; the loader and
 eSpeak NG against their GitHub repositories (PyPI carries no licence metadata for the loader); each
@@ -88,7 +91,11 @@ cross-checked against the upstream model cards. KittenTTS and Pocket TTS verifie
 their model cards, and Pocket TTS's presets against Kyutai's `kyutai/tts-voices` README — six of its
 26 presets are left out for non-commercial or unstated licences. VoxCPM2 verified 2026-10-02 against
 its upstream repository (`openbmb/VoxCPM2`, `apache-2.0`, not gated) and its README ("free for
-commercial use").
+commercial use"). MeCab, cppjieba's dictionaries, unidic-lite and UniDic verified 2026-10-04
+against the licence files themselves: `libmecab.LICENSE.txt` and `jieba/LICENSE` in the
+v0.9.0-jv.4 archives (Copyright 2001-2008 Taku Kudo and 2004-2008 Nippon Telegraph and Telephone
+Corporation, BSD-3-Clause; MIT), and unidic-lite 1.0.8's `LICENSE` (Copyright 2020 Paul McCann,
+MIT) and `LICENSE.unidic` (Copyright 2011-2017 The UniDic Consortium, BSD-3-Clause).
 
 **Why the GPL row does not relicense JustVoice.** GPL obligations attach to the *distribution* of a
 combined work, and JustVoice does not distribute eSpeak NG in any form. No JustVoice code links or

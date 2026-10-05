@@ -255,21 +255,31 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
 
 ### 1.4 Builds, releases and installs
 
-- Pinned build `v0.9.0-jv.1`; an install still on `v0.9.0` keeps working until updated.
-  Features name the first build that has them: `voxcpm2_transcript` jv.1; `voice_pack`,
-  `inline_ipa` jv.2; `turbo_clone`, `chatterbox_he_ru_zh`, `japanese` jv.3 (placeholders until
-  the next release is cut). — *code, 2026-10-04* · `engines/audiocpp/release.py:23-41`.
-- The tag `v0.9.0-jv.3` holds Turbo cloning (`3865d245`) but **not** Hebrew/Russian/Chinese
-  (`fc55e1e6`), Japanese (`6a2bb4c5`), the libmecab/jieba staging (`6d1825eb`) or the macOS fix
-  (`faf1ee03`). — *git, 2026-10-04* · audit §5 E2.
+- **Pinned build `v0.9.0-jv.4`** — tag at our copy's `f7d8140a`, published 2026-10-05 01:25 UTC
+  by release run 37243444087 after dry run 37235747073 passed on every platform. Builds in order
+  `v0.9.0`, `v0.9.0-jv.1`, `v0.9.0-jv.4`; an install on either older one keeps working until
+  updated. Features: `voxcpm2_transcript` jv.1; `voice_pack`, `inline_ipa`, `turbo_clone`,
+  `chatterbox_he_ru_zh`, `japanese`, `model_management` jv.4. (was: pinned jv.1, with jv.2 / jv.3
+  placeholders — until 2026-10-04.) — *code + GitHub API, 2026-10-05* ·
+  `engines/audiocpp/release.py`.
+- Tags `v0.9.0-jv.2` (`42db68d9`) and `v0.9.0-jv.3` (`3865d245`) exist on commits whose macOS
+  build failed; nothing was published for them, and their names are not reused (decided
+  2026-10-04). — *git, 2026-10-04* · audit §5 E2.
+- **Live, the update jv.1 → jv.4** through the app's own install job on the real data folder
+  (headless server on the pinned release): 464 MB + 607 MB downloaded and checksum-checked,
+  swapped in, jv.1 deleted, no `.downloads` left, in 23 s. On the published build: Kokoro
+  `jf_alpha` Japanese read back exactly; a Kokoro blend played; a Chatterbox Turbo clone (with
+  `[laugh]`) read back word for word; Chatterbox Russian and Chinese read back exactly. —
+  *measured, 2026-10-05* · TASKS (the release item).
 - Every build feature a line needs is checked against the INSTALLED build, and the refusal
   offers an update only when the pin has the feature. (was: only `voice_pack`, `turbo_clone` and
   `inline_ipa` were checked; the other three were offered from the pin alone — until
   2026-10-04.) — *code + tests, 2026-10-04* · `slot.py` `features_needed`, `feature_refusal`;
   audit §5 E1, §13.5.
-- v0.9.0-jv.1's Windows archives: CUDA 12.4 461 MB + its CUDA runtime 607 MB; CUDA 13.3 273 MB +
-  575 MB; Vulkan 60 MB; CPU (portable) 26 MB. Linux: x86-64 only (Vulkan, CPU, a Colab CUDA
-  build); macOS: Metal for arm64 and x64. — *GitHub API, 2026-10-04* · release v0.9.0-jv.1.
+- v0.9.0-jv.4's Windows archives: CUDA 12.4 464 MB + its CUDA runtime 607 MB; CUDA 13.3 275 MB +
+  575 MB; Vulkan 63 MB; CPU (portable) 28 MB. Linux: x86-64 only (Vulkan, CPU, a Colab CUDA
+  build); macOS: Metal for arm64 (32 MB) and x64 (33 MB). (was: jv.1's — 461, 273, 60, 26 MB —
+  until 2026-10-04.) — *GitHub API, 2026-10-05* · release v0.9.0-jv.4.
 - Each pinned archive carries its published sha256 (GitHub's asset digest); the kit refuses and
   deletes a mismatch before unpacking, downloads into `<build>/.downloads/` so a stopped download
   resumes, and deletes the archives after the swap. The CPU rows are the portable builds (the
@@ -287,13 +297,22 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
   fetches of one model are serialized. (was: size only, and two fetches raced — until
   2026-10-04.) — *code + tests, 2026-10-04* · `release.py` `MODEL_REVISION`; `speech_cache.py`
   `_verify_lfs_sha256`, `_fetch_lock`; audit §5 E6.
-- **libmecab (Japanese) per platform:** our build fetches it only on Windows (fugashi 1.5.2's
-  `win_amd64` wheel, `fugashi.libs/libmecab-*.dll`); macOS and Linux load the system libmecab.
+- **libmecab (Japanese) on every platform:** every build stages it beside the executable from
+  fugashi 1.5.2's wheel for its platform — `libmecab.dll`, `libmecab.2.dylib` (universal2) or
+  `libmecab.so.2` — with `libmecab.LICENSE.txt`, and the loader tries that copy first on macOS
+  and Linux too. Checked in the jv.4 dry run's Windows, macOS arm64 and Linux bundles. (was:
+  Windows only; macOS and Linux asked for `libmecab.so.2` by bare name, which never looks beside
+  the executable and is the wrong name on macOS — until 2026-10-04.) A
+  `file(ARCHIVE_EXTRACT … PATTERNS)` that matches nothing fails the configure, so each wheel's
+  extract names only its own folder. — *code + CI, 2026-10-04* · our copy `9e5a4887`,
+  `f7d8140a`; `cmake/text_dictionaries.cmake`, `src/framework/text/mecab.cpp`.
   fugashi 1.5.2's cp312 wheels carry libmecab 0.996 (BSD, `LICENSE.mecab`) on every platform:
   macOS `fugashi/.dylibs/libmecab.2.dylib` (arm64, x86_64 and universal2), Linux
   `fugashi.libs/libmecab-<hash>.so.2.0.0` (manylinux2014 x86_64 `eada4a80`, aarch64
-  `608f3a6a` — the name carries auditwheel's hash, so a copy must be renamed). —
-  *web (PyPI) + wheel contents, 2026-10-04* · `../audio.cpp/cmake/text_dictionaries.cmake:6-79`.
+  `608f3a6a` — the name carries auditwheel's hash, so a copy must be renamed); libmecab is each
+  wheel's only bundled library. — *web (PyPI) + wheel contents, 2026-10-04*.
+- Qwen3-ASR has no Hebrew: a Hebrew line read back as Spanish-looking words — Chatterbox's
+  Hebrew can't be checked by read-back. — *measured, 2026-10-05* · `slot.py` `ASR_LANGUAGE`.
 - `npm run dev` runs our checkout's build (`../audio.cpp/build/jv-dev`); on this card (Turing)
   CUDA graphs are disabled by ggml. — *code + runtime log, 2026-10-04*.
 

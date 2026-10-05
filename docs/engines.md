@@ -63,9 +63,9 @@ The builds audio.cpp publishes, and what each costs to download:
 | macOS | Metal |
 | Any machine, no usable GPU | CPU |
 
-The Windows CUDA 12.4 build is a 461 MB download plus 607 MB of NVIDIA's CUDA
-runtime libraries (about 2 GB once unpacked), the CUDA 13.3 build 273 MB plus
-575 MB, and the Vulkan build 60 MB — the files of v0.9.0-jv.1. Vulkan also
+The Windows CUDA 12.4 build is a 464 MB download plus 607 MB of NVIDIA's CUDA
+runtime libraries (about 2 GB once unpacked), the CUDA 13.3 build 275 MB plus
+575 MB, and the Vulkan build 63 MB — the files of v0.9.0-jv.4. Vulkan also
 runs on NVIDIA cards, more slowly than CUDA. The CPU build is the portable one,
 which also runs on older processors (the other CPU build stops at start on a
 processor without the newest instructions).
@@ -79,13 +79,25 @@ load again on their next use; your downloaded models stay. (Under `npm run dev`
 the app runs the build it made itself, so the row has no Reinstall.)
 
 The runtime is pinned to one build of JustVoice's copy of audio.cpp — today
-**v0.9.0-jv.1**, audio.cpp v0.9.0 with two fixes: VoxCPM2 uses a clip's
-transcript, and speech recognition's word times are right for audio at any
-sample rate. When a JustVoice update moves to a newer build, the build you have
+**v0.9.0-jv.4**, audio.cpp v0.9.0 with JustVoice's changes: Chatterbox Turbo and
+Nano clone voices; Chatterbox speaks Hebrew, Russian, Chinese and Japanese (23
+languages); Kokoro's five Japanese voices; Kokoro blends; a lexicon's exact
+pronunciations (IPA) on Kokoro; Qwen3-TTS's memory fixes (up to 2.3 GB less while
+it speaks); models joining their process without restarting it; and, from the
+first build (jv.1), VoxCPM2 using a clip's transcript and word times right at any
+sample rate. (Build numbers 2 and 3 were never published.) When a JustVoice update
+moves to a newer build, the build you have
 keeps working and the row offers **Update to** the new version. Clicking it
 downloads the new build — the bar shows how far along it is — and unloads
 whatever was loaded; load it again to use it. The older build is then deleted
 (about 2 GB for a CUDA build); your downloaded models stay.
+
+**The Japanese dictionary.** Kokoro's Japanese voices and Chatterbox in Japanese
+read Japanese text with MeCab and its UniDic dictionary. MeCab comes inside the
+runtime; the dictionary is an optional download, on its own row under the runtime
+row: **Japanese dictionary · UniDic 1.0.8 · Install** (about 260 MB on disk). A
+Japanese line without it stops with *"Japanese needs the Japanese dictionary —
+install it on AI Settings → Speech engines."* Nothing else needs it.
 
 **Two slots, a process for each.** The runtime holds at most one speech model
 and one speech-recognition model at a time — the same two slots as before.
@@ -132,7 +144,7 @@ See [8-bit or 16-bit](#8-bit-or-16-bit) for what the difference measured.
 
 | Engine · model | Download (8-bit · 16-bit) | Languages | Clones | Preset voices | Weights licence |
 |---|---|---|---|---|---|
-| **Kokoro 82M** | 190 MB · 212 MB | 8 (American and British English, Mandarin, Spanish, French, Hindi, Italian, Brazilian Portuguese) | — | 49 | Apache-2.0 |
+| **Kokoro 82M** | 190 MB · 212 MB | 9 (American and British English, Mandarin, Spanish, French, Hindi, Italian, Brazilian Portuguese, Japanese) | — | 54 | Apache-2.0 |
 | **KittenTTS Mini 0.8** | 302 MB (unquantized) | English | — | 8 | Apache-2.0 |
 | **Pocket TTS** — one model per language: English, German, Italian, Portuguese, Spanish | 258 MB · 350 MB each | 1 each | ✓ | 20 | CC-BY-4.0 |
 | **Qwen3-TTS CustomVoice 1.7B** | 2.8 GB · 4.2 GB | 10 | — | 9 | Apache-2.0 |
@@ -140,7 +152,9 @@ See [8-bit or 16-bit](#8-bit-or-16-bit) for what the difference measured.
 | **Qwen3-TTS Base 1.7B** | 2.7 GB · 4.2 GB | 10 | ✓ | — | Apache-2.0 |
 | **Qwen3-TTS Base 0.6B** | 2.0 GB · 2.5 GB | 10 | ✓ | — | Apache-2.0 |
 | **Qwen3-TTS VoiceDesign 1.7B** | 2.8 GB · 4.2 GB | 10 | — (designs a voice from words) | — | Apache-2.0 |
-| **Chatterbox Multilingual** | 2.1 GB · 3.7 GB | 19 | ✓ | — | MIT |
+| **Chatterbox Multilingual** | 2.1 GB · 3.7 GB | 23 | ✓ | — | MIT |
+| **Chatterbox Turbo** (350M) | 881 MB · 1.4 GB | English | ✓ (a clip longer than 5 s) | — | MIT |
+| **Chatterbox Nano** (110M) | 616 MB · 895 MB | English | ✓ (a clip longer than 5 s) | — | MIT |
 | **VoxCPM2** | 3.0 GB · 4.8 GB | 30 | ✓ (and designs from words) | — | Apache-2.0 |
 | **Speech recognition — Qwen3-ASR 1.7B** | 3.6 GB · 5.9 GB (with its word aligner) | 30 | — | — | Apache-2.0 |
 | **External** (OpenAI-compatible) | — | — | varies | varies | depends on provider |
@@ -372,13 +386,25 @@ speaker's cloned voice" are a choice — VoxCPM2 is the engine that does both �
 includes a designed voice once you keep it, because keeping one turns it into
 a clone ([voices.md](voices.md#keeping-a-designed-voice-is-what-makes-it-one-voice)).
 
-**No engine takes inline tags right now.** Bracketed markup typed into the
-text — `[laugh]`, `[sigh]` — is removed before the model sees it, so it is
-never read out as a word. The engine that understood them, Chatterbox Turbo,
-is not available yet (see below). The rule from 2026-09-29 still holds: **a tag
-the rendering engine doesn't list is dropped, never spoken**, in a chapter
-render and on Generate alike — including ordinary bracketed text such as
-`[sic]`.
+**Inline tags are Chatterbox Turbo's and Nano's.** Both read 19 bracketed tags
+in the text: an emotion the line is spoken in (`[angry]`, `[fear]`, `[happy]`,
+`[sarcastic]`, `[surprised]`, `[crying]`, `[whispering]`), a register it is read
+as (`[narration]`, `[dramatic]`, `[advertisement]`), and sounds made at a point in
+it (`[cough]`, `[laugh]`, `[chuckle]`, `[sigh]`, `[gasp]`, `[groan]`, `[sniff]`,
+`[clear throat]`, `[shush]`). With any other model, bracketed markup is removed
+before the model sees it, so it is never read out as a word. The rule from
+2026-09-29 holds: **a tag the rendering engine doesn't list is dropped, never
+spoken**, in a chapter render and on Generate alike — including ordinary
+bracketed text such as `[sic]`.
+
+**Chatterbox Turbo and Nano** are English-only Chatterbox models that clone from
+a clip longer than 5 seconds and take the inline tags above. Turbo is the larger
+(350M parameters); Nano is Turbo's design at 110M, for the CPU and small cards.
+They have no Exaggeration or CFG weight — only Temperature, Repetition penalty,
+Top p and Top k. They come from JustVoice's own conversions of Resemble AI's
+checkpoints (MIT), at
+[delebash/chatterbox-turbo-GGUF](https://huggingface.co/delebash/chatterbox-turbo-GGUF)
+and [delebash/chatterbox-nano-GGUF](https://huggingface.co/delebash/chatterbox-nano-GGUF).
 
 **Emotion** is a nine-value label rather than a sentence. On Qwen3
 CustomVoice and VoiceDesign it becomes part of the instruction; the other
@@ -396,30 +422,18 @@ another one is refused by name.
 ## Not available yet
 
 These worked before the 2026-10-01 switch and do not yet run on the speech
-runtime. Each returns when the runtime learns to do it; the order is in
+runtime; the order is in
 [the switch record](plans/2026-10-01-audiocpp-switch.md#5-after-the-cut--the-gaps-in-order).
-A request that needs one of them stops with a message naming it, rather than
-rendering something else in its place. The first five are built into
-JustVoice's copy of the runtime and arrive with its next release — the build
-`npm run dev` makes has them now. Until then the message says *"… isn't in this
-version's speech runtime yet"*; once a JustVoice update pins that release, a
-runtime you haven't updated says *"… needs the speech runtime update"*, and
-**Update to** on the runtime row brings it.
 
-- **Chatterbox Turbo**, with its 19 inline tags (`[laugh]`, `[sigh]`,
-  `[whispering]` …). The runtime has Turbo but cannot yet clone with it, and
-  a Chatterbox voice is always a clone.
-- **Chatterbox in Hebrew, Japanese, Russian and Chinese** — the runtime's
-  Chatterbox covers 19 of the original model's 23 languages. Qwen3 speaks
-  Japanese, Russian and Chinese in the meantime.
-- **Kokoro blends** — a voice mixed from several Kokoro voices.
-- **Kokoro's five Japanese voices** — Japanese needs a dictionary the runtime
-  does not ship yet.
-- **Exact pronunciations (IPA) in a lexicon.** A lexicon entry with both an
-  IPA pronunciation and a respelling now uses the respelling; an entry with
-  only IPA has no effect until this returns.
 - **A confidence score from speech recognition.** The old recogniser
   reported how sure it was of each transcript; the new one does not.
+- **Voice training** — see [Voice training](#voice-training).
+
+Back since v0.9.0-jv.4: Chatterbox Turbo (cloning, inline tags), Chatterbox in
+Hebrew, Japanese, Russian and Chinese, Kokoro blends, Kokoro's Japanese voices,
+and a lexicon's exact pronunciations on Kokoro. A runtime still on an older
+build refuses a line that needs one of them, by name — *"… — this needs the
+speech runtime update"* — and **Update to** on the runtime row brings it.
 
 **Removed for good:** LuxTTS, TADA and MOSS-TTSD. LuxTTS was the one engine
 that cloned quickly on a CPU; Pocket TTS took its place on 2026-10-02. TADA and

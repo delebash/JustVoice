@@ -123,12 +123,12 @@ everything around it unchanged. Engines that can't take phonemes use the
 entry's respelling instead; an IPA-only entry does nothing there — a guessed
 pronunciation beats hearing IPA letters read aloud.
 
-**No engine takes phonemes today.** Kokoro did until the 2026-10-01 switch to
-the speech runtime, which cannot yet splice IPA into a line (see
-[Engines → Not available yet](engines.md#not-available-yet)). Until it can,
-every engine reads an entry's **respelling**: give the names that matter a
-respelling ("Beauchamp" → "BEE-chum") as well as their IPA. The IPA stays
-stored with the entry; an IPA-only entry changes nothing on today's engines.
+**Kokoro takes phonemes.** An entry's IPA reaches Kokoro as the word's own
+pronunciation, everything around it unchanged (since v0.9.0-jv.4 of the speech
+runtime; between the 2026-10-01 switch and then, no engine did). Every other
+engine reads an entry's **respelling**: give the names that matter a respelling
+("Beauchamp" → "BEE-chum") as well as their IPA, so they come out right on any
+voice. An IPA-only entry changes nothing on an engine without phonemes.
 
 The live preview marks both: respellings replace the word, pronunciations
 show as 「/…/」 after it — the preview shows the IPA you've entered even

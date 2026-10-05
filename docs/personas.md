@@ -338,9 +338,7 @@ above the pickers, and every picker names a voice as *Bella · American English
   range yourself; the segments must cover 0% to 100%.
 
 A blend's language comes from the voices you mixed. **▶ Preview** speaks the
-Hear it line with the mix as this persona; **💾 Keep** saves it. (Blends need
-the speech runtime's next release to be heard — see
-[Engines → Not available yet](engines.md#not-available-yet).)
+Hear it line with the mix as this persona; **💾 Keep** saves it.
 
 ### Hear it
 
@@ -391,9 +389,7 @@ ms`. An empty pause is the book's own gap between lines.
   `[advertisement]`), put at the start of every line. Sounds like `[sigh]` or
   `[laugh]` go inside a line, so you type them in the line's text. Standing
   delivery is shown off with the reason: *Chatterbox Turbo takes tags, not
-  written direction — pick its emotion and register below.* (Turbo and Nano
-  arrive with the next speech-runtime release — see
-  [Not available yet](engines.md#not-available-yet).)
+  written direction — pick its emotion and register below.*
 - **Sliders-only models** (Kokoro, KittenTTS, Pocket TTS, Chatterbox
   Multilingual, Qwen3 Base): Standing delivery and Emotion are off, with the
   reason: *Kokoro takes no direction — shape it with the numbers, or pick a

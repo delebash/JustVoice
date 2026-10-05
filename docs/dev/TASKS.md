@@ -963,10 +963,15 @@ BUILT:  2026-10-03, committed + pushed (our audio.cpp 6a2bb4c5; JV the same turn
         Japanese dictionary (unidic-lite, its own row under the runtime row, a job, the runtime's
         AUDIOCPP_UNIDIC_DIR, refusals by name), gated on the pin; the row checked live in the real
         UI (install 6 s, 260 MB on disk).
-OPEN:   ONE release with everything (new tag name — jv.2/jv.3 exist on broken commits; the feature
-        table points at its tag; libmecab on macOS/Linux — jieba/ everywhere and Windows'
-        libmecab.dll now come from the fork's build, cmake/text_dictionaries.cmake; NOTICE/LICENSES;
-        engines.md/whats-new; live in-app checks) → gap 5 (training rebuild) is the remaining gap.
+BUILT:  2026-10-05 — the ONE release: `v0.9.0-jv.4` (our copy `f7d8140a`), published and pinned,
+        each archive's sha256 in `release.py`; libmecab beside the executable on every platform
+        (our copy `9e5a4887`, `f7d8140a`); NOTICE / LICENSES rows for MeCab, cppjieba's
+        dictionaries, unidic-lite / UniDic and the Turbo / Nano conversions; engines.md,
+        voices.md, generate.md, lexicons.md, personas.md, troubleshooting.md, whats-new. Live on
+        the app's real data folder through the pinned path: the update jv.1 → jv.4 in 23 s;
+        Kokoro Japanese, a Turbo clone, Chatterbox Russian and Chinese read back exactly; a
+        Kokoro blend played (docs/plans/2026-10-02-our-audiocpp-copy.md §6; RESEARCH.md §1.4).
+OPEN:   gap 5 (training rebuild) is the remaining gap.
         Local build recipe + release state: docs/plans/2026-10-02-our-audiocpp-copy.md §6.
         the app: an installed older build keeps working and the runtime row offers "Update to
         v0.9.0-jv.1"; the pin moves to our release; VoxCPM2's row gets "and its transcript" and
@@ -2255,9 +2260,9 @@ BUILT:  2026-10-04 — step 1 (eSpeak NG reaches Kokoro and KittenTTS; Linux fin
         Qwen3's per-model Attention and Decoder weights). 5h's rec changed from fork specs to
         a verified catalog in the app (audit §13.5). Record, blast radius and live checks:
         audit §13.5.
-OPEN:   `model_management`, Qwen3's memory fixes and every jv.2/jv.3 feature reach a packaged
-        app only with the next audio.cpp release (its tag still needs the user's word; E2's
-        placeholder retarget goes with it). The user's ear on the listening files: description
+OPEN:   (`model_management`, Qwen3's memory fixes and every later feature reach a packaged app
+        with v0.9.0-jv.4, published and pinned 2026-10-05; E2's placeholders retargeted with it.)
+        The user's ear on the listening files: description
         voices' split size (VoiceDesign, VoxCPM2 descriptions), the clone trim, Qwen3's
         16-bit decoder weights (measured: audit §13.4).
 DECIDED: 2026-10-04, after step 5 — the user: "your rec all go" on the three as shown:
@@ -2277,6 +2282,27 @@ DECIDED: 2026-10-04, after step 5 — the user: "your rec all go" on the three a
         universal2 and Linux x86_64 and aarch64, as its Windows wheel does. And 3 leaves the
         12 GB+ tier with nothing of its own (8 GB would be Kokoro, Pocket, Chatterbox and Qwen3,
         5.4 GB) — asked too. 2 needs nothing built: the defaults stay until the user listens.
+DECIDED: 2026-10-04 — the user: "your rec go" on the three as shown:
+        1 "The release's tag name … (a) v0.9.0-jv.4, the next unused number; the broken tags
+        stay. Lean: (a). A published tag name is never reused, and the app's version list simply
+        skips 2 and 3."
+        2 "Japanese on macOS and Linux … (a) Fetch it from fugashi's package for each platform,
+        as Windows already does. It's a build-file change with no compiling, and the file is
+        renamed on copy. Lean: (a). It's verified, it's the same method Windows uses, and it has
+        no build risk." (Replaces 2026-10-03's "(c) once our release build needs to compile it
+        on every platform".)
+        3 "The tiers after moving Qwen3 … (a) Merge into two tiers: 'CPU / low VRAM' and
+        '8 GB+', with '8 GB+' picked from 7 GB of graphics memory up. The list notes that Qwen3
+        and the AI model take turns on the card. Lean: (a)."
+        Then, as listed: dry run, then the tag; the app pointed at the new release with its
+        checksums and the right version names; notice and licence entries for MeCab, UniDic and
+        jieba; the docs; checked live in the app.
+BUILT:  2026-10-05 — 1 and 2: `v0.9.0-jv.4` published and pinned, libmecab on every platform (the
+        release item's BUILT line has the record). 3: Voice engine setup has two tiers, CPU / low
+        VRAM and 8 GB+ (from 7 GB), Qwen3-TTS in 8 GB+ "on the graphics card — takes turns with
+        the AI model on 8 GB"; quick-setup.md and whats-new. Checked: the setup dialog renders the
+        8 GB+ tier as suggested on this 8 GB card, every engine row on one line and the same
+        width (measured), no JS errors.
 GO:     given 2026-10-04 ("go and your rec for the audit fixes")
 
 ### FINDING — at 1440 px the title bar cuts "Personas › June" to "P.."

@@ -81,14 +81,14 @@ A dropdown of nine labels: *neutral · happy · sad · angry · fearful · whisp
 It is a list rather than a sentence for one reason: **it is the only delivery control with a cross-engine meaning.** Prose can only be handed to an engine that reads prose, but a label can be compiled two different ways, so the same choice survives recasting a speaker onto a persona on a different engine.
 
 - **Engines that read prose** (Qwen3-TTS CustomVoice and VoiceDesign) get the label folded into the instruction, alongside the persona's standing delivery and the line's direction.
-- **Engines with an emotion vocabulary** get their own token prefixed to the line instead. Chatterbox Turbo was that engine — pick *fearful* and it rendered `[fear] Who's there?` — and it is not available on the speech runtime yet (see [Engines → Not available yet](engines.md#not-available-yet)), so no engine takes emotion this way today.
+- **Engines with an emotion vocabulary** get their own token prefixed to the line instead: Chatterbox Turbo and Nano — pick *fearful* and the line renders as `[fear] Who's there?`. *Neutral* adds nothing; *shouted* and *contemptuous* have no token there, and *sad* is not mapped onto `[crying]`, which is a behaviour rather than a state.
 - **Every other engine** (Kokoro, Chatterbox Multilingual, Qwen3 Base) has no way to express it. The field is disabled and says so, rather than accepting a value it would drop.
 
 When an engine with a vocabulary is loaded, the list is filtered to what it can actually say and the hint names what it can't. *Neutral* is always available: it is expressible by adding nothing.
 
 The vocabulary comes from `/v1/engines/capabilities` rather than being typed into the UI, so the picker cannot drift from what the server accepts.
 
-**Emotion is not the same as an inline tag.** Emotion is the state the whole line is spoken in, so it is a field. A non-verbal sound happens at a *moment*, so it is typed where you want it — `/` in the textarea, or the **🏷️ Insert tag** button. Only Chatterbox Turbo and Nano take inline tags — in a packaged app from the speech runtime's next release (the build `npm run dev` makes has them); with any other model loaded both list nothing, and bracketed text you type yourself is removed before the model sees it — never read out as a word.
+**Emotion is not the same as an inline tag.** Emotion is the state the whole line is spoken in, so it is a field. A non-verbal sound happens at a *moment*, so it is typed where you want it — `/` in the textarea, or the **🏷️ Insert tag** button. Only Chatterbox Turbo and Nano take inline tags; with any other model loaded both list nothing, and bracketed text you type yourself is removed before the model sees it — never read out as a word.
 
 ### Engine-specific knobs
 
@@ -122,7 +122,7 @@ The row is always visible — it has two states:
 
 ## Paralinguistic slash menu
 
-Type **/** in the textarea. A menu pops up with the loaded engine's inline-tag taxonomy — and today it is empty for every engine: none of Kokoro, Qwen3-TTS or Chatterbox Multilingual takes inline tags on the speech runtime. The engine that had tags, Chatterbox Turbo, is not available yet (see [Engines → Not available yet](engines.md#not-available-yet)).
+Type **/** in the textarea. A menu pops up with the loaded engine's inline-tag taxonomy — Chatterbox Turbo's and Nano's 19 tags in three groups (Emotion, Register, Non-verbal). Every other engine has none, so the menu is empty: none of Kokoro, KittenTTS, Pocket TTS, Qwen3-TTS, VoxCPM2 or Chatterbox Multilingual takes inline tags.
 
 When there are tags: filter by typing, ↑↓ to navigate, Enter / Tab to insert, Esc to close. Tags whose manifest carries a start-of-turn placement rule are inserted at position 0 regardless of cursor location.
 

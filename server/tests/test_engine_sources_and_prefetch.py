@@ -58,11 +58,15 @@ def test_sources_list_uses_catalog_variant_ids_and_manifest_provenance(client):
     body = r.json()
     assert body["engine_id"] == "chatterbox"
     assert body["variants"], "chatterbox should expose variants"
+    from justvoice.engines.chatterbox import manifest as cb
+
+    # audio.cpp's own repo, or our Turbo / Nano conversions (offered since v0.9.0-jv.4).
+    pinned = {release.MODEL_REPO: release.MODEL_REVISION,
+              cb.TURBO_REPO: cb.TURBO_REVISION, cb.NANO_REPO: cb.NANO_REVISION}
     for v in body["variants"]:
         assert "/" not in v["variant_id"]
         assert v["provenance"] == "manifest"
-        assert v["hf_repo"] == release.MODEL_REPO
-        assert v["hf_revision"] == release.MODEL_REVISION
+        assert pinned.get(v["hf_repo"]) == v["hf_revision"], v["variant_id"]
 
 
 def test_sources_put_persists_and_flips_provenance(client):

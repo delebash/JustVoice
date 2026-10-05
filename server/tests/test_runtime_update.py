@@ -132,10 +132,13 @@ def test_voxcpm2s_transcript_follows_the_pin(monkeypatch):
     assert release.pinned_has("voxcpm2_transcript") is True
 
 
-def test_the_pin_is_our_build_and_upstreams_keeps_working():
-    assert release.TAG == "v0.9.0-jv.1" and release.PREVIOUS_TAGS == ("v0.9.0",)
-    assert all(b.asset_url.startswith("https://github.com/delebash/audio.cpp/releases/download/v0.9.0-jv.1/")
+def test_the_pin_is_our_build_and_the_older_ones_keep_working():
+    assert release.TAG == "v0.9.0-jv.4" and release.PREVIOUS_TAGS == ("v0.9.0-jv.1", "v0.9.0")
+    assert all(b.asset_url.startswith("https://github.com/delebash/audio.cpp/releases/download/v0.9.0-jv.4/")
                for b in release.binaries())
+    # Every feature the app knows names a build in the order; jv.2 and jv.3 were never published.
+    assert set(release.FEATURES.values()) <= set(release.BUILDS_IN_ORDER)
+    assert "v0.9.0-jv.2" not in release.BUILDS_IN_ORDER and "v0.9.0-jv.3" not in release.BUILDS_IN_ORDER
 
 
 # ── A clone's transcript is only what was typed (decided 2026-10-03) ─────

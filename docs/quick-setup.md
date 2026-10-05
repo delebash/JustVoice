@@ -23,15 +23,18 @@ be, and the estimate below is that total.
 | Tier | VRAM range | Engines — and where each runs | Models to download (on first load) |
 |---|---|---|---|
 | **CPU / low VRAM** | <7 GB | Kokoro, KittenTTS and Pocket TTS — preset voices and cloning, all on the CPU | 0.8 GB |
-| **8 GB** | 7-11 GB | Kokoro and Pocket TTS on the CPU (keeps the card free for the AI model) + Chatterbox Multilingual on the graphics card | 2.5 GB |
-| **12 GB+** | 11 GB+ | as 8 GB, plus Qwen3-TTS on the graphics card | 5.4 GB |
+| **8 GB+** | 7 GB and up | Kokoro and Pocket TTS on the CPU (keeps the card free for the AI model) + Chatterbox Multilingual and Qwen3-TTS on the graphics card | 5.4 GB |
 
-The sizes are each engine's default 8-bit model (Pocket TTS: English). Qwen3-TTS
-starts the 12 GB tier because its 1.7B model peaked at 7.8 GB of graphics memory
-on its own on an 8 GB card while rendering a book; on a smaller card it would
-leave nothing for anything else. Kokoro, KittenTTS and Pocket TTS each speak more
-than three times faster than real time on an 8-core CPU, so on the CPU they cost
-the AI model nothing.
+The sizes are each engine's default 8-bit model (Pocket TTS: English; Qwen3-TTS:
+CustomVoice 1.7B). Qwen3-TTS fits an 8 GB card: given lines in pieces of 200
+characters it peaks about 3.4 GB above the empty card. It does not fit beside an
+AI model of about 7 GB, so on an 8 GB card the two take turns — loading one
+unloads the other, and each loads itself back when it is needed (see
+[Engines → Long lines](engines.md#long-lines-and-what-a-model-costs)). Until
+2026-10-04 Qwen3-TTS started a 12 GB tier of its own, from a 7.8 GB peak
+measured with whole lines. Kokoro, KittenTTS and Pocket TTS each speak more than
+three times faster than real time on an 8-core CPU, so on the CPU they cost the
+AI model nothing.
 
 Each engine in the list says where it will run. That is the expected place; at
 each load **Auto** decides from what it has measured on your machine — see

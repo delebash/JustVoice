@@ -111,10 +111,15 @@ questions in §5 come first):
 - Decided 2026-10-03: no separate jv.2 / jv.3. Everything built since jv.1 goes into **one**
   release, cut once the open gaps are done. The app's `release.FEATURES` placeholders
   (jv.2 / jv.3) are retargeted to its tag then.
-- That release needs two decisions at cut time: a new tag name, since jv.2 and jv.3 exist on
-  broken commits; and libmecab on macOS and Linux. `jieba/` (every platform) and Windows'
-  `libmecab.dll` now come from the fork's own build (`cmake/text_dictionaries.cmake`,
-  2026-10-03), so the release's bundles carry them with no CI step.
+- That release needed two decisions at cut time: a new tag name, since jv.2 and jv.3 exist on
+  broken commits; and libmecab on macOS and Linux. Decided 2026-10-04: `v0.9.0-jv.4`, and
+  libmecab from fugashi's wheel for each platform as Windows already had.
+- **`v0.9.0-jv.4` is published** (2026-10-05 01:25 UTC): tag at `f7d8140a`, release run
+  37243444087, after dry run 37235747073 passed on every platform. The first dry run (on
+  `9e5a4887`) failed at configure everywhere — an extract pattern for the other platform's wheel
+  folder matched nothing — fixed in `f7d8140a`. The app is pinned to it, with each archive's
+  sha256. Its bundles carry `jieba/` and libmecab (`.dll` / `.2.dylib` / `.so.2`) beside the
+  executables on every platform.
 
 **`jv` branch head:**
 - `fc55e1e6` (Hebrew, Russian, Chinese), pushed;

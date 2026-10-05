@@ -60,7 +60,7 @@ TOP_LEVEL = {"speed", "seed"}   # canonical Delivery fields / the request's own 
 
 def _row(engine: str, variant: str) -> dict:
     # PENDING_VARIANTS: rows written and published that wait for the pinned runtime's feature
-    # (Chatterbox Turbo / Nano until v0.9.0-jv.3) — their knobs must reach the runtime too.
+    # (Chatterbox Turbo / Nano on a pin before v0.9.0-jv.4) — their knobs must reach the runtime too.
     module = discover_engines()[engine].module
     rows = list(module.VARIANTS) + list(getattr(module, "PENDING_VARIANTS", []))
     return next(r for r in rows if r["id"] == variant)

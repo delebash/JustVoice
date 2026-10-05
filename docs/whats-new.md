@@ -2,6 +2,21 @@
 
 ## v0.1.0
 
+- **Speech runtime v0.9.0-jv.4: everything built since the switch (2026-10-04).**
+  Chatterbox Turbo and Nano clone voices again and read their 19 inline tags;
+  Chatterbox speaks Hebrew, Russian, Chinese and Japanese (23 languages); Kokoro
+  gets its five Japanese voices (with the optional Japanese dictionary, on its own
+  row under the runtime row); Kokoro blends play; a lexicon's IPA reaches Kokoro as
+  the word's own pronunciation; Qwen3-TTS's memory fixes reach the packaged app;
+  and a newly downloaded model joins its process without restarting it. On macOS
+  and Linux, Japanese no longer needs MeCab installed on the computer — it comes
+  inside the runtime. An installed runtime keeps working; the runtime row offers
+  **Update to v0.9.0-jv.4** ([Engines → The speech runtime](engines.md#the-speech-runtime))
+- **Voice engine setup has two tiers (2026-10-04).** *CPU / low VRAM* and
+  *8 GB+*: Qwen3-TTS moves into the 8 GB+ tier beside Chatterbox — given lines in
+  200-character pieces it fits an 8 GB card, where it and the AI model take turns.
+  It started a 12 GB tier of its own before, from a peak measured with whole
+  lines ([Voice engine setup](quick-setup.md#hardware-tiers))
 - **More of each speech model's settings (2026-10-04).** New advanced knobs:
   Chatterbox's **Min p** and **Decoder CFG**, Qwen3's three **Detail** settings
   for the part of the model that fills in each frame's finer audio, and

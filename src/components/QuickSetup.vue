@@ -44,9 +44,11 @@ const llmProviders = ref([]);
 // on the one speech runtime since the 2026-10-01 switch, so setting up is
 // ONE runtime install; the tier only decides which engines' models you'll
 // be downloading, and those come down the first time each one loads. The
-// sizes are the default 8-bit models' real files (the engine manifests);
-// the tiers follow memory measured on an 8 GB card (switch plan §2.1, §8):
-// Qwen3 1.7B peaked at 7.8 GB on its own, so it starts the 12 GB tier.
+// sizes are the default 8-bit models' real files (the engine manifests).
+// Two tiers since 2026-10-04: Qwen3 1.7B's 7.8 GB was a whole line's peak; given lines in
+// 200-character pieces on our fixed build it peaks about 3.4 GB above the empty card, so it
+// fits 8 GB — beside a 6.8 GB AI model it doesn't, and the two take turns (audit 2026-10-04
+// §13.3–13.4; decided 2026-10-04, TASKS). A 12 GB tier was left with nothing of its own.
 //
 // Where each engine runs (decided 2026-10-02, CPU placement — the tiers of decision 3):
 // the CPU-fast engines (Kokoro 3.2×, KittenTTS 3.4×, Pocket TTS 3.9× real time, measured
@@ -56,6 +58,7 @@ const RUNS_ON = {
   cpu: "on the CPU",
   cpuBesideAi: "on the CPU — keeps the card free for the AI model",
   gpu: "on the graphics card",
+  gpuTakesTurns: "on the graphics card — takes turns with the AI model on 8 GB",
 };
 const TIER_RECIPES = {
   cpu: {
@@ -66,27 +69,18 @@ const TIER_RECIPES = {
     estimatedDownloadGb: 0.8,
   },
   vram8: {
-    label: "8 GB tier",
-    blurb: "Kokoro and Pocket TTS on the CPU, plus Chatterbox Multilingual on the graphics card for cloning beyond English.",
-    ttsEngineIds: ["kokoro", "pocket", "chatterbox"],
-    runsOn: { kokoro: "cpuBesideAi", pocket: "cpuBesideAi", chatterbox: "gpu" },
-    estimatedDownloadGb: 2.5,
-  },
-  vram12: {
-    label: "12 GB+ tier",
-    blurb: "Adds Qwen3-TTS on the graphics card — preset speakers you direct in plain words, designed voices, and cloning.",
+    label: "8 GB+ tier",
+    blurb: "Kokoro and Pocket TTS on the CPU, plus Chatterbox Multilingual for cloning beyond English and Qwen3-TTS — preset speakers you direct in plain words, designed voices, and cloning — on the graphics card.",
     ttsEngineIds: ["kokoro", "pocket", "chatterbox", "qwen3"],
-    runsOn: { kokoro: "cpuBesideAi", pocket: "cpuBesideAi", chatterbox: "gpu", qwen3: "gpu" },
+    runsOn: { kokoro: "cpuBesideAi", pocket: "cpuBesideAi", chatterbox: "gpu", qwen3: "gpuTakesTurns" },
     estimatedDownloadGb: 5.4,
   },
 };
 
-const TIER_ORDER = ["cpu", "vram8", "vram12"];
+const TIER_ORDER = ["cpu", "vram8"];
 
 function tierForVramMb(mb) {
-  if (!mb || mb < 7 * 1024) return "cpu";
-  if (mb < 11 * 1024) return "vram8";
-  return "vram12";
+  return !mb || mb < 7 * 1024 ? "cpu" : "vram8";
 }
 
 // Auto-detected tier (from /v1/system) — used as the dropdown default.
@@ -471,7 +465,7 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
 .quick-setup__helper-name { flex: 1; min-width: 0; }
 .quick-setup__engine-row { display: flex; align-items: center; gap: 8px; }
 .quick-setup__engine-row input { accent-color: var(--accent); width: 15px; height: 15px; flex: none; }
-.quick-setup__engine-name { font-weight: 600; }
+.quick-setup__engine-name { font-weight: 600; white-space: nowrap; flex: none; }
 .quick-setup__engine-where { color: var(--ink-2); white-space: nowrap; }
 .quick-setup__engine-blurb { font-size: 11px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .quick-setup__next { margin: 0; padding-left: 18px; font-size: 12.5px; line-height: 1.8; }

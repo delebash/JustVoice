@@ -910,9 +910,10 @@ coded in full before any test ran.
 - The runtime reporting its own memory (§6 item 2) and the options endpoint (§6 item 3): fork
   work, for the release after the pending one.
 - Hardcoded still: the probe TTL (2 s), the eviction drain wait (4 s). Voice engine setup's
-  tiers still put Qwen3 in the 12 GB tier, from the 7.8 GB whole-line peak; at 200-character
-  pieces on the fixed build it fits 8 GB — whether to move it is a product decision.
-- E2 (the placeholder tags `release.py` names) is fixed with the pending release.
+  tiers put Qwen3 in the 12 GB tier, from the 7.8 GB whole-line peak; at 200-character pieces on
+  the fixed build it fits 8 GB — moved to an 8 GB+ tier on the user's word, 2026-10-04 (TASKS).
+- E2 (the placeholder tags `release.py` names): fixed by `v0.9.0-jv.4`, published and pinned
+  2026-10-05 — every feature names jv.4 (TASKS, the release item).
 
 **Blast radius** (greps run 2026-10-04 after the code and before any test, as the user asked
 the batches to be coded first; 5a's while it was coded):

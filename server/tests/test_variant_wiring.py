@@ -83,10 +83,11 @@ def test_qwen3_voice_design_claim_is_backed() -> None:
 # ── Chatterbox ───────────────────────────────────────────────────────────
 
 
-def test_chatterbox_catalog_is_multilingual_only_until_turbo_clones() -> None:
-    """Turbo, Nano and v3 return with the gaps they wait on (switch plan §5)."""
-    assert {v.id for v in models_for("chatterbox")} == {"chatterbox-multilingual-v2-q8",
-                                                        "chatterbox-multilingual-v2-f16"}
+def test_chatterbox_catalog_is_multilingual_turbo_and_nano() -> None:
+    """Turbo and Nano are offered since the pin clones with them (v0.9.0-jv.4, gap 1)."""
+    assert {v.id for v in models_for("chatterbox")} == {
+        "chatterbox-multilingual-v2-q8", "chatterbox-multilingual-v2-f16",
+        "chatterbox-turbo-q8", "chatterbox-turbo-f16", "chatterbox-nano-q8", "chatterbox-nano-f16"}
     spec = _row("chatterbox", "chatterbox-multilingual-v2-q8")["audiocpp"]
     assert spec["family"] == "chatterbox" and spec["task"] == "clon"
 
@@ -145,8 +146,12 @@ def test_hf_sources_pin_a_commit_not_a_branch() -> None:
                 rev = str(src.get("revision") or "")
                 if not re.fullmatch(r"[0-9a-f]{40}", rev):
                     loose.append(f"{eid}/{variant.get('id')}: {rev!r}")
-                # audio.cpp's own repo, or our conversion of a model it does not publish (gap 4).
-                assert src.get("hf_repo") in {release.MODEL_REPO, qwen3_manifest.CV_06_REPO}, variant["id"]
+                # audio.cpp's own repo, or our conversion of a model it does not publish (gap 4;
+                # Turbo and Nano, gap 1).
+                from justvoice.engines.chatterbox import manifest as cb
+
+                assert src.get("hf_repo") in {release.MODEL_REPO, qwen3_manifest.CV_06_REPO,
+                                              cb.TURBO_REPO, cb.NANO_REPO}, variant["id"]
     assert not loose, f"these HF sources do not pin a full commit sha: {loose}"
 
 
@@ -375,4 +380,6 @@ def test_every_16_bit_row_is_its_8_bit_siblings_model_at_the_original_precision(
             assert "16-bit" in r["name"]
             assert r.get("cpu_realtime") is None or r["cpu_realtime"] != sib.get("cpu_realtime"), vid
             assert m.default_variant_id != vid
-    assert seen == 14  # kokoro 1 · pocket 5 · qwen3 5 (our 0.6B among them) · chatterbox 1 · asr 1 · voxcpm2 1
+    # kokoro 1 · pocket 5 · qwen3 5 (our 0.6B among them) · chatterbox 3 (Turbo and Nano too) ·
+    # asr 1 · voxcpm2 1
+    assert seen == 16
