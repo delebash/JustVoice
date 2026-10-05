@@ -2,6 +2,10 @@
 
 ## v0.1.0
 
+- **The header and Script see a language model the moment it loads (2026-10-05).** After the
+  LLM engine setup or AI Settings loaded a model, the header kept saying *No language model*
+  and Script kept saying *Analyze needs a language model* until a restart. Both now follow
+  AI Settings' own list of models — loading or unloading anywhere shows at once
 - **Render works line by line, and keeps every take (2026-10-04).** Studio ·
   Render is a chapter grid that opens a chapter's lines. Each line shows its
   state — *needs a speaker*, *needs a voice*, *ready*, *rendered* or *stale* —

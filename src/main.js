@@ -129,6 +129,10 @@ function wireKit(app) {
       chatRole: "attributes speakers + cleans up dictation",
       doneBody:
         "Speaker attribution, dictation cleanup and the other AI features run on this model — change it any time under Routing by feature.",
+      // The wizard just loaded the model. Tell the app, so the header's language-model
+      // pill (and everything else that listens) re-reads the kit's model list at once —
+      // until 2026-10-05 the header said "No language model" after a setup.
+      onApplied: () => window.dispatchEvent(new Event("jv:health-refresh")),
     },
   });
   // The Lab's fill-from-app doors (Part 4, 2026-08-06 — the kit's

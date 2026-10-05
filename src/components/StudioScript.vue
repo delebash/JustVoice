@@ -35,6 +35,7 @@ import { useCopy } from "../services/copy.js";
 import { routeWords } from "../services/attribution.js";
 import { cancelRun, chapterRunFor, failureOf, inRun, queueChapters } from "../services/chapterRun.js";
 import { useKeptScroll } from "../composables/useKeptScroll.js";
+import { useAnalyzeModel } from "../composables/useAnalyzeModel.js";
 
 const props = defineProps({
   project: { type: Object, required: true },
@@ -142,11 +143,9 @@ const picked = computed(() => rows.value.filter((r) => ticked.value[r.id] && can
 const pickedLines = computed(() => picked.value.reduce((n, r) => n + (r.lines || 0), 0));
 
 // ── Analyze: what it will read, and what stops it ────────────────────────
-const config = ref(null);   // GET /v1/extraction/config
+// GET /v1/extraction/config, re-read when the page comes back or a model loads.
+const { config, noModel } = useAnalyzeModel();
 const route = ref("");      // "" = Auto
-onMounted(async () => {
-  config.value = await api.safeRequest("/v1/extraction/config", null);
-});
 const autoRoute = computed(() => config.value?.auto_picked || "");
 const ROUTE_OPTIONS = computed(() => [
   { value: "", label: `Read: chosen for your model (${routeWords(autoRoute.value) || "…"})` },
@@ -157,8 +156,6 @@ const floor = computed(() => {
   const name = route.value || autoRoute.value;
   return config.value?.routes?.find((r) => r.name === name)?.confidence_floor;
 });
-// No model: the route Auto would run names no model at all.
-const noModel = computed(() => !!config.value && (config.value.auto_checks || []).every((c) => !c.model));
 const onlyNarrator = computed(() => props.cast.length > 0 && props.cast.every((c) => c.narrator));
 const blocked = computed(() => noModel.value || onlyNarrator.value);
 

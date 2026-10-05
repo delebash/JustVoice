@@ -48,6 +48,7 @@ One fact per bullet, then *how it was checked and when*, then where the proof is
 Subjects: [1 · Speech runtime](#1--speech-runtime-audiocpp) ·
 [2 · Speech memory](#2--speech-memory-graphics-memory-and-the-booking) ·
 [3 · Render and takes](#3--render-and-takes) ·
+[4 · The app's view of the AI model](#4--the-apps-view-of-the-ai-model) ·
 [Records not yet distilled](#records-not-yet-distilled)
 
 ---
@@ -476,6 +477,32 @@ its blast radius and the gaps.
 - The Stories timeline is inert — it calls no API; the rail is its only door (the old Chapters
   page's podcast "Open Timeline ➜" went with it, 2026-10-04). — *code, 2026-10-04* ·
   `StoriesView.vue:17`.
+
+---
+
+## 4 · The app's view of the AI model
+
+**Records:** TASKS "The header and Script hear an AI-model load made anywhere" (2026-10-05).
+
+- The kit keeps ONE shared list of the built-in runner's models (`useRunnerModels`, exported
+  with `refreshRunnerModels`): each model's status — `loaded`, `loading`, `disk`, `available`,
+  `error`. AI Settings' catalog reads it and refreshes it after its own Load and Unload; it polls
+  itself only while a model is `loading`. — *code, 2026-10-05* ·
+  `../just-llm-runner/ui/src/composables/useRunnerModels.js` (`refresh`, `_startPoll`),
+  `components/LuModelCatalog.vue` (`unloadModel`).
+- The kit's LLM engine setup loads through its own task and re-reads that list only after its
+  speed measure succeeds; its host hook `quickSetupCopy.onApplied({ modelId })` fires the moment
+  the load is done. JustVoice dispatches `jv:health-refresh` from it. — *code, 2026-10-05* ·
+  kit `views/QuickSetup.vue` (`finishApply`, `measureAfterApply`); `src/main.js`.
+- JustVoice's header pill reads that list (`App.vue`, `llmLive`) and re-reads it on health
+  events and when an AI task starts or ends; Script's "Analyze needs a language model" reads
+  `/v1/extraction/config` through `composables/useAnalyzeModel.js` — on mount, on coming back,
+  and on any change to the list. Live: Unload in AI Settings → the header said "No language
+  model" in 2 s; Load now → gemma in 15 s; Script re-read each time. (was: both kept their own
+  copy — the header of `/v1/llm-runner/status`, Script read once on mount — so a load from the
+  setup or AI Settings never reached them, until 2026-10-05.) — *code + live, 2026-10-05*.
+- While a model loads, the list can already say `loaded` while `/v1/llm-runner/status` still
+  says `starting · loading into VRAM` (seen 2026-10-05, a few seconds). — *live, 2026-10-05*.
 
 ---
 

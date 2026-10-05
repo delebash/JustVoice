@@ -666,6 +666,26 @@ GO: needed.
 
 ## The next build
 
+### The header and Script hear an AI-model load made anywhere
+STATE:  DECIDED 2026-10-05 — "your rec go" on, as shown: "1. The header reads the kit's shared
+        model list instead of its own fetch, so it changes the moment any kit surface loads or
+        unloads a model. 2. Script re-reads its model check each time you come back to the grid,
+        and when that shared list changes. Both are JustVoice-side only; nothing in the kit
+        changes." (Report: the LLM quick setup loaded gemma; the header still said "No language
+        model" and Script "Analyze needs a language model".)
+WHY:    the server knew (`/v1/llm-runner/status` running gemma; `/v1/extraction/config` named it).
+        The header (`App.vue:337-343`) and Script (`StudioScript.vue`, read once on mount, kept
+        alive) held their own copies a kit load never reaches; AI Settings reads the kit's
+        `useRunnerModels` and was right.
+NOT:    a new event or timer; a kit change.
+BUILT:  2026-10-05 — `App.vue` (the pill reads `useRunnerModels`), `composables/useAnalyzeModel.js`
+        (both Script pages), `main.js` (the setup's `onApplied` → `jv:health-refresh`, so a setup's
+        load reaches the list at once). Live, in-app navigation: Unload → "No language model" in
+        2 s; Load now → gemma in 15 s; the kept-alive Script re-read on each change and on return.
+        Smoke 15/15, vitest 136, Biome. RESEARCH §4.
+OPEN:   none.
+GO:     given 2026-10-05 ("your rec go")
+
 ### `npm run dev` always runs the latest audio.cpp — the dev app on our checkout, no release
 STATE:  BUILT 2026-10-03 — one open finding (the tooltip, OPEN below).
 BUILT:  our audio.cpp 6d1825eb (cmake/text_dictionaries.cmake, D3); JustVoice: scripts/tauri.js

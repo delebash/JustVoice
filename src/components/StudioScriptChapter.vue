@@ -34,6 +34,7 @@ import { useApi } from "../stores/api.js";
 import { useCopy } from "../services/copy.js";
 import { routeWords } from "../services/attribution.js";
 import { useKeptScroll } from "../composables/useKeptScroll.js";
+import { useAnalyzeModel } from "../composables/useAnalyzeModel.js";
 import { inRun, onChapterDone, queueChapters } from "../services/chapterRun.js";
 import {
   KEYS, applyLocally, checkQuestion, confidenceCell, confirm, decidedBy, editText, filterCounts,
@@ -131,9 +132,8 @@ const shown = computed(() =>
   visibleLines(lines.value, { filter: filter.value, speaker: speaker.value, around: around.value }));
 
 // ── What stops Analyze (the same two states the grid shows) ──────────────
-const config = ref(null);
-onMounted(async () => { config.value = await api.safeRequest("/v1/extraction/config", null); });
-const noModel = computed(() => !!config.value && (config.value.auto_checks || []).every((c) => !c.model));
+// Re-read when the page comes back or a model loads (useAnalyzeModel).
+const { noModel } = useAnalyzeModel();
 const onlyNarrator = computed(() => props.cast.length > 0 && props.cast.every((c) => c.narrator));
 
 // ── Header words ─────────────────────────────────────────────────────────

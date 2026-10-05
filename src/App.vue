@@ -16,7 +16,7 @@ import LeftoverEnginesHelp from "./components/LeftoverEnginesHelp.vue";
 // An engine's own terms (Pocket TTS — Kyutai's, before the first clone): one dialog for the
 // whole app, opened by `jv:engine-terms` (services/engineTerms.js).
 import EngineTermsDialog from "./components/EngineTermsDialog.vue";
-import { AiSetupOffer, AiStatusButton, AiTaskStrip, BootModelLoad, HelpDrawer, HelpTrigger, LlmUiHosts, TitleBar, openExternal, pushToast, useAiTasksNav, useAiTasksStore, useModelApply, warmModelId } from "@delebash/llm-ui";
+import { AiSetupOffer, AiStatusButton, AiTaskStrip, BootModelLoad, HelpDrawer, HelpTrigger, LlmUiHosts, TitleBar, openExternal, pushToast, refreshRunnerModels, useAiTasksNav, useAiTasksStore, useModelApply, useRunnerModels, warmModelId } from "@delebash/llm-ui";
 import { readPref, writePref } from "./services/prefs.js";
 
 // View components are lazy-loaded by the router (router/index.js); App.vue holds
@@ -331,15 +331,22 @@ async function refresh() {
 }
 
 // The language-model indicator beside the voice one (2026-09-29 — Studio's
-// own "TTS" / "Script" chips died as duplicates). The built-in runner loads a
-// model when an AI task runs, so it is re-read on the same events as health
-// and whenever a task starts or ends — no timer.
-const llm = ref(null);   // GET /v1/llm-runner/status
-async function refreshLlm() {
-  llm.value = await api.safeRequest("/v1/llm-runner/status", null);
+// own "TTS" / "Script" chips died as duplicates). It reads the kit's shared
+// list of the built-in runner's models — the one AI Settings, Quick setup and
+// the boot load read and refresh — so a load or unload made on any of them
+// shows here at once (2026-10-05: it kept its own copy of /status, and a model
+// loaded from Quick setup still read "No language model"). The runner also
+// loads a model when an AI task runs, so the list is re-read on the same
+// events as health and whenever a task starts or ends — no timer.
+const { models: runnerModels } = useRunnerModels();
+function refreshLlm() {
+  refreshRunnerModels();
 }
-const llmModel = computed(() =>
-  ["running", "loading"].includes(llm.value?.status) ? llm.value.modelId || "" : "");
+const llmLive = computed(() =>
+  runnerModels.value.find((m) => m.status === "loading")
+  || runnerModels.value.find((m) => m.status === "loaded") || null);
+const llmModel = computed(() => llmLive.value?.id || "");
+const llmLoading = computed(() => llmLive.value?.status === "loading");
 watch(() => tasks.runningCount, refreshLlm);
 
 // Boot banner — the Python server takes a few seconds to come up on
@@ -572,12 +579,12 @@ onMounted(async () => {
           class="jv-topbar__engine-pill"
           :class="{ 'jv-topbar__engine-pill--empty': !llmModel }"
           :title="llmModel
-            ? `Language model ${llm?.status === 'loading' ? 'loading' : 'loaded'}: ${llmModel}. Click to open AI Settings.`
+            ? `Language model ${llmLoading ? 'loading' : 'loaded'}: ${llmModel}. Click to open AI Settings.`
             : 'No language model loaded — one loads when an AI feature runs, or the features use the provider set in AI Settings. Click to open AI Settings.'"
           @click="goView('ai')"
         >
           <span class="jv-topbar__engine-icon">🧠</span>
-          {{ llmModel ? `${llmModel}${llm?.status === "loading" ? " · loading" : ""}` : "No language model" }}
+          {{ llmModel ? `${llmModel}${llmLoading ? " · loading" : ""}` : "No language model" }}
         </button>
 
         <!-- Status and server URL are TWO things, not one (user, 2026-08-08).
