@@ -723,6 +723,29 @@ GO: needed.
 
 ## The next build
 
+### The persona page shows which version of its model speaks, and can change it (decided 2026-10-05)
+STATE:  DECIDED 2026-10-05 — "yes i agree with surface in persona go", on the lean as shown (the
+        user: "when we choose a voice how do we know what model size is choose like on qwen we can
+        choose 1.7 or .6 … how woulod you tell it to use a different model?"): "Show the version on
+        the persona page beside the voice, for example 'Speaks with Qwen3-TTS CustomVoice · 1.7B ·
+        8-bit (loaded)'. Add a Size choice there that sets that model's default version, worded so
+        it's clear it changes every persona on that model. … keep size per model, as decided, and
+        just make it visible and changeable from the persona page."
+WHY:    the render already picks the version (`voice_model.variant_for_model`) — the loaded one,
+        else the engine's default, else an installed one — but no persona screen said which.
+NOT:    a size per persona (two versions of one model loaded at once — no room beside the AI
+        model on an 8 GB card; the 2026-10-03 call 4 stands).
+BUILT:  2026-10-05 — the plan `docs/plans/2026-10-05-cast-render-persona.md` §5 (blast radius there).
+        `voice_model.versions_of` + `GET /v1/voices/{id}/model-version`; `services/engineDefaults.js`
+        (Speech engines uses it too); the persona page's Version field, "Speaks with …", and Load
+        when another version is loaded. Not named in the decision, built because the choice alone
+        wouldn't take effect: a loaded version keeps speaking until the chosen one is loaded — the
+        page says so and offers Load. Docs: personas, whats-new; RESEARCH §7. Checked: ruff, Biome,
+        build. Not checked live: the route needs the app restarted (asked); no suites (the user's
+        word).
+OPEN:   the live check, after a restart.
+GO:     given 2026-10-05
+
 ### The persona page's Voice card: pick a voice first, filters that narrow each other (decided 2026-10-05)
 STATE:  DECIDED 2026-10-05 — "check for other errors like this in the drop down filters and your rec
         on 1 and 2 no need to mock just do it go", on the two as shown (the user first: "if i choose

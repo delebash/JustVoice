@@ -113,6 +113,36 @@ async def list_voices() -> VoiceList:
     return VoiceList(voices=out)
 
 
+class ModelVersion(_BaseModel):
+    id: str
+    name: str
+    size_mb: int | None = None
+    on_disk: bool = False
+
+
+class VoiceModelVersion(_BaseModel):
+    """Which version (size, precision) of its model speaks a voice — the one a
+    render picks — and the family's others (decided 2026-10-05)."""
+
+    engine_id: str
+    model: str
+    model_name: str
+    speaks_with: str | None = None
+    loaded: str | None = None
+    default: str | None = None
+    versions: list[ModelVersion] = []
+
+
+# Plain `def`: reads the speech cache on disk — thread pool, not the event loop.
+@router.get("/v1/voices/{id}/model-version", response_model=VoiceModelVersion,
+            summary="Which version of its model speaks this voice")
+def get_voice_model_version(id: str, language: str | None = None) -> VoiceModelVersion:
+    out = vmod.versions_of(get_state(), id, language)
+    if out is None:
+        raise not_found(f"voice {id}")
+    return VoiceModelVersion(**out)
+
+
 @router.get("/v1/voices/{id}", response_model=Voice, summary="Get one voice")
 async def get_voice(id: str) -> Voice:
     st = get_state()

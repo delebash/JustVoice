@@ -33,11 +33,11 @@
   kept, per model, so switching back restores them.
 -->
 <script setup>
-import { computed, onActivated, ref, watch } from "vue";
+import { computed, onActivated, onBeforeUnmount, ref, watch } from "vue";
 import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import {
   AppModal, EmptyState, UiButton, UiField, UiInput, UiNumber, UiSegmented, UiSelect,
-  UiSlider, UiTag, UiTextarea, confirmDialog, languageName, pushToast, runAiEndpoint, saveBlob,
+  DownloadBar, UiSlider, UiTag, UiTextarea, confirmDialog, fmtBytes, languageName, pushToast, runAiEndpoint, saveBlob,
 } from "@delebash/llm-ui";
 import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
 import PersonaBlendMaker from "../components/PersonaBlendMaker.vue";
@@ -46,7 +46,9 @@ import PersonaDesignMaker from "../components/PersonaDesignMaker.vue";
 import PageTaskStrips from "../components/PageTaskStrips.vue";
 import SlashTagMenu from "../components/SlashTagMenu.vue";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";
+import { setDefaultVariant } from "../services/engineDefaults.js";
 import { handleTermsRefusal } from "../services/engineTerms.js";
+import { makeEngineLoadTask } from "../services/ttsJobChannel.js";
 import { facetCounts, facetOptions, facetTotal, narrowed } from "../services/facets.js";
 import { lexiconMatches } from "../services/lexiconPreview.js";
 import { openProjectInStudio } from "../services/openProject.js";
@@ -421,6 +423,74 @@ const languageNote = computed(() => {
 const effectiveLanguage = computed(() => (languageFixed.value
   ? speaks.value[0] || voice.value?.language || draft.value?.language
   : draft.value?.language || voice.value?.language || speaks.value[0]));
+// ── Which version of the model speaks (decided 2026-10-05: "surface in
+// persona") — size and precision stay per MODEL, not per persona (doc §6.2
+// call 4): the version chosen here is the model's default, so every persona
+// on that model speaks with it. A version already loaded keeps speaking until
+// the chosen one is loaded — the server's own pick (`variant_for_model`).
+const modelVersion = ref(null);   // GET /v1/voices/{id}/model-version
+let versionSeq = 0;
+async function loadModelVersion() {
+  const v = voice.value;
+  const seq = ++versionSeq;
+  if (!v) {
+    modelVersion.value = null;
+    return;
+  }
+  const lang = effectiveLanguage.value ? `?language=${encodeURIComponent(effectiveLanguage.value)}` : "";
+  const r = await api.safeRequest(`/v1/voices/${encodeURIComponent(v.id)}/model-version${lang}`, null);
+  if (seq === versionSeq) modelVersion.value = r;
+}
+watch([() => voice.value?.id, () => effectiveLanguage.value], loadModelVersion, { immediate: true });
+// A load or a default set anywhere else (Speech engines, Voices) shows here too.
+const onHealth = () => { void loadModelVersion(); };
+window.addEventListener("jv:health-refresh", onHealth);
+onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", onHealth));
+
+// "Qwen3-TTS CustomVoice 1.7B (16-bit)" → "1.7B (16-bit)" — the model is already named.
+function versionShort(id) {
+  const mv = modelVersion.value;
+  const row = mv?.versions.find((x) => x.id === id);
+  if (!row) return id || "";
+  const rest = row.name.startsWith(mv.model_name) ? row.name.slice(mv.model_name.length).trim() : "";
+  return rest || row.name;
+}
+const chosenVersion = computed(() => modelVersion.value?.default || modelVersion.value?.speaks_with || "");
+const versionOptions = computed(() => (modelVersion.value?.versions || []).map((x) => ({
+  value: x.id,
+  label: [versionShort(x.id), x.size_mb ? fmtBytes(x.size_mb * 1024 * 1024) : "", x.on_disk ? "" : "not downloaded"]
+    .filter(Boolean).join(" · "),
+})));
+const versionBusy = ref(false);
+async function chooseVersion(id) {
+  const mv = modelVersion.value;
+  if (!mv || !id || id === chosenVersion.value || versionBusy.value) return;
+  versionBusy.value = true;
+  try {
+    await setDefaultVariant(api, mv.engine_id, id);
+    pushToast({ kind: "success", duration: 6000,
+      message: `${mv.model_name} ${versionShort(id)} — every persona on ${mv.model_name} speaks with it.` });
+    await loadModelVersion();
+  } catch (e) {
+    pushToast({ kind: "error", message: `Couldn't change the version: ${e?.message || e}` });
+  } finally {
+    versionBusy.value = false;
+  }
+}
+// The chosen version isn't the loaded one: the loaded one speaks until this loads.
+const versionLoadTask = ref(null);
+async function loadChosenVersion() {
+  const mv = modelVersion.value;
+  if (!mv || !chosenVersion.value) return;
+  const task = makeEngineLoadTask(api, mv.engine_id, { model_variant: chosenVersion.value });
+  versionLoadTask.value = task;
+  await task.start();
+  if (task.state === "done") {
+    versionLoadTask.value = null;
+    await loadModelVersion();
+  }
+}
+
 const speaksLabel = computed(() => {
   const lang = effectiveLanguage.value;
   return lang ? `Speaks ${languageName(lang) || lang}` : "";
@@ -895,7 +965,28 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
                 </UiField>
                 <UiButton intent="secondary" label="▶ Play" :loading="rawBusy" :disabled="!voice"
                   title="Play the voice on its own, before this page changes anything" @click="playRaw" />
+                <UiField v-if="modelVersion?.versions.length" label="Version" layout="block">
+                  <UiSelect :model-value="chosenVersion" :options="versionOptions" width="name"
+                    :disabled="versionOptions.length < 2 || versionBusy"
+                    :title="`The size and precision of ${modelVersion.model_name} — one for every persona on it`"
+                    @update:model-value="chooseVersion" />
+                </UiField>
               </div>
+              <p v-if="modelVersion?.versions.length" class="jv-hint">
+                Speaks with <strong>{{ modelVersion.model_name }} {{ versionShort(modelVersion.speaks_with || chosenVersion) }}</strong>
+                <template v-if="modelVersion.loaded && modelVersion.loaded === chosenVersion"> · loaded</template>
+                <template v-else-if="!modelVersion.loaded"> · not loaded — the first Listen loads it</template>.
+                Every persona on {{ modelVersion.model_name }} speaks with the version chosen here, or on
+                <a href="#/ai">AI Settings → Speech engines</a>.
+              </p>
+              <div v-if="modelVersion?.loaded && modelVersion.loaded !== chosenVersion" class="jv-inline-row">
+                <span class="jv-hint">{{ versionShort(modelVersion.loaded) }} is loaded and speaks until
+                  {{ versionShort(chosenVersion) }} is.</span>
+                <UiButton intent="secondary" size="small" :label="`Load ${versionShort(chosenVersion)}`"
+                  :loading="versionLoadTask?.state === 'running'" @click="loadChosenVersion" />
+              </div>
+              <DownloadBar v-if="versionLoadTask?.state" :task="versionLoadTask"
+                :title="`${modelVersion?.model_name || ''} ${versionShort(chosenVersion)}`" />
               <p v-if="voiceEmptyHint" class="jv-hint">{{ voiceEmptyHint }}</p>
               <div class="jv-inline-row">
                 <span class="jv-hint">Or make a new one:</span>

@@ -659,7 +659,10 @@ blast radius.
   16-bit) stay AI Settings' choice (persona redesign §6.2 call 4). A render picks the variant:
   the loaded one if it is this family, else the engine's default if it is, else an installed one
   of the family (same size and precision first), else the same pick among all of the family's
-  variants, and the load fetches it. The persona page does not show which. — *code,
+  variants, and the load fetches it. A loaded version of the family keeps speaking after
+  the default changes, until the chosen one is loaded. The persona page shows it since
+  2026-10-05: `GET /v1/voices/{id}/model-version` (`voice_model.versions_of` — the render's
+  own pick, the loaded one, the default, the family's versions with `on_disk`). — *code,
   2026-10-05* · `voice_model.variant_for_model` (`voice_model.py:372`).
 - Every multi-filter list follows one rule — each filter lists only what the others leave,
   counts match, a chosen option nothing fits stays with (0) — through `services/facets.js`

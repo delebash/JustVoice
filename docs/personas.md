@@ -219,6 +219,18 @@ Each voice reads *name · gender · language · model · what it can do*:
 the voice on its own, before anything on this page shapes it; if its model
 isn't loaded it asks before loading it.
 
+**Version** beside the voice is which size and precision of its model speaks
+it — *1.7B*, *0.6B (16-bit)* — and under it the page says what speaks right
+now: *Speaks with Qwen3-TTS CustomVoice 1.7B · loaded*. A version is chosen per
+**model**, not per persona: picking one here makes it that model's default, the
+same as **Set as default** on AI Settings → Speech engines, so every persona on
+that model speaks with it. (Two versions of one model can't be loaded at once
+beside the AI model on an 8 GB card.) A version you haven't downloaded says
+*not downloaded*; the first load fetches it. When another version of the model
+is already loaded, it keeps speaking until the chosen one is: the page says
+*1.7B is loaded and speaks until 0.6B is*, with **Load 0.6B** and its progress
+bar. (Since 2026-10-05 — before, no persona screen said which version spoke.)
+
 **Speaks** is the language this persona speaks. Picking a voice sets it to that
 voice's own language. Where the voice or its model allows only one (a Kokoro voice,
 KittenTTS, Chatterbox Turbo) it is plain text: *Speaks English*. Where the model

@@ -42,6 +42,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { DownloadBar, UiButton, confirmDialog, fmtBytes, openExternal, openPath, promptDialog, pushToast } from "@delebash/llm-ui";
 import { makeEngineDownloadTask, makeEngineLoadTask, makeJobDownloadTask } from "../services/ttsJobChannel.js";
+import { setDefaultVariant as setEngineDefault } from "../services/engineDefaults.js";
 // The row's three-dot menu — reka-ui's DropdownMenu, the same import shape
 // as the kit's LuModelCatalog (the portal escapes the group's overflow clip).
 import {
@@ -145,14 +146,8 @@ async function setDefaultEngine(engine) {
 // a bare PATCH could clobber sibling overrides.
 async function setDefaultVariant(engine, variantId) {
   try {
-    const s = await api.request("/v1/settings");
-    const overrides = { ...(s?.engines?.engine_overrides || {}) };
-    overrides[engine.id] = { ...(overrides[engine.id] || {}), default_variant: variantId };
-    await api.request("/v1/settings", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ engines: { engine_overrides: overrides } }),
-    });
+    // The one door, shared with the persona page's Version choice (2026-10-05).
+    await setEngineDefault(api, engine.id, variantId);
     pushToast({ message: `${variantNameFor(engine.id, variantId)} is now ${engine.name || engine.id}'s default model.`, kind: "success" });
     delete variants[engine.id];
     await refresh(); // the list serves the RESOLVED default — re-read the badge truth

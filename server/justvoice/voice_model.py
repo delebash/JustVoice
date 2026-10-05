@@ -483,3 +483,38 @@ def is_model_loaded(engine_id: str, model: str) -> bool:
     if not _family_rows(engine_id, model):
         return True
     return model_of_variant(_resident_variant(engine_id)) == model
+
+
+def versions_of(state: Any, voice_id: str, language: str | None = None) -> dict[str, Any] | None:
+    """Which version of its model speaks a voice, and the family's others — the
+    persona page's "Speaks with" (decided 2026-10-05). `speaks_with` is exactly
+    the variant a render picks now (`variant_for_model`); `loaded` is the
+    family's resident variant, if any; `default` the engine's default when it is
+    this family. Size and precision stay per model, not per persona (doc §6.2
+    call 4). None when no engine owns the voice."""
+    vm = voice_model(state, voice_id)
+    if vm is None:
+        return None
+    rows = _family_rows(vm.engine_id, vm.model)
+    try:
+        picked = variant_for_model(vm.engine_id, vm.model, language)
+    except ModelUnavailable:
+        picked = None
+    loaded = _resident_variant(vm.engine_id) if is_model_loaded(vm.engine_id, vm.model) else None
+    try:
+        default = _manager().resolved_default_variant(vm.engine_id)
+    except Exception:  # noqa: BLE001
+        default = None
+    return {
+        "engine_id": vm.engine_id,
+        "model": vm.model,
+        "model_name": vm.name,
+        "speaks_with": picked,
+        "loaded": loaded if rows else None,
+        "default": default if model_of_variant(default) == vm.model else None,
+        "versions": [
+            {"id": r["id"], "name": r.get("name") or r["id"], "size_mb": r.get("size_mb"),
+             "on_disk": _on_disk(vm.engine_id, r["id"])}
+            for r in rows
+        ],
+    }

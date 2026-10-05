@@ -2,6 +2,11 @@
 
 ## v0.1.0
 
+- **A persona shows which version of its model speaks it (2026-10-05).**
+  **Version** beside the voice — *1.7B*, *0.6B (16-bit)* — with *Speaks with
+  Qwen3-TTS CustomVoice 1.7B · loaded* under it. Changing it sets that model's
+  default for every persona on it, and **Load** swaps the loaded version
+  ([Personas → Voice](personas.md#voice))
 - **Filters narrow each other (2026-10-05).** On Voices, Cast's persona list,
   the Personas list, the blend maker, a persona's Voice card, and Script's and
   Render's chapter pages, each filter lists only what the others leave, with

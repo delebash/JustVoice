@@ -81,6 +81,21 @@ History. Its page also documents the AI task strip and panel (`generate.md`).
 | compose / rewrite get a second caller | `GenerateView.vue:404,436` · `PersonaEditorView.vue:576,597` | the endpoints read the saved note (`personas_api.py:500,542`) |
 | `lexiconMatches` gets a second caller | `GenerateView.vue:331` · `PersonaEditorView.vue:536` | — |
 
+## 5. The model's version on the persona page (decided 2026-10-05, "surface in persona go")
+
+**Version** beside the voice — the family's versions (size · precision · size on disk, "not
+downloaded"), set as that model's default (one door: `services/engineDefaults.setDefaultVariant`,
+shared with Speech engines' "Set as default"); "Speaks with … · loaded / not loaded"; when another
+version of the family is loaded, "… is loaded and speaks until … is" with **Load** (the shared
+`makeEngineLoadTask` and its DownloadBar). The server answers which version a render picks:
+`GET /v1/voices/{id}/model-version` → `voice_model.versions_of` (over `variant_for_model`).
+
+| Change | Callers / producers (pasted grep, 2026-10-05) | Already on the path |
+|---|---|---|
+| `versions_of` + the route (new) | `voices_api.py:137-140` → `voice_model.py:500` (`variant_for_model`) | `variant_for_model` is also the render's: `voice_model.py:449` (`ensure_model_loaded`) — read only here, no load |
+| `setDefaultVariant` moved to a service | `SpeechEnginesTab.vue:45,147,150,939` · `PersonaEditorView.vue:49,470` | the overrides map is read-modify-written, as before |
+| the persona page reads the route | `PersonaEditorView.vue:431,441` | `jv:health-refresh` re-reads it (a load anywhere) |
+
 ## 4. Removing Generate (8, 9 — and "Speak again", the ★ favorite)
 
 Decided 2026-10-05 ("your rec go", TASKS): Generate goes everywhere — route, rail, docs —
