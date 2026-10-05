@@ -666,6 +666,27 @@ GO: needed.
 
 ## The next build
 
+### The family moves to Electron and a Node server; Tauri and Python go — the study first
+STATE:  DECIDED 2026-10-05 (the direction) — "i think we go with electron and drop tauri either
+        ionic aor capawesome but do the study go", on the lean shown: "Electron on desktop,
+        Capacitor on mobile, a Node server. Against Tauri + Node, Electron drops Rust and the
+        sidecar spawn and supervision code; runs one runtime instead of two; uses the same browser
+        as the smoke gate on every OS. Tauri + Node only buys a lighter shell and less RAM."
+        Family-wide: JustVoice, JustWrite, docgen and the kit. Phone shell — Ionic's Capacitor or
+        Capawesome's Capacitor Electron platform — OPEN. (The study found it isn't either/or:
+        phones use Capacitor either way; the open choice is the desktop shape — study §5.1, §9 Q2.)
+WHY:    Python came in for the PyTorch speech engines (2026-06-16: "JustVoice MUST have Python
+        (STT/TTS) anyway"); since 2026-10-01 every model runs in audio.cpp. Tauri's sidecar is
+        desktop-only, so a phone runs JavaScript or native code — never Python.
+NOT:    ASP.NET Core (a third language; its speed is moot — the heavy work is in audio.cpp and
+        llama.cpp). Tauri + a Node sidecar (two runtimes). Keeping the Python sidecar.
+BUILT:  nothing. The study is done (2026-10-05): `docs/plans/2026-10-05-electron-node-study.md`;
+        facts in RESEARCH §6 and the kit's RESEARCH §2.
+OPEN:   your answers to the study's §9 — eight questions, first whether all the audio math goes
+        into audio.cpp ("i think all the work should be in audo cpp, what do you think?" —
+        answered yes with five conditions, not yet confirmed); then a plan.
+GO:     the study given 2026-10-05 ("do the study go"); the move itself needed.
+
 ### The header and Script hear an AI-model load made anywhere
 STATE:  DECIDED 2026-10-05 — "your rec go" on, as shown: "1. The header reads the kit's shared
         model list instead of its own fetch, so it changes the moment any kit surface loads or

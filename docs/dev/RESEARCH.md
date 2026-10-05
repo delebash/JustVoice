@@ -49,6 +49,7 @@ Subjects: [1 · Speech runtime](#1--speech-runtime-audiocpp) ·
 [2 · Speech memory](#2--speech-memory-graphics-memory-and-the-booking) ·
 [3 · Render and takes](#3--render-and-takes) ·
 [4 · The app's view of the AI model](#4--the-apps-view-of-the-ai-model) ·
+[6 · The app stack: Electron, Node, phones](#6--the-app-stack-electron-node-phones) ·
 [Records not yet distilled](#records-not-yet-distilled)
 
 ---
@@ -503,6 +504,80 @@ its blast radius and the gaps.
   setup or AI Settings never reached them, until 2026-10-05.) — *code + live, 2026-10-05*.
 - While a model loads, the list can already say `loaded` while `/v1/llm-runner/status` still
   says `starting · loading into VRAM` (seen 2026-10-05, a few seconds). — *live, 2026-10-05*.
+
+---
+
+## 6 · The app stack: Electron, Node, phones
+
+**Records:** [`2026-10-05-electron-node-study.md`](../plans/2026-10-05-electron-node-study.md)
+(the study, with every measurement and source); TASKS "The family moves to Electron and a Node
+server". The shared-stack half (Electron, Node, SQLite, Capacitor, process trees) is in the
+kit's register §2.
+
+**Size, memory, startup** (*measured, 2026-10-05*, Windows 11 · RTX 2070 SUPER — study §1):
+
+- Today's server frozen with PyInstaller onefile is **76.9 MB**, and takes **6.7–8.1 s** to
+  print `--help` (it unpacks to temp every launch); an unfrozen `import justvoice.app` takes
+  2.6–5.5 s.
+- An Electron 44.5.1 NSIS installer holding JustVoice's `dist/` is **111.7 MB** (370 MB
+  installed) — about 35 MB more than today's shell + sidecar; the speech runtime (≥1 GB) and
+  models dominate either way.
+- The same JustVoice UI: the Tauri window (justvoice.exe + 7 WebView2 processes) ~322 MB
+  private; an Electron window 256 MB (dev UI) / 204 MB (built UI). Rough — the WebView2 window
+  had been in use for hours.
+
+**The release build** (*measured + code*, study §1, §10):
+
+- `release.yml`'s `pyinstaller --onefile server/justvoice/__main__.py` builds an exe that dies
+  on start: `__main__.py:25` is a relative import (`from .serve import main`). An
+  absolute-import entry with `--collect-submodules justvoice/llm_runner` works.
+- The release job installs `./server[dev]` without the `bundle` extra
+  (`.github/workflows/release.yml:42`), so the kit is never in the frozen build.
+
+**The shell** (*code*, study §4):
+
+- The shell registers 23 commands (`src-tauri/src/lib.rs:918-942`); the renderer calls 5
+  (`src/services/native.js:33-69`). Hotkeys, paste, system-audio capture, the macOS permission
+  checks and server start/stop/restart have no caller (recorded at `native.js:18-22`), and
+  `list_audio_output_devices` / `play_audio_to_devices` are placeholders (`lib.rs:612-633`).
+  No dictation feature runs today.
+- `window.__TAURI__` exists only with `withGlobalTauri`, which no config sets — so JustVoice's
+  tray listeners (`App.vue:425-437`), the updater UI (`SettingsView.vue:525-576`) and "Open log
+  file" (`SettingsView.vue:910-924`) never work. No updater plugin is in any `Cargo.toml`.
+- Of JustVoice's 2,738 lines of Rust, 956 are `audio_capture/`, 312 `synthetic_keys.rs`, 290
+  `hotkey_monitor.rs`, 120 `permissions.rs`.
+
+**The audio math** (*measured*, an agent, study §2 — the app's functions against plain-JS ports):
+
+- Every filter, EQ, delay, reverb, compressor, chorus, distortion, the four shipped effect
+  chains (except Deep Voice's pitch), resampling, crossfades, the analyzer, Kokoro blends and
+  delivery gain match in JavaScript — bit-identical, or float error with **0** differing 16-bit
+  samples. ACX mastering is an ffmpeg subprocess (byte-identical from Node).
+- **Signalsmith Stretch (pitch, speed) can't be matched in any build** (34–57 dB SNR pitch,
+  13.5–58 dB speed): the library moves its own output that much on a 1-ulp input nudge, and it
+  seeds from `std::random_device` when the internal ratio exceeds 2 (speed 0.5 at 22.05 or
+  44.1 kHz) — so today's output isn't repeatable either.
+- **pyloudnorm is declared but never imported** (`server/pyproject.toml:27`); ACX QC uses the
+  analyzer's RMS/peak, normalisation is ffmpeg `loudnorm`. `docs/mastering.md:19` is stale.
+  Also never imported: `requests`, `rich`.
+- **The Kokoro "mean" blend changes in its last bits each restart**: `_kokoro_pack` returns the
+  names as `set(pack)` (`engines/blending.py:212`) and `_kokoro_pack_mean` sums in that order,
+  which follows per-process string hashing (max 4.5e-8 over three seeds).
+- `effects_chain_hash` (`audio/effects.py:181`) and `delivery.canonical_json`
+  (`delivery.py:26`) hash Python's `json.dumps`, which writes `1.0` where JavaScript writes
+  `1` — a naive port changes every render-cache key.
+- `as_16k_mono` (`engines/audiocpp/slot.py:540`) works around a v0.9.0 aligner bug that our
+  jv.1 build fixed (§1.3).
+
+**The server** (*code*, an agent, study §3):
+
+- JustVoice's server: 176 files / 36,380 lines, 113 test files / 19,924 lines, 971 test
+  functions, 188 routes, 23 tables. Its wire format is **snake_case** (284 of 285 fields in
+  `models.py`); nothing generates a client from its OpenAPI.
+- JustWrite never calls JustVoice at runtime — the handoff is a book `.zip`
+  (`docs/dev/design-decisions.md:101-104`).
+- `justvoice-server serve` is argparse (`serve.py:14`); typer is only the dev `cli.py`.
+- The OpenAPI licence says Apache-2.0 (`server/justvoice/app.py:139`); the project is MIT.
 
 ---
 
