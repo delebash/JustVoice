@@ -74,7 +74,7 @@ persona**.
 ### Rename and Merge into…
 
 **✏️ Rename** asks for the new name and changes it everywhere the persona
-plays — Cast, *Used by*, Generate. Names stay unique (see [Names](#names)).
+plays — Cast and *Used by*. Names stay unique (see [Names](#names)).
 
 **🔗 Merge into…** folds one persona into another, for when two personas have
 become the same voice. Pick the persona to keep: every speaker the merged one
@@ -201,9 +201,13 @@ design's kept clip can be on a model of any kind, so those stay on.
 - **Gender** — Any · Female · Male · Neutral. A voice's gender is worked out the
   same way everywhere: your own override first (Voices → click the letter), then
   what the voice says about itself, then the voice's id or first name.
-- **Language** — the voice's own language, the one its name in the list shows:
-  pick **Japanese (6)** to see only Japanese voices. English covers American
-  and British English alike.
+- **Voice's language** — the voice's own language, the one its name in the
+  list shows: pick **Japanese (6)** to see only Japanese voices. English covers
+  American and British English alike. It is not what the persona speaks — that
+  is **Speaks**, below.
+
+These only narrow the list. The persona's own voice stays in the **Voice** box
+even when they hide it, so a filter never makes the voice look unset.
 
 Each voice reads *name · gender · language · model · what it can do*:
 `Sohee · Female · Korean · Qwen3-TTS CustomVoice · written direction`,
@@ -211,8 +215,8 @@ Each voice reads *name · gender · language · model · what it can do*:
 the voice on its own, before anything on this page shapes it; if its model
 isn't loaded it asks before loading it.
 
-**Speaks** is the language this persona speaks. It starts as the voice's own
-language. Where the voice or its model allows only one (a Kokoro voice,
+**Speaks** is the language this persona speaks. Picking a voice sets it to that
+voice's own language. Where the voice or its model allows only one (a Kokoro voice,
 KittenTTS, Chatterbox Turbo) it is plain text: *Speaks English*. Where the model
 can speak several (Qwen3, Chatterbox Multilingual, VoxCPM2, Pocket TTS) it is a
 list of exactly those, so one Qwen3 speaker can be an English persona and a
@@ -230,8 +234,9 @@ pronouns.
 stale: *Changing this makes June's 61 lines stale.* When the new voice's model
 can't take written direction and some of those lines carry a direction of their
 own, it adds how many: *18 carry a written direction — Chatterbox Turbo won't
-perform them.* The language stays when the new voice's model speaks it, and
-falls back to the voice's own when it doesn't.
+perform them.* **Speaks** becomes the new voice's own language; change it
+afterwards for another language the model speaks. (Until 2026-10-05 it kept the
+old language whenever the new model could speak it.)
 
 ### Making a voice on this page
 
@@ -244,7 +249,7 @@ built-in voices come with their models. What you make is saved to
 use it too; this persona takes it at once (save the persona to keep that).
 
 **▶ Preview** speaks the line in **Hear it** below with the voice you are
-making — as *this persona* speaks: its language, standing delivery, emotion,
+making — as *this persona* speaks: its language, Style Instructions, emotion,
 lexicon, pace, pitch, gain and effects, through the same steps a chapter line
 goes through. So you hear the finished persona before anything is kept.
 
@@ -347,29 +352,6 @@ above the pickers, and every picker names a voice as *Bella · American English
 A blend's language comes from the voices you mixed. **▶ Preview** speaks the
 Hear it line with the mix as this persona; **💾 Keep** saves it.
 
-### Hear it
-
-Type a line and press **▶ Listen** to hear it spoken by this persona **as it is
-on the page, unsaved changes included**. Listen goes through exactly the path a
-chapter render uses, so what you hear is what the book gets. An empty box
-speaks the **stock line**; **↻ Stock line** puts it in the box, in the
-persona's language where one is written (English, Spanish, French, German,
-Italian, Portuguese, Dutch, Russian, Japanese, Chinese, Korean) and in English
-otherwise.
-
-**🏷️ Insert tag…** opens the voice's model's own tags and puts the one you pick
-at the cursor — on Chatterbox Turbo, `[laugh]`, `[sigh]`, `[fear]` and the rest
-of its nineteen. On a model with no tags the button is off and says so.
-**⤓ WAV** saves what you last heard.
-
-**✏️ Rewrite** rewrites the line in the box in this persona's voice, from its note
-on how it sounds; you see the original and the rewrite side by side and choose
-**Use the rewrite** or **Keep the original**. **🎲 Compose** writes a fresh line
-in its voice into the box. Both ask your language model, both read the persona's
-**saved** note — so they wait until a persona with a note is saved, and say so —
-and each shows its progress under the buttons. (They were on Generate until
-2026-10-05.)
-
 ### How it speaks
 
 **Pace, Pitch and Gain** apply to every model. They sit three across, each a
@@ -392,8 +374,8 @@ ms`. An empty pause is the book's own gap between lines.
 **Direction** depends on the model:
 
 - **Written-direction models** (Qwen3 CustomVoice, VoxCPM2, Qwen3 VoiceDesign):
-  **Standing delivery** — how this voice always speaks, in words (see
-  [Standing delivery](#standing-delivery-the-words-that-change-the-performance))
+  **Style Instructions (optional)** — how this voice always speaks, in words (see
+  [Style Instructions](#style-instructions-the-words-that-change-the-performance))
   — and **Emotion**, one of the app's nine: neutral, happy, sad, angry, fearful,
   whispered, shouted, sarcastic, contemptuous. On Qwen3 VoiceDesign the page
   warns: *On Qwen3 VoiceDesign these words reshape the voice itself, not just
@@ -402,11 +384,11 @@ ms`. An empty pause is the book's own gap between lines.
   (`[angry]` `[fear]` `[happy]` `[sarcastic]` `[surprised]` `[crying]`
   `[whispering]`) and **Register** from its three (`[narration]` `[dramatic]`
   `[advertisement]`), put at the start of every line. Sounds like `[sigh]` or
-  `[laugh]` go inside a line, so you type them in the line's text. Standing
-  delivery is shown off with the reason: *Chatterbox Turbo takes tags, not
+  `[laugh]` go inside a line, so you type them in the line's text. Style
+  Instructions is shown off with the reason: *Chatterbox Turbo takes tags, not
   written direction — pick its emotion and register below.*
 - **Sliders-only models** (Kokoro, KittenTTS, Pocket TTS, Chatterbox
-  Multilingual, Qwen3 Base): Standing delivery and Emotion are off, with the
+  Multilingual, Qwen3 Base): Style Instructions and Emotion are off, with the
   reason: *Kokoro takes no direction — shape it with the numbers, or pick a
   voice on a model that takes direction.*
 
@@ -445,6 +427,30 @@ to a voice on another model and that model's own settings show; switch back and
 the first model's come back as you left them. Pace, pitch, gain and the pauses
 are shared across every model.
 
+### Hear it
+
+Right above Save, below everything that shapes the sound (moved there 2026-10-05).
+Type a line and press **▶ Listen** to hear it spoken by this persona **as it is
+on the page, unsaved changes included**. Listen goes through exactly the path a
+chapter render uses, so what you hear is what the book gets. An empty box
+speaks the **stock line**; **↻ Stock line** puts it in the box, in the
+persona's language where one is written (English, Spanish, French, German,
+Italian, Portuguese, Dutch, Russian, Japanese, Chinese, Korean) and in English
+otherwise.
+
+**🏷️ Insert tag…** opens the voice's model's own tags and puts the one you pick
+at the cursor — on Chatterbox Turbo, `[laugh]`, `[sigh]`, `[fear]` and the rest
+of its nineteen. On a model with no tags the button is off and says so.
+**⤓ WAV** saves what you last heard.
+
+**✏️ Rewrite** rewrites the line in the box in this persona's voice, from its note
+on how it sounds; you see the original and the rewrite side by side and choose
+**Use the rewrite** or **Keep the original**. **🎲 Compose** writes a fresh line
+in its voice into the box. Both ask your language model, both read the persona's
+**saved** note — so they wait until a persona with a note is saved, and say so —
+and each shows its progress under the buttons. (They were on Generate until
+2026-10-05.)
+
 ### Save
 
 **💾 Save** saves the page; on a new persona it creates the persona and the
@@ -481,20 +487,21 @@ speakers in several books there is one button per book: **Open The Ninth Facet C
 
 Every way a persona is heard builds its request the same way: the page's
 Listen and Compare, a chapter render, a line's ↻ re-render, a take, the game
-voice-line export, Generate with the persona picked and MCP's speak with a
-persona. Each gets the persona's voice and model, its pace, pitch, gain and
-pauses, its model's own settings and seed, its standing delivery joined with
+voice-line export and MCP's speak with a persona. Each gets the persona's
+voice and model, its pace, pitch, gain and pauses, its model's own settings and
+seed, its Style Instructions joined with
 the emotion and the line's own direction, its language, its effects, and the
 book's lexicon then its own. Until 2026-10-03 a line's re-render and the game
 export left out the delivery and the line's direction, and no render sent the
 persona's language or seed.
 
-## Standing delivery: the words that change the performance
+## Style Instructions: the words that change the performance
 
-**Standing delivery** is a short description of how the voice always speaks,
+**Style Instructions** is a short description of how the voice always speaks,
 for example *"Clipped, world-weary noir delivery. Dry wit. Boston accent in
 stressful moments."* or *"Eager, optimistic, ends sentences with rising
-intonation."* (Until 2026-10-03 the field was called *Spoken delivery*.)
+intonation."* It is optional. (It was called *Standing delivery* until
+2026-10-05, and *Spoken delivery* before 2026-10-03.)
 
 **Qwen3-TTS (CustomVoice and VoiceDesign) and VoxCPM2 read it.** On Qwen3
 CustomVoice it arrives as the model's instruction when JustVoice renders a line
@@ -510,16 +517,16 @@ The page tells you which case you're in: on a model that can't take it the box
 is off and says why. Cast shows the same verdict as a tag on each persona row
 (**✓ written**, **tags** or **✗ none**).
 
-There is no checkbox or extra step. Write a standing delivery, render a
+There is no checkbox or extra step. Write Style Instructions, render a
 chapter, and a model that takes direction picks it up.
 
 ### How it combines with the line
 
-Standing delivery is the voice's **standing** instruction, not the last word.
+Style Instructions is the voice's **standing** instruction, not the last word.
 At render time three things join into the one instruction the engine receives,
 most specific last:
 
-1. this persona's **Standing delivery**
+1. this persona's **Style Instructions**
 2. the **Emotion** label, if one is set
 3. the line's own **direction**, from its *How it's said* box in
    [Studio · Render](studio.md#how-its-said)
@@ -602,7 +609,7 @@ Everything the source knows about a person lands in the speaker's **Who they
 are**: the one-liner, then a `Voice hint:` block carrying gender, age and role.
 Its aliases become the speaker's **Also called**, and its pronouns the speaker's
 **Pronouns** (he/him, she/her, they/them or it/its). Nothing is written into any
-persona's Standing delivery. *"female, age 34, protagonist"* is a casting hint, not
+persona's Style Instructions. *"female, age 34, protagonist"* is a casting hint, not
 a direction to the TTS, and guessing a direction would change how your book
 sounds without you asking.
 

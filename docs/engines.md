@@ -180,7 +180,7 @@ can do with it:
 **VoxCPM2** (added 2026-10-02) is OpenBMB's 2B model. It clones a voice from a
 short clip, or designs one from a written description, in 30 languages, at
 48 kHz — and it is the one engine where **written direction reaches a cloned
-voice**: a persona's standing delivery or a line's direction steers a clone the
+voice**: a persona's Style Instructions or a line's direction steers a clone the
 way it steers Qwen3 CustomVoice. Two things to know. It does not speak
 anything in parentheses — it reads brackets as direction — so JustVoice turns
 a line's own brackets into dashes ("He left (quietly) and…" is read as "He
@@ -220,7 +220,7 @@ German with English sounds.
   presented as a genuine recording of a real person. A persona's New clone shows
   the terms with an **Accept** button when Pocket TTS is the chosen model, the
   Pocket TTS row on Speech engines has **Read and accept**, and a Pocket TTS
-  clone asked for anywhere else (a chapter, Generate, JustWrite, the API) stops
+  clone asked for anywhere else (a chapter, a persona's Hear it, JustWrite, the API) stops
   with a message until you have. Presets need no acceptance.
 - **The weights are CC-BY-4.0**, which permits commercial use; the credit it
   asks for is in NOTICE.md.
@@ -378,8 +378,8 @@ Changing one on a loaded model reloads it. They are saved per model in
 `settings.engines.engine_overrides[engine].runtime_options[model]` (see
 [Settings reference](settings-reference.md)).
 
-**Direction and identity pull against each other.** Written direction — the
-Delivery direction box, a persona's standing delivery, a line's own direction —
+**Direction and identity pull against each other.** Written direction — a
+persona's Style Instructions, a line's own direction —
 reaches Qwen3 CustomVoice, Qwen3 VoiceDesign and VoxCPM2. On every engine but
 VoxCPM2 it does not reach a clone: Qwen3 Base and Pocket TTS clone but have no
 instruction input, and Chatterbox steers through Exaggeration and CFG weight

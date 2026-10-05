@@ -723,6 +723,32 @@ GO: needed.
 
 ## The next build
 
+### The persona page: "Style Instructions", and Hear it just above Save (decided 2026-10-05)
+STATE:  DECIDED 2026-10-05 — the user: "persona page change Standing delivery to Style Instructions
+        and add optional when it is optional, move the hear it block to above the save block as
+        there is no point in having all the values that change how is sound below the block, to
+        your rec on the others go". Read as: the field's label becomes "Style Instructions", marked
+        optional where it applies (where the voice's model takes written direction — elsewhere it
+        is off, with its ✗); Hear it moves below How it speaks and Sampling, right above Save; the
+        name changes wherever a user reads it (the page, its mock, the docs). "The others" = the
+        reset plan below (is_favorited), go given.
+WHY:    everything that shapes the sound sat below the box you hear it in.
+        Then DECIDED 2026-10-05 — "youre rec go", on the three as shown (the user: "change language
+        filter to portguages but still shows speaks korean"): "1. The Voice box always shows the
+        persona's own voice, even when the filters hide it, so filtering never makes it look unset.
+        2. Picking a voice sets Speaks to that voice's language. You can still change Speaks
+        afterwards to another language the model speaks. This reverses the redesign rule that kept
+        the old language. 3. Rename the filter from Language to Voice's language, so it can't be
+        mistaken for Speaks."
+BUILT:  2026-10-05 — `PersonaEditorView.vue` and its mock: "Style Instructions" with "(optional)" where
+        the model takes written direction; Hear it moved right above Save; the persona's voice pinned
+        in the Voice box (`listedVoices`); picking a voice sets Speaks to its language; the filter
+        is "Voice's language". Docs: personas, engines, voices, studio, ai-features, core-concepts,
+        code-map, whats-new. Checked: Biome, vitest 147, build, family guard, smoke. Not checked:
+        the page live, and the server suite (the user: "stop doing suite tests until i say").
+OPEN:   none.
+GO:     given 2026-10-05
+
 ### Cast, Render, Generate and the persona's gender — five answers (decided 2026-10-05)
 STATE:  DECIDED 2026-10-05 — "your rec on all go", on the five leans as shown. The user asked: "on
         cast what do you think about create persona for each cast button … we also have an add
@@ -807,9 +833,19 @@ BUILT:  2026-10-05 — 9 + 8 (the plan §4, blast radius there): `GenerateView.v
         1106 (the two favorite tests went), Biome, vitest 147, build, family guard, smoke 14/14. Live: no Generate in the rail;
         `#/generate` lands on Home; the Speak again hand-off filled Voices' test line; Cache and
         Settings without the favorite and the autoplay row.
-OPEN:   the `generations.is_favorited` column — kept in the model, inert: the app's database has it
-        NOT NULL with no default, so dropping it now breaks every new render until a reset (put to
-        the user 2026-10-05).
+OPEN:   the `generations.is_favorited` column — DECIDED 2026-10-05: the user picked "1" ("Drop it
+        now and reset your database?") and, on the plan as shown ("1. Drop is_favorited from the
+        model and the code map's table. 2. Run the server tests. 3. Run the full reset on your
+        running app. 4. Check that a render saves on the new database. 5. Reload the demo book.
+        6. Commit and push."), "your rec on the others go". Plus the step the plan missed, said
+        with the go: restart the app first, so the reset builds the new schema.
+        BUILT 2026-10-05: the column dropped (`database/models.py`, code-map); ruff and the 12
+        changed-area server tests passed; the app restarted (one window) and reset — the new
+        `generations` table has no `is_favorited`; one line rendered on a throwaway book saved a
+        generation (source `chapter_render`; the book and its persona deleted after); the demo
+        reloaded through the first-run picker (focus Audiobook, Studio). The full server suite was
+        stopped partway at the user's word. The reset re-seeded the AI settings — the LLM quick
+        setup runs again.
 GO:     given 2026-10-05 ("your rec on all go", "your rec go")
 
 ### A page shows only its own AI tasks, and the step's name leads

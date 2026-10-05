@@ -143,11 +143,11 @@ Deleting a book deletes its speakers.
   `.jv-knob-grid`): cards Persona (name, note) · Voice ("How it can be directed"
   first, "Made by" second — a kind that can't be directed that way is off; Model /
   Gender / Language filters; each option ends with what it can do; ▶ Play;
-  Speaks) · Hear it (`POST /v1/personas/preview` with the unsaved
-  draft; stock line; the model's tags via `SlashTagMenu`) · How it speaks (pace,
-  pitch, gain, pauses; standing delivery + emotion, or Turbo's emotion + register
-  tags, by `directed_by`; effects; lexicon) · Sampling (the model's own knobs,
-  seed, Compare settings…) · Save; right column: the maker for the kind picked
+  Speaks) · How it speaks (pace, pitch, gain, pauses; Style Instructions +
+  emotion, or Turbo's emotion + register tags, by `directed_by`; effects;
+  lexicon) · Sampling (the model's own knobs, seed, Compare settings…) · Hear it
+  (`POST /v1/personas/preview` with the unsaved draft; stock line; the model's
+  tags via `SlashTagMenu`; ✏️ Rewrite, 🎲 Compose) · Save; right column: the maker for the kind picked
   (below) · summary · This model · Used by. Model-specific values are stored per
   model under `default_delivery.models`.
 - The voice makers (2026-10-04 — a persona makes its own voice; Voices is the
@@ -256,7 +256,7 @@ podcast: show/episode/segment.
 | `speakers` | `project_id` · `name` · `aliases` · `description` · `persona_id` · `role_label` · `imported_from` / `imported_id` | the people in one book; `persona_id` is the cast (`SET NULL`). See §1 |
 | `personas` | see §1 | |
 | `lexicons` / `lexicon_entries` | `scope` = global \| project \| persona; `notation` default `phonetic` | |
-| `generations` | `block_id` · `persona_id` · `text` · `engine` · `seed` · `instruct` · `audio_path` · `status` · `ok_status` · `is_favorited` · `source` · `effects_chain` · `cache_key` | one synth result |
+| `generations` | `block_id` · `persona_id` · `text` · `engine` · `seed` · `instruct` · `audio_path` · `status` · `ok_status` · `source` · `effects_chain` · `cache_key` | one synth result |
 | `takes` | `block_id` · `generation_id` · `source_take_id` · `is_default` · `label` | take versioning with lineage |
 | `generation_versions` | `generation_id` · `source_version_id` · `audio_path` · `effects_chain` · `is_default` | effect re-renders of one generation |
 | `render_jobs` / `render_job_blocks` | `scope` · `scope_ids_json` · counts · per-block `attempts` / `last_error` | resumable batch render |

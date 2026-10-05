@@ -16,11 +16,13 @@
       off with its reason); Model / Gender / Language beside the list; every
       option names its model and what it can do. The model is never picked on
       its own: it comes with the voice.
-    · Hear it — the line through the same resolver a chapter renders with.
     · How it speaks — pace, pitch, gain, pauses (every model); direction in
-      the model's own kind (written direction + emotion, or Turbo's tags, or
+      the model's own kind (Style Instructions + emotion, or Turbo's tags, or
       none — shown off with the reason); effects; lexicon.
     · Sampling — exactly the model's own knobs and seed, kept per model.
+    · Hear it — the line through the same resolver a chapter renders with;
+      Rewrite and Compose. Right above Save, below everything that shapes the
+      sound (decided 2026-10-05).
     · Save — Save, Revert, Save as new, Train a LoRA (off). Blend is a kind
       of voice now, not a button here.
   The right column: a summary, This model, Used by.
@@ -369,15 +371,22 @@ async function onKept(v) {
 const draftPayload = computed(() => (draft.value ? payload() : null));
 
 // Every voice says what it can do, so the list reads without a filter set.
-const voiceOptions = computed(() => shownVoices.value.map((v) => ({
+// The persona's own voice stays in the box even when the filters hide it
+// (decided 2026-10-05) — the box read as empty while the voice was still chosen.
+const listedVoices = computed(() => {
+  const cur = voice.value;
+  return cur && !shownVoices.value.some((v) => v.id === cur.id) ? [cur, ...shownVoices.value] : shownVoices.value;
+});
+const voiceOptions = computed(() => listedVoices.value.map((v) => ({
   value: v.id,
   label: `${voiceLabel(v)} · ${DIRECTION_WORD[v.directed_by] || "sliders only"}`,
 })));
-const voiceSelectValue = computed(() =>
-  shownVoices.value.some((v) => v.id === draft.value?.voice_id) ? draft.value.voice_id : "");
+const voiceSelectValue = computed(() => voice.value?.id || "");
 const kindEmptyHint = computed(() => {
   if (shownVoices.value.length) return "";
-  if (voicesOfKind.value.length) return "No voice of this kind matches these filters.";
+  if (voicesOfKind.value.length) {
+    return voice.value ? "No other voice matches these filters." : "No voice of this kind matches these filters.";
+  }
   return {
     builtin: "No built-in voices — install a speech model on AI Settings → Speech engines.",
     clone: "No cloned voices yet — make one on the right.",
@@ -393,11 +402,12 @@ function pickVoice(id) {
   if (!v || !draft.value) return;
   const before = voice.value;
   draft.value.voice_id = id;
-  // Keep the language when the new voice's model speaks it; else the voice's own.
+  // Speaks becomes the new voice's own language (decided 2026-10-05 — it used
+  // to keep the old one whenever the model could speak it, so picking an
+  // English voice left a persona speaking Chinese). Change it after if you want
+  // another language the model speaks.
   const speaks = v.speaks || [];
-  const base = (code) => String(code || "").split("-")[0].toLowerCase();
-  if (speaks.length === 1) draft.value.language = speaks[0];
-  else if (!speaks.some((s) => base(s) === base(draft.value.language))) draft.value.language = v.language || speaks[0] || "";
+  draft.value.language = speaks.length === 1 ? speaks[0] : (v.language || speaks[0] || "");
   const lines = usage.value?.total_lines || 0;
   if (before && before.id !== v.id && lines) {
     const directed = usage.value?.directed_lines || 0;
@@ -899,7 +909,7 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
                 <UiField label="Gender" layout="block">
                   <UiSelect v-model="genderFilter" :options="GENDER_OPTIONS" width="id" />
                 </UiField>
-                <UiField label="Language" layout="block">
+                <UiField label="Voice's language" layout="block">
                   <UiSelect v-model="languageFilter" :options="languageFilterOptions" width="id" />
                 </UiField>
               </div>
@@ -947,37 +957,6 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
             </div>
           </div>
 
-          <!-- Hear it — the same path a chapter renders with; a maker's Preview speaks its line. -->
-          <div class="jv-card" :class="{ 'persona-editor__locked': locked && !maker }" :aria-disabled="(locked && !maker) || undefined">
-            <div class="jv-card__header"><h3 class="jv-card__title">Hear it</h3></div>
-            <div class="jv-card__body jv-col">
-              <UiTextarea ref="hearBox" v-model="hearText" :rows="2"
-                placeholder="Type a line — or leave it empty to hear the stock line." />
-              <SlashTagMenu :tag-sets="tagSets" :open="tagMenuOpen" :anchor="tagAnchor" query=""
-                @insert="insertTag" @close="tagMenuOpen = false" />
-              <div class="jv-inline-row">
-                <UiButton intent="primary" label="▶ Listen" :loading="hearBusy" :disabled="locked" @click="listen" />
-                <UiButton intent="secondary" label="↻ Stock line" :disabled="locked" @click="stockLine" />
-                <UiButton intent="ghost" label="🏷️ Insert tag…" :disabled="locked || !tagSets.length"
-                  :title="tagSets.length ? `${modelName}'s own tags` : `${modelName || 'This model'} takes no tags`"
-                  @click="openTagMenu" />
-                <UiButton intent="ghost" label="✏️ Rewrite" :loading="rewriteBusy" :disabled="!!aiWhy || rewriteBusy"
-                  :title="aiWhy || 'Rewrite the line above in this persona\'s voice, from its note — you see it first'"
-                  @click="rewriteLine" />
-                <UiButton intent="ghost" label="🎲 Compose" :loading="composeBusy" :disabled="!!aiWhy || composeBusy"
-                  :title="aiWhy || 'A fresh line in this persona\'s voice, from its note on how it sounds'"
-                  @click="composeLine" />
-                <span class="jv-spacer" />
-                <UiButton intent="ghost" label="⤓ WAV" :disabled="!audio" @click="saveWav" />
-              </div>
-              <PageTaskStrips v-if="saved" :features="['compose', 'persona-rewrite']" :meta="{ personaId: saved.id }" />
-              <div v-if="audio" class="jv-col">
-                <span class="jv-hint">{{ audio.label }}</span>
-                <audio :src="audio.url" controls autoplay class="jv-audio-inline" />
-              </div>
-            </div>
-          </div>
-
           <!-- How it speaks — the numbers on every model; direction in the model's own kind. -->
           <div class="jv-card" :class="{ 'persona-editor__locked': locked }" :aria-disabled="locked || undefined">
             <div class="jv-card__header"><h3 class="jv-card__title">How it speaks</h3></div>
@@ -1014,7 +993,7 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
 
               <UiField layout="block" :hint="directionReason || 'A line\'s own direction is added after this.'">
                 <template #label>
-                  <span class="jv-field-label-row">Standing delivery
+                  <span class="jv-field-label-row">Style Instructions<template v-if="!directionReason"> (optional)</template>
                     <UiTag v-if="voice" :intent="directedBy === 'words' ? 'success' : 'secondary'">{{ directedBy === 'words' ? '✓' : '✗' }} {{ modelName }}</UiTag>
                   </span>
                 </template>
@@ -1091,6 +1070,37 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
               </p>
               <div class="jv-inline-row">
                 <UiButton intent="secondary" label="⚖️ Compare settings…" :disabled="locked" @click="openCompare" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Hear it — the same path a chapter renders with; a maker's Preview speaks its line. -->
+          <div class="jv-card" :class="{ 'persona-editor__locked': locked && !maker }" :aria-disabled="(locked && !maker) || undefined">
+            <div class="jv-card__header"><h3 class="jv-card__title">Hear it</h3></div>
+            <div class="jv-card__body jv-col">
+              <UiTextarea ref="hearBox" v-model="hearText" :rows="2"
+                placeholder="Type a line — or leave it empty to hear the stock line." />
+              <SlashTagMenu :tag-sets="tagSets" :open="tagMenuOpen" :anchor="tagAnchor" query=""
+                @insert="insertTag" @close="tagMenuOpen = false" />
+              <div class="jv-inline-row">
+                <UiButton intent="primary" label="▶ Listen" :loading="hearBusy" :disabled="locked" @click="listen" />
+                <UiButton intent="secondary" label="↻ Stock line" :disabled="locked" @click="stockLine" />
+                <UiButton intent="ghost" label="🏷️ Insert tag…" :disabled="locked || !tagSets.length"
+                  :title="tagSets.length ? `${modelName}'s own tags` : `${modelName || 'This model'} takes no tags`"
+                  @click="openTagMenu" />
+                <UiButton intent="ghost" label="✏️ Rewrite" :loading="rewriteBusy" :disabled="!!aiWhy || rewriteBusy"
+                  :title="aiWhy || 'Rewrite the line above in this persona\'s voice, from its note — you see it first'"
+                  @click="rewriteLine" />
+                <UiButton intent="ghost" label="🎲 Compose" :loading="composeBusy" :disabled="!!aiWhy || composeBusy"
+                  :title="aiWhy || 'A fresh line in this persona\'s voice, from its note on how it sounds'"
+                  @click="composeLine" />
+                <span class="jv-spacer" />
+                <UiButton intent="ghost" label="⤓ WAV" :disabled="!audio" @click="saveWav" />
+              </div>
+              <PageTaskStrips v-if="saved" :features="['compose', 'persona-rewrite']" :meta="{ personaId: saved.id }" />
+              <div v-if="audio" class="jv-col">
+                <span class="jv-hint">{{ audio.label }}</span>
+                <audio :src="audio.url" controls autoplay class="jv-audio-inline" />
               </div>
             </div>
           </div>

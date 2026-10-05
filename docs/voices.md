@@ -59,7 +59,7 @@ Kokoro's five Japanese voices need the optional Japanese dictionary — see
 
 ### Which of them take written direction
 
-Written direction — a persona's **Standing delivery** text, a line's **+
+Written direction — a persona's **Style Instructions** text, a line's **+
 direction** note — only reaches models that have somewhere to put it. Whether
 yours does depends on the voice type as much as the engine, because a voice
 made from a recording is rendered by a different checkpoint than one made
@@ -104,9 +104,8 @@ never as a code. Any column heading sorts the list.
 direction (*describe it: clipped, world-weary*), tags (*pick from the model's
 list: [fear] [sigh]*), or neither (*sliders only — pace, pitch, gain*).
 
-Every list that offers a voice elsewhere — the persona's page, Generate, a
-chapter's *Regenerate with which voice?*, the Render Lab, the cache's **Prune by
-voice…** — names it the same way: *Sohee · Female · Korean · Qwen3-TTS CustomVoice*
+Every list that offers a voice elsewhere — the persona's page, the Render Lab,
+the cache's **Prune by voice…** — names it the same way: *Sohee · Female · Korean · Qwen3-TTS CustomVoice*
 (name, gender, the voice's own language, its model).
 
 ### The ⋯ menu

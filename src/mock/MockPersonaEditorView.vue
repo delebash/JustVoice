@@ -208,15 +208,22 @@ const shownVoices = computed(() => voicesOfKind.value.filter((v) =>
   && (!languageFilter.value || baseLang(v.language) === languageFilter.value)));
 
 // Every voice says what it can do, so the list reads without a filter set.
-const voiceOptions = computed(() => shownVoices.value.map((v) => ({
+// The persona's own voice stays in the box even when the filters hide it
+// (decided 2026-10-05) — the box read as empty while the voice was still chosen.
+const listedVoices = computed(() => {
+  const cur = voice.value;
+  return cur && !shownVoices.value.some((v) => v.id === cur.id) ? [cur, ...shownVoices.value] : shownVoices.value;
+});
+const voiceOptions = computed(() => listedVoices.value.map((v) => ({
   value: v.id,
   label: `${voiceLabel(v)} · ${DIRECTION_WORD[v.directed_by] || "sliders only"}`,
 })));
-const voiceSelectValue = computed(() =>
-  shownVoices.value.some((v) => v.id === draft.value?.voice_id) ? draft.value.voice_id : "");
+const voiceSelectValue = computed(() => voice.value?.id || "");
 const kindEmptyHint = computed(() => {
   if (shownVoices.value.length) return "";
-  if (voicesOfKind.value.length) return "No voice of this kind matches these filters.";
+  if (voicesOfKind.value.length) {
+    return voice.value ? "No other voice matches these filters." : "No voice of this kind matches these filters.";
+  }
   return {
     builtin: "No built-in voices — install a speech model on AI Settings → Speech engines.",
     clone: "No cloned voices yet — make one on the right.",
@@ -264,9 +271,9 @@ function pickVoice(id) {
   if (!v || !draft.value) return;
   const before = voice.value;
   draft.value.voice_id = id;
+  // Speaks becomes the new voice's own language (decided 2026-10-05).
   const speaks = v.speaks || [];
-  if (speaks.length === 1) draft.value.language = speaks[0];
-  else if (!speaks.some((s) => baseLang(s) === baseLang(draft.value.language))) draft.value.language = v.language || speaks[0] || "";
+  draft.value.language = speaks.length === 1 ? speaks[0] : (v.language || speaks[0] || "");
   const lines = usage.value?.total_lines || 0;
   if (before && before.id !== v.id && lines) {
     const directed = usage.value?.directed_lines || 0;
@@ -637,7 +644,7 @@ watch([() => draft.value?.name, isNew], publishCrumbs, { immediate: true });
                 <UiField label="Gender" layout="block">
                   <UiSelect v-model="genderFilter" :options="GENDER_OPTIONS" width="id" />
                 </UiField>
-                <UiField label="Language" layout="block">
+                <UiField label="Voice's language" layout="block">
                   <UiSelect v-model="languageFilter" :options="languageFilterOptions" width="id" />
                 </UiField>
               </div>
@@ -671,30 +678,6 @@ watch([() => draft.value?.name, isNew], publishCrumbs, { immediate: true });
               </div>
               <p v-if="locked && !maker" class="jv-hint">Pick a voice first — everything below depends on its model.</p>
               <p v-else-if="locked" class="jv-hint">Pick a voice, or make one on the right — everything below depends on its model.</p>
-            </div>
-          </div>
-
-          <!-- Hear it — the same path a chapter renders with; the makers' Preview speaks this line. -->
-          <div class="jv-card" :class="{ 'persona-editor__locked': locked && !maker }" :aria-disabled="(locked && !maker) || undefined">
-            <div class="jv-card__header"><h3 class="jv-card__title">Hear it</h3></div>
-            <div class="jv-card__body jv-col">
-              <UiTextarea ref="hearBox" v-model="hearText" :rows="2"
-                placeholder="Type a line — or leave it empty to hear the stock line." />
-              <SlashTagMenu :tag-sets="tagSets" :open="tagMenuOpen" :anchor="tagAnchor" query=""
-                @insert="insertTag" @close="tagMenuOpen = false" />
-              <div class="jv-inline-row">
-                <UiButton intent="primary" label="▶ Listen" :loading="hearBusy" :disabled="locked" @click="listen" />
-                <UiButton intent="secondary" label="↻ Stock line" @click="stockLine" />
-                <UiButton intent="ghost" label="🏷️ Insert tag…" :disabled="locked || !tagSets.length"
-                  :title="tagSets.length ? `${modelName}'s own tags` : `${modelName || 'This model'} takes no tags`"
-                  @click="openTagMenu" />
-                <span class="jv-spacer" />
-                <UiButton intent="ghost" label="⤓ WAV" :disabled="!audio" @click="saveWav" />
-              </div>
-              <div v-if="audio" class="jv-col">
-                <span class="jv-hint">{{ audio.label }}</span>
-                <audio :src="audio.url" controls autoplay class="jv-audio-inline" />
-              </div>
             </div>
           </div>
 
@@ -734,7 +717,7 @@ watch([() => draft.value?.name, isNew], publishCrumbs, { immediate: true });
 
               <UiField layout="block" :hint="directionReason || 'A line\'s own direction is added after this.'">
                 <template #label>
-                  <span class="jv-field-label-row">Standing delivery
+                  <span class="jv-field-label-row">Style Instructions<template v-if="!directionReason"> (optional)</template>
                     <UiTag v-if="voice" :intent="directedBy === 'words' ? 'success' : 'secondary'">{{ directedBy === 'words' ? '✓' : '✗' }} {{ modelName }}</UiTag>
                   </span>
                 </template>
@@ -810,6 +793,30 @@ watch([() => draft.value?.name, isNew], publishCrumbs, { immediate: true });
               </p>
               <div class="jv-inline-row">
                 <UiButton intent="secondary" label="⚖️ Compare settings…" :disabled="locked" @click="openCompare" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Hear it — the same path a chapter renders with; the makers' Preview speaks this line. -->
+          <div class="jv-card" :class="{ 'persona-editor__locked': locked && !maker }" :aria-disabled="(locked && !maker) || undefined">
+            <div class="jv-card__header"><h3 class="jv-card__title">Hear it</h3></div>
+            <div class="jv-card__body jv-col">
+              <UiTextarea ref="hearBox" v-model="hearText" :rows="2"
+                placeholder="Type a line — or leave it empty to hear the stock line." />
+              <SlashTagMenu :tag-sets="tagSets" :open="tagMenuOpen" :anchor="tagAnchor" query=""
+                @insert="insertTag" @close="tagMenuOpen = false" />
+              <div class="jv-inline-row">
+                <UiButton intent="primary" label="▶ Listen" :loading="hearBusy" :disabled="locked" @click="listen" />
+                <UiButton intent="secondary" label="↻ Stock line" @click="stockLine" />
+                <UiButton intent="ghost" label="🏷️ Insert tag…" :disabled="locked || !tagSets.length"
+                  :title="tagSets.length ? `${modelName}'s own tags` : `${modelName || 'This model'} takes no tags`"
+                  @click="openTagMenu" />
+                <span class="jv-spacer" />
+                <UiButton intent="ghost" label="⤓ WAV" :disabled="!audio" @click="saveWav" />
+              </div>
+              <div v-if="audio" class="jv-col">
+                <span class="jv-hint">{{ audio.label }}</span>
+                <audio :src="audio.url" controls autoplay class="jv-audio-inline" />
               </div>
             </div>
           </div>

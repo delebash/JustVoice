@@ -875,7 +875,7 @@ What a line can be told depends on the model of the persona that speaks it
 
 - **A model that takes written direction** (Qwen3-TTS, VoxCPM2): the cell is a
   box for the line's own direction — *Talking to the lamp, half amused.* It is
-  added after the persona's standing delivery, most specific last. Empty means
+  added after the persona's Style Instructions, most specific last. Empty means
   the line is said as the persona always speaks.
 - **A tag model** (Chatterbox Turbo and Nano): the persona's own tags, such as
   *[sarcastic]*, shown read-only — they are set on the persona's page.

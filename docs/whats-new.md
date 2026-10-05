@@ -2,6 +2,17 @@
 
 ## v0.1.0
 
+- **Picking a voice on a persona's page sets what it speaks (2026-10-05).**
+  **Speaks** becomes the new voice's own language — it used to keep the old one
+  whenever the model could speak it, so an English voice left a persona speaking
+  Chinese. The voice filters only narrow the list: the persona's own voice stays
+  in the box when they hide it, and the filter is now **Voice's language**, so
+  it can't be mistaken for Speaks ([Personas → Voice](personas.md#voice))
+- **The persona page: Style Instructions, and Hear it above Save (2026-10-05).**
+  *Standing delivery* is now **Style Instructions**, marked *(optional)* where
+  the voice's model takes written direction. **Hear it** moved down to just
+  above **Save**, so everything that shapes the sound is above the box you hear
+  it in ([Personas → Style Instructions](personas.md#style-instructions-the-words-that-change-the-performance))
 - **Generate is gone (2026-10-05).** Everything it did lives elsewhere: a
   persona's **Hear it** speaks a typed line with its pace, pitch, gain, tags and
   lexicon, and has **✏️ Rewrite** and **🎲 Compose**; Voices' test line plays any

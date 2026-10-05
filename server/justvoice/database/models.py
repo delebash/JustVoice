@@ -315,7 +315,6 @@ class Generation(Base):
     # ok / failed — required by bulk-delete status filter (per DESIGN_FREEZE §4.14)
     ok_status = Column(String, nullable=False, default="ok")
     error = Column(Text, nullable=True)
-    is_favorited = Column(Boolean, default=False, nullable=False)
     # "manual" | "chapter_render" | "mcp_speak" | "dictate_replay"
     source = Column(String, nullable=False, default="manual")
     effects_chain = Column(Text, nullable=True)

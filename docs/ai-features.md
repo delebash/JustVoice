@@ -167,12 +167,12 @@ and each AI feature reads the half it needs:
   line's speaker's **Who they are** (`POST /v1/speakers/{id}/rewrite`; a speaker with nothing there is
   refused with "*name* has nothing under Who they are — write it on Cast to
   rewrite in character.").
-- **Personas** are finished voices. Generate has no book, so its 🎲 Compose and
-  ✏️ Rewrite read the persona's **Note on how it sounds** instead (a persona
+- **Personas** are finished voices. A persona's page has no book, so its 🎲
+  Compose and ✏️ Rewrite read the persona's **Note on how it sounds** instead (a persona
   without one is refused: "*name* has no note on how it sounds — write one on
   the Personas page to use Compose / Rewrite."). The Compose and Rewrite prompts
-  keep their `{{personality}}` variable; its value is the persona's note on
-  Generate and the speaker's Who they are on Render.
+  keep their `{{personality}}` variable; its value is the persona's note on its
+  page and the speaker's Who they are on Render.
 - **Smart-assign** matches the book's speakers (name, Also called, Pronouns, Who they are)
   to your personas (name, their voice's gender, language, and the note as
   `tone`), and applies its matches straight away — change any of them on Cast.
