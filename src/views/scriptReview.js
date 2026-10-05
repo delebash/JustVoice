@@ -29,9 +29,11 @@ export function isReadable(line) {
   return !!line.speakable && !line.marker;
 }
 
-/** A line the render stops on. */
+/** A line the render stops on that someone has to look at. Narration in a book
+ *  with no narrator is not one: it waits for the narrator (`waits_for_narrator`,
+ *  the server's — one ＋ Add Narrator fixes all of it, decided 2026-10-05). */
 export function hasNoSpeaker(line) {
-  return isReadable(line) && !line.speaker_id;
+  return isReadable(line) && !line.speaker_id && !line.waits_for_narrator;
 }
 
 /** "To check": a flagged line, or one with no speaker. */

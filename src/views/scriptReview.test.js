@@ -32,6 +32,15 @@ describe("filters", () => {
     expect(LINES.filter(toCheck).map((l) => l.id)).toEqual(["d1", "d2", "d3", "d4"]);
   });
 
+  it("narration waiting for the book's narrator is neither No speaker nor To check (2026-10-05)", () => {
+    const waiting = line("n9", null, { source: "narration", spoken: false, waits_for_narrator: true });
+    const lines = [...LINES, waiting];
+    expect(toCheck(waiting)).toBe(false);
+    const { check, none } = filterCounts(lines);
+    expect({ check, none }).toEqual({ check: filterCounts(LINES).check, none: filterCounts(LINES).none });
+    expect(nextToCheck(lines, "d4", 1)).toBe("d1");
+  });
+
   it("a filter's number is the number of rows it shows, markers left out", () => {
     expect(filterCounts(LINES)).toEqual({ all: 6, check: 4, none: 1, changed: 1 });
     for (const f of ["check", "none", "changed"]) {

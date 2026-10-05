@@ -19,21 +19,30 @@
   Move up · Move down · Delete in each row's ⋯ menu (Personas' ev-kebab menu),
   and "＋ Add text" on a chapter with none — paste it, each paragraph a line.
   With no chapters at all, the page offers Import and ＋ Add chapter (G6).
+
+  A book with narration needs a narrator (decided 2026-10-05): ✨ Analyze on a
+  book with none asks first (NarratorNeeded.vue), and a book analyzed before it
+  had one shows one banner — its narration waiting — with ＋ Add Narrator; that
+  narration is not counted as No speaker or To check. The run banner is the
+  shared StudioRunBanner.vue (Discover shows the same one).
 -->
 <script setup>
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import {
   DropdownMenuContent, DropdownMenuItem, DropdownMenuPortal,
   DropdownMenuRoot, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "reka-ui";
 import {
-  AiTaskStrip, AppModal, EmptyState, UiButton, UiCheckbox, UiChip, UiProgress, UiSelect, UiTable, UiTag,
-  UiTextarea, confirmDialog, promptDialog, pushToast, useAiTasksStore,
+  AppModal, EmptyState, UiButton, UiCheckbox, UiChip, UiSelect, UiTable, UiTag,
+  UiTextarea, confirmDialog, promptDialog, pushToast,
 } from "@delebash/llm-ui";
 import { useApi } from "../stores/api.js";
 import { useCopy } from "../services/copy.js";
 import { routeWords } from "../services/attribution.js";
-import { cancelRun, chapterRunFor, failureOf, inRun, queueChapters } from "../services/chapterRun.js";
+import { chapterRunFor, failureOf, inRun, queueChapters, runKind } from "../services/chapterRun.js";
+import { addNarrator, hasNarrator, narrationOf } from "../services/narrator.js";
+import NarratorNeeded from "./NarratorNeeded.vue";
+import StudioRunBanner from "./StudioRunBanner.vue";
 import { useKeptScroll } from "../composables/useKeptScroll.js";
 import { useAnalyzeModel } from "../composables/useAnalyzeModel.js";
 
@@ -49,11 +58,11 @@ const props = defineProps({
   // The chip to open on ("check" from Overview's and Home's numbers).
   filter: { type: String, default: "all" },
 });
-const emit = defineEmits(["open", "go", "update:filter", "changed"]);
+// `cast-changed` ({ moved }): a narrator was added here, and narration moved to it.
+const emit = defineEmits(["open", "go", "update:filter", "changed", "cast-changed"]);
 
 const api = useApi();
 const copy = useCopy();
-const tasks = useAiTasksStore();
 // Kept alive in Studio: coming back from another step finds the grid as you
 // left it, scrolled where it was.
 const root = ref(null);
@@ -62,33 +71,9 @@ const word = computed(() => copy.value.chapter);
 const lower = (n, w = word.value) => (n === 1 ? w.singular : w.plural).toLowerCase();
 
 // ── The run ──────────────────────────────────────────────────────────────
+// Its banner and strip are StudioRunBanner.vue; the grid reads where each
+// chapter stands in it.
 const run = computed(() => chapterRunFor(props.project.id));
-const running = computed(() => !!run.value?.current);
-const runTask = computed(() =>
-  tasks.visibleTasks.find((t) => t.inline && t.meta?.run && t.meta?.projectId === props.project.id
-    && t.feature === "speaker_attribution") || null);
-
-// A second's tick for the elapsed times while a run is going.
-const now = ref(Date.now());
-let timer = null;
-watch(running, (on) => {
-  clearInterval(timer);
-  if (on) timer = setInterval(() => { now.value = Date.now(); }, 1000);
-}, { immediate: true });
-
-function secs(ms) {
-  const s = Math.max(0, Math.round(ms / 1000));
-  return s < 60 ? `${s} s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, "0")}s`;
-}
-const runLine = computed(() => {
-  const r = run.value;
-  if (!r?.current) return "";
-  const elapsed = now.value - r.startedAt;
-  const bits = [`${r.current.title || word.value.singular}`, `${r.finished} of ${r.total} done`, secs(elapsed)];
-  // Only once a chapter has finished is there anything to estimate from.
-  if (r.finished > 0) bits.push(`about ${secs((elapsed / r.finished) * (r.total - r.finished))} left`);
-  return bits.join(" · ");
-});
 
 // ── The rows ─────────────────────────────────────────────────────────────
 const sceneById = computed(() => Object.fromEntries(props.scenes.map((s) => [s.id, s])));
@@ -159,8 +144,16 @@ const floor = computed(() => {
 const onlyNarrator = computed(() => props.cast.length > 0 && props.cast.every((c) => c.narrator));
 const blocked = computed(() => noModel.value || onlyNarrator.value);
 
-function analyze(list) {
+// A book with narration needs a narrator before Analyze runs (2026-10-05).
+const narratorAsk = ref(null);   // the chapters waiting on the answer
+const narratorBusy = ref(false);
+const narrationWaiting = computed(() => props.chapters.reduce((n, c) => n + (c.narration_waiting || 0), 0));
+function analyze(list, { narratorChecked = false } = {}) {
   if (blocked.value || !list.length) return;
+  if (!narratorChecked && !hasNarrator(props.cast) && narrationOf(list) > 0) {
+    narratorAsk.value = list;
+    return;
+  }
   const n = queueChapters({
     projectId: props.project.id,
     kind: "analyze",
@@ -172,6 +165,16 @@ function analyze(list) {
     for (const r of list) delete next[r.id];
     ticked.value = next;
   }
+}
+
+async function addNarratorNow({ thenAnalyze = null } = {}) {
+  narratorBusy.value = true;
+  const moved = await addNarrator(props.project.id);
+  narratorBusy.value = false;
+  if (moved === null) return;
+  emit("cast-changed", { moved });
+  narratorAsk.value = null;
+  if (thenAnalyze) analyze(thenAnalyze, { narratorChecked: true });
 }
 
 // ── Columns ──────────────────────────────────────────────────────────────
@@ -314,19 +317,18 @@ function openRow(r, focus = null) {
           performed, and rendering it, come later.
         </p>
 
-        <div v-if="run?.current" class="jv-banner studio-script__run">
-          <strong>✨ {{ run.current.kind === "analyze" ? "Analyze" : "Discover" }} · {{ run.total }} {{ lower(run.total) }}</strong>
-          <span class="jv-hint">{{ runLine }}</span>
-          <UiProgress class="studio-script__bar" :value="run.finished" :max="run.total" bare />
-          <span class="jv-hint">Keeps running while you work elsewhere.</span>
-          <span class="jv-spacer" />
-          <UiButton intent="secondary" size="small" label="Cancel"
-            title="Stops the run. Chapters already analyzed are kept."
-            @click="cancelRun(project.id)" />
-        </div>
-        <AiTaskStrip v-if="runTask" :task="runTask" />
+        <StudioRunBanner :project="project" />
 
-        <EmptyState v-if="!rows.length" icon="Sparkle" :title="`No ${word.plural.toLowerCase()} yet`"
+        <div v-if="narrationWaiting && !hasNarrator(cast)" class="jv-banner jv-banner--warn studio-script__narrator">
+          <span><strong>This book has no narrator</strong> — {{ narrationWaiting.toLocaleString() }} lines of narration
+            are waiting for one.</span>
+          <UiButton intent="primary" size="small" label="＋ Add Narrator" :loading="narratorBusy"
+            title="Makes a speaker called Narrator — played by your persona called Narrator if you have one — and gives it the narration"
+            @click="addNarratorNow()" />
+          <a href="#studio" class="jv-hint" @click.prevent="emit('go', 'cast')">Told in the first person? Tick that speaker on Cast ➜</a>
+        </div>
+
+                <EmptyState v-if="!rows.length" icon="Sparkle" :title="`No ${word.plural.toLowerCase()} yet`"
           :message="`Import a manuscript — EPUB, DOCX, Markdown or plain text — and it splits into ${word.plural.toLowerCase()}, with a preview before anything is added. Or add a ${word.singular.toLowerCase()} and paste its text.`"
           compact>
           <template #actions>
@@ -372,7 +374,8 @@ function openRow(r, focus = null) {
               <span v-else class="jv-muted">—</span>
             </template>
             <template #analyzed="{ row }">
-              <UiTag v-if="inRun(project.id, row.scene_id) === 'current'" intent="solid">analyzing…</UiTag>
+              <UiTag v-if="inRun(project.id, row.scene_id) === 'current'" intent="solid">{{
+                runKind(project.id, row.scene_id) === "discover" ? "scanning…" : "analyzing…" }}</UiTag>
               <UiTag v-else-if="inRun(project.id, row.scene_id) === 'queued'" intent="ghost">queued</UiTag>
               <span v-else-if="!row.lines" class="jv-muted">no text yet</span>
               <template v-else>
@@ -529,13 +532,15 @@ function openRow(r, focus = null) {
           @click="addLines" />
       </template>
     </AppModal>
+
+    <NarratorNeeded v-if="narratorAsk" :busy="narratorBusy" @close="narratorAsk = null"
+      @cast="narratorAsk = null; emit('go', 'cast')" @add="addNarratorNow({ thenAnalyze: narratorAsk })" />
   </section>
 </template>
 
 <style scoped>
 .studio-script { display: flex; flex-direction: column; gap: 14px; }
-.studio-script__run { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.studio-script__bar { flex: 0 1 220px; min-width: 120px; }
+.studio-script__narrator { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .studio-script__chips { gap: 6px; flex-wrap: wrap; margin: 0 0 10px; }
 .studio-script__grid { margin: 0 0 12px; }
 .studio-script__grid :deep(.studio-script__row--open) { cursor: pointer; }

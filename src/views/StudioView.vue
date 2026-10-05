@@ -362,7 +362,14 @@ async function loadSpeakers(projectId = selectedProjectId.value) {
 async function onCastChanged(e) {
   await loadSpeakers();
   if (e?.moved) await loadScenesForProject(selectedProjectId.value);
+  // A narrator added from Script or Discover: its pages re-read their lines.
+  if (e?.moved) scriptVersion.value += 1;
 }
+
+// {sceneId: lines of narration} — read, not spoken — from Script's rows.
+// Discover proposes the narrator from it (2026-10-05).
+const narrationByScene = computed(() => Object.fromEntries(scriptChapters.value
+  .map((c) => [c.scene_id, Math.max(0, (c.lines || 0) - (c.spoken || 0))])));
 
 watch(selectedProjectId, (id) => {
   loadSpeakers(id);
@@ -643,7 +650,7 @@ watch(selectedProjectId, (id) => {
          running while you look at Script, and the page is as you left it. -->
     <KeepAlive>
       <StudioDiscover v-if="tab === 'discover' && selectedProject" :project="selectedProject" :scenes="scenes"
-        :lines-by-scene="linesByScene"
+        :lines-by-scene="linesByScene" :narration-by-scene="narrationByScene"
         :cast="scriptCast" :personas="personas"
         @cast-changed="onCastChanged" @go="goStep" />
     </KeepAlive>
@@ -675,14 +682,14 @@ watch(selectedProjectId, (id) => {
         :version="scriptVersion"
         @back="openScript({ sceneId: null })"
         @open="(id, focus) => openScript({ sceneId: id, focus })"
-        @go="(k) => (tab = k)" @changed="onScriptChanged" />
+        @go="(k) => (tab = k)" @changed="onScriptChanged" @cast-changed="onCastChanged" />
     </KeepAlive>
     <KeepAlive>
       <StudioScript v-if="tab === 'script' && selectedProject && !scriptSceneId"
         :project="selectedProject" :chapters="scriptChapters" :scenes="scenes"
         :cast="scriptCast" v-model:filter="scriptFilter"
         @open="(id, focus) => openScript({ sceneId: id, focus })" @go="(k) => (tab = k)"
-        @changed="onChaptersChanged" />
+        @changed="onChaptersChanged" @cast-changed="onCastChanged" />
     </KeepAlive>
 
     <!-- ── Render — the chapter grid, or one chapter's lines (Slice 4) ── -->

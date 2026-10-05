@@ -53,7 +53,7 @@ describe("projectState", () => {
     expect(projectState({ scenes, stats, cast, render })).toEqual({
       chapters: 2, scanned: 0, proposed: 0, analyzed: 1, fromImport: 0, running: 0, flagged: 0,
       noSpeaker: 2, lines: 14, unplaced: 2, castTotal: 2, castReady: 1, speakersBesideNarrator: 1, blocked: 4,
-      rendered: 5, renderable: 11, stale: 2,
+      rendered: 5, renderable: 11, stale: 2, noNarrator: false,
     });
   });
 
@@ -78,6 +78,20 @@ describe("stepStatus", () => {
     chapters: 14, scanned: 3, proposed: 3, analyzed: 3, lines: 2140, unplaced: 88, castTotal: 5, castReady: 3,
     speakersBesideNarrator: 4, blocked: 40, rendered: 412, renderable: 2140,
   };
+
+  it("says 'no narrator' while a book with narration has none, and opens Cast (2026-10-05)", () => {
+    const script = [{ scene_id: "a", analyzed: true, lines: 10, spoken: 4, no_speaker: 0, flagged: 0 }];
+    const lone = projectState({ cast: [{ id: "harbek", ready: true }], script });
+    expect(lone.noNarrator).toBe(true);
+    expect(stepStatus("script", { ...base, ...lone, chapters: 1, analyzed: 1 }, UNIT).tags[0]).toEqual({
+      intent: "danger", label: "no narrator", go: ["cast"],
+      title: "This book has narration and no narrator — Add Narrator on Cast gives it one",
+    });
+    const narrated = projectState({ cast: [{ id: "nar", ready: true, narrator: true }], script });
+    expect(narrated.noNarrator).toBe(false);
+    const noNarration = projectState({ cast: [], script: [{ ...script[0], lines: 4 }] });
+    expect(noNarration.noNarrator).toBe(false);
+  });
 
   it("names what is in the way, never a verdict", () => {
     const toCheck = { go: ["script", "check"], title: "Opens Script on the chapters to check" };

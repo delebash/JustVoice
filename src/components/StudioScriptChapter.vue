@@ -35,7 +35,9 @@ import { useCopy } from "../services/copy.js";
 import { routeWords } from "../services/attribution.js";
 import { useKeptScroll } from "../composables/useKeptScroll.js";
 import { useAnalyzeModel } from "../composables/useAnalyzeModel.js";
-import { inRun, onChapterDone, queueChapters } from "../services/chapterRun.js";
+import { inRun, onChapterDone, queueChapters, runStripTask } from "../services/chapterRun.js";
+import { addNarrator } from "../services/narrator.js";
+import NarratorNeeded from "./NarratorNeeded.vue";
 import {
   KEYS, applyLocally, checkQuestion, confidenceCell, confirm, decidedBy, editText, filterCounts,
   keyAction, markOf, mergeState, move, nextToCheck, numberKeys, popUndo, pushUndo, setSpeaker,
@@ -55,7 +57,8 @@ const props = defineProps({
   // Bumped by the parent when a line changed elsewhere (Render's rewrite).
   version: { type: Number, default: 0 },
 });
-const emit = defineEmits(["back", "open", "go", "changed"]);
+// `cast-changed` ({ moved }): a narrator was added here, and narration moved to it.
+const emit = defineEmits(["back", "open", "go", "changed", "cast-changed"]);
 
 const api = useApi();
 const copy = useCopy();
@@ -164,12 +167,31 @@ const subline = computed(() => {
 
 // ── The run (Re-analyze this chapter stays on the page) ──────────────────
 const runningHere = computed(() => inRun(props.project.id, props.sceneId));
-const runTask = computed(() =>
-  tasks.visibleTasks.find((t) => t.inline && t.meta?.run && t.meta?.sceneId === props.sceneId
-    && t.feature === "speaker_attribution") || null);
-function reanalyze() {
+// This chapter's strip: its task running now, else its last one (2026-10-05 —
+// the first match could be a finished one while another ran).
+const runTask = computed(() => runStripTask(tasks, props.project.id, props.sceneId));
+// A book with narration needs a narrator before Analyze runs (2026-10-05) — the
+// same question Script's grid asks.
+const narratorAsk = ref(false);
+const narratorBusy = ref(false);
+function reanalyze({ narratorChecked = false } = {}) {
+  const c = chapter.value;
+  if (!narratorChecked && !narratorId.value && c && c.lines - c.spoken > 0) {
+    narratorAsk.value = true;
+    return;
+  }
   const scene = props.scenes.find((s) => s.id === props.sceneId) || { id: props.sceneId, title: chapter.value?.title };
   queueChapters({ projectId: props.project.id, kind: "analyze", chapters: [scene] });
+}
+async function addNarratorNow({ thenAnalyze = false } = {}) {
+  narratorBusy.value = true;
+  const moved = await addNarrator(props.project.id);
+  narratorBusy.value = false;
+  if (moved === null) return;
+  emit("cast-changed", { moved });
+  narratorAsk.value = false;
+  await load();
+  if (thenAnalyze) reanalyze({ narratorChecked: true });
 }
 const offDone = onChapterDone(({ projectId, sceneId, kind, result }) => {
   if (projectId !== props.project.id || sceneId !== props.sceneId || kind !== "analyze") return;
@@ -555,7 +577,7 @@ const flagged = (ln) => (ln.flags || []).length > 0;
               <UiButton intent="primary" :disabled="!!runningHere || noModel || onlyNarrator"
                 :loading="runningHere === 'current'"
                 :label="chapter.analyzed ? `✨ Re-analyze this ${word.singular.toLowerCase()}` : `✨ Analyze this ${word.singular.toLowerCase()}`"
-                @click="reanalyze" />
+                @click="reanalyze()" />
               <span class="jv-hint">
                 <template v-if="noModel">Analyze needs a language model. <a href="#/ai">Set one in AI Settings ➜</a></template>
                 <template v-else-if="onlyNarrator">Your cast has only the Narrator, so Analyze has nobody to choose from.
@@ -579,6 +601,16 @@ const flagged = (ln) => (ln.flags || []).length > 0;
           </div>
           <AiTaskStrip v-if="runTask" :task="runTask" />
         </div>
+      </div>
+
+      <div v-if="chapter?.narration_waiting && !narratorId" class="jv-banner jv-banner--warn studio-script-ch__banner">
+        <span><strong>This book has no narrator</strong> — {{ chapter.narration_waiting.toLocaleString() }} lines of
+          narration are waiting for one.</span>
+        <span class="jv-spacer" />
+        <UiButton intent="primary" size="small" label="＋ Add Narrator" :loading="narratorBusy"
+          title="Makes a speaker called Narrator — played by your persona called Narrator if you have one — and gives it the narration"
+          @click="addNarratorNow()" />
+        <a href="#studio" @click.prevent="emit('go', 'cast')">Told in the first person? Tick that speaker on Cast ➜</a>
       </div>
 
       <div v-if="counts.none" class="jv-banner jv-banner--warn studio-script-ch__banner">
@@ -764,6 +796,9 @@ const flagged = (ln) => (ln.flags || []).length > 0;
         <UiButton intent="primary" label="Close" @click="keysOpen = false" />
       </template>
     </AppModal>
+
+    <NarratorNeeded v-if="narratorAsk" :busy="narratorBusy" @close="narratorAsk = false"
+      @cast="narratorAsk = false; emit('go', 'cast')" @add="addNarratorNow({ thenAnalyze: true })" />
   </section>
 </template>
 

@@ -99,14 +99,26 @@ chapter. It creates nothing on its own.
    line count updates as you tick. **Last scanned** says when each chapter was
    last read, and **Found** how many people it names, with how many of them are
    **new** (not in the cast yet).
-2. **Scan** reads them one at a time, one model call per chapter. The task strip
-   at the top of the page shows the chapter it is reading, and **Cancel** stops
-   the scan. Each row fills in as its chapter finishes, so you can start on the
-   results before a long scan ends. Scanning a chapter again replaces its last
-   scan. The scan shares one run of chapters with Script's Analyze: if an
-   Analyze is going, the scan **starts after** it, and a chapter already in the
-   run can't be ticked.
-3. **Speakers found** lists everyone the scanned chapters name, each person
+2. **Scan** reads them one at a time, one model call per chapter. A banner above
+   the chapters shows the run — *🔍 Discover · 4 chapters*, the chapter it is on,
+   how many are done, the time so far and about how long is left, with **Cancel**
+   — and under it the strip of the chapter being read now. Each row fills in as
+   its chapter finishes, so you can start on the results before a long scan ends.
+   Scanning a chapter again replaces its last scan. The scan shares one run of
+   chapters with Script's Analyze — the same banner shows on both pages, saying
+   which is running: if an Analyze is going, the scan **starts after** it, a
+   chapter already in the run can't be ticked, and a chapter Analyze has right
+   now says **analyzing…** rather than *scanning…*.
+3. **The narrator comes first.** A book with narration needs a narrator, and
+   nothing makes one on its own — so while the book has none, the first row of
+   **Speakers found** is **Narrator**: *reads everything outside quote marks*,
+   with roughly how many lines of narration the book has. It is **New** and
+   already ticked. **＋ Add** (or **＋ Add selected** with it ticked) makes a
+   speaker called Narrator — played by your persona called Narrator if you have
+   exactly one — and gives it all the narration that has no speaker. It has no
+   Ignore. A book told in the first person has a narrator who also speaks: tick
+   that speaker as **Narrator** on [Cast](#cast) instead, and this row goes.
+4. **Speakers found** lists everyone the scanned chapters name, each person
    once, with a **status**, roughly how many lines they speak in what was
    scanned (**0** means named but not heard speaking; a speaker in the cast
    shows how many times the text names them instead), the **First appearance**
@@ -377,7 +389,24 @@ example the undone change saved, so a mis-click doesn't teach anything.
 audio, and JustVoice will not quietly leave a sentence out of your audiobook.
 The banner above the table counts them and offers **Assign N → Narrator**. A
 book with no narrator yet says *This book has no narrator — choose one on Cast
-➜* instead, and the link opens Cast. If you go to Render first, the render
+➜* instead, and the link opens Cast.
+
+**A book with narration needs a narrator.** Narration — everything outside
+quote marks — goes to the narrator, and nothing makes one on its own, so
+Script asks for it:
+
+- **✨ Analyze** (on the grid, and **Re-analyze this chapter** on a chapter's
+  page) on a book with no narrator stops first: *This book has no narrator —
+  its narration needs one.* **＋ Add Narrator and analyze** adds it and runs;
+  **Choose on Cast** is for a book told in the first person, where you tick
+  that speaker as Narrator. There is no "analyze without".
+- A book analyzed before it had a narrator shows one banner instead of a red
+  line each: *This book has no narrator — 159 lines of narration are waiting for
+  one*, with **＋ Add Narrator**, which gives them all to the new narrator at
+  once. Until then that narration is not counted in **No speaker** or **To
+  check** — those count only the spoken lines nobody was found for, the ones
+  worth your eyes.
+- Overview's Script row says **no narrator** until there is one; it opens Cast. If you go to Render first, the render
 stops and lists them; **Fix in Script ➜** there opens the chapter on its lines
 with no speaker, the first one selected.
 

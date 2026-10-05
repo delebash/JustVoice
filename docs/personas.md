@@ -551,7 +551,10 @@ steady narrator persona can narrate every book you make.
 
 **No book gets a narrator on its own.** A project you create or import starts
 with none, unless the manuscript has its own speaker called *Narrator*, who then
-becomes the narrator. There are two ways to get one on Cast:
+becomes the narrator. But a book with narration needs one, so the app asks:
+[Discover](studio.md#discover) lists **Narrator** first among the speakers found,
+ticked, and Script's **Analyze** stops to offer **＋ Add Narrator and analyze**
+(both since 2026-10-05). On Cast there are two ways:
 
 - **Add Narrator** makes a speaker called Narrator, cast with your persona called
   *Narrator* if the library has exactly one by that name. If the book already

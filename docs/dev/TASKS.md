@@ -666,6 +666,37 @@ GO: needed.
 
 ## The next build
 
+### A book with narration gets a narrator: Discover proposes it, Script asks for it
+STATE:  DECIDED 2026-10-05 — "your rec on all go", on the flow as shown (the user first: "if there
+        is narration then we need a narrator, that is not an option … discover should propose a
+        narrator and give warning when running script … think on the flow again"):
+        Discover — when the book has no narrator, Narrator is the first row in "Speakers found":
+        "reads everything outside quote marks · ≈ N lines", status New, with ＋ Add; ＋ Add selected
+        adds it like anyone else, as the narrator, with the library's "Narrator" persona if there
+        is exactly one; hint "Told in the first person? Tick that speaker as Narrator on Cast
+        instead." Script — ✨ Analyze on a book with no narrator stops first: "This book has no
+        narrator — its narration needs one." ＋ Add Narrator and analyze · Choose on Cast; no
+        "analyze without". A book analyzed before it had a narrator shows one banner, "This book has
+        no narrator — N lines of narration are waiting for one", with ＋ Add Narrator; "To check"
+        and "No speaker" count only spoken lines nobody was found for. Cast unchanged. Overview —
+        Script's row says "no narrator" as its tag until there is one. The leans, all yes: the
+        narrator row pre-ticked; the same check wherever Analyze starts (Re-analyze this chapter
+        too); in the same change, Discover's and Script's run display — a row says scanning vs
+        analyzing, one shared run banner (kind, progress, Cancel), each strip follows the chapter
+        running now.
+BUILT:  2026-10-05 — plan + blast radius `docs/plans/2026-10-05-narrator-flow.md`. Server:
+        `_chapter_script` (`narration_waiting`, `waits_for_narrator`; No speaker / To check
+        leave narration out while there is no narrator). Renderer: `NarratorNeeded.vue`,
+        `StudioRunBanner.vue`, `services/narrator.js`, `chapterRun.runKind` / `runStripTask`;
+        Discover's Narrator row; Script's grid and chapter page (banner, the question before
+        Analyze); Overview's tag. Tested: server 1108, vitest 142, smoke 15/15. Live on The Ninth
+        Facet: Overview "no narrator · 6 no speaker"; Discover's Narrator row New, ≈153, ticked,
+        no Ignore; a one-chapter scan showed the run banner and the running chapter's strip;
+        Script's banner "153 lines of narration are waiting"; Analyze asked first, and Choose on
+        Cast opened Cast. No narrator was added to the book (that's yours to do).
+OPEN:   none.
+GO:     given 2026-10-05 ("your rec on all go")
+
 ### The family moves to Electron and a Node server; Tauri and Python go — the study first
 STATE:  DECIDED 2026-10-05 (the direction) — "i think we go with electron and drop tauri either
         ionic aor capawesome but do the study go", on the lean shown: "Electron on desktop,

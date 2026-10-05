@@ -48,6 +48,30 @@ export function inRun(projectId, sceneId) {
   return null;
 }
 
+/** "analyze" | "discover" | null — what the run is doing, or will do, to this chapter.
+ *  Both steps share the run, so a row says which: Discover's "scanning…" is not
+ *  Script's "analyzing…" (2026-10-05). */
+export function runKind(projectId, sceneId) {
+  const run = chapterRunFor(projectId);
+  if (!run) return null;
+  if (run.current?.sceneId === sceneId) return run.current.kind;
+  return run.queue.find((q) => q.sceneId === sceneId)?.kind || null;
+}
+
+const RUN_FEATURES = ["speaker_attribution", "speaker_identification"];
+
+/**
+ * The run's strip: the chapter running now, else the last one that finished
+ * (a failure stays readable). `sceneId` narrows it to one chapter. The kit
+ * lists tasks oldest first, and a finished one lingers — taking the first
+ * match showed a finished chapter's DONE while the next one ran (2026-10-05).
+ */
+export function runStripTask(tasks, projectId, sceneId = null) {
+  const mine = tasks.visibleTasks.filter((t) => t.inline && t.meta?.run && t.meta?.projectId === projectId
+    && RUN_FEATURES.includes(t.feature) && (!sceneId || t.meta?.sceneId === sceneId));
+  return mine.find((t) => tasks.isRunning(t.id)) || mine[mine.length - 1] || null;
+}
+
 /** The reason a chapter failed in this session's runs, or null. */
 export function failureOf(projectId, sceneId) {
   return runs[projectId]?.failed?.[sceneId] || null;

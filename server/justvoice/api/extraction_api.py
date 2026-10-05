@@ -954,7 +954,14 @@ def _chapter_script(
                           meta.get("source_text") or "\n\n".join(b.text or "" for b in blocks))
     groups = flag_groups(lines, cast_ids, marks=marks) if analyzed else []
     marked = flagged_lines(groups)
-    no_speaker = {r[0].id for r in speakable_rows if not r[0].speaker_id}
+    # Narration (read, not spoken) with no speaker in a book with no narrator
+    # waits for one — a book-level fix, ＋ Add Narrator, not a line to check
+    # (decided 2026-10-05). Everything else with no speaker is "No speaker".
+    waiting = (
+        {r[0].id for r in speakable_rows if not r[0].speaker_id and not r[4]}
+        if narrator_id is None else set()
+    )
+    no_speaker = {r[0].id for r in speakable_rows if not r[0].speaker_id} - waiting
 
     by_group: dict[str, list[int]] = {}
     for gi, g in enumerate(groups):
@@ -971,6 +978,7 @@ def _chapter_script(
             changed="prev_speaker_id" in bm, prev_speaker_id=bm.get("prev_speaker_id"),
             flags=by_group.get(b.id, []), metadata=bm,
             left_out=b.id in tags_left_out, takes=(take_counts or {}).get(b.id, 0),
+            waits_for_narrator=b.id in waiting,
         )
         for b, bm, marker, speakable, spoken in rows
     ]
@@ -1000,6 +1008,7 @@ def _chapter_script(
         # "To check" is for what Analyze (or the import) decided; a chapter
         # never analyzed needs Analyze, not checking.
         to_check=len(marked | no_speaker) if (analyzed or from_import) else 0,
+        narration_waiting=len(waiting),
         changed=sum(1 for ln in out_lines if ln.changed),
         no_dialogue_found=analyzed and bool(speakable_rows) and not spoken_rows,
         added_since=added,

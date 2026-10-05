@@ -25,7 +25,7 @@
   header and one per chapter. The scan runs on the project's chapter run
   (services/chapterRun.js, 2026-09-29) — the same run Script's Analyze uses, so
   only one runs at a time and it survives leaving Studio. Each chapter is a kit
-  task, shown by the AiTaskStrip at the top of this page with its Cancel.
+  task, shown with the run's banner (StudioRunBanner.vue) and its Cancel.
 
   Speakers and personas are two things (2026-09-29): a name that is EXACTLY a
   persona in your library says so (In your library), and Add makes the speaker
@@ -39,17 +39,25 @@
   ("yes ask first", 2026-09-29). The row then shows as New again. The
   "Already in the cast" card's ✕ and Clear all (which keeps the Narrator) ask
   the same way.
+
+  A book with narration needs a narrator (decided 2026-10-05): while it has
+  none, the first row of Speakers found is Narrator — reads everything outside
+  quote marks — New and ticked, with ＋ Add (Cast's Add Narrator; no Ignore).
+  The run banner is the shared StudioRunBanner.vue, and a chapter's row says
+  "analyzing…" when the run it is in is Script's Analyze.
 -->
 <script setup>
 import { computed, ref, watch } from "vue";
 import {
-  AiTaskStrip, UiButton, UiCheckbox, UiChip, UiTable, UiTag, confirmDialog, pushToast, useAiTasksStore,
+  UiButton, UiCheckbox, UiChip, UiTable, UiTag, confirmDialog, pushToast,
 } from "@delebash/llm-ui";
 import { useApi } from "../stores/api.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { useCopy } from "../services/copy.js";
-import { chapterRunFor, failureOf, inRun, queueChapters } from "../services/chapterRun.js";
+import { chapterRunFor, failureOf, inRun, queueChapters, runKind } from "../services/chapterRun.js";
+import { addNarrator, hasNarrator } from "../services/narrator.js";
 import { foundSpeakers, isWaiting } from "../views/studioStatus.js";
+import StudioRunBanner from "./StudioRunBanner.vue";
 
 const props = defineProps({
   project: { type: Object, required: true },
@@ -62,6 +70,9 @@ const props = defineProps({
   // The persona library — a name that is exactly one of these shows as In
   // your library.
   personas: { type: Array, default: () => [] },
+  // {sceneId: lines of narration} — Script's rows (read, not spoken). With no
+  // narrator, any narration makes Narrator the first row found.
+  narrationByScene: { type: Object, default: () => ({}) },
 });
 // A finished scan reaches Studio through the chapter run, not from here.
 // `cast-changed` carries `{ moved }` > 0 when lines lost their speaker.
@@ -69,7 +80,6 @@ const emit = defineEmits(["cast-changed", "go"]);
 
 const api = useApi();
 const copy = useCopy();
-const tasks = useAiTasksStore();
 // The ignore list lives on the project row, so the shared store is refreshed
 // after a change — every other reader of the project then sees it.
 const projectsStore = useProjectsStore();
@@ -84,10 +94,12 @@ watch(() => props.project?.id, () => {
 const plural = (n, word) => `${n.toLocaleString()} ${word}${n === 1 ? "" : "s"}`;
 
 // Where a chapter stands in the project's run: "scanning" (this one now),
+// "analyzing" (Script's Analyze has it now — the two share the run),
 // "queued", or a failure from this session's scans.
 function rowState(scene) {
   const where = inRun(props.project.id, scene.id);
-  if (where) return where === "current" ? "scanning" : "queued";
+  if (where === "current") return runKind(props.project.id, scene.id) === "analyze" ? "analyzing" : "scanning";
+  if (where) return "queued";
   return failureOf(props.project.id, scene.id)?.kind === "discover" ? "failed" : null;
 }
 const failureText = (scene) => failureOf(props.project.id, scene.id)?.reason || "";
@@ -103,8 +115,24 @@ const castById = computed(() => Object.fromEntries(props.cast.map((c) => [c.id, 
 const ignored = ref([]);
 watch(() => props.project, (p) => { ignored.value = [...(p?.discover_ignored || [])]; }, { immediate: true });
 
-// Everyone the saved scans found, each once, with a status.
-const found = computed(() => foundSpeakers(props.scenes, props.cast, ignored.value, props.personas));
+// The book's narrator, proposed while it has none and has narration: narration
+// needs one, and nothing makes it on its own (2026-10-05).
+const narration = computed(() => Object.values(props.narrationByScene).reduce((n, v) => n + (v || 0), 0));
+const narratorRow = computed(() => {
+  if (hasNarrator(props.cast) || !narration.value) return null;
+  return {
+    key: "narrator", narrator: true, status: "new", name: "Narrator", names: ["Narrator"],
+    role_hint: "Reads everything outside quote marks. Told in the first person? Tick that speaker as Narrator on Cast instead.",
+    lines: narration.value, mentions: 0, evidence: "", evidence_found: null,
+    chapters: props.scenes.filter((s) => props.narrationByScene[s.id] > 0).map((s) => s.id),
+  };
+});
+// Everyone the saved scans found, each once, with a status — the narrator first
+// when the book needs one.
+const found = computed(() => {
+  const rows = foundSpeakers(props.scenes, props.cast, ignored.value, props.personas);
+  return narratorRow.value ? [narratorRow.value, ...rows] : rows;
+});
 const counts = computed(() => ({
   all: found.value.length,
   new: found.value.filter(isWaiting).length,
@@ -128,6 +156,7 @@ const STATUS = {
   ignored: { label: "Ignored", intent: "secondary", title: "You ignored this name for this book. Undo shows it as new again." },
 };
 function statusTitle(r) {
+  if (r.narrator) return "This book has narration and no narrator. Add makes a speaker called Narrator — played by your persona called Narrator if you have one — and gives it the narration.";
   if (r.status === "library") return `A persona in your library is called ${r.persona.name}. Add makes ${r.persona.name} a speaker in this book, already cast with that persona.`;
   if (r.status === "cast") return `${r.speaker.name} is a speaker in this book.`;
   return STATUS[r.status].title;
@@ -135,6 +164,10 @@ function statusTitle(r) {
 
 const run = computed(() => chapterRunFor(props.project.id));
 const scanning = computed(() => run.value?.current?.kind === "discover");
+// The narrator row arrives ticked — nearly every book needs one (2026-10-05).
+watch(() => !!narratorRow.value, (has) => {
+  if (has) picked.value = { ...picked.value, narrator: true };
+});
 // A chapter already in the run can't be queued again.
 const pickable = (s) => !inRun(props.project.id, s.id);
 const pickedScenes = computed(() => props.scenes.filter((s) => selected.value[s.id] && pickable(s)));
@@ -151,10 +184,6 @@ function toggleOne(id, on) {
   selected.value = { ...selected.value, [id]: on };
 }
 
-// The page's own strip: the Discover run, running or lingering.
-const discoverTask = computed(() =>
-  tasks.visibleTasks.find((t) => t.feature === "speaker_identification" && t.inline
-    && t.meta?.projectId === props.project?.id) || null);
 
 const GRID_COLUMNS = computed(() => [
   { id: "sel", header: "", headerStyle: { width: "1%" }, cellStyle: { width: "1%" } },
@@ -200,7 +229,11 @@ function toCandidate(c) {
   const name = c.status === "library" ? c.persona.name : c.name;
   return { name, description: c.role_hint || null, aliases: c.names.filter((n) => n !== name) };
 }
+// The narrator is added through Cast's own door (services/narrator.js), not
+// promote: it takes the role, and the narration with no speaker moves to it.
 async function promote(rows) {
+  rows = rows.filter((r) => !r.narrator);
+  if (!rows.length) return null;
   return api.request(`/v1/projects/${props.project.id}/speakers/promote`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -212,7 +245,7 @@ async function promote(rows) {
 // take Add or Ignore, rows In the cast take Remove. Keyed by the row's key;
 // only rows still in that status count, so a row that changed since it was
 // ticked is not acted on.
-const picked = ref({});
+const picked = ref(narratorRow.value ? { narrator: true } : {});
 const tickable = (r) => isWaiting(r) || r.status === "cast";
 const pickedWaiting = computed(() => found.value.filter((r) => isWaiting(r) && picked.value[r.key]));
 const pickedCast = computed(() => found.value.filter((r) => r.status === "cast" && picked.value[r.key]));
@@ -229,14 +262,22 @@ async function addSelected() {
   if (!rows.length || bulkBusy.value) return;
   bulkBusy.value = true;
   try {
-    await promote(rows);
-    const lib = rows.filter((r) => r.status === "library").length;
+    let moved = 0;
+    if (rows.some((r) => r.narrator)) {
+      moved = await addNarrator(props.project.id);
+      if (moved === null) return;
+    }
+    const people = rows.filter((r) => !r.narrator);
+    await promote(people);
+    const lib = people.filter((r) => r.status === "library").length;
     for (const r of rows) delete picked.value[r.key];
-    pushToast({
-      message: `${rows.length} added to the cast${lib ? ` (${lib} already cast with the persona of that name)` : ""} — give them personas in Cast.`,
-      kind: "success",
-    });
-    emit("cast-changed");
+    if (people.length) {
+      pushToast({
+        message: `${people.length} added to the cast${lib ? ` (${lib} already cast with the persona of that name)` : ""} — give them personas in Cast.`,
+        kind: "success",
+      });
+    }
+    emit("cast-changed", { moved });
   } catch (e) {
     pushToast({ message: `Add failed: ${e?.message || e}`, kind: "error" });
   } finally {
@@ -245,7 +286,8 @@ async function addSelected() {
 }
 
 async function ignoreSelected() {
-  const rows = pickedWaiting.value;
+  // Narration needs a narrator — it is never ignored.
+  const rows = pickedWaiting.value.filter((r) => !r.narrator);
   if (!rows.length || bulkBusy.value) return;
   bulkBusy.value = true;
   try {
@@ -280,6 +322,12 @@ async function removeSelected() {
 
 async function add(c) {
   busyName.value = c.key;
+  if (c.narrator) {
+    const moved = await addNarrator(props.project.id);
+    busyName.value = null;
+    if (moved !== null) emit("cast-changed", { moved });
+    return;
+  }
   try {
     await promote([c]);
     pushToast({
@@ -393,8 +441,6 @@ async function ignore(c) {
 
 <template>
   <section class="studio-discover">
-    <AiTaskStrip v-if="discoverTask" :task="discoverTask" />
-
     <div class="jv-card">
       <div class="jv-card__header">
         <h3 class="jv-card__title">Who speaks in this {{ copy.book.singular.toLowerCase() }}?</h3>
@@ -405,6 +451,8 @@ async function ignore(c) {
           your library has, and new names. Nothing is created until you add someone. Script can only
           give a line to a speaker in this {{ copy.book.singular.toLowerCase() }}, so this step runs first.
         </p>
+
+        <StudioRunBanner :project="project" />
 
         <div v-if="!scenes.length" class="jv-banner">
           No {{ chapterWord.plural.toLowerCase() }} yet — add or import them in
@@ -426,6 +474,8 @@ async function ignore(c) {
             <template #lines="{ row }"><span class="jv-mono">{{ (linesByScene[row.id] || 0).toLocaleString() }}</span></template>
             <template #scanned="{ row }">
               <UiTag v-if="rowState(row) === 'scanning'" intent="solid">scanning…</UiTag>
+              <UiTag v-else-if="rowState(row) === 'analyzing'" intent="solid"
+                title="Script's Analyze has this chapter now — the two share one run">analyzing…</UiTag>
               <UiTag v-else-if="rowState(row) === 'queued'" intent="ghost">queued</UiTag>
               <template v-else-if="rowState(row) === 'failed'">
                 <UiTag intent="danger" :title="failureText(row)">failed</UiTag>
@@ -498,7 +548,8 @@ async function ignore(c) {
             <UiTag :intent="STATUS[row.status].intent" :title="statusTitle(row)">{{ STATUS[row.status].label }}</UiTag>
           </template>
           <template #lines="{ row }">
-            <span v-if="row.lines" class="jv-mono" title="Roughly how many lines of dialogue they speak in what was scanned">≈ {{ row.lines }}</span>
+            <span v-if="row.narrator" class="jv-mono" title="Lines of narration in the book">≈ {{ row.lines.toLocaleString() }}</span>
+            <span v-else-if="row.lines" class="jv-mono" title="Roughly how many lines of dialogue they speak in what was scanned">≈ {{ row.lines }}</span>
             <span v-else-if="row.mentions" class="jv-muted" title="How many times the text names them in what was scanned">named {{ row.mentions }}×</span>
             <span v-else class="jv-mono" title="Named, but not heard speaking in what was scanned">0</span>
           </template>
@@ -514,9 +565,10 @@ async function ignore(c) {
             <template v-if="isWaiting(row)">
               <UiButton intent="primary" size="small" label="＋ Add" :loading="busyName === row.key"
                 :disabled="busyName !== null"
-                :title="row.status === 'library' ? `Add ${row.persona.name} to this book, cast with your persona of that name` : `Add ${row.name} to this book as a speaker`"
+                :title="row.narrator ? 'Add the book\'s narrator — it takes the narration'
+                  : row.status === 'library' ? `Add ${row.persona.name} to this book, cast with your persona of that name` : `Add ${row.name} to this book as a speaker`"
                 @click="add(row)" />
-              <UiButton intent="ghost" size="small" label="Ignore" :disabled="busyName !== null"
+              <UiButton v-if="!row.narrator" intent="ghost" size="small" label="Ignore" :disabled="busyName !== null"
                 title="Mark it Ignored for this book. It stays in this list; Undo takes it back."
                 @click="ignore(row)" />
             </template>

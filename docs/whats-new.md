@@ -2,6 +2,16 @@
 
 ## v0.1.0
 
+- **A book with narration gets a narrator (2026-10-05).** Discover lists
+  **Narrator** first among the speakers found, ticked, while the book has none;
+  Script's **Analyze** asks for one before it runs (**＋ Add Narrator and
+  analyze**); and a book analyzed without one shows a single banner with **＋ Add
+  Narrator** instead of a red *No speaker* on every line of narration
+  ([Studio → Script](studio.md#script))
+- **Discover shows its run (2026-10-05).** The run banner — which run, the chapter
+  it is on, done of total, time left, Cancel — shows on Discover as on Script, the
+  strip follows the chapter running now, and a chapter Script's Analyze has says
+  *analyzing…*, not *scanning…* ([Studio → Discover](studio.md#discover))
 - **The header and Script see a language model the moment it loads (2026-10-05).** After the
   LLM engine setup or AI Settings loaded a model, the header kept saying *No language model*
   and Script kept saying *Analyze needs a language model* until a restart. Both now follow

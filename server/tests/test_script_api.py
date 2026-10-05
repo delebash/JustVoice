@@ -337,3 +337,59 @@ def test_a_character_who_narrates_is_counted_like_anyone(client, project, monkey
     r = client.put(f"/v1/projects/{project.id}/narrator", json={"speaker_id": project.tom})
     assert r.status_code == 200, r.text
     assert ("run", project.tom) in _groups(client, project.scene_id)
+
+
+# ── A book with narration and no narrator (decided 2026-10-05) ─────────────
+
+
+@pytest.fixture()
+def unnarrated(client):
+    """The same book, before anyone has added a narrator."""
+    r = client.post(
+        "/v1/projects/import?source=justwrite",
+        json=book_json(characters=CHARACTERS,
+                       chapters=[("ch1", "One", [scene("scn1", *PARAS)])]),
+    )
+    assert r.status_code == 200, r.text
+    pid = r.json()["project_id"]
+    sid = client.get(f"/v1/projects/{pid}/scenes").json()[0]["id"]
+    cast = client.get(f"/v1/projects/{pid}/speakers").json()["speakers"]
+    assert not any(s["role_label"] == "narrator" for s in cast)
+    ids = {s["name"]: s["id"] for s in cast}
+    return SimpleNamespace(id=pid, scene_id=sid, mara=ids["Mara Vance"], tom=ids["Tom Hale"])
+
+
+def test_narration_waits_for_a_narrator_instead_of_counting_as_no_speaker(client, unnarrated, monkeypatch):
+    p = unnarrated
+    before = client.get(f"/v1/projects/{p.id}/script").json()["chapters"][0]
+    # Four spoken paragraphs with no speaker yet; the narration waits for a narrator.
+    assert (before["no_speaker"], before["narration_waiting"], before["to_check"]) == (4, 1, 0)
+
+    _model_says(monkeypatch, {0: p.mara, 1: p.tom, 2: p.mara, 3: p.tom})
+    _analyze(client, p.scene_id)
+    page = client.get(f"/v1/scenes/{p.scene_id}/script").json()
+    ch = page["chapter"]
+    # Analyze's narration — "said Mara." cut from D0, and the closing line — waits; every
+    # spoken line has its speaker, so nothing is "No speaker" and nothing to check.
+    narration = [b["text"] for b in _blocks(client, p.scene_id) if b["source"] == "narration"]
+    assert len(narration) == 2 and "The lamps guttered in the hall." in narration
+    assert (ch["no_speaker"], ch["narration_waiting"], ch["to_check"]) == (0, 2, 0)
+    waiting = [ln["text"] for ln in page["lines"] if ln["waits_for_narrator"]]
+    assert sorted(waiting) == sorted(narration)
+    assert page["narrator_id"] is None
+
+    # ＋ Add Narrator gives it the narration at once — nothing waits, nothing to check.
+    r = client.post(f"/v1/projects/{p.id}/narrator")
+    assert r.status_code == 201 and r.json()["moved_lines"] == 2
+    after = client.get(f"/v1/scenes/{p.scene_id}/script").json()
+    assert (after["chapter"]["no_speaker"], after["chapter"]["narration_waiting"]) == (0, 0)
+    assert not any(ln["waits_for_narrator"] for ln in after["lines"])
+
+
+def test_with_a_narrator_a_line_with_no_speaker_is_counted_as_before(client, project, monkeypatch):
+    _model_says(monkeypatch, {0: project.mara, 1: project.tom, 2: project.mara, 3: project.tom})
+    _analyze(client, project.scene_id)
+    narration = next(b for b in _blocks(client, project.scene_id) if b["source"] == "narration")
+    client.patch(f"/v1/blocks/{narration['id']}", json={"speaker_id": None})
+    ch = client.get(f"/v1/scenes/{project.scene_id}/script").json()["chapter"]
+    assert (ch["no_speaker"], ch["narration_waiting"]) == (1, 0)

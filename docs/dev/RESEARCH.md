@@ -49,6 +49,7 @@ Subjects: [1 · Speech runtime](#1--speech-runtime-audiocpp) ·
 [2 · Speech memory](#2--speech-memory-graphics-memory-and-the-booking) ·
 [3 · Render and takes](#3--render-and-takes) ·
 [4 · The app's view of the AI model](#4--the-apps-view-of-the-ai-model) ·
+[5 · The narrator and the chapter run](#5--the-narrator-and-the-chapter-run) ·
 [6 · The app stack: Electron, Node, phones](#6--the-app-stack-electron-node-phones) ·
 [Records not yet distilled](#records-not-yet-distilled)
 
@@ -504,6 +505,34 @@ its blast radius and the gaps.
   setup or AI Settings never reached them, until 2026-10-05.) — *code + live, 2026-10-05*.
 - While a model loads, the list can already say `loaded` while `/v1/llm-runner/status` still
   says `starting · loading into VRAM` (seen 2026-10-05, a few seconds). — *live, 2026-10-05*.
+
+---
+
+## 5 · The narrator and the chapter run
+
+**Records:** [`2026-10-05-narrator-flow.md`](../plans/2026-10-05-narrator-flow.md) — the flow
+decided 2026-10-05 and its blast radius.
+
+- Narration is a line that is read and not spoken (`extraction/flags.spoken_block` false, not a
+  marker). Analyze gives it to the narrator without asking the model; with no narrator it stays
+  with no speaker. — *code, 2026-10-05* · `extraction_api.py` (`speaker == "narrator"` →
+  `narrator_id`); `_chapter_script`.
+- No book gets a narrator on its own (decided 2026-09-29). `POST /v1/projects/{id}/narrator`
+  (Cast's Add Narrator) is idempotent: a speaker called Narrator takes the role, or one is made
+  — cast with the persona of exactly that name — and the narration with no speaker moves to it
+  (`moved_lines`). — *code, 2026-10-05* · `speakers_api.ensure_narrator`.
+- While a book has no narrator, narration with no speaker is `waits_for_narrator` /
+  `narration_waiting` and is left out of `no_speaker` and `to_check` (was: counted as No speaker
+  and To check on every line — The Ninth Facet's four chapters read 43 · 46 · 39 · 31 "no
+  speaker", nearly all narration, until 2026-10-05). — *code, 2026-10-05* · `_chapter_script`.
+- Discover's scan and Script's Analyze share ONE run per book (`services/chapterRun.js`); each
+  chapter is an inline kit task (`speaker_identification` / `speaker_attribution`,
+  `meta.run`). The kit lists tasks oldest first and a finished one lingers, so the strip must
+  prefer the running task (`runStripTask`). — *code, 2026-10-05*.
+- Measured on The Ninth Facet (gemma 26B-A4B on the RTX 2070 SUPER, ~40–46 tokens/s): a Discover
+  call ≈ 7 s per chapter (2,200–2,800 prompt tokens, 52–68 generated); an Analyze call ≈ 35–65 s
+  per chapter (2,300–3,000 prompt tokens, 1,500–2,300 generated). — *measured, 2026-10-05* ·
+  `ai-runtime/logs/router-20261005-010917.log`.
 
 ---
 

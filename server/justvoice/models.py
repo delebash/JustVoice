@@ -1606,12 +1606,18 @@ class ScriptChapter(BaseModel):
     anchored: int = 0      # "Book says" — the book's own words named the speaker
     guessed: int = 0       # "AI decided"
     by_you: int = 0
-    no_speaker: int = 0    # lines the render stops on
+    # Lines the render stops on that someone has to look at: a spoken line no
+    # speaker was found for. Narration in a book with no narrator is not here
+    # — it all waits for one narrator (`narration_waiting`, 2026-10-05).
+    no_speaker: int = 0
     flagged: int = 0       # lines inside a flag group
     flag_groups: int = 0
     # Flagged lines + lines with no speaker, once Analyze (or the import)
     # decided the chapter; 0 before.
     to_check: int = 0
+    # Narration with no speaker while the book has no narrator: one fix —
+    # ＋ Add Narrator — not a line each to check (decided 2026-10-05).
+    narration_waiting: int = 0
     changed: int = 0       # lines the last Analyze gave a different speaker
     no_dialogue_found: bool = False
     # Speakers added after this chapter was analyzed whose name (or "also
@@ -1657,6 +1663,9 @@ class ScriptLine(BaseModel):
     # Rendered takes on the line — Merge says how many it would delete. The
     # chapter page fills it; the grid leaves it 0.
     takes: int = 0
+    # Narration with no speaker, in a book with no narrator yet: it waits for
+    # the narrator, so it is neither "No speaker" nor "To check" (2026-10-05).
+    waits_for_narrator: bool = False
 
 
 class ScriptFlag(BaseModel):

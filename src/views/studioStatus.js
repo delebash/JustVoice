@@ -220,6 +220,9 @@ export function projectState({
     ? script.filter((c) => c.analyzed || c.from_import).reduce((n, c) => n + (c.no_speaker || 0), 0)
     : unplaced;
   const notReady = cast.filter((sp) => !sp.ready);
+  // Narration needs a narrator (2026-10-05): read, not spoken, in Script's rows.
+  const narration = (script || []).reduce((n, c) => n + Math.max(0, (c.lines || 0) - (c.spoken || 0)), 0);
+  const noNarrator = narration > 0 && !cast.some((sp) => sp.narrator);
   const scanned = scenes.filter((s) => s.metadata?.discover?.scanned_at).length;
   // Found names still waiting for Add or Ignore.
   const proposed = foundSpeakers(scenes, cast, ignored, personas).filter(isWaiting).length;
@@ -239,6 +242,7 @@ export function projectState({
     castTotal: cast.length,
     castReady: cast.length - notReady.length,
     speakersBesideNarrator: cast.filter((sp) => !sp.narrator).length,
+    noNarrator,
     blocked,
     // Lines with a take (a stale one still plays), of the lines that can render.
     rendered: render ? render.rendered + render.stale : null,
@@ -271,6 +275,9 @@ export function stepStatus(key, state, unit) {
       if (!state.chapters) return { text: `No ${unit.plural.toLowerCase()} yet`, tag: null, tags: [] };
       const toCheck = { go: ["script", "check"], title: `Opens Script on the ${unit.plural.toLowerCase()} to check` };
       const tags = [
+        // Narration with no narrator: one fix, on Cast (Add Narrator) — 2026-10-05.
+        ...(state.noNarrator ? [{ intent: "danger", label: "no narrator", go: ["cast"],
+          title: "This book has narration and no narrator — Add Narrator on Cast gives it one" }] : []),
         ...(state.noSpeaker ? [{ intent: "danger", label: `${state.noSpeaker.toLocaleString()} no speaker`, ...toCheck }] : []),
         ...(state.flagged ? [{ intent: "danger", label: `${state.flagged.toLocaleString()} flagged`, ...toCheck }] : []),
       ];
