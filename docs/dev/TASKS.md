@@ -702,6 +702,22 @@ GO: needed.
 
 ## The next build
 
+### Analyze takes a second look at lines it leaves with no speaker, and offers to add who it finds (decided 2026-10-05)
+STATE:  DECIDED 2026-10-05 — "your rec go with the add them offer", on the build as shown after the
+        test (`docs/plans/2026-10-05-second-look-test.md`, 30/30, 0 wrong): "Should I build it into
+        Analyze? The build would: run the second look only on lines left blank; add the end of the
+        previous chapter and the start of the next; send only the text around the line; mark its
+        answers to check." — and the offer as shown: "when the speaker isn't in the cast, the
+        second look names who it is in its reason ('Old Sedge', 'the driver of the trap'). A build
+        could turn that into 'Old Sedge isn't in the cast — add him?'."
+WHY:    a speaker unseen in one chapter is often named in the next (Bigger Inside D39 = Ode,
+        revealed in The Same Hour); the first pass reads one chapter, so it leaves the line blank.
+NOT:    always reading the neighbouring chapters (option 2 — +7–10 s on every chapter, the tuned
+        prompt re-measured); leaving it to the user (option 3).
+BUILT:  —
+OPEN:   the build.
+GO:     given 2026-10-05
+
 ### The AI bar says "1,468 words", not "1,468 words in" (decided 2026-10-05)
 STATE:  DECIDED 2026-10-05 — "1", then "go" (the user: "in script analyze reading prompt 100% 7.5s
         1,468 words in what is words in it seems to truncate … its the ai progress bar"), on the

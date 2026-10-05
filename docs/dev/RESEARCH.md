@@ -512,6 +512,13 @@ its blast radius and the gaps.
   lines asked as if blank all right. ~5–15 s per blank line on a normal chapter, ~23 s on a
   12.6 k-token one. Tested, not built. — *measured, 2026-10-05, the user's machine* ·
   [`2026-10-05-second-look-test.md`](../plans/2026-10-05-second-look-test.md).
+- Where a second look plugs in (mapped 2026-10-05, an agent's read with the source greps
+  re-run): after `pipeline.analyze_scene`'s rows (:750–752); every reader of a line's source
+  (`PIPELINE_SOURCES`, `flags.DECIDED`, the *AI decided* count, `scriptReview.js`, `attribution.js`);
+  seeds insert missing prompt keys on every start but don't refresh changed ones (kit `seed.py:1290`);
+  the attribution Lab adapter is chosen by feature, so a prompt under `speaker_attribution` would
+  run as the main call. — *agent + code, 2026-10-05* ·
+  [`2026-10-05-second-look-build.md`](../plans/2026-10-05-second-look-build.md) §2.
 - A persona can be saved with no delivery settings (`default_delivery` None — `POST /v1/personas`
   passes it through; Cast's batch makes them so); the project export writes `{}` for it. — *code
   + test, 2026-10-05* · `server/tests/test_project_export.py`. (was: the export crashed with a 500
