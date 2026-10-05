@@ -8,20 +8,43 @@
   Auto; a route card's Lab run forces its own route per run. No readout, no
   model names: the run itself reports its route (Studio's meta line says
   "Auto's pick" vs "forced").
+  And Analyze's second look on/off (settings.extraction.second_look,
+  2026-10-05 — docs/plans/2026-10-05-second-look-build.md).
 -->
 <script setup>
 import { onMounted, ref } from "vue";
-import { pushToast } from "@delebash/llm-ui";
+import { UiToggle, pushToast } from "@delebash/llm-ui";
 import { useApi } from "../../stores/api.js";
 
 const api = useApi();
 
 const directMinB = ref(14);
+const secondLook = ref(true);
 const busy = ref(false);
 
 async function load() {
   const cfg = await api.safeRequest("/v1/extraction/config", null);
-  if (cfg) directMinB.value = cfg.direct_min_b ?? 14;
+  if (cfg) {
+    directMinB.value = cfg.direct_min_b ?? 14;
+    secondLook.value = cfg.second_look !== false;
+  }
+}
+
+async function saveSecondLook(on) {
+  busy.value = true;
+  try {
+    await api.request("/v1/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ extraction: { second_look: on } }),
+    });
+    pushToast({ message: on ? "Second look on." : "Second look off.", kind: "success", duration: 2500 });
+    await load();
+  } catch (e) {
+    pushToast({ message: `Couldn't save: ${e?.message || e}`, kind: "error" });
+  } finally {
+    busy.value = false;
+  }
 }
 
 async function saveMinB() {
@@ -68,12 +91,23 @@ onMounted(load);
       If JustVoice can't tell how big the model is, it plays it safe and uses
       <b>Guided</b>.
     </p>
+    <div class="aap__toggle">
+      <UiToggle :model-value="secondLook" :disabled="busy" aria-label="Second look"
+        @update:model-value="saveSecondLook" />
+      <p class="aap__rule">
+        <b>Second look.</b> A spoken line Analyze leaves with no speaker is asked about once
+        more, with the chapters either side — a speaker unseen in one chapter is often named in
+        the next. What it finds is marked to check. Its prompt is the <b>Speaker attribution ·
+        second look</b> card.
+      </p>
+    </div>
   </div>
 </template>
 
 <style scoped>
 .aap { display: flex; flex-direction: column; gap: 10px; max-width: 560px; }
 .aap__intro, .aap__rule { margin: 0; font-size: 13px; color: var(--ink-2); }
+.aap__toggle { display: flex; align-items: flex-start; gap: 10px; }
 .aap__num {
   width: 64px; font: inherit; font-size: 13px; text-align: center;
   border: 1px solid var(--line-strong, #cfccc4); border-radius: 6px;

@@ -519,6 +519,11 @@ its blast radius and the gaps.
   the attribution Lab adapter is chosen by feature, so a prompt under `speaker_attribution` would
   run as the main call. — *agent + code, 2026-10-05* ·
   [`2026-10-05-second-look-build.md`](../plans/2026-10-05-second-look-build.md) §2.
+- The attribution prompt's cast list (`prompts.format_characters`) carries id, name, role,
+  gender, pronouns and aliases — never the speaker's description. The second look needs it
+  ("Answers to Ode." links Odeline Marran to the "Ode" the next chapter names): without it, live
+  Re-analyze left Bigger Inside's last line blank; with it, 3/3 + the live run found her. — *measured,
+  2026-10-05* · `second_look.cast_lines` · plan §3.
 - A persona can be saved with no delivery settings (`default_delivery` None — `POST /v1/personas`
   passes it through; Cast's batch makes them so); the project export writes `{}` for it. — *code
   + test, 2026-10-05* · `server/tests/test_project_export.py`. (was: the export crashed with a 500

@@ -350,6 +350,7 @@ const TIP = {
   propagated: "No name on this line, so it has the speaker named elsewhere in the same paragraph.",
   llm: "The AI worked it out from the lines around it, and was confident enough to keep.",
   floored: "The AI answered but was too unsure, so the answer was dropped and the line left with no speaker.",
+  secondLook: "Analyze left this line with no speaker, so it asked once more with the chapters either side — a speaker unseen here is often named in the next. Worth checking.",
   noAnswer: "The AI's answer had no entry for this line.",
   noneInCast: "The AI's answer for this line wasn't anyone in the cast, so it has no speaker.",
   corrected: "You set or confirmed this one. Re-analyzing leaves it exactly as it is.",
@@ -391,6 +392,8 @@ export function decidedBy(line, lines = []) {
       ? { text: "AI gave no answer", sub: "", tip: TIP.noAnswer }
       : { text: "AI wasn't sure", sub: "", tip: TIP.floored };
   }
+  // The second look (2026-10-05): named from the chapters either side.
+  if (src === "second_look") return { text: "AI, from the chapters around it", sub: "", tip: TIP.secondLook };
   if (src === "corrected") return { text: "You", sub: "", tip: TIP.corrected };
   return line.speaker_id
     ? { text: "From the import", sub: "", tip: TIP.imported }
@@ -422,6 +425,8 @@ export function checkQuestion(line, groups, nameOf, chapterWord = "chapter") {
       return `${who}'s only line in this ${chapterWord.toLowerCase()} — is it theirs?`;
     case "disagree":
       return `The book says ${who}, the AI says ${nameOf(g.other)} — whose line is it?`;
+    case "nearby":
+      return `Found in a nearby ${chapterWord.toLowerCase()} — is it ${who}?`;
     default:
       return "";
   }

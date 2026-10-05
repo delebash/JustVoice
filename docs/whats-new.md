@@ -2,6 +2,13 @@
 
 ## v0.1.0
 
+- **Analyze takes a second look at lines it leaves with no speaker
+  (2026-10-05)** — each one is asked about again with the chapters either side,
+  where a speaker unseen in one chapter is often named. What it finds is marked
+  to check (*Found in a nearby chapter — is it Odeline Marran?*), and someone it
+  finds who isn't in the cast is offered on the chapter's banner: **＋ Add Old
+  Sedge**. Only blank lines cost time, about 5–15 seconds each ([Studio → The
+  second look](studio.md#the-second-look))
 - **The title bar gives way in order, the project export works, and Personas
   sorts by any column (2026-10-05)** — short of room, the server address goes
   first, then the project's name in its chip ends in "…", then the two model

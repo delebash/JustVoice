@@ -38,8 +38,9 @@ from dataclasses import dataclass, field
 
 from .segmentation import left_open, opens_speech
 
-# The sources an Analyze run writes for a spoken line.
-DECIDED = frozenset({"tag", "propagated", "llm", "floored"})
+# The sources an Analyze run writes for a spoken line ("second_look": the
+# second look named the speaker from the chapters around it, 2026-10-05).
+DECIDED = frozenset({"tag", "propagated", "llm", "floored", "second_look"})
 
 
 @dataclass
@@ -62,7 +63,7 @@ class Line:
 
 @dataclass
 class FlagGroup:
-    check: str                    # "run" | "only" | "disagree"
+    check: str                    # "run" | "only" | "disagree" | "nearby"
     speaker: str | None           # whose line(s) these are
     lines: list[str] = field(default_factory=list)   # the ids marked
     # run: how many turns the speaker took with no reply.
@@ -151,6 +152,11 @@ def flag_groups(
         if ln.source not in DECIDED:
             continue
         w = ln.speaker
+        # The second look named the speaker from a nearby chapter — always worth
+        # a look (decided 2026-10-05: its answers are "marked to check"). First,
+        # so it is the question Script asks of the line (its first mark).
+        if ln.source == "second_look" and w:
+            groups.append(FlagGroup("nearby", w, [ln.id]))
         if w and w in cast_ids and count[w] == 1:
             groups.append(FlagGroup("only", w, [ln.id]))
         if ln.llm_speaker and ln.llm_speaker != w:

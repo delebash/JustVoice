@@ -273,6 +273,8 @@ class Block(Base):
     #   "tag" | "propagated"  regex anchors, pre-LLM
     #   "llm"                 the model, above the route's confidence floor
     #   "floored"             below it — demoted to unknown
+    #   "second_look"         a line left blank, named by the second look from
+    #                         the chapters around it — marked to check (2026-10-05)
     #   "narration"           the segmenter; the LLM never answers for prose
     #   "corrected"           the user fixed it; re-analyze leaves it alone
     #   "manual"              hand-made block, never attributed

@@ -178,6 +178,9 @@ def test_user_prompt_and_floor_overrides(app, monkeypatch) -> None:
             "propagate": False,
             "userPrompt": "CAST:\n{{speakers}}\nBODY:\n{{paragraphs}}",
             "confidence_floor": 0.65,
+            # The main call's prompt is what this pins; the second look would ask
+            # again about the floored line and its prompt would be the one captured.
+            "second_look": False,
         },
     )
     assert r.status_code == 200

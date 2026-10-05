@@ -27,6 +27,8 @@ from __future__ import annotations
 
 from .extraction.identify import IDENTIFY_SYSTEM
 from .extraction.prompts import DIRECT_SYSTEM, GUIDED_SYSTEM
+from .extraction.second_look import SYSTEM as SECOND_LOOK_SYSTEM
+from .extraction.second_look import USER_TEMPLATE as SECOND_LOOK_USER
 from .refinement import (
     _BASE_INSTRUCTIONS,
     _PRESERVE_TECHNICAL,
@@ -224,6 +226,18 @@ Return only the JSON object.""",
         "label": "Keep technical words",
         "description": '"index dot tsx" comes out as index.tsx, exactly as spoken.',
         "system": _PRESERVE_TECHNICAL,
+    },
+    # ── Analyze's second look (2026-10-05) — its own card, so its Lab column
+    # runs this prompt (under speaker_attribution the attribution Lab adapter
+    # would run it as the main call). docs/plans/2026-10-05-second-look-build.md.
+    "speaker_second_look": {
+        "feature": "speaker_second_look",
+        "description": "Asks once more about a spoken line Analyze left with no speaker, with the "
+                       "chapters either side — a speaker unseen in one chapter is often named in "
+                       "the next. Its answers are marked to check.",
+        "system": SECOND_LOOK_SYSTEM,
+        "user_template": SECOND_LOOK_USER,
+        "json_mode": True,
     },
     # ── voices ──────────────────────────────────────────────────────────────
     "voice_gender": {

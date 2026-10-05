@@ -112,6 +112,8 @@ def main() -> int:
     ap.add_argument("--no-propagate", action="store_true", help="skip the tag-anchor pass")
     ap.add_argument("--chapter", action="append", help="only these chapter titles")
     ap.add_argument("--whole", action="store_true", help="join the keyed chapters into ONE long chapter")
+    ap.add_argument("--no-second-look", action="store_true",
+                    help="skip Analyze's second look at lines left blank (2026-10-05) for this run")
     ap.add_argument("--max-context", type=int,
                     help="treat the model's context as this many tokens - forces chapter splitting")
     ap.add_argument("--show", type=int, default=12, help="errors to print per chapter")
@@ -167,6 +169,8 @@ def main() -> int:
             body_extra[k] = v
     if args.no_propagate:
         body_extra["propagate"] = False
+    if args.no_second_look:
+        body_extra["second_look"] = False
     if args.max_context:
         body_extra["max_context"] = args.max_context
 
@@ -179,6 +183,11 @@ def main() -> int:
         print(f"   fix: “{fix['text_snippet'][:60]}” -> {id_to_name.get(fix['persona_id'])}")
 
     tests = []   # (title, text, truth, also_ok)
+    # The chapters either side, as Analyze sends them for its second look (2026-10-05).
+    all_texts = ["\n\n".join(line.text for line in s.lines if line.text) for s in book.scenes]
+    order = {s.title: i for i, s in enumerate(book.scenes)}
+    neighbours = {t: (all_texts[i - 1] if i > 0 else None, all_texts[i + 1] if i + 1 < len(all_texts) else None)
+                  for t, i in order.items()}
     for scene in book.scenes:
         if args.chapter and scene.title not in args.chapter:
             continue
@@ -207,7 +216,9 @@ def main() -> int:
         for run in range(args.runs):
             t0 = time.time()
             r = post(args.server, "/v1/extraction/analyze-text",
-                     {"text": text, "characters": chars, **body_extra})
+                     {"text": text, "characters": chars,
+                      "before_text": neighbours.get(title, (None, None))[0],
+                      "after_text": neighbours.get(title, (None, None))[1], **body_extra})
             dialogue = [row for row in r["rows"] if row["kind"] == "dialogue"]
             marks = detect_marks(text)   # the chapter's, as the app reads it
             open_paras = {i for i, p in enumerate(split_into_paragraphs(text)) if quote_left_open(p, marks)}
@@ -277,7 +288,7 @@ def main() -> int:
     print("by source: " + " · ".join(
         f"{s}: {by_source[(s, 'right')]}/{sum(v for (ss, _), v in by_source.items() if ss == s)} right"
         f"{', ' + str(by_source[(s, 'WRONG')]) + ' wrong' if by_source[(s, 'WRONG')] else ''}"
-        for s in ("tag", "propagated", "llm", "floored") if any(ss == s for ss, _ in by_source)))
+        for s in ("tag", "propagated", "llm", "floored", "second_look") if any(ss == s for ss, _ in by_source)))
     print(f"flags: {flag_total['groups']} group(s) · caught {flag_total['caught']} of "
           f"{flag_total['wrong']} wrong line(s) · {flag_total['idle']} group(s) hold no wrong line")
     if args.out:

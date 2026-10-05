@@ -49,3 +49,36 @@ prompt's home, the settings — **for the user's go before code**.
 | The post-pass in `analyze_scene` | `pipeline.py` between :750 (the `llm` row) and :752 (`return rows`); `run_feature` directly (no stream); `AttributionRow` (41-71) → `AttributionRowResponse` (`extraction_api.py:56-66`, built with `**row.__dict__`) | the floor (726-739) and resolve (696-701) unchanged |
 | New feature `speaker_second_look` | `feature_catalog.py:21` FEATURE_CATALOG + `:19` PREFER_LOCAL_FEATURES · `seed_feature_prompts.py:123` (a row, `json_mode: True`) · `seed_presets.py:185` (→ `p_extract`) · `DEFAULT_TEST_SAMPLES` (:230) · the Lab adapter by feature (`main.js:76`, kit `labAdapters.js:45`) | seeds insert missing keys on every start (kit `seed.py:1290`) |
 | Settings fields | `models.py:384 ExtractionSettings` · `/v1/extraction/config` (`extraction_api.py:848-890`) · `AttributionAutoPanel.vue` (23, 35-39) | `PATCH` deep-merges |
+
+## 3. Built and checked (2026-10-05, "go")
+
+Built as §1: `extraction/second_look.py` (prompt, window, the pass), `pipeline.analyze_scene` step 6,
+`AnalyzeRequest` `before_text`/`after_text`/`second_look`/`second_look_skip`, `AttributionRow.not_in_cast`;
+`extraction_api` (`_neighbour_texts`, `_set_by_you`, `with_audit`'s `not_in_cast`, the *AI decided*
+count, `PIPELINE_SOURCES`, the analyze-text fields, the config's `second_look`); `flags.py` (`DECIDED`,
+the `nearby` mark — FIRST on its line, so it is the question Script asks); `ExtractionSettings` ×4;
+the `speaker_second_look` feature, prompt row (`json_mode`), preset (`p_extract`) and Lab sample;
+`scriptReview.js`, `attribution.js`, `StudioScriptChapter.vue` (the banner's offer),
+`AttributionAutoPanel.vue` (the on/off); `eval_attribution.py` sends the neighbours
+(`--no-second-look` to compare), both tallies count `second_look`. Docs studio (*The second look*),
+ai-features, whats-new.
+
+**A fix found live:** the first build wrote the cast with the main call's `format_characters`,
+which leaves out each speaker's description — and "Answers to Ode." is the only link from Odeline
+Marran to the "Ode" the next chapter names. The eval still found her once (a guess from the
+name); the live Re-analyze didn't. The tested prompt (30/30) had the descriptions, so the second
+look now writes its own cast list with them (`cast_lines`, `who="…"`); the main call's list is
+unchanged.
+
+Checks: ruff, Biome, build; pytest `test_second_look.py` (14) + the neighbouring files (analyze
+persist, alignment, restore, extraction config, stream, feature prompts, llm seeds — the count to
+13 —, script api, script flags, split/merge, chapter text); vitest `scriptReview.test.js` (29).
+Eval through the real Analyze (the app on 17494): The Ninth Facet **136/136**, second look 1/1;
+Bigger Inside ×3 after the fix **40/40 each, second look 3/3**; Salt-Iron 131/132 (the known
+"Quartermaster." miss, main pass); Speckled Band 245/247 (D95/D96, the 2026-09-29 runs' same
+two). Live, through Script's pages: Re-analyze Bigger Inside → the candle line **Odeline Marran**,
+*AI, from the chapters around it*, *Found in a nearby chapter — is it Odeline Marran?*, no speaker
+0; a throwaway chapter with a ferryman → the banner offered *the ferryman isn't in the cast — ＋
+Add the ferryman*, ＋ Add put him in the cast, the offer went, the grid row said *the ferryman
+added since* (speaker and chapter removed after). Cost seen: Bigger Inside 120 s against ~48 s
+with its 6 blank lines (the key's cast, no Sedge); 84 s on your book (1 blank).

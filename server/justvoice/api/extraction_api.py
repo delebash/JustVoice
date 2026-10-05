@@ -64,6 +64,7 @@ class AttributionRowResponse(BaseModel):
     llm_speaker: str | None = None
     llm_confidence: float | None = None
     anchor_words: str | None = None
+    not_in_cast: str | None = None
 
 
 class AnalyzeSceneRequest(BaseModel):
@@ -185,7 +186,7 @@ def _resolve_cast(scene_id: str, db: Session) -> list[dict]:
 
 # The Block.source values an Analyze run writes (pipeline.AttributionRow).
 # "corrected" and "manual" are the user's and the import's.
-PIPELINE_SOURCES = frozenset({"narration", "tag", "propagated", "llm", "floored"})
+PIPELINE_SOURCES = frozenset({"narration", "tag", "propagated", "llm", "floored", "second_look"})
 
 def _block_text(kind: str, text: str, source_text: str, marks: str = "double") -> str:
     """The text a row stores as its block — dialogue keeps its quote marks.
@@ -256,6 +257,38 @@ def _lines_to_keep(scene: Scene, blocks: list) -> list | None:
         return None
     kept = [b for b in blocks if (b.text or "").strip()]
     return kept or None
+
+
+def _scene_text(db: Session, scene: Scene) -> str:
+    """A chapter's text: the analyzed text it was cut from, else its lines."""
+    stored = _scene_meta(scene).get("source_text")
+    if stored:
+        return stored
+    blocks = db.query(Block).filter(Block.scene_id == scene.id).order_by(Block.position).all()
+    return "\n\n".join(b.text for b in blocks if (b.text or "").strip())
+
+
+def _neighbour_texts(db: Session, scene: Scene) -> tuple[str | None, str | None]:
+    """The chapters either side of `scene`, by position — the second look reads
+    the end of the one before and the start of the one after (2026-10-05)."""
+    scenes = (db.query(Scene).filter(Scene.project_id == scene.project_id)
+              .order_by(Scene.position).all())
+    at = next((i for i, s in enumerate(scenes) if s.id == scene.id), None)
+    if at is None:
+        return None, None
+    before = _scene_text(db, scenes[at - 1]) if at > 0 else None
+    after = _scene_text(db, scenes[at + 1]) if at + 1 < len(scenes) else None
+    return before or None, after or None
+
+
+def _set_by_you(db: Session, line_ids: list | None) -> list[int]:
+    """Row indices of the lines you set, when the chapter is re-read as its
+    lines stand — the second look never asks about them (they are never
+    rewritten). A chapter cut afresh has none to skip."""
+    if not line_ids:
+        return []
+    src = {b.id: b.source for b in db.query(Block).filter(Block.id.in_(line_ids))}
+    return [i for i, lid in enumerate(line_ids) if src.get(lid) == "corrected"]
 
 
 def _analysis_input(db: Session, scene: Scene, text: str):
@@ -437,6 +470,12 @@ def _persist_attribution(
             meta.pop("prev_speaker_id", None)
         else:
             meta["prev_speaker_id"] = prev
+        # The second look's "not in the cast" name (2026-10-05) — Script offers
+        # to add them; set and cleared with every run, never left stale.
+        if getattr(row, "not_in_cast", None):
+            meta["not_in_cast"] = row.not_in_cast
+        else:
+            meta.pop("not_in_cast", None)
         return json.dumps(meta) if meta else None
 
     if in_place:
@@ -522,6 +561,7 @@ async def analyze_scene_endpoint(
 
     settings = get_state().settings.get()
     text, marks, line_ids, segments = _analysis_input(db, scene, body.text)
+    before_text, after_text = _neighbour_texts(db, scene)
     # Route precedence lives in ONE place (pipeline.pick_route): the body's
     # explicit route (a per-run override) > Auto. The pipeline reports the
     # pick that RAN via raw_out — never re-derived here.
@@ -532,6 +572,9 @@ async def analyze_scene_endpoint(
         route=body.route,
         propagate=body.propagate,
         use_floor=body.use_floor,
+        before_text=before_text,
+        after_text=after_text,
+        second_look_skip=_set_by_you(db, line_ids),
     )
 
     try:
@@ -603,6 +646,8 @@ async def analyze_scene_stream_endpoint(
     corrections = body.corrections if body.corrections is not None else _resolve_corrections(scene.project_id, db)
     settings = get_state().settings.get()
     text, marks, line_ids, segments = _analysis_input(db, scene, body.text)
+    # Read here, not in the worker — the worker thread has no session.
+    before_text, after_text = _neighbour_texts(db, scene)
     req = AnalyzeRequest(
         text=text,
         characters=characters,
@@ -610,6 +655,9 @@ async def analyze_scene_stream_endpoint(
         route=body.route,
         propagate=body.propagate,
         use_floor=body.use_floor,
+        before_text=before_text,
+        after_text=after_text,
+        second_look_skip=_set_by_you(db, line_ids),
     )
 
     q: SimpleQueue = SimpleQueue()
@@ -749,6 +797,11 @@ class AnalyzeTextRequest(BaseModel):
     samplers: list[dict] = []
     # Force chapter splitting by treating the model's context as this small (eval).
     max_context: int | None = None
+    # The second look (2026-10-05): the neighbouring chapters' text, and an
+    # on/off for this run (None = settings.extraction.second_look).
+    before_text: str | None = None
+    after_text: str | None = None
+    second_look: bool | None = None
 
 
 @router.post(
@@ -787,6 +840,9 @@ async def analyze_text_endpoint(
         top_p=body.topP,
         samplers=body.samplers,
         max_context=body.max_context,
+        before_text=body.before_text,
+        after_text=body.after_text,
+        second_look=body.second_look,
     )
     try:
         raw_out: dict = {}
@@ -854,6 +910,8 @@ class ExtractionConfigResponse(BaseModel):
     # Auto's pick right now + the readout lines that justify it.
     auto_picked: str = "guided"
     auto_checks: list[AutoCheckInfo] = []
+    # The second look's on/off (settings.extraction.second_look, 2026-10-05).
+    second_look: bool = True
 
 
 @router.get(
@@ -887,6 +945,7 @@ async def extraction_config() -> ExtractionConfigResponse:
         direct_min_b=settings.extraction.direct_min_b,
         auto_picked=picked,
         auto_checks=[AutoCheckInfo(**c) for c in checks],
+        second_look=settings.extraction.second_look,
     )
 
 
@@ -1002,7 +1061,8 @@ def _chapter_script(
         # no speaker is counted there, never as decided.
         anchored=sum(1 for r in spoken_rows
                      if r[0].source in ("tag", "propagated") and r[0].speaker_id),
-        guessed=sum(1 for r in spoken_rows if r[0].source == "llm" and r[0].speaker_id),
+        guessed=sum(1 for r in spoken_rows
+                    if r[0].source in ("llm", "second_look") and r[0].speaker_id),
         by_you=sum(1 for r in spoken_rows if r[0].source == "corrected" and r[0].speaker_id),
         no_speaker=len(no_speaker), flagged=len(marked), flag_groups=len(groups),
         # "To check" is for what Analyze (or the import) decided; a chapter

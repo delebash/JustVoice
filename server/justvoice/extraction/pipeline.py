@@ -69,6 +69,10 @@ class AttributionRow:
     # When an anchor decided the row: the book's own words that named the
     # speaker ("said Marius"); a propagated row carries its tag's words.
     anchor_words: str | None = None
+    # The second look (2026-10-05, extraction/second_look.py): who the text
+    # names as the speaker when they are not in the cast — Script offers to
+    # add them. A row the second look decided has source "second_look".
+    not_in_cast: str | None = None
 
 
 class AnalyzeRequest(BaseModel):
@@ -110,6 +114,14 @@ class AnalyzeRequest(BaseModel):
     # Treat the model's context as at most this many tokens (the Lab/eval door that
     # forces chapter splitting on a short chapter). None = the model's real context.
     max_context: int | None = None
+    # The second look (2026-10-05): the neighbouring chapters' text, which a
+    # speaker unseen here may be named in (None = not given), whether to run it
+    # (None = settings.extraction.second_look), and the row indices not to ask
+    # about (lines the user set — never rewritten).
+    before_text: str | None = None
+    after_text: str | None = None
+    second_look: bool | None = None
+    second_look_skip: list[int] = []
 
 
 def _strip_thinking(text: str) -> str:
@@ -749,4 +761,19 @@ def analyze_scene(
                 )
             )
 
+    # ── 6. The second look at lines left with no speaker (2026-10-05) ──
+    cfg = getattr(settings, "extraction", None) or ExtractionSettings()
+    if (cfg.second_look if request.second_look is None else request.second_look):
+        from .names import match
+        from .second_look import cast_lines, second_look
+
+        second_look(
+            rows, paragraphs,
+            cast_text=cast_lines(prompt_cast),
+            resolve=lambda raw: handle_to_id.get(h := resolve_speaker(raw, prompt_cast), h),
+            cast_names=lambda name: bool(match(name, prompt_cast)),
+            floor=floor, use_floor=request.use_floor,
+            before_text=request.before_text, after_text=request.after_text,
+            cfg=cfg, skip=set(request.second_look_skip), raw_out=raw_out,
+        )
     return rows

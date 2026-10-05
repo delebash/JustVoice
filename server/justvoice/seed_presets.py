@@ -189,6 +189,8 @@ DEFAULT_FEATURE_PRESETS: dict[str, str] = {
     "speaker_attribution.direct": "p_extract_reasoned",
     # Find new speakers — its own runnable card, its own ref.
     "speaker_attribution.identify": "p_extract",
+    # Analyze's second look — no thinking, as it was tested (2026-10-05, 30/30).
+    "speaker_second_look": "p_extract",
     "smart_assign": "p_extract",
     # Deterministic classification
     "voice_gender": "p_classify",
@@ -288,6 +290,16 @@ DEFAULT_TEST_SAMPLES: list[dict] = [
      "variables": {
          "transcript": "open src slash components slash index dot tsx and um run "
                        "npm install first",
+     }},
+    {"actions": ["speaker_second_look"], "label": "The voice in the dark — named in the next chapter",
+     "variables": {
+         "cast": '- id="cael", name="Cael"\n- id="iven", name="Iven"\n- id="ode", name="Ode"',
+         "before": "(none — this is the first chapter)",
+         "chapter": "The candle burned. Out beyond the ring of their light, someone was waiting.\n\n"
+                    "⟦“You always find the candle first. Every time.”⟧",
+         "after": "“Don't answer it,” Iven said. A woman stepped into the light. “I'm Ode,” she "
+                  "said. “I've been waiting for you to find the candle.”",
+         "line": "“You always find the candle first. Every time.”",
      }},
     {"actions": ["voice_gender"], "label": "Catalog batch with an ambiguous name",
      "variables": {

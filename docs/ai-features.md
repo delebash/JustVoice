@@ -12,6 +12,7 @@ is the **AI Settings** page in the sidebar.
 | **Compose** | Writes a fresh line in a persona's voice from its note on how it sounds | A persona's page → Hear it → 🎲 Compose |
 | **Persona rewrite** | Rewrites the current text in a persona's voice, or a line in its speaker's character (preview-then-accept) | A persona's page → Hear it → ✏️ Rewrite · Studio Render → a line's ✏️ Rewrite as *name* |
 | **Speaker attribution** | Extracts who says what and what they say; its Find new speakers row lists the people a chapter names | Studio Script tab → Analyze · Studio Discover → Scan |
+| **Speaker attribution · second look** | Asks once more about a spoken line Analyze left with no speaker, with the chapters either side; what it finds is marked to check | Runs inside Analyze, only on lines left blank — [Studio → The second look](studio.md#the-second-look) |
 | **Smart-assign** | Matches each speaker in a book to a persona | Studio Cast tab → Smart-assign |
 | **Show notes** | Chapter summaries for podcast descriptions | Projects → Show notes |
 | **Dictation cleanup** | Raw speech → clean text before paste | Captures — runs after a dictation when auto-refine is on |
@@ -219,6 +220,13 @@ parameters (default 14) and **Direct** runs; smaller models get **Guided**.
 A mixture-of-experts model counts its **total** size (the built-in Gemma
 reads as 26B). When JustVoice can't tell the size, it plays it safe and
 uses **Guided**.
+
+The Auto page also holds **Second look** — on by default. A spoken line
+Analyze leaves with no speaker is asked about once more with the chapters
+either side; turn it off here and those lines stay blank. Its prompt is its
+own card above the heading, **Speaker attribution · second look**, with its
+own preset (Structured extraction — no thinking, as it was tested) and Lab
+([Studio → The second look](studio.md#the-second-look)).
 
 Auto always judges the model a card would **actually run**: the card's
 engine preset names a model, and when it doesn't, your default model fills

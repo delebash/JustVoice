@@ -237,6 +237,13 @@ describe("the words on a row", () => {
     expect(checkQuestion(line("a", "june", { flags: [1] }), g, nameOf)).toBe("The book says June, the AI says Marius — whose line is it?");
   });
 
+  it("says where Analyze's second look found a speaker, and asks to check it (2026-10-05)", () => {
+    const seen = line("a", "marius", { source: "second_look", flags: [0] });
+    expect(decidedBy(seen, [seen])).toMatchObject({ text: "AI, from the chapters around it", sub: "" });
+    const g = [{ check: "nearby", speaker: "marius", lines: ["a"] }];
+    expect(checkQuestion(seen, g, nameOf, "Chapter")).toBe("Found in a nearby chapter — is it Marius?");
+  });
+
   it("shows confidence in the app's colours, and none on a line that is yours", () => {
     expect(confidenceCell(line("a", "x", { confidence: 0.97 }))).toEqual({ text: "97%", intent: "success" });
     expect(confidenceCell(line("a", "x", { confidence: 0.88 }))).toEqual({ text: "88%", intent: "ghost" });

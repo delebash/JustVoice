@@ -37,6 +37,7 @@ export const SOURCE_LEGEND = [
   ["propagated", "No tag on this line, so it inherited the speaker from the nearest tagged line in the same paragraph."],
   ["llm", "The model worked it out from context, and was confident enough to keep."],
   ["floored", "The model answered but was too unsure, so the answer was dropped and the line left with no speaker."],
+  ["second_look", "Left with no speaker, then found in the chapters either side by Analyze's second look. Marked to check."],
   ["corrected", "You set this one. Re-analyzing leaves it exactly as it is."],
   ["manual", "A block you wrote or pasted yourself — nothing has attributed it."],
 ];
@@ -77,7 +78,7 @@ export function isSpeakable(block) {
 
 // The Block.source values an Analyze run writes. "corrected" is yours and
 // "manual" a line nobody attributed — neither says Analyze ran.
-const PIPELINE_SOURCES = new Set(["narration", "tag", "propagated", "llm", "floored"]);
+const PIPELINE_SOURCES = new Set(["narration", "tag", "propagated", "llm", "floored", "second_look"]);
 
 /**
  * ONE "analyzed" rule (Studio Slice 3, §8.24) — the server's

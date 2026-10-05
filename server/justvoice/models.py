@@ -405,6 +405,13 @@ class ExtractionSettings(BaseModel):
     # for the model's answer, per dialogue line (measured 45-65 with thinking on).
     split_lead_in_paragraphs: int = Field(default=6, ge=0)
     answer_tokens_per_line: int = Field(default=65, ge=1)
+    # The second look (2026-10-05, extraction/second_look.py): after the main
+    # call, each spoken line left with no speaker is asked about once more, with
+    # the words around it and the neighbouring chapters' edges.
+    second_look: bool = True
+    second_look_words: int = Field(default=1500, ge=50)     # either side of the line
+    second_look_before: int = Field(default=800, ge=0)      # the end of the chapter before
+    second_look_after: int = Field(default=1500, ge=0)      # the start of the chapter after
 
 
 class AppSettings(BaseModel):
@@ -1672,7 +1679,7 @@ class ScriptLine(BaseModel):
 
 
 class ScriptFlag(BaseModel):
-    check: Literal["run", "only", "disagree"]
+    check: Literal["run", "only", "disagree", "nearby"]
     speaker: str | None = None
     lines: list[str]
     turns: int = 0

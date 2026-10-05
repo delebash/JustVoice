@@ -16,7 +16,7 @@ from llm_runner.llm.routing_api import FeatureCatalogEntry
 # Passed to install_llm(prefer_local_features=…). speaker_discovery reads the
 # same manuscript text attribution does — it moved out of that feature key in
 # the restore and keeps the preference with it.
-PREFER_LOCAL_FEATURES: set[str] = {"speaker_attribution", "speaker_discovery"}
+PREFER_LOCAL_FEATURES: set[str] = {"speaker_attribution", "speaker_discovery", "speaker_second_look"}
 
 FEATURE_CATALOG: list[FeatureCatalogEntry] = [
     # ANALYSIS order (user QC 2026-08-06): the plain single cards FIRST, the
@@ -35,6 +35,11 @@ FEATURE_CATALOG: list[FeatureCatalogEntry] = [
     # plain heading; its two routes (Guided · Direct) are routed cards under
     # it, with the app's "Auto" panel row first (main.js registers it). The
     # hint is the user's own sentence (QC ruling 2026-08-06).
+    # Analyze's second look (2026-10-05) — a plain card, so it sits ABOVE the
+    # attribution heading (whose Auto note covers only the two routes).
+    FeatureCatalogEntry(key="speaker_second_look", label="Speaker attribution · second look",
+                        hint="Asks once more about a line Analyze left with no speaker, reading the chapters either side.",
+                        group="Analysis"),
     FeatureCatalogEntry(key="speaker_attribution", label="Speaker attribution",
                         hint="Extracts who says what and what they say.",
                         group="Analysis"),

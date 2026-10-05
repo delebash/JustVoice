@@ -360,6 +360,7 @@ speaker dropdown on every row.
 | **“said Marius”** *the book says so* | the book's own words next to the line name the speaker — you can check it against the text |
 | **“said Marius”** *earlier in the same paragraph* (or *later*) | no name on this line; it has the speaker named elsewhere in its paragraph |
 | **AI, from the story around it** | the AI worked it out |
+| **AI, from the chapters around it** | Analyze left the line with no speaker, then its [second look](#the-second-look) found who speaks it in the chapters either side — marked to check |
 | **AI wasn't sure** | the AI answered, but below *Keeps answers above*, so the answer was dropped and the line has no speaker |
 | **AI gave no answer** | the AI's answer had no entry for this line |
 | **AI named no one in the cast** | the AI's answer wasn't any of the book's speakers |
@@ -410,7 +411,12 @@ example the undone change saved, so a mis-click doesn't teach anything.
 audio, and JustVoice will not quietly leave a sentence out of your audiobook.
 The banner above the table counts them and offers **Assign N → Narrator**. A
 book with no narrator yet says *This book has no narrator — choose one on Cast
-➜* instead, and the link opens Cast.
+➜* instead, and the link opens Cast. When the [second look](#the-second-look)
+found who speaks a line but they aren't in the cast, the banner offers them, one
+row each: **Old Sedge isn't in the cast — ＋ Add Old Sedge**. It adds them to the
+book's speakers the way Discover's **＋ Add** does; the chapter's row on the grid
+then says *Old Sedge added since* and offers **Re-analyze**, so Analyze can give
+them their lines.
 
 **A book with narration needs a narrator.** Narration — everything outside
 quote marks — goes to the narrator, and nothing makes one on its own, so
@@ -465,6 +471,7 @@ it was built:
 | One speaker speaks **three or more times in a row** — back-to-back spoken paragraphs, no narration-only paragraph between, all theirs | *Marius speaks 3 times with no reply — is one of these the other person's?* The **whole run** is marked: the wrong line is as often the middle one as the last |
 | A speaker's **only line** in the chapter | *Harbek's only line in this chapter — is it theirs?* |
 | **The book and the AI disagree** — the book's words named one speaker, the AI said another | *The book says June, the AI says Marius — whose line is it?* |
+| **Found in a nearby chapter** — the [second look](#the-second-look) named the speaker of a line Analyze had left blank | *Found in a nearby chapter — is it Odeline Marran?* Its first question, ahead of any other mark on the line |
 
 A speech that runs over several paragraphs — each opens a quote, only the last
 closes it — counts as **one** turn, so a long account never looks like three.
@@ -546,6 +553,38 @@ Pieces also catch what measuring can't see. If the model refuses a piece as
 too big, or its answer runs out of room and stops short, that piece is cut in
 half and both halves are read. Discover reads a long chapter in pieces the
 same way, and merges the names it finds in each.
+
+### The second look
+
+**A line Analyze leaves with no speaker gets asked about once more.** Analyze
+reads one chapter at a time, so a speaker who is unseen in it — a voice in the
+dark, revealed by name in the next chapter — has nobody to go to, and the line
+is left with no speaker. After the main pass, each spoken line left that way is
+asked about again, one model call per line, with the text around it (about
+1,500 words either side, the line marked), the end of the chapter before (800
+words) and the start of the chapter after (1,500 words).
+
+- If the text makes the speaker clear, the line gets them, **marked to check**:
+  *Decided by* says **AI, from the chapters around it**, the Check column asks
+  *Found in a nearby chapter — is it Odeline Marran?*, and the line stays under
+  **To check** until you set a speaker or press **✓ Looks right**. It counts
+  under *AI decided*.
+- If the speaker is someone the text names who isn't in the cast, the line keeps
+  no speaker and the banner above the table offers **＋ Add** them (see *Lines
+  with no speaker block the render*, above).
+- If the text never makes it clear, the line stays as it was. A wrong name is
+  worse than no name, and the second look is told so.
+
+Only blank lines are asked about, so a chapter with none takes no longer. On
+the built-in Gemma model a call takes about 5–15 seconds; a very long chapter's
+takes longer. Lines you set are never asked about. Measured before it was built
+on the three answer-keyed books: 30 lines asked, 30 right, none named wrongly —
+The Ninth Facet's voice in the dark found as Odeline Marran from the next
+chapter, and speakers who aren't in the cast kept blank.
+
+It is on by default. **AI Settings → Routing by feature → Speaker attribution →
+Auto** turns it off, and its prompt is its own card there, **Speaker attribution
+· second look** ([AI features](ai-features.md)).
 
 **When the model can't answer, Analyze says so.** If the model call fails,
 that chapter's row says **failed** with the reason; nothing is saved and the

@@ -712,10 +712,42 @@ STATE:  DECIDED 2026-10-05 — "your rec go with the add them offer", on the bui
         could turn that into 'Old Sedge isn't in the cast — add him?'."
 WHY:    a speaker unseen in one chapter is often named in the next (Bigger Inside D39 = Ode,
         revealed in The Same Hour); the first pass reads one chapter, so it leaves the line blank.
+        Then DECIDED 2026-10-05 — "go", on the design as shown (detail and blast radius:
+        `docs/plans/2026-10-05-second-look-build.md` — read it before coding):
+        "1. When it runs: after Analyze or Re-analyze, only on spoken lines left with no speaker,
+        one call per line. It reads: the end of the previous chapter (800 words); the text around
+        the line (1,500 words either side); the start of the next chapter (1,500 words).
+        2. A line it names gets that speaker, marked to check: Decided by says AI, from the
+        chapters around it. The Check column asks Found in a nearby chapter — is it Odeline
+        Marran? It stays under To check until you set a speaker or press ✓ Looks right. It counts
+        as AI decided.
+        3. A line it can't place, but whose speaker it names (someone not in the cast) stays
+        without a speaker. The chapter page's 'N lines have no speaker' banner adds Old Sedge
+        isn't in the cast — ＋ Add Old Sedge, one button per name, doing the same add as
+        Discover's ＋ Add. After that, the row says 'Old Sedge added since' and offers
+        Re-analyze, as it does now.
+        4. Its own prompt card under AI Settings → Routing by feature: Speaker attribution ·
+        second look. It's a separate feature so its Lab column works … It uses the Structured
+        extraction preset (temperature 0.2, no thinking), the settings the test passed with.
+        5. Settings: Second look on/off (on by default), also shown on Speaker attribution's Auto
+        panel. The word counts are settings with no screen, like the existing chapter-splitting
+        setting.
+        6. Done when: re-run through the real Analyze, The Ninth Facet still scores 136/136 with
+        the voice in the dark as Odeline, and the other two books are no worse. Bigger Inside's
+        last line comes back as Odeline, marked to check. With Sedge left out of the cast, his
+        lines stay blank and the banner offers to add him."
 NOT:    always reading the neighbouring chapters (option 2 — +7–10 s on every chapter, the tuned
         prompt re-measured); leaving it to the user (option 3).
-BUILT:  —
-OPEN:   the build.
+BUILT:  2026-10-05 — the plan's §3 (`docs/plans/2026-10-05-second-look-build.md`): the pass
+        (`extraction/second_look.py`, `pipeline.py` step 6), the neighbours and lines-you-set
+        (`extraction_api.py`), the `nearby` mark (`flags.py`), the card + prompt + preset + Lab sample,
+        the settings, Script's words and banner offer, the Auto pane's on/off, the eval harness.
+        Fixed on the way: the cast list now carries "who they are" (the live run missed Ode without
+        it). Checked: tests (pytest 14 new + neighbours; vitest 29), eval through the real Analyze
+        (Ninth Facet 136/136; Bigger Inside 3/3 runs; Salt-Iron and Speckled Band at their known
+        misses), live — Bigger Inside's last line = Odeline Marran, marked; the ferryman offered,
+        added, cleaned up. Docs studio, ai-features, whats-new; RESEARCH.
+OPEN:   none.
 GO:     given 2026-10-05
 
 ### The AI bar says "1,468 words", not "1,468 words in" (decided 2026-10-05)

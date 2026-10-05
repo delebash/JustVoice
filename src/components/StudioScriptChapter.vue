@@ -39,7 +39,7 @@ import { inRun, onChapterDone, queueChapters, runStripTask, stepRun } from "../s
 import { addNarrator } from "../services/narrator.js";
 import NarratorNeeded from "./NarratorNeeded.vue";
 import {
-  KEYS, applyLocally, checkQuestion, confidenceCell, confirm, decidedBy, editText, filterCounts, lineFacets,
+  KEYS, applyLocally, checkQuestion, confidenceCell, confirm, decidedBy, editText, filterCounts, hasNoSpeaker, lineFacets,
   keyAction, markOf, mergeState, move, nextToCheck, numberKeys, popUndo, pushUndo, setSpeaker,
   speakerOptions, swap, swapState, toCheck, visibleLines, wasBefore,
 } from "../views/scriptReview.js";
@@ -127,6 +127,37 @@ watch(() => props.version, load);
 const chapter = computed(() => page.value?.chapter || null);
 const groups = computed(() => page.value?.flag_groups || []);
 const speakers = computed(() => page.value?.speakers || []);
+// Who Analyze's second look found speaking a line it couldn't place, who isn't
+// in the cast (2026-10-05, metadata.not_in_cast) — the no-speaker banner
+// offers to add each. A name added since drops off; the grid's row then says
+// "<name> added since" and offers Re-analyze.
+const notInCast = computed(() => {
+  const cast = new Set(speakers.value.map((s) => (s.name || "").toLowerCase()));
+  const out = [];
+  for (const ln of lines.value) {
+    const name = ln.metadata?.not_in_cast;
+    if (name && hasNoSpeaker(ln) && !cast.has(name.toLowerCase()) && !out.includes(name)) out.push(name);
+  }
+  return out;
+});
+const addingName = ref("");
+async function addToCast(name) {
+  addingName.value = name;
+  try {
+    await api.request(`/v1/projects/${props.project.id}/speakers/promote`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ candidates: [{ name }] }),
+    });
+    await load();
+    emit("changed");
+    pushToast({ kind: "success", message: `${name} is in the cast now — ✨ Re-analyze this chapter so Analyze can choose them.` });
+  } catch (e) {
+    pushToast({ kind: "error", message: `Couldn't add ${name}: ${e?.message || e}` });
+  } finally {
+    addingName.value = "";
+  }
+}
 const narratorId = computed(() => page.value?.narrator_id || null);
 const nameOf = (id) => speakers.value.find((s) => s.speaker_id === id)?.name || (id ? "someone removed" : "nobody");
 
@@ -638,6 +669,13 @@ const flagged = (ln) => (ln.flags || []).length > 0;
           title="Everything the model couldn't place becomes narration."
           @click="allToNarrator" />
         <a v-else href="#studio" @click.prevent="emit('go', 'cast')">This book has no narrator — choose one on Cast ➜</a>
+        <div v-for="name in notInCast" :key="name" class="studio-script-ch__offer">
+          <span><strong>{{ name }}</strong> isn't in the cast —</span>
+          <UiButton intent="primary" size="small" :label="`＋ Add ${name}`" :loading="addingName === name"
+            :disabled="!!addingName"
+            :title="`Analyze's second look found ${name} speaking a line here. Adds them to this book's speakers, as Discover's ＋ Add does.`"
+            @click="addToCast(name)" />
+        </div>
       </div>
 
       <div class="jv-card studio-script-ch__lines">
@@ -823,6 +861,7 @@ const flagged = (ln) => (ln.flags || []).length > 0;
 .studio-script-ch__verbs { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: flex-start; }
 .studio-script-ch__verb { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; max-width: 34ch; }
 .studio-script-ch__banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 0; }
+.studio-script-ch__offer { flex-basis: 100%; display: flex; align-items: center; gap: 10px; }
 .studio-script-ch__lines { padding: 0; overflow: hidden; }
 .studio-script-ch__bar { gap: 8px; flex-wrap: wrap; align-items: center; padding: 11px 14px; }
 .studio-script-ch__foot { margin: 0; padding: 0 14px 11px; }

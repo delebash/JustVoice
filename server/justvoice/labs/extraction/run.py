@@ -140,15 +140,16 @@ def format_report(results: list[dict], route_label: str) -> str:
         "",
         "## Per-passage accuracy",
         "",
-        "| Passage | Genre | Dialogue | Correct | Accuracy | tag | propagated | llm | floored | LLM OK |",
-        "|---|---|---|---|---|---|---|---|---|---|",
+        "| Passage | Genre | Dialogue | Correct | Accuracy | tag | propagated | llm | floored | second look | LLM OK |",
+        "|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for r in results:
         s = r["by_source"]
         lines.append(
             f"| {r['title']} | {r['genre']} | {r['dialogue_count']} | {r['correct']} | "
             f"{r['accuracy'] * 100:.1f}% | {s.get('tag', 0)} | {s.get('propagated', 0)} | "
-            f"{s.get('llm', 0)} | {s.get('floored', 0)} | {'✓' if r['llm_ok'] else '✗'} |"
+            f"{s.get('llm', 0)} | {s.get('floored', 0)} | {s.get('second_look', 0)} | "
+            f"{'✓' if r['llm_ok'] else '✗'} |"
         )
 
     avg = sum(r["accuracy"] for r in results) / max(1, len(results))
