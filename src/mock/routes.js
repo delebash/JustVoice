@@ -16,6 +16,13 @@ export const mockRoutes = [
     component: () => import("./MockPersonasView.vue"),
     meta: { nav: "personas", lede: true },
   },
+  // The persona page's Voice card, two ways side by side (2026-10-05: "show me both").
+  {
+    path: "/mock/voice-card",
+    name: "mock-voice-card",
+    component: () => import("./MockVoiceCardOptions.vue"),
+    meta: { nav: "personas" },
+  },
   {
     path: "/mock/personas/:id",
     name: "mock-persona",
