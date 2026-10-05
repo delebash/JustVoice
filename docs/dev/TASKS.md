@@ -723,6 +723,56 @@ GO: needed.
 
 ## The next build
 
+### The persona page's Voice box resets when a filter drops its voice; "Any language" (decided 2026-10-05)
+STATE:  DECIDED 2026-10-05 — "your rec go", on the plan and the two leans as shown (the user: "if i
+        pick a voice a kokoro voice then change themodel dropdown to kittne nothing changes, you still
+        do not have the dropdowns working correctly"; "if you change files it should always change
+        voice box or it is confusing"; then "filters change what voices are displayed its easy, if
+        you have a voice selected and change the filter and that changes the voice list then that
+        voice no longer shows it simple resets the voice list same as if you never seleced a voice
+        and just changed voice filters"):
+        "- On the persona page and its mock, if a filter change takes the chosen voice out of the
+        list, the Voice box goes back to 'Pick a voice'. It's the same as never having picked one.
+        - Revert, and opening a persona, put the voice back and set the filters so it's in the
+        list: Type to the voice's type, everything else to Any.
+        - The warning about changing the voice of a persona that already speaks lines compares with
+        the saved voice, so it still shows after the box was emptied.
+        - The rule that kept the voice in the box goes, along with its line 'No other voice matches
+        these filters.'
+        - Docs (personas, whats-new), the filters plan and a TASKS entry with this text.
+        - After that, I rerun the filter check on your app, including Male and Tags, which are
+        still unchecked.
+        - The kit and the shared filter helper don't change."
+        "1. While the Voice box is empty, should Save stay as it is? My lean: yes. A persona with no
+        voice is already allowed (Cast creates them by name), an empty box is easy to see, and
+        Revert brings the voice back."
+        "2. Should 'All languages' still become 'Any language'? That's 9 places, to match 'Any
+        gender' beside it. My lean: yes, it's small and makes the filters read consistently."
+WHY:    with a Kokoro voice picked, Model → KittenTTS left the box on that voice (it was pinned in
+        the box), so the filter looked like it did nothing.
+NOT:    keeping every option in every filter dropdown, greyed at (0) — the user: "that may be a big
+        uncesessary list, maybe we should just leave the items hidden instead of greyed"; options
+        nothing fits stay hidden (the shared rule, `services/facets.js`). Not: picking the first
+        voice that matches instead (the user chose "2", the empty box).
+        Reverses decision 1 of "The persona page: 'Style Instructions', and Hear it just above
+        Save" below ("The Voice box always shows the persona's own voice, even when the filters
+        hide it").
+BUILT:  2026-10-05 — `PersonaEditorView.vue` and its mock: a `watch` on the five filters empties the
+        box when the voice leaves the list; `fitFiltersToVoice()` on open and Revert; `pickVoice`'s
+        warning compares with the saved voice; `listedVoices` and "No other voice matches these
+        filters." gone. "Any language" in the 9 places. Docs: personas, whats-new; the filters plan
+        §5 (blast radius); RESEARCH §7. Checked: Biome, build, family guard; live on the dev app, a
+        new persona — a Kokoro voice, then Model → KittenTTS: "Pick a voice", 8 KittenTTS voices
+        offered; a Female voice, then Gender → Male: "Pick a voice"; a filter that keeps the voice
+        keeps it; every filter option alone and combined (Male × model / language / direction,
+        Female + English × model / direction, Written direction × gender / language) — each count
+        = the list = the box, problems 0, page errors 0. The mock, a saved persona: Gender → Male
+        empties the box; another voice → "306 lines stale"; emptied again → the warning goes;
+        Revert → Heart back, filters Any; opening June after a filter → filters Any. Not run: the
+        suites (the user's word).
+OPEN:   none.
+GO:     given 2026-10-05
+
 ### The Voice card's lines: one line under the voice, one reading width (decided 2026-10-05)
 STATE:  DECIDED 2026-10-05 — "your rec go", on the two as shown (the user, of "The voice is what the
         persona keeps. Its model comes with it. / 91 voices in the list. / Pick a voice first —
@@ -890,6 +940,8 @@ BUILT:  2026-10-05 — `PersonaEditorView.vue` and its mock: "Style Instructions
         is "Voice's language". Docs: personas, engines, voices, studio, ai-features, core-concepts,
         code-map, whats-new. Checked: Biome, vitest 147, build, family guard, smoke. Not checked:
         the page live, and the server suite (the user: "stop doing suite tests until i say").
+        The pin was reversed the same day — "The persona page's Voice box resets when a filter
+        drops its voice" above.
 OPEN:   none.
 GO:     given 2026-10-05
 

@@ -2,6 +2,11 @@
 
 ## v0.1.0
 
+- **A persona's Voice box empties when a filter leaves its voice out
+  (2026-10-05)** — pick a Kokoro voice, set *Model* to KittenTTS, and the box
+  goes back to *Pick a voice* instead of keeping the Kokoro voice; **↺ Revert**
+  brings the saved voice back. Every language filter now starts on **Any
+  language** ([Personas → Voice](personas.md#voice))
 - **A persona's "Made by" is now "Type" (2026-10-05)** — the word Voices uses —
   with **Trained** beside Built-in, Cloned, Designed and Blended (off until voice
   training is rebuilt), and **🧪 Train a LoRA** gone from Save

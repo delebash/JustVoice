@@ -45,7 +45,7 @@ const packFilters = computed(() => [
   { key: "gender", value: genderFilter.value, test: (v, g) => voiceGender(v) === g },
 ]);
 const langOptions = computed(() => [
-  { value: "", label: `All languages (${facetTotal(pack.value, packFilters.value, "lang")})` },
+  { value: "", label: `Any language (${facetTotal(pack.value, packFilters.value, "lang")})` },
   ...facetOptions(pack.value, packFilters.value, "lang", (v) => v.language, (c, n) => `${languageName(c) || c} (${n})`),
 ]);
 const genderOptions = computed(() => [

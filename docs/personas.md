@@ -225,9 +225,18 @@ voices left by the others*:
   is **Speaks**, below.
 
 The direction and *Type* counts follow the filters too. A choice that nothing
-fits any more stays in its list with **(0)**, so you can see it and change it.
-The persona's own voice stays in the **Voice** box even when the filters hide
-it, so a filter never makes the voice look unset.
+fits any more stays in its list with **(0)**, so you can see it and change it;
+any other option nothing fits is left out. *Voice's language* starts on **Any
+language**.
+
+**A filter that leaves your voice out empties the box.** Change a filter so the
+voice you picked is no longer in the list — pick a Kokoro voice, then set
+*Model* to KittenTTS — and the **Voice** box goes back to *Pick a voice*, the
+same as if you had never picked one, and everything below it waits for a voice
+again. **↺ Revert** puts the saved voice back, and sets the filters so it is in
+the list: *Type* to its type, the rest to Any. Opening a persona does the same.
+(Until 2026-10-05 the voice stayed in the box when the filters hid it, so a
+filter looked like it did nothing.)
 
 **Voice** is the one choice the persona keeps. One line under it says how many
 voices are in the list and that its model decides everything below — *91 voices
@@ -273,7 +282,8 @@ pronouns.
 stale: *Changing this makes June's 61 lines stale.* When the new voice's model
 can't take written direction and some of those lines carry a direction of their
 own, it adds how many: *18 carry a written direction — Chatterbox Turbo won't
-perform them.* **Speaks** becomes the new voice's own language; change it
+perform them.* It compares with the saved voice, so picking the saved one back
+clears it. **Speaks** becomes the new voice's own language; change it
 afterwards for another language the model speaks. (Until 2026-10-05 it kept the
 old language whenever the new model could speak it.)
 
@@ -494,8 +504,9 @@ and each shows its progress under the buttons. (They were on Generate until
 **💾 Save** saves the page; on a new persona it creates the persona and the
 page becomes its page. Saving a persona that plays anyone says how many lines
 are now stale: *Saved. 61 lines are now stale.* **Save** stays off while
-nothing has changed or the name is blank. **↺ Revert** goes back to the last
-save.
+nothing has changed or the name is blank — a persona can be saved with no voice
+(its lines then *need a voice*). **↺ Revert** goes back to the last save, and
+sets the Voice card's filters so the saved voice is in the list.
 
 **Save as a new persona** (on a saved persona) makes a copy under the name you
 type, with everything on the page, and opens it; the persona you started from

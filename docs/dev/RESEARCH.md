@@ -669,6 +669,12 @@ blast radius.
   (since 2026-10-05; the audit of every filter set and what broke:
   [`2026-10-05-filters-narrow-each-other.md`](../plans/2026-10-05-filters-narrow-each-other.md)).
   — *code, 2026-10-05*.
+- The persona page is KeepAlive-cached (`App.vue:642`), and opening another persona used to
+  reset only its Voice card's Type (`load()` set `kind`), so direction, Model, Gender and
+  Voice's language carried over from the last persona; since 2026-10-05 `fitFiltersToVoice()`
+  resets them on open and Revert, and a filter change that leaves the voice out empties the
+  Voice box. — *code, 2026-10-05* ·
+  [`2026-10-05-filters-narrow-each-other.md`](../plans/2026-10-05-filters-narrow-each-other.md) §5.
 
 ---
 

@@ -230,7 +230,7 @@ const voiceFilters = computed(() => [
 const langFilterOptions = computed(() => {
   const opts = facetOptions(voices.value || [], voiceFilters.value, "lang", (v) => v.language, (c) => c);
   return languageOptionsFrom(opts.map((o) => o.value), {
-    allLabel: `All languages (${facetTotal(voices.value || [], voiceFilters.value, "lang")})`,
+    allLabel: `Any language (${facetTotal(voices.value || [], voiceFilters.value, "lang")})`,
     counts: new Map(opts.map((o) => [o.value, o.n])),
   });
 });

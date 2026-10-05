@@ -62,7 +62,7 @@ function makeCard(withKindFilter) {
     genders: computed(() => [{ value: "", label: "Any gender" },
       ...facetOptions(voices.value, filters.value, "gender", (v) => (GENDER_WORD[voiceGender(v)] ? voiceGender(v) : ""),
         (g, n) => `${GENDER_WORD[g]} (${n})`)]),
-    languages: computed(() => [{ value: "", label: "All languages" },
+    languages: computed(() => [{ value: "", label: "Any language" },
       ...facetOptions(voices.value, filters.value, "language", (v) => baseLang(v.language), (c, n) => `${languageName(c) || c} (${n})`)]),
     voiceOptions: computed(() => {
       const list = voice.value && !shown.value.includes(voice.value) ? [voice.value, ...shown.value] : shown.value;

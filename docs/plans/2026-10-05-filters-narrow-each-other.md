@@ -54,3 +54,24 @@ Built-in · Cloned · Designed · Blended.
 | Voices' `directionFilterOptions` replaces the static `DIRECTION_OPTIONS` in the select | `VoicesView.vue` template | the prefs-remembered engine filter (`voicesEngineFilter`) |
 | Cast's `directionOptions`, Personas' `directionOptions` / `usageOptions` | their templates | Cast's remembered `studioPersonaModelFilter` |
 | Render's `inFilter` over `passesFilters` | `rows` | the server's `counts` still feed the blocked banner |
+
+## 5. The persona page's Voice box resets (2026-10-05, later)
+
+The decision is TASKS "The persona page's Voice box resets when a filter drops its voice; 'Any
+language'" (verbatim, "your rec go"). The pin is gone — §3's build kept a picked voice in the box
+when the filters hid it, so with a Kokoro voice picked, Model → KittenTTS looked like it did
+nothing. Now a filter change that leaves the voice out empties the box (a `watch` on the five
+filters); opening a persona and Revert set the filters so its voice is in the list
+(`fitFiltersToVoice`: Type to its type, the rest to Any — the page is KeepAlive-cached, so the
+last persona's filters used to carry over); the voice-change warning compares with the SAVED
+voice, since the box's previous voice is now often none. Every language filter's "All languages"
+is "Any language". Rejected: keeping every option greyed at (0) — the user: "that may be a big
+uncesessary list"; §1's rule stands (options nothing fits stay hidden).
+
+| Change | Callers / readers (greps run 2026-10-05) | Already on the path |
+|---|---|---|
+| `listedVoices` removed | `PersonaEditorView.vue:382,386` · `MockPersonaEditorView.vue:202,206` — its only uses | `docs/personas.md:229-230` (rewritten) |
+| `voiceEmptyHint` loses "No other voice matches these filters." | `PersonaEditorView.vue:392,998,1011` · `MockPersonaEditorView.vue:212,634,645` | — |
+| The filters fit the voice on open and Revert | `kind.value =` before: `PersonaEditorView.vue:208` (open), `:333` (the direction watch, unchanged), `:887` (Revert); the mock `:183`, `:507`, `:562` | `watch(kind)` already cleared Model; `onKept` already cleared the three dropdown filters before picking the kept voice |
+| The voice-change warning compares with the saved voice | `voiceChange`: `PersonaEditorView.vue:405,421,854,886,1053-1056` (before the change) | Save (`:854`) and Revert (`:886`) clear it |
+| "All languages" → "Any language" | `PersonaEditorView.vue:348` · `MockPersonaEditorView.vue:198` · `PersonasView.vue:112` · `MockPersonasView.vue:84` · `StudioCast.vue:178` · `MockVoiceCardOptions.vue:65` · `VoicesView.vue:233` · `PersonaBlendMaker.vue:65` · `MockBlendMaker.vue:48` | no doc or test named it (`grep -rn "All languages" docs/*.md docs/dev/*.md scripts`) |

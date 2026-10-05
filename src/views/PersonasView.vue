@@ -109,7 +109,7 @@ const modelOptions = computed(() => {
 const directionOptions = computed(() =>
   facetChoices(personas.value, personaFilters.value, "direction", DIRECTION_OPTIONS, (p, d) => p.directed_by === d));
 const languageOptions = computed(() => [
-  { value: "", label: "All languages" },
+  { value: "", label: "Any language" },
   ...facetOptions(personas.value, personaFilters.value, "language", (p) => p.speaks, (c, n) => `${languageName(c) || c} (${n})`),
 ]);
 const usageOptions = computed(() => {

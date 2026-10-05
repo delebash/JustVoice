@@ -195,15 +195,11 @@ const genderOptions = computed(() => [
     (v) => (voiceGender(v) === "?" ? "" : voiceGender(v)), (g, n) => `${GENDER_WORD[g] || g} (${n})`),
 ]);
 const languageFilterOptions = computed(() => [
-  { value: "", label: "All languages" },
+  { value: "", label: "Any language" },
   ...facetOptions(voices.value, voiceFilters.value, "language",
     (v) => baseLang(v.language), (c, n) => `${languageName(c) || c} (${n})`),
 ]);
-const listedVoices = computed(() => {
-  const cur = voice.value;
-  return cur && !shownVoices.value.some((v) => v.id === cur.id) ? [cur, ...shownVoices.value] : shownVoices.value;
-});
-const voiceOptions = computed(() => listedVoices.value.map((v) => ({
+const voiceOptions = computed(() => shownVoices.value.map((v) => ({
   value: v.id,
   label: [voiceLabel(v), kindOf(v) !== "builtin" ? voiceKindWord(v) : "", DIRECTION_WORD[v.directed_by] || "sliders only"]
     .filter(Boolean).join(" · "),
@@ -212,7 +208,7 @@ const voiceSelectValue = computed(() => voice.value?.id || "");
 const voiceEmptyHint = computed(() => {
   if (shownVoices.value.length) return "";
   if (voices.value.some((v) => kindOf(v) === kind.value)) {
-    return voice.value ? "No other voice matches these filters." : "No voice of this kind matches these filters.";
+    return "No voice of this kind matches these filters.";
   }
   return {
     builtin: "No built-in voices — install a speech model on AI Settings → Speech engines.",
@@ -243,18 +239,42 @@ function onKept(v) {
   pickVoice(v.id);
 }
 const voiceChange = ref(null);
+// A filter change that leaves the voice out of the list empties the box, the
+// same as if none was ever picked (decided 2026-10-05: "if you have a voice
+// selected and change the filter and that changes the voice list then that
+// voice no longer shows"). It used to stay pinned in the box, so the filter
+// looked like it did nothing.
+watch([directionFilter, kind, modelFilter, genderFilter, languageFilter], () => {
+  const cur = voice.value;
+  if (!cur || shownVoices.value.some((v) => v.id === cur.id)) return;
+  draft.value.voice_id = "";
+  voiceChange.value = null;
+});
+// Opening a persona, and Revert, set the filters so its voice is in the list:
+// Type to the voice's type, the rest to Any.
+function fitFiltersToVoice() {
+  directionFilter.value = "";
+  modelFilter.value = "";
+  genderFilter.value = "";
+  languageFilter.value = "";
+  kind.value = voice.value ? kindOf(voice.value) : "builtin";
+}
 function pickVoice(id) {
   const v = voices.value.find((x) => x.id === id);
   if (!v || !draft.value) return;
-  const before = voice.value;
   draft.value.voice_id = id;
   // Speaks becomes the new voice's own language (decided 2026-10-05).
   const speaks = v.speaks || [];
   draft.value.language = speaks.length === 1 ? speaks[0] : (v.language || speaks[0] || "");
+  // The warning compares with the SAVED voice, so it still shows after a
+  // filter emptied the box (decided 2026-10-05).
   const lines = usage.value?.total_lines || 0;
-  if (before && before.id !== v.id && lines) {
+  const savedVoice = saved.value?.voice_id || "";
+  if (savedVoice && savedVoice !== v.id && lines) {
     const directed = usage.value?.directed_lines || 0;
     voiceChange.value = { lines, directed, lost: v.directed_by !== "words" ? (v.model_name || v.engine) : "" };
+  } else {
+    voiceChange.value = null;
   }
 }
 
@@ -504,7 +524,7 @@ function saveAsNew() {
 function revert() {
   draft.value = saved.value ? fromPersona(saved.value) : copyOf(opened.value || blank());
   voiceChange.value = null;
-  if (voice.value) kind.value = kindOf(voice.value);
+  if (voice.value) fitFiltersToVoice();
 }
 onBeforeRouteLeave(async () => {
   if (!dirty.value) return true;
@@ -559,7 +579,7 @@ function load() {
       directed_lines: list.reduce((n, u) => n + (u.directed || 0), 0),
     };
   }
-  kind.value = voice.value ? kindOf(voice.value) : "builtin";
+  fitFiltersToVoice();
 }
 watch(personaId, (id, before) => { if (id && id !== before) load(); }, { immediate: true });
 watch([() => draft.value?.name, isNew], publishCrumbs, { immediate: true });
