@@ -331,16 +331,21 @@ None runs today (4.1), so this is "where they get built", not "what we lose".
 
 | Native | Electron built-in? | Options (licence) | Lean |
 |---|---|---|---|
-| **Hold-to-talk** — global key-down *and* key-up, left/right modifiers | **No.** `globalShortcut` fires on press only, no left/right variants, no modifier-only chords | `uiohook-napi` 1.5.5 — MIT wrapper, but compiles in libuiohook, **LGPL-3.0-or-later → rejected**; `node-global-key-listener` — archived, X11 only → rejected; **napi-rs over the existing keytap code** (keytap 0.4.0 MIT/Apache-2.0; napi 3.14.0 MIT; Node-API is ABI-stable) | a napi-rs addon over `hotkey_monitor.rs`. keytap's Windows and Linux backends are only "compile-verified" upstream — spike on real Windows first |
-| **System audio capture** | **Windows: yes** — `getDisplayMedia` + `setDisplayMediaRequestHandler` with `audio: 'loopback'`. macOS: CoreAudio Tap by default since Electron 39 (needs `NSAudioCaptureUsageDescription`), but open bug electron#52738 kills the track on the custom-handler path. Linux: no backend; `getUserMedia` on the PulseAudio monitor device (today's `linux.rs` idea) | napi-rs over `macos.rs` / `linux.rs` as the fallback | Windows built-in; spike macOS and Linux built-in first. Output becomes a MediaStream, not base64 WAV |
-| **Paste the text into the focused app** | clipboard yes (main process); **system-wide key injection no** | `robotjs` 0.9.1 (MIT, revived 2026, N-API prebuilds); `@nut-tree/nut-js` gone from public npm (paid prebuilds) → rejected; the existing `synthetic_keys.rs` in the same napi-rs addon | Electron `clipboard` with a real save/restore (today's code **empties** the clipboard after 500 ms on Windows, and hard-codes the macOS V keycode — wrong off QWERTY), and the key send in the hotkey addon |
+| **Hold-to-talk** — global key-down *and* key-up, left/right modifiers | **No.** `globalShortcut` fires on press only, no left/right variants, no modifier-only chords | `uiohook-napi` 1.5.5 — MIT wrapper, but compiles in libuiohook, **LGPL-3.0-or-later → rejected**; `node-global-key-listener` — archived, X11 only → rejected; napi-rs over the existing keytap code (keytap 0.4.0 MIT/Apache-2.0; napi 3.14.0 MIT) — rejected 2026-10-05, it keeps Rust for one thing | **decided: a C++ addon** (Node-API, ABI-stable) written against the OS — `SetWindowsHookEx(WH_KEYBOARD_LL)` on Windows, an event tap on macOS (Input Monitoring), evdev/X11 on Linux |
+| **System audio capture** | **Windows: yes** — `getDisplayMedia` + `setDisplayMediaRequestHandler` with `audio: 'loopback'`. macOS: CoreAudio Tap by default since Electron 39 (needs `NSAudioCaptureUsageDescription`), but open bug electron#52738 kills the track on the custom-handler path. Linux: no backend; `getUserMedia` on the PulseAudio monitor device (today's `linux.rs` idea) | the C++ addon as the fallback (ported from `macos.rs` / `linux.rs`) | Windows built-in; spike macOS and Linux built-in first. Output becomes a MediaStream, not base64 WAV |
+| **Paste the text into the focused app** | clipboard yes (main process); **system-wide key injection no** | `robotjs` 0.9.1 (MIT, revived 2026, N-API prebuilds); `@nut-tree/nut-js` gone from public npm (paid prebuilds) → rejected; the key send in the same C++ addon (`SendInput` / `CGEventPost`) | Electron `clipboard` with a real save/restore (today's code **empties** the clipboard after 500 ms on Windows, and hard-codes the macOS V keycode — wrong off QWERTY — so don't copy it), and the key send in the C++ addon |
 | **Play to several output devices** | **yes** — `HTMLMediaElement.setSinkId` / `AudioContext.setSinkId` (one per device; clocks not sample-locked); allow the `media` and `speaker-selection` permissions | — | setSinkId, no native code (an improvement: macOS WKWebView has no `AudioContext.setSinkId`) |
 | **macOS permissions** | Accessibility: `systemPreferences.isTrustedAccessibilityClient`; Input Monitoring: none | the addon (`IOHIDCheckAccess`), or `node-mac-permissions` 2.5.0 (MIT) | built-in + the addon |
 
-So **"Electron drops Rust" holds fully for JustWrite and docgen.** For JustVoice it holds for
-the shell, and the dictation features — when they're built — keep a small napi-rs addon
-(hotkeys + paste, ~350–450 lines of the existing Rust), unless an MIT, LGPL-free key hook turns
-up.
+So **Rust leaves the family entirely.** For JustWrite and docgen nothing native is left. For
+JustVoice, the dictation features — when they're built — get a small **C++ addon** (hotkeys +
+the paste keystroke, ~400 lines written fresh against the OS). Decided 2026-10-05, the user:
+*"c++ addon, record it"*, on the option shown — "A C++ addon. The family would then be
+JavaScript plus C++, and C++ is already ours through audio.cpp. It's about 400 lines written
+fresh against the OS directly: a low-level keyboard hook and key sending on Windows, the macOS
+and Linux equivalents." Rejected: a Rust addon over today's code (keeps Rust for one thing),
+`uiohook-napi` (LGPL), `robotjs` alone (it can send the paste but can't see a key released).
+If dictation is dropped, there is no native code outside audio.cpp at all.
 
 ### 4.4 Electron facts (*web*, 2026-10-05)
 
@@ -649,8 +654,8 @@ moves.
    same schema.
 6. **The dev data root**: with one JS ladder, the dev app and a headless run can share one root.
    Where should it live? (Today: `src-tauri/target/debug/data`, which goes away with Tauri.)
-7. **Dictation, when it's built**: accept a JustVoice-only napi-rs addon over the existing Rust
-   (hotkeys + paste)? Lean: yes. Not needed for the move — nothing of it runs today (4.1).
+7. ~~**Dictation, when it's built**: which native addon?~~ **Answered 2026-10-05: a C++ addon**
+   — "c++ addon, record it" (4.3). Not needed for the move — nothing of it runs today (4.1).
 8. **JustWrite on phones** (the agent's three): separate phone and desktop libraries, moved by
    zip, for a first release? A cloud-only AI phone app (no local models)? And a Mac with Xcode
    26 for iOS builds — is one available?
