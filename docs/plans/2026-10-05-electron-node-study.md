@@ -699,8 +699,9 @@ JavaScript plus C++, and C++ is already ours through audio.cpp. It's about 400 l
 fresh against the OS directly: a low-level keyboard hook and key sending on Windows, the macOS
 and Linux equivalents." Only when dictation is built.
 
-**Still open:** Q8's last part — is a Mac with Xcode 26 available for iOS builds? The user's to
-answer.
+**Q8's last part, answered 2026-10-05:** *"no i dont have a mack"*. iOS builds need macOS with
+Xcode 26, so how iOS gets built (a rented or cloud Mac, or a macOS build runner — GitHub Actions
+stay off by the user's ruling) is open for the phone plan. Android builds on Windows.
 
 What the rulings settle elsewhere in this doc: §2.2 option (c) for Signalsmith (pitch and speed
 move into audio.cpp with the rest); §5.2 shape B; §6 the one-binary headless; §8 step 1 is no
@@ -710,7 +711,10 @@ longer conditional and the schema stays identical.
 
 ## 10 · Found on the way — not part of the move, not fixed
 
-Each is code-verified (✓) or agent-measured; none was changed. Say which to track.
+Each is code-verified (✓) or agent-measured; none was changed. All tracked 2026-10-05 at the
+user's word ("track all side finidngs"): the JustVoice ones as FINDING items in JustVoice's
+TASKS, the data-dir ladder and the hard-kill stop in the kit's TASKS (the shared Electron main
+module closes both).
 
 - ✓ **The release recipe's sidecar dies on start** (§1), and the release job installs
   `./server[dev]` without the `bundle` extra, so the kit is never in the frozen build

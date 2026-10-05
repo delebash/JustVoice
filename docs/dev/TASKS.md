@@ -56,6 +56,63 @@
 
 ## Waiting on your decision
 
+### FINDING — the release recipe's frozen server dies on start, and never contains the kit
+STATE:  FINDING — measured 2026-10-05 (stack study §1, §10). Tracked at your word: "track all
+        side finidngs".
+BUILT:  `.github/workflows/release.yml:68-74` freezes `server/justvoice/__main__.py`, whose
+        `from .serve import main` (`__main__.py:25`) dies as a top-level script: "attempted
+        relative import with no known parent package". `release.yml:42` installs `./server[dev]`
+        without the `bundle` extra, so `llm_runner` is never in the build. An absolute-import
+        entry with `--collect-submodules justvoice --collect-submodules llm_runner --collect-data
+        justvoice` builds 76.9 MB and runs.
+OPEN:   an absolute-import entry and the `bundle` extra in the recipe — or nothing, if the
+        Electron move ("The family moves to Electron…" below) retires PyInstaller first.
+GO:     needed.
+
+### FINDING — JustVoice's tray items, update check and "Open log file" do nothing
+STATE:  FINDING — code-verified 2026-10-05 (stack study §4.1).
+BUILT:  they read `window.__TAURI__` (`src/App.vue:425-437`; `src/views/SettingsView.vue:525-576`,
+        `:910-924`), which exists only with `withGlobalTauri` — set in no `tauri.conf.json`. So the
+        tray's Open settings / About / Copy URL do nothing, the updater always says "up to date",
+        and Open log file always says it needs the desktop app. No updater plugin is in any
+        `Cargo.toml`. JustWrite and docgen read `__TAURI_INTERNALS__`, which works.
+OPEN:   route them through the kit's shell door (`isTauriShell`, `services/native.js`) — or let
+        the Electron move's preload bridge replace them.
+GO:     needed.
+
+### FINDING — `docs/mastering.md` says the analyzer uses pyloudnorm; nothing imports it
+STATE:  FINDING — code-verified 2026-10-05 (stack study §2.2).
+BUILT:  `docs/mastering.md:19`. `server/pyproject.toml:27` declares pyloudnorm; no module or test
+        imports it. ACX QC uses the analyzer's RMS and peak (`export_audiobook.py:167-180`);
+        loudness is ffmpeg's `loudnorm` (`mastering.py:174-178`). Also declared and never
+        imported: `requests`, `rich`.
+OPEN:   correct the doc line; drop the three unused dependencies.
+GO:     needed.
+
+### FINDING — the Kokoro "mean" blend changes in its last bits on every server restart
+STATE:  FINDING — code-verified + measured 2026-10-05 (stack study §2.2).
+BUILT:  `_kokoro_pack` returns the voice names as `set(pack)` (`engines/blending.py:212`), and
+        `_kokoro_pack_mean` (`:227-238`) sums float32 voices in that order — which follows
+        Python's per-process string hashing. Three seeds: 82 % of values differ, max 4.5e-8.
+OPEN:   sum in `voices.json` order (a list, not a set); the C++ port of the audio math must too.
+GO:     needed.
+
+### FINDING — JustVoice's OpenAPI says the licence is Apache-2.0; the project is MIT
+STATE:  FINDING — code-verified 2026-10-05.
+BUILT:  `server/justvoice/app.py:139` — `license_info={"name": "Apache-2.0", ...}`.
+OPEN:   MIT there.
+GO:     needed.
+
+### FINDING — `synthetic_keys.rs` empties the clipboard after a paste and hard-codes the macOS V
+STATE:  FINDING — code-verified 2026-10-05 (stack study §4.3). Dead code: nothing calls
+        `paste_final_text`.
+BUILT:  `src-tauri/src/synthetic_keys.rs:290-307` clears the clipboard after the paste on Windows
+        — "Minimal: just clear the clipboard", no restore; `:80` sends Cmd+V as keycode `0x09`
+        (ANSI V — wrong off QWERTY).
+OPEN:   nothing in Rust (it goes with Tauri); the C++ dictation addon must save and restore the
+        clipboard and look the V key up from the keyboard layout.
+GO:     needed.
+
 ### `DatasetTab.vue` hand-rolls its JSON export — move it onto the kit's `saveBlob`
 STATE:  DECIDED 2026-09-19 — "your rec go" on: "replace the six hand-rolled
         lines with saveBlob(blob, name, { filterName: "Dataset script",
@@ -719,7 +776,8 @@ NOT:    ASP.NET Core (a third language; its speed is moot — the heavy work is 
         are in the study's §9 under each ruling.
 BUILT:  nothing. The study (2026-10-05): `docs/plans/2026-10-05-electron-node-study.md`; facts
         in RESEARCH §6 and the kit's RESEARCH §2.
-OPEN:   Q8's last part — is a Mac with Xcode 26 available for iOS builds (yours); then the plan.
+OPEN:   the plan. (Q8's last part answered — "no i dont have a mack": iOS builds need macOS, so
+        how iOS gets built is open for the phone plan; Android builds on Windows.)
 GO:     the study and the rulings given 2026-10-05; the plan and the move needed.
 
 ### The header and Script hear an AI-model load made anywhere
