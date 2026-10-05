@@ -1,7 +1,8 @@
 <!-- SPDX-License-Identifier: MIT -->
 # The family moves to Electron and a Node server — the study
 
-**Status:** study done 2026-10-05; waiting on the questions in §9. Tracker: `docs/dev/TASKS.md` → "The family moves to
+**Status:** study done 2026-10-05; the rulings are in §9 (all decided that day except whether a
+Mac is available for iOS builds). Next: the plan, which needs its own go. Tracker: `docs/dev/TASKS.md` → "The family moves to
 Electron and a Node server; Tauri and Python go — the study first". Facts land in
 `docs/dev/RESEARCH.md` §6 (JustVoice) and `../just-llm-runner/docs/dev/RESEARCH.md` (the shared
 stack) in the same change.
@@ -614,7 +615,7 @@ replaces while that Python still runs.
    kill of main (does it orphan?); the koffi Job Object in a `utilityProcess` (the agent proved
    it in plain Node); Kysely (or raw SQL) over the chosen driver and over Capacitor SQLite, if
    the phone is to share query code.
-1. **The audio math into audio.cpp** (if you confirm — §9 Q1), while Python is still the server:
+1. **The audio math into audio.cpp** (decided — §9 Q1), while Python is still the server:
    Python calls the new endpoints, and the agent's comparison harness proves them against
    today's functions. That shrinks JustVoice's later port to pure orchestration.
 2. **The kit**: `llm_runner` → JavaScript — `llm/` written browser-safe (storage, HTTP and file
@@ -628,37 +629,82 @@ replaces while that Python still runs.
 5. **JustVoice** (36,380 lines, 188 routes) — last and largest, on a proven kit and shell.
 
 The check at every step: the old and new servers run against the same database and every route
-is diffed — the ported tests are the spec, and the schema stays identical unless you choose a
-reset (§9 Q5). The family guard and the rule docs (7.2, 7.3) change with the first app that
+is diffed — the ported tests are the spec, and the schema stays identical (§9 Q5). The family guard and the rule docs (7.2, 7.3) change with the first app that
 moves.
 
 ---
 
-## 9 · Questions for the user
+## 9 · The rulings
 
-1. **The audio math: all of it into audio.cpp?** You leaned that way ("i think all the work
-   should be in audo cpp"); my answer was yes, with five conditions — its own module and
-   endpoints in the fork; endpoints that work with no model loaded; no sample math left in the
-   server; mastering stays ffmpeg; Python stays the reference until the C++ matches
-   (bit-identical except Signalsmith, which gets one deliberate cache reset). Not yet recorded
-   as decided — needs your word.
-2. **The desktop shape: plain Electron, with Capacitor only for the phones (shape B)?** Lean:
-   yes (§5.2). Ionic Framework isn't needed either way; Capawesome's paid plugins aren't needed.
-3. **Where the window loads its UI from**: an `app://` protocol (the window shows even if the
-   server fails, with the kit's connection-error state) or the server's own origin
-   (same-origin, but a dead server is a blank window)? Lean: `app://`.
-4. **The headless command**: one binary (`ELECTRON_RUN_AS_NODE`, the `runAsNode` fuse stays on)
-   or plain Node? Lean: one binary.
-5. **The databases**: the JavaScript servers open today's databases as they are (same schema —
-   which also makes the old-vs-new route diff possible), or start fresh and you reset? Lean:
-   same schema.
-6. **The dev data root**: with one JS ladder, the dev app and a headless run can share one root.
-   Where should it live? (Today: `src-tauri/target/debug/data`, which goes away with Tauri.)
-7. ~~**Dictation, when it's built**: which native addon?~~ **Answered 2026-10-05: a C++ addon**
-   — "c++ addon, record it" (4.3). Not needed for the move — nothing of it runs today (4.1).
-8. **JustWrite on phones** (the agent's three): separate phone and desktop libraries, moved by
-   zip, for a first release? A cloud-only AI phone app (no local models)? And a Mac with Xcode
-   26 for iOS builds — is one available?
+All decided 2026-10-05 except Q8's last part. Q7 by *"c++ addon, record it"* (4.3); Q1–Q6 and
+Q8 by **"your rec go"**, on these recommendations, pasted as shown:
+
+> 1. **Audio math: all of it into audio.cpp?** Yes, with the five conditions:
+>    - its own module and endpoints in the fork;
+>    - the endpoints work with no model loaded;
+>    - no sample math left in the server;
+>    - mastering stays ffmpeg;
+>    - Python stays the reference until the C++ matches.
+>
+> 2. **Desktop: plain Electron, with Capacitor for phones only?** Yes.
+>    - Capawesome's Electron platform is three months old.
+>    - It would force our native calls into plugin classes.
+>    - Its default security policy blocks our local server.
+>    - Its desktop SQLite is a paid plugin.
+>    - Plain Electron leaves the door open to switch later.
+>
+> 3. **Where the window loads its UI?** From `app://`.
+>    - The window still opens if the server fails, and shows the kit's connection-error state.
+>    - It's the same shape as today's `tauri://`, and the kit's server-address code already
+>      handles it.
+>
+> 4. **Headless?** One binary: the app's own exe run as Node.
+>    - Nothing extra to ship.
+>    - The native modules (SQLite, the process-tree job) are built once.
+>    - The cost, keeping the "run as Node" switch on, only helps someone who can already run
+>      programs on the machine.
+>
+> 5. **Databases?** Keep today's schema exactly.
+>    - No reset is needed.
+>    - The old and new servers can be diffed route by route on your real data.
+>    - After the move, the usual no-migrations rule applies again.
+>
+> 6. **Dev data root?** `<repo>/data`, gitignored, shared by the dev app and headless.
+>    - With one ladder the two can't drift apart again, so the `--data-dir` trap is gone.
+>    - When Tauri goes, today's `src-tauri/target/debug/data` gets renamed there once. That's
+>      instant on the same drive, and it holds your models and caches.
+>
+> 8. **JustWrite on phones:**
+>    - Separate libraries moved by zip for a first release? Yes; sync is a large design of its
+>      own.
+>    - Cloud-only AI on the phone? Yes; no maintained llama.cpp plugin exists for Capacitor.
+>    - A Mac with Xcode 26 for iOS builds? That one is yours to answer. iOS builds can't be made
+>      without macOS.
+
+Q1's five conditions in full, as shown earlier the same day (the user had asked *"i think all
+the work should be in audo cpp, what do you think?"*):
+
+> 1. **Keep the DSP in its own module in the fork**, with its own files and endpoints, apart from
+>    the model code. That keeps upstream merges clean, since every addition widens the distance
+>    from 0xShug0/audio.cpp.
+> 2. **The endpoints must work with no model loaded.**
+> 3. **The server does no sample math at all.** It passes audio and parameters to audio.cpp.
+> 4. **Mastering stays ffmpeg.** It's not our math, and its `loudnorm` is the standard.
+> 5. **Python stays the reference until the C++ is proven.** The agent's comparison harness
+>    already exists. Point it at the new endpoints and require bit-identical output everywhere
+>    except Signalsmith, which gets one deliberate cache reset.
+
+Q7, as shown and decided (*"c++ addon, record it"*): "A C++ addon. The family would then be
+JavaScript plus C++, and C++ is already ours through audio.cpp. It's about 400 lines written
+fresh against the OS directly: a low-level keyboard hook and key sending on Windows, the macOS
+and Linux equivalents." Only when dictation is built.
+
+**Still open:** Q8's last part — is a Mac with Xcode 26 available for iOS builds? The user's to
+answer.
+
+What the rulings settle elsewhere in this doc: §2.2 option (c) for Signalsmith (pitch and speed
+move into audio.cpp with the rest); §5.2 shape B; §6 the one-binary headless; §8 step 1 is no
+longer conditional and the schema stays identical.
 
 ---
 

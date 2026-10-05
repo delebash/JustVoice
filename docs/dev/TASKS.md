@@ -697,32 +697,30 @@ BUILT:  2026-10-05 — plan + blast radius `docs/plans/2026-10-05-narrator-flow.
 OPEN:   none.
 GO:     given 2026-10-05 ("your rec on all go")
 
-### The family moves to Electron and a Node server; Tauri and Python go — the study first
-STATE:  DECIDED 2026-10-05 (the direction) — "i think we go with electron and drop tauri either
-        ionic aor capawesome but do the study go", on the lean shown: "Electron on desktop,
-        Capacitor on mobile, a Node server. Against Tauri + Node, Electron drops Rust and the
-        sidecar spawn and supervision code; runs one runtime instead of two; uses the same browser
-        as the smoke gate on every OS. Tauri + Node only buys a lighter shell and less RAM."
-        Family-wide: JustVoice, JustWrite, docgen and the kit. Phone shell — Ionic's Capacitor or
-        Capawesome's Capacitor Electron platform — OPEN. (The study found it isn't either/or:
-        phones use Capacitor either way; the open choice is the desktop shape — study §5.1, §9 Q2.)
-        Q7 DECIDED 2026-10-05 — "c++ addon, record it", on the option shown: "A C++ addon. The
-        family would then be JavaScript plus C++, and C++ is already ours through audio.cpp. It's
-        about 400 lines written fresh against the OS directly: a low-level keyboard hook and key
-        sending on Windows, the macOS and Linux equivalents." Only when dictation is built.
+### The family moves to Electron and a Node server; Tauri and Python go
+STATE:  DECIDED 2026-10-05, in three words from you — every ruling's full text as shown is in
+        the study's §9 (READ IT before planning or coding any of this):
+        - the direction — "i think we go with electron and drop tauri either ionic aor capawesome
+          but do the study go": Electron on desktop, Capacitor on phones, a Node server, in
+          plain JavaScript; family-wide (JustVoice, JustWrite, docgen, the kit);
+        - Q7 — "c++ addon, record it": dictation's hotkeys + paste, when built, are a ~400-line
+          C++ addon written against the OS;
+        - Q1–Q6 and Q8 — "your rec go": 1 all the audio math into audio.cpp, with the five
+          conditions · 2 plain Electron, Capacitor for the phones only · 3 the window loads its UI
+          from `app://` · 4 headless = the app's own exe run as Node · 5 the JavaScript servers
+          keep today's schema exactly · 6 the dev data root is `<repo>/data`, today's
+          `src-tauri/target/debug/data` renamed there once · 8 phones: separate libraries moved
+          by zip, cloud-only AI.
 WHY:    Python came in for the PyTorch speech engines (2026-06-16: "JustVoice MUST have Python
         (STT/TTS) anyway"); since 2026-10-01 every model runs in audio.cpp. Tauri's sidecar is
         desktop-only, so a phone runs JavaScript or native code — never Python.
 NOT:    ASP.NET Core (a third language; its speed is moot — the heavy work is in audio.cpp and
-        llama.cpp). Tauri + a Node sidecar (two runtimes). Keeping the Python sidecar. For
-        dictation: a Rust addon over today's code (keeps Rust for one thing); `uiohook-napi`
-        (LGPL); `robotjs` alone (no key-release hook).
-BUILT:  nothing. The study is done (2026-10-05): `docs/plans/2026-10-05-electron-node-study.md`;
-        facts in RESEARCH §6 and the kit's RESEARCH §2.
-OPEN:   your answers to the study's §9 — seven questions left, first whether all the audio math goes
-        into audio.cpp ("i think all the work should be in audo cpp, what do you think?" —
-        answered yes with five conditions, not yet confirmed); then a plan.
-GO:     the study given 2026-10-05 ("do the study go"); the move itself needed.
+        llama.cpp). Tauri + a Node sidecar (two runtimes). Keeping the Python sidecar. The rest
+        are in the study's §9 under each ruling.
+BUILT:  nothing. The study (2026-10-05): `docs/plans/2026-10-05-electron-node-study.md`; facts
+        in RESEARCH §6 and the kit's RESEARCH §2.
+OPEN:   Q8's last part — is a Mac with Xcode 26 available for iOS builds (yours); then the plan.
+GO:     the study and the rulings given 2026-10-05; the plan and the move needed.
 
 ### The header and Script hear an AI-model load made anywhere
 STATE:  DECIDED 2026-10-05 — "your rec go" on, as shown: "1. The header reads the kit's shared
