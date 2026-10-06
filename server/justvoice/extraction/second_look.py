@@ -16,6 +16,12 @@ of the chapter after. A cast member it names is saved marked to check (source
 names who is not in the cast is kept on the row (`not_in_cast`) so Script can
 offer to add them. Only blank lines are asked about, so a chapter with none
 costs nothing; a failed call leaves its line as it was.
+
+On Analyze's stream (decided 2026-10-06 — TASKS "Analyze's strip says when it's
+on the second look"): each call streams its tokens on to the strip as the main
+call's do, the strip counts the lines ("second look · 2 of 6 lines"), the calls'
+tokens join the run's usage, and a cancel stops the look before its next line —
+the stream then saves the chapter as it stood (extraction_api).
 """
 
 from __future__ import annotations
@@ -25,7 +31,7 @@ import logging
 import re
 import time
 
-from ..engines.llm.run import run_feature
+from ..engines.llm.run import run_feature, stream_feature
 
 log = logging.getLogger(__name__)
 
@@ -150,12 +156,21 @@ def second_look(
     cfg,
     skip: set[int] | frozenset[int] = frozenset(),
     raw_out: dict | None = None,
+    on_delta=None,
+    on_step=None,
+    stop=None,
 ) -> None:
     """Ask once more about each spoken row with no speaker; changes `rows` in
     place. `resolve(raw)` maps the model's answer to a real cast id or
     "unknown"; `cast_names(name)` says whether a name is a cast member's (a
     cast member is never offered as someone to add). `skip` = row indices not
-    to ask about (lines the user set — their rows are never written)."""
+    to ask about (lines the user set — their rows are never written).
+
+    `on_delta(text)`: when set, each call streams and its text is passed on, as
+    the main call's is. `on_step(done, total, rows)`: called as the look starts
+    and after each line — points where `rows` is whole, so a caller can keep a
+    copy. `stop()`: asked before each line; True ends the look there. The calls'
+    tokens and time are added to `raw_out["usage"]` when the main call left one."""
     asks = [i for i, r in enumerate(rows)
             if r.kind == "dialogue" and r.speaker == "unknown" and i not in skip]
     report = {"asked": len(asks), "named": 0, "not_in_cast": [], "failed": 0, "seconds": 0.0}
@@ -166,39 +181,82 @@ def second_look(
     before = _tail(before_text, cfg.second_look_before) if before_text else "(none — this is the first chapter)"
     after = _head(after_text, cfg.second_look_after) if after_text else "(none — this is the last chapter)"
     t0 = time.time()
-    for i in asks:
-        row = rows[i]
-        variables = {
-            "cast": cast_text,
-            "before": before,
-            "chapter": around(paragraphs, row.paragraph_idx, row.text, cfg.second_look_words),
-            "after": after,
-            "line": row.text.strip(),
-        }
+    usage = (raw_out or {}).get("usage")
+    if on_step is not None:
+        on_step(0, len(asks), rows)
+    for k, i in enumerate(asks):
+        if stop is not None and stop():
+            report["stopped"] = True
+            break
         try:
-            resp = run_feature(ACTION, variables)
-        except Exception as e:  # noqa: BLE001 — an extra: a failure leaves the line as it was
-            report["failed"] += 1
-            log.warning("second look failed on %r: %s", row.text[:60], e)
-            continue
-        ans = parse(getattr(resp, "text", "") or "")
-        who = resolve(ans.get("speaker"))
-        try:
-            conf = float(ans.get("confidence") or 0)
-        except (TypeError, ValueError):
-            conf = 0.0
-        if who not in ("unknown", "narrator", None, "") and not (use_floor and conf < floor):
-            row.speaker = who
-            row.confidence = conf
-            row.source = "second_look"
-            row.floored_from = None
-            row.not_in_cast = None
-            report["named"] += 1
-            continue
-        name = str(ans.get("not_in_cast") or "").strip().strip("\"'“”")
-        if name and len(name) <= 60 and name.lower() not in ("unknown", "narrator", "none") \
-                and not cast_names(name):
-            row.not_in_cast = name
-            if name not in report["not_in_cast"]:
-                report["not_in_cast"].append(name)
+            _look_at(rows[i], paragraphs, cast_text=cast_text, before=before, after=after,
+                     resolve=resolve, cast_names=cast_names, floor=floor, use_floor=use_floor,
+                     cfg=cfg, report=report, usage=usage, on_delta=on_delta)
+        finally:
+            if on_step is not None:
+                on_step(k + 1, len(asks), rows)
     report["seconds"] = round(time.time() - t0, 1)
+    if isinstance(usage, dict):
+        usage["duration_ms"] = int(usage.get("duration_ms") or 0) + int(report["seconds"] * 1000)
+
+
+def _add_usage(usage, prompt_tokens, completion_tokens) -> None:
+    if isinstance(usage, dict):
+        usage["prompt_tokens"] = int(usage.get("prompt_tokens") or 0) + int(prompt_tokens or 0)
+        usage["completion_tokens"] = int(usage.get("completion_tokens") or 0) + int(completion_tokens or 0)
+
+
+def _ask(variables: dict, usage, on_delta) -> str:
+    """One question; the reply's text. Streams when `on_delta` is set — the
+    prompt-eval frames are dropped: the strip shows "reading prompt" only before
+    a run's first token (decided 2026-10-06)."""
+    if on_delta is None:
+        resp = run_feature(ACTION, variables)
+        _add_usage(usage, getattr(resp, "prompt_tokens", 0), getattr(resp, "completion_tokens", 0))
+        return getattr(resp, "text", "") or ""
+    parts: list[str] = []
+    for delta in stream_feature(ACTION, variables):
+        if delta.done:
+            _add_usage(usage, delta.prompt_tokens, delta.completion_tokens)
+        elif delta.text:
+            parts.append(delta.text)
+            on_delta(delta.text)
+    return "".join(parts)
+
+
+def _look_at(row, paragraphs, *, cast_text, before, after, resolve, cast_names, floor,
+             use_floor, cfg, report, usage, on_delta) -> None:
+    """Ask about one line and write the answer onto its row."""
+    variables = {
+        "cast": cast_text,
+        "before": before,
+        "chapter": around(paragraphs, row.paragraph_idx, row.text, cfg.second_look_words),
+        "after": after,
+        "line": row.text.strip(),
+    }
+    try:
+        text = _ask(variables, usage, on_delta)
+    except Exception as e:  # noqa: BLE001 — an extra: a failure leaves the line as it was
+        report["failed"] += 1
+        log.warning("second look failed on %r: %s", row.text[:60], e)
+        return
+    ans = parse(text)
+    who = resolve(ans.get("speaker"))
+    try:
+        conf = float(ans.get("confidence") or 0)
+    except (TypeError, ValueError):
+        conf = 0.0
+    if who not in ("unknown", "narrator", None, "") and not (use_floor and conf < floor):
+        row.speaker = who
+        row.confidence = conf
+        row.source = "second_look"
+        row.floored_from = None
+        row.not_in_cast = None
+        report["named"] += 1
+        return
+    name = str(ans.get("not_in_cast") or "").strip().strip("\"'“”")
+    if name and len(name) <= 60 and name.lower() not in ("unknown", "narrator", "none") \
+            and not cast_names(name):
+        row.not_in_cast = name
+        if name not in report["not_in_cast"]:
+            report["not_in_cast"].append(name)

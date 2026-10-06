@@ -21,12 +21,13 @@ actionable message from LLMNotConfiguredError.
 from __future__ import annotations
 
 import asyncio
+import copy
 import json
 import logging
 import re
 from datetime import datetime, timezone
 from queue import SimpleQueue
-from threading import Thread
+from threading import Event, Thread
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -623,10 +624,12 @@ async def analyze_scene_stream_endpoint(
     /analyze — same cast/corrections resolution, same route pick, same parsing
     and floor — but the LLM reply streams, so a minute-long chapter shows live
     tokens instead of a silent wait. Frames are the family contract
-    (`data:{"delta"}` · `data:{"progress"}` · a final `data:{"done":true,...}`
-    carrying the usage names top-level PLUS everything AnalyzeSceneResponse
-    carries · `data:[DONE]`; errors as `data:{"error"}` — the stream has
-    started, so there is no HTTP status to send).
+    (`data:{"delta"}` · `data:{"progress"}` · `data:{"step":{"name":"second_look",
+    "done","total"}}` as the second look starts and after each line it asks
+    about · a final `data:{"done":true,...}` carrying the usage names top-level
+    PLUS everything AnalyzeSceneResponse carries · `data:[DONE]`; errors as
+    `data:{"error"}` — the stream has started, so there is no HTTP status to
+    send).
 
     The pipeline is sync + blocking (the kit's stream_action is), so it runs in
     a worker thread feeding a queue the generator drains.
@@ -637,7 +640,14 @@ async def analyze_scene_stream_endpoint(
     worker that persisted on its own turned the Cancel button into a lie —
     the toast said "Analyze cancelled" while the run rewrote the chapter
     seconds later, leaving the table on screen disagreeing with the rows in
-    the database until you navigated away and back."""
+    the database until you navigated away and back.
+
+    **Except in the second look (decided 2026-10-06):** a cancel there keeps
+    the main pass. The worker hands over a copy of the rows as the second look
+    starts and after each line (`on_step`), and a cancel saves that copy — the
+    main pass's speakers plus the lines the second look had named — and stops
+    the look before its next line. A cancel during the main pass still writes
+    nothing."""
     scene = db.query(Scene).filter(Scene.id == scene_id).first()
     if scene is None:
         raise not_found(f"scene {scene_id}")
@@ -661,6 +671,14 @@ async def analyze_scene_stream_endpoint(
     )
 
     q: SimpleQueue = SimpleQueue()
+    stop = Event()
+    # The chapter as the second look last left it whole — what a cancel during the
+    # second look saves. None until the second look starts.
+    kept: dict = {"rows": None}
+
+    def on_step(done: int, total: int, rows: list) -> None:
+        kept["rows"] = copy.deepcopy(rows)
+        q.put({"step": {"name": "second_look", "done": done, "total": total}})
 
     def worker() -> None:
         raw_out: dict = {}
@@ -673,6 +691,8 @@ async def analyze_scene_stream_endpoint(
                 on_progress=lambda p: q.put({"progress": p}),
                 marks=marks,
                 segments=segments,
+                on_step=on_step,
+                stop=stop.is_set,
             )
             usage = raw_out.get("usage") or {}
             q.put({
@@ -725,7 +745,29 @@ async def analyze_scene_stream_endpoint(
         finally:
             wdb.close()
 
+    def _save_on_cancel(rows: list) -> None:
+        """Cancel during the second look keeps what the run had (decided
+        2026-10-06). Synchronous on purpose: it runs while the stream is torn
+        down, before the event loop serves the page's reload that follows the
+        cancel."""
+        try:
+            _persist(rows)
+            log.info("analyze stream: cancelled in the second look — scene %s saved as it stood", scene_id)
+        except Exception:  # noqa: BLE001 — the run is gone; say so in the log
+            log.exception("analyze stream: saving the main pass on cancel failed")
+
     async def gen():
+        finished = False
+        try:
+            async for frame in frames():
+                yield frame
+            finished = True
+        finally:
+            stop.set()
+            if not finished and kept["rows"] is not None:
+                _save_on_cancel(kept["rows"])
+
+    async def frames():
         while True:
             item = await asyncio.to_thread(q.get)
             if item is None:
@@ -743,8 +785,16 @@ async def analyze_scene_stream_endpoint(
                 # on its own (the disconnect frame has to have landed), which
                 # is why it is second and not first.
                 if await request.is_disconnected():
-                    log.info("analyze stream: client gone — scene %s not written", scene_id)
+                    if kept["rows"] is not None:
+                        # Gone after the second look ended: the run is whole.
+                        _save_on_cancel(rows)
+                        kept["rows"] = None
+                    else:
+                        log.info("analyze stream: client gone — scene %s not written", scene_id)
                     break
+                # The whole run is being written now; a cancel from here on must
+                # not write the kept copy over it.
+                kept["rows"] = None
                 try:
                     item["persisted"] = await asyncio.to_thread(_persist, rows)
                 except HTTPException as e:

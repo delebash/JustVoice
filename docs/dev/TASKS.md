@@ -125,6 +125,66 @@ GO:     given 2026-08-17
 
 ## The next build
 
+### Analyze's strip says when it's on the second look, with its count and tokens (decided 2026-10-06)
+STATE:  DECIDED 2026-10-06 — "your rec go" (the user: "script bigger inside analyzing says stuck" ·
+        "shouldnt we change the progress bar info to not that we are running the second look
+        process so user knows whats going on" · "wait you want to add another progress strip not
+        just change the task name likke running second pass?" · "yes it says when its on second
+        pass shows token count and progress just like main pass, correct?"), on the answer as shown:
+        "the strip still reads Script · analyze · Bigger Inside. When the second look starts, it
+        shows second look · 2 of 6 lines with a bar. … 1. Server: during the second look, the
+        Analyze stream sends a short message when it starts and after each line. 2. Kit: the shared
+        stream runner … needs to pass this new one to the strip's count. … I'd build JustWrite as
+        well to check it. 3. 'stuck': … the second look should also stream its tokens, as the main
+        pass does. … Lean: keep the label and put 'second look · 2 of 6 lines' in the count slot."
+        And: "'reading prompt X%' won't show for each line … The final token total needs one fix …
+        I'd add the second look's calls so the finished total includes both. … Tokens per second
+        will dip a little in the second pass."
+WHY:    the second look ran a minute of silent model calls, so the strip said "stuck" on a healthy
+        run and nothing said what was running.
+        Then "your rec go" (the user: "add some words about whgat second pass is for and why it is
+        needed" · "and if you cancel second pass it continues with main pass"), on the two as shown:
+        "1. Cancel in the second look keeps the main pass, done the one-request way above?" — that
+        is: "Cancel during the main pass still writes nothing … Cancel during the second look saves
+        the chapter as it stands then: the main pass's speakers, plus any lines the second look
+        already named. The remaining blank lines stay blank. The second look stops before its next
+        line. … Script reloads the chapter … after the main pass and after each second-look line,
+        the server keeps a copy of the rows, and a cancel saves that copy." · "2. The second-look
+        tooltip words … in that tooltip and in docs/studio.md" — the words: "Second look — the main
+        pass left these lines without a speaker. Each one is asked about again on its own, with the
+        end of the chapter before and the start of the chapter after, so a speaker the book named
+        earlier can still be found. A line it still can't place stays blank for you to set; a name
+        that isn't in the cast is offered for you to add."
+NOT:    a second strip; renaming the label mid-run; a per-line "reading prompt"; a separate
+        second-look request.
+BUILT:  2026-10-06 — server: `extraction/second_look.py` (each call streams through `on_delta`,
+        `on_step(done, total, rows)` as it starts and after each line, `stop()` before each line,
+        its tokens and time added to the run's usage), `extraction/pipeline.py` (passes them),
+        `api/extraction_api.py` analyze stream (`{"step"}` frames, a copy kept at each step, a
+        cancel in the second look saves it — synchronously, so the page's reload comes after; the
+        normal save clears the copy first). Kit (committed in just-llm-runner): `client.js`
+        requestStream `onStep`, `appTask.js` runAiEndpointStream `stepText`/`stepHint`/`onStep`,
+        `aiTasks.js` `progress.hint`, the count's tooltip in `AiTaskStrip.vue` and
+        `AiStatusPanel.vue`. Script: `services/chapterRun.js` (the words and tooltip; after a cancel
+        in the second look it waits for the chapter's `analyzed_at` to change, then reloads). Docs
+        studio (The second look), whats-new; RESEARCH §7 here, §3 in the kit's.
+        Callers, by grep before the edit: `second_look(` — `pipeline.py:770`,
+        `tests/test_second_look.py:59` (the old run_feature path, unchanged); `analyze_scene(` —
+        `extraction_api.py:668` (the stream), `labs/extraction/run.py:109` and
+        `tests/test_chapter_pieces.py` (no new arguments — defaults); `requestStream(` — the kit's
+        `aiFeature.js:142,214`, `appTask.js:143`, JustWrite's `aiFeature.test.js:298` (the new
+        option is additive); `runAiEndpointStream(` — `chapterRun.js:175` only.
+        Checked live: Bigger Inside re-analyzed over the stream — step 0 of 6 at 49.7 s, then one per
+        line ~11 s apart to 6 of 6, 306 token frames during the look, the done frame's usage
+        2,433 tokens out / 117 s (both passes); closed at line 2 of 6 — saved at once ("saved as it
+        stood"), the call in flight finished, no further calls; closed in the main pass —
+        `analyzed_at` unchanged. Script headless: the strip "Script · analyze · Bigger Inside ·
+        second look · 0 of 6 lines · … live", the tooltip the decided words, ✕ Cancel → the chapter
+        reloaded "analyzed just now" with its 6 blank lines; no page errors. Ruff, Biome, JustVoice
+        and JustWrite builds clean; no test suites run.
+OPEN:   none.
+GO:     given 2026-10-06
+
 ### The smoke gate opens Settings; the Podcast card stops promising a timeline (decided 2026-10-06)
 STATE:  DECIDED 2026-10-06 — "your rec go", on the two findings as shown: "1. The smoke gate has
         never opened Settings. Its click on SETTINGS lands on AI Settings. I fixed the same click in

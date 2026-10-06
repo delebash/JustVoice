@@ -746,6 +746,18 @@ kit's register §2.
 
 ## 7 · Where an AI task shows
 
+- Analyze's second look (one model call per line left blank) streams its tokens on the same
+  Analyze strip and reports `{step: {name: "second_look", done, total}}` as it starts and after
+  each line; the strip shows *second look · 2 of 6 lines* with the hint as its tooltip, and the
+  run's usage includes its calls. Before 2026-10-06 its calls didn't stream, so the strip said
+  *stuck* for the minute it ran (six lines × ~11 s on Bigger Inside). — *measured, 2026-10-06,
+  gemma 26B-A4B* · `extraction/second_look.py`, `services/chapterRun.js`.
+- A cancel during the second look saves the chapter as the second look last left it whole (a
+  copy kept at each step) and stops it before its next line; a cancel during the main pass
+  writes nothing. Measured: closed at line 2 of 6 → saved at once, the call in flight finished,
+  no further calls; closed in the main pass → `analyzed_at` unchanged. — *measured, 2026-10-06*
+  · `api/extraction_api.py` analyze stream (`kept`, `_save_on_cancel`).
+
 **Records:** [`2026-10-05-page-tasks.md`](../plans/2026-10-05-page-tasks.md) — the rule
 (decided 2026-10-05, "a page shows only its own tasks"), the table of each task's page, the
 blast radius.

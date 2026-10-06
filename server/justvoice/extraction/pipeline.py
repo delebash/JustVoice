@@ -605,6 +605,8 @@ def analyze_scene(
     on_progress=None,
     marks: str | None = None,
     segments: list[dict] | None = None,
+    on_step=None,
+    stop=None,
 ) -> list[AttributionRow]:
     """Run the full pipeline.
 
@@ -626,6 +628,10 @@ def analyze_scene(
     `on_progress(0..1)` gets the builtin engine's prompt-eval frames. The
     pipeline's inputs, outputs, parsing, floor and raw_out are IDENTICAL either
     way — streaming changes how the reply travels, never what runs.
+
+    The second look (step 6) streams through the same `on_delta`; `on_step(done,
+    total, rows)` hears it start and finish each line, and `stop()` ends it before
+    its next line (2026-10-06 — second_look.second_look).
     """
     # ── 1. Segment ───────────────────────────────────────────────
     if segments is None:
@@ -775,5 +781,6 @@ def analyze_scene(
             floor=floor, use_floor=request.use_floor,
             before_text=request.before_text, after_text=request.after_text,
             cfg=cfg, skip=set(request.second_look_skip), raw_out=raw_out,
+            on_delta=on_delta, on_step=on_step, stop=stop,
         )
     return rows

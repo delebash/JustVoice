@@ -43,6 +43,32 @@ const NO_MODEL = {
 };
 const FEATURE = { analyze: "speaker_attribution", discover: "speaker_identification" };
 
+// Analyze's second look on its strip (decided 2026-10-06): the count, and what it
+// is and why it runs as the count's tooltip — the same words as docs/studio.md
+// "The second look".
+const SECOND_LOOK_HINT = "Second look — the main pass left these lines without a speaker. Each one is "
+  + "asked about again on its own, with the end of the chapter before and the start of the chapter "
+  + "after, so a speaker the book named earlier can still be found. A line it still can't place stays "
+  + "blank for you to set; a name that isn't in the cast is offered for you to add.";
+const stepText = (s) => (s.name === "second_look" ? `second look · ${s.done} of ${s.total} lines` : undefined);
+const stepHint = (s) => (s.name === "second_look" ? SECOND_LOOK_HINT : undefined);
+
+/** When Analyze last saved this chapter (`analyzed_at`), or "" — read fresh. */
+async function analyzedAt(api, projectId, sceneId) {
+  const rows = await api.safeRequest(`/v1/projects/${projectId}/scenes`, null);
+  const row = Array.isArray(rows) ? rows.find((s) => s.id === sceneId) : null;
+  return row?.metadata?.analyzed_at || "";
+}
+
+/** A cancel during the second look saves the chapter as it stood (decided
+ *  2026-10-06); wait for that save before the page reloads, at most a few seconds. */
+async function waitForSave(api, projectId, sceneId, before) {
+  for (let i = 0; i < 20; i++) {
+    if ((await analyzedAt(api, projectId, sceneId)) !== before) return;
+    await new Promise((r) => setTimeout(r, 250));
+  }
+}
+
 /** The project's run, or null. Reactive — read it in a computed. */
 export function chapterRunFor(projectId) {
   return (projectId && runs[projectId]) || null;
@@ -167,14 +193,20 @@ async function drain(projectId) {
     run.controller = new AbortController();
     run.current = { ...item, startedAt: Date.now() };
     let result = null;
+    let inSecondLook = false;
+    let savedBefore = "";
     try {
       const text = (await chapterText(api, projectId, item.scene)).trim();
       if (!text) throw new Error("This chapter has no text yet.");
       const meta = { projectId, sceneId: item.sceneId, run: true };
       if (item.kind === "analyze") {
+        savedBefore = await analyzedAt(api, projectId, item.sceneId);
         result = await runAiEndpointStream({
           url: `${api.serverUrl}/v1/scenes/${item.sceneId}/analyze/stream`,
           body: { text, ...(item.route ? { route: item.route } : {}) },
+          stepText,
+          stepHint,
+          onStep: (s) => { if (s.name === "second_look") inSecondLook = true; },
           task: {
             // This chapter only — the step's banner carries "n of N" (2026-10-05).
             feature: FEATURE.analyze,
@@ -210,6 +242,8 @@ async function drain(projectId) {
         // Cancel — from the step's strip or its banner — stops that step's
         // chapters; the other step's go on.
         dropQueued(run, item.kind);
+        // In the second look the server keeps the main pass; reload after it has.
+        if (inSecondLook) await waitForSave(api, projectId, item.sceneId, savedBefore);
       } else if (isNoModel(e)) {
         // Both steps need the model, so nothing queued can run.
         run.failed[failKey(item.kind, item.sceneId)] = { kind: item.kind, reason: NO_MODEL[item.kind] };

@@ -2,6 +2,12 @@
 
 ## v0.1.0
 
+- **Analyze says when it's on its second look (2026-10-06)** — the strip of a
+  chapter's Analyze shows **second look · 2 of 6 lines** with a bar while it asks
+  again about the lines the main pass left blank, keeps counting tokens, and no
+  longer says *stuck* while that runs; hover the count for what the second look
+  is. Cancelling during the second look now keeps the main pass's speakers
+  instead of throwing the run away ([Studio → The second look](studio.md#the-second-look))
 - **A pause at a scene break, and a Lexicons editor that says what it needs
   (2026-10-06)** — a book from JustWrite pauses longer where one of its scenes
   ends inside a chapter: **Pause at a scene break** in Settings → Generation

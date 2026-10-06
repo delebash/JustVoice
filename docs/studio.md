@@ -582,6 +582,29 @@ It is on by default. **AI Settings → Routing by feature → Speaker attributio
 Auto** turns it off, and its prompt is its own card there, **Speaker attribution
 · second look** ([AI features](ai-features.md)).
 
+**On the strip.** While it runs, the chapter's Analyze strip — still *Script ·
+analyze · <chapter>* — shows **second look · 2 of 6 lines** with a bar, and
+keeps counting tokens and saying *live*, as in the main pass. Hover the count
+for what it is:
+
+> **Second look** — the main pass left these lines without a speaker. Each one
+> is asked about again on its own, with the end of the chapter before and the
+> start of the chapter after, so a speaker the book named earlier can still be
+> found. A line it still can't place stays blank for you to set; a name that
+> isn't in the cast is offered for you to add.
+
+The finished strip's token count includes the second look's calls. *reading
+prompt* shows only before the run's first token, not for each line, and tokens
+per second dips a little in the second look — it is averaged over the whole run,
+and each line's prompt reading falls between its tokens.
+
+**Cancel in the second look keeps the main pass.** Cancelled while the main
+pass runs, Analyze writes nothing and the chapter keeps its previous analysis.
+Cancelled during the second look, the chapter is saved as it stood: the main
+pass's speakers and any line the second look had already named; the rest stay
+blank, and the second look stops before its next line. Script reloads the
+chapter once the save is done.
+
 **When the model can't answer, Analyze says so.** If the model call fails,
 that chapter's row says **failed** with the reason; nothing is saved and the
 chapter keeps its previous analysis. A timeout or a model that would not load
