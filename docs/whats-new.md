@@ -2,10 +2,12 @@
 
 ## v0.1.0
 
-- **Home's memory reads like AI Settings (2026-10-06)** — the Loaded model
-  card showed *VRAM NaN / 8 GB*; it now shows AI Settings' memory cells —
-  **VRAM used**, **Free**, **LLM**, **TTS** and **STT**, each with the model it
-  holds — kept up to date while Home is open ([GPU](gpu.md)). On Speech engines, **Set as default** on a
+- **Home's memory reads like AI Settings (2026-10-06)** — Home's model
+  card showed *VRAM NaN / 8 GB*, a none/loaded tag, the voice model a second
+  time, *no external providers* and Unload / Switch buttons; it now shows AI
+  Settings' memory cells and nothing else — **VRAM used**, **Free**, **LLM**,
+  **TTS** and **STT**, each with the model it holds — kept up to date while Home
+  is open ([GPU](gpu.md)). On Speech engines, **Set as default** on a
   model's row now calls it the engine's default *version* — the persona page's
   word for the same choice
 - **Languages by name, one name per kind, one name per mastering target

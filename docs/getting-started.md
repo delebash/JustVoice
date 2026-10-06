@@ -29,7 +29,7 @@ The same UI is served at `http://localhost:17494/ui/`. Connect from any browser 
 
 ## Where things live
 
-- **Home.** Dashboard — intro band + quick-actions for each audience + the engine/voice catalogue, the loaded model, in-flight render tasks, and recent generations.
+- **Home.** Dashboard — intro band + quick-actions for each audience + the engine/voice catalogue, the graphics memory and the models in it (as AI Settings shows them), in-flight render tasks, and recent generations.
 - **Settings.** Server URL, mastering preset (ACX / iAudio / Podcast / YouTube), generation defaults, capture language and cleanup, MCP server, GPU diagnostics.
 - **Engines.** One speech runtime runs every voice engine and speech recognition; each engine is a set of model files you download from its row. See [engines.md](engines.md).
 - **Cache.** Disk-LRU render cache. Identical render of the same line costs nothing twice.

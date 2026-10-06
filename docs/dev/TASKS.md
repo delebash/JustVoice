@@ -320,13 +320,25 @@ STATE:  DECIDED 2026-10-06 — the user: "fix home vram it prop shouls show the 
         those two cells from JustVoice (vramFeed.js), so Home uses that same code, not a copy.
         3. Same look. They show as the strip's cells (label above value), not a line with a bar. My
         line and bar are deleted." — and the LLM question answered: "yes it show llm vram too" ·
-        "and the modle loaded for all".
+                "and the modle loaded for all".
+        Then the card's cleanup — the user: "you have loaded model none which is a duplicate of the info
+        you have and no external providers text what doe sthis mean, clean this up make it look nice
+        no extra uncecessary data dont need duplicate model info" → "go" on the plan as shown (cells
+        are the card; the tag, the model line, "No voice model loaded" and "no external providers"
+        go; title Loaded models; Unload kept; Switch ▾ → Speech engines ➜; docs), then changed: "no
+        unload no switch remove it, we have the models that pointo models page at top this is just
+        vram info" · "yes you stupid machine i do what the model line" · "when i say i want it like
+        the exisitng one in ai settins this is what i mean, in ai settins it has nothing but vram
+        info and model, correct, stop inventing stuff" — so the card is the strip's cells, each with
+        its model, and nothing else: no title, tag, model line, sentence, providers text or buttons.
 WHY:    Home's card read `vram_used_mb`, a field /v1/system/info never had: "VRAM NaN / 8 GB".
 NOT:    any change in the kit (my `memoryReading` kit edits were undone, uncommitted).
-BUILT:  2026-10-06 — Home's Loaded model card shows VRAM used · Free · LLM (`vramFeed.residentCells`,
+BUILT:  2026-10-06 — Home's card shows only VRAM used · Free · LLM (`vramFeed.residentCells`,
         the strip's reading of /v1/llm-runner/resident, with the loaded model under LLM) · TTS · STT
         (`vramFeed.hostCells`, the strip's own cells), polled while Home is open; `.jv-memcells` in
-        styles.css (the kit's cell is scoped). Checked live: every cell equal to AI Settings'.
+        styles.css (the kit's cell is scoped). Checked live: every cell equal to AI Settings'. The
+        card's tag, model line, sentence, "no external providers", Unload and Switch ▾ are gone, with
+        their now-unused code (unloadEngine, goEngines, the /v1/system/info fetch).
         Docs: gpu, whats-new; design-law inventory. Test: `vramFeed.test.js`.
 OPEN:   none.
 GO:     given 2026-10-06

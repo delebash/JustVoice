@@ -49,7 +49,7 @@ deleted 2026-06-23 and there is no local `components/ui/` directory. What follow
 | `.jv-col--start` / `.jv-stretch` | card-body children keep content width / one child opts back into full width |
 | `.jv-hint` | one quiet line under a row or field — cost or requirement of the choice above. **12.5px floor** (2026-08-21 "stop using small text"): no user-facing text renders smaller |
 | `.jv-text-warn` | text that is waiting on you, in the theme's amber (`--warn-ink`, which follows the theme; `--warn` is too light for text) — Script's Check questions (2026-10-06). Red stays for what is broken |
-| `.jv-memcells` · `.jv-memcell` | AI Settings' memory strip cell outside AI Settings — eyebrow label, value, the model it holds under it (Home's Loaded model card, 2026-10-06). The kit's own cell is scoped to its strip |
+| `.jv-memcells` · `.jv-memcell` | AI Settings' memory strip cell outside AI Settings — eyebrow label, value, the model it holds under it (Home, 2026-10-06). The kit's own cell is scoped to its strip |
 | `.jv-lede` | the one-paragraph explanation under a card title — body-size (13.5px) because a lede is content, not a footnote. User-language only, never file formats or internal jargon |
 | `.jv-mt10` / `.jv-mt12` / `.jv-mb14` / `.jv-inline-row` / `.jv-note-xs` | spacing + inline-row utilities (SettingsView referenced them for months while nothing defined them — defined 2026-08-21; `-xs` renders at the same 12.5px floor) |
 

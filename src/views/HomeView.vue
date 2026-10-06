@@ -62,7 +62,6 @@ const capturesTotal = ref(null);
 const stats = ref(null);
 const recentGenerations = ref([]);
 const loadedEngine = ref(null);
-const system = ref(null);
 const settings = ref(null);
 
 async function safeRequest(path, fallback) {
@@ -90,7 +89,6 @@ function hydrateFromSnapshot() {
     stats.value = snap.stats ?? null;
     recentGenerations.value = snap.recentGenerations || [];
     loadedEngine.value = snap.loadedEngine ?? null;
-    system.value = snap.system ?? null;
     settings.value = snap.settings ?? null;
     if (snap.miniStatus && snap.miniStatusProjectId === continueProject.value?.id) {
       miniStatus.value = snap.miniStatus;
@@ -104,7 +102,6 @@ function writeSnapshot() {
       stats: stats.value,
       recentGenerations: recentGenerations.value,
       loadedEngine: loadedEngine.value,
-      system: system.value,
       settings: settings.value,
       miniStatus: miniStatus.value,
       miniStatusProjectId: continueProject.value?.id ?? null,
@@ -114,7 +111,7 @@ function writeSnapshot() {
 
 async function refresh() {
   // Five shared lists via stores; the rest are this view's own fetches.
-  const [h, , , , , , ca, s, g, ce, sy, st] = await Promise.all([
+  const [h, , , , , , ca, s, g, ce, st] = await Promise.all([
     safeRequest("/v1/health", null),
     enginesStore.reload(),
     voicesStore.reload(),
@@ -125,7 +122,6 @@ async function refresh() {
     safeRequest("/v1/cache/stats", null),
     safeRequest("/v1/takes/recent?limit=4", { takes: [] }),
     safeRequest("/v1/engines/current", { engine: null }),
-    safeRequest("/v1/system/info", null),
     safeRequest("/v1/settings", null),
   ]);
   health.value = h;
@@ -134,7 +130,6 @@ async function refresh() {
   stats.value = s;
   recentGenerations.value = g.takes || [];
   loadedEngine.value = ce.engine || null;
-  system.value = sy;
   settings.value = st;
   writeSnapshot();
 }
@@ -291,9 +286,6 @@ function cancelTask(t) {
 }
 
 // ── Loaded engine card ────────────────────────────────────────────────
-const gpu = computed(() => system.value?.gpus?.[0] || null);
-const deviceLabel = computed(() => gpu.value ? `CUDA · ${gpu.value.name}` : (system.value ? "CPU" : ""));
-const externalCount = computed(() => (settings.value?.engines?.external || []).length);
 
 // The graphics memory as AI Settings' strip shows it (2026-10-06 — this card
 // read a field /v1/system/info never had and showed "VRAM NaN / 8 GB"): VRAM
@@ -322,24 +314,6 @@ onActivated(() => {
 });
 onDeactivated(stopMemory);
 onBeforeUnmount(stopMemory);
-const unloading = ref(false);
-async function unloadEngine() {
-  unloading.value = true;
-  try {
-    await api.request("/v1/engines/unload", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ kind: "tts" }),
-    });
-    window.dispatchEvent(new Event("jv:health-refresh"));
-    await refresh();
-    pushToast({ message: "Engine unloaded.", kind: "success" });
-  } catch (e) {
-    pushToast({ message: `Unload failed: ${e?.message || e}`, kind: "error" });
-  } finally {
-    unloading.value = false;
-  }
-}
 
 // ── Recent generations ────────────────────────────────────────────────
 // ▶ opens a compact inline player under the row (the ruling 2026-08-15:
@@ -380,7 +354,6 @@ const nextStep = computed(() => {
   return null;
 });
 
-function goEngines() { window.location.hash = "#engines"; }
 
 onMounted(() => {
   hydrateFromSnapshot();  // instant paint from the last visit
@@ -478,31 +451,15 @@ onMounted(() => {
         </div>
       </div>
 
-      <div class="jv-card home__engine">
-        <div class="home__cardhead">
-          <span class="home__eyebrow">Loaded model</span>
-          <UiTag :intent="health?.current_engine ? 'success' : 'ghost'">{{ health?.current_engine ? "loaded" : "none" }}</UiTag>
-        </div>
-        <template v-if="health?.current_engine">
-          <div class="home__engine-line">
-            <strong>{{ health.current_model || health.current_engine }}</strong>
-            <span class="jv-muted">{{ deviceLabel }}</span>
-          </div>
-        </template>
-        <p v-else class="jv-muted home__empty">No voice model loaded. Loading happens on first use, or pick one now.</p>
-        <div v-if="memoryCells.length" class="jv-memcells">
+      <!-- The graphics memory as AI Settings' strip shows it — its cells and
+           nothing else (the user, 2026-10-06). -->
+      <div v-if="memoryCells.length" class="jv-card home__engine">
+        <div class="jv-memcells">
           <div v-for="c in memoryCells" :key="c.key" class="jv-memcell" :title="c.title || undefined">
             <span class="jv-eyebrow">{{ c.label }}</span>
             <span class="jv-memcell__v">{{ c.value }}</span>
             <span v-if="c.sub" class="jv-memcell__sub">{{ c.sub }}</span>
           </div>
-        </div>
-        <div class="home__engine-foot">
-          <span class="jv-muted home__substat" style="flex:1">
-            {{ externalCount ? `● ${externalCount} external provider${externalCount === 1 ? "" : "s"} registered` : "no external providers" }}
-          </span>
-          <UiButton v-if="health?.current_engine" intent="ghost" size="small" label="Unload" :loading="unloading" title="Free the model's memory — next render reloads it" @click="unloadEngine" />
-          <UiButton intent="secondary" size="small" label="Switch ▾" title="Open Speech engines to load a different model" @click="goEngines" />
         </div>
       </div>
     </div>
@@ -575,8 +532,6 @@ onMounted(() => {
 .home__prog { flex: 1; height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
 .home__prog-fill { display: block; height: 100%; background: var(--accent); border-radius: 3px; transition: width .4s; }
 .home__task-x { color: var(--danger); }
-.home__engine-line { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
-.home__engine-foot { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 .home__recent { padding: 12px 16px; margin: 0; }
 .home__gen { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 6px 0; border-bottom: 1px dashed var(--line); }
 .home__gen:last-child { border-bottom: 0; }

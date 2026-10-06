@@ -99,9 +99,10 @@ never internal bookkeeping:
 
 The label follows your hardware: a discrete card shows **VRAM**; laptops with integrated or unified memory (iGPU, Apple Silicon) show **Memory**, because CPU and GPU share the same physical pool there and every load — even a CPU-placed one — draws from it.
 
-Home's **Loaded model** card shows the same cells — **VRAM used**, **Free**,
-**LLM**, **TTS** and **STT**, each with the model it holds under it — read the
-same way and kept up to date while Home is open, so the two never disagree.
+Home shows the same cells and nothing else — **VRAM used**, **Free**, **LLM**,
+**TTS** and **STT**, each with the model it holds under it — read the same way
+and kept up to date while Home is open, so the two never disagree. The top
+bar's pills open the models themselves.
 
 ### When the AI model goes to sleep
 
