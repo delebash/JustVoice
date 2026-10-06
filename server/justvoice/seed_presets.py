@@ -189,8 +189,11 @@ DEFAULT_FEATURE_PRESETS: dict[str, str] = {
     "speaker_attribution.direct": "p_extract_reasoned",
     # Find new speakers — its own runnable card, its own ref.
     "speaker_attribution.identify": "p_extract",
-    # Analyze's second look — no thinking, as it was tested (2026-10-05, 30/30).
-    "speaker_second_look": "p_extract",
+    # Analyze's second look — no thinking, at temperature 0 (decided 2026-10-06): at
+    # p_extract's 0.2 it declined a line it could answer about one time in four
+    # (Bigger Inside's candle line, 6 of 8); at 0 the 30 answer-keyed lines came back
+    # 30 right, 0 wrong (docs/plans/2026-10-05-second-look-test.md, 2026-10-06 rerun).
+    "speaker_second_look": "p_classify",
     "smart_assign": "p_extract",
     # Deterministic classification
     "voice_gender": "p_classify",

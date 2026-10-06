@@ -223,7 +223,8 @@ The Auto page also holds **Second look** — on by default. A spoken line
 Analyze leaves with no speaker is asked about once more with the chapters
 either side; turn it off here and those lines stay blank. Its prompt is its
 own card above the heading, **Speaker attribution · second look**, with its
-own preset (Structured extraction — no thinking, as it was tested) and Lab
+own preset (Deterministic classification — no thinking, temperature 0, so the
+same line gets the same answer every time) and Lab
 ([Studio → The second look](studio.md#the-second-look)).
 
 Auto always judges the model a card would **actually run**: the card's

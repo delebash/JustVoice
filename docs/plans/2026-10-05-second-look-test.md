@@ -54,3 +54,30 @@ per chapter (188 s for the 247-line Speckled Band chapter).
   the answer still comes back **marked to check**, as option 1 promised.
 - The second look also named speakers who aren't in the cast (Sedge, "the driver") in its
   reason — a build could offer *"Old Sedge isn't in the cast — add him?"* from it.
+
+## 2026-10-06 — the built second look, temperature 0 against 0.2
+
+**Why:** after a re-analyze the candle line (Bigger Inside D39) came back blank. The same
+question, asked 8 times each way on the user's book: 6 Odeline Marran, 2 unknown, streamed or
+not — the model declines it about one time in four at the preset's temperature 0.2, its reason
+reading "while the next chapter reveals Ode…". At temperature 0: 4 of 4 Odeline Marran. Decided
+(TASKS "The second look runs at temperature 0"): test the 30 lines first, then switch.
+
+**Method:** a scratch script, nothing written: each keyed chapter through
+`/v1/extraction/analyze-text` with `second_look: false` (the production main pass, the scorer's
+cast — no Sedge in The Ninth Facet's key); every dialogue row left blank, and 3 known rows per
+chapter of The Ninth Facet and The Salt-Iron Road (evenly spread — the stress set), asked the
+BUILT second look's question (`second_look.py`: its prompt row, `cast_lines`, `around` at
+`second_look_words`, the neighbours' tail and head) through `/v1/ai/run` with `temperature` 0,
+then 0.2; the build's 0.5 floor applied; scored against `attribution-truth.json`.
+
+| Temperature | Real blanks (9) | Stress (21) | All 30 |
+|---|---|---|---|
+| **0** | 9 right · 0 wrong | **21 right** · 0 wrong · 0 blank | **30 right, 0 wrong** |
+| 0.2 | 9 right · 0 wrong | 20 right · 0 wrong · 1 blank (The Same Hour D14, *"Odeline Marran,"*) | 29 right, 0 wrong |
+
+The real blanks: Bigger Inside's five Sedge lines kept unknown and D39 named Odeline Marran;
+The Speckled Band's three driver lines kept unknown. Per line 4–14 s at 0 (first calls, cold
+cache) against 1–2 s at 0.2 (the same prompts again, cached) — the time is the prompt cache,
+not the temperature. Switched 2026-10-06: `seed_presets.py` → `p_classify`, and the live
+database's assignment set the same way.

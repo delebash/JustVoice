@@ -746,6 +746,12 @@ kit's register §2.
 
 ## 7 · Where an AI task shows
 
+- The second look runs at temperature 0 (`p_classify`, since 2026-10-06). At 0.2 (`p_extract`)
+  Bigger Inside's candle line came back Odeline Marran 6 of 8 and unknown 2 of 8, streamed or
+  not; at 0, 4 of 4. On the 30 answer-keyed lines: 30 right at 0, 29 right + 1 blank at 0.2, no
+  wrong name either way. — *measured, 2026-10-06, gemma 26B-A4B* ·
+  [`2026-10-05-second-look-test.md`](../plans/2026-10-05-second-look-test.md) (2026-10-06 section).
+
 - Analyze's second look (one model call per line left blank) streams its tokens on the same
   Analyze strip and reports `{step: {name: "second_look", done, total}}` as it starts and after
   each line; the strip shows *second look · 2 of 6 lines* with the hint as its tooltip, and the

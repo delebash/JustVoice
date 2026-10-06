@@ -125,6 +125,30 @@ GO:     given 2026-08-17
 
 ## The next build
 
+### The second look runs at temperature 0 — tested first on the 30 answer-keyed lines (decided 2026-10-06)
+STATE:  DECIDED 2026-10-06 — "your rec go" (the user: "i reanlyzed chapter and it did second look but
+        looks like it did not work correctly"), on the finding and lean as shown: "the second look
+        worked. The model sometimes declines this line … Not streamed: 6 Odeline Marran, 2 unknown.
+        Streamed: the same … the second look runs on the 'Structured extraction' preset at
+        temperature 0.2 … At temperature 0 it's consistent: 4 of 4 named Odeline Marran. … Lean: run
+        the second look at temperature 0. The app already has a preset for that, 'Deterministic
+        classification' (p_classify) … a one-line change in seed_presets.py:193. Before switching,
+        I'd re-run the 30-line answer-keyed test from 2026-10-05
+        (docs/plans/2026-10-05-second-look-test.md) at temperature 0 … For your current one it's one
+        setting: the second look's preset in AI Settings → Routing by feature. I'd set that too."
+WHY:    at 0.2 the model declines a line it can answer about one time in four.
+NOT:    asking again on "unknown"; the prompt wording now (a seed change for a later reset).
+BUILT:  2026-10-06 — the test first (record: `docs/plans/2026-10-05-second-look-test.md`, the
+        2026-10-06 section): the built second look's question on the 30 answer-keyed lines, nothing
+        written — temperature 0: **30 right, 0 wrong** (9 real blanks, 21 stress); 0.2: 29 right, 0
+        wrong, 1 blank. Then the switch: `seed_presets.py` `speaker_second_look` → `p_classify`
+        (identical to `p_extract` but temperature 0.0, both read live), and the live database's
+        assignment set the same (`PUT /v1/ai/preset-assignments/feature`, as AI Settings → Routing
+        by feature does). Checked: the candle line on the live preset, 4 of 4 Odeline Marran.
+        Docs ai-features (the preset named); RESEARCH §7.
+OPEN:   none. Bigger Inside's candle line stays blank until it is analyzed again.
+GO:     given 2026-10-06
+
 ### Analyze's strip says when it's on the second look, with its count and tokens (decided 2026-10-06)
 STATE:  DECIDED 2026-10-06 — "your rec go" (the user: "script bigger inside analyzing says stuck" ·
         "shouldnt we change the progress bar info to not that we are running the second look
