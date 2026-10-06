@@ -22,6 +22,9 @@
   couldn't place says *Second look found no one*. Analyze's own second look is
   a switch on Speaker attribution's Auto page, now off
   ([Studio → The second look](studio.md#the-second-look))
+- **Script's Check column leads with a tag (2026-10-06)** — red **⚠ No
+  speaker** where a line can't render, amber **To check** where it is only worth
+  a look; the question follows in smaller text ([Studio → Script](studio.md))
 - **The setup and the AI strip stop overstating (2026-10-06)** — the LLM engine
   setup's Apply says *Setting up your model* for one model, says *both download
   at once* only when two models both download, and drops *A model is several

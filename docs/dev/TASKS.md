@@ -125,6 +125,31 @@ GO:     given 2026-08-17
 
 ## The next build
 
+### Script's Check column leads with a tag (decided 2026-10-06)
+STATE:  DECIDED 2026-10-06 — "go cehck column" (the user: "the check column the contrast is not very good
+        it is red but it just does not stand out what can you do to make that error langauge stand out?"),
+        on the answer as shown: "1. Lead with a short label, then the explanation. The cell would open
+        with a tag, like the "changed · was no speaker" tag in Decided by. For example ⚠ No speaker or
+        Check: nearby chapter. The full sentence moves under it in smaller, muted text. The eye catches
+        the tag; the sentence is there when you read it. Lean: yes, this is the main fix. 2. Two levels,
+        not one red. A line with no speaker blocks the render, so its tag is the danger kind (red). A line
+        that's only worth a look, like "Found in a nearby chapter — is it Odeline Marran?", gets the
+        warning kind (amber). Today both look the same. Lean: yes, so you can tell "fix this" from
+        "glance at this". 3. Only stronger red text, nothing else. … Lean: no. … My rec is 1 and 2
+        together, using the kit's existing tag component, no new style." — and: "a short tag leading
+        each check, red for "no speaker" and amber for "worth a look", the explanation in muted text
+        below."
+WHY:    the check sentence sat in the same size and weight as the text around it, on a tinted row.
+NOT:    a new style; rewording the sentences; a stronger red alone.
+BUILT:  2026-10-06 — `StudioScriptChapter.vue` Check cell: a `UiTag` leads, in the filter chips' own
+        words — `danger` "⚠ No speaker" where the line has none, `accent2` "To check" on a marked
+        line — then the unchanged sentence as `.jv-hint` (was `.jv-text-warn`). Docs: studio (the
+        columns table, The marks), whats-new. Checked live on Bigger Inside (one line blanked for the
+        screenshot through the page's own PATCH, `no_fix`, then restored exactly): both tags show, no
+        page errors. Build clean.
+OPEN:   none.
+GO:     given 2026-10-06
+
 ### Script's "added since" goes once the added speaker has lines in the chapter (decided 2026-10-06)
 STATE:  DECIDED 2026-10-06 — "go" (the user: "why is it stuck with sedge just added and reanalyze?"), on the
         lean as shown: "after a 🔎 Second look, drop the added since mark for a speaker who now has lines

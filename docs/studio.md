@@ -350,7 +350,7 @@ speaker dropdown on every row.
 | **Decided by** | why the line has its speaker — the evidence, not a category (below) |
 | **Text** | the line |
 | **Confidence** | how sure the AI said it was. A low number is worth a look; a high one is not proof — the AI has been 100 % sure and wrong. A line you set shows **—** |
-| **Check** | the question to ask about a marked line, or why a line can't render |
+| **Check** | a tag — red **⚠ No speaker** where the line can't render, amber **To check** where it is only worth a look (since 2026-10-06) — then the question to ask, or why the line can't render |
 
 **Decided by** reads:
 
@@ -463,8 +463,9 @@ Script decides who says what, and how it is performed is [Render](#render).
 
 ### The marks: where to read closely
 
-A mark tints the line and asks its question in the **Check** column, in amber
-(a line with no speaker says so there too). It marks
+A mark tints the line and asks its question in the **Check** column, under an
+amber **To check** tag (a line with no speaker says so there too, under a red
+**⚠ No speaker** tag). It marks
 the shape the AI's mistakes take, measured on three answer-keyed books before
 it was built:
 
