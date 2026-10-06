@@ -56,21 +56,6 @@
 
 ## Waiting on your decision
 
-### FINDING — the smoke gate never opens Settings: `text=SETTINGS` clicks AI Settings
-STATE:  FINDING — seen 2026-10-06 while fixing `npm run screenshots`, which used the same click.
-BUILT:  `scripts/smoke.js` clicks ``page.locator(`text=${tab}`).first()`` — a case-insensitive
-        part match, and AI SETTINGS comes first in the sidebar, so the SETTINGS row of the gate
-        loads AI Settings a second time. The screenshots script now clicks the whole label inside
-        `.jv-sidebar` (`smoke_gui.js`) and its 11-settings picture is the real Settings page.
-OPEN:   the same whole-label click in `smoke.js`.
-GO:     needed.
-
-### FINDING — New project's Podcast card promises a timeline that isn't built
-STATE:  FINDING — code-verified 2026-10-06, while removing the Stories tab.
-BUILT:  `NewProjectModal.vue:47` lists "Timeline assembly, music & SFX" for a podcast. Nothing
-        assembles a timeline; the Stories placeholder was removed 2026-10-06.
-OPEN:   the bullet's words (drop it, or say "planned").
-GO:     needed.
 
 ### FINDING — the release recipe's frozen server dies on start, and never contains the kit
 STATE:  FINDING — measured 2026-10-05 (stack study §1, §10). Tracked at your word: "track all
@@ -139,6 +124,19 @@ OPEN:   nothing.
 GO:     given 2026-08-17
 
 ## The next build
+
+### The smoke gate opens Settings; the Podcast card stops promising a timeline (decided 2026-10-06)
+STATE:  DECIDED 2026-10-06 — "your rec go", on the two findings as shown: "1. The smoke gate has
+        never opened Settings. Its click on SETTINGS lands on AI Settings. I fixed the same click in
+        the screenshots script. Lean: fix it in the gate too." · "2. New project's Podcast card
+        promises 'Timeline assembly, music & SFX', which isn't built. Lean: drop that bullet."
+WHY:    the gate's SETTINGS row tested AI Settings twice; app copy is code, and no timeline exists.
+NOT:    "planned" on the bullet.
+BUILT:  `scripts/smoke.js` clicks the whole label inside `.jv-sidebar`, as `smoke_gui.js` does
+        (`text=SETTINGS` is a part match and AI SETTINGS comes first); `NewProjectModal.vue` — the
+        Podcast card has two bullets. No doc names the bullet.
+OPEN:   none.
+GO:     given 2026-10-06
 
 ### The demo again, the small wrong things, five decisions, Lexicons and Compare (decided 2026-10-06)
 STATE:  DECIDED 2026-10-06 — "go on all and the fixes you noted in session notes your rec", then

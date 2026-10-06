@@ -143,7 +143,9 @@ try {
   for (const tab of TABS) {
     currentTab = tab;
     try {
-      await page.locator(`text=${tab}`).first().click({ timeout: 5000 });
+      // The whole label, in the sidebar: `text=SETTINGS` alone is a part match and
+      // clicked AI SETTINGS, so until 2026-10-06 the gate never opened Settings.
+      await page.locator(".jv-sidebar").getByText(new RegExp(`^\\s*${tab}\\s*$`, "i")).first().click({ timeout: 5000 });
       await page.waitForTimeout(800);
       const bodyChars = await page.evaluate(
         () => document.querySelector(".jv-content, main")?.innerText?.length || 0,

@@ -44,7 +44,9 @@ const KINDS = [
     id: "podcast",
     icon: projectKind("podcast").icon,
     label: projectKind("podcast").name,
-    bullets: ["Episodes & segments, multi-host", "Script import or write in-app", "Timeline assembly, music & SFX"],
+    // "Timeline assembly, music & SFX" went 2026-10-06: no timeline is built (the Stories
+    // placeholder was removed the same day; the design waits in IDEAS).
+    bullets: ["Episodes & segments, multi-host", "Script import or write in-app"],
     foot: "Exports: episode WAV/MP3 · −16 LUFS stereo",
   },
   {
