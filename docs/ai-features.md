@@ -47,15 +47,18 @@ that number includes the speed-up from speculative decoding (MTP), which the
 estimate deliberately leaves out. Setup never waits on it; if it fails, the
 chip keeps its estimate.
 
-**The setup shares AI files with your other apps.** JustWrite, JustVoice and
-the family keep the engine and its models in an *AI cache* folder. When another
-app's cache already holds models, the LLM engine setup asks before anything
-downloads — **Share <app>'s AI files**, picked for you, or **Keep a separate
-copy for this app** — so one 14 GB model sits on your PC once. Only another
-app's cache is ever offered to share, and a model counts as already there only
-when its download finished. The choice is saved with your settings, so a reset
-clears it and the next setup asks again. Cancel every download in the setup and
-it says **Setup stopped — nothing downloaded**, with **Back** and **Close**.
+**JustVoice shares AI files with your other apps.** JustWrite, JustVoice and
+the family keep the engine and its models in an *AI cache* folder. When
+JustVoice starts with no choice saved — a new install, or after a reset — and
+its own folder holds no finished model, it uses another app's cache that has
+models and saves that choice (since 2026-10-06), so one 14 GB model sits on your
+PC once and a reset never means a download. The LLM engine setup shows the
+choice whenever another app's cache has models, the one in use included —
+**Share <app>'s AI files**, picked for you, or **Keep a separate copy for this
+app** — and a choice you make, a separate copy too, is kept. Only another app's
+cache is ever offered to share, and a model counts as already there only when
+its download finished. Cancel every download in the setup and it says **Setup
+stopped — nothing downloaded**, with **Back** and **Close**.
 
 **On a PC with no hardware preset, the LLM engine setup offers a one-minute
 speed check** before it recommends anything. The estimate's weakest input is

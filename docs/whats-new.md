@@ -22,12 +22,15 @@
   couldn't place says *Second look found no one*. Analyze's own second look is
   a switch on Speaker attribution's Auto page, now off
   ([Studio → The second look](studio.md#the-second-look))
-- **A reset no longer re-downloads the AI model (2026-10-06)** — the LLM engine
-  setup could recommend JustVoice's own empty AI-files folder instead of the
-  copy JustWrite already holds, when a half-finished download had left a folder
-  there; it now only ever offers another app's files, and counts a model only
-  once its download finished. Cancelling every download now says *Setup stopped*
-  with Back and Close, instead of an empty box ([AI features](ai-features.md))
+- **A reset no longer re-downloads the AI model (2026-10-06)** — when no choice
+  is saved (a new install, or after a reset) and JustVoice's own AI-files folder
+  holds no finished model, it starts on the files JustWrite already holds by
+  itself and remembers that; the LLM engine setup shows that choice with **Keep
+  a separate copy** beside it. The setup only ever offers another app's files,
+  and counts a model only once its download finished — a half-finished download
+  had made JustVoice's own empty folder look like the copy to share. Cancelling
+  every download now says *Setup stopped* with Back and Close, instead of an
+  empty box ([AI features](ai-features.md))
 - **🔎 Second look at just the blank lines (2026-10-06)** — on a chapter in
   Script, the *lines have no speaker* banner can ask the AI again about just
   those lines, with the chapters either side, instead of re-analyzing the whole
