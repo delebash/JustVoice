@@ -5,9 +5,9 @@
   slice-4.md §3). Made from the kit's components on `renderMock.js` — The Ninth Facet, played by
   the persona mock's personas.
 
-  The line is the unit: Speaker · Text · How it's said · Status · Audio. "How it's said" is
-  words on a model that takes direction, the persona's own tags on a tag model, and nothing on
-  the rest. Opening a line shows who speaks it (read-only — Cast decides, D2), the numbers
+  The line is the unit: Speaker · Model · Text · Can be directed · Status · Audio — Model and
+  Can be directed in the Personas and Voices lists' own words (2026-10-06), with the line's
+  direction on a words model and the persona's tags on a tag model. Opening a line shows who speaks it (read-only — Cast decides, D2), the numbers
   override behind its closed hatch (D3), Pronunciation, Rewrite in character, and its takes:
   every take is kept, and the ★ one is what the chapter plays and exports (D4). A change to the
   line or to what it is made from marks it stale; you choose when to render it again.
@@ -21,6 +21,7 @@ import {
 import { facetCounts, facetOptions, facetTotal, passesFilters } from "../services/facets.js";
 import DeliveryKnobs from "../components/DeliveryKnobs.vue";
 import { capabilities, emotionValues, silentWav, wait } from "./personaMock.js";
+import { directionCell, tagCount } from "../services/personaFacts.js";
 import {
   BOOK_LEXICON, PAUSE_BETWEEN_LINES_MS, SPEAKERS, addTake, avatarColor, counts, directedBy,
   lineState, notReady, personaOfSpeaker, render, speakerOf, standingTags, voiceless,
@@ -83,8 +84,9 @@ const NARROW = { width: "1%", whiteSpace: "nowrap" };
 const COLUMNS = [
   { id: "open", header: "", headerStyle: NARROW, cellStyle: NARROW },
   { id: "speaker", header: "Speaker", cellStyle: { whiteSpace: "nowrap" } },
+  { id: "model", header: "Model", cellStyle: { whiteSpace: "nowrap" } },
   { id: "text", header: "Text" },
-  { id: "said", header: "How it's said", headerStyle: { width: "26%" } },
+  { id: "said", header: "Can be directed", headerStyle: { width: "26%" } },
   { id: "status", header: "Status", headerStyle: NARROW, cellStyle: NARROW },
   { id: "audio", header: "Audio", headerStyle: NARROW, cellStyle: { ...NARROW, textAlign: "right" } },
 ];
@@ -97,11 +99,6 @@ const personaName = (l) => personaOfSpeaker(l.speaker_id)?.name || "";
 const modelName = (l) => personaOfSpeaker(l.speaker_id)?.model_name || "";
 const liveTake = (l) => l.takes.find((t) => t.live) || null;
 const fmt = (s) => `0:${String(s).padStart(2, "0")}`;
-function saidPlaceholder(l) {
-  const s = lineState(l);
-  if (s === "needs a speaker" || s === "needs a voice") return "—";
-  return `${modelName(l)} takes no direction`;
-}
 function setDirection(l, v) {
   const next = (v || "").trim();
   if (next === (l.direction || "")) return;
@@ -383,21 +380,24 @@ const blockedBanner = computed(() => {
           <span v-else class="jv-muted">— nobody —</span>
         </template>
         <template #text="{ row }"><span class="mock-render-ch__text">{{ row.text }}</span></template>
+        <template #model="{ row }">
+          <span v-if="personaOfSpeaker(row.speaker_id)">{{ modelName(row) }}</span>
+          <span v-else class="jv-muted">—</span>
+        </template>
         <template #said="{ row }">
-          <span @click.stop>
-            <span v-if="directedBy(row) === 'words' && !['needs a speaker', 'needs a voice'].includes(lineState(row))"
-              class="mock-render-ch__dir" title="Open the line to change its Style Instructions"
-              @click="open = open === row.id ? null : row.id">
+          <span v-if="personaOfSpeaker(row.speaker_id)" class="mock-render-ch__said" @click.stop>
+            <UiTag :intent="directionCell(directedBy(row), tagCount(rowOfLine(row))).intent"
+              :title="directionCell(directedBy(row)).title">{{ directionCell(directedBy(row), tagCount(rowOfLine(row))).label }}</UiTag>
+            <span v-if="directedBy(row) === 'words'" class="mock-render-ch__dir"
+              title="Open the line to change its Style Instructions" @click="open = open === row.id ? null : row.id">
               <template v-if="row.direction">“{{ row.direction }}”</template>
               <span v-else class="jv-muted">as {{ personaName(row) }} always speaks</span>
             </span>
-            <span v-else-if="directedBy(row) === 'tags' && lineState(row) !== 'needs a voice'"
-              class="mock-render-ch__tags" :title="`${modelName(row)} takes tags, not words — ${personaName(row)}'s own, set on the persona`">
+            <span v-else-if="directedBy(row) === 'tags'" class="mock-render-ch__tags">
               <UiTag v-for="t in standingTags(row)" :key="t" intent="ghost">{{ t }}</UiTag>
-              <span v-if="!standingTags(row).length" class="jv-muted">no tags</span>
             </span>
-            <span v-else class="jv-muted">{{ saidPlaceholder(row) }}</span>
           </span>
+          <span v-else class="jv-muted">—</span>
         </template>
         <template #status="{ row }">
           <UiTag :intent="STATE_TAG[lineState(row)]">{{ lineState(row) }}</UiTag>
@@ -629,6 +629,8 @@ const blockedBanner = computed(() => {
   display: inline-flex; align-items: center; justify-content: center; flex: none; }
 .mock-render-ch__dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); display: inline-block; }
 .mock-render-ch__tags { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.mock-render-ch__said { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.mock-render-ch__dir { cursor: pointer; }
 .mock-render-ch__audio { display: inline-flex; align-items: center; gap: 4px; }
 .mock-render-ch__len { font-variant-numeric: tabular-nums; font-size: 12px; }
 .mock-render-ch__hidden { display: none; }

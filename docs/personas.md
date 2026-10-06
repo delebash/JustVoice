@@ -583,8 +583,8 @@ most specific last:
 
 1. this persona's **Style Instructions**
 2. the **Emotion** label, if one is set
-3. the line's own **direction**, from its *How it's said* box in
-   [Studio · Render](studio.md#how-its-said)
+3. the line's own **direction**, its **Style Instructions** in
+   [Studio · Render → Render overrides](studio.md#render-overrides)
 
 So a persona whose delivery reads *"gravel-voiced harbour-master, always weary"*
 on a line marked *"shouting over the wind"* sends the engine `gravel-voiced

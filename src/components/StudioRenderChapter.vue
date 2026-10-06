@@ -4,10 +4,11 @@
   docs/plans/2026-10-04-slice-4-render.md, drawn first as the in-app mock
   src/mock/MockRenderChapterView.vue).
 
-  The line is the unit: Speaker · Text · How it's said · Status · Audio, the
-  status in §8.16's words (GET /v1/scenes/{id}/render_lines). "How it's said"
-  is written direction on a model that takes it, the persona's own standing
-  tags (read-only) on a tag model, and nothing on the rest. Opening a line
+  The line is the unit: Speaker · Model · Text · Can be directed · Status ·
+  Audio, the status in §8.16's words (GET /v1/scenes/{id}/render_lines).
+  Model and Can be directed are the Personas and Voices lists' own words
+  (2026-10-06); the cell adds the line's direction on a words model and the
+  persona's tags on a tag model. Opening a line
   shows who speaks it (read-only — Cast decides, D2), "Render overrides" —
   the persona page's controls that the line's model takes, and only those,
   for this line (2026-10-06, was D3's closed hatch; stored in the line's
@@ -29,6 +30,7 @@ import {
 } from "@delebash/llm-ui";
 import { useApi } from "../stores/api.js";
 import DeliveryKnobs from "./DeliveryKnobs.vue";
+import { directionCell, tagCount } from "../services/personaFacts.js";
 import { useCopy } from "../services/copy.js";
 import { useKeptScroll } from "../composables/useKeptScroll.js";
 import { mediaUrl, renderChapter, renderLines } from "../services/renderRun.js";
@@ -212,15 +214,14 @@ const NARROW = { width: "1%", whiteSpace: "nowrap" };
 const COLUMNS = [
   { id: "open", header: "", headerStyle: NARROW, cellStyle: NARROW },
   { id: "speaker", header: "Speaker", cellStyle: { whiteSpace: "nowrap" } },
+  // The model and how it can be directed — the Personas and Voices lists' own
+  // columns and words (decided 2026-10-06: one fact, the same words everywhere).
+  { id: "model", header: "Model", cellStyle: { whiteSpace: "nowrap" } },
   { id: "text", header: "Text" },
-  { id: "said", header: "How it's said", headerStyle: { width: "26%" } },
+  { id: "said", header: "Can be directed", headerStyle: { width: "26%" } },
   { id: "status", header: "Status", headerStyle: NARROW, cellStyle: NARROW },
   { id: "audio", header: "Audio", headerStyle: NARROW, cellStyle: { ...NARROW, textAlign: "right" } },
 ];
-function saidText(l) {
-  if (BLOCKED.has(l.state)) return "—";
-  return `${personaOf(l)?.model_name || "This model"} takes no direction`;
-}
 
 // ── Saving a line ────────────────────────────────────────────────────
 async function patchBlock(l, body) {
@@ -587,22 +588,26 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
             <span v-else class="jv-muted">— nobody —</span>
           </template>
           <template #text="{ row }"><span class="studio-render-ch__text">{{ row.text }}</span></template>
+          <template #model="{ row }">
+            <span v-if="personaOf(row)?.model_name">{{ personaOf(row).model_name }}</span>
+            <span v-else class="jv-muted">—</span>
+          </template>
           <template #said="{ row }">
-            <span @click.stop>
-              <span v-if="personaOf(row)?.directed_by === 'words' && !BLOCKED.has(row.state)"
-                class="studio-render-ch__dir" title="Open the line to change its Style Instructions"
+            <span v-if="personaOf(row)" class="studio-render-ch__said" @click.stop>
+              <UiTag :intent="directionCell(personaOf(row).directed_by, tagCount(rowOf(row))).intent"
+                :title="directionCell(personaOf(row).directed_by).title">{{
+                  directionCell(personaOf(row).directed_by, tagCount(rowOf(row))).label }}</UiTag>
+              <span v-if="personaOf(row).directed_by === 'words'" class="studio-render-ch__dir"
+                title="Open the line to change its Style Instructions"
                 @click="open = open === row.block_id ? null : row.block_id">
                 <template v-if="row.direction">“{{ row.direction }}”</template>
                 <span v-else class="jv-muted">as {{ personaOf(row).name }} always speaks</span>
               </span>
-              <span v-else-if="personaOf(row)?.directed_by === 'tags' && !BLOCKED.has(row.state)"
-                class="studio-render-ch__tags"
-                :title="`${personaOf(row).model_name} takes tags, not words — ${personaOf(row).name}'s own, set on the persona`">
+              <span v-else-if="personaOf(row).directed_by === 'tags'" class="studio-render-ch__tags">
                 <UiTag v-for="t in standingTags(row)" :key="t" intent="ghost">{{ t }}</UiTag>
-                <span v-if="!standingTags(row).length" class="jv-muted">no tags</span>
               </span>
-              <span v-else class="jv-muted">{{ saidText(row) }}</span>
             </span>
+            <span v-else class="jv-muted">—</span>
           </template>
           <template #status="{ row }"><UiTag :intent="STATE_TAG[row.state]">{{ row.state }}</UiTag></template>
           <template #audio="{ row }">
@@ -851,6 +856,7 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
   display: inline-flex; align-items: center; justify-content: center; flex: none; }
 .studio-render-ch__dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); display: inline-block; }
 .studio-render-ch__tags { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.studio-render-ch__said { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .studio-render-ch__audio { display: inline-flex; align-items: center; gap: 4px; }
 .studio-render-ch__len { font-variant-numeric: tabular-nums; font-size: 12.5px; }
 .studio-render-ch__hidden { display: none; }

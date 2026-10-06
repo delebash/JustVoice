@@ -2,6 +2,10 @@
 
 ## v0.1.0
 
+- **Render's grid shows the model (2026-10-06)** — a **Model** column, and
+  **Can be directed** in the Personas and Voices lists' own words (*sliders
+  only*, *✓ written direction*, *✓ 7 tags*) instead of *Kokoro takes no
+  direction* ([Studio → A chapter's lines](studio.md#a-chapters-lines))
 - **Render: Rewrite for the narrator, the line's Style Instructions, ✎ Edit
   words (2026-10-06)** — **✏️ Rewrite** works on narration as the narrator
   would tell it; a line's own direction is the persona page's **Style

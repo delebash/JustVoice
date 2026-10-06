@@ -903,8 +903,11 @@ chapter.
 
 ### A chapter's lines
 
-One row per line that is heard: **Speaker**, **Text**, **How it's said**,
-**Status** and **Audio**. Lines a book leaves out (dialogue tags, when
+One row per line that is heard: **Speaker**, **Model**, **Text**, **Can be
+directed**, **Status** and **Audio**. **Model** and **Can be directed** say the
+same things, in the same words, as the Personas and Voices lists: the model
+that speaks the line (its persona's voice's), and *✓ written direction*, *✓ 7
+tags* or *sliders only*. Lines a book leaves out (dialogue tags, when
 [that's on](#leaving-out-dialogue-tags)) and a podcast's music markers aren't
 listed — they are never heard.
 
@@ -935,32 +938,34 @@ A row opens its line, under it:
   plays that speaker and its model; which persona plays a speaker is Cast's:
   **Change in Cast ➜**.
 - **Style Instructions** — the line's own direction; see
-  [How it's said](#how-its-said).
+  [Can be directed](#can-be-directed).
 - **Render overrides** — what this line does differently from its persona; see
   [Render overrides](#render-overrides).
 - **📕 Pronunciation**, **✏️ Rewrite as** *name* and **✎ Edit words** — see
   [below](#pronunciation-and-rewrite-in-character).
 - **Takes** — see [below](#takes).
 
-### How it's said
+### Can be directed
 
 What a line can be told depends on the model of the persona that speaks it
 ([Personas → Can be directed](personas.md)):
 
 - **A model that takes written direction** (Qwen3-TTS, VoxCPM2): the line can
   have its own direction — *Talking to the lamp, half amused.* The cell shows it
-  (or *as June always speaks*); click it, or open the line, to change it in
+  after *✓ written direction* (or *as June always speaks*); click it, or open
+  the line, to change it in
   **Style Instructions** — the persona page's own field, with a **↺** that clears
   it. It is added after the persona's Style Instructions, most specific last
   (the hint quotes the persona's), and saved when you leave the box. Empty means
   the line is said as the persona always speaks. The field is part of
   [Render overrides](#render-overrides), and only on a model that takes written
   direction.
-- **A tag model** (Chatterbox Turbo and Nano): the persona's own tags, such as
-  *[sarcastic]*, shown read-only — they are set on the persona's page.
-- **Every other model** (Kokoro, Kitten, Pocket, Chatterbox Multilingual): it
-  takes no direction, and the cell says so. Its only per-line control is
+- **A tag model** (Chatterbox Turbo and Nano): *✓ N tags*, then the persona's
+  own tags, such as *[sarcastic]*; a line picks its own emotion and register in
   [Render overrides](#render-overrides).
+- **Every other model** (Kokoro, Kitten, Pocket, Chatterbox Multilingual):
+  *sliders only* — no words, no tags; [Render overrides](#render-overrides)
+  shapes the line with the numbers.
 
 ### Render overrides
 
@@ -974,7 +979,7 @@ because there you are still choosing the voice. In the persona page's order:
 - **Pace** (×), **Pitch** (semitones), **Gain** (dB) and **Pause after** (ms)
   — every model.
 - **Style Instructions** — a model that takes written direction (Qwen3-TTS,
-  VoxCPM2); added after the persona's (see [How it's said](#how-its-said)).
+  VoxCPM2); added after the persona's (see [Can be directed](#can-be-directed)).
 - **Emotion** — the nine on a model that takes written direction; on a tag
   model (Chatterbox Turbo and Nano) its own emotion tags, with its **Register**
   tags beside it.

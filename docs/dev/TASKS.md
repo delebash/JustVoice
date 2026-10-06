@@ -195,6 +195,32 @@ GO: needed.
 
 ## The next build
 
+### Render's grid: a Model column, and "Can be directed" in Voices' words (decided 2026-10-06)
+STATE:  DECIDED 2026-10-06 — "your rec on render grid change go" (the user: "in voices grid you have
+        title can it be directed with sliders only … you are presenting the same info in render page
+        under title how its said Kokoro takes no direction, same info presented in different ways for
+        no reason" — "just add model speaks field like in voices to render grid"), on the rec as shown:
+        "Add a Model column, after Speaker, showing the model exactly as Voices shows it (Kokoro,
+        Qwen3-TTS CustomVoice). Then you can see at a glance which model each line goes through, and
+        so why the Render overrides box shows what it shows. Change 'How it's said' to Voices' Can be
+        directed words: Sliders only, Tags with the persona's tags, Written direction with the line's
+        direction when it has one. That replaces Kokoro takes no direction. I wouldn't add Speaks (the
+        languages). A book is in one language, and Cast already warns when a persona speaks a
+        different one, so on every line it would mostly repeat the same word."
+WHY:    one fact, the same words on every screen.
+NOT:    a Speaks column on Render.
+BUILT:  2026-10-06 — `StudioRenderChapter.vue` and its mock: a **Model** column after Speaker (the
+        persona's `model_name`, as the Personas list shows it); the "How it's said" column is **Can be
+        directed** — the shared `directionCell` tag (`personaFacts.js`, the Personas and Voices lists'
+        own) with `tagCount` from the capability row, then the line's direction (a words model, still
+        opening the line) or the persona's tags (a tag model); "takes no direction" and its helpers
+        gone. Docs studio (A chapter's lines; Can be directed), whats-new. Checked live: The Same Hour —
+        Speaker · Model · Text · Can be directed · Status · Audio, Kokoro lines read "sliders only";
+        the mock — Cael's lines "✓ written direction “Talking to the lamp, half amused.”" (a gap added
+        after the first look ran them together). No page errors.
+OPEN:   none.
+GO:     given 2026-10-06
+
 ### Render: a line can change what its model takes — emotion, tags, the model's settings (decided 2026-10-06)
 STATE:  DECIDED 2026-10-06 — "correct go" (the user: "go fix the render" … "explain how you think render
         should show overrid controls, it should work the same as persona except instead of disabling
