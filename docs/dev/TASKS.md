@@ -125,6 +125,23 @@ GO:     given 2026-08-17
 
 ## The next build
 
+### Script's "added since" goes once the added speaker has lines in the chapter (decided 2026-10-06)
+STATE:  DECIDED 2026-10-06 — "go" (the user: "why is it stuck with sedge just added and reanalyze?"), on the
+        lean as shown: "after a 🔎 Second look, drop the added since mark for a speaker who now has lines
+        in that chapter (the second look gave them theirs). Keep it for an added speaker who still has
+        none, because then Re-analyze is the only way they'd get lines."
+WHY:    the mark compares with the cast at the chapter's last Analyze; the second look isn't an Analyze,
+        so the mark stayed after Sedge had his lines.
+NOT:    the second look rewriting `analyzed_cast` (it never re-decides the lines it doesn't ask about).
+BUILT:  2026-10-06 — `extraction_api.py` (the chapter's script): an added speaker who already speaks a
+        line in the chapter is left out of `added_since` — whoever gave it, the second look or you.
+        Words: the grid's tag tooltip and "What these columns mean" (`StudioScript.vue`), docs studio.
+        Checked live after a restart: Bigger Inside's `added_since` [] and its row "80 · 47 min ago · 5 ·
+        29 · 0 · 0 · Review" with no tag or Re-analyze button; the filter "Re-analyze 0". Ruff, build
+        clean.
+OPEN:   none.
+GO:     given 2026-10-06
+
 ### Cast: "Models to choose from" for Smart-assign and New persona (decided 2026-10-06)
 STATE:  DECIDED 2026-10-06 — "go" (the user: "cast page the create new persona for unassigned how does that
         work it choose 3 diffrent engines, why … seems wastfule to choos 3 diffrent models since they are

@@ -1279,7 +1279,11 @@ def _chapter_script(
     before = meta.get("analyzed_cast")
     if analyzed and isinstance(before, list):
         text = meta.get("source_text") or "\n\n".join(b.text or "" for b in blocks)
-        for sid in sorted(cast_ids - set(before) - {narrator_id}):
+        # A speaker who already has lines here is no longer waiting for a
+        # Re-analyze — the 🔎 Second look (or you) gave them theirs (decided
+        # 2026-10-06).
+        speaking = {r[0].speaker_id for r in spoken_rows if r[0].speaker_id}
+        for sid in sorted(cast_ids - set(before) - {narrator_id} - speaking):
             sp = speakers.get(sid)
             pat = _name_pattern([sp.name, *speaker_aliases(sp)]) if sp else None
             if pat and pat.search(text):

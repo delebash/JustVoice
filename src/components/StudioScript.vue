@@ -439,7 +439,7 @@ function openRow(r, focus = null) {
                   <UiTag v-else intent="danger" :title="failureOf(project.id, row.scene_id, 'analyze').reason">failed</UiTag>
                 </template>
                 <UiTag v-for="n in row.added_since" :key="n" intent="accent2"
-                  :title="`Analyzed before ${n} was added as a speaker, and this ${word.singular.toLowerCase()}'s text names ${n} — Analyze could not choose ${n} then.`">{{ n }} added since</UiTag>
+                  :title="`Analyzed before ${n} was added as a speaker, and this ${word.singular.toLowerCase()}'s text names ${n}, but no line here is theirs yet — Analyze could not choose ${n} then.`">{{ n }} added since</UiTag>
                 <UiTag v-if="row.edited_since" intent="accent2"
                   :title="`${plural(row.edited_since, 'line')} added or changed with ✎ Edit text since the last Analyze, with no speaker yet. Re-analyze works out who speaks them; lines you set are kept.`">{{ row.edited_since }} changed since</UiTag>
                 <UiTag v-if="row.no_dialogue_found" intent="accent2"
@@ -555,8 +555,8 @@ function openRow(r, focus = null) {
           <dd class="jv-muted">The script named its speakers, so there was nothing to analyze. The checks
             above run only on what Analyze decided.</dd>
           <dt>added since</dt>
-          <dd class="jv-muted">Analyzed before that speaker was added, and the text names them.
-            Re-analyze it — lines you set are kept.</dd>
+          <dd class="jv-muted">Analyzed before that speaker was added, the text names them, and no
+            line here is theirs yet. Re-analyze it — lines you set are kept.</dd>
           <dt>changed since</dt>
           <dd class="jv-muted">Lines added or changed with ✎ Edit text since the last Analyze. They have no
             speaker until you re-analyze — lines you set are kept.</dd>

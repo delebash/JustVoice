@@ -258,7 +258,7 @@ never analyzed shows **—**.
 
 A row can also carry a tag:
 
-- **Name added since** — the chapter was analyzed before that speaker was added to the book, and its text names them (their name or an *Also called* name).
+- **Name added since** — the chapter was analyzed before that speaker was added to the book, its text names them (their name or an *Also called* name), and no line in it is theirs yet. Once they have lines there — from **🔎 Second look** or set by you — the mark goes (since 2026-10-06).
   Analyze couldn't choose them then. **Re-analyze** on the row runs it again;
   lines you set are kept.
 - **N changed since** — lines added or changed with **✎ Edit text** (below)
