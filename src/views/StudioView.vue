@@ -197,8 +197,16 @@ const overviewState = computed(() => projectState({
 // the cast; the line counts let Discover's Remove say what it takes.
 const scriptCast = computed(() => speakers.value.map((sp) => ({
   id: sp.id, name: sp.name, aliases: sp.aliases || [], narrator: sp.id === narratorSpeaker.value?.id,
-  lines: sp.lines || 0,
+  lines: sp.lines || 0, imported_from: sp.imported_from || null,
 })));
+
+// Discover opened from Script's banner, a chapter to tick for Scan (2026-10-06).
+const discoverFocus = ref(null);
+function openDiscover(arg) {
+  discoverFocus.value = arg?.sceneId || null;
+  tab.value = "discover";
+}
+watch(tab, (t) => { if (t !== "discover") discoverFocus.value = null; });
 // A step, and where in it to land: Overview's Script numbers open the grid on
 // To check.
 function goStep(k, arg = null) {
@@ -625,7 +633,7 @@ watch(selectedProjectId, (id) => {
     <KeepAlive>
       <StudioDiscover v-if="tab === 'discover' && selectedProject" :project="selectedProject" :scenes="scenes"
         :lines-by-scene="linesByScene" :narration-by-scene="narrationByScene"
-        :cast="scriptCast" :personas="personas"
+        :cast="scriptCast" :personas="personas" :focus-scene="discoverFocus"
         @cast-changed="onCastChanged" @go="goStep" />
     </KeepAlive>
 
@@ -656,7 +664,7 @@ watch(selectedProjectId, (id) => {
         :version="scriptVersion"
         @back="openScript({ sceneId: null })"
         @open="(id, focus) => openScript({ sceneId: id, focus })"
-        @go="(k) => (tab = k)" @changed="onScriptChanged" @cast-changed="onCastChanged" />
+        @go="(k, arg) => (k === 'discover' ? openDiscover(arg) : (tab = k))" @changed="onScriptChanged" @cast-changed="onCastChanged" />
     </KeepAlive>
     <KeepAlive>
       <StudioScript v-if="tab === 'script' && selectedProject && !scriptSceneId"

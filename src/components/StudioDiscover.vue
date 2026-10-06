@@ -74,6 +74,9 @@ const props = defineProps({
   // {sceneId: lines of narration} — Script's rows (read, not spoken). With no
   // narrator, any narration makes Narrator the first row found.
   narrationByScene: { type: Object, default: () => ({}) },
+  // A chapter to arrive with ticked for Scan — Script's banner sends one when its
+  // second look heard someone who isn't in the book (2026-10-06).
+  focusScene: { type: String, default: null },
 });
 // A finished scan reaches Studio through the chapter run, not from here.
 // `cast-changed` carries `{ moved }` > 0 when lines lost their speaker.
@@ -91,6 +94,9 @@ const busyName = ref(null);   // a row being added, ignored or removed
 watch(() => props.project?.id, () => {
   selected.value = {};
 });
+watch(() => props.focusScene, (id) => {
+  if (id) selected.value = { [id]: true };
+}, { immediate: true });
 
 const plural = (n, word) => `${n.toLocaleString()} ${word}${n === 1 ? "" : "s"}`;
 
@@ -421,6 +427,14 @@ async function removeRow(row) {
   }
 }
 const clearable = computed(() => props.cast.filter((c) => !c.narrator));
+// Where each speaker came from (decided 2026-10-06): the import's characters, and
+// everyone added here — Discover's ＋ Add and the narrator.
+const castGroups = computed(() => [
+  { key: "book", label: "From the book", hint: "the characters the import brought",
+    rows: props.cast.filter((c) => c.imported_from) },
+  { key: "added", label: "Added here", hint: "added with ＋ Add, and the narrator",
+    rows: props.cast.filter((c) => !c.imported_from) },
+].filter((g) => g.rows.length));
 
 async function ignore(c) {
   busyName.value = c.key;
@@ -542,8 +556,6 @@ async function ignore(c) {
             <strong>{{ row.name }}</strong>
             <div v-if="row.names.some((n) => n !== row.name)" class="jv-hint">also written {{ row.names.filter((n) => n !== row.name).join(", ") }}</div>
             <div v-if="row.role_hint" class="jv-hint">{{ row.role_hint }}</div>
-            <div v-if="row.second_look" class="jv-hint"
-              title="Script's 🔎 Second look heard them speaking a line that has no speaker. Add them, then run the second look again on Script so the line goes to them.">found by Script's second look</div>
           </template>
           <template #status="{ row }">
             <UiTag :intent="STATUS[row.status].intent" :title="statusTitle(row)">{{ STATUS[row.status].label }}</UiTag>
@@ -629,12 +641,18 @@ async function ignore(c) {
           @click="removeSpeakers(clearable)" />
       </div>
       <div class="jv-card__body">
-        <div class="studio-discover__cast">
-          <UiTag v-for="c in cast" :key="c.id" intent="ghost" removable :value="c.name"
-            :title="`✕ removes ${c.name} from this book — asks first; their lines go back to No speaker`"
-            @remove="removeSpeakers([c])">{{ c.name }}</UiTag>
-          <span v-if="!cast.length" class="jv-muted">Nobody yet.</span>
-        </div>
+        <template v-for="g in castGroups" :key="g.key">
+          <div class="studio-discover__castgroup">
+            <span class="jv-eyebrow">{{ g.label }}</span>
+            <span class="jv-hint">{{ g.hint }}</span>
+          </div>
+          <div class="studio-discover__cast">
+            <UiTag v-for="c in g.rows" :key="c.id" intent="ghost" removable :value="c.name"
+              :title="`✕ removes ${c.name} from this book — asks first; their lines go back to No speaker`"
+              @remove="removeSpeakers([c])">{{ c.name }}</UiTag>
+          </div>
+        </template>
+        <div v-if="!cast.length" class="studio-discover__cast"><span class="jv-muted">Nobody yet.</span></div>
         <p class="jv-hint">
           Script can only choose from these.
           <a href="#studio" @click.prevent="emit('go', 'script')">Go to Script ➜</a>
@@ -649,6 +667,7 @@ async function ignore(c) {
 .studio-discover__grid { margin: 10px 0 12px; }
 .studio-discover__run { gap: 10px; align-items: center; }
 .studio-discover__cast { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.studio-discover__castgroup { display: flex; align-items: baseline; gap: 8px; margin: 2px 0 6px; }
 .studio-discover__why { max-width: 60ch; margin-top: 4px; }
 .studio-discover__quote { display: block; max-width: 46ch; color: var(--ink-2); font-style: italic; }
 .studio-discover__chips { gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }

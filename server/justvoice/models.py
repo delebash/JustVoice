@@ -844,6 +844,10 @@ class Speaker(BaseModel):
     role_label: str | None = None
     pronouns: Pronouns | None = None
     lines: int = 0
+    # Where the speaker came from (2026-10-06): the import that brought them
+    # ("justwrite" — the book's own characters); null = added here (Discover's
+    # ＋ Add, the narrator). Discover and Cast show it as From the book / Added here.
+    imported_from: str | None = None
 
 
 class SpeakerList(BaseModel):

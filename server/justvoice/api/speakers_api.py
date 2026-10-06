@@ -51,6 +51,7 @@ def _out(s: Speaker, names: dict[str, str], counts: dict[str, int]) -> SpeakerOu
         role_label=s.role_label,
         pronouns=s.pronouns,
         lines=counts.get(s.id, 0),
+        imported_from=s.imported_from,
     )
 
 

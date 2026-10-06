@@ -129,11 +129,7 @@ chapter. It creates nothing on its own.
    scanned (**0** means named but not heard speaking; a speaker already in this book shows how many times the text names them instead), the **First appearance**
    — the quote that names them — and which chapters. Spellings of one person
    are one row: "Sedge" and "Old Sedge" show as *Old Sedge, also written Sedge*.
-   It also lists who Script's [second look](#the-second-look) heard speaking a
-   line that has no speaker, when they aren't in this book — marked *found by
-   Script's second look*, with that line as the quote, even in a chapter Discover
-   never scanned. Add them here like any other name; the mark goes once the line
-   is given a speaker. **Only Discover adds speakers** (since 2026-10-06).
+   **Only Discover adds speakers** — Script never does (since 2026-10-06).
    The chips above it filter the list: **All**, **New** (everyone not in this book yet — new names and names a persona in your library has), **In this book** and **Ignored**. The statuses:
    - **In this book** — a speaker this book already has, whatever the text calls
      them: full name, first name, surname, or one of their *Also called*
@@ -174,8 +170,10 @@ in AI Settings → Features. Edit and save them there and the next scan uses you
 text; **Reset** puts the shipped text back.
 
 **The book's speakers** lists them — the ones Script can choose
-from. A name's **✕** removes that speaker, and **Clear all** removes everyone
-but the Narrator. Both ask first.
+from — in two groups (since 2026-10-06): **From the book**, the characters the
+import brought (JustWrite's list), and **Added here**, the people you added with
+＋ Add, and the narrator. A name's **✕** removes that speaker, and **Clear all**
+removes everyone but the Narrator. Both ask first.
 
 Scan results are saved with each chapter, so they are still there after you
 move to another step, switch project, or restart the app. Scanning a chapter
@@ -413,11 +411,12 @@ The banner above the table counts them and offers **Assign N → Narrator**. A
 book with no narrator yet says *This book has no narrator — choose one on Cast
 ➜* instead, and the link opens Cast. When the [second look](#the-second-look)
 found who speaks a line but they aren't a speaker in this book, the banner names them, one
-row each: **Old Sedge may speak here but isn't in this book — add them on Discover ➜**.
-The link opens Discover, where they are listed under **Speakers found** (*found by
-Script's second look*) with **＋ Add** — Script itself never adds a speaker. Once
-they are added, the chapter's row on the grid says *Old Sedge added since*, and
-**🔎 Second look** on the chapter's page can give them their lines.
+row each: **Old Sedge may speak here but isn't in this book — scan Bigger Inside on
+Discover to add them ➜**. The link opens Discover with that chapter ticked:
+**Scan** it, and the scan lists them under **Speakers found** with **＋ Add** —
+Script itself never adds a speaker. Once they are added, the chapter's row on the
+grid says *Old Sedge added since*, and **🔎 Second look** on the chapter's page can
+give them their lines.
 
 **A book with narration needs a narrator.** Narration — everything outside
 quote marks — goes to the narrator, and nothing makes one on its own, so
@@ -580,8 +579,9 @@ it gets a speaker, or Analyze runs on the chapter again.
   **To check** until you set a speaker or press **✓ Looks right**. It counts
   under *AI decided*.
 - If the speaker is someone the text names who isn't a speaker in this book, the line keeps
-  no speaker; the banner above the table names them and links to Discover, which
-  lists them to add (see *Lines with no speaker block the render*, above).
+  no speaker; the banner above the table names them and opens Discover with the
+  chapter ticked to scan, where you add them (see *Lines with no speaker block
+  the render*, above).
 - If the text never makes it clear, the line stays as it was. A wrong name is
   worse than no name, and the second look is told so.
 
@@ -626,9 +626,10 @@ chapter is decided again.
 **What it's for.** Filling a few blank lines without re-deciding the whole
 chapter:
 
-- **After you ＋ Add someone who was missing** — on Discover, where the banner's
-  link takes you. Analyze could only pick from the speakers the book had; once
-  you add them, a second look asks about the blank lines with them in the cast.
+- **After you ＋ Add someone who was missing** — on Discover, after scanning the
+  chapter the banner's link ticks for you. Analyze could only pick from the
+  speakers the book had; once you add them, a second look asks about the blank
+  lines with them in the cast.
 - **For a speaker the book names in another chapter** — a voice in the dark,
   revealed by name later — when the lines are still blank.
 
@@ -640,7 +641,7 @@ second look to fill blanks.
 **What it saves.** Each answer is saved to its line as it comes: a name the
 text makes clear goes on the line **marked to check** (*Decided by: AI, from the
 chapters around it*); someone the text names who isn't a speaker in this book is
-listed on Discover for you to **＋ Add**; a line it still can't place stays blank for you to
+named on the banner, which opens Discover to scan and **＋ Add** them; a line it still can't place stays blank for you to
 set. A line it names shows under **Changed**, like a line a re-analyze changed.
 It isn't offered while the chapter is being analyzed.
 
@@ -777,6 +778,10 @@ speaker it plays. Cast never changes a voice: pace, pitch, gain, delivery and
 effects all belong to the persona, on the [Personas](personas.md) page.
 
 ### The speakers (left)
+
+**Each card says where the speaker came from** (since 2026-10-06): **From the
+book** — one of the characters the import brought — or **Added here**, with
+Discover's ＋ Add or as the narrator.
 
 **The narrator** has its own full-width card at the top (every kind but
 a game). It reads everything that isn't spoken. Its card shows its role line

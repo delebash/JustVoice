@@ -746,11 +746,16 @@ kit's register §2.
 
 ## 7 · Where an AI task shows
 
-- Only Discover adds speakers (since 2026-10-06). A name the second look hears on a line with no
-  speaker, who isn't in the book (`metadata.not_in_cast`), reaches Discover through
-  `GET /v1/projects/{id}/scenes` → each chapter's `second_look_found` (derived from the lines on
-  every read, not stored); `studioStatus.foundSpeakers` lists it beside the scanned names, marked.
-  Script's banner only links there. — *code + live, 2026-10-06* (Bigger Inside: Sedge, 2 lines).
+- Only Discover adds speakers (since 2026-10-06), and Discover's Speakers found is the scans'
+  results only. A name the second look hears on a line with no speaker, who isn't in the book
+  (`metadata.not_in_cast`), stays on the line; Script's banner names it and opens Discover with the
+  chapter ticked for Scan (`StudioView.openDiscover` → `StudioDiscover` `focusScene`). — *code,
+  2026-10-06*. (was: the chapter list derived `second_look_found` and Discover listed it beside the
+  scans — built and removed the same day, "you are messing the whole flow up".)
+- A speaker's origin is `Speaker.imported_from` (the import's source, "justwrite"); Discover's
+  ＋ Add, the narrator and Script's old add set none. `GET /v1/projects/{id}/speakers` carries it
+  since 2026-10-06; Discover groups the book's speakers by it (From the book / Added here) and
+  Cast's cards show it. — *code, 2026-10-06* · `speakers_api._out`, `projects_api.py:866,890`.
 
 - Analyze's own second look is off by default since 2026-10-06 (`ExtractionSettings.second_look`
   False): Analyze does its main pass only; Script's 🔎 Second look asks about the blank spoken

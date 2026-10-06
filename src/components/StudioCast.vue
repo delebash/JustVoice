@@ -647,6 +647,7 @@ const GAME_COLUMNS = [
             <span class="studio-cast__portrait" :style="{ background: colorFor(narrator.name) }">{{ (narrator.name || "?").charAt(0).toUpperCase() }}</span>
             <div class="studio-cast__main">
               <strong class="studio-cast__name">{{ narrator.name }}</strong>
+              <div class="studio-cast__origin jv-muted">{{ narrator.imported_from ? "From the book" : "Added here" }}</div>
               <div v-if="narrator.aliases?.length" class="studio-cast__aka jv-muted">also called {{ narrator.aliases.join(", ") }}</div>
               <div class="studio-cast__role jv-muted">{{ roleLine(narrator) || "carries the narration" }}</div>
               <span class="studio-cast__tick" title="The narrator reads everything outside quote marks. To hand it over, tick Narrator on another speaker." @click.stop>
@@ -728,6 +729,8 @@ const GAME_COLUMNS = [
               <span class="studio-cast__portrait" :style="{ background: colorFor(s.name) }">{{ (s.name || "?").charAt(0).toUpperCase() }}</span>
               <div class="studio-cast__main">
                 <strong class="studio-cast__name">{{ s.name }}</strong>
+                <div class="studio-cast__origin jv-muted"
+                  :title="s.imported_from ? 'One of the characters the import brought' : 'Added here — with Discover\'s ＋ Add'">{{ s.imported_from ? "From the book" : "Added here" }}</div>
                 <div v-if="s.aliases?.length" class="studio-cast__aka jv-muted">also called {{ s.aliases.join(", ") }}</div>
                 <div class="studio-cast__role jv-muted">{{ roleLine(s) }}</div>
                 <span class="studio-cast__tick" @click.stop
@@ -896,6 +899,7 @@ const GAME_COLUMNS = [
 .studio-cast__main { min-width: 0; flex: 1; }
 .studio-cast__name { font-weight: 600; font-size: 13.5px; }
 .studio-cast__aka { font-size: 11.5px; font-style: italic; }
+.studio-cast__origin { font-size: 11.5px; }
 .studio-cast__role { font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .studio-cast__table-role { font-size: 12px; }
 .studio-cast__tick { display: inline-flex; margin-top: 6px; }

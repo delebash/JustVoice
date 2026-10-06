@@ -130,9 +130,9 @@ const groups = computed(() => page.value?.flag_groups || []);
 const speakers = computed(() => page.value?.speakers || []);
 // Who the second look found speaking a line it couldn't place, who isn't in this
 // book (2026-10-05, metadata.not_in_cast). Script doesn't add speakers (decided
-// 2026-10-06): the no-speaker banner names each and links to Discover, which
-// lists them under Speakers found. A name added since drops off; the grid's row
-// then says "<name> added since".
+// 2026-10-06): the no-speaker banner names each and opens Discover with this
+// chapter ticked for Scan, where ＋ Add is. A name added since drops off; the
+// grid's row then says "<name> added since".
 const notInCast = computed(() => {
   const cast = new Set(speakers.value.map((s) => (s.name || "").toLowerCase()));
   const out = [];
@@ -673,8 +673,8 @@ const flagged = (ln) => (ln.flags || []).length > 0;
         </p>
         <div v-for="name in notInCast" :key="name" class="studio-script-ch__offer">
           <span><strong>{{ name }}</strong> may speak here but isn't in this book —</span>
-          <a href="#studio" :title="`The second look heard ${name} speaking a line here. Discover lists them under Speakers found, with ＋ Add.`"
-            @click.prevent="emit('go', 'discover')">add them on Discover ➜</a>
+          <a href="#studio" :title="`The second look heard ${name} speaking a line here. Discover opens with this ${word.singular.toLowerCase()} ticked: Scan it, then ＋ Add them.`"
+            @click.prevent="emit('go', 'discover', { sceneId: props.sceneId })">scan {{ chapter?.title || `this ${word.singular.toLowerCase()}` }} on Discover to add them ➜</a>
         </div>
       </div>
 

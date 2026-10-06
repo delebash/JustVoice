@@ -125,6 +125,39 @@ GO:     given 2026-08-17
 
 ## The next build
 
+### Discover back to scan results only; Script's banner sends you to scan; speakers show where they came from (decided 2026-10-06)
+STATE:  DECIDED 2026-10-06 — "it should have been in trakerk, but whatever, your rec on all go" (the user:
+        "the discover doesnt make since you have sedge found by second look you aremeesing the whole flow
+        up, before you had all casts listed that where found now you only show sedge and sedg is already
+        added at bottom … its confusing" · "als we where supposed to make a disticntion of imported cast
+        verse discovered" — that earlier decision was never recorded here), on the leans as shown:
+        "put Discover back exactly as it was, scan results only, and fix the flow on Script instead. ·
+        Discover: remove the second-look rows and that Found count, so it reads exactly as it did before
+        today. · Script's banner: when the second look hears someone who isn't in the book, it says 'Sedge
+        may speak here but isn't in this book — scan Bigger Inside on Discover to add them ➜'. The link
+        opens Discover with that chapter ticked for Scan. The scan finds Old Sedge from the text, and you
+        ＋ Add him there, the normal way. · Script still never adds speakers." And: "Discover's The book's
+        speakers splits in two: From the book, the characters the import brought (JustWrite's list), and
+        Added here, the people you added with ＋ Add, plus the Narrator. · Cast's cards get the same small
+        label, so you can see why a speaker exists."
+WHY:    Speakers found is the scan's results; a row no scan made, and Sedge listed twice, broke that.
+NOT:    the second-look rows kept for people not yet in the book (the alternative).
+BUILT:  2026-10-06 — Discover back to scans: `second_look_found` gone from the chapter list
+        (`projects_api`), `studioStatus.foundSpeakers` and Discover's row mark back as they were (the
+        entry above, "Only Discover adds speakers…", is superseded on that point). Script's banner:
+        "<name> may speak here but isn't in this book — scan <chapter> on Discover to add them ➜",
+        emitting `go("discover", {sceneId})` → `StudioView.openDiscover` → `StudioDiscover`
+        `focusScene` ticks that chapter. Origin: `models.Speaker.imported_from` on the wire
+        (`speakers_api._out`); Discover's The book's speakers in two groups (`castGroups`); Cast's
+        cards "From the book" / "Added here". Docs studio (Discover, the banner, the second look, Cast),
+        whats-new; RESEARCH §7 (the old fact rewritten with its "was").
+        Checked live: Speakers found reads "Scan some chapters to see who they name."; The book's
+        speakers shows From the book (8) and Added here (Narrator, Sedge); Cast's 10 cards carry the
+        same labels; no page errors. Not seen on screen: the banner's scan link — Sedge is already in
+        the book, so it doesn't show. Ruff, Biome, build clean.
+OPEN:   none.
+GO:     given 2026-10-06
+
 ### Only Discover adds speakers; a name the second look finds goes to Discover (decided 2026-10-06)
 STATE:  DECIDED 2026-10-06 — "your rec go" (the user: "should script be identifying speakers, i dont think
         thats its job, what do you think?" · earlier "in discover i added olde sage but for some reason it
