@@ -748,7 +748,7 @@ const flagged = (ln) => (ln.flags || []).length > 0;
           </template>
           <template #check="{ row }">
             <template v-if="toCheck(row)">
-              <div class="studio-script-ch__q">{{ checkQuestion(row, groups, nameOf, word.singular) }}</div>
+              <div class="studio-script-ch__q jv-text-warn">{{ checkQuestion(row, groups, nameOf, word.singular) }}</div>
               <div v-if="flagged(row)" class="studio-script-ch__qacts" @click.stop>
                 <UiButton intent="ghost" size="small" label="👁 Show the lines around"
                   title="Shows every line, with this one selected, so you can read the exchange" @click="showAround(row)" />
@@ -868,7 +868,7 @@ const flagged = (ln) => (ln.flags || []).length > 0;
 .studio-script-ch__text { display: block; max-width: 60ch; }
 .studio-script-ch__edit { display: flex; flex-direction: column; gap: 6px; }
 .studio-script-ch__ev { font-style: italic; color: var(--ink); }
-.studio-script-ch__q { max-width: 40ch; color: var(--ink); }
+.studio-script-ch__q { max-width: 40ch; }  /* amber — .jv-text-warn */
 .studio-script-ch__qacts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
 .studio-script-ch__table :deep(.ui-table-row) { cursor: pointer; }
 .studio-script-ch__table :deep(.studio-script-ch__narr) td { color: var(--ink-3, var(--ink-2)); }

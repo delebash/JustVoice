@@ -195,6 +195,26 @@ GO: needed.
 
 ## The next build
 
+### Script's Check questions show in amber (decided 2026-10-06)
+STATE:  DECIDED 2026-10-06 — "amber go" (the user: "maybe show the check column words in red or
+        yellow so it sticks out as to what is going on"), on the rec as shown: "I'd use amber
+        (yellow), not red: 'To check' means 'worth a look'. The app already uses amber for warnings,
+        for example its warning banners. Red stays for things that are actually broken, like
+        Render's '5 can't render'. Only the question's text would change colour ('Found in a nearby
+        chapter — is it Odeline Marran?'); the ✓ Looks right and Show the lines around buttons would
+        stay as they are. It would apply to every check question, not only the second look's, so
+        all lines waiting on you stand out the same way."
+WHY:    the question is what the line is waiting on; in the ink colour it read like the text beside it.
+NOT:    red.
+BUILT:  2026-10-06 — `.jv-text-warn` (`styles.css`, `--warn-ink`; design-law's inventory) on the
+        Check cell's text (`StudioScriptChapter.vue`), so every question there — and a no-speaker
+        line's "No speaker, so it can't render", which the same cell shows — is amber. Docs studio
+        (The marks). Checked live on the app's UI: fdsd's line reads in `oklch(0.4 0.1 82)` (the
+        theme's `--warn-ink`) against the row's amber tint; no page errors. (Bigger Inside had
+        nothing left to check — its candle line was marked ✓ Looks right.)
+OPEN:   none.
+GO:     given 2026-10-06
+
 ### Cast's batch lets you pick a voice it couldn't match; the three findings fixed (decided 2026-10-06)
 STATE:  DECIDED 2026-10-06 — "fix the stuff you found and your rec a go", on the findings as shown:
         "The update check still always says 'up to date'." · "Settings → Logs says logs are in

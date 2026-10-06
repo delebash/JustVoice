@@ -462,7 +462,8 @@ Script decides who says what, and how it is performed is [Render](#render).
 
 ### The marks: where to read closely
 
-A mark tints the line and asks its question in the **Check** column. It marks
+A mark tints the line and asks its question in the **Check** column, in amber
+(a line with no speaker says so there too). It marks
 the shape the AI's mistakes take, measured on three answer-keyed books before
 it was built:
 
