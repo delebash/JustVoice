@@ -115,6 +115,14 @@ Import backup…) replaces the data live and reloads the app. If a view still
 shows pre-restore state, reload once more; speech engines are unloaded by a
 restore, so load one again from the AI page before generating.
 
+**The window says "Can't reach the JustVoice server".** The app's window
+checks its server as it opens and shows this page if the server hasn't answered
+within a few seconds — usually because it is still starting (the first start
+after an update, or a slow disk). The page keeps asking every 2 seconds and
+opens the app the moment the server answers, so most of the time you only need
+to wait; **Retry** asks at once. If it never opens, the server didn't start —
+its log is `logs/justvoice.log` in your data folder.
+
 **MCP clients can't find the server.** MCP mounts at `/mcp` on the app port
 (17494) — if it's missing, the server log will say the `fastmcp` package is
 absent; install it in the server environment. See [MCP server](mcp-server.md).

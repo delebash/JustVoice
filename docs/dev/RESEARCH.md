@@ -631,13 +631,17 @@ kit's register §2.
   checks and server start/stop/restart have no caller (recorded at `native.js:18-22`), and
   `list_audio_output_devices` / `play_audio_to_devices` are placeholders (`lib.rs:612-633`).
   No dictation feature runs today.
-- `window.__TAURI__` exists only with `withGlobalTauri`, which no config sets — so JustVoice's
-  updater UI (`SettingsView.vue:525-576`) never works, and no updater plugin is in any
-  `Cargo.toml`. The tray listeners and "Open log file" go through the kit's `isTauriShell` /
-  `openPath` since 2026-10-05 and work (checked in the app window). (was: all three dead — until
-  2026-10-05.)
+- `window.__TAURI__` exists only with `withGlobalTauri`, which no config sets. The tray listeners
+  and "Open log file" go through the kit's `isTauriShell` / `openPath` since 2026-10-05 and work
+  (checked in the app window). No updater exists — no plugin in any `Cargo.toml`, no signed feed;
+  Settings → Updates shows the version and release notes only since 2026-10-06. (was: all three
+  read `window.__TAURI__` and never ran, and the updater UI always said "latest" — until
+  2026-10-05/06.)
 - The app window's boot check (`checkServer`, 8 tries, about 7.5 s) can give up before the dev
-  sidecar answers; its screen only retries by Retry. — *live, 2026-10-05* · `main.js:192`.
+  sidecar answers; since 2026-10-06 the kit's ConnectionError then asks every 2 s and opens the
+  app when the server answers (1.9 s after, measured). (was: only Retry left the screen — until
+  2026-10-06.) — *live, 2026-10-06* · `main.js:192`; kit `ConnectionError.vue` ·
+  [`2026-10-06-batch-pick-and-findings.md`](../plans/2026-10-06-batch-pick-and-findings.md).
 - Of JustVoice's 2,738 lines of Rust, 956 are `audio_capture/`, 312 `synthetic_keys.rs`, 290
   `hotkey_monitor.rs`, 120 `permissions.rs`.
 
@@ -696,7 +700,9 @@ blast radius.
   that character" (`seed_feature_prompts.py:46`); the model drops speakers it has little to go on,
   at random. Replayed against the app on The Ninth Facet (no speaker has pronouns), full cast, 5
   runs: the Narrator skipped in 2, Old Sedge in 5; three speakers alone, 4 runs: Old Sedge in 1.
-  — *measured, 2026-10-05, gemma 26B-A4B* · TASKS "The demo cast for Render…".
+  — *measured, 2026-10-05, gemma 26B-A4B* · TASKS "The demo cast for Render…". Since 2026-10-06
+  a skipped speaker's row in the batch's list has a Voice list of the same voices
+  (`CastNewPersonas.vue`).
 - Smart-assign sends each speaker's pronouns and each persona's gender as its VOICE's gender
   (`voiceGender.js`: your override on Voices, else the catalog's, else a guess from the id or
   first name; "?" is sent as no gender). A persona has no gender field of its own. — *code,

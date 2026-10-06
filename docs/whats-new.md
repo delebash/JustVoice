@@ -2,6 +2,14 @@
 
 ## v0.1.0
 
+- **Cast's ＋ New persona lets you pick a voice it couldn't match, and three
+  fixes (2026-10-06)** — a speaker the language model matched to no voice gets
+  a **Voice** list in the proposals instead of "cast them yourself"
+  ([Studio → Cast](studio.md#cast)); the "Can't reach the server" page now opens the
+  app on its own once the server answers ([Troubleshooting](troubleshooting.md));
+  Settings → Logs names the folder the log is really in; and Settings → Updates
+  shows the version and release notes only — its update check, which always
+  answered "latest", is gone until JustVoice has a real updater
 - **Analyze takes a second look at lines it leaves with no speaker
   (2026-10-05)** — each one is asked about again with the chapters either side,
   where a speaker unseen in one chapter is often named. What it finds is marked

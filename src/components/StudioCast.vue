@@ -517,7 +517,7 @@ async function play(p) {
 // after its speaker, with that voice and an empty note.
 const personasStore = usePersonasStore();
 const withoutPersona = computed(() => props.speakers.filter((s) => !s.persona_id));
-const newAsk = ref(null);     // { byName, proposals } while the list is open
+const newAsk = ref(null);     // { byName, proposals, voices } while the list is open
 const newBusy = ref(false);
 async function proposeNewPersonas() {
   const people = withoutPersona.value;
@@ -567,7 +567,7 @@ async function proposeNewPersonas() {
       newBusy.value = false;
     }
   }
-  newAsk.value = { byName, proposals };
+  newAsk.value = { byName, proposals, voices };
 }
 async function createNewPersonas(picked) {
   const ask = newAsk.value;
@@ -677,7 +677,7 @@ const GAME_COLUMNS = [
             @click="proposeNewPersonas" />
         </div>
         <PageTaskStrips :features="['smart_assign']" :meta="{ projectId: project.id }" />
-        <CastNewPersonas v-if="newAsk" :by-name="newAsk.byName" :proposals="newAsk.proposals" :busy="newBusy"
+        <CastNewPersonas v-if="newAsk" :by-name="newAsk.byName" :proposals="newAsk.proposals" :voices="newAsk.voices" :busy="newBusy"
           @close="newAsk = null" @create="createNewPersonas" />
         <div v-if="castEngineNotice" class="jv-banner jv-banner--warn studio-cast__notice">{{ castEngineNotice }}</div>
 

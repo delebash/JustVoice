@@ -456,9 +456,17 @@ onActivated(() => {
 
 // ── GPU info (task #91) ──────────────────────────────────────────────
 const gpuInfo = ref(null);
+// The server's data folder (system info) — where its logs are (2026-10-06).
+const dataDir = ref("");
+function inLogs(name = "") {
+  const dir = dataDir.value.replace(/[\\/]+$/, "");
+  const sep = dir.includes("\\") ? "\\" : "/";
+  return [dir, "logs", name].filter(Boolean).join(sep);
+}
 async function loadGpuInfo() {
   const r = await api.safeRequest("/v1/system/info", null);
   if (!r) return;
+  dataDir.value = r.data_dir || "";
   const runtimes = Object.entries(r.runtimes || {})
     .filter(([, ok]) => ok)
     .map(([k]) => k);
@@ -492,89 +500,12 @@ watch(activeSub, async (a) => {
   }
 });
 
-// ── Auto-updater (task #90) ──────────────────────────────────────────
-// UI shell only — the actual update check / download / install flow runs
-// through Tauri's built-in updater plugin via window.__TAURI__.updater.
-// When that's not available (web-only / headless dev), the buttons
-// short-circuit to a no-op + diagnostic toast.
-const UPDATER_CHANNEL_KEY = "justvoice:updater_channel";
-const updater = ref({
-  currentVersion: "0.1.0",
-  channel: "stable",
-  status: "idle", // idle | checking | available | downloading | ready | error | uptodate
-  availableVersion: null,
-  notes: null,
-  lastChecked: null,
-  progressPct: 0,
-  error: null,
-  busy: false,
-});
-try {
-  const ch = localStorage.getItem(UPDATER_CHANNEL_KEY);
-  if (ch) updater.value.channel = ch;
-} catch {}
-function persistUpdaterChannel() {
-  try {
-    localStorage.setItem(UPDATER_CHANNEL_KEY, updater.value.channel);
-  } catch {}
-}
-async function checkForUpdates() {
-  updater.value.busy = true;
-  updater.value.status = "checking";
-  updater.value.error = null;
-  try {
-    const tauri = typeof window !== "undefined" ? window.__TAURI__ : null;
-    if (!tauri?.updater) {
-      // Dev / web — pretend up-to-date.
-      updater.value.status = "uptodate";
-      updater.value.lastChecked = new Date().toLocaleString();
-      return;
-    }
-    const result = await tauri.updater.check();
-    updater.value.lastChecked = new Date().toLocaleString();
-    if (result?.available) {
-      updater.value.status = "available";
-      updater.value.availableVersion = result.manifest?.version || "?";
-      updater.value.notes = result.manifest?.body || "";
-    } else {
-      updater.value.status = "uptodate";
-    }
-  } catch (e) {
-    updater.value.status = "error";
-    updater.value.error = String(e?.message || e);
-  } finally {
-    updater.value.busy = false;
-  }
-}
-async function downloadUpdate() {
-  updater.value.busy = true;
-  updater.value.status = "downloading";
-  updater.value.progressPct = 0;
-  try {
-    const tauri = window.__TAURI__;
-    if (!tauri?.updater) {
-      updater.value.status = "error";
-      updater.value.error = "Tauri updater unavailable in this build.";
-      return;
-    }
-    await tauri.updater.downloadAndInstall((event) => {
-      if (event?.event === "Progress") {
-        const pct = Math.floor(((event.data?.chunkLength ?? 0) / (event.data?.contentLength || 1)) * 100);
-        updater.value.progressPct = pct;
-      }
-    });
-    updater.value.status = "ready";
-  } catch (e) {
-    updater.value.status = "error";
-    updater.value.error = String(e?.message || e);
-  } finally {
-    updater.value.busy = false;
-  }
-}
-async function restartAndInstall() {
-  const tauri = window.__TAURI__;
-  if (tauri?.process?.relaunch) await tauri.process.relaunch();
-}
+// ── Updates — the version and release notes, as JustWrite shows them
+// (2026-10-06). There is no updater: no plugin in any Cargo.toml, no signed
+// feed. A channel picker and a Check that always answered "You're on the
+// latest version" stood here until then; a real updater comes with the
+// Electron move (electron-updater — docs/plans/2026-10-05-electron-node-study.md).
+const APP_VERSION = "0.1.0";
 
 // ── Appearance ───────────────────────────────────────────────────────
 // The appearance config + theming now live in the shared engine via the ui
@@ -927,14 +858,12 @@ async function openLogFile() {
     pushToast({ message: "Open log file requires the desktop app.", kind: "warning" });
     return;
   }
-  const r = await api.safeRequest("/v1/system/info", null);
-  const dir = r?.data_dir;
-  if (!dir) {
+  if (!dataDir.value) await loadGpuInfo();
+  if (!dataDir.value) {
     pushToast({ message: "Couldn't locate the log file — check the server is running.", kind: "error" });
     return;
   }
-  const sep = dir.includes("\\") ? "\\" : "/";
-  openPath([dir.replace(/[\\/]+$/, ""), "logs", "justvoice.log"].join(sep));
+  openPath(inLogs("justvoice.log"));
 }
 onMounted(() => {
   loadGpuInfo();
@@ -1820,7 +1749,9 @@ onMounted(() => {
         <div class="jv-card__header"><h3 class="jv-card__title">Logs</h3></div>
         <p class="jv-muted jv-hint jv-mb14">
           Server-side log file. Useful for debugging engine load failures, render errors, and
-          inspecting auth attempts. Live tail is read from <code class="jv-mono">~/.justvoice/logs/</code>.
+          inspecting auth attempts. The server writes it to
+          <code v-if="dataDir" class="jv-mono">{{ inLogs() }}</code><template v-else>the logs folder in its data
+          folder</template>.
         </p>
         <div class="jv-row jv-gap8 jv-mb14">
           <UiButton intent="secondary" size="small" label="📂 Open log file" @click="openLogFile" />
@@ -1834,64 +1765,10 @@ onMounted(() => {
     <!-- ─── Updates — the kit UpdatesPanel is THE surface (no-valve commitment;
          the "Changelog" name died with the parity batch). Release notes come
          from docs/whats-new.md (JW's pattern: source + renderer app-side,
-         presentation shared); JV's Tauri auto-updater rides the panel's
-         designed #actions slot. ─── -->
+         presentation shared). ─── -->
     <div v-show="activeSub === 'updates'" class="jv-section">
       <div class="jv-card">
-        <UpdatesPanel :app-version="updater.currentVersion" :changelog-html="changelogHtml">
-          <template #actions>
-            <div class="jv-row jv-updater-actions">
-              <span class="jv-muted jv-updater-status">
-                <span v-if="updater.status === 'idle'">Last checked: {{ updater.lastChecked || 'never' }}</span>
-                <span v-else-if="updater.status === 'checking'">Checking for updates…</span>
-                <span v-else-if="updater.status === 'available'">
-                  <strong>v{{ updater.availableVersion }} available</strong> · {{ updater.notes || '' }}
-                </span>
-                <span v-else-if="updater.status === 'downloading'">Downloading… {{ updater.progressPct }}%</span>
-                <span v-else-if="updater.status === 'ready'">Ready to install — restart to apply.</span>
-                <span v-else-if="updater.status === 'error'" class="jv-updater-error">{{ updater.error }}</span>
-                <span v-else-if="updater.status === 'uptodate'">You're on the latest version.</span>
-              </span>
-              <UiSelect
-                v-model="updater.channel"
-                width="id"
-                :options="[
-                  { label: 'Stable', value: 'stable' },
-                  { label: 'Beta', value: 'beta' },
-                  { label: 'Nightly', value: 'nightly' },
-                ]"
-                @change="persistUpdaterChannel"
-              />
-              <UiButton
-                v-if="updater.status === 'idle' || updater.status === 'uptodate' || updater.status === 'error'"
-                intent="secondary"
-                size="small"
-                :disabled="updater.busy"
-                label="Check for updates"
-                @click="checkForUpdates"
-              />
-              <UiButton
-                v-if="updater.status === 'available'"
-                intent="primary"
-                size="small"
-                :disabled="updater.busy"
-                label="Download"
-                @click="downloadUpdate"
-              />
-              <UiButton
-                v-if="updater.status === 'ready'"
-                intent="primary"
-                size="small"
-                label="Restart and install"
-                @click="restartAndInstall"
-              />
-            </div>
-          </template>
-        </UpdatesPanel>
-        <p class="jv-muted jv-updater-note">
-          Updates ship via the GitHub Releases feed signed with the project's update key.
-          Verify the binary signature on every download (Tauri does this automatically).
-        </p>
+        <UpdatesPanel :app-version="APP_VERSION" :changelog-html="changelogHtml" />
       </div>
     </div>
 
@@ -1954,11 +1831,6 @@ onMounted(() => {
 .jv-mb6 { margin-bottom: 6px; }
 .jv-mb12 { margin-bottom: 12px; }
 
-/* The updater controls riding the kit UpdatesPanel's #actions slot. */
-.jv-updater-actions { align-items: center; gap: 8px; flex-wrap: wrap; }
-.jv-updater-status { font-size: 12.5px; }
-.jv-updater-error { color: var(--danger); }
-.jv-updater-note { font-size: 11px; margin-top: 12px; }
 
 .settings-grid {
   display: grid;

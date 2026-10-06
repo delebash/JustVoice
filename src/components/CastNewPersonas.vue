@@ -8,10 +8,13 @@
   else gets the voice your language model matched — from the installed voices
   that speak the book's language — and a persona named after them with an
   empty note. Create makes the ticked ones and casts them.
+  A speaker the model matched no voice to gets a Voice dropdown of those same
+  voices (decided 2026-10-06, "your rec a go": the model skips speakers it
+  knows little about — RESEARCH §7); picking one ticks the row.
 -->
 <script setup>
 import { computed, onBeforeUnmount, ref } from "vue";
-import { AppModal, UiButton, UiCheckbox, UiTable, pushToast } from "@delebash/llm-ui";
+import { AppModal, UiButton, UiCheckbox, UiSelect, UiTable, pushToast } from "@delebash/llm-ui";
 import { useApi } from "../stores/api.js";
 import { handleTermsRefusal } from "../services/engineTerms.js";
 import { voiceLabel } from "../services/personaFacts.js";
@@ -22,14 +25,26 @@ const props = defineProps({
   byName: { type: Array, default: () => [] },
   // [{speaker, voice}] — a new persona each; voice null when none was matched.
   proposals: { type: Array, default: () => [] },
+  // The voices the batch matched from — an unmatched row picks from them.
+  voices: { type: Array, default: () => [] },
   busy: { type: Boolean, default: false },
 });
 const emit = defineEmits(["close", "create"]);
 
 const api = useApi();
 const on = ref(Object.fromEntries(props.proposals.map((p) => [p.speaker.id, !!p.voice])));
-const rows = computed(() => props.proposals.map((p) => ({ ...p, id: p.speaker.id })));
-const picked = computed(() => props.proposals.filter((p) => p.voice && on.value[p.speaker.id]));
+const chosen = ref({});      // speaker id → the voice you picked, for a row the model left without one
+const voiceById = computed(() => Object.fromEntries(props.voices.map((v) => [v.id, v])));
+const voiceOptions = computed(() => props.voices.map((v) => ({ value: v.id, label: voiceLabel(v) })));
+const rows = computed(() => props.proposals.map((p) => ({
+  ...p, id: p.speaker.id, matched: !!p.voice, voice: p.voice || chosen.value[p.speaker.id] || null,
+})));
+const picked = computed(() => rows.value.filter((r) => r.voice && on.value[r.id])
+  .map((r) => ({ speaker: r.speaker, voice: r.voice })));
+function pickVoice(row, id) {
+  chosen.value = { ...chosen.value, [row.id]: voiceById.value[id] || null };
+  on.value = { ...on.value, [row.id]: !!voiceById.value[id] };
+}
 const COLUMNS = [
   { id: "pick", header: "", headerStyle: { width: "1%" }, cellStyle: { width: "1%" } },
   { id: "speaker", header: "Speaker" },
@@ -69,7 +84,8 @@ onBeforeUnmount(() => { if (playing.value?.url) URL.revokeObjectURL(playing.valu
     @close="emit('close')">
     <p class="cast-new__lede">
       Each new persona is named after its speaker and gets the voice your language model matched to who they
-      are. Its note on how it sounds is left for you to write. Untick any you'd rather cast yourself.
+      are. Its note on how it sounds is left for you to write. Where it matched none, pick a voice. Untick any
+      you'd rather cast yourself.
     </p>
     <div v-if="byName.length" class="cast-new__byname">
       <strong>Cast with your persona of the same name</strong>
@@ -82,8 +98,9 @@ onBeforeUnmount(() => { if (playing.value?.url) URL.revokeObjectURL(playing.valu
       </template>
       <template #speaker="{ row }"><strong>{{ row.speaker.name }}</strong></template>
       <template #voice="{ row }">
-        <span v-if="row.voice">{{ voiceLabel(row.voice) }}</span>
-        <span v-else class="jv-muted">no voice matched — cast them yourself</span>
+        <span v-if="row.matched">{{ voiceLabel(row.voice) }}</span>
+        <UiSelect v-else :model-value="row.voice?.id || ''" :options="voiceOptions" width="path"
+          placeholder="Pick a voice" @update:model-value="(id) => pickVoice(row, id)" />
       </template>
       <template #play="{ row }">
         <UiButton v-if="row.voice" intent="ghost" size="small" label="▶" :loading="loading === row.id"

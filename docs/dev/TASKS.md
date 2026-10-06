@@ -69,14 +69,14 @@ OPEN:   an absolute-import entry and the `bundle` extra in the recipe — or not
         Electron move ("The family moves to Electron…" below) retires PyInstaller first.
 GO:     needed.
 
-### FINDING — JustVoice's update check always says "up to date"
-STATE:  FINDING — code-verified 2026-10-05 (stack study §4.1). The tray items and Settings' Open log
-        file, in the same finding, were fixed 2026-10-05 (the first item under "The next build").
-BUILT:  the updater UI reads `window.__TAURI__` (`src/views/SettingsView.vue:526`, `:554`, `:575`),
-        which exists only with `withGlobalTauri` — set in no `tauri.conf.json` — so it always says
-        "up to date". No updater plugin is in any `Cargo.toml`.
-OPEN:   an updater plugin and its UI through the kit's shell door — or let the Electron move's
-        updater replace it.
+### FINDING — JustVoice has no updater
+STATE:  FINDING — code-verified 2026-10-05 (stack study §4.1). Settings → Updates pretended to have
+        one (a channel picker and a Check that always said "You're on the latest version") until
+        2026-10-06, when it became JustWrite's panel — the version and the release notes (the first
+        item under "The next build").
+BUILT:  no updater plugin in any `Cargo.toml`, no signed release feed.
+OPEN:   an updater — with the Electron move (`electron-updater`, the study §5), then its controls on
+        Settings → Updates.
 GO:     needed.
 
 ### FINDING — the server declares `requests` and `rich`; none of its code imports them
@@ -195,6 +195,40 @@ GO: needed.
 
 ## The next build
 
+### Cast's batch lets you pick a voice it couldn't match; the three findings fixed (decided 2026-10-06)
+STATE:  DECIDED 2026-10-06 — "fix the stuff you found and your rec a go", on the findings as shown:
+        "The update check still always says 'up to date'." · "Settings → Logs says logs are in
+        ~/.justvoice/logs/; they're actually in the data folder's logs/." · "after I restarted the
+        app, the window showed 'Can't reach the JustVoice server' even though the server was up.
+        Its startup check gives up after about 7.5 seconds and never retries; your Retry button is
+        the only way out." — and the question as shown: "How should the batch handle a speaker the
+        model skips? a) Give that row a voice dropdown in the proposal list, instead of 'no voice
+        matched — cast them yourself'. b) Give the batch its own prompt that never skips anyone.
+        c) Ask the model again for the speakers it skipped. My lean: a. It works whatever the
+        model does, and you still see every pick before anything is made."
+WHY:    the batch's misses become one pick instead of a trip to Personas; the three findings were
+        each a screen saying something untrue.
+NOT:    b, c.
+BUILT:  2026-10-06 — plan and blast radius `docs/plans/2026-10-06-batch-pick-and-findings.md`.
+        The batch: an unmatched row has a Voice list (placeholder "Pick a voice") of the voices the
+        batch matched from, labelled as the list labels a voice; a pick ticks the row and gives it
+        ▶ (`CastNewPersonas.vue`, `StudioCast.vue` passes `voices`). The update check: Settings →
+        Updates is JustWrite's panel — version and release notes; the channel picker, the Check
+        that always said "latest" and the signed-feed note are gone (`SettingsView.vue`). The Logs
+        line names `<data folder>/logs` from `/v1/system/info`, and Open log file uses the same
+        path. The unreachable screen asks the server every 2 s and opens the app when it answers
+        (kit `ConnectionError.vue` — JustWrite gets it too). Docs studio (Cast), troubleshooting,
+        whats-new. Checked: Biome (JV + kit), both apps build on the kit change, JustWrite's
+        ConnectionError test, live through the app's UI on the real data folder — the page showed
+        "Can't reach the JustVoice server", the server was started, the app opened 1.9 s after it
+        answered with no click; Cast's batch with the model's answer stubbed empty: Old Sedge's row
+        "Pick a voice" (65 voices), Create disabled → Fable (UK) picked → ticked, ▶, "Create 1
+        persona" (cancelled, nothing made); Updates shows v0.1.0 and the notes, no check; Logs
+        reads `E:\Dev\Web\JustVioce\src-tauri\target\debug\data\logs`. No page errors.
+OPEN:   none. (Not re-checked in the desktop window: Open log file's path — the same `openPath` door
+        checked there 2026-10-05, now fed by the path the Logs line shows.)
+GO:     given 2026-10-06
+
 ### The demo cast for Render, a tracker sweep, and three small findings (decided 2026-10-05)
 STATE:  DECIDED 2026-10-05 — "reread docs and rules and your rec on 1 and 2 and 3 go", on the three
         as shown (the user: "whats next"):
@@ -241,21 +275,9 @@ BUILT:  2026-10-05 —
         `http://127.0.0.1:17494` on the clipboard with its toast; Open settings and About moved
         Home → Settings; Open log file reached Windows, which asked which app opens `.log` (none is
         set on this machine).
-OPEN:   how the batch should place a speaker it skipped — asked 2026-10-05. Not touched (not in the
-        go): the update check (its FINDING, above); Settings → Logs says logs are in
-        `~/.justvoice/logs/` (`SettingsView.vue:1823`) — they are in the data folder's `logs/`.
+OPEN:   none — the batch question was answered 2026-10-06 ("your rec a go": a), and the update
+        check and the Logs line were fixed with it (the item above).
 GO:     given 2026-10-05
-
-### FINDING — after a restart the window can give up on its server before the server is up
-STATE:  FINDING — seen 2026-10-05 restarting `npm run dev`: the window showed "Can't reach the
-        JustVoice server" while the server answered; Retry loaded the app.
-BUILT:  `main.js:192` mounts ConnectionError when the kit's `checkServer()` fails, and that gives up
-        after 8 tries (about 7.5 s — `serverApi.js:203`); the screen's Retry reloads the page
-        (`ConnectionError.vue:25`), nothing retries on its own. Under `npm run dev` the sidecar took
-        longer than that to answer.
-OPEN:   keep probing while the screen shows (and boot when the server answers), or wait longer on a
-        desktop-shell start — the kit's call, for all three apps.
-GO:     needed.
 
 ### Analyze takes a second look at lines it leaves with no speaker, and offers to add who it finds (decided 2026-10-05)
 STATE:  DECIDED 2026-10-05 — "your rec go with the add them offer", on the build as shown after the

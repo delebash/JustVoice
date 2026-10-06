@@ -744,9 +744,13 @@ narrator ([Personas → The Narrator](personas.md#the-narrator)).
   that speak the book's **Language** (every installed voice when it isn't set),
   judging who they are against each voice's gender, language and description.
   Nothing is made yet: a list shows each speaker → voice with **▶** to hear the
-  voice, and you untick any you'd rather cast yourself. **Create N personas**
-  then makes each ticked one a persona named after its speaker, with that voice
-  and an empty note on how it sounds (yours to write), and casts it.
+  voice, and you untick any you'd rather cast yourself. The model sometimes
+  matches a speaker to no voice — most often one the book says little about,
+  like a narrator or someone with no pronouns set. That row has a **Voice** list
+  instead, of the same voices: **Pick a voice** and the row is ticked like the
+  rest. **Create N personas** then makes each ticked one a persona named after
+  its speaker, with that voice and an empty note on how it sounds (yours to
+  write), and casts it.
 
 Each speaker's card shows:
 
