@@ -2,6 +2,12 @@
 
 ## v0.1.0
 
+- **A reset no longer re-downloads the AI model (2026-10-06)** — the LLM engine
+  setup could recommend JustVoice's own empty AI-files folder instead of the
+  copy JustWrite already holds, when a half-finished download had left a folder
+  there; it now only ever offers another app's files, and counts a model only
+  once its download finished. Cancelling every download now says *Setup stopped*
+  with Back and Close, instead of an empty box ([AI features](ai-features.md))
 - **🔎 Second look at just the blank lines (2026-10-06)** — on a chapter in
   Script, the *lines have no speaker* banner can ask the AI again about just
   those lines, with the chapters either side, instead of re-analyzing the whole

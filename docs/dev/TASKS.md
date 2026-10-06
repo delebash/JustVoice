@@ -125,6 +125,34 @@ GO:     given 2026-08-17
 
 ## The next build
 
+### JustVoice back on the shared AI cache; the half-downloaded gemma removed (decided 2026-10-06)
+STATE:  DECIDED 2026-10-06 — "remove leftover folders fix all go" (the user: "i reset the databse as ran
+        the quicksetup it is downloading the model again why?" · "i cancled download then canceld setup
+        and it shows this" · "but the reset should have defualted to the shared location it has always
+        done this is the past … what was the change?"), on the finding and leans as shown: "Nothing in
+        the code changed … 1. The reset ran while the app kept running … the engine was still using
+        JustWrite's shared cache … the server listed the alternatives: JustVoice's own folder first. 2.
+        JustVoice's own folder looked like it already had the model … a leftover
+        models--unsloth--gemma-4-26B-A4B-it-qat-GGUF folder … The server counts a model as present if
+        its folder exists, not if the file is complete … The setup pre-selects the first option that
+        'has models' … so it picked JustVoice's own folder … Two bugs in the kit setup: The
+        recommendation can pick the app's own folder. It should only ever recommend another app's
+        cache, never 'this app'. · A model counts as downloaded when only its folder exists. It should
+        count only finished files, not a .part. Fixes: 1. Point JustVoice back at JustWrite's shared
+        cache now. 2. Fix both bugs in the kit, plus the setup's empty last step after a cancel … When
+        every download is cancelled, it should say 'Setup stopped — nothing downloaded' and offer Back
+        and Close instead of an empty box. 3. The leftover 14 GB .part … Delete it?"
+WHY:    the model was already on disk in JustWrite's cache; the copy in JustVoice's own was a .part.
+NOT:    any other folder in the data dir; the kit fixes (the kit's TASKS, same date).
+BUILT:  2026-10-06 — the re-point: `PUT /v1/ai/engine-cache` to JustWrite's `ai-cache` (applied live;
+        gemma then read "downloaded"); after the restart the log says "engine cache SHARED at
+        …justwrite-app…" and gemma loaded from it with no download. Deleted from JustVoice's own
+        `ai-cache` (no engine running from it, checked first): `hf/models--unsloth--gemma-4-26B-A4B-
+        it-qat-GGUF` (the 14 GB `.part` + its json) and `llamacpp/b11239` (1.2 GB, the same build the
+        shared cache has) — about 15 GB. Docs ai-features (the setup shares AI files), whats-new.
+OPEN:   none.
+GO:     given 2026-10-06
+
 ### Script: a Second look button asks again about just the blank lines (decided 2026-10-06)
 STATE:  DECIDED 2026-10-06 — "go make sure you expalin what it does and is used for" (the user:
         "maybe a second look button to reaalyze the ones missed by ai first pass instead of having to
