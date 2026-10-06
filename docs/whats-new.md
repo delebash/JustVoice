@@ -2,6 +2,13 @@
 
 ## v0.1.0
 
+- **Analyze leaves the second look to you (2026-10-06)** — Analyze now does its
+  main pass only; a spoken line it can't place says *No speaker — a candidate
+  for 🔎 Second look* in Script's Check column, and the chapter's 🔎 Second look
+  asks about those lines when you choose. A line it asked about and still
+  couldn't place says *Second look found no one*. Analyze's own second look is
+  a switch on Speaker attribution's Auto page, now off
+  ([Studio → The second look](studio.md#the-second-look))
 - **A reset no longer re-downloads the AI model (2026-10-06)** — the LLM engine
   setup could recommend JustVoice's own empty AI-files folder instead of the
   copy JustWrite already holds, when a half-finished download had left a folder

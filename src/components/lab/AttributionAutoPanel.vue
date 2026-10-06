@@ -95,10 +95,12 @@ onMounted(load);
       <UiToggle :model-value="secondLook" :disabled="busy" aria-label="Second look"
         @update:model-value="saveSecondLook" />
       <p class="aap__rule">
-        <b>Second look.</b> A spoken line Analyze leaves with no speaker is asked about once
-        more, with the chapters either side — a speaker unseen in one chapter is often named in
-        the next. What it finds is marked to check. Its prompt is the <b>Speaker attribution ·
-        second look</b> card.
+        <b>Second look.</b> Off by default: Analyze leaves the lines it can't place blank, and
+        Script's <b>🔎 Second look</b> asks about them when you choose — usually after adding a
+        missing speaker. On, Analyze asks about each one itself, once more, with the chapters
+        either side — a speaker unseen in one chapter is often named in the next. Either way
+        what it finds is marked to check. Its prompt is the <b>Speaker attribution · second
+        look</b> card.
       </p>
     </div>
   </div>

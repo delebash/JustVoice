@@ -188,9 +188,10 @@ def second_look(
             report["stopped"] = True
             break
         try:
-            look_at(rows[i], paragraphs, cast_text=cast_text, before=before, after=after,
-                     resolve=resolve, cast_names=cast_names, floor=floor, use_floor=use_floor,
-                     cfg=cfg, report=report, usage=usage, on_delta=on_delta)
+            if look_at(rows[i], paragraphs, cast_text=cast_text, before=before, after=after,
+                       resolve=resolve, cast_names=cast_names, floor=floor, use_floor=use_floor,
+                       cfg=cfg, report=report, usage=usage, on_delta=on_delta) == "none":
+                rows[i].second_look_asked = True
         finally:
             if on_step is not None:
                 on_step(k + 1, len(asks), rows)
@@ -233,11 +234,13 @@ def _ask(variables: dict, usage, on_delta) -> str:
 
 
 def look_at(row, paragraphs, *, cast_text, before, after, resolve, cast_names, floor,
-            use_floor, cfg, report, usage, on_delta) -> None:
+            use_floor, cfg, report, usage, on_delta) -> str:
     """Ask about one line and write the answer onto its row — `row` needs
     paragraph_idx, text, speaker, confidence, source, floored_from and
     not_in_cast. Analyze's second look and Script's 🔎 Second look button both
-    ask through here, so the question is the same either way."""
+    ask through here, so the question is the same either way. Returns "named",
+    "none" (asked, no one it could name) or "failed" (the call failed — the line
+    stays as it was, not marked asked)."""
     variables = {
         "cast": cast_text,
         "before": before,
@@ -250,7 +253,7 @@ def look_at(row, paragraphs, *, cast_text, before, after, resolve, cast_names, f
     except Exception as e:  # noqa: BLE001 — an extra: a failure leaves the line as it was
         report["failed"] += 1
         log.warning("second look failed on %r: %s", row.text[:60], e)
-        return
+        return "failed"
     ans = parse(text)
     who = resolve(ans.get("speaker"))
     try:
@@ -264,10 +267,11 @@ def look_at(row, paragraphs, *, cast_text, before, after, resolve, cast_names, f
         row.floored_from = None
         row.not_in_cast = None
         report["named"] += 1
-        return
+        return "named"
     name = str(ans.get("not_in_cast") or "").strip().strip("\"'“”")
     if name and len(name) <= 60 and name.lower() not in ("unknown", "narrator", "none") \
             and not cast_names(name):
         row.not_in_cast = name
         if name not in report["not_in_cast"]:
             report["not_in_cast"].append(name)
+    return "none"

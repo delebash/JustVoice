@@ -410,16 +410,19 @@ export function decidedBy(line, lines = []) {
 export function checkQuestion(line, groups, nameOf, chapterWord = "chapter") {
   if (hasNoSpeaker(line)) {
     const guess = line.floored_from && line.floored_from !== "unknown" ? nameOf(line.floored_from) : "";
-    if (line.source === "floored" && guess) {
-      return `No speaker, so it can't render. The AI thought ${guess}, but wasn't sure.`;
+    let why = "";
+    if (line.source === "floored" && guess) why = `The AI thought ${guess}, but wasn't sure.`;
+    else if (line.source === "floored") why = "The AI gave no answer.";
+    else if (line.source === "llm") why = "The AI didn't name any of this book's speakers.";
+    // A spoken line 🔎 Second look can ask about says so (decided 2026-10-06) — and,
+    // once the second look asked and named no one, says that instead.
+    if (secondLookCandidate(line)) {
+      if (line.metadata?.second_look_asked) {
+        return "Second look found no one — set a speaker, or ＋ Add who's missing and look again.";
+      }
+      return why ? `No speaker — a candidate for 🔎 Second look. ${why}` : "No speaker — a candidate for 🔎 Second look.";
     }
-    if (line.source === "floored") {
-      return "No speaker, so it can't render. The AI gave no answer.";
-    }
-    if (line.source === "llm") {
-      return "No speaker, so it can't render. The AI didn't name any of this book's speakers.";
-    }
-    return "No speaker, so it can't render.";
+    return why ? `No speaker, so it can't render. ${why}` : "No speaker, so it can't render.";
   }
   const g = groups[(line.flags || [])[0]];
   if (!g) return "";

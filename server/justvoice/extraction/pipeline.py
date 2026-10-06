@@ -73,6 +73,9 @@ class AttributionRow:
     # names as the speaker when they are not in the cast — Script offers to
     # add them. A row the second look decided has source "second_look".
     not_in_cast: str | None = None
+    # The second look asked about this row and named no one (2026-10-06) — Script
+    # then says so instead of offering it again as a candidate.
+    second_look_asked: bool = False
 
 
 class AnalyzeRequest(BaseModel):

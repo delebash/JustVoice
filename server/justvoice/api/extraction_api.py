@@ -478,6 +478,12 @@ def _persist_attribution(
             meta["not_in_cast"] = row.not_in_cast
         else:
             meta.pop("not_in_cast", None)
+        # Asked by the second look, named no one (2026-10-06) — set and cleared
+        # with every run, as the name above.
+        if getattr(row, "second_look_asked", False):
+            meta["second_look_asked"] = True
+        else:
+            meta.pop("second_look_asked", None)
         return json.dumps(meta) if meta else None
 
     if in_place:
@@ -846,35 +852,39 @@ def _paragraph_of(paragraphs: list[str], block: Block) -> int:
     return next((i for i, p in enumerate(paragraphs) if words and words in p), -1)
 
 
-def _save_second_look(block_id: str, row) -> None:
+def _save_second_look(block_id: str, row, outcome: str) -> None:
     """One answer onto its line, in a session of its own (the worker thread's).
-    A line given a speaker or set by you meanwhile is left alone. Named: the
-    speaker, marked to check; its "changed" mark says who it was before the
-    last Analyze, dropped when that is who it is again. Not named: only the
-    "not in the cast" name the answer gave, set or cleared."""
+    A line given a speaker or set by you meanwhile is left alone, and so is a
+    line whose question failed. Named: the speaker, marked to check; its
+    "changed" mark says who it was before the last Analyze, dropped when that is
+    who it is again. Not named: marked asked (Script's Check column says so),
+    and the "not in the cast" name the answer gave, set or cleared."""
     from ..database.session import SessionLocal
 
     wdb = SessionLocal()
     try:
         b = wdb.query(Block).filter(Block.id == block_id).first()
-        if b is None or b.speaker_id or b.source == "corrected":
+        if b is None or b.speaker_id or b.source == "corrected" or outcome == "failed":
             return
         meta = _json_meta(b.metadata_json)
-        if row.source == "second_look":
+        if outcome == "named":
             b.speaker_id = row.speaker
             b.source = "second_look"
             b.extraction_confidence = row.confidence
             meta.pop("floored_from", None)
             meta.pop("not_in_cast", None)
+            meta.pop("second_look_asked", None)
             if "prev_speaker_id" in meta:
                 if meta["prev_speaker_id"] == row.speaker:
                     meta.pop("prev_speaker_id")
             else:
                 meta["prev_speaker_id"] = None
-        elif row.not_in_cast:
-            meta["not_in_cast"] = row.not_in_cast
         else:
-            meta.pop("not_in_cast", None)
+            meta["second_look_asked"] = True
+            if row.not_in_cast:
+                meta["not_in_cast"] = row.not_in_cast
+            else:
+                meta.pop("not_in_cast", None)
         b.metadata_json = json.dumps(meta) if meta else None
         wdb.commit()
     finally:
@@ -939,7 +949,7 @@ async def second_look_stream_endpoint(
             for k, (block_id, row) in enumerate(rows):
                 if stop.is_set():
                     break
-                sl.look_at(
+                outcome = sl.look_at(
                     row, paragraphs, cast_text=cast_text, before=before, after=after,
                     resolve=resolve, cast_names=lambda name: bool(match(name, prompt_cast)),
                     floor=floor, use_floor=True, cfg=cfg, report=report, usage=usage,
@@ -947,7 +957,7 @@ async def second_look_stream_endpoint(
                 )
                 if stop.is_set():
                     break   # the answer landed after the cancel — dropped
-                _save_second_look(block_id, row)
+                _save_second_look(block_id, row, outcome)
                 q.put({"step": {"name": "second_look", "done": k + 1, "total": len(rows)}})
             report["seconds"] = round(time.time() - t0, 1)
             q.put({

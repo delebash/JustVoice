@@ -229,9 +229,10 @@ A mixture-of-experts model counts its **total** size (the built-in Gemma
 reads as 26B). When JustVoice can't tell the size, it plays it safe and
 uses **Guided**.
 
-The Auto page also holds **Second look** — on by default. A spoken line
-Analyze leaves with no speaker is asked about once more with the chapters
-either side; turn it off here and those lines stay blank. Its prompt is its
+The Auto page also holds **Second look** — off by default (since 2026-10-06).
+Off, Analyze leaves the spoken lines it can't place blank, and Script's
+**🔎 Second look** asks about them when you choose; on, Analyze asks about each
+one itself, once more, with the chapters either side. Its prompt is its
 own card above the heading, **Speaker attribution · second look**, with its
 own preset (Deterministic classification — no thinking, temperature 0, so the
 same line gets the same answer every time) and Lab

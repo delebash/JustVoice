@@ -552,13 +552,21 @@ same way, and merges the names it finds in each.
 
 ### The second look
 
-**A line Analyze leaves with no speaker gets asked about once more.** Analyze
+**A line Analyze leaves with no speaker can be asked about once more.** Analyze
 reads one chapter at a time, so a speaker who is unseen in it — a voice in the
 dark, revealed by name in the next chapter — has nobody to go to, and the line
-is left with no speaker. After the main pass, each spoken line left that way is
-asked about again, one model call per line, with the text around it (about
-1,500 words either side, the line marked), the end of the chapter before (800
-words) and the start of the chapter after (1,500 words).
+is left with no speaker. The second look asks about each spoken line left that
+way again, one model call per line, with the text around it (about 1,500 words
+either side, the line marked), the end of the chapter before (800 words) and
+the start of the chapter after (1,500 words).
+
+**You run it** (since 2026-10-06): Analyze does its main pass only and leaves
+those lines blank, and each says in the Check column *No speaker — a candidate
+for 🔎 Second look*. **🔎 Second look** on the chapter's page (below) asks about
+them when you choose — usually after you ＋ Add a speaker who was missing. A
+line the second look asked about and still couldn't place says *Second look
+found no one — set a speaker, or ＋ Add who's missing and look again.* — until
+it gets a speaker, or Analyze runs on the chapter again.
 
 - If the text makes the speaker clear, the line gets them, **marked to check**:
   *Decided by* says **AI, from the chapters around it**, the Check column asks
@@ -578,11 +586,13 @@ on the three answer-keyed books: 30 lines asked, 30 right, none named wrongly �
 The Ninth Facet's voice in the dark found as Odeline Marran from the next
 chapter, and people the book has no speaker for kept blank.
 
-It is on by default. **AI Settings → Routing by feature → Speaker attribution →
-Auto** turns it off, and its prompt is its own card there, **Speaker attribution
-· second look** ([AI features](ai-features.md)).
+**Analyze can run it itself.** The **Second look** switch on **AI Settings →
+Routing by feature → Speaker attribution → Auto** is off by default; switched on,
+Analyze asks about the blank lines right after its main pass, as it did before
+2026-10-06. The second look's prompt is its own card there, **Speaker
+attribution · second look** ([AI features](ai-features.md)).
 
-**On the strip.** While it runs, the chapter's Analyze strip — still *Script ·
+**On the strip,** when Analyze runs it: the chapter's Analyze strip — still *Script ·
 analyze · <chapter>* — shows **second look · 2 of 6 lines** with a bar, and
 keeps counting tokens and saying *live*, as in the main pass. Hover the count
 for what it is:
@@ -633,7 +643,7 @@ It isn't offered while the chapter is being analyzed.
 **second look · 2 of 6 lines**, the tokens and the same tooltip. **Cancel**
 keeps the lines already answered; the one being asked is dropped.
 
-**Cancel in the second look keeps the main pass.** Cancelled while the main
+**Cancel in Analyze's second look keeps the main pass.** Cancelled while the main
 pass runs, Analyze writes nothing and the chapter keeps its previous analysis.
 Cancelled during the second look, the chapter is saved as it stood: the main
 pass's speakers and any line the second look had already named; the rest stay

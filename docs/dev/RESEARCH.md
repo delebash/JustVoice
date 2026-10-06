@@ -746,6 +746,13 @@ kit's register §2.
 
 ## 7 · Where an AI task shows
 
+- Analyze's own second look is off by default since 2026-10-06 (`ExtractionSettings.second_look`
+  False): Analyze does its main pass only; Script's 🔎 Second look asks about the blank spoken
+  lines. A line the second look asked about and could not name carries
+  `metadata.second_look_asked`, which Script's Check column reads. A factory reset re-seeds the
+  setting from the running server's default. — *code + live, 2026-10-06* (Bigger Inside: 6 asked,
+  1 named, 5 marked).
+
 - Script's 🔎 Second look (`POST /v1/scenes/{id}/second-look/stream`) asks about the chapter's
   spoken lines with no speaker and not set by you (`_second_look_asks`; the client's
   `secondLookCandidate` is the same rule), through `second_look.look_at` — Analyze's own

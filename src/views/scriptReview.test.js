@@ -225,10 +225,14 @@ describe("the words on a row", () => {
 
   it("asks the Check question in terms of the conversation", () => {
     expect(checkQuestion(LINES[1], GROUPS, nameOf)).toBe("June speaks 3 times with no reply — is one of these the other person's?");
-    expect(checkQuestion(LINES[4], GROUPS, nameOf)).toBe("No speaker, so it can't render. The AI thought Marius, but wasn't sure.");
+    expect(checkQuestion(LINES[4], GROUPS, nameOf)).toBe("No speaker — a candidate for 🔎 Second look. The AI thought Marius, but wasn't sure.");
     expect(checkQuestion(LINES[5], GROUPS, nameOf)).toBe("");
     expect(checkQuestion(line("x", null, { source: "llm" }), GROUPS, nameOf))
-      .toBe("No speaker, so it can't render. The AI didn't name any of this book's speakers.");
+      .toBe("No speaker — a candidate for 🔎 Second look. The AI didn't name any of this book's speakers.");
+    // Asked by the second look, no one named (2026-10-06); a line you set is no candidate.
+    expect(checkQuestion(line("x", null, { source: "floored", metadata: { second_look_asked: true } }), GROUPS, nameOf))
+      .toBe("Second look found no one — set a speaker, or ＋ Add who's missing and look again.");
+    expect(checkQuestion(line("x", null, { source: "corrected" }), GROUPS, nameOf)).toBe("No speaker, so it can't render.");
     const g = [
       { check: "only", speaker: "marius", lines: ["a"] },
       { check: "disagree", speaker: "june", other: "marius", lines: ["a"] },

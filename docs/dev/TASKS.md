@@ -125,6 +125,43 @@ GO:     given 2026-08-17
 
 ## The next build
 
+### Analyze leaves the second look to you; blank lines say they are candidates (decided 2026-10-06)
+STATE:  DECIDED 2026-10-06 — "yes finish the rest go" (the user: "i think on chapter analyses we dont auto
+        run second pass we leave that up to user to run using this new button and process … we need to
+        make it clear that these are candadits for second look pass" · "i thought we decided not to
+        auturn second look?"), on the text as shown: "Off by default: the switch already exists (AI
+        Settings → Routing by feature → Speaker attribution → Auto → Second look). I'd turn it off in
+        your database and make 'off' the default for new ones. Analyze then does only the main pass, and
+        blank lines wait for 🔎 Second look. · Candidates made clear: a blank spoken line's Check column
+        would read *No speaker — a candidate for 🔎 Second look*. Once the second look has asked and
+        found no one, it would read *Second look found no one — set a speaker, or ＋ Add who's missing
+        and look again.* · Docs: Studio → The second look and AI features say Analyze no longer runs it
+        on its own." And earlier, as shown: "That means the line remembers it was asked (a small mark in
+        its metadata), cleared when the line gets a speaker." Also "finish the rest": push the kit and
+        JustWrite commits waiting on a word.
+WHY:    Analyze becomes one predictable pass; the extra calls run when you choose, usually after adding
+        a missing speaker.
+NOT:    deleting Analyze's own second look (the switch stays for anyone who wants it on).
+BUILT:  2026-10-06 — `models.py` `ExtractionSettings.second_look` default False, and your database's
+        switch set off (twice — your two resets set it back on). The second look's answer per line:
+        `second_look.look_at` returns "named" | "none" | "failed"; "none" marks the row
+        `second_look_asked` (`pipeline.AttributionRow`), written by Analyze (`with_audit`, set and
+        cleared each run) and by the 🔎 button (`_save_second_look`: named → cleared; failed → the line
+        untouched). Script: `scriptReview.js` `checkQuestion` — a candidate reads "No speaker — a
+        candidate for 🔎 Second look." then its old reason ("The AI thought Marius, but wasn't sure."),
+        an asked one "Second look found no one — set a speaker, or ＋ Add who's missing and look
+        again."; the test's expectations follow (`scriptReview.test.js`, not run). The switch's own
+        words (`AttributionAutoPanel.vue`). Docs studio (You run it; Analyze can run it itself),
+        ai-features, whats-new; RESEARCH §7.
+        Checked live on your fresh demo's Bigger Inside: Analyze 48.9 s, no second look, 6 blank
+        spoken lines; 🔎 Second look asked 6, named 1 (the candle line → Odeline Marran), marked 5
+        asked (Sedge's; "Sedge" offered on 2); Script showed "Second look found no one …", "Found in a
+        nearby chapter — is it Odeline Marran?", ＋ Add Sedge and the button; no page errors. The
+        candidate wording is not seen on screen (every blank line had been asked by then).
+        Also pushed: the kit's 8b4de38 and JustWrite's d30663c (the go's "finish the rest").
+OPEN:   none.
+GO:     given 2026-10-06
+
 ### JustVoice back on the shared AI cache; the half-downloaded gemma removed (decided 2026-10-06)
 STATE:  DECIDED 2026-10-06 — "remove leftover folders fix all go" (the user: "i reset the databse as ran
         the quicksetup it is downloading the model again why?" · "i cancled download then canceld setup
