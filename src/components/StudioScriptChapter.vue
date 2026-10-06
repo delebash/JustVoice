@@ -755,7 +755,7 @@ const flagged = (ln) => (ln.flags || []).length > 0;
               <div v-if="flagged(row)" class="studio-script-ch__qacts" @click.stop>
                 <UiButton intent="ghost" size="small" label="👁 Show the lines around"
                   title="Shows every line, with this one selected, so you can read the exchange" @click="showAround(row)" />
-                <UiButton intent="secondary" size="small" label="✓ Looks right" :disabled="busy"
+                <UiButton intent="primary" size="small" label="✓ Looks right" :disabled="busy"
                   title="Optional. Removes the mark from every line that shares it and takes them out of To check — the lines render the same either way (Shift+Enter)"
                   @click="looksRight(row, true)" />
               </div>
@@ -775,7 +775,7 @@ const flagged = (ln) => (ln.flags || []).length > 0;
             :disabled="!swapCheck.ok || busy"
             :title="swapCheck.ok ? 'For ticked lines spoken by exactly two speakers: each line goes to the other one' : swapCheck.reason"
             @click="swapTicked" />
-          <UiButton intent="secondary" size="small" label="✓ Looks right" :disabled="!tickedIds.length || busy"
+          <UiButton intent="primary" size="small" label="✓ Looks right" :disabled="!tickedIds.length || busy"
             title="Removes the marks from the ticked lines and makes them yours" @click="confirmTicked" />
           <UiButton intent="secondary" size="small" label="✎ Edit…" :disabled="!editLine.ok || busy"
             :title="editLine.ok ? 'Edit this line\'s words, or split it in two' : editLine.reason" @click="startEdit" />

@@ -125,6 +125,23 @@ GO:     given 2026-08-17
 
 ## The next build
 
+### Script's ✓ Looks right buttons are solid (decided 2026-10-06)
+STATE:  DECIDED 2026-10-06 — "go" (the user: "the looks right buttons need to be solid the clear buttons are
+        hard to see", then: "the clear buttons the one that dont have a solid color that just have an
+        outline they ar elike gohst buttons, the is the the style of the looks right button"), on the
+        change as shown: "1. Both ✓ Looks right buttons solid. One sits in the Check cell (:758), the
+        other in the bar under the table (:778). Both are outlined (secondary) today; they'd become
+        primary, the same solid green as Re-analyze this chapter. Lean: yes, both. The bar's one stays
+        greyed out until you tick lines."
+WHY:    the outline style reads as faint on a tinted row.
+NOT:    "Show the lines around" (offered as item 2 from a misreading of "clear"; dropped by the
+        clarification); the kit's outline style for every app.
+BUILT:  2026-10-06 — `StudioScriptChapter.vue`: both ✓ Looks right `UiButton`s `intent="primary"` (the Check
+        cell's and the ticked-lines bar's). Checked live on Bigger Inside: the cell's button solid green, no
+        page errors; the bar's not photographed (disabled until lines are ticked, same change). Build clean.
+OPEN:   none.
+GO:     given 2026-10-06
+
 ### Script's Check column leads with a tag (decided 2026-10-06)
 STATE:  DECIDED 2026-10-06 — "go cehck column" (the user: "the check column the contrast is not very good
         it is red but it just does not stand out what can you do to make that error langauge stand out?"),
