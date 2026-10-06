@@ -4078,3 +4078,7 @@ GO: needed.
   LEAVE IT 2026-10-06 ("fix go", on the lean as shown: "Lean: leave it, since the 0 in
   Lines already says so."). Seen in the end-to-end run after a reset: the courier, the
   Warden, a Concern clerk (`docs/plans/2026-10-05-second-look-test.md`).
+- **The kit's outline (secondary) button style stays as it is** — decided LEAVE IT 2026-10-06 (the user:
+  "leave it", to: "Every other outline button in all three apps has the same faint look … Should I make the
+  outline style itself easier to see, with a darker border and darker text?"). Only Script's ✓ Looks right
+  went solid ("Script's ✓ Looks right buttons are solid").
