@@ -6,7 +6,7 @@ JustVoice is a cross-platform voice-production studio. Five audiences share one 
 
 1. **Pick a use case.** The Welcome modal asks what you're doing with JustVoice. Your choice retunes the UI: audiobook producers get Projects + Studio with chapters terminology; game devs get the Lines tab (every line of the game, stable ids); podcasters get Projects + Studio with episodes (the multi-track Stories timeline tab is a placeholder — not built yet). The chosen use case is also highlighted on the Home dashboard as a quick-action card so you can jump straight back into your workflow. You can re-pick later in Settings → About.
 
-2. **Install the speech runtime, then load an engine.** Open the AI page's **Speech engines** tab. The **Speech runtime** row at the top installs the one program every voice engine runs on, in the build that suits your machine (the Voice engine setup wizard does this for you if you ran it). Then click Load on Kokoro (free, fast — faster than real time even on the CPU — with 49 preset voices in American and British English, Mandarin, Spanish, French, Hindi, Italian and Brazilian Portuguese); it downloads its 190 MB model first. That's the lightest starting point. For voice cloning, try Chatterbox Multilingual or Qwen3-TTS Base (clone from a reference WAV/MP3). See [engines.md](engines.md).
+2. **Install the speech runtime, then load an engine.** Open the AI page's **Speech engines** tab. The **Speech runtime** row at the top installs the one program every voice engine runs on, in the build that suits your machine (the Voice engine setup wizard does this for you if you ran it). Then click Load on Kokoro (free, fast — faster than real time even on the CPU — with 49 built-in voices in American and British English, Mandarin, Spanish, French, Hindi, Italian and Brazilian Portuguese); it downloads its 190 MB model first. That's the lightest starting point. For voice cloning, try Chatterbox Multilingual or Qwen3-TTS Base (clone from a reference WAV/MP3). See [engines.md](engines.md).
 
 3. **Pick a voice.** Voices tab. Hit ▶ Preview on any row to audition.
 
@@ -29,7 +29,7 @@ The same UI is served at `http://localhost:17494/ui/`. Connect from any browser 
 
 ## Where things live
 
-- **Home.** Dashboard — intro band + quick-actions for each audience + the engine/voice catalogue, loaded engine status, in-flight render tasks, and recent generations.
+- **Home.** Dashboard — intro band + quick-actions for each audience + the engine/voice catalogue, the loaded model, in-flight render tasks, and recent generations.
 - **Settings.** Server URL, mastering preset (ACX / iAudio / Podcast / YouTube), generation defaults, capture language and cleanup, MCP server, GPU diagnostics.
 - **Engines.** One speech runtime runs every voice engine and speech recognition; each engine is a set of model files you download from its row. See [engines.md](engines.md).
 - **Cache.** Disk-LRU render cache. Identical render of the same line costs nothing twice.

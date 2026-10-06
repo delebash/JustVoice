@@ -44,7 +44,7 @@ import { handleTermsRefusal } from "../services/engineTerms.js";
 import { DIRECTION_OPTIONS, directionCell, sameLanguage, tagCount } from "../services/personaFacts.js";
 import { facetChoices, facetOptions, narrowed } from "../services/facets.js";
 import { auditionPersona } from "../services/voiceAudition.js";
-import { voiceGenderWord } from "../services/voiceGender.js";
+import { voiceGender, voiceGenderWord } from "../services/voiceGender.js";
 
 const props = defineProps({
   project: { type: Object, required: true },
@@ -417,8 +417,7 @@ const speakerForAi = (s) => ({
 // The one gender answer (your override, the voice's own, its id or first
 // name — services/voiceGender.js), lower-case; none when it isn't known.
 function genderForAi(v) {
-  const word = voiceGenderWord(v);
-  return word && word !== "?" ? word.toLowerCase() : null;
+  return v && voiceGender(v) !== "?" ? voiceGenderWord(v).toLowerCase() : null;
 }
 
 // Smart-assign: the language model matches each speaker (name and who they

@@ -14,7 +14,7 @@ import { DIRECTION_OPTIONS, VOICE_KINDS, directionCell, tagCount, voiceKind, voi
 import { readPref, writePref } from "../services/prefs.js";
 import { rowOptions } from "../services/capabilities.js";
 import { voiceRowState } from "../services/voiceGrid.js";
-import { savePresetGenderOverride, voiceGender } from "../services/voiceGender.js";
+import { genderWord, savePresetGenderOverride, voiceGender } from "../services/voiceGender.js";
 import { UiButton, UiInput, UiTextarea, UiField, UiTag, UiChip, UiSelect, UiSlider, UiTable } from "@delebash/llm-ui";
 // Language CODE → the name a person reads ("en-US" → American English).
 // Kit-side, because every app in the family shows a language somewhere.
@@ -102,7 +102,7 @@ async function guessUnknownGenders() {
       applied += 1;
     }
     pushToast({
-      message: `${applied} voice${applied === 1 ? "" : "s"} labeled · ${unknown.length - applied} left unknown.`,
+      message: `${applied} voice${applied === 1 ? "" : "s"} labeled · ${unknown.length - applied} left as Not known.`,
       kind: "success",
     });
   } catch (e) {
@@ -156,18 +156,20 @@ const TYPE_FILTERS = [
 // hidden was a leftover "hiddenVoices" pref from before — a stale ghost
 // row filter. Stale pref rows stay on disk unread (no-migrations rule).
 
-const engineFilter = ref(readPref("voicesEngineFilter", "all"));
+// The Model filter — the model's name, as the Model column shows it (2026-10-06:
+// one wording per fact; it listed engine ids, kokoro, over that column).
+const engineFilter = ref(readPref("voicesModelFilter", "all"));
 function setEngineFilter(id) {
   engineFilter.value = id;
-  writePref("voicesEngineFilter", id);
+  writePref("voicesModelFilter", id);
 }
 // Every filter here lists only what the others leave, with counts that match
 // the grid (decided 2026-10-05, services/facets.js): kokoro (54) + Written
 // direction used to be an empty grid. A remembered engine whose voices are
 // gone stays in the list with (0).
 const engineFilterOptions = computed(() => [
-  { label: `All engines (${facetTotal(voices.value || [], voiceFilters.value, "engine")})`, value: "all" },
-  ...facetOptions(voices.value || [], voiceFilters.value, "engine", (v) => v.engine, (id, n) => `${id} (${n})`),
+  { label: `All models (${facetTotal(voices.value || [], voiceFilters.value, "engine")})`, value: "all" },
+  ...facetOptions(voices.value || [], voiceFilters.value, "engine", (v) => v.model_name || v.engine, (m, n) => `${m} (${n})`),
 ]);
 
 // Currently loaded TTS engine — surfaced in the toolbar (user ask: the
@@ -216,9 +218,9 @@ const genderFilter = ref("all");
 // user to filter out what types of voices they want to use").
 const directionFilter = ref("");
 
-const genderOf = (v) => voiceGenderWord(v) || "unset";
+const genderOf = (v) => voiceGender(v);
 const voiceFilters = computed(() => [
-  { key: "engine", value: engineFilter.value, empty: "all", test: (v, x) => v.engine === x },
+  { key: "engine", value: engineFilter.value, empty: "all", test: (v, x) => (v.model_name || v.engine) === x },
   { key: "type", value: typeFilter.value, empty: "all", test: (v, x) => voiceKind(v) === x },
   { key: "lang", value: langFilter.value, empty: "all", test: (v, x) => v.language === x },
   { key: "gender", value: genderFilter.value, empty: "all", test: (v, x) => genderOf(v) === x },
@@ -238,7 +240,7 @@ const langFilterOptions = computed(() => {
 const genderFilterOptions = computed(() => [
   { label: "Any gender", value: "all" },
   ...facetOptions(voices.value || [], voiceFilters.value, "gender", genderOf,
-    (g, n) => `${g[0].toUpperCase()}${g.slice(1)} (${n})`),
+    (g, n) => `${genderWord(g)} (${n})`),
 ]);
 
 const directionFilterOptions = computed(() =>
@@ -642,11 +644,6 @@ async function loadCapabilities() {
   capabilityRows.value = r?.engines || {};
 }
 
-/** The gender key behind the grid's one-letter chip, so the filter and
- *  the chip can never disagree about what a voice is. */
-function voiceGenderWord(v) {
-  return { F: "female", M: "male", N: "neutral" }[voiceGender(v)] || "";
-}
 
 // Voice type → UiTag intent mapping
 function voiceTypeVariant(kind) {
@@ -703,8 +700,8 @@ function voiceTypeVariant(kind) {
       href="#engines"
       :title="loadedTtsEngine
         ? `${loadedTtsEngine.name || loadedTtsEngine.id} is loaded — previews play instantly. Click to manage engines.`
-        : 'No TTS engine loaded — the first preview will offer to load one. Click to manage engines.'"
-    >{{ loadedTtsEngine ? `● ${loadedTtsEngine.name || loadedTtsEngine.id} loaded` : "○ no engine loaded" }}</UiChip>
+        : 'No voice model loaded — the first preview will offer to load one. Click to manage speech engines.'"
+    >{{ loadedTtsEngine ? `● ${loadedTtsEngine.name || loadedTtsEngine.id} loaded` : "○ no voice model loaded" }}</UiChip>
     <div class="voices-view__chips">
       <UiChip
         v-for="f in TYPE_FILTERS"
@@ -806,7 +803,7 @@ function voiceTypeVariant(kind) {
           type="button"
           class="voices-view__gender-chip"
           :data-gender="voiceGender(row)"
-          :title="`Gender: ${voiceGender(row) || 'unset'} — click to cycle ? → F → M → N → unset`"
+          :title="`Gender: ${genderWord(voiceGender(row))} — click to change: Not known → Female → Male → Neutral → as detected`"
           @click.stop="cycleGender(row)"
         >{{ (voiceGender(row) || "?").charAt(0).toUpperCase() }}</button>
       </template>
@@ -816,7 +813,7 @@ function voiceTypeVariant(kind) {
       </template>
 
       <template #engine="{ row }">
-        <span class="jv-muted" :title="`Engine: ${row.engine}`">{{ row._model }}</span>
+        <span class="jv-muted">{{ row._model }}</span>
         <span
           v-if="voiceLocality(row) === 'local'"
           class="jv-locality jv-locality--local"
@@ -835,8 +832,8 @@ function voiceTypeVariant(kind) {
         <span
           v-if="needsInstall(row)"
           class="jv-locality jv-locality--online"
-          :title="`${row.engine} runs on the speech runtime, which isn't installed yet — install it on AI Settings → Speech engines before this voice can play`"
-        >NEEDS INSTALL</span>
+          :title="`${row._model || row.engine} runs on the speech runtime, which isn't installed yet — install it on AI Settings → Speech engines before this voice can play`"
+        >needs the speech runtime</span>
       </template>
 
       <!-- The full name, never the code: "American English", not "en-US". -->
@@ -884,7 +881,7 @@ function voiceTypeVariant(kind) {
       v-else-if="voices.length === 0"
       icon="Sparkle"
       title="No voices registered"
-      message="Load an engine to see its preset voices, or make one — clone, design or blend — on a persona's page."
+      message="Load a speech model to see its built-in voices, or make one — clone, design or blend — on a persona's page."
       action-label="Open Speech engines"
       compact
       @action="$router && $router.push?.('#engines'); window.location.hash = '#engines'"

@@ -40,12 +40,12 @@ export function preferredModel(options, order) {
 
 /** What a voice made on this model keeps — said where the model is picked. */
 export const MODEL_NOTE = {
-  "chatterbox-turbo": "Takes tags — [fear] [sigh] — not written direction. English only; the clip must be longer than 5 seconds.",
-  "chatterbox-nano": "Takes tags — [fear] [sigh] — not written direction. English only; the clip must be longer than 5 seconds. Smaller and faster than Turbo.",
-  "chatterbox-multilingual": "Takes no direction — shape it with pace, pitch and gain.",
-  "qwen3-base": "Written direction is dropped: the clip is the whole voice.",
+  "chatterbox-turbo": "Tags only — [fear] [sigh], no written direction. English only; the clip must be longer than 5 seconds.",
+  "chatterbox-nano": "Tags only — [fear] [sigh], no written direction. English only; the clip must be longer than 5 seconds. Smaller and faster than Turbo.",
+  "chatterbox-multilingual": "Sliders only — pace, pitch and gain.",
+  "qwen3-base": "Sliders only — the clip is the whole voice, so written direction is dropped.",
   voxcpm2: "Takes written direction, on a clone too.",
-  pocket: "Takes no direction. One model per language — English, German, Italian, Portuguese or Spanish.",
+  pocket: "Sliders only. One model per language — English, German, Italian, Portuguese or Spanish.",
 };
 
 /** What a description keeps on each design model. */

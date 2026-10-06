@@ -8,7 +8,7 @@
 // (`words` · `tags` · `sliders`) and `model_name`.
 
 import { languageName } from "@delebash/llm-ui";
-import { voiceGenderWord } from "./voiceGender.js";
+import { voiceGender, voiceGenderWord } from "./voiceGender.js";
 
 /** Pace · Pitch · Gain — the persona page's How it speaks and Render's "This
  *  line only" read this ONE list (2026-10-06), through DeliveryKnobs.vue: same
@@ -24,8 +24,8 @@ export const SHAPE_KNOBS = [
  *  and the model that speaks it. */
 export function voiceLabel(v) {
   if (!v) return "";
-  return [v.name, voiceGenderWord(v), languageName(v.language) || v.language, v.model_name || v.engine]
-    .filter((x) => x && x !== "?").join(" · ");
+  return [v.name, voiceGender(v) === "?" ? "" : voiceGenderWord(v), languageName(v.language) || v.language, v.model_name || v.engine]
+    .filter(Boolean).join(" · ");
 }
 
 /** The "Can be directed" filter, each choice with its one-line example (the
@@ -54,6 +54,14 @@ export function directionCell(directedBy, tagCount = 0) {
     return { label: "sliders only", intent: "secondary", title: "Pace, pitch and gain — no words, no tags" };
   }
   return { label: "—", intent: "secondary", title: "No voice yet" };
+}
+
+/** THE sentence for how a model can be directed, in DIRECTION_OPTIONS' words
+ *  (2026-10-06, one wording per fact — six screens had their own). */
+export function directionSentence(directedBy, model = "This model") {
+  if (directedBy === "words") return `${model} takes written direction.`;
+  if (directedBy === "tags") return `${model}: tags only — [fear] [sigh], no written direction.`;
+  return `${model}: sliders only — pace, pitch and gain, no words or tags.`;
 }
 
 /** How many tags a capability row lists, across its kinds. */

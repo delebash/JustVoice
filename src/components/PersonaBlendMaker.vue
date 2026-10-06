@@ -20,7 +20,8 @@ import {
 } from "@delebash/llm-ui";
 import { handleTermsRefusal } from "../services/engineTerms.js";
 import { facetOptions, facetTotal, narrowed } from "../services/facets.js";
-import { voiceGender } from "../services/voiceGender.js";
+import { voiceLabel } from "../services/personaFacts.js";
+import { genderWord, voiceGender } from "../services/voiceGender.js";
 import { previewCandidate } from "../services/voiceMakers.js";
 import { useApi } from "../stores/api.js";
 
@@ -52,7 +53,6 @@ const strategy = ref("blend");
 
 // ── The voices you can mix — Kokoro's, found by language and gender ─────
 const pack = computed(() => props.voices.filter((v) => v.engine === "kokoro"));
-const GENDER_WORD = { F: "Female", M: "Male", N: "Neutral" };
 const langFilter = ref("");
 const genderFilter = ref("");
 // Language and gender each list only what the other leaves (decided
@@ -67,15 +67,14 @@ const langOptions = computed(() => [
 ]);
 const genderOptions = computed(() => [
   { value: "", label: "Any gender" },
-  ...facetOptions(pack.value, packFilters.value, "gender", (v) => (GENDER_WORD[voiceGender(v)] ? voiceGender(v) : ""),
-    (g, n) => `${GENDER_WORD[g] || g} (${n})`),
+  ...facetOptions(pack.value, packFilters.value, "gender", (v) => voiceGender(v), (g, n) => `${genderWord(g)} (${n})`),
 ]);
 const voiceOptions = computed(() => [
   { value: "", label: "— pick a voice —" },
   ...narrowed(pack.value, packFilters.value)
     .map((v) => ({
       value: v.id,
-      label: [v.name, languageName(v.language) || v.language, GENDER_WORD[voiceGender(v)]].filter(Boolean).join(" · "),
+      label: voiceLabel(v),
     })),
 ]);
 const nameOf = (id) => props.voices.find((v) => v.id === id)?.name || "";
@@ -208,7 +207,7 @@ async function keep() {
   <div class="jv-card">
     <div class="jv-card__header"><h3 class="jv-card__title">New blend</h3></div>
     <div class="jv-card__body jv-col">
-      <p class="jv-hint">Blends mix Kokoro's own voices.</p>
+      <p class="jv-hint">Blended voices mix Kokoro's own voices.</p>
       <div class="jv-inline-row">
         <UiSegmented v-model="strategy" :options="STRATEGIES" size="small" aria-label="How the voices combine" />
       </div>

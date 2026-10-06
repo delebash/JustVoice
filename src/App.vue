@@ -571,11 +571,11 @@ onMounted(async () => {
           type="button"
           class="jv-topbar__engine-pill"
           :class="{ 'jv-topbar__engine-pill--empty': !health.current_engine }"
-          :title="health.current_engine ? `Voice engine loaded: ${health.current_engine}. Click to manage speech engines.` : 'No voice engine loaded. Click to load one.'"
+          :title="health.current_engine ? `Voice model loaded: ${health.current_model || health.current_engine}. Click to manage speech engines.` : 'No voice model loaded. Click to load one.'"
           @click="goView('engines')"
         >
           <span class="jv-topbar__engine-icon">🔊</span>
-          <span class="jv-topbar__engine-name">{{ health.current_engine || "No voice engine" }}</span>
+          <span class="jv-topbar__engine-name">{{ health.current_model || health.current_engine || "No voice model" }}</span>
         </button>
         <button
           v-if="health"

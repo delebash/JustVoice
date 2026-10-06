@@ -55,9 +55,12 @@ import { facetCounts, facetOptions, facetTotal, narrowed } from "../services/fac
 import { lexiconMatches } from "../services/lexiconPreview.js";
 import { openProjectInStudio } from "../services/openProject.js";
 import { projectsService } from "../services/projects.js";
-import { DIRECTION_OPTIONS, VOICE_KINDS as KINDS, voiceKind as kindOf, voiceKindWord, voiceLabel } from "../services/personaFacts.js";
+import {
+  DIRECTION_OPTIONS, VOICE_KINDS as KINDS, directionCell, directionSentence, tagCount, voiceKind as kindOf, voiceKindLabel,
+  voiceLabel,
+} from "../services/personaFacts.js";
 import { auditionVoice } from "../services/voiceAudition.js";
-import { voiceGender, voiceGenderWord } from "../services/voiceGender.js";
+import { genderWord, voiceGender, voiceGenderWord } from "../services/voiceGender.js";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useApi } from "../stores/api.js";
 import { useEnginesStore } from "../stores/engines.js";
@@ -264,8 +267,6 @@ const notLoaded = computed(() => {
 // bette way to identify a voice that can do direction and words") — each with
 // its example.
 const directionFilter = ref("");
-const DIRECTION_WORD = { words: "written direction", tags: "tags", sliders: "sliders only" };
-const DIRECTION_EXAMPLE = { words: "describe it", tags: "[fear] [sigh]", sliders: "pace, pitch, gain" };
 
 // How it was made comes second. A kind is off when nothing of it can be
 // directed this way and nothing can make one that can: a clone, or a design's
@@ -277,10 +278,10 @@ function onKindBlocked(opt) {
 }
 const CAN_MAKE = { clone: ["words", "tags", "sliders"], design: ["words", "tags", "sliders"], blend: ["sliders"] };
 const OFF_REASON = {
-  builtin: { tags: "No built-in voice takes tags — Chatterbox Turbo and Nano voices are clones." },
+  builtin: { tags: "No Built-in voice is on a tag model — Chatterbox Turbo and Nano voices are Cloned." },
   blend: {
-    words: "Blends are Kokoro's — they take no written direction.",
-    tags: "Blends are Kokoro's — they take no tags.",
+    words: "Blended voices are Kokoro's: sliders only.",
+    tags: "Blended voices are Kokoro's: sliders only.",
   },
 };
 
@@ -305,8 +306,8 @@ const directionChoices = computed(() => {
     (v, d) => v.directed_by === d);
   return DIRECTION_OPTIONS.map((o) => ({
     value: o.value,
-    label: `${o.value ? o.label : "Any"} (${o.value ? n[o.value] : facetTotal(voices.value, voiceFilters.value, "direction")})`,
-    sublabel: o.value ? DIRECTION_EXAMPLE[o.value] : "every voice",
+    label: `${o.label} (${o.value ? n[o.value] : facetTotal(voices.value, voiceFilters.value, "direction")})`,
+    sublabel: o.hint || "every voice",
   }));
 });
 // A blend can be heard only when the installed speech runtime can play one (the capability
@@ -350,11 +351,10 @@ const modelOptions = computed(() => [
   { value: "", label: "All models" },
   ...facetOptions(voices.value, voiceFilters.value, "model", (v) => v.model, (m, n) => `${modelNames.value[m] || m} (${n})`),
 ]);
-const GENDER_WORD = { F: "Female", M: "Male", N: "Neutral" };
 const genderOptions = computed(() => [
   { value: "", label: "Any gender" },
   ...facetOptions(voices.value, voiceFilters.value, "gender",
-    (v) => (voiceGender(v) === "?" ? "" : voiceGender(v)), (g, n) => `${GENDER_WORD[g] || g} (${n})`),
+    (v) => voiceGender(v), (g, n) => `${genderWord(g)} (${n})`),
 ]);
 const languageFilterOptions = computed(() => [
   { value: "", label: "Any language" },
@@ -391,7 +391,7 @@ const draftPayload = computed(() => (draft.value ? payload() : null));
 // Every voice says what it can do, so the list reads without a filter set.
 const voiceOptions = computed(() => shownVoices.value.map((v) => ({
   value: v.id,
-  label: [voiceLabel(v), kindOf(v) !== "builtin" ? voiceKindWord(v) : "", DIRECTION_WORD[v.directed_by] || "sliders only"]
+  label: [voiceLabel(v), voiceKindLabel(v), directionCell(v.directed_by, tagCount(caps.value[v.model])).label]
     .filter(Boolean).join(" · "),
 })));
 const voiceSelectValue = computed(() => voice.value?.id || "");
@@ -404,7 +404,7 @@ const voiceEmptyHint = computed(() => {
     builtin: "No built-in voices — install a speech model on AI Settings → Speech engines.",
     clone: "No cloned voices yet — make one on the right.",
     design: "No designed voices yet — make one on the right.",
-    blend: "No blends yet — make one on the right.",
+    blend: "No blended voices yet — make one on the right.",
   }[kind.value] || "";
 });
 
@@ -600,8 +600,8 @@ const registerTag = computed({
 const isVoiceDesign = computed(() => model.value === "qwen3-vd");
 const directionReason = computed(() => {
   if (!voice.value) return "";
-  if (directedBy.value === "tags") return `${modelName.value} takes tags, not written direction — pick its emotion and register below.`;
-  if (directedBy.value === "sliders") return `${modelName.value} takes no direction — shape it with the numbers, or pick a voice on a model that takes direction.`;
+  if (directedBy.value === "tags") return `${directionSentence("tags", modelName.value)} Pick its emotion and register below.`;
+  if (directedBy.value === "sliders") return `${directionSentence("sliders", modelName.value)} Shape it with the numbers, or pick a voice on a model that takes written direction.`;
   return "";
 });
 
@@ -1073,7 +1073,7 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
                      what Smart-assign matches against a speaker's pronouns
                      (decided 2026-10-05). -->
                 <UiField label="Gender" layout="block">
-                  <span class="persona-editor__fixed">{{ voiceGender(voice) === "?" ? "Not known" : voiceGenderWord(voice) }}
+                  <span class="persona-editor__fixed">{{ voiceGenderWord(voice) }}
                     <span class="jv-hint">· from its voice · <a href="#/voices">change it on Voices ➜</a></span></span>
                 </UiField>
               </div>
@@ -1261,8 +1261,8 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
               <template v-if="voice">
                 <strong>{{ modelName }}</strong>
                 <div class="jv-inline-row persona-editor__tags">
-                  <UiTag :intent="directedBy === 'words' ? 'success' : 'secondary'">{{ directedBy === 'words' ? '✓' : '✗' }} written direction</UiTag>
-                  <UiTag :intent="tagSets.length ? 'success' : 'secondary'">{{ tagSets.length ? '✓' : '✗' }} tags</UiTag>
+                  <UiTag :intent="directionCell(directedBy, tagCount(row)).intent" :title="directionCell(directedBy).title">{{
+                    directionCell(directedBy, tagCount(row)).label }}</UiTag>
                   <UiTag intent="secondary">{{ speaks.length > 1 ? `✓ ${speaks.length} languages` : speaksLabel }}</UiTag>
                   <UiTag :intent="row?.supports_voice_cloning ? 'success' : 'secondary'">{{ row?.supports_voice_cloning ? '✓' : '✗' }} cloning</UiTag>
                   <UiTag :intent="seedSupported ? 'success' : 'secondary'">{{ seedSupported ? '✓' : '✗' }} seed</UiTag>

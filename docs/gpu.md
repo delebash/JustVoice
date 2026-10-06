@@ -246,7 +246,7 @@ You can still load one engine per slot (one TTS + one STT). Unload via the Speec
 - **GPU info card shows "no GPU detected"** — Either no discrete GPU is present (laptops often have CPU + integrated graphics only, which detection may not report) or the driver isn't installed. Run `nvidia-smi` (NVIDIA) or `vulkaninfo` (AMD) from a terminal to verify.
 - **The speech runtime fails to install** — Most often a network issue pulling the archive from GitHub. The bar on the runtime row carries the error; Install again resumes. If it says the program would not start, a virus scanner may still be holding the freshly unpacked files — wait a moment and retry.
 - **Out-of-memory on render** — Switch to a smaller model variant (Speech engines tab → engine row), or load a lighter engine entirely.
-- **Rendering is very slow** — Check the runtime row on AI Settings → Speech engines: which build is running? A CPU build on a machine with a GPU means Backend was set to CPU, or the GPU build failed to start and you installed CPU instead. The loaded engine card shows the backend it is on.
+- **Rendering is very slow** — Check the runtime row on AI Settings → Speech engines: which build is running? A CPU build on a machine with a GPU means Backend was set to CPU, or the GPU build failed to start and you installed CPU instead. Home's **Loaded model** card shows the backend it is on.
 
 ## What's detected — under the hood
 

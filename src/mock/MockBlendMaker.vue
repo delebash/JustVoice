@@ -11,7 +11,8 @@ import {
   UiButton, UiField, UiInput, UiSegmented, UiSelect, UiSlider, languageName, pushToast,
 } from "@delebash/llm-ui";
 import { facetOptions, facetTotal, narrowed } from "../services/facets.js";
-import { voiceGender } from "../services/voiceGender.js";
+import { voiceLabel } from "../services/personaFacts.js";
+import { genderWord, voiceGender } from "../services/voiceGender.js";
 import { keepVoice, silentWav, store, wait } from "./personaMock.js";
 
 const props = defineProps({
@@ -37,7 +38,6 @@ const strategy = ref("blend");
 const pack = computed(() => store.voices.filter((v) => v.model === "kokoro" && v.source === "preset"));
 const langFilter = ref("");
 const genderFilter = ref("");
-const GENDER_WORD = { F: "Female", M: "Male", N: "Neutral" };
 // Language and gender each list only what the other leaves (decided
 // 2026-10-05, services/facets.js) — French + Male left every picker empty.
 const packFilters = computed(() => [
@@ -50,15 +50,14 @@ const langOptions = computed(() => [
 ]);
 const genderOptions = computed(() => [
   { value: "", label: "Any gender" },
-  ...facetOptions(pack.value, packFilters.value, "gender", (v) => (GENDER_WORD[voiceGender(v)] ? voiceGender(v) : ""),
-    (g, n) => `${GENDER_WORD[g] || g} (${n})`),
+  ...facetOptions(pack.value, packFilters.value, "gender", (v) => voiceGender(v), (g, n) => `${genderWord(g)} (${n})`),
 ]);
 const pickable = computed(() => narrowed(pack.value, packFilters.value));
 const voiceOptions = computed(() => [
   { value: "", label: "— pick a voice —" },
   ...pickable.value.map((v) => ({
     value: v.id,
-    label: `${v.name} · ${languageName(v.language) || v.language} · ${GENDER_WORD[voiceGender(v)] || "?"}`,
+    label: voiceLabel(v),
   })),
 ]);
 const nameOf = (id) => store.voices.find((v) => v.id === id)?.name || "";
@@ -135,7 +134,7 @@ function keep() {
       <h3 class="jv-card__title">New blend</h3>
     </div>
     <div class="jv-card__body jv-col">
-      <p class="jv-hint">Blends mix Kokoro's own voices.</p>
+      <p class="jv-hint">Blended voices mix Kokoro's own voices.</p>
       <UiSegmented v-model="strategy" :options="STRATEGIES" size="small" aria-label="How the voices combine" />
       <p class="jv-hint">{{ STRATEGY_HINT[strategy] }}</p>
 

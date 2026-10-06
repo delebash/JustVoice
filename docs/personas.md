@@ -201,9 +201,9 @@ one.*
 | Trained | Off: *LoRA training — not rebuilt yet.* When it is, its maker opens here like the others | — |
 
 A *Type* that can't be directed the way you picked is off, and says
-why when you click it. Under **Tags**: *No built-in voice takes tags — Chatterbox
-Turbo and Nano voices are clones*, and *Blends are Kokoro's — they take no
-tags.* Under **Written direction**, Blended is off the same way. Blended is also
+why when you click it. Under **Tags**: *No Built-in voice is on a tag model — Chatterbox
+Turbo and Nano voices are Cloned*, and *Blended voices are Kokoro's: sliders
+only.* Under **Written direction**, Blended is off the same way. Blended is also
 off while the installed speech runtime can't play a blend: *Blends need a speech
 runtime that can play them — update it on AI Settings → Speech engines when an
 update is offered.* If the choice you were on goes off, the page moves to the
@@ -437,12 +437,13 @@ ms`. An empty pause is the book's own gap between lines.
   `[whispering]`) and **Register** from its three (`[narration]` `[dramatic]`
   `[advertisement]`), put at the start of every line. Sounds like `[sigh]` or
   `[laugh]` go inside a line, so you type them in the line's text. Style
-  Instructions is shown off with the reason: *Chatterbox Turbo takes tags, not
-  written direction — pick its emotion and register below.*
+  Instructions is shown off with the reason: *Chatterbox Turbo: tags only —
+  [fear] [sigh], no written direction. Pick its emotion and register below.*
 - **Sliders-only models** (Kokoro, KittenTTS, Pocket TTS, Chatterbox
   Multilingual, Qwen3 Base): Style Instructions and Emotion are off, with the
-  reason: *Kokoro takes no direction — shape it with the numbers, or pick a
-  voice on a model that takes direction.*
+  reason: *Kokoro: sliders only — pace, pitch and gain, no words or tags.
+  Shape it with the numbers, or pick a voice on a model that takes written
+  direction.*
 
 **Effects** shows the chain as chips, by name (`Reverb`, `EQ — Low shelf`);
 **＋ Edit** opens the effects editor. Effects run after the voice speaks.
@@ -526,8 +527,10 @@ the note or the lexicon kept the old value while the page said it was saved).
 
 ### This model, Used by
 
-**This model** shows what the voice's model can do: ✓/✗ written direction, ✓/✗
-tags (and lists them by kind — Emotion, Register, Non-verbal), the languages it
+**This model** shows what the voice's model can do: how it can be directed, in
+the words Voices' *Can be directed* column uses — **✓ written direction**,
+**✓ 7 tags** or **sliders only** — the tags by kind (Emotion, Register,
+Non-verbal), the languages it
 speaks, ✓/✗ cloning and ✓/✗ seed. **Compare models →** opens AI Settings →
 Speech engines.
 

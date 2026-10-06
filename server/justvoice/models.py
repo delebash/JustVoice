@@ -48,6 +48,10 @@ class HealthResponse(BaseModel):
     version: str
     api_version: str
     current_engine: str | None = None
+    # The loaded model by its own name (*Kokoro 82M*, *Qwen3-TTS CustomVoice 1.7B*) — what
+    # the top bar and Home show; the engine id above is for code (2026-10-06, one wording
+    # per fact: a model is shown by its name).
+    current_model: str | None = None
     engines: list[EngineHealth] = []
 
 

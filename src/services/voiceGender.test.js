@@ -37,6 +37,6 @@ describe("voiceGender — one answer on every screen", () => {
 
   it("gives a word for a dropdown label", () => {
     expect(voiceGenderWord({ name: "Emma" })).toBe("Female");
-    expect(voiceGenderWord({ name: "Zed" })).toBe("?");
+    expect(voiceGenderWord({ name: "Zed" })).toBe("Not known");
   });
 });

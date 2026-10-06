@@ -75,7 +75,7 @@ from a description:
 | **Designed**, no kept clip | Yes — and its description leads, with your direction added after |
 | **Designed**, kept clip | **No** — it is a clone now |
 | **Cloned** | **No** — the identity is the recording |
-| **Blended** (Kokoro) | No — Kokoro takes no direction at all |
+| **Blended** (Kokoro) | No — Kokoro is sliders only |
 
 No voice type gives you a specific person's voice *and* line-by-line written
 direction. Voice training (a LoRA fine-tune) was the way to get both; it was
@@ -105,7 +105,7 @@ as *engine (0)* instead of an empty list.
 | Name | ▶ plays the voice saying the test line, then the voice's name |
 | Gender | **F**, **M**, **N** or **?** — click it to set your own |
 | Type | preset, cloned, designed, imported or blended |
-| Model | The model that speaks it — *Kokoro*, *Qwen3-TTS CustomVoice*, *Chatterbox Multilingual* — with **LOCAL**, **ONLINE · METERED** or **NEEDS INSTALL** |
+| Model | The model that speaks it — *Kokoro*, *Qwen3-TTS CustomVoice*, *Chatterbox Multilingual* — with **LOCAL**, **ONLINE · METERED** or **needs the speech runtime** |
 | Speaks | The voice's own language. **+9** beside it means its model can also speak it in nine more; hover for the list. A persona built on it can speak any of them ([Personas → Voice](personas.md#voice)) |
 | Can be directed | **✓ written direction**, **✓ 19 tags** or **sliders only** — what a persona on this voice can be told (the same words as the Personas page) |
 | Used by | The personas built on it: *🎭 Narrator*, *🎭 June, Mara +1*. *— unused —* when none is |
@@ -159,18 +159,18 @@ without listening first keeps the clip as it is.
 
 ## Gender + accent + tone tags
 
-Every voice has a gender chip (F / M / N / ❓ / unset) in the library. JustVoice auto-detects from:
+Every voice has a gender chip in the library — **F**, **M**, **N** or **?** for Female, Male, Neutral and Not known (hover it for the word). JustVoice auto-detects from:
 
 - **OpenAI voices**: published canon (Alloy / Echo / Fable / Onyx / Nova / Shimmer / Ash / Coral / Sage / Verse / Ballad).
 - **Kokoro voices**: parses the `<region><gender>_<name>` convention (af_alloy = American Female; bm_george = British Male).
-- **Cloned / freeform voices**: first-name dictionary (sarah.wav → F, michael.wav → M). Ambiguous names (Alex, Jamie, Riley) deliberately left unset.
+- **Cloned / freeform voices**: first-name dictionary (sarah.wav → F, michael.wav → M). Ambiguous names (Alex, Jamie, Riley) are deliberately left Not known.
 
-Click the chip to cycle through F → M → N → unset → ❓. The override saves on the voice and feeds **Smart-assign** on subsequent runs — it matches a book's speakers to personas, and a persona's gender is its voice's.
+Click the chip to change it: Not known → Female → Male → Neutral → back to what was detected. The override saves on the voice and feeds **Smart-assign** on subsequent runs — it matches a book's speakers to personas, and a persona's gender is its voice's.
 
-For the voices the dictionary can't label (the ❓ ones), the toolbar's
+For the voices the dictionary can't label (the **?** ones), the toolbar's
 **✨ Guess unknown genders** button asks the AI to label them in one batch —
 it runs only when you click, applies the confident answers exactly like a
-manual chip click, and leaves genuinely ambiguous names unset. (This is the
+manual chip click, and leaves genuinely ambiguous names Not known. (This is the
 `voice_gender` feature; its prompt and model live under AI Settings.)
 
 ## Hear a voice with your own text
@@ -189,8 +189,8 @@ streaming.
 
 Two costs to know about:
 
-- **Engine swaps.** JustVoice keeps **one** TTS engine loaded at a time. If
-  the voice belongs to a different engine than the resident one, JustVoice
+- **Engine swaps.** JustVoice keeps **one** speech model loaded at a time. If
+  the voice belongs to a different model than the loaded one, JustVoice
   asks before paying the swap — a load can take a minute. After that,
   listens are quick.
 - **Repeat listens are cached.** The same line on the same voice is served

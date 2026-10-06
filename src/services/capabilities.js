@@ -52,11 +52,11 @@ export function capableRows(rows, engines, field) {
 // from the engines store — the SAME store the topbar pill and the
 // Engines tab read, refreshed by the jv:health-refresh event — and the
 // list is alphabetical, always. The vocabulary matches the rest of the
-// app: "· loaded" / "(not loaded)" / "(not installed)".
+// app: "· loaded" / "(not loaded)" / "(needs the speech runtime)".
 
 function statusSuffix(engine) {
   if (engine.status === "loaded") return " · loaded";
-  if (engine.status === "not_installed") return " (not installed)";
+  if (engine.status === "not_installed") return " (needs the speech runtime)";
   return " (not loaded)";
 }
 

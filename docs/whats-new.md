@@ -2,6 +2,14 @@
 
 ## v0.1.0
 
+- **One wording per fact: how a voice is directed, its type, its model and
+  gender (2026-10-06)** — the persona page says how a model can be directed in
+  the Voices list's words (**✓ written direction**, **✓ 7 tags**, **sliders
+  only**), its This model card shows that one tag, and the clone and design
+  makers' notes match; *preset* is **Built-in** everywhere; Voices filters by
+  **Model** name, not engine id; the top bar and Home's **Loaded model** card
+  name the loaded model (*Kokoro 82M*); a voice whose gender isn't known says
+  **Not known** on every screen
 - **Speaker, persona and Cast each mean one thing (2026-10-06)** — a
   **speaker** is a person in the book, a **persona** is a voice from your
   library (written *persona June* beside a speaker), and **Cast** is the step

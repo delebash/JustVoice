@@ -71,7 +71,14 @@ export function voiceGender(v) {
   return "?";
 }
 
-const WORDS = { F: "Female", M: "Male", N: "Neutral", "?": "?" };
+// "Not known" is THE word for an unknown gender on every screen (2026-10-06,
+// one wording per fact — it was ?, unset, Unset, unknown and Not known).
+const WORDS = { F: "Female", M: "Male", N: "Neutral", "?": "Not known" };
+
+/** The word for a gender letter ("F" → "Female", "?" or "" → "Not known"). */
+export function genderWord(letter) {
+  return WORDS[letter] || WORDS["?"];
+}
 
 /** "Female" · "Male" · "Neutral" · "?" — a word, for dropdown labels, where
  *  there is no column heading to explain a letter. */

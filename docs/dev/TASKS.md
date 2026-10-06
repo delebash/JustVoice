@@ -247,8 +247,23 @@ BUILT:  2026-10-06, batches 1–2 (A — the three words): on screen — Cast (c
         `test_render_chapter_scene_mode.py` follow the words. Checked: Biome, vitest 29, pytest 18, build,
         smoke, family guard; live — Render's line, Cast's cards and ✕ Clear personas, Discover's In
         this book / The book's speakers.
-OPEN:   batches 3–5 — B1–B4 (Can be directed, voice type, Model / Version / engine, gender), B5, B6,
-        B8 (line states, the take, step cards), B7, B9 and C1–C3, C6, C7.
+        2026-10-06, batch 3 (B1–B4): Can be directed — the persona page's own copies gone; its
+        voice list, the This model card (one tag: ✓ written direction / ✓ N tags / sliders only) and
+        the Style Instructions reason use `directionCell` / the new `directionSentence`; the clone and
+        design makers' notes say "Tags only —" / "Sliders only —". Voice type — `voiceKindLabel` on
+        Personas, the persona page and its voice list; "preset" → built-in (Settings, Voices),
+        "blends" → Blended voices. Model — Voices' filter lists model names ("All models",
+        "KittenTTS (8)"), "(needs the speech runtime)" not "(not installed)", Home "across N models",
+        the top-bar pill and Home's **Loaded model** card show the loaded model's name (*Kokoro 82M*)
+        from the new `/v1/health` `current_model`, not the engine id. Gender — one `genderWord`,
+        unknown is **Not known** everywhere (Voices' filter and chip, the persona page, the blend
+        maker, Cast's AI hint). Docs: personas, voices, getting-started, gpu. Tests:
+        `voiceGender.test.js`, `test_health_model_name.py`.
+OPEN:   batches 4–5 — B5, B6, B8 (line states, the take, step cards), B7, B9 and C1–C3, C6, C7.
+        Two B3 rows the decision doesn't word, asked: AI Settings → Speech engines calls each
+        size row a "model" (Load model · Set as default "the model this engine loads" · "is now
+        Qwen3-TTS's default model") where the persona page calls the same choice its Version; and
+        the Cache page's Engine column shows the engine id (a generation stores only that).
 GO:     given 2026-10-06
 
 ### Render's grid: a Model column, and "Can be directed" in Voices' words (decided 2026-10-06)

@@ -265,7 +265,7 @@ const captureCount = computed(() => capturesTotal.value ?? captures.value.length
 
 const statCards = computed(() => [
   { label: "Projects", value: projects.value.length, sub: projectKindCount.value ? `${projectKindCount.value} kind${projectKindCount.value === 1 ? "" : "s"}` : "create one to start", href: "#projects" },
-  { label: "Voices", value: voices.value.length, sub: `across ${new Set(voices.value.map((v) => v.engine || "?")).size} engines`, href: "#voices" },
+  { label: "Voices", value: voices.value.length, sub: `across ${new Set(voices.value.map((v) => v.model_name || v.engine || "?")).size} models`, href: "#voices" },
   { label: "Personas", value: personas.value.length, sub: "reusable in any book", href: "#personas" },
   { label: "Lexicons", value: lexicons.value.length, sub: `${lexiconEntries.value} entries`, href: "#lexicons" },
   { label: "Cache", value: cacheGB.value ? `${cacheGB.value} GB` : "0", sub: cacheSub.value, href: "#cache" },
@@ -449,25 +449,25 @@ onMounted(() => {
 
       <div class="jv-card home__engine">
         <div class="home__cardhead">
-          <span class="home__eyebrow">Loaded engine</span>
-          <UiTag :intent="health?.current_engine ? 'success' : 'ghost'">{{ health?.current_engine ? "ready" : "none" }}</UiTag>
+          <span class="home__eyebrow">Loaded model</span>
+          <UiTag :intent="health?.current_engine ? 'success' : 'ghost'">{{ health?.current_engine ? "loaded" : "none" }}</UiTag>
         </div>
         <template v-if="health?.current_engine">
           <div class="home__engine-line">
-            <strong>{{ health.current_engine }}</strong>
+            <strong>{{ health.current_model || health.current_engine }}</strong>
             <span class="jv-muted">{{ deviceLabel }}</span>
             <span class="jv-spacer" />
             <span v-if="gpu?.vram_mb" class="jv-mono jv-muted home__vram">VRAM {{ (gpu.vram_used_mb / 1024).toFixed(1) }} / {{ (gpu.vram_mb / 1024).toFixed(0) }} GB</span>
           </div>
           <div v-if="gpu?.vram_mb" class="home__prog home__prog--vram"><div class="home__prog-fill" :style="{ width: Math.round(((gpu.vram_used_mb || 0) / gpu.vram_mb) * 100) + '%' }" /></div>
         </template>
-        <p v-else class="jv-muted home__empty">No TTS engine in memory. Loading happens on first use, or pick one now.</p>
+        <p v-else class="jv-muted home__empty">No voice model loaded. Loading happens on first use, or pick one now.</p>
         <div class="home__engine-foot">
           <span class="jv-muted home__substat" style="flex:1">
             {{ externalCount ? `● ${externalCount} external provider${externalCount === 1 ? "" : "s"} registered` : "no external providers" }}
           </span>
           <UiButton v-if="health?.current_engine" intent="ghost" size="small" label="Unload" :loading="unloading" title="Free the model's memory — next render reloads it" @click="unloadEngine" />
-          <UiButton intent="secondary" size="small" label="Switch ▾" title="Open Engines to load a different model" @click="goEngines" />
+          <UiButton intent="secondary" size="small" label="Switch ▾" title="Open Speech engines to load a different model" @click="goEngines" />
         </div>
       </div>
     </div>

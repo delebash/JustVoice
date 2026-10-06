@@ -31,7 +31,7 @@ import {
 } from "@delebash/llm-ui";
 import { handleTermsRefusal } from "../services/engineTerms.js";
 import { facetChoices, facetOptions, narrowed } from "../services/facets.js";
-import { DIRECTION_OPTIONS, directionCell, tagCount, voiceKindWord } from "../services/personaFacts.js";
+import { DIRECTION_OPTIONS, directionCell, tagCount, voiceKindLabel } from "../services/personaFacts.js";
 import { auditionPersona } from "../services/voiceAudition.js";
 import { useApi } from "../stores/api.js";
 import { usePersonasStore } from "../stores/personas.js";
@@ -457,7 +457,7 @@ onActivated(() => { if (mounted) loadAll(); mounted = true; });
       </template>
       <template #built="{ row }">
         <template v-if="voiceById[row.voice_id]">
-          {{ voiceById[row.voice_id].name }} <span class="jv-hint">{{ voiceKindWord(voiceById[row.voice_id]) }}</span>
+          {{ voiceById[row.voice_id].name }} <span class="jv-hint">{{ voiceKindLabel(voiceById[row.voice_id]) }}</span>
         </template>
         <span v-else-if="row.voice_id" class="jv-muted" title="This voice isn't in the library any more">voice missing</span>
         <span v-else class="jv-muted">no voice yet</span>
