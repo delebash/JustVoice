@@ -285,22 +285,50 @@ BUILT:  2026-10-06, batches 1–2 (A — the three words): on screen — Cast (c
         hint keyed on a Designed voice (C6). Docs: voices, studio, engines, personas, dictation,
         projects. C1 left as it is: the server checks peak ≤ −3.0 dB (`ACX_PEAK_MAX_DB`, the ACX
         limit); −3.5 is the preset's target with headroom, so the checklist line is right.
-OPEN:   questions only —
-        1. B6: the table was not recorded word for word; its button, tag, Compare and Play chapter
-           words were. The Takes heading kept "Takes"; the chapter lede only swapped "the ★ one" →
-           "the one ★ In use".
-        2. B3: AI Settings → Speech engines calls each size row a "model" (Load model · "is now
-           Qwen3-TTS's default model") where the persona page calls the same choice its Version.
-        3. B3: the Cache page's Engine column shows the engine id (a generation stores only that).
-        4. B9: the kinds map's names were not given; the screens' most-used ones were kept —
-           Game (not Game voicelines / Game dialogue), Text (not Custom / Plain text).
-        B6's table was not recorded word for word; only its button, tag, Compare and Play chapter
-        words were. The Takes heading kept "Takes", and the chapter lede only swapped "the ★ one" →
-        "the one ★ In use" — asked whether the table said more there.
-        Two B3 rows the decision doesn't word, asked: AI Settings → Speech engines calls each
-        size row a "model" (Load model · Set as default "the model this engine loads" · "is now
-        Qwen3-TTS's default model") where the persona page calls the same choice its Version; and
-        the Cache page's Engine column shows the engine id (a generation stores only that).
+        Then DECIDED 2026-10-06 — "your rec go", on the four questions as shown:
+        "1. Take wording: I didn't save the table you approved word for word. Only the button, tag,
+        Compare and Play chapter words were saved, and those are in. I left the "Takes" heading
+        alone. In the chapter's intro text I only changed "the ★ one" to "the one ★ In use". Did
+        your table say more for those two? My lean: keep them as they are.
+        2. Speech engines vs persona page: Speech engines calls each size row a "model" ("is now
+        Qwen3-TTS's default model"). The persona page calls the same choice its Version. Should
+        Speech engines say version there? My lean: yes, in the toast and the Set as default tooltip;
+        keep "Load model".
+        3. Cache page: its Engine column shows the engine id, because a saved generation only records
+        that. Should it show the engine's name, or should the server start recording the model? My
+        lean: show the engine's name.
+        4. Kind names: the decision didn't give names, so I used the ones most screens already
+        showed: Game (not Game voicelines / Game dialogue) and Text (not Custom / Plain text). OK?"
+        2026-10-06, the four answers built: 1 and 4 need nothing (kept as built). 2: Speech engines' Set as default
+        toast and tooltip say "version".
+OPEN:   3 is not built — its premise was wrong. A generation doesn't store the engine id: every render
+        saves `engine = "managed"` (`render_jobs.py`: `state.engines.current() or "managed"`; the
+        old registry is never current for the speech runtime — 83 of 83 recent rows say it), so there
+        is no engine to name. Asked: record the real engine (and model) on each new render, older rows
+        showing "not recorded"?
+GO:     given 2026-10-06
+
+### Home's memory shows what AI Settings' strip shows (decided 2026-10-06)
+STATE:  DECIDED 2026-10-06 — the user: "fix home vram it prop shouls show the same info as the ai
+        settings page" → "go on all"; then "stop dont move anythikng in the kit, we are talking about
+        the home screen showing the same info as the kit strip in ai settings all we need to show is
+        the vram info so what do you propose" → "go" on the plan as shown:
+        "1. Same numbers, same source. Home reads the same server data the AI Settings strip reads and
+        applies the same rule: VRAM used 7.4 of 8.0 GB and Free 0.6 GB. The rule is "used" when
+        measured, "reserved" when nothing measures it, and "Memory" instead of "VRAM" on
+        shared-memory machines. 2. TTS and STT come from JustVoice's own code. The strip already gets
+        those two cells from JustVoice (vramFeed.js), so Home uses that same code, not a copy.
+        3. Same look. They show as the strip's cells (label above value), not a line with a bar. My
+        line and bar are deleted." — and the LLM question answered: "yes it show llm vram too" ·
+        "and the modle loaded for all".
+WHY:    Home's card read `vram_used_mb`, a field /v1/system/info never had: "VRAM NaN / 8 GB".
+NOT:    any change in the kit (my `memoryReading` kit edits were undone, uncommitted).
+BUILT:  2026-10-06 — Home's Loaded model card shows VRAM used · Free · LLM (`vramFeed.residentCells`,
+        the strip's reading of /v1/llm-runner/resident, with the loaded model under LLM) · TTS · STT
+        (`vramFeed.hostCells`, the strip's own cells), polled while Home is open; `.jv-memcells` in
+        styles.css (the kit's cell is scoped). Checked live: every cell equal to AI Settings'.
+        Docs: gpu, whats-new; design-law inventory. Test: `vramFeed.test.js`.
+OPEN:   none.
 GO:     given 2026-10-06
 
 ### Render's grid: a Model column, and "Can be directed" in Voices' words (decided 2026-10-06)

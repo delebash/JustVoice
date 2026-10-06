@@ -148,7 +148,7 @@ async function setDefaultVariant(engine, variantId) {
   try {
     // The one door, shared with the persona page's Version choice (2026-10-05).
     await setEngineDefault(api, engine.id, variantId);
-    pushToast({ message: `${variantNameFor(engine.id, variantId)} is now ${engine.name || engine.id}'s default model.`, kind: "success" });
+    pushToast({ message: `${variantNameFor(engine.id, variantId)} is now ${engine.name || engine.id}'s default version.`, kind: "success" });
     delete variants[engine.id];
     await refresh(); // the list serves the RESOLVED default — re-read the badge truth
   } catch (e) {
@@ -935,7 +935,7 @@ onBeforeUnmount(() => {
                    over the manifest default. Rightmost, family position. -->
               <UiButton :intent="e.default_variant_id === v.id ? 'success' : 'secondary'" size="small"
                 :label="e.default_variant_id === v.id ? 'Default ✓' : 'Set as default'"
-                title="The model this engine loads when nothing picks one explicitly"
+                title="The version this engine loads when nothing picks one explicitly"
                 @click="e.default_variant_id === v.id ? null : setDefaultVariant(e, v.id)" />
               <!-- The three-dot menu (§6) — Delete moved in here from the
                    old inline button; the reka portal escapes the group's

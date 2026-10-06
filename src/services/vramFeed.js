@@ -140,6 +140,48 @@ export const hostCells = computed(() => {
   return cells;
 });
 
+// ── The card's own cells, as AI Settings' strip reads them (Home, 2026-10-06) ──
+// The kit strip (AiModelsArea `memCells`) reads GET /v1/llm-runner/resident:
+// measured use first ("VRAM used"), the ledger's bookings when nothing measures
+// ("VRAM reserved"), "Memory" on unified memory; then the LLM cell — the awake
+// models' booked take, the loaded model under it, else the on-demand claim. The
+// kit doesn't export that reading and is left as it is (the user, 2026-10-06),
+// so Home's copy lives HERE, beside the TTS/STT cells it is shown with. Keep it
+// in step with the kit's memCells.
+const gb1 = (mb) => (mb / 1024).toFixed(1);
+export function residentCells(r, claim = null) {
+  if (!r?.vramTotalMb) return [];
+  const word = r.memArch && r.memArch !== "discrete" ? "Memory" : "VRAM";
+  const total = gb1(r.vramTotalMb);
+  const cells = r.usedMb == null
+    ? [
+      { key: "used", label: `${word} reserved`, value: `${gb1(r.committedMb || 0)} of ${total} GB`,
+        title: "This box has no per-process memory probe — these are the ledger's bookings, not a measurement" },
+      { key: "free", label: "Free", value: `${gb1(r.remainingMb || 0)} GB` },
+    ]
+    : [
+      { key: "used", label: `${word} used`, value: `${gb1(r.usedMb)} of ${total} GB`,
+        title: "Measured occupancy — what the card actually holds right now" },
+      { key: "free", label: "Free", value: `${gb1(Math.max(0, r.vramTotalMb - r.usedMb))} GB` },
+    ];
+  const models = (r.models || []).filter((m) => m.status === "loaded" || m.status === "sleeping");
+  if (models.length) {
+    const awake = models.filter((m) => m.status !== "sleeping");
+    const take = awake.reduce((n, m) => n + (m.vramMb || 0), 0);
+    cells.push({ key: "llm", label: "LLM",
+      value: take ? `${gb1(take)} GB` : (awake.length ? "loaded" : "asleep"),
+      sub: models.map((m) => m.id).join(" · "),
+      title: awake.length
+        ? "The AI runner's booked take for its loaded models"
+        : "Idle, so its memory has been released — it reloads on the next request" });
+  } else if (claim?.text) {
+    cells.push({ key: "llm", label: "LLM", value: claim.text, title: claim.title || "" });
+  } else {
+    cells.push({ key: "llm", label: "LLM", value: "—" });
+  }
+  return cells;
+}
+
 // The LLM cell's idle words (the on-demand claim — Q3's standing line): the
 // kit owns the cell; JV supplies only what to say when nothing is resident.
 export const llmClaim = computed(() => {

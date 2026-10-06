@@ -480,7 +480,8 @@ was made for ([Voices → Every voice knows the model that speaks it](voices.md#
 so hearing a Qwen3 built-in voice while Qwen3 Base is loaded loads CustomVoice first,
 and a chapter with voices on several models loads each in turn. The size and
 precision come from here: the model you loaded if it is the right one, else
-the one you **Set as default** if it is, else a downloaded build of that model
+the default version if it is — the one you **Set as default** on its row here,
+the same choice as the persona page's **Version** — else a downloaded build of that model
 (the same size first) — and if none is downloaded, the load downloads one, as
 any first load does. Pocket TTS picks its model by the line's language.
 

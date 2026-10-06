@@ -99,6 +99,10 @@ never internal bookkeeping:
 
 The label follows your hardware: a discrete card shows **VRAM**; laptops with integrated or unified memory (iGPU, Apple Silicon) show **Memory**, because CPU and GPU share the same physical pool there and every load — even a CPU-placed one — draws from it.
 
+Home's **Loaded model** card shows the same cells — **VRAM used**, **Free**,
+**LLM**, **TTS** and **STT**, each with the model it holds under it — read the
+same way and kept up to date while Home is open, so the two never disagree.
+
 ### When the AI model goes to sleep
 
 A local language model that has not been asked anything for a while is put to
@@ -246,7 +250,7 @@ You can still load one engine per slot (one TTS + one STT). Unload via the Speec
 - **GPU info card shows "no GPU detected"** — Either no discrete GPU is present (laptops often have CPU + integrated graphics only, which detection may not report) or the driver isn't installed. Run `nvidia-smi` (NVIDIA) or `vulkaninfo` (AMD) from a terminal to verify.
 - **The speech runtime fails to install** — Most often a network issue pulling the archive from GitHub. The bar on the runtime row carries the error; Install again resumes. If it says the program would not start, a virus scanner may still be holding the freshly unpacked files — wait a moment and retry.
 - **Out-of-memory on render** — Switch to a smaller model variant (Speech engines tab → engine row), or load a lighter engine entirely.
-- **Rendering is very slow** — Check the runtime row on AI Settings → Speech engines: which build is running? A CPU build on a machine with a GPU means Backend was set to CPU, or the GPU build failed to start and you installed CPU instead. Home's **Loaded model** card shows the backend it is on.
+- **Rendering is very slow** — Check the runtime row on AI Settings → Speech engines: which build is running? A CPU build on a machine with a GPU means Backend was set to CPU, or the GPU build failed to start and you installed CPU instead. The model's row there shows where it runs once loaded (`· CUDA`, `· VULKAN`, `· CPU`).
 
 ## What's detected — under the hood
 

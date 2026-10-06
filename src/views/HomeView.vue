@@ -17,7 +17,7 @@
   install, the real app has to drive a cold one to that state first.
 -->
 <script setup>
-import { ref, onMounted, computed, watch } from "vue";
+import { ref, onActivated, onBeforeUnmount, onDeactivated, onMounted, computed, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import { useAiTasksStore } from "@delebash/llm-ui";
 import { useOnboarding } from "../stores/onboarding.js";
@@ -29,7 +29,8 @@ import { useVoicesStore } from "../stores/voices.js";
 import { useLexiconsStore } from "../stores/lexicons.js";
 import { useEnginesStore } from "../stores/engines.js";
 import { pushToast } from "@delebash/llm-ui";
-import { UiButton, UiTag, UiChip } from "@delebash/llm-ui";
+import { UiButton, UiTag, UiChip, usePoll } from "@delebash/llm-ui";
+import { hostCells, llmClaim, residentCells, subscribeVramFeed } from "../services/vramFeed.js";
 import { chapterRendered, needSpeaker, partOf } from "../services/lineStates.js";
 import { PROJECT_KINDS, kindLabel, projectKind } from "../services/projectKinds.js";
 import { chapterWordForKind } from "../services/copy.js";
@@ -293,6 +294,34 @@ function cancelTask(t) {
 const gpu = computed(() => system.value?.gpus?.[0] || null);
 const deviceLabel = computed(() => gpu.value ? `CUDA · ${gpu.value.name}` : (system.value ? "CPU" : ""));
 const externalCount = computed(() => (settings.value?.engines?.external || []).length);
+
+// The graphics memory as AI Settings' strip shows it (2026-10-06 — this card
+// read a field /v1/system/info never had and showed "VRAM NaN / 8 GB"): VRAM
+// used · Free · LLM from the strip's own reading of /v1/llm-runner/resident,
+// then TTS · STT from the same feed the strip's cells come from, each with its
+// loaded model under it. Polled while Home is on screen, like the strip.
+const resident = ref(null);
+const memoryCells = computed(() => [
+  ...residentCells(resident.value, llmClaim.value),
+  ...hostCells.value.filter((c) => c.label === "TTS" || c.label === "STT"),
+]);
+async function readMemory() {
+  resident.value = await safeRequest("/v1/llm-runner/resident", resident.value);
+}
+const { start: startMemoryPoll, stop: stopMemoryPoll } = usePoll(readMemory, 2500);
+let unsubscribeVram = null;
+function stopMemory() {
+  stopMemoryPoll();
+  if (unsubscribeVram) unsubscribeVram();
+  unsubscribeVram = null;
+}
+onActivated(() => {
+  void readMemory();
+  startMemoryPoll();
+  if (!unsubscribeVram) unsubscribeVram = subscribeVramFeed();
+});
+onDeactivated(stopMemory);
+onBeforeUnmount(stopMemory);
 const unloading = ref(false);
 async function unloadEngine() {
   unloading.value = true;
@@ -458,12 +487,16 @@ onMounted(() => {
           <div class="home__engine-line">
             <strong>{{ health.current_model || health.current_engine }}</strong>
             <span class="jv-muted">{{ deviceLabel }}</span>
-            <span class="jv-spacer" />
-            <span v-if="gpu?.vram_mb" class="jv-mono jv-muted home__vram">VRAM {{ (gpu.vram_used_mb / 1024).toFixed(1) }} / {{ (gpu.vram_mb / 1024).toFixed(0) }} GB</span>
           </div>
-          <div v-if="gpu?.vram_mb" class="home__prog home__prog--vram"><div class="home__prog-fill" :style="{ width: Math.round(((gpu.vram_used_mb || 0) / gpu.vram_mb) * 100) + '%' }" /></div>
         </template>
         <p v-else class="jv-muted home__empty">No voice model loaded. Loading happens on first use, or pick one now.</p>
+        <div v-if="memoryCells.length" class="jv-memcells">
+          <div v-for="c in memoryCells" :key="c.key" class="jv-memcell" :title="c.title || undefined">
+            <span class="jv-eyebrow">{{ c.label }}</span>
+            <span class="jv-memcell__v">{{ c.value }}</span>
+            <span v-if="c.sub" class="jv-memcell__sub">{{ c.sub }}</span>
+          </div>
+        </div>
         <div class="home__engine-foot">
           <span class="jv-muted home__substat" style="flex:1">
             {{ externalCount ? `● ${externalCount} external provider${externalCount === 1 ? "" : "s"} registered` : "no external providers" }}
@@ -540,11 +573,9 @@ onMounted(() => {
 .home__task-label { flex: none; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .home__task-stats { font-size: 11px; flex: none; }
 .home__prog { flex: 1; height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
-.home__prog--vram { margin: 8px 0; }
 .home__prog-fill { display: block; height: 100%; background: var(--accent); border-radius: 3px; transition: width .4s; }
 .home__task-x { color: var(--danger); }
 .home__engine-line { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
-.home__vram { font-size: 11px; }
 .home__engine-foot { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 .home__recent { padding: 12px 16px; margin: 0; }
 .home__gen { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 6px 0; border-bottom: 1px dashed var(--line); }
