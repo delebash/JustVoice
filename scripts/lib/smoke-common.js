@@ -31,6 +31,20 @@ export const findChrome = () => kitFindChrome({ env: "JV_CHROME" });
  */
 export const chromeLaunchOptions = () => kitChromeLaunchOptions({ env: "JV_CHROME" });
 
+// ── The sidebar tabs every renderer script drives ─────────────────────────
+// The tabs that should always be reachable for an audiobook project — the
+// smoke gate clicks each one, `npm run screenshots` pictures each one. ENGINES
+// left the nav with the 2026-08-06 sidebar fold (8b7e05a — engines live under
+// AI Settings → Speech engines now); AI SETTINGS replaces it here. CHAPTERS left
+// with Studio Slice 4 (2026-10-04) — chapters are managed in Studio · Script,
+// and their lines rendered in Studio · Render. GENERATE left 2026-10-05 (a
+// persona's page and Voices' test line speak a line).
+export const SIDEBAR_TABS = [
+  "HOME", "PROJECTS", "STUDIO", "CAPTURES",
+  "VOICES", "PERSONAS", "LEXICONS", "EFFECTS", "AI SETTINGS",
+  "LABS", "SETTINGS",
+];
+
 // ── Server readiness — the ONE door every gate script waits on ────────────
 // `/v1/health` answers 200 while the server is still doing first-boot work
 // (SQLite seeding, engine-manifest discovery), and a renderer driven during

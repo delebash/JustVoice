@@ -27,7 +27,7 @@ router = APIRouter(tags=["mastering"])
 @router.post(
     "/v1/master",
     summary="Apply a mastering preset to a WAV",
-    responses={200: {"content": {"audio/mpeg": {}, "audio/aac": {}, "audio/wav": {}}}},
+    responses={200: {"content": {"audio/mpeg": {}, "audio/wav": {}}}},
 )
 async def master_endpoint(req: MasterRequest) -> Response:
     try:
@@ -65,6 +65,8 @@ async def master_endpoint(req: MasterRequest) -> Response:
         "acx": "audio/mpeg",
         "inaudio": "audio/mpeg",
         "podcast": "audio/mpeg",
-        "youtube": "audio/aac",
+        # The YouTube preset encodes MP3 (`MasterPresetSettings.youtube`); this said
+        # audio/aac until 2026-10-06.
+        "youtube": "audio/mpeg",
     }.get(req.preset, "audio/wav")
     return Response(content=mastered, media_type=media)

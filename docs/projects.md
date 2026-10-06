@@ -43,7 +43,7 @@ The row used to expand into a detail pane. Everything it held moved:
 **＋ New project → a demo project** creates a sample project of the kind you
 picked, so you can click through the whole flow before importing anything of
 your own. It opens in Studio on its **Overview**, like any new project, and
-the sidebar switches to its kind — an audiobook demo shows no Lines or Stories.
+the sidebar switches to its kind — an audiobook demo shows no Lines.
 Deleting it touches nothing else.
 
 - **Audiobook** — *The Ninth Facet*, JustWrite's own sample novel: two parts,

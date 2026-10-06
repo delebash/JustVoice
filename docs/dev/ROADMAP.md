@@ -33,8 +33,9 @@ plan §5.)
   "full impl deferred"). Voicebox's whole dictation pillar (push-to-talk, chord
   bindings, target-aware paste). Biggest true gap.
 - **Promote capture → voice sample**: no one-click path (manual download→Clone works).
-- **Stories multi-track timeline**: `StoriesView.vue` exists; their drag-drop
-  timeline + inline trimming ≈ the timeline design parked in IDEAS (2026-08-15).
+- **Stories multi-track timeline**: not built — the placeholder tab was removed
+  2026-10-06; their drag-drop timeline + inline trimming ≈ the timeline design parked in
+  IDEAS (2026-08-15).
 - Unverified minor: their MCP per-client voice binding; LLM transcript refinement.
 
 ## 2. Candidates from voicebox's roadmap (checked against our code 2026-08-22)

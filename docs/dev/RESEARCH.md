@@ -496,9 +496,28 @@ its blast radius and the gaps.
 - A line's own pause after (imported `pause_after_ms`, or the ⚙ hatch) wins over its persona's.
   — *code, 2026-10-04* · `line_takes.override_delivery` via `plan_block`. (was: the persona's
   won — until 2026-10-04, decided G7.)
-- The Stories timeline is inert — it calls no API; the rail is its only door (the old Chapters
-  page's podcast "Open Timeline ➜" went with it, 2026-10-04). — *code, 2026-10-04* ·
-  `StoriesView.vue:17`.
+- There is no Stories tab or timeline page: the placeholder was removed 2026-10-06 (the
+  2026-08-15 ruling); its tables `stories` / `story_items` stay, with nothing reading them.
+  — *code, 2026-10-06* · `database/models.py:417-440`; no `/stories` route in
+  `router/index.js`. (was: an inert tab, the rail its only door — until 2026-10-06.)
+- A JustWrite chapter's lines keep the book scene each came from: the import writes
+  `source_ref` = `chapter:<id>#scene:<id>#block:<n>` into the line's metadata, and a scene
+  ends where the next line names another scene. Analyze gives every line it cuts from one
+  paragraph that paragraph's `source_ref`; split, ✎ Edit text and ＋ Add text make lines with
+  none. — *code, 2026-10-06* · `imports/adapters/justwrite.py:212`, `projects_api.py:916`,
+  `extraction_api.py:539`, `projects_api.py:613`, `line_takes.scene_ends`.
+- The pause at a scene break joins lines only: it is set on the rendered line in
+  `_join`, never in its delivery, because the delivery is hashed into the line's audio key
+  (`render_core._inputs_key`) — a pause there would make the line stale. A line's own
+  `pause_after_ms` wins; a persona's pause after does not. — *code, 2026-10-06* ·
+  `render_chapter_api._join`, `_resolve_scene_to_lines`.
+- Every mastering target encodes MP3, YouTube's too, and is served as `audio/mpeg`.
+  — *code, 2026-10-06* · `models.py:214` (`format="mp3"`), `master_api.py`,
+  `render_chapter_api.py` media maps. (was: YouTube served as `audio/aac` — until 2026-10-06.)
+- Kokoro's pack mean sums the voices in `voices.json` order, so the "mean" blend is the same
+  bits on every run. — *code, 2026-10-06* · `engines/blending.py` `_kokoro_pack` (a list).
+  (was: a set, in Python's per-process hash order — 82 % of values differed across three
+  seeds, max 4.5e-8 — until 2026-10-06.)
 - A chapter line's language and seed come from the one resolver: `persona_render.plan_line` →
   `ChapterLine(language=plan.language, seed=plan.seed)` (`render_chapter_api.py:183-185`). The
   language is the persona's when its model speaks it, else the voice's own, else the model's

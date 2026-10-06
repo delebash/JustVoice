@@ -177,11 +177,14 @@ def _kokoro_gguf(data_dir: Path) -> Path:
     raise LookupError("Kokoro is not downloaded — download it on AI Settings → Speech engines first")
 
 
-_PACK_CACHE: dict[tuple[str, int], tuple[dict, set]] = {}
+_PACK_CACHE: dict[tuple[str, int], tuple[dict, list]] = {}
 
 
 def _kokoro_pack(data_dir: Path):
-    """The preset voices as name → (rows, 1, 256) float32 arrays, plus the name set.
+    """The preset voices as name → (rows, 1, 256) float32 arrays, plus their names in
+    `voices.json` order — a list, never a set: the mean sums float32 voices in this order, and a
+    set's order follows Python's per-process string hashing, so the "mean" blend changed in its
+    last bits on every server restart (TASKS, 2026-10-05; fixed 2026-10-06).
 
     Since the 2026-10-01 switch Kokoro is one audio.cpp GGUF, and its voices are files
     embedded in it — `voices.json` plus `voices/<id>.bin`, raw float32 rows × 256
@@ -209,7 +212,7 @@ def _kokoro_pack(data_dir: Path):
         rows, cols = int(entry["rows"]), int(entry["cols"])
         pack[name] = np.frombuffer(raw, dtype="<f4").reshape(rows, 1, cols).copy()
     _PACK_CACHE.clear()
-    _PACK_CACHE[key] = (pack, set(pack))
+    _PACK_CACHE[key] = (pack, list(pack))
     return _PACK_CACHE[key]
 
 

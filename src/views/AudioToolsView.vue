@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: MIT -->
 <script setup>
-import { ref, computed, onBeforeUnmount } from "vue";
+import { ref, onBeforeUnmount } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast, saveBlob } from "@delebash/llm-ui";
 import { UiButton, UiInput, UiField, UiSelect } from "@delebash/llm-ui";
@@ -27,12 +27,14 @@ const PRESETS = [
   { id: "acx", label: "ACX (audiobook · MP3)" },
   { id: "inaudio", label: "INaudio (audiobook · MP3)" },
   { id: "podcast", label: "Podcast (MP3)" },
-  { id: "youtube", label: "YouTube (AAC/M4A)" },
+  { id: "youtube", label: "YouTube (MP3)" },
 ];
 
 const PRESET_OPTIONS = PRESETS.map((p) => ({ label: p.label, value: p.id }));
 
-const masterExt = computed(() => (masterPreset.value === "youtube" ? "m4a" : "mp3"));
+// Every target encodes MP3 — YouTube's too (`MasterPresetSettings.youtube`; this
+// page said AAC/M4A until 2026-10-06).
+const MASTER_EXT = "mp3";
 
 async function readAsBase64(file) {
   return new Promise((resolve, reject) => {
@@ -94,7 +96,7 @@ async function runMaster() {
     masteredMime.value = blob.type || "application/octet-stream";
     masteredBytes.value = blob.size;
     const base = (masterFile.value.name || "track").replace(/\.[^.]+$/, "");
-    masteredName.value = `${base}.${masterPreset.value}.${masterExt.value}`;
+    masteredName.value = `${base}.${masterPreset.value}.${MASTER_EXT}`;
   } catch (e) {
     pushToast({ message: `Master failed: ${e.message || e}`, kind: "error" });
   } finally {
@@ -108,7 +110,7 @@ async function downloadMastered() {
   // native dialog (where a host wires one) has real bytes to write.
   if (!masteredBlob.value) return;
   await saveBlob(masteredBlob.value, masteredName.value,
-    { title: "Save mastered audio", filterName: "Mastered audio", filterExt: masterExt.value });
+    { title: "Save mastered audio", filterName: "Mastered audio", filterExt: MASTER_EXT });
 }
 
 function fmtDb(n) {
@@ -205,8 +207,8 @@ onBeforeUnmount(revokeMastered);
     <section class="jv-card jv-section">
       <h3 class="jv-section__title">Apply a mastering target</h3>
       <p class="jv-muted" style="margin-bottom: 16px;">
-        Upload a WAV, pick a target, get a mastered MP3/M4A back. Requires ffmpeg on the server. ACX
-        targets audiobook spec (−23 LUFS, −3 dBTP, head/tail silence). YouTube outputs AAC.
+        Upload a WAV, pick a target, get a mastered MP3 back. Requires ffmpeg on the server. ACX
+        targets audiobook spec (−23 LUFS, −3 dBTP, head/tail silence).
       </p>
 
       <div class="master-grid">

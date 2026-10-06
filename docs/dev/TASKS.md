@@ -56,6 +56,22 @@
 
 ## Waiting on your decision
 
+### FINDING — the smoke gate never opens Settings: `text=SETTINGS` clicks AI Settings
+STATE:  FINDING — seen 2026-10-06 while fixing `npm run screenshots`, which used the same click.
+BUILT:  `scripts/smoke.js` clicks ``page.locator(`text=${tab}`).first()`` — a case-insensitive
+        part match, and AI SETTINGS comes first in the sidebar, so the SETTINGS row of the gate
+        loads AI Settings a second time. The screenshots script now clicks the whole label inside
+        `.jv-sidebar` (`smoke_gui.js`) and its 11-settings picture is the real Settings page.
+OPEN:   the same whole-label click in `smoke.js`.
+GO:     needed.
+
+### FINDING — New project's Podcast card promises a timeline that isn't built
+STATE:  FINDING — code-verified 2026-10-06, while removing the Stories tab.
+BUILT:  `NewProjectModal.vue:47` lists "Timeline assembly, music & SFX" for a podcast. Nothing
+        assembles a timeline; the Stories placeholder was removed 2026-10-06.
+OPEN:   the bullet's words (drop it, or say "planned").
+GO:     needed.
+
 ### FINDING — the release recipe's frozen server dies on start, and never contains the kit
 STATE:  FINDING — measured 2026-10-05 (stack study §1, §10). Tracked at your word: "track all
         side finidngs".
@@ -77,23 +93,6 @@ STATE:  FINDING — code-verified 2026-10-05 (stack study §4.1). Settings → U
 BUILT:  no updater plugin in any `Cargo.toml`, no signed release feed.
 OPEN:   an updater — with the Electron move (`electron-updater`, the study §5), then its controls on
         Settings → Updates.
-GO:     needed.
-
-### FINDING — the server declares `requests` and `rich`; none of its code imports them
-STATE:  FINDING — code-verified 2026-10-05 (stack study §2.2). The doc line (`docs/mastering.md`)
-        and `pyloudnorm`, in the same finding, were fixed 2026-10-05.
-BUILT:  `server/pyproject.toml:22-23`. No JustVoice module, test or script imports either. Both
-        still ship: the kit declares and imports `requests` (`llm_runner/runner/*.py`), and `typer`
-        pulls in `rich` — so NOTICE.md and LICENSES.md keep their rows either way.
-OPEN:   drop the two lines.
-GO:     needed.
-
-### FINDING — the Kokoro "mean" blend changes in its last bits on every server restart
-STATE:  FINDING — code-verified + measured 2026-10-05 (stack study §2.2).
-BUILT:  `_kokoro_pack` returns the voice names as `set(pack)` (`engines/blending.py:212`), and
-        `_kokoro_pack_mean` (`:227-238`) sums float32 voices in that order — which follows
-        Python's per-process string hashing. Three seeds: 82 % of values differ, max 4.5e-8.
-OPEN:   sum in `voices.json` order (a list, not a set); the C++ port of the audio math must too.
 GO:     needed.
 
 ### FINDING — `synthetic_keys.rs` empties the clipboard after a paste and hard-codes the macOS V
@@ -121,32 +120,6 @@ BUILT:  n/a — this is a working rule: **always `git commit -F - -- <paths>`.**
         OPEN: none — apply it on every commit while a second session runs.
 GO:     n/a
 
-### QuickSetup's tier recipe is hardcoded per engine, and it had drifted
-STATE:  FINDING — code-verified 2026-08-17, raised by you: *"doesnt quick setup
-just pull engine config info and or data in db, nothing is hardcoded to a
-specific engine like dia in quick setup, correct?"* Correct instinct; the code
-does the opposite.
-WHY:    `QuickSetup.vue:43-80` holds `TIER_RECIPES` — a renderer-side constant
-with hardcoded engine ids, hardcoded `estimatedDownloadGb`, and blurbs naming
-engines in prose. It fetches `/v1/system` for VRAM and `/v1/engines` for the
-list, but the recipe itself is typed. So the wizard cannot follow the
-manifests, and dropping an engine means hand-editing a Vue file.
-NOT:    Leaving it derived-looking. It is not derived, and the drift below is
-what that costs.
-BUILT:  the two drifts found and FIXED in the same pass —
-  1. **`"moss_tts"` was a dead id.** The manifest is `ID = "moss-tts"`
-     (`moss_tts/manifest.py:22`); the folder is `moss_tts`. The 24 GB and
-     32 GB tiers named an engine the server does not serve.
-  2. **Every download estimate was wrong**, before Dia was even removed:
-     4.1 / 6.8 / 14.0 / 22.0 GB typed vs **8.1 / 9.3 / 13.4 / 33.0** summed
-     from the manifests' own pinned `size_bytes`. Same invented-number class
-     the `vram_mb` purge killed on 2026-08-14; this one survived.
-OPEN:   derive the recipe from the manifests — sizes summed from `VARIANTS`
-`sources`, ids from `discover_engines()`, tiers expressed as a capability
-policy rather than an id list — so the numbers cannot be wrong and an engine
-add/drop needs no renderer edit.
-GO:     needed
-
 ### Dia was dropped; its external-provider entry was deliberately kept
 STATE:  DECIDED 2026-08-17 — "drop dia stop testing for it". Engine excised.
 WHY:    Dia and MOSS-TTSD were the same slot (multi-speaker dialogue); MOSS
@@ -165,35 +138,71 @@ mentions inside other tracker items and dated plan docs are left as record.
 OPEN:   nothing.
 GO:     given 2026-08-17
 
-### A scene break could carry a real pause instead of a glyph
-
-STATE: OPEN — your call. Noted 2026-08-08 during the JustWrite-zip build.
-WHY: JW's `* * *` is display-only, but the boundary it marks is real structured
-data (scene rows). In audio the equivalent is a longer silence, and
-`StandardLine.pause_after_ms` already exists (`imports/standard_schema.py:57`).
-NOT: hardcoded in the adapter — that is exactly the "no hardcoded
-operator-tunable values" law.
-OPEN: add a settings knob (default scene-break pause, ms) and have the importer
-stamp it on each scene's last line.
-GO: needed.
-
-### Script tab: reorder a line was deferred, not dropped
-
-STATE: DEFERRED by your ruling in the restore's decision 6 ("Defer split,
-merge and reorder"). Split and merge were BUILT 2026-09-30 (Script's "✎ Edit…"
-→ "Split at the cursor", and "⇲ Merge" — `docs/plans/2026-09-30-script-
-leftovers.md`); reorder was left out of that plan and needs its own word.
-WHY it still matters: a line the segmenter put in the wrong order can only be
-moved through ✎ Edit text on the chapter's row (since 2026-10-05), which makes
-the moved paragraph a new line — its speaker and takes don't follow it.
-(Corrected 2026-10-05: this said "nothing on Script adds a line".)
-NOT: built with split/merge — the 2026-09-30 plan said "Reorder isn't in this
-plan and needs its own word."
-OPEN: the design (where it lives, and whether a moved line keeps its
-`paragraph_idx`), then the build.
-GO: needed.
-
 ## The next build
+
+### The demo again, the small wrong things, five decisions, Lexicons and Compare (decided 2026-10-06)
+STATE:  DECIDED 2026-10-06 — "go on all and the fixes you noted in session notes your rec", then
+        "go on 1 and 2 from before recreate demo and the small things that are wrong", on the text
+        as shown:
+        "1. Re-create the demo, then you look at Render. … I'd re-create it (New project → demo
+        project), cast it and render one chapter so Render has something to show you. Lean: this
+        first."
+        Leans for 2: "Effects help line: rewrite it from docs/effects.md. · YouTube: change the label
+        to MP3, which is what it actually encodes. … · requests and rich: drop the two lines. ·
+        Kokoro blend: add the voices in the order voices.json lists them, so the result is the same
+        after every restart. · screenshots script: make it use JV_BASE and update its outdated
+        button selectors. · Stories tab: carry out the 2026-08-15 ruling."
+        Recs for 3: "1. Per-line model settings on Render … already decided and built … Lean: delete
+        that out-of-date line. 2. Scene-break pause … Lean: build it. Add a setting, 'Pause at a
+        scene break', default 2 seconds. … The import marks the last line of each scene, and the
+        render adds the pause there. Don't save the pause on the line itself. It would show as a
+        line override on Render, and changing the setting later wouldn't reach books you've already
+        imported. 3. Script: reorder a line … Lean: don't build it. Move it to IDEAS. 4. ElevenLabs
+        import … Lean: drop it. Close the item and mark that section of the research doc 'not
+        planned'. 5. QuickSetup's tiers … Lean: work out the sizes from the engine catalog and keep
+        the tiers typed in."
+        From last session's notes: "Lexicons entry: mark the required fields, explain each box, and
+        make sure Save never drops what you typed." (the user's report: "lexicon i can enter the
+        word test and nothing else and it will say it saves but it doenst, the user needs to know
+        required fields and have explantions of what they need to do what each box does to create
+        a lexicon entry and it should not save if required fields are [not] filled out") ·
+        "Compare dialog: two equal columns for take A and take B." (the user: "compare take css is
+        bad").
+WHY:    Render waits on your look and the reset emptied the demo; each small item was wrong on
+        screen or in code; the five were open decisions with a lean.
+NOT:    per-line model settings again (built — "Render overrides" below); Script reorder now;
+        an ElevenLabs import.
+BUILT:  2026-10-06 — record with every change's callers: `docs/plans/2026-10-06-leftovers-batch.md`.
+        The demo: it was already there (imported 13:33 after the reset, nothing done); "+ Add
+        Narrator", The Same Hour analyzed (81 lines, 53 s), all nine speakers cast through Cast's
+        batch (Narrator Echo, Odeline Marran River, Iven Sarraz Liam, Cael Ferren Nova, Brick
+        Halvorn Sky, Nettle Kiki, Auberon Vasht Michael, Haldane Threll Sarah, Ophra Kell Kore),
+        The Same Hour rendered (81 lines in 215 s, joined and mastered: 9.7 min). Small ones: the
+        Effects line (`App.vue`), YouTube MP3 (both media maps, Audio tools' label, name and line,
+        studio.md), `requests`/`rich` out of `server/pyproject.toml`, the Kokoro pack a list
+        (`blending.py`, its test), `npm run screenshots` (JV_BASE, the shared tab list, the whole
+        sidebar label), the Stories tab gone (tab, route, view, help slug, e2e list, five docs; the
+        tables stay). Decisions: the stale OPEN line deleted; **Pause at a scene break**
+        (`generation.pause_at_scene_break_ms`, 2000; `line_takes.scene_ends`; `_join`; Render's
+        words; Settings slider) — **my rec was wrong that the saved line lost its scene**: it keeps
+        `source_ref`, so the import's existing label is the mark and no import field was added;
+        reorder → IDEAS; ElevenLabs not planned (external-import-formats.md); QuickSetup sums the
+        catalog — it shows 0.7 / 5.0 GB, the typed figures were 0.8 / 5.4. Lexicons: required
+        marks, a hint under each box, Save takes a whole typed entry along and refuses a half one
+        with the reason in the footer. Compare: two equal columns, A named by its take number.
+        Docs studio, lexicons, import-and-export, settings-reference, quick-setup, use-cases,
+        projects, getting-started, whats-new; RESEARCH §3.
+        Checked live: Render's scene ends after lines 14/32, 12/23, 8/15 and — after Analyze cut
+        The Same Hour into 81 lines — 28/54 (each chapter has 3 scenes in book.json); the chapter's
+        two longest gaps are the scene breaks (2.78 s and 2.75 s at 186.9 s and 359 s; every other
+        gap 0.3–1.6 s); Render's foot says "and 2000 ms after the last line of each of the book's
+        scenes"; Lexicons with only "test" typed: Save off, the footer and its tooltip say why,
+        then with a phonetic spelling Save kept `test → tesst` (the test lexicon deleted after);
+        Compare 247 px | 247 px; `npm run screenshots` pictured all 11 tabs, no page errors.
+        Not run: the server suite and the smoke gate (no tests for small changes); ruff and Biome
+        clean, the build clean.
+OPEN:   none.
+GO:     given 2026-10-06
 
 ### One meaning per word — speaker, persona, cast — and one wording per fact (decided 2026-10-06)
 STATE:  DECIDED 2026-10-06 — "your rec go" (the user: "we have 3 things speaker cast persona it is
@@ -481,9 +490,8 @@ BUILT:  2026-10-06 — plan §5 (`docs/plans/2026-10-06-batch-pick-and-findings.
         typed, saved on leaving the box, the cell showed it, ↺ cleared it; ✎ Edit words saved the new
         words. The mock: hidden on Kokoro, shown on Cael's words line, knobs and ✎ Edit words on both.
         No page errors.
-OPEN:   per-line model settings (temperature, seed, a model's own knobs, emotion, a tag model's tags)
-        — not decided; needs server storage on the line and the render reading it; each line would
-        show only its own model's controls. Asked 2026-10-06.
+OPEN:   none — per-line model settings were decided and built the same day ("Render: a line can
+        change what its model takes" above).
 GO:     given 2026-10-06
 
 ### Render: "This line only" — open, the persona page's controls, ↺ each and Reset to default (decided 2026-10-06)
@@ -2048,13 +2056,11 @@ BUILT:  2026-10-04 — the plan's §3, plus the three sites in its "found while 
         on the running app; live through the app with a throwaway book (removed after): states,
         takes with audio, override → stale, New take, ★ an old take → stale, the chapter playing a
         stale take's words, the book lexicon, and a deleted book's take files gone.
-OPEN:   your look at Render in the app. The dev database was reset on 2026-10-06 (for
-        `generations.model`), so the demo below is gone — re-create The Ninth Facet (New project →
-        a demo project), cast it and render a chapter first. As it stood on 2026-10-05: every speaker but
-        Old Sedge has a persona — the Narrator (Echo) and Odeline Marran (River) were cast through
-        Cast's batch; The Same Hour is rendered (81/81 lines, joined and mastered: about 9.6 min,
-        RMS −21.1 dBFS, peak −3.5 dB). Left: Old Sedge (5 lines, all in Bigger Inside) has no
-        persona; "fdsd" (your one-line test chapter) untouched.
+OPEN:   your look at Render in the app. The demo is ready again (2026-10-06, "The demo again…"
+        above): all nine speakers cast, The Same Hour rendered (81 lines, 9.7 min) and line 3 has a
+        second take for Compare. The other three chapters aren't analyzed and Discover hasn't run:
+        Old Sedge, who speaks in Bigger Inside, isn't one of the book's characters, so he becomes a
+        speaker only when Discover finds him there.
 GO:     given 2026-10-04 ("your rec on all go code it all")
 
 ### Studio Slice 3 — Script, redesigned against the 09-28 measurements (mock first)
@@ -3677,84 +3683,17 @@ encoded, the global player) · `generate.md` (dead `profiles.md` /
 deep exhaustive audit — *"for now we are not doing jv harness or deep audit i
 want to finish all features and complete the jv llm runner conversion."*
 
-## Features the docs promise and the code does not do
-
-### The YouTube master target is labelled AAC and encodes MP3
-
-STATE: FINDING — code-verified 2026-08-15 during the docs pass.
-WHY it matters: a caller asking for the YouTube target gets a response typed
-`audio/aac` holding an MP3 (`media_map` in `render_chapter_api.py` and
-`master_api.py` both map youtube → audio/aac; `MasterPresetSettings.youtube`
-has `format="mp3"`, and `master()` encodes the preset's format). A browser
-copes; a pipeline that trusts the content type does not.
-OPEN: one of the two — either the preset should be m4a/AAC (its
-`bitrate_kbps=192` and 48 kHz suggest that was the intent) or both media maps
-should say `audio/mpeg`. Docs currently describe the MP3 reality.
-GO: needed — it is a one-line change either way, but which line is a product
-call.
-
-### The Effects page's help line still says "Pedalboard-backed" and "a new generation version"
-
-STATE: FINDING — re-checked 2026-10-05 by the tracker sweep: `docs/effects.md`'s
-section was cut (its *Non-destructive* section is current), but the app's own
-help line for the page wasn't — `src/App.vue:59`: "Pedalboard-backed effects
-chain. Apply non-destructively — creates a new generation version that
-preserves the original." Pedalboard was removed 2026-07-29, and a chain edit
-makes lines stale to render again. (Was: noticed 2026-08-15 while correcting that page; NOT checked
-against code. The take/generation rows do carry `effects_chain` columns, so it
-is plausible, but the page states a whole workflow (bake, `source_take_id`
-link, revert by setting the source take default) that nobody has traced. The
-rest of the page was corrected: chains live on personas and render presets
-only, they stack rather than override, and they now run on every render.
-OPEN: rewrite `App.vue:59`'s line from `docs/effects.md`'s *Non-destructive* section.
-GO: needed.
-
 ## Docs and repo debt
-
-### The Stories tab advertises a feature that isn't built
-
-STATE: **DECIDED 2026-08-15 — *"ok you rec add this to ideas so we can design
-the proper timeline"***, on the recommendation to RETRACT rather than build:
-hide the tab, keep the tables, design the real thing first. The design is
-written in full at the top of `IDEAS.md` (2026-08-15 entry) — what it does,
-what it looks like, which kinds, and the four open questions. Two facts that
-forced the rec, both code-verified that day: `story_items` points at
-`generations`/`generation_versions` and carries no `take_id`/`block_id`/
-`scene_id` (`database/models.py:396-412`), so the inherited timeline cannot
-arrange what the production pipeline makes; and it anchors to the entity plan
-item 6 dissolves. The retraction itself is NOT built — it needs its own go.
-WHY it matters: app copy is code. `App.vue:43` sells "Multi-track timeline editor.
-For podcasting, game-dialogue assembly, and per-chapter multi-voice arrangement."
-BUILT: nothing behind it — `StoriesView.vue` has been deliberately inert since
-2026-06-13, and the live server's `openapi.json` has **no `/v1/stories*` route at
-all** (verified 2026-08-08). The tab's ? button also 404s: `App.vue:143` maps it
-to help slug `stories`, and `docs/stories.md` does not exist.
-OPEN: the copy decision, then either write `docs/stories.md` + restore its
-`toc.json` entry, or remove the tab and leave both out.
-GO: needed. (User docs were corrected 2026-08-04 to stop sending podcasters there.)
 
 ### Design rationale that exists only as code comments
 
 STATE: FINDING — the comments verified present 2026-08-08; whether
 `design-decisions.md` already covers each one is **not** verified.
 WHY: a comment does not survive the next refactor of the file it sits in.
-OPEN: write these into `design-decisions.md` — why Stories is gated
-(`StoriesView.vue:3-15`, belongs in §5) · the backup schema-v1 / 4 GB design ·
+OPEN: write these into `design-decisions.md` — the backup schema-v1 / 4 GB design ·
 why settings folded from JSON into SQLite (`storage/settings_store.py:4-8`) · the
 "no hardcoded operator-tunable values" law and how engine source overrides
 implement it · corrections used as few-shot examples.
-GO: needed.
-
-### The `screenshots` npm script is broken two independent ways
-
-STATE: FINDING — hit live 2026-08-08 (left unfixed: no go was given to edit it).
-BUILT: nothing. `scripts/smoke_gui.js` hardcodes `127.0.0.1:17497` and ignores
-`JV_BASE` (CLAUDE.md's "JV_BASE overrides the base URL" is true of `smoke.js`
-only), and even on the right port it times out waiting for a
-`getByRole('button', { name: 'Engines' })` that no longer resolves.
-OPEN: fix the port to honor `JV_BASE` and update the stale selectors — or
-retire the script into the deferred harness decision (it is browser-driven,
-the banned acceptance class).
 GO: needed.
 
 ### §3 wording tension: "speaker attribution = JW" vs "JV does its own casting"
@@ -3781,22 +3720,6 @@ zip-import item's NOT list).
 OPEN: a shape-lock test in JW's suite asserting `book_io.assemble()` still emits
 the exact key paths JV reads, naming JustVoice in its failure message. Lives in
 `../justwrite-app/docs/dev/TASKS.md` once you take it — JW work belongs there.
-GO: needed.
-
-### ElevenLabs import: build it or drop it — the research says it is small
-
-STATE: OPEN — your call. Its picker row was removed 2026-08-08 (a 501 in a menu),
-but the module's own docstring is WRONG about why it was never built.
-WHY: `imports/adapters/elevenlabs.py` claimed the mapping needs "an account-side
-voice manifest" or a hand-mapping step and is "out of scope". JustVoice's own
-research doc contradicts it — `docs/dev/external-import-formats.md` says the
-Studio export is a ZIP of `manifest.json` (name, `voice_assignments`, chapters) +
-per-chapter HTML with `<span data-speaker>` turns, maps "directly to Project /
-Scene / Block", and rates the importer effort **Small**. The same doc surveys
-Resemble, Speechify, Murf, Coqui and OpenVoice the same way.
-OPEN: build it from the research doc (it also unlocks the four other tools), or
-decide the whole external-tool import family is not wanted and retire the
-research doc's claim. Either way the stub is gone — git holds it.
 GO: needed.
 
 ## Known deviations, recorded so they aren't re-litigated

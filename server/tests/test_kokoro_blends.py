@@ -77,7 +77,7 @@ def test_a_gguf_without_embedded_files_reads_as_none(tmp_path):
 
 def test_blends_are_made_from_the_ggufs_voices(kokoro_gguf, tmp_path):
     pack, names = blending._kokoro_pack(tmp_path)
-    assert names == {"af_heart", "am_adam"} and pack["af_heart"].shape == (ROWS, 1, 256)
+    assert names == ["af_heart", "am_adam"] and pack["af_heart"].shape == (ROWS, 1, 256)
     mix = blending.blend("kokoro", ["af_heart", "am_adam"], [0.5, 0.5], data_dir=tmp_path,
                          resolve_stored=lambda vid: None)
     assert len(mix) == ROWS * 256 and mix[0] == pytest.approx(2.0)

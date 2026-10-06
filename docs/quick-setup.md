@@ -16,14 +16,16 @@ Every voice engine runs on the same speech runtime (see
 step is one download, not one per engine: 60–460 MB depending on your graphics
 card (the NVIDIA CUDA build is the large one). Each engine's model then
 downloads the first time you load it — the tier decides which engines that will
-be, and the estimate below is that total.
+be. The confirm step shows that total, added up from each engine's default model
+in the engine catalog, so it follows the models you would really get; the
+figures below are what it said on 2026-10-06.
 
 ## Hardware tiers
 
 | Tier | VRAM range | Engines — and where each runs | Models to download (on first load) |
 |---|---|---|---|
-| **CPU / low VRAM** | <7 GB | Kokoro, KittenTTS and Pocket TTS — built-in voices and cloning, all on the CPU | 0.8 GB |
-| **8 GB+** | 7 GB and up | Kokoro and Pocket TTS on the CPU (keeps the card free for the AI model) + Chatterbox Multilingual and Qwen3-TTS on the graphics card | 5.4 GB |
+| **CPU / low VRAM** | <7 GB | Kokoro, KittenTTS and Pocket TTS — built-in voices and cloning, all on the CPU | 0.7 GB |
+| **8 GB+** | 7 GB and up | Kokoro and Pocket TTS on the CPU (keeps the card free for the AI model) + Chatterbox Multilingual and Qwen3-TTS on the graphics card | 5.0 GB |
 
 The sizes are each engine's default 8-bit model (Pocket TTS: English; Qwen3-TTS:
 CustomVoice 1.7B). Qwen3-TTS fits an 8 GB card: given lines in pieces of 200

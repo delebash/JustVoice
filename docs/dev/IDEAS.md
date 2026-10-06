@@ -6,6 +6,14 @@ The holding pen for unscheduled JustVoice ideas — same charter as JW's
 
 ---
 
+- **2026-10-06 · Script: move a line up or down** — deferred by the restore's decision 6
+  ("Defer split, merge and reorder"); split and merge were built 2026-09-30, reorder was
+  moved here 2026-10-06 ("your rec", on "don't build it. Move it to IDEAS"). Why it waits:
+  lines come out in the order of the text, so a line is out of order only when the text is,
+  and ✎ Edit text on the chapter's row fixes that — though the moved paragraph becomes a new
+  line, so its speaker and takes don't follow it. Open if it is ever picked up: where it
+  lives, and whether a moved line keeps its `paragraph_idx`.
+
 - **2026-10-05 · Global dictation hotkeys, in-app recording, and paste into any field** —
   the dictation pipeline works on the server (`POST /v1/captures` transcribes and cleans),
   but nothing in the app starts a recording: the desktop shell has a hotkey monitor

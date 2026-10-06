@@ -69,6 +69,36 @@ def is_marker(block) -> bool:
     return bool(block_meta(block).get("marker"))
 
 
+def _book_scene(block) -> str | None:
+    """The book's scene a line came from: the `#scene:<id>` in its `source_ref`,
+    which the JustWrite import writes on every line. None for any other line."""
+    ref = block_meta(block).get("source_ref")
+    if not isinstance(ref, str) or "#scene:" not in ref:
+        return None
+    return ref.split("#scene:", 1)[1].split("#", 1)[0]
+
+
+def scene_ends(blocks) -> set[str]:
+    """The ids of the lines that end one of the book's scenes inside a chapter
+    (decided 2026-10-06: a pause at a scene break). A JustWrite chapter keeps its
+    scenes as runs of lines; a scene ends where the next line names another scene.
+    Found by the label CHANGING, never by a flag on the last line: Analyze gives
+    every line it cuts from one paragraph that paragraph's label, and a line split
+    off, typed in or written by ✎ Edit text has none — it runs on in the scene
+    before it. The chapter's last line ends no scene here: the chapter ends there.
+    `blocks` in chapter order — the lines that are heard."""
+    ends: set[str] = set()
+    current = prev = None
+    for block in blocks:
+        scene = _book_scene(block)
+        if scene is not None:
+            if current is not None and scene != current and prev is not None:
+                ends.add(prev.id)
+            current = scene
+        prev = block
+    return ends
+
+
 def line_override(block) -> dict[str, Any]:
     """What this line sets for itself: {speed, pitch, gain_db, pause_after_ms}, set ones only,
     and `models` — its per-model settings — when it has any."""
@@ -340,6 +370,7 @@ def scene_lines(db, state, scene_id: str) -> dict:
         for (bid,) in db.query(Take.block_id).filter(Take.block_id.in_(ids)):
             counts_by_block[bid] = counts_by_block.get(bid, 0) + 1
 
+    ends = scene_ends([b for _n, b in heard])
     rows = []
     counts = {s: 0 for s in STATES}
     for n, block in heard:
@@ -365,6 +396,7 @@ def scene_lines(db, state, scene_id: str) -> dict:
             "spoken": spoken_block(block.source, block.text),
             "direction": block.direction or "",
             "override": line_override(block),
+            "scene_end": block.id in ends,
             "state": st,
             "takes": counts_by_block.get(block.id, 0),
             "live": _take_summary(take, gen) if take is not None else None,

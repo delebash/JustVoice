@@ -23,7 +23,7 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
-import { DownloadBar, pushToast } from "@delebash/llm-ui";
+import { DownloadBar, fmtBytes, pushToast } from "@delebash/llm-ui";
 import { makeEngineDownloadTask } from "../services/ttsJobChannel.js";
 import { UiButton, UiCheckbox, UiTag, UiSelect, AppModal } from "@delebash/llm-ui";
 
@@ -44,7 +44,10 @@ const llmProviders = ref([]);
 // on the one speech runtime since the 2026-10-01 switch, so setting up is
 // ONE runtime install; the tier only decides which engines' models you'll
 // be downloading, and those come down the first time each one loads. The
-// sizes are the default 8-bit models' real files (the engine manifests).
+// size shown is summed from the catalog — each engine's default model,
+// `size_mb` on `/v1/engines/<id>/models`, the manifest's pinned real files —
+// never typed here (2026-10-06: the typed 0.8 / 5.4 GB were the drift the
+// TASKS finding was about).
 // Two tiers since 2026-10-04: Qwen3 1.7B's 7.8 GB was a whole line's peak; given lines in
 // 200-character pieces on our fixed build it peaks about 3.4 GB above the empty card, so it
 // fits 8 GB — beside a 6.8 GB AI model it doesn't, and the two take turns (audit 2026-10-04
@@ -66,14 +69,12 @@ const TIER_RECIPES = {
     blurb: "Kokoro, KittenTTS and Pocket TTS — built-in voices and voice cloning, all on the CPU.",
     ttsEngineIds: ["kokoro", "kitten", "pocket"],
     runsOn: { kokoro: "cpu", kitten: "cpu", pocket: "cpu" },
-    estimatedDownloadGb: 0.8,
   },
   vram8: {
     label: "8 GB+ tier",
     blurb: "Kokoro and Pocket TTS on the CPU, plus Chatterbox Multilingual for cloning beyond English and Qwen3-TTS — built-in voices you direct in written words, designed voices, and cloning — on the graphics card.",
     ttsEngineIds: ["kokoro", "pocket", "chatterbox", "qwen3"],
     runsOn: { kokoro: "cpuBesideAi", pocket: "cpuBesideAi", chatterbox: "gpu", qwen3: "gpuTakesTurns" },
-    estimatedDownloadGb: 5.4,
   },
 };
 
@@ -122,6 +123,31 @@ const enginesToInstall = computed(() => {
     .filter(Boolean)
     .filter((e) => e.status === "not_installed");
 });
+// Each engine's default model's download size in MB, from the catalog — read in
+// detect(). The tier's total shows only when every one of its engines is known.
+const modelSizeMb = ref({});
+const tierDownloadBytes = computed(() => {
+  let mb = 0;
+  for (const id of tierEngineIds.value) {
+    const size = modelSizeMb.value[id];
+    if (!Number.isFinite(size)) return 0;
+    mb += size;
+  }
+  return mb * 1024 * 1024;
+});
+async function loadModelSizes() {
+  const ids = [...new Set(TIER_ORDER.flatMap((k) => TIER_RECIPES[k].ttsEngineIds))];
+  const sizes = {};
+  await Promise.all(ids.map(async (id) => {
+    const eng = engines.value.find((e) => e.id === id);
+    if (!eng?.default_variant_id) return;
+    const r = await api.safeRequest(`/v1/engines/${id}/models`, { variants: [] });
+    const v = (r?.variants || []).find((x) => x.id === eng.default_variant_id);
+    if (v && Number.isFinite(v.size_mb)) sizes[id] = v.size_mb;
+  }));
+  modelSizeMb.value = sizes;
+}
+
 const enginesAlreadyInstalled = computed(() => {
   return tierEngineIds.value
     .map((id) => engines.value.find((e) => e.id === id))
@@ -146,6 +172,7 @@ async function detect() {
     }
     engines.value = eng?.engines || [];
     llmProviders.value = llm?.providers || [];
+    await loadModelSizes();
     detectedTierKey.value = tierForVramMb(gpu.value.vram_mb || 0);
     tierKey.value = detectedTierKey.value;
   } catch (e) {
@@ -293,8 +320,9 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
             </ul>
             <p class="jv-muted quick-setup__note quick-setup__note--est">
               Every engine runs on one speech runtime — it downloads now (60–460 MB, depending on
-              your graphics card). Each engine's model downloads the first time you load it:
-              about <strong>{{ recipe.estimatedDownloadGb }} GB</strong> for this tier.
+              your graphics card). Each engine's model downloads the first time you load it<template
+                v-if="tierDownloadBytes">: about <strong>{{ fmtBytes(tierDownloadBytes) }}</strong> for this
+                tier</template>.
             </p>
           </section>
 

@@ -878,6 +878,17 @@ pause wins for that line, whether it came from an import (a script's
 `pause_after_ms`) or from [Render overrides](#render-overrides) — and,
 since 2026-10-04, it wins over the persona's own pause too.
 
+**A scene break gets a longer pause.** A book from JustWrite keeps where each
+of its scenes ends inside a chapter (the `* * *` you see in JustWrite). The
+last line of each such scene is followed by **Pause at a scene break**
+(Settings → Generation pipeline, 2 seconds by default) instead of the pause
+between lines — in Render, the exported audiobook and ACX QC alike. A line's
+own pause still wins. The pause joins lines and is not part of any line's
+audio, so changing the setting renders nothing again. Lines you split off,
+type in or write with ✎ Edit text run on in the scene before them; merging the
+last line of a scene into the next line removes that break. Under the chapter
+grid, Render says the scene-break pause when the chapter has one.
+
 ### The chapter grid
 
 One row per chapter: **Lines**, **Rendered** (*12 of 40 lines* — the lines
@@ -980,7 +991,8 @@ because there you are still choosing the voice. In the persona page's order:
 Kokoro shows the four numbers and nothing else. Each control:
 
 - shows the persona's value until you change it (the pause: the persona's, else
-  **Pause between lines** in Settings → Generation);
+  **Pause between lines** in Settings → Generation — and on the last line of one
+  of the book's scenes, **Pause at a scene break**);
 - saves when you let go of the slider, leave the box or pick from the list —
   for this line only, winning over the persona's; the line turns
   [stale](#stale-lines) until you render it again. Setting a value back to the
@@ -1140,7 +1152,7 @@ A chapter render gives you a **WAV** — the mastering *processing* (loudness,
 true-peak ceiling, head/tail silence) is applied, but the encoding is not.
 That is deliberate: you are auditioning here, and the .m4b export encodes
 once, at the end, instead of stacking two lossy passes. The encoded
-deliverable (ACX's MP3, YouTube's M4A) comes from Export.
+deliverable (an MP3 for every target, YouTube's too) comes from Export.
 
 Mastering needs **ffmpeg**. Without it the pill says so and chapters render
 raw rather than failing — install ffmpeg and restart the server to get the

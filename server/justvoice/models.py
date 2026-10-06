@@ -128,6 +128,11 @@ class GenerationSettings(BaseModel):
     # ships. Until then Render used 250 ms and export/QC a hardcoded 600. A
     # line's own pause (an import's pause_after_ms) still overrides it.
     pause_between_lines_ms: int = 600  # 0-3000 in the UI
+    # The silence after a line that ends one of the book's scenes, inside a chapter
+    # (decided 2026-10-06) — a JustWrite chapter keeps its scenes as runs of lines
+    # (line_takes.scene_ends). Joins lines only: never in a line's delivery, so
+    # changing it renders nothing again. A line's own pause still wins.
+    pause_at_scene_break_ms: int = 2000  # 0-6000 in the UI
     # The language a voice speaks when nothing else decides it — today, a Kokoro
     # blend of voices in different languages (engines/blending.blend_language).
     # BCP-47. Lived under `training` until training was removed (2026-10-02).
@@ -1468,6 +1473,10 @@ class ChapterLine(BaseModel):
     # Scene mode only: the line's block, so the chapter plays its ★ take when
     # it has one (Studio Slice 4, 2026-10-04). Direct-mode callers leave it out.
     block_id: str | None = None
+    # Scene mode: the line ends one of the book's scenes, and has no pause of its
+    # own — the chapter joins it to the next with Settings' pause at a scene break
+    # (2026-10-06).
+    scene_break_after: bool = False
 
 
 class BetweenLines(BaseModel):

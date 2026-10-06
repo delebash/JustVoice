@@ -20,7 +20,7 @@
 // it can gate CI / a pre-merge check.
 
 import { createRequire } from "node:module";
-import { findChrome, waitForServerReady } from "./lib/smoke-common.js";
+import { SIDEBAR_TABS as TABS, findChrome, waitForServerReady } from "./lib/smoke-common.js";
 
 const require = createRequire(import.meta.url);
 // playwright is a CJS package; import via require to get { chromium }.
@@ -29,18 +29,6 @@ const { chromium } = require("playwright");
 // 17494 is JV's real port (src-tauri/src/lib.rs SERVER_PORT); this default said
 // 8741 — a port JV never listens on — until the 2026-08-04 docs campaign.
 const BASE = process.env.JV_BASE || "http://127.0.0.1:17494/";
-
-// Sidebar tabs that should always be reachable for an audiobook project.
-// ENGINES left the nav with the 2026-08-06 sidebar fold (8b7e05a — engines
-// live under AI Settings → Speech engines now); AI SETTINGS replaces it here.
-// CHAPTERS left with Studio Slice 4 (2026-10-04) — chapters are managed in
-// Studio · Script, and their lines rendered in Studio · Render. GENERATE
-// left 2026-10-05 (a persona's page and Voices' test line speak a line).
-const TABS = [
-  "HOME", "PROJECTS", "STUDIO", "CAPTURES",
-  "VOICES", "PERSONAS", "LEXICONS", "EFFECTS", "AI SETTINGS",
-  "LABS", "SETTINGS",
-];
 
 const exe = findChrome();
 const browser = await chromium.launch({

@@ -2,6 +2,20 @@
 
 ## v0.1.0
 
+- **A pause at a scene break, and a Lexicons editor that says what it needs
+  (2026-10-06)** — a book from JustWrite pauses longer where one of its scenes
+  ends inside a chapter: **Pause at a scene break** in Settings → Generation
+  pipeline, 2 seconds by default, in Render, the export and ACX QC alike
+  ([Studio → Render](studio.md#render)). The Lexicons editor marks what is
+  required, says under each box what it is for, and **Save** takes along an entry
+  still typed in the form — one typed halfway stops Save and the footer says what
+  it lacks (it used to say *saved* and drop it) —
+  [Lexicons](lexicons.md#make-a-lexicon-and-add-entries). Smaller: Compare shows
+  take A and take B side by side, the same width each; the Stories tab is gone (a
+  placeholder for a timeline that isn't built); the YouTube target says MP3, which
+  is what it always encoded; the voice engine setup wizard adds up its download
+  size from the engine catalog; and the Effects page's description no longer
+  names a library that was removed in July
 - **Home and the Cache page say what they mean (2026-10-06)** — Home's
   *Load your first voice model* banner shows only on a first run, not whenever
   no model is loaded; each recent generation names the persona that spoke it

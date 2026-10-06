@@ -46,7 +46,8 @@ const VIEWS = [
   { id: "projects",  lane: "workflow", label: "Projects",  icon: "📖", lede: "Multi-use Project library. Audiobooks, game voicelines, podcasts. Import a book from JustWrite, or scripts, line lists and subtitle files from other tools.", visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
   { id: "lines",     lane: "workflow", label: "Lines",      icon: "🎮", lede: "Every line of the game project — stable ids, speakers, derived take status. Re-import the writers\u2019 next sheet (only changed lines go stale), re-render exactly those, export per-line WAVs + manifest.", visibleFor: ["game", "multiple", "unset"] },
   { id: "studio",    lane: "workflow", label: "Studio",    icon: "🎬", lede: "A project's home. Overview holds its settings and shows where each step stands; then Discover finds the speakers your text names, Script works out who says each line, Cast gives each speaker a persona, Render makes the audio and Export packages it. A game project starts from its Lines instead — the sheet already says who speaks.", visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
-  { id: "stories",   lane: "workflow", label: "Stories",   icon: "🎞️", lede: "Multi-track timeline editor. For podcasting, game-dialogue assembly, and per-chapter multi-speaker arrangement.", visibleFor: ["game", "podcast", "multiple", "unset"] },
+  // The Stories tab was removed 2026-10-06 (the 2026-08-15 ruling: retract it, keep the
+  // tables, design the real timeline first — IDEAS "THE TIMELINE, designed properly").
   // Always visible (queue item 11): dictation is a cross-cutting utility
   // for all five audiences — the focus gate made it vanish the moment an
   // audiobook project set workspace focus (user: "where is that?").
@@ -59,7 +60,7 @@ const VIEWS = [
   { id: "voices",    lane: "library", label: "Voices",    icon: "🎙️", lede: "" },
   { id: "personas",  lane: "library", label: "Personas",  icon: "🎭", lede: PERSONA_IS, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
   { id: "lexicons",  lane: "library", label: "Lexicons",  icon: "📚", lede: "Pronunciation dictionaries. Force \"Beauchamp\" → \"BEE-chum\", domain words → consistent phoneme-level pronunciation across a whole book. Per-persona override.", visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
-  { id: "effects",   lane: "library", label: "Effects",   icon: "🎛️", lede: "Pedalboard-backed effects chain. Apply non-destructively — creates a new generation version that preserves the original. 8 types · 4 built-in presets + custom.", visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
+  { id: "effects",   lane: "library", label: "Effects",   icon: "🎛️", lede: "A persona's effects chain. It never changes audio you already have: editing a chain makes the lines its speakers say stale on Render, and rendering them again makes new takes — the old ones are kept.", visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
   // (The Voice engines page left the sidebar in the parity batch, 2026-08-06 —
   // the installed-engine catalog is the AI console's Speech engines tab now;
   // /engines redirects there.)
@@ -90,14 +91,14 @@ function isVisibleFor(viewEntry, useCase) {
 
 // ── Per-kind nav vocabulary (journeys-preview KIND_NAV contract) ──────
 // When a project is open, the structure item swaps with its kind:
-// game → Lines · podcast → Timeline. Chapters are managed in Studio · Script
-// (the Chapters page was deleted with Studio Slice 4, 2026-10-04).
+// game → Lines. Chapters are managed in Studio · Script (the Chapters page was
+// deleted with Studio Slice 4, 2026-10-04).
 // A string = show with this label; false = hide for this kind.
 const KIND_STRUCT = {
-  audiobook: { lines: false, stories: false },
-  game:      { lines: "Lines", stories: false },
-  podcast:   { lines: false, stories: "Timeline" },
-  text:      { lines: false, stories: false },
+  audiobook: { lines: false },
+  game:      { lines: "Lines" },
+  podcast:   { lines: false },
+  text:      { lines: false },
 };
 
 // The open project's kind also drives the visibleFor filtering — the
@@ -137,7 +138,6 @@ if (typeof document !== "undefined") {
 const HELP_SLUG_BY_VIEW = {
   home:     "getting-started",
   projects: "core-concepts",
-  stories:  "stories",
   voices:   "voices",
   personas: "personas",
   lexicons: "lexicons",
@@ -255,8 +255,8 @@ const effectiveLede = computed(() => {
 // Sidebar gating by onboarding primary use case (plan locked decision #7).
 // Universal tabs (no `visibleFor`) always render; conditional tabs only
 // appear when the user's use case is in the entry's allow-list. With a
-// project open, the project's kind takes over: the struct item swaps
-// (Lines / Timeline) and visibleFor filters against
+// project open, the project's kind takes over: the struct item shows or
+// hides (Lines) and visibleFor filters against
 // the kind's vocabulary instead of the install-time focus.
 const effectiveUseCase = computed(() =>
   KIND_TO_USE_CASE[activeProject.kind] || onboarding.primaryUseCase || "unset",
@@ -269,7 +269,7 @@ const visibleViews = computed(() =>
   }),
 );
 
-// Sidebar label override per kind (Stories → Timeline).
+// Sidebar label override per kind (a string in KIND_STRUCT).
 function navLabel(v) {
   const struct = KIND_STRUCT[activeProject.kind];
   const override = struct?.[v.id];

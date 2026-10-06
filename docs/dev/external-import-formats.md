@@ -7,18 +7,26 @@ ElevenLabs / Resemble / Speechify / Murf / Coqui / OpenVoice so JustVoice's
 importer (the JustWrite-adapter pattern at `server/justvoice/imports/adapters/`)
 can absorb projects from them.
 
+**ElevenLabs is not planned (decided 2026-10-06 — "your rec", on "drop it. Close the item
+and mark that section of the research doc 'not planned'").** None of JustVoice's audiences
+comes from ElevenLabs Studio projects, and the export shape below was never checked against
+ElevenLabs' own docs. Its stub adapter was already gone (removed 2026-08-08). The other
+tools are surveyed only; nothing here is scheduled.
+
 ## TL;DR
 
 | Tool | Export shape | Maps cleanly into JustVoice? | Importer effort |
 |---|---|---|---|
-| ElevenLabs Studio | Project ZIP with `manifest.json` + per-chapter HTML + cast roster | Yes — direct map to Project / Scene / Block | Small |
+| ElevenLabs Studio | Project ZIP with `manifest.json` + per-chapter HTML + cast roster (unverified) | Yes — direct map to Project / Scene / Block | **Not planned** (2026-10-06) |
 | Resemble.ai | Project JSON with `clips[]` array (text + voice_id + take metadata) | Mostly — flatten clips into a single Scene per project | Small |
 | Speechify | Book project JSON: `chapters[]` with `text` + `voice_id` per chapter | Yes — direct Scene-per-chapter map | Small |
 | Murf | Sheet-based CSV/XLSX export (rows: voice + text + delivery + duration) | Yes — one Scene, one Block per row | Small |
 | Coqui Studio | Project YAML + audio file references | Partial — voice cloning settings don't translate | Medium |
 | OpenVoice | Folder of WAV references + JSON metadata | Partial — depends on reference-WAV resolution | Medium |
 
-## ElevenLabs Studio export
+## ElevenLabs Studio export — not planned (2026-10-06)
+
+Kept as the record of what was surveyed; never checked against ElevenLabs' docs.
 
 **Shape:** ZIP archive at `https://api.elevenlabs.io/v1/studio/projects/{project_id}/archive` containing:
 - `manifest.json` — `{ name, voice_assignments: { speaker_id: voice_id }, chapters: [{ id, name, content_html }] }`
@@ -103,7 +111,7 @@ chapters:
 
 ## What JustVoice needs to do
 
-1. **One adapter per supported tool**, under `server/justvoice/imports/adapters/`. Each is a module exporting a `SOURCE_ID` constant and `parse(raw: bytes, *, filename: str | None = None) -> StandardImport` (bytes, not a file handle — corrected 2026-08-06 against the code). Registration is the manual 3-step in `imports/__init__.py`: create the module, append the `_ADAPTER_REGISTRY` tuple, document in `docs/import-formats.md`. The existing `justwrite.py` is the template; `elevenlabs.py` is a registered `implemented=False` stub whose stated blocker (cloud-scoped voice IDs) is what item 3 below solves.
+1. **One adapter per supported tool**, under `server/justvoice/imports/adapters/`. Each is a module exporting a `SOURCE_ID` constant and `parse(raw: bytes, *, filename: str | None = None) -> StandardImport` (bytes, not a file handle — corrected 2026-08-06 against the code). Registration is the manual 3-step in `imports/__init__.py`: create the module, append the `_ADAPTER_REGISTRY` tuple, document in `docs/import-formats.md`. The existing `justwrite.py` is the template. (`elevenlabs.py`, a registered `implemented=False` stub, was removed 2026-08-08; ElevenLabs is not planned — see Status.)
 2. **StandardImport schema stays as-is** — every tool's export normalizes through it before hitting the Project/Scene/Block writer.
 3. **Voice/Persona collision resolution**: when an imported tool's voice/persona ID conflicts with an existing JustVoice entry, default to "create new Persona with imported_from=<tool>, imported_id=<id>" so the originals stay clean.
 4. **Reference-WAV ingestion** for Coqui/OpenVoice: stream the referenced WAV files into JustVoice's voice-store via the existing `voices.py` upload path.
@@ -113,7 +121,7 @@ chapters:
 1. Murf CSV — smallest, fastest path. One day of work.
 2. Speechify — book-shaped imports are a clear audiobook fit. Two days.
 3. Resemble — handles the take-versioning interop. Two-three days.
-4. ElevenLabs — biggest feature surface but biggest user pull. Three-four days including the HTML walker.
+4. ~~ElevenLabs~~ — not planned (2026-10-06).
 5. Coqui + OpenVoice — defer until there's user demand. Reference-WAV ingestion is heavier than the other adapters combined.
 
 Not in scope: Audacity Labels (already supported), SRT (already supported), JustWrite (the existing first-class adapter).

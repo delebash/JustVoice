@@ -575,6 +575,7 @@ const blockedBanner = computed(() => {
       <div class="mock-render-ch__compare">
         <div class="jv-linepanel__field">
           <span class="jv-eyebrow">A — ★ In use</span>
+          <span class="mock-render-ch__compare-take">take {{ compare.line.takes.length - compare.line.takes.indexOf(liveTake(compare.line)) }}</span>
           <UiButton intent="secondary" size="small" label="▶ Play A" @click="playTake(liveTake(compare.line))" />
         </div>
         <div class="jv-linepanel__field">
@@ -635,7 +636,9 @@ const blockedBanner = computed(() => {
 .mock-render-ch__audio { display: inline-flex; align-items: center; gap: 4px; }
 .mock-render-ch__len { font-variant-numeric: tabular-nums; font-size: 12px; }
 .mock-render-ch__hidden { display: none; }
-.mock-render-ch__compare { display: flex; gap: 24px; flex-wrap: wrap; margin-bottom: 10px; }
+.mock-render-ch__compare { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; margin-bottom: 10px; }
+.mock-render-ch__compare > .jv-linepanel__field { min-width: 0; }
+.mock-render-ch__compare-take { min-height: 30px; display: flex; align-items: center; }
 .mock-render-ch__rewrite { display: flex; flex-direction: column; gap: 14px; }
 .mock-render-ch__rewrite-field { display: flex; flex-direction: column; gap: 4px; }
 .mock-render-ch__quote { margin: 0; padding: 10px 12px; background: var(--surface-2); border-radius: 6px; line-height: 1.5; }

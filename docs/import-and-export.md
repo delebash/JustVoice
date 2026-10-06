@@ -110,7 +110,9 @@ unzipped the file, a bare `book.json` imports too.
   scenes, the paragraphs stay in order and remember which scene they came from.
   Bold and italics flatten to plain text, which is what a voice engine reads. The
   `* * *` scene marks you see in JustWrite are never spoken — they are drawn on
-  screen between scenes, not stored in the text.
+  screen between scenes, not stored in the text. Where one scene ends, the
+  chapter pauses for **Pause at a scene break** (Settings → Generation pipeline,
+  2 seconds by default — see [Studio → Render](studio.md#render)).
 - **The speakers.** Every person in the book becomes a speaker in this book,
   carrying its name, its aliases as **Also called**, its pronouns as
   **Pronouns** (he/him, she/her, they/them or it/its; anything else is left

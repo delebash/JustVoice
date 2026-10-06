@@ -211,14 +211,36 @@ function closeDialog() {
   resetPreview();
 }
 
-const canSave = computed(() => !!draft.value?.name.trim());
+// What Save needs (2026-10-06 — the user: "i can enter the word test and nothing else
+// and it will say it saves but it doenst"). A name; the book or persona a scoped
+// lexicon is for; and an entry typed in the form below must be whole — a word and a
+// way to say it — because Save takes it along rather than dropping it. A half-typed
+// entry stops Save and says what it lacks; an empty form is fine.
+const typedEntry = computed(() => !!(newGrapheme.value.trim() || newPhonemeIpa.value.trim() || newAlias.value.trim()));
+const entryComplete = computed(() => !!newGrapheme.value.trim() && !!(newPhonemeIpa.value.trim() || newAlias.value.trim()));
+const saveBlockedWhy = computed(() => {
+  const d = draft.value;
+  if (!d) return "";
+  if (!d.name.trim()) return "Name the lexicon.";
+  if (creating.value && d.scope === "project" && !d.project_id) return "Pick the book it's for.";
+  if (creating.value && d.scope === "persona" && !d.persona_id) return "Pick the persona it's for.";
+  if (typedEntry.value && !entryComplete.value) {
+    return newGrapheme.value.trim()
+      ? `“${newGrapheme.value.trim()}” needs a way to say it — IPA, a phonetic spelling or both — or clear the entry.`
+      : "The entry needs its word, or clear it.";
+  }
+  return "";
+});
+const canSave = computed(() => !!draft.value && !saveBlockedWhy.value);
 
 async function saveDialog() {
   if (!draft.value) return;
-  if (!draft.value.name.trim()) {
-    pushToast({ kind: "info", title: "Name the lexicon first" });
+  if (saveBlockedWhy.value) {
+    pushToast({ kind: "info", title: saveBlockedWhy.value });
     return;
   }
+  // The entry still in the form is part of what you're saving.
+  if (typedEntry.value) saveEntry();
   // Normalize scope target: only the matching id is sent.
   const scope = draft.value.scope || "global";
   const body = {
@@ -534,8 +556,9 @@ onActivated(() => {
     <!-- ── Editor dialog — draft + Save/Cancel (canonical shell) ────── -->
     <AppModal v-if="dialogOpen && draft" :eyebrow="creating ? 'New lexicon' : 'Lexicon'" :title="draft.name || 'Untitled lexicon'" :max-width="'860px'" dismissable @close="closeDialog">
           <div class="lex__field">
-            <label>Name</label>
+            <label>Name · required</label>
             <UiInput ref="nameInputEl" width="name" v-model="draft.name" placeholder="e.g. The Ninth Facet names" @keydown.enter.prevent />
+            <p class="jv-hint">What the lexicon is called where you choose one — a book's Overview, a persona's page.</p>
           </div>
 
           <div class="lex__field">
@@ -548,6 +571,11 @@ onActivated(() => {
               <UiSelect v-if="draft.scope === 'persona'" width="name" v-model="draft.persona_id"
                 placeholder="— pick a persona —" :options="personas" option-label="name" option-value="id" />
             </div>
+            <p v-if="creating" class="jv-hint">
+              What it's made for: <b>Reusable</b> — any book can choose it; <b>Book-scoped</b> — one
+              book's own names (pick the book); <b>Persona-scoped</b> — one persona's way of saying
+              things (pick the persona). It can't change once saved.
+            </p>
             <div v-else class="lex__scope-row">
               <UiTag :intent="scopeBadge(draft).intent">{{ scopeBadge(draft).label }}</UiTag>
               <!-- "ghost" is a BUTTON intent — UiTag doesn't have it (the
@@ -599,6 +627,7 @@ onActivated(() => {
               v-model="previewText"
               placeholder="Beauchamp arrived at the Lumen Concern on the NYPD ferry. — Worcestershire sauce on his cuff."
             />
+            <p class="jv-hint">Optional. Type a sentence and ▶ Preview against text shows it as the voice will get it. Nothing here is saved.</p>
             <p v-if="previewResult" class="lex__preview-out">{{ previewResult }}</p>
             <p v-if="previewResult.includes('「/')" class="jv-hint">「/…/」 is IPA — {{ ipaWho }}.</p>
           </div>
@@ -625,18 +654,25 @@ onActivated(() => {
           <div class="jv-divider" />
 
           <h4 class="lex__sub-h">{{ editingEntryIndex != null ? "Edit entry" : "Add entry" }}</h4>
+          <p class="jv-hint lex__entry-lede">
+            An entry is a word and a way to say it: IPA, a phonetic spelling, or both. + Add entry puts it
+            in the list; Save keeps the list — and takes along an entry still typed here.
+          </p>
           <div class="lex__entry-grid">
             <label class="lex__field">
-              <span>Grapheme (as written)</span>
+              <span>Word · required</span>
               <UiInput width="name" v-model="newGrapheme" placeholder="Beauchamp" @keydown.enter="saveEntry" />
+              <span class="jv-hint">Exactly as the text spells it.</span>
             </label>
             <label class="lex__field">
-              <span>Phoneme IPA</span>
+              <span>IPA</span>
               <UiInput width="name" v-model="newPhonemeIpa" placeholder="/ˈbiːtʃəm/" @keydown.enter="saveEntry" />
+              <span class="jv-hint">The sounds, in the phonetic alphabet — {{ ipaWho }}.</span>
             </label>
             <label class="lex__field">
-              <span>Alias (phonetic — engine reads this)</span>
+              <span>Phonetic spelling</span>
               <UiInput width="name" v-model="newAlias" placeholder="bee-chum" @keydown.enter="saveEntry" />
+              <span class="jv-hint">Spelled the way it sounds — every voice model reads this.</span>
             </label>
           </div>
 
@@ -652,9 +688,10 @@ onActivated(() => {
 
         <template #footer>
           <span class="jv-muted lex__count">{{ draft.entries.length }} entr{{ draft.entries.length === 1 ? "y" : "ies" }}</span>
+          <span v-if="saveBlockedWhy" class="jv-hint">{{ saveBlockedWhy }}</span>
           <span class="jv-spacer" />
           <UiButton intent="secondary" label="Cancel" @click="closeDialog" />
-          <UiButton intent="primary" label="Save" :disabled="!canSave" @click="saveDialog" />
+          <UiButton intent="primary" label="Save" :disabled="!canSave" :title="saveBlockedWhy" @click="saveDialog" />
         </template>
     </AppModal>
 
@@ -694,7 +731,7 @@ onActivated(() => {
   margin-bottom: 12px;
 }
 .lex__field > label,
-.lex__field > span {
+.lex__field > span:not(.jv-hint) {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -738,6 +775,7 @@ onActivated(() => {
 }
 
 .lex__sub-h { margin: 8px 0 12px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-3); }
+.lex__entry-lede { margin: -6px 0 12px; }
 
 .lex__entry-grid {
   display: grid;

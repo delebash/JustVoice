@@ -915,7 +915,7 @@ exposes queue depth or the current engine.**
 
 `src/router/index.js`. Real routes:
 
-`/home · /projects · /chapter · /lines · /studio · /stories · /generate ·
+`/home · /projects · /chapter · /lines · /studio · /generate ·
 /captures · /voices · /personas · /personas/:id · /lexicons · /effects · /ai ·
 /importreview · /labs · /settings` (+ `/` → `/home`, `/overview` → `/home`,
 `/engines` → `/ai?tab=speech-engines`, unknown → `/home`).
@@ -947,7 +947,6 @@ exposes queue depth or the current engine.**
 | `AudioChannelsView` | 172 | Output channels |
 | `AiView` | 97 | The AI console (kit) — tabs incl. `features`, `speech-engines` |
 | `LabsView` | 79 | Container for `compare · renderlab · audio` |
-| `StoriesView` | 43 | The timeline — thin |
 
 ### StudioView's steps
 

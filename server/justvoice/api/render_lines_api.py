@@ -61,6 +61,9 @@ class RenderLine(BaseModel):
     # What the line sets for itself (This line only): speed, pitch, gain_db, pause_after_ms —
     # set ones only — and `models`: {model: {knobs, emotion, register_tag}} (2026-10-06).
     override: dict[str, Any] = {}
+    # The line ends one of the book's scenes (line_takes.scene_ends): with no pause of
+    # its own, Settings' pause at a scene break follows it (2026-10-06).
+    scene_end: bool = False
     state: Literal["needs a speaker", "needs a voice", "ready", "rendered", "stale"]
     takes: int = 0
     live: LineTake | None = None

@@ -19,7 +19,6 @@ const routes = [
   { path: "/projects", name: "projects", component: () => import("../views/ProjectsView.vue") },
   { path: "/lines", name: "lines", component: () => import("../views/LinesView.vue") },
   { path: "/studio", name: "studio", component: () => import("../views/StudioView.vue") },
-  { path: "/stories", name: "stories", component: () => import("../views/StoriesView.vue") },
   { path: "/captures", name: "captures", component: () => import("../views/CapturesView.vue") },
 
   // ── Library ───────────────────────────────────────────────────────

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import logging
+from dataclasses import replace
 
 from fastapi import APIRouter, Response
 from pydantic import BaseModel
@@ -26,7 +27,7 @@ from ..database import session as _db_session
 from ..database.session import SessionLocal
 from ..errors import bad_request, internal, not_found
 from ..extraction.tags import left_out_blocks
-from ..line_takes import is_marker, plan_block, played_takes
+from ..line_takes import is_marker, line_override, plan_block, played_takes, scene_ends
 from ..mastering import have_ffmpeg, master, master_to_wav, resolve_master_target
 from ..models import ChapterLine, Delivery, RenderChapterRequest
 from ..render_core import (
@@ -117,6 +118,7 @@ def _resolve_scene_to_lines(
         book_lexicon = getattr(project, "default_lexicon_id", None)
 
         lines: list[ChapterLine] = []
+        played: list[Block] = []               # each line's block, in step with `lines`
         skipped = 0
         unplaced: list[tuple[int, str]] = []   # (1-based line no, block text)
         uncast: set[str] = set()               # speaker names no persona plays
@@ -188,6 +190,7 @@ def _resolve_scene_to_lines(
                     block_id=block.id,
                 )
             )
+            played.append(block)
 
         if strict and (unplaced or uncast or voiceless):
             parts: list[str] = []
@@ -226,9 +229,30 @@ def _resolve_scene_to_lines(
                 f"the speakers personas in Cast."
             )
 
+        # A line that ends one of the book's scenes is followed by Settings' pause at a
+        # scene break (2026-10-06) — unless it has a pause of its own, which wins.
+        ends = scene_ends(played)
+        for line, block in zip(lines, played):
+            if block.id in ends and "pause_after_ms" not in line_override(block):
+                line.scene_break_after = True
         return lines
     finally:
         db.close()
+
+
+def _join(st, lines: list[ChapterLine], rendered: list[RenderedLine], gap_ms: int) -> RenderedLine:
+    """The chapter's lines as one audio, `gap_ms` apart — and Settings' pause at a scene
+    break after a line that ends one of the book's scenes (2026-10-06). That pause is set
+    on the rendered line here, never in its delivery: the delivery is in the line's audio
+    key (`render_core._inputs_key`), so changing the setting would make those lines stale
+    and render them again. A copy, so a cached line is never changed."""
+    ms = st.settings.get().generation.pause_at_scene_break_ms
+    joined = [
+        replace(rl, effective_delivery={**(rl.effective_delivery or {}), "pause_after": ms})
+        if line.scene_break_after else rl
+        for line, rl in zip(lines, rendered)
+    ]
+    return concat_lines(joined, silence_ms=gap_ms)
 
 
 def _line_kwargs(line: ChapterLine, cache_scope: str, request_lexicons: list[str] | None = None) -> dict:
@@ -451,7 +475,7 @@ async def render_cache_stats(project_id: str) -> RenderCacheStatsResponse:
 @router.post(
     "/v1/render_chapter",
     summary="Render a multi-line chapter → mastered audio",
-    responses={200: {"content": {"audio/wav": {}, "audio/mpeg": {}, "audio/aac": {}}}},
+    responses={200: {"content": {"audio/wav": {}, "audio/mpeg": {}}}},
 )
 async def render_chapter(req: RenderChapterRequest) -> Response:
     st = get_state()
@@ -491,7 +515,7 @@ async def render_chapter(req: RenderChapterRequest) -> Response:
     gap = req.between_lines.silence_ms
     if gap is None:
         gap = st.settings.get().generation.pause_between_lines_ms
-    combined = concat_lines(rendered, silence_ms=gap)
+    combined = _join(st, lines, rendered, gap)
 
     # Scene mode: the server decides the mastering target (request → project →
     # kind) and returns a WAV monitor. Studio has never sent a
@@ -537,7 +561,9 @@ async def render_chapter(req: RenderChapterRequest) -> Response:
         "acx": "audio/mpeg",
         "inaudio": "audio/mpeg",
         "podcast": "audio/mpeg",
-        "youtube": "audio/aac",
+        # The YouTube preset encodes MP3 (`MasterPresetSettings.youtube`); this said
+        # audio/aac until 2026-10-06.
+        "youtube": "audio/mpeg",
     }
     return Response(content=mastered, media_type=media_map.get(req.master, "audio/wav"))
 
@@ -564,7 +590,7 @@ def render_scene_to_wav(st, scene_id: str, *, strict: bool = True, master: bool 
     # chapter plays is what ships and what QC measures.
     rendered = render_scene_lines(st, lines, [_line_kwargs(line, f"scene:{scene_id}") for line in lines])
     # The same gap Studio's Render uses (was a hardcoded 600 until 2026-09-29).
-    combined = concat_lines(rendered, silence_ms=st.settings.get().generation.pause_between_lines_ms)
+    combined = _join(st, lines, rendered, st.settings.get().generation.pause_between_lines_ms)
     target = _scene_master_target(scene_id, None)[0] if master else None
     wav, _applied, _fallback = _master_scene_pcm(combined, target)
     return wav

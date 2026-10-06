@@ -57,6 +57,8 @@ const api = useApi();
 const copy = useCopy();
 const word = computed(() => copy.value.chapter);
 const PAUSE_SETTING_MS = ref(600);
+// After a line that ends one of the book's scenes (`scene_end`, 2026-10-06).
+const SCENE_BREAK_MS = ref(2000);
 
 // ── The page ─────────────────────────────────────────────────────────
 const page = ref(null);
@@ -76,6 +78,8 @@ async function loadPause() {
   const s = await api.safeRequest("/v1/settings", null);
   const ms = s?.generation?.pause_between_lines_ms;
   if (Number.isFinite(ms)) PAUSE_SETTING_MS.value = ms;
+  const brk = s?.generation?.pause_at_scene_break_ms;
+  if (Number.isFinite(brk)) SCENE_BREAK_MS.value = brk;
 }
 // What each model takes — the persona page's own source (its knobs, its tag
 // sets, the app's emotion words), read once.
@@ -88,6 +92,9 @@ async function loadCaps() {
 }
 
 const lines = computed(() => page.value?.lines || []);
+// How many of the book's scenes end inside this chapter — the pause words name the
+// scene-break pause only when there is one.
+const sceneBreaks = computed(() => lines.value.filter((l) => l.scene_end).length);
 const counts = computed(() => page.value?.counts || {});
 const blocked = computed(() => (counts.value.needs_speaker || 0) + (counts.value.needs_voice || 0));
 const scene = computed(() => props.scenes.find((s) => s.id === props.sceneId) || null);
@@ -372,6 +379,8 @@ function personaDefault(l, key) {
   if (key === "speed") return d.speed ?? 1;
   if (key === "pitch") return d.pitch ?? 0;
   if (key === "gain_db") return d.gain_db ?? 0;
+  // A scene's last line is followed by the scene-break pause, whatever its persona says.
+  if (l.scene_end) return SCENE_BREAK_MS.value;
   return d.pause_after ?? PAUSE_SETTING_MS.value;
 }
 // What the knobs show: the line's own values (by the knobs' keys) and, for an
@@ -553,7 +562,7 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
               <UiButton intent="secondary" :disabled="!!blocked || !!running" :loading="running === 'chapter'"
                 :label="`▶ Play ${word.singular.toLowerCase()}`" @click="playChapter" />
               <span class="jv-hint">{{ blocked ? `Not until every line can render — ${chapterBlockedWhy}.`
-                : `Every line's take in use, in order, ${PAUSE_SETTING_MS} ms apart. A line with no take is rendered first.` }}</span>
+                : `Every line's take in use, in order, ${PAUSE_SETTING_MS} ms apart${sceneBreaks ? ` (${SCENE_BREAK_MS} ms at a scene break)` : ""}. A line with no take is rendered first.` }}</span>
             </span>
             <span class="jv-spacer" />
             <span class="studio-render-ch__verb">
@@ -787,8 +796,9 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
           <template #empty>No lines in this view.</template>
         </UiTable>
 
-        <p class="jv-hint studio-render-ch__foot">Lines are joined with {{ PAUSE_SETTING_MS }} ms of silence — Settings →
-          Generation. A line's own pause (Render overrides) changes it after that line.</p>
+        <p class="jv-hint studio-render-ch__foot">Lines are joined with {{ PAUSE_SETTING_MS }} ms of silence<template
+          v-if="sceneBreaks">, and {{ SCENE_BREAK_MS }} ms after the last line of each of the book's scenes</template> —
+          Settings → Generation. A line's own pause (Render overrides) changes it after that line.</p>
         <div class="jv-inline-row studio-render-ch__bar">
           <UiButton intent="secondary" size="small" :label="`← Previous ${word.singular.toLowerCase()}`"
             :disabled="!prevChapter" :title="prevChapter ? chapterName(prevChapter) : `This is the first ${word.singular.toLowerCase()}`"
@@ -805,6 +815,7 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
       <div class="studio-render-ch__compare">
         <div class="jv-linepanel__field">
           <span class="jv-eyebrow">A — ★ In use</span>
+          <span class="studio-render-ch__compare-take">{{ compareA ? `take ${compareTakes.length - compareTakes.indexOf(compareA)} · ${fmt(compareA.seconds)}` : "—" }}</span>
           <UiButton intent="secondary" size="small" label="▶ Play A" :disabled="!compareA?.audio_url"
             @click="play(`cmp-${compareA.id}`, compareA.audio_url)" />
         </div>
@@ -867,7 +878,10 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
 .studio-render-ch__audio { display: inline-flex; align-items: center; gap: 4px; }
 .studio-render-ch__len { font-variant-numeric: tabular-nums; font-size: 12.5px; }
 .studio-render-ch__hidden { display: none; }
-.studio-render-ch__compare { display: flex; gap: 24px; flex-wrap: wrap; margin-bottom: 10px; }
+/* Take A and take B side by side, the same width each (2026-10-06: "compare take css is bad"). */
+.studio-render-ch__compare { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; margin-bottom: 10px; }
+.studio-render-ch__compare > .jv-linepanel__field { min-width: 0; }
+.studio-render-ch__compare-take { min-height: 30px; display: flex; align-items: center; }
 .studio-render-ch__rewrite { display: flex; flex-direction: column; gap: 14px; }
 .studio-render-ch__rewrite-field { display: flex; flex-direction: column; gap: 4px; }
 .studio-render-ch__quote { margin: 0; padding: 10px 12px; background: var(--surface-2); border-radius: 6px; line-height: 1.5; }

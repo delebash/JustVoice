@@ -65,15 +65,41 @@ word [stale](studio.md#stale-lines) in Studio · Render: they keep playing their
 take in use until you render them again, and every other line stays as it was. Take
 the lexicon off again and those lines are no longer stale.
 
-## Entry shapes
+## Make a lexicon and add entries
+
+**+ New lexicon** opens the editor. Each box says under it what it is for;
+the ones marked *required* must be filled before **Save** works:
+
+- **Name** *(required)* — what the lexicon is called where you choose one: a
+  book's Overview, a persona's page.
+- **Scope** — what it is made for (see [Scopes](#scopes)). A book-scoped
+  lexicon needs its book picked, a persona-scoped one its persona. The scope
+  can't change once the lexicon is saved.
+- **Live preview text** — optional; see [Live preview](#live-preview). Nothing
+  typed here is saved.
+
+An **entry** is a word and a way to say it. In **Add entry**:
+
+- **Word** *(required)* — exactly as the text spells it.
+- **IPA** — the sounds in the phonetic alphabet. Only some models speak IPA;
+  the hint under the box names them (see
+  [IPA entries reach the audio](#ipa-entries-reach-the-audio)).
+- **Phonetic spelling** — the word spelled the way it sounds. Every voice model
+  reads this.
+
+Give the word an IPA pronunciation, a phonetic spelling or both, then **+ Add
+entry** puts it in the list. **Save** keeps the whole lexicon — and takes along
+an entry still typed in the form, so nothing you typed is dropped. An entry
+typed only halfway (a word with no way to say it, or a pronunciation with no
+word) stops Save: the footer says what is missing, and Save works again once
+you finish the entry or clear it. Rows added by the
+[name scan](#find-the-names-before-you-hear-them-wrong) start blank on purpose.
 
 Entries can be:
 
 - **IPA**: `Beauchamp` → `/ˈbiːtʃəm/` (most precise; requires you to know IPA).
 - **Phonetic**: `Worcestershire` → `WUS-tə-shər` (write what you'd say aloud; JustVoice converts to engine input).
 - **Letter-by-letter**: `NYPD` → `en-why-pee-dee` (spell out acronyms).
-
-Each entry has an optional **note** (where the word appears in the manuscript, what the variant pronunciation means) for editorial review.
 
 ## Live preview
 
