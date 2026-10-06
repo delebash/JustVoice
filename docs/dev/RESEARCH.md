@@ -425,6 +425,25 @@ unloaded — audit §3.1 has the method.
 - The safety margin is 1,024 MB (the kit's setting; the manager falls back to the same). —
   *code, 2026-10-04* · `manager.py:800-803`.
 
+### 2.4 What the app shows of it
+
+- AI Settings' strip reads `GET /v1/llm-runner/resident`: `vramTotalMb`, `usedMb` (measured;
+  null on a box with no probe → the strip says "reserved" and uses `committedMb` /
+  `remainingMb`), `memArch` ("discrete" → VRAM, else "Memory") and `models[]` (`status`,
+  `vramMb` — the LLM cell sums the awake ones). The cells are built inside the kit's
+  `AiModelsArea.vue` (`memCells`, not exported) with SCOPED styles (`.lu-hwstat`), so no other
+  screen can borrow either. JustVoice adds TTS · STT (and Busy) from `/v1/engines/vram`
+  through `services/vramFeed.js` `hostCells`. — *code + live, 2026-10-06* (live: 8,192 MB
+  total, 855 MB used, discrete).
+- Home shows the same cells — VRAM used · Free · LLM through JustVoice's copy of that reading
+  (`vramFeed.residentCells`, the kit left untouched by the user's word) and TTS · STT from
+  `hostCells` — and nothing else; checked cell for cell against AI Settings. (was: Home read
+  `gpus[0].vram_used_mb` from `/v1/system/info`, a field that endpoint never had — "VRAM NaN /
+  8 GB" — until 2026-10-06.) — *code + live, 2026-10-06* · `HomeView.vue` (`memoryCells`).
+- `/v1/health` carries `current_model`, the loaded speech model's catalog name (*Kokoro 82M*),
+  beside `current_engine` (the id). The top bar's pill shows the name. — *code + live,
+  2026-10-06* · `api/health_api.py` (`loaded_model_name`).
+
 ---
 
 ## 3 · Render and takes
@@ -542,6 +561,23 @@ its blast radius and the gaps.
   passes it through; Cast's batch makes them so); the project export writes `{}` for it. — *code
   + test, 2026-10-05* · `server/tests/test_project_export.py`. (was: the export crashed with a 500
   on such a persona — measured on the dev app until 2026-10-05.)
+- A take's generation records the engine and the model that spoke it (`RenderedLine.engine` /
+  `.model` → `generations.engine` / `generations.model`; the MCP path too). (was: every render
+  saved `engine = "managed"` — `render_jobs.py` used `state.engines.current()`, which is never
+  current for the speech runtime; 83 of 83 rows on the dev DB — and no model at all, until
+  2026-10-06.) The Cache page names both; older rows read "not recorded". `generations.model`
+  is schema only — the dev DB was reset for it. — *code + live, 2026-10-06* ·
+  `render_core.py` (`RenderedLine`), `render_jobs.py`, `api/cache_api.py`.
+- `/v1/takes/recent` (Home's Recent generations) names the persona that spoke each row. (was: it
+  sent the legacy `profile_id`, which no render sets — every row said "?" — until 2026-10-06.) —
+  *code + live, 2026-10-06* · `api/takes_api.py`.
+- "Rendered" means a take made from what the line is now; a stale line has a take but is not
+  counted rendered — Overview, the step cards, Home and Render's grid all count it so
+  (`services/lineStates.js`). (was: Overview and Render's grid counted rendered + stale, Render's
+  header did not — until 2026-10-06.) — *code, 2026-10-06*.
+- ACX QC checks peak ≤ −3.0 dB (`export_audiobook.ACX_PEAK_MAX_DB`, the ACX limit); the ACX
+  preset masters to −3.5 dB for headroom (`models.MasterPresetSettings.acx`). Export's
+  checklist "Peak ≤ −3 dB" is right; the audit's C1 was wrong. — *code, 2026-10-06*.
 
 ---
 
@@ -791,7 +827,7 @@ touches the subject. History in [`../plans/archive/`](../plans/archive/) is not 
 [`2026-08-22-data-dirs-and-disk-reclaim.md`](../plans/2026-08-22-data-dirs-and-disk-reclaim.md).
 
 **Docs** — [`2026-08-04-docs-coverage-worklist.md`](../plans/2026-08-04-docs-coverage-worklist.md) ·
-[`2026-10-06-one-word-one-meaning-audit.md`](../plans/2026-10-06-one-word-one-meaning-audit.md) (speaker / persona / cast and one wording per fact — the list, before any change).
+[`2026-10-06-one-word-one-meaning-audit.md`](../plans/2026-10-06-one-word-one-meaning-audit.md) (speaker / persona / cast and one wording per fact — the list; built 2026-10-06 in five batches, TASKS "One meaning per word").
 
 **Research kept in this folder** —
 [`2026-06-24-audiobook-nlp-competitor-research.md`](2026-06-24-audiobook-nlp-competitor-research.md) ·

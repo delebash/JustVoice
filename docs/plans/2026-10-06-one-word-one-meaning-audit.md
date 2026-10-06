@@ -2,8 +2,14 @@
 # One meaning per word, one wording per fact — the audit (2026-10-06)
 
 **Decision:** TASKS "One meaning per word — speaker, persona, cast — and one wording per fact"
-("your rec go" — the list first). **Nothing has been changed.** This is the list, for the go on
-each decision in §1. Three read-only passes found the rows (on-screen text in `src/`, the user
+("your rec go" — the list first). **Status (2026-10-06, end of day): built.** "your rec go" on A, B
+and C as leaned; built in five batches (`e410e97` A · `e3ab4f9` B1–B4 · `fb3e603` B5/B6/B8 ·
+`fb41867` B7/B9/C) and the four follow-up answers (Speech engines says *version*; the Cache page
+names engine and model, which needed renders to record them). C1 was wrong and left as it is
+(RESEARCH §3). B6's take-wording table was not recorded word for word — only its button, tag,
+Compare and Play chapter words were; the rest was kept as built by the user's answer. TASKS "One
+meaning per word" holds each batch's BUILT line. The text below is the list as it was approved.
+**Before the go:** nothing had been changed. This is the list, for the go on each decision in §1. Three read-only passes found the rows (on-screen text in `src/`, the user
 docs `docs/*.md`, the same fact worded differently across screens); the key rows were re-checked by
 grep before this was written (VoicesView's own `voiceGenderWord` at `:647`, "★ live" at
 `StudioRenderChapter.vue:325`, "Peak ≤ −3 dB" at `ExportPanel.vue:208`, ProjectsView's chapter word

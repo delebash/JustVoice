@@ -2048,7 +2048,9 @@ BUILT:  2026-10-04 — the plan's §3, plus the three sites in its "found while 
         on the running app; live through the app with a throwaway book (removed after): states,
         takes with audio, override → stale, New take, ★ an old take → stale, the chapter playing a
         stale take's words, the book lexicon, and a deleted book's take files gone.
-OPEN:   your look at Render in the app. The demo is ready for it (2026-10-05): every speaker but
+OPEN:   your look at Render in the app. The dev database was reset on 2026-10-06 (for
+        `generations.model`), so the demo below is gone — re-create The Ninth Facet (New project →
+        a demo project), cast it and render a chapter first. As it stood on 2026-10-05: every speaker but
         Old Sedge has a persona — the Narrator (Echo) and Odeline Marran (River) were cast through
         Cast's batch; The Same Hour is rendered (81/81 lines, joined and mastered: about 9.6 min,
         RMS −21.1 dBFS, peak −3.5 dB). Left: Old Sedge (5 lines, all in Bigger Inside) has no
