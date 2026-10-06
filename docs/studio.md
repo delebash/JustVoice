@@ -7,7 +7,10 @@ always lands on its **Overview**. From there the steps run in order:
 **Discover → Script → Cast → Render → Export**
 
 The step names adapt to your project kind (chapters for audiobooks, quests for
-game projects, episodes for podcasts) — same flow, your vocabulary.
+game projects, episodes for podcasts) — same flow, your vocabulary. Each step's
+card says where it stands in the same words as the Overview's row for it —
+*3 of 5 chapters scanned*, *9 of 10 speakers cast*, *412 of 2,140 lines
+rendered* — a count always names what it counts.
 
 **Three words, one job each.** A **speaker** is a person in this book: a name,
 the other names the text uses (*Also called*) and *Who they are*. A
@@ -46,8 +49,8 @@ row opens that step:
 | Discover | how many chapters have been scanned, and how many proposed speakers are waiting for **＋ Add** or **Ignore** |
 | Script | how many chapters are analyzed (or, for a script whose speakers came with the import, how many have speakers), and — in what Analyze decided — how many lines have **no speaker** and how many are **flagged**. Either number opens Script's grid on *To check* |
 | Lines (game) | how many lines the sheet has |
-| Cast | how many of the book's speakers are cast (*3 of 5 speakers cast*) — played by a persona that has a voice — and how many lines are blocked on a speaker who isn't |
-| Render | how many lines are rendered and current, out of those that can render |
+| Cast | how many of the book's speakers are cast (*3 of 5 speakers cast*) — played by a persona that has a voice — and how many lines can't render because a speaker isn't |
+| Render | how many lines are rendered — a take made from what the line is now — out of those that can render (*412 of 2,140 lines rendered*), and how many are still to go or stale |
 | Export | what Export makes — it keeps no record of past exports, so there is no count |
 
 Every number is read from the project itself; nothing is estimated. Export
@@ -758,7 +761,7 @@ Each speaker's card shows:
   narration Analyze decided moves to the new narrator, and lines you set
   yourself stay where you put them;
 - what plays them: **persona Name · model · 61 lines** when a persona with a voice plays them (*persona June · Qwen3-TTS CustomVoice · 61 lines*). Otherwise it says what blocks them, in amber: **⚠ no persona · 22
-  lines blocked**, or **⚠ persona Harbek (warm) has no voice · 22 lines can't render** when
+  lines can't render**, or **⚠ persona Harbek (warm) has no voice · 22 lines can't render** when
   their persona has no voice yet. A speaker with no persona has a dashed edge;
 - when the book's **Language** is set (Overview) and their persona speaks
   another, a second amber line says so: **⚠ speaks Korean — the book is
@@ -846,7 +849,7 @@ spoken. Two pages, the way Script has two: a **chapter grid**, and a
 **chapter's lines**.
 
 **A take is a kept render of one line.** Every render of a line makes a new
-take, and nothing is overwritten. One take per line is the **★ take**: it is
+take, and nothing is overwritten. One take per line is **★ In use**: it is
 what the chapter plays and what the exported book ships. A line with no take is
 rendered when the chapter is.
 
@@ -855,10 +858,14 @@ rendered when the chapter is.
 | State | What it means |
 |---|---|
 | **needs a speaker** | Script hasn't given the line a speaker. It can't render |
-| **needs a voice** | its speaker has no persona, or the persona has no voice. It can't render |
+| **needs a persona** | its speaker has no persona. It can't render |
+| **needs a voice** | its speaker's persona has no voice. It can't render |
 | **ready** | it can render, and has no take yet |
-| **rendered** | its ★ take was made from what the line is now |
-| **stale** | something its ★ take was made from has changed since |
+| **rendered** | its take in use was made from what the line is now |
+| **stale** | something its take in use was made from has changed since. It isn't counted as rendered |
+
+A count of lines always says *lines* — *12 of 40 lines rendered* — and a
+rendered chapter is one whose every line is rendered.
 
 Every line sounds the way its persona is set up — there is no per-chapter
 preset laid over it (render presets were removed on 2026-10-03, so a persona's
@@ -873,13 +880,14 @@ since 2026-10-04, it wins over the persona's own pause too.
 
 ### The chapter grid
 
-One row per chapter: **Lines**, **Rendered** (the lines that have a take, of
-all of them, with tags for how many are *stale* and how many *can't render*),
+One row per chapter: **Lines**, **Rendered** (*12 of 40 lines* — the lines
+rendered, of all of them — with tags for how many are *stale* and how many
+*can't render*),
 **Check** (the [ACX check](#the-acx-check)'s answer once it has run) and
 **▶ Render**. A row, or **Open ➜**, opens the chapter's lines.
 
 **▶ Render** on a chapter gives every line that has no take one, then joins the
-chapter from every line's ★ take and masters it. Stale lines keep their ★ take —
+chapter from every line's take in use and masters it. Stale lines keep their take in use —
 render them again on the chapter's page when you choose. A progress row under
 the chapter shows how far it is, with **Cancel**; when it is done, **▶ Play**
 and **⬇ Download** (a WAV). Tick chapters and **▶ Render N chapters** renders
@@ -901,7 +909,7 @@ The chips show the lines in one state — **Ready**, **Stale**, **Rendered**,
 **Can't render** — and the dropdown beside them one speaker's lines. Each counts
 under the other: with a speaker picked, the chips count that speaker's lines,
 and each speaker shows how many lines the chip leaves. The
-**Audio** cell plays a line's ★ take (with its length); on a stale line **↻**
+**Audio** cell plays a line's take in use (with its length); on a stale line **↻**
 renders it again; on a ready line **▶ Gen** renders it. A line that can't render
 says where it is fixed: **Fix in Script**, **Cast** *name*, or **Give** *persona*
 **a voice** (its page on Personas). A banner above the lines says the same for
@@ -910,7 +918,7 @@ the whole chapter.
 Three things at the top work on the whole chapter:
 
 - **⚡ Render N ready** — a take for every line that has none.
-- **▶ Play chapter** — every line's ★ take in order, joined and mastered (a line
+- **▶ Play chapter** — every line's take in use, in order, joined and mastered (a line
   with no take is rendered first). Not while any line can't render — the hint
   says why.
 - **↻ Re-render all** — a new take for every line that can render, made fresh
@@ -989,25 +997,25 @@ has a dot beside its speaker in the table.
 
 ### Takes
 
-The line's takes are listed newest first, its ★ take marked **★ live**, each
-with its length, **▶** to play it, **★** to make it the one the chapter plays,
-and **🗑** to delete it (with its audio). The ★ take can't be deleted — star
-another first.
+The line's takes are listed newest first, the one the chapter plays marked
+**★ In use**, each with its length, **▶** to play it, **★ Use this take** to
+make it the one the chapter plays, and **🗑** to delete it (with its audio). The
+take in use can't be deleted — use another first.
 
 - **↻ New take** reads the line again with a **new seed**, so you get a
-  different reading; the takes you have are kept, and the new one becomes ★. A
+  different reading; the takes you have are kept, and the new one is ★ In use. A
   take made this way keeps its own seed. On a voice made from a description
   (Qwen3 VoiceDesign, a VoxCPM2 description), a new seed can change who speaks,
   not only how — the hint on the button says so.
-- **⚖️ Compare two** plays the ★ take against another and **Make B the ★ take**
-  if you prefer it.
+- **⚖️ Compare two** plays the take in use (A) against another (B), and
+  **★ Use take B** if you prefer it.
 
 ### Stale lines
 
-A line goes stale when something its ★ take was made from changes: its words
+A line goes stale when something its take in use was made from changes: its words
 (an edit in Script, a split, an accepted rewrite), its direction or its own
 numbers, its persona (voice, delivery, seed, effects), or a lexicon entry that
-changes how one of its words is said. A stale line **keeps playing its ★ take**
+changes how one of its words is said. A stale line **keeps playing its take in use**
 — the chapter and the export use it — until you render it again: **↻** on the
 row, or **↻ Re-render all**. Nothing renders on its own. A take with **↻ New
 take**'s own seed stays rendered when the persona's seed changes; any other take
@@ -1140,7 +1148,7 @@ target applied.
 
 ### The ACX check
 
-**Run ACX QC** joins every chapter that can render from its lines' ★ takes
+**Run ACX QC** joins every chapter that can render from its lines' takes in use
 (a line with no take is rendered, and kept as no take) and measures RMS and
 peak against the ACX limits. It measures the **mastered**
 chapter — the audio the export would ship — so a pass means the finished book

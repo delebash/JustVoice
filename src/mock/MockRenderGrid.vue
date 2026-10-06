@@ -3,13 +3,14 @@
   Studio · Render — the chapter grid (the mock, dev only: #/mock/render). Slice 4, D5: today's
   chapter table on the kit's table, opening one chapter's lines the way Script does. Lines,
   Rendered, ▶ Render and the ACX check stay; Cached and Render preset go. A chapter is its lines'
-  ★ takes joined (D4): ▶ Render gives every line with no take one, then joins and masters it;
-  stale lines keep their ★ take until you render them again on the chapter's page.
+  takes in use joined (D4): ▶ Render gives every line with no take one, then joins and masters it;
+  stale lines keep their take in use until you render them again on the chapter's page.
 -->
 <script setup>
 import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import { AppModal, UiButton, UiCheckbox, UiProgress, UiTable, UiTag, pushToast } from "@delebash/llm-ui";
+import { CANT_RENDER, partOf } from "../services/lineStates.js";
 import { silentWav } from "./personaMock.js";
 import { PAUSE_BETWEEN_LINES_MS, counts, render, renderChapter, runQc } from "./renderMock.js";
 
@@ -137,7 +138,7 @@ function open(ch) {
       </div>
       <div class="jv-card__body">
         <p class="jv-lede">
-          Every line becomes a take, and a chapter is its lines' ★ takes joined, {{ PAUSE_BETWEEN_LINES_MS }} ms apart,
+          Every line becomes a take, and a chapter is its lines' takes in use joined, {{ PAUSE_BETWEEN_LINES_MS }} ms apart,
           and mastered to the book's target. Open a chapter to hear its lines, say how they're spoken, and choose
           their takes.
         </p>
@@ -178,10 +179,10 @@ function open(ch) {
             <template #rendered="{ row }">
               <span v-if="!row.lines.length" class="jv-muted">no text yet</span>
               <span v-else class="mock-render__rollup">
-                <span class="jv-mono">{{ counts(row.lines).rendered + counts(row.lines).stale }}/{{ row.lines.length }}</span>
+                <span>{{ partOf(counts(row.lines).rendered, row.lines.length, "line") }}</span>
                 <UiTag v-if="counts(row.lines).stale" intent="accent2"
-                  title="Changed since their take was made — each plays its ★ take until you render it again">{{ counts(row.lines).stale }} stale</UiTag>
-                <UiTag v-if="counts(row.lines).blocked" intent="danger">{{ counts(row.lines).blocked }} can't render</UiTag>
+                  title="Changed since their take was made — each plays its take in use until you render it again">{{ counts(row.lines).stale }} stale</UiTag>
+                <UiTag v-if="counts(row.lines).blocked" intent="danger">{{ counts(row.lines).blocked }} {{ CANT_RENDER }}</UiTag>
               </span>
             </template>
             <template #check="{ row }">

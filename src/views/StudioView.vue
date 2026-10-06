@@ -25,7 +25,7 @@ import { computed, nextTick, onActivated, onBeforeUnmount, onMounted, ref, watch
 import { useApi } from "../stores/api.js";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";
 import { isStepFor, stepsFor } from "./studioSteps.js";
-import { blockStats, projectState } from "./studioStatus.js";
+import { blockStats, projectState, stepStatus } from "./studioStatus.js";
 import { useCopy } from "../services/copy.js";
 import { chapterRunFor, onChapterDone } from "../services/chapterRun.js";
 import { pushToast } from "@delebash/llm-ui";
@@ -174,16 +174,6 @@ function stepBy(delta) {
   if (next) tab.value = next.key;
 }
 
-// Live step-card subtitles (item 2; design contract = the JustWrite
-// Audio Studio screenshots): honest counts only — no fake progress. A chapter
-// is rendered when every line has a take, stale or not (Slice 4).
-const renderedSceneCount = computed(() => (renderState.value?.chapters || [])
-  .filter((c) => c.lines > 0 && c.rendered + c.stale === c.lines).length);
-// The Script card's live count — the thing the user went looking for and
-// found hardcoded ("the heading is in studio like render 0/4 rendered, the
-// script used to show this and now doesn't"). Same shape as Render's, on the
-// one "analyzed" rule the grid uses.
-const analyzedSceneCount = computed(() => scriptChapters.value.filter((c) => c.analyzed).length);
 // The Overview's rollup (studioStatus.js). The cast is the book's speakers,
 // each with a narrator flag (so Discover can tell "only the Narrator so far"
 // from a populated cast) and whether a persona with a voice plays them.
@@ -238,33 +228,16 @@ const STEP_TITLES = {
   export: "Package + ACX checklist",
 };
 
-const stepCards = computed(() => visibleTabs.value.map((t) => {
-  let sub = "";
-  if (t.key === "overview") {
-    sub = selectedProject.value ? copy.value.book.singular.toLowerCase() : "";
-  } else if (t.key === "discover") {
-    sub = scenes.value.length
-      ? `${overviewState.value.scanned}/${scenes.value.length} scanned${overviewState.value.proposed ? ` · ${overviewState.value.proposed} to review` : ""}`
-      : "find speakers";
-  } else if (t.key === "lines") {
-    sub = overviewState.value.lines ? `${overviewState.value.lines} lines` : "no lines yet";
-  } else if (t.key === "cast") {
-    sub = overviewState.value.castTotal
-      ? `${overviewState.value.castReady}/${overviewState.value.castTotal} cast`
-      : "no speakers yet";
-  } else if (t.key === "script") {
-    sub = scenes.value.length
-      ? `${analyzedSceneCount.value}/${scenes.value.length} analyzed`
-      : "speaker analysis";
-  } else if (t.key === "render") {
-    sub = scenes.value.length
-      ? `${renderedSceneCount.value}/${scenes.value.length} rendered`
-      : `${copy.value.chapter.singular.toLowerCase()} audio`;
-  } else if (t.key === "export") {
-    sub = "M4B · WAVs · ACX";
-  }
-  return { ...t, sub };
-}));
+// Live step-card subtitles: Overview's own Status words (stepStatus), so a
+// card and Overview's row can't say the same thing two ways (the one-wording
+// audit B8, 2026-10-06) — "3 of 5 chapters scanned", "9 of 10 speakers cast",
+// "412 of 2,140 lines rendered". Honest counts only — no fake progress.
+const stepCards = computed(() => visibleTabs.value.map((t) => ({
+  ...t,
+  sub: t.key === "overview"
+    ? (selectedProject.value ? copy.value.book.singular.toLowerCase() : "")
+    : stepStatus(t.key, overviewState.value, copy.value.chapter).text,
+})));
 
 watch([selectedProject, () => tab.value], () => {
   // Resolve the step: whatever isn't a stop of THIS kind (the empty seed,

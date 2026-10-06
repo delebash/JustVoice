@@ -12,6 +12,7 @@
 import {
   chapterAnalyzed, isSpeakable, speakersFromImport, unplacedBlocks,
 } from "../services/attribution.js";
+import { CANT_RENDER } from "../services/lineStates.js";
 
 /**
  * One chapter's blocks → the counts the Overview rolls up.
@@ -244,9 +245,12 @@ export function projectState({
     speakersBesideNarrator: cast.filter((sp) => !sp.narrator).length,
     noNarrator,
     blocked,
-    // Lines with a take (a stale one still plays), of the lines that can render.
-    rendered: render ? render.rendered + render.stale : null,
+    // Rendered = a take that is current (services/lineStates.js, 2026-10-06): a
+    // stale line still plays its take but isn't counted rendered — Render's own
+    // numbers. Of the lines that can render; `ready` have no take yet.
+    rendered: render ? render.rendered : null,
     renderable: render ? render.ready + render.rendered + render.stale : null,
+    ready: render ? render.ready : 0,
     stale: render ? render.stale : 0,
   };
 }
@@ -302,7 +306,7 @@ export function stepStatus(key, state, unit) {
         text: state.castTotal
           ? `${state.castReady.toLocaleString()} of ${plural(state.castTotal, "speaker")} cast`
           : "No speakers yet",
-        tag: state.blocked ? { intent: "danger", label: `${plural(state.blocked, "line")} blocked` } : null,
+        tag: state.blocked ? { intent: "danger", label: `${plural(state.blocked, "line")} ${CANT_RENDER}` } : null,
       };
     case "render":
       if (state.renderable === null) return { text: "Checking what is rendered…", tag: null };
@@ -310,8 +314,8 @@ export function stepStatus(key, state, unit) {
         text: state.renderable
           ? `${state.rendered.toLocaleString()} of ${plural(state.renderable, "line")} rendered`
           : "Nothing can render yet",
-        tag: state.renderable && state.rendered < state.renderable
-          ? { intent: "accent2", label: `${(state.renderable - state.rendered).toLocaleString()} to go` }
+        tag: state.ready
+          ? { intent: "accent2", label: `${state.ready.toLocaleString()} to go` }
           : state.stale
             ? { intent: "accent2", label: `${state.stale.toLocaleString()} stale` }
             : null,

@@ -62,7 +62,7 @@ Overview.
 Only the lines a lexicon actually changes. Choosing a lexicon on Overview,
 adding an entry or editing a pronunciation makes the lines that contain that
 word [stale](studio.md#stale-lines) in Studio · Render: they keep playing their
-★ take until you render them again, and every other line stays as it was. Take
+take in use until you render them again, and every other line stays as it was. Take
 the lexicon off again and those lines are no longer stale.
 
 ## Entry shapes

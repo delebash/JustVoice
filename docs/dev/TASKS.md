@@ -259,7 +259,20 @@ BUILT:  2026-10-06, batches 1–2 (A — the three words): on screen — Cast (c
         unknown is **Not known** everywhere (Voices' filter and chip, the persona page, the blend
         maker, Cast's AI hint). Docs: personas, voices, getting-started, gpu. Tests:
         `voiceGender.test.js`, `test_health_model_name.py`.
-OPEN:   batches 4–5 — B5, B6, B8 (line states, the take, step cards), B7, B9 and C1–C3, C6, C7.
+        2026-10-06, batch 4 (B5, B6, B8): one `services/lineStates.js` — rendered is a current take
+        (Overview, the step cards, Home and Render's grid stop counting stale lines as rendered),
+        "can't render" for Cast's and Overview's "blocked", "needs a persona" on Render when a
+        speaker has none, "1 line needs a speaker" / "3 lines need a speaker" on Home, counts name
+        their unit ("12 of 40 lines", "9 of 10 speakers cast", "1 of 5 chapters rendered"), the Lines
+        grid's "changed" → "stale". The take: "★ In use" (was "★ live"), the ★ button → "★ Use this
+        take", Compare "A — ★ In use" / "★ Use take B", Play chapter "Every line's take in use, in
+        order…", every other "★ take" → "take in use" (Render's two pages, Export, the docs). Step
+        cards are Overview's `stepStatus` text. Mocks follow. Docs: studio, core-concepts, lexicons,
+        lines. Tests: `lineStates.test.js` (new), `studioStatus.test.js`.
+OPEN:   batch 5 — B7, B9 and C1–C3, C6, C7.
+        B6's table was not recorded word for word; only its button, tag, Compare and Play chapter
+        words were. The Takes heading kept "Takes", and the chapter lede only swapped "the ★ one" →
+        "the one ★ In use" — asked whether the table said more there.
         Two B3 rows the decision doesn't word, asked: AI Settings → Speech engines calls each
         size row a "model" (Load model · Set as default "the model this engine loads" · "is now
         Qwen3-TTS's default model") where the persona page calls the same choice its Version; and

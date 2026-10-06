@@ -14,7 +14,7 @@
   for this line (2026-10-06, was D3's closed hatch; stored in the line's
   metadata), 📕 Pronunciation (the
   book's lexicon), ✏️ Rewrite as the speaker (moved here from Script), and its
-  takes: every take is kept, and the ★ one is what the chapter plays and
+  takes: every take is kept, and the one ★ In use is what the chapter plays and
   exports (D4). A change to the line or to what it is made from marks it
   stale; you choose when to render it again.
 
@@ -35,6 +35,7 @@ import { useCopy } from "../services/copy.js";
 import { useKeptScroll } from "../composables/useKeptScroll.js";
 import { mediaUrl, renderChapter, renderLines } from "../services/renderRun.js";
 import { facetCounts, facetOptions, facetTotal, passesFilters } from "../services/facets.js";
+import { CANT_RENDER_STATES as BLOCKED, lineStateWord } from "../services/lineStates.js";
 import { speakerOptions as castChoices } from "../views/scriptReview.js";
 import PageTaskStrips from "./PageTaskStrips.vue";
 
@@ -153,7 +154,6 @@ const fmt = (s) => {
   const n = Math.max(0, Math.round(Number(s) || 0));
   return `${Math.floor(n / 60)}:${String(n % 60).padStart(2, "0")}`;
 };
-const BLOCKED = new Set(["needs a speaker", "needs a voice"]);
 const STATE_TAG = {
   rendered: "success", stale: "accent2", ready: "ghost", "needs a speaker": "danger", "needs a voice": "danger",
 };
@@ -322,7 +322,7 @@ async function loadTakes(blockId) {
 }
 watch(open, (id) => { if (id) loadTakes(id); });
 function takeName(list, t) {
-  if (t.is_default) return "★ live";
+    if (t.is_default) return "★ In use";
   return `take ${list.length - list.indexOf(t)}`;
 }
 async function makeLive(l, t) {
@@ -532,9 +532,9 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
         </div>
         <div class="jv-card__body">
           <p class="jv-lede">
-            Render turns each line into audio. Every take is kept, and the ★ one is what the
+            Render turns each line into audio. Every take is kept, and the one ★ In use is what the
             {{ word.singular.toLowerCase() }} plays and exports. Changing a line, or what it is made from, marks it
-            stale — it plays its ★ take until you render it again.
+            stale — it plays its take in use until you render it again.
           </p>
           <div class="studio-render-ch__verbs">
             <span class="studio-render-ch__verb">
@@ -546,7 +546,7 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
               <UiButton intent="secondary" :disabled="!!blocked || !!running" :loading="running === 'chapter'"
                 :label="`▶ Play ${word.singular.toLowerCase()}`" @click="playChapter" />
               <span class="jv-hint">{{ blocked ? `Not until every line can render — ${chapterBlockedWhy}.`
-                : `Every line's ★ take in order, ${PAUSE_SETTING_MS} ms apart. A line with no take is rendered first.` }}</span>
+                : `Every line's take in use, in order, ${PAUSE_SETTING_MS} ms apart. A line with no take is rendered first.` }}</span>
             </span>
             <span class="jv-spacer" />
             <span class="studio-render-ch__verb">
@@ -609,12 +609,12 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
             </span>
             <span v-else class="jv-muted">—</span>
           </template>
-          <template #status="{ row }"><UiTag :intent="STATE_TAG[row.state]">{{ row.state }}</UiTag></template>
+          <template #status="{ row }"><UiTag :intent="STATE_TAG[row.state]">{{ lineStateWord(row.state, { hasPersona: !!speakerOf(row)?.persona_id }) }}</UiTag></template>
           <template #audio="{ row }">
             <span class="studio-render-ch__audio" @click.stop>
               <template v-if="row.live">
                 <UiButton intent="ghost" size="small" label="▶" :disabled="!row.live.audio_url"
-                  :title="row.live.audio_url ? `Play the ★ take (${fmt(row.live.seconds)})` : 'This take has no audio — render it again'"
+                  :title="row.live.audio_url ? `Play the take in use (${fmt(row.live.seconds)})` : 'This take has no audio — render it again'"
                   @click="play(row.live.take_id, row.live.audio_url)" />
                 <span class="jv-muted studio-render-ch__len">{{ fmt(row.live.seconds) }}</span>
                 <UiButton v-if="row.state === 'stale'" intent="secondary" size="small" label="↻" :loading="busy[row.block_id]"
@@ -754,7 +754,7 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
                   <span class="jv-takes__len">{{ fmt(t.seconds) }}</span>
                   <span class="jv-takes__label">{{ t.new_seed ? "new seed" : "" }}{{ t.text && t.text !== row.line.text ? `${t.new_seed ? " · " : ""}earlier words` : "" }}</span>
                   <UiButton intent="ghost" size="small" label="▶" :disabled="!t.audio_url" title="Play" @click="play(t.id, t.audio_url)" />
-                  <UiButton v-if="!t.is_default" intent="ghost" size="small" label="★"
+                  <UiButton v-if="!t.is_default" intent="ghost" size="small" label="★ Use this take"
                     title="Make this the take the chapter plays" @click="makeLive(row.line, t)" />
                   <UiButton v-if="!t.is_default" intent="ghost" size="small" label="🗑" title="Delete this take"
                     @click="deleteTake(row.line, t)" />
@@ -797,7 +797,7 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
     <AppModal v-if="compare" :title="`Compare takes — line ${compare.line.n}`" max-width="560px" dismissable @close="compare = null">
       <div class="studio-render-ch__compare">
         <div class="jv-linepanel__field">
-          <span class="jv-eyebrow">A — ★ live</span>
+          <span class="jv-eyebrow">A — ★ In use</span>
           <UiButton intent="secondary" size="small" label="▶ Play A" :disabled="!compareA?.audio_url"
             @click="play(`cmp-${compareA.id}`, compareA.audio_url)" />
         </div>
@@ -811,7 +811,7 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
       <audio v-if="playing && String(playing.key).startsWith('cmp-')" :src="playing.url" controls autoplay class="jv-audio-inline" />
       <template #footer>
         <UiButton intent="secondary" label="Close" @click="compare = null" />
-        <UiButton intent="primary" label="Make B the ★ take" :disabled="!compareB"
+        <UiButton intent="primary" label="★ Use take B" :disabled="!compareB"
           @click="makeLive(compare.line, compareB); compare = null" />
       </template>
     </AppModal>

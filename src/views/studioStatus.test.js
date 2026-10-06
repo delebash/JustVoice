@@ -46,14 +46,14 @@ describe("projectState", () => {
   const cast = [{ id: "nar", ready: true, narrator: true }, { id: "harbek", ready: false }];
 
   it("rolls chapters and speakers up, and counts lines blocked on a speaker no voiced persona plays", () => {
-    // Render's counts (GET /v1/projects/{id}/render_state totals): a stale line
-    // still has a take, so it counts as rendered; lines that can't render don't
-    // count toward what can.
+    // Render's counts (GET /v1/projects/{id}/render_state totals): rendered is a
+    // current take — a stale line isn't counted (2026-10-06, lineStates.js); lines
+    // that can't render don't count toward what can.
     const render = { lines: 14, needs_speaker: 2, needs_voice: 1, ready: 6, rendered: 3, stale: 2 };
     expect(projectState({ scenes, stats, cast, render })).toEqual({
       chapters: 2, scanned: 0, proposed: 0, analyzed: 1, fromImport: 0, running: 0, flagged: 0,
       noSpeaker: 2, lines: 14, unplaced: 2, castTotal: 2, castReady: 1, speakersBesideNarrator: 1, blocked: 4,
-      rendered: 5, renderable: 11, stale: 2, noNarrator: false,
+      rendered: 3, renderable: 11, ready: 6, stale: 2, noNarrator: false,
     });
   });
 
@@ -76,7 +76,7 @@ describe("projectState", () => {
 describe("stepStatus", () => {
   const base = {
     chapters: 14, scanned: 3, proposed: 3, analyzed: 3, lines: 2140, unplaced: 88, castTotal: 5, castReady: 3,
-    speakersBesideNarrator: 4, blocked: 40, rendered: 412, renderable: 2140,
+    speakersBesideNarrator: 4, blocked: 40, rendered: 412, renderable: 2140, ready: 1728,
   };
 
   it("says 'no narrator' while a book with narration has none, and opens Cast (2026-10-05)", () => {
@@ -101,14 +101,14 @@ describe("stepStatus", () => {
       text: "3 of 14 chapters analyzed · 1 running", tag: noSpeaker, tags: [noSpeaker, flagged],
     });
     expect(stepStatus("cast", base, UNIT)).toEqual({
-      text: "3 of 5 speakers cast", tag: { intent: "danger", label: "40 lines blocked" },
+      text: "3 of 5 speakers cast", tag: { intent: "danger", label: "40 lines can't render" },
     });
     expect(stepStatus("render", base, UNIT)).toEqual({
       text: "412 of 2,140 lines rendered", tag: { intent: "accent2", label: "1,728 to go" },
     });
-    // Everything has a take, some stale: the tag says so.
-    expect(stepStatus("render", { ...base, rendered: 2140, stale: 9 }, UNIT)).toEqual({
-      text: "2,140 of 2,140 lines rendered", tag: { intent: "accent2", label: "9 stale" },
+    // Everything has a take, some stale: stale isn't rendered, and the tag says why.
+    expect(stepStatus("render", { ...base, rendered: 2131, ready: 0, stale: 9 }, UNIT)).toEqual({
+      text: "2,131 of 2,140 lines rendered", tag: { intent: "accent2", label: "9 stale" },
     });
   });
 

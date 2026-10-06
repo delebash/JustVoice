@@ -11,6 +11,7 @@ import { computed, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { UiButton, UiSelect, UiTag, pushToast } from "@delebash/llm-ui";
 import { stepsFor } from "../views/studioSteps.js";
+import { stepStatus } from "../views/studioStatus.js";
 import MockRenderChapterView from "./MockRenderChapterView.vue";
 import MockRenderGrid from "./MockRenderGrid.vue";
 import MockScriptGrid from "./MockScriptGrid.vue";
@@ -32,19 +33,32 @@ const STEP_TITLES = {
   render: "Every line's audio, and each chapter joined and mastered",
   export: "Package + ACX checklist",
 };
-const stepCards = computed(() => stepsFor("audiobook").map((t) => {
-  const n = render.chapters.length;
-  let sub = "";
-  if (t.key === "overview") sub = "book";
-  else if (t.key === "discover") sub = `${render.chapters.filter((c) => c.scanned).length}/${n} scanned`;
-  else if (t.key === "script") sub = `${render.chapters.filter((c) => c.script.analyzed).length}/${n} analyzed`;
-  else if (t.key === "cast") sub = `${SPEAKERS.filter((s) => speakerReady(s.id)).length}/${SPEAKERS.length} cast`;
-  else if (t.key === "render") {
-    const done = (c) => c.lines.length && counts(c.lines).rendered + counts(c.lines).stale === c.lines.length;
-    sub = `${render.chapters.filter(done).length}/${n} rendered`;
-  } else if (t.key === "export") sub = "M4B · WAVs · ACX";
-  return { ...t, sub };
-}));
+// The app's step cards say Overview's own words (studioStatus.stepStatus — the
+// one-wording audit B8, 2026-10-06); the mock feeds it the mock's counts.
+const mockState = computed(() => {
+  const k = counts(render.chapters.flatMap((c) => c.lines));
+  return {
+    chapters: render.chapters.length,
+    scanned: render.chapters.filter((c) => c.scanned).length,
+    proposed: 0,
+    analyzed: render.chapters.filter((c) => c.script.analyzed).length,
+    fromImport: 0,
+    running: 0,
+    lines: k.all,
+    castTotal: SPEAKERS.length,
+    castReady: SPEAKERS.filter((s) => speakerReady(s.id)).length,
+    blocked: k.blocked,
+    rendered: k.rendered,
+    renderable: k.ready + k.rendered + k.stale,
+    ready: k.ready,
+    stale: k.stale,
+  };
+});
+const UNIT = { singular: "Chapter", plural: "Chapters" };
+const stepCards = computed(() => stepsFor("audiobook").map((t) => ({
+  ...t,
+  sub: t.key === "overview" ? "book" : stepStatus(t.key, mockState.value, UNIT).text,
+})));
 function goStep(k) {
   if (k === "render") router.push({ name: "mock-render" });
   else if (k === "script") router.push({ name: "mock-script" });

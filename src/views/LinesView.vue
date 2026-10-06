@@ -262,9 +262,9 @@ watch(selectedProjectId, (id) => {
     </div>
 
     <div v-if="staleLines.length" class="jv-banner jv-banner--warn lines__stale">
-      <strong>{{ staleLines.length }} line{{ staleLines.length === 1 ? "" : "s" }} changed</strong>
-      since last render (text differs from the rendered take)
-      <UiButton size="small" :disabled="rerendering" :label="`↻ Re-render ${staleLines.length} changed`" @click="rerenderChanged" />
+      <strong>{{ staleLines.length }} stale line{{ staleLines.length === 1 ? "" : "s" }}</strong>
+      — the text changed since its take was made
+      <UiButton size="small" :disabled="rerendering" :label="`↻ Re-render ${staleLines.length} stale`" @click="rerenderChanged" />
       <span class="jv-muted">everything else stays cached</span>
     </div>
     <PageTaskStrips :features="['chapter']" :meta="{ projectId: selectedProjectId }" />

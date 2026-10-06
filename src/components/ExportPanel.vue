@@ -5,8 +5,7 @@
   Package card (M4B + chapter-WAV zip) + honest ACX checklist (only
   measured items get ✓/✗; unmeasured say so) + show notes for podcasts.
   Lifted out of the old Chapters page's fold-out panel (user decision
-  2026-06-12: export lives as a Studio step). The book ships each line's ★
-  take (Studio Slice 4, D4); lines whose take is stale still ship it, and the
+  2026-06-12: export lives as a Studio step). The book ships each line's take in use (Studio Slice 4, D4); lines whose take is stale still ship it, and the
   checklist says how many (G3, 2026-10-04) — a warning, never a block.
 
   Props: project (ProjectResponse record) + scenes (list).
@@ -33,7 +32,7 @@ const exportQcBusy = ref(false);
 const exportBusy = ref("");
 const showNotes = ref(null);
 
-// Stale lines ship their ★ take, made before the line changed (G3).
+// Stale lines ship their take in use, made before the line changed (G3).
 const staleLines = ref(0);
 async function loadRenderState() {
   const id = props.project?.id;
@@ -195,7 +194,7 @@ async function copyShowNotes() {
       </div>
       <div v-if="staleLines" class="jv-banner jv-banner--warn exportp__stale">
         <span><strong>{{ staleLines.toLocaleString() }} line{{ staleLines === 1 ? " is" : "s are" }} stale.</strong>
-          {{ staleLines === 1 ? "It ships its" : "They ship their" }} ★ take, made before the line changed. Render
+          {{ staleLines === 1 ? "It ships its" : "They ship their" }} take in use, made before the line changed. Render
           {{ staleLines === 1 ? "it" : "them" }} again in Studio · Render, or export as they are.</span>
       </div>
       <p v-if="exportQcBusy" class="jv-muted">Rendering + measuring {{ copy.chapter.plural.toLowerCase() }} — cached audio makes this fast…</p>

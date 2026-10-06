@@ -16,7 +16,7 @@ Your line ids come from your import (`source_ref` in the CSV, or generated
 1. The writers send a new sheet. **Re-import it** — lines merge **by id**.
 2. Only lines whose text actually changed go `stale` (a re-import changes only
    words); everything else keeps its rendered take untouched.
-3. **Re-render N changed lines** does exactly that — the 480 lines that didn't
+3. **↻ Re-render N stale** does exactly that — the 480 lines that didn't
    change don't cost a render. The batch runs as one render job on the server:
    lines are grouped by engine (one model load per engine instead of one per
    speaker change), the task strip shows live `done/total` progress, and Cancel
@@ -31,7 +31,7 @@ Your line ids come from your import (`source_ref` in the CSV, or generated
 The per-line export writes one WAV per line, named by your `source_ref` (or the
 generated id), plus a JSON manifest (each entry names the line's `speaker`) —
 drop the folder into your engine's import pipeline. A line that has a take
-ships its ★ take — the one you chose in [Studio · Render](studio.md#takes) —
+ships its take in use — the one you chose in [Studio · Render](studio.md#takes) —
 and its manifest entry says that take's words; a line with no take is rendered
 for the export (since 2026-10-04). CSV import expects fixed
 headers — `scene, character, text, delivery, pause_after_ms` (only `text` is

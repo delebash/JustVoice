@@ -32,7 +32,7 @@ The smallest renderable unit. Holds the **text** that becomes audio, an optional
 
 ## Take
 
-A rendered audio version of a Block, kept with the seed and everything else it was made from. Every render makes a new take and nothing is overwritten; one take per Block is the **★ take**, the one the chapter plays and the export ships. When something the ★ take was made from changes, the Block is **stale** until you render it again. See [Studio → Render](studio.md#render).
+A rendered audio version of a Block, kept with the seed and everything else it was made from. Every render makes a new take and nothing is overwritten; one take per Block is **★ In use**, the one the chapter plays and the export ships. When something the take in use was made from changes, the Block is **stale** until you render it again. See [Studio → Render](studio.md#render).
 
 ## Voices, Personas, Lexicons — the three orthogonal layers
 

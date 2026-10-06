@@ -30,6 +30,7 @@ import { useLexiconsStore } from "../stores/lexicons.js";
 import { useEnginesStore } from "../stores/engines.js";
 import { pushToast } from "@delebash/llm-ui";
 import { UiButton, UiTag, UiChip } from "@delebash/llm-ui";
+import { chapterRendered, needSpeaker, partOf } from "../services/lineStates.js";
 
 const onboarding = useOnboarding();
 const api = useApi();
@@ -149,10 +150,10 @@ const continueProject = computed(() => {
 });
 
 const KIND_META = {
-  audiobook:       { icon: "📖", label: "audiobook", unit: "chapters" },
-  game_voicelines: { icon: "🎮", label: "game",      unit: "quests" },
-  podcast:         { icon: "🎙️", label: "podcast",   unit: "episodes" },
-  custom:          { icon: "📄", label: "text",      unit: "sections" },
+  audiobook:       { icon: "📖", label: "audiobook", unit: "chapters", one: "chapter" },
+  game_voicelines: { icon: "🎮", label: "game",      unit: "quests",   one: "quest" },
+  podcast:         { icon: "🎙️", label: "podcast",   unit: "episodes", one: "episode" },
+  custom:          { icon: "📄", label: "text",      unit: "sections", one: "section" },
 };
 const continueMeta = computed(() => KIND_META[continueProject.value?.project_type] || KIND_META.custom);
 
@@ -169,8 +170,9 @@ const continueStatus = computed(() => {
 
 // Mini workflow status for the Continue card — one render-state call +
 // one speakers call for the single continue project (no per-scene block
-// walks on Home). A chapter is rendered when every line has a take (Studio
-// Slice 4). `castVoiced` counts speakers played by a persona that has a voice.
+// walks on Home). A chapter is rendered when every line in it is — a current
+// take (services/lineStates.js, 2026-10-06). `castVoiced` counts speakers played
+// by a persona that has a voice.
 const miniStatus = ref(null);  // { rendered, total, castTotal, castVoiced, noSpeaker }
 async function loadMiniStatus() {
   miniStatus.value = null;
@@ -180,7 +182,7 @@ async function loadMiniStatus() {
   try {
     const rs = await api.request(`/v1/projects/${p.id}/render_state`);
     out.total = (rs?.chapters || []).length;
-    out.rendered = (rs?.chapters || []).filter((c) => c.lines > 0 && c.rendered + c.stale === c.lines).length;
+    out.rendered = (rs?.chapters || []).filter(chapterRendered).length;
   } catch { /* zero-chapter projects 404 here — strip shows import-first */ }
   try {
     const c = await api.request(`/v1/projects/${p.id}/speakers`);
@@ -207,10 +209,12 @@ const miniSteps = computed(() => {
   const p = continueProject.value;
   if (!m || !p) return [];
   const n = p.scene_count ?? m.total;
+  const { one, unit } = continueMeta.value;
   return [
     { label: `1 Import`, sub: n ? `${n} ${continueMeta.value.unit}` : "no text yet", done: n > 0 },
-    { label: `2 Cast`, sub: m.castTotal ? `${m.castVoiced}/${m.castTotal} cast` : "—", done: m.castTotal > 0 && m.castVoiced === m.castTotal },
-    { label: `3 Render`, sub: n ? `${m.rendered}/${n} rendered` : "—", done: n > 0 && m.rendered === n },
+    // Overview's own words (the one-wording audit B8, 2026-10-06).
+    { label: `2 Cast`, sub: m.castTotal ? partOf(m.castVoiced, m.castTotal, "speaker", "cast") : "—", done: m.castTotal > 0 && m.castVoiced === m.castTotal },
+    { label: `3 Render`, sub: n ? partOf(m.rendered, n, one, "rendered", unit) : "—", done: n > 0 && m.rendered === n },
   ];
 });
 
@@ -401,7 +405,7 @@ onMounted(() => {
               {{ st.done ? "✓" : "" }} {{ st.label }} <i>{{ st.sub }}</i>
             </span>
             <UiTag v-if="miniStatus?.noSpeaker" intent="danger" class="home__to-check"
-              title="Opens Script on the chapters to check" @click="openScriptToCheck">{{ miniStatus.noSpeaker.toLocaleString() }} need a speaker</UiTag>
+              title="Opens Script on the chapters to check" @click="openScriptToCheck">{{ needSpeaker(miniStatus.noSpeaker) }}</UiTag>
           </div>
         </div>
         <UiButton intent="primary" label="Resume ➜" title="Open this project's home base" @click="resumeProject" />

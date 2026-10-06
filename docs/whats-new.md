@@ -2,6 +2,15 @@
 
 ## v0.1.0
 
+- **The take in use, and one set of words for a line's state (2026-10-06)** —
+  on Render a line's takes show **★ In use** on the one the chapter plays, and
+  **★ Use this take** on the others; Compare offers **★ Use take B**.
+  **Rendered** now always means a take made from what the line is now — stale
+  lines are counted apart everywhere — and every count names its unit
+  (*412 of 2,140 lines rendered*, *9 of 10 speakers cast*). Lines that can't
+  render say **can't render** on Cast and the Overview too, and a speaker with
+  no persona reads **needs a persona**. Studio's step cards say what the
+  Overview's rows say ([Studio → Render](studio.md#render))
 - **One wording per fact: how a voice is directed, its type, its model and
   gender (2026-10-06)** — the persona page says how a model can be directed in
   the Voices list's words (**✓ written direction**, **✓ 7 tags**, **sliders

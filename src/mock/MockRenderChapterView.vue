@@ -9,7 +9,7 @@
   Can be directed in the Personas and Voices lists' own words (2026-10-06), with the line's
   direction on a words model and the persona's tags on a tag model. Opening a line shows who speaks it (read-only — Cast decides, D2), the numbers
   override behind its closed hatch (D3), Pronunciation, Rewrite as the speaker, and its takes:
-  every take is kept, and the ★ one is what the chapter plays and exports (D4). A change to the
+  every take is kept, and the one ★ In use is what the chapter plays and exports (D4). A change to the
   line or to what it is made from marks it stale; you choose when to render it again.
 -->
 <script setup>
@@ -19,6 +19,7 @@ import {
   AppModal, UiButton, UiChip, UiField, UiInput, UiSelect, UiTable, UiTag, UiTextarea, pushToast,
 } from "@delebash/llm-ui";
 import { facetCounts, facetOptions, facetTotal, passesFilters } from "../services/facets.js";
+import { lineStateWord } from "../services/lineStates.js";
 import DeliveryKnobs from "../components/DeliveryKnobs.vue";
 import { capabilities, emotionValues, silentWav, wait } from "./personaMock.js";
 import { directionCell, tagCount } from "../services/personaFacts.js";
@@ -144,7 +145,7 @@ async function renderAllAgain() {
 }
 const playing = ref(null);
 const chapterBusy = ref(false);
-// The chapter is every line's ★ take joined — a line with no take is rendered first, so this is
+// The chapter is every line's take in use joined — a line with no take is rendered first, so this is
 // Render's ▶ Render for one chapter, played here. Lines that can't render stop it.
 async function playChapter() {
   chapterBusy.value = true;
@@ -259,7 +260,7 @@ function openCompare(l) {
 const compareOptions = computed(() => (compare.value?.line.takes || [])
   .filter((t) => !t.live).map((t) => ({ value: t.id, label: takeName(compare.value.line, t) })));
 function takeName(l, t) {
-  if (t.live) return "★ live";
+    if (t.live) return "★ In use";
   const i = l.takes.length - l.takes.indexOf(t);
   return `take ${i}`;
 }
@@ -326,8 +327,8 @@ const blockedBanner = computed(() => {
       </div>
       <div class="jv-card__body">
         <p class="jv-lede">
-          Render turns each line into audio. Every take is kept, and the ★ one is what the chapter plays and
-          exports. Changing a line, or what it is made from, marks it stale — it plays its ★ take until you
+          Render turns each line into audio. Every take is kept, and the one ★ In use is what the chapter plays and
+          exports. Changing a line, or what it is made from, marks it stale — it plays its take in use until you
           render it again.
         </p>
         <div class="mock-render-ch__verbs">
@@ -338,7 +339,7 @@ const blockedBanner = computed(() => {
           <span class="mock-render-ch__verb">
             <UiButton intent="secondary" :disabled="!!c.blocked" :loading="chapterBusy" label="▶ Play chapter" @click="playChapter" />
             <span class="jv-hint">{{ c.blocked ? `Not until every line can render — ${chapterBlockedWhy}`
-              : `Every line's ★ take in order, ${PAUSE_BETWEEN_LINES_MS} ms apart. A line with no take is rendered first.` }}</span>
+              : `Every line's take in use, in order, ${PAUSE_BETWEEN_LINES_MS} ms apart. A line with no take is rendered first.` }}</span>
           </span>
           <span class="jv-spacer" />
           <span class="mock-render-ch__verb">
@@ -400,12 +401,12 @@ const blockedBanner = computed(() => {
           <span v-else class="jv-muted">—</span>
         </template>
         <template #status="{ row }">
-          <UiTag :intent="STATE_TAG[lineState(row)]">{{ lineState(row) }}</UiTag>
+          <UiTag :intent="STATE_TAG[lineState(row)]">{{ lineStateWord(lineState(row), { hasPersona: !!personaOfSpeaker(row.speaker_id) }) }}</UiTag>
         </template>
         <template #audio="{ row }">
           <span class="mock-render-ch__audio" @click.stop>
             <template v-if="lineState(row) === 'rendered' || lineState(row) === 'stale'">
-              <UiButton intent="ghost" size="small" label="▶" :title="`Play the ★ take (${fmt(liveTake(row).seconds)})`"
+              <UiButton intent="ghost" size="small" label="▶" :title="`Play the take in use (${fmt(liveTake(row).seconds)})`"
                 @click="playTake(liveTake(row))" />
               <span class="jv-muted mock-render-ch__len">{{ fmt(liveTake(row).seconds) }}</span>
               <UiButton v-if="lineState(row) === 'stale'" intent="secondary" size="small" label="↻"
@@ -539,7 +540,7 @@ const blockedBanner = computed(() => {
                 <span class="jv-takes__len">{{ fmt(t.seconds) }}</span>
                 <span class="jv-takes__label">{{ t.label }}</span>
                 <UiButton intent="ghost" size="small" label="▶" title="Play" @click="playTake(t)" />
-                <UiButton v-if="!t.live" intent="ghost" size="small" label="★" title="Make this the take the chapter plays" @click="makeLive(row.line, t)" />
+                <UiButton v-if="!t.live" intent="ghost" size="small" label="★ Use this take" title="Make this the take the chapter plays" @click="makeLive(row.line, t)" />
                 <UiButton v-if="!t.live" intent="ghost" size="small" label="🗑" title="Delete this take" @click="deleteTake(row.line, t)" />
               </div>
               <div v-if="!row.line.takes.length" class="jv-takes__row jv-muted">No takes yet.</div>
@@ -573,7 +574,7 @@ const blockedBanner = computed(() => {
     <AppModal v-if="compare" :title="`Compare takes — line ${compare.line.n}`" @close="compare = null">
       <div class="mock-render-ch__compare">
         <div class="jv-linepanel__field">
-          <span class="jv-eyebrow">A — ★ live</span>
+          <span class="jv-eyebrow">A — ★ In use</span>
           <UiButton intent="secondary" size="small" label="▶ Play A" @click="playTake(liveTake(compare.line))" />
         </div>
         <div class="jv-linepanel__field">
@@ -586,7 +587,7 @@ const blockedBanner = computed(() => {
       <audio v-if="playing" :src="playing.url" controls autoplay class="jv-audio-inline" />
       <template #footer>
         <UiButton intent="ghost" label="Close" @click="compare = null" />
-        <UiButton intent="primary" label="Make B the ★ take" :disabled="!compare.b"
+        <UiButton intent="primary" label="★ Use take B" :disabled="!compare.b"
           @click="makeLive(compare.line, compare.line.takes.find((t) => t.id === compare.b)); compare = null" />
       </template>
     </AppModal>

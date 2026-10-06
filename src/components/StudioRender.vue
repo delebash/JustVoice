@@ -7,9 +7,9 @@
   Lines, Rendered, ▶ Render and the ACX check stay; Cached and Render preset
   went.
 
-  A chapter is its lines' ★ takes joined and mastered (D4). ▶ Render gives
+  A chapter is its lines' takes in use joined and mastered (D4). ▶ Render gives
   every line with no take one, then joins the chapter (services/renderRun.js);
-  stale lines keep their ★ take until you render them again on the chapter's
+  stale lines keep their take in use until you render them again on the chapter's
   page. The counts are GET /v1/projects/{id}/render_state, in §8.16's words.
 
   Shapes: Script's chapter grid (StudioScript.vue) — card, chips row, kit
@@ -23,6 +23,7 @@ import {
 } from "@delebash/llm-ui";
 import { useApi } from "../stores/api.js";
 import { useCopy } from "../services/copy.js";
+import { CANT_RENDER, partOf } from "../services/lineStates.js";
 import { renderChapter } from "../services/renderRun.js";
 import PageTaskStrips from "./PageTaskStrips.vue";
 
@@ -49,6 +50,8 @@ const totals = computed(() => props.renderState?.totals || null);
 const ordered = computed(() => [...props.scenes].sort((a, b) => a.position - b.position));
 const counts = (s) => stateById.value[s.id] || null;
 const blockedOf = (c) => (c ? c.needs_speaker + c.needs_voice : 0);
+// "12 of 40 lines" under Rendered — a current take (services/lineStates.js,
+// 2026-10-06); the chapter's stale lines show as their own tag.
 const titleOf = (s) => `${s.position + 1} · ${s.title || `${word.value.singular} ${s.position + 1}`}`;
 
 // ── The grid, with a progress row under a chapter while it renders ───
@@ -234,7 +237,7 @@ function checkState(s) {
       </div>
       <div class="jv-card__body">
         <p class="jv-lede">
-          Every line becomes a take, and a {{ word.singular.toLowerCase() }} is its lines' ★ takes joined and mastered to
+          Every line becomes a take, and a {{ word.singular.toLowerCase() }} is its lines' takes in use joined and mastered to
           the book's target. Open a {{ word.singular.toLowerCase() }} to hear its lines, say how they're spoken, and
           choose their takes.
         </p>
@@ -279,10 +282,10 @@ function checkState(s) {
               <span v-if="!counts(row)" class="jv-muted">…</span>
               <span v-else-if="!hasLines(row)" class="jv-muted">no text yet</span>
               <span v-else class="studio-render__rollup">
-                <span class="jv-mono">{{ counts(row).rendered + counts(row).stale }}/{{ counts(row).lines }}</span>
+                <span>{{ partOf(counts(row).rendered, counts(row).lines, "line") }}</span>
                 <UiTag v-if="counts(row).stale" intent="accent2"
-                  title="Changed since their take was made — each plays its ★ take until you render it again">{{ counts(row).stale }} stale</UiTag>
-                <UiTag v-if="blockedOf(counts(row))" intent="danger">{{ blockedOf(counts(row)) }} can't render</UiTag>
+                  title="Changed since their take was made — each plays its take in use until you render it again">{{ counts(row).stale }} stale</UiTag>
+                <UiTag v-if="blockedOf(counts(row))" intent="danger">{{ blockedOf(counts(row)) }} {{ CANT_RENDER }}</UiTag>
               </span>
             </template>
             <template #check="{ row }">
