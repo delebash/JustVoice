@@ -16,7 +16,7 @@
 import { computed, reactive, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import {
-  AppModal, UiButton, UiChip, UiInput, UiSelect, UiTable, UiTag, UiTextarea, pushToast,
+  AppModal, UiButton, UiChip, UiField, UiInput, UiSelect, UiTable, UiTag, UiTextarea, pushToast,
 } from "@delebash/llm-ui";
 import { facetCounts, facetOptions, facetTotal, passesFilters } from "../services/facets.js";
 import DeliveryKnobs from "../components/DeliveryKnobs.vue";
@@ -103,9 +103,31 @@ function saidPlaceholder(l) {
   return `${modelName(l)} takes no direction`;
 }
 function setDirection(l, v) {
-  if ((v || "") === (l.direction || "")) return;
-  l.direction = v;
+  const next = (v || "").trim();
+  if (next === (l.direction || "")) return;
+  l.direction = next;
   if (l.takes.length) l.madeFrom = "old";      // a change makes its take stale (D4)
+}
+// The line's direction: the persona page's Style Instructions field, in the open line
+// (2026-10-06) — only when the line's model takes written direction.
+const takesWords = (l) => directedBy(l) === "words";
+function directionHint(l) {
+  const p = personaOfSpeaker(l.speaker_id);
+  const own = (p?.voice_instruct || "").trim();
+  return `For this line only — added after ${p.name}'s own${own ? `: “${own}”` : " (none yet)."}`;
+}
+// ✎ Edit words — the same change as Script's ✎ Edit… (2026-10-06).
+const editing = reactive({});
+const wordsChanged = (l) => {
+  const w = (editing[l.id] || "").trim();
+  return !!w && w !== l.text;
+};
+function saveWords(l) {
+  const w = (editing[l.id] || "").trim();
+  delete editing[l.id];
+  if (!w || w === l.text) return;
+  l.text = w;
+  if (l.takes.length) l.madeFrom = "old";
 }
 
 // ── Doing things ───────────────────────────────────────────────────────
@@ -314,9 +336,12 @@ const blockedBanner = computed(() => {
         <template #text="{ row }"><span class="mock-render-ch__text">{{ row.text }}</span></template>
         <template #said="{ row }">
           <span @click.stop>
-            <UiInput v-if="directedBy(row) === 'words' && !['needs a speaker', 'needs a voice'].includes(lineState(row))"
-              size="small" :model-value="row.direction" :placeholder="`as ${personaName(row)} always speaks`"
-              @blur="(e) => setDirection(row, e.target.value)" @keydown.enter="(e) => e.target.blur()" />
+            <span v-if="directedBy(row) === 'words' && !['needs a speaker', 'needs a voice'].includes(lineState(row))"
+              class="mock-render-ch__dir" title="Open the line to change its Style Instructions"
+              @click="open = open === row.id ? null : row.id">
+              <template v-if="row.direction">“{{ row.direction }}”</template>
+              <span v-else class="jv-muted">as {{ personaName(row) }} always speaks</span>
+            </span>
             <span v-else-if="directedBy(row) === 'tags' && lineState(row) !== 'needs a voice'"
               class="mock-render-ch__tags" :title="`${modelName(row)} takes tags, not words — ${personaName(row)}'s own, set on the persona`">
               <UiTag v-for="t in standingTags(row)" :key="t" intent="ghost">{{ t }}</UiTag>
@@ -363,6 +388,22 @@ const blockedBanner = computed(() => {
                 <span v-else class="jv-muted">Nobody — <a href="#" @click.prevent="goScript">give it a speaker in Script ➜</a></span>
               </div>
 
+              <UiField v-if="takesWords(row.line)" layout="block" class="jv-linepanel__wide" :hint="directionHint(row.line)">
+                <template #label>
+                  <span class="jv-field-label-row">
+                    <span>Style Instructions (optional)</span>
+                    <span class="jv-inline-row">
+                      <UiTag intent="success">✓ {{ modelName(row.line) }}</UiTag>
+                      <UiButton intent="ghost" size="small" label="↺" :disabled="!row.line.direction"
+                        title="Clear this line's Style Instructions" @click="setDirection(row.line, '')" />
+                    </span>
+                  </span>
+                </template>
+                <UiTextarea :model-value="row.line.direction" :rows="2"
+                  :placeholder="`as ${personaName(row.line)} always speaks`"
+                  @blur="(e) => setDirection(row.line, e.target.value)" />
+              </UiField>
+
               <div class="jv-linepanel__field jv-linepanel__field--wide">
                 <span class="jv-field-label-row jv-linepanel__wide">
                   <span class="jv-eyebrow">This line only</span>
@@ -380,10 +421,22 @@ const blockedBanner = computed(() => {
               <div class="jv-linepanel__row">
                 <UiButton intent="secondary" size="small" label="📕 Pronunciation"
                   :title="`Opens ${BOOK_LEXICON}, the book's lexicon`" @click="pronounce(row.line)" />
-                <UiButton intent="secondary" size="small" :disabled="!row.line.spoken || !row.line.speaker_id"
-                  :label="row.line.spoken && row.line.speaker_id ? `✏️ Rewrite as ${speakerOf(row.line.speaker_id).name.split(' ')[0]}` : '✏️ Rewrite in character'"
-                  :title="!row.line.spoken ? 'Rewrite only applies to spoken lines.' : !row.line.speaker_id ? 'Give this line a speaker first.'
+                <UiButton intent="secondary" size="small" :disabled="!row.line.speaker_id"
+                  :label="row.line.speaker_id ? `✏️ Rewrite as ${speakerOf(row.line.speaker_id).name.split(' ')[0]}` : '✏️ Rewrite in character'"
+                  :title="!row.line.speaker_id ? 'Give this line a speaker first.'
                     : 'Reads who they are on Cast, and offers the line in their words'" @click="openRewrite(row.line)" />
+                <UiButton intent="secondary" size="small" label="✎ Edit words" :disabled="editing[row.line.id] !== undefined"
+                  title="Change this line's words — split and merge are on Script" @click="editing[row.line.id] = row.line.text" />
+              </div>
+              <div v-if="editing[row.line.id] !== undefined" class="jv-linepanel__field jv-linepanel__field--wide">
+                <UiField label="Its words" layout="block" class="jv-linepanel__wide"
+                  hint="Saving makes the line stale until you render it again — its takes are kept. Split and merge are on Script.">
+                  <UiTextarea v-model="editing[row.line.id]" :rows="3" />
+                </UiField>
+                <span class="jv-linepanel__row">
+                  <UiButton intent="primary" size="small" label="Save" :disabled="!wordsChanged(row.line)" @click="saveWords(row.line)" />
+                  <UiButton intent="ghost" size="small" label="Cancel" @click="delete editing[row.line.id]" />
+                </span>
               </div>
             </div>
 

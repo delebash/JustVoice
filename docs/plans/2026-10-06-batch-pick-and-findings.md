@@ -74,3 +74,28 @@ persona's is saved as none, so "untouched" stays true. The row's dot stays.
 | `overrideSet` | the row dot `:495` (stays; title reworded), the toggle label `:558` (goes), Clear `:579` (→ Reset's disabled) · mock `:160`, `:307`, `:365`, `:385` | — |
 | `SHAPE_KNOBS` moves to `personaFacts.js` | `PersonaEditorView.vue:564` (def), `:1100` · `MockPersonaEditorView.vue:324` (def), `:462`, `:709` | `personaFacts.js` already holds the persona page's shared vocabulary |
 | Words that name the toggle | `StudioRenderChapter.vue:12` (header), `:631` (foot) · mock `:430` · `docs/studio.md:882`, `:934-935`, `:953`, `:955-962` · `whats-new.md:147` (history — kept) | — |
+
+## 5. Render: Rewrite for the narrator · the line's Style Instructions · ✎ Edit words ("your rec on all go")
+
+**What it is.**
+- **✏️ Rewrite** works on every line that has a speaker — narration included (*✏️ Rewrite as
+  Narrator*). Render's only narrator exception was this button (`isNarrator` has no other reader);
+  the server's speaker rewrite has no narrator rule and needs only a non-empty *Who they are*.
+- **The line's direction** becomes the persona page's **Style Instructions** field — a labelled
+  block `UiTextarea` with **↺** (clears it) and the hint *For this line only — added after June's own*
+  (her Style Instructions quoted). A table cell can't hold that field, so it lives in the open line's
+  panel; the row's *How it's said* cell shows the line's direction (or *as June always speaks*) and
+  opens the line. Only on a model that takes written direction (the decision's own words): on
+  Render the voice is fixed, so a control its model can't use isn't shown — the user, 2026-10-06:
+  "i only want to show controls for that voice" (a first cut showed it greyed, the persona page's
+  rule, and was corrected before commit). Saved when the box is left.
+- **✎ Edit words** in the line panel: the line's text in a box, **Save** / **Cancel** — the same
+  `PATCH /v1/blocks/{id} {text}` as Script's ✎ Edit… and Render's Rewrite Accept; the line turns
+  stale and its takes are kept. Split and merge stay on Script.
+
+| Change | Readers / producers (grep in `src`, `server`) | Already on the path |
+|---|---|---|
+| Rewrite's narrator gate goes | `StudioRenderChapter.vue:101` (`isNarrator`), `:388` (`rewriteTitle`), `:590-591` (the button) — no other reader · `speakers_api.rewrite_as_speaker` `:268` (no narrator rule; 400 on an empty *Who they are*) | the `persona_rewrite` prompt (`seed_feature_prompts.py:106`) says "no narration" — meant as "add no narration"; checked live on a narration line |
+| Direction moves into the panel | `setDirection` `StudioRenderChapter.vue:228-232` · the cell `:516-519` · mock `MockRenderChapterView.vue:103-107`, `:315` | `PATCH {direction}` unchanged; `delivery_merge.compose_instruct` adds it after the persona's |
+| ✎ Edit words | `patchBlock` `:214` (already sends `{text}` for Rewrite, `:383`) · Script's `editText` (`scriptReview.js:222`) sends the same | `projects_api.update_block` — a text change marks the line stale (RESEARCH §3) |
+| Words | `docs/studio.md:940-953` (How it's said), `:1003-1015` (Rewrite), `:805` (Cast's *Who they are*) | — |

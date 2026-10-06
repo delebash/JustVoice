@@ -804,7 +804,10 @@ leave it (or press Enter in a one-line field):
   use that. A JustWrite import fills it from the character sheet.
 - **Who they are** — *"Read by Discover, Smart-assign and Rewrite in character.
   Never heard."* Discover reads its first line; Script's line-by-line
-  attribution does not read it. An import fills it from the book.
+  attribution does not read it. An import fills it from the book. For the
+  narrator it is where the narration's style goes — *dry and wry, short
+  sentences* — which Render's **✏️ Rewrite as Narrator** reads; the narrator Cast
+  makes says only that it reads the narration.
 - **Edit their persona →** opens the page of the persona that plays them
   (*Personas › Gruff dockhand*) — *"Pace, pitch, gain, delivery, effects — all
   of it lives there."* It is off until they have a persona. See
@@ -931,9 +934,11 @@ A row opens its line, under it:
   persona changed — until you render it again. Beside it, the persona that
   plays that speaker and its model; which persona plays a speaker is Cast's:
   **Change in Cast ➜**.
+- **Style Instructions** — the line's own direction; see
+  [How it's said](#how-its-said).
 - **This line only** — the line's own pace, pitch, gain and pause; see
   [This line only](#this-line-only).
-- **📕 Pronunciation** and **✏️ Rewrite as** *name* — see
+- **📕 Pronunciation**, **✏️ Rewrite as** *name* and **✎ Edit words** — see
   [below](#pronunciation-and-rewrite-in-character).
 - **Takes** — see [below](#takes).
 
@@ -942,10 +947,16 @@ A row opens its line, under it:
 What a line can be told depends on the model of the persona that speaks it
 ([Personas → Can be directed](personas.md)):
 
-- **A model that takes written direction** (Qwen3-TTS, VoxCPM2): the cell is a
-  box for the line's own direction — *Talking to the lamp, half amused.* It is
-  added after the persona's Style Instructions, most specific last. Empty means
-  the line is said as the persona always speaks.
+- **A model that takes written direction** (Qwen3-TTS, VoxCPM2): the line can
+  have its own direction — *Talking to the lamp, half amused.* The cell shows it
+  (or *as June always speaks*); click it, or open the line, to change it in
+  **Style Instructions** — the persona page's own field, with a **↺** that clears
+  it. It is added after the persona's Style Instructions, most specific last
+  (the hint quotes the persona's), and saved when you leave the box. Empty means
+  the line is said as the persona always speaks. On any other model the field
+  isn't there: Render shows only the controls the line's own model can use
+  (the persona page shows them greyed instead, because there you are still
+  choosing the voice).
 - **A tag model** (Chatterbox Turbo and Nano): the persona's own tags, such as
   *[sarcastic]*, shown read-only — they are set on the persona's page.
 - **Every other model** (Kokoro, Kitten, Pocket, Chatterbox Multilingual): it
@@ -1009,13 +1020,21 @@ arrives ready to add; otherwise you are asked which word, or can leave it
 empty just to open the lexicon. Saving an entry makes the lines with that word
 stale.
 
-**✏️ Rewrite as** *name* has the AI rewrite a spoken line as its speaker would
-say it. It reads the speaker's **Who they are** on Cast — not the persona's note
-— and refuses when that is empty: *Nettle has nothing under Who they are —
-write it on Cast to rewrite in character.* You see the rewrite first (**↻ Try
-again** asks for another); **Accept** replaces the line's text, and the line is
-stale until you render it. Narration can't be rewritten. (This was a right-click
-on Script's text until 2026-10-04.)
+**✏️ Rewrite as** *name* has the AI rewrite a line as its speaker would say it
+— narration too, as the narrator would tell it (*✏️ Rewrite as Narrator*). It
+reads the speaker's **Who they are** on Cast — not the persona's note — and
+refuses when that is empty: *Nettle has nothing under Who they are — write it on
+Cast to rewrite in character.* A narrator's style goes there too (*dry and wry,
+short sentences*); the narrator Cast makes says only that it reads the
+narration, which gives the AI little to go on. You see the rewrite first (**↻
+Try again** asks for another); **Accept** replaces the line's text, and the line
+is stale until you render it. (This was a right-click on Script's text until
+2026-10-04; narration could be rewritten from 2026-10-06.)
+
+**✎ Edit words** opens the line's text in a box, with **Save** and **Cancel** —
+the same change as Script's **✎ Edit…**: the line turns stale until you render
+it, and its takes are kept. To cut a line in two or join two, use Script
+([a line's words](#a-lines-words-edit-split-merge)).
 
 ### What a chapter needs before it renders
 

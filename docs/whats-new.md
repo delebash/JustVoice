@@ -2,6 +2,12 @@
 
 ## v0.1.0
 
+- **Render: Rewrite for the narrator, the line's Style Instructions, ✎ Edit
+  words (2026-10-06)** — **✏️ Rewrite** works on narration as the narrator
+  would tell it; a line's own direction is the persona page's **Style
+  Instructions** field, in the open line, with a **↺**; and **✎ Edit words**
+  changes a line's text right on Render ([Studio → Pronunciation and Rewrite in
+  character](studio.md#pronunciation-and-rewrite-in-character))
 - **Render's "This line only" (2026-10-06)** — a line's own pace, pitch, gain
   and pause are no longer behind a closed **⚙ Override the numbers** toggle:
   they sit open in the line panel, on the persona page's own sliders (drag or

@@ -24,7 +24,7 @@
 <script setup>
 import { computed, reactive, ref, watch } from "vue";
 import {
-  AppModal, UiButton, UiChip, UiInput, UiSelect, UiTable, UiTag, UiTextarea,
+  AppModal, UiButton, UiChip, UiField, UiSelect, UiTable, UiTag, UiTextarea,
   promptDialog, pushToast,
 } from "@delebash/llm-ui";
 import { useApi } from "../stores/api.js";
@@ -98,7 +98,6 @@ const speakerOf = (l) => speakersById.value[l.speaker_id] || null;
 const personaOf = (l) => personasById.value[speakerOf(l)?.persona_id] || null;
 const speakerName = (l) => speakerOf(l)?.name || "—";
 const firstName = (l) => speakerName(l).split(" ")[0];
-const isNarrator = (l) => speakerOf(l)?.role_label === "narrator";
 
 // ── Who says the line — the same picker as Script's (decided 2026-10-05) ──
 // So a wrong speaker heard while rendering is fixed on the spot. It saves
@@ -229,6 +228,30 @@ function setDirection(l, v) {
   const next = (v || "").trim();
   if (next === (l.direction || "")) return;
   patchBlock(l, { direction: next });
+}
+// The line's direction is the persona page's Style Instructions field, in the
+// open line (decided 2026-10-06 — "render overrides should work look and act
+// the same"), shown only when the line's model takes written direction: on
+// Render the voice is fixed, so a control its model can't use is not shown
+// ("i only want to show controls for that voice" — the persona page greys
+// them instead, because there you are still choosing the voice).
+const takesWords = (l) => personaOf(l)?.directed_by === "words";
+function directionHint(l) {
+  const p = personaOf(l);
+  const own = (p?.voice_instruct || "").trim();
+  return `For this line only — added after ${p.name}'s own${own ? `: “${own}”` : " (none yet)."}`;
+}
+
+// ── ✎ Edit words — the same save as Script's ✎ Edit… (decided 2026-10-06) ──
+const editing = reactive({});   // block_id → the words being edited
+const wordsChanged = (l) => {
+  const w = (editing[l.block_id] || "").trim();
+  return !!w && w !== l.text;
+};
+async function saveWords(l) {
+  const words = (editing[l.block_id] || "").trim();
+  delete editing[l.block_id];
+  if (words && words !== l.text) await patchBlock(l, { text: words });
 }
 
 // ── Rendering ────────────────────────────────────────────────────────
@@ -383,9 +406,10 @@ async function acceptRewrite() {
   rewrite.value = null;
   await patchBlock(line, { text: text.trim() });
 }
+// Every line with a speaker, narration included (decided 2026-10-06, "your rec
+// on all go": the narrator is an ordinary persona and can have a style).
 function rewriteTitle(l) {
-  if (!l.spoken) return "Rewrite only applies to spoken lines.";
-  if (!l.speaker_id || isNarrator(l)) return "Give this line a speaker first.";
+  if (!l.speaker_id) return "Give this line a speaker first.";
   return "Reads who they are on Cast, and offers the line in their words";
 }
 
@@ -514,9 +538,12 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
           <template #text="{ row }"><span class="studio-render-ch__text">{{ row.text }}</span></template>
           <template #said="{ row }">
             <span @click.stop>
-              <UiInput v-if="personaOf(row)?.directed_by === 'words' && !BLOCKED.has(row.state)" size="small"
-                :model-value="row.direction" :placeholder="`as ${personaOf(row).name} always speaks`"
-                @blur="(e) => setDirection(row, e.target.value)" @keydown.enter="(e) => e.target.blur()" />
+              <span v-if="personaOf(row)?.directed_by === 'words' && !BLOCKED.has(row.state)"
+                class="studio-render-ch__dir" title="Open the line to change its Style Instructions"
+                @click="open = open === row.block_id ? null : row.block_id">
+                <template v-if="row.direction">“{{ row.direction }}”</template>
+                <span v-else class="jv-muted">as {{ personaOf(row).name }} always speaks</span>
+              </span>
               <span v-else-if="personaOf(row)?.directed_by === 'tags' && !BLOCKED.has(row.state)"
                 class="studio-render-ch__tags"
                 :title="`${personaOf(row).model_name} takes tags, not words — ${personaOf(row).name}'s own, set on the persona`">
@@ -568,6 +595,22 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
                   </span>
                 </div>
 
+                <UiField v-if="takesWords(row.line)" layout="block" class="jv-linepanel__wide" :hint="directionHint(row.line)">
+                  <template #label>
+                    <span class="jv-field-label-row">
+                      <span>Style Instructions (optional)</span>
+                      <span class="jv-inline-row">
+                        <UiTag intent="success">✓ {{ personaOf(row.line).model_name }}</UiTag>
+                        <UiButton intent="ghost" size="small" label="↺" :disabled="!row.line.direction"
+                          title="Clear this line's Style Instructions" @click="setDirection(row.line, '')" />
+                      </span>
+                    </span>
+                  </template>
+                  <UiTextarea :model-value="row.line.direction" :rows="2"
+                    :placeholder="`as ${personaOf(row.line).name} always speaks`"
+                    @blur="(e) => setDirection(row.line, e.target.value)" />
+                </UiField>
+
                 <div class="jv-linepanel__field jv-linepanel__field--wide">
                   <span class="jv-field-label-row jv-linepanel__wide">
                     <span class="jv-eyebrow">This line only</span>
@@ -586,10 +629,23 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
                 <div class="jv-linepanel__row">
                   <UiButton intent="secondary" size="small" label="📕 Pronunciation"
                     title="Opens the book's lexicon — select a word in the line first to add it" @click="pronounce(row.line)" />
-                  <UiButton intent="secondary" size="small"
-                    :disabled="!row.line.spoken || !row.line.speaker_id || isNarrator(row.line)"
-                    :label="row.line.spoken && row.line.speaker_id && !isNarrator(row.line) ? `✏️ Rewrite as ${firstName(row.line)}` : '✏️ Rewrite in character'"
+                  <UiButton intent="secondary" size="small" :disabled="!row.line.speaker_id"
+                    :label="row.line.speaker_id ? `✏️ Rewrite as ${firstName(row.line)}` : '✏️ Rewrite in character'"
                     :title="rewriteTitle(row.line)" @click="openRewrite(row.line)" />
+                  <UiButton intent="secondary" size="small" label="✎ Edit words"
+                    :disabled="editing[row.line.block_id] !== undefined"
+                    title="Change this line's words — split and merge are on Script" @click="editing[row.line.block_id] = row.line.text" />
+                </div>
+                <div v-if="editing[row.line.block_id] !== undefined" class="jv-linepanel__field jv-linepanel__field--wide">
+                  <UiField label="Its words" layout="block" class="jv-linepanel__wide"
+                    hint="Saving makes the line stale until you render it again — its takes are kept. Split and merge are on Script.">
+                    <UiTextarea v-model="editing[row.line.block_id]" :rows="3" />
+                  </UiField>
+                  <span class="jv-linepanel__row">
+                    <UiButton intent="primary" size="small" label="Save"
+                      :disabled="!wordsChanged(row.line)" @click="saveWords(row.line)" />
+                    <UiButton intent="ghost" size="small" label="Cancel" @click="delete editing[row.line.block_id]" />
+                  </span>
                 </div>
               </div>
 
@@ -690,6 +746,7 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
 
 <style scoped>
 .studio-render-ch { display: flex; flex-direction: column; gap: 14px; }
+.studio-render-ch__dir { cursor: pointer; }
 .studio-render-ch__verbs { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: flex-start; }
 .studio-render-ch__verb { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; max-width: 34ch; }
 .studio-render-ch__banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 0; }

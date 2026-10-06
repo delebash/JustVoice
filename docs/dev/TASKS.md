@@ -220,9 +220,29 @@ STATE:  DECIDED 2026-10-06 — "your rec on all go", on the open questions as sh
 WHY:    the narrator is an ordinary persona; one look for every control a line can change; a typo is
         noticed while listening on Render.
 NOT:    2 (per-line model settings) now; the "Edit in Script ➜" link.
-BUILT:  (in progress)
-OPEN:   per-line model settings (temperature, seed, a model's own knobs, emotion) — not decided;
-        needs server storage on the line and the render reading it. Rest (in progress).
+        Then (the user, 2026-10-06: "on render you cant change voice or model so i think we should
+        only show controls that work with that voice … i only want to show controls for that voice"):
+        Style Instructions shows only on a model that takes written direction — as the decision's
+        own words had it ("On a model that takes written direction"); the first cut greyed it on the
+        others, the persona page's rule, and was corrected before commit.
+BUILT:  2026-10-06 — plan §5 (`docs/plans/2026-10-06-batch-pick-and-findings.md`). ✏️ Rewrite on every
+        line with a speaker — Render's only narrator exception went (`isNarrator` had no other
+        reader); the line's direction is the persona page's Style Instructions field (label, the
+        model's ✓ tag, ↺, the hint quoting the persona's own) in the open line, only on a words model,
+        and the row's cell shows it and opens the line; ✎ Edit words → Its words, Save / Cancel,
+        `PATCH {text}` as Script's (`StudioRenderChapter.vue`, `MockRenderChapterView.vue`). Docs
+        studio (How it's said; Pronunciation and Rewrite; ✎ Edit words; Cast's Who they are for the
+        narrator), whats-new. Checked live on a throwaway chapter in the demo book (deleted after):
+        ✏️ Rewrite as Narrator on a narration line came back in 12 s / 1 s — "The lamp gave two
+        unsteady flickers before a heavy silence descended upon the room." (not accepted, line
+        unchanged); Style Instructions not shown on Kokoro (the row says "Kokoro takes no
+        direction"), shown on a words model (the persona answered as Qwen3-TTS in the browser only):
+        typed, saved on leaving the box, the cell showed it, ↺ cleared it; ✎ Edit words saved the new
+        words. The mock: hidden on Kokoro, shown on Cael's words line, knobs and ✎ Edit words on both.
+        No page errors.
+OPEN:   per-line model settings (temperature, seed, a model's own knobs, emotion, a tag model's tags)
+        — not decided; needs server storage on the line and the render reading it; each line would
+        show only its own model's controls. Asked 2026-10-06.
 GO:     given 2026-10-06
 
 ### Render: "This line only" — open, the persona page's controls, ↺ each and Reset to default (decided 2026-10-06)
