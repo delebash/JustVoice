@@ -706,6 +706,10 @@ const GAME_COLUMNS = [
           </button>
         </template>
 
+        <!-- Two rows on purpose (decided 2026-10-06): one row wrapped its last button
+             alone once Models to choose from joined it. Row 2 is what the language
+             model reads, right-aligned under ＋ Add / ✕ Clear personas. -->
+        <div class="studio-cast__heads">
         <div class="studio-cast__head">
           <strong>Speakers</strong>
           <template v-if="speakers.length">
@@ -718,6 +722,8 @@ const GAME_COLUMNS = [
             title="Someone Discover missed: add them, then Re-analyze or set their lines on Script." @click="addSpeaker" />
           <UiButton intent="secondary" size="small" label="✕ Clear personas" :disabled="busy || !speakers.some((s) => s.persona_id)"
             title="Unassign every persona — the speakers stay" @click="clearCast" />
+        </div>
+        <div class="studio-cast__head studio-cast__head--ai">
           <span v-if="castModelOptions.length" class="studio-cast__models"
             title="Smart-assign and ＋ New persona choose only from voices on these models — saved for this book">
             <span class="jv-hint">Models to choose from</span>
@@ -731,6 +737,7 @@ const GAME_COLUMNS = [
             :disabled="newBusy"
             title="A persona for each speaker with none — named after them, with a voice your language model matches to who they are. You see the list first."
             @click="proposeNewPersonas" />
+        </div>
         </div>
         <PageTaskStrips :features="['smart_assign']" :meta="{ projectId: project.id }" />
         <CastNewPersonas v-if="newAsk" :by-name="newAsk.byName" :proposals="newAsk.proposals" :voices="newAsk.voices" :busy="newBusy"
@@ -907,7 +914,9 @@ const GAME_COLUMNS = [
 .studio-cast__narrator-empty-text { display: flex; flex-direction: column; gap: 2px; }
 .studio-cast__narrator-empty-text strong { font-size: 13.5px; font-weight: 600; }
 .studio-cast__narrator-empty-text .jv-muted { font-size: 12px; }
+.studio-cast__heads { display: flex; flex-direction: column; gap: 8px; }
 .studio-cast__head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.studio-cast__head--ai { justify-content: flex-end; }
 .studio-cast__models { display: inline-flex; align-items: center; gap: 6px; }
 .studio-cast__models > .jv-hint { white-space: nowrap; }
 .studio-cast__head strong { font-size: 12px; }

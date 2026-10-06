@@ -125,6 +125,21 @@ GO:     given 2026-08-17
 
 ## The next build
 
+### Cast's Speakers head is two rows; the AI row lines up on the right (decided 2026-10-06)
+STATE:  DECIDED 2026-10-06 — "your rec go" (the user, with a screenshot: "the new persona button is
+        wrapping"), on the fix as shown: "Two rows on purpose instead of a wrap wherever it falls: Row 1:
+        Speakers · All 10 · No persona 10 … ＋ Add · ✕ Clear personas (as now, actions right). Row 2:
+        Models to choose from [Kokoro (28) ▾] · ✨ Smart-assign · ＋ New persona for the 10 with none.
+        The picker stays beside both buttons, as decided this morning." Question 1, "row 2 lined up on
+        the right under ＋ Add / ✕ Clear personas, or on the left under 'Speakers'? Lean: right" — rec.
+WHY:    one wrapping row (`.studio-cast__head`) left the last button alone on a line once Models to
+        choose from (~310px) joined it: ~1,070px of controls in a ~1,050px column at a 1920px window.
+NOT:    a shorter label (decided wording; it only moves the wrap); `nowrap` (overflows narrow windows).
+BUILT:  2026-10-06 — `StudioCast.vue`: `.studio-cast__heads` (two rows, 8px apart), row 2
+        `.studio-cast__head--ai` right-aligned. Below a ~1,270px window row 2 still wraps on its own.
+OPEN:   none.
+GO:     given 2026-10-06
+
 ### Script's ✓ Looks right buttons are solid (decided 2026-10-06)
 STATE:  DECIDED 2026-10-06 — "go" (the user: "the looks right buttons need to be solid the clear buttons are
         hard to see", then: "the clear buttons the one that dont have a solid color that just have an
