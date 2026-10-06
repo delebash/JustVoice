@@ -22,6 +22,12 @@
   couldn't place says *Second look found no one*. Analyze's own second look is
   a switch on Speaker attribution's Auto page, now off
   ([Studio → The second look](studio.md#the-second-look))
+- **The setup and the AI strip stop overstating (2026-10-06)** — the LLM engine
+  setup's Apply says *Setting up your model* for one model, says *both download
+  at once* only when two models both download, and drops *A model is several
+  gigabytes…* when nothing downloads. An AI task's tokens per second shows once a
+  second of output has arrived — the first tokens had read as *3000.0 tok/s*
+  ([AI features](ai-features.md#ai-tasks--where-they-show-and-the-panel))
 - **A reset no longer re-downloads the AI model (2026-10-06)** — when no choice
   is saved (a new install, or after a reset) and JustVoice's own AI-files folder
   holds no finished model, it starts on the files JustWrite already holds by

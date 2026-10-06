@@ -4032,3 +4032,7 @@ GO: needed.
 - **`capture.llm_model` is a dormant settings field** — decided KEEP. Its UI
   picker is gone but the field stays (`models.py:366`; its default still names
   `qwen3-llm-0.6b`, an engine that no longer exists).
+- **Discover lists named people who never speak as New, with 0 lines** — decided
+  LEAVE IT 2026-10-06 ("fix go", on the lean as shown: "Lean: leave it, since the 0 in
+  Lines already says so."). Seen in the end-to-end run after a reset: the courier, the
+  Warden, a Concern clerk (`docs/plans/2026-10-05-second-look-test.md`).

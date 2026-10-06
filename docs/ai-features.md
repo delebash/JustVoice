@@ -484,7 +484,9 @@ each reports on its own row on Speech engines (see
 | cancelled | grey ⊘ and `cancelled` | after 3 seconds |
 
 The numbers are what each job reports: characters, words and seconds of audio
-for a render; tokens and tokens per second for a language-model job. A batch
+for a render; tokens and tokens per second for a language-model job. Tokens per
+second shows once a second of output has arrived (since 2026-10-06), so the first
+few tokens never read as thousands a second. A batch
 (*Re-render changed*) also shows `done/total` with a real bar. A single call shows
 elapsed time only — the strip never invents a percentage for work that doesn't
 report one.
