@@ -195,6 +195,33 @@ GO: needed.
 
 ## The next build
 
+### One meaning per word — speaker, persona, cast — and one wording per fact (decided 2026-10-06)
+STATE:  DECIDED 2026-10-06 — "your rec go" (the user: "we have 3 things speaker cast persona it is
+        confusing to tell what you are referening to on render page" · "its one of those things we
+        talked about being inconsistant having 3 terms speaker cast persona and using them in similiar
+        manner withouhgt a good distinciton" · "explain what you are doing with one meaning per word
+        rule before you code anything" · "same info presented in different ways for no reason, i bet
+        you do that alot"), on the plan as shown:
+        "The rule: Speaker: only ever a person in the book (Narrator, Nettle). A list of them is the
+        book's speakers. Persona: only ever a voice from your library. Next to a speaker it's written
+        persona Narrator. Cast: only the step, and the act of giving a speaker a persona (Cast gives
+        each speaker a persona, Cast them ➜). Never a name for the speakers.
+        What I'd do, in order: 1. Find every use. Search the app's on-screen text (labels, hints,
+        tooltips, messages, banners) and the user docs for speaker, cast, persona, played by and
+        character. 2. List the ones that break the rule, each with where it is, what it says now, and
+        the proposed new text. … 3. Show you the whole list and stop. Nothing changes until you've
+        read it and said go. You can strike or change any row. 4. After your go: change the wording,
+        update the docs to match, and add the rule to the design-law doc so new screens follow it."
+        — widened as answered: "the audit … will check two things: each word means one thing
+        (speaker / cast / persona), and each fact is shown with the same words everywhere (Can be
+        directed, model names, voice gender, line states and so on). Every case goes on the list,
+        with the shared wording it should use, for your go before anything changes."
+WHY:    speaker and persona often share a name, and "cast" meant both the step and the speakers.
+NOT:    changing any wording before the list is read.
+BUILT:  (in progress — the list)
+OPEN:   the list → your go → the changes, the docs, the rule in design-law.
+GO:     given 2026-10-06 for the list; needed for the changes
+
 ### Render's grid: a Model column, and "Can be directed" in Voices' words (decided 2026-10-06)
 STATE:  DECIDED 2026-10-06 — "your rec on render grid change go" (the user: "in voices grid you have
         title can it be directed with sliders only … you are presenting the same info in render page
