@@ -790,7 +790,8 @@ touches the subject. History in [`../plans/archive/`](../plans/archive/) is not 
 **Data folders and disk** —
 [`2026-08-22-data-dirs-and-disk-reclaim.md`](../plans/2026-08-22-data-dirs-and-disk-reclaim.md).
 
-**Docs** — [`2026-08-04-docs-coverage-worklist.md`](../plans/2026-08-04-docs-coverage-worklist.md).
+**Docs** — [`2026-08-04-docs-coverage-worklist.md`](../plans/2026-08-04-docs-coverage-worklist.md) ·
+[`2026-10-06-one-word-one-meaning-audit.md`](../plans/2026-10-06-one-word-one-meaning-audit.md) (speaker / persona / cast and one wording per fact — the list, before any change).
 
 **Research kept in this folder** —
 [`2026-06-24-audiobook-nlp-competitor-research.md`](2026-06-24-audiobook-nlp-competitor-research.md) ·
