@@ -78,6 +78,13 @@ export function useCopy() {
   );
 }
 
+/** What one kind calls its chapters — `{singular, plural}` — for a screen that
+ *  lists projects of several kinds (Projects, Home): each row in ITS words, not
+ *  the open project's (C2, 2026-10-06). `kind` is the nav kind. */
+export function chapterWordForKind(kind) {
+  return dictFor(KIND_TO_USE_CASE[kind] || "unset").chapter;
+}
+
 // Plain accessor for non-component contexts (e.g. router titles).
 export function copyFor(useCase) {
   return dictFor(useCase);

@@ -103,7 +103,7 @@ const rows = computed(() => props.chapters.map((c) => ({ ...c, id: c.scene_id, s
 const CHIPS = [
   { id: "all", label: "All", tip: "" },
   { id: "check", label: "To check", tip: "Chapters with flagged lines or lines with no speaker" },
-  { id: "never", label: "Not analyzed", tip: "" },
+  { id: "never", label: "Not analyzed yet", tip: "" },
   { id: "stale", label: "Re-analyze", tip: "A speaker was added since, and the text names them" },
   { id: "problem", label: "Needs attention", tip: "Failed, can't re-cut, no text, or no dialogue found" },
 ];
@@ -432,7 +432,7 @@ function openRow(r, focus = null) {
                 <span v-else-if="row.analyzed" class="jv-muted">analyzed</span>
                 <span v-else-if="row.from_import" class="jv-muted"
                   title="The script named its speakers, so there was nothing to analyze.">from the import</span>
-                <span v-else class="jv-muted">never</span>
+                <span v-else class="jv-muted">not analyzed yet</span>
                 <template v-if="failureOf(project.id, row.scene_id, 'analyze')">
                   <UiTag v-if="recut(failureOf(project.id, row.scene_id, 'analyze'))" intent="danger"
                     :title="failureOf(project.id, row.scene_id, 'analyze').reason">can't re-cut</UiTag>

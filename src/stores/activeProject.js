@@ -9,6 +9,7 @@
 
 import { defineStore } from "pinia";
 import { readPref, writePref } from "../services/prefs.js";
+import { projectKindByNav } from "../services/projectKinds.js";
 
 // project_type (API) → nav kind (journeys KIND_NAV vocabulary).
 const KIND_BY_TYPE = {
@@ -18,12 +19,6 @@ const KIND_BY_TYPE = {
   custom: "text",
 };
 
-const KIND_META = {
-  audiobook: { icon: "📖", label: "audiobook" },
-  game:      { icon: "🎮", label: "game" },
-  podcast:   { icon: "🎙️", label: "podcast" },
-  text:      { icon: "📄", label: "text" },
-};
 
 function load() {
   const p = readPref("activeProject", {});
@@ -43,8 +38,8 @@ export const useActiveProject = defineStore("activeProject", {
   },
   getters: {
     kind: (s) => (s.id ? (KIND_BY_TYPE[s.projectType] || "text") : ""),
-    kindIcon() { return KIND_META[this.kind]?.icon || ""; },
-    kindLabel() { return KIND_META[this.kind]?.label || ""; },
+    kindIcon() { return projectKindByNav(this.kind)?.icon || ""; },
+    kindLabel() { return projectKindByNav(this.kind)?.name.toLowerCase() || ""; },
   },
   actions: {
     open(p) {

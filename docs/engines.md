@@ -493,8 +493,9 @@ server stops one left over from an earlier session when it starts — see
 Each engine group expands into its model rows, and each row carries the model's
 **facts** — read from the engine's pinned catalog, never typed twice:
 
-- **Language chip** — `en` for single-language models, `19 langs` for
-  multilingual ones (hover for the full list).
+- **Language chip** — the language's name (*English*) for single-language
+  models, *19 languages* for multilingual ones (hover for the full list, by
+  name).
 - **Capability chips** — `CLONING` (clones a voice from a short clean sample)
   and `PRESETS · N` (ships N ready-made voices). The filter row above the list
   (**All · TTS · STT · Cloning · Built-in voices**) filters on exactly these

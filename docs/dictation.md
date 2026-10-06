@@ -57,4 +57,5 @@ Every capture lives in the Captures tab. Click "→ Sample" on any row to promot
 
 ## Capture language
 
-The recogniser detects the language of each recording by default — on clean speech in the languages measured it did as well without a hint as with one. To pin a language (code-switched speech, a lot of jargon), pick it under Settings → Capture → **Capture language**; it saves the moment you pick it (it is the server's `captures.language`, also settable through `PATCH /v1/settings`). A transcription request can also pass its own `language`.
+The recogniser detects the language of each recording by default — on clean speech in the languages measured it did as well without a hint as with one. To pin a language (code-switched speech, a lot of jargon), pick it under Settings → Capture → **Capture language** (*Auto-detect* or a language by name); it
+saves the moment you pick it, and the Captures page shows what is set (it is the server's `captures.language`, also settable through `PATCH /v1/settings`). A transcription request can also pass its own `language`.

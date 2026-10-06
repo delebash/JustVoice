@@ -8,6 +8,7 @@
 import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { captureReadinessService } from "../services/projects.js";
+import { captureLanguageWord } from "../services/captureLanguage.js";
 import { pushToast } from "@delebash/llm-ui";
 import { UiButton, UiInput, UiCheckbox, UiTag, UiChip } from "@delebash/llm-ui";
 
@@ -100,9 +101,17 @@ function fmtDuration(ms) {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+// What Settings → Captures holds, shown as it is (C3 — this said "auto" always).
+const captureLanguage = ref("auto");
+async function loadCaptureLanguage() {
+  const s = await api.safeRequest("/v1/settings", null);
+  captureLanguage.value = s?.captures?.language || "auto";
+}
+
 onMounted(() => {
   refresh();
   refreshReadiness();
+  loadCaptureLanguage();
 });
 </script>
 
@@ -131,7 +140,7 @@ onMounted(() => {
             🔉 Source: <strong>Default mic</strong>
           </span>
           <span class="jv-chip-card">
-            🌐 Capture language: <strong>auto</strong>
+            🌐 Capture language: <strong>{{ captureLanguageWord(captureLanguage) }}</strong>
           </span>
           <UiCheckbox :model-value="true" disabled title="Configurable soon" class="jv-chip-card captures__autopaste">🤖 Auto-paste</UiCheckbox>
         </div>
@@ -242,7 +251,7 @@ onMounted(() => {
               <td><span class="jv-muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;">Source</span></td>
               <td>{{ selectedCapture.source }}</td>
               <td><span class="jv-muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;">Language</span></td>
-              <td>{{ selectedCapture.language ?? "auto" }}</td>
+              <td>{{ captureLanguageWord(selectedCapture.language) }}</td>
             </tr>
             <tr>
               <td><span class="jv-muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;">Duration</span></td>

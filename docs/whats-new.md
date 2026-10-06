@@ -2,6 +2,16 @@
 
 ## v0.1.0
 
+- **Languages by name, one name per kind, one name per mastering target
+  (2026-10-06)** — every language filter lists a language once (*English*, not
+  American and British apart); Voices' column is **Voice's language**; Speech
+  engines and the capture language say names, not codes, and Captures shows the
+  capture language Settings holds. A project's kind reads **Audiobook**,
+  **Game**, **Podcast** or **Text** everywhere, and Projects counts each row's
+  chapters in its own kind's word. The mastering target is named the same on
+  Overview, the top bar, Render and Export (Export showed *acx*), and Export's
+  package says **✓ ACX pass** or **✗ out of spec** after a check. Smaller words
+  line up too: *no voice yet*, *— no speaker —*, *not analyzed yet*
 - **The take in use, and one set of words for a line's state (2026-10-06)** —
   on Render a line's takes show **★ In use** on the one the chapter plays, and
   **★ Use this take** on the others; Compare offers **★ Use take B**.

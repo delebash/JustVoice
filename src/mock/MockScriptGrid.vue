@@ -24,7 +24,7 @@ const emit = defineEmits(["go"]);
 const CHIPS = [
   { id: "all", label: "All", tip: "" },
   { id: "check", label: "To check", tip: "Chapters with flagged lines or lines with no speaker" },
-  { id: "never", label: "Not analyzed", tip: "" },
+  { id: "never", label: "Not analyzed yet", tip: "" },
   { id: "stale", label: "Re-analyze", tip: "A speaker was added since, and the text names them" },
   { id: "problem", label: "Needs attention", tip: "Failed, can't re-cut, no text, or no dialogue found" },
 ];
@@ -184,7 +184,7 @@ function analyze() {
             </template>
             <template #analyzed="{ row }">
               <span v-if="!row.lines.length" class="jv-muted">no text yet</span>
-              <span v-else class="jv-muted">{{ row.script.analyzed || "never" }}</span>
+              <span v-else class="jv-muted">{{ row.script.analyzed || "not analyzed yet" }}</span>
             </template>
             <template #anchored="{ row }">
               <span v-if="row.script.analyzed" class="jv-mono">{{ row.script.anchored }}</span>

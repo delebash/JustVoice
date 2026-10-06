@@ -22,7 +22,7 @@ import {
   confirmDialog, languageName, promptDialog, pushToast,
 } from "@delebash/llm-ui";
 import { facetChoices, facetOptions, narrowed } from "../services/facets.js";
-import { DIRECTION_OPTIONS, directionCell, tagCount, voiceKindWord } from "../services/personaFacts.js";
+import { DIRECTION_OPTIONS, PERSONA_IS, baseLang, directionCell, tagCount, voiceKindLabel } from "../services/personaFacts.js";
 import { capabilities, effectLabels, personaView, silentWav, store, wait } from "./personaMock.js";
 
 const NARROW = { width: "1%", whiteSpace: "nowrap" };
@@ -68,7 +68,7 @@ function usedAs(p, u) {
 const personaFilters = computed(() => [
   { key: "model", value: modelFilter.value, test: (p, m) => p.model === m },
   { key: "direction", value: directionFilter.value, test: (p, d) => p.directed_by === d },
-  { key: "language", value: languageFilter.value, test: (p, c) => p.speaks === c },
+  { key: "language", value: languageFilter.value, test: (p, c) => baseLang(p.speaks) === c },
   { key: "usage", value: usageFilter.value, test: usedAs },
   { key: "search", value: search.value.trim().toLowerCase(),
     test: (p, q) => (p.name || "").toLowerCase().includes(q) || (p.note || "").toLowerCase().includes(q) },
@@ -82,7 +82,7 @@ const directionOptions = computed(() =>
   facetChoices(personas.value, personaFilters.value, "direction", DIRECTION_OPTIONS, (p, d) => p.directed_by === d));
 const languageOptions = computed(() => [
   { value: "", label: "Any language" },
-  ...facetOptions(personas.value, personaFilters.value, "language", (p) => p.speaks, (c, n) => `${languageName(c) || c} (${n})`),
+  ...facetOptions(personas.value, personaFilters.value, "language", (p) => baseLang(p.speaks), (c, n) => `${languageName(c) || c} (${n})`),
 ]);
 const usageOptions = computed(() => {
   const books = new Map();
@@ -304,7 +304,7 @@ function colorFor(name) {
       v-if="!personas.length"
       icon="Sparkle"
       title="No personas yet"
-      message="A persona is a voice from your library — the voice, which carries the model that speaks it, plus pace, pitch, gain, direction and effects. Cast gives one to each speaker in a book, and one persona can play many."
+      :message="PERSONA_IS"
       action-label="＋ Create your first persona"
       @action="openPersona('new')"
     />
@@ -334,7 +334,7 @@ function colorFor(name) {
       </template>
       <template #built="{ row }">
         <template v-if="voiceById[row.voice_id]">
-          {{ voiceById[row.voice_id].name }} <span class="jv-hint">{{ voiceKindWord(voiceById[row.voice_id]) }}</span>
+          {{ voiceById[row.voice_id].name }} <span class="jv-hint">{{ voiceKindLabel(voiceById[row.voice_id]) }}</span>
         </template>
         <span v-else-if="row.voice_id" class="jv-muted" title="This voice isn't in the library any more">voice missing</span>
         <span v-else class="jv-muted">no voice yet</span>

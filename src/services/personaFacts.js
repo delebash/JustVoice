@@ -102,9 +102,19 @@ export function voiceKindWord(voice) {
   return KIND_WORD[voiceKind(voice)];
 }
 
+/** What a persona is — ONE sentence for Personas, Cast and the sidebar (the
+ *  one-wording audit B9, 2026-10-06; it was phrased four ways). */
+export const PERSONA_IS =
+  "A persona is a voice from your library — the voice, which carries the model that speaks it, plus pace, "
+  + "pitch, gain, direction, effects and a lexicon. Cast gives one to each speaker in a book, and one persona "
+  + "can play many, in any book.";
+
 // ── The book's language (decided 2026-10-03: "so Cast can warn on a
 // mismatch") ──────────────────────────────────────────────────────────────
-const baseLang = (code) => String(code || "").split(/[-_]/)[0].toLowerCase();
+/** A language without its region — "en-GB" → "en". Every language FILTER lists
+ *  these, so it reads *English*, never *American English* beside *British
+ *  English* (decided 2026-10-06, the one-wording audit B7). */
+export const baseLang = (code) => String(code || "").split(/[-_]/)[0].toLowerCase();
 
 /** Same language, region aside: "en-GB" and "en" match; "ko" and "en" don't. */
 export function sameLanguage(a, b) {

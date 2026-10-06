@@ -17,6 +17,7 @@ import PageTaskStrips from "./PageTaskStrips.vue";
 import { pushToast, saveBlob } from "@delebash/llm-ui";
 import { projectsService } from "../services/projects.js";
 import { useCopy } from "../services/copy.js";
+import { masterLabel, projectMaster } from "../services/masterTargets.js";
 import { UiButton, UiTag, runAiEndpoint } from "@delebash/llm-ui";
 
 const props = defineProps({
@@ -155,7 +156,7 @@ async function copyShowNotes() {
     <div class="jv-card exportp__card">
       <div class="exportp__h">
         <strong>{{ copy.book.singular }} package</strong>
-        <UiTag :intent="exportQc?.all_ok ? 'success' : 'ghost'">{{ exportQc?.all_ok ? "ready" : "unchecked" }}</UiTag>
+        <UiTag :intent="!exportQc ? 'ghost' : exportQc.all_ok ? 'success' : 'danger'">{{ !exportQc ? "unchecked" : exportQc.all_ok ? "✓ ACX pass" : "✗ out of spec" }}</UiTag>
       </div>
       <div class="exportp__id">
         <span class="exportp__portrait">{{ (project.name || "?").slice(0, 1).toUpperCase() }}</span>
@@ -168,7 +169,7 @@ async function copyShowNotes() {
       </div>
       <div class="exportp__row"><span>Format</span><b>M4B (AAC) · chapter markers from {{ copy.chapter.singular.toLowerCase() }} titles</b></div>
       <div class="exportp__row"><span>Also export</span><b>per-{{ copy.chapter.singular.toLowerCase() }} WAV + masters (zip)</b></div>
-      <div class="exportp__row"><span>Master</span><b>{{ project.mastering_preset || (project.project_type === "audiobook" ? "ACX −20 LUFS" : "default") }}</b></div>
+      <div class="exportp__row"><span>Master</span><b>{{ masterLabel(projectMaster(project)) }}</b></div>
       <div class="exportp__actions">
         <UiButton intent="primary" :loading="exportBusy === 'm4b'" :disabled="!!exportBusy" label="⬇ Export M4B" @click="exportM4B" />
         <UiButton intent="secondary" :loading="exportBusy === 'zip'" :disabled="!!exportBusy" :label="`⬇ ${copy.chapter.singular} WAVs (zip)`" @click="exportChapterWavs" />

@@ -56,7 +56,7 @@ Deleting it touches nothing else.
   asks for one — or pick one on Studio's Cast step.
   **Discover** shows the speakers it finds as *In this book*; remove one there
   (it asks first) and its row turns *New*, ready to ＋ Add back.
-- **Game voicelines** — *Emberfall VO*, five lines with stable line ids.
+- **Game** — *Emberfall VO*, five lines with stable line ids.
 - **Podcast** — *Signal & Noise ep. 42*, three speakers.
 
 The book lives in the app's `samples/` folder, the same layout JustWrite ships

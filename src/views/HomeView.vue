@@ -31,6 +31,8 @@ import { useEnginesStore } from "../stores/engines.js";
 import { pushToast } from "@delebash/llm-ui";
 import { UiButton, UiTag, UiChip } from "@delebash/llm-ui";
 import { chapterRendered, needSpeaker, partOf } from "../services/lineStates.js";
+import { PROJECT_KINDS, kindLabel, projectKind } from "../services/projectKinds.js";
+import { chapterWordForKind } from "../services/copy.js";
 
 const onboarding = useOnboarding();
 const api = useApi();
@@ -149,13 +151,14 @@ const continueProject = computed(() => {
   )[0] || null;
 });
 
-const KIND_META = {
-  audiobook:       { icon: "📖", label: "audiobook", unit: "chapters", one: "chapter" },
-  game_voicelines: { icon: "🎮", label: "game",      unit: "quests",   one: "quest" },
-  podcast:         { icon: "🎙️", label: "podcast",   unit: "episodes", one: "episode" },
-  custom:          { icon: "📄", label: "text",      unit: "sections", one: "section" },
-};
-const continueMeta = computed(() => KIND_META[continueProject.value?.project_type] || KIND_META.custom);
+// The kind's icon and name (services/projectKinds.js) and its chapter word
+// (copy.js) — Home said "quests" and "episodes" where Studio says Scenes and
+// Segments (the one-wording audit B9, 2026-10-06).
+const continueMeta = computed(() => {
+  const k = projectKind(continueProject.value?.project_type);
+  const w = chapterWordForKind(k.kind);
+  return { icon: k.icon, label: k.name.toLowerCase(), unit: w.plural.toLowerCase(), one: w.singular.toLowerCase() };
+});
 
 const continueStatus = computed(() => {
   const p = continueProject.value;
@@ -231,12 +234,7 @@ function openScriptToCheck() {
 }
 
 // ── Start something (kind pills → Projects create flow) ──────────────
-const KIND_PILLS = [
-  { kind: "audiobook",       label: "📖 Audiobook" },
-  { kind: "game_voicelines", label: "🎮 Game" },
-  { kind: "podcast",         label: "🎙️ Podcast" },
-  { kind: "custom",          label: "📄 Text" },
-];
+const KIND_PILLS = Object.keys(PROJECT_KINDS).map((kind) => ({ kind, label: kindLabel(kind) }));
 function startKind(kind) {
   // Projects view consumes this on mount and opens the create flow with
   // the kind preselected (journeys kind-picker step).

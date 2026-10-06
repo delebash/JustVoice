@@ -26,6 +26,7 @@ import { useApi } from "../stores/api.js";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";
 import { isStepFor, stepsFor } from "./studioSteps.js";
 import { blockStats, projectState, stepStatus } from "./studioStatus.js";
+import { masterLabel } from "../services/masterTargets.js";
 import { useCopy } from "../services/copy.js";
 import { chapterRunFor, onChapterDone } from "../services/chapterRun.js";
 import { pushToast } from "@delebash/llm-ui";
@@ -419,12 +420,12 @@ const masterPill = computed(() => {
   const m = masterTarget.value;
   if (!m) return "no master target";
   if (!m.preset) return "no master target · raw audio";
-  if (!m.ffmpeg) return `${m.preset} target · ffmpeg missing — renders stay raw`;
+  if (!m.ffmpeg) return `${masterLabel(m.preset)} target · ffmpeg missing — renders stay raw`;
   const t = m.targets || {};
   const numbers = t.loudness_target_lufs
     ? ` · ${t.loudness_target_lufs} LUFS · peak ${t.true_peak_dbfs} dB`
     : "";
-  return `${m.preset} target${numbers}`;
+  return `${masterLabel(m.preset)} target${numbers}`;
 });
 
 const masterPillIntent = computed(() => {

@@ -40,7 +40,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import { useApi } from "../stores/api.js";
-import { DownloadBar, UiButton, confirmDialog, fmtBytes, openExternal, openPath, promptDialog, pushToast } from "@delebash/llm-ui";
+import { DownloadBar, UiButton, confirmDialog, fmtBytes, languageName, openExternal, openPath, promptDialog, pushToast } from "@delebash/llm-ui";
 import { makeEngineDownloadTask, makeEngineLoadTask, makeJobDownloadTask } from "../services/ttsJobChannel.js";
 import { setDefaultVariant as setEngineDefault } from "../services/engineDefaults.js";
 // The row's three-dot menu — reka-ui's DropdownMenu, the same import shape
@@ -500,10 +500,10 @@ async function deleteModel(e, v) {
 function langText(v) {
   const ls = v.languages || [];
   if (!ls.length) return "";
-  return ls.length === 1 ? ls[0] : `${ls.length} langs`;
+  return ls.length === 1 ? languageName(ls[0]) || ls[0] : `${ls.length} languages`;
 }
 function langTitle(v) {
-  return (v.languages || []).join(" · ");
+  return (v.languages || []).map((c) => languageName(c) || c).join(" · ");
 }
 // Weights-licence chip — the kit's use-limited warn pattern, retold
 // honestly for JV: every bundled engine's weights permit commercial output

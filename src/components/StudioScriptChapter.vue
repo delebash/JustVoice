@@ -159,7 +159,7 @@ async function addToCast(name) {
   }
 }
 const narratorId = computed(() => page.value?.narrator_id || null);
-const nameOf = (id) => speakers.value.find((s) => s.speaker_id === id)?.name || (id ? "someone removed" : "nobody");
+const nameOf = (id) => speakers.value.find((s) => s.speaker_id === id)?.name || (id ? "someone removed" : "no speaker");
 
 // The chapter's own counts (the no-speaker banner, Next to check), and the
 // chips and the speaker list each counted under the other (decided 2026-10-05).
@@ -717,10 +717,10 @@ const flagged = (ln) => (ln.flags || []).length > 0;
           <template #by="{ row }">
             <span :class="{ 'studio-script-ch__ev': decidedBy(row, lines).quoted }" :title="decidedBy(row, lines).tip">{{ decidedBy(row, lines).text }}</span>
             <span v-if="row.source === 'corrected' && wasBefore(undoStack, row.id) !== undefined" class="jv-hint">
-              · was {{ wasBefore(undoStack, row.id) ? nameOf(wasBefore(undoStack, row.id)) : "no one" }}</span>
+              · was {{ wasBefore(undoStack, row.id) ? nameOf(wasBefore(undoStack, row.id)) : "no speaker" }}</span>
             <div v-if="decidedBy(row, lines).sub" class="jv-hint">{{ decidedBy(row, lines).sub }}</div>
             <div v-if="row.changed">
-              <UiTag intent="accent2" title="The last Analyze gave this line a different speaker">changed · was {{ row.prev_speaker_id ? nameOf(row.prev_speaker_id) : "no one" }}</UiTag>
+              <UiTag intent="accent2" title="The last Analyze gave this line a different speaker">changed · was {{ row.prev_speaker_id ? nameOf(row.prev_speaker_id) : "no speaker" }}</UiTag>
             </div>
           </template>
           <template #text="{ row }">

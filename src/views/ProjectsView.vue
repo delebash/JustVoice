@@ -22,7 +22,8 @@ import { projectsService } from "../services/projects.js";
 import { openProjectInStudio } from "../services/openProject.js";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "@delebash/llm-ui";
-import { useCopy } from "../services/copy.js";
+import { chapterWordForKind, useCopy } from "../services/copy.js";
+import { PROJECT_KINDS, kindLabel, projectKind } from "../services/projectKinds.js";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useOnboarding } from "../stores/onboarding.js";
 import { useProjectsStore } from "../stores/projects.js";
@@ -57,14 +58,16 @@ const filtered = computed(() => {
   return list;
 });
 
+// One kinds map (services/projectKinds.js — the one-wording audit B9, 2026-10-06).
 const PROJECT_TYPES = [
   { id: "all", label: "All" },
-  { id: "audiobook", label: "📖 Audiobooks" },
-  { id: "game_voicelines", label: "🎮 Games" },
-  { id: "podcast", label: "🎙️ Podcasts" },
-  { id: "custom", label: "📄 Text" },
+  ...Object.entries(PROJECT_KINDS).map(([id, k]) => ({ id, label: `${k.icon} ${k.plural}` })),
 ];
-const KIND_ICON = { audiobook: "📖", game_voicelines: "🎮", podcast: "🎙️", custom: "📄" };
+// Each row's chapter count in ITS kind's word — it was the open project's (C2).
+const chaptersWord = (p) => {
+  const w = chapterWordForKind(projectKind(p.project_type).kind);
+  return (p.scene_count === 1 ? w.singular : w.plural).toLowerCase();
+};
 
 function fmtAgo(iso) {
   if (!iso) return "—";
@@ -74,12 +77,6 @@ function fmtAgo(iso) {
   return `${Math.floor(ago / 86_400_000)} d`;
 }
 
-const PROJECT_TYPE_LABEL = {
-  audiobook: "Audiobook",
-  game_voicelines: "Game",
-  podcast: "Podcast",
-  custom: "Custom",
-};
 
 // Refresh the shared projects store. Called after every mutation here
 // (create/import) so all consumers — Chapters, Studio, etc. — reflect it.
@@ -223,8 +220,8 @@ onActivated(() => {
           title="Open in Studio — its Overview holds the settings and where each step stands"
           @click="openProjectInStudio(activeProject, p)">
           <td><strong class="projects__name">{{ p.name }}</strong></td>
-          <td>{{ KIND_ICON[p.project_type] || "📄" }} {{ PROJECT_TYPE_LABEL[p.project_type] ?? p.project_type }}</td>
-          <td class="projects__num jv-muted">{{ p.scene_count }} {{ copy.chapter.plural.toLowerCase() }}</td>
+          <td>{{ kindLabel(p.project_type) }}</td>
+          <td class="projects__num jv-muted">{{ p.scene_count }} {{ chaptersWord(p) }}</td>
           <td class="projects__num jv-muted">{{ fmtAgo(p.updated_at) }}</td>
         </tr>
       </tbody>

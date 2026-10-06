@@ -6,8 +6,8 @@ always lands on its **Overview**. From there the steps run in order:
 
 **Discover → Script → Cast → Render → Export**
 
-The step names adapt to your project kind (chapters for audiobooks, quests for
-game projects, episodes for podcasts) — same flow, your vocabulary. Each step's
+The step names adapt to your project kind (chapters for audiobooks, scenes for
+game projects, segments for podcasts) — same flow, your vocabulary. Each step's
 card says where it stands in the same words as the Overview's row for it —
 *3 of 5 chapters scanned*, *9 of 10 speakers cast*, *412 of 2,140 lines
 rendered* — a count always names what it counts.
@@ -242,7 +242,7 @@ One row per chapter:
 | Column | What it says |
 |---|---|
 | **Lines** | every line with text, narration included |
-| **Analyzed** | when Analyze last ran on it — *never*, *from the import*, or a time. A chapter analyzed before this version shows *analyzed* with no time |
+| **Analyzed** | when Analyze last ran on it — *not analyzed yet*, *from the import*, or a time. A chapter analyzed before this version shows *analyzed* with no time |
 | **Book says** | lines whose speaker the book names next to them, or elsewhere in the same paragraph |
 | **AI decided** | lines whose speaker the AI worked out |
 | **Flagged** | lines that carry a mark — [where to read closely](#the-marks-where-to-read-closely) |
@@ -273,7 +273,7 @@ A row can also carry a tag:
   opens Render.
 
 **The chips** above the grid show the chapters in one state: **To check**
-(flagged lines, or lines with no speaker), **Not analyzed**, **Re-analyze**
+(flagged lines, or lines with no speaker), **Not analyzed yet**, **Re-analyze**
 (someone was added since, or lines changed since), **Needs attention** (failed, no text, no dialogue
 found). The tick box in the header ticks **only the chapters shown**, so "To
 check" → tick all → Analyze re-runs exactly those.
@@ -817,11 +817,11 @@ shows as *(0)*.
 Each row shows:
 
 - the persona's name, then its voice, model and language (*Sohee · Qwen3-TTS
-  CustomVoice · Korean*), or *no voice*;
+  CustomVoice · Korean*), or *no voice yet*;
 - **✓ plays Nettle, Marius** — who in this book it already plays;
 - whether it can be directed, the same words as the Personas page: **✓ written
   direction**, **✓ 19 tags** (the model's own tags) or **sliders only** (pace,
-  pitch and gain — no words), or **no voice**;
+  pitch and gain — no words), or **no voice yet**;
 - **▶** plays the persona — its voice speaking the stock line in its language,
   with its pace, pitch, gain, direction and effects, through the same path a
   chapter renders. If its model isn't loaded, JustVoice asks before loading it
@@ -1154,3 +1154,8 @@ peak against the ACX limits. It measures the **mastered**
 chapter — the audio the export would ship — so a pass means the finished book
 passes. If ffmpeg is missing, QC still runs and tells you the numbers are for
 the raw render and not what the finished book would measure.
+
+Studio · Export checks the same way. Its package reads **unchecked** until you
+check it there, then **✓ ACX pass** or **✗ out of spec**, the checklist below
+says which limit, and its **Master** row names the project's mastering target
+the way Overview does (*ACX*, *Podcast*, *None — raw*).

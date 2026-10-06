@@ -30,7 +30,8 @@ import {
 } from "@delebash/llm-ui";
 import { useApi } from "../stores/api.js";
 import DeliveryKnobs from "./DeliveryKnobs.vue";
-import { directionCell, tagCount } from "../services/personaFacts.js";
+import { directionCell, tagCount, voiceKind } from "../services/personaFacts.js";
+import { useVoicesStore } from "../stores/voices.js";
 import { useCopy } from "../services/copy.js";
 import { useKeptScroll } from "../composables/useKeptScroll.js";
 import { mediaUrl, renderChapter, renderLines } from "../services/renderRun.js";
@@ -108,6 +109,12 @@ const speakersById = computed(() => Object.fromEntries(props.speakers.map((s) =>
 const personasById = computed(() => Object.fromEntries(props.personas.map((p) => [p.id, p])));
 const speakerOf = (l) => speakersById.value[l.speaker_id] || null;
 const personaOf = (l) => personasById.value[speakerOf(l)?.persona_id] || null;
+// A Designed voice is drawn from its description on every render, so a new seed
+// can change who speaks (C6, 2026-10-06 — the hint keyed on written direction).
+const voicesStore = useVoicesStore();
+void voicesStore.ensureLoaded();
+const designedVoice = (l) =>
+  voiceKind(voicesStore.items.find((v) => v.id === personaOf(l)?.voice_id)) === "design";
 const speakerName = (l) => speakerOf(l)?.name || "—";
 const firstName = (l) => speakerName(l).split(" ")[0];
 
@@ -585,7 +592,7 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
               {{ speakerName(row) }}
               <span v-if="overrideSet(row)" class="studio-render-ch__dot" title="This line has render overrides" />
             </span>
-            <span v-else class="jv-muted">— nobody —</span>
+            <span v-else class="jv-muted">— no speaker —</span>
           </template>
           <template #text="{ row }"><span class="studio-render-ch__text">{{ row.text }}</span></template>
           <template #model="{ row }">
@@ -765,7 +772,7 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
                 <div class="jv-takes__foot">
                   <UiButton intent="secondary" size="small" label="↻ New take"
                     :disabled="BLOCKED.has(row.line.state) || !!running" :loading="busy[row.line.block_id]"
-                    :title="personaOf(row.line)?.directed_by === 'words'
+                    :title="designedVoice(row.line)
                       ? 'Reads the line again with a new seed — the takes you have are kept. On a voice made from a description, a new seed can change who speaks.'
                       : 'Reads the line again with a new seed — the takes you have are kept'"
                     @click="renderOne(row.line, { newTake: true })" />

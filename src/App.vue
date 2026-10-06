@@ -18,6 +18,9 @@ import LeftoverEnginesHelp from "./components/LeftoverEnginesHelp.vue";
 import EngineTermsDialog from "./components/EngineTermsDialog.vue";
 import { AiSetupOffer, AiStatusButton, BootModelLoad, HelpDrawer, HelpTrigger, LlmUiHosts, TitleBar, isTauriShell, openExternal, pushToast, refreshRunnerModels, useAiTasksNav, useAiTasksStore, useModelApply, useRunnerModels, warmModelId } from "@delebash/llm-ui";
 import { readPref, writePref } from "./services/prefs.js";
+import { projectKind } from "./services/projectKinds.js";
+import { masterLabel } from "./services/masterTargets.js";
+import { PERSONA_IS } from "./services/personaFacts.js";
 
 // View components are lazy-loaded by the router (router/index.js); App.vue holds
 // only the sidebar metadata (VIEWS) keyed by route name.
@@ -54,7 +57,7 @@ const VIEWS = [
   // baked into it ("Kokoro 54 + Qwen 9") — numbers that go stale the moment
   // an engine ships a voice, and which the type filters show anyway.
   { id: "voices",    lane: "library", label: "Voices",    icon: "🎙️", lede: "" },
-  { id: "personas",  lane: "library", label: "Personas",  icon: "🎭", lede: "Each persona is a voice — which carries the model that speaks it — plus pace, pitch, gain, direction, effects, a lexicon and a short note on how it sounds. Cast gives one to each speaker in a book, and one persona can play many speakers, in any book.", visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
+  { id: "personas",  lane: "library", label: "Personas",  icon: "🎭", lede: PERSONA_IS, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
   { id: "lexicons",  lane: "library", label: "Lexicons",  icon: "📚", lede: "Pronunciation dictionaries. Force \"Beauchamp\" → \"BEE-chum\", domain words → consistent phoneme-level pronunciation across a whole book. Per-persona override.", visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
   { id: "effects",   lane: "library", label: "Effects",   icon: "🎛️", lede: "Pedalboard-backed effects chain. Apply non-destructively — creates a new generation version that preserves the original. 8 types · 4 built-in presets + custom.", visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
   // (The Voice engines page left the sidebar in the parity batch, 2026-08-06 —
@@ -105,12 +108,6 @@ const KIND_TO_USE_CASE = { audiobook: "audiobook", game: "game", podcast: "podca
 const switcherOpen = ref(false);
 const switcherRef = ref(null);
 const switcherProjects = ref([]);
-const SWITCH_KIND_META = {
-  audiobook: { icon: "📖", label: "audiobook" },
-  game_voicelines: { icon: "🎮", label: "game" },
-  podcast: { icon: "🎙️", label: "podcast" },
-  custom: { icon: "📄", label: "text" },
-};
 async function toggleSwitcher() {
   switcherOpen.value = !switcherOpen.value;
   if (!switcherOpen.value) return;
@@ -542,10 +539,10 @@ onMounted(async () => {
                 type="button"
                 class="jv-topbar__menu-item"
                 :class="{ 'jv-topbar__menu-item--current': p.id === activeProject.id }"
-                :title="`Switch — the sidebar re-tailors to ${SWITCH_KIND_META[p.project_type]?.label || 'this kind'}`"
+                :title="`Switch — the sidebar re-tailors to ${projectKind(p.project_type).name.toLowerCase()}`"
                 @click="switchProject(p)"
               >
-                <span>{{ SWITCH_KIND_META[p.project_type]?.icon || "📄" }}</span>
+                <span>{{ projectKind(p.project_type).icon }}</span>
                 <span class="jv-topbar__menu-name">{{ p.name }}</span>
                 <span v-if="p.id === activeProject.id" class="jv-topbar__menu-check">✓</span>
               </button>
@@ -558,7 +555,7 @@ onMounted(async () => {
             <span class="jv-topbar__proj-k">Kind</span><b>{{ activeProject.kindIcon }} {{ activeProject.kindLabel }}</b>
           </span>
           <span v-if="activeProject.master" class="jv-topbar__proj" title="Mastering preset applied on render">
-            <span class="jv-topbar__proj-k">Master</span><b>{{ activeProject.master }}</b>
+            <span class="jv-topbar__proj-k">Master</span><b>{{ masterLabel(activeProject.master) }}</b>
           </span>
         </template>
 

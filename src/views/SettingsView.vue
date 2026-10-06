@@ -15,6 +15,7 @@ import { useActiveProject } from "../stores/activeProject.js";
 import { useUiStore } from "../stores/ui.js";
 import { useServerStore } from "../stores/server.js";
 import { SETTINGS_SECTION_IDS } from "./settingsSections.js";
+import { CAPTURE_LANGUAGES, captureLanguageWord } from "../services/captureLanguage.js";
 import CacheView from "./CacheView.vue";
 import AudioChannelsView from "./AudioChannelsView.vue";
 import WebhooksView from "./WebhooksView.vue";
@@ -520,6 +521,7 @@ const APP_VERSION = "0.1.0";
 // refinement-mode dropdown, auto-paste, a playback voice and a hotkeys card
 // with fixed chords. Global hotkeys are an idea (docs/dev/IDEAS.md).
 const captureLanguage = ref("auto");
+const CAPTURE_LANGUAGE_OPTIONS = ["auto", ...CAPTURE_LANGUAGES].map((c) => ({ value: c, label: captureLanguageWord(c) }));
 async function loadCaptureLanguage() {
   const s = await api.safeRequest("/v1/settings", null);
   captureLanguage.value = s?.captures?.language || "auto";
@@ -1535,20 +1537,13 @@ onMounted(() => {
           <div class="setting-row__head">
             <div>
               <div class="setting-row__title">Capture language</div>
-              <div class="setting-row__desc">Language hint for speech recognition. "auto" detects per-recording.</div>
+              <div class="setting-row__desc">Language hint for speech recognition. Auto-detect works it out for each recording.</div>
             </div>
             <UiSelect
               :model-value="captureLanguage"
               width="name"
               @update:model-value="saveCaptureLanguage"
-              :options="[
-                { label: 'auto', value: 'auto' },
-                { label: 'English (en)', value: 'en' },
-                { label: 'Spanish (es)', value: 'es' },
-                { label: 'French (fr)', value: 'fr' },
-                { label: 'German (de)', value: 'de' },
-                { label: 'Japanese (ja)', value: 'ja' },
-              ]"
+              :options="CAPTURE_LANGUAGE_OPTIONS"
             />
           </div>
         </div>

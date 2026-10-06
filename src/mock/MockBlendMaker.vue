@@ -11,7 +11,7 @@ import {
   UiButton, UiField, UiInput, UiSegmented, UiSelect, UiSlider, languageName, pushToast,
 } from "@delebash/llm-ui";
 import { facetOptions, facetTotal, narrowed } from "../services/facets.js";
-import { voiceLabel } from "../services/personaFacts.js";
+import { baseLang, voiceLabel } from "../services/personaFacts.js";
 import { genderWord, voiceGender } from "../services/voiceGender.js";
 import { keepVoice, silentWav, store, wait } from "./personaMock.js";
 
@@ -41,12 +41,12 @@ const genderFilter = ref("");
 // Language and gender each list only what the other leaves (decided
 // 2026-10-05, services/facets.js) — French + Male left every picker empty.
 const packFilters = computed(() => [
-  { key: "lang", value: langFilter.value, test: (v, c) => v.language === c },
+  { key: "lang", value: langFilter.value, test: (v, c) => baseLang(v.language) === c },
   { key: "gender", value: genderFilter.value, test: (v, g) => voiceGender(v) === g },
 ]);
 const langOptions = computed(() => [
   { value: "", label: `Any language (${facetTotal(pack.value, packFilters.value, "lang")})` },
-  ...facetOptions(pack.value, packFilters.value, "lang", (v) => v.language, (c, n) => `${languageName(c) || c} (${n})`),
+  ...facetOptions(pack.value, packFilters.value, "lang", (v) => baseLang(v.language), (c, n) => `${languageName(c) || c} (${n})`),
 ]);
 const genderOptions = computed(() => [
   { value: "", label: "Any gender" },

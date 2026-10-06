@@ -56,7 +56,7 @@ import { lexiconMatches } from "../services/lexiconPreview.js";
 import { openProjectInStudio } from "../services/openProject.js";
 import { projectsService } from "../services/projects.js";
 import {
-  DIRECTION_OPTIONS, VOICE_KINDS as KINDS, directionCell, directionSentence, tagCount, voiceKind as kindOf, voiceKindLabel,
+  DIRECTION_OPTIONS, VOICE_KINDS as KINDS, baseLang, directionCell, directionSentence, tagCount, voiceKind as kindOf, voiceKindLabel,
   voiceLabel,
 } from "../services/personaFacts.js";
 import { auditionVoice } from "../services/voiceAudition.js";
@@ -290,7 +290,6 @@ const OFF_REASON = {
 const modelFilter = ref("");
 const genderFilter = ref("");
 const languageFilter = ref("");
-const baseLang = (code) => String(code || "").split(/[-_]/)[0].toLowerCase();
 
 // Every filter, for the shared rule; Type always has a kind chosen.
 const voiceFilters = computed(() => [
@@ -478,9 +477,8 @@ const languageNote = computed(() => {
   const v = voice.value;
   const lang = effectiveLanguage.value;
   if (!v || !lang || !v.language) return "";
-  const base = (code) => String(code).split("-")[0].toLowerCase();
-  return base(lang) !== base(v.language)
-    ? `Speaks ${languageName(lang) || lang} · voice is ${languageName(v.language) || v.language}`
+  return baseLang(lang) !== baseLang(v.language)
+    ? `Speaks ${languageName(lang) || lang} · Voice's language: ${languageName(v.language) || v.language}`
     : "";
 });
 // What the persona actually speaks: where the voice or model allows one

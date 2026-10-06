@@ -31,7 +31,7 @@ import {
 } from "@delebash/llm-ui";
 import { handleTermsRefusal } from "../services/engineTerms.js";
 import { facetChoices, facetOptions, narrowed } from "../services/facets.js";
-import { DIRECTION_OPTIONS, directionCell, tagCount, voiceKindLabel } from "../services/personaFacts.js";
+import { DIRECTION_OPTIONS, PERSONA_IS, baseLang, directionCell, tagCount, voiceKindLabel } from "../services/personaFacts.js";
 import { auditionPersona } from "../services/voiceAudition.js";
 import { useApi } from "../stores/api.js";
 import { usePersonasStore } from "../stores/personas.js";
@@ -96,7 +96,7 @@ function usedAs(p, u) {
 const personaFilters = computed(() => [
   { key: "model", value: modelFilter.value, test: (p, m) => p.model === m },
   { key: "direction", value: directionFilter.value, test: (p, d) => p.directed_by === d },
-  { key: "language", value: languageFilter.value, test: (p, c) => p.speaks === c },
+  { key: "language", value: languageFilter.value, test: (p, c) => baseLang(p.speaks) === c },
   { key: "usage", value: usageFilter.value, test: usedAs },
   { key: "search", value: search.value.trim().toLowerCase(),
     test: (p, q) => (p.name || "").toLowerCase().includes(q) || (p.note || "").toLowerCase().includes(q) },
@@ -110,7 +110,7 @@ const directionOptions = computed(() =>
   facetChoices(personas.value, personaFilters.value, "direction", DIRECTION_OPTIONS, (p, d) => p.directed_by === d));
 const languageOptions = computed(() => [
   { value: "", label: "Any language" },
-  ...facetOptions(personas.value, personaFilters.value, "language", (p) => p.speaks, (c, n) => `${languageName(c) || c} (${n})`),
+  ...facetOptions(personas.value, personaFilters.value, "language", (p) => baseLang(p.speaks), (c, n) => `${languageName(c) || c} (${n})`),
 ]);
 const usageOptions = computed(() => {
   const books = new Map();
@@ -426,7 +426,7 @@ onActivated(() => { if (mounted) loadAll(); mounted = true; });
       v-else-if="!personas.length"
       icon="Sparkle"
       title="No personas yet"
-      message="A persona is a voice from your library — the voice, which carries the model that speaks it, plus pace, pitch, gain, direction and effects. Cast gives one to each speaker in a book, and one persona can play many."
+      :message="PERSONA_IS"
       action-label="＋ Create your first persona"
       @action="openPersona('new')"
     />

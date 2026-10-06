@@ -143,7 +143,7 @@ function keepTake() {
         </div>
         <div class="jv-col jv-col--start">
           <div class="jv-field-row">
-            <UiField label="Spoken by" layout="block">
+            <UiField label="Model" layout="block">
               <UiSelect v-model="cloneModel" :options="cloneOptions" width="name" />
             </UiField>
             <UiButton intent="secondary" :label="chosenTake ? `📌 Keep take ${chosenTake.n}` : '📌 Keep a take'"

@@ -41,7 +41,7 @@ import { usePersonasStore } from "../stores/personas.js";
 import { projectsService } from "../services/projects.js";
 import { readPref, writePref } from "../services/prefs.js";
 import { handleTermsRefusal } from "../services/engineTerms.js";
-import { DIRECTION_OPTIONS, directionCell, sameLanguage, tagCount } from "../services/personaFacts.js";
+import { DIRECTION_OPTIONS, PERSONA_IS, baseLang, directionCell, sameLanguage, tagCount } from "../services/personaFacts.js";
 import { facetChoices, facetOptions, narrowed } from "../services/facets.js";
 import { auditionPersona } from "../services/voiceAudition.js";
 import { voiceGender, voiceGenderWord } from "../services/voiceGender.js";
@@ -171,7 +171,7 @@ const personaLanguageFilter = ref("");
 const personaFilters = computed(() => [
   { key: "model", value: personaModelFilter.value, test: (p, m) => p.model === m },
   { key: "direction", value: personaDirectionFilter.value, test: (p, d) => p.directed_by === d },
-  { key: "language", value: personaLanguageFilter.value, test: (p, c) => p.speaks === c },
+  { key: "language", value: personaLanguageFilter.value, test: (p, c) => baseLang(p.speaks) === c },
   { key: "search", value: personaQuery.value.trim().toLowerCase(),
     test: (p, q) => (p.name || "").toLowerCase().includes(q) || (p.note || "").toLowerCase().includes(q) },
 ]);
@@ -184,7 +184,7 @@ const directionOptions = computed(() =>
   facetChoices(props.personas, personaFilters.value, "direction", DIRECTION_OPTIONS, (p, d) => p.directed_by === d));
 const languageOptions = computed(() => [
   { value: "", label: "Any language" },
-  ...facetOptions(props.personas, personaFilters.value, "language", (p) => p.speaks, (c, n) => `${languageName(c) || c} (${n})`),
+  ...facetOptions(props.personas, personaFilters.value, "language", (p) => baseLang(p.speaks), (c, n) => `${languageName(c) || c} (${n})`),
 ]);
 const shownPersonas = computed(() => narrowed(props.personas, personaFilters.value));
 // Who in this book each persona plays — "✓ June, Marius".
@@ -203,7 +203,7 @@ onMounted(async () => {
   caps.value = r?.engines || {};
 });
 function directed(p) {
-  if (!p.voice_id) return { intent: "secondary", label: "no voice", title: "This persona has no voice yet — pick one on its page." };
+  if (!p.voice_id) return { intent: "secondary", label: "no voice yet", title: "This persona has no voice yet — pick one on its page." };
   return directionCell(p.directed_by, tagCount(caps.value[p.model]));
 }
 
@@ -791,7 +791,7 @@ const GAME_COLUMNS = [
             @click="newPersona" />
         </div>
         <EmptyState v-if="!personas.length" icon="Sparkle" title="No personas yet" compact
-          message="A persona is a voice and how it's spoken. Make one, then give it to a speaker here."
+          :message="PERSONA_IS"
           action-label="＋ New persona" @action="newPersona" />
         <template v-else>
           <div class="studio-cast__picking">Select a speaker, then click a persona to assign it.</div>
@@ -804,7 +804,7 @@ const GAME_COLUMNS = [
               aria-label="Speaks" :options="languageOptions" />
           </div>
           <div class="studio-cast__rows">
-            <div v-if="!shownPersonas.length" class="jv-muted studio-cast__rows-empty">No personas match this filter.</div>
+            <div v-if="!shownPersonas.length" class="jv-muted studio-cast__rows-empty">No persona matches these filters.</div>
             <div v-for="p in shownPersonas" :key="p.id" class="studio-cast__prow"
               :class="{ 'studio-cast__prow--on': selected?.persona_id === p.id }">
               <button type="button" class="studio-cast__prow-main" :disabled="!selected || busy"
@@ -813,7 +813,7 @@ const GAME_COLUMNS = [
                 <span class="studio-cast__prow-avatar" :style="{ background: colorFor(p.name) }">{{ (p.name || "?").charAt(0).toUpperCase() }}</span>
                 <span class="studio-cast__prow-text">
                   <strong class="studio-cast__prow-name">{{ p.name }}</strong>
-                  <span class="studio-cast__prow-meta">{{ [voiceById[p.voice_id]?.name, personaEngine(p), languageName(p.speaks)].filter(Boolean).join(" · ") || "no voice" }}</span>
+                  <span class="studio-cast__prow-meta">{{ [voiceById[p.voice_id]?.name, personaEngine(p), languageName(p.speaks)].filter(Boolean).join(" · ") || "no voice yet" }}</span>
                   <span v-if="playsHere[p.id]" class="studio-cast__prow-plays">✓ plays {{ playsHere[p.id] }}</span>
                 </span>
               </button>

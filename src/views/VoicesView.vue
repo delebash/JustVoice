@@ -10,7 +10,7 @@ import {
   DropdownMenuContent, DropdownMenuItem, DropdownMenuPortal,
   DropdownMenuRoot, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "reka-ui";
-import { DIRECTION_OPTIONS, VOICE_KINDS, directionCell, tagCount, voiceKind, voiceKindLabel } from "../services/personaFacts.js";
+import { DIRECTION_OPTIONS, VOICE_KINDS, baseLang, directionCell, tagCount, voiceKind, voiceKindLabel } from "../services/personaFacts.js";
 import { readPref, writePref } from "../services/prefs.js";
 import { rowOptions } from "../services/capabilities.js";
 import { voiceRowState } from "../services/voiceGrid.js";
@@ -222,7 +222,7 @@ const genderOf = (v) => voiceGender(v);
 const voiceFilters = computed(() => [
   { key: "engine", value: engineFilter.value, empty: "all", test: (v, x) => (v.model_name || v.engine) === x },
   { key: "type", value: typeFilter.value, empty: "all", test: (v, x) => voiceKind(v) === x },
-  { key: "lang", value: langFilter.value, empty: "all", test: (v, x) => v.language === x },
+  { key: "lang", value: langFilter.value, empty: "all", test: (v, x) => baseLang(v.language) === x },
   { key: "gender", value: genderFilter.value, empty: "all", test: (v, x) => genderOf(v) === x },
   { key: "direction", value: directionFilter.value, test: (v, x) => v.directed_by === x },
   { key: "search", value: search.value.trim().toLowerCase(),
@@ -230,7 +230,7 @@ const voiceFilters = computed(() => [
 ]);
 
 const langFilterOptions = computed(() => {
-  const opts = facetOptions(voices.value || [], voiceFilters.value, "lang", (v) => v.language, (c) => c);
+  const opts = facetOptions(voices.value || [], voiceFilters.value, "lang", (v) => baseLang(v.language), (c) => c);
   return languageOptionsFrom(opts.map((o) => o.value), {
     allLabel: `Any language (${facetTotal(voices.value || [], voiceFilters.value, "lang")})`,
     counts: new Map(opts.map((o) => [o.value, o.n])),
@@ -275,7 +275,7 @@ const VOICE_COLUMNS = [
   { id: "_gender", accessorKey: "_gender", header: "Gender", sortable: true, headerStyle: FIT, cellStyle: FIT },
   { id: "source", accessorKey: "_type", header: "Type", sortable: true, headerStyle: FIT, cellStyle: FIT },
   { id: "engine", accessorKey: "_model", header: "Model", sortable: true, headerStyle: FIT, cellStyle: FIT },
-  { id: "_lang", accessorKey: "_lang", header: "Speaks", sortable: true, headerStyle: FIT, cellStyle: FIT },
+  { id: "_lang", accessorKey: "_lang", header: "Voice's language", sortable: true, headerStyle: FIT, cellStyle: FIT },
   { id: "directed", accessorKey: "directed_by", header: "Can be directed", sortable: true, headerStyle: FIT, cellStyle: FIT },
   { id: "used", header: "Used by" },
   { id: "actions", header: "", headerStyle: FIT, cellStyle: FIT },
@@ -671,7 +671,7 @@ function voiceTypeVariant(kind) {
     <UiSelect
       :model-value="engineFilter"
       :options="engineFilterOptions"
-      title="Show only voices from one engine"
+      title="Show only voices on one model"
       width="id"
       @update:model-value="setEngineFilter"
     />

@@ -363,12 +363,12 @@ persona; pick the one you like. Then keep it one of two ways:
 | Keep | What the voice is | On every line |
 |---|---|---|
 | **💾 Keep as a description** | the words themselves | spoken from them again, so it can shift a little between lines; takes written direction on top |
-| **📌 Keep take N**, *Spoken by* a model you pick | that take, as its clip, on the model you pick (VoxCPM2, Chatterbox Turbo or Nano, Multilingual, Qwen3 Base, Pocket TTS) | the same voice every time; it takes what that model takes — written direction on VoxCPM2, tags on Turbo and Nano, none on the rest |
+| **📌 Keep take N**, on the **Model** you pick | that take, as its clip, on the model you pick (VoxCPM2, Chatterbox Turbo or Nano, Multilingual, Qwen3 Base, Pocket TTS) | the same voice every time; it takes what that model takes — written direction on VoxCPM2, tags on Turbo and Nano, none on the rest |
 
 Either way the voice stays a design and keeps its description. Under
 **Tags** or **Sliders only** the description can't be kept as it is — both
 design models take written direction — so that button is off and says so, and
-*Spoken by* lists only the models that match.
+**Model** lists only the models that match.
 
 **A kept voice doesn't change.** Pick a design under *Designed* and
 its words show under the list with **Start from this one**, which copies them

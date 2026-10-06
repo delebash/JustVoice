@@ -34,7 +34,7 @@ import SlashTagMenu from "../components/SlashTagMenu.vue";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";
 import { facetCounts, facetOptions, facetTotal, narrowed } from "../services/facets.js";
 import {
-  DIRECTION_OPTIONS, VOICE_KINDS as KINDS, SHAPE_KNOBS, directionCell, directionSentence, tagCount, voiceKind as kindOf,
+  DIRECTION_OPTIONS, VOICE_KINDS as KINDS, SHAPE_KNOBS, baseLang, directionCell, directionSentence, tagCount, voiceKind as kindOf,
   voiceKindLabel, voiceLabel,
 } from "../services/personaFacts.js";
 import DeliveryKnobs from "../components/DeliveryKnobs.vue";
@@ -150,7 +150,6 @@ const OFF_REASON = {
 const modelFilter = ref("");
 const genderFilter = ref("");
 const languageFilter = ref("");
-const baseLang = (c) => String(c || "").split(/[-_]/)[0].toLowerCase();
 const voiceFilters = computed(() => [
   { key: "direction", value: directionFilter.value, test: (v, d) => v.directed_by === d },
   { key: "kind", value: kind.value, test: (v, k) => kindOf(v) === k },
@@ -313,7 +312,7 @@ const languageNote = computed(() => {
   const lang = effectiveLanguage.value;
   if (!v || !lang || !v.language) return "";
   return baseLang(lang) !== baseLang(v.language)
-    ? `Speaks ${languageName(lang) || lang} · voice is ${languageName(v.language) || v.language}`
+    ? `Speaks ${languageName(lang) || lang} · Voice's language: ${languageName(v.language) || v.language}`
     : "";
 });
 const speaksLabel = computed(() => {

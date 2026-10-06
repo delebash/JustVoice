@@ -50,6 +50,8 @@ import { useVoicesStore } from "../stores/voices.js";
 import { bookLanguageOptions } from "../services/personaFacts.js";
 import { lexiconChoices } from "../views/studioLexicon.js";
 import { stepStatus } from "../views/studioStatus.js";
+import { kindLabel } from "../services/projectKinds.js";
+import { MASTER_TARGETS, projectMaster } from "../services/masterTargets.js";
 
 const props = defineProps({
   project: { type: Object, required: true },
@@ -79,12 +81,6 @@ watch(() => props.project.default_lexicon_id, (id) => {
   if (id && !lexiconsStore.byId(id)) refreshLexicons();
 });
 
-const KIND_LABEL = {
-  audiobook: "📖 Audiobook",
-  game_voicelines: "🎮 Game voicelines",
-  podcast: "🎙️ Podcast",
-  custom: "📄 Text",
-};
 
 // The server's mastering vocabulary (mastering.resolve_master_target): an empty
 // value means "this kind's default" (KIND_MASTER_DEFAULTS — ACX for an
@@ -95,16 +91,9 @@ const KIND_LABEL = {
 // A new project is created with its kind's target (server `mastering.kind_master`),
 // so there is no "kind's default" option — it only repeated a target below. An
 // older project that stored none still renders to its kind's target, and shows it.
-const KIND_MASTER = { audiobook: "acx", podcast: "podcast" };
-const masterShown = computed(() =>
-  props.project.mastering_preset || KIND_MASTER[props.project.project_type] || "none");
-const MASTERING_PRESETS = computed(() => [
-  { id: "none", label: "None — raw" },
-  { id: "acx", label: "ACX (-20 LUFS / -3.5 dB peak)" },
-  { id: "inaudio", label: "iAudio" },
-  { id: "podcast", label: "Podcast" },
-  { id: "youtube", label: "YouTube" },
-]);
+// The targets' names are one list (services/masterTargets.js, 2026-10-06); the
+// numbers are the server's, on Render's target pill.
+const masterShown = computed(() => projectMaster(props.project));
 
 const meta = computed(() => (props.project.metadata && typeof props.project.metadata === "object")
   ? props.project.metadata : {});
@@ -284,10 +273,10 @@ async function deleteProject() {
               aria-label="Language" @update:model-value="commitLanguage" />
           </UiField>
           <UiField label="Kind" layout="block" hint="Set when the project is created.">
-            <UiTag intent="ghost">{{ KIND_LABEL[project.project_type] || project.project_type }}</UiTag>
+            <UiTag intent="ghost">{{ kindLabel(project.project_type) }}</UiTag>
           </UiField>
           <UiField label="Mastering target" layout="block" hint="Every render is mastered to this, and Export checks against it.">
-            <UiSelect :model-value="masterShown" width="name" :options="MASTERING_PRESETS"
+            <UiSelect :model-value="masterShown" width="name" :options="MASTER_TARGETS"
               option-value="id" @update:model-value="commitMastering" />
           </UiField>
           <UiField label="Pronunciation lexicon" layout="block">

@@ -14,6 +14,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { UiButton, UiInput, UiSelect, AppModal } from "@delebash/llm-ui";
 import { bookLanguageOptions } from "../services/personaFacts.js";
+import { projectKind } from "../services/projectKinds.js";
 import { useVoicesStore } from "../stores/voices.js";
 
 const props = defineProps({
@@ -25,15 +26,15 @@ const emit = defineEmits(["close", "create", "import", "demo", "focus-only"]);
 const KINDS = [
   {
     id: "audiobook",
-    icon: "📖",
-    label: "Audiobook",
+    icon: projectKind("audiobook").icon,
+    label: projectKind("audiobook").name,
     bullets: ["Chapters & paragraphs", "Script → Cast → Render", "Lexicons enforce pronunciation"],
     foot: "Exports: chapter WAVs · M4B · ACX −20 LUFS",
   },
   {
     id: "game_voicelines",
-    icon: "🎮",
-    label: "Game dialogue",
+    icon: projectKind("game_voicelines").icon,
+    label: projectKind("game_voicelines").name,
     // "string-table import" was here until 2026-08-08 and no adapter ever read
     // one — the idea is in docs/dev/IDEAS.md. The card names only what imports.
     bullets: ["Lines with stable IDs, grouped", "CSV / JSON import", "Re-render only changed lines"],
@@ -41,15 +42,15 @@ const KINDS = [
   },
   {
     id: "podcast",
-    icon: "🎙️",
-    label: "Podcast",
+    icon: projectKind("podcast").icon,
+    label: projectKind("podcast").name,
     bullets: ["Episodes & segments, multi-host", "Script import or write in-app", "Timeline assembly, music & SFX"],
     foot: "Exports: episode WAV/MP3 · −16 LUFS stereo",
   },
   {
     id: "custom",
-    icon: "📄",
-    label: "Plain text",
+    icon: projectKind("custom").icon,
+    label: projectKind("custom").name,
     bullets: ["Paste or drop any text", "Split into sections, or don't", "A voice per section, or one for all"],
     foot: "Exports: WAV / MP3 — no spec checklist",
   },

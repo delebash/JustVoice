@@ -89,9 +89,10 @@ sees it, rather than read aloud.
 ### Finding a voice in the library
 
 Above the library: a search box, then filters for
-**engine**, **language**, **gender**, **can be directed** and voice **type**.
-Language reads as a name — *American English*, *British English*, *Chinese* —
-never as a code. Any column heading sorts the list.
+**model**, **language**, **gender**, **can be directed** and voice **type**.
+The language filter lists each language once, by its plain name — *English*
+takes in American and British voices alike, *Chinese* — never a code; the
+**Voice's language** column shows the voice's own (*British English*). Any column heading sorts the list.
 
 Each filter lists only what the others leave, with counts that match the list,
 so no choice empties it by surprise; a choice that nothing fits any more stays
@@ -106,7 +107,7 @@ as *engine (0)* instead of an empty list.
 | Gender | **F**, **M**, **N** or **?** — click it to set your own |
 | Type | preset, cloned, designed, imported or blended |
 | Model | The model that speaks it — *Kokoro*, *Qwen3-TTS CustomVoice*, *Chatterbox Multilingual* — with **LOCAL**, **ONLINE · METERED** or **needs the speech runtime** |
-| Speaks | The voice's own language. **+9** beside it means its model can also speak it in nine more; hover for the list. A persona built on it can speak any of them ([Personas → Voice](personas.md#voice)) |
+| Voice's language | The voice's own language. **+9** beside it means its model can also speak it in nine more; hover for the list. A persona built on it can speak any of them ([Personas → Voice](personas.md#voice)) |
 | Can be directed | **✓ written direction**, **✓ 19 tags** or **sliders only** — what a persona on this voice can be told (the same words as the Personas page) |
 | Used by | The personas built on it: *🎭 Narrator*, *🎭 June, Mara +1*. *— unused —* when none is |
 | ⋯ | The voice's menu, below |

@@ -269,7 +269,31 @@ BUILT:  2026-10-06, batches 1–2 (A — the three words): on screen — Cast (c
         order…", every other "★ take" → "take in use" (Render's two pages, Export, the docs). Step
         cards are Overview's `stepStatus` text. Mocks follow. Docs: studio, core-concepts, lexicons,
         lines. Tests: `lineStates.test.js` (new), `studioStatus.test.js`.
-OPEN:   batch 5 — B7, B9 and C1–C3, C6, C7.
+        2026-10-06, batch 5 (B7, B9, C2, C3, C6, C7): language — every language filter lists plain
+        names (`personaFacts.baseLang`: Voices, Personas, Cast, the persona page, the blend maker),
+        Voices' column "Speaks" → "Voice's language", the persona page's note "Voice's language:",
+        Speech engines' chip by name ("19 languages"), Settings' capture language by name with
+        "Auto-detect" and Captures showing what Settings holds (C3, `services/captureLanguage.js`).
+        Smaller ones — "no voice yet" (Cast), "— no speaker —" (Render, Script's "was no speaker"),
+        "not analyzed yet" (Script's grid and chip), one `services/projectKinds.js` (App, the active
+        project, Home, Overview, Projects, New project — Audiobook · Game · Podcast · Text), Home's and
+        Projects' chapter word from `copy.js` per row (C2 — `chapterWordForKind`), one
+        `PERSONA_IS` sentence (Personas, Cast, the sidebar), "No persona matches these filters." on
+        Cast, the design maker's "Spoken by" → "Model", one `services/masterTargets.js` (Overview,
+        the top bar, Render's target pill, Export's Master row — C7), Export's tag "✓ ACX pass" /
+        "✗ out of spec" / "unchecked" (it said "unchecked" after a failed check), ↻ New take's
+        hint keyed on a Designed voice (C6). Docs: voices, studio, engines, personas, dictation,
+        projects. C1 left as it is: the server checks peak ≤ −3.0 dB (`ACX_PEAK_MAX_DB`, the ACX
+        limit); −3.5 is the preset's target with headroom, so the checklist line is right.
+OPEN:   questions only —
+        1. B6: the table was not recorded word for word; its button, tag, Compare and Play chapter
+           words were. The Takes heading kept "Takes"; the chapter lede only swapped "the ★ one" →
+           "the one ★ In use".
+        2. B3: AI Settings → Speech engines calls each size row a "model" (Load model · "is now
+           Qwen3-TTS's default model") where the persona page calls the same choice its Version.
+        3. B3: the Cache page's Engine column shows the engine id (a generation stores only that).
+        4. B9: the kinds map's names were not given; the screens' most-used ones were kept —
+           Game (not Game voicelines / Game dialogue), Text (not Custom / Plain text).
         B6's table was not recorded word for word; only its button, tag, Compare and Play chapter
         words were. The Takes heading kept "Takes", and the chapter lede only swapped "the ★ one" →
         "the one ★ In use" — asked whether the table said more there.

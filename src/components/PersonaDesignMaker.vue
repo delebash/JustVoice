@@ -224,7 +224,7 @@ async function keepTake() {
         </div>
         <div class="jv-col jv-col--start">
           <div class="jv-field-row">
-            <UiField label="Spoken by" layout="block">
+            <UiField label="Model" layout="block">
               <UiSelect v-model="cloneModel" :options="cloneOptions" width="name" :disabled="!cloneOptions.length"
                 placeholder="None can be directed this way" />
             </UiField>

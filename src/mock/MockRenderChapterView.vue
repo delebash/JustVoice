@@ -378,7 +378,7 @@ const blockedBanner = computed(() => {
             {{ speakerOf(row.speaker_id).name }}
             <span v-if="overrideSet(row)" class="mock-render-ch__dot" title="This line has render overrides" />
           </span>
-          <span v-else class="jv-muted">— nobody —</span>
+          <span v-else class="jv-muted">— no speaker —</span>
         </template>
         <template #text="{ row }"><span class="mock-render-ch__text">{{ row.text }}</span></template>
         <template #model="{ row }">
