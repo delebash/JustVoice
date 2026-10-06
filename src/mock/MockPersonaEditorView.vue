@@ -689,7 +689,7 @@ watch([() => draft.value?.name, isNew], publishCrumbs, { immediate: true });
                 </UiField>
               </div>
               <div v-if="voiceChange" class="jv-banner jv-banner--warn">
-                Changing this makes {{ draft.name || "this persona" }}'s <strong>{{ plural(voiceChange.lines, "line") }}</strong> stale.
+                Changing this makes persona {{ draft.name || "this one" }}'s <strong>{{ plural(voiceChange.lines, "line") }}</strong> stale.
                 <template v-if="voiceChange.lost && voiceChange.directed">
                   <strong>{{ voiceChange.directed }} carry a written direction</strong> — {{ voiceChange.lost }} won't perform them.
                 </template>

@@ -62,10 +62,10 @@ function removeAt(i) {
       <li v-for="(c, i) in cast" :key="`${c.name}-${i}`">
         <strong>{{ c.name }}</strong>
         <span v-if="c.aliases.length" class="cast-ed__aliases">aliases: {{ c.aliases.join(", ") }}</span>
-        <button type="button" class="cast-ed__x" title="Remove from cast" @click="removeAt(i)">✕</button>
+        <button type="button" class="cast-ed__x" title="Remove this speaker" @click="removeAt(i)">✕</button>
       </li>
     </ul>
-    <p v-else class="cast-ed__empty">No cast yet — add everyone who speaks in the passage.</p>
+    <p v-else class="cast-ed__empty">No speakers yet — add everyone who speaks in the passage.</p>
     <div class="cast-ed__add">
       <UiInput v-model="newName" placeholder="Speaker name" @keydown.enter.prevent="add" />
       <UiInput v-model="newAliases" placeholder="Aliases (comma-separated, optional)" @keydown.enter.prevent="add" />

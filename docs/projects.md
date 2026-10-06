@@ -33,7 +33,7 @@ The row used to expand into a detail pane. Everything it held moved:
 | Title, author, mastering target | Studio · **Overview** |
 | Description | Studio · **Overview** (new there) |
 | Export ZIP, Delete | Studio · **Overview** → *Also from here* / *Delete project* |
-| Cast pills and **+ Add personas** | Studio · **Cast** — the one place a book's speakers get their personas |
+| Speaker → persona pills and **+ Add personas** | Studio · **Cast** — the one place a book's speakers get their personas |
 | Render preset | gone — render presets were removed on 2026-10-03 |
 | Webhook on complete | gone — nothing ever sent it; webhooks are set up in Settings |
 | The chapters subtable | Studio · **Script**'s chapter grid, and Studio's steps |
@@ -54,7 +54,7 @@ Deleting it touches nothing else.
   names. It has no narrator until you add one — **Discover** lists
   **Narrator** first among the speakers found, ticked, and Script's **Analyze**
   asks for one — or pick one on Studio's Cast step.
-  **Discover** shows the speakers it finds as *In the cast*; remove one there
+  **Discover** shows the speakers it finds as *In this book*; remove one there
   (it asks first) and its row turns *New*, ready to ＋ Add back.
 - **Game voicelines** — *Emberfall VO*, five lines with stable line ids.
 - **Podcast** — *Signal & Noise ep. 42*, three speakers.

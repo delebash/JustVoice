@@ -89,7 +89,7 @@ onBeforeUnmount(() => { if (playing.value?.url) URL.revokeObjectURL(playing.valu
     </p>
     <div v-if="byName.length" class="cast-new__byname">
       <strong>Cast with your persona of the same name</strong>
-      <span v-for="x in byName" :key="x.speaker.id" class="jv-hint">{{ x.speaker.name }} → {{ x.persona.name }}</span>
+      <span v-for="x in byName" :key="x.speaker.id" class="jv-hint">{{ x.speaker.name }} → persona {{ x.persona.name }}</span>
     </div>
     <UiTable v-if="rows.length" class="jv-table-look" :data="rows" :columns="COLUMNS" data-key="id">
       <template #pick="{ row }">

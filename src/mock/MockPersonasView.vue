@@ -186,7 +186,7 @@ async function merge(p) {
   const plays = usageCount(p.id) ? ` It plays ${playsText(p.id)}.` : " It plays no one yet.";
   const choice = await promptDialog({
     title: `Merge ${p.name} into…`,
-    message: `Every speaker ${p.name} plays is played by the persona you pick, and ${p.name} is deleted.`
+    message: `Every speaker persona ${p.name} plays is played by the persona you pick, and persona ${p.name} is deleted.`
       + `${plays} The persona you pick keeps its own voice and settings.`,
     fields: [{
       key: "into",
@@ -207,7 +207,7 @@ async function merge(p) {
   const n = moved.length;
   pushToast({
     kind: "success",
-    message: `${p.name} merged into ${stored(into)?.name || "the persona"}`
+    message: `Persona ${p.name} merged into ${stored(into)?.name ? `persona ${stored(into).name}` : "the persona"}`
       + (n ? ` — ${n} speaker${n === 1 ? "" : "s"} moved.` : "."),
   });
 }
@@ -230,7 +230,7 @@ async function removePicked() {
   const n = list.reduce((sum, p) => sum + usageCount(p.id), 0);
   const ok = await confirmDialog({
     title: `Delete ${list.length} persona${list.length === 1 ? "" : "s"}?`,
-    message: `${list.map((p) => p.name).join(", ")}.`
+    message: `${list.length === 1 ? "Persona" : "Personas"} ${list.map((p) => p.name).join(", ")}.`
       + (n
         ? ` ${n} speaker${n === 1 ? "" : "s"} lose${n === 1 ? "s" : ""} their persona and need${n === 1 ? "s" : ""} another in Cast before rendering: ${played}.`
         : "")
@@ -247,7 +247,7 @@ async function removePicked() {
 async function removePersona(p) {
   const ok = await confirmDialog({
     title: "Delete persona?",
-    message: `"${p.name}" will be removed. Voice and lexicon are kept (only the binding is removed).`
+    message: `Persona "${p.name}" will be removed. Voice and lexicon are kept (only the binding is removed).`
       + (usageCount(p.id) ? ` It plays ${playsText(p.id)} — ${usageCount(p.id) === 1 ? "that speaker loses its" : "those speakers lose their"} persona.` : ""),
     danger: true,
     confirmLabel: "Delete",
@@ -304,7 +304,7 @@ function colorFor(name) {
       v-if="!personas.length"
       icon="Sparkle"
       title="No personas yet"
-      message="A persona is a finished spoken voice — a voice, which carries the model that speaks it, plus pace, pitch, gain, direction and effects. Cast gives one to each speaker in a book, and one persona can play many."
+      message="A persona is a voice from your library — the voice, which carries the model that speaks it, plus pace, pitch, gain, direction and effects. Cast gives one to each speaker in a book, and one persona can play many."
       action-label="＋ Create your first persona"
       @action="openPersona('new')"
     />

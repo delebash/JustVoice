@@ -282,7 +282,7 @@ async def rewrite_as_speaker(
     if not who:
         raise HTTPException(
             status_code=400,
-            detail=f"{s.name} has nothing under Who they are — write it on Cast to rewrite in character.",
+            detail=f"{s.name} has nothing under Who they are — write it on Cast to rewrite as them.",
         )
     if not body.text.strip():
         raise HTTPException(status_code=400, detail="rewrite requires non-empty text")

@@ -17,7 +17,7 @@ a little different, because each model clones with its own character.
 One engine can hold several models, and they are not interchangeable.
 Chatterbox is **Multilingual** (23 languages, no tags), **Turbo** and **Nano**
 (English, 19 inline tags); Qwen3 is
-**CustomVoice** (its nine speakers), **Base** (clones) and **VoiceDesign**
+**CustomVoice** (its nine built-in voices), **Base** (clones) and **VoiceDesign**
 (designed voices). So a voice remembers the model it was made for, and every
 render loads *that* model:
 
@@ -178,8 +178,7 @@ manual chip click, and leaves genuinely ambiguous names unset. (This is the
 The **test line** box above the grid is the audition surface: type the line
 you actually care about once, and every voice's ▶ speaks *that* line — one
 box, all voices, so comparing candidates is press, press, press. Leave it
-empty and ▶ plays a stock sentence — enough to tell two voices apart, not
-enough to cast one. Nothing is saved; you are auditioning, not editing.
+empty and ▶ plays a stock sentence — enough to tell two voices apart, not enough to choose one for a persona. Nothing is saved; you are auditioning, not editing.
 
 Playback starts as soon as the first sentence is rendered: longer lines
 stream sentence by sentence instead of waiting for the whole render. (The

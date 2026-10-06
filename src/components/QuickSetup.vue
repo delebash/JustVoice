@@ -70,7 +70,7 @@ const TIER_RECIPES = {
   },
   vram8: {
     label: "8 GB+ tier",
-    blurb: "Kokoro and Pocket TTS on the CPU, plus Chatterbox Multilingual for cloning beyond English and Qwen3-TTS — preset speakers you direct in plain words, designed voices, and cloning — on the graphics card.",
+    blurb: "Kokoro and Pocket TTS on the CPU, plus Chatterbox Multilingual for cloning beyond English and Qwen3-TTS — built-in voices you direct in written words, designed voices, and cloning — on the graphics card.",
     ttsEngineIds: ["kokoro", "pocket", "chatterbox", "qwen3"],
     runsOn: { kokoro: "cpuBesideAi", pocket: "cpuBesideAi", chatterbox: "gpu", qwen3: "gpuTakesTurns" },
     estimatedDownloadGb: 5.4,

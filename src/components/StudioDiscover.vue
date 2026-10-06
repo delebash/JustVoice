@@ -12,7 +12,7 @@
   candidates, named_cast}`), written by the discover endpoint and replaced
   only by the next scan of that chapter: the AI's names that are not speakers
   of this book, and the speakers the text names (found by name, no AI). Add,
-  Ignore and Remove change a person's STATUS — In the cast · In your library ·
+  Ignore and Remove change a person's STATUS — In this book · In your library ·
   New · Ignored — and never remove them from the list, so a rescan of a
   finished chapter still shows everyone. This component keeps no results of
   its own: the list and the grid's Found column are DERIVED from the `scenes`
@@ -36,11 +36,11 @@
   sent the library. Spellings of one person merge into one row ("Sedge" + "Old
   Sedge") and Add keeps the others as "Also called"; a quote the server could
   not find in the chapter is flagged; Ignore is remembered for the project and
-  listed below as well. A row In the cast has Remove from cast, and ticked
+  listed below as well. A row In this book has Remove from book, and ticked
   rows a "Remove N selected"; removing deletes the speaker from the book and
   its lines go back to No speaker, so it asks first, naming each one's lines
   ("yes ask first", 2026-09-29). The row then shows as New again. The
-  "Already in the cast" card's ✕ and Clear all (which keeps the Narrator) ask
+  "The book's speakers" card's ✕ and Clear all (which keeps the Narrator) ask
   the same way.
 
   A book with narration needs a narrator (decided 2026-10-05): while it has
@@ -66,7 +66,7 @@ const props = defineProps({
   // {sceneId: spoken lines} — Studio already counts these for every chapter.
   linesByScene: { type: Object, default: () => ({}) },
   // The book's speakers, [{id, name, aliases, narrator, lines}] — who shows as
-  // In the cast.
+    // In this book.
   cast: { type: Array, default: () => [] },
   // The persona library — a name that is exactly one of these shows as In
   // your library.
@@ -153,7 +153,7 @@ function foundIn(scene) {
 const STATUS = {
   new: { label: "New", intent: "accent2", title: "No speaker or persona has this name. Add makes them a speaker in this book." },
   library: { label: "In your library", intent: "info" },
-  cast: { label: "In the cast", intent: "success" },
+  cast: { label: "In this book", intent: "success" },
   ignored: { label: "Ignored", intent: "secondary", title: "You ignored this name for this book. Undo shows it as new again." },
 };
 function statusTitle(r) {
@@ -243,7 +243,7 @@ async function promote(rows) {
 }
 
 // Tick several rows, then act on them together (2026-09-29): waiting rows
-// take Add or Ignore, rows In the cast take Remove. Keyed by the row's key;
+// take Add or Ignore, rows In this book take Remove. Keyed by the row's key;
 // only rows still in that status count, so a row that changed since it was
 // ticked is not acted on.
 const picked = ref(narratorRow.value ? { narrator: true } : {});
@@ -274,7 +274,7 @@ async function addSelected() {
     for (const r of rows) delete picked.value[r.key];
     if (people.length) {
       pushToast({
-        message: `${people.length} added to the cast${lib ? ` (${lib} already cast with the persona of that name)` : ""} — give them personas in Cast.`,
+        message: `${people.length} added as speakers${lib ? ` (${lib} already cast with the persona of that name)` : ""} — give them personas in Cast.`,
         kind: "success",
       });
     }
@@ -333,8 +333,8 @@ async function add(c) {
     await promote([c]);
     pushToast({
       message: c.status === "library"
-        ? `${c.persona.name} added to the cast — played by your persona of that name.`
-        : `${c.name} added to the cast — give them a persona in Cast.`,
+        ? `${c.persona.name} added as a speaker — played by persona ${c.persona.name}, your persona of that name.`
+        : `${c.name} added as a speaker — give them a persona in Cast.`,
       kind: "success",
     });
     emit("cast-changed");
@@ -379,13 +379,13 @@ async function removeSpeakers(people) {
   const lines = people.reduce((n, p) => n + (p.lines || 0), 0);
   const ok = await confirmDialog(people.length === 1
     ? {
-      title: `Remove ${people[0].name} from the cast?`,
+      title: `Remove ${people[0].name} from this book?`,
       message: lines ? `${plural(lines, "line")} will have no speaker.` : "",
       confirmLabel: "Remove",
       danger: true,
     }
     : {
-      title: `Remove ${people.length} speakers from the cast?`,
+      title: `Remove ${people.length} speakers from this book?`,
       message: `${people.map((p) => `${p.name} — ${plural(p.lines || 0, "line")}`).join(" · ")}.${lines ? ` ${plural(lines, "line")} will have no speaker.` : ""}`,
       confirmLabel: `Remove ${people.length}`,
       danger: true,
@@ -402,10 +402,10 @@ async function removeSpeakers(people) {
   emit("cast-changed", { moved: lines });
   pushToast({
     message: failed
-      ? `${people.length - failed} removed from the cast; ${failed} failed.`
+      ? `${people.length - failed} removed from this book; ${failed} failed.`
       : people.length === 1
-        ? `${people[0].name} removed from the cast.`
-        : `${people.length} removed from the cast.`,
+        ? `${people[0].name} removed from this book.`
+        : `${people.length} removed from this book.`,
     kind: failed ? "warning" : "success",
   });
   return true;
@@ -448,7 +448,7 @@ async function ignore(c) {
       </div>
       <div class="jv-card__body">
         <p class="jv-lede">
-          Reads the prose for everyone it names: speakers already in the cast, names a persona in
+          Reads the prose for everyone it names: speakers already in this book, names a persona in
           your library has, and new names. Nothing is created until you add someone. Script can only
           give a line to a speaker in this {{ copy.book.singular.toLowerCase() }}, so this step runs first.
         </p>
@@ -488,7 +488,7 @@ async function ignore(c) {
               <template v-if="foundIn(row).total">
                 <span class="jv-mono">{{ foundIn(row).total }}</span>
                 <UiTag v-if="foundIn(row).waiting" intent="accent2" class="studio-discover__new"
-                  :title="`${foundIn(row).waiting} not in the cast yet`">{{ foundIn(row).waiting }} new</UiTag>
+                  :title="`${foundIn(row).waiting} not in this book yet`">{{ foundIn(row).waiting }} new</UiTag>
               </template>
               <span v-else-if="row.metadata?.discover?.scanned_at" class="jv-muted">nobody</span>
               <span v-else class="jv-muted">—</span>
@@ -523,9 +523,9 @@ async function ignore(c) {
       <div class="jv-card__body">
         <div v-if="found.length" class="jv-inline-row studio-discover__chips">
           <UiChip :selected="filter === 'all'" @click="filter = 'all'">All {{ counts.all }}</UiChip>
-          <UiChip :selected="filter === 'new'" title="Not in this cast yet: new names, and names a persona in your library has"
+          <UiChip :selected="filter === 'new'" title="Not in this book yet: new names, and names a persona in your library has"
             @click="filter = 'new'">New {{ counts.new }}</UiChip>
-          <UiChip :selected="filter === 'cast'" @click="filter = 'cast'">In the cast {{ counts.cast }}</UiChip>
+          <UiChip :selected="filter === 'cast'" @click="filter = 'cast'">In this book {{ counts.cast }}</UiChip>
           <UiChip :selected="filter === 'ignored'" @click="filter = 'ignored'">Ignored {{ counts.ignored }}</UiChip>
         </div>
         <UiTable class="jv-table-look" :data="shown" :columns="RESULT_COLUMNS" data-key="key">
@@ -572,8 +572,8 @@ async function ignore(c) {
                 @click="ignore(row)" />
             </template>
             <template v-else-if="row.status === 'cast'">
-              <span class="jv-muted studio-discover__incast">already in the cast</span>
-              <UiButton intent="ghost" size="small" label="Remove from cast" :loading="busyName === row.key"
+              <span class="jv-muted studio-discover__incast">already a speaker</span>
+              <UiButton intent="ghost" size="small" label="Remove from book" :loading="busyName === row.key"
                 :disabled="busyName !== null || castBusy"
                 :title="`Remove ${row.speaker.name} from this book — asks first; their lines go back to No speaker`"
                 @click="removeRow(row)" />
@@ -620,7 +620,7 @@ async function ignore(c) {
 
     <div class="jv-card jv-card--soft">
       <div class="jv-card__header">
-        <h3 class="jv-card__title">Already in the cast</h3>
+        <h3 class="jv-card__title">The book's speakers</h3>
         <span class="jv-hint">{{ cast.length }}</span>
         <UiButton v-if="clearable.length" intent="ghost" size="small" label="Clear all" :disabled="castBusy"
           title="Remove everyone but the Narrator from this book — asks first; their lines go back to No speaker"
@@ -630,7 +630,7 @@ async function ignore(c) {
         <div class="studio-discover__cast">
           <UiTag v-for="c in cast" :key="c.id" intent="ghost" removable :value="c.name"
             :title="`✕ removes ${c.name} from this book — asks first; their lines go back to No speaker`"
-            @remove="removeSpeakers([c])">🎭 {{ c.name }}</UiTag>
+            @remove="removeSpeakers([c])">{{ c.name }}</UiTag>
           <span v-if="!cast.length" class="jv-muted">Nobody yet.</span>
         </div>
         <p class="jv-hint">

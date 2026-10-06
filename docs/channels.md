@@ -4,7 +4,7 @@ Route specific voices to specific OS audio devices. The **Channels** tab is wher
 
 ## When you'd use channels
 
-- **Streaming / production rigs** — send the narrator to your speakers, send a chat-companion voice to OBS audio source 2, send a "warning bell" to a separate monitor.
+- **Streaming / production rigs** — send the narrator's persona to your sound output, send a chat-companion voice to OBS audio source 2, send a "warning bell" to a separate monitor.
 - **Accessibility** — route TTS to a different device than system audio so screen-reader output stays separate.
 - **DAW workflows** — bind each persona to a different virtual audio cable (BlackHole / VB-Cable / Loopback) so they show up as discrete tracks in Ableton / Reaper / Logic.
 - **Dictation** — route the dictate-window's confirmation tone to a specific device so it doesn't interrupt the active call's audio.
@@ -26,7 +26,7 @@ Subsequent renders for that voice route audio to the bound device automatically.
 
 ## Bindings
 
-Bindings live in SQLite. They're cross-session — once you bind Mara to BlackHole 2ch, every render of Mara routes there until you change it.
+Bindings live in SQLite. They're cross-session — once you bind persona Mara to BlackHole 2ch, every render with persona Mara routes there until you change it.
 
 API:
 

@@ -82,7 +82,7 @@ takes it back to the graphics card. To keep it on the card regardless, set its
 different models, and a voice belongs to one of them: *"the CustomVoice model
 cannot clone — use a Base model for this voice"* (a cloned voice on
 CustomVoice), *"the Base model is clone-only — this voice needs a reference
-clip"* (a preset speaker on Base), or *"VoiceDesign renders from a voice
+clip"* (a built-in voice on Base), or *"VoiceDesign renders from a voice
 description and this voice has none"*. Chatterbox likewise *"speaks only cloned
 voices"*. Load the model the voice was made with, or pick a voice made for the
 loaded one.

@@ -20,7 +20,7 @@ The top-level container. Has a `project_type` (audiobook / game_voicelines / pod
 
 ## Speaker
 
-A person in one project: a **name**, the other names the text uses (**Also called**), their **Pronouns** (he/him, she/her, they/them, it/its, or not set), and **Who they are** — what the AI reads for attribution and for rewriting in character, never heard. Discover finds speakers, Script gives lines to them, and Cast gives each one a **persona** to speak with. Names are unique within a project — adding or renaming into a clash is refused (an import keeps the source's people as they are). One speaker can be the project's **narrator**, who reads everything outside quote marks; no project gets one on its own. Deleting a project deletes its speakers.
+A person in one project: a **name**, the other names the text uses (**Also called**), their **Pronouns** (he/him, she/her, they/them, it/its, or not set), and **Who they are** — what the AI reads for attribution and for rewriting a line as the speaker would say it, never heard. Discover finds speakers, Script gives lines to them, and Cast gives each one a **persona** to speak with. Names are unique within a project — adding or renaming into a clash is refused (an import keeps the source's people as they are). One speaker can be the project's **narrator**, who reads everything outside quote marks; no project gets one on its own. Deleting a project deletes its speakers.
 
 ## Scene
 

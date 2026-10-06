@@ -414,7 +414,7 @@ def test_strict_names_a_speaker_no_persona_plays(tmp_db, monkeypatch):  # noqa: 
         render_chapter_api._resolve_scene_to_lines(
             scene_id="scene-1", st=_fake_state(personas), strict=True,
         )
-    assert "Nobody plays Harbek yet" in str(exc_info.value.detail)
+    assert "Harbek has no persona yet" in str(exc_info.value.detail)
 
 
 def test_strict_ignores_markers(tmp_db, monkeypatch):  # noqa: F811

@@ -867,7 +867,7 @@ async function save() {
         await personasStore.reload();
         pushToast({
           kind: "success",
-          message: back.speaker ? `${p.name} created and given to ${back.speaker.name}.` : `${p.name} created.`,
+          message: back.speaker ? `Persona ${p.name} created — ${back.speaker.name} is cast with it.` : `Persona ${p.name} created.`,
         });
         castFor.value = null;
         openProjectInStudio(activeProject, back.project, "cast");
@@ -1082,7 +1082,7 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
                 to a speaker's pronouns. Set it on <a href="#/voices">Voices ➜</a> — click the voice's gender.
               </div>
               <div v-if="voiceChange" class="jv-banner jv-banner--warn">
-                Changing this makes {{ draft.name || "this persona" }}'s <strong>{{ plural(voiceChange.lines, "line") }}</strong> stale.
+                Changing this makes persona {{ draft.name || "this one" }}'s <strong>{{ plural(voiceChange.lines, "line") }}</strong> stale.
                 <template v-if="voiceChange.lost && voiceChange.directed">
                   <strong>{{ voiceChange.directed }} carry a written direction</strong> — {{ voiceChange.lost }} won't perform them.
                 </template>
@@ -1287,7 +1287,7 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
             <div class="jv-card__body jv-col jv-col--start">
               <div v-if="usedBy.length" class="jv-inline-row persona-editor__tags">
                 <UiTag v-for="u in usedBy" :key="u.speaker_id" intent="secondary">
-                  🎭 {{ u.speaker_name }} — {{ u.project_name }} · {{ plural(u.lines, "line") }}
+                  {{ u.speaker_name }} — {{ u.project_name }} · {{ plural(u.lines, "line") }}
                 </UiTag>
               </div>
               <p v-else class="jv-hint">No speaker has this persona yet — give it to one in Studio · Cast.</p>

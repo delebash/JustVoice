@@ -2,6 +2,17 @@
 
 ## v0.1.0
 
+- **Speaker, persona and Cast each mean one thing (2026-10-06)** — a
+  **speaker** is a person in the book, a **persona** is a voice from your
+  library (written *persona June* beside a speaker), and **Cast** is the step
+  that gives a speaker a persona. Discover's *In the cast* is **In this book**,
+  its card **The book's speakers**, **Remove from cast** is **Remove from
+  book**; Cast's card reads *persona June · Qwen3 · 61 lines* and **✕ Clear
+  cast** is **✕ Clear personas**; Render's line reads **Speaker** [Nettle ▾] ·
+  **Cast:** persona June; *Rewrite in character* is **Rewrite as the speaker**;
+  Qwen3's *nine speakers* are its nine built-in voices. Cast's narrator note now
+  says the narrator reads the prose *outside* quote marks, and Import review
+  names Discover as the step that finds speakers
 - **Render's grid shows the model (2026-10-06)** — a **Model** column, and
   **Can be directed** in the Personas and Voices lists' own words (*sliders
   only*, *✓ written direction*, *✓ 7 tags*) instead of *Kokoro takes no
@@ -11,7 +22,7 @@
   would tell it; a line's own direction is the persona page's **Style
   Instructions** field, in the open line, with a **↺**; and **✎ Edit words**
   changes a line's text right on Render ([Studio → Pronunciation and Rewrite in
-  character](studio.md#pronunciation-and-rewrite-in-character))
+  character](studio.md#pronunciation-and-rewrite-as-the-speaker))
 - **Render overrides (2026-10-06)** — an open line has a box with the persona
   page's controls for its model, and only those: pace, pitch, gain and pause on
   every model, Style Instructions, Emotion (and a tag model's Register) and the
@@ -338,7 +349,7 @@
   (the mixed-Qwen3 refusal is gone). Import's **Model that speaks as this clip**
   lists models rather than engines
   ([Voices → Every voice knows the model that speaks it](voices.md#every-voice-knows-the-model-that-speaks-it),
-  [Studio → One speech model at a time](studio.md#one-speech-model-at-a-time--a-mixed-cast-renders-model-by-model))
+  [Studio → One speech model at a time](studio.md#one-speech-model-at-a-time--personas-on-several-models-render-model-by-model))
 - **An empty transcript stays empty (2026-10-03).** Auditioning a cloned voice
   without typing what the clip says sent a dash as its transcript, and saving the
   audition kept it, so Qwen3 Base read the clip as saying "—". Now an empty box

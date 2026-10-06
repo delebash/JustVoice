@@ -18,7 +18,7 @@
   Phase 4 / Slice 2 — Script tab + analyze + Smart-assign.
   Studio Slice 4 (2026-10-04) — Render is a chapter grid
   (components/StudioRender.vue) that opens one chapter's lines
-  (components/StudioRenderChapter.vue); Rewrite in character moved there.
+  (components/StudioRenderChapter.vue); Rewrite as the speaker moved there.
 -->
 <script setup>
 import { computed, nextTick, onActivated, onBeforeUnmount, onMounted, ref, watch } from "vue";

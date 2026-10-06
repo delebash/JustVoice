@@ -104,8 +104,7 @@ unzipped the file, a bare `book.json` imports too.
 
 **What comes across**
 
-- **Chapters**, in the book's own order, each becoming one JustVoice scene — the
-  unit you cast and render. Chapter titles come with them; a chapter without one
+- **Chapters**, in the book's own order, each becoming one JustVoice scene — the unit you analyze and render. Chapter titles come with them; a chapter without one
   is named for its number.
 - **The prose**, paragraph by paragraph. Where JustWrite splits a chapter into
   scenes, the paragraphs stay in order and remember which scene they came from.
@@ -121,7 +120,7 @@ unzipped the file, a bare `book.json` imports too.
   through the prose, and attribution has to recognise every one of them.
 
   A speaker is a person, not a voice, so nothing here decides how anyone sounds:
-  "female, age 34, protagonist" tells you who to cast, not how to perform. A
+  "female, age 34, protagonist" tells you which persona to give them, not how to perform. A
   speaker whose name is exactly a persona in your library arrives cast with that
   persona; everyone else gets one in [Studio → Cast](studio.md#cast). The import
   creates no personas. A book with its own "Narrator" makes that speaker the
@@ -250,7 +249,7 @@ Audacity exports label tracks as a tab-separated file:
 ```
 0.000000	1.500000	Intro music fades
 2.000000	4.250000	Narrator opens the scene
-5.000000	7.000000	Character speaks
+5.000000	7.000000	Nettle speaks
 ```
 
 - Two-column form (point labels: `time<TAB>label`) is also accepted.

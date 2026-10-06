@@ -352,7 +352,7 @@ const TIP = {
   floored: "The AI answered but was too unsure, so the answer was dropped and the line left with no speaker.",
   secondLook: "Analyze left this line with no speaker, so it asked once more with the chapters either side — a speaker unseen here is often named in the next. Worth checking.",
   noAnswer: "The AI's answer had no entry for this line.",
-  noneInCast: "The AI's answer for this line wasn't anyone in the cast, so it has no speaker.",
+  noneInCast: "The AI's answer for this line wasn't any of this book's speakers, so it has no speaker.",
   corrected: "You set or confirmed this one. Re-analyzing leaves it exactly as it is.",
   imported: "The speaker came with the import. Nothing has analyzed this line.",
   none: "Nothing has decided this line's speaker yet.",
@@ -381,11 +381,11 @@ export function decidedBy(line, lines = []) {
       : { text: sub === "the book says so" ? "The book says so" : `Named ${sub}`, sub: "", tip: TIP[src] };
   }
   if (src === "llm") {
-    // Kept above the floor but matched no one in the cast: the model named
+    // Kept above the floor but matched none of the book's speakers: the model named
     // someone who isn't in it (or said "unknown"), not "no answer".
     return line.speaker_id
       ? { text: "AI, from the story around it", sub: "", tip: TIP.llm }
-      : { text: "AI named no one in the cast", sub: "", tip: TIP.noneInCast };
+      : { text: "AI named none of the speakers", sub: "", tip: TIP.noneInCast };
   }
   if (src === "floored") {
     return !line.floored_from || line.floored_from === "unknown"
@@ -411,7 +411,7 @@ export function checkQuestion(line, groups, nameOf, chapterWord = "chapter") {
       return "No speaker, so it can't render. The AI gave no answer.";
     }
     if (line.source === "llm") {
-      return "No speaker, so it can't render. The AI didn't name anyone in the cast.";
+      return "No speaker, so it can't render. The AI didn't name any of this book's speakers.";
     }
     return "No speaker, so it can't render.";
   }

@@ -92,14 +92,14 @@ kept.
 
 ## Discover
 
-Finds everyone your text names — speakers already in the cast, names a
+Finds everyone your text names — speakers already in this book, names a
 persona in your library has, and new names — and keeps that record for each
 chapter. It creates nothing on its own.
 
 1. Tick the chapters to read — the checkbox in the header selects them all. The
    line count updates as you tick. **Last scanned** says when each chapter was
    last read, and **Found** how many people it names, with how many of them are
-   **new** (not in the cast yet).
+   **new** (not in this book yet).
 2. **Scan** reads them one at a time, one model call per chapter. A banner above
    the chapters shows the scan as a whole — *🔍 Discover · scanning 4 chapters ·
    1 of 4 done · 0:42 · about 2 min left*, its bar and **Cancel** — and under it
@@ -123,17 +123,13 @@ chapter. It creates nothing on its own.
    that speaker as **Narrator** on [Cast](#cast) instead, and this row goes.
 4. **Speakers found** lists everyone the scanned chapters name, each person
    once, with a **status**, roughly how many lines they speak in what was
-   scanned (**0** means named but not heard speaking; a speaker in the cast
-   shows how many times the text names them instead), the **First appearance**
+   scanned (**0** means named but not heard speaking; a speaker already in this book shows how many times the text names them instead), the **First appearance**
    — the quote that names them — and which chapters. Spellings of one person
    are one row: "Sedge" and "Old Sedge" show as *Old Sedge, also written Sedge*.
-   The chips above it filter the list: **All**, **New** (everyone not in the
-   cast yet — new names and names a persona in your library has), **In the
-   cast** and **Ignored**. The statuses:
-   - **In the cast** — a speaker this book already has, whatever the text calls
+   The chips above it filter the list: **All**, **New** (everyone not in this book yet — new names and names a persona in your library has), **In this book** and **Ignored**. The statuses:
+   - **In this book** — a speaker this book already has, whatever the text calls
      them: full name, first name, surname, or one of their *Also called*
-     names. The row's action cell says *already in the cast*, with **Remove
-     from cast** beside it (see [Removing a speaker](#removing-a-speaker)).
+     names. The row's action cell says *already a speaker*, with **Remove from book** beside it (see [Removing a speaker](#removing-a-speaker)).
    - **In your library** — no speaker yet, but a persona in your library has
      exactly this name. **＋ Add** makes the speaker already cast with that
      persona, so Cast shows the assignment and you can change it. Only an exact
@@ -149,15 +145,14 @@ chapter. It creates nothing on its own.
      in the **Ignored** box below) shows it as new again; **Clear all** there
      empties the list.
 
-   **Add**, **Ignore** and **Remove from cast** change a row's status — they
+   **Add**, **Ignore** and **Remove from book** change a row's status — they
    never take it off the list, so rescanning a chapter you've finished still
    shows everyone it names.
    - **quote not in the chapter** means the quote the model gave is not in the
      text — treat the name as suspect.
-   - **Several at once:** tick rows — the box in the header ticks every New, In
-     your library and In the cast row shown — then **＋ Add N selected**,
+   - **Several at once:** tick rows — the box in the header ticks every New, In your library and In this book row shown — then **＋ Add N selected**,
      **Ignore N selected** or **Remove N selected**. Add and Ignore act on the
-     ticked New and In-your-library rows, Remove on the ticked In-the-cast rows.
+     ticked New and In-your-library rows, Remove on the ticked In-this-book rows.
      Each works exactly as its row's own button would.
 
 **What counts as a name.** Discover proposes everyone the text *names* — a
@@ -170,7 +165,7 @@ The instructions Discover gives the model are the **Find new speakers** feature
 in AI Settings → Features. Edit and save them there and the next scan uses your
 text; **Reset** puts the shipped text back.
 
-**Already in the cast** lists the book's speakers — the ones Script can choose
+**The book's speakers** lists them — the ones Script can choose
 from. A name's **✕** removes that speaker, and **Clear all** removes everyone
 but the Narrator. Both ask first.
 
@@ -179,7 +174,7 @@ move to another step, switch project, or restart the app. Scanning a chapter
 again replaces that chapter's record. A scan keeps running while you look at
 another step. Discover needs a language model; without one, Scan says so.
 
-**Your cast is found without the model.** A speaker counts as named when the
+**The book's speakers are found without the model.** A speaker counts as named when the
 chapter uses their full name or one of their *Also called* names, or their
 first name or surname alone (three letters or more, capitalised) when no other
 speaker shares it — so the same scan always finds the same people. The model
@@ -198,10 +193,9 @@ Removing a speaker deletes them from the book: every line they had goes back to
 anyone. The persona that played them stays in your library. Because lines
 change, every door asks first, naming who goes and how many lines each has:
 
-- one speaker — *Remove Cael Ferren from the cast? 21 lines will have no
+- one speaker — *Remove Cael Ferren from this book? 21 lines will have no
   speaker.*
-- several (**Remove N selected**, **Clear all**) — *Remove 2 speakers from the
-  cast? Cael Ferren — 21 lines · Nettle — 22 lines. 43 lines will have no
+- several (**Remove N selected**, **Clear all**) — *Remove 2 speakers from this book? Cael Ferren — 21 lines · Nettle — 22 lines. 43 lines will have no
   speaker.*
 
 After a removal the row stays in **Speakers found** and shows as **New** again
@@ -257,8 +251,7 @@ never analyzed shows **—**.
 
 A row can also carry a tag:
 
-- **Name added since** — the chapter was analyzed before that speaker joined
-  the cast, and its text names them (their name or an *Also called* name).
+- **Name added since** — the chapter was analyzed before that speaker was added to the book, and its text names them (their name or an *Also called* name).
   Analyze couldn't choose them then. **Re-analyze** on the row runs it again;
   lines you set are kept.
 - **N changed since** — lines added or changed with **✎ Edit text** (below)
@@ -306,7 +299,7 @@ answer must reach to be kept; below it the line is left with no speaker.
 **Two things stop Analyze**, and the grid says so instead of letting it fail:
 
 - *Analyze needs a language model. Set one in AI Settings ➜*
-- *Your cast has only the Narrator, so Analyze has nobody to choose from. Find
+- *This book's only speaker is the Narrator, so Analyze has nobody to choose from. Find
   the speakers first — Discover ➜*
 
 A row opens its chapter — before Analyze too, so you can read a chapter you
@@ -363,12 +356,11 @@ speaker dropdown on every row.
 | **AI, from the chapters around it** | Analyze left the line with no speaker, then its [second look](#the-second-look) found who speaks it in the chapters either side — marked to check |
 | **AI wasn't sure** | the AI answered, but below *Keeps answers above*, so the answer was dropped and the line has no speaker |
 | **AI gave no answer** | the AI's answer had no entry for this line |
-| **AI named no one in the cast** | the AI's answer wasn't any of the book's speakers |
+| **AI named none of the speakers** | the AI's answer wasn't any of the book's speakers |
 | **You** | you set or confirmed it |
 | **From the import** | the imported script named the speaker; nothing analyzed it |
 
-A line whose speaker the **last Analyze changed** carries **changed · was
-June**. The lines of one paragraph sit together — the divider is drawn only
+A line whose speaker the **last Analyze changed** carries **changed · was Nettle**. The lines of one paragraph sit together — the divider is drawn only
 under a paragraph's last line.
 
 **Filters.** **All**, **To check** (marked lines and lines with no speaker),
@@ -412,8 +404,8 @@ audio, and JustVoice will not quietly leave a sentence out of your audiobook.
 The banner above the table counts them and offers **Assign N → Narrator**. A
 book with no narrator yet says *This book has no narrator — choose one on Cast
 ➜* instead, and the link opens Cast. When the [second look](#the-second-look)
-found who speaks a line but they aren't in the cast, the banner offers them, one
-row each: **Old Sedge isn't in the cast — ＋ Add Old Sedge**. It adds them to the
+found who speaks a line but they aren't a speaker in this book, the banner offers them, one
+row each: **Old Sedge isn't a speaker in this book — ＋ Add Old Sedge**. It adds them to the
 book's speakers the way Discover's **＋ Add** does; the chapter's row on the grid
 then says *Old Sedge added since* and offers **Re-analyze**, so Analyze can give
 them their lines.
@@ -441,7 +433,7 @@ with no speaker, the first one selected.
 says who spoke carries a grey **Left out** tag. It stays in the script so you
 can see it; the audio skips it.
 
-**A speaker you removed.** Removing a speaker from the cast (on Discover or
+**A speaker you removed.** Removing a speaker from the book (on Discover or
 Cast — both ask first) gives every line they had back to **no speaker**, so
 those lines show under **No speaker** and **To check**, and block the render
 until each has a speaker again. The dropdown only ever lists the book's own
@@ -457,7 +449,7 @@ missing** opens Discover — Analyze can only choose the book's speakers.
 **← Previous** and **Next chapter ➜** at the foot walk the book in order; the
 next one says how many lines it has to check.
 
-Direction, takes, rendering and Rewrite in character are not on this page:
+Direction, takes, rendering and Rewrite as the speaker are not on this page:
 Script decides who says what, and how it is performed is [Render](#render).
 
 ### The marks: where to read closely
@@ -471,7 +463,7 @@ it was built:
 |---|---|
 | One speaker speaks **three or more times in a row** — back-to-back spoken paragraphs, no narration-only paragraph between, all theirs | *Marius speaks 3 times with no reply — is one of these the other person's?* The **whole run** is marked: the wrong line is as often the middle one as the last |
 | A speaker's **only line** in the chapter | *Harbek's only line in this chapter — is it theirs?* |
-| **The book and the AI disagree** — the book's words named one speaker, the AI said another | *The book says June, the AI says Marius — whose line is it?* |
+| **The book and the AI disagree** — the book's words named one speaker, the AI said another | *The book says Nettle, the AI says Marius — whose line is it?* |
 | **Found in a nearby chapter** — the [second look](#the-second-look) named the speaker of a line Analyze had left blank | *Found in a nearby chapter — is it Odeline Marran?* Its first question, ahead of any other mark on the line |
 
 A speech that runs over several paragraphs — each opens a quote, only the last
@@ -546,7 +538,7 @@ imported as one chapter, is cut into pieces:
 - Each piece starts with the last few paragraphs of the piece before, so the
   model knows who was speaking when the piece begins. Those lines are
   answered by the earlier piece; the repeat is only context.
-- Every piece gets the whole cast, your corrections and the same prompt.
+- Every piece gets all the book's speakers, your corrections and the same prompt.
 - It is still **one run**: one result, saved the same way. Nothing about the
   chapter changes.
 
@@ -570,7 +562,7 @@ words) and the start of the chapter after (1,500 words).
   *Found in a nearby chapter — is it Odeline Marran?*, and the line stays under
   **To check** until you set a speaker or press **✓ Looks right**. It counts
   under *AI decided*.
-- If the speaker is someone the text names who isn't in the cast, the line keeps
+- If the speaker is someone the text names who isn't a speaker in this book, the line keeps
   no speaker and the banner above the table offers **＋ Add** them (see *Lines
   with no speaker block the render*, above).
 - If the text never makes it clear, the line stays as it was. A wrong name is
@@ -581,7 +573,7 @@ the built-in Gemma model a call takes about 5–15 seconds; a very long chapter'
 takes longer. Lines you set are never asked about. Measured before it was built
 on the three answer-keyed books: 30 lines asked, 30 right, none named wrongly —
 The Ninth Facet's voice in the dark found as Odeline Marran from the next
-chapter, and speakers who aren't in the cast kept blank.
+chapter, and people the book has no speaker for kept blank.
 
 It is on by default. **AI Settings → Routing by feature → Speaker attribution →
 Auto** turns it off, and its prompt is its own card there, **Speaker attribution
@@ -602,15 +594,15 @@ as it was; nothing is written.
 
 Re-analyzing a chapter does *not* re-cut its text: the chapter keeps exactly
 the lines it has, and lines you set are left untouched. What changes between
-runs is everything around the model — a bigger cast means more names the
+runs is everything around the model — more speakers in the book means more names the
 pattern passes can match, and your fixes go into the prompt. That is what
 re-analyze is for: fix five lines, run it again, and the model applies the
 same reasoning to the rest. A line whose speaker it changes is marked
-**changed · was June**, and the **Changed** filter shows just those — check
+**changed · was Nettle**, and the **Changed** filter shows just those — check
 what moved, at no extra model cost. Setting or confirming the line clears the
 mark.
 
-If neither the cast nor your fixes have changed, re-analyzing mostly spends
+If neither the book's speakers nor your fixes have changed, re-analyzing mostly spends
 time for the same answer.
 
 **A chapter you've edited is read as its lines.** Once you've changed a line's
@@ -632,8 +624,7 @@ chapters as **from the import** and never marks them; Analyze would replace
 speakers the file already told us with the model's guesses, so run it only if
 you mean to.
 
-Analyze does not look for new speakers — that is [Discover](#discover). A line
-whose speaker isn't in the cast comes back with no speaker; add that person in
+Analyze does not look for new speakers — that is [Discover](#discover). A line spoken by someone who isn't a speaker in this book comes back with no speaker; add that person in
 Discover, then analyze again.
 
 ### Speech marks
@@ -724,17 +715,16 @@ narrator ([Personas → The Narrator](personas.md#the-narrator)).
 speaker of the book, the narrator included, and how many still need a persona.
 Click **No persona** to see only those (the narrator's card too, only when it
 has none); **All** shows everyone again. When everyone is cast it says
-*Everyone has a persona.* The chips change only what you see — Smart-assign
-and ＋ New persona still read the whole cast. Its head has three buttons:
+*Everyone has a persona.* The chips change only what you see — Smart-assign and ＋ New persona still read all the book's speakers. Its head has three buttons:
 
 - **＋ Add** asks for a name and adds a speaker to the book — for someone
   [Discover](#discover) missed. Analyze can only give a line to a speaker the
   book has, so add them, then **Re-analyze** the chapters they speak in, or set
-  their lines yourself on Script (its speaker list has the whole cast). If your
+  their lines yourself on Script (its speaker list has every speaker in the book). If your
   library has a persona of exactly that name, the new speaker arrives cast with
   it; otherwise pick a persona for them. Names are unique within a book, so a
   name the book already has is refused.
-- **✕ Clear cast** asks first, then takes the persona away from every speaker:
+- **✕ Clear personas** asks first, then takes the persona away from every speaker:
   *"Unassign personas from all 5 speakers. The speakers stay — only the persona
   links go."*
 - **✨ Smart-assign** sends the speakers (name, *Also called*, *Pronouns*, *Who
@@ -764,19 +754,17 @@ Each speaker's card shows:
 - a **Narrator** box. Tick it to make them the narrator. A first-person narrator
   also speaks (Watson tells *The Speckled Band* and talks in it), so ticking
   Watson gives his narration and his lines one voice. There is one narrator per
-  book: the one who had the role stays in the cast as an ordinary speaker, the
+  book: the one who had the role stays in the book as an ordinary speaker, the
   narration Analyze decided moves to the new narrator, and lines you set
   yourself stay where you put them;
-- what plays them: **Persona · model · 61 lines** when a persona with a voice
-  plays them (*June · Qwen3-TTS CustomVoice · 61 lines*). Otherwise it says what blocks them, in amber: **⚠ no persona · 22
-  lines blocked**, or **⚠ Harbek (warm) has no voice · 22 lines blocked** when
+- what plays them: **persona Name · model · 61 lines** when a persona with a voice plays them (*persona June · Qwen3-TTS CustomVoice · 61 lines*). Otherwise it says what blocks them, in amber: **⚠ no persona · 22
+  lines blocked**, or **⚠ persona Harbek (warm) has no voice · 22 lines can't render** when
   their persona has no voice yet. A speaker with no persona has a dashed edge;
 - when the book's **Language** is set (Overview) and their persona speaks
   another, a second amber line says so: **⚠ speaks Korean — the book is
   English**. Every line that speaker has is sent in the persona's language, so
-  this is the place to catch a Korean persona cast in an English book;
-- **✕** (on hover) removes the speaker from the book. It asks first — *Remove
-  Harbek from the cast? 22 lines will have no speaker.* — because their lines go
+  this is the place to catch a speaker cast with a Korean persona in an English book;
+- **✕** (on hover) removes the speaker from the book. It asks first — *Remove Harbek from this book? 22 lines will have no speaker.* — because their lines go
   back to no speaker ([Removing a speaker](#removing-a-speaker)). The persona
   that played them stays in your library.
 
@@ -784,8 +772,7 @@ A **game project** lists its speakers in a table instead (Speaker · Role ·
 Persona), since a game can have hundreds. Click a row to select it.
 
 Under the cards, a hint names what can't render yet: *"40 lines can't render
-until Harbek and Renn have a persona."* A banner warns when the cast spans
-several engines (chapters swap engines while rendering) or uses an online voice
+until Harbek and Renn have a persona."* A banner warns when the book's personas are on several models (chapters swap models while rendering) or uses an online voice
 (billed per use, and the text leaves this machine).
 
 ### The selected speaker
@@ -802,7 +789,7 @@ leave it (or press Enter in a one-line field):
   heard."* Saves when you pick one. With two people in a scene, *"she said"* can
   only be the one who is *she*; Analyze is told each speaker's pronouns so it can
   use that. A JustWrite import fills it from the character sheet.
-- **Who they are** — *"Read by Discover, Smart-assign and Rewrite in character.
+- **Who they are** — *"Read by Discover, Smart-assign and Rewrite as the speaker.
   Never heard."* Discover reads its first line; Script's line-by-line
   attribution does not read it. An import fills it from the book. For the
   narrator it is where the narration's style goes — *dry and wry, short
@@ -828,7 +815,7 @@ Each row shows:
 
 - the persona's name, then its voice, model and language (*Sohee · Qwen3-TTS
   CustomVoice · Korean*), or *no voice*;
-- **✓ June, Marius** — who in this book it already plays;
+- **✓ plays Nettle, Marius** — who in this book it already plays;
 - whether it can be directed, the same words as the Personas page: **✓ written
   direction**, **✓ 19 tags** (the model's own tags) or **sliders only** (pace,
   pitch and gain — no words), or **no voice**;
@@ -840,12 +827,11 @@ Each row shows:
 
 **＋ New persona** opens a blank persona. With a speaker selected, the page says
 *For Cael Ferren in The Ninth Facet — Save gives Cael Ferren this persona and takes you
-back to Cast*; Save does exactly that (*Old Crow created and given to Cael Ferren.*). With no
+back to Cast*; Save does exactly that (*Persona Old Crow created — Cael Ferren is cast with it.*). With no
 speaker selected, Save brings you back to Cast with the new persona in the
 list.
 
-Click a row to give that persona to the selected speaker (*Assigned Gruff
-dockhand to Harbek.*). Click the persona that already plays them to take it
+Click a row to give that persona to the selected speaker (*Harbek cast with persona Gruff dockhand.*). Click the persona that already plays them to take it
 away. The row that plays the selected speaker is tinted green. Rows can't be clicked until a
 speaker is selected.
 
@@ -932,17 +918,13 @@ Three things at the top work on the whole chapter:
 
 A row opens its line, under it:
 
-- **Spoken by** — who says the line, with the same speaker list as Script's:
-  hear the wrong person and change it here. The line then reads *stale* — its
-  persona changed — until you render it again. Beside it, the persona that
-  plays that speaker and its model; which persona plays a speaker is Cast's:
-  **Change in Cast ➜**.
+- **Speaker** — who says the line in the book, with the same speaker list as Script's: hear the wrong person and change it here. The line then reads *stale* — its persona changed — until you render it again. Beside it, **Cast:** the persona that plays that speaker and its model (*Cast: persona June · Qwen3-TTS CustomVoice*); which persona plays a speaker is Cast's: **Change in Cast ➜**. A speaker with no persona reads *no persona yet · Cast them ➜*.
 - **Style Instructions** — the line's own direction; see
   [Can be directed](#can-be-directed).
 - **Render overrides** — what this line does differently from its persona; see
   [Render overrides](#render-overrides).
 - **📕 Pronunciation**, **✏️ Rewrite as** *name* and **✎ Edit words** — see
-  [below](#pronunciation-and-rewrite-in-character).
+  [below](#pronunciation-and-rewrite-as-the-speaker).
 - **Takes** — see [below](#takes).
 
 ### Can be directed
@@ -952,7 +934,7 @@ What a line can be told depends on the model of the persona that speaks it
 
 - **A model that takes written direction** (Qwen3-TTS, VoxCPM2): the line can
   have its own direction — *Talking to the lamp, half amused.* The cell shows it
-  after *✓ written direction* (or *as June always speaks*); click it, or open
+  after *✓ written direction* (or *as persona June always speaks*); click it, or open
   the line, to change it in
   **Style Instructions** — the persona page's own field, with a **↺** that clears
   it. It is added after the persona's Style Instructions, most specific last
@@ -995,7 +977,7 @@ Kokoro shows the four numbers and nothing else. Each control:
   for this line only, winning over the persona's; the line turns
   [stale](#stale-lines) until you render it again. Setting a value back to the
   persona's own is the same as no change;
-- has a **↺** — *Back to June's pitch* — that removes this line's value.
+- has a **↺** — *Back to persona June's pitch* — that removes this line's value.
   **↺ Reset to default** removes them all (the Style Instructions too), so the
   line speaks exactly as its persona. Each is greyed while there is nothing to
   remove.
@@ -1032,7 +1014,7 @@ take**'s own seed stays rendered when the persona's seed changes; any other take
 goes stale. Studio · Export warns how many lines are stale, and ships them as
 they are if you go ahead.
 
-### Pronunciation and Rewrite in character
+### Pronunciation and Rewrite as the speaker
 
 **📕 Pronunciation** opens the book's lexicon on the Lexicons page
 (Overview → **Pronunciation lexicon**). A book with none gets one, named
@@ -1044,8 +1026,7 @@ stale.
 **✏️ Rewrite as** *name* has the AI rewrite a line as its speaker would say it
 — narration too, as the narrator would tell it (*✏️ Rewrite as Narrator*). It
 reads the speaker's **Who they are** on Cast — not the persona's note — and
-refuses when that is empty: *Nettle has nothing under Who they are — write it on
-Cast to rewrite in character.* A narrator's style goes there too (*dry and wry,
+refuses when that is empty: *Nettle has nothing under Who they are — write it on Cast to rewrite as them.* A narrator's style goes there too (*dry and wry,
 short sentences*); the narrator Cast makes says only that it reads the
 narration, which gives the AI little to go on. You see the rewrite first (**↻
 Try again** asks for another); **Accept** replaces the line's text, and the line
@@ -1070,14 +1051,13 @@ what is missing:
 - **lines with no speaker** — the render stops and lists them, with **Fix in
   Script ➜** for each chapter and **Assign all to** the narrator (the button
   shows the narrator's name) once the book has one;
-- **a speaker no persona plays** — *"Nobody plays Harbek yet — give them a
-  persona in Studio · Cast."*;
+- **a speaker with no persona** — *"Harbek has no persona yet — give them one in Studio · Cast."*;
 - **a persona with no voice** — *"The persona Harbek (warm) has no voice — pick
   one on the Personas page."*
 
 ### Leaving out dialogue tags
 
-In a full-cast book every speaker has their own voice, so the narrator reading
+In a book where every speaker has their own persona, so the narrator reading
 *"said Marius"* between two of Marius's lines only repeats what the listener
 already hears. Overview → **Leave out dialogue tags** (off by default) skips
 those lines.
@@ -1099,21 +1079,19 @@ speaker. It works on analyzed chapters (it needs to know which lines are
 speech and which paragraph each came from), and the speaking verbs it knows are
 English.
 
-### One speech model at a time — a mixed cast renders model by model
+### One speech model at a time — personas on several models render model by model
 
 Only one speech model fits in memory at once, and one engine can be several
-models: Qwen3 is **CustomVoice** (its nine speakers), **Base** (clones) and
+models: Qwen3 is **CustomVoice** (its nine built-in voices), **Base** (clones) and
 **VoiceDesign** (a designed voice with no kept clip); Chatterbox is
 **Multilingual**, and Turbo and Nano. Every voice knows its own model
 ([Voices → Every voice knows the model that speaks it](voices.md#every-voice-knows-the-model-that-speaks-it)).
 
 So a chapter renders **model by model**: all the lines for one model, then a
-swap, then the next. A chapter with a Kokoro narrator, June on Qwen3 Sohee
-(CustomVoice) and Marius cloned on Qwen3 Base loads three models in turn —
+swap, then the next. A chapter whose narrator's persona is on Kokoro, Nettle's on Qwen3 Sohee (CustomVoice) and Marius's on a Qwen3 Base clone loads three models in turn —
 three swaps, not one per line — and the chapter comes out in its own order.
 Each swap costs a model load (seconds for Kokoro, up to a minute for a large
-Qwen3 model), which is the only price of a mixed cast. Until 2026-10-03 a cast
-that mixed Qwen3's models was refused.
+Qwen3 model), which is the only price of personas on several models. Until 2026-10-03 a book whose personas mixed Qwen3's models was refused.
 
 Casting everyone on one model is still the fastest render — and note that
 [keeping a designed voice](voices.md#keeping-a-designed-voice-is-what-makes-it-one-voice)

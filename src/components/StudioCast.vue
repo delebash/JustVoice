@@ -95,10 +95,10 @@ const plural = (n, word) => `${n.toLocaleString()} ${word}${n === 1 ? "" : "s"}`
 function castLine(s) {
   const p = personaOf(s);
   if (p?.voice_id) {
-    return { ok: true, text: [p.name, personaEngine(p), s.lines ? plural(s.lines, "line") : ""].filter(Boolean).join(" · ") };
+    return { ok: true, text: [`persona ${p.name}`, personaEngine(p), s.lines ? plural(s.lines, "line") : ""].filter(Boolean).join(" · ") };
   }
-  const why = p ? `⚠ ${p.name} has no voice` : "⚠ no persona";
-  return { ok: false, text: s.lines ? `${why} · ${plural(s.lines, "line")} blocked` : why };
+  const why = p ? `⚠ persona ${p.name} has no voice` : "⚠ no persona";
+  return { ok: false, text: s.lines ? `${why} · ${plural(s.lines, "line")} can't render` : why };
 }
 // "⚠ speaks Korean — the book is English" (decided 2026-10-03: "so Cast can
 // warn on a mismatch"). Nothing when the book's language isn't set.
@@ -128,11 +128,11 @@ const castEngineNotice = computed(() => {
     .map((s) => voiceById.value[personaOf(s)?.voice_id])
     .filter(Boolean);
   if (!voiced.length) return "";
-  const engineIds = [...new Set(voiced.map((v) => v.engine))];
+  const models = [...new Set(voiced.map((v) => v.model_name || v.engine))];
   const metered = new Set(voiced.filter((v) => voiceLocality(v) === "online").map((v) => v.id)).size;
   const bits = [];
-  if (engineIds.length > 1) {
-    bits.push(`this cast spans ${engineIds.length} engines (${engineIds.join(", ")}) — chapters will swap engines while rendering`);
+  if (models.length > 1) {
+    bits.push(`this book's personas are on ${models.length} models (${models.join(", ")}) — chapters will swap models while rendering`);
   }
   if (metered) {
     bits.push(`${metered} voice${metered === 1 ? "" : "s"} use${metered === 1 ? "s" : ""} an online provider — billed per use, text leaves this machine`);
@@ -231,7 +231,7 @@ async function assign(persona) {
     pushToast({
       kind: "success",
       duration: 3000,
-      message: same ? `Unassigned ${persona.name} from ${s.name}.` : `Assigned ${persona.name} to ${s.name}.`,
+      message: same ? `${s.name} no longer has persona ${persona.name}.` : `${s.name} cast with persona ${persona.name}.`,
     });
   } catch (e) {
     pushToast({ kind: "error", message: `Assign failed: ${e?.message || e}` });
@@ -316,7 +316,7 @@ async function addSpeaker() {
     pushToast({
       kind: "success",
       message: sp.persona_id
-        ? `Added ${sp.name} — played by ${sp.persona_name}, the persona of that name.`
+        ? `Added ${sp.name} — played by persona ${sp.persona_name}, your persona of that name.`
         : `Added ${sp.name} — now pick a persona.`,
     });
   } catch (e) {
@@ -325,10 +325,10 @@ async function addSpeaker() {
 }
 
 // Removing deletes the speaker from the book, so it asks first, naming the
-// lines: "Remove Nettle from the cast? 22 lines will have no speaker."
+// lines: "Remove Nettle from this book? 22 lines will have no speaker."
 async function removeSpeaker(s) {
   const ok = await confirmDialog({
-    title: `Remove ${s.name} from the cast?`,
+    title: `Remove ${s.name} from this book?`,
     message: s.lines ? `${plural(s.lines, "line")} will have no speaker.` : "",
     confirmLabel: "Remove",
     danger: true,
@@ -338,7 +338,7 @@ async function removeSpeaker(s) {
     await projectsService.removeSpeaker(s.id);
     if (selectedId.value === s.id) selectedId.value = null;
     emit("changed", { moved: s.lines });
-    pushToast({ kind: "success", message: `${s.name} removed from the cast.` });
+    pushToast({ kind: "success", message: `${s.name} removed from this book.` });
   } catch (e) {
     pushToast({ kind: "error", message: `Remove failed: ${e?.message || e}` });
   }
@@ -348,9 +348,9 @@ async function clearCast() {
   const cast = props.speakers.filter((s) => s.persona_id);
   if (!cast.length) return;
   const ok = await confirmDialog({
-    title: "Clear cast?",
+    title: "Clear personas?",
     message: `Unassign personas from all ${plural(cast.length, "speaker")}. The speakers stay — only the persona links go.`,
-    confirmLabel: "Clear cast",
+    confirmLabel: "Clear personas",
     danger: true,
   });
   if (!ok) return;
@@ -360,7 +360,7 @@ async function clearCast() {
     emit("changed");
     pushToast({ kind: "warning", message: "Cleared every assignment. The speakers stay." });
   } catch (e) {
-    pushToast({ kind: "error", message: `Clear cast failed: ${e?.message || e}` });
+    pushToast({ kind: "error", message: `Clear personas failed: ${e?.message || e}` });
   } finally {
     busy.value = false;
   }
@@ -401,7 +401,7 @@ async function addNarrator() {
     emit("changed", { moved });
     pushToast({
       kind: "success",
-      message: `Narrator added to the cast${moved ? ` — ${plural(moved, "narration line")} now read by it` : ""}.`,
+      message: `Narrator added as a speaker${moved ? ` — ${plural(moved, "narration line")} now read by it` : ""}.`,
     });
   } catch (e) {
     pushToast({ kind: "error", message: `Add Narrator failed: ${e?.message || e}` });
@@ -633,7 +633,7 @@ const GAME_COLUMNS = [
         <!-- Compact audition player — one in-flow player atop the card serves
              every ▶ (the ruling 2026-08-15: playback is compact and in place). -->
         <div v-if="audition" class="studio-cast__audition">
-          <span class="jv-muted">Audition · <strong>{{ audition.name }}</strong><template v-if="audition.engine"> · {{ audition.engine }}</template></span>
+          <span class="jv-muted">Audition · persona <strong>{{ audition.name }}</strong><template v-if="audition.engine"> · {{ audition.engine }}</template></span>
           <audio :src="audition.url" controls autoplay class="jv-audio-inline" />
         </div>
 
@@ -641,9 +641,9 @@ const GAME_COLUMNS = [
         <template v-if="!isGame">
           <article v-if="narratorShown" class="jv-card studio-cast__card studio-cast__card--narrator"
             :class="{ 'studio-cast__card--selected': selectedId === narrator.id, 'studio-cast__card--unassigned': !narrator.persona_id }"
-            title="The narrator carries the prose between quotes"
+            title="The narrator reads the prose outside quote marks"
             @click="selectedId = narrator.id">
-            <button type="button" class="studio-cast__x" title="Remove from the cast — asks first"
+            <button type="button" class="studio-cast__x" title="Remove from this book — asks first"
               @click.stop="removeSpeaker(narrator)">✕</button>
             <span class="studio-cast__portrait" :style="{ background: colorFor(narrator.name) }">{{ (narrator.name || "?").charAt(0).toUpperCase() }}</span>
             <div class="studio-cast__main">
@@ -678,7 +678,7 @@ const GAME_COLUMNS = [
           <span class="jv-spacer" />
           <UiButton intent="secondary" size="small" label="＋ Add"
             title="Someone Discover missed: add them, then Re-analyze or set their lines on Script." @click="addSpeaker" />
-          <UiButton intent="secondary" size="small" label="✕ Clear cast" :disabled="busy || !speakers.some((s) => s.persona_id)"
+          <UiButton intent="secondary" size="small" label="✕ Clear personas" :disabled="busy || !speakers.some((s) => s.persona_id)"
             title="Unassign every persona — the speakers stay" @click="clearCast" />
           <UiButton intent="primary" size="small" label="✨ Smart-assign" :loading="smartBusy" :disabled="smartBusy"
             title="Your language model proposes a persona for each speaker from who they are" @click="smartAssign" />
@@ -718,14 +718,14 @@ const GAME_COLUMNS = [
               <div v-if="languageWarning(row)" class="studio-cast__as--none">{{ languageWarning(row) }}</div>
             </template>
             <template #actions="{ row }">
-              <button type="button" class="jv-rowact jv-rowact--danger" title="Remove from the cast — asks first" @click.stop="removeSpeaker(row)">✕</button>
+              <button type="button" class="jv-rowact jv-rowact--danger" title="Remove from this book — asks first" @click.stop="removeSpeaker(row)">✕</button>
             </template>
           </UiTable>
           <div v-else class="studio-cast__grid">
             <article v-for="s in shown" :key="s.id" class="jv-card studio-cast__card"
               :class="{ 'studio-cast__card--selected': selectedId === s.id, 'studio-cast__card--unassigned': !s.persona_id }"
               :title="`Select, then click a persona to cast ${s.name}`" @click="selectedId = s.id">
-              <button type="button" class="studio-cast__x" title="Remove from the cast — asks first" @click.stop="removeSpeaker(s)">✕</button>
+              <button type="button" class="studio-cast__x" title="Remove from this book — asks first" @click.stop="removeSpeaker(s)">✕</button>
               <span class="studio-cast__portrait" :style="{ background: colorFor(s.name) }">{{ (s.name || "?").charAt(0).toUpperCase() }}</span>
               <div class="studio-cast__main">
                 <strong class="studio-cast__name">{{ s.name }}</strong>
@@ -766,7 +766,7 @@ const GAME_COLUMNS = [
             <div class="studio-cast__field">
               <span class="jv-eyebrow">Who they are</span>
               <UiTextarea v-model="draft.description" class="studio-cast__prose" :rows="3" @blur="saveField('description')" />
-              <span class="jv-hint">Read by Discover, Smart-assign and Rewrite in character. Never heard.</span>
+              <span class="jv-hint">Read by Discover, Smart-assign and Rewrite as the speaker. Never heard.</span>
             </div>
             <div class="studio-cast__detail-foot">
               <UiButton intent="secondary" label="Edit their persona →" :disabled="!selected.persona_id"
@@ -792,7 +792,7 @@ const GAME_COLUMNS = [
             @click="newPersona" />
         </div>
         <EmptyState v-if="!personas.length" icon="Sparkle" title="No personas yet" compact
-          message="A persona is a finished voice — a voice and how it's spoken. Make one, then assign it here."
+          message="A persona is a voice and how it's spoken. Make one, then give it to a speaker here."
           action-label="＋ New persona" @action="newPersona" />
         <template v-else>
           <div class="studio-cast__picking">Select a speaker, then click a persona to assign it.</div>
@@ -809,13 +809,13 @@ const GAME_COLUMNS = [
             <div v-for="p in shownPersonas" :key="p.id" class="studio-cast__prow"
               :class="{ 'studio-cast__prow--on': selected?.persona_id === p.id }">
               <button type="button" class="studio-cast__prow-main" :disabled="!selected || busy"
-                :title="!selected ? 'Select a speaker first' : selected.persona_id === p.id ? `Unassign ${p.name} from ${selected.name}` : `Assign ${p.name} to ${selected.name}`"
+                :title="!selected ? 'Select a speaker first' : selected.persona_id === p.id ? `Take persona ${p.name} from ${selected.name}` : `Cast ${selected.name} with persona ${p.name}`"
                 @click="assign(p)">
                 <span class="studio-cast__prow-avatar" :style="{ background: colorFor(p.name) }">{{ (p.name || "?").charAt(0).toUpperCase() }}</span>
                 <span class="studio-cast__prow-text">
                   <strong class="studio-cast__prow-name">{{ p.name }}</strong>
                   <span class="studio-cast__prow-meta">{{ [voiceById[p.voice_id]?.name, personaEngine(p), languageName(p.speaks)].filter(Boolean).join(" · ") || "no voice" }}</span>
-                  <span v-if="playsHere[p.id]" class="studio-cast__prow-plays">✓ {{ playsHere[p.id] }}</span>
+                  <span v-if="playsHere[p.id]" class="studio-cast__prow-plays">✓ plays {{ playsHere[p.id] }}</span>
                 </span>
               </button>
               <UiTag :intent="directed(p).intent" :title="directed(p).title">{{ directed(p).label }}</UiTag>

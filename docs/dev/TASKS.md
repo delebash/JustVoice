@@ -231,8 +231,24 @@ NOT:    changing any wording before the list is read.
         Play chapter, Compare's "★ Use take B" —, language, step cards from Overview's words, the
         smaller ones). C1–C7 the factual slips. The docs follow their screens; the mocks match; the
         tests that pin the old words change with them.
-BUILT:  (in progress, in batches)
-OPEN:   (in progress)
+BUILT:  2026-10-06, batches 1–2 (A — the three words): on screen — Cast (card lines "persona June · …",
+        "can't render", toasts and titles "cast with persona June", "Remove from this book", "✕ Clear
+        personas", "Audition · persona", "✓ plays", the models banner), Discover ("In this book", "The
+        book's speakers", "Remove from book", the 🎭 gone from speaker chips), Script and its review
+        words, Render ("Speaker" [▾] · "Cast: persona June · model", "no persona yet", "as persona June
+        always speaks", "Back to persona June's …", "Rewrite as the speaker"), Personas and the persona
+        page ("Persona June …", "Changing this makes persona June's lines stale"), CastNewPersonas,
+        Overview, Import review (Discover, C5), Channels (personas, sound output), Quick setup (built-in
+        voices), the Lab's speakers editor, Home, the server's "X has no persona yet" and the rewrite
+        refusal; the mocks; C4 (the narrator reads outside quote marks). Docs: studio, personas,
+        ai-features, engines, import-and-export, projects, voices, channels, ai-providers,
+        troubleshooting, lexicons, mcp-server, core-concepts (whats-new kept as history; its two
+        anchors moved); design-law 6b (A8). Tests: `scriptReview.test.js`,
+        `test_render_chapter_scene_mode.py` follow the words. Checked: Biome, vitest 29, pytest 18, build,
+        smoke, family guard; live — Render's line, Cast's cards and ✕ Clear personas, Discover's In
+        this book / The book's speakers.
+OPEN:   batches 3–5 — B1–B4 (Can be directed, voice type, Model / Version / engine, gender), B5, B6,
+        B8 (line states, the take, step cards), B7, B9 and C1–C3, C6, C7.
 GO:     given 2026-10-06
 
 ### Render's grid: a Model column, and "Can be directed" in Voices' words (decided 2026-10-06)

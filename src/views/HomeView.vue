@@ -266,7 +266,7 @@ const captureCount = computed(() => capturesTotal.value ?? captures.value.length
 const statCards = computed(() => [
   { label: "Projects", value: projects.value.length, sub: projectKindCount.value ? `${projectKindCount.value} kind${projectKindCount.value === 1 ? "" : "s"}` : "create one to start", href: "#projects" },
   { label: "Voices", value: voices.value.length, sub: `across ${new Set(voices.value.map((v) => v.engine || "?")).size} engines`, href: "#voices" },
-  { label: "Personas", value: personas.value.length, sub: "finished voices, any book", href: "#personas" },
+  { label: "Personas", value: personas.value.length, sub: "reusable in any book", href: "#personas" },
   { label: "Lexicons", value: lexicons.value.length, sub: `${lexiconEntries.value} entries`, href: "#lexicons" },
   { label: "Cache", value: cacheGB.value ? `${cacheGB.value} GB` : "0", sub: cacheSub.value, href: "#cache" },
   { label: "Captures", value: captureCount.value, sub: "dictation + TTS history", href: "#captures" },

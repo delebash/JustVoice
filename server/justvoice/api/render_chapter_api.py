@@ -203,8 +203,8 @@ def _resolve_scene_to_lines(
                 )
             if uncast:
                 parts.append(
-                    f"Nobody plays {', '.join(sorted(uncast))} yet — give them a persona "
-                    f"in Studio · Cast."
+                    f"{', '.join(sorted(uncast))} {'has' if len(uncast) == 1 else 'have'} no persona "
+                    f"yet — give them one in Studio · Cast."
                 )
             if voiceless:
                 parts.append(

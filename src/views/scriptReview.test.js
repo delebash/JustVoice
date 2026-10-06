@@ -219,7 +219,7 @@ describe("the words on a row", () => {
     expect(decidedBy(LINES[4]).text).toBe("AI wasn't sure");
     expect(decidedBy(line("x", null, { source: "floored", floored_from: "unknown" })).text).toBe("AI gave no answer");
     expect(decidedBy(line("x", "june", { source: "corrected" })).text).toBe("You");
-    expect(decidedBy(line("x", null, { source: "llm" })).text).toBe("AI named no one in the cast");
+    expect(decidedBy(line("x", null, { source: "llm" })).text).toBe("AI named none of the speakers");
     expect(decidedBy(line("x", "june", { source: null })).text).toBe("From the import");
   });
 
@@ -228,7 +228,7 @@ describe("the words on a row", () => {
     expect(checkQuestion(LINES[4], GROUPS, nameOf)).toBe("No speaker, so it can't render. The AI thought Marius, but wasn't sure.");
     expect(checkQuestion(LINES[5], GROUPS, nameOf)).toBe("");
     expect(checkQuestion(line("x", null, { source: "llm" }), GROUPS, nameOf))
-      .toBe("No speaker, so it can't render. The AI didn't name anyone in the cast.");
+      .toBe("No speaker, so it can't render. The AI didn't name any of this book's speakers.");
     const g = [
       { check: "only", speaker: "marius", lines: ["a"] },
       { check: "disagree", speaker: "june", other: "marius", lines: ["a"] },

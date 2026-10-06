@@ -195,7 +195,7 @@ export function notReady(ch) {
     if (p) voicelessP.add(p.name);
     else uncast.add(speakerOf(l.speaker_id).name);
   }
-  if (uncast.size) parts.push(`Nobody plays ${[...uncast].sort().join(", ")} yet — give them a persona in Studio · Cast.`);
+  if (uncast.size) parts.push(`${[...uncast].sort().join(", ")} ${uncast.size === 1 ? "has" : "have"} no persona yet — give them one in Studio · Cast.`);
   if (voicelessP.size) parts.push(`The persona ${[...voicelessP].sort().join(", ")} has no voice — pick one on the Personas page.`);
   return parts.length ? `This chapter isn't ready to render. ${parts.join(" ")}` : "";
 }

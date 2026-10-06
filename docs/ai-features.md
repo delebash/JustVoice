@@ -10,7 +10,7 @@ is the **AI Settings** page in the sidebar.
 | Feature | What it does | When you use it |
 |---|---|---|
 | **Compose** | Writes a fresh line in a persona's voice from its note on how it sounds | A persona's page → Hear it → 🎲 Compose |
-| **Persona rewrite** | Rewrites the current text in a persona's voice, or a line in its speaker's character (preview-then-accept) | A persona's page → Hear it → ✏️ Rewrite · Studio Render → a line's ✏️ Rewrite as *name* |
+| **Persona rewrite** | Rewrites the current text in a persona's voice, or a line as its speaker would say it (preview-then-accept) | A persona's page → Hear it → ✏️ Rewrite · Studio Render → a line's ✏️ Rewrite as *name* |
 | **Speaker attribution** | Extracts who says what and what they say; its Find new speakers row lists the people a chapter names | Studio Script tab → Analyze · Studio Discover → Scan |
 | **Speaker attribution · second look** | Asks once more about a spoken line Analyze left with no speaker, with the chapters either side; what it finds is marked to check | Runs inside Analyze, only on lines left blank — [Studio → The second look](studio.md#the-second-look) |
 | **Smart-assign** | Matches each speaker in a book to a persona | Studio Cast tab → Smart-assign |
@@ -164,10 +164,9 @@ and each AI feature reads the half it needs:
   **Pronouns**, and **Who they are**. Discover finds them, Script's Analyze gives
   lines to them (it is told each speaker's pronouns, so *"she said"* can only be
   someone who is *she*), and
-  Render's *Rewrite in character* (a line's ✏️ Rewrite as *name*) reads the
+  Render's *Rewrite as the speaker* (a line's ✏️ Rewrite as *name*) reads the
   line's speaker's **Who they are** (`POST /v1/speakers/{id}/rewrite`; a speaker with nothing there is
-  refused with "*name* has nothing under Who they are — write it on Cast to
-  rewrite in character.").
+  refused with "*name* has nothing under Who they are — write it on Cast to rewrite as them.").
 - **Personas** are finished voices. A persona's page has no book, so its 🎲
   Compose and ✏️ Rewrite read the persona's **Note on how it sounds** instead (a persona
   without one is refused: "*name* has no note on how it sounds — write one on
@@ -185,8 +184,7 @@ holds voices, not people, so that list and its paragraph are gone; Discover's
 **In your library** status is worked out in code instead — a found name that is
 **exactly** the name of a persona in your library (persona names are unique since
 2026-09-29; two older personas that still share a name match neither). The removal was measured on 2026-09-29 with `npm run
-eval:discover` (2 runs over *The Ninth Facet*, with some of its people taken out
-of the cast for the model to find) before it was made:
+eval:discover` (2 runs over *The Ninth Facet*, with some of its speakers taken out for the model to find) before it was made:
 
 | Prompt | Library sent | Found | Wrong |
 |---|---|---|---|
@@ -196,9 +194,9 @@ of the cast for the model to find) before it was made:
 
 The paragraph itself changed nothing — the old and new prompts score the same
 without a library. The drop from 28 to 26 comes from no longer handing the model
-descriptions of people who are not in this book's cast: it missed Haldane Threll
+descriptions of people who are not this book's speakers: it missed Haldane Threll
 twice and proposed Gudgeon — Brick's enchanted maul, an object — four times. The
-book's own speakers are still sent as its known cast.
+book's own speakers are still sent as its known speakers.
 
 ## Speaker attribution — two routes and the Auto row
 
@@ -209,7 +207,7 @@ Lab:
 - **Guided** — its system prompt carries the rules **plus worked examples**;
   small models follow better when shown.
 - **Direct** — the **same system-prompt rules without the examples**, for
-  big models. (The user prompt — your text and cast — is identical on both
+  big models. (The user prompt — your text and speakers — is identical on both
   routes; only the system prompt differs.)
 
 Above them sits the **Auto** row — *"Picks which of the two features below
@@ -263,8 +261,8 @@ Guided's card tests Guided, Direct's tests Direct. The prompt boxes you see
 are exactly what runs — there is no separate route picker to disagree with
 them.
 
-**The cast editor.** The Speakers box (the prompt's `{{speakers}}`
-variable) isn't a raw text area — it's the original Speaker Lab's cast editor:
+**The speakers editor.** The Speakers box (the prompt's `{{speakers}}`
+variable) isn't a raw text area — it's the original Speaker Lab's speakers editor:
 your speakers as removable chips, a **Speaker name** input, an **Aliases**
 input, and a **＋ Add** button (Enter adds too). A chip shows the name in bold
 and its aliases beside it ("**Renn** — aliases: Old Renn, the harbor-master").
@@ -292,10 +290,10 @@ controls so you never have to invent test data:
   chapter's real prose in the passage box. The picker then shows what you
   inserted, so you can see which chapter is in the box; pick its top row to
   clear the label.
-- **Insert from cast…** lists your projects ("Speakers of The Ninth Facet") and
+- **Insert from speakers…** lists your projects ("Speakers of The Ninth Facet") and
   fills the Speakers box with that project's real speakers, one name per
   line.
-- **Sample** fills the passage AND the cast together with the built-in
+- **Sample** fills the passage AND the speakers together with the built-in
   cellar scene — the original Speaker Lab's sample passage, word for word
   (Mara, Sarah, the fog, the cellar). It has anchored quotes, bare quotes
   and a narration-only opener, so every part of the pipeline has something
@@ -351,8 +349,7 @@ button in the app, on that button's own page — see
 The **Find new speakers** row's Lab runs the discovery scan instead — the
 same prompt behind Studio's **Discover** step. It lists the people the text
 names who aren't in the Known speakers list, speaking or not, each with the
-quote that names them; nothing is created from the Lab. Its Known speakers box is the same cast
-editor, and Insert from chapter/cast fill it the same way.
+quote that names them; nothing is created from the Lab. Its Known speakers box is the same speakers editor, and Insert from chapter/speakers fill it the same way.
 
 ## Filling the other features' Labs from your app
 
@@ -360,7 +357,7 @@ Every feature's Lab has the same idea — the test input should be your real
 app data in exactly the shape a production run sends, never hand-typed
 fakes:
 
-- **Smart-assign**: *Insert from cast…* fills the Speakers box with your
+- **Smart-assign**: *Insert from speakers…* fills the Speakers box with your
   project's speakers in the run's own wire shape
   (`- id="…", name="Renn", aliases="Old Renn", description="gravel-voiced"` —
   the description is the first 200 characters of the speaker's Who they are),

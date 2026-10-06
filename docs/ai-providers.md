@@ -64,7 +64,7 @@ preset ships with it off; turn it on on a card's preset to test it.
 
 - **Edit** — click Edit on the row. The form expands in place.
 - **Remove provider** — inside the Edit form. Confirms before removing.
-  Casting that pointed at this provider's voices falls back at render time.
+  A persona whose voice is on this provider falls back at render time.
 
 ## Self-hosted TTS — Kokoro / Chatterbox / Dia / Qwen3-TTS
 

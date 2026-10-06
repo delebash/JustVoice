@@ -68,6 +68,19 @@ judgment, modal and data-state coverage, a recorded-exceptions ledger, and findi
 5. **No internal jargon in user-facing copy** ("pin", "manifest", feature keys). If a knob's effect is invisible — a prompt resolved server-side, say — SHOW the resolved truth in the UI, never an empty box with a "defaults apply" placeholder. (The Speaker Lab lesson.)
 5b. **No raw ids in user-facing GUI** (user decree 2026-08-15: *"we should not be using these types of ids in user facing gui"*). A UUID, or a minted id like `voice_<32 hex>`, is never a label, a chip, or a dropdown option — and never the `|| fallback` when a name lookup misses. Two consequences, both load-bearing: **(a) the API ships the name with the id** — `/v1/projects/{id}/cast` carries `persona_name` for exactly this reason — rather than every screen resolving ids against a client-side cache that can be empty; **(b) a lookup that misses says what is wrong** — "(deleted persona)", "(voice unavailable)" — because an id tells the reader nothing they can act on. Exempt, and only as `<code>` technical detail beside a name: engine slugs, audio device ids, job ids, MCP client ids.
 6. **Ghost buttons are borderless quiet utilities** — the kit's `intent="ghost"` (`ui-btn--ghost`: no border, no fill, a tint on hover), as the mock draws them (`.btn.g`). Use one for a quiet, secondary action beside the thing it acts on ("Open ➜", "Edit", "↻ Re-check"); a stand-alone action that must be found is `secondary` or `primary`. This line used to say *"No borderless text-only buttons (user decree 2026-06-12: 'no ghost buttons'). The ghost variant renders as a thin-bordered quiet utility"* — the kit's ghost had no border by then, the app used it 126 times, and the mock, approved later, uses it; on 2026-09-30 the user chose the mock (*"your rec on all go"*, option A of `docs/plans/2026-09-30-project-lexicon.md` §6 item 5). Selection chips use `UiChip` with a `:selected` state — a chip pattern, not a button.
+6b. **One meaning per word, one wording per fact** (decided 2026-10-06 — the user: *"we have 3 things
+   speaker cast persona it is confusing"* · *"same info presented in different ways for no reason"*;
+   the audit and its rows: `docs/plans/2026-10-06-one-word-one-meaning-audit.md`).
+   - **Speaker** — only ever a person in the book who says lines. A list of them is *the book's
+     speakers* / *in this book*; never "the cast", "cast member" or "character".
+   - **Persona** — only ever a voice from the library. Next to a speaker it is written **persona X**
+     (*Cast: persona June*), because a persona is often named after its speaker.
+   - **Cast** — only the Studio step and the act of giving a speaker a persona (*Cast them ➜*, *cast
+     with persona June*). "Plays" stays the verb (*persona June plays Nettle*).
+   - **A fact has one wording**: how a model can be directed is `personaFacts.directionCell` /
+     `DIRECTION_OPTIONS`; a voice's type `voiceKindLabel`; its gender `voiceGenderWord`; a model is
+     its **Model** name and its size a **Version**; a line's state the Render words. A screen never
+     writes its own sentence for a fact a shared helper words — add to the helper instead.
 7. **Layout grammar** (rewritten 2026-06-12 after the copy-JustWrite correction — *"you just decided to copy instead of think"*):
    - Size every control to its content and let rows END where the content ends. Never inflate a field to "use" the width; dead space to the right of well-sized controls is not a defect.
    - Group controls by what they act on — preset actions live beside the preset dropdown.

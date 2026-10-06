@@ -14,7 +14,7 @@
   Everything that decides what a row shows, what a key does and what a change
   sends lives in views/scriptReview.js (pure, unit-tested); the lines, their
   flags and the counts come from GET /v1/scenes/{id}/script and are re-read
-  after every change. Rewrite in character, direction, takes and rendering are
+  after every change. Rewrite as the speaker, direction, takes and rendering are
   Render's (StudioRenderChapter.vue's line panel, Slice 4), never Script's.
 
   A line's words are Script's (2026-09-30, docs/plans/2026-09-30-script-
@@ -128,7 +128,7 @@ const chapter = computed(() => page.value?.chapter || null);
 const groups = computed(() => page.value?.flag_groups || []);
 const speakers = computed(() => page.value?.speakers || []);
 // Who Analyze's second look found speaking a line it couldn't place, who isn't
-// in the cast (2026-10-05, metadata.not_in_cast) — the no-speaker banner
+// in this book (2026-10-05, metadata.not_in_cast) — the no-speaker banner
 // offers to add each. A name added since drops off; the grid's row then says
 // "<name> added since" and offers Re-analyze.
 const notInCast = computed(() => {
@@ -151,7 +151,7 @@ async function addToCast(name) {
     });
     await load();
     emit("changed");
-    pushToast({ kind: "success", message: `${name} is in the cast now — ✨ Re-analyze this chapter so Analyze can choose them.` });
+    pushToast({ kind: "success", message: `${name} is a speaker now — ✨ Re-analyze this chapter so Analyze can choose them.` });
   } catch (e) {
     pushToast({ kind: "error", message: `Couldn't add ${name}: ${e?.message || e}` });
   } finally {
@@ -624,12 +624,12 @@ const flagged = (ln) => (ln.flags || []).length > 0;
                 @click="reanalyze()" />
               <span class="jv-hint">
                 <template v-if="noModel">Analyze needs a language model. <a href="#/ai">Set one in AI Settings ➜</a></template>
-                <template v-else-if="onlyNarrator">Your cast has only the Narrator, so Analyze has nobody to choose from.
+                <template v-else-if="onlyNarrator">This book's only speaker is the Narrator, so Analyze has nobody to choose from.
                   Find the speakers first — <a href="#studio" @click.prevent="emit('go', 'discover')">Discover ➜</a></template>
                 <template v-else-if="runningHere === 'queued'">{{ analyzeWaits
                   ? "Queued — waiting for Discover to finish."
                   : `Queued — starts after the ${word.plural.toLowerCase()} before it.` }}</template>
-                <template v-else>Works out who speaks each line, choosing from the cast. Narration is never sent
+                <template v-else>Works out who speaks each line, choosing from this book's speakers. Narration is never sent
                   to the model. Lines you set are kept. Stays on this page.</template>
               </span>
             </span>
@@ -670,7 +670,7 @@ const flagged = (ln) => (ln.flags || []).length > 0;
           @click="allToNarrator" />
         <a v-else href="#studio" @click.prevent="emit('go', 'cast')">This book has no narrator — choose one on Cast ➜</a>
         <div v-for="name in notInCast" :key="name" class="studio-script-ch__offer">
-          <span><strong>{{ name }}</strong> isn't in the cast —</span>
+          <span><strong>{{ name }}</strong> isn't a speaker in this book —</span>
           <UiButton intent="primary" size="small" :label="`＋ Add ${name}`" :loading="addingName === name"
             :disabled="!!addingName"
             :title="`Analyze's second look found ${name} speaking a line here. Adds them to this book's speakers, as Discover's ＋ Add does.`"

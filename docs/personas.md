@@ -18,7 +18,7 @@ changes with it: in this book, in every other book, and in the next render.
 |---|---|---|
 | **Persona** | A finished spoken voice: a voice (and so its model), how it speaks, effects, lexicon, a note on how it sounds | Your library, used in any book |
 | **Speaker** | A person in one book: a name, the other names the text uses (*Also called*), and *Who they are* | One book |
-| **Cast** | Which persona plays each speaker | The speaker's persona |
+| **Cast** | The Studio step that gives each speaker a persona | The speaker's persona |
 
 ## Why a persona is separate from a speaker
 
@@ -35,7 +35,7 @@ does three things:
   called* stay on the speaker whichever persona plays them, so trying a
   different voice never loses what Discover and Script know about them.
 
-A book's lines, its cast and the corrections Script remembers all point at
+A book's lines, its speakers' personas and the corrections Script remembers all point at
 **speakers**. Generations, lexicons, audio channels and MCP bindings stay on
 the **persona**, because they belong to the voice.
 
@@ -108,7 +108,7 @@ can have its own speaker called Narrator (see [Studio · Discover](studio.md#dis
 
 Unique names are what make **casting by name** dependable: a new speaker whose
 name is exactly a persona's name arrives already cast with it. A persona you
-call exactly "Narrator" is the one **+ Add Narrator** casts; for a book that
+call exactly "Narrator" is the one **+ Add Narrator** gives the Narrator; for a book that
 needs a different narrator voice, cast its Narrator speaker by hand in Cast.
 (Personas made before 2026-09-29 could share a name. If two still do, a new
 speaker of that name matches neither and arrives uncast; rename one to fix it.)
@@ -135,7 +135,7 @@ Facet), Old Sedge (The Ninth Facet)."* Each persona goes exactly as a single
 
 Each persona has its own page: **Personas › June**. You get there from a row
 on the Personas list, from **＋ New persona** (a blank page), and from Cast's
-**Edit their persona →**, so a speaker's voice is one click from the cast.
+**Edit their persona →**, so a speaker's voice is one click from Cast.
 
 Along the top: the voice and its model (`Sohee · Qwen3-TTS CustomVoice`), the
 language it speaks (`Speaks Korean`), **used by N speakers**, and **Unsaved
@@ -272,8 +272,7 @@ bar. (Since 2026-10-05 — before, no persona screen said which version spoke.)
 voice's own language. Where the voice or its model allows only one (a Kokoro voice,
 KittenTTS, Chatterbox Turbo) it is plain text: *Speaks English*. Where the model
 can speak several (Qwen3, Chatterbox Multilingual, VoxCPM2, Pocket TTS) it is a
-list of exactly those, so one Qwen3 speaker can be an English persona and a
-Korean one; when the two differ the page says *Speaks English · voice is
+list of exactly those, so one Qwen3 voice can be an English persona and a Korean one; when the two differ the page says *Speaks English · voice is
 Korean*. Every render of a line this persona plays is sent in this language.
 
 **Gender** beside it is the voice's: *Female · from its voice*. A persona has no
@@ -284,7 +283,7 @@ known* and warns that Smart-assign can't match this persona to anyone's
 pronouns.
 
 **Changing the voice** of a persona that plays anyone warns that its lines go
-stale: *Changing this makes June's 61 lines stale.* When the new voice's model
+stale: *Changing this makes persona June's 61 lines stale.* When the new voice's model
 can't take written direction and some of those lines carry a direction of their
 own, it adds how many: *18 carry a written direction — Chatterbox Turbo won't
 perform them.* It compares with the saved voice, so picking the saved one back
@@ -353,7 +352,7 @@ Describe a voice in words and a design model invents it — no recording.
 harbour-master in his seventies, unhurried"*. **↧ Start from the note** copies
 this persona's note in, to edit; it never happens on its own. The model is
 **Qwen3 VoiceDesign** (a separate 2.8 GB download from Qwen3's CustomVoice and
-Base, 1.7B only) or **VoxCPM2**. A design model invents a speaker afresh on
+Base, 1.7B only) or **VoxCPM2**. A design model invents a voice afresh on
 every call — ask twice for the same description and you get two different
 people — which is why keeping a take matters for a voice that must stay one
 person through a book.
@@ -533,7 +532,7 @@ speaks, ✓/✗ cloning and ✓/✗ seed. **Compare models →** opens AI Settin
 Speech engines.
 
 **Used by** lists every speaker the persona plays as
-`🎭 Cael Ferren — The Ninth Facet · 25 lines`, with the total line count beside the heading.
+`Cael Ferren — The Ninth Facet · 25 lines`, with the total line count beside the heading.
 **Open Cast →** takes you to that book's Cast step. When the persona plays
 speakers in several books there is one button per book: **Open The Ninth Facet Cast
 →**.
@@ -611,10 +610,10 @@ The note is for the language-model features, and nothing else reads it:
   language, and its note (as the persona's tone) to your language model, which
   matches them against the speakers.
 
-**Rewrite in character** in Studio · Render is different. It rewrites a line as
+**Rewrite as the speaker** in Studio · Render is different. It rewrites a line as
 the *speaker*, so it reads the speaker's *Who they are* on Cast, not the
 persona's note (see
-[Studio → Pronunciation and Rewrite in character](studio.md#pronunciation-and-rewrite-in-character)).
+[Studio → Pronunciation and Rewrite as the speaker](studio.md#pronunciation-and-rewrite-as-the-speaker)).
 
 Rewriting is always explicit and never happens at render time. The manuscript's
 words are only changed when you ask for a rewrite and accept it.
@@ -641,12 +640,12 @@ ticked, and Script's **Analyze** stops to offer **＋ Add Narrator and analyze**
 - **Tick Narrator** on any speaker's card. A book told in the first person has
   a narrator who also speaks (Watson tells *The Speckled Band* and talks in it),
   and both should be one voice. There is one narrator per book. The speaker who
-  had the role stays in the cast as an ordinary speaker. The narration Analyze
+  had the role stays in the book as an ordinary speaker. The narration Analyze
   decided moves to the new narrator at once; lines you set yourself stay where
   you put them.
 
 Until a book has a narrator, Analyze leaves its narration with no speaker, and a
-chapter won't render. Removing the narrator from the cast returns its lines to
+chapter won't render. Removing the narrator from the book returns its lines to
 no speaker in the same way. Script's **Assign N → Narrator** and the render's
 **Assign all to Narrator** (each shows the narrator's name) send lines with no
 speaker to the narrator once there is one.
@@ -676,7 +675,7 @@ page shows it, the language the persona speaks, note) to your language model, wh
 apply straight away. It is a starting point, so listen to each assignment before
 rendering and change any you disagree with by clicking another persona.
 
-Personas on different engines and providers can share one cast, for example an
+One book's speakers can be cast with personas on different engines and providers, for example an
 OpenAI voice for the protagonist, Kokoro for the villagers and a Chatterbox clone
-for the narrator. Cast warns when a cast spans several engines (chapters swap
+for the narrator. Cast warns when the book's personas are on several models (chapters swap
 engines while rendering) or uses online voices (billed per use).

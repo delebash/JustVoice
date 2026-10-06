@@ -34,7 +34,7 @@ claude mcp add justvoice --transport http \
 
 The `X-JustVoice-Client-Id` header identifies the client for **bindings**: in
 Settings you can bind a client id to a persona (`client_id / label /
-persona_id`), so "my-agent" always speaks as Mara without naming her in every
+persona_id`), so "my-agent" always speaks as persona Mara without naming it in every
 call. If the server has auth tokens set (Settings → auth), add the bearer header
 like any other client.
 

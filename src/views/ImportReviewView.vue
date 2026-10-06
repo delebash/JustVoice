@@ -208,8 +208,8 @@ function cancel() {
         <div class="imrev__sum"><span>Estimated audio</span><b>{{ totalEst }}</b></div>
         <div class="imrev__sum"><span>Speakers</span><b>{{ characterCount || "found later, in Script" }}</b></div>
         <div class="jv-banner jv-banner--info" style="font-size:12px; margin-top:12px">
-          Nothing is assigned automatically. The <strong>Script</strong> step finds speakers per
-          chapter and offers to add them to your cast.
+          Nothing is assigned automatically. The <strong>Discover</strong> step finds the speakers
+          each chapter names and offers to add them to this book.
         </div>
         <div class="imrev__actions">
           <UiButton

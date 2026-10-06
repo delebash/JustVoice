@@ -100,7 +100,7 @@ onMounted(() => {
     <!-- Tab strip already says "Channels" — explainer lede only, no
          duplicate title (same treatment as the Labs sub-views). -->
     <header class="jv-section">
-      <p class="jv-muted" style="margin-top: 4px; margin-bottom: 0;">Route specific voices to specific audio outputs. Multi-device broadcast supported (e.g. play through speakers AND OBS virtual mic).</p>
+      <p class="jv-muted" style="margin-top: 4px; margin-bottom: 0;">Route personas to specific audio outputs. Multi-device broadcast supported (e.g. play through your sound output AND OBS virtual mic).</p>
     </header>
 
     <div class="jv-section">
@@ -122,7 +122,7 @@ onMounted(() => {
             <UiButton intent="danger-outline" size="small" label="Delete" @click="deleteChannel(row)" />
           </div>
         </template>
-        <template #empty>No channels configured. Add one below to route voices to specific outputs.</template>
+        <template #empty>No channels configured. Add one below to route personas to specific outputs.</template>
       </UiTable>
     </div>
 
@@ -151,7 +151,7 @@ onMounted(() => {
       <UiField label="" layout="block" style="margin-top: 8px;">
         <UiCheckbox
           v-model="editing.is_default"
-          label="Default channel (used when a voice has no explicit channel assignment)"
+          label="Default channel (used when a persona has no channel of its own)"
         />
       </UiField>
 

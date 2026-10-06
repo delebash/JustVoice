@@ -13,7 +13,7 @@
   the persona page's controls that the line's model takes, and only those,
   for this line (2026-10-06, was D3's closed hatch; stored in the line's
   metadata), 📕 Pronunciation (the
-  book's lexicon), ✏️ Rewrite in character (moved here from Script), and its
+  book's lexicon), ✏️ Rewrite as the speaker (moved here from Script), and its
   takes: every take is kept, and the ★ one is what the chapter plays and
   exports (D4). A change to the line or to what it is made from marks it
   stale; you choose when to render it again.
@@ -427,9 +427,9 @@ function setKnob(l, key, v) {
   patchBlock(l, { line_override: { models: { [model]: { knobs: { [key]: value } } } } });
 }
 const KNOB_WORD = { speed: "pace", pitch: "pitch", gain_db: "gain", pause_after: "pause after" };
-const personaWord = (l) => (personaOf(l)?.name ? `${personaOf(l).name}'s` : "the persona's");
+const personaWord = (l) => (personaOf(l)?.name ? `persona ${personaOf(l).name}'s` : "the persona's");
 
-// ── Rewrite in character (moved here from Script, decided 2026-09-29) ─
+// ── Rewrite as the speaker (moved here from Script, decided 2026-09-29) ─
 const rewrite = ref(null);   // { line, text, busy, error }
 async function runRewrite() {
   const r = rewrite.value;
@@ -506,7 +506,7 @@ const blockedBanner = computed(() => {
     seen.add(l.speaker_id);
     const p = personaOf(l);
     parts.push(p
-      ? { text: `${p.name} (who plays ${speakerName(l)}) has no voice`, link: "fix on Personas",
+      ? { text: `persona ${p.name} (who plays ${speakerName(l)}) has no voice`, link: "fix on Personas",
           go: () => goPersona(p.id) }
       : { text: `${speakerName(l)} has no persona`, link: "fix in Cast", go: () => emit("go", "cast") });
   }
@@ -601,7 +601,7 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
                 title="Open the line to change its Style Instructions"
                 @click="open = open === row.block_id ? null : row.block_id">
                 <template v-if="row.direction">“{{ row.direction }}”</template>
-                <span v-else class="jv-muted">as {{ personaOf(row).name }} always speaks</span>
+                <span v-else class="jv-muted">as persona {{ personaOf(row).name }} always speaks</span>
               </span>
               <span v-else-if="personaOf(row).directed_by === 'tags'" class="studio-render-ch__tags">
                 <UiTag v-for="t in standingTags(row)" :key="t" intent="ghost">{{ t }}</UiTag>
@@ -626,7 +626,7 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
                 title="Opens Script" @click="emit('go', 'script')" />
               <UiButton v-else-if="!personaOf(row)" intent="secondary" size="small" :label="`Cast ${firstName(row)}`"
                 @click="emit('go', 'cast')" />
-              <UiButton v-else intent="secondary" size="small" :label="`Give ${personaOf(row).name} a voice`"
+              <UiButton v-else intent="secondary" size="small" :label="`Give persona ${personaOf(row).name} a voice`"
                 @click="goPersona(personaOf(row).id)" />
             </span>
             <audio v-if="playing && row.live && playing.key === row.live.take_id" :src="playing.url" autoplay
@@ -637,16 +637,16 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
             <div class="jv-linepanel" @click.stop>
               <div class="jv-linepanel__side">
                 <div class="jv-linepanel__field">
-                  <span class="jv-eyebrow">Spoken by</span>
+                  <span class="jv-eyebrow">Speaker</span>
                   <span class="jv-inline-row">
                     <UiSelect :model-value="row.line.speaker_id" width="name" :options="speakerChoices"
                       placeholder="— no speaker —" :disabled="!!speakerBusy[row.line.block_id]"
-                      title="Who says this line — the same choice as Script's"
+                      title="Who says this line in the book — the same choice as Script's"
                       @update:model-value="(v) => changeSpeaker(row.line, v)" />
-                    <span v-if="personaOf(row.line)">played by {{ personaOf(row.line).name }}<template
+                    <span v-if="personaOf(row.line)">Cast: persona {{ personaOf(row.line).name }}<template
                       v-if="personaOf(row.line).model_name"> · {{ personaOf(row.line).model_name }}</template> ·
                       <a href="#" @click.prevent="emit('go', 'cast')">Change in Cast ➜</a></span>
-                    <span v-else-if="row.line.speaker_id" class="jv-muted">nobody plays them yet ·
+                    <span v-else-if="row.line.speaker_id" class="jv-muted">no persona yet ·
                       <a href="#" @click.prevent="emit('go', 'cast')">Cast them ➜</a></span>
                   </span>
                 </div>
@@ -677,7 +677,7 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
                       </span>
                     </template>
                     <UiTextarea :model-value="row.line.direction" :rows="2"
-                      :placeholder="`as ${personaOf(row.line).name} always speaks`"
+                      :placeholder="`as persona ${personaOf(row.line).name} always speaks`"
                       @blur="(e) => setDirection(row.line, e.target.value)" />
                   </UiField>
 
@@ -727,7 +727,7 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
                   <UiButton intent="secondary" size="small" label="📕 Pronunciation"
                     title="Opens the book's lexicon — select a word in the line first to add it" @click="pronounce(row.line)" />
                   <UiButton intent="secondary" size="small" :disabled="!row.line.speaker_id"
-                    :label="row.line.speaker_id ? `✏️ Rewrite as ${firstName(row.line)}` : '✏️ Rewrite in character'"
+                    :label="row.line.speaker_id ? `✏️ Rewrite as ${firstName(row.line)}` : '✏️ Rewrite as the speaker'"
                     :title="rewriteTitle(row.line)" @click="openRewrite(row.line)" />
                   <UiButton intent="secondary" size="small" label="✎ Edit words"
                     :disabled="editing[row.line.block_id] !== undefined"
@@ -816,7 +816,7 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
       </template>
     </AppModal>
 
-    <AppModal v-if="rewrite" eyebrow="Rewrite in character" :title="speakerName(rewrite.line)"
+    <AppModal v-if="rewrite" eyebrow="Rewrite as the speaker" :title="speakerName(rewrite.line)"
       max-width="720px" dismissable @close="rewrite = null">
       <div class="studio-render-ch__rewrite">
         <div class="studio-render-ch__rewrite-field">

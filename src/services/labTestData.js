@@ -155,7 +155,7 @@ export const LAB_TEST_SOURCES = [
   },
   {
     id: "cast",
-    label: "cast",
+    label: "speakers",
     kind: "cast",
     async list() {
       return (await listProjects()).map((p) => ({ id: p.id, label: `Speakers of ${p.name}` }));

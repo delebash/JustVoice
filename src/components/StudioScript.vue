@@ -439,7 +439,7 @@ function openRow(r, focus = null) {
                   <UiTag v-else intent="danger" :title="failureOf(project.id, row.scene_id, 'analyze').reason">failed</UiTag>
                 </template>
                 <UiTag v-for="n in row.added_since" :key="n" intent="accent2"
-                  :title="`Analyzed before ${n} joined the cast, and this ${word.singular.toLowerCase()}'s text names ${n} — Analyze could not choose ${n} then.`">{{ n }} added since</UiTag>
+                  :title="`Analyzed before ${n} was added as a speaker, and this ${word.singular.toLowerCase()}'s text names ${n} — Analyze could not choose ${n} then.`">{{ n }} added since</UiTag>
                 <UiTag v-if="row.edited_since" intent="accent2"
                   :title="`${plural(row.edited_since, 'line')} added or changed with ✎ Edit text since the last Analyze, with no speaker yet. Re-analyze works out who speaks them; lines you set are kept.`">{{ row.edited_since }} changed since</UiTag>
                 <UiTag v-if="row.no_dialogue_found" intent="accent2"
@@ -514,7 +514,7 @@ function openRow(r, focus = null) {
                 <a href="#/ai">Set one in AI Settings ➜</a></span>
             </template>
             <template v-else-if="onlyNarrator">
-              <span class="jv-hint">Your cast has only the Narrator, so Analyze has nobody to choose from.
+              <span class="jv-hint">This book's only speaker is the Narrator, so Analyze has nobody to choose from.
                 Find the speakers first — <a href="#studio" @click.prevent="emit('go', 'discover')">Discover ➜</a></span>
             </template>
             <template v-else>

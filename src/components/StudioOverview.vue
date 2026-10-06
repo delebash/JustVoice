@@ -320,7 +320,7 @@ async function deleteProject() {
           <UiButton intent="secondary" size="small" label="↻ Re-import"
             title="Merge a newer version of the source file into this project" @click="showReimport = true" />
           <UiButton intent="secondary" size="small" label="📦 Export .justvoice.zip"
-            title="The whole project — text, cast, lexicons — as one file" @click="exportPackage" />
+            title="The whole project — text, speakers, personas, lexicons — as one file" @click="exportPackage" />
         </div>
       </div>
       <div class="jv-card">

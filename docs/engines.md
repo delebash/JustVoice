@@ -167,13 +167,13 @@ Norwegian, Polish, Portuguese, Swedish, Swahili and Turkish.
 **Qwen3-TTS is three different models**, and the difference decides what you
 can do with it:
 
-- **CustomVoice** ships 9 preset speakers (Vivian, Serena, Uncle Fu, Dylan,
+- **CustomVoice** ships 9 built-in voices (Vivian, Serena, Uncle Fu, Dylan,
   Eric, Ryan, Aiden, Ono Anna, Sohee) and takes a plain-English instruction to
   steer their style and emotion. It **cannot clone**. It comes in two sizes
-  with the same speakers: 1.7B, and 0.6B — a 1.7 GB download instead of 2.8 GB
+  with the same voices: 1.7B, and 0.6B — a 1.7 GB download instead of 2.8 GB
   that needs less graphics memory.
 - **Base** clones from a 3–10 second reference clip and its transcript, and
-  has no preset speakers. It ignores written direction.
+  has no built-in voices. It ignores written direction.
 - **VoiceDesign** makes a voice from a written description ("a gravelly
   harbour-master, sixties, unhurried") and speaks the line in it.
 
@@ -383,8 +383,7 @@ persona's Style Instructions, a line's own direction —
 reaches Qwen3 CustomVoice, Qwen3 VoiceDesign and VoxCPM2. On every engine but
 VoxCPM2 it does not reach a clone: Qwen3 Base and Pocket TTS clone but have no
 instruction input, and Chatterbox steers through Exaggeration and CFG weight
-rather than words. So on those, "direct the performance in words" and "use this
-speaker's cloned voice" are a choice — VoxCPM2 is the engine that does both — and that
+rather than words. So on those, "direct the performance in words" and "use this cloned voice" are a choice — VoxCPM2 is the engine that does both — and that
 includes a designed voice once you keep it, because keeping one turns it into
 a clone ([voices.md](voices.md#keeping-a-designed-voice-is-what-makes-it-one-voice)).
 
@@ -447,8 +446,7 @@ against 5.8 %) and rendered narration (8.6 % against 9.9 %).
 
 - **Audiobook narration in your own voice.** Chatterbox Multilingual or Qwen3
   Base. Clone from a minute or two of clean read-aloud.
-- **Audiobook with many speakers.** Cloned or designed voices for the main
-  cast, Kokoro for minor speakers — faster to render, 49 voices to choose from.
+- **Audiobook with many speakers.** Cloned or designed voices for the main speakers, Kokoro for minor ones — faster to render, 49 voices to choose from.
 - **Directed performances.** Qwen3 CustomVoice — tell each line how to sound
   in plain words.
 - **A voice nobody recorded.** Qwen3 VoiceDesign — describe it.
@@ -479,7 +477,7 @@ downloads it first. Loading a model unloads the same slot's previous one.
 
 **A render loads the model each voice needs.** A voice remembers the model it
 was made for ([Voices → Every voice knows the model that speaks it](voices.md#every-voice-knows-the-model-that-speaks-it)),
-so hearing a Qwen3 speaker while Qwen3 Base is loaded loads CustomVoice first,
+so hearing a Qwen3 built-in voice while Qwen3 Base is loaded loads CustomVoice first,
 and a chapter with voices on several models loads each in turn. The size and
 precision come from here: the model you loaded if it is the right one, else
 the one you **Set as default** if it is, else a downloaded build of that model

@@ -22,8 +22,7 @@ Every line is read with up to two lexicons, in this order:
    it. The list there offers **None**, this book's own lexicons, then your
    reusable ones; **Open ➜** goes to this page.
 2. **The lexicon of the persona that speaks the line** — **Lexicon** on the
-   persona. It is read only on the lines that persona speaks, so Old Crow's
-   street slang is never applied when the narrator reads the same word.
+   persona. It is read only on the lines that persona speaks, so persona Old Crow's street slang is never applied when the narrator reads the same word.
 
 **When both have the same word, the book's wins.** A name belongs to the book,
 not to a voice you reuse across books. On an engine that takes IPA that holds

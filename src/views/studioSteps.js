@@ -10,7 +10,7 @@
 //
 // PROSE KINDS: Discover → Script → Cast → Render → Export (redesign §8.5).
 // Discover is its own step because it is a different verb: it reads the prose
-// for names not yet in the cast and, on confirmation, CREATES personas. Script
+// for names not yet in this book and, on confirmation, CREATES personas. Script
 // (Analyze) can only choose from personas that exist, so Discover runs first.
 //
 // GAME PROJECTS: Lines → Cast → Render → Export. Their lines arrive from the

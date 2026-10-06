@@ -23,7 +23,7 @@
       <h2 class="stories__coming-title">Timeline</h2>
       <p>
         The multi-track timeline editor — arranging rendered clips across
-        tracks for episode assembly and multi-voice mixing — isn't built
+        tracks for episode assembly and multi-speaker mixing — isn't built
         yet. It's planned as its own feature, and this page will become it.
       </p>
       <p class="jv-muted">
