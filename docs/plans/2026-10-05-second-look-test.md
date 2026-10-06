@@ -81,3 +81,42 @@ The Speckled Band's three driver lines kept unknown. Per line 4–14 s at 0 (fir
 cache) against 1–2 s at 0.2 (the same prompts again, cached) — the time is the prompt cache,
 not the temperature. Switched 2026-10-06: `seed_presets.py` → `p_classify`, and the live
 database's assignment set the same way.
+
+## 2026-10-06 — end to end after a factory reset
+
+**Why:** the user, 2026-10-06: "i want you to reset the db and do the tests, check these types
+of errors we are finding make sure no errrors on second pass, no problems with discover alias,
+no wierd stuff" and "i dont want some warning or error when there really isnt one".
+
+**Method:** the running app (port 17494, data dir `src-tauri/target/debug/data`) after
+`POST /v1/data/reset` and a restart. Startup took JustWrite's AI cache by itself (kit TASKS
+"An app with no cache chosen uses a sibling's cache by itself"). LLM engine setup → Apply setup
+(gemma-4-26b-a4b-qat; nothing downloaded). The demo (The Ninth Facet, audiobook) through
+`POST /v1/projects/demo`, the call the Projects page makes. Then the real pages in headless
+Chromium, clicking what the user clicks: Discover → tick all → Scan; ＋ Add on Narrator and Old
+Sedge; Script → tick all → ✨ Analyze (main pass only — the second look is off by default);
+Bigger Inside → Review → 🔎 Second look; then each Studio step's text read for warnings. The
+saved lines scored against `attribution-truth.json` (spoken lines in order = the key's [D#];
+Old Sedge counts right where the key says unknown, since he is cast now).
+
+| Step | What happened |
+|---|---|
+| Discover · Scan, 4 chapters | 35 s, no failures, no page errors. Old Sedge one row, *also written Sedge*, ≈ 5 lines. Also listed as New with 0 lines: the courier, the Warden, a Concern clerk (named, never speak; not added). Neither earlier false name (Gudgeon, Ode) came back. |
+| ＋ Add | Narrator (role narrator) and Old Sedge with aliases `["Sedge"]` — the alias from Discover. |
+| ✨ Analyze, 4 chapters | 195 s, no failures, never *stuck*. Old Sedge got all 5 of his lines. 1 line blank: Bigger Inside D39, the candle line. Flagged 0 everywhere; no *added since*, no *changed since*. |
+| 🔎 Second look, Bigger Inside | 17 s; 1 of 1 → Odeline Marran (the key's speaker), marked to check — *To check 1*, by design. |
+| Score | **136 / 136 spoken lines right · 0 WRONG · 0 blank.** |
+| Page walk | No page errors on Overview, Discover, Script, Cast, Render, Export. Every warning true: nothing has a persona yet, so 289 lines can't render (Cast, Render). *🔍 A speaker is missing* is a permanent button to Discover, not a warning; *✕ Clear personas* is disabled with none set. |
+
+**Found — filed in the kit TASKS, nothing changed:**
+
+- The LLM engine setup's Apply says *both download at once* and *A model is several
+  gigabytes…* whenever the engine is installed — here one model, nothing downloading
+  (`QuickSetup.vue:1082-1096`).
+- The AI task strip's tok/s: 3 tokens just after the first read *3000.0 tok/s*
+  (`AiTaskStrip.vue:85-91`, the span floored at 1 ms). With thinking on — Analyze runs
+  `p_extract_reasoned`, think true, reasoning budget 1024 (`seed_presets.py:52`) — the
+  thinking streams no content: *first token in 26.7 s* on a 2,752-token prompt, ~28 tok/s
+  live (characters ÷ 4), then at done the count becomes `completionTokens`, thinking
+  included, over the content-only span — The Keystone 1720 tokens → *122.2 tok/s*. The
+  second look, without thinking, read right: 63 tokens, 48.6 tok/s.
