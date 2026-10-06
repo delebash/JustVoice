@@ -2,6 +2,12 @@
 
 ## v0.1.0
 
+- **Cast shows who still needs a persona; Script's checks in amber
+  (2026-10-06)** — the Speakers head has **All** and **No persona** chips:
+  click **No persona** to see only the speakers left to cast
+  ([Studio → Cast](studio.md#cast)). On Script, the **Check** column's
+  questions read in amber, so a line waiting on you stands out
+  ([Studio → The marks](studio.md#the-marks-where-to-read-closely))
 - **Cast's ＋ New persona lets you pick a voice it couldn't match, and three
   fixes (2026-10-06)** — a speaker the language model matched to no voice gets
   a **Voice** list in the proposals instead of "cast them yourself"

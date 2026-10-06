@@ -720,8 +720,12 @@ Narrator, played by your persona called Narrator if you have one. Or tick
 Narrator on any speaker."* It moves the narration that has no speaker to the new
 narrator ([Personas → The Narrator](personas.md#the-narrator)).
 
-**Speakers** below it counts everyone else and how many have no persona yet
-(*4 · 2 unassigned*). Its head has three buttons:
+**Speakers** below it has two chips, **All 10** and **No persona 1** — every
+speaker of the book, the narrator included, and how many still need a persona.
+Click **No persona** to see only those (the narrator's card too, only when it
+has none); **All** shows everyone again. When everyone is cast it says
+*Everyone has a persona.* The chips change only what you see — Smart-assign
+and ＋ New persona still read the whole cast. Its head has three buttons:
 
 - **＋ Add** asks for a name and adds a speaker to the book — for someone
   [Discover](#discover) missed. Analyze can only give a line to a speaker the

@@ -195,6 +195,29 @@ GO: needed.
 
 ## The next build
 
+### Cast: All · No persona chips to see who still needs a persona (decided 2026-10-06)
+STATE:  DECIDED 2026-10-06 — "go for cast filter" (the user: "the cast it shows 1 unassigned we need a
+        way to filter unassigned so user can easily see which ones need personas"), on the proposal
+        as shown: "Above Cast's speaker cards, a row of filter chips like Script's: All 10 · No
+        persona 1. Click No persona to see only the speakers who still need one; All brings
+        everyone back. It would use the same kit chip Script uses for its All / To check / No
+        speaker row. The count would follow the list, so once Old Sedge has a persona it reads No
+        persona 0. It sits beside the existing ＋ New persona for the N with none: the chip shows
+        who they are, the button makes their personas."
+WHY:    "1 unassigned" said how many, not who; a dashed card among ten is easy to miss.
+NOT:    —
+BUILT:  2026-10-06 — blast radius `docs/plans/2026-10-06-batch-pick-and-findings.md` §3. The Speakers
+        head's count became the kit's `UiChip`s **All N** · **No persona N** (every speaker, the
+        narrator included); No persona shows only those with none (the narrator's card too, only
+        when it has none) and, when there are none, "Everyone has a persona."; the choice resets
+        with the book; Smart-assign and ＋ New persona still read the whole cast (`StudioCast.vue`).
+        Docs studio (Cast), whats-new. Checked live on the app's UI: Old Sedge's persona cleared in
+        the browser only → All 10 · No persona 1, No persona shows only Old Sedge with the narrator's
+        card hidden, All brings all 9 + the narrator back; your real data (everyone cast) → No
+        persona 0 → "Everyone has a persona."; no page errors.
+OPEN:   none.
+GO:     given 2026-10-06
+
 ### Script's Check questions show in amber (decided 2026-10-06)
 STATE:  DECIDED 2026-10-06 — "amber go" (the user: "maybe show the check column words in red or
         yellow so it sticks out as to what is going on"), on the rec as shown: "I'd use amber

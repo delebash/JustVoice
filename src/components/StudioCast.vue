@@ -22,12 +22,15 @@
   Removing a speaker deletes it from the book and its lines go back to No
   speaker, so it asks first, naming the lines (decided 2026-09-29).
   Smart-assign applies its matches straight away, as it always has.
+  All · No persona chips (decided 2026-10-06, "go for cast filter") show only
+  the speakers who still need a persona, the narrator's card included; they
+  change what is shown, never who Smart-assign or ＋ New persona read.
 -->
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import {
-  EmptyState, UiButton, UiCheckbox, UiInput, UiSelect, UiTable, UiTag, UiTextarea,
+  EmptyState, UiButton, UiCheckbox, UiChip, UiInput, UiSelect, UiTable, UiTag, UiTextarea,
   confirmDialog, languageName, promptDialog, pushToast, withAiTask,
 } from "@delebash/llm-ui";
 import { useApi } from "../stores/api.js";
@@ -73,7 +76,13 @@ const listed = computed(() => (isGame.value
   : props.speakers.filter((s) => s.id !== narrator.value?.id)));
 
 const selectedId = ref(null);
-watch(() => props.project?.id, () => { selectedId.value = null; });
+// All · No persona — what the cards (or the game table) show.
+const castFilter = ref("all");
+watch(() => props.project?.id, () => { selectedId.value = null; castFilter.value = "all"; });
+const needsPersona = (s) => !s.persona_id;
+const noPersonaCount = computed(() => props.speakers.filter(needsPersona).length);
+const shown = computed(() => (castFilter.value === "none" ? listed.value.filter(needsPersona) : listed.value));
+const narratorShown = computed(() => !!narrator.value && (castFilter.value === "all" || needsPersona(narrator.value)));
 const selected = computed(() => props.speakers.find((s) => s.id === selectedId.value) || null);
 
 // ── What a speaker's cast says ───────────────────────────────────────────
@@ -99,7 +108,6 @@ function languageWarning(s) {
   if (!p?.speaks || !book || sameLanguage(p.speaks, book)) return "";
   return `⚠ speaks ${languageName(p.speaks) || p.speaks} — the book is ${languageName(book) || book}`;
 }
-const unassigned = computed(() => listed.value.filter((s) => !s.persona_id).length);
 // "40 lines can't render until Harbek and Renn have a persona."
 const uncast = computed(() => props.speakers.filter((s) => s.lines > 0 && !s.persona_id));
 const uncastLines = computed(() => uncast.value.reduce((n, s) => n + s.lines, 0));
@@ -631,7 +639,7 @@ const GAME_COLUMNS = [
 
         <!-- The narrator: its own full-width card above the rest, as the mock. -->
         <template v-if="!isGame">
-          <article v-if="narrator" class="jv-card studio-cast__card studio-cast__card--narrator"
+          <article v-if="narratorShown" class="jv-card studio-cast__card studio-cast__card--narrator"
             :class="{ 'studio-cast__card--selected': selectedId === narrator.id, 'studio-cast__card--unassigned': !narrator.persona_id }"
             title="The narrator carries the prose between quotes"
             @click="selectedId = narrator.id">
@@ -649,7 +657,7 @@ const GAME_COLUMNS = [
               <div v-if="languageWarning(narrator)" class="studio-cast__as studio-cast__as--none">{{ languageWarning(narrator) }}</div>
             </div>
           </article>
-          <button v-else type="button" class="studio-cast__narrator-empty" :disabled="busy"
+          <button v-else-if="!narrator" type="button" class="studio-cast__narrator-empty" :disabled="busy"
             title="Make a speaker called Narrator — played by your persona called Narrator if you have one"
             @click="addNarrator">
             <span class="studio-cast__portrait" :style="{ background: 'var(--surface-3)' }">N</span>
@@ -662,7 +670,11 @@ const GAME_COLUMNS = [
 
         <div class="studio-cast__head">
           <strong>Speakers</strong>
-          <span v-if="listed.length" class="jv-muted">{{ listed.length }} · {{ unassigned }} unassigned</span>
+          <template v-if="speakers.length">
+            <UiChip :selected="castFilter === 'all'" @click="castFilter = 'all'">All {{ speakers.length }}</UiChip>
+            <UiChip :selected="castFilter === 'none'" title="The speakers who still need a persona"
+              @click="castFilter = 'none'">No persona {{ noPersonaCount }}</UiChip>
+          </template>
           <span class="jv-spacer" />
           <UiButton intent="secondary" size="small" label="＋ Add"
             title="Someone Discover missed: add them, then Re-analyze or set their lines on Script." @click="addSpeaker" />
@@ -690,7 +702,10 @@ const GAME_COLUMNS = [
               add there arrive here — or ＋ Add one.
             </p>
           </div>
-          <UiTable v-else-if="isGame" class="jv-table-look" :data="listed" :columns="GAME_COLUMNS" data-key="id" row-hover
+          <div v-else-if="castFilter === 'none' && !noPersonaCount" class="studio-cast__empty">
+            <p class="jv-muted">Everyone has a persona.</p>
+          </div>
+          <UiTable v-else-if="isGame" class="jv-table-look" :data="shown" :columns="GAME_COLUMNS" data-key="id" row-hover
             :row-class="(row) => (selectedId === row.id ? 'studio-cast__row--selected' : '')"
             @row-click="({ data }) => (selectedId = data.id)">
             <template #portrait="{ row }">
@@ -707,7 +722,7 @@ const GAME_COLUMNS = [
             </template>
           </UiTable>
           <div v-else class="studio-cast__grid">
-            <article v-for="s in listed" :key="s.id" class="jv-card studio-cast__card"
+            <article v-for="s in shown" :key="s.id" class="jv-card studio-cast__card"
               :class="{ 'studio-cast__card--selected': selectedId === s.id, 'studio-cast__card--unassigned': !s.persona_id }"
               :title="`Select, then click a persona to cast ${s.name}`" @click="selectedId = s.id">
               <button type="button" class="studio-cast__x" title="Remove from the cast — asks first" @click.stop="removeSpeaker(s)">✕</button>

@@ -34,3 +34,19 @@ is measured in TASKS "The demo cast for Render…" and RESEARCH §7.
 | The fake updater goes (`updater`, `checkForUpdates`, `downloadUpdate`, `restartAndInstall`, `justvoice:updater_channel`, `.jv-updater-*`) | only `SettingsView.vue` (grep of src, scripts, docs: no other reader; docs name none) · TASKS:75-79 and RESEARCH:635 describe it | JustWrite: `<UpdatesPanel :app-version :changelog-html />` (`justwrite-app/src/views/SettingsView.vue:1614`) |
 | The Logs line and Open log file read `data_dir` | `SettingsView.vue:925` (`openLogFile`), `:1823` (the line), `:1826` (the button) · `loadGpuInfo` `:459-467` already fetches `/v1/system/info` | the tray's Open log file is Rust (`lib.rs` `open_logs`), unchanged |
 | `ConnectionError` probes while shown | mounted by `JustVioce/src/main.js:193`, `justwrite-app/src/main.js:110`; a JustWrite test mounts and unmounts it (`familyLabels.bite.test.js:33`) · `checkServer` (`serverApi.js:203`) called by both apps' `main.js` | the transport is configured before the screen mounts (both apps call `checkServer` first) |
+
+## 3. Cast's All · No persona chips (decided 2026-10-06, "go for cast filter")
+
+**What it is.** The Speakers head's *10 · 1 unassigned* becomes two kit `UiChip`s, Script's row:
+**All 10** · **No persona 1**. The counts are every speaker of the book, the narrator included
+(the Cast step card's *9/10 cast*). **No persona** shows only speakers with no persona — the
+narrator's card too, only when it has none — and an empty result says *Everyone has a persona.*
+**All** shows everyone. The choice resets when the book changes. Only what is shown changes:
+Smart-assign and ＋ New persona read the whole cast as before.
+
+| Change | Readers (grep `listed`, `unassigned`, `withoutPersona` in `StudioCast.vue`) | Already on the path |
+|---|---|---|
+| A shown list beside `listed` | `listed` `:71` (defined) · `:421` Smart-assign's `people` — **stays on `listed`** · `:665` the head's count (→ chips) · `:685` "No speakers yet" (stays: the book has none) · `:693` the game table's `:data` (→ shown) · `:710` the grid (→ shown) | `withoutPersona` `:519` (the batch) reads `props.speakers`, unchanged |
+| `unassigned` goes | its one reader `:665` | the step card's *9/10 cast* is Studio's own (`StudioView.vue:253`, `overviewState`) |
+| The narrator card follows the chip | `:633-659` (`v-if="narrator"`) · the Add Narrator button `:660` stays (it is no speaker) | — |
+| Docs | `docs/studio.md:723-724` (*4 · 2 unassigned*) | — |
