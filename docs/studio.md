@@ -129,7 +129,8 @@ chapter. It creates nothing on its own.
    scanned (**0** means named but not heard speaking; a speaker already in this book shows how many times the text names them instead), the **First appearance**
    — the quote that names them — and which chapters. Spellings of one person
    are one row: "Sedge" and "Old Sedge" show as *Old Sedge, also written Sedge*.
-   **Only Discover adds speakers** — Script never does (since 2026-10-06).
+   **Script never adds speakers** (since 2026-10-06) — they come from the import,
+   Discover's **＋ Add**, or Cast's **＋ Add** for someone Discover missed.
    The chips above it filter the list: **All**, **New** (everyone not in this book yet — new names and names a persona in your library has), **In this book** and **Ignored**. The statuses:
    - **In this book** — a speaker this book already has, whatever the text calls
      them: full name, first name, surname, or one of their *Also called*
@@ -808,8 +809,16 @@ has none); **All** shows everyone again. When everyone is cast it says
 - **✕ Clear personas** asks first, then takes the persona away from every speaker:
   *"Unassign personas from all 5 speakers. The speakers stay — only the persona
   links go."*
+- **Models to choose from** (since 2026-10-06), beside the two buttons below: a
+  check-list of the models that have voices in the book's language, with how many
+  each has — *Kokoro (28) · Pocket TTS (20) · KittenTTS (8)*. Smart-assign and
+  ＋ New persona choose only from voices on the ticked models, so a book's cast
+  doesn't spread over several models (each extra model is one more load per
+  chapter, and sounds like a different production). It starts on the narrator's
+  model when the narrator is cast, else on the model with the most voices; your
+  choice is saved for the book.
 - **✨ Smart-assign** sends the speakers (name, *Also called*, *Pronouns*, *Who
-  they are*) and your personas (name, voice gender, language, note) to your language model,
+  they are*) and your personas whose voice is on a ticked model (name, voice gender, language, note) to your language model,
   which proposes a persona for each speaker. The matches apply at once. Change
   any you disagree with by clicking another persona. It needs a language model;
   without one it says so.
@@ -817,7 +826,7 @@ has none); **All** shows everyone again. When everyone is cast it says
   included, has no persona) makes them personas of their own. A speaker whose
   name is already a persona in your library is simply cast with it. For the
   rest, your language model matches each to a voice — from the installed voices
-  that speak the book's **Language** (every installed voice when it isn't set),
+  on the ticked models that speak the book's **Language** (every language when it isn't set),
   judging who they are against each voice's gender, language and description.
   Nothing is made yet: a list shows each speaker → voice with **▶** to hear the
   voice, and you untick any you'd rather cast yourself. The model sometimes

@@ -2,7 +2,12 @@
 
 ## v0.1.0
 
-- **Only Discover adds speakers, and speakers say where they came from
+- **Cast chooses from the models you tick (2026-10-06)** — beside Smart-assign
+  and ＋ New persona, **Models to choose from** lists the models with voices in
+  the book's language; both buttons offer only voices on the ticked ones, so a
+  cast stays on one model unless you tick more. It starts on the narrator's
+  model, and is saved per book ([Studio → Cast](studio.md#cast))
+- **Script never adds speakers, and speakers say where they came from
   (2026-10-06)** — Script no longer adds a speaker. When its second look hears
   someone who isn't in the book, the chapter's banner says *Sedge may speak here
   but isn't in this book — scan Bigger Inside on Discover to add them ➜*, and

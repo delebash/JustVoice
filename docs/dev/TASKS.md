@@ -125,6 +125,36 @@ GO:     given 2026-08-17
 
 ## The next build
 
+### Cast: "Models to choose from" for Smart-assign and New persona (decided 2026-10-06)
+STATE:  DECIDED 2026-10-06 — "go" (the user: "cast page the create new persona for unassigned how does that
+        work it choose 3 diffrent engines, why … seems wastfule to choos 3 diffrent models since they are
+        all similiar, what is reasoning" · "your rec so you add a dropdown next to smart assign and the
+        auto create persona so you can choose from any model or only a few should be dropdown check list
+        i think, what do you think?"), on the answer as shown: "One control, beside both buttons: Models
+        to choose from: [Kokoro ▾], a check-list dropdown (the kit's UiMultiSelect). It sits next to
+        Smart-assign and ＋ New persona for the N with none, and both obey it. ＋ New persona offers the AI
+        model only voices from the checked models. Smart-assign offers only personas whose voice is on a
+        checked model. … The list: each installed model that has voices in the book's language, with its
+        count, e.g. Kokoro (28) · Pocket TTS (20) · KittenTTS (8). All models means everything ticked. The
+        default: the narrator's model, if the narrator is cast; otherwise the model with the most voices in
+        the book's language (Kokoro, for English). It's saved per book, so it sticks. A speaker nothing
+        fits still shows 'pick a voice', as today."
+WHY:    the batch matched on voice fit alone across every model, so a book's cast spread over three.
+NOT:    a single-model choice; a rule inside the prompt.
+BUILT:  2026-10-06 — `StudioCast.vue`: Models to choose from (the kit's `UiMultiSelect`) in the speakers'
+        head, before Smart-assign; `castModelOptions` = the models with voices in the book's language
+        (`voicesForBook`), most first, with counts; default the narrator's model when cast, else the
+        most voices; saved per book in prefs `castModels`. ＋ New persona's voices and Smart-assign's
+        personas (whose voice is on a ticked model) are filtered by it; Smart-assign with none left
+        says so. Docs studio (Cast; and "Script never adds speakers", correcting today's "Only
+        Discover adds speakers" — Cast's ＋ Add adds too), whats-new.
+        Checked on screen: the control reads "Models to choose from · Kokoro (28)" (narrator not cast →
+        most voices); opened: Kokoro (28), Pocket TTS (20), Qwen3-TTS (9), KittenTTS (8); no page
+        errors. Not run: Smart-assign or ＋ New persona with it — every speaker in the book is cast, and
+        Smart-assign would re-cast them. Biome, build clean.
+OPEN:   none.
+GO:     given 2026-10-06
+
 ### Discover back to scan results only; Script's banner sends you to scan; speakers show where they came from (decided 2026-10-06)
 STATE:  DECIDED 2026-10-06 — "it should have been in trakerk, but whatever, your rec on all go" (the user:
         "the discover doesnt make since you have sedge found by second look you aremeesing the whole flow

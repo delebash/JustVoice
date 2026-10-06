@@ -30,7 +30,7 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import {
-  EmptyState, UiButton, UiCheckbox, UiChip, UiInput, UiSelect, UiTable, UiTag, UiTextarea,
+  EmptyState, UiButton, UiCheckbox, UiChip, UiInput, UiMultiSelect, UiSelect, UiTable, UiTag, UiTextarea,
   confirmDialog, languageName, promptDialog, pushToast, withAiTask,
 } from "@delebash/llm-ui";
 import { useApi } from "../stores/api.js";
@@ -69,6 +69,39 @@ const voiceById = computed(() => Object.fromEntries(props.voices.map((v) => [v.i
 const engineById = computed(() => Object.fromEntries(props.engines.map((e) => [e.id, e])));
 
 const narrator = computed(() => props.speakers.find((s) => s.role_label === "narrator") || null);
+
+// ── Models to choose from (decided 2026-10-06) ──────────────────────────────
+// Smart-assign and ＋ New persona offer the language model only voices — or
+// personas whose voice is — on the ticked models, so a book's cast need not
+// spread over every installed model. The list: each model with voices in the
+// book's language, most voices first. The default: the narrator's model when
+// the narrator is cast, else the model with the most voices. Saved per book
+// (prefs `castModels`: {projectId: [engine ids]}).
+const bookVoices = computed(() => voicesForBook(props.voices, props.project?.language));
+const castModelOptions = computed(() => {
+  const counts = {};
+  for (const v of bookVoices.value) counts[v.engine] = (counts[v.engine] || 0) + 1;
+  return Object.entries(counts).sort((a, b) => b[1] - a[1])
+    .map(([id, n]) => ({ value: id, label: `${engineById.value[id]?.name || id} (${n})` }));
+});
+const defaultModels = computed(() => {
+  const nv = voiceById.value[personaOf(narrator.value)?.voice_id];
+  if (nv?.engine && castModelOptions.value.some((o) => o.value === nv.engine)) return [nv.engine];
+  return castModelOptions.value.length ? [castModelOptions.value[0].value] : [];
+});
+const savedModels = ref(readPref("castModels", {}) || {});
+const castModels = computed({
+  get() {
+    const saved = (savedModels.value[props.project.id] || [])
+      .filter((id) => castModelOptions.value.some((o) => o.value === id));
+    return saved.length ? saved : defaultModels.value;
+  },
+  set(v) {
+    savedModels.value = { ...savedModels.value, [props.project.id]: v };
+    writePref("castModels", savedModels.value);
+  },
+});
+const onCastModels = (engineId) => castModels.value.includes(engineId);
 // The grid: everyone but the narrator, who has the card above it. A game
 // sheet has no narrator section, so all of them.
 const listed = computed(() => (isGame.value
@@ -430,12 +463,16 @@ async function smartAssign() {
     pushToast({ kind: "info", message: "No speakers in this project to assign." });
     return;
   }
-  if (!props.personas.length) {
-    pushToast({ kind: "info", message: "No personas to assign from." });
+  // Only personas whose voice is on a ticked model (Models to choose from).
+  const pool = props.personas.filter((p) => onCastModels(voiceById.value[p.voice_id]?.engine));
+  if (!pool.length) {
+    pushToast({ kind: "info", message: props.personas.length
+      ? "None of your personas is on the models to choose from — tick more, or make some with ＋ New persona."
+      : "No personas to assign from." });
     return;
   }
   smartBusy.value = true;
-  const stats = [plural(people.length, "speaker"), plural(props.personas.length, "persona")];
+  const stats = [plural(people.length, "speaker"), plural(pool.length, "persona")];
   try {
     const applied = await withAiTask({
       feature: "smart_assign",
@@ -452,7 +489,7 @@ async function smartAssign() {
           characters: people.map(speakerForAi),
           // The persona's voice's gender and the language the persona really
           // speaks (the server's `speaks`), as every page shows them.
-          voices: props.personas.map((p) => ({
+          voices: pool.map((p) => ({
             id: p.id,
             name: p.name,
             gender: genderForAi(voiceById.value[p.voice_id]),
@@ -531,7 +568,8 @@ async function proposeNewPersonas() {
   if (!people.length || newBusy.value) return;
   const { byName, rest } = splitByName(people, props.personas);
   const book = props.project?.language;
-  const voices = voicesForBook(props.voices, book);
+  // Only voices on a ticked model (Models to choose from).
+  const voices = voicesForBook(props.voices, book).filter((v) => onCastModels(v.engine));
   if (rest.length && !voices.length) {
     pushToast({ kind: "warning", duration: 6000,
       message: `No installed voice speaks ${languageName(book) || book} — install a speech model on AI Settings → Speech engines.` });
@@ -680,6 +718,12 @@ const GAME_COLUMNS = [
             title="Someone Discover missed: add them, then Re-analyze or set their lines on Script." @click="addSpeaker" />
           <UiButton intent="secondary" size="small" label="✕ Clear personas" :disabled="busy || !speakers.some((s) => s.persona_id)"
             title="Unassign every persona — the speakers stay" @click="clearCast" />
+          <span v-if="castModelOptions.length" class="studio-cast__models"
+            title="Smart-assign and ＋ New persona choose only from voices on these models — saved for this book">
+            <span class="jv-hint">Models to choose from</span>
+            <UiMultiSelect v-model="castModels" :options="castModelOptions" :filterable="false" width="name"
+              placeholder="Pick models…" aria-label="Models to choose from" />
+          </span>
           <UiButton intent="primary" size="small" label="✨ Smart-assign" :loading="smartBusy" :disabled="smartBusy"
             title="Your language model proposes a persona for each speaker from who they are" @click="smartAssign" />
           <UiButton v-if="withoutPersona.length" intent="secondary" size="small"
@@ -864,6 +908,8 @@ const GAME_COLUMNS = [
 .studio-cast__narrator-empty-text strong { font-size: 13.5px; font-weight: 600; }
 .studio-cast__narrator-empty-text .jv-muted { font-size: 12px; }
 .studio-cast__head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.studio-cast__models { display: inline-flex; align-items: center; gap: 6px; }
+.studio-cast__models > .jv-hint { white-space: nowrap; }
 .studio-cast__head strong { font-size: 12px; }
 .studio-cast__head .jv-muted { font-size: 12px; }
 .studio-cast__notice { font-size: 12px; }
