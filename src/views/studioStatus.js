@@ -132,6 +132,7 @@ export function foundSpeakers(scenes, cast = [], ignored = [], personas = []) {
       row.evidence = c.evidence;
       row.evidence_found = c.evidence_found ?? null;
     }
+    if (c.second_look) row.second_look = true;
     if (!row.chapters.includes(s.id)) row.chapters.push(s.id);
   };
   // A name with no speaker behind it: Ignored, In your library, or New.
@@ -148,6 +149,13 @@ export function foundSpeakers(scenes, cast = [], ignored = [], personas = []) {
     } else note(nameRow("new", name), s, name, c);
   };
   for (const s of scenes || []) {
+    // Who Script's second look heard speaking a line that has no speaker, who isn't in
+    // the book (2026-10-06 — only Discover adds speakers): listed beside the scans, not
+    // as one — the row is marked, and its first line is the quote. Derived by the
+    // server from the lines (`second_look_found`), so it goes when they are decided.
+    for (const f of s.second_look_found || []) {
+      byName(s, f.name, { approx_lines: f.approx_lines, evidence: f.evidence, second_look: true });
+    }
     const saved = s.metadata?.discover;
     if (!saved) continue;
     for (const m of saved.named_cast || []) {
@@ -180,6 +188,7 @@ function blank(key, name) {
   return {
     key, status: null, name: (name || "").trim(), names: [], speaker: null, persona: null,
     role_hint: "", evidence: "", evidence_found: null, lines: 0, mentions: 0, chapters: [],
+    second_look: false,
   };
 }
 /** A row still waiting for Add or Ignore. */

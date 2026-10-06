@@ -2,6 +2,12 @@
 
 ## v0.1.0
 
+- **Only Discover adds speakers (2026-10-06)** — Script no longer adds a
+  speaker. When its second look hears someone speaking a line who isn't in the
+  book, the chapter's banner says *Sedge may speak here but isn't in this book —
+  add them on Discover ➜*, and Discover lists them under **Speakers found**,
+  marked *found by Script's second look*, with **＋ Add** — even before any
+  scan ([Studio → Discover](studio.md#discover))
 - **Analyze leaves the second look to you (2026-10-06)** — Analyze now does its
   main pass only; a spoken line it can't place says *No speaker — a candidate
   for 🔎 Second look* in Script's Check column, and the chapter's 🔎 Second look

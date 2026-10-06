@@ -109,9 +109,15 @@ class SceneResponse(BaseModel):
     metadata: dict
     block_count: int = 0
     created_at: datetime
+    # Names Script's second look heard speaking a line of this chapter that has no
+    # speaker, who aren't in the book (decided 2026-10-06: only Discover adds
+    # speakers) — derived from the lines on every read, never stored, so Discover
+    # lists them beside its scans without faking one: [{name, approx_lines,
+    # evidence, line_ids}]. Only the chapter list fills it.
+    second_look_found: list[dict] = []
 
     @classmethod
-    def from_orm(cls, row: Scene, block_count: int = 0) -> "SceneResponse":
+    def from_orm(cls, row: Scene, block_count: int = 0, second_look_found=None) -> "SceneResponse":
         return cls(
             id=row.id,
             project_id=row.project_id,
@@ -121,7 +127,30 @@ class SceneResponse(BaseModel):
             metadata=json.loads(row.metadata_json or "{}"),
             block_count=block_count,
             created_at=row.created_at,
+            second_look_found=second_look_found or [],
         )
+
+
+def second_look_found(db: Session, scene_id: str) -> list[dict]:
+    """The second look's "not in this book" names on a chapter's lines that still have
+    no speaker (`metadata.not_in_cast`), one entry per name in line order: how many
+    lines, the first line's words, their ids."""
+    out: dict[str, dict] = {}
+    blocks = (db.query(Block).filter(Block.scene_id == scene_id, Block.speaker_id.is_(None))
+              .order_by(Block.position).all())
+    for b in blocks:
+        try:
+            meta = json.loads(b.metadata_json or "{}")
+        except ValueError:
+            continue
+        name = str(meta.get("not_in_cast") or "").strip()
+        if not name:
+            continue
+        row = out.setdefault(name.lower(), {"name": name, "approx_lines": 0,
+                                            "evidence": (b.text or "").strip(), "line_ids": []})
+        row["approx_lines"] += 1
+        row["line_ids"].append(b.id)
+    return list(out.values())
 
 
 class BlockResponse(BaseModel):
@@ -346,7 +375,8 @@ async def list_scenes(project_id: str, db: Session = Depends(get_db)) -> list[Sc
     )
     return [
         SceneResponse.from_orm(
-            s, block_count=db.query(Block).filter(Block.scene_id == s.id).count()
+            s, block_count=db.query(Block).filter(Block.scene_id == s.id).count(),
+            second_look_found=second_look_found(db, s.id),
         )
         for s in scenes
     ]

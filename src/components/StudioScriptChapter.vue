@@ -128,10 +128,11 @@ watch(() => props.version, load);
 const chapter = computed(() => page.value?.chapter || null);
 const groups = computed(() => page.value?.flag_groups || []);
 const speakers = computed(() => page.value?.speakers || []);
-// Who Analyze's second look found speaking a line it couldn't place, who isn't
-// in this book (2026-10-05, metadata.not_in_cast) — the no-speaker banner
-// offers to add each. A name added since drops off; the grid's row then says
-// "<name> added since" and offers Re-analyze.
+// Who the second look found speaking a line it couldn't place, who isn't in this
+// book (2026-10-05, metadata.not_in_cast). Script doesn't add speakers (decided
+// 2026-10-06): the no-speaker banner names each and links to Discover, which
+// lists them under Speakers found. A name added since drops off; the grid's row
+// then says "<name> added since".
 const notInCast = computed(() => {
   const cast = new Set(speakers.value.map((s) => (s.name || "").toLowerCase()));
   const out = [];
@@ -141,24 +142,6 @@ const notInCast = computed(() => {
   }
   return out;
 });
-const addingName = ref("");
-async function addToCast(name) {
-  addingName.value = name;
-  try {
-    await api.request(`/v1/projects/${props.project.id}/speakers/promote`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ candidates: [{ name }] }),
-    });
-    await load();
-    emit("changed");
-    pushToast({ kind: "success", message: `${name} is a speaker now — 🔎 Second look asks again about the lines with no speaker, so ${name} can be chosen.` });
-  } catch (e) {
-    pushToast({ kind: "error", message: `Couldn't add ${name}: ${e?.message || e}` });
-  } finally {
-    addingName.value = "";
-  }
-}
 const narratorId = computed(() => page.value?.narrator_id || null);
 const nameOf = (id) => speakers.value.find((s) => s.speaker_id === id)?.name || (id ? "someone removed" : "no speaker");
 
@@ -689,11 +672,9 @@ const flagged = (ln) => (ln.flags || []).length > 0;
             chapter changes. ✨ Re-analyze decides every line again.</span>
         </p>
         <div v-for="name in notInCast" :key="name" class="studio-script-ch__offer">
-          <span><strong>{{ name }}</strong> isn't a speaker in this book —</span>
-          <UiButton intent="primary" size="small" :label="`＋ Add ${name}`" :loading="addingName === name"
-            :disabled="!!addingName"
-            :title="`Analyze's second look found ${name} speaking a line here. Adds them to this book's speakers, as Discover's ＋ Add does.`"
-            @click="addToCast(name)" />
+          <span><strong>{{ name }}</strong> may speak here but isn't in this book —</span>
+          <a href="#studio" :title="`The second look heard ${name} speaking a line here. Discover lists them under Speakers found, with ＋ Add.`"
+            @click.prevent="emit('go', 'discover')">add them on Discover ➜</a>
         </div>
       </div>
 

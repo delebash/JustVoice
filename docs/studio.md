@@ -129,6 +129,11 @@ chapter. It creates nothing on its own.
    scanned (**0** means named but not heard speaking; a speaker already in this book shows how many times the text names them instead), the **First appearance**
    — the quote that names them — and which chapters. Spellings of one person
    are one row: "Sedge" and "Old Sedge" show as *Old Sedge, also written Sedge*.
+   It also lists who Script's [second look](#the-second-look) heard speaking a
+   line that has no speaker, when they aren't in this book — marked *found by
+   Script's second look*, with that line as the quote, even in a chapter Discover
+   never scanned. Add them here like any other name; the mark goes once the line
+   is given a speaker. **Only Discover adds speakers** (since 2026-10-06).
    The chips above it filter the list: **All**, **New** (everyone not in this book yet — new names and names a persona in your library has), **In this book** and **Ignored**. The statuses:
    - **In this book** — a speaker this book already has, whatever the text calls
      them: full name, first name, surname, or one of their *Also called*
@@ -407,11 +412,12 @@ audio, and JustVoice will not quietly leave a sentence out of your audiobook.
 The banner above the table counts them and offers **Assign N → Narrator**. A
 book with no narrator yet says *This book has no narrator — choose one on Cast
 ➜* instead, and the link opens Cast. When the [second look](#the-second-look)
-found who speaks a line but they aren't a speaker in this book, the banner offers them, one
-row each: **Old Sedge isn't a speaker in this book — ＋ Add Old Sedge**. It adds them to the
-book's speakers the way Discover's **＋ Add** does; the chapter's row on the grid
-then says *Old Sedge added since* and offers **Re-analyze**, so Analyze can give
-them their lines.
+found who speaks a line but they aren't a speaker in this book, the banner names them, one
+row each: **Old Sedge may speak here but isn't in this book — add them on Discover ➜**.
+The link opens Discover, where they are listed under **Speakers found** (*found by
+Script's second look*) with **＋ Add** — Script itself never adds a speaker. Once
+they are added, the chapter's row on the grid says *Old Sedge added since*, and
+**🔎 Second look** on the chapter's page can give them their lines.
 
 **A book with narration needs a narrator.** Narration — everything outside
 quote marks — goes to the narrator, and nothing makes one on its own, so
@@ -574,8 +580,8 @@ it gets a speaker, or Analyze runs on the chapter again.
   **To check** until you set a speaker or press **✓ Looks right**. It counts
   under *AI decided*.
 - If the speaker is someone the text names who isn't a speaker in this book, the line keeps
-  no speaker and the banner above the table offers **＋ Add** them (see *Lines
-  with no speaker block the render*, above).
+  no speaker; the banner above the table names them and links to Discover, which
+  lists them to add (see *Lines with no speaker block the render*, above).
 - If the text never makes it clear, the line stays as it was. A wrong name is
   worse than no name, and the second look is told so.
 
@@ -620,10 +626,9 @@ chapter is decided again.
 **What it's for.** Filling a few blank lines without re-deciding the whole
 chapter:
 
-- **After you ＋ Add someone who was missing.** Analyze could only pick from the
-  speakers the book had; once you add the person the banner offers (or one you
-  found with Discover), a second look asks about the blank lines with them in
-  the cast. ＋ Add's message says so.
+- **After you ＋ Add someone who was missing** — on Discover, where the banner's
+  link takes you. Analyze could only pick from the speakers the book had; once
+  you add them, a second look asks about the blank lines with them in the cast.
 - **For a speaker the book names in another chapter** — a voice in the dark,
   revealed by name later — when the lines are still blank.
 
@@ -635,7 +640,7 @@ second look to fill blanks.
 **What it saves.** Each answer is saved to its line as it comes: a name the
 text makes clear goes on the line **marked to check** (*Decided by: AI, from the
 chapters around it*); someone the text names who isn't a speaker in this book is
-offered for you to **＋ Add**; a line it still can't place stays blank for you to
+listed on Discover for you to **＋ Add**; a line it still can't place stays blank for you to
 set. A line it names shows under **Changed**, like a line a re-analyze changed.
 It isn't offered while the chapter is being analyzed.
 

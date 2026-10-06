@@ -542,6 +542,8 @@ async function ignore(c) {
             <strong>{{ row.name }}</strong>
             <div v-if="row.names.some((n) => n !== row.name)" class="jv-hint">also written {{ row.names.filter((n) => n !== row.name).join(", ") }}</div>
             <div v-if="row.role_hint" class="jv-hint">{{ row.role_hint }}</div>
+            <div v-if="row.second_look" class="jv-hint"
+              title="Script's 🔎 Second look heard them speaking a line that has no speaker. Add them, then run the second look again on Script so the line goes to them.">found by Script's second look</div>
           </template>
           <template #status="{ row }">
             <UiTag :intent="STATUS[row.status].intent" :title="statusTitle(row)">{{ STATUS[row.status].label }}</UiTag>

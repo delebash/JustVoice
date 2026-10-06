@@ -125,6 +125,41 @@ GO:     given 2026-08-17
 
 ## The next build
 
+### Only Discover adds speakers; a name the second look finds goes to Discover (decided 2026-10-06)
+STATE:  DECIDED 2026-10-06 — "your rec go" (the user: "should script be identifying speakers, i dont think
+        thats its job, what do you think?" · earlier "in discover i added olde sage but for some reason it
+        does nto shwo it" · "how does script know to add sedge but discover is set as never analyzed"),
+        on the lean as shown: "one place adds speakers, and that's Discover. · Script stops adding. The
+        banner keeps 🔎 Second look and Assign N → Narrator, but loses ＋ Add Sedge. · What the second
+        look finds isn't thrown away. When it names someone who isn't in the book, the banner says 'Sedge
+        may speak here but isn't in this book — add them on Discover ➜'. The link goes to Discover with
+        Sedge listed under Speakers found, marked found by Script's second look with the line, and
+        Discover's own ＋ Add sits there as for any scanned name. · The flow becomes: Discover → Script →
+        (if a name is missing) Discover's ＋ Add → back to Script's 🔎 Second look. · One thing to check
+        before building: how Discover stores its found list, so a second-look name sits beside scanned
+        ones without faking a scan."
+WHY:    Script gives lines to the book's speakers; adding speakers on Script left Discover showing a
+        different book than Script.
+NOT:    dropping the second look's "not in this book" names (the simpler alternative).
+BUILT:  2026-10-06 — how Discover stores its list, checked first: the page builds Speakers found from
+        each chapter's saved scan (`scene.metadata.discover`, `studioStatus.foundSpeakers`). So the
+        server adds `second_look_found` to each chapter in `GET /v1/projects/{id}/scenes`
+        (`projects_api.second_look_found`: the not-in-this-book names on lines that still have no
+        speaker) — a field of its own, derived on every read, never stored, so nothing fakes a scan
+        and nothing goes stale. `foundSpeakers` lists them beside the scans (a mark, the line as the
+        quote); Discover's name cell says "found by Script's second look". Script's banner names them
+        and links to Discover ("may speak here but isn't in this book — add them on Discover ➜");
+        Script's own add (`addToCast`, its promote call and toast) is gone — Discover's is the only add
+        left (grep). Docs studio (Discover's Speakers found; the banner; the second look's bullets),
+        whats-new; RESEARCH §7.
+        Checked live: the chapter list gives Bigger Inside `[("Sedge", 2)]`; Discover's row reads
+        "Sedge · found by Script's second look · In this book · ≈ 2 · "Concern's fourth party." ·
+        Bigger Inside"; no page errors. Not seen on screen: a New row from the second look and Script's
+        link line — Sedge is already in the book (my reproduction click added him earlier today), so
+        neither appears; the New path is the same `byName` path scanned names take.
+OPEN:   none.
+GO:     given 2026-10-06
+
 ### Analyze leaves the second look to you; blank lines say they are candidates (decided 2026-10-06)
 STATE:  DECIDED 2026-10-06 — "yes finish the rest go" (the user: "i think on chapter analyses we dont auto
         run second pass we leave that up to user to run using this new button and process … we need to

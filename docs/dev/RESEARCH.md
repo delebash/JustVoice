@@ -746,6 +746,12 @@ kit's register §2.
 
 ## 7 · Where an AI task shows
 
+- Only Discover adds speakers (since 2026-10-06). A name the second look hears on a line with no
+  speaker, who isn't in the book (`metadata.not_in_cast`), reaches Discover through
+  `GET /v1/projects/{id}/scenes` → each chapter's `second_look_found` (derived from the lines on
+  every read, not stored); `studioStatus.foundSpeakers` lists it beside the scanned names, marked.
+  Script's banner only links there. — *code + live, 2026-10-06* (Bigger Inside: Sedge, 2 lines).
+
 - Analyze's own second look is off by default since 2026-10-06 (`ExtractionSettings.second_look`
   False): Analyze does its main pass only; Script's 🔎 Second look asks about the blank spoken
   lines. A line the second look asked about and could not name carries
