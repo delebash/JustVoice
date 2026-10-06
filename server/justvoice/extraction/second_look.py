@@ -159,6 +159,7 @@ def second_look(
     on_delta=None,
     on_step=None,
     stop=None,
+    on_thinking=None,
 ) -> None:
     """Ask once more about each spoken row with no speaker; changes `rows` in
     place. `resolve(raw)` maps the model's answer to a real cast id or
@@ -167,7 +168,7 @@ def second_look(
     to ask about (lines the user set — their rows are never written).
 
     `on_delta(text)`: when set, each call streams and its text is passed on, as
-    the main call's is. `on_step(done, total, rows)`: called as the look starts
+    the main call's is; `on_thinking(text)` gets a thinking model's reasoning. `on_step(done, total, rows)`: called as the look starts
     and after each line — points where `rows` is whole, so a caller can keep a
     copy. `stop()`: asked before each line; True ends the look there. The calls'
     tokens and time are added to `raw_out["usage"]` when the main call left one."""
@@ -190,7 +191,8 @@ def second_look(
         try:
             if look_at(rows[i], paragraphs, cast_text=cast_text, before=before, after=after,
                        resolve=resolve, cast_names=cast_names, floor=floor, use_floor=use_floor,
-                       cfg=cfg, report=report, usage=usage, on_delta=on_delta) == "none":
+                       cfg=cfg, report=report, usage=usage, on_delta=on_delta,
+                       on_thinking=on_thinking) == "none":
                 rows[i].second_look_asked = True
         finally:
             if on_step is not None:
@@ -215,7 +217,7 @@ def _add_usage(usage, prompt_tokens, completion_tokens) -> None:
         usage["completion_tokens"] = int(usage.get("completion_tokens") or 0) + int(completion_tokens or 0)
 
 
-def _ask(variables: dict, usage, on_delta) -> str:
+def _ask(variables: dict, usage, on_delta, on_thinking=None) -> str:
     """One question; the reply's text. Streams when `on_delta` is set — the
     prompt-eval frames are dropped: the strip shows "reading prompt" only before
     a run's first token (decided 2026-10-06)."""
@@ -227,6 +229,9 @@ def _ask(variables: dict, usage, on_delta) -> str:
     for delta in stream_feature(ACTION, variables):
         if delta.done:
             _add_usage(usage, delta.prompt_tokens, delta.completion_tokens)
+        elif delta.reasoning:
+            if on_thinking is not None:
+                on_thinking(delta.reasoning)
         elif delta.text:
             parts.append(delta.text)
             on_delta(delta.text)
@@ -234,7 +239,7 @@ def _ask(variables: dict, usage, on_delta) -> str:
 
 
 def look_at(row, paragraphs, *, cast_text, before, after, resolve, cast_names, floor,
-            use_floor, cfg, report, usage, on_delta) -> str:
+            use_floor, cfg, report, usage, on_delta, on_thinking=None) -> str:
     """Ask about one line and write the answer onto its row — `row` needs
     paragraph_idx, text, speaker, confidence, source, floored_from and
     not_in_cast. Analyze's second look and Script's 🔎 Second look button both
@@ -249,7 +254,7 @@ def look_at(row, paragraphs, *, cast_text, before, after, resolve, cast_names, f
         "line": row.text.strip(),
     }
     try:
-        text = _ask(variables, usage, on_delta)
+        text = _ask(variables, usage, on_delta, on_thinking)
     except Exception as e:  # noqa: BLE001 — an extra: a failure leaves the line as it was
         report["failed"] += 1
         log.warning("second look failed on %r: %s", row.text[:60], e)

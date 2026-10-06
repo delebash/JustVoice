@@ -22,6 +22,10 @@
   couldn't place says *Second look found no one*. Analyze's own second look is
   a switch on Speaker attribution's Auto page, now off
   ([Studio → The second look](studio.md#the-second-look))
+- **The AI strip shows a model thinking (2026-10-06)** — Analyze's model reasons
+  before it answers; the strip now says **thinking…** with its tokens, and *first
+  token* is its first thought — about 7 s on The Keystone, where it had read 27 s
+  ([AI features](ai-features.md#ai-tasks--where-they-show-and-the-panel))
 - **Script's Check column leads with a tag (2026-10-06)** — red **⚠ No
   speaker** where a line can't render, amber **To check** where it is only worth
   a look; the question follows in smaller text ([Studio → Script](studio.md))

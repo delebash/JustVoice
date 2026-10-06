@@ -695,6 +695,7 @@ async def analyze_scene_stream_endpoint(
                 request=req,
                 raw_out=raw_out,
                 on_delta=lambda t: q.put({"delta": t}),
+                on_thinking=lambda t: q.put({"thinking": t}),
                 on_progress=lambda p: q.put({"progress": p}),
                 marks=marks,
                 segments=segments,
@@ -954,6 +955,7 @@ async def second_look_stream_endpoint(
                     resolve=resolve, cast_names=lambda name: bool(match(name, prompt_cast)),
                     floor=floor, use_floor=True, cfg=cfg, report=report, usage=usage,
                     on_delta=lambda t: q.put({"delta": t}),
+                    on_thinking=lambda t: q.put({"thinking": t}),
                 )
                 if stop.is_set():
                     break   # the answer landed after the cancel — dropped

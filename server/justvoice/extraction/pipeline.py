@@ -439,7 +439,7 @@ def _one_paragraph_too_big(tokens: int | None, context: int | None) -> str:
 
 
 def _attribute_in_pieces(request, settings, pick, paragraphs, segments, prompt_cast, prompt_corrections,
-                         *, on_delta, on_progress, raw_out) -> list[dict]:
+                         *, on_delta, on_progress, raw_out, on_thinking=None) -> list[dict]:
     """The model's answers for every dialogue line, read in as many calls as the
     model's context needs — usually one (2026-09-28, the chapter-splitting plan).
 
@@ -538,6 +538,11 @@ def _attribute_in_pieces(request, settings, pick, paragraphs, segments, prompt_c
                 if on_progress is not None:
                     # One bar across every piece.
                     on_progress(min(1.0, (state["done"] + delta.progress) / state["total"]))
+            elif delta.reasoning:
+                # The model thinking before its answer — shown and counted on the
+                # strip, never part of the reply (2026-10-06).
+                if on_thinking is not None:
+                    on_thinking(delta.reasoning)
             elif delta.text:
                 parts.append(delta.text)
                 on_delta(delta.text)
@@ -610,6 +615,7 @@ def analyze_scene(
     segments: list[dict] | None = None,
     on_step=None,
     stop=None,
+    on_thinking=None,
 ) -> list[AttributionRow]:
     """Run the full pipeline.
 
@@ -680,7 +686,7 @@ def analyze_scene(
         try:
             llm_picks = _attribute_in_pieces(
                 request, settings, pick, paragraphs, segments, prompt_cast, prompt_corrections,
-                on_delta=on_delta, on_progress=on_progress, raw_out=raw_out,
+                on_delta=on_delta, on_progress=on_progress, raw_out=raw_out, on_thinking=on_thinking,
             )
         except (LLMNotConfiguredError, AttributionModelError):
             # Not configured -> the API layer's 501 with the actionable message.
@@ -784,6 +790,6 @@ def analyze_scene(
             floor=floor, use_floor=request.use_floor,
             before_text=request.before_text, after_text=request.after_text,
             cfg=cfg, skip=set(request.second_look_skip), raw_out=raw_out,
-            on_delta=on_delta, on_step=on_step, stop=stop,
+            on_delta=on_delta, on_step=on_step, stop=stop, on_thinking=on_thinking,
         )
     return rows
