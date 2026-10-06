@@ -1096,6 +1096,9 @@ progress {
 .jv-linepanel { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; padding: 12px 14px 14px; background: var(--surface-2); }
 .jv-linepanel__side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .jv-linepanel__field { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+/* A field whose sliders fill the side column — "This line only" (2026-10-06). */
+.jv-linepanel__field--wide { align-items: stretch; }
+.jv-linepanel__wide { width: 100%; }
 .jv-linepanel__row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .jv-linepanel__nums { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-end; }
 @media (max-width: 900px) { .jv-linepanel { grid-template-columns: 1fr; } }

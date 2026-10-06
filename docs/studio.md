@@ -879,7 +879,7 @@ Lines are joined with **Pause between lines** (Settings → Generation pipeline,
 600 ms by default) — the same pause in Render, in the exported audiobook and in
 ACX QC, so the chapter you audition is the chapter that ships. A line's own
 pause wins for that line, whether it came from an import (a script's
-`pause_after_ms`) or from [the line's own numbers](#a-lines-own-numbers) — and,
+`pause_after_ms`) or from [This line only](#this-line-only) — and,
 since 2026-10-04, it wins over the persona's own pause too.
 
 ### The chapter grid
@@ -931,8 +931,8 @@ A row opens its line, under it:
   persona changed — until you render it again. Beside it, the persona that
   plays that speaker and its model; which persona plays a speaker is Cast's:
   **Change in Cast ➜**.
-- **⚙ Override the numbers for this line** — see
-  [the line's own numbers](#a-lines-own-numbers).
+- **This line only** — the line's own pace, pitch, gain and pause; see
+  [This line only](#this-line-only).
 - **📕 Pronunciation** and **✏️ Rewrite as** *name* — see
   [below](#pronunciation-and-rewrite-in-character).
 - **Takes** — see [below](#takes).
@@ -950,16 +950,28 @@ What a line can be told depends on the model of the persona that speaks it
   *[sarcastic]*, shown read-only — they are set on the persona's page.
 - **Every other model** (Kokoro, Kitten, Pocket, Chatterbox Multilingual): it
   takes no direction, and the cell says so. Its only per-line control is
-  [the line's own numbers](#a-lines-own-numbers).
+  [This line only](#this-line-only).
 
-### A line's own numbers
+### This line only
 
-**⚙ Override the numbers for this line** opens four boxes: **Pace ×**, **Pitch
-st**, **Gain dB** and **Pause after ms**. Each shows the persona's value (or, for
-the pause, Settings → Generation's) until you type one; a value you type is for
-this line only and wins over the persona's. A line that sets any of them has a
-dot beside its speaker, and **Clear** puts them all back. Changing one makes
-the line stale.
+Every open line has **This line only**: *Pace, pitch, gain and the pause after,
+for this line alone. The persona's own settings don't change.* They are the
+persona page's own controls — the same sliders (drag, or type an exact value in
+the box beside each), labels, ranges and units as its **How it speaks**
+([Personas → How it speaks](personas.md#how-it-speaks)) — so a line works exactly like its persona:
+
+- **Pace** (×), **Pitch** (semitones) and **Gain** (dB) — a slider each;
+  **Pause after** (ms) — a box.
+- A line you haven't touched shows its persona's values (the pause: the
+  persona's, else **Pause between lines** in Settings → Generation).
+- A change is saved when you let go of the slider or leave the box. It is for
+  this line only and wins over the persona's; the line turns
+  [stale](#stale-lines) until you render it again. Setting a value back to the
+  persona's own is the same as no change.
+- Each has a **↺** — *Back to June's pitch* — that removes this line's value;
+  **↺ Reset to default** removes them all. Both are greyed out while there is
+  nothing to remove.
+- A line with any of its own values has a dot beside its speaker in the table.
 
 ### Takes
 

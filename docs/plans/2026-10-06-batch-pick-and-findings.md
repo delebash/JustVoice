@@ -50,3 +50,27 @@ Smart-assign and ＋ New persona read the whole cast as before.
 | `unassigned` goes | its one reader `:665` | the step card's *9/10 cast* is Studio's own (`StudioView.vue:253`, `overviewState`) |
 | The narrator card follows the chip | `:633-659` (`v-if="narrator"`) · the Add Narrator button `:660` stays (it is no speaker) | — |
 | Docs | `docs/studio.md:723-724` (*4 · 2 unassigned*) | — |
+
+## 4. Render's "This line only" (decided 2026-10-06, "go" — reverses Slice 4's closed hatch, D3)
+
+**What it is.** The line panel's closed **⚙ Override the numbers for this line** toggle and its four
+bare number boxes go. In their place, always open, a section headed **This line only** with the
+line *Pace, pitch, gain and the pause after, for this line alone. The persona's own settings don't
+change.* Pace, Pitch and Gain are the persona page's own controls — the kit `UiSlider` (drag, or
+type in its number box) in `.jv-knob-grid`, the same labels, ranges and units, from ONE list
+(`SHAPE_KNOBS`, moved to `services/personaFacts.js` so the persona page, Render and both mocks read
+the same one). Pause after is the persona page's number box (ms). Each has **↺** (removes this
+line's value — *Back to June's pitch*), greyed while the line has none; **↺ Reset to default**
+removes them all, greyed while there are none. An untouched line shows its persona's numbers (the
+pause: the persona's, else Settings → Generation's). A value is saved when the slider is let go or
+the box is left (the slider's `change`), not on every step of a drag; a value equal to the
+persona's is saved as none, so "untouched" stays true. The row's dot stays.
+
+| Change | Readers / producers (grep in `src`) | Already on the path |
+|---|---|---|
+| The toggle goes (`hatch`) | `StudioRenderChapter.vue:324` (state), `:558-560` (button, `v-if`) · mock `MockRenderChapterView.vue:159` (state), `:365-367` | — |
+| The four boxes → sliders + Pause after box | `StudioRenderChapter.vue:561-578` · mock `:368-384` | `setNum` `:333` → `patchBlock(l, { line_override })` → `PATCH /v1/blocks/{id}` → `line_takes.merge_override` (a value sets, **null clears**, limits = the persona page's: `line_takes.py:40`) |
+| Clear → ↺ each + ↺ Reset to default | `clearOverride` `StudioRenderChapter.vue:338`, `:579` · mock `:385` | the same PATCH with every key null |
+| `overrideSet` | the row dot `:495` (stays; title reworded), the toggle label `:558` (goes), Clear `:579` (→ Reset's disabled) · mock `:160`, `:307`, `:365`, `:385` | — |
+| `SHAPE_KNOBS` moves to `personaFacts.js` | `PersonaEditorView.vue:564` (def), `:1100` · `MockPersonaEditorView.vue:324` (def), `:462`, `:709` | `personaFacts.js` already holds the persona page's shared vocabulary |
+| Words that name the toggle | `StudioRenderChapter.vue:12` (header), `:631` (foot) · mock `:430` · `docs/studio.md:882`, `:934-935`, `:953`, `:955-962` · `whats-new.md:147` (history — kept) | — |

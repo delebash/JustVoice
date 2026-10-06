@@ -8,8 +8,10 @@
   status in §8.16's words (GET /v1/scenes/{id}/render_lines). "How it's said"
   is written direction on a model that takes it, the persona's own standing
   tags (read-only) on a tag model, and nothing on the rest. Opening a line
-  shows who speaks it (read-only — Cast decides, D2), its numbers behind the
-  closed ⚙ hatch (D3, stored in the line's metadata), 📕 Pronunciation (the
+  shows who speaks it (read-only — Cast decides, D2), "This line only" — its
+  own pace, pitch, gain and pause, open, on the persona page's own controls
+  (DeliveryKnobs.vue; 2026-10-06, was D3's closed hatch; stored in the line's
+  metadata), 📕 Pronunciation (the
   book's lexicon), ✏️ Rewrite in character (moved here from Script), and its
   takes: every take is kept, and the ★ one is what the chapter plays and
   exports (D4). A change to the line or to what it is made from marks it
@@ -22,10 +24,11 @@
 <script setup>
 import { computed, reactive, ref, watch } from "vue";
 import {
-  AppModal, UiButton, UiChip, UiInput, UiNumber, UiSelect, UiTable, UiTag, UiTextarea,
+  AppModal, UiButton, UiChip, UiInput, UiSelect, UiTable, UiTag, UiTextarea,
   promptDialog, pushToast,
 } from "@delebash/llm-ui";
 import { useApi } from "../stores/api.js";
+import DeliveryKnobs from "./DeliveryKnobs.vue";
 import { useCopy } from "../services/copy.js";
 import { useKeptScroll } from "../composables/useKeptScroll.js";
 import { mediaUrl, renderChapter, renderLines } from "../services/renderRun.js";
@@ -320,9 +323,11 @@ const compareOptions = computed(() => compareTakes.value.filter((t) => !t.is_def
 const compareA = computed(() => compareTakes.value.find((t) => t.is_default) || null);
 const compareB = computed(() => compareTakes.value.find((t) => t.id === compare.value?.b) || null);
 
-// ── The numbers override (D3) — a closed hatch; a set value puts a dot on the row ──
-const hatch = reactive({});
+// ── This line only — open, the persona page's controls (2026-10-06; was D3's
+// closed hatch). A set value puts a dot on the row. The line stores
+// `pause_after_ms`; the knobs say `pause_after`, as the persona does.
 const overrideSet = (l) => Object.keys(l.override || {}).length > 0;
+const OVERRIDE_KEY = { speed: "speed", pitch: "pitch", gain_db: "gain_db", pause_after: "pause_after_ms" };
 function personaDefault(l, key) {
   const d = personaOf(l)?.default_delivery || {};
   if (key === "speed") return d.speed ?? 1;
@@ -330,14 +335,24 @@ function personaDefault(l, key) {
   if (key === "gain_db") return d.gain_db ?? 0;
   return d.pause_after ?? PAUSE_SETTING_MS.value;
 }
+// What the knobs show: the line's own values (by the knobs' keys) and, for an
+// untouched one, the persona's.
+const lineValues = (l) => Object.fromEntries(Object.entries(OVERRIDE_KEY).map(([k, o]) => [k, l.override?.[o] ?? null]));
+const lineFallback = (l) => Object.fromEntries(Object.keys(OVERRIDE_KEY).map((k) => [k, personaDefault(l, k)]));
+// Saved when a slider is let go or the pause box is left. A value equal to the
+// persona's is saved as none, so an untouched line stays untouched.
 function setNum(l, key, v) {
-  const value = v === "" || v === null || v === undefined ? null : Number(v);
-  if ((l.override?.[key] ?? null) === value) return;
-  patchBlock(l, { line_override: { [key]: value } });
+  let value = v === "" || v === null || v === undefined ? null : Number(v);
+  if (value !== null && value === Number(personaDefault(l, key))) value = null;
+  const field = OVERRIDE_KEY[key];
+  if ((l.override?.[field] ?? null) === value) return;
+  patchBlock(l, { line_override: { [field]: value } });
 }
-function clearOverride(l) {
+function resetOverrides(l) {
   patchBlock(l, { line_override: Object.fromEntries(Object.keys(l.override || {}).map((k) => [k, null])) });
 }
+const KNOB_WORD = { speed: "pace", pitch: "pitch", gain_db: "gain", pause_after: "pause after" };
+const personaWord = (l) => (personaOf(l)?.name ? `${personaOf(l).name}'s` : "the persona's");
 
 // ── Rewrite in character (moved here from Script, decided 2026-09-29) ─
 const rewrite = ref(null);   // { line, text, busy, error }
@@ -492,7 +507,7 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
             <span v-if="row.speaker_id" class="studio-render-ch__who">
               <span class="studio-render-ch__av" :style="{ background: avatarColor(row.speaker_id) }">{{ speakerName(row)[0] }}</span>
               {{ speakerName(row) }}
-              <span v-if="overrideSet(row)" class="studio-render-ch__dot" title="This line sets its own numbers" />
+              <span v-if="overrideSet(row)" class="studio-render-ch__dot" title="This line has its own pace, pitch, gain or pause (This line only)" />
             </span>
             <span v-else class="jv-muted">— nobody —</span>
           </template>
@@ -553,34 +568,19 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
                   </span>
                 </div>
 
-                <div class="jv-linepanel__field">
-                  <UiButton intent="ghost" size="small"
-                    :label="`⚙ Override the numbers for this line — ${overrideSet(row.line) ? 'set' : 'not set'}`"
-                    @click="hatch[row.line.block_id] = !hatch[row.line.block_id]" />
-                  <template v-if="hatch[row.line.block_id]">
-                    <div class="jv-linepanel__nums">
-                      <label class="jv-linepanel__field"><span class="jv-eyebrow">Pace ×</span>
-                        <UiNumber size="small" width="token" :step="0.05" :min="0.5" :max="2"
-                          :model-value="row.line.override.speed ?? null" :placeholder="String(personaDefault(row.line, 'speed'))"
-                          @update:model-value="(v) => setNum(row.line, 'speed', v)" /></label>
-                      <label class="jv-linepanel__field"><span class="jv-eyebrow">Pitch st</span>
-                        <UiNumber size="small" width="token" :step="1" :min="-12" :max="12"
-                          :model-value="row.line.override.pitch ?? null" :placeholder="String(personaDefault(row.line, 'pitch'))"
-                          @update:model-value="(v) => setNum(row.line, 'pitch', v)" /></label>
-                      <label class="jv-linepanel__field"><span class="jv-eyebrow">Gain dB</span>
-                        <UiNumber size="small" width="token" :step="0.5" :min="-12" :max="12"
-                          :model-value="row.line.override.gain_db ?? null" :placeholder="String(personaDefault(row.line, 'gain_db'))"
-                          @update:model-value="(v) => setNum(row.line, 'gain_db', v)" /></label>
-                      <label class="jv-linepanel__field"><span class="jv-eyebrow">Pause after ms</span>
-                        <UiNumber size="small" width="token" :step="50" :min="0" :max="10000"
-                          :model-value="row.line.override.pause_after_ms ?? null"
-                          :placeholder="String(personaDefault(row.line, 'pause_after'))"
-                          @update:model-value="(v) => setNum(row.line, 'pause_after_ms', v)" /></label>
-                      <UiButton v-if="overrideSet(row.line)" intent="ghost" size="small" label="Clear" @click="clearOverride(row.line)" />
-                    </div>
-                    <span class="jv-hint">For this line only. Empty means as {{ personaOf(row.line)?.name || "its persona" }}
-                      — and the pause, as Settings → Generation.</span>
-                  </template>
+                <div class="jv-linepanel__field jv-linepanel__field--wide">
+                  <span class="jv-field-label-row jv-linepanel__wide">
+                    <span class="jv-eyebrow">This line only</span>
+                    <UiButton intent="ghost" size="small" label="↺ Reset to default" :disabled="!overrideSet(row.line)"
+                      :title="`Back to ${personaWord(row.line)} pace, pitch, gain and pause`"
+                      @click="resetOverrides(row.line)" />
+                  </span>
+                  <span class="jv-hint">Pace, pitch, gain and the pause after, for this line alone. The persona's own
+                    settings don't change.</span>
+                  <DeliveryKnobs class="jv-linepanel__wide" :values="lineValues(row.line)" :fallback="lineFallback(row.line)"
+                    :pauses="['pause_after']" pause-reset
+                    :reset-title="(key) => `Back to ${personaWord(row.line)} ${KNOB_WORD[key]}`"
+                    @commit="(key, v) => setNum(row.line, key, v)" @reset="(key) => setNum(row.line, key, null)" />
                 </div>
 
                 <div class="jv-linepanel__row">
@@ -628,7 +628,7 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
         </UiTable>
 
         <p class="jv-hint studio-render-ch__foot">Lines are joined with {{ PAUSE_SETTING_MS }} ms of silence — Settings →
-          Generation. A line's own pause (⚙ Override) changes it after that line.</p>
+          Generation. A line's own pause (This line only) changes it after that line.</p>
         <div class="jv-inline-row studio-render-ch__bar">
           <UiButton intent="secondary" size="small" :label="`← Previous ${word.singular.toLowerCase()}`"
             :disabled="!prevChapter" :title="prevChapter ? chapterName(prevChapter) : `This is the first ${word.singular.toLowerCase()}`"

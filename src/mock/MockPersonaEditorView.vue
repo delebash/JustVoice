@@ -33,7 +33,8 @@ import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
 import SlashTagMenu from "../components/SlashTagMenu.vue";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";
 import { facetCounts, facetOptions, facetTotal, narrowed } from "../services/facets.js";
-import { DIRECTION_OPTIONS, VOICE_KINDS as KINDS, voiceKind as kindOf, voiceKindWord, voiceLabel } from "../services/personaFacts.js";
+import { DIRECTION_OPTIONS, VOICE_KINDS as KINDS, SHAPE_KNOBS, voiceKind as kindOf, voiceKindWord, voiceLabel } from "../services/personaFacts.js";
+import DeliveryKnobs from "../components/DeliveryKnobs.vue";
 import { voiceGender } from "../services/voiceGender.js";
 import MockBlendMaker from "./MockBlendMaker.vue";
 import MockCloneMaker from "./MockCloneMaker.vue";
@@ -320,12 +321,7 @@ const speaksLabel = computed(() => {
   return lang ? `Speaks ${languageName(lang) || lang}` : "";
 });
 
-// ── How it speaks ───────────────────────────────────────────────────────
-const SHAPE_KNOBS = [
-  { key: "speed", label: "Pace", min: 0.5, max: 2, step: 0.05, neutral: 1, unit: "×", reset: "Back to the voice's own pace" },
-  { key: "pitch", label: "Pitch", min: -12, max: 12, step: 1, neutral: 0, unit: "st", reset: "Back to the voice's own pitch" },
-  { key: "gain_db", label: "Gain", min: -12, max: 12, step: 0.5, neutral: 0, unit: "dB", reset: "Back to the voice's own level" },
-];
+// ── How it speaks ─── (the knobs: DeliveryKnobs.vue over personaFacts' SHAPE_KNOBS)
 function shared(key, fallback) {
   const v = draft.value?.default_delivery?.[key];
   return v === null || v === undefined ? fallback : Number(v);
@@ -705,33 +701,8 @@ watch([() => draft.value?.name, isNew], publishCrumbs, { immediate: true });
           <div class="jv-card" :class="{ 'persona-editor__locked': locked }" :aria-disabled="locked || undefined">
             <div class="jv-card__header"><h3 class="jv-card__title">How it speaks</h3></div>
             <div class="jv-card__body jv-col">
-              <div class="jv-knob-grid">
-                <div v-for="k in SHAPE_KNOBS" :key="k.key" class="jv-knob-grid__knob">
-                  <div class="jv-knob-grid__head">
-                    <label class="jv-knob-grid__label">{{ k.label }}</label>
-                    <UiButton intent="ghost" size="small" label="↺" :disabled="shared(k.key, null) === null"
-                      :title="k.reset" @click="setShared(k.key, null)" />
-                  </div>
-                  <div class="jv-knob-grid__row">
-                    <UiSlider :model-value="shared(k.key, k.neutral)" :min="k.min" :max="k.max" :step="k.step"
-                      width="full" :aria-label="k.label" @update:model-value="(v) => setShared(k.key, v)" />
-                    <span class="jv-knob-grid__unit">{{ k.unit }}</span>
-                  </div>
-                </div>
-                <div class="jv-knob-grid__knob">
-                  <div class="jv-knob-grid__head"><label class="jv-knob-grid__label">Pause before → after</label></div>
-                  <div class="jv-knob-grid__row">
-                    <UiNumber :model-value="draft.default_delivery.pause_before" :min="0" :max="10000" :step="50"
-                      width="num" size="small" placeholder="—" aria-label="Pause before"
-                      @update:model-value="(v) => setShared('pause_before', v)" />
-                    <span class="jv-knob-grid__unit">→</span>
-                    <UiNumber :model-value="draft.default_delivery.pause_after" :min="0" :max="10000" :step="50"
-                      width="num" size="small" placeholder="—" aria-label="Pause after"
-                      @update:model-value="(v) => setShared('pause_after', v)" />
-                    <span class="jv-knob-grid__unit">ms</span>
-                  </div>
-                </div>
-              </div>
+              <DeliveryKnobs :values="draft.default_delivery"
+                @input="setShared" @reset="(key) => setShared(key, null)" />
               <p v-if="voice && !paceNative" class="jv-hint">Pace is time-stretched after {{ modelName }} speaks — it doesn't pace itself.</p>
               <p class="jv-hint">An empty pause is the book's own gap between lines.</p>
 

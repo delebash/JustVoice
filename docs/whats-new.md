@@ -2,6 +2,11 @@
 
 ## v0.1.0
 
+- **Render's "This line only" (2026-10-06)** — a line's own pace, pitch, gain
+  and pause are no longer behind a closed **⚙ Override the numbers** toggle:
+  they sit open in the line panel, on the persona page's own sliders (drag or
+  type), with a **↺** each and **↺ Reset to default**. An untouched line shows
+  its persona's values ([Studio → This line only](studio.md#this-line-only))
 - **Cast shows who still needs a persona; Script's checks in amber
   (2026-10-06)** — the Speakers head has **All** and **No persona** chips:
   click **No persona** to see only the speakers left to cast

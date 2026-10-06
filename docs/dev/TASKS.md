@@ -195,6 +195,77 @@ GO: needed.
 
 ## The next build
 
+### Render: the line's direction as Style Instructions, Rewrite for the narrator, ✎ Edit words (decided 2026-10-06)
+STATE:  DECIDED 2026-10-06 — "your rec on all go", on the open questions as shown:
+        Narrator (the user: "narrator is a character and can have a style so should rewrite work for
+        narraotro as well … all options for narrator should be same as any persona"): "The change:
+        enable ✏️ Rewrite on every line that has a speaker, narration included. It would read ✏️
+        Rewrite as Narrator, or the narrator's name if they're a character." — with: "Rewrite reads
+        the speaker's Who they are on Cast. The narrator's default there is only 'The book's
+        narrator: reads everything that is not a speaker's line.' … I'd add a line to Cast's docs
+        saying so." · "as far as I can tell from the Render code, Rewrite is the only control the
+        narrator loses … I'll confirm there are no other exceptions before building."
+        Consistency (the user: "the same consistancy with the sliders on the render page should apply
+        to direction clone ect persona settins and render overrides should work look and act the
+        same"): "1. Direction on a line. On a model that takes written direction, Render's line has
+        its own direction box. I'd make it the persona page's Style Instructions field: same label
+        style and size, plus a ↺ that clears it. One difference stays: a line's direction is added
+        after the persona's rather than replacing it, so the hint would say so." · "2. The model's
+        own settings per line … I'd keep that as a separate decision, and only build it if you want
+        a single line to sound different from its persona in those ways." (rec: not now)
+        Words on Render (the user: "i thought we where able to edit text lines on render"): "1. ✎
+        Edit words in Render's line panel. It would use the same save Script's ✎ Edit… does, so the
+        line goes stale and its old take is kept, exactly as on Script. … My lean is 1 … Split and
+        merge would stay on Script."
+WHY:    the narrator is an ordinary persona; one look for every control a line can change; a typo is
+        noticed while listening on Render.
+NOT:    2 (per-line model settings) now; the "Edit in Script ➜" link.
+BUILT:  (in progress)
+OPEN:   per-line model settings (temperature, seed, a model's own knobs, emotion) — not decided;
+        needs server storage on the line and the render reading it. Rest (in progress).
+GO:     given 2026-10-06
+
+### Render: "This line only" — open, the persona page's controls, ↺ each and Reset to default (decided 2026-10-06)
+STATE:  DECIDED 2026-10-06 — "go" (the user: "render change ovveride numbers for this to something
+        more descirpting user dosnt know that this is to change pictch in fact dont hide it behind
+        anything just display it nad you are inconsistnat as the controls should workd the same as
+        persona, dont we use sliders on persona, if not shouldnt we with a textbox as addition?" —
+        "and we should have a reset to default as well"), on the change as shown:
+        "1. Not hidden. Drop the closed '⚙ Override the numbers for this line' toggle. The controls
+        sit open in the line panel as their own section, called This line only, with one line under
+        it: 'Pace, pitch, gain and the pause after, for this line alone. The persona's own settings
+        don't change.'
+        2. The same controls as the persona page. … a slider with a number box beside it for each
+        setting (Pace, Pitch, Gain), so you can drag or type. Render's section would reuse those
+        exact controls: same labels, ranges and units, plus Pause after.
+        3. Reset per setting. Each one gets a ↺ that removes this line's change, so the line goes back
+        to the persona's value. A line you haven't touched shows the persona's numbers."
+        — and the reset as answered: "Each setting keeps its own ↺, which removes that one change. The
+        section also gets one ↺ Reset to default button. It removes all of this line's changes at
+        once, so the line uses the persona's pace, pitch, gain and pause again. It's greyed out while
+        the line has no changes."
+WHY:    "Override the numbers" didn't say pitch, and the closed hatch hid it; the persona page already
+        has the controls.
+NOT:    the closed hatch (Slice 4's D3, 2026-10-04 — reversed here).
+BUILT:  2026-10-06 — plan §4 (`docs/plans/2026-10-06-batch-pick-and-findings.md`). One component,
+        `DeliveryKnobs.vue` (the kit `UiSlider` — drag or type — in `.jv-knob-grid`, ↺ per knob, the
+        pause boxes), over ONE knob list (`SHAPE_KNOBS`, moved to `services/personaFacts.js`), used by
+        the persona page's How it speaks, Render's This line only and both mocks. Render: the toggle
+        and its four bare boxes went; the section is open, "↺ Reset to default" at its head; a value
+        is saved when the slider is let go or the pause box left, and one equal to the persona's is
+        saved as none (`StudioRenderChapter.vue`, `MockRenderChapterView.vue`; `.jv-linepanel__field--wide`).
+        Docs studio (This line only, its links), whats-new. Checked live on the app's UI: The Same
+        Hour's line 1 — the section showed the persona's 1 · 0 · 0 and 600 ms, Reset greyed; Pitch +1
+        by the slider saved `{"pitch": 1}`, the row got its dot, Reset went live; Pitch's ↺ cleared it;
+        the pause typed 900 saved nothing until the box was left, then `{"pause_after_ms": 900}`;
+        Reset to default cleared it — the line "rendered" as it began. The persona page (Nettle) and
+        its mock: Pace · Pitch · Gain · Pause before → after, 3 sliders, 2 pause boxes, ↺ on the
+        sliders only, as before; the mock's Pitch moved 0 → 1 and its ↺ put it back. No page errors.
+        Caught on the way: the persona page's first cut left the component unimported (the knobs
+        vanished, no error) — fixed before commit.
+OPEN:   none.
+GO:     given 2026-10-06
+
 ### Cast: All · No persona chips to see who still needs a persona (decided 2026-10-06)
 STATE:  DECIDED 2026-10-06 — "go for cast filter" (the user: "the cast it shows 1 unassigned we need a
         way to filter unassigned so user can easily see which ones need personas"), on the proposal

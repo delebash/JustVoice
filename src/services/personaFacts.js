@@ -10,6 +10,15 @@
 import { languageName } from "@delebash/llm-ui";
 import { voiceGenderWord } from "./voiceGender.js";
 
+/** Pace · Pitch · Gain — the persona page's How it speaks and Render's "This
+ *  line only" read this ONE list (2026-10-06), through DeliveryKnobs.vue: same
+ *  labels, ranges (the server's: line_takes.OVERRIDE_LIMITS) and units. */
+export const SHAPE_KNOBS = [
+  { key: "speed", label: "Pace", min: 0.5, max: 2, step: 0.05, neutral: 1, unit: "×", reset: "Back to the voice's own pace" },
+  { key: "pitch", label: "Pitch", min: -12, max: 12, step: 1, neutral: 0, unit: "st", reset: "Back to the voice's own pitch" },
+  { key: "gain_db", label: "Gain", min: -12, max: 12, step: 0.5, neutral: 0, unit: "dB", reset: "Back to the voice's own level" },
+];
+
 /** Every voice dropdown's label (decided 2026-10-03): "Sohee · Female ·
  *  Korean · Qwen3-TTS CustomVoice" — name, gender, the voice's own language
  *  and the model that speaks it. */
