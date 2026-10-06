@@ -125,6 +125,44 @@ GO:     given 2026-08-17
 
 ## The next build
 
+### Script: a Second look button asks again about just the blank lines (decided 2026-10-06)
+STATE:  DECIDED 2026-10-06 — "go make sure you expalin what it does and is used for" (the user:
+        "maybe a second look button to reaalyze the ones missed by ai first pass instead of having to
+        reanalyze whole chapter second pass just analyzes those lines, what do you think … i am not
+        sure how reananlyze chapter works"), on the lean as shown: "Ask only about the chapter's
+        spoken lines with no speaker, skipping lines you set. Nothing else is touched. · Take about
+        10 s per line … · Save each answer as it comes, marked to check, the same as the second look
+        inside Analyze. Cancel keeps the lines already answered. · Fit your Sedge case exactly: ＋ Add
+        Sedge, then Second look … Where: on Script's chapter page, inside the 'N lines have no
+        speaker' banner, beside Assign N → Narrator: 🔎 Second look at the N lines. It shows only
+        when there are blank spoken lines, and isn't offered while that chapter is being analyzed. ·
+        On the strip: its own task, Script · second look · Bigger Inside, with '2 of 6 lines', tokens
+        and the tooltip words you approved. · Server: a new streaming endpoint for one chapter … asks
+        about each blank line using the same code, and saves each answer to that line alone, without
+        rewriting the chapter. So other lines aren't marked 'changed'. · Docs: Studio → The second
+        look gets the button." And the user's word: explain what it does and what it is for.
+WHY:    filling a few blank lines meant re-deciding the whole chapter, which can change right lines.
+NOT:    re-analyzing the chapter to fill blanks; touching any line that has a speaker or that you set.
+BUILT:  2026-10-06 — server: `POST /v1/scenes/{id}/second-look/stream` (`api/extraction_api.py`:
+        `_second_look_asks` — spoken, no speaker, not set by you; `_paragraph_of`; `_save_second_look`
+        — one line in its own session, named → the speaker marked to check, its "changed" mark the
+        speaker before the last Analyze, dropped when that is who it is again; not named → only the
+        not-in-cast name); `extraction/second_look.py` shares `look_at` and `context` with Analyze.
+        Script: `services/chapterRun.js` runs it as an "analyze" item with `mode: "second_look"`
+        (Script's strip, running checks and reload are Analyze's; the strip lists both features);
+        `views/scriptReview.js` `secondLookCandidate` (the server's rule); `StudioScriptChapter.vue` —
+        the banner's 🔎 Second look at the N lines (hidden while the chapter is analyzed), a
+        paragraph under it saying what it does and what it is for, and ＋ Add's message now points to
+        it. Docs studio (🔎 Second look — just the blank lines), whats-new; RESEARCH §7.
+        Checked live on The Keystone with one AI line cleared (not as a fix): the banner, the button
+        and its words; the strip "Script · second look · The Keystone · second look · 1 of 1 lines",
+        9.3 s, DONE; the line named Iven Sarraz (right), marked to check; the other 49 lines
+        untouched; no page errors. (The line could not be put back afterwards: you reset the
+        database a minute later.) Ruff, Biome, build clean; no test suites run.
+OPEN:   none. Asked, not decided: Analyze's own second look off by default, and the candidates'
+        wording in the Check column.
+GO:     given 2026-10-06
+
 ### The second look runs at temperature 0 — tested first on the 30 answer-keyed lines (decided 2026-10-06)
 STATE:  DECIDED 2026-10-06 — "your rec go" (the user: "i reanlyzed chapter and it did second look but
         looks like it did not work correctly"), on the finding and lean as shown: "the second look

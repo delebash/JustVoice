@@ -598,6 +598,41 @@ prompt* shows only before the run's first token, not for each line, and tokens
 per second dips a little in the second look — it is averaged over the whole run,
 and each line's prompt reading falls between its tokens.
 
+### 🔎 Second look — just the blank lines
+
+**What it does.** On a chapter's page in Script, the **N lines have no speaker**
+banner has **🔎 Second look at the N lines**. It asks the AI again about just
+the chapter's spoken lines with no speaker — skipping any you set yourself —
+one at a time, with the end of the chapter before and the start of the chapter
+after: the same question Analyze's second look asks. Nothing else in the
+chapter is decided again.
+
+**What it's for.** Filling a few blank lines without re-deciding the whole
+chapter:
+
+- **After you ＋ Add someone who was missing.** Analyze could only pick from the
+  speakers the book had; once you add the person the banner offers (or one you
+  found with Discover), a second look asks about the blank lines with them in
+  the cast. ＋ Add's message says so.
+- **For a speaker the book names in another chapter** — a voice in the dark,
+  revealed by name later — when the lines are still blank.
+
+**✨ Re-analyze is different:** it reads the whole chapter again and decides
+every line you didn't set, so a line that was right can come back changed.
+Use Re-analyze after the chapter's text or its speakers change a lot; use the
+second look to fill blanks.
+
+**What it saves.** Each answer is saved to its line as it comes: a name the
+text makes clear goes on the line **marked to check** (*Decided by: AI, from the
+chapters around it*); someone the text names who isn't a speaker in this book is
+offered for you to **＋ Add**; a line it still can't place stays blank for you to
+set. A line it names shows under **Changed**, like a line a re-analyze changed.
+It isn't offered while the chapter is being analyzed.
+
+**On the strip** it is its own task, **Script · second look · <chapter>**, with
+**second look · 2 of 6 lines**, the tokens and the same tooltip. **Cancel**
+keeps the lines already answered; the one being asked is dropped.
+
 **Cancel in the second look keeps the main pass.** Cancelled while the main
 pass runs, Analyze writes nothing and the chapter keeps its previous analysis.
 Cancelled during the second look, the chapter is saved as it stood: the main

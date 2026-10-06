@@ -42,6 +42,8 @@ const NO_MODEL = {
   discover: "Discover can't scan without a language model — set one in AI Settings.",
 };
 const FEATURE = { analyze: "speaker_attribution", discover: "speaker_identification" };
+// A step's strip shows its own tasks: Script's are Analyze and its 🔎 Second look.
+const STRIP_FEATURES = { analyze: ["speaker_attribution", "speaker_second_look"], discover: ["speaker_identification"] };
 
 // Analyze's second look on its strip (decided 2026-10-06): the count, and what it
 // is and why it runs as the count's tooltip — the same words as docs/studio.md
@@ -107,7 +109,7 @@ export function stepRun(projectId, kind) {
  * match showed a finished chapter's DONE while the next one ran (2026-10-05).
  */
 export function runStripTask(tasks, projectId, kind, sceneId = null) {
-  const mine = pageTasks(tasks, [FEATURE[kind]], { projectId, run: true, ...(sceneId ? { sceneId } : {}) });
+  const mine = pageTasks(tasks, STRIP_FEATURES[kind], { projectId, run: true, ...(sceneId ? { sceneId } : {}) });
   return mine.find((t) => tasks.isRunning(t.id)) || mine[mine.length - 1] || null;
 }
 
@@ -139,9 +141,11 @@ export function cancelRun(projectId, kind) {
 /**
  * Queue chapters on the project's run, starting it if none is going.
  * `chapters` is [{id, title, metadata}] — the scene rows. Returns how many
- * were queued (a chapter already in the run is skipped).
+ * were queued (a chapter already in the run is skipped). `mode: "second_look"`
+ * on an "analyze" item runs Script's 🔎 Second look instead: only the chapter's
+ * spoken lines with no speaker are asked about again (decided 2026-10-06).
  */
-export function queueChapters({ projectId, kind, chapters, route = null }) {
+export function queueChapters({ projectId, kind, chapters, route = null, mode = null }) {
   let run = runs[projectId];
   if (!run) {
     runs[projectId] = { queue: [], current: null, done: {}, failed: {}, steps: {}, controller: null };
@@ -152,7 +156,7 @@ export function queueChapters({ projectId, kind, chapters, route = null }) {
   let added = 0;
   for (const c of chapters) {
     if (inRun(projectId, c.id, kind)) continue;
-    run.queue.push({ sceneId: c.id, kind, title: c.title || "", scene: c, route });
+    run.queue.push({ sceneId: c.id, kind, title: c.title || "", scene: c, route, mode });
     delete run.failed[failKey(kind, c.id)];
     added += 1;
   }
@@ -196,10 +200,27 @@ async function drain(projectId) {
     let inSecondLook = false;
     let savedBefore = "";
     try {
-      const text = (await chapterText(api, projectId, item.scene)).trim();
-      if (!text) throw new Error("This chapter has no text yet.");
       const meta = { projectId, sceneId: item.sceneId, run: true };
-      if (item.kind === "analyze") {
+      // Script's 🔎 Second look: the server reads the chapter as it stands and
+      // saves each answer to its line, so there is no text to send.
+      const text = item.mode === "second_look" ? "" : (await chapterText(api, projectId, item.scene)).trim();
+      if (item.mode !== "second_look" && !text) throw new Error("This chapter has no text yet.");
+      if (item.mode === "second_look") {
+        result = await runAiEndpointStream({
+          url: `${api.serverUrl}/v1/scenes/${item.sceneId}/second-look/stream`,
+          body: {},
+          stepText,
+          stepHint,
+          task: {
+            feature: "speaker_second_look",
+            label: `Script · second look · ${item.title}`,
+            inline: true,
+            meta,
+            signal: run.controller.signal,
+            onRetry: () => queueChapters({ projectId, kind: item.kind, chapters: [item.scene], mode: "second_look" }),
+          },
+        });
+      } else if (item.kind === "analyze") {
         savedBefore = await analyzedAt(api, projectId, item.sceneId);
         result = await runAiEndpointStream({
           url: `${api.serverUrl}/v1/scenes/${item.sceneId}/analyze/stream`,

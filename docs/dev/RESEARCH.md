@@ -746,6 +746,15 @@ kit's register §2.
 
 ## 7 · Where an AI task shows
 
+- Script's 🔎 Second look (`POST /v1/scenes/{id}/second-look/stream`) asks about the chapter's
+  spoken lines with no speaker and not set by you (`_second_look_asks`; the client's
+  `secondLookCandidate` is the same rule), through `second_look.look_at` — Analyze's own
+  question and context — and saves each answer to its line alone (`_save_second_look`). It runs
+  as an "analyze" item with `mode: "second_look"` in `services/chapterRun.js`, so Script's strip,
+  its running checks and its reload are Analyze's. Measured on The Keystone with one line made
+  blank: 1 of 1 asked in 9.3 s, named right, the chapter's other 49 lines untouched. — *measured,
+  2026-10-06*.
+
 - The second look runs at temperature 0 (`p_classify`, since 2026-10-06). At 0.2 (`p_extract`)
   Bigger Inside's candle line came back Odeline Marran 6 of 8 and unknown 2 of 8, streamed or
   not; at 0, 4 of 4. On the 30 answer-keyed lines: 30 right at 0, 29 right + 1 blank at 0.2, no

@@ -2,6 +2,12 @@
 
 ## v0.1.0
 
+- **🔎 Second look at just the blank lines (2026-10-06)** — on a chapter in
+  Script, the *lines have no speaker* banner can ask the AI again about just
+  those lines, with the chapters either side, instead of re-analyzing the whole
+  chapter: after you ＋ Add someone who was missing, or for a speaker the book
+  names in another chapter. Nothing else in the chapter changes
+  ([Studio → Second look](studio.md#-second-look--just-the-blank-lines))
 - **Analyze says when it's on its second look (2026-10-06)** — the strip of a
   chapter's Analyze shows **second look · 2 of 6 lines** with a bar while it asks
   again about the lines the main pass left blank, keeps counting tokens, and no

@@ -25,6 +25,7 @@ import copy
 import json
 import logging
 import re
+import time
 from datetime import datetime, timezone
 from queue import SimpleQueue
 from threading import Event, Thread
@@ -806,6 +807,177 @@ async def analyze_scene_stream_endpoint(
                     item = {"error": str(e)[:200]}
             yield f"data: {json.dumps(item)}\n\n"
         yield "data: [DONE]\n\n"
+
+    return StreamingResponse(gen(), media_type="text/event-stream")
+
+
+# ── Script's 🔎 Second look — the blank lines only (decided 2026-10-06) ─────
+#
+# TASKS "Script: a Second look button asks again about just the blank lines".
+# The second look over the chapter AS IT STANDS: only its spoken lines with no
+# speaker that you didn't set, nothing else re-decided — so after ＋ Add-ing a
+# missing speaker, or for a speaker the book reveals in the next chapter, the
+# blanks get asked about in seconds instead of re-deciding the whole chapter.
+# The question is Analyze's own (second_look.look_at, the same context). Each
+# answer is saved to its line as it comes, marked to check (source
+# "second_look"), so a cancel keeps what was answered; an answer that lands
+# after the cancel is dropped.
+
+
+def _second_look_asks(db: Session, scene: Scene) -> list[Block]:
+    """The chapter's spoken lines with no speaker that you didn't set, in order —
+    what the 🔎 Second look asks about."""
+    from ..extraction.flags import spoken_block
+    from ..line_takes import is_marker
+
+    blocks = db.query(Block).filter(Block.scene_id == scene.id).order_by(Block.position).all()
+    return [b for b in blocks
+            if (b.text or "").strip() and not b.speaker_id and b.source != "corrected"
+            and not is_marker(b) and spoken_block(b.source, b.text)]
+
+
+def _paragraph_of(paragraphs: list[str], block: Block) -> int:
+    """The paragraph a line came from: Analyze's `paragraph_idx`, else the first
+    paragraph holding its words (a line typed in or split off has no index)."""
+    idx = _json_meta(block.metadata_json).get("paragraph_idx")
+    if isinstance(idx, int) and 0 <= idx < len(paragraphs):
+        return idx
+    words = (block.text or "").strip().strip("\"'“”‘’ ,.")
+    return next((i for i, p in enumerate(paragraphs) if words and words in p), -1)
+
+
+def _save_second_look(block_id: str, row) -> None:
+    """One answer onto its line, in a session of its own (the worker thread's).
+    A line given a speaker or set by you meanwhile is left alone. Named: the
+    speaker, marked to check; its "changed" mark says who it was before the
+    last Analyze, dropped when that is who it is again. Not named: only the
+    "not in the cast" name the answer gave, set or cleared."""
+    from ..database.session import SessionLocal
+
+    wdb = SessionLocal()
+    try:
+        b = wdb.query(Block).filter(Block.id == block_id).first()
+        if b is None or b.speaker_id or b.source == "corrected":
+            return
+        meta = _json_meta(b.metadata_json)
+        if row.source == "second_look":
+            b.speaker_id = row.speaker
+            b.source = "second_look"
+            b.extraction_confidence = row.confidence
+            meta.pop("floored_from", None)
+            meta.pop("not_in_cast", None)
+            if "prev_speaker_id" in meta:
+                if meta["prev_speaker_id"] == row.speaker:
+                    meta.pop("prev_speaker_id")
+            else:
+                meta["prev_speaker_id"] = None
+        elif row.not_in_cast:
+            meta["not_in_cast"] = row.not_in_cast
+        else:
+            meta.pop("not_in_cast", None)
+        b.metadata_json = json.dumps(meta) if meta else None
+        wdb.commit()
+    finally:
+        wdb.close()
+
+
+@router.post(
+    "/v1/scenes/{scene_id}/second-look/stream",
+    summary="Ask again about the chapter's spoken lines with no speaker, streaming the family SSE frames",
+)
+async def second_look_stream_endpoint(
+    scene_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> StreamingResponse:
+    """Script's 🔎 Second look: `{"delta"}` as each question streams, `{"step":
+    {"name": "second_look", "done", "total"}}` as it starts and after each line,
+    then `{"done": true, asked, named, not_in_cast, failed, seconds}` with the
+    usage names, then `[DONE]`; errors as `{"error"}`. Writes each answer to its
+    line as it comes (`_save_second_look`); nothing else in the chapter."""
+    from types import SimpleNamespace
+
+    from ..extraction import second_look as sl
+    from ..extraction.names import match
+    from ..extraction.pipeline import pick_route, prompt_handles, resolve_speaker
+    from ..extraction.segmentation import split_into_paragraphs
+    from ..models import ExtractionSettings
+
+    scene = db.query(Scene).filter(Scene.id == scene_id).first()
+    if scene is None:
+        raise not_found(f"scene {scene_id}")
+    settings = get_state().settings.get()
+    cfg = getattr(settings, "extraction", None) or ExtractionSettings()
+    asks = _second_look_asks(db, scene)
+    blocks = db.query(Block).filter(Block.scene_id == scene.id).order_by(Block.position).all()
+    stored = _scene_meta(scene).get("source_text")
+    text, _marks, _line_ids, segments = _analysis_input(
+        db, scene, stored or "\n\n".join(b.text for b in blocks if b.text))
+    paragraphs = split_into_paragraphs(text) if segments is None else paragraphs_of(segments)
+    prompt_cast, handle_to_id = prompt_handles(_resolve_cast(scene_id, db))
+    cast_text = sl.cast_lines(prompt_cast)
+    before, after = sl.context(*_neighbour_texts(db, scene), cfg)
+    floor = pick_route(None, settings).floor
+    rows = [(b.id, SimpleNamespace(paragraph_idx=_paragraph_of(paragraphs, b), text=b.text,
+                                   speaker="unknown", confidence=0.0, source=b.source,
+                                   floored_from=None, not_in_cast=None))
+            for b in asks]
+
+    q: SimpleQueue = SimpleQueue()
+    stop = Event()
+
+    def resolve(raw):
+        h = resolve_speaker(raw, prompt_cast)
+        return handle_to_id.get(h, h)
+
+    def worker() -> None:
+        report = {"asked": len(rows), "named": 0, "not_in_cast": [], "failed": 0, "seconds": 0.0}
+        usage: dict = {"prompt_tokens": 0, "completion_tokens": 0}
+        t0 = time.time()
+        try:
+            q.put({"step": {"name": "second_look", "done": 0, "total": len(rows)}})
+            for k, (block_id, row) in enumerate(rows):
+                if stop.is_set():
+                    break
+                sl.look_at(
+                    row, paragraphs, cast_text=cast_text, before=before, after=after,
+                    resolve=resolve, cast_names=lambda name: bool(match(name, prompt_cast)),
+                    floor=floor, use_floor=True, cfg=cfg, report=report, usage=usage,
+                    on_delta=lambda t: q.put({"delta": t}),
+                )
+                if stop.is_set():
+                    break   # the answer landed after the cancel — dropped
+                _save_second_look(block_id, row)
+                q.put({"step": {"name": "second_look", "done": k + 1, "total": len(rows)}})
+            report["seconds"] = round(time.time() - t0, 1)
+            q.put({
+                "done": True,
+                "promptTokens": usage.get("prompt_tokens", 0),
+                "completionTokens": usage.get("completion_tokens", 0),
+                "model": "",
+                "scene_id": scene_id,
+                **report,
+            })
+        except LLMNotConfiguredError as e:
+            q.put({"error": str(e)})
+        except Exception as e:  # noqa: BLE001 — a frame, not a 500
+            log.exception("second look stream failed")
+            q.put({"error": str(e)[:200]})
+        finally:
+            q.put(None)
+
+    Thread(target=worker, daemon=True).start()
+
+    async def gen():
+        try:
+            while True:
+                item = await asyncio.to_thread(q.get)
+                if item is None:
+                    break
+                yield f"data: {json.dumps(item)}\n\n"
+            yield "data: [DONE]\n\n"
+        finally:
+            stop.set()
 
     return StreamingResponse(gen(), media_type="text/event-stream")
 

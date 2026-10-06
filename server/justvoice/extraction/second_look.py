@@ -178,8 +178,7 @@ def second_look(
         raw_out["second_look"] = report
     if not asks:
         return
-    before = _tail(before_text, cfg.second_look_before) if before_text else "(none — this is the first chapter)"
-    after = _head(after_text, cfg.second_look_after) if after_text else "(none — this is the last chapter)"
+    before, after = context(before_text, after_text, cfg)
     t0 = time.time()
     usage = (raw_out or {}).get("usage")
     if on_step is not None:
@@ -189,7 +188,7 @@ def second_look(
             report["stopped"] = True
             break
         try:
-            _look_at(rows[i], paragraphs, cast_text=cast_text, before=before, after=after,
+            look_at(rows[i], paragraphs, cast_text=cast_text, before=before, after=after,
                      resolve=resolve, cast_names=cast_names, floor=floor, use_floor=use_floor,
                      cfg=cfg, report=report, usage=usage, on_delta=on_delta)
         finally:
@@ -198,6 +197,15 @@ def second_look(
     report["seconds"] = round(time.time() - t0, 1)
     if isinstance(usage, dict):
         usage["duration_ms"] = int(usage.get("duration_ms") or 0) + int(report["seconds"] * 1000)
+
+
+def context(before_text: str | None, after_text: str | None, cfg) -> tuple[str, str]:
+    """The end of the chapter before and the start of the chapter after, as the
+    question gives them — shared by Analyze's second look and Script's 🔎 Second
+    look button (2026-10-06)."""
+    before = _tail(before_text, cfg.second_look_before) if before_text else "(none — this is the first chapter)"
+    after = _head(after_text, cfg.second_look_after) if after_text else "(none — this is the last chapter)"
+    return before, after
 
 
 def _add_usage(usage, prompt_tokens, completion_tokens) -> None:
@@ -224,9 +232,12 @@ def _ask(variables: dict, usage, on_delta) -> str:
     return "".join(parts)
 
 
-def _look_at(row, paragraphs, *, cast_text, before, after, resolve, cast_names, floor,
-             use_floor, cfg, report, usage, on_delta) -> None:
-    """Ask about one line and write the answer onto its row."""
+def look_at(row, paragraphs, *, cast_text, before, after, resolve, cast_names, floor,
+            use_floor, cfg, report, usage, on_delta) -> None:
+    """Ask about one line and write the answer onto its row — `row` needs
+    paragraph_idx, text, speaker, confidence, source, floored_from and
+    not_in_cast. Analyze's second look and Script's 🔎 Second look button both
+    ask through here, so the question is the same either way."""
     variables = {
         "cast": cast_text,
         "before": before,

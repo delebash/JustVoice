@@ -40,6 +40,7 @@ import { addNarrator } from "../services/narrator.js";
 import NarratorNeeded from "./NarratorNeeded.vue";
 import {
   KEYS, applyLocally, checkQuestion, confidenceCell, confirm, decidedBy, editText, filterCounts, hasNoSpeaker, lineFacets,
+  secondLookCandidate,
   keyAction, markOf, mergeState, move, nextToCheck, numberKeys, popUndo, pushUndo, setSpeaker,
   speakerOptions, swap, swapState, toCheck, visibleLines, wasBefore,
 } from "../views/scriptReview.js";
@@ -151,7 +152,7 @@ async function addToCast(name) {
     });
     await load();
     emit("changed");
-    pushToast({ kind: "success", message: `${name} is a speaker now — ✨ Re-analyze this chapter so Analyze can choose them.` });
+    pushToast({ kind: "success", message: `${name} is a speaker now — 🔎 Second look asks again about the lines with no speaker, so ${name} can be chosen.` });
   } catch (e) {
     pushToast({ kind: "error", message: `Couldn't add ${name}: ${e?.message || e}` });
   } finally {
@@ -211,6 +212,13 @@ const runTask = computed(() => runStripTask(tasks, props.project.id, "analyze", 
 // same question Script's grid asks.
 const narratorAsk = ref(false);
 const narratorBusy = ref(false);
+// Script's 🔎 Second look (decided 2026-10-06): ask again about just the spoken
+// lines with no speaker — not offered while this chapter is being analyzed.
+const secondLookCount = computed(() => lines.value.filter(secondLookCandidate).length);
+function secondLook() {
+  const scene = props.scenes.find((s) => s.id === props.sceneId) || { id: props.sceneId, title: chapter.value?.title };
+  queueChapters({ projectId: props.project.id, kind: "analyze", chapters: [scene], mode: "second_look" });
+}
 function reanalyze({ narratorChecked = false } = {}) {
   const c = chapter.value;
   if (!narratorChecked && !narratorId.value && c && c.lines - c.spoken > 0) {
@@ -669,6 +677,17 @@ const flagged = (ln) => (ln.flags || []).length > 0;
           title="Everything the model couldn't place becomes narration."
           @click="allToNarrator" />
         <a v-else href="#studio" @click.prevent="emit('go', 'cast')">This book has no narrator — choose one on Cast ➜</a>
+        <UiButton v-if="secondLookCount && !runningHere" intent="secondary" size="small" :disabled="busy"
+          :label="`🔎 Second look at the ${secondLookCount} line${secondLookCount === 1 ? '' : 's'}`"
+          title="Asks the AI again about just these lines, one at a time, with the chapters either side. Nothing else in the chapter changes."
+          @click="secondLook" />
+        <p v-if="secondLookCount && !runningHere" class="jv-hint studio-script-ch__offer">
+          <span>🔎 <strong>Second look</strong> asks the AI again about just the spoken lines with no speaker —
+            one at a time, with the end of the chapter before and the start of the chapter after. Use it for a
+            speaker the book names in another chapter, or after you ＋ Add someone who was missing. Each answer is
+            saved as it comes, marked to check; a line it still can't place stays blank, and nothing else in the
+            chapter changes. ✨ Re-analyze decides every line again.</span>
+        </p>
         <div v-for="name in notInCast" :key="name" class="studio-script-ch__offer">
           <span><strong>{{ name }}</strong> isn't a speaker in this book —</span>
           <UiButton intent="primary" size="small" :label="`＋ Add ${name}`" :loading="addingName === name"

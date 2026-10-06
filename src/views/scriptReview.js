@@ -38,6 +38,12 @@ export function hasNoSpeaker(line) {
   return isReadable(line) && !line.speaker_id && !line.waits_for_narrator;
 }
 
+/** A line Script's 🔎 Second look asks about (decided 2026-10-06): spoken, no
+ *  speaker, and not set by you — the server's `_second_look_asks`, the same rule. */
+export function secondLookCandidate(line) {
+  return hasNoSpeaker(line) && !!line.spoken && line.source !== "corrected";
+}
+
 /** "To check": a flagged line, or one with no speaker. */
 export function toCheck(line) {
   return (line.flags || []).length > 0 || hasNoSpeaker(line);
