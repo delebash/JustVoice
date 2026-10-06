@@ -54,6 +54,9 @@ class RenderedLine:
     # (Studio Slice 4, 2026-10-04). Empty for audio that was not rendered here.
     inputs_key: str = ""
     seed: int | None = None
+    # The engine that spoke it — a take's generation records it (2026-10-06:
+    # every render was saved as "managed", so the Cache page had nothing to name).
+    engine: str = ""
 
 
 def _resolve_engine_for_voice(state: AppState, voice_id: str) -> str | None:
@@ -795,7 +798,7 @@ def render_line(
             sr, ch, pcm = unpack_pcm_with_format(cached)
             return RenderedLine(
                 pcm=pcm, sample_rate=sr, channels=ch, effective_delivery=delivery,
-                inputs_key=cache_key, seed=seed,
+                inputs_key=cache_key, seed=seed, engine=engine_id,
             )
 
     # Auto-load on first synthesize + the per-door synth call. Registry
@@ -920,6 +923,7 @@ def render_line(
         effective_delivery=delivery,
         inputs_key=cache_key,
         seed=seed,
+        engine=engine_id,
     )
 
 

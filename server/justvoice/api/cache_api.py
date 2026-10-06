@@ -76,6 +76,9 @@ async def clear_cache(
 class RecentCacheEntry(BaseModel):
     id: str
     engine: str
+    # The engine by its name (*Qwen3-TTS*) for the Cache page; "not recorded"
+    # for renders saved before 2026-10-06, which all said "managed".
+    engine_name: str = ""
     voice: str
     text_preview: str
     size_bytes: int
@@ -84,6 +87,20 @@ class RecentCacheEntry(BaseModel):
 
 class RecentCacheResponse(BaseModel):
     entries: list[RecentCacheEntry]
+
+
+def engine_name(engine_id: str | None) -> str:
+    """An engine's own name — its catalog's, else the registry's. A render saved
+    before engines were recorded says "managed": that is "not recorded"."""
+    from ..engines.manager import get_manager
+
+    if not engine_id or engine_id == "managed":
+        return "not recorded"
+    manifest = get_manager().get_manifest(engine_id)
+    if manifest:
+        return manifest.name
+    inst = get_state().engines.get(engine_id)
+    return inst.meta.display_name if inst else engine_id
 
 
 @router.get("/v1/cache/recent", response_model=RecentCacheResponse)
@@ -112,6 +129,7 @@ async def recent_entries(limit: int = 15, db: Session = Depends(get_db)) -> Rece
         out.append(RecentCacheEntry(
             id=g.id,
             engine=g.engine or "?",
+            engine_name=engine_name(g.engine),
             voice=(persona.name if persona else (g.profile_id or "—")),
             text_preview=(g.text or "")[:80],
             size_bytes=size,

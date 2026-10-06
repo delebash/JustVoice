@@ -301,7 +301,20 @@ BUILT:  2026-10-06, batches 1–2 (A — the three words): on screen — Cast (c
         showed: Game (not Game voicelines / Game dialogue) and Text (not Custom / Plain text). OK?"
         2026-10-06, the four answers built: 1 and 4 need nothing (kept as built). 2: Speech engines' Set as default
         toast and tooltip say "version".
-OPEN:   3 is not built — its premise was wrong. A generation doesn't store the engine id: every render
+        Then DECIDED 2026-10-06 — "fix things go your rec", on the three items as shown:
+        "1. "Load your first engine" banner: it appears whenever no voice model is loaded, even though
+        you've rendered before. That makes "first" wrong, and it repeats the top bar's "No voice
+        model". 2. "?" in Recent generations: each row shows "?" because it prints the take's voice
+        and falls back to "?" when there isn't one. … the Cache page's Engine column. Every render is
+        saved as managed, so fixing it means recording the real engine and model on new renders, with
+        older rows reading "not recorded"." Recs applied: 1 — the banner only on a true first run
+        (nothing loaded and nothing ever rendered), titled "Load your first voice model"; 2 — each
+        row shows the persona that spoke it, nothing when unknown; 3 — new renders record their real
+        engine (`RenderedLine.engine` → the generation; the MCP path too) and the Cache column shows
+        its name, older rows "not recorded". BUILT 2026-10-06. NOT built: the model — a generation has
+        no column for it, and adding one is a schema change (no migrations; a reset).
+OPEN:   asked: record the model too (a new column — needs your DB reset)?
+        (Superseded:) 3 was not built at first — its premise was wrong. A generation doesn't store the engine id: every render
         saves `engine = "managed"` (`render_jobs.py`: `state.engines.current() or "managed"`; the
         old registry is never current for the speech runtime — 83 of 83 recent rows say it), so there
         is no engine to name. Asked: record the real engine (and model) on each new render, older rows

@@ -29,7 +29,7 @@ const recent = ref([]);
 // even where the header is blank, or getCanSort() is false and the caret never
 // appears (the kit documents this).
 const RECENT_COLUMNS = [
-  { id: "engine", accessorKey: "engine", header: "Engine", sortable: true },
+  { id: "engine", accessorKey: "engine_name", header: "Engine", sortable: true },
   { id: "voice", accessorKey: "voice", header: "Voice", sortable: true },
   { id: "text_preview", accessorKey: "text_preview", header: "Text preview" },
   { id: "size_bytes", accessorKey: "size_bytes", header: "Size", sortable: true },
@@ -257,7 +257,7 @@ onMounted(async () => {
            indistinguishable from the hand-rolled tables still to be converted.
            Sorting comes free, which this list never had. -->
       <UiTable class="jv-table-look" :data="recent" :columns="RECENT_COLUMNS" data-key="id" row-hover>
-        <template #engine="{ row }"><UiTag intent="ghost">{{ row.engine }}</UiTag></template>
+        <template #engine="{ row }"><UiTag intent="ghost">{{ row.engine_name || row.engine }}</UiTag></template>
         <template #text_preview="{ row }">
           <span class="jv-muted">{{ row.text_preview || "—" }}</span>
         </template>

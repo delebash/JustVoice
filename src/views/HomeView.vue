@@ -344,9 +344,12 @@ const speakChord = computed(() => chordLabel(settings.value?.captures?.chord_tog
 const dictateChord = computed(() => chordLabel(settings.value?.captures?.chord_push_to_talk_keys));
 
 // ── Bootstrap banner (cold install — mock assumes a warmed-up state) ──
+// "Load your first voice model" only on a true first run: nothing loaded AND
+// nothing ever rendered (2026-10-06 — it showed whenever no model was loaded,
+// to someone with a rendered book, and said "engine").
 const nextStep = computed(() => {
-  if (health.value && !loadedEngine.value && !health.value.current_engine) {
-    return { title: "Load your first engine", body: "Kokoro runs on CPU in realtime — a good first pick.", href: "#engines", cta: "Open Speech engines" };
+  if (health.value && !loadedEngine.value && !health.value.current_engine && !recentGenerations.value.length) {
+    return { title: "Load your first voice model", body: "Kokoro runs on CPU in realtime — a good first pick.", href: "#engines", cta: "Open Speech engines" };
   }
   if (health.value && !projects.value.length) {
     return { title: "Create your first project", body: "Pick what you're making — the whole app reshapes around it.", href: "#projects", cta: "Open Projects" };
@@ -474,7 +477,7 @@ onMounted(() => {
       <div class="home__gen">
         <UiButton intent="ghost" size="small" label="▶" title="Play" @click="playGen(g)" />
         <span class="home__gen-text">{{ g.text || "—" }}</span>
-        <span class="jv-muted home__gen-who">{{ g.voice || "?" }}</span>
+        <span v-if="g.voice" class="jv-muted home__gen-who">{{ g.voice }}</span>
         <span class="jv-mono jv-muted home__gen-meta">{{ g.take ? g.take + " · " : "" }}{{ fmtAgo(g.when) }}</span>
         <UiButton as="a" intent="ghost" size="small" :href="genDownloadUrl(g)" download title="Download WAV">⬇</UiButton>
       </div>

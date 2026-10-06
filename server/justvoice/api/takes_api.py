@@ -18,6 +18,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from ..app_state import get_state
 from ..database import Take, get_db
 from ..database.models import Generation
 from ..errors import not_found, bad_request
@@ -167,7 +168,9 @@ async def list_recent_takes(limit: int = 20, db: Session = Depends(get_db)) -> R
         .all()
     )
     out: list[RecentTakeRow] = []
+    personas = get_state().personas
     for r in rows:
+        persona = personas.get(r.persona_id) if r.persona_id else None
         # Take label — block_id if present (chapter context), else just the
         # status. Voicebox shows "3 of 7" but that requires lineage which
         # we don't compute here. Leave None for now; #98 will fill this in.
@@ -176,7 +179,9 @@ async def list_recent_takes(limit: int = 20, db: Session = Depends(get_db)) -> R
             RecentTakeRow(
                 id=r.id,
                 when=r.created_at,
-                voice=r.profile_id or None,
+                # The persona that spoke it (2026-10-06 — this read the legacy
+                # profile id, which no render sets, so every row said "?").
+                voice=persona.name if persona else None,
                 text=(r.text or "")[:120],
                 take=take_label,
                 effects=None,
