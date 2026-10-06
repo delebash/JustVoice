@@ -88,6 +88,7 @@ def persist_block_take(db, state, block, rl, *, new_seed: bool = False) -> Take:
         chapter_id=block.scene_id,
         text=block.text,
         engine=rl.engine or state.engines.current() or "managed",
+        model=rl.model or None,
         seed=rl.seed,
         instruct=(getattr(block, "direction", None) or None),
         cache_key=rl.inputs_key or None,

@@ -308,6 +308,9 @@ class Generation(Base):
     text = Column(Text, nullable=False)
     language = Column(String, default="en")
     engine = Column(String, nullable=False)
+    # The model that spoke it (voice_model.py's id) — recorded from 2026-10-06;
+    # None for a render made before, or audio no model spoke.
+    model = Column(String, nullable=True)
     seed = Column(Integer, nullable=True)
     instruct = Column(Text, nullable=True)
     audio_path = Column(String, nullable=True)

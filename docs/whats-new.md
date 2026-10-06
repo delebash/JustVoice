@@ -5,9 +5,9 @@
 - **Home and the Cache page say what they mean (2026-10-06)** — Home's
   *Load your first voice model* banner shows only on a first run, not whenever
   no model is loaded; each recent generation names the persona that spoke it
-  instead of *?*; and the Cache page's **Engine** column names the engine that
-  rendered each line (every render was saved as *managed*; older ones read
-  *not recorded*)
+  instead of *?*; and the Cache page's **Engine** and **Model** columns name
+  the engine and model that rendered each line (every render was saved as
+  *managed*; older ones read *not recorded*)
 - **Home's memory reads like AI Settings (2026-10-06)** — Home's model
   card showed *VRAM NaN / 8 GB*, a none/loaded tag, the voice model a second
   time, *no external providers* and Unload / Switch buttons; it now shows AI

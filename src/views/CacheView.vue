@@ -30,6 +30,7 @@ const recent = ref([]);
 // appears (the kit documents this).
 const RECENT_COLUMNS = [
   { id: "engine", accessorKey: "engine_name", header: "Engine", sortable: true },
+  { id: "model", accessorKey: "model_name", header: "Model", sortable: true },
   { id: "voice", accessorKey: "voice", header: "Voice", sortable: true },
   { id: "text_preview", accessorKey: "text_preview", header: "Text preview" },
   { id: "size_bytes", accessorKey: "size_bytes", header: "Size", sortable: true },

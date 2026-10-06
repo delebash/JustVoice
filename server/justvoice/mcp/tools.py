@@ -207,15 +207,17 @@ async def _speak(
     response = await generate_route(req)
     wav: bytes = bytes(response.body)
 
-    from ..render_core import _resolve_engine_for_voice
+    from ..render_core import _line_model, _resolve_engine_for_voice
 
     state = get_state()
+    engine_id = _resolve_engine_for_voice(state, voice_id)
     gen = Generation(
         persona_id=persona.id if persona else None,
         text=text,
         language=language or "en",
         # The engine that spoke it (2026-10-06 — it was always "managed").
-        engine=_resolve_engine_for_voice(state, voice_id) or state.engines.current() or "managed",
+        engine=engine_id or state.engines.current() or "managed",
+        model=_line_model(state, voice_id, engine_id) if engine_id else None,
         status="completed",
         source="mcp",
         duration_sec=round((len(wav) - 44) / (2 * 16000), 3) if len(wav) > 44 else None,

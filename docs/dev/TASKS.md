@@ -313,7 +313,14 @@ BUILT:  2026-10-06, batches 1–2 (A — the three words): on screen — Cast (c
         engine (`RenderedLine.engine` → the generation; the MCP path too) and the Cache column shows
         its name, older rows "not recorded". BUILT 2026-10-06. NOT built: the model — a generation has
         no column for it, and adding one is a schema change (no migrations; a reset).
-OPEN:   asked: record the model too (a new column — needs your DB reset)?
+        Then DECIDED 2026-10-06 — "go" on: "recording the model as well as the engine. A saved render
+        has nowhere to store it, so it needs a new database column. Under your no-migrations rule
+        that only works after you reset the database. Do you want that?" (the user: "i reset the db",
+        "you dont need to backup anything"). BUILT 2026-10-06: `generations.model` (schema only, no
+        migration), recorded from `RenderedLine.model` and on the MCP path; the Cache page gains a
+        **Model** column beside Engine (older rows "not recorded"). The database was reset once more
+        after the column landed so it exists.
+OPEN:   none.
         (Superseded:) 3 was not built at first — its premise was wrong. A generation doesn't store the engine id: every render
         saves `engine = "managed"` (`render_jobs.py`: `state.engines.current() or "managed"`; the
         old registry is never current for the speech runtime — 83 of 83 recent rows say it), so there

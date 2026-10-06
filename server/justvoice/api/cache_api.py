@@ -79,6 +79,8 @@ class RecentCacheEntry(BaseModel):
     # The engine by its name (*Qwen3-TTS*) for the Cache page; "not recorded"
     # for renders saved before 2026-10-06, which all said "managed".
     engine_name: str = ""
+    # The model by its name (*Qwen3-TTS CustomVoice*); "not recorded" before 2026-10-06.
+    model_name: str = ""
     voice: str
     text_preview: str
     size_bytes: int
@@ -87,6 +89,12 @@ class RecentCacheEntry(BaseModel):
 
 class RecentCacheResponse(BaseModel):
     entries: list[RecentCacheEntry]
+
+
+def model_name(model: str, engine_id: str | None) -> str:
+    from ..voice_model import model_name as name_of
+
+    return name_of(model, engine_id)
 
 
 def engine_name(engine_id: str | None) -> str:
@@ -130,6 +138,7 @@ async def recent_entries(limit: int = 15, db: Session = Depends(get_db)) -> Rece
             id=g.id,
             engine=g.engine or "?",
             engine_name=engine_name(g.engine),
+            model_name=model_name(g.model, g.engine) if g.model else "not recorded",
             voice=(persona.name if persona else (g.profile_id or "—")),
             text_preview=(g.text or "")[:80],
             size_bytes=size,
