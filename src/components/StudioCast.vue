@@ -36,7 +36,7 @@ import {
 import { useApi } from "../stores/api.js";
 import PageTaskStrips from "./PageTaskStrips.vue";
 import CastNewPersonas from "./CastNewPersonas.vue";
-import { splitByName, voicesForBook } from "../services/newPersonas.js";
+import { andList, splitByName, voicesForBook } from "../services/newPersonas.js";
 import { usePersonasStore } from "../stores/personas.js";
 import { projectsService } from "../services/projects.js";
 import { readPref, writePref } from "../services/prefs.js";
@@ -144,9 +144,6 @@ function languageWarning(s) {
 // "40 lines can't render until Harbek and Renn have a persona."
 const uncast = computed(() => props.speakers.filter((s) => s.lines > 0 && !s.persona_id));
 const uncastLines = computed(() => uncast.value.reduce((n, s) => n + s.lines, 0));
-function andList(names) {
-  return names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
-}
 
 // Cast-level engine notice (kept from the old Cast, item 6): says when the
 // cast spans engines (render-time swapping) or uses metered online voices.
@@ -634,8 +631,12 @@ async function createNewPersonas(picked) {
       await projectsService.updateSpeaker(p.speaker.id, { persona_id: persona.id });
       made += 1;
     }
+    // Whoever the list left uncast is named, so Create never reads as done
+    // when it wasn't (decided 2026-10-06).
+    const left = ask.proposals.filter((x) => !picked.some((p) => p.speaker.id === x.speaker.id)).map((x) => x.speaker.name);
     const said = [made ? `${plural(made, "new persona")} made and cast` : "",
-      cast ? `${plural(cast, "speaker")} cast with your persona of that name` : ""].filter(Boolean);
+      cast ? `${plural(cast, "speaker")} cast with your persona of that name` : "",
+      left.length ? `${andList(left)} still ${left.length === 1 ? "has" : "have"} no persona` : ""].filter(Boolean);
     pushToast({ kind: "success", duration: 5000, message: `${said.join(" · ")}.` });
     newAsk.value = null;
   } catch (e) {

@@ -125,6 +125,22 @@ GO:     given 2026-08-17
 
 ## The next build
 
+### Cast's batch: the speakers the model skipped are hard to miss (decided 2026-10-06)
+STATE:  DECIDED 2026-10-06 — "your rec go on all" (the user, with a screenshot: "i did create persona
+        but for some reason narrator did not get assigned" — the batch made 7; the Narrator, Nettle and
+        Old Sedge were left), on the fix as shown: "1. Skipped rows go first in the list, each with an
+        amber No voice yet tag (the same tag as Script's To check), and a line above the list names
+        them: 'Your model matched no voice for Narrator, Nettle and Old Sedge — pick one for each, or
+        they stay without a persona.' 2. After Create, the message names who is still uncast: '7 new
+        personas made and cast · Narrator, Nettle and Old Sedge still have no persona.' Lean: both."
+WHY:    the skipped rows' Pick a voice sat among the matched ones; Create 7 read as done.
+NOT:    reopening b (a prompt that never skips) or c (ask again) — turned down 2026-10-06, not reopened.
+BUILT:  2026-10-06 — `CastNewPersonas.vue` (skipped rows first; the tag leads the Voice cell until a
+        voice is picked; the line in `.jv-text-warn`), `StudioCast.vue` `createNewPersonas` (the
+        message), `andList` moved to `services/newPersonas.js` (Cast's footer uses the same one).
+OPEN:   none.
+GO:     given 2026-10-06
+
 ### Cast's Speakers head is two rows; the AI row lines up on the right (decided 2026-10-06)
 STATE:  DECIDED 2026-10-06 — "your rec go" (the user, with a screenshot: "the new persona button is
         wrapping"), on the fix as shown: "Two rows on purpose instead of a wrap wherever it falls: Row 1:

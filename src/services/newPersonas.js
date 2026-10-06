@@ -25,3 +25,8 @@ export function voicesForBook(voices, bookLanguage) {
   if (!bookLanguage) return voices;
   return voices.filter((v) => (v.speaks?.length ? v.speaks : [v.language]).some((c) => sameLanguage(c, bookLanguage)));
 }
+
+/** "A", "A and B", "A, B and C" — names in a sentence (Cast's footer, the batch). */
+export function andList(names) {
+  return names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}

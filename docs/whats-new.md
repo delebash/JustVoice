@@ -2,6 +2,10 @@
 
 ## v0.1.0
 
+- **Cast's ＋ New persona shows who it left out (2026-10-06)** — the speakers
+  your language model matched no voice to come first in the list, tagged **No
+  voice yet**, with a line naming them; after **Create**, the message names
+  anyone still without a persona ([Studio → Cast](studio.md#cast))
 - **Cast chooses from the models you tick (2026-10-06)** — beside Smart-assign
   and ＋ New persona, **Models to choose from** lists the models with voices in
   the book's language; both buttons offer only voices on the ticked ones, so a

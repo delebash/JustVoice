@@ -832,11 +832,15 @@ has none); **All** shows everyone again. When everyone is cast it says
   Nothing is made yet: a list shows each speaker → voice with **▶** to hear the
   voice, and you untick any you'd rather cast yourself. The model sometimes
   matches a speaker to no voice — most often one the book says little about,
-  like a narrator or someone with no pronouns set. That row has a **Voice** list
-  instead, of the same voices: **Pick a voice** and the row is ticked like the
-  rest. **Create N personas** then makes each ticked one a persona named after
-  its speaker, with that voice and an empty note on how it sounds (yours to
-  write), and casts it.
+  like a narrator or someone with no pronouns set. Those rows come first, tagged
+  **No voice yet**, and a line above the list names them: *Your model matched no
+  voice for Narrator, Nettle and Old Sedge — pick one for each, or they stay
+  without a persona.* Each has a **Voice** list instead, of the same voices:
+  **Pick a voice** and the row is ticked like the rest. **Create N personas**
+  then makes each ticked one a persona named after its speaker, with that voice
+  and an empty note on how it sounds (yours to write), and casts it. The message
+  after names anyone the list left without a persona — *7 new personas made and
+  cast · Narrator, Nettle and Old Sedge still have no persona.*
 
 Each speaker's card shows:
 
