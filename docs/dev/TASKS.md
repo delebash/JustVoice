@@ -218,9 +218,22 @@ STATE:  DECIDED 2026-10-06 — "your rec go" (the user: "we have 3 things speake
         with the shared wording it should use, for your go before anything changes."
 WHY:    speaker and persona often share a name, and "cast" meant both the step and the speakers.
 NOT:    changing any wording before the list is read.
-BUILT:  (in progress — the list)
-OPEN:   the list → your go → the changes, the docs, the rule in design-law.
-GO:     given 2026-10-06 for the list; needed for the changes
+        Then DECIDED 2026-10-06 — "your rec go", on the list as shown
+        (`docs/plans/2026-10-06-one-word-one-meaning-audit.md` §1 — READ IT before coding): A1 "the
+        cast" for the speakers → "the book's speakers" / "in this book"; A2 a persona named next to a
+        speaker → "persona X" (Render's line → Speaker [▾] · Cast: persona June · model · Change in
+        Cast ➜); A3 keep "plays", only "nobody plays them yet" → "no persona yet"; A4 "✕ Clear cast" →
+        "✕ Clear personas"; A5 "speaker" for a built-in voice → "built-in voice", loudspeakers → "sound
+        output"; A6 "voice" meaning persona → persona; A7 "Rewrite in character" → "Rewrite as the
+        speaker"; A8 the rule in design-law. B1–B9 one wording per fact (Can be directed, voice type,
+        Model / Version / engine, gender "Not known", line states and counts naming the unit, the take
+        — B6 = the take wording table: "★ Use this take" / "★ In use", the heading, the chapter text,
+        Play chapter, Compare's "★ Use take B" —, language, step cards from Overview's words, the
+        smaller ones). C1–C7 the factual slips. The docs follow their screens; the mocks match; the
+        tests that pin the old words change with them.
+BUILT:  (in progress, in batches)
+OPEN:   (in progress)
+GO:     given 2026-10-06
 
 ### Render's grid: a Model column, and "Can be directed" in Voices' words (decided 2026-10-06)
 STATE:  DECIDED 2026-10-06 — "your rec on render grid change go" (the user: "in voices grid you have
