@@ -139,29 +139,38 @@ def _persona_delivery(persona) -> PersonaDelivery:
     return PersonaDelivery.model_validate(dd or {})
 
 
-def model_settings(persona, model: str | None) -> tuple[dict[str, Any], list[str], int | None]:
+def model_settings(persona, model: str | None, line: dict | None = None) -> tuple[dict[str, Any], list[str], int | None]:
     """(delivery, tags, seed) the persona sets for `model`.
 
     The shared values first (pace, pitch, gain, pauses), then that model's
     own: its knobs (nested as the engines read them), its emotion — words for
     a written-direction model, a tag for a tag model — its register tag, and
     its seed. A model the persona has no settings for gets the shared values
-    and nothing else."""
+    and nothing else. `line` is a line's own settings for this model
+    (`line_takes.line_models`, 2026-10-06): its knobs, emotion and register
+    win over the persona's; an emotion or register of "" is none on that line."""
     pd = _persona_delivery(persona)
     out: dict[str, Any] = {k: getattr(pd, k) for k in SHARED_KEYS if getattr(pd, k) is not None}
     tags: list[str] = []
-    seed: int | None = None
     ms = pd.models.get(model) if model else None
-    if ms is not None:
-        out.update(ms.knobs)
-        if ms.emotion:
-            if "emotion" in _tagsets(model):
-                tags.append(ms.emotion)
-            else:
-                out["emotion"] = ms.emotion
-        if ms.register_tag:
-            tags.append(ms.register_tag)
-        seed = ms.seed
+    knobs = dict(ms.knobs) if ms is not None else {}
+    emotion = ms.emotion if ms is not None else None
+    register = ms.register_tag if ms is not None else None
+    seed: int | None = ms.seed if ms is not None else None
+    if line:
+        knobs.update(line.get("knobs") or {})
+        if "emotion" in line:
+            emotion = line["emotion"] or None
+        if "register_tag" in line:
+            register = line["register_tag"] or None
+    out.update(knobs)
+    if emotion:
+        if "emotion" in _tagsets(model):
+            tags.append(emotion)
+        else:
+            out["emotion"] = emotion
+    if register:
+        tags.append(register)
     return nest_engine_keys(out), tags, seed
 
 
@@ -209,6 +218,7 @@ def plan_line(
     request_delivery: dict[str, Any] | None = None,
     voice: str | None = None,
     candidate: Candidate | None = None,
+    line_models: dict | None = None,
 ) -> LinePlan:
     """The request one line spoken by `persona` renders with.
 
@@ -216,7 +226,9 @@ def plan_line(
     on its own voice pick); `candidate` stands in for a voice not saved yet
     (the plan's `voice` is then None); `request_delivery` sits on top of the persona's
     delivery (a Compare value, a line's override in Slice 4); `direction` is
-    the line's own written direction, added after the persona's.
+    the line's own written direction, added after the persona's; `line_models`
+    is a line's own settings per model — the one for this model wins over the
+    persona's (2026-10-06).
 
     The written direction is composed most specific last, for every model
     and dropped by the ones that take none (slot.py): a clip-less designed
@@ -238,7 +250,7 @@ def plan_line(
         own_language = voice_language(state, voice_id)
     model = vm.model if vm is not None else None
 
-    persona_delivery, tags, seed = model_settings(persona, model)
+    persona_delivery, tags, seed = model_settings(persona, model, (line_models or {}).get(model) if model else None)
     request = dict(request_delivery or {})
     if request.get("seed") is not None:
         seed = request.pop("seed")

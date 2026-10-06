@@ -882,7 +882,7 @@ Lines are joined with **Pause between lines** (Settings → Generation pipeline,
 600 ms by default) — the same pause in Render, in the exported audiobook and in
 ACX QC, so the chapter you audition is the chapter that ships. A line's own
 pause wins for that line, whether it came from an import (a script's
-`pause_after_ms`) or from [This line only](#this-line-only) — and,
+`pause_after_ms`) or from [Render overrides](#render-overrides) — and,
 since 2026-10-04, it wins over the persona's own pause too.
 
 ### The chapter grid
@@ -936,8 +936,8 @@ A row opens its line, under it:
   **Change in Cast ➜**.
 - **Style Instructions** — the line's own direction; see
   [How it's said](#how-its-said).
-- **This line only** — the line's own pace, pitch, gain and pause; see
-  [This line only](#this-line-only).
+- **Render overrides** — what this line does differently from its persona; see
+  [Render overrides](#render-overrides).
 - **📕 Pronunciation**, **✏️ Rewrite as** *name* and **✎ Edit words** — see
   [below](#pronunciation-and-rewrite-in-character).
 - **Takes** — see [below](#takes).
@@ -953,36 +953,52 @@ What a line can be told depends on the model of the persona that speaks it
   **Style Instructions** — the persona page's own field, with a **↺** that clears
   it. It is added after the persona's Style Instructions, most specific last
   (the hint quotes the persona's), and saved when you leave the box. Empty means
-  the line is said as the persona always speaks. On any other model the field
-  isn't there: Render shows only the controls the line's own model can use
-  (the persona page shows them greyed instead, because there you are still
-  choosing the voice).
+  the line is said as the persona always speaks. The field is part of
+  [Render overrides](#render-overrides), and only on a model that takes written
+  direction.
 - **A tag model** (Chatterbox Turbo and Nano): the persona's own tags, such as
   *[sarcastic]*, shown read-only — they are set on the persona's page.
 - **Every other model** (Kokoro, Kitten, Pocket, Chatterbox Multilingual): it
   takes no direction, and the cell says so. Its only per-line control is
-  [This line only](#this-line-only).
+  [Render overrides](#render-overrides).
 
-### This line only
+### Render overrides
 
-Every open line has **This line only**: *Pace, pitch, gain and the pause after,
-for this line alone. The persona's own settings don't change.* They are the
-persona page's own controls — the same sliders (drag, or type an exact value in
-the box beside each), labels, ranges and units as its **How it speaks**
-([Personas → How it speaks](personas.md#how-it-speaks)) — so a line works exactly like its persona:
+Every open line has a box, **Render overrides**: the persona page's controls
+([Personas → How it speaks](personas.md#how-it-speaks)), for this one line —
+the same sliders (drag, or type an exact value in the box beside each), lists,
+labels, ranges, units and explanations. The voice is fixed on Render, so the box
+shows only what the line's model takes; the persona page shows the rest greyed,
+because there you are still choosing the voice. In the persona page's order:
 
-- **Pace** (×), **Pitch** (semitones) and **Gain** (dB) — a slider each;
-  **Pause after** (ms) — a box.
-- A line you haven't touched shows its persona's values (the pause: the
-  persona's, else **Pause between lines** in Settings → Generation).
-- A change is saved when you let go of the slider or leave the box. It is for
-  this line only and wins over the persona's; the line turns
+- **Pace** (×), **Pitch** (semitones), **Gain** (dB) and **Pause after** (ms)
+  — every model.
+- **Style Instructions** — a model that takes written direction (Qwen3-TTS,
+  VoxCPM2); added after the persona's (see [How it's said](#how-its-said)).
+- **Emotion** — the nine on a model that takes written direction; on a tag
+  model (Chatterbox Turbo and Nano) its own emotion tags, with its **Register**
+  tags beside it.
+- **Sampling** — the model's own settings (temperature, top k, exaggeration …),
+  as many as that model has. Seed isn't one: **↻ New take** gives a line a new
+  seed.
+
+Kokoro shows the four numbers and nothing else. Each control:
+
+- shows the persona's value until you change it (the pause: the persona's, else
+  **Pause between lines** in Settings → Generation);
+- saves when you let go of the slider, leave the box or pick from the list —
+  for this line only, winning over the persona's; the line turns
   [stale](#stale-lines) until you render it again. Setting a value back to the
-  persona's own is the same as no change.
-- Each has a **↺** — *Back to June's pitch* — that removes this line's value;
-  **↺ Reset to default** removes them all. Both are greyed out while there is
-  nothing to remove.
-- A line with any of its own values has a dot beside its speaker in the table.
+  persona's own is the same as no change;
+- has a **↺** — *Back to June's pitch* — that removes this line's value.
+  **↺ Reset to default** removes them all (the Style Instructions too), so the
+  line speaks exactly as its persona. Each is greyed while there is nothing to
+  remove.
+
+The line keeps its settings per model, as a persona does: a line set for
+Chatterbox Turbo keeps them if its speaker is recast with a Kokoro persona, and
+they come back if it is cast with a Turbo one again. A line with any override
+has a dot beside its speaker in the table.
 
 ### Takes
 

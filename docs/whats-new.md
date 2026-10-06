@@ -8,11 +8,13 @@
   Instructions** field, in the open line, with a **↺**; and **✎ Edit words**
   changes a line's text right on Render ([Studio → Pronunciation and Rewrite in
   character](studio.md#pronunciation-and-rewrite-in-character))
-- **Render's "This line only" (2026-10-06)** — a line's own pace, pitch, gain
-  and pause are no longer behind a closed **⚙ Override the numbers** toggle:
-  they sit open in the line panel, on the persona page's own sliders (drag or
-  type), with a **↺** each and **↺ Reset to default**. An untouched line shows
-  its persona's values ([Studio → This line only](studio.md#this-line-only))
+- **Render overrides (2026-10-06)** — an open line has a box with the persona
+  page's controls for its model, and only those: pace, pitch, gain and pause on
+  every model, Style Instructions, Emotion (and a tag model's Register) and the
+  model's own Sampling settings where the model has them. Each starts as the
+  persona's, has a **↺**, and **↺ Reset to default** clears them all. It
+  replaces the closed **⚙ Override the numbers** toggle
+  ([Studio → Render overrides](studio.md#render-overrides))
 - **Cast shows who still needs a persona; Script's checks in amber
   (2026-10-06)** — the Speakers head has **All** and **No persona** chips:
   click **No persona** to see only the speakers left to cast

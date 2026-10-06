@@ -563,7 +563,7 @@ const speaksLabel = computed(() => {
 
 // ── How it speaks ───────────────────────────────────────────────────────
 // The knobs are DeliveryKnobs.vue over personaFacts' SHAPE_KNOBS (shared with
-// Render's "This line only", 2026-10-06).
+// Render's "Render overrides", 2026-10-06).
 function shared(key, fallback) {
   const v = draft.value?.default_delivery?.[key];
   return v === null || v === undefined ? fallback : Number(v);

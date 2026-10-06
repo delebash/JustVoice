@@ -99,3 +99,29 @@ persona's is saved as none, so "untouched" stays true. The row's dot stays.
 | Direction moves into the panel | `setDirection` `StudioRenderChapter.vue:228-232` · the cell `:516-519` · mock `MockRenderChapterView.vue:103-107`, `:315` | `PATCH {direction}` unchanged; `delivery_merge.compose_instruct` adds it after the persona's |
 | ✎ Edit words | `patchBlock` `:214` (already sends `{text}` for Rewrite, `:383`) · Script's `editText` (`scriptReview.js:222`) sends the same | `projects_api.update_block` — a text change marks the line stale (RESEARCH §3) |
 | Words | `docs/studio.md:940-953` (How it's said), `:1003-1015` (Rewrite), `:805` (Cast's *Who they are*) | — |
+
+## 6. Render: a line can change what its model takes (decided 2026-10-06, "correct go")
+
+**What it is.** The open line's **This line only** holds every control the persona page has for
+that line's model — in the persona page's order — and only those (hidden, not greyed: the voice
+is fixed on Render): Pace · Pitch · Gain · Pause after (every model) · **Style Instructions**
+(a words model) · **Emotion** (the app's nine on a words model, the model's emotion tags on a tag
+model) and **Register** (a tag model's) · **Sampling** — the model's own settings, as its
+capability row lists them, minus speed and seed. Each shows the persona's value until changed, is
+for this line only, has a ↺; **↺ Reset to default** clears them all (direction included), so the
+line speaks exactly as its persona. A value equal to the persona's is saved as none.
+
+**Stored like the persona's** (`PersonaModelSettings`): a line keeps `{knobs, emotion,
+register_tag}` per model under its metadata's `line_models`, so a line set for Chatterbox never
+sends its settings to Qwen3 after a recast, and an emotion is always in its own model's vocabulary.
+`emotion: ""` means "none on this line" against a persona that has one. The render reads it in
+`persona_render.model_settings` — the line's over the persona's, the same tag/words split.
+
+| Change | Readers / producers (grep in `server/justvoice`, `src`) | Already on the path |
+|---|---|---|
+| `merge_override` takes `models` (`{model: {knobs: {k: v\|null}, emotion, register_tag} \| null} \| null`) | `projects_api.update_block` `:512-516` (the one caller) · `UpdateBlockRequest.line_override` `:219` | a value sets, null clears, a key left out is kept — the hatch's semantics |
+| `line_override` returns `models` too | `line_takes.override_delivery` `:83` (must skip it) · `render_lines` `:276` (`"override"`, the page reads it) | — |
+| `model_settings(persona, model, line)` | `persona_render.plan_line` `:241` (the one caller) | the tag/words emotion split (`_tagsets`), `nest_engine_keys` |
+| `plan_line(…, line_models)` | `line_takes.plan_block` `:119` passes it · the other callers (`generate_api.py:282`, `:411`, `personas_api.py:361`, `:431`) pass none — unchanged | `plan_block` feeds the render (`render_chapter_api.py:176`), the game export (`export_voicelines.py:166`) and the stale check (`line_takes.py:207`) — so a line setting makes it stale |
+| Render's panel | `StudioRenderChapter.vue` (`overrideSet`, `resetOverrides`, the section) · `GET /v1/engines/capabilities` (the persona page's own source: `knobs`, `inline_tags`, `emotion_values`) · `DeliveryKnobs.vue` gains a `knobs` prop | the persona keeps `default_delivery.models[model]` — the fallback each control shows |
+| Tests | `server/tests/test_line_takes.py` (`test_the_line_override_merges_and_is_checked`) — the unknown-field message changes | — |

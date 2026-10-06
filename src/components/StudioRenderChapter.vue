@@ -8,9 +8,9 @@
   status in §8.16's words (GET /v1/scenes/{id}/render_lines). "How it's said"
   is written direction on a model that takes it, the persona's own standing
   tags (read-only) on a tag model, and nothing on the rest. Opening a line
-  shows who speaks it (read-only — Cast decides, D2), "This line only" — its
-  own pace, pitch, gain and pause, open, on the persona page's own controls
-  (DeliveryKnobs.vue; 2026-10-06, was D3's closed hatch; stored in the line's
+  shows who speaks it (read-only — Cast decides, D2), "Render overrides" —
+  the persona page's controls that the line's model takes, and only those,
+  for this line (2026-10-06, was D3's closed hatch; stored in the line's
   metadata), 📕 Pronunciation (the
   book's lexicon), ✏️ Rewrite in character (moved here from Script), and its
   takes: every take is kept, and the ★ one is what the chapter plays and
@@ -72,6 +72,15 @@ async function loadPause() {
   const s = await api.safeRequest("/v1/settings", null);
   const ms = s?.generation?.pause_between_lines_ms;
   if (Number.isFinite(ms)) PAUSE_SETTING_MS.value = ms;
+}
+// What each model takes — the persona page's own source (its knobs, its tag
+// sets, the app's emotion words), read once.
+const caps = ref({});
+const emotionValues = ref([]);
+async function loadCaps() {
+  const r = await api.safeRequest("/v1/engines/capabilities", { engines: {} });
+  caps.value = r?.engines || {};
+  emotionValues.value = r?.emotion_values || [];
 }
 
 const lines = computed(() => page.value?.lines || []);
@@ -197,6 +206,7 @@ watch(() => props.sceneId, () => {
 }, { immediate: true });
 watch(() => props.version, load);
 loadPause();
+loadCaps();
 
 const NARROW = { width: "1%", whiteSpace: "nowrap" };
 const COLUMNS = [
@@ -236,11 +246,9 @@ function setDirection(l, v) {
 // ("i only want to show controls for that voice" — the persona page greys
 // them instead, because there you are still choosing the voice).
 const takesWords = (l) => personaOf(l)?.directed_by === "words";
-function directionHint(l) {
-  const p = personaOf(l);
-  const own = (p?.voice_instruct || "").trim();
-  return `For this line only — added after ${p.name}'s own${own ? `: “${own}”` : " (none yet)."}`;
-}
+// The persona page's own explanation, for a line.
+const directionHint = () => "Added after its persona's Style Instructions.";
+const paceNative = (l) => !!rowOf(l)?.speed_native;
 
 // ── ✎ Edit words — the same save as Script's ✎ Edit… (decided 2026-10-06) ──
 const editing = reactive({});   // block_id → the words being edited
@@ -346,7 +354,7 @@ const compareOptions = computed(() => compareTakes.value.filter((t) => !t.is_def
 const compareA = computed(() => compareTakes.value.find((t) => t.is_default) || null);
 const compareB = computed(() => compareTakes.value.find((t) => t.id === compare.value?.b) || null);
 
-// ── This line only — open, the persona page's controls (2026-10-06; was D3's
+// ── Render overrides — open, the persona page's controls (2026-10-06; was D3's
 // closed hatch). A set value puts a dot on the row. The line stores
 // `pause_after_ms`; the knobs say `pause_after`, as the persona does.
 const overrideSet = (l) => Object.keys(l.override || {}).length > 0;
@@ -371,8 +379,51 @@ function setNum(l, key, v) {
   if ((l.override?.[field] ?? null) === value) return;
   patchBlock(l, { line_override: { [field]: value } });
 }
+// ↺ Reset to default: everything the line sets for itself — the numbers, its
+// settings for every model, its Style Instructions — so it speaks as its persona.
+const lineChanged = (l) => overrideSet(l) || !!l.direction;
 function resetOverrides(l) {
-  patchBlock(l, { line_override: Object.fromEntries(Object.keys(l.override || {}).map((k) => [k, null])) });
+  const numbers = Object.keys(l.override || {}).filter((k) => k !== "models").map((k) => [k, null]);
+  const body = { line_override: { ...Object.fromEntries(numbers), models: null } };
+  if (l.direction) body.direction = "";
+  patchBlock(l, body);
+}
+
+// ── What the line's model takes, and only that (decided 2026-10-06: Render
+// works like the persona page, but hides what the model can't use) ──
+const modelOf = (l) => personaOf(l)?.model || "";
+const rowOf = (l) => caps.value[modelOf(l)] || null;
+const tagSetOf = (l, category) => (rowOf(l)?.inline_tags || []).find((t) => t.category === category) || null;
+function emotionChoices(l) {
+  const tags = tagSetOf(l, "emotion");
+  if (tags) return tags.tags;
+  return takesWords(l) ? emotionValues.value : [];
+}
+// The persona's settings for the model, and the line's own on top.
+const personaMs = (l) => personaOf(l)?.default_delivery?.models?.[modelOf(l)] || {};
+const lineMs = (l) => l.override?.models?.[modelOf(l)] || {};
+const lineHas = (l, key) => Object.hasOwn(lineMs(l), key);
+const wordValue = (l, key) => (lineHas(l, key) ? lineMs(l)[key] : personaMs(l)[key]) || "";
+// Emotion / register: the persona's value is saved as none; "" = none on this line.
+function setWord(l, key, v) {
+  const model = modelOf(l);
+  if (!model) return;
+  const value = (v || "") === (personaMs(l)[key] || "") ? null : v || "";
+  if ((lineHas(l, key) ? lineMs(l)[key] : null) === value) return;
+  patchBlock(l, { line_override: { models: { [model]: { [key]: value } } } });
+}
+// Sampling: the model's own knobs, as its capability row lists them — minus
+// speed (Pace) and seed (↻ New take).
+const modelKnobs = (l) => (rowOf(l)?.knobs || []).filter((k) => k.key !== "speed" && k.key !== "seed")
+  .map((k) => ({ key: k.key, label: k.label, min: k.min, max: k.max, step: k.step, neutral: Number(k.default), unit: k.unit || "", hint: k.hint }));
+const knobFallback = (l) => Object.fromEntries(modelKnobs(l).map((k) => [k.key, personaMs(l).knobs?.[k.key] ?? k.neutral]));
+function setKnob(l, key, v) {
+  const model = modelOf(l);
+  if (!model) return;
+  let value = v === null || v === undefined || v === "" ? null : Number(v);
+  if (value !== null && value === Number(knobFallback(l)[key])) value = null;
+  if ((lineMs(l).knobs?.[key] ?? null) === value) return;
+  patchBlock(l, { line_override: { models: { [model]: { knobs: { [key]: value } } } } });
 }
 const KNOB_WORD = { speed: "pace", pitch: "pitch", gain_db: "gain", pause_after: "pause after" };
 const personaWord = (l) => (personaOf(l)?.name ? `${personaOf(l).name}'s` : "the persona's");
@@ -531,7 +582,7 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
             <span v-if="row.speaker_id" class="studio-render-ch__who">
               <span class="studio-render-ch__av" :style="{ background: avatarColor(row.speaker_id) }">{{ speakerName(row)[0] }}</span>
               {{ speakerName(row) }}
-              <span v-if="overrideSet(row)" class="studio-render-ch__dot" title="This line has its own pace, pitch, gain or pause (This line only)" />
+              <span v-if="overrideSet(row)" class="studio-render-ch__dot" title="This line has render overrides" />
             </span>
             <span v-else class="jv-muted">— nobody —</span>
           </template>
@@ -595,35 +646,76 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
                   </span>
                 </div>
 
-                <UiField v-if="takesWords(row.line)" layout="block" class="jv-linepanel__wide" :hint="directionHint(row.line)">
-                  <template #label>
-                    <span class="jv-field-label-row">
-                      <span>Style Instructions (optional)</span>
-                      <span class="jv-inline-row">
-                        <UiTag intent="success">✓ {{ personaOf(row.line).model_name }}</UiTag>
-                        <UiButton intent="ghost" size="small" label="↺" :disabled="!row.line.direction"
-                          title="Clear this line's Style Instructions" @click="setDirection(row.line, '')" />
-                      </span>
-                    </span>
-                  </template>
-                  <UiTextarea :model-value="row.line.direction" :rows="2"
-                    :placeholder="`as ${personaOf(row.line).name} always speaks`"
-                    @blur="(e) => setDirection(row.line, e.target.value)" />
-                </UiField>
-
-                <div class="jv-linepanel__field jv-linepanel__field--wide">
-                  <span class="jv-field-label-row jv-linepanel__wide">
-                    <span class="jv-eyebrow">This line only</span>
-                    <UiButton intent="ghost" size="small" label="↺ Reset to default" :disabled="!overrideSet(row.line)"
-                      :title="`Back to ${personaWord(row.line)} pace, pitch, gain and pause`"
-                      @click="resetOverrides(row.line)" />
-                  </span>
-                  <span class="jv-hint">Pace, pitch, gain and the pause after, for this line alone. The persona's own
-                    settings don't change.</span>
+                <div class="jv-card jv-linepanel__wide">
+                  <div class="jv-card__header">
+                    <h3 class="jv-card__title">Render overrides</h3>
+                    <UiButton intent="ghost" size="small" label="↺ Reset to default" :disabled="!lineChanged(row.line)"
+                      title="Every override back to its persona's" @click="resetOverrides(row.line)" />
+                  </div>
+                  <div class="jv-card__body jv-col">
                   <DeliveryKnobs class="jv-linepanel__wide" :values="lineValues(row.line)" :fallback="lineFallback(row.line)"
                     :pauses="['pause_after']" pause-reset
                     :reset-title="(key) => `Back to ${personaWord(row.line)} ${KNOB_WORD[key]}`"
                     @commit="(key, v) => setNum(row.line, key, v)" @reset="(key) => setNum(row.line, key, null)" />
+                  <p v-if="personaOf(row.line) && !paceNative(row.line)" class="jv-hint">Pace is time-stretched after
+                    {{ personaOf(row.line).model_name }} speaks — it doesn't pace itself.</p>
+
+                  <UiField v-if="takesWords(row.line)" layout="block" class="jv-linepanel__wide" :hint="directionHint(row.line)">
+                    <template #label>
+                      <span class="jv-field-label-row">
+                        <span>Style Instructions (optional)</span>
+                        <span class="jv-inline-row">
+                          <UiTag intent="success">✓ {{ personaOf(row.line).model_name }}</UiTag>
+                          <UiButton intent="ghost" size="small" label="↺" :disabled="!row.line.direction"
+                            title="Clear this line's Style Instructions" @click="setDirection(row.line, '')" />
+                        </span>
+                      </span>
+                    </template>
+                    <UiTextarea :model-value="row.line.direction" :rows="2"
+                      :placeholder="`as ${personaOf(row.line).name} always speaks`"
+                      @blur="(e) => setDirection(row.line, e.target.value)" />
+                  </UiField>
+
+                  <div v-if="emotionChoices(row.line).length || tagSetOf(row.line, 'register')" class="jv-field-row">
+                    <UiField v-if="emotionChoices(row.line).length" layout="block">
+                      <template #label>
+                        <span class="jv-field-label-row">
+                          <span>{{ tagSetOf(row.line, 'emotion') ? `Emotion — ${personaOf(row.line).model_name}'s own tags` : "Emotion" }}</span>
+                          <UiButton intent="ghost" size="small" label="↺" :disabled="!lineHas(row.line, 'emotion')"
+                            :title="`Back to ${personaWord(row.line)} emotion`" @click="setWord(row.line, 'emotion', personaMs(row.line).emotion || '')" />
+                        </span>
+                      </template>
+                      <UiSelect :model-value="wordValue(row.line, 'emotion')" width="id"
+                        :options="[{ value: '', label: '— none —' }, ...emotionChoices(row.line).map((e) => ({ value: e, label: tagSetOf(row.line, 'emotion') ? `[${e}]` : e }))]"
+                        @update:model-value="(v) => setWord(row.line, 'emotion', v)" />
+                    </UiField>
+                    <UiField v-if="tagSetOf(row.line, 'register')" layout="block">
+                      <template #label>
+                        <span class="jv-field-label-row">
+                          <span>Register</span>
+                          <UiButton intent="ghost" size="small" label="↺" :disabled="!lineHas(row.line, 'register_tag')"
+                            :title="`Back to ${personaWord(row.line)} register`" @click="setWord(row.line, 'register_tag', personaMs(row.line).register_tag || '')" />
+                        </span>
+                      </template>
+                      <UiSelect :model-value="wordValue(row.line, 'register_tag')" width="id"
+                        :options="[{ value: '', label: '— none —' }, ...tagSetOf(row.line, 'register').tags.map((t) => ({ value: t, label: `[${t}]` }))]"
+                        @update:model-value="(v) => setWord(row.line, 'register_tag', v)" />
+                    </UiField>
+                  </div>
+                  <p v-if="tagSetOf(row.line, 'emotion')" class="jv-hint">
+                    Put at the start of the line. Sounds like [sigh] or [laugh] go inside it — type them in its words.
+                  </p>
+
+                  <template v-if="modelKnobs(row.line).length">
+                    <span class="jv-inline-row">
+                      <strong>Sampling</strong><span class="jv-hint">{{ personaOf(row.line).model_name }}</span>
+                    </span>
+                    <DeliveryKnobs class="jv-linepanel__wide" :knobs="modelKnobs(row.line)" :pauses="[]"
+                      :values="lineMs(row.line).knobs || {}" :fallback="knobFallback(row.line)"
+                      :reset-title="(key, k) => `Back to ${personaWord(row.line)} ${(k?.label || key).toLowerCase()}`"
+                      @commit="(key, v) => setKnob(row.line, key, v)" @reset="(key) => setKnob(row.line, key, null)" />
+                  </template>
+                  </div>
                 </div>
 
                 <div class="jv-linepanel__row">
@@ -684,7 +776,7 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
         </UiTable>
 
         <p class="jv-hint studio-render-ch__foot">Lines are joined with {{ PAUSE_SETTING_MS }} ms of silence — Settings →
-          Generation. A line's own pause (This line only) changes it after that line.</p>
+          Generation. A line's own pause (Render overrides) changes it after that line.</p>
         <div class="jv-inline-row studio-render-ch__bar">
           <UiButton intent="secondary" size="small" :label="`← Previous ${word.singular.toLowerCase()}`"
             :disabled="!prevChapter" :title="prevChapter ? chapterName(prevChapter) : `This is the first ${word.singular.toLowerCase()}`"

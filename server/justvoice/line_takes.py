@@ -38,6 +38,12 @@ log = logging.getLogger(__name__)
 OVERRIDE_FIELDS = {"speed": "speed", "pitch": "pitch", "gain_db": "gain_db", "pause_after_ms": "pause_after"}
 # The limits the hatch's fields keep to — the persona page's own ranges.
 OVERRIDE_LIMITS = {"speed": (0.5, 2.0), "pitch": (-12.0, 12.0), "gain_db": (-12.0, 12.0), "pause_after_ms": (0, 10_000)}
+# What a line sets that only one MODEL understands — its emotion, a tag
+# model's register, the model's own knobs — kept per model under this metadata
+# key, the shape of a persona's `PersonaModelSettings` (decided 2026-10-06:
+# Render works like the persona page). `emotion: ""` = none on this line.
+LINE_MODELS = "line_models"
+_WORD_FIELDS = ("emotion", "register_tag")
 
 CHAPTER_RENDER = "chapter_render"   # made with the persona's seed
 NEW_TAKE = "new_take"               # ↻ New take: a seed of its own
@@ -64,7 +70,8 @@ def is_marker(block) -> bool:
 
 
 def line_override(block) -> dict[str, Any]:
-    """The numbers this line sets for itself: {speed, pitch, gain_db, pause_after_ms}, set ones only."""
+    """What this line sets for itself: {speed, pitch, gain_db, pause_after_ms}, set ones only,
+    and `models` — its per-model settings — when it has any."""
     meta = block_meta(block)
     out: dict[str, Any] = {}
     for key in OVERRIDE_FIELDS:
@@ -75,21 +82,60 @@ def line_override(block) -> dict[str, Any]:
             out[key] = max(0, int(raw)) if key == "pause_after_ms" else float(raw)
         except (TypeError, ValueError):
             continue
+    models = line_models(block)
+    if models:
+        out["models"] = models
+    return out
+
+
+def line_models(block) -> dict[str, dict[str, Any]]:
+    """The line's settings per model: {model: {knobs?, emotion?, register_tag?}}, set ones only."""
+    raw = block_meta(block).get(LINE_MODELS)
+    if not isinstance(raw, dict):
+        return {}
+    out: dict[str, dict[str, Any]] = {}
+    for model, s in raw.items():
+        if not isinstance(s, dict):
+            continue
+        entry: dict[str, Any] = {}
+        knobs = {}
+        for k, v in (s.get("knobs") or {}).items():
+            try:
+                knobs[str(k)] = float(v)
+            except (TypeError, ValueError):
+                continue
+        if knobs:
+            entry["knobs"] = knobs
+        for key in _WORD_FIELDS:
+            if isinstance(s.get(key), str):
+                entry[key] = s[key]
+        if entry:
+            out[str(model)] = entry
     return out
 
 
 def override_delivery(block) -> dict[str, Any]:
-    """The line's numbers, delivery-shaped — `plan_line`'s request, which wins over the persona."""
-    return {OVERRIDE_FIELDS[k]: v for k, v in line_override(block).items()}
+    """The line's numbers, delivery-shaped — `plan_line`'s request, which wins over the persona.
+    (Its per-model settings go to `plan_line` on their own — `line_models`.)"""
+    return {OVERRIDE_FIELDS[k]: v for k, v in line_override(block).items() if k in OVERRIDE_FIELDS}
 
 
 def merge_override(meta: dict, patch: dict) -> dict:
     """PATCH semantics for the hatch: a value sets, null clears, a key left out is kept.
+    `models` merges the same way, a level down ({model: {knobs: {k: v}, emotion, register_tag}};
+    a model or `models` itself sent as null clears it).
     Raises ValueError naming the field when a value is out of range."""
     out = dict(meta)
     for key, value in patch.items():
+        if key == "models":
+            merged = _merge_models(out.get(LINE_MODELS) or {}, value)
+            if merged:
+                out[LINE_MODELS] = merged
+            else:
+                out.pop(LINE_MODELS, None)
+            continue
         if key not in OVERRIDE_FIELDS:
-            raise ValueError(f"unknown field {key!r} — a line can set {', '.join(OVERRIDE_FIELDS)}")
+            raise ValueError(f"unknown field {key!r} — a line can set {', '.join([*OVERRIDE_FIELDS, 'models'])}")
         if value is None:
             out.pop(key, None)
             continue
@@ -101,6 +147,50 @@ def merge_override(meta: dict, patch: dict) -> dict:
         if not lo <= num <= hi:
             raise ValueError(f"{key} must be between {lo} and {hi}")
         out[key] = num
+    return out
+
+
+def _merge_models(current: dict, patch: dict | None) -> dict:
+    if patch is None:
+        return {}
+    if not isinstance(patch, dict):
+        raise ValueError("models must be an object of {model: settings}")
+    out = {m: dict(s) for m, s in current.items() if isinstance(s, dict)}
+    for model, s in patch.items():
+        if s is None:
+            out.pop(model, None)
+            continue
+        if not isinstance(s, dict):
+            raise ValueError(f"models.{model} must be an object")
+        entry = out.get(model, {})
+        for key, value in s.items():
+            if key == "knobs":
+                knobs = dict(entry.get("knobs") or {})
+                for k, v in (value or {}).items():
+                    if v is None:
+                        knobs.pop(k, None)
+                        continue
+                    try:
+                        knobs[str(k)] = float(v)
+                    except (TypeError, ValueError):
+                        raise ValueError(f"{model}'s {k} must be a number") from None
+                if knobs:
+                    entry["knobs"] = knobs
+                else:
+                    entry.pop("knobs", None)
+            elif key in _WORD_FIELDS:
+                if value is None:
+                    entry.pop(key, None)
+                elif isinstance(value, str) and len(value) <= 60:
+                    entry[key] = value.strip()
+                else:
+                    raise ValueError(f"{model}'s {key} must be a short word")
+            else:
+                raise ValueError(f"unknown setting {key!r} for {model} — a line can set knobs, emotion, register_tag")
+        if entry:
+            out[model] = entry
+        else:
+            out.pop(model, None)
     return out
 
 
@@ -120,6 +210,7 @@ def plan_block(state, persona, block, *, book_lexicon: str | None = None, seed: 
         state, persona, text=block.text,
         direction=getattr(block, "direction", None),
         book_lexicon=book_lexicon, request_delivery=request,
+        line_models=line_models(block),
     )
 
 

@@ -489,6 +489,15 @@ its blast radius and the gaps.
   — *code, 2026-10-05* (was: "language never reaches Chatterbox or Qwen3" and "a persona's seed
   is ignored when a chapter renders" — both true on the Python engines until the 2026-10-01
   switch and the 2026-10-03 resolver; the two TASKS findings were closed 2026-10-05).
+- A line's Render overrides: the four numbers at the top of its block metadata (`speed`,
+  `pitch`, `gain_db`, `pause_after_ms`) and, per model, `{knobs, emotion, register_tag}` under
+  `line_models` — the shape of a persona's `PersonaModelSettings`; `emotion: ""` = none on the line.
+  `PATCH /v1/blocks/{id}` `line_override` merges both (a value sets, null clears; `models: null`
+  clears every model). `plan_block` passes `line_models` to `plan_line`, whose
+  `model_settings(persona, model, line)` lays the line's settings for THAT model over the
+  persona's — so another model's never reach the render — and the inputs key changes, so the line
+  turns stale. — *code + test, 2026-10-06* · `line_takes.py`, `persona_render.py`,
+  `server/tests/test_line_model_settings.py`.
 - A chapter's text can be edited as a whole: `GET`/`PUT /v1/scenes/{id}/text`
   (`projects_api.text_edit_plan`, difflib over whitespace-normalised lines). Unchanged lines keep
   their id, speaker and takes; changed and new paragraphs are new `source="manual"` lines, which

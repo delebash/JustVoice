@@ -19,7 +19,7 @@ line_takes.py.
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from fastapi import APIRouter
 from pydantic import BaseModel
@@ -58,8 +58,9 @@ class RenderLine(BaseModel):
     speaker_id: str | None = None
     spoken: bool = False
     direction: str = ""
-    # The line's own numbers (⚙ hatch): speed, pitch, gain_db, pause_after_ms — set ones only.
-    override: dict[str, float] = {}
+    # What the line sets for itself (This line only): speed, pitch, gain_db, pause_after_ms —
+    # set ones only — and `models`: {model: {knobs, emotion, register_tag}} (2026-10-06).
+    override: dict[str, Any] = {}
     state: Literal["needs a speaker", "needs a voice", "ready", "rendered", "stale"]
     takes: int = 0
     live: LineTake | None = None

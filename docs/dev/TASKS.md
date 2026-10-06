@@ -195,6 +195,53 @@ GO: needed.
 
 ## The next build
 
+### Render: a line can change what its model takes — emotion, tags, the model's settings (decided 2026-10-06)
+STATE:  DECIDED 2026-10-06 — "correct go" (the user: "go fix the render" … "explain how you think render
+        should show overrid controls, it should work the same as persona except instead of disabling
+        enabling controls you show hide, is this your understnading?"), on the answer as shown:
+        "Yes, that's my understanding. Render works like the persona page, with one difference: a
+        control the line's model can't use is hidden instead of greyed out. For an open line on
+        Render: Pace, Pitch, Gain, Pause after: always shown, because every model takes them. Style
+        Instructions: shown only when the model takes written direction (Qwen3-TTS, VoxCPM2).
+        Emotion: shown only when the model has emotion. Tags: shown only on a tag model (Chatterbox
+        Turbo, Nano). The model's own settings (the persona page's Sampling, e.g. Chatterbox's
+        exaggeration and CFG, temperature): only the ones that model has. Each control works as on
+        the persona page: It shows the persona's value until you change it. The change is for this
+        line only. It has a ↺ to go back to the persona's value, and ↺ Reset to default clears them
+        all. Seed isn't on the list because ↻ New take already gives a line a new seed. Effects and
+        the lexicon stay with the persona and the book. Today the server only stores direction and
+        the four numbers per line. So emotion, tags and the model's settings need storing on the
+        line, and the render needs to read them."
+WHY:    a line should be shaped with everything its model offers, the way its persona is.
+NOT:    greyed controls on Render; seed per line (↻ New take); effects or lexicon per line.
+        Then (the user, 2026-10-06: "you are overcomplicating, just label the box render
+        ovverides, like you have the title how it speaks in person just a simple title render
+        override with the same corresponding controls for that voice that you have on persona
+        screen with same explanations"): one box titled **Render overrides**, the persona page's
+        own explanations, no paragraph of its own.
+BUILT:  2026-10-06 — plan §6 (`docs/plans/2026-10-06-batch-pick-and-findings.md`). Server: a line keeps
+        `{knobs, emotion, register_tag}` per model under its metadata's `line_models`
+        (`line_takes.py` — `line_models`, `merge_override`'s `models`, `line_override` returns them);
+        `persona_render.model_settings(persona, model, line)` lays the line's over the persona's;
+        `plan_line(…, line_models)` from `plan_block`; the render-lines `override` widened
+        (`render_lines_api.py`). Page: the **Render overrides** box (`StudioRenderChapter.vue`,
+        `MockRenderChapterView.vue`) — the numbers, the pace hint, Style Instructions (a words
+        model), Emotion / Register (the nine, or a tag model's own tags), Sampling (the model's
+        knobs minus speed and seed, through `DeliveryKnobs.vue`'s new `knobs` prop) — each from the
+        app's capability rows, each with ↺, Reset to default clears all (direction included).
+        Docs studio (Render overrides), whats-new; RESEARCH §3. Checked: ruff; pytest
+        `test_line_model_settings.py` (6 new) + `test_line_takes.py`, `test_line_pause_and_direction.py`
+        (29) + `test_persona_render.py`, `test_emotion_wiring.py`, `test_designed_voice_parity.py`,
+        `test_persona_voice_makers.py` (64); Biome; live on a throwaway chapter (deleted after, the
+        app restarted for the server change): Kokoro — the numbers only; a words model (simulated in
+        the browser) — Style Instructions, Emotion (started at the persona's happy), 7 Sampling
+        knobs; sad saved `{"models": {"qwen3-cv": {"emotion": "sad"}}}`, a knob saved, Emotion's ↺
+        and Reset to default cleared it all; a tag model — Turbo's emotion tags, Register, its 4
+        knobs, no Style Instructions. The mock: Cael's words line — the box with Emotion and
+        Sampling from the app's own capability snapshot. No page errors.
+OPEN:   none.
+GO:     given 2026-10-06
+
 ### Render: the line's direction as Style Instructions, Rewrite for the narrator, ✎ Edit words (decided 2026-10-06)
 STATE:  DECIDED 2026-10-06 — "your rec on all go", on the open questions as shown:
         Narrator (the user: "narrator is a character and can have a style so should rewrite work for

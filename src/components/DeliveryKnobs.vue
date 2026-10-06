@@ -1,12 +1,13 @@
 <!-- SPDX-License-Identifier: MIT -->
 <!--
   Pace · Pitch · Gain and the pauses — ONE set of controls for the persona
-  page's How it speaks and Render's "This line only" (decided 2026-10-06: "the
+  page's How it speaks and Render's "Render overrides" (decided 2026-10-06: "the
   controls should work the same as persona … render overrides should work look
   and act the same"). The kit slider (drag, or type in its number box), the
   ranges and units of `SHAPE_KNOBS`, a ↺ per knob, the pause boxes.
 
-  `values` holds what is set (null = not set); an unset knob shows `fallback`'s
+  `knobs` is the list (default SHAPE_KNOBS; Render's Sampling passes the
+  model's own, 2026-10-06). `values` holds what is set (null = not set); an unset knob shows `fallback`'s
   value (else the knob's neutral). Events: `input` on every step of a drag or
   keystroke (the persona page's draft follows it), `commit` when the slider is
   let go or the pause box is left (Render saves then), `reset` from a ↺.
@@ -17,6 +18,8 @@ import { UiButton, UiNumber, UiSlider } from "@delebash/llm-ui";
 import { SHAPE_KNOBS } from "../services/personaFacts.js";
 
 const props = defineProps({
+  // [{key, label, min, max, step, neutral, unit, hint?, reset?}]
+  knobs: { type: Array, default: () => SHAPE_KNOBS },
   values: { type: Object, default: () => ({}) },
   fallback: { type: Object, default: () => ({}) },
   // Which pause boxes to show: ["pause_before", "pause_after"] or ["pause_after"].
@@ -54,9 +57,9 @@ function onCommit(key, v) {
 
 <template>
   <div class="jv-knob-grid">
-    <div v-for="k in SHAPE_KNOBS" :key="k.key" class="jv-knob-grid__knob">
+    <div v-for="k in knobs" :key="k.key" class="jv-knob-grid__knob">
       <div class="jv-knob-grid__head">
-        <label class="jv-knob-grid__label">{{ k.label }}</label>
+        <label class="jv-knob-grid__label" :title="k.hint">{{ k.label }}</label>
         <UiButton intent="ghost" size="small" label="↺" :disabled="!isSet(k.key)"
           :title="resetTitle(k.key, k)" @click="emit('reset', k.key)" />
       </div>
@@ -64,7 +67,7 @@ function onCommit(key, v) {
         <UiSlider :model-value="shown(k.key, k.neutral)" :min="k.min" :max="k.max" :step="k.step"
           width="full" :aria-label="k.label"
           @update:model-value="(v) => onInput(k.key, v)" @change="(v) => onCommit(k.key, v)" />
-        <span class="jv-knob-grid__unit">{{ k.unit }}</span>
+        <span v-if="k.unit" class="jv-knob-grid__unit">{{ k.unit }}</span>
       </div>
     </div>
     <div v-if="pauses.length" class="jv-knob-grid__knob">
