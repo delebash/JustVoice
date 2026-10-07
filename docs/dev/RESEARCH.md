@@ -653,9 +653,19 @@ its blast radius and the gaps.
   rendered line in `_join`, a line's own `pause_after_ms` wins, a persona's does not. Render's
   line list says so (`paragraph_next`). — *code + test, 2026-10-07*.
 - **Long lines also hold ~0.9–1 s silences inside the take**: 17 in 14 of Brass Rank's 78 lines,
-  all in narration lines of 16–23 s — where audio.cpp cut Kokoro's text into pieces (240
-  characters) and joined them with no crossfade, each piece keeping its padding. The join trim
-  doesn't reach them. Not fixed. — *measured, 2026-10-07*.
+  all in narration lines over 240 characters — where OUR server cut the line into pieces at the
+  model's piece size (Kokoro's catalog: 240, `render_core.line_split_chars`, `:883`) and joined
+  them in `audio/chunked.concatenate_audio_chunks` with a 50 ms crossfade, each piece keeping its
+  ~715 ms tail and ~265 ms lead. Kokoro's own pause at a sentence end inside a piece: median
+  260 ms (middle half 210–310, 214 pauses); an em dash in one piece: 170 ms. audio.cpp never
+  splits these lines (each piece is under its budget). Not fixed in the app's path. (was: "where
+  audio.cpp cut Kokoro's text … and joined them" — wrong, until later on 2026-10-07.) —
+  *measured, 2026-10-07*.
+- **Our audio.cpp copy joins a request's own pieces at 260 ms** (fork `a2d7c161`,
+  `kokoro_tts/session.cpp` `piece_join_cut`): it cuts what is quieter than −70 dBFS on either
+  side down to Kokoro's sentence pause and shifts word timings. Measured straight from the
+  runtime on a 423-character line: the join 950 ms → ~250 ms. Only reached by a request longer
+  than audio.cpp's own budget, which the app never sends. — *measured, 2026-10-07*.
 - **A render job's progress**: a line reads `running` from the moment the scheduler starts it
   (`render_jobs._rendering`) until the runner saves it (`completed`), fails it, or withdraws it
   (`pending`). `GET /v1/render_jobs/{id}` also returns `audio_seconds` (the finished lines'

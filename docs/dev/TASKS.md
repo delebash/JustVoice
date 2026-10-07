@@ -125,6 +125,23 @@ GO:     given 2026-08-17
 
 ## The next build
 
+### Long lines lose the ~1 s gaps where audio.cpp joins Kokoro's pieces (decided 2026-10-07)
+STATE:  DECIDED 2026-10-07 — "your rec go", on the finding as shown: "long narration lines (16–23 s) have
+        pauses of about 0.9–1 s inside the take. There are 17 of them across 14 of Brass Rank's 78
+        lines. audio.cpp cuts long text for Kokoro into pieces of up to 240 characters and joins the
+        pieces with each one's silence still attached. The join trim can't reach them because they're
+        inside the take. Fixing it means trimming at that cut inside our audio.cpp copy, and the
+        affected lines would need re-rendering."
+WHY:    the chapter join's trim (the entry below) can't reach silence inside a take.
+NOT:    —
+BUILT:  2026-10-07 — our audio.cpp copy `a2d7c161` (`piece_join_cut`): verified straight from the runtime,
+        line 2's join 950 ms → ~250 ms. BUT the premise was wrong: the app's gaps come from OUR server's
+        split (Kokoro lines over 240 characters, `render_core.py:883`) and its join
+        (`audio/chunked.concatenate_audio_chunks`, 50 ms crossfade, padding kept) — audio.cpp never
+        splits these lines. A fresh render through the app's path still had 950 / 870 / 880 / 990 ms.
+OPEN:   the same trim in our server's piece join — needs your word (the decided place was audio.cpp).
+GO:     given 2026-10-07 (audio.cpp); needed (our server's join)
+
 ### Render all sits beside Render N chapters (decided 2026-10-07)
 STATE:  DECIDED 2026-10-07 — "your rec go" (the user, with a screenshot: "render all buttn should be next to
         render button"), on the proposal as shown: "move ▶ Render all from the top bar (beside the ACX
