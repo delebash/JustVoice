@@ -11,6 +11,13 @@ AI Settings (the sidebar page). TTS itself never needs an LLM.
 isn't on PATH. Install it and restart the server; everything that muxes or
 masters audio depends on it.
 
+**Mastering failed — "ffmpeg could not start (Windows error 0xC0000142)".**
+Windows refused to start ffmpeg at all, so it never read the chapter. Every line
+keeps its take; only the joined, mastered chapter is missing. The server starts
+ffmpeg with no console of its own since 2026-10-07 — before that, a server whose
+starting terminal had closed hit this on every chapter. If you still see it,
+restart the app and press **Retry** on the chapter's strip.
+
 **A model load hangs or you loaded the wrong one.** Engine loads are
 cancellable — the Speech engines tab's load job has a Cancel, and it answers at
 once, even mid-load; a cancelled load unloads whatever it had brought in and

@@ -324,3 +324,42 @@ def test_unknown_block_ids_reject(job_env):
         assert db.query(RenderJobBlock).count() == 0
     finally:
         db.close()
+
+
+def test_a_line_reads_rendering_while_it_renders(job_env, monkeypatch):
+    """Render's progress (decided 2026-10-07): the line rendering now is marked
+    running, named by its number in the chapter and its speaker; once the run
+    ends nothing is current and the audio the lines made adds up."""
+    from justvoice.database.models import Speaker
+
+    factory = job_env
+    project_id, _, block_ids = _seed_project(factory, ["Line one.", "Line two."])
+    db = factory()
+    try:
+        sp = Speaker(project_id=project_id, name="Narrator")
+        db.add(sp)
+        db.flush()
+        for b in db.query(Block).filter(Block.id.in_(block_ids)):
+            b.speaker_id = sp.id
+        db.commit()
+    finally:
+        db.close()
+
+    seen = {}
+
+    def render(st, p, b, **kw):
+        seen[b.id] = render_jobs.job_status(job.id, include_blocks=True)
+        return _line()
+
+    monkeypatch.setattr(ev, "render_block_take", render)
+    job = render_jobs.create_job(project_id, "blocks", block_ids)
+    render_jobs.start_job(job.id)
+    s = _wait_terminal(job.id)
+    assert s["status"] == "completed"
+
+    for n, bid in enumerate(block_ids, start=1):
+        during = seen[bid]
+        assert {b["block_id"]: b["status"] for b in during["blocks"]}[bid] == "running"
+        assert during["current"][0] == {"block_id": bid, "n": n, "speaker": "Narrator"}
+    assert s["current"] == []
+    assert s["audio_seconds"] == round(2 * 50 / 24000, 2)

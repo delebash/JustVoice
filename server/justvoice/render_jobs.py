@@ -258,6 +258,8 @@ def job_status(job_id: str, *, include_blocks: bool = False) -> dict | None:
             "total_blocks": job.total_blocks or 0,
             "completed_blocks": job.completed_blocks or 0,
             "failed_blocks": job.failed_blocks or 0,
+            "audio_seconds": _audio_seconds(db, job_id),
+            "current": _current_lines(db, job_id),
         }
         if include_blocks:
             rows = (
@@ -295,6 +297,64 @@ def sweep_stale_jobs() -> int:
         return len(jobs)
     finally:
         db.close()
+
+
+def _audio_seconds(db, job_id: str) -> float:
+    """Seconds of audio the job's finished lines made — Render's "3:12 of audio"
+    and its × real time (decided 2026-10-07)."""
+    from sqlalchemy import func
+
+    total = (
+        db.query(func.sum(Generation.duration_sec))
+        .join(RenderJobBlock, RenderJobBlock.generation_id == Generation.id)
+        .filter(RenderJobBlock.job_id == job_id, RenderJobBlock.status == "completed")
+        .scalar()
+    )
+    return round(float(total or 0.0), 2)
+
+
+def _current_lines(db, job_id: str) -> list[dict]:
+    """The lines rendering now — each with its number in its chapter (the one
+    Render shows) and its speaker's name: "line 47 · Narrator"."""
+    from .database.models import Project, Speaker
+    from .line_takes import heard_blocks
+
+    out = []
+    rows = (
+        db.query(RenderJobBlock)
+        .filter(RenderJobBlock.job_id == job_id, RenderJobBlock.status == "running")
+        # Newest first: a line that has finished but is still being saved reads
+        # running for a moment beside the one that just started.
+        .order_by(RenderJobBlock.updated_at.desc())
+        .all()
+    )
+    for jb in rows:
+        block = db.query(Block).filter(Block.id == jb.block_id).first()
+        if block is None:
+            continue
+        scene = db.query(Scene).filter(Scene.id == block.scene_id).first()
+        project = db.query(Project).filter(Project.id == scene.project_id).first() if scene else None
+        n = next((n for n, b in heard_blocks(db, scene, project) if b.id == block.id), None) if scene else None
+        speaker = db.query(Speaker).filter(Speaker.id == block.speaker_id).first() if block.speaker_id else None
+        out.append({"block_id": block.id, "n": n, "speaker": speaker.name if speaker else None})
+    return out
+
+
+def _rendering(jb_id: str, fn):
+    """Mark a job's line as rendering when the scheduler starts it, then render
+    it (decided 2026-10-07: Render lights the line). The runner marks it
+    completed, failed or — when withdrawn — pending again."""
+    db = _open_db()
+    try:
+        jb = db.query(RenderJobBlock).filter(RenderJobBlock.id == jb_id).first()
+        if jb is not None and jb.status == "pending":
+            jb.status = "running"
+            db.commit()
+    except Exception as e:  # noqa: BLE001 — a progress mark never costs the line its render
+        log.warning("render job: marking %s rendering failed: %s", jb_id, e)
+    finally:
+        db.close()
+    return fn()
 
 
 # ── the runner ───────────────────────────────────────────────────────
@@ -396,8 +456,8 @@ def _run_job(job_id: str) -> None:
         handles = []
         for jb_id, block, persona, engine_id in work:
             h = scheduler.submit(
-                [(engine_id, lambda p=persona, b=block: render_block_take(
-                    state, p, b, use_cache=not fresh))]
+                [(engine_id, lambda p=persona, b=block, j=jb_id: _rendering(j, lambda: render_block_take(
+                    state, p, b, use_cache=not fresh)))]
             )
             handles.append((jb_id, block, h))
         with _state_lock:

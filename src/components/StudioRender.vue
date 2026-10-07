@@ -19,7 +19,7 @@
 <script setup>
 import { computed, ref } from "vue";
 import {
-  AppModal, UiButton, UiCheckbox, UiProgress, UiTable, UiTag, pushToast, useAiTasksStore, withAiTask,
+  AiTaskStrip, AppModal, UiButton, UiCheckbox, UiTable, UiTag, pushToast, useAiTasksStore, withAiTask,
 } from "@delebash/llm-ui";
 import { useApi } from "../stores/api.js";
 import { useCopy } from "../services/copy.js";
@@ -53,6 +53,7 @@ const blockedOf = (c) => (c ? c.needs_speaker + c.needs_voice : 0);
 // "12 of 40 lines" under Rendered — a current take (services/lineStates.js,
 // 2026-10-06); the chapter's stale lines show as their own tag.
 const titleOf = (s) => `${s.position + 1} · ${s.title || `${word.value.singular} ${s.position + 1}`}`;
+const lineName = (c) => `line ${c.n}${c.speaker ? ` · ${c.speaker}` : ""}`;
 
 // ── The grid, with a progress row under a chapter while it renders ───
 function taskFor(sceneId) {
@@ -80,15 +81,6 @@ const COLUMNS = computed(() => [
   { id: "check", header: "Check", headerStyle: { width: "1%" }, cellStyle: { whiteSpace: "nowrap" } },
   { id: "acts", header: "", headerStyle: { width: "1%" }, cellStyle: { whiteSpace: "nowrap", textAlign: "right" } },
 ]);
-const BADGE = {
-  done: { text: "done", intent: "success" },
-  error: { text: "failed", intent: "danger" },
-  cancelled: { text: "cancelled", intent: "accent2" },
-};
-function badge(t) {
-  if (tasks.isRunning(t.id)) return { text: "rendering", intent: "solid" };
-  return BADGE[t.status] || { text: t.status, intent: "ghost" };
-}
 const playing = ref(null);   // { id, url }
 
 // ── Ticks ────────────────────────────────────────────────────────────
@@ -114,6 +106,9 @@ const fixing = ref(false);
 const stoppedTotal = computed(() => (stopped.value || []).reduce((n, g) => n + g.lines.length, 0));
 const narrator = computed(() => props.speakers.find((sp) => sp.role_label === "narrator") || null);
 
+// The chapters still waiting in a run of several — "queued" in Check while they
+// wait, and only then (a ticked chapter that failed said "queued", 2026-10-07).
+const waiting = ref(new Set());
 async function renderQueue(queue) {
   const found = [];
   for (const s of queue) {
@@ -129,7 +124,15 @@ async function renderQueue(queue) {
     stoppedQueue.value = queue;
     return;
   }
-  for (const s of queue) await renderOne(s);
+  waiting.value = new Set(queue.map((s) => s.id));
+  try {
+    for (const s of queue) {
+      waiting.value = new Set([...waiting.value].filter((id) => id !== s.id));
+      await renderOne(s);
+    }
+  } finally {
+    waiting.value = new Set();
+  }
 }
 async function renderOne(s) {
   try {
@@ -221,7 +224,9 @@ function checkState(s) {
     return { intent: "danger", label: `✗ ${!qc.rms_ok ? "RMS" : "peak"} out of spec`, title: numbers };
   }
   if (taskFor(s.id)?.status === "done") return { intent: "success", label: "rendered" };
-  if (ticked.value[s.id]) return { intent: "ghost", label: "queued" };
+  if (taskFor(s.id)?.status === "error") return { intent: "danger", label: "failed", title: taskFor(s.id).error || "" };
+  if (taskFor(s.id)?.status === "cancelled") return { intent: "accent2", label: "cancelled" };
+  if (waiting.value.has(s.id)) return { intent: "ghost", label: "queued" };
   return { intent: "ghost", label: "—" };
 }
 </script>
@@ -302,25 +307,20 @@ function checkState(s) {
               </span>
             </template>
             <template #full-row="{ row }">
+              <!-- The chapter page's strip (decided 2026-10-07): progress, the line
+                   rendering now, the figures, Cancel · Retry · dismiss. -->
               <div class="studio-render__task">
-                <UiTag :intent="badge(taskFor(row.scene.id)).intent">{{ badge(taskFor(row.scene.id)).text }}</UiTag>
-                <UiProgress class="studio-render__bar-fill" :value="taskFor(row.scene.id).progress?.done || 0"
-                  :max="taskFor(row.scene.id).progress?.total || 0" bare />
-                <span v-if="isRunning(row.scene.id) && taskFor(row.scene.id).progress" class="jv-hint">
-                  {{ taskFor(row.scene.id).progress.done }} of {{ taskFor(row.scene.id).progress.total }}</span>
-                <span v-if="taskFor(row.scene.id).error" class="studio-render__error">{{ taskFor(row.scene.id).error }}</span>
-                <UiButton v-if="isRunning(row.scene.id)" intent="danger-outline" size="small" label="Cancel"
-                  @click="tasks.cancel(taskFor(row.scene.id).id)" />
-                <UiButton v-if="['error', 'cancelled'].includes(taskFor(row.scene.id).status)" intent="secondary" size="small"
-                  label="↻ Retry" @click="renderQueue([row.scene])" />
+                <AiTaskStrip :task="taskFor(row.scene.id)" class="studio-render__strip">
+                  <template #extra-stats="{ task }">
+                    <span v-if="task.render?.current" class="sts-stat">{{ lineName(task.render.current) }}</span>
+                  </template>
+                </AiTaskStrip>
                 <template v-if="taskFor(row.scene.id).status === 'done' && taskFor(row.scene.id).result?.url">
                   <UiButton intent="ghost" size="small" label="▶ Play" title="Play here in the row"
                     @click="playing = { id: row.scene.id, url: taskFor(row.scene.id).result.url }" />
                   <UiButton as="a" :href="taskFor(row.scene.id).result.url" :download="taskFor(row.scene.id).result.filename"
                     intent="ghost" size="small" title="Download WAV">⬇ Download</UiButton>
                 </template>
-                <UiButton v-if="!isRunning(row.scene.id)" intent="ghost" size="small" label="✕"
-                  @click="tasks.dismiss(taskFor(row.scene.id).id)" />
               </div>
               <audio v-if="playing?.id === row.scene.id" :src="playing.url" controls autoplay
                 class="jv-audio-inline studio-render__audio" />
@@ -377,8 +377,7 @@ function checkState(s) {
 .studio-render__rollup { display: inline-flex; align-items: center; gap: 6px; }
 .studio-render__acts { display: inline-flex; gap: 6px; }
 .studio-render__task { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.studio-render__bar-fill { flex: 0 1 220px; min-width: 120px; }
-.studio-render__error { color: var(--danger); max-width: 60ch; }
+.studio-render__strip { flex: 1 1 auto; min-width: 0; }
 .studio-render__audio { margin-top: 6px; }
 .studio-render__go { gap: 10px; align-items: center; flex-wrap: wrap; }
 .studio-render__stopped-lede { margin: 0 0 12px; }

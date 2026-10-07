@@ -25,10 +25,10 @@ from __future__ import annotations
 
 import logging
 import shutil
-import subprocess
 import tempfile
 from pathlib import Path
 
+from . import procs
 from .audio.wav import write_wav_container
 from .models import MasterPresetSettings
 
@@ -222,10 +222,9 @@ def _run_master(
     cmd.append(out_path)
 
     try:
-        result = subprocess.run(cmd, capture_output=True, timeout=600)
+        result = procs.run(cmd, capture_output=True, timeout=600)
         if result.returncode != 0:
-            err = result.stderr.decode("utf-8", errors="ignore")[-1500:]
-            raise RuntimeError(f"ffmpeg failed (exit {result.returncode}): {err}")
+            raise RuntimeError(procs.failed("ffmpeg", result.returncode, result.stderr))
         return Path(out_path).read_bytes()
     finally:
         try:

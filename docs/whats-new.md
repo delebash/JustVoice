@@ -2,6 +2,14 @@
 
 ## v0.1.0
 
+- **Render shows its progress, and mastering works again (2026-10-07)** — while
+  a chapter renders, its strip names the line rendering now and shows the audio
+  made, its speed against real time and the time left; on the chapter's page
+  that line is lit and the rest of the run reads *queued*, and the counts and
+  chips fill in as each line lands, wherever the render was started. The chapter
+  list shows the same strip. Mastering no longer fails with *ffmpeg failed (exit
+  3221225794)*, and a failure says that every line's take is kept
+  ([Studio → Render](studio.md#a-renders-progress))
 - **Render plays a take every time you press ▶, and the take in use can be
   deleted (2026-10-07)** — a take's ▶ worked only the first time; now each ▶
   on Render (a line's, a take's, Compare's) turns into ⏸ while it plays, with a

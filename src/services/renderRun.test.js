@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { followJob, mediaUrl } from "./renderRun.js";
+import { clock, followJob, mediaUrl, runFigures } from "./renderRun.js";
 
 function fakeApi(statuses) {
   const calls = [];
@@ -36,7 +36,7 @@ describe("followJob", () => {
     await vi.runAllTimersAsync();
     expect((await done).status).toBe("completed");
     expect(seen).toEqual(["queued:0", "running:1", "completed:3"]);
-    expect(api.calls).toEqual(["/v1/render_jobs/job1", "/v1/render_jobs/job1"]);
+    expect(api.calls).toEqual(["/v1/render_jobs/job1?include_blocks=true", "/v1/render_jobs/job1?include_blocks=true"]);
   });
 
   it("returns at once for a job born finished (nothing to render)", async () => {
@@ -53,6 +53,26 @@ describe("followJob", () => {
     await expect(followJob(api, { id: "job1", status: "running" }, { signal: ctl.signal }))
       .rejects.toMatchObject({ name: "AbortError" });
     expect(api.calls).toEqual(["POST /v1/render_jobs/job1/cancel"]);
+  });
+});
+
+describe("a run's figures (2026-10-07)", () => {
+  it("say the audio made, its speed against real time, and the time left", () => {
+    const job = { audio_seconds: 192, completed_blocks: 30, failed_blocks: 0, total_blocks: 90 };
+    expect(runFigures(job, 80)).toEqual(["3:12 of audio", "2.4× real time", "about 3 min left"]);
+  });
+  it("say nothing before the first line lands, and no time left at the end", () => {
+    expect(runFigures({ audio_seconds: 0, completed_blocks: 0, failed_blocks: 0, total_blocks: 9 }, 4)).toEqual([]);
+    expect(runFigures({ audio_seconds: 30, completed_blocks: 9, failed_blocks: 0, total_blocks: 9 }, 10))
+      .toEqual(["0:30 of audio", "3.0× real time"]);
+  });
+  it("count seconds under a minute", () => {
+    expect(runFigures({ audio_seconds: 10, completed_blocks: 4, failed_blocks: 0, total_blocks: 6 }, 20))
+      .toContain("about 10 s left");
+  });
+  it("reads a long run as hours", () => {
+    expect(clock(3725)).toBe("1:02:05");
+    expect(clock(59.6)).toBe("1:00");
   });
 });
 

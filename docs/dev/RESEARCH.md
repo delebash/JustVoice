@@ -622,6 +622,26 @@ its blast radius and the gaps.
   boost on a line that already peaks near full scale clips it. The chapter is mastered after the
   lines are joined (`render_chapter_api._master_scene_pcm`, `:526`), so a line's gain sets only
   its level against the others — and its clipped peaks stay. — *code, 2026-10-07*.
+- **A program the server starts without `CREATE_NO_WINDOW` inherits the server's console — and
+  when the shell that started the app is gone, it can't start at all: exit `0xC0000142`
+  (3221225794).** That is how every chapter's mastering failed on 2026-10-07: the app had been
+  started by `npm run dev` in a background shell that later closed; no console host served the
+  app's process tree, while the speech runtime and llama-server each had one of their own.
+  Reproduced outside the app: a test process's console host killed, then ffmpeg without the flag
+  → `0xc0000142`, with it → exit 0; a detached process with no console at all starts ffmpeg fine
+  either way. Since 2026-10-07 every program JustVoice's server starts goes through
+  `procs.py` (`NO_CONSOLE`): mastering's and the M4B export's ffmpeg, system info's `wmic` and
+  `ffmpeg -version`, the speech runtime. The kit's llama-server spawn passes no flag
+  (`llm_runner/runner/process.py:959`); whether a model load under a dead console fails the same
+  way: not checked. — *measured + code, 2026-10-07*.
+- **A render job's progress**: a line reads `running` from the moment the scheduler starts it
+  (`render_jobs._rendering`) until the runner saves it (`completed`), fails it, or withdraws it
+  (`pending`). `GET /v1/render_jobs/{id}` also returns `audio_seconds` (the finished lines'
+  `Generation.duration_sec` summed) and `current` — the running lines, newest first, each with
+  its number in its chapter (`line_takes.heard_blocks`) and its speaker's name; a line that has
+  finished but is still being saved reads running beside the next for a moment.
+  `?include_blocks=true` adds every line's state. — *code + test, 2026-10-07* ·
+  `server/tests/test_render_jobs.py`.
 
 ---
 

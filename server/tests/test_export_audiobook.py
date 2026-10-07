@@ -195,7 +195,7 @@ def test_export_m4b_with_stubbed_ffmpeg(client, monkeypatch):
         Path(argv[-1]).write_bytes(b"M4B!")
         return SimpleNamespace(returncode=0, stderr=b"")
 
-    monkeypatch.setattr("justvoice.export_audiobook.subprocess.run", fake_run)
+    monkeypatch.setattr("justvoice.procs.run", fake_run)
     r = client.post(f"/v1/projects/{pid}/export_m4b")
     assert r.status_code == 200, r.text
     assert r.content == b"M4B!"

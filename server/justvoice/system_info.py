@@ -17,6 +17,7 @@ import sys
 
 from llm_runner.runner.hardware import detect as _detect_hardware
 
+from . import procs
 from .models import GpuInfo, SystemInfo
 
 
@@ -41,7 +42,7 @@ def _cpu_name() -> str:
     # Best-effort across platforms.
     if sys.platform == "win32":
         try:
-            out = subprocess.check_output(
+            out = procs.check_output(
                 ["wmic", "cpu", "get", "name"], stderr=subprocess.DEVNULL, timeout=5
             ).decode("utf-8", errors="ignore")
             lines = [ln.strip() for ln in out.splitlines() if ln.strip() and "Name" not in ln]
@@ -85,7 +86,7 @@ def _detect_ffmpeg() -> dict | None:
     if not bin_:
         return None
     try:
-        out = subprocess.check_output(
+        out = procs.check_output(
             [bin_, "-version"], stderr=subprocess.DEVNULL, timeout=5
         ).decode("utf-8", errors="ignore")
         first_line = out.splitlines()[0] if out else ""

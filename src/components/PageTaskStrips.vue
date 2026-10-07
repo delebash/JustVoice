@@ -5,6 +5,8 @@
   the tasks, `meta` narrows them to this page's project or chapter — the same
   keys the page stamps on the task. Running, done, failed or cancelled, each
   strip keeps the kit's own lifetime (a failure stays until dismissed).
+  `#extra-stats="{ task }"` passes through to each strip — Render names the
+  line rendering now there (2026-10-07).
 -->
 <script setup>
 import { computed } from "vue";
@@ -22,6 +24,8 @@ const mine = computed(() => pageTasks(tasks, props.features, props.meta));
 
 <template>
   <div v-if="mine.length" class="jv-task-strips">
-    <AiTaskStrip v-for="t in mine" :key="t.id" :task="t" />
+    <AiTaskStrip v-for="t in mine" :key="t.id" :task="t">
+      <template v-if="$slots['extra-stats']" #extra-stats="{ task }"><slot name="extra-stats" :task="task" /></template>
+    </AiTaskStrip>
   </div>
 </template>

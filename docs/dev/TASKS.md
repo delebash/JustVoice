@@ -125,6 +125,71 @@ GO:     given 2026-08-17
 
 ## The next build
 
+### Every program the server starts runs without a console — mastering stops failing with 0xC0000142 (decided 2026-10-07)
+STATE:  DECIDED 2026-10-07 — "your rec on all and previous go" (the user, with screenshots: "also errror on
+        render" — "mastering: ffmpeg failed (exit 3221225794)" on Brass Rank, then on Bigger Inside), on
+        the fix as shown: "1. One helper starts every external program without a console: mastering's
+        ffmpeg, the M4B export's ffmpeg, and Settings' system-info checks (wmic for the CPU name, ffmpeg
+        -version). The speech runtime's inline copy of the flag moves to the same helper. 2. When
+        mastering fails, the strip says what's kept: 'Mastering failed — every line's take is kept;
+        Retry masters again.' 3. The facts go into the register." The fix takes effect when the app
+        restarts; I restart it.
+WHY:    the app's server inherited the console of the shell that started it; that shell is gone, and a
+        child started without CREATE_NO_WINDOW inherits the dead console and can't start (0xC0000142).
+        Reproduced outside the app: no flag → 0xc0000142, the flag → exit 0.
+NOT:    retrying ffmpeg; a bundled ffmpeg.
+BUILT:  2026-10-07 — `server/justvoice/procs.py` (`NO_CONSOLE`, `run`, `check_output`, `failed` — "ffmpeg
+        could not start (Windows error 0xC0000142)"); `mastering.py`, `export_audiobook.py`,
+        `system_info.py` (wmic, ffmpeg -version) and `engines/audiocpp/runtime.py` use it.
+        `renderRun.renderChapter`: "Mastering failed — every line's take is kept; Retry masters again."
+        + the reason. Docs troubleshooting, studio, whats-new; RESEARCH §3. Checked: reproduced outside
+        the app (dead console: no flag 0xc0000142, flag 0); the app restarted in a console of its own;
+        /v1/master 200 (it failed 3/3 before), system info finds ffmpeg, Brass Rank mastered from the
+        chapter list (10:04). Not checked: the new path under a dead console inside the app (killing the
+        app's console would end the app). Tests: export, mastering, system info, audio.cpp (102 pass).
+        FINDING, not fixed: the kit's llama-server spawn passes no flag (`process.py:959`).
+OPEN:   none.
+GO:     given 2026-10-07
+
+### Render shows its progress: the page follows a run, the line rendering is lit, the strip has figures (decided 2026-10-07)
+STATE:  DECIDED 2026-10-07 — "your rec on all and previous go" (the user: "should we have more rendering
+        info progress bar like we do with the llm progress", "i dont see any kind of render progress
+        besideds the prgress bar should each line show if it is being rendered and the filters show 75
+        ready renderd 3 but that is not accurate as it is rendering now", "it should hgihlight the
+        current row it is rendering so it is easy to see"), on the proposal as shown: "A. The chapter
+        page follows any render of its chapter, wherever it was started. As each line finishes, the page
+        re-reads its lines, so the chips, counts, statuses and ▶ update as it goes. B. The server marks a
+        line as rendering when it starts. That row gets a tint, and its Status reads rendering…. Lines
+        waiting in this run read queued. C. The strip gets the language model's kind of figures: the
+        current line: line 47 · Narrator; audio made so far: 3:12 of audio; speed: 2.4× real time; time
+        left: about 1 min left. For that, the server's progress check would also return the audio
+        seconds done and the current line. D. The chapter list's progress row becomes the same strip the
+        chapter page uses." Questions, each "your rec": 1 no new chip — "Ready shrinks and Rendered grows
+        as each line lands"; 2 the four figures in C; 3 D yes; 4 the tint: "a) Script's flagged-row
+        tint, the accent green (.jv-row--flag)"; 5 "no automatic scrolling … Instead, the strip names the
+        line and clicking the name scrolls to it." With D, the two faults in the 2026-10-07 screenshot:
+        a failed chapter's Check said "queued" (`StudioRender.vue:224`), and one failed row showed a full
+        bar, the other none.
+WHY:    the page re-read its lines only on its own ⚡ run; the server never marked a line running; the
+        strip had no figures to show.
+NOT:    a Rendering chip; following the rendering line by scrolling.
+BUILT:  2026-10-07 — server: `render_jobs._rendering` marks a line running when it starts; `job_status`
+        returns `audio_seconds` and `current` [{block_id, n, speaker}], newest first (`RenderJobOut`);
+        test `test_a_line_reads_rendering_while_it_renders`. Client: `renderRun.js` polls with
+        `include_blocks`, puts `render` {lines, current, done} on the task and `runFigures` (+ tests) on
+        its strip. `StudioRenderChapter.vue`: `liveRun` (any run of this chapter) re-reads the lines as
+        each lands, `jv-row--flag` on the line rendering, Status `rendering…` / `queued`, the strip's
+        `line 47 · Narrator` button scrolls to it (filters reset if they hide it). `PageTaskStrips`
+        passes `#extra-stats` through. `StudioRender.vue`: the kit's strip in the row (the line as plain
+        text), Check `failed` / `cancelled`, `queued` only while waiting in a run. Docs studio ("A
+        render's progress"), whats-new. Checked live: The Keystone ↻ Re-render all, 50 lines in 214 s —
+        one row lit throughout, queued 49 → 0, figures e.g. "2:04 of audio · 2.1× real time · about 5
+        min left · line 10 · Iven Sarraz", the name's click brought the row into view, no page errors;
+        the test's 50 takes then deleted (the earlier takes back in use). Smoke passed, vitest 166.
+        Not built: the mock's simulated run (Render's mock shows no progress).
+OPEN:   none.
+GO:     given 2026-10-07
+
 ### Render: one player for the page — ▶ plays every time, its controls in the row you pressed (decided 2026-10-07)
 STATE:  DECIDED 2026-10-07 — "yoour rec on all go" (the user, with a screenshot: "on the take the the play
         button nex to use this take doesnt work and we have another progress playline below, what do

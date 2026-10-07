@@ -17,11 +17,11 @@ from __future__ import annotations
 
 import logging
 import shutil
-import subprocess
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
+from . import procs
 from .audio.analyzer import analyze
 from .database.models import Scene
 from .database import session as db_session
@@ -229,7 +229,7 @@ def mux_m4b(
     if not chapters:
         raise ValueError("nothing to export — no rendered chapters")
     if run is None:
-        run = subprocess.run  # call-time bind so test monkeypatches apply
+        run = procs.run  # call-time bind so test monkeypatches apply; no console (procs.py)
     with tempfile.TemporaryDirectory(prefix="jv-m4b-") as td:
         tdir = Path(td)
         concat_lines = []
@@ -252,6 +252,5 @@ def mux_m4b(
         ]
         proc = run(argv, capture_output=True)
         if proc.returncode != 0:
-            stderr = getattr(proc, "stderr", b"") or b""
-            raise RuntimeError(f"ffmpeg failed: {stderr.decode(errors='replace')[:400]}")
+            raise RuntimeError(procs.failed("ffmpeg", proc.returncode, getattr(proc, "stderr", b"")))
         return out.read_bytes()

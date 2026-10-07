@@ -991,12 +991,31 @@ rendered, of all of them — with tags for how many are *stale* and how many
 
 **▶ Render** on a chapter gives every line that has no take one, then joins the
 chapter from every line's take in use and masters it. Stale lines keep their take in use —
-render them again on the chapter's page when you choose. A progress row under
-the chapter shows how far it is, with **Cancel**; when it is done, **▶ Play**
-and **⬇ Download** (a WAV). Tick chapters and **▶ Render N chapters** renders
-them one after another; **Select unrendered** ticks every chapter with lines
-that have no take yet. **▶ Render all**, beside the mastering pill, does every
-chapter.
+render them again on the chapter's page when you choose. A progress strip under
+the chapter shows how far it is — the same strip as on the chapter's page (see
+[A render's progress](#a-renders-progress)) — with **Cancel**; when it is done,
+**▶ Play** and **⬇ Download** (a WAV). Tick chapters and **▶ Render N chapters**
+renders them one after another, the ones still waiting reading *queued* in
+**Check** (a chapter that failed reads *failed*); **Select unrendered** ticks
+every chapter with lines that have no take yet. **▶ Render all**, beside the
+mastering pill, does every chapter.
+
+If the last step fails, the strip says *Mastering failed — every line's take is
+kept; Retry masters again*, followed by the reason. Every line keeps the take it
+just got, so **Retry** only joins and masters again.
+
+#### A render's progress
+
+While a chapter renders — from its page or from the chapter list — its strip
+shows the lines done of all of them, how long it has run, and then, as lines
+land: the line rendering now (*line 47 · Narrator*), the audio made so far
+(*3:12 of audio*), how fast that is against real time (*2.4× real time*) and
+about how long is left. On the chapter's page the line rendering now is lit
+green and its **Status** reads *rendering…*; the lines still waiting in the run
+read *queued*. The page fills in as each line lands — its counts, the chips
+(**Ready** shrinks, **Rendered** grows), the **Status** and the **▶**. The page
+doesn't scroll on its own; click the line's name on the strip to bring it into
+view.
 
 ### A chapter's lines
 

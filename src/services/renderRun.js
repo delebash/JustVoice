@@ -14,6 +14,12 @@
 // Both are kit tasks (cancel, retry, progress in the AI tasks panel).
 // `renderChapter`'s task is feature "render-scene" with meta.sceneId — the
 // grid's progress row finds it by that.
+//
+// As a run goes (decided 2026-10-07) each task carries `render`: every line's
+// state in the run (pending · running · completed · failed), the line rendering
+// now ({block_id, n, speaker}) and how many are done — the chapter page lights
+// that line and re-reads its lines as each lands — and the strip's figures:
+// audio made, × real time, time left.
 
 import { withAiTask } from "@delebash/llm-ui";
 
@@ -31,7 +37,7 @@ export async function followJob(api, job, { signal, onProgress } = {}) {
       throw new DOMException("Render cancelled", "AbortError");
     }
     await wait(700);
-    j = await api.request(`/v1/render_jobs/${j.id}`, { signal });
+    j = await api.request(`/v1/render_jobs/${j.id}?include_blocks=true`, { signal });
     onProgress?.(j);
   }
   return j;
@@ -42,6 +48,45 @@ export function startLines(api, sceneId, which, signal) {
   return api.request(`/v1/scenes/${sceneId}/render_lines`, {
     method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ which }), signal,
   });
+}
+
+/** 192 → "3:12"; an hour or more → "1:02:05". */
+export function clock(sec) {
+  const t = Math.max(0, Math.round(Number(sec) || 0));
+  const h = Math.floor(t / 3600);
+  const m = Math.floor((t % 3600) / 60);
+  const s = String(t % 60).padStart(2, "0");
+  return h ? `${h}:${String(m).padStart(2, "0")}:${s}` : `${m}:${s}`;
+}
+
+/** The strip's figures for a run at `elapsed` seconds: audio made, × real time,
+ *  time left — each once there is something to say. */
+export function runFigures(job, elapsed) {
+  const out = [];
+  const audio = job.audio_seconds || 0;
+  if (audio > 0) {
+    out.push(`${clock(audio)} of audio`);
+    if (elapsed > 0) out.push(`${(audio / elapsed).toFixed(1)}× real time`);
+  }
+  const done = (job.completed_blocks || 0) + (job.failed_blocks || 0);
+  const left = (job.total_blocks || 0) - done;
+  if (done > 0 && left > 0 && elapsed > 0) {
+    const sec = (left * elapsed) / done;
+    out.push(sec < 60 ? `about ${Math.max(1, Math.round(sec))} s left` : `about ${Math.round(sec / 60)} min left`);
+  }
+  return out;
+}
+
+/** One poll of a run, onto its task: the line states, the line rendering now, the figures. */
+function report(task, job, startedAt) {
+  task.update({
+    render: {
+      lines: Object.fromEntries((job.blocks || []).map((b) => [b.block_id, b.status])),
+      current: job.current?.[0] || null,
+      done: job.completed_blocks || 0,
+    },
+  });
+  task.setStats(runFigures(job, (Date.now() - startedAt) / 1000));
 }
 
 function failedLine(job) {
@@ -58,10 +103,12 @@ export function renderLines(api, { sceneId, title, which, onProgress }) {
     meta: { sceneId },
   }, async (task) => {
     const job = await startLines(api, sceneId, which, task.signal);
+    const t0 = Date.now();
     const done = await followJob(api, job, {
       signal: task.signal,
       onProgress: (j) => {
         task.setProgress(j.completed_blocks + j.failed_blocks, j.total_blocks || 1);
+        report(task, j, t0);
         onProgress?.(j);
       },
     });
@@ -85,15 +132,27 @@ export function renderChapter(api, { sceneId, projectId, title, onRetry }) {
     meta: { sceneId, projectId },
   }, async (task) => {
     const job = await startLines(api, sceneId, "ready", task.signal);
+    const t0 = Date.now();
     const done = await followJob(api, job, {
       signal: task.signal,
-      onProgress: (j) => task.setProgress(j.completed_blocks + j.failed_blocks, (j.total_blocks || 0) + 1),
+      onProgress: (j) => {
+        task.setProgress(j.completed_blocks + j.failed_blocks, (j.total_blocks || 0) + 1);
+        report(task, j, t0);
+      },
     });
     if (done.status === "cancelled") throw new DOMException("Render cancelled", "AbortError");
     if (done.failed_blocks) throw new Error(failedLine(done));
-    const audio = await api.request("/v1/render_chapter", {
-      method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ scene_id: sceneId }), signal: task.signal,
-    });
+    let audio;
+    try {
+      audio = await api.request("/v1/render_chapter", {
+        method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ scene_id: sceneId }), signal: task.signal,
+      });
+    } catch (e) {
+      // What is kept when the last step fails (decided 2026-10-07).
+      const why = String(e?.message || "").match(/mastering: ([\s\S]*)$/);
+      if (why) throw new Error(`Mastering failed — every line's take is kept; Retry masters again. ${why[1].trim()}`);
+      throw e;
+    }
     task.setProgress((done.total_blocks || 0) + 1, (done.total_blocks || 0) + 1);
     if (!(audio instanceof Blob)) return audio;
     const result = {

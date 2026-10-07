@@ -33,6 +33,13 @@ class RenderJobBlockOut(BaseModel):
     generation_id: str | None = None
 
 
+class RenderJobLine(BaseModel):
+    """A line rendering now: its number in its chapter and its speaker's name."""
+    block_id: str
+    n: int | None = None
+    speaker: str | None = None
+
+
 class RenderJobOut(BaseModel):
     id: str
     project_id: str
@@ -42,6 +49,9 @@ class RenderJobOut(BaseModel):
     completed_blocks: int
     failed_blocks: int
     blocks: list[RenderJobBlockOut] | None = None
+    # Seconds of audio the finished lines made, and the lines rendering now (2026-10-07).
+    audio_seconds: float = 0.0
+    current: list[RenderJobLine] = []
 
 
 @router.post("/v1/render_jobs", response_model=RenderJobOut)

@@ -29,7 +29,6 @@ import logging
 import os
 import socket
 import subprocess
-import sys
 import threading
 import time
 from dataclasses import dataclass, field
@@ -38,6 +37,7 @@ from typing import Any, Callable
 
 import httpx
 
+from ...procs import NO_CONSOLE
 from . import dev_build, release
 
 log = logging.getLogger(__name__)
@@ -388,7 +388,6 @@ class AudioCppServer:
             log_path = data_dir / "logs" / f"{self._file_stem()}.log"
             log_path.parent.mkdir(parents=True, exist_ok=True)
             _rotate_log(log_path)
-            flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
             out = open(log_path, "ab")  # noqa: SIM115 — owned by the child for its lifetime
             # The kit's one spawn seam: on Windows the child goes into a kill-on-close
             # Job Object, so it dies WITH this process however this process dies (the
@@ -397,7 +396,7 @@ class AudioCppServer:
             from llm_runner.runner.process import spawn_child
 
             popen = functools.partial(subprocess.Popen, cwd=str(exe.parent),
-                                      creationflags=flags, env=env)
+                                      creationflags=NO_CONSOLE, env=env)
             proc, job = spawn_child(popen, [str(exe), "--config", str(conf_path), "--no-ui"], out)
             self._run = _Running(proc, port, signature, log_path,
                                  {} if managed else {m.id: m for m in models}, job, managed)

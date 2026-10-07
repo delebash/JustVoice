@@ -23,10 +23,10 @@
   with a full-width row for the open line (.jv-linepanel, .jv-takes).
 -->
 <script setup>
-import { computed, reactive, ref, watch } from "vue";
+import { computed, nextTick, reactive, ref, watch } from "vue";
 import {
   AppModal, UiButton, UiChip, UiField, UiSelect, UiTable, UiTag, UiTextarea,
-  confirmDialog, promptDialog, pushToast,
+  confirmDialog, promptDialog, pushToast, useAiTasksStore,
 } from "@delebash/llm-ui";
 import { useApi } from "../stores/api.js";
 import DeliveryKnobs from "./DeliveryKnobs.vue";
@@ -298,10 +298,32 @@ async function renderOne(l, { newTake = false } = {}) {
   }
 }
 const running = ref("");        // "ready" | "all" | "chapter" while a whole-chapter run goes
+
+// A render of this chapter, wherever it was started — here or the chapter list
+// (decided 2026-10-07): the page re-reads its lines as each one lands, lights the
+// line rendering now, and says which lines wait in the run.
+const aiTasks = useAiTasksStore();
+const liveRun = computed(() => aiTasks.visibleTasks.find((t) => ["render-lines", "render-scene"].includes(t.feature)
+  && t.meta?.sceneId === props.sceneId && aiTasks.isRunning(t.id)) || null);
+const runState = (blockId) => liveRun.value?.render?.lines?.[blockId] || "";
+watch(() => liveRun.value?.render?.done, (n, was) => { if (n && n !== was) load(); });
+watch(() => !!liveRun.value, (on, was) => { if (was && !on) load(); });
+const lineName = (c) => `line ${c.n}${c.speaker ? ` · ${c.speaker}` : ""}`;
+// The strip names the line rendering now; clicking it brings that line into
+// view (no following on its own — it would pull the page away while you read).
+async function goToLine(blockId) {
+  if (!rows.value.some((r) => r.block_id === blockId)) {
+    filter.value = "all";
+    speakerFilter.value = "all";
+  }
+  await nextTick();
+  root.value?.querySelector("tr.jv-row--flag")?.scrollIntoView({ block: "center", behavior: "smooth" });
+}
+
 async function runLines(which) {
   running.value = which;
   try {
-    await renderLines(api, { sceneId: props.sceneId, title: title.value, which, onProgress: () => load() });
+    await renderLines(api, { sceneId: props.sceneId, title: title.value, which });
   } catch (e) {
     if (e?.name !== "AbortError") pushToast({ kind: "error", message: `Render failed: ${e?.message || e}`, duration: 7000 });
   } finally {
@@ -607,7 +629,12 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
               <span class="jv-hint">A new take for every line that can render. Old takes are kept.</span>
             </span>
           </div>
-          <PageTaskStrips :features="['render-lines', 'render-scene']" :meta="{ sceneId }" />
+          <PageTaskStrips :features="['render-lines', 'render-scene']" :meta="{ sceneId }">
+            <template #extra-stats="{ task }">
+              <UiButton v-if="task.render?.current" intent="ghost" size="small" class="sts-stat"
+                :label="lineName(task.render.current)" title="Show this line" @click="goToLine(task.render.current.block_id)" />
+            </template>
+          </PageTaskStrips>
           <PlayTransport v-if="player.key === 'chapter'" :player="player" width="long" toggle />
         </div>
       </div>
@@ -628,7 +655,7 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
 
         <UiTable class="jv-table-look ui-table-top studio-render-ch__table" :data="rows" :columns="COLUMNS" data-key="block_id"
           :full-width-row="(r) => (r.panel ? 'studio-render-ch__panel-row' : false)"
-          :row-class="(r) => ({ 'jv-row--selected': open === r.block_id })"
+          :row-class="(r) => ({ 'jv-row--selected': open === r.block_id, 'jv-row--flag': runState(r.block_id) === 'running' })"
           @row-click="({ data }) => { if (!data.panel) open = open === data.block_id ? null : data.block_id; }">
           <template #open="{ row }"><span class="jv-muted">{{ open === row.block_id ? "⌃" : "⌄" }}</span></template>
           <template #speaker="{ row }">
@@ -661,7 +688,11 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
             </span>
             <span v-else class="jv-muted">—</span>
           </template>
-          <template #status="{ row }"><UiTag :intent="STATE_TAG[row.state]">{{ lineStateWord(row.state, { hasPersona: !!speakerOf(row)?.persona_id }) }}</UiTag></template>
+          <template #status="{ row }">
+            <UiTag v-if="runState(row.block_id) === 'running'" intent="info">rendering…</UiTag>
+            <UiTag v-else-if="runState(row.block_id) === 'pending'" intent="ghost" title="Waiting in this run">queued</UiTag>
+            <UiTag v-else :intent="STATE_TAG[row.state]">{{ lineStateWord(row.state, { hasPersona: !!speakerOf(row)?.persona_id }) }}</UiTag>
+          </template>
           <template #audio="{ row }">
             <span class="studio-render-ch__audio" @click.stop>
               <template v-if="row.live">
