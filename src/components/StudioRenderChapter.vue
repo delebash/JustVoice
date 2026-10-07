@@ -306,6 +306,9 @@ const aiTasks = useAiTasksStore();
 const liveRun = computed(() => aiTasks.visibleTasks.find((t) => ["render-lines", "render-scene"].includes(t.feature)
   && t.meta?.sceneId === props.sceneId && aiTasks.isRunning(t.id)) || null);
 const runState = (blockId) => liveRun.value?.render?.lines?.[blockId] || "";
+// The three whole-chapter runs wait for any run of this chapter, wherever it
+// started — one from the chapter list left them open (2026-10-07).
+const runBusy = computed(() => !!running.value || !!liveRun.value);
 watch(() => liveRun.value?.render?.done, (n, was) => { if (n && n !== was) load(); });
 watch(() => !!liveRun.value, (on, was) => { if (was && !on) load(); });
 const lineName = (c) => `line ${c.n}${c.speaker ? ` · ${c.speaker}` : ""}`;
@@ -612,19 +615,19 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
           </p>
           <div class="studio-render-ch__verbs">
             <span class="studio-render-ch__verb">
-              <UiButton intent="primary" :disabled="!counts.ready || !!running" :loading="running === 'ready'"
+              <UiButton intent="primary" :disabled="!counts.ready || runBusy" :loading="running === 'ready'"
                 :label="`⚡ Render ${counts.ready || 0} ready`" @click="runLines('ready')" />
               <span class="jv-hint">Each line gets a take. Lines that can't render are left for you to fix.</span>
             </span>
             <span class="studio-render-ch__verb">
-              <UiButton intent="secondary" :disabled="!!blocked || !!running" :loading="running === 'chapter'"
+              <UiButton intent="secondary" :disabled="!!blocked || runBusy" :loading="running === 'chapter'"
                 :label="`▶ Play ${word.singular.toLowerCase()}`" @click="playChapter" />
               <span class="jv-hint">{{ blocked ? `Not until every line can render — ${chapterBlockedWhy}.`
                 : `Every line's take in use, in order, ${PAUSE_SETTING_MS} ms apart${sceneBreaks ? ` (${SCENE_BREAK_MS} ms at a scene break)` : ""}. A line with no take is rendered first.` }}</span>
             </span>
             <span class="jv-spacer" />
             <span class="studio-render-ch__verb">
-              <UiButton intent="secondary" :disabled="!(counts.rendered + counts.stale) || !!running"
+              <UiButton intent="secondary" :disabled="!(counts.rendered + counts.stale) || runBusy"
                 :loading="running === 'all'" label="↻ Re-render all" @click="runLines('all')" />
               <span class="jv-hint">A new take for every line that can render. Old takes are kept.</span>
             </span>

@@ -36,8 +36,8 @@ from pathlib import Path
 from typing import Any, Callable
 
 import httpx
+from llm_runner.platform.procs import NO_CONSOLE
 
-from ...procs import NO_CONSOLE
 from . import dev_build, release
 
 log = logging.getLogger(__name__)

@@ -15,9 +15,9 @@ import shutil
 import subprocess
 import sys
 
+from llm_runner.platform import procs
 from llm_runner.runner.hardware import detect as _detect_hardware
 
-from . import procs
 from .models import GpuInfo, SystemInfo
 
 

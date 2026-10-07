@@ -28,7 +28,8 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from . import procs
+from llm_runner.platform import procs
+
 from .audio.wav import write_wav_container
 from .models import MasterPresetSettings
 

@@ -629,11 +629,13 @@ its blast radius and the gaps.
   app's process tree, while the speech runtime and llama-server each had one of their own.
   Reproduced outside the app: a test process's console host killed, then ffmpeg without the flag
   → `0xc0000142`, with it → exit 0; a detached process with no console at all starts ffmpeg fine
-  either way. Since 2026-10-07 every program JustVoice's server starts goes through
-  `procs.py` (`NO_CONSOLE`): mastering's and the M4B export's ffmpeg, system info's `wmic` and
-  `ffmpeg -version`, the speech runtime. The kit's llama-server spawn passes no flag
-  (`llm_runner/runner/process.py:959`); whether a model load under a dead console fails the same
-  way: not checked. — *measured + code, 2026-10-07*.
+  either way. Every program JustVoice's server starts — mastering's and the M4B export's ffmpeg,
+  system info's `wmic` and `ffmpeg -version`, the speech runtime — and every program the kit
+  starts (nvidia-smi and the other hardware probes, llama-server) goes through the kit's
+  `llm_runner/platform/procs.py` (`NO_CONSOLE`); the kit register §5 has the kit's half. (was:
+  JustVoice's own `procs.py`, the kit's spawns without the flag — until later on 2026-10-07; under
+  a dead console the kit then found no GPU and llama-server could not start.) — *measured + code,
+  2026-10-07*.
 - **A render job's progress**: a line reads `running` from the moment the scheduler starts it
   (`render_jobs._rendering`) until the runner saves it (`completed`), fails it, or withdraws it
   (`pending`). `GET /v1/render_jobs/{id}` also returns `audio_seconds` (the finished lines'

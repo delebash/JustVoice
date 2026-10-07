@@ -125,6 +125,36 @@ GO:     given 2026-08-17
 
 ## The next build
 
+### The kit's programs run without a console too; a chapter's run buttons wait for any run (decided 2026-10-07)
+STATE:  DECIDED 2026-10-07 — "fix your rec go", on the three findings as shown: "The kit starts llama-server
+        without the no-console flag, so a model load could hit the same 0xC0000142 if the app's console
+        dies. I haven't checked that." · "The language model's engine status says it isn't installed while
+        gemma runs from JustWrite's shared cache." · "A render started from the chapter list doesn't
+        disable ⚡ Render N ready on the chapter page, so a second run can be started on top of it."
+        My rec, found on the way: 1 and 2 are one cause — under a dead console the kit's own hardware
+        detection finds no GPU (reproduced: `detect()` → gpus [] with the console host killed, the RTX
+        2070 SUPER with it alive), so no llama.cpp build matched ("no llama.cpp binary configured for
+        platform=windows") and the status read not installed; after the restart it reads installed,
+        cuda12. Fix: the no-console helper moves into the kit (`llm_runner/platform/procs.py`, the family
+        rule — one implementation), every kit `subprocess.run` / `Popen` uses it, and JustVoice imports it
+        (its `procs.py` goes). 3: the chapter page's ⚡ Render N ready, ▶ Play chapter and ↻ Re-render all
+        wait while any run of that chapter goes, wherever it started.
+WHY:    the 2026-10-07 console fix covered JustVoice's own programs only.
+NOT:    a JustVoice-only copy of the helper beside the kit's.
+BUILT:  2026-10-07 — kit `llm_runner/platform/procs.py` (`NO_CONSOLE`, `run`, `check_output`, `popen`,
+        `failed`); kit `hardware.py` (15 calls), `bandwidth.py`, `binary.py`, `process.py`, `calibrate.py`
+        use it; JustVoice's `mastering.py`, `export_audiobook.py`, `system_info.py`, audio.cpp
+        `runtime.py` import it, its own `procs.py` deleted. `StudioRenderChapter.vue` `runBusy`. Kit
+        RESEARCH §5, JustVoice RESEARCH §3. Checked: under a killed console host, `detect()` now finds
+        the RTX 2070 SUPER and `llama-server --version` starts through `procs.run` (0xc0000142 plainly);
+        the app restarted on the kit: engine installed, cuda12, idle, no error; ▶ Render on The
+        Keystone from the chapter list → on its page ⚡ / ▶ Play chapter / ↻ Re-render all disabled
+        during the run, Play chapter and Re-render all back after it (it mastered). Kit tests 210,
+        JustVoice server 71, smoke passed; JustWrite's server imports the changed kit (it starts no
+        programs of its own).
+OPEN:   none.
+GO:     given 2026-10-07
+
 ### Every program the server starts runs without a console — mastering stops failing with 0xC0000142 (decided 2026-10-07)
 STATE:  DECIDED 2026-10-07 — "your rec on all and previous go" (the user, with screenshots: "also errror on
         render" — "mastering: ffmpeg failed (exit 3221225794)" on Brass Rank, then on Bigger Inside), on
@@ -138,7 +168,7 @@ WHY:    the app's server inherited the console of the shell that started it; tha
         child started without CREATE_NO_WINDOW inherits the dead console and can't start (0xC0000142).
         Reproduced outside the app: no flag → 0xc0000142, the flag → exit 0.
 NOT:    retrying ffmpeg; a bundled ffmpeg.
-BUILT:  2026-10-07 — `server/justvoice/procs.py` (`NO_CONSOLE`, `run`, `check_output`, `failed` — "ffmpeg
+BUILT:  2026-10-07 — `server/justvoice/procs.py` (moved into the kit the same day — the entry above) (`NO_CONSOLE`, `run`, `check_output`, `failed` — "ffmpeg
         could not start (Windows error 0xC0000142)"); `mastering.py`, `export_audiobook.py`,
         `system_info.py` (wmic, ffmpeg -version) and `engines/audiocpp/runtime.py` use it.
         `renderRun.renderChapter`: "Mastering failed — every line's take is kept; Retry masters again."

@@ -21,7 +21,8 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import procs
+from llm_runner.platform import procs
+
 from .audio.analyzer import analyze
 from .database.models import Scene
 from .database import session as db_session
@@ -229,7 +230,7 @@ def mux_m4b(
     if not chapters:
         raise ValueError("nothing to export — no rendered chapters")
     if run is None:
-        run = procs.run  # call-time bind so test monkeypatches apply; no console (procs.py)
+        run = procs.run  # call-time bind so test monkeypatches apply; no console (the kit's procs)
     with tempfile.TemporaryDirectory(prefix="jv-m4b-") as td:
         tdir = Path(td)
         concat_lines = []
