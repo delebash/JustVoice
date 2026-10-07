@@ -2,7 +2,9 @@
 # The family moves to Electron and a Node server — the study
 
 **Status:** study done 2026-10-05; the rulings are in §9 (all decided that day except whether a
-Mac is available for iOS builds). Next: the plan, which needs its own go. Tracker: `docs/dev/TASKS.md` → "The family moves to
+Mac is available for iOS builds). The plan, with the step-0 spikes, is
+[`2026-10-07-electron-node-plan.md`](2026-10-07-electron-node-plan.md) (written 2026-10-07,
+waiting for approval). Tracker: `docs/dev/TASKS.md` → "The family moves to
 Electron and a Node server; Tauri and Python go — the study first". Facts land in
 `docs/dev/RESEARCH.md` §6 (JustVoice) and `../just-llm-runner/docs/dev/RESEARCH.md` (the shared
 stack) in the same change.

@@ -2137,11 +2137,41 @@ WHY:    Python came in for the PyTorch speech engines (2026-06-16: "JustVoice MU
 NOT:    ASP.NET Core (a third language; its speed is moot — the heavy work is in audio.cpp and
         llama.cpp). Tauri + a Node sidecar (two runtimes). Keeping the Python sidecar. The rest
         are in the study's §9 under each ruling.
-BUILT:  nothing. The study (2026-10-05): `docs/plans/2026-10-05-electron-node-study.md`; facts
-        in RESEARCH §6 and the kit's RESEARCH §2.
-OPEN:   the plan. (Q8's last part answered — "no i dont have a mack": iOS builds need macOS, so
-        how iOS gets built is open for the phone plan; Android builds on Windows.)
-GO:     the study and the rulings given 2026-10-05; the plan and the move needed.
+BUILT:  no app code. The study (2026-10-05): `docs/plans/2026-10-05-electron-node-study.md`.
+        The plan, with the step-0 spikes run on Electron 44.7.0 and 45.0.0-alpha.16
+        (2026-10-07): `docs/plans/2026-10-07-electron-node-plan.md` — READ IT before any step.
+        Facts in RESEARCH §6 and the kit's RESEARCH §2. Pointers in the kit's, JustWrite's and
+        docgen's TASKS.
+THEN:   DECIDED 2026-10-07 — the user: "lets do electron adn get rid of python completely", then
+        "your rec go" on the four questions as shown: "1. Keep that order, with JustVoice last? Lean:
+        yes. JustVoice runs on the kit, so the kit has to move first anyway. docgen proves the shell
+        and the installer cheaply before your main app moves." · "2. Freeze server features in each
+        app while it moves? Lean: yes, per app, only while it's mid-move. Work on the pages can
+        continue." · "3. Which Electron version? Lean: 45, which becomes stable on 2026-10-20, about
+        when the first app moves. Then upgrade on Electron's 8-week cycle." · "4. May the plan
+        include running the step-0 spikes? Lean: yes. They're small, throwaway and kept outside the
+        apps, and they decide designs the plan would otherwise guess at." The order shown: "0. Short
+        spikes that settle designs … 1. The audio math into our audio.cpp copy, while Python is still
+        the server … 2. The kit … 3. docgen … 4. JustWrite, then the phone app as its own plan.
+        5. JustVoice, last and largest" — "At every step the old and new servers run against the
+        same database and each route's answers are compared. The database schema stays exactly as it
+        is." Approved: run the spikes and write the plan beside the study, a pointer in each repo's
+        TASKS; no app code changes until the plan is approved.
+        DECIDED 2026-10-07, after the closed session was recovered — "your rec go" on, as shown:
+        "1. Do you want me to resume? It's a new session, so I'm not assuming the old go still
+        holds. Lean: yes, starting from the spikes." · "2. Which Electron version should the
+        spikes use? Lean: 44.7.0, the current stable. The plan keeps your target of 45 and picks
+        the exact version when the first app actually moves, so a late 45 doesn't hold anything
+        up." (Asked because on 2026-10-07 npm had only 45.0.0-alpha.16 and no beta, against
+        Electron's schedule of beta 2026-10-01, stable 2026-10-20.) Then, the user: "i thoght
+        you where going to use electron 45", and "your rec go" on, as shown: "1. Both: 44.7.0
+        and 45.0.0-alpha.16. It's the same scripts run twice, so it costs a few minutes, and we
+        see 45's behaviour now. (Lean.)" — over "2. 45 alpha only" and "3. 44.7.0 only, as
+        approved". The move's target stays 45.
+OPEN:   the plan's approval, with its nine questions (plan §10). (Q8's last part answered — "no i dont have a mack": iOS builds
+        need macOS, so how iOS gets built is open for the phone plan; Android builds on Windows.)
+GO:     the study and the rulings given 2026-10-05; the spikes and the plan given 2026-10-07; the
+        move itself needs the plan's approval.
 
 ### The header and Script hear an AI-model load made anywhere
 STATE:  DECIDED 2026-10-05 — "your rec go" on, as shown: "1. The header reads the kit's shared

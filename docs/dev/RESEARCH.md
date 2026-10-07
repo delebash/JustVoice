@@ -830,7 +830,9 @@ decided 2026-10-05 and its blast radius.
 ## 6 · The app stack: Electron, Node, phones
 
 **Records:** [`2026-10-05-electron-node-study.md`](../plans/2026-10-05-electron-node-study.md)
-(the study, with every measurement and source); TASKS "The family moves to Electron and a Node
+(the study, with every measurement and source);
+[`2026-10-07-electron-node-plan.md`](../plans/2026-10-07-electron-node-plan.md) (the plan, and
+the step-0 spikes' measurements, §1); TASKS "The family moves to Electron and a Node
 server". The shared-stack half (Electron, Node, SQLite, Capacitor, process trees) is in the
 kit's register §2.
 
@@ -896,6 +898,22 @@ kit's register §2.
   `1` — a naive port changes every render-cache key.
 - `as_16k_mono` (`engines/audiocpp/slot.py:540`) works around a v0.9.0 aligner bug that our
   jv.1 build fixed (§1.3).
+
+**The database** (*measured 2026-10-07*, a read-only snapshot of the dev root's `justvoice.db`
+— plan [`2026-10-07-electron-node-plan.md`](../plans/2026-10-07-electron-node-plan.md) §1.3):
+
+- 49 tables (JustVoice 23 + the kit 26), 1,690 rows, 17,374 cells, journal mode `delete`.
+- `DATETIME` is text with six fractional digits (`2026-10-06 19:45:42.582131`); `BOOLEAN` is
+  `0`/`1`. No integer is beyond 2^53 — the largest, a `BIGINT`, is 14,249,047,104.
+- JSON text is Python's `json.dumps` with its defaults: 347 cells with `", "` / `": "`, and 4
+  holding non-ASCII text escaped as `\uXXXX`. The render-cache key hashes a compact, key-sorted
+  dump (`audio/effects.py:196`).
+- Absolute paths stored: 1 `runner_setting.cache_root` and 3 `measurement_switches.flag_value`
+  point into JustWrite's dev root (the shared model cache — kit register §2). None point into
+  JustVoice's own root.
+- Render-cache keys: an effects chain's key carries `DSP_VERSION`
+  (`audio/effects.py:181-197`), a render without effects is keyed `noeffects`, and speed enters
+  through the delivery JSON (`render_core.py:641-642`).
 
 **The server** (*code*, an agent, study §3):
 
