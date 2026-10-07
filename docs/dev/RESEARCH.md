@@ -52,6 +52,7 @@ Subjects: [1 · Speech runtime](#1--speech-runtime-audiocpp) ·
 [5 · The narrator and the chapter run](#5--the-narrator-and-the-chapter-run) ·
 [6 · The app stack: Electron, Node, phones](#6--the-app-stack-electron-node-phones) ·
 [7 · Where an AI task shows](#7--where-an-ai-task-shows) ·
+[8 · Character voices](#8--character-voices-effects-formants-conversion-creature-sounds) ·
 [Records not yet distilled](#records-not-yet-distilled)
 
 ---
@@ -614,9 +615,9 @@ its blast radius and the gaps.
   (`render_core.py:463-471`). The binding has no formant control — its `Stretch` offers
   `configure`, `preset`, `process`, `reset`, `setTimeFactor`, `setTransposeFactor` and
   `setTransposeSemitones(semitones, tonalityLimit=0)` — so a voice's formants move with its pitch:
-  a few semitones sound natural, ±12 sounds like a much smaller or larger speaker. Whether a
-  newer or other package exposes formants: not checked. — *code + measured (the server venv's
-  package introspected), 2026-10-07*.
+  a few semitones sound natural, ±12 sounds like a much smaller or larger speaker. The library
+  itself can shift formants, and 0.3.1 is still python-stretch's newest release — §8. — *code +
+  measured (the server venv's package introspected), 2026-10-07*.
 - **Gain is the server's**: `delivery.apply_gain_db` multiplies the 16-bit samples and hard-clips
   at full scale — no limiter; clamped −24…+12 dB (`render_core.py:457`; Render's slider ±12). A
   boost on a line that already peaks near full scale clips it. The chapter is mastered after the
@@ -900,6 +901,114 @@ blast radius.
   resets them on open and Revert, and a filter change that leaves the voice out empties the
   Voice box. — *code, 2026-10-05* ·
   [`2026-10-05-filters-narrow-each-other.md`](../plans/2026-10-05-filters-narrow-each-other.md) §5.
+
+---
+
+## 8 · Character voices: effects, formants, conversion, creature sounds
+
+**Records:** [`2026-10-07-character-voice-controls.md`](../plans/2026-10-07-character-voice-controls.md)
+— the controls the user wants for characters, the C++/Node library survey and the local-AI
+survey (asked and recorded 2026-10-07; nothing decided or built). User-facing half:
+[`../effects.md`](../effects.md). Where the DSP goes after the move: §6 and the Electron/Node
+study's §9.
+
+**Today** (*code, 2026-10-07*):
+
+- The only effects chain is the persona's (`docs/effects.md:38`): twelve primitives over numpy,
+  scipy and python-stretch (`audio/dsp/__init__.py:142-155`; the editor's "EQ (3-band)" is three
+  of them). The package exists to keep GPL out (`:5-7`). Every effect returns its input's length
+  (contract 2, `:14-18`), and a change to an effect's output needs `DSP_VERSION` bumped — it is
+  in the render-cache key (`:35-37`, `audio/effects.py:181-198`).
+- The delay effect takes any delay of one sample or more and feedback up to 0.999
+  (`audio/dsp/delays.py:24-27`), so a few-millisecond comb filter is possible — but the editor's
+  Delay runs 0–4 s in 0.05 s steps (`api/effect_presets_api.py:105`): only a preset or the API
+  can set one.
+- No catalog model (`engines/*/manifest.py`: asr, chatterbox, kitten, kokoro, pocket, qwen3,
+  voxcpm2) is a sound-effect or voice-conversion model, and no server code names a `vc` task. The
+  only non-speech sounds are Chatterbox Turbo's and Nano's nine non-verbal tags, all human
+  (`engines/capability_details.py:328-338`).
+
+**Formants and pitch-track tools** (*web, 2026-10-07*):
+
+- Signalsmith Stretch (MIT; `version` 1.3.2 on main) shifts formants —
+  `setFormantFactor(multiplier, compensatePitch=false)`, `setFormantSemitones(semitones,
+  compensatePitch=false)`, `setFormantBase(baseFreq=0)` (0 = detect the pitch) — and maps
+  frequencies with `setFreqMap(fn)`. `compensatePitch` adjusts for the pitch shift (or the map)
+  when correcting or shifting formants. Its README warns the formant correction is less sharp
+  than monophonic methods such as PSOLA and wants a rough fundamental. ·
+  `github.com/Signalsmith-Audio/signalsmith-stretch` (`signalsmith-stretch.h`, README).
+- python-stretch 0.3.1 (2025-02-14) is still the newest release, and it binds none of those
+  calls (§3). Whether Signalsmith's WASM or npm `signalsmith-stretch` 1.3.2 exposes them: not
+  checked. · `pypi.org/pypi/python-stretch/json`.
+- WORLD (modified-BSD; "no patent in all algorithms") estimates F0, aperiodicity and the
+  spectral envelope and resynthesizes from them; pyworld (MIT) wraps it. pyworld 0.3.6
+  (2026-08-20) ships only five Windows wheels, CPython 3.6–3.8; 0.3.5 (2025-01-21) has win_amd64
+  wheels for 3.6–3.13 and a source archive; neither has macOS or Linux wheels. ·
+  `github.com/mmorise/World`, `pypi.org/pypi/pyworld/0.3.5/json`, `…/0.3.6/json`.
+
+**C++ and Node libraries** (*web — the GitHub API and the npm registry, 2026-10-07*; ★ = stars,
+dates = last commit):
+
+- Permissive, maintained, fit: Signalsmith Stretch 563★ MIT (2026-09-25) · Signalsmith DSP 277★
+  MIT, header-only C++11 — filters, delay, envelopes, FFT, spectral/STFT, windows, mix, rates
+  (2026-08-23) · Airwindows Consolidated (`baconpaul/airwin2rack`) 722★, MIT for `src`,
+  `libs/airwindows` and `res/awdoc`: 530 effect headers behind one static library
+  (`airwin-registry`, `AirwinRegistry.h`), among them RingModulator, Vibrato, Tremolo, DeRez
+  (bitcrush), Distortion, PitchNasty, VoiceOfTheStarship, Galactic; its DAW and Rack plugin
+  targets bring in GPL (2026-10-04; Airwindows itself 1,246★ MIT) · WORLD 1,348★ (2025-02-21;
+  release v1.0.1 2026-02-18) · SPTK 4 249★ Apache-2.0, a C++11 library and CLI — pitch by
+  RAPT, SWIPE' or REAPER, mel-cepstral analysis, MLSA/MGLSA, LPC (2026-10-06; v4.4 2025-12-24)
+  · DaisySP 1,248★ MIT — autowah, chorus, decimator, flanger, overdrive, phaser, pitchshifter,
+  sample-rate reducer, tremolo, wavefolder; its LGPL parts live in DaisySP-LGPL (2026-09-28) ·
+  Q (cycfi) 1,431★ MIT, header-only C++20 — BACF pitch detector, filters, envelope followers,
+  dynamics (2026-10-07) · stftPitchShift 195★ MIT — pitch and timbre shifting with cepstral
+  formants (2025-09) · r8brain-free-src 744★ MIT · libsamplerate 746★ BSD-2 · CloudSeedCore
+  79★ MIT (2024-09).
+- Node: `node-web-audio-api` 2.2.0, BSD-3, 74,297 downloads a week, a Rust core with prebuilt
+  Windows, macOS and Linux binaries — standard Web Audio nodes, no pitch or formants ·
+  `signalsmith-stretch` 1.3.2 MIT, 43,861 a week · `@elemaudio/core` 4.0.1 MIT, 1,687 a week,
+  last commit 2024-12-21 · `pitchy` 4.1.0 MIT.
+- Out on licence: Rubber Band GPL-2.0 · essentia AGPL-3.0 · aubio GPL-3.0 · KFR GPL-2.0 ·
+  `pitchfinder` GPL-3.0 · `@grame/faustwasm` LGPL-3.0. Bungee is MPL-2.0 (file-level copyleft).
+  Archived: google/REAPER (2021; SPTK bundles it) and magenta/ddsp-vst (2023).
+
+**Models in our pinned build** (*code* — the fork's docs at `f7d8140a`; licences *record* —
+audio.cpp's `docs/model_licenses.md`, checked upstream 2026-09-21…27). Their specs ship in
+`engines/audiocpp/v0.9.0-jv.4/cuda12/model_specs/`; the app registers none of them.
+
+- Voice conversion (`vc`: source audio + `voice_ref`): `chatterbox` MIT · `tone_color_vc`
+  (OpenVoice V2's converter; mono 22,050 Hz; `seed`, and `temperature` = upstream's `tau`, 0.3)
+  MIT · `meanvc2` Apache-2.0 · `miocodec` MIT · `rvc` — base models MIT, packaged voices
+  unlicensed; a user `.pth` (`voice_model_path`), `semitone_shift`, `pitch_path` (a `time,Hz`
+  CSV that replaces the pitch curve), `retrieval_blend`, `unvoiced_protection`, `rms_mix_rate` ·
+  `seed_vc` GPL-3.0 weights · `vevo2` CC-BY-NC-ND-4.0. · `../audio.cpp/docs/audio_tools.md`,
+  `docs/tts.md:77-104`, `docs/models/tone_color_vc.md`.
+- `dots_tts` Edit (Apache-2.0) edits an existing line: `template_name=edit`, `source_audio`, and
+  an instruction tagged `<del>`, `<ins>`, `<sub targ>`, `<emo>`, `<pitch>`, `<rate>`,
+  `<enhance>`, `<bg>`, `<pause/>` or `<spk_transfer/>`. · `docs/models/dots_tts.md:39-62`.
+- `maya1` (Apache-2.0, SNAC MIT; English, 24 kHz, no cloning) makes a voice from a required
+  `instruct` description and takes inline tags; its card names `<laugh> <sigh> <whisper>
+  <angry> <giggle> <chuckle> <gasp> <cry>` "and 12+ more" and gives demon and villain
+  descriptions. — *code + web* · `docs/models/maya1.md`, `huggingface.co/maya-research/maya1`.
+- `midashenglm_gen` (Apache-2.0) generates mixed audio from tagged layers `<|caption|>`,
+  `<|asr|>`, `<|speech|>`, `<|music|>`, `<|sfx|>`, `<|env|>`. · `docs/models/midashenglm_gen.md`.
+- `stable_audio`: Stable Audio 3 Small SFX (0.6B, text → sound effect), Small Music and Medium.
+  Stability AI Community License — free under USD 1M yearly revenue, commercial use registered,
+  "Powered by Stability AI" shown, the Gemma terms on its text encoder. `controlfoley` is
+  CC-BY-NC-4.0. — *code + web + record* · `docs/models/stable_audio.md`,
+  `huggingface.co/stabilityai/stable-audio-3-small-sfx`.
+
+**AI outside our runtime** (*web, 2026-10-07*):
+
+- Step-Audio-EditX (980★, code Apache-2.0) edits existing speech — emotion, styles (whisper,
+  child, older, …), paralinguistics, denoise, speed; 3B; ≥12 GB VRAM, an AWQ 4-bit build
+  ~6–8 GB; Python/torch only, no GGUF or C++ runtime documented, not in audio.cpp. Its Hugging
+  Face weights carry no licence tag (engine scan). · `huggingface.co/stepfun-ai/Step-Audio-EditX`.
+- RAVE is CC-BY-NC-4.0 (its LICENSE); DDSP is Apache-2.0 on TensorFlow; Beatrice v2 forbids
+  commercial use (a secondary source).
+- LLM2Fx (Sony AI and KAIST, WASPAA 2025, arXiv 2505.20770): LLMs predict EQ and reverb
+  parameters from a text description zero-shot, better with DSP features, DSP code and
+  few-shot examples in the prompt.
 
 ---
 

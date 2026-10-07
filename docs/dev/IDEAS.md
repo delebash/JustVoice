@@ -6,6 +6,25 @@ The holding pen for unscheduled JustVoice ideas — same charter as JW's
 
 ---
 
+- **2026-10-07 · Character voice controls: formants, texture, creature sounds** — the user,
+  after the list: *"record this, also we will be removing pyton nad going to electron and node
+  eventually, but these types of features i want to add"*. Wanted, not scheduled; nothing
+  decided or built. The record — the list as presented, the C++/Node library survey and the
+  local-AI survey the user asked for the same day, sources and the open calls — is
+  `docs/plans/2026-10-07-character-voice-controls.md`; the facts are RESEARCH §8. In short:
+  - **The controls:** Size (formant shift) and a pitch that keeps the voice; texture effects
+    (growl, ring mod, breath/whisper, vibrato/tremolo, layers, bitcrush, vocoder, a "talking
+    beast"); pitch-track controls (intonation range, jitter, fry, pitch lock); timbre transfer
+    by voice conversion; monster noises (generated, a sound bank, voice-to-beast); character
+    sliders, creature presets, "make 8 siblings", per-line intensity.
+  - **Libraries (the rec, not decided):** Signalsmith Stretch and Signalsmith DSP as the core,
+    Airwindows Consolidated for the effects, WORLD for the speech controls — MIT or BSD C++,
+    built into our audio.cpp fork's DSP module per the 2026-10-05 ruling, so Node only calls
+    the fork. Nothing covers everything; our own code is the glue.
+  - **AI (the rec, not decided):** the app's own local AI model turning a description into
+    settings; dots.tts Edit and the voice-conversion models already in the speech runtime;
+    Stable Audio SFX only if its licence is accepted.
+
 - **2026-10-06 · Script: move a line up or down** — deferred by the restore's decision 6
   ("Defer split, merge and reorder"); split and merge were built 2026-09-30, reorder was
   moved here 2026-10-06 ("your rec", on "don't build it. Move it to IDEAS"). Why it waits:
