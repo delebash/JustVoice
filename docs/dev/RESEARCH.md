@@ -911,6 +911,15 @@ kit's register §2.
 - Absolute paths stored: 1 `runner_setting.cache_root` and 3 `measurement_switches.flag_value`
   point into JustWrite's dev root (the shared model cache — kit register §2). None point into
   JustVoice's own root.
+- **Whole-number floats are stored as `1.0`.** 5 of the 355 JSON cells hold them: 4
+  `effect_presets.chain_json` (effect parameters such as `"depth": 1.0`) and `settings.data`
+  (`"loudness_target_lufs": -20.0`). A JavaScript writer must know those fields are floats to
+  write the same text.
+- **Foreign keys** are turned on per connection (`database/session.py:71-73`); restore turns them
+  off (`data_admin.py:162`).
+- **`LexiconStore` answers in two time formats.** `create` returns zone-aware times
+  (`…:01.123456Z`); `get`, `list` and `update` read them back from the database and return them
+  without the `Z` (measured with the real store, the plan's §1.5).
 - Render-cache keys: an effects chain's key carries `DSP_VERSION`
   (`audio/effects.py:181-197`), a render without effects is keyed `noeffects`, and speed enters
   through the delivery JSON (`render_core.py:641-642`).

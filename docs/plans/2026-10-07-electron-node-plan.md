@@ -107,7 +107,7 @@ started outside any job, as a user's launch is. State read 3 s after the act.
 What it settles:
 
 - **The server can't orphan.** A `utilityProcess` ends when main dies, even a hard kill (A0).
-  No watchdog is needed. Measured on Windows; macOS and Linux are checked in step 2 (§1.4).
+  No watchdog is needed. Measured on Windows; macOS and Linux are checked in step 2 (§1.6).
 - **The kit's spawn door keeps its kill-on-close job.** Without it, grandchildren survive every
   way the server can end (A0, B1, H2) — for llama-server, that's leaked VRAM. With it, the tree
   dies every time (A1, B2, H1). This confirms the study's plain-Node finding inside Electron.
@@ -180,7 +180,70 @@ justvoice.db`, copied with SQLite's backup API — the original untouched): 49 t
 
 The questions this leaves — driver, query layer, text formats — are §10 Q2–Q4.
 
-### 1.4 What step 0 didn't settle
+### 1.5 Drizzle against plain SQL — the query-layer test (*measured 2026-10-07*)
+
+Asked for after the plan was written (TASKS, the item's `THEN:` block): Prisma and Knex were
+skipped on what their docs and source show — Prisma needs its own schema file and code
+generation, its default generator writes TypeScript, and it is async only; Knex is async with a
+one-connection pool for SQLite (`dialects/sqlite3/index.js:228-229`), so the Kysely hang, ending
+in a 60 s timeout (`client.js:253`). Drizzle 0.45.3 on better-sqlite3 runs in "sync" mode — its
+transaction is better-sqlite3's own, nested ones are savepoints (`better-sqlite3/session.js:37-54`)
+— so it was tested against plain SQL.
+
+**How.** Both approaches use one column map taken from today's models (49 tables: 255 text, 56
+integer, 31 boolean, 29 datetime, 16 float columns; the database's columns match the models
+exactly). Plain SQL = better-sqlite3 plus a small helper that converts dates and true/false by
+that map. Drizzle = tables generated from the same map, with two custom column types using the
+same converters. The Python side is the app's own code — its SQLAlchemy models and its real
+`LexiconStore` — on scratch copies of the same snapshot, with ids and clocks fixed so all three
+outputs can be compared byte for byte. Electron 44.7.0 run as Node (Node 24.21.0).
+
+| Check | Plain SQL | Drizzle |
+|---|---|---|
+| 1 · every value read, against what SQLAlchemy returns (dates as Python's `isoformat()`, true/false) | 17,374 cells, 0 differ | 17,374 cells, 0 differ |
+| 2 · rows written with explicit values, stored bytes against SQLAlchemy's (78 rows, 39 tables: dates with and without microseconds, true/false, floats, non-ASCII text) | 714 cells, 0 differ | 714 cells, 0 differ |
+| 3 · a query through the database handle while a transaction is open | finishes at once and sees the transaction's row (one connection, no lock) | the same |
+| 3 · an `async` function given as the transaction | refused: "Transaction function cannot return a promise"; a write made before its first `await` is rolled back | refused, the same message |
+| 4 · read 336 rows (with dates) 2,000 times, converted | 927 ms | 985 ms |
+| 4 · insert 5,000 rows in one transaction | 90 ms | 193 ms |
+| 5 · the lexicon store, ten steps (create, get, append, update, list, missing, delete ×2, get, create) | all 10 answers identical to Python's; both tables byte-identical | the same |
+| 5 · lines | the port 108 + the helper ~70 | the port 106 + the table builder 20 + the dependency |
+
+**What it shows.**
+
+- **No difference in correctness or safety.** Both read, write and transact exactly like today's
+  Python, and in both the deadlock can't happen.
+- **Drizzle didn't save the column work.** It needed the same column map and the same two
+  converters, as custom types. What it adds is the query-builder syntax (`eq`, `asc`) and table
+  objects, whose main payoff is TypeScript types.
+- **Drizzle costs** a pre-1.0 dependency (0.45.3; 1.0 is at release candidate 4, with breaking
+  changes) and writes about half as fast. Both are fast enough: 18 µs against 39 µs a row.
+- **Plain SQL** reads one-to-one against today's queries, and the same SQL text runs over a
+  phone's SQLite.
+- **The lean stays plain SQL** (§10 Q3).
+
+**Found on the way.**
+
+- **JSON text needs to know which numbers are floats.** `pyJson` reproduced Python's text for
+  350 of the 355 JSON cells. All five differences are whole-number floats: Python writes
+  `1.0`, JavaScript can't tell `1.0` from `1`.
+  - Marking the effect parameters as floats brought it to 354.
+  - The last one is `settings.data` (`"loudness_target_lufs": -20.0`).
+  - Separators, `\uXXXX` escapes, key order and nesting never differed. The compact, sorted form
+    the render-cache key hashes showed the same five, for the same reason.
+  - So float-ness has to come from the field types — the validation schema's number-vs-integer
+    — which ties §10 Q4 to Q5.
+- **Both Node drivers turn foreign keys on by default; Python's `sqlite3` doesn't.**
+  - JustVoice and JustWrite turn them on for every connection (`database/session.py:71-73`,
+    JustWrite's `:49-51`).
+  - **docgen never does** (`app.py:256`), so its step decides on or off deliberately (§5).
+  - The restore paths that switch them off (`data_admin.py:162`, the kit's
+    `platform/data_api.py:133`) keep doing so.
+- **The lexicon store returns two time formats.** `create` answers with zone-aware times
+  (`…21:00:01.123456Z`). `get`, `list` and `update` read times back from the database and answer
+  without the `Z`. Both ports reproduce it; the route diff will flag any port that "fixes" it.
+
+### 1.6 What step 0 didn't settle
 
 - **Validation library** — zod 4 or TypeBox (study §3.3). That's §10 Q5. Either way it's proved
   on the kit's `Settings` model first: same defaults, coercion and 422 shape as pydantic.
@@ -324,6 +387,8 @@ The smallest server: 31 files, 4,975 lines, 32 routes, 1 table (study §3.2).
 - the e2e harness moves from tauri-driver to Playwright `_electron`;
 - the electron-builder installer;
 - user docs (§9 B7) and `CLAUDE.md` (11 lines naming Python or Tauri, §9 B9);
+- **foreign keys:** docgen's server never turns them on (`app.py:256`), and both Node drivers
+  turn them on by default (§1.5). This step decides on or off and says so;
 - last: `server/` and `src-tauri/` are deleted.
 
 **Checked:** ported tests (155), the route diff, docgen's e2e, the dev app on docgen's real
@@ -802,6 +867,32 @@ just-llm-runner/docs/app-structure.md 62      [~68]
 JustVioce/docs/dev/design-law.md 0            [0]
 ```
 
+### B10 · Steps 2–5 — the database connections (foreign keys)
+
+`git grep -n -i "foreign_keys"` and `git grep -n -E "create_engine\("` (tests and scripts
+dropped), 2026-10-07:
+
+```
+== JustVioce
+server/justvoice/data_admin.py:162:                conn.execute(text("PRAGMA foreign_keys=OFF"))
+server/justvoice/database/session.py:71:    def _enable_foreign_keys(dbapi_connection, _connection_record):
+server/justvoice/database/session.py:73:        cursor.execute("PRAGMA foreign_keys=ON")
+server/justvoice/storage/lexicons.py:279:                # SQLite FK cascade needs PRAGMA foreign_keys per connection;
+server/justvoice/database/session.py:60:    engine = create_engine(
+== just-llm-runner
+llm_runner/platform/data_api.py:133:                con.execute("PRAGMA foreign_keys=OFF")
+== justwrite-app
+server/justwrite_server/database/session.py:49:    def _enable_foreign_keys(dbapi_connection, _record):
+server/justwrite_server/database/session.py:51:        cursor.execute("PRAGMA foreign_keys=ON")
+server/justwrite_server/database/session.py:43:    engine = create_engine(
+== just_ai_i18n_docgen
+server/just_ai_i18n_docgen/app.py:256:    engine = create_engine(f"sqlite:///{data_dir / 'app.db'}")
+```
+
+| Change | Exceptions already on the path |
+|---|---|
+| the connection opens through better-sqlite3, which turns foreign keys on by default (§1.5) | docgen runs with them off today · both restore paths switch them off on purpose · the lexicon store deletes entries itself so it doesn't depend on them (`lexicons.py:279`) |
+
 ---
 
 ## 10 · Questions to answer with the approval
@@ -814,12 +905,11 @@ Each has a lean; nothing here is decided until you say.
    - Lean: yes. It read every cell like Python, it's twice as fast as `node:sqlite`, and its API
      is stable; `node:sqlite` is still a release candidate.
    - `node:sqlite` stays the fallback: the 15-line adapter worked.
-3. **Query layer: plain SQL through a small kit helper, not Kysely?**
-   - Lean: plain SQL.
-   - better-sqlite3's synchronous transactions make "a transaction open across an `await`"
-     impossible.
-   - Kysely deadlocked in the spike, on a query made outside an open transaction. Its main
-     benefit is TypeScript types, which the family doesn't use.
+3. **Query layer: plain SQL through a small kit helper?**
+   - Lean: plain SQL — confirmed by the test (§1.5).
+   - Drizzle passed every check too, but needed the same column map and converters, writes at
+     half the speed, and is pre-1.0.
+   - Kysely deadlocked; Prisma and Knex were ruled out on their docs and source.
 4. **Keep Python's text formats wherever text is stored or hashed?**
    - One kit function, `pyJson`, writes exactly what Python's `json.dumps` writes for the
      options each call site passes (separators, sorted keys, `\uXXXX` escapes, `1.0`). Dates
@@ -829,7 +919,8 @@ Each has a lean; nothing here is decided until you say.
 5. **Validation: TypeBox over zod?**
    - Lean: TypeBox. Fastify validates with JSON Schema natively, and TypeBox writes JSON Schema
      directly; zod needs a conversion step.
-   - It gets proved on the kit's `Settings` model against pydantic first (§1.4).
+   - Its number-vs-integer is also where `pyJson` learns which numbers are floats (§1.5).
+   - It gets proved on the kit's `Settings` model against pydantic first (§1.6).
 6. **While the kit runs both languages (steps 2 to 5), where do kit server changes land?**
    - Lean: in both, in the same change. The other choice is freezing kit server features until
      JustVoice moves, which is months.
@@ -844,3 +935,387 @@ Each has a lean; nothing here is decided until you say.
      covers seven database cells across the three apps and two cache-registry lines (§9 B8).
    - Lean: yes, with a one-off command run by hand on this machine, with the apps closed. It's
      not shipped code: packaged installs don't move.
+
+---
+
+## Appendix A · The lexicon store ported both ways (the §1.5 test)
+
+The port of `server/justvoice/storage/lexicons.py` (the one-shot legacy-file import left out),
+as run in the test. Throwaway code, kept here because the scratchpad isn't kept.
+
+### The lexicon store on plain SQL — `f-lex-plain.cjs`
+
+```js
+// LexiconStore on the plain-SQL helper — a port of server/justvoice/storage/lexicons.py
+// (the one-shot legacy-file import left out). `now` is the store's _now() (UTC, "Z");
+// `utcnow` and `uuid4` are the model defaults (_utcnow, _uuid).
+const fs = require("node:fs");
+const path = require("node:path");
+
+const entryToRow = (e) => ({
+  word: e.grapheme,
+  pronunciation: e.phoneme_ipa || e.alias || "",
+  notation: e.phoneme_ipa ? "ipa" : "phonetic",
+});
+const rowToEntry = (r) =>
+  r.notation === "ipa"
+    ? { grapheme: r.word, phoneme_ipa: r.pronunciation, alias: null }
+    : { grapheme: r.word, phoneme_ipa: null, alias: r.pronunciation };
+const asEntry = (e) => ({ grapheme: e.grapheme, phoneme_ipa: e.phoneme_ipa ?? null, alias: e.alias ?? null });
+
+class LexiconStore {
+  constructor(db, dir, { now, utcnow, uuid4 }) {
+    Object.assign(this, { db, dir, now, utcnow, uuid4 });
+    fs.mkdirSync(dir, { recursive: true });
+  }
+
+  #addEntry(lexiconId, e) {
+    this.db.insert("lexicon_entries", { id: this.uuid4(), lexicon_id: lexiconId, ...entryToRow(e), created_at: this.utcnow() });
+  }
+
+  #hydrate(row) {
+    const entries = this.db.all("select * from lexicon_entries where lexicon_id = ? order by created_at", [row.id], "lexicon_entries");
+    return {
+      id: row.id,
+      name: row.name,
+      entries: entries.map(rowToEntry),
+      scope: row.scope || "global",
+      description: row.description,
+      project_id: row.project_id,
+      persona_id: row.persona_id,
+      created_at: row.created_at || this.now(),
+      updated_at: row.updated_at || this.now(),
+    };
+  }
+
+  #row(id) {
+    return this.db.one("select * from lexicons where id = ?", [id], "lexicons");
+  }
+
+  list() {
+    return this.db.all("select * from lexicons order by created_at", [], "lexicons").map((r) => this.#hydrate(r));
+  }
+
+  get(id) {
+    const row = this.#row(id);
+    return row ? this.#hydrate(row) : null;
+  }
+
+  create(name, { entries = [], scope = "global", description = null, project_id = null, persona_id = null, id = null } = {}) {
+    const lex = {
+      id: id || `lex_${this.uuid4().replaceAll("-", "")}`,
+      name,
+      entries: entries.map(asEntry),
+      scope,
+      description,
+      project_id,
+      persona_id,
+      created_at: this.now(),
+      updated_at: this.now(),
+    };
+    this.db.tx(() => {
+      const { entries: _, ...row } = lex;
+      this.db.insert("lexicons", row);
+      for (const e of entries) this.#addEntry(lex.id, e);
+    });
+    return lex;
+  }
+
+  update(id, entries, name = null) {
+    return this.db.tx(() => {
+      const row = this.#row(id);
+      if (!row) return null;
+      const set = name != null && name.trim() ? { name: name.trim() } : {};
+      this.db.run("delete from lexicon_entries where lexicon_id = ?", [id]);
+      for (const e of entries) this.#addEntry(id, e);
+      this.db.update("lexicons", { ...set, updated_at: this.now() }, "id = ?", [id]);
+      return this.#hydrate(this.#row(id));
+    });
+  }
+
+  appendEntry(id, entry) {
+    return this.db.tx(() => {
+      if (!this.#row(id)) return null;
+      this.#addEntry(id, entry);
+      this.db.update("lexicons", { updated_at: this.now() }, "id = ?", [id]);
+      return this.#hydrate(this.#row(id));
+    });
+  }
+
+  delete(id) {
+    // Entries go explicitly so the result doesn't depend on foreign_keys being on.
+    const deleted = this.db.tx(() => {
+      this.db.run("delete from lexicon_entries where lexicon_id = ?", [id]);
+      return this.db.run("delete from lexicons where id = ?", [id]).changes;
+    });
+    for (const suffix of [".json", ".json.migrated"]) fs.rmSync(path.join(this.dir, `${id}${suffix}`), { force: true });
+    return deleted > 0;
+  }
+}
+module.exports = { LexiconStore };
+```
+
+### The lexicon store on Drizzle — `f-lex-drizzle.cjs`
+
+```js
+// LexiconStore on Drizzle (better-sqlite3, sync mode) — the same port as f-lex-plain.cjs.
+const fs = require("node:fs");
+const path = require("node:path");
+const { eq, asc } = require("drizzle-orm");
+
+const entryToRow = (e) => ({
+  word: e.grapheme,
+  pronunciation: e.phoneme_ipa || e.alias || "",
+  notation: e.phoneme_ipa ? "ipa" : "phonetic",
+});
+const rowToEntry = (r) =>
+  r.notation === "ipa"
+    ? { grapheme: r.word, phoneme_ipa: r.pronunciation, alias: null }
+    : { grapheme: r.word, phoneme_ipa: null, alias: r.pronunciation };
+const asEntry = (e) => ({ grapheme: e.grapheme, phoneme_ipa: e.phoneme_ipa ?? null, alias: e.alias ?? null });
+
+class LexiconStore {
+  constructor(db, tables, dir, { now, utcnow, uuid4 }) {
+    Object.assign(this, { db, dir, now, utcnow, uuid4, lexicons: tables.lexicons, entries: tables.lexicon_entries });
+    fs.mkdirSync(dir, { recursive: true });
+  }
+
+  #addEntry(q, lexiconId, e) {
+    q.insert(this.entries).values({ id: this.uuid4(), lexicon_id: lexiconId, ...entryToRow(e), created_at: this.utcnow() }).run();
+  }
+
+  #hydrate(q, row) {
+    const entries = q.select().from(this.entries).where(eq(this.entries.lexicon_id, row.id)).orderBy(asc(this.entries.created_at)).all();
+    return {
+      id: row.id,
+      name: row.name,
+      entries: entries.map(rowToEntry),
+      scope: row.scope || "global",
+      description: row.description,
+      project_id: row.project_id,
+      persona_id: row.persona_id,
+      created_at: row.created_at || this.now(),
+      updated_at: row.updated_at || this.now(),
+    };
+  }
+
+  #row(q, id) {
+    return q.select().from(this.lexicons).where(eq(this.lexicons.id, id)).get() ?? null;
+  }
+
+  list() {
+    return this.db.select().from(this.lexicons).orderBy(asc(this.lexicons.created_at)).all().map((r) => this.#hydrate(this.db, r));
+  }
+
+  get(id) {
+    const row = this.#row(this.db, id);
+    return row ? this.#hydrate(this.db, row) : null;
+  }
+
+  create(name, { entries = [], scope = "global", description = null, project_id = null, persona_id = null, id = null } = {}) {
+    const lex = {
+      id: id || `lex_${this.uuid4().replaceAll("-", "")}`,
+      name,
+      entries: entries.map(asEntry),
+      scope,
+      description,
+      project_id,
+      persona_id,
+      created_at: this.now(),
+      updated_at: this.now(),
+    };
+    this.db.transaction((tx) => {
+      const { entries: _, ...row } = lex;
+      tx.insert(this.lexicons).values(row).run();
+      for (const e of entries) this.#addEntry(tx, lex.id, e);
+    });
+    return lex;
+  }
+
+  update(id, entries, name = null) {
+    return this.db.transaction((tx) => {
+      if (!this.#row(tx, id)) return null;
+      const set = name != null && name.trim() ? { name: name.trim() } : {};
+      tx.delete(this.entries).where(eq(this.entries.lexicon_id, id)).run();
+      for (const e of entries) this.#addEntry(tx, id, e);
+      tx.update(this.lexicons).set({ ...set, updated_at: this.now() }).where(eq(this.lexicons.id, id)).run();
+      return this.#hydrate(tx, this.#row(tx, id));
+    });
+  }
+
+  appendEntry(id, entry) {
+    return this.db.transaction((tx) => {
+      if (!this.#row(tx, id)) return null;
+      this.#addEntry(tx, id, entry);
+      tx.update(this.lexicons).set({ updated_at: this.now() }).where(eq(this.lexicons.id, id)).run();
+      return this.#hydrate(tx, this.#row(tx, id));
+    });
+  }
+
+  delete(id) {
+    // Entries go explicitly so the result doesn't depend on foreign_keys being on.
+    const deleted = this.db.transaction((tx) => {
+      tx.delete(this.entries).where(eq(this.entries.lexicon_id, id)).run();
+      return tx.delete(this.lexicons).where(eq(this.lexicons.id, id)).run().changes;
+    });
+    for (const suffix of [".json", ".json.migrated"]) fs.rmSync(path.join(this.dir, `${id}${suffix}`), { force: true });
+    return deleted > 0;
+  }
+}
+module.exports = { LexiconStore };
+```
+
+### The plain-SQL helper, the date and true/false converters, and `pyJson` — `f-sql.cjs`
+
+```js
+// The plain-SQL helper the kit would carry: better-sqlite3, synchronous, plus the two
+// conversions SQLAlchemy does for us today (DateTime and Boolean), driven by a column map
+// taken from today's models. And pyJson: Python's json.dumps, byte for byte.
+const Database = require("better-sqlite3");
+
+// SQLAlchemy stores DateTime as "YYYY-MM-DD HH:MM:SS.ffffff"; Python's isoformat() gives
+// "YYYY-MM-DDTHH:MM:SS[.ffffff]", dropping the fraction when it is zero.
+const STORED = /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})(?:\.(\d{1,6}))?$/;
+function dtFromDb(text) {
+  if (text == null) return null;
+  const m = STORED.exec(text);
+  if (!m) return text;
+  const f = (m[3] || "").padEnd(6, "0");
+  return `${m[1]}T${m[2]}${f === "000000" ? "" : `.${f}`}`;
+}
+// An ISO string, naive or with an offset. SQLAlchemy's SQLite DateTime drops the offset
+// and keeps the wall-clock time, so this does too.
+const ISO = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})(?:\.(\d{1,6}))?(?:Z|[+-]\d{2}:\d{2})?$/;
+function dtToDb(v) {
+  if (v == null) return null;
+  const m = ISO.exec(v);
+  if (!m) throw new Error(`not a datetime: ${v}`);
+  return `${m[1]} ${m[2]}.${(m[3] || "").padEnd(6, "0")}`;
+}
+const boolToDb = (v) => (v == null ? null : v ? 1 : 0);
+const boolFromDb = (v) => (v == null ? null : !!v);
+
+function open(file, { types = {}, readonly = false } = {}) {
+  const db = new Database(file, { readonly });
+  if (!readonly) db.pragma("foreign_keys = ON");
+  const stmts = new Map();
+  const prep = (sql) => {
+    let s = stmts.get(sql);
+    if (!s) stmts.set(sql, (s = db.prepare(sql)));
+    return s;
+  };
+  const kinds = (table) => types[table] || {};
+  const fromRow = (table, row) => {
+    if (!row) return null;
+    const k = kinds(table);
+    for (const c in row) {
+      if (k[c] === "datetime") row[c] = dtFromDb(row[c]);
+      else if (k[c] === "bool") row[c] = boolFromDb(row[c]);
+    }
+    return row;
+  };
+  const toDb = (table, col, v) => {
+    const k = kinds(table)[col];
+    return k === "datetime" ? dtToDb(v) : k === "bool" ? boolToDb(v) : v;
+  };
+  return {
+    raw: db,
+    all: (sql, params = [], table) => prep(sql).all(params).map((r) => (table ? fromRow(table, r) : r)),
+    one: (sql, params = [], table) => (table ? fromRow(table, prep(sql).get(params)) : prep(sql).get(params) ?? null),
+    run: (sql, params = []) => prep(sql).run(params),
+    insert(table, obj) {
+      const cols = Object.keys(obj);
+      const sql = `insert into "${table}" (${cols.map((c) => `"${c}"`).join(", ")}) values (${cols.map(() => "?").join(", ")})`;
+      return prep(sql).run(cols.map((c) => toDb(table, c, obj[c])));
+    },
+    update(table, obj, where, params = []) {
+      const cols = Object.keys(obj);
+      const sql = `update "${table}" set ${cols.map((c) => `"${c}" = ?`).join(", ")} where ${where}`;
+      return prep(sql).run([...cols.map((c) => toDb(table, c, obj[c])), ...params]);
+    },
+    tx: (fn) => db.transaction(fn)(),
+    close: () => db.close(),
+  };
+}
+
+// Python's json.dumps for the options a call site passes. Numbers: JavaScript can't tell
+// 1.0 from 1, so a call site that stores floats says which keys are floats (`floats`).
+function pyFloat(x) {
+  if (Number.isNaN(x)) return "NaN";
+  if (!Number.isFinite(x)) return x > 0 ? "Infinity" : "-Infinity";
+  const [mant, e] = x.toExponential().split("e");
+  const exp = Number(e);
+  const neg = mant.startsWith("-");
+  const digits = mant.replace("-", "").replace(".", "");
+  if (exp >= -4 && exp < 16) {
+    let s;
+    if (exp >= 0) {
+      const intPart = digits.slice(0, exp + 1).padEnd(exp + 1, "0");
+      const frac = digits.slice(exp + 1);
+      s = `${intPart}.${frac || "0"}`;
+    } else {
+      s = `0.${"0".repeat(-exp - 1)}${digits}`;
+    }
+    return (neg ? "-" : "") + s;
+  }
+  const m = digits.length > 1 ? `${digits[0]}.${digits.slice(1)}` : digits;
+  return `${neg ? "-" : ""}${m}e${exp < 0 ? "-" : "+"}${String(Math.abs(exp)).padStart(2, "0")}`;
+}
+function pyJson(v, { separators = [", ", ": "], sortKeys = false, ensureAscii = true, floats = new Set() } = {}, key = null) {
+  const [itemSep, keySep] = separators;
+  const u = (c) => `\\u${c.toString(16).padStart(4, "0")}`;
+  const str = (s) => {
+    let out = '"';
+    for (let i = 0; i < s.length; i++) {
+      const ch = s[i];
+      const c = s.charCodeAt(i);
+      if (ch === '"') out += '\\"';
+      else if (ch === "\\") out += "\\\\";
+      else if (ch === "\n") out += "\\n";
+      else if (ch === "\r") out += "\\r";
+      else if (ch === "\t") out += "\\t";
+      else if (ch === "\b") out += "\\b";
+      else if (ch === "\f") out += "\\f";
+      else if (c < 0x20 || (ensureAscii && c > 0x7e)) out += u(c); // UTF-16 units = Python's surrogate pairs
+      else out += ch;
+    }
+    return `${out}"`;
+  };
+  const opts = { separators, sortKeys, ensureAscii, floats };
+  if (v === null || v === undefined) return "null";
+  if (v === true) return "true";
+  if (v === false) return "false";
+  if (typeof v === "number") return Number.isInteger(v) && !floats.has(key) ? String(v) : pyFloat(v);
+  if (typeof v === "string") return str(v);
+  if (Array.isArray(v)) return `[${v.map((x) => pyJson(x, opts, key)).join(itemSep)}]`;
+  const keys = Object.keys(v);
+  if (sortKeys) keys.sort();
+  return `{${keys.map((k) => `${str(k)}${keySep}${pyJson(v[k], opts, k)}`).join(itemSep)}}`;
+}
+
+module.exports = { open, dtFromDb, dtToDb, boolToDb, boolFromDb, pyJson, pyFloat };
+```
+
+### Drizzle's tables, built from the same column map — `f-drizzle.cjs`
+
+```js
+// Drizzle tables for every model table, built from the same column map (f-types.json),
+// with two custom column types that store what SQLAlchemy stores.
+const { sqliteTable, text, integer, real, customType } = require("drizzle-orm/sqlite-core");
+const { dtToDb, dtFromDb, boolToDb, boolFromDb } = require("./f-sql.cjs");
+
+const pyDateTime = customType({ dataType: () => "DATETIME", toDriver: dtToDb, fromDriver: dtFromDb });
+const pyBool = customType({ dataType: () => "BOOLEAN", toDriver: boolToDb, fromDriver: boolFromDb });
+const BUILD = { text, int: integer, float: real, datetime: pyDateTime, bool: pyBool };
+
+function tablesFrom(types) {
+  const out = {};
+  for (const [name, cols] of Object.entries(types)) {
+    const def = {};
+    for (const c of cols.__model_order__) def[c] = BUILD[cols[c]](c);
+    out[name] = sqliteTable(name, def);
+  }
+  return out;
+}
+module.exports = { tablesFrom };
+```

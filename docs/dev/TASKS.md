@@ -2167,8 +2167,18 @@ THEN:   DECIDED 2026-10-07 — the user: "lets do electron adn get rid of python
         you where going to use electron 45", and "your rec go" on, as shown: "1. Both: 44.7.0
         and 45.0.0-alpha.16. It's the same scripts run twice, so it costs a few minutes, and we
         see 45's behaviour now. (Lean.)" — over "2. 45 alpha only" and "3. 44.7.0 only, as
-        approved". The move's target stays 45.
-OPEN:   the plan's approval, with its nine questions (plan §10). (Q8's last part answered — "no i dont have a mack": iOS builds
+        approved". The move's target stays 45. Then on the plan's §10 Q3 (query layer), the
+        user: "3 test prisma knex and drizzle, what do you think? unless you like plain sql
+        better", and "your rec go" on the lean as shown: Prisma and Knex skipped (Prisma: its own
+        schema file and code generation, TypeScript output, async only; Knex: async with a
+        one-connection pool for SQLite, so the same hang as Kysely, ending in a 60 s timeout) —
+        "test Drizzle against plain SQL on the same read-only copy of your real database: 1.
+        Every value reads back exactly as Python reads it. 2. A written row comes out
+        byte-identical to what Python writes (dates, JSON), using Drizzle's custom column types.
+        3. The deadlock case can't happen. 4. Speed. 5. One real store ported both ways, so you
+        can see the code side by side. Then I'd recommend from the results."
+OPEN:   the plan's approval, with its nine questions (plan §10). Q3's test is done (plan §1.5:
+        Drizzle and plain SQL both pass every check; the lean stays plain SQL). (Q8's last part answered — "no i dont have a mack": iOS builds
         need macOS, so how iOS gets built is open for the phone plan; Android builds on Windows.)
 GO:     the study and the rulings given 2026-10-05; the spikes and the plan given 2026-10-07; the
         move itself needs the plan's approval.
