@@ -972,6 +972,35 @@ dates = last commit):
   `pitchfinder` GPL-3.0 · `@grame/faustwasm` LGPL-3.0. Bungee is MPL-2.0 (file-level copyleft).
   Archived: google/REAPER (2021; SPTK bundles it) and magenta/ddsp-vst (2023).
 
+**Platforms** (*web — the GitHub API, READMEs, CI files and release assets, 2026-10-07*):
+
+- Airwindows Consolidated's CI builds Windows x64, Windows with JUCE 7, Windows arm64ec, macOS
+  and Linux x64 (`.github/workflows/build-daw-plugin.yml`); its 2026-10-04 DAW release has a
+  macOS `.dmg`, a Linux zip and Windows installers (64-bit, arm64ec, Windows 7), and its VCV Rack
+  builds cover lin-x64, mac-arm64, mac-x64 and win-x64. The original airwindows repo's
+  `plugins/` holds WinVST, MacVST, MacAU, MacSignedVST, MacSignedAU and LinuxVST.
+- Signalsmith Stretch: python-stretch 0.3.1 vendors it as a submodule (`include/stretch`) and
+  ships wheels for Windows (32- and 64-bit), macOS (x86_64, arm64) and Linux (manylinux,
+  musllinux; i686, x86_64) — of commit `ffa45981` (§6's study §2.1); npm `signalsmith-stretch`
+  1.3.2 is its WASM. The 1.3.2 header includes `signalsmith-linear/stft.h`: Signalsmith Linear
+  (MIT, header-only C++11, 28★, last push 2026-10-04, "designed for internal use") links Apple's
+  Accelerate on a Mac by default (CMake `SIGNALSMITH_USE_ACCELERATE`) and IPP only when asked
+  (`SIGNALSMITH_USE_IPP`, off), and works without either. When that dependency arrived: not
+  checked.
+- Signalsmith DSP is header-only C++11; its README names no platforms and its tests live in a
+  separate repo — no per-platform CI found.
+- WORLD ships `visualstudio2015`, `visualstudio2019` and `visualstudio2022` projects, a
+  `makefile` and a `CMakeLists.txt`; it has no CI workflows; pyworld's win_amd64 wheels compile
+  it.
+- Q's CI (`build.yml`) builds on windows-latest (MSVC), ubuntu-latest (GCC) and macos-latest
+  (Clang); it needs C++20. SPTK's README lists Linux, macOS and Windows; DaisySP's lists desktop,
+  iOS and Android; stftPitchShift has CMake, vcpkg and WASM builds (CI `cpp.yml`, `python.yml`,
+  platforms not checked); node-web-audio-api is prebuilt for Windows x64/arm64, macOS
+  x64/aarch64 and Linux x64/arm/arm64.
+- The models below run wherever the pinned audio.cpp build does (§1.4): Windows CUDA, Vulkan
+  and CPU; macOS Metal on arm64 and x64; Linux x86-64 only. Which of those backends each model
+  supports: not checked.
+
 **Models in our pinned build** (*code* — the fork's docs at `f7d8140a`; licences *record* —
 audio.cpp's `docs/model_licenses.md`, checked upstream 2026-09-21…27). Their specs ship in
 `engines/audiocpp/v0.9.0-jv.4/cuda12/model_specs/`; the app registers none of them.

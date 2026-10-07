@@ -11,7 +11,8 @@ to add"*.
 **State: wanted, not scheduled.** Nothing is decided and nothing is built. IDEAS carries the
 entry (2026-10-07); the facts are in RESEARCH §8. §2 says what the Electron/Node move changes
 in the answer's "how" column; §3 and §4 are the surveys the user asked for the same day (C++
-and Node libraries, then local AI); §5 lists the sources, §6 what is open.
+and Node libraries with their platforms, then local AI); §5 lists the sources, §6 what is
+open.
 
 ## 1 · The answer, as presented 2026-10-07
 
@@ -222,6 +223,40 @@ built into the fork's DSP module, so Node only calls the fork. Our own code is t
 character sliders' mapping, the talking-beast vocoder on Signalsmith's STFT, layering, and any
 effect Airwindows doesn't cover.
 
+### Platforms — asked 2026-10-07
+
+The user: *"are these cross platform as airwindows?"* — then *"save thsi info"*. The answer,
+verbatim:
+
+Yes, all four libraries I recommended run on Windows, macOS and Linux, like Airwindows. Airwindows and WORLD ship builds or build projects for all three. Signalsmith Stretch is compiled for all three by python-stretch, our current pitch package. Signalsmith DSP is plain portable C++, but I found no per-platform testing for it.
+
+| Library | Windows | macOS | Linux | Evidence |
+|---|---|---|---|---|
+| **Airwindows Consolidated** | ✓ x64, ARM (arm64ec), Win7 | ✓ | ✓ x64 | Its automated builds cover all five targets, and the 2026-10-04 release has a `.dmg`, a Linux zip and Windows installers. The original Airwindows repo ships Windows, Mac and Linux plugin builds. |
+| **Signalsmith Stretch** | ✓ | ✓ Intel + Apple Silicon | ✓ | python-stretch ships it compiled for all three (an older commit), and npm ships version 1.3.2 as WebAssembly. Since 1.3 it needs Signalsmith Linear (MIT, header-only), which uses Apple's Accelerate on a Mac and plain C++ elsewhere. |
+| **Signalsmith DSP** | should | should | should | Header-only standard C++11 with no operating-system code. No per-platform testing found. |
+| **WORLD** | ✓ | ✓ | ✓ | Ships Visual Studio 2015/2019/2022 projects, a makefile and CMake. No automated builds, but pyworld's Windows wheels compile it. |
+
+The alternatives:
+- **Q:** builds and tests on Windows, Linux and macOS in its CI. Needs C++20.
+- **SPTK:** its README lists Linux, macOS and Windows.
+- **DaisySP:** its README lists desktop plus iOS and Android.
+- **stftPitchShift:** has CMake, vcpkg and WebAssembly builds; I didn't check which platforms its CI covers.
+- **node-web-audio-api:** prebuilt for Windows x64/arm64, macOS Intel/Apple Silicon and Linux x64/arm/arm64.
+
+The AI models run inside audio.cpp, so they reach the platforms our pinned build covers:
+- **Windows:** CUDA, Vulkan and CPU.
+- **macOS:** Metal, on Apple Silicon and Intel.
+- **Linux:** x86-64 only (Vulkan and CPU). There's no Linux ARM build.
+
+I haven't checked whether each model (Stable Audio, dots.tts Edit and so on) runs on Metal and Vulkan as well as CUDA.
+
+These platform facts aren't in RESEARCH §8 yet.
+
+*(Saved the same day: RESEARCH §8, "Platforms". Two precisions there: "Since 1.3" is the
+1.3.2 header including `signalsmith-linear/stft.h` — when the dependency arrived wasn't
+checked; and Linux also has a Colab CUDA build of the runtime, RESEARCH §1.4.)*
+
 ## 4 · Local AI — surveyed 2026-10-07
 
 The user, while this was being recorded: *"also if there is ai that can help with this we can
@@ -281,6 +316,12 @@ only if its licence is accepted.
 - [Step-Audio-EditX](https://huggingface.co/stepfun-ai/Step-Audio-EditX)'s model card;
   [LLM2Fx](https://arxiv.org/abs/2505.20770); Faust's generated-code exception and Beatrice
   v2's licence from search results only.
+- Platforms (§3): airwin2rack's `.github/workflows/build-daw-plugin.yml` matrix and its release
+  assets (`DAWPlugin`, 2026-10-04; `Nightly` and v2.12.0 Rack builds); airwindows'
+  `plugins/` folder; python-stretch's `.gitmodules` (`include/stretch`) and PyPI wheels;
+  `signalsmith-stretch.h`'s includes; Signalsmith Linear's README (Accelerate, IPP);
+  Signalsmith DSP's README; WORLD's top-level files (no `.github/workflows`); Q's
+  `.github/workflows/build.yml`; the SPTK, DaisySP, stftPitchShift and node-web-audio-api READMEs.
 
 **Web, 2026-10-07 — the first answer (§1):**
 
