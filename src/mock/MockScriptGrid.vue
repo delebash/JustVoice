@@ -103,7 +103,6 @@ async function remove(ch) {
   });
   if (!ok) return;
   render.chapters.splice(render.chapters.indexOf(ch), 1);
-  delete render.tasks[ch.id];
   delete render.qc[ch.id];
   renumber();
 }

@@ -91,7 +91,6 @@ export const projectsService = {
   exportZip(projectId, opts = {}) {
     const params = new URLSearchParams();
     params.set("include_audio", String(opts.includeAudio ?? true));
-    params.set("include_masters", String(opts.includeMasters ?? true));
     return withApi().requestBlob(`/v1/projects/${projectId}/export?${params}`);
   },
 };

@@ -509,4 +509,4 @@ doesn't have.
 - **M4B is missing chapter markers** — chapters come from the FFMETADATA file `mux_m4b()` writes, one entry per assembled chapter. A project whose scenes have not been rendered produces no chapters; render first, then export.
 - **WAV plays at wrong speed** — Mismatched sample rate. Check the engine's output rate vs the destination application's expected rate. Every local engine — Kokoro, Qwen3-TTS, Chatterbox — renders at 24 kHz on the speech runtime; an online provider may differ.
 - **Mastered audio is silent at the start** — A bug in the mastering normalize step. Try the "iAudio" target instead of ACX; iAudio's threshold is gentler.
-- **ZIP export is huge** — Unmastered + every take is large. Project export offers `include_audio` / `include_masters` toggles; bulk-delete old takes first to slim the archive.
+- **ZIP export is huge** — Overview's project export holds each line's take in use, unmastered; `GET /v1/projects/{id}/export?include_audio=false` leaves the audio out. Mastered chapters are Export's ⬇ Chapter WAVs (zip), not the project export.

@@ -673,8 +673,14 @@ its blast radius and the gaps.
   `kokoro_tts/session.cpp` `piece_join_cut`): it cuts what is quieter than −70 dBFS on either
   side down to Kokoro's sentence pause and shifts word timings. Measured straight from the
   runtime on a 423-character line: the join 950 ms → ~250 ms. Only reached by a request longer
-  than audio.cpp's own budget, which the app never sends; its threshold is still per-sample
-  −70 dBFS, not the server join's −60 dBFS windows. — *measured, 2026-10-07*.
+  than audio.cpp's own budget, which the app never sends. Since later on 2026-10-07 it judges
+  quiet as the server's join does — 10 ms windows under −60 dBFS (fork `a2601edf`). Measured
+  again straight from the runtime (`build/jv-dev`, af_heart): the 423-character line is cut
+  after its second sentence (the first 13.58 s agree sample for sample with those 232
+  characters rendered alone) and the join is 260 ms. Kokoro's own pauses at the two sentence
+  ends inside the pieces of that line were 650 and 560 ms — the 260 ms target is the book's
+  median, not every pause. (was: "its threshold is still per-sample −70 dBFS, not the server
+  join's −60 dBFS windows".) — *measured, 2026-10-07*.
 - **The M4B export, as a job** (`api/export_jobs_api.py`): The Ninth Facet — 4 chapters at ~6 s
   each (every line already had its take), then ~23 s encoding; 49 s, a 31.7 MB, 34.2 min M4B with
   the four chapter titles. The file is handed over once, then the job is gone. — *measured,
@@ -690,8 +696,9 @@ its blast radius and the gaps.
   279 MB; chapters 24 kHz at about −25.5 dBFS RMS, masters 44.1 kHz at −20.5, peaks −3.5 dB.
   (was: the button saved the project package — book data and each line's take — while Export's
   row said "per-chapter WAV + masters (zip)", until 2026-10-07.) The package
-  (`GET /v1/projects/{id}/export`) is Overview's; its `include_masters` is still accepted and
-  writes nothing. — *code + measured, 2026-10-07* · `api/export_jobs_api.py`.
+  (`GET /v1/projects/{id}/export`) is Overview's; it holds each line's take in use, never a
+  master. (was: "its `include_masters` is still accepted and writes nothing" — the option went
+  later on 2026-10-07.) — *code + measured, 2026-10-07* · `api/export_jobs_api.py`.
 - **A render job's progress**: a line reads `running` from the moment the scheduler starts it
   (`render_jobs._rendering`) until the runner saves it (`completed`), fails it, or withdraws it
   (`pending`). `GET /v1/render_jobs/{id}` also returns `audio_seconds` (the finished lines'
@@ -700,6 +707,16 @@ its blast radius and the gaps.
   finished but is still being saved reads running beside the next for a moment.
   `?include_blocks=true` adds every line's state. — *code + test, 2026-10-07* ·
   `server/tests/test_render_jobs.py`.
+- **A chapter of 400 lines needs no virtualization**: on a temporary 400-line chapter (the
+  sample book's paragraphs, deleted after), headless Chrome against the real app, Script's
+  chapter page opened in 178–462 ms and Render's in 127–181 ms to all 400 rows, and both
+  scrolled at 16.7 ms a frame (worst 17.1 and 19.3 ms). The longest real chapter, 78 lines,
+  opened in 183–326 ms (2026-09-29). — *measured, 2026-10-07*.
+- **A game project's Studio**: a 12-line sheet imported as `csv_lines` opens with Overview ·
+  1 · Lines · 2 · Cast · 3 · Render · 4 · Export, and 1 · Lines shows the sheet. The Lines
+  card reads "No lines yet — re-import the sheet" until each chapter's blocks have loaded
+  (1–3 s; `studioStatus.stepStatus` has no loading word for it, as Render's "Checking what is
+  rendered…" has). — *measured, 2026-10-07*.
 
 ---
 

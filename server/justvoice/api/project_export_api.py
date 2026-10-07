@@ -3,8 +3,10 @@
 
 Different from /v1/backup (whole-server disaster recovery): export bundles
 a single project's data (Scenes + Blocks + Speakers + the Personas that play
-them + Lexicons + rendered audio + masters) so a producer can hand off a book
-to an author for review or move it between studio + travel laptops.
+them + Lexicons + each line's take in use) so a producer can hand off a book
+to an author for review or move it between studio + travel laptops. Mastered
+chapters are Export's "⬇ Chapter WAVs (zip)" (`export_jobs_api.py`); the
+`include_masters` option here wrote nothing and went on 2026-10-07.
 """
 
 from __future__ import annotations
@@ -48,7 +50,6 @@ def _slugify(name: str) -> str:
 async def export_project(
     project_id: str,
     include_audio: bool = True,
-    include_masters: bool = True,
     db: Session = Depends(get_db),
 ) -> StreamingResponse:
     project = db.query(Project).filter(Project.id == project_id).first()
@@ -221,7 +222,6 @@ async def export_project(
                     "persona_count": len(personas),
                     "lexicon_count": len(lexicons),
                     "include_audio": include_audio,
-                    "include_masters": include_masters,
                 },
                 indent=2,
             ),

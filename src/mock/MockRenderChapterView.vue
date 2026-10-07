@@ -10,15 +10,19 @@
   direction on a words model and the persona's tags on a tag model. Opening a line shows who speaks it (read-only — Cast decides, D2), the numbers
   override behind its closed hatch (D3), Pronunciation, Rewrite as the speaker, and its takes:
   every take is kept, and the one ★ In use is what the chapter plays and exports (D4). A change to the
-  line or to what it is made from marks it stale; you choose when to render it again.
+  line or to what it is made from marks it stale; you choose when to render it again. A run is the
+  app's kit task (2026-10-07): the strip names the line rendering now, that row is lit, the lines
+  still to come say queued, and the three whole-chapter verbs wait for it.
 -->
 <script setup>
-import { computed, reactive, ref, watch } from "vue";
+import { computed, nextTick, reactive, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import {
   AppModal, UiButton, UiChip, UiField, UiInput, UiSelect, UiTable, UiTag, UiTextarea, confirmDialog, pushToast,
+  useAiTasksStore,
 } from "@delebash/llm-ui";
 import PagePlayer from "../components/PagePlayer.vue";
+import PageTaskStrips from "../components/PageTaskStrips.vue";
 import PlayTransport from "../components/PlayTransport.vue";
 import { usePagePlayer } from "../composables/usePagePlayer.js";
 import { facetCounts, facetOptions, facetTotal, passesFilters } from "../services/facets.js";
@@ -27,8 +31,9 @@ import DeliveryKnobs from "../components/DeliveryKnobs.vue";
 import { capabilities, emotionValues, silentWav, wait } from "./personaMock.js";
 import { directionCell, tagCount } from "../services/personaFacts.js";
 import {
-  BOOK_LEXICON, PAUSE_BETWEEN_LINES_MS, SPEAKERS, addTake, avatarColor, counts, directedBy,
-  lineState, notReady, personaOfSpeaker, render, speakerOf, standingTags, voiceless,
+  BOOK_LEXICON, PARAGRAPH_MS, PAUSE_BETWEEN_LINES_MS, SCENE_BREAK_MS, SPEAKERS, addTake, avatarColor, counts,
+  directedBy, lineState, notReady, personaOfSpeaker, render, renderChapter, renderLines, speakerOf, standingTags,
+  voiceless,
 } from "./renderMock.js";
 
 const emit = defineEmits(["go"]);
@@ -42,6 +47,13 @@ const title = computed(() => `${chapter.value.n} · ${chapter.value.title}`);
 const idx = computed(() => render.chapters.indexOf(chapter.value));
 const prev = computed(() => render.chapters[idx.value - 1] || null);
 const next = computed(() => render.chapters[idx.value + 1] || null);
+// The pauses this chapter's joins use besides the setting's — named only when it has them.
+const sceneBreaks = computed(() => lines.value.filter((l) => l.scene_end).length);
+const paragraphJoins = computed(() => lines.value.filter((l) => l.paragraph_next).length);
+const otherPauses = computed(() => [
+  paragraphJoins.value ? `${PARAGRAPH_MS} ms within a paragraph` : "",
+  sceneBreaks.value ? `${SCENE_BREAK_MS} ms at a scene break` : "",
+].filter(Boolean).join(", "));
 
 // ── Filters ────────────────────────────────────────────────────────────
 const filter = ref("all");
@@ -136,31 +148,51 @@ async function gen(l, label = "") {
   addTake(l, label);
   busy[l.id] = false;
 }
-async function renderReady() {
-  const todo = lines.value.filter((l) => lineState(l) === "ready");
-  pushToast({ kind: "info", message: `Rendering ${todo.length} lines — each gets a take.` });
-  for (const l of todo) addTake(l);
+const running = ref("");        // "ready" | "all" | "chapter" while a whole-chapter run goes
+// A run of this chapter, wherever it was started — here or the chapter list, as the app's.
+const aiTasks = useAiTasksStore();
+const liveRun = computed(() => aiTasks.visibleTasks.find((t) => ["render-lines", "render-scene"].includes(t.feature)
+  && t.meta?.sceneId === chapter.value.id && aiTasks.isRunning(t.id)) || null);
+const runState = (id) => liveRun.value?.render?.lines?.[id] || "";
+const runBusy = computed(() => !!running.value || !!liveRun.value);
+const lineName = (x) => `line ${x.n}${x.speaker ? ` · ${x.speaker}` : ""}`;
+// The strip names the line rendering now; clicking it brings that line into view.
+const root = ref(null);
+async function goToLine(id) {
+  if (!rows.value.some((r) => r.id === id)) {
+    filter.value = "all";
+    speakerFilter.value = "all";
+  }
+  await nextTick();
+  root.value?.querySelector("tr.jv-row--flag")?.scrollIntoView({ block: "center", behavior: "smooth" });
 }
-async function renderAllAgain() {
-  const todo = lines.value.filter((l) => ["ready", "rendered", "stale"].includes(lineState(l)));
-  pushToast({ kind: "info", message: `Rendering all ${todo.length} lines again — every old take is kept.` });
-  for (const l of todo) addTake(l);
+async function runLines(which) {
+  running.value = which;
+  try {
+    await renderLines(chapter.value, which);
+  } catch (e) {
+    if (e?.name !== "AbortError") pushToast({ kind: "error", message: `Render failed: ${e?.message || e}`, duration: 7000 });
+  } finally {
+    running.value = "";
+  }
 }
 // One player for the page, as the app's (2026-10-07). Keys: "chapter", "row:<take>",
 // "take:<take>", "cmp:<take>". A take keeps one silent clip, so its ▶ pauses and replays.
 const player = usePagePlayer();
 const takeUrls = {};
 const takeUrl = (t) => (takeUrls[t.id] ||= URL.createObjectURL(silentWav(t.seconds)));
-const chapterBusy = ref(false);
 // The chapter is every line's take in use joined — a line with no take is rendered first, so this is
 // Render's ▶ Render for one chapter, played here. Lines that can't render stop it.
 async function playChapter() {
-  chapterBusy.value = true;
-  await wait(600);
-  for (const l of lines.value) if (lineState(l) === "ready") addTake(l);
-  chapterBusy.value = false;
-  const talk = lines.value.reduce((s, l) => s + (liveTake(l)?.seconds || 0), 0);
-  player.play("chapter", URL.createObjectURL(silentWav(Math.min(talk, 30))));
+  running.value = "chapter";
+  try {
+    const r = await renderChapter(chapter.value, { onRetry: playChapter });
+    if (r?.url) player.play("chapter", r.url);
+  } catch (e) {
+    if (e?.name !== "AbortError") pushToast({ kind: "error", message: `${e?.message || e}`, duration: 9000 });
+  } finally {
+    running.value = "";
+  }
 }
 const chapterBlockedWhy = computed(() => (c.value.noSpeaker
   ? `${c.value.noSpeaker} line${c.value.noSpeaker === 1 ? " has" : "s have"} no speaker.`
@@ -263,6 +295,10 @@ function personaDefault(l, key) {
   if (key === "speed") return d.speed ?? 1;
   if (key === "pitch") return d.pitch ?? 0;
   if (key === "gain_db") return d.gain_db ?? 0;
+  // A scene's last line is followed by the scene-break pause, a line whose next line is in its
+  // paragraph by the paragraph's — whatever its persona says.
+  if (l.scene_end) return SCENE_BREAK_MS;
+  if (l.paragraph_next) return PARAGRAPH_MS;
   return PAUSE_BETWEEN_LINES_MS;
 }
 const lineFallback = (l) => Object.fromEntries(["speed", "pitch", "gain_db", "pause_after"].map((k) => [k, personaDefault(l, k)]));
@@ -339,7 +375,7 @@ const blockedBanner = computed(() => {
 </script>
 
 <template>
-  <section class="mock-render-ch">
+  <section ref="root" class="mock-render-ch">
     <PagePlayer :player="player" />
     <div class="jv-inline-row">
       <UiButton intent="ghost" size="small" label="← All chapters" @click="router.push({ name: 'mock-render' })" />
@@ -358,20 +394,29 @@ const blockedBanner = computed(() => {
         </p>
         <div class="mock-render-ch__verbs">
           <span class="mock-render-ch__verb">
-            <UiButton intent="primary" :disabled="!c.ready" :label="`⚡ Render ${c.ready} ready`" @click="renderReady" />
+            <UiButton intent="primary" :disabled="!c.ready || runBusy" :loading="running === 'ready'"
+              :label="`⚡ Render ${c.ready} ready`" @click="runLines('ready')" />
             <span class="jv-hint">Each line gets a take. Lines that can't render are left for you to fix.</span>
           </span>
           <span class="mock-render-ch__verb">
-            <UiButton intent="secondary" :disabled="!!c.blocked" :loading="chapterBusy" label="▶ Play chapter" @click="playChapter" />
+            <UiButton intent="secondary" :disabled="!!c.blocked || runBusy" :loading="running === 'chapter'"
+              label="▶ Play chapter" @click="playChapter" />
             <span class="jv-hint">{{ c.blocked ? `Not until every line can render — ${chapterBlockedWhy}`
-              : `Every line's take in use, in order, ${PAUSE_BETWEEN_LINES_MS} ms apart. A line with no take is rendered first.` }}</span>
+              : `Every line's take in use, in order, ${PAUSE_BETWEEN_LINES_MS} ms apart${otherPauses ? ` (${otherPauses})` : ""}. A line with no take is rendered first.` }}</span>
           </span>
           <span class="jv-spacer" />
           <span class="mock-render-ch__verb">
-            <UiButton intent="secondary" :disabled="!(c.rendered + c.stale)" label="↻ Re-render all" @click="renderAllAgain" />
+            <UiButton intent="secondary" :disabled="!(c.rendered + c.stale) || runBusy" :loading="running === 'all'"
+              label="↻ Re-render all" @click="runLines('all')" />
             <span class="jv-hint">A new take for every line that can render. Old takes are kept.</span>
           </span>
         </div>
+        <PageTaskStrips :features="['render-lines', 'render-scene']" :meta="{ sceneId: chapter.id }">
+          <template #extra-stats="{ task }">
+            <UiButton v-if="task.render?.current" intent="ghost" size="small" class="sts-stat"
+              :label="lineName(task.render.current)" title="Show this line" @click="goToLine(task.render.current.block_id)" />
+          </template>
+        </PageTaskStrips>
         <PlayTransport v-if="player.key === 'chapter'" :player="player" width="long" toggle />
       </div>
     </div>
@@ -392,7 +437,7 @@ const blockedBanner = computed(() => {
 
       <UiTable class="jv-table-look ui-table-top mock-render-ch__table" :data="rows" :columns="COLUMNS" data-key="id"
         :full-width-row="(r) => (r.panel ? 'mock-render-ch__panel-row' : false)"
-        :row-class="(r) => ({ 'mock-render-ch__row--open': open === r.id })"
+        :row-class="(r) => ({ 'jv-row--selected': open === r.id, 'jv-row--flag': runState(r.id) === 'running' })"
         @row-click="({ data }) => { if (!data.panel) open = open === data.id ? null : data.id; }">
         <template #open="{ row }">
           <span class="jv-muted">{{ open === row.id ? "⌃" : "⌄" }}</span>
@@ -426,7 +471,9 @@ const blockedBanner = computed(() => {
           <span v-else class="jv-muted">—</span>
         </template>
         <template #status="{ row }">
-          <UiTag :intent="STATE_TAG[lineState(row)]">{{ lineStateWord(lineState(row), { hasPersona: !!personaOfSpeaker(row.speaker_id) }) }}</UiTag>
+          <UiTag v-if="runState(row.id) === 'running'" intent="info">rendering…</UiTag>
+          <UiTag v-else-if="runState(row.id) === 'pending'" intent="ghost" title="Waiting in this run">queued</UiTag>
+          <UiTag v-else :intent="STATE_TAG[lineState(row)]">{{ lineStateWord(lineState(row), { hasPersona: !!personaOfSpeaker(row.speaker_id) }) }}</UiTag>
         </template>
         <template #audio="{ row }">
           <span class="mock-render-ch__audio" @click.stop>
@@ -588,8 +635,11 @@ const blockedBanner = computed(() => {
         <template #empty>No lines in this view.</template>
       </UiTable>
 
-      <p class="jv-hint mock-render-ch__foot">Lines are joined with {{ PAUSE_BETWEEN_LINES_MS }} ms of silence — Settings →
-        Generation. A line's own pause (Render overrides) changes it after that line.</p>
+      <p class="jv-hint mock-render-ch__foot">Lines are joined with {{ PAUSE_BETWEEN_LINES_MS }} ms of silence<template
+        v-if="paragraphJoins">, {{ PARAGRAPH_MS }} ms between lines of one paragraph</template><template
+        v-if="sceneBreaks">, and {{ SCENE_BREAK_MS }} ms after the last line of each of the book's scenes</template> —
+        Settings → Generation. Each take's own silence at its start and end is trimmed first, so these are the
+        pauses you hear. A line's own pause (Render overrides) changes it after that line.</p>
       <div class="jv-inline-row mock-render-ch__bar">
         <UiButton intent="secondary" size="small" label="← Previous chapter" :disabled="!prev"
           @click="router.push({ name: 'mock-render-chapter', params: { id: prev.id } })" />
@@ -673,6 +723,5 @@ const blockedBanner = computed(() => {
 .mock-render-ch__rewrite-field { display: flex; flex-direction: column; gap: 4px; }
 .mock-render-ch__quote { margin: 0; padding: 10px 12px; background: var(--surface-2); border-radius: 6px; line-height: 1.5; }
 .mock-render-ch__table :deep(.ui-table-row) { cursor: pointer; }
-.mock-render-ch__table :deep(.mock-render-ch__row--open) td { background: var(--accent-soft, var(--surface-2)); }
 .mock-render-ch__table :deep(.mock-render-ch__panel-row) td { padding: 0; }
 </style>

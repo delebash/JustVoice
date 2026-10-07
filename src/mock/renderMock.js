@@ -17,11 +17,17 @@
 // "stale": something it was made from changed since — you choose when to render it again (D4).
 
 import { reactive } from "vue";
-import { personaView, store, wait } from "./personaMock.js";
+import { withAiTask } from "@delebash/llm-ui";
+import { runFigures } from "../services/renderRun.js";
+import { personaView, silentWav, store, wait } from "./personaMock.js";
 import script from "./ninthFacetScript.json";
 
 export const PROJECT = { id: "b_ninth", name: script.book, author: script.author, kind: "audiobook", language: "en" };
 export const PAUSE_BETWEEN_LINES_MS = 600;     // Settings → Generation (D1)
+// After the last line of one of the book's scenes, and between two lines of one paragraph
+// (Settings → Generation, `models.py`; 2026-10-06 and 2026-10-07).
+export const SCENE_BREAK_MS = 2000;
+export const PARAGRAPH_MS = 250;
 export const BOOK_LEXICON = "The Ninth Facet names";
 // The audiobook kind's master target (`models.py` MasterPresets.acx).
 export const MASTER = { preset: "acx", lufs: -20, peak: -3.5 };
@@ -59,13 +65,16 @@ export function speakerReady(id) {
 const seconds = (text) => Math.max(1, Math.round(text.length / 15));
 
 // Which lines already carry takes: the first `rendered + stale` playable lines of a chapter.
-// `script`: what Script's grid shows for it — when it was analyzed, and its checks.
+// `script`: what Script's grid shows for it — when it was analyzed, and its checks. Each line's
+// paragraph and scene in the book (`p`, `s`) give the app's `paragraph_next` and `scene_end`.
 function chapter(id, src, { rendered = 0, stale = 0, analyzed = "", flagged = 0 } = {}) {
   let given = 0;
   const lines = src.lines.map((l, k) => {
+    const next = src.lines[k + 1];
     const line = {
       id: `${id}_l${k + 1}`, n: k + 1, speaker_id: l.speaker ? BY_NAME[l.speaker] : null, text: l.text,
       spoken: l.speaker !== "Narrator", direction: "", override: null, takes: [], madeFrom: null,
+      paragraph_next: !!next && next.p === l.p, scene_end: !!next && next.s !== l.s,
     };
     if (given < rendered + stale && line.speaker_id && speakerReady(line.speaker_id)) {
       line.takes = [{ id: `${line.id}_t1`, live: true, seconds: seconds(l.text), label: "" }];
@@ -90,8 +99,6 @@ export const render = reactive({
     chapter("c3", script.chapters[2], { analyzed: "2 days ago", flagged: 2 }),
     chapter("c4", script.chapters[3], { analyzed: "2 days ago" }),
   ],
-  // A chapter's render, while it runs and after: {status, done, total, error, seconds}.
-  tasks: {},
   // The ACX check, per chapter, once run (POST …/qc in the app).
   qc: {},
 });
@@ -200,30 +207,90 @@ export function notReady(ch) {
   return parts.length ? `This chapter isn't ready to render. ${parts.join(" ")}` : "";
 }
 
+/** The pause after a line when the chapter is joined (`render_chapter_api._join`): a scene's
+ *  last line the scene break's, a line whose next is in its paragraph the paragraph's, else its own. */
+export function pauseAfter(l) {
+  if (l.scene_end) return SCENE_BREAK_MS;
+  if (l.paragraph_next) return PARAGRAPH_MS;
+  return l.override?.pause_after ?? PAUSE_BETWEEN_LINES_MS;
+}
+
+const LINE_MS = 400;   // how long the mock takes over one line
+const cancelled = () => new DOMException("Render cancelled", "AbortError");
+
 /**
- * Render a chapter: every line with no take gets one; then the ★ takes are joined, the pause
- * between them, and mastered. Stale lines keep their ★ take (D4).
+ * Lines rendering as the app's run reports them (`services/renderRun.js`, 2026-10-07): each
+ * line's state in the run, the line rendering now and how many are done on the task, and the
+ * strip's figures. which: "ready" — each line with no take gets one; "all" — a new take for
+ * every line that can render.
  */
-export async function renderChapter(ch) {
-  const why = notReady(ch);
-  const todo = ch.lines.filter((l) => lineState(l) === "ready");
-  const t = { status: "running", done: 0, total: todo.length || 1, error: "", seconds: 0 };
-  render.tasks[ch.id] = t;
-  delete render.qc[ch.id];
-  await wait(300);
-  if (why) {
-    Object.assign(render.tasks[ch.id], { status: "error", error: why });
-    return;
-  }
+async function runLines(task, ch, which, steps) {
+  const todo = ch.lines.filter((l) => (which === "all"
+    ? ["ready", "rendered", "stale"].includes(lineState(l)) : lineState(l) === "ready"));
+  const states = Object.fromEntries(todo.map((l) => [l.id, "pending"]));
+  const t0 = Date.now();
+  let done = 0;
+  let audio = 0;
+  const report = (current) => {
+    task.update({ render: { lines: { ...states }, current, done } });
+    task.setProgress(done, steps ?? (todo.length || 1));
+    task.setStats(runFigures({ audio_seconds: audio, completed_blocks: done, failed_blocks: 0, total_blocks: todo.length },
+      (Date.now() - t0) / 1000));
+  };
   for (const l of todo) {
-    if (render.tasks[ch.id]?.status !== "running") return;
-    await wait(40);
+    if (task.signal.aborted) throw cancelled();
+    states[l.id] = "running";
+    report({ block_id: l.id, n: l.n, speaker: speakerOf(l.speaker_id)?.name || "" });
+    await wait(LINE_MS);
+    if (task.signal.aborted) throw cancelled();
     addTake(l);
-    render.tasks[ch.id].done += 1;
+    audio += l.takes[0].seconds;
+    states[l.id] = "completed";
+    done += 1;
   }
-  const pause = ch.lines.reduce((ms, l) => ms + (l.override?.pause_after ?? PAUSE_BETWEEN_LINES_MS), 0) / 1000;
-  const talk = ch.lines.reduce((s, l) => s + (l.takes.find((x) => x.live)?.seconds || 0), 0);
-  Object.assign(render.tasks[ch.id], { status: "done", done: todo.length, seconds: Math.round(talk + pause) });
+  report(null);
+}
+
+/** ⚡ Render N ready / ↻ Re-render all on one chapter, as the app's kit task ("render-lines"). */
+export function renderLines(ch, which) {
+  return withAiTask({
+    feature: "render-lines",
+    label: `${ch.n} · ${ch.title} → ${which === "all" ? "a new take for every line" : "takes for the ready lines"}`,
+    meta: { sceneId: ch.id },
+  }, (task) => runLines(task, ch, which));
+}
+
+/**
+ * Render a chapter, as the app's kit task ("render-scene"): every line with no take gets one;
+ * then the ★ takes are joined, the pause between them, and mastered. Stale lines keep their
+ * ★ take (D4). Resolves to { url, filename } — a silent clip as long as the chapter, to 30 s.
+ */
+export function renderChapter(ch, { onRetry } = {}) {
+  return withAiTask({
+    feature: "render-scene",
+    label: `${ch.n} · ${ch.title} → chapter render`,
+    onRetry,
+    meta: { sceneId: ch.id },
+  }, async (task) => {
+    delete render.qc[ch.id];
+    const why = notReady(ch);
+    const steps = ch.lines.filter((l) => lineState(l) === "ready").length + 1;
+    task.setProgress(0, steps);
+    await wait(300);
+    if (why) throw new Error(why);
+    await runLines(task, ch, "ready", steps);
+    await wait(500);   // the join and the master
+    if (task.signal.aborted) throw cancelled();
+    task.setProgress(steps, steps);
+    const pause = ch.lines.slice(0, -1).reduce((ms, l) => ms + pauseAfter(l), 0) / 1000;
+    const talk = ch.lines.reduce((s, l) => s + (l.takes.find((x) => x.live)?.seconds || 0), 0);
+    const result = {
+      url: URL.createObjectURL(silentWav(Math.min(Math.round(talk + pause), 30))),
+      filename: `${ch.n}_${ch.title.replace(/[^a-z0-9_-]+/gi, "_")}.wav`,
+    };
+    task.update({ result });
+    return result;
+  });
 }
 
 /** The ACX check: each chapter that can render, measured after the master. */

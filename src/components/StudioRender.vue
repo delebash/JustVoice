@@ -17,7 +17,7 @@
   full-width row of the same table.
 -->
 <script setup>
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import {
   AiTaskStrip, AppModal, UiButton, UiCheckbox, UiTable, UiTag, pushToast, useAiTasksStore, withAiTask,
 } from "@delebash/llm-ui";
@@ -25,7 +25,10 @@ import { useApi } from "../stores/api.js";
 import { useCopy } from "../services/copy.js";
 import { CANT_RENDER, partOf } from "../services/lineStates.js";
 import { renderChapter } from "../services/renderRun.js";
+import { usePagePlayer } from "../composables/usePagePlayer.js";
+import PagePlayer from "./PagePlayer.vue";
 import PageTaskStrips from "./PageTaskStrips.vue";
+import PlayTransport from "./PlayTransport.vue";
 
 const props = defineProps({
   project: { type: Object, required: true },
@@ -83,7 +86,14 @@ const COLUMNS = computed(() => [
   { id: "check", header: "Check", headerStyle: { width: "1%" }, cellStyle: { whiteSpace: "nowrap" } },
   { id: "acts", header: "", headerStyle: { width: "1%" }, cellStyle: { whiteSpace: "nowrap", textAlign: "right" } },
 ]);
-const playing = ref(null);   // { id, url }
+// One player for the page, as a chapter's (decided 2026-10-07): a finished
+// chapter's ▶ Play plays, pauses and plays again, its controls in its row. Key:
+// "chapter:<scene id>". Dismissing the row stops it, as the row's own player did.
+const player = usePagePlayer();
+const playKey = (sceneId) => `chapter:${sceneId}`;
+watch(() => String(player.key || "").startsWith("chapter:") && !taskFor(player.key.slice(8)), (gone) => {
+  if (gone) player.stop();
+});
 
 // ── Ticks ────────────────────────────────────────────────────────────
 const ticked = ref({});
@@ -141,7 +151,7 @@ async function renderOne(s) {
     const r = await renderChapter(api, {
       sceneId: s.id, projectId: props.project.id, title: titleOf(s), onRetry: () => renderQueue([s]),
     });
-    if (r?.url) playing.value = { id: s.id, url: r.url };
+    if (r?.url) player.play(playKey(s.id), r.url);
   } catch (e) {
     if (e?.name !== "AbortError") pushToast({ kind: "error", message: `${titleOf(s)}: ${e?.message || e}`, duration: 9000 });
   } finally {
@@ -234,6 +244,7 @@ function checkState(s) {
 
 <template>
   <section class="studio-render">
+    <PagePlayer :player="player" />
     <div class="jv-card">
       <div class="jv-card__header">
         <h3 class="jv-card__title">{{ word.singular }} audio</h3>
@@ -317,14 +328,14 @@ function checkState(s) {
                   </template>
                 </AiTaskStrip>
                 <template v-if="taskFor(row.scene.id).status === 'done' && taskFor(row.scene.id).result?.url">
-                  <UiButton intent="ghost" size="small" label="▶ Play" title="Play here in the row"
-                    @click="playing = { id: row.scene.id, url: taskFor(row.scene.id).result.url }" />
+                  <UiButton intent="ghost" size="small" :label="player.isPlaying(playKey(row.scene.id)) ? '⏸ Pause' : '▶ Play'"
+                    :title="player.isPlaying(playKey(row.scene.id)) ? 'Pause' : 'Play here in the row'"
+                    @click="player.play(playKey(row.scene.id), taskFor(row.scene.id).result.url)" />
                   <UiButton as="a" :href="taskFor(row.scene.id).result.url" :download="taskFor(row.scene.id).result.filename"
                     intent="ghost" size="small" title="Download WAV">⬇ Download</UiButton>
                 </template>
+                <PlayTransport v-if="player.key === playKey(row.scene.id)" :player="player" width="long" />
               </div>
-              <audio v-if="playing?.id === row.scene.id" :src="playing.url" controls autoplay
-                class="jv-audio-inline studio-render__audio" />
             </template>
             <template #empty>No {{ word.plural.toLowerCase() }}.</template>
           </UiTable>
@@ -382,7 +393,6 @@ function checkState(s) {
 .studio-render__acts { display: inline-flex; gap: 6px; }
 .studio-render__task { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .studio-render__strip { flex: 1 1 auto; min-width: 0; }
-.studio-render__audio { margin-top: 6px; }
 .studio-render__go { gap: 10px; align-items: center; flex-wrap: wrap; }
 .studio-render__stopped-lede { margin: 0 0 12px; }
 .studio-render__stopped { margin-bottom: 12px; }

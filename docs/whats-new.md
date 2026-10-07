@@ -2,6 +2,11 @@
 
 ## v0.1.0
 
+- **Render's chapter list pauses and plays on (2026-10-07)** — a finished chapter's
+  **▶ Play** becomes **⏸ Pause**, with a seek bar in its row, like a take's on the
+  chapter's page; it had a player of its own before. The project export (Overview) no
+  longer takes an *include masters* option, which wrote nothing — mastered chapters are
+  Export's **⬇ Chapter WAVs (zip)** ([Studio → Render](studio.md#render))
 - **⬇ Chapter WAVs (zip) holds chapter WAVs, and voice previews stop pausing a second
   between sentences (2026-10-07)** — the button saved the project package; it now makes
   each chapter's WAV and its mastered WAV, with the same progress strip and Save dialog as

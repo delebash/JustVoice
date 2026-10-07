@@ -125,6 +125,49 @@ GO:     given 2026-08-17
 
 ## The next build
 
+### Render and Export's leftovers: the chapter list's ▶ on the page player, no masters option on the package, the Render mock's progress, the tracker, audio.cpp's join threshold (decided 2026-10-07)
+STATE:  DECIDED 2026-10-07 — "do 1-5 go", on the five as shown: "1. The chapter list's ▶ Play still has its
+        own player. It doesn't use the one-player-per-page fix from earlier today. Lean: move it onto that
+        player, so ▶ works the same everywhere on Render." · "2. The project package's 'include masters'
+        option saves nothing. Lean: remove the option, because ⬇ Chapter WAVs (zip) now carries the
+        masters. The other choice is to make it work." · "3. The Render mock doesn't show the new progress.
+        The app's Render page now has the progress strip and the lit row; the mock still has neither. Lean:
+        bring the mock up to match." · "4. Some tracker lines no longer match the code. The long-line gaps
+        item still says OPEN even though it was built today. The Personas item still lists P1–P9 as open.
+        Slice 4 still says 'your look at Render', which you've been doing all session. Lean: check each
+        against the code, then correct or close it." · "5. The join threshold differs between audio.cpp and
+        the server. Our audio.cpp copy uses −70 dB on single samples; the server uses −60 dB over 10 ms
+        windows. The app never uses the audio.cpp one. Lean: match it the next time we change audio.cpp,
+        not now." — "do" on 5 = match it now (audio.cpp takes the server's rule).
+        Then "do 6-9 your rec go", answered as: 6 — a proposal for "what a waiting line waits for", no
+        code · 7 — no rec was given, so none is approved; the rec now: run Analyze on the 30 answer-keyed
+        lines with and without each speaker's description (200 characters) and decide from the two scores
+        — needs its own go · 8 — per-line emotion was likely built 2026-10-06 ("Render: a line can change
+        what its model takes"); check the code with item 4; if it isn't, a proposal, no build · 9 — check
+        both in the real app: a temporary game project for "1 · Lines" and a temporary chapter of several
+        hundred lines on the chapter page, both deleted afterwards.
+WHY:    1 — the chapter list's ▶ Play was the last `<audio controls>` on Render; 2 — an option that writes
+        nothing; 3 — the mock is the picture of the page; 4 — a tracker line is a claim; 5 — one join rule.
+NOT:    2 — making the package write masters (the chapter zip carries them).
+BUILT:  2026-10-07 — 1: `StudioRender.vue` on `usePagePlayer` (key `chapter:<scene id>`; ▶ Play ↔
+        ⏸ Pause, `PlayTransport` in the row, dismissing the row stops it); checked live on Brass Rank:
+        plays itself when done, Pause 3.1 s → Play resumes, ✕ stops, one `<audio>`, no page errors.
+        2: `project_export_api.py` (option and manifest key gone), `services/projects.js`, docs
+        import-and-export troubleshooting, RESEARCH; live: the manifest reads only `include_audio`.
+        3: `renderMock.js` (a render is the app's kit task — `renderLines`, `renderChapter`,
+        `runFigures`; `pauseAfter`; lines carry `paragraph_next` / `scene_end` from `p` · `s` now in
+        `ninthFacetScript.json`), `MockRenderGrid.vue` (the kit strip, the page player, Check's
+        queued/failed/cancelled, the ACX task), `MockRenderChapterView.vue` (lit row, queued, the
+        strip's line button, the verbs wait, the pause words), `MockScriptGrid.vue`; checked on
+        #/mock/render: strip "12/72 · 1:27 of audio · … · line 13 · Iven Sarraz", chapter 4 fails
+        naming Ophra Kell and Old Tom, ↻ Re-render all lights the row and queues 62, Cancel ends it.
+        4: the four lines corrected (above and below). 5: our audio.cpp copy `a2601edf` (`piece_quiet_run`,
+        10 ms windows under −60 dBFS, as `audio/chunked._quiet_run`); straight from the runtime, a
+        423-character line cut after its second sentence joins at 260 ms. 8: built 2026-10-06 —
+        the style_prompt item's line corrected. 9: both checked — Slices 1 + 2 and Slice 3 above.
+OPEN:   6 — the proposal is with the user (reply of 2026-10-07); 7 — needs its own go.
+GO:     given 2026-10-07
+
 ### Chapter WAVs (zip) holds chapter WAVs and masters; voice previews join their pieces at 260 ms (decided 2026-10-07)
 STATE:  DECIDED 2026-10-07 — "fix all go", on the two findings as shown: "'⬇ Chapter WAVs (zip)' doesn't
         contain chapter WAVs. It saves the book's data plus each line's separate take. The panel says
@@ -192,7 +235,7 @@ BUILT:  2026-10-07 — our audio.cpp copy `a2d7c161` (`piece_join_cut`): verifie
         split (Kokoro lines over 240 characters, `render_core.py:883`) and its join
         (`audio/chunked.concatenate_audio_chunks`, 50 ms crossfade, padding kept) — audio.cpp never
         splits these lines. A fresh render through the app's path still had 950 / 870 / 880 / 990 ms.
-OPEN:   the same trim in our server's piece join — DECIDED 2026-10-07, "your rec on all go", on: "apply the
+THEN:   the same trim in our server's piece join — DECIDED 2026-10-07, "your rec on all go", on: "apply the
         same trim in our server's piece join. Where two pieces meet, cut the quiet on both sides down to
         260 ms, which is Kokoro's own pause at a sentence end … It only affects new renders … existing
         lines need ↻ Re-render all per chapter" · Q1 fix it in our server's join — yes · Q2 keep the
@@ -200,7 +243,10 @@ OPEN:   the same trim in our server's piece join — DECIDED 2026-10-07, "your r
         (`PIECE_JOIN_PAUSE_MS` 260, quiet = 10 ms windows under −60 dBFS; silence meets silence with
         no crossfade), tests in `test_chunked.py`; docs engines, whats-new. Checked live after a
         restart, fresh renders of lines 2, 7, 11 through the app's path: 950 → 250, 870/880 →
-        260/270, 990 → 250 ms. Existing takes keep theirs until ↻ Re-render all.
+        260/270, 990 → 250 ms. Existing takes keep theirs until ↻ Re-render all. audio.cpp's own join
+        took the server's rule later the same day ("Render and Export's leftovers", above).
+OPEN:   none. (Was "OPEN: the same trim in our server's piece join" — built the same day; the label
+        corrected 2026-10-07.)
 GO:     given 2026-10-07 (audio.cpp, and our server's join)
 
 ### Render all sits beside Render N chapters (decided 2026-10-07)
@@ -2603,7 +2649,12 @@ DECIDED 2026-09-28 — "go", on: "Overview mastering options: switch to what the
         offers: 'This kind's default (ACX)', 'None — raw', ACX, iAudio, Podcast, YouTube, with
         'Custom' gone. This is the wording still waiting on your approval. Say go only if you
         accept that wording." The mastering wording above stands as built; the mock matches it.
-OPEN:   Game "1 · Lines" is unverified in the real app — the real data has no game project.
+OPEN:   none — Game "1 · Lines" checked in the real app 2026-10-07 on a temporary game project
+        (a 12-line sheet in three voices, deleted after): the steps read 1 · Lines · 2 · Cast ·
+        3 · Render · 4 · Export, 1 · Lines shows the sheet's 12 lines, no page errors. Seen on
+        the way, not fixed: the Lines card reads "No lines yet — re-import the sheet" for the first
+        1–3 s while the counts load. (Was: "unverified in the real app — the real data has no
+        game project".)
         (Corrected 2026-10-05 by the tracker sweep. Built since this line was written: the Personas
         work — its FINDING "a persona's pace, pitch and gain can't be edited" — 2026-10-03; Slice 4,
         2026-10-04, its own item below, which also built the three "Slice 4 ALSO" parts that
@@ -2692,11 +2743,9 @@ BUILT:  2026-10-04 — the plan's §3, plus the three sites in its "found while 
         on the running app; live through the app with a throwaway book (removed after): states,
         takes with audio, override → stale, New take, ★ an old take → stale, the chapter playing a
         stale take's words, the book lexicon, and a deleted book's take files gone.
-OPEN:   your look at Render in the app. The demo is ready again (2026-10-06, "The demo again…"
-        above): all nine speakers cast, The Same Hour rendered (81 lines, 9.7 min) and line 3 has a
-        second take for Compare. The other three chapters aren't analyzed and Discover hasn't run:
-        Old Sedge, who speaks in Bigger Inside, isn't one of the book's characters, so he becomes a
-        speaker only when Discover finds him there.
+OPEN:   none — you have been using Render on The Ninth Facet: every Render item dated 2026-10-06
+        and 2026-10-07 above came from it. (Was: "your look at Render in the app", with the demo's
+        state on 2026-10-06 — closed 2026-10-07.)
 GO:     given 2026-10-04 ("your rec on all go code it all")
 
 ### Studio Slice 3 — Script, redesigned against the 09-28 measurements (mock first)
@@ -2930,7 +2979,10 @@ DECIDED 2026-09-29 — "your rec on all the wording". The rec was to keep the bu
           · "is it theirs?" / "are theirs" / "Put them back in the cast" — personas carry no
             pronouns, so the mock's "his" can't be known
           · "later in the same paragraph" for a line whose tag comes after it
-OPEN:   Not measured: a chapter of several hundred lines on the chapter page.
+OPEN:   none — measured 2026-10-07 on a temporary 400-line chapter (deleted after), headless
+        Chrome, the real app: Script's chapter page opens in 178–462 ms and Render's in 127–181 ms
+        (all 400 rows); both scroll at 16.7 ms a frame (60 fps, worst 19.3 ms). No virtualization
+        needed. (Was: "Not measured: a chapter of several hundred lines on the chapter page".)
 DECIDED 2026-09-29 — "your rec go" (then "go all three"): the rec was to move the model call
         off the event loop in all three blocking endpoints, not only analyze-text.
 BUILT:  2026-09-29 — `asyncio.to_thread` around the pipeline in `POST /v1/extraction/analyze-text`,
@@ -3049,7 +3101,7 @@ DECIDED: 2026-10-03, the build — "your rec on all save the plan and go code". 
         done on persona with slice 4 as override". Presets: removed with this work (already ruled
         2026-09-27, "2 presets die"). §6.2 also lists eleven calls the plan made that no question
         named — surfaced for the user to overrule.
-OPEN:   the build, slices P1–P9 (doc §6.3): P1 a voice knows its model · P2 render presets
+PLAN:   the build, slices P1–P9 (doc §6.3): P1 a voice knows its model · P2 render presets
         removed everywhere · P3 the persona's data and the one resolver · P4 the editor page ·
         P5 the index · P6 Voices + gender · P7 Cast + the book's language · P8 the Turbo tag
         check · P9 speaker pronouns (asks before its data reset). Blast radius: doc §6.4.
@@ -3290,7 +3342,8 @@ BUILT:  2026-10-04 — step 1 (eSpeak NG reaches Kokoro and KittenTTS; Linux fin
         Qwen3's per-model Attention and Decoder weights). 5h's rec changed from fork specs to
         a verified catalog in the app (audit §13.5). Record, blast radius and live checks:
         audit §13.5.
-OPEN:   (`model_management`, Qwen3's memory fixes and every later feature reach a packaged app
+OPEN:   none — checked 2026-10-07: the pin is v0.9.0-jv.4 (`engines/audiocpp/release.py`).
+        (`model_management`, Qwen3's memory fixes and every later feature reach a packaged app
         with v0.9.0-jv.4, published and pinned 2026-10-05; E2's placeholders retargeted with it.)
         (The listening files, heard 2026-10-04 — "1 no it changes persons on the 200 slightly 2 person changes 3 no difference 4 cant tell a difference": description voices stay whole,
         the clone trim stays, 16-bit decoder weights became Qwen3's default — audit §13.6.)
@@ -4184,8 +4237,11 @@ chatterbox-turbo (**4 of 19 tags declared → all 19**, in three categories, wit
 (variant-precise via `manager.current_variant_id`, mirrored in
 `probe_line_cached`) · `GenerateView.vue` Emotion picker.
 Pinned by `server/tests/test_emotion_wiring.py` (25 tests).
-OPEN:   per-line emotion needs a `blocks` column and is NOT built — today the
-line carries prose `direction`, the persona carries the emotion. (Corrected
+OPEN:   none — per-line emotion was built 2026-10-06 in the line's metadata, not a `blocks`
+column: `line_takes.line_models`, laid over the persona's by `persona_render.model_settings`
+(TASKS "Render: a line can change what its model takes"). Checked against the code 2026-10-07.
+(Was: "per-line emotion needs a `blocks` column and is NOT built — today the
+line carries prose `direction`, the persona carries the emotion".) (Corrected
 2026-10-05 by the tracker sweep: all 19 Turbo tags render on Turbo and Nano —
 `docs/plans/2026-10-04-turbo-tag-check.md`; tags are kept or stripped per model
 — `render_core.performable_text`; the Emotion picker is on the persona page now.)
