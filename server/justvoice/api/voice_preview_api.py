@@ -882,7 +882,7 @@ async def stream_voice_audition(
     import numpy as np
 
     from ..app_state import get_state
-    from ..audio.chunked import split_text_into_chunks
+    from ..audio.chunked import held_for_next_seam, join_pieces, split_text_into_chunks
     from ..audio.wav import parse_wav_header, strip_wav_header, write_wav_container
     from ..models import GenerateRequest
     from .generate_api import _generate_via_inprocess, _generate_via_manager
@@ -921,7 +921,7 @@ async def stream_voice_audition(
     async def _wav_stream():
         sr = 0
         channels = 1
-        tail: np.ndarray | None = None  # held-back crossfade window
+        tail: np.ndarray | None = None  # held back for the next seam
         emitted: list[bytes] = []  # int16 bytes, for the cache
 
         def _to_i16(x: np.ndarray) -> bytes:
@@ -957,23 +957,15 @@ async def stream_voice_audition(
                     f"({sr} → {fmt.sample_rate})"
                 )
 
-            xf = int(sr * crossfade_ms / 1000)
             if tail is not None:
-                # Same math as concatenate_audio_chunks, one seam at a time:
-                # blend the held tail's end with this piece's head.
-                overlap = min(xf, len(tail), len(pcm))
-                if overlap > 0:
-                    fade_out = np.linspace(1.0, 0.0, overlap, dtype=np.float32)
-                    fade_in = np.linspace(0.0, 1.0, overlap, dtype=np.float32)
-                    blended = tail[len(tail) - overlap:] * fade_out + pcm[:overlap] * fade_in
-                    pcm = np.concatenate([tail[: len(tail) - overlap], blended, pcm[overlap:]])
-                else:
-                    pcm = np.concatenate([tail, pcm])
-            # Hold back one crossfade window for the NEXT seam — except on
-            # the last piece, which flushes whole.
-            if idx < len(pieces) - 1 and xf > 0 and len(pcm) > xf:
-                tail = pcm[-xf:]
-                out = pcm[:-xf]
+                # The seam a line's pieces get (audio.chunked.join_pieces): the
+                # quiet on both sides cut to the piece pause — the stream kept
+                # each piece's padding, ~1 s between sentences (2026-10-07).
+                pcm = join_pieces(tail, pcm, sr, crossfade_ms)
+            # Hold back this piece's trailing quiet for the NEXT seam — except
+            # on the last piece, which flushes whole.
+            if idx < len(pieces) - 1:
+                out, tail = held_for_next_seam(pcm, sr, crossfade_ms)
             else:
                 tail = None
                 out = pcm

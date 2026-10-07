@@ -2,6 +2,11 @@
 
 ## v0.1.0
 
+- **⬇ Chapter WAVs (zip) holds chapter WAVs, and voice previews stop pausing a second
+  between sentences (2026-10-07)** — the button saved the project package; it now makes
+  each chapter's WAV and its mastered WAV, with the same progress strip and Save dialog as
+  the M4B. Voice auditions join their pieces at a natural pause, like a line does
+  ([Import & export](import-and-export.md#audiobook--m4b))
 - **Export asks where to save, and shows its progress (2026-10-07)** — **⬇ Export M4B**
   now shows each chapter as it is mastered, then the encode, with Cancel; and both exports
   open a **Save** dialog for the folder and file name and say where the file went, with

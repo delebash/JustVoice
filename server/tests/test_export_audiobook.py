@@ -267,3 +267,38 @@ def test_the_export_job_says_when_ffmpeg_is_missing(client, monkeypatch):
     monkeypatch.setattr("justvoice.export_audiobook.have_ffmpeg", lambda: False)
     r = client.post(f"/v1/projects/{pid}/export_m4b/start")
     assert r.status_code == 503 and "ffmpeg" in r.text
+
+
+def test_the_chapter_audio_export_holds_each_chapter_and_its_master(tmp_path, monkeypatch):
+    """2026-10-07: "⬇ Chapter WAVs (zip)" handed over the project package; now each
+    chapter joined and mastered, as Export's row always said."""
+    import io as _io
+    import time
+    import zipfile
+
+    with TestClient(create_app(data_dir=tmp_path)) as c:
+        pid = _seed(c)
+
+        def render(st, scene_id, **kw):
+            return _wav(0.3 if kw.get("master", True) else 0.1, 0.5)
+
+        async def no_warm(*a, **k):
+            return None
+
+        monkeypatch.setattr("justvoice.api.render_chapter_api.render_scene_to_wav", render)
+        monkeypatch.setattr("justvoice.synth_scheduler.warm_lines", no_warm)
+        monkeypatch.setattr("justvoice.export_audiobook.have_ffmpeg", lambda: True)
+        job = c.post(f"/v1/projects/{pid}/export_chapters/start").json()
+        for _ in range(200):
+            job = c.get(f"/v1/export_jobs/{job['id']}").json()
+            if job["status"] != "running":
+                break
+            time.sleep(0.02)
+        assert job["status"] == "done", job
+        assert job["filename"].endswith("_chapters.zip")
+        r = c.get(f"/v1/export_jobs/{job['id']}/file")
+        assert r.status_code == 200
+        names = sorted(zipfile.ZipFile(_io.BytesIO(r.content)).namelist())
+        assert names == ["chapters/01 One.wav", "chapters/02 Two.wav", "masters/01 One.wav", "masters/02 Two.wav"]
+        z = zipfile.ZipFile(_io.BytesIO(r.content))
+        assert z.read("masters/01 One.wav") == _wav(0.3, 0.5) and z.read("chapters/01 One.wav") == _wav(0.1, 0.5)

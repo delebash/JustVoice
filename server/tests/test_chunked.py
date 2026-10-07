@@ -105,3 +105,22 @@ def test_a_join_already_short_is_left_as_it_is():
     a, b = _piece(sr, 0, 500, 60), _piece(sr, 40, 500, 0)
     merged = concatenate_audio_chunks([a, b], sample_rate=sr, crossfade_ms=50)
     assert _gaps_ms(merged, sr) == [100]
+
+
+def test_a_streamed_audition_joins_its_pieces_like_a_line():
+    """2026-10-07: the Voices preview streams pieces one by one; holding each piece's
+    quiet back for the next seam gives exactly the line's join."""
+    from justvoice.audio.chunked import held_for_next_seam, join_pieces
+
+    sr = 24000
+    pieces = [_piece(sr, 265, 800, 715), _piece(sr, 265, 600, 715), _piece(sr, 265, 700, 715)]
+    streamed, held = [], None
+    for i, p in enumerate(pieces):
+        if held is not None:
+            p = join_pieces(held, p, sr, 50)
+        if i < len(pieces) - 1:
+            out, held = held_for_next_seam(p, sr, 50)
+        else:
+            out, held = p, None
+        streamed.append(out)
+    assert np.array_equal(np.concatenate(streamed), concatenate_audio_chunks(pieces, sample_rate=sr))

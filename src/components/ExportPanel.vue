@@ -15,8 +15,7 @@ import { ref, computed, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import PageTaskStrips from "./PageTaskStrips.vue";
 import { openPath, pushToast, saveBlob } from "@delebash/llm-ui";
-import { exportM4bRun, savedMessage } from "../services/exportRun.js";
-import { projectsService } from "../services/projects.js";
+import { exportRun, savedMessage } from "../services/exportRun.js";
 import { useCopy } from "../services/copy.js";
 import { masterLabel, projectMaster } from "../services/masterTargets.js";
 import { UiButton, UiTag, runAiEndpoint } from "@delebash/llm-ui";
@@ -94,7 +93,7 @@ async function exportM4B() {
   if (!p || exportBusy.value) return;
   exportBusy.value = "m4b";
   try {
-    const { blob, filename } = await exportM4bRun(api, p);
+    const { blob, filename } = await exportRun(api, p, "m4b");
     sayWhereSaved(await saveBlob(blob, filename,
       { title: "Save audiobook", filterName: "M4B audiobook", filterExt: "m4b" }), filename);
   } catch (e) {
@@ -108,14 +107,14 @@ async function exportChapterWavs() {
   const p = props.project;
   if (!p || exportBusy.value) return;
   exportBusy.value = "zip";
-  pushToast({ message: "Packaging per-chapter audio…", kind: "info" });
   try {
-    const blob = await projectsService.exportZip(p.id, { includeAudio: true, includeMasters: true });
-    const filename = `${(p.name || "book").replace(/[^\w.-]+/g, "_")}.zip`;
+    // Each chapter joined and mastered (decided 2026-10-07) — it handed over the
+    // project package, which is Overview's export, until then.
+    const { blob, filename } = await exportRun(api, p, "chapters");
     sayWhereSaved(await saveBlob(blob, filename,
-      { title: "Save chapter package", filterName: "Chapter package", filterExt: "zip" }), filename);
+      { title: "Save chapter audio", filterName: "Chapter WAVs", filterExt: "zip" }), filename);
   } catch (e) {
-    pushToast({ message: `Export failed: ${e?.message || e}`, kind: "error", duration: 7000 });
+    if (e?.name !== "AbortError") pushToast({ message: `Export failed: ${e?.message || e}`, kind: "error", duration: 7000 });
   } finally {
     exportBusy.value = "";
   }
@@ -186,7 +185,7 @@ async function copyShowNotes() {
         <UiButton intent="secondary" :loading="exportBusy === 'zip'" :disabled="!!exportBusy" :label="`⬇ ${copy.chapter.singular} WAVs (zip)`" @click="exportChapterWavs" />
         <UiButton v-if="project.project_type === 'podcast'" intent="secondary" label="📝 Show notes" title="Draft episode show notes from the segments (LLM)" @click="generateShowNotes" />
       </div>
-      <PageTaskStrips :features="['export-m4b', 'show-notes']" :meta="{ projectId: project.id }" />
+      <PageTaskStrips :features="['export-m4b', 'export-chapters', 'show-notes']" :meta="{ projectId: project.id }" />
       <div v-if="showNotes" class="exportp__notes">
         <div class="exportp__h" style="margin-bottom:6px">
           <strong>Show notes</strong>

@@ -593,7 +593,9 @@ and that setting caps them all.
 Voice auditions on the Voices page use the same splitter at a much smaller size
 (`settings.generation.stream_piece_chars`, default 200): each sentence-sized
 piece is sent to your player the moment it renders, so playback starts after the
-first piece instead of the whole render. Pieces join with the same crossfade.
+first piece instead of the whole render. Pieces join the same way — the quiet
+between them cut to 260 ms, so a long test line no longer pauses a second between
+sentences (since 2026-10-07).
 
 The splitter knows about abbreviations (`Mr.`, `Dr.`, `e.g.`), decimal numbers,
 CJK sentence-end punctuation (`。！？`), and treats `[bracket]` tags as one unit

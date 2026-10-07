@@ -125,6 +125,29 @@ GO:     given 2026-08-17
 
 ## The next build
 
+### Chapter WAVs (zip) holds chapter WAVs and masters; voice previews join their pieces at 260 ms (decided 2026-10-07)
+STATE:  DECIDED 2026-10-07 — "fix all go", on the two findings as shown: "'⬇ Chapter WAVs (zip)' doesn't
+        contain chapter WAVs. It saves the book's data plus each line's separate take. The panel says
+        'per-chapter WAV + masters (zip)', but nothing in it writes chapter files or mastered files." ·
+        "Voice previews on the Voices page still have the long gaps in long test lines. They play their
+        pieces one after another without trimming." Built to what the panel already promises: the
+        button makes its own zip — `chapters/NN Title.wav` (each chapter joined) and
+        `masters/NN Title.wav` (mastered to the book's target) — as a job with the same strip; the
+        project package (Overview's export, `GET /v1/projects/{id}/export`) is left as it is. Previews:
+        the piece-join rule (260 ms) moves into one function the stream uses seam by seam.
+WHY:    the button's file didn't match its label; the preview kept each piece's padding.
+NOT:    changing the project package, which Overview's export relies on.
+BUILT:  2026-10-07 — server `export_jobs_api.py` (`export_chapters/start`, `_chapters_zip`; the two exports
+        share start/poll/cancel/file), `audio/chunked.join_pieces` + `held_for_next_seam` (the line join
+        and the preview stream, one seam rule), `voice_preview_api.stream_voice_audition`; client
+        `exportRun(api, project, kind)`, `ExportPanel.vue` (the chapter button on the job, its strip).
+        Tests: chapter zip contents, streamed join == line join. Docs import-and-export, engines,
+        whats-new; RESEARCH §3. Checked live: a real chapter export (4 chapters, 26 s, 279 MB, masters
+        at −20.5 dBFS / −3.5 dB peak) and the panel's strip + "Saved … to your Downloads folder" in a
+        browser; previews: POST join 990 → 260 ms, stream 870/880 → 260/270 ms. Smoke passed.
+OPEN:   none.
+GO:     given 2026-10-07
+
 ### Export shows its progress, and asks where to save (decided 2026-10-07)
 STATE:  DECIDED 2026-10-07 — "your rec on all go" (the user: "on export m4b and chapter is this a long
         running process can we do an accurate progress bar? also should the expoort pop up with a

@@ -1,12 +1,20 @@
 # SPDX-License-Identifier: MIT
-"""The book's M4B export as a job the Export panel follows (decided 2026-10-07).
+"""The book's exports as jobs the Export panel follows (decided 2026-10-07).
 
 `POST /v1/projects/{id}/export_m4b` renders and masters every chapter, then
 encodes the book, and answers only at the end — minutes with nothing to show.
-This is the same work, reported as it goes: start it, poll it (chapter 2 of 4,
-then "Encoding the book"), cancel it between chapters, then fetch the file.
+These are the same work, reported as it goes: start one, poll it (chapter 2 of
+4, then "Encoding the book"), cancel it between chapters, then fetch the file.
+
+* M4B — the book, one file with chapter marks.
+* Chapter audio — a zip of each chapter joined (`chapters/NN Title.wav`) and
+  mastered to the book's target (`masters/NN Title.wav`): what Export's
+  "per-chapter WAV + masters (zip)" always said, and what its button handed
+  over the project package instead of until 2026-10-07. The package itself
+  (`GET /v1/projects/{id}/export`) is Overview's, and stays as it is.
+
 Jobs live in memory and a finished file in the temp folder until it is
-fetched; the old door stays for anything that calls it directly.
+fetched; the old M4B door stays for anything that calls it directly.
 """
 
 from __future__ import annotations
@@ -17,6 +25,7 @@ import os
 import re
 import tempfile
 import uuid
+import zipfile
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
@@ -42,33 +51,77 @@ def _public(job: dict[str, Any]) -> dict[str, Any]:
     return {k: job[k] for k in ("id", "status", "done", "total", "step", "error", "filename")}
 
 
-async def _run(job: dict[str, Any], project_id: str, name: str, author: str | None) -> None:
-    from ..export_audiobook import assemble_project, collect_project_line_kwargs, mux_m4b
+def _safe(name: str | None, fallback: str) -> str:
+    return re.sub(r"[^A-Za-z0-9._ -]+", "_", name or "").strip() or fallback
+
+
+def _chapter_step(job: dict[str, Any], i: int, n: int, scene) -> str:
+    if job["cancel"]:
+        raise _Cancelled()
+    job["done"] = i
+    return f"Chapter {i + 1} of {n} · {scene.title or f'Chapter {scene.position + 1}'}"
+
+
+async def _warm(project_id: str, job: dict[str, Any]) -> None:
+    from ..export_audiobook import collect_project_line_kwargs
     from ..synth_scheduler import warm_lines
 
     st = get_state()
+    job["step"] = "Rendering the lines that have no take yet"
+    await warm_lines(st, collect_project_line_kwargs(st, project_id))
+
+
+def _m4b(job: dict[str, Any], project_id: str, name: str, author: str | None) -> str:
+    from ..export_audiobook import assemble_project, mux_m4b
+
+    def progress(i: int, n: int, scene) -> None:
+        job["total"] = n + 1          # every chapter, then the encode
+        job["step"] = _chapter_step(job, i, n, scene)
+
+    chapters = assemble_project(get_state(), project_id, progress=progress)
+    if not chapters:
+        raise bad_request("project has no scenes to export")
+    if job["cancel"]:
+        raise _Cancelled()
+    job["done"] = len(chapters)
+    job["step"] = "Encoding the book"
+    m4b = mux_m4b(chapters, name, author)
+    fd, path = tempfile.mkstemp(prefix="jv-export-", suffix=".m4b")
+    with os.fdopen(fd, "wb") as f:
+        f.write(m4b)
+    return path
+
+
+def _chapters_zip(job: dict[str, Any], project_id: str) -> str:
+    from ..export_audiobook import project_scenes
+    from .render_chapter_api import render_scene_to_wav
+
+    st = get_state()
+    scenes = project_scenes(project_id)
+    if not scenes:
+        raise bad_request("project has no scenes to export")
+    job["total"] = len(scenes)
+    fd, path = tempfile.mkstemp(prefix="jv-export-", suffix=".zip")
+    os.close(fd)
     try:
-        job["step"] = "Rendering the lines that have no take yet"
-        await warm_lines(st, collect_project_line_kwargs(st, project_id))
+        # Stored, not deflated: WAV barely compresses, and a book is hundreds of MB.
+        with zipfile.ZipFile(path, "w", zipfile.ZIP_STORED) as zf:
+            for i, scene in enumerate(scenes):
+                job["step"] = _chapter_step(job, i, len(scenes), scene)
+                title = _safe(scene.title, f"Chapter {scene.position + 1}")
+                name = f"{i + 1:02d} {title}.wav"
+                zf.writestr(f"chapters/{name}", render_scene_to_wav(st, scene.id, master=False))
+                zf.writestr(f"masters/{name}", render_scene_to_wav(st, scene.id, master=True))
+    except BaseException:
+        os.path.exists(path) and os.remove(path)
+        raise
+    return path
 
-        def progress(i: int, n: int, scene) -> None:
-            if job["cancel"]:
-                raise _Cancelled()
-            job["total"] = n + 1          # every chapter, then the encode
-            job["done"] = i
-            job["step"] = f"Chapter {i + 1} of {n} · {scene.title or f'Chapter {scene.position + 1}'}"
 
-        chapters = await asyncio.to_thread(assemble_project, st, project_id, progress=progress)
-        if not chapters:
-            raise bad_request("project has no scenes to export")
-        if job["cancel"]:
-            raise _Cancelled()
-        job["done"] = len(chapters)
-        job["step"] = "Encoding the book"
-        m4b = await asyncio.to_thread(mux_m4b, chapters, name, author)
-        fd, path = tempfile.mkstemp(prefix="jv-export-", suffix=".m4b")
-        with os.fdopen(fd, "wb") as f:
-            f.write(m4b)
+async def _run(job: dict[str, Any], project_id: str, build) -> None:
+    try:
+        await _warm(project_id, job)
+        path = await asyncio.to_thread(build)
         job.update(path=path, done=job["total"], step="Done", status="done")
     except _Cancelled:
         job.update(status="cancelled", step="Cancelled")
@@ -79,9 +132,7 @@ async def _run(job: dict[str, Any], project_id: str, name: str, author: str | No
         job.update(status="error", error=str(e))
 
 
-@router.post("/v1/projects/{project_id}/export_m4b/start")
-async def start_export_m4b(project_id: str) -> dict[str, Any]:
-    from ..export_audiobook import have_ffmpeg
+def _project(project_id: str) -> tuple[str, str | None]:
     from .projects_api import m4b_author
 
     db = db_session.SessionLocal()
@@ -89,21 +140,44 @@ async def start_export_m4b(project_id: str) -> dict[str, Any]:
         project = db.query(Project).filter(Project.id == project_id).first()
         if project is None:
             raise not_found(f"project {project_id}")
-        name, author = project.name, m4b_author(project)
+        return project.name, m4b_author(project)
     finally:
         db.close()
+
+
+def _need_ffmpeg(what: str) -> None:
+    from ..export_audiobook import have_ffmpeg
+
     if not have_ffmpeg():
         raise HTTPException(
             status_code=503,
-            detail="ffmpeg is not installed — required for M4B export. Install ffmpeg and restart the server.",
+            detail=f"ffmpeg is not installed — required for {what}. Install ffmpeg and restart the server.",
         )
-    safe = re.sub(r"[^A-Za-z0-9._-]+", "_", name or "") or "book"
+
+
+def _start(project_id: str, filename: str, media_type: str, build) -> dict[str, Any]:
     job = {"id": uuid.uuid4().hex, "status": "running", "done": 0, "total": 0, "step": "Starting",
-           "error": None, "filename": f"{safe}.m4b", "path": None, "cancel": False}
+           "error": None, "filename": filename, "media_type": media_type, "path": None, "cancel": False}
     _jobs[job["id"]] = job
     # Held on the job: an unreferenced task can be collected mid-run.
-    job["task"] = asyncio.create_task(_run(job, project_id, name, author))
+    job["task"] = asyncio.create_task(_run(job, project_id, lambda: build(job)))
     return _public(job)
+
+
+@router.post("/v1/projects/{project_id}/export_m4b/start")
+async def start_export_m4b(project_id: str) -> dict[str, Any]:
+    name, author = _project(project_id)
+    _need_ffmpeg("M4B export")
+    return _start(project_id, f"{_safe(name, 'book').replace(' ', '_')}.m4b", "audio/mp4",
+                  lambda job: _m4b(job, project_id, name, author))
+
+
+@router.post("/v1/projects/{project_id}/export_chapters/start")
+async def start_export_chapters(project_id: str) -> dict[str, Any]:
+    name, _author = _project(project_id)
+    _need_ffmpeg("mastered chapters")
+    return _start(project_id, f"{_safe(name, 'book').replace(' ', '_')}_chapters.zip", "application/zip",
+                  lambda job: _chapters_zip(job, project_id))
 
 
 def _job(job_id: str) -> dict[str, Any]:
@@ -133,5 +207,5 @@ async def get_export_file(job_id: str) -> FileResponse:
         raise bad_request(f"export job {job_id} is {job['status']}")
     path = job["path"]
     _jobs.pop(job_id, None)
-    return FileResponse(path, media_type="audio/mp4", filename=job["filename"],
+    return FileResponse(path, media_type=job["media_type"], filename=job["filename"],
                         background=BackgroundTask(lambda: os.path.exists(path) and os.remove(path)))

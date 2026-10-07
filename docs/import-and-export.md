@@ -380,15 +380,22 @@ follows it — *Chapter 2 of 4 · Bigger Inside* as each chapter is joined and m
 *Encoding the book* — with **Cancel**, which stops after the chapter it is on. When the file is
 made, a **Save** dialog asks where to put it and what to call it (the book's title is filled
 in); the message after says where it went, with **Open folder**. Cancel the dialog and it says
-nothing was saved. **⬇ Chapter WAVs (zip)** saves the same way. (Until then the app saved
-nothing in the desktop window — the window ignores a browser-style download — and said
-"M4B exported." anyway.)
+nothing was saved. (Until then the app saved nothing in the desktop window — the window
+ignores a browser-style download — and said "M4B exported." anyway.)
+
+**⬇ Chapter WAVs (zip)** runs the same way, with the same strip, and saves a zip with two
+folders: `chapters/` — each chapter joined from its lines' takes in use (`01 Brass Rank.wav`)
+— and `masters/` — the same chapters mastered to the book's target, the audio the M4B is made
+from. (Until 2026-10-07 this button saved the project package instead — the book's data and
+each line's take — which is what Overview's project export is for.) A chapter that can't
+render stops it and says why, as the M4B does.
 
 **For other callers:** `POST /v1/projects/{project_id}/export_m4b/start` starts the job;
 `GET /v1/export_jobs/{id}` says `{status, done, total, step}`; `POST /v1/export_jobs/{id}/cancel`
 stops it between chapters; `GET /v1/export_jobs/{id}/file` hands over the finished `.m4b` once.
 `POST /v1/projects/{project_id}/export_m4b` still does it all in one request and returns the
-`.m4b`.
+`.m4b`. The chapter audio: `POST /v1/projects/{project_id}/export_chapters/start`, then the same
+`/v1/export_jobs/{id}` doors.
 
 1. `assemble_project()` renders every scene through the **production render path** (the same
    scene resolution and `render_core` the Studio Render tab uses), so the exported book sounds

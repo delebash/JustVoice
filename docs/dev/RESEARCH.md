@@ -664,8 +664,11 @@ its blast radius and the gaps.
   the 260 ms was measured — 10 ms windows under −60 dBFS (a per-sample −70 dBFS left a faint fade
   and the joins measured 440–480 ms). Through the app's path, fresh renders of lines 2, 7, 11:
   950 → 250, 870/880 → 260/270, 990 → 250 ms. Takes rendered before keep their gaps until
-  rendered again past the cache. Voice previews stream their pieces to the player one by one and
-  still hold the padding between them. — *measured, 2026-10-07*.
+  rendered again past the cache. Voice previews take the same seam since 2026-10-07
+  (`audio/chunked.join_pieces`; the stream holds each piece's trailing quiet back for the next
+  seam, `held_for_next_seam`, and gives exactly the line's join — tested): the POST preview's
+  join 990 → 260 ms, the stream's 870/880 → 260/270 ms. (was: "still hold the padding" — until
+  later on 2026-10-07.) — *measured, 2026-10-07*.
 - **Our audio.cpp copy joins a request's own pieces at 260 ms** (fork `a2d7c161`,
   `kokoro_tts/session.cpp` `piece_join_cut`): it cuts what is quieter than −70 dBFS on either
   side down to Kokoro's sentence pause and shifts word timings. Measured straight from the
@@ -681,10 +684,14 @@ its blast radius and the gaps.
   blob download — and WebView2 ignores `<a download>` on blob: URLs (JustWrite's `lib.rs` says so
   where it wires its own). The export said "M4B exported." either way. JustVoice now has
   JustWrite's `shell_save_file` and `saveFile`, byte-identical. — *code, 2026-10-07*.
-- **"⬇ Chapter WAVs (zip)" is the project package**, not chapter WAVs: book and cast data plus each
-  line's take in use (`audio/<chapter>/<line>.wav`); its `include_masters` is accepted and recorded
-  in the manifest, and nothing writes a master — yet Export's row says "per-chapter WAV + masters
-  (zip)". Not fixed. — *code, 2026-10-07* · `api/project_export_api.py`.
+- **"⬇ Chapter WAVs (zip)" is chapter audio since 2026-10-07**: an export job
+  (`POST /v1/projects/{id}/export_chapters/start`) zips `chapters/NN Title.wav` (joined, the
+  model's rate) and `masters/NN Title.wav` (mastered to the book's target). The Ninth Facet: 26 s,
+  279 MB; chapters 24 kHz at about −25.5 dBFS RMS, masters 44.1 kHz at −20.5, peaks −3.5 dB.
+  (was: the button saved the project package — book data and each line's take — while Export's
+  row said "per-chapter WAV + masters (zip)", until 2026-10-07.) The package
+  (`GET /v1/projects/{id}/export`) is Overview's; its `include_masters` is still accepted and
+  writes nothing. — *code + measured, 2026-10-07* · `api/export_jobs_api.py`.
 - **A render job's progress**: a line reads `running` from the moment the scheduler starts it
   (`render_jobs._rendering`) until the runner saves it (`completed`), fails it, or withdraws it
   (`pending`). `GET /v1/render_jobs/{id}` also returns `audio_seconds` (the finished lines'

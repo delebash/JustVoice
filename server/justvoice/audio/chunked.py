@@ -207,50 +207,66 @@ def _quiet_run(x: np.ndarray, sample_rate: int, *, from_end: bool) -> int:
     return int((n - 1 - loud[-1]) * w) if from_end else int(loud[0] * w)
 
 
+def join_pieces(a: np.ndarray, b: np.ndarray, sample_rate: int, crossfade_ms: int = 50) -> np.ndarray:
+    """One seam: piece `a` then piece `b`, as one array.
+
+    Where `a` ends and `b` begins in silence, that silence is cut down to
+    PIECE_JOIN_PAUSE_MS — half from each side, the rest from whichever has more
+    — and the two meet without a crossfade (silence against silence cannot
+    click). A join already that short, or a piece with no sound, is left as it
+    is, with the short crossfade. The one rule for a line's pieces and for a
+    streamed audition's (decided 2026-10-07).
+    """
+    a = np.asarray(a, dtype=np.float32)
+    b = np.asarray(b, dtype=np.float32)
+    if len(b) == 0:
+        return a
+    tail = _quiet_run(a, sample_rate, from_end=True)
+    head = _quiet_run(b, sample_rate, from_end=False)
+    if tail < len(a) and head < len(b) and (tail or head):
+        pause = int(sample_rate * PIECE_JOIN_PAUSE_MS / 1000)
+        if tail + head > pause:
+            keep_tail = min(tail, pause // 2)
+            keep_head = min(head, pause - keep_tail)
+            keep_tail = min(tail, pause - keep_head)
+            a = a[: len(a) - (tail - keep_tail)]
+            b = b[head - keep_head:]
+        return np.concatenate([a, b])
+    overlap = min(int(sample_rate * crossfade_ms / 1000), len(a), len(b))
+    if overlap > 0:
+        fade_out = np.linspace(1.0, 0.0, overlap, dtype=np.float32)
+        fade_in = np.linspace(0.0, 1.0, overlap, dtype=np.float32)
+        blended = a[len(a) - overlap:] * fade_out + b[:overlap] * fade_in
+        return np.concatenate([a[: len(a) - overlap], blended, b[overlap:]])
+    return np.concatenate([a, b])
+
+
+def held_for_next_seam(pcm: np.ndarray, sample_rate: int, crossfade_ms: int = 50) -> tuple[np.ndarray, np.ndarray]:
+    """A streamed piece split into what can go out now and what waits for the
+    next piece: its trailing quiet and one crossfade window before it, so
+    `join_pieces` can judge that seam whole."""
+    quiet = _quiet_run(pcm, sample_rate, from_end=True)
+    cut = max(0, len(pcm) - quiet - int(sample_rate * crossfade_ms / 1000))
+    return pcm[:cut], pcm[cut:]
+
+
 def concatenate_audio_chunks(
     chunks: List[np.ndarray],
     sample_rate: int,
     crossfade_ms: int = 50,
 ) -> np.ndarray:
-    """Concatenate audio arrays with a short crossfade to eliminate clicks.
+    """Concatenate audio arrays, each seam by `join_pieces`.
 
     Each chunk is expected to be a 1-D float32 ndarray at *sample_rate* Hz.
-    Where a piece ends and the next begins in silence, that silence is cut down
-    to PIECE_JOIN_PAUSE_MS — half from each side, the rest from whichever has
-    more — and the two meet without a crossfade (silence against silence
-    cannot click). A join already that short, or a piece with no sound, is
-    left as it is.
     """
     if not chunks:
         return np.array([], dtype=np.float32)
     if len(chunks) == 1:
         return chunks[0]
 
-    crossfade_samples = int(sample_rate * crossfade_ms / 1000)
-    pause = int(sample_rate * PIECE_JOIN_PAUSE_MS / 1000)
     result = np.array(chunks[0], dtype=np.float32, copy=True)
-
     for chunk in chunks[1:]:
         if len(chunk) == 0:
             continue
-        tail = _quiet_run(result, sample_rate, from_end=True)
-        head = _quiet_run(chunk, sample_rate, from_end=False)
-        if tail < len(result) and head < len(chunk) and (tail or head):
-            if tail + head > pause:
-                keep_tail = min(tail, pause // 2)
-                keep_head = min(head, pause - keep_tail)
-                keep_tail = min(tail, pause - keep_head)
-                result = result[: len(result) - (tail - keep_tail)]
-                chunk = chunk[head - keep_head:]
-            result = np.concatenate([result, np.asarray(chunk, dtype=np.float32)])
-            continue
-        overlap = min(crossfade_samples, len(result), len(chunk))
-        if overlap > 0:
-            fade_out = np.linspace(1.0, 0.0, overlap, dtype=np.float32)
-            fade_in = np.linspace(0.0, 1.0, overlap, dtype=np.float32)
-            result[-overlap:] = result[-overlap:] * fade_out + chunk[:overlap] * fade_in
-            result = np.concatenate([result, chunk[overlap:]])
-        else:
-            result = np.concatenate([result, chunk])
-
+        result = join_pieces(result, chunk, sample_rate, crossfade_ms)
     return result
