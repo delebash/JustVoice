@@ -14,7 +14,8 @@
 import { ref, computed, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import PageTaskStrips from "./PageTaskStrips.vue";
-import { pushToast, saveBlob } from "@delebash/llm-ui";
+import { openPath, pushToast, saveBlob } from "@delebash/llm-ui";
+import { exportM4bRun, savedMessage } from "../services/exportRun.js";
 import { projectsService } from "../services/projects.js";
 import { useCopy } from "../services/copy.js";
 import { masterLabel, projectMaster } from "../services/masterTargets.js";
@@ -76,18 +77,28 @@ const qcDurationLabel = computed(() => {
 // for putting a file on disk, native dialog where a host wired one, Downloads
 // otherwise.
 
+// What a save did, said plainly — where the file went, with Open folder; or that
+// nothing was saved (decided 2026-10-07: it said "M4B exported." either way).
+function sayWhereSaved(res, filename) {
+  const said = savedMessage(res, filename);
+  pushToast({
+    kind: said.kind, message: said.message, duration: said.folder ? 9000 : 5000,
+    ...(said.folder ? { action: { label: "Open folder", fn: () => openPath(said.folder) } } : {}),
+  });
+}
+
+// ⬇ Export M4B: a job the strip below follows — each chapter mastered, then the
+// encode (decided 2026-10-07) — then the Save dialog.
 async function exportM4B() {
   const p = props.project;
   if (!p || exportBusy.value) return;
   exportBusy.value = "m4b";
-  pushToast({ message: "Export M4B — rendering anything not cached, then muxing chapters…", kind: "info" });
   try {
-    const blob = await api.requestBlob(`/v1/projects/${p.id}/export_m4b`, { method: "POST" });
-    await saveBlob(blob, `${(p.name || "book").replace(/[^\w.-]+/g, "_")}.m4b`,
-      { title: "Save audiobook", filterName: "M4B audiobook", filterExt: "m4b" });
-    pushToast({ message: "M4B exported.", kind: "success" });
+    const { blob, filename } = await exportM4bRun(api, p);
+    sayWhereSaved(await saveBlob(blob, filename,
+      { title: "Save audiobook", filterName: "M4B audiobook", filterExt: "m4b" }), filename);
   } catch (e) {
-    pushToast({ message: `Export failed: ${e?.message || e}`, kind: "error", duration: 7000 });
+    if (e?.name !== "AbortError") pushToast({ message: `Export failed: ${e?.message || e}`, kind: "error", duration: 7000 });
   } finally {
     exportBusy.value = "";
   }
@@ -100,9 +111,9 @@ async function exportChapterWavs() {
   pushToast({ message: "Packaging per-chapter audio…", kind: "info" });
   try {
     const blob = await projectsService.exportZip(p.id, { includeAudio: true, includeMasters: true });
-    await saveBlob(blob, `${(p.name || "book").replace(/[^\w.-]+/g, "_")}.zip`,
-      { title: "Save chapter package", filterName: "Chapter package", filterExt: "zip" });
-    pushToast({ message: "Chapter package exported.", kind: "success" });
+    const filename = `${(p.name || "book").replace(/[^\w.-]+/g, "_")}.zip`;
+    sayWhereSaved(await saveBlob(blob, filename,
+      { title: "Save chapter package", filterName: "Chapter package", filterExt: "zip" }), filename);
   } catch (e) {
     pushToast({ message: `Export failed: ${e?.message || e}`, kind: "error", duration: 7000 });
   } finally {
@@ -175,7 +186,7 @@ async function copyShowNotes() {
         <UiButton intent="secondary" :loading="exportBusy === 'zip'" :disabled="!!exportBusy" :label="`⬇ ${copy.chapter.singular} WAVs (zip)`" @click="exportChapterWavs" />
         <UiButton v-if="project.project_type === 'podcast'" intent="secondary" label="📝 Show notes" title="Draft episode show notes from the segments (LLM)" @click="generateShowNotes" />
       </div>
-      <PageTaskStrips :features="['show-notes']" :meta="{ projectId: project.id }" />
+      <PageTaskStrips :features="['export-m4b', 'show-notes']" :meta="{ projectId: project.id }" />
       <div v-if="showNotes" class="exportp__notes">
         <div class="exportp__h" style="margin-bottom:6px">
           <strong>Show notes</strong>

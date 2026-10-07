@@ -125,6 +125,36 @@ GO:     given 2026-08-17
 
 ## The next build
 
+### Export shows its progress, and asks where to save (decided 2026-10-07)
+STATE:  DECIDED 2026-10-07 — "your rec on all go" (the user: "on export m4b and chapter is this a long
+        running process can we do an accurate progress bar? also should the expoort pop up with a
+        folder save location it just doe sit and there is no info to there user where the file is save
+        or option to pick a folder or file name"), on the proposal as shown: "Progress: '⬇ Export M4B'
+        is one long request. The server renders and masters every chapter, then encodes the whole book,
+        and only answers at the end. An honest progress bar needs the server to report as it goes:
+        chapter 3 of 4 mastered, then encoding. That's the same polling pattern Render now uses, shown
+        in the same strip." · "Saving: … JustVoice never switched it on (configureFileSave is never
+        called), and the save command it needs exists in JustWrite's app but not in ours. … Fix: switch
+        it on the same way JustWrite does. You get a Save dialog with folder and file name (the book's
+        title filled in), and afterwards the message says where the file went and offers to open that
+        folder. Same for the chapter WAV zip."
+WHY:    the export said "M4B exported." with no place named — even when nothing was saved — and showed
+        no progress for minutes.
+NOT:    —
+BUILT:  2026-10-07 — server `api/export_jobs_api.py` (start · poll · cancel between chapters · fetch once),
+        `assemble_project(progress=)`; client `services/exportRun.js` (+ test), `ExportPanel.vue` (the
+        strip, `sayWhereSaved` with Open folder, "nothing was saved" on cancel). Save: JustWrite's
+        `shell_save_file` in `src-tauri/src/lib.rs` (+ `base64`), `saveFile` in `services/native.js`,
+        `configureFileSave` in `main.js`. Docs import-and-export, whats-new; RESEARCH §3. Checked: a
+        real export job — each chapter in turn, then the encode, 49 s, a valid 34.2 min M4B with four
+        chapter marks; the panel's strip live, and in a browser "Saved The_Ninth_Facet.m4b to your
+        Downloads folder." Server tests (export 11), vitest 169, smoke passed, `cargo check`.
+        NOT checked: the Save dialog itself — it needs a click in the desktop window.
+        FINDING, not fixed: "⬇ Chapter WAVs (zip)" is the project package with each line's take, not
+        chapter WAVs or masters, while Export says "per-chapter WAV + masters (zip)" (RESEARCH §3).
+OPEN:   none.
+GO:     given 2026-10-07
+
 ### Long lines lose the ~1 s gaps where audio.cpp joins Kokoro's pieces (decided 2026-10-07)
 STATE:  DECIDED 2026-10-07 — "your rec go", on the finding as shown: "long narration lines (16–23 s) have
         pauses of about 0.9–1 s inside the take. There are 17 of them across 14 of Brass Rank's 78
@@ -139,8 +169,16 @@ BUILT:  2026-10-07 — our audio.cpp copy `a2d7c161` (`piece_join_cut`): verifie
         split (Kokoro lines over 240 characters, `render_core.py:883`) and its join
         (`audio/chunked.concatenate_audio_chunks`, 50 ms crossfade, padding kept) — audio.cpp never
         splits these lines. A fresh render through the app's path still had 950 / 870 / 880 / 990 ms.
-OPEN:   the same trim in our server's piece join — needs your word (the decided place was audio.cpp).
-GO:     given 2026-10-07 (audio.cpp); needed (our server's join)
+OPEN:   the same trim in our server's piece join — DECIDED 2026-10-07, "your rec on all go", on: "apply the
+        same trim in our server's piece join. Where two pieces meet, cut the quiet on both sides down to
+        260 ms, which is Kokoro's own pause at a sentence end … It only affects new renders … existing
+        lines need ↻ Re-render all per chapter" · Q1 fix it in our server's join — yes · Q2 keep the
+        audio.cpp change — keep. BUILT 2026-10-07: `audio/chunked.concatenate_audio_chunks`
+        (`PIECE_JOIN_PAUSE_MS` 260, quiet = 10 ms windows under −60 dBFS; silence meets silence with
+        no crossfade), tests in `test_chunked.py`; docs engines, whats-new. Checked live after a
+        restart, fresh renders of lines 2, 7, 11 through the app's path: 950 → 250, 870/880 →
+        260/270, 990 → 250 ms. Existing takes keep theirs until ↻ Re-render all.
+GO:     given 2026-10-07 (audio.cpp, and our server's join)
 
 ### Render all sits beside Render N chapters (decided 2026-10-07)
 STATE:  DECIDED 2026-10-07 — "your rec go" (the user, with a screenshot: "render all buttn should be next to

@@ -373,8 +373,22 @@ action emits one mastered WAV per chapter.
 
 ### Audiobook → M4B
 
-M4B assembly happens **on the JustVoice server** — one endpoint, one download, no other app
-involved. `POST /v1/projects/{project_id}/export_m4b` returns a finished `.m4b`.
+M4B assembly happens **on the JustVoice server**, no other app involved.
+
+**In the app** (Studio → Export → **⬇ Export M4B**, since 2026-10-07): a strip under the buttons
+follows it — *Chapter 2 of 4 · Bigger Inside* as each chapter is joined and mastered, then
+*Encoding the book* — with **Cancel**, which stops after the chapter it is on. When the file is
+made, a **Save** dialog asks where to put it and what to call it (the book's title is filled
+in); the message after says where it went, with **Open folder**. Cancel the dialog and it says
+nothing was saved. **⬇ Chapter WAVs (zip)** saves the same way. (Until then the app saved
+nothing in the desktop window — the window ignores a browser-style download — and said
+"M4B exported." anyway.)
+
+**For other callers:** `POST /v1/projects/{project_id}/export_m4b/start` starts the job;
+`GET /v1/export_jobs/{id}` says `{status, done, total, step}`; `POST /v1/export_jobs/{id}/cancel`
+stops it between chapters; `GET /v1/export_jobs/{id}/file` hands over the finished `.m4b` once.
+`POST /v1/projects/{project_id}/export_m4b` still does it all in one request and returns the
+`.m4b`.
 
 1. `assemble_project()` renders every scene through the **production render path** (the same
    scene resolution and `render_core` the Studio Render tab uses), so the exported book sounds

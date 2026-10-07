@@ -40,6 +40,7 @@ from .api import (
     channels_api,
     effect_presets_api,
     engines_api,
+    export_jobs_api,
     extraction_api,
     prefs_api,
     refine_lab_api,
@@ -303,6 +304,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     # Phase 4a backend (DESIGN_FREEZE §5)
     app.include_router(takes_api.router)
     app.include_router(render_jobs_api.router)
+    app.include_router(export_jobs_api.router)
     app.include_router(render_lines_api.router)
     app.include_router(channels_api.router)
     app.include_router(mcp_bindings_api.router)

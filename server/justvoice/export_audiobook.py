@@ -82,7 +82,7 @@ def project_scenes(project_id: str) -> list[Scene]:
 
 
 def assemble_project(
-    state, project_id: str, *, render_scene_fn=None, skip_unrenderable: bool = False,
+    state, project_id: str, *, render_scene_fn=None, skip_unrenderable: bool = False, progress=None,
 ) -> list[ChapterAudio]:
     """Render every scene of the project to a mastered WAV, in order.
 
@@ -101,6 +101,9 @@ def assemble_project(
     has chapters that aren't cast yet — dying on the first one would make it
     unusable for the whole middle of the job. The caller that skips is
     responsible for reporting what it skipped.
+
+    `progress(i, n, scene)` is told before each chapter renders (the export job's
+    "Chapter 2 of 4", 2026-10-07); raising from it stops the assembly there.
     """
     if render_scene_fn is None:
         from .api.render_chapter_api import render_scene_to_wav as render_scene_fn
@@ -108,7 +111,10 @@ def assemble_project(
     from .errors import ApiError
 
     out: list[ChapterAudio] = []
-    for scene in project_scenes(project_id):
+    scenes = project_scenes(project_id)
+    for i, scene in enumerate(scenes):
+        if progress is not None:
+            progress(i, len(scenes), scene)
         try:
             wav = render_scene_fn(state, scene.id)
         except ApiError:

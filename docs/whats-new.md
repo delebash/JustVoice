@@ -2,6 +2,13 @@
 
 ## v0.1.0
 
+- **Export asks where to save, and shows its progress (2026-10-07)** — **⬇ Export M4B**
+  now shows each chapter as it is mastered, then the encode, with Cancel; and both exports
+  open a **Save** dialog for the folder and file name and say where the file went, with
+  **Open folder**. Before, the desktop window saved nothing and said "exported" anyway.
+  Long lines' pieces also join at a natural sentence pause now (about a quarter second,
+  where a line over 240 characters used to hold a second of silence); lines already
+  rendered keep theirs until **↻ Re-render all** ([Import & export](import-and-export.md#audiobook--m4b))
 - **The pause between lines is the pause you hear, and a paragraph's lines join
   closer (2026-10-07)** — each take's own silence (Kokoro pads about a second per
   line) is trimmed as a chapter is joined, so 600 ms between lines plays as 600 ms,

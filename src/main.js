@@ -9,6 +9,7 @@ import {
   ConnectionError,
   configureServerApi,
   configureFamilyLabels,
+  configureFileSave,
   configureTestData,
   checkServer,
   installLlmUi,
@@ -23,6 +24,7 @@ import { attributionLabAdapter } from "./services/attributionLab.js";
 import { refineLabAdapter } from "./services/refineLab.js";
 import { LAB_TEST_ACTIONS, LAB_TEST_SOURCES } from "./services/labTestData.js";
 import { bootPrefs, ensureActiveProjectDefault } from "./services/prefs.js";
+import { saveFile } from "./services/native.js";
 import { loadDoc, hasDoc, titleForSlug } from "./services/helpDocs.js";
 import { useUiStore } from "./stores/ui.js";
 import { i18n } from "./i18n/index.js";
@@ -214,6 +216,14 @@ async function boot() {
   // the host supplies the content adapter. No full-pane reader / public docs
   // site yet, so onOpenFull / onOpenWeb are omitted (footer buttons stay hidden).
   configureHelp({ loadDoc, hasDoc, titleForSlug });
+
+  // The native "save as", wired once as in JustWrite (2026-10-07): every export goes
+  // through the kit's `saveBlob`, which opens the shell's Save dialog. Unwired, it fell
+  // back to a blob download that WebView2 ignores — the export saved nothing.
+  configureFileSave({
+    save: (blob, { filename, title, filterName, filterExt, defaultDir }) =>
+      saveFile({ blob, suggestedName: filename, title, filterName, filterExt, defaultDir }),
+  });
 
   const pinia = createPinia();
   app.use(pinia);

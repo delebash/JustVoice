@@ -218,3 +218,52 @@ def test_m4b_author_prefers_the_author_field():
     assert m4b_author(proj({"author": "  "}, "by Old Way")) == "Old Way"
     assert m4b_author(proj({}, "A novel")) is None
     assert m4b_author(proj(None)) is None
+
+
+def test_the_export_job_reports_each_chapter_then_hands_over_the_file(tmp_path, monkeypatch):
+    """2026-10-07: the M4B export as a job the Export panel follows — chapter by
+    chapter, then the encode — and the finished file fetched once."""
+    import time
+
+    with TestClient(create_app(data_dir=tmp_path)) as c:
+        pid = _seed(c)
+        steps: list[str] = []
+
+        def render(st, scene_id, **kw):
+            time.sleep(0.05)
+            return _wav(0.1, 0.5)
+
+        async def no_warm(*a, **k):
+            return None
+
+        monkeypatch.setattr("justvoice.api.render_chapter_api.render_scene_to_wav", render)
+        monkeypatch.setattr("justvoice.synth_scheduler.warm_lines", no_warm)
+        monkeypatch.setattr("justvoice.export_audiobook.have_ffmpeg", lambda: True)
+
+        def fake_run(argv, capture_output=True):
+            from pathlib import Path
+
+            Path(argv[-1]).write_bytes(b"M4B!")
+            return SimpleNamespace(returncode=0, stderr=b"")
+
+        monkeypatch.setattr("llm_runner.platform.procs.run", fake_run)
+        job = c.post(f"/v1/projects/{pid}/export_m4b/start").json()
+        for _ in range(200):
+            job = c.get(f"/v1/export_jobs/{job['id']}").json()
+            steps.append(job["step"])
+            if job["status"] != "running":
+                break
+            time.sleep(0.02)
+        assert job["status"] == "done", job
+        assert (job["done"], job["total"]) == (3, 3)          # two chapters, then the encode
+        assert any(s.startswith("Chapter 1 of 2") for s in steps)
+        r = c.get(f"/v1/export_jobs/{job['id']}/file")
+        assert r.status_code == 200 and r.content == b"M4B!"
+        assert c.get(f"/v1/export_jobs/{job['id']}").status_code == 404   # fetched once
+
+
+def test_the_export_job_says_when_ffmpeg_is_missing(client, monkeypatch):
+    pid = _seed(client)
+    monkeypatch.setattr("justvoice.export_audiobook.have_ffmpeg", lambda: False)
+    r = client.post(f"/v1/projects/{pid}/export_m4b/start")
+    assert r.status_code == 503 and "ffmpeg" in r.text

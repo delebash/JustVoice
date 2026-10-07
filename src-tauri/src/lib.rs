@@ -39,7 +39,9 @@ use std::process::{Child, Command};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
+use base64::Engine;
 use serde::Serialize;
+use tauri::ipc::{InvokeBody, Request};
 use tauri::AppHandle;
 use tauri_plugin_dialog::DialogExt;
 
@@ -538,6 +540,65 @@ async fn pick_directory(
     picked.into_path().ok().map(|p| p.display().to_string())
 }
 
+// ─── Generic binary save (Save-As) — the family's, from JustWrite (2026-10-07) ─
+// WebView2 ignores `<a download>` on blob: URLs, so an export that "downloaded"
+// saved nothing and said it had. Every export now routes here through the kit's
+// `saveBlob` (configureFileSave in main.js). Bytes ride the raw IPC body
+// (zero-copy); the suggested filename, the dialog title and one file-type filter
+// come in as base64 headers so non-ASCII names survive the trip. Byte-identical
+// to JustWrite's `shell_save_file`.
+
+#[derive(Serialize)]
+struct SaveOk {
+    ok: bool,
+    path: String,
+}
+
+#[tauri::command]
+async fn shell_save_file(
+    app: AppHandle,
+    request: Request<'_>,
+) -> Result<SaveOk, String> {
+    let InvokeBody::Raw(buffer) = request.body() else {
+        return Err("shell_save_file expects a raw binary body".into());
+    };
+
+    let headers = request.headers();
+    let decode_b64_header = |key: &str| -> Option<String> {
+        let raw = headers.get(key)?.to_str().ok()?;
+        let bytes = base64::engine::general_purpose::STANDARD.decode(raw).ok()?;
+        String::from_utf8(bytes).ok()
+    };
+
+    let suggested = decode_b64_header("x-save-name").unwrap_or_else(|| "download".to_string());
+    let title = decode_b64_header("x-save-title").unwrap_or_else(|| "Save file".to_string());
+    let filter_name = decode_b64_header("x-filter-name").unwrap_or_else(|| "File".to_string());
+    let filter_ext = decode_b64_header("x-filter-ext").unwrap_or_default();
+    let default_dir = decode_b64_header("x-save-dir").unwrap_or_default();
+
+    let mut dialog = app
+        .dialog()
+        .file()
+        .set_title(&title)
+        .set_file_name(&suggested);
+    if !default_dir.is_empty() {
+        dialog = dialog.set_directory(&default_dir);
+    }
+    if !filter_ext.is_empty() {
+        let exts: Vec<&str> = filter_ext.split(',').filter(|s| !s.is_empty()).collect();
+        if !exts.is_empty() {
+            dialog = dialog.add_filter(&filter_name, &exts);
+        }
+    }
+
+    let Some(file_path) = dialog.blocking_save_file() else {
+        return Err("cancelled".into());
+    };
+    let path_buf: PathBuf = file_path.into_path().map_err(|e| e.to_string())?;
+    fs::write(&path_buf, buffer).map_err(|e| e.to_string())?;
+    Ok(SaveOk { ok: true, path: path_buf.display().to_string() })
+}
+
 #[tauri::command]
 fn storage_get_root(app: AppHandle) -> StorageRoot {
     let root = resolve_data_root(&app);
@@ -922,6 +983,7 @@ pub fn run() {
             restart_server,
             set_keep_server_running,
             pick_directory,
+            shell_save_file,
             storage_get_root,
             storage_relocate,
             list_audio_output_devices,

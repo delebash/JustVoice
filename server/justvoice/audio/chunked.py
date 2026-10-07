@@ -181,6 +181,32 @@ def _safe_hard_cut(segment: str, max_chars: int) -> int:
     return cut
 
 
+#: Where two pieces of one line meet, the quiet on both sides is cut down to this
+#: (decided 2026-10-07): each piece arrives with its model's own padding — Kokoro
+#: ~715 ms after and ~265 ms before — so a long line held ~0.9-1 s gaps where it was
+#: cut, against the ~260 ms Kokoro pauses at a sentence end inside a piece (median of
+#: 214 on The Ninth Facet). "Quiet" is judged the way that pause was measured: 10 ms
+#: windows under PIECE_JOIN_SILENCE_DBFS. A per-sample −70 dBFS left a faint fade on
+#: top, and the joins measured 440-480 ms.
+PIECE_JOIN_PAUSE_MS = 260
+PIECE_JOIN_SILENCE_DBFS = -60.0
+_WINDOW_MS = 10
+
+
+def _quiet_run(x: np.ndarray, sample_rate: int, *, from_end: bool) -> int:
+    """How many samples at the start (or end) of `x` lie in quiet 10 ms windows."""
+    w = max(1, int(sample_rate * _WINDOW_MS / 1000))
+    n = len(x) // w
+    if n == 0:
+        return len(x)
+    frames = x[: n * w].reshape(n, w) if not from_end else x[len(x) - n * w:].reshape(n, w)
+    rms = np.sqrt((frames.astype(np.float64) ** 2).mean(axis=1))
+    loud = np.nonzero(rms > 10 ** (PIECE_JOIN_SILENCE_DBFS / 20))[0]
+    if len(loud) == 0:
+        return len(x)
+    return int((n - 1 - loud[-1]) * w) if from_end else int(loud[0] * w)
+
+
 def concatenate_audio_chunks(
     chunks: List[np.ndarray],
     sample_rate: int,
@@ -189,6 +215,11 @@ def concatenate_audio_chunks(
     """Concatenate audio arrays with a short crossfade to eliminate clicks.
 
     Each chunk is expected to be a 1-D float32 ndarray at *sample_rate* Hz.
+    Where a piece ends and the next begins in silence, that silence is cut down
+    to PIECE_JOIN_PAUSE_MS — half from each side, the rest from whichever has
+    more — and the two meet without a crossfade (silence against silence
+    cannot click). A join already that short, or a piece with no sound, is
+    left as it is.
     """
     if not chunks:
         return np.array([], dtype=np.float32)
@@ -196,10 +227,22 @@ def concatenate_audio_chunks(
         return chunks[0]
 
     crossfade_samples = int(sample_rate * crossfade_ms / 1000)
+    pause = int(sample_rate * PIECE_JOIN_PAUSE_MS / 1000)
     result = np.array(chunks[0], dtype=np.float32, copy=True)
 
     for chunk in chunks[1:]:
         if len(chunk) == 0:
+            continue
+        tail = _quiet_run(result, sample_rate, from_end=True)
+        head = _quiet_run(chunk, sample_rate, from_end=False)
+        if tail < len(result) and head < len(chunk) and (tail or head):
+            if tail + head > pause:
+                keep_tail = min(tail, pause // 2)
+                keep_head = min(head, pause - keep_tail)
+                keep_tail = min(tail, pause - keep_head)
+                result = result[: len(result) - (tail - keep_tail)]
+                chunk = chunk[head - keep_head:]
+            result = np.concatenate([result, np.asarray(chunk, dtype=np.float32)])
             continue
         overlap = min(crossfade_samples, len(result), len(chunk))
         if overlap > 0:

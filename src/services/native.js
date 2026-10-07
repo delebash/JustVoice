@@ -35,6 +35,33 @@ export function pickDirectory({ title, defaultPath } = {}) {
   return invoke("pick_directory", { title, defaultPath }).catch(() => null);
 }
 
+/**
+ * Save-as for binary blobs (2026-10-07, from JustWrite — the same function). WebView2
+ * ignores `<a download>` on blob: URLs, so an export that "downloaded" saved nothing;
+ * every export now comes through here via the kit's `saveBlob` (configureFileSave in
+ * main.js). Bytes ride the raw IPC body (zero-copy); the suggested filename, dialog
+ * title and a single file-type filter come as base64 headers so non-ASCII names
+ * survive transport. Resolves `{ ok, path }`, or null if the user cancelled.
+ */
+export async function saveFile({ blob, suggestedName, title, filterName, filterExt, defaultDir }) {
+  if (!hasShell()) return null;
+  const buf = await blob.arrayBuffer();
+  const bytes = new Uint8Array(buf);
+  const b64 = (s) => btoa(unescape(encodeURIComponent(s)));
+  const headers = {};
+  if (suggestedName) headers["x-save-name"] = b64(suggestedName);
+  if (title) headers["x-save-title"] = b64(title);
+  if (filterName) headers["x-filter-name"] = b64(filterName);
+  if (filterExt) headers["x-filter-ext"] = b64(filterExt);
+  if (defaultDir) headers["x-save-dir"] = b64(defaultDir);
+  try {
+    return await invoke("shell_save_file", bytes, { headers });
+  } catch (e) {
+    if (String(e || "") === "cancelled") return null;
+    throw e;
+  }
+}
+
 // ─── The portable data root ──────────────────────────────────────────
 
 /** `{ root, default, portable }`, or null outside the shell. */

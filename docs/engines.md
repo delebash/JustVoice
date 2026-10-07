@@ -575,9 +575,15 @@ process's own share of the card (about 100 MB). The full story is in
 
 #### Long text, cut into pieces
 
-Long text is split at sentence boundaries, rendered per piece, and joined with a
-short crossfade. You don't need to do anything — the server sees long input and
-switches paths on its own.
+Long text is split at sentence boundaries, rendered per piece, and joined. You
+don't need to do anything — the server sees long input and switches paths on its
+own. Where two pieces meet, the silence each model leaves at a piece's end and
+start (Kokoro: about three quarters of a second after, a quarter before) is cut
+down to **260 ms** — Kokoro's own pause at a sentence end — so a long line no
+longer holds a second of silence where it was cut (since 2026-10-07; a line
+rendered before keeps its gap until it is rendered again — **↻ Re-render all** on
+the chapter's Render page). Where a piece ends mid-sound, the two still meet with
+the short crossfade.
 
 How long a piece may be depends on the model, as above: **200 characters** for
 Qwen3-TTS CustomVoice and Base and for VoxCPM2, **240** for Kokoro (its own

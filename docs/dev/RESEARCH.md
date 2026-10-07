@@ -658,14 +658,33 @@ its blast radius and the gaps.
   them in `audio/chunked.concatenate_audio_chunks` with a 50 ms crossfade, each piece keeping its
   ~715 ms tail and ~265 ms lead. Kokoro's own pause at a sentence end inside a piece: median
   260 ms (middle half 210–310, 214 pauses); an em dash in one piece: 170 ms. audio.cpp never
-  splits these lines (each piece is under its budget). Not fixed in the app's path. (was: "where
-  audio.cpp cut Kokoro's text … and joined them" — wrong, until later on 2026-10-07.) —
-  *measured, 2026-10-07*.
+  splits these lines (each piece is under its budget). (was: "where audio.cpp cut Kokoro's text …
+  and joined them" — wrong, until later on 2026-10-07.) Since 2026-10-07
+  `concatenate_audio_chunks` cuts the quiet at a piece join down to 260 ms, quiet judged the way
+  the 260 ms was measured — 10 ms windows under −60 dBFS (a per-sample −70 dBFS left a faint fade
+  and the joins measured 440–480 ms). Through the app's path, fresh renders of lines 2, 7, 11:
+  950 → 250, 870/880 → 260/270, 990 → 250 ms. Takes rendered before keep their gaps until
+  rendered again past the cache. Voice previews stream their pieces to the player one by one and
+  still hold the padding between them. — *measured, 2026-10-07*.
 - **Our audio.cpp copy joins a request's own pieces at 260 ms** (fork `a2d7c161`,
   `kokoro_tts/session.cpp` `piece_join_cut`): it cuts what is quieter than −70 dBFS on either
   side down to Kokoro's sentence pause and shifts word timings. Measured straight from the
   runtime on a 423-character line: the join 950 ms → ~250 ms. Only reached by a request longer
-  than audio.cpp's own budget, which the app never sends. — *measured, 2026-10-07*.
+  than audio.cpp's own budget, which the app never sends; its threshold is still per-sample
+  −70 dBFS, not the server join's −60 dBFS windows. — *measured, 2026-10-07*.
+- **The M4B export, as a job** (`api/export_jobs_api.py`): The Ninth Facet — 4 chapters at ~6 s
+  each (every line already had its take), then ~23 s encoding; 49 s, a 31.7 MB, 34.2 min M4B with
+  the four chapter titles. The file is handed over once, then the job is gone. — *measured,
+  2026-10-07*.
+- **The desktop window saved no export until 2026-10-07**: the kit's `saveBlob` opens a Save dialog
+  only when the host wired `configureFileSave`, which JustVoice never did, so it fell back to a
+  blob download — and WebView2 ignores `<a download>` on blob: URLs (JustWrite's `lib.rs` says so
+  where it wires its own). The export said "M4B exported." either way. JustVoice now has
+  JustWrite's `shell_save_file` and `saveFile`, byte-identical. — *code, 2026-10-07*.
+- **"⬇ Chapter WAVs (zip)" is the project package**, not chapter WAVs: book and cast data plus each
+  line's take in use (`audio/<chapter>/<line>.wav`); its `include_masters` is accepted and recorded
+  in the manifest, and nothing writes a master — yet Export's row says "per-chapter WAV + masters
+  (zip)". Not fixed. — *code, 2026-10-07* · `api/project_export_api.py`.
 - **A render job's progress**: a line reads `running` from the moment the scheduler starts it
   (`render_jobs._rendering`) until the runner saves it (`completed`), fails it, or withdraws it
   (`pending`). `GET /v1/render_jobs/{id}` also returns `audio_seconds` (the finished lines'
