@@ -1,9 +1,9 @@
 <!-- SPDX-License-Identifier: MIT -->
 # The family moves to Electron and a Node server — the plan
 
-**Status:** written 2026-10-07, with step 0 (the spikes) done; **waiting for approval**. No app
-code changes until the plan is approved (TASKS "The family moves to Electron and a Node server").
-The questions to answer with the approval are in §10.
+**Status:** **approved 2026-10-07** ("your rec on all go", on §10's nine leans — TASKS "The
+family moves to Electron and a Node server", word for word). Step 0 is done; step 1 has its go;
+steps 2–5 each need their own (§10 Q1).
 
 **Records:** the study, with every ruling as shown —
 [`2026-10-05-electron-node-study.md`](2026-10-05-electron-node-study.md) (read §9 before any
@@ -895,9 +895,9 @@ server/just_ai_i18n_docgen/app.py:256:    engine = create_engine(f"sqlite:///{da
 
 ---
 
-## 10 · Questions to answer with the approval
+## 10 · The questions, answered with the approval
 
-Each has a lean; nothing here is decided until you say.
+All nine decided 2026-10-07 as leaned ("your rec on all go").
 
 1. **Does approving the plan start step 1, with each later step getting its own go?**
    - Lean: yes. The steps are weeks apart, and each one may change the plan for the next.

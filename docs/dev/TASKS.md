@@ -2177,11 +2177,32 @@ THEN:   DECIDED 2026-10-07 — the user: "lets do electron adn get rid of python
         byte-identical to what Python writes (dates, JSON), using Drizzle's custom column types.
         3. The deadlock case can't happen. 4. Speed. 5. One real store ported both ways, so you
         can see the code side by side. Then I'd recommend from the results."
-OPEN:   the plan's approval, with its nine questions (plan §10). Q3's test is done (plan §1.5:
-        Drizzle and plain SQL both pass every check; the lean stays plain SQL). (Q8's last part answered — "no i dont have a mack": iOS builds
-        need macOS, so how iOS gets built is open for the phone plan; Android builds on Windows.)
-GO:     the study and the rulings given 2026-10-05; the spikes and the plan given 2026-10-07; the
-        move itself needs the plan's approval.
+        APPROVED 2026-10-07 — the plan (`docs/plans/2026-10-07-electron-node-plan.md`, its §10
+        as it stood), the user: "your rec on all go", on the nine questions as shown: "1.
+        Approving the plan starts step 1, and each later step gets its own go? Lean: yes. The
+        steps are weeks apart, and each may change the next." · "2. Use better-sqlite3 as the
+        database driver? Lean: yes. It's twice as fast as the built-in node:sqlite and its API is
+        stable." · "3. Plain SQL through a small kit helper rather than Kysely? Lean: plain SQL."
+        — after the test: "plain SQL is still my recommendation for question 3. Drizzle needed
+        the same work and added nothing we'd use." · "4. Write stored and hashed text exactly as
+        Python does — JSON spacing, \uXXXX escapes, 1.0, six-digit times? Lean: yes. Then the old
+        and new databases can be compared value for value, and the render cache survives." —
+        with the test's finding: "the JSON writer has to learn which fields are floats from the
+        field types" · "5. TypeBox rather than zod for checking request data? Lean: TypeBox.
+        Fastify checks requests against JSON Schema natively, and TypeBox writes it directly." ·
+        "6. While the kit's server exists in both Python and JavaScript, do kit server changes
+        land in both? Lean: yes. The alternative is freezing kit server features for months." ·
+        "7. During an app's freeze, does a server bug fix land in both? Lean: yes. Otherwise the
+        route comparison flags the fix as a difference." · "8. Take a new database's schema from
+        the one Python creates today? Lean: yes. That keeps fresh installs exactly the same shape
+        too." · "9. When a dev data folder is renamed, rewrite the saved paths that point into
+        it? Lean: yes, with a one-off command I run by hand with the apps closed. It isn't
+        shipped code."
+OPEN:   step 1 — the audio math into our audio.cpp (plan §3). Steps 2–5 each need their own go.
+        (Q8's last part answered — "no i dont have a mack": iOS builds need macOS, so how iOS
+        gets built is open for the phone plan; Android builds on Windows.)
+GO:     the study and the rulings given 2026-10-05; the spikes and the plan given 2026-10-07;
+        the plan approved 2026-10-07, which is step 1's go. Steps 2–5: each needs its own.
 
 ### The header and Script hear an AI-model load made anywhere
 STATE:  DECIDED 2026-10-05 — "your rec go" on, as shown: "1. The header reads the kit's shared
