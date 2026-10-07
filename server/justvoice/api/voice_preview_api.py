@@ -363,7 +363,7 @@ async def synth_candidate(
         channels = out.channels
     else:
         from ..engines.manager import get_manager
-        from ..synth_scheduler import get_scheduler
+        from ..synth_scheduler import get_scheduler, work_owner
 
         mgr = get_manager()
 
@@ -388,7 +388,8 @@ async def synth_candidate(
                 return audio_bytes, sr, ch
             return write_wav_container(audio_bytes, sr, ch), sr, ch
 
-        handle = get_scheduler().submit([(body.engine, _do)], interactive=True)
+        handle = get_scheduler().submit([(body.engine, _do)], interactive=True,
+                                        owner=work_owner("a voice preview"))
         await handle.wait_async()
         if handle.error is not None:
             from ..engines.manager import TermsRequired

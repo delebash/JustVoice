@@ -19,7 +19,8 @@
 // state in the run (pending · running · completed · failed), the line rendering
 // now ({block_id, n, speaker}) and how many are done — the chapter page lights
 // that line and re-reads its lines as each lands — and the strip's figures:
-// audio made, × real time, time left.
+// audio made, × real time, time left. While none of its lines has started, it
+// carries what is ahead of it in the queue (`waiting`), and the strip says so.
 
 import { withAiTask } from "@delebash/llm-ui";
 
@@ -77,12 +78,28 @@ export function runFigures(job, elapsed) {
   return out;
 }
 
-/** One poll of a run, onto its task: the line states, the line rendering now, the figures. */
+/**
+ * What a waiting run waits for — the first thing ahead of it in the queue
+ * (decided 2026-10-07): "waiting — 2 · Bigger Inside is ahead: 40 lines on
+ * Chatterbox Turbo" for a chapter's render, "waiting — the M4B export is
+ * rendering 12 lines first" for other work. "" when nothing is ahead.
+ */
+export function waitingText(waiting) {
+  const g = waiting?.groups?.[0];
+  if (!g) return "";
+  const n = `${g.lines.toLocaleString()} line${g.lines === 1 ? "" : "s"}`;
+  return g.kind === "chapter"
+    ? `waiting — ${g.label} is ahead: ${n}${g.model ? ` on ${g.model}` : ""}`
+    : `waiting — ${g.label} is rendering ${n} first`;
+}
+
+/** One poll of a run, onto its task: the line states, the line rendering now, what it waits for, the figures. */
 function report(task, job, startedAt) {
   task.update({
     render: {
       lines: Object.fromEntries((job.blocks || []).map((b) => [b.block_id, b.status])),
       current: job.current?.[0] || null,
+      waiting: job.waiting || null,
       done: job.completed_blocks || 0,
     },
   });

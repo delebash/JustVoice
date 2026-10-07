@@ -2,6 +2,11 @@
 
 ## v0.1.0
 
+- **A waiting render says what it is waiting for (2026-10-07)** — a render held
+  behind other work showed every line *queued* and nothing else; its strip now
+  says what is ahead: *waiting — 2 · Bigger Inside is ahead: 40 lines on
+  Chatterbox Turbo*, or *waiting — the M4B export is rendering 12 lines first*
+  ([Studio → A render's progress](studio.md#a-renders-progress))
 - **Render's chapter list pauses and plays on (2026-10-07)** — a finished chapter's
   **▶ Play** becomes **⏸ Pause**, with a seek bar in its row, like a take's on the
   chapter's page; it had a player of its own before. The project export (Overview) no

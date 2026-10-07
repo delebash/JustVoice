@@ -18,6 +18,11 @@ submit result-bearing items and re-raise the item's error.
 A set's remaining items are withdrawn on its first failure (parity with the
 sequential loops, which abort on first error). Cancelling a set withdraws
 its pending items; an in-flight item finishes — line-boundary semantics.
+
+Every set says who it is for (`owner`: a label and a kind — a chapter's render
+or other work), so a render held behind another model's lines can say why
+(`ahead`, decided 2026-10-07): "waiting — 2 · Bigger Inside is ahead: 40 lines
+on Chatterbox Turbo".
 """
 
 from __future__ import annotations
@@ -25,6 +30,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import threading
+from collections import deque
 from dataclasses import dataclass
 from typing import Any, Callable
 
@@ -78,6 +84,8 @@ class SynthScheduler:
         self._handles: dict[int, SetHandle] = {}
         self._remaining: dict[int, int] = {}
         self._interactive: set[int] = set()
+        self._owners: dict[int, dict] = {}    # set id → {"label", "kind"} (2026-10-07)
+        self._running: _Item | None = None     # the item the worker is on
         self._next_set = 1
         self._next_order = 1
         self._current_engine: str | None = None
@@ -94,10 +102,14 @@ class SynthScheduler:
         specs: list[tuple[str, Callable[[], Any]]],
         *,
         interactive: bool = False,
+        owner: dict | None = None,
     ) -> SetHandle:
         """`specs` = (engine_id, zero-arg callable) per line, position order.
         The engine id is only a grouping key — an unresolvable voice submits
-        under a sentinel key and its callable raises the real error."""
+        under a sentinel key and its callable raises the real error. `owner`
+        names who the set is for — `{"label": "2 · Bigger Inside", "kind":
+        "chapter"}` or `{"label": "the M4B export", "kind": "work"}` — for
+        `ahead`; a set without one is "other work"."""
         with self._wake:
             set_id = self._next_set
             self._next_set += 1
@@ -112,6 +124,7 @@ class SynthScheduler:
             self._remaining[set_id] = len(items)
             if interactive:
                 self._interactive.add(set_id)
+            self._owners[set_id] = owner or {"label": "other work", "kind": "work"}
             self._pending.extend(items)
             if not items:
                 self._finish_locked(set_id)
@@ -133,6 +146,54 @@ class SynthScheduler:
                 self._remaining[set_id] -= dropped
             if self._remaining.get(set_id, 0) <= 0:
                 self._finish_locked(set_id)
+
+    # ── what is ahead ────────────────────────────────────────────────
+
+    def _order_locked(self) -> list[_Item]:
+        """The pending items in the order the worker will take them, if nothing
+        else arrives — `_pick_locked`'s rule run to the end: interactive first,
+        then the current engine's lines, then the engine of the oldest line."""
+        interactive = sorted((i for i in self._pending if i.set_id in self._interactive), key=lambda i: i.order)
+        out = list(interactive)
+        current = interactive[-1].engine_id if interactive else self._current_engine
+        by_engine: dict[str, deque] = {}
+        for item in sorted((i for i in self._pending if i.set_id not in self._interactive), key=lambda i: i.order):
+            by_engine.setdefault(item.engine_id, deque()).append(item)
+        oldest = deque(sorted((q[0] for q in by_engine.values()), key=lambda i: i.order))
+        while by_engine:
+            if current not in by_engine:
+                while oldest[0].engine_id not in by_engine:
+                    oldest.popleft()
+                current = oldest.popleft().engine_id
+            out.extend(by_engine.pop(current))
+        return out
+
+    def ahead(self, set_ids) -> dict | None:
+        """What runs before the next line of these sets: `{"lines": n,
+        "groups": [{"label", "kind", "engine", "lines"}, …]}` in the order they
+        run, the line the worker is on first. None while one of the sets' own
+        lines is running, or when none is waiting (2026-10-07)."""
+        mine = set(set_ids)
+        with self._lock:
+            if self._running is not None and self._running.set_id in mine:
+                return None
+            before: list[_Item] = [self._running] if self._running is not None else []
+            for item in self._order_locked():
+                if item.set_id in mine:
+                    break
+                before.append(item)
+            else:
+                return None
+            groups: list[dict] = []
+            for item in before:
+                owner = self._owners.get(item.set_id) or {"label": "other work", "kind": "work"}
+                last = groups[-1] if groups else None
+                if last and last["label"] == owner["label"] and last["engine"] == item.engine_id:
+                    last["lines"] += 1
+                else:
+                    groups.append({"label": owner["label"], "kind": owner["kind"],
+                                   "engine": item.engine_id, "lines": 1})
+            return {"lines": len(before), "groups": groups}
 
     # ── worker ───────────────────────────────────────────────────────
 
@@ -200,11 +261,13 @@ class SynthScheduler:
                     self._wake.wait()
                 self._set_busy_locked(True)
                 item = self._pick_locked()
+                self._running = item
             try:
                 item.result = item.fn()
             except BaseException as e:  # noqa: BLE001 — recorded per item, re-raised at the submitter
                 item.error = e
             with self._wake:
+                self._running = None
                 self._remaining[item.set_id] -= 1
                 handle = self._handles.get(item.set_id)
                 if item.error is not None and handle is not None and handle.error is None:
@@ -220,6 +283,7 @@ class SynthScheduler:
         handle = self._handles.pop(set_id, None)
         self._remaining.pop(set_id, None)
         self._interactive.discard(set_id)
+        self._owners.pop(set_id, None)
         if handle is not None:
             handle.done.set()
 
@@ -227,18 +291,18 @@ class SynthScheduler:
 # ── warm-set helpers (the multi-line producers' door) ─────────────────
 
 
-async def warm_specs(specs: list[tuple[str, Callable[[], Any]]]) -> None:
+async def warm_specs(specs: list[tuple[str, Callable[[], Any]]], *, owner: dict | None = None) -> None:
     """Submit one advisory warm set and wait. Failures are logged, not
     raised — the caller's own render loop is the error surface (§7d)."""
     if not specs:
         return
-    handle = get_scheduler().submit(specs)
+    handle = get_scheduler().submit(specs, owner=owner)
     await handle.wait_async()
     if handle.error is not None:
         log.info("warm set finished early (the render loop surfaces it): %s", handle.error)
 
 
-async def warm_lines(state, line_kwargs: list[dict]) -> None:
+async def warm_lines(state, line_kwargs: list[dict], *, owner: dict | None = None) -> None:
     """Warm the render cache for these render_line calls, engine-grouped.
     Each kwargs dict must be EXACTLY what the assembly loop will pass —
     same args, same cache key, guaranteed hit."""
@@ -248,7 +312,18 @@ async def warm_lines(state, line_kwargs: list[dict]) -> None:
     specs: list[tuple[str, Callable[[], Any]]] = []
     for kw in line_kwargs:
         specs.append((model_key(state, kw["voice"]), lambda kw=kw: render_line(state, **kw)))
-    await warm_specs(specs)
+    await warm_specs(specs, owner=owner)
+
+
+def chapter_owner(scene) -> dict:
+    """A chapter's render, as Render names it: "2 · Bigger Inside"."""
+    title = getattr(scene, "title", None) or f"Chapter {scene.position + 1}"
+    return {"label": f"{scene.position + 1} · {title}", "kind": "chapter"}
+
+
+def work_owner(label: str) -> dict:
+    """Other work: "the M4B export", "a voice preview"."""
+    return {"label": label, "kind": "work"}
 
 
 # ── singleton ─────────────────────────────────────────────────────────

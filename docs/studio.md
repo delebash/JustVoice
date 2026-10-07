@@ -1042,6 +1042,16 @@ read *queued*. The page fills in as each line lands — its counts, the chips
 doesn't scroll on its own; click the line's name on the strip to bring it into
 view.
 
+Speech renders one line at a time, and it finishes every line waiting on the
+model that is already loaded before it loads another — so it isn't swapping
+models back and forth. A render can therefore wait behind other work: another
+chapter's render, an export, a preview. While none of its own lines has started,
+the strip says what it is waiting for, in place of the line's name —
+*waiting — 2 · Bigger Inside is ahead: 40 lines on Chatterbox Turbo*, or
+*waiting — the M4B export is rendering 12 lines first* — and every line still
+reads *queued*. When several things are ahead, it names the first. As soon as
+its first line starts, the strip names that line again.
+
 ### A chapter's lines
 
 One row per line that is heard: **Speaker**, **Model**, **Text**, **Can be

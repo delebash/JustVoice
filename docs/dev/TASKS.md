@@ -125,6 +125,61 @@ GO:     given 2026-08-17
 
 ## The next build
 
+### Render says what a waiting render is waiting for (decided 2026-10-07)
+STATE:  DECIDED 2026-10-07 — "your rec go", on the proposal as shown: "Why it waits: speech renders one
+        line at a time from one queue. The queue finishes every line on the model that's already loaded
+        before it switches. So a chapter whose voices use a different model sits there with every line
+        'queued' and no reason given. What you'd see: while nothing in the run has started, the strip
+        shows the reason where the line name normally is: 'waiting — 2 · Bigger Inside is ahead: 40
+        lines on Chatterbox Turbo' · 'waiting — the M4B export is rendering 12 lines first'. Once its
+        own lines start, the strip goes back to 'line N · Speaker'. How it would work: every piece of
+        work sent to the queue says who it's for: a chapter render, an export or a preview. A render's
+        status then reports what is ahead of it and on which model, only while none of its own lines is
+        running. Not included: a model that is still loading (20–50 s). That shows today as line 1
+        'rendering…', and I'd need to find out how the app can detect a load first." · Q1 the wording —
+        yes · Q2 every kind of work named (chapter renders, exports, previews) — yes · Q3 model loading
+        researched next, as its own item — yes.
+WHY:    a render held behind another model's lines showed every line queued and no reason
+        (the FINDING "the synth scheduler has no UI at all", 2026-08-15).
+NOT:    model loading in this build (Q3: researched next, its own item).
+BUILT:  2026-10-07 — server: `synth_scheduler` (every set's `owner` — `chapter_owner` / `work_owner`;
+        `ahead(set_ids)` runs the pick rule to the end; the line running counts first), all ten
+        senders name theirs (render jobs: the chapter, or the book across chapters; exports, ACX
+        check, voice-line export, chapter render, a line's take, Generate, persona and voice
+        previews); `render_jobs._waiting` → `GET /v1/render_jobs/{id}` `waiting` (models by name)
+        while a job runs. Client: `renderRun.waitingText` ("waiting — 2 · Bigger Inside is ahead: 40
+        lines on Chatterbox Turbo" / "waiting — the M4B export is rendering 12 lines first"; the
+        first thing ahead, as approved), on the task as `render.waiting`, shown in the strip in place
+        of the line on the chapter list and the chapter page. Tests: `test_synth_scheduler.py` (3),
+        `test_render_jobs.py` (1), `renderRun.test.js` (3). Docs studio (A render's progress),
+        whats-new; RESEARCH §3. Live, a temporary two-chapter book (deleted after): chapter 2's
+        ▶ Render on the chapter list read "waiting — 1 · First is ahead: 30 lines on Kokoro" down to
+        "1 line", then "line 1 · Narrator" … as its own lines ran; no page errors. Found on the way
+        (RESEARCH §3, not fixed): a deleted book's render keeps going — its lines render and each
+        fails to save; a chapter page's run greys out another chapter's buttons there.
+        Q3 researched (RESEARCH §3 "A render's model loads inside its first line"); the proposal
+        is with the user.
+OPEN:   none for this build; model loading — a proposal, needs its own go.
+GO:     given 2026-10-07
+
+### Analyze with each speaker's description in its cast list — tested first (decided 2026-10-07)
+STATE:  DECIDED 2026-10-07 — "your rec go", on: "7. Speaker descriptions in Analyze — needs your go. My
+        recommendation is to test it first. I'd run Analyze on the 30 lines we have right answers for,
+        once as it is and once with each speaker's description, then show you both scores." The 30
+        lines were the second look's set (`docs/plans/2026-10-05-second-look-test.md`); the main
+        Analyze answers every line of a keyed chapter, so it is scored on all of them, those 30 among
+        them. Test only — the build is the user's call on the scores (the FINDING "the analyze prompt
+        gets id + name and nothing else").
+BUILT:  2026-10-07 — the test (`eval_attribution.py` against the running app, two runs each way;
+        the description variant a one-off user template, the live one with each cast line plus
+        `description="…"` — first 200 characters, under the prompt's own handles; nothing saved):
+        The Ninth Facet 272/272 without → 271/272 with (Brass Rank D24 "It's the warmest room…"
+        given to Cael Ferren, not Nettle, once); The Salt-Iron Road 263/264 both ways (A Debt Called
+        In D7 "Quartermaster." given to Sable Coyne, not Ino, once each way). The Speckled Band's key
+        has no descriptions, so not run. RESEARCH §5.
+OPEN:   the user's call on the scores — the recommendation: leave the prompt as it is.
+GO:     given 2026-10-07 (the test)
+
 ### Render and Export's leftovers: the chapter list's ▶ on the page player, no masters option on the package, the Render mock's progress, the tracker, audio.cpp's join threshold (decided 2026-10-07)
 STATE:  DECIDED 2026-10-07 — "do 1-5 go", on the five as shown: "1. The chapter list's ▶ Play still has its
         own player. It doesn't use the one-player-per-page fix from earlier today. Lean: move it onto that
@@ -4261,9 +4316,10 @@ BUT: **nothing in `src/` references it**, and no endpoint exposes queue depth or
 the current engine. `/v1/render_jobs/{id}` reports a job's progress, not the
 pool. So when a render waits behind another engine's batch, the app shows
 nothing and the user cannot know why.
-OPEN: surface it in the chapter render panel — *"waiting — Chatterbox is
-finishing 40 lines"*.
-GO: needed.
+OPEN: none — built 2026-10-07 ("Render says what a waiting render is waiting
+for", above). (Was: "surface it in the chapter render panel — *'waiting —
+Chatterbox is finishing 40 lines'*".)
+GO: given 2026-10-07.
 
 ### FINDING — the analyze prompt gets id + name and nothing else
 
@@ -4276,7 +4332,8 @@ has never seen who a speaker is; the second look does (`second_look.cast_lines`,
 2026-10-05). (Corrected 2026-10-05: this said aliases and pronouns never arrive.)
 OPEN: put the speaker's description (`description[:200]`) in the main prompt's
 cast list — changes every analyze run's tokens and behavior, so it is a product
-call, not a cleanup.
+call, not a cleanup. Tested 2026-10-07 ("Analyze with each speaker's
+description", above): no better — 272→271/272 and 263→263/264. Your call.
 GO: needed.
 
 ### THE 2026-08-15 PLAN — pipeline truth + first-run speech + Alexandria adoptions

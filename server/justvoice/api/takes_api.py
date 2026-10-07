@@ -347,9 +347,14 @@ async def render_block(
     engine_id = model_key(state, voice) if voice else f"?voice:{voice}"
     new_take = bool(body and body.new_take)
     seed = roll_seed() if new_take else None
+    from ..database.models import Scene
+    from ..synth_scheduler import chapter_owner, work_owner
+
+    scene = db.query(Scene).filter(Scene.id == block.scene_id).first()
     handle = get_scheduler().submit(
         [(engine_id, lambda: render_block_take(state, persona, block, seed=seed))],
         interactive=True,
+        owner=chapter_owner(scene) if scene is not None else work_owner("a line's take"),
     )
     await handle.wait_async()
     handle.raise_if_failed()

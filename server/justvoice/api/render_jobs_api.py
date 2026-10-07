@@ -40,6 +40,22 @@ class RenderJobLine(BaseModel):
     speaker: str | None = None
 
 
+class RenderJobAhead(BaseModel):
+    """Work ahead of a waiting job, in the order it runs: whose it is, its kind
+    ("chapter" — a chapter's render; "work" — an export, a preview…), its model."""
+    label: str
+    kind: str
+    model: str | None = None
+    lines: int
+
+
+class RenderJobWaiting(BaseModel):
+    """What a job's next line waits behind (2026-10-07) — only while none of its
+    own lines is rendering."""
+    lines: int
+    groups: list[RenderJobAhead] = []
+
+
 class RenderJobOut(BaseModel):
     id: str
     project_id: str
@@ -52,6 +68,7 @@ class RenderJobOut(BaseModel):
     # Seconds of audio the finished lines made, and the lines rendering now (2026-10-07).
     audio_seconds: float = 0.0
     current: list[RenderJobLine] = []
+    waiting: RenderJobWaiting | None = None
 
 
 @router.post("/v1/render_jobs", response_model=RenderJobOut)

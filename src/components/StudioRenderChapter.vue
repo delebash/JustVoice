@@ -34,7 +34,7 @@ import { directionCell, tagCount, voiceKind } from "../services/personaFacts.js"
 import { useVoicesStore } from "../stores/voices.js";
 import { useCopy } from "../services/copy.js";
 import { useKeptScroll } from "../composables/useKeptScroll.js";
-import { mediaUrl, renderChapter, renderLines } from "../services/renderRun.js";
+import { mediaUrl, renderChapter, renderLines, waitingText } from "../services/renderRun.js";
 import { facetCounts, facetOptions, facetTotal, passesFilters } from "../services/facets.js";
 import { CANT_RENDER_STATES as BLOCKED, lineStateWord } from "../services/lineStates.js";
 import { speakerOptions as castChoices } from "../views/scriptReview.js";
@@ -648,6 +648,7 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
             <template #extra-stats="{ task }">
               <UiButton v-if="task.render?.current" intent="ghost" size="small" class="sts-stat"
                 :label="lineName(task.render.current)" title="Show this line" @click="goToLine(task.render.current.block_id)" />
+              <span v-else-if="waitingText(task.render?.waiting)" class="sts-stat">{{ waitingText(task.render.waiting) }}</span>
             </template>
           </PageTaskStrips>
           <PlayTransport v-if="player.key === 'chapter'" :player="player" width="long" toggle />

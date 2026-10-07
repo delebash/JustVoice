@@ -24,7 +24,7 @@ import {
 import { useApi } from "../stores/api.js";
 import { useCopy } from "../services/copy.js";
 import { CANT_RENDER, partOf } from "../services/lineStates.js";
-import { renderChapter } from "../services/renderRun.js";
+import { renderChapter, waitingText } from "../services/renderRun.js";
 import { usePagePlayer } from "../composables/usePagePlayer.js";
 import PagePlayer from "./PagePlayer.vue";
 import PageTaskStrips from "./PageTaskStrips.vue";
@@ -325,6 +325,7 @@ function checkState(s) {
                 <AiTaskStrip :task="taskFor(row.scene.id)" class="studio-render__strip">
                   <template #extra-stats="{ task }">
                     <span v-if="task.render?.current" class="sts-stat">{{ lineName(task.render.current) }}</span>
+                    <span v-else-if="waitingText(task.render?.waiting)" class="sts-stat">{{ waitingText(task.render.waiting) }}</span>
                   </template>
                 </AiTaskStrip>
                 <template v-if="taskFor(row.scene.id).status === 'done' && taskFor(row.scene.id).result?.url">

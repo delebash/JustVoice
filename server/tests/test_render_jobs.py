@@ -363,3 +363,33 @@ def test_a_line_reads_rendering_while_it_renders(job_env, monkeypatch):
         assert during["current"][0] == {"block_id": bid, "n": n, "speaker": "Narrator"}
     assert s["current"] == []
     assert s["audio_seconds"] == round(2 * 50 / 24000, 2)
+
+
+def test_a_waiting_job_says_what_is_ahead(job_env, monkeypatch):
+    """Render's "waiting — the M4B export is rendering 1 line first" (decided
+    2026-10-07): while other work holds the queue and none of the job's lines
+    has started, its status names that work; once its lines run, it says
+    nothing."""
+    from justvoice.synth_scheduler import get_scheduler, work_owner
+
+    factory = job_env
+    project_id, _, block_ids = _seed_project(factory, ["Line one."])
+    monkeypatch.setattr(ev, "render_block_take", lambda st, p, b, **kw: _line())
+    gate = threading.Event()
+    started = threading.Event()
+    get_scheduler().submit([("?gate", lambda: (started.set(), gate.wait(10)))], owner=work_owner("the M4B export"))
+    assert started.wait(5)
+    try:
+        job = render_jobs.create_job(project_id, "blocks", block_ids)
+        render_jobs.start_job(job.id)
+        t0 = time.time()
+        while not render_jobs._live_handles.get(job.id) and time.time() - t0 < 5:
+            time.sleep(0.01)
+        waiting = render_jobs.job_status(job.id)["waiting"]
+        assert waiting == {"lines": 1, "groups": [
+            {"label": "the M4B export", "kind": "work", "model": None, "lines": 1}]}
+    finally:
+        gate.set()
+    s = _wait_terminal(job.id)
+    assert s["status"] == "completed"
+    assert s["waiting"] is None

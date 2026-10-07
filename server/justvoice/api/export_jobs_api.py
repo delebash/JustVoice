@@ -64,11 +64,12 @@ def _chapter_step(job: dict[str, Any], i: int, n: int, scene) -> str:
 
 async def _warm(project_id: str, job: dict[str, Any]) -> None:
     from ..export_audiobook import collect_project_line_kwargs
-    from ..synth_scheduler import warm_lines
+    from ..synth_scheduler import warm_lines, work_owner
 
     st = get_state()
     job["step"] = "Rendering the lines that have no take yet"
-    await warm_lines(st, collect_project_line_kwargs(st, project_id))
+    what = "the M4B export" if job["media_type"] == "audio/mp4" else "the chapter WAVs export"
+    await warm_lines(st, collect_project_line_kwargs(st, project_id), owner=work_owner(what))
 
 
 def _m4b(job: dict[str, Any], project_id: str, name: str, author: str | None) -> str:

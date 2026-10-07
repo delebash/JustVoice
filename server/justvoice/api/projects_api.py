@@ -1157,7 +1157,7 @@ async def project_qc(project_id: str, db: Session = Depends(get_db)) -> ProjectQ
         project_scenes,
         qc_report,
     )
-    from ..synth_scheduler import warm_lines
+    from ..synth_scheduler import warm_lines, work_owner
 
     if db.query(Project).filter(Project.id == project_id).first() is None:
         raise not_found(f"project {project_id}")
@@ -1167,7 +1167,8 @@ async def project_qc(project_id: str, db: Session = Depends(get_db)) -> ProjectQ
     # mode: warm the renderable subset of every scene, skipping refusals,
     # exactly like the measuring assembly below.
     await warm_lines(
-        st, collect_project_line_kwargs(st, project_id, skip_unrenderable=True)
+        st, collect_project_line_kwargs(st, project_id, skip_unrenderable=True),
+        owner=work_owner("the ACX check"),
     )
 
     # QC MEASURES — it does not ship. The render refusal on unplaced lines
@@ -1281,7 +1282,7 @@ async def project_export_m4b(project_id: str, db: Session = Depends(get_db)) -> 
         have_ffmpeg,
         mux_m4b,
     )
-    from ..synth_scheduler import warm_lines
+    from ..synth_scheduler import warm_lines, work_owner
 
     project = db.query(Project).filter(Project.id == project_id).first()
     if project is None:
@@ -1294,7 +1295,7 @@ async def project_export_m4b(project_id: str, db: Session = Depends(get_db)) -> 
     st = get_state()
     # Whole-book warm, engine-grouped (§7 of the 2026-08-08 plan); the
     # assembly below re-reads the cache and stays the error surface.
-    await warm_lines(st, collect_project_line_kwargs(st, project_id))
+    await warm_lines(st, collect_project_line_kwargs(st, project_id), owner=work_owner("the M4B export"))
     chapters = assemble_project(st, project_id)
     if not chapters:
         raise bad_request("project has no scenes to export")
@@ -1313,7 +1314,7 @@ async def project_export_voicelines(
     """Game export — zip of per-line WAVs named by stable line id, grouped
     by scene, plus a diffable manifest.json (mock #game/6)."""
     from ..export_voicelines import collect_block_specs, export_voicelines
-    from ..synth_scheduler import warm_specs
+    from ..synth_scheduler import warm_specs, work_owner
 
     project = db.query(Project).filter(Project.id == project_id).first()
     if project is None:
@@ -1321,7 +1322,7 @@ async def project_export_voicelines(
     st = get_state()
     # Whole-project warm, engine-grouped (§7 of the 2026-08-08 plan); the
     # export below re-reads the cache and stays the error surface.
-    await warm_specs(collect_block_specs(st, project_id))
+    await warm_specs(collect_block_specs(st, project_id), owner=work_owner("the voice-line export"))
     data = export_voicelines(st, project_id)
     safe = re.sub(r"[^A-Za-z0-9._-]+", "_", project.name) or "voicelines"
     return Response(

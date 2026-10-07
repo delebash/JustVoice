@@ -299,6 +299,22 @@ def _takes_for(lines: list[ChapterLine]) -> dict:
         db.close()
 
 
+def _scene_owner(scene_id: str | None) -> dict:
+    """The chapter a render is for, as the queue names it — "2 · Bigger Inside"
+    (2026-10-07); lines sent without a chapter are "a chapter render"."""
+    from ..synth_scheduler import chapter_owner, work_owner
+
+    if scene_id:
+        db = _open_db()
+        try:
+            scene = db.query(Scene).filter(Scene.id == scene_id).first()
+            if scene is not None:
+                return chapter_owner(scene)
+        finally:
+            db.close()
+    return work_owner("a chapter render")
+
+
 def _take_line(line: ChapterLine, audio_path: str) -> RenderedLine | None:
     """A line's ★ take as a rendered line, its pauses from the line as it is now
     (they join takes; they are not in them)."""
@@ -312,9 +328,11 @@ def _take_line(line: ChapterLine, audio_path: str) -> RenderedLine | None:
     return RenderedLine(pcm=pcm, sample_rate=sr, channels=ch, effective_delivery=delivery)
 
 
-async def render_scene_lines_async(st, lines: list[ChapterLine], kwargs: list[dict]) -> list[RenderedLine]:
+async def render_scene_lines_async(st, lines: list[ChapterLine], kwargs: list[dict], *,
+                                   owner: dict | None = None) -> list[RenderedLine]:
     """The chapter's lines as audio: a line's ★ take where it has one, the rest
-    rendered as before — through the cache, warmed model by model first."""
+    rendered as before — through the cache, warmed model by model first. `owner`
+    names the chapter in the queue (`synth_scheduler.ahead`)."""
     takes = _takes_for(lines)
     played: dict[int, RenderedLine] = {}
     for i, line in enumerate(lines):
@@ -322,7 +340,7 @@ async def render_scene_lines_async(st, lines: list[ChapterLine], kwargs: list[di
             rl = _take_line(line, takes[line.block_id][1])
             if rl is not None:
                 played[i] = rl
-    await warm_lines(st, [kw for i, kw in enumerate(kwargs) if i not in played])
+    await warm_lines(st, [kw for i, kw in enumerate(kwargs) if i not in played], owner=owner)
     return [played[i] if i in played else render_line(st, **kw) for i, kw in enumerate(kwargs)]
 
 
@@ -525,7 +543,7 @@ async def render_chapter(req: RenderChapterRequest) -> Response:
     line_kwargs = [_line_kwargs(line, cache_scope, req.lexicons) for line in lines]
     # Scene mode plays each line's ★ take where it has one (Studio Slice 4,
     # D4); direct-mode lines carry no block and render as before.
-    rendered = await render_scene_lines_async(st, lines, line_kwargs)
+    rendered = await render_scene_lines_async(st, lines, line_kwargs, owner=_scene_owner(req.scene_id))
 
     gap = req.between_lines.silence_ms
     if gap is None:

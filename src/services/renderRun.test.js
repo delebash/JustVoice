@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { clock, followJob, mediaUrl, runFigures } from "./renderRun.js";
+import { clock, followJob, mediaUrl, runFigures, waitingText } from "./renderRun.js";
 
 function fakeApi(statuses) {
   const calls = [];
@@ -73,6 +73,25 @@ describe("a run's figures (2026-10-07)", () => {
   it("reads a long run as hours", () => {
     expect(clock(3725)).toBe("1:02:05");
     expect(clock(59.6)).toBe("1:00");
+  });
+});
+
+describe("what a waiting run says (2026-10-07)", () => {
+  it("names a chapter ahead, its lines and its model", () => {
+    expect(waitingText({ lines: 41, groups: [
+      { label: "2 · Bigger Inside", kind: "chapter", model: "Chatterbox Turbo", lines: 40 },
+      { label: "the M4B export", kind: "work", model: "Kokoro", lines: 1 },
+    ] })).toBe("waiting — 2 · Bigger Inside is ahead: 40 lines on Chatterbox Turbo");
+  });
+  it("says other work is rendering first", () => {
+    expect(waitingText({ lines: 12, groups: [{ label: "the M4B export", kind: "work", model: "Kokoro", lines: 12 }] }))
+      .toBe("waiting — the M4B export is rendering 12 lines first");
+    expect(waitingText({ lines: 1, groups: [{ label: "a voice preview", kind: "work", model: null, lines: 1 }] }))
+      .toBe("waiting — a voice preview is rendering 1 line first");
+  });
+  it("says nothing when nothing is ahead", () => {
+    expect(waitingText(null)).toBe("");
+    expect(waitingText({ lines: 0, groups: [] })).toBe("");
   });
 });
 

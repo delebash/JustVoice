@@ -260,6 +260,7 @@ def job_status(job_id: str, *, include_blocks: bool = False) -> dict | None:
             "failed_blocks": job.failed_blocks or 0,
             "audio_seconds": _audio_seconds(db, job_id),
             "current": _current_lines(db, job_id),
+            "waiting": _waiting(job_id) if job.status == "running" else None,
         }
         if include_blocks:
             rows = (
@@ -338,6 +339,53 @@ def _current_lines(db, job_id: str) -> list[dict]:
         speaker = db.query(Speaker).filter(Speaker.id == block.speaker_id).first() if block.speaker_id else None
         out.append({"block_id": block.id, "n": n, "speaker": speaker.name if speaker else None})
     return out
+
+
+def _model_label(key: str) -> str | None:
+    """A scheduler key ("kokoro:kokoro-82m") as the model's name ("Kokoro"); None
+    for a line whose voice didn't resolve."""
+    engine, _, model = (key or "").partition(":")
+    if not model or engine.startswith("?"):
+        return None
+    try:
+        from .voice_model import model_name
+
+        return model_name(model, engine)
+    except Exception:  # noqa: BLE001 — a name is a nicety; the key still says which
+        return model
+
+
+def _waiting(job_id: str) -> dict | None:
+    """What the job's next line waits behind — the work ahead of it in the
+    queue, each with its model (decided 2026-10-07: "waiting — 2 · Bigger
+    Inside is ahead: 40 lines on Chatterbox Turbo"). None while one of its own
+    lines is rendering, or before its lines are queued."""
+    with _state_lock:
+        handles = list(_live_handles.get(job_id, []))
+    if not handles:
+        return None
+    from .synth_scheduler import get_scheduler
+
+    ahead = get_scheduler().ahead([h.set_id for h in handles])
+    if not ahead:
+        return None
+    for g in ahead["groups"]:
+        g["model"] = _model_label(g.pop("engine"))
+    return ahead
+
+
+def _job_owner(db, job, scene_ids: set) -> dict:
+    """Who the job's lines are for, as Render names it: its chapter ("2 · Bigger
+    Inside"), or its book when it spans several (2026-10-07)."""
+    from .database.models import Project
+    from .synth_scheduler import chapter_owner
+
+    if len(scene_ids) == 1:
+        scene = db.query(Scene).filter(Scene.id == next(iter(scene_ids))).first()
+        if scene is not None:
+            return chapter_owner(scene)
+    project = db.query(Project).filter(Project.id == job.project_id).first()
+    return {"label": project.name if project else "a render", "kind": "chapter"}
 
 
 def _rendering(jb_id: str, fn):
@@ -445,6 +493,7 @@ def _run_job(job_id: str) -> None:
                     else None
                 )
                 work.append((jb.id, block_data, persona_data, engine_id))
+            owner = _job_owner(db, job, {b.scene_id for _, b, _, _ in work})
             _refresh_counters(db, job_id)
             db.commit()
         finally:
@@ -457,7 +506,8 @@ def _run_job(job_id: str) -> None:
         for jb_id, block, persona, engine_id in work:
             h = scheduler.submit(
                 [(engine_id, lambda p=persona, b=block, j=jb_id: _rendering(j, lambda: render_block_take(
-                    state, p, b, use_cache=not fresh)))]
+                    state, p, b, use_cache=not fresh)))],
+                owner=owner,
             )
             handles.append((jb_id, block, h))
         with _state_lock:

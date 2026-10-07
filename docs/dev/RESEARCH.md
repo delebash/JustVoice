@@ -707,6 +707,36 @@ its blast radius and the gaps.
   finished but is still being saved reads running beside the next for a moment.
   `?include_blocks=true` adds every line's state. — *code + test, 2026-10-07* ·
   `server/tests/test_render_jobs.py`.
+- **A waiting render says what it waits for** (2026-10-07): every set sent to the speech
+  queue names its owner — `{"label": "2 · Bigger Inside", "kind": "chapter"}` or
+  `{"label": "the M4B export", "kind": "work"}` (`synth_scheduler.chapter_owner` /
+  `work_owner`; all ten senders give one). `SynthScheduler.ahead(set_ids)` runs the pick rule
+  to the end over the pending lines (interactive first, then the loaded model's lines, then the
+  model of the oldest line) and returns the work before the set's next line, grouped by owner and
+  model, the line running first; None while one of the set's own lines runs. A newer chapter on
+  the loaded model goes before an older one on another model. `GET /v1/render_jobs/{id}` returns
+  it as `waiting` (models by name) while the job runs. — *code + test, 2026-10-07* ·
+  `server/tests/test_synth_scheduler.py`, `test_render_jobs.py`.
+- **A render's model loads inside its first line**: `render_core.render_line` →
+  `voice_model.ensure_model_loaded` → `EngineManager.load(engine, variant=…)`, on the queue's
+  worker and with no `progress` callback — so a run shows that line *rendering…* for the whole
+  load (Qwen3 1.7B: 17 s on a first load, 10.6 s after, §2.3), and nothing records "loading this
+  model now". The manager reports its load steps (`loading`, `loading_weights`) only to a
+  caller's `progress` (AI Settings' Load passes one). To show it, the render path would note the
+  model and the time around that `load` call, and a job's running line would carry it.
+  — *code, 2026-10-07*.
+- **A deleted book's render keeps going**: deleting a project doesn't cancel its render jobs.
+  Their queued lines still render, one by one, and each then fails to save —
+  `persist_block_take` → `sqlite3.IntegrityError: FOREIGN KEY constraint failed` on the
+  `generations` insert (the flush comes before the WAV is written, so no audio file is left).
+  Seen live: a deleted two-chapter book's ~56 lines held the queue for about two minutes, and
+  the next render's strip named it ("waiting — 2 · Second is ahead…"). — *measured, 2026-10-07*
+  · `api/projects_api.delete_project`, `render_jobs._run_job`.
+- **A chapter page's run greys out another chapter's buttons**: Render's chapter page keeps one
+  `running` for the page, not per chapter, so after ⚡ Render N ready on chapter 1, opening
+  chapter 2 shows its three verbs greyed while chapter 1 runs, and no strip says why (that
+  chapter's strip is chapter 1's). The chapter list still starts chapter 2. — *measured,
+  2026-10-07* · `StudioRenderChapter.vue` `runBusy`.
 - **A chapter of 400 lines needs no virtualization**: on a temporary 400-line chapter (the
   sample book's paragraphs, deleted after), headless Chrome against the real app, Script's
   chapter page opened in 178–462 ms and Render's in 127–181 ms to all 400 rows, and both
@@ -774,6 +804,13 @@ decided 2026-10-05 and its blast radius.
   and Cancel stops one step's chapters (`cancelRun(projectId, kind)`, one AbortController per
   chapter). (was: one banner, one count and one Cancel for the whole queue, shown on both
   pages.) — *code, 2026-10-05*.
+- **A speaker's description in Analyze's cast list doesn't help**: the main pass with each cast
+  line carrying `description="…"` (200 characters) against the live prompt, two runs each, the
+  eval's cast and answer keys: The Ninth Facet 272/272 without, 271/272 with (D24 to Cael, not
+  Nettle, once); The Salt-Iron Road 263/264 both ways (D7 "Quartermaster." to Sable, not Ino,
+  once each way — run-to-run noise). The descriptions add 744 characters to The Ninth Facet's
+  cast list and 1,228 to The Salt-Iron Road's, on every call.
+  — *measured, 2026-10-07* (the scripts: a one-off `--user` template, nothing saved).
 - Measured on The Ninth Facet (gemma 26B-A4B on the RTX 2070 SUPER, ~40–46 tokens/s): a Discover
   call ≈ 7 s per chapter (2,200–2,800 prompt tokens, 52–68 generated); an Analyze call ≈ 35–65 s
   per chapter (2,300–3,000 prompt tokens, 1,500–2,300 generated). — *measured, 2026-10-05* ·

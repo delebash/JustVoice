@@ -341,7 +341,7 @@ async def preview_persona(body: PersonaPreviewRequest) -> Response:
     contains. An empty line speaks the stock line in the persona's language."""
     from ..persona_render import check_delivery, plan_line, stock_line
     from ..render_core import pcm_to_wav, render_line
-    from ..synth_scheduler import get_scheduler
+    from ..synth_scheduler import get_scheduler, work_owner
     from ..voice_model import model_key
 
     st = get_state()
@@ -378,7 +378,8 @@ async def preview_persona(body: PersonaPreviewRequest) -> Response:
         )
         return pcm_to_wav(rl)
 
-    handle = get_scheduler().submit([(model_key(st, plan.voice), _do)], interactive=True)
+    handle = get_scheduler().submit([(model_key(st, plan.voice), _do)], interactive=True,
+                                    owner=work_owner("a persona preview"))
     await handle.wait_async()
     handle.raise_if_failed()
     return Response(content=handle.items[0].result, media_type="audio/wav")

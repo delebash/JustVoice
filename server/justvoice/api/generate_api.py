@@ -371,9 +371,9 @@ async def _generate_via_manager(
     # managed synth goes through the one synth door, and the endpoint awaits
     # instead of blocking the event loop (§7b P2-5/P2-6 of the 2026-08-08
     # plan). The scheduler lets it jump any batch at the next line boundary.
-    from ..synth_scheduler import get_scheduler
+    from ..synth_scheduler import get_scheduler, work_owner
 
-    handle = get_scheduler().submit([(engine_id, _do)], interactive=True)
+    handle = get_scheduler().submit([(engine_id, _do)], interactive=True, owner=work_owner("Generate"))
     await handle.wait_async()
     handle.raise_if_failed()
     return handle.items[0].result
