@@ -597,6 +597,31 @@ its blast radius and the gaps.
 - ACX QC checks peak ≤ −3.0 dB (`export_audiobook.ACX_PEAK_MAX_DB`, the ACX limit); the ACX
   preset masters to −3.5 dB for headroom (`models.MasterPresetSettings.acx`). Export's
   checklist "Peak ≤ −3 dB" is right; the audit's C1 was wrong. — *code, 2026-10-06*.
+- **Pace on Kokoro and KittenTTS is the model's own.** The request carries `speed`
+  (`engines/audiocpp/slot.py:681-682` Kokoro, `:740-741` KittenTTS); both are `speed_native`
+  (`capability_details.py:141`, `:159`), so `render_core.server_speed` returns None and the server
+  never stretches them (the registry check before it only finds external providers —
+  `app.py:469` registers nothing else). Our audio.cpp's Kokoro divides each token's predicted
+  duration by the speed, rounds it and keeps it ≥ 1 frame (`src/models/kokoro_tts/predictor.cpp:968-972`)
+  — upstream Kokoro's own rule, `torch.sigmoid(duration).sum(axis=-1) / speed`, then
+  `round().clamp(min=1)`. — *code + web, 2026-10-07* · hexgrad/kokoro `kokoro/model.py`.
+- **Every other model's pace is the server's**: Signalsmith Stretch time-stretches the finished line,
+  pitch kept, 0.5–2.0 (`audio/dsp.STRETCH_RANGE`), before gain and pitch
+  (`render_core.apply_line_delivery`). — *code, 2026-10-07*.
+- **Pitch is the server's on every model** — no model reads `delivery.pitch`. `pitch_shift`
+  (`audio/dsp/__init__.py:66`, Signalsmith Stretch through python-stretch 0.3.1) transposes the
+  finished line, length kept, clamped to ±12 st, after gain and before the effects chain
+  (`render_core.py:463-471`). The binding has no formant control — its `Stretch` offers
+  `configure`, `preset`, `process`, `reset`, `setTimeFactor`, `setTransposeFactor` and
+  `setTransposeSemitones(semitones, tonalityLimit=0)` — so a voice's formants move with its pitch:
+  a few semitones sound natural, ±12 sounds like a much smaller or larger speaker. Whether a
+  newer or other package exposes formants: not checked. — *code + measured (the server venv's
+  package introspected), 2026-10-07*.
+- **Gain is the server's**: `delivery.apply_gain_db` multiplies the 16-bit samples and hard-clips
+  at full scale — no limiter; clamped −24…+12 dB (`render_core.py:457`; Render's slider ±12). A
+  boost on a line that already peaks near full scale clips it. The chapter is mastered after the
+  lines are joined (`render_chapter_api._master_scene_pcm`, `:526`), so a line's gain sets only
+  its level against the others — and its clipped peaks stay. — *code, 2026-10-07*.
 
 ---
 
