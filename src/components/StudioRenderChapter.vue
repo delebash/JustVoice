@@ -34,7 +34,7 @@ import { directionCell, tagCount, voiceKind } from "../services/personaFacts.js"
 import { useVoicesStore } from "../stores/voices.js";
 import { useCopy } from "../services/copy.js";
 import { useKeptScroll } from "../composables/useKeptScroll.js";
-import { mediaUrl, renderChapter, renderLines, waitingText } from "../services/renderRun.js";
+import { loadingText, mediaUrl, renderChapter, renderLines, waitingText } from "../services/renderRun.js";
 import { facetCounts, facetOptions, facetTotal, passesFilters } from "../services/facets.js";
 import { CANT_RENDER_STATES as BLOCKED, lineStateWord } from "../services/lineStates.js";
 import { speakerOptions as castChoices } from "../views/scriptReview.js";
@@ -307,7 +307,10 @@ async function renderOne(l, { newTake = false } = {}) {
     busy[l.block_id] = false;
   }
 }
-const running = ref("");        // "ready" | "all" | "chapter" while a whole-chapter run goes
+// "ready" | "all" | "chapter" while a whole-chapter run goes — per chapter (decided
+// 2026-10-07: chapter 1's run greyed out chapter 2's buttons when you opened it).
+const runs = reactive({});      // scene id → its run
+const running = computed(() => runs[props.sceneId] || "");
 
 // A render of this chapter, wherever it was started — here or the chapter list
 // (decided 2026-10-07): the page re-reads its lines as each one lands, lights the
@@ -334,13 +337,14 @@ async function goToLine(blockId) {
 }
 
 async function runLines(which) {
-  running.value = which;
+  const id = props.sceneId;
+  runs[id] = which;
   try {
-    await renderLines(api, { sceneId: props.sceneId, title: title.value, which });
+    await renderLines(api, { sceneId: id, title: title.value, which });
   } catch (e) {
     if (e?.name !== "AbortError") pushToast({ kind: "error", message: `Render failed: ${e?.message || e}`, duration: 7000 });
   } finally {
-    running.value = "";
+    delete runs[id];
     await load();
     emit("changed", { sceneId: props.sceneId });
   }
@@ -350,16 +354,18 @@ async function runLines(which) {
 // "take:<take>" (a line's Takes), "cmp:<take>" (Compare).
 const player = usePagePlayer();
 async function playChapter() {
-  running.value = "chapter";
+  const id = props.sceneId;
+  runs[id] = "chapter";
   try {
     const r = await renderChapter(api, {
-      sceneId: props.sceneId, projectId: props.project.id, title: title.value, onRetry: playChapter,
+      sceneId: id, projectId: props.project.id, title: title.value, onRetry: playChapter,
     });
-    if (r?.url) player.play("chapter", r.url);
+    // Played only where it was asked for — another chapter may be open by now.
+    if (r?.url && props.sceneId === id) player.play("chapter", r.url);
   } catch (e) {
     if (e?.name !== "AbortError") pushToast({ kind: "error", message: `${e?.message || e}`, duration: 9000 });
   } finally {
-    running.value = "";
+    delete runs[id];
     await load();
     emit("changed", { sceneId: props.sceneId });
   }
@@ -646,7 +652,8 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
           </div>
           <PageTaskStrips :features="['render-lines', 'render-scene']" :meta="{ sceneId }">
             <template #extra-stats="{ task }">
-              <UiButton v-if="task.render?.current" intent="ghost" size="small" class="sts-stat"
+              <span v-if="loadingText(task.render?.loading)" class="sts-stat">{{ loadingText(task.render.loading) }}</span>
+              <UiButton v-else-if="task.render?.current" intent="ghost" size="small" class="sts-stat"
                 :label="lineName(task.render.current)" title="Show this line" @click="goToLine(task.render.current.block_id)" />
               <span v-else-if="waitingText(task.render?.waiting)" class="sts-stat">{{ waitingText(task.render.waiting) }}</span>
             </template>

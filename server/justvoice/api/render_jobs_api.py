@@ -56,6 +56,12 @@ class RenderJobWaiting(BaseModel):
     groups: list[RenderJobAhead] = []
 
 
+class RenderJobLoading(BaseModel):
+    """The model the line rendering now is loading, and for how long (2026-10-07)."""
+    model: str
+    seconds: float
+
+
 class RenderJobOut(BaseModel):
     id: str
     project_id: str
@@ -69,6 +75,7 @@ class RenderJobOut(BaseModel):
     audio_seconds: float = 0.0
     current: list[RenderJobLine] = []
     waiting: RenderJobWaiting | None = None
+    loading: RenderJobLoading | None = None
 
 
 @router.post("/v1/render_jobs", response_model=RenderJobOut)

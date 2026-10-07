@@ -2,6 +2,12 @@
 
 ## v0.1.0
 
+- **Render says when a model is loading, and stops for deleted books (2026-10-07)** —
+  while a line's model loads, the strip says *loading Qwen3-TTS CustomVoice — 8 s*
+  instead of the line rendering for 10–20 s with no reason given. Deleting a book (or a
+  chapter, or a line) no longer leaves its lines rendering in the background, each failing
+  to save. And a chapter's buttons wait only for that chapter's render — another
+  chapter's run no longer greys them out ([Studio → A render's progress](studio.md#a-renders-progress))
 - **A waiting render says what it is waiting for (2026-10-07)** — a render held
   behind other work showed every line *queued* and nothing else; its strip now
   says what is ahead: *waiting — 2 · Bigger Inside is ahead: 40 lines on

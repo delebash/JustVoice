@@ -125,6 +125,41 @@ GO:     given 2026-08-17
 
 ## The next build
 
+### Render says when a line's model is loading; a deleted book's renders stop; a chapter's run greys only its own buttons (decided 2026-10-07)
+STATE:  DECIDED 2026-10-07 — "your rec go", on the proposal and the two problems as shown: "Why: when a
+        render needs a different model, that model loads inside its first line. So the line shows
+        'rendering…' for 10–17 s (Qwen3), and nothing in the app records that a load is happening.
+        What you'd see: while the line's model loads, the strip says 'loading Qwen3-TTS CustomVoice —
+        8 s' in place of 'line N · Speaker'. It names the line again once the load is done. How: note
+        which model is loading and when it started, at the point where a line loads its model. The
+        line that is running would carry that, and the strip would show it." · Q1 the wording — yes ·
+        Q2 "Should Generate and the previews say so too, or only Render? Lean: Render first." — Render
+        first · Q3 "Should the two problems above be fixed? Lean: yes, both." — both: "1. Deleting a
+        book doesn't stop its renders. Its lines keep rendering and each one then fails to save …
+        Lean: cancel a book's renders when it's deleted, and check whether deleting a chapter does the
+        same." "2. On Render's chapter page, a run on one chapter greys out other chapters' buttons …
+        Lean: grey out only the buttons of the chapter that is rendering."
+        Not covered (asked with no lean): "when several things are ahead, the strip names only the
+        first, as approved. Should it add 'and 12 more lines'?" — left as it is until answered.
+NOT:    the loading words on Generate and the previews (Q2: Render first).
+BUILT:  2026-10-07 — loading: `voice_model._noting_load` / `loading_now` around both `mgr.load` calls in
+        `ensure_model_loaded`; `render_jobs.job_status` → `loading` while the job has a line running;
+        `RenderJobLoading`; client `renderRun.loadingText` ("loading Qwen3-TTS CustomVoice — 8 s"), on
+        the task as `render.loading`, shown before the line on both strips. Deleted lines:
+        `render_jobs._rendering` skips a line whose job row is gone (`LineGone` — the cascade of a book,
+        chapter or line delete takes it), and a line deleted while it renders is dropped, not saved.
+        A chapter's run: `StudioRenderChapter.vue` (and its mock) keep runs per chapter (`runs[sceneId]`);
+        ▶ Play chapter plays only on the chapter it was asked for. Tests: `test_render_jobs.py` (3),
+        `test_voice_model.py` (1), `renderRun.test.js` (2). Docs studio (A render's progress), whats-new;
+        RESEARCH §3. Live, temporary books (deleted after): with the speech model unloaded, chapter 1's
+        strip read "loading Kokoro — 1 s … 7 s" then "line 1 · Narrator"; chapter 2's buttons stayed
+        live while chapter 1 rendered, and its ⚡ queued — "waiting — 1 · First is ahead: 12 lines on
+        Kokoro"; chapter 1's own buttons greyed during its run; a book deleted with a line rendering:
+        that line dropped, the other five skipped within 5 ms, no FOREIGN KEY errors (before: 56 lines
+        held the queue ~2 min, each failing to save). No page errors.
+OPEN:   "and 12 more lines" when several things are ahead — asked, no answer yet.
+GO:     given 2026-10-07
+
 ### Render says what a waiting render is waiting for (decided 2026-10-07)
 STATE:  DECIDED 2026-10-07 — "your rec go", on the proposal as shown: "Why it waits: speech renders one
         line at a time from one queue. The queue finishes every line on the model that's already loaded
@@ -156,7 +191,8 @@ BUILT:  2026-10-07 — server: `synth_scheduler` (every set's `owner` — `chapt
         ▶ Render on the chapter list read "waiting — 1 · First is ahead: 30 lines on Kokoro" down to
         "1 line", then "line 1 · Narrator" … as its own lines ran; no page errors. Found on the way
         (RESEARCH §3, not fixed): a deleted book's render keeps going — its lines render and each
-        fails to save; a chapter page's run greys out another chapter's buttons there.
+        fails to save; a chapter page's run greys out another chapter's buttons there. (Both fixed
+        later the same day — "Render says when a line's model is loading…", above.)
         Q3 researched (RESEARCH §3 "A render's model loads inside its first line"); the proposal
         is with the user.
 OPEN:   none for this build; model loading — a proposal, needs its own go.
@@ -177,7 +213,9 @@ BUILT:  2026-10-07 — the test (`eval_attribution.py` against the running app, 
         given to Cael Ferren, not Nettle, once); The Salt-Iron Road 263/264 both ways (A Debt Called
         In D7 "Quartermaster." given to Sable Coyne, not Ino, once each way). The Speckled Band's key
         has no descriptions, so not run. RESEARCH §5.
-OPEN:   the user's call on the scores — the recommendation: leave the prompt as it is.
+THEN:   DECIDED 2026-10-07 — "your rec go", on "My recommendation is to leave the Analyze prompt as it
+        is. The descriptions add 700–1,200 characters to every call and gain nothing." — left as it is.
+OPEN:   none.
 GO:     given 2026-10-07 (the test)
 
 ### Render and Export's leftovers: the chapter list's ▶ on the page player, no masters option on the package, the Render mock's progress, the tracker, audio.cpp's join threshold (decided 2026-10-07)
@@ -4333,8 +4371,10 @@ has never seen who a speaker is; the second look does (`second_look.cast_lines`,
 OPEN: put the speaker's description (`description[:200]`) in the main prompt's
 cast list — changes every analyze run's tokens and behavior, so it is a product
 call, not a cleanup. Tested 2026-10-07 ("Analyze with each speaker's
-description", above): no better — 272→271/272 and 263→263/264. Your call.
-GO: needed.
+description", above): no better — 272→271/272 and 263→263/264. DECIDED
+2026-10-07, "your rec go": the prompt stays as it is.
+OPEN: none.
+GO: n/a — nothing to build.
 
 ### THE 2026-08-15 PLAN — pipeline truth + first-run speech + Alexandria adoptions
 

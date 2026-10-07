@@ -148,7 +148,9 @@ async function gen(l, label = "") {
   addTake(l, label);
   busy[l.id] = false;
 }
-const running = ref("");        // "ready" | "all" | "chapter" while a whole-chapter run goes
+// "ready" | "all" | "chapter" while a whole-chapter run goes — per chapter, as the app's.
+const runs = reactive({});      // chapter id → its run
+const running = computed(() => runs[chapter.value.id] || "");
 // A run of this chapter, wherever it was started — here or the chapter list, as the app's.
 const aiTasks = useAiTasksStore();
 const liveRun = computed(() => aiTasks.visibleTasks.find((t) => ["render-lines", "render-scene"].includes(t.feature)
@@ -167,13 +169,14 @@ async function goToLine(id) {
   root.value?.querySelector("tr.jv-row--flag")?.scrollIntoView({ block: "center", behavior: "smooth" });
 }
 async function runLines(which) {
-  running.value = which;
+  const ch = chapter.value;
+  runs[ch.id] = which;
   try {
-    await renderLines(chapter.value, which);
+    await renderLines(ch, which);
   } catch (e) {
     if (e?.name !== "AbortError") pushToast({ kind: "error", message: `Render failed: ${e?.message || e}`, duration: 7000 });
   } finally {
-    running.value = "";
+    delete runs[ch.id];
   }
 }
 // One player for the page, as the app's (2026-10-07). Keys: "chapter", "row:<take>",
@@ -184,14 +187,15 @@ const takeUrl = (t) => (takeUrls[t.id] ||= URL.createObjectURL(silentWav(t.secon
 // The chapter is every line's take in use joined — a line with no take is rendered first, so this is
 // Render's ▶ Render for one chapter, played here. Lines that can't render stop it.
 async function playChapter() {
-  running.value = "chapter";
+  const ch = chapter.value;
+  runs[ch.id] = "chapter";
   try {
-    const r = await renderChapter(chapter.value, { onRetry: playChapter });
-    if (r?.url) player.play("chapter", r.url);
+    const r = await renderChapter(ch, { onRetry: playChapter });
+    if (r?.url && chapter.value === ch) player.play("chapter", r.url);
   } catch (e) {
     if (e?.name !== "AbortError") pushToast({ kind: "error", message: `${e?.message || e}`, duration: 9000 });
   } finally {
-    running.value = "";
+    delete runs[ch.id];
   }
 }
 const chapterBlockedWhy = computed(() => (c.value.noSpeaker

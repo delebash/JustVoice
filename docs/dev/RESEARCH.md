@@ -722,21 +722,22 @@ its blast radius and the gaps.
   worker and with no `progress` callback — so a run shows that line *rendering…* for the whole
   load (Qwen3 1.7B: 17 s on a first load, 10.6 s after, §2.3), and nothing records "loading this
   model now". The manager reports its load steps (`loading`, `loading_weights`) only to a
-  caller's `progress` (AI Settings' Load passes one). To show it, the render path would note the
-  model and the time around that `load` call, and a job's running line would carry it.
-  — *code, 2026-10-07*.
-- **A deleted book's render keeps going**: deleting a project doesn't cancel its render jobs.
-  Their queued lines still render, one by one, and each then fails to save —
-  `persist_block_take` → `sqlite3.IntegrityError: FOREIGN KEY constraint failed` on the
-  `generations` insert (the flush comes before the WAV is written, so no audio file is left).
-  Seen live: a deleted two-chapter book's ~56 lines held the queue for about two minutes, and
-  the next render's strip named it ("waiting — 2 · Second is ahead…"). — *measured, 2026-10-07*
-  · `api/projects_api.delete_project`, `render_jobs._run_job`.
-- **A chapter page's run greys out another chapter's buttons**: Render's chapter page keeps one
-  `running` for the page, not per chapter, so after ⚡ Render N ready on chapter 1, opening
-  chapter 2 shows its three verbs greyed while chapter 1 runs, and no strip says why (that
-  chapter's strip is chapter 1's). The chapter list still starts chapter 2. — *measured,
-  2026-10-07* · `StudioRenderChapter.vue` `runBusy`.
+  caller's `progress` (AI Settings' Load passes one). Since later on 2026-10-07 the load is noted
+  (`voice_model.loading_now`) and a render job carries it while its line runs (`loading`); Render's
+  strip says "loading Kokoro — 7 s" (measured: Kokoro took ~7 s from unloaded).
+  — *code + measured, 2026-10-07*.
+- **A deleted line's render is skipped**: deleting a book, a chapter or a line takes its
+  render-job rows with it (the database's cascade), and the queue skips a line whose row is gone
+  when it reaches it (`render_jobs._rendering` → `LineGone`); a line deleted while it renders
+  finishes and is dropped, not saved. Live: a book deleted with a line rendering — that line
+  dropped, the other five skipped within 5 ms, no errors. (was: a deleted book's lines all
+  rendered, each then failing to save — `FOREIGN KEY constraint failed` on the `generations`
+  insert, before the WAV was written; a two-chapter book's ~56 lines held the queue about two
+  minutes — until later on 2026-10-07.) — *measured, 2026-10-07*.
+- **A chapter page's runs are per chapter**: `StudioRenderChapter.vue` keeps `runs[sceneId]`, so
+  chapter 1's run greys only chapter 1's verbs; chapter 2's ⚡ queues behind it and says so.
+  (was: one `running` for the page — chapter 2's verbs greyed with no reason shown, until later
+  on 2026-10-07.) — *measured, 2026-10-07*.
 - **A chapter of 400 lines needs no virtualization**: on a temporary 400-line chapter (the
   sample book's paragraphs, deleted after), headless Chrome against the real app, Script's
   chapter page opened in 178–462 ms and Render's in 127–181 ms to all 400 rows, and both

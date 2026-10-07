@@ -20,7 +20,8 @@
 // now ({block_id, n, speaker}) and how many are done — the chapter page lights
 // that line and re-reads its lines as each lands — and the strip's figures:
 // audio made, × real time, time left. While none of its lines has started, it
-// carries what is ahead of it in the queue (`waiting`), and the strip says so.
+// carries what is ahead of it in the queue (`waiting`), and while the line
+// rendering now loads its model, that model (`loading`) — the strip says so.
 
 import { withAiTask } from "@delebash/llm-ui";
 
@@ -93,6 +94,11 @@ export function waitingText(waiting) {
     : `waiting — ${g.label} is rendering ${n} first`;
 }
 
+/** "loading Qwen3-TTS CustomVoice — 8 s" while the line rendering now loads its model (2026-10-07); "" otherwise. */
+export function loadingText(loading) {
+  return loading?.model ? `loading ${loading.model} — ${Math.round(loading.seconds || 0)} s` : "";
+}
+
 /** One poll of a run, onto its task: the line states, the line rendering now, what it waits for, the figures. */
 function report(task, job, startedAt) {
   task.update({
@@ -100,6 +106,7 @@ function report(task, job, startedAt) {
       lines: Object.fromEntries((job.blocks || []).map((b) => [b.block_id, b.status])),
       current: job.current?.[0] || null,
       waiting: job.waiting || null,
+      loading: job.loading || null,
       done: job.completed_blocks || 0,
     },
   });

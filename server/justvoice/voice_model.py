@@ -24,6 +24,9 @@ Voices table, the persona editor, Cast and the render can never disagree.
 from __future__ import annotations
 
 import logging
+import threading
+import time
+from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any
 
@@ -428,11 +431,44 @@ def _on_disk(engine_id: str, variant_id: str) -> bool:
         return False
 
 
+# The speech model a line is loading right now (decided 2026-10-07): a render's
+# model loads inside its first line, which read "rendering…" for the whole load;
+# Render's strip says "loading Qwen3-TTS CustomVoice — 8 s" from this instead.
+_loading: dict | None = None
+_loading_lock = threading.Lock()
+
+
+@contextmanager
+def _noting_load(engine_id: str, model: str):
+    global _loading
+    try:
+        name = model_name(model, engine_id)
+    except Exception:  # noqa: BLE001 — a name is a nicety
+        name = model
+    with _loading_lock:
+        _loading = {"model": name, "since": time.monotonic()}
+    try:
+        yield
+    finally:
+        with _loading_lock:
+            _loading = None
+
+
+def loading_now() -> dict | None:
+    """`{"model": "Qwen3-TTS CustomVoice", "seconds": 8.2}` while a line's model
+    loads (`ensure_model_loaded`); None otherwise."""
+    with _loading_lock:
+        if _loading is None:
+            return None
+        return {"model": _loading["model"], "seconds": round(time.monotonic() - _loading["since"], 1)}
+
+
 def ensure_model_loaded(engine_id: str, model: str, language: str | None = None) -> None:
     """Make `model` the resident speech model before a synth.
 
     Where the engine has no catalog (a test's fake manager) this is the old
-    engine-level rule: load the engine if it isn't the resident one."""
+    engine-level rule: load the engine if it isn't the resident one. A load is
+    noted while it runs (`loading_now`)."""
     mgr = _manager()
     kind = _kind(engine_id)
     rows = _family_rows(engine_id, model)
@@ -442,12 +478,14 @@ def ensure_model_loaded(engine_id: str, model: str, language: str | None = None)
             raise ModelUnavailable(f"{model_name(model)} — this isn't in this version's speech "
                                    "runtime yet, so its voices can't be spoken")
         if mgr.current_for(kind) != engine_id:
-            mgr.load(engine_id, device="auto")
+            with _noting_load(engine_id, model):
+                mgr.load(engine_id, device="auto")
         return
     if is_model_loaded(engine_id, model) and _language_resident(engine_id, model, language):
         return
     variant = variant_for_model(engine_id, model, language)
-    mgr.load(engine_id, device="auto", variant=variant)
+    with _noting_load(engine_id, model):
+        mgr.load(engine_id, device="auto", variant=variant)
 
 
 def _resident_variant(engine_id: str) -> str | None:

@@ -262,6 +262,8 @@ def job_status(job_id: str, *, include_blocks: bool = False) -> dict | None:
             "current": _current_lines(db, job_id),
             "waiting": _waiting(job_id) if job.status == "running" else None,
         }
+        # The line rendering now may be loading its model first (2026-10-07).
+        out["loading"] = _loading() if out["current"] else None
         if include_blocks:
             rows = (
                 db.query(RenderJobBlock)
@@ -374,6 +376,17 @@ def _waiting(job_id: str) -> dict | None:
     return ahead
 
 
+def _loading() -> dict | None:
+    from .voice_model import loading_now
+
+    return loading_now()
+
+
+class LineGone(Exception):
+    """The line was deleted — with its book, its chapter or on its own — before
+    the queue reached it (2026-10-07)."""
+
+
 def _job_owner(db, job, scene_ids: set) -> dict:
     """Who the job's lines are for, as Render names it: its chapter ("2 · Bigger
     Inside"), or its book when it spans several (2026-10-07)."""
@@ -391,10 +404,15 @@ def _job_owner(db, job, scene_ids: set) -> dict:
 def _rendering(jb_id: str, fn):
     """Mark a job's line as rendering when the scheduler starts it, then render
     it (decided 2026-10-07: Render lights the line). The runner marks it
-    completed, failed or — when withdrawn — pending again."""
+    completed, failed or — when withdrawn — pending again. A line whose row is
+    gone was deleted (its book, its chapter, or itself — the row goes with it):
+    it is skipped, not rendered (decided 2026-10-07; a deleted book's lines used
+    to render on, each failing to save)."""
     db = _open_db()
+    gone = False
     try:
         jb = db.query(RenderJobBlock).filter(RenderJobBlock.id == jb_id).first()
+        gone = jb is None
         if jb is not None and jb.status == "pending":
             jb.status = "running"
             db.commit()
@@ -402,6 +420,8 @@ def _rendering(jb_id: str, fn):
         log.warning("render job: marking %s rendering failed: %s", jb_id, e)
     finally:
         db.close()
+    if gone:
+        raise LineGone("the line was deleted")
     return fn()
 
 
@@ -530,6 +550,8 @@ def _run_job(job_id: str) -> None:
                         jb.status = "pending"  # withdrawn — resume picks it up
                     _refresh_counters(db, job_id)
                     db.commit()
+                elif isinstance(item.error, LineGone):
+                    log.info("render job %s: block %s was deleted — skipped", job_id, block.id)
                 elif item.error is not None:
                     if jb is not None:
                         jb.status = "failed"
@@ -539,6 +561,9 @@ def _run_job(job_id: str) -> None:
                     )
                     _refresh_counters(db, job_id)
                     db.commit()
+                elif jb is None:
+                    # Deleted while it rendered — nothing left to save it to.
+                    log.info("render job %s: block %s was deleted while it rendered — not saved", job_id, block.id)
                 else:
                     take = persist_block_take(db, state, block, item.result)
                     if jb is not None:

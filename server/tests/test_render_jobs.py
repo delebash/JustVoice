@@ -393,3 +393,88 @@ def test_a_waiting_job_says_what_is_ahead(job_env, monkeypatch):
     s = _wait_terminal(job.id)
     assert s["status"] == "completed"
     assert s["waiting"] is None
+
+
+def test_a_deleted_line_is_skipped_not_rendered(job_env, monkeypatch):
+    """Deleting a book, a chapter or a line takes its job rows with it (the
+    database's cascade; this test DB doesn't enforce it, so the test deletes
+    them). The queue then skips that line instead of rendering it and failing
+    to save it (decided 2026-10-07)."""
+    from justvoice.synth_scheduler import get_scheduler, work_owner
+
+    factory = job_env
+    project_id, _, block_ids = _seed_project(factory, ["Kept.", "Deleted."])
+    rendered = []
+    monkeypatch.setattr(ev, "render_block_take", lambda st, p, b, **kw: rendered.append(b.id) or _line())
+    gate = threading.Event()
+    started = threading.Event()
+    get_scheduler().submit([("?gate", lambda: (started.set(), gate.wait(10)))], owner=work_owner("other work"))
+    assert started.wait(5)
+    try:
+        job = render_jobs.create_job(project_id, "blocks", block_ids)
+        render_jobs.start_job(job.id)
+        t0 = time.time()
+        while not render_jobs._live_handles.get(job.id) and time.time() - t0 < 5:
+            time.sleep(0.01)
+        db = factory()
+        try:
+            db.query(RenderJobBlock).filter(RenderJobBlock.block_id == block_ids[1]).delete()
+            db.query(Block).filter(Block.id == block_ids[1]).delete()
+            db.commit()
+        finally:
+            db.close()
+    finally:
+        gate.set()
+    s = _wait_terminal(job.id)
+    assert s["status"] == "completed"
+    assert rendered == [block_ids[0]]
+
+
+def test_a_line_loading_its_model_says_so(job_env, monkeypatch):
+    """Render's "loading Qwen3-TTS CustomVoice — 8 s" (decided 2026-10-07): while
+    the line rendering now loads its model, the job carries the model and how
+    long; once the run ends it carries nothing."""
+    from justvoice import voice_model
+
+    factory = job_env
+    project_id, _, block_ids = _seed_project(factory, ["Line one."])
+    seen = {}
+
+    def render(st, p, b, **kw):
+        with voice_model._noting_load("qwen3", "qwen3-customvoice"):
+            seen["during"] = render_jobs.job_status(job.id)
+        return _line()
+
+    monkeypatch.setattr(ev, "render_block_take", render)
+    job = render_jobs.create_job(project_id, "blocks", block_ids)
+    render_jobs.start_job(job.id)
+    s = _wait_terminal(job.id)
+    loading = seen["during"]["loading"]
+    assert loading["model"] and loading["seconds"] >= 0
+    assert s["loading"] is None
+
+
+def test_a_line_deleted_while_it_renders_is_not_saved(job_env, monkeypatch):
+    """The line in flight when its book is deleted finishes, and is dropped
+    quietly instead of failing to save (2026-10-07)."""
+    factory = job_env
+    project_id, _, block_ids = _seed_project(factory, ["Deleted mid-render."])
+
+    def render(st, p, b, **kw):
+        db = factory()
+        try:
+            db.query(RenderJobBlock).filter(RenderJobBlock.block_id == b.id).delete()
+            db.query(Block).filter(Block.id == b.id).delete()
+            db.commit()
+        finally:
+            db.close()
+        return _line()
+
+    saved = []
+    monkeypatch.setattr(render_jobs, "persist_block_take", lambda *a, **k: saved.append(a))
+    monkeypatch.setattr(ev, "render_block_take", render)
+    job = render_jobs.create_job(project_id, "blocks", block_ids)
+    render_jobs.start_job(job.id)
+    s = _wait_terminal(job.id)
+    assert s["status"] == "completed"
+    assert saved == []

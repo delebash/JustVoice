@@ -224,3 +224,15 @@ def test_pocket_picks_its_model_by_language(monkeypatch):
     assert vmod.variant_for_model("pocket", "pocket", "de-DE").startswith("pocket-de-")
     with pytest.raises(vmod.ModelUnavailable):
         vmod.variant_for_model("pocket", "pocket", "ja")
+
+
+def test_a_load_is_noted_while_it_runs():
+    """Render's loading words (2026-10-07): `loading_now` names the model a line
+    is loading and for how long, and nothing outside a load."""
+    from justvoice import voice_model
+
+    assert voice_model.loading_now() is None
+    with voice_model._noting_load("kokoro", "kokoro-82m"):
+        now = voice_model.loading_now()
+        assert now["model"] and now["seconds"] >= 0
+    assert voice_model.loading_now() is None

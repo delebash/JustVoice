@@ -1052,6 +1052,16 @@ the strip says what it is waiting for, in place of the line's name —
 reads *queued*. When several things are ahead, it names the first. As soon as
 its first line starts, the strip names that line again.
 
+A line whose model isn't loaded yet loads it first — a few seconds for Kokoro,
+10–20 s for Qwen3-TTS. Meanwhile the strip says so in place of the line's name —
+*loading Qwen3-TTS CustomVoice — 8 s* — and names the line again once the model
+is in.
+
+Each chapter's page waits only for its own run: while chapter 1 renders, you can
+open chapter 2 and start its render too — it queues behind chapter 1's lines and
+says so. Deleting a book, a chapter or a line takes its waiting renders with it:
+the queue skips those lines.
+
 ### A chapter's lines
 
 One row per line that is heard: **Speaker**, **Model**, **Text**, **Can be

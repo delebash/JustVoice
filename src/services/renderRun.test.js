@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { clock, followJob, mediaUrl, runFigures, waitingText } from "./renderRun.js";
+import { clock, followJob, loadingText, mediaUrl, runFigures, waitingText } from "./renderRun.js";
 
 function fakeApi(statuses) {
   const calls = [];
@@ -92,6 +92,15 @@ describe("what a waiting run says (2026-10-07)", () => {
   it("says nothing when nothing is ahead", () => {
     expect(waitingText(null)).toBe("");
     expect(waitingText({ lines: 0, groups: [] })).toBe("");
+  });
+});
+
+describe("what a loading line says (2026-10-07)", () => {
+  it("names the model and how long it has been loading", () => {
+    expect(loadingText({ model: "Qwen3-TTS CustomVoice", seconds: 7.6 })).toBe("loading Qwen3-TTS CustomVoice — 8 s");
+  });
+  it("says nothing when no model is loading", () => {
+    expect(loadingText(null)).toBe("");
   });
 });
 
