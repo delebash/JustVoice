@@ -1013,7 +1013,7 @@ The chips show the lines in one state — **Ready**, **Stale**, **Rendered**,
 under the other: with a speaker picked, the chips count that speaker's lines,
 and each speaker shows how many lines the chip leaves. The
 **Audio** cell plays a line's take in use (with its length); on a stale line **↻**
-renders it again; on a ready line **▶ Gen** renders it. A line that can't render
+renders it again (how ▶ plays: [Playing a take](#playing-a-take)); on a ready line **▶ Gen** renders it. A line that can't render
 says where it is fixed: **Fix in Script**, **Cast** *name*, or **Give** *persona*
 **a voice** (its page on Personas). A banner above the lines says the same for
 the whole chapter.
@@ -1023,7 +1023,7 @@ Three things at the top work on the whole chapter:
 - **⚡ Render N ready** — a take for every line that has none.
 - **▶ Play chapter** — every line's take in use, in order, joined and mastered (a line
   with no take is rendered first). Not while any line can't render — the hint
-  says why.
+  says why. Its controls show under the buttons: **▶/⏸**, a seek bar and the time.
 - **↻ Re-render all** — a new take for every line that can render, made fresh
   rather than from the render cache. Old takes are kept.
 
@@ -1103,8 +1103,12 @@ has a dot beside its speaker in the table.
 
 The line's takes are listed newest first, the one the chapter plays marked
 **★ In use**, each with its length, **▶** to play it, **★ Use this take** to
-make it the one the chapter plays, and **🗑** to delete it (with its audio). The
-take in use can't be deleted — use another first.
+make it the one the chapter plays, and **🗑** to delete it (with its audio).
+Deleting the take in use asks first, and the newest take left goes in use — *Take 1
+(0:05) becomes the one the chapter plays.* If it is the line's only take, the line
+goes back to **Ready**, and **▶ Play chapter** renders it again. The take that goes
+in use reads **stale** if the line has changed since it was made, like any older
+take.
 
 - **↻ New take** reads the line again with a **new seed**, so you get a
   different reading; the takes you have are kept, and the new one is ★ In use. A
@@ -1113,6 +1117,15 @@ take in use can't be deleted — use another first.
   not only how — the hint on the button says so.
 - **⚖️ Compare two** plays the take in use (A) against another (B), and
   **★ Use take B** if you prefer it.
+
+#### Playing a take
+
+Render has one player for the page. Every ▶ — a line's in the table, a take's,
+Compare's **▶ Play A** and **▶ Play B** — plays through it, so one thing plays at
+a time: pressing another ▶ stops the first. While a take plays, its ▶ becomes
+**⏸**, and a seek bar with *0:02 / 0:05* shows in that row, where its length
+was. Press it again to pause or carry on; once it has finished, it plays again
+from the start. Closing the line, or Compare, stops what it was playing.
 
 ### Stale lines
 

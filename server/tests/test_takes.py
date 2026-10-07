@@ -10,6 +10,7 @@ conftest_db fixtures provide — no real data directory required.
 from __future__ import annotations
 
 import struct
+from datetime import datetime
 from pathlib import Path
 from typing import Generator
 
@@ -368,8 +369,28 @@ class TestDeleteTake:
         ids = [t["id"] for t in list_resp.json()["takes"]]
         assert other_id not in ids
 
-    def test_delete_default_take_is_rejected_with_400(self, api_client):
-        """Deleting the default take returns 400 Bad Request."""
+    def test_delete_default_take_puts_the_newest_left_in_use(self, api_client):
+        """The take in use can be deleted (2026-10-07): the newest take left goes in use."""
+        client, db = api_client
+        v, b = _seed(db)
+        g_old, g_mid, g_new = (_gen(db, v, b) for _ in range(3))
+        t_old = Take(block_id=b.id, generation_id=g_old.id, created_at=datetime(2026, 10, 1))
+        t_mid = Take(block_id=b.id, generation_id=g_mid.id, created_at=datetime(2026, 10, 2))
+        t_in_use = Take(block_id=b.id, generation_id=g_new.id, is_default=True, created_at=datetime(2026, 10, 3))
+        db.add_all([t_old, t_mid, t_in_use])
+        db.commit()
+
+        resp = client.delete(f"/v1/takes/{t_in_use.id}")
+        assert resp.status_code == 200
+        assert resp.json() == {"deleted": True, "default_take_id": t_mid.id}
+
+        data = client.get(f"/v1/takes/by_block/{b.id}").json()
+        assert data["default_take_id"] == t_mid.id
+        assert [t["id"] for t in data["takes"] if t["is_default"]] == [t_mid.id]
+        assert len(data["takes"]) == 2
+
+    def test_delete_the_only_take_leaves_the_line_without_one(self, api_client):
+        """The line's only take can be deleted: no take left, none in use."""
         client, db = api_client
         v, b = _seed(db)
         g1 = _gen(db, v, b)
@@ -378,7 +399,10 @@ class TestDeleteTake:
         db.commit()
 
         resp = client.delete(f"/v1/takes/{t.id}")
-        assert resp.status_code == 400
+        assert resp.status_code == 200
+        assert resp.json() == {"deleted": True, "default_take_id": None}
+        data = client.get(f"/v1/takes/by_block/{b.id}").json()
+        assert data == {"takes": [], "default_take_id": None}
 
     def test_delete_unknown_take_returns_404(self, api_client):
         """Deleting a non-existent take_id returns 404."""

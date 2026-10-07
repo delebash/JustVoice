@@ -26,7 +26,7 @@
 import { computed, reactive, ref, watch } from "vue";
 import {
   AppModal, UiButton, UiChip, UiField, UiSelect, UiTable, UiTag, UiTextarea,
-  promptDialog, pushToast,
+  confirmDialog, promptDialog, pushToast,
 } from "@delebash/llm-ui";
 import { useApi } from "../stores/api.js";
 import DeliveryKnobs from "./DeliveryKnobs.vue";
@@ -39,6 +39,9 @@ import { facetCounts, facetOptions, facetTotal, passesFilters } from "../service
 import { CANT_RENDER_STATES as BLOCKED, lineStateWord } from "../services/lineStates.js";
 import { speakerOptions as castChoices } from "../views/scriptReview.js";
 import PageTaskStrips from "./PageTaskStrips.vue";
+import PagePlayer from "./PagePlayer.vue";
+import PlayTransport from "./PlayTransport.vue";
+import { usePagePlayer } from "../composables/usePagePlayer.js";
 
 const props = defineProps({
   project: { type: Object, required: true },
@@ -307,14 +310,17 @@ async function runLines(which) {
     emit("changed", { sceneId: props.sceneId });
   }
 }
-const playing = ref(null);      // { key, url }
+// One player for the page (decided 2026-10-07): every ▶ drives it, and its
+// controls show where that ▶ is. Keys: "chapter", "row:<take>" (the grid),
+// "take:<take>" (a line's Takes), "cmp:<take>" (Compare).
+const player = usePagePlayer();
 async function playChapter() {
   running.value = "chapter";
   try {
     const r = await renderChapter(api, {
       sceneId: props.sceneId, projectId: props.project.id, title: title.value, onRetry: playChapter,
     });
-    if (r?.url) playing.value = { key: "chapter", url: r.url };
+    if (r?.url) player.play("chapter", r.url);
   } catch (e) {
     if (e?.name !== "AbortError") pushToast({ kind: "error", message: `${e?.message || e}`, duration: 9000 });
   } finally {
@@ -324,8 +330,7 @@ async function playChapter() {
   }
 }
 function play(key, path) {
-  const url = mediaUrl(api, path);
-  if (url) playing.value = { key, url };
+  player.play(key, mediaUrl(api, path));
 }
 
 // ── Takes ────────────────────────────────────────────────────────────
@@ -334,7 +339,11 @@ async function loadTakes(blockId) {
   const r = await api.safeRequest(`/v1/takes/by_block/${blockId}`, { takes: [] });
   takes[blockId] = r?.takes || [];
 }
-watch(open, (id) => { if (id) loadTakes(id); });
+watch(open, (id) => {
+  if (id) loadTakes(id);
+  // A take played from the panel stops with it, as its own player did.
+  if (String(player.key).startsWith("take:")) player.stop();
+});
 function takeName(list, t) {
     if (t.is_default) return "★ In use";
   return `take ${list.length - list.indexOf(t)}`;
@@ -348,10 +357,31 @@ async function makeLive(l, t) {
     pushToast({ kind: "error", message: `Couldn't choose that take: ${e?.message || e}` });
   }
 }
+// The take in use can go too (decided 2026-10-07): it asks first, and the
+// server puts the newest take left in use — or the line goes back to Ready.
 async function deleteTake(l, t) {
+  if (t.is_default) {
+    const list = takes[l.block_id] || [];
+    const next = list.find((x) => x.id !== t.id);
+    const unit = word.value.singular.toLowerCase();
+    const ok = await confirmDialog(next
+      ? {
+          title: "Delete the take in use?",
+          message: `${takeName(list, next).replace(/^t/, "T")} (${fmt(next.seconds)}) becomes the one the ${unit} plays. This take's audio is deleted.`,
+          confirmLabel: "Delete take", danger: true,
+        }
+      : {
+          title: "Delete this line's only take?",
+          message: `The line goes back to Ready, and Play ${unit} renders it again.`,
+          confirmLabel: "Delete take", danger: true,
+        });
+    if (!ok) return;
+  }
   try {
     await api.request(`/v1/takes/${t.id}`, { method: "DELETE" });
+    if (String(player.key).endsWith(`:${t.id}`)) player.stop();
     await Promise.all([load(), loadTakes(l.block_id)]);
+    if (t.is_default) emit("changed", { sceneId: props.sceneId });
   } catch (e) {
     pushToast({ kind: "error", message: `Couldn't delete the take: ${e?.message || e}` });
   }
@@ -368,6 +398,11 @@ const compareOptions = computed(() => compareTakes.value.filter((t) => !t.is_def
   .map((t) => ({ value: t.id, label: `${takeName(compareTakes.value, t)} · ${fmt(t.seconds)}` })));
 const compareA = computed(() => compareTakes.value.find((t) => t.is_default) || null);
 const compareB = computed(() => compareTakes.value.find((t) => t.id === compare.value?.b) || null);
+// Compare's takes stop when it closes or B changes, as its own player did.
+watch(() => compare.value?.b, () => {
+  if (String(player.key).startsWith("cmp:") && player.key !== `cmp:${compareA.value?.id}`) player.stop();
+});
+watch(compare, (c) => { if (!c && String(player.key).startsWith("cmp:")) player.stop(); });
 
 // ── Render overrides — open, the persona page's controls (2026-10-06; was D3's
 // closed hatch). A set value puts a dot on the row. The line stores
@@ -533,6 +568,7 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
 
 <template>
   <section ref="root" class="studio-render-ch">
+    <PagePlayer :player="player" />
     <div class="jv-inline-row">
       <UiButton intent="ghost" size="small" :label="`← All ${word.plural.toLowerCase()}`" @click="emit('back')" />
     </div>
@@ -572,7 +608,7 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
             </span>
           </div>
           <PageTaskStrips :features="['render-lines', 'render-scene']" :meta="{ sceneId }" />
-          <audio v-if="playing?.key === 'chapter'" :src="playing.url" controls autoplay class="jv-audio-inline" />
+          <PlayTransport v-if="player.key === 'chapter'" :player="player" width="long" toggle />
         </div>
       </div>
 
@@ -629,10 +665,13 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
           <template #audio="{ row }">
             <span class="studio-render-ch__audio" @click.stop>
               <template v-if="row.live">
-                <UiButton intent="ghost" size="small" label="▶" :disabled="!row.live.audio_url"
-                  :title="row.live.audio_url ? `Play the take in use (${fmt(row.live.seconds)})` : 'This take has no audio — render it again'"
-                  @click="play(row.live.take_id, row.live.audio_url)" />
-                <span class="jv-muted studio-render-ch__len">{{ fmt(row.live.seconds) }}</span>
+                <UiButton intent="ghost" size="small" :label="player.isPlaying(`row:${row.live.take_id}`) ? '⏸' : '▶'"
+                  :disabled="!row.live.audio_url"
+                  :title="!row.live.audio_url ? 'This take has no audio — render it again'
+                    : player.isPlaying(`row:${row.live.take_id}`) ? 'Pause' : `Play the take in use (${fmt(row.live.seconds)})`"
+                  @click="play(`row:${row.live.take_id}`, row.live.audio_url)" />
+                <PlayTransport v-if="player.key === `row:${row.live.take_id}`" :player="player" />
+                <span v-else class="jv-muted studio-render-ch__len">{{ fmt(row.live.seconds) }}</span>
                 <UiButton v-if="row.state === 'stale'" intent="secondary" size="small" label="↻" :loading="busy[row.block_id]"
                   :disabled="!!running" title="Render it again — the old take is kept" @click="renderOne(row)" />
               </template>
@@ -645,8 +684,6 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
               <UiButton v-else intent="secondary" size="small" :label="`Give persona ${personaOf(row).name} a voice`"
                 @click="goPersona(personaOf(row).id)" />
             </span>
-            <audio v-if="playing && row.live && playing.key === row.live.take_id" :src="playing.url" autoplay
-              class="studio-render-ch__hidden" />
           </template>
 
           <template #full-row="{ row }">
@@ -767,17 +804,19 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
                   <span class="jv-hint">{{ (takes[row.line.block_id] || []).length }} · nothing is overwritten</span></div>
                 <div v-for="t in takes[row.line.block_id] || []" :key="t.id" class="jv-takes__row">
                   <UiTag :intent="t.is_default ? 'success' : 'ghost'">{{ takeName(takes[row.line.block_id], t) }}</UiTag>
-                  <span class="jv-takes__len">{{ fmt(t.seconds) }}</span>
+                  <PlayTransport v-if="player.key === `take:${t.id}`" :player="player" />
+                  <span v-else class="jv-takes__len">{{ fmt(t.seconds) }}</span>
                   <span class="jv-takes__label">{{ t.new_seed ? "new seed" : "" }}{{ t.text && t.text !== row.line.text ? `${t.new_seed ? " · " : ""}earlier words` : "" }}</span>
-                  <UiButton intent="ghost" size="small" label="▶" :disabled="!t.audio_url" title="Play" @click="play(t.id, t.audio_url)" />
+                  <UiButton intent="ghost" size="small" :label="player.isPlaying(`take:${t.id}`) ? '⏸' : '▶'"
+                    :disabled="!t.audio_url" :title="player.isPlaying(`take:${t.id}`) ? 'Pause' : 'Play'"
+                    @click="play(`take:${t.id}`, t.audio_url)" />
                   <UiButton v-if="!t.is_default" intent="ghost" size="small" label="★ Use this take"
                     title="Make this the take the chapter plays" @click="makeLive(row.line, t)" />
-                  <UiButton v-if="!t.is_default" intent="ghost" size="small" label="🗑" title="Delete this take"
+                  <UiButton intent="ghost" size="small" label="🗑"
+                    :title="t.is_default ? 'Delete this take — asks first; the newest take left goes in use' : 'Delete this take'"
                     @click="deleteTake(row.line, t)" />
                 </div>
                 <div v-if="!(takes[row.line.block_id] || []).length" class="jv-takes__row jv-muted">No takes yet.</div>
-                <audio v-if="playing && (takes[row.line.block_id] || []).some((t) => t.id === playing.key)" :src="playing.url"
-                  controls autoplay class="jv-audio-inline" />
                 <div class="jv-takes__foot">
                   <UiButton intent="secondary" size="small" label="↻ New take"
                     :disabled="BLOCKED.has(row.line.state) || !!running" :loading="busy[row.line.block_id]"
@@ -816,17 +855,18 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
         <div class="jv-linepanel__field">
           <span class="jv-eyebrow">A — ★ In use</span>
           <span class="studio-render-ch__compare-take">{{ compareA ? `take ${compareTakes.length - compareTakes.indexOf(compareA)} · ${fmt(compareA.seconds)}` : "—" }}</span>
-          <UiButton intent="secondary" size="small" label="▶ Play A" :disabled="!compareA?.audio_url"
-            @click="play(`cmp-${compareA.id}`, compareA.audio_url)" />
+          <UiButton intent="secondary" size="small" :label="player.isPlaying(`cmp:${compareA?.id}`) ? '⏸ Pause A' : '▶ Play A'"
+            :disabled="!compareA?.audio_url" @click="play(`cmp:${compareA.id}`, compareA.audio_url)" />
+          <PlayTransport v-if="compareA && player.key === `cmp:${compareA.id}`" :player="player" />
         </div>
         <div class="jv-linepanel__field">
           <span class="jv-eyebrow">B</span>
           <UiSelect v-model="compare.b" width="name" :options="compareOptions" placeholder="Pick a take…" />
-          <UiButton intent="secondary" size="small" label="▶ Play B" :disabled="!compareB?.audio_url"
-            @click="play(`cmp-${compareB.id}`, compareB.audio_url)" />
+          <UiButton intent="secondary" size="small" :label="player.isPlaying(`cmp:${compareB?.id}`) ? '⏸ Pause B' : '▶ Play B'"
+            :disabled="!compareB?.audio_url" @click="play(`cmp:${compareB.id}`, compareB.audio_url)" />
+          <PlayTransport v-if="compareB && player.key === `cmp:${compareB.id}`" :player="player" />
         </div>
       </div>
-      <audio v-if="playing && String(playing.key).startsWith('cmp-')" :src="playing.url" controls autoplay class="jv-audio-inline" />
       <template #footer>
         <UiButton intent="secondary" label="Close" @click="compare = null" />
         <UiButton intent="primary" label="★ Use take B" :disabled="!compareB"
@@ -877,7 +917,6 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
 .studio-render-ch__said { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .studio-render-ch__audio { display: inline-flex; align-items: center; gap: 4px; }
 .studio-render-ch__len { font-variant-numeric: tabular-nums; font-size: 12.5px; }
-.studio-render-ch__hidden { display: none; }
 /* Take A and take B side by side, the same width each (2026-10-06: "compare take css is bad"). */
 .studio-render-ch__compare { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; margin-bottom: 10px; }
 .studio-render-ch__compare > .jv-linepanel__field { min-width: 0; }

@@ -2,6 +2,14 @@
 
 ## v0.1.0
 
+- **Render plays a take every time you press ▶, and the take in use can be
+  deleted (2026-10-07)** — a take's ▶ worked only the first time; now each ▶
+  on Render (a line's, a take's, Compare's) turns into ⏸ while it plays, with a
+  seek bar in its own row instead of a second player under the takes, and one
+  thing plays at a time. Play chapter's controls show under its button. **🗑**
+  on the take in use asks first and puts the newest take left in use — or, for
+  a line's only take, sends the line back to Ready. Voices plays through the
+  same player ([Studio → Render](studio.md#takes))
 - **Cast's ＋ New persona shows who it left out (2026-10-06)** — the speakers
   your language model matched no voice to come first in the list, tagged **No
   voice yet**, with a line naming them; after **Create**, the message names

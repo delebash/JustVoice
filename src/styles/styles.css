@@ -1883,6 +1883,12 @@ section.block > h3 {
    where the action lives — promoted from the old Chapters page's scoped
    .chapter-view__audio, which this replaces. */
 .jv-audio-inline{width:100%;height:36px;display:block}
+/* A page player (composables/usePagePlayer.js, 2026-10-07): ONE hidden <audio>
+   per page, and its controls — PlayTransport.vue, a seek bar and "0:02 / 0:05"
+   — in the row whose ▶ started it. Voices and Render. */
+.jv-player-el{display:none}
+.jv-transport{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.jv-transport__time{font-size:12.5px;color:var(--ink-3)}
 .ev-rail{display:flex;align-items:center;background:var(--surface);border:1px solid var(--accent-line,#b8d2c3);border-radius:10px;margin-bottom:18px;overflow:hidden}
 .ev-rail-h{background:var(--accent-soft,#e8f0eb);color:var(--accent-ink,#2c6049);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:14px 16px;align-self:stretch;display:flex;align-items:center;border-right:1px solid var(--accent-line,#b8d2c3)}
 .ev-slot{display:flex;align-items:center;gap:10px;padding:9px 16px;border-right:1px solid var(--line);flex:1;min-width:0}

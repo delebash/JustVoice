@@ -15,7 +15,7 @@ import { readPref, writePref } from "../services/prefs.js";
 import { rowOptions } from "../services/capabilities.js";
 import { voiceRowState } from "../services/voiceGrid.js";
 import { genderWord, savePresetGenderOverride, voiceGender } from "../services/voiceGender.js";
-import { UiButton, UiInput, UiTextarea, UiField, UiTag, UiChip, UiSelect, UiSlider, UiTable } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTextarea, UiField, UiTag, UiChip, UiSelect, UiTable } from "@delebash/llm-ui";
 // Language CODE → the name a person reads ("en-US" → American English).
 // Kit-side, because every app in the family shows a language somewhere.
 import { languageName, languageOptionsFrom } from "@delebash/llm-ui";
@@ -27,6 +27,9 @@ import { useVoicesStore } from "../stores/voices.js";
 import { usePersonasStore } from "../stores/personas.js";
 import { runAiEndpoint } from "@delebash/llm-ui";
 import { useEnginesStore } from "../stores/engines.js";
+import { usePagePlayer } from "../composables/usePagePlayer.js";
+import PagePlayer from "../components/PagePlayer.vue";
+import PlayTransport from "../components/PlayTransport.vue";
 
 const api = useApi();
 // voices / engines come from shared stores. Mutations here (copy to
@@ -286,7 +289,7 @@ const VOICE_COLUMNS = [
  *  orphan row and tinted one cell of the playing row. The rule itself is pure
  *  and lives in services/voiceGrid.js, where it is unit-tested. */
 function voiceRowClass(row) {
-  return voiceRowState(row, orphanIds.value, playingVoice.value?.id || "");
+  return voiceRowState(row, orphanIds.value, player.key || "");
 }
 
 // The type chips count what the other filters leave, like every filter here.
@@ -301,9 +304,8 @@ const typeCounts = computed(() => ({
 // pressed — so the control and the voice it plays are the same object.
 // (2026-08-19: the expanding preview row, the in-row audition panel and
 // the inspector all came out; a library reads as a list.)
-const previewAudio = ref(null);
+const player = usePagePlayer();   // key = the voice id whose ▶ started it
 const previewingId = ref(null);
-const playingVoice = ref(null);
 
 // The line every ▶ in the grid speaks. One box above the grid, because
 // comparing voices means hearing them say the SAME thing — a per-row
@@ -312,43 +314,6 @@ const previewText = ref(readPref("voicesTestLine", ""));
 function setPreviewText(v) {
   previewText.value = v;
   writePref("voicesTestLine", v);
-}
-
-// The transport itself. One hidden <audio> for the page, driven by
-// whichever row started it.
-const playerEl = ref(null);
-const playerPaused = ref(true);
-const playTime = ref(0);
-const playDuration = ref(0);
-
-function onPlayTime() {
-  const el = playerEl.value;
-  if (!el) return;
-  playTime.value = el.currentTime || 0;
-  // A streamed audition's WAV header carries the streaming convention's
-  // 0xFFFFFFFF sizes, which browsers read as an hours-long duration —
-  // treat anything absurd as unknown so the transport shows elapsed time
-  // only until the stream (or a cached replay) has a real length.
-  const d = el.duration;
-  playDuration.value = Number.isFinite(d) && d < 21600 ? d : 0;
-}
-function onPlayEnded() {
-  playerPaused.value = true;
-  playTime.value = 0;
-}
-function togglePlay() {
-  const el = playerEl.value;
-  if (!el) return;
-  if (el.paused) el.play().catch(() => {});
-  else el.pause();
-}
-function seekTo(v) {
-  const el = playerEl.value;
-  if (el) el.currentTime = Number(v) || 0;
-}
-function fmtTime(sec) {
-  const t = Math.max(0, Math.floor(Number(sec) || 0));
-  return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
 }
 
 function previewBody() {
@@ -372,7 +337,7 @@ function tryStreamPreview(v) {
   // cannot send Authorization), dead server — resolves false and the POST
   // door below takes over with its install/load dialogs.
   return new Promise((resolve) => {
-    const el = playerEl.value;
+    const el = player.el;
     if (!el) return resolve(false);
     const line = previewText.value.trim();
     const qs = line ? `?${new URLSearchParams({ text: line })}` : "";
@@ -388,11 +353,8 @@ function tryStreamPreview(v) {
     const onErr = () => done(false);
     el.addEventListener("playing", onOk);
     el.addEventListener("error", onErr);
-    playingVoice.value = v;
-    playTime.value = 0;
-    playDuration.value = 0;
-    previewAudio.value = apiPath(`/v1/voices/${v.id}/preview/stream${qs}`);
-    nextTick().then(() => playerEl.value?.play().catch(() => done(false)));
+    player.load(v.id, apiPath(`/v1/voices/${v.id}/preview/stream${qs}`));
+    nextTick().then(() => player.el?.play().catch(() => done(false)));
     // Backstop for a silently hung connection. Generous on purpose: the
     // first piece's render time is real on CPU engines, and a working
     // stream fires "playing" long before this.
@@ -402,11 +364,11 @@ function tryStreamPreview(v) {
 
 async function previewVoice(v) {
   previewingId.value = v.id;
-  if (previewAudio.value) {
+  if (player.src) {
     // The src may be a stream URL rather than a blob — revoking those is
     // meaningless, so only blobs get revoked.
-    if (String(previewAudio.value).startsWith("blob:")) URL.revokeObjectURL(previewAudio.value);
-    previewAudio.value = null;
+    if (String(player.src).startsWith("blob:")) URL.revokeObjectURL(player.src);
+    player.src = null;
   }
   try {
     if (await tryStreamPreview(v)) return;
@@ -451,12 +413,9 @@ async function previewVoice(v) {
       // Topbar pill + Engines page track loads from anywhere.
       window.dispatchEvent(new Event("jv:health-refresh"));
     }
-    previewAudio.value = URL.createObjectURL(blob);
-    playingVoice.value = v;
-    playTime.value = 0;
-    playDuration.value = 0;
+    player.load(v.id, URL.createObjectURL(blob));
     await nextTick();
-    playerEl.value?.play().catch(() => {});
+    player.el?.play().catch(() => {});
   } catch (e) {
     if (handleTermsRefusal(e)) return;
     pushToast({ message: `Preview failed: ${e.message || e}`, kind: "error" });
@@ -743,16 +702,7 @@ function voiceTypeVariant(kind) {
 
   <!-- One audio element for the page, driven by whichever row you pressed.
        Hidden on purpose: the transport lives in that row. -->
-  <audio
-    ref="playerEl"
-    :src="previewAudio || undefined"
-    class="voices-view__audio-el"
-    @timeupdate="onPlayTime"
-    @loadedmetadata="onPlayTime"
-    @play="playerPaused = false"
-    @pause="playerPaused = true"
-    @ended="onPlayEnded"
-  />
+  <PagePlayer :player="player" />
 
   <!-- ── Voice catalog table — owns its own scroll lane ───────────────── -->
   <div class="voices-view__list">
@@ -777,23 +727,13 @@ function voiceTypeVariant(kind) {
             intent="ghost"
             size="small"
             :loading="previewingId === row.id"
-            :label="playingVoice?.id === row.id && !playerPaused ? '⏸' : '▶'"
-            :title="playingVoice?.id === row.id && !playerPaused ? `Pause ${row.name}` : `Hear ${row.name} say the test line`"
-            @click="playingVoice?.id === row.id ? togglePlay() : previewVoice(row)"
+            :label="player.isPlaying(row.id) ? '⏸' : '▶'"
+            :title="player.isPlaying(row.id) ? `Pause ${row.name}` : `Hear ${row.name} say the test line`"
+            @click="player.key === row.id ? player.toggle() : previewVoice(row)"
           />
           <strong>{{ row.name }}</strong>
           <UiTag v-if="orphanIds.includes(row.id)" intent="danger" value="orphan" style="margin-left: 6px" />
-          <span v-if="playingVoice?.id === row.id" class="voices-view__transport">
-            <UiSlider
-              :modelValue="playTime"
-              :min="0" :max="playDuration || 0" :step="0.01"
-              width="short"
-              :show-number="false"
-              aria-label="Seek"
-              @update:modelValue="seekTo($event)"
-            />
-            <span class="jv-mono voices-view__time">{{ playDuration ? `${fmtTime(playTime)} / ${fmtTime(playDuration)}` : fmtTime(playTime) }}</span>
-          </span>
+          <PlayTransport v-if="player.key === row.id" :player="player" class="voices-view__transport" />
         </div>
       </template>
 
@@ -976,14 +916,12 @@ function voiceTypeVariant(kind) {
 .voices-view__bench-field { flex: 0 1 62ch; min-width: 340px; }
 .voices-view__bench-field :deep(textarea) { width: 100%; }
 .voices-view__bench-hint { flex: 1 1 40ch; max-width: 64ch; font-size: 12px; line-height: 1.5; margin: 0 0 2px; }
-.voices-view__audio-el { display: none; }
 
 /* The play control belongs WITH the name, and the transport appears in
    the same cell while that voice plays — one object, not a button in one
    column and a player elsewhere on the page. */
 .voices-view__name-cell { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
-.voices-view__transport { display: inline-flex; align-items: center; gap: 8px; margin-left: 4px; }
-.voices-view__time { font-size: 11px; color: var(--ink-3); }
+.voices-view__transport { margin-left: 4px; }
 
 /* Columns sized to what they hold — otherwise six columns share the whole
    window and Name becomes a near-empty 470px cell.

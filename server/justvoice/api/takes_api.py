@@ -114,8 +114,20 @@ async def delete_take(take_id: str, db: Session = Depends(get_db)) -> dict:
     take = db.query(Take).filter(Take.id == take_id).first()
     if not take:
         raise not_found(f"take {take_id}")
+    # The take in use can go too (decided 2026-10-07): the newest take left —
+    # the top of the line's list — goes in use in the same commit. With none
+    # left the line has no take, like a line never rendered.
+    default_take_id = None
     if take.is_default:
-        raise bad_request("Cannot delete the default take; promote another take first.")
+        nxt = (
+            db.query(Take)
+            .filter(Take.block_id == take.block_id, Take.id != take.id)
+            .order_by(Take.created_at.desc())
+            .first()
+        )
+        if nxt is not None:
+            nxt.is_default = True
+            default_take_id = nxt.id
     # Its audio goes with it (Slice 4): the generation row and its file.
     from ..line_takes import TAKE_SOURCES, delete_generation
 
@@ -124,7 +136,7 @@ async def delete_take(take_id: str, db: Session = Depends(get_db)) -> dict:
     if gen is not None and gen.source in TAKE_SOURCES:
         delete_generation(db, gen)
     db.commit()
-    return {"deleted": True}
+    return {"deleted": True, "default_take_id": default_take_id}
 
 
 class RecentTakeRow(BaseModel):

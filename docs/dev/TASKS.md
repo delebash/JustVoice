@@ -125,6 +125,57 @@ GO:     given 2026-08-17
 
 ## The next build
 
+### Render: one player for the page — ▶ plays every time, its controls in the row you pressed (decided 2026-10-07)
+STATE:  DECIDED 2026-10-07 — "yoour rec on all go" (the user, with a screenshot: "on the take the the play
+        button nex to use this take doesnt work and we have another progress playline below, what do
+        you think this should look like nad work?", then "correction the play button next to use this
+        take only works the first time you click it then you have to click the progress play line"), on
+        the proposal as shown: "One hidden player for the whole Render page, driven by whichever ▶ you
+        press: a grid row, a take, or Compare's A/B. A take's ▶ becomes ⏸ while it plays. Press to pause;
+        press after it ends and it plays from the start. The controls appear inside the row you pressed:
+        a short seek bar and '0:02 / 0:05', where the take's length sits now. The full-width player under
+        the takes goes away. Only one thing plays at a time. Pressing another ▶ stops the first, which
+        also ends the double play." Questions, each "your rec": 1 controls inside the take row (Voices'
+        way) — "Lean: inside the row." 2 Play chapter on the same player, its controls wide under the
+        button — "Lean: yes." 3 Voices' player becomes one shared piece Voices and Render both use —
+        "Lean: yes. Voices would work exactly as it does now."
+WHY:    `play()` set the same URL again, so a finished player never restarted (`StudioRenderChapter.vue:326`);
+        the mock built a fresh URL each press and never showed it. The row ▶ and Compare had the same bug,
+        and the In use take's ▶ matched two players at once (`:648` and `:779`).
+NOT:    keeping one full-width player under the takes; a second copy of Voices' transport.
+BUILT:  2026-10-07 — `composables/usePagePlayer.js` + `PagePlayer.vue` (the hidden `<audio>`) +
+        `PlayTransport.vue` (seek bar, "0:02 / 0:05"; `toggle` adds ▶/⏸ for Play chapter, `width="long"`);
+        `.jv-transport` / `.jv-player-el` in styles.css and design-law. Render (`StudioRenderChapter.vue`
+        and its mock): keys `chapter` · `row:` · `take:` · `cmp:`; the four `<audio>` gone; closing the
+        line, Compare, or changing B stops what it played. Voices moved onto it (time text 11px → the
+        12.5px floor). Checked live (headless, read-only): ▶ plays, ⏸, ends, ▶ again plays from the
+        start; the grid row's ▶ likewise; one `<audio>` on the page, one set of controls. Voices loads
+        with one `<audio>`, no errors — its ▶ not pressed (it would load a speech model).
+OPEN:   none.
+GO:     given 2026-10-07
+
+### Render: the take in use can be deleted — the newest one left takes over (decided 2026-10-07)
+STATE:  DECIDED 2026-10-07 — "yoour rec on all go" (the user: "i cant delete the in use take, i should be
+        abloe to do that with a warning and it just picks next take to set in use, what do you think?"),
+        on the proposal as shown: "1. The In use take gets a 🗑 like the others. Pressing it asks first:
+        when other takes exist: 'Delete the take in use? Take 1 (0:05) becomes the one the chapter plays.
+        This take's audio is deleted.' When it's the line's only take: 'Delete this line's only take? The
+        line goes back to Ready, and Play chapter renders it again.' 2. The server deletes the take and
+        puts the next one in use in the same step, so this stays in Python. 3. If the take that takes
+        over no longer matches the line's current settings, it shows Stale, like any older take. 4.
+        Deleting any other take works as now, without asking." Questions, each "your rec": 1 next = "the
+        newest one left, the top of the list once the deleted take is gone"; 2 the only take can be
+        deleted too — "yes, with its own warning. The line just goes back to Ready."
+WHY:    the refusal (`takes_api.py:117`) was the code's rule from before Slice 4, never a decision.
+NOT:    "promote another take first" as the only way.
+BUILT:  2026-10-07 — `takes_api.delete_take`: the take in use puts the newest take left in use in the
+        same commit, returns `default_take_id`; `test_takes.py` (the 400 test replaced by two).
+        `StudioRenderChapter.vue` `deleteTake` (the two warnings, `danger`) and the mock. Docs studio
+        (Takes, Playing a take), whats-new. Checked live: the only-take warning shows, Cancel writes
+        nothing. Not live: the delete itself — the running app has the old server until restarted.
+OPEN:   none.
+GO:     given 2026-10-07
+
 ### Cast's batch: the speakers the model skipped are hard to miss (decided 2026-10-06)
 STATE:  DECIDED 2026-10-06 — "your rec go on all" (the user, with a screenshot: "i did create persona
         but for some reason narrator did not get assigned" — the batch made 7; the Narrator, Nettle and
