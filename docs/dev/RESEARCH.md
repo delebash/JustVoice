@@ -445,6 +445,12 @@ unloaded — audit §3.1 has the method.
   beside `current_engine` (the id). The top bar's pill shows the name. — *code + live,
   2026-10-06* · `api/health_api.py` (`loaded_model_name`).
 
+- **What a preview says about a load**: a ▶ that needs a model not loaded asks first ("Load
+  Kokoro?" → **Load & play**), then shows "Loading Kokoro… this can take up to a minute." and
+  "Kokoro loaded." (`services/voiceAudition.askingToLoad`; the Voices table its own copy). With
+  **Always auto-load** on it loads without asking and shows nothing but the ▶'s spinner. There is
+  no Generate page any more — `/v1/generate` serves MCP and JustWrite. — *code, 2026-10-07*.
+
 ---
 
 ## 3 · Render and takes

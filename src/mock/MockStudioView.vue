@@ -47,6 +47,7 @@ const mockState = computed(() => {
     castTotal: SPEAKERS.length,
     castReady: SPEAKERS.filter((s) => speakerReady(s.id)).length,
     blocked: k.blocked,
+    cantRender: k.blocked,
     rendered: k.rendered,
     renderable: k.ready + k.rendered + k.stale,
     ready: k.ready,

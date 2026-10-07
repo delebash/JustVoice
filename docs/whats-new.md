@@ -2,6 +2,10 @@
 
 ## v0.1.0
 
+- **Small fixes on Render and Studio's steps (2026-10-07)** — a waiting render counts what
+  else is ahead (*…on Kokoro, and 12 more lines*); the Render step says how many lines can't
+  render (*0 of 4 lines rendered · 8 can't render*); a game's Lines step says *Checking the
+  lines…* while it reads them, instead of *No lines yet* ([Studio](studio.md))
 - **Render says when a model is loading, and stops for deleted books (2026-10-07)** —
   while a line's model loads, the strip says *loading Qwen3-TTS CustomVoice — 8 s*
   instead of the line rendering for 10–20 s with no reason given. Deleting a book (or a

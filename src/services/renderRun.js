@@ -83,15 +83,18 @@ export function runFigures(job, elapsed) {
  * What a waiting run waits for — the first thing ahead of it in the queue
  * (decided 2026-10-07): "waiting — 2 · Bigger Inside is ahead: 40 lines on
  * Chatterbox Turbo" for a chapter's render, "waiting — the M4B export is
- * rendering 12 lines first" for other work. "" when nothing is ahead.
+ * rendering 12 lines first" for other work; when more is ahead after it,
+ * ", and 12 more lines". "" when nothing is ahead.
  */
 export function waitingText(waiting) {
   const g = waiting?.groups?.[0];
   if (!g) return "";
-  const n = `${g.lines.toLocaleString()} line${g.lines === 1 ? "" : "s"}`;
-  return g.kind === "chapter"
-    ? `waiting — ${g.label} is ahead: ${n}${g.model ? ` on ${g.model}` : ""}`
-    : `waiting — ${g.label} is rendering ${n} first`;
+  const lines = (n) => `${n.toLocaleString()} line${n === 1 ? "" : "s"}`;
+  const first = g.kind === "chapter"
+    ? `waiting — ${g.label} is ahead: ${lines(g.lines)}${g.model ? ` on ${g.model}` : ""}`
+    : `waiting — ${g.label} is rendering ${lines(g.lines)} first`;
+  const more = (waiting.lines || 0) - g.lines;
+  return more > 0 ? `${first}, and ${more.toLocaleString()} more line${more === 1 ? "" : "s"}` : first;
 }
 
 /** "loading Qwen3-TTS CustomVoice — 8 s" while the line rendering now loads its model (2026-10-07); "" otherwise. */

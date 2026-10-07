@@ -27,6 +27,7 @@ import PlayTransport from "../components/PlayTransport.vue";
 import { usePagePlayer } from "../composables/usePagePlayer.js";
 import { facetCounts, facetOptions, facetTotal, passesFilters } from "../services/facets.js";
 import { lineStateWord } from "../services/lineStates.js";
+import { loadingText, waitingText } from "../services/renderRun.js";
 import DeliveryKnobs from "../components/DeliveryKnobs.vue";
 import { capabilities, emotionValues, silentWav, wait } from "./personaMock.js";
 import { directionCell, tagCount } from "../services/personaFacts.js";
@@ -417,8 +418,10 @@ const blockedBanner = computed(() => {
         </div>
         <PageTaskStrips :features="['render-lines', 'render-scene']" :meta="{ sceneId: chapter.id }">
           <template #extra-stats="{ task }">
-            <UiButton v-if="task.render?.current" intent="ghost" size="small" class="sts-stat"
+            <span v-if="loadingText(task.render?.loading)" class="sts-stat">{{ loadingText(task.render.loading) }}</span>
+            <UiButton v-else-if="task.render?.current" intent="ghost" size="small" class="sts-stat"
               :label="lineName(task.render.current)" title="Show this line" @click="goToLine(task.render.current.block_id)" />
+            <span v-else-if="waitingText(task.render?.waiting)" class="sts-stat">{{ waitingText(task.render.waiting) }}</span>
           </template>
         </PageTaskStrips>
         <PlayTransport v-if="player.key === 'chapter'" :player="player" width="long" toggle />

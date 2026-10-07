@@ -197,8 +197,8 @@ export const isWaiting = (r) => r.status === "new" || r.status === "library";
  * server's), or null before it loads; `running` counts chapters being analyzed.
  */
 export function projectState({
-  scenes = [], stats = {}, cast = [], ignored = [], personas = [], render = null, script = null,
-  running = 0,
+  scenes = [], scenesLoaded = true, stats = {}, cast = [], ignored = [], personas = [], render = null,
+  script = null, running = 0,
 }) {
   let lines = 0;
   let unplaced = 0;
@@ -245,6 +245,11 @@ export function projectState({
     speakersBesideNarrator: cast.filter((sp) => !sp.narrator).length,
     noNarrator,
     blocked,
+    // Every chapter's lines read (the step cards say "Checking the lines…" until
+    // then — 2026-10-07: a game's sheet read "No lines yet" for 1–3 s).
+    linesLoaded: scenesLoaded && scenes.every((s) => stats[s.id]),
+    // Lines that can't render, as Render counts them (its header's "· N can't render").
+    cantRender: render ? (render.needs_speaker || 0) + (render.needs_voice || 0) : 0,
     // Rendered = a take that is current (services/lineStates.js, 2026-10-06): a
     // stale line still plays its take but isn't counted rendered — Render's own
     // numbers. Of the lines that can render; `ready` have no take yet.
@@ -297,6 +302,7 @@ export function stepStatus(key, state, unit) {
       };
     }
     case "lines":
+      if (state.linesLoaded === false) return { text: "Checking the lines…", tag: null };
       return {
         text: state.lines ? plural(state.lines, "line") : "No lines yet — re-import the sheet",
         tag: null,
@@ -311,9 +317,12 @@ export function stepStatus(key, state, unit) {
     case "render":
       if (state.renderable === null) return { text: "Checking what is rendered…", tag: null };
       return {
-        text: state.renderable
+        // The lines that can't render are named beside it (2026-10-07: a game's
+        // sheet read "0 of 4 lines rendered" with 8 more it didn't mention).
+        text: (state.renderable
           ? `${state.rendered.toLocaleString()} of ${plural(state.renderable, "line")} rendered`
-          : "Nothing can render yet",
+          : "Nothing can render yet")
+          + (state.cantRender ? ` · ${state.cantRender.toLocaleString()} ${CANT_RENDER}` : ""),
         tag: state.ready
           ? { intent: "accent2", label: `${state.ready.toLocaleString()} to go` }
           : state.stale

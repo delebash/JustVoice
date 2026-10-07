@@ -75,6 +75,9 @@ const loading = ref(false);
 
 // Script (Slice 3, §8.24): the chapter grid, or one chapter's page.
 const scenes = ref([]);
+// Whose chapter list `scenes` is — until it is the open project's, its lines
+// aren't known yet (the step cards say "Checking the lines…", 2026-10-07).
+const scenesOf = ref(null);
 // GET /v1/projects/{id}/script — one row per chapter, the grid's and
 // Overview's numbers on the one "analyzed" rule.
 const scriptChapters = ref([]);
@@ -175,6 +178,7 @@ function stepBy(delta) {
 // from a populated cast) and whether a persona with a voice plays them.
 const overviewState = computed(() => projectState({
   scenes: scenes.value,
+  scenesLoaded: scenesOf.value === selectedProjectId.value,
   stats: sceneStats.value,
   script: scriptChapters.value,
   running: chapterRunFor(selectedProjectId.value)?.current?.kind === "analyze" ? 1 : 0,
@@ -378,6 +382,7 @@ async function loadScenesForProject(projectId) {
     const r = await api.safeRequest(`/v1/projects/${projectId}/scenes`, []);
     // Endpoint returns a bare array (block_count included per scene).
     scenes.value = Array.isArray(r) ? r : r?.scenes || [];
+    scenesOf.value = projectId;
     // A chapter open in Script that isn't in THIS project closes back to the
     // grid — keeping the old id froze Script on the previous book's chapter
     // (user-hit: "book dropdown doesn't change anything").
@@ -400,6 +405,7 @@ async function loadScenesForProject(projectId) {
     );
   } catch {
     scenes.value = [];
+    scenesOf.value = projectId;   // known to be empty, not still loading
   }
 }
 

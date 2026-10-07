@@ -125,6 +125,42 @@ GO:     given 2026-08-17
 
 ## The next build
 
+### The small leftovers: "and N more lines", two tracker lines, the game project's cards, the Render mock's words, loading words beyond Render (decided 2026-10-07)
+STATE:  DECIDED 2026-10-07 — "do the small go", on the six as shown: "1. 'and 12 more lines' when several
+        things are ahead of a render. Your answer is still needed. My recommendation is yes." · "2. Two
+        tracker lines are out of date. Today's leftovers entry still lists items 6 and 7 as open, and the
+        Analyze-prompt finding still says OPEN although you decided to leave the prompt as it is. Both
+        just need closing." · "3. The game project's Lines card says 'No lines yet — re-import the
+        sheet' for 1–3 s while it loads. Lean: show a loading word there, the way the Render card shows
+        'Checking what is rendered…'." · "4. The game project's Render card said '0 of 4 lines rendered'
+        for a 12-line sheet. It counts only the lines that can render, and doesn't say that 8 can't.
+        Lean: add '8 can't render', as the book's cards do." · "5. The Render mock doesn't show today's
+        waiting and loading words yet. Lean: add both, so the mock stays a true picture of the page." ·
+        "6. The loading words on Generate and in previews. You chose Render first; this is the 'then'."
+        — 6 had no lean and no shape for those pages (they have no strip): researched first, built
+        only where it fits what already shows there, else asked.
+BUILT:  2026-10-07 — 1: `renderRun.waitingText` ", and 12 more lines" when more is ahead than the first
+        thing. 2: the leftovers entry's OPEN and the Analyze-prompt finding's OPEN closed. 3:
+        `studioStatus.projectState` `linesLoaded` (and `scenesLoaded`, from `StudioView`'s `scenesOf`):
+        the Lines card reads "Checking the lines…" until every chapter's lines are read. 4: `cantRender`
+        (Render's own needs_speaker + needs_voice) — the Render card adds "· 8 can't render", on a book
+        too: the book's cards never showed it either (my "as the book's cards do" was wrong — that tag
+        is on Overview's Cast row). 5: the mock's one queue (`renderMock.js`: runs in order, a run's
+        lines by model with the loaded one first, a load when the model changes) feeding `waiting` /
+        `loading`; both mock strips show the app's words; the mock's Studio cards take `cantRender`.
+        Tests: `renderRun.test.js`, `studioStatus.test.js` (3). Docs studio, whats-new. Checked: a
+        temporary game project (deleted after) — Lines "Checking the lines…" → "12 lines", Render "0
+        of 4 lines rendered · 8 can't render"; the mock — "waiting — 1 · Brass Rank is ahead: 65 lines
+        on Kokoro, and 67 more lines", "loading Chatterbox Turbo — 0 s"; no page errors.
+        6: researched — there is no Generate page (only `/v1/generate`, for MCP and JustWrite), and
+        a preview that has to load asks first, then says "Loading Kokoro… this can take up to a
+        minute" and "Kokoro loaded" (`voiceAudition.askingToLoad`, VoicesView); only with "Always
+        auto-load" on does a load show nothing but the ▶'s spinner. Asked, not built.
+        Seen on the way, not fixed: before a game project's kind is known, its cards read the book's
+        steps for a moment ("Discover No scenes yet"), and Cast reads "No speakers yet" until they load.
+OPEN:   6 — the "Always auto-load" case: the same two messages then? (asked).
+GO:     given 2026-10-07
+
 ### Render says when a line's model is loading; a deleted book's renders stop; a chapter's run greys only its own buttons (decided 2026-10-07)
 STATE:  DECIDED 2026-10-07 — "your rec go", on the proposal and the two problems as shown: "Why: when a
         render needs a different model, that model loads inside its first line. So the line shows
@@ -157,7 +193,7 @@ BUILT:  2026-10-07 — loading: `voice_model._noting_load` / `loading_now` aroun
         Kokoro"; chapter 1's own buttons greyed during its run; a book deleted with a line rendering:
         that line dropped, the other five skipped within 5 ms, no FOREIGN KEY errors (before: 56 lines
         held the queue ~2 min, each failing to save). No page errors.
-OPEN:   "and 12 more lines" when several things are ahead — asked, no answer yet.
+OPEN:   none — "and 12 more lines" built 2026-10-07 ("The small leftovers", above).
 GO:     given 2026-10-07
 
 ### Render says what a waiting render is waiting for (decided 2026-10-07)
@@ -258,7 +294,9 @@ BUILT:  2026-10-07 — 1: `StudioRender.vue` on `usePagePlayer` (key `chapter:<s
         10 ms windows under −60 dBFS, as `audio/chunked._quiet_run`); straight from the runtime, a
         423-character line cut after its second sentence joins at 260 ms. 8: built 2026-10-06 —
         the style_prompt item's line corrected. 9: both checked — Slices 1 + 2 and Slice 3 above.
-OPEN:   6 — the proposal is with the user (reply of 2026-10-07); 7 — needs its own go.
+OPEN:   none — 6 built ("Render says what a waiting render is waiting for"), 7 tested and decided
+        (the prompt stays) — both above. (Was: "6 — the proposal is with the user; 7 — needs its own
+        go", corrected 2026-10-07.)
 GO:     given 2026-10-07
 
 ### Chapter WAVs (zip) holds chapter WAVs and masters; voice previews join their pieces at 260 ms (decided 2026-10-07)
@@ -4368,7 +4406,7 @@ now sends each speaker's pronouns, aliases and description
 gender, pronouns and aliases — never the description. So the main Analyze call
 has never seen who a speaker is; the second look does (`second_look.cast_lines`,
 2026-10-05). (Corrected 2026-10-05: this said aliases and pronouns never arrive.)
-OPEN: put the speaker's description (`description[:200]`) in the main prompt's
+WAS OPEN: put the speaker's description (`description[:200]`) in the main prompt's
 cast list — changes every analyze run's tokens and behavior, so it is a product
 call, not a cleanup. Tested 2026-10-07 ("Analyze with each speaker's
 description", above): no better — 272→271/272 and 263→263/264. DECIDED

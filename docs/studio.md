@@ -48,9 +48,9 @@ row opens that step:
 |---|---|
 | Discover | how many chapters have been scanned, and how many proposed speakers are waiting for **＋ Add** or **Ignore** |
 | Script | how many chapters are analyzed (or, for a script whose speakers came with the import, how many have speakers), and — in what Analyze decided — how many lines have **no speaker** and how many are **flagged**. Either number opens Script's grid on *To check* |
-| Lines (game) | how many lines the sheet has |
+| Lines (game) | how many lines the sheet has (*Checking the lines…* while they are read) |
 | Cast | how many of the book's speakers are cast (*3 of 5 speakers cast*) — played by a persona that has a voice — and how many lines can't render because a speaker isn't |
-| Render | how many lines are rendered — a take made from what the line is now — out of those that can render (*412 of 2,140 lines rendered*), and how many are still to go or stale |
+| Render | how many lines are rendered — a take made from what the line is now — out of those that can render (*412 of 2,140 lines rendered*), how many can't render (*· 8 can't render*), and how many are still to go or stale |
 | Export | what Export makes — it keeps no record of past exports, so there is no count |
 
 Every number is read from the project itself; nothing is estimated. Export
@@ -1049,7 +1049,8 @@ chapter's render, an export, a preview. While none of its own lines has started,
 the strip says what it is waiting for, in place of the line's name —
 *waiting — 2 · Bigger Inside is ahead: 40 lines on Chatterbox Turbo*, or
 *waiting — the M4B export is rendering 12 lines first* — and every line still
-reads *queued*. When several things are ahead, it names the first. As soon as
+reads *queued*. When several things are ahead, it names the first and counts the
+rest — *…on Kokoro, and 12 more lines*. As soon as
 its first line starts, the strip names that line again.
 
 A line whose model isn't loaded yet loads it first — a few seconds for Kokoro,

@@ -81,6 +81,11 @@ describe("what a waiting run says (2026-10-07)", () => {
     expect(waitingText({ lines: 41, groups: [
       { label: "2 · Bigger Inside", kind: "chapter", model: "Chatterbox Turbo", lines: 40 },
       { label: "the M4B export", kind: "work", model: "Kokoro", lines: 1 },
+    ] })).toBe("waiting — 2 · Bigger Inside is ahead: 40 lines on Chatterbox Turbo, and 1 more line");
+  });
+  it("says only the first when nothing more is ahead", () => {
+    expect(waitingText({ lines: 40, groups: [
+      { label: "2 · Bigger Inside", kind: "chapter", model: "Chatterbox Turbo", lines: 40 },
     ] })).toBe("waiting — 2 · Bigger Inside is ahead: 40 lines on Chatterbox Turbo");
   });
   it("says other work is rendering first", () => {

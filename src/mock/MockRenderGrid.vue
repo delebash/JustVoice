@@ -20,6 +20,7 @@ import PageTaskStrips from "../components/PageTaskStrips.vue";
 import PlayTransport from "../components/PlayTransport.vue";
 import { usePagePlayer } from "../composables/usePagePlayer.js";
 import { CANT_RENDER, partOf } from "../services/lineStates.js";
+import { loadingText, waitingText } from "../services/renderRun.js";
 import { PROJECT, counts, render, renderChapter, runQc } from "./renderMock.js";
 
 const emit = defineEmits(["go"]);
@@ -232,7 +233,9 @@ function open(ch) {
               <div class="mock-render__task">
                 <AiTaskStrip :task="taskFor(row.ch.id)" class="mock-render__strip">
                   <template #extra-stats="{ task }">
-                    <span v-if="task.render?.current" class="sts-stat">{{ lineName(task.render.current) }}</span>
+                    <span v-if="loadingText(task.render?.loading)" class="sts-stat">{{ loadingText(task.render.loading) }}</span>
+                    <span v-else-if="task.render?.current" class="sts-stat">{{ lineName(task.render.current) }}</span>
+                    <span v-else-if="waitingText(task.render?.waiting)" class="sts-stat">{{ waitingText(task.render.waiting) }}</span>
                   </template>
                 </AiTaskStrip>
                 <template v-if="taskFor(row.ch.id).status === 'done' && taskFor(row.ch.id).result?.url">

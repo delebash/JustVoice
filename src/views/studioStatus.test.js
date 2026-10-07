@@ -53,8 +53,24 @@ describe("projectState", () => {
     expect(projectState({ scenes, stats, cast, render })).toEqual({
       chapters: 2, scanned: 0, proposed: 0, analyzed: 1, fromImport: 0, running: 0, flagged: 0,
       noSpeaker: 2, lines: 14, unplaced: 2, castTotal: 2, castReady: 1, speakersBesideNarrator: 1, blocked: 4,
-      rendered: 3, renderable: 11, ready: 6, stale: 2, noNarrator: false,
+      linesLoaded: true, cantRender: 3, rendered: 3, renderable: 11, ready: 6, stale: 2, noNarrator: false,
     });
+  });
+
+  it("says the lines are being checked until every chapter's lines are read (2026-10-07)", () => {
+    const s = projectState({ scenes, stats: { a: stats.a }, cast });
+    expect(s.linesLoaded).toBe(false);
+    expect(stepStatus("lines", s, UNIT).text).toBe("Checking the lines…");
+    expect(stepStatus("lines", projectState({ scenes: [], scenesLoaded: false, stats: {}, cast }), UNIT).text)
+      .toBe("Checking the lines…");
+    expect(stepStatus("lines", projectState({ scenes: [], stats: {}, cast }), UNIT).text)
+      .toBe("No lines yet — re-import the sheet");
+  });
+
+  it("names the lines that can't render beside what is rendered (2026-10-07)", () => {
+    const render = { lines: 12, needs_speaker: 0, needs_voice: 8, ready: 4, rendered: 0, stale: 0 };
+    expect(stepStatus("render", projectState({ scenes, stats, cast, render }), UNIT).text)
+      .toBe("0 of 4 lines rendered · 8 can't render");
   });
 
   it("takes the flagged lines from the server's Script rows, and counts no-speaker lines only where Analyze ran", () => {

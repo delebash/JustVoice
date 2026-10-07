@@ -216,39 +216,84 @@ export function pauseAfter(l) {
 }
 
 const LINE_MS = 400;   // how long the mock takes over one line
+const LOAD_MS = 2500;  // and over loading another model
 const cancelled = () => new DOMException("Render cancelled", "AbortError");
+
+// The one speech queue, as the app's (`synth_scheduler`, 2026-10-07): one line at a time
+// across every run, the runs in the order they were started, a run's lines grouped by model
+// with the loaded one first — so another model loads once, inside its first line.
+const queue = [];          // runs: { label, left: [lines] }
+let loadedModel = "Kokoro";
+const modelOf = (l) => personaOfSpeaker(l.speaker_id)?.model_name || "";
+function byModel(lines) {
+  const order = [...new Set([loadedModel, ...lines.map(modelOf)])];
+  return [...lines].sort((a, b) => order.indexOf(modelOf(a)) - order.indexOf(modelOf(b)));
+}
+/** What is ahead of `run`, as `GET /v1/render_jobs/{id}`'s `waiting`. */
+function ahead(run) {
+  const before = queue.slice(0, queue.indexOf(run)).filter((r) => r.left.length);
+  if (!before.length) return null;
+  const first = before[0];
+  return {
+    lines: before.reduce((n, r) => n + r.left.length, 0),
+    groups: [{ label: first.label, kind: "chapter", model: modelOf(first.left[0]), lines: first.left.length }],
+  };
+}
 
 /**
  * Lines rendering as the app's run reports them (`services/renderRun.js`, 2026-10-07): each
- * line's state in the run, the line rendering now and how many are done on the task, and the
- * strip's figures. which: "ready" — each line with no take gets one; "all" — a new take for
- * every line that can render.
+ * line's state in the run, the line rendering now and how many are done on the task, what it
+ * waits behind, the model a line is loading, and the strip's figures. which: "ready" — each
+ * line with no take gets one; "all" — a new take for every line that can render.
  */
 async function runLines(task, ch, which, steps) {
   const todo = ch.lines.filter((l) => (which === "all"
     ? ["ready", "rendered", "stale"].includes(lineState(l)) : lineState(l) === "ready"));
   const states = Object.fromEntries(todo.map((l) => [l.id, "pending"]));
+  const run = { label: `${ch.n} · ${ch.title}`, left: [...todo] };
+  queue.push(run);
   const t0 = Date.now();
   let done = 0;
   let audio = 0;
-  const report = (current) => {
-    task.update({ render: { lines: { ...states }, current, done } });
+  const report = (current, extra = {}) => {
+    task.update({ render: { lines: { ...states }, current, done, waiting: null, loading: null, ...extra } });
     task.setProgress(done, steps ?? (todo.length || 1));
     task.setStats(runFigures({ audio_seconds: audio, completed_blocks: done, failed_blocks: 0, total_blocks: todo.length },
       (Date.now() - t0) / 1000));
   };
-  for (const l of todo) {
-    if (task.signal.aborted) throw cancelled();
-    states[l.id] = "running";
-    report({ block_id: l.id, n: l.n, speaker: speakerOf(l.speaker_id)?.name || "" });
-    await wait(LINE_MS);
-    if (task.signal.aborted) throw cancelled();
-    addTake(l);
-    audio += l.takes[0].seconds;
-    states[l.id] = "completed";
-    done += 1;
+  try {
+    while (ahead(run)) {
+      report(null, { waiting: ahead(run) });
+      await wait(250);
+      if (task.signal.aborted) throw cancelled();
+    }
+    run.left = byModel(run.left);
+    while (run.left.length) {
+      const l = run.left[0];
+      if (task.signal.aborted) throw cancelled();
+      states[l.id] = "running";
+      const current = { block_id: l.id, n: l.n, speaker: speakerOf(l.speaker_id)?.name || "" };
+      if (modelOf(l) && modelOf(l) !== loadedModel) {
+        for (let ms = 0; ms < LOAD_MS; ms += 250) {
+          report(current, { loading: { model: modelOf(l), seconds: ms / 1000 } });
+          await wait(250);
+          if (task.signal.aborted) throw cancelled();
+        }
+        loadedModel = modelOf(l);
+      }
+      report(current);
+      await wait(LINE_MS);
+      if (task.signal.aborted) throw cancelled();
+      addTake(l);
+      audio += l.takes[0].seconds;
+      states[l.id] = "completed";
+      done += 1;
+      run.left.shift();
+    }
+    report(null);
+  } finally {
+    queue.splice(queue.indexOf(run), 1);
   }
-  report(null);
 }
 
 /** ⚡ Render N ready / ↻ Re-render all on one chapter, as the app's kit task ("render-lines"). */
