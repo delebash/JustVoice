@@ -970,6 +970,27 @@ pause wins for that line, whether it came from an import (a script's
 `pause_after_ms`) or from [Render overrides](#render-overrides) — and,
 since 2026-10-04, it wins over the persona's own pause too.
 
+**The pause you set is the pause you hear.** A speech model leaves silence of its
+own at the start and end of every take — Kokoro about a quarter of a second
+before and three quarters after — so a 600 ms pause used to play as about 1.6
+seconds, and unevenly from line to line. Since 2026-10-07 the chapter trims each
+take's own silence down to 50 ms at either end as it joins the lines, then adds
+the pause. Only true silence goes — anything quieter than −70 dBFS — so the quiet
+end of a word is never cut. The take itself is not changed, nothing renders again,
+and every chapter — new or already rendered — joins this way: in Render, the
+exported audiobook and ACX QC alike. A take's ▶ on its own still plays it whole,
+so its length reads a little longer than its place in the chapter.
+
+**A paragraph's lines join closer.** When Analyze cuts one paragraph into several
+lines — a quote, its *she said*, the rest of the quote — they are joined with
+**Pause within a paragraph** (Settings → Generation pipeline, 250 ms by default)
+instead of the pause between lines; a new paragraph keeps the pause between
+lines. A line knows its paragraph when it came from a JustWrite book or from
+Analyze; a line you split off, typed in or wrote with ✎ Edit text joins with the
+pause between lines. A line's own pause still wins, and a speaker changing gets
+no pause of its own — inside a paragraph it is the paragraph's pause, between
+paragraphs the pause between lines.
+
 **A scene break gets a longer pause.** A book from JustWrite keeps where each
 of its scenes ends inside a chapter (the `* * *` you see in JustWrite). The
 last line of each such scene is followed by **Pause at a scene break**
@@ -997,8 +1018,9 @@ the chapter shows how far it is — the same strip as on the chapter's page (see
 **▶ Play** and **⬇ Download** (a WAV). Tick chapters and **▶ Render N chapters**
 renders them one after another, the ones still waiting reading *queued* in
 **Check** (a chapter that failed reads *failed*); **Select unrendered** ticks
-every chapter with lines that have no take yet. **▶ Render all**, beside the
-mastering pill, does every chapter.
+every chapter with lines that have no take yet. **▶ Render all**, right beside
+**▶ Render N chapters**, does every chapter — it says why when it can't (no
+chapter has text, or nobody is cast yet).
 
 If the last step fails, the strip says *Mastering failed — every line's take is
 kept; Retry masters again*, followed by the reason. Every line keeps the take it
@@ -1102,8 +1124,9 @@ because there you are still choosing the voice. In the persona page's order:
 Kokoro shows the four numbers and nothing else. Each control:
 
 - shows the persona's value until you change it (the pause: the persona's, else
-  **Pause between lines** in Settings → Generation — and on the last line of one
-  of the book's scenes, **Pause at a scene break**);
+  **Pause between lines** in Settings → Generation — on the last line of one
+  of the book's scenes, **Pause at a scene break**, and on a line whose next line
+  is in its paragraph, **Pause within a paragraph**);
 - saves when you let go of the slider, leave the box or pick from the list —
   for this line only, winning over the persona's; the line turns
   [stale](#stale-lines) until you render it again. Setting a value back to the

@@ -21,7 +21,7 @@
   (components/StudioRenderChapter.vue); Rewrite as the speaker moved there.
 -->
 <script setup>
-import { computed, nextTick, onActivated, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, onActivated, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";
 import { isStepFor, stepsFor } from "./studioSteps.js";
@@ -106,7 +106,6 @@ function openScript({ sceneId = null, focus = null, filter = null } = {}) {
 
 // Render (Studio Slice 4): the chapter grid, or one chapter's lines.
 const renderSceneId = ref(null);     // the open chapter; null = the grid
-const renderGrid = ref(null);        // StudioRender — ▶ Render all runs through it
 const renderVersion = ref(0);        // bumped when Studio changed lines Render shows
 // GET /v1/projects/{id}/render_state — every chapter's counts in §8.16's words:
 // the grid, this strip's Render card and Overview's Render row.
@@ -129,13 +128,9 @@ async function onRenderChanged() {
   await loadRenderState();
   scriptVersion.value += 1;
 }
-async function renderAllChapters() {
-  renderSceneId.value = null;
-  await nextTick();
-  renderGrid.value?.renderAll();
-}
 
-// Render gate (queue item 13): the button says WHY it is disabled instead of
+// Render gate (queue item 13): ▶ Render all (on the chapter list since
+// 2026-10-07, beside ▶ Render N chapters) says WHY it is disabled instead of
 // failing later — no text → nothing to render; nobody played by a persona
 // with a voice → the server would refuse every line.
 const renderGate = computed(() => {
@@ -602,14 +597,6 @@ watch(selectedProjectId, (id) => {
       <template v-if="tab === 'render' && selectedProject">
         <span class="jv-spacer" />
         <UiTag :intent="masterPillIntent" :title="masterPillTitle">{{ masterPill }}</UiTag>
-        <UiButton
-          intent="secondary"
-          size="small"
-          :disabled="!renderGate.ok"
-          label="▶ Render all"
-          :title="renderGate.ok ? `Render every ${copy.chapter.singular.toLowerCase()}: each line with no take gets one, then it is joined and mastered` : renderGate.reason"
-          @click="renderAllChapters"
-        />
       </template>
       <!-- Cast's actions live in its own Speakers head (StudioCast.vue), on
            the surface they affect. -->
@@ -688,7 +675,7 @@ watch(selectedProjectId, (id) => {
         @go="goStep" @changed="onRenderChanged" />
     </KeepAlive>
     <KeepAlive>
-      <StudioRender v-if="tab === 'render' && selectedProject && !renderSceneId" ref="renderGrid"
+      <StudioRender v-if="tab === 'render' && selectedProject && !renderSceneId" :render-gate="renderGate"
         :project="selectedProject" :scenes="scenes" :render-state="renderState" :speakers="speakers"
         :chapters="scriptChapters"
         @open="(id) => openRender({ sceneId: id })"

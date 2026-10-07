@@ -62,6 +62,8 @@ const word = computed(() => copy.value.chapter);
 const PAUSE_SETTING_MS = ref(600);
 // After a line that ends one of the book's scenes (`scene_end`, 2026-10-06).
 const SCENE_BREAK_MS = ref(2000);
+// Between two lines of one paragraph (`paragraph_next`, 2026-10-07).
+const PARAGRAPH_MS = ref(250);
 
 // ── The page ─────────────────────────────────────────────────────────
 const page = ref(null);
@@ -83,6 +85,8 @@ async function loadPause() {
   if (Number.isFinite(ms)) PAUSE_SETTING_MS.value = ms;
   const brk = s?.generation?.pause_at_scene_break_ms;
   if (Number.isFinite(brk)) SCENE_BREAK_MS.value = brk;
+  const para = s?.generation?.pause_within_paragraph_ms;
+  if (Number.isFinite(para)) PARAGRAPH_MS.value = para;
 }
 // What each model takes — the persona page's own source (its knobs, its tag
 // sets, the app's emotion words), read once.
@@ -98,6 +102,12 @@ const lines = computed(() => page.value?.lines || []);
 // How many of the book's scenes end inside this chapter — the pause words name the
 // scene-break pause only when there is one.
 const sceneBreaks = computed(() => lines.value.filter((l) => l.scene_end).length);
+const paragraphJoins = computed(() => lines.value.filter((l) => l.paragraph_next).length);
+// "(250 ms within a paragraph, 2000 ms at a scene break)" — only the joins this chapter has.
+const otherPauses = computed(() => [
+  paragraphJoins.value ? `${PARAGRAPH_MS.value} ms within a paragraph` : "",
+  sceneBreaks.value ? `${SCENE_BREAK_MS.value} ms at a scene break` : "",
+].filter(Boolean).join(", "));
 const counts = computed(() => page.value?.counts || {});
 const blocked = computed(() => (counts.value.needs_speaker || 0) + (counts.value.needs_voice || 0));
 const scene = computed(() => props.scenes.find((s) => s.id === props.sceneId) || null);
@@ -439,8 +449,10 @@ function personaDefault(l, key) {
   if (key === "speed") return d.speed ?? 1;
   if (key === "pitch") return d.pitch ?? 0;
   if (key === "gain_db") return d.gain_db ?? 0;
-  // A scene's last line is followed by the scene-break pause, whatever its persona says.
+  // A scene's last line is followed by the scene-break pause, a line whose next line is in
+  // its paragraph by the paragraph's — whatever its persona says.
   if (l.scene_end) return SCENE_BREAK_MS.value;
+  if (l.paragraph_next) return PARAGRAPH_MS.value;
   return d.pause_after ?? PAUSE_SETTING_MS.value;
 }
 // What the knobs show: the line's own values (by the knobs' keys) and, for an
@@ -623,7 +635,7 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
               <UiButton intent="secondary" :disabled="!!blocked || runBusy" :loading="running === 'chapter'"
                 :label="`▶ Play ${word.singular.toLowerCase()}`" @click="playChapter" />
               <span class="jv-hint">{{ blocked ? `Not until every line can render — ${chapterBlockedWhy}.`
-                : `Every line's take in use, in order, ${PAUSE_SETTING_MS} ms apart${sceneBreaks ? ` (${SCENE_BREAK_MS} ms at a scene break)` : ""}. A line with no take is rendered first.` }}</span>
+                : `Every line's take in use, in order, ${PAUSE_SETTING_MS} ms apart${otherPauses ? ` (${otherPauses})` : ""}. A line with no take is rendered first.` }}</span>
             </span>
             <span class="jv-spacer" />
             <span class="studio-render-ch__verb">
@@ -870,8 +882,10 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
         </UiTable>
 
         <p class="jv-hint studio-render-ch__foot">Lines are joined with {{ PAUSE_SETTING_MS }} ms of silence<template
+          v-if="paragraphJoins">, {{ PARAGRAPH_MS }} ms between lines of one paragraph</template><template
           v-if="sceneBreaks">, and {{ SCENE_BREAK_MS }} ms after the last line of each of the book's scenes</template> —
-          Settings → Generation. A line's own pause (Render overrides) changes it after that line.</p>
+          Settings → Generation. Each take's own silence at its start and end is trimmed first, so these are the
+          pauses you hear. A line's own pause (Render overrides) changes it after that line.</p>
         <div class="jv-inline-row studio-render-ch__bar">
           <UiButton intent="secondary" size="small" :label="`← Previous ${word.singular.toLowerCase()}`"
             :disabled="!prevChapter" :title="prevChapter ? chapterName(prevChapter) : `This is the first ${word.singular.toLowerCase()}`"

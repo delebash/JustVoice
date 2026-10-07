@@ -64,6 +64,9 @@ class RenderLine(BaseModel):
     # The line ends one of the book's scenes (line_takes.scene_ends): with no pause of
     # its own, Settings' pause at a scene break follows it (2026-10-06).
     scene_end: bool = False
+    # The next line is from the same paragraph (line_takes.paragraph_joins): with no
+    # pause of its own, Settings' pause within a paragraph follows it (2026-10-07).
+    paragraph_next: bool = False
     state: Literal["needs a speaker", "needs a voice", "ready", "rendered", "stale"]
     takes: int = 0
     live: LineTake | None = None

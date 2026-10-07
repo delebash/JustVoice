@@ -78,6 +78,22 @@ def _book_scene(block) -> str | None:
     return ref.split("#scene:", 1)[1].split("#", 1)[0]
 
 
+def paragraph_joins(blocks) -> set[str]:
+    """The ids of the lines whose next heard line comes from the same paragraph —
+    both carry the same `source_ref` (the JustWrite import's `…#block:<n>`; Analyze
+    gives every line it cuts from one paragraph that paragraph's). They join with
+    Settings' pause within a paragraph, closer than lines of two paragraphs
+    (decided 2026-10-07: a quote · tag · quote cut into three lines joined at
+    ~1.5 s each). A line with no `source_ref` joins as any other. `blocks` in
+    chapter order — the lines that are heard."""
+    out: set[str] = set()
+    for a, b in zip(blocks, blocks[1:]):
+        ref = block_meta(a).get("source_ref")
+        if isinstance(ref, str) and ref and ref == block_meta(b).get("source_ref"):
+            out.add(a.id)
+    return out
+
+
 def scene_ends(blocks) -> set[str]:
     """The ids of the lines that end one of the book's scenes inside a chapter
     (decided 2026-10-06: a pause at a scene break). A JustWrite chapter keeps its
@@ -371,6 +387,7 @@ def scene_lines(db, state, scene_id: str) -> dict:
             counts_by_block[bid] = counts_by_block.get(bid, 0) + 1
 
     ends = scene_ends([b for _n, b in heard])
+    joins = paragraph_joins([b for _n, b in heard])
     rows = []
     counts = {s: 0 for s in STATES}
     for n, block in heard:
@@ -397,6 +414,7 @@ def scene_lines(db, state, scene_id: str) -> dict:
             "direction": block.direction or "",
             "override": line_override(block),
             "scene_end": block.id in ends,
+            "paragraph_next": block.id in joins and block.id not in ends,
             "state": st,
             "takes": counts_by_block.get(block.id, 0),
             "live": _take_summary(take, gen) if take is not None else None,

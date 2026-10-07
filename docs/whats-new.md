@@ -2,6 +2,13 @@
 
 ## v0.1.0
 
+- **The pause between lines is the pause you hear, and a paragraph's lines join
+  closer (2026-10-07)** — each take's own silence (Kokoro pads about a second per
+  line) is trimmed as a chapter is joined, so 600 ms between lines plays as 600 ms,
+  not about 1.6 s; and the lines Analyze cuts from one paragraph — a quote, its
+  *she said*, the rest — are joined with the new **Pause within a paragraph**
+  (Settings → Generation, 250 ms). Every chapter joins this way at once; nothing
+  renders again ([Studio → Render](studio.md#render))
 - **Render shows its progress, and mastering works again (2026-10-07)** — while
   a chapter renders, its strip names the line rendering now and shows the audio
   made, its speed against real time and the time left; on the chapter's page

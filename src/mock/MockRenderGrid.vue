@@ -65,7 +65,6 @@ function renderAll() {
   tickAll(true);
   renderQueue(render.chapters.filter((c) => c.lines.length));
 }
-defineExpose({ renderAll });
 const stoppedTotal = computed(() => (stopped.value || []).reduce((n, g) => n + g.lines.length, 0));
 function assignToNarrator() {
   for (const g of stopped.value) for (const l of g.lines) l.speaker_id = "s_narr1";
@@ -224,6 +223,9 @@ function open(ch) {
             <UiButton intent="primary" :disabled="!picked.length || running"
               :label="picked.length ? `▶ Render ${picked.length} chapter${picked.length === 1 ? '' : 's'}` : '▶ Render'"
               @click="renderQueue(picked)" />
+            <UiButton intent="secondary" :disabled="running" label="▶ Render all"
+              title="Render every chapter: each line with no take gets one, then the chapter is joined and mastered"
+              @click="renderAll" />
             <span class="jv-hint">{{ picked.length
               ? `${picked.reduce((n, c) => n + counts(c.lines).ready, 0)} lines get their first take · stale lines keep theirs · one chapter at a time`
               : "Pick at least one chapter." }}</span>

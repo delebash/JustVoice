@@ -125,6 +125,45 @@ GO:     given 2026-08-17
 
 ## The next build
 
+### Render all sits beside Render N chapters (decided 2026-10-07)
+STATE:  DECIDED 2026-10-07 — "your rec go" (the user, with a screenshot: "render all buttn should be next to
+        render button"), on the proposal as shown: "move ▶ Render all from the top bar (beside the ACX
+        target pill) to the bottom of the chapter list, right beside ▶ Render N chapters, and remove it
+        from the top bar so there's one place to start renders. It's disabled while a render is running,
+        like the button beside it." Question: "move it, or keep a copy in the top bar as well? Lean: move
+        it."
+WHY:    two buttons that start renders, a page apart.
+NOT:    a copy in both places.
+BUILT:  2026-10-07 — `StudioRender.vue` (beside ▶ Render N chapters; Studio's gate as a prop — it still
+        says why it can't run), `StudioView.vue` (out of the step bar); the mock the same. Docs studio.
+        Checked live: one ▶ Render all, in the chapter list's bottom row next to ▶ Render; smoke passed.
+OPEN:   none.
+GO:     given 2026-10-07
+
+### The pause between lines is the pause you hear; a paragraph's lines join closer (decided 2026-10-07)
+STATE:  DECIDED 2026-10-07 — "you rec fix them go" (the user: "render the pause after is that pause between
+        lines, when listening between lines especially when changing characters it feels like the is too
+        much of a pause"; then Fable's review of the first recs, then mine of Fable's), on the revised
+        recommendation as shown: "1. Trim each take at the join: everything below −70 dBFS at both ends,
+        keeping 50 ms. 2. Pause within a paragraph (Settings → Generation), default 250 ms, built
+        together with 1. 3. No separate pause for a change of speaker." With, from the first proposal:
+        "A line's own Pause after and the scene break still win for their join, as now."
+WHY:    measured on Brass Rank's first 30 takes: Kokoro pads each take with ~265 ms before and ~715 ms
+        after (exact digital zero, −180 dBFS), so a 600 ms setting played as ~1.6 s, uneven by line; a
+        paragraph Analyze cut into three lines (quote · tag · quote) joined at ~1.5 s each.
+NOT:    a −45 dBFS threshold (cut up to 710 ms of a line's quiet tail); Fable's 100 ms / 60 ms margins
+        (the tail is the fragile end); a pause rule for a change of speaker.
+BUILT:  2026-10-07 — `render_core._trim_pcm` in `concat_lines` (−70 dBFS, 50 ms); `line_takes.paragraph_joins`,
+        `ChapterLine.paragraph_next`, `_join` (the paragraph's pause, as the scene break's);
+        `generation.pause_within_paragraph_ms` 250 (Settings row); Render's line list `paragraph_next`,
+        the line's Pause after shows it, the hints name it. Tests `test_pause_heard.py` (6). Docs studio,
+        settings-reference, whats-new; RESEARCH §3. Checked live after a restart: Brass Rank joined +
+        mastered 10:04 → 9:04, joins now ~700 ms (600 + 2×50) and ~350 ms in a paragraph. Server 209,
+        vitest 166, smoke passed. FINDING, not fixed: 17 silences of ~0.9–1 s INSIDE 14 long takes,
+        where audio.cpp joins Kokoro's 240-character pieces with their padding (RESEARCH §3).
+OPEN:   none.
+GO:     given 2026-10-07
+
 ### The kit's programs run without a console too; a chapter's run buttons wait for any run (decided 2026-10-07)
 STATE:  DECIDED 2026-10-07 — "fix your rec go", on the three findings as shown: "The kit starts llama-server
         without the no-console flag, so a model load could hit the same 0xC0000142 if the app's console

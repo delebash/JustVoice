@@ -168,7 +168,7 @@ const settings = ref({
   models:    {},
   engines:   { default_tts_engine: "kokoro" },
   app:       { primary_use_case: "unset", secondary_use_cases: [], onboarding_shown: false },
-  generation:{ max_chunk_chars: 800, crossfade_ms: 50, stream_piece_chars: 200, pause_between_lines_ms: 600, pause_at_scene_break_ms: 2000, normalize_audio: true },
+  generation:{ max_chunk_chars: 800, crossfade_ms: 50, stream_piece_chars: 200, pause_between_lines_ms: 600, pause_within_paragraph_ms: 250, pause_at_scene_break_ms: 2000, normalize_audio: true },
 });
 const serverReachable = ref(false);
 
@@ -1350,6 +1350,30 @@ onMounted(() => {
             :marks="[{ value: 0, label: 'none' }, { value: 600, label: 'default' }, { value: 3000, label: 'long' }]"
             class="setting-row__slider"
             aria-label="Pause between lines"
+            @change="saveDebounced"
+          />
+        </div>
+
+        <!-- Pause within a paragraph (2026-10-07) -->
+        <div class="setting-row">
+          <div class="setting-row__head">
+            <div>
+              <div class="setting-row__title">Pause within a paragraph</div>
+              <div class="setting-row__desc">
+                The silence between two lines cut from one paragraph — a quote, its "she said", the
+                quote's rest. Used instead of the pause between lines there, everywhere that one is.
+                A line's own pause still wins. Changing it renders nothing again.
+              </div>
+            </div>
+            <span class="setting-row__value">{{ settings.generation.pause_within_paragraph_ms }} ms</span>
+          </div>
+          <UiSlider
+            v-model="settings.generation.pause_within_paragraph_ms"
+            :min="0" :max="3000" :step="50"
+            width="long" :show-number="false"
+            :marks="[{ value: 0, label: 'none' }, { value: 250, label: 'default' }, { value: 3000, label: 'long' }]"
+            class="setting-row__slider"
+            aria-label="Pause within a paragraph"
             @change="saveDebounced"
           />
         </div>

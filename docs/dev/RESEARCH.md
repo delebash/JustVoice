@@ -637,6 +637,25 @@ its blast radius and the gaps.
   JustVoice's own `procs.py`, the kit's spawns without the flag — until later on 2026-10-07; under
   a dead console the kit then found no GPU and llama-server could not start.) — *measured + code,
   2026-10-07*.
+- **A take carries the model's own silence at both ends**: Kokoro, Brass Rank's first 30 takes —
+  ~265 ms before the sound (up to 500) and ~715 ms after (up to 960), exact digital zero (the
+  first and last 100 ms at −180 dBFS; the loudest tail −78 dBFS). Our code adds none. So until
+  2026-10-07 a 600 ms pause between lines played as ~1.6 s, uneven by line. Since then
+  `render_core.concat_lines` trims each line to 50 ms either side of anything louder than
+  −70 dBFS as it joins (`_trim_pcm`); the take and its key are unchanged. A −45 dBFS threshold
+  would have cut real sound: the two thresholds differ by up to 710 ms at a take's end, 50 ms at
+  its start. Brass Rank joined + mastered: 10:04 → 9:04. — *measured, 2026-10-07* ·
+  `server/tests/test_pause_heard.py`.
+- **Lines of one paragraph share a `source_ref`** (the JustWrite import's `…#block:<n>`, kept by
+  Analyze's cuts): Brass Rank's lines 3–5 — quote · *she told it,* · quote — all `#block:2`.
+  `line_takes.paragraph_joins` finds them; the chapter joins them with
+  `generation.pause_within_paragraph_ms` (250) the way the scene break works — set on the
+  rendered line in `_join`, a line's own `pause_after_ms` wins, a persona's does not. Render's
+  line list says so (`paragraph_next`). — *code + test, 2026-10-07*.
+- **Long lines also hold ~0.9–1 s silences inside the take**: 17 in 14 of Brass Rank's 78 lines,
+  all in narration lines of 16–23 s — where audio.cpp cut Kokoro's text into pieces (240
+  characters) and joined them with no crossfade, each piece keeping its padding. The join trim
+  doesn't reach them. Not fixed. — *measured, 2026-10-07*.
 - **A render job's progress**: a line reads `running` from the moment the scheduler starts it
   (`render_jobs._rendering`) until the runner saves it (`completed`), fails it, or withdraws it
   (`pending`). `GET /v1/render_jobs/{id}` also returns `audio_seconds` (the finished lines'

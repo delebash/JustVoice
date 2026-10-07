@@ -934,6 +934,33 @@ def pcm_to_wav(rl: RenderedLine) -> bytes:
     return write_wav_container(rl.pcm, rl.sample_rate, rl.channels)
 
 
+#: A take's own silence at either end is cut at the join, down to TRIM_KEEP_MS
+#: (decided 2026-10-07): models pad — Kokoro ~265 ms before and ~715 ms after, exact
+#: digital zero — so a 600 ms pause played as ~1.6 s, uneven by line. Only what is
+#: quieter than TRIM_BELOW_DBFS goes, so a word's quiet tail never does (−45 dBFS
+#: cut up to 710 ms of one). The take itself is never changed.
+TRIM_BELOW_DBFS = -70.0
+TRIM_KEEP_MS = 50
+
+
+def _trim_pcm(pcm: bytes, sample_rate: int, channels: int) -> bytes:
+    """16-bit interleaved PCM with its silent start and end cut to TRIM_KEEP_MS. A
+    line with no sound at all is kept as it is."""
+    ch = max(1, int(channels))
+    x = np.frombuffer(pcm, dtype="<i2")
+    n = len(x) // ch
+    if n == 0:
+        return pcm
+    peak = np.abs(x[: n * ch].reshape(n, ch).astype(np.int32)).max(axis=1)
+    sound = np.nonzero(peak > 32768 * 10 ** (TRIM_BELOW_DBFS / 20))[0]
+    if len(sound) == 0:
+        return pcm
+    keep = int(sample_rate * TRIM_KEEP_MS / 1000)
+    start = max(0, int(sound[0]) - keep)
+    end = min(n, int(sound[-1]) + 1 + keep)
+    return x[start * ch: end * ch].tobytes()
+
+
 def _pause_ms(line: RenderedLine, key: str) -> int | None:
     """`pause_before` / `pause_after` off a rendered line's delivery."""
     raw = (line.effective_delivery or {}).get(key)
@@ -973,6 +1000,9 @@ def concat_lines(lines: list[RenderedLine], silence_ms: int = 250) -> RenderedLi
     project", a value means this join is special — the same
     only-show-what-differs rule the line table uses.
 
+    Each line's own silence at either end is trimmed first (`_trim_pcm`,
+    2026-10-07), so the gap is the pause heard.
+
     Until 2026-08-17 this used the project gap unconditionally, so every
     per-line pause in the app — the Generate slider, the delivery overlay, and
     the `pause_after_ms` every import adapter parses — was stored and silently
@@ -1001,7 +1031,8 @@ def concat_lines(lines: list[RenderedLine], silence_ms: int = 250) -> RenderedLi
             gap = silence_ms if after is None and before is None else (after or 0) + (before or 0)
             if gap > 0:
                 out_pcm.write(silence(gap))
-        out_pcm.write(_conform_pcm(line.pcm, line.sample_rate, line.channels, sr, ch))
+        pcm = _trim_pcm(line.pcm, line.sample_rate, line.channels)
+        out_pcm.write(_conform_pcm(pcm, line.sample_rate, line.channels, sr, ch))
     return RenderedLine(
         pcm=out_pcm.getvalue(),
         sample_rate=sr,

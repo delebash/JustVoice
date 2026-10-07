@@ -27,7 +27,7 @@ from ..database import session as _db_session
 from ..database.session import SessionLocal
 from ..errors import bad_request, internal, not_found
 from ..extraction.tags import left_out_blocks
-from ..line_takes import is_marker, line_override, plan_block, played_takes, scene_ends
+from ..line_takes import is_marker, line_override, paragraph_joins, plan_block, played_takes, scene_ends
 from ..mastering import have_ffmpeg, master, master_to_wav, resolve_master_target
 from ..models import ChapterLine, Delivery, RenderChapterRequest
 from ..render_core import (
@@ -230,26 +230,41 @@ def _resolve_scene_to_lines(
             )
 
         # A line that ends one of the book's scenes is followed by Settings' pause at a
-        # scene break (2026-10-06) — unless it has a pause of its own, which wins.
+        # scene break (2026-10-06); one whose next line is in the same paragraph, by the
+        # pause within a paragraph (2026-10-07) — unless it has a pause of its own, which wins.
         ends = scene_ends(played)
+        joins = paragraph_joins(played)
         for line, block in zip(lines, played):
-            if block.id in ends and "pause_after_ms" not in line_override(block):
+            if "pause_after_ms" in line_override(block):
+                continue
+            if block.id in ends:
                 line.scene_break_after = True
+            elif block.id in joins:
+                line.paragraph_next = True
         return lines
     finally:
         db.close()
 
 
 def _join(st, lines: list[ChapterLine], rendered: list[RenderedLine], gap_ms: int) -> RenderedLine:
-    """The chapter's lines as one audio, `gap_ms` apart — and Settings' pause at a scene
-    break after a line that ends one of the book's scenes (2026-10-06). That pause is set
-    on the rendered line here, never in its delivery: the delivery is in the line's audio
-    key (`render_core._inputs_key`), so changing the setting would make those lines stale
-    and render them again. A copy, so a cached line is never changed."""
-    ms = st.settings.get().generation.pause_at_scene_break_ms
+    """The chapter's lines as one audio, `gap_ms` apart — Settings' pause at a scene
+    break after a line that ends one of the book's scenes (2026-10-06), and its pause
+    within a paragraph between two lines of one paragraph (2026-10-07). Those pauses are
+    set on the rendered line here, never in its delivery: the delivery is in the line's
+    audio key (`render_core._inputs_key`), so changing a setting would make those lines
+    stale and render them again. A copy, so a cached line is never changed."""
+    gen = st.settings.get().generation
+
+    def own(line):
+        if line.scene_break_after:
+            return gen.pause_at_scene_break_ms
+        if line.paragraph_next:
+            return gen.pause_within_paragraph_ms
+        return None
+
     joined = [
-        replace(rl, effective_delivery={**(rl.effective_delivery or {}), "pause_after": ms})
-        if line.scene_break_after else rl
+        replace(rl, effective_delivery={**(rl.effective_delivery or {}), "pause_after": own(line)})
+        if own(line) is not None else rl
         for line, rl in zip(lines, rendered)
     ]
     return concat_lines(joined, silence_ms=gap_ms)

@@ -20,7 +20,6 @@ import { MASTER, PROJECT, SPEAKERS, counts, render, speakerReady } from "./rende
 const route = useRoute();
 const router = useRouter();
 const tab = computed(() => route.meta.step);
-const grid = ref(null);
 
 const bookId = ref(PROJECT.id);
 const BOOK_OPTIONS = [{ value: PROJECT.id, label: PROJECT.name }];
@@ -84,14 +83,11 @@ const masterPill = `${MASTER.preset} target · ${MASTER.lufs} LUFS · peak ${MAS
       <template v-if="tab === 'render'">
         <span class="jv-spacer" />
         <UiTag intent="success" title="The default for this project kind">{{ masterPill }}</UiTag>
-        <UiButton intent="secondary" size="small" label="▶ Render all"
-          title="Render every chapter: each line with no take gets one, then the chapter is joined and mastered"
-          @click="grid ? grid.renderAll() : router.push({ name: 'mock-render' })" />
       </template>
     </div>
 
     <div class="mock-studio__step">
-      <MockRenderGrid v-if="tab === 'render' && !route.params.id" ref="grid" @go="goStep" />
+      <MockRenderGrid v-if="tab === 'render' && !route.params.id" @go="goStep" />
       <MockRenderChapterView v-else-if="tab === 'render'" @go="goStep" />
       <MockScriptGrid v-else-if="tab === 'script'" @go="goStep" />
     </div>

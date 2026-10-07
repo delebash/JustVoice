@@ -133,6 +133,10 @@ class GenerationSettings(BaseModel):
     # (line_takes.scene_ends). Joins lines only: never in a line's delivery, so
     # changing it renders nothing again. A line's own pause still wins.
     pause_at_scene_break_ms: int = 2000  # 0-6000 in the UI
+    # The silence between two lines cut from one paragraph — a quote, its dialogue tag,
+    # the quote's rest (decided 2026-10-07). Joins lines only, like the scene break; a
+    # line's own pause still wins.
+    pause_within_paragraph_ms: int = 250  # 0-3000 in the UI
     # The language a voice speaks when nothing else decides it — today, a Kokoro
     # blend of voices in different languages (engines/blending.blend_language).
     # BCP-47. Lived under `training` until training was removed (2026-10-02).
@@ -1483,6 +1487,9 @@ class ChapterLine(BaseModel):
     # own — the chapter joins it to the next with Settings' pause at a scene break
     # (2026-10-06).
     scene_break_after: bool = False
+    # Scene mode: the next line is from the same paragraph, and this line has no pause of
+    # its own — joined with Settings' pause within a paragraph (2026-10-07).
+    paragraph_next: bool = False
 
 
 class BetweenLines(BaseModel):

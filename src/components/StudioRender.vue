@@ -36,6 +36,8 @@ const props = defineProps({
   speakers: { type: Array, default: () => [] },
   // GET /v1/projects/{id}/script's rows — whether a chapter was analyzed.
   chapters: { type: Array, default: () => [] },
+  // Studio's {ok, reason}: ▶ Render all says why it can't run (no text, nobody cast).
+  renderGate: { type: Object, default: () => ({ ok: true, reason: "" }) },
 });
 const emit = defineEmits(["open", "go", "changed"]);
 
@@ -146,12 +148,11 @@ async function renderOne(s) {
     emit("changed");
   }
 }
-/** ▶ Render all (Studio's step bar). */
+/** ▶ Render all — beside ▶ Render N chapters (decided 2026-10-07; it was in Studio's step bar). */
 function renderAll() {
   tickAll(true);
   renderQueue(tickable.value);
 }
-defineExpose({ renderAll });
 
 async function assignToNarrator() {
   if (!narrator.value) return;
@@ -332,6 +333,9 @@ function checkState(s) {
             <UiButton intent="primary" :disabled="!picked.length || anyRunning"
               :label="picked.length ? `▶ Render ${picked.length} ${lower(picked.length)}` : '▶ Render'"
               @click="renderQueue(picked)" />
+            <UiButton intent="secondary" :disabled="!renderGate.ok || !tickable.length || anyRunning" label="▶ Render all"
+              :title="renderGate.ok ? `Render every ${word.singular.toLowerCase()}: each line with no take gets one, then it is joined and mastered` : renderGate.reason"
+              @click="renderAll" />
             <span class="jv-hint">{{ picked.length
               ? `${pickedReady.toLocaleString()} lines get their first take · stale lines keep theirs · one ${word.singular.toLowerCase()} at a time`
               : `Pick at least one ${word.singular.toLowerCase()}.` }}</span>
