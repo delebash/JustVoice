@@ -71,7 +71,9 @@ const tab = ref("");
 // project switch it arrived with — the project watcher would otherwise reset
 // it to Overview a tick later.
 let requestedTab = null;
-const loading = ref(false);
+// True until the first load is done — before it no project is picked yet, and the
+// step cards say "Checking…" rather than "No chapters yet" (2026-10-07).
+const loading = ref(true);
 
 // Script (Slice 3, §8.24): the chapter grid, or one chapter's page.
 const scenes = ref([]);
@@ -161,7 +163,10 @@ const TAB_LABELS = computed(() => {
 });
 const isGameProject = computed(() => selectedProject.value?.project_type === "game_voicelines");
 
-const visibleTabs = computed(() => stepsFor(selectedProject.value?.project_type));
+// Until the project list is in, the open project's kind is the one it was opened with
+// (2026-10-07: a game project showed a book's steps for a moment).
+const visibleTabs = computed(() => stepsFor(selectedProject.value?.project_type
+  || (!selectedProjectId.value || selectedProjectId.value === activeProject.id ? activeProject.projectType : undefined)));
 
 const selectedProject = computed(() =>
   projects.value.find((p) => p.id === selectedProjectId.value) || null,
@@ -178,7 +183,9 @@ function stepBy(delta) {
 // from a populated cast) and whether a persona with a voice plays them.
 const overviewState = computed(() => projectState({
   scenes: scenes.value,
-  scenesLoaded: scenesOf.value === selectedProjectId.value,
+  // Before a project is picked, nothing is known yet while the first load runs.
+  scenesLoaded: selectedProjectId.value ? scenesOf.value === selectedProjectId.value : !loading.value,
+  speakersLoaded: selectedProjectId.value ? speakersOf.value === selectedProjectId.value : !loading.value,
   stats: sceneStats.value,
   script: scriptChapters.value,
   running: chapterRunFor(selectedProjectId.value)?.current?.kind === "analyze" ? 1 : 0,
@@ -298,6 +305,9 @@ const projectOptions = computed(() => {
 // a persona (GET /v1/projects/{id}/speakers, most lines first). Cast is
 // components/StudioCast.vue.
 const speakers = ref([]);
+// Whose speakers `speakers` is — Cast's card says "Checking the speakers…" until
+// they are the open project's (2026-10-07).
+const speakersOf = ref(null);
 const narratorSpeaker = computed(() => speakers.value.find((sp) => sp.role_label === "narrator") || null);
 const personaById = computed(() => Object.fromEntries(personas.value.map((p) => [p.id, p])));
 // Heard at render: played by a persona that has a voice.
@@ -335,6 +345,7 @@ async function loadSpeakers(projectId = selectedProjectId.value) {
   const r = await api.safeRequest(`/v1/projects/${projectId}/speakers`, { speakers: [] });
   if (projectId !== selectedProjectId.value) return;   // switched away mid-load
   speakers.value = r?.speakers || [];
+  speakersOf.value = projectId;
 }
 
 // Cast or Discover changed the speakers. `moved` > 0 when lines changed

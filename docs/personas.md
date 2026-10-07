@@ -45,7 +45,7 @@ The Personas page lists your library, one row per persona:
 
 | Column | Shows |
 |---|---|
-| ▶ | Plays the persona speaking the stock line in its language — its voice, model, pace, pitch, gain, direction and effects, through the same path a chapter renders. If its model isn't loaded it asks first: *Load Kokoro?* (with **Always auto-load** once it has loaded, the same choice Voices offers). One compact player above the list serves every row |
+| ▶ | Plays the persona speaking the stock line in its language — its voice, model, pace, pitch, gain, direction and effects, through the same path a chapter renders. If its model isn't loaded it asks first: *Load Kokoro?* (with **Always auto-load** once it has loaded, the same choice Voices offers — with it on, it loads without asking and still says *Loading Kokoro…* and *Kokoro loaded.*). One compact player above the list serves every row |
 | Persona | Its name, and the start of its note |
 | Built on | The voice it's built on and how that voice was made: `Sohee built-in`, `Mara cloned`, `Old Crow designed`, `Warm mix blended`. *No voice yet* when none is picked, *voice missing* when its voice was deleted |
 | Model | The model that speaks its voice: `Qwen3-TTS CustomVoice`, `Kokoro` |

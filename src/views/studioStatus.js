@@ -197,8 +197,8 @@ export const isWaiting = (r) => r.status === "new" || r.status === "library";
  * server's), or null before it loads; `running` counts chapters being analyzed.
  */
 export function projectState({
-  scenes = [], scenesLoaded = true, stats = {}, cast = [], ignored = [], personas = [], render = null,
-  script = null, running = 0,
+  scenes = [], scenesLoaded = true, speakersLoaded = true, stats = {}, cast = [], ignored = [], personas = [],
+  render = null, script = null, running = 0,
 }) {
   let lines = 0;
   let unplaced = 0;
@@ -248,6 +248,9 @@ export function projectState({
     // Every chapter's lines read (the step cards say "Checking the lines…" until
     // then — 2026-10-07: a game's sheet read "No lines yet" for 1–3 s).
     linesLoaded: scenesLoaded && scenes.every((s) => stats[s.id]),
+    // The chapter list and the speakers read — until then the cards say "Checking…".
+    chaptersLoaded: scenesLoaded,
+    castLoaded: speakersLoaded,
     // Lines that can't render, as Render counts them (its header's "· N can't render").
     cantRender: render ? (render.needs_speaker || 0) + (render.needs_voice || 0) : 0,
     // Rendered = a take that is current (services/lineStates.js, 2026-10-06): a
@@ -272,6 +275,7 @@ export function stepStatus(key, state, unit) {
   const ch = (n) => `${n.toLocaleString()} ${(n === 1 ? unit.singular : unit.plural).toLowerCase()}`;
   switch (key) {
     case "discover":
+      if (state.chaptersLoaded === false) return { text: `Checking the ${unit.plural.toLowerCase()}…`, tag: null };
       return {
         text: state.chapters
           ? `${state.scanned.toLocaleString()} of ${ch(state.chapters)} scanned`
@@ -281,6 +285,7 @@ export function stepStatus(key, state, unit) {
           : null,
       };
     case "script": {
+      if (state.linesLoaded === false) return { text: `Checking the ${unit.plural.toLowerCase()}…`, tag: null, tags: [] };
       if (!state.chapters) return { text: `No ${unit.plural.toLowerCase()} yet`, tag: null, tags: [] };
       const toCheck = { go: ["script", "check"], title: `Opens Script on the ${unit.plural.toLowerCase()} to check` };
       const tags = [
@@ -308,6 +313,7 @@ export function stepStatus(key, state, unit) {
         tag: null,
       };
     case "cast":
+      if (state.castLoaded === false) return { text: "Checking the speakers…", tag: null };
       return {
         text: state.castTotal
           ? `${state.castReady.toLocaleString()} of ${plural(state.castTotal, "speaker")} cast`

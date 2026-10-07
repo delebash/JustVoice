@@ -48,12 +48,14 @@ row opens that step:
 |---|---|
 | Discover | how many chapters have been scanned, and how many proposed speakers are waiting for **＋ Add** or **Ignore** |
 | Script | how many chapters are analyzed (or, for a script whose speakers came with the import, how many have speakers), and — in what Analyze decided — how many lines have **no speaker** and how many are **flagged**. Either number opens Script's grid on *To check* |
-| Lines (game) | how many lines the sheet has (*Checking the lines…* while they are read) |
+| Lines (game) | how many lines the sheet has |
 | Cast | how many of the book's speakers are cast (*3 of 5 speakers cast*) — played by a persona that has a voice — and how many lines can't render because a speaker isn't |
 | Render | how many lines are rendered — a take made from what the line is now — out of those that can render (*412 of 2,140 lines rendered*), how many can't render (*· 8 can't render*), and how many are still to go or stale |
 | Export | what Export makes — it keeps no record of past exports, so there is no count |
 
-Every number is read from the project itself; nothing is estimated. Export
+Every number is read from the project itself; nothing is estimated. Until a
+number has been read, its row says so — *Checking the chapters…*, *Checking the
+speakers…*, *Checking the lines…*, *Checking what is rendered…*. Export
 shows no count because nothing records an export.
 
 
@@ -917,7 +919,8 @@ Each row shows:
 - **▶** plays the persona — its voice speaking the stock line in its language,
   with its pace, pitch, gain, direction and effects, through the same path a
   chapter renders. If its model isn't loaded, JustVoice asks before loading it
-  (*Load Kokoro?*), and once it has loaded offers **Always auto-load**;
+  (*Load Kokoro?*), and once it has loaded offers **Always auto-load** — after which it
+  loads without asking, still saying *Loading Kokoro…* and *Kokoro loaded.*;
 - **✎** opens the persona's own page.
 
 **＋ New persona** opens a blank persona. With a speaker selected, the page says

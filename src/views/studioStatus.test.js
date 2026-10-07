@@ -53,7 +53,8 @@ describe("projectState", () => {
     expect(projectState({ scenes, stats, cast, render })).toEqual({
       chapters: 2, scanned: 0, proposed: 0, analyzed: 1, fromImport: 0, running: 0, flagged: 0,
       noSpeaker: 2, lines: 14, unplaced: 2, castTotal: 2, castReady: 1, speakersBesideNarrator: 1, blocked: 4,
-      linesLoaded: true, cantRender: 3, rendered: 3, renderable: 11, ready: 6, stale: 2, noNarrator: false,
+      linesLoaded: true, chaptersLoaded: true, castLoaded: true,
+      cantRender: 3, rendered: 3, renderable: 11, ready: 6, stale: 2, noNarrator: false,
     });
   });
 
@@ -65,6 +66,16 @@ describe("projectState", () => {
       .toBe("Checking the lines…");
     expect(stepStatus("lines", projectState({ scenes: [], stats: {}, cast }), UNIT).text)
       .toBe("No lines yet — re-import the sheet");
+  });
+
+  it("says the chapters and the speakers are being checked until they are read (2026-10-07)", () => {
+    const s = projectState({ scenes: [], scenesLoaded: false, speakersLoaded: false, cast: [] });
+    expect(stepStatus("discover", s, UNIT).text).toBe("Checking the chapters…");
+    expect(stepStatus("script", s, UNIT).text).toBe("Checking the chapters…");
+    expect(stepStatus("cast", s, UNIT).text).toBe("Checking the speakers…");
+    const read = projectState({ scenes: [], cast: [] });
+    expect(stepStatus("discover", read, UNIT).text).toBe("No chapters yet");
+    expect(stepStatus("cast", read, UNIT).text).toBe("No speakers yet");
   });
 
   it("names the lines that can't render beside what is rendered (2026-10-07)", () => {

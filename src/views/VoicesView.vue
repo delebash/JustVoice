@@ -375,14 +375,10 @@ async function previewVoice(v) {
     const always = readPref("autoLoadEngine") === "always";
     let blob;
     try {
-      blob = await api.request(`/v1/voices/${v.id}/preview?auto_load=${always}`, previewBody());
-      // Door 1 of the tracked finding: with "always auto-load" on, pressing ▶
-      // loads the engine as a SIDE EFFECT and announced nothing — which is
-      // why the toolbar could read "no engine loaded" while a voice played.
-      // The client cannot see whether the server actually loaded, so it
-      // announces whenever it authorised one; a redundant refresh is cheap
-      // and a missed one is the bug.
-      if (always) window.dispatchEvent(new Event("jv:health-refresh"));
+      // Never loads on this first ask — with "Always auto-load" on too
+      // (2026-10-07): a load then skips the question below but still says
+      // "Loading …" and "… loaded", where it used to load in silence.
+      blob = await api.request(`/v1/voices/${v.id}/preview?auto_load=false`, previewBody());
     } catch (e) {
       const mi = String(e?.message || "").match(/engine_not_installed:([\w.-]+)/);
       if (mi) {
@@ -396,19 +392,22 @@ async function previewVoice(v) {
       }
       const m = String(e?.message || "").match(/engine_not_loaded:([\w.-]+)/);
       if (!m) throw e;
-      const engineId = m[1];
-      const ok = await confirmDialog({
-        title: `Load ${engineId}?`,
-        message: `"${v.name}" needs the ${engineId} engine, which isn't loaded. Load it now to preview? The first load can take ~25–55 s; after that previews are instant.`,
-        confirmLabel: "Load & preview",
-      });
-      if (!ok) return;
+      // The model's name, as every other preview says it ("Kokoro", not "kokoro").
+      const engineId = v.model_name || m[1];
+      if (!always) {
+        const ok = await confirmDialog({
+          title: `Load ${engineId}?`,
+          message: `"${v.name}" needs the ${engineId} engine, which isn't loaded. Load it now to preview? The first load can take ~25–55 s; after that previews are instant.`,
+          confirmLabel: "Load & preview",
+        });
+        if (!ok) return;
+      }
       pushToast({ message: `Loading ${engineId}… this can take up to a minute.`, kind: "info" });
       blob = await api.request(`/v1/voices/${v.id}/preview?auto_load=true`, { ...previewBody(), method: "POST" });
       pushToast({
         message: `${engineId} loaded.`,
         kind: "success",
-        action: { label: "Always auto-load", fn: () => writePref("autoLoadEngine", "always") },
+        ...(always ? {} : { action: { label: "Always auto-load", fn: () => writePref("autoLoadEngine", "always") } }),
       });
       // Topbar pill + Engines page track loads from anywhere.
       window.dispatchEvent(new Event("jv:health-refresh"));

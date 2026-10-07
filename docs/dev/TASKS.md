@@ -125,6 +125,30 @@ GO:     given 2026-08-17
 
 ## The next build
 
+### Previews say a load with Always auto-load on too; Studio's cards say "Checking…" until the project's facts load (decided 2026-10-07)
+STATE:  DECIDED 2026-10-07 — "go", on the two as shown: "The only silent case is with Always auto-load on,
+        where ▶ just spins during the load. Should it show the same two messages then? Lean: yes, it's
+        the same wording the previews already use." · "Seen on the way, not fixed: for a moment after a
+        game project opens, its step cards show the book's steps ('Discover No scenes yet'), and Cast
+        says 'No speakers yet' until the speakers load. Lean: give those the same 'Checking…'
+        treatment, as one more small fix."
+BUILT:  2026-10-07 — previews: `voiceAudition.askingToLoad` and VoicesView ask without loading first
+        (`auto_load=false`); a model not loaded then skips the question when Always auto-load is on but
+        still says "Loading … this can take up to a minute." and "… loaded." (no "Always auto-load"
+        button then); Voices names the model ("KittenTTS", was the engine id "kokoro"). Studio: the
+        steps follow the open project's remembered kind until the project list is in; Discover,
+        Script and Cast say "Checking the chapters…" / "Checking the speakers…" until their facts load
+        (`projectState` `chaptersLoaded`, `castLoaded`; `StudioView` `scenesOf`, `speakersOf`, `loading`
+        true until the first load). Tests `studioStatus.test.js` (1). Docs studio. Checked live: a
+        temporary game project (deleted after) — its cards from the first frame: "1 · Lines Checking the
+        lines… | 2 · Cast Checking the speakers… | 3 · Render Checking what is rendered…" → "6 lines |
+        0 of 2 speakers cast | Nothing can render yet · 6 can't render"; with Always auto-load on and the
+        speech model unloaded, ▶ on Personas' Narrator → "Loading Kokoro…" → "Kokoro loaded."; on a
+        Voices row → "Loading KittenTTS…" → "KittenTTS loaded."; no question, no page errors; the pref
+        put back (unset). A preview heard before plays from memory and loads nothing.
+OPEN:   none.
+GO:     given 2026-10-07
+
 ### The small leftovers: "and N more lines", two tracker lines, the game project's cards, the Render mock's words, loading words beyond Render (decided 2026-10-07)
 STATE:  DECIDED 2026-10-07 — "do the small go", on the six as shown: "1. 'and 12 more lines' when several
         things are ahead of a render. Your answer is still needed. My recommendation is yes." · "2. Two
@@ -158,7 +182,7 @@ BUILT:  2026-10-07 — 1: `renderRun.waitingText` ", and 12 more lines" when mor
         auto-load" on does a load show nothing but the ▶'s spinner. Asked, not built.
         Seen on the way, not fixed: before a game project's kind is known, its cards read the book's
         steps for a moment ("Discover No scenes yet"), and Cast reads "No speakers yet" until they load.
-OPEN:   6 — the "Always auto-load" case: the same two messages then? (asked).
+OPEN:   none — 6's "Always auto-load" case built the same day (the entry above).
 GO:     given 2026-10-07
 
 ### Render says when a line's model is loading; a deleted book's renders stop; a chapter's run greys only its own buttons (decided 2026-10-07)
