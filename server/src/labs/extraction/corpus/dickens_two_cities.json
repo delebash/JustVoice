@@ -1,0 +1,23 @@
+{
+  "slug": "dickens_two_cities",
+  "title": "A Tale of Two Cities — coach scene",
+  "source": "Charles Dickens, A Tale of Two Cities (1859). Public domain via Project Gutenberg.",
+  "genre": "literary-classic-dialogue-heavy",
+  "characters": [
+    { "id": "c_messenger", "name": "Jerry", "aliases": ["the messenger"] },
+    { "id": "c_lorry", "name": "Mr Lorry", "aliases": ["the passenger", "Lorry"] }
+  ],
+  "text": "\"Halloa!\" the guard cried, in a hoarse voice. \"What now?\"\n\n\"Is that the Dover mail?\" called the rider from the road below.\n\n\"Never you mind what it is!\" the guard retorted. \"What are you?\"\n\n\"IS that the Dover mail?\"\n\n\"Why do you want to know?\"\n\n\"I want a passenger, if it is.\"\n\n\"What passenger?\"\n\n\"Mr Jarvis Lorry.\"\n\nMr Lorry, hearing his name, leaned forward. \"What is the matter?\" he asked. \"Who wants me? Is it Jerry?\"\n\n\"Yes, Mr Lorry,\" the messenger said. \"A despatch from T. and Co.\"",
+  "ground_truth": [
+    { "dialogue_id": 0, "speaker": "c_messenger" },
+    { "dialogue_id": 1, "speaker": "c_lorry" },
+    { "dialogue_id": 2, "speaker": "c_messenger" },
+    { "dialogue_id": 3, "speaker": "c_lorry" },
+    { "dialogue_id": 4, "speaker": "c_messenger" },
+    { "dialogue_id": 5, "speaker": "c_lorry" },
+    { "dialogue_id": 6, "speaker": "c_messenger" },
+    { "dialogue_id": 7, "speaker": "c_lorry" },
+    { "dialogue_id": 8, "speaker": "c_lorry" },
+    { "dialogue_id": 9, "speaker": "c_messenger" }
+  ]
+}

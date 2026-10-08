@@ -1059,6 +1059,57 @@ the suite re-run by me; `render_core`, `render_jobs`, `line_takes`, `synth_sched
   their fake scheduler's `submit` lacks the `owner=` argument added on 2026-10-07. (*measured*,
   pytest.)
 
+**The port to JavaScript — wave D, Analyze, imports, labs and MCP** (*measured 2026-10-08*, an
+agent's checks, the suite and the extraction check re-run by me; `extraction/`, `imports/`,
+`labs/`, `mcp/`, plus the helper halves of `projects_api`, `voices_api`, `captures_api`):
+
+- **Imports are Python's:** 101 inputs (the samples, a fresh JustWrite book export with its zip,
+  EPUB and DOCX, the test fixtures, about 70 hard cases) through every adapter, split mode and
+  renamed extension — 1,717 jobs. 814 imported and 868 refused identically (status and words),
+  the 35 Python 500s fail in JS too, 1,313 dry-run previews match, 269 HTML texts (2,694 blocks)
+  match, and the rows written into two database copies match: 43,931 cells, 0 different.
+  (`server/scripts/compare-imports.mjs`.)
+- `imports/adapters/html_parser.js` is CPython 3.12.9's `html.parser` and `html.unescape`, line for
+  line (`close()` flushes a pending block before the remaining text, as Python does);
+  `etree.js` is the ElementTree subset the importers use, to expat's rules and error words
+  (76 cases, 0 different). `py_compat.js` holds Python's `json.loads`, UTF-8 decode errors,
+  `splitlines`, `float()`, `title` and friends (`compare-pycompat.mjs`: 6,863 cases, 0 different).
+- **Analyze and Discover send Python's requests and write Python's results:** against a fake
+  llama-server (no model loaded), 4 real chapters × Analyze with the second look, Analyze of an
+  edited chapter, Analyze streamed on the guided route, and Discover — 243 requests byte for
+  byte identical, 867 rows, the run reports, deltas, progress, thinking frames and candidates
+  identical, 49 tables / 18,742 cells identical. Chapters were read in 2–3 pieces and the
+  second look's not-in-cast offer was exercised. (`compare-extraction.mjs`.) Until the kit's
+  fix the same day, 104 of those requests differed: the kit sent a preset's `temperature` 0.0
+  as `0` (the kit register, "JustVoice's server port").
+- **MCP answers as Python's did:** Python on a bare FastAPI and JS on a bare Fastify, each on a
+  free port with its own database copy — 47 exchanges, 0 different: initialize with 4 protocol
+  versions, `tools/list`, `list_voices` (91 voices and every refusal), `list_personas`, 11
+  `transcribe` refusals, bad arguments, unknown tool and method, ping, the empty prompt and
+  resource lists, the transport's refusals and the stamped `mcp_bindings` row. `speak` was not
+  called. (`compare-mcp.mjs`.)
+- fastmcp's wire (*probed on the live Python app*): capabilities include prompts, resources and
+  `extensions`; protocol versions 2024-11-05 to 2025-11-25 are accepted and any other gets
+  2025-11-25; `serverInfo.version` is fastmcp's own, "3.4.5"; tool errors read "Error calling
+  tool '…': …" and "Unknown tool: '…'", argument errors are pydantic 2.13's text.
+- What JS doesn't match, none of it reached by a real input: SSE frames end in LF where Python
+  writes CRLF and the JSON-RPC envelope's key order differs (JSON-equal); inside an MCP session
+  the SDK's own refusal words; a whole-number float argument reported as `input_type=int`;
+  pydantic's truncation of long inputs; Python's IGNORECASE letting `İ`/`ı` match `i`; integer-
+  looking keys iterating first in a JS object (a CSV delivery dict's key order); XML DTD
+  attribute defaults, parameter entities and encodings beyond UTF-8/16, Latin-1, ASCII, cp125x.
+- Python bugs the JS copies on purpose (the Python is retiring): a non-EPUB zip named `.epub` or
+  a corrupt zip is a 500, not a 400; a lone CR inside an unquoted CSV field is a 500; a
+  JustWrite file whose `project`/`scenes`/`characters`/`chapters` have the wrong type is a 500.
+  The labs CLI never installs the LLM, so every passage reports ✗ — the tracked
+  `latest-auto.md` shows that and still says "Tier".
+- Two Python second-look route tests fail today: Analyze's own second look has been off by
+  default since 2026-10-06 and the tests never turn it on. (*measured*, pytest.)
+- The MCP mount (`mcp.mountInto(app)`) registers `/mcp` and `/mcp/` and an `onResponse` hook
+  stamping `last_seen_at` for requests carrying `X-JustVoice-Client-Id`; it needs
+  `await runtime.ensureHardware()` first (`list_voices`). Python's `ClientIdMiddleware` wrapped
+  every request.
+
 ---
 
 ## 7 · Where an AI task shows

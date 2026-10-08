@@ -1,0 +1,16 @@
+{
+  "slug": "austen_persuasion",
+  "title": "Persuasion — opening scene",
+  "source": "Jane Austen, Persuasion (1817). Public domain via Project Gutenberg.",
+  "genre": "literary-classic",
+  "characters": [
+    { "id": "c_sir_walter", "name": "Sir Walter Elliot", "aliases": ["Sir Walter"] },
+    { "id": "c_elizabeth", "name": "Elizabeth Elliot", "aliases": ["Elizabeth"] }
+  ],
+  "text": "Sir Walter Elliot, of Kellynch Hall, in Somersetshire, was a man who, for his own amusement, never took up any book but the Baronetage; there he found occupation for an idle hour, and consolation in a distressed one.\n\n\"There is hardly a circumstance in which I take more interest,\" Sir Walter said, glancing at the great mirror, \"than the upkeep of one's appearance. A gentleman never neglects it.\"\n\nElizabeth, his eldest daughter, who had been long in the habit of agreeing with her father, made no objection. \"Of course not, Papa,\" she said. \"It is the first duty of our station.\"\n\n\"And yet,\" Sir Walter resumed, with a sigh, \"there is hardly a face among our acquaintance which would not be improved by some attention to it.\"",
+  "ground_truth": [
+    { "dialogue_id": 0, "speaker": "c_sir_walter" },
+    { "dialogue_id": 1, "speaker": "c_elizabeth" },
+    { "dialogue_id": 2, "speaker": "c_sir_walter" }
+  ]
+}

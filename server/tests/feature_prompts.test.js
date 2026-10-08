@@ -16,8 +16,8 @@ try {
 test.todo("prompts_seeded_and_editable — waits for app.js + engines/llm/*");
 test.todo("reset_and_get_unknown — waits for app.js + engines/llm/*");
 test.todo("endpoints_have_no_hardcoded_system_constant — waits for api/projects_api.js + api/smart_assign_api.js");
-test.todo("extraction_prompts_seeded — waits for app.js + extraction/prompts.js");
-test.todo("extraction_config_serves_db_prompts — waits for app.js + extraction/*");
+test.todo("extraction_prompts_seeded — waits for app.js (it reads GET /v1/ai/prompts)");
+test.todo("extraction_config_serves_db_prompts — waits for app.js + api/extraction_api.js (GET /v1/extraction/config)");
 
 test.skipIf(D === null)(
   "renamed_placeholders_keep_every_word_the_model_reads (waits for extraction/* + refinement.js)",

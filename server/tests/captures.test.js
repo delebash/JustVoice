@@ -1,13 +1,19 @@
 // SPDX-License-Identifier: MIT
 // Captures — dictation recordings and their refinement (the port of tests/test_captures.py).
 //
-// Not ported here: the two capture endpoint tests (api/captures_api.js), and
-// test_compose_refinement_system_toggles — it needs the seeded `refine.*` prompt rows, which
-// seed_feature_prompts.js writes once the extraction wave's modules it imports exist
-// (extraction/identify.js, prompts.js, second_look.js): test.todo. The repetition collapse is
-// refinement's own pure pass.
-import { expect, test } from "vitest";
-import { collapseRepetitiveArtifacts as collapse } from "../src/refinement.js";
+// Not ported here: the two capture endpoint tests (api/captures_api.js). The repetition
+// collapse is refinement's own pure pass; the system composition reads the seeded `refine.*`
+// prompt rows, so its test boots the LLM half of create_app headless (llm_boot.js).
+import { afterEach, expect, test } from "vitest";
+import { cfg as appCfg } from "../src/app_state.js";
+import { collapseRepetitiveArtifacts as collapse, composeRefinementSystem, RefinementFlags } from "../src/refinement.js";
+import { closeModuleDb, tmpPath } from "./helpers.js";
+import { llmBoot } from "./llm_boot.js";
+
+afterEach(() => {
+  closeModuleDb();
+  appCfg.state = null;
+});
 
 test.todo("transcribe_stateless — waits for api/captures_api.js");
 test.todo("capture_crud_and_refine_degrades — waits for api/captures_api.js");
@@ -22,4 +28,15 @@ test("collapse_repetitive_artifacts", () => {
   expect(collapse("wooooooow")).toBe("wooooooow");
 });
 
-test.todo("compose_refinement_system_toggles — waits for extraction/* (seed_feature_prompts.js imports them)");
+test("compose_refinement_system_toggles", async () => {
+  // F1 Phase 2: the system assembles from the TEMPLATE ROWS (refine.base + enabled section
+  // rows); the no-sections identity line lives in the base row itself, so flags-all-off still
+  // states it.
+  await llmBoot(tmpPath());
+  const allOn = composeRefinementSystem(new RefinementFlags());
+  expect(allOn.toLowerCase()).toContain("self");
+  expect(allOn.toLowerCase()).toContain("technical");
+  const noneOn = composeRefinementSystem(new RefinementFlags({ smartCleanup: false, selfCorrection: false, preserveTechnical: false }));
+  expect(noneOn.toLowerCase()).toContain("return the transcript unchanged");
+  expect(noneOn.toLowerCase()).not.toContain("technical");
+});

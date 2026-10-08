@@ -6,11 +6,9 @@
 // gap, so `pause_before` / `pause_after` — the Generate sliders, the delivery overlay, and the
 // `pause_after_ms` every import adapter parses — did nothing; and `Block.direction` was never
 // read by a render path. These pin both.
-//
-// Not ported here: test_import_adapters_still_parse_pause_after_ms — it reads
-// imports/standard_schema (the imports wave): test.todo.
 import { expect, test } from "vitest";
 import "./engines_helpers.js";
+import { StandardLine } from "../src/imports/standard_schema.js";
 import { lineOverride, overrideDelivery } from "../src/line_takes.js";
 import { concatLines, RenderedLine } from "../src/render_core.js";
 
@@ -77,7 +75,11 @@ test("block_pause_after_is_none_when_absent_or_unparseable", () => {
   }
 });
 
-test.todo("import_adapters_still_parse_pause_after_ms — waits for imports/standard_schema.js");
+test("import_adapters_still_parse_pause_after_ms", () => {
+  // The producer side of the pause path — a field with no consumer was the bug; a consumer
+  // with no producer would be the same bug inverted.
+  expect("pause_after_ms" in StandardLine.properties).toBe(true);
+});
 
 // ── Lines from engines with different formats (2026-10-02) ──────────────
 

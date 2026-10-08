@@ -2318,6 +2318,22 @@ OPEN:   step 1's last end — packaged builds need `audiocpp_dsp` in an audio.cp
             2026-10-08 when JustVoice's port needed it: the kit's `platform/zip.js` replaced four
             copies (the backup routes', the runner's, JustWrite's, JustVoice's) — its own module
             rather than inside `data_api`, since the runner and the apps import it too.
+        Rec applied under the 2026-10-08 go — step 5 (JustVoice), each as decided:
+        1. The speech runtime lives at `<data_dir>/engines-runtime` always (Python used the source
+           tree when unfrozen); this machine's downloaded runtime moves there with the data-root
+           move. (RESEARCH §6, wave A.)
+        2. MCP runs on the official SDK, `@modelcontextprotocol/sdk` 1.30.1 (MIT, published
+           2026-09-23, pinned exact), Streamable HTTP, mounted on the Fastify app at `/mcp`.
+        3. The Python-behaviour helpers are copied across the family (`isDict` in 10+ files,
+           `pyRepr` in 7, `splitlines` in 4, JustVoice's new `server/src/py_compat.js` beside the
+           kit's `platform/py.js`). One sweep moves them into the kit's `platform/py.js` right
+           after JustVoice's API wave, when every copy exists, before Python is deleted (the
+           family-sameness law); until then no port adds a new copy.
+        FINDING (needs a go): the JustVoice port copied these Python bugs on purpose — a non-EPUB
+        zip named `.epub` or a corrupt zip imports as a 500, not a 400; a lone CR inside an
+        unquoted CSV field is a 500; a JustWrite file whose `project`/`scenes`/`characters`/
+        `chapters` have the wrong type is a 500; the labs CLI never installs the LLM, so every
+        passage reports ✗. (RESEARCH §6, wave D.)
         FINDING (needs a go): a book whose title isn't latin-1 fails to export with a 500 — Python
         did too, and the port copied it on purpose; JustWrite's TASKS has the fix.
         (Q8's last part answered — "no i dont have a mack": iOS builds need macOS, so how iOS
