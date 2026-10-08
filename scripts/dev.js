@@ -32,7 +32,11 @@ try {
   process.exit(1);
 }
 
-const vite = spawn(process.execPath, [require.resolve("vite/bin/vite.js")], { cwd: root, stdio: "inherit" });
+// Vite's command, from its package.json "bin" field — vite 8's "exports" no longer lists
+// bin/vite.js, so require.resolve can't name the file directly.
+const vitePkg = require.resolve("vite/package.json");
+const viteBin = path.join(path.dirname(vitePkg), require(vitePkg).bin.vite);
+const vite = spawn(process.execPath, [viteBin], { cwd: root, stdio: "inherit" });
 
 async function waitForVite() {
   for (let i = 0; i < 120; i++) {
