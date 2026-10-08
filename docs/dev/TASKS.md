@@ -2433,6 +2433,22 @@ OPEN:   step 1's last end — packaged builds need `audiocpp_dsp` in an audio.cp
         its api object, filled with our narrow list of commands; don't expose electronAPI." ·
         "5. The app-specific part (data folder, server, tray). Lean: each app's src/main/index.js
         is the template's file plus one call to a shared kit function for those parts."
+        DECIDED 2026-10-08 — the user: "your rec on all go, also any reference to voicebox we can
+        remove since we are using audio cpp" (the go also covers cutting the four project
+        CLAUDE.md files down after the restructure). Rec applied, as answered: "we can remove
+        most references, but not all of them. Some of JustVoice's code was originally taken from
+        voicebox under its MIT licence, and the JS port is a translation of that code. MIT
+        requires keeping the original copyright notice wherever substantial parts of the original
+        remain. Every voicebox mention that isn't a required credit goes: docs, comments, the old
+        upstream-audit leftovers. The credit blocks stay only on files that still carry
+        voicebox-derived code, after I check each one." Checked: all 14 credited files still hold
+        it (refinement's prompt corpus, the MCP server/tools/resolve/context, the column helpers,
+        chunked TTS, the captures routes, the built-in effect presets, the session start-up, and
+        DictateWindow / ChordPicker / CapturePill / AudioKeepAlive translated from React), so
+        their credits, NOTICE.md, LICENSES.md, voicebox-pin.txt and the About line stay. Removed:
+        ROADMAP's and IDEAS' voicebox framing, takes_api's comparisons, JustWrite's outdated TTS
+        research block; `.gitignore`'s upstream-audit line goes after the restructure. Dated plan
+        records (`docs/plans/`) keep theirs as history.
         DECIDED 2026-10-08 — the user: "when the conversion is complete no python should remain
         not even in testing, do you understnad?" Answered, rec applied, as shown: "When the
         conversion is complete, no Python remains anywhere: no server, no tests, no scripts, no

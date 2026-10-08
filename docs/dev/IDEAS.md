@@ -178,9 +178,9 @@ The holding pen for unscheduled JustVoice ideas — same charter as JW's
   saved state, and it touches the ruling that the Script grid shows no completion
   state (redesign doc §8.8, §8.25).
 
-- **2026-08-22 · Feature-horizon candidates live in `ROADMAP.md`** — the voicebox
+- **2026-08-22 · Feature-horizon candidates live in `ROADMAP.md`** — the
   parity gaps (dictation hotkey epic, capture→voice promote, timeline) and the
-  candidates inherited from voicebox's own roadmap (STT expansion, streaming
+  candidates seen in other studios' roadmaps (STT expansion, streaming
   transcription, pipeline sinks, long-form dual-stream capture, …) are tracked
   there with code receipts. Same charter as this file: listed ≠ started.
 
@@ -204,7 +204,7 @@ The holding pen for unscheduled JustVoice ideas — same charter as JW's
 
   **Why the inherited shape cannot be built on.** `story_items` points at
   `generation_id` / `version_id` and carries no `take_id`, `block_id` or
-  `scene_id`. Voicebox's timeline arranges one-off Generate clips — but a
+  `scene_id`. The inherited timeline arranges one-off Generate clips — but a
   JustVoice episode is Project → Scene → Block → **Take**, so as inherited the
   timeline cannot arrange the audio the production pipeline actually makes. It
   also points at the entity plan item 6 dissolves. Any build starts with a

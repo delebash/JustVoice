@@ -2,8 +2,8 @@
 // /v1/takes — per-block take versioning for the audiobook re-roll workflow (the port of
 // justvoice/api/takes_api.py).
 //
-// Voicebox versions WHOLE generations; we version per-block so re-rendering paragraph 47
-// doesn't invalidate paragraph 48. Since Studio Slice 4 (2026-10-04) a take keeps its audio,
+// A take versions one block, not a whole generation, so re-rendering paragraph 47 doesn't
+// invalidate paragraph 48. Since Studio Slice 4 (2026-10-04) a take keeps its audio,
 // and the ★ (default) take is what the chapter plays — Render's line panel lists, plays, stars
 // and deletes them here (line_takes.js holds the rules).
 
@@ -185,7 +185,7 @@ export async function router(app) {
     const personas = getState().personas;
     const takes = rows.map((r) => {
       const persona = r.persona_id ? personas.get(r.persona_id) : null;
-      // Take label — none computed here (Voicebox shows "3 of 7", which needs lineage).
+      // Take label — none computed here (a "3 of 7" label would need the lineage).
       return {
         id: r.id,
         when: r.created_at,
