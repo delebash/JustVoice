@@ -6,6 +6,25 @@ The holding pen for unscheduled JustVoice ideas — same charter as JW's
 
 ---
 
+- **2026-10-08 · Rewrite every family app on the Quasar framework** — the user, mid-conversion:
+  *"add it to notes that i think we should rewrite all apps using the quasar framework,
+  starting with creating a new default quasar app and building the new apps, this makes it so
+  all apps are the same as we have had so many problmens with you rolling your own in each app
+  this enforcese a framework conformity you cant break easily"*. The user's direction, recorded;
+  not scheduled, nothing built. It follows the Electron move (decided the same day, "ok your rec
+  continue": the conversion finishes with today's GUI — TASKS "The family moves to Electron…",
+  the 2026-10-08 GUI entry). The shape the user named: a new default Quasar app first, then each
+  app built on it — framework conformity instead of each app's own hand-rolled surfaces.
+  What it would touch, for when it's planned (not decided):
+  - the kit UI `@delebash/llm-ui` (its Ui* controls, UiTable, the task strip, the settings shells,
+    `tokens.css`) would give way to Quasar's components, or wrap them — the family rule
+    "nothing gets hand-rolled that the kit ships" becomes "nothing that Quasar ships";
+  - Quasar's Electron mode generates its own main/preload (`src-electron/`) — the kit's shared
+    shell (`@delebash/llm-runner/shell`, `runDesktopApp`) would run inside it; its Capacitor mode
+    is the phone app (JustWrite, ruling 8);
+  - the servers don't change: the Node server kit and each app's routes stay as the move leaves
+    them.
+
 - **2026-10-07 · Character voice controls: formants, texture, creature sounds** — the user,
   after the list: *"record this, also we will be removing pyton nad going to electron and node
   eventually, but these types of features i want to add"*. Wanted, not scheduled; nothing

@@ -2299,6 +2299,10 @@ OPEN:   step 1's last end — packaged builds need `audiocpp_dsp` in an audio.cp
         screens at phone width. 3. If the audit says the kit can't get there with a responsive
         layer, run a small comparison: one JustWrite screen built in Quasar and the same screen on
         the kit with phone layouts. Decide from the result rather than in advance."
+        Then the user, 2026-10-08: "add it to notes that i think we should rewrite all apps using
+        the quasar framework, starting with creating a new default quasar app and building the new
+        apps…" — recorded in IDEAS (2026-10-08 · Rewrite every family app on the Quasar framework);
+        the conversion continues with today's GUI.
 GO:     the study and the rulings given 2026-10-05; the spikes and the plan given 2026-10-07;
         the plan approved 2026-10-07, which is step 1's go. Steps 2–5: "your rec go do it all
         the full conversion" (2026-10-07, above); "keep going complete the switch to electron do it
