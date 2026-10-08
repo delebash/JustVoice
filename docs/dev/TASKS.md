@@ -2284,6 +2284,21 @@ OPEN:   step 1's last end — packaged builds need `audiocpp_dsp` in an audio.cp
         work. Pushing the kit, JustWrite and docgen as the work goes (answer 4's reason — so the
         work isn't only on this machine) falls under it; tags, releases, CI runs and deletions of
         anything not part of the plan still ask.
+        DECIDED 2026-10-08 — the user asked (mid-work) "are you using electron vite vue with the
+        electron build plus we need it for mobile app as well so you have to add capacitor, should
+        we redo the gui … or should we rewrite the gui in ionic or maybe another framework mobile
+        friendly for vue", then "maybe redo them in ionic vue or quasar, what do you think?", and
+        answered "ok your rec continue" on the rec as shown: plain Vite for the renderer (no
+        electron-vite — main and preload are a few plain files; one dist/ serves the desktop window,
+        the headless UI and later Capacitor); Capacitor only in the phone plan, after JustWrite
+        moves (ruling 8). On the GUI: "I'd still keep the GUI as it is for now. If you later decide
+        a framework is worth it, Quasar fits these apps better than Ionic. … Why not now: 1. It would
+        break the conversion's safety net … 2. The phone need is narrow. Only JustWrite goes to
+        phones (ruling 8) … 3. Nothing is lost by waiting. What I'd do instead: 1. Finish the
+        conversion with today's GUI. 2. Start JustWrite's phone plan with a measured audit of its
+        screens at phone width. 3. If the audit says the kit can't get there with a responsive
+        layer, run a small comparison: one JustWrite screen built in Quasar and the same screen on
+        the kit with phone layouts. Decide from the result rather than in advance."
 GO:     the study and the rulings given 2026-10-05; the spikes and the plan given 2026-10-07;
         the plan approved 2026-10-07, which is step 1's go. Steps 2–5: "your rec go do it all
         the full conversion" (2026-10-07, above); "keep going complete the switch to electron do it
