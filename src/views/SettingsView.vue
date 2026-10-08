@@ -1597,7 +1597,7 @@ onMounted(() => {
           </div>
         </div>
         <p class="jv-muted jv-note-xs jv-mt8">
-          Captures live under <code class="jv-mono">~/.justvoice/captures/</code>. See the
+          Captures live in the <code class="jv-mono">captures</code> folder of your data folder (Settings → Storage). See the
           <a href="#captures">Captures tab</a> for the live recording list + 6-gate readiness checklist.
         </p>
       </div>

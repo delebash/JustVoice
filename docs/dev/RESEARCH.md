@@ -1283,6 +1283,15 @@ extraction, speakers, smart_assign, project_export, export_jobs, bulk_delete, _s
   147 ms while the first keeps serving, and quitting closes the port. The same check passed on
   JustWrite's and docgen's real apps (microphone denied there), and a packaged JustWrite with its
   fuses started, served, and ran the headless form.
+- **The real app, on the real data** (2026-10-08, Playwright's Electron driver on the
+  desktop app — the JS server, `<repo>/data`, the dev audio.cpp build `44518561`; scratchpad
+  `real_render.js`, `real_synth.js`): the runtime row reads `dev · 44518561`, CUDA; Studio →
+  The Ninth Facet → 4 · Render → **▶ Render** on The Keystone (50 lines, every line already
+  with its take) joined and mastered the 8.4-minute chapter and the row's player was playing
+  8 s later, no page errors. A row audition (`POST /v1/voices/af_alloy/preview?auto_load=true`,
+  nothing saved) loaded Kokoro and synthesized a 5.5 s 24 kHz line in 15 s; VRAM 564 →
+  7,217 MiB (Kokoro + the warm-on-boot chat model) → 479 MiB after quitting, no runtime,
+  DSP or llama process left, the port closed.
 
 ---
 
