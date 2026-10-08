@@ -1167,6 +1167,50 @@ agent's checks, the suite and the extraction check re-run by me; `extraction/`, 
   `/v1/models/progress/*` sends one error frame; `webhooks.dispatch_event` has no callers.
   (*measured* with probe scripts and *code*, by the agent.)
 
+**The port to JavaScript — the API wave, agent 2: voices, personas, previews, Generate and
+render routes** (*measured 2026-10-08*, an agent's checks, the suite re-run by me; generate,
+voice_preview, render_chapter/lines/jobs, takes, voices, personas, voice_bundle, master,
+effect_presets, lexicons, pronunciation):
+
+- **The route diff:** reads 180 — 143 identical, 21 volatile, 16 not ported yet (agent 3's),
+  0 different; among the identical, cache-stats over all 289 real lines against the real
+  render cache, render state, every chapter's render_lines, takes and lineage, a generation's
+  audio bytes, personas with usage. Writes 296 (the kit's 37, agent 1's 93, agent 2's 166 —
+  voices clone/design/copy/patch/delete, personas create/patch/merge/delete, lexicons, the
+  pronunciation scan over 289 lines, effect presets, takes bookkeeping, render jobs, refusals),
+  all identical; 49 tables / 17,040 cells, 0 different; the 5 stored voices' manifests and
+  clips identical. A voice bundle's zip carries its write time, so `bundle.zip` is volatile.
+- **A real render through both servers' routes is byte-identical** (`server/scripts/
+  compare-api-render.mjs`, Kokoro, one server at a time on copies, warm-on-boot off):
+  `POST /v1/blocks/{id}/render` ×3 (one line split and joined), `/v1/generate` ×2 (a preset
+  voice with a seed; a persona at speed 1.1), `/v1/render_chapter` in scene mode with the ACX
+  master — every answer, the rows, the 3 take WAVs, both Generate WAVs, the chapter WAV and
+  its X-Master headers, the 5 render-cache files. VRAM 481 → 1,040 → 481/499 MiB; no runtime
+  left.
+- A rendering route cancels on disconnect through `generate_api.clientGone(req, reply)` (the
+  response closing before it finished aborts the signal passed to `waitAsync` / `warmLines`).
+  FastAPI's optional body (`X | None = None`) is `nullable(Model)` as the Fastify body schema.
+  pydantic's `model_fields_set` for a nested model rides a Symbol-keyed set
+  (`voice_preview_api.markSent`). cachetools 7.1.7's TTLCache is ported in
+  `voice_preview_api.TTLCache` (a TTL runs from the last set; `get` promotes; `in` does not).
+- Not matched: a stream audition failing on its first piece — Starlette had already sent a
+  200, Fastify sends the real error; a pydantic ValidationError raised inside a handler — the
+  kit's `ModelValidationError` text gives one line and counts a nullable union's null branch
+  ("2 validation errors" where pydantic says 1; kit TODO); whole-number floats in JSON answers
+  print `2` where Python printed `2.0` (JSON-equal).
+- Python bugs copied on purpose (FINDING in TASKS, fixed in JS after the final comparison): a
+  clone on an engine that can't clone (Kokoro) stores a voice with the engine id as its model
+  (201); `ref_wav_b64: "%%%"` stores an empty clip (non-strict base64, 201); a blended
+  stream-ticket with no ids or weights is a 500; a voice name past latin-1 makes `bundle.zip`
+  a 500 (the Content-Disposition — the kit's `attachment()` fixes it); an invalid row-preview
+  delivery is a 500, not a 422; a ticket's stream caches its WAV under a None key nothing
+  reads; `RecentTakeRow.take` / `.effects` are always null. Two Python test files depend on
+  order (`test_pause_between_lines` ×2, `test_takes` TestGenerationAudio ×2 fail alone).
+- The test suites left a temp folder per test in %TEMP% (45,568 entries there on 2026-10-08,
+  from every family suite). Since 2026-10-08 each server suite's vitest config runs the kit's
+  `platform/vitest_tmp.js`: one folder per run, TMP/TEMP/TMPDIR pointed at it, removed at the
+  end — measured: a full JV, JW, docgen and kit run leave 0 entries.
+
 ---
 
 ## 7 · Where an AI task shows

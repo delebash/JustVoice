@@ -7,10 +7,14 @@
 // 2. **The chain is part of the cache key.** Editing a chain served the old audio back.
 // 3. **Mastering happens.** ACX QC measured raw TTS output and printed a verdict on it.
 //
-// Not ported here: the three endpoint tests (GET /v1/render/master-target, GET
-// /v1/projects/{id}/qc) — they wait for the API wave's routes: test.todo.
+// The master-target endpoint runs through the app; its book is imported the way POST
+// /v1/projects/import?source=justwrite does it (the JustWrite adapter, then the materializer in
+// one transaction) — that route is projects_api's, API agent 3's. Not ported here: GET
+// /v1/projects/{id}/qc (projects_api): test.todo.
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { appClient, closeApps } from "./app_helpers.js";
 import "./engines_helpers.js";
+import { _materializeLexicon, _materializeStandard } from "../src/api/projects_api.js";
 import * as renderChapterApi from "../src/api/render_chapter_api.js";
 import * as appState from "../src/app_state.js";
 import { effectsChainHash } from "../src/audio/effects.js";
@@ -21,7 +25,9 @@ import { resolveMasterTarget } from "../src/mastering.js";
 import { construct, Persona, utcNow } from "../src/models.js";
 import * as renderCore from "../src/render_core.js";
 import { probeLineCached, RenderedLine, renderLine } from "../src/render_core.js";
+import { runAdapter } from "../src/imports/index.js";
 import { tmpDb } from "./helpers.js";
+import { bookJson, scene as jwScene } from "./jw_fixtures.js";
 import { FakeCache, FakeManager, fakeManifest, pcmOf, renderState, useManager } from "./render_helpers.js";
 
 const GAIN_UP = [{ type: "gain", params: { gain_db: 6.0 } }];
@@ -250,6 +256,42 @@ test("render_survives_a_missing_ffmpeg", async () => {
 
 // ── 5. the endpoints report what they did ──────────────────────────────
 
-test.todo("master_target_endpoint_reports_the_resolved_preset — waits for api/render_chapter_api.js routes + imports");
-test.todo("master_target_endpoint_404s_on_an_unknown_project — waits for api/render_chapter_api.js routes");
+/** A JustWrite book imported into the app's database → its project id (what POST
+ * /v1/projects/import?source=justwrite does: the adapter, then the materializer). */
+function seedBook() {
+  const payload = bookJson({ premise: "by S. K. H.", chapters: [["ch1", "One", [jwScene("scn1", "Hello.")]]] });
+  const standard = runAdapter("justwrite", Buffer.from(JSON.stringify(payload), "utf8"));
+  const h = session.getDb();
+  return h.tx(() => {
+    const [project] = _materializeStandard(standard, h);
+    _materializeLexicon(standard, project, h);
+    return project.id;
+  });
+}
+
+test("master_target_endpoint_reports_the_resolved_preset", async () => {
+  const { c } = await appClient();
+  try {
+    const pid = seedBook();
+    const r = await c.get(`/v1/render/master-target?project_id=${pid}`);
+    expect(r.status, r.text).toBe(200);
+    const body = r.json();
+    expect(body.preset).toBe("acx");
+    expect(["project", "kind"]).toContain(body.source);
+    // The pill's numbers come from settings, not from a template string.
+    expect(body.targets.loudness_target_lufs).toBe(-20.0);
+    expect(typeof body.ffmpeg).toBe("boolean");
+  } finally {
+    await closeApps();
+  }
+});
+
+test("master_target_endpoint_404s_on_an_unknown_project", async () => {
+  const { c } = await appClient();
+  try {
+    expect((await c.get("/v1/render/master-target?project_id=nope")).status).toBe(404);
+  } finally {
+    await closeApps();
+  }
+});
 test.todo("qc_says_whether_it_measured_a_mastered_render — waits for api/projects_api.js + imports");

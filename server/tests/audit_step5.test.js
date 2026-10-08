@@ -10,6 +10,7 @@ import * as http from "@delebash/llm-runner/platform/http";
 import * as hardware from "@delebash/llm-runner/runner/hardware";
 import { afterEach, expect, test, vi } from "vitest";
 import * as captures from "../src/api/captures_api.js";
+import * as voicePreview from "../src/api/voice_preview_api.js";
 import { appClient, closeApps } from "./app_helpers.js";
 import { discrete } from "./engines_helpers.js";
 import { writeWavContainer } from "../src/audio/wav.js";
@@ -223,7 +224,22 @@ test("a_model_file_that_does_not_match_its_checksum_is_deleted", async () => {
 
 // ─── 5f: leaks ───────────────────────────────────────────────────────────────
 
-test.todo("a_candidate_clip_is_reused_and_old_ones_are_cleared — waits for api/voice_preview_api.js");
+test("a_candidate_clip_is_reused_and_old_ones_are_cleared", () => {
+  // Python patched tempfile.gettempdir; Node's os.tmpdir() reads the environment.
+  const tmp = tmpPath();
+  vi.stubEnv("TEMP", tmp);
+  vi.stubEnv("TMP", tmp);
+  vi.stubEnv("TMPDIR", tmp);
+  const old = path.join(tmp, "justvoice-candidate-clips", "old.wav");
+  mkdirSync(path.dirname(old));
+  writeFileSync(old, "x");
+  const then = Date.now() / 1000 - 7200;
+  utimesSync(old, then, then);
+  const a = voicePreview._candidateClip(Buffer.from("RIFF-one"));
+  expect(voicePreview._candidateClip(Buffer.from("RIFF-one"))).toBe(a);
+  expect(readFileSync(a).toString("latin1")).toBe("RIFF-one");
+  expect(existsSync(old)).toBe(false);
+});
 
 test("voice_packs_are_touched_on_reuse_and_only_the_newest_kept", () => {
   const tmp = tmpPath();

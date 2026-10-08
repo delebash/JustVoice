@@ -2342,7 +2342,14 @@ OPEN:   step 1's last end — packaged builds need `audiocpp_dsp` in an audio.cp
         runtime options, accepted terms and default model; `PUT /v1/speech-runtime` without a
         `backend` resets a saved backend to "auto" and stops both processes; a capture whose
         transcription fails leaves its WAV behind; download progress was never written, so
-        active tasks never list downloads; `webhooks.dispatch_event` has no callers.
+        active tasks never list downloads; `webhooks.dispatch_event` has no callers. And from
+        the API wave's agent 2: a clone on an engine that can't clone stores a voice with the
+        engine id as its model; an invalid base64 clip stores an empty clip; a blended
+        stream-ticket with no ids or weights is a 500; a voice name past latin-1 makes
+        `bundle.zip` a 500 (use the kit's `attachment()`); an invalid row-preview delivery is
+        a 500, not a 422; a ticket's stream caches its WAV under a key nothing reads;
+        `RecentTakeRow.take` / `.effects` are always null. (Fixed in JS after the final
+        whole-server comparison — the 2026-10-08 rec below.)
         FINDING: the labs CLI never installs the LLM, so every passage reports ✗; the tracked
         `latest-auto.md` shows that and still says "Tier". (RESEARCH §6, wave D.)
         DECIDED 2026-10-08 — the user, after the list "Waiting on you (none of these blocks the

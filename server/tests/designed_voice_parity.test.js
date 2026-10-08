@@ -8,15 +8,15 @@
 // failed per line**: since 2026-10-03 every voice names its model (voice_model.js) and the
 // chapter renders model by model. **C**: the paralinguistic-tag flag Qwen3 never earned.
 //
-// Not ported here: the three preview-save tests (test_saving_a_designed_preview_freezes_its_clip,
-// test_a_frozen_designed_voice_keeps_the_line_its_clip_speaks,
-// test_a_frozen_designed_voice_renders_as_a_clone) — they drive api/voice_preview_api.js:
-// test.todo; and the api/generate_api half of test_both_render_doors_put_the_description_first
-// (the resolver half runs). The app state is `useState` (create_app's state half); Python's
-// seed_workspace() is not needed by what these read.
+// The app state is `useState` (create_app's state half); Python's seed_workspace() is not needed
+// by what those tests read. The three preview-save tests drive the real app (`saveClient`, the
+// whole app with its seed, as Python's fixture).
 import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, expect, test } from "vitest";
+import { appClient, closeApps } from "./app_helpers.js";
 import { endState, useState } from "./engines_helpers.js";
+import * as vp from "../src/api/voice_preview_api.js";
+import { getState } from "../src/app_state.js";
 import * as release from "../src/engines/audiocpp/release.js";
 import { lookup } from "../src/engines/capability_details.js";
 import { discoverEngines } from "../src/engines/manager.js";
@@ -52,7 +52,16 @@ let st;
 beforeEach(() => {
   st = useState();
 });
-afterEach(() => endState());
+afterEach(async () => {
+  await closeApps();
+  endState();
+});
+
+/** The whole app (create_app + seed_workspace) in place of this file's bare state. */
+async function saveClient() {
+  endState();
+  return (await appClient(undefined, { seed: true })).c;
+}
 
 function store(state, kw = {}) {
   const now = utcNow();
@@ -70,9 +79,60 @@ function store(state, kw = {}) {
 
 // ── A — the freeze bridge ──────────────────────────────────────────────
 
-test.todo("saving_a_designed_preview_freezes_its_clip — waits for api/voice_preview_api.js");
-test.todo("a_frozen_designed_voice_keeps_the_line_its_clip_speaks — waits for api/voice_preview_api.js");
-test.todo("a_frozen_designed_voice_renders_as_a_clone — waits for api/voice_preview_api.js");
+/** Put a rendered designed candidate in the preview LRU and return its id. Goes in directly
+ * rather than through POST /v1/voices/preview because that door needs a loaded engine to
+ * render; what is under test is what `save` does with audio it already has. */
+function seedDesignedPreview(audio, payloadExtra = {}) {
+  const payload = {
+    engine: "qwen3",
+    source: "designed",
+    prompt: "a gravel-voiced harbour-master in his seventies, unhurried",
+    preview_text: "The tide turns at four, and not a minute later.",
+    language: "en-US",
+    ...payloadExtra,
+  };
+  const previewId = "prv_test_designed";
+  vp.cfg._PREVIEW_LRU.set(previewId, new vp._PreviewEntry("designed", payload, audio));
+  return previewId;
+}
+
+test("saving_a_designed_preview_freezes_its_clip", async () => {
+  // The audio the Designer just rendered becomes the voice's ref.wav.
+  const c = await saveClient();
+  const previewId = seedDesignedPreview(wav());
+  const r = await c.post(`/v1/voices/preview/${previewId}/save`, { json: { name: "Harbourmaster" } });
+  expect(r.status, r.text).toBe(200);
+  const voiceId = r.json().voice_id;
+  const ref = getState().voices.refWavPath(voiceId);
+  expect(readFileSync(ref).equals(wav())).toBe(true);
+});
+
+test("a_frozen_designed_voice_keeps_the_line_its_clip_speaks", async () => {
+  // `transcript` is what makes the clip an ICL clone source, and for a designed voice that text
+  // is `preview_text`, not the clone field.
+  const c = await saveClient();
+  const previewId = seedDesignedPreview(wav());
+  const r = await c.post(`/v1/voices/preview/${previewId}/save`, { json: { name: "Harbourmaster" } });
+  const rec = getState().voices.get(r.json().voice_id);
+  expect(rec.transcript).toBe("The tide turns at four, and not a minute later.");
+  // The description survives too — export requires it, the table shows it, and it is the
+  // provenance of a voice with no recording behind it.
+  expect(rec.design_prompt.startsWith("a gravel-voiced harbour-master")).toBe(true);
+});
+
+test("a_frozen_designed_voice_renders_as_a_clone", async () => {
+  // Clip wins: once frozen, the identity comes from the audio.
+  const c = await saveClient();
+  const previewId = seedDesignedPreview(wav());
+  const r = await c.post(`/v1/voices/preview/${previewId}/save`, { json: { name: "Harbourmaster" } });
+  const state = getState();
+  const rec = state.voices.get(r.json().voice_id);
+  const fields = voiceSynthFields(state, rec);
+  expect(fields.audio_prompt_path.endsWith("ref.wav")).toBe(true);
+  expect(fields.ref_text).toBe("The tide turns at four, and not a minute later.");
+  // …and its description must NOT also be spoken as direction.
+  expect(voiceDesignInstruct(state, rec)).toBeNull();
+});
 
 // ── J — the clip-less half stays dynamic ───────────────────────────────
 
@@ -101,8 +161,7 @@ test("both_render_doors_put_the_description_first", () => {
   // Most specific LAST: the description is identity, so it leads — ahead of the persona's
   // standing instruction, the emotion and the line's own direction. Source-level. Every persona
   // line is planned by the one resolver (2026-10-03); the chapter door calls it through
-  // line_takes.planBlock, and its compose call leads with the description. (Generate's half —
-  // api/generate_api.js — waits for the API wave.)
+  // line_takes.planBlock, and its compose call leads with the description.
   expect(src("api/render_chapter_api.js")).toContain("planBlock(");
   expect(src("line_takes.js")).toContain("planLine(");
   const resolver = src("persona_render.js");
@@ -111,6 +170,13 @@ test("both_render_doors_put_the_description_first", () => {
   expect(composed.trimStart().startsWith("design,")).toBe(true);
   expect(resolver).toContain("design = renderCore.voiceDesignInstructForId(state, voiceId)");
   expect(resolver).toContain("design = candidate.designPrompt");
+
+  // Generate's two doors (managed and in-process) both lead with the voice's description.
+  const generate = src("api/generate_api.js");
+  expect(generate.split("_voiceDesignInstruct(req.voice)").length - 1).toBe(2);
+  for (const chunk of generate.split("composed = composeInstruct(").slice(1)) {
+    expect(chunk.trimStart().startsWith("_voiceDesignInstruct(req.voice)")).toBe(true);
+  }
 });
 
 // ── E — every voice names its model ────────────────────────────────────

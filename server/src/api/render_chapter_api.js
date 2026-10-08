@@ -11,18 +11,18 @@
 //     "Who they are" never reaches this path. Each line is read with the book's lexicon, then
 //     its own persona's (render_core.lineLexicons, 2026-09-30).
 //
-// PARTIAL — the render wave (wave C) ported the scene path's helpers, which export_audiobook,
-// the captions and the render jobs share: `_resolveSceneToLines`, `_join`, `_lineKwargs`,
+// The render wave (wave C) ported the scene path's helpers, which export_audiobook, the captions
+// and the render jobs share: `_resolveSceneToLines`, `_join`, `_lineKwargs`,
 // `renderSceneLines(Async)`, `playedTexts`, `_lexiconsFor`, `_sceneMasterTarget`,
-// `_masterScenePcm`, `renderSceneToWav`, `_sceneOwner`. The API wave adds the routes
-// (GET /v1/render/cache-stats, POST /v1/render_chapter, GET /v1/render/master-target) to this
-// file.
+// `_masterScenePcm`, `renderSceneToWav`, `_sceneOwner`; the API wave added the routes (GET
+// /v1/render/cache-stats, POST /v1/render_chapter, GET /v1/render/master-target).
 //
 // A chapter line is a `ChapterLine` wire object (snake_case). Calls a test spies on go through
 // the module namespaces (render_core.renderLine / concatLines, synth_scheduler.warmLines,
 // mastering.*, this module's own `self.`).
 
 import { getLogger } from "@delebash/llm-runner/platform/log";
+import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
 import { pySorted, strip, truthy } from "@delebash/llm-runner/platform/py";
 import * as appState from "../app_state.js";
 import { writeWavContainer } from "../audio/wav.js";
@@ -32,10 +32,11 @@ import { badRequest, internal, notFound } from "../errors.js";
 import { leftOutBlocks } from "../extraction/tags.js";
 import * as lineTakes from "../line_takes.js";
 import * as mastering from "../mastering.js";
-import { ChapterLine, construct, Delivery, floatify, modelDump, modelFields } from "../models.js";
+import { ChapterLine, construct, Delivery, floatify, modelDump, modelFields, RenderChapterRequest } from "../models.js";
 import * as renderCore from "../render_core.js";
 import { RenderedLine } from "../render_core.js";
 import * as synthScheduler from "../synth_scheduler.js";
+import { clientGone } from "./generate_api.js";
 import * as self from "./render_chapter_api.js";
 
 export const log = getLogger("justvoice.api.render_chapter_api");
@@ -381,4 +382,195 @@ export async function renderSceneToWav(st, sceneId, { strict = true, master = tr
   const target = master ? self._sceneMasterTarget(sceneId, null)[0] : null;
   const [wav] = await self._masterScenePcm(combined, target);
   return wav;
+}
+
+// ── The routes ─────────────────────────────────────────────────────────────
+
+export const SceneCacheStats = T.Object({
+  scene_id: T.String(),
+  title: T.String(),
+  total: T.Integer(),
+  cached: T.Integer(),
+});
+
+export const RenderCacheStatsResponse = T.Object({
+  project_id: T.String(),
+  total: T.Integer(),
+  cached: T.Integer(),
+  scenes: T.Array(SceneCacheStats),
+});
+
+export const MasterTargetResponse = T.Object({
+  project_id: T.String(),
+  preset: nullable(T.String()), // null = renders stay raw
+  source: T.String(), // request | project | kind
+  ffmpeg: T.Boolean(),
+  targets: opt(nullable(T.Record(T.String(), T.Any())), null), // the preset's real numbers, when one applies
+});
+
+const ProjectQuery = T.Object({ project_id: T.String() });
+
+// The YouTube preset encodes MP3 (`MasterPresetSettings.youtube`); this said audio/aac until
+// 2026-10-06.
+const MEDIA_MAP = { acx: "audio/mpeg", inaudio: "audio/mpeg", podcast: "audio/mpeg", youtube: "audio/mpeg" };
+
+export async function router(app) {
+  /**
+   * How much of a project's next render is already cached — per-scene coverage, the Studio
+   * Render banner ("412 of 583 lines unchanged since last render"). Probes each block's cache
+   * key exactly as renderLine would; no audio is produced, no engine loads.
+   */
+  app.get("/v1/render/cache-stats", { schema: { querystring: ProjectQuery } }, async (req) => {
+    const projectId = req.query.project_id;
+    const h = self._openDb();
+    const known = h.one(`select id from ${Project} where id = ? limit 1`, [projectId]) !== null;
+    const scenes = h.all(`select * from ${Scene} where project_id = ? order by position`, [projectId], Scene);
+    if (!known) throw notFound(`project ${projectId} not found`);
+    if (!scenes.length) {
+      // A real project with nothing in it yet is a normal state, not an error: Home, Studio and
+      // Chapter all probe this on mount. Zero scenes = zero coverage; 404 is reserved for an id
+      // that does not exist.
+      return construct(RenderCacheStatsResponse, { project_id: projectId, total: 0, cached: 0, scenes: [] });
+    }
+    const st = appState.getState();
+    const out = [];
+    let grandTotal = 0;
+    let grandCached = 0;
+    for (const scene of scenes) {
+      let lines;
+      try {
+        lines = await self._resolveSceneToLines(scene.id, st);
+      } catch {
+        out.push({ scene_id: scene.id, title: scene.title || "", total: 0, cached: 0 });
+        continue;
+      }
+      let cached = 0;
+      for (const line of lines) {
+        const hit = await renderCore.probeLineCached(st, line.voice, line.text, {
+          language: line.language,
+          delivery: _deliveryOf(line) || {},
+          seed: line.seed,
+          lexicons: _lexiconsFor(line),
+          effects: line.effects,
+          cacheScope: `scene:${scene.id}`,
+        });
+        if (hit) cached += 1;
+      }
+      out.push({ scene_id: scene.id, title: scene.title || "", total: lines.length, cached });
+      grandTotal += lines.length;
+      grandCached += cached;
+    }
+    return construct(RenderCacheStatsResponse, { project_id: projectId, total: grandTotal, cached: grandCached, scenes: out });
+  });
+
+  /** Render a multi-line chapter → mastered audio. */
+  app.post("/v1/render_chapter", { schema: { body: RenderChapterRequest }, config: { pyFloats: true } }, async (req, reply) => {
+    const st = appState.getState();
+    const settings = st.settings.get();
+    const body = req.body;
+    const sceneMode = Boolean(body.scene_id) && !body.lines.length;
+
+    // Scene mode — resolve blocks → personas → lines on the server.
+    let cacheScope = body.cache_scope;
+    let lines;
+    if (sceneMode) {
+      lines = await self._resolveSceneToLines(body.scene_id, st, { strict: true });
+      // Scene renders share one per-scene cache scope with the QC/M4B assembly path
+      // (renderSceneToWav) and the cache-stats probe — otherwise the same audio caches twice
+      // and the banner lies.
+      if (cacheScope === "default") cacheScope = `scene:${body.scene_id}`;
+    } else lines = body.lines;
+
+    if (!lines.length) throw badRequest("lines must not be empty (or pass scene_id)");
+    if (lines.length > settings.limits.chapter_max_lines) {
+      throw badRequest(`lines count ${lines.length} > limit ${settings.limits.chapter_max_lines}`);
+    }
+
+    // Warm the render cache model-grouped through the scheduler (§7 of
+    // docs/plans/2026-08-08-vram-think.md): the loop re-reads the cache with the SAME options,
+    // so the warm changes model-load count and order, never outcomes. A cast whose voices need
+    // different models renders model by model, one swap each. Scene mode plays each line's ★
+    // take where it has one (Studio Slice 4, D4); direct-mode lines carry no block.
+    const lineKwargs = lines.map((line) => _lineKwargs(line, cacheScope, body.lexicons));
+    const rendered = await self.renderSceneLinesAsync(st, lines, lineKwargs, {
+      owner: self._sceneOwner(body.scene_id),
+      signal: clientGone(req, reply),
+    });
+
+    let gap = body.between_lines.silence_ms;
+    if (gap == null) gap = st.settings.get().generation.pause_between_lines_ms;
+    const combined = await self._join(st, lines, rendered, gap);
+
+    // Scene mode: the server decides the mastering target (request → project → kind) and
+    // returns a WAV monitor. Studio has never sent a `master` field, so before 2026-08-15 an
+    // audiobook chapter came back as raw TTS output while the Render tab's pill claimed ACX.
+    if (sceneMode) {
+      const [target, source] = self._sceneMasterTarget(body.scene_id, body.master);
+      const [wav, applied, fallback] = await self._masterScenePcm(combined, target);
+      reply.header("X-Master-Preset", applied || "none").header("X-Master-Source", source);
+      if (fallback) reply.header("X-Master-Fallback", fallback);
+      return reply.type("audio/wav").send(wav);
+    }
+
+    // Direct mode (`lines[]` passed literally — the JustWrite adapter, CLI): the caller names
+    // the preset and gets the preset's encoding.
+    if (!body.master || body.master === "none") {
+      return reply.type("audio/wav").send(writeWavContainer(combined.pcm, combined.sampleRate, combined.channels));
+    }
+
+    if (!mastering.haveFfmpeg()) {
+      throw internal("ffmpeg is not installed. Install ffmpeg + restart the server to use mastering presets.");
+    }
+    let mastered;
+    try {
+      mastered = await mastering.master(combined.pcm, combined.sampleRate, combined.channels, {
+        presetName: body.master,
+        presets: settings.mastering,
+        title: body.title,
+        author: body.author,
+        book: body.book,
+      });
+    } catch (e) {
+      throw internal(`mastering: ${e?.message ?? e}`);
+    }
+    return reply.type(Object.hasOwn(MEDIA_MAP, body.master) ? MEDIA_MAP[body.master] : "audio/wav").send(mastered);
+  });
+
+  /**
+   * Which mastering preset this project's renders apply, and why — what the Render tab's
+   * mastering pill reads. It used to hard-code "ACX target · −20 LUFS · peak −3 dB · noise floor
+   * −60 dB" for every audiobook project; this returns the preset the render path would actually
+   * pick, from the same resolver, with the loudness numbers read out of settings.
+   */
+  app.get("/v1/render/master-target", { schema: { querystring: ProjectQuery } }, async (req) => {
+    const projectId = req.query.project_id;
+    const h = self._openDb();
+    const project = h.one(`select * from ${Project} where id = ? limit 1`, [projectId], Project);
+    if (project === null) throw notFound(`project ${projectId}`);
+    const [target, source] = mastering.resolveMasterTarget({
+      projectMaster: project.mastering_preset,
+      projectType: project.project_type,
+    });
+    let numbers = null;
+    if (target) {
+      const presets = appState.getState().settings.get().mastering;
+      const p = presets && Object.hasOwn(presets, target) ? presets[target] : null;
+      if (p != null) {
+        numbers = {
+          loudness_target_lufs: p.loudness_target_lufs,
+          true_peak_dbfs: p.true_peak_dbfs,
+          sample_rate: p.sample_rate,
+          channels: p.channels,
+          format: p.format,
+        };
+      }
+    }
+    return construct(MasterTargetResponse, {
+      project_id: projectId,
+      preset: target,
+      source,
+      ffmpeg: mastering.haveFfmpeg(),
+      targets: numbers,
+    });
+  });
 }

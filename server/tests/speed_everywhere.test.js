@@ -7,20 +7,25 @@
 // through the chapter render's own function, so its Speed, Pitch and Gain sound the same from
 // both. Python's parametrized test loops over its cases.
 //
-// Not ported here: the three Generate tests (POST /v1/generate) — they wait for
-// api/generate_api.js: test.todo.
-import { expect, test } from "vitest";
+// The three Generate tests (POST /v1/generate) FAIL in Python today: their fake
+// `_NowScheduler.submit(specs, interactive=False)` takes no `owner=`, which generate_api has
+// passed since 2026-10-07. Here the fake scheduler takes `owner`, so they pass.
+import { afterEach, expect, test, vi } from "vitest";
+import { appClient, closeApps } from "./app_helpers.js";
 import "./engines_helpers.js";
 import * as dspClient from "../src/audio/dsp_client.js";
 import { applyEffectsChain, effectsChainHash } from "../src/audio/effects.js";
-import { writeWavContainer } from "../src/audio/wav.js";
+import { parseWavHeader, writeWavContainer } from "../src/audio/wav.js";
 import { CacheKeyBuilder, packPcmWithFormat } from "../src/cache.js";
 import { canonicalJson } from "../src/delivery.js";
 import { ExternalOpenAiTtsBackend } from "../src/engines/external_openai.js";
 import { EngineRegistry } from "../src/engines/registry.js";
 import { applyLineDelivery, probeLineCached, renderLine, speedNative } from "../src/render_core.js";
+import * as synthScheduler from "../src/synth_scheduler.js";
 import { VERSION } from "../src/version.js";
 import { FakeCache, renderState, useManager } from "./render_helpers.js";
+
+afterEach(closeApps);
 
 const SR = 16000;
 const N = SR; // one second
@@ -96,8 +101,15 @@ class Manager {
       ["mock-tts", m("mock-tts", "mv_1")],
       ["kokoro", m("kokoro", "af_heart")],
     ]);
+    this._voice = { "mock-tts": "mv_1", kokoro: "af_heart" };
     this.synths = [];
     this.current = { tts: current };
+  }
+  currentId() {
+    return this.current.tts ?? null;
+  }
+  async voices(engineId) {
+    return [{ id: this._voice[engineId], name: "V" }];
   }
   getManifest(id) {
     return this._m.get(id) ?? null;
@@ -192,6 +204,65 @@ test("a_speed_the_model_took_is_not_applied_twice", async () => {
 
 // ── Generate ────────────────────────────────────────────────────────────
 
-test.todo("generate_stretches_a_line_on_an_engine_without_speed — waits for api/generate_api.js");
-test.todo("generate_leaves_kokoros_pacing_to_kokoro — waits for api/generate_api.js");
-test.todo("generate_applies_gain_and_pitch — waits for api/generate_api.js");
+/** Runs the one interactive item on the spot. (Python's twin took no `owner=` and so fails
+ * today — see the header.) */
+const nowScheduler = {
+  submit(specs, { interactive = false, owner = null } = {}) {
+    void interactive;
+    void owner;
+    const run = specs[0][1]();
+    const handle = {
+      items: [{ result: null, error: null }],
+      error: null,
+      async waitAsync() {
+        try {
+          handle.items[0].result = await run;
+        } catch (e) {
+          handle.error = e;
+        }
+      },
+      raiseIfFailed() {
+        if (handle.error != null) throw handle.error;
+      },
+    };
+    return handle;
+  },
+};
+
+/** The app with Generate's manager and scheduler faked (Python's `client` + `gen`). */
+async function genApp() {
+  const { c } = await appClient();
+  const mgr = useManager(new Manager());
+  vi.spyOn(synthScheduler, "getScheduler").mockReturnValue(nowScheduler);
+  return [c, mgr];
+}
+
+/** POST /v1/generate "Hi." → `[sample count, pcm]`. */
+async function generate(c, voice, delivery) {
+  const r = await c.post("/v1/generate", { json: { voice, text: "Hi.", delivery } });
+  expect(r.status, r.text).toBe(200);
+  const [fmt, offset, size] = parseWavHeader(r.content);
+  return [fmt.sampleCount, r.content.subarray(offset, offset + size)];
+}
+
+test("generate_stretches_a_line_on_an_engine_without_speed", async () => {
+  const [c] = await genApp();
+  const [samples] = await generate(c, "mv_1", { speed: 0.5 });
+  expect(samples).toBe(2 * N);
+});
+
+test("generate_leaves_kokoros_pacing_to_kokoro", async () => {
+  const [c, mgr] = await genApp();
+  mgr.current.tts = "kokoro";
+  const [samples] = await generate(c, "af_heart", { speed: 1.25 });
+  expect(samples).toBe(N);
+  expect(Number(mgr.synths.at(-1)[1].delivery.speed)).toBe(1.25);
+});
+
+test("generate_applies_gain_and_pitch", async () => {
+  const [c] = await genApp();
+  const [, louder] = await generate(c, "mv_1", { gain_db: 6.0 });
+  expect(Math.abs(rms(louder) / rms(TONE) / 10 ** (6 / 20) - 1)).toBeLessThan(0.01); // pytest.approx(rel=0.01)
+  const [, higher] = await generate(c, "mv_1", { pitch: 3 });
+  expect(higher.length === TONE.length && !higher.equals(TONE)).toBe(true);
+});

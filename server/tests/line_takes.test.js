@@ -6,26 +6,30 @@
 // line's own numbers make it stale and win over the persona (G7); ↻ New take keeps its own seed
 // (G1); the chapter, its captions and the game export play the ★ take (D4).
 //
-// Python drove these through the app's endpoints. The routes are the API wave's; the shim in
-// render_helpers.js does what the two thin ones do (POST /v1/blocks/{id}/render, PATCH
-// /v1/blocks/{id}) over the modules under test, and the book is written straight to the
-// database and stores. Not ported here — they need routes with logic of their own:
-// test_render_lines_job_gives_the_ready_lines_takes (api/render_lines_api.js),
-// test_a_takes_audio_goes_with_it (api/takes_api.js + api/projects_api.js),
-// test_deleting_a_chapter_closes_the_gap and test_the_books_lexicon_is_made_once
-// (api/projects_api.js): test.todo.
+// Python drove these through the app's endpoints. Here the render routes are the real ones
+// (POST /v1/blocks/{id}/render, GET /v1/scenes/{id}/render_lines, the render jobs, POST
+// /v1/projects/{id}/lexicon) on a bare app over the test's state (render_helpers.js
+// `viaRoutes`); PATCH /v1/blocks/{id} is still render_helpers.js's shim and the book is written
+// straight to the database and stores — projects_api (POST /v1/projects, /scenes, /blocks,
+// /speakers, DELETE /v1/scenes/{id}) is API agent 3's. Not ported here, waiting for it:
+// test_a_takes_audio_goes_with_it (its last step deletes the chapter through DELETE
+// /v1/scenes/{id}) and test_deleting_a_chapter_closes_the_gap: test.todo.
 import { existsSync } from "node:fs";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { sleep } from "@delebash/llm-runner/platform/asyncutil";
 import { endState, useState } from "./engines_helpers.js";
 import * as renderChapterApi from "../src/api/render_chapter_api.js";
+import { router as renderJobsRouter } from "../src/api/render_jobs_api.js";
+import { router as renderLinesRouter } from "../src/api/render_lines_api.js";
 import * as session from "../src/database/session.js";
-import { Take } from "../src/database/models.js";
+import { Project, Take, uuid } from "../src/database/models.js";
 import { exportVoicelines } from "../src/export_voicelines.js";
 import { mediaFile } from "../src/media_paths.js";
 import * as renderCore from "../src/render_core.js";
 import { lineInputsKey, RenderedLine } from "../src/render_core.js";
 import { ZipReader } from "@delebash/llm-runner/platform/zip";
-import { book, lines, metaOf, patchLineOverride, patchMetadata, patchText, renderBlock, states, unwrap } from "./render_helpers.js";
+import { book, lines, metaOf, patchLineOverride, patchMetadata, patchText, renderBlock, states, unwrap, viaRoutes } from "./render_helpers.js";
+import * as renderJobs from "../src/render_jobs.js";
 
 let st;
 let calls;
@@ -156,10 +160,52 @@ test("the_chapter_plays_the_star_take", async () => {
   expect(await states(st, b.sid)).toEqual(["stale", "ready"]); // playing it rendered nothing new
 });
 
-test.todo("render_lines_job_gives_the_ready_lines_takes — waits for api/render_lines_api.js");
-test.todo("a_takes_audio_goes_with_it — waits for api/takes_api.js + api/projects_api.js");
+const inject = async (app, method, url, json) => {
+  const r = await app.inject({
+    method,
+    url,
+    ...(json !== undefined ? { payload: JSON.stringify(json), headers: { "content-type": "application/json" } } : {}),
+  });
+  return { status: r.statusCode, json: () => JSON.parse(r.body), text: r.body };
+};
+
+test("render_lines_job_gives_the_ready_lines_takes", async () => {
+  const b = book(st, ["One.", "Two."]);
+  await viaRoutes([renderLinesRouter, renderJobsRouter], async (app) => {
+    let job = (await inject(app, "POST", `/v1/scenes/${b.sid}/render_lines`, { which: "ready" })).json();
+    expect(job.total_blocks).toBe(2);
+    for (let i = 0; i < 200; i++) {
+      if (["completed", "failed", "cancelled"].includes(job.status)) break;
+      await sleep(50);
+      job = (await inject(app, "GET", `/v1/render_jobs/${job.id}`)).json();
+    }
+    expect(job.status === "completed" && job.completed_blocks === 2).toBe(true);
+    // Let the runner finish its bookkeeping before the next reads.
+    for (let i = 0; i < 100 && renderJobs._running.size; i++) await sleep(10);
+    expect(await states(st, b.sid)).toEqual(["rendered", "rendered"]);
+    const again = (await inject(app, "POST", `/v1/scenes/${b.sid}/render_lines`, { which: "ready" })).json();
+    expect(again.total_blocks === 0 && again.status === "completed").toBe(true);
+    const state = (await inject(app, "GET", `/v1/projects/${b.pid}/render_state`)).json();
+    expect(state.totals.rendered === 2 && state.chapters[0].scene_id === b.sid).toBe(true);
+  });
+});
+
+test.todo("a_takes_audio_goes_with_it — waits for api/projects_api.js (DELETE /v1/scenes/{id})");
 test.todo("deleting_a_chapter_closes_the_gap — waits for api/projects_api.js");
-test.todo("the_books_lexicon_is_made_once — waits for api/projects_api.js");
+
+test("the_books_lexicon_is_made_once", async () => {
+  // (POST /v1/projects is projects_api's: the book is written straight to the database.)
+  const pid = uuid();
+  h().insert(Project, { id: pid, name: "Stillness", project_type: "audiobook" });
+  const first = await viaRoutes([renderLinesRouter], async (app) => {
+    const one = (await inject(app, "POST", `/v1/projects/${pid}/lexicon`)).json();
+    const again = (await inject(app, "POST", `/v1/projects/${pid}/lexicon`)).json();
+    expect(one.created === true && one.name === "Stillness names").toBe(true);
+    expect(again).toEqual({ ...one, created: false });
+    return one;
+  });
+  expect(h().get(Project, pid).default_lexicon_id).toBe(first.lexicon_id);
+});
 
 test("the_game_export_ships_the_star_take", async () => {
   const b = book(st, ["Halt.", "Pass."]);

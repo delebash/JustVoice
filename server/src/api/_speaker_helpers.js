@@ -17,12 +17,13 @@
 //
 // PARTIAL — the render wave (wave C) ported `personaForBlock`; the import wave (wave D) added
 // what the import materializer calls (sameName … ensureSpeaker, adoptBookNarrator). The API
-// wave fills in the rest of this file (speakerLineCounts, narratorSpeakerId, moveNarration)
-// under the same names. `h` is the database handle wherever Python took a session.
+// wave fills in the rest of this file under the same names: API agent 2 added
+// speakerLineCounts; narratorSpeakerId and moveNarration are API agent 3's. `h` is the
+// database handle wherever Python took a session.
 
 import { casefold, splitWs, strip } from "@delebash/llm-runner/platform/py";
 import { pyJson } from "@delebash/llm-runner/platform/pyjson";
-import { Persona, Speaker } from "../database/models.js";
+import { Block, Persona, Scene, Speaker } from "../database/models.js";
 import { conflict } from "../errors.js";
 import { pyStrOf } from "../py_compat.js";
 
@@ -123,6 +124,17 @@ export function ensureSpeaker(
   h.insert(Speaker, row);
   const created = h.one(`select * from ${Speaker} where rowid = last_insert_rowid()`, [], Speaker);
   return [created, true];
+}
+
+/** {speaker_id: lines with text} across the book (a Map) — Cast's "61 lines", and what a
+ * removal says it will leave with no speaker. (API agent 2, for personas_api's "Used by".) */
+export function speakerLineCounts(h, projectId) {
+  const rows = h.all(
+    `select ${Block}.speaker_id as sid, count(${Block}.id) as n from ${Block} join ${Scene} on ${Scene}.id = ${Block}.scene_id ` +
+      `where ${Scene}.project_id = ? and ${Block}.speaker_id is not null and trim(${Block}.text) != '' group by ${Block}.speaker_id`,
+    [projectId],
+  );
+  return new Map(rows.map((r) => [r.sid, r.n]));
 }
 
 /** The persona row that voices a line: line → speaker → persona. null when the line has no

@@ -10,8 +10,6 @@
 // and the standing-vs-this-line axis it reached for is persona-vs-line.
 //
 // Source-level tests read the JavaScript modules' own text (Python's inspect.getsource).
-// Not ported here: the api/generate_api half of test_both_render_paths_compose_with_the_same_function, which waits
-// for that module (the persona and chapter halves run).
 import { readFileSync } from "node:fs";
 import { afterEach, expect, test } from "vitest";
 import { appClient, closeApps } from "./app_helpers.js";
@@ -52,12 +50,15 @@ test("trailing_punctuation_is_not_doubled_when_joining", () => {
 test("both_render_paths_compose_with_the_same_function", () => {
   // The chapter path composed and the one-off path did not, so the same persona sounded
   // different depending on which button was pressed. One resolver composes for a persona
-  // (2026-10-03): the chapter render and the single line call it through line_takes.planBlock.
-  // (Generate's half — api/generate_api.js — waits for the API wave.)
+  // (2026-10-03): the chapter render, the single line and Generate-with-a-persona all call it —
+  // the first two through line_takes.planBlock (Slice 4) — and Generate composes the same way
+  // for a bare voice.
   expect(src("persona_render.js")).toContain("composeInstruct");
   expect(src("line_takes.js")).toContain("planLine(");
   expect(src("api/render_chapter_api.js")).toContain("planBlock(");
   expect(src("export_voicelines.js")).toContain("planBlock(");
+  expect(src("api/generate_api.js")).toContain("planLine(");
+  expect(src("api/generate_api.js")).toContain("composeInstruct");
 });
 
 // ── The tag compilation ────────────────────────────────────────────────

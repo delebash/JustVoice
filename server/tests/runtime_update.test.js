@@ -5,7 +5,6 @@
 // (the port of tests/test_runtime_update.py; the parametrized update test loops over its
 // cases).
 //
-// Not ported here (the API wave's later routers — voice_preview_api, voices_api): test.todo.
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import * as binary from "@delebash/llm-runner/runner/binary";
@@ -18,7 +17,10 @@ import * as runtime from "../src/engines/audiocpp/runtime.js";
 import { toSpeechRequest } from "../src/engines/audiocpp/slot.js";
 import * as manager from "../src/engines/manager.js";
 import { discoverEngines } from "../src/engines/manager.js";
+import { appClient, closeApps } from "./app_helpers.js";
 import { tmpPath } from "./helpers.js";
+import { getState } from "../src/app_state.js";
+import { voiceSynthFields } from "../src/render_core.js";
 
 const TAG = release.cfg.TAG;
 const PREVIOUS = release.cfg.PREVIOUS_TAGS;
@@ -27,6 +29,7 @@ afterEach(() => {
   release.cfg.PREVIOUS_TAGS = PREVIOUS;
   runtime.forgetInstalled();
 });
+afterEach(closeApps);
 
 /** A pinned release "v9-new", an older "v9-old" still installed; the kit's lookup finds
  * whichever tag has a folder. Returns the set of tags on disk. */
@@ -165,5 +168,69 @@ test("qwen3_base_without_either_is_refused_by_name", () => {
   );
 });
 
-test.todo("a_cloned_audition_needs_no_transcript_and_sends_none — waits for app.js + api/voice_preview_api.js");
-test.todo("a_saved_voice_keeps_skip_the_words — waits for app.js + api/voices_api.js");
+/** The app with its candidate clips kept in a temp folder of the test's own. */
+async function previewClient() {
+  const tmp = tmpPath();
+  vi.stubEnv("TEMP", tmp);
+  vi.stubEnv("TMP", tmp);
+  vi.stubEnv("TMPDIR", tmp);
+  return (await appClient()).c;
+}
+
+test("a_cloned_audition_needs_no_transcript_and_sends_none", async () => {
+  // The preview API no longer requires a transcript, so the Voices screen stops sending a
+  // placeholder; without one, no ref_text reaches the engine and the saved voice has none.
+  const client = await previewClient();
+  const mgr = manager.getManager();
+  const sent = [];
+  vi.spyOn(mgr, "currentFor").mockReturnValue("chatterbox");
+  vi.spyOn(mgr, "synth").mockImplementation(async (_engineId, body) => {
+    sent.push(body);
+    return [Buffer.alloc(4800), { sample_rate: 24000, channels: 1 }];
+  });
+  const r = await client.post("/v1/voices/preview", {
+    json: {
+      engine: "chatterbox",
+      source: "cloned",
+      language: "en-US",
+      ref_wav_b64: Buffer.from("RIFF....WAVE").toString("base64"),
+      preview_text: "Hello there.",
+    },
+  });
+  expect(r.status, r.text).toBe(200);
+  expect(sent.length).toBeGreaterThan(0);
+  expect("ref_text" in sent[0]).toBe(false);
+  expect(sent[0].audio_prompt_path).toBeTruthy();
+  const saved = await client.post(`/v1/voices/preview/${r.json().preview_id}/save`, { json: { name: "No words" } });
+  expect([200, 201], saved.text).toContain(saved.status);
+  const stored = getState().voices.get(saved.json().voice_id);
+  expect(stored).not.toBeNull();
+  expect(stored.transcript).toBeNull();
+});
+
+test("a_saved_voice_keeps_skip_the_words", async () => {
+  // The x-vector choice is stored on the voice — from a direct clone and from a saved audition
+  // — so its renders take the mode its audition did (decided 2026-10-03).
+  const client = await previewClient();
+  const clip = Buffer.from("RIFF....WAVE").toString("base64");
+  let r = await client.post("/v1/voices/clone", { json: { engine: "qwen3", name: "Fingerprint", ref_wav_b64: clip, xvector_only: true } });
+  expect(r.status, r.text).toBe(201);
+  const state = getState();
+  const fields = voiceSynthFields(state, state.voices.get(r.json().id));
+  expect(fields.xvector_only).toBe(true);
+  expect("ref_text" in fields).toBe(false);
+
+  const mgr = manager.getManager();
+  vi.spyOn(mgr, "currentFor").mockReturnValue("qwen3");
+  // A clone is heard on Qwen3 Base (2026-10-03: the voice's model, not just its engine, has to
+  // be resident) — so the fake says Base is loaded.
+  vi.spyOn(mgr, "currentVariantId").mockReturnValue("qwen3-base-1.7b-q8");
+  vi.spyOn(mgr, "synth").mockResolvedValue([Buffer.alloc(4800), { sample_rate: 24000, channels: 1 }]);
+  r = await client.post("/v1/voices/preview", {
+    json: { engine: "qwen3", source: "cloned", ref_wav_b64: clip, preview_text: "Hello.", xvector_only: true },
+  });
+  expect(r.status, r.text).toBe(200);
+  const saved = await client.post(`/v1/voices/preview/${r.json().preview_id}/save`, { json: { name: "Audition" } });
+  expect([200, 201], saved.text).toContain(saved.status);
+  expect(state.voices.get(saved.json().voice_id).xvector_only).toBe(true);
+});

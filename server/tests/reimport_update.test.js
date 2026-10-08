@@ -10,4 +10,4 @@ import { test } from "vitest";
 
 test.todo("reimport_updates_in_place_and_derives_staleness — waits for api/projects_api.js + imports/*");
 test.todo("update_requires_stable_ids — waits for api/projects_api.js + imports/*");
-test.todo("block_render_clears_staleness — waits for api/projects_api.js + imports/* + api/takes_api.js");
+test.todo("block_render_clears_staleness — waits for api/projects_api.js (the import route; takes_api is ported)");

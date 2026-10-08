@@ -27,7 +27,7 @@ import {
 import { purePath } from "@delebash/llm-runner/platform/data_paths";
 import { getLogger } from "@delebash/llm-runner/platform/log";
 import { NotImplementedError, ValueError } from "@delebash/llm-runner/platform/py";
-// ── The routers, in app.py's order (agents 2 and 3 add theirs at the marked places) ──
+// ── The routers (registered below in app.py's order; agent 3 adds theirs at the marked places) ──
 import { router as activeTasksRouter } from "./api/active_tasks_api.js";
 import { router as alignRouter } from "./api/align_api.js";
 import { router as analyzerRouter } from "./api/analyzer_api.js";
@@ -35,20 +35,33 @@ import { router as cacheRouter } from "./api/cache_api.js";
 import { router as captureReadinessRouter } from "./api/capture_readiness_api.js";
 import { router as capturesRouter } from "./api/captures_api.js";
 import { router as channelsRouter } from "./api/channels_api.js";
+import { router as effectPresetsRouter } from "./api/effect_presets_api.js";
 import { router as engineSourcesRouter } from "./api/engine_sources_api.js";
 import { router as enginesRouter } from "./api/engines_api.js";
 import { router as enginesModelsRouter } from "./api/engines_models_api.js";
 import { router as externalRouter } from "./api/external_api.js";
+import { router as generateRouter } from "./api/generate_api.js";
 import { router as healthRouter } from "./api/health_api.js";
+import { router as lexiconsRouter } from "./api/lexicons_api.js";
+import { router as masterRouter } from "./api/master_api.js";
 import { router as mcpBindingsRouter } from "./api/mcp_bindings_api.js";
 import { router as modelsRouter } from "./api/models_api.js";
+import { router as personasRouter } from "./api/personas_api.js";
 import { router as prefsRouter } from "./api/prefs_api.js";
+import { router as pronunciationRouter } from "./api/pronunciation_api.js";
 import { router as refineLabRouter } from "./api/refine_lab_api.js";
+import { router as renderChapterRouter } from "./api/render_chapter_api.js";
+import { router as renderJobsRouter } from "./api/render_jobs_api.js";
+import { router as renderLinesRouter } from "./api/render_lines_api.js";
 import { router as serverAuthRouter } from "./api/server_auth_api.js";
 import { router as settingsRouter } from "./api/settings_api.js";
 import { router as speechRuntimeRouter } from "./api/speech_runtime_api.js";
 import { router as sseStreamsRouter } from "./api/sse_streams_api.js";
 import { router as systemRouter } from "./api/system_api.js";
+import { router as takesRouter } from "./api/takes_api.js";
+import { router as voiceBundleRouter } from "./api/voice_bundle_api.js";
+import { router as voicePreviewRouter } from "./api/voice_preview_api.js";
+import { router as voicesRouter } from "./api/voices_api.js";
 import { router as webhooksRouter } from "./api/webhooks_api.js";
 import { AppState, setState } from "./app_state.js";
 import * as dspClient from "./audio/dsp_client.js";
@@ -320,7 +333,11 @@ export async function createApp(dataDir = null) {
   app.register(systemRouter);
   app.register(serverAuthRouter); // the auth door + lockout escape (family shape)
   app.register(settingsRouter);
-  // [agents 2/3] voices_api, voice_bundle_api, personas_api, speakers_api, lexicons_api
+  app.register(voicesRouter);
+  app.register(voiceBundleRouter);
+  app.register(personasRouter);
+  // [agent 3] speakers_api
+  app.register(lexiconsRouter);
   app.register(enginesRouter);
   app.register(speechRuntimeRouter);
   app.register(modelsRouter);
@@ -359,15 +376,20 @@ export async function createApp(dataDir = null) {
   // shared LLM seed, the provider registry boot) is database/seed.js `seedWorkspace()`, called
   // by serve.js AFTER createApp.
 
-  // [agents 2/3] generate_api, render_chapter_api
+  app.register(generateRouter);
+  app.register(renderChapterRouter);
   app.register(analyzerRouter);
   app.register(alignRouter);
-  // [agents 2/3] pronunciation_api
+  app.register(pronunciationRouter);
   app.register(externalRouter);
   app.register(cacheRouter);
-  // [agents 2/3] master_api, projects_api
+  app.register(masterRouter);
+  // [agent 3] projects_api
   // Phase 4a backend (DESIGN_FREEZE §5)
-  // [agents 2/3] takes_api, render_jobs_api, export_jobs_api, render_lines_api
+  app.register(takesRouter);
+  app.register(renderJobsRouter);
+  // [agent 3] export_jobs_api
+  app.register(renderLinesRouter);
   app.register(channelsRouter);
   app.register(mcpBindingsRouter);
   app.register(activeTasksRouter);
@@ -383,11 +405,14 @@ export async function createApp(dataDir = null) {
   app.register(sseStreamsRouter);
   // Phase 4a addendum (gap-decision workflow v1.0 endpoints)
   app.register(webhooksRouter);
-  // [agents 2/3] bulk_delete_api, voice_preview_api, project_export_api, effect_presets_api
+  // [agent 3] bulk_delete_api
+  app.register(voicePreviewRouter);
+  // [agent 3] project_export_api
+  app.register(effectPresetsRouter);
   app.register(prefsRouter);
-  // [agents 2/3] extraction_api
+  // [agent 3] extraction_api
   app.register(refineLabRouter);
-  // [agents 2/3] smart_assign_api
+  // [agent 3] smart_assign_api
 
   // MCP server — justvoice.speak / list_voices / list_personas for local AI agents, at /mcp
   // (Streamable HTTP), before the root static catch-all. A failed mount must still boot the app.

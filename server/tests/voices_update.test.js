@@ -1,11 +1,15 @@
 // SPDX-License-Identifier: MIT
 // Tests for PATCH /v1/voices/{id} — stored-voice metadata updates (the port of
 // tests/test_voices_update.py): VoiceStore.update()'s partial-update semantics, and the HTTP
-// endpoint (whose three tests wait for api/voices_api.js + app.js).
-import { expect, test } from "vitest";
+// endpoint (200 stored, 404 missing, PATCH-skips-null).
+import { afterEach, expect, test } from "vitest";
+import { getState } from "../src/app_state.js";
 import { dtMicros, utcNow } from "../src/models.js";
 import { VoiceStore } from "../src/storage/voices.js";
+import { appClient, closeApps } from "./app_helpers.js";
 import { tmpPath } from "./helpers.js";
+
+afterEach(closeApps);
 
 function record(id = "voice_test1") {
   const now = utcNow();
@@ -57,6 +61,28 @@ test("store_update_bumps_updated_at", () => {
 
 // ── HTTP endpoint ────────────────────────────────────────────────────────────
 
-test.todo("patch_voice_updates_gender — waits for api/voices_api.js + app.js");
-test.todo("patch_voice_partial_leaves_other_fields — waits for api/voices_api.js + app.js");
-test.todo("patch_voice_404_when_missing — waits for api/voices_api.js + app.js");
+test("patch_voice_updates_gender", async () => {
+  const { c } = await appClient();
+  getState().voices.create(record());
+  const r = await c.patch("/v1/voices/voice_test1", { json: { gender: "F" } });
+  expect(r.status).toBe(200);
+  expect(r.json().gender).toBe("F");
+  // Round-trips through GET.
+  expect((await c.get("/v1/voices/voice_test1")).json().gender).toBe("F");
+});
+
+test("patch_voice_partial_leaves_other_fields", async () => {
+  const { c } = await appClient();
+  getState().voices.create(record());
+  const r = await c.patch("/v1/voices/voice_test1", { json: { gender: "M" } });
+  expect(r.status).toBe(200);
+  const body = r.json();
+  expect(body.name).toBe("Sarah");
+  expect(body.language).toBe("en-US");
+});
+
+test("patch_voice_404_when_missing", async () => {
+  const { c } = await appClient();
+  const r = await c.patch("/v1/voices/voice_missing", { json: { gender: "F" } });
+  expect(r.status).toBe(404);
+});

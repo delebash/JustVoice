@@ -6,13 +6,15 @@
 // block is ISOLATED (the rest keep rendering); resume re-runs only unfinished blocks; cancel
 // withdraws queued blocks at the line boundary; the boot sweep pauses interrupted jobs.
 //
-// Not ported here: test_api_roundtrip — it drives api/render_jobs_api.js (the API wave):
-// test.todo. Python's threads are async tasks: `_waitTerminal` polls with a short sleep.
+// test_api_roundtrip drives the routes on a bare app holding the render_jobs router, as Python's
+// minimal FastAPI app did (render_helpers.js `viaRoutes`). Python's threads are async tasks:
+// `_waitTerminal` polls with a short sleep.
 import { existsSync } from "node:fs";
 import { AsyncEvent, sleep } from "@delebash/llm-runner/platform/asyncutil";
 import { ValueError } from "@delebash/llm-runner/platform/py";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import "./engines_helpers.js";
+import { router as renderJobsRouter } from "../src/api/render_jobs_api.js";
 import * as appState from "../src/app_state.js";
 import * as session from "../src/database/session.js";
 import { Block, Generation, Project, RenderJob, RenderJobBlock, Scene, Speaker, Take, uuid } from "../src/database/models.js";
@@ -24,6 +26,7 @@ import * as renderJobs from "../src/render_jobs.js";
 import { getScheduler, workOwner } from "../src/synth_scheduler.js";
 import * as voiceModel from "../src/voice_model.js";
 import { tmpDb, tmpPath } from "./helpers.js";
+import { viaRoutes } from "./render_helpers.js";
 
 const TERMINAL = ["completed", "failed", "cancelled"];
 
@@ -218,7 +221,38 @@ test("empty_scope_completes_immediately", () => {
   expect(job.total_blocks || 0).toBe(0);
 });
 
-test.todo("api_roundtrip — waits for api/render_jobs_api.js");
+test("api_roundtrip", async () => {
+  const [projectId, , blockIds] = seedProject(["One.", "Two."]);
+  fakeRender(async () => line());
+  await viaRoutes([renderJobsRouter], async (app) => {
+    const call = async (method, url, json) => {
+      const r = await app.inject({ method, url, ...(json !== undefined ? { payload: json } : {}) });
+      return { status: r.statusCode, json: () => JSON.parse(r.body) };
+    };
+    let r = await call("POST", "/v1/render_jobs", { project_id: projectId, scope: "blocks", scope_ids: blockIds });
+    expect(r.status).toBe(200);
+    const jobId = r.json().id;
+
+    const t0 = Date.now();
+    let body = r.json();
+    while (!TERMINAL.includes(body.status) && Date.now() - t0 < 10000) {
+      await sleep(5);
+      body = (await call("GET", `/v1/render_jobs/${jobId}`)).json();
+    }
+    // Always re-fetch WITH blocks — the job may already have been terminal in the POST
+    // response, which carries no blocks list.
+    body = (await call("GET", `/v1/render_jobs/${jobId}?include_blocks=true`)).json();
+    expect(body.status).toBe("completed");
+    expect(body.completed_blocks).toBe(2);
+    expect(body.blocks.length).toBe(2);
+
+    // Validation: scene/blocks scope requires ids.
+    r = await call("POST", "/v1/render_jobs", { project_id: projectId, scope: "blocks" });
+    expect(r.status).toBe(400);
+    // Unknown job → 404.
+    expect((await call("GET", "/v1/render_jobs/nope")).status).toBe(404);
+  });
+});
 
 test("unknown_block_ids_reject", () => {
   const [projectId, , blockIds] = seedProject(["One."]);
