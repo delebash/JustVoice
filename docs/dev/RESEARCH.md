@@ -1023,6 +1023,42 @@ agent's checks, re-run by me; `server/src/engines/`, `server/src/audio/`, `speec
 - Two kit bugs it found are fixed in the kit (its register has them): a `.tar.gz` extraction left
   the archive open, and an app's `FormData` reached the kit's HTTP client as "[object FormData]".
 
+**The port to JavaScript — wave C, the render layer** (*measured 2026-10-08*, an agent's checks,
+the suite re-run by me; `render_core`, `render_jobs`, `line_takes`, `synth_scheduler`,
+`persona_render`, `voice_model`, `refinement`, `voice_bundle`, `export_audiobook`,
+`export_voicelines`, `mastering`):
+
+- **Render-cache keys are Python's:** on a copy of the dev data, augmented through Python's own
+  stores with what it lacked (stored voices of every source, 13 personas with float deliveries,
+  per-model knobs, emotions, effects, lexicons; a second book with per-line numbers, direction,
+  tags, a marker, a dialogue tag, a long line), all 340 keys and 343 take-path keys match, and
+  every one of the 289 real-book keys names a file Python wrote in the real render cache. With
+  the read answers (`voice_model`, `persona_render`, `sceneLines`, render states, takes,
+  `jobStatus`), 36,527 values, 0 different, key order included. (`server/scripts/compare-render.mjs`.)
+- **A delivery's floats must stay `PyFloat`s** (`persona_render.modelSettings`, `line_takes`,
+  `render_chapter_api._deliveryOf` through `floatify(Delivery)`), or the keys change; code that
+  reads one unwraps it with `num()`/`Number()`. (*code*, confirmed by the check.)
+- **A real Kokoro render job is byte-identical** — three real lines (one of 372 characters, through
+  the split-and-join path): the generation, take and job-block rows (ids aside), the take WAVs,
+  the 7 render-cache files and the voice-line zip's entries. With ffmpeg 8.1.1: an ACX chapter
+  WAV, the M4B and one take mastered with all 4 presets (MP3 with tags and WAV) are
+  byte-identical, and the ffmpeg command lines match (temp paths aside). Graphics memory 533 MiB
+  before and after. (`compare-render-real.mjs`.)
+- A line with no seed is sent a random seed (`slot.to_speech_request`), so a repeatable Kokoro
+  take needs a persona seed. (*code*.)
+- Voice resolution is async in JS (a registry engine's `voices()` may need the network), so the
+  key, plan and scene readers are async (`lineInputsKey`, `planLine`, `planBlock`, `sceneLines`,
+  `projectRenderState`, …). The scheduler's worker is an async loop; `waitAsync({signal})`
+  stands in for asyncio's cancellation — a rendering route passes its request's AbortSignal.
+- The JS DSP program keeps `<data>/logs/audiocpp-dsp.log` open until `dspClient.stop()`; the
+  server's shutdown must call it.
+- The boot runs `render_jobs.sweepStaleJobs()` and `line_takes.sweepOrphanTakesNow()` after the
+  database, the state and `await runtime.ensureHardware()` — before it, `_supportsPhonemeInput`
+  reads "no IPA".
+- Five Python Generate tests fail today (`test_project_lexicon` ×2, `test_speed_everywhere` ×3):
+  their fake scheduler's `submit` lacks the `owner=` argument added on 2026-10-07. (*measured*,
+  pytest.)
+
 ---
 
 ## 7 · Where an AI task shows

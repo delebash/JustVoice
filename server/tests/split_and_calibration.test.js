@@ -3,17 +3,19 @@
 // for a description voice, and the calibrating warm-up a model with no price on the card
 // measures its peak with (the port of tests/test_split_and_calibration.py; parametrized tests
 // loop over their cases).
-//
-// Not ported here: the three render tests (render_core.render_line / probe_line_cached /
-// description_seed — a later wave): test.todo.
 import { readFileSync } from "node:fs";
+import path from "node:path";
 import { expect, test, vi } from "vitest";
 import "./engines_helpers.js";
 import * as appState from "../src/app_state.js";
 import { parseWavHeader } from "../src/audio/wav.js";
 import { AudioCppError } from "../src/engines/audiocpp/runtime.js";
 import * as slotMod from "../src/engines/audiocpp/slot.js";
+import * as manager from "../src/engines/manager.js";
 import { discoverEngines, EngineManager } from "../src/engines/manager.js";
+import { EngineRegistry } from "../src/engines/registry.js";
+import { descriptionSeed, probeLineCached, renderLine } from "../src/render_core.js";
+import { tmpPath } from "./helpers.js";
 
 // ─── the split size ──────────────────────────────────────────────────────────
 
@@ -42,9 +44,105 @@ test("a_models_split_size_comes_from_the_user_then_the_catalog", () => {
 
 // ─── the render: pieces of the model's length; a description voice's seed ────
 
-test.todo("a_long_line_goes_to_the_model_in_its_own_piece_length — waits for render_core.js");
-test.todo("a_description_voice_keeps_one_seed_and_the_full_length — waits for render_core.js");
-test.todo("a_description_seed_is_stable_and_per_voice — waits for render_core.js");
+class Mgr {
+  constructor(split) {
+    this.split = split;
+    this.synths = [];
+    this.m = { id: "mock-tts", kind: "tts", capabilities: { paralinguistic_tags: false }, staticVoices: [{ id: "mv_1", name: "MV" }] };
+  }
+  getManifest(engineId) {
+    return engineId === "mock-tts" ? this.m : null;
+  }
+  manifests() {
+    return new Map([["mock-tts", this.m]]);
+  }
+  currentFor() {
+    return "mock-tts";
+  }
+  currentVariantId() {
+    return "v1";
+  }
+  splitCharsFor() {
+    return this.split;
+  }
+  async load() {
+    return {};
+  }
+  async synth(engineId, body) {
+    this.synths.push({ ...body });
+    const b = Buffer.alloc(200);
+    for (let i = 0; i < 100; i++) b.writeInt16LE(0x0100, 2 * i);
+    return [b, { sample_rate: 16000, channels: 1, is_wav_container: false }];
+  }
+}
+
+class Cache {
+  constructor() {
+    this.d = new Map();
+  }
+  has(scope, key) {
+    return this.d.has(`${scope}|${key}`);
+  }
+  get(scope, key) {
+    return this.d.get(`${scope}|${key}`) ?? null;
+  }
+  put(scope, key, data) {
+    this.d.set(`${scope}|${key}`, data);
+  }
+}
+
+function renderState(tmp, { cache = null, designed = false } = {}) {
+  const settings = {
+    limits: { text_max_chars: 5000 },
+    cache: { enabled: cache !== null },
+    generation: { max_chunk_chars: 800, crossfade_ms: 50 },
+  };
+  const stored = { id: "d1", engine: "mock-tts", source: "designed", design_prompt: "A gravel-voiced harbour-master." };
+  const voices = {
+    get: (vid) => (designed && vid === "d1" ? stored : null),
+    refWavPath: () => path.join(tmp, "no-clip.wav"),
+  };
+  const st = { settings: { get: () => settings }, engines: new EngineRegistry(), voices, lexicons: { get: () => null } };
+  if (cache !== null) st._renderCache = cache;
+  return st;
+}
+
+const LONG =
+  "The ferry was late again, and nobody on the quay looked surprised. Marius set the lamp " +
+  "on the table and counted the doors until the ninth. The fog came in over the pier.";
+
+test("a_long_line_goes_to_the_model_in_its_own_piece_length", async () => {
+  const mgr = new Mgr(70);
+  vi.spyOn(manager, "getManager").mockReturnValue(mgr);
+  const tmp = tmpPath();
+  await renderLine(renderState(tmp), { voice: "mv_1", text: LONG });
+  expect(mgr.synths.length).toBeGreaterThanOrEqual(3);
+  expect(mgr.synths.every((b) => [...b.text].length <= 70)).toBe(true);
+  mgr.synths.length = 0;
+  mgr.split = null; // a model with none: the global cap
+  await renderLine(renderState(tmp), { voice: "mv_1", text: LONG });
+  expect(mgr.synths.length).toBe(1);
+});
+
+test("a_description_voice_keeps_one_seed_and_the_full_length", async () => {
+  const mgr = new Mgr(70);
+  vi.spyOn(manager, "getManager").mockReturnValue(mgr);
+  const st = renderState(tmpPath(), { cache: new Cache(), designed: true });
+  expect(await probeLineCached(st, "d1", LONG, { cacheScope: "s" })).toBe(false);
+  await renderLine(st, { voice: "d1", text: LONG, cacheScope: "s" });
+  // Its voice is drawn from the description on every request: one piece, one fixed seed.
+  expect(mgr.synths.length).toBe(1);
+  expect(mgr.synths[0].seed).toBe(descriptionSeed("d1"));
+  expect(await probeLineCached(st, "d1", LONG, { cacheScope: "s" })).toBe(true); // the probe agrees
+  await renderLine(st, { voice: "d1", text: LONG, cacheScope: "s", seed: 7 }); // a set seed still wins
+  expect(mgr.synths.at(-1).seed).toBe(7);
+});
+
+test("a_description_seed_is_stable_and_per_voice", () => {
+  expect(descriptionSeed("d1")).toBe(descriptionSeed("d1"));
+  expect(descriptionSeed("d1")).not.toBe(descriptionSeed("d2"));
+  expect(descriptionSeed("d1") >= 0 && descriptionSeed("d1") < 2 ** 31).toBe(true);
+});
 
 // ─── the calibrating warm-up ─────────────────────────────────────────────────
 

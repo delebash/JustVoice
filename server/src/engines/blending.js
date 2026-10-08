@@ -17,7 +17,7 @@
 
 import { readdirSync, statSync } from "node:fs";
 import path from "node:path";
-import { pyRound, ValueError } from "@delebash/llm-runner/platform/py";
+import { NotImplementedError, pyRound, ValueError } from "@delebash/llm-runner/platform/py";
 import * as dspClient from "../audio/dsp_client.js";
 import * as speechCache from "../speech_cache.js";
 import { embeddedFiles } from "./audiocpp/gguf_files.js";
@@ -30,13 +30,6 @@ export class LookupError extends Error {
   constructor(message) {
     super(message);
     this.name = "LookupError";
-  }
-}
-/** Python's NotImplementedError. */
-export class NotImplementedError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = "NotImplementedError";
   }
 }
 

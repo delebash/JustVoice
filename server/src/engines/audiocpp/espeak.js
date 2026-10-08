@@ -21,7 +21,7 @@ import os from "node:os";
 import path from "node:path";
 import * as http from "@delebash/llm-runner/platform/http";
 import { RuntimeError } from "@delebash/llm-runner/platform/py";
-import * as binary from "@delebash/llm-runner/runner/binary";
+import { extractZip } from "@delebash/llm-runner/platform/zip";
 
 export const VERSION = "0.2.4";
 export const _SHA256 = {
@@ -102,7 +102,7 @@ export async function install(runtimeRoot, force = false) {
   mkdirSync(staging, { recursive: true });
   try {
     writeFileSync(wheel, blob);
-    await binary.extractZip(wheel, unpack);
+    await extractZip(wheel, unpack);
     // Only the package folder, without its Python wrapper (*.py), lands — the layout the
     // runtime is pointed at.
     const pkg = path.join(unpack, "espeakng_loader");

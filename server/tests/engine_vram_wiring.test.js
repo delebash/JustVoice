@@ -19,6 +19,8 @@ import { bareManager, discrete, makeArbiter, onePool, resetArbiter } from "./eng
 import * as runtime from "../src/engines/audiocpp/runtime.js";
 import * as manager from "../src/engines/manager.js";
 import { EngineManager } from "../src/engines/manager.js";
+import { SynthScheduler } from "../src/synth_scheduler.js";
+import { AsyncEvent, sleep } from "@delebash/llm-runner/platform/asyncutil";
 
 afterEach(() => resetArbiter());
 
@@ -380,7 +382,30 @@ test("evictor_terminates_only_the_matching_occupant", async () => {
 
 // ─── busy flags (step 4) ──────────────────────────────────────────────
 
-test.todo("scheduler_worker_marks_tts_busy_while_draining — waits for synth_scheduler.js");
+test("scheduler_worker_marks_tts_busy_while_draining", async () => {
+  const arb = makeArbiter(discrete());
+  // The idle transition's high-water re-probe reaches the manager; a stand-in answers it.
+  vi.spyOn(manager, "getManager").mockReturnValue({ bumpEngineReservation: async () => {} });
+  const sched = new SynthScheduler();
+  const seen = [];
+  const gate = new AsyncEvent();
+  const handle = sched.submit([
+    [
+      "eng",
+      async () => {
+        seen.push(arb.busyKinds());
+        await gate.wait(5000);
+        return "ok";
+      },
+    ],
+  ]);
+  for (let i = 0; i < 200 && !seen.length; i++) await sleep(10);
+  expect(seen.length && seen[0].has("tts")).toBe(true);
+  gate.set();
+  expect(await handle.wait(5)).toBe(true);
+  for (let i = 0; i < 200 && arb.busyKinds().has("tts"); i++) await sleep(10);
+  expect(arb.busyKinds().has("tts")).toBe(false);
+});
 test.todo("vram_endpoint_serves_the_strip — waits for app.js + api/engines_api.js");
 
 test("transcribe_marks_stt_busy", async () => {

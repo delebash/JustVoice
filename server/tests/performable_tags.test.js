@@ -3,10 +3,10 @@
 // tests/test_performable_tags.py; decided 2026-09-29: "drop every [word] tag the chosen engine
 // doesn't list, not only the ones the app recognises"). Found on the walkthrough: the podcast
 // demo's "[warm]" survived `inline_tags.strip` and Kokoro said the word "warm" aloud.
-//
-// The four render_core.performable_text tests wait for render_core.js (another slice).
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
+import "./engines_helpers.js";
 import { strip } from "../src/inline_tags.js";
+import * as renderCore from "../src/render_core.js";
 
 test("strip_drops_every_tag_by_default", () => {
   expect(strip("Welcome back. [warm] Good to see you.")).toBe("Welcome back.  Good to see you.");
@@ -27,8 +27,28 @@ test("strip_keeps_only_the_listed_tags", () => {
   expect(strip("[LAUGH] ha", new Set(["laugh"]))).toBe("[LAUGH] ha");
 });
 
-test.todo("a_model_without_tags_loses_them_all — waits for render_core.js");
-test.todo("a_tag_model_keeps_exactly_what_it_lists — waits for render_core.js");
-test.todo("a_tokenless_model_of_a_tag_engine_keeps_none — waits for render_core.js");
-test.todo("without_a_capability_row_a_tag_engine_keeps_the_parsers_set — waits for render_core.js");
-test.todo("without_a_capability_row_a_tagless_engine_keeps_none — waits for render_core.js");
+test("a_model_without_tags_loses_them_all", () => {
+  expect(renderCore.performableText(null, "kokoro", "kokoro", "Hi. [laugh] [warm] Bye.")).toBe("Hi.   Bye.");
+});
+
+test("a_tag_model_keeps_exactly_what_it_lists", () => {
+  // Turbo's own vocabulary survives; a word it doesn't list goes.
+  const out = renderCore.performableText(null, "chatterbox", "chatterbox-turbo", "[sigh] So. [warm] [laugh]");
+  expect(out).toBe("[sigh] So.  [laugh]");
+});
+
+test("a_tokenless_model_of_a_tag_engine_keeps_none", () => {
+  // Chatterbox Multilingual: the same engine as Turbo, a model with no tags — so none survive,
+  // whichever model happens to be loaded (the tags follow the VOICE's model since 2026-10-03).
+  expect(renderCore.performableText(null, "chatterbox", "chatterbox-multilingual", "[laugh] Ha.")).toBe(" Ha.");
+});
+
+test("without_a_capability_row_a_tag_engine_keeps_the_parsers_set", () => {
+  vi.spyOn(renderCore, "_engineTakesTags").mockReturnValue(true);
+  expect(renderCore.performableText(null, "x", "x", "[laugh] [warm] ok")).toBe("[laugh]  ok");
+});
+
+test("without_a_capability_row_a_tagless_engine_keeps_none", () => {
+  vi.spyOn(renderCore, "_engineTakesTags").mockReturnValue(false);
+  expect(renderCore.performableText(null, "x", "x", "[laugh] ok")).toBe(" ok");
+});

@@ -3,8 +3,8 @@
 // mapping per family, and the runtime's own bookkeeping. No binary, no GPU (the port of
 // tests/test_audiocpp_switch.py; Python's parametrized tests loop over their cases).
 //
-// Not ported here (a later wave's modules): test_qwen3_family_still_reads_off_the_variant_id
-// (voice_model), and the runtime-row / delete API tests (app.js + api/*): test.todo.
+// Not ported here (a later wave's modules): the runtime-row / delete API tests (app.js +
+// api/*): test.todo.
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { afterAll, afterEach, expect, test, vi } from "vitest";
@@ -58,7 +58,13 @@ test("every_switched_variant_reaches_a_capability_row", () => {
   }
 });
 
-test.todo("qwen3_family_still_reads_off_the_variant_id — waits for voice_model.js");
+test("qwen3_family_still_reads_off_the_variant_id", async () => {
+  // voice_model.modelOfVariant walks the id down to its capability row:
+  // qwen3-<family>-<size>-<precision> → qwen3-<family>.
+  const { modelOfVariant } = await import("../src/voice_model.js");
+  const ids = discoverEngines().get("qwen3").module.VARIANTS.map((r) => r.id);
+  expect(new Set(ids.map((i) => modelOfVariant(i)))).toEqual(new Set(["qwen3-cv", "qwen3-base", "qwen3-vd"]));
+});
 
 test("kokoro_offers_only_voices_audiocpp_can_speak", () => {
   // Since v0.9.0-jv.4 the pinned runtime reads Japanese: all 54, the five Japanese among them.

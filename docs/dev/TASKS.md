@@ -2314,7 +2314,10 @@ OPEN:   step 1's last end — packaged builds need `audiocpp_dsp` in an audio.cp
         15. The repo root `.venv` stays: the kit's Python suite runs on it until JustVoice's step
             ends.
         16. JustWrite's in-memory zip classes stay in `book_transfer_api.js` until JustVoice needs
-            the same, then move into the kit's `data_api` (the family-sameness law).
+            the same, then move into the kit's `data_api` (the family-sameness law). Done
+            2026-10-08 when JustVoice's port needed it: the kit's `platform/zip.js` replaced four
+            copies (the backup routes', the runner's, JustWrite's, JustVoice's) — its own module
+            rather than inside `data_api`, since the runner and the apps import it too.
         FINDING (needs a go): a book whose title isn't latin-1 fails to export with a 500 — Python
         did too, and the port copied it on purpose; JustWrite's TASKS has the fix.
         (Q8's last part answered — "no i dont have a mack": iOS builds need macOS, so how iOS

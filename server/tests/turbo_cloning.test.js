@@ -3,15 +3,13 @@
 // their capability rows are back, the slot maps a cloned voice and refuses on an older runtime
 // by name, and a Load warms the built-in voice so the memory is booked (the port of
 // tests/test_turbo_cloning.py).
-//
-// Not ported here: test_an_emotion_compiles_to_turbos_token — it reads
-// render_core._apply_emotion_tag (a later wave): test.todo.
 import { afterEach, expect, test, vi } from "vitest";
 import "./engines_helpers.js";
 import * as release from "../src/engines/audiocpp/release.js";
 import * as runtime from "../src/engines/audiocpp/runtime.js";
 import * as slot from "../src/engines/audiocpp/slot.js";
 import { CAPABILITY_DETAILS, lookup } from "../src/engines/capability_details.js";
+import { _applyEmotionTag } from "../src/render_core.js";
 
 const TAG = release.cfg.TAG;
 afterEach(() => {
@@ -66,7 +64,11 @@ test("the_nineteen_tags_are_turbos_and_multilingual_keeps_none", () => {
   expect(lookup("chatterbox-multilingual-v2-q8").inline_tags).toEqual([]);
 });
 
-test.todo("an_emotion_compiles_to_turbos_token — waits for render_core.js");
+test("an_emotion_compiles_to_turbos_token", () => {
+  const emotion = CAPABILITY_DETAILS["chatterbox-turbo"].inline_tags[0];
+  expect(_applyEmotionTag("Who's there?", { emotion: "fearful" }, emotion).startsWith("[fear]")).toBe(true);
+  expect(_applyEmotionTag("A line.", { emotion: "sad" }, emotion)).toBe("A line."); // no token for sad
+});
 
 test("a_cloned_voice_maps_to_voice_ref_and_turbos_knobs", () => {
   const req = slot.toSpeechRequest(TURBO, {

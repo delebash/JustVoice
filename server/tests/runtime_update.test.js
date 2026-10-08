@@ -151,4 +151,4 @@ test("qwen3_base_without_either_is_refused_by_name", () => {
 });
 
 test.todo("a_cloned_audition_needs_no_transcript_and_sends_none — waits for app.js + api/voice_preview_api.js");
-test.todo("a_saved_voice_keeps_skip_the_words — waits for app.js + api/voices_api.js + render_core.js");
+test.todo("a_saved_voice_keeps_skip_the_words — waits for app.js + api/voices_api.js");

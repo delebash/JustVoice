@@ -2,15 +2,15 @@
 // A lexicon's IPA reaches Kokoro again (gap 3): canonical IPA becomes Kokoro's symbols, the
 // words of a line are marked "[word](/phonemes/)" for our audio.cpp, by the host's own rule,
 // and only when the installed runtime splices (the port of tests/test_kokoro_ipa.py).
-//
-// Not ported here: test_ipa_is_used_only_when_the_installed_runtime_splices — it reads
-// render_core._supports_phoneme_input (a later wave): test.todo.
-import { afterEach, expect, test } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
 import "./engines_helpers.js";
 import * as release from "../src/engines/audiocpp/release.js";
 import { toSpeechRequest } from "../src/engines/audiocpp/slot.js";
 import { splice, toKokoro } from "../src/engines/kokoro/ipa.js";
+import * as runtime from "../src/engines/audiocpp/runtime.js";
+import { CAPABILITY_DETAILS } from "../src/engines/capability_details.js";
 import { discoverEngines } from "../src/engines/manager.js";
+import * as renderCore from "../src/render_core.js";
 
 const TAG = release.cfg.TAG;
 afterEach(() => {
@@ -65,7 +65,22 @@ test("kokoro_gets_the_spliced_line", () => {
   expect(req.input).toBe("[Beauchamp](/ˈbiːʧəm/) came home.");
 });
 
-test.todo("ipa_is_used_only_when_the_installed_runtime_splices — waits for render_core.js");
+test("ipa_is_used_only_when_the_installed_runtime_splices", () => {
+  const kokoro = CAPABILITY_DETAILS.kokoro;
+  const had = kokoro.supports_phoneme_input;
+  try {
+    kokoro.supports_phoneme_input = true;
+    vi.spyOn(runtime, "hasFeature").mockImplementation((name) => name === "inline_ipa");
+    expect(renderCore._supportsPhonemeInput("kokoro")).toBe(true);
+    vi.spyOn(runtime, "hasFeature").mockReturnValue(false);
+    expect(renderCore._supportsPhonemeInput("kokoro")).toBe(false); // its respelling is used
+    kokoro.supports_phoneme_input = false;
+    vi.spyOn(runtime, "hasFeature").mockReturnValue(true);
+    expect(renderCore._supportsPhonemeInput("kokoro")).toBe(false);
+  } finally {
+    kokoro.supports_phoneme_input = had;
+  }
+});
 
 test("the_capability_follows_the_pin", () => {
   release.cfg.TAG = "v0.9.0";
