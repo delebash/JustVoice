@@ -157,8 +157,8 @@ BUILT:  2026-10-08 — gone: `LabsView`, `CompareView`, `RenderLabView`, `AudioT
         `analyzer_api.js` and `analyzer.test.js`; `sampleDiff` only by `analyzer.compare`.
 OPEN:   `legacy-gui/index.html` (the frozen reference UI at /legacy/, in-repo only) still has
         a Compare panel calling `/v1/compare`, which now answers 404 — left as it is, since it's
-        a frozen reference. The fork's `audiocpp_dsp` keeps its `compare` command, which JustVoice
-        no longer calls.
+        a frozen reference. (The fork's `compare` command went too — fork `b1c8103f`, the
+        clean-room item's ruling.)
 GO:     given 2026-10-08
 
 ### Previews say a load with Always auto-load on too; Studio's cards say "Checking…" until the project's facts load (decided 2026-10-07)
@@ -2469,6 +2469,17 @@ OPEN:   step 1's last end — packaged builds need `audiocpp_dsp` in an audio.cp
         its api object, filled with our narrow list of commands; don't expose electronAPI." ·
         "5. The app-specific part (data folder, server, tray). Lean: each app's src/main/index.js
         is the template's file plus one call to a shared kit function for those parts."
+        REVERSED 2026-10-08 — both entries above were a misread: the user, "wait i thought we
+        where holding off on electron vite while we decide on quasar", then "no i did not mean we
+        rewrite the apps today in electron vite, that was not my intnet". The restructure agent
+        was stopped and nothing of it was committed. Its leftovers stay as they are (the user:
+        "leave it all for now"): docgen's uncommitted working tree in the electron-vite layout
+        (46 changes), the two lines it added to `biome.json` in JustVoice and JustWrite, and the
+        kit's `stash@{0}` (its half-rewritten shell, set aside so JustVoice runs the committed
+        one). The family moves to Quasar instead — the kit's TASKS item "Every family app moves
+        to Quasar", whose OPEN 6 holds the global CLAUDE.md Stack line (it still names
+        electron-vite's template; the new text goes to the user first). The "STANDARD FIRST" and
+        "plain .js only" rules stand.
         DECIDED 2026-10-08 — the user: "your rec on all go, also any reference to voicebox we can
         remove since we are using audio cpp" (the go also covers cutting the four project
         CLAUDE.md files down after the restructure). Rec applied, as answered: "we can remove
@@ -2591,6 +2602,14 @@ OPEN:   step 1's last end — packaged builds need `audiocpp_dsp` in an audio.cp
         preset values and prompt rows until the user resets. Keep-alive's need under Electron is
         unmeasured. speak with no language and no persona still stores "en" though the voice
         speaks its own. A tag longer than the piece length is still cut (no piece may exceed it).
+        WAITING 2026-10-08 — the user: "wait and updte docs make sure other seesion knows about
+        this udate correct docs". The rest of the conversion list waits while the Quasar move is
+        decided: LICENSES.md and NOTICE.md re-inventoried for npm (both still list the Python and
+        Tauri dependencies), the kit's docs that still name Python, check-family's Python rules,
+        the bug-fix pass (the FINDING list's copied old-server bugs, the 19 unmerged helper
+        copies, `pyFloatOf` U+001C–1F, `pronunciation.js`'s "Jean-Luc Picard" escape, the labs
+        CLI's LLM boot, webhooks `dispatch_event`), the installer build, the four project
+        CLAUDE.md files cut down, the final no-Python grep.
         DECIDED 2026-10-08 — the user: "when the conversion is complete no python should remain
         not even in testing, do you understnad?" Answered, rec applied, as shown: "When the
         conversion is complete, no Python remains anywhere: no server, no tests, no scripts, no

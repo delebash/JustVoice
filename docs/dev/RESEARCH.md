@@ -1304,6 +1304,34 @@ extraction, speakers, smart_assign, project_export, export_jobs, bulk_delete, _s
   nothing saved) loaded Kokoro and synthesized a 5.5 s 24 kHz line in 15 s; VRAM 564 →
   7,217 MiB (Kokoro + the warm-on-boot chat model) → 479 MiB after quitting, no runtime,
   DSP or llama process left, the port closed.
+- **The clean-room rewrite, checked** (2026-10-08 — TASKS, the Electron item's clean-room
+  entries; JV `64edd25`):
+  - Refinement, old vs new, through production's own `refineTranscript` on the real data
+    folder's model (gemma-4-26b-a4b-qat) and settings, 22 dictations (14 made up + the old and
+    new refine Lab samples): with all three toggles on, both 19/22 (the 3 misses are the
+    checker's case strictness, identical for both); the new wording also drops a leading
+    "So"/"Okay, so". With every toggle off the new one keeps self-corrections ("Mark — no,
+    wait, … Sarah") as ruled, the old one removed them; both still drop "um"/"uh" — gemma does
+    that on its own. — *measured, 2026-10-08* · scratchpad harness `refine-compare/`:
+    `createApp(<data>)` + the provider registry from the database (`loadFromConfigs`, what
+    `seedWorkspace` step 7 does) + each module's `refineTranscript`, which returns
+    `[text, model]`.
+  - The UI is served at `/`: `/ui/` answers 307 to `/` and drops the query, so the dictation
+    window is `/?view=dictate`. At rest it renders nothing (`DictateWindow.vue`: the pill
+    shows only while `state !== "rest"`), and nothing in the app starts a cycle today, so its
+    states are proven by unit tests only. — *measured + code, 2026-10-08*.
+  - MCP through the SDK's own client (`Client` + `StreamableHTTPClientTransport`) on the
+    headless server: speak with neither voice nor persona and no `mcp.default_voice` refuses
+    "No voice resolved for this call…"; speak through a persona whose engine isn't loaded refuses
+    "…which is not currently loaded…" (the headless server starts with no speech engine loaded —
+    `POST /v1/engines/kokoro/load` first); loaded, it returns a 24 kHz WAV whose
+    `duration_sec` matches its header, and transcribing that WAV gives the text back. —
+    *measured, 2026-10-08* · scratchpad `mcp-proof.js`.
+  - Building the fork by hand: `cmake` isn't on Git Bash's PATH — `scripts/audiocpp-dev.js`
+    runs it inside Visual Studio's `vcvarsall.bat` (toolset 14.44), and its build names only
+    `audiocpp_server` and `audiocpp_dsp`, so the dsp test program needs
+    `cmake --build ../audio.cpp/build/jv-dev --target audiocpp_dsp_test` in that environment. —
+    *measured, 2026-10-08*.
 
 ---
 
