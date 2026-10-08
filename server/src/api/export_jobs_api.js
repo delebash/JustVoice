@@ -95,9 +95,8 @@ async function _chaptersZip(job, projectId) {
   const scenes = exportAudiobook.projectScenes(projectId);
   if (!scenes.length) throw badRequest("project has no scenes to export");
   job.total = scenes.length;
-  // KIT-GAP: Python wrote these members STORED (WAV barely compresses, and a book is hundreds of
-  // MB); the kit's ZipWriter writes DEFLATED only. The members and their bytes are the same.
-  const zf = new ZipWriter();
+  // STORED, as Python wrote them: WAV barely compresses, and a book is hundreds of MB.
+  const zf = new ZipWriter({ compression: "stored" });
   for (let i = 0; i < scenes.length; i++) {
     const scene = scenes[i];
     job.step = _chapterStep(job, i, scenes.length, scene);
