@@ -2694,6 +2694,15 @@ OPEN:   step 1's last end — packaged builds need `audiocpp_dsp` in an audio.cp
         the quasar framework, starting with creating a new default quasar app and building the new
         apps…" — recorded in IDEAS (2026-10-08 · Rewrite every family app on the Quasar framework);
         the conversion continues with today's GUI.
+        DECIDED 2026-10-08 (later) — the user: "all apps will be converted to quasar, we will use the
+        same stack, we will keep the code the same as in the servers should look and work the same,
+        i think we already have the servers but i want a framework rules so when we do apps they
+        resuse and end up very similiar", then "we already decided on quasar you messed up all apps
+        get quasar" and "1-5 your rec … go" on the five questions as shown. This replaces "the
+        conversion continues with today's GUI" above: every app moves to Quasar. The decision, the
+        five recommendations and what is open are in the kit's TASKS, "Every family app moves to
+        Quasar" (`../just-llm-runner/docs/dev/TASKS.md`); the phone-app test and the sync design in
+        JustWrite's TASKS, "The phone app's UI library — the theming test".
 GO:     the study and the rulings given 2026-10-05; the spikes and the plan given 2026-10-07;
         the plan approved 2026-10-07, which is step 1's go. Steps 2–5: "your rec go do it all
         the full conversion" (2026-10-07, above); "keep going complete the switch to electron do it
