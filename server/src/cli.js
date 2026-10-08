@@ -3,9 +3,10 @@
 //
 //   node scripts/node24.js server/src/cli.js <command>
 //     default-settings   print the seed settings
-//     open-api           (Python printed FastAPI's OpenAPI document — the JavaScript server
-//                        has none; the command says so and exits 1)
 //     self-test          GET /v1/health on the server the default settings name
+//
+// (Python's CLI also had `open-api`, FastAPI's OpenAPI document; the JavaScript server has none,
+// so the command went with it.)
 //
 // The SERVER entry is serve.js (one door per purpose). Typer's boxed help is written plainly.
 
@@ -19,7 +20,6 @@ export const PROG = "justvoice-cli";
 
 const COMMANDS = {
   "default-settings": "Print the seed settings (defaults).",
-  "open-api": "Generate the OpenAPI spec (writes to stdout).",
   "self-test": "Run smoke tests against a booted server.",
 };
 
@@ -67,10 +67,6 @@ export async function main(argv = process.argv.slice(2)) {
   if (cmd === "default-settings") {
     process.stdout.write(`${defaultSettings()}\n`);
     return process.exit(0);
-  }
-  if (cmd === "open-api") {
-    process.stderr.write("open-api: the JavaScript server has no OpenAPI document (FastAPI generated it).\n");
-    return process.exit(1);
   }
   if (cmd === "self-test") {
     const [code, lines] = await selfTest();
