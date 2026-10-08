@@ -6,7 +6,7 @@
 // effects chains (whole-number floats and ints both), joins, a streamed audition's seams,
 // fits (trim, resample, channels), the aligner's input, the analyzer, Kokoro vector math.
 //
-//   node scripts/node24.mjs server/scripts/compare-dsp.mjs      (JV_PYTHON overrides)
+//   node scripts/node24.js server/scripts/compare-dsp.js      (JV_PYTHON overrides)
 
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // One real line through the speech runtime, from Python and from this port (wave B of step
-// 5): each side boots on its own COPY of JustVoice's dev database (src-tauri/target/debug/data
+// 5): each side boots on its own COPY of JustVoice's dev database (data
 // — only justvoice.db is copied; the speech models are reached through a junction to the real
 // speech cache), loads the same model through its engine manager (placement, admission, the
 // calibrating warm-up, the runtime process started through the kit's spawn door) against the
@@ -11,7 +11,7 @@
 // audiocpp_server / llama-server runs — and refuses to run beside the app; afterwards it
 // checks no runtime process is left, and reports graphics memory before and after.
 //
-//   node scripts/node24.mjs server/scripts/compare-synth.mjs [engine] [variant]
+//   node scripts/node24.js server/scripts/compare-synth.js [engine] [variant]
 //      (default: kokoro kokoro-82m-q8; JV_PYTHON overrides)
 
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
@@ -23,7 +23,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const SERVER = resolve(HERE, "..");
 const REPO = resolve(SERVER, "..");
 const PY = process.env.JV_PYTHON || join(SERVER, ".venv", process.platform === "win32" ? "Scripts/python.exe" : "bin/python");
-const DEV_DATA = join(REPO, "src-tauri", "target", "debug", "data");
+const DEV_DATA = join(REPO, "data");
 const PY_RUNTIME = join(SERVER, "justvoice", "engines");
 const [engine = "kokoro", variant = "kokoro-82m-q8"] = process.argv.slice(2);
 const REQUEST = {

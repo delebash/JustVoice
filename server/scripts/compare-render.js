@@ -19,11 +19,11 @@
 // cache and the take audio are junctions to the real ones (read only — fingerprinted before and
 // after); the JS data root's `engines-runtime` is a junction to Python's source-tree runtime.
 //
-//   node scripts/node24.mjs server/scripts/compare-render.mjs      (JV_PYTHON overrides)
+//   node scripts/node24.js server/scripts/compare-render.js      (JV_PYTHON overrides)
 
 import { readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
-import { attempt, cleanup, compare, DEV_DATA, dataCopy, fingerprint, leaves, python, tempRoot } from "./compare-render-lib.mjs";
+import { attempt, cleanup, compare, DEV_DATA, dataCopy, fingerprint, leaves, python, tempRoot } from "./compare-render-lib.js";
 
 const dir = tempRoot("jv-compare-render-");
 const before = Object.fromEntries(["cache", "generations", "speech-cache"].map((d) => [d, fingerprint(join(DEV_DATA, d))]));

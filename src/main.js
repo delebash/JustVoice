@@ -15,7 +15,6 @@ import {
   installLlmUi,
   startWarmOnBoot,
 } from "@delebash/llm-ui";
-import { openPath, openUrl } from "@tauri-apps/plugin-opener";
 import { serverUrl } from "@delebash/llm-ui";
 import AttributionAutoPanel from "./components/lab/AttributionAutoPanel.vue";
 import RefineSectionToggles from "./components/lab/RefineSectionToggles.vue";
@@ -24,22 +23,13 @@ import { attributionLabAdapter } from "./services/attributionLab.js";
 import { refineLabAdapter } from "./services/refineLab.js";
 import { LAB_TEST_ACTIONS, LAB_TEST_SOURCES } from "./services/labTestData.js";
 import { bootPrefs, ensureActiveProjectDefault } from "./services/prefs.js";
-import { saveFile } from "./services/native.js";
+import { openPath, openUrl, saveFile } from "./services/native.js";
 import { loadDoc, hasDoc, titleForSlug } from "./services/helpDocs.js";
 import { useUiStore } from "./stores/ui.js";
 import { i18n } from "./i18n/index.js";
 import router from "./router/index.js";
 import "./styles/tokens.css";
 import "./styles/styles.css";
-
-// NOT installed here yet — deliberately, and this is the note that says why.
-// The cross-origin fetch route (kit `installTauriFetch`) exists so a renderer can
-// reach a server that ships no CORS headers. JustWrite installs it. JustVoice
-// would need its `http:default` capability to carry an explicit URL allow-list
-// first (JustWrite's does; JV's is scope-empty, so routing calls through the
-// plugin would DENY what plain fetch reaches today) — and which hosts JustVoice
-// may reach in `jt:server` thin-client mode is a decision, not a refactor.
-// Tracked in ../just-llm-runner/docs/dev/TASKS.md.
 
 function isDictateView() {
   if (typeof window === "undefined") return false;
@@ -55,16 +45,16 @@ function isDictateView() {
 // default), which used to be read in TWO places in this app.
 // Called in BOTH boot branches: the dictate webview builds server URLs off the
 // same transport, and an unconfigured client falls back to
-// window.location.origin — tauri.localhost in production, empty views only there.
+// window.location.origin — app://justvoice in the desktop app, empty views only there.
 function wireKit(app) {
   installLlmUi(app, {
     devPorts: ["1430", "1431"],
     fallbackBase: import.meta.env.VITE_SERVER_URL || "http://127.0.0.1:17494",
     serverOverrideKey: "jt:server",
-    // The openers, straight from the plugin — the SAME line in all three apps
-    // (2026-08-14). The kit decides when they can be used (browser vs webview);
-    // no app repeats that reasoning. `openPath` is what both model catalogs'
-    // "Open folder" rides.
+    // The openers, through services/native.js (the shell's one bridge) — the SAME
+    // line in all three apps. The kit decides when they can be used (browser vs
+    // desktop window); no app repeats that reasoning. `openPath` is what both model
+    // catalogs' "Open folder" rides.
     external: { open: openUrl, openPath },
     // Nothing in JV embeds (chat ruling 2026-08-05).
     capabilities: { embeddings: false },
@@ -174,9 +164,10 @@ function wireKit(app) {
 }
 
 async function boot() {
-  // The dictate window runs in a separate Tauri webview that must skip the
-  // main shell + server bootstrap (the main window owns those) and render
-  // only the floating recording pill. URL?view=dictate triggers this branch.
+  // The dictate window (never created today — study §7.1) runs in a separate
+  // window that must skip the main shell + server bootstrap (the main window owns
+  // those) and render only the floating recording pill. URL?view=dictate
+  // triggers this branch.
   if (isDictateView()) {
     const app = createApp(DictateWindow);
     wireKit(app);
@@ -199,7 +190,7 @@ async function boot() {
       serverUrl: serverUrl(""),
       need: "load voices, projects, and settings",
       devHint:
-        "Dev: it should start automatically with `npm run tauri dev`, or run it yourself with `npm run server`, then retry.",
+        "Dev: it should start automatically with `npm run dev`, or run it yourself with `npm run server`, then retry.",
     }).mount("#app");
     return;
   }

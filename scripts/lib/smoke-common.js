@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Shared browser lookup for every JV script that drives the renderer with
 // Playwright — JustVoice's DOOR to the family implementation in
-// `../just-llm-runner/scripts/lib/exec-resolve.mjs` (target-tree P7): it binds
+// `../just-llm-runner/scripts/lib/exec-resolve.js` (target-tree P7): it binds
 // JV's env override (JV_CHROME) and re-exports the lookup. Import from HERE;
 // never re-fork the lookup, and never hardcode a browser path.
 //
@@ -18,7 +18,7 @@
 import {
   chromeLaunchOptions as kitChromeLaunchOptions,
   findChrome as kitFindChrome,
-} from "../../../just-llm-runner/scripts/lib/exec-resolve.mjs";
+} from "../../../just-llm-runner/scripts/lib/exec-resolve.js";
 
 /** Path to a usable Chromium executable, or `undefined` (a SUCCESS value —
  *  Playwright then resolves from its own registry). `JV_CHROME` overrides. */

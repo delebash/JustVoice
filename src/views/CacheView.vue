@@ -150,7 +150,7 @@ async function pruneGenerations(query, label) {
 }
 async function pruneByVoice() {
   // promptDialog with a select — the native prompt() it replaces is
-  // banned (returns null in the Tauri webview) and made users TYPE an id.
+  // banned (returned null in the old Tauri webview) and made users TYPE an id.
   const picked = await promptDialog({
     title: "Prune renders by voice",
     fields: [{

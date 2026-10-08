@@ -7,7 +7,7 @@
 // need an editable (cloned) voice + a loaded engine, so they're covered
 // by build + static disabled markup, not here.
 //
-//   cd server && JUSTVOICE_DATA_DIR=/tmp/jv-vX justvoice-server serve --host 127.0.0.1 --port 8752 &
+//   JUSTVOICE_DATA_DIR=/tmp/jv-vX npm run server -- --host 127.0.0.1 --port 8752 &
 //   JV_BASE=http://127.0.0.1:8752 node scripts/verify-no-fakes.js
 
 import { chromium } from "playwright";

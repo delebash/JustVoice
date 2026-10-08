@@ -4,9 +4,9 @@
 // docstrings: JustVoice's quality-evaluation labs, each sub-package independent and runnable).
 //
 // Usage:
-//   node scripts/node24.mjs server/src/labs/extraction/run.js                  # every passage, auto route
-//   node scripts/node24.mjs server/src/labs/extraction/run.js --route guided   # force a route
-//   node scripts/node24.mjs server/src/labs/extraction/run.js --corpus austen_persuasion
+//   node scripts/node24.js server/src/labs/extraction/run.js                  # every passage, auto route
+//   node scripts/node24.js server/src/labs/extraction/run.js --route guided   # force a route
+//   node scripts/node24.js server/src/labs/extraction/run.js --corpus austen_persuasion
 //
 // Writes a markdown report to labs/extraction/reports/latest-<route>.md with per-passage
 // block-accuracy, per-character F1, and a source breakdown (anchor / propagated / llm / floored

@@ -1,5 +1,5 @@
 // Side-by-side screenshots of the same view on the new SPA vs the legacy GUI.
-// Boot the Python server first; both UIs are mounted under the same origin.
+// Boot the server first; both UIs are mounted under the same origin.
 //   New:    http://localhost:17494/
 //   Legacy: http://localhost:17494/legacy/
 import { chromium } from "playwright";

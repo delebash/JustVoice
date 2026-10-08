@@ -24,12 +24,12 @@
 // No model is loaded and nothing is started: the bundled runner's model-load hook is off and its
 // base URL is the fake server.
 //
-//   node scripts/node24.mjs server/scripts/compare-extraction.mjs      (JV_PYTHON overrides)
+//   node scripts/node24.js server/scripts/compare-extraction.js      (JV_PYTHON overrides)
 
 import { createServer } from "node:http";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { cleanup, compare, dataCopy, HERE, PY, SERVER, tempRoot } from "./compare-render-lib.mjs";
+import { cleanup, compare, dataCopy, HERE, PY, SERVER, tempRoot } from "./compare-render-lib.js";
 
 const dir = tempRoot("jv-compare-extraction-");
 const CTX = 3000;

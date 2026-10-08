@@ -1,6 +1,6 @@
 # 🎙️ JustVoice
 
-**A cross-platform open-source voice production studio for audiobook producers, game developers, podcasters, dictation users, and accessibility users. Built on Tauri 2 + Vue 3 + Python FastAPI.**
+**A cross-platform open-source voice production studio for audiobook producers, game developers, podcasters, dictation users, and accessibility users. Built on Electron + Vue 3 + a Node server (Fastify + SQLite).**
 
 JustWrite-compatible imports are one of several supported workflows — see `docs/import-formats.md`.
 
@@ -40,9 +40,13 @@ Read the docs in this order:
 git clone https://github.com/delebash/justvoice-new.git
 cd justvoice-new
 npm install
-cd server && pip install -e . && cd ..
 npm run dev
 ```
+
+The shared AI stack (`@delebash/llm-runner`) comes from the kit checked out beside this repo
+(`../just-llm-runner`), as `package.json` names it. `npm run dev` opens the desktop app on
+Vite's dev server with hot reload; its server runs on the dev data folder `data/` in the
+checkout. `npm run build` makes the installer (`release/`).
 
 `npm run dev` runs the speech runtime from our audio.cpp source when it is checked out beside
 this repo (`git clone -b jv https://github.com/delebash/audio.cpp ../audio.cpp`): it builds
@@ -54,21 +58,22 @@ app downloads the pinned release from the AI page as usual.
 ### Headless server (run on a remote box, hit from any browser)
 
 ```bash
-cd server
-pip install -e .
-justvoice-server serve --port 17494
+npm run server -- --port 17494          # from a checkout
+justvoice-server serve --port 17494     # an installed app (Windows, in the install folder)
 ```
 
-Then point any browser at `http://localhost:17494/ui/`.
+Then point any browser at `http://localhost:17494/ui/`. More in
+[docs/run-modes.md](docs/run-modes.md).
 
-> **Naming**: the Python console script is `justvoice-server`, not `justvoice`. Don't rename — on Windows, using the same name as the Tauri binary causes infinite spawn loops.
+> **Naming**: the headless launcher is `justvoice-server`, never `justvoice` — the app's exe is
+> `justvoice.exe`, and a launcher sharing its name makes Windows run the GUI exe instead.
 
 ### Install the speech engines
 
 Use AI Settings → Speech engines in the UI: **Install speech runtime** downloads
 the one program every engine runs on, in the build that suits your machine
 (CUDA, Vulkan, CPU or Metal), and each model downloads from its own row. There
-are no pip extras to remember; the app is the installer. See
+is nothing else to install; the app is the installer. See
 [docs/engines.md](docs/engines.md).
 
 ## Repository layout
@@ -77,25 +82,24 @@ are no pip extras to remember; the app is the installer. See
 .
 ├── index.html                 # Vite entry — the repo root is the Vite root
 ├── public/                    # Copied verbatim into the build
-├── src-tauri/                 # Tauri 2 Rust shell (window mgmt + sidecar spawn + tray + system audio + 21 invoke commands)
+├── electron/main.js           # The desktop app: the kit's shared Electron shell with this app's settings
+├── build/                     # Icons and the headless launcher the installer ships
 ├── src/                       # Vue 3 + Pinia + Vite SPA
 │   ├── components/            # ListPane, CapturePill, ChordPicker, AudioKeepAlive, etc.
 │   ├── stores/                # Pinia: api, server, player, ui, audioChannel, generation (AI tasks live in the kit's store)
-│   ├── services/              # HTTP client per endpoint group (projects, webhooks, takes, …)
+│   ├── services/              # HTTP client per endpoint group; native.js is the one door to the desktop shell
 │   └── views/                 # One per top-level tab
-├── server/                    # Python FastAPI server — the brain
-│   ├── justvoice/
-│   │   ├── api/               # /v1/* HTTP routes (~30 endpoint files)
-│   │   ├── audio/             # WAV math, analyzer, chunked TTS
-│   │   ├── database/          # SQLAlchemy ORM + idempotent column migrations
-│   │   │   ├── models.py      # 24 ORM tables matching DESIGN_FREEZE §4
-│   │   │   ├── migrations.py  # Idempotent column-existence helpers (per-file attribution in header)
-│   │   │   └── session.py     # init_db + get_db dependency
+├── server/                    # The Node server (Fastify + SQLite) — the brain
+│   ├── src/
+│   │   ├── api/               # /v1/* HTTP routes, one file per area
+│   │   ├── audio/             # WAV headers, the analyzer, chunked TTS, the DSP program's client
+│   │   ├── database/          # The SQLite schema (models_schema.js), sessions, seeds
 │   │   ├── engines/           # Per-engine model catalogs + audiocpp/ (the speech runtime + request mapping)
-│   │   ├── storage/           # Atomic JSON for settings.json only (everything else is in SQLite now)
-│   │   ├── models.py          # Pydantic source-of-truth (cross-language contract)
-│   │   └── app.py             # FastAPI factory; create_app() registers all routers
-│   └── tests/                 # pytest baseline
+│   │   ├── storage/           # Voices, profiles, lexicons and the other stores
+│   │   ├── models.js          # The request/response shapes (the wire contract)
+│   │   ├── app.js             # The server: registers every router
+│   │   └── serve.js           # The entry the desktop app and `npm run server` run
+│   └── tests/                 # vitest (`npm run test:server`)
 ├── preview/
 │   └── ux-feature-inventory.html  # Visual feature catalog (cream/forest-green aesthetic preview)
 ```
@@ -117,7 +121,7 @@ are no pip extras to remember; the app is the installer. See
 
 ## Status
 
-See `MORNING_RECAP.md` for the current build state. JustVoice's data model + HTTP API + Tauri shell + license posture are all locked. Remaining work is mostly UI tabs (Phase 4b) — they land one-per-PR going forward.
+See `MORNING_RECAP.md` for the current build state. JustVoice's data model + HTTP API + desktop shell + license posture are all locked. Remaining work is mostly UI tabs (Phase 4b) — they land one-per-PR going forward.
 
 ## Project relationships
 
@@ -127,7 +131,7 @@ JustWrite is the novel-writing app. JustVoice can be driven by JustWrite (the au
 
 ### Upstream code lifts
 
-A handful of files in this repo (`audio/chunked.py`, `database/migrations.py`) carry per-file MIT attribution headers referencing a pinned upstream commit. The full license trail is in `NOTICE.md` + `voicebox-pin.txt`.
+A handful of files in this repo (`server/src/audio/chunked.js`, `server/src/database/migrations.js`, among others) carry per-file MIT attribution headers referencing a pinned upstream commit. The full license trail is in `NOTICE.md` + `voicebox-pin.txt`.
 
 ## Contributing
 
@@ -138,7 +142,7 @@ Per-file SPDX-License-Identifier headers required on every new file:
 
 See `project_licensing_attribution` in the memory layer for the policy + templates.
 
-- **Python**: ruff for lint, pytest for tests. Run both before opening a PR.
+- **Server and app**: Biome for lint (`npm run lint`), vitest for tests (`npm run test:server`, `npm run test:unit`). Run them before opening a PR.
 - **Vue**: prefer single-file components. CSS variables for design tokens (no Tailwind).
-- **Rust (Tauri shell)**: keep it minimal. Move business logic to Python.
+- **Desktop shell**: `electron/main.js` only names this app's settings; the shell is the kit's. Business logic lives in the server.
 - **Docs are mandatory**: every feature ships with a `FEATURES.md` section (what/when/how/examples/troubleshooting).

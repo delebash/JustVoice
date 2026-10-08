@@ -5,7 +5,7 @@
 // tree's runtime folder (server/justvoice/engines/audiocpp). Downloads ~50 MB into a temp
 // folder; writes nothing else.
 //
-//   node scripts/node24.mjs server/scripts/compare-installs.mjs
+//   node scripts/node24.js server/scripts/compare-installs.js
 
 import { createHash } from "node:crypto";
 import { mkdtempSync, readdirSync, readFileSync, statSync } from "node:fs";

@@ -29,7 +29,7 @@
   Since the 2026-10-01 switch every engine here runs in the ONE speech runtime
   (audio.cpp): the runtime row at the top installs it and picks its backend;
   the per-engine Install, Device select and environment Uninstall went with
-  the per-engine Python environments.
+  the per-engine environments of the old Python server (gone since 2026-10-02).
 
   CPU placement (2026-10-02, docs/plans/2026-10-02-cpu-placement.md §8): every model
   runs on the graphics card or the CPU — Auto / GPU / CPU on its own line under the
@@ -774,7 +774,7 @@ onBeforeUnmount(() => {
     </div>
 
     <p v-if="enginesLoaded && !engines.length" class="jv-banner jv-banner--warn">
-      No engines listed — the Python server may not be running. Check <a href="#settings">Settings → Server</a>.
+      No engines listed — the server may not be running. Check <a href="#settings">Settings → Server</a>.
     </p>
 
     <!-- The speech runtime — ONE audio.cpp program runs every engine below

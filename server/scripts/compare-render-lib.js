@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
-// What the render layer's parity checks share (compare-render.mjs, compare-render-real.mjs):
-// the temp folder and the COPIES of JustVoice's dev data root (src-tauri/target/debug/data — read
+// What the render layer's parity checks share (compare-render.js, compare-render-real.js):
+// the temp folder and the COPIES of JustVoice's dev data root (data — read
 // only: the database and the small config files are copied; the speech cache, and where asked
 // the render cache and the take audio, are reached through junctions, never written), the
 // Python runner, the JSON comparison, and the cleanup — junctions unlinked first, then a check
@@ -15,7 +15,7 @@ export const HERE = dirname(fileURLToPath(import.meta.url));
 export const SERVER = resolve(HERE, "..");
 export const REPO = resolve(SERVER, "..");
 export const PY = process.env.JV_PYTHON || join(SERVER, ".venv", process.platform === "win32" ? "Scripts/python.exe" : "bin/python");
-export const DEV_DATA = join(REPO, "src-tauri", "target", "debug", "data");
+export const DEV_DATA = join(REPO, "data");
 export const PY_RUNTIME = join(SERVER, "justvoice", "engines");
 
 /** A new temp folder with the family registry and the user cache inside it. */

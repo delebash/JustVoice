@@ -370,7 +370,7 @@ function saveDebounced() {
   }, 350);
 }
 
-// ─── Keep-server-running + Network access (preview parity, Tauri commands) ──
+// ─── Keep-server-running + Network access (preview parity, desktop shell commands) ──
 // ONE source of truth: the server store (persisted in its `justvoice-server`
 // doc, default FALSE — the family headless ruling 2026-08-04). The view's own
 // `justvoice:keep_server_running` key + `{ enabled }` invoke died 2026-08-05:
@@ -1056,14 +1056,14 @@ onMounted(() => {
         </div>
 
         <!-- Keep server running on close — closes window to tray but keeps -->
-        <!-- the Python sidecar alive so MCP agents, JustWrite, or external -->
+        <!-- the server alive so MCP agents, JustWrite, or external -->
         <!-- callers can keep hitting the API. -->
         <div class="setting-row">
           <div class="setting-row__head">
             <div>
               <div class="setting-row__title">Keep server running when window closes</div>
               <div class="setting-row__desc">
-                Closing the window minimizes JustVoice to the system tray and keeps the Python
+                Closing the window minimizes JustVoice to the system tray and keeps the
                 server running in the background. MCP agents, JustWrite, and external scripts
                 stay connected. Toggle off if you'd rather a true quit on close.
               </div>
@@ -1820,7 +1820,7 @@ onMounted(() => {
     <div v-show="activeSub === 'about'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header"><h3 class="jv-card__title">About JustVoice v0.1.0</h3></div>
-        <p>JustVoice is a cross-platform open-source voice production studio for audiobook producers, game developers, podcasters, dictation users, and accessibility users. Built on Tauri 2 + Vue 3 + Python FastAPI.</p>
+        <p>JustVoice is a cross-platform open-source voice production studio for audiobook producers, game developers, podcasters, dictation users, and accessibility users. Built on Electron + Vue 3 + Node.</p>
         <p class="jv-muted jv-note jv-mt10">Licensed MIT. Portions ported from voicebox (MIT) and JustWrite (MIT) — see <code>NOTICE.md</code>.</p>
         <div class="jv-btn-group jv-mt14">
           <UiButton intent="secondary" label="📋 Third-party licenses" />

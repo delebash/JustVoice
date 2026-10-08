@@ -3,7 +3,7 @@
 // headless server (Phase A closing deliverable, IMPLEMENTATION_PLAN).
 //
 // Usage:
-//   1. cd server && justvoice-server serve     (separate terminal)
+//   1. npm run server                          (separate terminal)
 //   2. node scripts/e2e.js [--executable /path/to/chrome]
 //
 // What it covers (no TTS/LLM models needed — those paths assert their

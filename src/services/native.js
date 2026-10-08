@@ -1,65 +1,43 @@
 // SPDX-License-Identifier: MIT
-// native.js — JustVoice's calls into its own Tauri shell.
+// native.js — JustVoice's calls into its own desktop shell.
 //
-// The family shape (2026-08-15), same file, same job in all three apps: ordinary
-// module exports, one per `#[tauri::command]`, so a command's NAME as a string
-// exists in exactly ONE place. Before this, `invoke` was imported ad hoc at four
-// call sites across a store and a view, and a renamed command would have had to
-// be found by grepping for a string literal.
+// The family shape (2026-08-15), same file, same job in all three apps: ordinary module
+// exports, one per shell command, so a command's NAME as a string exists in exactly ONE
+// place. Since the Electron move (2026-10-08) the shell is the kit's shared Electron main
+// module (`@delebash/llm-runner/shell`, configured in electron/main.js); this file is the
+// ONLY reader of its one preload object, `window.appShell` (`invoke(command, args)`,
+// `on(event, fn)`). These throw on failure where noted and callers use try/catch; a
+// cancelled dialog resolves null. Outside the desktop app (Vite dev in a browser, the
+// headless `serve` UI) every call answers the browser's way: null / [] / a no-op.
 //
-// The commands live in `src-tauri/src/lib.rs`. Every native dialog is a Rust
-// command rather than the JS dialog plugin — the family shape, so a dialog can't
-// appear at two different layers across the three apps.
-//
-// NOT here: `@tauri-apps/api/event` listeners. Events are a different channel
-// (the shell pushing to the renderer), and JustWrite subscribes to them directly
-// in App.vue too — same shape, deliberately.
-//
-// SCOPE NOTE, so this file isn't mistaken for an inventory: the shell registers
-// 23 commands and the renderer calls FIVE. The other 18 — dictation, hotkeys,
-// system-audio capture, accessibility permissions, server start/stop/restart —
-// have no caller in `src/`. That is recorded, not acted on (your call,
-// 2026-08-15: "no on jv stuff").
+// Every native dialog is a shell command rather than a renderer API — the family shape, so
+// a dialog can't appear at two different layers across the apps.
 
-import { invoke } from "@tauri-apps/api/core";
-import { isTauriShell } from "@delebash/llm-ui";
+import { isDesktopShell } from "@delebash/llm-ui";
 
 /** Is a desktop shell there to answer? The kit owns the one test. */
-export const hasShell = () => isTauriShell();
+export const hasShell = () => isDesktopShell() && !!window.appShell;
 
-// ─── Native dialogs (Rust commands — see lib.rs) ─────────────────────
+const call = (command, args) => window.appShell.invoke(command, args);
+
+// ─── Native dialogs ──────────────────────────────────────────────────
 
 /** Folder picker. Resolves the chosen path, or null if the user cancelled. */
 export function pickDirectory({ title, defaultPath } = {}) {
   if (!hasShell()) return Promise.resolve(null);
-  return invoke("pick_directory", { title, defaultPath }).catch(() => null);
+  return call("pickDirectory", { title, defaultPath }).catch(() => null);
 }
 
 /**
- * Save-as for binary blobs (2026-10-07, from JustWrite — the same function). WebView2
- * ignores `<a download>` on blob: URLs, so an export that "downloaded" saved nothing;
- * every export now comes through here via the kit's `saveBlob` (configureFileSave in
- * main.js). Bytes ride the raw IPC body (zero-copy); the suggested filename, dialog
- * title and a single file-type filter come as base64 headers so non-ASCII names
- * survive transport. Resolves `{ ok, path }`, or null if the user cancelled.
+ * Save-as for binary blobs (2026-10-07, from JustWrite — the same function): every export
+ * comes through here via the kit's `saveBlob` (configureFileSave in main.js). The bytes cross
+ * to the shell as one Uint8Array (structured clone). Resolves `{ ok, path }`, or null if the
+ * user cancelled; throws anything else.
  */
 export async function saveFile({ blob, suggestedName, title, filterName, filterExt, defaultDir }) {
   if (!hasShell()) return null;
-  const buf = await blob.arrayBuffer();
-  const bytes = new Uint8Array(buf);
-  const b64 = (s) => btoa(unescape(encodeURIComponent(s)));
-  const headers = {};
-  if (suggestedName) headers["x-save-name"] = b64(suggestedName);
-  if (title) headers["x-save-title"] = b64(title);
-  if (filterName) headers["x-filter-name"] = b64(filterName);
-  if (filterExt) headers["x-filter-ext"] = b64(filterExt);
-  if (defaultDir) headers["x-save-dir"] = b64(defaultDir);
-  try {
-    return await invoke("shell_save_file", bytes, { headers });
-  } catch (e) {
-    if (String(e || "") === "cancelled") return null;
-    throw e;
-  }
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  return call("saveFile", { bytes, suggestedName, title, filterName, filterExt, defaultDir });
 }
 
 // ─── The portable data root ──────────────────────────────────────────
@@ -67,14 +45,14 @@ export async function saveFile({ blob, suggestedName, title, filterName, filterE
 /** `{ root, default, portable }`, or null outside the shell. */
 export function storageGetRoot() {
   if (!hasShell()) return Promise.resolve(null);
-  return invoke("storage_get_root").catch(() => null);
+  return call("storageGetRoot").catch(() => null);
 }
 
-/** MOVE all app data to `newRoot` and respawn the server. Throws on failure; the
- *  caller reloads the webview once it resolves. Pick the folder with
- *  `pickDirectory` first. */
+/** MOVE all app data to `newRoot`. Throws on failure. On success the app restarts itself
+ *  (Chromium's own files live under the data root and can only move with a restart), so
+ *  nothing after this call runs. Pick the folder with `pickDirectory` first. */
 export function storageRelocate(newRoot) {
-  return invoke("storage_relocate", { newRoot });
+  return call("storageRelocate", { newRoot });
 }
 
 // ─── The shell's own switches ────────────────────────────────────────
@@ -82,15 +60,48 @@ export function storageRelocate(newRoot) {
 /** The family headless ruling (2026-08-04): keep the server up on window close. */
 export function setKeepRunning(keepRunning) {
   if (!hasShell()) return Promise.resolve();
-  return invoke("set_keep_server_running", { keepRunning: !!keepRunning }).catch(() => {});
+  return call("setKeepRunning", { keepRunning: !!keepRunning }).catch(() => {});
+}
+
+// ─── Openers (handed to the kit's installLlmUi as `external`) ────────
+
+/** Open a web link in the user's browser. */
+export function openUrl(url) {
+  return call("openExternal", { url });
+}
+
+/** Show a local folder (or file) in the OS file manager. */
+export function openPath(path) {
+  return call("openPath", { path });
+}
+
+// ─── The shell's pushes (the tray) ───────────────────────────────────
+
+/** Subscribe to a shell event (`tray:open-settings`, `tray:about`, `tray:copy-url`).
+ *  Returns the unsubscribe function; outside the shell, a no-op. */
+export function onShellEvent(event, fn) {
+  if (!hasShell()) return () => {};
+  return window.appShell.on(event, fn);
 }
 
 // ─── Audio devices ───────────────────────────────────────────────────
 
-/** OS audio outputs for the Channels view. `[]` outside the shell — and today
- *  `[]` inside it too: the command is a placeholder that returns an empty list
- *  (`lib.rs`), which is why the picker is always empty. */
+/** OS audio outputs for the Channels view. `[]` — as it was under Tauri, whose command was a
+ *  placeholder returning an empty list; the picker stays empty until the feature is built. */
 export function listAudioOutputDevices() {
-  if (!hasShell()) return Promise.resolve([]);
-  return invoke("list_audio_output_devices").catch(() => []);
+  return Promise.resolve([]);
+}
+
+// ─── The dictation window (never created — study §7.1) ──────────────
+
+/** The dictation window's messages to and from the main window. The Tauri shell carried
+ *  them between windows; that window is never created, and the Electron shell has no
+ *  window-to-window channel — the dictation feature adds one. Until then, no-ops. */
+export function dictateEmit(_event, _payload) {
+  return Promise.resolve();
+}
+
+/** See `dictateEmit`. Returns the unsubscribe function (a no-op). */
+export function onDictateEvent(_event, _fn) {
+  return () => {};
 }

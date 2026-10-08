@@ -2307,7 +2307,7 @@ OPEN:   step 1's last end — packaged builds need `audiocpp_dsp` in an audio.cp
             llama-servers) was closed — no Python is left to cause it.
         12. Headless on macOS and Linux has no launcher yet; `docs/headless-access.md` gives the
             `ELECTRON_RUN_AS_NODE=1` form. Windows has `justwrite-server.cmd`.
-        13. The port's seed tools (`server/scripts/*.py`, `compare-seed.mjs`) stay as the record
+        13. The port's seed tools (`server/scripts/*.py`, `compare-seed.js`) stay as the record
             of the check, each noting that the Python it reads is in git before the deletion.
         14. The release workflow is rewritten for electron-builder (checks out the kit beside the
             app; .exe, universal .dmg, .AppImage + .deb) — not run: it needs a tag.
@@ -2398,7 +2398,7 @@ OPEN:   step 1's last end — packaged builds need `audiocpp_dsp` in an audio.cp
         checked against Electron's security checklist and the current official templates,
         gaps fixed, rec applied.) New files are .js from now; the rest are
         renamed right after API agent 2 finishes (it is running the route-diff scripts and
-        node24.mjs). The Python-comparison scripts (compare-*.mjs, the route diff, compare-seed)
+        node24.js). The Python-comparison scripts (compare-*.mjs, the route diff, compare-seed)
         are deleted with the Python at the end rather than renamed.
         (Q8's last part answered — "no i dont have a mack": iOS builds need macOS, so how iOS
         gets built is open for the phone plan; Android builds on Windows.)

@@ -3,7 +3,7 @@
 // src/models.js — field order, type, constraints, required/default, extra="forbid", and the
 // default values themselves (pydantic's JSON of each default vs the JS default).
 //
-//   node scripts/node24.mjs server/scripts/compare-models.mjs      (JV_PYTHON overrides)
+//   node scripts/node24.js server/scripts/compare-models.js      (JV_PYTHON overrides)
 
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";

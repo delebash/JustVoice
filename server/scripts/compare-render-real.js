@@ -24,11 +24,11 @@
 // ports and no runtime runs — it refuses to run beside the app; afterwards it checks no runtime
 // process is left and reports graphics memory before and after.
 //
-//   node scripts/node24.mjs server/scripts/compare-render-real.mjs [--keep]   (JV_PYTHON overrides)
+//   node scripts/node24.js server/scripts/compare-render-real.js [--keep]   (JV_PYTHON overrides)
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
-import { cleanup, compare, DEV_DATA, dataCopy, fingerprint, python, tempRoot } from "./compare-render-lib.mjs";
+import { cleanup, compare, DEV_DATA, dataCopy, fingerprint, python, tempRoot } from "./compare-render-lib.js";
 
 const procs = await import("@delebash/llm-runner/platform/procs");
 async function vramMb() {

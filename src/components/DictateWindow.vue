@@ -9,7 +9,8 @@
   are licensed under MIT. MIT permission notice continues to apply
   to upstream-derived portions.
 
-  Floating dictate surface shown in a separate transparent Tauri window.
+  Floating dictate surface shown in a separate transparent window (never created today —
+  study §7.1).
   Mounted when the URL contains `?view=dictate`. Surfaces the CapturePill
   for two independent cycles:
     1. User dictation - driven by `dictate:start` / `dictate:stop` from the
@@ -24,6 +25,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import CapturePill from "./CapturePill.vue";
 import { useApi } from "../stores/api.js";
+import { dictateEmit, onDictateEvent } from "../services/native.js";
 
 const api = useApi();
 
@@ -32,7 +34,7 @@ const pillState = ref("rest");
 const elapsedMs = ref(0);
 const errorMessage = ref("");
 
-// Force the host document chrome transparent so the Tauri window takes
+// Force the host document chrome transparent so the window takes
 // on the pill's own shape.
 onMounted(() => {
   document.documentElement.style.background = "transparent";
@@ -80,19 +82,11 @@ function dismissSpeak() {
   pillState.value = "rest";
   elapsedMs.value = 0;
   speakStartedAt = null;
-  // Tell Rust to tuck the window away. Rust owns the hide+park+click-through
-  // dance because calling hide() directly from JS has been unreliable for
-  // transparent always-on-top windows on macOS.
-  emitTauri("dictate:hide", {});
-}
-
-async function emitTauri(event, payload) {
-  try {
-    const { emit } = await import("@tauri-apps/api/event");
-    await emit(event, payload);
-  } catch {
-    /* not running inside Tauri */
-  }
+  // Tell the shell to tuck the window away: the shell owns the hide+park+click-through
+  // dance because calling hide() directly from JS has been unreliable for transparent
+  // always-on-top windows on macOS. (services/native.js — a no-op until the dictation
+  // feature gives the shell a window-to-window channel.)
+  dictateEmit("dictate:hide", {});
 }
 
 function startSpeakPlayback(generationId) {
@@ -103,7 +97,7 @@ function startSpeakPlayback(generationId) {
   audio.onplaying = () => {
     // Surface the window the moment audio starts (we kept it hidden through
     // the ~1s generation wait so the user doesn't see a silent pill).
-    emitTauri("dictate:show", {});
+    dictateEmit("dictate:show", {});
     speakStartedAt = Date.now();
     pillState.value = "speaking";
     elapsedMs.value = 0;
@@ -186,14 +180,9 @@ function onSpeakEnd(eventPayload) {
 
 const unlistens = [];
 
-onMounted(async () => {
-  try {
-    const { listen } = await import("@tauri-apps/api/event");
-    unlistens.push(await listen("dictate:speak-start", (e) => onSpeakStart(e.payload)));
-    unlistens.push(await listen("dictate:speak-end", (e) => onSpeakEnd(e.payload)));
-  } catch {
-    /* not running inside Tauri */
-  }
+onMounted(() => {
+  unlistens.push(onDictateEvent("dictate:speak-start", (payload) => onSpeakStart(payload)));
+  unlistens.push(onDictateEvent("dictate:speak-end", (payload) => onSpeakEnd(payload)));
 });
 
 onBeforeUnmount(() => {

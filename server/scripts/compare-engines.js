@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // The speech-engine layer's parity check (wave B of step 5): Python's engine layer and this
-// port each read their own COPY of JustVoice's dev database (src-tauri/target/debug/data —
+// port each read their own COPY of JustVoice's dev database (data —
 // read only: only justvoice.db is copied; the speech models are reached through a junction
 // to the real speech cache, never copied or written), against the same installed runtime
 // (Python's source-tree runtime under server/justvoice/engines/audiocpp — the JS data root's
@@ -11,7 +11,7 @@
 // — is dumped by both and compared, key order included; paths are compared relative to each
 // side's runtime and data roots.
 //
-//   node scripts/node24.mjs server/scripts/compare-engines.mjs [--dev]      (JV_PYTHON overrides)
+//   node scripts/node24.js server/scripts/compare-engines.js [--dev]      (JV_PYTHON overrides)
 //
 // --dev: both sides run as under `npm run dev` — JUSTVOICE_AUDIOCPP_BUILD names a stand-in
 // development build (a bin folder with the server file, its CMake cache and jv-dev-build.json
@@ -27,7 +27,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const SERVER = resolve(HERE, "..");
 const REPO = resolve(SERVER, "..");
 const PY = process.env.JV_PYTHON || join(SERVER, ".venv", process.platform === "win32" ? "Scripts/python.exe" : "bin/python");
-const DEV_DATA = join(REPO, "src-tauri", "target", "debug", "data");
+const DEV_DATA = join(REPO, "data");
 const PY_RUNTIME = join(SERVER, "justvoice", "engines");
 
 const dir = mkdtempSync(join(tmpdir(), "jv-compare-engines-"));

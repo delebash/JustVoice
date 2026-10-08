@@ -11,7 +11,7 @@
 
   Why this exists: WKWebView tears down the app's CoreAudio output session when
   idle for long enough, and a JS-level reload (cmd+R) does NOT restore it — only
-  relaunching the Tauri app does. Keeping a silent <audio> element looping
+  relaunching the app does. Keeping a silent <audio> element looping
   forever prevents the OS audio session from ever going dormant.
 
   Real silence (zero PCM samples) at full volume is preferred over a muted

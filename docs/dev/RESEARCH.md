@@ -20,7 +20,7 @@ memory is organised by session, not by subject. The answer, approved "your rec o
   carries that section and the line *"don't re-derive these; re-check one only if the code it
   cites changed after its date"*.
 - **After research:** its facts land here in the same change. A research doc with no entry here
-  is not done. The family guard (`../../../just-llm-runner/scripts/check-family.mjs`, check 15)
+  is not done. The family guard (`../../../just-llm-runner/scripts/check-family.js`, check 15)
   fails any `docs/plans/YYYY-MM-DD-*.md` dated 2026-10-04 or later that this page does not link,
   and any link here that points nowhere. (It can check the link, not that the facts came with
   it — that part is the rule.)
@@ -967,7 +967,7 @@ kit's register §2.
   — until 2026-10-05.)
 
 **The port to JavaScript — wave A, the foundation** (*measured 2026-10-08*, an agent's checks;
-`server/src/` and `server/scripts/compare-*.mjs`):
+`server/src/` and `server/scripts/compare-*.js`):
 
 - The JS models, seed and stores match Python: 106 models field by field (order, int vs float,
   constraints, defaults); a fresh seed 49 tables / 2,521 cells, 0 different; 31 store writes
@@ -1000,14 +1000,14 @@ agent's checks, re-run by me; `server/src/engines/`, `server/src/audio/`, `speec
   sections (manifests, status, variants, sources, placements beside a booked 6.8 GB AI model,
   prices, runtime readers), 0 different; 5,064 with a stand-in dev build. `dsp_client` against
   `../audio.cpp/build/jv-dev/bin/audiocpp_dsp.exe`: 31 operations, 2,096,984 bytes, 0 different.
-  (`server/scripts/compare-engines.mjs`, `compare-dsp.mjs`.)
+  (`server/scripts/compare-engines.js`, `compare-dsp.js`.)
 - **Real synthesis is byte-identical:** kokoro-82m-q8 (193,244 bytes) and kitten-mini-0.8
   (328,444 bytes) from the JS and the Python through the same runtime, with the same peak rows
   and runtime config files; Qwen3-ASR 1.7B q8 gives the same transcript and all 12 word times.
-  Graphics memory 533 MiB before and after each run, no process left. (`compare-synth.mjs`,
-  `compare-asr.mjs`.)
+  Graphics memory 533 MiB before and after each run, no process left. (`compare-synth.js`,
+  `compare-asr.js`.)
 - The JS installs of eSpeak NG (365 files) and UniDic (21 files) are file-for-file Python's — the
-  wheels are downloaded and unpacked in JS, no Python at runtime. (`compare-installs.mjs`.)
+  wheels are downloaded and unpacked in JS, no Python at runtime. (`compare-installs.js`.)
 - **The boot must `await runtime.ensureHardware()` once:** hardware detection is async in JS, and
   the sync readers (`installedExe`, `selectedAsset`, `hasFeature`, the placement readers) throw
   "hardware not detected yet" before it. `manager.load()` and `placementFor()` await it themselves.
@@ -1034,7 +1034,7 @@ the suite re-run by me; `render_core`, `render_jobs`, `line_takes`, `synth_sched
   tags, a marker, a dialogue tag, a long line), all 340 keys and 343 take-path keys match, and
   every one of the 289 real-book keys names a file Python wrote in the real render cache. With
   the read answers (`voice_model`, `persona_render`, `sceneLines`, render states, takes,
-  `jobStatus`), 36,527 values, 0 different, key order included. (`server/scripts/compare-render.mjs`.)
+  `jobStatus`), 36,527 values, 0 different, key order included. (`server/scripts/compare-render.js`.)
 - **A delivery's floats must stay `PyFloat`s** (`persona_render.modelSettings`, `line_takes`,
   `render_chapter_api._deliveryOf` through `floatify(Delivery)`), or the keys change; code that
   reads one unwraps it with `num()`/`Number()`. (*code*, confirmed by the check.)
@@ -1043,7 +1043,7 @@ the suite re-run by me; `render_core`, `render_jobs`, `line_takes`, `synth_sched
   the 7 render-cache files and the voice-line zip's entries. With ffmpeg 8.1.1: an ACX chapter
   WAV, the M4B and one take mastered with all 4 presets (MP3 with tags and WAV) are
   byte-identical, and the ffmpeg command lines match (temp paths aside). Graphics memory 533 MiB
-  before and after. (`compare-render-real.mjs`.)
+  before and after. (`compare-render-real.js`.)
 - A line with no seed is sent a random seed (`slot.to_speech_request`), so a repeatable Kokoro
   take needs a persona seed. (*code*.)
 - Voice resolution is async in JS (a registry engine's `voices()` may need the network), so the
@@ -1068,18 +1068,18 @@ agent's checks, the suite and the extraction check re-run by me; `extraction/`, 
   renamed extension — 1,717 jobs. 814 imported and 868 refused identically (status and words),
   the 35 Python 500s fail in JS too, 1,313 dry-run previews match, 269 HTML texts (2,694 blocks)
   match, and the rows written into two database copies match: 43,931 cells, 0 different.
-  (`server/scripts/compare-imports.mjs`.)
+  (`server/scripts/compare-imports.js`.)
 - `imports/adapters/html_parser.js` is CPython 3.12.9's `html.parser` and `html.unescape`, line for
   line (`close()` flushes a pending block before the remaining text, as Python does);
   `etree.js` is the ElementTree subset the importers use, to expat's rules and error words
   (76 cases, 0 different). `py_compat.js` holds Python's `json.loads`, UTF-8 decode errors,
-  `splitlines`, `float()`, `title` and friends (`compare-pycompat.mjs`: 6,863 cases, 0 different).
+  `splitlines`, `float()`, `title` and friends (`compare-pycompat.js`: 6,863 cases, 0 different).
 - **Analyze and Discover send Python's requests and write Python's results:** against a fake
   llama-server (no model loaded), 4 real chapters × Analyze with the second look, Analyze of an
   edited chapter, Analyze streamed on the guided route, and Discover — 243 requests byte for
   byte identical, 867 rows, the run reports, deltas, progress, thinking frames and candidates
   identical, 49 tables / 18,742 cells identical. Chapters were read in 2–3 pieces and the
-  second look's not-in-cast offer was exercised. (`compare-extraction.mjs`.) Until the kit's
+  second look's not-in-cast offer was exercised. (`compare-extraction.js`.) Until the kit's
   fix the same day, 104 of those requests differed: the kit sent a preset's `temperature` 0.0
   as `0` (the kit register, "JustVoice's server port").
 - **MCP answers as Python's did:** Python on a bare FastAPI and JS on a bare Fastify, each on a
@@ -1087,7 +1087,7 @@ agent's checks, the suite and the extraction check re-run by me; `extraction/`, 
   versions, `tools/list`, `list_voices` (91 voices and every refusal), `list_personas`, 11
   `transcribe` refusals, bad arguments, unknown tool and method, ping, the empty prompt and
   resource lists, the transport's refusals and the stamped `mcp_bindings` row. `speak` was not
-  called. (`compare-mcp.mjs`.)
+  called. (`compare-mcp.js`.)
 - fastmcp's wire (*probed on the live Python app*): capabilities include prompts, resources and
   `extensions`; protocol versions 2024-11-05 to 2025-11-25 are accepted and any other gets
   2025-11-25; `serverInfo.version` is fastmcp's own, "3.4.5"; tool errors read "Error calling
@@ -1125,7 +1125,7 @@ agent's checks, the suite and the extraction check re-run by me; `extraction/`, 
 (*measured 2026-10-08*, an agent's checks, the suite re-run by me; `app.js`, `serve.js`,
 `cli.js`, 22 routers):
 
-- **The route diff** (the kit's `scripts/route-diff/route-diff.mjs --app --target justvoice`,
+- **The route diff** (the kit's `scripts/route-diff/route-diff.js --app --target justvoice`,
   Python `-m justvoice.serve` on 8790 and `server/src/serve.js` on 8791, each on its own copy
   of the dev data): reads 160 — 103 identical with key order, 17 volatile (logs, disk usage,
   the backup zip, live hardware, VRAM, leftovers, the runner's probes, `/v1/system/info`),
@@ -1135,7 +1135,7 @@ agent's checks, the suite and the extraction check re-run by me; `extraction/`, 
   no ORDER BY, so rows come in each side's random-UUID order. Databases: 49 tables, 17,042
   cells, 0 different. Nothing loaded a model, installed, synthesized or downloaded; VRAM
   559 MiB before and after.
-- **The boot order** (`server/scripts/check-boot.mjs`, the server's debug log): initDb →
+- **The boot order** (`server/scripts/check-boot.js`, the server's debug log): initDb →
   setState → `await runtime.ensureHardware()` → `sweepStaleJobs` → `sweepOrphanTakesNow` →
   engine discovery and external engines → createServer → CSRF / CORS / auth → routers in
   app.py's order → installLlm → MCP `mountInto` → onClose (MCP close, `shutdownManager`,
@@ -1181,7 +1181,7 @@ effect_presets, lexicons, pronunciation):
   all identical; 49 tables / 17,040 cells, 0 different; the 5 stored voices' manifests and
   clips identical. A voice bundle's zip carries its write time, so `bundle.zip` is volatile.
 - **A real render through both servers' routes is byte-identical** (`server/scripts/
-  compare-api-render.mjs`, Kokoro, one server at a time on copies, warm-on-boot off):
+  compare-api-render.js`, Kokoro, one server at a time on copies, warm-on-boot off):
   `POST /v1/blocks/{id}/render` ×3 (one line split and joined), `/v1/generate` ×2 (a preset
   voice with a seed; a persona at speed 1.1), `/v1/render_chapter` in scene mode with the ACX
   master — every answer, the rows, the 3 take WAVs, both Generate WAVs, the chapter WAV and
@@ -1210,6 +1210,30 @@ effect_presets, lexicons, pronunciation):
   from every family suite). Since 2026-10-08 each server suite's vitest config runs the kit's
   `platform/vitest_tmp.js`: one folder per run, TMP/TEMP/TMPDIR pointed at it, removed at the
   end — measured: a full JV, JW, docgen and kit run leave 0 entries.
+
+**The desktop switch and the data move** (*measured 2026-10-08*, by me):
+
+- **The dev data root moved** (the plan's ruling 6, with no app or server running — ports 17494,
+  8741, 1430, 1431, 8790, 8791 free; no justvoice, audio.cpp or llama process):
+  `src-tauri/target/debug/data` → `<repo>/data` (a rename on the same drive). The empty headless
+  root that sat at `<repo>/data` (a 483 KB database with 0 projects, scenes, blocks, takes,
+  personas and lexicons, and logs from 2026-08-22 to 09-30 — bare `serve` runs) was renamed aside
+  to `data-old-2026-08-22/`, as JustWrite's was in step 4. The speech runtime's four folders
+  (`v0.9.0` 169 MB, `v0.9.0-jv.4` 2.0 GB, `espeak-ng-0.2.4` 19 MB, `unidic-lite-1.0.8` 249 MB)
+  moved from `server/justvoice/engines/audiocpp/` to `data/engines-runtime/audiocpp/`, where
+  the JS server reads them; their 129 upstream Python reference scripts were deleted (new
+  installs leave them out — the kit's `acquireRuntime({dropFiles})`). Nothing named the old
+  places: 0 database cells, 0 config files (`engines-runtime-config/*.json` hold no paths). The
+  family registry's JustVoice line (`%LOCALAPPDATA%\just-ai\caches.json`) was pointed at the new
+  root (backup beside it). The registry also holds 8 lines naming temporary folders — test and
+  comparison runs registering themselves; cleanup open.
+- **The Electron shell, checked on JustVoice's own window** (a temporary data folder; Playwright's
+  Electron driver): the page loads from `app://justvoice` (Projects), `window.appShell` answers
+  and refuses an unknown command, the page has no Node, the clipboard and the microphone are
+  allowed and notifications and location denied, the server answers, a second launch exits in
+  147 ms while the first keeps serving, and quitting closes the port. The same check passed on
+  JustWrite's and docgen's real apps (microphone denied there), and a packaged JustWrite with its
+  fuses started, served, and ran the headless form.
 
 ---
 

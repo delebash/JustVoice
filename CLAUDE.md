@@ -1,70 +1,76 @@
 # JustVoice
 
-A cross-platform voice production server: **Tauri 2 shell + Vue 3 renderer + Python (FastAPI +
-SQLite) server**, with every speech model run by one audio.cpp process (the speech runtime).
-Also runs **headless** as `justvoice-server serve`, no Tauri shell.
+A cross-platform voice production server: **Electron shell + Vue 3 renderer + Node server
+(Fastify + SQLite)**, with every speech model run by one audio.cpp process (the speech runtime).
+Also runs **headless** (`npm run server`, or the installed app's `justvoice-server serve`), no
+window. Plain `.js` everywhere (`"type": "module"`) — no TypeScript, no `.mjs`/`.cjs`, and no
+Python anywhere (the user's rulings, 2026-10-08).
 
 Standalone product. JustWrite drives JustVoice for audiobooks — JW hands over the prose, JV does
 its own casting and narration — but JustVoice does not depend on JustWrite. The boundary rules
 live in `docs/dev/design-decisions.md` §3 — read them before touching anything cross-app. (The
 original `CONTRACT.md` was archived to `docs/plans/archive/` by the 2026-08-04 docs campaign;
-its endpoint table is stale — trust `server/justvoice/api/*` route literals.)
+its endpoint table is stale — trust `server/src/api/*` route literals.)
 
-The AI/LLM stack is shared with JustWrite: `just-llm-runner` (Python) + `@delebash/llm-ui` (Vue).
+The AI/LLM stack is shared with JustWrite: `@delebash/llm-runner` (the kit's Node package, `../just-llm-runner/server`) + `@delebash/llm-ui` (Vue).
 Only TTS and each app's feature catalog differ. A change in those repos lands here too.
 
 ## Commands
 
 ```bash
-npm install
-cd server && pip install -e . && cd ..   # the speech runtime installs from the app
-npm run dev                        # builds ../audio.cpp, then Tauri + Vite + Python sidecar (dev port 1430, HMR 1431)
-npm run tauri build                # production installer
+npm install                        # the speech runtime installs from the app
+npm run dev                        # builds ../audio.cpp, then Electron + Vite (dev port 1430, HMR 1431)
+npm run build                      # production installer (electron-builder → release/)
 
-justvoice-server serve             # headless; same UI at /ui/
-cd server && ruff check . && pytest    # both must pass before a commit
+npm run server                     # headless; same UI at /ui/ (options after --)
+npm run lint && npm run test:server && npm run test:unit   # all must pass before a commit
 ```
 
+The dev data folder is `<repo>/data` (gitignored) — the desktop app, `npm run server` and every
+script read it; there is one data root (the Electron move's ruling 6, moved 2026-10-08).
+
 The server's audio math runs in `audiocpp_dsp`, a small program from our audio.cpp fork's `dsp/`
-module (since 2026-10-07): the server, pytest and the gate all need it built — `npm run dev`
+module (since 2026-10-07): the server, its tests and the gate all need it built — `npm run dev`
 builds it beside the runtime into `../audio.cpp/build/jv-dev/bin`, or `JUSTVOICE_DSP_EXE` names
-one. Its proof against the Python it replaced is the fork's `dsp/tests/parity/`.
+one. Its proof against the code it replaced is recorded in RESEARCH §6 and the fork's
+`dsp/README.md`.
 
 **One speech runtime runs every engine (since 2026-10-01).** Installing any engine — the
 runtime row on AI Settings → Speech engines — downloads the pinned audio.cpp build for this
-machine (`server/justvoice/engines/audiocpp/`, binaries via the kit's `acquire_runtime`) plus
-eSpeak NG; each engine is then a catalog (`engines/<id>/manifest.py`) of GGUF model files in
-the speech cache. In a source checkout the runtime lands INSIDE `engines/audiocpp/`
-(gitignored, 2 GB for CUDA) — never `git add` that folder by hand. The server itself is
-separate: `pip install -e .` in a dev checkout, a frozen PyInstaller sidecar in a release.
+machine (`<data>/engines-runtime/audiocpp/`, binaries via the kit's `acquireRuntime`, which
+leaves upstream's Python reference scripts out) plus eSpeak NG; each engine is then a catalog
+(`server/src/engines/<id>/manifest.js`) of GGUF model files in the speech cache.
 `docs/plans/2026-10-01-audiocpp-switch.md` is the record; `docs/engines.md` the user-facing
 half. Voice training (LoRA) was removed 2026-10-02 — no PyTorch anywhere.
 
 **`npm run dev` runs our audio.cpp checkout, not the release (since 2026-10-03).** Our fork
 (github.com/delebash/audio.cpp, branch `jv`) is checked out beside this repo at `../audio.cpp`,
-the way the kit sits at `../just-llm-runner`. `npm run dev` and `npm run tauri dev` go through
-`scripts/tauri.js`: it builds the checkout into `../audio.cpp/build/jv-dev` (only what changed;
-the first build sets the folder up — CUDA 12.4 when installed, about 30 min — `scripts/audiocpp-dev.js`),
-then starts the app with `JUSTVOICE_AUDIOCPP_BUILD` naming that build, which the server runs
-instead of the pinned release, with every feature on (`engines/audiocpp/dev_build.py`). A
-failed build stops `npm run dev`. The runtime row shows `audio.cpp dev · <commit>`. **Test the
-app this way** — never a private audio.cpp server with a scratch config. A packaged app, the
-headless `justvoice-server serve` and pytest run the pinned release. Record: TASKS "`npm run
-dev` always runs the latest audio.cpp".
+the way the kit sits at `../just-llm-runner`. `npm run dev` (`scripts/dev.js`) builds the
+checkout into `../audio.cpp/build/jv-dev` (only what changed; the first build sets the folder up
+— CUDA 12.4 when installed, about 30 min — `scripts/audiocpp-dev.js`), then starts the app with
+`JUSTVOICE_AUDIOCPP_BUILD` naming that build, which the server runs instead of the pinned
+release, with every feature on (`server/src/engines/audiocpp/dev_build.js`). A failed build
+stops `npm run dev`. The runtime row shows `audio.cpp dev · <commit>`. **Test the app this way**
+— never a private audio.cpp server with a scratch config. A packaged app, `npm run server` and
+the tests run the pinned release. Record: TASKS "`npm run dev` always runs the latest
+audio.cpp".
 
-**The console script is `justvoice-server`, never `justvoice`.** The Tauri binary is
-`justvoice.exe`; giving both the same name makes Windows `CreateProcessW` resolve
-`Command::new("justvoice")` to the Tauri binary itself and spawn infinite windows. Never revert
-that rename — the Python package and console-script names stay as they are until a deliberate
-rename PR that preserves this fix.
+**The headless launcher is `justvoice-server`, never `justvoice`.** The app's exe is
+`justvoice.exe`; a launcher with the same name makes Windows resolve the bare name to the GUI exe
+instead (under Tauri that spawned infinite windows). `build/launcher/justvoice-server.cmd` runs
+the exe as Node (`ELECTRON_RUN_AS_NODE=1`) on `server/src/serve.js`. Never rename it to match
+the exe.
+
+**The desktop shell is the kit's** (`@delebash/llm-runner/shell`, checked against Electron's
+security checklist 2026-10-08): `electron/main.js` only names this app's settings; the renderer
+reaches the shell through `src/services/native.js` alone (`window.appShell`).
 
 ## The renderer gate
 
 The Playwright headless smoke is the gate for any renderer or GUI change:
 
 ```bash
-justvoice-server serve --host 127.0.0.1 --port 8741 \
-  --data-dir src-tauri/target/debug/data              # background — see below
+npm run server -- --host 127.0.0.1 --port 8741         # background — see below
 npm run build:vite
 JV_BASE=http://127.0.0.1:8741 npm run smoke            # drives every view, asserts zero JS errors
 ```
@@ -73,11 +79,11 @@ JV_BASE=http://127.0.0.1:8741 npm run smoke            # drives every view, asse
 17494, not 8741. `scripts/smoke_gui.js` screenshots tabs.
 
 **If the app is running, gate against IT — never start the 8741 server beside
-it** (2026-10-04). The 8741 server opens the app's own data dir, where
+it** (2026-10-04). The 8741 server opens the app's own data folder, where
 warm-on-boot is on, so the moment the smoke (or any browser) loads its UI it
 loads the default chat model into a SECOND llama-server — two copies of gemma on
 one 8 GB card; on 2026-10-04 it ran out of memory and fell back to the CPU. The
-app's sidecar serves the same freshly built `dist/` at `/ui/`, so:
+app's server serves the same freshly built `dist/` at `/ui/`, so:
 
 ```bash
 npm run build:vite
@@ -89,25 +95,13 @@ for the card. Either way the gate reads the app's database; a running app just
 also runs the server code it was started with, so restart it after server edits
 before trusting a server-backed check.
 
-**`--data-dir` is not optional in development.** There are two data roots in a
-source checkout and they are NOT the same database. The desktop shell resolves
-`exe_dir()/data`, which in `tauri dev` is `src-tauri/target/debug/data`, and
-hands it to the sidecar as `JUSTVOICE_DATA_DIR`. A bare headless run has no such
-variable and falls through to `install_dir()`, which unfrozen is the **checkout
-root** — a second, usually much older `<repo>/data`. In a packaged build both
-resolve to the frozen executable's folder, so this divergence exists only in
-dev. Omit the flag and the gate tests a database the app never opens: on
-2026-08-21 that produced seven "failing" views that were fine in the app. The
-reasoning and the ladder are in
-`docs/plans/2026-08-21-blend-rework-and-consistency-audit.md` §18.1.
-
-`<repo>/data` was **deleted on 2026-08-22**, and that made the trap *worse, not
-better*: a bare headless run now creates a fresh empty one, so instead of an
-obviously-stale database you get a plausible-looking empty one. The flag is
-still the only thing that points the gate at the app's data.
-`docs/plans/2026-08-22-data-dirs-and-disk-reclaim.md` §2 has the measured
-contents of both roots, and §3 the near-miss that came out of assuming the
-second one was disposable.
+**One data root (since 2026-10-08).** Under Tauri a source checkout had two — the desktop
+shell's `src-tauri/target/debug/data` and a bare headless run's `<repo>/data` — and a gate run
+without `--data-dir` tested a database the app never opened (2026-08-21: seven "failing" views
+that were fine in the app). The Electron move gave the shell and the server one ladder, and the
+dev root moved to `<repo>/data`; the empty headless root that sat there was renamed aside to
+`data-old-2026-08-22/`. History: `docs/plans/2026-08-21-blend-rework-and-consistency-audit.md`
+§18.1, `docs/plans/2026-08-22-data-dirs-and-disk-reclaim.md` §2–3.
 
 **Run the gate before claiming a renderer fix works, but do not mistake it for
 proof of the fix.** It loads each view and counts JS errors. It does not click
@@ -118,21 +112,20 @@ whatever unit test you write for it.
 2026-08-06 (*"for now we are not doing jv harness or deep audit…"*, tracked in
 `docs/dev/TASKS.md`). This file used to claim `e2e/` was "the packaged-app check",
 which was the same documented-but-not-runnable failure the browser-lookup note
-below describes. JustWrite and i18n-docgen have that harness (tauri-driver against
-the built binary); when JustVoice picks it up, docgen's is the donor and
+below describes. JustWrite and i18n-docgen have that harness (against the built
+app); when JustVoice picks it up, docgen's is the donor and
 `scripts/e2e.js`, `verify_all.js` and `shots.js` retire with it — they are
 browser-driven, banned as an acceptance surface on 2026-08-02.
 
 **Browser lookup has one door — `scripts/lib/smoke-common.js`.** Import `findChrome()` or
 `chromeLaunchOptions()` from it; never re-fork the lookup and never hardcode a browser path. The
-implementation is the kit's `../just-llm-runner/scripts/lib/exec-resolve.mjs` (one copy for the
+implementation is the kit's `../just-llm-runner/scripts/lib/exec-resolve.js` (one copy for the
 family; the door binds `JV_CHROME`): it probes `/opt/pw-browsers` (the dev container's prebuilt
 browsers), `~/.cache/ms-playwright` and `%LOCALAPPDATA%\ms-playwright`, across Linux, Windows and
 macOS layouts, skips `headless_shell` builds (they lack the surface these scripts drive), and
 honours `JV_CHROME` above everything. Returning `undefined` is a SUCCESS value — it lets
-Playwright resolve from its own registry. `scripts/py.js` rides the same kit resolver
-(`JV_PYTHON`, `server/.venv`), so node-side tooling needs the kit checked out as a sibling —
-the same layout the vite alias already requires.
+Playwright resolve from its own registry. Node-side tooling needs the kit checked out as a
+sibling — the same layout the vite alias already requires.
 
 Until 2026-07-29 every script carried its own Linux-only copy and the seven verify/parity scripts
 hardcoded `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`, pinned to a browser version — so
@@ -143,9 +136,9 @@ implementation lives in the kit. The one-off snapshot scripts predating the law 
 ## Invariants that bite
 
 - **No hardcoded operator-tunable values.** Every knob lives in settings (SQLite via `SettingsStore`) and is reachable through `PATCH /v1/settings`.
-- **SQLite via SQLAlchemy is the primary persistence layer**, and there is no renderer-side store. `settings.json` was folded into the `settings` table and renderer UI prefs into `prefs` (the 2026-06-19 storage rewrite; `SettingsStore` imports a legacy `settings.json` once). Per-artifact JSON sidecars on disk are the exception and still live: `storage/atomic.py`'s `atomic_write_json` (tmp + `os.replace` + fsync) writes voice manifests (`storage/voices.py`).
-- **`server/justvoice/models.py` is the cross-language source of truth.** The Vue client fetches directly against the OpenAPI shape; the JustWrite-facing boundary rules are `docs/dev/design-decisions.md` §3.
-- **Business logic never goes in Rust.** `src-tauri/` is plumbing — spawn the sidecar, host the webview, shut down cleanly. If you are writing logic there, it belongs in Python.
+- **SQLite (the kit's `platform/sql.js` on better-sqlite3) is the primary persistence layer**, and there is no renderer-side store. `settings.json` was folded into the `settings` table and renderer UI prefs into `prefs` (the 2026-06-19 storage rewrite; `SettingsStore` imports a legacy `settings.json` once). The tables are `server/src/database/models_schema.js`. Per-artifact JSON sidecars on disk are the exception and still live: `storage/atomic.js`'s `atomicWriteJson` (tmp + rename + fsync) writes voice manifests (`storage/voices.js`).
+- **`server/src/models.js` is the source of truth for the wire shapes.** The Vue client fetches directly against those shapes; the JustWrite-facing boundary rules are `docs/dev/design-decisions.md` §3.
+- **Business logic never goes in the shell.** `electron/main.js` only names this app's settings; the shell is plumbing — start the server, host the window, shut down cleanly. If you are writing logic there, it belongs in the server.
 - **Every file carries an SPDX-License-Identifier header.** Files lifted from an upstream MIT codebase also carry a full attribution block referencing `voicebox-pin.txt`. Ship license is MIT.
 - **A mock is production minus the plumbing.** When a mock is asked for, the only thing it may omit is the wiring — no server, no real audio, no persistence. Everything else is the deliverable: **production copy only** (never design commentary, "still a proposal", or notes on what changed), **nav and controls that actually work**, **real enum values and labels verified in the code** (an invented-but-plausible option is worse than a missing one), **real states** — empty, blocked, stale, error — not just the happy path, **counts and names consistent across every screen**, **no leftovers from earlier drafts**, and the app's own tokens and density. Audit the whole file before publishing, not just the screen last edited.
 
@@ -174,16 +167,16 @@ implementation lives in the kit. The one-off snapshot scripts predating the law 
 
 | Concern | Layer |
 |---|---|
-| TTS/STT models + the speech runtime | `server/justvoice/engines/<engine>/manifest.py` (catalog) · `engines/audiocpp/` (runtime + request mapping) |
-| Storage — settings, voices, profiles, projects, chapters, takes, generations, lexicons, personas, story items, renderer prefs | `server/justvoice/storage/` + `database/` |
-| Render orchestration + cache | `server/justvoice/render_core.py`, `api/render_chapter_api.py` |
-| Audio math — effects, speed/gain/pitch, joins, trim, resampling, analyzer, blends | our fork's `dsp/` (`audiocpp_dsp`), reached through `server/justvoice/audio/dsp_client.py` |
-| WAV headers, mastering | `server/justvoice/audio/`, `mastering.py` |
-| API endpoints | `server/justvoice/api/<area>_api.py` |
-| Request/response shapes | `server/justvoice/models.py` |
+| TTS/STT models + the speech runtime | `server/src/engines/<engine>/manifest.js` (catalog) · `engines/audiocpp/` (runtime + request mapping) |
+| Storage — settings, voices, profiles, projects, chapters, takes, generations, lexicons, personas, story items, renderer prefs | `server/src/storage/` + `database/` |
+| Render orchestration + cache | `server/src/render_core.js`, `api/render_chapter_api.js` |
+| Audio math — effects, speed/gain/pitch, joins, trim, resampling, analyzer, blends | our fork's `dsp/` (`audiocpp_dsp`), reached through `server/src/audio/dsp_client.js` |
+| WAV headers, mastering | `server/src/audio/`, `mastering.js` |
+| API endpoints | `server/src/api/<area>_api.js` (registered in `server/src/app.js`) |
+| Request/response shapes | `server/src/models.js` |
 | UI components and views | `src/components/`, `views/` |
 | Pinia stores (api, toasts, tasks) | `src/stores/` |
-| Desktop-only concerns (file picker, OS paths) | `src-tauri/src/lib.rs` |
+| Desktop-only concerns (file picker, OS paths, tray) | the kit's shell, reached through `src/services/native.js`; `electron/main.js` names the settings |
 
 Renderer/server are larger here than in JustWrite, and a few stores are domain-rich (engines,
 takes, generation). That is scope, not drift.

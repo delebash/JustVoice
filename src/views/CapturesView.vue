@@ -91,7 +91,7 @@ async function refreshReadiness() {
 
 // In-app record is not built yet (the Record button is disabled). Real
 // capture happens via the global dictation hotkey / the transparent
-// dictate Tauri window; this list reflects captures as they land.
+// dictate window; this list reflects captures as they land.
 
 function fmtDuration(ms) {
   if (!ms) return "0:00";
@@ -161,7 +161,7 @@ onMounted(() => {
           <span class="cap-pill cap-pill--rest">○ Rest</span>
         </div>
         <p class="jv-muted captures__pill-hint">
-          The pill renders in a separate transparent Tauri window (<code>?view=dictate</code>) — see the "Show dictate" button in the topbar.
+          The pill renders in a separate transparent window (<code>?view=dictate</code>) — see the "Show dictate" button in the topbar.
         </p>
       </section>
     </div>

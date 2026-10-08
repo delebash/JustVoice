@@ -101,7 +101,7 @@ async function onEditorSaved(newChain) {
     }
   } else {
     // Create new — name it via our dialog (native prompt() is banned:
-    // it returns null in the Tauri webview, so creates silently died).
+    // it returned null in the old Tauri webview, so creates silently died).
     const name = (await promptDialog({
       title: "New effect chain preset",
       message: "Name this effect chain preset:",

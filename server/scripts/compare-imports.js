@@ -20,11 +20,11 @@
 //   4. `htmlBlocks` over every XHTML document in the EPUBs, every JustWrite scene body, the repo's
 //      HTML page and the hard-case corpus.
 //
-//   node scripts/node24.mjs server/scripts/compare-imports.mjs      (JV_PYTHON overrides)
+//   node scripts/node24.js server/scripts/compare-imports.js      (JV_PYTHON overrides)
 
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { cleanup, compare, dataCopy, HERE, PY, REPO, SERVER, tempRoot } from "./compare-render-lib.mjs";
+import { cleanup, compare, dataCopy, HERE, PY, REPO, SERVER, tempRoot } from "./compare-render-lib.js";
 
 const dir = tempRoot("jv-compare-imports-");
 const JW = join(REPO, "..", "justwrite-app");

@@ -33,8 +33,9 @@ Thumbs.db
 .env.local
 *.log
 
-# Build artifacts
-build/
+# Build artifacts — electron-builder's output (build/ holds the icons and the launcher:
+# tracked, as JustWrite's)
+release/
 dist-electron/
 
 # Engine model weights — downloaded at runtime from HuggingFace; not source
@@ -64,8 +65,10 @@ scripts/_shots/
 *-wal
 *-shm
 
-# Server data dir (settings, audio, etc.)
+# Server data dir (settings, audio, etc.) — the dev data folder, and the empty headless root
+# renamed aside when it moved here (2026-10-08)
 data/
+data-old-*/
 server/data/
 target/
 .claude/worktrees/

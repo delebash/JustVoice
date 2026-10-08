@@ -21,9 +21,11 @@ JustVoice is a cross-platform voice-production studio. Five audiences share one 
 
 ## Headless mode
 
-JustVoice runs without the desktop shell. From a terminal:
+JustVoice runs without the desktop window. On Windows, from the install folder:
 
     justvoice-server serve --port 17494
+
+(macOS, Linux and a copy of the source code: see [Run modes](run-modes.md#headless).)
 
 The same UI is served at `http://localhost:17494/ui/`. Connect from any browser on your network. Useful for running JustVoice on a remote GPU box and hitting it from a laptop.
 

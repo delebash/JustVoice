@@ -4,7 +4,7 @@
   OBS / multi-monitor / per-persona podcast monitoring use cases.
 
   Voice profiles assigned to channels with non-default device IDs use native
-  playback via Tauri IPC (list_audio_output_devices + play_audio_to_devices).
+  playback through the desktop shell (not built: native.js listAudioOutputDevices answers []).
 -->
 <script setup>
 import { onMounted, ref } from "vue";
@@ -24,7 +24,7 @@ const CHANNEL_COLUMNS = [
 
 const channels = ref([]);
 const editing = ref({ id: null, name: "", device_ids: [], is_default: false });
-const tauriDevices = ref([]);
+const osDevices = ref([]);
 
 async function refresh() {
   try {
@@ -36,9 +36,9 @@ async function refresh() {
 }
 
 async function loadDevices() {
-  // services/native.js — the one place a command name is written. Returns [] in
-  // a browser (and today in the desktop app too: the command is a placeholder).
-  tauriDevices.value = await listAudioOutputDevices();
+  // services/native.js — [] in a browser and in the desktop app alike: the OS device
+  // list is not built yet (the Tauri command was a placeholder too).
+  osDevices.value = await listAudioOutputDevices();
 }
 
 async function save() {
@@ -140,10 +140,10 @@ onMounted(() => {
           :rows="3"
           @update:model-value="editing.device_ids = $event.split(',').map((s) => s.trim()).filter(Boolean)"
         />
-        <details v-if="tauriDevices.length > 0" class="devices-details">
-          <summary>{{ tauriDevices.length }} system audio devices detected</summary>
+        <details v-if="osDevices.length > 0" class="devices-details">
+          <summary>{{ osDevices.length }} system audio devices detected</summary>
           <ul>
-            <li v-for="d in tauriDevices" :key="d.id">{{ d.name }} <code class="jv-mono">{{ d.id }}</code></li>
+            <li v-for="d in osDevices" :key="d.id">{{ d.name }} <code class="jv-mono">{{ d.id }}</code></li>
           </ul>
         </details>
       </UiField>

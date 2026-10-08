@@ -20,14 +20,14 @@ The switch is remembered and re-applied every launch.
 | Item | What it does |
 |---|---|
 | 📺 Show window / 🔵 Hide window | Toggle main window visibility. |
-| ▶️ Start server | Launch the Python sidecar if it isn't running. |
-| ⏹ Stop server | Stop the sidecar. |
+| ▶️ Start server | Start the app's server if it isn't running. |
+| ⏹ Stop server | Stop the server. |
 | 🔄 Restart server | Stop + start. Useful after settings changes that need a restart. |
 | 🎙️ Start dictation | JustVoice-specific (not wired yet — coming with the dictation tray work). |
 | 🎚️ MCP server: toggle | JustVoice-specific (not wired yet). |
 | ⚙️ Open settings | Shows the window and opens Settings. |
 | 📋 Copy server URL | Copies `http://127.0.0.1:17494` to the clipboard and says so. |
-| 📜 Open log file | Opens the server's logs folder in your file manager. |
+| 📜 Open log file | Opens the server's log file (`logs/justvoice.log` in your data folder). |
 | ℹ️ About JustVoice | Shows the window and opens Settings (the About tab lives there). |
 | 🚪 Quit JustVoice | Full quit — stops the server too, even with close-to-tray on. |
 

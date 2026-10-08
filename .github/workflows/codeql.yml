@@ -14,62 +14,31 @@ concurrency:
 
 jobs:
   analyze:
-    name: CodeQL — ${{ matrix.language }}
+    name: CodeQL — javascript
     runs-on: ubuntu-latest
     permissions:
       actions: read
       contents: read
       security-events: write
 
-    strategy:
-      fail-fast: false
-      matrix:
-        language:
-          - javascript
-          - python
-
+    # Everything is JavaScript since the Electron move (2026-10-08): the renderer, the Node
+    # server and the desktop shell. No dependency install is needed for the scan.
     steps:
       - uses: actions/checkout@v4
-
-      # For JavaScript: install deps so CodeQL can resolve imports
-      - name: Set up Node 20 (javascript scan)
-        if: matrix.language == 'javascript'
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-
-      - name: Install npm deps (javascript scan)
-        if: matrix.language == 'javascript'
-        run: npm install
-
-      # For Python: install the package so CodeQL can resolve imports
-      - name: Set up Python 3.11 (python scan)
-        if: matrix.language == 'python'
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install server (python scan)
-        if: matrix.language == 'python'
-        run: pip install -e "./server[dev]"
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
-          languages: ${{ matrix.language }}
+          languages: javascript
           # Exclude vendored / generated paths
           config: |
             paths-ignore:
               - "legacy-gui/**"
               - "dist/**"
-              - "src-tauri/target/**"
+              - "release/**"
               - "**/*.min.js"
-
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
         with:
-          category: "/language:${{ matrix.language }}"
+          category: "/language:javascript"

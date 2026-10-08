@@ -10,7 +10,7 @@
 //   3. a clean shutdown — the DSP program the server started (an analyze request starts it) is
 //      gone after POST /v1/shutdown, the process has exited, and nothing listens on its port.
 //
-//   node scripts/node24.mjs server/scripts/check-boot.mjs        (ports 8790 / 8791)
+//   node scripts/node24.js server/scripts/check-boot.js        (ports 8790 / 8791)
 //
 // Copies: justvoice.db and the small folders copied; the JS side's `engines-runtime` is a
 // junction to Python's source-tree runtime (read only, unlinked first at cleanup). Warm-on-boot
@@ -27,7 +27,7 @@ import * as procs from "@delebash/llm-runner/platform/procs";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SERVER = path.resolve(HERE, "..");
 const REPO = path.resolve(SERVER, "..");
-const DEV_DATA = path.join(REPO, "src-tauri", "target", "debug", "data");
+const DEV_DATA = path.join(REPO, "data");
 const PY = process.env.JV_PYTHON || path.join(SERVER, ".venv", "Scripts", "python.exe");
 const PY_RUNTIME = path.join(SERVER, "justvoice", "engines");
 const PY_PORT = 8790;

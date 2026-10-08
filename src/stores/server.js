@@ -9,12 +9,9 @@ import { setKeepRunning } from "../services/native.js";
 
 function getDefaultServerUrl() {
   if (typeof window === "undefined") return "http://127.0.0.1:17494";
-  const { protocol, origin, hostname } = window.location;
-  if (
-    (protocol === "http:" || protocol === "https:") &&
-    origin &&
-    hostname !== "tauri.localhost"
-  ) {
+  // The desktop window's page is app://justvoice (not http), so it falls through to the port.
+  const { protocol, origin } = window.location;
+  if ((protocol === "http:" || protocol === "https:") && origin) {
     return origin;
   }
   return "http://127.0.0.1:17494";
@@ -60,7 +57,7 @@ export const useServerStore = defineStore("server", () => {
   }
   async function setKeepServerRunningOnClose(v) {
     keepServerRunningOnClose.value = Boolean(v);
-    // Sync to the Rust shell through services/native.js — the ONE place a
+    // Sync to the desktop shell through services/native.js — the ONE place a
     // command name is written (family shape, 2026-08-15). No-op in a browser.
     await setKeepRunning(v);
   }

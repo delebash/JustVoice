@@ -16,12 +16,11 @@
 //   node scripts/audiocpp-dev.js         build it alone and print the folder
 //
 // The server finds the build through JUSTVOICE_AUDIOCPP_BUILD (the bin folder) —
-// server/justvoice/engines/audiocpp/dev_build.py reads it; a packaged app ignores it.
+// server/src/engines/audiocpp/dev_build.js reads it; a packaged app ignores it.
 import { execFileSync, spawnSync } from "node:child_process";
 import { copyFileSync, existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { findPython } from "../../just-llm-runner/scripts/lib/exec-resolve.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const WIN = process.platform === "win32";
@@ -140,8 +139,8 @@ function copyCudaRuntime(cuda) {
  *  replace it. Only one whose JustVoice server is gone (the app's own leftover rule); one still
  *  served means the app is running (decided D5). */
 function stopLeftovers() {
-  const python = findPython({ env: "JV_PYTHON", root: ROOT, venvs: ["server/.venv"] });
-  const r = spawnSync(python, ["-m", "justvoice.engines.audiocpp.dev_build", "--stop-leftovers"],
+  const r = spawnSync(process.execPath, [join(ROOT, "scripts", "node24.js"),
+    join(ROOT, "server", "src", "engines", "audiocpp", "dev_build.js"), "--stop-leftovers"],
     { cwd: ROOT, stdio: "inherit", env: { ...process.env, [ENV]: BIN } });
   if (r.status === 3) throw new BuildError("Close the running JustVoice first.");
   if (r.status !== 0) throw new BuildError("could not check for a running audio.cpp server.");

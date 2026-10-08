@@ -24,23 +24,27 @@ Webhooks tab → "+ Add webhook":
 
 ## HMAC signing
 
-Every POST carries an `X-JustVoice-Signature` header: `sha256=<hex>` of `HMAC(secret, body)`. Receivers verify by recomputing and comparing in constant time. JustVoice also sends `X-JustVoice-Event` (event name) and `X-JustVoice-Delivery` (per-delivery UUID).
+Every POST carries an `X-JustVoice-Signature` header: the hex of `HMAC-SHA256(secret, body)` (no prefix). Receivers verify by recomputing and comparing in constant time. JustVoice also sends `X-JustVoice-Event` (event name) and `X-JustVoice-Delivery` (per-delivery UUID).
 
-Example receiver (Python / FastAPI):
+Example receiver (Node):
 
-    import hmac, hashlib
-    @app.post("/webhook")
-    async def receive(request: Request):
-        body = await request.body()
-        sig = request.headers.get("x-justvoice-signature", "").removeprefix("sha256=")
-        want = hmac.new(SECRET.encode(), body, hashlib.sha256).hexdigest()
-        if not hmac.compare_digest(sig, want):
-            raise HTTPException(401)
-        ...
+    import { createHmac, timingSafeEqual } from "node:crypto";
+    import { createServer } from "node:http";
+
+    createServer(async (req, res) => {
+      const chunks = [];
+      for await (const c of req) chunks.push(c);
+      const body = Buffer.concat(chunks);
+      const sig = Buffer.from(String(req.headers["x-justvoice-signature"] || ""));
+      const want = Buffer.from(createHmac("sha256", SECRET).update(body).digest("hex"));
+      if (sig.length !== want.length || !timingSafeEqual(sig, want)) return res.writeHead(401).end();
+      // ... handle JSON.parse(body)
+      res.writeHead(204).end();
+    }).listen(9000);
 
 ## Retry policy
 
-At-least-once delivery. If the receiver returns non-2xx or times out (10s), JustVoice retries with exponential backoff:
+At-least-once delivery. If the receiver returns non-2xx or times out (15 s; 10 s for the Test button), JustVoice retries with exponential backoff:
 
 - 1s, 5s, 30s, 5min (4 retries total → 5 attempts including the initial).
 

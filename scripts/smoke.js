@@ -1,18 +1,20 @@
 // SPDX-License-Identifier: MIT
 //
 // Headless smoke test — drives the real renderer against a running
-// `justvoice-server serve` and asserts every view renders with zero
+// server (`npm run server`) and asserts every view renders with zero
 // JS errors. This is the regression harness that caught the import-
 // staleness bug during the 2026-06-13/14 data-layer rebuild; keep it
 // green before merging UI changes.
 //
 // Usage:
-//   1. Start the server:   justvoice-server serve --host 127.0.0.1 --port 8741
+//   1. Start the server:   npm run server -- --host 127.0.0.1 --port 8741
+//                          (the dev data folder <repo>/data; when the app is running,
+//                          skip this and gate against its own server on 17494)
 //   2. Build the renderer: npm run build:vite
 //   3. Run:                node scripts/smoke.js
 //
 // Env overrides:
-//   JV_BASE    base URL of the running server (default http://127.0.0.1:8741/)
+//   JV_BASE    base URL of the running server (default http://127.0.0.1:17494/)
 //   JV_CHROME  path to a Chromium/Chrome binary. If unset, tries the
 //              Playwright cache, then a few common locations.
 //
@@ -26,8 +28,8 @@ const require = createRequire(import.meta.url);
 // playwright is a CJS package; import via require to get { chromium }.
 const { chromium } = require("playwright");
 
-// 17494 is JV's real port (src-tauri/src/lib.rs SERVER_PORT); this default said
-// 8741 — a port JV never listens on — until the 2026-08-04 docs campaign.
+// 17494 is JV's real port (electron/main.js `port`); this default said 8741 — a port
+// the app never listens on — until the 2026-08-04 docs campaign.
 const BASE = process.env.JV_BASE || "http://127.0.0.1:17494/";
 
 const exe = findChrome();

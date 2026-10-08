@@ -8,327 +8,82 @@ on:
 
 # No concurrency group — release builds must never cancel each other.
 
+permissions:
+  contents: write # needed to create / update the GitHub release
+
+# The desktop app is Electron + the Node server (the family's move, 2026-10-08); electron-builder
+# makes the installers (package.json `build`). A packaged app also needs the audio.cpp DSP
+# program, which ships in an audio.cpp release — that tag waits for the user's word (TASKS,
+# the Electron item).
 jobs:
-  # ── PyInstaller — bundle the Python server as a sidecar binary ───────────
-  # Must run first (before Tauri builds) so its artifacts can be downloaded.
-  bundle-python:
-    name: Bundle Python server (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
+  build:
+    name: Installer (${{ matrix.platform }})
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
-            artifact_name: justvoice-server-linux
-            sidecar_triple: x86_64-unknown-linux-gnu
-          - os: windows-latest
-            artifact_name: justvoice-server-windows
-            sidecar_triple: x86_64-pc-windows-msvc
-          - os: macos-latest
-            artifact_name: justvoice-server-macos
-            sidecar_triple: universal-apple-darwin
-
+          - platform: windows-latest
+            args: --win
+          - platform: macos-latest
+            args: --mac --universal
+          - platform: ubuntu-22.04
+            args: --linux
+    runs-on: ${{ matrix.platform }}
     steps:
+      # The app needs the family kit beside it (package.json: file:../just-llm-runner/server;
+      # vite.config.js: ../just-llm-runner/ui), so both are checked out side by side.
       - uses: actions/checkout@v4
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-
-      # Install server without heavy ML extras to keep the sidecar small;
-      # sherpa-onnx native wheels are resolved at runtime via lazy loading.
-      - name: Install server + pyinstaller
-        run: pip install -e "./server[dev]" pyinstaller
-
-      # macOS: build a universal2 (arm64 + x86_64) binary via two passes.
-      - name: Build PyInstaller sidecar (macOS universal)
-        if: runner.os == 'macOS'
-        run: |
-          # x86_64 slice
-          arch -x86_64 python -m PyInstaller \
-            --onefile server/justvoice/__main__.py \
-            --name justvoice-server \
-            --distpath dist-x86 \
-            --workpath build-x86
-
-          # arm64 slice
-          arch -arm64 python -m PyInstaller \
-            --onefile server/justvoice/__main__.py \
-            --name justvoice-server \
-            --distpath dist-arm64 \
-            --workpath build-arm64
-
-          # Fuse into a fat binary
-          mkdir -p dist
-          lipo -create -output dist/justvoice-server \
-            dist-x86/justvoice-server \
-            dist-arm64/justvoice-server
-
-      - name: Build PyInstaller sidecar (non-macOS)
-        if: runner.os != 'macOS'
-        # No spec file exists — use inline command
-        run: |
-          pyinstaller --onefile server/justvoice/__main__.py \
-            --name justvoice-server \
-            --distpath dist
-
-      # Tauri expects sidecars named <binary>-<target-triple>[.exe]
-      - name: Rename sidecar for Tauri triple (Unix)
-        if: runner.os != 'Windows'
-        run: |
-          cp dist/justvoice-server \
-            "dist/justvoice-server-${{ matrix.sidecar_triple }}"
-
-      - name: Rename sidecar for Tauri triple (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          Copy-Item dist\justvoice-server.exe `
-            "dist\justvoice-server-${{ matrix.sidecar_triple }}.exe"
-
-      - name: Upload sidecar artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.artifact_name }}
-          path: |
-            dist/justvoice-server-${{ matrix.sidecar_triple }}
-            dist/justvoice-server-${{ matrix.sidecar_triple }}.exe
-          if-no-files-found: error
-          retention-days: 1
-
-  # ── Tauri builds ─────────────────────────────────────────────────────────
-  build-tauri:
-    name: Tauri build (${{ matrix.platform }})
-    needs: bundle-python
-    runs-on: ${{ matrix.runner }}
-    permissions:
-      contents: write   # needed for tauri-action to create/update the release
-
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # Windows — produces .msi + NSIS .exe
-          - platform: windows
-            runner: windows-latest
-            tauri_targets: msi,nsis
-            artifact_name: justvoice-server-windows
-            sidecar_triple: x86_64-pc-windows-msvc
-            sidecar_ext: .exe
-            rust_target: x86_64-pc-windows-msvc
-
-          # macOS universal — produces .dmg + .app
-          - platform: macos
-            runner: macos-latest
-            tauri_targets: dmg,app
-            artifact_name: justvoice-server-macos
-            sidecar_triple: universal-apple-darwin
-            sidecar_ext: ""
-            rust_target: universal-apple-darwin
-
-          # Linux — produces .AppImage + .deb
-          - platform: linux
-            runner: ubuntu-latest
-            tauri_targets: appimage,deb
-            artifact_name: justvoice-server-linux
-            sidecar_triple: x86_64-unknown-linux-gnu
-            sidecar_ext: ""
-            rust_target: x86_64-unknown-linux-gnu
-
-    steps:
+          path: JustVioce
       - uses: actions/checkout@v4
-
-      # ── Python sidecar ──────────────────────────────────────────────────
-      - name: Download Python sidecar
-        uses: actions/download-artifact@v4
         with:
-          name: ${{ matrix.artifact_name }}
-          path: sidecar-bin
+          repository: delebash/just-llm-runner
+          path: just-llm-runner
 
-      - name: Place sidecar into Tauri binaries dir (Unix)
-        if: runner.os != 'Windows'
-        run: |
-          mkdir -p src-tauri/binaries
-          cp "sidecar-bin/justvoice-server-${{ matrix.sidecar_triple }}" \
-            "src-tauri/binaries/justvoice-server-${{ matrix.sidecar_triple }}"
-          chmod +x "src-tauri/binaries/justvoice-server-${{ matrix.sidecar_triple }}"
-
-      - name: Place sidecar into Tauri binaries dir (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force src-tauri\binaries | Out-Null
-          Copy-Item `
-            "sidecar-bin\justvoice-server-${{ matrix.sidecar_triple }}.exe" `
-            "src-tauri\binaries\justvoice-server-${{ matrix.sidecar_triple }}.exe"
-
-      # (The uv sidecar left on 2026-10-01: it built the per-engine Python
-      # environments, and every speech engine now runs in the audio.cpp runtime,
-      # which the app downloads per machine — nothing on a user's box needs uv.)
-
-      # ── Toolchains ──────────────────────────────────────────────────────
-      - name: Set up Node 20
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "npm"
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            JustVioce/package-lock.json
+            just-llm-runner/server/package-lock.json
 
-      - name: Set up Rust (stable)
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.rust_target }}
+      # better-sqlite3 and koffi ship per-platform N-API prebuilds, so nothing native is
+      # compiled here; electron-builder packages the Electron the app pins.
+      - name: Install the kit's server deps
+        working-directory: just-llm-runner/server
+        run: npm ci
+      - name: Install deps
+        working-directory: JustVioce
+        run: npm ci
 
-      - name: Cache Cargo
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            src-tauri/target
-          key: cargo-release-${{ matrix.platform }}-${{ hashFiles('src-tauri/Cargo.lock') }}
-          restore-keys: cargo-release-${{ matrix.platform }}-
-
-      # ── Platform-specific system deps ───────────────────────────────────
-      - name: Install Linux system deps
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y \
-            libgtk-3-dev \
-            libwebkit2gtk-4.1-dev \
-            libayatana-appindicator3-dev \
-            librsvg2-dev \
-            libssl-dev \
-            libglib2.0-dev \
-            pkg-config \
-            fuse            # required by AppImage runtime
-
-      # ── macOS signing / notarization ─────────────────────────────────────
-      # Import the signing certificate if secrets are present; otherwise build
-      # unsigned and emit a warning.
-      - name: Import Apple signing certificate
-        if: >
-          runner.os == 'macOS' &&
-          secrets.APPLE_CERTIFICATE != '' &&
-          secrets.APPLE_CERTIFICATE_PASSWORD != ''
+      # Signing: electron-builder signs when its variables are set and builds unsigned (with a
+      # warning in its log) when they are not. macOS: the p12 (base64) and its password, plus
+      # the Apple ID trio for notarization. Windows: the code-signing PFX (base64) and password.
+      - name: Build the installers
+        working-directory: JustVioce
         env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-        run: |
-          KEYCHAIN_PATH=$RUNNER_TEMP/build.keychain
-          KEYCHAIN_PASSWORD=$(openssl rand -hex 16)
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          echo "$APPLE_CERTIFICATE" | base64 --decode > /tmp/cert.p12
-          security import /tmp/cert.p12 \
-            -k "$KEYCHAIN_PATH" \
-            -P "$APPLE_CERTIFICATE_PASSWORD" \
-            -T /usr/bin/codesign
-          security list-keychain -d user -s "$KEYCHAIN_PATH"
-          security set-key-partition-list \
-            -S apple-tool:,apple: \
-            -s -k "$KEYCHAIN_PASSWORD" \
-            "$KEYCHAIN_PATH"
-          rm /tmp/cert.p12
-
-      - name: Warn — macOS unsigned build
-        if: >
-          runner.os == 'macOS' &&
-          (secrets.APPLE_CERTIFICATE == '' ||
-           secrets.APPLE_CERTIFICATE_PASSWORD == '')
-        run: |
-          echo "::warning::APPLE_CERTIFICATE / APPLE_CERTIFICATE_PASSWORD not set — building unsigned macOS bundle."
-
-      # ── Windows code-signing setup ───────────────────────────────────────
-      - name: Decode Windows EV cert
-        if: >
-          runner.os == 'Windows' &&
-          secrets.WINDOWS_CERT_PFX != '' &&
-          secrets.WINDOWS_CERT_PASSWORD != ''
-        shell: pwsh
-        env:
-          WINDOWS_CERT_PFX: ${{ secrets.WINDOWS_CERT_PFX }}
-        run: |
-          $certPath = "$env:RUNNER_TEMP\ev_cert.pfx"
-          [System.Convert]::FromBase64String($env:WINDOWS_CERT_PFX) |
-            Set-Content -Path $certPath -AsByteStream
-          echo "WINDOWS_CERTIFICATE_FILE=$certPath" >> $env:GITHUB_ENV
-
-      - name: Warn — Windows unsigned build
-        if: >
-          runner.os == 'Windows' &&
-          (secrets.WINDOWS_CERT_PFX == '' ||
-           secrets.WINDOWS_CERT_PASSWORD == '')
-        shell: pwsh
-        run: |
-          Write-Host "::warning::WINDOWS_CERT_PFX / WINDOWS_CERT_PASSWORD not set — building unsigned Windows installer."
-
-      # ── npm install ──────────────────────────────────────────────────────
-      - name: Install npm dependencies
-        run: npm install
-
-      # ── Tauri build + GitHub Release ─────────────────────────────────────
-      - name: Build Tauri + publish release
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # macOS signing + notarization (no-ops when secrets are empty)
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          CSC_LINK: ${{ secrets.APPLE_CERTIFICATE }}
+          CSC_KEY_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          # Windows signing (no-ops when secrets are empty)
-          TAURI_SIGNING_PRIVATE_KEY: ""
-          # Windows certificate path set in previous step (empty string if unsigned)
-          WINDOWS_CERTIFICATE_FILE: ${{ env.WINDOWS_CERTIFICATE_FILE }}
-          WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
-        with:
-          tagName: ${{ github.ref_name }}
-          releaseName: "JustVoice ${{ github.ref_name }}"
-          releaseBody: |
-            See CHANGELOG or commit history for details.
-          releaseDraft: true
-          prerelease: ${{ contains(github.ref_name, '-') }}
-          # `--config tauri.release.conf.json` merges the sidecar declarations
-          # (justvoice-server) over the base config. They live in a release
-          # overlay rather than tauri.conf.json because Tauri's build script
-          # REQUIRES every declared externalBin to exist on disk, and lib.rs
-          # deliberately does not use the bundled sidecar in debug builds — it
-          # spawns from PATH so a dev can iterate on the Python server without
-          # rebuilding a PyInstaller binary. Declaring them unconditionally
-          # would break `cargo check` and `tauri dev` for everyone.
-          args: >-
-            --target ${{ matrix.rust_target }}
-            --bundles ${{ matrix.tauri_targets }}
-            --config tauri.release.conf.json
+          WIN_CSC_LINK: ${{ secrets.WINDOWS_CERT_PFX }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+        run: npx vite build && npx electron-builder ${{ matrix.args }} --publish never
 
-      # ── Linux AppImage optional signing ─────────────────────────────────
-      # If APPIMAGE_SIGNING_KEY is present, sign the produced AppImage.
-      - name: Sign AppImage (optional)
-        if: >
-          runner.os == 'Linux' &&
-          secrets.APPIMAGE_SIGNING_KEY != ''
+      - name: Publish to the draft release
+        working-directory: JustVioce
+        shell: bash
         env:
-          APPIMAGE_SIGNING_KEY: ${{ secrets.APPIMAGE_SIGNING_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
         run: |
-          # Locate the AppImage produced by tauri-action
-          APPIMAGE=$(find src-tauri/target -name "*.AppImage" | head -n 1)
-          if [ -z "$APPIMAGE" ]; then
-            echo "::warning::No AppImage found to sign."
-            exit 0
-          fi
-          # Import key and sign
-          echo "$APPIMAGE_SIGNING_KEY" | gpg --batch --import
-          gpg --batch --yes --detach-sign --armor "$APPIMAGE"
-          echo "Signed: $APPIMAGE"
-
-      - name: Warn — AppImage unsigned
-        if: >
-          runner.os == 'Linux' &&
-          secrets.APPIMAGE_SIGNING_KEY == ''
-        run: |
-          echo "::warning::APPIMAGE_SIGNING_KEY not set — AppImage will be unsigned."
+          PRE=""
+          case "$TAG" in *-*) PRE="--prerelease" ;; esac
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --draft $PRE \
+            --title "JustVoice $TAG" \
+            --notes "See the assets below to download and install this version." \
+            || gh release view "$TAG" >/dev/null  # another platform's job created it first
+          shopt -s nullglob
+          gh release upload "$TAG" release/*.exe release/*.dmg release/*.AppImage release/*.deb --clobber

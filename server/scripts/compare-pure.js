@@ -5,7 +5,7 @@
 // sentence breaks, multi-word coverage), captions, inline tags, the delivery cache key
 // (floats sent as Python floats), the delivery merge and the render-cache key builder.
 //
-//   node scripts/node24.mjs server/scripts/compare-pure.mjs      (JV_PYTHON overrides)
+//   node scripts/node24.js server/scripts/compare-pure.js      (JV_PYTHON overrides)
 
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";

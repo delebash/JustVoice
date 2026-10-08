@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // The domain CLI — dev utilities (the port of justvoice/cli.py, a typer app):
 //
-//   node scripts/node24.mjs server/src/cli.js <command>
+//   node scripts/node24.js server/src/cli.js <command>
 //     default-settings   print the seed settings
 //     open-api           (Python printed FastAPI's OpenAPI document — the JavaScript server
 //                        has none; the command says so and exits 1)

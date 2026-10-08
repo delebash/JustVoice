@@ -9,13 +9,13 @@
 //      same boot again on the same folder (idempotency) — compared after each;
 //   3. ops: a replay of store writes (personas, lexicons, settings patches, voices) — answers,
 //      databases and voice manifests compared;
-//   4. real: two COPIES of JustVoice's dev database (src-tauri/target/debug/data — read only;
+//   4. real: two COPIES of JustVoice's dev database (data — read only;
 //      the copies live in temp): every store read for real rows, then every persona,
 //      lexicon, voice and the settings row rewritten unchanged — answers and databases.
 // Masked: datetime columns and uuid-default ids (compared by FORMAT — each side's clock and
 // random ids), and datetimes inside answers (compared by shape: Z / naive / offset).
 //
-//   node scripts/node24.mjs server/scripts/compare-seed.mjs      (JV_PYTHON overrides)
+//   node scripts/node24.js server/scripts/compare-seed.js      (JV_PYTHON overrides)
 //
 // Modules other slices still port (extraction/*, refinement, engines/llm/*) are stood in by
 // a resolve hook ONLY while their file is missing: the prompt texts come from Python itself,
@@ -32,7 +32,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const SERVER = resolve(HERE, "..");
 const REPO = resolve(SERVER, "..");
 const PY = process.env.JV_PYTHON || join(SERVER, ".venv", process.platform === "win32" ? "Scripts/python.exe" : "bin/python");
-const DEV_DATA = join(REPO, "src-tauri", "target", "debug", "data");
+const DEV_DATA = join(REPO, "data");
 
 const dir = mkdtempSync(join(tmpdir(), "jv-compare-seed-"));
 process.env.JUST_AI_HOME = join(dir, "family");

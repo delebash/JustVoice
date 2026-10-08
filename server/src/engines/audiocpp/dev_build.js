@@ -13,7 +13,7 @@
 //
 // A packaged app ignores the variable. The wrapper's check before it builds (decided D5):
 //
-//     node scripts/node24.mjs server/src/engines/audiocpp/dev_build.js --stop-leftovers
+//     node scripts/node24.js server/src/engines/audiocpp/dev_build.js --stop-leftovers
 //
 // stops a server a crashed session left on this build, and exits 3 when one is still served
 // by a running app.
@@ -166,7 +166,7 @@ if (isMain) {
       },
     );
   } else {
-    console.log("usage: node scripts/node24.mjs server/src/engines/audiocpp/dev_build.js --stop-leftovers");
+    console.log("usage: node scripts/node24.js server/src/engines/audiocpp/dev_build.js --stop-leftovers");
     process.exit(2);
   }
 }

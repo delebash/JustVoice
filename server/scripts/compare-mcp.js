@@ -10,11 +10,11 @@
 // transport's refusals (no session, unknown session, a client that won't take SSE), and the
 // mcp_bindings rows the client-id header stamps (times aside). `speak` is never called.
 //
-//   node scripts/node24.mjs server/scripts/compare-mcp.mjs      (JV_PYTHON overrides)
+//   node scripts/node24.js server/scripts/compare-mcp.js      (JV_PYTHON overrides)
 
 import { createServer as netServer } from "node:net";
 import { join } from "node:path";
-import { cleanup, compare, dataCopy, HERE, PY, SERVER, tempRoot } from "./compare-render-lib.mjs";
+import { cleanup, compare, dataCopy, HERE, PY, SERVER, tempRoot } from "./compare-render-lib.js";
 
 const FORBIDDEN = new Set([17494, 17495, 8742, 1420, 1430, 1431]);
 const dir = tempRoot("jv-compare-mcp-");

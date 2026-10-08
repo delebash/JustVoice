@@ -6,11 +6,11 @@
 // (compare-pycompat.py) and by this port over thousands of generated cases (a fixed seed, so a
 // run repeats), compared answer for answer.
 //
-//   node scripts/node24.mjs server/scripts/compare-pycompat.mjs      (JV_PYTHON overrides)
+//   node scripts/node24.js server/scripts/compare-pycompat.js      (JV_PYTHON overrides)
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { cleanup, compare, HERE, PY, SERVER, tempRoot } from "./compare-render-lib.mjs";
+import { cleanup, compare, HERE, PY, SERVER, tempRoot } from "./compare-render-lib.js";
 
 const dir = tempRoot("jv-compare-pycompat-");
 let exitCode = 0;

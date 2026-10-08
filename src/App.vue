@@ -16,7 +16,8 @@ import LeftoverEnginesHelp from "./components/LeftoverEnginesHelp.vue";
 // An engine's own terms (Pocket TTS — Kyutai's, before the first clone): one dialog for the
 // whole app, opened by `jv:engine-terms` (services/engineTerms.js).
 import EngineTermsDialog from "./components/EngineTermsDialog.vue";
-import { AiSetupOffer, AiStatusButton, BootModelLoad, HelpDrawer, HelpTrigger, LlmUiHosts, TitleBar, isTauriShell, openExternal, pushToast, refreshRunnerModels, useAiTasksNav, useAiTasksStore, useModelApply, useRunnerModels, warmModelId } from "@delebash/llm-ui";
+import { AiSetupOffer, AiStatusButton, BootModelLoad, HelpDrawer, HelpTrigger, LlmUiHosts, TitleBar, openExternal, pushToast, refreshRunnerModels, useAiTasksNav, useAiTasksStore, useModelApply, useRunnerModels, warmModelId } from "@delebash/llm-ui";
+import { onShellEvent } from "./services/native.js";
 import { readPref, writePref } from "./services/prefs.js";
 import { projectKind } from "./services/projectKinds.js";
 import { masterLabel } from "./services/masterTargets.js";
@@ -345,7 +346,7 @@ const llmModel = computed(() => llmLive.value?.id || "");
 const llmLoading = computed(() => llmLive.value?.status === "loading");
 watch(() => tasks.runningCount, refreshLlm);
 
-// Boot banner — the Python server takes a few seconds to come up on
+// Boot banner — the server takes a few seconds to come up on
 // fresh launch. Without any signal, the UI looks broken (empty stores,
 // no engine, no voices). Track elapsed time-since-mount; if no health
 // response by 1s, show "Server starting…" until it lands. Hides as
@@ -379,7 +380,7 @@ function onQuickSetupClosed() {
 onMounted(async () => {
   // Re-apply the persisted keep-running flag to the shell every boot — the
   // Rust side resets to false per launch (the family headless ruling
-  // 2026-08-04; setter no-ops outside Tauri).
+  // 2026-08-04; setter no-ops outside the desktop app).
   if (serverStore.keepServerRunningOnClose) {
     serverStore.setKeepServerRunningOnClose(true);
   }
@@ -414,28 +415,20 @@ onMounted(async () => {
   window.addEventListener("jv:health-refresh", refresh);
   // Re-run the QuickSetup wizard on demand (Settings → General, Home).
   window.addEventListener("jv:quick-setup", () => { showQuickSetup.value = true; });
-  // The tray's renderer half (the family full-donor ruling 2026-08-04): the
-  // donor's generic entries were dead emits with ZERO listeners (audit
-  // 2026-08-05) — these are the listeners. dictate/MCP stay JV-specific;
-  // their wiring is JV feature work, parked per the standing sequence.
-  // The shell test is the kit's (`__TAURI_INTERNALS__`, JustWrite's shape):
-  // these read `window.__TAURI__` until 2026-10-05, which exists only with
-  // `withGlobalTauri` — set in no config — so not one of them ever ran. The
-  // dynamic import is gated because in a browser each listen() rejects.
-  if (isTauriShell()) {
-    import("@tauri-apps/api/event").then(({ listen }) => {
-      listen("tray:open-settings", () => goView("settings"));
-      listen("tray:about", () => goView("settings"));
-      listen("tray:copy-url", async (e) => {
-        try {
-          await navigator.clipboard.writeText(String(e.payload));
-          pushToast({ message: `Server URL copied — ${e.payload}`, duration: 4000 });
-        } catch {
-          pushToast({ message: "Copy failed", kind: "error" });
-        }
-      });
-    }).catch(() => {});
-  }
+  // The tray's renderer half (the family full-donor ruling 2026-08-04), through
+  // services/native.js — the shell's one bridge; outside the desktop app each is a
+  // no-op. dictate/MCP stay JV-specific; their wiring is JV feature work, parked per
+  // the standing sequence.
+  onShellEvent("tray:open-settings", () => goView("settings"));
+  onShellEvent("tray:about", () => goView("settings"));
+  onShellEvent("tray:copy-url", async (url) => {
+    try {
+      await navigator.clipboard.writeText(String(url));
+      pushToast({ message: `Server URL copied — ${url}`, duration: 4000 });
+    } catch {
+      pushToast({ message: "Copy failed", kind: "error" });
+    }
+  });
 });
 </script>
 
@@ -592,7 +585,7 @@ onMounted(async () => {
              The status is text, not a button (2026-09-29: "it shouldnt be a
              click at all") — the AI status button beside it and the sidebar's
              AI Tasks open the task panel. The URL is a real link that opens
-             the server in the browser through the app's Tauri opener (the
+             the server in the browser through the app's desktop opener (the
              webview swallows target=_blank, so an unrouted anchor is silently
              dead). -->
         <span class="jv-topbar__statusgroup">
@@ -622,7 +615,7 @@ onMounted(async () => {
       <div class="jv-content">
         <div v-if="showBootBanner" class="jv-banner jv-banner--warn jv-boot-banner">
           <span class="jv-boot-banner__spinner" />
-          <span>Server starting… The Python sidecar is spinning up. Engine and voice catalogues will populate when it's ready.</span>
+          <span>Server starting… Engine and voice catalogues will populate when it's ready.</span>
         </div>
         <p v-if="effectiveLede" class="jv-content__lede">
           {{ effectiveLede.text }}

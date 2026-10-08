@@ -2,7 +2,7 @@
 // `justvoice-server` — run the server standalone, and as the desktop app's server process (the
 // port of justvoice/serve.py and justvoice/__main__.py — this file IS the module entry).
 //
-//   node scripts/node24.mjs server/src/serve.js serve [--host H] [--port P] [--data-dir D] [--log-level L]
+//   node scripts/node24.js server/src/serve.js serve [--host H] [--port P] [--data-dir D] [--log-level L]
 //
 // The family entry shape (docgen's serve was the donor): `serve` is the canonical form and the
 // bare form works too. Host/port default from the SETTINGS STORE (the no-hardcoded-tunables law),

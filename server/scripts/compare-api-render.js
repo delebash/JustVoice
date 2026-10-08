@@ -4,7 +4,7 @@
 // same real lines through their HTTP routes with the real speech runtime and Kokoro — and every
 // result is compared byte for byte.
 //
-// The copies (compare-render-lib.mjs): the database copied, the speech models through a junction
+// The copies (compare-render-lib.js): the database copied, the speech models through a junction
 // to the real speech cache (read only), a fresh empty render cache and take folder in each; the
 // JS side's `engines-runtime` is a junction to Python's source-tree runtime (the pinned release,
 // JUSTVOICE_AUDIOCPP_BUILD unset). `compare-render.py prep` adds the two small books from The
@@ -21,13 +21,13 @@
 // headers. Before anything it refuses to run beside the app (JustVoice's ports, any runtime);
 // after each server it records graphics memory and the runtime processes left.
 //
-//   node scripts/node24.mjs server/scripts/compare-api-render.mjs [--keep]   (JV_PYTHON overrides)
+//   node scripts/node24.js server/scripts/compare-api-render.js [--keep]   (JV_PYTHON overrides)
 
 import { spawn } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join, relative } from "node:path";
-import { cleanup, compare, DEV_DATA, dataCopy, fingerprint, PY, python, SERVER, tempRoot } from "./compare-render-lib.mjs";
+import { cleanup, compare, DEV_DATA, dataCopy, fingerprint, PY, python, SERVER, tempRoot } from "./compare-render-lib.js";
 
 const procs = await import("@delebash/llm-runner/platform/procs");
 const PY_PORT = 8792;

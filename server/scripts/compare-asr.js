@@ -7,7 +7,7 @@
 // must be equal. Refuses to run beside the app (ports / runtime processes), reports graphics
 // memory before and after and that no runtime process is left.
 //
-//   node scripts/node24.mjs server/scripts/compare-asr.mjs      (JV_PYTHON overrides)
+//   node scripts/node24.js server/scripts/compare-asr.js      (JV_PYTHON overrides)
 
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -18,7 +18,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const SERVER = resolve(HERE, "..");
 const REPO = resolve(SERVER, "..");
 const PY = process.env.JV_PYTHON || join(SERVER, ".venv", process.platform === "win32" ? "Scripts/python.exe" : "bin/python");
-const DEV_DATA = join(REPO, "src-tauri", "target", "debug", "data");
+const DEV_DATA = join(REPO, "data");
 const PY_RUNTIME = join(SERVER, "justvoice", "engines");
 const TEXT = "The ferry was late again, and nobody on the quay looked surprised.";
 

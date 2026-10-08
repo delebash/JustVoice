@@ -28,7 +28,7 @@ await page.route("**/v1/jobs/*", async (route) => {
   if (!j) { await route.fulfill({ status: 404, body: "{}" }); return; }
   j.polls += 1;
   // Fail on the 3rd poll with an HF-style error.
-  if (j.polls >= 3) { j.phase = "failed"; j.error = "huggingface_hub is required for HF-distributed engines but isn't available in this Python environment"; }
+  if (j.polls >= 3) { j.phase = "failed"; j.error = "the engine's model files could not be downloaded"; }
   await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
     job_id: jobId, phase: j.phase, bytes_downloaded: j.bd, bytes_total: j.bt,
     current_file: "model.safetensors", error: j.error || null,
