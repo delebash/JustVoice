@@ -2161,6 +2161,14 @@ BUILT:  STEP 1, 2026-10-07 — the audio math is in our fork's `dsp/` module and
         (83 reads: 70 identical, 13 volatile; 37/37 writes; 1,910 database cells, 0 different),
         the installer on this machine (installs, starts, serves; an update and an uninstall keep
         `data\`). docgen's TASKS has the pointer; the user's own use of it is the step's end.
+        STEP 4 BUILT, 2026-10-08 — JustWrite runs on Electron and a Node server; its Python server
+        and `src-tauri/` are deleted; its dev data root is `<repo>/data` (the Q9 rewrite done).
+        Checked: 146 server tests, 590 renderer tests, the route diff (92 reads: 78 identical, 14
+        volatile; 37/37 writes; 4,809 database cells, 0 different), the seed comparison (17,741
+        cells), the headless smoke, e2e 7/7 on the real data, the installer on this machine
+        (installs, starts, serves headless with the tutorial book; an update and an uninstall
+        keep `data\`). JustWrite's TASKS has the pointer and RESEARCH the facts; the user's own
+        use of it is the step's end. The phone app's plan comes after (ruling 8).
 THEN:   DECIDED 2026-10-07 — the user: "lets do electron adn get rid of python completely", then
         "your rec go" on the four questions as shown: "1. Keep that order, with JustVoice last? Lean:
         yes. JustVoice runs on the kit, so the kit has to move first anyway. docgen proves the shell
@@ -2268,6 +2276,47 @@ OPEN:   step 1's last end — packaged builds need `audiocpp_dsp` in an audio.cp
            `src-tauri/target` (6 GB) with the rest of `server/`'s Python and `src-tauri/` — both
            local and ignored; `src-tauri/target/debug/data` was empty (its data had moved to
            `data/`).
+        Rec applied under the 2026-10-08 go — step 4 (JustWrite), each as decided:
+        1. The desktop window's origin `app://justwrite` stays allowed when the user sets their
+           own CORS origins (the port's open question: Python allowed only the list; the window
+           is the app itself, and under Tauri its requests were never refused).
+        2. JustWrite's Starlette CORS port moved into the kit (`platform/cors.js`) — JustVoice
+           configures CORS the same way (the family-sameness law); docgen uses it too.
+        3. The kit's 422 errors come in field-declaration order, as pydantic's (found by the
+           port: `POST /v1/images {"name": 5}` listed `data` before `name`).
+        4. JustWrite's window CSP is the kit's default plus `https:` images (`cspAdd`): the
+           Tauri window had no CSP, and a manuscript can hold an image pasted from the web.
+        5. Settings → About shows "Electron (<version>)" — the kit's preload exposes
+           `appShell.versions` (it said "Tauri (2)").
+        6. The renderer's libraries are devDependencies in JustWrite and docgen: electron-builder
+           packages every dependency, and Vite had already bundled them (JustWrite's installer
+           170 MB → 134 MB).
+        7. The Q9 rewrite (one-off script, apps closed): 9 database cells, not the 7 measured on
+           2026-10-07 — JustWrite's chooser folders and a docgen measurement were written since —
+           plus 18 text files (3 `models.ini`, 15 autosave snapshots) and the cache registry, whose
+           rows naming a deleted data folder were dropped. A backup of each database sits beside
+           it (`.bak-2026-10-08-before-path-rewrite`).
+        8. The 2026-08-15 headless root at `justwrite-app/data` was renamed aside to
+           `data-old-2026-08-15/` (kept, gitignored), as the plan's B8 row required.
+        9. JustWrite's e2e runs on the real data (Electron from the checkout); the theme test's
+           clicks are undone by writing the `ui` settings section back; two tests were stale
+           against the app (AI settings at `#/ai`; `--accent-hue`) and were updated to it.
+        10. `e2e/probe-idb.js` was deleted with the tauri-driver harness: it read IndexedDB
+            (empty since the 2026-06 server storage) from the Tauri release binary.
+        11. JustWrite's parked "bench-autostart venv re-exec oddity" (a stray Python owning
+            llama-servers) was closed — no Python is left to cause it.
+        12. Headless on macOS and Linux has no launcher yet; `docs/headless-access.md` gives the
+            `ELECTRON_RUN_AS_NODE=1` form. Windows has `justwrite-server.cmd`.
+        13. The port's seed tools (`server/scripts/*.py`, `compare-seed.mjs`) stay as the record
+            of the check, each noting that the Python it reads is in git before the deletion.
+        14. The release workflow is rewritten for electron-builder (checks out the kit beside the
+            app; .exe, universal .dmg, .AppImage + .deb) — not run: it needs a tag.
+        15. The repo root `.venv` stays: the kit's Python suite runs on it until JustVoice's step
+            ends.
+        16. JustWrite's in-memory zip classes stay in `book_transfer_api.js` until JustVoice needs
+            the same, then move into the kit's `data_api` (the family-sameness law).
+        FINDING (needs a go): a book whose title isn't latin-1 fails to export with a 500 — Python
+        did too, and the port copied it on purpose; JustWrite's TASKS has the fix.
         (Q8's last part answered — "no i dont have a mack": iOS builds need macOS, so how iOS
         gets built is open for the phone plan; Android builds on Windows.)
         DECIDED 2026-10-07 — "your rec go" on, as shown: "1. May I close your running app to free
