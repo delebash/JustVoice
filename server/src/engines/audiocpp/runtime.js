@@ -305,6 +305,9 @@ export async function install({ backend = null, force = false, onProgress = null
     cancelCheck,
     // `--version` alone proves the DLLs load; this proves the flags we launch with exist.
     probeArgvs: [["--no-ui", "--max-loaded-models", "0", "--version"]],
+    // The release ships upstream's Python reference scripts (tools/…); the app runs none of
+    // them, and the family keeps no Python (2026-10-08).
+    dropFiles: (rel) => rel.endsWith(".py"),
   });
 }
 

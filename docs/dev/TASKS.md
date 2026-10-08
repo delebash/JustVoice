@@ -2330,7 +2330,10 @@ OPEN:   step 1's last end — packaged builds need `audiocpp_dsp` in an audio.cp
            after JustVoice's API wave, when every copy exists, before Python is deleted (the
            family-sameness law); until then no port adds a new copy. The same sweep moves
            `app.js`'s request-body float opt-in (`installPyFloatBodies`) and `py_compat`'s
-           `b64decode` (JustWrite's `book_io.b64decode` is the same function) into the kit.
+           `b64decode` (JustWrite's `book_io.b64decode` is the same function) into the kit,
+           and retires `engines/audiocpp/japanese.js`'s own tar reader (written because the
+           kit's `extractTarGz` leaked its archive handle — fixed 2026-10-08): the kit's gains
+           the member filter it needs.
         4. The desktop window's origin `app://justvoice` is allowed by CORS and CSRF, as
            JustWrite's is (step-4 rec 1): the window is the app itself.
         FINDING: the JustVoice port copied these Python bugs on purpose (RESEARCH §6, the API
@@ -2375,6 +2378,21 @@ OPEN:   step 1's last end — packaged builds need `audiocpp_dsp` in an audio.cp
         the runtime installer leaves the .py files out when it unpacks, so no Python lands in
         the app; anything we added to the fork that runs Python moves to C++ or JS; upstream's
         own files in the fork stay, since it's their code and not part of our apps."
+        DECIDED 2026-10-08 — the user: "stop using .mjs remove it change it to js there is no
+        reason to use .mjs just set the config to the correct type". Rec applied, as answered:
+        every `.mjs` in the four repos becomes `.js` and every reference to one is updated (npm
+        scripts, docs, CLAUDE.md, the agents' briefs); the kit's root, a Python project with no
+        package.json, gets one with "type": "module" for its scripts/. (I first kept the kit's
+        preload.cjs as an exception; the user: "no way electron does not require .cjs … make
+        sure you are using modern techniques and doing an electron app correctly there should
+        be modern examples temploates". Electron's ESM doc says sandboxed preloads "are run as
+        plain JavaScript without an ESM context" and "ignore "type": "module" fields", so the
+        exception was wrong: it becomes preload.js, still sandboxed — and the kit's shell is
+        checked against Electron's security checklist and the current official templates,
+        gaps fixed, rec applied.) New files are .js from now; the rest are
+        renamed right after API agent 2 finishes (it is running the route-diff scripts and
+        node24.mjs). The Python-comparison scripts (compare-*.mjs, the route diff, compare-seed)
+        are deleted with the Python at the end rather than renamed.
         (Q8's last part answered — "no i dont have a mack": iOS builds need macOS, so how iOS
         gets built is open for the phone plan; Android builds on Windows.)
         DECIDED 2026-10-07 — "your rec go" on, as shown: "1. May I close your running app to free

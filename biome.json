@@ -7,7 +7,8 @@
 			"vite.config.js",
 			"electron/**/*.{js,cjs}",
 			"server/src/**/*.js",
-			"server/tests/**/*.js"
+			"server/tests/**/*.js",
+			"server/scripts/**/*.js"
 		]
 	},
 	"linter": {

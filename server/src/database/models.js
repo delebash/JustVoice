@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: MIT
-// The JustVoice SQLite schema (the port of justvoice/database/models.py). The tables are
-// the DDL Python's create_all writes, captured in models_schema.js by the kit's
-// scripts/capture-schema.py — re-generate it when a Python table changes:
-//   cd server && .venv/Scripts/python.exe ../../just-llm-runner/server/scripts/capture-schema.py \
-//       justvoice.database.models:Base src/database/models_schema.js
+//
+// Several tables (Generation, GenerationVersion, Story, StoryItem, EffectPreset, Capture,
+// MCPBinding, Channel) adapt voicebox's schema (MIT) — backend/database/models.py at the
+// commit pinned in voicebox-pin.txt. Original copyright (c) the voicebox authors.
+//
+// The JustVoice SQLite schema (the port of justvoice/database/models.py). The tables are the
+// DDL in models_schema.js — captured once from Python's create_all (2026-10-08) and, with the
+// Python gone, the schema itself: change a table there.
 //
 // Schema is the implementation of DESIGN_FREEZE.md §4. Every entity lives here, including
 // operator settings (folded from settings.json) and renderer prefs.
