@@ -2231,8 +2231,7 @@ THEN:   DECIDED 2026-10-07 — the user: "lets do electron adn get rid of python
 OPEN:   step 1's last end — packaged builds need `audiocpp_dsp` in an audio.cpp release: a tag,
         which waits for the user's word (decided below). (`as_16k_mono` was ported, as decided
         below: the server has no numpy or scipy.)
-        Pushing the kit, JustWrite and docgen (local commits only so far) — asked before the
-        first push.
+        (Pushing the kit, JustWrite and docgen — answered below, 2026-10-08.)
         (Q8's last part answered — "no i dont have a mack": iOS builds need macOS, so how iOS
         gets built is open for the phone plan; Android builds on Windows.)
         DECIDED 2026-10-07 — "your rec go" on, as shown: "1. May I close your running app to free
@@ -2250,9 +2249,36 @@ OPEN:   step 1's last end — packaged builds need `audiocpp_dsp` in an audio.cp
         user: "your rec go do it all the full conversion" — the go for steps 2–5 (kit, docgen,
         JustWrite, JustVoice), as the plan describes them. The tag waits (its rec). Pushing the
         kit/JustWrite/docgen repos had no rec — asked before their first push.
+        DECIDED 2026-10-08 — after step 2's report (the kit ported, every Python test file twinned,
+        the route diff clean: reads, writes and both databases 0 different), the user: "keep going
+        complete the switch to electron do it all go your rec", on the eight questions as shown:
+        "1. When the install folder can't be written to, where does app data go? Lean:
+        %LOCALAPPDATA%\<App>\<App> (the Python server's choice; local, not roaming)." · "2. Where
+        does dataroot.txt (the Change-folder pointer) go in that case? Lean:
+        %LOCALAPPDATA%\<App>\dataroot.txt — beside the data folder, never inside it, so a move can't
+        delete it." · "3. The browser's own folder inside each data folder: its name? Lean:
+        electron." · "4. May I push the kit (24 commits), JustWrite (2) and docgen (2)? Lean: yes. No
+        CI starts: JustWrite's only workflow runs by hand, and docgen only has GitHub's automatic
+        dependency graph." · "5. Python's RAM-bandwidth probe never ran its copies in parallel. Fix it,
+        or keep it? Lean: keep it during the move, so today's 0.40 calibration stays valid. Fixing it
+        and recalibrating becomes its own item after the move." · "6. Python re-detected hardware on
+        every status call; the new runner detects once at startup. Lean: re-detect whenever the
+        hardware panel is read — a GPU or driver change shows without a restart, and nothing probes
+        on every call." · "7. May I close your running app for about 10 minutes for the hands-on
+        check? The new kit starts llama-server, loads a small model, stops it and hard-kills it, and
+        I confirm VRAM goes back to baseline each time. Lean: yes. With the app running the card is
+        full, and two llama-servers on 8 GB is the trap CLAUDE.md warns about." · "8. docgen's
+        layout after the move (step 3, next) — OK? package.json: one npm project holding the UI, the
+        server and Electron. electron/main.js: about 40 lines, runDesktopApp({...}) with docgen's
+        settings. server/src/*.js: the server, one file per Python module with the same names;
+        serve.js is the entry. server/tests/*.test.js: beside Python's tests until Python is deleted.
+        data/: the dev data folder (ruling 6), gitignored. The kit comes in as
+        file:../just-llm-runner/server. server/just_ai_i18n_docgen/ and src-tauri/ are deleted as the
+        step's last slice. Lean: yes. It mirrors the kit's own server/src and server/tests."
 GO:     the study and the rulings given 2026-10-05; the spikes and the plan given 2026-10-07;
         the plan approved 2026-10-07, which is step 1's go. Steps 2–5: "your rec go do it all
-        the full conversion" (2026-10-07, above).
+        the full conversion" (2026-10-07, above); "keep going complete the switch to electron do it
+        all go your rec" (2026-10-08, above) — the eight answers.
 
 ### The header and Script hear an AI-model load made anywhere
 STATE:  DECIDED 2026-10-05 — "your rec go" on, as shown: "1. The header reads the kit's shared
