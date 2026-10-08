@@ -990,6 +990,39 @@ kit's register §2.
   that folder when frozen. The downloaded runtime on this machine moves there with the data-root
   move.
 
+**The port to JavaScript — wave B, the speech engines and audio** (*measured 2026-10-08*, an
+agent's checks, re-run by me; `server/src/engines/`, `server/src/audio/`, `speech_cache.js`,
+`installer.js`):
+
+- 308 of the 309 Python tests are ported (262 pass; 46 wait for a later wave's module and name
+  it). The one not ported checks FastAPI's threadpool, which has no JS counterpart.
+- The engine manager answers as Python does on copies of the dev data: 5,063 values across 13
+  sections (manifests, status, variants, sources, placements beside a booked 6.8 GB AI model,
+  prices, runtime readers), 0 different; 5,064 with a stand-in dev build. `dsp_client` against
+  `../audio.cpp/build/jv-dev/bin/audiocpp_dsp.exe`: 31 operations, 2,096,984 bytes, 0 different.
+  (`server/scripts/compare-engines.mjs`, `compare-dsp.mjs`.)
+- **Real synthesis is byte-identical:** kokoro-82m-q8 (193,244 bytes) and kitten-mini-0.8
+  (328,444 bytes) from the JS and the Python through the same runtime, with the same peak rows
+  and runtime config files; Qwen3-ASR 1.7B q8 gives the same transcript and all 12 word times.
+  Graphics memory 533 MiB before and after each run, no process left. (`compare-synth.mjs`,
+  `compare-asr.mjs`.)
+- The JS installs of eSpeak NG (365 files) and UniDic (21 files) are file-for-file Python's — the
+  wheels are downloaded and unpacked in JS, no Python at runtime. (`compare-installs.mjs`.)
+- **The boot must `await runtime.ensureHardware()` once:** hardware detection is async in JS, and
+  the sync readers (`installedExe`, `selectedAsset`, `hasFeature`, the placement readers) throw
+  "hardware not detected yet" before it. `manager.load()` and `placementFor()` await it themselves.
+- **Leftover runtimes are found by reading their environment** (`JUSTVOICE_SERVER_PID`): on
+  Windows from the process's PEB through koffi (offsets 0x20 → 0x80 → 0x3F0, checked working), on
+  Linux from `/proc`; macOS can't read it and falls back to the parent-pid check. Physical cores
+  come from CIM `Win32_Processor.NumberOfCores`.
+- Where the JS differs on purpose: a request timeout is a total limit (fetch abort), not httpx's
+  per-read limit; "stopped answering (<kind>)" names the Node error code where Python named the
+  httpx class; `wavRateChannels` accepts a non-PCM WAV where Python's `wave` raised.
+- `manager._ensureVariantLocal` returns null until `api/engine_sources_api.js` exists — that
+  module must export a sync `resolveSource(engineId, variantId)` → `[source, provenance]`.
+- Two kit bugs it found are fixed in the kit (its register has them): a `.tar.gz` extraction left
+  the archive open, and an app's `FormData` reached the kit's HTTP client as "[object FormData]".
+
 ---
 
 ## 7 · Where an AI task shows
