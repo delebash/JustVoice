@@ -11,12 +11,13 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-import numpy as np
+from array import array
 
 from justvoice.api import render_chapter_api
 from justvoice.line_takes import paragraph_joins
 from justvoice.models import ChapterLine, GenerationSettings, Settings
-from justvoice.render_core import TRIM_KEEP_MS, RenderedLine, _trim_pcm, concat_lines
+from justvoice.audio import dsp_client
+from justvoice.render_core import TRIM_BELOW_DBFS, TRIM_KEEP_MS, RenderedLine, concat_lines
 
 SR = 24000
 
@@ -27,9 +28,13 @@ def _ms(n_samples: int) -> int:
 
 def _padded(lead_ms: int, sound_ms: int, trail_ms: int, *, level: int = 8000) -> bytes:
     """A take as a model hands it over: silence, sound, silence."""
-    z = lambda ms: np.zeros(int(SR * ms / 1000), dtype="<i2")  # noqa: E731
-    return np.concatenate([z(lead_ms), np.full(int(SR * sound_ms / 1000), level, dtype="<i2"),
-                           z(trail_ms)]).tobytes()
+    z = lambda ms: [0] * int(SR * ms / 1000)  # noqa: E731
+    return array("h", z(lead_ms) + [level] * int(SR * sound_ms / 1000) + z(trail_ms)).tobytes()
+
+
+def _trim_pcm(pcm: bytes, sr: int, ch: int) -> bytes:
+    """A line's silence trim, as concat_lines asks the DSP program for it."""
+    return dsp_client.fit(pcm, sr, ch, sr, ch, trim_below_dbfs=TRIM_BELOW_DBFS, trim_keep_ms=TRIM_KEEP_MS)
 
 
 def test_a_takes_own_silence_is_cut_to_the_margin():
@@ -40,9 +45,7 @@ def test_a_takes_own_silence_is_cut_to_the_margin():
 def test_a_quiet_tail_above_the_threshold_is_kept():
     """A word's decay at −60 dBFS is sound, not padding — −45 dBFS cut up to 710 ms of one."""
     quiet = int(32768 * 10 ** (-60 / 20))  # ≈ 33
-    pcm = np.concatenate([np.frombuffer(_padded(0, 500, 0), dtype="<i2"),
-                          np.full(int(SR * 0.4), quiet, dtype="<i2"),
-                          np.zeros(int(SR * 0.7), dtype="<i2")]).tobytes()
+    pcm = _padded(0, 500, 0) + array("h", [quiet] * int(SR * 0.4) + [0] * int(SR * 0.7)).tobytes()
     assert _ms(len(_trim_pcm(pcm, SR, 1)) // 2) == 500 + 400 + TRIM_KEEP_MS
 
 

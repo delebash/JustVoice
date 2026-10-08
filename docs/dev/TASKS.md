@@ -2137,7 +2137,13 @@ WHY:    Python came in for the PyTorch speech engines (2026-06-16: "JustVoice MU
 NOT:    ASP.NET Core (a third language; its speed is moot — the heavy work is in audio.cpp and
         llama.cpp). Tauri + a Node sidecar (two runtimes). Keeping the Python sidecar. The rest
         are in the study's §9 under each ruling.
-BUILT:  no app code. The study (2026-10-05): `docs/plans/2026-10-05-electron-node-study.md`.
+BUILT:  STEP 1, 2026-10-07 — the audio math is in our fork's `dsp/` module and its program
+        `audiocpp_dsp` (the fork's `dsp/README.md`); the server calls it through
+        `server/justvoice/audio/dsp_client.py`; `audio/dsp/`, the numpy joins, trim, conform,
+        gain and python-stretch are gone. Proven by the fork's `dsp/tests/parity/` against
+        `7d0cecb`: identical 16-bit output in all 859 non-Signalsmith cases; Signalsmith 1.4.0
+        repeats, keeps lengths, isn't shifted. Record: plan §3 "Built", RESEARCH §6.
+        The study (2026-10-05): `docs/plans/2026-10-05-electron-node-study.md`.
         The plan, with the step-0 spikes run on Electron 44.7.0 and 45.0.0-alpha.16
         (2026-10-07): `docs/plans/2026-10-07-electron-node-plan.md` — READ IT before any step.
         Facts in RESEARCH §6 and the kit's RESEARCH §2. Pointers in the kit's, JustWrite's and
@@ -2198,9 +2204,42 @@ THEN:   DECIDED 2026-10-07 — the user: "lets do electron adn get rid of python
         too." · "9. When a dev data folder is renamed, rewrite the saved paths that point into
         it? Lean: yes, with a one-off command I run by hand with the apps closed. It isn't
         shipped code."
-OPEN:   step 1 — the audio math into our audio.cpp (plan §3). Steps 2–5 each need their own go.
+        Step 1's shape, DECIDED 2026-10-07 — the user: "we want to add those extra dsp features
+        we talked about should we have a c++ dsp program, i think the research is saved", then
+        "you rec on all go do research testing if need be", on, as shown: "2. A small separate
+        DSP program built from our fork (audiocpp_dsp), shipped with the app instead of
+        downloaded. (Lean.) It has the same kind of HTTP endpoints, but no models, no GPU and no
+        ggml, so it's small. It would always be there and versioned with the app. The server
+        would start it through the kit's process launcher, like the runtime. It keeps both of
+        your conditions … Until the Electron installer exists, npm run dev builds it alongside
+        the runtime from ../audio.cpp." — over 1 (endpoints on audiocpp_server: a cloud-only
+        user would have to install the runtime) and 3 (a shared library: not "endpoints"). The
+        split as shown: audiocpp_dsp holds "today's effects, resampling, joins, trim, the
+        analyzer, Kokoro blends; later formants, texture, creature presets, WORLD controls" (CPU
+        only, no models); audiocpp_server keeps speech, recognition and later the AI models
+        (voice conversion and the rest). "Step 1 itself only moves today's math; the new
+        features stay unscheduled until you pick them." And the technical choices as shown:
+        "Audio goes as a WAV request body and comes back as WAV. The study's comparison harness
+        moves into the fork's tests, so it no longer depends on a temp folder. Signalsmith
+        Stretch is built at its newest version (1.3.2) with a fixed seed. … Python's audio math
+        stays as the reference until the C++ output matches, then it's deleted in the same
+        step." Research: `docs/plans/2026-10-07-character-voice-controls.md`, RESEARCH §8.
+OPEN:   step 1's last end — packaged builds need `audiocpp_dsp` in an audio.cpp release: a tag,
+        which waits for the user's word (decided below). (`as_16k_mono` was ported, as decided
+        below: the server has no numpy or scipy.)
+        Steps 2–5 each need their own go.
         (Q8's last part answered — "no i dont have a mack": iOS builds need macOS, so how iOS
         gets built is open for the phone plan; Android builds on Windows.)
+        DECIDED 2026-10-07 — "your rec go" on, as shown: "1. May I close your running app to free
+        memory, run the full suite on both versions, then start it with npm run dev and render a
+        chapter plus a pitched preview live? Lean: yes. It ends your current session and unloads
+        its models." · "2. as_16k_mono is the last code using numpy and scipy. The plan says delete
+        it, but an install still on the original upstream audio.cpp build (v0.9.0) needs it for
+        correct word timings. Lean: port it exactly into audiocpp_dsp as one more endpoint (about
+        20 lines). Then old installs stay correct and numpy and scipy leave the server completely."
+        · "4. Packaged builds will need an audio.cpp release that includes audiocpp_dsp, which means
+        a tag. Nothing needs it until there's a packaged release, so it can wait for your word." (3,
+        pushing the kit/JustWrite/docgen commits, had no lean — not covered.)
 GO:     the study and the rulings given 2026-10-05; the spikes and the plan given 2026-10-07;
         the plan approved 2026-10-07, which is step 1's go. Steps 2–5: each needs its own.
 

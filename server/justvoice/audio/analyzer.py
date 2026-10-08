@@ -1,11 +1,11 @@
-"""Audio analyzer — format + loudness + A/B comparison."""
+"""Audio analyzer — format + loudness + A/B comparison.
+
+The header half (format, sha256) is read here; the sample half — loudness, the noise margin,
+the sample-by-sample comparison — runs in `audiocpp_dsp` (audio/dsp_client.py, 2026-10-07)."""
 
 from __future__ import annotations
 
 import hashlib
-import math
-
-import numpy as np
 
 from ..models import (
     AudioAnalysis,
@@ -13,38 +13,14 @@ from ..models import (
     LoudnessStats,
     WavFormat as WavFormatModel,
 )
-from .wav import parse_wav_header
+from . import dsp_client
+from .wav import parse_wav_header, write_wav_container
 
 
-def _compute_loudness(pcm_bytes: bytes) -> LoudnessStats:
-    if len(pcm_bytes) < 2:
-        return LoudnessStats(
-            peak_dbfs=-math.inf,
-            rms_dbfs=-math.inf,
-            crest_factor_db=0.0,
-            silence_ratio=1.0,
-            clipping_ratio=0.0,
-        )
-    samples = np.frombuffer(pcm_bytes, dtype="<i2").astype(np.float64)
-    abs_samples = np.abs(samples)
-    peak = int(abs_samples.max())
-    rms = math.sqrt(float(np.mean(samples * samples)))
-
-    max_i16 = 32767.0
-    peak_dbfs = 20.0 * math.log10(peak / max_i16) if peak > 0 else -math.inf
-    rms_dbfs = 20.0 * math.log10(rms / max_i16) if rms > 0 else -math.inf
-    crest = peak_dbfs - rms_dbfs if math.isfinite(peak_dbfs) and math.isfinite(rms_dbfs) else 0.0
-    silence_threshold = 32
-    silence_ratio = float((abs_samples < silence_threshold).sum()) / len(samples)
-    clipping_ratio = float((abs_samples >= 32760).sum()) / len(samples)
-
-    return LoudnessStats(
-        peak_dbfs=peak_dbfs,
-        rms_dbfs=rms_dbfs,
-        crest_factor_db=crest,
-        silence_ratio=silence_ratio,
-        clipping_ratio=clipping_ratio,
-    )
+def _compute_loudness(wav: bytes) -> LoudnessStats:
+    """Peak, RMS and crest in dBFS (-inf for silence), and the share of samples that are near
+    silent (|x| < 32) or clipped (|x| ≥ 32760) — over the data chunk's samples as they lie."""
+    return LoudnessStats(**dsp_client.loudness(wav))
 
 
 def noise_margin_db(pcm_bytes: bytes, sample_rate: int, channels: int) -> float | None:
@@ -53,28 +29,12 @@ def noise_margin_db(pcm_bytes: bytes, sample_rate: int, channels: int) -> float 
     pauses between words, where only the room is heard. A clean clip reads
     40 dB and more; under 25 a clone copies the hiss (Alexandria's own floor).
     None for a clip under half a second, or one that is all silence."""
-    samples = np.frombuffer(pcm_bytes, dtype="<i2").astype(np.float64)
-    if channels > 1:
-        usable = len(samples) - len(samples) % channels
-        samples = samples[:usable].reshape(-1, channels).mean(axis=1)
-    frame = max(1, int(sample_rate * 0.02))
-    count = len(samples) // frame
-    if count < 25:
-        return None
-    frames = samples[: count * frame].reshape(count, frame)
-    rms = np.sqrt(np.mean(frames * frames, axis=1))
-    rms = np.maximum(rms, 1.0)  # one LSB: digital silence reads as -90 dBFS, not -inf
-    db = 20.0 * np.log10(rms / 32767.0)
-    loud, quiet = float(np.percentile(db, 90)), float(np.percentile(db, 10))
-    if loud <= -89.0:
-        return None
-    return round(loud - quiet, 1)
+    return dsp_client.noise_margin(write_wav_container(pcm_bytes, sample_rate, channels))
 
 
 def analyze(buf: bytes) -> AudioAnalysis:
-    fmt, data_off, data_size = parse_wav_header(buf)
-    pcm = buf[data_off : data_off + data_size]
-    loudness = _compute_loudness(pcm)
+    fmt, _data_off, _data_size = parse_wav_header(buf)
+    loudness = _compute_loudness(buf)
     return AudioAnalysis(
         sha256=hashlib.sha256(buf).hexdigest(),
         file_size_bytes=len(buf),
@@ -103,17 +63,10 @@ def compare(a_buf: bytes, b_buf: bytes) -> ComparisonReport:
     max_sample_delta = None
     pct_identical_samples = None
     if format_match:
-        _, ao, asz = parse_wav_header(a_buf)
-        _, bo, bsz = parse_wav_header(b_buf)
-        length = min(asz, bsz)
-        n = length // 2
-        if n > 0:
-            sa = np.frombuffer(a_buf[ao : ao + length], dtype="<i2").astype(np.float64)
-            sb = np.frombuffer(b_buf[bo : bo + length], dtype="<i2").astype(np.float64)
-            diff = sb - sa
-            sample_rmse = float(math.sqrt(np.mean((diff / 32767.0) ** 2)))
-            max_sample_delta = float(np.abs(diff).max() / 32767.0)
-            pct_identical_samples = float((diff == 0).sum() / n)
+        d = dsp_client.sample_diff(a_buf, b_buf)
+        sample_rmse = d["sample_rmse"]
+        max_sample_delta = d["max_sample_delta"]
+        pct_identical_samples = d["pct_identical_samples"]
 
     if identical:
         verdict = "identical"

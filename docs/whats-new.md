@@ -2,6 +2,13 @@
 
 ## v0.1.0
 
+- **The audio processing moved into our speech runtime's own program (2026-10-07)** — effects,
+  a line's speed, gain and pitch, the joins between pieces, trimming and the analyzer now run in
+  a small program built from our audio.cpp copy, ready for the app to leave Python. Everything
+  sounds the same, sample for sample, except speed and pitch, which use the newest version of
+  their library: lines with a pitch, a server-side speed or a pitch-shifting effect render again
+  the next time they're rendered; every other rendered line is kept
+  ([Effects](effects.md))
 - **Small fixes on Render and Studio's steps (2026-10-07)** — a waiting render counts what
   else is ahead (*…on Kokoro, and 12 more lines*); the Render step says how many lines can't
   render (*0 of 4 lines rendered · 8 can't render*); a game's Lines step says *Checking the

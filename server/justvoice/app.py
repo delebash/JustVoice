@@ -369,6 +369,9 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
             shutdown_manager()
         except Exception as e:
             log.warning("manager shutdown raised: %s", e)
+        from .audio import dsp_client
+
+        dsp_client.stop()
 
     # GUI — the Vite-built Vue SPA (dist/). The Tauri webview loads this build
     # directly; serving it here lets the headless server show the same UI at

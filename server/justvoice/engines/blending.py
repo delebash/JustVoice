@@ -4,8 +4,8 @@
 Managed engines run as subprocess procs the registry never holds, so a
 python-call into an adapter could never reach them for blending. It also
 never needed to: a Kokoro voice is a (510, 1, 256) float32 style array
-sitting in the installed variant's name-keyed voices file (np.load-able),
-and a blend is the elementwise weighted average
+sitting in the installed model file's embedded voices, and a blend is the
+elementwise weighted average
 
     blend[i] = Σ(wⱼ · voiceⱼ[i]) / Σwⱼ
 
@@ -13,6 +13,9 @@ and a blend is the elementwise weighted average
 blend therefore needs only files on disk; the engine can be unloaded.
 Only *hearing* a blend needs the engine, and that rides the normal synth
 path as ``SynthRequest.voice_vector``.
+
+The math itself runs in `audiocpp_dsp` (audio/dsp_client.py, 2026-10-07):
+this module resolves which voices, as raw float32 bytes, and checks shapes.
 
 Per-engine dispatch is explicit because exactly one engine blends today.
 Adding a second means adding its arm here — the requirement is an engine that
@@ -154,7 +157,9 @@ def pack_mean(engine_id: str, *, data_dir: Path) -> list[float]:
     """
     if engine_id != "kokoro":
         raise NotImplementedError(f"engine '{engine_id}' has no voice pack")
-    return _kokoro_pack_mean(data_dir).ravel().astype("float32").tolist()
+    from ..audio.dsp_client import f32_list
+
+    return f32_list(_kokoro_pack_mean(data_dir))
 
 
 # ── Kokoro ───────────────────────────────────────────────────────────────
@@ -177,14 +182,15 @@ def _kokoro_gguf(data_dir: Path) -> Path:
     raise LookupError("Kokoro is not downloaded — download it on AI Settings → Speech engines first")
 
 
-_PACK_CACHE: dict[tuple[str, int], tuple[dict, list]] = {}
+_PACK_CACHE: dict[tuple[str, int], tuple[dict, list, int]] = {}
 
 
-def _kokoro_pack(data_dir: Path):
-    """The preset voices as name → (rows, 1, 256) float32 arrays, plus their names in
+def _kokoro_pack(data_dir: Path) -> tuple[dict[str, bytes], list[str], int]:
+    """The preset voices as name → raw little-endian float32 rows × features, their names in
     `voices.json` order — a list, never a set: the mean sums float32 voices in this order, and a
     set's order follows Python's per-process string hashing, so the "mean" blend changed in its
-    last bits on every server restart (TASKS, 2026-10-05; fixed 2026-10-06).
+    last bits on every server restart (TASKS, 2026-10-05; fixed 2026-10-06) — and the feature
+    count (256).
 
     Since the 2026-10-01 switch Kokoro is one audio.cpp GGUF, and its voices are files
     embedded in it — `voices.json` plus `voices/<id>.bin`, raw float32 rows × 256
@@ -192,8 +198,6 @@ def _kokoro_pack(data_dir: Path):
     the old engine's `voices*.bin`/`.npz` and every blend answered "kokoro is not installed".
     Read once per model file version."""
     import json
-
-    import numpy as np
 
     from .audiocpp.gguf_files import embedded_files
 
@@ -204,41 +208,28 @@ def _kokoro_pack(data_dir: Path):
     files = embedded_files(gguf)
     if "voices.json" not in files:
         raise LookupError(f"{gguf.name} carries no voices — re-download Kokoro")
-    pack: dict = {}
+    pack: dict[str, bytes] = {}
+    features = 0
     for name, entry in json.loads(files["voices.json"]).items():
         raw = files.get(f"voices/{entry['path']}")
         if raw is None:
             continue
         rows, cols = int(entry["rows"]), int(entry["cols"])
-        pack[name] = np.frombuffer(raw, dtype="<f4").reshape(rows, 1, cols).copy()
+        pack[name] = bytes(raw[: rows * cols * 4])
+        features = features or cols
     _PACK_CACHE.clear()
-    _PACK_CACHE[key] = (pack, list(pack))
+    _PACK_CACHE[key] = (pack, list(pack), features)
     return _PACK_CACHE[key]
 
 
-def _kokoro_pack_shape(pack, names) -> tuple:
-    """The pack's per-voice array shape, e.g. (510, 1, 256). Read from the
-    pack rather than hardcoded — a future pack may size differently, and a
-    wrong constant here would corrupt every recombine silently."""
-    import numpy as np
+def _kokoro_pack_mean(data_dir: Path) -> bytes:
+    """Centroid over every preset in the pack (float32 bytes, the pack's shape)."""
+    from ..audio import dsp_client
 
-    for n in names:
-        return np.asarray(pack[n]).shape
-    raise LookupError("kokoro voices file holds no voices")
-
-
-def _kokoro_pack_mean(data_dir: Path):
-    """Centroid over every preset in the pack, in PACK SHAPE."""
-    import numpy as np
-
-    pack, names = _kokoro_pack(data_dir)
+    pack, names, _features = _kokoro_pack(data_dir)
     if not names:
         raise LookupError("kokoro voices file holds no voices")
-    acc = None
-    for n in names:
-        v = np.asarray(pack[n], dtype=np.float32)
-        acc = v.copy() if acc is None else acc + v
-    return acc / float(len(names))
+    return dsp_client.vectors_mean([pack[n] for n in names])
 
 
 def _kokoro_vectors(
@@ -247,49 +238,44 @@ def _kokoro_vectors(
     resolve_stored: Callable[[str], "list[float] | None"],
     *,
     shaped: bool = False,
-) -> "list":
-    """Resolve ids → arrays. `shaped` keeps the pack's (510, 1, 256) form
-    (recombine needs the feature axis); otherwise they come back flat, which
-    is what a weighted average wants and what a stored blend already is."""
-    import numpy as np
+) -> tuple[list[bytes], int]:
+    """Resolve ids → float32 bytes, and the pack's feature count. `shaped` (recombine) needs a
+    stored blend to have exactly a preset's size, so its feature axis lines up; otherwise
+    (a weighted average) every source just needs the same size."""
+    from ..audio import dsp_client
 
-    pack, names = _kokoro_pack(data_dir)
-    shape = _kokoro_pack_shape(pack, names) if shaped else None
+    pack, names, features = _kokoro_pack(data_dir)
+    if not names:
+        raise LookupError("kokoro voices file holds no voices")
+    pack_size = len(pack[names[0]]) // 4
     mean_cache = None
 
-    out: list = []
+    out: list[bytes] = []
     for vid in source_ids:
         if vid == MEAN_SOURCE:
             if mean_cache is None:
                 mean_cache = _kokoro_pack_mean(data_dir)
             arr = mean_cache
         elif vid in names:
-            arr = np.asarray(pack[vid], dtype=np.float32)
+            arr = pack[vid]
         else:
             stored = resolve_stored(vid)
             if stored is None:
                 raise LookupError(
                     f"unknown source voice '{vid}' — not a kokoro preset or a stored blend"
                 )
-            arr = np.asarray(stored, dtype=np.float32)
-        if shaped:
-            # A stored blend arrives flat; put it back in pack shape so its
-            # feature axis lines up with a preset's.
-            if arr.shape != shape:
-                if arr.size != int(np.prod(shape)):
-                    raise ValueError(
-                        f"voice '{vid}' has {arr.size} values; this pack's voices "
-                        f"are {shape} — re-blend against the installed pack."
-                    )
-                arr = arr.reshape(shape)
-        else:
-            arr = arr.ravel()
+            arr = dsp_client.f32_bytes(stored)
+        if shaped and len(arr) // 4 != pack_size:
+            raise ValueError(
+                f"voice '{vid}' has {len(arr) // 4} values; this pack's voices "
+                f"are {(pack_size // features, 1, features)} — re-blend against the installed pack."
+            )
         out.append(arr)
 
-    sizes = {v.size for v in out}
+    sizes = {len(v) // 4 for v in out}
     if len(sizes) != 1:
         raise ValueError(f"source voices have mismatched vector sizes: {sorted(sizes)}")
-    return out
+    return out, features
 
 
 def _kokoro_blend(
@@ -299,20 +285,12 @@ def _kokoro_blend(
     resolve_stored: Callable[[str], "list[float] | None"],
     normalize: bool = True,
 ) -> list[float]:
-    import numpy as np
+    from ..audio import dsp_client
 
-    vecs = _kokoro_vectors(source_ids, data_dir, resolve_stored)
-
-    denom = 1.0
-    if normalize:
-        denom = float(sum(weights))
-        if denom == 0:
-            raise ValueError("weights must sum to a non-zero value")
-
-    out = np.zeros_like(vecs[0])
-    for v, w in zip(vecs, weights):
-        out += (w / denom) * v
-    return out.astype(np.float32).tolist()
+    vecs, _features = _kokoro_vectors(source_ids, data_dir, resolve_stored)
+    if normalize and float(sum(weights)) == 0:
+        raise ValueError("weights must sum to a non-zero value")
+    return dsp_client.f32_list(dsp_client.vectors_blend(vecs, weights, normalize))
 
 
 def _kokoro_recombine(
@@ -320,31 +298,29 @@ def _kokoro_recombine(
     data_dir: Path,
     resolve_stored: Callable[[str], "list[float] | None"],
 ) -> list[float]:
-    import numpy as np
+    from ..audio import dsp_client
 
     if not segments:
         raise ValueError("recombine needs at least one segment")
 
     ids = [s[0] for s in segments]
-    vecs = _kokoro_vectors(ids, data_dir, resolve_stored, shaped=True)
-    features = vecs[0].shape[-1]
+    vecs, features = _kokoro_vectors(ids, data_dir, resolve_stored, shaped=True)
 
-    out = np.zeros_like(vecs[0])
-    covered = np.zeros(features, dtype=bool)
-    for (vid, start, end), v in zip(segments, vecs):
+    covered = [False] * features
+    for vid, start, end in segments:
         lo = int(round(max(0.0, min(1.0, float(start))) * features))
         hi = int(round(max(0.0, min(1.0, float(end))) * features))
         if hi <= lo:
             raise ValueError(
                 f"segment for '{vid}' is empty: start {start} is not below end {end}"
             )
-        out[..., lo:hi] = v[..., lo:hi]
-        covered[lo:hi] = True
+        covered[lo:hi] = [True] * (hi - lo)
 
-    if not covered.all():
-        gap = int((~covered).sum())
+    if not all(covered):
+        gap = covered.count(False)
         raise ValueError(
             f"the segments leave {gap} of {features} features unset — a voice "
             f"with holes in its style vector does not render; cover 0% to 100%."
         )
-    return out.astype(np.float32).ravel().tolist()
+    spans = [(i, float(start), float(end)) for i, (_vid, start, end) in enumerate(segments)]
+    return dsp_client.f32_list(dsp_client.vectors_recombine(vecs, spans, features))

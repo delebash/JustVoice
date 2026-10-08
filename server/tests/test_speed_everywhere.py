@@ -12,15 +12,17 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-import numpy as np
+import math
+from array import array
+
 import pytest
 from fastapi.testclient import TestClient
 
 import justvoice.engines.manager as manager_module
 from justvoice.app import create_app
-from justvoice.audio import dsp
-from justvoice.audio.effects import effects_chain_hash
-from justvoice.audio.wav import parse_wav_header
+from justvoice.audio import dsp_client
+from justvoice.audio.effects import apply_effects_chain, effects_chain_hash
+from justvoice.audio.wav import parse_wav_header, write_wav_container
 from justvoice.cache import CacheKeyBuilder, pack_pcm_with_format
 from justvoice.delivery import canonical_json
 from justvoice.engines.external_openai import ExternalOpenAiTtsBackend
@@ -32,43 +34,44 @@ SR = 16000
 N = SR  # one second
 
 
-def _tone_pcm(n: int = N, amp: float = 0.3) -> bytes:
-    t = np.arange(n) / SR
-    return (amp * np.sin(2 * np.pi * 220.0 * t) * 32767).astype("<i2").tobytes()
+def _tone_pcm(n: int = N, amp: float = 0.3, channels: int = 1) -> bytes:
+    return array("h", [int(amp * math.sin(2 * math.pi * 220.0 * (i // channels) / SR) * 32767)
+                       for i in range(n * channels)]).tobytes()
 
 
 TONE = _tone_pcm()
 
 
 def _rms(pcm: bytes) -> float:
-    s = np.frombuffer(pcm, dtype="<i2").astype(np.float64)
-    return float(np.sqrt(np.mean(s * s)))
+    s = array("h", pcm)
+    return math.sqrt(sum(v * v for v in s) / len(s))
 
 
-# ── the stretch itself ──────────────────────────────────────────────────
+# ── the stretch itself (in audiocpp_dsp since 2026-10-07) ───────────────
 
 
 @pytest.mark.parametrize("factor", [0.8, 1.25, 2.0])
 def test_the_stretch_is_n_over_factor_long(factor: float) -> None:
-    x = np.frombuffer(TONE, dtype="<i2").astype(np.float32).reshape(1, -1) / 32767
-    assert dsp.time_stretch(x, SR, factor=factor).shape == (1, round(N / factor))
+    assert len(dsp_client.shape(TONE, SR, 1, stretch_factor=factor)) // 2 == round(N / factor)
 
 
 def test_a_speed_outside_the_range_is_clamped_to_it() -> None:
-    x = np.zeros((1, N), dtype=np.float32)
-    assert dsp.time_stretch(x, SR, factor=3.0).shape[-1] == N // 2
-    assert dsp.time_stretch(x, SR, factor=0.25).shape[-1] == N * 2
+    silence = b"\x00\x00" * N
+    assert len(dsp_client.shape(silence, SR, 1, stretch_factor=3.0)) // 2 == N // 2
+    assert len(dsp_client.shape(silence, SR, 1, stretch_factor=0.25)) // 2 == N * 2
 
 
-def test_one_is_a_bypass_and_stereo_keeps_both_channels() -> None:
-    x = np.zeros((2, N), dtype=np.float32)
-    assert dsp.time_stretch(x, SR, factor=1.0) is x
-    assert dsp.time_stretch(x, SR, factor=1.25).shape == (2, round(N / 1.25))
+def test_a_speed_of_one_never_reaches_the_stretch_and_stereo_keeps_both_channels() -> None:
+    assert apply_line_delivery(TONE, SR, 1, {"speed": 1.0}, speed_native=False) == TONE
+    stereo = _tone_pcm(channels=2)
+    assert len(dsp_client.shape(stereo, SR, 2, stretch_factor=1.25)) // 4 == round(N / 1.25)
 
 
 def test_the_stretch_is_not_an_effect() -> None:
-    """Effects promise the length they were given; a stretch cannot."""
-    assert dsp.time_stretch not in dsp.EFFECTS.values()
+    """Effects promise the length they were given; a stretch cannot — a chain entry naming
+    it is skipped like any unknown effect."""
+    wav = write_wav_container(TONE, SR, 1)
+    assert apply_effects_chain(wav, [{"type": "time_stretch", "params": {"factor": 2.0}}]) == wav
 
 
 # ── which engines pace themselves ───────────────────────────────────────

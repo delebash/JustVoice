@@ -350,7 +350,7 @@ Three facts this grid exists to keep visible:
 - **`speed` reaches two models; the server paces the rest.** Kokoro and
   KittenTTS take it (capability row `speed_native=True`); for every other
   engine `render_core.apply_line_delivery` time-stretches the finished line
-  (`audio/dsp.time_stretch`, Signalsmith, pitch kept; 0.5–2.0×). Gap 8 of the
+  (`audiocpp_dsp`'s `shape`, Signalsmith, pitch kept; 0.5–2.0×). Gap 8 of the
   switch plan, built 2026-10-02 — `docs/plans/2026-10-02-gap-8-speed.md`.
 - **Prose direction reaches the two checkpoints that cannot clone.** Qwen3 Base
   has no instruction input. "Direct in words" and "use this speaker's cloned

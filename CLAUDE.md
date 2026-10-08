@@ -25,6 +25,11 @@ justvoice-server serve             # headless; same UI at /ui/
 cd server && ruff check . && pytest    # both must pass before a commit
 ```
 
+The server's audio math runs in `audiocpp_dsp`, a small program from our audio.cpp fork's `dsp/`
+module (since 2026-10-07): the server, pytest and the gate all need it built — `npm run dev`
+builds it beside the runtime into `../audio.cpp/build/jv-dev/bin`, or `JUSTVOICE_DSP_EXE` names
+one. Its proof against the Python it replaced is the fork's `dsp/tests/parity/`.
+
 **One speech runtime runs every engine (since 2026-10-01).** Installing any engine — the
 runtime row on AI Settings → Speech engines — downloads the pinned audio.cpp build for this
 machine (`server/justvoice/engines/audiocpp/`, binaries via the kit's `acquire_runtime`) plus
@@ -172,7 +177,8 @@ implementation lives in the kit. The one-off snapshot scripts predating the law 
 | TTS/STT models + the speech runtime | `server/justvoice/engines/<engine>/manifest.py` (catalog) · `engines/audiocpp/` (runtime + request mapping) |
 | Storage — settings, voices, profiles, projects, chapters, takes, generations, lexicons, personas, story items, renderer prefs | `server/justvoice/storage/` + `database/` |
 | Render orchestration + cache | `server/justvoice/render_core.py`, `api/render_chapter_api.py` |
-| Audio analyzer, WAV math, mastering | `server/justvoice/audio/`, `mastering.py` |
+| Audio math — effects, speed/gain/pitch, joins, trim, resampling, analyzer, blends | our fork's `dsp/` (`audiocpp_dsp`), reached through `server/justvoice/audio/dsp_client.py` |
+| WAV headers, mastering | `server/justvoice/audio/`, `mastering.py` |
 | API endpoints | `server/justvoice/api/<area>_api.py` |
 | Request/response shapes | `server/justvoice/models.py` |
 | UI components and views | `src/components/`, `views/` |

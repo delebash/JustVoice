@@ -10,7 +10,6 @@ import struct
 from pathlib import Path
 from types import SimpleNamespace
 
-import numpy as np
 import pytest
 
 from justvoice.engines import blending
@@ -45,15 +44,15 @@ def _gguf_with_files(path: Path, files: dict[str, bytes]) -> Path:
 ROWS = 3
 
 
-def _voice(seed: float) -> np.ndarray:
-    return (np.arange(ROWS * 256, dtype="<f4") * 0 + seed).reshape(ROWS, 256)
+def _voice(seed: float) -> bytes:
+    return struct.pack(f"<{ROWS * 256}f", *([seed] * (ROWS * 256)))
 
 
 @pytest.fixture()
 def kokoro_gguf(tmp_path, monkeypatch):
     voices = {"af_heart": _voice(1.0), "am_adam": _voice(3.0)}
     files = {"voices.json": json.dumps({n: {"rows": ROWS, "cols": 256, "path": f"{n}.bin"} for n in voices}).encode(),
-             **{f"voices/{n}.bin": v.tobytes() for n, v in voices.items()},
+             **{f"voices/{n}.bin": v for n, v in voices.items()},
              "config.json": b"{}"}
     g = _gguf_with_files(tmp_path / "kokoro.gguf", files)
     monkeypatch.setattr(blending, "_kokoro_gguf", lambda data_dir: g)
@@ -76,8 +75,8 @@ def test_a_gguf_without_embedded_files_reads_as_none(tmp_path):
 
 
 def test_blends_are_made_from_the_ggufs_voices(kokoro_gguf, tmp_path):
-    pack, names = blending._kokoro_pack(tmp_path)
-    assert names == ["af_heart", "am_adam"] and pack["af_heart"].shape == (ROWS, 1, 256)
+    pack, names, features = blending._kokoro_pack(tmp_path)
+    assert names == ["af_heart", "am_adam"] and len(pack["af_heart"]) == ROWS * 256 * 4 and features == 256
     mix = blending.blend("kokoro", ["af_heart", "am_adam"], [0.5, 0.5], data_dir=tmp_path,
                          resolve_stored=lambda vid: None)
     assert len(mix) == ROWS * 256 and mix[0] == pytest.approx(2.0)
@@ -124,10 +123,10 @@ def test_a_blend_rides_voice_pack_with_a_preset_of_its_language():
 
 def test_the_pack_file_is_written_once_by_content(tmp_path, monkeypatch):
     monkeypatch.setattr(slot, "_data_dir", lambda: tmp_path)
-    vec = list(_voice(2.0).ravel())
+    vec = [2.0] * (ROWS * 256)
     p1 = slot.write_voice_pack(vec)
     p2 = slot.write_voice_pack(vec)
-    assert p1 == p2 and p1.read_bytes() == np.asarray(vec, dtype="<f4").tobytes()
+    assert p1 == p2 and p1.read_bytes() == struct.pack(f"<{len(vec)}f", *vec)
     with pytest.raises(slot.AudioCppError, match="rows × 256"):
         slot.write_voice_pack([1.0, 2.0])
 

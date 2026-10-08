@@ -16,7 +16,6 @@ dependencies = [
     "uvicorn[standard]>=0.32",
     "pydantic>=2.9",
     "httpx>=0.27",
-    "numpy>=1.26",
     "platformdirs>=4",
     "typer>=0.12",
     "psutil>=5.9",  # CPU/RAM detection in system_info (stdlib fallback exists)
@@ -28,9 +27,9 @@ dependencies = [
     # statically links JUCE), and that single dependency was what forced the
     # whole project to GPL. Nothing else in this list is copyleft, so
     # replacing it is what makes an MIT relicense possible at all.
-    # The twelve effects it provided now live in `justvoice/audio/dsp/`.
-    "scipy>=1.11",  # sosfilt/lfilter — fast IIR. numpy alone cannot do recursive filters at speed. BSD-3-Clause
-    "python-stretch>=0.3",  # Signalsmith Stretch bindings — pitch shift. MIT; prebuilt wheels incl. Windows
+    # The twelve effects it provided lived in `justvoice/audio/dsp/` (numpy, scipy,
+    # python-stretch) until 2026-10-07; every piece of audio math now runs in
+    # `audiocpp_dsp`, our audio.cpp fork's DSP program (audio/dsp_client.py).
     # MCP server (Model Context Protocol) — local AI agents call
     # justvoice.speak / list_voices / list_personas at /mcp. Same major
     # pin as upstream voicebox.
@@ -55,7 +54,8 @@ dependencies = [
 # never the real dependency. Since 2026-10-01 no engine has Python
 # dependencies at all — every model runs in the audio.cpp speech runtime the
 # app downloads. `pip install -e .` is the whole server setup.
-dev = ["pytest>=8", "pytest-asyncio>=0.24", "playwright>=1.48", "ruff>=0.7"]
+# numpy: some tests build their test signals with it (the server itself has none since 2026-10-07).
+dev = ["pytest>=8", "pytest-asyncio>=0.24", "playwright>=1.48", "ruff>=0.7", "numpy>=1.26"]
 
 # The frozen PyInstaller bundle's runner source — @main, never a SHA pin (JW's
 # lesson: a stale pin ships old code while dev runs the editable HEAD).

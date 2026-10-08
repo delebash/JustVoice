@@ -1,14 +1,14 @@
 # SPDX-License-Identifier: MIT
-"""Tests for the chunked TTS splitter + concatenator (Phase 3 lift)."""
+"""Tests for the chunked TTS splitter (Phase 3 lift) and the joins between a line's pieces —
+which run in audiocpp_dsp since 2026-10-07 (audio/dsp_client.py)."""
 
 from __future__ import annotations
 
-import numpy as np
+from array import array
 
-from justvoice.audio.chunked import (
-    concatenate_audio_chunks,
-    split_text_into_chunks,
-)
+from justvoice.audio import dsp_client
+from justvoice.audio.chunked import split_text_into_chunks
+from justvoice.audio.wav import write_wav_container
 
 
 def test_short_text_is_one_chunk():
@@ -43,37 +43,43 @@ def test_does_not_split_paralinguistic_tag():
     assert "[laugh]" in full
 
 
+def _pcm(samples) -> bytes:
+    return array("h", samples).tobytes()
+
+
+def _samples(pcm: bytes) -> list[int]:
+    return array("h", pcm).tolist()
+
+
 def test_concatenate_with_crossfade_no_clicks():
     """Crossfading two short chunks should produce a smooth boundary."""
     sr = 44100
-    a = np.ones(sr // 10, dtype=np.float32) * 0.5  # 100ms tone
-    b = np.ones(sr // 10, dtype=np.float32) * 0.5
-    merged = concatenate_audio_chunks([a, b], sample_rate=sr, crossfade_ms=20)
+    a = _pcm([16383] * (sr // 10))  # 100 ms at half scale
+    b = _pcm([16383] * (sr // 10))
+    merged = _samples(dsp_client.join([(a, sr, 1), (b, sr, 1)], 20))
     # Without crossfade the concat would be 2*len(a). With 20ms overlap it's less.
-    expected_min = len(a) + len(b) - int(sr * 0.020)
-    assert expected_min - 10 <= len(merged) <= len(a) + len(b)
+    n = sr // 10
+    assert 2 * n - int(sr * 0.020) - 10 <= len(merged) <= 2 * n
     # No discontinuity over the crossfade region — adjacent samples differ by
     # at most a small fade amount.
-    diffs = np.diff(merged)
-    assert float(np.max(np.abs(diffs))) < 0.1
+    assert max(abs(x - y) for x, y in zip(merged, merged[1:])) < 0.1 * 32767
 
 
-def test_empty_input_returns_empty_array():
-    out = concatenate_audio_chunks([], sample_rate=44100)
-    assert out.size == 0
-    assert out.dtype == np.float32
+def test_empty_input_returns_empty_audio():
+    assert dsp_client.join([], 50) == b""
 
 
-def _piece(sr, lead_ms, sound_ms, tail_ms):
+def _piece(sr, lead_ms, sound_ms, tail_ms) -> bytes:
     """A piece as a model hands it over: silence, sound, silence."""
-    z = lambda ms: np.zeros(int(sr * ms / 1000), dtype=np.float32)  # noqa: E731
-    return np.concatenate([z(lead_ms), np.full(int(sr * sound_ms / 1000), 0.3, dtype=np.float32), z(tail_ms)])
+    z = lambda ms: [0] * int(sr * ms / 1000)  # noqa: E731
+    return _pcm(z(lead_ms) + [int(0.3 * 32767)] * int(sr * sound_ms / 1000) + z(tail_ms))
 
 
-def _gaps_ms(x, sr):
-    quiet = np.abs(x) <= 10 ** (-60 / 20)
-    out, i = [], int(np.argmax(~quiet))
-    last = len(x) - int(np.argmax(~quiet[::-1]))
+def _gaps_ms(x: list[int], sr) -> list[int]:
+    quiet = [abs(v) / 32767 <= 10 ** (-60 / 20) for v in x]
+    i = quiet.index(False)
+    last = len(x) - quiet[::-1].index(False)
+    out = []
     while i < last:
         if quiet[i]:
             j = i
@@ -92,7 +98,7 @@ def test_pieces_meet_at_the_piece_pause_not_their_padding():
 
     sr = 24000
     a, b = _piece(sr, 265, 1000, 715), _piece(sr, 265, 1000, 715)
-    merged = concatenate_audio_chunks([a, b], sample_rate=sr, crossfade_ms=50)
+    merged = _samples(dsp_client.join([(a, sr, 1), (b, sr, 1)], 50))
     # Quiet is judged in 10 ms windows, so the join lands within a window or two of the pause.
     (gap,) = _gaps_ms(merged, sr)
     assert PIECE_JOIN_PAUSE_MS <= gap <= PIECE_JOIN_PAUSE_MS + 20
@@ -103,24 +109,17 @@ def test_pieces_meet_at_the_piece_pause_not_their_padding():
 def test_a_join_already_short_is_left_as_it_is():
     sr = 24000
     a, b = _piece(sr, 0, 500, 60), _piece(sr, 40, 500, 0)
-    merged = concatenate_audio_chunks([a, b], sample_rate=sr, crossfade_ms=50)
+    merged = _samples(dsp_client.join([(a, sr, 1), (b, sr, 1)], 50))
     assert _gaps_ms(merged, sr) == [100]
 
 
 def test_a_streamed_audition_joins_its_pieces_like_a_line():
     """2026-10-07: the Voices preview streams pieces one by one; holding each piece's
     quiet back for the next seam gives exactly the line's join."""
-    from justvoice.audio.chunked import held_for_next_seam, join_pieces
-
     sr = 24000
     pieces = [_piece(sr, 265, 800, 715), _piece(sr, 265, 600, 715), _piece(sr, 265, 700, 715)]
     streamed, held = [], None
     for i, p in enumerate(pieces):
-        if held is not None:
-            p = join_pieces(held, p, sr, 50)
-        if i < len(pieces) - 1:
-            out, held = held_for_next_seam(p, sr, 50)
-        else:
-            out, held = p, None
+        out, held = dsp_client.stream_join(write_wav_container(p, sr, 1), held, last=i == len(pieces) - 1, crossfade_ms=50)
         streamed.append(out)
-    assert np.array_equal(np.concatenate(streamed), concatenate_audio_chunks(pieces, sample_rate=sr))
+    assert b"".join(streamed) == dsp_client.join([(p, sr, 1) for p in pieces], 50)

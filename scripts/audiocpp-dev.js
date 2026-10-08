@@ -173,7 +173,8 @@ export function prepareAudioCppDevBuild() {
       + `delete ${BUILD} to rebuild it for the graphics card (about 30 minutes).`);
   }
   const t0 = Date.now();
-  run(["cmake", "--build", BUILD, "--target", "audiocpp_server"], { vs, cuda });
+  // The speech runtime, and the DSP program the server sends its audio math to (2026-10-07).
+  run(["cmake", "--build", BUILD, "--target", "audiocpp_server", "audiocpp_dsp"], { vs, cuda });
   if (cuda && WIN) copyCudaRuntime(cuda);
   describe();
   console.log(`[audio.cpp] dev build ready in ${Math.round((Date.now() - t0) / 1000)} s: ${BIN}`);

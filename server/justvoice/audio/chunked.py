@@ -10,9 +10,10 @@
 # portions.
 """Chunked TTS generation utilities.
 
-Splits long text into sentence-boundary chunks, generates audio per-chunk
-via any TTS backend, and concatenates with crossfade. All logic is
-engine-agnostic — wraps the standard `synthesize()` interface.
+Splits long text into sentence-boundary chunks; each piece is spoken by any
+TTS backend, and the pieces are joined by the DSP program (`dsp_client.join`,
+by the PIECE_JOIN_* rules below — the joins themselves moved to our audio.cpp
+fork's `audiocpp_dsp` on 2026-10-07). All logic is engine-agnostic.
 
 Short text (≤ max_chunk_chars) uses the single-shot fast path with zero
 overhead.
@@ -28,8 +29,6 @@ from __future__ import annotations
 import logging
 import re
 from typing import List
-
-import numpy as np
 
 
 logger = logging.getLogger("justvoice.audio.chunked")
@@ -187,86 +186,12 @@ def _safe_hard_cut(segment: str, max_chars: int) -> int:
 #: cut, against the ~260 ms Kokoro pauses at a sentence end inside a piece (median of
 #: 214 on The Ninth Facet). "Quiet" is judged the way that pause was measured: 10 ms
 #: windows under PIECE_JOIN_SILENCE_DBFS. A per-sample −70 dBFS left a faint fade on
-#: top, and the joins measured 440-480 ms.
+#: top, and the joins measured 440-480 ms. The rule is applied in `audiocpp_dsp`
+#: (`dsp_client.join` / `stream_join` send these values): where `a` ends and `b`
+#: begins in silence, that silence is cut down to the pause — half from each side,
+#: the rest from whichever has more — and the two meet without a crossfade; a join
+#: already that short, or a piece with no sound, gets the short crossfade. A streamed
+#: piece holds back its trailing quiet and one crossfade window for the next seam.
 PIECE_JOIN_PAUSE_MS = 260
 PIECE_JOIN_SILENCE_DBFS = -60.0
-_WINDOW_MS = 10
-
-
-def _quiet_run(x: np.ndarray, sample_rate: int, *, from_end: bool) -> int:
-    """How many samples at the start (or end) of `x` lie in quiet 10 ms windows."""
-    w = max(1, int(sample_rate * _WINDOW_MS / 1000))
-    n = len(x) // w
-    if n == 0:
-        return len(x)
-    frames = x[: n * w].reshape(n, w) if not from_end else x[len(x) - n * w:].reshape(n, w)
-    rms = np.sqrt((frames.astype(np.float64) ** 2).mean(axis=1))
-    loud = np.nonzero(rms > 10 ** (PIECE_JOIN_SILENCE_DBFS / 20))[0]
-    if len(loud) == 0:
-        return len(x)
-    return int((n - 1 - loud[-1]) * w) if from_end else int(loud[0] * w)
-
-
-def join_pieces(a: np.ndarray, b: np.ndarray, sample_rate: int, crossfade_ms: int = 50) -> np.ndarray:
-    """One seam: piece `a` then piece `b`, as one array.
-
-    Where `a` ends and `b` begins in silence, that silence is cut down to
-    PIECE_JOIN_PAUSE_MS — half from each side, the rest from whichever has more
-    — and the two meet without a crossfade (silence against silence cannot
-    click). A join already that short, or a piece with no sound, is left as it
-    is, with the short crossfade. The one rule for a line's pieces and for a
-    streamed audition's (decided 2026-10-07).
-    """
-    a = np.asarray(a, dtype=np.float32)
-    b = np.asarray(b, dtype=np.float32)
-    if len(b) == 0:
-        return a
-    tail = _quiet_run(a, sample_rate, from_end=True)
-    head = _quiet_run(b, sample_rate, from_end=False)
-    if tail < len(a) and head < len(b) and (tail or head):
-        pause = int(sample_rate * PIECE_JOIN_PAUSE_MS / 1000)
-        if tail + head > pause:
-            keep_tail = min(tail, pause // 2)
-            keep_head = min(head, pause - keep_tail)
-            keep_tail = min(tail, pause - keep_head)
-            a = a[: len(a) - (tail - keep_tail)]
-            b = b[head - keep_head:]
-        return np.concatenate([a, b])
-    overlap = min(int(sample_rate * crossfade_ms / 1000), len(a), len(b))
-    if overlap > 0:
-        fade_out = np.linspace(1.0, 0.0, overlap, dtype=np.float32)
-        fade_in = np.linspace(0.0, 1.0, overlap, dtype=np.float32)
-        blended = a[len(a) - overlap:] * fade_out + b[:overlap] * fade_in
-        return np.concatenate([a[: len(a) - overlap], blended, b[overlap:]])
-    return np.concatenate([a, b])
-
-
-def held_for_next_seam(pcm: np.ndarray, sample_rate: int, crossfade_ms: int = 50) -> tuple[np.ndarray, np.ndarray]:
-    """A streamed piece split into what can go out now and what waits for the
-    next piece: its trailing quiet and one crossfade window before it, so
-    `join_pieces` can judge that seam whole."""
-    quiet = _quiet_run(pcm, sample_rate, from_end=True)
-    cut = max(0, len(pcm) - quiet - int(sample_rate * crossfade_ms / 1000))
-    return pcm[:cut], pcm[cut:]
-
-
-def concatenate_audio_chunks(
-    chunks: List[np.ndarray],
-    sample_rate: int,
-    crossfade_ms: int = 50,
-) -> np.ndarray:
-    """Concatenate audio arrays, each seam by `join_pieces`.
-
-    Each chunk is expected to be a 1-D float32 ndarray at *sample_rate* Hz.
-    """
-    if not chunks:
-        return np.array([], dtype=np.float32)
-    if len(chunks) == 1:
-        return chunks[0]
-
-    result = np.array(chunks[0], dtype=np.float32, copy=True)
-    for chunk in chunks[1:]:
-        if len(chunk) == 0:
-            continue
-        result = join_pieces(result, chunk, sample_rate, crossfade_ms)
-    return result
+WINDOW_MS = 10

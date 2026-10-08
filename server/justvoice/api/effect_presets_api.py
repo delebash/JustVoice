@@ -47,8 +47,8 @@ class EffectType(BaseModel):
     params: list[EffectParam]
 
 
-# Mirrors server/justvoice/audio/effects.py:_build_plugins. Per-effect
-# parameter schemas drive the modal's input rendering.
+# Mirrors the effects audiocpp_dsp knows (our audio.cpp fork's dsp/src/effects.cpp table, and
+# audio/effects.py's list). Per-effect parameter schemas drive the modal's input rendering.
 EFFECT_CATALOG: list[EffectType] = [
     EffectType(
         type="reverb",

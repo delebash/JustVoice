@@ -880,11 +880,10 @@ async def stream_voice_audition(
     the existing dialog path takes over). A client disconnect stops the
     render at the next piece boundary.
     """
-    import numpy as np
-
     from ..app_state import get_state
-    from ..audio.chunked import held_for_next_seam, join_pieces, split_text_into_chunks
-    from ..audio.wav import parse_wav_header, strip_wav_header, write_wav_container
+    from ..audio import dsp_client
+    from ..audio.chunked import split_text_into_chunks
+    from ..audio.wav import parse_wav_header, write_wav_container
     from ..models import GenerateRequest
     from .generate_api import _generate_via_inprocess, _generate_via_manager
 
@@ -922,11 +921,8 @@ async def stream_voice_audition(
     async def _wav_stream():
         sr = 0
         channels = 1
-        tail: np.ndarray | None = None  # held back for the next seam
+        tail: bytes | None = None  # held back for the next seam (the DSP program's own float32)
         emitted: list[bytes] = []  # int16 bytes, for the cache
-
-        def _to_i16(x: np.ndarray) -> bytes:
-            return (np.clip(x, -1.0, 1.0) * 32767.0).astype("<i2").tobytes()
 
         for idx, piece in enumerate(pieces):
             # language: a stored voice's own, a ticket's derived one, or
@@ -941,10 +937,6 @@ async def stream_voice_audition(
                 resp = _generate_via_inprocess(engine_id, req)
             wav = bytes(resp.body)
             fmt, _, _ = parse_wav_header(wav)
-            pcm = (
-                np.frombuffer(strip_wav_header(wav), dtype="<i2").astype(np.float32)
-                / 32767.0
-            )
 
             if sr == 0:
                 sr = fmt.sample_rate
@@ -958,27 +950,17 @@ async def stream_voice_audition(
                     f"({sr} → {fmt.sample_rate})"
                 )
 
-            if tail is not None:
-                # The seam a line's pieces get (audio.chunked.join_pieces): the
-                # quiet on both sides cut to the piece pause — the stream kept
-                # each piece's padding, ~1 s between sentences (2026-10-07).
-                pcm = join_pieces(tail, pcm, sr, crossfade_ms)
-            # Hold back this piece's trailing quiet for the NEXT seam — except
-            # on the last piece, which flushes whole.
-            if idx < len(pieces) - 1:
-                out, tail = held_for_next_seam(pcm, sr, crossfade_ms)
-            else:
-                tail = None
-                out = pcm
-            if len(out):
-                chunk = _to_i16(out)
+            # The seam a line's pieces get (chunked.PIECE_JOIN_*): joined onto the tail held
+            # from the piece before — the quiet on both sides cut to the piece pause; the
+            # stream kept each piece's padding, ~1 s between sentences (2026-10-07) — then this
+            # piece's trailing quiet and one crossfade window held back for the NEXT seam,
+            # except on the last piece, which flushes whole.
+            chunk, tail = dsp_client.stream_join(
+                wav, tail, last=idx == len(pieces) - 1, crossfade_ms=crossfade_ms,
+            )
+            if chunk:
                 emitted.append(chunk)
                 yield chunk
-
-        if tail is not None and len(tail):
-            chunk = _to_i16(tail)
-            emitted.append(chunk)
-            yield chunk
 
         # The full render exists now — cache it with a REAL header so the
         # next play of this line is instant and scrubbable.

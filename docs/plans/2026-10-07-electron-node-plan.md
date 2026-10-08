@@ -318,6 +318,25 @@ Python stays the reference until the C++ matches.
 **Release:** packaged builds need a new audio.cpp release, which means a tag. A tag needs your
 word — the standing commit-and-push go doesn't cover tags.
 
+**Built 2026-10-07** (decided the same day, TASKS: a separate DSP program, `audiocpp_dsp`, shipped
+with the app, so it works with nothing installed — cloud voices too):
+
+- The fork's `dsp/` module and program — the README there lists the endpoints. Signalsmith
+  Stretch 1.4.0 (its header says 1.3.2) with a fixed seed; C++ unit tests (`audiocpp_dsp_test`,
+  incl. the effects' behaviour tests ported from JustVoice's `tests/test_dsp.py`).
+- The parity harness (`dsp/tests/parity/parity.py`): **PASS** against JustVoice `7d0cecb` —
+  identical 16-bit output in all 859 non-Signalsmith cases; Signalsmith repeats, keeps lengths,
+  isn't shifted, and differs from python-stretch by the library's update (its wrapper on the old
+  library matched python-stretch to 23–93 dB).
+- JustVoice: `audio/dsp_client.py`; `render_core`, `generate_api`, the streamed preview, the
+  analyzer and Kokoro blends call it; `audio/dsp/`, the numpy joins, `_trim_pcm`, `_conform_pcm`,
+  `apply_gain_db` and python-stretch are gone. The cache re-keys only pitched and server-paced
+  lines and chains with a pitch shift.
+- `as_16k_mono` (needed by an install still on upstream v0.9.0) was ported exactly too — the
+  program's `aligner-input` (decided 2026-10-07, TASKS) — so the server has no numpy or scipy.
+- Not done: the audio.cpp release tag (waits for the user's word; nothing needs it before a
+  packaged release).
+
 ---
 
 ## 4 · Step 2 — the kit

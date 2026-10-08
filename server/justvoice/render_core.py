@@ -10,6 +10,10 @@ Phase 3 lift: long-text inputs (> settings.generation.max_chunk_chars)
 go through the chunked path (audio/chunked.py — upstream MIT lift) so
 chapter-scale renders split at sentence boundaries and crossfade-blend
 to eliminate clicks.
+
+No sample math happens here: speed, gain, pitch, the effects chain, the joins
+and a line's fit into a chapter are requests to `audiocpp_dsp`
+(audio/dsp_client.py; 2026-10-07).
 """
 
 from __future__ import annotations
@@ -20,19 +24,16 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-import numpy as np
-
 from .app_state import AppState
+from .audio import dsp_client
 from .audio.chunked import (
     DEFAULT_MAX_CHUNK_CHARS,
-    concatenate_audio_chunks,
     split_text_into_chunks,
 )
-from .audio.dsp import STRETCH_RANGE, time_stretch
-from .audio.effects import apply_effects_chain, effects_chain_hash
+from .audio.effects import effects_chain_hash
 from .audio.wav import parse_wav_header, strip_wav_header, write_wav_container
 from .cache import CacheKeyBuilder, pack_pcm_with_format, unpack_pcm_with_format
-from .delivery import apply_gain_db, canonical_json
+from .delivery import canonical_json
 from .engines.base import SynthRequest
 from .engines.manager import EngineRequestError, TermsRequired
 from .errors import bad_request, internal, not_found
@@ -424,20 +425,46 @@ def server_speed(delivery: dict[str, Any], native: bool) -> float | None:
     return None if abs(factor - 1.0) < 1e-6 else factor
 
 
+#: The speed range the server stretches over — a persona's pace and a line's own
+#: (audiocpp_dsp clamps to the same range).
+STRETCH_RANGE = (0.5, 2.0)
+
+#: What made a line's pace and pitch, as the render cache keys it. Signalsmith Stretch moved
+#: from python-stretch (the library at commit ffa45981) to 1.4.0 inside audiocpp_dsp, with a
+#: fixed seed, on 2026-10-07 — its output changed (the move plan §3), so a line the server
+#: paced or pitched is keyed anew, and only those.
+STRETCH_ENGINE = "ss-1.4.0"
+
+
 def _key_delivery(delivery: dict[str, Any], native: bool) -> dict[str, Any]:
-    """The delivery the cache key hashes. A line the server stretches carries
-    a marker: until gap 8 the same delivery rendered unstretched on these
-    engines, and those cached entries must not be served as the new audio."""
-    return {**delivery, "speed_by": "server"} if server_speed(delivery, native) else delivery
+    """The delivery the cache key hashes. A line the server stretches or pitches carries a
+    marker naming what did it: until gap 8 the same delivery rendered unstretched on these
+    engines, and until 2026-10-07 python-stretch did the stretching — neither's cached entries
+    may be served as the new audio."""
+    key = dict(delivery)
+    if server_speed(delivery, native):
+        key["speed_by"] = f"server {STRETCH_ENGINE}"
+    if _pitch_semitones(delivery):
+        key["pitch_by"] = STRETCH_ENGINE
+    return key
 
 
-def _stretch_pcm(pcm: bytes, sample_rate: int, channels: int, factor: float) -> bytes:
-    """Time-stretch interleaved 16-bit PCM; the length becomes n / factor."""
-    ch = max(1, int(channels))
-    samples = np.frombuffer(pcm, dtype="<i2").astype(np.float32) / 32767.0
-    n = len(samples) // ch
-    stretched = time_stretch(samples[: n * ch].reshape(n, ch).T, int(sample_rate), factor=factor)
-    return (np.clip(stretched.T.reshape(-1), -1.0, 1.0) * 32767.0).astype("<i2").tobytes()
+def _pitch_semitones(delivery: dict[str, Any]) -> float:
+    """A line's pitch, clamped to ±12 semitones; 0 when it has none."""
+    if not delivery.get("pitch"):
+        return 0.0
+    return max(-12.0, min(12.0, float(delivery["pitch"])))
+
+
+def line_shape(delivery: dict[str, Any], *, speed_native: bool) -> dict[str, Any]:
+    """What the server does to a finished line from its delivery, as `dsp_client.shape`'s
+    parameters: Speed (when the model did not pace itself), then Gain, then Pitch."""
+    gain = max(-24.0, min(12.0, float(delivery["gain_db"]))) if delivery.get("gain_db") else 0.0
+    return {
+        "stretch_factor": server_speed(delivery, speed_native),
+        "gain_db": gain,
+        "pitch_semitones": _pitch_semitones(delivery),
+    }
 
 
 def apply_line_delivery(
@@ -448,28 +475,13 @@ def apply_line_delivery(
     chapter render and Generate, so the same settings sound the same from
     both — Generate applied none of the three until 2026-10-02 (gap 8 plan §4).
     The effects chain is not here: it sits on top of the finished line and
-    each caller applies it after this."""
-    factor = server_speed(delivery, speed_native)
-    if factor:
-        pcm = _stretch_pcm(pcm, sample_rate, channels, factor)
+    each caller applies it after this.
 
-    if delivery.get("gain_db"):
-        gain = max(-24.0, min(12.0, float(delivery["gain_db"])))
-        pcm = apply_gain_db(pcm, gain)
-
-    # `capability_details` advertises pitch_post_process on every engine that
-    # has no native transposer, and nothing ever applied the value until the
-    # 2026-08-17 audit: no engine reads `delivery.pitch`. Before the effects
-    # chain, because pitch is part of how the line was spoken.
-    if delivery.get("pitch"):
-        semitones = max(-12.0, min(12.0, float(delivery["pitch"])))
-        if semitones:
-            shifted = apply_effects_chain(
-                write_wav_container(pcm, sample_rate, channels),
-                [{"type": "pitch_shift", "params": {"semitones": semitones}}],
-            )
-            pcm = strip_wav_header(shifted)
-    return pcm
+    `capability_details` advertises pitch_post_process on every engine that
+    has no native transposer, and nothing ever applied the value until the
+    2026-08-17 audit: no engine reads `delivery.pitch`. It comes before the
+    effects chain, because pitch is part of how the line was spoken."""
+    return dsp_client.shape(pcm, sample_rate, channels, **line_shape(delivery, speed_native=speed_native))
 
 
 def line_lexicons(book_lexicon_id: str | None, persona_lexicon_id: str | None) -> list[str]:
@@ -714,12 +726,11 @@ def shape_line_pcm(
     """What a persona does to a line once the model has spoken it: speed (when
     the model did not pace itself), gain, pitch, then the effects chain on top
     of the finished line. Shared by `render_line` and the persona page's
-    preview of an unsaved voice — one implementation, one sound."""
-    pcm = apply_line_delivery(pcm, sample_rate, channels, delivery, speed_native=speed_native)
-    if effects:
-        wet = apply_effects_chain(write_wav_container(pcm, sample_rate, channels), effects)
-        pcm = strip_wav_header(wet)
-    return pcm
+    preview of an unsaved voice — one implementation, one sound. One request to
+    the DSP program, which runs the steps in that order."""
+    return dsp_client.shape(
+        pcm, sample_rate, channels, **line_shape(delivery, speed_native=speed_native), effects=effects or [],
+    )
 
 
 def render_line(
@@ -882,9 +893,7 @@ def render_line(
 
     if len(effective_text) > max_chunk_chars:
         chunks = split_text_into_chunks(effective_text, max_chars=max_chunk_chars)
-        pcm_chunks: list[np.ndarray] = []
-        chunk_sr = None
-        chunk_ch = 1
+        pieces: list[tuple[bytes, int, int]] = []
         for piece in chunks:
             try:
                 piece_pcm, piece_sr, piece_ch = _synth_piece(piece)
@@ -892,15 +901,12 @@ def render_line(
                 raise e.api_error() from e
             except Exception as e:
                 raise internal(f"engine synthesize (chunked): {e}")
-            samples = np.frombuffer(piece_pcm, dtype="<i2").astype(np.float32) / 32767.0
-            pcm_chunks.append(samples)
-            chunk_sr = piece_sr
-            chunk_ch = piece_ch
-        merged = concatenate_audio_chunks(pcm_chunks, chunk_sr or 22050, crossfade_ms=crossfade_ms)
-        # Back to int16 PCM bytes.
-        pcm = (np.clip(merged, -1.0, 1.0) * 32767.0).astype("<i2").tobytes()
-        out_sample_rate = chunk_sr or 22050
-        out_channels = chunk_ch
+            pieces.append((piece_pcm, piece_sr or 22050, piece_ch))
+        # Every seam by chunked.PIECE_JOIN_*, in the DSP program — even one piece, which comes
+        # back through the same float round trip the numpy join gave it.
+        pcm = dsp_client.join(pieces, crossfade_ms)
+        out_sample_rate = pieces[-1][1]
+        out_channels = pieces[-1][2]
     else:
         try:
             pcm, out_sample_rate, out_channels = _synth_piece(effective_text)
@@ -943,24 +949,6 @@ TRIM_BELOW_DBFS = -70.0
 TRIM_KEEP_MS = 50
 
 
-def _trim_pcm(pcm: bytes, sample_rate: int, channels: int) -> bytes:
-    """16-bit interleaved PCM with its silent start and end cut to TRIM_KEEP_MS. A
-    line with no sound at all is kept as it is."""
-    ch = max(1, int(channels))
-    x = np.frombuffer(pcm, dtype="<i2")
-    n = len(x) // ch
-    if n == 0:
-        return pcm
-    peak = np.abs(x[: n * ch].reshape(n, ch).astype(np.int32)).max(axis=1)
-    sound = np.nonzero(peak > 32768 * 10 ** (TRIM_BELOW_DBFS / 20))[0]
-    if len(sound) == 0:
-        return pcm
-    keep = int(sample_rate * TRIM_KEEP_MS / 1000)
-    start = max(0, int(sound[0]) - keep)
-    end = min(n, int(sound[-1]) + 1 + keep)
-    return x[start * ch: end * ch].tobytes()
-
-
 def _pause_ms(line: RenderedLine, key: str) -> int | None:
     """`pause_before` / `pause_after` off a rendered line's delivery."""
     raw = (line.effective_delivery or {}).get(key)
@@ -972,26 +960,6 @@ def _pause_ms(line: RenderedLine, key: str) -> int | None:
         return None
 
 
-def _conform_pcm(pcm: bytes, sr: int, ch: int, to_sr: int, to_ch: int) -> bytes:
-    """16-bit interleaved PCM at (sr, ch) → (to_sr, to_ch): polyphase resampling
-    (scipy), mono duplicated to every channel or channels averaged down."""
-    if sr == to_sr and ch == to_ch:
-        return pcm
-    from math import gcd
-
-    from scipy.signal import resample_poly
-
-    x = np.frombuffer(pcm, dtype="<i2").astype(np.float32) / 32767.0
-    x = x[: len(x) // ch * ch].reshape(-1, ch)
-    if ch != to_ch:
-        mono = x.mean(axis=1, keepdims=True)
-        x = np.repeat(mono, to_ch, axis=1) if to_ch > 1 else mono
-    if sr != to_sr:
-        g = gcd(int(sr), int(to_sr))
-        x = resample_poly(x, int(to_sr) // g, int(sr) // g, axis=0)
-    return (np.clip(x, -1.0, 1.0) * 32767.0).astype("<i2").tobytes()
-
-
 def concat_lines(lines: list[RenderedLine], silence_ms: int = 250) -> RenderedLine:
     """Concatenate rendered lines with silence between them.
 
@@ -1000,8 +968,8 @@ def concat_lines(lines: list[RenderedLine], silence_ms: int = 250) -> RenderedLi
     project", a value means this join is special — the same
     only-show-what-differs rule the line table uses.
 
-    Each line's own silence at either end is trimmed first (`_trim_pcm`,
-    2026-10-07), so the gap is the pause heard.
+    Each line's own silence at either end is trimmed first (TRIM_BELOW_DBFS,
+    TRIM_KEEP_MS; 2026-10-07), so the gap is the pause heard.
 
     Until 2026-08-17 this used the project gap unconditionally, so every
     per-line pause in the app — the Generate slider, the delivery overlay, and
@@ -1010,7 +978,7 @@ def concat_lines(lines: list[RenderedLine], silence_ms: int = 250) -> RenderedLi
 
     Lines from engines with different sample rates or channel counts are
     brought to the chapter's highest rate and channel count before joining
-    (`_conform_pcm`), so no line loses quality. Until 2026-10-02 this
+    (polyphase resampling), so no line loses quality. Until 2026-10-02 this
     docstring said it resampled while the code appended a mismatched line raw
     — harmless while every engine rendered 24 kHz mono, wrong the moment
     VoxCPM2 (48 kHz) spoke one character in a chapter: half speed, an octave low.
@@ -1031,8 +999,11 @@ def concat_lines(lines: list[RenderedLine], silence_ms: int = 250) -> RenderedLi
             gap = silence_ms if after is None and before is None else (after or 0) + (before or 0)
             if gap > 0:
                 out_pcm.write(silence(gap))
-        pcm = _trim_pcm(line.pcm, line.sample_rate, line.channels)
-        out_pcm.write(_conform_pcm(pcm, line.sample_rate, line.channels, sr, ch))
+        # Trimmed, then brought to the chapter's rate and channels — one request per line.
+        out_pcm.write(dsp_client.fit(
+            line.pcm, line.sample_rate, line.channels, sr, ch,
+            trim_below_dbfs=TRIM_BELOW_DBFS, trim_keep_ms=TRIM_KEEP_MS,
+        ))
     return RenderedLine(
         pcm=out_pcm.getvalue(),
         sample_rate=sr,

@@ -61,17 +61,15 @@ def test_disabled_entries_do_not_apply(sine_wav: bytes) -> None:
     assert apply_effects_chain(sine_wav, chain) == sine_wav
 
 
-def test_a_throwing_effect_does_not_lose_the_render(sine_wav: bytes, monkeypatch) -> None:
-    """If an effect raises mid-chain we keep the audio and log it. Losing a
-    take because one knob was wrong is not an acceptable failure mode."""
-    from justvoice.audio import effects as effects_mod
-
-    def boom(x, sr, **kw):
-        raise RuntimeError("synthetic failure")
-
-    monkeypatch.setitem(effects_mod.EFFECTS, "gain", boom)
-    out = apply_effects_chain(sine_wav, [{"type": "gain", "params": {}}])
+def test_a_failing_effect_does_not_lose_the_render(sine_wav: bytes) -> None:
+    """If an effect fails mid-chain we keep the audio. Losing a take because
+    one knob was wrong is not an acceptable failure mode. (A value that isn't
+    a number makes the effect fail when it runs, in audiocpp_dsp as in the
+    numpy effects it replaced.)"""
+    chain = [{"type": "gain", "params": {"gain_db": "loud"}}, {"type": "lowpass", "params": {"cutoff_frequency_hz": 2000.0}}]
+    out = apply_effects_chain(sine_wav, chain)
     assert _frames(out) == _frames(sine_wav)
+    assert out != sine_wav  # the chain went on past the one that failed
 
 
 def test_undecodable_wav_is_returned_unchanged() -> None:

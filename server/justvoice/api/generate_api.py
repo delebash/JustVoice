@@ -12,16 +12,14 @@ some engines truncate or hallucinate trailing noise on long inputs.
 
 from __future__ import annotations
 
-import numpy as np
 from fastapi import APIRouter, Response
 
 from ..app_state import get_state
+from ..audio import dsp_client
 from ..audio.chunked import (
     DEFAULT_MAX_CHUNK_CHARS,
-    concatenate_audio_chunks,
     split_text_into_chunks,
 )
-from ..audio.effects import apply_effects_chain
 from ..audio.wav import parse_wav_header, strip_wav_header, write_wav_container
 from ..delivery_merge import compose_instruct, merge_delivery
 from ..engines.base import SynthRequest
@@ -30,10 +28,9 @@ from ..errors import bad_request, internal, not_found
 from ..models import GenerateRequest
 
 
-def _samples_from_chunk_bytes(audio_bytes: bytes, is_wav: bool) -> np.ndarray:
-    """Decode one chunk's bytes (PCM or WAV) → float32 samples in [-1, 1]."""
-    pcm = strip_wav_header(audio_bytes) if is_wav else audio_bytes
-    return np.frombuffer(pcm, dtype="<i2").astype(np.float32) / 32767.0
+def _pcm_of_chunk(audio_bytes: bytes, is_wav: bool) -> bytes:
+    """One chunk's bytes (PCM or WAV) → its 16-bit PCM."""
+    return strip_wav_header(audio_bytes) if is_wav else audio_bytes
 
 
 def _finish_line(
@@ -43,14 +40,15 @@ def _finish_line(
     """A finished line's PCM → the WAV Generate returns: Speed, Gain and Pitch
     through the chapter render's own function, then the effects chain. Until
     2026-10-02 this path applied only the chain, so Generate's Speed (on
-    every engine but Kokoro and KittenTTS), Pitch and Gain did nothing."""
-    from ..render_core import apply_line_delivery, speed_native
+    every engine but Kokoro and KittenTTS), Pitch and Gain did nothing.
+    One request to the DSP program (render_core.shape_line_pcm)."""
+    from ..render_core import shape_line_pcm, speed_native
 
-    pcm = apply_line_delivery(
+    pcm = shape_line_pcm(
         pcm, sample_rate, channels, delivery,
-        speed_native=speed_native(get_state(), engine_id, model),
+        speed_native=speed_native(get_state(), engine_id, model), effects=effects,
     )
-    return apply_effects_chain(write_wav_container(pcm, sample_rate, channels), effects)
+    return write_wav_container(pcm, sample_rate, channels)
 
 
 def _read_through_lexicons(st, engine_id: str, req: GenerateRequest) -> tuple[GenerateRequest, dict]:
@@ -345,7 +343,7 @@ async def _generate_via_manager(
 
             # Long-form path: split → per-chunk synth → crossfade-concat → WAV
             chunks = split_text_into_chunks(req.text, max_chars=max_chunk_chars)
-            pcm_chunks: list[np.ndarray] = []
+            pieces: list[tuple[bytes, int, int]] = []
             sample_rate = 24000
             channels = 1
             for i, piece in enumerate(chunks):
@@ -356,10 +354,9 @@ async def _generate_via_manager(
                 audio_bytes, meta = _synth_one(piece, chunk_seed)
                 sample_rate = meta.get("sample_rate") or sample_rate
                 channels = meta.get("channels") or channels
-                pcm_chunks.append(_samples_from_chunk_bytes(audio_bytes, bool(meta.get("is_wav_container"))))
+                pieces.append((_pcm_of_chunk(audio_bytes, bool(meta.get("is_wav_container"))), sample_rate, channels))
 
-            merged = concatenate_audio_chunks(pcm_chunks, sample_rate, crossfade_ms=crossfade_ms)
-            pcm_int16 = (np.clip(merged, -1.0, 1.0) * 32767.0).astype("<i2").tobytes()
+            pcm_int16 = dsp_client.join(pieces, crossfade_ms)
             wav_bytes = _finish_line(pcm_int16, sample_rate, channels, delivery, engine_id, effects, model)
             return Response(content=wav_bytes, media_type="audio/wav")
         except (TermsRequired, EngineRequestError) as e:
@@ -452,13 +449,13 @@ def _generate_via_inprocess(engine_id: str, req: GenerateRequest) -> Response:
                 except ValueError:
                     # Not 16-bit PCM: the delivery cannot be applied; the chain
                     # decodes what it can, as this path always did.
-                    return Response(content=apply_effects_chain(out.bytes, effects), media_type="audio/wav")
+                    return Response(content=dsp_client.apply_effects(out.bytes, effects), media_type="audio/wav")
                 pcm, sr, ch = out.bytes[offset:offset + size], fmt.sample_rate, fmt.channels
             wav_bytes = _finish_line(pcm, sr, ch, delivery, engine_id, effects)
             return Response(content=wav_bytes, media_type="audio/wav")
 
         chunks = split_text_into_chunks(req.text, max_chars=max_chunk_chars)
-        pcm_chunks: list[np.ndarray] = []
+        pieces: list[tuple[bytes, int, int]] = []
         sample_rate = 24000
         channels = 1
         for i, piece in enumerate(chunks):
@@ -466,10 +463,9 @@ def _generate_via_inprocess(engine_id: str, req: GenerateRequest) -> Response:
             out = _synth_one(piece, chunk_seed)
             sample_rate = out.sample_rate or sample_rate
             channels = out.channels or channels
-            pcm_chunks.append(_samples_from_chunk_bytes(out.bytes, out.is_wav_container))
+            pieces.append((_pcm_of_chunk(out.bytes, out.is_wav_container), sample_rate, channels))
 
-        merged = concatenate_audio_chunks(pcm_chunks, sample_rate, crossfade_ms=crossfade_ms)
-        pcm_int16 = (np.clip(merged, -1.0, 1.0) * 32767.0).astype("<i2").tobytes()
+        pcm_int16 = dsp_client.join(pieces, crossfade_ms)
         wav_bytes = _finish_line(pcm_int16, sample_rate, channels, delivery, engine_id, effects)
         return Response(content=wav_bytes, media_type="audio/wav")
     except Exception as e:

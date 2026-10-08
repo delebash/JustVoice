@@ -615,18 +615,18 @@ its blast radius and the gaps.
   — upstream Kokoro's own rule, `torch.sigmoid(duration).sum(axis=-1) / speed`, then
   `round().clamp(min=1)`. — *code + web, 2026-10-07* · hexgrad/kokoro `kokoro/model.py`.
 - **Every other model's pace is the server's**: Signalsmith Stretch time-stretches the finished line,
-  pitch kept, 0.5–2.0 (`audio/dsp.STRETCH_RANGE`), before gain and pitch
-  (`render_core.apply_line_delivery`). — *code, 2026-10-07*.
+  pitch kept, 0.5–2.0 (`render_core.STRETCH_RANGE`), before gain and pitch — one `shape` request
+  to `audiocpp_dsp` (`render_core.line_shape` → `audio/dsp_client.shape`). — *code, 2026-10-07*.
 - **Pitch is the server's on every model** — no model reads `delivery.pitch`. `pitch_shift`
-  (`audio/dsp/__init__.py:66`, Signalsmith Stretch through python-stretch 0.3.1) transposes the
-  finished line, length kept, clamped to ±12 st, after gain and before the effects chain
-  (`render_core.py:463-471`). The binding has no formant control — its `Stretch` offers
-  `configure`, `preset`, `process`, `reset`, `setTimeFactor`, `setTransposeFactor` and
-  `setTransposeSemitones(semitones, tonalityLimit=0)` — so a voice's formants move with its pitch:
-  a few semitones sound natural, ±12 sounds like a much smaller or larger speaker. The library
-  itself can shift formants, and 0.3.1 is still python-stretch's newest release — §8. — *code +
-  measured (the server venv's package introspected), 2026-10-07*.
-- **Gain is the server's**: `delivery.apply_gain_db` multiplies the 16-bit samples and hard-clips
+  (Signalsmith Stretch 1.4.0 inside `audiocpp_dsp`, the fork's `dsp/src/stretch.cpp`, seed fixed)
+  transposes the finished line, length kept, clamped to ±12 st, after gain and before the effects
+  chain. No formant control is wired yet, so a voice's formants move with its pitch: a few
+  semitones sound natural, ±12 sounds like a much smaller or larger speaker. The library itself
+  can shift formants (`setFormantSemitones`, `compensatePitch`) — §8. (was: python-stretch 0.3.1,
+  the library at commit `ffa45981`, whose binding has no formant calls, seeded at random — until
+  2026-10-07.) — *code, 2026-10-07*.
+- **Gain is the server's**: `audiocpp_dsp`'s `apply_gain_db` (the fork's `dsp/src/line.cpp`; until
+  2026-10-07 `delivery.apply_gain_db`, the same maths) multiplies the 16-bit samples and hard-clips
   at full scale — no limiter; clamped −24…+12 dB (`render_core.py:457`; Render's slider ±12). A
   boost on a line that already peaks near full scale clips it. The chapter is mastered after the
   lines are joined (`render_chapter_api._master_scene_pcm`, `:526`), so a line's gain sets only
@@ -924,6 +924,37 @@ kit's register §2.
   (`audio/effects.py:181-197`), a render without effects is keyed `noeffects`, and speed enters
   through the delivery JSON (`render_core.py:641-642`).
 
+**The DSP program — step 1, built 2026-10-07** (*code + measured*; plan
+[`2026-10-07-electron-node-plan.md`](../plans/2026-10-07-electron-node-plan.md) §3, the fork's
+`dsp/README.md`):
+
+- `audiocpp_dsp` (426 KB, Windows) holds all of the server's sample math: the effects chain, a
+  line's pace, gain and pitch, the joins between pieces (and the streamed preview's seams), a
+  line's trim and fit into a chapter, the analyzer, Kokoro blends. No models, no GPU, no ggml —
+  it reuses the runtime's `app/server/http.cpp` and `multipart.cpp`.
+- The server reaches it through `audio/dsp_client.py`: started on first use through the kit's
+  `spawn_child` (kill-on-close job), on a free loopback port, logged to
+  `<data>/logs/audiocpp-dsp.log`, started again if it died; found at `JUSTVOICE_DSP_EXE`, the dev
+  build, beside a packaged server, or `../audio.cpp/build/jv-dev/bin`.
+- **Proven against the Python it replaced** (the fork's `dsp/tests/parity/`, JustVoice `7d0cecb`
+  as the reference): identical 16-bit output in 859 cases (effects 369, shaped lines 52, joins 72,
+  streamed seams 20, fits 224, aligner input 18, analyzer 90, vectors 14), including 8 real renders from the dev
+  cache. Signalsmith (155 cases) repeats exactly, keeps every length, is never shifted (best lag
+  0 ± 1 sample); against python-stretch its waveform differs (0.2–43 dB SNR) and its long-term
+  spectrum stays within 0.003–0.26 dB on speech. The same wrapper on python-stretch's library
+  (`ffa45981`) matched python-stretch to 23–93 dB — the difference is the library update.
+- **Two Python rules the port had to copy, found by the harness:** a parameter read through
+  `float()` accepts a numeric string while one read through `np.clip` or plain arithmetic fails
+  its effect (e.g. `eq_mid`'s `q` vs its `gain_db`); and cJSON prints 15 significant digits, so
+  numbers go out in their shortest exact form.
+- **What the cache re-renders:** a chain with a pitch shift is keyed `dsp1+ss-1.4.0`
+  (`effects_chain_hash`), a line the server paces or pitches carries `speed_by: server ss-1.4.0` /
+  `pitch_by: ss-1.4.0` (`render_core._key_delivery`); every other cached line stays valid.
+- `engines/audiocpp/slot.as_16k_mono` (the aligner's 16 kHz input, which an install still on
+  upstream v0.9.0 needs) is the program's `aligner-input`, ported exactly (18 of 18 identical);
+  the server has no numpy or scipy left — numpy stays only in the `dev` extra for tests that
+  build signals with it. (was: still numpy + scipy — until later on 2026-10-07.)
+
 **The server** (*code*, an agent, study §3):
 
 - JustVoice's server: 176 files / 36,380 lines, 113 test files / 19,924 lines, 971 test
@@ -1059,13 +1090,14 @@ study's §9.
 
 **Today** (*code, 2026-10-07*):
 
-- The only effects chain is the persona's (`docs/effects.md:38`): twelve primitives over numpy,
-  scipy and python-stretch (`audio/dsp/__init__.py:142-155`; the editor's "EQ (3-band)" is three
-  of them). The package exists to keep GPL out (`:5-7`). Every effect returns its input's length
-  (contract 2, `:14-18`), and a change to an effect's output needs `DSP_VERSION` bumped — it is
-  in the render-cache key (`:35-37`, `audio/effects.py:181-198`).
+- The only effects chain is the persona's (`docs/effects.md:38`): twelve primitives in
+  `audiocpp_dsp`, the DSP program built from our fork (`dsp/src/effects.cpp`; the editor's "EQ
+  (3-band)" is three of them) — new effects for characters belong there. Every effect returns
+  its input's length, and a change to an effect's output needs `DSP_VERSION` bumped — it is in the
+  render-cache key (`audio/effects.py` `effects_chain_hash`). (was: numpy, scipy and python-stretch
+  in `audio/dsp/` — until 2026-10-07.)
 - The delay effect takes any delay of one sample or more and feedback up to 0.999
-  (`audio/dsp/delays.py:24-27`), so a few-millisecond comb filter is possible — but the editor's
+  (`dsp/src/effects.cpp` `delay`), so a few-millisecond comb filter is possible — but the editor's
   Delay runs 0–4 s in 0.05 s steps (`api/effect_presets_api.py:105`): only a preset or the API
   can set one.
 - No catalog model (`engines/*/manifest.py`: asr, chatterbox, kitten, kokoro, pocket, qwen3,

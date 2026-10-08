@@ -30,6 +30,7 @@ log = logging.getLogger(__name__)
 ENV = "JUSTVOICE_AUDIOCPP_BUILD"
 TAG = "dev"   # what `runtime.installed_tag` answers for a development build
 SERVER_EXE = "audiocpp_server.exe" if sys.platform == "win32" else "audiocpp_server"
+DSP_EXE = "audiocpp_dsp.exe" if sys.platform == "win32" else "audiocpp_dsp"
 
 
 @dataclass(frozen=True)
@@ -87,7 +88,8 @@ def is_dev_exe(exe: Path | None) -> bool:
 
 
 def _stop_leftovers() -> int:
-    """Stop this build's servers whose JustVoice is gone; 3 when one is still served."""
+    """Stop this build's servers whose JustVoice is gone; 3 when one is still served. The
+    DSP program counts too: a running one holds its exe, which the build replaces."""
     import psutil
 
     from ..leftovers import stop_leftover_engines
@@ -98,11 +100,11 @@ def _stop_leftovers() -> int:
     # The app's own sweep: every audio.cpp server (this build's included) whose JustVoice is gone.
     if stopped := stop_leftover_engines("npm run dev"):
         print(f"[audio.cpp] stopped {len(stopped)} audio.cpp server(s) left by a closed JustVoice")
-    want = os.path.normcase(str(dev.exe))
+    want = {os.path.normcase(str(dev.exe)), os.path.normcase(str(dev.bin_dir / DSP_EXE))}
     for p in psutil.process_iter(["pid", "exe"]):
         try:
-            if p.info.get("exe") and os.path.normcase(p.info["exe"]) == want:
-                print(f"[audio.cpp] {dev.exe.name} (pid {p.pid}) is still running for an open JustVoice")
+            if p.info.get("exe") and os.path.normcase(p.info["exe"]) in want:
+                print(f"[audio.cpp] {os.path.basename(p.info['exe'])} (pid {p.pid}) is still running for an open JustVoice")
                 return 3
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue

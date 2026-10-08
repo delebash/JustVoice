@@ -1,26 +1,15 @@
 """Delivery overlay — per-line knobs (speed/pitch/gain/pause/emotion/instruct).
 
 The overlay is optional per render — every field defaults to "engine's
-own default behavior". Post-render gain is applied here as PCM
-scaling; everything else is passed to the engine and the engine
-chooses how to honor it.
+own default behavior". Post-render speed (when the model did not pace
+itself), gain and pitch are applied to the finished line by the DSP program
+(render_core.line_shape → audio/dsp_client.py); everything else is passed to
+the engine and the engine chooses how to honor it.
 """
 
 from __future__ import annotations
 
 from typing import Any
-
-import numpy as np
-
-
-def apply_gain_db(pcm: bytes, gain_db: float) -> bytes:
-    """Scale 16-bit PCM by `gain_db` decibels (no ffmpeg round-trip)."""
-    if abs(gain_db) < 1e-6:
-        return pcm
-    samples = np.frombuffer(pcm, dtype="<i2").astype(np.float32)
-    factor = 10.0 ** (gain_db / 20.0)
-    samples = np.clip(samples * factor, -32768, 32767).astype("<i2")
-    return samples.tobytes()
 
 
 def canonical_json(delivery: dict[str, Any] | None) -> str:

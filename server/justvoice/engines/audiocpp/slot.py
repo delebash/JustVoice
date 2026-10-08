@@ -103,13 +103,12 @@ def write_voice_pack(vector) -> Path:
     """A blend's style pack as the raw float32 rows × 256 file our audio.cpp's `voice_pack`
     option reads (gap 2). Named by its content, so each blend is written once and kept."""
     import hashlib
+    import struct
 
-    import numpy as np
-
-    arr = np.asarray(vector, dtype="<f4").ravel()
-    if arr.size == 0 or arr.size % 256:
-        raise AudioCppError(f"a blended voice has {arr.size} values — Kokoro's are rows × 256")
-    raw = arr.tobytes()
+    values = [float(v) for v in vector]
+    if not values or len(values) % 256:
+        raise AudioCppError(f"a blended voice has {len(values)} values — Kokoro's are rows × 256")
+    raw = struct.pack(f"<{len(values)}f", *values)
     folder = _data_dir() / "cache" / "kokoro-voice-packs"
     out = folder / f"{hashlib.sha1(raw).hexdigest()}.bin"
     if out.is_file():
@@ -544,29 +543,20 @@ def as_16k_mono(wav: bytes) -> bytes:
     positions into seconds with the INPUT rate: a 24 kHz render came back at exactly 2/3 of
     its real word times (measured 2026-10-01 — the sample indices matched, the seconds did
     not). Sent at 16 kHz mono the seconds are right, and they stay right once that is fixed
-    upstream. A WAV this parser can't read (not 16-bit PCM) goes as it is."""
-    from math import gcd
-
-    from ...audio.wav import parse_wav_header, write_wav_container
+    upstream. A WAV this parser can't read (not 16-bit PCM) goes as it is. Our builds fixed it
+    (jv.1); an install still on v0.9.0 needs this. The conversion — channels averaged, resampled,
+    rounded — runs in audiocpp_dsp (2026-10-07; ported exactly, it was numpy and scipy)."""
+    from ...audio import dsp_client
+    from ...audio.wav import parse_wav_header
 
     try:
-        fmt, off, size = parse_wav_header(wav)
+        fmt, _off, _size = parse_wav_header(wav)
     except ValueError as e:
         log.warning("aligner input left as it is (%s) — word times may be scaled", e)
         return wav
     if fmt.sample_rate == ALIGN_RATE and fmt.channels == 1:
         return wav
-    import numpy as np
-    from scipy.signal import resample_poly
-
-    x = np.frombuffer(wav[off:off + size], dtype="<i2").astype(np.float32)
-    if fmt.channels > 1:
-        x = x[: len(x) // fmt.channels * fmt.channels].reshape(-1, fmt.channels).mean(axis=1)
-    if fmt.sample_rate != ALIGN_RATE:
-        g = gcd(ALIGN_RATE, fmt.sample_rate)
-        x = resample_poly(x, ALIGN_RATE // g, fmt.sample_rate // g)
-    pcm = np.clip(np.round(x), -32768, 32767).astype("<i2").tobytes()
-    return write_wav_container(pcm, ALIGN_RATE, 1)
+    return dsp_client.aligner_input(wav, ALIGN_RATE)
 
 
 _SILENCE: dict[int, str] = {}
