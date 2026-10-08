@@ -116,8 +116,7 @@ as *engine (0)* instead of an empty list.
 direction (*describe it: clipped, world-weary*), tags (*pick from the model's
 list: [fear] [sigh]*), or neither (*sliders only — pace, pitch, gain*).
 
-Every list that offers a voice elsewhere — the persona's page, the Render Lab,
-the cache's **Prune by voice…** — names it the same way: *Sohee · Female · Korean · Qwen3-TTS CustomVoice*
+Every list that offers a voice elsewhere — the persona's page, the cache's **Prune by voice…** — names it the same way: *Sohee · Female · Korean · Qwen3-TTS CustomVoice*
 (name, gender, the voice's own language, its model).
 
 ### The ⋯ menu

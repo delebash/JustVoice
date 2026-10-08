@@ -546,7 +546,7 @@ onMounted(loadCaptureLanguage);
 // ── Mastering settings (preview parity — preview Mastering sub-tab) ─────
 // Six knobs per preset (LUFS / peak / noise floor / head silence / tail
 // silence / apply-effects-pre-master) + 5 named presets. Active preset
-// drives the chapter render pipeline + the Audio Tools "Apply preset" flow.
+// drives the chapter render pipeline.
 const MASTER_PRESETS = [
   { id: "acx",     label: "ACX (audiobook)",     lufs: -20.0, peak: -3.5, noise: -60, head: 0.75, tail: 3.00 },
   { id: "inaudio", label: "iAudio",              lufs: -19.0, peak: -1.0, noise: -60, head: 0.50, tail: 2.00 },
@@ -789,7 +789,7 @@ async function clearRenderCache() {
   const size = fmtBytes(diskUsage.value?.extras?.renderCache) || "0 MB";
   const yes = await confirmDialog({
     title: "Clear the render cache?",
-    message: `This frees ${size} of cached renders. Nothing is lost — an identical render simply computes again instead of coming back instantly. (Labs → Cache offers scoped clears by age.)`,
+    message: `This frees ${size} of cached renders. Nothing is lost — an identical render simply computes again instead of coming back instantly. (Settings → Cache offers scoped clears by age.)`,
     confirmLabel: "Clear render cache",
   });
   if (!yes) return;
@@ -1492,8 +1492,8 @@ onMounted(() => {
           <UiTag intent="success">{{ masterPresetLabel }}</UiTag>
         </div>
         <p class="jv-muted jv-hint jv-mb14">
-          The active mastering target applies to every chapter render + standalone Audio Tools
-          master. Switch targets by clicking a chip. Custom lets you override individual knobs
+          The active mastering target applies to every chapter render. Switch targets by
+          clicking a chip. Custom lets you override individual knobs
           below.
         </p>
 

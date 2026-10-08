@@ -161,7 +161,7 @@ Picking a kind at project creation sets:
 
 Resolved 2026-06-12: mastering presets are **targets** in all UI copy
 (ACX target, podcast target) — Settings → Mastering "Active target",
-Audio Tools "Apply a mastering target", project meta "Mastering target".
+project meta "Mastering target".
 "Preset" stays with effect chains, and "preset voice" reads as a plain
 adjective.
 API field names (`mastering_preset`, `master`) are unchanged — the

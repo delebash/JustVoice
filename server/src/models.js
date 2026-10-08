@@ -1372,31 +1372,6 @@ export const AudioAnalysis = T.Object({
   loudness: LoudnessStats,
 });
 
-export const AnalyzeRequest = T.Object({ wav_b64: T.String() });
-
-export const CompareRequest = T.Object({
-  a_wav_b64: T.String(),
-  b_wav_b64: T.String(),
-  a_label: opt(nullable(T.String()), null),
-  b_label: opt(nullable(T.String()), null),
-});
-
-export const ComparisonReport = T.Object({
-  a: AudioAnalysis,
-  b: AudioAnalysis,
-  identical: T.Boolean(),
-  format_match: T.Boolean(),
-  peak_diff_db: T.Number(),
-  rms_diff_db: T.Number(),
-  duration_diff_sec: T.Number(),
-  sample_rmse: opt(nullable(T.Number()), null),
-  max_sample_delta: opt(nullable(T.Number()), null),
-  pct_identical_samples: opt(nullable(T.Number()), null),
-  verdict: T.String(),
-  a_label: opt(nullable(T.String()), null),
-  b_label: opt(nullable(T.String()), null),
-});
-
 // ─── Script — who says each line (Studio Slice 3, §8.24) ─────────────────
 
 export const ScriptSpeaker = T.Object({

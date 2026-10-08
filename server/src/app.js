@@ -31,7 +31,6 @@ import { NotImplementedError, ValueError } from "@delebash/llm-runner/platform/p
 import { router as activeTasksRouter } from "./api/active_tasks_api.js";
 import { router as alignRouter } from "./api/align_api.js";
 import { router as bulkDeleteRouter } from "./api/bulk_delete_api.js";
-import { router as analyzerRouter } from "./api/analyzer_api.js";
 import { router as cacheRouter } from "./api/cache_api.js";
 import { router as captureReadinessRouter } from "./api/capture_readiness_api.js";
 import { router as capturesRouter } from "./api/captures_api.js";
@@ -46,7 +45,6 @@ import { router as extractionRouter } from "./api/extraction_api.js";
 import { router as generateRouter } from "./api/generate_api.js";
 import { router as healthRouter } from "./api/health_api.js";
 import { router as lexiconsRouter } from "./api/lexicons_api.js";
-import { router as masterRouter } from "./api/master_api.js";
 import { router as mcpBindingsRouter } from "./api/mcp_bindings_api.js";
 import { router as modelsRouter } from "./api/models_api.js";
 import { router as personasRouter } from "./api/personas_api.js";
@@ -341,12 +339,10 @@ export async function createApp(dataDir = null) {
 
   app.register(generateRouter);
   app.register(renderChapterRouter);
-  app.register(analyzerRouter);
   app.register(alignRouter);
   app.register(pronunciationRouter);
   app.register(externalRouter);
   app.register(cacheRouter);
-  app.register(masterRouter);
   app.register(projectsRouter);
   // Phase 4a backend (DESIGN_FREEZE §5)
   app.register(takesRouter);

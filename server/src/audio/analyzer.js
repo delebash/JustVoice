@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-// Audio analyzer — format + loudness + A/B comparison (the port of justvoice/audio/analyzer.py).
+// Audio analyzer — format + loudness (the port of justvoice/audio/analyzer.py).
 //
-// The header half (format, sha256) is read here; the sample half — loudness, the noise
-// margin, the sample-by-sample comparison — runs in `audiocpp_dsp` (audio/dsp_client.js,
-// 2026-10-07). Results are the wire models' shapes (`AudioAnalysis`, `ComparisonReport`),
-// fields in declaration order; silence reads -Infinity.
+// The header half (format, sha256) is read here; the sample half — loudness and the noise
+// margin — runs in `audiocpp_dsp` (audio/dsp_client.js, 2026-10-07). Results are the wire
+// model's shape (`AudioAnalysis`), fields in declaration order; silence reads -Infinity.
+// The A/B comparison went with Labs (2026-10-08).
 
 import { createHash } from "node:crypto";
 import * as dspClient from "./dsp_client.js";
@@ -47,54 +47,5 @@ export async function analyze(buf) {
       duration_sec: fmt.durationSec,
     },
     loudness,
-  };
-}
-
-const sameFormat = (a, b) => Object.keys(a).every((k) => a[k] === b[k]);
-
-/** A `ComparisonReport` of two WAVs. */
-export async function compare(aBuf, bBuf) {
-  const a = await analyze(aBuf);
-  const b = await analyze(bBuf);
-
-  const identical = a.sha256 === b.sha256;
-  const formatMatch = sameFormat(a.format, b.format);
-  const peakDiffDb = b.loudness.peak_dbfs - a.loudness.peak_dbfs;
-  const rmsDiffDb = b.loudness.rms_dbfs - a.loudness.rms_dbfs;
-  const durationDiffSec = b.format.duration_sec - a.format.duration_sec;
-
-  let sampleRmse = null;
-  let maxSampleDelta = null;
-  let pctIdenticalSamples = null;
-  if (formatMatch) {
-    const d = await dspClient.sampleDiff(aBuf, bBuf);
-    sampleRmse = d.sample_rmse;
-    maxSampleDelta = d.max_sample_delta;
-    pctIdenticalSamples = d.pct_identical_samples;
-  }
-
-  let verdict;
-  if (identical) verdict = "identical";
-  else if (!formatMatch) verdict = "incomparable";
-  else if (sampleRmse == null) verdict = "incomparable";
-  else if (sampleRmse < 0.001) verdict = "near-identical";
-  else if (sampleRmse < 0.05) verdict = "similar";
-  else if (sampleRmse < 0.2) verdict = "different";
-  else verdict = "unrelated";
-
-  return {
-    a,
-    b,
-    identical,
-    format_match: formatMatch,
-    peak_diff_db: peakDiffDb,
-    rms_diff_db: rmsDiffDb,
-    duration_diff_sec: durationDiffSec,
-    sample_rmse: sampleRmse ?? null,
-    max_sample_delta: maxSampleDelta ?? null,
-    pct_identical_samples: pctIdenticalSamples ?? null,
-    verdict,
-    a_label: null,
-    b_label: null,
   };
 }

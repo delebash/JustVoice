@@ -29,7 +29,7 @@ const EXE = exeIdx > 0 ? process.argv[exeIdx + 1] : undefined;
 const VIEWS = [
   "home","studio","lines","captures",
   "books","voices","personas","lexicons","effects","ai",
-  "compare","audio","labs","renderlab","settings",
+  "settings",
 ];
 
 const failures = [];

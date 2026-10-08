@@ -43,12 +43,10 @@ const routes = [
 
   // ── Hidden / pinned ───────────────────────────────────────────────
   { path: "/importreview", name: "importreview", component: () => import("../views/ImportReviewView.vue") },
-  { path: "/labs", name: "labs", component: () => import("../views/LabsView.vue") },
   { path: "/settings", name: "settings", component: () => import("../views/SettingsView.vue") },
 
   // ── Legacy sub-tab deep-links ─────────────────────────────────────
-  // Settings sub-tabs (#cache/#channels/#webhooks) and Labs sub-tabs
-  // (#compare/#renderlab/#audio) were top-level hashes. The
+  // Settings sub-tabs (#cache/#channels/#webhooks) were top-level hashes. The
   // destination view reads the chosen sub-tab from sessionStorage on mount, so
   // set it here then redirect to the parent view.
   ...["cache", "channels", "webhooks"].map((sub) => ({
@@ -66,13 +64,6 @@ const routes = [
     path: "/speakerlab",
     redirect: { path: "/ai", query: { tab: "features", action: "speaker_attribution.guided" } },
   },
-  ...["compare", "renderlab", "audio"].map((sub) => ({
-    path: `/${sub}`,
-    redirect: () => {
-      try { sessionStorage.setItem("jv.labs.sub", sub); } catch { /* ignore */ }
-      return "/labs";
-    },
-  })),
 
   // The design mocks — dev only (src/mock/routes.js).
   ...(import.meta.env.DEV ? mockRoutes : []),

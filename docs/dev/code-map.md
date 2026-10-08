@@ -936,17 +936,13 @@ exposes queue depth or the current engine.**
 | `LexiconsView` | 632 | Pronunciation dictionaries |
 | `HomeView` | 561 | Empty hero *"What are you making?"* · Continue/Resume card · live tasks · engine status **with VRAM** + Unload/Switch · recent generations with inline replay |
 | `CapturesView` | 409 | Dictation captures, refined vs raw transcript, pin, retranscribe |
-| `CompareView` | 358 | A/B two takes → metric deltas + verdict (inside Labs) |
 | `CacheView` | 310 | Total on disk · by scope · recent entries · clear |
-| `RenderLabView` | 296 | Settings sweep (inside Labs) |
 | `LinesView` | 292 | Game voicelines grid — **Line ID · Speaker · Text · Take**, Re-import CSV, Export VO zip |
-| `AudioToolsView` | 261 | Analyze a WAV · apply a mastering target (inside Labs) |
 | `ImportReviewView` | 236 | Post-import check — **Chapter · Lines · Words · Est. audio** |
 | `WebhooksView` | 232 | Subscriptions |
 | `EffectsView` | 222 | Effect-chain presets |
 | `AudioChannelsView` | 172 | Output channels |
 | `AiView` | 97 | The AI console (kit) — tabs incl. `features`, `speech-engines` |
-| `LabsView` | 79 | Container for `compare · renderlab · audio` |
 
 ### StudioView's steps
 

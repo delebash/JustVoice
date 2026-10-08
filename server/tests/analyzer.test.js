@@ -3,7 +3,7 @@
 // tests/test_analyzer.py).
 import { afterAll, expect, test } from "vitest";
 import "./engines_helpers.js";
-import { analyze, compare } from "../src/audio/analyzer.js";
+import { analyze } from "../src/audio/analyzer.js";
 import * as dspClient from "../src/audio/dsp_client.js";
 import { fullscaleWav, silenceWav, sineWav } from "./audio_fixtures.js";
 
@@ -31,22 +31,6 @@ test("fullscale_detects_clipping", async () => {
   expect(a.loudness.clipping_ratio).toBeGreaterThan(0.9);
   // Peak is at the +/- 32767 ceiling => 0 dBFS
   expect(a.loudness.peak_dbfs).toBeGreaterThan(-0.01);
-});
-
-test("compare_identical_wavs_reports_identical", async () => {
-  const w = sineWav();
-  const rep = await compare(w, w);
-  expect(rep.identical).toBe(true);
-  expect(rep.verdict).toBe("identical");
-  expect(rep.sample_rmse === null || rep.sample_rmse === 0.0).toBe(true);
-});
-
-test("compare_different_wavs_reports_unrelated", async () => {
-  const rep = await compare(sineWav(), fullscaleWav());
-  expect(rep.identical).toBe(false);
-  expect(["different", "unrelated"]).toContain(rep.verdict);
-  expect(rep.sample_rmse).not.toBeNull();
-  expect(rep.sample_rmse).toBeGreaterThan(0.05);
 });
 
 test("analyze_reports_duration", async () => {

@@ -70,7 +70,7 @@ or re-render*:
   download fresh. (Older still: models from before 2026-08-14 lived in
   per-engine folders, which are no longer counted.)
 - **Render cache** — cached renders; an identical render computes again
-  instead of returning instantly. Labs → Cache offers scoped clears (by age)
+  instead of returning instantly. Settings → Cache offers scoped clears (by age)
   when you don't want to drop everything.
 
 Engine spawn logs get the same per-row Clear; database, server logs, and

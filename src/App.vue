@@ -36,7 +36,6 @@ import { PERSONA_IS } from "./services/personaFacts.js";
 // `lane` groups tabs in the sidebar (plan Q4 architecture):
 //   workflow — Do the work. Always-on for the current use case.
 //   library  — Manage assets (voices, personas, etc.).
-//   tools    — Diagnostics, comparison, render and audio labs.
 //   advanced — Cache, channels, webhooks — collapsed by default.
 // Settings is its own thing — pinned at the very bottom of the sidebar
 // outside the Advanced collapse.
@@ -77,7 +76,6 @@ const VIEWS = [
   { id: "importreview", lane: "hidden", label: "Import", icon: "⬆", lede: "Review what was detected — pick the chapters to import, confirm, done. Nothing imports until you confirm." },
 
   // ─── Settings — pinned at the very bottom, always visible ──────────
-  { id: "labs",      lane: "pinned", label: "Labs",      icon: "🧪", lede: "", visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
   { id: "settings",  lane: "pinned", label: "Settings",  icon: "⚙️", lede: "Every tunable setting in one place — nothing is hardcoded, so you can adjust how JustVoice behaves without editing files by hand." },
 ];
 

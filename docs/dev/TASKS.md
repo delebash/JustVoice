@@ -125,6 +125,42 @@ GO:     given 2026-08-17
 
 ## The next build
 
+### Labs goes — Compare, Render and Audio, the settings grid, and the three routes behind them (decided 2026-10-08)
+STATE:  DECIDED 2026-10-08 — the user asked "do we really need the lab? render and compare functions
+        are basically already part of the render page and i think we can already apply different
+        mastering targets too, what do you think?" On the answer as shown: "If we drop Labs, it goes
+        everywhere: the sidebar entry, the four views, the old #compare/#renderlab/#audio links,
+        docs/labs.md, and those three routes and their tests. I'd show you the full list of what's
+        affected before removing anything." · "1. Drop Labs entirely? Lean: yes." · "2. The
+        side-by-side settings grid: drop it with Labs, or move it onto the persona page? Lean: drop
+        it. "Hear it" plus comparing takes on Render covers the real use." · "3. The three server
+        routes: remove them too, or keep them for API users such as game developers' scripts? Lean:
+        remove them. Nothing calls them, and a game developer would use a project's own mastering
+        target." — the user: "1 and do the clean room rewrite", "your rec on all go", "1 2 and 3
+        your rec". The three routes: `POST /v1/analyze`, `/v1/compare`, `/v1/master`.
+BUILT:  2026-10-08 — gone: `LabsView`, `CompareView`, `RenderLabView`, `AudioToolsView`, the
+        sidebar's Labs entry (`App.vue` VIEWS), `/labs` and the `#compare`/`#renderlab`/`#audio`
+        redirects (`router/index.js`), the four `nav.*` strings (`en.json`), `api/analyzer_api.js`
+        and `api/master_api.js` and their registration (`app.js`), `AnalyzeRequest`,
+        `CompareRequest`, `ComparisonReport` (`models.js`), `analyzer.compare` and the dsp client's
+        `sampleDiff` (their only caller was `/v1/compare`), the two compare tests
+        (`analyzer.test.js`), `docs/labs.md`, the Labs rows of `docs/dev/code-map.md` and
+        `CONCEPTS.md`, the Labs lines of the old browser scripts (`e2e.js`, `verify-no-fakes.js`,
+        `verify_all.js`). Kept: `analyzer.analyze` (Export's ACX check) and `noiseMarginDb`
+        (voices), `mastering.master` (chapter renders), `AudioAnalysis` (analyze's shape). Fixed on
+        the way: "Labs → Cache" was already wrong — the scoped clears are Settings → Cache
+        (`SettingsView.vue`, `docs/backups-and-data.md`); Settings' mastering hint no longer names
+        Audio Tools; `docs/voices.md` no longer lists the Render Lab. Blast radius (grep before
+        the change): the views were imported only by `LabsView`, and `LabsView` only by the
+        router; `/v1/analyze`, `/v1/compare`, `/v1/master` were called only by `CompareView` and
+        `AudioToolsView` (no JustWrite, MCP or test caller); `analyzer.compare` only by
+        `analyzer_api.js` and `analyzer.test.js`; `sampleDiff` only by `analyzer.compare`.
+OPEN:   `legacy-gui/index.html` (the frozen reference UI at /legacy/, in-repo only) still has
+        a Compare panel calling `/v1/compare`, which now answers 404 — left as it is, since it's
+        a frozen reference. The fork's `audiocpp_dsp` keeps its `compare` command, which JustVoice
+        no longer calls.
+GO:     given 2026-10-08
+
 ### Previews say a load with Always auto-load on too; Studio's cards say "Checking…" until the project's facts load (decided 2026-10-07)
 STATE:  DECIDED 2026-10-07 — "go", on the two as shown: "The only silent case is with Always auto-load on,
         where ▶ just spins during the load. Should it show the same two messages then? Lean: yes, it's
@@ -2449,6 +2485,37 @@ OPEN:   step 1's last end — packaged builds need `audiocpp_dsp` in an audio.cp
         ROADMAP's and IDEAS' voicebox framing, takes_api's comparisons, JustWrite's outdated TTS
         research block; `.gitignore`'s upstream-audit line goes after the restructure. Dated plan
         records (`docs/plans/`) keep theirs as history.
+        DECIDED 2026-10-08 — then the user: "transcript-refinement prompts what are thses, i think
+        you have rewrittien it enought or can rewrite we can remove reference", "keep alive is
+        standradr this type of stuff is not really copying if it is stnadard", "can you rewrite
+        all of that on your own andmake it work well so we dont need any ref to voicebox?", "mcp
+        is standard pelent of tool examples", "your rec all go" — on the plan as shown: a
+        clean-room rewrite of all 14 credited pieces, in two halves that never share the old
+        code: "1. A spec, no code. One agent reads each credited file and writes down only what
+        it must do: its inputs, outputs, edge cases, and which existing tests pin it. 2. Fresh
+        code from the spec. A second agent, which is never shown the old files, writes new code
+        and new prompt wording from that spec alone." The 14: the transcript-refinement prompts,
+        examples and repeat-collapse step; the MCP server, tools, voice resolution and client
+        context (rebuilt from the official MCP SDK's documented examples and patterns — standard
+        first — with our own tool descriptions); chunked TTS; the captures routes; the database
+        start-up and column helpers; the built-in effect presets (our own settings, so they
+        sound a little different; saved presets untouched); the four Vue components (keep-alive,
+        chord picker, capture pill, dictate window). Then the credits go: the 14 headers,
+        NOTICE.md's entry, LICENSES.md's row, voicebox-pin.txt, the About line, the CLAUDE.md and
+        README mentions. Proof: every existing test passes unchanged; old and new refinement
+        prompts side by side in the Refine Lab on real captures (the new wording only goes in if
+        the clean-up is as good); the pill, the dictation window and keep-alive in the running
+        app; MCP with a real MCP client. When: right after the restructure agent, before the
+        installer.
+        GO 2026-10-08 — the user: "1 and do the clean room rewrite", then "your rec on all go". It
+        runs now; it no longer waits for the restructure (the user: "no i did not mean we rewrite
+        the apps today in electron vite, that was not my intnet"). 15 credited code files carry
+        the 14 pieces: `server/src/refinement.js`; `server/src/mcp/{server,tools,resolve,context}.js`;
+        `server/src/audio/chunked.js`; `server/src/api/captures_api.js`;
+        `server/src/database/{session,migrations,models}.js` (the start-up and column helpers);
+        `server/src/database/seed.js` (the effect presets); `src/components/{AudioKeepAlive,
+        ChordPicker,CapturePill,DictateWindow}.vue`. The Refine Lab is the AI console's
+        (`src/services/refineLab.js`), not the Labs view, so dropping Labs leaves it.
         DECIDED 2026-10-08 — the user: "when the conversion is complete no python should remain
         not even in testing, do you understnad?" Answered, rec applied, as shown: "When the
         conversion is complete, no Python remains anywhere: no server, no tests, no scripts, no

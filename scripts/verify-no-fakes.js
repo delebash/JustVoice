@@ -2,8 +2,8 @@
 //
 // verify-no-fakes.js — asserts the "coming soon"-gated affordances are
 // genuinely inert (disabled, no fake toast), so the UI never claims an
-// action it can't perform. Covers the item-4 fakes: Compare (Refresh /
-// Bulk QC), Captures (Record / Hotkey Change). Voices inspector buttons
+// action it can't perform. Covers the item-4 fakes: Captures (Record /
+// Hotkey Change). Voices inspector buttons
 // need an editable (cloned) voice + a loaded engine, so they're covered
 // by build + static disabled markup, not here.
 //
@@ -32,18 +32,6 @@ async function go(hash) {
   await page.waitForTimeout(700);
 }
 const toastCount = () => page.locator(".jv-toast, [data-sonner-toast], .toast").count();
-
-// ── Compare ──
-await go("#compare");
-check("Compare: A/B core still present (Choose A / Run analysis)",
-  (await page.locator("button", { hasText: "Choose A" }).count()) === 1 &&
-  (await page.locator("button", { hasText: "Run analysis" }).count()) === 1);
-check("Compare: 'Refresh from takes (soon)' is disabled",
-  await page.locator("button", { hasText: /Refresh from takes/ }).isDisabled());
-check("Compare: Bulk QC shows 'coming soon'",
-  (await page.locator("h3", { hasText: "Bulk QC across takes" }).innerText()).toLowerCase().includes("coming soon"));
-check("Compare: no live 'Run QC pass' button", (await page.locator("button", { hasText: "Run QC pass" }).count()) === 0);
-await page.screenshot({ path: `${SHOTS}/comingsoon-compare.png` });
 
 // ── Captures ──
 await go("#captures");

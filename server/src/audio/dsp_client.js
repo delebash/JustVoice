@@ -315,11 +315,6 @@ export async function loudness(wav) {
   return Object.fromEntries(Object.entries(got).map(([k, v]) => [k, v === null ? Number.NEGATIVE_INFINITY : v]));
 }
 
-/** sample_rmse, max_sample_delta, pct_identical_samples over the shorter (null for none). */
-export async function sampleDiff(wavA, wavB) {
-  return (await self._post("compare", {}, [["a", wavA], ["b", wavB]])).json();
-}
-
 export async function noiseMargin(wav) {
   return (await self._post("noise-margin", {}, [["audio", wav]])).json().noise_margin_db;
 }
