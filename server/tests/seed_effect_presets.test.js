@@ -12,8 +12,8 @@ import { applyEffectsChain } from "../src/audio/effects.js";
 import { writeWavContainer } from "../src/audio/wav.js";
 import * as session from "../src/database/session.js";
 import { seedBuiltinEffectPresets } from "../src/database/seed.js";
-import { pyJsonParse } from "../src/models.js";
 import { closeModuleDb, initDbAt, tmpPath } from "./helpers.js";
+import { pyJsonParse } from "@delebash/llm-runner/platform/pyjson";
 
 afterAll(() => dspClient.stop());
 afterEach(() => closeModuleDb());

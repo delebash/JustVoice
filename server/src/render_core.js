@@ -25,8 +25,8 @@
 import { realpathSync, statSync } from "node:fs";
 import zlib from "node:zlib";
 import { getLogger } from "@delebash/llm-runner/platform/log";
-import { B, pyFloatParse, pyInt, pySorted, strip, truthy, ValueError } from "@delebash/llm-runner/platform/py";
-import { PyFloat } from "@delebash/llm-runner/platform/pyjson";
+import { B, pyFloatParse, pyInt, pySorted, strip, truthy, ValueError, cpLen, reEscape } from "@delebash/llm-runner/platform/py";
+import { unwrap } from "@delebash/llm-runner/platform/pyjson";
 import { DEFAULT_MAX_CHUNK_CHARS, splitTextIntoChunks } from "./audio/chunked.js";
 import * as dspClient from "./audio/dsp_client.js";
 import { effectsChainHash } from "./audio/effects.js";
@@ -47,13 +47,10 @@ export const log = getLogger("justvoice.render_core");
 
 // ── Python's number conversions (candidates for platform/py.js) ─────────────────
 
-/** A stored number may be a PyFloat (a float kept for Python's text) — read as its number. */
-export const num = (v) => (v instanceof PyFloat ? v.v : v);
-
 /** Python's `float(v)` for the values a delivery holds: a number, a bool, a numeric string;
  * anything else is a TypeError, a non-numeric string a ValueError. */
 export function toFloat(v) {
-  const x = num(v);
+  const x = unwrap(v);
   if (typeof x === "number") return x;
   if (typeof x === "boolean") return x ? 1 : 0;
   if (typeof x === "string") return pyFloatParse(x);
@@ -62,15 +59,12 @@ export function toFloat(v) {
 
 /** Python's `int(v)`: a float is truncated, a bool is 0/1, a string must be a whole number. */
 export function toInt(v) {
-  const x = num(v);
+  const x = unwrap(v);
   if (typeof x === "number") return pyInt(x);
   if (typeof x === "boolean") return x ? 1 : 0;
   if (typeof x === "string") return pyInt(x);
   throw new TypeError(`int() argument must be a string, a bytes-like object or a real number, not '${x === null ? "NoneType" : typeof x}'`);
 }
-
-/** `len(s)` — code points, as Python counts them. */
-export const pyLen = (s) => [...s].length;
 
 /** A manager's `manifests()` values — a Map from the real manager, an object from a test's. */
 const valuesOf = (x) => (x instanceof Map ? [...x.values()] : Object.values(x || {}));
@@ -429,14 +423,14 @@ export function _keyDelivery(delivery, native) {
 
 /** A line's pitch, clamped to ±12 semitones; 0 when it has none. */
 function _pitchSemitones(delivery) {
-  if (!truthy(num(delivery.pitch))) return 0.0;
+  if (!truthy(unwrap(delivery.pitch))) return 0.0;
   return Math.max(-12.0, Math.min(12.0, toFloat(delivery.pitch)));
 }
 
 /** What the server does to a finished line from its delivery, as `dspClient.shape`'s options:
  * Speed (when the model did not pace itself), then Gain, then Pitch. */
 export function lineShape(delivery, { speedNative: native }) {
-  const gain = truthy(num(delivery.gain_db)) ? Math.max(-24.0, Math.min(12.0, toFloat(delivery.gain_db))) : 0.0;
+  const gain = truthy(unwrap(delivery.gain_db)) ? Math.max(-24.0, Math.min(12.0, toFloat(delivery.gain_db))) : 0.0;
   return {
     stretchFactor: serverSpeed(delivery, native),
     gainDb: gain,
@@ -519,8 +513,6 @@ export function _applyLexicons(text, lexiconIds, state, { ipaCapable = false } =
   return [out, ipaMap];
 }
 
-const escapeRe = (s) => s.replace(/[\\^$.*+?()[\]{}|/]/g, "\\$&");
-
 /**
  * The mapped words the engine will speak from IPA in `text`, lowercased (a Set). Step for step
  * what the engine's splice does: whole words, case aside, the longest entry first so "Mara
@@ -534,11 +526,11 @@ export function _ipaWords(text, ipaMap) {
     Object.entries(ipaMap)
       .filter(([g, p]) => strip(g) && strip(p || ""))
       .map(([g]) => strip(g)),
-    (g) => pyLen(g),
+    (g) => cpLen(g),
     true,
   );
   if (!entries.length || !strip(text)) return new Set();
-  const pattern = new RegExp(`${B}(${entries.map(escapeRe).join("|")})${B}`, "iu");
+  const pattern = new RegExp(`${B}(${entries.map(reEscape).join("|")})${B}`, "iu");
   const parts = text.split(pattern);
   if (parts.length === 1) return new Set();
   const known = new Set(entries.map((g) => g.toLowerCase()));
@@ -656,8 +648,8 @@ export async function renderLine(
   lexicons = lexicons || [];
   effects = effects || [];
 
-  if (pyLen(text) > settings.limits.text_max_chars) {
-    throw badRequest(`text length ${pyLen(text)} > limit ${settings.limits.text_max_chars}`);
+  if (cpLen(text) > settings.limits.text_max_chars) {
+    throw badRequest(`text length ${cpLen(text)} > limit ${settings.limits.text_max_chars}`);
   }
 
   const engineId = await self._resolveEngineForVoice(state, voice);
@@ -767,7 +759,7 @@ export async function renderLine(
   let pcm;
   let outSampleRate;
   let outChannels;
-  if (pyLen(effectiveText) > maxChunkChars) {
+  if (cpLen(effectiveText) > maxChunkChars) {
     const chunks = splitTextIntoChunks(effectiveText, maxChunkChars);
     const pieces = [];
     for (const piece of chunks) {

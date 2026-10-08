@@ -23,7 +23,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runtime as dataRuntime } from "@delebash/llm-runner/platform/data_paths";
 import { getLogger } from "@delebash/llm-runner/platform/log";
-import { splitlines } from "@delebash/llm-runner/runner/hardware";
+import { splitlines } from "@delebash/llm-runner/platform/py";
 import * as self from "./dev_build.js";
 
 const log = getLogger("justvoice.engines.audiocpp.dev_build");

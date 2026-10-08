@@ -27,8 +27,8 @@
 import { randomInt } from "node:crypto";
 import { readFileSync, rmSync, statSync } from "node:fs";
 import { getLogger } from "@delebash/llm-runner/platform/log";
-import { strip, truthy, ValueError } from "@delebash/llm-runner/platform/py";
-import { pyFloat, pyFloatValue } from "@delebash/llm-runner/platform/pyjson";
+import { cpLen, isDict, strip, truthy, ValueError } from "@delebash/llm-runner/platform/py";
+import { pyFloat, pyFloatValue, pyJsonParse, unwrap } from "@delebash/llm-runner/platform/pyjson";
 import { parseWavHeader } from "./audio/wav.js";
 import * as session from "./database/session.js";
 import { Block, Generation, Project, Scene, Speaker, Take } from "./database/models.js";
@@ -36,10 +36,9 @@ import { notFound } from "./errors.js";
 import { spokenBlock } from "./extraction/flags.js";
 import { leftOutBlocks } from "./extraction/tags.js";
 import * as mediaPaths from "./media_paths.js";
-import { pyJsonParse } from "./models.js";
 import * as personaRender from "./persona_render.js";
 import * as renderCore from "./render_core.js";
-import { num, pyLen, toFloat, toInt } from "./render_core.js";
+import { toFloat, toInt } from "./render_core.js";
 
 export const log = getLogger("justvoice.line_takes");
 
@@ -68,8 +67,6 @@ export const TAKE_SOURCES = [CHAPTER_RENDER, NEW_TAKE];
 // §8.16's words, the order Render shows them in.
 export const STATES = ["needs a speaker", "needs a voice", "ready", "rendered", "stale"];
 
-const isDict = (v) => v !== null && typeof v === "object" && !Array.isArray(v) && Object.getPrototypeOf(v) === Object.prototype;
-
 // ── The line's own numbers (D3) ──────────────────────────────────────
 
 /** The block's metadata as a dict ({} when there is none, or it is not a JSON object). Floats
@@ -86,7 +83,7 @@ export function blockMeta(block) {
 
 /** A podcast music/ad direction line — speaker-less by design, never heard. */
 export function isMarker(block) {
-  return truthy(num(blockMeta(block).marker));
+  return truthy(unwrap(blockMeta(block).marker));
 }
 
 /** The book's scene a line came from: the `#scene:<id>` in its `source_ref`, which the
@@ -264,7 +261,7 @@ function _mergeModels(current, patch) {
         else delete entry.knobs;
       } else if (_WORD_FIELDS.includes(key)) {
         if (value == null) delete entry[key];
-        else if (typeof value === "string" && pyLen(value) <= 60) entry[key] = strip(value);
+        else if (typeof value === "string" && cpLen(value) <= 60) entry[key] = strip(value);
         else throw new ValueError(`${model}'s ${key} must be a short word`);
       } else {
         throw new ValueError(`unknown setting ${personaRender.pyReprStr(key)} for ${model} — a line can set knobs, emotion, register_tag`);

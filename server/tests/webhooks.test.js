@@ -4,11 +4,10 @@
 // runs at once). The port of tests/test_webhooks.py.
 import { createHmac } from "node:crypto";
 import * as http from "@delebash/llm-runner/platform/http";
-import { pyJson } from "@delebash/llm-runner/platform/pyjson";
+import { pyJson, jsonLoads } from "@delebash/llm-runner/platform/pyjson";
 import { afterEach, expect, test, vi } from "vitest";
 import * as whApi from "../src/api/webhooks_api.js";
 import { Webhook } from "../src/database/models.js";
-import { jsonLoads } from "../src/py_compat.js";
 import { tmpDb } from "./helpers.js";
 
 const { _hashSecret } = whApi;

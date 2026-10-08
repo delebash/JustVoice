@@ -12,8 +12,8 @@ import * as effects from "../src/audio/effects.js";
 import { applyEffectsChain, chainEntries, effectsChainHash } from "../src/audio/effects.js";
 import { parseWavHeader } from "../src/audio/wav.js";
 import { BUILTIN_EFFECT_PRESETS } from "../src/database/seed.js";
-import { pyJsonParse } from "../src/models.js";
 import { sineWav } from "./audio_fixtures.js";
+import { pyJsonParse } from "@delebash/llm-runner/platform/pyjson";
 
 afterAll(() => dspClient.stop());
 

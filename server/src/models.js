@@ -12,13 +12,26 @@
 //
 // Beside the models, the helpers every store needs to write Python's bytes (each a
 // candidate for platform/): `floatify` (a model's floats → PyFloat for pyJson),
-// `construct` (pydantic's `Model(**x)`, safe for PyFloat values), the datetime forms
-// (`dtWire`, `dtIso`, `utcNow`, `utcNowNaive`, `dtMicros`) and `pyJsonParse`
-// (json.loads that keeps a whole-number float literal a float).
+// `construct` (pydantic's `Model(**x)`, safe for PyFloat values) and the datetime forms
+// (`dtWire`, `dtIso`, `utcNow`, `utcNowNaive`, `dtMicros`). Stored text is read with the
+// kit's `pyJsonParse` (json.loads that keeps a whole-number float literal a float).
 
 import { LLMProviderConfig } from "@delebash/llm-runner/llm/schema";
-import { check, laxConvert, literal, model, nullable, opt, shapeRequest, strictObject, T } from "@delebash/llm-runner/platform/models";
-import { PyFloat, pyFloatValue } from "@delebash/llm-runner/platform/pyjson";
+import {
+  branchOf,
+  check,
+  laxConvert,
+  literal,
+  model,
+  nullable,
+  opt,
+  shapeRequest,
+  strictObject,
+  T,
+  unwrapTyped,
+} from "@delebash/llm-runner/platform/models";
+import { isDict } from "@delebash/llm-runner/platform/py";
+import { PyFloat, pyClone, pyFloatValue } from "@delebash/llm-runner/platform/pyjson";
 
 export { LLMProviderConfig };
 
@@ -108,36 +121,6 @@ export const utcNow = () => `${fmtMicros(nowMicros())}Z`;
 export const utcNowNaive = () => fmtMicros(nowMicros());
 
 /**
- * `json.loads` for stored text whose numbers have no model to type them (a free `dict`, an
- * effects chain): a whole-number FLOAT literal ("1.0", "-20.0", "1e3") comes back as a
- * PyFloat, so writing it again (pyJson) or hashing it keeps Python's "1.0". Everything else
- * is plain JSON.parse — a PyFloat reads as its number through `Number(x)` / `+x`.
- * Candidate for platform/pyjson.js.
- */
-export function pyJsonParse(text) {
-  return JSON.parse(text, (_k, v, ctx) =>
-    typeof v === "number" && Number.isInteger(v) && ctx?.source && /[.eE]/.test(ctx.source) ? pyFloatValue(v) : v,
-  );
-}
-
-/** A deep copy that keeps PyFloat values (structuredClone turns them into plain objects). */
-export function pyClone(v) {
-  if (v === null || typeof v !== "object" || v instanceof PyFloat) return v;
-  if (Array.isArray(v)) return v.map(pyClone);
-  if (v instanceof Date) return new Date(v.getTime());
-  const out = {};
-  for (const [k, x] of Object.entries(v)) out[k] = pyClone(x);
-  return out;
-}
-
-function branchOf(schema, v) {
-  const want = v instanceof PyFloat ? "number" : Array.isArray(v) ? "array" : v === null ? "null" : typeof v;
-  const bs = schema.anyOf || [];
-  if (want === "number") return bs.find((b) => b.type === "number") || bs.find((b) => b.type === "integer");
-  return bs.find((b) => b.type === want) || bs.find((b) => !b.type && !b.anyOf);
-}
-
-/**
  * The value with every number its model types as `float` wrapped as a PyFloat, so pyJson
  * writes `1.0` where Python's json.dumps of `model_dump()` does. Numbers in free (`Any`)
  * positions are left as they are (a PyFloat stays one).
@@ -159,32 +142,6 @@ export function floatify(schema, v) {
   if (schema.patternProperties) {
     const s = Object.values(schema.patternProperties)[0];
     return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, floatify(s, x)]));
-  }
-  return v;
-}
-
-const typedNumber = (s) =>
-  s && (s.type === "number" || s.type === "integer" || (s.anyOf || []).some((b) => b.type === "number" || b.type === "integer"));
-
-/** A PyFloat where the model types a number becomes the plain number the model holds (its
- * float-ness comes back from the schema on write); in a free (`Any`) position it stays. */
-export function unwrapTyped(schema, v) {
-  if (v == null || !schema) return v;
-  if (v instanceof PyFloat) return typedNumber(schema) ? v.v : v;
-  if (schema.anyOf) {
-    const b = branchOf(schema, v);
-    return b ? unwrapTyped(b, v) : v;
-  }
-  if (schema.type === "array" && Array.isArray(v)) return v.map((x) => unwrapTyped(schema.items, x));
-  if (typeof v !== "object" || Array.isArray(v)) return v;
-  if (schema.type === "object" && schema.properties) {
-    const out = { ...v };
-    for (const [k, s] of Object.entries(schema.properties)) if (k in out) out[k] = unwrapTyped(s, out[k]);
-    return out;
-  }
-  if (schema.patternProperties) {
-    const s = Object.values(schema.patternProperties)[0];
-    return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, unwrapTyped(s, x)]));
   }
   return v;
 }
@@ -222,8 +179,6 @@ export function construct(schema, value, title) {
   return v;
 }
 
-const isPlain = (v) => v !== null && typeof v === "object" && !Array.isArray(v) && !(v instanceof PyFloat);
-
 /**
  * `model.model_dump(exclude_none=…)` — the fields in DECLARATION order, recursing into nested
  * models (also inside lists and dicts), unknown keys dropped. Given a constructed value it is
@@ -238,7 +193,7 @@ export function modelDump(schema, v, { excludeNone = false } = {}) {
     return b ? modelDump(b, v, { excludeNone }) : v;
   }
   if (schema.type === "array" && Array.isArray(v)) return v.map((x) => modelDump(schema.items, x, { excludeNone }));
-  if (schema.type === "object" && schema.properties && isPlain(v)) {
+  if (schema.type === "object" && schema.properties && isDict(v)) {
     const out = {};
     for (const [k, s] of Object.entries(schema.properties)) {
       if (!(k in v) || v[k] === undefined) continue;
@@ -248,7 +203,7 @@ export function modelDump(schema, v, { excludeNone = false } = {}) {
     }
     return out;
   }
-  if (schema.patternProperties && isPlain(v)) {
+  if (schema.patternProperties && isDict(v)) {
     const s = Object.values(schema.patternProperties)[0];
     return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, modelDump(s, x, { excludeNone })]));
   }

@@ -17,7 +17,7 @@ import path from "node:path";
 import { Readable } from "node:stream";
 import { getLogger } from "@delebash/llm-runner/platform/log";
 import { literal, nullable, opt, T } from "@delebash/llm-runner/platform/models";
-import { NotImplementedError, pyInt, strip, truthy, ValueError } from "@delebash/llm-runner/platform/py";
+import { b64decode, cpLen, NotImplementedError, pyInt, strip, truthy, ValueError } from "@delebash/llm-runner/platform/py";
 import { pyFloatValue, pyJson } from "@delebash/llm-runner/platform/pyjson";
 import { getState } from "../app_state.js";
 import { splitTextIntoChunks } from "../audio/chunked.js";
@@ -28,8 +28,6 @@ import * as blending from "../engines/blending.js";
 import * as manager from "../engines/manager.js";
 import { badRequest, conflict, notFound } from "../errors.js";
 import { BlendSegment, BlendStrategy, construct, Delivery, GenerateRequest, modelDump, modelFields, utcNow } from "../models.js";
-import { b64decode } from "../py_compat.js";
-import * as renderCore from "../render_core.js";
 import * as synthScheduler from "../synth_scheduler.js";
 import * as vmod from "../voice_model.js";
 import * as generateApi from "./generate_api.js";
@@ -613,7 +611,7 @@ export const StreamTicketResponse = T.Object({ ticket: T.String(), expires_at: T
 function auditionText(st, raw) {
   const text = strip(raw || "") || PREVIEW_LINE_DEFAULT;
   const cap = Math.max(AUDITION_TEXT_FLOOR, st.settings.get().limits.text_max_chars);
-  const n = renderCore.pyLen(text);
+  const n = cpLen(text);
   if (n > cap) {
     throw badRequest(`audition text is ${n} characters, limit ${cap} — previews are for a line or two, not a chapter.`);
   }

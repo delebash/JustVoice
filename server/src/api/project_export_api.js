@@ -14,14 +14,13 @@
 import { statSync } from "node:fs";
 import { opt, T } from "@delebash/llm-runner/platform/models";
 import { strip } from "@delebash/llm-runner/platform/py";
-import { pyJson } from "@delebash/llm-runner/platform/pyjson";
+import { jsonLoads, pyJson } from "@delebash/llm-runner/platform/pyjson";
 import { ZipWriter } from "@delebash/llm-runner/platform/zip";
 import { Block, Generation, Lexicon, LexiconEntry, Persona, Project, Scene, Speaker, Take } from "../database/models.js";
 import * as session from "../database/session.js";
 import { notFound } from "../errors.js";
 import { mediaFile } from "../media_paths.js";
 import { dtIso, utcNow } from "../models.js";
-import { jsonLoads } from "../py_compat.js";
 import { VERSION } from "../version.js";
 
 /** `re.sub(r"[^a-zA-Z0-9-_]+", "-", name).strip("-").lower() or "project"`. */

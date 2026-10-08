@@ -5,12 +5,11 @@
 // certain voices to OBS virtual mic, per-character podcast monitoring across multiple outputs.
 
 import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
-import { pyJson } from "@delebash/llm-runner/platform/pyjson";
+import { jsonLoads, pyJson } from "@delebash/llm-runner/platform/pyjson";
 import { Channel, PersonaChannel, uuid } from "../database/models.js";
 import * as session from "../database/session.js";
 import { notFound } from "../errors.js";
 import { construct, DateTime } from "../models.js";
-import { jsonLoads } from "../py_compat.js";
 
 export const ChannelResponse = T.Object({
   id: T.String(),

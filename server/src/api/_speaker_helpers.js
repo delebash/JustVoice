@@ -23,10 +23,9 @@
 // written at once.
 
 import { casefold, splitWs, strip } from "@delebash/llm-runner/platform/py";
-import { pyJson } from "@delebash/llm-runner/platform/pyjson";
+import { pyJson, pyStrOf } from "@delebash/llm-runner/platform/pyjson";
 import { Block, Persona, Scene, Speaker } from "../database/models.js";
 import { conflict } from "../errors.js";
-import { pyStrOf } from "../py_compat.js";
 
 /** The form two names are compared in — case and extra spaces don't count. */
 export function sameName(name) {

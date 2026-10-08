@@ -10,18 +10,16 @@
 // holding just their routers (`viaRoutes`) over the test's own module state (`useState()`). The
 // bare app reads bodies with the real app's JSON parsers (app.js `installPyFloatBodies`), so a
 // route sees what was sent (`req.sentBody`) and a free field keeps Python's floats.
-import { createServer } from "@delebash/llm-runner/platform";
-import { PyFloat } from "@delebash/llm-runner/platform/pyjson";
+import { createServer, installPyFloatBodies } from "@delebash/llm-runner/platform";
+import { PyFloat, pyJsonParse } from "@delebash/llm-runner/platform/pyjson";
 import { vi } from "vitest";
 import { router as projectsRouter } from "../src/api/projects_api.js";
 import { router as renderLinesRouter } from "../src/api/render_lines_api.js";
 import { router as takesRouter } from "../src/api/takes_api.js";
-import { installPyFloatBodies } from "../src/app.js";
 import * as session from "../src/database/session.js";
 import { Block, Project, Scene, Speaker, uuid } from "../src/database/models.js";
 import { EngineRegistry } from "../src/engines/registry.js";
 import * as manager from "../src/engines/manager.js";
-import { pyJsonParse } from "../src/models.js";
 
 /** A value with every PyFloat read as its number (for toEqual). */
 export function unwrap(v) {

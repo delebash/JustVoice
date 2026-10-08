@@ -25,8 +25,8 @@
 import { LLMNotConfiguredError, stores } from "@delebash/llm-runner/llm";
 import { getLogger } from "@delebash/llm-runner/platform/log";
 import { literal, nullable, opt, T } from "@delebash/llm-runner/platform/models";
-import { B, pyRound, pySorted, strip, truthy } from "@delebash/llm-runner/platform/py";
-import { pyFloatValue, pyJson } from "@delebash/llm-runner/platform/pyjson";
+import { B, cpSlice, isDict, pyCapitalize, pyRound, pySorted, reEscape, strip, truthy } from "@delebash/llm-runner/platform/py";
+import { jsonLoads, pyFloatValue, pyJson, pyStrOf } from "@delebash/llm-runner/platform/pyjson";
 import { getState } from "../app_state.js";
 import { Block, Project, Scene, Speaker, SpeakerCorrection, Take } from "../database/models.js";
 import * as session from "../database/session.js";
@@ -42,7 +42,6 @@ import { paragraphsOf, QUOTE_PAIRS, resolveMarks, segmentsFromLines, splitIntoPa
 import { leftOutBlocks } from "../extraction/tags.js";
 import { isMarker } from "../line_takes.js";
 import { construct, dtIso, ExtractionSettings, ProjectScript, SceneScript, utcNow } from "../models.js";
-import { cpSlice, isDict, jsonLoads, pyCapitalize, pyStrOf, reEscape } from "../py_compat.js";
 import { ensureSpeaker, narratorSpeakerId, speakerAliases } from "./_speaker_helpers.js";
 import { sseResponse } from "./sse_streams_api.js";
 

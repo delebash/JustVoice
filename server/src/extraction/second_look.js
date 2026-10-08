@@ -22,11 +22,10 @@
 // join the run's usage, and a cancel stops the look before its next line — the stream then
 // saves the chapter as it stood (extraction_api).
 
-import { errText, head } from "@delebash/llm-runner/llm/base";
 import { getLogger } from "@delebash/llm-runner/platform/log";
-import { pyRound, splitWs, strip, truthy, ValueError } from "@delebash/llm-runner/platform/py";
+import { cpSlice, errText, isDict, pyRound, splitWs, strip, strRepr, truthy, ValueError } from "@delebash/llm-runner/platform/py";
+import { jsonLoads, pyFloatOf, pyStrOf } from "@delebash/llm-runner/platform/pyjson";
 import * as run from "../engines/llm/run.js";
-import { cpSlice, isDict, jsonLoads, pyFloatOf, pyStrOf, strRepr } from "../py_compat.js";
 import * as self from "./second_look.js";
 
 const log = getLogger("justvoice.extraction.second_look");
@@ -280,7 +279,7 @@ export async function lookAt(
   } catch (e) {
     // An extra: a failure leaves the line as it was.
     report.failed += 1;
-    log.warning(`second look failed on ${strRepr(head(row.text, 60))}: ${errText(e)}`);
+    log.warning(`second look failed on ${strRepr(cpSlice(row.text, 0, 60))}: ${errText(e)}`);
     return "failed";
   }
   const ans = parse(text);

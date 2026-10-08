@@ -25,11 +25,10 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
-import { B } from "@delebash/llm-runner/platform/py";
+import { B, reEscape } from "@delebash/llm-runner/platform/py";
 import { formatKnown, knownLabels, parseCandidates } from "../src/extraction/identify.js";
 import { match, norm, quoteInText, refersTo } from "../src/extraction/names.js";
 import { runAdapter } from "../src/imports/index.js";
-import { reEscape } from "../src/py_compat.js";
 
 const ROOT = path.resolve(import.meta.dirname, "..", "..");
 const ACTION = "speaker_attribution.identify";

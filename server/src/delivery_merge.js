@@ -11,7 +11,7 @@
 // /v1/chapters/render (chapter batch), and the tier ordering must match exactly across both.
 
 import { getLogger } from "@delebash/llm-runner/platform/log";
-import { rstrip, truthy } from "@delebash/llm-runner/platform/py";
+import { isDict, rstrip, truthy } from "@delebash/llm-runner/platform/py";
 import { Delivery, modelFields } from "./models.js";
 
 // (Python named this logger "justvoice.delivery-merge"; nothing logs through it today.)
@@ -34,8 +34,6 @@ export function composeInstruct(...hints) {
   if (kept.length === 1) return kept[0];
   return kept.map((h) => rstrip(h, ". ")).join(". ");
 }
-
-const isDict = (v) => v !== null && typeof v === "object" && !Array.isArray(v) && Object.getPrototypeOf(v) === Object.prototype;
 
 export function _decodeJsonDict(raw) {
   if (!raw) return {};

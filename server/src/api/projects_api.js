@@ -27,8 +27,22 @@ import { readFileSync } from "node:fs";
 import { LLMNotConfiguredError } from "@delebash/llm-runner/llm";
 import { RequestValidationError } from "@delebash/llm-runner/platform/errors";
 import { literal, nullable, opt, T } from "@delebash/llm-runner/platform/models";
-import { casefold, KeyError, lstrip, PY_WS, rstrip, splitWs, strip, truthy, ValueError } from "@delebash/llm-runner/platform/py";
-import { pyJson } from "@delebash/llm-runner/platform/pyjson";
+import {
+  casefold,
+  cpSlice,
+  isDict,
+  KeyError,
+  lstrip,
+  PY_WS,
+  pyIntOfStr,
+  rstrip,
+  splitWs,
+  strip,
+  strRepr,
+  truthy,
+  ValueError,
+} from "@delebash/llm-runner/platform/py";
+import { jsonLoads, pyJson, pyStrOf } from "@delebash/llm-runner/platform/pyjson";
 import { getState } from "../app_state.js";
 import { SequenceMatcher } from "../difflib.js";
 import { Block, Lexicon as DbLexicon, LexiconEntry as DbLexiconEntry, Project, Scene, Speaker, Take } from "../database/models.js";
@@ -43,7 +57,6 @@ import { AdapterListResponse, ImportRunResponse } from "../imports/standard_sche
 import * as lineTakes from "../line_takes.js";
 import * as mastering from "../mastering.js";
 import { construct, DateTime } from "../models.js";
-import { cpSlice, isDict, jsonLoads, pyIntOfStr, pyStrOf, strRepr } from "../py_compat.js";
 import * as synthScheduler from "../synth_scheduler.js";
 import { adoptBookNarrator, ensureSpeaker } from "./_speaker_helpers.js";
 import * as captures from "./captures_api.js";

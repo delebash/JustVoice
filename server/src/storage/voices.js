@@ -18,9 +18,10 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, wri
 import path from "node:path";
 import { getLogger } from "@delebash/llm-runner/platform/log";
 import { KeyError, pySorted, ValueError } from "@delebash/llm-runner/platform/py";
-import { construct, dtIso, dtMicros, floatify, modelDump, pyClone, utcNow, VoiceRecord } from "../models.js";
+import { construct, dtIso, dtMicros, floatify, modelDump, utcNow, VoiceRecord } from "../models.js";
 import { voicesRoot } from "../paths.js";
 import { atomicWriteJson } from "./atomic.js";
+import { pyClone } from "@delebash/llm-runner/platform/pyjson";
 
 const log = getLogger("justvoice.storage.voices");
 

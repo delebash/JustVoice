@@ -10,8 +10,7 @@
 // name, then sweeps forward + backward through unanchored dialogue segments to fill in
 // pronoun-only or bare turn-taking patterns.
 
-import { B, pySorted } from "@delebash/llm-runner/platform/py";
-import { cpIndex, pyEscapedLen, reEscape } from "../py_compat.js";
+import { B, cpIndex, pyEscapedLen, pySorted, reEscape } from "@delebash/llm-runner/platform/py";
 
 // 40+ dialogue-tag verbs. Order doesn't matter — they're joined into one regex alternation.
 // Past + present + third-person where relevant.

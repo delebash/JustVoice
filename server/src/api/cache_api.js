@@ -3,6 +3,7 @@
 
 import { statSync } from "node:fs";
 import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
+import { pyRepr } from "@delebash/llm-runner/platform/pyjson";
 import { getState } from "../app_state.js";
 import { Generation } from "../database/models.js";
 import * as session from "../database/session.js";
@@ -10,7 +11,6 @@ import * as manager from "../engines/manager.js";
 import { badRequest } from "../errors.js";
 import { mediaFile } from "../media_paths.js";
 import { CacheStats, construct } from "../models.js";
-import { pyRepr } from "../py_compat.js";
 import * as voiceModel from "../voice_model.js";
 
 export const RecentCacheEntry = T.Object({

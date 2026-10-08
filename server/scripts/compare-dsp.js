@@ -26,7 +26,7 @@ process.env.JUSTVOICE_DATA_DIR = join(dir, "data");
 process.env.JUSTVOICE_DSP_EXE = DSP;
 delete process.env.JUSTVOICE_AUDIOCPP_BUILD;
 
-const { pyJsonParse } = await import("../src/models.js");
+const { pyJsonParse } = await import("@delebash/llm-runner/platform/pyjson");
 const { writeWavContainer } = await import("../src/audio/wav.js");
 const dsp = await import("../src/audio/dsp_client.js");
 const { analyze, compare, noiseMarginDb } = await import("../src/audio/analyzer.js");

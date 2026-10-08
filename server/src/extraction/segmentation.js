@@ -21,8 +21,7 @@
 // with the `u` flag (and the inline `(?i:…)` group, which Node 24 reads); Python's `$` is
 // END (it also matches before a final newline).
 
-import { B, D, PY_WS, pyMax, strip, W } from "@delebash/llm-runner/platform/py";
-import { END } from "../py_compat.js";
+import { B, D, END, PY_WS, pyMax, strip, W } from "@delebash/llm-runner/platform/py";
 
 export const SPEECH_MARKS = ["double", "single", "guillemets", "german"];
 

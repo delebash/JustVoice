@@ -1072,8 +1072,12 @@ agent's checks, the suite and the extraction check re-run by me; `extraction/`, 
 - `imports/adapters/html_parser.js` is CPython 3.12.9's `html.parser` and `html.unescape`, line for
   line (`close()` flushes a pending block before the remaining text, as Python does);
   `etree.js` is the ElementTree subset the importers use, to expat's rules and error words
-  (76 cases, 0 different). `py_compat.js` holds Python's `json.loads`, UTF-8 decode errors,
-  `splitlines`, `float()`, `title` and friends (`compare-pycompat.js`: 6,863 cases, 0 different).
+  (76 cases, 0 different). `py_compat.js` held Python's `json.loads`, UTF-8 decode errors,
+  `splitlines`, `float()`, `title` and friends (`compare-pycompat.js`: 6,863 cases, 0 different);
+  since 2026-10-08 they are the kit's `platform/py.js` / `pyjson.js` and `py_compat.js` is gone
+  (the kit's register, "One copy of the Python helpers"). `compare-pycompat.js` still imports
+  `../src/py_compat.js` — not edited by that sweep; it runs again only once its import names the
+  kit's two modules.
 - **Analyze and Discover send Python's requests and write Python's results:** against a fake
   llama-server (no model loaded), 4 real chapters × Analyze with the second look, Analyze of an
   edited chapter, Analyze streamed on the guided route, and Discover — 243 requests byte for
@@ -1150,8 +1154,9 @@ agent's checks, the suite and the extraction check re-run by me; `extraction/`, 
 - **Float bodies:** `JSON.parse` turns `1.0` and `1e3` into `1` and `1000`; a route that stores
   a free-form body opts in (`config: {pyFloats: true}`, or `PY_FLOAT_ROUTES` for a kit-built
   router such as `PATCH /v1/prefs`) and gets PyFloats, so prefs store `1.0` / `1000.0` as
-  Python did. Built in `app.js` (`installPyFloatBodies`) — the kit has no such option yet; it
-  moves into the kit with the helper sweep (TASKS, step-5 rec 3).
+  Python did. Built in `app.js` first; since 2026-10-08 it is the kit's
+  `createServer({pyFloats: {routes}})` (`platform/server.js` `installPyFloatBodies`), JustVoice
+  passing `PY_FLOAT_ROUTES`. An app that doesn't pass it (JustWrite, docgen) parses as before.
 - Not matched: there is no `/openapi.json`, `/docs` or `/redoc` (`cli.js open-api` exits 1 and
   says so); network and SQL-constraint error texts are undici's and better-sqlite3's; HttpUrl
   reasons beyond "relative URL without a base" and "empty host" are approximate; a

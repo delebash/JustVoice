@@ -27,10 +27,10 @@
 // and Script's Analyze discovers the speakers.
 
 import { BadZipFile, ZipReader } from "@delebash/llm-runner/platform/zip";
-import { strip, truthy } from "@delebash/llm-runner/platform/py";
+import { decodeUtf8, isDict, strip, strRepr, truthy } from "@delebash/llm-runner/platform/py";
+import { jsonLoads, pyStrOf } from "@delebash/llm-runner/platform/pyjson";
 import { badRequest } from "../../errors.js";
 import { construct } from "../../models.js";
-import { decodeUtf8, isDict, jsonLoads, pyStrOf, strRepr } from "../../py_compat.js";
 import { StandardImport } from "../standard_schema.js";
 import { htmlBlocks } from "./book_prose.js";
 

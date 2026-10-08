@@ -29,6 +29,7 @@ import { stores } from "@delebash/llm-runner/llm";
 import { background, Mutex, sleep } from "@delebash/llm-runner/platform/asyncutil";
 import { getLogger } from "@delebash/llm-runner/platform/log";
 import { floorDiv, pyInt, pyRound, RuntimeError } from "@delebash/llm-runner/platform/py";
+import { pyFixed } from "@delebash/llm-runner/platform/pyjson";
 import * as arbiter from "@delebash/llm-runner/runner/arbiter";
 import * as kitConfig from "@delebash/llm-runner/runner/config";
 import * as download from "@delebash/llm-runner/runner/download";
@@ -558,11 +559,9 @@ export function _newSlot(m, placement = "gpu") {
   return new slot.AudioCppSlot(m, placement);
 }
 
-const fixed = (v, n) => pyRound(v, n).toFixed(n);
-
 /** A real-time factor the way the rows say it: 3.2×, 12×. */
 export function _x(v) {
-  return v < 10 ? `${fixed(v, 1)}×` : `${fixed(v, 0)}×`;
+  return v < 10 ? `${pyFixed(v, 1)}×` : `${pyFixed(v, 0)}×`;
 }
 
 const isAuto = (v) => v == null || v === "" || v === "auto";

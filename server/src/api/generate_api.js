@@ -12,7 +12,7 @@
 // MCP server's `justvoice.speak` calls too. Calls a test spies on go through the module
 // namespaces (render_core, voice_model, the manager, the scheduler, this module's own `self.`).
 
-import { pyInt } from "@delebash/llm-runner/platform/py";
+import { cpLen, pyInt, strRepr } from "@delebash/llm-runner/platform/py";
 import { getState } from "../app_state.js";
 import { DEFAULT_MAX_CHUNK_CHARS, splitTextIntoChunks } from "../audio/chunked.js";
 import * as dspClient from "../audio/dsp_client.js";
@@ -23,7 +23,6 @@ import * as manager from "../engines/manager.js";
 import { badRequest, internal, notFound } from "../errors.js";
 import { Delivery, floatify, GenerateRequest, modelDump } from "../models.js";
 import * as personaRender from "../persona_render.js";
-import { strRepr } from "../py_compat.js";
 import * as renderCore from "../render_core.js";
 import * as synthScheduler from "../synth_scheduler.js";
 import * as voiceModel from "../voice_model.js";
@@ -135,8 +134,8 @@ export async function generate(req, { signal = null } = {}) {
   const st = getState();
   const settings = st.settings.get();
 
-  if (renderCore.pyLen(req.text) > settings.limits.text_max_chars) {
-    throw badRequest(`text length ${renderCore.pyLen(req.text)} > limit ${settings.limits.text_max_chars}`);
+  if (cpLen(req.text) > settings.limits.text_max_chars) {
+    throw badRequest(`text length ${cpLen(req.text)} > limit ${settings.limits.text_max_chars}`);
   }
 
   const mgr = manager.getManager();
@@ -298,7 +297,7 @@ export async function _generateViaManager(engineId, req, voiceFields = null, { s
 
   const doIt = async () => {
     try {
-      if (renderCore.pyLen(req.text) <= maxChunkChars) {
+      if (cpLen(req.text) <= maxChunkChars) {
         const [audioBytes, meta] = await synthOne(req.text, effectiveSeed);
         const pcm = meta.is_wav_container ? stripWavHeader(audioBytes) : audioBytes;
         return await _finishLine(pcm, meta.sample_rate || 24000, meta.channels || 1, delivery, engineId, effects, model);
@@ -385,7 +384,7 @@ export async function _generateViaInprocess(engineId, req) {
     engine.synthesize(new SynthRequest({ voiceId: req.voice, text, language: req.language, delivery, seed: chunkSeed }));
 
   try {
-    if (renderCore.pyLen(req.text) <= maxChunkChars) {
+    if (cpLen(req.text) <= maxChunkChars) {
       const out = await synthOne(req.text, req.seed);
       let pcm;
       let sr;

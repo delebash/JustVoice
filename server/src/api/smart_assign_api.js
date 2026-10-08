@@ -11,11 +11,11 @@
 import { LLMNotConfiguredError } from "@delebash/llm-runner/llm";
 import { getLogger } from "@delebash/llm-runner/platform/log";
 import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
-import { strip } from "@delebash/llm-runner/platform/py";
+import { cpSlice, isDict, strip } from "@delebash/llm-runner/platform/py";
+import { jsonLoads, pyStrOf } from "@delebash/llm-runner/platform/pyjson";
 import * as run from "../engines/llm/run.js";
 import { HttpError } from "../errors.js";
 import { construct } from "../models.js";
-import { cpSlice, isDict, jsonLoads, pyStrOf } from "../py_compat.js";
 import { RunUsage } from "./extraction_api.js";
 
 const log = getLogger("justvoice.api.smart_assign_api");

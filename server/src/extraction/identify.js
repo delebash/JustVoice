@@ -15,11 +15,10 @@
 // names deduped case-insensitively against the known cast AND each other.
 
 import { getLogger } from "@delebash/llm-runner/platform/log";
-import { PY_WS, RuntimeError, strip, truthy } from "@delebash/llm-runner/platform/py";
-import { errText } from "@delebash/llm-runner/llm/base";
+import { cpLen, cpSlice, errText, isDict, PY_WS, pyGet, RuntimeError, splitlines, strip, truthy } from "@delebash/llm-runner/platform/py";
+import { isNumber, jsonLoads, pyIntOfNumber, pyStrOf } from "@delebash/llm-runner/platform/pyjson";
 import * as run from "../engines/llm/run.js";
 import { ExtractionSettings, construct } from "../models.js";
-import { cpLen, cpSlice, isDict, isNumber, jsonLoads, pyIntOfNumber, pyStrOf, splitlines } from "../py_compat.js";
 import { ParagraphTooBig, Piece, planPieces } from "./pieces.js";
 import { resolveMarks, segmentParagraphs, splitIntoParagraphs } from "./segmentation.js";
 
@@ -67,8 +66,6 @@ function _stripCodeFences(text) {
   const m = FENCE.exec(text);
   return m ? m[1] : text;
 }
-
-const pyGet = (d, k, dflt = null) => (Object.hasOwn(d, k) ? d[k] : dflt);
 
 /** Parse the LLM reply into deduped candidates. Tolerates fences, stray text around the
  * array, and partially-malformed entries. */

@@ -10,8 +10,8 @@ import { readFileSync, statSync } from "node:fs";
 import { LLMNotConfiguredError } from "@delebash/llm-runner/llm";
 import { HttpError } from "@delebash/llm-runner/platform/errors";
 import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
-import { NotImplementedError, pyRound, pySorted, strip, ValueError } from "@delebash/llm-runner/platform/py";
-import { pyFloat, pyFloatValue } from "@delebash/llm-runner/platform/pyjson";
+import { b64decode, isDict, NotImplementedError, pyRound, pySorted, strip, ValueError } from "@delebash/llm-runner/platform/py";
+import { jsonLoads, pyFixed, pyFloat, pyFloatValue, pyStrOf } from "@delebash/llm-runner/platform/pyjson";
 import { getState } from "../app_state.js";
 import { noiseMarginDb } from "../audio/analyzer.js";
 import { parseWavHeader } from "../audio/wav.js";
@@ -34,7 +34,6 @@ import {
   VoiceList,
 } from "../models.js";
 import { fmtG } from "../persona_render.js";
-import { b64decode, isDict, jsonLoads, pyFixed, pyStrOf } from "../py_compat.js";
 import * as vmod from "../voice_model.js";
 import { RunUsage } from "./extraction_api.js";
 import { sentBody } from "./settings_api.js";

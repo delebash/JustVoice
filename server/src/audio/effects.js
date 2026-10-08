@@ -30,6 +30,7 @@
 // `pyJsonParse` so its whole-number floats stay floats ("1.0") — or every key changes.
 
 import { createHash } from "node:crypto";
+import { isJsonObject } from "@delebash/llm-runner/platform/py";
 import { pyJsonCompact } from "@delebash/llm-runner/platform/pyjson";
 import * as dspClient from "./dsp_client.js";
 
@@ -46,12 +47,10 @@ export const cfg = {
 export const DSP_VERSION = cfg.DSP_VERSION;
 export const PITCH_ENGINE = cfg.PITCH_ENGINE;
 
-const isDict = (e) => e !== null && typeof e === "object" && !Array.isArray(e);
-
 /** The usable entries of a stored chain, in order (anything not a `{type, params}` object is
  * skipped). */
 export function chainEntries(chain) {
-  return (chain || []).filter(isDict);
+  return (chain || []).filter(isJsonObject);
 }
 
 /** Apply `chain` to `wavBytes`, return new WAV bytes (async). An empty chain (or one whose
@@ -62,7 +61,7 @@ export async function applyEffectsChain(wavBytes, chain) {
 }
 
 function hasPitchShift(chain) {
-  return chain.some((e) => isDict(e) && String(e.type || "").toLowerCase() === "pitch_shift");
+  return chain.some((e) => isJsonObject(e) && String(e.type || "").toLowerCase() === "pitch_shift");
 }
 
 /**

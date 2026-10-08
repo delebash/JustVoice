@@ -14,10 +14,10 @@
 import { existsSync, readFileSync, rmSync } from "node:fs";
 import { isDeepStrictEqual } from "node:util";
 import { getLogger } from "@delebash/llm-runner/platform/log";
-import { RuntimeError } from "@delebash/llm-runner/platform/py";
-import { pyJson } from "@delebash/llm-runner/platform/pyjson";
+import { RuntimeError, isJsonObject } from "@delebash/llm-runner/platform/py";
+import { pyJson, pyClone } from "@delebash/llm-runner/platform/pyjson";
 import * as session from "../database/session.js";
-import { construct, floatify, modelDump, pyClone, Settings, SettingsPatch } from "../models.js";
+import { construct, floatify, modelDump, Settings, SettingsPatch } from "../models.js";
 import { settingsPath } from "../paths.js";
 
 const log = getLogger("justvoice.storage.settings_store");
@@ -54,16 +54,14 @@ function renameKeys(obj, renames) {
   }
 }
 
-const isDict = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
-
 /** Rename legacy snake_case LLM-config keys to camelCase in a settings dict (mutates +
  * returns it). Tolerant of missing/oddly-typed sections — never raises. */
 export function _migrateLlmCamel(data) {
-  const engines = isDict(data) ? data.engines : null;
-  if (!isDict(engines)) return data;
+  const engines = isJsonObject(data) ? data.engines : null;
+  if (!isJsonObject(engines)) return data;
   const llm = engines.llm;
   for (const prov of Array.isArray(llm) ? llm : []) {
-    if (isDict(prov)) renameKeys(prov, LLM_PROVIDER_RENAMES);
+    if (isJsonObject(prov)) renameKeys(prov, LLM_PROVIDER_RENAMES);
   }
   return data;
 }
@@ -72,7 +70,7 @@ export function _migrateLlmCamel(data) {
  * replaces. */
 export function _deepMerge(base, update) {
   for (const [key, value] of Object.entries(update)) {
-    if (isDict(value) && isDict(base[key])) _deepMerge(base[key], value);
+    if (isJsonObject(value) && isJsonObject(base[key])) _deepMerge(base[key], value);
     else base[key] = value;
   }
 }

@@ -24,9 +24,8 @@ import { Generation, uuid } from "../database/models.js";
 import * as session from "../database/session.js";
 import { storeMediaPath } from "../media_paths.js";
 import { generationsRoot } from "../paths.js";
-import { pyRound, ValueError } from "@delebash/llm-runner/platform/py";
-import { PyFloat } from "@delebash/llm-runner/platform/pyjson";
-import { isDict, pyRepr } from "../py_compat.js";
+import { b64decode, isDict, pyRound, pyTypeName, ValueError } from "@delebash/llm-runner/platform/py";
+import { PyFloat, pyRepr } from "@delebash/llm-runner/platform/pyjson";
 import { currentClientId, requestIsLoopback } from "./context.js";
 import { resolveVoice } from "./resolve.js";
 
@@ -92,23 +91,6 @@ export function listTools() {
 }
 
 // ── argument validation, in pydantic's words ──────────────────────────────────
-
-const pyTypeName = (v) =>
-  v === null || v === undefined
-    ? "NoneType"
-    : typeof v === "boolean"
-      ? "bool"
-      : v instanceof PyFloat
-        ? "float"
-        : typeof v === "number"
-          ? Number.isInteger(v)
-            ? "int"
-            : "float"
-          : typeof v === "string"
-            ? "str"
-            : Array.isArray(v)
-              ? "list"
-              : "dict";
 
 /** One pydantic error → [type, msg], or null when `v` fits (lax mode, as validate_call). */
 function checkValue(kind, nullable, v) {
@@ -202,41 +184,6 @@ function isAbsolutePath(p) {
   return p.startsWith("/");
 }
 
-const B64 = /[A-Za-z0-9+/]/;
-
-/** `base64.b64decode(s, validate=True)` — binascii's strict decoder and its words. */
-export function b64decodeStrict(s) {
-  if (!/^[\x00-\x7f]*$/.test(s)) throw new ValueError("string argument should contain only ASCII characters");
-  if (s.length > 0 && s[0] === "=") throw new ValueError("Leading padding not allowed");
-  let quadPos = 0;
-  let pads = 0;
-  let paddingStarted = false;
-  let dataChars = 0;
-  for (let i = 0; i < s.length; i++) {
-    const ch = s[i];
-    if (ch === "=") {
-      paddingStarted = true;
-      if (quadPos === 0) throw new ValueError("Excess padding not allowed");
-      pads += 1;
-      if (quadPos >= 2 && quadPos + pads >= 4) {
-        if (i + 1 < s.length) throw new ValueError("Excess data after padding");
-        return Buffer.from(s.slice(0, i + 1), "base64");
-      }
-      continue;
-    }
-    if (!B64.test(ch)) throw new ValueError("Only base64 data is allowed");
-    if (paddingStarted) throw new ValueError("Discontinuous padding not allowed");
-    pads = 0;
-    dataChars += 1;
-    quadPos = (quadPos + 1) % 4;
-  }
-  if (quadPos === 1) {
-    throw new ValueError(`Invalid base64-encoded string: number of data characters (${dataChars}) cannot be 1 more than a multiple of 4`);
-  }
-  if (quadPos !== 0) throw new ValueError("Incorrect padding");
-  return Buffer.from(s, "base64");
-}
-
 async function justvoiceTranscribe({ audio_base64: audioBase64, audio_path: audioPath, language }) {
   if (Boolean(audioBase64) === Boolean(audioPath)) throw new ValueError("Pass exactly one of `audio_base64` or `audio_path`.");
 
@@ -264,7 +211,7 @@ async function justvoiceTranscribe({ audio_base64: audioBase64, audio_path: audi
 
   let raw;
   try {
-    raw = b64decodeStrict(audioBase64);
+    raw = b64decode(audioBase64, true);
   } catch (exc) {
     throw new ValueError(`Invalid audio_base64: ${exc.message}`);
   }

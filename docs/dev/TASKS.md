@@ -2334,6 +2334,25 @@ OPEN:   step 1's last end — packaged builds need `audiocpp_dsp` in an audio.cp
            and retires `engines/audiocpp/japanese.js`'s own tar reader (written because the
            kit's `extractTarGz` leaked its archive handle — fixed 2026-10-08): the kit's gains
            the member filter it needs.
+           DONE 2026-10-08 (kit 2989154, JustWrite 46a3036, docgen 7e4b3c1, JustVoice next
+           commit): every copy that answers the same on its callers' inputs moved into
+           `platform/py.js` / `platform/pyjson.js` (fuzzed against its replacement; the new
+           kit functions checked against CPython 3.12.9, `py_text.test.js`); `py_compat.js` is
+           deleted; `createServer({pyFloats})`; `extractTarGz({members})` (the real UniDic
+           sdist unpacks identically). 19 copies were NOT merged because their output differs
+           on inputs callers can reach: repr of a str (kit seed.js, runner/models.js,
+           lifecycle reprAny, JV persona_render — C1 unescaped; docgen jsonio CPython-exact;
+           JV slot, html_parser, book_prose, voice_bundle, JW book_io — less), str() (kit
+           pyStr writes 1e-7 for 1e-07; prompts pyStrAny/pyReprAny print a PyFloat as {'v': …}),
+           format g (JV pipeline formatG, persona_render fmtG round ties up), pyFloatParse
+           beside pyFloatOf, the dict.get variants with their own errors (JW pyGet/pyItems, JV
+           projects/extraction dget, justwrite.js pyGet), JW setdefault, model_catalog
+           excStr, JV's nine errText copies, render_core toFloat/toInt. Rec applied: converge
+           them on the kit's CPython-checked functions in the bug-fix pass (no Python is left
+           to match a quirk against), with two bugs the CPython fixture found: `pyFloatOf` /
+           `pyIntOfStr` strip U+001C–U+001F where float()/int() refuse them; `pronunciation.js`
+           escapes `-` inside a `u`-flag pattern, so a lexicon entry with a space and a hyphen
+           ("Jean-Luc Picard") throws "Invalid escape".
         4. The desktop window's origin `app://justvoice` is allowed by CORS and CSRF, as
            JustWrite's is (step-4 rec 1): the window is the app itself.
         FINDING: the JustVoice port copied these Python bugs on purpose (RESEARCH §6, the API
@@ -2377,6 +2396,43 @@ OPEN:   step 1's last end — packaged builds need `audiocpp_dsp` in an audio.cp
         earlier test runs. Deleting them isn't in the plan. May I delete them? Lean: yes; they're
         named by the test suites, so they can't be confused with anything else.": "your rec on
         all go when ready".
+        DECIDED 2026-10-08 — the user: "are you using any standard folder structure like i asked
+        for electron vite vue https://github.com/electron-vite/electron-vite-vue or
+        https://electron-vite.org/guide/ you keep rolling your own crap i keep telling you not
+        too!!! how did you decide to do it?", then "why wouldnt you use a well maintianed
+        structure for your template on all projects instead of rolling your own", then "i need
+        you to lean towards using industry standard in your coding decisions and resuse of
+        existing projects codes instead of leaning towards rolling your own, this should be for
+        any new session and a priority ... can you fix yourself? i dnt care if the entry files are
+        typescript ... plain js just means the code not the tool ... if the tool happens to be in
+        ts and we are modifying that it is fine its a tool". Done: the "STANDARD FIRST" rule is in
+        the global CLAUDE.md RULES (every session), and its Stack line says Electron on
+        electron-vite. The earlier rec ("plain Vite for the renderer (no electron-vite)",
+        2026-10-08) is REVERSED. Taken as the go on the three questions as shown, with my leans:
+        "1. Move all three apps (JustVoice, JustWrite, docgen) onto electron-vite's standard
+        layout, scaffolded from its vue template? Lean: yes." · "2. Keep one shared kit function
+        for the parts no template has (data folder, server, tray), called from each app's main
+        file? Lean: yes. Otherwise each app carries its own copy of that code." · "3. When?
+        Lean: right after the sweep agent finishes, before deleting the Python and building the
+        installer, since the installer config moves with the restructure." (The template's own
+        pieces — @electron-toolkit/utils and /preload, electron-builder.yml, out/, its build/ and
+        resources/ — are used as the template ships them.)
+        DECIDED 2026-10-08 — the user added "update the plain js rule to reflect i mean i want our
+        code in js if we use a tool that is ts that doesnt go into our codebase that is fine, and
+        no mjs or cjs files ... add this too" (done: the global CLAUDE.md rule "OUR CODE IS PLAIN
+        JS, .js ONLY"), then, on the five departures from the template as shown, "these need to
+        be globlal so they persist on new sessions" — taken as approval of the leans, now the
+        global CLAUDE.md's Electron convention: "1. Lint and format. The template brings ESLint
+        + Prettier; the family uses Biome everywhere today. Lean: keep Biome." · "2. The sandbox.
+        The template turns the renderer sandbox off; Electron's security checklist says keep it
+        on. Lean: keep it on." · "3. How the window loads the app. The template loads the built
+        page from file://; the checklist says use a custom protocol, and a file:// page has a
+        null origin. Lean: keep app://justvoice (and app://justwrite, app://just-ai-i18n-docgen)."
+        · "4. The preload bridge. The template's preload exposes @electron-toolkit/preload's
+        electronAPI, raw ipcRenderer on every channel. Lean: keep the template's preload file and
+        its api object, filled with our narrow list of commands; don't expose electronAPI." ·
+        "5. The app-specific part (data folder, server, tray). Lean: each app's src/main/index.js
+        is the template's file plus one call to a shared kit function for those parts."
         DECIDED 2026-10-08 — the user: "when the conversion is complete no python should remain
         not even in testing, do you understnad?" Answered, rec applied, as shown: "When the
         conversion is complete, no Python remains anywhere: no server, no tests, no scripts, no

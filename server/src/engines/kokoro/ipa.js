@@ -16,7 +16,7 @@
 //   the longest entry first, and every piece of the split that IS an entry — so a line spoken
 //   here and the cache key computed there always agree.
 
-import { B, pySorted, strip } from "@delebash/llm-runner/platform/py";
+import { B, cpLen, pySorted, reEscape, strip } from "@delebash/llm-runner/platform/py";
 
 // IPA → Kokoro, longest first so "t͡ʃ" is not half-replaced by "tʃ".
 const REPLACEMENTS = [
@@ -44,10 +44,6 @@ export function toKokoro(ipa) {
   for (const [a, b] of REPLACEMENTS) s = s.replaceAll(a, b);
   return s;
 }
-
-// re.escape for a pattern built with the `u` flag (only syntax characters may be escaped).
-const reEscape = (s) => s.replace(/[\\^$.*+?()[\]{}|/]/g, "\\$&");
-const cpLen = (s) => [...s].length;
 
 /** `text` with each word that has an IPA entry written as "[word](/kokoro phonemes/)". */
 export function splice(text, ipaMap) {

@@ -24,6 +24,7 @@
 import { readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { attempt, cleanup, compare, DEV_DATA, dataCopy, fingerprint, leaves, python, tempRoot } from "./compare-render-lib.js";
+import { cpLen } from "@delebash/llm-runner/platform/py";
 
 const dir = tempRoot("jv-compare-render-");
 const before = Object.fromEntries(["cache", "generations", "speech-cache"].map((d) => [d, fingerprint(join(DEV_DATA, d))]));
@@ -226,7 +227,7 @@ for (const [sid] of scenesMeta) {
         native,
         phoneme: rc._supportsPhonemeInput(model),
         split,
-        chunks: rc.pyLen(text) > split ? splitTextIntoChunks(text, split) : [text],
+        chunks: cpLen(text) > split ? splitTextIntoChunks(text, split) : [text],
         shape: shapeOut(rc.lineShape(prepared, { speedNative: native })),
         fx_hash: effectsChainHash(kw.effects || []),
         key_delivery: canonicalJson(rc._keyDelivery(prepared, native)),

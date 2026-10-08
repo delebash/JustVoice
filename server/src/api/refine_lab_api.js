@@ -15,11 +15,10 @@ import { LLMNotConfiguredError } from "@delebash/llm-runner/llm";
 import { HttpError } from "@delebash/llm-runner/platform/errors";
 import { getLogger } from "@delebash/llm-runner/platform/log";
 import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
-import { pyInt } from "@delebash/llm-runner/platform/py";
+import { pyInt, strRepr } from "@delebash/llm-runner/platform/py";
 import { getState } from "../app_state.js";
 import * as run from "../engines/llm/run.js";
 import { construct } from "../models.js";
-import { strRepr } from "../py_compat.js";
 import { composeRefinementSystem, REFINEMENT_EXAMPLES, RefinementFlags } from "../refinement.js";
 
 const log = getLogger("justvoice.api.refine_lab_api");

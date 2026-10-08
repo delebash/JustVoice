@@ -15,10 +15,9 @@
 // pipeline's stream reader reads, so the run ends in an error frame. Here a missing field is just
 // undefined and the test passes as written.
 import { LLMNotConfiguredError } from "@delebash/llm-runner/llm";
-import { strip } from "@delebash/llm-runner/platform/py";
+import { strip, isDict } from "@delebash/llm-runner/platform/py";
 import { afterEach, expect, test, vi } from "vitest";
 import * as pipeline from "../src/extraction/pipeline.js";
-import { isDict } from "../src/py_compat.js";
 import { appClient, closeApps } from "./app_helpers.js";
 import { bookJson } from "./jw_fixtures.js";
 

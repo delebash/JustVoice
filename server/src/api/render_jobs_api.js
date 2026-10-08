@@ -9,10 +9,9 @@
 // survive a server restart as rows ("paused" after the boot sweep).
 
 import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
-import { ValueError } from "@delebash/llm-runner/platform/py";
+import { strRepr, ValueError } from "@delebash/llm-runner/platform/py";
 import { badRequest, notFound } from "../errors.js";
 import { construct } from "../models.js";
-import { strRepr } from "../py_compat.js";
 import * as renderJobs from "../render_jobs.js";
 
 export const RenderJobCreate = T.Object({

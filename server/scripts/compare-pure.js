@@ -13,7 +13,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isDeepStrictEqual } from "node:util";
 import * as procs from "@delebash/llm-runner/platform/procs";
-import { PyFloat, pyJson } from "@delebash/llm-runner/platform/pyjson";
+import { PyFloat, pyJson, pyJsonParse } from "@delebash/llm-runner/platform/pyjson";
 import { alignKnownText } from "../src/alignment.js";
 import { CacheKeyBuilder } from "../src/cache.js";
 import { groupCues, toSrt, toVtt } from "../src/captions.js";
@@ -21,7 +21,6 @@ import { canonicalJson } from "../src/delivery.js";
 import { composeInstruct, mergeDelivery, nestEngineKeys } from "../src/delivery_merge.js";
 import { SequenceMatcher } from "../src/difflib.js";
 import { parse, strip } from "../src/inline_tags.js";
-import { pyJsonParse } from "../src/models.js";
 import { scanNames } from "../src/pronunciation.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));

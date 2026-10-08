@@ -12,12 +12,12 @@ import { sleep } from "@delebash/llm-runner/platform/asyncutil";
 import { RequestValidationError } from "@delebash/llm-runner/platform/errors";
 import * as http from "@delebash/llm-runner/platform/http";
 import { literal, nullable, opt, T } from "@delebash/llm-runner/platform/models";
-import { pyJson } from "@delebash/llm-runner/platform/pyjson";
+import { isDict } from "@delebash/llm-runner/platform/py";
+import { jsonLoads, pyJson } from "@delebash/llm-runner/platform/pyjson";
 import { Webhook, uuid } from "../database/models.js";
 import * as session from "../database/session.js";
 import { notFound } from "../errors.js";
 import { construct, DateTime, utcNowNaive } from "../models.js";
-import { isDict, jsonLoads } from "../py_compat.js";
 import * as self from "./webhooks_api.js";
 
 export const WEBHOOK_EVENTS = [

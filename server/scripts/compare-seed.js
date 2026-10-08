@@ -83,7 +83,7 @@ const seedPresets = await import("../src/seed_presets.js");
 const { DEFAULT_FEATURE_PROMPTS } = await import("../src/seed_feature_prompts.js");
 const { FEATURE_CATALOG, PREFER_LOCAL_FEATURES } = await import("../src/feature_catalog.js");
 const { PRODUCT } = await import("../src/version.js");
-const { pyJsonParse } = await import("../src/models.js");
+const { pyJsonParse } = await import("@delebash/llm-runner/platform/pyjson");
 
 let failures = 0;
 const fail = (m) => {

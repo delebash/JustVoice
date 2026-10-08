@@ -20,10 +20,9 @@
 //             one scene.
 
 import { BadZipFile, ZipReader } from "@delebash/llm-runner/platform/zip";
-import { B, KeyError, PY_WS, splitWs, strip, W } from "@delebash/llm-runner/platform/py";
+import { B, cpLen, decodeUtf8, END, KeyError, PY_WS, splitlines, splitWs, strip, W } from "@delebash/llm-runner/platform/py";
 import { badRequest } from "../../errors.js";
 import { construct } from "../../models.js";
-import { cpLen, decodeUtf8, END, splitlines } from "../../py_compat.js";
 import { StandardImport } from "../standard_schema.js";
 import { ParseError, fromstring } from "./etree.js";
 import { HTMLParser } from "./html_parser.js";

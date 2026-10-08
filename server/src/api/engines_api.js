@@ -12,7 +12,7 @@
 
 import { HttpError } from "@delebash/llm-runner/platform/errors";
 import { opt, T } from "@delebash/llm-runner/platform/models";
-import { pyInt } from "@delebash/llm-runner/platform/py";
+import { pyInt, strRepr } from "@delebash/llm-runner/platform/py";
 import { getState } from "../app_state.js";
 import * as runtime from "../engines/audiocpp/runtime.js";
 import { CAPABILITY_DETAILS, lookup as lookupCapability } from "../engines/capability_details.js";
@@ -33,7 +33,6 @@ import {
   LeftoverEnginesResponse,
   VramClaim,
 } from "../models.js";
-import { strRepr } from "../py_compat.js";
 
 // Mapping from manifest CAPABILITIES dict keys → Feature literal strings.
 const _CAPABILITY_TO_FEATURE = {

@@ -34,11 +34,10 @@ import { readFileSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { parseArgs } from "node:util";
-import { pyFloatValue } from "@delebash/llm-runner/platform/pyjson";
+import { pyFloatValue, pyRepr } from "@delebash/llm-runner/platform/pyjson";
 import { flagGroups, linesFromRows, quoteLeftOpen } from "../src/extraction/flags.js";
 import { detectMarks, segmentParagraphs, splitIntoParagraphs } from "../src/extraction/segmentation.js";
 import { runAdapter } from "../src/imports/index.js";
-import { pyRepr } from "../src/py_compat.js";
 
 const ROOT = path.resolve(import.meta.dirname, "..", "..");
 

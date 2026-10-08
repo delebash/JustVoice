@@ -3,12 +3,11 @@
 // justvoice/api/external_api.py).
 
 import * as http from "@delebash/llm-runner/platform/http";
-import { strip } from "@delebash/llm-runner/platform/py";
+import { isDict, strip } from "@delebash/llm-runner/platform/py";
 import { getState } from "../app_state.js";
 import { ExternalOpenAiTtsBackend } from "../engines/external_openai.js";
 import { badRequest, conflict, notFound } from "../errors.js";
 import { construct, ExternalEngineConfig, ProbeRequest, ProbeResponse } from "../models.js";
-import { isDict } from "../py_compat.js";
 
 export function _extractModelIds(body) {
   if (isDict(body) && Array.isArray(body.data)) return body.data.filter((m) => isDict(m) && "id" in m).map((m) => m.id);

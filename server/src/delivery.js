@@ -9,9 +9,7 @@
 // honor it.
 
 import { pyFloatParse, pyInt, pyStr, strip, truthy } from "@delebash/llm-runner/platform/py";
-import { PyFloat, pyJson } from "@delebash/llm-runner/platform/pyjson";
-
-const num = (v) => (v instanceof PyFloat ? v.v : v);
+import { pyJson, unwrap } from "@delebash/llm-runner/platform/pyjson";
 
 /**
  * Stable string form for cache-key hashing — the bytes Python's
@@ -27,11 +25,11 @@ export function canonicalJson(delivery) {
   const canonical = {};
   for (const [k, v] of Object.entries(delivery)) {
     if (v === null || v === undefined) continue;
-    if (k === "speed" && Math.abs(pyFloatParse(num(v)) - 1.0) < 1e-6) continue;
-    if (k === "pitch" && Math.abs(pyFloatParse(num(v))) < 1e-6) continue;
-    if (k === "pause_before" && pyInt(num(v)) === 0) continue;
-    if (k === "pause_after" && pyInt(num(v)) === 0) continue;
-    if (k === "gain_db" && Math.abs(pyFloatParse(num(v))) < 1e-6) continue;
+    if (k === "speed" && Math.abs(pyFloatParse(unwrap(v)) - 1.0) < 1e-6) continue;
+    if (k === "pitch" && Math.abs(pyFloatParse(unwrap(v))) < 1e-6) continue;
+    if (k === "pause_before" && pyInt(unwrap(v)) === 0) continue;
+    if (k === "pause_after" && pyInt(unwrap(v)) === 0) continue;
+    if (k === "gain_db" && Math.abs(pyFloatParse(unwrap(v))) < 1e-6) continue;
     if (k === "instruct" && !strip(pyStr(v))) continue;
     if (k === "engine" && !truthy(v)) continue;
     canonical[k] = v;

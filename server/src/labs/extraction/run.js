@@ -19,8 +19,7 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { getLogger } from "@delebash/llm-runner/platform/log";
 import { pyRound, pySorted } from "@delebash/llm-runner/platform/py";
-import { pyFloat } from "@delebash/llm-runner/platform/pyjson";
-import { pyFixed } from "../../py_compat.js";
+import { pyFixed, pyFloat } from "@delebash/llm-runner/platform/pyjson";
 
 const logger = getLogger("justvoice.labs.extraction.run");
 

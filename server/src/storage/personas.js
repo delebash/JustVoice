@@ -22,19 +22,9 @@ import { mkdirSync, readdirSync, readFileSync, renameSync, rmSync } from "node:f
 import path from "node:path";
 import { getLogger } from "@delebash/llm-runner/platform/log";
 import { RuntimeError, truthy } from "@delebash/llm-runner/platform/py";
-import { pyJson } from "@delebash/llm-runner/platform/pyjson";
+import { pyJson, pyClone, pyJsonParse } from "@delebash/llm-runner/platform/pyjson";
 import * as session from "../database/session.js";
-import {
-  construct,
-  dtIso,
-  floatify,
-  modelDump,
-  Persona,
-  PersonaDelivery,
-  pyClone,
-  pyJsonParse,
-  utcNow,
-} from "../models.js";
+import { construct, dtIso, floatify, modelDump, Persona, PersonaDelivery, utcNow } from "../models.js";
 import { personasRoot } from "../paths.js";
 
 const log = getLogger("justvoice.storage.personas");

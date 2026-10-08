@@ -8,12 +8,12 @@
 // render the right parameter form per effect.
 
 import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
-import { pyJson } from "@delebash/llm-runner/platform/pyjson";
+import { strRepr } from "@delebash/llm-runner/platform/py";
+import { pyJson, pyJsonParse } from "@delebash/llm-runner/platform/pyjson";
 import { EffectPreset, uuid } from "../database/models.js";
 import * as session from "../database/session.js";
 import { badRequest, notFound } from "../errors.js";
-import { construct, DateTime, pyJsonParse } from "../models.js";
-import { strRepr } from "../py_compat.js";
+import { construct, DateTime } from "../models.js";
 
 // ── Effect type catalog ──────────────────────────────────────────────────
 

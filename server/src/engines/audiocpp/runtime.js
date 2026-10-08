@@ -34,11 +34,10 @@ import { Mutex, sleep } from "@delebash/llm-runner/platform/asyncutil";
 import * as http from "@delebash/llm-runner/platform/http";
 import { getLogger } from "@delebash/llm-runner/platform/log";
 import * as procs from "@delebash/llm-runner/platform/procs";
-import { pyInt, RuntimeError, ValueError } from "@delebash/llm-runner/platform/py";
+import { isJsonObject, pyInt, RuntimeError, splitlines, ValueError } from "@delebash/llm-runner/platform/py";
 import { pyJson } from "@delebash/llm-runner/platform/pyjson";
 import * as binary from "@delebash/llm-runner/runner/binary";
 import * as hardware from "@delebash/llm-runner/runner/hardware";
-import { splitlines } from "@delebash/llm-runner/runner/hardware";
 import * as kitProcess from "@delebash/llm-runner/runner/process";
 import * as appState from "../../app_state.js";
 import { construct, SpeechRuntimeSettings } from "../../models.js";
@@ -381,8 +380,6 @@ export function responseOf(status, content = Buffer.alloc(0), headers = {}) {
   };
 }
 
-const isDict = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
-
 // The request keys Python always sends as floats (`float(...)` in slot.toSpeechRequest), so
 // the JSON text is Python's (`1.0`, not `1`).
 const FLOAT_KEYS = new Set([
@@ -613,9 +610,9 @@ export class AudioCppServer {
     } catch {
       body = null;
     }
-    const err = isDict(body) ? body.error : undefined;
+    const err = isJsonObject(body) ? body.error : undefined;
     // `error` is an object with a message — or, from some handlers, a bare string.
-    const msg = (isDict(err) ? err.message : err) || r.text;
+    const msg = (isJsonObject(err) ? err.message : err) || r.text;
     throw new AudioCppError(String(msg).slice(0, 500), r.status);
   }
 

@@ -9,10 +9,9 @@
 // that run the pipeline, so nothing probes a local runner.
 import { getLlmRegistry, LLMResponse } from "@delebash/llm-runner/llm";
 import { setEnsureLocalModel } from "@delebash/llm-runner/llm/dispatch";
-import { RuntimeError, rstrip } from "@delebash/llm-runner/platform/py";
+import { RuntimeError, rstrip, cpSlice } from "@delebash/llm-runner/platform/py";
 import { afterEach, expect, test, vi } from "vitest";
 import * as pipeline from "../src/extraction/pipeline.js";
-import { cpSlice } from "../src/py_compat.js";
 import { appClient, closeApps } from "./app_helpers.js";
 
 class FakeAdapter {

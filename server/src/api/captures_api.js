@@ -19,14 +19,13 @@ import multipart from "@fastify/multipart";
 import { RequestValidationError } from "@delebash/llm-runner/platform/errors";
 import { getLogger } from "@delebash/llm-runner/platform/log";
 import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
-import { pyJson } from "@delebash/llm-runner/platform/pyjson";
+import { jsonLoads, pyJson } from "@delebash/llm-runner/platform/pyjson";
 import { getState } from "../app_state.js";
 import { Capture, uuid } from "../database/models.js";
 import * as session from "../database/session.js";
 import { badRequest, notFound } from "../errors.js";
 import { mediaFile, storeMediaPath } from "../media_paths.js";
 import { construct, DateTime } from "../models.js";
-import { jsonLoads } from "../py_compat.js";
 import * as refinement from "../refinement.js";
 import * as self from "./captures_api.js";
 

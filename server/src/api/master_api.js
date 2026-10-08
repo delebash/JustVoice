@@ -3,12 +3,11 @@
 // justvoice/api/master_api.py).
 
 import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
-import { ValueError } from "@delebash/llm-runner/platform/py";
+import { b64decode, ValueError } from "@delebash/llm-runner/platform/py";
 import { getState } from "../app_state.js";
 import { parseWavHeader } from "../audio/wav.js";
 import { badRequest, serviceUnavailable } from "../errors.js";
 import * as mastering from "../mastering.js";
-import { b64decode } from "../py_compat.js";
 
 export const MasterRequest = T.Object({
   wav_b64: T.String(),

@@ -10,8 +10,8 @@ import { afterEach, expect, test } from "vitest";
 import { recordCorrection } from "../src/api/extraction_api.js";
 import { Block, SpeakerCorrection } from "../src/database/models.js";
 import * as session from "../src/database/session.js";
-import { cpSlice } from "../src/py_compat.js";
 import { appClient, closeApps } from "./app_helpers.js";
+import { cpSlice } from "@delebash/llm-runner/platform/py";
 
 afterEach(closeApps);
 

@@ -308,7 +308,7 @@ try {
 
   // ── 4. the HTML texts ──
   const html = [...HTML_CASES];
-  const { decodeUtf8 } = await import("../src/py_compat.js");
+  const { decodeUtf8 } = await import("@delebash/llm-runner/platform/py");
   for (const inp of inputs) {
     const buf = readFileSync(inp.path);
     if (inp.name.endsWith(".html")) html.push(buf.toString("utf8"));

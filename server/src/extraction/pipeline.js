@@ -10,15 +10,26 @@
 // The dataclasses keep their Python field names: `AttributionRow` IS the wire row
 // (`AttributionRowResponse(**row.__dict__)` in extraction_api), so one name per field.
 
-import { errText } from "@delebash/llm-runner/llm/base";
 import { getLlmRegistry, LLMNotConfiguredError, resolveFeaturePreset } from "@delebash/llm-runner/llm";
 import * as llmDb from "@delebash/llm-runner/llm/db";
 import { literal, nullable, opt, T } from "@delebash/llm-runner/platform/models";
 import { getLogger } from "@delebash/llm-runner/platform/log";
-import { B, PY_WS, RuntimeError, strip, truthy, ValueError } from "@delebash/llm-runner/platform/py";
+import {
+  B,
+  cpLen,
+  digitsToInt,
+  errText,
+  isDict,
+  PY_WS,
+  pyGet,
+  RuntimeError,
+  strip,
+  truthy,
+  ValueError,
+} from "@delebash/llm-runner/platform/py";
+import { jsonLoads, jsonRawDecode, pyFloatOf, pyStrOf } from "@delebash/llm-runner/platform/pyjson";
 import * as run from "../engines/llm/run.js";
 import { construct, ExtractionSettings } from "../models.js";
-import { cpLen, digitsToInt, isDict, jsonLoads, jsonRawDecode, pyFloatOf, pyStrOf } from "../py_compat.js";
 import { findAnchors } from "./anchors.js";
 import { match } from "./names.js";
 import { ParagraphTooBig, Piece, isBreak, planPieces } from "./pieces.js";
@@ -589,8 +600,6 @@ async function _attributeInPieces(request, settings, pick, paragraphs, segments,
   }
   return picks;
 }
-
-const pyGet = (d, k) => (Object.hasOwn(d, k) ? d[k] : null);
 
 /** `x in dict` raises for an unhashable x (a list or a dict) in Python. */
 function hashable(x) {

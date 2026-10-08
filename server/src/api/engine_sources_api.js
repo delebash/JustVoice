@@ -18,12 +18,12 @@
 // `_ensureVariantLocal` and installer.spawnPrefetch import it.
 
 import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
+import { strRepr } from "@delebash/llm-runner/platform/py";
 import { getState } from "../app_state.js";
 import * as manager from "../engines/manager.js";
 import * as modelCatalog from "../engines/model_catalog.js";
 import { badRequest, notFound } from "../errors.js";
 import { construct, EngineModelSourceOverride, EngineOverrides } from "../models.js";
-import { strRepr } from "../py_compat.js";
 
 export const VariantSource = T.Object({
   variant_id: T.String(),

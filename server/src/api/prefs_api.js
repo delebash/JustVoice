@@ -13,10 +13,9 @@
 // (Python's `json.dumps` — a whole-number float stays `1.0`, app.js's body parser keeps it).
 
 import { makePrefsRouter } from "@delebash/llm-runner/platform";
-import { pyJson } from "@delebash/llm-runner/platform/pyjson";
+import { jsonLoads, pyJson } from "@delebash/llm-runner/platform/pyjson";
 import { Pref } from "../database/models.js";
 import * as session from "../database/session.js";
-import { jsonLoads } from "../py_compat.js";
 
 export function _readAll() {
   const h = session.getDb();

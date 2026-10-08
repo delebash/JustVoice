@@ -30,7 +30,7 @@ import os from "node:os";
 import path from "node:path";
 import { getLogger } from "@delebash/llm-runner/platform/log";
 import { cmp, pyFloatParse, pyInt, rstrip, RuntimeError, splitWs, S, strip, truthy, ValueError } from "@delebash/llm-runner/platform/py";
-import { PyFloat, pyJson } from "@delebash/llm-runner/platform/pyjson";
+import { pyIntOf, pyJson, unwrap } from "@delebash/llm-runner/platform/pyjson";
 import * as appState from "../../app_state.js";
 import * as dspClient from "../../audio/dsp_client.js";
 import { parseWavHeader, writeWavContainer } from "../../audio/wav.js";
@@ -79,11 +79,6 @@ export const KOKORO_LANGUAGE = {
 
 const has = (o, k) => o != null && Object.hasOwn(o, k);
 const get = (o, k, d = null) => (has(o, k) ? o[k] : d);
-// A stored value may be a PyFloat (a float kept for Python's text) — read as its number.
-const num = (v) => (v instanceof PyFloat ? v.v : v);
-const t = (v) => (v instanceof PyFloat ? v.v !== 0 : truthy(v));
-const toInt = (v) => pyInt(num(v));
-const toFloat = (v) => pyFloatParse(num(v));
 const fwd = (p) => String(p).replaceAll("\\", "/");
 
 /** Python's repr() of a str / None, for a refusal's text. */
@@ -141,7 +136,7 @@ const isFile = (p) => {
 /** A blend's style pack as the raw float32 rows × 256 file our audio.cpp's `voice_pack`
  * option reads (gap 2). Named by its content, so each blend is written once and kept. */
 export function writeVoicePack(vector) {
-  const values = Array.from(vector, (v) => Number(num(v)));
+  const values = Array.from(vector, (v) => Number(unwrap(v)));
   if (!values.length || values.length % 256) {
     throw new AudioCppError(`a blended voice has ${values.length} values — Kokoro's are rows × 256`);
   }
@@ -248,7 +243,7 @@ export function featuresNeeded(row, body) {
   const family = row.audiocpp.family;
   const lang = String(get(body, "language") || "").split("-")[0].toLowerCase();
   const out = [];
-  if (t(get(body, "voice_vector"))) out.push("voice_pack");
+  if (truthy(get(body, "voice_vector"))) out.push("voice_pack");
   if (family === "chatterbox_turbo") out.push("turbo_clone");
   if (family === "kokoro_tts") {
     const hit = VOICES.find(([vid]) => vid === get(body, "voice_id"));
@@ -259,7 +254,7 @@ export function featuresNeeded(row, body) {
     if (["he", "ru", "zh"].includes(lang)) out.push("chatterbox_he_ru_zh");
     else if (lang === "ja") out.push("japanese");
   }
-  if (family === "voxcpm2" && t(get(body, "audio_prompt_path")) && t(get(body, "ref_text"))) out.push("voxcpm2_transcript");
+  if (family === "voxcpm2" && truthy(get(body, "audio_prompt_path")) && truthy(get(body, "ref_text"))) out.push("voxcpm2_transcript");
   return out;
 }
 
@@ -436,7 +431,7 @@ export class AudioCppSlot {
     this.port = srv._run.port;
     this._generation = srv._run.proc.pid;
     this._loaded = true;
-    const calibrated = await this._warm(toInt(get(body, "calibrate_chars") || 0));
+    const calibrated = await this._warm(pyIntOf(get(body, "calibrate_chars") || 0));
     return new _Resp(200, Buffer.alloc(0), null, {
       ok: true,
       variant: row.id,
@@ -497,7 +492,7 @@ export class AudioCppSlot {
 
   async _synth(body) {
     if (!this.isAlive() || this._row === null) return err(409, `${this.manifest.name} is not loaded`);
-    if (t(get(body, "voice_vector")) && this._row.audiocpp.family !== "kokoro_tts") {
+    if (truthy(get(body, "voice_vector")) && this._row.audiocpp.family !== "kokoro_tts") {
       return err(422, `${this.manifest.name} has no blended voices — blends are Kokoro's`);
     }
     // What this line needs from the INSTALLED build (the CPU process runs the same one), each
@@ -505,9 +500,9 @@ export class AudioCppSlot {
     for (const feature of self.featuresNeeded(this._row, body)) {
       if (!runtime.hasFeature(feature)) return err(409, self.featureRefusal(feature));
     }
-    if (t(get(body, "voice_vector"))) body = { ...body, voice_pack_path: String(self.writeVoicePack(body.voice_vector)) };
+    if (truthy(get(body, "voice_vector"))) body = { ...body, voice_pack_path: String(self.writeVoicePack(body.voice_vector)) };
     const terms = this.manifest.module?.TERMS;
-    if (terms && terms.gates === "cloning" && t(get(body, "audio_prompt_path")) && !self.termsAccepted(this.manifest.id)) {
+    if (terms && terms.gates === "cloning" && truthy(get(body, "audio_prompt_path")) && !self.termsAccepted(this.manifest.id)) {
       return new _Resp(403, Buffer.alloc(0), null, {
         detail:
           `${this.manifest.name} clones a voice only after you accept ${terms.owner ?? "its makers"}'s terms — ` +
@@ -530,7 +525,7 @@ export class AudioCppSlot {
   // -- /transcribe, /align --
 
   _audioPath(body) {
-    if (t(get(body, "audio_path"))) return [fwd(body.audio_path), false];
+    if (truthy(get(body, "audio_path"))) return [fwd(body.audio_path), false];
     const raw = Buffer.from(String(get(body, "wav_b64") || ""), "base64"); // before the file: a bad upload leaves none
     const name = path.join(os.tmpdir(), `tmp${Math.random().toString(36).slice(2, 10)}.wav`);
     writeFileSync(name, raw);
@@ -557,7 +552,7 @@ export class AudioCppSlot {
     if (!this.isAlive() || this._row === null) return err(409, `${this.manifest.name} is not loaded`);
     const aligner = (this._row.audiocpp.companions || []).find((c) => c.role === "aligner");
     if (aligner === undefined) return err(501, "this speech-recognition model has no word aligner");
-    const wav = t(get(body, "audio_path"))
+    const wav = truthy(get(body, "audio_path"))
       ? readFileSync(body.audio_path)
       : Buffer.from(String(get(body, "wav_b64") || ""), "base64");
     const lang = String(get(body, "language") || "en").split("-")[0].toLowerCase();
@@ -719,7 +714,7 @@ export function toSpeechRequest(row, body) {
   // own "no seed" is not random everywhere: Kokoro and Kitten keep the session's seed, Turbo a
   // fixed one, VoxCPM2 1234 (audit §5 D1), so a random one is sent. A description voice never
   // arrives here without one (render_core.description_seed).
-  const seed = num(get(body, "seed"));
+  const seed = unwrap(get(body, "seed"));
   const noSeed = seed == null || seed === "" || seed === "0" || seed === 0 || seed === false;
   req.seed = noSeed ? 1 + Math.floor(Math.random() * (2 ** 31 - 1)) : pyInt(seed);
 
@@ -730,21 +725,21 @@ export function toSpeechRequest(row, body) {
     req.voice = voice;
     const key = lang || voiceLang;
     req.language = get(KOKORO_LANGUAGE, key) ?? get(KOKORO_LANGUAGE, key.split("-")[0]) ?? "en-us";
-    if (voiceLang.startsWith("ja") && !t(get(body, "voice_pack_path"))) requireJapaneseDictionary();
-    if (t(get(delivery, "ipa_map"))) {
+    if (voiceLang.startsWith("ja") && !truthy(get(body, "voice_pack_path"))) requireJapaneseDictionary();
+    if (truthy(get(delivery, "ipa_map"))) {
       // A lexicon's IPA: the words it covers ride as "[word](/phonemes/)" (gap 3). The host
       // sends an ipa_map only when the installed runtime splices (render_core).
       req.input = splice(req.input, delivery.ipa_map);
     }
     const opts = {};
-    if (t(get(body, "voice_pack_path"))) {
+    if (truthy(get(body, "voice_pack_path"))) {
       // A blend: its pack rides `voice_pack`; the voice id only picks the language and the
       // G2P, so it is the first preset that speaks the blend's language.
       opts.voice_pack = fwd(body.voice_pack_path);
       const first = VOICES.find(([, , lg]) => (get(KOKORO_LANGUAGE, lg.toLowerCase()) ?? lg.toLowerCase()) === req.language);
       req.voice = first ? first[0] : "af_heart";
     }
-    if (t(get(delivery, "speed"))) req.speed = toFloat(delivery.speed);
+    if (truthy(get(delivery, "speed"))) req.speed = pyFloatParse(delivery.speed);
     if (Object.keys(opts).length) req.options = opts;
     return req;
   }
@@ -757,16 +752,16 @@ export function toSpeechRequest(row, body) {
     const opts = {};
     const temperature = has(delivery, "temperature") ? delivery.temperature : get(knobs, "talker_temperature");
     for (const [ours, theirs, cast] of [
-      ["talker_top_k", "top_k", toInt],
-      ["talker_top_p", "top_p", toFloat],
-      ["repetition_penalty", "repetition_penalty", toFloat],
-      ["subtalker_temperature", "subtalker_temperature", toFloat],
-      ["subtalker_top_k", "subtalker_top_k", toInt],
-      ["subtalker_top_p", "subtalker_top_p", toFloat],
+      ["talker_top_k", "top_k", pyIntOf],
+      ["talker_top_p", "top_p", pyFloatParse],
+      ["repetition_penalty", "repetition_penalty", pyFloatParse],
+      ["subtalker_temperature", "subtalker_temperature", pyFloatParse],
+      ["subtalker_top_k", "subtalker_top_k", pyIntOf],
+      ["subtalker_top_p", "subtalker_top_p", pyFloatParse],
     ]) {
       if (get(knobs, ours) != null) opts[theirs] = cast(knobs[ours]);
     }
-    if (temperature != null) opts.temperature = Math.max(MIN_SAMPLING, toFloat(temperature));
+    if (temperature != null) opts.temperature = Math.max(MIN_SAMPLING, pyFloatParse(temperature));
     // A top-p of 0 is "no filter" and a sampling temperature of 0 is refused (audit §5 D4, D9).
     for (const key of ["top_p", "subtalker_top_p", "subtalker_temperature"]) {
       if (key in opts) opts[key] = Math.max(MIN_SAMPLING, opts[key]);
@@ -775,14 +770,14 @@ export function toSpeechRequest(row, body) {
     if (spec.task === "vdes") {
       if (!instruct) throw new AudioCppError("VoiceDesign renders from a voice description and this voice has none");
       req.instructions = instruct;
-    } else if (t(get(body, "audio_prompt_path"))) {
+    } else if (truthy(get(body, "audio_prompt_path"))) {
       if (!spec.clone) throw new AudioCppError("the CustomVoice model cannot clone — use a Base model for this voice");
       req.voice_ref = fwd(body.audio_prompt_path);
       // audio.cpp clones a Base voice in ICL mode (the clip and what it says) unless
       // `x_vector_only_mode` asks for the speaker vector alone, and ICL without a transcript
       // is refused — so a clip with neither is refused here, by name (decided 2026-10-03).
-      if (t(get(body, "xvector_only"))) opts.x_vector_only_mode = true;
-      else if (t(get(body, "ref_text"))) req.reference_text = body.ref_text;
+      if (truthy(get(body, "xvector_only"))) opts.x_vector_only_mode = true;
+      else if (truthy(get(body, "ref_text"))) req.reference_text = body.ref_text;
       else throw new AudioCppError("Qwen3 Base needs what the clip says — type the transcript, or tick Skip the words.");
     } else {
       if (spec.clone) throw new AudioCppError("the Base model is clone-only — this voice needs a reference clip");
@@ -795,7 +790,7 @@ export function toSpeechRequest(row, body) {
 
   if (family === "kitten_tts") {
     req.voice = get(KITTEN_VOICE, get(body, "voice_id") || "") ?? "Leo";
-    if (t(get(delivery, "speed"))) req.speed = toFloat(delivery.speed);
+    if (truthy(get(delivery, "speed"))) req.speed = pyFloatParse(delivery.speed);
     return req;
   }
 
@@ -810,13 +805,13 @@ export function toSpeechRequest(row, body) {
           `this line is ${langWord(base)} — load the ${langWord(base)} Pocket TTS model for it`,
       );
     }
-    if (t(get(body, "audio_prompt_path"))) req.voice_ref = fwd(body.audio_prompt_path);
+    if (truthy(get(body, "audio_prompt_path"))) req.voice_ref = fwd(body.audio_prompt_path);
     else req.voice = get(POCKET_VOICE, get(body, "voice_id") || "") ?? "alba";
     return req;
   }
 
   if (family === "chatterbox") {
-    if (!t(get(body, "audio_prompt_path"))) {
+    if (!truthy(get(body, "audio_prompt_path"))) {
       throw new AudioCppError("Chatterbox speaks only cloned voices — this voice has no reference clip");
     }
     req.voice_ref = fwd(body.audio_prompt_path);
@@ -831,10 +826,10 @@ export function toSpeechRequest(row, body) {
       ["min_p", "min_p"],
       ["s3gen_cfg_rate", "s3gen_cfg_rate"],
     ]) {
-      if (get(knobs, ours) != null) opts[theirs] = toFloat(knobs[ours]);
+      if (get(knobs, ours) != null) opts[theirs] = pyFloatParse(knobs[ours]);
     }
     const temperature = has(delivery, "temperature") ? delivery.temperature : get(knobs, "temperature");
-    if (temperature != null) opts.temperature = Math.max(MIN_SAMPLING, toFloat(temperature));
+    if (temperature != null) opts.temperature = Math.max(MIN_SAMPLING, pyFloatParse(temperature));
     if (Object.keys(opts).length) req.options = opts;
     return req;
   }
@@ -843,17 +838,17 @@ export function toSpeechRequest(row, body) {
     // Turbo and Nano (gap 1): English, cloned voices only — our audio.cpp needs a clip longer
     // than 5 s and refuses a shorter one by name. Exaggeration / CFG / min-p do nothing on
     // Turbo, so only its own sampling knobs are sent.
-    if (!t(get(body, "audio_prompt_path"))) {
+    if (!truthy(get(body, "audio_prompt_path"))) {
       throw new AudioCppError(`${row.name ?? "Chatterbox Turbo"} speaks only cloned voices — this voice has no reference clip`);
     }
     req.voice_ref = fwd(body.audio_prompt_path);
     const opts = {};
     for (const key of ["repetition_penalty", "top_p"]) {
-      if (get(knobs, key) != null) opts[key] = toFloat(knobs[key]);
+      if (get(knobs, key) != null) opts[key] = pyFloatParse(knobs[key]);
     }
-    if (get(knobs, "top_k") != null) opts.top_k = toInt(knobs.top_k);
+    if (get(knobs, "top_k") != null) opts.top_k = pyIntOf(knobs.top_k);
     const temperature = has(delivery, "temperature") ? delivery.temperature : get(knobs, "temperature");
-    if (temperature != null) opts.temperature = Math.max(MIN_SAMPLING, toFloat(temperature));
+    if (temperature != null) opts.temperature = Math.max(MIN_SAMPLING, pyFloatParse(temperature));
     if (Object.keys(opts).length) req.options = opts;
     return req;
   }
@@ -863,10 +858,10 @@ export function toSpeechRequest(row, body) {
     // a line's direction on a clone, as a parenthesised prefix on the text, which audio.cpp
     // splits off and does not speak (manifest header).
     const instruct = splitWs(get(delivery, "instruct") || get(knobs, "instruct") || "").join(" ");
-    if (t(get(body, "audio_prompt_path"))) {
+    if (truthy(get(body, "audio_prompt_path"))) {
       req.voice_ref = fwd(body.audio_prompt_path);
       // Reaches the model once our copy of audio.cpp passes the clip as prompt audio.
-      if (t(get(body, "ref_text"))) req.reference_text = body.ref_text;
+      if (truthy(get(body, "ref_text"))) req.reference_text = body.ref_text;
     } else if (!instruct) {
       throw new AudioCppError("VoxCPM2 speaks a cloned voice or a designed one — this voice has neither a reference clip nor a description");
     }
@@ -878,11 +873,11 @@ export function toSpeechRequest(row, body) {
     if (instruct) text = `(${instruct.replaceAll("(", "").replaceAll(")", "")})${text}`;
     req.input = text;
     const opts = {};
-    if (get(knobs, "cfg_value") != null) opts.guidance_scale = toFloat(knobs.cfg_value);
-    if (get(knobs, "inference_timesteps") != null) opts.num_inference_steps = toInt(knobs.inference_timesteps);
-    if (get(knobs, "retry_badcase_max_times") != null) opts.retry_badcase_max_times = Math.max(1, toInt(knobs.retry_badcase_max_times));
+    if (get(knobs, "cfg_value") != null) opts.guidance_scale = pyFloatParse(knobs.cfg_value);
+    if (get(knobs, "inference_timesteps") != null) opts.num_inference_steps = pyIntOf(knobs.inference_timesteps);
+    if (get(knobs, "retry_badcase_max_times") != null) opts.retry_badcase_max_times = Math.max(1, pyIntOf(knobs.retry_badcase_max_times));
     if (get(knobs, "retry_badcase_ratio_threshold") != null) {
-      opts.retry_badcase_ratio_threshold = toFloat(knobs.retry_badcase_ratio_threshold);
+      opts.retry_badcase_ratio_threshold = pyFloatParse(knobs.retry_badcase_ratio_threshold);
     }
     if (Object.keys(opts).length) req.options = opts;
     return req;

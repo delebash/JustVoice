@@ -17,8 +17,19 @@
 // Ambiguity is refused rather than guessed: when a name fits two speakers ("Vance" with Mara
 // Vance and Edith Vance), `match` returns null and the caller treats it as unmatched.
 
-import { B, casefold, PY_WS, pySorted, splitWs, strip, rstrip } from "@delebash/llm-runner/platform/py";
-import { cpLen, cpSlice, pyCapitalize, reEscape } from "../py_compat.js";
+import {
+  B,
+  casefold,
+  cpLen,
+  cpSlice,
+  PY_WS,
+  pyCapitalize,
+  pySorted,
+  reEscape,
+  rstrip,
+  splitWs,
+  strip,
+} from "@delebash/llm-runner/platform/py";
 
 const _PUNCT = new RegExp(`[^\\p{L}\\p{N}_${PY_WS}'-]`, "gu");
 const _SPACE = new RegExp(`[${PY_WS}]+`, "gu");

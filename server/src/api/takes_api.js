@@ -9,7 +9,7 @@
 
 import { createReadStream, statSync, unlinkSync } from "node:fs";
 import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
-import { cpSlice } from "../py_compat.js";
+import { cpSlice } from "@delebash/llm-runner/platform/py";
 import { getState } from "../app_state.js";
 import { Block, Generation, Scene, Take } from "../database/models.js";
 import * as session from "../database/session.js";

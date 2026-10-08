@@ -81,7 +81,6 @@ import * as manager from "./engines/manager.js";
 import { FEATURE_CATALOG, PREFER_LOCAL_FEATURES } from "./feature_catalog.js";
 import * as lineTakes from "./line_takes.js";
 import { mountInto as mountMcp } from "./mcp/index.js";
-import { pyClone, pyJsonParse, unwrapTyped } from "./models.js";
 import { cacheRoot, defaultDataDir, SOURCE_ROOT, speechCacheRoot } from "./paths.js";
 import * as renderJobs from "./render_jobs.js";
 import { DEFAULT_FEATURE_PROMPTS } from "./seed_feature_prompts.js";
@@ -120,56 +119,8 @@ function errorEnvelope(err, request, reply) {
   return reply.code(500).type("application/json").send({ title: "Internal Server Error", detail });
 }
 
-// ── The request-body float opt-in ───────────────────────────────────────────
-// KIT-GAP: the kit's createServer parses JSON with JSON.parse, so a whole-number float a client
-// sends (`1.0`) reads as the integer 1, and a free (`Any`) field stored with Python's json.dumps
-// would write `1` where Python wrote `1.0`. Until the kit's server.js carries the opt-in, the
-// app replaces its JSON parsers: a route that OPTS IN (`config: {pyFloats: true}`, or its path
-// in PY_FLOAT_ROUTES for a router the kit builds) reads its body with `pyJsonParse` (a
-// whole-number float literal → a PyFloat) and gets its typed fields' plain numbers back
-// (`unwrapTyped`) before validation; every other route reads plain JSON, as the kit's parser
-// did — a PyFloat reaching code that never expected one (a template's `${x}`) would print
-// "[object Object]". Every route's body as SENT (before defaults fill it) rides on
-// `req.sentBody` — what pydantic's `exclude_unset` reads (PATCH /v1/settings, PUT
-// /v1/speech-runtime).
-
 /** Routes the kit builds that store a free-form body with Python's json.dumps. */
 export const PY_FLOAT_ROUTES = new Set(["PATCH /v1/prefs"]);
-
-const optsIn = (req) =>
-  req.routeOptions?.config?.pyFloats === true || PY_FLOAT_ROUTES.has(`${req.method} ${req.routeOptions?.url ?? ""}`);
-
-function parseJsonBody(req, body, done) {
-  if (body === "" || body == null) return done(null, undefined);
-  const floats = optsIn(req);
-  let v;
-  try {
-    v = floats ? pyJsonParse(body) : JSON.parse(body);
-  } catch (e) {
-    e.statusCode = 400;
-    e.code = "FST_ERR_CTP_INVALID_JSON_BODY";
-    const m = /at position (\d+)/.exec(e.message);
-    if (m) e.jsonPos = Number(m[1]);
-    return done(e, undefined);
-  }
-  const schema = req.routeOptions?.schema?.body;
-  const typed = floats && schema ? unwrapTyped(schema, v) : v;
-  req.sentBody = pyClone(typed);
-  done(null, typed);
-}
-
-/** The app's JSON body parsers (above) on `app` — exported for tests that serve a router on a
- * bare app and need the bodies read as the real app reads them (`req.sentBody`, PyFloats). */
-export function installPyFloatBodies(app) {
-  app.removeContentTypeParser(/^application\/(.+\+)?json/);
-  app.addContentTypeParser(/^application\/(.+\+)?json/, { parseAs: "string" }, parseJsonBody);
-  // No content type (or one nobody else claims): FastAPI tries JSON when there is a body.
-  app.removeContentTypeParser("*");
-  app.addContentTypeParser("*", { parseAs: "string" }, (req, body, done) => {
-    if (!req.headers["content-type"]) return parseJsonBody(req, body, done);
-    done(null, body === "" ? undefined : body);
-  });
-}
 
 /** Find the Vite build output (dist/) across dev + packaged layouts. */
 export function locateUiDir() {
@@ -296,8 +247,11 @@ export async function createApp(dataDir = null) {
   const settings = state.settings.get();
   // (FastAPI's /openapi.json, /docs and /redoc — `settings.server.docs_enabled` — have no
   // Fastify counterpart: the JavaScript server publishes no OpenAPI document.)
-  const app = createServer({ typeBase: TYPE_BASE, onUnhandled: errorEnvelope });
-  installPyFloatBodies(app);
+  // Request bodies keep Python's floats where a route opts in (the kit's float opt-in: `config:
+  // {pyFloats: true}`, or a kit-built route named here), and every body as sent rides on
+  // `req.sentBody` — what pydantic's `exclude_unset` reads (PATCH /v1/settings, PUT
+  // /v1/speech-runtime).
+  const app = createServer({ typeBase: TYPE_BASE, onUnhandled: errorEnvelope, pyFloats: { routes: PY_FLOAT_ROUTES } });
   // serve.js hands the app its server handle (Python's `app.state.uvicorn_server`) — what
   // POST /v1/shutdown stops.
   app.decorate("serverHandle", null);

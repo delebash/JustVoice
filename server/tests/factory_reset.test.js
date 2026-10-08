@@ -12,9 +12,10 @@ import * as dataAdmin from "../src/data_admin.js";
 import * as session from "../src/database/session.js";
 import * as managerModule from "../src/engines/manager.js";
 import { EngineRegistry } from "../src/engines/registry.js";
-import { construct, pyClone, Settings } from "../src/models.js";
+import { construct, Settings } from "../src/models.js";
 import { PersonaStore } from "../src/storage/personas.js";
 import { tmpDb, tmpPath } from "./helpers.js";
+import { pyClone } from "@delebash/llm-runner/platform/pyjson";
 
 class FakeSettingsStore {
   constructor() {

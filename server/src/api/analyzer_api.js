@@ -2,11 +2,10 @@
 // POST /v1/analyze + /v1/compare — WAV format + loudness + A/B (the port of
 // justvoice/api/analyzer_api.py).
 
-import { ValueError } from "@delebash/llm-runner/platform/py";
+import { b64decode, ValueError } from "@delebash/llm-runner/platform/py";
 import * as analyzer from "../audio/analyzer.js";
 import { badRequest } from "../errors.js";
 import { AnalyzeRequest, CompareRequest } from "../models.js";
-import { b64decode } from "../py_compat.js";
 
 const msg = (e) => e?.message ?? String(e);
 const isValueError = (e) => e instanceof ValueError;

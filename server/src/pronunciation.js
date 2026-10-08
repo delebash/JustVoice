@@ -13,13 +13,10 @@
 // Python's regexes are Unicode (`\w`, `\s`, `\b`, IGNORECASE): the kit's W/B classes with the
 // `u` flag stand in for them, and lengths and slices count code points.
 
-import { B, casefold, pySorted } from "@delebash/llm-runner/platform/py";
+import { B, casefold, pySorted, S } from "@delebash/llm-runner/platform/py";
 
 // `[A-Za-zÀ-ÖØ-öø-ÿ][\w'’-]*`
 const TOKEN_RE = /[A-Za-zÀ-ÖØ-öø-ÿ](?:[\p{L}\p{N}_]|['’-])*/gu;
-// Python's `\s` on str (str.isspace): JavaScript's `\s` also counts U+FEFF and misses
-// U+001C–U+001F and U+0085. (Candidate for platform/py.js.)
-const S = "(?:(?!\\ufeff)\\s|[\\x1c-\\x1f\\x85])";
 // A token counts as "mid-sentence" unless it follows a sentence break or opens the
 // text/paragraph — those positions capitalize any word. `[.!?…]\s*["'“”‘’)\]]*\s*$`
 const BREAK_RE = new RegExp(`[.!?…]${S}*["'“”‘’)\\]]*${S}*$`, "u");

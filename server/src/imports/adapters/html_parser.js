@@ -11,8 +11,7 @@
 // Python's `\s` is Unicode on str (PY_WS here); a `match(s, pos)` is a sticky regex at
 // lastIndex = pos, a `search(s, pos)` a global one (lookbehinds see before pos in both).
 
-import { PY_WS, ValueError } from "@delebash/llm-runner/platform/py";
-import { AssertionError } from "../../py_compat.js";
+import { AssertionError, PY_WS, ValueError } from "@delebash/llm-runner/platform/py";
 import { HTML5_ENTITIES } from "./html5_entities.js";
 
 const WS = PY_WS;

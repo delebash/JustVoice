@@ -8,12 +8,12 @@
 
 import { RequestValidationError } from "@delebash/llm-runner/platform/errors";
 import { getLogger } from "@delebash/llm-runner/platform/log";
+import { isDict } from "@delebash/llm-runner/platform/py";
 import { getState } from "../app_state.js";
 import * as manager from "../engines/manager.js";
 import { conflict, notFound, serviceUnavailable } from "../errors.js";
 import * as installer from "../installer.js";
 import { construct, InstallRequest, InstallResponse, JobStatus, LoadRequest, LoadResponse, UninstallResponse, UnloadResponse } from "../models.js";
-import { isDict } from "../py_compat.js";
 
 const log = getLogger("justvoice.api.engines_models_api");
 
