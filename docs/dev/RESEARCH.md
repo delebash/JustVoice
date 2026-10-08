@@ -1098,17 +1098,74 @@ agent's checks, the suite and the extraction check re-run by me; `extraction/`, 
   pydantic's truncation of long inputs; Python's IGNORECASE letting `İ`/`ı` match `i`; integer-
   looking keys iterating first in a JS object (a CSV delivery dict's key order); XML DTD
   attribute defaults, parameter entities and encodings beyond UTF-8/16, Latin-1, ASCII, cp125x.
-- Python bugs the JS copies on purpose (the Python is retiring): a non-EPUB zip named `.epub` or
-  a corrupt zip is a 500, not a 400; a lone CR inside an unquoted CSV field is a 500; a
-  JustWrite file whose `project`/`scenes`/`characters`/`chapters` have the wrong type is a 500.
-  The labs CLI never installs the LLM, so every passage reports ✗ — the tracked
+- The port found 35 import runs that were Python 500s: a non-EPUB zip named `.epub`, a
+  corrupt zip (its directory, a member's CRC, its deflate data), a CSV with a lone CR, a
+  JustWrite file whose `project`/`scenes`/`characters`/`chapters`/`aliases`/`body` had a type
+  that crashed. Fixed in both languages 2026-10-08 (the user's go): each is a 400 that names
+  the problem; the CSV is read with `newline=""` as the csv module asks, so a lone CR ends a
+  row. A wrong type a `for` loop walks without raising (a dict's keys, a str's characters)
+  is still walked and skipped as before — only the crashes changed. `compare-imports`: 815
+  imported, 902 refused, 0 crashed, JS identical; `compare-pycompat`'s CSV cases read with
+  `newline=""` on both sides, 0 different. (`tests/test_import_refusals.py` and its twin.)
+- The labs CLI never installs the LLM, so every passage reports ✗ — the tracked
   `latest-auto.md` shows that and still says "Tier".
 - Two Python second-look route tests fail today: Analyze's own second look has been off by
   default since 2026-10-06 and the tests never turn it on. (*measured*, pytest.)
+- `test_extraction_stream.py::test_stream_emits_deltas_then_a_done_frame_with_rows_and_usage`
+  fails too: its fake stream delta (a SimpleNamespace) has no `reasoning`, which the kit's
+  stream reader now reads, so the call fails and no delta is sent. The whole Python suite on
+  2026-10-08: 1,115 passed, 8 failed — these three, the five Generate tests of wave C.
+  (*measured*, pytest, full run.)
 - The MCP mount (`mcp.mountInto(app)`) registers `/mcp` and `/mcp/` and an `onResponse` hook
   stamping `last_seen_at` for requests carrying `X-JustVoice-Client-Id`; it needs
   `await runtime.ensureHardware()` first (`list_voices`). Python's `ClientIdMiddleware` wrapped
   every request.
+
+**The port to JavaScript — the API wave, agent 1: the app shell, system and engine routes**
+(*measured 2026-10-08*, an agent's checks, the suite re-run by me; `app.js`, `serve.js`,
+`cli.js`, 22 routers):
+
+- **The route diff** (the kit's `scripts/route-diff/route-diff.mjs --app --target justvoice`,
+  Python `-m justvoice.serve` on 8790 and `server/src/serve.js` on 8791, each on its own copy
+  of the dev data): reads 160 — 103 identical with key order, 17 volatile (logs, disk usage,
+  the backup zip, live hardware, VRAM, leftovers, the runner's probes, `/v1/system/info`),
+  40 not ported yet, 0 different. Writes 130 on fresh copies (the kit's 37 steps and 93
+  JustVoice steps, ending in `POST /v1/shutdown`): 127 identical; 2 were the kit's Literal 422
+  wording (fixed in the kit the same day); 1 is `GET /v1/personas/{id}/channels`, which has
+  no ORDER BY, so rows come in each side's random-UUID order. Databases: 49 tables, 17,042
+  cells, 0 different. Nothing loaded a model, installed, synthesized or downloaded; VRAM
+  559 MiB before and after.
+- **The boot order** (`server/scripts/check-boot.mjs`, the server's debug log): initDb →
+  setState → `await runtime.ensureHardware()` → `sweepStaleJobs` → `sweepOrphanTakesNow` →
+  engine discovery and external engines → createServer → CSRF / CORS / auth → routers in
+  app.py's order → installLlm → MCP `mountInto` → onClose (MCP close, `shutdownManager`,
+  `dspClient.stop`) → static mounts. `/mcp` initialize and `tools/list` on the whole app are
+  JSON-identical to Python's whole app. `POST /v1/shutdown` stops the DSP program, exits 0
+  and frees the port. Up to the first good health answer: Python 2.3 s, Node 3.3 s.
+- The kit's auth and CSRF hooks gate only `/v1*` paths, so `/mcp` passes them as it did under
+  Python's middlewares. (*code*, the kit's `auth.js` / `csrf.js`; check-boot's MCP exchanges.)
+- FastAPI's `Form()` treats an empty string as not sent: a required field answers 422
+  "missing". pydantic's `HttpUrl` `str()` equals WHATWG `URL.href` for scheme and host case,
+  the default port, an empty path and an IDN host. (*code*, and identical route-diff answers.)
+- **Float bodies:** `JSON.parse` turns `1.0` and `1e3` into `1` and `1000`; a route that stores
+  a free-form body opts in (`config: {pyFloats: true}`, or `PY_FLOAT_ROUTES` for a kit-built
+  router such as `PATCH /v1/prefs`) and gets PyFloats, so prefs store `1.0` / `1000.0` as
+  Python did. Built in `app.js` (`installPyFloatBodies`) — the kit has no such option yet; it
+  moves into the kit with the helper sweep (TASKS, step-5 rec 3).
+- Not matched: there is no `/openapi.json`, `/docs` or `/redoc` (`cli.js open-api` exits 1 and
+  says so); network and SQL-constraint error texts are undici's and better-sqlite3's; HttpUrl
+  reasons beyond "relative URL without a base" and "empty host" are approximate; a
+  `--log-level` above INFO is lowered to INFO by the kit's `installFileLog`.
+- Python bugs the port copies on purpose (FINDING in TASKS): the generation status stream
+  re-queries through one SQLAlchemy session, whose identity map returns the first row
+  unrefreshed, so it never reports a status change (only a deletion); clearing an engine's
+  last source override deletes its whole `engine_overrides` entry — placements, runtime
+  options, accepted terms, the default model; `PUT /v1/speech-runtime` always writes
+  `backend`, so a request without one resets a saved backend to "auto" and stops both
+  processes; `POST /v1/captures` leaves the uploaded WAV behind when transcription fails;
+  `utils.progress` was never written, so active tasks' downloads are always `[]` and
+  `/v1/models/progress/*` sends one error frame; `webhooks.dispatch_event` has no callers.
+  (*measured* with probe scripts and *code*, by the agent.)
 
 ---
 

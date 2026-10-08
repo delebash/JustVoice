@@ -59,8 +59,15 @@ export function parse(raw, { filename = null, split_on = "auto" } = {}) {
   const ext = _extension(filename);
   if (buf[0] === 0x50 && buf[1] === 0x4b) {
     const names = _zipNames(buf);
-    if (names.has("META-INF/container.xml") || ext === ".epub") return _parseEpub(buf, filename, split_on);
-    if (names.has("word/document.xml") || ext === ".docx") return _parseDocx(buf, filename, split_on);
+    // A damaged archive (its directory, a member's CRC, its compressed data cut short or
+    // corrupt — zlib's Z_* errors) is the uploader's to fix — a 400, not the 500 it was.
+    try {
+      if (names.has("META-INF/container.xml") || ext === ".epub") return _parseEpub(buf, filename, split_on);
+      if (names.has("word/document.xml") || ext === ".docx") return _parseDocx(buf, filename, split_on);
+    } catch (e) {
+      if (e instanceof BadZipFile || /^Z_/.test(e?.code ?? "")) throw badRequest("book_prose import: zip file is damaged");
+      throw e;
+    }
     throw badRequest("book_prose import: zip file is neither EPUB nor DOCX");
   }
   let text;
@@ -257,12 +264,24 @@ const NS_DC = "{http://purl.org/dc/elements/1.1/}";
 
 function _parseEpub(buf, filename, splitOn = "auto") {
   const zf = ZipReader.fromBuffer(buf);
-  const container = _xmlRoot(zf.read("META-INF/container.xml"), "container.xml");
+  let container;
+  try {
+    container = _xmlRoot(zf.read("META-INF/container.xml"), "container.xml");
+  } catch (e) {
+    if (e instanceof KeyError) throw badRequest("book_prose import: EPUB has no META-INF/container.xml");
+    throw e;
+  }
   const rootfile = container.find(`.//${NS_CONTAINER}rootfile`);
   if (rootfile === null || !rootfile.get("full-path")) throw badRequest("book_prose import: EPUB container has no rootfile");
   const opfPath = rootfile.get("full-path");
   const opfDir = opfPath.includes("/") ? `${opfPath.slice(0, opfPath.lastIndexOf("/"))}/` : "";
-  const opf = _xmlRoot(zf.read(opfPath), "OPF package");
+  let opf;
+  try {
+    opf = _xmlRoot(zf.read(opfPath), "OPF package");
+  } catch (e) {
+    if (e instanceof KeyError) throw badRequest(`book_prose import: EPUB has no ${opfPath}`);
+    throw e;
+  }
 
   const title = strip(opf.findtext(`.//${NS_DC}title`) || "");
   const creator = strip(opf.findtext(`.//${NS_DC}creator`) || "");

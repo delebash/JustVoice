@@ -146,6 +146,11 @@ unzipped the file, a bare `book.json` imports too.
 unwritten chapter does not become a silent scene. To leave more out, use the
 per-chapter checkboxes on the import review screen before committing.
 
+**A file that can't be read is refused with the reason.** A damaged zip says
+*zip file is damaged* — export the book from JustWrite again. A `book.json` whose
+fields have the wrong type names the field, for example *book.json is malformed —
+'characters' must be a list*.
+
 ---
 
 ### <a id="import-book_prose"></a>Book / manuscript (`book_prose`)
@@ -162,6 +167,10 @@ finished book. Stdlib-only parsing (works headless, no optional deps).
 - **Markdown** — `#`/`##`/`###` headings start chapters.
 - **TXT** — short `Chapter N` / `Part N` lines start chapters; otherwise
   the whole file becomes one scene.
+
+A file that can't be read is refused with the reason: a damaged zip says
+*zip file is damaged*, and an `.epub` missing its parts names the missing file
+(*EPUB has no META-INF/container.xml*). Re-download or re-export the book.
 
 Every paragraph becomes one `line` with `character_id: null` — prose
 carries no speaker data. The book's speakers are found later by
@@ -213,6 +222,9 @@ forest,Hero,The trees are thick here.,,
   as `{"instruct": "<raw string>"}`.
 - `pause_after_ms` is parsed as an integer; ignored if non-numeric.
 - Project kind defaults to `game_voicelines`.
+- Any line ends work: Windows, Unix and old Mac (a carriage return alone).
+- A field longer than 131,072 characters is refused with the reason:
+  *not a readable CSV file — a field is longer than 131,072 characters*.
 
 ---
 

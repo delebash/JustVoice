@@ -40,6 +40,7 @@ from __future__ import annotations
 import io
 import json
 import zipfile
+import zlib
 from typing import Any
 
 from ...errors import bad_request
@@ -59,6 +60,19 @@ _SKIP_CLASSES = frozenset({"scene-mark"})
 
 # How many chapter names a warning lists before it summarizes the rest.
 _WARN_NAME_CAP = 5
+
+
+def _malformed(where: str, kind: str):
+    """A book.json whose shape is wrong is the uploader's to fix — a 400 naming the field,
+    not the 500 a wrong type raised."""
+    return bad_request(f"justwrite import: book.json is malformed — {where} must be {kind}")
+
+
+def _walkable(v: Any) -> bool:
+    """What a `for` loop walks without raising: a dict's keys and a str's characters are
+    walked (and skipped, not being dicts) as they always were; only a number or true
+    raised TypeError — the 500 these checks turn into a 400."""
+    return isinstance(v, (list, dict, str))
 
 
 def _find_book_json(zf: zipfile.ZipFile) -> str | None:
@@ -88,7 +102,10 @@ def _read_book(raw: bytes) -> tuple[dict[str, Any], int]:
                     "justwrite import: this zip has no book.json — export ONE BOOK "
                     "from JustWrite, not a whole-server backup"
                 )
-            payload = zf.read(name)
+            try:
+                payload = zf.read(name)
+            except (zipfile.BadZipFile, zlib.error, EOFError):
+                raise bad_request("justwrite import: zip file is damaged") from None
             image_dir = name[: -len("book.json")] + "images/"
             images = sum(
                 1
@@ -153,6 +170,14 @@ def parse(raw: bytes, *, filename: str | None = None) -> StandardImport:
     doc, image_count = _read_book(raw)
 
     proj = doc.get("project") or {}
+    if not isinstance(proj, dict):
+        raise _malformed("'project'", "an object")
+    raw_characters = doc.get("characters") or []
+    if not _walkable(raw_characters):
+        raise _malformed("'characters'", "a list")
+    for c in raw_characters:
+        if isinstance(c, dict) and c.get("id") and not _walkable(c.get("aliases") or []):
+            raise _malformed(f"'aliases' of character {str(c['id'])!r}", "a list")
     project = StandardProject(
         name=str(proj.get("title") or "Untitled"),
         kind="audiobook",
@@ -170,7 +195,7 @@ def parse(raw: bytes, *, filename: str | None = None) -> StandardImport:
             aliases=[str(a).strip() for a in (c.get("aliases") or []) if str(a).strip()],
             pronouns=_pronouns(c),
         )
-        for c in (doc.get("characters") or [])
+        for c in raw_characters
         if isinstance(c, dict) and c.get("id")
     ]
 
@@ -180,13 +205,21 @@ def parse(raw: bytes, *, filename: str | None = None) -> StandardImport:
     # become ordered runs of lines inside it, their boundary preserved in
     # source_ref.
     scenes_by_chapter = doc.get("scenes") or {}
+    if not isinstance(scenes_by_chapter, dict):
+        raise _malformed("'scenes'", "an object")
+    parts = doc.get("parts") or []
+    if not _walkable(parts):
+        raise _malformed("'parts'", "a list")
     scenes: list[StandardScene] = []
     empty_chapters: list[str] = []
     seen = 0
-    for part in doc.get("parts") or []:
+    for part in parts:
         if not isinstance(part, dict):
             continue
-        for ch in part.get("chapters") or []:
+        part_chapters = part.get("chapters") or []
+        if not _walkable(part_chapters):
+            raise _malformed("'chapters' of a part", "a list")
+        for ch in part_chapters:
             if not isinstance(ch, dict):
                 continue
             seen += 1
@@ -195,15 +228,19 @@ def parse(raw: bytes, *, filename: str | None = None) -> StandardImport:
                 str(ch.get("title") or "").strip() or f"Chapter {ch.get('num') or seen}"
             )
             lines: list[StandardLine] = []
-            for scene in scenes_by_chapter.get(chapter_id) or []:
+            chapter_scenes = scenes_by_chapter.get(chapter_id) or []
+            if not _walkable(chapter_scenes):
+                raise _malformed(f"'scenes' for chapter {chapter_id!r}", "a list")
+            for scene in chapter_scenes:
                 if not isinstance(scene, dict):
                     continue
                 scene_id = str(scene.get("id") or "")
+                body = scene.get("body") or ""
+                if not isinstance(body, str):
+                    raise _malformed(f"'body' of scene {scene_id!r}", "text")
                 # The scene TITLE is deliberately not narrated: it is a
                 # JustWrite planning label, not published prose.
-                blocks = html_blocks(
-                    scene.get("body") or "", skip_classes=_SKIP_CLASSES
-                )
+                blocks = html_blocks(body, skip_classes=_SKIP_CLASSES)
                 for index, (_kind, text) in enumerate(blocks):
                     lines.append(
                         StandardLine(

@@ -2,6 +2,12 @@
 
 ## v0.1.0
 
+- **A file that can't be imported says why (2026-10-08)** — a damaged zip, an `.epub`
+  missing its parts, or a JustWrite file whose fields have the wrong type was refused with a
+  bare server error; each now says what is wrong (*zip file is damaged*, *EPUB has no
+  META-INF/container.xml*, *book.json is malformed — 'characters' must be a list*). A CSV
+  saved with old Mac line ends (a carriage return alone) now imports instead of failing
+  ([Import and export](import-and-export.md))
 - **The audio processing moved into our speech runtime's own program (2026-10-07)** — effects,
   a line's speed, gain and pitch, the joins between pieces, trimming and the analyzer now run in
   a small program built from our audio.cpp copy, ready for the app to leave Python. Everything

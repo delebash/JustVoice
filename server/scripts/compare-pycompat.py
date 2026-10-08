@@ -5,7 +5,7 @@
 
 Answers each generated case the way CPython does: json.loads (the value, with floats marked,
 or the JSONDecodeError text), bytes.decode("utf-8" / "utf-8-sig", strict and "replace"),
-csv.reader over io.StringIO, str.splitlines / title / isupper / capitalize, float(),
+csv.reader over io.StringIO(newline=""), str.splitlines / title / isupper / capitalize, float(),
 format(x, "g") and format(x, ".1f"), html.unescape, re.escape lengths.
 """
 
@@ -52,7 +52,7 @@ def main(cases_path: str, out_path: str) -> None:
             }
             for b in c["utf8"]
         ],
-        "csv": [attempt(lambda t=t: list(csv.reader(io.StringIO(t)))) for t in c["csv"]],
+        "csv": [attempt(lambda t=t: list(csv.reader(io.StringIO(t, newline="")))) for t in c["csv"]],
         "str": [
             {"splitlines": s.splitlines(), "title": s.title(), "isupper": s.isupper(), "capitalize": s.capitalize()}
             for s in c["str"]

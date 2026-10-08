@@ -36,16 +36,38 @@ def _slug(s: str) -> str:
     return s or "x"
 
 
+def _csv_refusal(e: csv.Error):
+    """A file the csv reader can't read is the uploader's to fix (a 400, not a 500). With
+    newline="" the excel dialect raises only for an over-long field."""
+    msg = str(e)
+    if msg.startswith("field larger than field limit"):
+        msg = f"a field is longer than {csv.field_size_limit():,} characters"
+    return bad_request(f"csv_lines import: not a readable CSV file — {msg}")
+
+
+def _rows(reader: csv.DictReader):
+    try:
+        yield from reader
+    except csv.Error as e:
+        raise _csv_refusal(e) from None
+
+
 def parse(raw: bytes, *, filename: str | None = None) -> StandardImport:
     try:
         text = raw.decode("utf-8-sig")
     except UnicodeDecodeError as e:
         raise bad_request(f"csv_lines import: not valid UTF-8 ({e})") from e
 
-    reader = csv.DictReader(io.StringIO(text))
-    if not reader.fieldnames:
+    # newline="" as the csv module asks: a lone CR (an old Mac file's line end) ends a row.
+    # Without it the reader raised "new-line character seen in unquoted field" — a 500.
+    reader = csv.DictReader(io.StringIO(text, newline=""))
+    try:
+        fieldnames = reader.fieldnames
+    except csv.Error as e:
+        raise _csv_refusal(e) from None
+    if not fieldnames:
         raise bad_request("csv_lines import: no header row")
-    headers = {h.strip().lower(): h for h in reader.fieldnames}
+    headers = {h.strip().lower(): h for h in fieldnames}
     if "text" not in headers:
         raise bad_request("csv_lines import: missing required 'text' column")
 
@@ -59,7 +81,7 @@ def parse(raw: bytes, *, filename: str | None = None) -> StandardImport:
     scenes_by_id: OrderedDict[str, StandardScene] = OrderedDict()
     chars_by_id: OrderedDict[str, StandardCharacter] = OrderedDict()
     row_no = 1
-    for row in reader:
+    for row in _rows(reader):
         row_no += 1
         line_text = col(row, "text")
         if not line_text:

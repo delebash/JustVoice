@@ -35,14 +35,16 @@ export class CsvError extends Error {
 const FIELD_LIMIT = 131072; // csv.field_size_limit()
 const EOL = Symbol("EOL");
 
-/** `csv.reader(io.StringIO(text))` with the excel dialect → its rows, in order. The input is
- * read in lines split after "\n" (StringIO's own line ends), as the C reader receives them. */
+/** `csv.reader(io.StringIO(text, newline=""))` with the excel dialect → its rows, in order. The
+ * input is read in lines split after "\r\n", "\r" or "\n" (StringIO's line ends with
+ * newline=""), as the C reader receives them. */
 export function* csvReader(text) {
   const lines = [];
   let at = 0;
   while (at < text.length) {
-    const nl = text.indexOf("\n", at);
-    const end = nl < 0 ? text.length : nl + 1;
+    let end = at;
+    while (end < text.length && text[end] !== "\n" && text[end] !== "\r") end++;
+    if (end < text.length) end += text[end] === "\r" && text[end + 1] === "\n" ? 2 : 1;
     lines.push(text.slice(at, end));
     at = end;
   }
@@ -167,6 +169,23 @@ function _slug(s) {
   return strip((s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-"), "-") || "x";
 }
 
+/** A file the csv reader can't read is the uploader's to fix (a 400, not a 500). With
+ * newline="" the excel dialect raises only for an over-long field. */
+function _csvRefusal(e) {
+  let msg = e.message;
+  if (msg.startsWith("field larger than field limit")) msg = `a field is longer than ${FIELD_LIMIT.toLocaleString("en-US")} characters`;
+  return badRequest(`csv_lines import: not a readable CSV file — ${msg}`);
+}
+
+function* _rows(records) {
+  try {
+    yield* records;
+  } catch (e) {
+    if (e instanceof CsvError) throw _csvRefusal(e);
+    throw e;
+  }
+}
+
 export function parse(raw, { filename = null } = {}) {
   let text;
   try {
@@ -176,7 +195,15 @@ export function parse(raw, { filename = null } = {}) {
     throw e;
   }
 
-  const reader = dictReader(text);
+  // newline="" as the csv module asks: a lone CR (an old Mac file's line end) ends a row.
+  // Without it the reader raised "new-line character seen in unquoted field" — a 500.
+  let reader;
+  try {
+    reader = dictReader(text);
+  } catch (e) {
+    if (e instanceof CsvError) throw _csvRefusal(e);
+    throw e;
+  }
   if (!reader.fieldnames?.length) throw badRequest("csv_lines import: no header row");
   const headers = new Map(reader.fieldnames.map((h) => [strip(h).toLowerCase(), h]));
   if (!headers.has("text")) throw badRequest("csv_lines import: missing required 'text' column");
@@ -190,7 +217,7 @@ export function parse(raw, { filename = null } = {}) {
   const scenesById = new Map();
   const charsById = new Map();
   let rowNo = 1;
-  for (const row of reader.records) {
+  for (const row of _rows(reader.records)) {
     rowNo += 1;
     const lineText = col(row, "text");
     if (!lineText) continue;

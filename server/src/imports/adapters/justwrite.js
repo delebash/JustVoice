@@ -30,7 +30,7 @@ import { BadZipFile, ZipReader } from "@delebash/llm-runner/platform/zip";
 import { strip, truthy } from "@delebash/llm-runner/platform/py";
 import { badRequest } from "../../errors.js";
 import { construct } from "../../models.js";
-import { decodeUtf8, isDict, jsonLoads, pyStrOf } from "../../py_compat.js";
+import { decodeUtf8, isDict, jsonLoads, pyStrOf, strRepr } from "../../py_compat.js";
 import { StandardImport } from "../standard_schema.js";
 import { htmlBlocks } from "./book_prose.js";
 
@@ -50,6 +50,15 @@ function _findBookJson(zf) {
   if (!names.length) return null;
   return names.reduce((best, n) => (n.length < best.length ? n : best));
 }
+
+/** A book.json whose shape is wrong is the uploader's to fix — a 400 naming the field, not
+ * the 500 a wrong type raised. */
+const _malformed = (where, kind) => badRequest(`justwrite import: book.json is malformed — ${where} must be ${kind}`);
+
+/** What `_iter` walks without raising: a dict's keys and a str's characters are walked (and
+ * skipped, not being dicts) as they always were; only a number or true raised TypeError — the
+ * 500 these checks turn into a 400. */
+const _walkable = (v) => Array.isArray(v) || isDict(v) || typeof v === "string";
 
 const typeName = (v) => (Array.isArray(v) ? "list" : typeof v === "string" ? "str" : typeof v === "boolean" ? "bool" : typeof v === "number" && Number.isInteger(v) ? "int" : "float");
 
@@ -91,7 +100,13 @@ function _readBook(raw) {
     if (name === null) {
       throw badRequest("justwrite import: this zip has no book.json — export ONE BOOK from JustWrite, not a whole-server backup");
     }
-    payload = zf.read(name);
+    try {
+      payload = zf.read(name);
+    } catch (e) {
+      // A member's CRC or its compressed data cut short or corrupt (zlib's Z_* errors).
+      if (e instanceof BadZipFile || /^Z_/.test(e?.code ?? "")) throw badRequest("justwrite import: zip file is damaged");
+      throw e;
+    }
     const imageDir = `${name.slice(0, -"book.json".length)}images/`;
     images = zf.entries.filter((e) => !e.name.endsWith("/") && e.name.startsWith(imageDir)).length;
   } else {
@@ -161,6 +176,14 @@ export function parse(raw, { filename = null } = {}) {
   const [doc, imageCount] = _readBook(buf);
 
   const proj = or(pyGet(doc, "project"), {});
+  if (!isDict(proj)) throw _malformed("'project'", "an object");
+  const rawCharacters = or(pyGet(doc, "characters"), []);
+  if (!_walkable(rawCharacters)) throw _malformed("'characters'", "a list");
+  for (const c of _iter(rawCharacters)) {
+    if (isDict(c) && truthy(c.id) && !_walkable(or(pyGet(c, "aliases"), []))) {
+      throw _malformed(`'aliases' of character ${strRepr(pyStrOf(c.id))}`, "a list");
+    }
+  }
   const project = {
     name: pyStrOf(or(pyGet(proj, "title"), "Untitled")),
     kind: "audiobook",
@@ -170,7 +193,7 @@ export function parse(raw, { filename = null } = {}) {
   };
 
   const characters = [];
-  for (const c of _iter(or(pyGet(doc, "characters"), []))) {
+  for (const c of _iter(rawCharacters)) {
     if (!isDict(c) || !truthy(c.id)) continue;
     characters.push({
       id: pyStrOf(c.id),
@@ -187,24 +210,30 @@ export function parse(raw, { filename = null } = {}) {
   // deliverable unit. JustWrite's scenes become ordered runs of lines inside it, their
   // boundary preserved in source_ref.
   const scenesByChapter = or(pyGet(doc, "scenes"), {});
+  if (!isDict(scenesByChapter)) throw _malformed("'scenes'", "an object");
+  const parts = or(pyGet(doc, "parts"), []);
+  if (!_walkable(parts)) throw _malformed("'parts'", "a list");
   const scenes = [];
   const emptyChapters = [];
   let seen = 0;
-  for (const part of _iter(or(pyGet(doc, "parts"), []))) {
+  for (const part of _iter(parts)) {
     if (!isDict(part)) continue;
-    for (const ch of _iter(or(pyGet(part, "chapters"), []))) {
+    const partChapters = or(pyGet(part, "chapters"), []);
+    if (!_walkable(partChapters)) throw _malformed("'chapters' of a part", "a list");
+    for (const ch of _iter(partChapters)) {
       if (!isDict(ch)) continue;
       seen += 1;
       const chapterId = pyStrOf(or(pyGet(ch, "id"), "")) || `chapter-${seen}`;
       const title = strip(pyStrOf(or(pyGet(ch, "title"), ""))) || `Chapter ${pyStrOf(or(pyGet(ch, "num"), seen))}`;
       const lines = [];
-      for (const scene of _iter(or(pyGet(scenesByChapter, chapterId), []))) {
+      const chapterScenes = or(pyGet(scenesByChapter, chapterId), []);
+      if (!_walkable(chapterScenes)) throw _malformed(`'scenes' for chapter ${strRepr(chapterId)}`, "a list");
+      for (const scene of _iter(chapterScenes)) {
         if (!isDict(scene)) continue;
         const sceneId = pyStrOf(or(pyGet(scene, "id"), ""));
         // The scene TITLE is deliberately not narrated: it is a JustWrite planning label.
         const body = or(pyGet(scene, "body"), "");
-        // html.parser's feed() of a body that isn't text is Python's TypeError (a 500).
-        if (typeof body !== "string") throw new TypeError(`can only concatenate str (not "${typeName(body)}") to str`);
+        if (typeof body !== "string") throw _malformed(`'body' of scene ${strRepr(sceneId)}`, "text");
         const blocks = htmlBlocks(body, { skipClasses: _SKIP_CLASSES });
         blocks.forEach(([, text], index) => {
           lines.push({ character_id: null, text, source_ref: `chapter:${chapterId}#scene:${sceneId}#block:${index}` });

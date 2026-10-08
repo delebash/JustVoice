@@ -26,6 +26,7 @@ from __future__ import annotations
 import io
 import re
 import zipfile
+import zlib
 from html.parser import HTMLParser
 from xml.etree import ElementTree as ET
 
@@ -67,10 +68,15 @@ def parse(
     ext = _extension(filename)
     if raw[:2] == b"PK":
         names = _zip_names(raw)
-        if "META-INF/container.xml" in names or ext == ".epub":
-            return _parse_epub(raw, filename, split_on)
-        if "word/document.xml" in names or ext == ".docx":
-            return _parse_docx(raw, filename, split_on)
+        # A damaged archive (its directory, a member's CRC, its compressed data cut short or
+        # corrupt) is the uploader's to fix — a 400, not the 500 it was.
+        try:
+            if "META-INF/container.xml" in names or ext == ".epub":
+                return _parse_epub(raw, filename, split_on)
+            if "word/document.xml" in names or ext == ".docx":
+                return _parse_docx(raw, filename, split_on)
+        except (zipfile.BadZipFile, zlib.error, EOFError):
+            raise bad_request("book_prose import: zip file is damaged") from None
         raise bad_request("book_prose import: zip file is neither EPUB nor DOCX")
     try:
         text = raw.decode("utf-8-sig")
@@ -264,7 +270,10 @@ def _split_blocks(
 
 def _parse_epub(raw: bytes, filename: str | None, split_on: str = "auto") -> StandardImport:
     zf = zipfile.ZipFile(io.BytesIO(raw))
-    container = _xml_root(zf.read("META-INF/container.xml"), "container.xml")
+    try:
+        container = _xml_root(zf.read("META-INF/container.xml"), "container.xml")
+    except KeyError:
+        raise bad_request("book_prose import: EPUB has no META-INF/container.xml") from None
     rootfile = container.find(
         ".//{urn:oasis:names:tc:opendocument:xmlns:container}rootfile"
     )
@@ -272,7 +281,10 @@ def _parse_epub(raw: bytes, filename: str | None, split_on: str = "auto") -> Sta
         raise bad_request("book_prose import: EPUB container has no rootfile")
     opf_path = rootfile.get("full-path")
     opf_dir = opf_path.rsplit("/", 1)[0] + "/" if "/" in opf_path else ""
-    opf = _xml_root(zf.read(opf_path), "OPF package")
+    try:
+        opf = _xml_root(zf.read(opf_path), "OPF package")
+    except KeyError:
+        raise bad_request(f"book_prose import: EPUB has no {opf_path}") from None
 
     ns_opf = "{http://www.idpf.org/2007/opf}"
     ns_dc = "{http://purl.org/dc/elements/1.1/}"
