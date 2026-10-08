@@ -966,6 +966,30 @@ kit's register §2.
 - The OpenAPI licence says MIT (`server/justvoice/app.py:139`), as the project is. (was: Apache-2.0
   — until 2026-10-05.)
 
+**The port to JavaScript — wave A, the foundation** (*measured 2026-10-08*, an agent's checks;
+`server/src/` and `server/scripts/compare-*.mjs`):
+
+- The JS models, seed and stores match Python: 106 models field by field (order, int vs float,
+  constraints, defaults); a fresh seed 49 tables / 2,521 cells, 0 different; 31 store writes
+  replayed on both, 204 cells, 0 different; every persona and the settings row of a COPY of the
+  real dev database read back and rewritten unchanged, 19,115 cells, 0 different; 1,320
+  generated cases of the pure functions (difflib, alignment, captions, inline tags,
+  `canonicalJson`, the delivery merge, the cache key) identical.
+- **Voice manifests are CRLF on Windows** — Python wrote them in text mode; the JS
+  `atomicWriteJson` writes the platform's line ending too.
+- **Free-form stored JSON keeps Python's floats** (`1.0` in an effects chain): the JS reads such
+  text with `pyJsonParse` (a float stays a `PyFloat`, written back as `1.0`) and gives typed
+  fields their floats back from the schema (`floatify`). This is what keeps the render-cache keys
+  — hashes of Python's json.dumps — identical.
+- `difflib.SequenceMatcher` is ported exactly (`server/src/difflib.js`); on a JS string it counts
+  UTF-16 units, so callers pass arrays.
+- Python's factory reset leaves foreign keys OFF on its pooled connection after dropping tables
+  in place; the JS restores the previous setting.
+- **Where the speech runtime lives** (decided 2026-10-08, rec applied under the go): always
+  `<data_dir>/engines-runtime` in the JS server — Python used the source tree when unfrozen and
+  that folder when frozen. The downloaded runtime on this machine moves there with the data-root
+  move.
+
 ---
 
 ## 7 · Where an AI task shows
