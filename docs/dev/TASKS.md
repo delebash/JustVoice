@@ -2275,10 +2275,20 @@ OPEN:   step 1's last end — packaged builds need `audiocpp_dsp` in an audio.cp
         data/: the dev data folder (ruling 6), gitignored. The kit comes in as
         file:../just-llm-runner/server. server/just_ai_i18n_docgen/ and src-tauri/ are deleted as the
         step's last slice. Lean: yes. It mirrors the kit's own server/src and server/tests."
+        DECIDED 2026-10-08 — the user, mid-work: "ok do it all do not stop do the how conversion for
+        all apps do not stop at end of turns, unless you have something i really need to answer
+        finsih the conversion your rec on all go!" — the whole conversion (docgen, JustWrite,
+        JustVoice) runs without stopping at turn ends; a question that would normally be asked gets
+        its recommendation APPLIED and recorded here, marked "rec applied under the 2026-10-08 go",
+        with the text of the recommendation; only something the user really must answer stops the
+        work. Pushing the kit, JustWrite and docgen as the work goes (answer 4's reason — so the
+        work isn't only on this machine) falls under it; tags, releases, CI runs and deletions of
+        anything not part of the plan still ask.
 GO:     the study and the rulings given 2026-10-05; the spikes and the plan given 2026-10-07;
         the plan approved 2026-10-07, which is step 1's go. Steps 2–5: "your rec go do it all
         the full conversion" (2026-10-07, above); "keep going complete the switch to electron do it
-        all go your rec" (2026-10-08, above) — the eight answers.
+        all go your rec" (2026-10-08, above) — the eight answers; "…finsih the conversion your rec on
+        all go!" (2026-10-08, above) — every remaining step, recommendations applied.
 
 ### The header and Script hear an AI-model load made anywhere
 STATE:  DECIDED 2026-10-05 — "your rec go" on, as shown: "1. The header reads the kit's shared
