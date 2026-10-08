@@ -2148,10 +2148,19 @@ BUILT:  STEP 1, 2026-10-07 — the audio math is in our fork's `dsp/` module and
         (2026-10-07): `docs/plans/2026-10-07-electron-node-plan.md` — READ IT before any step.
         Facts in RESEARCH §6 and the kit's RESEARCH §2. Pointers in the kit's, JustWrite's and
         docgen's TASKS.
-        STEP 2 underway, 2026-10-07 — the kit's JavaScript package `../just-llm-runner/server/`
+        STEP 2 BUILT, 2026-10-08 — the kit's JavaScript package `../just-llm-runner/server/`
         (`@delebash/llm-runner`); its build sheet (layout, the conventions every port follows,
         the slices and waves, the checks): `../just-llm-runner/docs/plans/
-        2026-10-07-kit-in-javascript.md` — READ IT before porting any kit module.
+        2026-10-07-kit-in-javascript.md` — READ IT before porting any kit module. Checked: 1,084
+        tests; the route diff against the Python kit (reads 0 different, writes 37/37, the
+        databases 0 different); llama-server load, stop and hard kill on the real GPU, VRAM back
+        to baseline each time. Python's kit stays until JustVoice's step ends (JustWrite and
+        JustVoice still run on it).
+        STEP 3 BUILT, 2026-10-08 — docgen runs on Electron and a Node server; its Python server and
+        `src-tauri/` are deleted. Checked: 161 server tests, e2e 20/20, the whole-server route diff
+        (83 reads: 70 identical, 13 volatile; 37/37 writes; 1,910 database cells, 0 different),
+        the installer on this machine (installs, starts, serves; an update and an uninstall keep
+        `data\`). docgen's TASKS has the pointer; the user's own use of it is the step's end.
 THEN:   DECIDED 2026-10-07 — the user: "lets do electron adn get rid of python completely", then
         "your rec go" on the four questions as shown: "1. Keep that order, with JustVoice last? Lean:
         yes. JustVoice runs on the kit, so the kit has to move first anyway. docgen proves the shell
@@ -2232,6 +2241,33 @@ OPEN:   step 1's last end — packaged builds need `audiocpp_dsp` in an audio.cp
         which waits for the user's word (decided below). (`as_16k_mono` was ported, as decided
         below: the server has no numpy or scipy.)
         (Pushing the kit, JustWrite and docgen — answered below, 2026-10-08.)
+        Rec applied under the 2026-10-08 go — step 3 (docgen), each as decided:
+        1. Foreign keys stay OFF in docgen, as its Python server ran (`app.py:256`, sqlite3's
+           default): identical behaviour, and the route diff proves it (`server/src/app.js`,
+           `openDatabase(…, { foreignKeys: false })`).
+        2. Electron 44.7.0, the version the step-0 spikes ran on: 45 was still alpha on
+           2026-10-08.
+        3. docgen keeps FastAPI's error shape (`{"detail": …}`, the 422 items) rather than
+           problem+json — the route diff found docgen never used problem+json; the kit's
+           `createServer({ errors: "fastapi" })` gives it. JustWrite and JustVoice keep problem+json.
+        4. The installer keeps the user's data. electron-builder's uninstaller ends with
+           `RMDir /r $INSTDIR`, and an update runs the old uninstaller first — measured: an
+           uninstall left only `resources\`. The kit's `src/shell/installer.nsh` (every app's
+           `nsis.include`) removes everything in the install folder except `data\` and
+           `dataroot.txt`, as the Tauri installers did. Measured after: a marker file in
+           `data\` survived an update and an uninstall.
+        5. The headless launchers keep the Python console names (`just-ai-i18n-docgen-server.cmd`,
+           `just-ai-i18n-docgen.cmd`, beside the exe; they run the exe as Node with
+           `ELECTRON_RUN_AS_NODE=1`); the exe is `just_ai_i18n_docgen.exe`. A launcher is never
+           named like the exe (the JustVoice `CreateProcessW` trap).
+        6. The package leaves out better-sqlite3's build leftovers (sources, object files, PDBs):
+           they made the uninstall trip MAX_PATH and leave empty folders.
+        7. Biome now lints `server/` and `electron/` too, with the kit server's rules (undeclared
+           variables, unused imports).
+        8. The deletion took the Python virtualenv `server/.venv` and the Rust build folder
+           `src-tauri/target` (6 GB) with the rest of `server/`'s Python and `src-tauri/` — both
+           local and ignored; `src-tauri/target/debug/data` was empty (its data had moved to
+           `data/`).
         (Q8's last part answered — "no i dont have a mack": iOS builds need macOS, so how iOS
         gets built is open for the phone plan; Android builds on Windows.)
         DECIDED 2026-10-07 — "your rec go" on, as shown: "1. May I close your running app to free
