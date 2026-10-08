@@ -2148,6 +2148,10 @@ BUILT:  STEP 1, 2026-10-07 — the audio math is in our fork's `dsp/` module and
         (2026-10-07): `docs/plans/2026-10-07-electron-node-plan.md` — READ IT before any step.
         Facts in RESEARCH §6 and the kit's RESEARCH §2. Pointers in the kit's, JustWrite's and
         docgen's TASKS.
+        STEP 2 underway, 2026-10-07 — the kit's JavaScript package `../just-llm-runner/server/`
+        (`@delebash/llm-runner`); its build sheet (layout, the conventions every port follows,
+        the slices and waves, the checks): `../just-llm-runner/docs/plans/
+        2026-10-07-kit-in-javascript.md` — READ IT before porting any kit module.
 THEN:   DECIDED 2026-10-07 — the user: "lets do electron adn get rid of python completely", then
         "your rec go" on the four questions as shown: "1. Keep that order, with JustVoice last? Lean:
         yes. JustVoice runs on the kit, so the kit has to move first anyway. docgen proves the shell
@@ -2227,7 +2231,8 @@ THEN:   DECIDED 2026-10-07 — the user: "lets do electron adn get rid of python
 OPEN:   step 1's last end — packaged builds need `audiocpp_dsp` in an audio.cpp release: a tag,
         which waits for the user's word (decided below). (`as_16k_mono` was ported, as decided
         below: the server has no numpy or scipy.)
-        Steps 2–5 each need their own go.
+        Pushing the kit, JustWrite and docgen (local commits only so far) — asked before the
+        first push.
         (Q8's last part answered — "no i dont have a mack": iOS builds need macOS, so how iOS
         gets built is open for the phone plan; Android builds on Windows.)
         DECIDED 2026-10-07 — "your rec go" on, as shown: "1. May I close your running app to free
@@ -2240,8 +2245,14 @@ OPEN:   step 1's last end — packaged builds need `audiocpp_dsp` in an audio.cp
         · "4. Packaged builds will need an audio.cpp release that includes audiocpp_dsp, which means
         a tag. Nothing needs it until there's a packaged release, so it can wait for your word." (3,
         pushing the kit/JustWrite/docgen commits, had no lean — not covered.)
+        DECIDED 2026-10-07 — after step 1's report (open: the tag, the unpushed kit/JustWrite/
+        docgen commits, the 8 older failing tests, "Step 2, the kit. It needs its own go"), the
+        user: "your rec go do it all the full conversion" — the go for steps 2–5 (kit, docgen,
+        JustWrite, JustVoice), as the plan describes them. The tag waits (its rec). Pushing the
+        kit/JustWrite/docgen repos had no rec — asked before their first push.
 GO:     the study and the rulings given 2026-10-05; the spikes and the plan given 2026-10-07;
-        the plan approved 2026-10-07, which is step 1's go. Steps 2–5: each needs its own.
+        the plan approved 2026-10-07, which is step 1's go. Steps 2–5: "your rec go do it all
+        the full conversion" (2026-10-07, above).
 
 ### The header and Script hear an AI-model load made anywhere
 STATE:  DECIDED 2026-10-05 — "your rec go" on, as shown: "1. The header reads the kit's shared
