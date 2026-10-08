@@ -3,7 +3,7 @@
 // the card's Lab (the one refine surface since the 2026-08-08 sectioned
 // redesign retired the per-piece panes) runs the REAL production path —
 // /v1/refine/lab-run: the composed system plus the few-shot
-// REFINEMENT_EXAMPLES history production sends (the generic run sent no
+// examples history production sends for the current toggles (the generic run sent no
 // history — the recorded 2026-08-06 gap). A column-edited system still
 // rides (what you see is what runs). §16: every run is a real task on the strip — the
 // task row is ConfigColumn's: it registers the run in the shared kit queue

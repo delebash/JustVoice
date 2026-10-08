@@ -19,12 +19,15 @@ JustVoice has an effects chain: 10 effect types, 4 built-in presets, custom pres
 
 ## Built-in presets
 
-| Preset | Chain |
-|---|---|
-| **Radio** | HP 300 Hz · LP 3500 Hz · Compressor 6:1 / -15 dB · Gain +6 dB |
-| **Robotic** | Chorus — slow LFO (0.2 Hz), full depth, 35% feedback (a flanger-ish metallic sweep) |
-| **Echo Chamber** | Reverb (room 0.85, damping 0.3, 45% wet) · Delay 250 ms (30% feedback, 20% mix) |
-| **Deep Voice** | Pitch −3 st · LP 6000 Hz · Compressor 3:1 / −18 dB |
+| Preset | Sounds like | Chain |
+|---|---|---|
+| **Robotic** | A machine voice: a slow flanging sweep with a metallic ring and a little grit | Chorus (0.35 Hz, depth 0.4, 3 ms, 65% feedback, 55% mix) · EQ mid +5 dB at 1100 Hz (Q 1.6) · Distortion 8 dB drive |
+| **Radio** | An old AM set: only the middle of the voice gets through, squeezed flat and driven hot | HP 450 Hz · LP 3200 Hz · Compressor 6:1 / −24 dB (2 ms attack, 150 ms release) · Distortion 12 dB drive |
+| **Echo Chamber** | A large, hard-walled room: a wide reverb tail with a repeating echo behind the voice | Reverb (room 0.92, damping 0.18, 38% wet, 72% dry, width 0.9) · Delay 240 ms (40% feedback, 30% mix) |
+| **Deep Voice** | Three semitones lower, with more weight in the low end and an evened-out level | Pitch −3 st · EQ low +4 dB at 220 Hz (Q 0.7) · Compressor 2.5:1 / −20 dB (8 ms attack, 200 ms release) |
+
+The built-in values changed on 2026-10-08. A database made before then keeps the earlier
+values until it is reset; presets you saved yourself never change.
 
 ## Non-destructive
 

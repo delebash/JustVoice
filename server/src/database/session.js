@@ -1,79 +1,75 @@
 // SPDX-License-Identifier: MIT
-// The JustVoice SQLite database handle (the port of justvoice/database/session.py, whose
-// init flow was lifted from an upstream MIT codebase — see voicebox-pin.txt).
+// The one database handle — `justvoice.db` in the data folder, opened with better-sqlite3 through
+// the kit's `openDatabase`, foreign keys on.
 //
-// One better-sqlite3 handle (the kit's platform/sql.js) replaces SQLAlchemy's engine +
-// session factory: every store reaches it through `getDb()` (or `cfg.handle`, which is null
-// until `initDb` runs — the Python stores' "SessionLocal is None" check). Foreign keys are
-// turned ON for the connection, as Python's connect hook did per connection; the kit's
-// shared LLM tables live in the same file (the app passes this handle to installLlm).
+// `cfg` holds the live handle and the file's path. Tests and the factory reset assign both
+// properties directly, so everything here reads `cfg` at call time and never keeps a copy.
 //
-// `cfg` holds the module state Python kept in globals (`engine`, `SessionLocal`,
-// `_db_path`) — a test assigns its properties where Python monkeypatched them.
+// Opening (`initDb`) is: open → register the schema (column kinds and the computed defaults) →
+// create every table the file is missing, with the schema's exact DDL and indexes → publish the
+// handle. A table that already exists is left as it is: there are no column upgrades (pre-release,
+// the user resets instead — the no-migrations rule).
 
 import { mkdirSync } from "node:fs";
 import path from "node:path";
+import { purePath, samePath } from "@delebash/llm-runner/platform/data_paths";
 import { getLogger } from "@delebash/llm-runner/platform/log";
 import { RuntimeError } from "@delebash/llm-runner/platform/py";
-import { purePath, samePath } from "@delebash/llm-runner/platform/data_paths";
 import { openDatabase } from "@delebash/llm-runner/platform/sql";
 import { defaultDataDir } from "../paths.js";
-import { runMigrations } from "./migrations.js";
 import { TABLES } from "./models.js";
 
-const logger = getLogger("justvoice.database.session");
+const log = getLogger("justvoice.database.session");
 
-/** `handle` — the open database (null before initDb); `dbPath` — its file. */
+/** The database file's name inside the data folder (backup and restore look for it). */
+const DB_FILE = "justvoice.db";
+
 export const cfg = { handle: null, dbPath: null };
 
+function closeQuietly(h) {
+  try {
+    h.close();
+  } catch {
+    /* already closed, or the file went away — nothing to keep */
+  }
+}
+
 /**
- * Open the database, run migrations, create tables. Idempotent for the same target —
- * re-inits when a DIFFERENT data dir is explicitly requested (tests: without this, the first
- * boot in a process pinned every later create_app(tmp) to the first dir). `dataDir`
- * defaults to `paths.defaultDataDir()`.
+ * Open the database in `dataDir` (the default data folder when none is given). Nothing happens
+ * when a handle is already open and no folder — or the same folder — is asked for; a different
+ * folder closes the open handle first (a test process builds many apps, each on its own folder).
  */
 export function initDb(dataDir = null) {
   if (cfg.handle !== null) {
-    if (dataDir == null || (cfg.dbPath !== null && samePath(path.dirname(cfg.dbPath), dataDir))) return;
-    try {
-      cfg.handle.close();
-    } catch {
-      /* already closed */
-    }
+    if (dataDir == null) return;
+    if (cfg.dbPath !== null && samePath(path.dirname(cfg.dbPath), dataDir)) return;
+    closeQuietly(cfg.handle);
     cfg.handle = null;
   }
-  const dir = dataDir ?? defaultDataDir();
-  mkdirSync(dir, { recursive: true });
-  cfg.dbPath = purePath(path.join(dir, "justvoice.db"));
-  // Foreign keys must be turned on per connection for SQLite; better-sqlite3 has one.
+  const folder = dataDir ?? defaultDataDir();
+  mkdirSync(folder, { recursive: true });
+  cfg.dbPath = purePath(path.join(folder, DB_FILE));
+
   const h = openDatabase(cfg.dbPath, { foreignKeys: true });
   h.register(TABLES);
-  // Idempotent column-existence migrations BEFORE create-tables, so schema changes land on
-  // the existing tables (and creating is a no-op for tables already there).
-  runMigrations(h);
-  // Then ensure any net-new tables exist.
   h.createTables(TABLES);
   cfg.handle = h;
-  logger.info(`Database: ${cfg.dbPath}`);
+  log.info(`database ready at ${cfg.dbPath}`);
 }
 
-/** The open database handle (FastAPI's `get_db` dependency yielded a session). */
+/** The open handle. Throws when the database has not been opened yet. */
 export function getDb() {
-  if (cfg.handle === null) throw new RuntimeError("Database not initialized. Call init_db() during app startup.");
+  if (cfg.handle === null) throw new RuntimeError("the database is not open yet — initDb() runs at app startup");
   return cfg.handle;
 }
 
-/** The resolved DB path, or null if initDb() hasn't run yet. */
-export const getDbPath = () => cfg.dbPath;
+/** The database file's path, or null before `initDb`. */
+export function getDbPath() {
+  return cfg.dbPath;
+}
 
-/** Close the handle (and forget it) — factory reset's `engine.dispose()`, and tests. */
+/** Close the handle (if any). The path is kept; a caller that wants it gone clears it. */
 export function closeDb() {
-  if (cfg.handle !== null) {
-    try {
-      cfg.handle.close();
-    } catch {
-      /* already closed */
-    }
-  }
+  if (cfg.handle !== null) closeQuietly(cfg.handle);
   cfg.handle = null;
 }

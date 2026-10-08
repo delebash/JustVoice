@@ -30,7 +30,6 @@ Read the docs in this order:
 | `NOTICE.md` | Third-party attribution (MIT/Apache lifts, the speech runtime, models) |
 | `LICENSES.md` | Dependency license inventory |
 | `MORNING_RECAP.md` | Current build state — what shipped, what's pending |
-| `voicebox-pin.txt` | Pinned upstream commit hash for code lifted under MIT — referenced by per-file attribution headers |
 
 ## Quick start
 
@@ -85,7 +84,7 @@ is nothing else to install; the app is the installer. See
 ├── electron/main.js           # The desktop app: the kit's shared Electron shell with this app's settings
 ├── build/                     # Icons and the headless launcher the installer ships
 ├── src/                       # Vue 3 + Pinia + Vite SPA
-│   ├── components/            # ListPane, CapturePill, ChordPicker, AudioKeepAlive, etc.
+│   ├── components/            # ListPane, CapturePill, AudioKeepAlive, etc.
 │   ├── stores/                # Pinia: api, server, player, ui, audioChannel, generation (AI tasks live in the kit's store)
 │   ├── services/              # HTTP client per endpoint group; native.js is the one door to the desktop shell
 │   └── views/                 # One per top-level tab
@@ -115,7 +114,7 @@ is nothing else to install; the app is the installer. See
 ✅ **Phase 5 (JustVoice side)** — All endpoints for JustWrite to drive JustVoice are live; PHASE5_JUSTWRITE_INTEGRATION.md documents the JustWrite-side edits
 ✅ **Phase 6 partial** — README + FEATURES.md (23 sections, ~6000 words) + all architecture docs
 
-🚧 **Phase 4b (UI)** — Foundation in place (AudioKeepAlive, ListPane, CapturePill, ChordPicker, 5 new Pinia stores, BooksView). Pending: 8 settings sub-routes, full aesthetic CSS sweep matching the preview HTML, StoriesView (timeline editor port), CapturesView (dictation pill), EffectsView (pedalboard chain editor)
+🚧 **Phase 4b (UI)** — Foundation in place (AudioKeepAlive, ListPane, CapturePill, 5 new Pinia stores, BooksView). Pending: 8 settings sub-routes, full aesthetic CSS sweep matching the preview HTML, StoriesView (timeline editor port), CapturesView (dictation pill), EffectsView (pedalboard chain editor)
 🚧 **Phase 4c+5 (DictateWindow agent-speak cycle)** — Backend ready, Vue + Rust window-spawn integration pending
 🚧 **UE integration** — Research-first, deferred until main program completes (see `project_unreal_deep_dive_deferred` memory)
 
@@ -129,16 +128,12 @@ See `MORNING_RECAP.md` for the current build state. JustVoice's data model + HTT
 
 JustWrite is the novel-writing app. JustVoice can be driven by JustWrite (the audiobook workflow) OR run standalone (game, podcast, dictation). The wire format is HTTP per `CONTRACT.md`. JustWrite owns the manuscript + final M4B mux (via FFmpeg.wasm); JustVoice owns the engine pool + ACX mastering. Either can ship without the other.
 
-### Upstream code lifts
-
-A handful of files in this repo (`server/src/audio/chunked.js`, `server/src/database/migrations.js`, among others) carry per-file MIT attribution headers referencing a pinned upstream commit. The full license trail is in `NOTICE.md` + `voicebox-pin.txt`.
-
 ## Contributing
 
 Per-file SPDX-License-Identifier headers required on every new file:
 
 - `MIT` for first-party files
-- `MIT` for files lifted from upstream MIT code too — but they additionally carry a full attribution block referencing the pinned commit in `voicebox-pin.txt`. The identifier is no longer compound because upstream and this project are both MIT now
+- Code taken from another project keeps its licence notice and gets an entry in `NOTICE.md`
 
 See `project_licensing_attribution` in the memory layer for the policy + templates.
 

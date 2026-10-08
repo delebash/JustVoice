@@ -55,7 +55,7 @@ You could route OS audio to BlackHole and split there. Two reasons we do it in J
 
 ## Audio keep-alive (macOS)
 
-On Mac, CoreAudio tears down idle audio sessions. JustVoice runs a silent looping WAV in the background to keep the session open so the first render after idle doesn't pop. See [system-tray.md](system-tray.md) for the AudioKeepAlive setup.
+On Mac, CoreAudio tears down idle audio sessions. JustVoice runs a silent looping WAV in the background to keep the session open so the first render after idle doesn't pop. There is nothing to set up: the app window starts it on its own, and if the system blocks audio until you interact with the window, it starts on your first click or key press. (It lives in the app window itself — `src/components/AudioKeepAlive.vue`, mounted once by the main shell.)
 
 ## Troubleshooting
 

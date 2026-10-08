@@ -2516,6 +2516,81 @@ OPEN:   step 1's last end — packaged builds need `audiocpp_dsp` in an audio.cp
         `server/src/database/seed.js` (the effect presets); `src/components/{AudioKeepAlive,
         ChordPicker,CapturePill,DictateWindow}.vue`. The Refine Lab is the AI console's
         (`src/services/refineLab.js`), not the Labs view, so dropping Labs leaves it.
+        DECIDED 2026-10-08 — on "1. What should the old-vs-new refinement comparison run on? (a) You
+        dictate 5–10 real captures in the app. (b) The Refine Lab's own sample dictations plus a
+        set of made-up messy ones. Lean: (a), since that's what was approved. (b) still compares
+        the prompts properly, but it's the weaker proof." (the database has no captures) and "2.
+        Without Labs, nothing in JustVoice calls the compare command in our audio.cpp fork's audio
+        tool. Remove it from the fork too? Lean: yes, as part of the clean-up after the rewrite."
+        — the user: "your rec you can do it all without me". So: (b), with nothing asked of the
+        user; and the fork's `compare` command goes after the rewrite.
+        SPEC WRITTEN 2026-10-08 — `docs/plans/2026-10-08-clean-room-rewrite.md` (half 1; checked: no
+        code from the 15 files, no old prompt wording; its code blocks are callers' grep lines).
+        Its 21 gaps, ruled with my rec under "your rec you can do it all without me": 1. The six
+        upgrade steps are extinct — the live database has every column they add and none of the
+        tables they drop (checked) — so `migrations.js` goes with its calls (the no-migrations
+        rule). 2. The ground rules only fix punctuation and capitals and never change words;
+        filler goes only with "Remove filler" on, so all toggles off agrees with "return it
+        unchanged". 3. `seed_feature_prompts.js`'s "unchanged" line stays (not credited; a test
+        pins it). 4. The refine Lab samples in `seed_presets.js` are rewritten too (they echo the
+        old examples). 5. An existing database keeps the old prompt rows and built-in preset
+        values until the user's next reset (no migrations). 6. DictateWindow plays
+        `/v1/generations/<id>/audio`, not the dead `/audio/<id>`. 7. ChordPicker is deleted, not
+        rewritten — nothing uses it and its key names don't match the stored chords. 8. The error
+        pill answers Enter and Space. 9. `zod` becomes a direct dependency, for the MCP SDK's
+        documented high-level API (standard first). 10. The Python mimicry goes (version
+        "3.4.5", pydantic-style error text, the empty prompts/resources capabilities) unless a
+        test pins it. 11. `/mcp` goes behind the same bearer token and Origin guard as every other
+        route, as `docs/mcp-server.md` already says. 12. speak's `duration_sec` comes from the WAV's
+        own rate. 13. speak stores the language it actually spoke. 14. Settings → MCP's curl
+        snippet becomes one that works. 15. The splitter: "e.g.", "i.e.", "a.m.", "U.S." count as
+        abbreviations (as `docs/engines.md` says), "2024." ends a sentence, a tag is never split
+        or cut, a piece length ≤ 0 is refused. 16. A failed transcription deletes its WAV. 17.
+        Re-refining with no LLM answers 501 with the not-configured message, as the refine Lab
+        does. 18. An empty `audio_path` counts as missing. 19. `captures.duration_ms` is written.
+        20. The stale docs are fixed (fastmcp in `mcp-server.md` and `troubleshooting.md`,
+        `channels.md`'s keep-alive pointer, `effects.md`'s preset table). 21. Keep-alive is kept;
+        whether Electron's Chromium needs it stays unmeasured (open). Each fix gets a new test;
+        existing tests stay as they are.
+        BUILT 2026-10-08 — the writer (never shown the old files; they were moved out of the repo
+        first) wrote fresh: `refinement.js` (new wording, new examples — and the examples now
+        follow the toggles: `refinementExamplesFor(flags)` / `refinementHistory(flags)`, used by
+        production and `/v1/refine/lab-run`, so all-off sends only examples that keep every word),
+        `mcp/{server,tools,resolve,context}.js` (the SDK's `McpServer` + `registerTool` + zod;
+        `zod` 4.6.5 a direct dependency), `audio/chunked.js`, `api/captures_api.js`,
+        `database/{session,models,seed}.js` (new preset values — `docs/effects.md`'s table), the
+        three Vue components, the refine Lab samples (`seed_presets.js`). Deleted:
+        `migrations.js`, `ChordPicker.vue`. All 21 rulings built, each fix with a new test
+        (`mcp_rulings`, `captures_rulings`, `chunked_rulings`, `refinement_examples`,
+        `CapturePill.test.js`, `DictateWindow.test.js`); no existing test changed (only
+        `tests/helpers.js`' migrations call). Kit: `platform/auth.js` and `csrf.js` take
+        `prefixes` (default `["/v1"]`, so JustWrite and docgen are unchanged; kit test
+        `guarded_prefixes.test.js`); JustVoice passes `["/v1", "/mcp"]`. One audit: three Echo
+        Chamber reverb values matched the old preset exactly; the writer listed everything it had
+        read (none of it held them) and chose new ones anyway. Credits out: NOTICE.md's entry,
+        LICENSES.md's row, `voicebox-pin.txt`, the About line, CLAUDE.md, README, `.gitignore`,
+        `generate_api.js`'s comment — `git grep -i voicebox` outside `docs/plans` and this file
+        finds nothing. The fork's `compare` command went too (fork `b1c8103f`, dsp tests pass).
+        PROOF: lint · build · 183 unit · 1,055 server tests pass. Refinement, old vs new through
+        production's `refineTranscript` on the real model (gemma-4-26b-a4b-qat, the real data
+        folder's settings) on 22 dictations (14 made up + the old and new Lab samples), ruling (b):
+        with the user's toggles (all on) both pass 19/22 — the 3 misses are the checker's case
+        strictness, the same for both — and the new wording is as good or better (it also drops a
+        leading "So"/"Okay, so"); with all toggles off the new one keeps self-corrections as
+        ruled, the old one removed them. MCP with the SDK's own client on the running server:
+        initialize, the four tools listed, list_voices, list_personas, speak through a persona →
+        a 2.3 s 24 kHz WAV (duration from its header), transcribe of that WAV → "The rewritten
+        server speaks.", an empty `audio_path` refused, the session closed. The smoke gate:
+        every view, zero JS errors (it caught Labs still in `scripts/lib/smoke-common.js`'s tab
+        list — fixed). The main window (keep-alive mounted) and `/?view=dictate` load with zero
+        errors; at rest the dictation window shows nothing, as designed — nothing starts a
+        recording cycle today (RESEARCH: dictation isn't wired), so the pill's states are proven
+        by its unit tests only.
+        STILL OPEN after the clean room: with every toggle off, gemma still drops "um"/"uh" on
+        its own — old and new alike. A database made before 2026-10-08 keeps the old built-in
+        preset values and prompt rows until the user resets. Keep-alive's need under Electron is
+        unmeasured. speak with no language and no persona still stores "en" though the voice
+        speaks its own. A tag longer than the piece length is still cut (no piece may exceed it).
         DECIDED 2026-10-08 — the user: "when the conversion is complete no python should remain
         not even in testing, do you understnad?" Answered, rec applied, as shown: "When the
         conversion is complete, no Python remains anywhere: no server, no tests, no scripts, no

@@ -131,8 +131,15 @@ to wait; **Retry** asks at once. If it never opens, the server didn't start —
 its log is `logs/justvoice.log` in your data folder.
 
 **MCP clients can't find the server.** MCP mounts at `/mcp` on the app port
-(17494) — if it's missing, the server log will say the `fastmcp` package is
-absent; install it in the server environment. See [MCP server](mcp-server.md).
+(17494) whenever the server starts — it is built in (the official MCP SDK
+ships with the app), so there is nothing to install. If a client still can't
+connect, check the server log for `MCP server failed to mount`. A client
+that gets **401** or **403** is being asked for the server's token: with auth
+tokens set, `/mcp` needs `Authorization: Bearer <token>` like the rest of the
+API (from this machine only when *Require a token even on localhost* is on).
+A **404** means the client's session is gone (the server restarted) — it
+should start a new one; most clients do that on their own. See
+[MCP server](mcp-server.md).
 
 **Dictation won't start.** The Captures tab shows six readiness gates
 (microphone permission, engine loaded, hotkey registered, …) — the failing one

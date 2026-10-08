@@ -669,7 +669,7 @@ const MCP_SNIPPETS = computed(() => ({
   }
 }`,
   claude_code: `claude mcp add justvoice --transport http --url ${api.serverUrl}/mcp --header "X-JustVoice-Client-Id: claude-code"`,
-  curl: `curl -X POST ${api.serverUrl}/mcp -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' -H 'X-JustVoice-Client-Id: my-script' -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'`,
+  curl: `curl -i -X POST ${api.serverUrl}/mcp -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' -H 'X-JustVoice-Client-Id: my-script' -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"curl","version":"1"}}}'`,
 }));
 
 async function copySnippet(key) {
@@ -1025,7 +1025,7 @@ onMounted(() => {
         <p class="jv-muted jv-hint">
           Off by default. Add a token to require an
           <code class="jv-mono">Authorization: Bearer</code> header on every
-          <code class="jv-mono">/v1</code> API call — for when you run the server
+          <code class="jv-mono">/v1</code> API call and on <code class="jv-mono">/mcp</code> — for when you run the server
           exposed beyond this machine. Thin clients paste the token under Connection.
         </p>
         <table class="jv-table jv-w560" v-if="auth.tokens.length">
@@ -1821,7 +1821,7 @@ onMounted(() => {
       <div class="jv-card">
         <div class="jv-card__header"><h3 class="jv-card__title">About JustVoice v0.1.0</h3></div>
         <p>JustVoice is a cross-platform open-source voice production studio for audiobook producers, game developers, podcasters, dictation users, and accessibility users. Built on Electron + Vue 3 + Node.</p>
-        <p class="jv-muted jv-note jv-mt10">Licensed MIT. Portions ported from voicebox (MIT) and JustWrite (MIT) — see <code>NOTICE.md</code>.</p>
+        <p class="jv-muted jv-note jv-mt10">Licensed MIT. Portions ported from JustWrite (MIT) — see <code>NOTICE.md</code>.</p>
         <div class="jv-btn-group jv-mt14">
           <UiButton intent="secondary" label="📋 Third-party licenses" />
           <UiButton intent="secondary" label="🐛 Report an issue" />

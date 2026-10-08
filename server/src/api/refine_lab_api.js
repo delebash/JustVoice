@@ -8,8 +8,8 @@
 // Any other feature 404s (fail-loud; the kit shows the error line, never a fallback picker).
 //
 // POST /v1/refine/lab-run — the refine Lab's run door: the SAME path production takes
-// (explicit composed system + the few-shot REFINEMENT_EXAMPLES history), with the column's
-// overrides riding like any feature's.
+// (explicit composed system + the worked examples for the current toggles as history), with the
+// column's overrides riding like any feature's.
 
 import { LLMNotConfiguredError } from "@delebash/llm-runner/llm";
 import { HttpError } from "@delebash/llm-runner/platform/errors";
@@ -19,7 +19,7 @@ import { pyInt, strRepr } from "@delebash/llm-runner/platform/py";
 import { getState } from "../app_state.js";
 import * as run from "../engines/llm/run.js";
 import { construct } from "../models.js";
-import { composeRefinementSystem, REFINEMENT_EXAMPLES, RefinementFlags } from "../refinement.js";
+import { composeRefinementSystem, RefinementFlags, refinementHistory } from "../refinement.js";
 
 const log = getLogger("justvoice.api.refine_lab_api");
 
@@ -29,7 +29,7 @@ export const PromptPreviewResponse = T.Object({ system: T.String(), user: T.Stri
 
 // The seeded refine.base Lab sample's transcript (seed_presets.js) — the preview's user half
 // shows a real dictation, not a placeholder.
-const _PREVIEW_TRANSCRIPT = "um can you check if the uh export finished before we send it";
+const _PREVIEW_TRANSCRIPT = "um can you check whether the uh backup ran last night or should i start it again";
 
 export function _currentFlags() {
   const s = getState().settings.get();
@@ -94,7 +94,9 @@ export async function router(app) {
     const overrides = Object.fromEntries(Object.entries(all).filter(([, v]) => v !== null));
     // The column's own system wins when it sent one (what you see is what runs); else the
     // CURRENT toggles' composition — exactly production's call (the sectioned redesign).
-    if (!Object.hasOwn(overrides, "system")) overrides.system = composeRefinementSystem(_currentFlags());
+    // The worked examples follow the same toggles, as production's do.
+    const flags = _currentFlags();
+    if (!Object.hasOwn(overrides, "system")) overrides.system = composeRefinementSystem(flags);
     const t0 = performance.now();
     let resp;
     try {
@@ -102,10 +104,7 @@ export async function router(app) {
         "refine.base",
         { transcript: body.transcript || "" },
         {
-          history: REFINEMENT_EXAMPLES.flatMap(([user, assistant]) => [
-            { role: "user", content: user },
-            { role: "assistant", content: assistant },
-          ]),
+          history: refinementHistory(flags),
           ...overrides,
         },
       );

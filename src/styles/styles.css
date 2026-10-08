@@ -132,7 +132,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
      sizes from its content — the widest label decides, nothing clips. */
   grid-template-columns: auto 1fr;
   /* One full-height row. WITHOUT this the implicit row is content-sized, so a
-     short view (e.g. Labs) shrinks the whole row — the sidebar then isn't
+     short view (e.g. Lexicons) shrinks the whole row — the sidebar then isn't
      100vh and its pinned bottom group rises, making the nav "jump" between
      views. minmax(0,1fr) forces the row to the viewport height regardless of
      content, and lets the children own their own scroll. */

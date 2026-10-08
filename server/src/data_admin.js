@@ -16,7 +16,6 @@ import * as lifecycle from "@delebash/llm-runner/runner/lifecycle";
 import { getLogger } from "@delebash/llm-runner/platform/log";
 import { makeDataRouter } from "@delebash/llm-runner/platform/data_api";
 import * as appState from "./app_state.js";
-import { runMigrations } from "./database/migrations.js";
 import { TABLE_NAMES, TABLES } from "./database/models.js";
 import * as dbSeed from "./database/seed.js";
 import * as dbSession from "./database/session.js";
@@ -100,7 +99,7 @@ export async function runFactoryReset() {
   await _stopAiEnginesBestEffort();
 
   // 1. The database resets the way a fresh install creates it: delete the SQLite file and
-  // re-run initDb (create + migrations + seeds). Guarantees the post-reset schema is
+  // re-run initDb (create + seeds). Guarantees the post-reset schema is
   // identical to a new install — dropping tables in place kept legacy drift alive (user-hit
   // three times on 2026-06-12). Falls back to dropping tables when the DB isn't the module's
   // file-backed one (tests).
@@ -151,7 +150,6 @@ export async function runFactoryReset() {
       h.exec(`PRAGMA foreign_keys=${fkWas ? "ON" : "OFF"}`);
     }
     h.createTables(TABLES);
-    runMigrations(h);
     dbSeed.seedBuiltinEffectPresets();
     // Dropped-in-place path: the shared tables were dropped with the rest — recreate +
     // reseed them on the same handle.

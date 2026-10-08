@@ -1,85 +1,57 @@
 // SPDX-License-Identifier: MIT
+// Dictation on the server — /v1/transcribe and /v1/captures.
 //
-// Route surface adapted from voicebox (MIT) — backend/routes/captures.py +
-// routes/transcription.py at the commit pinned in voicebox-pin.txt, rewritten on JustVoice's
-// managed-engine architecture (the recogniser runs in the stt slot of the speech runtime;
-// refinement routes through the LLM provider dispatch). Original copyright (c) the voicebox
-// authors.
+// A recording arrives as a multipart upload; the local speech recognizer (the `asr` engine in
+// the speech runtime) transcribes it; the cleanup pass (refinement.js) tidies it when
+// `settings.captures.auto_refine` is on; and a `captures` row keeps BOTH texts, so the Captures
+// page can show either. A cleanup that fails never loses the recording's words: the raw
+// transcript stands in for the cleaned one. `POST /v1/transcribe` is the same transcription with
+// nothing stored.
 //
-// /v1/captures + /v1/transcribe — the dictation backend (parity gaps G1/G2), the port of
-// justvoice/api/captures_api.py. The desktop hotkey records audio and POSTs it here; headless
-// callers upload files. The Capture row stores BOTH the raw recogniser output and the
-// post-refinement transcript so the UI can toggle between them.
+// This module also owns two things other routers use:
+//   - the multipart form reader (`_useForms`, `_readForm`, `_requireFile`, `_formField`) —
+//     FastAPI's `File()` / `Form()` semantics for align, voice bundles and project import;
+//   - speech recognition loaded on first use (`ensureSttLoaded`, `_sttTranscribe`) — align and
+//     the MCP `justvoice.transcribe` tool call it too.
+//
+// The routes reach `_sttTranscribe`, `ensureSttLoaded`, `_readForm` and `_maybeRefine` through
+// this module's own namespace (`self.`), so a test's spy on an export takes effect.
 
-import { createReadStream, createWriteStream, mkdirSync, mkdtempSync, rmSync, statSync, unlinkSync } from "node:fs";
+import { closeSync, createReadStream, createWriteStream, mkdirSync, mkdtempSync, openSync, readSync, rmSync, statSync } from "node:fs";
+import { copyFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pipeline } from "node:stream/promises";
 import multipart from "@fastify/multipart";
-import { RequestValidationError } from "@delebash/llm-runner/platform/errors";
+import { LLMNotConfiguredError } from "@delebash/llm-runner/llm";
+import { HttpError, RequestValidationError } from "@delebash/llm-runner/platform/errors";
 import { getLogger } from "@delebash/llm-runner/platform/log";
 import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
+import { isJsonObject, strRepr } from "@delebash/llm-runner/platform/py";
 import { jsonLoads, pyJson } from "@delebash/llm-runner/platform/pyjson";
+import { attachment } from "@delebash/llm-runner/platform/server";
 import { getState } from "../app_state.js";
+import { parseWavHeader } from "../audio/wav.js";
 import { Capture, uuid } from "../database/models.js";
-import * as session from "../database/session.js";
+import { getDb } from "../database/session.js";
 import { badRequest, notFound } from "../errors.js";
 import { mediaFile, storeMediaPath } from "../media_paths.js";
 import { construct, DateTime } from "../models.js";
-import * as refinement from "../refinement.js";
+import { RefinementFlags, refineTranscript } from "../refinement.js";
 import * as self from "./captures_api.js";
 
 const log = getLogger("justvoice.api.captures_api");
 
-const _UPLOAD_CHUNK = 1024 * 1024;
+const msg = (e) => e?.message ?? String(e);
+
+/** The largest upload any form route takes, in MB. */
 export const _MAX_UPLOAD_MB = 200;
-/** `_MAX_UPLOAD_MB` as the routes read it — a test lowers it (Python monkeypatched the module
- * global). */
+/** The cap the routes read at request time (a test lowers it; align and voice bundles read it). */
 export const cfg = { _MAX_UPLOAD_MB };
 
-export function _capturesDir() {
-  const d = path.join(String(getState().dataDir), "captures");
-  mkdirSync(d, { recursive: true });
-  return d;
-}
+const SOURCES = ["mic", "system_audio", "upload"];
 
-/** The stt slot's manager (and the settings), with speech recognition auto-loaded on first use.
- * Shared by transcription and word alignment — one loading rule. → `[manager, settings]`. */
-export async function ensureSttLoaded() {
-  const { getManager } = await import("../engines/manager.js");
-  const mgr = getManager();
-  const settings = getState().settings.get();
-  if (mgr.loadedFor("stt") === null) {
-    const status = mgr.status("asr");
-    if (status === "installed") {
-      log.info(`captures: auto-loading speech recognition (${settings.captures.stt_model}) on first use`);
-      await mgr.load("asr", { device: "auto", variant: settings.captures.stt_model });
-    } else {
-      throw badRequest(`Speech recognition is ${status} — install the speech runtime on the AI page first`);
-    }
-  }
-  return [mgr, settings];
-}
-
-/** Transcribe via the stt-slot engine; auto-load speech recognition if installed. What
- * dictation, MCP and the /v1/transcribe door share. */
-export async function _sttTranscribe(audioPath, language) {
-  const [mgr, settings] = await self.ensureSttLoaded();
-  const lang = language || settings.captures.language;
-  return mgr.transcribe({ audio_path: audioPath, language: lang === "" || lang === "auto" ? null : lang });
-}
-
-/** Refine if a provider is available → `[refined, model]`, or `[null, null]` — refinement
- * failure never loses the raw transcript. */
-export async function _maybeRefine(raw, flags) {
-  try {
-    const settings = getState().settings.get();
-    return await refinement.refineTranscript(raw, flags, { settings });
-  } catch (e) {
-    log.warning(`captures: refinement skipped: ${e?.message ?? e}`);
-    return [null, null];
-  }
-}
+// ─── Wire shapes ────────────────────────────────────────────────────────────
 
 export const CaptureRow = T.Object({
   id: T.String(),
@@ -90,284 +62,349 @@ export const CaptureRow = T.Object({
   raw_transcript: nullable(T.String()),
   refinement_flags: T.Record(T.String(), T.Any()),
   audio_url: T.String(),
-  pinned: opt(T.Boolean(), false),
+  pinned: T.Boolean(),
   created_at: DateTime(),
 });
 
 export const CaptureList = T.Object({ captures: T.Array(CaptureRow), total: T.Integer() });
 
+export const TranscribeResponse = T.Object({ text: T.String(), language: nullable(T.String()) });
+
 export const UpdateCaptureRequest = T.Object({ pinned: opt(nullable(T.Boolean()), null) });
 
+/** Re-refine: each toggle left out (or null) keeps the capture's own. */
 export const RefineBody = T.Object({
   smart_cleanup: opt(nullable(T.Boolean()), null),
   self_correction: opt(nullable(T.Boolean()), null),
   preserve_technical: opt(nullable(T.Boolean()), null),
 });
 
-export function _row(c) {
+const ListQuery = T.Object({ limit: opt(T.Integer(), 50), offset: opt(T.Integer(), 0) });
+const RetranscribeQuery = T.Object({ language: opt(nullable(T.String()), null) });
+
+/** The stored flags as an object; `{}` when nothing (or nothing readable) is stored. */
+function storedFlags(row) {
+  if (!row.refinement_flags_json) return {};
+  try {
+    const v = jsonLoads(row.refinement_flags_json);
+    return isJsonObject(v) ? v : {};
+  } catch {
+    return {};
+  }
+}
+
+/** A captures row → the wire shape. */
+export function _row(r) {
   return construct(CaptureRow, {
-    id: c.id,
-    source: c.source,
-    language: c.language,
-    duration_ms: c.duration_ms,
-    transcript: c.transcript,
-    raw_transcript: c.raw_transcript,
-    refinement_flags: c.refinement_flags_json ? jsonLoads(c.refinement_flags_json) : {},
-    audio_url: `/v1/captures/${c.id}/audio`,
-    pinned: Boolean(c.pinned),
-    created_at: c.created_at,
+    id: r.id,
+    source: r.source,
+    language: r.language,
+    duration_ms: r.duration_ms,
+    transcript: r.transcript,
+    raw_transcript: r.raw_transcript,
+    refinement_flags: storedFlags(r),
+    audio_url: `/v1/captures/${r.id}/audio`,
+    pinned: Boolean(r.pinned),
+    created_at: r.created_at,
   });
 }
 
-// ── The form, as Starlette reads one ────────────────────────────────────────
+// ─── Multipart forms ────────────────────────────────────────────────────────
+
+const SPOOL = Symbol("jv.formSpool");
 
 /**
- * A multipart/form-data request read whole before the handler runs, as Starlette does: each
- * file part spooled to a temp folder (`{path, filename, size}`), each other part a string.
- * The folder goes when the answer has been sent (`_useForms`). A request that isn't multipart
- * has no form (every field missing). Candidate for platform/ (FastAPI's `File()` / `Form()`).
+ * Let a plugin context read multipart forms: @fastify/multipart with no file-size limit of its
+ * own (each route caps its upload) and a 1 MiB limit per text field, plus a hook that removes a
+ * request's spooled files once the answer has gone out. Call once per plugin context.
+ */
+export async function _useForms(app) {
+  await app.register(multipart, { limits: { fileSize: Number.POSITIVE_INFINITY, fieldSize: 1024 * 1024 } });
+  app.addHook("onResponse", async (req) => {
+    const dir = req[SPOOL];
+    if (!dir) return;
+    req[SPOOL] = null;
+    rmSync(dir, { recursive: true, force: true });
+  });
+}
+
+/**
+ * The request's form: `{files: {field: {path, filename, size}}, fields: {field: string}}`. Each
+ * file part is written whole to a spool folder under the OS temp folder (read now, so a test can
+ * redirect it) before this returns. A request that is not multipart has an empty form.
  */
 export async function _readForm(req) {
   const form = { files: {}, fields: {} };
-  if (!req.isMultipart?.()) return form;
-  const dir = mkdtempSync(path.join(tmpdir(), "jv-upload-"));
-  req.formDir = dir;
+  if (typeof req.isMultipart !== "function" || !req.isMultipart()) return form;
   let n = 0;
   for await (const part of req.parts()) {
     if (part.type === "file") {
-      const p = path.join(dir, `part-${n++}`);
-      await pipeline(part.file, createWriteStream(p));
-      form.files[part.fieldname] = { path: p, filename: part.filename, size: statSync(p).size };
+      if (!req[SPOOL]) req[SPOOL] = mkdtempSync(path.join(tmpdir(), "jv-form-"));
+      n += 1;
+      const dest = path.join(req[SPOOL], `part-${n}`);
+      await pipeline(part.file, createWriteStream(dest));
+      form.files[part.fieldname] = { path: dest, filename: part.filename, size: statSync(dest).size };
     } else {
-      form.fields[part.fieldname] = String(part.value);
+      form.fields[part.fieldname] = String(part.value ?? "");
     }
   }
   return form;
 }
 
-/** `name: UploadFile = File(...)` — the 422 FastAPI gives when it is missing. */
+/** The form's file `name`, or a 422 naming the missing field. */
 export function _requireFile(form, name) {
-  const f = form.files[name];
-  if (f === undefined) throw new RequestValidationError([{ loc: ["body", name], msg: "Field required", type: "missing" }]);
-  return f;
+  const file = form.files[name];
+  if (file === undefined) throw new RequestValidationError([{ loc: ["body", name], msg: "Field required", type: "missing" }]);
+  return file;
 }
 
-/** `name: str = Form(default)` — FastAPI reads an empty form value as "not sent". */
+/** The form's text field `name`; `dflt` when it is missing or empty. */
 export function _formField(form, name, dflt) {
   const v = form.fields[name];
   return v === undefined || v === "" ? dflt : v;
 }
 
-/** Copy an upload chunk by chunk into `dest`, refusing past `cfg._MAX_UPLOAD_MB` (the partial
- * file is the caller's to remove). */
-async function copyCapped(upload, dest) {
-  let total = 0;
-  const out = createWriteStream(dest);
+/** Copy an uploaded file to `dest`, refusing (400) one over the cap. */
+async function copyUpload(file, dest) {
+  const cap = cfg._MAX_UPLOAD_MB;
+  if (file.size > cap * 1024 * 1024) throw badRequest(`upload exceeds ${cap} MB`);
   try {
-    for await (const chunk of createReadStream(upload.path, { highWaterMark: _UPLOAD_CHUNK })) {
-      total += chunk.length;
-      if (total > cfg._MAX_UPLOAD_MB * 1024 * 1024) throw badRequest(`upload exceeds ${cfg._MAX_UPLOAD_MB} MB`);
-      if (!out.write(chunk)) await new Promise((r) => out.once("drain", r));
+    await copyFile(file.path, dest);
+  } catch (e) {
+    rmSync(dest, { force: true });
+    throw e;
+  }
+}
+
+// ─── Speech recognition ─────────────────────────────────────────────────────
+
+/** `[manager, settings]`, with the speech-recognition model loaded — on first use, when the
+ * runtime and the model are installed; otherwise a 400 that says what to do. */
+export async function ensureSttLoaded() {
+  const { getManager } = await import("../engines/manager.js");
+  const mgr = getManager();
+  const settings = getState().settings.get();
+  if (mgr.loadedFor("stt") === null) {
+    const status = mgr.status("asr");
+    if (status !== "installed") {
+      throw badRequest(`speech recognition is ${status} — install the speech runtime and its model on the AI page`);
     }
-  } finally {
-    await new Promise((r) => out.end(r));
+    log.info(`loading speech recognition (${settings.captures.stt_model}) for its first use`);
+    await mgr.load("asr", { device: "auto", variant: settings.captures.stt_model });
   }
+  return [mgr, settings];
 }
 
-const byId = (h, id) => h.one(`select * from ${Capture} where id = ? limit 1`, [id], Capture);
-const unlinkQuiet = (p) => {
+/** The recognizer's text for the file at `audioPath`. The language is `language`, else
+ * `settings.captures.language`; "" or "auto" lets the recognizer detect it. */
+export async function _sttTranscribe(audioPath, language) {
+  const [mgr, settings] = await self.ensureSttLoaded();
+  const lang = language || settings.captures.language;
+  return mgr.transcribe({ audio_path: audioPath, language: lang && lang !== "auto" ? lang : null });
+}
+
+/** Clean `raw` with these flags; on any failure, log it and keep `raw`. */
+export async function _maybeRefine(raw, flags, settings) {
   try {
-    unlinkSync(p);
-  } catch {
-    /* missing_ok */
+    const [text] = await refineTranscript(raw, flags, { settings });
+    return text;
+  } catch (e) {
+    log.warning(`cleanup skipped, the raw transcript is kept: ${msg(e)}`);
+    return raw;
   }
-};
-
-/** Make a router context read forms: the multipart parser (FastAPI has no upload limit of its
- * own; the routes cap at _MAX_UPLOAD_MB themselves) and the spooled files' cleanup once the
- * answer is sent. */
-export async function _useForms(app) {
-  await app.register(multipart, { limits: { fileSize: Number.POSITIVE_INFINITY, fieldSize: 1024 * 1024 } });
-  app.addHook("onResponse", async (req) => {
-    if (req.formDir) rmSync(req.formDir, { recursive: true, force: true });
-  });
 }
+
+/** A WAV file's length in milliseconds, from its header; null when it is not a WAV this app
+ * reads. Only the head of the file is read. */
+function wavDurationMs(file) {
+  try {
+    const size = statSync(file).size;
+    const head = Buffer.alloc(Math.min(size, 64 * 1024));
+    const fd = openSync(file, "r");
+    try {
+      readSync(fd, head, 0, head.length, 0);
+    } finally {
+      closeSync(fd);
+    }
+    const [fmt, dataOffset] = parseWavHeader(head);
+    // The header's own data size, unless the file is shorter than it says (a recording cut off).
+    const declared = head.readUInt32LE(dataOffset - 4);
+    const bytes = Math.min(declared, size - dataOffset);
+    const frames = Math.floor(bytes / (fmt.channels * 2));
+    return Math.round((frames * 1000) / fmt.sampleRate);
+  } catch {
+    return null;
+  }
+}
+
+/** The folder recordings are kept in (made on first use). */
+export function _capturesDir() {
+  const dir = path.join(getState().dataDir, "captures");
+  mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+const flagsFromSettings = (settings) =>
+  new RefinementFlags({
+    smartCleanup: settings.captures.smart_cleanup,
+    selfCorrection: settings.captures.self_correction,
+    preserveTechnical: settings.captures.preserve_technical,
+  });
+
+function captureOr404(h, id) {
+  const row = h.get(Capture, id);
+  if (row === null) throw notFound(`capture ${id}`);
+  return row;
+}
+
+// ─── Routes ─────────────────────────────────────────────────────────────────
 
 export async function router(app) {
   await _useForms(app);
 
-  /** Pin/unpin (parity: the journeys mock pins repeated phrases). */
-  app.patch("/v1/captures/:capture_id", { schema: { body: UpdateCaptureRequest } }, async (req) => {
-    const h = session.getDb();
-    const id = req.params.capture_id;
-    if (byId(h, id) === null) throw notFound(`capture ${id}`);
-    if (req.body.pinned !== null) h.update(Capture, { pinned: req.body.pinned }, { id });
-    return _row(byId(h, id));
-  });
-
-  /** Stateless transcription — upload audio, get text. No Capture row. */
+  /** Transcribe one recording; nothing is stored. */
   app.post("/v1/transcribe", async (req) => {
-    const form = await _readForm(req);
+    const form = await self._readForm(req);
     const file = _requireFile(form, "file");
     const language = _formField(form, "language", null);
-    const tmp = path.join(mkdtempSync(path.join(tmpdir(), "jv-transcribe-")), "upload.wav");
+    const dir = mkdtempSync(path.join(tmpdir(), "jv-transcribe-"));
     try {
-      // The file is deleted however this ends — an oversized upload used to be refused before
-      // its path was known, leaving up to 200 MB behind (audit §5 F).
-      await copyCapped(file, tmp);
-      return { text: await self._sttTranscribe(tmp, language), language };
+      const wav = path.join(dir, "upload.wav");
+      await copyUpload(file, wav);
+      const text = await self._sttTranscribe(wav, language);
+      return construct(TranscribeResponse, { text, language });
     } finally {
-      rmSync(path.dirname(tmp), { recursive: true, force: true });
+      rmSync(dir, { recursive: true, force: true });
     }
   });
 
-  /** Upload a recording → transcribe → (optionally) refine → persist. */
+  /** A new capture: keep the recording, transcribe it, clean it when auto-refine is on. */
   app.post("/v1/captures", async (req, reply) => {
-    const form = await _readForm(req);
+    const form = await self._readForm(req);
     const file = _requireFile(form, "file");
     const source = _formField(form, "source", "upload");
     const language = _formField(form, "language", null);
-    if (!["mic", "system_audio", "upload"].includes(source)) throw badRequest("source must be mic | system_audio | upload");
-
-    const id = uuid();
-    const dest = path.join(_capturesDir(), `${id}.wav`);
-    try {
-      await copyCapped(file, dest);
-    } catch (e) {
-      unlinkQuiet(dest);
-      throw e;
-    }
-    // Stored RELATIVE to the data root so a Change-folder move doesn't orphan the file.
-    const audioPath = storeMediaPath(dest);
-    // A failed transcription leaves the file and no row — as Python (its flushed row rolled
-    // back; the file stayed).
-    const raw = await self._sttTranscribe(dest, language);
+    if (!SOURCES.includes(source)) throw badRequest(`source must be one of ${SOURCES.join(", ")} — got ${strRepr(source)}`);
 
     const settings = getState().settings.get();
-    const flags = new refinement.RefinementFlags({
-      smartCleanup: settings.captures.smart_cleanup,
-      selfCorrection: settings.captures.self_correction,
-      preserveTechnical: settings.captures.preserve_technical,
-    });
-    let transcript = raw;
-    if (settings.captures.auto_refine) {
-      const [refined] = await self._maybeRefine(raw, flags);
-      if (refined !== null) transcript = refined;
+    const id = uuid();
+    const wav = path.join(_capturesDir(), `${id}.wav`);
+    await copyUpload(file, wav);
+    let raw;
+    try {
+      raw = await self._sttTranscribe(wav, language);
+    } catch (e) {
+      // No row is written, so the recording would be an orphan.
+      rmSync(wav, { force: true });
+      throw e;
     }
-    const h = session.getDb();
+    const flags = flagsFromSettings(settings);
+    const transcript = settings.captures.auto_refine ? await self._maybeRefine(raw, flags, settings) : raw;
+
+    const h = getDb();
     h.insert(Capture, {
       id,
-      audio_path: audioPath,
+      audio_path: storeMediaPath(wav),
       source,
       language,
+      duration_ms: wavDurationMs(wav),
       raw_transcript: raw,
       refinement_flags_json: pyJson(flags.toDict()),
       transcript,
     });
     reply.code(201);
-    return _row(byId(h, id));
+    return _row(h.get(Capture, id));
   });
 
-  app.get(
-    "/v1/captures",
-    { schema: { querystring: T.Object({ limit: opt(T.Integer(), 50), offset: opt(T.Integer(), 0) }) } },
-    async (req) => {
-      const h = session.getDb();
-      const total = h.count(Capture);
-      const rows = h.all(`select * from ${Capture} order by created_at desc limit ? offset ?`, [
-        Math.max(1, Math.min(200, req.query.limit)),
-        Math.max(0, req.query.offset),
-      ], Capture);
-      return construct(CaptureList, { captures: rows.map(_row), total });
-    },
-  );
-
-  app.get("/v1/captures/:capture_id", async (req) => {
-    const c = byId(session.getDb(), req.params.capture_id);
-    if (c === null) throw notFound(`capture ${req.params.capture_id}`);
-    return _row(c);
+  /** Newest first. Pinned captures are not sorted to the top here — the Captures page does that. */
+  app.get("/v1/captures", { schema: { querystring: ListQuery } }, async (req) => {
+    const limit = Math.min(Math.max(req.query.limit, 1), 200);
+    const offset = Math.max(req.query.offset, 0);
+    const h = getDb();
+    const rows = h.all(`select * from ${Capture} order by created_at desc limit ? offset ?`, [limit, offset], Capture);
+    return construct(CaptureList, { captures: rows.map(_row), total: h.count(Capture) });
   });
 
+  app.get("/v1/captures/:capture_id", async (req) => _row(captureOr404(getDb(), req.params.capture_id)));
+
+  /** The recording, as a WAV download. */
   app.get("/v1/captures/:capture_id/audio", async (req, reply) => {
     const id = req.params.capture_id;
-    const c = byId(session.getDb(), id);
-    if (c === null) throw notFound(`capture ${id}`);
-    const p = mediaFile(c.audio_path);
-    let st;
-    try {
-      st = statSync(p);
-    } catch {
-      st = null;
-    }
-    if (!st?.isFile()) throw notFound(`audio missing from disk: ${c.audio_path}`);
-    // Starlette's FileResponse: the media type, the length, and an attachment name.
+    const row = captureOr404(getDb(), id);
+    const file = row.audio_path ? mediaFile(row.audio_path) : null;
+    const size = file ? statSync(file, { throwIfNoEntry: false }) : null;
+    if (!size?.isFile()) throw notFound(`audio for capture ${id}`);
     return reply
       .type("audio/wav")
-      .header("content-length", st.size)
-      .header("content-disposition", `attachment; filename="${id}.wav"`)
-      .send(createReadStream(p));
+      .header("content-length", size.size)
+      .header("content-disposition", attachment(`${id}.wav`))
+      .send(createReadStream(file));
+  });
+
+  app.patch("/v1/captures/:capture_id", { schema: { body: UpdateCaptureRequest } }, async (req) => {
+    const h = getDb();
+    const id = req.params.capture_id;
+    captureOr404(h, id);
+    if (req.body.pinned !== null) h.update(Capture, { pinned: req.body.pinned }, { id });
+    return _row(h.get(Capture, id));
   });
 
   app.delete("/v1/captures/:capture_id", async (req) => {
-    const h = session.getDb();
+    const h = getDb();
     const id = req.params.capture_id;
-    const c = byId(h, id);
-    if (c === null) throw notFound(`capture ${id}`);
-    if (c.audio_path) unlinkQuiet(mediaFile(c.audio_path));
+    const row = captureOr404(h, id);
+    if (row.audio_path) rmSync(mediaFile(row.audio_path), { force: true });
     h.delete(Capture, { id });
     return { deleted: true };
   });
 
-  /** Re-run refinement on the stored RAW transcript with (possibly new) flags. The raw
-   * transcript is never overwritten. */
-  app.post("/v1/captures/:capture_id/refine", { schema: { body: RefineBody } }, async (req) => {
-    const h = session.getDb();
-    const id = req.params.capture_id;
-    const c = byId(h, id);
-    if (c === null) throw notFound(`capture ${id}`);
-    if (!c.raw_transcript) throw badRequest("capture has no raw transcript to refine");
-    const settings = getState().settings.get();
-    const prev = refinement.RefinementFlags.fromDict(c.refinement_flags_json ? jsonLoads(c.refinement_flags_json) : null);
-    const b = req.body;
-    const flags = new refinement.RefinementFlags({
-      smartCleanup: b.smart_cleanup === null ? prev.smartCleanup : b.smart_cleanup,
-      selfCorrection: b.self_correction === null ? prev.selfCorrection : b.self_correction,
-      preserveTechnical: b.preserve_technical === null ? prev.preserveTechnical : b.preserve_technical,
-    });
-    const [refined] = await refinement.refineTranscript(c.raw_transcript, flags, { settings });
-    h.update(Capture, { transcript: refined, refinement_flags_json: pyJson(flags.toDict()) }, { id });
-    return _row(byId(h, id));
-  });
-
-  /** Re-run STT on the stored audio (e.g. after switching recognition models), then re-apply
-   * the capture's refinement flags. */
+  /** Clean the raw transcript again — always, whatever auto-refine says — with the toggles
+   * sent, each one not sent keeping the capture's own. The raw transcript is never touched. */
   app.post(
-    "/v1/captures/:capture_id/retranscribe",
-    { schema: { querystring: T.Object({ language: opt(nullable(T.String()), null) }) } },
+    "/v1/captures/:capture_id/refine",
+    {
+      schema: { body: RefineBody },
+      // No body at all means "the capture's own toggles".
+      preValidation: async (req) => {
+        if (req.body === undefined || req.body === null) req.body = {};
+      },
+    },
     async (req) => {
-      const h = session.getDb();
+      const h = getDb();
       const id = req.params.capture_id;
-      const c = byId(h, id);
-      if (c === null) throw notFound(`capture ${id}`);
-      let ok = false;
-      if (c.audio_path) {
-        try {
-          ok = statSync(mediaFile(c.audio_path)).isFile();
-        } catch {
-          ok = false;
-        }
+      const row = captureOr404(h, id);
+      if (!row.raw_transcript) throw badRequest(`capture ${id} has no raw transcript to clean`);
+      const own = RefinementFlags.fromDict(storedFlags(row));
+      const b = req.body;
+      const flags = new RefinementFlags({
+        smartCleanup: b.smart_cleanup ?? own.smartCleanup,
+        selfCorrection: b.self_correction ?? own.selfCorrection,
+        preserveTechnical: b.preserve_technical ?? own.preserveTechnical,
+      });
+      let text;
+      try {
+        [text] = await refineTranscript(row.raw_transcript, flags, { settings: getState().settings.get() });
+      } catch (e) {
+        // The same answer the refine Lab gives when no language model is set up.
+        if (e instanceof LLMNotConfiguredError) throw new HttpError(501, msg(e));
+        throw e;
       }
-      if (!ok) throw badRequest("capture audio missing from disk");
-      const raw = await self._sttTranscribe(String(mediaFile(c.audio_path)), req.query.language || c.language);
-      const flags = refinement.RefinementFlags.fromDict(c.refinement_flags_json ? jsonLoads(c.refinement_flags_json) : null);
-      const settings = getState().settings.get();
-      let transcript = raw;
-      if (settings.captures.auto_refine) {
-        const [refined] = await self._maybeRefine(raw, flags);
-        if (refined !== null) transcript = refined;
-      }
-      h.update(Capture, { raw_transcript: raw, transcript }, { id });
-      return _row(byId(h, id));
+      h.update(Capture, { transcript: text, refinement_flags_json: pyJson(flags.toDict()) }, { id });
+      return _row(h.get(Capture, id));
     },
   );
+
+  /** Transcribe the stored recording again (in `?language=`, else the capture's own). */
+  app.post("/v1/captures/:capture_id/retranscribe", { schema: { querystring: RetranscribeQuery } }, async (req) => {
+    const h = getDb();
+    const id = req.params.capture_id;
+    const row = captureOr404(h, id);
+    const file = row.audio_path ? mediaFile(row.audio_path) : null;
+    if (!file || !statSync(file, { throwIfNoEntry: false })?.isFile()) throw badRequest(`the recording for capture ${id} is missing`);
+    const settings = getState().settings.get();
+    const raw = await self._sttTranscribe(file, req.query.language || row.language);
+    const transcript = settings.captures.auto_refine ? await self._maybeRefine(raw, RefinementFlags.fromDict(storedFlags(row)), settings) : raw;
+    h.update(Capture, { raw_transcript: raw, transcript }, { id });
+    return _row(h.get(Capture, id));
+  });
 }

@@ -1,163 +1,117 @@
 // SPDX-License-Identifier: MIT
+// The MCP endpoint — JustVoice's tools (tools.js) over the Model Context Protocol's Streamable
+// HTTP transport at `/mcp` on the app's own port, so an agent (Claude Code, Claude Desktop,
+// Cursor, any MCP client) can list voices and personas, speak and transcribe through the running
+// server.
 //
-// Adapted from voicebox (MIT) — backend/mcp_server/server.py at the commit pinned in
-// voicebox-pin.txt. Original copyright (c) the voicebox authors.
+// Built on the official SDK the way its stateful Streamable HTTP example does it: one
+// `McpServer` and one `StreamableHTTPServerTransport` per session, kept by the session id the
+// transport hands out on `initialize`; every later request names its session in the
+// `mcp-session-id` header and its transport does the protocol work (POST messages, GET the
+// server's event stream, DELETE ends the session).
 //
-// Construct the MCP server and mount it on the Fastify app (the port of
-// justvoice/mcp/server.py, which built a FastMCP server and mounted its Streamable HTTP app).
+//   - no session id, an `initialize` POST → a new session (its id: 32 lowercase hex digits);
+//   - a session id that names no open session → 404, the spec's "initialize again";
+//   - no session id and anything else → 400.
 //
-// The MCP endpoint lives at `/mcp` (Streamable HTTP transport). Modern MCP clients (Claude Code,
-// Cursor, Windsurf, VS Code MCP extensions) connect directly via URL:
-//
-//     claude mcp add justvoice --transport http \
-//         --url http://127.0.0.1:17494/mcp \
-//         --header "X-JustVoice-Client-Id: claude-code"
-//
-// Built on the official TypeScript SDK's low-level `Server` (@modelcontextprotocol/sdk) so the
-// wire is under our hand: the capabilities, server info, protocol versions, tool list and
-// results are fastmcp 3.4.5's (on mcp 1.29.0), as the Python server sends them. Sessions are
-// stateful, as fastmcp's: one SDK server + transport per `mcp-session-id` (32 hex digits).
+// `/mcp` sits behind the same bearer-token and Origin guards as `/v1` (app.js). Each request runs
+// inside its own context (context.js), so a tool can read the calling client's id and address;
+// the response stamps the client's "last seen".
 
 import { randomUUID } from "node:crypto";
 import { getLogger } from "@delebash/llm-runner/platform/log";
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import {
-  CallToolRequestSchema,
-  ListPromptsRequestSchema,
-  ListResourcesRequestSchema,
-  ListResourceTemplatesRequestSchema,
-  ListToolsRequestSchema,
-} from "@modelcontextprotocol/sdk/types.js";
-import { CLIENT_ID_HEADER, installClientIdHook, runWithRequest } from "./context.js";
-import { callTool, listTools } from "./tools.js";
+import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
+import { VERSION } from "../version.js";
+import { headerValue, installClientIdHook, requestContext, runWithRequest } from "./context.js";
+import { registerTools } from "./tools.js";
 
 const log = getLogger("justvoice.mcp.server");
 
 export const SERVER_NAME = "justvoice";
-// fastmcp's own version is what the Python server reports as its serverInfo.version.
-export const SERVER_VERSION = "3.4.5";
+export const SERVER_VERSION = VERSION;
 export const INSTRUCTIONS =
-  "JustVoice is a local voice production server. Use `justvoice.speak` to render text in a voice (returns an audio URL), and the `list_*` tools to discover voices and personas.";
+  "JustVoice is a voice production server running on this machine. justvoice.speak renders text in one of its " +
+  "voices and returns an audio_url to fetch the WAV from; justvoice.list_voices and justvoice.list_personas " +
+  "find the voices and personas to ask for.";
 
-// What fastmcp advertises (it serves empty prompt and resource lists).
-export const CAPABILITIES = {
-  experimental: {},
-  logging: {},
-  prompts: { listChanged: true },
-  resources: { subscribe: false, listChanged: true },
-  tools: { listChanged: true },
-  extensions: { "io.modelcontextprotocol/ui": {} },
-};
-
-// mcp 1.29.0's SUPPORTED_PROTOCOL_VERSIONS and LATEST (the SDK also takes 2024-10-07).
-const SUPPORTED_PROTOCOL_VERSIONS = ["2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25"];
-const LATEST_PROTOCOL_VERSION = "2025-11-25";
-
-class JustVoiceMcpServer extends Server {
-  async _oninitialize(request) {
-    const requested = request.params.protocolVersion;
-    this._clientCapabilities = request.params.capabilities;
-    this._clientVersion = request.params.clientInfo;
-    return {
-      protocolVersion: SUPPORTED_PROTOCOL_VERSIONS.includes(requested) ? requested : LATEST_PROTOCOL_VERSION,
-      capabilities: this.getCapabilities(),
-      serverInfo: this._serverInfo,
-      instructions: this._instructions,
-    };
-  }
-}
-
-/** One MCP server with JustVoice's tools registered (one per session). */
+/** A JustVoice MCP server with the four tools, not yet connected to a transport. */
 export function buildMcpServer() {
-  const server = new JustVoiceMcpServer({ name: SERVER_NAME, version: SERVER_VERSION }, { capabilities: CAPABILITIES, instructions: INSTRUCTIONS });
-  server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: listTools() }));
-  server.setRequestHandler(CallToolRequestSchema, async (request) => callTool(request.params.name, request.params.arguments));
-  server.setRequestHandler(ListPromptsRequestSchema, async () => ({ prompts: [] }));
-  server.setRequestHandler(ListResourcesRequestSchema, async () => ({ resources: [] }));
-  server.setRequestHandler(ListResourceTemplatesRequestSchema, async () => ({ resourceTemplates: [] }));
-  // A method the server doesn't serve answers as the Python server's does.
-  server.fallbackRequestHandler = async () => {
-    const e = new Error("Invalid request parameters");
-    e.code = -32602;
-    e.data = "";
-    throw e;
-  };
+  const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION }, { instructions: INSTRUCTIONS });
+  registerTools(server);
   return server;
 }
 
-/** The transport-level refusal the Python transport writes (`id: "server-error"`). */
+/** A JSON-RPC error answer that no transport sent (the request never reached a session). */
 function refuse(reply, status, message) {
-  reply
-    .code(status)
-    .header("content-type", "application/json")
-    .send(JSON.stringify({ jsonrpc: "2.0", id: "server-error", error: { code: -32600, message } }));
+  return reply.code(status).type("application/json").send({ jsonrpc: "2.0", error: { code: -32000, message }, id: null });
 }
 
-const accepts = (req) => (req.headers.accept || "").split(",").map((t) => t.trim());
-const isInitialize = (body) => body !== null && typeof body === "object" && !Array.isArray(body) && body.method === "initialize";
-
 /**
- * Attach the MCP endpoint to `app` at `/mcp` (and `/mcp/`), with the client-id hook. The app
- * boot calls this once, before any catch-all route. Returns `{close}` — the shutdown closes
- * every open session.
+ * Mount `/mcp` (and `/mcp/`) on the Fastify app — GET, POST and DELETE — and the last-seen
+ * stamp. Synchronous: the routes exist when this returns. Touches neither the database nor the
+ * app state until a request arrives. `close()` ends every open session.
  */
 export function mountInto(app) {
-  const sessions = new Map(); // mcp-session-id → {server, transport}
+  const sessions = new Map(); // session id → its transport
 
-  installClientIdHook(app);
+  async function openSession() {
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: () => randomUUID().replaceAll("-", ""),
+      onsessioninitialized: (id) => {
+        sessions.set(id, transport);
+        log.info(`MCP session ${id} opened`);
+      },
+    });
+    transport.onclose = () => {
+      if (transport.sessionId) sessions.delete(transport.sessionId);
+    };
+    await buildMcpServer().connect(transport);
+    return transport;
+  }
 
-  const handler = async (request, reply) => {
-    const clientId = request.headers[CLIENT_ID_HEADER.toLowerCase()] ?? null;
-    const ctx = { clientId: Array.isArray(clientId) ? clientId[0] : clientId, remoteAddr: request.socket?.remoteAddress ?? null };
-    const sid = request.headers["mcp-session-id"];
-
-    let entry;
-    if (sid !== undefined) {
-      entry = sessions.get(sid);
-      // Unknown or expired session ID — 404 per the MCP spec.
-      if (!entry) return refuse(reply, 404, "Session not found");
+  async function handle(request, reply) {
+    const sessionId = headerValue(request.headers, "mcp-session-id");
+    let transport;
+    if (sessionId) {
+      transport = sessions.get(sessionId);
+      if (!transport) return refuse(reply, 404, "Session not found — send a new initialize request.");
+    } else if (request.method === "POST" && isInitializeRequest(request.body)) {
+      transport = await openSession();
     } else {
-      // A new session: the Python transport's checks for a request with no session id.
-      const acc = accepts(request.raw);
-      if (request.method === "GET" && !acc.some((t) => t.startsWith("text/event-stream"))) {
-        return refuse(reply, 406, "Not Acceptable: Client must accept text/event-stream");
-      }
-      if (request.method === "POST") {
-        if (!(acc.some((t) => t.startsWith("application/json")) && acc.some((t) => t.startsWith("text/event-stream")))) {
-          return refuse(reply, 406, "Not Acceptable: Client must accept both application/json and text/event-stream");
-        }
-        const ct = (request.headers["content-type"] || "").split(";")[0].split(",").map((p) => p.trim());
-        if (!ct.includes("application/json")) return refuse(reply, 415, "Unsupported Media Type: Content-Type must be application/json");
-      }
-      if (request.method !== "POST" || !isInitialize(request.body)) return refuse(reply, 400, "Bad Request: Missing session ID");
-      const newId = randomUUID().replaceAll("-", "");
-      const server = buildMcpServer();
-      const transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: () => newId,
-        onsessioninitialized: (id) => {
-          sessions.set(id, entry);
-          log.info(`Created new transport with session ID: ${id}`);
-        },
-      });
-      transport.onclose = () => {
-        if (transport.sessionId) sessions.delete(transport.sessionId);
-      };
-      entry = { server, transport };
-      await server.connect(transport);
+      return refuse(reply, 400, "Bad Request: no valid session id — a session starts with an initialize request.");
     }
-
+    // From here the transport writes the answer itself.
     reply.hijack();
-    await runWithRequest(ctx, () => entry.transport.handleRequest(request.raw, reply.raw, request.body));
-  };
+    try {
+      await runWithRequest(requestContext(request), () =>
+        transport.handleRequest(request.raw, reply.raw, request.method === "POST" ? request.body : undefined),
+      );
+    } catch (e) {
+      log.warning(`MCP request failed: ${e?.message ?? e}`);
+      if (!reply.raw.headersSent) {
+        reply.raw.writeHead(500, { "content-type": "application/json" });
+        reply.raw.end(JSON.stringify({ jsonrpc: "2.0", error: { code: -32603, message: "Internal server error" }, id: null }));
+      }
+    }
+  }
 
-  for (const url of ["/mcp", "/mcp/"]) app.route({ method: ["GET", "POST", "DELETE"], url, handler });
-  log.info("MCP: mounted at /mcp");
+  for (const url of ["/mcp", "/mcp/"]) app.route({ method: ["GET", "POST", "DELETE"], url, handler: handle });
+  installClientIdHook(app);
+  log.info("MCP server mounted at /mcp (Streamable HTTP)");
 
   return {
     async close() {
-      for (const { transport } of [...sessions.values()]) await transport.close();
+      const open = [...sessions.values()];
       sessions.clear();
+      for (const transport of open) {
+        try {
+          await transport.close();
+        } catch (e) {
+          log.debug(`closing an MCP session raised: ${e?.message ?? e}`);
+        }
+      }
     },
   };
 }

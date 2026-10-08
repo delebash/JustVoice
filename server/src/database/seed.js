@@ -1,91 +1,78 @@
 // SPDX-License-Identifier: MIT
+// Boot-time seeding, run after the app is built (serve.js) — never inside the app factory, so a
+// test's fresh app starts from an empty database.
 //
-// Preset data adapted from voicebox (MIT) — backend/utils/effects.py BUILTIN_PRESETS at the
-// commit pinned in voicebox-pin.txt. Original copyright (c) the voicebox authors.
-//
-// Idempotent boot-time seeding — built-in effect presets, and the serve-time workspace seed
-// (the port of justvoice/database/seed.py).
-//
-// The EffectPreset model + API carried `is_builtin` guards from day one, but nothing ever
-// inserted the built-ins (parity-audit finding F5). Runs on every boot; existing rows by
-// name are left untouched so user edits to sort order survive.
+// Two parts:
+//   - the built-in effect presets (Robotic, Radio, Echo Chamber, Deep Voice) — the starting points
+//     the effects-chain editor offers. A preset is matched by NAME and only ever inserted: a
+//     database that already has a preset of that name keeps it as it is, built-in or the user's.
+//   - the workspace seed — the shared LLM stack's migrations and seed in JustWrite's order, then
+//     the provider registry booted from the database.
 
 import { getLogger } from "@delebash/llm-runner/platform/log";
-import { pyFloatValue, pyJson } from "@delebash/llm-runner/platform/pyjson";
+import { pyFloatValue as F, pyJson } from "@delebash/llm-runner/platform/pyjson";
+import { EffectPreset } from "./models.js";
 import * as session from "./session.js";
 
 const log = getLogger("justvoice.database.seed");
 
-// Every effect parameter below is a float in the Python literal (`1.0`, `300.0`), so it is
-// stored as one: `"depth": 1.0` — the text a JavaScript writer must match (RESEARCH §6).
-const floats = (params) => Object.fromEntries(Object.entries(params).map(([k, v]) => [k, pyFloatValue(v)]));
+const on = (type, params) => ({ type, enabled: true, params });
 
+// Every parameter is a float on disk (`1.0`, not `1` — the chain's stored form), so each value
+// goes through `F`. Each effect alone audibly changes a voice, and no chain changes the length.
 export const BUILTIN_EFFECT_PRESETS = [
   {
     name: "Robotic",
-    sort_order: 0,
-    description: "Metallic robotic voice (flanger with slow LFO and high feedback)",
+    sort_order: 10,
+    description: "A machine voice: a slow flanging sweep with a metallic ring and a little grit.",
     chain: [
-      {
-        type: "chorus",
-        enabled: true,
-        params: floats({ rate_hz: 0.2, depth: 1.0, feedback: 0.35, centre_delay_ms: 7.0, mix: 0.5 }),
-      },
+      on("chorus", { rate_hz: F(0.35), depth: F(0.4), centre_delay_ms: F(3.0), feedback: F(0.65), mix: F(0.55) }),
+      on("eq_mid", { cutoff_frequency_hz: F(1100.0), gain_db: F(5.0), q: F(1.6) }),
+      on("distortion", { drive_db: F(8.0) }),
     ],
   },
   {
     name: "Radio",
-    sort_order: 1,
-    description: "Thin AM-radio voice with band-pass filtering and light compression",
+    sort_order: 20,
+    description: "An old AM set: only the middle of the voice gets through, squeezed flat and driven hot.",
     chain: [
-      { type: "highpass", enabled: true, params: floats({ cutoff_frequency_hz: 300.0 }) },
-      { type: "lowpass", enabled: true, params: floats({ cutoff_frequency_hz: 3500.0 }) },
-      {
-        type: "compressor",
-        enabled: true,
-        params: floats({ threshold_db: -15.0, ratio: 6.0, attack_ms: 5.0, release_ms: 50.0 }),
-      },
-      { type: "gain", enabled: true, params: floats({ gain_db: 6.0 }) },
+      on("highpass", { cutoff_frequency_hz: F(450.0) }),
+      on("lowpass", { cutoff_frequency_hz: F(3200.0) }),
+      on("compressor", { threshold_db: F(-24.0), ratio: F(6.0), attack_ms: F(2.0), release_ms: F(150.0) }),
+      on("distortion", { drive_db: F(12.0) }),
     ],
   },
   {
     name: "Echo Chamber",
-    sort_order: 2,
-    description: "Spacious reverb with trailing echo",
+    sort_order: 30,
+    description: "A large, hard-walled room: a wide reverb tail with a repeating echo behind the voice.",
     chain: [
-      {
-        type: "reverb",
-        enabled: true,
-        params: floats({ room_size: 0.85, damping: 0.3, wet_level: 0.45, dry_level: 0.55, width: 1.0 }),
-      },
-      { type: "delay", enabled: true, params: floats({ delay_seconds: 0.25, feedback: 0.3, mix: 0.2 }) },
+      on("reverb", { room_size: F(0.92), damping: F(0.18), wet_level: F(0.38), dry_level: F(0.72), width: F(0.9) }),
+      on("delay", { delay_seconds: F(0.24), feedback: F(0.4), mix: F(0.3) }),
     ],
   },
   {
     name: "Deep Voice",
-    sort_order: 99,
-    description: "Lower pitch with added warmth",
+    sort_order: 40,
+    description: "Three semitones lower, with more weight in the low end and an evened-out level.",
     chain: [
-      { type: "pitch_shift", enabled: true, params: floats({ semitones: -3.0 }) },
-      { type: "lowpass", enabled: true, params: floats({ cutoff_frequency_hz: 6000.0 }) },
-      {
-        type: "compressor",
-        enabled: true,
-        params: floats({ threshold_db: -18.0, ratio: 3.0, attack_ms: 10.0, release_ms: 150.0 }),
-      },
+      on("pitch_shift", { semitones: F(-3.0) }),
+      on("eq_low", { cutoff_frequency_hz: F(220.0), gain_db: F(4.0), q: F(0.7) }),
+      on("compressor", { threshold_db: F(-20.0), ratio: F(2.5), attack_ms: F(8.0), release_ms: F(200.0) }),
     ],
   },
 ];
 
-/** Insert any missing built-in presets. Safe to call on every boot. */
+/** Insert every built-in preset the database has no preset of that name for. Never throws: a
+ * failed seed is logged and the app carries on without the missing presets. */
 export function seedBuiltinEffectPresets() {
   const h = session.cfg.handle;
   if (h === null) return;
   try {
     h.tx(() => {
       for (const preset of BUILTIN_EFFECT_PRESETS) {
-        if (h.one("select id from effect_presets where name = ? limit 1", [preset.name])) continue;
-        h.insert("effect_presets", {
+        if (h.one(`select id from ${EffectPreset} where name = ? limit 1`, [preset.name]) !== null) continue;
+        h.insert(EffectPreset, {
           name: preset.name,
           description: preset.description,
           chain_json: pyJson(preset.chain),
@@ -95,40 +82,37 @@ export function seedBuiltinEffectPresets() {
       }
     });
   } catch (e) {
-    log.warning(`builtin effect-preset seed failed: ${e?.message ?? e}`);
+    log.warning(`seeding the built-in effect presets failed: ${e?.message ?? e}`);
   }
 }
 
 /**
- * Serve-time workspace seeding — the family call-site (target-tree P6). It moved out of the
- * app factory so a test's fresh app starts from an EMPTY database; the server calls it after
- * creating the app, and tests that assert seeded content call it explicitly. The factory
- * reset stays on its own bundle (data_admin → llm_bootstrap.reseedSharedLlm).
- *
- * ORDER IS THE CONTRACT: effect presets (an independent domain seed) first; the
- * legacy-prompt migration BEFORE seedLlm (user edits win over seed defaults); the
- * settings→DB provider migration, the shared seed, then the registry boots FROM THE DB —
- * JustWrite's exact order, so `registered` flags are live from boot; the tunable lift and
- * the catalog-row retirement after the presets exist.
- *
- * Async because its collaborators are loaded lazily, as Python imported them inside the
- * function (engines/llm is another slice's module).
+ * The workspace seed. The ORDER is the contract (JustWrite's):
+ *   1. the built-in effect presets (independent of the rest);
+ *   2. JustVoice's legacy prompt rows into the shared table — before the shared seed, so a prompt
+ *      the user edited wins over the seed's default;
+ *   3. providers kept in settings into the database;
+ *   4. the shared seed;
+ *   5. tunables edited on legacy rows onto the presets — once the presets exist;
+ *   6. retired default catalog rows out;
+ *   7. the provider registry booted from the database, so `registered` is live from boot.
+ * The collaborators load at call time (they sit in import cycles with the app). Errors from
+ * steps 2–7 propagate.
  */
 export async function seedWorkspace() {
+  seedBuiltinEffectPresets();
+
   const { loadFromConfigs, stores } = await import("@delebash/llm-runner/llm");
   const { seedLlm } = await import("@delebash/llm-runner/llm/seed");
   const { getState } = await import("../app_state.js");
-  const migratePrompts = await import("../engines/llm/migrate_prompts.js");
+  const { liftEditedTunablesIntoPresets, migrateJvPromptsToShared } = await import("../engines/llm/migrate_prompts.js");
   const { migrateSettingsProvidersToDb } = await import("../engines/llm/migrate_providers.js");
   const { retireDefaultCatalogRows } = await import("../llm_bootstrap.js");
 
-  seedBuiltinEffectPresets();
-  // JV's warm-OFF override retired 2026-08-13 with the VRAM wiring — the shared seed's
-  // family default (warm ON) reaches fresh DBs directly.
-  await migratePrompts.migrateJvPromptsToShared();
+  await migrateJvPromptsToShared();
   await migrateSettingsProvidersToDb(getState().settings.get());
   seedLlm();
-  await migratePrompts.liftEditedTunablesIntoPresets();
+  await liftEditedTunablesIntoPresets();
   retireDefaultCatalogRows();
   loadFromConfigs(stores.getProviderStore().list());
 }

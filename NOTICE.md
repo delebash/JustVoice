@@ -20,9 +20,8 @@ Licensed under the **MIT License** (see `LICENSE`).
 > `MIT AND GPL-3.0-or-later` → plain `MIT`, since upstream-derived files were MIT to begin
 > with and the combined work is now MIT too).
 >
-> **The policy for new files is unchanged:** every file carries an SPDX header, and files
-> lifted from upstream MIT code additionally carry a full attribution block referencing the
-> pinned commit in `voicebox-pin.txt`. Only the identifier changed.
+> **The policy for new files is unchanged:** every file carries an SPDX header. Only the
+> identifier changed.
 
 This product incorporates, links against, or depends on the following third-party software. Each component retains its original license. See `LICENSES.md` for the authoritative inventory and `LICENSES/<SPDX-id>.txt` for full license texts.
 
@@ -51,20 +50,6 @@ published credits, was removed with the 2026-10-01 switch to the speech runtime.
 ---
 
 ## Code lifted into this repository
-
-### voicebox (MIT)
-
-- Upstream: https://github.com/jamiepine/voicebox
-- License: MIT
-- Copyright (c) 2024 Jamie Pine and voicebox contributors
-- Pinned commit: see `voicebox-pin.txt` at repo root (`b35b90961d5bc83a8b4e96e8b6ccde2a03152ff9`)
-- Lifted, ported, or translated files (authoritative — must match per-file headers):
-
-  *To be populated as Phase 3 lifts land. Each entry: path, lift type (verbatim port / translation), original voicebox path at the pinned SHA.*
-
-The MIT permission notice (`LICENSES/MIT.txt`) applies to the upstream-derived portions of these files. JustVoice modifications are licensed under MIT as part of the combined JustVoice work — so as of 2026-07-29 these files are MIT throughout, which is why their SPDX headers are plain `MIT` rather than a compound identifier. The attribution above is still required.
-
-> **Note on voicebox upstream changes.** If voicebox relicenses to a non-permissive license after the pinned SHA above, do NOT cherry-pick patches or read post-relicense code while working on JustVoice. The pinned snapshot remains MIT in perpetuity (MIT is irrevocable), but anything past the cutoff is out of bounds.
 
 ### JustWrite audio modules (license: same project, internal)
 
@@ -222,6 +207,3 @@ See `LICENSES.md` for the full tabular inventory.
 ## How to update this file
 
 - Adding a new pip/npm dep: add a row to `LICENSES.md`, add a section here if the license is Apache-2.0 (NOTICE propagation), confirm `LICENSES/<SPDX>.txt` exists.
-- Adding a new voicebox lift: append the file path to the voicebox "Lifted files" list above and add the per-file header to the lifted file (see `project_licensing_attribution` memory for templates).
-- Removing a lift entirely (file deleted): remove its entry from the list.
-- Voicebox SHA bump: update `voicebox-pin.txt`, update the archived snapshot, and add a note here describing what changed.

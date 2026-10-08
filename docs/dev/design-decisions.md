@@ -88,8 +88,9 @@ integration decisions record (2026-07-15) is executed history at
   `confirm=False` is a dry-run, ≥1 filter required. Generations sourced `mcp`/`rest`
   skip main-window autoplay. Recordings need ≥0.5 s. MCP (corrected 2026-08-04 — the freeze's "6 tools, off
   by default" was wrong): **4 tools** (`justvoice.speak/list_voices/transcribe/
-  list_personas`), mounted **unconditionally** at `/mcp` on the app port (only a
-  missing `fastmcp` disables it); `MCPSettings` holds one field, `default_voice`;
+  list_personas`), mounted **unconditionally** at `/mcp` on the app port (the
+  official MCP SDK, built in since 2026-10-08), behind the same bearer token and
+  Origin check as `/v1`; `MCPSettings` holds one field, `default_voice`;
   `transcribe`'s `audio_path` is loopback-only.
 - **Backup vs export:** backup = whole-server disaster recovery; export =
   per-project handoff.

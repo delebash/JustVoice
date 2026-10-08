@@ -160,13 +160,16 @@ Everything lives on the cleanup card's pane, and everything on it is real:
   composition built from unsaved text.
 - **The generated prompt is the real composed call**, and the Lab under it
   runs that exact call — with the same worked examples production sends with
-  each dictation. What you test is what a capture runs.
+  each dictation (they follow the toggles too: an example that removes filler
+  rides only while *Remove filler* is on). What you test is what a capture runs.
 
 What that looks like in practice: paste
-`um can you check if the uh export finished before we send it`
+`um can you check whether the uh backup ran last night or should i start it again`
 and a working model returns something like
-`Can you check if the export finished before we send it?` — fillers
-dropped, punctuation added, nothing answered back.
+`Can you check whether the backup ran last night, or should I start it again?`
+— fillers dropped (that is *Remove filler*), punctuation added, nothing
+answered back. The ground rules on their own only add capitals and
+punctuation; every change to the words is a section's.
 
 ## Who the AI features read (speakers and personas)
 

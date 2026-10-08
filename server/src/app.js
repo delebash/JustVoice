@@ -105,6 +105,9 @@ export const TYPE_BASE = "https://justvoice.dev/errors/";
 export const DESKTOP_ORIGIN = "app://justvoice";
 export const APP_ORIGINS = ["http://localhost:1430", "http://127.0.0.1:1430", DESKTOP_ORIGIN];
 
+/** The paths the bearer auth and the CSRF Origin check guard: the API and the MCP endpoint. */
+export const GUARDED_PREFIXES = ["/v1", "/mcp"];
+
 /**
  * The catch-all error envelope: an unhandled exception becomes a JSON 500 that still carries
  * the CORS headers (stamped by the CORS hook before the route ran), so the browser sees a real
@@ -215,8 +218,7 @@ export async function createApp(dataDir = null) {
   installLogRing();
   installFileLog(path.join(dataDir, "logs", "justvoice.log"));
 
-  // SQLite is the primary persistence layer: initDb runs the idempotent migrations and creates
-  // net-new tables.
+  // SQLite is the primary persistence layer: initDb opens it and creates any missing table.
   initDb(dataDir);
   const state = new AppState(dataDir);
   setState(state);
@@ -257,18 +259,20 @@ export async function createApp(dataDir = null) {
   // Python's middleware order, outermost first: the MCP client-id stamp (mcp/index.js — an
   // onResponse hook), CSRF, then CORS, then bearer auth (Starlette ran the last-added first).
   // Fastify runs onRequest hooks in the order these root plugins load: a CSRF 403 carries no
-  // CORS headers; CORS answers preflights before auth sees them and stamps auth's 401/403. All
-  // three gate `/v1` paths only, so `/mcp` passes them as it did in Python.
+  // CORS headers; CORS answers preflights before auth sees them and stamps auth's 401/403. CSRF
+  // and auth guard the MCP endpoint like the API (GUARDED_PREFIXES — the user's ruling,
+  // 2026-10-08: an MCP client sends no Origin and carries the token like any other client).
   const corsOrigins = settings.cors.origins;
   const corsRegex = settings.cors.origin_regex;
 
-  // CSRF: reject cross-site browser mutations to /v1 (no token — can never lock anyone out).
-  // JustVoice reuses its CORS origins AND its loopback origin_regex as the one allowlist.
+  // CSRF: reject cross-site browser mutations to /v1 and /mcp (no token — can never lock anyone
+  // out). JustVoice reuses its CORS origins AND its loopback origin_regex as the one allowlist.
   app.register(CsrfOriginMiddleware, {
     appOrigins: APP_ORIGINS,
     extraOrigins: corsOrigins,
     originRegex: corsRegex,
     typeBase: TYPE_BASE,
+    prefixes: GUARDED_PREFIXES,
   });
 
   // CORS — the bundled UI is a different origin than this loopback server; without these
@@ -287,7 +291,12 @@ export async function createApp(dataDir = null) {
   // Auth — the desktop shell closes the server through /v1/shutdown and carries no token; with
   // "Require a token even on localhost" on, every close fell back to a hard kill (2026-09-30).
   // It stays refused from anywhere but this machine (system_api's own check, and auth).
-  app.register(BearerAuthMiddleware, { readAuth, typeBase: TYPE_BASE, loopbackOpenPaths: ["/v1/shutdown"] });
+  app.register(BearerAuthMiddleware, {
+    readAuth,
+    typeBase: TYPE_BASE,
+    loopbackOpenPaths: ["/v1/shutdown"],
+    prefixes: GUARDED_PREFIXES,
+  });
 
   // ── Routes, in app.py's order ──────────────────────────────────────────────
   app.register(healthRouter);

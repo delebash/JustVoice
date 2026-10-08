@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 // SQLite — the primary persistence layer (the port of justvoice/database/__init__.py).
 // Every entity lives here; `settings.json` was folded into the `settings` table and renderer
-// prefs into `prefs` (the 2026-06-19 storage rewrite). Migrations are hand-rolled
-// idempotent column-existence checks (migrations.js).
+// prefs into `prefs` (the 2026-06-19 storage rewrite). There are no column upgrades: a missing
+// table is created, an existing one is left as it is (pre-release, the user resets).
 
 export {
   Block,

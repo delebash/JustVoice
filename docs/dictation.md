@@ -27,13 +27,15 @@ Click any failing gate to open the matching System Settings pane (macOS) or fix 
 
 ## Cleanup
 
-After transcription, an optional language-model pass cleans up the text. Settings → Capture → **Cleanup** has three switches, each on by default and saved the moment you flip it — the next dictation uses it:
+After transcription, an optional language-model pass cleans up the text. Whatever the switches below say, it always gives the text capitals and punctuation, and it never answers what you dictated: a question comes back as a question, a request ("write an email to…") as a request. That is all it does on its own — the words stay as you said them. Each change to the words is one of three switches under Settings → Capture → **Cleanup**, each on by default and saved the moment you flip it — the next dictation uses it:
 
-- **Remove filler** — fix obvious errors and remove filler ("um" / "uh").
+- **Remove filler** — remove filler ("um" / "uh", a "like" that means nothing) and stumbles, and fix a word the recogniser clearly misheard. With it off, the fillers stay in.
 - **Take your corrections** — apply mid-sentence corrections you spoke ("she walked to the window — I mean, the door"). Output: "she walked to the door".
 - **Keep technical words** — keep proper nouns and technical jargon intact, for code dictation, medical notes and the like.
 
 The same switches sit on AI Settings → Routing by feature, on the **Dictation cleanup** card. (Until 2026-10-05 Settings showed a *Refinement mode* dropdown instead — smart-cleanup, self-correction, preserve-technical — that saved nothing.)
+
+With all three off, a dictation comes back with its words untouched, only written down with capitals and punctuation. The worked examples sent with each dictation follow the switches as well: an example that removes filler or applies a correction is sent only while its switch is on. (Until 2026-10-08 the ground rules removed fillers too, and every example rode along whatever the switches said, so with them off a model still removed fillers and applied corrections.) A database made before then keeps its old cleanup texts until it is reset — or until each text is reset on the Dictation cleanup card — because stored prompt texts are never overwritten.
 
 The model that does the cleanup is whatever the **Dictation cleanup** row on
 AI Settings → Routing by feature points at, like every other AI feature — see
@@ -53,7 +55,7 @@ System-audio capture uses cpal / WASAPI loopback / ScreenCaptureKit depending on
 
 ## Promoting captures to voice samples
 
-Every capture lives in the Captures tab. Click "→ Sample" on any row to promote the audio into a Voice profile's reference samples. Useful for cloning your own voice — read aloud for a while, then promote the longest / cleanest captures into a Chatterbox voice.
+Every capture lives in the Captures tab, with its length (read from the recording itself since 2026-10-08 — captures made earlier, and a recording that is not a WAV, show none). A recording the recogniser could not transcribe is not kept. Click "→ Sample" on any row to promote the audio into a Voice profile's reference samples. Useful for cloning your own voice — read aloud for a while, then promote the longest / cleanest captures into a Chatterbox voice.
 
 ## Capture language
 

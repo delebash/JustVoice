@@ -597,9 +597,17 @@ first piece instead of the whole render. Pieces join the same way — the quiet
 between them cut to 260 ms, so a long test line no longer pauses a second between
 sentences (since 2026-10-07).
 
-The splitter knows about abbreviations (`Mr.`, `Dr.`, `e.g.`), decimal numbers,
-CJK sentence-end punctuation (`。！？`), and treats `[bracket]` tags as one unit
-(never split inside one).
+The splitter cuts at a sentence end first, then at a clause mark (`,` `;` `:`
+`—`), then at a space, and only as a last resort mid-word. It knows
+abbreviations (`Mr.`, `Dr.`, `e.g.`, `i.e.`, `a.m.`, `U.S.` — their period
+ends no sentence), decimal numbers (`3.14`), a sentence that ends in a number
+(`It was 2024.` ends there), closing quotes after a sentence end, and CJK
+punctuation (`。！？` end a sentence, `，、` a clause). A `[bracket]` tag is one
+unit — `[laugh]` or `[clears throat]` is never split or cut; only a tag longer
+than the piece length itself would have to be. A piece length
+(`generation.max_chunk_chars`, a model's split length) below 1 is refused with
+an error instead of being used (since 2026-10-08; before, `e.g.` ended a
+sentence, `2024.` did not, and a tag with a space in it could be cut).
 
 Per-piece seeds vary deterministically (`seed + piece index`), so the same text
 and seed always give the same audio while artefacts don't line up across pieces.

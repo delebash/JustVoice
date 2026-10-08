@@ -1,185 +1,187 @@
+<!-- SPDX-License-Identifier: MIT -->
 <!--
-  SPDX-License-Identifier: MIT
-  SPDX-FileCopyrightText: 2024 Jamie Pine and voicebox contributors
-  SPDX-FileCopyrightText: 2026 JustVoice contributors
+  The floating dictation pill: what dictation (or an agent's speech) is doing
+  right now — listening, transcribing, refining, speaking, done, idle or
+  failed — with a row of five bars, a running timer, and a stop button while
+  recording. Rendered by the dictation window (DictateWindow.vue).
 
-  Originally from https://github.com/jamiepine/voicebox/blob/b35b90961d5bc83a8b4e96e8b6ccde2a03152ff9/app/src/components/CapturePill/CapturePill.tsx
-  (commit pinned in voicebox-pin.txt at repo root).
-  Translated React -> Vue on 2026-06-08. Modifications by JustVoice contributors
-  are licensed under MIT. MIT permission notice continues to apply
-  to upstream-derived portions.
-
-  Animated dictation pill — 7 states (recording / transcribing / refining /
-  speaking / completed / rest / error). Used inside the floating DictateWindow
-  and inline previews on Settings → Captures.
+  In the error state the whole pill is a button: clicking it — or Enter or
+  Space while it has focus — copies the error to the clipboard and emits
+  `dismiss`. An error with no message does nothing.
 -->
 <script setup>
-import { computed } from 'vue';
+import { computed } from "vue";
+import { Icon, UiButton } from "@delebash/llm-ui";
 
 const props = defineProps({
   state: {
     type: String,
-    default: 'rest',
-    validator: (v) =>
-      ['recording', 'transcribing', 'refining', 'speaking', 'completed', 'rest', 'error'].includes(v),
+    default: "rest",
+    validator: (v) => ["recording", "transcribing", "refining", "speaking", "completed", "rest", "error"].includes(v),
   },
   elapsedMs: { type: Number, default: 0 },
-  errorMessage: { type: String, default: '' },
+  errorMessage: { type: String, default: "" },
 });
+const emit = defineEmits(["stop", "dismiss"]);
 
-const emit = defineEmits(['dismiss', 'stop']);
-
-const labelMap = {
-  recording: 'Listening…',
-  transcribing: 'Transcribing…',
-  refining: 'Refining…',
-  speaking: 'Speaking…',
-  completed: 'Done',
-  rest: '',
-  error: 'Error',
+const LABELS = {
+  recording: "Listening…",
+  transcribing: "Transcribing…",
+  refining: "Refining…",
+  speaking: "Speaking…",
+  completed: "Done",
+  rest: "",
 };
 
+const isError = computed(() => props.state === "error");
+const label = computed(() => (isError.value ? props.errorMessage || "Error" : LABELS[props.state]));
+
+// How the bars move: "playing" while sound flows, "working" while waiting on
+// the machine, "idle" when nothing happens.
 const barMode = computed(() => {
-  if (props.state === 'recording' || props.state === 'speaking') return 'playing';
-  if (props.state === 'completed' || props.state === 'rest') return 'idle';
-  return 'generating';
+  if (props.state === "recording" || props.state === "speaking") return "playing";
+  if (props.state === "completed" || props.state === "rest") return "idle";
+  return "working";
 });
 
-const elapsed = computed(() => {
+const showTimer = computed(() => !isError.value && props.state !== "rest");
+const timer = computed(() => {
   const total = Math.max(0, Math.floor(props.elapsedMs / 1000));
-  const m = Math.floor(total / 60);
-  const s = total % 60;
-  return `${m}:${String(s).padStart(2, '0')}`;
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
 });
 
-const isError = computed(() => props.state === 'error');
-
-const copyError = async () => {
+async function copyAndDismiss() {
   if (!isError.value || !props.errorMessage) return;
   try {
     await navigator.clipboard.writeText(props.errorMessage);
   } catch {
-    /* clipboard unavailable */
+    // No clipboard (permissions, an unfocused window) — dismissing still works.
   }
-  emit('dismiss');
-};
+  emit("dismiss");
+}
+
+// Enter and Space press the error pill like a click. Only then: the stop
+// button inside the recording pill keeps its own keys.
+function onKey(event) {
+  if (!isError.value) return;
+  event.preventDefault();
+  copyAndDismiss();
+}
 </script>
 
 <template>
   <div
-    :class="['pill', isError ? 'pill--error' : `pill--${state}`]"
-    @click="isError ? copyError() : undefined"
-    :role="isError ? 'button' : undefined"
+    class="capture-pill"
+    :class="[`capture-pill--${state}`, { 'capture-pill--error': isError }]"
+    :role="isError ? 'button' : 'status'"
     :tabindex="isError ? 0 : undefined"
+    :title="isError && errorMessage ? 'Copy the error and close' : undefined"
+    @click="copyAndDismiss"
+    @keydown.enter="onKey"
+    @keydown.space="onKey"
   >
-    <div class="pill__bars" :data-mode="barMode">
-      <span class="pill__bar" v-for="i in 5" :key="i" />
-    </div>
-    <span class="pill__label">{{ isError ? errorMessage || 'Error' : labelMap[state] }}</span>
-    <span v-if="!isError && state !== 'rest'" class="pill__elapsed">{{ elapsed }}</span>
-    <button
-      v-if="!isError && state === 'recording'"
-      class="pill__stop"
-      @click.stop="emit('stop')"
+    <span class="capture-pill__bars" :class="`capture-pill__bars--${barMode}`" aria-hidden="true">
+      <span v-for="n in 5" :key="n" />
+    </span>
+    <span v-if="label" class="capture-pill__label">{{ label }}</span>
+    <span v-if="showTimer" class="capture-pill__timer">{{ timer }}</span>
+    <UiButton
+      v-if="state === 'recording'"
+      class="capture-pill__stop"
+      intent="ghost"
+      size="icon"
       aria-label="Stop recording"
+      title="Stop recording"
+      @click.stop="emit('stop')"
     >
-      ⏹
-    </button>
+      <template #icon><Icon name="Stop" :size="12" fill /></template>
+    </UiButton>
   </div>
 </template>
 
 <style scoped>
-.pill {
+.capture-pill {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 14px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.8);
+  gap: 8px;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--r-pill);
+  background: rgba(24, 24, 27, 0.82);
   color: #fff;
-  font-size: 13px;
-  font-family: inherit;
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  box-shadow: var(--shadow-3);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   user-select: none;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
 }
-.pill--error {
-  background: var(--danger, #a8442e);
+.capture-pill--error {
+  background: var(--danger);
   cursor: pointer;
 }
-.pill__bars {
+.capture-pill--error:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+.capture-pill__label {
+  max-width: 48ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.capture-pill__timer {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.7;
+}
+.capture-pill__stop {
+  color: #fff;
+  margin-right: -6px;
+}
+
+.capture-pill__bars {
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  height: 20px;
+  height: 14px;
 }
-.pill__bar {
+.capture-pill__bars > span {
   width: 3px;
-  border-radius: 999px;
-  background: var(--accent, #3a7d63);
-  display: inline-block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+  transform-origin: center;
 }
-.pill__bars[data-mode="idle"] .pill__bar {
-  height: 8px;
-  background: rgba(255, 255, 255, 0.35);
+.capture-pill--error .capture-pill__bars > span {
+  background: #fff;
 }
-.pill__bars[data-mode="generating"] .pill__bar {
-  animation: pill-generating 0.6s ease-in-out infinite;
+.capture-pill__bars--playing > span {
+  animation: capture-pill-bounce 0.8s ease-in-out infinite;
 }
-.pill__bars[data-mode="generating"] .pill__bar:nth-child(2) {
-  animation-delay: 0.08s;
+.capture-pill__bars--playing > span:nth-child(2) { animation-duration: 0.65s; animation-delay: -0.2s; }
+.capture-pill__bars--playing > span:nth-child(3) { animation-duration: 0.9s; animation-delay: -0.45s; }
+.capture-pill__bars--playing > span:nth-child(4) { animation-duration: 0.7s; animation-delay: -0.1s; }
+.capture-pill__bars--playing > span:nth-child(5) { animation-duration: 0.85s; animation-delay: -0.3s; }
+.capture-pill__bars--working > span {
+  animation: capture-pill-pulse 1.2s ease-in-out infinite;
 }
-.pill__bars[data-mode="generating"] .pill__bar:nth-child(3) {
-  animation-delay: 0.16s;
+.capture-pill__bars--working > span:nth-child(2) { animation-delay: 0.12s; }
+.capture-pill__bars--working > span:nth-child(3) { animation-delay: 0.24s; }
+.capture-pill__bars--working > span:nth-child(4) { animation-delay: 0.36s; }
+.capture-pill__bars--working > span:nth-child(5) { animation-delay: 0.48s; }
+.capture-pill__bars--idle > span {
+  transform: scaleY(0.25);
+  opacity: 0.45;
 }
-.pill__bars[data-mode="generating"] .pill__bar:nth-child(4) {
-  animation-delay: 0.24s;
+
+@keyframes capture-pill-bounce {
+  0%, 100% { transform: scaleY(0.3); }
+  35% { transform: scaleY(1); }
+  60% { transform: scaleY(0.55); }
 }
-.pill__bars[data-mode="generating"] .pill__bar:nth-child(5) {
-  animation-delay: 0.32s;
-}
-.pill__bars[data-mode="playing"] .pill__bar {
-  animation: pill-playing 1.2s ease-in-out infinite;
-}
-.pill__bars[data-mode="playing"] .pill__bar:nth-child(2) {
-  animation-delay: 0.15s;
-}
-.pill__bars[data-mode="playing"] .pill__bar:nth-child(3) {
-  animation-delay: 0.3s;
-}
-.pill__bars[data-mode="playing"] .pill__bar:nth-child(4) {
-  animation-delay: 0.45s;
-}
-.pill__bars[data-mode="playing"] .pill__bar:nth-child(5) {
-  animation-delay: 0.6s;
-}
-@keyframes pill-generating {
-  0%, 100% { height: 6px; }
-  50% { height: 16px; }
-}
-@keyframes pill-playing {
-  0% { height: 8px; }
-  20% { height: 14px; }
-  40% { height: 4px; }
-  60% { height: 12px; }
-  100% { height: 8px; }
-}
-.pill__label {
-  font-weight: 500;
-}
-.pill__elapsed {
-  font-variant-numeric: tabular-nums;
-  opacity: 0.7;
-  font-size: 12px;
-}
-.pill__stop {
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 999px;
-  color: #fff;
-  padding: 2px 8px;
-  cursor: pointer;
-  font-size: 11px;
+@keyframes capture-pill-pulse {
+  0%, 100% { transform: scaleY(0.35); opacity: 0.55; }
+  50% { transform: scaleY(0.75); opacity: 1; }
 }
 </style>

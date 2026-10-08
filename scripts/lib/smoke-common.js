@@ -42,7 +42,7 @@ export const chromeLaunchOptions = () => kitChromeLaunchOptions({ env: "JV_CHROM
 export const SIDEBAR_TABS = [
   "HOME", "PROJECTS", "STUDIO", "CAPTURES",
   "VOICES", "PERSONAS", "LEXICONS", "EFFECTS", "AI SETTINGS",
-  "LABS", "SETTINGS",
+  "SETTINGS",
 ];
 
 // ── Server readiness — the ONE door every gate script waits on ────────────

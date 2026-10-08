@@ -5,7 +5,7 @@
 // in-process registry (external engines). Both paths return audio/wav bytes.
 //
 // Long text (> settings.generation.max_chunk_chars) is auto-chunked at sentence boundaries via
-// `audio/chunked.js` (upstream MIT lift). Below the threshold, a single-shot synth call is used.
+// `audio/chunked.js`. Below the threshold, a single-shot synth call is used.
 // Without this wrapping some engines truncate or hallucinate trailing noise on long inputs.
 //
 // `generate(req, {signal})` is the route's body as a function — the WAV as a Buffer — which the

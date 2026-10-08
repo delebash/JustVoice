@@ -1,173 +1,190 @@
 // SPDX-License-Identifier: MIT
-// SPDX-FileCopyrightText: 2024 Jamie Pine and voicebox contributors
-// SPDX-FileCopyrightText: 2026 JustVoice contributors
+// Long text into pieces a speech model can take, and the rule for joining the pieces again.
 //
-// Originally from https://github.com/jamiepine/voicebox/blob/b35b90961d5bc83a8b4e96e8b6ccde2a03152ff9/backend/utils/chunked_tts.py
-// (commit pinned in voicebox-pin.txt at repo root).
-// Ported to JustVoice on 2026-06-08. Modifications by JustVoice contributors
-// are licensed under MIT as part of the combined JustVoice work. The
-// MIT permission notice (LICENSES/MIT.txt) continues to apply to upstream-derived
-// portions.
+// A model is given a long line in pieces of its own length (`render_core.lineSplitChars`; the
+// general cap is `settings.generation.max_chunk_chars`). `splitTextIntoChunks` cuts the line at
+// the most natural place inside each piece's length, best first:
 //
-// Chunked TTS generation utilities (the port of justvoice/audio/chunked.py).
+//   1. a sentence end — `.` `!` `?` followed by whitespace (closing quotes may sit between), or
+//      a CJK `。` `！` `？` anywhere. A `.` after a known abbreviation (`Mr.`, `e.g.`, `U.S.`) is
+//      not one; a number before the `.` is no exception (`It was 2024. Then…` ends there), and a
+//      decimal (`3.14`) never qualifies because no whitespace follows its point;
+//   2. a clause mark — `;` `:` `,` `—` followed by whitespace, or a CJK `，` `、` `；` `：`;
+//   3. a space;
+//   4. a hard cut at the piece length.
+// Within each kind the last one in the window wins. A `[bracket]` tag (`[laugh]`,
+// `[clears throat]`) is one unit: nothing inside it is a boundary and no cut lands inside it — a
+// hard cut that would moves back to just before the `[`. Only a tag longer than the piece length
+// itself is cut, since no piece may be longer than that.
 //
-// Splits long text into sentence-boundary chunks; each piece is spoken by any TTS backend,
-// and the pieces are joined by the DSP program (`dsp_client.join`, by the PIECE_JOIN_* rules
-// below — the joins moved to our audio.cpp fork's `audiocpp_dsp` on 2026-10-07). All logic is
-// engine-agnostic. Short text (≤ max_chunk_chars) uses the single-shot fast path.
+// Lengths are counted in Unicode code points (an emoji is one character) and whitespace is
+// Python's definition (the kit's PY_WS), as everywhere else lengths are compared. Only
+// whitespace is lost at a cut.
 //
-// Tunables live in settings (CLAUDE.md "no hardcoded operator-tunable values"):
-//     settings.generation.max_chunk_chars  (default 800)
-//     settings.generation.crossfade_ms     (default 50)
-//
-// Python counts and slices by CODE POINT; this works on arrays of code points so a line with
-// an emoji splits exactly where Python splits it.
+// The join constants below are JustVoice's measured decision (2026-10-07, docs/dev/RESEARCH.md
+// §3 "Long lines also hold ~0.9–1 s silences"): where two pieces meet in silence, the silence is
+// cut down to PIECE_JOIN_PAUSE_MS — quiet judged in WINDOW_MS windows under
+// PIECE_JOIN_SILENCE_DBFS. `dsp_client.js` sends them with every join; the DSP program applies
+// the rule.
 
-import { PY_WS } from "@delebash/llm-runner/platform/py";
+import { PY_WS, ValueError } from "@delebash/llm-runner/platform/py";
 
-/** Default chunk size in characters. Can be overridden per-request. */
+/** The general piece length (`settings.generation.max_chunk_chars`' default). */
 export const DEFAULT_MAX_CHUNK_CHARS = 800;
 
-// Common abbreviations that should NOT be treated as sentence endings (lowercase).
+/** Where two pieces meet in silence, the silence is cut down to this many milliseconds. */
+export const PIECE_JOIN_PAUSE_MS = 260;
+/** At or below this level a window counts as quiet. */
+export const PIECE_JOIN_SILENCE_DBFS = -60.0;
+/** Quiet is judged in windows of this many milliseconds. */
+export const WINDOW_MS = 10;
+
+const WS = new Set(PY_WS);
+const isWs = (ch) => WS.has(ch);
+const isLetter = (ch) => /\p{L}/u.test(ch);
+
+const SENTENCE_END = new Set([".", "!", "?"]);
+const CJK_SENTENCE_END = new Set(["。", "！", "？"]);
+const CLAUSE_MARK = new Set([";", ":", ",", "—"]);
+const CJK_CLAUSE_MARK = new Set(["，", "、", "；", "："]);
+// Closing quotes and brackets that may follow a sentence end before the whitespace.
+const CLOSERS = new Set(['"', "'", "”", "’", "»", ")", "」", "』"]);
+
+// Words whose period is part of the word, not the end of a sentence (lower case, inner dots kept).
 const ABBREVIATIONS = new Set([
-  "mr", "mrs", "ms", "dr", "prof", "sr", "jr", "st", "ave", "blvd", "inc", "ltd", "corp", "dept",
-  "est", "approx", "vs", "etc", "e.g", "i.e", "a.m", "p.m", "u.s", "u.s.a", "u.k",
+  "mr",
+  "mrs",
+  "ms",
+  "dr",
+  "prof",
+  "sr",
+  "jr",
+  "st",
+  "mt",
+  "ave",
+  "blvd",
+  "rd",
+  "inc",
+  "ltd",
+  "corp",
+  "dept",
+  "est",
+  "approx",
+  "vs",
+  "etc",
+  "vol",
+  "fig",
+  "e.g",
+  "i.e",
+  "a.m",
+  "p.m",
+  "u.s",
+  "u.k",
+  "u.n",
+  "e.u",
 ]);
 
-const isWs = (ch) => ch !== undefined && PY_WS.includes(ch);
-// str.isalpha: categories Lu Ll Lt Lm Lo.
-const isAlpha = (ch) => ch !== undefined && /^\p{L}$/u.test(ch);
-// str.isdigit: Numeric_Type Decimal (Nd) or Digit — the superscripts, subscripts and circled
-// digits JS has no property for are listed.
-const DIGIT_RE =
-  /^[\p{Nd}²³¹⁰⁴-⁹₀-₉①-⑨⑴-⑼⒈-⒐⓵-⓽❶-❾➀-➈➊-➒፩-፱᧚]$/u;
-const isDigit = (ch) => ch !== undefined && DIGIT_RE.test(ch);
-
-/** `\[[^\]]*\]` matches, left to right, non-overlapping: [start, end) code-point spans. */
-function paraTags(cps) {
-  const out = [];
+/** The `[…]` tags of `chars`, as [start, end) index pairs: a `[` up to the next `]`. A `[` that
+ * is never closed is plain text. */
+function tagSpans(chars) {
+  const spans = [];
   let i = 0;
-  while (i < cps.length) {
-    if (cps[i] === "[") {
-      const j = cps.indexOf("]", i + 1);
-      if (j === -1) break; // no closing bracket after this one, nor after any later "["
-      out.push([i, j + 1]);
-      i = j + 1;
+  while (i < chars.length) {
+    if (chars[i] === "[") {
+      const close = chars.indexOf("]", i + 1);
+      if (close === -1) break;
+      spans.push([i, close + 1]);
+      i = close + 1;
     } else i += 1;
   }
-  return out;
+  return spans;
 }
 
-/** True if `pos` falls inside a `[...]` tag. */
-function insideBracketTag(cps, pos) {
-  for (const [s, e] of paraTags(cps)) if (s < pos && pos < e) return true;
-  return false;
+/** Is a `.` at `i` the end of a known abbreviation? */
+function endsAbbreviation(chars, i) {
+  let j = i;
+  while (j > 0 && (isLetter(chars[j - 1]) || chars[j - 1] === ".")) j -= 1;
+  const word = chars.slice(j, i).join("").replace(/^\.+/, "").toLowerCase();
+  return word !== "" && ABBREVIATIONS.has(word);
 }
 
-/** The index of the last sentence-ending punctuation in `cps`, or -1. Skips periods after
- * common abbreviations (`Dr.`, `Mr.`) and decimals, and periods inside bracket tags
- * (`[laugh]`). Handles CJK sentence ends (`。！？`). */
-function findLastSentenceEnd(cps) {
-  let best = -1;
-  // ASCII sentence ends: [.!?](?:\s|$)
-  for (let pos = 0; pos < cps.length; pos++) {
-    const ch = cps[pos];
-    if (!(ch === "." || ch === "!" || ch === "?")) continue;
-    if (!(pos + 1 === cps.length || isWs(cps[pos + 1]))) continue;
-    if (ch === ".") {
-      // Walk backwards to find the preceding word.
-      let wordStart = pos - 1;
-      while (wordStart >= 0 && isAlpha(cps[wordStart])) wordStart -= 1;
-      const word = cps.slice(wordStart + 1, pos).join("").toLowerCase();
-      if (ABBREVIATIONS.has(word)) continue;
-      // Skip decimal numbers (digit immediately before the period).
-      if (wordStart >= 0 && isDigit(cps[wordStart])) continue;
-    }
-    if (insideBracketTag(cps, pos)) continue;
-    best = pos;
-  }
-  // CJK sentence-ending punctuation.
-  for (let pos = 0; pos < cps.length; pos++) {
-    if ((cps[pos] === "。" || cps[pos] === "！" || cps[pos] === "？") && pos > best) best = pos;
-  }
-  return best;
-}
-
-/** The index of the last clause-boundary punctuation, or -1. */
-function findLastClauseBoundary(cps) {
-  let best = -1;
-  for (let pos = 0; pos < cps.length; pos++) {
-    const ch = cps[pos];
-    if (!(ch === ";" || ch === ":" || ch === "," || ch === "—")) continue;
-    if (!(pos + 1 === cps.length || isWs(cps[pos + 1]))) continue;
-    if (insideBracketTag(cps, pos)) continue;
-    best = pos;
-  }
-  return best;
-}
-
-/** A hard-cut position that doesn't split a `[tag]`. */
-function safeHardCut(segment, maxChars) {
-  const cut = maxChars - 1;
-  for (const [s, e] of paraTags(segment)) {
-    if (s < cut && cut < e) return s > 0 ? s - 1 : cut;
-  }
-  return cut;
-}
-
-const stripCps = (cps, left = true, right = true) => {
+/** Trim whitespace (Python's) from both ends of a code-point array → a string. */
+function trimmed(chars) {
   let a = 0;
-  let b = cps.length;
-  if (left) while (a < b && isWs(cps[a])) a++;
-  if (right) while (b > a && isWs(cps[b - 1])) b--;
-  return cps.slice(a, b);
-};
+  let b = chars.length;
+  while (a < b && isWs(chars[a])) a += 1;
+  while (b > a && isWs(chars[b - 1])) b -= 1;
+  return chars.slice(a, b).join("");
+}
 
 /**
- * Split `text` at natural boundaries into chunks of at most `maxChars` characters.
- * Priority: sentence-end (`.!?` not preceded by an abbreviation and not inside brackets) →
- * clause boundary (`;:,—`) → whitespace → hard cut. Paralinguistic tags like `[laugh]` are
- * atomic and never split across chunks.
+ * Where to cut the text that starts at `start`: the number of characters to take, 1..limit.
+ * `spans` are the text's tags (`tagSpans`).
  */
-export function splitTextIntoChunks(text, maxChars = DEFAULT_MAX_CHUNK_CHARS) {
-  const all = stripCps([...String(text)]);
-  if (!all.length) return [];
-  if (all.length <= maxChars) return [all.join("")];
+function cutLength(chars, start, limit, spans) {
+  const end = start + limit; // the window is [start, end); chars[end] is the text after it
+  const insideTag = (i) => spans.some(([a, b]) => a <= i && i < b);
+  const cutsTag = (c) => spans.some(([a, b]) => a < c && c < b);
+  const followedByWs = (c) => c >= chars.length || isWs(chars[c]);
 
-  const chunks = [];
-  let remaining = all;
-  while (remaining.length) {
-    remaining = stripCps(remaining, true, false);
-    if (!remaining.length) break;
-    if (remaining.length <= maxChars) {
-      chunks.push(remaining.join(""));
-      break;
+  let sentence = -1;
+  let clause = -1;
+  let space = -1;
+  for (let i = start; i < end; i++) {
+    const ch = chars[i];
+    if (insideTag(i)) continue;
+    if (CJK_SENTENCE_END.has(ch)) {
+      let c = i + 1;
+      while (c < end && CLOSERS.has(chars[c])) c += 1;
+      sentence = c;
+    } else if (SENTENCE_END.has(ch)) {
+      let c = i + 1;
+      while (c < end && CLOSERS.has(chars[c])) c += 1;
+      if (c <= end && followedByWs(c) && !(ch === "." && endsAbbreviation(chars, i))) sentence = c;
+    } else if (CJK_CLAUSE_MARK.has(ch)) {
+      clause = i + 1;
+    } else if (CLAUSE_MARK.has(ch)) {
+      if (followedByWs(i + 1)) clause = i + 1;
+    } else if (ch === " ") {
+      space = i + 1;
     }
-    const segment = remaining.slice(0, maxChars);
-    // Try sentence-end → clause-boundary → whitespace → safe hard cut.
-    let splitPos = findLastSentenceEnd(segment);
-    if (splitPos === -1) splitPos = findLastClauseBoundary(segment);
-    if (splitPos === -1) splitPos = segment.lastIndexOf(" ");
-    if (splitPos === -1) splitPos = safeHardCut(segment, maxChars);
-
-    const chunk = stripCps(remaining.slice(0, splitPos + 1)).join("");
-    if (chunk) chunks.push(chunk);
-    remaining = remaining.slice(splitPos + 1);
   }
-  return chunks;
+  for (const c of [sentence, clause, space]) if (c > start && !cutsTag(c)) return c - start;
+
+  // A hard cut — moved back to just before a tag it would land inside, unless that tag opens the
+  // window (then nothing shorter than the tag is possible, and the piece length wins).
+  const tag = spans.find(([a, b]) => a < end && end < b);
+  if (tag && tag[0] > start) return tag[0] - start;
+  return limit;
 }
 
-// Where two pieces of one line meet, the quiet on both sides is cut down to this (decided
-// 2026-10-07): each piece arrives with its model's own padding — Kokoro ~715 ms after and
-// ~265 ms before — so a long line held ~0.9-1 s gaps where it was cut, against the ~260 ms
-// Kokoro pauses at a sentence end inside a piece (median of 214 on The Ninth Facet). "Quiet"
-// is judged the way that pause was measured: 10 ms windows under PIECE_JOIN_SILENCE_DBFS. A
-// per-sample −70 dBFS left a faint fade on top, and the joins measured 440-480 ms. The rule
-// is applied in `audiocpp_dsp` (`dsp_client.join` / `streamJoin` send these values): where
-// `a` ends and `b` begins in silence, that silence is cut down to the pause — half from each
-// side, the rest from whichever has more — and the two meet without a crossfade; a join
-// already that short, or a piece with no sound, gets the short crossfade. A streamed piece
-// holds back its trailing quiet and one crossfade window for the next seam.
-export const PIECE_JOIN_PAUSE_MS = 260;
-export const PIECE_JOIN_SILENCE_DBFS = -60.0;
-export const WINDOW_MS = 10;
+/**
+ * `text` in pieces of at most `maxChars` characters, cut at the most natural boundary (see the
+ * header). Empty text gives `[]`; text that fits gives one piece. Throws a ValueError when
+ * `maxChars` is not at least 1.
+ */
+export function splitTextIntoChunks(text, maxChars = DEFAULT_MAX_CHUNK_CHARS) {
+  const limit = Math.floor(Number(maxChars));
+  if (!(limit >= 1)) throw new ValueError(`the piece length must be at least 1 character (got ${maxChars})`);
+
+  const chars = [...trimmed([...(text == null ? "" : String(text))])];
+  if (chars.length === 0) return [];
+  if (chars.length <= limit) return [chars.join("")];
+
+  const spans = tagSpans(chars);
+  const pieces = [];
+  let start = 0;
+  while (start < chars.length) {
+    while (start < chars.length && isWs(chars[start])) start += 1;
+    if (start >= chars.length) break;
+    if (chars.length - start <= limit) {
+      pieces.push(trimmed(chars.slice(start)));
+      break;
+    }
+    const take = cutLength(chars, start, limit, spans);
+    const piece = trimmed(chars.slice(start, start + take));
+    if (piece) pieces.push(piece);
+    start += take;
+  }
+  return pieces;
+}

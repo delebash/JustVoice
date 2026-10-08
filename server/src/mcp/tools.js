@@ -1,173 +1,124 @@
 // SPDX-License-Identifier: MIT
+// The four MCP tools — thin wrappers over the routes and services the app itself uses, so an
+// agent sees what the UI sees:
 //
-// Adapted from voicebox (MIT) — backend/mcp_server/tools.py at the commit pinned in
-// voicebox-pin.txt. Tool surface renamed (justvoice.*), speak delegates to JustVoice's
-// /v1/generate pipeline and persists a Generation row (headless JustVoice returns a fetchable
-// audio URL instead of playing it). transcribe is added alongside the bundled speech-recognition
-// engine. Original copyright (c) the voicebox authors.
+//   justvoice.speak          text → speech in a voice; a `generations` row and an `audio_url`
+//                            (a headless server plays nothing — the agent fetches the WAV)
+//   justvoice.list_voices    the voice library
+//   justvoice.list_personas  the personas (finished voices)
+//   justvoice.transcribe     a clip → text, with the local speech recognition
 //
-// JustVoice MCP tool implementations (the port of justvoice/mcp/tools.py). Thin wrappers over
-// existing routes/services. Tools are registered with dotted names (`justvoice.speak` etc.) so
-// they look natural in agent logs.
+// The tool, parameter and result field names are fixed: agents' configs and docs/mcp-server.md
+// use them. Arguments are checked by the SDK against each tool's zod schema (an unknown or a
+// wrongly typed parameter is refused); a refusal or a failure comes back as a tool result with
+// `isError` and the reason as text. A success carries its result object both as JSON text (what
+// every client reads) and as `structuredContent`.
 //
-// fastmcp generated each tool's wire description from the Python function — the input schema
-// from its signature, `outputSchema` from its `dict[str, Any]` return, `_meta.fastmcp.tags` —
-// and validated a call's arguments with pydantic. The TOOLS table below is that wire output,
-// copied from the Python server's `tools/list`, and `validateArgs` answers a bad call in
-// pydantic's words, so an agent sees the same server either way.
+// The captures, voices, generate, wire-model and render modules are loaded when a tool runs:
+// they import the app, which imports this package.
 
 import { mkdtempSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { b64decode, pyRound, strRepr } from "@delebash/llm-runner/platform/py";
+import * as z from "zod/v4";
 import { getState } from "../app_state.js";
+import { parseWavHeader } from "../audio/wav.js";
 import { Generation, uuid } from "../database/models.js";
-import * as session from "../database/session.js";
+import { getDb } from "../database/session.js";
 import { storeMediaPath } from "../media_paths.js";
 import { generationsRoot } from "../paths.js";
-import { b64decode, isDict, pyRound, pyTypeName, ValueError } from "@delebash/llm-runner/platform/py";
-import { PyFloat, pyRepr } from "@delebash/llm-runner/platform/pyjson";
 import { currentClientId, requestIsLoopback } from "./context.js";
 import { resolveVoice } from "./resolve.js";
 
-const NULLABLE_STR = { anyOf: [{ type: "string" }, { type: "null" }], default: null };
-const OUTPUT_SCHEMA = { additionalProperties: true, type: "object" };
-const META = { fastmcp: { tags: [] } };
+const optionalText = (what) => z.string().nullable().optional().describe(what);
 
-/** The tools as fastmcp lists them, with each parameter's check (in signature order). */
-export const TOOLS = [
-  {
-    name: "justvoice.speak",
-    fn: "justvoice_speak",
-    description:
-      "Render text to speech in a JustVoice voice. Returns a generation id plus an audio_url you can GET for the WAV. Pass `voice` (a voice id) or `persona` (a character name); with neither, the per-client binding or the global default voice applies.",
-    inputSchema: {
-      additionalProperties: false,
-      properties: { text: { type: "string" }, voice: NULLABLE_STR, persona: NULLABLE_STR, language: NULLABLE_STR },
-      required: ["text"],
-      type: "object",
-    },
-    params: [
-      ["text", "str", { required: true }],
-      ["voice", "str", { nullable: true, dflt: null }],
-      ["persona", "str", { nullable: true, dflt: null }],
-      ["language", "str", { nullable: true, dflt: null }],
-    ],
-  },
-  {
-    name: "justvoice.list_voices",
-    fn: "justvoice_list_voices",
-    description: "List available voices (presets, cloned, designed). Use the returned `id` with justvoice.speak(voice=...).",
-    inputSchema: { additionalProperties: false, properties: { limit: { default: 200, type: "integer" } }, type: "object" },
-    params: [["limit", "int", { dflt: 200 }]],
-  },
-  {
-    name: "justvoice.transcribe",
-    fn: "justvoice_transcribe",
-    description:
-      "Transcribe an audio clip to text with the local speech recognition engine. Pass exactly one of `audio_base64` (bytes as base64) or `audio_path` (absolute local file path — loopback callers only).",
-    inputSchema: {
-      additionalProperties: false,
-      properties: { audio_base64: NULLABLE_STR, audio_path: NULLABLE_STR, language: NULLABLE_STR },
-      type: "object",
-    },
-    params: [
-      ["audio_base64", "str", { nullable: true, dflt: null }],
-      ["audio_path", "str", { nullable: true, dflt: null }],
-      ["language", "str", { nullable: true, dflt: null }],
-    ],
-  },
-  {
-    name: "justvoice.list_personas",
-    fn: "justvoice_list_personas",
-    description: "List personas (finished voices) with their bound voice. Use the returned `name` with justvoice.speak(persona=...).",
-    inputSchema: { additionalProperties: false, properties: {}, type: "object" },
-    params: [],
-  },
-];
-
-/** `tools/list` — each tool as fastmcp sends it. */
-export function listTools() {
-  return TOOLS.map((t) => ({ name: t.name, description: t.description, inputSchema: t.inputSchema, outputSchema: OUTPUT_SCHEMA, _meta: META }));
+/** A WAV's length in seconds (3 places), from its own header; null when it can't be read. */
+function wavSeconds(wav) {
+  try {
+    return pyRound(parseWavHeader(wav)[0].durationSec, 3);
+  } catch {
+    return null;
+  }
 }
 
-// ── argument validation, in pydantic's words ──────────────────────────────────
-
-/** One pydantic error → [type, msg], or null when `v` fits (lax mode, as validate_call). */
-function checkValue(kind, nullable, v) {
-  if ((v === null || v === undefined) && nullable) return null;
-  if (kind === "str") return typeof v === "string" ? null : ["string_type", "Input should be a valid string"];
-  // int (lax): a bool, a whole float, a numeric string.
-  if (typeof v === "boolean") return null;
-  const n = v instanceof PyFloat ? v.v : v;
-  if (typeof n === "number") {
-    if (!Number.isFinite(n)) return ["finite_number", "Input should be a finite number"];
-    return Number.isInteger(n) ? null : ["int_from_float", "Input should be a valid integer, got a number with a fractional part"];
-  }
-  if (typeof v === "string") {
-    const t = v.trim();
-    if (/^[-+]?\d+(?:_\d+)*(?:\.0*)?$/.test(t)) return null;
-    return ["int_parsing", "Input should be a valid integer, unable to parse string as an integer"];
-  }
-  return ["int_type", "Input should be a valid integer"];
+/** An absolute local path: a drive letter and separator or a UNC share on Windows, a leading
+ * `/` elsewhere. */
+function isAbsoluteLocalPath(p) {
+  if (process.platform === "win32") return /^(?:[A-Za-z]:[\\/]|[\\/]{2}[^\\/]+[\\/][^\\/]+)/.test(p);
+  return p.startsWith("/");
 }
 
-/** The value a lax int check accepted, as Python passes it on. */
-function coerce(kind, v) {
-  if (kind !== "int" || v === null || v === undefined) return v;
-  if (typeof v === "boolean") return v ? 1 : 0;
-  if (typeof v === "string") return Math.trunc(Number(v.trim().replace(/_/g, "")));
-  return v instanceof PyFloat ? v.v : v;
-}
+const given = (v) => typeof v === "string" && v !== "";
 
-/** The call's keyword arguments → [kwargs, null] or [null, pydantic's message]. */
-export function validateArgs(tool, args) {
-  const given = isDict(args) ? args : {};
-  const errors = [];
-  const kwargs = {};
-  for (const [name, kind, { required = false, nullable = false, dflt = null }] of tool.params) {
-    if (!Object.hasOwn(given, name)) {
-      if (required) errors.push([name, "missing_argument", "Missing required argument", given]);
-      else kwargs[name] = dflt;
-      continue;
-    }
-    const e = checkValue(kind, nullable, given[name]);
-    if (e) errors.push([name, e[0], e[1], given[name]]);
-    else kwargs[name] = coerce(kind, given[name]);
-  }
-  const known = new Set(tool.params.map(([n]) => n));
-  for (const [name, v] of Object.entries(given)) {
-    if (!known.has(name)) errors.push([name, "unexpected_keyword_argument", "Unexpected keyword argument", v]);
-  }
-  if (!errors.length) return [kwargs, null];
-  const lines = errors.map(
-    ([loc, type, msg, v]) =>
-      `${loc}\n  ${msg} [type=${type}, input_value=${pyRepr(v)}, input_type=${pyTypeName(v)}]\n    For further information visit https://errors.pydantic.dev/2.13/v/${type}`,
-  );
-  return [null, `${errors.length} validation error${errors.length === 1 ? "" : "s"} for call[${tool.fn}]\n${lines.join("\n")}`];
-}
+// ─── speak ──────────────────────────────────────────────────────────────────
 
-// ── the tools ────────────────────────────────────────────────────────────────
-
-async function justvoiceSpeak({ text, voice, persona, language }) {
-  const h = session.getDb();
-  const clientId = currentClientId();
-  const resolved = resolveVoice(voice, persona, clientId, h);
+async function speak({ text, voice = null, persona = null, language = null }) {
+  const h = getDb();
+  const resolved = resolveVoice(voice, persona, currentClientId(), h);
   if (resolved === null) {
-    throw new ValueError(
-      "No voice resolved. Pass `voice=` with a voice id or `persona=` with a character name, bind a persona to this client at POST /v1/mcp/bindings, or set settings.mcp.default_voice.",
+    throw new Error(
+      "No voice resolved for this call. Pass `voice` (an id from justvoice.list_voices) or `persona` " +
+        "(a name from justvoice.list_personas), bind a persona to this client with POST /v1/mcp/bindings, " +
+        "or set settings.mcp.default_voice.",
     );
   }
-  return _speak({ voiceId: resolved.voice_id, persona: resolved.persona, text, language, h });
+  const st = getState();
+  const spokenIn = language || resolved.persona?.language || null;
+
+  const { construct, GenerateRequest } = await import("../models.js");
+  const { generate } = await import("../api/generate_api.js");
+  const renderCore = await import("../render_core.js");
+  const answer = await generate(
+    construct(GenerateRequest, { voice: resolved.voice_id, text, language: spokenIn, persona_id: resolved.persona?.id ?? null }),
+  );
+  const wav = Buffer.isBuffer(answer) ? answer : Buffer.from(answer.body);
+
+  let engine = null;
+  try {
+    engine = await renderCore._resolveEngineForVoice(st, resolved.voice_id);
+  } catch {
+    /* no registry to ask — fall back below */
+  }
+  const model = engine ? await renderCore._lineModel(st, resolved.voice_id, engine) : null;
+  const durationSec = wavSeconds(wav);
+
+  const id = uuid();
+  const file = path.join(generationsRoot(st.dataDir), `${id}.wav`);
+  h.tx(() => {
+    h.insert(Generation, {
+      id,
+      persona_id: resolved.persona?.id ?? null,
+      text,
+      // What it was spoken in: the caller's language, else the persona's; "en" when neither
+      // named one (the column's own default).
+      language: spokenIn ?? "en",
+      engine: engine ?? st.engines?.current() ?? "managed",
+      model,
+      status: "completed",
+      source: "mcp",
+      duration_sec: durationSec,
+    });
+    writeFileSync(file, wav);
+    h.update(Generation, { audio_path: storeMediaPath(file) }, { id });
+  });
+
+  return {
+    generation_id: id,
+    status: "completed",
+    voice: resolved.voice_id,
+    persona: resolved.persona?.name ?? null,
+    duration_sec: durationSec,
+    audio_url: `/v1/generations/${id}/audio`,
+    source: "mcp",
+  };
 }
 
-async function justvoiceListVoices({ limit }) {
-  if (!(limit >= 1 && limit <= 1000)) throw new ValueError("`limit` must be between 1 and 1000.");
-  // Delegate to the real /v1/voices route (upstream pattern: tools are thin wrappers over
-  // existing routes) so the tool sees exactly what the UI sees — managed-engine presets
-  // included.
-  const { listVoices } = await import("../api/voices_api.js");
-  const result = await listVoices();
-  const voices = result.voices.map((v) => ({
+// ─── list_voices ────────────────────────────────────────────────────────────
+
+async function listVoices({ limit = 200 }) {
+  const voicesApi = await import("../api/voices_api.js");
+  const all = (await voicesApi.listVoices()).voices.map((v) => ({
     id: v.id,
     name: v.name,
     engine: v.engine,
@@ -175,146 +126,131 @@ async function justvoiceListVoices({ limit }) {
     language: v.language,
     gender: v.gender || null,
   }));
-  return { voices: voices.slice(0, limit), total: voices.length };
+  return { voices: all.slice(0, limit), total: all.length };
 }
 
-/** `pathlib.Path(p).is_absolute()` — on Windows a drive and a root (or a UNC share). */
-function isAbsolutePath(p) {
-  if (process.platform === "win32") return /^[a-zA-Z]:[\\/]/.test(p) || /^[\\/]{2}[^\\/]+[\\/]+[^\\/]+/.test(p);
-  return p.startsWith("/");
+// ─── list_personas ──────────────────────────────────────────────────────────
+
+async function listPersonas() {
+  return {
+    personas: getState()
+      .personas.list()
+      .map((p) => ({ id: p.id, name: p.name, voice_id: p.voice_id ?? null, language: p.language ?? null, has_note: Boolean(p.note) })),
+  };
 }
 
-async function justvoiceTranscribe({ audio_base64: audioBase64, audio_path: audioPath, language }) {
-  if (Boolean(audioBase64) === Boolean(audioPath)) throw new ValueError("Pass exactly one of `audio_base64` or `audio_path`.");
+// ─── transcribe ─────────────────────────────────────────────────────────────
 
+async function transcribe({ audio_base64 = null, audio_path = null, language = null }) {
+  const byPath = given(audio_path);
+  if (byPath === given(audio_base64)) throw new Error("Pass exactly one of audio_base64 or audio_path.");
   const captures = await import("../api/captures_api.js");
-  const maxMb = captures._MAX_UPLOAD_MB;
+  const capMb = captures._MAX_UPLOAD_MB;
+  const tooBig = () => new Error(`The audio is larger than the ${capMb} MB limit.`);
 
-  // Absolute-path mode is loopback-only so a server bound on 0.0.0.0 doesn't double as an
-  // arbitrary-local-file read primitive (upstream contract).
-  if (audioPath !== null && audioPath !== undefined) {
-    if (!requestIsLoopback()) {
-      throw new ValueError("`audio_path` is only available to loopback callers — remote callers must use `audio_base64`.");
-    }
-    if (!isAbsolutePath(audioPath)) throw new ValueError("`audio_path` must be absolute.");
-    let st;
-    try {
-      st = statSync(audioPath);
-    } catch {
-      st = null;
-    }
-    if (st === null || !st.isFile()) throw new ValueError(`File not found: ${audioPath}`);
-    if (st.size > maxMb * 1024 * 1024) throw new ValueError(`File exceeds ${maxMb} MB limit.`);
-    const text = await captures._sttTranscribe(audioPath, language);
-    return { text, language };
+  if (byPath) {
+    // A server bound to the network must not read its own files for a remote caller.
+    if (!requestIsLoopback()) throw new Error("audio_path is accepted only from this machine — a remote caller sends audio_base64.");
+    if (!isAbsoluteLocalPath(audio_path)) throw new Error(`audio_path must be an absolute path, not ${strRepr(audio_path)}.`);
+    const info = statSync(audio_path, { throwIfNoEntry: false });
+    if (!info?.isFile()) throw new Error(`There is no file at ${audio_path}.`);
+    if (info.size > capMb * 1024 * 1024) throw tooBig();
+    return { text: await captures._sttTranscribe(audio_path, language), language: language ?? null };
   }
 
-  let raw;
+  let bytes;
   try {
-    raw = b64decode(audioBase64, true);
-  } catch (exc) {
-    throw new ValueError(`Invalid audio_base64: ${exc.message}`);
+    bytes = b64decode(audio_base64, true);
+  } catch (e) {
+    throw new Error(`audio_base64 is not valid base64: ${e?.message ?? e}`);
   }
-  if (raw.length > maxMb * 1024 * 1024) throw new ValueError(`Audio exceeds ${maxMb} MB limit.`);
-  const dir = mkdtempSync(path.join(tmpdir(), "jv-mcp-"));
-  const tmpPath = path.join(dir, "clip.wav");
-  writeFileSync(tmpPath, raw);
+  if (bytes.length > capMb * 1024 * 1024) throw tooBig();
+  const dir = mkdtempSync(path.join(tmpdir(), "jv-mcp-audio-"));
   try {
-    const text = await captures._sttTranscribe(tmpPath, language);
-    return { text, language };
+    const file = path.join(dir, "audio.wav");
+    writeFileSync(file, bytes);
+    return { text: await captures._sttTranscribe(file, language), language: language ?? null };
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
 }
 
-async function justvoiceListPersonas() {
-  const personas = getState().personas.list();
-  return {
-    personas: personas.map((p) => ({ id: p.id, name: p.name, voice_id: p.voice_id, language: p.language, has_note: Boolean(p.note) })),
-  };
-}
+// ─── Registration ───────────────────────────────────────────────────────────
 
-const HANDLERS = {
-  "justvoice.speak": justvoiceSpeak,
-  "justvoice.list_voices": justvoiceListVoices,
-  "justvoice.transcribe": justvoiceTranscribe,
-  "justvoice.list_personas": justvoiceListPersonas,
-};
+/** Every tool: its name, what an agent is told, its arguments (strict — an unknown one is
+ * refused) and its handler. */
+export const TOOLS = [
+  {
+    name: "justvoice.speak",
+    title: "Speak text",
+    description:
+      "Render text as speech in a JustVoice voice. Returns a generation_id and an audio_url — GET it from the " +
+      "JustVoice server to fetch the WAV (nothing is played). Pass voice (a voice id) or persona (a persona name); " +
+      "with neither, the persona bound to this client applies, else the server's default voice.",
+    inputSchema: z.strictObject({
+      text: z.string().describe("The text to speak."),
+      voice: optionalText("A voice id from justvoice.list_voices."),
+      persona: optionalText("A persona name (or id) from justvoice.list_personas."),
+      language: optionalText("A language code such as en or ja; default: the persona's, else the voice's own."),
+    }),
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    handler: speak,
+  },
+  {
+    name: "justvoice.list_voices",
+    title: "List voices",
+    description:
+      "List the voice library — preset, cloned and designed voices. A voice's id is what justvoice.speak takes as voice.",
+    inputSchema: z.strictObject({
+      limit: z.number().int().min(1).max(1000).optional().describe("How many voices to return, 1–1000 (default 200)."),
+    }),
+    annotations: { readOnlyHint: true, openWorldHint: false },
+    handler: listVoices,
+  },
+  {
+    name: "justvoice.transcribe",
+    title: "Transcribe audio",
+    description:
+      "Transcribe a clip with JustVoice's local speech recognition. Pass exactly one of audio_base64 (the file's bytes) " +
+      "or audio_path (an absolute path on the server's machine — accepted only from that machine).",
+    inputSchema: z.strictObject({
+      audio_base64: optionalText("The audio file, base64-encoded."),
+      audio_path: optionalText("An absolute path to an audio file on the server's machine."),
+      language: optionalText("A language code; default: detect it."),
+    }),
+    annotations: { readOnlyHint: true, openWorldHint: false },
+    handler: transcribe,
+  },
+  {
+    name: "justvoice.list_personas",
+    title: "List personas",
+    description:
+      "List the personas — finished voices with a name — and the voice each one speaks with. A persona's name is what " +
+      "justvoice.speak takes as persona.",
+    // No arguments; an unknown one is refused, and a call may leave `arguments` out.
+    inputSchema: z.strictObject({}).optional(),
+    annotations: { readOnlyHint: true, openWorldHint: false },
+    handler: listPersonas,
+  },
+];
 
-const textResult = (text, isError) => ({ content: [{ type: "text", text }], isError });
+/** The result object as a tool result: JSON text for every client, and the same object as
+ * structured content. */
+const toResult = (value) => ({ content: [{ type: "text", text: JSON.stringify(value) }], structuredContent: value });
 
-/**
- * `tools/call` → the CallToolResult fastmcp sends: the result as compact JSON text plus
- * `structuredContent`, or `isError` with the reason — an unknown tool, pydantic's validation
- * message, or "Error calling tool '<name>': <the error>".
- */
-export async function callTool(name, args) {
-  const tool = TOOLS.find((t) => t.name === name);
-  if (!tool) return textResult(`Unknown tool: ${pyRepr(String(name))}`, true);
-  const [kwargs, invalid] = validateArgs(tool, args ?? {});
-  if (invalid) return textResult(invalid, true);
-  let result;
-  try {
-    result = await HANDLERS[name](kwargs);
-  } catch (e) {
-    return textResult(`Error calling tool ${pyRepr(name)}: ${e?.detail ?? e?.message ?? e}`, true);
+/** Register every tool on an SDK `McpServer`. */
+export function registerTools(server) {
+  for (const tool of TOOLS) {
+    server.registerTool(
+      tool.name,
+      {
+        title: tool.title,
+        description: tool.description,
+        inputSchema: tool.inputSchema,
+        outputSchema: z.looseObject({}),
+        annotations: tool.annotations,
+      },
+      async (args) => toResult(await tool.handler(args ?? {})),
+    );
   }
-  return { content: [{ type: "text", text: JSON.stringify(result) }], structuredContent: result, isError: false };
-}
-
-/** The tools' doors, for a test or a host that drives them without the protocol. */
-export { justvoiceListPersonas, justvoiceListVoices, justvoiceSpeak, justvoiceTranscribe };
-
-// ─── Speak helper ──────────────────────────────────────────────────────────
-
-/** Delegate to the /v1/generate pipeline, persist a Generation row, and return ids + a
- * fetchable audio URL. The API wave's `api/generate_api.js` exports `generate(req)` (the
- * route's handler, answering the WAV — a Buffer, or an object whose `body` is one). */
-export async function _speak({ voiceId, persona, text, language, h }) {
-  const generateApi = await import("../api/generate_api.js");
-  const { construct, GenerateRequest } = await import("../models.js");
-  const rc = await import("../render_core.js");
-
-  const req = construct(GenerateRequest, {
-    voice: voiceId,
-    text,
-    language: language || (persona ? persona.language : null),
-    persona_id: persona ? persona.id : null,
-  });
-  const response = await generateApi.generate(req);
-  const wav = Buffer.isBuffer(response) ? response : Buffer.from(response.body);
-
-  const state = getState();
-  const engineId = await rc._resolveEngineForVoice(state, voiceId);
-  const id = uuid();
-  const gen = {
-    id,
-    persona_id: persona ? persona.id : null,
-    text,
-    language: language || "en",
-    // The engine that spoke it (2026-10-06 — it was always "managed").
-    engine: engineId || state.engines?.current?.() || "managed",
-    model: engineId ? await rc._lineModel(state, voiceId, engineId) : null,
-    status: "completed",
-    source: "mcp",
-    // A generation's length still assumes 16 kHz, 16-bit mono WAV (as Python's).
-    duration_sec: wav.length > 44 ? pyRound((wav.length - 44) / (2 * 16000), 3) : null,
-  };
-  const outPath = path.join(generationsRoot(state.dataDir), `${id}.wav`);
-  h.tx(() => {
-    h.insert(Generation, gen);
-    writeFileSync(outPath, wav);
-    // Relative to the data root — survives a Change-folder move.
-    h.update(Generation, { audio_path: storeMediaPath(outPath) }, { id });
-  });
-
-  return {
-    generation_id: id,
-    status: "completed",
-    voice: voiceId,
-    persona: persona ? persona.name : null,
-    duration_sec: gen.duration_sec,
-    audio_url: `/v1/generations/${id}/audio`,
-    source: "mcp",
-  };
 }

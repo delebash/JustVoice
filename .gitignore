@@ -50,9 +50,6 @@ server/justvoice/engines/.shared-venv/
 server/justvoice/engines/audiocpp/*
 !server/justvoice/engines/audiocpp/*.py
 
-# Voicebox upstream audit clone — reference only, separate repo upstream
-voicebox-upstream/
-
 # Test-render artifacts (audio output of smoke tests)
 scripts/*.wav
 scripts/_shots/

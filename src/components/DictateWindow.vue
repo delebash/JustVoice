@@ -1,224 +1,212 @@
+<!-- SPDX-License-Identifier: MIT -->
 <!--
-  SPDX-License-Identifier: MIT
-  SPDX-FileCopyrightText: 2024 Jamie Pine and voicebox contributors
-  SPDX-FileCopyrightText: 2026 JustVoice contributors
+  The dictation window: a separate, transparent, always-on-top window that
+  shows only the capture pill. main.js mounts this instead of the app when the
+  page is opened with ?view=dictate.
 
-  Originally from https://github.com/jamiepine/voicebox/blob/b35b90961d5bc83a8b4e96e8b6ccde2a03152ff9/app/src/components/DictateWindow/DictateWindow.tsx
-  (commit pinned in voicebox-pin.txt at repo root).
-  Translated React -> Vue on 2026-06-08. Modifications by JustVoice contributors
-  are licensed under MIT. MIT permission notice continues to apply
-  to upstream-derived portions.
+  Its one working cycle is an agent's speech. When the shell announces that an
+  MCP agent's justvoice.speak made a generation (dictate:speak-start), the
+  window waits for that generation on its status stream, plays its audio, and
+  shows the pill while it plays (dictate:show / dictate:hide ask the shell to
+  show and hide the window — hiding is the shell's job, not the page's). The
+  pill never stays up: a generation that has not started playing 60 s after
+  speak-start, or 15 s after speak-end, ends the cycle.
 
-  Floating dictate surface shown in a separate transparent window (never created today —
-  study §7.1).
-  Mounted when the URL contains `?view=dictate`. Surfaces the CapturePill
-  for two independent cycles:
-    1. User dictation - driven by `dictate:start` / `dictate:stop` from the
-       Rust hotkey monitor (DEFERRED — the full hotkey + paste injection
-       impl is in Phase 6).
-    2. Agent speech - driven by `dictate:speak-start` / `dictate:speak-end`
-       from the Rust `speak_monitor` (which owns the backend SSE stream).
-       On speak-start we subscribe to this single generation's status SSE,
-       then play `/audio/{id}` via a plain HTMLAudioElement when it lands.
+  The window is not created today: the Electron shell has no window-to-window
+  channel yet, and services/native.js's dictateEmit / onDictateEvent are
+  no-ops until it does. Recording from the hotkey is not built.
 -->
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
-import CapturePill from "./CapturePill.vue";
-import { useApi } from "../stores/api.js";
+import { onBeforeUnmount, onMounted, ref } from "vue";
 import { dictateEmit, onDictateEvent } from "../services/native.js";
+import { useApi } from "../stores/api.js";
+import CapturePill from "./CapturePill.vue";
+
+const STUCK_MS = 60_000; // speak-start → audio must have started by then
+const GRACE_MS = 15_000; // speak-end → audio must have started by then
+const TICK_MS = 250; // the pill's timer
 
 const api = useApi();
-
-// Pill state machine — speaking / recording / transcribing / refining / etc.
-const pillState = ref("rest");
+const state = ref("rest");
 const elapsedMs = ref(0);
 const errorMessage = ref("");
 
-// Force the host document chrome transparent so the window takes
-// on the pill's own shape.
-onMounted(() => {
-  document.documentElement.style.background = "transparent";
-  document.body.style.background = "transparent";
-});
-onBeforeUnmount(() => {
-  document.documentElement.style.background = "";
-  document.body.style.background = "";
-});
+let active = false;
+let playing = false;
+let stream = null;
+let player = null;
+let stuckTimer = null;
+let graceTimer = null;
+let ticker = null;
+const unsubscribes = [];
 
-// ── Agent-speak cycle ──────────────────────────────────────────────────
-let statusSource = null;
-let audioEl = null;
-let speakStartedAt = null;
-let elapsedTimer = null;
-let stuckTimeout = null;
-let endGraceTimeout = null;
+/** A shell payload — an object, or the same as JSON text. null when it is neither. */
+function parse(payload) {
+  let value = payload;
+  if (typeof value === "string") {
+    try {
+      value = JSON.parse(value);
+    } catch {
+      return null;
+    }
+  }
+  return value !== null && typeof value === "object" ? value : null;
+}
+
+function closeStream() {
+  if (stream) {
+    stream.onmessage = null;
+    stream.onerror = null;
+    stream.close();
+    stream = null;
+  }
+}
 
 function clearTimers() {
-  if (elapsedTimer) {
-    clearInterval(elapsedTimer);
-    elapsedTimer = null;
-  }
-  if (stuckTimeout) {
-    clearTimeout(stuckTimeout);
-    stuckTimeout = null;
-  }
-  if (endGraceTimeout) {
-    clearTimeout(endGraceTimeout);
-    endGraceTimeout = null;
-  }
+  clearTimeout(stuckTimer);
+  clearTimeout(graceTimer);
+  clearInterval(ticker);
+  stuckTimer = graceTimer = ticker = null;
 }
 
-function dismissSpeak() {
-  if (statusSource) {
-    statusSource.close();
-    statusSource = null;
-  }
-  if (audioEl) {
-    audioEl.pause();
-    audioEl.src = "";
-    audioEl = null;
+/** Stop everything this cycle started and ask the shell to hide the window. */
+function endCycle() {
+  const wasActive = active;
+  active = false;
+  playing = false;
+  closeStream();
+  if (player) {
+    player.onplaying = player.onended = player.onerror = null;
+    player.pause();
+    player.removeAttribute("src");
+    player = null;
   }
   clearTimers();
-  pillState.value = "rest";
+  state.value = "rest";
   elapsedMs.value = 0;
-  speakStartedAt = null;
-  // Tell the shell to tuck the window away: the shell owns the hide+park+click-through
-  // dance because calling hide() directly from JS has been unreliable for transparent
-  // always-on-top windows on macOS. (services/native.js — a no-op until the dictation
-  // feature gives the shell a window-to-window channel.)
-  dictateEmit("dictate:hide", {});
+  if (wasActive) dictateEmit("dictate:hide", {});
 }
 
-function startSpeakPlayback(generationId) {
-  const url = `${api.serverUrl}/audio/${generationId}`;
-  const audio = new Audio(url);
-  audio.onended = () => dismissSpeak();
-  audio.onerror = () => dismissSpeak();
+/** Play the generation's audio; the pill appears once sound actually starts. */
+function play(generationId) {
+  const audio = new Audio(`${api.serverUrl}/v1/generations/${encodeURIComponent(generationId)}/audio`);
+  player = audio;
+  const mine = () => player === audio;
   audio.onplaying = () => {
-    // Surface the window the moment audio starts (we kept it hidden through
-    // the ~1s generation wait so the user doesn't see a silent pill).
+    if (!mine() || playing) return;
+    playing = true;
+    clearTimeout(graceTimer);
     dictateEmit("dictate:show", {});
-    speakStartedAt = Date.now();
-    pillState.value = "speaking";
+    state.value = "speaking";
+    const startedAt = Date.now();
     elapsedMs.value = 0;
-    elapsedTimer = setInterval(() => {
-      if (speakStartedAt) elapsedMs.value = Date.now() - speakStartedAt;
-    }, 250);
+    ticker = setInterval(() => {
+      elapsedMs.value = Date.now() - startedAt;
+    }, TICK_MS);
   };
-  audioEl = audio;
-  audio.play().catch(() => dismissSpeak());
-}
-
-async function onSpeakStart(eventPayload) {
-  // Rust emits the SSE payload as a JSON STRING (not parsed). Handle both.
-  let parsed = {};
+  audio.onended = () => mine() && endCycle();
+  audio.onerror = () => mine() && endCycle();
+  let attempt;
   try {
-    parsed = typeof eventPayload === "string" ? JSON.parse(eventPayload) : eventPayload || {};
+    attempt = audio.play();
   } catch {
+    endCycle();
     return;
   }
-  const id = parsed.generation_id;
-  if (!id) return;
+  if (attempt && typeof attempt.catch === "function") attempt.catch(() => mine() && endCycle());
+}
 
-  // Tear down any previous cycle — last speak wins.
-  dismissSpeak();
-
-  pillState.value = "transcribing"; // visual cue while we wait for completion
+function onSpeakStart(payload) {
+  const generationId = parse(payload)?.generation_id;
+  if (!generationId) return;
+  endCycle(); // the latest speak wins
+  active = true;
+  state.value = "transcribing"; // a waiting cue while the window is still hidden
   elapsedMs.value = 0;
 
-  // Subscribe to this one generation's status. When it completes, the
-  // /audio/{id} endpoint will serve the WAV we need to play.
-  const source = new EventSource(`${api.serverUrl}/v1/generate/${id}/status`);
-  statusSource = source;
-
-  // Stuck-cap: 60s without ever hearing back from the backend.
-  stuckTimeout = setTimeout(() => {
-    if (!audioEl) dismissSpeak();
-  }, 60000);
-
-  source.onmessage = (msg) => {
+  const source = new EventSource(`${api.serverUrl}/v1/generate/${encodeURIComponent(generationId)}/status`);
+  stream = source;
+  source.onmessage = (event) => {
+    let status;
     try {
-      const data = JSON.parse(msg.data);
-      if (data.status === "completed") {
-        if (stuckTimeout) clearTimeout(stuckTimeout);
-        stuckTimeout = null;
-        source.close();
-        if (statusSource === source) statusSource = null;
-        startSpeakPlayback(id);
-      } else if (data.status === "failed" || data.status === "not_found") {
-        source.close();
-        dismissSpeak();
-      }
+      status = JSON.parse(event.data)?.status;
     } catch {
-      // heartbeats / junk - ignore
+      return; // a heartbeat
+    }
+    if (status === "completed") {
+      clearTimeout(stuckTimer);
+      stuckTimer = null;
+      closeStream();
+      play(generationId);
+    } else if (status === "failed" || status === "not_found") {
+      endCycle();
     }
   };
-  source.onerror = () => {
-    // EventSource auto-reconnects on transient drops; the stuckTimeout
-    // is the backstop for the case where it never recovers.
-  };
+  // The browser reconnects on its own; the stuck timer is the backstop.
+  source.onerror = () => {};
+  stuckTimer = setTimeout(() => {
+    if (!playing) endCycle();
+  }, STUCK_MS);
 }
 
-function onSpeakEnd(eventPayload) {
-  let parsed = {};
-  try {
-    parsed = typeof eventPayload === "string" ? JSON.parse(eventPayload) : eventPayload || {};
-  } catch {
+function onSpeakEnd(payload) {
+  const message = parse(payload);
+  if (message === null) return;
+  if (message.status != null && message.status !== "completed") {
+    endCycle();
     return;
   }
-  if (parsed.status && parsed.status !== "completed") {
-    // Failed / cancelled - dismiss immediately.
-    dismissSpeak();
-    return;
-  }
-  // Completed: if audio never started (shouldn't happen, but guard),
-  // auto-dismiss after 15s so the pill never stays forever.
-  endGraceTimeout = setTimeout(() => {
-    if (!audioEl) dismissSpeak();
-  }, 15000);
+  clearTimeout(graceTimer);
+  graceTimer = setTimeout(() => {
+    if (!playing) endCycle();
+  }, GRACE_MS);
 }
 
-const unlistens = [];
+// The window takes the pill's shape: no page background behind it.
+const saved = { html: "", body: "" };
 
 onMounted(() => {
-  unlistens.push(onDictateEvent("dictate:speak-start", (payload) => onSpeakStart(payload)));
-  unlistens.push(onDictateEvent("dictate:speak-end", (payload) => onSpeakEnd(payload)));
+  saved.html = document.documentElement.style.background;
+  saved.body = document.body.style.background;
+  document.documentElement.style.background = "transparent";
+  document.body.style.background = "transparent";
+  unsubscribes.push(onDictateEvent("dictate:speak-start", onSpeakStart));
+  unsubscribes.push(onDictateEvent("dictate:speak-end", onSpeakEnd));
 });
 
 onBeforeUnmount(() => {
-  for (const fn of unlistens) {
+  for (const off of unsubscribes.splice(0)) {
     try {
-      fn();
+      if (typeof off === "function") off();
     } catch {
-      /* unlisten failed; not fatal */
+      // A shell that is already gone has nothing left to unsubscribe.
     }
   }
-  dismissSpeak();
+  endCycle();
+  document.documentElement.style.background = saved.html;
+  document.body.style.background = saved.body;
 });
-
-const showPill = computed(() => pillState.value !== "rest");
 </script>
 
 <template>
   <div class="dictate-window">
     <CapturePill
-      v-if="showPill"
-      :state="pillState"
+      v-if="state !== 'rest'"
+      :state="state"
       :elapsed-ms="elapsedMs"
       :error-message="errorMessage"
-      @dismiss="dismissSpeak"
+      @dismiss="endCycle"
     />
   </div>
 </template>
 
 <style scoped>
 .dictate-window {
-  width: 100vw;
-  height: 100vh;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 8px;
   background: transparent;
-  padding: 12px;
 }
 </style>

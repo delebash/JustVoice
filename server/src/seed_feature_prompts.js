@@ -187,19 +187,19 @@ Return only the JSON object.`,
   "refine.smart_cleanup": {
     feature: "refine",
     label: "Remove filler",
-    description: 'Drops the ums, uhs and "you know"s, adds sentence punctuation.',
+    description: 'Drops the ums, uhs and "you know"s, and words the recogniser plainly misheard.',
     system: _SMART_CLEANUP,
   },
   "refine.self_correction": {
     feature: "refine",
     label: "Take your corrections",
-    description: 'Say "no wait — make that Tuesday" and only Tuesday survives.',
+    description: 'Say "Monday — sorry, I mean Tuesday" and only Tuesday survives.',
     system: _SELF_CORRECTION,
   },
   "refine.preserve_technical": {
     feature: "refine",
     label: "Keep technical words",
-    description: '"index dot tsx" comes out as index.tsx, exactly as spoken.',
+    description: '"config dot yaml" comes out as config.yaml, exactly as spoken.',
     system: _PRESERVE_TECHNICAL,
   },
   // ── Analyze's second look (2026-10-05) — its own card, so its Lab column runs this prompt

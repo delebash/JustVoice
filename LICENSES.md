@@ -29,7 +29,6 @@ The project was GPL-3.0-or-later between 2026-06-08 and 2026-07-29, forced by ex
 
 | Component | Version pin | SPDX license | Apache-2.0 compatible | GPL-3.0 compatible | Source URL |
 |---|---|---|---|---|---|
-| **voicebox** (lifted source) | commit in `voicebox-pin.txt` | `MIT` | ✓ | ✓ | https://github.com/jamiepine/voicebox |
 | **fastapi** | `>=0.115` | `MIT` | ✓ | ✓ | https://github.com/tiangolo/fastapi |
 | **uvicorn** | `>=0.32` (`[standard]`) | `BSD-3-Clause` | ✓ | ✓ | https://github.com/encode/uvicorn |
 | **pydantic** | `>=2.9` | `MIT` | ✓ | ✓ | https://github.com/pydantic/pydantic |

@@ -4,7 +4,6 @@ import { mkdirSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { openDatabase } from "@delebash/llm-runner/platform/sql";
-import { runMigrations } from "../src/database/migrations.js";
 import { TABLES } from "../src/database/models.js";
 import * as session from "../src/database/session.js";
 
@@ -22,9 +21,9 @@ export function tmpPath(prefix = "jv-test-") {
 export const tmpStorageDir = (tmp) => path.join(tmp, "storage");
 
 /**
- * conftest_db's `tmp_db`: a fresh SQLite file in its own temp folder with every table and the
- * migrations run — and, like that fixture's engine, no foreign-key pragma (SQLite's default,
- * OFF). Returns the handle (Python yielded a session factory + the engine).
+ * conftest_db's `tmp_db`: a fresh SQLite file in its own temp folder with every table — and,
+ * like that fixture's engine, no foreign-key pragma (SQLite's default, OFF). Returns the handle
+ * (Python yielded a session factory + the engine).
  */
 export function tmpDb() {
   const dir = tmpPath("jv-test-db-");
@@ -32,7 +31,6 @@ export function tmpDb() {
   const h = openDatabase(path.join(dir, "justvoice.test.db"), { foreignKeys: false });
   h.register(TABLES);
   h.createTables(TABLES);
-  runMigrations(h);
   return h;
 }
 

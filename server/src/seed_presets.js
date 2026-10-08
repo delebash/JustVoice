@@ -339,28 +339,28 @@ export const DEFAULT_TEST_SAMPLES = [
   },
   {
     actions: ["refine.base"],
-    label: "Question stays a question",
-    variables: { transcript: "um can you check if the uh export finished before we send it" },
+    label: "A question to tidy, not to answer",
+    variables: { transcript: "um can you check whether the uh backup ran last night or should i start it again" },
   },
   {
     actions: ["refine.smart_cleanup"],
-    label: "Fillers + missing punctuation",
+    label: "Filler words, no punctuation",
     variables: {
-      transcript: "so um like the meeting moved to you know thursday at three and basically everyone needs the new deck",
+      transcript: "okay so um the garden centre called and uh basically the hedge trimmers are like ready to collect on saturday",
     },
   },
   {
     actions: ["refine.self_correction"],
-    label: "Mid-utterance correction",
+    label: "A spoken change of mind",
     variables: {
-      transcript: "send the invoice to becca no wait actually scratch that send it to pete before friday",
+      transcript: "the quarterly figures go to marta sorry i mean to the whole finance team by the end of next week",
     },
   },
   {
     actions: ["refine.preserve_technical"],
-    label: "Dictated code path",
+    label: "A command and a file name, said aloud",
     variables: {
-      transcript: "open src slash components slash index dot tsx and um run npm install first",
+      transcript: "run git checkout dash b feature slash login then open config dot yaml in the uh project root",
     },
   },
   {

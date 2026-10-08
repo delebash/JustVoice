@@ -479,8 +479,11 @@ its blast radius and the gaps.
   (`instruct`) and its real length, and becomes the line's only ★ take. — *code, 2026-10-04* ·
   `render_jobs.persist_block_take`. (was: no audio, no seed or key, a 16 kHz length, and the old
   default never cleared — until 2026-10-04.)
-- An MCP generation's length still assumes 16 kHz, 16-bit mono WAV. — *code, 2026-10-04* ·
-  `mcp/tools.py:217`.
+- An MCP generation's length is read from the WAV's own header (any sample rate), rounded to 3
+  places, and its row stores the language it was spoken in — the call's, else the persona's, else
+  `en`. — *code + test, 2026-10-08* · `server/src/mcp/tools.js` `speak`,
+  `server/tests/mcp_rulings.test.js`. (was: it assumed 16 kHz, 16-bit mono and stored the call's
+  language or `en` — until 2026-10-08, the clean-room rewrite's rulings 12 and 13.)
 - A line is STALE when the inputs key of what it is made from now differs from its ★ take's key;
   the key is the render cache's (`render_core._inputs_key`, one builder for the render, the probe
   and the check). A ↻ New take take (`Generation.source` "new_take") is judged with its own seed,
@@ -1146,8 +1149,12 @@ agent's checks, the suite and the extraction check re-run by me; `extraction/`, 
   `dspClient.stop`) → static mounts. `/mcp` initialize and `tools/list` on the whole app are
   JSON-identical to Python's whole app. `POST /v1/shutdown` stops the DSP program, exits 0
   and frees the port. Up to the first good health answer: Python 2.3 s, Node 3.3 s.
-- The kit's auth and CSRF hooks gate only `/v1*` paths, so `/mcp` passes them as it did under
-  Python's middlewares. (*code*, the kit's `auth.js` / `csrf.js`; check-boot's MCP exchanges.)
+- The kit's auth and CSRF hooks guard the path prefixes an app names (`prefixes`, `["/v1"]` by
+  default); JustVoice names `/v1` and `/mcp` (`app.js` `GUARDED_PREFIXES`), so an MCP client needs
+  the token like any API client and a foreign page's POST to `/mcp` is refused 403. (*code + test,
+  2026-10-08*, the kit's `auth.js` / `csrf.js` and `tests/guarded_prefixes.test.js`,
+  `server/tests/mcp_rulings.test.js`.) (was: they gated only `/v1*`, so `/mcp` passed them as under
+  Python's middlewares — until 2026-10-08, the user's ruling.)
 - FastAPI's `Form()` treats an empty string as not sent: a required field answers 422
   "missing". pydantic's `HttpUrl` `str()` equals WHATWG `URL.href` for scheme and host case,
   the default port, an empty path and an IDN host. (*code*, and identical route-diff answers.)

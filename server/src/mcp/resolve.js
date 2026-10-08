@@ -1,60 +1,47 @@
 // SPDX-License-Identifier: MIT
+// Which voice a `justvoice.speak` call speaks with. First match wins:
 //
-// Adapted from voicebox (MIT) — backend/mcp_server/resolve.py at the commit pinned in
-// voicebox-pin.txt. Voicebox resolves to a VoiceProfile; JustVoice resolves to (voice_id,
-// persona) since personas carry the voice binding. Original copyright (c) the voicebox authors.
+//   1. the call's `voice` (a voice id) — even when a persona is named too;
+//   2. the call's `persona` — by id, else by name (trimmed, any case). A persona that is not
+//      found, or has no voice, resolves NOTHING: the caller asked for it by name, so falling
+//      back to someone else's voice would be wrong;
+//   3. the calling client's binding (Settings → MCP), when its persona exists and has a voice;
+//   4. `settings.mcp.default_voice`;
+//   5. nothing (null) — speak then tells the caller its four ways out.
 //
-// Voice resolution for MCP tool calls (the port of justvoice/mcp/resolve.py).
-//
-// Precedence:
-//   1. Explicit `voice` tool arg (a JustVoice voice id)
-//   2. Explicit `persona` tool arg (persona name or id) → its voice
-//   3. Per-client MCPBinding.persona_id → its voice
-//   4. settings.mcp.default_voice (global default)
-//   5. null — the caller raises a helpful error
+// Empty strings count as not given.
 
 import { strip } from "@delebash/llm-runner/platform/py";
 import { getState } from "../app_state.js";
 import { MCPBinding } from "../database/models.js";
 
-export class Resolved {
-  /** `persona` is set when the voice came via a persona. */
-  constructor(voice_id, persona = null) {
-    this.voice_id = voice_id;
-    this.persona = persona;
-  }
-}
+const given = (v) => (typeof v === "string" ? strip(v) : "") !== "";
 
-function _personaByNameOrId(ref) {
-  const personas = getState().personas;
-  const p = personas.get(ref);
-  if (p != null) return p;
+/** A persona by id, else by name (trimmed, case-insensitive). */
+function findPersona(personas, ref) {
+  const byId = personas.get(ref);
+  if (byId) return byId;
   const want = strip(ref).toLowerCase();
-  for (const cand of personas.list()) if (strip(cand.name).toLowerCase() === want) return cand;
-  return null;
+  return personas.list().find((p) => strip(p.name ?? "").toLowerCase() === want) ?? null;
 }
 
-/** Apply the full precedence chain (`h` is the database handle). null when nothing resolves. */
+/** `{voice_id, persona}` for this call, or null when nothing resolves. `h` is the database
+ * handle the client bindings are read through. */
 export function resolveVoice(voice, persona, clientId, h) {
-  if (voice) return new Resolved(voice, null);
+  if (given(voice)) return { voice_id: voice, persona: null };
 
-  if (persona) {
-    const p = _personaByNameOrId(persona);
-    if (p != null && p.voice_id) return new Resolved(p.voice_id, p);
-    // Explicit but not found / voiceless — let the caller report it.
-    return null;
+  const st = getState();
+  if (given(persona)) {
+    const p = findPersona(st.personas, persona);
+    return p?.voice_id ? { voice_id: p.voice_id, persona: p } : null;
   }
 
-  if (clientId) {
-    const binding = h.one(`select * from ${MCPBinding} where client_id = ? limit 1`, [clientId], MCPBinding);
-    if (binding != null && binding.persona_id) {
-      const p = getState().personas.get(binding.persona_id);
-      if (p != null && p.voice_id) return new Resolved(p.voice_id, p);
-    }
+  if (given(clientId)) {
+    const binding = h.get(MCPBinding, clientId);
+    const bound = binding?.persona_id ? st.personas.get(binding.persona_id) : null;
+    if (bound?.voice_id) return { voice_id: bound.voice_id, persona: bound };
   }
 
-  const dflt = getState().settings.get().mcp.default_voice;
-  if (dflt) return new Resolved(dflt, null);
-
-  return null;
+  const fallback = st.settings.get().mcp?.default_voice;
+  return given(fallback) ? { voice_id: fallback, persona: null } : null;
 }

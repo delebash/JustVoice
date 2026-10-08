@@ -1,27 +1,14 @@
 // SPDX-License-Identifier: MIT
+// Table names and the two computed column defaults.
 //
-// Several tables (Generation, GenerationVersion, Story, StoryItem, EffectPreset, Capture,
-// MCPBinding, Channel) adapt voicebox's schema (MIT) — backend/database/models.py at the
-// commit pinned in voicebox-pin.txt. Original copyright (c) the voicebox authors.
+// Every entity is exported as the name of its table, so a query reads `h.get(Persona, id)` or
+// `select * from ${Persona}` and a table is renamed in one place. The schema itself — each
+// table's DDL, column kinds and defaults — is `models_schema.js`; this module only re-exports it.
 //
-// The JustVoice SQLite schema (the port of justvoice/database/models.py). The tables are the
-// DDL in models_schema.js — captured once from Python's create_all (2026-10-08) and, with the
-// Python gone, the schema itself: change a table there.
-//
-// Schema is the implementation of DESIGN_FREEZE.md §4. Every entity lives here, including
-// operator settings (folded from settings.json) and renderer prefs.
-//
-// Convention:
-// - Primary keys are UUID4 strings — easier to debug than autoincrement integers.
-// - Foreign keys use ON DELETE CASCADE where the child has no meaning without its parent;
-//   SET NULL where the child outlives it. Foreign keys are ON per connection
-//   (database/session.js), as SQLAlchemy's connect hook set them.
-// - JSON-shaped columns store a serialized payload as TEXT (Python's json.dumps — write it
-//   with pyJson).
-// - All datetimes are stored in UTC, as "YYYY-MM-DD HH:MM:SS.ffffff".
-//
-// Each ORM class name is exported as its table name (`Persona` → "personas"), so a port of
-// `db.query(Persona)` reads `h.all(\`select * from ${Persona} …\`)` or `h.get(Persona, id)`.
+// The schema names two JavaScript defaults by a fixed string (`defaultFn` / `onupdateFn` on every
+// `id`, `created_at` and `updated_at` column). They are registered with the kit's database helper
+// as this module loads — `session.js` imports it, so the registration is in place before the first
+// insert. Without them an insert that leaves an id or a timestamp out throws.
 
 import { randomUUID } from "node:crypto";
 import { registerDefaultFn } from "@delebash/llm-runner/platform/sql";
@@ -30,56 +17,39 @@ import { TABLES } from "./models_schema.js";
 
 export { TABLES };
 
-/** `str(uuid.uuid4())` — the primary-key default. */
+/** The table names, in the schema's order. */
+export const TABLE_NAMES = TABLES.map((t) => t.name);
+
+/** A new random id (UUID v4, with dashes). */
 export const uuid = () => randomUUID();
-/** `datetime.utcnow()` — naive UTC, microseconds (models.utcNowNaive). */
+
+/** Now, as naive UTC — the form every stored timestamp takes. */
 export const utcnow = () => utcNowNaive();
 
-// The two Python-side callable defaults the capture lists, by their qualified names, so
-// sql.js fills them on insert (and on update for `onupdate=_utcnow`).
+// The names the schema refers to; they must match `models_schema.js` exactly.
 registerDefaultFn("justvoice.database.models._uuid", uuid);
 registerDefaultFn("justvoice.database.models._utcnow", utcnow);
 
-// ── The ORM classes, as table names ───────────────────────────────────────
-
-// Persona layer — the finished spoken voices (the library). Persona channels: which audio
-// output channels a persona plays through.
-export const PersonaChannel = "persona_channels";
 export const Persona = "personas";
-// Lexicon layer (pronunciation dictionaries)
+export const PersonaChannel = "persona_channels";
 export const Lexicon = "lexicons";
 export const LexiconEntry = "lexicon_entries";
-// Project layer (use-case generalized: audiobook + game + podcast)
 export const Project = "projects";
 export const Speaker = "speakers";
 export const Scene = "scenes";
 export const Block = "blocks";
-// Generation + take layer
 export const Generation = "generations";
 export const Take = "takes";
 export const GenerationVersion = "generation_versions";
-// Render orchestration
 export const RenderJob = "render_jobs";
 export const RenderJobBlock = "render_job_blocks";
-// Stories (DAW timeline) — kept; nothing reads them since 2026-10-06
 export const Story = "stories";
 export const StoryItem = "story_items";
-// Audio output channels
 export const Channel = "channels";
-// MCP integration
 export const MCPBinding = "mcp_bindings";
-// Captures (dictation recordings)
 export const Capture = "captures";
-// Effects
 export const EffectPreset = "effect_presets";
-// Webhooks
 export const Webhook = "webhooks";
-// Speaker-attribution correction memory
 export const SpeakerCorrection = "speaker_corrections";
-// Renderer UI preferences (key/value JSON; replaces the renderer's localStorage)
 export const Pref = "prefs";
-// Operator/server settings (singleton row "singleton"; replaces the legacy settings.json)
 export const SettingsRow = "settings";
-
-/** Every table name, in creation order (`Base.metadata.tables`). */
-export const TABLE_NAMES = TABLES.map((t) => t.name);
