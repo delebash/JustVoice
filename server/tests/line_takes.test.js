@@ -6,23 +6,24 @@
 // line's own numbers make it stale and win over the persona (G7); ↻ New take keeps its own seed
 // (G1); the chapter, its captions and the game export play the ★ take (D4).
 //
-// Python drove these through the app's endpoints. Here the render routes are the real ones
-// (POST /v1/blocks/{id}/render, GET /v1/scenes/{id}/render_lines, the render jobs, POST
-// /v1/projects/{id}/lexicon) on a bare app over the test's state (render_helpers.js
-// `viaRoutes`); PATCH /v1/blocks/{id} is still render_helpers.js's shim and the book is written
-// straight to the database and stores — projects_api (POST /v1/projects, /scenes, /blocks,
-// /speakers, DELETE /v1/scenes/{id}) is API agent 3's. Not ported here, waiting for it:
-// test_a_takes_audio_goes_with_it (its last step deletes the chapter through DELETE
-// /v1/scenes/{id}) and test_deleting_a_chapter_closes_the_gap: test.todo.
-import { existsSync } from "node:fs";
+// Python drove these through the app's endpoints. Here the routes are the real ones (POST
+// /v1/blocks/{id}/render, GET /v1/scenes/{id}/render_lines, the render jobs, POST
+// /v1/projects/{id}/lexicon, PATCH /v1/blocks/{id}, DELETE /v1/takes/{id}, the chapter routes)
+// on a bare app over the test's state (render_helpers.js `viaRoutes`); the book of most tests is
+// written straight to the database and stores (render_helpers.js `book`, Python's `_book`
+// without its POSTs).
+import { existsSync, readdirSync } from "node:fs";
+import path from "node:path";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { sleep } from "@delebash/llm-runner/platform/asyncutil";
 import { endState, useState } from "./engines_helpers.js";
+import { router as projectsRouter } from "../src/api/projects_api.js";
 import * as renderChapterApi from "../src/api/render_chapter_api.js";
 import { router as renderJobsRouter } from "../src/api/render_jobs_api.js";
 import { router as renderLinesRouter } from "../src/api/render_lines_api.js";
+import { router as takesRouter } from "../src/api/takes_api.js";
 import * as session from "../src/database/session.js";
-import { Project, Take, uuid } from "../src/database/models.js";
+import { Take } from "../src/database/models.js";
 import { exportVoicelines } from "../src/export_voicelines.js";
 import { mediaFile } from "../src/media_paths.js";
 import * as renderCore from "../src/render_core.js";
@@ -92,8 +93,8 @@ test("what_makes_a_line_stale", async () => {
   const [b0, b1, b2] = b.blocks;
   for (const id of b.blocks) await renderBlock(st, id);
   expect(await states(st, b.sid)).toEqual(["rendered", "rendered", "rendered"]);
-  patchLineOverride(b0, { speed: 1.2 }); // its own numbers
-  patchText(b1, "Two, changed."); // its words
+  await patchLineOverride(b0, { speed: 1.2 }); // its own numbers
+  await patchText(b1, "Two, changed."); // its words
   expect(await states(st, b.sid)).toEqual(["stale", "stale", "rendered"]);
   st.personas.update(b.persona, { default_delivery: { gain_db: 3 } }); // its persona
   expect(await states(st, b.sid)).toEqual(["stale", "stale", "stale"]);
@@ -109,14 +110,14 @@ test("what_makes_a_line_stale", async () => {
 test("the_line_override_merges_and_is_checked", async () => {
   const b = book(st, ["One."]);
   const [b0] = b.blocks;
-  patchMetadata(b0, { source_ref: "L1" });
-  patchLineOverride(b0, { speed: 1.1, pause_after_ms: 900 });
-  patchLineOverride(b0, { speed: null, pitch: -2 });
+  await patchMetadata(b0, { source_ref: "L1" });
+  await patchLineOverride(b0, { speed: 1.1, pause_after_ms: 900 });
+  await patchLineOverride(b0, { speed: null, pitch: -2 });
   const line = (await lines(st, b.sid)).lines[0];
   expect(unwrap(line.override)).toEqual({ pitch: -2.0, pause_after_ms: 900.0 });
   expect(metaOf(b0).source_ref).toBe("L1"); // the rest of the metadata is kept
   for (const bad of [{ speed: 5 }, { pause_after_ms: -1 }, { volume: 2 }]) {
-    expect(() => patchLineOverride(b0, bad), JSON.stringify(bad)).toThrow(); // the route's 400
+    await expect(patchLineOverride(b0, bad), JSON.stringify(bad)).rejects.toThrow(/: 400 /); // the route's 400
   }
 });
 
@@ -125,7 +126,7 @@ test("the_lines_own_pause_wins_over_the_personas", async () => {
   const b = book(st, ["One."]);
   st.personas.update(b.persona, { default_delivery: { pause_after: 300 } });
   expect((await renderChapterApi._resolveSceneToLines(b.sid, st))[0].delivery.pause_after).toBe(300);
-  patchLineOverride(b.blocks[0], { pause_after_ms: 1200 });
+  await patchLineOverride(b.blocks[0], { pause_after_ms: 1200 });
   expect((await renderChapterApi._resolveSceneToLines(b.sid, st))[0].delivery.pause_after).toBe(1200);
 });
 
@@ -149,7 +150,7 @@ test("the_chapter_plays_the_star_take", async () => {
   const b = book(st, ["Take me.", "No take."]);
   const [b0] = b.blocks;
   await renderBlock(st, b0);
-  patchText(b0, "Take me, changed.");
+  await patchText(b0, "Take me, changed.");
   calls.length = 0;
   const ls = await renderChapterApi._resolveSceneToLines(b.sid, st);
   const kwargs = ls.map((line) => renderChapterApi._lineKwargs(line, `scene:${b.sid}`));
@@ -190,28 +191,55 @@ test("render_lines_job_gives_the_ready_lines_takes", async () => {
   });
 });
 
-test.todo("a_takes_audio_goes_with_it — waits for api/projects_api.js (DELETE /v1/scenes/{id})");
-test.todo("deleting_a_chapter_closes_the_gap — waits for api/projects_api.js");
+test("a_takes_audio_goes_with_it", async () => {
+  const b = book(st, ["One.", "Two."]);
+  const [b0, b1] = b.blocks;
+  const first = await renderBlock(st, b0);
+  await renderBlock(st, b0);
+  await renderBlock(st, b1);
+  const gens = path.join(st.dataDir, "generations");
+  const wavs = () => (existsSync(gens) ? readdirSync(gens).filter((f) => f.endsWith(".wav")) : []);
+  expect(wavs().length).toBe(3);
+  await viaRoutes([takesRouter, projectsRouter], async (app) => {
+    expect((await inject(app, "DELETE", `/v1/takes/${first.id}`)).status).toBe(200);
+    expect(wavs().length).toBe(2);
+    await inject(app, "DELETE", `/v1/scenes/${b.sid}`);
+  });
+  expect(wavs()).toEqual([]);
+});
+
+test("deleting_a_chapter_closes_the_gap", async () => {
+  await viaRoutes([projectsRouter], async (app) => {
+    const pid = (await inject(app, "POST", "/v1/projects", { name: "Check", project_type: "audiobook" })).json().id;
+    const ids = [];
+    for (const [i, t] of ["A", "B", "C"].entries()) {
+      ids.push((await inject(app, "POST", `/v1/projects/${pid}/scenes`, { title: t, position: i })).json().id);
+    }
+    await inject(app, "DELETE", `/v1/scenes/${ids[0]}`);
+    const scenes = (await inject(app, "GET", `/v1/projects/${pid}/scenes`)).json();
+    expect(scenes.sort((x, y) => x.position - y.position).map((s) => [s.title, s.position])).toEqual([
+      ["B", 0],
+      ["C", 1],
+    ]);
+  });
+});
 
 test("the_books_lexicon_is_made_once", async () => {
-  // (POST /v1/projects is projects_api's: the book is written straight to the database.)
-  const pid = uuid();
-  h().insert(Project, { id: pid, name: "Stillness", project_type: "audiobook" });
-  const first = await viaRoutes([renderLinesRouter], async (app) => {
-    const one = (await inject(app, "POST", `/v1/projects/${pid}/lexicon`)).json();
+  await viaRoutes([projectsRouter, renderLinesRouter], async (app) => {
+    const pid = (await inject(app, "POST", "/v1/projects", { name: "Stillness", project_type: "audiobook" })).json().id;
+    const first = (await inject(app, "POST", `/v1/projects/${pid}/lexicon`)).json();
     const again = (await inject(app, "POST", `/v1/projects/${pid}/lexicon`)).json();
-    expect(one.created === true && one.name === "Stillness names").toBe(true);
-    expect(again).toEqual({ ...one, created: false });
-    return one;
+    expect(first.created === true && first.name === "Stillness names").toBe(true);
+    expect(again).toEqual({ ...first, created: false });
+    expect((await inject(app, "GET", `/v1/projects/${pid}`)).json().default_lexicon_id).toBe(first.lexicon_id);
   });
-  expect(h().get(Project, pid).default_lexicon_id).toBe(first.lexicon_id);
 });
 
 test("the_game_export_ships_the_star_take", async () => {
   const b = book(st, ["Halt.", "Pass."]);
   const [b0] = b.blocks;
   await renderBlock(st, b0);
-  patchText(b0, "Halt, changed.");
+  await patchText(b0, "Halt, changed.");
   calls.length = 0;
   const z = ZipReader.fromBuffer(await exportVoicelines(st, b.pid));
   const manifest = JSON.parse(z.read("manifest.json").toString("utf8"));

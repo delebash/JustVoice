@@ -1,18 +1,15 @@
 // SPDX-License-Identifier: MIT
-// The shared prompt rows JustVoice seeds (the port of tests/test_feature_prompts.py). Two
-// tests wait for the API wave's later routers (projects / smart_assign, extraction).
-import { afterEach, expect, test } from "vitest";
-import { appClient, closeApps } from "./app_helpers.js";
+// /v1/ai/prompts — every JV action is a SHARED template row (F1 Phase 2: the legacy shadow
+// editor died; the kit's prompt router serves this path), the endpoints read their prompt from
+// the DB, and tunables live on presets (the port of tests/test_feature_prompts.py).
 import { render } from "@delebash/llm-runner/llm/prompts";
+import { afterEach, expect, test } from "vitest";
+import * as projectsApi from "../src/api/projects_api.js";
+import * as smartAssignApi from "../src/api/smart_assign_api.js";
+import { DEFAULT_FEATURE_PROMPTS as D } from "../src/seed_feature_prompts.js";
+import { appClient, closeApps } from "./app_helpers.js";
 
 afterEach(closeApps);
-
-let D = null;
-try {
-  ({ DEFAULT_FEATURE_PROMPTS: D } = await import("../src/seed_feature_prompts.js"));
-} catch (e) {
-  if (!/Cannot find module/.test(String(e?.message))) throw e;
-}
 
 test("prompts_seeded_and_editable", async () => {
   const { c } = await appClient(undefined, { seed: true });
@@ -45,7 +42,14 @@ test("reset_and_get_unknown", async () => {
   expect((await c.post("/v1/ai/prompts/nope/reset")).status).toBe(400);
   expect((await c.get("/v1/ai/prompts/nope")).status).toBe(404);
 });
-test.todo("endpoints_have_no_hardcoded_system_constant — waits for api/projects_api.js + api/smart_assign_api.js");
+
+test("endpoints_have_no_hardcoded_system_constant", () => {
+  // The migrated endpoints must not carry a SYSTEM_PROMPT constant anymore — the prompt comes
+  // from the DB store. (Python's hasattr on the module; here the module's exports.)
+  expect(smartAssignApi).not.toHaveProperty("SYSTEM_PROMPT");
+  expect(projectsApi).not.toHaveProperty("SHOW_NOTES_SYSTEM");
+});
+
 test("extraction_prompts_seeded", async () => {
   // The speaker-attribution pipeline + /v1/extraction/config read tier-specific prompts from
   // the DB (speaker_attribution.guided/.direct). The old in-code selector systemFor() is gone.
@@ -68,23 +72,32 @@ test("extraction_prompts_seeded", async () => {
   const prompts = await import("../src/extraction/prompts.js");
   expect(prompts).not.toHaveProperty("systemFor");
 });
-test.todo("extraction_config_serves_db_prompts — waits for app.js + api/extraction_api.js (GET /v1/extraction/config)");
 
-test.skipIf(D === null)(
-  "renamed_placeholders_keep_every_word_the_model_reads (waits for extraction/* + refinement.js)",
-  () => {
-    // 2026-09-29: the placeholders are named for speakers and personas so the Lab's boxes say
-    // so, but the words the model reads did not change — pinned byte for byte.
-    const cast = '- id="s1", name="Mara"';
-    expect(render(D["speaker_attribution.guided"].user_template, { speakers: cast, corrections: "", paragraphs: "[D1] Hi." })).toBe(
-      `Characters in this scene:\n${cast}\n\nParagraphs (dialogue segments tagged inline):\n\n[D1] Hi.\n\n` +
-        "Return only the JSON array, one entry per [D#] in the order they appear.\n",
-    );
-    expect(render(D["speaker_attribution.identify"].user_template, { known_speakers: "- Mara", manuscript: "Text." })).toBe(
-      "Known characters:\n- Mara\n\nManuscript text:\nText.",
-    );
-    expect(render(D.smart_assign.user_template, { speakers: cast, personas: '- id="p1", name="Slate"' })).toBe(
-      `Characters:\n${cast}\n\nAvailable voices:\n- id="p1", name="Slate"\n\nReturn only the JSON object.`,
-    );
-  },
-);
+test("extraction_config_serves_db_prompts", async () => {
+  // The Speaker Lab's config endpoint now sources its prompt bodies from the DB.
+  const { c } = await appClient(undefined, { seed: true });
+  const r = await c.get("/v1/extraction/config");
+  expect(r.status, r.text).toBe(200);
+  const body = r.json();
+  expect(body.system_prompts.guided).toContain("WORKED EXAMPLES");
+  expect(body.system_prompts.direct).not.toContain("WORKED EXAMPLES");
+  expect(body.user_template).toContain("{{paragraphs}}");
+});
+
+test("renamed_placeholders_keep_every_word_the_model_reads", () => {
+  // 2026-09-29: the placeholders are named for speakers and personas so the Lab's boxes say so
+  // ({{speakers}}, {{known_speakers}}, {{personas}}), but the words the model reads did not
+  // change — "Known characters:", "Characters in this scene:", "Available voices:" stay. Checked
+  // byte for byte against the templates before the rename; pinned here.
+  const cast = '- id="s1", name="Mara"';
+  expect(render(D["speaker_attribution.guided"].user_template, { speakers: cast, corrections: "", paragraphs: "[D1] Hi." })).toBe(
+    `Characters in this scene:\n${cast}\n\nParagraphs (dialogue segments tagged inline):\n\n[D1] Hi.\n\n` +
+      "Return only the JSON array, one entry per [D#] in the order they appear.\n",
+  );
+  expect(render(D["speaker_attribution.identify"].user_template, { known_speakers: "- Mara", manuscript: "Text." })).toBe(
+    "Known characters:\n- Mara\n\nManuscript text:\nText.",
+  );
+  expect(render(D.smart_assign.user_template, { speakers: cast, personas: '- id="p1", name="Slate"' })).toBe(
+    `Characters:\n${cast}\n\nAvailable voices:\n- id="p1", name="Slate"\n\nReturn only the JSON object.`,
+  );
+});

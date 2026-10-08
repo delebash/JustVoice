@@ -27,9 +27,10 @@ import {
 import { purePath } from "@delebash/llm-runner/platform/data_paths";
 import { getLogger } from "@delebash/llm-runner/platform/log";
 import { NotImplementedError, ValueError } from "@delebash/llm-runner/platform/py";
-// ── The routers (registered below in app.py's order; agent 3 adds theirs at the marked places) ──
+// ── The routers (registered below in app.py's order) ──
 import { router as activeTasksRouter } from "./api/active_tasks_api.js";
 import { router as alignRouter } from "./api/align_api.js";
+import { router as bulkDeleteRouter } from "./api/bulk_delete_api.js";
 import { router as analyzerRouter } from "./api/analyzer_api.js";
 import { router as cacheRouter } from "./api/cache_api.js";
 import { router as captureReadinessRouter } from "./api/capture_readiness_api.js";
@@ -39,7 +40,9 @@ import { router as effectPresetsRouter } from "./api/effect_presets_api.js";
 import { router as engineSourcesRouter } from "./api/engine_sources_api.js";
 import { router as enginesRouter } from "./api/engines_api.js";
 import { router as enginesModelsRouter } from "./api/engines_models_api.js";
+import { router as exportJobsRouter } from "./api/export_jobs_api.js";
 import { router as externalRouter } from "./api/external_api.js";
+import { router as extractionRouter } from "./api/extraction_api.js";
 import { router as generateRouter } from "./api/generate_api.js";
 import { router as healthRouter } from "./api/health_api.js";
 import { router as lexiconsRouter } from "./api/lexicons_api.js";
@@ -48,6 +51,8 @@ import { router as mcpBindingsRouter } from "./api/mcp_bindings_api.js";
 import { router as modelsRouter } from "./api/models_api.js";
 import { router as personasRouter } from "./api/personas_api.js";
 import { router as prefsRouter } from "./api/prefs_api.js";
+import { router as projectExportRouter } from "./api/project_export_api.js";
+import { router as projectsRouter } from "./api/projects_api.js";
 import { router as pronunciationRouter } from "./api/pronunciation_api.js";
 import { router as refineLabRouter } from "./api/refine_lab_api.js";
 import { router as renderChapterRouter } from "./api/render_chapter_api.js";
@@ -55,6 +60,8 @@ import { router as renderJobsRouter } from "./api/render_jobs_api.js";
 import { router as renderLinesRouter } from "./api/render_lines_api.js";
 import { router as serverAuthRouter } from "./api/server_auth_api.js";
 import { router as settingsRouter } from "./api/settings_api.js";
+import { router as smartAssignRouter } from "./api/smart_assign_api.js";
+import { router as speakersRouter } from "./api/speakers_api.js";
 import { router as speechRuntimeRouter } from "./api/speech_runtime_api.js";
 import { router as sseStreamsRouter } from "./api/sse_streams_api.js";
 import { router as systemRouter } from "./api/system_api.js";
@@ -151,7 +158,9 @@ function parseJsonBody(req, body, done) {
   done(null, typed);
 }
 
-function installPyFloatBodies(app) {
+/** The app's JSON body parsers (above) on `app` — exported for tests that serve a router on a
+ * bare app and need the bodies read as the real app reads them (`req.sentBody`, PyFloats). */
+export function installPyFloatBodies(app) {
   app.removeContentTypeParser(/^application\/(.+\+)?json/);
   app.addContentTypeParser(/^application\/(.+\+)?json/, { parseAs: "string" }, parseJsonBody);
   // No content type (or one nobody else claims): FastAPI tries JSON when there is a body.
@@ -336,7 +345,7 @@ export async function createApp(dataDir = null) {
   app.register(voicesRouter);
   app.register(voiceBundleRouter);
   app.register(personasRouter);
-  // [agent 3] speakers_api
+  app.register(speakersRouter);
   app.register(lexiconsRouter);
   app.register(enginesRouter);
   app.register(speechRuntimeRouter);
@@ -384,11 +393,11 @@ export async function createApp(dataDir = null) {
   app.register(externalRouter);
   app.register(cacheRouter);
   app.register(masterRouter);
-  // [agent 3] projects_api
+  app.register(projectsRouter);
   // Phase 4a backend (DESIGN_FREEZE §5)
   app.register(takesRouter);
   app.register(renderJobsRouter);
-  // [agent 3] export_jobs_api
+  app.register(exportJobsRouter);
   app.register(renderLinesRouter);
   app.register(channelsRouter);
   app.register(mcpBindingsRouter);
@@ -405,14 +414,14 @@ export async function createApp(dataDir = null) {
   app.register(sseStreamsRouter);
   // Phase 4a addendum (gap-decision workflow v1.0 endpoints)
   app.register(webhooksRouter);
-  // [agent 3] bulk_delete_api
+  app.register(bulkDeleteRouter);
   app.register(voicePreviewRouter);
-  // [agent 3] project_export_api
+  app.register(projectExportRouter);
   app.register(effectPresetsRouter);
   app.register(prefsRouter);
-  // [agent 3] extraction_api
+  app.register(extractionRouter);
   app.register(refineLabRouter);
-  // [agent 3] smart_assign_api
+  app.register(smartAssignRouter);
 
   // MCP server — justvoice.speak / list_voices / list_personas for local AI agents, at /mcp
   // (Streamable HTTP), before the root static catch-all. A failed mount must still boot the app.

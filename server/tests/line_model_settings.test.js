@@ -7,8 +7,8 @@
 // left out is kept); the render reads the line's over the persona's, in the model's own
 // vocabulary (words or a tag); "" is none on the line; a setting makes the line stale.
 //
-// The two tests that went through the line's endpoints use the shim in render_helpers.js (the
-// routes are the API wave's; see line_takes.test.js).
+// The two tests that went through the line's endpoints use them — PATCH /v1/blocks/{id} and the
+// render routes, on a bare app (render_helpers.js).
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { endState, useState } from "./engines_helpers.js";
 import { LINE_MODELS, mergeOverride } from "../src/line_takes.js";
@@ -93,7 +93,7 @@ afterEach(() => endState());
 
 test("another_models_line_settings_never_reach_this_model", async () => {
   const b = book(st, ["One."]);
-  patchLineOverride(b.blocks[0], { models: { chatterbox: { knobs: { exaggeration: 1.5 } } } });
+  await patchLineOverride(b.blocks[0], { models: { chatterbox: { knobs: { exaggeration: 1.5 } } } });
   await renderBlock(st, b.blocks[0]);
   expect(find(calls.at(-1).delivery || {}, "exaggeration")).toBeNull(); // the persona is on Kokoro
 });
@@ -103,10 +103,10 @@ test("a_line_setting_is_shown_and_makes_the_line_stale", async () => {
   const [b0] = b.blocks;
   await renderBlock(st, b0);
   expect(await states(st, b.sid)).toEqual(["rendered"]);
-  patchLineOverride(b0, { models: { kokoro: { emotion: "sad" } } });
+  await patchLineOverride(b0, { models: { kokoro: { emotion: "sad" } } });
   expect((await lines(st, b.sid)).lines[0].override).toEqual({ models: { kokoro: { emotion: "sad" } } });
   expect(await states(st, b.sid)).toEqual(["stale"]);
-  patchLineOverride(b0, { models: null });
+  await patchLineOverride(b0, { models: null });
   expect(await states(st, b.sid)).toEqual(["rendered"]);
-  expect(() => patchLineOverride(b0, { models: { kokoro: { top_k: 1 } } })).toThrow(); // the route's 400
+  await expect(patchLineOverride(b0, { models: { kokoro: { top_k: 1 } } })).rejects.toThrow(/: 400 /); // the route's 400
 });

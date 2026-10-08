@@ -2349,7 +2349,12 @@ OPEN:   step 1's last end — packaged builds need `audiocpp_dsp` in an audio.cp
         `bundle.zip` a 500 (use the kit's `attachment()`); an invalid row-preview delivery is
         a 500, not a 422; a ticket's stream caches its WAV under a key nothing reads;
         `RecentTakeRow.take` / `.effects` are always null. (Fixed in JS after the final
-        whole-server comparison — the 2026-10-08 rec below.)
+        whole-server comparison — the 2026-10-08 rec below.) And from agent 3: a project
+        export with a played persona that has a saved delivery is a 500; `DELETE
+        /v1/generations?scope=<anything>&confirm=true` deletes every generation; `PATCH
+        /v1/projects/{id}` always answers `scene_count: 0`; an unknown `speaker_id` on a line is a
+        500, not a 404; a speaker renamed to blanks stores an empty name; smart-assign reads
+        booleans as ids (filtered, harmless).
         FINDING: the labs CLI never installs the LLM, so every passage reports ✗; the tracked
         `latest-auto.md` shows that and still says "Tier". (RESEARCH §6, wave D.)
         DECIDED 2026-10-08 — the user, after the list "Waiting on you (none of these blocks the
@@ -2368,6 +2373,10 @@ OPEN:   step 1's last end — packaged builds need `audiocpp_dsp` in an audio.cp
         comparison is told which differences are fixes. Lean: yes." · "2. Leave today's Python
         edit as it is (it's deleted with the rest), rather than spend time undoing it? Lean:
         leave it." · "3. Agent 2 is still running. Keep it going? Lean: yes."
+        DECIDED 2026-10-08 — the user, on "Your %TEMP% holds about 45,000 leftover folders from
+        earlier test runs. Deleting them isn't in the plan. May I delete them? Lean: yes; they're
+        named by the test suites, so they can't be confused with anything else.": "your rec on
+        all go when ready".
         DECIDED 2026-10-08 — the user: "when the conversion is complete no python should remain
         not even in testing, do you understnad?" Answered, rec applied, as shown: "When the
         conversion is complete, no Python remains anywhere: no server, no tests, no scripts, no

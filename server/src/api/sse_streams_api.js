@@ -74,6 +74,11 @@ export async function sseResponse(reply, gen, headers = { "cache-control": "no-c
     ...headers,
     "content-type": "text/event-stream; charset=utf-8",
   });
+  // Starlette sends the status and headers as the stream starts, before its first frame (uvicorn
+  // writes `http.response.start` at once); Node holds them until the first write. A client then
+  // knows the stream started — and can cancel it — while the first frame is still being made
+  // (measured with Analyze's stream on a slow model, 2026-10-08).
+  if (typeof res.flushHeaders === "function") res.flushHeaders();
   let closed = false;
   res.on("close", () => {
     closed = true;

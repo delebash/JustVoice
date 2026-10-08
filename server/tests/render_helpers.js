@@ -4,21 +4,23 @@
 // PyFloat-free views for assertions, and a small "book" — a project, a chapter, its lines, a
 // speaker and a persona written straight to the database and stores.
 //
-// The routes the Python tests drove: POST /v1/blocks/{id}/render (takes_api) and GET
-// /v1/scenes/{id}/render_lines (render_lines_api) are the real routes, served by a bare app
-// holding just their routers (`viaRoutes`) over the test's own module state (`useState()`).
-// PATCH /v1/blocks/{id} (`patchLineOverride`, `patchMetadata`, `patchText`) is still a shim
-// doing what projects_api.update_block does — that router is API agent 3's.
+// The routes the Python tests drove: POST /v1/blocks/{id}/render (takes_api), GET
+// /v1/scenes/{id}/render_lines (render_lines_api) and PATCH /v1/blocks/{id} (projects_api —
+// `patchLineOverride`, `patchMetadata`, `patchText`) are the real routes, served by a bare app
+// holding just their routers (`viaRoutes`) over the test's own module state (`useState()`). The
+// bare app reads bodies with the real app's JSON parsers (app.js `installPyFloatBodies`), so a
+// route sees what was sent (`req.sentBody`) and a free field keeps Python's floats.
 import { createServer } from "@delebash/llm-runner/platform";
-import { PyFloat, pyJson } from "@delebash/llm-runner/platform/pyjson";
+import { PyFloat } from "@delebash/llm-runner/platform/pyjson";
 import { vi } from "vitest";
+import { router as projectsRouter } from "../src/api/projects_api.js";
 import { router as renderLinesRouter } from "../src/api/render_lines_api.js";
 import { router as takesRouter } from "../src/api/takes_api.js";
+import { installPyFloatBodies } from "../src/app.js";
 import * as session from "../src/database/session.js";
 import { Block, Project, Scene, Speaker, uuid } from "../src/database/models.js";
 import { EngineRegistry } from "../src/engines/registry.js";
 import * as manager from "../src/engines/manager.js";
-import * as lineTakes from "../src/line_takes.js";
 import { pyJsonParse } from "../src/models.js";
 
 /** A value with every PyFloat read as its number (for toEqual). */
@@ -140,20 +142,6 @@ export function book(st, texts, { cast = true, seed = null, voice = "af_heart", 
   return { pid, sid, blocks, persona, speaker: sp };
 }
 
-/** PATCH /v1/blocks/{id} with `line_override` (projects_api.update_block): merged into the
- * metadata, written as Python's json.dumps. Throws ValueError as the route answers 400. */
-export function patchLineOverride(blockId, override) {
-  const b = h().get(Block, blockId);
-  h().update(Block, { metadata_json: pyJson(lineTakes.mergeOverride(lineTakes.blockMeta(b), override)) }, { id: blockId });
-}
-
-/** PATCH /v1/blocks/{id} with `metadata` — the whole JSON replaced. */
-export function patchMetadata(blockId, metadata) {
-  h().update(Block, { metadata_json: pyJson(metadata) }, { id: blockId });
-}
-
-export const patchText = (blockId, text) => h().update(Block, { text }, { id: blockId });
-
 // ── the real routes, on a bare app ───────────────────────────────────────
 
 export const TYPE_BASE = "https://justvoice.dev/errors/";
@@ -166,6 +154,7 @@ export const TYPE_BASE = "https://justvoice.dev/errors/";
  */
 export async function viaRoutes(routers, fn) {
   const app = createServer({ typeBase: TYPE_BASE });
+  installPyFloatBodies(app);
   for (const r of routers) app.register(r);
   await app.ready();
   try {
@@ -194,6 +183,24 @@ export async function renderBlock(_st, blockId, { newTake = false } = {}) {
   if (r.status !== 200) throw new Error(`render ${blockId}: ${r.status} ${r.text}`);
   return r.json();
 }
+
+/** PATCH /v1/blocks/{id} (projects_api) with `body` → the block as the route answers it
+ * (`BlockResponse`). Throws `PATCH <id>: <status> <body>` when the route refuses. */
+async function patchBlock(blockId, body) {
+  const r = await routeCall([projectsRouter], "PATCH", `/v1/blocks/${blockId}`, body);
+  if (r.status !== 200) throw new Error(`PATCH ${blockId}: ${r.status} ${r.text}`);
+  return r.json();
+}
+
+/** PATCH /v1/blocks/{id} with `line_override`: merged into the metadata (a value sets, null
+ * clears, a key left out is kept). A bad override is the route's 400 — thrown. */
+export const patchLineOverride = (blockId, override) => patchBlock(blockId, { line_override: override });
+
+/** PATCH /v1/blocks/{id} with `metadata` — the whole JSON replaced. */
+export const patchMetadata = (blockId, metadata) => patchBlock(blockId, { metadata });
+
+/** PATCH /v1/blocks/{id} with `text`. */
+export const patchText = (blockId, text) => patchBlock(blockId, { text });
 
 /** GET /v1/scenes/{id}/render_lines (render_lines_api). */
 export async function lines(_st, sid) {

@@ -8,16 +8,10 @@
 // persona and a line into the request every render path sends.
 //
 // The pure and resolver tests run on an app state (`useState`, create_app's state half) over the
-// real engine manifests; the persona API tests drive the real app (`api()`). Two of them made
-// their book through /v1/projects, /v1/projects/{id}/speakers, /scenes and /blocks (API agent
-// 3's routers): the book is written straight to the database instead, and the merge's result
-// is read from the speaker's row. Not ported here: test_a_book_keeps_its_language_and_can_clear_it
-// — it is all /v1/projects (api/projects_api.js): test.todo.
+// real engine manifests; the persona API tests drive the real app (`api()`).
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { appClient, closeApps } from "./app_helpers.js";
 import { endState, useState } from "./engines_helpers.js";
-import { Block, Project, Scene, Speaker, uuid } from "../src/database/models.js";
-import * as session from "../src/database/session.js";
 import * as voiceModel from "../src/voice_model.js";
 import * as exportVoicelines from "../src/export_voicelines.js";
 import { construct, PersonaDelivery, PersonaDraft } from "../src/models.js";
@@ -42,18 +36,6 @@ afterEach(async () => {
 async function api() {
   endState();
   return (await appClient()).c;
-}
-
-const h = () => session.getDb();
-
-/** A book with one speaker played by `personaId` (the rows /v1/projects and
- * /v1/projects/{id}/speakers would write) → `{pid, sid}`. */
-function bookWithSpeaker(personaId, name = "June") {
-  const pid = uuid();
-  h().insert(Project, { id: pid, name: "Book", project_type: "audiobook" });
-  const sid = uuid();
-  h().insert(Speaker, { id: sid, project_id: pid, name, persona_id: personaId });
-  return { pid, sid };
 }
 
 // ── What a persona sets for a model ───────────────────────────────────────
@@ -216,12 +198,14 @@ test("merge_moves_the_speakers_and_removes_the_persona", async () => {
   const c = await api();
   const a = (await c.post("/v1/personas", { json: { name: "June", voice_id: "Sohee" } })).json().id;
   const b = (await c.post("/v1/personas", { json: { name: "Mara", voice_id: "Ono_Anna" } })).json().id;
-  const { sid } = bookWithSpeaker(a);
+  const pid = (await c.post("/v1/projects", { json: { name: "Book", project_type: "audiobook" } })).json().id;
+  const sid = (await c.post(`/v1/projects/${pid}/speakers`, { json: { name: "June", persona_id: a } })).json().id;
   const r = await c.post(`/v1/personas/${a}/merge`, { json: { into: b } });
   expect(r.status, r.text).toBe(200);
   expect(r.json().speakers).toBe(1);
   expect((await c.get(`/v1/personas/${a}`)).status).toBe(404);
-  expect(h().get(Speaker, sid).persona_id).toBe(b);
+  const speakers = (await c.get(`/v1/projects/${pid}/speakers`)).json().speakers;
+  expect(speakers.find((sp) => sp.id === sid).persona_id).toBe(b);
   expect((await c.post(`/v1/personas/${b}/merge`, { json: { into: b } })).status).toBe(400);
 });
 
@@ -318,13 +302,14 @@ test("usage_counts_the_lines_that_carry_their_own_direction", async () => {
   // written direction — Chatterbox Turbo won't perform them."
   const c = await api();
   const a = (await c.post("/v1/personas", { json: { name: "June", voice_id: "Sohee" } })).json().id;
-  const { pid, sid } = bookWithSpeaker(a);
-  const scene = uuid();
-  h().insert(Scene, { id: scene, project_id: pid, position: 0, title: "One" });
-  ["sharp", null, "", "whispered"].forEach((direction, i) => {
-    h().insert(Block, { id: uuid(), scene_id: scene, position: i, text: `Line ${i}.`, speaker_id: sid, direction });
-  });
-  h().insert(Block, { id: uuid(), scene_id: scene, position: 9, text: "Someone else.", direction: "loud" });
+  const pid = (await c.post("/v1/projects", { json: { name: "Book", project_type: "audiobook" } })).json().id;
+  const sid = (await c.post(`/v1/projects/${pid}/speakers`, { json: { name: "June", persona_id: a } })).json().id;
+  const scene = (await c.post(`/v1/projects/${pid}/scenes`, { json: { title: "One" } })).json().id;
+  for (const [i, direction] of ["sharp", null, "", "whispered"].entries()) {
+    const r = await c.post(`/v1/scenes/${scene}/blocks`, { json: { position: i, text: `Line ${i}.`, speaker_id: sid, direction } });
+    expect(r.status, r.text).toBe(201);
+  }
+  await c.post(`/v1/scenes/${scene}/blocks`, { json: { position: 9, text: "Someone else.", direction: "loud" } });
   const r = await c.get(`/v1/personas/${a}/usage-detail`);
   expect(r.status, r.text).toBe(200);
   expect(r.json().total_lines).toBe(4);
@@ -333,7 +318,16 @@ test("usage_counts_the_lines_that_carry_their_own_direction", async () => {
 
 // ── The book's language ───────────────────────────────────────────────────
 
-test.todo("a_book_keeps_its_language_and_can_clear_it — waits for api/projects_api.js");
+test("a_book_keeps_its_language_and_can_clear_it", async () => {
+  const c = await api();
+  let r = await c.post("/v1/projects", { json: { name: "Book", project_type: "audiobook", language: "ja" } });
+  const pid = r.json().id;
+  expect(r.json().language).toBe("ja");
+  expect((await c.patch(`/v1/projects/${pid}`, { json: { language: "en" } })).json().language).toBe("en");
+  r = await c.patch(`/v1/projects/${pid}`, { json: { language: null } });
+  expect(r.json().language).toBeNull();
+  expect("language" in r.json().metadata).toBe(false);
+});
 
 // ── The single-line door uses the same plan ───────────────────────────────
 

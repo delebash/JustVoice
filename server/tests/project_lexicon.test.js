@@ -10,18 +10,14 @@
 //   e  the cache is keyed on what the lexicons change in a line
 //   f  a line is read with its own speaker's persona lexicon, not the whole cast's
 //
-// Not ported here: Overview's save (PATCH /v1/projects/{id} — api/projects_api.js, API agent
-// 3's): test.todo. The book the app-level tests read is written straight to the database
-// (POST /v1/projects, /scenes, /blocks, /speakers and PATCH /v1/projects/{id} are projects_api's);
-// the lexicons, the persona, the scan, Generate and the chapter render go through their real
-// routes — the chapter doors on a bare app holding the render_chapter router.
+// The app-level tests build their book through the real routes (Python's `_book`); the chapter
+// doors run on a bare app holding the render_chapter router.
 //
 // The two Generate tests FAIL in Python today: their fake `_NowScheduler.submit(specs,
 // interactive=False)` takes no `owner=`, which generate_api has passed since 2026-10-07. Here the
 // fake scheduler takes `owner`, so they pass.
 import { afterEach, expect, test, vi } from "vitest";
 import { appClient, closeApps } from "./app_helpers.js";
-import { endState, useState } from "./engines_helpers.js";
 import { personaForBlock } from "../src/api/_speaker_helpers.js";
 import * as renderChapterApi from "../src/api/render_chapter_api.js";
 import { router as renderChapterRouter } from "../src/api/render_chapter_api.js";
@@ -325,75 +321,60 @@ test("a_requests_own_lexicons_follow_the_lines", async () => {
 
 // ── the app-level doors: Overview's save, the single line, the scan ─────
 
-test.todo("overview_sets_clears_and_refuses_an_unknown_lexicon — waits for api/projects_api.js");
-
-test("the_single_line_door_reads_the_books_lexicon_first", async () => {
-    // Lines ↻, a render job and the voiceline export all render a line through this one
-    // function — it read the persona's lexicon only.
-    const st = useState();
-    try {
-      const h = session.getDb();
-      const pid = uuid();
-      h.insert(Project, { id: pid, name: "Harbor", project_type: "audiobook" });
-      const book = st.lexicons.create("Harbor names", { scope: "project", project_id: pid, entries: [construct(LexiconEntry, { grapheme: "Elara", alias: "eh-LAH-ra" })] }).id;
-      st.lexicons.create("Old list", { scope: "project", project_id: pid, entries: [construct(LexiconEntry, { grapheme: "Brindlewood", alias: "BRIN-dul-wood" })] });
-      const slang = st.lexicons.create("Crow's slang", { entries: [construct(LexiconEntry, { grapheme: "Harbek", alias: "AR-bek" })] }).id;
-      const persona = st.personas.create("Gravel", { voice_id: "af_heart", lexicon_id: slang, language: "en-US" }).id;
-      const crow = uuid();
-      h.insert(Speaker, { id: crow, project_id: pid, name: "Old Crow", persona_id: persona });
-      const scene = uuid();
-      h.insert(Scene, { id: scene, project_id: pid, position: 0, title: "One" });
-      const said = uuid();
-      h.insert(Block, { id: said, scene_id: scene, position: 0, speaker_id: crow, text: "They told Harbek about Elara and Brindlewood." });
-      h.insert(Block, { scene_id: scene, position: 1, text: "Much later Harbek met Elara again." });
-      h.update(Project, { default_lexicon_id: book }, { id: pid });
-
-      const seen = {};
-      vi.spyOn(renderCore, "renderLine").mockImplementation(async (s, kw) => {
-        Object.assign(seen, kw);
-        return new RenderedLine({ pcm: pcmOf(40, 0x1000), sampleRate: 16000, channels: 1, effectiveDelivery: {} });
-      });
-      const block = h.get(Block, said);
-      await exportVoicelines._renderBlockProduction(st, personaForBlock(h, block), block);
-      expect(seen.lexicons).toEqual([book, slang]);
-    } finally {
-      endState();
-    }
-  });
-
 async function post(c, url, body) {
   const r = await c.post(url, { json: body });
   expect([200, 201], r.text).toContain(r.status);
   return r.json();
 }
 
-/** A project row (POST /v1/projects is projects_api's). */
-function newProject(name) {
-  const pid = uuid();
-  session.getDb().insert(Project, { id: pid, name, project_type: "audiobook" });
-  return pid;
-}
-
 /** A book with a chosen lexicon, a second lexicon nobody chose, and Old Crow — played by a
- * persona with a lexicon of its own (Python's `_book`). The lexicons and the persona through
- * their routes; the project, its speaker, chapter and lines straight into the database. */
+ * persona with a lexicon of its own (Python's `_book`). */
 async function harborBook(c) {
-  const h = session.getDb();
-  const pid = newProject("Harbor");
+  const pid = (await post(c, "/v1/projects", { name: "Harbor", project_type: "audiobook" })).id;
   const book = (await post(c, "/v1/lexicons", { name: "Harbor names", scope: "project", project_id: pid, entries: [{ grapheme: "Elara", alias: "eh-LAH-ra" }] })).id;
   const spare = (await post(c, "/v1/lexicons", { name: "Old list", scope: "project", project_id: pid, entries: [{ grapheme: "Brindlewood", alias: "BRIN-dul-wood" }] })).id;
   const slang = (await post(c, "/v1/lexicons", { name: "Crow's slang", entries: [{ grapheme: "Harbek", alias: "AR-bek" }] })).id;
   const persona = (await post(c, "/v1/personas", { name: "Gravel", voice_id: "af_heart", lexicon_id: slang })).id;
-  const crow = uuid();
-  h.insert(Speaker, { id: crow, project_id: pid, name: "Old Crow", persona_id: persona });
-  const scene = uuid();
-  h.insert(Scene, { id: scene, project_id: pid, position: 0, title: "One" });
-  const said = uuid();
-  h.insert(Block, { id: said, scene_id: scene, position: 0, speaker_id: crow, text: "They told Harbek about Elara and Brindlewood." });
-  h.insert(Block, { scene_id: scene, position: 1, text: "Much later Harbek met Elara again." });
-  h.update(Project, { default_lexicon_id: book }, { id: pid });
+  const crow = (await post(c, `/v1/projects/${pid}/speakers`, { name: "Old Crow", persona_id: persona })).id;
+  const scene = (await post(c, `/v1/projects/${pid}/scenes`, { title: "One" })).id;
+  const said = (await post(c, `/v1/scenes/${scene}/blocks`, { position: 0, speaker_id: crow, text: "They told Harbek about Elara and Brindlewood." })).id;
+  await post(c, `/v1/scenes/${scene}/blocks`, { position: 1, text: "Much later Harbek met Elara again." });
+  const r = await c.patch(`/v1/projects/${pid}`, { json: { default_lexicon_id: book } });
+  expect(r.status, r.text).toBe(200);
   return { pid, book, spare, slang, said };
 }
+
+test("overview_sets_clears_and_refuses_an_unknown_lexicon", async () => {
+  const { c } = await appClient();
+  const b = await harborBook(c);
+  expect((await c.get(`/v1/projects/${b.pid}`)).json().default_lexicon_id).toBe(b.book);
+  // A save that says nothing about the lexicon leaves it.
+  let r = await c.patch(`/v1/projects/${b.pid}`, { json: { name: "Harbor Lights" } });
+  expect(r.json().default_lexicon_id).toBe(b.book);
+  // "None" on Overview.
+  r = await c.patch(`/v1/projects/${b.pid}`, { json: { default_lexicon_id: null } });
+  expect(r.status).toBe(200);
+  expect(r.json().default_lexicon_id).toBeNull();
+  r = await c.patch(`/v1/projects/${b.pid}`, { json: { default_lexicon_id: "lex_nope" } });
+  expect(r.status).toBe(404);
+  expect((await c.get(`/v1/projects/${b.pid}`)).json().default_lexicon_id).toBeNull();
+});
+
+test("the_single_line_door_reads_the_books_lexicon_first", async () => {
+  // Lines ↻, a render job and the voiceline export all render a line through this one function —
+  // it read the persona's lexicon only.
+  const { c } = await appClient();
+  const b = await harborBook(c);
+  const seen = {};
+  vi.spyOn(renderCore, "renderLine").mockImplementation(async (s, kw) => {
+    Object.assign(seen, kw);
+    return new RenderedLine({ pcm: pcmOf(40, 0x1000), sampleRate: 16000, channels: 1, effectiveDelivery: {} });
+  });
+  const h = session.getDb();
+  const block = h.get(Block, b.said);
+  await exportVoicelines._renderBlockProduction(appState.getState(), personaForBlock(h, block), block);
+  expect(seen.lexicons).toEqual([b.book, b.slang]);
+});
 
 test("the_scan_counts_a_name_as_handled_only_where_the_render_handles_it", async () => {
   const { c } = await appClient();
@@ -492,17 +473,17 @@ test("a_new_book_lexicon_is_chosen_for_a_book_that_has_none", async () => {
   // Only an import used to choose one, so a lexicon made by hand on the Lexicons page did
   // nothing until someone found Overview's row.
   const { c } = await appClient();
-  const lexiconOf = (pid) => session.getDb().get(Project, pid).default_lexicon_id;
-  const pid = newProject("Harbor");
+  const lexiconOf = async (pid) => (await c.get(`/v1/projects/${pid}`)).json().default_lexicon_id;
+  const pid = (await post(c, "/v1/projects", { name: "Harbor", project_type: "audiobook" })).id;
   const first = (await post(c, "/v1/lexicons", { name: "Harbor names", scope: "project", project_id: pid })).id;
-  expect(lexiconOf(pid)).toBe(first);
+  expect(await lexiconOf(pid)).toBe(first);
   // A second one leaves the book's choice alone…
   await post(c, "/v1/lexicons", { name: "More names", scope: "project", project_id: pid });
-  expect(lexiconOf(pid)).toBe(first);
+  expect(await lexiconOf(pid)).toBe(first);
   // …and a reusable or a persona's lexicon never chooses itself.
-  const other = newProject("Ember");
+  const other = (await post(c, "/v1/projects", { name: "Ember", project_type: "audiobook" })).id;
   await post(c, "/v1/lexicons", { name: "Nautical" });
-  expect(lexiconOf(other)).toBeNull();
+  expect(await lexiconOf(other)).toBeNull();
 });
 
 // ── an IPA entry reaches only an engine that takes phonemes ─────────────

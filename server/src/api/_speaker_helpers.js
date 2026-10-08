@@ -15,11 +15,12 @@
 //   with it ("Every new speaker");
 // * a line's voice is line → speaker → persona (`personaForBlock`).
 //
-// PARTIAL — the render wave (wave C) ported `personaForBlock`; the import wave (wave D) added
-// what the import materializer calls (sameName … ensureSpeaker, adoptBookNarrator). The API
-// wave fills in the rest of this file under the same names: API agent 2 added
-// speakerLineCounts; narratorSpeakerId and moveNarration are API agent 3's. `h` is the
-// database handle wherever Python took a session.
+// Ported in parts: the render wave (wave C) `personaForBlock`; the import wave (wave D) what
+// the import materializer calls (sameName … ensureSpeaker, adoptBookNarrator); API agent 2
+// speakerLineCounts; API agent 3 narratorSpeakerId and moveNarration — the whole file now.
+// `h` is the database handle wherever Python took a session. Python's `db.flush()` calls
+// (speakers added earlier in the same request count too) need nothing here: every insert is
+// written at once.
 
 import { casefold, splitWs, strip } from "@delebash/llm-runner/platform/py";
 import { pyJson } from "@delebash/llm-runner/platform/pyjson";
@@ -135,6 +136,41 @@ export function speakerLineCounts(h, projectId) {
     [projectId],
   );
   return new Map(rows.map((r) => [r.sid, r.n]));
+}
+
+/**
+ * The book's narrator — the speaker holding the "narrator" role. null when the book has none yet
+ * (nothing makes one on its own): Analyze then leaves narration with no speaker.
+ *
+ * The role only, as Studio and Cast read it (2026-09-30, one narrator rule). A speaker merely
+ * CALLED Narrator used to count here too, so the server and the app could disagree on who
+ * narrates; an imported "Narrator" character gets the role at import (`adoptBookNarrator`).
+ */
+export function narratorSpeakerId(h, projectId) {
+  const row = h.one(`select id from ${Speaker} where project_id = ? and role_label = 'narrator' limit 1`, [projectId]);
+  return row ? row.id : null;
+}
+
+/**
+ * Narration follows the narrator: every line Analyze decided is narration (`source ==
+ * "narration"`) that belonged to the old narrator, or to nobody, moves to the new one. Lines you
+ * set yourself (`corrected`) stay. → how many moved. The caller runs it in its transaction.
+ */
+export function moveNarration(h, projectId, newId, oldId) {
+  const sceneIds = h.all(`select id from ${Scene} where project_id = ?`, [projectId]).map((r) => r.id);
+  if (!sceneIds.length) return 0;
+  const owners = ["speaker_id is null"];
+  const params = [];
+  if (oldId && oldId !== newId) {
+    owners.push("speaker_id = ?");
+    params.push(oldId);
+  }
+  // One bulk UPDATE, as SQLAlchemy's query.update(synchronize_session=False) emitted.
+  const r = h.run(
+    `update ${Block} set speaker_id = ? where scene_id in (${sceneIds.map(() => "?").join(", ")}) and source = 'narration' and (${owners.join(" or ")})`,
+    [newId, ...sceneIds, ...params],
+  );
+  return r.changes;
 }
 
 /** The persona row that voices a line: line → speaker → persona. null when the line has no

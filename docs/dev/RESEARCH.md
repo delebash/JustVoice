@@ -1211,6 +1211,53 @@ effect_presets, lexicons, pronunciation):
   `platform/vitest_tmp.js`: one folder per run, TMP/TEMP/TMPDIR pointed at it, removed at the
   end — measured: a full JV, JW, docgen and kit run leave 0 entries.
 
+**The port to JavaScript — the API wave, agent 3: projects, Analyze and the rest; the final
+comparison** (*measured 2026-10-08*, an agent's checks, the suite re-run by me; projects,
+extraction, speakers, smart_assign, project_export, export_jobs, bulk_delete, _speaker_helpers):
+
+- **The final whole-server route diff** (every router ported; the kit's
+  `scripts/route-diff/route-diff.js --app --target justvoice`): reads 188 — 166 identical, 22
+  volatile, 0 not ported, 0 different. Writes 508 — 506 identical; the 2 others are the
+  persona-channels UUID order (no ORDER BY) and a merge's 422 text ("List should have at least
+  2 items after validation" — pydantic 2.13 adds ", not 1"; kit fix the same day). Databases:
+  49 tables, 17,114 cells, 0 different. The writes covered projects, chapters, a line's PATCH
+  (numbers, text, metadata, source, speaker with its saved fix and Undo), split, merge, the
+  chapter-text edit, speakers (add, rename, cast, narrator, uncast, remove), corrections,
+  Discover's ignore/promote, Analyze on a chapter with no speech, imports (CSV dry run, real,
+  re-import; every refusal; a JustWrite raw body), an empty book's M4B and export jobs, the QC
+  refusal, and bulk delete (dry runs and one real delete).
+- **Analyze and Discover through the routes are identical** (`server/scripts/
+  compare-analyze-routes.js`, both whole servers on copies, every model call answered by the
+  fake llama-server, `server/scripts/fake-llama.js`): 179 LLM requests byte-identical (96 chat,
+  83 streamed), 36 answers identical including 10 SSE streams of 1,056 frames, 49 tables /
+  20,827 cells identical — all 4 real chapters in place, streamed, with the second look, and
+  Discover; the Lab's analyze-text; smart-assign, show-notes, rewrite; a fresh JustWrite book
+  re-cut. A cancel during the main pass writes nothing, during the second look the main pass is
+  written — on both servers.
+- **The smoke gate passes on the JS server** (a copy, warm-on-boot off, port 8741): 11 views,
+  zero JS errors.
+- Node's `writeHead` holds an SSE response's headers until the first write, where uvicorn sends
+  them at once; `sse_streams_api.sseResponse` now flushes them (a cancel during Analyze's main
+  pass couldn't land before). SQLAlchemy's flush order decides rowids (within one flush a
+  table's INSERTs run before its DELETEs; a resegment deletes before it inserts) — emulated in
+  `_updateProjectFromStandard`, the chapter-text edit and `_persistAttribution`; an attribute set
+  to its current value issues no UPDATE and no `onupdate` stamp (`_dirtyUpdate`). The import
+  route reads a form or a raw body through a child Fastify context with its own parsers.
+  pydantic's datetime from a query string accepts a date alone, HH:MM and Unix seconds or
+  milliseconds (above 2e10); the refusal texts are in `bulk_delete_api.js`. The old server ran
+  pydantic 2.13.4, FastAPI 0.141.1, Starlette 1.3.1, SQLAlchemy 2.0.51.
+- Not matched: the chapter-WAVs zip's members are DEFLATED where Python wrote STORED (same
+  bytes inside); SQL constraint 500s carry better-sqlite3's text; rare malformed `older_than`
+  inputs get approximate words; free-form dicts in Analyze/Discover requests aren't read as
+  PyFloats; a long Analyze re-reads lines at write time where Python's session served stale
+  ones (only under concurrent edits).
+- Python bugs copied on purpose (FINDING in TASKS): a project export with a played persona that
+  has a saved delivery is a 500 ("'str' object has no attribute 'model_dump'"); `DELETE
+  /v1/generations?scope=<anything>&confirm=true` deletes every generation (scope counts as a
+  filter but filters nothing); `PATCH /v1/projects/{id}` always answers `scene_count: 0`; an
+  unknown `speaker_id` on a line is a 500, not a 404; a speaker renamed to blanks stores an
+  empty name; smart-assign reads booleans as "True"/"False" ids (filtered out, harmless).
+
 **The desktop switch and the data move** (*measured 2026-10-08*, by me):
 
 - **The dev data root moved** (the plan's ruling 6, with no app or server running — ports 17494,
@@ -1226,7 +1273,9 @@ effect_presets, lexicons, pronunciation):
   places: 0 database cells, 0 config files (`engines-runtime-config/*.json` hold no paths). The
   family registry's JustVoice line (`%LOCALAPPDATA%\just-ai\caches.json`) was pointed at the new
   root (backup beside it). The registry also holds 8 lines naming temporary folders — test and
-  comparison runs registering themselves; cleanup open.
+  comparison runs registering themselves. Harmless: each names JustWrite's live cache, and the
+  kit's `cache_registry.read()` drops a row only when its cache folder is gone, so they repeat
+  a real offer rather than invent one.
 - **The Electron shell, checked on JustVoice's own window** (a temporary data folder; Playwright's
   Electron driver): the page loads from `app://justvoice` (Projects), `window.appShell` answers
   and refuses an unknown command, the page has no Node, the clipboard and the microphone are

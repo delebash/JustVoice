@@ -8,10 +8,10 @@
 //   * `voice_instruct` reaches `delivery.instruct` and nothing else;
 //   * `personality` (the character sheet) reaches the prompts and NEVER the delivery;
 //   * an importer fills the sheet only — a casting hint is not a delivery instruction.
-// The Smart-assign test waits for api/smart_assign_api.js (the API wave).
 import { afterEach, beforeEach, expect, test } from "vitest";
 import "./engines_helpers.js";
 import { _materializeStandard } from "../src/api/projects_api.js";
+import { _formatCharacters, SmartAssignCharacter } from "../src/api/smart_assign_api.js";
 import * as renderChapterApi from "../src/api/render_chapter_api.js";
 import * as appState from "../src/app_state.js";
 import { Block, Project, Scene, Speaker, uuid } from "../src/database/models.js";
@@ -113,4 +113,15 @@ test("import_fills_the_sheet_and_leaves_the_instruct_empty", () => {
 
 // ─── 5. Casting reads the sheet ─────────────────────────────────────────
 
-test.todo("smart_assign_description_comes_from_the_sheet — waits for api/smart_assign_api.js");
+test("smart_assign_description_comes_from_the_sheet", () => {
+  const longSheet = "x".repeat(500);
+  const block = _formatCharacters([
+    construct(SmartAssignCharacter, { id: "p1", name: "Mara", description: longSheet }),
+    construct(SmartAssignCharacter, { id: "p2", name: "Renn" }),
+  ]);
+
+  expect(block).toContain(`description="${"x".repeat(200)}"`);
+  expect(block).not.toContain("x".repeat(201));
+  // A character with no sheet contributes no description at all.
+  expect(block.split("\n")[1]).toBe('- id="p2", name="Renn"');
+});

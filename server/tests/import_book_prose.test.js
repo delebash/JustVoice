@@ -1,12 +1,18 @@
 // SPDX-License-Identifier: MIT
 // book_prose adapter — EPUB / DOCX / Markdown / TXT, synthetic fixtures (the port of
 // tests/test_import_book_prose.py). The last test posts a multipart dry run through the real
-// router and waits for api/projects_api.js's routes.
+// router — a bare app holding only projects_api's router (render_helpers.js `viaRoutes`) over the
+// test's own database and app state (`useState()`; Python overrode `get_db` with conftest_db's
+// session).
 import { ZipWriter } from "@delebash/llm-runner/platform/zip";
 import { expect, test } from "vitest";
+import { client } from "./app_helpers.js";
+import { endState, useState } from "./engines_helpers.js";
+import { router as projectsRouter } from "../src/api/projects_api.js";
 import { ApiError } from "../src/errors.js";
 import { parse } from "../src/imports/adapters/book_prose.js";
 import { getAdapter, runAdapter } from "../src/imports/index.js";
+import { viaRoutes } from "./render_helpers.js";
 
 // ── fixture builders ─────────────────────────────────────────────────
 
@@ -237,4 +243,27 @@ test("registered_and_runs_through_registry", () => {
 
 // ── endpoint: multipart dry-run through the real router ──────────────
 
-test.todo("endpoint_multipart_dry_run_epub — waits for api/projects_api.js routes");
+test("endpoint_multipart_dry_run_epub", async () => {
+  useState();
+  try {
+    const raw = _makeEpub({
+      "front.xhtml": _xhtml(null, ["Tiny title page."]),
+      "ch1.xhtml": _xhtml("One", ["First chapter paragraph text goes here."]),
+    });
+    const r = await viaRoutes([projectsRouter], (app) =>
+      client(app).post("/v1/projects/import", {
+        data: { source: "book_prose", dry_run: "true" },
+        files: { file: ["the-ninth-facet.epub", raw, "application/epub+zip"] },
+      }),
+    );
+    expect(r.status, r.text).toBe(200);
+    const body = r.json();
+    expect(body.committed).toBe(false);
+    expect(body.project_id).toBeNull();
+    expect(body.standard.project.name).toBe("The Ninth Facet");
+    expect(body.standard.scenes.map((s) => s.title)).toEqual(["One"]);
+    expect(body.warnings.some((w) => w.includes("front matter"))).toBe(true);
+  } finally {
+    endState();
+  }
+});

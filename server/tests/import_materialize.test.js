@@ -2,11 +2,12 @@
 // Import materialization — the book's speakers + lexicon creation (the port of
 // tests/test_import_materialize.py). The materializer (api/projects_api.js's
 // `_materializeStandard` / `_materializeLexicon`, ported with the imports) and the stores run
-// here; the demo-through-the-app test waits for app.js.
+// here; the demo test goes through the real app (create_app + seed_workspace).
 // (`session_factory=` → the store's injectable handle; a commit → one `h.tx`.)
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { expect, test } from "vitest";
+import { afterEach, expect, test } from "vitest";
+import { appClient, closeApps } from "./app_helpers.js";
 import { ensureSpeaker } from "../src/api/_speaker_helpers.js";
 import { _materializeLexicon, _materializeStandard } from "../src/api/projects_api.js";
 import { Block, Lexicon as DbLexicon, LexiconEntry as DbLexiconEntry, Persona, Project, Scene, Speaker } from "../src/database/models.js";
@@ -16,6 +17,8 @@ import { construct } from "../src/models.js";
 import { LexiconStore } from "../src/storage/lexicons.js";
 import { PersonaStore } from "../src/storage/personas.js";
 import { tmpDb, tmpPath } from "./helpers.js";
+
+afterEach(closeApps);
 
 function _standard(name, { lexicon = false } = {}) {
   return construct(StandardImport, {
@@ -241,4 +244,18 @@ test("demo_projects_seed_through_the_real_materializer", () => {
   expect(JSON.parse(block.metadata_json).source_ref.startsWith("Q0")).toBe(true);
 });
 
-test.todo("the_audiobook_demo_is_the_ninth_facet_through_the_justwrite_adapter — waits for app.js (POST /v1/projects/demo)");
+test("the_audiobook_demo_is_the_ninth_facet_through_the_justwrite_adapter", async () => {
+  // Decided 2026-09-27: the audiobook demo imports samples/the-ninth-facet — JustWrite's sample
+  // book — by the same adapter a user's export uses.
+  const { c } = await appClient(undefined, { seed: true });
+  const r = await c.post("/v1/projects/demo", { json: { kind: "audiobook" } });
+  expect(r.status, r.text).toBe(200);
+  const pid = r.json().project_id;
+  expect(r.json().standard.source).toBe("justwrite");
+  const project = (await c.get(`/v1/projects/${pid}`)).json();
+  expect(project.name).toBe("The Ninth Facet");
+  expect(project.project_type).toBe("audiobook");
+  expect((await c.get(`/v1/projects/${pid}/scenes`)).json().length).toBe(4);
+  const cast = new Set((await c.get(`/v1/projects/${pid}/speakers`)).json().speakers.map((sp) => sp.name));
+  for (const name of ["Cael Ferren", "Haldane Threll"]) expect(cast.has(name), name).toBe(true);
+});

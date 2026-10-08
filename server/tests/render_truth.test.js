@@ -7,14 +7,13 @@
 // 2. **The chain is part of the cache key.** Editing a chain served the old audio back.
 // 3. **Mastering happens.** ACX QC measured raw TTS output and printed a verdict on it.
 //
-// The master-target endpoint runs through the app; its book is imported the way POST
-// /v1/projects/import?source=justwrite does it (the JustWrite adapter, then the materializer in
-// one transaction) — that route is projects_api's, API agent 3's. Not ported here: GET
-// /v1/projects/{id}/qc (projects_api): test.todo.
+// The endpoint tests run through the app, the book imported by POST
+// /v1/projects/import?source=justwrite. The QC test stubs the chapter render as Python did
+// (`renderSceneToWav`) and also its whole-book warm (`synth_scheduler.warmLines`, which Python
+// left real over a book with nothing to warm), so no test can reach a speech model.
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { appClient, closeApps } from "./app_helpers.js";
 import "./engines_helpers.js";
-import { _materializeLexicon, _materializeStandard } from "../src/api/projects_api.js";
 import * as renderChapterApi from "../src/api/render_chapter_api.js";
 import * as appState from "../src/app_state.js";
 import { effectsChainHash } from "../src/audio/effects.js";
@@ -25,7 +24,8 @@ import { resolveMasterTarget } from "../src/mastering.js";
 import { construct, Persona, utcNow } from "../src/models.js";
 import * as renderCore from "../src/render_core.js";
 import { probeLineCached, RenderedLine, renderLine } from "../src/render_core.js";
-import { runAdapter } from "../src/imports/index.js";
+import * as synthScheduler from "../src/synth_scheduler.js";
+import { writeWavContainer } from "../src/audio/wav.js";
 import { tmpDb } from "./helpers.js";
 import { bookJson, scene as jwScene } from "./jw_fixtures.js";
 import { FakeCache, FakeManager, fakeManifest, pcmOf, renderState, useManager } from "./render_helpers.js";
@@ -256,23 +256,19 @@ test("render_survives_a_missing_ffmpeg", async () => {
 
 // ── 5. the endpoints report what they did ──────────────────────────────
 
-/** A JustWrite book imported into the app's database → its project id (what POST
- * /v1/projects/import?source=justwrite does: the adapter, then the materializer). */
-function seedBook() {
+/** A JustWrite book imported through POST /v1/projects/import?source=justwrite → its project
+ * id (Python's `_seed_book`). */
+async function seedBook(c) {
   const payload = bookJson({ premise: "by S. K. H.", chapters: [["ch1", "One", [jwScene("scn1", "Hello.")]]] });
-  const standard = runAdapter("justwrite", Buffer.from(JSON.stringify(payload), "utf8"));
-  const h = session.getDb();
-  return h.tx(() => {
-    const [project] = _materializeStandard(standard, h);
-    _materializeLexicon(standard, project, h);
-    return project.id;
-  });
+  const r = await c.post("/v1/projects/import?source=justwrite", { json: payload });
+  expect(r.status, r.text).toBe(200);
+  return r.json().project_id;
 }
 
 test("master_target_endpoint_reports_the_resolved_preset", async () => {
   const { c } = await appClient();
   try {
-    const pid = seedBook();
+    const pid = await seedBook(c);
     const r = await c.get(`/v1/render/master-target?project_id=${pid}`);
     expect(r.status, r.text).toBe(200);
     const body = r.json();
@@ -294,4 +290,33 @@ test("master_target_endpoint_404s_on_an_unknown_project", async () => {
     await closeApps();
   }
 });
-test.todo("qc_says_whether_it_measured_a_mastered_render — waits for api/projects_api.js + imports");
+test("qc_says_whether_it_measured_a_mastered_render", async () => {
+  // An ACX verdict computed over raw TTS output is a wrong answer. When ffmpeg is missing QC
+  // still measures — and says the numbers are raw.
+  const { c } = await appClient();
+  try {
+    const pid = await seedBook(c);
+    vi.spyOn(synthScheduler, "warmLines").mockResolvedValue(undefined);
+    vi.spyOn(renderChapterApi, "renderSceneToWav").mockImplementation(async () => sineWav());
+    const ffmpeg = vi.spyOn(mastering, "haveFfmpeg").mockReturnValue(false);
+    let body = (await c.get(`/v1/projects/${pid}/qc`)).json();
+    expect(body.master_preset).toBe("acx");
+    expect(body.mastered).toBe(false);
+    expect(body.note).toContain("ffmpeg");
+
+    ffmpeg.mockReturnValue(true);
+    body = (await c.get(`/v1/projects/${pid}/qc`)).json();
+    expect(body.mastered).toBe(true);
+    expect(body.note).toBeNull();
+  } finally {
+    await closeApps();
+  }
+});
+
+/** Mono 16-bit sine (Python's `_sine_wav`). */
+function sineWav(amplitude = 0.14, seconds = 1.0, rate = 16000) {
+  const n = Math.trunc(rate * seconds);
+  const pcm = Buffer.alloc(2 * n);
+  for (let i = 0; i < n; i++) pcm.writeInt16LE(Math.trunc(amplitude * 32767 * Math.sin((2 * Math.PI * 440 * i) / rate)), 2 * i);
+  return writeWavContainer(pcm, rate, 1);
+}
