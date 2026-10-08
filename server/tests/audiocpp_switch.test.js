@@ -2,13 +2,11 @@
 // The audio.cpp switch (docs/plans/2026-10-01-audiocpp-switch.md): the catalog, the request
 // mapping per family, and the runtime's own bookkeeping. No binary, no GPU (the port of
 // tests/test_audiocpp_switch.py; Python's parametrized tests loop over their cases).
-//
-// Not ported here (a later wave's modules): the runtime-row / delete API tests (app.js +
-// api/*): test.todo.
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { afterAll, afterEach, expect, test, vi } from "vitest";
-import "./engines_helpers.js";
+import { appClient, closeApps } from "./app_helpers.js";
+import { discrete } from "./engines_helpers.js";
 import { parseWavHeader, writeWavContainer } from "../src/audio/wav.js";
 import * as dspClient from "../src/audio/dsp_client.js";
 import * as espeak from "../src/engines/audiocpp/espeak.js";
@@ -250,10 +248,76 @@ test("an_audiocpp_engine_runs_where_the_runtime_runs", () => {
   expect(new EngineManager()._resolveDevice(m, "cpu")).toBe("vulkan");
 });
 
-test.todo("the_runtime_row_reads_and_saves_its_backend — waits for app.js + api/speech_runtime_api.js");
-test.todo("the_runtime_row_saves_the_cpu_process_threads_without_touching_the_build — waits for app.js + api/speech_runtime_api.js");
-test.todo("the_runtime_row_refuses_a_build_this_os_has_none_of — waits for app.js + api/speech_runtime_api.js");
-test.todo("deleting_an_engines_models_says_so_when_files_stay — waits for app.js + api/engines_models_api.js");
+// ─── the runtime row and the delete (the API) ────────────────────────────────
+
+/** A client on a fresh app over fake hardware, with the runtime's install answer pinned. */
+async function runtimeClient(dir, { installed = null } = {}) {
+  runtime.cfg.HW = discrete();
+  vi.spyOn(runtime, "installedExe").mockReturnValue(installed);
+  return (await appClient(dir)).c;
+}
+
+test("the_runtime_row_reads_and_saves_its_backend", async () => {
+  const c = await runtimeClient(tmpPath());
+  let r = (await c.get("/v1/speech-runtime")).json();
+  expect(r.installed).toBe(false);
+  expect(r.backend_setting).toBe("auto");
+  expect(new Set(r.backends)).toEqual(new Set(["cuda", "vulkan", "cpu"]));
+  expect(r.gpus).toEqual(["fake"]);
+  r = await c.put("/v1/speech-runtime", { json: { backend: "vulkan", gpu: 0 } });
+  expect(r.status).toBe(200);
+  expect(r.json().backend_setting).toBe("vulkan");
+  expect((await c.get("/v1/settings")).json().engines.speech_runtime).toEqual({
+    backend: "vulkan",
+    gpu: 0,
+    cpu_threads: 0,
+    cpu_min_realtime: 2.0,
+    gpu_threads: 4,
+    start_timeout_s: 60.0,
+    request_timeout_s: 900.0,
+  });
+});
+
+test("the_runtime_row_saves_the_cpu_process_threads_without_touching_the_build", async () => {
+  // CPU placement (2026-10-02): the CPU process's threads are a setting; 0 means the physical
+  // core count, and changing them keeps the backend the user chose.
+  vi.spyOn(runtime, "physicalCores").mockReturnValue(8);
+  const c = await runtimeClient(tmpPath());
+  let r = (await c.get("/v1/speech-runtime")).json();
+  expect([r.cpu_threads, r.cpu_threads_used, r.physical_cores]).toEqual([0, 8, 8]);
+  expect(r.cpu_min_realtime).toBe(2.0);
+  expect(r.cpu_running).toBe(false);
+  await c.put("/v1/speech-runtime", { json: { backend: "vulkan", gpu: 0 } });
+  r = await c.put("/v1/speech-runtime", { json: { backend: "vulkan", gpu: 0, cpu_threads: 6 } });
+  expect(r.status).toBe(200);
+  expect(r.json().cpu_threads_used).toBe(6);
+  expect(r.json().backend_setting).toBe("vulkan");
+  expect((await c.put("/v1/speech-runtime", { json: { backend: "vulkan", cpu_threads: -1 } })).status).toBe(400);
+  expect((await c.put("/v1/speech-runtime", { json: { backend: "vulkan", cpu_min_realtime: 0 } })).status).toBe(400);
+});
+
+test("the_runtime_row_refuses_a_build_this_os_has_none_of", async () => {
+  const c = await runtimeClient(tmpPath());
+  expect((await c.put("/v1/speech-runtime", { json: { backend: "metal" } })).status).toBe(400);
+  expect((await c.put("/v1/speech-runtime", { json: { backend: "cpu", gpu: -1 } })).status).toBe(400);
+});
+
+test("deleting_an_engines_models_says_so_when_files_stay", async () => {
+  // Windows refuses to delete a file a process holds open; the delete must not report success
+  // over files that are still there.
+  const dir = tmpPath();
+  const c = await runtimeClient(dir);
+  const model = path.join(dir, "speech-cache", "kokoro", "kokoro-82m-q8", "kokoro-82m-q8_0.gguf");
+  mkdirSync(path.dirname(model), { recursive: true });
+  writeFileSync(model, "gguf");
+  const spy = vi.spyOn(manager, "_rmtree").mockImplementation(() => {});
+  const r = await c.delete("/v1/engines/kokoro");
+  spy.mockRestore();
+  expect(r.status).toBe(409);
+  expect(r.text).toContain("still in use");
+  expect((await c.delete("/v1/engines/kokoro")).status).toBe(200);
+  expect(existsSync(model)).toBe(false);
+});
 
 // ─── the aligner's input rate ────────────────────────────────────────────────
 
@@ -321,7 +385,9 @@ test("voxcpm2_speaks_a_lines_own_brackets_as_dashes", () => {
   expect(toSpeechRequest(r, { text: "(Aside) He left.", delivery: { instruct: "Dry" } }).input).toBe("(Dry)Aside — He left.");
 });
 
-afterEach(() => {
+afterEach(async () => {
+  await closeApps();
+  runtime.cfg.HW = null;
   runtime.forgetInstalled();
 });
 

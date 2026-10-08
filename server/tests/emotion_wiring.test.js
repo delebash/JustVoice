@@ -10,16 +10,18 @@
 // and the standing-vs-this-line axis it reached for is persona-vs-line.
 //
 // Source-level tests read the JavaScript modules' own text (Python's inspect.getsource).
-// Not ported here: the capabilities endpoint (api/engines_api.js): test.todo; and the
-// api/generate_api half of test_both_render_paths_compose_with_the_same_function, which waits
+// Not ported here: the api/generate_api half of test_both_render_paths_compose_with_the_same_function, which waits
 // for that module (the persona and chapter halves run).
 import { readFileSync } from "node:fs";
-import { expect, test } from "vitest";
+import { afterEach, expect, test } from "vitest";
+import { appClient, closeApps } from "./app_helpers.js";
 import "./engines_helpers.js";
 import { composeInstruct } from "../src/delivery_merge.js";
 import { CAPABILITY_DETAILS } from "../src/engines/capability_details.js";
 import { construct, Delivery, Emotion, EMOTION_VALUES, EngineCapabilityDetail, modelDump, modelFields } from "../src/models.js";
 import { _applyEmotionTag, _emotionTagset, prepareLineText, probeLineCached, renderLine } from "../src/render_core.js";
+
+afterEach(closeApps);
 
 const src = (rel) => readFileSync(new URL(`../src/${rel}`, import.meta.url), "utf8");
 
@@ -123,7 +125,13 @@ test("the_emotion_vocabulary_is_derived_from_the_enum", () => {
   expect(EMOTION_VALUES).toEqual(Emotion.anyOf.map((s) => s.const));
 });
 
-test.todo("the_capabilities_endpoint_serves_the_vocabulary — waits for api/engines_api.js");
+test("the_capabilities_endpoint_serves_the_vocabulary", async () => {
+  // Served rather than duplicated in the renderer, so the picker cannot offer a value the
+  // server would reject.
+  const { c } = await appClient();
+  const body = (await c.get("/v1/engines/capabilities")).json();
+  expect(body.emotion_values).toEqual(EMOTION_VALUES);
+});
 
 // ── The probe must keep lying-free parity with the render ──────────────
 

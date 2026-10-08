@@ -7,9 +7,6 @@
 //      (`engines/leftovers.js`).
 // (The port of tests/test_engine_lifetime.py. Python's stand-in processes were Python
 // sleepers; here they are Node sleepers on this test's own runtime.)
-//
-// Not ported here: parts 3 and 4 — POST /v1/shutdown and GET/POST /v1/engines/leftovers (app.js
-// + api/system_api / engines_api, a later wave): test.todo.
 import { writeFileSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -19,7 +16,10 @@ import * as hardware from "@delebash/llm-runner/runner/hardware";
 import { pollProc, waitExit } from "@delebash/llm-runner/runner/process";
 import { afterEach, expect, test, vi } from "vitest";
 import "./engines_helpers.js";
+import * as systemApi from "../src/api/system_api.js";
 import * as leftovers from "../src/engines/leftovers.js";
+import * as manager from "../src/engines/manager.js";
+import { client, closeApps, makeApp } from "./app_helpers.js";
 import { tmpPath } from "./helpers.js";
 
 const NODE = process.execPath;
@@ -143,7 +143,8 @@ test("only_a_binary_under_this_installs_runtime_folder_counts", () => {
 });
 
 let removeSink = null;
-afterEach(() => {
+afterEach(async () => {
+  await closeApps();
   if (removeSink) removeSink();
   removeSink = null;
 });
@@ -183,10 +184,102 @@ test("gpu_is_measured_with_one_whole_machine_query", async () => {
 
 // ── 3. POST /v1/shutdown · 4. the endpoints behind the splash's button ─────
 
-test.todo("shutdown_is_refused_from_another_machine — waits for app.js + api/system_api.js");
-test.todo("shutdown_stops_engines_and_ends_the_server — waits for app.js + api/system_api.js");
-test.todo("shutdown_without_a_server_handle_only_stops_engines — waits for app.js + api/system_api.js");
-test.todo("leftovers_endpoint_names_the_engine_and_sums_the_memory — waits for app.js + api/engines_api.js");
-test.todo("unmeasurable_memory_is_null_not_zero — waits for app.js + api/engines_api.js");
-test.todo("stop_endpoint_reports_what_it_stopped — waits for app.js + api/engines_api.js");
-test.todo("shutdown_needs_no_token_from_this_machine — waits for app.js + api/system_api.js");
+const SYSTEM_CFG = { ...systemApi.cfg };
+
+test("shutdown_is_refused_from_another_machine", async () => {
+  const app = await makeApp();
+  expect((await client(app, { remoteAddress: "192.168.1.20" }).post("/v1/shutdown")).status).toBe(403);
+});
+
+test("shutdown_stops_engines_and_ends_the_server", async () => {
+  const app = await makeApp();
+  const stopped = [];
+  const timers = [];
+  const exits = [];
+  vi.spyOn(manager, "shutdownManager").mockImplementation(async () => stopped.push(true));
+  // never the real timer: it would end this test run
+  systemApi.cfg.startTimer = (s, fn) => timers.push([s, fn]);
+  systemApi.cfg.exit = (code) => exits.push(code);
+  const server = { stopped: [], stop: (why) => server.stopped.push(why) };
+  app.serverHandle = server;
+  try {
+    const r = await client(app, { remoteAddress: "127.0.0.1" }).post("/v1/shutdown");
+    expect(r.status).toBe(200);
+    expect(r.json()).toEqual({ ok: true, exiting: true });
+    expect(stopped, "engines stop before the server goes").toEqual([true]);
+    await new Promise((res) => setImmediate(res));
+    expect(server.stopped.length).toBe(1); // uvicorn's should_exit
+    // A stalled exit still ends: the deadline exits the process.
+    expect(timers.length).toBe(1);
+    expect(timers[0][0]).toBe(10.0);
+    timers[0][1]();
+    expect(exits).toEqual([0]);
+  } finally {
+    Object.assign(systemApi.cfg, SYSTEM_CFG);
+    app.serverHandle = null;
+  }
+});
+
+test("shutdown_without_a_server_handle_only_stops_engines", async () => {
+  const app = await makeApp();
+  const stopped = [];
+  vi.spyOn(manager, "shutdownManager").mockImplementation(async () => stopped.push(true));
+  const r = await client(app, { remoteAddress: "127.0.0.1" }).post("/v1/shutdown");
+  expect(r.json()).toEqual({ ok: true, exiting: false });
+  expect(stopped).toEqual([true]);
+});
+
+const twoRuntimes = () => [
+  new leftovers.Leftover({ pid: 10, engineId: "audiocpp", started: 1.0, serverPid: 7, pids: [10], gpuMb: 1295 }),
+  new leftovers.Leftover({ pid: 20, engineId: "audiocpp", started: 2.0, serverPid: 8, pids: [20], gpuMb: 286 }),
+];
+
+test("leftovers_endpoint_names_the_engine_and_sums_the_memory", async () => {
+  vi.spyOn(leftovers, "findLeftoverEngines").mockResolvedValue(twoRuntimes());
+  const body = (await client(await makeApp()).get("/v1/engines/leftovers")).json();
+  expect(body.gpu_mb).toBe(1581);
+  expect(body.leftovers.map((r) => [r.pid, r.engine_name, r.gpu_mb])).toEqual([
+    [10, "Speech runtime", 1295],
+    [20, "Speech runtime", 286],
+  ]);
+});
+
+test("unmeasurable_memory_is_null_not_zero", async () => {
+  const rows = twoRuntimes();
+  for (const lo of rows) lo.gpuMb = null;
+  vi.spyOn(leftovers, "findLeftoverEngines").mockResolvedValue(rows);
+  expect((await client(await makeApp()).get("/v1/engines/leftovers")).json().gpu_mb).toBeNull();
+});
+
+test("stop_endpoint_reports_what_it_stopped", async () => {
+  const seen = [];
+  vi.spyOn(leftovers, "stopLeftoverEngines").mockImplementation(async (reason = "") => {
+    seen.push(reason);
+    return twoRuntimes();
+  });
+  const body = (await client(await makeApp()).post("/v1/engines/leftovers/stop")).json();
+  expect(body.leftovers.map((r) => r.pid)).toEqual([10, 20]);
+  expect(seen).toEqual(["stopped from the app"]);
+});
+
+// ── 5. The close works with "Require a token even on localhost" on (2026-09-30) ──
+
+test("shutdown_needs_no_token_from_this_machine", async () => {
+  const app = await makeApp();
+  const stopped = [];
+  vi.spyOn(manager, "shutdownManager").mockImplementation(async () => stopped.push(true));
+  systemApi.cfg.startTimer = () => {};
+  try {
+    const local = client(app, { remoteAddress: "127.0.0.1" });
+    const r = await local.patch("/v1/settings", { json: { auth: { tokens: ["t0k"], require_for_loopback: true } } });
+    expect(r.status, r.text).toBe(200);
+    expect((await local.get("/v1/settings")).status).toBe(401); // the setting is really on
+
+    expect((await local.post("/v1/shutdown")).status).toBe(200); // the shell's close, no token
+    expect(stopped).toEqual([true]);
+    const remote = client(app, { remoteAddress: "192.168.1.20" });
+    expect((await remote.post("/v1/shutdown")).status).toBe(401);
+  } finally {
+    Object.assign(systemApi.cfg, SYSTEM_CFG);
+  }
+});

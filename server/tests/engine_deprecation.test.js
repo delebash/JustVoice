@@ -7,13 +7,15 @@
 // Nothing shipped is marked today; the mechanism stays, so these tests mark Kokoro for the
 // length of a test.
 import { afterEach, expect, test, vi } from "vitest";
+import { appClient, closeApps } from "./app_helpers.js";
 import "./engines_helpers.js";
 import * as manager from "../src/engines/manager.js";
 import { discoverEngines } from "../src/engines/manager.js";
 
 const REASON = "Marked for removal in this test — the reason a user reads on the badge.";
 let restore = null;
-afterEach(() => {
+afterEach(async () => {
+  await closeApps();
   if (restore) restore();
   restore = null;
 });
@@ -55,4 +57,14 @@ test("marking_does_NOT_block_install", async () => {
   expect(called).toEqual(["runtime"]);
 });
 
-test.todo("the_catalog_serves_the_mark — waits for app.js + api/engines_api.js");
+test("the_catalog_serves_the_mark", async () => {
+  marked();
+  const { c } = await appClient();
+  const body = (await c.get("/v1/engines")).json();
+  const served = Object.fromEntries(body.engines.filter((e) => e.backend === "managed").map((e) => [e.id, e]));
+  expect(Object.keys(served).length, "no managed engines served").toBeGreaterThan(0);
+  expect(served.kokoro.deprecated).toBe(REASON);
+  for (const [engineId, row] of Object.entries(served)) {
+    if (engineId !== "kokoro") expect(row.deprecated, engineId).toBe("");
+  }
+});

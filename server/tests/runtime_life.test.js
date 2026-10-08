@@ -6,8 +6,6 @@
 // Not ported: test_engine_handlers_run_off_the_event_loop — a Python-only mechanism (FastAPI
 // runs a plain `def` handler on its thread pool; it pins that no handler was `async def`).
 // The Node server is one event loop by design; the load's long waits are awaits.
-// test_the_memory_strip_never_shows_a_dead_models_booking reads api/engines_api (a later
-// wave): test.todo.
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import * as kitProcess from "@delebash/llm-runner/runner/process";
@@ -16,6 +14,8 @@ import { discrete, makeArbiter, resetArbiter, wav } from "./engines_helpers.js";
 import * as runtime from "../src/engines/audiocpp/runtime.js";
 import { ModelEntry } from "../src/engines/audiocpp/runtime.js";
 import * as slotMod from "../src/engines/audiocpp/slot.js";
+import * as enginesApi from "../src/api/engines_api.js";
+import * as managerMod from "../src/engines/manager.js";
 import { discoverEngines, EngineManager } from "../src/engines/manager.js";
 import * as speechCache from "../src/speech_cache.js";
 import { tmpPath } from "./helpers.js";
@@ -169,7 +169,19 @@ test("a_slot_whose_process_died_is_dropped_with_its_booking", () => {
   expect(arbiter.reservedMb("stt:asr")).toBeFalsy();
 });
 
-test.todo("the_memory_strip_never_shows_a_dead_models_booking — waits for api/engines_api.js");
+test("the_memory_strip_never_shows_a_dead_models_booking", async () => {
+  // Live 2026-10-04: after the speech process was killed, the first poll still listed
+  // `tts:qwen3 1913 MB` — the handler read the bookings before it looked at the slots.
+  const mgr = new EngineManager();
+  arbiter.reserve("tts:qwen3", 1913, { kind: "tts", evictFn: () => {}, source: "measured" });
+  mgr._loaded = new Map([["tts", new Slot("qwen3", { alive: false, dead: true })]]);
+  vi.spyOn(managerMod, "getManager").mockReturnValue(mgr);
+  vi.spyOn(mgr, "_hardware").mockResolvedValue(null);
+  vi.spyOn(mgr, "poolUsedMb").mockResolvedValue(500);
+  const out = await enginesApi.getEngineVram();
+  expect(out.reservations.filter((r) => r.key === "tts:qwen3")).toEqual([]);
+  expect(out.loaded).toEqual([]);
+});
 
 test("a_slot_still_loading_is_left_alone", () => {
   const mgr = new EngineManager();

@@ -521,3 +521,83 @@ export function jsonLoads(s) {
 
 /** Python's whitespace class for building patterns (`\s` on str). */
 export const WS = `[${PY_WS}]`;
+
+// ── base64.b64decode ─────────────────────────────────────────────────────────
+
+/** binascii.Error (a ValueError). */
+export class Base64Error extends ValueError {
+  constructor(m) {
+    super(m);
+    this.name = "Error";
+  }
+}
+
+const B64_TABLE = new Int16Array(256).fill(-1);
+for (const [i, c] of [..."ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"].entries()) {
+  B64_TABLE[c.charCodeAt(0)] = i;
+}
+
+/**
+ * `base64.b64decode(s, validate=…)` — CPython 3.12's `binascii.a2b_base64` (validate = its
+ * strict mode), messages included. Non-strict skips characters outside the alphabet and stops
+ * at a complete padding run; strict refuses them. A str holding non-ASCII is Python's
+ * ValueError. (The same port as JustWrite's `book_io.b64decode`, measured against Python
+ * 2026-10-08 — the kit sweep after the API wave keeps one.)
+ */
+export function b64decode(s, validate = false) {
+  if (typeof s === "string" && /[^\x00-\x7f]/.test(s)) throw new ValueError("string argument should contain only ASCII characters");
+  const data = typeof s === "string" ? Buffer.from(s, "latin1") : Buffer.from(s);
+  const out = Buffer.alloc(Math.floor((data.length * 3) / 4) + 3);
+  let n = 0;
+  let quadPos = 0;
+  let leftchar = 0;
+  let pads = 0;
+  let paddingStarted = false;
+  for (let i = 0; i < data.length; i++) {
+    const ch = data[i];
+    if (ch === 0x3d) {
+      paddingStarted = true;
+      if (validate && quadPos === 0) throw new Base64Error(i === 0 ? "Leading padding not allowed" : "Excess padding not allowed");
+      if (quadPos >= 2 && quadPos + ++pads >= 4) {
+        // A pad sequence means no more input is parsed; strict mode refuses data after it.
+        if (validate && i + 1 < data.length) throw new Base64Error("Excess data after padding");
+        return out.subarray(0, n);
+      }
+      continue;
+    }
+    const v = B64_TABLE[ch];
+    if (v < 0) {
+      if (validate) throw new Base64Error("Only base64 data is allowed");
+      continue;
+    }
+    if (validate && paddingStarted) throw new Base64Error("Discontinuous padding not allowed");
+    pads = 0;
+    switch (quadPos) {
+      case 0:
+        quadPos = 1;
+        leftchar = v;
+        break;
+      case 1:
+        quadPos = 2;
+        out[n++] = ((leftchar << 2) | (v >> 4)) & 0xff;
+        leftchar = v & 0x0f;
+        break;
+      case 2:
+        quadPos = 3;
+        out[n++] = ((leftchar << 4) | (v >> 2)) & 0xff;
+        leftchar = v & 0x03;
+        break;
+      default:
+        quadPos = 0;
+        out[n++] = ((leftchar << 6) | v) & 0xff;
+        leftchar = 0;
+    }
+  }
+  if (quadPos === 1) {
+    throw new Base64Error(
+      `Invalid base64-encoded string: number of data characters (${Math.floor(n / 3) * 4 + 1}) cannot be 1 more than a multiple of 4`,
+    );
+  }
+  if (quadPos !== 0) throw new Base64Error("Incorrect padding");
+  return out.subarray(0, n);
+}

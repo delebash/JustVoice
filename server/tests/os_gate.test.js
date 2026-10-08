@@ -3,10 +3,8 @@
 // tests/test_os_gate.py). Every manifest declares SUPPORTED_OSES explicitly, and
 // `installEngine()` refuses before any install work runs. (Python parametrized three tests
 // over the engines; here each loops over them.)
-//
-// Not ported here: test_the_catalog_serves_the_verdict_not_just_the_list — it reads
-// GET /v1/engines (api/engines_api, a later wave): test.todo.
 import { afterEach, expect, test, vi } from "vitest";
+import { appClient, closeApps } from "./app_helpers.js";
 import "./engines_helpers.js";
 import * as manager from "../src/engines/manager.js";
 import { discoverEngines, InstallError } from "../src/engines/manager.js";
@@ -46,7 +44,8 @@ test("every_engine_runs_on_all_three", () => {
 // ── The gate ──────────────────────────────────────────────────────────────
 
 let restore = null;
-afterEach(() => {
+afterEach(async () => {
+  await closeApps();
   if (restore) restore();
   restore = null;
 });
@@ -91,4 +90,17 @@ test("a_supported_os_passes_the_gate", async () => {
   expect(called).toEqual(["runtime"]);
 });
 
-test.todo("the_catalog_serves_the_verdict_not_just_the_list — waits for app.js + api/engines_api.js");
+test("the_catalog_serves_the_verdict_not_just_the_list", async () => {
+  // `supported_on_this_os` must reach the client. The renderer must never re-derive it: it can
+  // be a browser on a different machine than the server, so only the server knows the platform
+  // the engine would actually install on.
+  const { c } = await appClient();
+  const body = (await c.get("/v1/engines")).json();
+  const managed = Object.fromEntries(body.engines.filter((e) => e.supported_oses?.length).map((e) => [e.id, e]));
+  expect(Object.keys(managed).length, "no engine served a supported_oses list").toBeGreaterThan(0);
+  const manifests = discoverEngines();
+  for (const [engineId, served] of Object.entries(managed)) {
+    expect(served, `${engineId} served supported_oses without the verdict`).toHaveProperty("supported_on_this_os");
+    expect(served.supported_on_this_os).toBe(manifests.get(engineId).supportsCurrentOs());
+  }
+});

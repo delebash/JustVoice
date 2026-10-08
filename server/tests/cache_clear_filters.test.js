@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: MIT
 // POST /v1/cache/clear filter honesty (the port of tests/test_cache_clear_filters.py;
 // wiring-audit W1): age + scope are honored by RenderCache.clear; identity filters belong to
-// DELETE /v1/generations. The three endpoint tests wait for api/cache_api.js + app.js.
+// DELETE /v1/generations.
 import { utimesSync } from "node:fs";
 import path from "node:path";
-import { expect, test } from "vitest";
+import { afterEach, expect, test } from "vitest";
+import { getState } from "../src/app_state.js";
 import { RenderCache } from "../src/cache.js";
+import { appClient, closeApps } from "./app_helpers.js";
 import { tmpPath } from "./helpers.js";
+
+afterEach(closeApps);
 
 function backdate(p, days) {
   const ts = Date.now() / 1000 - days * 86400.0;
@@ -83,6 +87,38 @@ test("memory_tier_evicts_lru_past_cap", () => {
 
 // ── Endpoint behavior ─────────────────────────────────────────────────
 
-test.todo("endpoint_rejects_identity_filters_and_destroys_nothing — waits for api/cache_api.js + app.js");
-test.todo("endpoint_honors_older_than_days — waits for api/cache_api.js + app.js");
-test.todo("endpoint_scope_clear_unchanged — waits for api/cache_api.js + app.js");
+test("endpoint_rejects_identity_filters_and_destroys_nothing", async () => {
+  const { c } = await appClient();
+  const cache = getState()._renderCache;
+  cache.put("scene-1", "k1", buf("a"));
+  for (const params of ["voice_id=v1", "engine=kokoro"]) {
+    const r = await c.post(`/v1/cache/clear?${params}`);
+    expect(r.status, params).toBe(400);
+    expect(r.json().detail).toContain("/v1/generations");
+  }
+  // The 2026-06-12 failure mode: a filtered prune must NOT have wiped.
+  expect(cache.stats().total_entries_on_disk).toBe(1);
+});
+
+test("endpoint_honors_older_than_days", async () => {
+  const { c } = await appClient();
+  const cache = getState()._renderCache;
+  cache.put("scene-1", "k-old", buf("old"));
+  cache.put("scene-1", "k-new", buf("new"));
+  backdate(cache._path("scene-1", "k-old"), 40);
+  const r = await c.post("/v1/cache/clear?older_than_days=30");
+  expect(r.status).toBe(200);
+  expect(r.json().removed).toBe(1);
+  expect(cache.stats().total_entries_on_disk).toBe(1);
+});
+
+test("endpoint_scope_clear_unchanged", async () => {
+  const { c } = await appClient();
+  const cache = getState()._renderCache;
+  cache.put("scene-1", "k1", buf("a"));
+  cache.put("scene-2", "k2", buf("b"));
+  const r = await c.post("/v1/cache/clear?scope=scene-1");
+  expect(r.status).toBe(200);
+  expect(cache.get("scene-2", "k2")).toEqual(buf("b"));
+  expect(cache.get("scene-1", "k1")).toBeNull();
+});

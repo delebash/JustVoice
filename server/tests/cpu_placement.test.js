@@ -6,9 +6,6 @@
 // else the card with the AI model unloaded first), the load door, KittenTTS and Pocket TTS
 // requests and the Kyutai terms gate, and the runtime processes (the port of
 // tests/test_cpu_placement.py).
-//
-// Not ported here: the three API tests (app.js + api/engines_api / engines_models_api — a
-// later wave): test.todo.
 import * as stores from "@delebash/llm-runner/llm/stores";
 import * as hardware from "@delebash/llm-runner/runner/hardware";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
@@ -18,13 +15,17 @@ import * as slot from "../src/engines/audiocpp/slot.js";
 import * as manager from "../src/engines/manager.js";
 import { _wavSeconds, discoverEngines, EngineManager, TermsRequired } from "../src/engines/manager.js";
 import { construct, SpeechRuntimeSettings } from "../src/models.js";
+import { appClient, closeApps } from "./app_helpers.js";
 import { tmpPath } from "./helpers.js";
 
 let arb;
 beforeEach(() => {
   arb = makeArbiter(discrete());
 });
-afterEach(() => resetArbiter());
+afterEach(async () => {
+  await closeApps();
+  resetArbiter();
+});
 
 function mgrFor(build = "cuda12") {
   const exe = `C:/rt/audiocpp/v0.9.0/${build}/audiocpp_server.exe`;
@@ -439,6 +440,52 @@ test("the_cpu_process_runs_the_same_build_on_the_cpu", async () => {
 
 // ─── the API ────────────────────────────────────────────────────────────────
 
-test.todo("the_models_say_where_they_run — waits for app.js + api/engines_models_api.js");
-test.todo("a_models_place_is_saved_and_auto_clears_it — waits for app.js + api/engines_models_api.js");
-test.todo("pocket_shows_its_terms_until_accepted — waits for app.js + api/engines_api.js");
+async function placementClient() {
+  vi.spyOn(EngineManager.prototype, "_aiModelOnCard").mockResolvedValue(false);
+  return (await appClient()).c;
+}
+
+test("the_models_say_where_they_run", async () => {
+  const c = await placementClient();
+  const rows = Object.fromEntries((await c.get("/v1/engines/kokoro/models")).json().variants.map((v) => [v.id, v]));
+  const k = rows["kokoro-82m-q8"];
+  expect(k.placement).toBe("auto");
+  expect(["gpu", "cpu"]).toContain(k.runs_on);
+  expect(k.runs_on_reason).toBeTruthy();
+  expect(k.cpu_realtime).toBe(3.15);
+  expect(k.cpu_realtime_here).toBe(false);
+});
+
+test("a_models_place_is_saved_and_auto_clears_it", async () => {
+  const c = await placementClient();
+  const r = await c.put("/v1/engines/kokoro/models/kokoro-82m-q8/placement", { json: { placement: "cpu" } });
+  expect(r.status).toBe(200);
+  expect(r.json().runs_on).toBe("cpu");
+  expect(r.json().moves).toBe(false);
+  let ov = (await c.get("/v1/settings")).json().engines.engine_overrides.kokoro;
+  expect(ov.placements).toEqual({ "kokoro-82m-q8": "cpu" });
+  await c.put("/v1/engines/kokoro/models/kokoro-82m-q8/placement", { json: { placement: "auto" } });
+  ov = (await c.get("/v1/settings")).json().engines.engine_overrides.kokoro;
+  expect(ov.placements).toEqual({});
+  expect((await c.put("/v1/engines/kokoro/models/nope/placement", { json: { placement: "cpu" } })).status).toBe(404);
+  expect((await c.put("/v1/engines/kokoro/models/kokoro-82m-q8/placement", { json: { placement: "npu" } })).status).toBe(422);
+});
+
+test("pocket_shows_its_terms_until_accepted", async () => {
+  const c = await placementClient();
+  const engine = async (id) => (await c.get("/v1/engines")).json().engines.find((e) => e.id === id);
+  let eng = await engine("pocket");
+  expect(eng.terms.owner).toBe("Kyutai");
+  expect(eng.terms.gates).toBe("cloning");
+  expect(eng.terms.text).toContain("voice impersonation or cloning without explicit and lawful consent");
+  expect(eng.terms_accepted).toBe(false);
+  const r = await c.post("/v1/engines/pocket/terms");
+  expect(r.status).toBe(200);
+  expect(r.json().accepted).toBe(true);
+  expect(r.json().at).toBeTruthy();
+  eng = await engine("pocket");
+  expect(eng.terms_accepted).toBe(true);
+  // An engine without terms has nothing to accept.
+  expect((await c.post("/v1/engines/kokoro/terms")).status).toBe(400);
+  expect((await engine("kokoro")).terms).toBeNull();
+});

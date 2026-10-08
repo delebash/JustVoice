@@ -9,12 +9,11 @@
 // Every test injects its own VramArbiter (fake hardware) and restores the singleton after. The
 // pool probe is stubbed to null by default; measured-admission and delta tests install their
 // own probe sequences.
-//
-// Not ported here: test_scheduler_worker_marks_tts_busy_while_draining (synth_scheduler) and
-// test_vram_endpoint_serves_the_strip (app.js + api/engines_api) — later waves: test.todo.
 import * as stores from "@delebash/llm-runner/llm/stores";
 import * as hardware from "@delebash/llm-runner/runner/hardware";
 import { afterEach, expect, test, vi } from "vitest";
+import { seedWorkspace } from "../src/database/seed.js";
+import { appClient, closeApps } from "./app_helpers.js";
 import { bareManager, discrete, makeArbiter, onePool, resetArbiter } from "./engines_helpers.js";
 import * as runtime from "../src/engines/audiocpp/runtime.js";
 import * as manager from "../src/engines/manager.js";
@@ -22,7 +21,10 @@ import { EngineManager } from "../src/engines/manager.js";
 import { SynthScheduler } from "../src/synth_scheduler.js";
 import { AsyncEvent, sleep } from "@delebash/llm-runner/platform/asyncutil";
 
-afterEach(() => resetArbiter());
+afterEach(async () => {
+  await closeApps();
+  resetArbiter();
+});
 
 const resp = (payload = { ok: true, voices: [] }, status = 200) => ({ statusCode: status, text: "", json: () => payload });
 
@@ -406,7 +408,53 @@ test("scheduler_worker_marks_tts_busy_while_draining", async () => {
   for (let i = 0; i < 200 && arb.busyKinds().has("tts"); i++) await sleep(10);
   expect(arb.busyKinds().has("tts")).toBe(false);
 });
-test.todo("vram_endpoint_serves_the_strip — waits for app.js + api/engines_api.js");
+test("vram_endpoint_serves_the_strip", async () => {
+  // GET /v1/engines/vram (Q3/Q4 + the redesign): snapshot + the MEASURED pool state
+  // (used/other) + kind/source-tagged reservations + busy kinds + eviction events after
+  // `events_since`. (The manager's hardware is the fake box here — Python read this machine's,
+  // whose card is the same 8 GB.)
+  const arb = makeArbiter(discrete(8192));
+  arb.reserve("tts:eng", 1234, { kind: "tts", source: "measured" });
+  arb.busyBegin("tts");
+  arb.recordEviction("chat", "llm", "loading eng");
+  vi.spyOn(EngineManager.prototype, "poolUsedMb").mockResolvedValue(5000);
+  vi.spyOn(EngineManager.prototype, "_hardware").mockResolvedValue(discrete(8192));
+  const { c } = await appClient();
+  const body = (await c.get("/v1/engines/vram")).json();
+  expect(body.mem_arch).toBe("discrete");
+  expect(body.total_mb).toBe(8192);
+  expect(body.committed_mb).toBe(1234);
+  expect(body.remaining_mb).toBe(8192 - 1234);
+  // The measured truth the strip displays: used is what nvidia-smi would say; other = the
+  // slice the ledger can't attribute.
+  expect(body.used_mb).toBe(5000);
+  expect(body.other_mb).toBe(5000 - 1234);
+  expect(body.busy_kinds).toEqual(["tts"]);
+  const row = body.reservations.find((r) => r.key === "tts:eng");
+  expect(row.kind).toBe("tts");
+  expect(row.source).toBe("measured");
+  expect(body.events.length).toBeGreaterThan(0);
+  expect(body.events[0].victim_key).toBe("chat");
+  // The poller's cursor: nothing newer than the last seen seq.
+  const seq = body.events.at(-1).seq;
+  expect((await c.get(`/v1/engines/vram?events_since=${seq}`)).json().events).toEqual([]);
+  arb.busyEnd("tts");
+  // Q3's claim line: an unconfigured fresh DB says so honestly...
+  expect(body.claim).toBeNull();
+  expect(body.claim_reason).toBe("not-configured");
+  // ...and once the routing default names a local catalog model, the claim resolves through
+  // the kit's four-arm ladder (the declared arm — the model isn't downloaded in a test run).
+  await seedWorkspace();
+  const routing = (await c.get("/v1/ai/routing")).json();
+  routing.default.llmId = "local-llamacpp";
+  routing.default.model = "gemma-4-26b-a4b-qat";
+  expect((await c.put("/v1/ai/routing", { json: routing })).status).toBe(200);
+  const routed = (await c.get("/v1/engines/vram")).json();
+  expect(routed.claim).not.toBeNull();
+  expect(routed.claim.model).toBe("gemma-4-26b-a4b-qat");
+  expect(routed.claim.vram_mb).toBeGreaterThan(0);
+  expect(["declared", "computed", "measured"]).toContain(routed.claim.source);
+});
 
 test("transcribe_marks_stt_busy", async () => {
   const arb = makeArbiter(discrete());

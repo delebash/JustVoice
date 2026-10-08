@@ -168,7 +168,7 @@ const typedNumber = (s) =>
 
 /** A PyFloat where the model types a number becomes the plain number the model holds (its
  * float-ness comes back from the schema on write); in a free (`Any`) position it stays. */
-function unwrapTyped(schema, v) {
+export function unwrapTyped(schema, v) {
   if (v == null || !schema) return v;
   if (v instanceof PyFloat) return typedNumber(schema) ? v.v : v;
   if (schema.anyOf) {

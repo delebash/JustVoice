@@ -4,14 +4,12 @@
 // JUSTVOICE_AUDIOCPP_BUILD, runs it instead of the pinned release, offers every feature, shows
 // it on the runtime row, and installs only eSpeak NG for it (the port of
 // tests/test_audiocpp_dev_build.py).
-//
-// Not ported here: test_the_runtime_row_says_it_is_the_dev_build (api/speech_runtime_api — a
-// later wave): test.todo.
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { runtime as dataRuntime } from "@delebash/llm-runner/platform/data_paths";
 import { afterEach, expect, test, vi } from "vitest";
 import "./engines_helpers.js";
+import * as speechRuntimeApi from "../src/api/speech_runtime_api.js";
 import * as devBuild from "../src/engines/audiocpp/dev_build.js";
 import * as espeak from "../src/engines/audiocpp/espeak.js";
 import * as release from "../src/engines/audiocpp/release.js";
@@ -114,7 +112,26 @@ test("the_catalogs_offer_what_the_dev_build_reads", () => {
   expect(kokoro.build().STATIC_VOICES.length).toBe(54);
 });
 
-test.todo("the_runtime_row_says_it_is_the_dev_build — waits for api/speech_runtime_api.js");
+test("the_runtime_row_says_it_is_the_dev_build", () => {
+  dev();
+  const srv = { _run: null, pid: null, isRunning: () => false };
+  vi.spyOn(runtime, "servers").mockReturnValue([srv]);
+  vi.spyOn(runtime, "availableBackends").mockReturnValue(["cuda", "cpu"]);
+  vi.spyOn(runtime, "_hardware").mockReturnValue({ gpus: [] });
+  vi.spyOn(runtime, "cpuThreads").mockReturnValue(8);
+  vi.spyOn(runtime, "physicalCores").mockReturnValue(8);
+  vi.spyOn(runtime, "_settings").mockReturnValue({ backend: "vulkan", gpu: 0, cpu_threads: 0, cpu_min_realtime: 2.0 });
+  const info = speechRuntimeApi._info();
+  expect([info.installed, info.version, info.update_to, info.backend, info.build, info.dev_source]).toEqual([
+    true,
+    "dev · 6a2bb4c5",
+    null,
+    "cuda",
+    null,
+    "..\\audio.cpp",
+  ]);
+  expect(info.japanese_dictionary).not.toBeNull(); // the dev build reads Japanese
+});
 
 test("install_fetches_only_espeak", async () => {
   dev();

@@ -5,12 +5,13 @@
 // (the port of tests/test_runtime_update.py; the parametrized update test loops over its
 // cases).
 //
-// Not ported here (a later wave's modules — app.js / api/*): test.todo.
+// Not ported here (the API wave's later routers — voice_preview_api, voices_api): test.todo.
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import * as binary from "@delebash/llm-runner/runner/binary";
 import { afterEach, expect, test, vi } from "vitest";
 import "./engines_helpers.js";
+import * as speechRuntimeApi from "../src/api/speech_runtime_api.js";
 import * as espeak from "../src/engines/audiocpp/espeak.js";
 import * as release from "../src/engines/audiocpp/release.js";
 import * as runtime from "../src/engines/audiocpp/runtime.js";
@@ -68,7 +69,21 @@ test("nothing_installed_is_nothing", () => {
   expect(runtime.installedTag()).toBeNull();
 });
 
-test.todo("the_runtime_row_offers_the_update — waits for api/speech_runtime_api.js");
+test("the_runtime_row_offers_the_update", () => {
+  const onDisk = tags();
+  vi.spyOn(runtime, "servers").mockReturnValue([{ _run: null, pid: null, isRunning: () => false }]);
+  vi.spyOn(runtime, "availableBackends").mockReturnValue(["cuda", "cpu"]);
+  vi.spyOn(runtime, "_hardware").mockReturnValue({ gpus: [] });
+  vi.spyOn(runtime, "cpuThreads").mockReturnValue(8);
+  vi.spyOn(runtime, "physicalCores").mockReturnValue(8);
+  vi.spyOn(runtime, "_settings").mockReturnValue({ backend: "auto", gpu: 0, cpu_threads: 0, cpu_min_realtime: 2.0 });
+  let info = speechRuntimeApi._info();
+  expect([info.installed, info.version, info.update_to]).toEqual([true, "v9-old", "v9-new"]);
+  onDisk.add("v9-new");
+  runtime.forgetInstalled();
+  info = speechRuntimeApi._info();
+  expect([info.version, info.update_to]).toEqual(["v9-new", null]);
+});
 
 test("an_update_stops_the_old_processes_and_a_fresh_install_does_not", async () => {
   // An update also deletes the build it replaced (decided 2026-10-03) — only that one: the

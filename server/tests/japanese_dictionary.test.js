@@ -3,9 +3,6 @@
 // unidic-lite downloads, is verified and unpacks to only its dictionary and licences; the
 // runtime finds it through AUDIOCPP_UNIDIC_DIR; a Japanese line without it is refused by name;
 // the catalogs follow the pin (the port of tests/test_japanese_dictionary.py).
-//
-// Not ported here: test_the_runtime_row_offers_it_only_once_the_pin_reads_japanese
-// (api/speech_runtime_api — a later wave): test.todo.
 import { createHash } from "node:crypto";
 import { mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -13,6 +10,7 @@ import { gzipSync } from "node:zlib";
 import * as download from "@delebash/llm-runner/runner/download";
 import { afterEach, expect, test, vi } from "vitest";
 import "./engines_helpers.js";
+import * as speechRuntimeApi from "../src/api/speech_runtime_api.js";
 import * as japanese from "../src/engines/audiocpp/japanese.js";
 import * as release from "../src/engines/audiocpp/release.js";
 import * as runtime from "../src/engines/audiocpp/runtime.js";
@@ -143,6 +141,13 @@ test("languages_and_voices_follow_the_pin", () => {
   expect(kokoro.build().STATIC_VOICES.length).toBe(54);
 });
 
-test.todo("the_runtime_row_offers_it_only_once_the_pin_reads_japanese — waits for api/speech_runtime_api.js");
+test("the_runtime_row_offers_it_only_once_the_pin_reads_japanese", () => {
+  release.cfg.TAG = "v0.9.0-jv.1";
+  expect(speechRuntimeApi._japaneseDictionary()).toBeNull();
+  release.cfg.TAG = "v0.9.0-jv.4";
+  const info = speechRuntimeApi._japaneseDictionary();
+  expect(info.version).toBe(japanese.VERSION);
+  expect(info.size_bytes).toBe(japanese.INSTALLED_BYTES);
+});
 
 

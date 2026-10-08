@@ -5,16 +5,20 @@
 // the model and the wire, snake_case is REJECTED on input, and the one-time legacy-snake
 // settings migration upgrades pre-existing rows.
 //
-// The two /v1/settings route tests wait for api/settings_api.js + app.js. The legacy-row
-// test initialised the DB through create_app; here through initDb (the part it needs).
+// The legacy-row test initialised the DB through create_app; here through initDb (the part it
+// needs).
 import { afterEach, expect, test } from "vitest";
 import { pyJson } from "@delebash/llm-runner/platform/pyjson";
 import * as session from "../src/database/session.js";
 import { construct, LLMProviderConfig, modelDump } from "../src/models.js";
 import { _migrateLlmCamel, SettingsStore } from "../src/storage/settings_store.js";
+import { appClient, closeApps } from "./app_helpers.js";
 import { closeModuleDb, initDbAt, tmpPath } from "./helpers.js";
 
-afterEach(() => closeModuleDb());
+afterEach(async () => {
+  await closeApps();
+  closeModuleDb();
+});
 
 test("provider_config_is_camel_native", () => {
   // camelCase input (the only accepted shape) parses into camel fields.
@@ -34,8 +38,32 @@ test("provider_config_is_camel_native", () => {
   expect(() => construct(LLMProviderConfig, { id: "p", name: "P", provider_type: "openai" })).toThrow(/validation error/);
 });
 
-test.todo("settings_emits_camel_for_providers — waits for api/settings_api.js + app.js");
-test.todo("settings_patch_rejects_snake_provider — waits for api/settings_api.js + app.js");
+test("settings_emits_camel_for_providers", async () => {
+  // /v1/settings emits the nested provider entries in camelCase natively. Seeded via PATCH
+  // (writes settings only) — NOT POST /v1/llm-providers, which would register into the
+  // process-wide registry.
+  const { c } = await appClient();
+  const r = await c.patch("/v1/settings", {
+    json: { engines: { llm: [{ id: "op", name: "OpenAI", providerType: "openai-compat", baseUrl: "http://x/v1" }] } },
+  });
+  expect(r.status).toBe(200);
+  const llm = (await c.get("/v1/settings")).json().engines.llm;
+  expect(llm.length).toBeGreaterThan(0);
+  expect(llm[0].providerType).toBe("openai-compat");
+  expect(llm[0].baseUrl).toBe("http://x/v1");
+  expect(llm[0]).not.toHaveProperty("provider_type");
+  expect(llm[0]).not.toHaveProperty("base_url");
+});
+
+test("settings_patch_rejects_snake_provider", async () => {
+  // snake_case provider keys are no longer accepted: the required camel `providerType` is
+  // absent → 422 (and nothing is persisted).
+  const { c } = await appClient();
+  const body = { engines: { llm: [{ id: "c", name: "C", provider_type: "openai-compat", base_url: "http://y/v1" }] } };
+  const r = await c.patch("/v1/settings", { json: body });
+  expect(r.status).toBe(422);
+  expect((await c.get("/v1/settings")).json().engines.llm).toEqual([]);
+});
 
 test("legacy_snake_settings_row_is_migrated", () => {
   // A pre-2026-06-21 settings row stored the LLM sections in snake_case. Loading it renames

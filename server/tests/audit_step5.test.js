@@ -2,8 +2,6 @@
 // Audit 2026-10-04, step 5 (docs/plans/2026-10-04-audiocpp-switch-audit.md §13.5): the
 // requests, gates, runtime errors, placement, installs, leaks and options batches. No binary,
 // no GPU (the port of tests/test_audit_step5.py; parametrized tests loop over their cases).
-//
-// Not ported here (a later wave's modules — app.js / api/*): test.todo.
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -11,7 +9,9 @@ import * as stores from "@delebash/llm-runner/llm/stores";
 import * as http from "@delebash/llm-runner/platform/http";
 import * as hardware from "@delebash/llm-runner/runner/hardware";
 import { afterEach, expect, test, vi } from "vitest";
-import "./engines_helpers.js";
+import * as captures from "../src/api/captures_api.js";
+import { appClient, closeApps } from "./app_helpers.js";
+import { discrete } from "./engines_helpers.js";
 import { writeWavContainer } from "../src/audio/wav.js";
 import * as release from "../src/engines/audiocpp/release.js";
 import * as runtime from "../src/engines/audiocpp/runtime.js";
@@ -29,9 +29,12 @@ import { tmpPath } from "./helpers.js";
 const row = (engine, variant) => discoverEngines().get(engine).module.VARIANTS.find((r) => r.id === variant);
 const KEPT = slot.cfg.VOICE_PACKS_KEPT;
 const ROTATE = runtime.cfg.LOG_ROTATE_BYTES;
-afterEach(() => {
+afterEach(async () => {
+  await closeApps();
   slot.cfg.VOICE_PACKS_KEPT = KEPT;
   runtime.cfg.LOG_ROTATE_BYTES = ROTATE;
+  runtime.cfg.HW = null;
+  captures.cfg._MAX_UPLOAD_MB = captures._MAX_UPLOAD_MB;
 });
 
 // ─── 5a: requests ────────────────────────────────────────────────────────────
@@ -264,7 +267,18 @@ test("the_log_tail_reads_only_the_end", () => {
   expect(srv.logTail(3).split("\n")).toEqual(["line 49997", "line 49998", "line 49999"]);
 });
 
-test.todo("an_oversized_transcription_upload_leaves_no_file — waits for app.js + api/captures_api.js");
+test("an_oversized_transcription_upload_leaves_no_file", async () => {
+  // The spool (Python's tempfile.tempdir) is a folder of this test's own.
+  const spool = tmpPath();
+  vi.stubEnv("TEMP", spool);
+  vi.stubEnv("TMP", spool);
+  captures.cfg._MAX_UPLOAD_MB = 0;
+  const { c } = await appClient(path.join(tmpPath(), "data"));
+  const r = await c.post("/v1/transcribe", { files: { file: ["a.wav", Buffer.concat([Buffer.from("RIFF"), Buffer.alloc(64)]), "audio/wav"] } });
+  expect(r.status).toBe(400);
+  const wavs = readdirSync(spool, { recursive: true }).filter((n) => String(n).endsWith(".wav"));
+  expect(wavs).toEqual([]);
+});
 
 test("system_info_reports_only_runtimes_this_app_can_use", () => {
   expect(_detectRuntimes({ cuda: true, vulkan: true })).toEqual({ cpu: true, cuda: true, vulkan: true });
@@ -318,5 +332,33 @@ test("saved_runtime_options_ride_the_models_registration", () => {
   expect(Object.fromEntries(slot._entriesFor(discoverEngines().get("qwen3"), r)[0].sessionOptions)).toEqual({});
 });
 
-test.todo("the_model_row_reads_and_saves_its_runtime_options — waits for app.js + api/engines_models_api.js");
-test.todo("the_runtime_row_keeps_a_setting_it_does_not_send — waits for app.js + api/speech_runtime_api.js");
+test("the_model_row_reads_and_saves_its_runtime_options", async () => {
+  const { c } = await appClient();
+  const url = "/v1/engines/qwen3/models/qwen3-cv-1.7b-q8/runtime-options";
+  let r = await c.put(url, { json: { options: { "qwen3_tts.perf_mode": "flash_attention" } } });
+  expect(r.status).toBe(200);
+  expect(r.json().reload).toBe(false);
+  const v = (await c.get("/v1/engines/qwen3/models")).json().variants.find((x) => x.id === "qwen3-cv-1.7b-q8");
+  expect(Object.fromEntries(v.runtime_options.map((o) => [o.key, o.value]))).toEqual({
+    "qwen3_tts.perf_mode": "flash_attention",
+    "qwen3_tts.conv_weight_type": "f16",
+  });
+  let ov = (await c.get("/v1/settings")).json().engines.engine_overrides.qwen3;
+  expect(ov.runtime_options).toEqual({ "qwen3-cv-1.7b-q8": { "qwen3_tts.perf_mode": "flash_attention" } });
+  expect((await c.put(url, { json: { options: { "qwen3_tts.perf_mode": "x" } } })).status).toBe(400);
+  r = await c.put(url, { json: { options: { "qwen3_tts.perf_mode": "off" } } });
+  ov = (await c.get("/v1/settings")).json().engines.engine_overrides.qwen3;
+  expect(ov.runtime_options).toEqual({});
+});
+
+test("the_runtime_row_keeps_a_setting_it_does_not_send", async () => {
+  runtime.cfg.HW = discrete();
+  vi.spyOn(runtime, "installedExe").mockReturnValue(null);
+  const { c } = await appClient();
+  expect((await c.put("/v1/speech-runtime", { json: { backend: "auto", request_timeout_s: 1800 } })).status).toBe(200);
+  expect((await c.put("/v1/speech-runtime", { json: { backend: "vulkan", gpu: 0 } })).status).toBe(200);
+  const sr = (await c.get("/v1/settings")).json().engines.speech_runtime;
+  expect(sr.backend).toBe("vulkan");
+  expect(sr.request_timeout_s).toBe(1800);
+  expect((await c.put("/v1/speech-runtime", { json: { backend: "vulkan", gpu_threads: 0 } })).status).toBe(400);
+});
