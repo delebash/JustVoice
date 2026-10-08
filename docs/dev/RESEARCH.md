@@ -1223,6 +1223,9 @@ audio.cpp's `docs/model_licenses.md`, checked upstream 2026-09-21…27). Their s
 Indexed by subject so they can be found; their facts move into a section above when work next
 touches the subject. History in [`../plans/archive/`](../plans/archive/) is not listed.
 
+**The 2026-10-06 leftovers batch** (the demo again, the small wrong things, five decisions,
+Lexicons and Compare) — [`2026-10-06-leftovers-batch.md`](../plans/2026-10-06-leftovers-batch.md)
+
 **Voices and personas** —
 [`2026-08-15-voice-workflow-redesign.md`](../plans/2026-08-15-voice-workflow-redesign.md) ·
 [`2026-08-15-voice-workbench.md`](../plans/2026-08-15-voice-workbench.md) ·
