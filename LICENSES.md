@@ -53,7 +53,7 @@ The project was GPL-3.0-or-later between 2026-06-08 and 2026-07-29, forced by ex
 | **ruff** | `>=0.7` (dev) | `MIT` | ✓ | ✓ | https://github.com/astral-sh/ruff |
 | **vue** | `^3.5.0` | `MIT` | ✓ | ✓ | https://github.com/vuejs/core |
 | **pinia** | `^2.3.0` | `MIT` | ✓ | ✓ | https://github.com/vuejs/pinia |
-| **vue-sonner** | `^2.0.0` | `MIT` | ✓ | ✓ | https://github.com/xiaoluoboding/vue-sonner |
+| **quasar** | `^2.35.0` | `MIT` | ✓ | ✓ | https://github.com/quasarframework/quasar |
 | **@tauri-apps/api** | `^2.x` | `Apache-2.0 OR MIT` | ✓ | ✓ | https://github.com/tauri-apps/tauri |
 | **@tauri-apps/plugin-***  | `^2.x` | `Apache-2.0 OR MIT` | ✓ | ✓ | https://github.com/tauri-apps/plugins-workspace |
 | **vite** | `^6.0.0` (dev) | `MIT` | ✓ | ✓ | https://github.com/vitejs/vite |

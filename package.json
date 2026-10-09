@@ -37,7 +37,6 @@
     "@floating-ui/dom": "^1.7.6",
     "@playwright/test": "^1.61.0",
     "@quasar/app-vite": "^3.10.2",
-    "@tanstack/vue-table": "^8.21.3",
     "@vitejs/plugin-vue": "^6.0.7",
     "@vueuse/core": "^14.3.0",
     "autoprefixer": "^10.4.27",
@@ -47,12 +46,10 @@
     "playwright": "^1.61.0",
     "postcss": "^8.5.8",
     "qrcode": "^1.5.4",
-    "reka-ui": "^2.10.0",
     "vitest": "^4.1.10",
     "vue": "^3.5.38",
     "vue-i18n": "^11.4.6",
-    "vue-router": "^5.1.0",
-    "vue-sonner": "^2.0.9"
+    "vue-router": "^5.1.0"
   },
   "allowScripts": {
     "electron": true,

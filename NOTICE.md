@@ -55,6 +55,15 @@ published credits, was removed with the 2026-10-01 switch to the speech runtime.
 
 JustWrite ships `services/m4b.js`, `services/speakerAttribution.js`, `services/render.js`, and `services/audioStore.js`. These remain in JustWrite (which owns audiobook orchestration UI per `CONTRACT.md`). JustVoice does not duplicate them.
 
+### Through the shared kit (`@delebash/llm-ui`, bundled into the renderer)
+
+- The table's sorting and filtering rules (`ui/src/common/components/tableRows.js`) are ported from
+  TanStack Table's table-core 8 — MIT License, Copyright (c) 2016 Tanner Linsley; the full notice
+  is kept in the file.
+- The toasts' kind icons (`ui/src/common/services/toastBridge.js`) are Heroicons paths (MIT License,
+  Copyright (c) Tailwind Labs, Inc.) copied from vue-sonner 2.0.9 — MIT License, Copyright (c) 2022
+  Yunwei Xiao; the full notice is kept in the file.
+
 ---
 
 ## Runtime dependencies (installed from PyPI; not re-vendored)
@@ -190,7 +199,7 @@ Copyright 2019 Kenneth Reitz
 
 - `vue` (MIT) — https://github.com/vuejs/core
 - `pinia` (MIT) — https://github.com/vuejs/pinia
-- `vue-sonner` (MIT) — toast notifications
+- `quasar` (MIT) — the app framework; the kit's controls are built on its components — https://github.com/quasarframework/quasar
 - `@tauri-apps/api` + `@tauri-apps/plugin-*` (Apache-2.0 OR MIT) — https://github.com/tauri-apps/tauri
 - `vite` (MIT) — https://github.com/vitejs/vite
 

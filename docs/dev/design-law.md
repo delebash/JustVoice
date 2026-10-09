@@ -26,7 +26,8 @@ a test round.
 ## The canonical inventory (JV-local layout and shell classes)
 
 Form primitives come from the shared `@delebash/llm-ui` kit — `UiButton`, `UiInput`, `UiTextarea`,
-`UiSelect` (Reka), `UiToggle`, `UiCheckbox`, `UiField`, `UiTag`, `UiChip`. The `Jv*` forks were
+`UiSelect`, `UiToggle`, `UiCheckbox`, `UiField`, `UiTag`, `UiChip`, `UiMenu` (all on Quasar's components
+since 2026-10-09). The `Jv*` forks were
 deleted 2026-06-23 and there is no local `components/ui/` directory. What follows is JV-local
 **layout and shell** structure only, all verified present in `styles.css`:
 
