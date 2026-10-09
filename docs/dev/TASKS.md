@@ -125,6 +125,37 @@ GO:     given 2026-08-17
 
 ## The next build
 
+### Every open task, in the recommended order (decided 2026-10-09)
+STATE:  DECIDED 2026-10-09 — asked "whats next" once the phone was done; shown, from the three
+        trackers: "1. Packaged JustVoice is missing its audio program. … The fix is a new fork
+        release, v0.9.0-jv.5, and moving the pin to it. … My recommendation: do this first. 2. Loose
+        ends from today's family move (small): docgen is 11 commits ahead and not pushed; a few
+        tracker lines are now wrong … The kit's README still says "Python core". My recommendation:
+        one short pass, with your go to push docgen. 3. JustVoice product work: the redesign's
+        screens that haven't been redone (Scene, New project, Lexicons, Effects, Engines; each is
+        drawn in the app first, then built; each phase needs its own go); no updater
+        (electron-updater plus its controls on Settings → Updates); fonts (the desktop window has
+        never loaded Inter or JetBrains Mono … JustVoice could bundle its fonts too); voice training
+        (gap 5), rebuilt on audio.cpp. My recommendation: after 1, the remaining redesign screens.
+        4. Older kit engine findings, waiting on a go: the KV/context sizing faults (three, to be
+        fixed together); two smoke tests that fail only when run with the full suite; the
+        data-folder and server-stop findings (may already be closed by the shared Electron shell;
+        I'd verify before touching them). My overall recommendation: 1, then 2, then the redesign
+        screens." The user: "do it all your rec go, lets get all the tasks completed".
+        Then, mid-work: "lets remove any phone from release worflow for now, and we only want to to
+        a full release once all tasks are done except to one release you recommend now. Once all
+        tasks are complete we will do a release for crossplatform" — so the one release now is the
+        fork's v0.9.0-jv.5 (item 1); the apps' releases wait for one cross-platform release at the
+        end. Phones: no release workflow builds one; just-sqlite-sync's iOS test went manual-only
+        like JustWrite's ("your rec go", just-sqlite-sync 7897f08).
+WHY:    finish the open work across JustVoice, the kit, JustWrite and docgen.
+NOT:    a NOT STANDARD piece without its own word by name; wording and looks the decisions leave
+        open are asked, not chosen.
+BUILT:  in progress — 1 first: the fork's release builds `audiocpp_dsp`, tag v0.9.0-jv.5, the pin,
+        and the installer carries the program beside `justvoice.exe` (electron-builder `extraFiles`).
+OPEN:   1–4 above, in that order.
+GO:     given 2026-10-09 ("do it all your rec go, lets get all the tasks completed").
+
 ### The server moves to Hono (decided 2026-10-09)
 STATE:  DECIDED 2026-10-09, family-wide — the decision with the user's words is the kit's TASKS,
         "The family's servers move to Hono — one server that runs in Node and in a worker".
