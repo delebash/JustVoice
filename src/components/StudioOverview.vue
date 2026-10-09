@@ -40,7 +40,7 @@ import {
   UiButton, UiField, UiInput, UiSelect, UiTable, UiTag, UiTextarea, UiToggle,
   confirmDialog, pushToast, saveBlob,
 } from "@delebash/llm-ui";
-import ImportModal from "../views/ImportModal.vue";
+import ImportModal from "./ImportModal.vue";
 import { projectsService } from "../services/projects.js";
 import { useCopy } from "../services/copy.js";
 import { useProjectsStore } from "../stores/projects.js";
@@ -48,8 +48,8 @@ import { useActiveProject } from "../stores/activeProject.js";
 import { useLexiconsStore } from "../stores/lexicons.js";
 import { useVoicesStore } from "../stores/voices.js";
 import { bookLanguageOptions } from "../services/personaFacts.js";
-import { lexiconChoices } from "../views/studioLexicon.js";
-import { stepStatus } from "../views/studioStatus.js";
+import { lexiconChoices } from "../services/studioLexicon.js";
+import { stepStatus } from "../services/studioStatus.js";
 import { kindLabel } from "../services/projectKinds.js";
 import { MASTER_TARGETS, projectMaster } from "../services/masterTargets.js";
 

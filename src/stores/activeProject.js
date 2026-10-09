@@ -4,7 +4,7 @@
 // contract: the open project's kind reshapes the sidebar vocabulary,
 // the topbar shows Project/Kind/Master chips, and Home's Continue card
 // resumes it). Views that open or select a project call `open(p)` with
-// the /v1/projects record; AppShell.vue and Home read it. Persists across
+// the /v1/projects record; The layout and Home read it. Persists across
 // reloads server-side via /v1/prefs (key: `activeProject`).
 
 import { defineStore } from "pinia";

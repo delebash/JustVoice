@@ -3,7 +3,7 @@
 // uiContext — a tiny global slot for "where am I" breadcrumb segments.
 // Any view that has internal context (current project, current scene,
 // current sub-tab) writes its trail here on mount + watch changes; the
-// topbar in AppShell.vue reads it and renders the breadcrumb.
+// topbar in layouts/MainLayout.vue reads it and renders the breadcrumb.
 //
 // Each segment is { label, href? }. The href is the navigation target
 // when the user clicks the segment (commonly "#projects" to jump back to

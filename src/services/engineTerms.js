@@ -5,7 +5,7 @@
 // accepted: HTTP 403, problem type `…/terms-required`, with the engine id.
 //
 // One door opens the prompt. The Clone tab, the Speech engines row and any refusal met on
-// the way all dispatch `jv:engine-terms`; <EngineTermsDialog> (mounted once, in AppShell.vue)
+// the way all dispatch `jv:engine-terms`; <EngineTermsDialog> (mounted once, in layouts/MainLayout.vue)
 // answers it. A caller's catch block hands its error to handleTermsRefusal first.
 
 export const TERMS_EVENT = "jv:engine-terms";

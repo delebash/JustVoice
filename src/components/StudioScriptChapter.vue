@@ -12,7 +12,7 @@
   jumps to the next such line. The keys are an extra behind "Shortcuts".
 
   Everything that decides what a row shows, what a key does and what a change
-  sends lives in views/scriptReview.js (pure, unit-tested); the lines, their
+  sends lives in services/scriptReview.js (pure, unit-tested); the lines, their
   flags and the counts come from GET /v1/scenes/{id}/script and are re-read
   after every change. Rewrite as the speaker, direction, takes and rendering are
   Render's (StudioRenderChapter.vue's line panel, Slice 4), never Script's.
@@ -43,7 +43,7 @@ import {
   secondLookCandidate,
   keyAction, markOf, mergeState, move, nextToCheck, numberKeys, popUndo, pushUndo, setSpeaker,
   speakerOptions, swap, swapState, toCheck, visibleLines, wasBefore,
-} from "../views/scriptReview.js";
+} from "../services/scriptReview.js";
 
 const props = defineProps({
   project: { type: Object, required: true },

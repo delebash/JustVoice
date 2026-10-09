@@ -71,11 +71,11 @@ the exe.
 security checklist 2026-10-08): `src-electron/electron-main.js` only names this app's settings;
 the renderer reaches the shell through `src/services/native.js` alone (`window.appShell`).
 
-**A Quasar app** (since 2026-10-08 — the kit's `docs/app-structure.md` §Q is the layout): start-up
-code is the boot file `src/boot/jv.js` (no `main.js`); `src/App.vue` is the root (the shell
-`AppShell.vue`, the dictation pill, or the connection-error screen); the server is its own
-package (`server/package.json`, `justvoice-server`, an npm workspace) with the bundled samples
-in `server/samples/`.
+**A Quasar app, laid out as its CLI creates a project** (the kit's `docs/app-structure.md` §Q): boot
+files `src/boot/` (no `main.js`), `src/App.vue` a bare `<router-view>`, the chrome `src/layouts/MainLayout.vue`,
+the screens `src/pages/<Name>Page.vue`, the stylesheets `src/css/`; `/dictate` and `/offline` are routes
+outside the layout. The server is its own package (`server/package.json`, `justvoice-server`, a workspace;
+its bundled samples in `server/samples/`).
 
 ## The renderer gate
 
@@ -151,8 +151,8 @@ implementation lives in the kit. The one-off snapshot scripts predating the law 
 - **`server/src/models.js` is the source of truth for the wire shapes.** The Vue client fetches directly against those shapes; the JustWrite-facing boundary rules are `docs/dev/design-decisions.md` §3.
 - **A mock is production minus the plumbing.** When a mock is asked for, the only thing it may omit is the wiring — no server, no real audio, no persistence. Everything else is the deliverable: **production copy only** (never design commentary, "still a proposal", or notes on what changed), **nav and controls that actually work**, **real enum values and labels verified in the code** (an invented-but-plausible option is worse than a missing one), **real states** — empty, blocked, stale, error — not just the happy path, **counts and names consistent across every screen**, **no leftovers from earlier drafts**, and the app's own tokens and density. Audit the whole file before publishing, not just the screen last edited.
 
-  **A mock is built in the app itself** (decided 2026-10-04 — the HTML mock shared only the tokens, so screens built with the real controls never looked like it): a Vue page in `src/mock/` on the kit's own components and the app's own classes, with made-up data and no server, reached at `#/mock/...` under `npm run dev` only (`src/mock/routes.js`; a packaged build leaves it out). A shape the app doesn't have yet is promoted into `styles.css` first, so the real page reuses it. Before calling a screen done, screenshot the mock and the app at the same width and list every difference. Record: `docs/plans/2026-10-04-persona-voice-making.md` §2. The old HTML mock in `docs/plans/mock/` is **frozen** (decided 2026-10-04): no more edits. It stays only as the picture of screens not yet redone, and each is drawn fresh in the app when its work starts; anything new is drawn only in the app. The Personas list and persona page already are.
-- **Before UI work or a design sweep, read `docs/dev/design-law.md`** — the method, the class inventory and the 7-point conformance checklist. A shape no view has yet is promoted into `styles.css` as a canonical class, never a scoped one-off.
+  **A mock is built in the app itself** (decided 2026-10-04 — the HTML mock shared only the tokens, so screens built with the real controls never looked like it): a Vue page in `src/pages/mock/` (its pieces in `src/components/mock/`, its made-up data in `src/services/mock/`) on the kit's own components and the app's own classes, with made-up data and no server, reached at `#/mock/...` under `npm run dev` only (`src/router/mockRoutes.js`; a packaged build leaves it out). A shape the app doesn't have yet is promoted into `src/css/app.scss` first, so the real page reuses it. Before calling a screen done, screenshot the mock and the app at the same width and list every difference. Record: `docs/plans/2026-10-04-persona-voice-making.md` §2. The old HTML mock in `docs/plans/mock/` is **frozen** (decided 2026-10-04): no more edits. It stays only as the picture of screens not yet redone, and each is drawn fresh in the app when its work starts; anything new is drawn only in the app. The Personas list and persona page already are.
+- **Before UI work or a design sweep, read `docs/dev/design-law.md`** — the method, the class inventory and the 7-point conformance checklist. A shape no page has yet is promoted into `src/css/app.scss` as a canonical class, never a scoped one-off.
 - **Upstream library and model facts** (licences, parameters, capabilities) get checked on the web, never recalled.
 
 ## What goes where
@@ -166,7 +166,7 @@ implementation lives in the kit. The one-off snapshot scripts predating the law 
 | WAV headers, mastering | `server/src/audio/`, `mastering.js` |
 | API endpoints | `server/src/api/<area>_api.js` (registered in `server/src/app.js`) |
 | Request/response shapes | `server/src/models.js` |
-| UI components and views | `src/components/`, `views/` |
+| UI components and pages | `src/components/`, `src/pages/`, the chrome `src/layouts/MainLayout.vue` |
 | Pinia stores (api, toasts, tasks) | `src/stores/` |
 | Desktop-only concerns (file picker, OS paths, tray) | the kit's shell, reached through `src/services/native.js`; `src-electron/electron-main.js` names the settings |
 

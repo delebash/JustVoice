@@ -57,7 +57,7 @@ import { useProjectsStore } from "../stores/projects.js";
 import { useCopy } from "../services/copy.js";
 import { chapterRunFor, failureOf, inRun, queueChapters } from "../services/chapterRun.js";
 import { addNarrator, hasNarrator } from "../services/narrator.js";
-import { foundSpeakers, isWaiting } from "../views/studioStatus.js";
+import { foundSpeakers, isWaiting } from "../services/studioStatus.js";
 import StudioRunBanner from "./StudioRunBanner.vue";
 
 const props = defineProps({

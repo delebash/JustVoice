@@ -117,5 +117,5 @@ Stable fields: `persona_id`, `persona_name`, `block_id`, `line_text`. Everything
 
 - Plan: `docs/plans/archive/persona-voiceprofile-multiuse-design.md` (executed history)
 - Game-flow walkthrough: plan Q2 walkthrough section
-- Studio Render Tab: `src/views/StudioView.vue` Render tab
+- Studio Render Tab: `src/pages/StudioPage.vue` Render tab
 - The external boundary rules: `docs/dev/design-decisions.md` §3 (the original CONTRACT.md is archived)

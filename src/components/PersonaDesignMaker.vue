@@ -3,7 +3,7 @@
   New design — on the persona's own page, at the top of the right column while
   "Type" is Designed (decided 2026-10-04; plan
   docs/plans/2026-10-04-persona-voice-making.md §3; the approved mock is
-  src/mock/MockDesignMaker.vue). Both of the 08-22 paths ("same as
+  src/components/mock/MockDesignMaker.vue). Both of the 08-22 paths ("same as
   alexandria"):
     · 💾 Keep as a description — the voice IS the words; every line is spoken
       from them (Qwen3 VoiceDesign or VoxCPM2), so it can shift a little from

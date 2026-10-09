@@ -1325,7 +1325,7 @@ extraction, speakers, smart_assign, project_export, export_jobs, bulk_delete, _s
     `seedWorkspace` step 7 does) + each module's `refineTranscript`, which returns
     `[text, model]`.
   - The UI is served at `/`: `/ui/` answers 307 to `/` and drops the query, so the dictation
-    window is `/?view=dictate`. At rest it renders nothing (`DictateWindow.vue`: the pill
+    window is `/?view=dictate`. At rest it renders nothing (`pages/DictatePage.vue`: the pill
     shows only while `state !== "rest"`), and nothing in the app starts a cycle today, so its
     states are proven by unit tests only. — *measured + code, 2026-10-08*.
   - MCP through the SDK's own client (`Client` + `StreamableHTTPClientTransport`) on the

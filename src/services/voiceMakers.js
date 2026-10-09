@@ -3,7 +3,7 @@
 // What the persona page's three voice makers share — Clone, Design and Blend
 // open on the persona's own page (decided 2026-10-04, plan
 // docs/plans/2026-10-04-persona-voice-making.md §3; the approved mock is
-// src/mock/MockPersonaEditorView.vue):
+// src/pages/mock/MockPersonaEditorPage.vue):
 //   · the models a maker offers, filtered by how a voice on them can be
 //     directed (the page's "How it can be directed"), with its first pick;
 //   · the one line that says what a voice on a model keeps;

@@ -2,7 +2,7 @@
 <!--
   Studio · Render — the chapter grid (Studio Slice 4, decided 2026-10-04;
   docs/plans/2026-10-04-slice-4-render.md, drawn first as the in-app mock
-  src/mock/MockRenderGrid.vue). D5: the chapter table on the kit's table,
+  src/components/mock/MockRenderGrid.vue). D5: the chapter table on the kit's table,
   opening one chapter's lines (StudioRenderChapter.vue) the way Script does.
   Lines, Rendered, ▶ Render and the ACX check stay; Cached and Render preset
   went.

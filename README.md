@@ -88,11 +88,16 @@ is nothing else to install; the app is the installer. See
 │                              #   this app's settings; electron-assets/icons/ the app and tray icons
 ├── src-capacitor/             # The phone app (Quasar's Capacitor mode)
 ├── build/launcher/            # The headless launcher the installer ships
-├── src/                       # Vue 3 + Pinia renderer (a Quasar app): boot/jv.js starts it, App.vue is the root
+├── src/                       # Vue 3 + Pinia renderer, laid out as Quasar's CLI creates a project
+│   ├── boot/                  # start-up: i18n.js (vue-i18n) · jv.js (the kit's UI, the stores off the server)
+│   ├── App.vue                # the root: a bare <router-view>
+│   ├── layouts/MainLayout.vue # the chrome: q-layout — the rail (q-drawer), the title bar, the content scroller
+│   ├── pages/                 # one <Name>Page.vue per route (each a q-page); DictatePage, ConnectionErrorPage; mock/ (dev only)
+│   ├── router/                # index.js · routes.js (the pages under the layout) · mockRoutes.js
+│   ├── css/                   # tokens.css · app.scss · quasar.variables.scss (the kit's theme)
 │   ├── components/            # ListPane, CapturePill, AudioKeepAlive, etc.
 │   ├── stores/                # Pinia: api, server, player, ui, audioChannel, generation (AI tasks live in the kit's store)
 │   ├── services/              # HTTP client per endpoint group; native.js is the one door to the desktop shell
-│   └── views/                 # One per top-level tab
 ├── server/                    # The Node server (Fastify + SQLite) — the brain; its own package
 │   │                          #   (justvoice-server), which the desktop app installs
 │   ├── samples/               # The bundled sample books
@@ -122,7 +127,7 @@ is nothing else to install; the app is the installer. See
 ✅ **Phase 6 partial** — README + FEATURES.md (23 sections, ~6000 words) + all architecture docs
 
 🚧 **Phase 4b (UI)** — Foundation in place (AudioKeepAlive, ListPane, CapturePill, 5 new Pinia stores, BooksView). Pending: 8 settings sub-routes, full aesthetic CSS sweep matching the preview HTML, StoriesView (timeline editor port), CapturesView (dictation pill), EffectsView (pedalboard chain editor)
-🚧 **Phase 4c+5 (DictateWindow agent-speak cycle)** — Backend ready, Vue + Rust window-spawn integration pending
+🚧 **Phase 4c+5 (the dictation window's agent-speak cycle)** — Backend ready, Vue + Rust window-spawn integration pending
 🚧 **UE integration** — Research-first, deferred until main program completes (see `project_unreal_deep_dive_deferred` memory)
 
 ## Status

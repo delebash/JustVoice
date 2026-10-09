@@ -3,7 +3,7 @@
   The floating dictation pill: what dictation (or an agent's speech) is doing
   right now — listening, transcribing, refining, speaking, done, idle or
   failed — with a row of five bars, a running timer, and a stop button while
-  recording. Rendered by the dictation window (DictateWindow.vue).
+  recording. Rendered by the dictation window (pages/DictatePage.vue).
 
   In the error state the whole pill is a button: clicking it — or Enter or
   Space while it has focus — copies the error to the clipboard and emits

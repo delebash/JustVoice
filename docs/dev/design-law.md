@@ -17,7 +17,7 @@ questions **in writing**, in the code comment or the commit message:
 
 1. **Which existing view already solves this shape?** Name the file and the canonical class. Then
    use it.
-2. **If genuinely nothing exists**, promote a NEW canonical class into `styles.css` first — never a
+2. **If genuinely nothing exists**, promote a NEW canonical class into `src/css/app.scss` first — never a
    scoped one-off — so the next view has a precedent to find.
 
 A grep for the obvious class names costs five seconds; the user paying for the inconsistency costs
@@ -29,7 +29,7 @@ Form primitives come from the shared `@delebash/llm-ui` kit — `UiButton`, `UiI
 `UiSelect`, `UiToggle`, `UiCheckbox`, `UiField`, `UiTag`, `UiChip`, `UiMenu` (all on Quasar's components
 since 2026-10-09). The `Jv*` forks were
 deleted 2026-06-23 and there is no local `components/ui/` directory. What follows is JV-local
-**layout and shell** structure only, all verified present in `styles.css`:
+**layout and shell** structure only, all verified present in `src/css/app.scss`:
 
 | Class | Shape it solves |
 |---|---|

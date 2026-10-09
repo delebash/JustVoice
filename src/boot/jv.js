@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 // JustVoice — the renderer's start-up, as a Quasar boot file (app-structure §Q.4). Quasar creates
-// the app (root: App.vue), Pinia (stores/index.js) and the router (router/index.js), awaits this
-// file, then installs the router and mounts. Until the Quasar move (2026-10-08) this was
-// src/main.js, which created and mounted one of three roots itself; App.vue now picks the root
-// from services/bootState.js, and the sequence below is unchanged.
+// the app (root: App.vue), Pinia (stores/index.js) and the router (router/index.js), runs the boot
+// files in quasar.config.js order (i18n.js, then this one), then installs the router and mounts.
+// Until the Quasar move (2026-10-08) this was src/main.js, which created and mounted one of three
+// roots itself; the start-up now decides by route — the app, the dictation window (/dictate) or
+// the connection-error page (/offline) — and the sequence below is unchanged.
 import { defineBoot } from "#q-app";
 import {
   tooltipDirective,
@@ -25,10 +26,8 @@ import { LAB_TEST_ACTIONS, LAB_TEST_SOURCES } from "../services/labTestData.js";
 import { bootPrefs, ensureActiveProjectDefault } from "../services/prefs.js";
 import { openPath, openUrl, saveFile } from "../services/native.js";
 import { loadDoc, hasDoc, titleForSlug } from "../services/helpDocs.js";
-import { bootView } from "../services/bootState.js";
 import { watchSync } from "../services/syncWatch.js";
 import { useUiStore } from "../stores/ui.js";
-import { i18n } from "../i18n/index.js";
 
 function isDictateView() {
   if (typeof window === "undefined") return false;
@@ -166,24 +165,28 @@ async function boot({ app, router, store: pinia }) {
   // The dictate window (never created today — study §7.1) runs in a separate
   // window that must skip the main shell + server bootstrap (the main window owns
   // those) and render only the floating recording pill. URL?view=dictate
-  // triggers this branch; App.vue renders the pill instead of the shell.
+  // triggers this branch; every route then shows the pill's page (/dictate,
+  // outside the layout).
   if (isDictateView()) {
     wireKit(app);
-    bootView.value = "dictate";
+    router.beforeEach((to) => (to.path === "/dictate" ? true : "/dictate"));
     return;
   }
 
   wireKit(app);
 
-  // Thin-client guard: all data lives in the server. If it's unreachable, App.vue
-  // shows a connection-error screen instead of booting the app with empty/default
-  // state (which looks broken and silently fails to save). The kit's transport is
-  // already configured by wireKit() above, so the screen names the SAME base the
-  // app talks to — no second resolver to disagree with.
+  // Thin-client guard: all data lives in the server. If it's unreachable, every
+  // route goes to the connection-error page (pages/ConnectionErrorPage.vue, outside
+  // the layout) instead of booting the app with empty/default state (which looks
+  // broken and silently fails to save). The kit's transport is already configured
+  // by wireKit() above, so the screen names the SAME base the app talks to — no
+  // second resolver to disagree with. Its Retry reloads the window; once the server
+  // answers, /offline goes back to the page the user was on.
   if (!(await checkServer())) {
-    bootView.value = "server-down";
+    router.beforeEach((to) => (to.path === "/offline" ? true : { path: "/offline", query: { from: to.fullPath } }));
     return;
   }
+  router.beforeEach((to) => (to.path === "/offline" ? to.query.from || "/" : true));
 
   // Pull renderer prefs (appearance, hidden voices, …) off the server into a
   // reactive cache BEFORE mount so views read populated data synchronously.
@@ -206,15 +209,14 @@ async function boot({ app, router, store: pinia }) {
       saveFile({ blob, suggestedName: filename, title, filterName, filterExt, defaultDir }),
   });
 
-  // (Quasar installs Pinia before this file and the router after it.)
-  app.use(i18n);
+  // (Quasar installs Pinia before this file and the router after it; vue-i18n is boot/i18n.js.)
   app.directive("tooltip", tooltipDirective);
   // Force the ui store to init before mount so the persisted appearance (mode,
   // accent hue, ui scale) is applied via the shared engine on the FIRST paint of
   // every view — not lazily after a component first touches the store.
   useUiStore(pinia);
   // Warm the default local model BEFORE mount (the kit's startWarmOnBoot —
-  // family mechanic): AppShell.vue's splash overlay is up on the very first Vue
+  // family mechanic): the layout's splash overlay is up on the very first Vue
   // paint, a seamless hand-off from index.html's static plate. JV's warm
   // default is OFF (ruling 2026-08-05: TTS owns the GPU until F4's arbiter),
   // so this normally decides "nothing to warm" and the app just opens; the

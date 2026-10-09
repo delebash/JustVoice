@@ -139,7 +139,7 @@ Deleting a book deletes its speakers.
   `model_name`, `directed_by`, `speaks`), the answer Cast and the page share; the
   vocabulary lives in `services/personaFacts.js`. A row opens the persona's page.
 - `PersonaEditorView.vue` (2026-10-03, the redesign's P4; laid out as the in-app
-  mock `src/mock/MockPersonaEditorView.vue` 2026-10-04 — `.jv-split--wide-left`,
+  mock `src/pages/mock/MockPersonaEditorPage.vue` 2026-10-04 — `.jv-split--wide-left`,
   `.jv-knob-grid`): cards Persona (name, note) · Voice ("How it can be directed"
   first, "Type" (once "Made by") second — a kind that can't be directed that way is off; Model /
   Gender / Language filters; each option ends with what it can do; ▶ Play;
@@ -946,7 +946,7 @@ exposes queue depth or the current engine.**
 
 ### StudioView's steps
 
-Order is canon in `src/views/studioSteps.js`, **pinned by a test**:
+Order is canon in `src/services/studioSteps.js`, **pinned by a test**:
 
 ```
 every kind : overview (unnumbered — the project's own page)
@@ -962,12 +962,12 @@ active project so the title-bar switcher works while Studio is on screen.
 
 | Step | Where | What it is |
 |---|---|---|
-| **Overview** | `components/StudioOverview.vue` | Where-it-stands rows (`views/studioStatus.js`, pure + tested — counts from blocks, cast, the render state and Script's grid rows; Script's two tags open the grid on "To check"), Continue, settings (title, author → M4B artist, description, kind, mastering target), re-import, .justvoice.zip, delete |
+| **Overview** | `components/StudioOverview.vue` | Where-it-stands rows (`services/studioStatus.js`, pure + tested — counts from blocks, cast, the render state and Script's grid rows; Script's two tags open the grid on "To check"), Continue, settings (title, author → M4B artist, description, kind, mastering target), re-import, .justvoice.zip, delete |
 | **Discover** | `components/StudioDiscover.vue` | Chapter grid (Found column) + Scan + Speakers found (status per person, chips All · New · In the cast · Ignored; Add / Ignore / Undo; In-the-cast rows *already in the cast* + Remove from cast; ticks → ＋ Add / Ignore / Remove N selected); Ignored and Already-in-the-cast each have a ✕ per name and Clear all (the cast's keeps the Narrator); every removal asks first |
 | **Cast** | `components/StudioCast.vue` | Speakers left (narrator card, cards with *also called*, Narrator tick, ✕ asks first, the ⚠ language-mismatch line against `project.language`; a game project gets a table), the selected speaker's Name / Also called / Who they are / *Edit their persona →*; personas right (search, model / can be directed / language filters, the server's `model_name` · `speaks` · `directed_by`, ▶ plays the persona via `auditionPersona`, ✎, ＋ New persona → `/personas/new?project=&for=` and back assigned), click to assign; ＋ Add · ✕ Clear cast · ✨ Smart-assign |
 | **Script** | `components/StudioScript.vue` (the chapter grid) · `components/StudioScriptChapter.vue` (one chapter) | The grid reads `GET /v1/projects/{id}/script` (Studio owns the fetch; Overview reads the same rows) and queues Analyze on `services/chapterRun.js` — one run of chapters per project, one kit task per chapter, module state so it survives leaving Studio. The chapter page reads `GET /v1/scenes/{id}/script` and re-reads after every change; its selection, keys, set / swap / confirm and undo stack are `views/scriptReview.js` (pure, unit-tested). The grid also adds, renames, moves and deletes chapters and pastes a new chapter's text (D7, 2026-10-04) |
 | **Render** | `components/StudioRender.vue` (the chapter grid) · `components/StudioRenderChapter.vue` (one chapter's lines) | The grid reads `GET /v1/projects/{id}/render_state` (Studio owns the fetch; its step card and Overview read it) and runs chapters through `services/renderRun.js` (a render job for the ready lines, then `/v1/render_chapter`), ACX QC, the Render-stopped dialog. The line page reads `GET /v1/scenes/{id}/render_lines`: direction, the ⚙ numbers (`PATCH /v1/blocks/{id}` `line_override`), takes (`/v1/takes/*`), Compare, Rewrite in character, 📕 Pronunciation |
-| **Lines** (game) | `views/LinesView.vue` embedded with `:project-id` | the line grid, its own project picker hidden |
+| **Lines** (game) | `components/LinesBoard.vue` embedded with `:project-id` (the /lines page is `pages/LinesPage.vue`) | the line grid, its own project picker hidden |
 
 | Step | Subtitle in the tab strip | What it does |
 |---|---|---|

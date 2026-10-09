@@ -2,7 +2,7 @@
 <!--
   Studio · Render — one chapter's lines (Studio Slice 4, decided 2026-10-04;
   docs/plans/2026-10-04-slice-4-render.md, drawn first as the in-app mock
-  src/mock/MockRenderChapterView.vue).
+  src/components/mock/MockRenderChapter.vue).
 
   The line is the unit: Speaker · Model · Text · Can be directed · Status ·
   Audio, the status in §8.16's words (GET /v1/scenes/{id}/render_lines).
@@ -37,7 +37,7 @@ import { useKeptScroll } from "../composables/useKeptScroll.js";
 import { loadingText, mediaUrl, renderChapter, renderLines, waitingText } from "../services/renderRun.js";
 import { facetCounts, facetOptions, facetTotal, passesFilters } from "../services/facets.js";
 import { CANT_RENDER_STATES as BLOCKED, lineStateWord } from "../services/lineStates.js";
-import { speakerOptions as castChoices } from "../views/scriptReview.js";
+import { speakerOptions as castChoices } from "../services/scriptReview.js";
 import PageTaskStrips from "./PageTaskStrips.vue";
 import PagePlayer from "./PagePlayer.vue";
 import PlayTransport from "./PlayTransport.vue";

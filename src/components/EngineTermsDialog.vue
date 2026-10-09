@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: MIT -->
 <!--
   An engine's own terms, shown before the use they gate (decided 2026-10-02 — Pocket TTS:
-  "use the copy and show kyutai's terms before first clone"). Mounted once, in AppShell.vue;
+  "use the copy and show kyutai's terms before first clone"). Mounted once, in layouts/MainLayout.vue;
   opened by `jv:engine-terms` from services/engineTerms.js — the Clone tab, the Speech
   engines row, and any refusal the server answers with `terms-required`. Accept records it
   once per install (POST /v1/engines/{id}/terms); the server then lets the use through.

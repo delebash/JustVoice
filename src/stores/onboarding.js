@@ -3,7 +3,7 @@
 // Onboarding store — first-run "what are you using JustVoice for?" state.
 //
 // Lives in Pinia because the answer drives terminology (services/copy.js),
-// the launch tab (AppShell.vue), and featured docs across the app. We persist
+// the launch tab (layouts/MainLayout.vue), and featured docs across the app. We persist
 // to the server's settings.json via PATCH /v1/settings so the choice
 // survives across machines that share the same server data dir, and
 // hydrate on boot so the welcome modal only shows once.

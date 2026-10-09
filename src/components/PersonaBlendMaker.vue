@@ -3,7 +3,7 @@
   New blend — on the persona's own page, at the top of the right column while
   "Type" is Blended (decided 2026-10-04; plan
   docs/plans/2026-10-04-persona-voice-making.md §3; the approved mock is
-  src/mock/MockBlendMaker.vue). Moved from Voices → Blend whole: Kokoro's own
+  src/components/mock/MockBlendMaker.vue). Moved from Voices → Blend whole: Kokoro's own
   voices, mixed four ways — Blend, Extrapolate, Vector math, Recombine (with
   its custom cut points) — with the same words and the same checks. ▶ Preview
   speaks the Hear it line with the mix AS the persona; 💾 Keep saves it to
@@ -11,7 +11,7 @@
 
   Why the four ways are what they are — StyleTTS2's two halves, the pack
   mean, the analogy arithmetic — is recorded where they were built, beside
-  Voices' old Blend tab (views/VoicesView.vue, 2026-08-21).
+  Voices' old Blend tab (then views/VoicesView.vue, 2026-08-21).
 -->
 <script setup>
 import { computed, ref } from "vue";

@@ -13,8 +13,9 @@ await page.waitForTimeout(800);
 await page.getByRole("button", { name: TAB, exact: true }).click();
 await page.waitForTimeout(700);
 await page.evaluate((y) => {
-  const main = document.querySelector(".app-shell > main");
-  if (main) main.scrollTop = y;
+  // the one content scroller (layouts/MainLayout.vue)
+  const content = document.querySelector(".jv-content");
+  if (content) content.scrollTop = y;
 }, SCROLL);
 await page.waitForTimeout(300);
 const slug = TAB.toLowerCase().replace(/\s+/g, "-");

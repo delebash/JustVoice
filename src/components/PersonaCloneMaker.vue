@@ -3,7 +3,7 @@
   New clone — on the persona's own page, at the top of the right column while
   "Type" is Cloned (decided 2026-10-04: "the whole design should
   be part of the persona"; plan docs/plans/2026-10-04-persona-voice-making.md
-  §3; the approved mock is src/mock/MockCloneMaker.vue).
+  §3; the approved mock is src/components/mock/MockCloneMaker.vue).
 
   The clip comes from a drop, a browse, a pasted URL, a recording or one of
   your captures; its length and how far its speech stands above the noise are
