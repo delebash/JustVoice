@@ -92,7 +92,7 @@ export default defineConfig(() => {
     framework: {
       // the family's Quasar settings (the kit's docs/app-structure.md §Q): no Material ripple
       config: { ripple: false },
-      plugins: []
+      plugins: ['Notify']
     },
 
     animations: [],

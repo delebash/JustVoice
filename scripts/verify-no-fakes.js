@@ -31,7 +31,7 @@ async function go(hash) {
   await page.evaluate((h) => { window.location.hash = h; }, hash);
   await page.waitForTimeout(700);
 }
-const toastCount = () => page.locator(".jv-toast, [data-sonner-toast], .toast").count();
+const toastCount = () => page.locator(".jv-toast, .ui-toast, .toast").count();
 
 // ── Captures ──
 await go("#captures");

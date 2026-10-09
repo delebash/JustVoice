@@ -1795,9 +1795,9 @@ section.block > h3 {
   overflow-x: auto;
 }
 
-/* Toaster anchor (vue-sonner sets its own positioning; this just
-   ensures the host doesn't get pushed by other fixed-position UI). */
-.ui-toaster { z-index: 250; }
+/* The toasts (the kit's, on Quasar's Notify) stack under the select lists
+   and menus, as the toaster did. */
+.q-notifications__list { z-index: 250; }
 
 /* =========================================================
    5. Animations
