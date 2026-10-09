@@ -1095,6 +1095,14 @@ agent's checks, the suite and the extraction check re-run by me; `extraction/`, 
   `transcribe` refusals, bad arguments, unknown tool and method, ping, the empty prompt and
   resource lists, the transport's refusals and the stamped `mcp_bindings` row. `speak` was not
   called. (`compare-mcp.js`.)
+- **The MCP SDK's lines** (*web*, its GitHub releases, 2026-10-09): `@modelcontextprotocol/sdk`
+  1.32.1 (2026-10-05) is the newest of the 1.x line JustVoice runs, pinned exact. 1.31 binds stored
+  OAuth credentials to their issuer (client side); 1.32 makes the HTTP client transports follow
+  only same-origin redirects and adds two options that stay off unless set (`maxToolInputElements`
+  on `McpServer`, `expectedResource` on `requireBearerAuth`) — nothing JustVoice's server calls
+  changed (`npm run test:server` 1061/1061 on it). The 2.x line is new packages
+  (`@modelcontextprotocol/server`, `/client`, `/core`, per-framework adapters, a codemod), and the
+  1.x README now points at it: moving there is a migration, not an update.
 - fastmcp's wire (*probed on the live Python app*): capabilities include prompts, resources and
   `extensions`; protocol versions 2024-11-05 to 2025-11-25 are accepted and any other gets
   2025-11-25; `serverInfo.version` is fastmcp's own, "3.4.5"; tool errors read "Error calling
