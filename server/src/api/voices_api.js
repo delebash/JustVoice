@@ -8,6 +8,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync, statSync } from "node:fs";
 import { LLMNotConfiguredError } from "@delebash/llm-runner/llm";
+import { Hono, input } from "@delebash/llm-runner/platform";
 import { HttpError } from "@delebash/llm-runner/platform/errors";
 import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
 import { b64decode, isDict, NotImplementedError, pyRound, pySorted, strip, ValueError } from "@delebash/llm-runner/platform/py";
@@ -253,59 +254,57 @@ export function _recipeHash(sources, weights, strategy = "blend", segments = nul
 
 const errText = (e) => e?.message ?? String(e);
 
-export async function router(app) {
-  app.get("/v1/voices", async () => listVoices());
+export function router() {
+  const app = new Hono();
+  app.get("/v1/voices", async (c) => c.json(await listVoices()));
 
   /** Which version of its model speaks this voice. */
-  app.get(
-    "/v1/voices/:id/model-version",
-    { schema: { querystring: T.Object({ language: opt(nullable(T.String()), null) }) } },
-    async (req) => {
-      const out = await vmod.versionsOf(getState(), req.params.id, req.query.language);
-      if (out === null) throw notFound(`voice ${req.params.id}`);
-      return construct(VoiceModelVersion, out);
-    },
-  );
+  app.get("/v1/voices/:id/model-version", input({ querystring: T.Object({ language: opt(nullable(T.String()), null) }) }), async (c) => {
+    const id = c.req.param("id");
+    const out = await vmod.versionsOf(getState(), id, c.req.valid("query").language);
+    if (out === null) throw notFound(`voice ${id}`);
+    return c.json(construct(VoiceModelVersion, out));
+  });
 
-  app.get("/v1/voices/:id", async (req) => {
+  app.get("/v1/voices/:id", async (c) => {
     const st = getState();
-    const id = req.params.id;
+    const id = c.req.param("id");
     const hit = await registryPreset(st, id);
-    if (hit !== null) return _registryDto(st, hit[0], hit[1]);
+    if (hit !== null) return c.json(_registryDto(st, hit[0], hit[1]));
     const rec = st.voices.get(id);
-    if (rec) return _storedToDto(rec);
+    if (rec) return c.json(_storedToDto(rec));
     for (const manifest of getManager().manifests().values()) {
-      for (const v of manifest.staticVoices) if (v.id === id) return _presetDto(st, manifest.id, v);
+      for (const v of manifest.staticVoices) if (v.id === id) return c.json(_presetDto(st, manifest.id, v));
     }
     throw notFound(`voice ${id}`);
   });
 
   /** Update a stored voice's metadata. */
-  app.patch("/v1/voices/:id", { schema: { body: UpdateVoiceRequest } }, async (req) => {
+  app.patch("/v1/voices/:id", input({ body: UpdateVoiceRequest }), async (c) => {
     const st = getState();
-    const id = req.params.id;
+    const id = c.req.param("id");
     // Preset voices ship with the engine — nothing stored to update.
     if ((await registryPreset(st, id)) !== null) throw badRequest(`voice ${id} is an engine preset and cannot be updated`);
-    const rec = st.voices.update(id, modelDump(UpdateVoiceRequest, sentBody(req)));
+    const rec = st.voices.update(id, modelDump(UpdateVoiceRequest, sentBody(c)));
     if (!rec) throw notFound(`voice ${id}`);
-    return _storedToDto(rec);
+    return c.json(_storedToDto(rec));
   });
 
-  app.delete("/v1/voices/:id", async (req) => {
-    if (!getState().voices.delete(req.params.id)) throw notFound(`voice ${req.params.id}`);
-    return { deleted: true };
+  app.delete("/v1/voices/:id", (c) => {
+    if (!getState().voices.delete(c.req.param("id"))) throw notFound(`voice ${c.req.param("id")}`);
+    return c.json({ deleted: true });
   });
 
   /** How long a clip is, and how far its speech stands above its noise. The persona page's
    * clone maker checks a clip before it is kept (2026-10-04): the page decodes it to WAV, this
    * measures it. */
-  app.post("/v1/voices/clip-check", { schema: { body: ClipCheckRequest } }, async (req) => {
+  app.post("/v1/voices/clip-check", input({ body: ClipCheckRequest }), async (c) => {
     let raw;
     let fmt;
     let offset;
     let size;
     try {
-      raw = b64decode(req.body.wav_b64);
+      raw = b64decode(c.req.valid("json").wav_b64);
       [fmt, offset, size] = parseWavHeader(raw);
     } catch (e) {
       // anything unreadable is the caller's to fix
@@ -313,16 +312,18 @@ export async function router(app) {
     }
     if (fmt.bitsPerSample !== 16) throw badRequest("send the clip as 16-bit PCM WAV");
     const pcm = raw.subarray(offset, offset + size);
-    return construct(ClipCheckResponse, {
-      seconds: pyRound(fmt.durationSec, 2),
-      noise_margin_db: await noiseMarginDb(pcm, fmt.sampleRate, fmt.channels),
-    });
+    return c.json(
+      construct(ClipCheckResponse, {
+        seconds: pyRound(fmt.durationSec, 2),
+        noise_margin_db: await noiseMarginDb(pcm, fmt.sampleRate, fmt.channels),
+      }),
+    );
   });
 
   /** Clone a voice from a reference clip. */
-  app.post("/v1/voices/clone", { schema: { body: CloneVoiceRequest } }, async (req, reply) => {
+  app.post("/v1/voices/clone", input({ body: CloneVoiceRequest }), (c) => {
     const st = getState();
-    const body = req.body;
+    const body = c.req.valid("json");
     if (!body.engine || !body.name) throw badRequest("engine + name required");
     let wavBytes;
     try {
@@ -347,14 +348,13 @@ export async function router(app) {
       updated_at: now,
     });
     st.voices.writeRefWav(created.id, wavBytes);
-    reply.code(201);
-    return _storedToDto(created);
+    return c.json(_storedToDto(created), 201);
   });
 
   /** Create a voice from a prose description. */
-  app.post("/v1/voices/design", { schema: { body: DesignVoiceRequest } }, async (req, reply) => {
+  app.post("/v1/voices/design", input({ body: DesignVoiceRequest }), (c) => {
     const st = getState();
-    const body = req.body;
+    const body = c.req.valid("json");
     const model = _modelFor(body.engine, body.model, "design");
     const now = utcNow();
     const created = st.voices.create({
@@ -370,8 +370,7 @@ export async function router(app) {
       created_at: now,
       updated_at: now,
     });
-    reply.code(201);
-    return _storedToDto(created);
+    return c.json(_storedToDto(created), 201);
   });
 
   /**
@@ -380,10 +379,10 @@ export async function router(app) {
    * tags, and on Chatterbox Multilingual for Spanish. What the target model needs is checked
    * here, by name, before anything is written.
    */
-  app.post("/v1/voices/:id/copy", { schema: { body: CopyVoiceRequest } }, async (req, reply) => {
+  app.post("/v1/voices/:id/copy", input({ body: CopyVoiceRequest }), (c) => {
     const st = getState();
-    const id = req.params.id;
-    const body = req.body;
+    const id = c.req.param("id");
+    const body = c.req.valid("json");
     const src = st.voices.get(id);
     if (src === null) throw notFound(`voice ${id}`);
     const clip = String(st.voices.refWavPath(id));
@@ -425,14 +424,13 @@ export async function router(app) {
       updated_at: now,
     });
     st.voices.writeRefWav(created.id, readFileSync(clip));
-    reply.code(201);
-    return _storedToDto(created);
+    return c.json(_storedToDto(created), 201);
   });
 
   /** LLM-label the voices the built-in dictionary doesn't know. */
-  app.post("/v1/voices/gender-guess", { schema: { body: GenderGuessRequest } }, async (req) => {
-    const voices = req.body.voices;
-    if (!voices.length) return construct(GenderGuessResponse, { guesses: {} });
+  app.post("/v1/voices/gender-guess", input({ body: GenderGuessRequest }), async (c) => {
+    const voices = c.req.valid("json").voices;
+    if (!voices.length) return c.json(construct(GenderGuessResponse, { guesses: {} }));
     const lines = voices.map((v) => `- ${v.name}${v.description ? ` — ${v.description}` : ""}`);
     let resp;
     try {
@@ -450,17 +448,18 @@ export async function router(app) {
         guesses[name] = Object.hasOwn(_GENDER_MAP, key) ? _GENDER_MAP[key] : "";
       }
     }
-    return construct(GenderGuessResponse, {
-      guesses,
-      usage: { prompt_tokens: resp.prompt_tokens, completion_tokens: resp.completion_tokens, model: resp.model },
-    });
+    return c.json(
+      construct(GenderGuessResponse, {
+        guesses,
+        usage: { prompt_tokens: resp.prompt_tokens, completion_tokens: resp.completion_tokens, model: resp.model },
+      }),
+    );
   });
 
   /** Blend 2–5 voices into a new voice (elementwise weighted average). */
-  app.post("/v1/voices/blend", { schema: { body: BlendVoiceRequest } }, async (req, reply) => {
+  app.post("/v1/voices/blend", input({ body: BlendVoiceRequest }), async (c) => {
     const st = getState();
-    const body = req.body;
-    reply.code(201);
+    const body = c.req.valid("json");
 
     if (!blending.supports(body.engine)) {
       throw notImplemented(`engine '${body.engine}' cannot blend — its voices are not style vectors. Kokoro is the blending engine.`);
@@ -516,7 +515,7 @@ export async function router(app) {
         v.blend_recipe &&
         _recipeHash(v.blend_recipe.sources, v.blend_recipe.weights, v.blend_recipe.strategy, v.blend_recipe.segments) === recipeHash
       ) {
-        return _storedToDto(v);
+        return c.json(_storedToDto(v), 201);
       }
     }
 
@@ -563,6 +562,7 @@ export async function router(app) {
       created_at: now,
       updated_at: now,
     });
-    return _storedToDto(created);
+    return c.json(_storedToDto(created), 201);
   });
+  return app;
 }

@@ -12,6 +12,7 @@
 // The archive is the kit's ZIP (platform/zip.js — CPython 3.12's zipfile, deflated).
 
 import { statSync } from "node:fs";
+import { Hono, input } from "@delebash/llm-runner/platform";
 import { opt, T } from "@delebash/llm-runner/platform/models";
 import { strip } from "@delebash/llm-runner/platform/py";
 import { jsonLoads, pyJson } from "@delebash/llm-runner/platform/pyjson";
@@ -42,11 +43,12 @@ function stampNow() {
   return `${iso.slice(0, 4)}${iso.slice(5, 7)}${iso.slice(8, 10)}T${iso.slice(11, 13)}${iso.slice(14, 16)}${iso.slice(17, 19)}Z`;
 }
 
-export async function router(app) {
-  app.get("/v1/projects/:project_id/export", { schema: { querystring: T.Object({ include_audio: opt(T.Boolean(), true) }) } }, async (req, reply) => {
+export function router() {
+  const app = new Hono();
+  app.get("/v1/projects/:project_id/export", input({ querystring: T.Object({ include_audio: opt(T.Boolean(), true) }) }), async (c) => {
     const h = session.getDb();
-    const projectId = req.params.project_id;
-    const includeAudio = req.query.include_audio;
+    const projectId = c.req.param("project_id");
+    const includeAudio = c.req.valid("query").include_audio;
     const project = h.one(`select * from ${Project} where id = ? limit 1`, [projectId], Project);
     if (!project) throw notFound(`project ${projectId}`);
 
@@ -184,10 +186,11 @@ export async function router(app) {
 
     const bytesOut = zf.toBuffer();
     const filename = `${_slugify(project.name)}-${stampNow()}.justvoice.zip`;
-    return reply
-      .type("application/zip")
-      .header("content-disposition", `attachment; filename="${filename}"`)
-      .header("content-length", String(bytesOut.length))
-      .send(bytesOut);
+    return c.body(bytesOut, 200, {
+      "content-type": "application/zip",
+      "content-disposition": `attachment; filename="${filename}"`,
+      "content-length": String(bytesOut.length),
+    });
   });
+  return app;
 }

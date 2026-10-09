@@ -15,6 +15,7 @@ import { existsSync, mkdirSync, readdirSync, statSync, unlinkSync, utimesSync, w
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { Readable } from "node:stream";
+import { Hono, input } from "@delebash/llm-runner/platform";
 import { getLogger } from "@delebash/llm-runner/platform/log";
 import { literal, nullable, opt, T } from "@delebash/llm-runner/platform/models";
 import { b64decode, cpLen, NotImplementedError, pyInt, strip, truthy, ValueError } from "@delebash/llm-runner/platform/py";
@@ -626,14 +627,15 @@ function renderPiece(kind, engineId, req, voiceFields, signal) {
 
 const DELIVERY_FIELDS = new Set(modelFields(Delivery));
 
-export async function router(app) {
+export function router() {
+  const app = new Hono();
   /**
    * Generate a short audition clip without persisting the voice. Returns a preview_id that can
    * be passed to POST /v1/voices/preview/{id}/save within 10 minutes to promote the candidate to
    * a persistent Voice.
    */
-  app.post("/v1/voices/preview", { schema: { body: VoicePreviewRequest } }, async (req, reply) => {
-    const body = markSent(req.body, sentBody(req));
+  app.post("/v1/voices/preview", input({ body: VoicePreviewRequest }), async (c) => {
+    const body = markSent(c.req.valid("json"), sentBody(c));
     self.validateCandidate(body);
     const state = getState();
     const engine = await self.candidateEngine(body, state);
@@ -651,25 +653,27 @@ export async function router(app) {
       delivery,
       seed: body.seed,
       extra,
-      signal: generateApi.clientGone(req, reply),
+      signal: generateApi.clientGone(c),
     });
     const durationSec = wav.length / (sampleRate * channels * 2);
     const [previewId, expiresAt] = await self.storeCandidate(body.source, modelDump(VoicePreviewRequest, body), wav);
-    return construct(VoicePreviewResponse, {
-      wav_b64: Buffer.from(wav).toString("base64"),
-      duration_sec: durationSec,
-      preview_id: previewId,
-      expires_at: expiresAt,
-    });
+    return c.json(
+      construct(VoicePreviewResponse, {
+        wav_b64: Buffer.from(wav).toString("base64"),
+        duration_sec: durationSec,
+        preview_id: previewId,
+        expires_at: expiresAt,
+      }),
+    );
   });
 
   /**
    * Promote a previewed voice to the persistent library. Idempotent on preview_id: subsequent
    * saves return the same record. 404 if the preview has expired from the LRU.
    */
-  app.post("/v1/voices/preview/:preview_id/save", { schema: { body: PromotePreviewRequest } }, async (req) => {
-    const previewId = req.params.preview_id;
-    const body = req.body;
+  app.post("/v1/voices/preview/:preview_id/save", input({ body: PromotePreviewRequest }), async (c) => {
+    const previewId = c.req.param("preview_id");
+    const body = c.req.valid("json");
     const entry = await _getPreview(previewId);
     if (entry === null) throw notFound(`preview ${previewId} (expired from LRU or never existed)`);
 
@@ -682,7 +686,7 @@ export async function router(app) {
     const already = entry.savedVoiceId;
     if (already) {
       const rec = state.voices.get(already);
-      if (rec) return { promoted: true, preview_id: previewId, voice_id: rec.id, name: rec.name, source: rec.source };
+      if (rec) return c.json({ promoted: true, preview_id: previewId, voice_id: rec.id, name: rec.name, source: rec.source });
     }
 
     const now = utcNow();
@@ -796,7 +800,7 @@ export async function router(app) {
     }
 
     entry.savedVoiceId = created.id;
-    return { promoted: true, preview_id: previewId, voice_id: created.id, name: created.name, source: created.source };
+    return c.json({ promoted: true, preview_id: previewId, voice_id: created.id, name: created.name, source: created.source });
   });
 
   /**
@@ -806,8 +810,8 @@ export async function router(app) {
    * for now: a clone or a design needs its reference clip on the engine call, which the ticket
    * does not carry.
    */
-  app.post("/v1/voices/preview/stream-ticket", { schema: { body: VoicePreviewRequest } }, async (req) => {
-    const body = markSent(req.body, sentBody(req));
+  app.post("/v1/voices/preview/stream-ticket", input({ body: VoicePreviewRequest }), async (c) => {
+    const body = markSent(c.req.valid("json"), sentBody(c));
     if (body.source !== "blended") {
       throw badRequest("stream tickets are for blend candidates; clone and design auditions use POST /v1/voices/preview");
     }
@@ -818,7 +822,7 @@ export async function router(app) {
       voice_fields: { voice_vector: vector },
       language: lang !== null ? lang : body.language,
     });
-    return construct(StreamTicketResponse, { ticket, expires_at: Date.now() / 1000 + _TTL_S });
+    return c.json(construct(StreamTicketResponse, { ticket, expires_at: Date.now() / 1000 + _TTL_S }));
   });
 
   /**
@@ -832,11 +836,12 @@ export async function router(app) {
    */
   app.get(
     "/v1/voices/:voice_id/preview/stream",
-    { schema: { querystring: T.Object({ text: opt(T.String(), ""), auto_load: opt(T.Boolean(), false) }) } },
-    async (req, reply) => {
+    input({ querystring: T.Object({ text: opt(T.String(), ""), auto_load: opt(T.Boolean(), false) }) }),
+    async (c) => {
       const st = getState();
-      const voiceId = req.params.voice_id;
-      const text = auditionText(st, req.query.text);
+      const voiceId = c.req.param("voice_id");
+      const query = c.req.valid("query");
+      const text = auditionText(st, query.text);
 
       // Same key as a body-less POST of this line — the two doors share the cache. A TICKET is
       // skipped: it names one unsaved candidate, so every entry would be a permanent miss.
@@ -845,11 +850,11 @@ export async function router(app) {
         const hit = cfg._AUDITION_CACHE.get(key);
         if (hit !== undefined) {
           auditionCacheHits += 1;
-          return reply.type(hit[1]).send(hit[0]);
+          return c.body(hit[0], 200, { "content-type": hit[1] });
         }
       }
 
-      const [kind, engineId, voiceFields] = await self._resolveAuditionTarget(voiceId, req.query.auto_load);
+      const [kind, engineId, voiceFields] = await self._resolveAuditionTarget(voiceId, query.auto_load);
       const auditionLang = _auditionLanguage(voiceId);
 
       const gen = st.settings.get().generation;
@@ -857,7 +862,7 @@ export async function router(app) {
       const crossfadeMs = pyInt(gen.crossfade_ms ?? 50);
       const pieces = splitTextIntoChunks(text, pieceChars);
       if (!pieces.length) pieces.push(text);
-      const signal = generateApi.clientGone(req, reply);
+      const signal = generateApi.clientGone(c);
 
       async function* wavStream() {
         let sr = 0;
@@ -894,7 +899,7 @@ export async function router(app) {
         if (sr && emitted.length) cfg._AUDITION_CACHE.set(key, [writeWavContainer(Buffer.concat(emitted), sr, channels), "audio/wav"]);
       }
 
-      return reply.type("audio/wav").send(Readable.from(wavStream(), { objectMode: false }));
+      return c.body(Readable.toWeb(Readable.from(wavStream(), { objectMode: false })), 200, { "content-type": "audio/wav" });
     },
   );
 
@@ -907,14 +912,11 @@ export async function router(app) {
    */
   app.post(
     "/v1/voices/:voice_id/preview",
-    {
-      schema: { body: nullable(AuditionRequest), querystring: T.Object({ auto_load: opt(T.Boolean(), false) }) },
-      config: { pyFloats: true },
-    },
-    async (req, reply) => {
+    input({ body: nullable(AuditionRequest), querystring: T.Object({ auto_load: opt(T.Boolean(), false) }), pyFloats: true }),
+    async (c) => {
       const st = getState();
-      const voiceId = req.params.voice_id;
-      const body = req.body ?? null;
+      const voiceId = c.req.param("voice_id");
+      const body = c.req.valid("json") ?? null;
       const text = auditionText(st, body ? body.text : null);
 
       // Only fields the Delivery shape actually carries; an unknown key would 422 the whole
@@ -926,7 +928,7 @@ export async function router(app) {
       const hit = cfg._AUDITION_CACHE.get(key);
       if (hit !== undefined) {
         auditionCacheHits += 1;
-        return reply.type(hit[1]).send(hit[0]);
+        return c.body(hit[0], 200, { "content-type": hit[1] });
       }
 
       const genReq = construct(GenerateRequest, {
@@ -938,10 +940,11 @@ export async function router(app) {
       });
 
       // Routing lives in _resolveAuditionTarget — ONE door shared with GET /preview/stream.
-      const [kind, engineId, voiceFields] = await self._resolveAuditionTarget(voiceId, req.query.auto_load);
-      const wav = await renderPiece(kind, engineId, genReq, voiceFields, generateApi.clientGone(req, reply));
+      const [kind, engineId, voiceFields] = await self._resolveAuditionTarget(voiceId, c.req.valid("query").auto_load);
+      const wav = await renderPiece(kind, engineId, genReq, voiceFields, generateApi.clientGone(c));
       if (wav && wav.length) cfg._AUDITION_CACHE.set(key, [Buffer.from(wav), "audio/wav"]);
-      return reply.type("audio/wav").send(wav);
+      return c.body(wav, 200, { "content-type": "audio/wav" });
     },
   );
+  return app;
 }

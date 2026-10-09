@@ -25,7 +25,7 @@ import { RenderedLine } from "../src/render_core.js";
 import * as renderJobs from "../src/render_jobs.js";
 import { getScheduler, workOwner } from "../src/synth_scheduler.js";
 import * as voiceModel from "../src/voice_model.js";
-import { tmpDb, tmpPath } from "./helpers.js";
+import { inject, tmpDb, tmpPath } from "./helpers.js";
 import { viaRoutes } from "./render_helpers.js";
 
 const TERMINAL = ["completed", "failed", "cancelled"];
@@ -226,7 +226,7 @@ test("api_roundtrip", async () => {
   fakeRender(async () => line());
   await viaRoutes([renderJobsRouter], async (app) => {
     const call = async (method, url, json) => {
-      const r = await app.inject({ method, url, ...(json !== undefined ? { payload: json } : {}) });
+      const r = await inject(app, { method, url, ...(json !== undefined ? { payload: json } : {}) });
       return { status: r.statusCode, json: () => JSON.parse(r.body) };
     };
     let r = await call("POST", "/v1/render_jobs", { project_id: projectId, scope: "blocks", scope_ids: blockIds });

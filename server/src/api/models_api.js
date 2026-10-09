@@ -10,6 +10,7 @@
 
 import { existsSync, rmSync } from "node:fs";
 import { isDeepStrictEqual } from "node:util";
+import { Hono, input } from "@delebash/llm-runner/platform";
 import { dirSize } from "@delebash/llm-runner/platform/disk_api";
 import { literal, T } from "@delebash/llm-runner/platform/models";
 import { getState } from "../app_state.js";
@@ -45,9 +46,10 @@ export async function _annotatePlacement(engineId, variants) {
 
 const variantIn = (engineId, variantId) => modelCatalog.modelsFor(engineId).some((v) => v.id === variantId);
 
-export async function router(app) {
-  app.get("/v1/engines/:id/models", async (req) => {
-    const id = req.params.id;
+export function router() {
+  const app = new Hono();
+  app.get("/v1/engines/:id/models", async (c) => {
+    const id = c.req.param("id");
     // Validate against the manager's discovered manifests — the ONE catalog.
     if (manager.getManager().getManifest(id) === null) throw notFound(`engine ${id}`);
     const variants = modelCatalog.modelsFor(id);
@@ -65,7 +67,7 @@ export async function router(app) {
     for (const v of variants) {
       if (rows.has(v.id)) v.runtime_options = runtimeOptions.describe(id, rows.get(v.id));
     }
-    return construct(ModelsListResponse, { engine_id: id, variants });
+    return c.json(construct(ModelsListResponse, { engine_id: id, variants }));
   });
 
   /**
@@ -73,8 +75,9 @@ export async function router(app) {
    * `engine_overrides[id].placements`. A loaded model is not moved here: the answer's `moves`
    * says it would now run elsewhere, and the next load of it puts it there.
    */
-  app.put("/v1/engines/:id/models/:variant_id/placement", { schema: { body: PlacementBody } }, async (req) => {
-    const { id, variant_id: variantId } = req.params;
+  app.put("/v1/engines/:id/models/:variant_id/placement", input({ body: PlacementBody }), async (c) => {
+    const { id, variant_id: variantId } = c.req.param();
+    const body = c.req.valid("json");
     const mgr = manager.getManager();
     const m = mgr.getManifest(id);
     if (m === null) throw notFound(`engine ${id}`);
@@ -82,22 +85,22 @@ export async function router(app) {
     const store = getState().settings;
     const cur = store.get();
     const ov = cur.engines.engine_overrides[id] ?? construct(EngineOverrides, {});
-    if (req.body.placement === "auto") delete ov.placements[variantId];
-    else ov.placements[variantId] = req.body.placement;
+    if (body.placement === "auto") delete ov.placements[variantId];
+    else ov.placements[variantId] = body.placement;
     cur.engines.engine_overrides[id] = ov;
     store.set(cur);
     const [runsOn, why] = await mgr.placementFor(m, m.kind, variantId);
     const loaded = mgr.status(id) === "loaded" && mgr.currentVariantId(id) === variantId;
     const now = loaded ? ((mgr.resolvedDeviceFor(id) || "") === "cpu" ? "cpu" : "gpu") : null;
-    return {
+    return c.json({
       engine_id: id,
       variant_id: variantId,
-      placement: req.body.placement,
+      placement: body.placement,
       runs_on: runsOn,
       runs_on_reason: why,
       loaded,
       moves: Boolean(loaded && now !== runsOn),
-    };
+    });
   });
 
   /**
@@ -106,8 +109,8 @@ export async function router(app) {
    * reads them when the model loads, so a loaded model whose options changed is unloaded here,
    * and the answer's `reload` asks the caller to load it again.
    */
-  app.put("/v1/engines/:id/models/:variant_id/runtime-options", { schema: { body: RuntimeOptionsBody } }, async (req) => {
-    const { id, variant_id: variantId } = req.params;
+  app.put("/v1/engines/:id/models/:variant_id/runtime-options", input({ body: RuntimeOptionsBody }), async (c) => {
+    const { id, variant_id: variantId } = c.req.param();
     const mgr = manager.getManager();
     const m = mgr.getManifest(id);
     if (m === null) throw notFound(`engine ${id}`);
@@ -115,7 +118,7 @@ export async function router(app) {
     if (row === null) throw notFound(`variant ${variantId} on engine ${id}`);
     let values;
     try {
-      values = runtimeOptions.validate(row, req.body.options);
+      values = runtimeOptions.validate(row, c.req.valid("json").options);
     } catch (e) {
       if (e?.name === "ValueError") throw badRequest(e.message);
       throw e;
@@ -131,7 +134,7 @@ export async function router(app) {
     store.set(cur);
     const loaded = mgr.status(id) === "loaded" && mgr.currentVariantId(id) === variantId;
     if (loaded && changed) await mgr.unload(m.kind);
-    return { engine_id: id, variant_id: variantId, runtime_options: runtimeOptions.describe(id, row), reload: Boolean(loaded && changed) };
+    return c.json({ engine_id: id, variant_id: variantId, runtime_options: runtimeOptions.describe(id, row), reload: Boolean(loaded && changed) });
   });
 
   /**
@@ -141,9 +144,9 @@ export async function router(app) {
    * `{ok: false, detail: "unload engines first"}` (HTTP 200) while any engine is loaded — a
    * resident model's file is open in the runtime. On success `{ok: true, bytes}`.
    */
-  app.post("/v1/engines/speech-cache/clear", async () => {
+  app.post("/v1/engines/speech-cache/clear", async (c) => {
     const mgr = manager.getManager();
-    if ([...mgr.manifests().keys()].some((eid) => mgr.status(eid) === "loaded")) return { ok: false, detail: "unload engines first" };
+    if ([...mgr.manifests().keys()].some((eid) => mgr.status(eid) === "loaded")) return c.json({ ok: false, detail: "unload engines first" });
     const root = speechCacheRoot(getState().dataDir);
     let freed = 0;
     if (existsSync(root)) {
@@ -154,13 +157,13 @@ export async function router(app) {
         /* ignore_errors */
       }
     }
-    return { ok: true, bytes: freed };
+    return c.json({ ok: true, bytes: freed });
   });
 
   /** Delete one model's downloaded file(s) — the per-model 'Delete downloaded model' verb. The
    * engine and its other variants stay. */
-  app.delete("/v1/engines/:id/models/:variant_id", async (req) => {
-    const { id, variant_id: variantId } = req.params;
+  app.delete("/v1/engines/:id/models/:variant_id", (c) => {
+    const { id, variant_id: variantId } = c.req.param();
     if (!variantIn(id, variantId)) throw notFound(`variant ${variantId} on engine ${id}`);
     const st = getState();
     if (!speechCache.variantOnDisk(st.dataDir, id, variantId)) throw notFound(`${variantId} has no downloaded files`);
@@ -181,7 +184,8 @@ export async function router(app) {
       // A file the runtime still holds open (Windows refuses the delete).
       throw conflict(`${variantId}'s files are still in use and were not deleted — unload the model and try again (${vdir})`);
     }
-    return { deleted: true, engine_id: id, variant_id: variantId, path: vdir };
+    return c.json({ deleted: true, engine_id: id, variant_id: variantId, path: vdir });
   });
+  return app;
 }
 

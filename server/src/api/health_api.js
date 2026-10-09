@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // GET /v1/health (the port of justvoice/api/health_api.py).
 
+import { Hono } from "@delebash/llm-runner/platform";
 import { getState } from "../app_state.js";
 import * as manager from "../engines/manager.js";
 import { _variantRows } from "../engines/model_catalog.js";
@@ -21,8 +22,9 @@ export function loadedModelName(engineId) {
   return inst ? inst.meta.displayName : engineId;
 }
 
-export async function router(app) {
-  app.get("/v1/health", async () => {
+export function router() {
+  const app = new Hono();
+  app.get("/v1/health", (c) => {
     const st = getState();
     const engines = st.engines.all().map((e) => ({
       id: e.meta.engineId,
@@ -34,15 +36,18 @@ export async function router(app) {
     // boot; the EngineManager tracks the TTS slot's loaded engine independently — checking
     // both keeps the topbar pill honest however the engine was loaded.
     const current = manager.getManager().currentId() || st.engines.current();
-    return construct(HealthResponse, {
-      product: PRODUCT,
-      apiVersion: API_VERSION,
-      status: "ok",
-      version: VERSION,
-      api_version: API_VERSION,
-      current_engine: current,
-      current_model: loadedModelName(current),
-      engines,
-    });
+    return c.json(
+      construct(HealthResponse, {
+        product: PRODUCT,
+        apiVersion: API_VERSION,
+        status: "ok",
+        version: VERSION,
+        api_version: API_VERSION,
+        current_engine: current,
+        current_model: loadedModelName(current),
+        engines,
+      }),
+    );
   });
+  return app;
 }

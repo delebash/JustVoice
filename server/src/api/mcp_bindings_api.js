@@ -6,6 +6,7 @@
 // the per-client binding's defaults apply. After Slice 4 of the Profile-kill rollout the
 // binding points at a Persona rather than a (now-dead) VoiceProfile.
 
+import { Hono, input } from "@delebash/llm-runner/platform";
 import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
 import { MCPBinding } from "../database/models.js";
 import * as session from "../database/session.js";
@@ -33,26 +34,28 @@ export const UpsertMCPBindingRequest = T.Object({
 const row = (r) => construct(MCPBindingResponse, r);
 const byClient = (h, id) => h.one(`select * from ${MCPBinding} where client_id = ? limit 1`, [id], MCPBinding);
 
-export async function router(app) {
-  app.get("/v1/mcp/bindings", async () => {
+export function router() {
+  const app = new Hono();
+  app.get("/v1/mcp/bindings", (c) => {
     const rows = session.getDb().all(`select * from ${MCPBinding} order by created_at`, undefined, MCPBinding);
-    return { bindings: rows.map(row) };
+    return c.json({ bindings: rows.map(row) });
   });
 
-  app.post("/v1/mcp/bindings", { schema: { body: UpsertMCPBindingRequest } }, async (req) => {
+  app.post("/v1/mcp/bindings", input({ body: UpsertMCPBindingRequest }), (c) => {
     const h = session.getDb();
-    const b = req.body;
+    const b = c.req.valid("json");
     const fields = { label: b.label, persona_id: b.persona_id, default_engine: b.default_engine };
     if (byClient(h, b.client_id) !== null) h.update(MCPBinding, fields, { client_id: b.client_id });
     else h.insert(MCPBinding, { client_id: b.client_id, ...fields });
-    return row(byClient(h, b.client_id));
+    return c.json(row(byClient(h, b.client_id)));
   });
 
-  app.delete("/v1/mcp/bindings/:client_id", async (req) => {
+  app.delete("/v1/mcp/bindings/:client_id", (c) => {
     const h = session.getDb();
-    const clientId = req.params.client_id;
+    const clientId = c.req.param("client_id");
     if (byClient(h, clientId) === null) throw notFound(`mcp binding ${clientId}`);
     h.delete(MCPBinding, { client_id: clientId });
-    return { deleted: true };
+    return c.json({ deleted: true });
   });
+  return app;
 }

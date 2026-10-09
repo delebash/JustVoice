@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // /v1/lexicons CRUD (the port of justvoice/api/lexicons_api.py).
 
+import { Hono, input } from "@delebash/llm-runner/platform";
 import { getState } from "../app_state.js";
 import { Project } from "../database/models.js";
 import * as session from "../database/session.js";
@@ -19,11 +20,12 @@ export function _chooseForBookWithNone(projectId, lexiconId) {
   if (project !== null && !project.default_lexicon_id) h.update(Project, { default_lexicon_id: lexiconId }, { id: projectId });
 }
 
-export async function router(app) {
-  app.get("/v1/lexicons", async () => construct(LexiconList, { lexicons: getState().lexicons.list() }));
+export function router() {
+  const app = new Hono();
+  app.get("/v1/lexicons", (c) => c.json(construct(LexiconList, { lexicons: getState().lexicons.list() })));
 
-  app.post("/v1/lexicons", { schema: { body: CreateLexiconRequest } }, async (req, reply) => {
-    const body = req.body;
+  app.post("/v1/lexicons", input({ body: CreateLexiconRequest }), (c) => {
+    const body = c.req.valid("json");
     const lex = getState().lexicons.create(body.name, {
       entries: body.entries,
       scope: body.scope,
@@ -32,30 +34,35 @@ export async function router(app) {
       persona_id: body.persona_id,
     });
     if (lex.scope === "project" && lex.project_id) _chooseForBookWithNone(lex.project_id, lex.id);
-    reply.code(201);
-    return construct(Lexicon, lex);
+    return c.json(construct(Lexicon, lex), 201);
   });
 
-  app.get("/v1/lexicons/:id", async (req) => {
-    const lex = getState().lexicons.get(req.params.id);
-    if (!lex) throw notFound(`lexicon ${req.params.id}`);
-    return construct(Lexicon, lex);
+  app.get("/v1/lexicons/:id", (c) => {
+    const id = c.req.param("id");
+    const lex = getState().lexicons.get(id);
+    if (!lex) throw notFound(`lexicon ${id}`);
+    return c.json(construct(Lexicon, lex));
   });
 
-  app.put("/v1/lexicons/:id", { schema: { body: CreateLexiconRequest } }, async (req) => {
-    const lex = getState().lexicons.update(req.params.id, req.body.entries, req.body.name);
-    if (!lex) throw notFound(`lexicon ${req.params.id}`);
-    return construct(Lexicon, lex);
+  app.put("/v1/lexicons/:id", input({ body: CreateLexiconRequest }), (c) => {
+    const id = c.req.param("id");
+    const body = c.req.valid("json");
+    const lex = getState().lexicons.update(id, body.entries, body.name);
+    if (!lex) throw notFound(`lexicon ${id}`);
+    return c.json(construct(Lexicon, lex));
   });
 
-  app.delete("/v1/lexicons/:id", async (req) => {
-    if (!getState().lexicons.delete(req.params.id)) throw notFound(`lexicon ${req.params.id}`);
-    return { deleted: true };
+  app.delete("/v1/lexicons/:id", (c) => {
+    const id = c.req.param("id");
+    if (!getState().lexicons.delete(id)) throw notFound(`lexicon ${id}`);
+    return c.json({ deleted: true });
   });
 
-  app.post("/v1/lexicons/:id/entries", { schema: { body: LexiconEntry } }, async (req) => {
-    const lex = getState().lexicons.appendEntry(req.params.id, req.body);
-    if (!lex) throw notFound(`lexicon ${req.params.id}`);
-    return construct(Lexicon, lex);
+  app.post("/v1/lexicons/:id/entries", input({ body: LexiconEntry }), (c) => {
+    const id = c.req.param("id");
+    const lex = getState().lexicons.appendEntry(id, c.req.valid("json"));
+    if (!lex) throw notFound(`lexicon ${id}`);
+    return c.json(construct(Lexicon, lex));
   });
+  return app;
 }

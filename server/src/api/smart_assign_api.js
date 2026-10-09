@@ -9,6 +9,7 @@
 // feature='smart_assign'; returns the proposed {speaker_id: persona_id} map.
 
 import { LLMNotConfiguredError } from "@delebash/llm-runner/llm";
+import { Hono, input } from "@delebash/llm-runner/platform";
 import { getLogger } from "@delebash/llm-runner/platform/log";
 import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
 import { cpSlice, isDict, strip } from "@delebash/llm-runner/platform/py";
@@ -106,9 +107,10 @@ export function _parseAssignmentObject(text) {
   );
 }
 
-export async function router(app) {
-  app.post("/v1/llm/smart-assign", { schema: { body: SmartAssignRequest } }, async (req) => {
-    const body = req.body;
+export function router() {
+  const app = new Hono();
+  app.post("/v1/llm/smart-assign", input({ body: SmartAssignRequest }), async (c) => {
+    const body = c.req.valid("json");
     if (!body.characters.length || !body.voices.length) throw new HttpError(400, "smart-assign requires non-empty characters AND voices");
 
     // The template row owns the wording ({{speakers}}/{{personas}} — ruling 9; the book's
@@ -124,7 +126,7 @@ export async function router(app) {
     }
 
     const raw = _parseAssignmentObject(resp.text);
-    const charIds = new Set(body.characters.map((c) => c.id));
+    const charIds = new Set(body.characters.map((ch) => ch.id));
     const voiceIds = new Set(body.voices.map((v) => v.id));
     // Defensive filter: ignore ids the model invented or that no longer appear in the catalog
     // (e.g. the user deleted a voice mid-flight).
@@ -133,10 +135,13 @@ export async function router(app) {
     let note = null;
     if (!Object.keys(assignments).length && Object.keys(raw).length) note = "Model returned assignments, but none matched the current catalog.";
 
-    return construct(SmartAssignResponse, {
-      assignments,
-      note,
-      usage: { prompt_tokens: resp.prompt_tokens, completion_tokens: resp.completion_tokens, model: resp.model },
-    });
+    return c.json(
+      construct(SmartAssignResponse, {
+        assignments,
+        note,
+        usage: { prompt_tokens: resp.prompt_tokens, completion_tokens: resp.completion_tokens, model: resp.model },
+      }),
+    );
   });
+  return app;
 }

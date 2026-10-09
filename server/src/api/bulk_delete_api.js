@@ -6,6 +6,7 @@
 // required to prevent an accidental nuke-all.
 
 import { statSync, unlinkSync } from "node:fs";
+import { Hono, input } from "@delebash/llm-runner/platform";
 import { RequestValidationError } from "@delebash/llm-runner/platform/errors";
 import { literal, nullable, opt, T } from "@delebash/llm-runner/platform/models";
 import { Generation, Persona } from "../database/models.js";
@@ -71,15 +72,16 @@ export function _queryDatetime(raw) {
   return `${y}-${mo}-${da} ${t[1]}:${t[2]}:${t[3] ?? "00"}.${(t[4] ?? "").padEnd(6, "0")}`;
 }
 
-export async function router(app) {
+export function router() {
+  const app = new Hono();
   /**
    * Bulk-delete generations matching filter criteria. Filters compose with AND. At least one
    * filter required (400 otherwise) to prevent an accidental nuke-all. confirm=false (default)
    * returns the dry-run count WITHOUT deleting; pass confirm=true to actually delete.
    */
-  app.delete("/v1/generations", { schema: { querystring: Query } }, async (req) => {
+  app.delete("/v1/generations", input({ querystring: Query }), (c) => {
     const h = session.getDb();
-    const q = req.query;
+    const q = c.req.valid("query");
     const olderThan = q.older_than === null ? null : _queryDatetime(q.older_than);
     const present = [q.voice_id, q.engine, q.scope, q.status, olderThan, q.chapter_id, q.project_id].some((v) => v !== null);
     if (!present) {
@@ -139,7 +141,7 @@ export async function router(app) {
       }
     }
 
-    if (!q.confirm) return construct(BulkDeleteResult, { deleted_count: count, freed_bytes: freedBytes, dry_run: true });
+    if (!q.confirm) return c.json(construct(BulkDeleteResult, { deleted_count: count, freed_bytes: freedBytes, dry_run: true }));
 
     // Actually delete: DB rows first (cascades), then audio files.
     h.tx(() => {
@@ -152,6 +154,7 @@ export async function router(app) {
         /* OSError */
       }
     }
-    return construct(BulkDeleteResult, { deleted_count: count, freed_bytes: freedBytes, dry_run: false });
+    return c.json(construct(BulkDeleteResult, { deleted_count: count, freed_bytes: freedBytes, dry_run: false }));
   });
+  return app;
 }

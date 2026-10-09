@@ -2,6 +2,7 @@
 // External OpenAI-compatible TTS server probe + live add/remove (the port of
 // justvoice/api/external_api.py).
 
+import { Hono, input } from "@delebash/llm-runner/platform";
 import * as http from "@delebash/llm-runner/platform/http";
 import { isDict, strip } from "@delebash/llm-runner/platform/py";
 import { getState } from "../app_state.js";
@@ -50,13 +51,15 @@ export function _serverHint(base, models, voices) {
 
 const RECOMMENDED = { "kokoro-fastapi": "kokoro", openai: "tts-1", "openai-edge-tts": "tts-1" };
 
-export async function router(app) {
-  app.post("/v1/engines/external/probe", { schema: { body: ProbeRequest } }, async (req) => {
-    const base = strip(req.body.base_url).replace(/\/+$/, "");
+export function router() {
+  const app = new Hono();
+  app.post("/v1/engines/external/probe", input({ body: ProbeRequest }), async (c) => {
+    const body = c.req.valid("json");
+    const base = strip(body.base_url).replace(/\/+$/, "");
     if (!base) throw badRequest("base_url must not be empty");
     if (!(base.startsWith("http://") || base.startsWith("https://"))) throw badRequest("base_url must start with http:// or https://");
 
-    const headers = req.body.api_key ? { Authorization: `Bearer ${req.body.api_key}` } : {};
+    const headers = body.api_key ? { Authorization: `Bearer ${body.api_key}` } : {};
     let reachable = false;
     let error = null;
     let models = [];
@@ -99,18 +102,20 @@ export async function router(app) {
 
     const hint = _serverHint(base, models, voices);
     const recommendedModel = models.length ? models[0] : (RECOMMENDED[hint] ?? null);
-    return construct(ProbeResponse, {
-      reachable,
-      models,
-      voices,
-      server_hint: hint,
-      recommended_model: recommendedModel,
-      error: reachable ? null : error,
-    });
+    return c.json(
+      construct(ProbeResponse, {
+        reachable,
+        models,
+        voices,
+        server_hint: hint,
+        recommended_model: recommendedModel,
+        error: reachable ? null : error,
+      }),
+    );
   });
 
-  app.post("/v1/engines/external", { schema: { body: ExternalEngineConfig } }, async (req, reply) => {
-    const cfg = req.body;
+  app.post("/v1/engines/external", input({ body: ExternalEngineConfig }), (c) => {
+    const cfg = c.req.valid("json");
     const st = getState();
     if (!strip(cfg.id)) throw badRequest("id must not be empty");
     if (!strip(cfg.base_url)) throw badRequest("base_url must not be empty");
@@ -131,12 +136,11 @@ export async function router(app) {
     current.engines.external = current.engines.external.filter((e) => e.id !== cfg.id);
     current.engines.external.push(cfg);
     st.settings.patch({ engines: current.engines });
-    reply.code(201);
-    return construct(ExternalEngineConfig, cfg);
+    return c.json(construct(ExternalEngineConfig, cfg), 201);
   });
 
-  app.delete("/v1/engines/external/:id", async (req) => {
-    const id = req.params.id;
+  app.delete("/v1/engines/external/:id", (c) => {
+    const id = c.req.param("id");
     const st = getState();
     const current = st.settings.get();
     const before = current.engines.external.length;
@@ -144,6 +148,7 @@ export async function router(app) {
     if (current.engines.external.length === before) throw notFound(`No external engine with id '${id}' in settings`);
     st.engines.unregister(id);
     st.settings.patch({ engines: current.engines });
-    return { removed: id };
+    return c.json({ removed: id });
   });
+  return app;
 }

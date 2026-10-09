@@ -15,7 +15,7 @@ import { Block, Project, Scene, Speaker, uuid } from "../src/database/models.js"
 import * as session from "../src/database/session.js";
 import { construct, Persona, utcNow } from "../src/models.js";
 import * as renderCore from "../src/render_core.js";
-import { tmpDb } from "./helpers.js";
+import { inject, tmpDb } from "./helpers.js";
 import { viaRoutes } from "./render_helpers.js";
 
 let h;
@@ -54,7 +54,7 @@ function seed(nBlocks = 3) {
 /** GET /v1/render/cache-stats?project_id=… → `[status, body]`. */
 const cacheStats = (projectId) =>
   viaRoutes([renderChapterRouter], async (app) => {
-    const r = await app.inject({ method: "GET", url: `/v1/render/cache-stats?project_id=${projectId}` });
+    const r = await inject(app, { method: "GET", url: `/v1/render/cache-stats?project_id=${projectId}` });
     return [r.statusCode, JSON.parse(r.body)];
   });
 

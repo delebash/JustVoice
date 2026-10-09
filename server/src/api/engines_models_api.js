@@ -6,6 +6,7 @@
 // registry (only external OpenAI-compatible engines). The branch lives in each route so the
 // route shapes stay the same.
 
+import { Hono, input, readJson } from "@delebash/llm-runner/platform";
 import { RequestValidationError } from "@delebash/llm-runner/platform/errors";
 import { getLogger } from "@delebash/llm-runner/platform/log";
 import { isDict } from "@delebash/llm-runner/platform/py";
@@ -33,39 +34,39 @@ function unloadKind(body) {
   return kind;
 }
 
-export async function router(app) {
+export function router() {
+  const app = new Hono();
   /**
    * Install an engine, or download one of its models.
    *   - `model_variant` given → spawnPrefetch: that model's file(s) into the speech cache;
    *   - no `model_variant` → spawnManagedInstall: the shared speech runtime (audio.cpp + eSpeak
    *     NG) — once for every engine (the 2026-10-01 switch).
    */
-  app.post("/v1/engines/:id/install", { schema: { body: InstallRequest } }, async (req, reply) => {
-    const id = req.params.id;
+  app.post("/v1/engines/:id/install", input({ body: InstallRequest }), async (c) => {
+    const id = c.req.param("id");
+    const body = c.req.valid("json");
     const st = getState();
     if (_isManaged(id)) {
-      if (req.body.model_variant) {
+      if (body.model_variant) {
         let jobId;
         try {
-          jobId = await installer.spawnPrefetch(st, id, req.body.model_variant);
+          jobId = await installer.spawnPrefetch(st, id, body.model_variant);
         } catch (e) {
           if (e?.name === "ValueError") throw notFound(msg(e));
           throw e;
         }
-        reply.code(202);
-        return construct(InstallResponse, { engine_id: id, model_variant: req.body.model_variant, job_id: jobId });
+        return c.json(construct(InstallResponse, { engine_id: id, model_variant: body.model_variant, job_id: jobId }), 202);
       }
       // Engine-wide setup: the speech runtime every engine shares.
-      const jobId = installer.spawnManagedInstall(st, id, req.body.repair);
-      reply.code(202);
-      return construct(InstallResponse, { engine_id: id, model_variant: "managed", job_id: jobId });
+      const jobId = installer.spawnManagedInstall(st, id, body.repair);
+      return c.json(construct(InstallResponse, { engine_id: id, model_variant: "managed", job_id: jobId }), 202);
     }
     throw notFound(`Unknown engine: ${id}`);
   });
 
-  app.post("/v1/engines/:id/load", { schema: { body: LoadRequest } }, async (req) => {
-    const id = req.params.id;
-    const body = req.body;
+  app.post("/v1/engines/:id/load", input({ body: LoadRequest }), async (c) => {
+    const id = c.req.param("id");
+    const body = c.req.valid("json");
     const st = getState();
     if (_isManaged(id)) {
       const mgr = manager.getManager();
@@ -76,7 +77,7 @@ export async function router(app) {
       }
       // Clear the in-process current marker so it doesn't conflict with the managed claim.
       st.engines.clearCurrent();
-      return construct(LoadResponse, { engine_id: id, device: body.device, model_variant: body.model_variant });
+      return c.json(construct(LoadResponse, { engine_id: id, device: body.device, model_variant: body.model_variant }));
     }
     // Legacy in-process path — used by external-openai-tts.
     const engine = st.engines.get(id);
@@ -90,7 +91,7 @@ export async function router(app) {
       throw serviceUnavailable(`engine load failed: ${msg(e)}`);
     }
     st.engines.setCurrent(id);
-    return construct(LoadResponse, { engine_id: id, device: body.device, model_variant: body.model_variant });
+    return c.json(construct(LoadResponse, { engine_id: id, device: body.device, model_variant: body.model_variant }));
   });
 
   /**
@@ -99,22 +100,22 @@ export async function router(app) {
    * fails 'cancelled by user' (a 503 to the original load). A model already in the runtime is
    * unloaded, so no VRAM keeps being consumed after the cancel.
    */
-  app.post("/v1/engines/:id/cancel-load", async (req) => {
-    const id = req.params.id;
+  app.post("/v1/engines/:id/cancel-load", async (c) => {
+    const id = c.req.param("id");
     if (!_isManaged(id)) {
       // In-process engines (external-openai-tts) — load has nothing to interrupt.
-      return { engine_id: id, cancelled: false, reason: "engine is not managed; nothing to cancel" };
+      return c.json({ engine_id: id, cancelled: false, reason: "engine is not managed; nothing to cancel" });
     }
     const cancelled = await manager.getManager().requestCancelLoad(id);
-    return { engine_id: id, cancelled };
+    return c.json({ engine_id: id, cancelled });
   });
 
   /**
    * Optional body `{kind}`: when given (Phase 2 / Slice 1), only the engine in that kind's slot
    * is unloaded — other-kind slots stay loaded. No body or `{}` unloads every loaded engine.
    */
-  app.post("/v1/engines/unload", async (req) => {
-    const requestedKind = unloadKind(req.body);
+  app.post("/v1/engines/unload", async (c) => {
+    const requestedKind = unloadKind(await readJson(c));
     const st = getState();
     const mgr = manager.getManager();
     let previousManaged;
@@ -139,13 +140,13 @@ export async function router(app) {
       }
       st.engines.clearCurrent();
     }
-    return construct(UnloadResponse, { previous_engine: previous ?? null });
+    return c.json(construct(UnloadResponse, { previous_engine: previous ?? null }));
   });
 
   /** Delete every downloaded model of this engine (its speech-cache folder). The speech runtime
    * is shared and stays. 409 when a file is still held open. */
-  app.delete("/v1/engines/:id", async (req) => {
-    const id = req.params.id;
+  app.delete("/v1/engines/:id", async (c) => {
+    const id = c.req.param("id");
     if (_isManaged(id)) {
       let result;
       try {
@@ -154,24 +155,24 @@ export async function router(app) {
         if (e instanceof manager.InstallError) throw conflict(msg(e));
         throw e;
       }
-      return construct(UninstallResponse, { engine_id: id, model_files_removed: Boolean(result.removed) });
+      return c.json(construct(UninstallResponse, { engine_id: id, model_files_removed: Boolean(result.removed) }));
     }
     throw notFound(`Unknown engine: ${id}`);
   });
 
-  app.get("/v1/jobs/:job_id", async (req) => {
-    const jobId = req.params.job_id;
+  app.get("/v1/jobs/:job_id", (c) => {
+    const jobId = c.req.param("job_id");
     const data = getState().jobGet(jobId);
     if (!data) throw notFound(`job ${jobId}`);
-    return construct(JobStatus, data);
+    return c.json(construct(JobStatus, data));
   });
 
   /** Signal an in-flight install job to abort at its next safe checkpoint. */
-  app.delete("/v1/jobs/:job_id", async (req, reply) => {
-    const jobId = req.params.job_id;
+  app.delete("/v1/jobs/:job_id", (c) => {
+    const jobId = c.req.param("job_id");
     if (!getState().jobGet(jobId)) throw notFound(`job ${jobId}`);
     installer.cancel(jobId);
-    reply.code(202);
-    return { cancelled: jobId };
+    return c.json({ cancelled: jobId }, 202);
   });
+  return app;
 }

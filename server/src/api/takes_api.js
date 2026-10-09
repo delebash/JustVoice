@@ -8,6 +8,8 @@
 // and deletes them here (line_takes.js holds the rules).
 
 import { createReadStream, statSync, unlinkSync } from "node:fs";
+import { Readable } from "node:stream";
+import { Hono, input } from "@delebash/llm-runner/platform";
 import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
 import { cpSlice } from "@delebash/llm-runner/platform/py";
 import { getState } from "../app_state.js";
@@ -115,17 +117,18 @@ function unlinkMissingOk(p) {
   }
 }
 
-export async function router(app) {
-  app.get("/v1/takes/by_block/:block_id", async (req) => {
+export function router() {
+  const app = new Hono();
+  app.get("/v1/takes/by_block/:block_id", (c) => {
     const h = session.getDb();
-    const rows = h.all(`select * from ${Take} where block_id = ? order by created_at desc`, [req.params.block_id], Take);
+    const rows = h.all(`select * from ${Take} where block_id = ? order by created_at desc`, [c.req.param("block_id")], Take);
     const def = rows.find((r) => r.is_default);
-    return { takes: rows.map((r) => _takeOut(h, r)), default_take_id: def ? def.id : null };
+    return c.json({ takes: rows.map((r) => _takeOut(h, r)), default_take_id: def ? def.id : null });
   });
 
-  app.post("/v1/takes/:take_id/set_default", async (req) => {
+  app.post("/v1/takes/:take_id/set_default", (c) => {
     const h = session.getDb();
-    const takeId = req.params.take_id;
+    const takeId = c.req.param("take_id");
     const take = takeById(h, takeId);
     if (!take) throw notFound(`take ${takeId}`);
     // Clear other defaults for the same block, then mark this one.
@@ -133,21 +136,22 @@ export async function router(app) {
       h.update(Take, { is_default: false }, "block_id = ? and is_default = 1", [take.block_id]);
       h.update(Take, { is_default: true }, { id: takeId });
     });
-    return _takeOut(h, takeById(h, takeId));
+    return c.json(_takeOut(h, takeById(h, takeId)));
   });
 
-  app.patch("/v1/takes/:take_id", { schema: { body: UpdateTakeRequest } }, async (req) => {
+  app.patch("/v1/takes/:take_id", input({ body: UpdateTakeRequest }), (c) => {
     const h = session.getDb();
-    const takeId = req.params.take_id;
+    const takeId = c.req.param("take_id");
+    const body = c.req.valid("json");
     const take = takeById(h, takeId);
     if (!take) throw notFound(`take ${takeId}`);
-    if (req.body.label !== null) h.update(Take, { label: req.body.label }, { id: takeId });
-    return _takeOut(h, takeById(h, takeId));
+    if (body.label !== null) h.update(Take, { label: body.label }, { id: takeId });
+    return c.json(_takeOut(h, takeById(h, takeId)));
   });
 
-  app.delete("/v1/takes/:take_id", async (req) => {
+  app.delete("/v1/takes/:take_id", (c) => {
     const h = session.getDb();
-    const takeId = req.params.take_id;
+    const takeId = c.req.param("take_id");
     const take = takeById(h, takeId);
     if (!take) throw notFound(`take ${takeId}`);
     // The take in use can go too (decided 2026-10-07): the newest take left — the top of the
@@ -167,7 +171,7 @@ export async function router(app) {
       h.delete(Take, { id: take.id });
       if (gen !== null && lineTakes.TAKE_SOURCES.includes(gen.source)) lineTakes.deleteGeneration(h, gen);
     });
-    return { deleted: true, default_take_id: defaultTakeId };
+    return c.json({ deleted: true, default_take_id: defaultTakeId });
   });
 
   /**
@@ -175,11 +179,11 @@ export async function router(app) {
    * Home's Recent generations card. (Generate's History table read it too, until Generate was
    * removed 2026-10-05.)
    */
-  app.get("/v1/takes/recent", { schema: { querystring: T.Object({ limit: opt(T.Integer(), 20) }) } }, async (req) => {
+  app.get("/v1/takes/recent", input({ querystring: T.Object({ limit: opt(T.Integer(), 20) }) }), (c) => {
     const h = session.getDb();
     const rows = h.all(
       `select * from ${Generation} order by created_at desc limit ?`,
-      [Math.max(1, Math.min(100, req.query.limit))],
+      [Math.max(1, Math.min(100, c.req.valid("query").limit))],
       Generation,
     );
     const personas = getState().personas;
@@ -199,19 +203,19 @@ export async function router(app) {
         audio_url: r.audio_path ? `/v1/generations/${r.id}/audio` : null,
       };
     });
-    return construct(RecentTakesResponse, { takes });
+    return c.json(construct(RecentTakesResponse, { takes }));
   });
 
   /** Delete one generation (DB row + audio file). The History table's ✕. Bulk deletion with
    * filters stays on DELETE /v1/generations. */
-  app.delete("/v1/generations/:generation_id", async (req) => {
+  app.delete("/v1/generations/:generation_id", (c) => {
     const h = session.getDb();
-    const id = req.params.generation_id;
+    const id = c.req.param("generation_id");
     const gen = genById(h, id);
     if (!gen) throw notFound(`generation ${id}`);
     if (gen.audio_path) unlinkMissingOk(mediaFile(gen.audio_path));
     h.delete(Generation, { id });
-    return { deleted: true };
+    return c.json({ deleted: true });
   });
 
   /**
@@ -219,11 +223,11 @@ export async function router(app) {
    * Each take points to the take it was re-rolled from; the chain ends at the original
    * (source_take_id null).
    */
-  app.get("/v1/takes/:take_id/lineage", async (req) => {
+  app.get("/v1/takes/:take_id/lineage", (c) => {
     const h = session.getDb();
     const chain = [];
     const visited = new Set();
-    let curId = req.params.take_id;
+    let curId = c.req.param("take_id");
     let blockId = null;
     // Walk backward up to a sane bound — protects against accidental cycles.
     for (let i = 0; i < 50; i++) {
@@ -246,14 +250,14 @@ export async function router(app) {
     }
     // Oldest (root) first — a top-to-bottom timeline.
     chain.reverse();
-    return construct(LineageResponse, { chain, block_id: blockId });
+    return c.json(construct(LineageResponse, { chain, block_id: blockId }));
   });
 
   /** Stream the WAV for a completed generation — the take-versioning UI plays takes back
    * without re-rendering. Only for generations with an audio_path on disk. */
-  app.get("/v1/generations/:generation_id/audio", async (req, reply) => {
+  app.get("/v1/generations/:generation_id/audio", (c) => {
     const h = session.getDb();
-    const id = req.params.generation_id;
+    const id = c.req.param("generation_id");
     const gen = genById(h, id);
     if (!gen) throw notFound(`generation ${id}`);
     if (!gen.audio_path) throw badRequest("generation has no audio on disk (status may not be 'completed')");
@@ -266,11 +270,11 @@ export async function router(app) {
     }
     if (!st?.isFile()) throw notFound(`audio file missing from disk: ${gen.audio_path}`);
     // Starlette's FileResponse: the media type, the length, and an attachment name.
-    return reply
-      .type("audio/wav")
-      .header("content-length", st.size)
-      .header("content-disposition", `attachment; filename="${id}.wav"`)
-      .send(createReadStream(p));
+    return c.body(Readable.toWeb(createReadStream(p)), 200, {
+      "content-type": "audio/wav",
+      "content-length": String(st.size),
+      "content-disposition": `attachment; filename="${id}.wav"`,
+    });
   });
 
   /**
@@ -280,9 +284,9 @@ export async function router(app) {
    * changed'. The take records what it was made from, so the line reads rendered until that
    * changes.
    */
-  app.post("/v1/blocks/:block_id/render", { schema: { body: nullable(RenderBlockRequest) } }, async (req, reply) => {
+  app.post("/v1/blocks/:block_id/render", input({ body: nullable(RenderBlockRequest) }), async (c) => {
     const h = session.getDb();
-    const blockId = req.params.block_id;
+    const blockId = c.req.param("block_id");
     const block = h.one(`select * from ${Block} where id = ? limit 1`, [blockId], Block);
     if (block === null) throw notFound(`block ${blockId}`);
     const persona = personaForBlock(h, block);
@@ -295,7 +299,7 @@ export async function router(app) {
       if (storeP !== null) voice = storeP.voice_id || null;
     }
     const engineId = voice ? await voiceModel.modelKey(state, voice) : `?voice:${voice === null ? "None" : voice}`;
-    const newTake = Boolean(req.body?.new_take);
+    const newTake = Boolean(c.req.valid("json")?.new_take);
     const seed = newTake ? lineTakes.rollSeed() : null;
     const scene = h.one(`select * from ${Scene} where id = ? limit 1`, [block.scene_id], Scene);
     const handle = synthScheduler.getScheduler().submit(
@@ -305,11 +309,12 @@ export async function router(app) {
         owner: scene !== null ? synthScheduler.chapterOwner(scene) : synthScheduler.workOwner("a line's take"),
       },
     );
-    await handle.waitAsync({ signal: clientGone(req, reply) });
+    await handle.waitAsync({ signal: clientGone(c) });
     handle.raiseIfFailed();
     const rl = handle.items[0].result;
 
     const take = renderJobs.persistBlockTake(h, state, block, rl, { newSeed: newTake });
-    return _takeOut(h, take);
+    return c.json(_takeOut(h, take));
   });
+  return app;
 }

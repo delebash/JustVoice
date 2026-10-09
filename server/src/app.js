@@ -6,23 +6,26 @@
 // router, the whole shared LLM stack (installLlm), the family data/logs/disk routers and the MCP
 // server. The GUI (the Vite-built Vue SPA) is served from `/` (with `/ui` redirecting there).
 //
-// The family shape (JustWrite's app.js, docgen's): problem+json errors (`createServer`), the
-// kit's CSRF / CORS / bearer-auth hooks in Python's middleware order, a catch-all error
-// envelope, and `@fastify/static` for the UI with Starlette's StaticFiles answers.
+// The family shape (JustWrite's app.js, docgen's): the kit's Hono server with problem+json
+// errors (`createServer`), the kit's CSRF / CORS / bearer-auth middleware in Python's middleware
+// order, a catch-all error envelope, and the kit's `serveStatic` (@hono/node-server's) for the UI
+// with Starlette's StaticFiles answers. Hono runs middleware in the order it is added and covers
+// only the routes added after it: the middleware first, then the routers, then the UI.
 
 import path from "node:path";
 import { statSync } from "node:fs";
-import fastifyStatic from "@fastify/static";
 import { installLlm, router as runnerRouter } from "@delebash/llm-runner";
 import {
-  BearerAuthMiddleware,
-  CorsMiddleware,
-  CsrfOriginMiddleware,
+  bearerAuth,
   createServer,
+  csrfOrigin,
   installFileLog,
   installLogRing,
   makeDiskRouter,
   makeLogsRouter,
+  onClose,
+  serveStatic,
+  starletteCors,
 } from "@delebash/llm-runner/platform";
 import { purePath } from "@delebash/llm-runner/platform/data_paths";
 import { getLogger } from "@delebash/llm-runner/platform/log";
@@ -79,6 +82,7 @@ import { ExternalOpenAiTtsBackend } from "./engines/external_openai.js";
 import * as manager from "./engines/manager.js";
 import { FEATURE_CATALOG, PREFER_LOCAL_FEATURES } from "./feature_catalog.js";
 import * as lineTakes from "./line_takes.js";
+import { clientIdStamp } from "./mcp/context.js";
 import { mountInto as mountMcp } from "./mcp/index.js";
 import { cacheRoot, defaultDataDir, SOURCE_ROOT, speechCacheRoot } from "./paths.js";
 import * as renderJobs from "./render_jobs.js";
@@ -115,10 +119,10 @@ export const GUARDED_PREFIXES = ["/v1", "/mcp"];
  * error instead of "blocked by CORS" (verified the hard way, 2026-06-12). The detail is
  * Python's `str(exc)[:300]`.
  */
-function errorEnvelope(err, request, reply) {
-  log.exception(`unhandled error on ${request.method} ${request.url.split("?")[0]}`, err);
+function errorEnvelope(err, c) {
+  log.exception(`unhandled error on ${c.req.method} ${new URL(c.req.url).pathname}`, err);
   const detail = [...String(err instanceof Error ? err.message : err)].slice(0, 300).join("");
-  return reply.code(500).type("application/json").send({ title: "Internal Server Error", detail });
+  return c.json({ title: "Internal Server Error", detail }, 500);
 }
 
 /** Routes the kit builds that store a free-form body with Python's json.dumps. */
@@ -211,7 +215,7 @@ export async function _buildExternalEngine(cfg) {
 }
 
 /**
- * The Fastify app (not yet listening). `dataDir` defaults to the family data-root ladder.
+ * The Hono app (not yet listening). `dataDir` defaults to the family data-root ladder.
  * Seeding is NOT done here (serve.js runs `seedWorkspace()`): a test's createApp(tmp) starts
  * from an empty database — the family's named winner for the seeding call-site.
  */
@@ -254,74 +258,97 @@ export async function createApp(dataDir = null) {
 
   const settings = state.settings.get();
   // (FastAPI's /openapi.json, /docs and /redoc — `settings.server.docs_enabled` — have no
-  // Fastify counterpart: the JavaScript server publishes no OpenAPI document.)
-  // Request bodies keep Python's floats where a route opts in (the kit's float opt-in: `config:
-  // {pyFloats: true}`, or a kit-built route named here), and every body as sent rides on
-  // `req.sentBody` — what pydantic's `exclude_unset` reads (PATCH /v1/settings, PUT
+  // counterpart here: the JavaScript server publishes no OpenAPI document.)
+  // Request bodies keep Python's floats where a route opts in (the kit's float opt-in:
+  // `input({…, pyFloats: true})`, or a kit-built route named here), and every body as sent rides
+  // on `c.get("sentBody")` — what pydantic's `exclude_unset` reads (PATCH /v1/settings, PUT
   // /v1/speech-runtime).
   const app = createServer({ typeBase: TYPE_BASE, onUnhandled: errorEnvelope, pyFloats: { routes: PY_FLOAT_ROUTES } });
   // serve.js hands the app its server handle (Python's `app.state.uvicorn_server`) — what
-  // POST /v1/shutdown stops.
-  app.decorate("serverHandle", null);
+  // POST /v1/shutdown stops (`c.get("serverHandle")`). Read on each request, so a handle set
+  // after boot is seen.
+  app.serverHandle = null;
+  app.use("*", async (c, next) => {
+    c.set("serverHandle", app.serverHandle ?? null);
+    await next();
+  });
 
-  // Python's middleware order, outermost first: the MCP client-id stamp (mcp/index.js — an
-  // onResponse hook), CSRF, then CORS, then bearer auth (Starlette ran the last-added first).
-  // Fastify runs onRequest hooks in the order these root plugins load: a CSRF 403 carries no
-  // CORS headers; CORS answers preflights before auth sees them and stamps auth's 401/403. CSRF
-  // and auth guard the MCP endpoint like the API (GUARDED_PREFIXES — the user's ruling,
-  // 2026-10-08: an MCP client sends no Origin and carries the token like any other client).
+  // Python's middleware order, outermost first: the MCP client-id stamp, CSRF, then CORS, then
+  // bearer auth (Starlette ran the last-added first; Hono runs middleware in the order added). A
+  // CSRF 403 carries no CORS headers; CORS answers preflights before auth sees them and stamps
+  // auth's 401/403. CSRF and auth guard the MCP endpoint like the API (GUARDED_PREFIXES — the
+  // user's ruling, 2026-10-08: an MCP client sends no Origin and carries the token like any other
+  // client). All of it before the routes: a Hono middleware covers only the routes added after it.
   const corsOrigins = settings.cors.origins;
   const corsRegex = settings.cors.origin_regex;
 
+  // The MCP "last seen" stamp (mcp/context.js), after every /mcp answer — a guard's refusal too.
+  app.use("*", clientIdStamp);
+  // Sync: stamp what the triggers noted after every request that may have written (the order
+  // edits were made in is the order their stamps run) — once the answer is made.
+  app.use("*", async (c, next) => {
+    await next();
+    if (c.req.method !== "GET" && c.req.method !== "HEAD" && c.req.method !== "OPTIONS") flushSync();
+  });
+
   // CSRF: reject cross-site browser mutations to /v1 and /mcp (no token — can never lock anyone
   // out). JustVoice reuses its CORS origins AND its loopback origin_regex as the one allowlist.
-  app.register(CsrfOriginMiddleware, {
-    appOrigins: APP_ORIGINS,
-    extraOrigins: corsOrigins,
-    originRegex: corsRegex,
-    typeBase: TYPE_BASE,
-    prefixes: GUARDED_PREFIXES,
-  });
+  app.use(
+    "*",
+    csrfOrigin({
+      appOrigins: APP_ORIGINS,
+      extraOrigins: corsOrigins,
+      originRegex: corsRegex,
+      typeBase: TYPE_BASE,
+      prefixes: GUARDED_PREFIXES,
+    }),
+  );
 
   // CORS — the bundled UI is a different origin than this loopback server; without these
   // headers the webview's fetch() calls are blocked. Operator-tunable; none configured → no
   // CORS answers at all (Python added the middleware only when one is set).
   if (corsOrigins.length || corsRegex) {
-    app.register(CorsMiddleware, {
-      allowOrigins: [DESKTOP_ORIGIN, ...corsOrigins.filter((o) => o !== DESKTOP_ORIGIN)],
-      allowOriginRegex: corsRegex || null,
-      allowCredentials: true,
-      allowMethods: ["*"],
-      allowHeaders: ["*"],
-    });
+    app.use(
+      "*",
+      starletteCors({
+        allowOrigins: [DESKTOP_ORIGIN, ...corsOrigins.filter((o) => o !== DESKTOP_ORIGIN)],
+        allowOriginRegex: corsRegex || null,
+        allowCredentials: true,
+        allowMethods: ["*"],
+        allowHeaders: ["*"],
+      }),
+    );
   }
 
   // Auth — the desktop shell closes the server through /v1/shutdown and carries no token; with
   // "Require a token even on localhost" on, every close fell back to a hard kill (2026-09-30).
   // It stays refused from anywhere but this machine (system_api's own check, and auth).
-  app.register(BearerAuthMiddleware, {
-    readAuth,
-    typeBase: TYPE_BASE,
-    loopbackOpenPaths: ["/v1/shutdown"],
-    prefixes: GUARDED_PREFIXES,
-  });
+  app.use(
+    "*",
+    bearerAuth({
+      readAuth,
+      typeBase: TYPE_BASE,
+      loopbackOpenPaths: ["/v1/shutdown"],
+      prefixes: GUARDED_PREFIXES,
+    }),
+  );
 
   // ── Routes, in app.py's order ──────────────────────────────────────────────
-  app.register(healthRouter);
-  app.register(systemRouter);
-  app.register(serverAuthRouter); // the auth door + lockout escape (family shape)
-  app.register(settingsRouter);
-  app.register(voicesRouter);
-  app.register(voiceBundleRouter);
-  app.register(personasRouter);
-  app.register(speakersRouter);
-  app.register(lexiconsRouter);
-  app.register(enginesRouter);
-  app.register(speechRuntimeRouter);
-  app.register(modelsRouter);
-  app.register(enginesModelsRouter);
-  app.register(engineSourcesRouter);
-  app.register(runnerRouter);
+  app.route("/", healthRouter());
+  app.route("/", systemRouter());
+  app.route("/", serverAuthRouter()); // the auth door + lockout escape (family shape)
+  app.route("/", settingsRouter());
+  app.route("/", voicesRouter());
+  app.route("/", voiceBundleRouter());
+  app.route("/", personasRouter());
+  app.route("/", speakersRouter());
+  app.route("/", lexiconsRouter());
+  app.route("/", enginesRouter());
+  app.route("/", speechRuntimeRouter());
+  app.route("/", modelsRouter());
+  app.route("/", enginesModelsRouter());
+  app.route("/", engineSourcesRouter());
+  app.route("/", runnerRouter());
 
   // THE SHARED STACK, ONE CALL: the same installLlm JustWrite boots through — LLM tables in
   // JustVoice's SQLite, DB-backed provider CRUD, the routing/presets/tunes/knob-catalog
@@ -354,47 +381,42 @@ export async function createApp(dataDir = null) {
   // shared LLM seed, the provider registry boot) is database/seed.js `seedWorkspace()`, called
   // by serve.js AFTER createApp.
 
-  app.register(generateRouter);
-  app.register(renderChapterRouter);
-  app.register(alignRouter);
-  app.register(pronunciationRouter);
-  app.register(externalRouter);
-  app.register(cacheRouter);
-  app.register(projectsRouter);
+  app.route("/", generateRouter());
+  app.route("/", renderChapterRouter());
+  app.route("/", alignRouter());
+  app.route("/", pronunciationRouter());
+  app.route("/", externalRouter());
+  app.route("/", cacheRouter());
+  app.route("/", projectsRouter());
   // Phase 4a backend (DESIGN_FREEZE §5)
-  app.register(takesRouter);
-  app.register(renderJobsRouter);
-  app.register(exportJobsRouter);
-  app.register(renderLinesRouter);
-  app.register(channelsRouter);
-  app.register(mcpBindingsRouter);
-  app.register(activeTasksRouter);
-  app.register(captureReadinessRouter);
-  app.register(capturesRouter);
+  app.route("/", takesRouter());
+  app.route("/", renderJobsRouter());
+  app.route("/", exportJobsRouter());
+  app.route("/", renderLinesRouter());
+  app.route("/", channelsRouter());
+  app.route("/", mcpBindingsRouter());
+  app.route("/", activeTasksRouter());
+  app.route("/", captureReadinessRouter());
+  app.route("/", capturesRouter());
   // The shared /v1/data backup/restore/reset (JW's donor wiring in data_admin.js).
-  app.register(getDataRouter());
-  app.register(syncRouter); // /v1/sync/* — the sync product's routes (export, import, folder, pairing)
-  // Sync: stamp what the triggers noted after every request that may have written (the order
-  // edits were made in is the order their stamps run).
-  app.addHook("onResponse", async (req) => {
-    if (req.method !== "GET" && req.method !== "HEAD" && req.method !== "OPTIONS") flushSync();
-  });
+  app.route("/", getDataRouter());
+  app.route("/", syncRouter()); // /v1/sync/* — the sync product's routes (export, import, folder, pairing)
   // The shared platform log + disk surface (the kit's LogsPanel + Storage read these).
-  app.register(makeLogsRouter(PRODUCT));
+  app.route("/", makeLogsRouter(PRODUCT));
   // JustVoice's app-specific stores ride the disk router's extras: "Speech models" is the
   // speech cache (every downloaded speech model), the render cache its own row.
-  app.register(makeDiskRouter(dataDir, { speechCache: [speechCacheRoot(dataDir)], renderCache: cacheRoot(dataDir) }));
-  app.register(sseStreamsRouter);
+  app.route("/", makeDiskRouter(dataDir, { speechCache: [speechCacheRoot(dataDir)], renderCache: cacheRoot(dataDir) }));
+  app.route("/", sseStreamsRouter());
   // Phase 4a addendum (gap-decision workflow v1.0 endpoints)
-  app.register(webhooksRouter);
-  app.register(bulkDeleteRouter);
-  app.register(voicePreviewRouter);
-  app.register(projectExportRouter);
-  app.register(effectPresetsRouter);
-  app.register(prefsRouter);
-  app.register(extractionRouter);
-  app.register(refineLabRouter);
-  app.register(smartAssignRouter);
+  app.route("/", webhooksRouter());
+  app.route("/", bulkDeleteRouter());
+  app.route("/", voicePreviewRouter());
+  app.route("/", projectExportRouter());
+  app.route("/", effectPresetsRouter());
+  app.route("/", prefsRouter());
+  app.route("/", extractionRouter());
+  app.route("/", refineLabRouter());
+  app.route("/", smartAssignRouter());
 
   // MCP server — justvoice.speak / list_voices / list_personas for local AI agents, at /mcp
   // (Streamable HTTP), before the root static catch-all. A failed mount must still boot the app.
@@ -407,7 +429,7 @@ export async function createApp(dataDir = null) {
 
   // Shutdown — every open MCP session, then the managed engines (their runtime processes), then
   // the DSP program. Without it, a stopped server would leave engine processes holding memory.
-  app.addHook("onClose", async () => {
+  onClose(app, async () => {
     stopSync();
     if (mcp !== null) {
       try {
@@ -431,49 +453,33 @@ export async function createApp(dataDir = null) {
 /**
  * The legacy reference UI at /legacy/ (in-repo only, when legacy-gui/ exists) and the Vite
  * build at / (the headless UI) — Starlette's StaticFiles(html=True) answers: "/" is
- * index.html; a missing file answers FastAPI's {"detail": "Not Found"}; any method but
- * GET/HEAD on an unrouted path answers 405 (measured on JustWrite's Python server).
+ * index.html; a missing file answers FastAPI's {"detail": "Not Found"} (the file server passes
+ * the request on, and nothing else answers it); any method but GET/HEAD on an unrouted path
+ * answers 405 (measured on JustWrite's Python server). After every route: a Hono app tries its
+ * routes in the order they were added, so the static catch-alls come last.
  */
 function mountStatic(app) {
   const legacyDir = path.join(SOURCE_ROOT, "legacy-gui");
   if (isDir(legacyDir) && isFile(path.join(legacyDir, "index.html"))) {
-    app.get("/legacy", async (_req, reply) => reply.redirect("/legacy/", 307));
-    app.register(fastifyStatic, {
-      root: legacyDir,
-      prefix: "/legacy/",
-      wildcard: true,
-      index: ["index.html"],
-      redirect: false,
-      cacheControl: false,
-      decorateReply: false,
-    });
+    app.get("/legacy", (c) => c.redirect("/legacy/", 307));
+    // GET (and HEAD, which Hono answers as GET) only; the files under /legacy/ come from the
+    // folder's root.
+    app.get("/legacy/*", serveStatic({ root: legacyDir, rewriteRequestPath: (p) => p.slice("/legacy".length) }));
     log.info(`Legacy reference UI served from ${legacyDir}`);
   }
 
   const uiDir = locateUiDir();
   if (uiDir !== null) {
     // /ui/ kept as a redirect for the documented headless URL.
-    const toRoot = async (_req, reply) => reply.redirect("/", 307);
+    const toRoot = (c) => c.redirect("/", 307);
     app.get("/ui", toRoot);
     app.get("/ui/", toRoot);
-    app.register(fastifyStatic, {
-      root: uiDir,
-      prefix: "/",
-      wildcard: true,
-      index: ["index.html"],
-      redirect: false,
-      cacheControl: false,
-    });
+    app.get("/*", serveStatic({ root: uiDir }));
     // StaticFiles raised Starlette's own HTTPException, which FastAPI's default handler
     // answers (not the problem+json handlers).
-    app.route({
-      method: ["POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-      url: "/*",
-      handler: async (_req, reply) => reply.code(405).send({ detail: "Method Not Allowed" }),
-    });
+    app.on(["POST", "PUT", "PATCH", "DELETE", "OPTIONS"], "/*", (c) => c.json({ detail: "Method Not Allowed" }, 405));
     log.info(`UI served from ${uiDir}`);
   } else {
     log.warning("UI build not found — headless UI disabled. Run `npm run build:spa` to produce dist/spa/, or set JUSTVOICE_UI_DIR.");
   }
 }
-

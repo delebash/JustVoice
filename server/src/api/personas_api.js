@@ -6,6 +6,7 @@
 // which books.
 
 import { LLMNotConfiguredError } from "@delebash/llm-runner/llm";
+import { Hono, input } from "@delebash/llm-runner/platform";
 import { HttpError } from "@delebash/llm-runner/platform/errors";
 import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
 import { pySorted, splitWs, strip } from "@delebash/llm-runner/platform/py";
@@ -226,27 +227,28 @@ async function runOrRefuse(action, variables) {
   }
 }
 
-export async function router(app) {
-  app.get("/v1/personas", async () => {
+export function router() {
+  const app = new Hono();
+  app.get("/v1/personas", async (c) => {
     const st = getState();
     const seen = new Map();
     const personas = [];
     for (const p of st.personas.list()) personas.push(await _view(st, p, seen));
-    return construct(PersonaList, { personas });
+    return c.json(construct(PersonaList, { personas }));
   });
 
   /** {persona_id: [the speakers it plays, with their book]} — the Personas page's "Used by"
    * column and filters. */
-  app.get("/v1/personas/usage", async () => {
+  app.get("/v1/personas/usage", (c) => {
     const usage = _usage(session.getDb());
-    return construct(PersonaUsageMap, { usage: Object.fromEntries(usage) });
+    return c.json(construct(PersonaUsageMap, { usage: Object.fromEntries(usage) }));
   });
 
   /** The speakers one persona plays, each with its book and lines — the persona editor's "Used
    * by" panel. */
-  app.get("/v1/personas/:persona_id/usage-detail", async (req) => {
+  app.get("/v1/personas/:persona_id/usage-detail", (c) => {
     const h = session.getDb();
-    const personaId = req.params.persona_id;
+    const personaId = c.req.param("persona_id");
     if (getState().personas.get(personaId) === null) throw notFound(`persona ${personaId}`);
     const speakers = pySorted(_usage(h, personaId).get(personaId) ?? [], (u) => -u.lines);
     let directed = 0;
@@ -257,22 +259,25 @@ export async function router(app) {
         ids,
       );
     }
-    return construct(PersonaUsageDetailResponse, {
-      persona_id: personaId,
-      speakers,
-      total_lines: speakers.reduce((a, u) => a + u.lines, 0),
-      directed_lines: directed,
-    });
+    return c.json(
+      construct(PersonaUsageDetailResponse, {
+        persona_id: personaId,
+        speakers,
+        total_lines: speakers.reduce((a, u) => a + u.lines, 0),
+        directed_lines: directed,
+      }),
+    );
   });
 
   /** The persona editor's "↻ Stock line" — one sentence in the persona's language where one is
    * written, else English (persona_render.STOCK_LINES). */
-  app.get("/v1/personas/stock-line", { schema: { querystring: T.Object({ language: opt(nullable(T.String()), null) }) } }, async (req) =>
-    construct(StockLineResponse, { language: req.query.language, text: personaRender.stockLine(req.query.language) }),
-  );
+  app.get("/v1/personas/stock-line", input({ querystring: T.Object({ language: opt(nullable(T.String()), null) }) }), (c) => {
+    const { language } = c.req.valid("query");
+    return c.json(construct(StockLineResponse, { language, text: personaRender.stockLine(language) }));
+  });
 
-  app.post("/v1/personas", { schema: { body: CreatePersonaRequest }, config: { pyFloats: true } }, async (req, reply) => {
-    const body = req.body;
+  app.post("/v1/personas", input({ body: CreatePersonaRequest, pyFloats: true }), async (c) => {
+    const body = c.req.valid("json");
     const voiceId = await _checkedVoice(body.voice_id);
     const st = getState();
     // Python's argument order: the name, then the delivery, then the language.
@@ -291,25 +296,24 @@ export async function router(app) {
       note: body.note,
       effects_chain: body.effects_chain,
     });
-    reply.code(201);
-    return _view(st, created);
+    return c.json(await _view(st, created), 201);
   });
 
-  app.get("/v1/personas/:id", async (req) => {
+  app.get("/v1/personas/:id", async (c) => {
     const st = getState();
-    const p = st.personas.get(req.params.id);
-    if (!p) throw notFound(`persona ${req.params.id}`);
-    return _view(st, p);
+    const p = st.personas.get(c.req.param("id"));
+    if (!p) throw notFound(`persona ${c.req.param("id")}`);
+    return c.json(await _view(st, p));
   });
 
   /** Change what was sent: a field left out stays, a field sent as null is cleared
    * (2026-10-03 — this replaced a PUT that could not clear). */
-  app.patch("/v1/personas/:id", { schema: { body: UpdatePersonaRequest }, config: { pyFloats: true } }, async (req) => {
-    const id = req.params.id;
-    const body = req.body;
+  app.patch("/v1/personas/:id", input({ body: UpdatePersonaRequest, pyFloats: true }), async (c) => {
+    const id = c.req.param("id");
+    const body = c.req.valid("json");
     const current = getState().personas.get(id);
     if (current === null) throw notFound(`persona ${id}`);
-    const sent = new Set(Object.keys(sentBody(req) || {}));
+    const sent = new Set(Object.keys(sentBody(c) || {}));
     const fields = {};
     if (sent.has("name")) fields.name = _personaName(body.name, { besides: id });
     if (sent.has("voice_id")) fields.voice_id = await _checkedVoice(body.voice_id);
@@ -326,18 +330,18 @@ export async function router(app) {
     }
     const p = getState().personas.update(id, fields);
     if (!p) throw notFound(`persona ${id}`);
-    return _view(getState(), p);
+    return c.json(await _view(getState(), p));
   });
 
-  app.delete("/v1/personas/:id", async (req) => {
-    const id = req.params.id;
+  app.delete("/v1/personas/:id", (c) => {
+    const id = c.req.param("id");
     const personas = getState().personas;
     if (personas.get(id) === null) throw notFound(`persona ${id}`);
     // Every persona deletes the same way (2026-09-29: no built-in personas). The speakers it
     // played lose their persona (SET NULL) and keep their lines — the render stops on them
     // until Cast gives them another.
     if (!personas.delete(id)) throw notFound(`persona ${id}`);
-    return { deleted: true };
+    return c.json({ deleted: true });
   });
 
   /**
@@ -345,11 +349,11 @@ export async function router(app) {
    * from now on, and this persona goes. Its persona-scoped lexicons, its generations and its MCP
    * bindings move too; its own settings do not — the persona merged into keeps its own.
    */
-  app.post("/v1/personas/:id/merge", { schema: { body: MergePersonaRequest } }, async (req) => {
+  app.post("/v1/personas/:id/merge", input({ body: MergePersonaRequest }), (c) => {
     const st = getState();
     const h = session.getDb();
-    const id = req.params.id;
-    const into = req.body.into;
+    const id = c.req.param("id");
+    const into = c.req.valid("json").into;
     const source = st.personas.get(id);
     if (source === null) throw notFound(`persona ${id}`);
     if (into === id) throw badRequest("A persona can't be merged into itself.");
@@ -363,7 +367,7 @@ export async function router(app) {
       return n;
     });
     st.personas.delete(id);
-    return { merged: true, into: target.id, into_name: target.name, speakers: moved };
+    return c.json({ merged: true, into: target.id, into_name: target.name, speakers: moved });
   });
 
   /**
@@ -372,9 +376,9 @@ export async function router(app) {
    * `persona_render.planLine` — the resolver the chapter render uses — so what you hear here is
    * what the chapter contains. An empty line speaks the stock line in the persona's language.
    */
-  app.post("/v1/personas/preview", { schema: { body: PersonaPreviewRequest }, config: { pyFloats: true } }, async (req, reply) => {
+  app.post("/v1/personas/preview", input({ body: PersonaPreviewRequest, pyFloats: true }), async (c) => {
     const st = getState();
-    const body = req.body;
+    const body = c.req.valid("json");
     let persona;
     if (body.persona !== null) persona = body.persona;
     else if (body.persona_id) {
@@ -411,9 +415,9 @@ export async function router(app) {
       interactive: true,
       owner: synthScheduler.workOwner("a persona preview"),
     });
-    await handle.waitAsync({ signal: clientGone(req, reply) });
+    await handle.waitAsync({ signal: clientGone(c) });
     handle.raiseIfFailed();
-    return reply.type("audio/wav").send(handle.items[0].result);
+    return c.body(handle.items[0].result, 200, { "content-type": "audio/wav" });
   });
 
   /**
@@ -425,11 +429,11 @@ export async function router(app) {
    */
   app.post(
     "/v1/personas/preview-candidate",
-    { schema: { body: PersonaCandidatePreviewRequest }, config: { pyFloats: true } },
-    async (req, reply) => {
+    input({ body: PersonaCandidatePreviewRequest, pyFloats: true }),
+    async (c) => {
       const st = getState();
-      const body = req.body;
-      const cand = vp.markSent(body.candidate, (sentBody(req) || {}).candidate);
+      const body = c.req.valid("json");
+      const cand = vp.markSent(body.candidate, (sentBody(c) || {}).candidate);
       vp.validateCandidate(cand);
       const engine = await vp.candidateEngine(cand, st);
       const problems = personaRender.checkDelivery(body.persona.default_delivery);
@@ -451,7 +455,7 @@ export async function router(app) {
         delivery,
         seed: plan.seed,
         extra,
-        signal: clientGone(req, reply),
+        signal: clientGone(c),
       });
       // The take as the model spoke it — what Keep saves; a design's take keeps the words it
       // speaks as its transcript.
@@ -464,12 +468,14 @@ export async function router(app) {
         speedNative: renderCore.speedNative(st, cand.engine, model),
         effects: plan.effects,
       });
-      return construct(VoicePreviewResponse, {
-        wav_b64: writeWavContainer(pcm, sampleRate, channels).toString("base64"),
-        duration_sec: pcm.length / (sampleRate * channels * 2),
-        preview_id: previewId,
-        expires_at: expiresAt,
-      });
+      return c.json(
+        construct(VoicePreviewResponse, {
+          wav_b64: writeWavContainer(pcm, sampleRate, channels).toString("base64"),
+          duration_sec: pcm.length / (sampleRate * channels * 2),
+          preview_id: previewId,
+          expires_at: expiresAt,
+        }),
+      );
     },
   );
 
@@ -479,11 +485,11 @@ export async function router(app) {
    * row owns the wording — {{personality}} in the system half, the persona's note since
    * 2026-09-29; the old temperature lives on its preset.)
    */
-  app.post("/v1/personas/:id/compose", async (req) => {
-    const id = req.params.id;
+  app.post("/v1/personas/:id/compose", async (c) => {
+    const id = c.req.param("id");
     const persona = _requirePersonaWithNote(id);
     const resp = await runOrRefuse("compose", { personality: strip(persona.note) });
-    return construct(ComposeResponse, { text: strip(resp.text), persona_id: id, note: null, usage: usageOf(resp) });
+    return c.json(construct(ComposeResponse, { text: strip(resp.text), persona_id: id, note: null, usage: usageOf(resp) }));
   });
 
   /**
@@ -492,18 +498,21 @@ export async function router(app) {
    * an automatic render-time hook — always explicit. The `persona_rewrite` template row + its
    * engine preset; no token cap (caps ruling 2026-08-07).
    */
-  app.post("/v1/personas/:id/rewrite", { schema: { body: RewriteRequest } }, async (req) => {
-    const id = req.params.id;
-    const body = req.body;
+  app.post("/v1/personas/:id/rewrite", input({ body: RewriteRequest }), async (c) => {
+    const id = c.req.param("id");
+    const body = c.req.valid("json");
     const persona = _requirePersonaWithNote(id);
     if (!strip(body.text)) throw new HttpError(400, "rewrite requires non-empty text");
     const resp = await runOrRefuse("persona_rewrite", { personality: strip(persona.note), text: body.text });
-    return construct(RewriteResponse, {
-      original: body.text,
-      rewritten: strip(resp.text),
-      persona_id: id,
-      note: null,
-      usage: usageOf(resp),
-    });
+    return c.json(
+      construct(RewriteResponse, {
+        original: body.text,
+        rewritten: strip(resp.text),
+        persona_id: id,
+        note: null,
+        usage: usageOf(resp),
+      }),
+    );
   });
+  return app;
 }

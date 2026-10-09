@@ -23,6 +23,7 @@
 // gone. API agent 2 ported `RunUsage` first; API agent 3 the rest under the same names.
 
 import { LLMNotConfiguredError, stores } from "@delebash/llm-runner/llm";
+import { Hono, input } from "@delebash/llm-runner/platform";
 import { getLogger } from "@delebash/llm-runner/platform/log";
 import { literal, nullable, opt, T } from "@delebash/llm-runner/platform/models";
 import { B, cpSlice, isDict, pyCapitalize, pyRound, pySorted, reEscape, strip, truthy } from "@delebash/llm-runner/platform/py";
@@ -933,14 +934,15 @@ const frame = (item) => `data: ${pyJson(item)}\n\n`;
 
 // ── The routes ─────────────────────────────────────────────────────────────
 
-export async function router(app) {
-  app.post("/v1/scenes/:scene_id/analyze", { schema: { body: AnalyzeSceneRequest } }, async (req) => {
+export function router() {
+  const app = new Hono();
+  app.post("/v1/scenes/:scene_id/analyze", input({ body: AnalyzeSceneRequest }), async (c) => {
     const h = session.getDb();
-    const sceneId = req.params.scene_id;
+    const sceneId = c.req.param("scene_id");
     const scene = sceneById(h, sceneId);
     if (scene === null) throw notFound(`scene ${sceneId}`);
     const settings = getState().settings.get();
-    const { request, text, style, lineIds, segments } = sceneRequest(h, scene, req.body);
+    const { request, text, style, lineIds, segments } = sceneRequest(h, scene, c.req.valid("json"));
 
     const rawOut = {};
     let rows;
@@ -952,16 +954,18 @@ export async function router(app) {
 
     // The scene as this request read it (Python's session object, never refreshed).
     const persisted = h.tx(() => _persistAttribution(h, scene, rows, text, { marks: style, lineIds }));
-    return construct(AnalyzeSceneResponse, {
-      scene_id: sceneId,
-      raw_llm: rawOut.llm_text ?? null,
-      rows: rowsOut(rows),
-      route_used: rawOut.route ?? "guided",
-      route_source: rawOut.route_source ?? "auto",
-      confidence_floor: rawOut.floor ?? 0.7,
-      usage: rawOut.usage ?? null,
-      persisted,
-    });
+    return c.json(
+      construct(AnalyzeSceneResponse, {
+        scene_id: sceneId,
+        raw_llm: rawOut.llm_text ?? null,
+        rows: rowsOut(rows),
+        route_used: rawOut.route ?? "guided",
+        route_source: rawOut.route_source ?? "auto",
+        confidence_floor: rawOut.floor ?? 0.7,
+        usage: rawOut.usage ?? null,
+        persisted,
+      }),
+    );
   });
 
   /**
@@ -980,13 +984,13 @@ export async function router(app) {
    * that copy and stops the look before its next line. A cancel during the main pass still
    * writes nothing.
    */
-  app.post("/v1/scenes/:scene_id/analyze/stream", { schema: { body: AnalyzeSceneRequest } }, async (req, reply) => {
+  app.post("/v1/scenes/:scene_id/analyze/stream", input({ body: AnalyzeSceneRequest }), (c) => {
     const h = session.getDb();
-    const sceneId = req.params.scene_id;
+    const sceneId = c.req.param("scene_id");
     const scene = sceneById(h, sceneId);
     if (scene === null) throw notFound(`scene ${sceneId}`);
     const settings = getState().settings.get();
-    const { request, text, style, lineIds, segments } = sceneRequest(h, scene, req.body);
+    const { request, text, style, lineIds, segments } = sceneRequest(h, scene, c.req.valid("json"));
 
     const q = new Queue();
     let stop = false;
@@ -1067,7 +1071,9 @@ export async function router(app) {
 
     // The client going away is Python's cancelled generator: the look stops before its next
     // line, the kept copy (if the second look had started) is saved, and nothing else is.
-    reply.raw.once("close", () => {
+    // (The stream's onAbort: it runs only when the client goes mid-stream; `finished` still
+    // guards a client gone after the last frame.)
+    const onAbort = () => {
       if (finished) return;
       gone = true;
       stop = true;
@@ -1076,7 +1082,7 @@ export async function router(app) {
         kept.rows = null;
       }
       q.put(null);
-    });
+    };
 
     worker();
 
@@ -1111,7 +1117,7 @@ export async function router(app) {
         stop = true;
       }
     }
-    return sseResponse(reply, frames(), {});
+    return sseResponse(c, frames(), {}, { onAbort });
   });
 
   /**
@@ -1121,9 +1127,9 @@ export async function router(app) {
    * `{"error"}`. Writes each answer to its line as it comes (`_saveSecondLook`); nothing else.
    * The question is Analyze's own (second_look.lookAt, the same context).
    */
-  app.post("/v1/scenes/:scene_id/second-look/stream", async (req, reply) => {
+  app.post("/v1/scenes/:scene_id/second-look/stream", (c) => {
     const h = session.getDb();
-    const sceneId = req.params.scene_id;
+    const sceneId = c.req.param("scene_id");
     const scene = sceneById(h, sceneId);
     if (scene === null) throw notFound(`scene ${sceneId}`);
     const settings = getState().settings.get();
@@ -1206,10 +1212,11 @@ export async function router(app) {
       }
     };
 
-    reply.raw.once("close", () => {
+    // The client going away stops the look before its next line.
+    const onAbort = () => {
       stop = true;
       q.put(null);
-    });
+    };
     worker();
 
     async function* frames() {
@@ -1224,14 +1231,14 @@ export async function router(app) {
         stop = true;
       }
     }
-    return sseResponse(reply, frames(), {});
+    return sseResponse(c, frames(), {}, { onAbort });
   });
 
   /** No scene id — for the Speaker Lab + ad-hoc analysis. Returns the same
    * AnalyzeSceneResponse shape with scene_id="(adhoc)". */
-  app.post("/v1/extraction/analyze-text", { schema: { body: AnalyzeTextRequest } }, async (req) => {
+  app.post("/v1/extraction/analyze-text", input({ body: AnalyzeTextRequest }), async (c) => {
     const h = session.getDb();
-    const body = req.body;
+    const body = c.req.valid("json");
     let corrections = body.corrections;
     if (!corrections.length && body.project_id) {
       // The open project's stored corrections, exactly like production (Part 5 — same resolver,
@@ -1269,39 +1276,43 @@ export async function router(app) {
     } catch (e) {
       throw analyzeError(e);
     }
-    return construct(AnalyzeSceneResponse, {
-      scene_id: "(adhoc)",
-      raw_llm: rawOut.llm_text ?? null,
-      rows: rowsOut(rows),
-      route_used: rawOut.route ?? "guided",
-      route_source: rawOut.route_source ?? "auto",
-      confidence_floor: rawOut.floor ?? 0.7,
-      usage: rawOut.usage ?? null,
-    });
+    return c.json(
+      construct(AnalyzeSceneResponse, {
+        scene_id: "(adhoc)",
+        raw_llm: rawOut.llm_text ?? null,
+        rows: rowsOut(rows),
+        route_used: rawOut.route ?? "guided",
+        route_source: rawOut.route_source ?? "auto",
+        confidence_floor: rawOut.floor ?? 0.7,
+        usage: rawOut.usage ?? null,
+      }),
+    );
   });
 
-  app.get("/v1/extraction/config", async () => {
+  app.get("/v1/extraction/config", (c) => {
     // Prompt truth = the SHARED template rows (the same rows the run renders).
     const store = stores.getPromptStore();
     const rowsBy = Object.fromEntries(pipeline.ROUTES.map((name) => [name, store.get(`speaker_attribution.${name}`)]));
     const settings = getState().settings.get();
     const [picked, checks] = pipeline.autoRoute(settings.extraction.direct_min_b);
-    return construct(ExtractionConfigResponse, {
-      routes: pipeline.ROUTES.map((name) => ({ name, label: pyCapitalize(name), confidence_floor: pipeline.ROUTE_FLOORS[name] })),
-      system_prompts: Object.fromEntries(Object.entries(rowsBy).map(([name, r]) => [name, r ? r.system : ""])),
-      user_template: rowsBy.guided ? rowsBy.guided.user_template : "",
-      direct_min_b: settings.extraction.direct_min_b,
-      auto_picked: picked,
-      auto_checks: checks,
-      second_look: settings.extraction.second_look,
-    });
+    return c.json(
+      construct(ExtractionConfigResponse, {
+        routes: pipeline.ROUTES.map((name) => ({ name, label: pyCapitalize(name), confidence_floor: pipeline.ROUTE_FLOORS[name] })),
+        system_prompts: Object.fromEntries(Object.entries(rowsBy).map(([name, r]) => [name, r ? r.system : ""])),
+        user_template: rowsBy.guided ? rowsBy.guided.user_template : "",
+        direct_min_b: settings.extraction.direct_min_b,
+        auto_picked: picked,
+        auto_checks: checks,
+        second_look: settings.extraction.second_look,
+      }),
+    );
   });
 
   // ── Script ──
 
-  app.get("/v1/projects/:project_id/script", async (req) => {
+  app.get("/v1/projects/:project_id/script", (c) => {
     const h = session.getDb();
-    const projectId = req.params.project_id;
+    const projectId = c.req.param("project_id");
     if (projectById(h, projectId) === null) throw notFound(`project ${projectId}`);
     const scenes = h.all(`select * from ${Scene} where project_id = ? order by position`, [projectId], Scene);
     const byScene = new Map(scenes.map((s) => [s.id, []]));
@@ -1313,15 +1324,17 @@ export async function router(app) {
     }
     const [castIds, narratorId, speakers] = _scriptContext(h, projectId);
     const pm = _projectMeta(h, projectId);
-    return construct(ProjectScript, {
-      project_id: projectId,
-      chapters: scenes.map((s) => _chapterScript(s, byScene.get(s.id), { castIds, narratorId, speakers, projectMeta: pm })[0]),
-    });
+    return c.json(
+      construct(ProjectScript, {
+        project_id: projectId,
+        chapters: scenes.map((s) => _chapterScript(s, byScene.get(s.id), { castIds, narratorId, speakers, projectMeta: pm })[0]),
+      }),
+    );
   });
 
-  app.get("/v1/scenes/:scene_id/script", async (req) => {
+  app.get("/v1/scenes/:scene_id/script", (c) => {
     const h = session.getDb();
-    const sceneId = req.params.scene_id;
+    const sceneId = c.req.param("scene_id");
     const scene = sceneById(h, sceneId);
     if (scene === null) throw notFound(`scene ${sceneId}`);
     const blocks = blocksOf(h, sceneId);
@@ -1348,34 +1361,36 @@ export async function router(app) {
       [...byId].map(([sid, sp]) => ({ speaker_id: sid, name: sp.name, lines: counts.get(sid) ?? 0 })),
       (sp) => [-sp.lines, sp.name.toLowerCase()],
     );
-    return construct(SceneScript, {
-      chapter,
-      project_id: scene.project_id,
-      narrator_id: narratorId,
-      lines,
-      flag_groups: groups.map((g) => ({ check: g.check, speaker: g.speaker, lines: g.lines, turns: g.turns, other: g.other })),
-      speakers,
-    });
+    return c.json(
+      construct(SceneScript, {
+        chapter,
+        project_id: scene.project_id,
+        narrator_id: narratorId,
+        lines,
+        flag_groups: groups.map((g) => ({ check: g.check, speaker: g.speaker, lines: g.lines, turns: g.turns, other: g.other })),
+        speakers,
+      }),
+    );
   });
 
   // ── Speaker-correction management (Phase 5) ──
 
-  app.get("/v1/projects/:project_id/corrections/count", async (req) => {
+  app.get("/v1/projects/:project_id/corrections/count", (c) => {
     const h = session.getDb();
-    const projectId = req.params.project_id;
-    return construct(CorrectionsCountResponse, { project_id: projectId, count: _countProjectCorrections(h, projectId) });
+    const projectId = c.req.param("project_id");
+    return c.json(construct(CorrectionsCountResponse, { project_id: projectId, count: _countProjectCorrections(h, projectId) }));
   });
 
-  app.delete("/v1/projects/:project_id/corrections", async (req) => {
+  app.delete("/v1/projects/:project_id/corrections", (c) => {
     const h = session.getDb();
-    return { deleted: h.delete(SpeakerCorrection, { project_id: req.params.project_id }).changes };
+    return c.json({ deleted: h.delete(SpeakerCorrection, { project_id: c.req.param("project_id") }).changes });
   });
 
   /** Remove ONE saved fix — Script's Undo, taking back the fix the undone change saved. A fix
    * already gone (capped out) is not an error. */
-  app.delete("/v1/projects/:project_id/corrections/:fix_id", async (req) => {
+  app.delete("/v1/projects/:project_id/corrections/:fix_id", (c) => {
     const h = session.getDb();
-    return { deleted: h.delete(SpeakerCorrection, { project_id: req.params.project_id, id: req.params.fix_id }).changes };
+    return c.json({ deleted: h.delete(SpeakerCorrection, { project_id: c.req.param("project_id"), id: c.req.param("fix_id") }).changes });
   });
 
   /**
@@ -1384,14 +1399,14 @@ export async function router(app) {
    * REAL speaker of this book (the FK the table carries) — the Lab's typed cast uses synthetic
    * ids, which teach nothing and are refused here.
    */
-  app.post("/v1/projects/:project_id/corrections", { schema: { body: CorrectionIn } }, async (req) => {
+  app.post("/v1/projects/:project_id/corrections", input({ body: CorrectionIn }), (c) => {
     const h = session.getDb();
-    const projectId = req.params.project_id;
-    const body = req.body;
+    const projectId = c.req.param("project_id");
+    const body = c.req.valid("json");
     const sp = h.get(Speaker, body.speaker_id);
     if (sp === null || sp.project_id !== projectId) throw new HttpError(404, `speaker ${body.speaker_id} not found in this book`);
     h.tx(() => recordCorrection(h, projectId, body.text_snippet, body.speaker_id));
-    return { ok: true, count: _countProjectCorrections(h, projectId) };
+    return c.json({ ok: true, count: _countProjectCorrections(h, projectId) });
   });
 
   // ── Discover ──
@@ -1402,10 +1417,10 @@ export async function router(app) {
    * itself IS saved, on the chapter (`metadata.discover`), replacing that chapter's previous
    * scan.
    */
-  app.post("/v1/scenes/:scene_id/discover-speakers", { schema: { body: DiscoverSpeakersRequest } }, async (req) => {
+  app.post("/v1/scenes/:scene_id/discover-speakers", input({ body: DiscoverSpeakersRequest }), async (c) => {
     const h = session.getDb();
-    const sceneId = req.params.scene_id;
-    const body = req.body;
+    const sceneId = c.req.param("scene_id");
+    const body = c.req.valid("json");
     const scene = sceneById(h, sceneId);
     if (scene === null) throw notFound(`scene ${sceneId}`);
     const cast = _resolveCast(sceneId, h);
@@ -1421,12 +1436,12 @@ export async function router(app) {
       throw new HttpError(502, `identification failed: ${errText(e)}`);
     }
     const out = [];
-    for (const c of candidates) {
+    for (const cand of candidates) {
       // Already a speaker under a name the model could not connect — a first or last name alone
       // ("Cael" for Cael Ferren): that person is recorded below, as a speaker the chapter names.
       // An IGNORED name stays in the record; the page shows it as Ignored.
-      if (names.match(c.name, cast) !== null) continue;
-      out.push(construct(SpeakerCandidateOut, candidateOut(c, { evidence_found: c.evidence ? names.quoteInText(c.evidence, body.text) : null })));
+      if (names.match(cand.name, cast) !== null) continue;
+      out.push(construct(SpeakerCandidateOut, candidateOut(cand, { evidence_found: cand.evidence ? names.quoteInText(cand.evidence, body.text) : null })));
     }
     // Every speaker of this book the chapter names, found by name in the text (no AI — the same
     // on every scan). The narrator is a speaker like any other; prose rarely names it.
@@ -1434,45 +1449,45 @@ export async function router(app) {
     const meta = _sceneMeta(scene);
     meta.discover = { scanned_at: dtIso(utcNow()), candidates: out, named_cast: namedCast };
     h.update(Scene, { metadata_json: pyJson(meta) }, { id: sceneId });
-    return construct(DiscoverSpeakersResponse, { scene_id: sceneId, candidates: out, named_cast: namedCast, usage: rawOut.usage ?? null });
+    return c.json(construct(DiscoverSpeakersResponse, { scene_id: sceneId, candidates: out, named_cast: namedCast, usage: rawOut.usage ?? null }));
   });
 
   /** Discover's Ignore: the name is remembered for the project, and every chapter that names it
    * shows it as Ignored (fix 4). /discover/unignore takes it back off the list. */
-  app.post("/v1/projects/:project_id/discover/ignore", { schema: { body: IgnoreDiscoveredRequest } }, async (req) => {
+  app.post("/v1/projects/:project_id/discover/ignore", input({ body: IgnoreDiscoveredRequest }), (c) => {
     const h = session.getDb();
-    const projectId = req.params.project_id;
+    const projectId = c.req.param("project_id");
     const project = projectById(h, projectId);
     if (project === null) throw notFound(`project ${projectId}`);
     const current = projectIgnored(project);
     const have = new Set(current.map((n) => names.norm(n)));
-    for (const n of req.body.names) {
+    for (const n of c.req.valid("json").names) {
       if (strip(n) && !have.has(names.norm(n))) {
         current.push(strip(n));
         have.add(names.norm(n));
       }
     }
     _setIgnored(h, project, current);
-    return construct(IgnoreDiscoveredResponse, { ignored: current });
+    return c.json(construct(IgnoreDiscoveredResponse, { ignored: current }));
   });
 
   /** Takes names off the project's ignore list; the chapters that name them show them as
    * proposals again. */
-  app.post("/v1/projects/:project_id/discover/unignore", { schema: { body: IgnoreDiscoveredRequest } }, async (req) => {
+  app.post("/v1/projects/:project_id/discover/unignore", input({ body: IgnoreDiscoveredRequest }), (c) => {
     const h = session.getDb();
-    const projectId = req.params.project_id;
+    const projectId = c.req.param("project_id");
     const project = projectById(h, projectId);
     if (project === null) throw notFound(`project ${projectId}`);
-    const drop = new Set(req.body.names.map((n) => names.norm(n)));
+    const drop = new Set(c.req.valid("json").names.map((n) => names.norm(n)));
     const current = projectIgnored(project).filter((n) => !drop.has(names.norm(n)));
     _setIgnored(h, project, current);
-    return construct(IgnoreDiscoveredResponse, { ignored: current });
+    return c.json(construct(IgnoreDiscoveredResponse, { ignored: current }));
   });
 
   /** No scene id — the Lab's discovery door (parity batch 2026-08-06), beside
    * /v1/extraction/analyze-text. Same identify pipeline; candidates are a review list. */
-  app.post("/v1/extraction/discover-speakers", { schema: { body: DiscoverTextRequest } }, async (req) => {
-    const body = req.body;
+  app.post("/v1/extraction/discover-speakers", input({ body: DiscoverTextRequest }), async (c) => {
+    const body = c.req.valid("json");
     const all = {
       providerId: body.providerId,
       model: body.model,
@@ -1497,11 +1512,13 @@ export async function router(app) {
       log.exception("speaker identification failed", e);
       throw new HttpError(502, `identification failed: ${errText(e)}`);
     }
-    return construct(DiscoverSpeakersResponse, {
-      scene_id: "(adhoc)",
-      candidates: candidates.map((c) => candidateOut(c)),
-      usage: rawOut.usage ?? null,
-    });
+    return c.json(
+      construct(DiscoverSpeakersResponse, {
+        scene_id: "(adhoc)",
+        candidates: candidates.map((cand) => candidateOut(cand)),
+        usage: rawOut.usage ?? null,
+      }),
+    );
   });
 
   /**
@@ -1509,20 +1526,21 @@ export async function router(app) {
    * its name when the library has one ("Every new speaker", 2026-09-29). A name the book already
    * has is refused (names are unique within a book) and nothing in the batch is saved.
    */
-  app.post("/v1/projects/:project_id/speakers/promote", { schema: { body: PromoteSpeakersRequest } }, async (req) => {
+  app.post("/v1/projects/:project_id/speakers/promote", input({ body: PromoteSpeakersRequest }), (c) => {
     const h = session.getDb();
-    const projectId = req.params.project_id;
+    const projectId = c.req.param("project_id");
     if (projectById(h, projectId) === null) throw notFound(`project ${projectId}`);
     const created = [];
     const reused = [];
     h.tx(() => {
-      for (const cand of req.body.candidates) {
+      for (const cand of c.req.valid("json").candidates) {
         const [speaker, wasCreated] = ensureSpeaker(h, projectId, { name: cand.name, description: cand.description, aliases: cand.aliases, unique: true });
         (wasCreated ? created : reused).push(speaker.id);
       }
     });
-    return construct(PromoteSpeakersResponse, { created, reused });
+    return c.json(construct(PromoteSpeakersResponse, { created, reused }));
   });
+  return app;
 }
 
 /** `project.discover_ignored = json.dumps(names) if names else None`. */

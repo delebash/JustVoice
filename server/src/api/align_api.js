@@ -14,6 +14,7 @@
 // frame-exact editing.
 
 import { readFileSync } from "node:fs";
+import { Hono, input } from "@delebash/llm-runner/platform";
 import { RequestValidationError } from "@delebash/llm-runner/platform/errors";
 import { opt, T } from "@delebash/llm-runner/platform/models";
 import { RuntimeError, strip } from "@delebash/llm-runner/platform/py";
@@ -44,15 +45,15 @@ export function _wavSeconds(wav) {
   }
 }
 
-export async function router(app) {
-  await captures._useForms(app);
+export function router() {
+  const app = new Hono();
 
   /**
    * Upload audio + the text it speaks → when each word is spoken. Returns
    * {"words": [{word, start, end}]} in seconds, one entry per word of `text`, in order.
    */
-  app.post("/v1/align", async (req) => {
-    const form = await captures._readForm(req);
+  app.post("/v1/align", captures._formSpool, async (c) => {
+    const form = await captures._readForm(c);
     const missing = [];
     if (form.files.file === undefined) missing.push("file");
     const textRaw = form.fields.text;
@@ -71,7 +72,7 @@ export async function router(app) {
       if (e instanceof RuntimeError) throw badRequest(msg(e));
       throw e;
     }
-    return { words };
+    return c.json({ words });
   });
 
   /**
@@ -80,10 +81,10 @@ export async function router(app) {
    */
   app.get(
     "/v1/scenes/:scene_id/captions",
-    { schema: { querystring: T.Object({ format: opt(T.String(), "vtt") }) } },
-    async (req, reply) => {
-      const format = req.query.format;
-      const sceneId = req.params.scene_id;
+    input({ querystring: T.Object({ format: opt(T.String(), "vtt") }) }),
+    async (c) => {
+      const format = c.req.valid("query").format;
+      const sceneId = c.req.param("scene_id");
       if (format !== "vtt" && format !== "srt") throw badRequest("format must be vtt or srt");
       const st = getState();
       // No blanket catch: the resolver already throws the honest answers (404 for a missing
@@ -106,10 +107,11 @@ export async function router(app) {
         throw e;
       }
       const body = format === "vtt" ? toVtt(words) : toSrt(words);
-      return reply
-        .type(format === "vtt" ? "text/vtt; charset=utf-8" : "application/x-subrip")
-        .header("content-disposition", `attachment; filename="chapter-${sceneId}.${format}"`)
-        .send(body);
+      return c.body(body, 200, {
+        "content-type": format === "vtt" ? "text/vtt; charset=utf-8" : "application/x-subrip",
+        "content-disposition": `attachment; filename="chapter-${sceneId}.${format}"`,
+      });
     },
   );
+  return app;
 }

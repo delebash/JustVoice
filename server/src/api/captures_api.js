@@ -9,7 +9,7 @@
 // nothing stored.
 //
 // This module also owns two things other routers use:
-//   - the multipart form reader (`_useForms`, `_readForm`, `_requireFile`, `_formField`) —
+//   - the multipart form reader (`_formSpool`, `_readForm`, `_requireFile`, `_formField`) —
 //     FastAPI's `File()` / `Form()` semantics for align, voice bundles and project import;
 //   - speech recognition loaded on first use (`ensureSttLoaded`, `_sttTranscribe`) — align and
 //     the MCP `justvoice.transcribe` tool call it too.
@@ -21,15 +21,16 @@ import { closeSync, createReadStream, createWriteStream, mkdirSync, mkdtempSync,
 import { copyFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
-import multipart from "@fastify/multipart";
+import Busboy from "@fastify/busboy";
 import { LLMNotConfiguredError } from "@delebash/llm-runner/llm";
 import { HttpError, RequestValidationError } from "@delebash/llm-runner/platform/errors";
 import { getLogger } from "@delebash/llm-runner/platform/log";
-import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
+import { nullable, opt, shapeRequest, T } from "@delebash/llm-runner/platform/models";
 import { isJsonObject, strRepr } from "@delebash/llm-runner/platform/py";
 import { jsonLoads, pyJson } from "@delebash/llm-runner/platform/pyjson";
-import { attachment } from "@delebash/llm-runner/platform/server";
+import { attachment, Hono, input, readJson } from "@delebash/llm-runner/platform/server";
 import { getState } from "../app_state.js";
 import { parseWavHeader } from "../audio/wav.js";
 import { Capture, uuid } from "../database/models.js";
@@ -111,43 +112,84 @@ export function _row(r) {
 
 // ─── Multipart forms ────────────────────────────────────────────────────────
 
-const SPOOL = Symbol("jv.formSpool");
+const SPOOL = "jv.formSpool";
 
 /**
- * Let a plugin context read multipart forms: @fastify/multipart with no file-size limit of its
- * own (each route caps its upload) and a 1 MiB limit per text field, plus a hook that removes a
- * request's spooled files once the answer has gone out. Call once per plugin context.
+ * Remove a request's spooled files once its answer is made — a middleware on each route that
+ * reads a form (`_readForm`), placed before its handler.
  */
-export async function _useForms(app) {
-  await app.register(multipart, { limits: { fileSize: Number.POSITIVE_INFINITY, fieldSize: 1024 * 1024 } });
-  app.addHook("onResponse", async (req) => {
-    const dir = req[SPOOL];
-    if (!dir) return;
-    req[SPOOL] = null;
-    rmSync(dir, { recursive: true, force: true });
-  });
+export async function _formSpool(c, next) {
+  try {
+    await next();
+  } finally {
+    const dir = c.get(SPOOL);
+    if (dir) {
+      c.set(SPOOL, null);
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
 }
+
+/** A refusal the form reader answers with its own status ({"detail": …}), as the multipart
+ * plugin it replaces did. */
+const formRefusal = (status, message) => Object.assign(new Error(message), { statusCode: status });
 
 /**
  * The request's form: `{files: {field: {path, filename, size}}, fields: {field: string}}`. Each
  * file part is written whole to a spool folder under the OS temp folder (read now, so a test can
- * redirect it) before this returns. A request that is not multipart has an empty form.
+ * redirect it) before this returns; the route's `_formSpool` removes it. A request that is not
+ * multipart has an empty form. busboy (framework-free) reads the request's own body stream —
+ * no limit on a file (each route caps its upload), 1 MiB per text field; an empty body is an
+ * empty form.
  */
-export async function _readForm(req) {
+export async function _readForm(c) {
   const form = { files: {}, fields: {} };
-  if (typeof req.isMultipart !== "function" || !req.isMultipart()) return form;
+  const type = c.req.header("content-type") || "";
+  if (!/^multipart\//i.test(type) || !c.req.raw.body) return form;
+  const bb = new Busboy({ headers: { "content-type": type }, limits: { fileSize: Number.POSITIVE_INFINITY, fieldSize: 1024 * 1024 } });
+  const writes = [];
+  let refused = null;
   let n = 0;
-  for await (const part of req.parts()) {
-    if (part.type === "file") {
-      if (!req[SPOOL]) req[SPOOL] = mkdtempSync(path.join(tmpdir(), "jv-form-"));
-      n += 1;
-      const dest = path.join(req[SPOOL], `part-${n}`);
-      await pipeline(part.file, createWriteStream(dest));
-      form.files[part.fieldname] = { path: dest, filename: part.filename, size: statSync(dest).size };
-    } else {
-      form.fields[part.fieldname] = String(part.value ?? "");
+  bb.on("file", (fieldname, file, filename) => {
+    if (fieldname in Object.prototype) {
+      refused ??= formRefusal(400, "prototype property is not allowed as field name");
+      file.resume();
+      return;
+    }
+    if (!c.get(SPOOL)) c.set(SPOOL, mkdtempSync(path.join(tmpdir(), "jv-form-")));
+    n += 1;
+    const dest = path.join(c.get(SPOOL), `part-${n}`);
+    // Named in the order the parts came (the last of a name wins); its size once written.
+    const entry = { path: dest, filename, size: 0 };
+    form.files[fieldname] = entry;
+    writes.push(
+      pipeline(file, createWriteStream(dest)).then(() => {
+        entry.size = statSync(dest).size;
+      }),
+    );
+  });
+  bb.on("field", (fieldname, value) => {
+    if (fieldname in Object.prototype) refused ??= formRefusal(400, "prototype property is not allowed as field name");
+    else form.fields[fieldname] = String(value ?? "");
+  });
+  let sawData = false;
+  const seen = async function* (source) {
+    for await (const chunk of source) {
+      if (chunk.length) sawData = true;
+      yield chunk;
+    }
+  };
+  try {
+    await pipeline(Readable.fromWeb(c.req.raw.body), seen, bb);
+  } catch (e) {
+    // An empty body is an empty form, not truncated multipart data.
+    if (sawData || e?.message !== "Unexpected end of multipart data") {
+      await Promise.allSettled(writes);
+      throw e;
     }
   }
+  await Promise.all(writes);
+  if (refused) throw refused;
   return form;
 }
 
@@ -259,12 +301,12 @@ function captureOr404(h, id) {
 
 // ─── Routes ─────────────────────────────────────────────────────────────────
 
-export async function router(app) {
-  await _useForms(app);
+export function router() {
+  const app = new Hono();
 
   /** Transcribe one recording; nothing is stored. */
-  app.post("/v1/transcribe", async (req) => {
-    const form = await self._readForm(req);
+  app.post("/v1/transcribe", _formSpool, async (c) => {
+    const form = await self._readForm(c);
     const file = _requireFile(form, "file");
     const language = _formField(form, "language", null);
     const dir = mkdtempSync(path.join(tmpdir(), "jv-transcribe-"));
@@ -272,15 +314,15 @@ export async function router(app) {
       const wav = path.join(dir, "upload.wav");
       await copyUpload(file, wav);
       const text = await self._sttTranscribe(wav, language);
-      return construct(TranscribeResponse, { text, language });
+      return c.json(construct(TranscribeResponse, { text, language }));
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
   });
 
   /** A new capture: keep the recording, transcribe it, clean it when auto-refine is on. */
-  app.post("/v1/captures", async (req, reply) => {
-    const form = await self._readForm(req);
+  app.post("/v1/captures", _formSpool, async (c) => {
+    const form = await self._readForm(c);
     const file = _requireFile(form, "file");
     const source = _formField(form, "source", "upload");
     const language = _formField(form, "language", null);
@@ -312,70 +354,72 @@ export async function router(app) {
       refinement_flags_json: pyJson(flags.toDict()),
       transcript,
     });
-    reply.code(201);
-    return _row(h.get(Capture, id));
+    return c.json(_row(h.get(Capture, id)), 201);
   });
 
   /** Newest first. Pinned captures are not sorted to the top here — the Captures page does that. */
-  app.get("/v1/captures", { schema: { querystring: ListQuery } }, async (req) => {
-    const limit = Math.min(Math.max(req.query.limit, 1), 200);
-    const offset = Math.max(req.query.offset, 0);
+  app.get("/v1/captures", input({ querystring: ListQuery }), (c) => {
+    const q = c.req.valid("query");
+    const limit = Math.min(Math.max(q.limit, 1), 200);
+    const offset = Math.max(q.offset, 0);
     const h = getDb();
     const rows = h.all(`select * from ${Capture} order by created_at desc limit ? offset ?`, [limit, offset], Capture);
-    return construct(CaptureList, { captures: rows.map(_row), total: h.count(Capture) });
+    return c.json(construct(CaptureList, { captures: rows.map(_row), total: h.count(Capture) }));
   });
 
-  app.get("/v1/captures/:capture_id", async (req) => _row(captureOr404(getDb(), req.params.capture_id)));
+  app.get("/v1/captures/:capture_id", (c) => c.json(_row(captureOr404(getDb(), c.req.param("capture_id")))));
 
   /** The recording, as a WAV download. */
-  app.get("/v1/captures/:capture_id/audio", async (req, reply) => {
-    const id = req.params.capture_id;
+  app.get("/v1/captures/:capture_id/audio", (c) => {
+    const id = c.req.param("capture_id");
     const row = captureOr404(getDb(), id);
     const file = row.audio_path ? mediaFile(row.audio_path) : null;
     const size = file ? statSync(file, { throwIfNoEntry: false }) : null;
     if (!size?.isFile()) throw notFound(`audio for capture ${id}`);
-    return reply
-      .type("audio/wav")
-      .header("content-length", size.size)
-      .header("content-disposition", attachment(`${id}.wav`))
-      .send(createReadStream(file));
+    return c.body(Readable.toWeb(createReadStream(file)), 200, {
+      "content-type": "audio/wav",
+      "content-length": String(size.size),
+      "content-disposition": attachment(`${id}.wav`),
+    });
   });
 
-  app.patch("/v1/captures/:capture_id", { schema: { body: UpdateCaptureRequest } }, async (req) => {
+  app.patch("/v1/captures/:capture_id", input({ body: UpdateCaptureRequest }), (c) => {
     const h = getDb();
-    const id = req.params.capture_id;
+    const id = c.req.param("capture_id");
+    const body = c.req.valid("json");
     captureOr404(h, id);
-    if (req.body.pinned !== null) h.update(Capture, { pinned: req.body.pinned }, { id });
-    return _row(h.get(Capture, id));
+    if (body.pinned !== null) h.update(Capture, { pinned: body.pinned }, { id });
+    return c.json(_row(h.get(Capture, id)));
   });
 
-  app.delete("/v1/captures/:capture_id", async (req) => {
+  app.delete("/v1/captures/:capture_id", (c) => {
     const h = getDb();
-    const id = req.params.capture_id;
+    const id = c.req.param("capture_id");
     const row = captureOr404(h, id);
     if (row.audio_path) rmSync(mediaFile(row.audio_path), { force: true });
     h.delete(Capture, { id });
-    return { deleted: true };
+    return c.json({ deleted: true });
   });
 
   /** Clean the raw transcript again — always, whatever auto-refine says — with the toggles
    * sent, each one not sent keeping the capture's own. The raw transcript is never touched. */
+  const refineInput = input({ body: RefineBody });
   app.post(
     "/v1/captures/:capture_id/refine",
-    {
-      schema: { body: RefineBody },
-      // No body at all means "the capture's own toggles".
-      preValidation: async (req) => {
-        if (req.body === undefined || req.body === null) req.body = {};
-      },
+    // No body at all means "the capture's own toggles" (validated as `{}`).
+    async (c, next) => {
+      const sent = await readJson(c);
+      if (sent !== undefined && sent !== null) return refineInput(c, next);
+      c.req.addValidatedData("json", shapeRequest(RefineBody, {}));
+      return next();
     },
-    async (req) => {
+    async (c) => {
       const h = getDb();
-      const id = req.params.capture_id;
+      const id = c.req.param("capture_id");
       const row = captureOr404(h, id);
       if (!row.raw_transcript) throw badRequest(`capture ${id} has no raw transcript to clean`);
       const own = RefinementFlags.fromDict(storedFlags(row));
-      const b = req.body;
+      const b = c.req.valid("json");
       const flags = new RefinementFlags({
         smartCleanup: b.smart_cleanup ?? own.smartCleanup,
         selfCorrection: b.self_correction ?? own.selfCorrection,
@@ -390,21 +434,22 @@ export async function router(app) {
         throw e;
       }
       h.update(Capture, { transcript: text, refinement_flags_json: pyJson(flags.toDict()) }, { id });
-      return _row(h.get(Capture, id));
+      return c.json(_row(h.get(Capture, id)));
     },
   );
 
   /** Transcribe the stored recording again (in `?language=`, else the capture's own). */
-  app.post("/v1/captures/:capture_id/retranscribe", { schema: { querystring: RetranscribeQuery } }, async (req) => {
+  app.post("/v1/captures/:capture_id/retranscribe", input({ querystring: RetranscribeQuery }), async (c) => {
     const h = getDb();
-    const id = req.params.capture_id;
+    const id = c.req.param("capture_id");
     const row = captureOr404(h, id);
     const file = row.audio_path ? mediaFile(row.audio_path) : null;
     if (!file || !statSync(file, { throwIfNoEntry: false })?.isFile()) throw badRequest(`the recording for capture ${id} is missing`);
     const settings = getState().settings.get();
-    const raw = await self._sttTranscribe(file, req.query.language || row.language);
+    const raw = await self._sttTranscribe(file, c.req.valid("query").language || row.language);
     const transcript = settings.captures.auto_refine ? await self._maybeRefine(raw, RefinementFlags.fromDict(storedFlags(row)), settings) : raw;
     h.update(Capture, { raw_transcript: raw, transcript }, { id });
-    return _row(h.get(Capture, id));
+    return c.json(_row(h.get(Capture, id)));
   });
+  return app;
 }

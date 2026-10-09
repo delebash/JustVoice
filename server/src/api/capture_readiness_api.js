@@ -8,6 +8,7 @@
 // model the dictation setting names (`settings.captures.stt_model`) is in the speech cache. It
 // loads on first use, so "downloaded" is the gate, not "loaded".
 
+import { Hono } from "@delebash/llm-runner/platform";
 import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
 import { getState } from "../app_state.js";
 import * as modelCatalog from "../engines/model_catalog.js";
@@ -62,6 +63,8 @@ export async function _llmReadiness() {
   }
 }
 
-export async function router(app) {
-  app.get("/v1/capture/readiness", async () => construct(CaptureReadiness, { stt: _sttReadiness(), llm: await _llmReadiness() }));
+export function router() {
+  const app = new Hono();
+  app.get("/v1/capture/readiness", async (c) => c.json(construct(CaptureReadiness, { stt: _sttReadiness(), llm: await _llmReadiness() })));
+  return app;
 }

@@ -10,6 +10,7 @@
 // Status per engine: managed → manager.status(id) (not_installed | installed | loaded); legacy
 // → the registry's registration + computeStatus().
 
+import { Hono, input } from "@delebash/llm-runner/platform";
 import { HttpError } from "@delebash/llm-runner/platform/errors";
 import { opt, T } from "@delebash/llm-runner/platform/models";
 import { pyInt, strRepr } from "@delebash/llm-runner/platform/py";
@@ -258,13 +259,14 @@ export async function getEngineVram(eventsSince = 0) {
   });
 }
 
-export async function router(app) {
+export function router() {
+  const app = new Hono();
   /**
    * Record that the user accepted this engine's terms (manifest TERMS) — once per install.
    * Pocket TTS refuses a render from a reference clip until then (decided 2026-10-02).
    */
-  app.post("/v1/engines/:id/terms", async (req) => {
-    const id = req.params.id;
+  app.post("/v1/engines/:id/terms", (c) => {
+    const id = c.req.param("id");
     const m = manager.getManager().getManifest(id);
     if (m === null) throw notFound(`engine ${id}`);
     if (!m.module?.TERMS || !Object.keys(m.module.TERMS).length) throw badRequest(`${m.name} has no terms to accept`);
@@ -276,10 +278,10 @@ export async function router(app) {
       cur.engines.engine_overrides[id] = ov;
       store.set(cur);
     }
-    return { engine_id: id, accepted: true, at: ov.terms_accepted_at };
+    return c.json({ engine_id: id, accepted: true, at: ov.terms_accepted_at });
   });
 
-  app.get("/v1/engines", async () => {
+  app.get("/v1/engines", (c) => {
     const st = getState();
     const mgr = manager.getManager();
     const cur = _currentId();
@@ -313,7 +315,7 @@ export async function router(app) {
       });
       seen.add(eid);
     }
-    return construct(EnginesListResponse, { engines: catalog, current: cur });
+    return c.json(construct(EnginesListResponse, { engines: catalog, current: cur }));
   });
 
   /**
@@ -321,7 +323,7 @@ export async function router(app) {
    * variant ids (`chatterbox-turbo`) where the variant has materially different parameters.
    * The frontend tries the variant id first, then the base engine id — `lookup()`'s rule.
    */
-  app.get("/v1/engines/capabilities", async () => {
+  app.get("/v1/engines/capabilities", (c) => {
     // OS gate (2026-08-20): a row keyed by a variant this machine's catalog cannot see is
     // dropped HERE — the same one-door rule the catalog applies. Engine-id rows and family rows
     // (a visible variant id extends them, e.g. qwen3-base → qwen3-base-1.7b) always pass.
@@ -334,49 +336,51 @@ export async function router(app) {
         engines[key] = _asInstalled(detail);
       }
     }
-    return construct(EngineCapabilitiesResponse, { engines, emotion_values: [...EMOTION_VALUES] });
+    return c.json(construct(EngineCapabilitiesResponse, { engines, emotion_values: [...EMOTION_VALUES] }));
   });
 
-  app.get("/v1/engines/:engine_id/capabilities", async (req) => {
-    const engineId = req.params.engine_id;
+  app.get("/v1/engines/:engine_id/capabilities", (c) => {
+    const engineId = c.req.param("engine_id");
     const detail = lookupCapability(engineId);
     if (detail === null) throw new HttpError(404, `No capability detail for engine ${strRepr(engineId)}`);
-    return construct(EngineCapabilityDetail, detail);
+    return c.json(construct(EngineCapabilityDetail, detail));
   });
 
-  app.get("/v1/engines/vram", { schema: { querystring: T.Object({ events_since: opt(T.Integer(), 0) }) } }, async (req) =>
-    getEngineVram(req.query.events_since ?? 0),
+  app.get("/v1/engines/vram", input({ querystring: T.Object({ events_since: opt(T.Integer(), 0) }) }), async (c) =>
+    c.json(await getEngineVram(c.req.valid("query").events_since ?? 0)),
   );
 
-  app.get("/v1/engines/current", async () => {
+  app.get("/v1/engines/current", (c) => {
     const mgr = manager.getManager();
     const cur = mgr.currentId() || getState().engines.current();
-    if (cur == null) return construct(CurrentEngineResponse, { engine: null });
+    if (cur == null) return c.json(construct(CurrentEngineResponse, { engine: null }));
     // Managed engine?
     const m = mgr.getManifest(cur);
     if (m) {
       const info = _infoFromManifest(m, mgr.status(cur));
       info.current = true;
-      return construct(CurrentEngineResponse, { engine: info });
+      return c.json(construct(CurrentEngineResponse, { engine: info }));
     }
     // External / runtime-registered (no manifest by design).
     const inst = getState().engines.get(cur);
     if (inst) {
-      return construct(CurrentEngineResponse, {
-        engine: {
-          id: cur,
-          name: inst.meta.displayName,
-          description: "",
-          backend: inst.meta.backend,
-          capabilities: [],
-          prerequisites: {},
-          status: computeStatus(cur, true, inst.ready(), cur),
-          current: true,
-          is_stubbed: false,
-        },
-      });
+      return c.json(
+        construct(CurrentEngineResponse, {
+          engine: {
+            id: cur,
+            name: inst.meta.displayName,
+            description: "",
+            backend: inst.meta.backend,
+            capabilities: [],
+            prerequisites: {},
+            status: computeStatus(cur, true, inst.ready(), cur),
+            current: true,
+            is_stubbed: false,
+          },
+        }),
+      );
     }
-    return construct(CurrentEngineResponse, { engine: null });
+    return c.json(construct(CurrentEngineResponse, { engine: null }));
   });
 
   // ── Engines left behind by a server that is gone (2026-09-29) ─────────────
@@ -384,8 +388,9 @@ export async function router(app) {
   // memory; the server also sweeps them once at startup (serve.js). `engines/leftovers.js` owns
   // what counts as one.
 
-  app.get("/v1/engines/leftovers", async () => _leftoversResponse(await leftovers.findLeftoverEngines()));
+  app.get("/v1/engines/leftovers", async (c) => c.json(_leftoversResponse(await leftovers.findLeftoverEngines())));
 
-  app.post("/v1/engines/leftovers/stop", async () => _leftoversResponse(await leftovers.stopLeftoverEngines("stopped from the app")));
+  app.post("/v1/engines/leftovers/stop", async (c) => c.json(_leftoversResponse(await leftovers.stopLeftoverEngines("stopped from the app"))));
+  return app;
 }
 

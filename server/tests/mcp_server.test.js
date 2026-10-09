@@ -4,7 +4,7 @@
 // by the end-to-end suite; here we verify the wiring. Python's fixture booted the whole app
 // (create_app); these boot what the tools read — the database and the app state — and mount
 // on a bare server (app.js is the API wave's).
-import { createServer } from "@delebash/llm-runner/platform/server";
+import { closeApp, createServer } from "@delebash/llm-runner/platform/server";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { afterEach, expect, test } from "vitest";
@@ -40,10 +40,10 @@ async function connected() {
 test("mcp_mounted", async () => {
   const app = createServer({ typeBase: "https://justvoice.dev/errors/" });
   mountInto(app);
-  await app.ready();
-  expect(app.hasRoute({ method: "POST", url: "/mcp" })).toBe(true);
-  expect(app.hasRoute({ method: "GET", url: "/mcp" })).toBe(true);
-  await app.close();
+  const hasRoute = (method, path) => app.routes.some((r) => r.method === method && r.path === path);
+  expect(hasRoute("POST", "/mcp")).toBe(true);
+  expect(hasRoute("GET", "/mcp")).toBe(true);
+  await closeApp(app);
 });
 
 test("tools_registered", async () => {

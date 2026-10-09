@@ -12,16 +12,18 @@
 //   await c.post("/v1/captures", { files: { file: ["a.wav", buf, "audio/wav"] }, data: { source: "upload" } });
 //   client(app, { remoteAddress: "192.168.1.20" })        // TestClient(app, client=(host, port))
 //
-// Requests go through Fastify's `inject` (no socket, no port). `closeApps()` closes every app
-// built since the last call (its onClose stops MCP sessions, the engine manager and the DSP
-// program), then forgets the module database and the app state — the next test starts clean.
+// Requests go through Hono's `app.request` (no socket, no port — helpers.js `inject`).
+// `closeApps()` closes every app built since the last call (its close hooks stop MCP sessions, the
+// engine manager and the DSP program), then forgets the module database and the app state — the
+// next test starts clean.
+import { closeApp } from "@delebash/llm-runner/platform";
 import { multipart } from "@delebash/llm-runner/platform/http";
 import "./helpers.js"; // the sandboxed family registry + user cache (JUST_AI_HOME, LLM_RUNNER_CACHE)
 import { createApp } from "../src/app.js";
 import { cfg as appCfg } from "../src/app_state.js";
 import { seedWorkspace } from "../src/database/seed.js";
 import * as session from "../src/database/session.js";
-import { tmpPath } from "./helpers.js";
+import { inject, tmpPath } from "./helpers.js";
 
 // npm run dev names its audio.cpp build in this variable; the suite tests the pinned release.
 delete process.env.JUSTVOICE_AUDIOCPP_BUILD;
@@ -32,7 +34,6 @@ const open = [];
 export async function makeApp(dir = tmpPath(), { seed = false } = {}) {
   const app = await createApp(dir);
   if (seed) await seedWorkspace();
-  await app.ready();
   open.push(app);
   return app;
 }
@@ -70,7 +71,7 @@ export function client(app, { remoteAddress = "127.0.0.1" } = {}) {
     } else if (body !== undefined) {
       opts.payload = body;
     }
-    return answer(await app.inject(opts));
+    return answer(await inject(app, opts));
   };
   return {
     get: (url, o) => send("GET", url, o),
@@ -92,7 +93,7 @@ export async function appClient(dir = tmpPath(), { seed = false, remoteAddress }
 export async function closeApps() {
   for (const app of open.splice(0)) {
     try {
-      await app.close();
+      await closeApp(app);
     } catch {
       /* already closed */
     }

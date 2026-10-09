@@ -20,6 +20,8 @@ import { randomUUID } from "node:crypto";
 import { createReadStream, mkdtempSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { Readable } from "node:stream";
+import { Hono } from "@delebash/llm-runner/platform";
 import { getLogger } from "@delebash/llm-runner/platform/log";
 import { strip } from "@delebash/llm-runner/platform/py";
 import { ZipWriter } from "@delebash/llm-runner/platform/zip";
@@ -164,32 +166,33 @@ function _job(jobId) {
   return job;
 }
 
-export async function router(app) {
-  app.post("/v1/projects/:project_id/export_m4b/start", async (req) => {
-    const projectId = req.params.project_id;
+export function router() {
+  const app = new Hono();
+  app.post("/v1/projects/:project_id/export_m4b/start", (c) => {
+    const projectId = c.req.param("project_id");
     const [name, author] = _project(projectId);
     _needFfmpeg("M4B export");
-    return _start(projectId, `${_safe(name, "book").replaceAll(" ", "_")}.m4b`, "audio/mp4", (job) => _m4b(job, projectId, name, author));
+    return c.json(_start(projectId, `${_safe(name, "book").replaceAll(" ", "_")}.m4b`, "audio/mp4", (job) => _m4b(job, projectId, name, author)));
   });
 
-  app.post("/v1/projects/:project_id/export_chapters/start", async (req) => {
-    const projectId = req.params.project_id;
+  app.post("/v1/projects/:project_id/export_chapters/start", (c) => {
+    const projectId = c.req.param("project_id");
     const [name] = _project(projectId);
     _needFfmpeg("mastered chapters");
-    return _start(projectId, `${_safe(name, "book").replaceAll(" ", "_")}_chapters.zip`, "application/zip", (job) => _chaptersZip(job, projectId));
+    return c.json(_start(projectId, `${_safe(name, "book").replaceAll(" ", "_")}_chapters.zip`, "application/zip", (job) => _chaptersZip(job, projectId)));
   });
 
-  app.get("/v1/export_jobs/:job_id", async (req) => _public(_job(req.params.job_id)));
+  app.get("/v1/export_jobs/:job_id", (c) => c.json(_public(_job(c.req.param("job_id")))));
 
-  app.post("/v1/export_jobs/:job_id/cancel", async (req) => {
-    const job = _job(req.params.job_id);
+  app.post("/v1/export_jobs/:job_id/cancel", (c) => {
+    const job = _job(c.req.param("job_id"));
     job.cancel = true;
-    return _public(job);
+    return c.json(_public(job));
   });
 
   /** The finished file, once; the job and its temp file go with it. */
-  app.get("/v1/export_jobs/:job_id/file", async (req, reply) => {
-    const jobId = req.params.job_id;
+  app.get("/v1/export_jobs/:job_id/file", (c) => {
+    const jobId = c.req.param("job_id");
     const job = _job(jobId);
     if (job.status !== "done" || !job.path) throw badRequest(`export job ${jobId} is ${job.status}`);
     const p = job.path;
@@ -197,10 +200,11 @@ export async function router(app) {
     const size = statSync(p).size;
     const stream = createReadStream(p);
     stream.once("close", () => removeTemp(p));
-    return reply
-      .type(job.media_type)
-      .header("content-disposition", `attachment; filename="${job.filename}"`)
-      .header("content-length", String(size))
-      .send(stream);
+    return c.body(Readable.toWeb(stream), 200, {
+      "content-type": job.media_type,
+      "content-disposition": `attachment; filename="${job.filename}"`,
+      "content-length": String(size),
+    });
   });
+  return app;
 }

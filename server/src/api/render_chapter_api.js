@@ -21,6 +21,7 @@
 // the module namespaces (render_core.renderLine / concatLines, synth_scheduler.warmLines,
 // mastering.*, this module's own `self.`).
 
+import { Hono, input } from "@delebash/llm-runner/platform";
 import { getLogger } from "@delebash/llm-runner/platform/log";
 import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
 import { pySorted, strip, truthy } from "@delebash/llm-runner/platform/py";
@@ -414,14 +415,15 @@ const ProjectQuery = T.Object({ project_id: T.String() });
 // 2026-10-06.
 const MEDIA_MAP = { acx: "audio/mpeg", inaudio: "audio/mpeg", podcast: "audio/mpeg", youtube: "audio/mpeg" };
 
-export async function router(app) {
+export function router() {
+  const app = new Hono();
   /**
    * How much of a project's next render is already cached — per-scene coverage, the Studio
    * Render banner ("412 of 583 lines unchanged since last render"). Probes each block's cache
    * key exactly as renderLine would; no audio is produced, no engine loads.
    */
-  app.get("/v1/render/cache-stats", { schema: { querystring: ProjectQuery } }, async (req) => {
-    const projectId = req.query.project_id;
+  app.get("/v1/render/cache-stats", input({ querystring: ProjectQuery }), async (c) => {
+    const projectId = c.req.valid("query").project_id;
     const h = self._openDb();
     const known = h.one(`select id from ${Project} where id = ? limit 1`, [projectId]) !== null;
     const scenes = h.all(`select * from ${Scene} where project_id = ? order by position`, [projectId], Scene);
@@ -430,7 +432,7 @@ export async function router(app) {
       // A real project with nothing in it yet is a normal state, not an error: Home, Studio and
       // Chapter all probe this on mount. Zero scenes = zero coverage; 404 is reserved for an id
       // that does not exist.
-      return construct(RenderCacheStatsResponse, { project_id: projectId, total: 0, cached: 0, scenes: [] });
+      return c.json(construct(RenderCacheStatsResponse, { project_id: projectId, total: 0, cached: 0, scenes: [] }));
     }
     const st = appState.getState();
     const out = [];
@@ -460,14 +462,14 @@ export async function router(app) {
       grandTotal += lines.length;
       grandCached += cached;
     }
-    return construct(RenderCacheStatsResponse, { project_id: projectId, total: grandTotal, cached: grandCached, scenes: out });
+    return c.json(construct(RenderCacheStatsResponse, { project_id: projectId, total: grandTotal, cached: grandCached, scenes: out }));
   });
 
   /** Render a multi-line chapter → mastered audio. */
-  app.post("/v1/render_chapter", { schema: { body: RenderChapterRequest }, config: { pyFloats: true } }, async (req, reply) => {
+  app.post("/v1/render_chapter", input({ body: RenderChapterRequest, pyFloats: true }), async (c) => {
     const st = appState.getState();
     const settings = st.settings.get();
-    const body = req.body;
+    const body = c.req.valid("json");
     const sceneMode = Boolean(body.scene_id) && !body.lines.length;
 
     // Scene mode — resolve blocks → personas → lines on the server.
@@ -494,7 +496,7 @@ export async function router(app) {
     const lineKwargs = lines.map((line) => _lineKwargs(line, cacheScope, body.lexicons));
     const rendered = await self.renderSceneLinesAsync(st, lines, lineKwargs, {
       owner: self._sceneOwner(body.scene_id),
-      signal: clientGone(req, reply),
+      signal: clientGone(c),
     });
 
     let gap = body.between_lines.silence_ms;
@@ -507,15 +509,16 @@ export async function router(app) {
     if (sceneMode) {
       const [target, source] = self._sceneMasterTarget(body.scene_id, body.master);
       const [wav, applied, fallback] = await self._masterScenePcm(combined, target);
-      reply.header("X-Master-Preset", applied || "none").header("X-Master-Source", source);
-      if (fallback) reply.header("X-Master-Fallback", fallback);
-      return reply.type("audio/wav").send(wav);
+      c.header("x-master-preset", applied || "none");
+      c.header("x-master-source", source);
+      if (fallback) c.header("x-master-fallback", fallback);
+      return c.body(wav, 200, { "content-type": "audio/wav" });
     }
 
     // Direct mode (`lines[]` passed literally — the JustWrite adapter, CLI): the caller names
     // the preset and gets the preset's encoding.
     if (!body.master || body.master === "none") {
-      return reply.type("audio/wav").send(writeWavContainer(combined.pcm, combined.sampleRate, combined.channels));
+      return c.body(writeWavContainer(combined.pcm, combined.sampleRate, combined.channels), 200, { "content-type": "audio/wav" });
     }
 
     if (!mastering.haveFfmpeg()) {
@@ -533,7 +536,7 @@ export async function router(app) {
     } catch (e) {
       throw internal(`mastering: ${e?.message ?? e}`);
     }
-    return reply.type(Object.hasOwn(MEDIA_MAP, body.master) ? MEDIA_MAP[body.master] : "audio/wav").send(mastered);
+    return c.body(mastered, 200, { "content-type": Object.hasOwn(MEDIA_MAP, body.master) ? MEDIA_MAP[body.master] : "audio/wav" });
   });
 
   /**
@@ -542,8 +545,8 @@ export async function router(app) {
    * −60 dB" for every audiobook project; this returns the preset the render path would actually
    * pick, from the same resolver, with the loudness numbers read out of settings.
    */
-  app.get("/v1/render/master-target", { schema: { querystring: ProjectQuery } }, async (req) => {
-    const projectId = req.query.project_id;
+  app.get("/v1/render/master-target", input({ querystring: ProjectQuery }), (c) => {
+    const projectId = c.req.valid("query").project_id;
     const h = self._openDb();
     const project = h.one(`select * from ${Project} where id = ? limit 1`, [projectId], Project);
     if (project === null) throw notFound(`project ${projectId}`);
@@ -565,12 +568,15 @@ export async function router(app) {
         };
       }
     }
-    return construct(MasterTargetResponse, {
-      project_id: projectId,
-      preset: target,
-      source,
-      ffmpeg: mastering.haveFfmpeg(),
-      targets: numbers,
-    });
+    return c.json(
+      construct(MasterTargetResponse, {
+        project_id: projectId,
+        preset: target,
+        source,
+        ffmpeg: mastering.haveFfmpeg(),
+        targets: numbers,
+      }),
+    );
   });
+  return app;
 }

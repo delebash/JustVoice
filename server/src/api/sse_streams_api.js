@@ -6,6 +6,7 @@
 // useModelDownloadToast (toast progress bar tied to download), DictateWindow's agent-speak cycle
 // (MCP justvoice.speak playback).
 
+import { Hono, stream } from "@delebash/llm-runner/platform";
 import { sleep } from "@delebash/llm-runner/platform/asyncutil";
 import { pyJson } from "@delebash/llm-runner/platform/pyjson";
 import { Generation } from "../database/models.js";
@@ -64,39 +65,36 @@ export async function* _streamModelDownload(modelName) {
 /**
  * Starlette's StreamingResponse with `media_type="text/event-stream"` and `headers` (these
  * routes' own by default), fed by an async iterable of text frames; stops pulling when the
- * client goes. Candidate for platform/ (the API wave's other streams use it).
+ * client goes. `onAbort` runs when the client goes away mid-stream (extraction's streams stop
+ * their work then). Candidate for platform/ (the API wave's other streams use it).
+ *
+ * The kit's `stream` (Hono's), not `streamSSE`, which adds headers of its own: Starlette sent
+ * the content type and the route's headers only. Headers a middleware already set on `c` ride
+ * along. The status and headers go out as the stream starts, before its first frame
+ * (@hono/node-server flushes them, as uvicorn wrote `http.response.start` at once): a client
+ * then knows the stream started — and can cancel it — while the first frame is still being made
+ * (measured with Analyze's stream on a slow model, 2026-10-08).
  */
-export async function sseResponse(reply, gen, headers = { "cache-control": "no-cache", "x-accel-buffering": "no" }) {
-  reply.hijack();
-  const res = reply.raw;
-  res.writeHead(200, {
-    ...reply.getHeaders(),
-    ...headers,
-    "content-type": "text/event-stream; charset=utf-8",
-  });
-  // Starlette sends the status and headers as the stream starts, before its first frame (uvicorn
-  // writes `http.response.start` at once); Node holds them until the first write. A client then
-  // knows the stream started — and can cancel it — while the first frame is still being made
-  // (measured with Analyze's stream on a slow model, 2026-10-08).
-  if (typeof res.flushHeaders === "function") res.flushHeaders();
-  let closed = false;
-  res.on("close", () => {
-    closed = true;
-  });
-  try {
+export function sseResponse(c, gen, headers = { "cache-control": "no-cache", "x-accel-buffering": "no" }, { onAbort = null } = {}) {
+  for (const [k, v] of Object.entries(headers)) c.header(k, v);
+  c.header("content-type", "text/event-stream; charset=utf-8");
+  return stream(c, async (s) => {
+    let closed = false;
+    s.onAbort(() => {
+      closed = true;
+      onAbort?.();
+    });
     for await (const text of gen) {
       if (closed) break;
-      res.write(text);
+      await s.write(text);
     }
-  } finally {
-    res.end();
-  }
+  });
 }
 
-export async function router(app) {
-  app.get("/v1/generate/:generation_id/status", async (req, reply) =>
-    sseResponse(reply, _streamGenerationStatus(req.params.generation_id)),
-  );
+export function router() {
+  const app = new Hono();
+  app.get("/v1/generate/:generation_id/status", (c) => sseResponse(c, _streamGenerationStatus(c.req.param("generation_id"))));
 
-  app.get("/v1/models/progress/:model_name", async (req, reply) => sseResponse(reply, _streamModelDownload(req.params.model_name)));
+  app.get("/v1/models/progress/:model_name", (c) => sseResponse(c, _streamModelDownload(c.req.param("model_name"))));
+  return app;
 }

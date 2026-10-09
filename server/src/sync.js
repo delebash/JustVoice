@@ -15,6 +15,7 @@
 
 import { betterSqlite3Adapter, parseStamp } from "@delebash/sqlite-sync";
 import { createAppSync } from "@delebash/sqlite-sync/app";
+import { Hono, readJson } from "@delebash/llm-runner/platform";
 import { getLogger } from "@delebash/llm-runner/platform/log";
 import { pyJson } from "@delebash/llm-runner/platform/pyjson";
 import { getState } from "./app_state.js";
@@ -178,6 +179,9 @@ const appSync = createAppSync({
     refused: (e) => new ApiError(409, e.code, "Sync refused", e.message, { error: e.code, ...(e.details ?? {}) }),
   },
   log,
+  // The routes read JSON bodies by the family's rules (the kit's reader: no content type is JSON,
+  // a body that doesn't parse is pydantic's 422).
+  readJson,
 });
 
 /** Open sync on the synced tables (after initDb). Safe to call again. */
@@ -200,11 +204,13 @@ export const stopSync = () => appSync.stop();
 export const networkHost = () => appSync.networkHost();
 
 /** The routes: /v1/sync/… — the product's, and the projects for the export picker. */
-export async function router(app) {
-  await appSync.routes(app);
-  app.get("/v1/sync/projects", async () => {
+export function router() {
+  const app = new Hono();
+  appSync.routes(app);
+  app.get("/v1/sync/projects", (c) => {
     const sync = appSync.get();
     if (!sync || !session.cfg.handle) throw new HttpError(503, "database not ready");
-    return { projects: projectsChangedAt(session.cfg.handle, sync) };
+    return c.json({ projects: projectsChangedAt(session.cfg.handle, sync) });
   });
+  return app;
 }

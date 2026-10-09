@@ -2,6 +2,7 @@
 // /v1/cache/* — stats + clear + recent entries (the port of justvoice/api/cache_api.py).
 
 import { statSync } from "node:fs";
+import { Hono, input } from "@delebash/llm-runner/platform";
 import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
 import { pyRepr } from "@delebash/llm-runner/platform/pyjson";
 import { getState } from "../app_state.js";
@@ -54,13 +55,14 @@ export function engineName(engineId) {
 
 const head80 = (s) => [...(s || "")].slice(0, 80).join("");
 
-export async function router(app) {
-  app.get("/v1/cache/stats", async () => {
+export function router() {
+  const app = new Hono();
+  app.get("/v1/cache/stats", (c) => {
     const cache = getState()._renderCache ?? null;
     if (cache === null) {
-      return construct(CacheStats, { total_entries_on_disk: 0, total_bytes_on_disk: 0, memory_entries: 0, memory_bytes: 0 });
+      return c.json(construct(CacheStats, { total_entries_on_disk: 0, total_bytes_on_disk: 0, memory_entries: 0, memory_bytes: 0 }));
     }
-    return cache.stats();
+    return c.json(cache.stats());
   });
 
   /**
@@ -70,8 +72,8 @@ export async function router(app) {
    * dropped, which turned every filtered prune into a full wipe. Voice/engine pruning operates
    * on DELETE /v1/generations.
    */
-  app.post("/v1/cache/clear", { schema: { querystring: ClearQuery } }, async (req) => {
-    const q = req.query;
+  app.post("/v1/cache/clear", input({ querystring: ClearQuery }), (c) => {
+    const q = c.req.valid("query");
     const scope = q.scope ?? null;
     const olderThanDays = q.older_than_days ?? null;
     const unsupported = ["voice_id", "engine"].filter((k) => q[k] != null).sort();
@@ -85,7 +87,7 @@ export async function router(app) {
     const cache = getState()._renderCache ?? null;
     let removed = 0;
     if (cache !== null) removed = cache.clear(scope, olderThanDays);
-    return { cleared: true, scope, older_than_days: olderThanDays, removed };
+    return c.json({ cleared: true, scope, older_than_days: olderThanDays, removed });
   });
 
   /**
@@ -93,9 +95,9 @@ export async function router(app) {
    * hashes; the generation row carries the engine/voice/text that produced them). Delete rows
    * via DELETE /v1/generations/{id}.
    */
-  app.get("/v1/cache/recent", { schema: { querystring: RecentQuery } }, async (req) => {
+  app.get("/v1/cache/recent", input({ querystring: RecentQuery }), (c) => {
     const st = getState();
-    const limit = Math.max(1, Math.min(req.query.limit, 100));
+    const limit = Math.max(1, Math.min(c.req.valid("query").limit, 100));
     const rows = session
       .getDb()
       .all(`select * from ${Generation} where status = 'completed' order by created_at desc limit ?`, [limit], Generation);
@@ -121,6 +123,7 @@ export async function router(app) {
         created_at: g.created_at || "",
       });
     }
-    return construct(RecentCacheResponse, { entries });
+    return c.json(construct(RecentCacheResponse, { entries }));
   });
+  return app;
 }

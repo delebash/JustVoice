@@ -1,6 +1,6 @@
 # 🎙️ JustVoice
 
-**A cross-platform open-source voice production studio for audiobook producers, game developers, podcasters, dictation users, and accessibility users. Built on Electron + Vue 3 + a Node server (Fastify + SQLite).**
+**A cross-platform open-source voice production studio for audiobook producers, game developers, podcasters, dictation users, and accessibility users. Built on Electron + Vue 3 + a Node server (Hono + SQLite).**
 
 JustWrite-compatible imports are one of several supported workflows — see `docs/import-formats.md`.
 
@@ -98,7 +98,7 @@ is nothing else to install; the app is the installer. See
 │   ├── components/            # ListPane, CapturePill, AudioKeepAlive, etc.
 │   ├── stores/                # Pinia: api, server, player, ui, audioChannel, generation (AI tasks live in the kit's store)
 │   ├── services/              # HTTP client per endpoint group; native.js is the one door to the desktop shell
-├── server/                    # The Node server (Fastify + SQLite) — the brain; its own package
+├── server/                    # The Node server (Hono + SQLite) — the brain; its own package
 │   │                          #   (justvoice-server), which the desktop app installs
 │   ├── samples/               # The bundled sample books
 │   ├── src/

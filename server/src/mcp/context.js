@@ -8,7 +8,7 @@
 // background task — there is no client id and no address.
 
 import { AsyncLocalStorage } from "node:async_hooks";
-import { isLoopback } from "@delebash/llm-runner/platform/auth";
+import { clientHost, isLoopback } from "@delebash/llm-runner/platform/auth";
 import { getLogger } from "@delebash/llm-runner/platform/log";
 import { MCPBinding } from "../database/models.js";
 import { getDb } from "../database/session.js";
@@ -22,18 +22,12 @@ const HEADER_KEY = CLIENT_ID_HEADER.toLowerCase();
 
 const current = new AsyncLocalStorage();
 
-/** A header's first value, or null. */
-export function headerValue(headers, name = HEADER_KEY) {
-  const v = headers?.[name];
-  const first = Array.isArray(v) ? v[0] : v;
-  return first ? String(first) : null;
-}
-
-/** The context of one HTTP request: its client id (from the header) and the socket's address. */
-export function requestContext(request) {
+/** The context of one HTTP request (a Hono context): its client id (from the header) and the
+ * socket's address (none where the request has no socket). */
+export function requestContext(c) {
   return {
-    clientId: headerValue(request.headers),
-    remoteAddr: request.socket?.remoteAddress ?? request.raw?.socket?.remoteAddress ?? null,
+    clientId: c.req.header(HEADER_KEY) || null,
+    remoteAddr: clientHost(c) || null,
   };
 }
 
@@ -80,11 +74,12 @@ export function _stampLastSeen(clientId) {
   }
 }
 
-/** Stamp the calling client after every MCP response (an `onResponse` hook on the root app). */
-export function installClientIdHook(app) {
-  app.addHook("onResponse", async (request) => {
-    if (!_isStampedPath(request.raw?.url ?? request.url)) return;
-    const clientId = headerValue(request.headers);
-    if (clientId) _stampLastSeen(clientId);
-  });
+/** Stamp the calling client after every MCP response — a middleware on the root app, added
+ * before every other (app.js), so it stamps whatever answered: the route, a guard's refusal, an
+ * error. Its stamp runs once the answer is made. */
+export async function clientIdStamp(c, next) {
+  await next();
+  if (!_isStampedPath(c.req.path)) return;
+  const clientId = c.req.header(HEADER_KEY);
+  if (clientId) _stampLastSeen(clientId);
 }

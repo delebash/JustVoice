@@ -14,6 +14,7 @@
 
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
+import { Hono, input } from "@delebash/llm-runner/platform";
 import { getLogger } from "@delebash/llm-runner/platform/log";
 import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
 import { strip } from "@delebash/llm-runner/platform/py";
@@ -131,18 +132,18 @@ export function _info() {
   });
 }
 
-export async function router(app) {
+export function router() {
+  const app = new Hono();
   /** Start the Japanese dictionary's download; poll /v1/jobs/{job_id}. */
-  app.post("/v1/speech-runtime/japanese-dictionary", async (_req, reply) => {
+  app.post("/v1/speech-runtime/japanese-dictionary", (c) => {
     if (!release.pinnedHas("japanese")) throw badRequest("this speech runtime cannot read Japanese yet");
-    reply.code(202);
-    return { job_id: installer.spawnJapaneseDictionaryInstall(getState()) };
+    return c.json({ job_id: installer.spawnJapaneseDictionaryInstall(getState()) }, 202);
   });
 
-  app.get("/v1/speech-runtime", async () => _info());
+  app.get("/v1/speech-runtime", (c) => c.json(_info()));
 
-  app.put("/v1/speech-runtime", { schema: { body: SpeechRuntimeSettings } }, async (req) => {
-    const body = req.body;
+  app.put("/v1/speech-runtime", input({ body: SpeechRuntimeSettings }), async (c) => {
+    const body = c.req.valid("json");
     const backend = strip(body.backend || "auto").toLowerCase();
     if (backend !== "auto" && !runtime.availableBackends().includes(backend)) {
       throw badRequest(`audio.cpp has no ${backend} build for this machine`);
@@ -157,7 +158,7 @@ export async function router(app) {
     const old = cur.engines.speech_runtime;
     // A field the request leaves out keeps its value — the runtime row sends only what it
     // shows, and a value set through PATCH /v1/settings must survive the row's next change.
-    const sent = sentBody(req);
+    const sent = sentBody(c);
     const update = {};
     for (const k of Object.keys(SpeechRuntimeSettings.properties)) if (Object.hasOwn(sent, k)) update[k] = body[k];
     const next = { ...old, ...update, backend };
@@ -191,6 +192,7 @@ export async function router(app) {
         }
       }
     }
-    return _info();
+    return c.json(_info());
   });
+  return app;
 }

@@ -8,6 +8,7 @@
 // §4.12 + §5 webhooks workflow.
 
 import { createHash, createHmac, randomBytes } from "node:crypto";
+import { Hono, input } from "@delebash/llm-runner/platform";
 import { sleep } from "@delebash/llm-runner/platform/asyncutil";
 import { RequestValidationError } from "@delebash/llm-runner/platform/errors";
 import * as http from "@delebash/llm-runner/platform/http";
@@ -128,14 +129,15 @@ export function fromOrm(row) {
 const byId = (h, id) => h.one(`select * from ${Webhook} where id = ? limit 1`, [id], Webhook);
 const sign = (secret, body) => createHmac("sha256", Buffer.from(secret, "utf8")).update(body).digest("hex");
 
-export async function router(app) {
-  app.get("/v1/webhooks", async () => {
+export function router() {
+  const app = new Hono();
+  app.get("/v1/webhooks", (c) => {
     const rows = session.getDb().all(`select * from ${Webhook} order by created_at`, undefined, Webhook);
-    return { subscriptions: rows.map(fromOrm) };
+    return c.json({ subscriptions: rows.map(fromOrm) });
   });
 
-  app.post("/v1/webhooks", { schema: { body: CreateWebhookRequest } }, async (req, reply) => {
-    const body = req.body;
+  app.post("/v1/webhooks", input({ body: CreateWebhookRequest }), (c) => {
+    const body = c.req.valid("json");
     const url = httpUrl(body.url);
     const rawSecret = body.secret || tokenUrlsafe(32);
     const h = session.getDb();
@@ -148,22 +150,21 @@ export async function router(app) {
       enabled: body.enabled,
     });
     _SECRETS_CACHE.set(id, rawSecret);
-    reply.code(201);
-    return construct(WebhookWithSecret, { subscription: fromOrm(byId(h, id)), secret: rawSecret });
+    return c.json(construct(WebhookWithSecret, { subscription: fromOrm(byId(h, id)), secret: rawSecret }), 201);
   });
 
-  app.delete("/v1/webhooks/:webhook_id", async (req) => {
+  app.delete("/v1/webhooks/:webhook_id", (c) => {
     const h = session.getDb();
-    const webhookId = req.params.webhook_id;
+    const webhookId = c.req.param("webhook_id");
     if (byId(h, webhookId) === null) throw notFound(`webhook ${webhookId}`);
     h.delete(Webhook, { id: webhookId });
     _SECRETS_CACHE.delete(webhookId);
-    return { deleted: true };
+    return c.json({ deleted: true });
   });
 
-  app.post("/v1/webhooks/:webhook_id/test", async (req) => {
+  app.post("/v1/webhooks/:webhook_id/test", async (c) => {
     const h = session.getDb();
-    const webhookId = req.params.webhook_id;
+    const webhookId = c.req.param("webhook_id");
     const wh = byId(h, webhookId);
     if (wh === null) throw notFound(`webhook ${webhookId}`);
     const bodyBytes = Buffer.from(pyJson({ event: "webhook.test", ping: Math.trunc(Date.now() / 1000) }), "utf8");
@@ -178,21 +179,26 @@ export async function router(app) {
       const latencyMs = Math.trunc(performance.now() - start);
       h.update(Webhook, { last_status_code: resp.status, last_delivery_at: utcNowNaive() }, { id: webhookId });
       const ok = resp.status >= 200 && resp.status < 300;
-      return construct(WebhookTestResult, {
-        delivered: ok,
-        status_code: resp.status,
-        latency_ms: latencyMs,
-        error: ok ? null : `HTTP ${resp.status}`,
-      });
+      return c.json(
+        construct(WebhookTestResult, {
+          delivered: ok,
+          status_code: resp.status,
+          latency_ms: latencyMs,
+          error: ok ? null : `HTTP ${resp.status}`,
+        }),
+      );
     } catch (e) {
-      return construct(WebhookTestResult, {
-        delivered: false,
-        status_code: null,
-        latency_ms: Math.trunc(performance.now() - start),
-        error: String(e?.message ?? e),
-      });
+      return c.json(
+        construct(WebhookTestResult, {
+          delivered: false,
+          status_code: null,
+          latency_ms: Math.trunc(performance.now() - start),
+          error: String(e?.message ?? e),
+        }),
+      );
     }
   });
+  return app;
 }
 
 // ── Background dispatcher (fire-and-forget) ───────────────────────────────

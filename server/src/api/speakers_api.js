@@ -11,6 +11,7 @@
 // own (+ Add Narrator, or a book's own "Narrator" character).
 
 import { LLMNotConfiguredError } from "@delebash/llm-runner/llm";
+import { Hono, input } from "@delebash/llm-runner/platform";
 import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
 import { pySorted, splitWs, strip } from "@delebash/llm-runner/platform/py";
 import { pyJson } from "@delebash/llm-runner/platform/pyjson";
@@ -110,19 +111,20 @@ export const SpeakerRewriteResponse = T.Object({
   usage: opt(nullable(RunUsage), null),
 });
 
-export async function router(app) {
-  app.get("/v1/projects/:project_id/speakers", async (req) => {
+export function router() {
+  const app = new Hono();
+  app.get("/v1/projects/:project_id/speakers", (c) => {
     const h = session.getDb();
-    _project(h, req.params.project_id);
-    return construct(SpeakerList, { speakers: listSpeakers(h, req.params.project_id) });
+    _project(h, c.req.param("project_id"));
+    return c.json(construct(SpeakerList, { speakers: listSpeakers(h, c.req.param("project_id")) }));
   });
 
   /** Cast's ＋ Add: a speaker by name. Refused when the book already has that name; cast with
    * the persona of exactly its name unless one is given. */
-  app.post("/v1/projects/:project_id/speakers", { schema: { body: CreateSpeakerRequest } }, async (req, reply) => {
+  app.post("/v1/projects/:project_id/speakers", input({ body: CreateSpeakerRequest }), (c) => {
     const h = session.getDb();
-    const projectId = req.params.project_id;
-    const body = req.body;
+    const projectId = c.req.param("project_id");
+    const body = c.req.valid("json");
     _project(h, projectId);
     if (body.persona_id) _personaOr404(h, body.persona_id);
     const speaker = h.tx(() => {
@@ -136,20 +138,19 @@ export async function router(app) {
       if (body.persona_id) _dirtyUpdate(h, Speaker, s, { persona_id: body.persona_id });
       return s;
     });
-    reply.code(201);
-    return _one(h, speakerById(h, speaker.id));
+    return c.json(_one(h, speakerById(h, speaker.id)), 201);
   });
 
   /** Rename, "Also called", "Who they are", Pronouns (`null` = not set), and the cast — the
    * persona that plays them (`persona_id: null` un-casts). A rename is refused when the book
    * already has a speaker by the new name. */
-  app.patch("/v1/speakers/:speaker_id", { schema: { body: UpdateSpeakerRequest } }, async (req) => {
+  app.patch("/v1/speakers/:speaker_id", input({ body: UpdateSpeakerRequest }), (c) => {
     const h = session.getDb();
-    const id = req.params.speaker_id;
-    const body = req.body;
+    const id = c.req.param("speaker_id");
+    const body = c.req.valid("json");
     const s = speakerById(h, id);
     if (s === null) throw notFound(`speaker ${id}`);
-    const sent = new Set(Object.keys(sentBody(req) || {}));
+    const sent = new Set(Object.keys(sentBody(c) || {}));
     const cur = { ...s };
     if (body.name !== null) {
       const name = splitWs(body.name).join(" ");
@@ -179,15 +180,15 @@ export async function router(app) {
         persona_id: cur.persona_id,
       }),
     );
-    return _one(h, speakerById(h, id));
+    return c.json(_one(h, speakerById(h, id)));
   });
 
   /** Remove a speaker from the book. Their lines go back to no speaker and their saved fixes
    * forget them; the persona that played them stays in the library. (Studio asks first —
    * decided 2026-09-29.) */
-  app.delete("/v1/speakers/:speaker_id", async (req) => {
+  app.delete("/v1/speakers/:speaker_id", (c) => {
     const h = session.getDb();
-    const id = req.params.speaker_id;
+    const id = c.req.param("speaker_id");
     const s = speakerById(h, id);
     if (s === null) throw notFound(`speaker ${id}`);
     const sceneIds = h.all(`select id from ${Scene} where project_id = ?`, [s.project_id]).map((r) => r.id);
@@ -199,49 +200,48 @@ export async function router(app) {
       h.update(SpeakerCorrection, { speaker_id: null }, { speaker_id: s.id });
       h.delete(Speaker, { id: s.id });
     });
-    return { deleted: true, lines };
+    return c.json({ deleted: true, lines });
   });
 
   /** Cast's ✕ Clear cast: every speaker loses its persona. The speakers stay. */
-  app.post("/v1/projects/:project_id/speakers/uncast", async (req) => {
+  app.post("/v1/projects/:project_id/speakers/uncast", (c) => {
     const h = session.getDb();
-    const projectId = req.params.project_id;
+    const projectId = c.req.param("project_id");
     _project(h, projectId);
     h.update(Speaker, { persona_id: null }, { project_id: projectId });
-    return construct(SpeakerList, { speakers: listSpeakers(h, projectId) });
+    return c.json(construct(SpeakerList, { speakers: listSpeakers(h, projectId) }));
   });
 
   /** Make one speaker the book's narrator (any speaker can be — a first-person narrator
    * narrates AND speaks, one voice). The role comes off whoever held it; narration follows it
    * (`moveNarration`). */
-  app.put("/v1/projects/:project_id/narrator", { schema: { body: SetNarratorRequest } }, async (req) => {
+  app.put("/v1/projects/:project_id/narrator", input({ body: SetNarratorRequest }), (c) => {
     const h = session.getDb();
-    const projectId = req.params.project_id;
+    const projectId = c.req.param("project_id");
     _project(h, projectId);
-    const s = speakerById(h, req.body.speaker_id);
+    const s = speakerById(h, c.req.valid("json").speaker_id);
     if (s === null || s.project_id !== projectId) throw badRequest("That speaker isn't in this book.");
     const oldId = narratorSpeakerId(h, projectId);
-    if (oldId === s.id && s.role_label === "narrator") return construct(NarratorResponse, { speakers: listSpeakers(h, projectId) });
+    if (oldId === s.id && s.role_label === "narrator") return c.json(construct(NarratorResponse, { speakers: listSpeakers(h, projectId) }));
     const moved = h.tx(() => {
       h.update(Speaker, { role_label: null }, "project_id = ? and role_label = 'narrator' and id != ?", [projectId, s.id]);
       const n = moveNarration(h, projectId, s.id, oldId);
       _dirtyUpdate(h, Speaker, s, { role_label: "narrator" });
       return n;
     });
-    return construct(NarratorResponse, { speakers: listSpeakers(h, projectId), moved_lines: moved });
+    return c.json(construct(NarratorResponse, { speakers: listSpeakers(h, projectId), moved_lines: moved }));
   });
 
   /** Studio Cast's "+ Add Narrator". Idempotent: a book that has a narrator comes back
    * unchanged. Else a speaker called Narrator takes the role, or a new speaker "Narrator" is made
    * — cast with the persona of exactly that name when there is one. Narration with no speaker
    * then moves to it. */
-  app.post("/v1/projects/:project_id/narrator", async (req, reply) => {
+  app.post("/v1/projects/:project_id/narrator", (c) => {
     const h = session.getDb();
-    const projectId = req.params.project_id;
+    const projectId = c.req.param("project_id");
     _project(h, projectId);
-    reply.code(201);
     if (h.one(`select id from ${Speaker} where project_id = ? and role_label = 'narrator' limit 1`, [projectId]) !== null) {
-      return construct(NarratorResponse, { speakers: listSpeakers(h, projectId) });
+      return c.json(construct(NarratorResponse, { speakers: listSpeakers(h, projectId) }), 201);
     }
     const moved = h.tx(() => {
       let existing = h.all(`select * from ${Speaker} where project_id = ?`, [projectId], Speaker).find((s) => sameName(s.name) === "narrator") ?? null;
@@ -255,32 +255,36 @@ export async function router(app) {
       _dirtyUpdate(h, Speaker, existing, { role_label: "narrator" });
       return n;
     });
-    return construct(NarratorResponse, { speakers: listSpeakers(h, projectId), moved_lines: moved });
+    return c.json(construct(NarratorResponse, { speakers: listSpeakers(h, projectId), moved_lines: moved }), 201);
   });
 
   /** Script's "Rewrite in character": the speaker's "Who they are" is the character (it moved
    * off the persona 2026-09-29). Same `persona_rewrite` template row as the persona page's
    * Rewrite, which reads a persona's note instead. */
-  app.post("/v1/speakers/:speaker_id/rewrite", { schema: { body: SpeakerRewriteRequest } }, async (req) => {
+  app.post("/v1/speakers/:speaker_id/rewrite", input({ body: SpeakerRewriteRequest }), async (c) => {
     const h = session.getDb();
-    const id = req.params.speaker_id;
+    const id = c.req.param("speaker_id");
+    const body = c.req.valid("json");
     const s = speakerById(h, id);
     if (s === null) throw notFound(`speaker ${id}`);
     const who = strip(s.description || "");
     if (!who) throw new HttpError(400, `${s.name} has nothing under Who they are — write it on Cast to rewrite as them.`);
-    if (!strip(req.body.text)) throw new HttpError(400, "rewrite requires non-empty text");
+    if (!strip(body.text)) throw new HttpError(400, "rewrite requires non-empty text");
     let resp;
     try {
-      resp = await run.runFeature("persona_rewrite", { personality: who, text: req.body.text });
+      resp = await run.runFeature("persona_rewrite", { personality: who, text: body.text });
     } catch (e) {
       if (e instanceof LLMNotConfiguredError) throw new HttpError(501, errText(e));
       throw new HttpError(502, `LLM call failed: ${errText(e)}`);
     }
-    return construct(SpeakerRewriteResponse, {
-      original: req.body.text,
-      rewritten: strip(resp.text),
-      speaker_id: id,
-      usage: { prompt_tokens: resp.prompt_tokens, completion_tokens: resp.completion_tokens, model: resp.model },
-    });
+    return c.json(
+      construct(SpeakerRewriteResponse, {
+        original: body.text,
+        rewritten: strip(resp.text),
+        speaker_id: id,
+        usage: { prompt_tokens: resp.prompt_tokens, completion_tokens: resp.completion_tokens, model: resp.model },
+      }),
+    );
   });
+  return app;
 }

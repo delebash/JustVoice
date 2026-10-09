@@ -12,6 +12,7 @@
 // line), since 2026-09-30. It used to count every book-scoped lexicon of the project, chosen or
 // not, while the render read none of them: a name could be "handled" and still be said wrong.
 
+import { Hono } from "@delebash/llm-runner/platform";
 import { Block, LexiconEntry, Persona, Project, Scene, Speaker } from "../database/models.js";
 import * as session from "../database/session.js";
 import { notFound } from "../errors.js";
@@ -20,11 +21,12 @@ import { lineLexicons } from "../render_core.js";
 
 const marks = (n) => Array(n).fill("?").join(", ");
 
-export async function router(app) {
+export function router() {
+  const app = new Hono();
   /** Likely-mispronounced names the render doesn't already handle. */
-  app.post("/v1/projects/:project_id/pronunciation-report", async (req) => {
+  app.post("/v1/projects/:project_id/pronunciation-report", (c) => {
     const h = session.getDb();
-    const projectId = req.params.project_id;
+    const projectId = c.req.param("project_id");
     const project = h.one(`select * from ${Project} where id = ? limit 1`, [projectId], Project);
     if (project === null) throw notFound(`project '${projectId}' not found`);
 
@@ -63,12 +65,13 @@ export async function router(app) {
     const words = scanNames(lines);
     const all = new Set();
     for (const s of wordsIn.values()) for (const w of s) all.add(w);
-    return {
+    return c.json({
       project_id: projectId,
       project_name: project.name,
       blocks_scanned: lines.length,
       covered_count: all.size,
       words,
-    };
+    });
   });
+  return app;
 }

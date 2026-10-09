@@ -8,6 +8,7 @@
 // the queued lines at the next boundary; resume re-runs pending + failed blocks only. Jobs
 // survive a server restart as rows ("paused" after the boot sweep).
 
+import { Hono, input } from "@delebash/llm-runner/platform";
 import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
 import { strRepr, ValueError } from "@delebash/llm-runner/platform/py";
 import { badRequest, notFound } from "../errors.js";
@@ -73,9 +74,10 @@ export const RenderJobOut = T.Object({
 
 const JobParams = T.Object({ job_id: T.String() });
 
-export async function router(app) {
-  app.post("/v1/render_jobs", { schema: { body: RenderJobCreate } }, async (req) => {
-    const body = req.body;
+export function router() {
+  const app = new Hono();
+  app.post("/v1/render_jobs", input({ body: RenderJobCreate }), (c) => {
+    const body = c.req.valid("json");
     if ((body.scope === "scene" || body.scope === "blocks") && !body.scope_ids.length) {
       throw badRequest(`scope_ids is required for scope ${strRepr(body.scope)}`);
     }
@@ -87,28 +89,32 @@ export async function router(app) {
       throw e;
     }
     if (job.total_blocks) renderJobs.startJob(job.id);
-    return construct(RenderJobOut, renderJobs.jobStatus(job.id));
+    return c.json(construct(RenderJobOut, renderJobs.jobStatus(job.id)));
   });
 
   app.get(
     "/v1/render_jobs/:job_id",
-    { schema: { params: JobParams, querystring: T.Object({ include_blocks: opt(T.Boolean(), false) }) } },
-    async (req) => {
-      const out = renderJobs.jobStatus(req.params.job_id, { includeBlocks: req.query.include_blocks });
-      if (out === null) throw notFound(`render job ${req.params.job_id}`);
-      return construct(RenderJobOut, out);
+    input({ params: JobParams, querystring: T.Object({ include_blocks: opt(T.Boolean(), false) }) }),
+    (c) => {
+      const jobId = c.req.valid("param").job_id;
+      const out = renderJobs.jobStatus(jobId, { includeBlocks: c.req.valid("query").include_blocks });
+      if (out === null) throw notFound(`render job ${jobId}`);
+      return c.json(construct(RenderJobOut, out));
     },
   );
 
-  app.post("/v1/render_jobs/:job_id/cancel", async (req) => {
-    const out = renderJobs.cancelJob(req.params.job_id);
-    if (out === null) throw notFound(`render job ${req.params.job_id}`);
-    return construct(RenderJobOut, out);
+  app.post("/v1/render_jobs/:job_id/cancel", (c) => {
+    const jobId = c.req.param("job_id");
+    const out = renderJobs.cancelJob(jobId);
+    if (out === null) throw notFound(`render job ${jobId}`);
+    return c.json(construct(RenderJobOut, out));
   });
 
-  app.post("/v1/render_jobs/:job_id/resume", async (req) => {
-    const out = renderJobs.resumeJob(req.params.job_id);
-    if (out === null) throw notFound(`render job ${req.params.job_id}`);
-    return construct(RenderJobOut, out);
+  app.post("/v1/render_jobs/:job_id/resume", (c) => {
+    const jobId = c.req.param("job_id");
+    const out = renderJobs.resumeJob(jobId);
+    if (out === null) throw notFound(`render job ${jobId}`);
+    return c.json(construct(RenderJobOut, out));
   });
+  return app;
 }

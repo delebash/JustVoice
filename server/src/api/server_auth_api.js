@@ -9,6 +9,7 @@
 // tokens already sit in the locally readable settings store, so the loopback door exposes
 // nothing new. Wire shape: {"tokens": [...], "requireForLoopback": bool}.
 
+import { Hono, input } from "@delebash/llm-runner/platform";
 import { HttpError } from "@delebash/llm-runner/platform/errors";
 import { T } from "@delebash/llm-runner/platform/models";
 import { strip, truthy } from "@delebash/llm-runner/platform/py";
@@ -20,11 +21,12 @@ const wire = (a) => ({
   requireForLoopback: Boolean(a.require_for_loopback),
 });
 
-export async function router(app) {
-  app.get("/v1/server-auth", async () => wire(getState().settings.get().auth));
+export function router() {
+  const app = new Hono();
+  app.get("/v1/server-auth", (c) => c.json(wire(getState().settings.get().auth)));
 
-  app.put("/v1/server-auth", { schema: { body: T.Record(T.String(), T.Any()) } }, async (req) => {
-    const body = req.body;
+  app.put("/v1/server-auth", input({ body: T.Record(T.String(), T.Any()) }), (c) => {
+    const body = c.req.valid("json");
     const tokens = body.tokens;
     if (!Array.isArray(tokens) || !tokens.every((t) => typeof t === "string")) {
       throw new HttpError(400, "tokens must be a list of strings");
@@ -37,6 +39,7 @@ export async function router(app) {
       require_for_loopback: truthy(rfl),
     });
     state.settings.set(current);
-    return wire(current.auth);
+    return c.json(wire(current.auth));
   });
+  return app;
 }

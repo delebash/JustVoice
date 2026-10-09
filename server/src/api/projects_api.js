@@ -25,6 +25,7 @@
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { LLMNotConfiguredError } from "@delebash/llm-runner/llm";
+import { Hono, input } from "@delebash/llm-runner/platform";
 import { RequestValidationError } from "@delebash/llm-runner/platform/errors";
 import { literal, nullable, opt, T } from "@delebash/llm-runner/platform/models";
 import {
@@ -780,9 +781,9 @@ function boolParam(raw, loc, errors) {
 }
 
 /** A query parameter's value (the last one, as Starlette's QueryParams gives it). */
-const queryValue = (q, name) => {
-  const v = q?.[name];
-  return Array.isArray(v) ? v[v.length - 1] : v;
+const queryValue = (c, name) => {
+  const v = c.req.queries(name);
+  return v ? v[v.length - 1] : undefined;
 };
 
 /**
@@ -790,13 +791,13 @@ const queryValue = (q, name) => {
  * body is then consumed); an url-encoded one gives fields and no body; anything else has no form
  * and its raw bytes are the body.
  */
-async function readImportRequest(req) {
-  const ctype = String(req.headers["content-type"] || "").toLowerCase();
-  if (req.isMultipart?.()) {
-    const form = await captures._readForm(req);
+async function readImportRequest(c) {
+  const ctype = String(c.req.header("content-type") || "").toLowerCase();
+  if (/^multipart\//i.test(ctype)) {
+    const form = await captures._readForm(c);
     return { fields: form.fields, file: form.files.file ?? null, raw: Buffer.alloc(0) };
   }
-  const body = Buffer.isBuffer(req.body) ? req.body : req.body == null ? Buffer.alloc(0) : Buffer.from(String(req.body));
+  const body = Buffer.from(await c.req.arrayBuffer());
   if (ctype.startsWith("application/x-www-form-urlencoded")) {
     const fields = {};
     for (const [k, v] of new URLSearchParams(body.toString("utf8"))) fields[k] = v;
@@ -813,12 +814,13 @@ const formValue = (fields, name) => {
 
 // ── The routes ─────────────────────────────────────────────────────────────
 
-export async function router(app) {
+export function router() {
+  const app = new Hono();
   // ── Project CRUD ──
 
-  app.get("/v1/projects", { schema: { querystring: T.Object({ project_type: opt(nullable(ProjectType), null) }) } }, async (req) => {
+  app.get("/v1/projects", input({ querystring: T.Object({ project_type: opt(nullable(ProjectType), null) }) }), (c) => {
     const h = session.getDb();
-    const projectType = req.query.project_type;
+    const projectType = c.req.valid("query").project_type;
     const rows =
       projectType !== null
         ? h.all(`select * from ${Project} where project_type = ? order by created_at desc`, [projectType], Project)
@@ -826,12 +828,12 @@ export async function router(app) {
     // One GROUP BY instead of a COUNT query per project (N+1 — the list endpoint is on every
     // view's load path).
     const counts = new Map(h.all(`select project_id as pid, count(id) as n from ${Scene} group by project_id`).map((r) => [r.pid, r.n]));
-    return construct(ProjectList, { projects: rows.map((row) => projectOut(row, counts.get(row.id) ?? 0)) });
+    return c.json(construct(ProjectList, { projects: rows.map((row) => projectOut(row, counts.get(row.id) ?? 0)) }));
   });
 
-  app.post("/v1/projects", { schema: { body: CreateProjectRequest }, config: { pyFloats: true } }, async (req, reply) => {
+  app.post("/v1/projects", input({ body: CreateProjectRequest, pyFloats: true }), (c) => {
     const h = session.getDb();
-    const body = req.body;
+    const body = c.req.valid("json");
     const metadata = { ...body.metadata };
     if (body.language) metadata.language = strip(body.language);
     const p = insertRow(h, Project, {
@@ -842,23 +844,22 @@ export async function router(app) {
       default_lexicon_id: body.default_lexicon_id,
       mastering_preset: body.mastering_preset || mastering.kindMaster(body.project_type),
     });
-    reply.code(201);
-    return projectOut(p);
+    return c.json(projectOut(p), 201);
   });
 
-  app.get("/v1/projects/:project_id", async (req) => {
+  app.get("/v1/projects/:project_id", (c) => {
     const h = session.getDb();
-    const id = req.params.project_id;
+    const id = c.req.param("project_id");
     const p = projectById(h, id);
     if (!p) throw notFound(`project ${id}`);
-    return projectOut(p, h.count(Scene, { project_id: p.id }));
+    return c.json(projectOut(p, h.count(Scene, { project_id: p.id })));
   });
 
-  app.patch("/v1/projects/:project_id", { schema: { body: UpdateProjectRequest }, config: { pyFloats: true } }, async (req) => {
+  app.patch("/v1/projects/:project_id", input({ body: UpdateProjectRequest, pyFloats: true }), (c) => {
     const h = session.getDb();
-    const id = req.params.project_id;
-    const body = req.body;
-    const sent = new Set(Object.keys(sentBody(req) || {}));
+    const id = c.req.param("project_id");
+    const body = c.req.valid("json");
+    const sent = new Set(Object.keys(sentBody(c) || {}));
     const p = projectById(h, id);
     if (!p) throw notFound(`project ${id}`);
     const changes = {};
@@ -888,34 +889,34 @@ export async function router(app) {
       changes.metadata_json = pyJson(metadata);
     }
     h.tx(() => _dirtyUpdate(h, Project, p, changes));
-    return projectOut(projectById(h, id));
+    return c.json(projectOut(projectById(h, id)));
   });
 
-  app.delete("/v1/projects/:project_id", async (req) => {
+  app.delete("/v1/projects/:project_id", (c) => {
     const h = session.getDb();
-    const id = req.params.project_id;
+    const id = c.req.param("project_id");
     const p = projectById(h, id);
     if (!p) throw notFound(`project ${id}`);
     h.delete(Project, { id });
     lineTakes.sweepOrphanTakes(h); // its takes' audio goes with them (Slice 4)
-    return { deleted: true };
+    return c.json({ deleted: true });
   });
 
   // ── Scene CRUD ──
 
-  app.get("/v1/projects/:project_id/scenes", async (req) => {
+  app.get("/v1/projects/:project_id/scenes", (c) => {
     const h = session.getDb();
-    const id = req.params.project_id;
+    const id = c.req.param("project_id");
     if (!projectById(h, id)) throw notFound(`project ${id}`);
     const scenes = h.all(`select * from ${Scene} where project_id = ? order by position`, [id], Scene);
-    return scenes.map((s) => sceneOut(s, h.count(Block, { scene_id: s.id })));
+    return c.json(scenes.map((s) => sceneOut(s, h.count(Block, { scene_id: s.id }))));
   });
 
-  app.post("/v1/projects/:project_id/scenes", { schema: { body: CreateSceneRequest }, config: { pyFloats: true } }, async (req, reply) => {
+  app.post("/v1/projects/:project_id/scenes", input({ body: CreateSceneRequest, pyFloats: true }), (c) => {
     const h = session.getDb();
-    const id = req.params.project_id;
+    const id = c.req.param("project_id");
     if (!projectById(h, id)) throw notFound(`project ${id}`);
-    const body = req.body;
+    const body = c.req.valid("json");
     const s = insertRow(h, Scene, {
       project_id: id,
       position: body.position,
@@ -923,18 +924,17 @@ export async function router(app) {
       description: body.description,
       metadata_json: pyJson(body.metadata),
     });
-    reply.code(201);
-    return sceneOut(s);
+    return c.json(sceneOut(s), 201);
   });
 
   /** Rename / reorder a chapter (Chapters management, 2026-06-12). Position moves swap with the
    * displaced neighbor so ordering stays dense. */
-  app.patch("/v1/scenes/:scene_id", { schema: { body: UpdateSceneRequest } }, async (req) => {
+  app.patch("/v1/scenes/:scene_id", input({ body: UpdateSceneRequest }), (c) => {
     const h = session.getDb();
-    const id = req.params.scene_id;
+    const id = c.req.param("scene_id");
     const sc = sceneById(h, id);
     if (!sc) throw notFound(`scene ${id}`);
-    const body = req.body;
+    const body = c.req.valid("json");
     h.tx(() => {
       const changes = {};
       if (body.title !== null) changes.title = body.title;
@@ -945,14 +945,14 @@ export async function router(app) {
       }
       _dirtyUpdate(h, Scene, sc, changes);
     });
-    return sceneOut(sceneById(h, id));
+    return c.json(sceneOut(sceneById(h, id)));
   });
 
   /** Delete a chapter and its blocks/takes (FK cascade) — and the takes' audio (Studio Slice 4).
    * Script's ⋯ → Delete. */
-  app.delete("/v1/scenes/:scene_id", async (req) => {
+  app.delete("/v1/scenes/:scene_id", (c) => {
     const h = session.getDb();
-    const id = req.params.scene_id;
+    const id = c.req.param("scene_id");
     const sc = sceneById(h, id);
     if (!sc) throw notFound(`scene ${id}`);
     const [projectId, position] = [sc.project_id, sc.position];
@@ -965,21 +965,21 @@ export async function router(app) {
       }
     });
     lineTakes.sweepOrphanTakes(h);
-    return { deleted: true, scene_id: id };
+    return c.json({ deleted: true, scene_id: id });
   });
 
-  app.get("/v1/scenes/:scene_id/blocks", async (req) => {
+  app.get("/v1/scenes/:scene_id/blocks", (c) => {
     const h = session.getDb();
-    const id = req.params.scene_id;
+    const id = c.req.param("scene_id");
     if (!sceneById(h, id)) throw notFound(`scene ${id}`);
-    return blocksOf(h, id).map((b) => blockOut(b));
+    return c.json(blocksOf(h, id).map((b) => blockOut(b)));
   });
 
-  app.post("/v1/scenes/:scene_id/blocks", { schema: { body: CreateBlockRequest }, config: { pyFloats: true } }, async (req, reply) => {
+  app.post("/v1/scenes/:scene_id/blocks", input({ body: CreateBlockRequest, pyFloats: true }), (c) => {
     const h = session.getDb();
-    const id = req.params.scene_id;
+    const id = c.req.param("scene_id");
     if (!sceneById(h, id)) throw notFound(`scene ${id}`);
-    const body = req.body;
+    const body = c.req.valid("json");
     const b = h.tx(() => {
       const row = insertRow(h, Block, {
         scene_id: id,
@@ -994,15 +994,14 @@ export async function router(app) {
       _dropSceneSourceText(h, id);
       return row;
     });
-    reply.code(201);
-    return blockOut(b);
+    return c.json(blockOut(b), 201);
   });
 
-  app.patch("/v1/blocks/:block_id", { schema: { body: UpdateBlockRequest }, config: { pyFloats: true } }, async (req) => {
+  app.patch("/v1/blocks/:block_id", input({ body: UpdateBlockRequest, pyFloats: true }), (c) => {
     const h = session.getDb();
-    const id = req.params.block_id;
-    const body = req.body;
-    const sent = new Set(Object.keys(sentBody(req) || {}));
+    const id = c.req.param("block_id");
+    const body = c.req.valid("json");
+    const sent = new Set(Object.keys(sentBody(c) || {}));
     const b = blockById(h, id);
     if (!b) throw notFound(`block ${id}`);
 
@@ -1057,12 +1056,12 @@ export async function router(app) {
         if (scene) fixId = extraction.recordCorrection(h, scene.project_id, b.text, body.speaker_id);
       }
     });
-    return blockOut(blockById(h, id), fixId);
+    return c.json(blockOut(blockById(h, id), fixId));
   });
 
-  app.delete("/v1/blocks/:block_id", async (req) => {
+  app.delete("/v1/blocks/:block_id", (c) => {
     const h = session.getDb();
-    const id = req.params.block_id;
+    const id = c.req.param("block_id");
     const b = blockById(h, id);
     if (!b) throw notFound(`block ${id}`);
     h.tx(() => {
@@ -1070,7 +1069,7 @@ export async function router(app) {
       h.delete(Block, { id });
     });
     lineTakes.sweepOrphanTakes(h); // its takes' audio goes with them (Slice 4)
-    return { deleted: true };
+    return c.json({ deleted: true });
   });
 
   /**
@@ -1079,10 +1078,10 @@ export async function router(app) {
    * date and it re-renders. The second is new, with no takes, and does not carry the import's
    * line id (`source_ref`): one line of the source can only be one line here.
    */
-  app.post("/v1/blocks/:block_id/split", { schema: { body: SplitBlockRequest } }, async (req) => {
+  app.post("/v1/blocks/:block_id/split", input({ body: SplitBlockRequest }), (c) => {
     const h = session.getDb();
-    const id = req.params.block_id;
-    const body = req.body;
+    const id = c.req.param("block_id");
+    const body = c.req.valid("json");
     const b = blockById(h, id);
     if (!b) throw notFound(`block ${id}`);
     const text = body.text === null ? b.text : body.text;
@@ -1117,7 +1116,7 @@ export async function router(app) {
       _renumber(h, order, new Set([neu]));
       _dropSceneSourceText(h, b.scene_id);
     });
-    return construct(BlockListResponse, { blocks: [blockOut(blockById(h, id)), blockOut(blockById(h, newId))] });
+    return c.json(construct(BlockListResponse, { blocks: [blockOut(blockById(h, id)), blockOut(blockById(h, newId))] }));
   });
 
   /**
@@ -1126,11 +1125,11 @@ export async function router(app) {
    * rendered takes with them (Take.block_id is ON DELETE CASCADE); Script asks before it sends
    * this when there are any.
    */
-  app.post("/v1/scenes/:scene_id/blocks/merge", { schema: { body: MergeBlocksRequest } }, async (req) => {
+  app.post("/v1/scenes/:scene_id/blocks/merge", input({ body: MergeBlocksRequest }), (c) => {
     const h = session.getDb();
-    const sceneId = req.params.scene_id;
+    const sceneId = c.req.param("scene_id");
     if (!sceneById(h, sceneId)) throw notFound(`scene ${sceneId}`);
-    const ids = req.body.ids;
+    const ids = c.req.valid("json").ids;
     const ordered = blocksOf(h, sceneId);
     const index = new Map(ordered.map((blk, i) => [blk.id, i]));
     if (new Set(ids).size !== ids.length || ids.some((i) => !index.has(i))) {
@@ -1155,25 +1154,25 @@ export async function router(app) {
       _dropSceneSourceText(h, sceneId);
     });
     lineTakes.sweepOrphanTakes(h); // the merged-away lines' takes' audio (Slice 4)
-    return blockOut(blockById(h, keep.id));
+    return c.json(blockOut(blockById(h, keep.id)));
   });
 
   /** The chapter's lines as one text, a paragraph each (a line's own blank lines close up, so it
    * stays one paragraph). */
-  app.get("/v1/scenes/:scene_id/text", async (req) => {
+  app.get("/v1/scenes/:scene_id/text", (c) => {
     const h = session.getDb();
-    const id = req.params.scene_id;
+    const id = c.req.param("scene_id");
     if (!sceneById(h, id)) throw notFound(`scene ${id}`);
     const paras = blocksOf(h, id)
       .filter((b) => strip(b.text || ""))
       .map((b) => strip(b.text).replace(PARAGRAPH_BREAKS, "\n"));
-    return construct(ChapterTextResponse, { text: paras.join("\n\n") });
+    return c.json(construct(ChapterTextResponse, { text: paras.join("\n\n") }));
   });
 
-  app.put("/v1/scenes/:scene_id/text", { schema: { body: EditChapterTextRequest } }, async (req) => {
+  app.put("/v1/scenes/:scene_id/text", input({ body: EditChapterTextRequest }), (c) => {
     const h = session.getDb();
-    const sceneId = req.params.scene_id;
-    const body = req.body;
+    const sceneId = c.req.param("scene_id");
+    const body = c.req.valid("json");
     if (!sceneById(h, sceneId)) throw notFound(`scene ${sceneId}`);
     const paras = _textParagraphs(body.text);
     if (!paras.length) throw badRequest("A chapter needs some text. To remove it, use Delete.");
@@ -1200,7 +1199,7 @@ export async function router(app) {
       lost = h.value(`select count(distinct block_id) from ${Take} where block_id in (${marks(gone.length)})`, gone.map((b) => b.id));
     }
     const out = construct(EditChapterTextResponse, { ...counts, takes_lost: lost });
-    if (body.dry_run || !(counts.changed || counts.added || counts.removed)) return out;
+    if (body.dry_run || !(counts.changed || counts.added || counts.removed)) return c.json(out);
 
     h.tx(() => {
       const ordered = [...(after.get(null) ?? [])];
@@ -1226,13 +1225,13 @@ export async function router(app) {
       _dropSceneSourceText(h, sceneId);
     });
     if (gone.length) lineTakes.sweepOrphanTakes(h); // the gone lines' takes' audio
-    return out;
+    return c.json(out);
   });
 
   // ── The import pipeline ──
 
   /** List the import adapters the UI's format picker can choose from. */
-  app.get("/v1/projects/import/adapters", async () => construct(AdapterListResponse, { adapters: listAdapters() }));
+  app.get("/v1/projects/import/adapters", (c) => c.json(construct(AdapterListResponse, { adapters: listAdapters() })));
 
   /**
    * Run an import adapter.
@@ -1240,103 +1239,97 @@ export async function router(app) {
    * Multipart shape (preferred — what ImportModal sends): `source` = adapter id, `file` = the
    * source file, `dry_run` = "true" to parse + return the preview without committing. The
    * query-string shape (JustWrite's client): POST /v1/projects/import?source=justwrite[&dry_run=
-   * true] with the raw body as the payload (a book zip's bytes, a JSON document). Its own
-   * content-type parsing (any body as bytes, multipart as a form) lives in this child context.
+   * true] with the raw body as the payload (a book zip's bytes, a JSON document). The route reads
+   * its own body (readImportRequest): any body as bytes, multipart as a form.
    */
-  await app.register(async (child) => {
-    child.removeAllContentTypeParsers();
-    await captures._useForms(child);
-    child.addContentTypeParser("*", { parseAs: "buffer" }, (_req, body, done) => done(null, body));
+  app.post("/v1/projects/import", captures._formSpool, async (c) => {
+    const h = session.getDb();
+    const { fields, file, raw: rawBody } = await readImportRequest(c);
+    const errors = [];
+    const dryRunQ = boolParam(queryValue(c, "dry_run"), ["query", "dry_run"], errors);
+    const dryRun = boolParam(formValue(fields, "dry_run"), ["body", "dry_run"], errors);
+    if (errors.length) throw new RequestValidationError(errors);
+    const source = formValue(fields, "source");
+    const sourceQ = queryValue(c, "source") ?? null;
+    const projectId = formValue(fields, "project_id");
+    const projectIdQ = queryValue(c, "project_id") ?? null;
+    const includeScenes = formValue(fields, "include_scenes");
+    // Chapter-split strategy (book_prose: auto | h1 | h1_h2 | none) — the import-review "Split
+    // chapters on" selector re-runs the dry run with this; adapters that don't take it ignore it.
+    const splitOn = formValue(fields, "split_on");
 
-    child.post("/v1/projects/import", async (req) => {
-      const h = session.getDb();
-      const { fields, file, raw: rawBody } = await readImportRequest(req);
-      const errors = [];
-      const dryRunQ = boolParam(queryValue(req.query, "dry_run"), ["query", "dry_run"], errors);
-      const dryRun = boolParam(formValue(fields, "dry_run"), ["body", "dry_run"], errors);
-      if (errors.length) throw new RequestValidationError(errors);
-      const source = formValue(fields, "source");
-      const sourceQ = queryValue(req.query, "source") ?? null;
-      const projectId = formValue(fields, "project_id");
-      const projectIdQ = queryValue(req.query, "project_id") ?? null;
-      const includeScenes = formValue(fields, "include_scenes");
-      // Chapter-split strategy (book_prose: auto | h1 | h1_h2 | none) — the import-review "Split
-      // chapters on" selector re-runs the dry run with this; adapters that don't take it ignore it.
-      const splitOn = formValue(fields, "split_on");
+    const effectiveSource = strip(source || sourceQ || "");
+    if (!effectiveSource) throw badRequest("import: missing 'source' — pass as multipart form field or ?source= query param");
+    const effectiveDryRun = Boolean(dryRun !== null ? dryRun : dryRunQ);
 
-      const effectiveSource = strip(source || sourceQ || "");
-      if (!effectiveSource) throw badRequest("import: missing 'source' — pass as multipart form field or ?source= query param");
-      const effectiveDryRun = Boolean(dryRun !== null ? dryRun : dryRunQ);
+    let filename = null;
+    let raw;
+    if (file !== null) {
+      raw = readFileSync(file.path);
+      filename = file.filename;
+    } else {
+      raw = rawBody;
+      if (!raw.length) throw badRequest("import: no file uploaded and no raw request body");
+    }
 
-      let filename = null;
-      let raw;
-      if (file !== null) {
-        raw = readFileSync(file.path);
-        filename = file.filename;
-      } else {
-        raw = rawBody;
-        if (!raw.length) throw badRequest("import: no file uploaded and no raw request body");
-      }
+    const standard = await runAdapter(effectiveSource, raw, { filename, split_on: splitOn });
 
-      const standard = await runAdapter(effectiveSource, raw, { filename, split_on: splitOn });
-
-      // Per-chapter include list (import-page checkboxes): comma-separated scene indices from
-      // the dry-run preview. Unlisted scenes don't materialize. Dry runs ignore it — the preview
-      // always shows all.
-      if (includeScenes !== null && !effectiveDryRun) {
-        let keep;
-        try {
-          keep = new Set(
-            includeScenes
-              .split(",")
-              .filter((i) => strip(i) !== "")
-              .map((i) => pyIntOfStr(i)),
-          );
-        } catch (e) {
-          if (e instanceof ValueError) throw badRequest("import: include_scenes must be comma-separated indices");
-          throw e;
-        }
-        standard.scenes = standard.scenes.filter((_sc, i) => keep.has(i));
-        if (!standard.scenes.length) throw badRequest("import: include_scenes excluded every chapter");
-      }
-
-      // Update mode — re-import INTO an existing project, matching by stable line ids (game
-      // workflow: writers' next CSV revision).
-      const effectiveProjectId = strip(projectId || projectIdQ || "") || null;
-      if (effectiveProjectId && !effectiveDryRun) {
-        const project = projectById(h, effectiveProjectId);
-        if (project === null) throw notFound(`project ${effectiveProjectId}`);
-        const summary = h.tx(() => _updateProjectFromStandard(standard, project, h));
-        lineTakes.sweepOrphanTakes(h); // removed lines' takes' audio (Slice 4)
-        standard.project.id = project.id;
-        standard.warnings.push(
-          `updated in place: ${Object.entries(summary)
-            .filter(([, v]) => v)
-            .map(([k, v]) => `${k}=${v}`)
-            .join(", ")}`,
+    // Per-chapter include list (import-page checkboxes): comma-separated scene indices from
+    // the dry-run preview. Unlisted scenes don't materialize. Dry runs ignore it — the preview
+    // always shows all.
+    if (includeScenes !== null && !effectiveDryRun) {
+      let keep;
+      try {
+        keep = new Set(
+          includeScenes
+            .split(",")
+            .filter((i) => strip(i) !== "")
+            .map((i) => pyIntOfStr(i)),
         );
-        return construct(ImportRunResponse, { committed: true, project_id: project.id, standard, warnings: standard.warnings });
+      } catch (e) {
+        if (e instanceof ValueError) throw badRequest("import: include_scenes must be comma-separated indices");
+        throw e;
       }
+      standard.scenes = standard.scenes.filter((_sc, i) => keep.has(i));
+      if (!standard.scenes.length) throw badRequest("import: include_scenes excluded every chapter");
+    }
 
-      if (effectiveDryRun) return construct(ImportRunResponse, { committed: false, project_id: null, standard, warnings: standard.warnings });
-
-      const project = h.tx(() => {
-        const [p] = _materializeStandard(standard, h);
-        _materializeLexicon(standard, p, h);
-        return p;
-      });
+    // Update mode — re-import INTO an existing project, matching by stable line ids (game
+    // workflow: writers' next CSV revision).
+    const effectiveProjectId = strip(projectId || projectIdQ || "") || null;
+    if (effectiveProjectId && !effectiveDryRun) {
+      const project = projectById(h, effectiveProjectId);
+      if (project === null) throw notFound(`project ${effectiveProjectId}`);
+      const summary = h.tx(() => _updateProjectFromStandard(standard, project, h));
+      lineTakes.sweepOrphanTakes(h); // removed lines' takes' audio (Slice 4)
       standard.project.id = project.id;
-      return construct(ImportRunResponse, { committed: true, project_id: project.id, standard, warnings: standard.warnings });
+      standard.warnings.push(
+        `updated in place: ${Object.entries(summary)
+          .filter(([, v]) => v)
+          .map(([k, v]) => `${k}=${v}`)
+          .join(", ")}`,
+      );
+      return c.json(construct(ImportRunResponse, { committed: true, project_id: project.id, standard, warnings: standard.warnings }));
+    }
+
+    if (effectiveDryRun) return c.json(construct(ImportRunResponse, { committed: false, project_id: null, standard, warnings: standard.warnings }));
+
+    const project = h.tx(() => {
+      const [p] = _materializeStandard(standard, h);
+      _materializeLexicon(standard, p, h);
+      return p;
     });
+    standard.project.id = project.id;
+    return c.json(construct(ImportRunResponse, { committed: true, project_id: project.id, standard, warnings: standard.warnings }));
   });
 
   // ── Audiobook export + QC ──
 
   /** Render every chapter (cache-served when unchanged) and run the ACX technical checks — RMS
    * window + peak ceiling — per chapter. */
-  app.get("/v1/projects/:project_id/qc", async (req, reply) => {
+  app.get("/v1/projects/:project_id/qc", async (c) => {
     const h = session.getDb();
-    const projectId = req.params.project_id;
+    const projectId = c.req.param("project_id");
     if (projectById(h, projectId) === null) throw notFound(`project ${projectId}`);
     const st = getState();
     // Whole-book warm, engine-grouped (§7 of the 2026-08-08 plan); the assembly below re-reads
@@ -1344,7 +1337,7 @@ export async function router(app) {
     // scene, skipping refusals, exactly like the measuring assembly below.
     await synthScheduler.warmLines(st, await exportAudiobook.collectProjectLineKwargs(st, projectId, { skipUnrenderable: true }), {
       owner: synthScheduler.workOwner("the ACX check"),
-      signal: clientGone(req, reply),
+      signal: clientGone(c),
     });
 
     // QC MEASURES — it does not ship. The render refusal on unplaced lines (Script-tab restore,
@@ -1367,12 +1360,12 @@ export async function router(app) {
     const chapters = await exportAudiobook.assembleProject(st, projectId, { renderSceneFn: measure, skipUnrenderable: true });
     const scenes = exportAudiobook.projectScenes(projectId);
     if (!scenes.length) throw badRequest("project has no scenes to check");
-    const measured = new Map((await exportAudiobook.qcReport(chapters)).map((c) => [c.sceneId, c]));
+    const measured = new Map((await exportAudiobook.qcReport(chapters)).map((ch) => [ch.sceneId, ch]));
     const out = [];
     for (const scene of scenes) {
       const note = await notReady(scene.id);
-      const c = measured.get(scene.id);
-      if (c === undefined) {
+      const ch = measured.get(scene.id);
+      if (ch === undefined) {
         // Nothing renderable in it at all — report the reason instead of killing the whole run,
         // which is what a book mid-production looks like for most of its life.
         out.push({
@@ -1389,16 +1382,16 @@ export async function router(app) {
         continue;
       }
       out.push({
-        scene_id: c.sceneId,
-        title: c.title,
-        duration_s: c.durationS,
-        rms_dbfs: c.rmsDbfs,
-        peak_dbfs: c.peakDbfs,
-        rms_ok: c.rmsOk,
-        peak_ok: c.peakOk,
+        scene_id: ch.sceneId,
+        title: ch.title,
+        duration_s: ch.durationS,
+        rms_dbfs: ch.rmsDbfs,
+        peak_dbfs: ch.peakDbfs,
+        rms_ok: ch.rmsOk,
+        peak_ok: ch.peakOk,
         // A chapter measured without the lines it's missing has not passed anything — never
         // report that as ok.
-        ok: c.ok && note === null,
+        ok: ch.ok && note === null,
         note,
       });
     }
@@ -1412,25 +1405,27 @@ export async function router(app) {
         `Measured without the ${target} master — ffmpeg is not installed, so these are raw-render numbers, ` +
         "not what the finished book would measure. Install ffmpeg and re-run.";
     }
-    return construct(ProjectQCResponse, {
-      project_id: projectId,
-      chapters: out,
-      all_ok: out.every((c) => c.ok),
-      limits: {
-        rms_min_db: exportAudiobook.ACX_RMS_MIN_DB,
-        rms_max_db: exportAudiobook.ACX_RMS_MAX_DB,
-        peak_max_db: exportAudiobook.ACX_PEAK_MAX_DB,
-      },
-      master_preset: target,
-      mastered,
-      note: qcNote,
-    });
+    return c.json(
+      construct(ProjectQCResponse, {
+        project_id: projectId,
+        chapters: out,
+        all_ok: out.every((ch) => ch.ok),
+        limits: {
+          rms_min_db: exportAudiobook.ACX_RMS_MIN_DB,
+          rms_max_db: exportAudiobook.ACX_RMS_MAX_DB,
+          peak_max_db: exportAudiobook.ACX_PEAK_MAX_DB,
+        },
+        master_preset: target,
+        mastered,
+        note: qcNote,
+      }),
+    );
   });
 
   /** Assemble all chapters into one .m4b with chapter markers. */
-  app.post("/v1/projects/:project_id/export_m4b", async (req, reply) => {
+  app.post("/v1/projects/:project_id/export_m4b", async (c) => {
     const h = session.getDb();
-    const projectId = req.params.project_id;
+    const projectId = c.req.param("project_id");
     const project = projectById(h, projectId);
     if (project === null) throw notFound(`project ${projectId}`);
     if (!exportAudiobook.haveFfmpeg()) {
@@ -1441,20 +1436,20 @@ export async function router(app) {
     // the cache and stays the error surface.
     await synthScheduler.warmLines(st, await exportAudiobook.collectProjectLineKwargs(st, projectId), {
       owner: synthScheduler.workOwner("the M4B export"),
-      signal: clientGone(req, reply),
+      signal: clientGone(c),
     });
     const chapters = await exportAudiobook.assembleProject(st, projectId);
     if (!chapters.length) throw badRequest("project has no scenes to export");
     const m4b = await exportAudiobook.muxM4b(chapters, project.name, m4bAuthor(project));
     const safe = project.name.replace(IMPORT_SAFE, "_") || "book";
-    return reply.type("audio/mp4").header("content-disposition", `attachment; filename="${safe}.m4b"`).send(m4b);
+    return c.body(m4b, 200, { "content-type": "audio/mp4", "content-disposition": `attachment; filename="${safe}.m4b"` });
   });
 
   /** Game export — zip of per-line WAVs named by stable line id, grouped by scene, plus a
    * diffable manifest.json (mock #game/6). */
-  app.post("/v1/projects/:project_id/export_voicelines", async (req, reply) => {
+  app.post("/v1/projects/:project_id/export_voicelines", async (c) => {
     const h = session.getDb();
-    const projectId = req.params.project_id;
+    const projectId = c.req.param("project_id");
     const project = projectById(h, projectId);
     if (project === null) throw notFound(`project ${projectId}`);
     const st = getState();
@@ -1462,11 +1457,11 @@ export async function router(app) {
     // the cache and stays the error surface.
     await synthScheduler.warmSpecs(await exportVoicelines.collectBlockSpecs(st, projectId), {
       owner: synthScheduler.workOwner("the voice-line export"),
-      signal: clientGone(req, reply),
+      signal: clientGone(c),
     });
     const data = await exportVoicelines.exportVoicelines(st, projectId);
     const safe = project.name.replace(IMPORT_SAFE, "_") || "voicelines";
-    return reply.type("application/zip").header("content-disposition", `attachment; filename="${safe}_VO.zip"`).send(data);
+    return c.body(data, 200, { "content-type": "application/zip", "content-disposition": `attachment; filename="${safe}_VO.zip"` });
   });
 
   /**
@@ -1474,9 +1469,9 @@ export async function router(app) {
    * function (line_takes.sceneLines, G9 2026-10-04): stale = something the ★ take was made from
    * changed since.
    */
-  app.get("/v1/projects/:project_id/lines", async (req) => {
+  app.get("/v1/projects/:project_id/lines", async (c) => {
     const h = session.getDb();
-    const projectId = req.params.project_id;
+    const projectId = c.req.param("project_id");
     if (projectById(h, projectId) === null) throw notFound(`project ${projectId}`);
     const scenes = h.all(`select * from ${Scene} where project_id = ? order by position`, [projectId], Scene);
     const st = getState();
@@ -1511,14 +1506,14 @@ export async function router(app) {
         });
       }
     }
-    return construct(ProjectLinesResponse, { project_id: projectId, lines: out, counts });
+    return c.json(construct(ProjectLinesResponse, { project_id: projectId, lines: out, counts }));
   });
 
   /** Seed a demo project for the kind — runs through the same materializer as a real import
    * (CONCEPTS §13.7), so speakers and line ids behave exactly like production data. */
-  app.post("/v1/projects/demo", { schema: { body: CreateDemoRequest } }, async (req) => {
+  app.post("/v1/projects/demo", input({ body: CreateDemoRequest }), async (c) => {
     const h = session.getDb();
-    const kind = req.body.kind;
+    const kind = c.req.valid("json").kind;
     let standard;
     try {
       standard = await demoProjects.demoStandard(kind);
@@ -1528,14 +1523,14 @@ export async function router(app) {
     }
     const project = h.tx(() => _materializeStandard(standard, h)[0]);
     standard.project.id = project.id;
-    return construct(ImportRunResponse, { committed: true, project_id: project.id, standard, warnings: [] });
+    return c.json(construct(ImportRunResponse, { committed: true, project_id: project.id, standard, warnings: [] }));
   });
 
   /** LLM show notes from the project's segments (CONCEPTS §14.4). 501 when no provider is
    * configured, same contract as analyze. */
-  app.post("/v1/projects/:project_id/show-notes", async (req) => {
+  app.post("/v1/projects/:project_id/show-notes", async (c) => {
     const h = session.getDb();
-    const projectId = req.params.project_id;
+    const projectId = c.req.param("project_id");
     if (projectById(h, projectId) === null) throw notFound(`project ${projectId}`);
     const scenes = h.all(`select * from ${Scene} where project_id = ? order by position`, [projectId], Scene);
     const parts = [];
@@ -1558,10 +1553,13 @@ export async function router(app) {
       if (e instanceof LLMNotConfiguredError) throw new HttpError(501, errText(e));
       throw e;
     }
-    return construct(ShowNotesResponse, {
-      project_id: projectId,
-      markdown: strip(resp.text),
-      usage: { prompt_tokens: resp.prompt_tokens, completion_tokens: resp.completion_tokens, model: resp.model },
-    });
+    return c.json(
+      construct(ShowNotesResponse, {
+        project_id: projectId,
+        markdown: strip(resp.text),
+        usage: { prompt_tokens: resp.prompt_tokens, completion_tokens: resp.completion_tokens, model: resp.model },
+      }),
+    );
   });
+  return app;
 }

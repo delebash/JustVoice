@@ -30,7 +30,7 @@ import { ChapterLine, construct, Lexicon, LexiconEntry, Persona, Settings, utcNo
 import * as renderCore from "../src/render_core.js";
 import { _applyLexicons, lineLexicons, probeLineCached, RenderedLine, renderLine } from "../src/render_core.js";
 import * as synthScheduler from "../src/synth_scheduler.js";
-import { tmpDb } from "./helpers.js";
+import { inject, tmpDb } from "./helpers.js";
 import { FakeCache, FakeManager, fakeManifest, pcmOf, renderState, unwrap, useManager, viaRoutes } from "./render_helpers.js";
 
 afterEach(closeApps);
@@ -279,7 +279,7 @@ async function renderChapterRoute(body) {
   session.cfg.handle = h;
   try {
     await viaRoutes([renderChapterRouter], async (app) => {
-      const r = await app.inject({ method: "POST", url: "/v1/render_chapter", payload: body });
+      const r = await inject(app, { method: "POST", url: "/v1/render_chapter", payload: body });
       expect(r.statusCode, r.body).toBe(200);
     });
   } finally {

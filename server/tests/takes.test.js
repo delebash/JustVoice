@@ -18,7 +18,7 @@ import { endState, useState } from "./engines_helpers.js";
 import { router as takesRouter } from "../src/api/takes_api.js";
 import { Block, Generation, Persona, Project, Scene, Take, uuid } from "../src/database/models.js";
 import * as session from "../src/database/session.js";
-import { tmpPath } from "./helpers.js";
+import { inject, tmpPath } from "./helpers.js";
 import { viaRoutes } from "./render_helpers.js";
 
 beforeEach(() => {
@@ -80,7 +80,7 @@ function makeWav(p) {
 async function api(fn) {
   return viaRoutes([takesRouter], async (app) => {
     const send = async (method, url, json) => {
-      const r = await app.inject({
+      const r = await inject(app, {
         method,
         url,
         ...(json !== undefined ? { payload: JSON.stringify(json), headers: { "content-type": "application/json" } } : {}),

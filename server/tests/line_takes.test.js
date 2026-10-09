@@ -29,6 +29,7 @@ import { mediaFile } from "../src/media_paths.js";
 import * as renderCore from "../src/render_core.js";
 import { lineInputsKey, RenderedLine } from "../src/render_core.js";
 import { ZipReader } from "@delebash/llm-runner/platform/zip";
+import { inject as request } from "./helpers.js";
 import { book, lines, metaOf, patchLineOverride, patchMetadata, patchText, renderBlock, states, unwrap, viaRoutes } from "./render_helpers.js";
 import * as renderJobs from "../src/render_jobs.js";
 
@@ -162,7 +163,7 @@ test("the_chapter_plays_the_star_take", async () => {
 });
 
 const inject = async (app, method, url, json) => {
-  const r = await app.inject({
+  const r = await request(app, {
     method,
     url,
     ...(json !== undefined ? { payload: JSON.stringify(json), headers: { "content-type": "application/json" } } : {}),

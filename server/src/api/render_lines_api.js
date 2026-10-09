@@ -14,6 +14,7 @@
 //
 // The rules — what a take was made from, stale, the line's own numbers — live in line_takes.js.
 
+import { Hono, input } from "@delebash/llm-runner/platform";
 import { literal, nullable, opt, T } from "@delebash/llm-runner/platform/models";
 import { ValueError } from "@delebash/llm-runner/platform/py";
 import { getState } from "../app_state.js";
@@ -94,16 +95,17 @@ export const RenderLinesRequest = T.Object({ which: opt(literal("ready", "all"),
 
 export const BookLexicon = T.Object({ lexicon_id: T.String(), name: T.String(), created: T.Boolean() });
 
-export async function router(app) {
-  app.get("/v1/scenes/:scene_id/render_lines", async (req) =>
-    construct(SceneRenderLines, await lineTakes.sceneLines(_openDb(), getState(), req.params.scene_id)),
+export function router() {
+  const app = new Hono();
+  app.get("/v1/scenes/:scene_id/render_lines", async (c) =>
+    c.json(construct(SceneRenderLines, await lineTakes.sceneLines(_openDb(), getState(), c.req.param("scene_id")))),
   );
 
-  app.get("/v1/projects/:project_id/render_state", async (req) => {
+  app.get("/v1/projects/:project_id/render_state", async (c) => {
     const h = _openDb();
-    const projectId = req.params.project_id;
+    const projectId = c.req.param("project_id");
     if (h.one(`select id from ${Project} where id = ? limit 1`, [projectId]) === null) throw notFound(`project ${projectId}`);
-    return construct(ProjectRenderState, await lineTakes.projectRenderState(h, getState(), projectId));
+    return c.json(construct(ProjectRenderState, await lineTakes.projectRenderState(h, getState(), projectId)));
   });
 
   /**
@@ -112,10 +114,10 @@ export async function router(app) {
    * can't render are left out — Render shows them, and the chapter's ▶ Render refuses until
    * they can.
    */
-  app.post("/v1/scenes/:scene_id/render_lines", { schema: { body: nullable(RenderLinesRequest) } }, async (req) => {
-    const which = (req.body ?? construct(RenderLinesRequest, {})).which;
+  app.post("/v1/scenes/:scene_id/render_lines", input({ body: nullable(RenderLinesRequest) }), async (c) => {
+    const which = (c.req.valid("json") ?? construct(RenderLinesRequest, {})).which;
     const h = _openDb();
-    const sceneId = req.params.scene_id;
+    const sceneId = c.req.param("scene_id");
     const scene = h.one(`select * from ${Scene} where id = ? limit 1`, [sceneId], Scene);
     if (scene === null) throw notFound(`scene ${sceneId}`);
     const projectId = scene.project_id;
@@ -130,7 +132,7 @@ export async function router(app) {
       throw e;
     }
     if (job.total_blocks) renderJobs.startJob(job.id);
-    return construct(RenderJobOut, renderJobs.jobStatus(job.id));
+    return c.json(construct(RenderJobOut, renderJobs.jobStatus(job.id)));
   });
 
   /**
@@ -138,18 +140,19 @@ export async function router(app) {
    * item 4). A book with none gets "<book> names", chosen as its lexicon (Overview →
    * Pronunciation lexicon).
    */
-  app.post("/v1/projects/:project_id/lexicon", async (req) => {
+  app.post("/v1/projects/:project_id/lexicon", (c) => {
     const st = getState();
     const h = _openDb();
-    const projectId = req.params.project_id;
+    const projectId = c.req.param("project_id");
     const project = h.one(`select * from ${Project} where id = ? limit 1`, [projectId], Project);
     if (project === null) throw notFound(`project ${projectId}`);
     if (project.default_lexicon_id) {
       const lex = st.lexicons.get(project.default_lexicon_id);
-      if (lex !== null) return construct(BookLexicon, { lexicon_id: lex.id, name: lex.name, created: false });
+      if (lex !== null) return c.json(construct(BookLexicon, { lexicon_id: lex.id, name: lex.name, created: false }));
     }
     const lex = st.lexicons.create(`${project.name} names`, { scope: "project", project_id: projectId });
     h.update(Project, { default_lexicon_id: lex.id }, { id: projectId });
-    return construct(BookLexicon, { lexicon_id: lex.id, name: lex.name, created: true });
+    return c.json(construct(BookLexicon, { lexicon_id: lex.id, name: lex.name, created: true }));
   });
+  return app;
 }

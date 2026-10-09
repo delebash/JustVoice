@@ -7,6 +7,7 @@
 // description. The /catalog endpoint exposes the 11 supported effect types so the modal can
 // render the right parameter form per effect.
 
+import { Hono, input } from "@delebash/llm-runner/platform";
 import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
 import { strRepr } from "@delebash/llm-runner/platform/py";
 import { pyJson, pyJsonParse } from "@delebash/llm-runner/platform/pyjson";
@@ -191,18 +192,19 @@ const byId = (h, id) => h.one(`select * from ${EffectPreset} where id = ? limit 
  * PyFloats). */
 const dumpChain = (chain) => pyJson(chain);
 
-export async function router(app) {
+export function router() {
+  const app = new Hono();
   /** The 11 supported effect types + their parameter schemas for the EffectsChainEditorModal. */
-  app.get("/v1/effects/catalog", async () => construct(EffectCatalogResponse, { effects: EFFECT_CATALOG }));
+  app.get("/v1/effects/catalog", (c) => c.json(construct(EffectCatalogResponse, { effects: EFFECT_CATALOG })));
 
-  app.get("/v1/effect-presets", async () => {
+  app.get("/v1/effect-presets", (c) => {
     const rows = session.getDb().all(`select * from ${EffectPreset} order by sort_order, created_at`, undefined, EffectPreset);
-    return { presets: rows.map(fromOrm) };
+    return c.json({ presets: rows.map(fromOrm) });
   });
 
-  app.post("/v1/effect-presets", { schema: { body: CreateEffectPresetRequest }, config: { pyFloats: true } }, async (req, reply) => {
+  app.post("/v1/effect-presets", input({ body: CreateEffectPresetRequest, pyFloats: true }), (c) => {
     const h = session.getDb();
-    const body = req.body;
+    const body = c.req.valid("json");
     if (h.one(`select id from ${EffectPreset} where name = ? limit 1`, [body.name]) !== null) {
       throw badRequest(`effect preset name ${strRepr(body.name)} already exists`);
     }
@@ -215,41 +217,37 @@ export async function router(app) {
       is_builtin: false,
       sort_order: body.sort_order,
     });
-    reply.code(201);
-    return fromOrm(byId(h, id));
+    return c.json(fromOrm(byId(h, id)), 201);
   });
 
-  app.patch(
-    "/v1/effect-presets/:preset_id",
-    { schema: { body: UpdateEffectPresetRequest }, config: { pyFloats: true } },
-    async (req) => {
-      const h = session.getDb();
-      const presetId = req.params.preset_id;
-      const body = req.body;
-      const row = byId(h, presetId);
-      if (row === null) throw notFound(`effect preset ${presetId}`);
-      if (row.is_builtin) throw badRequest("built-in effect presets are read-only — duplicate and edit instead");
-      const set = {};
-      if (body.name !== null) {
-        const clash = h.one(`select id from ${EffectPreset} where name = ? and id != ? limit 1`, [body.name, presetId]);
-        if (clash !== null) throw badRequest(`effect preset name ${strRepr(body.name)} already exists`);
-        set.name = body.name;
-      }
-      if (body.description !== null) set.description = body.description;
-      if (body.chain !== null) set.chain_json = dumpChain(body.chain);
-      if (body.sort_order !== null) set.sort_order = body.sort_order;
-      if (Object.keys(set).length) h.update(EffectPreset, set, { id: presetId });
-      return fromOrm(byId(h, presetId));
-    },
-  );
-
-  app.delete("/v1/effect-presets/:preset_id", async (req) => {
+  app.patch("/v1/effect-presets/:preset_id", input({ body: UpdateEffectPresetRequest, pyFloats: true }), (c) => {
     const h = session.getDb();
-    const presetId = req.params.preset_id;
+    const presetId = c.req.param("preset_id");
+    const body = c.req.valid("json");
+    const row = byId(h, presetId);
+    if (row === null) throw notFound(`effect preset ${presetId}`);
+    if (row.is_builtin) throw badRequest("built-in effect presets are read-only — duplicate and edit instead");
+    const set = {};
+    if (body.name !== null) {
+      const clash = h.one(`select id from ${EffectPreset} where name = ? and id != ? limit 1`, [body.name, presetId]);
+      if (clash !== null) throw badRequest(`effect preset name ${strRepr(body.name)} already exists`);
+      set.name = body.name;
+    }
+    if (body.description !== null) set.description = body.description;
+    if (body.chain !== null) set.chain_json = dumpChain(body.chain);
+    if (body.sort_order !== null) set.sort_order = body.sort_order;
+    if (Object.keys(set).length) h.update(EffectPreset, set, { id: presetId });
+    return c.json(fromOrm(byId(h, presetId)));
+  });
+
+  app.delete("/v1/effect-presets/:preset_id", (c) => {
+    const h = session.getDb();
+    const presetId = c.req.param("preset_id");
     const row = byId(h, presetId);
     if (row === null) throw notFound(`effect preset ${presetId}`);
     if (row.is_builtin) throw badRequest("built-in effect presets cannot be deleted");
     h.delete(EffectPreset, { id: presetId });
-    return { deleted: true };
+    return c.json({ deleted: true });
   });
+  return app;
 }

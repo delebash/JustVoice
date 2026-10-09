@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // JustVoice's auth SEAM — the settings read behind the family bearer-auth middleware (the
-// port of justvoice/auth.py; the kit's platform/auth.js BearerAuthMiddleware). The POLICY
+// port of justvoice/auth.py; the kit's platform/auth.js `bearerAuth`). The POLICY
 // (token check, loopback bypass, the lockout escape) lives once in the kit; what stays here
 // is where this app keeps its auth config — the SettingsStore's `auth` section, read live
 // per /v1 request.

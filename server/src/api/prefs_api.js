@@ -46,4 +46,4 @@ export function _clear() {
   session.getDb().run(`delete from ${Pref}`);
 }
 
-export const router = makePrefsRouter({ readAll: _readAll, writeMany: _writeMany, clear: _clear });
+export const router = () => makePrefsRouter({ readAll: _readAll, writeMany: _writeMany, clear: _clear });

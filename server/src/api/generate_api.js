@@ -12,6 +12,7 @@
 // MCP server's `justvoice.speak` calls too. Calls a test spies on go through the module
 // namespaces (render_core, voice_model, the manager, the scheduler, this module's own `self.`).
 
+import { Hono, input } from "@delebash/llm-runner/platform";
 import { cpLen, pyInt, strRepr } from "@delebash/llm-runner/platform/py";
 import { getState } from "../app_state.js";
 import { DEFAULT_MAX_CHUNK_CHARS, splitTextIntoChunks } from "../audio/chunked.js";
@@ -33,12 +34,13 @@ const errText = (e) => e?.message ?? String(e);
 /**
  * An AbortSignal that fires when the client goes away before the answer is sent — what
  * asyncio's cancellation of a disconnected request's handler gave Python. Rendering routes pass
- * it to `waitAsync` / `warmLines`, which withdraw the request's pending lines. Candidate for
- * platform/server.js.
+ * it to `waitAsync` / `warmLines`, which withdraw the request's pending lines. Watches Node's own
+ * response (`c.env.outgoing`, @hono/node-server's); a request with none (a test's
+ * `app.request`) never fires it. Candidate for platform/server.js.
  */
-export function clientGone(req, reply) {
+export function clientGone(c) {
   const ctl = new AbortController();
-  const raw = reply?.raw;
+  const raw = c?.env?.outgoing;
   if (raw && typeof raw.once === "function") {
     raw.once("close", () => {
       if (!raw.writableFinished) ctl.abort();
@@ -426,10 +428,12 @@ export async function _generateViaInprocess(engineId, req) {
   }
 }
 
-export async function router(app) {
+export function router() {
+  const app = new Hono();
   /** Synthesize one line → audio/wav bytes. */
-  app.post("/v1/generate", { schema: { body: GenerateRequest }, config: { pyFloats: true } }, async (req, reply) => {
-    const wav = await self.generate(req.body, { signal: clientGone(req, reply) });
-    return reply.type("audio/wav").send(wav);
+  app.post("/v1/generate", input({ body: GenerateRequest, pyFloats: true }), async (c) => {
+    const wav = await self.generate(c.req.valid("json"), { signal: clientGone(c) });
+    return c.body(wav, 200, { "content-type": "audio/wav" });
   });
+  return app;
 }

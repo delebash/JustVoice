@@ -131,10 +131,13 @@ STATE:  DECIDED 2026-10-09, family-wide — the decision with the user's words i
 WHY:    one server that runs in Node (desktop, headless) and in a worker (phone, offline web page)
         with nothing imitating Node; the kit's item has the full reasons.
 NOT:    the kit's item.
-BUILT:  nothing yet — the plan: `../just-llm-runner/docs/plans/2026-10-09-hono-standard.md`.
-OPEN:   JustVoice's slice (plan §7, slice 6): 42 route files, 190 routes, MCP on `@hono/mcp`, the
-        captures upload on busboy, the server's tests — after the kit's slice and the user's word on
-        the plan's §3 and §5.
+BUILT:  2026-10-09 — 40 routers, `app.js` (the guards, the MCP stamp and the sync flush as
+        middleware before the routers), MCP on the SDK's own `WebStandardStreamableHTTPServerTransport`
+        (not `@hono/mcp` — the SDK's Node transport is that class behind `@hono/node-server`), the SSE
+        streams on the kit's `stream`, the uploads on busboy, the test helpers on `app.request`
+        (1,061/1,061); a real-socket run on a temp data folder. The plan:
+        `../just-llm-runner/docs/plans/2026-10-09-hono-standard.md` §9.
+OPEN:   nothing.
 GO:     given 2026-10-09 (the kit's item).
 
 ### JustVoice's sync — projects, scripts, personas and lexicons (decided 2026-10-08)

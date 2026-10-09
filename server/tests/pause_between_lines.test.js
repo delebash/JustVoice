@@ -20,7 +20,7 @@ import * as session from "../src/database/session.js";
 import { BetweenLines, ChapterLine, construct, GenerationSettings, Settings } from "../src/models.js";
 import * as renderCore from "../src/render_core.js";
 import * as synthScheduler from "../src/synth_scheduler.js";
-import { tmpDb } from "./helpers.js";
+import { inject, tmpDb } from "./helpers.js";
 import { viaRoutes } from "./render_helpers.js";
 
 let h;
@@ -61,7 +61,7 @@ function fakes(pauseMs) {
 /** POST /v1/render_chapter with `body`. */
 const renderChapter = (body) =>
   viaRoutes([renderChapterRouter], async (app) => {
-    const r = await app.inject({ method: "POST", url: "/v1/render_chapter", payload: body });
+    const r = await inject(app, { method: "POST", url: "/v1/render_chapter", payload: body });
     expect(r.statusCode, r.body).toBe(200);
   });
 

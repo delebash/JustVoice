@@ -17,6 +17,7 @@
 // `engines.engine_overrides` map. `resolveSource` is SYNC: engines/manager.js
 // `_ensureVariantLocal` and installer.spawnPrefetch import it.
 
+import { Hono, input } from "@delebash/llm-runner/platform";
 import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
 import { strRepr } from "@delebash/llm-runner/platform/py";
 import { getState } from "../app_state.js";
@@ -117,32 +118,34 @@ function requireManifest(engineId) {
   if (manager.getManager().getManifest(engineId) === null) throw notFound(`engine ${strRepr(engineId)} (no manifest)`);
 }
 
-export async function router(app) {
-  app.get("/v1/engines/:engine_id/sources", async (req) => {
-    const engineId = req.params.engine_id;
+export function router() {
+  const app = new Hono();
+  app.get("/v1/engines/:engine_id/sources", (c) => {
+    const engineId = c.req.param("engine_id");
     requireManifest(engineId);
     const variants = _allVariantIds(engineId).map((vid) => variantSource(vid)(...resolveSource(engineId, vid)));
-    return construct(EngineSourcesResponse, { engine_id: engineId, variants });
+    return c.json(construct(EngineSourcesResponse, { engine_id: engineId, variants }));
   });
 
-  app.put("/v1/engines/:engine_id/sources/:variant_id", { schema: { body: EngineModelSourceOverride } }, async (req) => {
-    const { engine_id: engineId, variant_id: variantId } = req.params;
+  app.put("/v1/engines/:engine_id/sources/:variant_id", input({ body: EngineModelSourceOverride }), (c) => {
+    const { engine_id: engineId, variant_id: variantId } = c.req.param();
+    const body = c.req.valid("json");
     requireManifest(engineId);
     // Permissive overrides for variants the manifest doesn't know would let a typo become a
     // silently broken row — rejected.
     if (!_allVariantIds(engineId).includes(variantId)) throw notFound(`variant ${strRepr(variantId)} on engine ${strRepr(engineId)}`);
-    if (!req.body.hf_repo) throw badRequest("override needs hf_repo");
+    if (!body.hf_repo) throw badRequest("override needs hf_repo");
     const store = getState().settings;
     const settings = store.get();
     const overrides = settings.engines.engine_overrides[engineId] ?? construct(EngineOverrides, {});
-    overrides.sources[variantId] = req.body;
+    overrides.sources[variantId] = body;
     settings.engines.engine_overrides[engineId] = overrides;
     store.set(settings);
-    return variantSource(variantId)(...resolveSource(engineId, variantId));
+    return c.json(variantSource(variantId)(...resolveSource(engineId, variantId)));
   });
 
-  app.delete("/v1/engines/:engine_id/sources/:variant_id", async (req) => {
-    const { engine_id: engineId, variant_id: variantId } = req.params;
+  app.delete("/v1/engines/:engine_id/sources/:variant_id", (c) => {
+    const { engine_id: engineId, variant_id: variantId } = c.req.param();
     requireManifest(engineId);
     const store = getState().settings;
     const settings = store.get();
@@ -154,6 +157,7 @@ export async function router(app) {
       if (!Object.keys(overrides.sources).length) delete settings.engines.engine_overrides[engineId];
       store.set(settings);
     }
-    return variantSource(variantId)(...resolveSource(engineId, variantId));
+    return c.json(variantSource(variantId)(...resolveSource(engineId, variantId)));
   });
+  return app;
 }

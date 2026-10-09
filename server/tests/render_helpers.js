@@ -8,9 +8,9 @@
 // /v1/scenes/{id}/render_lines (render_lines_api) and PATCH /v1/blocks/{id} (projects_api —
 // `patchLineOverride`, `patchMetadata`, `patchText`) are the real routes, served by a bare app
 // holding just their routers (`viaRoutes`) over the test's own module state (`useState()`). The
-// bare app reads bodies with the real app's JSON parsers (app.js `installPyFloatBodies`), so a
-// route sees what was sent (`req.sentBody`) and a free field keeps Python's floats.
-import { createServer, installPyFloatBodies } from "@delebash/llm-runner/platform";
+// bare app reads bodies as the real app does (the kit's `installPyFloatBodies`), so a route sees
+// what was sent (`c.get("sentBody")`) and a free field keeps Python's floats.
+import { closeApp, createServer, installPyFloatBodies } from "@delebash/llm-runner/platform";
 import { PyFloat, pyJsonParse } from "@delebash/llm-runner/platform/pyjson";
 import { vi } from "vitest";
 import { router as projectsRouter } from "../src/api/projects_api.js";
@@ -20,6 +20,7 @@ import * as session from "../src/database/session.js";
 import { Block, Project, Scene, Speaker, uuid } from "../src/database/models.js";
 import { EngineRegistry } from "../src/engines/registry.js";
 import * as manager from "../src/engines/manager.js";
+import { inject } from "./helpers.js";
 
 /** A value with every PyFloat read as its number (for toEqual). */
 export function unwrap(v) {
@@ -153,19 +154,18 @@ export const TYPE_BASE = "https://justvoice.dev/errors/";
 export async function viaRoutes(routers, fn) {
   const app = createServer({ typeBase: TYPE_BASE });
   installPyFloatBodies(app);
-  for (const r of routers) app.register(r);
-  await app.ready();
+  for (const r of routers) app.route("/", r());
   try {
     return await fn(app);
   } finally {
-    await app.close();
+    await closeApp(app);
   }
 }
 
 /** One request on a bare app holding `routers` → `{status, json(), content, headers}`. */
 export async function routeCall(routers, method, url, json = undefined) {
   return viaRoutes(routers, async (app) => {
-    const r = await app.inject({
+    const r = await inject(app, {
       method,
       url,
       ...(json !== undefined ? { payload: JSON.stringify(json), headers: { "content-type": "application/json" } } : {}),

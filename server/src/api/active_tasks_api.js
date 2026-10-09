@@ -6,6 +6,7 @@
 // pending generations + active model downloads so the UI can re-attach progress toasts after a
 // window close+reopen or page refresh.
 
+import { Hono } from "@delebash/llm-runner/platform";
 import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
 import { Generation } from "../database/models.js";
 import * as session from "../database/session.js";
@@ -36,8 +37,9 @@ export const ActiveTasksResponse = T.Object({
 /** Python's `(g.text or "")[:80]` — 80 code points. */
 const head80 = (s) => [...(s || "")].slice(0, 80).join("");
 
-export async function router(app) {
-  app.get("/v1/active_tasks", async () => {
+export function router() {
+  const app = new Hono();
+  app.get("/v1/active_tasks", (c) => {
     const h = session.getDb();
     // Pending generations: anything not terminal.
     const pending = h.all(
@@ -54,6 +56,7 @@ export async function router(app) {
     }));
     // Active downloads came from an in-process progress manager (`..utils.progress`) that was
     // never written: Python's import fails and the list is always empty.
-    return construct(ActiveTasksResponse, { generations, downloads: [] });
+    return c.json(construct(ActiveTasksResponse, { generations, downloads: [] }));
   });
+  return app;
 }

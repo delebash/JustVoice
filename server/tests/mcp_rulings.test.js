@@ -21,7 +21,7 @@ import * as session from "../src/database/session.js";
 import { buildMcpServer } from "../src/mcp/server.js";
 import { SOURCE_ROOT } from "../src/paths.js";
 import { appClient, closeApps } from "./app_helpers.js";
-import { closeModuleDb, initDbAt, tmpPath } from "./helpers.js";
+import { closeModuleDb, initDbAt, inject, tmpPath } from "./helpers.js";
 
 afterEach(async () => {
   await closeApps();
@@ -90,7 +90,7 @@ test("mcp_needs_the_token_like_the_api", async () => {
   settings.auth.tokens = ["s3cret"];
   getState().settings.set(settings);
   const send = (headers) =>
-    app.inject({
+    inject(app, {
       method: "POST",
       url: "/mcp",
       remoteAddress: "192.168.1.20",
@@ -124,7 +124,7 @@ test("the_settings_curl_snippet_opens_a_session", async () => {
   }
   const body = /-d '([^']+)'/.exec(line)[1];
   const { app } = await appClient();
-  const r = await app.inject({ method: "POST", url: "/mcp", headers, payload: body, remoteAddress: "127.0.0.1" });
+  const r = await inject(app, { method: "POST", url: "/mcp", headers, payload: body, remoteAddress: "127.0.0.1" });
   expect(r.statusCode, r.body).toBe(200);
   expect(r.headers["mcp-session-id"]).toMatch(/^[0-9a-f]{32}$/);
   expect(messages(r.body)[0].result.serverInfo.name).toBe("justvoice");

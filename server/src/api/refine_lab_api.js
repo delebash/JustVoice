@@ -12,6 +12,7 @@
 // column's overrides riding like any feature's.
 
 import { LLMNotConfiguredError } from "@delebash/llm-runner/llm";
+import { Hono, input } from "@delebash/llm-runner/platform";
 import { HttpError } from "@delebash/llm-runner/platform/errors";
 import { getLogger } from "@delebash/llm-runner/platform/log";
 import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
@@ -63,22 +64,26 @@ export const RefineLabRunResponse = T.Object({
 
 const msg = (e) => e?.message ?? String(e);
 
-export async function router(app) {
-  app.post("/v1/ai/prompt-preview", { schema: { body: PromptPreviewRequest } }, async (req) => {
-    if (req.body.feature !== "refine") throw new HttpError(404, `no prompt preview for ${strRepr(req.body.feature)}`);
+export function router() {
+  const app = new Hono();
+  app.post("/v1/ai/prompt-preview", input({ body: PromptPreviewRequest }), (c) => {
+    const body = c.req.valid("json");
+    if (body.feature !== "refine") throw new HttpError(404, `no prompt preview for ${strRepr(body.feature)}`);
     const flags = _currentFlags();
     const on = Object.entries(flags.toDict())
       .filter(([, v]) => v)
       .map(([k]) => k.replaceAll("_", " "));
-    return construct(PromptPreviewResponse, {
-      system: composeRefinementSystem(flags),
-      user: _PREVIEW_TRANSCRIPT,
-      sample: on.length ? `sections on: ${on.join(", ")}` : "ground rules only",
-    });
+    return c.json(
+      construct(PromptPreviewResponse, {
+        system: composeRefinementSystem(flags),
+        user: _PREVIEW_TRANSCRIPT,
+        sample: on.length ? `sections on: ${on.join(", ")}` : "ground rules only",
+      }),
+    );
   });
 
-  app.post("/v1/refine/lab-run", { schema: { body: RefineLabRunRequest } }, async (req) => {
-    const body = req.body;
+  app.post("/v1/refine/lab-run", input({ body: RefineLabRunRequest }), async (c) => {
+    const body = c.req.valid("json");
     const all = {
       providerId: body.providerId,
       model: body.model,
@@ -113,15 +118,18 @@ export async function router(app) {
       log.exception("refine lab run failed", e);
       throw new HttpError(502, `refine failed: ${msg(e)}`);
     }
-    return construct(RefineLabRunResponse, {
-      text: resp.text,
-      model: resp.model,
-      usage: {
-        prompt_tokens: pyInt(resp.prompt_tokens || 0),
-        completion_tokens: pyInt(resp.completion_tokens || 0),
-        duration_ms: Math.trunc(performance.now() - t0),
-        model: resp.model || "",
-      },
-    });
+    return c.json(
+      construct(RefineLabRunResponse, {
+        text: resp.text,
+        model: resp.model,
+        usage: {
+          prompt_tokens: pyInt(resp.prompt_tokens || 0),
+          completion_tokens: pyInt(resp.completion_tokens || 0),
+          duration_ms: Math.trunc(performance.now() - t0),
+          model: resp.model || "",
+        },
+      }),
+    );
   });
+  return app;
 }
