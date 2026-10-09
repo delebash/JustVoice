@@ -23,7 +23,7 @@ export default defineConfig({
       "#q-app": "@quasar/app-vite",
     },
     // Same dedupe list as vite.config.js, same reason — keep the two in lock-step.
-    dedupe: ["vue", "reka-ui", "@floating-ui/dom", "pinia", "vue-router", "vue-i18n", "marked", "vue-sonner", "@tanstack/vue-table", "@vueuse/core"],
+    dedupe: ["vue", "quasar", "reka-ui", "@floating-ui/dom", "pinia", "vue-router", "vue-i18n", "marked", "vue-sonner", "@tanstack/vue-table", "@vueuse/core"],
   },
   test: {
     environment: "node",

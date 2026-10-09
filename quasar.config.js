@@ -48,7 +48,7 @@ export default defineConfig(() => {
         // Vue's reactivity break with two).
         viteConf.resolve.dedupe = [
           ...(viteConf.resolve.dedupe || []),
-          'vue', 'reka-ui', '@floating-ui/dom', 'pinia', 'vue-router', 'vue-i18n', 'marked',
+          'vue', 'quasar', 'reka-ui', '@floating-ui/dom', 'pinia', 'vue-router', 'vue-i18n', 'marked',
           'vue-sonner', '@tanstack/vue-table', '@vueuse/core', 'qrcode',
         ]
         viteConf.server = viteConf.server || {}
@@ -90,7 +90,8 @@ export default defineConfig(() => {
     },
 
     framework: {
-      config: {},
+      // the family's Quasar settings (the kit's docs/app-structure.md §Q): no Material ripple
+      config: { ripple: false },
       plugins: []
     },
 
