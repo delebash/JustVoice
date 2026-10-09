@@ -906,8 +906,9 @@ p + .jv-field-row { margin-top: 12px; }
 
 /* Status badges + selectable chips now use the shared .ui-tag / .ui-chip
    (@delebash/llm-ui), tuned via JV's tokens (--tag-radius/--chip-radius =
-   --r-pill, --tag-border-width:1px). JV adds one extra tag intent: */
-.ui-tag--violet { color: #6b4fae; border-color: #c8b9ea; background: #f3eefb; }
+   --r-pill, --tag-border-width:1px). JV adds one extra tag intent, through the variables an
+   intent sets (the kit's quasar/theme.css, "Tag"): */
+.ui-tag--violet { --ui-tag-ink: #6b4fae; --ui-tag-border: #c8b9ea; --ui-tag-bg: #f3eefb; }
 
 /* Filter chips group (preview L178-183) */
 .jv-chips {
