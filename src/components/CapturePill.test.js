@@ -5,8 +5,10 @@
 // clean-room rewrite): Enter and Space press it like a click — the error goes
 // to the clipboard and the pill is dismissed. Outside the error state the keys
 // are left alone, so the stop button inside the recording pill keeps its own.
-import { createApp, h, nextTick } from "vue";
+import { h, nextTick } from "vue";
 import { afterEach, expect, test, vi } from "vitest";
+// Quasar installed as in the real app — the kit's controls are Quasar components
+import { createTestApp } from "@delebash/llm-ui/quasar/install.js";
 
 vi.mock("@delebash/llm-ui", () => ({
   Icon: { props: ["name", "size", "fill"], setup: () => () => h("i") },
@@ -35,7 +37,7 @@ async function mount(props) {
   vi.stubGlobal("navigator", { clipboard: { writeText } });
   el = document.createElement("div");
   document.body.appendChild(el);
-  app = createApp({ render: () => h(CapturePill, { ...props, onDismiss: dismiss, onStop: stop }) });
+  app = createTestApp({ render: () => h(CapturePill, { ...props, onDismiss: dismiss, onStop: stop }) });
   app.mount(el);
   await nextTick();
   return { pill: el.querySelector(".capture-pill"), dismiss, stop };

@@ -4,8 +4,10 @@
 // The dictation window's agent-speech cycle plays the generation from the
 // route that serves it, /v1/generations/<id>/audio (ruling 6 of the 2026-10-08
 // clean-room rewrite — it used to ask for /audio/<id>, which no route serves).
-import { createApp, h, nextTick } from "vue";
+import { h, nextTick } from "vue";
 import { afterEach, expect, test, vi } from "vitest";
+// Quasar installed as in the real app — the kit's controls are Quasar components
+import { createTestApp } from "@delebash/llm-ui/quasar/install.js";
 
 const handlers = {};
 const emitted = [];
@@ -66,7 +68,7 @@ async function mount() {
   vi.stubGlobal("Audio", FakeAudio);
   el = document.createElement("div");
   document.body.appendChild(el);
-  app = createApp({ render: () => h(DictateWindow) });
+  app = createTestApp({ render: () => h(DictateWindow) });
   app.mount(el);
   await nextTick();
 }

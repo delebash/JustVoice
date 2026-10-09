@@ -4,8 +4,10 @@
 // The boot splash's help under a failed model load (2026-09-29): names the
 // speech engines left over from an earlier session and what they hold, and
 // "Stop them and retry" stops them, then re-runs the load.
-import { createApp, h, nextTick } from "vue";
+import { h, nextTick } from "vue";
 import { afterEach, expect, test, vi } from "vitest";
+// Quasar installed as in the real app — the kit's controls are Quasar components
+import { createTestApp } from "@delebash/llm-ui/quasar/install.js";
 
 const request = vi.fn();
 const pushToast = vi.fn();
@@ -44,7 +46,7 @@ afterEach(() => {
 async function mount(task) {
   el = document.createElement("div");
   document.body.appendChild(el);
-  app = createApp(LeftoverEnginesHelp, { task });
+  app = createTestApp(LeftoverEnginesHelp, { task });
   app.mount(el);
   for (let i = 0; i < 5; i++) await nextTick();
   await new Promise((r) => setTimeout(r, 0));
