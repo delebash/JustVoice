@@ -19,6 +19,7 @@ The same keys work on every page.
 | `←` / `→`, `Home` / `End` | Move between those tabs; `Enter` or `Space` opens the one you're on |
 | `←` / `→` in a row of choices (a persona's filters and type, …) | Move between the choices; `Enter` or `Space` picks one, and typing a choice's first letter picks it |
 | `←` / `→`, `Page Up` / `Page Down`, `Home` / `End` on a slider | One step, ten steps, either end |
+| `↓`, `Enter` or `Space` on a row's `⋯` menu | Opens it on its first action (`↑` on its last); `↑` / `↓`, `Home` / `End` and typing an action's first letter move; `Enter` picks; `Esc` closes |
 
 ## Studio Script — a chapter
 

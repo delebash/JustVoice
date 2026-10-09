@@ -1940,7 +1940,7 @@ section.block > h3 {
 /* The loaded row's measured-memory hint ("1.1 GB measured" / "not measured
    yet") — reads the same vram reservations as the budget strip. */
 .ev-memhint{font-size:11px;color:var(--ink-3);white-space:nowrap}
-/* The row's three-dot menu (reka DropdownMenu; content portals to body,
+/* The row's three-dot menu (the kit's UiMenu; content portals to body,
    so these are canonical, never scoped). */
 .ev-kebab{font:inherit;font-size:15px;line-height:1;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink-2);padding:3px 9px;cursor:pointer}
 .ev-kebab:hover{background:var(--surface-2)}

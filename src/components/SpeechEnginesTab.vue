@@ -43,12 +43,9 @@ import { useApi } from "../stores/api.js";
 import { DownloadBar, UiButton, confirmDialog, fmtBytes, languageName, openExternal, openPath, promptDialog, pushToast } from "@delebash/llm-ui";
 import { makeEngineDownloadTask, makeEngineLoadTask, makeJobDownloadTask } from "../services/ttsJobChannel.js";
 import { setDefaultVariant as setEngineDefault } from "../services/engineDefaults.js";
-// The row's three-dot menu — reka-ui's DropdownMenu, the same import shape
-// as the kit's LuModelCatalog (the portal escapes the group's overflow clip).
-import {
-  DropdownMenuContent, DropdownMenuItem, DropdownMenuPortal,
-  DropdownMenuRoot, DropdownMenuSeparator, DropdownMenuTrigger,
-} from "reka-ui";
+// The row's three-dot menu — the kit's UiMenu, as the kit's LuModelCatalog
+// (its list portals out of the group's overflow clip).
+import { UiMenu, UiMenuItem, UiMenuSeparator } from "@delebash/llm-ui";
 
 import SpeechProvidersPanel from "./SpeechProvidersPanel.vue";
 import { UiNumber, UiSelect } from "@delebash/llm-ui";
@@ -938,27 +935,23 @@ onBeforeUnmount(() => {
                 title="The version this engine loads when nothing picks one explicitly"
                 @click="e.default_variant_id === v.id ? null : setDefaultVariant(e, v.id)" />
               <!-- The three-dot menu (§6) — Delete moved in here from the
-                   old inline button; the reka portal escapes the group's
+                   old inline button; the menu's portal escapes the group's
                    overflow clip (the kit LuModelCatalog pattern). -->
-              <DropdownMenuRoot>
-                <DropdownMenuTrigger class="ev-kebab" aria-label="More actions" title="More actions">⋯</DropdownMenuTrigger>
-                <DropdownMenuPortal>
-                  <DropdownMenuContent class="ev-menu" align="end" :side-offset="4" :collision-padding="8">
-                    <DropdownMenuItem v-if="v.on_disk === true" class="ev-menu-item"
-                      :disabled="busyAnywhere(e.id, v.id) || modelLoaded(e, v)"
-                      @select="redownload(e, v)">Re-download</DropdownMenuItem>
-                    <DropdownMenuItem v-if="v.local_dir" class="ev-menu-item"
-                      @select="openModelFolder(v)">Open folder</DropdownMenuItem>
-                    <DropdownMenuItem v-if="v.hf_repo" class="ev-menu-item"
-                      @select="viewOnHf(v)">View on Hugging Face</DropdownMenuItem>
-                    <template v-if="v.on_disk === true && !modelLoaded(e, v)">
-                      <DropdownMenuSeparator class="ev-menu-sep" />
-                      <DropdownMenuItem class="ev-menu-item danger"
-                        @select="deleteModel(e, v)">Delete downloaded model</DropdownMenuItem>
-                    </template>
-                  </DropdownMenuContent>
-                </DropdownMenuPortal>
-              </DropdownMenuRoot>
+              <UiMenu label="More actions" trigger-class="ev-kebab" content-class="ev-menu" align="end">
+                <template #trigger>⋯</template>
+                <UiMenuItem v-if="v.on_disk === true" class="ev-menu-item"
+                  :disabled="busyAnywhere(e.id, v.id) || modelLoaded(e, v)"
+                  @select="redownload(e, v)">Re-download</UiMenuItem>
+                <UiMenuItem v-if="v.local_dir" class="ev-menu-item"
+                  @select="openModelFolder(v)">Open folder</UiMenuItem>
+                <UiMenuItem v-if="v.hf_repo" class="ev-menu-item"
+                  @select="viewOnHf(v)">View on Hugging Face</UiMenuItem>
+                <template v-if="v.on_disk === true && !modelLoaded(e, v)">
+                  <UiMenuSeparator class="ev-menu-sep" />
+                  <UiMenuItem class="ev-menu-item danger"
+                    @select="deleteModel(e, v)">Delete downloaded model</UiMenuItem>
+                </template>
+              </UiMenu>
             </span>
           </div>
           <!-- Where it runs (CPU placement, 2026-10-02): the choice, and the server's

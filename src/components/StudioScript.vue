@@ -33,10 +33,7 @@
 -->
 <script setup>
 import { computed, ref, watch } from "vue";
-import {
-  DropdownMenuContent, DropdownMenuItem, DropdownMenuPortal,
-  DropdownMenuRoot, DropdownMenuSeparator, DropdownMenuTrigger,
-} from "reka-ui";
+import { UiMenu, UiMenuItem, UiMenuSeparator } from "@delebash/llm-ui";
 import {
   AppModal, EmptyState, UiButton, UiCheckbox, UiChip, UiSelect, UiTable, UiTag,
   UiTextarea, confirmDialog, promptDialog, pushToast,
@@ -482,24 +479,19 @@ function openRow(r, focus = null) {
                       : row.to_check ? 'Opens the chapter at its first line to check' : ''"
                     @click="openRow(row, row.to_check ? 'check' : null)" />
                 </template>
-                <DropdownMenuRoot>
-                  <DropdownMenuTrigger class="ev-kebab" :aria-label="`${word.singular} actions`"
-                    :title="`${word.singular} actions`">⋯</DropdownMenuTrigger>
-                  <DropdownMenuPortal>
-                    <DropdownMenuContent class="ev-menu" align="end" :side-offset="4" :collision-padding="8">
-                      <DropdownMenuItem class="ev-menu-item"
-                        :disabled="!row.lines || inRun(project.id, row.scene_id, 'analyze') === 'current'"
-                        @select="editText(row)">✎ Edit text</DropdownMenuItem>
-                      <DropdownMenuItem class="ev-menu-item" @select="rename(row)">✏️ Rename</DropdownMenuItem>
-                      <DropdownMenuItem class="ev-menu-item" :disabled="row.position === 0" @select="move(row, -1)">↑ Move up</DropdownMenuItem>
-                      <DropdownMenuItem class="ev-menu-item" :disabled="row.position >= ordered.length - 1"
-                        @select="move(row, 1)">↓ Move down</DropdownMenuItem>
-                      <DropdownMenuSeparator class="ev-menu-sep" />
-                      <DropdownMenuItem class="ev-menu-item danger" :disabled="inRun(project.id, row.scene_id) === 'current'"
-                        @select="remove(row)">🗑 Delete</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenuPortal>
-                </DropdownMenuRoot>
+                <UiMenu :label="`${word.singular} actions`" trigger-class="ev-kebab" content-class="ev-menu" align="end">
+                  <template #trigger>⋯</template>
+                  <UiMenuItem class="ev-menu-item"
+                    :disabled="!row.lines || inRun(project.id, row.scene_id, 'analyze') === 'current'"
+                    @select="editText(row)">✎ Edit text</UiMenuItem>
+                  <UiMenuItem class="ev-menu-item" @select="rename(row)">✏️ Rename</UiMenuItem>
+                  <UiMenuItem class="ev-menu-item" :disabled="row.position === 0" @select="move(row, -1)">↑ Move up</UiMenuItem>
+                  <UiMenuItem class="ev-menu-item" :disabled="row.position >= ordered.length - 1"
+                    @select="move(row, 1)">↓ Move down</UiMenuItem>
+                  <UiMenuSeparator class="ev-menu-sep" />
+                  <UiMenuItem class="ev-menu-item danger" :disabled="inRun(project.id, row.scene_id) === 'current'"
+                    @select="remove(row)">🗑 Delete</UiMenuItem>
+                </UiMenu>
               </span>
             </template>
             <template #empty>No {{ word.plural.toLowerCase() }} in this view.</template>

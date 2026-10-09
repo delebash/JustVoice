@@ -6,10 +6,7 @@ import { useApi } from "../stores/api.js";
 import PageTaskStrips from "../components/PageTaskStrips.vue";
 import { pushToast, saveBlob, serverUrl as apiPath } from "@delebash/llm-ui";
 import { confirmDialog, promptDialog } from "@delebash/llm-ui";
-import {
-  DropdownMenuContent, DropdownMenuItem, DropdownMenuPortal,
-  DropdownMenuRoot, DropdownMenuSeparator, DropdownMenuTrigger,
-} from "reka-ui";
+import { UiMenu, UiMenuItem, UiMenuSeparator } from "@delebash/llm-ui";
 import { DIRECTION_OPTIONS, VOICE_KINDS, baseLang, directionCell, tagCount, voiceKind, voiceKindLabel } from "../services/personaFacts.js";
 import { readPref, writePref } from "../services/prefs.js";
 import { rowOptions } from "../services/capabilities.js";
@@ -799,20 +796,16 @@ function voiceTypeVariant(kind) {
       <template #actions="{ row }">
         <span class="jv-table__actions">
           <!-- The row menu — the Speech engines rows' pattern (`.ev-kebab`). -->
-          <DropdownMenuRoot>
-            <DropdownMenuTrigger class="ev-kebab" aria-label="Voice actions" :title="`${row.name} — actions`">⋯</DropdownMenuTrigger>
-            <DropdownMenuPortal>
-              <DropdownMenuContent class="ev-menu" align="end" :side-offset="4" :collision-padding="8">
-                <DropdownMenuItem class="ev-menu-item" @select="newPersonaFrom(row)">🎭 New persona from this voice</DropdownMenuItem>
-                <DropdownMenuItem v-if="hasClip(row)" class="ev-menu-item" @select="copyToModel(row)">⧉ Copy to another model…</DropdownMenuItem>
-                <DropdownMenuItem v-if="row.source !== 'preset'" class="ev-menu-item" @select="exportVoice(row)">⤓ Export…</DropdownMenuItem>
-                <template v-if="row.source !== 'preset'">
-                  <DropdownMenuSeparator class="ev-menu-sep" />
-                  <DropdownMenuItem class="ev-menu-item danger" @select="deleteVoice(row)">🗑 Delete</DropdownMenuItem>
-                </template>
-              </DropdownMenuContent>
-            </DropdownMenuPortal>
-          </DropdownMenuRoot>
+          <UiMenu label="Voice actions" :title="`${row.name} — actions`" trigger-class="ev-kebab" content-class="ev-menu" align="end">
+            <template #trigger>⋯</template>
+            <UiMenuItem class="ev-menu-item" @select="newPersonaFrom(row)">🎭 New persona from this voice</UiMenuItem>
+            <UiMenuItem v-if="hasClip(row)" class="ev-menu-item" @select="copyToModel(row)">⧉ Copy to another model…</UiMenuItem>
+            <UiMenuItem v-if="row.source !== 'preset'" class="ev-menu-item" @select="exportVoice(row)">⤓ Export…</UiMenuItem>
+            <template v-if="row.source !== 'preset'">
+              <UiMenuSeparator class="ev-menu-sep" />
+              <UiMenuItem class="ev-menu-item danger" @select="deleteVoice(row)">🗑 Delete</UiMenuItem>
+            </template>
+          </UiMenu>
         </span>
       </template>
     </UiTable>

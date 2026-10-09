@@ -13,10 +13,7 @@
 <script setup>
 import { computed, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import {
-  DropdownMenuContent, DropdownMenuItem, DropdownMenuPortal,
-  DropdownMenuRoot, DropdownMenuSeparator, DropdownMenuTrigger,
-} from "reka-ui";
+import { UiMenu, UiMenuItem, UiMenuSeparator } from "@delebash/llm-ui";
 import {
   EmptyState, UiButton, UiCheckbox, UiInput, UiSelect, UiTable, UiTag,
   confirmDialog, languageName, promptDialog, pushToast,
@@ -360,18 +357,14 @@ function colorFor(name) {
       </template>
       <template #more="{ row }">
         <span @click.stop>
-          <DropdownMenuRoot>
-            <DropdownMenuTrigger class="ev-kebab" aria-label="Persona actions" title="Persona actions">⋯</DropdownMenuTrigger>
-            <DropdownMenuPortal>
-              <DropdownMenuContent class="ev-menu" align="end" :side-offset="4" :collision-padding="8">
-                <DropdownMenuItem class="ev-menu-item" @select="openPersona(row.id)">✎ Edit</DropdownMenuItem>
-                <DropdownMenuItem class="ev-menu-item" @select="rename(row)">✏️ Rename</DropdownMenuItem>
-                <DropdownMenuItem class="ev-menu-item" :disabled="personas.length < 2" @select="merge(row)">🔗 Merge into…</DropdownMenuItem>
-                <DropdownMenuSeparator class="ev-menu-sep" />
-                <DropdownMenuItem class="ev-menu-item danger" @select="removePersona(row)">🗑 Delete</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenuPortal>
-          </DropdownMenuRoot>
+          <UiMenu label="Persona actions" trigger-class="ev-kebab" content-class="ev-menu" align="end">
+            <template #trigger>⋯</template>
+            <UiMenuItem class="ev-menu-item" @select="openPersona(row.id)">✎ Edit</UiMenuItem>
+            <UiMenuItem class="ev-menu-item" @select="rename(row)">✏️ Rename</UiMenuItem>
+            <UiMenuItem class="ev-menu-item" :disabled="personas.length < 2" @select="merge(row)">🔗 Merge into…</UiMenuItem>
+            <UiMenuSeparator class="ev-menu-sep" />
+            <UiMenuItem class="ev-menu-item danger" @select="removePersona(row)">🗑 Delete</UiMenuItem>
+          </UiMenu>
         </span>
       </template>
       <template #empty>

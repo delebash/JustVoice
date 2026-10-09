@@ -21,10 +21,7 @@
 <script setup>
 import { computed, onActivated, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
-import {
-  DropdownMenuContent, DropdownMenuItem, DropdownMenuPortal,
-  DropdownMenuRoot, DropdownMenuSeparator, DropdownMenuTrigger,
-} from "reka-ui";
+import { UiMenu, UiMenuItem, UiMenuSeparator } from "@delebash/llm-ui";
 import {
   EmptyState, UiButton, UiCheckbox, UiInput, UiSelect, UiTable, UiTag,
   confirmDialog, languageName, promptDialog, pushToast,
@@ -483,21 +480,17 @@ onActivated(() => { if (mounted) loadAll(); mounted = true; });
       </template>
       <template #more="{ row }">
         <span @click.stop>
-          <!-- The row menu — reka's DropdownMenu, the Speech engines rows'
+          <!-- The row menu — the kit's UiMenu, the Speech engines rows'
                pattern (`.ev-kebab` / `.ev-menu`); the portal escapes the
                table's overflow. -->
-          <DropdownMenuRoot>
-            <DropdownMenuTrigger class="ev-kebab" aria-label="Persona actions" title="Persona actions">⋯</DropdownMenuTrigger>
-            <DropdownMenuPortal>
-              <DropdownMenuContent class="ev-menu" align="end" :side-offset="4" :collision-padding="8">
-                <DropdownMenuItem class="ev-menu-item" @select="openPersona(row.id)">✎ Edit</DropdownMenuItem>
-                <DropdownMenuItem class="ev-menu-item" @select="rename(row)">✏️ Rename</DropdownMenuItem>
-                <DropdownMenuItem class="ev-menu-item" :disabled="personas.length < 2" @select="merge(row)">🔗 Merge into…</DropdownMenuItem>
-                <DropdownMenuSeparator class="ev-menu-sep" />
-                <DropdownMenuItem class="ev-menu-item danger" @select="removePersona(row)">🗑 Delete</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenuPortal>
-          </DropdownMenuRoot>
+          <UiMenu label="Persona actions" trigger-class="ev-kebab" content-class="ev-menu" align="end">
+            <template #trigger>⋯</template>
+            <UiMenuItem class="ev-menu-item" @select="openPersona(row.id)">✎ Edit</UiMenuItem>
+            <UiMenuItem class="ev-menu-item" @select="rename(row)">✏️ Rename</UiMenuItem>
+            <UiMenuItem class="ev-menu-item" :disabled="personas.length < 2" @select="merge(row)">🔗 Merge into…</UiMenuItem>
+            <UiMenuSeparator class="ev-menu-sep" />
+            <UiMenuItem class="ev-menu-item danger" @select="removePersona(row)">🗑 Delete</UiMenuItem>
+          </UiMenu>
         </span>
       </template>
       <template #empty>

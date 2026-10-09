@@ -9,10 +9,7 @@
 -->
 <script setup>
 import { computed, ref } from "vue";
-import {
-  DropdownMenuContent, DropdownMenuItem, DropdownMenuPortal,
-  DropdownMenuRoot, DropdownMenuSeparator, DropdownMenuTrigger,
-} from "reka-ui";
+import { UiMenu, UiMenuItem, UiMenuSeparator } from "@delebash/llm-ui";
 import {
   AppModal, EmptyState, UiButton, UiCheckbox, UiChip, UiTable, UiTag, UiTextarea,
   confirmDialog, promptDialog, pushToast,
@@ -209,18 +206,14 @@ function analyze() {
                   title="Paste its text" @click="paste = { ch: row.ch, text: '' }" />
                 <UiButton v-else intent="secondary" size="small" label="Review" :disabled="!row.script.analyzed"
                   :title="row.script.analyzed ? '' : 'Analyze it first'" @click="review" />
-                <DropdownMenuRoot>
-                  <DropdownMenuTrigger class="ev-kebab" aria-label="Chapter actions" title="Chapter actions">⋯</DropdownMenuTrigger>
-                  <DropdownMenuPortal>
-                    <DropdownMenuContent class="ev-menu" align="end" :side-offset="4" :collision-padding="8">
-                      <DropdownMenuItem class="ev-menu-item" @select="rename(row.ch)">✏️ Rename</DropdownMenuItem>
-                      <DropdownMenuItem class="ev-menu-item" :disabled="row.n === 1" @select="move(row.ch, -1)">↑ Move up</DropdownMenuItem>
-                      <DropdownMenuItem class="ev-menu-item" :disabled="row.n === rows.length" @select="move(row.ch, 1)">↓ Move down</DropdownMenuItem>
-                      <DropdownMenuSeparator class="ev-menu-sep" />
-                      <DropdownMenuItem class="ev-menu-item danger" @select="remove(row.ch)">🗑 Delete</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenuPortal>
-                </DropdownMenuRoot>
+                <UiMenu label="Chapter actions" trigger-class="ev-kebab" content-class="ev-menu" align="end">
+                  <template #trigger>⋯</template>
+                  <UiMenuItem class="ev-menu-item" @select="rename(row.ch)">✏️ Rename</UiMenuItem>
+                  <UiMenuItem class="ev-menu-item" :disabled="row.n === 1" @select="move(row.ch, -1)">↑ Move up</UiMenuItem>
+                  <UiMenuItem class="ev-menu-item" :disabled="row.n === rows.length" @select="move(row.ch, 1)">↓ Move down</UiMenuItem>
+                  <UiMenuSeparator class="ev-menu-sep" />
+                  <UiMenuItem class="ev-menu-item danger" @select="remove(row.ch)">🗑 Delete</UiMenuItem>
+                </UiMenu>
               </span>
             </template>
             <template #empty>No chapters in this view.</template>
