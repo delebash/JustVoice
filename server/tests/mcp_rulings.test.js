@@ -113,7 +113,7 @@ test("mcp_refuses_a_foreign_page_but_not_a_client_without_an_origin", async () =
 
 test("the_settings_curl_snippet_opens_a_session", async () => {
   // Ruling 14: replay Settings → MCP's curl line exactly as the user copies it.
-  const vue = readFileSync(path.join(SOURCE_ROOT, "src", "views", "SettingsView.vue"), "utf8");
+  const vue = readFileSync(path.join(SOURCE_ROOT, "src", "pages", "SettingsPage.vue"), "utf8");
   const line = /^\s*curl: `(curl [^`]+)`,$/m.exec(vue)?.[1];
   expect(line, "the curl snippet").toBeTruthy();
   expect(line).toContain("${api.serverUrl}/mcp");
