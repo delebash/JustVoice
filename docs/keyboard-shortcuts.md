@@ -9,6 +9,17 @@ Press `?` from anywhere in the app (when no input is focused) to open the in-app
 | `?` | Open / close this cheatsheet |
 | `Esc` | Close any open modal, drawer, dropdown, or this cheatsheet |
 
+## Tab rows, choices and sliders
+
+The same keys work on every page.
+
+| Keys | Action |
+|---|---|
+| `Tab` | Reaches the row of tabs on Settings once, on the open tab |
+| `←` / `→`, `Home` / `End` | Move between those tabs; `Enter` or `Space` opens the one you're on |
+| `←` / `→` in a row of choices (a persona's filters and type, …) | Move between the choices; `Enter` or `Space` picks one, and typing a choice's first letter picks it |
+| `←` / `→`, `Page Up` / `Page Down`, `Home` / `End` on a slider | One step, ten steps, either end |
+
 ## Studio Script — a chapter
 
 These are an extra: everything is also a click, and **⌨ Shortcuts** on the page
