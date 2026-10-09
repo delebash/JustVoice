@@ -27,6 +27,7 @@ import { getState } from "./app_state.js";
 import { seedWorkspace } from "./database/seed.js";
 import * as leftovers from "./engines/leftovers.js";
 import { defaultDataDir } from "./paths.js";
+import { networkHost } from "./sync.js";
 import { VERSION } from "./version.js";
 
 export const PROG = "justvoice-server";
@@ -169,9 +170,11 @@ export async function main(argv = process.argv.slice(2)) {
       } catch (e) {
         getLogger("justvoice.serve").warning(`leftover-engine sweep failed: ${e?.message ?? e}`);
       }
-      // CLI/env overrides sit on top of the settings-derived host/port.
+      // CLI/env overrides sit on top of the settings-derived host/port; sync's "let my other
+      // devices connect" (with a pairing token) widens the settings' host to the network
+      // (server/src/sync.js).
       const settings = getState().settings.get();
-      const host = args.host || settings.server.host;
+      const host = args.host || (networkHost() ?? settings.server.host);
       const port = args.port || settings.server.port;
       process.stdout.write(`JustVoice ${VERSION} — http://${host}:${port}/  (data: ${dd})\n`);
       return { app, host, port };

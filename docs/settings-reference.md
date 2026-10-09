@@ -21,6 +21,11 @@ need your attention; this page is the operator config under `/v1/settings`.)
 | `mcp` | One field: the default voice for agent `speak` calls — see [MCP server](mcp-server.md). |
 | `app` | `primary_use_case` (the Welcome pick; re-pick here) and app-level toggles. |
 
+Sync's settings — this computer's name, the cloud folder, how often it syncs, letting your other
+computers connect, the library's key and the paired computers — aren't a section here: they keep a
+row of their own, changed only through **Settings → Sync** (`PUT /v1/sync/settings`), so a save of
+the sections above can never put back an older library key. See [Sync](sync.md).
+
 ## Restart-required
 
 A few fields only take effect after a server restart — the API names them when

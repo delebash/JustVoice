@@ -68,6 +68,7 @@ import { router as voiceBundleRouter } from "./api/voice_bundle_api.js";
 import { router as voicePreviewRouter } from "./api/voice_preview_api.js";
 import { router as voicesRouter } from "./api/voices_api.js";
 import { router as webhooksRouter } from "./api/webhooks_api.js";
+import { flushSync, openSync, stopSync, router as syncRouter } from "./sync.js";
 import { AppState, setState } from "./app_state.js";
 import * as dspClient from "./audio/dsp_client.js";
 import { readAuth } from "./auth.js";
@@ -226,6 +227,9 @@ export async function createApp(dataDir = null) {
   initDb(dataDir);
   const state = new AppState(dataDir);
   setState(state);
+  // Sync on the projects, scripts, personas and lexicons (server/src/sync.js; docs/sync.md):
+  // the engine adopts what's there and records every change from here on.
+  openSync(dataDir);
 
   // Hardware detection is async in JavaScript, and the runtime's readers (installed build,
   // features, placement) read its memo — detected once, before anything reads them.
@@ -369,6 +373,12 @@ export async function createApp(dataDir = null) {
   app.register(capturesRouter);
   // The shared /v1/data backup/restore/reset (JW's donor wiring in data_admin.js).
   app.register(getDataRouter());
+  app.register(syncRouter); // /v1/sync/* — the sync product's routes (export, import, folder, pairing)
+  // Sync: stamp what the triggers noted after every request that may have written (the order
+  // edits were made in is the order their stamps run).
+  app.addHook("onResponse", async (req) => {
+    if (req.method !== "GET" && req.method !== "HEAD" && req.method !== "OPTIONS") flushSync();
+  });
   // The shared platform log + disk surface (the kit's LogsPanel + Storage read these).
   app.register(makeLogsRouter(PRODUCT));
   // JustVoice's app-specific stores ride the disk router's extras: "Speech models" is the
@@ -398,6 +408,7 @@ export async function createApp(dataDir = null) {
   // Shutdown — every open MCP session, then the managed engines (their runtime processes), then
   // the DSP program. Without it, a stopped server would leave engine processes holding memory.
   app.addHook("onClose", async () => {
+    stopSync();
     if (mcp !== null) {
       try {
         await mcp.close();

@@ -71,6 +71,7 @@
       { "slug": "run-modes",          "title": "Run modes (desktop · headless · admin)" },
       { "slug": "settings-reference", "title": "Settings reference" },
       { "slug": "backups-and-data",   "title": "Backups and data" },
+      { "slug": "sync",               "title": "Sync" },
       { "slug": "troubleshooting",    "title": "Troubleshooting" },
       { "slug": "keyboard-shortcuts", "title": "Keyboard shortcuts" }
     ]

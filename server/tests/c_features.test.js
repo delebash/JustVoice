@@ -220,6 +220,19 @@ test("bundle_round_trip_carries_the_clip", () => {
   expect(isFile(store.refWavPath(back.id))).toBe(true);
 });
 
+test("bundle_keeps_the_voice_id_on_another_computer", () => {
+  // Personas sync and voices don't (server/src/sync.js): a voice moved by hand must keep its id,
+  // or the synced personas built on it find nothing.
+  const here = new FakeVoices(tmpPath());
+  const v = here.create(rec());
+  here.writeRefWav(v.id, wav());
+  const [payload] = buildBundle(here, v.id);
+  const there = new FakeVoices(tmpPath());
+  expect(importBundle(there, payload, { knownEngines: new Set(["chatterbox"]) }).id).toBe(v.id);
+  // imported again where the id is taken: a new voice, as always
+  expect(importBundle(there, payload, { knownEngines: new Set(["chatterbox"]) }).id).not.toBe(v.id);
+});
+
 test("bundle_carries_the_model_and_skip_the_words", () => {
   // Until 2026-10-05 the file left the model out, so an imported Turbo clone spoke on the
   // engine's default model.

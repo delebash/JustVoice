@@ -8,6 +8,7 @@ export const SETTINGS_SECTION_IDS = [
   "general",
   "appearance",
   "backups",
+  "sync", // app section (not yet the family canon — docgen has no sync)
   "storage",
   "server",
   "logs",

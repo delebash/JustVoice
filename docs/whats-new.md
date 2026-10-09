@@ -2,6 +2,11 @@
 
 ## v0.1.0
 
+- **Sync (2026-10-08)** — your projects, personas and lexicons on every computer: through a
+  cloud folder (Dropbox, OneDrive…), by pairing two computers, or with a file carried by hand.
+  Every computer works offline and catches up when it can; the audio and the voices stay on each
+  computer, and a voice exported and imported keeps its identity, so a synced persona finds it.
+  In **Settings → Sync** ([Sync](sync.md))
 - **A file that can't be imported says why (2026-10-08)** — a damaged zip, an `.epub`
   missing its parts, or a JustWrite file whose fields have the wrong type was refused with a
   bare server error; each now says what is wrong (*zip file is damaged*, *EPUB has no

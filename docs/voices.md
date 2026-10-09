@@ -142,7 +142,9 @@ Every list that offers a voice elsewhere — the persona's page, the cache's **P
   another voice before they can speak.*
 
 **⤒ Import voice…** (in the toolbar, at the right) reads a `.jvvoice.zip` back
-in as a new voice on the same model. It refuses, saying why, a file whose
+in as a voice on the same model. On another computer it keeps the voice's
+identity, so the personas that [sync](sync.md) from the first one find it; on
+the computer that already has it, it comes in as a new voice beside it. It refuses, saying why, a file whose
 engine this install doesn't have (*install it first, then import again*), a
 blend for any engine but the one that mixed it, and a file missing what its
 voice is made of — a clone with no clip, a design with no description. (The

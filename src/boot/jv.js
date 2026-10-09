@@ -26,6 +26,7 @@ import { bootPrefs, ensureActiveProjectDefault } from "../services/prefs.js";
 import { openPath, openUrl, saveFile } from "../services/native.js";
 import { loadDoc, hasDoc, titleForSlug } from "../services/helpDocs.js";
 import { bootView } from "../services/bootState.js";
+import { watchSync } from "../services/syncWatch.js";
 import { useUiStore } from "../stores/ui.js";
 import { i18n } from "../i18n/index.js";
 
@@ -219,6 +220,8 @@ async function boot({ app, router, store: pinia }) {
   // so this normally decides "nothing to warm" and the app just opens; the
   // mechanics ship identically so flipping the toggle on is all it takes.
   await startWarmOnBoot();
+  // Another device's changes (sync) offer a reload (services/syncWatch.js).
+  watchSync();
   // Resolve the initial (lazy) route before mount so the first paint is the
   // real view, not an empty router-view. (main.js awaited router.isReady(); Quasar
   // installs the router only after this file, and isReady() waits on the navigation

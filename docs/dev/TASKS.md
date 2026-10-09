@@ -135,9 +135,26 @@ STATE:  DECIDED 2026-10-08 — the user: "your rec all go", on this as shown: "4
 WHY:    the same ways to sync as JustWrite (a cloud folder, pairing, a file by hand), so a project
         set up on one device carries to another; the audio is large and regenerable.
 NOT:    the audio, voice files or generated takes (the decision above).
-BUILT:  nothing yet.
-OPEN:   the tables that hold those four, the server side and Settings → Sync (the kit's SyncPanel),
-        the user docs.
+BUILT:  2026-10-08 — `server/src/sync.js` on the product's app layer (`@delebash/sqlite-sync/app`):
+        projects, scenes, blocks, speakers, speaker_corrections, personas, lexicons,
+        lexicon_entries; wired in `app.js`, `serve.js`, `data_admin.js` (a factory reset starts a
+        new library; a restore syncs as this device's change); Settings → Sync (the kit's SyncPanel,
+        `settingsSections.js`, `SettingsView.vue`); `src/services/syncWatch.js`; `docs/sync.md`.
+        Choices made under "your rec" where the decision had gaps (each reversible — say if not):
+        the file is `.jvsync`; speakers and corrections count as the script; a persona's picture
+        stays per computer, its voice choice syncs, and a voice exported and imported now keeps its
+        id (`voice_bundle.js`) so the persona finds it; the sync settings keep their own settings
+        row, not the /v1/settings tree (its PUT replaces the whole tree, which could put back an
+        older library key); a project's file carries what was deleted from it and every parent its
+        rows point at (a persona reading another project's lexicon brings that project's name
+        only) — the engine deletes a row whose parent is missing and syncs that delete back; a
+        notice with Reload when another device's changes land; Sync stays an app section, not the
+        family canon, until docgen has it.
+CHECKED: server 1061/1061 (`server/tests/sync.test.js`, the voice id in `c_features.test.js`) ·
+        unit 183/183 · lint · the guard · the smoke on a snapshot of your data · Settings → Sync
+        rendered, zero errors · your project by hand into a fresh JustVoice: 289 lines, 10
+        speakers, 10 personas equal, takes and generations stayed, the same file twice changed nothing.
+OPEN:   nothing.
 GO:     given 2026-10-08 ("your rec all go").
 
 ### JustVoice on Quasar — BUILT on branch `quasar`, merged by the user's go (2026-10-08)
@@ -178,7 +195,7 @@ OPEN:   1. DONE — merged into main by the user's go ("your rec all go", on "1.
         2. The desktop window has never loaded Inter / JetBrains Mono: styles.css @imports them
            from Google Fonts and the shell's CSP blocks it (JustWrite self-hosts its fonts).
            Not changed by the move.
-        3. JustVoice's sync (the kit's TASKS, the Quasar item; program step Q5).
+        3. DONE 2026-10-08 — JustVoice's sync (the item above).
 GO:     given 2026-10-08 ("we need to do the quasar conversion as well you have a go on that").
 
 ### Labs goes — Compare, Render and Audio, the settings grid, and the three routes behind them (decided 2026-10-08)

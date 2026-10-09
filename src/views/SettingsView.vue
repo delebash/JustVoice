@@ -7,7 +7,7 @@ import { confirmDialog } from "@delebash/llm-ui";
 import { AppearancePanel, DataManagement, FAMILY_LABELS, LogsPanel, SettingsShell, UiButton, UiInput, UiToggle, UiField, UiCheckbox, UiTag, UiSelect, UpdatesPanel, UiTable, UiSlider, canOpenPath, fmtBytes, openPath, refreshRunnerModels, renderHelpMarkdown, serverUrl, useAiTasksStore } from "@delebash/llm-ui";
 import RefineSectionToggles from "../components/lab/RefineSectionToggles.vue";
 import { loadDoc } from "../services/helpDocs.js";
-import { pickDirectory, storageGetRoot, storageRelocate } from "../services/native.js";
+import { hasShell, pickDirectory, storageGetRoot, storageRelocate } from "../services/native.js";
 import { useOnboarding } from "../stores/onboarding.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { usePersonasStore } from "../stores/personas.js";
@@ -19,6 +19,8 @@ import { CAPTURE_LANGUAGES, captureLanguageWord } from "../services/captureLangu
 import CacheView from "./CacheView.vue";
 import AudioChannelsView from "./AudioChannelsView.vue";
 import WebhooksView from "./WebhooksView.vue";
+// The family Sync screen — by path, not the kit barrel (it needs `qrcode`; SyncPanel.vue's header).
+import SyncPanel from "@delebash/llm-ui/components/SyncPanel.vue";
 
 // Appearance — the shared rows are the kit AppearancePanel; the Language
 // options are JV app content (docgen has no i18n) so they live here.
@@ -154,6 +156,17 @@ const BACKUP_OPTIONS = [{
   excludes: ["generations", "captures"],
   default: true,
 }];
+
+// ── Sync — the kit's SyncPanel over server/src/sync.js (docs/sync.md). The export picker's
+// projects come from the server with when each last changed (its script and cast included).
+// Pairing adds a token to the settings tree, so leaving the section reloads the tree — a later
+// save from this screen must not drop it.
+const syncProjects = ref([]);
+const syncPickFolder = hasShell() ? () => pickDirectory({ title: "Sync folder" }) : null;
+async function loadSyncProjects() {
+  const r = await api.safeRequest("/v1/sync/projects", null);
+  syncProjects.value = r?.projects ?? [];
+}
 // Initialize with the same shape the API returns so the sub-nav + every
 // field renders before /v1/settings comes back (or when the server is
 // offline). refresh() overwrites with real values when the server is up.
@@ -433,12 +446,18 @@ const APP_SECTION_LABELS = {
   cache: "Cache",
   channels: "Channels",
   webhooks: "Webhooks",
+  sync: "Sync",
 };
 const SUBS = SETTINGS_SECTION_IDS.map((id) => ({
   id,
   label: SEC[id] || APP_SECTION_LABELS[id] || id,
 }));
 const activeSub = ref("general");
+// Sync (above): the picker's projects on opening; the settings tree again on leaving.
+watch(activeSub, (now, before) => {
+  if (now === "sync") void loadSyncProjects();
+  if (before === "sync") void refresh();
+});
 
 // Deep links (#cache/#channels/#webhooks redirect here) hand the target
 // sub-tab over via sessionStorage — ids stay stable; the retired "changelog"
@@ -1152,6 +1171,17 @@ onMounted(() => {
         <div class="jv-card__header"><h3 class="jv-card__title">{{ SEC.backups }}</h3></div>
         <DataManagement app-name="JustVoice" :options="BACKUP_OPTIONS" />
       </div>
+    </div>
+
+    <!-- ─── Sync — the kit's SyncPanel over server/src/sync.js (docs/sync.md) ─── -->
+    <div v-if="activeSub === 'sync'" class="jv-section">
+      <SyncPanel
+        app-name="JustVoice"
+        :unit-noun="{ one: 'project', many: 'projects' }"
+        :units="syncProjects"
+        file-extension="jvsync"
+        :pick-folder="syncPickFolder"
+      />
     </div>
 
     <div v-show="activeSub === 'server'" class="jv-section">

@@ -25,6 +25,7 @@ import { generationsRoot, lexiconsRoot, personasRoot, projectsRoot, voicesRoot }
 import { LexiconStore } from "./storage/lexicons.js";
 import { PersonaStore } from "./storage/personas.js";
 import { VoiceStore } from "./storage/voices.js";
+import { flushSync, resetSync } from "./sync.js";
 
 const log = getLogger("justvoice.data_admin");
 
@@ -195,6 +196,10 @@ export async function runFactoryReset() {
   const current = state.settings.get();
   state.settings.set(construct(Settings, { server: current.server }));
 
+  // 5. Sync starts a new library on the new tables (this device keeps its identity; the old
+  // library's sync settings went with the database).
+  if (dbSession.cfg.handle !== null && dataDir !== null) resetSync(dataDir);
+
   log.warning(`FACTORY RESET executed — ${cleared} tables cleared`);
   return cleared;
 }
@@ -206,7 +211,11 @@ export function getDataRouter() {
     runReset: runFactoryReset,
     assetDirs: _assetDirs,
     // A restore replaces routing/models/engine config under the live app — same clean-slate
-    // rule as reset.
-    onReplaced: _stopAiEnginesBestEffort,
+    // rule as reset. The restore rewrote the synced tables on its own connection and the
+    // triggers noted it: stamp it now, so the restored projects sync as this device's change.
+    onReplaced: async () => {
+      await _stopAiEnginesBestEffort();
+      flushSync();
+    },
   });
 }

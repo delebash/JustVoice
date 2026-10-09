@@ -30,8 +30,9 @@ jobs:
             target: linux
     runs-on: ${{ matrix.platform }}
     steps:
-      # The app needs the family kit beside it (package.json: file:../just-llm-runner/server;
-      # quasar.config.js: ../just-llm-runner/ui), so both are checked out side by side.
+      # The app needs the family kit and the sync engine beside it (server/package.json:
+      # file:../../just-llm-runner/server and file:../../just-sqlite-sync; quasar.config.js:
+      # ../just-llm-runner/ui), so all three are checked out side by side.
       - uses: actions/checkout@v4
         with:
           path: JustVioce
@@ -39,6 +40,10 @@ jobs:
         with:
           repository: delebash/just-llm-runner
           path: just-llm-runner
+      - uses: actions/checkout@v4
+        with:
+          repository: delebash/just-sqlite-sync
+          path: just-sqlite-sync
 
       - uses: actions/setup-node@v4
         with:
@@ -48,6 +53,7 @@ jobs:
             JustVioce/package-lock.json
             JustVioce/src-electron/package-lock.json
             just-llm-runner/server/package-lock.json
+            just-sqlite-sync/package-lock.json
 
       # better-sqlite3 and koffi ship per-platform N-API prebuilds, so nothing native is
       # compiled here; electron-builder (Quasar's Electron mode, quasar.config.js) packages the
@@ -55,6 +61,9 @@ jobs:
       - name: Install the kit's server deps
         working-directory: just-llm-runner/server
         run: npm ci
+      - name: Install the sync engine's deps
+        working-directory: just-sqlite-sync
+        run: npm ci --omit=dev
       - name: Install deps
         working-directory: JustVioce
         run: npm ci

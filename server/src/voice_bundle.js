@@ -12,6 +12,11 @@
 //     mixed it, and the import refuses any other.
 //   * preset — NOT bundled: a preset ships with its engine — there is nothing of yours to carry.
 //
+// It carries the voice's id (since 2026-10-08): an import keeps it when this install has no voice
+// by that id, so a voice moved to another computer is the same voice there — the personas that
+// sync with it (server/src/sync.js; voices themselves don't sync) find it. Imported twice on one
+// computer, or a bundle from before, it gets a new id as always.
+//
 // It also carries the model the voice was made for (the capability row id, e.g.
 // "chatterbox-turbo") and Qwen3 Base's "skip the words" mode — until 2026-10-05 it left both
 // out, so an imported voice spoke on its engine's default model. A model this install doesn't
@@ -60,6 +65,7 @@ export function buildBundle(voicesStore, voiceId) {
 
   const manifest = {
     format: FORMAT,
+    id: rec.id,
     engine: rec.engine,
     model: rec.model ?? null,
     xvector_only: rec.xvector_only ?? false,
@@ -128,8 +134,10 @@ export function importBundle(voicesStore, payload, { knownEngines }) {
   }
 
   const now = utcNow();
+  // the voice's own id when it's free here and safe as a folder name; a new one otherwise
+  const ownId = typeof m.id === "string" && /^[A-Za-z0-9_-]{1,80}$/.test(m.id) && voicesStore.get(m.id) == null ? m.id : "";
   const rec = construct(VoiceRecord, {
-    id: "",
+    id: ownId,
     engine,
     model: m.model || null,
     xvector_only: Boolean(m.xvector_only),
