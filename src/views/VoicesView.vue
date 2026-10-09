@@ -913,7 +913,7 @@ function voiceTypeVariant(kind) {
   flex-wrap: wrap;
 }
 .voices-view__bench-field { flex: 0 1 62ch; min-width: 340px; }
-.voices-view__bench-field :deep(textarea) { width: 100%; }
+.voices-view__bench-field :deep(.ui-textarea) { width: 100%; }
 .voices-view__bench-hint { flex: 1 1 40ch; max-width: 64ch; font-size: 12px; line-height: 1.5; margin: 0 0 2px; }
 
 /* The play control belongs WITH the name, and the transport appears in

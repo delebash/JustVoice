@@ -396,5 +396,5 @@ onMounted(() => {
 .effects-modal__saveas {
   margin-top: 14px;
 }
-.effects-modal__saveas > input { flex: 1; }
+.effects-modal__saveas > .ui-input { flex: 1; }
 </style>
