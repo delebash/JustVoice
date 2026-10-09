@@ -15,6 +15,8 @@ its endpoint table is stale — trust `server/src/api/*` route literals.)
 The AI/LLM stack is shared with JustWrite: `@delebash/llm-runner` (the kit's Node package, `../just-llm-runner/server`) + `@delebash/llm-ui` (Vue).
 Only TTS and each app's feature catalog differ. A change in those repos lands here too.
 
+The family rules every family repo follows: @../just-llm-runner/docs/family-rules.md
+
 ## Commands
 
 ```bash
@@ -27,6 +29,7 @@ npm run build:spa                  # the browser build (dist/spa), what the head
 
 npm run server                     # headless; same UI at / (options after --)
 npm run lint && npm run test:server && npm run test:unit   # all must pass before a commit
+node ../just-llm-runner/scripts/check-family.js            # the family guard — must pass too
 ```
 
 The dev data folder is `<repo>/data` (gitignored) — the desktop app, `npm run server` and every
@@ -144,33 +147,13 @@ implementation lives in the kit. The one-off snapshot scripts predating the law 
 
 ## Invariants that bite
 
-- **No hardcoded operator-tunable values.** Every knob lives in settings (SQLite via `SettingsStore`) and is reachable through `PATCH /v1/settings`.
-- **SQLite (the kit's `platform/sql.js` on better-sqlite3) is the primary persistence layer**, and there is no renderer-side store. `settings.json` was folded into the `settings` table and renderer UI prefs into `prefs` (the 2026-06-19 storage rewrite; `SettingsStore` imports a legacy `settings.json` once). The tables are `server/src/database/models_schema.js`. Per-artifact JSON sidecars on disk are the exception and still live: `storage/atomic.js`'s `atomicWriteJson` (tmp + rename + fsync) writes voice manifests (`storage/voices.js`).
+- **Settings live in SQLite via `SettingsStore`**, reachable through `PATCH /v1/settings`; the database runs on the kit's `platform/sql.js` (better-sqlite3). `settings.json` was folded into the `settings` table and renderer UI prefs into `prefs` (the 2026-06-19 storage rewrite; `SettingsStore` imports a legacy `settings.json` once). The tables are `server/src/database/models_schema.js`. Per-artifact JSON sidecars on disk are the exception and still live: `storage/atomic.js`'s `atomicWriteJson` (tmp + rename + fsync) writes voice manifests (`storage/voices.js`).
 - **`server/src/models.js` is the source of truth for the wire shapes.** The Vue client fetches directly against those shapes; the JustWrite-facing boundary rules are `docs/dev/design-decisions.md` §3.
-- **Business logic never goes in the shell.** `src-electron/electron-main.js` only names this app's settings; the shell is plumbing — start the server, host the window, shut down cleanly. If you are writing logic there, it belongs in the server.
-- **Every file carries an SPDX-License-Identifier header.** Code taken from another project keeps its licence notice and gets an entry in `NOTICE.md`. Ship license is MIT.
 - **A mock is production minus the plumbing.** When a mock is asked for, the only thing it may omit is the wiring — no server, no real audio, no persistence. Everything else is the deliverable: **production copy only** (never design commentary, "still a proposal", or notes on what changed), **nav and controls that actually work**, **real enum values and labels verified in the code** (an invented-but-plausible option is worse than a missing one), **real states** — empty, blocked, stale, error — not just the happy path, **counts and names consistent across every screen**, **no leftovers from earlier drafts**, and the app's own tokens and density. Audit the whole file before publishing, not just the screen last edited.
 
   **A mock is built in the app itself** (decided 2026-10-04 — the HTML mock shared only the tokens, so screens built with the real controls never looked like it): a Vue page in `src/mock/` on the kit's own components and the app's own classes, with made-up data and no server, reached at `#/mock/...` under `npm run dev` only (`src/mock/routes.js`; a packaged build leaves it out). A shape the app doesn't have yet is promoted into `styles.css` first, so the real page reuses it. Before calling a screen done, screenshot the mock and the app at the same width and list every difference. Record: `docs/plans/2026-10-04-persona-voice-making.md` §2. The old HTML mock in `docs/plans/mock/` is **frozen** (decided 2026-10-04): no more edits. It stays only as the picture of screens not yet redone, and each is drawn fresh in the app when its work starts; anything new is drawn only in the app. The Personas list and persona page already are.
-- **Precedent before pattern** — before adding any UI surface, name the existing view that already solves that shape and use its canonical class; if nothing exists, promote a new canonical class into `styles.css` rather than a scoped one-off. The method, the class inventory and the 7-point conformance checklist are in `docs/dev/design-law.md`. Read it before UI work or a design sweep.
-- **Nothing gets hand-rolled that `@delebash/llm-ui` already ships.** Not just form fields — this rule covers **every** repeated UI surface: tables, sliders, progress, modals, tabs, empty states, toasts, dialogs, long-running tasks. The `Jv*` forks were deleted 2026-06-23; there is no local `components/ui/`.
-
-  **Check before you build.** The inventory is `../just-llm-runner/ui/src/common/index.js` and `ui/src/index.js` — read the export list, then read the component's own header comment, which documents its full prop/slot API. As of 2026-08-21 that includes:
-
-  | Shape | Use | Never |
-  |---|---|---|
-  | fields | `UiInput` `UiSecretInput` `UiTextarea` `UiNumber` `UiSelect` `UiMultiSelect` `UiCheckbox` `UiToggle` `UiSlider` `UiColorPicker` `UiField` | a raw `<input>`, `<select>`, `<textarea>` |
-  | buttons / labels | `UiButton` `UiTag` `UiChip` `UiSegmented` `Icon` | a raw `<button>` outside a control's internals |
-  | data grids | `UiTable` — sorting, filtering, pagination, `#empty`, per-cell and per-header slots, `:full-width-row`, `:row-class` | a hand-rolled `<table>` with its own sort state |
-  | progress | `UiProgress`, and `DownloadBar` + `createDownloadTask` for anything long-running | a bespoke `<div>` with a width percentage |
-  | shells / chrome | `SettingsShell` `PaneHeader` `Breadcrumb` `AppModal` `AppDialog` `EmptyState` `ConnectionError` `HelpDrawer` | a scoped copy of a strip or panel another view already has |
-  | services | `pushToast` `confirmDialog` `promptDialog` `openPath` `openExternal` `saveBlob` `languageName` `fmtBytes` | a local re-implementation |
-
-  **A gap is filled in the kit, not worked around locally.** If the kit component is 95 % right, add the missing prop *there* — every app gains it and the next adopter does not re-hit the wall. Two worked examples from 2026-08-21: `UiSlider` and `languageNames` did not exist and were added to the kit; `UiTable` could class a banner row but not a record row, so it gained `:row-class` rather than the consumer pushing state onto an inner div. Kit changes are additive by default — verify by building **both** consumer apps before committing.
-
-  **Adopting a kit component is not automatically a win.** Check what you lose: a hand-rolled surface often carries per-row state, a keyboard path, or a class hook the kit component has no slot for. Find that first and either close the gap in the kit or say plainly what regressed — silently dropping it is how `.row-orphan` ended up styling one cell.
-- **Reuse extends to this app's own services, not just the kit.** Before writing a fetch-and-poll, a task, or a channel, check `src/services/` — `ttsJobChannel.js` already wraps engine install/download in the kit's task shape. Two call sites building the same `createDownloadTask({…})` by hand is a copy, and copies share bugs: an engine load has no status endpoint, so both places fake the channel — and Retry therefore re-arms a poll loop that never reaches a terminal and never loads anything. One shared `makeEngineLoadTask` would let that be fixed once.
-- **Verify feature-parity claims against upstream file by file**, never from a summary. The failure mode is lifted-but-not-wired code — an auto-chunking module landed but was not imported by the generate API for weeks. Upstream library and model facts (licences, parameters, capabilities) get checked on the web, never recalled.
+- **Before UI work or a design sweep, read `docs/dev/design-law.md`** — the method, the class inventory and the 7-point conformance checklist. A shape no view has yet is promoted into `styles.css` as a canonical class, never a scoped one-off.
+- **Upstream library and model facts** (licences, parameters, capabilities) get checked on the web, never recalled.
 
 ## What goes where
 

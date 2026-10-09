@@ -6,6 +6,14 @@ The holding pen for unscheduled JustVoice ideas — same charter as JW's
 
 ---
 
+- **2026-10-09 · One shared engine-load task** — moved here from CLAUDE.md when its rules moved
+  to the kit's `docs/family-rules.md`; not re-checked against the code since it was written:
+  "Two call sites building the same `createDownloadTask({…})` by hand is a copy, and copies share
+  bugs: an engine load has no status endpoint, so both places fake the channel — and Retry
+  therefore re-arms a poll loop that never reaches a terminal and never loads anything. One
+  shared `makeEngineLoadTask` would let that be fixed once." (`src/services/ttsJobChannel.js`
+  already wraps engine install/download in the kit's task shape.)
+
 - **2026-10-08 · Rewrite every family app on the Quasar framework** — the user, mid-conversion:
   *"add it to notes that i think we should rewrite all apps using the quasar framework,
   starting with creating a new default quasar app and building the new apps, this makes it so
