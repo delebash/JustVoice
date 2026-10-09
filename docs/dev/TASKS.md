@@ -125,7 +125,22 @@ GO:     given 2026-08-17
 
 ## The next build
 
-### JustVoice on Quasar — BUILT on branch `quasar`, waiting for your merge (2026-10-08)
+### JustVoice's sync — projects, scripts, personas and lexicons (decided 2026-10-08)
+STATE:  DECIDED 2026-10-08 — the user: "your rec all go", on this as shown: "4. JustVoice sync:
+        what syncs? Lean: projects, scripts, personas and lexicons, but not the audio, voice files
+        or generated takes." So JustVoice syncs its projects, scripts, personas and lexicons with
+        the family's sync product (`@delebash/sqlite-sync`, JustWrite's TASKS "Sync — offline
+        first, by file, folder and server"); audio, voice files and generated takes stay on each
+        device.
+WHY:    the same ways to sync as JustWrite (a cloud folder, pairing, a file by hand), so a project
+        set up on one device carries to another; the audio is large and regenerable.
+NOT:    the audio, voice files or generated takes (the decision above).
+BUILT:  nothing yet.
+OPEN:   the tables that hold those four, the server side and Settings → Sync (the kit's SyncPanel),
+        the user docs.
+GO:     given 2026-10-08 ("your rec all go").
+
+### JustVoice on Quasar — BUILT on branch `quasar`, merged by the user's go (2026-10-08)
 STATE:  DECIDED 2026-10-08 — every family app moves to Quasar (the kit's TASKS, "Every family app
         moves to Quasar…", rec 1: "Quasar's own tooling for everything. Its Electron mode is the
         desktop app, calling the kit's shared function for the data folder, the server and the
@@ -158,8 +173,8 @@ CHECKED: unit 183/183 · server 1055/1055 · lint · the guard (kind quasar, no 
         the UI from the archive · ten screens against
         today's build at 1440×900: within 0.15 % of their pixels — the only difference is disabled
         buttons, Quasar's global disabled rule (the kit's TASKS, the Quasar item, OPEN 5).
-OPEN:   1. Your merge of `quasar` into main (close the app first; then `npm install` and once
-           `cd src-electron && npm install`).
+OPEN:   1. DONE — merged into main by the user's go ("your rec all go", on "1. Merge both quasar
+           branches?"); after pulling: `npm install` and once `cd src-electron && npm install`.
         2. The desktop window has never loaded Inter / JetBrains Mono: styles.css @imports them
            from Google Fonts and the shell's CSP blocks it (JustWrite self-hosts its fonts).
            Not changed by the move.
