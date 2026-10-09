@@ -64,7 +64,7 @@ async function main() {
     },
   });
   const runs = Number.parseInt(args.runs, 10);
-  const root = path.join(ROOT, "samples", args.sample);
+  const root = path.join(ROOT, "server", "samples", args.sample);
   const spec = JSON.parse(readFileSync(path.join(root, "discover-eval.json"), "utf8"));
   const book = runAdapter("justwrite", readFileSync(path.join(root, "book.json")), { filename: "book.json" });
 

@@ -12,7 +12,7 @@ import { AppModal } from "@delebash/llm-ui";
 
 const open = ref(false);
 
-// Map view IDs → shortcut bindings. App.vue's view ref isn't reachable
+// Map view IDs → shortcut bindings. AppShell.vue's view ref isn't reachable
 // here, so we group by category and let the user scan. Add new entries
 // as new shortcuts land.
 const GROUPS = [

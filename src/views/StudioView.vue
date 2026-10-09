@@ -530,7 +530,7 @@ async function onChaptersChanged() {
 }
 
 // Chapters workflow strip hands the target tab over (Cast/Script/Render/
-// Export). Consumed on EVERY entry: App.vue keeps views alive (KeepAlive),
+// Export). Consumed on EVERY entry: AppShell.vue keeps views alive (KeepAlive),
 // so mounted fires once per session — the handoff must ride onActivated
 // (which also fires after the initial mount) or it works at most once.
 // Returns the step asked for, or null. openProjectInStudio (services/

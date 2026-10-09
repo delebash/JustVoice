@@ -22,17 +22,17 @@ import {
   StandardScene,
 } from "./imports/standard_schema.js";
 import { construct } from "./models.js";
-import { SOURCE_ROOT } from "./paths.js";
 
 /**
  * The samples SHIPPED with the app, mirroring JustWrite's demo seed: `JUSTVOICE_SAMPLES_SRC`
- * when set (a packaged build points it at the bundled resource — that wiring is deferred),
- * else the repo-root `samples/`.
+ * when set, else the server package's own `samples/` (one folder above this file's `src/`) —
+ * `server/samples/` in a checkout, `node_modules/justvoice-server/samples/` in the packaged app
+ * (the Quasar move, 2026-10-08).
  */
 export function _bundledSamplesDir() {
   const env = process.env.JUSTVOICE_SAMPLES_SRC;
   if (env) return path.normalize(env);
-  return path.join(SOURCE_ROOT, "samples");
+  return path.resolve(import.meta.dirname, "..", "samples");
 }
 
 // The audiobook demo is JustWrite's own sample book (decided 2026-09-27) — the same

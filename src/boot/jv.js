@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
-import { createApp } from "vue";
-import { createPinia } from "pinia";
-import App from "./App.vue";
-import DictateWindow from "./components/DictateWindow.vue";
+// JustVoice — the renderer's start-up, as a Quasar boot file (app-structure §Q.4). Quasar creates
+// the app (root: App.vue), Pinia (stores/index.js) and the router (router/index.js), awaits this
+// file, then installs the router and mounts. Until the Quasar move (2026-10-08) this was
+// src/main.js, which created and mounted one of three roots itself; App.vue now picks the root
+// from services/bootState.js, and the sequence below is unchanged.
+import { defineBoot } from "#q-app";
 import {
   tooltipDirective,
   configureHelp,
-  ConnectionError,
   configureServerApi,
   configureFamilyLabels,
   configureFileSave,
@@ -15,21 +16,18 @@ import {
   installLlmUi,
   startWarmOnBoot,
 } from "@delebash/llm-ui";
-import { serverUrl } from "@delebash/llm-ui";
-import AttributionAutoPanel from "./components/lab/AttributionAutoPanel.vue";
-import RefineSectionToggles from "./components/lab/RefineSectionToggles.vue";
-import SmartAssignResult from "./components/lab/SmartAssignResult.vue";
-import { attributionLabAdapter } from "./services/attributionLab.js";
-import { refineLabAdapter } from "./services/refineLab.js";
-import { LAB_TEST_ACTIONS, LAB_TEST_SOURCES } from "./services/labTestData.js";
-import { bootPrefs, ensureActiveProjectDefault } from "./services/prefs.js";
-import { openPath, openUrl, saveFile } from "./services/native.js";
-import { loadDoc, hasDoc, titleForSlug } from "./services/helpDocs.js";
-import { useUiStore } from "./stores/ui.js";
-import { i18n } from "./i18n/index.js";
-import router from "./router/index.js";
-import "./styles/tokens.css";
-import "./styles/styles.css";
+import AttributionAutoPanel from "../components/lab/AttributionAutoPanel.vue";
+import RefineSectionToggles from "../components/lab/RefineSectionToggles.vue";
+import SmartAssignResult from "../components/lab/SmartAssignResult.vue";
+import { attributionLabAdapter } from "../services/attributionLab.js";
+import { refineLabAdapter } from "../services/refineLab.js";
+import { LAB_TEST_ACTIONS, LAB_TEST_SOURCES } from "../services/labTestData.js";
+import { bootPrefs, ensureActiveProjectDefault } from "../services/prefs.js";
+import { openPath, openUrl, saveFile } from "../services/native.js";
+import { loadDoc, hasDoc, titleForSlug } from "../services/helpDocs.js";
+import { bootView } from "../services/bootState.js";
+import { useUiStore } from "../stores/ui.js";
+import { i18n } from "../i18n/index.js";
 
 function isDictateView() {
   if (typeof window === "undefined") return false;
@@ -37,7 +35,7 @@ function isDictateView() {
 }
 
 // The whole shared LLM front end, in ONE call (the UI twin of the server's
-// install_llm; docgen's main.js is the donor shape). The KIT resolves the base
+// installLlm; docgen's main.js is the donor shape). The KIT resolves the base
 // now (2026-08-15) — `src/config.js` is deleted. It was a third shape for one
 // job: JustVoice had config.js, JustWrite had services/serverApi.js, docgen had
 // nothing and let the installer do it. docgen was right. `serverOverrideKey`
@@ -163,35 +161,26 @@ function wireKit(app) {
   });
 }
 
-async function boot() {
+async function boot({ app, router, store: pinia }) {
   // The dictate window (never created today — study §7.1) runs in a separate
   // window that must skip the main shell + server bootstrap (the main window owns
   // those) and render only the floating recording pill. URL?view=dictate
-  // triggers this branch.
+  // triggers this branch; App.vue renders the pill instead of the shell.
   if (isDictateView()) {
-    const app = createApp(DictateWindow);
     wireKit(app);
-    app.use(createPinia());
-    app.mount("#app");
+    bootView.value = "dictate";
     return;
   }
 
-  const app = createApp(App);
   wireKit(app);
 
-  // Thin-client guard: all data lives in the server. If it's unreachable, mount
-  // a connection-error screen instead of booting the app with empty/default
-  // state (which looks broken and silently fails to save).
+  // Thin-client guard: all data lives in the server. If it's unreachable, App.vue
+  // shows a connection-error screen instead of booting the app with empty/default
+  // state (which looks broken and silently fails to save). The kit's transport is
+  // already configured by wireKit() above, so the screen names the SAME base the
+  // app talks to — no second resolver to disagree with.
   if (!(await checkServer())) {
-    createApp(ConnectionError, {
-      appName: "JustVoice",
-      // The kit's transport is already configured by wireKit() above, so this
-      // is the SAME base the app talks to — no second resolver to disagree with.
-      serverUrl: serverUrl(""),
-      need: "load voices, projects, and settings",
-      devHint:
-        "Dev: it should start automatically with `npm run dev`, or run it yourself with `npm run server`, then retry.",
-    }).mount("#app");
+    bootView.value = "server-down";
     return;
   }
 
@@ -216,9 +205,7 @@ async function boot() {
       saveFile({ blob, suggestedName: filename, title, filterName, filterExt, defaultDir }),
   });
 
-  const pinia = createPinia();
-  app.use(pinia);
-  app.use(router);
+  // (Quasar installs Pinia before this file and the router after it.)
   app.use(i18n);
   app.directive("tooltip", tooltipDirective);
   // Force the ui store to init before mount so the persisted appearance (mode,
@@ -226,27 +213,34 @@ async function boot() {
   // every view — not lazily after a component first touches the store.
   useUiStore(pinia);
   // Warm the default local model BEFORE mount (the kit's startWarmOnBoot —
-  // family mechanic): App.vue's splash overlay is up on the very first Vue
+  // family mechanic): AppShell.vue's splash overlay is up on the very first Vue
   // paint, a seamless hand-off from index.html's static plate. JV's warm
   // default is OFF (ruling 2026-08-05: TTS owns the GPU until F4's arbiter),
   // so this normally decides "nothing to warm" and the app just opens; the
   // mechanics ship identically so flipping the toggle on is all it takes.
   await startWarmOnBoot();
   // Resolve the initial (lazy) route before mount so the first paint is the
-  // real view, not an empty router-view.
-  await router.isReady();
-  app.mount("#app");
+  // real view, not an empty router-view. (main.js awaited router.isReady(); Quasar
+  // installs the router only after this file, and isReady() waits on the navigation
+  // that installing starts — so the boot makes that first navigation itself, and
+  // the install then finds it done.)
+  await router.replace(router.options.history.location);
 }
 
-boot().catch((e) => {
-  // Boot must NEVER strand the static splash plate (docgen's 2026-08-05
-  // lesson: a boot throw left the plate on screen forever with nothing
-  // mounted). Whatever threw, tear the plate down and say so in place.
-  window.__bootErr = e;
-  document.getElementById("app-boot")?.remove();
-  const el = document.getElementById("app");
-  if (el && !el.childElementCount) {
-    el.textContent = `The app could not start: ${e?.message || e}`;
+export default defineBoot(async (ctx) => {
+  try {
+    await boot(ctx);
+  } catch (e) {
+    // Boot must NEVER strand the static splash plate (docgen's 2026-08-05
+    // lesson: a boot throw left the plate on screen forever with nothing
+    // mounted — and Quasar mounts nothing after a boot error either). Whatever
+    // threw, tear the plate down and say so in place.
+    window.__bootErr = e;
+    document.getElementById("app-boot")?.remove();
+    const el = document.getElementById("q-app");
+    if (el && !el.childElementCount) {
+      el.textContent = `The app could not start: ${e?.message || e}`;
+    }
+    throw e;
   }
-  throw e;
 });

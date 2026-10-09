@@ -18,11 +18,14 @@ Only TTS and each app's feature catalog differ. A change in those repos lands he
 ## Commands
 
 ```bash
-npm install                        # the speech runtime installs from the app
-npm run dev                        # builds ../audio.cpp, then Electron + Vite (dev port 1430, HMR 1431)
-npm run build                      # production installer (electron-builder → release/)
+npm install                        # the renderer + the server/ workspace; once: cd src-electron && npm install
+                                   # (the speech runtime installs from the app)
+npm run dev                        # builds ../audio.cpp, then Quasar's dev server (1430, HMR 1431) + Electron
+npm run build                      # production installer (Quasar's Electron mode → dist/electron/Packaged)
+npm run dev:spa                    # the renderer alone in a browser tab (start the server yourself)
+npm run build:spa                  # the browser build (dist/spa), what the headless server serves
 
-npm run server                     # headless; same UI at /ui/ (options after --)
+npm run server                     # headless; same UI at / (options after --)
 npm run lint && npm run test:server && npm run test:unit   # all must pass before a commit
 ```
 
@@ -45,8 +48,8 @@ half. Voice training (LoRA) was removed 2026-10-02 — no PyTorch anywhere.
 
 **`npm run dev` runs our audio.cpp checkout, not the release (since 2026-10-03).** Our fork
 (github.com/delebash/audio.cpp, branch `jv`) is checked out beside this repo at `../audio.cpp`,
-the way the kit sits at `../just-llm-runner`. `npm run dev` (`scripts/dev.js`) builds the
-checkout into `../audio.cpp/build/jv-dev` (only what changed; the first build sets the folder up
+the way the kit sits at `../just-llm-runner`. `npm run dev` (Quasar's `beforeDev` hook in
+`quasar.config.js`) builds the checkout into `../audio.cpp/build/jv-dev` (only what changed; the first build sets the folder up
 — CUDA 12.4 when installed, about 30 min — `scripts/audiocpp-dev.js`), then starts the app with
 `JUSTVOICE_AUDIOCPP_BUILD` naming that build, which the server runs instead of the pinned
 release, with every feature on (`server/src/engines/audiocpp/dev_build.js`). A failed build
@@ -62,8 +65,14 @@ the exe as Node (`ELECTRON_RUN_AS_NODE=1`) on `server/src/serve.js`. Never renam
 the exe.
 
 **The desktop shell is the kit's** (`@delebash/llm-runner/shell`, checked against Electron's
-security checklist 2026-10-08): `electron/main.js` only names this app's settings; the renderer
-reaches the shell through `src/services/native.js` alone (`window.appShell`).
+security checklist 2026-10-08): `src-electron/electron-main.js` only names this app's settings;
+the renderer reaches the shell through `src/services/native.js` alone (`window.appShell`).
+
+**A Quasar app** (since 2026-10-08 — the kit's `docs/app-structure.md` §Q is the layout): start-up
+code is the boot file `src/boot/jv.js` (no `main.js`); `src/App.vue` is the root (the shell
+`AppShell.vue`, the dictation pill, or the connection-error screen); the server is its own
+package (`server/package.json`, `justvoice-server`, an npm workspace) with the bundled samples
+in `server/samples/`.
 
 ## The renderer gate
 
@@ -71,7 +80,7 @@ The Playwright headless smoke is the gate for any renderer or GUI change:
 
 ```bash
 npm run server -- --host 127.0.0.1 --port 8741         # background — see below
-npm run build:vite
+npm run build:spa
 JV_BASE=http://127.0.0.1:8741 npm run smoke            # drives every view, asserts zero JS errors
 ```
 
@@ -83,10 +92,10 @@ it** (2026-10-04). The 8741 server opens the app's own data folder, where
 warm-on-boot is on, so the moment the smoke (or any browser) loads its UI it
 loads the default chat model into a SECOND llama-server — two copies of gemma on
 one 8 GB card; on 2026-10-04 it ran out of memory and fell back to the CPU. The
-app's server serves the same freshly built `dist/` at `/ui/`, so:
+app's server serves the same freshly built `dist/spa/` at `/`, so:
 
 ```bash
-npm run build:vite
+npm run build:spa
 JV_BASE=http://127.0.0.1:17494 npm run smoke           # the running app's own server
 ```
 
@@ -125,7 +134,7 @@ browsers), `~/.cache/ms-playwright` and `%LOCALAPPDATA%\ms-playwright`, across L
 macOS layouts, skips `headless_shell` builds (they lack the surface these scripts drive), and
 honours `JV_CHROME` above everything. Returning `undefined` is a SUCCESS value — it lets
 Playwright resolve from its own registry. Node-side tooling needs the kit checked out as a
-sibling — the same layout the vite alias already requires.
+sibling — the same layout the kit UI alias (quasar.config.js) already requires.
 
 Until 2026-07-29 every script carried its own Linux-only copy and the seven verify/parity scripts
 hardcoded `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`, pinned to a browser version — so
@@ -138,7 +147,7 @@ implementation lives in the kit. The one-off snapshot scripts predating the law 
 - **No hardcoded operator-tunable values.** Every knob lives in settings (SQLite via `SettingsStore`) and is reachable through `PATCH /v1/settings`.
 - **SQLite (the kit's `platform/sql.js` on better-sqlite3) is the primary persistence layer**, and there is no renderer-side store. `settings.json` was folded into the `settings` table and renderer UI prefs into `prefs` (the 2026-06-19 storage rewrite; `SettingsStore` imports a legacy `settings.json` once). The tables are `server/src/database/models_schema.js`. Per-artifact JSON sidecars on disk are the exception and still live: `storage/atomic.js`'s `atomicWriteJson` (tmp + rename + fsync) writes voice manifests (`storage/voices.js`).
 - **`server/src/models.js` is the source of truth for the wire shapes.** The Vue client fetches directly against those shapes; the JustWrite-facing boundary rules are `docs/dev/design-decisions.md` §3.
-- **Business logic never goes in the shell.** `electron/main.js` only names this app's settings; the shell is plumbing — start the server, host the window, shut down cleanly. If you are writing logic there, it belongs in the server.
+- **Business logic never goes in the shell.** `src-electron/electron-main.js` only names this app's settings; the shell is plumbing — start the server, host the window, shut down cleanly. If you are writing logic there, it belongs in the server.
 - **Every file carries an SPDX-License-Identifier header.** Code taken from another project keeps its licence notice and gets an entry in `NOTICE.md`. Ship license is MIT.
 - **A mock is production minus the plumbing.** When a mock is asked for, the only thing it may omit is the wiring — no server, no real audio, no persistence. Everything else is the deliverable: **production copy only** (never design commentary, "still a proposal", or notes on what changed), **nav and controls that actually work**, **real enum values and labels verified in the code** (an invented-but-plausible option is worse than a missing one), **real states** — empty, blocked, stale, error — not just the happy path, **counts and names consistent across every screen**, **no leftovers from earlier drafts**, and the app's own tokens and density. Audit the whole file before publishing, not just the screen last edited.
 
@@ -176,7 +185,7 @@ implementation lives in the kit. The one-off snapshot scripts predating the law 
 | Request/response shapes | `server/src/models.js` |
 | UI components and views | `src/components/`, `views/` |
 | Pinia stores (api, toasts, tasks) | `src/stores/` |
-| Desktop-only concerns (file picker, OS paths, tray) | the kit's shell, reached through `src/services/native.js`; `electron/main.js` names the settings |
+| Desktop-only concerns (file picker, OS paths, tray) | the kit's shell, reached through `src/services/native.js`; `src-electron/electron-main.js` names the settings |
 
 Renderer/server are larger here than in JustWrite, and a few stores are domain-rich (engines,
 takes, generation). That is scope, not drift.

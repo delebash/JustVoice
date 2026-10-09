@@ -130,7 +130,7 @@ async function main() {
   const runs = Number.parseInt(args.runs, 10);
   const show = Number.parseInt(args.show, 10);
 
-  const root = path.join(ROOT, "samples", args.sample);
+  const root = path.join(ROOT, "server", "samples", args.sample);
   const key = JSON.parse(readFileSync(path.join(root, "attribution-truth.json"), "utf8"));
   // A key may name its book file and the adapter that reads it — a plain-text book goes
   // through book_prose, the path a non-JustWrite import takes.

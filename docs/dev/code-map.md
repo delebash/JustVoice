@@ -628,7 +628,7 @@ the cast). A speaker's aliases (*Also called*) reach Analyze through
 ignore list is `Project.discover_ignored`, its own column because project PATCH
 replaces `metadata_json` wholesale. **Prompt test:** `npm run eval:discover`
 (`server/scripts/eval_discover.py`, scenario in
-`samples/the-ninth-facet/discover-eval.json`) scores the live prompt — or a
+`server/samples/the-ninth-facet/discover-eval.json`) scores the live prompt — or a
 `--system` candidate — against the real model, writing nothing.
 
 **Long chapters are read in pieces — `extraction/pieces.py`** (2026-09-28, plan
@@ -645,7 +645,7 @@ same way (no lead-in) and merges candidates by name. Knobs:
 **Test:** `npm run eval:attribution -- --whole --max-context N` forces splitting
 on the answer-keyed samples.
 
-**The answer-keyed samples** (`samples/<name>/attribution-truth.json`, read by
+**The answer-keyed samples** (`server/samples/<name>/attribution-truth.json`, read by
 `server/scripts/eval_attribution.py`): `the-ninth-facet` and `the-salt-iron-road`
 are JustWrite's own sample books; `the-speckled-band` (2026-09-29) is published
 prose — Conan Doyle's story, public domain, from Project Gutenberg — loaded as a

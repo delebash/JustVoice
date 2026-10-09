@@ -2,49 +2,51 @@
   "name": "justvoice",
   "version": "0.1.0",
   "description": "An open-source TTS server built for audiobook production, useful for any TTS workload.",
+  "productName": "JustVoice",
   "license": "MIT",
   "private": true,
   "type": "module",
-  "main": "electron/main.js",
+  "workspaces": [
+    "server"
+  ],
   "scripts": {
-    "dev:vite": "vite",
-    "build:vite": "vite build",
-    "preview:vite": "vite preview",
-    "dev": "node scripts/dev.js",
-    "build": "vite build && electron-builder",
+    "dev": "quasar dev -m electron",
+    "dev:spa": "quasar dev",
+    "build": "quasar build -m electron",
+    "build:spa": "quasar build",
+    "build:unpacked": "quasar build -m electron --skip-pkg",
+    "postinstall": "quasar prepare --silent",
     "server": "node scripts/node24.js server/src/serve.js serve",
-    "lint": "biome check .",
-    "screenshots": "node scripts/smoke_gui.js",
-    "test:unit": "vitest run",
     "test:server": "node scripts/node24.js node_modules/vitest/vitest.mjs run --config server/vitest.config.js",
+    "test:unit": "vitest run",
+    "lint": "biome check .",
+    "smoke": "node scripts/smoke.js",
+    "screenshots": "node scripts/smoke_gui.js",
+    "test": "node scripts/e2e.js",
     "eval:discover": "node scripts/node24.js server/scripts/eval_discover.js",
     "eval:attribution": "node scripts/node24.js server/scripts/eval_attribution.js",
-    "test": "node scripts/e2e.js",
-    "smoke": "node scripts/smoke.js",
     "test:server:js": "node scripts/node24.js node_modules/vitest/vitest.mjs run --config server/vitest.config.js"
   },
   "dependencies": {
     "@delebash/llm-runner": "file:../just-llm-runner/server",
-    "@fastify/multipart": "^10.1.2",
-    "@fastify/static": "^10.1.5",
-    "@modelcontextprotocol/sdk": "1.30.1",
-    "zod": "4.6.5"
+    "@quasar/extras": "^2.1.0",
+    "quasar": "^2.35.0"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.6",
     "@floating-ui/dom": "^1.7.6",
     "@playwright/test": "^1.61.0",
+    "@quasar/app-vite": "^3.10.2",
     "@tanstack/vue-table": "^8.21.3",
     "@vitejs/plugin-vue": "^6.0.7",
     "@vueuse/core": "^14.3.0",
-    "electron": "44.7.0",
-    "electron-builder": "26.15.3",
+    "autoprefixer": "^10.4.27",
     "jsdom": "^30.0.1",
     "marked": "^18.0.5",
     "pinia": "^3.0.4",
     "playwright": "^1.61.0",
+    "postcss": "^8.5.8",
     "reka-ui": "^2.10.0",
-    "vite": "^8.0.16",
     "vitest": "^4.1.10",
     "vue": "^3.5.38",
     "vue-i18n": "^11.4.6",
@@ -54,68 +56,8 @@
   "allowScripts": {
     "electron": true,
     "koffi": true,
-    "better-sqlite3": true
-  },
-  "build": {
-    "appId": "dev.justvoice.app",
-    "productName": "JustVoice",
-    "directories": {
-      "buildResources": "build",
-      "output": "release"
-    },
-    "files": [
-      "electron/**",
-      "server/src/**",
-      "dist/**",
-      "samples/**",
-      "package.json",
-      "!**/node_modules/better-sqlite3/{deps,src,build/Release/obj,build/Release/obj.target,build/deps}/**",
-      "!**/node_modules/better-sqlite3/build/Release/*.{pdb,iobj,ipdb,lib,exp}"
-    ],
-    "asarUnpack": [
-      "**/*.node",
-      "samples/**"
-    ],
-    "extraResources": [
-      {
-        "from": "build/launcher",
-        "to": ".."
-      }
-    ],
-    "win": {
-      "target": "nsis",
-      "icon": "build/icon.ico",
-      "executableName": "justvoice"
-    },
-    "nsis": {
-      "oneClick": false,
-      "perMachine": false,
-      "allowToChangeInstallationDirectory": true,
-      "include": "node_modules/@delebash/llm-runner/src/shell/installer.nsh"
-    },
-    "electronFuses": {
-      "runAsNode": true,
-      "enableCookieEncryption": true,
-      "enableNodeOptionsEnvironmentVariable": false,
-      "enableNodeCliInspectArguments": false,
-      "enableEmbeddedAsarIntegrityValidation": true,
-      "onlyLoadAppFromAsar": true,
-      "grantFileProtocolExtraPrivileges": false
-    },
-    "mac": {
-      "icon": "build/icon.icns",
-      "category": "public.app-category.music",
-      "extendInfo": {
-        "NSMicrophoneUsageDescription": "JustVoice records your voice when you clone it."
-      }
-    },
-    "linux": {
-      "icon": "build/icon.png",
-      "target": [
-        "AppImage",
-        "deb"
-      ],
-      "category": "AudioVideo"
-    }
+    "better-sqlite3": true,
+    "esbuild": true,
+    "@parcel/watcher": true
   }
 }

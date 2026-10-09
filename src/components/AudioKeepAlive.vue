@@ -9,7 +9,7 @@
   Browsers refuse to start audio before the user has interacted with the page,
   so a refused start is retried on the first click or key press, and whenever
   the window comes back into view. A refusal is logged at debug level only.
-  Renders nothing; mounted once by App.vue.
+  Renders nothing; mounted once by AppShell.vue.
 -->
 <script setup>
 import { onBeforeUnmount, onMounted } from "vue";

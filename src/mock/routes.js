@@ -7,7 +7,7 @@
 // never carries them. Open them under `npm run dev`.
 //
 // `meta.nav` keeps the rail on Personas; `meta.lede` keeps that rail item's
-// lede on the list (App.vue hides it on a sub-page otherwise).
+// lede on the list (AppShell.vue hides it on a sub-page otherwise).
 
 export const mockRoutes = [
   {

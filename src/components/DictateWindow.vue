@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: MIT -->
 <!--
   The dictation window: a separate, transparent, always-on-top window that
-  shows only the capture pill. main.js mounts this instead of the app when the
+  shows only the capture pill. App.vue (the root) renders this instead of the shell when the
   page is opened with ?view=dictate.
 
   Its one working cycle is an agent's speech. When the shell announces that an

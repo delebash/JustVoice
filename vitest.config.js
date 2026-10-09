@@ -18,6 +18,9 @@ export default defineConfig({
     alias: {
       "@renderer": resolve(__dirname, "src"),
       "@delebash/llm-ui": resolve(__dirname, "../just-llm-runner/ui/src"),
+      // Quasar's wrappers (defineBoot / defineRouter / defineStore) — the alias Quasar's own
+      // build defines (@quasar/app-vite's lib/config-tools.js).
+      "#q-app": "@quasar/app-vite",
     },
     // Same dedupe list as vite.config.js, same reason — keep the two in lock-step.
     dedupe: ["vue", "reka-ui", "@floating-ui/dom", "pinia", "vue-router", "vue-i18n", "marked", "vue-sonner", "@tanstack/vue-table", "@vueuse/core"],

@@ -27,7 +27,7 @@ export const FEATURE_CATALOG = [
   e("smart_assign", "Smart assign", "Bulk-assign detected speakers to personas.", "Analysis"),
   e("show_notes", "Show notes", "Chapter summaries for podcast descriptions.", "Analysis"),
   // SPEAKER ATTRIBUTION is a plain heading; its two routes (Guided · Direct) are routed cards
-  // under it, with the app's "Auto" panel row first (main.js registers it). Analyze's second
+  // under it, with the app's "Auto" panel row first (the boot file, src/boot/jv.js, registers it). Analyze's second
   // look (2026-10-05) is a plain card, so it sits ABOVE the attribution heading.
   e(
     "speaker_second_look",

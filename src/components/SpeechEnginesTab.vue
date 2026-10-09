@@ -586,7 +586,7 @@ async function downloadOnly(engine, variantId) {
 // Desktop-only: the SERVER resolved local_dir (speech cache / legacy HF
 // cache / tarball dir), so the layout knowledge never leaks into the client.
 // The OPENER is the kit's (configureExternal's openPath, wired once in
-// main.js) — the same door the LLM catalog's Open folder uses, one
+// boot/jv.js) — the same door the LLM catalog's Open folder uses, one
 // implementation for the family. It was `window.__TAURI__.shell.open` here,
 // which never fired: JV doesn't set `withGlobalTauri`, so that global is
 // undefined even in the desktop app and this item only ever toasted.

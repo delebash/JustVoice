@@ -23,15 +23,15 @@ jobs:
       matrix:
         include:
           - platform: windows-latest
-            args: --win
+            target: win32
           - platform: macos-latest
-            args: --mac --universal
+            target: darwin
           - platform: ubuntu-22.04
-            args: --linux
+            target: linux
     runs-on: ${{ matrix.platform }}
     steps:
       # The app needs the family kit beside it (package.json: file:../just-llm-runner/server;
-      # vite.config.js: ../just-llm-runner/ui), so both are checked out side by side.
+      # quasar.config.js: ../just-llm-runner/ui), so both are checked out side by side.
       - uses: actions/checkout@v4
         with:
           path: JustVioce
@@ -46,15 +46,20 @@ jobs:
           cache: npm
           cache-dependency-path: |
             JustVioce/package-lock.json
+            JustVioce/src-electron/package-lock.json
             just-llm-runner/server/package-lock.json
 
       # better-sqlite3 and koffi ship per-platform N-API prebuilds, so nothing native is
-      # compiled here; electron-builder packages the Electron the app pins.
+      # compiled here; electron-builder (Quasar's Electron mode, quasar.config.js) packages the
+      # Electron src-electron/package.json pins.
       - name: Install the kit's server deps
         working-directory: just-llm-runner/server
         run: npm ci
       - name: Install deps
         working-directory: JustVioce
+        run: npm ci
+      - name: Install the desktop app's deps (Electron, which the server's scripts run as Node)
+        working-directory: JustVioce/src-electron
         run: npm ci
 
       # Signing: electron-builder signs when its variables are set and builds unsigned (with a
@@ -70,7 +75,8 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           WIN_CSC_LINK: ${{ secrets.WINDOWS_CERT_PFX }}
           WIN_CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
-        run: npx vite build && npx electron-builder ${{ matrix.args }} --publish never
+        # Quasar's CLI run as node (app-structure §Q.6); -P never: publishing is the next step's job
+        run: node node_modules/@quasar/app-vite/bin/quasar.js build -m electron -T ${{ matrix.target }} -P never
 
       - name: Publish to the draft release
         working-directory: JustVioce
@@ -86,4 +92,4 @@ jobs:
             --notes "See the assets below to download and install this version." \
             || gh release view "$TAG" >/dev/null  # another platform's job created it first
           shopt -s nullglob
-          gh release upload "$TAG" release/*.exe release/*.dmg release/*.AppImage release/*.deb --clobber
+          gh release upload "$TAG" dist/electron/Packaged/*.exe dist/electron/Packaged/*.dmg dist/electron/Packaged/*.AppImage dist/electron/Packaged/*.deb --clobber

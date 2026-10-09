@@ -33,11 +33,11 @@
    ========================================================= */
 
 * { box-sizing: border-box; }
-html, body, #app {
+html, body, #q-app {
   /* height:100% chain (NOT 100vh) so the UI-size `zoom` on <html> scales the
      shell correctly. 100vh references the UNZOOMED viewport, so at zoom 0.9
      (Compact) the shell renders at 90% — dead space + broken scroll. Mirrors
-     JustWrite. */
+     JustWrite. #q-app is Quasar's mount point (the Quasar move, 2026-10-08). */
   height: 100%;
 }
 html, body {

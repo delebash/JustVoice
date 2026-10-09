@@ -565,7 +565,7 @@ async function deleteVoice(voice) {
 }
 
 onMounted(refresh);
-// Every app view runs under <KeepAlive> (App.vue), so onMounted fires
+// Every app view runs under <KeepAlive> (AppShell.vue), so onMounted fires
 // ONCE per session. Without this, coming back to Voices after loading an
 // engine elsewhere showed whatever was true the first time you opened it.
 onActivated(() => { void refresh(); takeTestLine(); });

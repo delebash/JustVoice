@@ -1,17 +1,30 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/justtts.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>JustVoice</title>
+    <title><%= productName %></title>
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1<% if (ctx.mode.cordova || ctx.mode.capacitor) { %>, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover<% } %>">
+    <link rel="icon" type="image/svg+xml" href="justtts.svg" />
+    <!-- The family's CSP (app-structure §Q.5). The page talks to its server — beside it on the
+         desktop (http://127.0.0.1:17494), or a server over the network for the thin client and
+         sync — so connect/img/media allow http(s) (audio and images come from the server);
+         scripts stay 'self' only. In development Quasar's HMR also needs ws://. The desktop shell
+         sends its own CSP header for app:// (the kit's server/src/shell/main.js); both apply.
+         JustVoice adds Google Fonts (styles.css @imports Inter and JetBrains Mono): a browser
+         loads them, as before the Quasar move; the desktop window's header still blocks them,
+         as it did before. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'<% if (ctx.mode.capacitor) { %> 'wasm-unsafe-eval'<% } %>; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: http: https:; media-src 'self' data: blob: http: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' http: https:<% if (ctx.dev) { %> ws://localhost:* ws://127.0.0.1:*<% } %>; worker-src 'self' blob:;"
+    />
     <!-- First-paint boot plate (family pattern, adopted for F1 2026-08-05) — the
          minimal brand plate (name + logo on the brand background, ruling 5: no
          artwork invention), shown instantly before the JS bundle parses. The SAME
-         plate is App.vue's .splash, so boot is ONE continuous image: static plate
+         plate is AppShell.vue's .splash, so boot is ONE continuous image: static plate
          → Vue splash (model load, when warm is on) → shell. KEEP the palette +
-         layout IN SYNC with styles.css .splash. Vue's mount() replaces #app's
-         content (the app, or the connection-error screen). -->
+         layout IN SYNC with styles.css .splash. App.vue removes it when it mounts
+         (the app, the dictation pill, or the connection-error screen). -->
     <style>
       #app-boot {
         position: fixed; inset: 0; display: flex; flex-direction: column;
@@ -27,12 +40,10 @@
     </style>
   </head>
   <body>
-    <div id="app">
-      <div id="app-boot">
-        <img src="/justtts.svg" alt="" />
-        <div>JustVoice</div>
-      </div>
+    <div id="app-boot">
+      <img src="justtts.svg" alt="" />
+      <div>JustVoice</div>
     </div>
-    <script type="module" src="/src/main.js"></script>
+    <!-- quasar:entry-point -->
   </body>
 </html>

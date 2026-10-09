@@ -4,11 +4,30 @@
 // THE BOOT SMOKE (parity batch slice 11) — the skeleton (stub environment +
 // mount assertion + why this gate exists: the TDZ-crash class, which JV hit
 // live 2026-08-05) is the kit's registerBootSmoke; this file keeps JustVoice's
-// parts: the fetch route map and the boot-error probe.
+// parts: the start-up, the fetch route map and the boot-error probe.
+//
+// The start-up is Quasar's (app-structure §Q.4): the root App.vue, Pinia from
+// stores/index.js, the router from router/index.js, the boot file awaited, then
+// the router installed and the app mounted — the steps Quasar's generated client
+// entry takes, run here by hand because that entry only exists inside a Quasar
+// build. No Quasar plugin: the app renders no Quasar component yet.
 import { registerBootSmoke } from "@delebash/llm-ui/test/bootSmoke.js";
 
 registerBootSmoke({
-  boot: () => import("./main.js"),
+  boot: async () => {
+    const { createApp } = await import("vue");
+    const { default: App } = await import("./App.vue");
+    const { default: createStore } = await import("./stores/index.js");
+    const { default: createRouter } = await import("./router/index.js");
+    const { default: jvBoot } = await import("./boot/jv.js");
+    const app = createApp(App);
+    const store = await createStore({});
+    app.use(store);
+    const router = await createRouter({ store });
+    await jvBoot({ app, router, store });
+    app.use(router);
+    app.mount("#app");
+  },
   routes: {
     "/v1/health": { status: "ok", product: "justvoice" },
     "/v1/prefs": {}, // the prefs DOCUMENT is the top-level object (empty = defaults)

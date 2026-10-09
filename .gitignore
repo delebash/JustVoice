@@ -33,10 +33,16 @@ Thumbs.db
 .env.local
 *.log
 
-# Build artifacts — electron-builder's output (build/ holds the icons and the launcher:
-# tracked, as JustWrite's)
-release/
-dist-electron/
+# Quasar's generated files and its build output (dist/spa, dist/electron, dist/capacitor);
+# build/ holds the headless launcher (tracked, as JustWrite's)
+.quasar/
+/quasar.config.*.temporary.compiled*
+
+# The phone app: Capacitor's web copy, its packages, and the native projects it generates
+/src-capacitor/www
+/src-capacitor/node_modules
+/src-capacitor/android
+/src-capacitor/ios
 
 # Engine model weights — downloaded at runtime from HuggingFace; not source
 server/justvoice/engines/*/models/

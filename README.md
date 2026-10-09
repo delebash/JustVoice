@@ -43,9 +43,11 @@ npm run dev
 ```
 
 The shared AI stack (`@delebash/llm-runner`) comes from the kit checked out beside this repo
-(`../just-llm-runner`), as `package.json` names it. `npm run dev` opens the desktop app on
-Vite's dev server with hot reload; its server runs on the dev data folder `data/` in the
-checkout. `npm run build` makes the installer (`release/`).
+(`../just-llm-runner`), as `server/package.json` names it. `npm install` installs the app and its
+server (an npm workspace); once, also `cd src-electron && npm install` (the desktop app's
+Electron). `npm run dev` opens the desktop app on Quasar's dev server with hot reload; its server
+runs on the dev data folder `data/` in the checkout. `npm run build` makes the installer
+(`dist/electron/Packaged/`).
 
 `npm run dev` runs the speech runtime from our audio.cpp source when it is checked out beside
 this repo (`git clone -b jv https://github.com/delebash/audio.cpp ../audio.cpp`): it builds
@@ -79,16 +81,21 @@ is nothing else to install; the app is the installer. See
 
 ```
 .
-├── index.html                 # Vite entry — the repo root is the Vite root
+├── quasar.config.js           # The one build config (Quasar): the renderer, the desktop app, the phone app
+├── index.html                 # The page: the CSP and the static boot plate
 ├── public/                    # Copied verbatim into the build
-├── electron/main.js           # The desktop app: the kit's shared Electron shell with this app's settings
-├── build/                     # Icons and the headless launcher the installer ships
-├── src/                       # Vue 3 + Pinia + Vite SPA
+├── src-electron/              # The desktop app: electron-main.js is the kit's shared Electron shell with
+│                              #   this app's settings; electron-assets/icons/ the app and tray icons
+├── src-capacitor/             # The phone app (Quasar's Capacitor mode)
+├── build/launcher/            # The headless launcher the installer ships
+├── src/                       # Vue 3 + Pinia renderer (a Quasar app): boot/jv.js starts it, App.vue is the root
 │   ├── components/            # ListPane, CapturePill, AudioKeepAlive, etc.
 │   ├── stores/                # Pinia: api, server, player, ui, audioChannel, generation (AI tasks live in the kit's store)
 │   ├── services/              # HTTP client per endpoint group; native.js is the one door to the desktop shell
 │   └── views/                 # One per top-level tab
-├── server/                    # The Node server (Fastify + SQLite) — the brain
+├── server/                    # The Node server (Fastify + SQLite) — the brain; its own package
+│   │                          #   (justvoice-server), which the desktop app installs
+│   ├── samples/               # The bundled sample books
 │   ├── src/
 │   │   ├── api/               # /v1/* HTTP routes, one file per area
 │   │   ├── audio/             # WAV headers, the analyzer, chunked TTS, the DSP program's client
@@ -139,5 +146,5 @@ See `project_licensing_attribution` in the memory layer for the policy + templat
 
 - **Server and app**: Biome for lint (`npm run lint`), vitest for tests (`npm run test:server`, `npm run test:unit`). Run them before opening a PR.
 - **Vue**: prefer single-file components. CSS variables for design tokens (no Tailwind).
-- **Desktop shell**: `electron/main.js` only names this app's settings; the shell is the kit's. Business logic lives in the server.
+- **Desktop shell**: `src-electron/electron-main.js` only names this app's settings; the shell is the kit's. Business logic lives in the server.
 - **Docs are mandatory**: every feature ships with a `FEATURES.md` section (what/when/how/examples/troubleshooting).

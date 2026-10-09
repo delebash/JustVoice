@@ -161,7 +161,7 @@ onMounted(() => {
 
 // Home's Start-something pills (and Chapters' "1 Import") hand their ask over
 // via sessionStorage. Consumed on EVERY entry: this view is kept alive
-// (App.vue), so a mounted-time read fires once per session and the second
+// (AppShell.vue), so a mounted-time read fires once per session and the second
 // "start an audiobook" click of a session would open nothing.
 onActivated(() => {
   try {

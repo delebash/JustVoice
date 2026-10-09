@@ -13,7 +13,7 @@ import { detectMarks, segmentParagraphs, splitIntoParagraphs } from "../src/extr
 import { runAdapter } from "../src/imports/index.js";
 
 const CAST = new Set(["marius", "june", "renn", "narrator"]);
-const SAMPLES = path.resolve(import.meta.dirname, "..", "..", "samples");
+const SAMPLES = path.resolve(import.meta.dirname, "..", "samples"); // the server package's bundled samples
 
 const say = (i, who, text = "“Line.”", { p = null, source = "llm", llm = null } = {}) =>
   new Line({ id: `d${i}`, speaker: who, text, spoken: true, source, paragraph: p === null ? i : p, llm_speaker: llm });

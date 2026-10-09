@@ -23,7 +23,7 @@ import {
 } from "../src/extraction/segmentation.js";
 import { runAdapter } from "../src/imports/index.js";
 
-const SAMPLES = path.resolve(import.meta.dirname, "..", "..", "samples");
+const SAMPLES = path.resolve(import.meta.dirname, "..", "samples"); // the server package's bundled samples
 const BOOK = path.join(SAMPLES, "the-speckled-band", "book.txt");
 
 const _spoken = (text) =>

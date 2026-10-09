@@ -45,7 +45,7 @@ const tasks = useAiTasksStore();
 // ── Workspace focus (primary use case) ──────────────────────────────
 // The welcome modal asks this once; this card is the only place to
 // change it afterwards. Writing through onboarding.set() persists to
-// settings.json AND live re-filters the sidebar (App.vue visibleFor).
+// settings.json AND live re-filters the sidebar (AppShell.vue visibleFor).
 const onboarding = useOnboarding();
 const USE_CASES = [
   { id: "audiobook", label: "Audiobooks" },
@@ -443,7 +443,7 @@ const activeSub = ref("general");
 // Deep links (#cache/#channels/#webhooks redirect here) hand the target
 // sub-tab over via sessionStorage — ids stay stable; the retired "changelog"
 // id keeps landing on the section that replaced it. Consumed on EVERY entry:
-// this view is kept alive (App.vue), so a setup-time read fires once per
+// this view is kept alive (AppShell.vue), so a setup-time read fires once per
 // session and later deep links would land on whatever sub was left open.
 onActivated(() => {
   try {
@@ -852,7 +852,7 @@ function dropToken(t) {
 // 2026-06-13, W4 revision: the ring dies with the process — a crash or
 // boot hang is exactly when logs are needed, so the server now writes
 // {data_dir}/logs/justvoice.log and exposes data_dir in system info).
-// The opener is the kit's (configureExternal's openPath, wired in main.js) —
+// The opener is the kit's (configureExternal's openPath, wired in boot/jv.js) —
 // it read `window.__TAURI__.shell` until 2026-10-05, which JustVoice never
 // has (no `withGlobalTauri`), so the button only ever said it needs the app.
 async function openLogFile() {

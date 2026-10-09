@@ -4,7 +4,7 @@
 // The family shape (2026-08-15), same file, same job in all three apps: ordinary module
 // exports, one per shell command, so a command's NAME as a string exists in exactly ONE
 // place. Since the Electron move (2026-10-08) the shell is the kit's shared Electron main
-// module (`@delebash/llm-runner/shell`, configured in electron/main.js); this file is the
+// module (`@delebash/llm-runner/shell`, configured in src-electron/electron-main.js); this file is the
 // ONLY reader of its one preload object, `window.appShell` (`invoke(command, args)`,
 // `on(event, fn)`). These throw on failure where noted and callers use try/catch; a
 // cancelled dialog resolves null. Outside the desktop app (Vite dev in a browser, the
@@ -30,7 +30,7 @@ export function pickDirectory({ title, defaultPath } = {}) {
 
 /**
  * Save-as for binary blobs (2026-10-07, from JustWrite — the same function): every export
- * comes through here via the kit's `saveBlob` (configureFileSave in main.js). The bytes cross
+ * comes through here via the kit's `saveBlob` (configureFileSave in boot/jv.js). The bytes cross
  * to the shell as one Uint8Array (structured clone). Resolves `{ ok, path }`, or null if the
  * user cancelled; throws anything else.
  */

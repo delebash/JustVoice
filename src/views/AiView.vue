@@ -5,7 +5,7 @@
   LLM providers · Speech engines · Routing by feature · Usage · AI engine
   console. The providers tab is the kit's ("Providers & models" — connections
   + the local model catalog together, the kit's default shape), relabeled
-  JV-only via the labels feed (two provider kinds need naming — see main.js);
+  JV-only via the labels feed (two provider kinds need naming — see boot/jv.js);
   Speech engines is the one speech surface with its own Local/Online pair
   (engines + self-hosted under Local, cloud APIs under Online). The
   four-tab split this replaced (separate TTS-providers and LLM-models tabs)
@@ -15,7 +15,7 @@
   engines tab) and ?action=<featureAction> (the old #speakerlab redirects to
   ?tab=features&action=speaker_attribution.guided — the Lab there IS the
   Speaker Lab now, running the real pipeline via the labAdapters seam;
-  main.js registers it). The KIT wizard runs here, voiced by main.js's
+  boot/jv.js registers it). The KIT wizard runs here, voiced by boot/jv.js's
   quickSetupCopy and named "LLM engine setup" by the labels feed (ruling 6).
 -->
 <script setup>
@@ -49,7 +49,7 @@ const initialAction = ref(String(route.query.action || ""));
 // or the wizard reopens on every remount and on Back.
 const openWizardOnce = ref(route.query.quicksetup === "1");
 
-// This view is kept alive (App.vue's KeepAlive), so the setup reads above fire
+// This view is kept alive (AppShell.vue's KeepAlive), so the setup reads above fire
 // once per session — a LATER #engines / #speakerlab redirect arrives as a query
 // on the same route and must be re-consumed here. The kit area reacts to the
 // prop updates (its own deep-link watcher, 2026-08-06).

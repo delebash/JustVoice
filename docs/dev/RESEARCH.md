@@ -1305,7 +1305,7 @@ extraction, speakers, smart_assign, project_export, export_jobs, bulk_delete, _s
   7,217 MiB (Kokoro + the warm-on-boot chat model) → 479 MiB after quitting, no runtime,
   DSP or llama process left, the port closed.
 - **The clean-room rewrite, checked** (2026-10-08 — TASKS, the Electron item's clean-room
-  entries; JV `64edd25`):
+  entries; JV `64edd25`; the plan: [`docs/plans/2026-10-08-clean-room-rewrite.md`](../plans/2026-10-08-clean-room-rewrite.md)):
   - Refinement, old vs new, through production's own `refineTranscript` on the real data
     folder's model (gemma-4-26b-a4b-qat) and settings, 22 dictations (14 made up + the old and
     new refine Lab samples): with all three toggles on, both 19/22 (the 3 misses are the

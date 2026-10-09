@@ -11,12 +11,12 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# The app needs the family kit beside it (package.json: file:../just-llm-runner/server;
-# vite.config.js: ../just-llm-runner/ui), so every job checks both out side by side.
+# The app needs the family kit beside it (server/package.json: file:../../just-llm-runner/server;
+# quasar.config.js: ../just-llm-runner/ui), so every job checks both out side by side.
 jobs:
   # ── Renderer (Vue + Vite) ─────────────────────────────────────────────────
   renderer:
-    name: Renderer — Biome, unit tests, Vite build
+    name: Renderer — Biome, unit tests, Quasar build
     runs-on: ubuntu-latest
     if: >
       github.event_name != 'pull_request' ||
@@ -35,6 +35,7 @@ jobs:
           cache: npm
           cache-dependency-path: |
             JustVioce/package-lock.json
+            JustVioce/src-electron/package-lock.json
             just-llm-runner/server/package-lock.json
       - name: Install the kit's server deps
         working-directory: just-llm-runner/server
@@ -50,7 +51,7 @@ jobs:
         run: npm run test:unit
       - name: Build renderer
         working-directory: JustVioce
-        run: npx vite build
+        run: node node_modules/@quasar/app-vite/bin/quasar.js build
 
   # ── Node server ───────────────────────────────────────────────────────────
   server:
@@ -73,12 +74,16 @@ jobs:
           cache: npm
           cache-dependency-path: |
             JustVioce/package-lock.json
+            JustVioce/src-electron/package-lock.json
             just-llm-runner/server/package-lock.json
       - name: Install the kit's server deps
         working-directory: just-llm-runner/server
         run: npm ci
       - name: Install deps
         working-directory: JustVioce
+        run: npm ci
+      - name: Install the desktop app's deps (Electron, which the server's scripts run as Node)
+        working-directory: JustVioce/src-electron
         run: npm ci
       # The tests that need the audio.cpp DSP program (audiocpp_dsp) skip without it; CI has
       # no audio.cpp build.

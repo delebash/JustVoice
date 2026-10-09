@@ -125,6 +125,47 @@ GO:     given 2026-08-17
 
 ## The next build
 
+### JustVoice on Quasar — BUILT on branch `quasar`, waiting for your merge (2026-10-08)
+STATE:  DECIDED 2026-10-08 — every family app moves to Quasar (the kit's TASKS, "Every family app
+        moves to Quasar…", rec 1: "Quasar's own tooling for everything. Its Electron mode is the
+        desktop app, calling the kit's shared function for the data folder, the server and the
+        tray. Its Capacitor mode is the phone app."); the go: "we need to do the quasar conversion
+        as well you have a go on that". The order of work and its status: the kit's
+        `docs/plans/2026-10-08-sync-and-quasar-program.md`, step Q5; the layout: the kit's
+        `docs/app-structure.md` §Q.
+BUILT:  2026-10-08, on branch `quasar` (worktree `../justvoice-quasar` — this checkout runs your
+        app, so the move stays off main until you merge): `quasar.config.js` (the kit UI alias;
+        dev ports 1430 / HMR 1431; the audio.cpp dev build moved from `scripts/dev.js` into
+        Quasar's `beforeDev` hook — a failed build still stops `npm run dev`, and
+        JUSTVOICE_AUDIOCPP_BUILD still reaches the server; electron-builder with the old
+        installer's settings — NSIS, the fuses, the launcher, the microphone description, a
+        universal macOS .dmg; the app's stylesheets in Quasar's `css` list); `src-electron/` (the
+        kit's `runDesktopApp`, the same settings as `electron/main.js`; icons moved from `build/`);
+        `src-capacitor/` (dev.justvoice.app); `src/main.js` → the boot file `src/boot/jv.js` (the
+        same sequence, its never-strand-the-plate guard kept), the root `src/App.vue` (the shell,
+        renamed `AppShell.vue`, the dictation pill, or the connection-error screen);
+        `router/routes.js`; `stores/index.js`; `src/css/quasar.variables.scss` (the kit's theme);
+        `server/` its own package (`justvoice-server`, an npm workspace) with the samples in
+        `server/samples/`; the headless UI from `dist/spa` (the app folder when packaged); the
+        height chain on Quasar's `#q-app`; the CSP `<meta>` (Google Fonts allowed, so a browser
+        still loads Inter as before — the desktop window's header blocks it, as it always has);
+        CI and the release workflow on Quasar's CLI; the docs.
+CHECKED: unit 183/183 · server 1055/1055 · lint · the guard (kind quasar, no new violations) · the
+        smoke on a snapshot of your data (every view, zero JS errors) · dev mode (the audio.cpp
+        build ran in `beforeDev`, the runtime row reads `dev · b1c8103f`, the window on :1430,
+        routes, zero errors) · the installer builds; the packaged app on a copy of your data
+        (`app://`, the bridge, the server, five routes, zero errors) · the headless launcher serves
+        the UI from the archive · ten screens against
+        today's build at 1440×900: within 0.15 % of their pixels — the only difference is disabled
+        buttons, Quasar's global disabled rule (the kit's TASKS, the Quasar item, OPEN 5).
+OPEN:   1. Your merge of `quasar` into main (close the app first; then `npm install` and once
+           `cd src-electron && npm install`).
+        2. The desktop window has never loaded Inter / JetBrains Mono: styles.css @imports them
+           from Google Fonts and the shell's CSP blocks it (JustWrite self-hosts its fonts).
+           Not changed by the move.
+        3. JustVoice's sync (the kit's TASKS, the Quasar item; program step Q5).
+GO:     given 2026-10-08 ("we need to do the quasar conversion as well you have a go on that").
+
 ### Labs goes — Compare, Render and Audio, the settings grid, and the three routes behind them (decided 2026-10-08)
 STATE:  DECIDED 2026-10-08 — the user asked "do we really need the lab? render and compare functions
         are basically already part of the render page and i think we can already apply different
