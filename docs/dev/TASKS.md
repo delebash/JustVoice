@@ -125,6 +125,18 @@ GO:     given 2026-08-17
 
 ## The next build
 
+### The server moves to Hono (decided 2026-10-09)
+STATE:  DECIDED 2026-10-09, family-wide — the decision with the user's words is the kit's TASKS,
+        "The family's servers move to Hono — one server that runs in Node and in a worker".
+WHY:    one server that runs in Node (desktop, headless) and in a worker (phone, offline web page)
+        with nothing imitating Node; the kit's item has the full reasons.
+NOT:    the kit's item.
+BUILT:  nothing yet — the plan: `../just-llm-runner/docs/plans/2026-10-09-hono-standard.md`.
+OPEN:   JustVoice's slice (plan §7, slice 6): 42 route files, 190 routes, MCP on `@hono/mcp`, the
+        captures upload on busboy, the server's tests — after the kit's slice and the user's word on
+        the plan's §3 and §5.
+GO:     given 2026-10-09 (the kit's item).
+
 ### JustVoice's sync — projects, scripts, personas and lexicons (decided 2026-10-08)
 STATE:  DECIDED 2026-10-08 — the user: "your rec all go", on this as shown: "4. JustVoice sync:
         what syncs? Lean: projects, scripts, personas and lexicons, but not the audio, voice files
