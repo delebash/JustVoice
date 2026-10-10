@@ -270,6 +270,31 @@ OPEN:   1 — the user's listening, then the trainer question; 7 — not built: 
         stale — asked again; 4 — asked again.
 GO:     given 2026-10-09 ("your rec all go").
 
+### Voice training: Python may train LoRAs, outside the app — one experiment first (decided 2026-10-10)
+STATE:  DECIDED 2026-10-10. The listening test, the user's words: "most of them are probably 70% close
+        most of my picks where take 1 and 2 but there where differences in picth and sometimes a
+        pause or inflection but it was fairly good it hard to tell" (picks: B 3, C 2, A 2 of 7 —
+        no method wins). Asked whether to move training to IDEAS, the user: "so no lora training?
+        didnt alexandria have lora and it wasnt that hard, you make it sound hard and not worth it,
+        maybe it isnt, what do you think?" Shown: LoRA is easy in Python (PyTorch + PEFT, as
+        Alexandria does) and hard only under the no-Python rule (C++ on ggml, young and
+        unmaintained); "Run Alexandria's trainer once, outside the app, on the same narrator… Add
+        the trained voice to the same listening page… That one-off experiment needs Python on this
+        machine… may I use it just for this test?" The user: "we can use python and if we have
+        tohave a small seperate python app just for lora training thats is possibility, i meant if
+        we are converting the app like we did the goal was to not have python, you did not really
+        make it clear tome that lora would be hard and not well supported, maybe we should have just
+        stayed with python".
+        So: Python may be used for the experiment; a small separate Python app for LoRA training is
+        a possibility; the app itself stays without Python.
+WHY:    LoRA training is mature in Python and young in C++/ggml; the ear test left about 30% of her
+        delivery (pitch, pauses, inflection) to win, which is what training teaches.
+NOT:    Python in the app; building a trainer before the experiment says it is worth it.
+BUILT:  in progress — the experiment (plan 2026-10-09 voice-training findings).
+OPEN:   train a LoRA on the narrator; render the 20 held-out lines with and without it in the same
+        setup; the user's ears; then the trainer decision.
+GO:     given 2026-10-10 ("we can use python…").
+
 ### FINDING — A long clone reference runs Qwen3-TTS Base on without stopping, and holds the speech queue
 STATE:  FINDING — measured 2026-10-10 (the cloning measurement, plan 2026-10-09
         voice-training findings, "The measurement — results").
