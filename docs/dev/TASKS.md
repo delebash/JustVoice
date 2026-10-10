@@ -313,9 +313,12 @@ STATE:  DECIDED 2026-10-10. The listening test, the user's words: "most of them 
 WHY:    LoRA training is mature in Python and young in C++/ggml; the ear test left about 30% of her
         delivery (pitch, pauses, inflection) to win, which is what training teaches.
 NOT:    Python in the app; building a trainer before the experiment says it is worth it.
-BUILT:  in progress — the experiment (plan 2026-10-09 voice-training findings).
-OPEN:   train a LoRA on the narrator; render the 20 held-out lines with and without it in the same
-        setup; the user's ears; then the trainer decision.
+BUILT:  2026-10-10 — the experiment ran (plan 2026-10-09 voice-training findings, "The LoRA
+        experiment"): Alexandria's trainer, unchanged, trained Qwen3-TTS Base 1.7B on 14 minutes of
+        the narrator in 201 s on the 8 GB card (loss 3.90; a 2-epoch run 4.16 in 136 s); the trained
+        voice's pace matches hers (7.06 s against her 6.96 s, untrained 7.71 s). Round 2 of the
+        listening page puts it beside the untrained clone.
+OPEN:   the user's ears on round 2; then the trainer decision.
 GO:     given 2026-10-10 ("we can use python…").
 
 ### FINDING — A long clone reference runs Qwen3-TTS Base on without stopping, and holds the speech queue

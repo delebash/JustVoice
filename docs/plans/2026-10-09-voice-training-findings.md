@@ -131,6 +131,29 @@ afterwards).
   holds the speech queue the whole time. A cancelled request does not stop it: the runtime keeps
   rendering until done (TASKS FINDING "A long clone reference runs Qwen3-TTS Base on…").
 
+## The LoRA experiment (2026-10-10)
+
+The user's word (TASKS "Voice training: Python may train LoRAs"): run Alexandria's trainer once, outside
+the app. Done in a throwaway Python environment in the session's temp folder: torch 2.13.0+cu126,
+transformers 4.57.3, peft 0.21.2, qwen-tts at the commit the old engine pinned (022e286b98fb); the
+trainer is the old one (git 1c7398d^ `engines/qwen3/train_lora.py`, adapted from Alexandria),
+unchanged.
+
+- **The set** — 120 LJSpeech clips of 4–10 s spread over LJ002–LJ049 (14.0 minutes); the reference
+  clip LJ001-0001 for the speaker vector; the 20 test lines (LJ050) never seen in training.
+- **The settings** — Alexandria's current guide for ~120 samples (github.com/Finrandojin/
+  alexandria-audiobook `lora.md`, checked 2026-10-10): learning rate 2e-6, rank 64, alpha 128,
+  accumulation 4, batch 1; its target loss 4.1–4.2 ("below 4.1 risks garbling").
+- **Training** — on the RTX 2070 SUPER (Turing: bf16 emulated, not native), Qwen3-TTS Base 1.7B:
+  29.0 M trainable parameters (1.49% of the talker), 6.3 GB of the card in use, about 0.6 s a step.
+  3 epochs: loss 4.42 → 4.16 → 3.90, 201 s. A second run of 2 epochs: 4.42 → 4.16, 136 s.
+- **Rendering** — the 20 lines said three ways in the same Python setup, one seed: no training (U),
+  the 2-epoch adapter (T2), the 3-epoch adapter (T3). Mean length: her recordings 6.96 s, U 7.71 s,
+  T2 7.21 s, T3 7.06 s — training brought the pace to hers. PyTorch took about 20 s a line on this
+  card (audio.cpp: 1–2 s).
+- **Sounds like her** — round 2 of the listening page (same link), her recording beside U, T2 and T3
+  shuffled; picks in `round2`.
+
 ## The decision (the user's)
 
 1. **Measure cloning first?**
