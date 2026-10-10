@@ -271,9 +271,32 @@ OPEN:   1 — DONE 2026-10-10: two listening rounds; voice training moved to IDE
         stale — asked again; 4 — asked again.
 GO:     given 2026-10-09 ("your rec all go").
 
+### Four answers: the version, the engines paragraph, the clone clip cap, two pushes (decided 2026-10-10)
+STATE:  DECIDED 2026-10-10 — asked, as shown: "1. Version shown in Settings. The sidebar says 0.0.1
+        and Settings says 0.1.0; the real version is 0.1.0. Fixing it naively would mark every
+        rendered line stale, because the version is baked into each render's cache key. My
+        recommendation: give the render cache its own fixed version number, then show 0.1.0 in both
+        places. Nothing goes stale. 2. The paragraph under 'Picking an engine…' on the Speech engines
+        tab. Proposed text: 'A persona's voice brings its model, and the model decides what that
+        persona can do on every line: whether it can clone someone's voice, and whether it takes
+        written direction, tags, or only pace, pitch and gain.' My recommendation: add it. 3. Long
+        clone clips. A clip much over 20 seconds makes Qwen3-TTS run on without stopping and blocks
+        all speech for minutes. My recommendation: cap clone clips at 20 seconds in the app, and say
+        so on the clone screen. 4. Two commits waiting to be pushed: kit 1347b49 (re-loads with new
+        settings no longer dropped) and JustWrite 60f06ad (installer file name fix). Push them?"
+        The user: "your rec go".
+WHY:    one version everywhere without restaling every render; the table's missing lede; a clip
+        length that can freeze speech; two finished fixes.
+NOT:    finding the long-reference cause in our audio.cpp copy (not asked); changing what a render's
+        key holds beyond the version's place in it.
+BUILT:  in progress.
+OPEN:   1–4.
+GO:     given 2026-10-10 ("your rec go").
+
 ### FINDING — A long clone reference runs Qwen3-TTS Base on without stopping, and holds the speech queue
 STATE:  FINDING — measured 2026-10-10 (the cloning measurement, plan 2026-10-09
-        voice-training findings, "The measurement — results").
+        voice-training findings, "The measurement — results"). The app's half is decided (the item
+        above, 3: cap clone clips at 20 s); the cause in our audio.cpp copy stays open.
 BUILT:  nothing. The app takes a clone reference of any length (`voices_api.js` /v1/voices/clone checks
         only Chatterbox Turbo's 5 s minimum). On Qwen3-TTS Base x-vector only, a 19 s reference is
         fine (one sentence: 3.4 s of audio in 7.9 s) and a 32 s one runs away (655 s of audio in
