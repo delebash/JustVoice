@@ -48,8 +48,31 @@ import { setDefaultVariant as setEngineDefault } from "../services/engineDefault
 import { UiMenu, UiMenuItem, UiMenuSeparator } from "@delebash/llm-ui";
 
 import SpeechProvidersPanel from "./SpeechProvidersPanel.vue";
-import { UiNumber, UiSelect } from "@delebash/llm-ui";
+import { UiNumber, UiSelect, UiTable } from "@delebash/llm-ui";
 import { openEngineTerms } from "../services/engineTerms.js";
+import { directionCell } from "../services/personaFacts.js";
+
+// "Picking an engine is picking what a voice can do" (mock _s13; the rows as approved
+// 2026-10-09, plan docs/plans/2026-10-09-finishing-the-open-work.md §5 — facts from the
+// manifests).
+const PICKING_COLUMNS = [
+  { id: "want", header: "If you want…", accessorKey: "want" },
+  { id: "use", header: "Use", accessorKey: "use" },
+  { id: "give", header: "What you give up", accessorKey: "give" },
+];
+const PICKING = [
+  { want: "Ready-made voices, fast, on any machine", use: "Kokoro — 54 built-in voices, 9 languages", give: "No cloning and no written direction — pace, pitch, gain and pauses only" },
+  { want: "English voices made for the CPU", use: "Kitten — 8 built-in voices", give: "English only; no cloning, no written direction; the same seed does not repeat the same audio" },
+  { want: "Someone's own voice on a modest machine", use: "Pocket — cloning, 20 built-in voices", give: "One language per model; no written direction" },
+  { want: "To direct performances in words", use: "Qwen3 CustomVoice — 9 built-in voices, 10 languages", give: "Cannot clone" },
+  { want: "Someone's own voice, in 10 languages", use: "Qwen3 Base", give: "Written direction is dropped" },
+  { want: "A voice designed from a description", use: "Qwen3 VoiceDesign", give: "—" },
+  { want: "Someone's own voice, with per-line emotion tags", use: "Chatterbox Turbo or Nano — 19 tags", give: "English only; no written direction" },
+  { want: "Someone's own voice in another language", use: "Chatterbox Multilingual — 23 languages", give: "No written direction, no tags" },
+  { want: "Cloning, designing and written direction together", use: "VoxCPM2 — 30 languages", give: "The largest download (2.8 GB at 8-bit)" },
+];
+// Speech recognition's "What for?" — what in the app it serves.
+const whatFor = ref(false);
 
 // The Local/Online half switch (the folder-tab pair).
 const half = ref("local");
@@ -850,13 +873,25 @@ onBeforeUnmount(() => {
         :title="`Japanese dictionary · UniDic ${runtime.japanese_dictionary.version}`" />
     </div>
 
+    <section v-if="engines.length" class="jv-card ev-picking">
+      <div class="jv-card__header"><h3 class="jv-card__title">Picking an engine is picking what a voice can do</h3></div>
+      <UiTable class="jv-table-look" :data="PICKING" :columns="PICKING_COLUMNS" />
+    </section>
+
     <!-- capability sections (speech only) -->
     <div v-for="sec in sectionData" :key="sec.id">
       <div class="ev-section-h">
         <h3>{{ sec.title }} <span class="suffix">— {{ sec.suffix }}</span></h3>
         <span class="count">{{ sec.engineCount }} engine{{ sec.engineCount === 1 ? '' : 's' }} · {{ sec.modelCount }} models</span>
         <span class="note">{{ sec.note }}</span>
+        <UiButton v-if="sec.id === 'stt'" intent="ghost" size="small" label="What for?" @click="whatFor = !whatFor" />
       </div>
+      <p v-if="sec.id === 'stt' && whatFor" class="jv-hint ev-whatfor">
+        Speech recognition is not a voice — nothing here speaks. It turns speech into text: Captures'
+        dictation, the words of a capture you clone a voice from (they fill in its transcript), and,
+        for other apps, transcripts and the word timings of captions through /v1/transcribe, /v1/align
+        and the MCP tool justvoice.transcribe.
+      </p>
 
       <div v-for="e in sec.engines" :key="e.id" class="ev-group">
         <div class="ev-ghead" @click="toggleOpen(e)">
@@ -899,6 +934,9 @@ onBeforeUnmount(() => {
                 title="Clones a voice from a short clean sample">CLONING</span>
               <span v-if="v.preset_voices > 0" class="ev-cap presets"
                 :title="`${v.preset_voices} built-in voices — no sample needed`">BUILT-IN · {{ v.preset_voices }}</span>
+              <span v-if="v.directed_by" class="ev-cap"
+                :class="{ directed: directionCell(v.directed_by).intent === 'success' }"
+                :title="directionCell(v.directed_by).title">{{ directionCell(v.directed_by).label.toUpperCase() }}</span>
               <span v-if="v.weights_license" class="ev-lic" :class="{ 'ev-lic--warn': licenseWarn(v) }"
                 :title="licenseTitle(v)"><template v-if="licenseWarn(v)">⚠ </template>{{ v.weights_license }}</span>
             </span>

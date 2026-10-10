@@ -1888,6 +1888,12 @@ section.block > h3 {
    positive capability), Presets the STT blue, languages stay neutral. */
 .ev-cap.clone{border-color:var(--accent-line,#b8d2c3);background:var(--accent-soft,#e8f0eb);color:var(--accent-ink,#2c6049)}
 .ev-cap.presets{border-color:#c8d4e8;background:#eaf0f8;color:#3a5a8c}
+/* How a model is directed (2026-10-09): written direction or tags ride the accent family like
+   Cloning; sliders only stays neutral. */
+.ev-cap.directed{border-color:var(--accent-line,#b8d2c3);background:var(--accent-soft,#e8f0eb);color:var(--accent-ink,#2c6049)}
+/* "Picking an engine…" (mock _s13) sits between the runtime rows and the sections. */
+.ev-picking{margin-top:18px}
+.ev-whatfor{margin:8px 0 0}
 .ev-vchips{display:flex;gap:5px;align-items:center;flex:none}
 /* Weights-licence chip — neutral for permissive (MIT/Apache), the kit's
    gold use-limited warn for obligation licences (Llama-3.2-Community). */

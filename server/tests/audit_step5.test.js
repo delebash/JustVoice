@@ -14,6 +14,7 @@ import * as voicePreview from "../src/api/voice_preview_api.js";
 import { appClient, closeApps } from "./app_helpers.js";
 import { discrete } from "./engines_helpers.js";
 import { writeWavContainer } from "../src/audio/wav.js";
+import * as vmod from "../src/voice_model.js";
 import * as release from "../src/engines/audiocpp/release.js";
 import * as runtime from "../src/engines/audiocpp/runtime.js";
 import { AudioCppError, AudioCppServer, responseOf } from "../src/engines/audiocpp/runtime.js";
@@ -365,6 +366,19 @@ test("the_model_row_reads_and_saves_its_runtime_options", async () => {
   r = await c.put(url, { json: { options: { "qwen3_tts.perf_mode": "off" } } });
   ov = (await c.get("/v1/settings")).json().engines.engine_overrides.qwen3;
   expect(ov.runtime_options).toEqual({});
+});
+
+test("each_speech_model_says_how_it_is_directed", async () => {
+  // The Engines page's model rows (2026-10-09): voice_model.directedBy, per model family.
+  const { c } = await appClient();
+  const directed = async (engine) =>
+    Object.fromEntries((await c.get(`/v1/engines/${engine}/models`)).json().variants.map((v) => [v.id, v.directed_by]));
+  expect((await directed("qwen3"))["qwen3-cv-1.7b-q8"]).toBe("words");
+  expect(new Set(Object.values(await directed("kokoro")))).toEqual(new Set(["sliders"]));
+  const chatterbox = await directed("chatterbox");
+  const turbo = Object.keys(chatterbox).find((id) => vmod.modelOfVariant(id) === "chatterbox-turbo");
+  expect(chatterbox[turbo]).toBe("tags");
+  expect(new Set(Object.values(await directed("asr")))).toEqual(new Set([null]));
 });
 
 test("the_runtime_row_keeps_a_setting_it_does_not_send", async () => {

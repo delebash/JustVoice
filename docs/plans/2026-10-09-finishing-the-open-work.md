@@ -201,6 +201,20 @@ Blast radius: `SpeechEnginesTab` — `AiPage.vue:25, :94`; the models wire gains
 `PersonaCloneMaker.vue:187`, `PersonaDesignMaker.vue:58`, `QuickSetup.vue:144`,
 `SpeechEnginesTab.vue:170` — an added field changes none of them).
 
+**Built 2026-10-09** — where it differs from the above:
+- The table's rows as drafted, above the engine sections. The mock's paragraph under the title
+  ("You choose an engine once, when you cast a persona to a voice…") is left out: new wording,
+  in words the app no longer uses — waiting for the user's word.
+- `directed_by` per model family (`voice_model.modelOfVariant` → `directedBy`), null for speech
+  recognition. The chip shows `directionCell`'s words in the chips' capitals, without a tag
+  count — the tab has no capability rows.
+- "What for?" says what speech recognition serves in code: Captures' dictation, a capture's words
+  filling a clone's transcript, `/v1/transcribe`, `/v1/align` (caption word timings) and the MCP
+  tool `justvoice.transcribe`. The mock's "a clone arrives with its text already filled in" holds
+  only for a capture — an uploaded clip is not transcribed.
+- `docs/engines.md`: 54 voices, 23 languages, Chatterbox's language list (it lacked Hebrew,
+  Russian, Chinese and Japanese), and the `BUILT-IN · N` chip (it said `PRESETS · N`).
+
 ## 6 · After the screens
 
 - **The updater** — `electron-updater` (electron-builder's own; standard), in the kit's shell

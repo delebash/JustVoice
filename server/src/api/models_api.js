@@ -21,6 +21,7 @@ import { badRequest, conflict, notFound } from "../errors.js";
 import { construct, EngineOverrides, ModelsListResponse } from "../models.js";
 import { speechCacheRoot } from "../paths.js";
 import * as speechCache from "../speech_cache.js";
+import * as vmod from "../voice_model.js";
 
 export const PlacementBody = T.Object({ placement: literal("auto", "gpu", "cpu") });
 export const RuntimeOptionsBody = T.Object({ options: T.Record(T.String(), T.String()) });
@@ -63,6 +64,14 @@ export function router() {
       if (v.on_disk) v.local_dir = String(speechCache.variantDir(st.dataDir, id, v.id));
     }
     await _annotatePlacement(id, variants);
+    // How each speech model is directed — written direction, tags, or sliders only (the Engines
+    // page, 2026-10-09). Speech recognition speaks nothing, so it has none.
+    if (manager.getManager().getManifest(id).kind === "tts") {
+      for (const v of variants) {
+        const family = vmod.modelOfVariant(v.id);
+        v.directed_by = family ? vmod.directedBy(family) : null;
+      }
+    }
     const rows = new Map(modelCatalog._variantRows(id).map((r) => [r.id, r]));
     for (const v of variants) {
       if (rows.has(v.id)) v.runtime_options = runtimeOptions.describe(id, rows.get(v.id));

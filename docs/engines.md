@@ -160,9 +160,10 @@ See [8-bit or 16-bit](#8-bit-or-16-bit) for what the difference measured.
 | **External** (OpenAI-compatible) | — | — | varies | varies | depends on provider |
 
 Qwen3 speaks Chinese, English, Japanese, Korean, German, French, Russian,
-Portuguese, Spanish and Italian. Chatterbox speaks Arabic, Danish, German,
-Greek, English, Spanish, Finnish, French, Hindi, Italian, Korean, Malay, Dutch,
-Norwegian, Polish, Portuguese, Swedish, Swahili and Turkish.
+Portuguese, Spanish and Italian. Chatterbox Multilingual speaks Arabic, Danish,
+German, Greek, English, Spanish, Finnish, French, Hebrew, Hindi, Italian,
+Japanese, Korean, Malay, Dutch, Norwegian, Polish, Portuguese, Russian, Swedish,
+Swahili, Turkish and Chinese.
 
 **Qwen3-TTS is three different models**, and the difference decides what you
 can do with it:
@@ -442,15 +443,37 @@ MOSS-TTSD were already marked for removal. Whisper, the old speech recogniser, w
 replaced by Qwen3-ASR, which got fewer words wrong on both human speech (4.3 %
 against 5.8 %) and rendered narration (8.6 % against 9.9 %).
 
+## Picking an engine is picking what a voice can do
+
+The Speech engines tab opens with this table, above the engines. A persona's
+voice brings its model, and the model decides what that persona can do on every
+line: whether it can clone someone's voice, and whether it takes written
+direction, tags, or only pace, pitch and gain.
+
+| If you want… | Use | What you give up |
+|---|---|---|
+| Ready-made voices, fast, on any machine | Kokoro — 54 built-in voices, 9 languages | No cloning and no written direction — pace, pitch, gain and pauses only |
+| English voices made for the CPU | Kitten — 8 built-in voices | English only; no cloning, no written direction; the same seed does not repeat the same audio |
+| Someone's own voice on a modest machine | Pocket — cloning, 20 built-in voices | One language per model; no written direction |
+| To direct performances in words | Qwen3 CustomVoice — 9 built-in voices, 10 languages | Cannot clone |
+| Someone's own voice, in 10 languages | Qwen3 Base | Written direction is dropped |
+| A voice designed from a description | Qwen3 VoiceDesign | — |
+| Someone's own voice, with per-line emotion tags | Chatterbox Turbo or Nano — 19 tags | English only; no written direction |
+| Someone's own voice in another language | Chatterbox Multilingual — 23 languages | No written direction, no tags |
+| Cloning, designing and written direction together | VoxCPM2 — 30 languages | The largest download (2.8 GB at 8-bit) |
+
+Each model's row says the same with its direction chip (see
+[The catalog rows](#the-catalog-rows)).
+
 ## Picking an engine for a use case
 
 - **Audiobook narration in your own voice.** Chatterbox Multilingual or Qwen3
   Base. Clone from a minute or two of clean read-aloud.
-- **Audiobook with many speakers.** Cloned or designed voices for the main speakers, Kokoro for minor ones — faster to render, 49 voices to choose from.
+- **Audiobook with many speakers.** Cloned or designed voices for the main speakers, Kokoro for minor ones — faster to render, 54 voices to choose from.
 - **Directed performances.** Qwen3 CustomVoice — tell each line how to sound
   in plain words.
 - **A voice nobody recorded.** Qwen3 VoiceDesign — describe it.
-- **Multilingual audiobook.** Chatterbox Multilingual clones in 19 languages;
+- **Multilingual audiobook.** Chatterbox Multilingual clones in 23 languages;
   Qwen3 covers 10, including Chinese, Japanese and Korean.
 - **Game dialogue at 50–500 line scale.** Kokoro. Render speed matters at
   scale.
@@ -495,12 +518,17 @@ Each engine group expands into its model rows, and each row carries the model's
 **facts** — read from the engine's pinned catalog, never typed twice:
 
 - **Language chip** — the language's name (*English*) for single-language
-  models, *19 languages* for multilingual ones (hover for the full list, by
+  models, *23 languages* for multilingual ones (hover for the full list, by
   name).
 - **Capability chips** — `CLONING` (clones a voice from a short clean sample)
-  and `PRESETS · N` (ships N ready-made voices). The filter row above the list
+  and `BUILT-IN · N` (ships N built-in voices). The filter row above the list
   (**All · TTS · STT · Cloning · Built-in voices**) filters on exactly these
   facts.
+- **Direction chip** — how a speech model is directed: `✓ WRITTEN DIRECTION`
+  (describe how it speaks, in words — Qwen3 CustomVoice and VoiceDesign,
+  VoxCPM2), `✓ TAGS` (the model's own tags — Chatterbox Turbo and Nano) or
+  `SLIDERS ONLY` (pace, pitch and gain). The same words as Cast and a
+  persona's page. Speech recognition has none.
 - **Licence chip** — the model's *weights* licence. Every bundled model
   permits selling your generated output.
 - **Download size · on disk** — the verified download size, plus "on disk"
@@ -523,6 +551,12 @@ The **⋯ menu** on each row holds the less-common verbs:
 
 These are the same four verbs, in the same order and with the same words, as
 the **⋯** menu on an AI model row under **LLM providers**.
+
+**What for?** beside the Transcription heading says what speech recognition
+serves: it is not a voice, it turns speech into text — Captures' dictation, the
+words of a capture you clone a voice from (they fill in its transcript), and,
+for other apps, transcripts and the word timings of captions through
+`/v1/transcribe`, `/v1/align` and the MCP tool `justvoice.transcribe`.
 
 At the bottom of an engine group with anything downloaded, **Delete downloaded
 models** removes all of that engine's models at once. The speech runtime stays

@@ -176,7 +176,10 @@ BUILT:  in progress — 1: the fork's release builds `audiocpp_dsp` (fork 342d27
         table; what differs from the plan is its §3 "Built 2026-10-09". Effects — the chain
         editor's steps drag into order (VueUse's useSortable), "A / B it" plays one take dry and
         wet (the persona preview's `hold`, `POST /v1/effects/apply`), "Order matters"; the
-        plan's §4 "Built 2026-10-09".
+        plan's §4 "Built 2026-10-09". Engines — "Picking an engine is picking what a voice can
+        do" (the rows as drafted), each model's direction chip (`directed_by`), speech
+        recognition's "What for?", docs/engines.md's counts; the plan's §5 "Built 2026-10-09".
+        Open: the mock's paragraph under the table's title, new wording for the user's word.
 OPEN:   1–4 above, in that order.
 GO:     given 2026-10-09 ("do it all your rec go, lets get all the tasks completed").
 

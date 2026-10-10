@@ -1164,6 +1164,9 @@ export const ModelVariant = T.Object({
   cpu_realtime: opt(nullable(T.Number()), null),
   cpu_realtime_here: opt(T.Boolean(), false),
   runtime_options: opt(T.Array(RuntimeOption), []),
+  // "words" | "tags" | "sliders" — how a speech model is directed (voice_model.directedBy);
+  // null for speech recognition.
+  directed_by: opt(nullable(T.String()), null),
 });
 
 export const ModelsListResponse = T.Object({
