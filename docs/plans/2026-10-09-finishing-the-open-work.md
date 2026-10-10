@@ -296,8 +296,13 @@ Blast radius: `SpeechEnginesTab` — `AiPage.vue:25, :94`; the models wire gains
   - *The KV/context faults* — not built: the user's ruling (2026-09-19) is all three faults together
     with a corrected CUDA seed, and the seed only from multi-box evidence — `__overhead__` rows from
     at least two more machines. One machine is all there is here.
-  - *The suite-only smoke tests* — not run: they start a real router on :8080 and must never run
-    while an app is up; JustWrite's router held :8080 (a JustWrite server was running).
+  - *The suite-only smoke tests* — measured (just-llm-runner 1f202b7). :8080 was held by this
+    session's own 8741 test server's router (it shares JustWrite's model cache), not JustWrite;
+    with it stopped they ran. `stop_stays_stopped` failed only through leakage from the test before
+    it, cut by vitest's 20 s limit — with a 300 s limit it passes. `switch_change_reflected_on_reload`
+    is a real race: a re-load with other switches, sent after the router says loaded but before the
+    runner's ledger says running, is dropped by `load()`'s "already in flight" return. The runner
+    change — queue the newer tuning, or refuse it visibly — is for the user's word (kit TASKS).
 
 ## 7 · Already done or underway under the go
 

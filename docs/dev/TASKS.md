@@ -178,7 +178,8 @@ BUILT:  in progress — 1: the fork's release builds `audiocpp_dsp` (fork 342d27
         the chosen data folder — for the user's word. 4: the kit's data-folder and server-stop
         findings verified closed and removed from its TASKS; the KV/context faults wait on
         measurements from two more machines (the user's 2026-09-19 ruling); the suite-only smoke
-        tests wait for :8080 to be free (the plan's §6 "Done 2026-10-09"). Voice training (gap 5):
+        tests are measured — one was the port's 20 s timeout (fixed), one is a re-tune the runner
+        drops while a load finishes, for the user's word (kit TASKS; the plan's §6 "Done 2026-10-09"). Voice training (gap 5):
         the research is written up, findings only — `docs/plans/2026-10-09-voice-training-findings.md`,
         the facts in RESEARCH §9; its three questions wait for the user.
 OPEN:   1–4 above, in that order.
