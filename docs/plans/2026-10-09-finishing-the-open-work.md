@@ -280,6 +280,23 @@ Blast radius: `SpeechEnginesTab` — `AiPage.vue:25, :94`; the models wire gains
   (the data folder's ladder, the server's stop); then the KV/context sizing faults, fixed together as
   their item demands; then the two smoke tests that fail only inside the suite.
 
+  **Done 2026-10-09:**
+  - *The data folder's ladder* — closed. One implementation: the shell's `resolveDataRoot` and all
+    three servers' `paths` call the kit's `data_paths.resolveDataDir`; no Tauri shell is left; the
+    shell puts Chromium's files under `<root>/electron`. Measured: two development launches of
+    JustVoice's window wrote nothing to `%APPDATA%` or `%LOCALAPPDATA%` (the folders there —
+    `dev.justvoice.app`, `justvoice`, `Electron` — were last written between July and
+    2026-10-07, Tauri's and the move's). The one new outside write is the updater's download cache
+    (§6 above, for the user's word).
+  - *The server's stop* — closed. All three servers run through the kit's `runServer`
+    (`platform/serve.js`), which answers the shell's `stop` by refusing new connections, closing
+    the app and exiting; the shell kills only after 8 s.
+  - *The KV/context faults* — not built: the user's ruling (2026-09-19) is all three faults together
+    with a corrected CUDA seed, and the seed only from multi-box evidence — `__overhead__` rows from
+    at least two more machines. One machine is all there is here.
+  - *The suite-only smoke tests* — not run: they start a real router on :8080 and must never run
+    while an app is up; JustWrite's router held :8080 (a JustWrite server was running).
+
 ## 7 · Already done or underway under the go
 
 - 1 — the fork's release builds `audiocpp_dsp` everywhere (fork 342d2737, 55b150f4 — the Linux

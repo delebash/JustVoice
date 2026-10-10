@@ -175,7 +175,10 @@ BUILT:  in progress — 1: the fork's release builds `audiocpp_dsp` (fork 342d27
         it, JustVoice and JustWrite name their feeds and upload latest*.yml; docgen's stays off
         until it has releases; checked against a local feed in JustVoice's window (the plan's §6
         "Built 2026-10-09"). Open: the downloaded installer waits in the OS cache folder, outside
-        the chosen data folder — for the user's word.
+        the chosen data folder — for the user's word. 4: the kit's data-folder and server-stop
+        findings verified closed and removed from its TASKS; the KV/context faults wait on
+        measurements from two more machines (the user's 2026-09-19 ruling); the suite-only smoke
+        tests wait for :8080 to be free (the plan's §6 "Done 2026-10-09").
 OPEN:   1–4 above, in that order.
 GO:     given 2026-10-09 ("do it all your rec go, lets get all the tasks completed").
 
