@@ -238,9 +238,8 @@ CHECKED: unit 183/183 · server 1055/1055 · lint · the guard (kind quasar, no 
         buttons, Quasar's global disabled rule (the kit's TASKS, the Quasar item, OPEN 5).
 OPEN:   1. DONE — merged into main by the user's go ("your rec all go", on "1. Merge both quasar
            branches?"); after pulling: `npm install` and once `cd src-electron && npm install`.
-        2. The desktop window has never loaded Inter / JetBrains Mono: styles.css @imports them
-           from Google Fonts and the shell's CSP blocks it (JustWrite self-hosts its fonts).
-           Not changed by the move.
+        2. DONE 2026-10-09 — the fonts are bundled (`src/css/fonts.css`, @fontsource Inter and
+           JetBrains Mono, as JustWrite's), the Google import and its two hosts left the CSP.
         3. DONE 2026-10-08 — JustVoice's sync (the item above).
 GO:     given 2026-10-08 ("we need to do the quasar conversion as well you have a go on that").
 

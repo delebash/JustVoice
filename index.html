@@ -16,7 +16,7 @@
          as it did before. -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'<% if (ctx.mode.capacitor) { %> 'wasm-unsafe-eval'<% } %>; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: http: https:; media-src 'self' data: blob: http: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' http: https:<% if (ctx.dev) { %> ws://localhost:* ws://127.0.0.1:*<% } %>; worker-src 'self' blob:;"
+      content="default-src 'self'; script-src 'self'<% if (ctx.mode.capacitor) { %> 'wasm-unsafe-eval'<% } %>; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: http: https:; media-src 'self' data: blob: http: https:; font-src 'self' data:; connect-src 'self' http: https:<% if (ctx.dev) { %> ws://localhost:* ws://127.0.0.1:*<% } %>; worker-src 'self' blob:;"
     />
     <!-- First-paint boot plate (family pattern, adopted for F1 2026-08-05) — the
          minimal brand plate (name + logo on the brand background, ruling 5: no

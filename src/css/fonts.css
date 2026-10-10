@@ -1,0 +1,18 @@
+/* SELF-HOSTED FONTS — JustVoice's two families, bundled (2026-10-09), as JustWrite's
+ * src/css/fonts.css does. app.scss used to @import them from fonts.googleapis.com: the desktop
+ * window's security policy blocks that host, so the window had never drawn Inter or
+ * JetBrains Mono (only a browser tab did), and an offline start fell back to the system fonts.
+ * Bundled, they are a local read, present at first paint.
+ *
+ * The weights are the ones the old Google URL asked for: Inter 400–700, JetBrains Mono 400 and
+ * 500 (tokens.css: --font-ui, --font-mono). Static @fontsource packages, which declare the plain
+ * family names the tokens use; `font-display: swap` and the unicode-range subsets come from
+ * @fontsource itself.
+ */
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
+
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";

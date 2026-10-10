@@ -23,12 +23,11 @@ export default defineConfig(() => {
     // src/main.js), awaited before Quasar mounts the app.
     boot: ['i18n', 'jv'],
 
-    // The app's stylesheets (src/css/): the design tokens, then the app's own styles — ahead of
-    // the kit's, which its modules import, the order JustVoice has always had. Here, not imported
-    // by the boot file: Quasar puts these in the entry stylesheet, while a boot file's CSS is
-    // preloaded with its chunk — and a stylesheet that fails to load (app.scss @imports Google
-    // Fonts, which the CSP blocks) would then fail the whole start-up.
-    css: [ 'tokens.css', 'app.scss' ],
+    // The app's stylesheets (src/css/): the bundled fonts, the design tokens, then the app's own
+    // styles — ahead of the kit's, which its modules import, the order JustVoice has always had.
+    // Here, not imported by the boot file: Quasar puts these in the entry stylesheet, present at
+    // first paint, while a boot file's CSS is preloaded with its chunk.
+    css: [ 'fonts.css', 'tokens.css', 'app.scss' ],
 
     // No Quasar icon font or Roboto: JustVoice's look is its own tokens, and the icons Quasar's
     // components draw are the kit's line icons (its icon set).
