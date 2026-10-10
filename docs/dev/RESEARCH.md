@@ -271,13 +271,18 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
 
 ### 1.4 Builds, releases and installs
 
-- **Pinned build `v0.9.0-jv.4`** — tag at our copy's `f7d8140a`, published 2026-10-05 01:25 UTC
-  by release run 37243444087 after dry run 37235747073 passed on every platform. Builds in order
-  `v0.9.0`, `v0.9.0-jv.1`, `v0.9.0-jv.4`; an install on either older one keeps working until
-  updated. Features: `voxcpm2_transcript` jv.1; `voice_pack`, `inline_ipa`, `turbo_clone`,
+- **Pinned build `v0.9.0-jv.5`** — tag at our copy's `55b150f4`, published 2026-10-10 04:10 UTC
+  by release run 38015817065 after dry run 38007578452 passed on every platform: jv.4 plus
+  `audiocpp_dsp` in every build (release.yml's BUILD_TARGETS; the Linux builds needed
+  Signalsmith's headers as SYSTEM includes, 55b150f4). The installer stages the CPU build's copy
+  (`scripts/audiocpp-dsp-package.js`, measured 2026-10-10: the Windows CPU-portable archive,
+  sha256-checked, `audiocpp_dsp.exe` with its eight MSVC runtime DLLs, launch-checked). Builds in
+  order `v0.9.0`, `v0.9.0-jv.1`, `v0.9.0-jv.4`, `v0.9.0-jv.5`; an install on any older one keeps
+  working until updated. (was: pinned jv.4, published 2026-10-05 by run 37243444087, until
+  2026-10-10.) Features: `voxcpm2_transcript` jv.1; `voice_pack`, `inline_ipa`, `turbo_clone`,
   `chatterbox_he_ru_zh`, `japanese`, `model_management` jv.4. (was: pinned jv.1, with jv.2 / jv.3
-  placeholders — until 2026-10-04.) — *code + GitHub API, 2026-10-05* ·
-  `engines/audiocpp/release.py`.
+  placeholders — until 2026-10-04.) — *code + GitHub API + measured, 2026-10-10* ·
+  `server/src/engines/audiocpp/release.js`.
 - Tags `v0.9.0-jv.2` (`42db68d9`) and `v0.9.0-jv.3` (`3865d245`) exist on commits whose macOS
   build failed; nothing was published for them, and their names are not reused (decided
   2026-10-04). — *git, 2026-10-04* · audit §5 E2.

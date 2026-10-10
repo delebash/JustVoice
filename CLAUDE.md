@@ -38,7 +38,9 @@ script read it; there is one data root (the Electron move's ruling 6, moved 2026
 The server's audio math runs in `audiocpp_dsp`, a small program from our audio.cpp fork's `dsp/`
 module (since 2026-10-07): the server, its tests and the gate all need it built — `npm run dev`
 builds it beside the runtime into `../audio.cpp/build/jv-dev/bin`, or `JUSTVOICE_DSP_EXE` names
-one. Its proof against the code it replaced is recorded in RESEARCH §6 and the fork's
+one. A packaged app carries it beside its executable: the installer build stages the pinned
+release's CPU build (`scripts/audiocpp-dsp-package.js`, Quasar's `beforeBuild`; since jv.5,
+2026-10-10). Its proof against the code it replaced is recorded in RESEARCH §6 and the fork's
 `dsp/README.md`.
 
 **One speech runtime runs every engine (since 2026-10-01).** Installing any engine — the

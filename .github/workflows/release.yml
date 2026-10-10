@@ -12,9 +12,9 @@ permissions:
   contents: write # needed to create / update the GitHub release
 
 # The desktop app is Electron + the Node server (the family's move, 2026-10-08); electron-builder
-# makes the installers (package.json `build`). A packaged app also needs the audio.cpp DSP
-# program, which ships in an audio.cpp release — that tag waits for the user's word (TASKS,
-# the Electron item).
+# makes the installers (package.json `build`). A packaged app also carries the audio.cpp DSP
+# program: Quasar's beforeBuild stages it from the pinned audio.cpp release
+# (scripts/audiocpp-dsp-package.js — sha256-checked, macOS lipo'd from both Metal builds).
 jobs:
   build:
     name: Installer (${{ matrix.platform }})

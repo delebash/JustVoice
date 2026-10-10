@@ -476,8 +476,16 @@ export class AudioCppServer {
         throw e;
       }
       const dev = devBuild.current();
+      // The build actually running — an older pinned release keeps running until updated. A log
+      // line never fails a start: the pin when the installed build can't be read.
+      let running = release.cfg.TAG;
+      try {
+        running = self.installedTag() ?? running;
+      } catch {
+        /* the pin */
+      }
       log.info(
-        `audio.cpp ${dev ? dev.version : release.cfg.TAG} (${this.placement} ${this.kind}) up on :${port} ` +
+        `audio.cpp ${dev ? dev.version : running} (${this.placement} ${this.kind}) up on :${port} ` +
           `(pid ${proc.pid}, ${conf.backend}, ${threads} threads, ` +
           `${managed ? "models registered as they load" : `${models.length} models`})`,
       );

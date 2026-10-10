@@ -137,11 +137,13 @@ test("voxcpm2s_transcript_follows_the_pin", () => {
 });
 
 test("the_pin_is_our_build_and_the_older_ones_keep_working", () => {
-  expect(release.cfg.TAG).toBe("v0.9.0-jv.4");
-  expect(release.cfg.PREVIOUS_TAGS).toEqual(["v0.9.0-jv.1", "v0.9.0"]);
+  expect(release.cfg.TAG).toBe("v0.9.0-jv.5");
+  expect(release.cfg.PREVIOUS_TAGS).toEqual(["v0.9.0-jv.4", "v0.9.0-jv.1", "v0.9.0"]);
   expect(
-    release.binaries().every((b) => b.assetUrl.startsWith("https://github.com/delebash/audio.cpp/releases/download/v0.9.0-jv.4/")),
+    release.binaries().every((b) => b.assetUrl.startsWith("https://github.com/delebash/audio.cpp/releases/download/v0.9.0-jv.5/")),
   ).toBe(true);
+  // Every archive the pin downloads is checked against its published digest.
+  expect(release.binaries().every((b) => b.sha256 && (!b.runtimeUrl || b.runtimeSha256))).toBe(true);
   // Every feature the app knows names a build in the order; jv.2 and jv.3 were never published.
   for (const v of Object.values(release.FEATURES)) expect(release.BUILDS_IN_ORDER).toContain(v);
   expect(release.BUILDS_IN_ORDER).not.toContain("v0.9.0-jv.2");

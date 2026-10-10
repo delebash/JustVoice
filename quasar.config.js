@@ -16,6 +16,8 @@ delete process.env.npm_config_allow_scripts
 
 const root = import.meta.dirname
 const kitUi = path.resolve(root, '../just-llm-runner/ui')
+// the audiocpp_dsp an installer carries (scripts/audiocpp-dsp-package.js stages it here)
+const dspStage = path.join(root, 'dist', 'audiocpp-dsp')
 
 export default defineConfig(() => {
   return {
@@ -77,6 +79,16 @@ export default defineConfig(() => {
         const bin = prepareAudioCppDevBuild()
         if (bin) process.env[ENV] = bin
         else console.log(`[audio.cpp] no checkout at ${CHECKOUT} — the app runs the pinned speech runtime`)
+      },
+
+      // An installer carries audiocpp_dsp, the server's audio math, beside the executable
+      // (decided 2026-10-07: shipped with the app, not downloaded): staged into
+      // dist/audiocpp-dsp/ from the pinned audio.cpp release — or the local build
+      // JUSTVOICE_DSP_EXE names — and copied by `extraFiles` below. Imported by path, as above.
+      async beforeBuild ({ quasarConf }) {
+        if (!quasarConf.ctx.mode.electron) return
+        const { stageDsp } = await import(pathToFileURL(path.join(root, 'scripts', 'audiocpp-dsp-package.js')).href)
+        await stageDsp()
       },
     },
 
@@ -146,8 +158,13 @@ export default defineConfig(() => {
         asarUnpack: [ '**/*.node', 'node_modules/justvoice-server/samples/**' ],
         // the headless launcher (justvoice-server.cmd) beside the exe
         extraResources: [ { from: path.join(root, 'build', 'launcher'), to: '..' } ],
-        win: { target: 'nsis', executableName: 'justvoice' },
+        // audiocpp_dsp beside the executable (beforeBuild stages it): extraFiles lands in the
+        // app's own folder on Windows and Linux, in Contents/ on macOS
+        win: { target: 'nsis', executableName: 'justvoice', extraFiles: [ { from: dspStage, to: '.' } ] },
         nsis: {
+          // no spaces: GitHub renames a spaced asset on upload (spaces → dots), and latest.yml names
+          // electron-builder's dashed form — the updater would download a file that isn't there
+          artifactName: '${productName}-Setup-${version}.${ext}',
           oneClick: false,
           perMachine: false,
           allowToChangeInstallationDirectory: true,
@@ -166,9 +183,12 @@ export default defineConfig(() => {
         mac: {
           category: 'public.app-category.music',
           target: [ { target: 'dmg', arch: [ 'universal' ] } ],
-          extendInfo: { NSMicrophoneUsageDescription: 'JustVoice records your voice when you clone it.' }
+          extendInfo: { NSMicrophoneUsageDescription: 'JustVoice records your voice when you clone it.' },
+          extraFiles: [ { from: dspStage, to: 'MacOS' } ],
+          // already universal (lipo'd when staged), so the same file in both builds is expected
+          x64ArchFiles: 'Contents/MacOS/audiocpp_dsp'
         },
-        linux: { target: [ 'AppImage', 'deb' ], category: 'AudioVideo' }
+        linux: { target: [ 'AppImage', 'deb' ], category: 'AudioVideo', extraFiles: [ { from: dspStage, to: '.' } ] }
       }
     }
   }

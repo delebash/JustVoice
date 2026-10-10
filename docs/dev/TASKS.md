@@ -158,9 +158,10 @@ STATE:  DECIDED 2026-10-09 — asked "whats next" once the phone was done; shown
 WHY:    finish the open work across JustVoice, the kit, JustWrite and docgen.
 NOT:    a NOT STANDARD piece without its own word by name; wording and looks the decisions leave
         open are asked, not chosen.
-BUILT:  in progress — 1: the fork's release builds `audiocpp_dsp` (fork 342d2737, 55b150f4); the dry
-        run of v0.9.0-jv.5 waits on its last build; then the tag, the pin, and the installer carries
-        the program beside `justvoice.exe` (electron-builder `extraFiles`). 2: docgen pushed, the
+BUILT:  in progress — 1: DONE 2026-10-10 — v0.9.0-jv.5 tagged on the fork (55b150f4) and published
+        by run 38015817065; the pin moved (release.js: TAG, the build order, the ten digests); the
+        installer carries `audiocpp_dsp` beside `justvoice.exe` (electron-builder `extraFiles`,
+        staged by scripts/audiocpp-dsp-package.js). 2: docgen pushed, the
         kit's loose ends (kit 0289acc), the fonts (3eaf205). 3: New project (0761c86); Lexicons —
         ▶ per entry, Try a word, Affects (`GET /v1/lexicons/:id/reach`), the IPA note under the
         table; what differs from the plan is its §3 "Built 2026-10-09". Effects — the chain

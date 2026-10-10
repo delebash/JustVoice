@@ -64,8 +64,8 @@ The builds audio.cpp publishes, and what each costs to download:
 | Any machine, no usable GPU | CPU |
 
 The Windows CUDA 12.4 build is a 464 MB download plus 607 MB of NVIDIA's CUDA
-runtime libraries (about 2 GB once unpacked), the CUDA 13.3 build 275 MB plus
-575 MB, and the Vulkan build 63 MB — the files of v0.9.0-jv.4. Vulkan also
+runtime libraries (about 2 GB once unpacked), the CUDA 13.3 build 276 MB plus
+576 MB, and the Vulkan build 63 MB — the files of v0.9.0-jv.5. Vulkan also
 runs on NVIDIA cards, more slowly than CUDA. The CPU build is the portable one,
 which also runs on older processors (the other CPU build stops at start on a
 processor without the newest instructions).
@@ -79,7 +79,10 @@ load again on their next use; your downloaded models stay. (Under `npm run dev`
 the app runs the build it made itself, so the row has no Reinstall.)
 
 The runtime is pinned to one build of JustVoice's copy of audio.cpp — today
-**v0.9.0-jv.4**, audio.cpp v0.9.0 with JustVoice's changes: Chatterbox Turbo and
+**v0.9.0-jv.5**, audio.cpp v0.9.0 with JustVoice's changes. jv.5 speaks exactly as
+jv.4 did; it adds the small program that does the app's own audio work (effects,
+speed, gain and pitch, the joins between pieces), which the installed app carries
+beside itself. Since jv.4: Chatterbox Turbo and
 Nano clone voices; Chatterbox speaks Hebrew, Russian, Chinese and Japanese (23
 languages); Kokoro's five Japanese voices; Kokoro blends; a lexicon's exact
 pronunciations (IPA) on Kokoro; Qwen3-TTS's memory fixes (up to 2.3 GB less while

@@ -2,6 +2,11 @@
 
 ## v0.1.0
 
+- **Speech runtime v0.9.0-jv.5 (2026-10-10)** — speaks exactly as v0.9.0-jv.4; it adds the program
+  that does the app's own audio work (effects, speed, gain, pitch, the joins between pieces), so
+  the installed app carries it. The runtime row on AI Settings → Speech engines offers **Update to
+  v0.9.0-jv.5**; jv.4 keeps working until you update ([Engines → The speech
+  runtime](engines.md#the-speech-runtime))
 - **The desktop app updates itself (2026-10-09)** — it checks for a new version when it starts;
   **Settings → Updates** says when one is out, **Download** fetches it, and it installs when you
   quit the app (or at once with **Restart now**). On a Mac it opens the release page instead

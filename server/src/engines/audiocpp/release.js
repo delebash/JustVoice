@@ -20,18 +20,20 @@ import * as devBuild from "./dev_build.js";
 import * as self from "./release.js";
 
 export const cfg = {
-  // Our build 4 on audio.cpp v0.9.0 (github.com/delebash/audio.cpp, published 2026-10-04 by
-  // the fork's release workflow): everything since jv.1 in one release (decided 2026-10-03) —
-  // Kokoro blends and inline IPA, Chatterbox Turbo / Nano cloning, Chatterbox in Hebrew,
-  // Russian, Chinese and Japanese, Kokoro's Japanese voices, models registered at run time
-  // (`model_management`), Qwen3's memory fixes, and libmecab beside the executable on every
-  // platform. jv.2 and jv.3 were tagged on commits whose macOS build failed and were never
-  // published; their names are not reused (decided 2026-10-04). Upstream's v0.9.0 was
-  // released 2026-09-30 (795c45fb).
-  TAG: "v0.9.0-jv.4",
+  // Our build 5 on audio.cpp v0.9.0 (github.com/delebash/audio.cpp, published 2026-10-10 by
+  // the fork's release workflow, from 55b150f4): jv.4 plus `audiocpp_dsp`, the audio program
+  // the server runs (effects, speed, gain, pitch, joins, trim, the analyzer — our `dsp/`), in
+  // every build — the installer carries the CPU build's copy beside the app
+  // (scripts/audiocpp-dsp-package.js). jv.4 (2026-10-04) brought Kokoro blends and inline IPA,
+  // Chatterbox Turbo / Nano cloning, Chatterbox in Hebrew, Russian, Chinese and Japanese,
+  // Kokoro's Japanese voices, models registered at run time (`model_management`), Qwen3's memory
+  // fixes and libmecab beside the executable. jv.2 and jv.3 were tagged on commits whose macOS
+  // build failed and were never published; their names are not reused (decided 2026-10-04).
+  // Upstream's v0.9.0 was released 2026-09-30 (795c45fb).
+  TAG: "v0.9.0-jv.5",
   // Older pinned releases an install may still hold, newest first. One of them keeps working
   // until the runtime row's "Update to <TAG>" installs the pinned build (decided 2026-10-03).
-  PREVIOUS_TAGS: ["v0.9.0-jv.1", "v0.9.0"],
+  PREVIOUS_TAGS: ["v0.9.0-jv.4", "v0.9.0-jv.1", "v0.9.0"],
 };
 
 const dl = () => `https://github.com/delebash/audio.cpp/releases/download/${cfg.TAG}`;
@@ -39,7 +41,7 @@ const dl = () => `https://github.com/delebash/audio.cpp/releases/download/${cfg.
 // Every build the app has pinned or will, oldest first — upstream's, then ours. A feature
 // names the first build that has it, so an older installed build refuses that feature by
 // name instead of failing inside.
-export const BUILDS_IN_ORDER = ["v0.9.0", "v0.9.0-jv.1", "v0.9.0-jv.4"];
+export const BUILDS_IN_ORDER = ["v0.9.0", "v0.9.0-jv.1", "v0.9.0-jv.4", "v0.9.0-jv.5"];
 export const FEATURES = {
   voxcpm2_transcript: "v0.9.0-jv.1", // a VoxCPM2 clone uses the clip's transcript
   voice_pack: "v0.9.0-jv.4", // Kokoro blends (gap 2)
@@ -69,20 +71,20 @@ export const MODEL_REVISION = "7bf52723f5a95b6cec53ea905fd10eca1c8b942e";
 export const SERVER_EXE = process.platform === "win32" ? "audiocpp_server.exe" : "audiocpp_server";
 
 // The pinned release's archives, by their published sha256 (GitHub's asset digests for
-// v0.9.0-jv.4, read 2026-10-05 from the published release). The kit refuses a download that
+// v0.9.0-jv.5, read 2026-10-10 from the published release). The kit refuses a download that
 // doesn't match, before anything is unpacked (audit §5 E6). A new TAG brings its own; an
 // archive missing here is launch-verified only.
 export const SHA256 = {
-  "audio-v0.9.0-jv.4-bin-windows-x64-cuda12.4.zip": "0e36c9764df350aec58159fd2588ad4c2fc87e3685034ea3f1089550fbd6afdd",
-  "audio-v0.9.0-jv.4-cudart-windows-x64-cuda12.4.zip": "475a21d187171a0c9e835b1840d494dbec305c799b33be59c2265041e5848a07",
-  "audio-v0.9.0-jv.4-bin-windows-x64-cuda13.3.zip": "a31ad974101b3c4a59a9f68f2a157a5ff7e2471aece18f4c80ee026c5d98e216",
-  "audio-v0.9.0-jv.4-cudart-windows-x64-cuda13.3.zip": "5f07adf13799320992b77948d2332d903ab699b732e4ee31bc953328543a15c3",
-  "audio-v0.9.0-jv.4-bin-windows-x64-vulkan.zip": "f7b74cc9e389857c69524b1584fc4bfbc530cd45eac8f289a63123e2fb0c90ef",
-  "audio-v0.9.0-jv.4-bin-windows-x64-cpu-portable.zip": "03e25b41d62645975bb077f290affbd965b35f153e1124d9e9ebba28b8700a98",
-  "audio-v0.9.0-jv.4-bin-ubuntu-x64-vulkan.tar.gz": "847a68aca76858f15e007e17627bdf54509375a0f369b69f19568dc348911f61",
-  "audio-v0.9.0-jv.4-bin-ubuntu-x64-cpu-portable.tar.gz": "7776d5a85f0f92583965737fcc010318ec5cadc0f5915120c9291e34c6a876e6",
-  "audio-v0.9.0-jv.4-bin-macos-arm64-metal.tar.gz": "1a5cbace610c9a31393e21cb4cf7bf3db893b83ad58ba1afeced169fc0a2ae7c",
-  "audio-v0.9.0-jv.4-bin-macos-x64-metal.tar.gz": "717eea7bec0b7fd54176ce8f0ef8c6b9878110c2bd58e6f9056fbee6c09d6f6f",
+  "audio-v0.9.0-jv.5-bin-windows-x64-cuda12.4.zip": "268b9d5aaafc21014d0fd98ffc3013883333fcf861c48644e34072bfcb690093",
+  "audio-v0.9.0-jv.5-cudart-windows-x64-cuda12.4.zip": "ab356389477e11e48d74920d609e6599d3e3a61d44e515e8d332ac930b8342c3",
+  "audio-v0.9.0-jv.5-bin-windows-x64-cuda13.3.zip": "2c23d8178d3386c20e9b8069538bc5953e88e60bd612adb849d02cc7690368e5",
+  "audio-v0.9.0-jv.5-cudart-windows-x64-cuda13.3.zip": "6f6746b99d7943d8fd6c654c05944c1abaa56e3603f0551c579c187c4b3db5df",
+  "audio-v0.9.0-jv.5-bin-windows-x64-vulkan.zip": "1a296190c7bb61307b5f43962bd717806c5863efa2bd2a2144cfc8d869c46261",
+  "audio-v0.9.0-jv.5-bin-windows-x64-cpu-portable.zip": "5f816b4301d6e4c58c5f6175a0215829aeea59f49fe521cf78f33d0793540842",
+  "audio-v0.9.0-jv.5-bin-ubuntu-x64-vulkan.tar.gz": "916ab78bf7717b9fd890c2e18a992fc82c0cd2c25210e5e018c537cf06fda017",
+  "audio-v0.9.0-jv.5-bin-ubuntu-x64-cpu-portable.tar.gz": "a66718ecbf0b8ff8bb8547feeeadd7d706fd2aa0cad8d9d45b98467588ab68f1",
+  "audio-v0.9.0-jv.5-bin-macos-arm64-metal.tar.gz": "9c9f2296e4b2ee02a9959fe19eb7d78c06906e5d083a51bd9a63ba69364bd023",
+  "audio-v0.9.0-jv.5-bin-macos-x64-metal.tar.gz": "8d8a02efd820f6e8e851b6d1b15568c780528fd4db72821ae738548f12b45b2c",
 };
 
 const sha = (name) => (Object.hasOwn(SHA256, name) ? SHA256[name] : null);
