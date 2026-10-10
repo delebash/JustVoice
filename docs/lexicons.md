@@ -105,6 +105,29 @@ Entries can be:
 
 The lexicon editor includes a preview text field. Type a sentence; JustVoice shows which entries would apply and how the preprocessed text looks before it hits the engine. Useful when checking edge cases ("Beauchamp's" → "BEE-chum's" — does the possessive carry through?).
 
+## Hear it before you render
+
+A saved lexicon's editor lets you listen to it:
+
+- **▶ beside an entry** — the word as it will be said: the persona chosen under
+  **Try a word**, reading this lexicon. It plays what is saved, so the ▶ of an
+  entry added or changed since is greyed out until you **Save**.
+- **Try a word** — pick a persona, type a word or a short line, then **▶ Before**
+  hears it without this lexicon and **▶ After** with its saved entries. The
+  persona list holds the personas that read this lexicon — the one that carries
+  it, and the ones cast in a book that chose it — so you hear it in the voice
+  that will say it. For a lexicon nothing reads yet it lists every persona.
+- **Affects** — how many lines contain one of the lexicon's words, counting only
+  the lines the render reads it for (see
+  [Which lexicons a line is read with](#which-lexicons-a-line-is-read-with)).
+  Editing an entry makes those lines [stale](#what-goes-stale-when-you-change-one)
+  on Render; nothing renders again until you choose to. A lexicon nothing reads
+  says so, and where to choose it.
+
+When the persona's voice model isn't loaded, ▶ asks first — **Load & play** —
+unless you chose **Always auto-load**. A new lexicon has none of this until its
+first Save.
+
 ## When to use which scope
 
 | Case | Scope |
@@ -159,7 +182,9 @@ voice. An IPA-only entry changes nothing on an engine without phonemes.
 The live preview marks both: respellings replace the word, pronunciations
 show as 「/…/」 after it, with a line under the preview saying which models
 speak IPA — *「/…/」 is IPA — Kokoro only.* The entries table says the same in
-its Kind column (*IPA · Kokoro only*; hover it for the rest). Both read the
+its Kind column (*IPA · Kokoro only*; hover it for the rest), and the note under
+the table spells it out — *Spoken as IPA by Kokoro. Every other model reads the
+respelling — an entry with only IPA does nothing there.* All of them read the
 installed models' capabilities, so they follow the speech runtime you have.
 On a persona's page, the count of word replacements under **Lexicon** leaves
 out an IPA-only entry when the voice's model can't take IPA.

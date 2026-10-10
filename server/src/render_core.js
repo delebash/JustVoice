@@ -514,18 +514,29 @@ export function _applyLexicons(text, lexiconIds, state, { ipaCapable = false } =
 }
 
 /**
- * The mapped words the engine will speak from IPA in `text`, lowercased (a Set). Step for step
- * what the engine's splice does: whole words, case aside, the longest entry first so "Mara
- * Vance" is not also "Mara"; split on those, and every piece that IS an entry is spoken from
- * its IPA — which includes an entry ending in punctuation ("Dr.") that the regex itself can't
- * match but that stands alone between two matches. Two matchers, one rule; the project-lexicon
- * tests pin them together.
+ * The mapped words the engine will speak from IPA in `text`, lowercased (a Set): the entries
+ * with a pronunciation, through `wordsIn`.
  */
 export function _ipaWords(text, ipaMap) {
-  const entries = pySorted(
+  return wordsIn(
+    text,
     Object.entries(ipaMap)
       .filter(([g, p]) => strip(g) && strip(p || ""))
-      .map(([g]) => strip(g)),
+      .map(([g]) => g),
+  );
+}
+
+/**
+ * Which of `words` a text contains, lowercased (a Set). Step for step what the engine's IPA
+ * splice does: whole words, case aside, the longest first so "Mara Vance" is not also "Mara";
+ * split on those, and every piece that IS a word counts — which includes one ending in
+ * punctuation ("Dr.") that the regex itself can't match but that stands alone between two
+ * matches. Two matchers, one rule; the project-lexicon tests pin them together. Lexicons'
+ * "Affects" count uses it too (`lexicons_api.lexiconReach`).
+ */
+export function wordsIn(text, words) {
+  const entries = pySorted(
+    words.map((g) => strip(g || "")).filter(Boolean),
     (g) => cpLen(g),
     true,
   );

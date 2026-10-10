@@ -120,6 +120,22 @@ already warns per entry when no model reads IPA (`LexiconsPage.vue:135–149`, f
 Blast radius: new endpoint only; `/v1/generate` unchanged (one more caller); `lexiconMatches(`
 (`PersonaEditorPage.vue:650`) untouched.
 
+**Built 2026-10-09** — where it differs from the above:
+- ▶ and Try a word go through `POST /v1/personas/preview` with the persona as a draft whose lexicon
+  is swapped (this one, or none), not `/v1/generate`: the preview already shapes a line the way the
+  persona does (its delivery and effects), so before and after differ by the lexicon alone
+  (`voiceAudition.auditionWithLexicon`). Checked on the 8741 server: the same word, Kokoro, gave
+  different audio with the lexicon and the same audio twice with it.
+- **The reach** — "a global lexicon: every project" above is wrong. The render reads a lexicon only
+  as a book's (`default_lexicon_id`, every line of the book) or a persona's (`lexicon_id`, the
+  lines its speakers say) — `render_core.lineLexicons` — so `GET /v1/lexicons/:id/reach` returns
+  those books, the personas that carry it or are cast there, and the count of lines in that reach
+  containing one of its words. A lexicon nothing points at reaches nothing, and the card says
+  where to choose it. The words match by the engine's IPA rule (`render_core.wordsIn`, taken out
+  of `_ipaWords` unchanged): whole words, any case. A respelling also replaces its exact spelling
+  inside a longer word (`_applyLexicons`), which the count leaves out.
+- The IPA note sits under the entries table; the Kind column keeps *IPA · Kokoro only*.
+
 ## 4 · Effects — reorder by dragging, hear it dry and wet
 
 Mock `_s11`. Today the Effects page is the preset library; a persona's chain is edited in

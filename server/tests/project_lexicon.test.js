@@ -390,6 +390,26 @@ test("the_scan_counts_a_name_as_handled_only_where_the_render_handles_it", async
   expect(words.Harbek).toBe(1);
 });
 
+// Lexicons' "Affects" and "Try a word" (2026-10-09): what a lexicon reaches is what the render
+// reads it for — a book's lexicon every line of its book, a persona's the lines its speakers say.
+test("a_lexicon_reaches_the_lines_the_render_reads_it_for", async () => {
+  const { c } = await appClient();
+  const b = await harborBook(c);
+  const reach = async (id) => {
+    const r = await c.get(`/v1/lexicons/${id}/reach`);
+    expect(r.status, r.text).toBe(200);
+    return r.json();
+  };
+  // The book's lexicon: both lines name Elara; the cast's persona can try a word.
+  expect(await reach(b.book)).toEqual({ lines: 2, projects: [{ id: b.pid, name: "Harbor" }], personas: [expect.objectContaining({ name: "Gravel" })] });
+  // A book-scoped lexicon nobody chose reaches nothing.
+  expect(await reach(b.spare)).toEqual({ lines: 0, projects: [], personas: [] });
+  // The persona's: Harbek on Old Crow's line only — the narration names him too, but no persona
+  // with this lexicon says it.
+  expect(await reach(b.slang)).toEqual({ lines: 1, projects: [], personas: [expect.objectContaining({ name: "Gravel" })] });
+  expect((await c.get("/v1/lexicons/lex_nope/reach")).status).toBe(404);
+});
+
 // ── §6 · 1 · Generate reads the lexicons the page sends ─────────────────
 
 /** A loaded managed engine with one voice, as `_findManagedVoiceOwner` sees it. */

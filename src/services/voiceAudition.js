@@ -51,6 +51,21 @@ export function auditionVoice(api, voice) {
   );
 }
 
+/** A persona saying `text` with one lexicon or with none — Lexicons' ▶ and Try a word
+ *  (2026-10-09). The persona goes as a draft with its lexicon swapped, through the same
+ *  preview the persona page uses, so before and after differ by that lexicon alone; it
+ *  reads the lexicon's saved entries. */
+export function auditionWithLexicon(api, persona, text, lexiconId) {
+  return askingToLoad(
+    (load) => api.request("/v1/personas/preview", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ persona: { ...persona, lexicon_id: lexiconId }, text, auto_load: load }),
+    }),
+    { who: persona.name, modelName: persona.model_name },
+  );
+}
+
 /** A saved persona speaking the stock line in its language — through the
  *  same path a chapter renders with (`POST /v1/personas/preview`). */
 export function auditionPersona(api, persona) {

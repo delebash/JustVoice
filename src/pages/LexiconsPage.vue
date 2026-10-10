@@ -21,6 +21,11 @@ import { useLexiconsStore } from "../stores/lexicons.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { usePersonasStore } from "../stores/personas.js";
 import { lexiconUsedBy } from "../services/lexiconUsage.js";
+import { auditionWithLexicon } from "../services/voiceAudition.js";
+import { handleTermsRefusal } from "../services/engineTerms.js";
+import { usePagePlayer } from "../composables/usePagePlayer.js";
+import PagePlayer from "../components/PagePlayer.vue";
+import PlayTransport from "../components/PlayTransport.vue";
 
 const api = useApi();
 
@@ -106,6 +111,7 @@ const entryRows = computed(() =>
   (draft.value?.entries || []).map((e, i) => ({ ...e, __i: i })),
 );
 const ENTRY_COLUMNS = [
+  { id: "heard", header: "", headerStyle: { width: "44px" } },
   { id: "grapheme", accessorKey: "grapheme", header: "Word", sortable: true },
   { id: "pron", header: "Pronunciation (IPA or phonetic)" },
   { id: "kind", header: "Format", headerStyle: { width: "90px" } },
@@ -174,9 +180,70 @@ function resetPreview() {
   previewResult.value = "";
 }
 
+// ── Hear it, and what it touches (mock _s10, 2026-10-09) ──
+// What the lexicon reaches — the books that read it, the personas that read it or speak there,
+// and how many lines contain its words (GET /v1/lexicons/:id/reach). A saved lexicon only.
+const reach = ref(null);
+const player = usePagePlayer();
+const hearAsId = ref(null);
+const tryWord = ref("");
+// The entries as saved when the dialog opened: ▶ plays what the server has, so an entry added
+// or changed since needs a Save first.
+const savedKeys = ref(new Set());
+const entryKey = (e) => `${e.grapheme}\u0000${e.phoneme_ipa || ""}\u0000${e.alias || ""}`;
+const isSaved = (e) => savedKeys.value.has(entryKey(e));
+const hearPersonas = computed(() => {
+  const ids = (reach.value?.personas || []).map((p) => p.id);
+  const inReach = personas.value.filter((p) => ids.includes(p.id));
+  return inReach.length ? inReach : personas.value;
+});
+const hearPersonaOptions = computed(() => hearPersonas.value.map((p) => ({ label: p.name, value: p.id })));
+const hearHint = computed(() => (reach.value?.personas?.length
+  ? "Before and after, in the voice that will say it."
+  : "Nothing reads this lexicon yet, so try it in any persona's voice."));
+const affectsLine = computed(() => {
+  const r = reach.value;
+  if (!r) return "";
+  if (!r.projects.length && !r.personas.length) {
+    return "Nothing reads this lexicon yet — choose it on a book's Overview or on a persona's page.";
+  }
+  if (!r.lines) return "No line it reaches contains these words yet.";
+  return `${r.lines} line${r.lines === 1 ? "" : "s"} contain${r.lines === 1 ? "s" : ""} one of these words. Editing an entry makes them read stale on Render — nothing renders again until you choose to.`;
+});
+let audioUrls = [];
+function forgetAudio() {
+  player.stop();
+  for (const u of audioUrls) URL.revokeObjectURL(u);
+  audioUrls = [];
+}
+async function loadReach(id) {
+  reach.value = await api.safeRequest(`/v1/lexicons/${encodeURIComponent(id)}/reach`, null);
+  if (!hearPersonas.value.some((p) => p.id === hearAsId.value)) hearAsId.value = hearPersonas.value[0]?.id ?? null;
+}
+/** ▶ — `text` in the chosen persona's voice, with this lexicon ("after") or without ("before"). */
+async function hear(text, which, key) {
+  const persona = personas.value.find((p) => p.id === hearAsId.value);
+  if (!persona || !String(text || "").trim() || !editingId.value) return;
+  if (player.key === key && audioUrls.length) return player.toggle();
+  try {
+    const blob = await auditionWithLexicon(api, persona, text.trim(), which === "after" ? editingId.value : null);
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    audioUrls.push(url);
+    await player.play(key, url);
+  } catch (e) {
+    if (handleTermsRefusal(e)) return;
+    pushToast({ kind: "error", title: "Couldn't play it", description: String(e?.message ?? e) });
+  }
+}
+
 function openEdit(lex) {
   creating.value = false;
   editingId.value = lex.id;
+  savedKeys.value = new Set((lex.entries ?? []).map(entryKey));
+  tryWord.value = lex.entries?.[0]?.grapheme ?? "";
+  forgetAudio();
+  loadReach(lex.id);
   draft.value = {
     name: lex.name ?? "",
     scope: lex.scope ?? "global",
@@ -203,6 +270,8 @@ function createLexicon() {
 }
 
 function closeDialog() {
+  forgetAudio();
+  reach.value = null;
   dialogOpen.value = false;
   creating.value = false;
   editingId.value = null;
@@ -634,6 +703,13 @@ onActivated(() => {
 
           <UiTable class="lex__table" :data="entryRows" :columns="ENTRY_COLUMNS" data-key="__i"
             :row-class="(row) => (editingEntryIndex === row.__i ? 'lex__row--editing' : '')">
+            <template #heard="{ row }">
+              <UiButton v-if="!creating" intent="ghost" size="small"
+                :label="player.isPlaying(`entry:${row.__i}`) ? '❚❚' : '▶'"
+                :disabled="!isSaved(row) || !hearAsId"
+                :title="isSaved(row) ? `Hear “${row.grapheme}” as it will be said` : 'Save the lexicon to hear this entry'"
+                @click="hear(row.grapheme, 'after', `entry:${row.__i}`)" />
+            </template>
             <template #grapheme="{ row }"><strong>{{ row.grapheme }}</strong></template>
             <template #pron="{ row }"><code class="jv-mono">{{ row.phoneme_ipa || row.alias || "—" }}</code></template>
             <template #kind="{ row }">
@@ -650,6 +726,27 @@ onActivated(() => {
               No entries yet — add one below, bulk-paste, or merge a <code>.justlex.json</code>.
             </template>
           </UiTable>
+
+          <PlayTransport v-if="player.key?.startsWith('entry:')" :player="player" />
+          <p v-if="draft.entries.length" class="jv-hint">{{ ipaTip }}</p>
+
+          <!-- Hear a word before and after, in the voice that will say it; what the lexicon touches. -->
+          <div v-if="!creating" class="lex__field lex__try">
+            <label>Try a word</label>
+            <div class="jv-inline-row">
+              <UiSelect width="name" v-model="hearAsId" :options="hearPersonaOptions" aria-label="As"
+                title="The persona whose voice says it" placeholder="— a persona —" />
+              <UiInput width="name" v-model="tryWord" placeholder="A word or a short line"
+                @keydown.enter.prevent="hear(tryWord, 'after', 'try:after')" />
+              <UiButton intent="secondary" size="small" :label="player.isPlaying('try:before') ? '❚❚ Before' : '▶ Before'"
+                title="Without this lexicon" :disabled="!hearAsId || !tryWord.trim()" @click="hear(tryWord, 'before', 'try:before')" />
+              <UiButton intent="secondary" size="small" :label="player.isPlaying('try:after') ? '❚❚ After' : '▶ After'"
+                title="With this lexicon's saved entries" :disabled="!hearAsId || !tryWord.trim()" @click="hear(tryWord, 'after', 'try:after')" />
+              <PlayTransport v-if="player.key?.startsWith('try:')" :player="player" />
+            </div>
+            <p class="jv-hint">{{ hearHint }}</p>
+            <p v-if="affectsLine" class="jv-hint"><b>Affects:</b> {{ affectsLine }}</p>
+          </div>
 
           <div class="jv-divider" />
 
@@ -695,6 +792,7 @@ onActivated(() => {
         </template>
     </AppModal>
 
+    <PagePlayer :player="player" />
     <input ref="fileInputNew" type="file" accept=".justlex.json,application/json" style="display:none" @change="importNewFromFile" />
     <input ref="fileInputMerge" type="file" accept=".justlex.json,application/json" style="display:none" @change="importIntoDraft" />
   </q-page>
@@ -774,6 +872,8 @@ onActivated(() => {
   vertical-align: middle;
 }
 
+/* Clear of the entries table and its note above. */
+.lex__try { margin-top: 16px; }
 .lex__sub-h { margin: 8px 0 12px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-3); }
 .lex__entry-lede { margin: -6px 0 12px; }
 

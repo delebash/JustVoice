@@ -882,6 +882,16 @@ export const Lexicon = T.Object({
 
 export const LexiconList = T.Object({ lexicons: T.Array(Lexicon) });
 
+// What a lexicon reaches (Lexicons' "Affects" and "Try a word", 2026-10-09): the books that read
+// it as their lexicon, the personas that read it as theirs or speak in those books, and how many
+// lines contain one of its words.
+const NamedRef = T.Object({ id: T.String(), name: T.String() });
+export const LexiconReach = T.Object({
+  lines: T.Integer(),
+  projects: T.Array(NamedRef),
+  personas: T.Array(NamedRef),
+});
+
 export const CreateLexiconRequest = T.Object({
   name: T.String(),
   entries: opt(T.Array(LexiconEntry), []),

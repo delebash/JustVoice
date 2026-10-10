@@ -1622,7 +1622,9 @@ Lexicons and Compare) — [`2026-10-06-leftovers-batch.md`](../plans/2026-10-06-
 [`2026-09-30-script-leftovers.md`](../plans/2026-09-30-script-leftovers.md) ·
 [`2026-09-30-mock-vs-app-and-slice-4.md`](../plans/2026-09-30-mock-vs-app-and-slice-4.md).
 
-**Pronunciation** — [`2026-09-30-project-lexicon.md`](../plans/2026-09-30-project-lexicon.md).
+**Pronunciation** — [`2026-09-30-project-lexicon.md`](../plans/2026-09-30-project-lexicon.md) ·
+[`2026-10-09-finishing-the-open-work.md`](../plans/2026-10-09-finishing-the-open-work.md) §3 (Lexicons'
+▶, Try a word and Affects; the same plan carries New project, Effects, Engines and the updater).
 
 **The pipeline and first run** —
 [`2026-08-15-pipeline-truth-and-first-run.md`](../plans/2026-08-15-pipeline-truth-and-first-run.md).
