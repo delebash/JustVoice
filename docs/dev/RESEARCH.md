@@ -53,6 +53,7 @@ Subjects: [1 · Speech runtime](#1--speech-runtime-audiocpp) ·
 [6 · The app stack: Electron, Node, phones](#6--the-app-stack-electron-node-phones) ·
 [7 · Where an AI task shows](#7--where-an-ai-task-shows) ·
 [8 · Character voices](#8--character-voices-effects-formants-conversion-creature-sounds) ·
+[9 · Voice training on the speech runtime](#9--voice-training-on-the-speech-runtime) ·
 [Records not yet distilled](#records-not-yet-distilled)
 
 ---
@@ -1596,6 +1597,88 @@ audio.cpp's `docs/model_licenses.md`, checked upstream 2026-09-21…27). Their s
 - LLM2Fx (Sony AI and KAIST, WASPAA 2025, arXiv 2505.20770): LLMs predict EQ and reverb
   parameters from a text description zero-shot, better with DSP features, DSP code and
   few-shot examples in the prompt.
+
+---
+
+## 9 · Voice training on the speech runtime
+
+The research for gap 5 — training rebuilt on audio.cpp, no Python (2026-10-09). The reading and the
+open questions: [`2026-10-09-voice-training-findings.md`](../plans/2026-10-09-voice-training-findings.md).
+Paths: AC = our fork `../audio.cpp`, G = its ggml `AC/external/ggml`, OLD = `git show
+1c7398d^:server/justvoice/` (the training removed in the switch). Found by a research agent
+2026-10-09, read-only; the optimizer reset, the LoRA loader and Qwen3-TTS's missing LoRA option
+re-read by the session.
+
+**What the old training was** (*git*):
+- It trained Qwen3-TTS Base, adapted from Alexandria (MIT): PEFT on the talker, targets
+  q/k/v/o, rank 32, alpha 128, 20 epochs, learning rate 5e-6, batch 1 with 8-step accumulation,
+  AdamW (weight decay 0.01), bf16 on CUDA, gradient clipping — OLD `engines/qwen3/train_lora.py`
+  :57-62, :381, :420-437. Loss: the talker's cross-entropy on codebook 0 plus 0.3 × the code
+  predictor's (:497).
+- A Chatterbox trainer (from gokhaneraslan, Apache-2.0) existed too; its header says no adapter
+  it made was ever listened to (OLD `engines/chatterbox/train_lora.py`:3-30).
+- Data: each clip through the model's own speech tokenizer (:186), one reference clip for the
+  x-vector (:123-148), clips over 30 s dropped (:65, :171); the preparer took Whisper transcripts at
+  confidence ≥ 0.85 and SNR ≥ 25 dB (plan 2026-08-20 :151). Alexandria's guidance: 15–30 minutes for
+  a premium voice (github.com/Finrandojin/alexandria-audiobook `lora.md`:57).
+- A real training run end to end was never verified, so its time and memory were never measured
+  (plan 2026-08-21 :129). At render time the adapter went on the talker through
+  `PeftModel.from_pretrained` with an x-vector-only prompt (OLD `engines/qwen3/engine.py`:222-256).
+
+**ggml's training support** (*code*, *web*):
+- `ggml-opt`: losses mean, sum, cross-entropy, MSE; optimizers AdamW and SGD only; no gradient
+  clipping; the cross-entropy op takes no mask (G `include/ggml-opt.h`:31-34, :77-96;
+  `include/ggml.h`:2960).
+- Backward passes exist for MUL_MAT, RMS_NORM, SOFT_MAX (not its mask), ROPE (with multi-section),
+  GET_ROWS, SILU, split SwiGLU, CROSS_ENTROPY_LOSS, IM2COL and the view ops; none for
+  FLASH_ATTN_EXT, NORM (LayerNorm), GELU, CONCAT, PAD, CONV_TRANSPOSE_1D, SET_ROWS or fused SwiGLU —
+  they abort (G `src/ggml.c`:7144-7623; upstream the same set).
+- Backends: CPU and CUDA run the backward ops; Vulkan runs most; Metal has only the optimizer
+  steps, so on a Mac the backward pass falls to the CPU (llama.cpp `docs/ops.md`, 2026-10-09).
+- The gradient through a frozen weight is `OUT_PROD`: CUDA takes only F32 weights, the CPU F32 or
+  quantized but not F16/BF16 (G `src/ggml-cuda/ggml-cuda.cu`:5643-5644, `src/ggml-cpu/ggml-cpu.cpp`
+  :468-470, `ops.cpp`:4493-4497). Our ggml copy lacks upstream's Vulkan OUT_PROD (upstream
+  f955e394, #23997, 2026-07-15).
+- A bug in our copy, read not reproduced: with dynamic graphs the gradient accumulators are zeroed
+  only at first allocation — the per-step reset gets a graph pointer the previous step set to null
+  (G `src/ggml-opt.cpp`:492-498, :727-729, :828-833). llama.cpp #29364 and #30170 describe it; both
+  closed unmerged.
+- llama.cpp has full fine-tuning (#10544, merged 2025-05-12: "CPU training seems to work, other
+  backends are missing support for some GGML ops"; its README: F32 models, "very much WIP"). No
+  LoRA trainer is merged — #20453, #22705, #26794 closed unmerged; #18499: "I don't think we
+  currently have a maintainer for llama-finetune".
+
+**audio.cpp and LoRA** (*code*, *git*, *web*):
+- No training code in the fork: no `ggml_opt` or backward pass in AC `src`, `include`, `tools`.
+- Loading exists: `make_lora_tensor_source` merges B·A into the base weights at load time (AC
+  `include/engine/framework/assets/lora_tensor_source.h`:31-51; upstream bd805760, 2026-09-15),
+  used by VibeVoice (reads PEFT's `adapter_model.safetensors` + `adapter_config.json`, AC
+  `src/models/vibevoice/lora.cpp`) and YuE2. Qwen3-TTS has no LoRA option (nothing in AC
+  `src/models/qwen3_tts`); it can load F32 weights (`qwen3_tts.weight_type`, `session.cpp`:173-181).
+  So rendering a trained voice is now a wiring job, not "merge and convert" (corrects the switch
+  plan's note, 2026-10-01 §5 item 5).
+- Upstream: LoRA hot-swapping is "not a near-term priority" (#610); no issue or PR about training.
+- The talker (28 layers, hidden 2048, GQA 16/8, M-RoPE, a 5-layer code predictor —
+  huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-Base config.json) is built from audio.cpp's own
+  `CausalDecoderModule` (AC `src/models/qwen3_tts/talker.cpp`:229-283). Its fast paths have no
+  backward pass — flash attention, the KV cache's set_rows, fused SwiGLU, `ggml_round_bf16`; plain
+  alternatives exist (ManualRepeat attention, split SwiGLU — `decoder.h`:15-20, `decoder.cpp`:489-491),
+  not verified end to end.
+
+**Elsewhere** (*web*):
+- No ggml TTS project that trains was found (not proven absent). QVAC Fabric
+  (github.com/tetherto/qvac-fabric-llm.cpp, a llama.cpp fork) trains LoRA for Qwen3/Gemma3 LLMs
+  with backward kernels on Vulkan, Metal and CUDA — not upstreamed; Qwen3-1.7B Q8, one epoch: 5.5 min
+  on an RTX 4090, 40 min on an M3 Pro (huggingface.co/blog/qvac/fabric-llm-finetune).
+- Baseten fine-tuned Qwen3-TTS on 1.5 h of one speaker; it "didn't materially beat zero-shot on
+  similarity or MOS-style quality"; an x-vector averaged over 64 clips helped
+  (baseten.co/blog/fine-tuning-qwen3-tts-for-high-quality-voice-cloning). Qwen's own recipe is full
+  fine-tuning into a named speaker, not LoRA (github.com/QwenLM/Qwen3-TTS `finetuning/README.md`).
+
+**Memory, by arithmetic, unmeasured:** the 1.7B talker is ~1.41B parameters — ~5.6 GB as F32,
+2.8 GB as BF16; a rank-32 q/k/v/o adapter ~12.8M parameters, ~200 MB with gradients and AdamW
+state; a 30 s clip is 360 frames at 12 Hz. Training on CUDA needs the frozen talker in F32 (CUDA's
+OUT_PROD), tight for the 1.7B on an 8 GB card, more plausible for the 0.6B.
 
 ---
 
