@@ -1681,6 +1681,17 @@ re-read by the session.
   (baseten.co/blog/fine-tuning-qwen3-tts-for-high-quality-voice-cloning). Qwen's own recipe is full
   fine-tuning into a named speaker, not LoRA (github.com/QwenLM/Qwen3-TTS `finetuning/README.md`).
 
+**Cloning, measured** (2026-10-10, through the app on CUDA, Qwen3-TTS Base 1.7B 8-bit; the run and
+its page: plan 2026-10-09 voice-training findings, "The measurement — results"):
+- A pooled x-vector from a long reference makes the model run away: one sentence from a 19 s
+  reference → 3.4 s of audio in 7.9 s; from 32 s → 655 s of audio in 468 s. The speaker encoder's
+  pooling is 32-bit float (`src/models/qwen3_tts/speaker_encoder.cpp` `attentive_statistics_pool`);
+  cause not found. — *measured*.
+- On 20 LJSpeech lines, word errors (Qwen3-ASR, 336 words): real 1, clip with words 0, clip x-vector
+  only 1, 2-clip pooled x-vector 1. — *measured*.
+- A request the app cancels (client gone) does not stop the runtime's work: the next request waits
+  until the runaway line ends. — *measured*.
+
 **Memory, by arithmetic, unmeasured:** the 1.7B talker is ~1.41B parameters — ~5.6 GB as F32,
 2.8 GB as BF16; a rank-32 q/k/v/o adapter ~12.8M parameters, ~200 MB with gradients and AdamW
 state; a 30 s clip is 360 frames at 12 Hz. Training on CUDA needs the frozen talker in F32 (CUDA's

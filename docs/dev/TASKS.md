@@ -259,9 +259,29 @@ STATE:  DECIDED 2026-10-09 — asked at the end of the open-work program, as sho
         recommendation, so it is asked again — not decided.
 WHY:    finish the program's open ends.
 NOT:    4 (not decided); a trainer before the measurement says it is needed.
-BUILT:  in progress.
-OPEN:   1, 2, 6, 7, 8 to do; 4 asked again.
+BUILT:  1 — the measurement ran 2026-10-10 (plan 2026-10-09 voice-training findings, "results"):
+        all three clones equally intelligible; the 64-clip x-vector could not be made (a long
+        reference runs away — the FINDING above), so C used 2 clips; the blind listening page holds
+        the deciding part, the user's ears. 2 — kit 1347b49 (a re-tune asked while the load finishes
+        runs once it does; the real-router smoke 8/8). 3 — nothing to build. 5 — nothing to build.
+        6 — pushed (kit, JustWrite, docgen). 8 — both servers stopped 2026-10-10.
+OPEN:   1 — the user's listening, then the trainer question; 7 — not built: VERSION is in the
+        render cache key (render_core.js `_inputsKey`), so changing it marks every rendered line
+        stale — asked again; 4 — asked again.
 GO:     given 2026-10-09 ("your rec all go").
+
+### FINDING — A long clone reference runs Qwen3-TTS Base on without stopping, and holds the speech queue
+STATE:  FINDING — measured 2026-10-10 (the cloning measurement, plan 2026-10-09
+        voice-training findings, "The measurement — results").
+BUILT:  nothing. The app takes a clone reference of any length (`voices_api.js` /v1/voices/clone checks
+        only Chatterbox Turbo's 5 s minimum). On Qwen3-TTS Base x-vector only, a 19 s reference is
+        fine (one sentence: 3.4 s of audio in 7.9 s) and a 32 s one runs away (655 s of audio in
+        468 s); 494 s never finished. Meanwhile every other speech request waits, and a cancelled
+        request does not stop the runtime's work. The encoder's pooling is 32-bit float; the cause
+        is not found.
+OPEN:   the user's word: cap a clone reference's length in the app (and say so on the clone
+        screen), find the cause in our audio.cpp copy, or both.
+GO:     needed.
 
 ### The server moves to Hono (decided 2026-10-09)
 STATE:  DECIDED 2026-10-09, family-wide — the decision with the user's words is the kit's TASKS,

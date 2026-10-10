@@ -80,6 +80,57 @@ recipe. It was never run end to end, so its quality, time and memory were never 
    - Then overfit one clip.
    - Needs pieces 1–3 and the reset fix.
 
+## The measurement — design (2026-10-09, before running it)
+
+Decided 2026-10-09 (TASKS "The work's eight questions", 1): measure cloning first — clip cloning
+against a many-clip x-vector, on one speaker — and build a trainer only if cloning falls short.
+
+- **The speaker** — LJSpeech 1.1 (keithito.com/LJ-Speech-Dataset, public domain, checked
+  2026-10-09): one woman reading non-fiction aloud, 13,100 clips of 1–10 s, 22.05 kHz, each with
+  its transcript — an audiobook narrator, JustVoice's first use. 20 clips are held out as the
+  lines to say (their recordings are the target); the references come from other clips.
+- **Three clones, one model** — Qwen3-TTS Base 1.7B (8-bit, on disk), made and spoken through
+  the app itself (the clone endpoint and the persona preview), one seed for all:
+  - **A · clip with its words** — one ~10 s clip and its transcript, as the clone screen makes it
+    today;
+  - **B · clip, x-vector only** — the same clip without its words;
+  - **C · many clips, x-vector only** — 64 clips (~6 min) joined into one reference. The speaker
+    encoder (ECAPA-TDNN) pools its statistics over every frame it hears, so this is an x-vector
+    pooled over all 64 clips — not the average of 64 separate x-vectors, which would need a change
+    in our audio.cpp copy. Recorded as such.
+- **Scores**
+  - **Word errors** — each line transcribed by Qwen3-ASR through the app, against its text.
+  - **Sounds like her** — a blind listening page: each line's real recording beside A, B and C
+    in shuffled order, the names revealed on request. A number for this would need a speaker
+    encoder as judge. The only one in our copy is Qwen3-TTS's own, which B and C are conditioned
+    on, so it would favour them. A neutral one would be a conversion job. Left out unless the
+    listening says it's needed.
+- **Clean-up** — the three test voices are deleted from the app afterwards.
+
+## The measurement — results (2026-10-10)
+
+Run through the app on 2026-10-10 (the 8741 server on the real data folder, Qwen3-TTS Base 1.7B 8-bit
+on CUDA, seed 1234, 20 held-out LJSpeech lines of 5–9 s from LJ050; the three test voices deleted
+afterwards).
+
+- **C as designed could not be made.** A pooled x-vector from a long reference makes the model run
+  on without stopping: the same sentence ("The quick brown fox…") from a 19 s reference (2 clips)
+  took 7.9 s and gave 3.4 s of audio; from a 32 s reference (4 clips) it took 468 s and gave
+  **655 s** of audio. The 494 s reference (64 clips) never finished. The encoder's pooling is all
+  32-bit float, so not a half-precision overflow; the cause is not found. C was measured as **C′,
+  2 clips (19 s)**, the longest that worked.
+- **Word errors** (Qwen3-ASR, 336 words): her own recordings 1, A 0, B 1, C′ 1. All four are
+  equally clear; intelligibility does not separate them.
+- **Length**: A's lines averaged 6.97 s, B 7.57 s, C′ 7.41 s.
+- **Sounds like her** — the blind listening page:
+  [Which clone sounds like her?](https://claude.ai/artifact/YTkFK4WS4QkfEr7cjoq4BD). Each line's real
+  recording beside A, B and C′ in shuffled order. The user's picks are saved with the page
+  (`picks`, one document per line) for the tally.
+- **Found on the way**: the app takes a clone reference of any length. A long one (past ~20–30 s on
+  Qwen3-TTS Base, x-vector only) sends its first line to the maximum length — minutes of GPU — and
+  holds the speech queue the whole time. A cancelled request does not stop it: the runtime keeps
+  rendering until done (TASKS FINDING "A long clone reference runs Qwen3-TTS Base on…").
+
 ## The decision (the user's)
 
 1. **Measure cloning first?**
