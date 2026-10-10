@@ -185,6 +185,36 @@ BUILT:  in progress — 1: the fork's release builds `audiocpp_dsp` (fork 342d27
 OPEN:   1–4 above, in that order.
 GO:     given 2026-10-09 ("do it all your rec go, lets get all the tasks completed").
 
+### The work's eight questions, answered (decided 2026-10-09)
+STATE:  DECIDED 2026-10-09 — asked at the end of the open-work program, as shown: "1. Voice
+        training: measure cloning first — clip cloning against a many-clip x-vector, on one
+        speaker? It needs no trainer. My recommendation: yes; build the trainer only if cloning
+        falls short, else gap 5 moves to IDEAS. 2. The dropped re-load: should a re-load with
+        different settings, sent while the first load finishes, run when it finishes, or be
+        refused visibly ('still loading — try again')? My recommendation: run it when the load
+        finishes — the user asked for it, and today it's silently lost. 3. Updater download
+        folder: electron-updater keeps the downloaded installer in %LOCALAPPDATA%\justvoice-updater
+        (outside your chosen data folder), with no option to move it. Accept it? My
+        recommendation: accept — the library's standard place, gone once it installs. 4. Engines
+        paragraph: the mock's paragraph under 'Picking an engine…' was left out (old wording).
+        Leave it out, or a reworded one? 5. Effects page A/B: add a persona picker to play a
+        preset there? My recommendation: no — keep A/B on the persona page, as the mock draws it.
+        6. Pushes: may I push the kit, JustWrite and docgen commits listed above? 7. Version
+        shown: JV's Settings → Updates shows a hardcoded 'v0.1.0' while the app is 0.0.1. Make it
+        read the real version? 8. Leftover test servers: a JustWrite test server on 8751 (scratch
+        data, started 2026-10-08) and a static server on 8791 are still running. Stop them?"
+        The user: "your rec all go".
+        So: 1 measure cloning first, the trainer only if cloning falls short; 2 the runner runs a
+        re-load with other settings once the finishing load completes (the kit's TASKS item);
+        3 the download cache stays where electron-updater keeps it; 5 no A / B on the Effects page;
+        6 push; 7 Settings → Updates reads the real version; 8 stop both servers. 4 carried no
+        recommendation, so it is asked again — not decided.
+WHY:    finish the program's open ends.
+NOT:    4 (not decided); a trainer before the measurement says it is needed.
+BUILT:  in progress.
+OPEN:   1, 2, 6, 7, 8 to do; 4 asked again.
+GO:     given 2026-10-09 ("your rec all go").
+
 ### The server moves to Hono (decided 2026-10-09)
 STATE:  DECIDED 2026-10-09, family-wide — the decision with the user's words is the kit's TASKS,
         "The family's servers move to Hono — one server that runs in Node and in a worker".
