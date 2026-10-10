@@ -185,6 +185,32 @@ BUILT:  in progress — 1: the fork's release builds `audiocpp_dsp` (fork 342d27
 OPEN:   1–4 above, in that order.
 GO:     given 2026-10-09 ("do it all your rec go, lets get all the tasks completed").
 
+### One-click audiobook: one pipeline in JV, run by its own AI or by Claude Code (decided 2026-10-10)
+STATE:  DECIDED 2026-10-10 — the user: "its not for me it will be a production app for anyone".
+        Shown: "one pipeline, two ways to run it … Each step reads from JV and writes its result
+        into JV … Each result records which model made it. … Way 1, everyone: a 'Make audiobook'
+        button … Way 2, people who have Claude Code: a JV plugin for Claude Code … JV never
+        touches Claude credentials", then: "1. Measure before building? On one real chapter in the
+        dev app, three things: does direction make an audible difference on these engines, does a
+        designed voice stay the same across a chapter, and can the local model direct without
+        over-marking. My lean: yes. … 2. Build order: the in-app button first, the Claude Code
+        plugin second? My lean: yes. … 3. No 'start Claude Code' button in JV for now? My lean:
+        yes. Revisit after asking Anthropic." The user: "your rec on all". The goal, the user's
+        words: "an opensource ebook to audiobook converter that does an oustanding job with local
+        ai automatically and even better job with frontier models but not suing too much tokens so
+        it is very cheap"; then a test against the commercial tools, scoped by the user: "i think
+        it is a big advantage to have multople voices not reading in one voice … if so we dont
+        need to compare ones that read in one voice" (agreed) — only tools that cast many voices.
+WHY:    most users have no Claude Code — the in-app route (the local model, or any provider by
+        API key) is the product; the plugin rides the same routes.
+NOT:    JV signing in with, or holding, Claude.ai credentials (Anthropic's terms forbid it); a JV
+        button that starts Claude Code (Commercial Terms and conditions — ask Anthropic first);
+        single-voice tools in the comparison (AudiobookGen, Speechify, Google Play, KDP).
+BUILT:  nothing yet — what exists, the terms, prices and the commercial tools: RESEARCH §10.
+OPEN:   the test book (the user picks), the measurement on one real chapter, then the plan doc.
+GO:     given 2026-10-10 ("your rec on all"); "wait i want to discuss a little more" — the
+        measurement waits for the user's word.
+
 ### The work's eight questions, answered (decided 2026-10-09)
 STATE:  DECIDED 2026-10-09 — asked at the end of the open-work program, as shown: "1. Voice
         training: measure cloning first — clip cloning against a many-clip x-vector, on one

@@ -54,6 +54,7 @@ Subjects: [1 · Speech runtime](#1--speech-runtime-audiocpp) ·
 [7 · Where an AI task shows](#7--where-an-ai-task-shows) ·
 [8 · Character voices](#8--character-voices-effects-formants-conversion-creature-sounds) ·
 [9 · Voice training on the speech runtime](#9--voice-training-on-the-speech-runtime) ·
+[10 · One-click audiobook, frontier AI and the market](#10--one-click-audiobook-frontier-ai-and-the-market) ·
 [Records not yet distilled](#records-not-yet-distilled)
 
 ---
@@ -1679,6 +1680,112 @@ re-read by the session.
 2.8 GB as BF16; a rank-32 q/k/v/o adapter ~12.8M parameters, ~200 MB with gradients and AdamW
 state; a 30 s clip is 360 frames at 12 Hz. Training on CUDA needs the frozen talker in F32 (CUDA's
 OUT_PROD), tight for the 1.7B on an 8 GB card, more plausible for the 0.6B.
+
+---
+
+## 10 · One-click audiobook, frontier AI and the market
+
+The decision these serve: TASKS "One-click audiobook: one pipeline in JV, run by its own AI or by
+Claude Code" (2026-10-10).
+
+### 10.1 What the pipeline already has
+
+- The AI steps that exist: Analyze (speaker attribution and its second look), Smart-assign
+  (speaker → persona), Compose and Rewrite — `docs/ai-features.md` §The features. — *code,
+  2026-10-10*.
+- A line can carry direction, stored and rendered: Style Instructions on a model that takes
+  written direction, Emotion where the model has one, and Chatterbox Turbo's 19 tags (emotion,
+  register, non-verbal) — `server/src/engines/capability_details.js:225`. — *code, 2026-10-10* ·
+  TASKS-history "Render: a line can change what its model takes" (built 2026-10-06).
+- What each model can do with a character voice: Qwen3 CustomVoice takes direction, can't clone
+  (`capability_details.js:285`); Qwen3 Base clones and silently drops direction (`:298`); Qwen3
+  VoiceDesign makes a voice from words and takes direction (`:318`); VoxCPM2 clones, designs and
+  takes direction (`:339`); Chatterbox Turbo clones and takes tags, English only (`:257`). — *code,
+  2026-10-10*.
+- A voice made from words is not stable across pieces (§1.3, by ear 2026-10-04), so a character
+  voice designed from the book has to be designed once, then cloned from a rendered clip. —
+  *record* · §1.3.
+- A voice from a description: `POST /v1/voices/design` (`server/src/api/voices_api.js:355`). —
+  *code, 2026-10-10*.
+- The render cache keys a line on engine, voice, text, language, seed, delivery and effects, so
+  only changed lines render again (`server/src/render_core.js:692`). — *code, 2026-10-10*.
+- JV's MCP server has four tools — speak, list_voices, list_personas, transcribe
+  (`server/src/mcp/tools.js:4`) — on the official SDK's `McpServer` over Streamable HTTP
+  (`server/src/mcp/server.js:27`). — *code, 2026-10-10*.
+- The kit already speaks to Claude with an API key (`../just-llm-runner/server/src/llm/anthropic.js`),
+  routed per feature in AI Settings → Routing by feature. — *code, 2026-10-10*.
+- Not built, and listed in IDEAS: a direction step ("LLM emotion-tag insertion"), the
+  persona-generation loop (description → design → cast), and a take check (transcribe, compare,
+  re-render) — `docs/dev/IDEAS.md:309`. — *code, 2026-10-10*.
+- Render speed on the RTX 2070 SUPER 8 GB: Qwen3 CustomVoice 1.7B 2.0× real time, Kokoro 11.9×
+  (§1.3), so a 10-hour book is about 5 hours on Qwen3 and under an hour on Kokoro. — *arithmetic
+  on §1.3's measurements*.
+
+### 10.2 Claude: subscriptions, Claude Code and API prices
+
+- Anthropic's terms: "Anthropic does not permit third-party developers to offer Claude.ai login
+  into their own applications, or to route requests through Free, Pro, or Max plan credentials on
+  behalf of their users. Moreover, developers may not collect, store, or intermediate Claude.ai
+  credentials or session tokens." — *web, 2026-10-10* ·
+  [code.claude.com/docs/en/legal-and-compliance](https://code.claude.com/docs/en/legal-and-compliance).
+- The same page does not stop "an end user from signing in to the unmodified Claude Code binary
+  with their own Claude subscription"; running Claude Code inside a product requires the
+  Commercial Terms, an unmodified binary, and each end user's own credentials. — *web, 2026-10-10*
+  · same page.
+- "Advertised usage limits for Pro and Max plans assume ordinary, individual usage of Claude Code
+  and the Agent SDK." — *web, 2026-10-10* · same page.
+- The Agent SDK page: "Unless previously approved, Anthropic does not allow third party developers
+  to offer claude.ai login or rate limits for their products, including agents built on the Claude
+  Agent SDK." — *web, 2026-10-10* ·
+  [code.claude.com/docs/en/agent-sdk/overview](https://code.claude.com/docs/en/agent-sdk/overview).
+- `claude -p` loads the project's `.mcp.json` and skills like an interactive session; with
+  `--bare` it never reads the subscription login and needs an API key. — *web, 2026-10-10* ·
+  [code.claude.com/docs/en/headless](https://code.claude.com/docs/en/headless).
+- A Claude Code skill lives at `.claude/skills/<name>/SKILL.md`; inside a plugin it is invoked as
+  `/plugin-name:skill-name`. — *web, 2026-10-10* ·
+  [code.claude.com/docs/en/skills](https://code.claude.com/docs/en/skills).
+- API prices per million tokens, input/output: Haiku 5.5 $0.10/$0.50 (prompts up to 100K),
+  Sonnet 5.5 $2/$10, Opus 5.5 $4/$20, Fable 5.1 $10/$50; the Batch API is half price; cache reads
+  about a tenth. — *record* · the Claude Code `claude-api` skill's model table, cached 2026-10-06.
+- One pass over a 100,000-word book (about 130K tokens), with context, is roughly 350K tokens in
+  and 100K out: about $0.10 on Haiku 5.5, $1.70 on Sonnet 5.5, $3.40 on Opus 5.5, half that as a
+  batch. — *arithmetic, unmeasured*.
+
+### 10.3 The commercial tools, for a comparison
+
+- ElevenLabs Free: 10,000 credits a month (about 10 minutes of speech), Studio limited to 3
+  projects, no commercial licence; the commercial licence starts at Starter, $6/month for 30,000
+  credits. — *web, 2026-10-10* · [elevenlabs.io/pricing](https://elevenlabs.io/pricing).
+  JV already has ElevenLabs as a voice provider (`server/src/engines/tts_providers/elevenlabs.js`).
+- ACX: "Unauthorized use of text-to-speech, AI, or automated recordings in ACX titles is
+  prohibited"; an audiobook "must be narrated by a human unless otherwise authorized". The
+  technical limits: RMS −23 to −18 dB, peaks below −3 dB, noise floor at most −60 dB RMS, 1–5 s
+  room tone, MP3 192 kbps+ CBR 44.1 kHz. Page updated 2026-04-15. — *web, 2026-10-10* ·
+  [help.acx.com — ACX audio submission requirements](https://help.acx.com/s/article/acx-audio-submission-requirements).
+  JV's ACX check (`docs/studio.md` §The ACX check) measures those limits; it doesn't make an AI
+  title acceptable to ACX.
+- KDP Virtual Voice (Amazon's own route for AI narration): "an invite-only beta for eligible KDP
+  eBooks"; "After your eBook is Live, we will complete an eligibility check". — *web, 2026-10-10* ·
+  [KDP — Audiobooks with virtual voice eligibility and troubleshooting](https://kdp.amazon.com/en_US/help/topic/GJSXT4GZLP4PL62B).
+- Google Play Books auto-narration: free "for a limited time"; needs an EPUB in English, Spanish,
+  German, French, Hindi or Brazilian Portuguese offered on Google Play, and the audio rights;
+  publishers get 52 %; Google calls dialogue-heavy or emotional titles poor fits. — *web,
+  2026-10-10* · [play.google.com/books/publish/autonarrated](https://play.google.com/books/publish/autonarrated).
+- Speechify: about 10 minutes of downloadable audio a month on the free plan — a third-party
+  review only, undated. — *web, 2026-10-10, not checked against Speechify* ·
+  [reedsy.com/blog/speechify-review](https://reedsy.com/blog/speechify-review).
+- Play.ht: reported shut down on 2025-12-31 after Meta took the team; the reports are secondary
+  and disagree on dates. — *web, 2026-10-10, not confirmed* ·
+  [infrabase.ai/audio/playht](https://infrabase.ai/audio/playht).
+- AudiobookGen: one narrator per book from six voices (the sample names Inworld TTS-2); EPUB,
+  PDF (with OCR), DOCX, TXT and Markdown in, MP3 out; "$0.054 per 1,000 characters", "$9.99"
+  minimum, no subscription; no free conversion, only free voice previews; no word on ACX. A
+  100,000-word book (about 550,000 characters) comes to about $30 — *arithmetic*. — *web,
+  2026-10-10* · [audiobookgen.com](https://audiobookgen.com/) (was: "no result in a search —
+  its URL is needed" until 2026-10-10).
+- Resemble AI's "best AI tool" article (2025-11-20) is Resemble's own marketing and ranks itself
+  first; it names a free trial and no prices. — *web, 2026-10-10* ·
+  [resemble.ai/resources/best-ai-tool-turns-book-audiobook](https://www.resemble.ai/resources/best-ai-tool-turns-book-audiobook).
 
 ---
 
