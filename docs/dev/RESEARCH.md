@@ -1683,10 +1683,16 @@ re-read by the session.
 
 **Cloning, measured** (2026-10-10, through the app on CUDA, Qwen3-TTS Base 1.7B 8-bit; the run and
 its page: plan 2026-10-09 voice-training findings, "The measurement — results"):
-- A pooled x-vector from a long reference makes the model run away: one sentence from a 19 s
-  reference → 3.4 s of audio in 7.9 s; from 32 s → 655 s of audio in 468 s. The speaker encoder's
-  pooling is 32-bit float (`src/models/qwen3_tts/speaker_encoder.cpp` `attentive_statistics_pool`);
-  cause not found. — *measured*.
+- Exact digital silence inside a Qwen3-TTS Base reference makes the model run away — its length
+  does not: one sentence ("The quick brown fox…"), x-vector only unless said: a 26.6 s reference (Kokoro
+  speaking known text) → 2.7 s of audio; the same at 22.05 kHz → 3.2 s; a 52.9 s one → 2.8 s, and
+  in ICL mode (with its words) 2.6 s; the 26.6 s one cut into four by three 0.25 s gaps of exact
+  digital silence → still running after 240 s; the same gaps filled with ±2 LSB of noise
+  (about −84 dBFS) → 2.8 s. The LJSpeech references that ran away (32 s → 655 s of audio in 468 s;
+  494 s never finished) were clips joined by 0.25 s of digital silence; 2 clips (one gap, 19 s)
+  worked. The speaker mel floors its log (`mel_spectrogram_frontend.cpp` `log_floor`), so it is not
+  a −infinity there; the mechanism is not found. — *measured*. (was: "a pooled x-vector from a long
+  reference makes the model run away" until 2026-10-10.)
 - On 20 LJSpeech lines, word errors (Qwen3-ASR, 336 words): real 1, clip with words 0, clip x-vector
   only 1, 2-clip pooled x-vector 1. — *measured*.
 - A request the app cancels (client gone) does not stop the runtime's work: the next request waits

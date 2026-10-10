@@ -299,21 +299,24 @@ DECIDED: 2026-10-10 — 3, asked again: "1. Which engines does the 20-second cli
         recommendation: use the first 20 seconds automatically and say so on the clone screen
         ('Qwen3-TTS uses the first 20 seconds; trim the clip to your best 20 for the best copy'),
         rather than refusing it. 3. Push JustWrite a157e71 (its lint fix)?" The user: "your rec go".
-OPEN:   3 — building: the cap on Qwen3-TTS Base, the first 20 s, said on the clone screen.
+OPEN:   3 — NOT built: probes on 2026-10-10 showed length is not the trigger (exact digital silence
+        in the clip is — the FINDING below), so a 20 s cap would cut good clips and miss the cause;
+        asked again.
 GO:     given 2026-10-10 ("your rec go", twice).
 
-### FINDING — A long clone reference runs Qwen3-TTS Base on without stopping, and holds the speech queue
-STATE:  FINDING — measured 2026-10-10 (the cloning measurement, plan 2026-10-09
-        voice-training findings, "The measurement — results"). The app's half is decided (the item
-        above, 3: cap clone clips at 20 s); the cause in our audio.cpp copy stays open.
-BUILT:  nothing. The app takes a clone reference of any length (`voices_api.js` /v1/voices/clone checks
-        only Chatterbox Turbo's 5 s minimum). On Qwen3-TTS Base x-vector only, a 19 s reference is
-        fine (one sentence: 3.4 s of audio in 7.9 s) and a 32 s one runs away (655 s of audio in
-        468 s); 494 s never finished. Meanwhile every other speech request waits, and a cancelled
-        request does not stop the runtime's work. The encoder's pooling is 32-bit float; the cause
-        is not found.
-OPEN:   the user's word: cap a clone reference's length in the app (and say so on the clone
-        screen), find the cause in our audio.cpp copy, or both.
+### FINDING — Digital silence in a clone reference runs Qwen3-TTS Base on without stopping, and holds the speech queue
+STATE:  FINDING — measured 2026-10-10 (plan 2026-10-09 voice-training findings, "Found on the way";
+        RESEARCH §9). First read as a length problem, which the 20 s cap (the item above, 3) was
+        decided on; probes the same day showed the length is not the trigger — the cap is NOT
+        built, and the user is asked again.
+BUILT:  nothing. Probes, one sentence on Qwen3-TTS Base: 26.6 s, 52.9 s and a 22.05 kHz reference all
+        fine, in ICL and x-vector mode; the 26.6 s one with three 0.25 s gaps of exact digital
+        silence → still running after 240 s; the same gaps filled with ±2 LSB of noise → fine. While
+        it runs every other speech request waits, and a cancelled request does not stop the
+        runtime's work. Exact silence comes from joined clips and edited or gated recordings.
+OPEN:   the user's word: an app-side guard (fill exact-silence stretches of a Qwen3-TTS Base
+        reference with inaudible noise before it reaches the runtime) in place of the cap; and/or
+        the cause in our audio.cpp copy.
 GO:     needed.
 
 ### The server moves to Hono (decided 2026-10-09)

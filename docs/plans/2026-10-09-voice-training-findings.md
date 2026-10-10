@@ -113,12 +113,11 @@ Run through the app on 2026-10-10 (the 8741 server on the real data folder, Qwen
 on CUDA, seed 1234, 20 held-out LJSpeech lines of 5–9 s from LJ050; the three test voices deleted
 afterwards).
 
-- **C as designed could not be made.** A pooled x-vector from a long reference makes the model run
-  on without stopping: the same sentence ("The quick brown fox…") from a 19 s reference (2 clips)
-  took 7.9 s and gave 3.4 s of audio; from a 32 s reference (4 clips) it took 468 s and gave
-  **655 s** of audio. The 494 s reference (64 clips) never finished. The encoder's pooling is all
-  32-bit float, so not a half-precision overflow; the cause is not found. C was measured as **C′,
-  2 clips (19 s)**, the longest that worked.
+- **C as designed could not be made.** The 64 clips were joined by 0.25 s of digital silence, and a
+  reference with such gaps makes the model run on without stopping: from 4 clips (32 s) one sentence
+  took 468 s and gave **655 s** of audio; 64 clips (494 s) never finished. C was measured as **C′,
+  2 clips (19 s)**, which worked. (Later probes found the gaps, not the length, to be the trigger —
+  see "Found on the way".)
 - **Word errors** (Qwen3-ASR, 336 words): her own recordings 1, A 0, B 1, C′ 1. All four are
   equally clear; intelligibility does not separate them.
 - **Length**: A's lines averaged 6.97 s, B 7.57 s, C′ 7.41 s.
@@ -126,10 +125,14 @@ afterwards).
   [Which clone sounds like her?](https://claude.ai/artifact/YTkFK4WS4QkfEr7cjoq4BD). Each line's real
   recording beside A, B and C′ in shuffled order. The user's picks are saved with the page
   (`picks`, one document per line) for the tally.
-- **Found on the way**: the app takes a clone reference of any length. A long one (past ~20–30 s on
-  Qwen3-TTS Base, x-vector only) sends its first line to the maximum length — minutes of GPU — and
-  holds the speech queue the whole time. A cancelled request does not stop it: the runtime keeps
-  rendering until done (TASKS FINDING "A long clone reference runs Qwen3-TTS Base on…").
+- **Found on the way**: exact digital silence inside a Qwen3-TTS Base reference sends its lines to
+  the maximum length — minutes of GPU — and holds the speech queue the whole time; a cancelled
+  request does not stop it. Not its length: one sentence ("The quick brown fox…"), x-vector only unless said: a 26.6 s reference (Kokoro
+  speaking known text) → 2.7 s of audio; the same at 22.05 kHz → 3.2 s; a 52.9 s one → 2.8 s, and
+  in ICL mode (with its words) 2.6 s; the 26.6 s one cut into four by three 0.25 s gaps of exact
+  digital silence → still running after 240 s; the same gaps filled with ±2 LSB of noise
+  (about −84 dBFS) → 2.8 s. (TASKS FINDING "Digital silence in a clone
+  reference runs Qwen3-TTS Base on…".)
 
 ## The LoRA experiment (2026-10-10)
 
