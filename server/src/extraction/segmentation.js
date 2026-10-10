@@ -52,6 +52,70 @@ const PATTERN_SOURCES = {
 /** A fresh global pattern for a style (re.DOTALL → the `s` flag). */
 const pattern = (style) => new RegExp(PATTERN_SOURCES[style], "gsu");
 
+// Curly double quotes have a direction, so a paragraph that uses them is read by counting
+// instead of by the pattern (2026-10-10): a “ inside an open speech opens a quote within it,
+// its ” closes that, and the next ” ends the speech — Alice's Dormouse, “… you know you say
+// things are “much of a muchness”—did you ever see such a thing…?”, is one line, where the
+// pattern kept only the phrase he quotes. Straight quotes have no direction and keep the
+// pattern; so do the other styles.
+const CURLY_OPEN = "“";
+const CURLY_CLOSE = "”";
+const hasCurly = (para) => para.includes(CURLY_OPEN) || para.includes(CURLY_CLOSE);
+
+/** The paragraph's first curly double mark: "open", "close", or null when it has none. */
+function firstCurly(para) {
+  const o = para.indexOf(CURLY_OPEN);
+  const c = para.indexOf(CURLY_CLOSE);
+  if (o < 0 && c < 0) return null;
+  if (o < 0) return "close";
+  if (c < 0) return "open";
+  return o < c ? "open" : "close";
+}
+
+/**
+ * The speeches in a paragraph, by counting curly double marks. `carried`: a speech from the
+ * paragraphs before is still open at this one's start. → `{at, start, end, stop, unclosed}`
+ * per speech: `at..stop` is the whole span, marks included; `start..end` its words. A closing
+ * mark with no speech open is left as text, as the pattern leaves it.
+ */
+function curlySpans(para, carried = false) {
+  const spans = [];
+  let depth = carried ? 1 : 0;
+  let at = 0;
+  let start = 0;
+  for (let i = 0; i < para.length; i++) {
+    const ch = para[i];
+    if (ch === CURLY_OPEN) {
+      if (depth === 0) {
+        at = i;
+        start = i + 1;
+      }
+      depth += 1;
+    } else if (ch === CURLY_CLOSE && depth > 0) {
+      depth -= 1;
+      if (depth === 0) spans.push({ at, start, end: i, stop: i + 1, unclosed: false });
+    }
+  }
+  if (depth > 0) spans.push({ at, start, end: para.length, stop: para.length, unclosed: true });
+  return spans;
+}
+
+/**
+ * Is a speech left open before `paragraphs[i]` still running through it? Only when the speech
+ * comes back to close: `paragraphs[i]` opens with a closing mark, or it and the paragraphs
+ * after it have no curly mark at all until one that does — and that one's first mark closes.
+ * The Hatter's song is the case (Alice VII): his speech opens, the verse has no marks, and
+ * “You know the song, perhaps?” ends on a closing mark. A speech that never comes back to
+ * close leaves the paragraphs after it as they were, so a missing mark can't swallow narration.
+ */
+function carriedInto(paragraphs, i) {
+  for (let j = i; j < paragraphs.length; j++) {
+    const first = firstCurly(paragraphs[j]);
+    if (first !== null) return first === "close";
+  }
+  return false;
+}
+
 // The groups of each pattern that match a speech left open.
 const _UNCLOSED = { double: [2, 4], single: [2], guillemets: [2], german: [2] };
 
@@ -117,6 +181,7 @@ export function opensSpeech(text) {
 /** Does a speech open in this paragraph and never close — carrying on into the next one? */
 export function leftOpen(paragraph, marks = null) {
   const style = SPEECH_MARKS.includes(marks) ? marks : detectMarks(paragraph);
+  if (style === "double" && hasCurly(paragraph)) return curlySpans(paragraph).at(-1)?.unclosed ?? false;
   let last = null;
   for (const m of paragraph.matchAll(pattern(style))) last = m;
   return last !== null && _UNCLOSED[style].some((g) => last[g] !== undefined);
@@ -200,26 +265,40 @@ export function segmentParagraphs(paragraphs, { startDialogueId = 0, marks = nul
   let nextDid = startDialogueId;
   const style = SPEECH_MARKS.includes(marks) ? marks : detectMarks(paragraphs.join("\n\n"));
   const re = pattern(style);
+  // A curly speech left open at the end of the paragraph before (see `carriedInto`).
+  let open = false;
 
   paragraphs.forEach((para, pIdx) => {
+    const carried = style === "double" && open && carriedInto(paragraphs, pIdx);
+    // Each span: [at, stop) the whole match, the words between `start` and `end`.
+    const spans =
+      style === "double" && (carried || hasCurly(para))
+        ? curlySpans(para, carried)
+        : [...para.matchAll(re)].map((m) => {
+            const g = m.slice(1).findIndex((x) => x !== undefined);
+            const words = m[g + 1] ?? "";
+            const start = m.index + m[0].indexOf(words);
+            return { at: m.index, start, end: start + words.length, stop: m.index + m[0].length, unclosed: false };
+          });
     let lastEnd = 0;
-    for (const m of para.matchAll(re)) {
+    for (const sp of spans) {
       // Narration BEFORE this dialogue span (if any).
-      if (m.index > lastEnd) {
-        const narration = strip(para.slice(lastEnd, m.index));
+      if (sp.at > lastEnd) {
+        const narration = strip(para.slice(lastEnd, sp.at));
         if (narration) segments.push({ kind: "narration", text: narration, paragraph_idx: pIdx });
       }
       // The dialogue itself.
-      const dialogue = strip(m.slice(1).find((g) => g !== undefined) ?? "");
+      const dialogue = strip(para.slice(sp.start, sp.end));
       if (dialogue) {
         segments.push({ kind: "dialogue", text: dialogue, paragraph_idx: pIdx, dialogue_id: nextDid });
         nextDid += 1;
       }
-      lastEnd = m.index + m[0].length;
+      lastEnd = sp.stop;
     }
     // Trailing narration after the last dialogue (or the whole paragraph when there's none).
     const tail = strip(para.slice(lastEnd));
     if (tail) segments.push({ kind: "narration", text: tail, paragraph_idx: pIdx });
+    open = spans.length > 0 && spans[spans.length - 1].unclosed;
   });
 
   return segments;

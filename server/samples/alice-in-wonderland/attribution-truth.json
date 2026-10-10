@@ -1,5 +1,5 @@
 {
- "about": "Who says each dialogue segment in chapters VII and VIII of \"Alice's Adventures in Wonderland\" (Lewis Carroll, 1865) — the answer key for server/scripts/eval_attribution.js, and the test book of TASKS \"One-click audiobook\" (2026-10-10). SOURCE: Project Gutenberg eBook #11 (https://www.gutenberg.org/ebooks/11), whose page states \"Public domain in the USA.\" (checked 2026-10-10); book.epub is that EPUB3, unchanged, so it goes through the book_prose adapter the way an EPUB import does in the app, and only these two of its chapters are keyed. Keys are the pipeline's own [D#] numbers per chapter. Values are cast names; 'unknown' where no single cast member speaks: the group lines (VII D2 and D91–D92, the Hatter and the March Hare together; VII D118, their 'Sh! sh!'; VIII D39, the soldiers). A quoted thought is its thinker's. Segmentation quirks kept as they fall: VII D138 is a phrase the Dormouse quotes inside his own speech, so it is his; the Hatter's song (VII P48–P49, P52) comes out as narration. 'cues' lists the segments whose text says how they are spoken — the book's own words, and the nearest of the app's nine emotions (models.js EMOTION_VALUES) only where the word is a direct match, else null; nothing scores cues yet (the direction step will). Labelled by hand 2026-10-10 from the text.",
+ "about": "Who says each dialogue segment in chapters VII and VIII of \"Alice's Adventures in Wonderland\" (Lewis Carroll, 1865) — the answer key for server/scripts/eval_attribution.js, and the test book of TASKS \"One-click audiobook\" (2026-10-10). SOURCE: Project Gutenberg eBook #11 (https://www.gutenberg.org/ebooks/11), whose page states \"Public domain in the USA.\" (checked 2026-10-10); book.epub is that EPUB3, unchanged, so it goes through the book_prose adapter the way an EPUB import does in the app, and only these two of its chapters are keyed. Keys are the pipeline's own [D#] numbers per chapter. Values are cast names; 'unknown' where no single cast member speaks: the group lines (VII D2 and D94–D95, the Hatter and the March Hare together; VII D121, their 'Sh! sh!'; VIII D39, the soldiers). A quoted thought is its thinker's. Chapter VII is numbered by the splitter as it reads since 2026-10-10 (150 lines; 147 before): the Hatter's song and the end of his speech (VII D72, D73, D77) are his, and D141 is the Dormouse's whole speech, the phrase he quotes inside it included. 'cues' lists the segments whose text says how they are spoken — the book's own words, and the nearest of the app's nine emotions (models.js EMOTION_VALUES) only where the word is a direct match, else null; nothing scores cues yet (the direction step will). Labelled by hand 2026-10-10 from the text.",
  "title": "Alice's Adventures in Wonderland — chapters VII and VIII",
  "adapter": "book_prose",
  "book": "book.epub",
@@ -151,13 +151,13 @@
    "69": "Hatter",
    "70": "Hatter",
    "71": "Hatter",
-   "72": "Alice",
+   "72": "Hatter",
    "73": "Hatter",
-   "74": "Hatter",
-   "75": "Dormouse",
+   "74": "Alice",
+   "75": "Hatter",
    "76": "Hatter",
    "77": "Hatter",
-   "78": "Alice",
+   "78": "Dormouse",
    "79": "Hatter",
    "80": "Hatter",
    "81": "Alice",
@@ -167,65 +167,68 @@
    "85": "Hatter",
    "86": "Hatter",
    "87": "Alice",
-   "88": "March Hare",
-   "89": "March Hare",
+   "88": "Hatter",
+   "89": "Hatter",
    "90": "Alice",
-   "91": "unknown",
-   "92": "unknown",
-   "93": "Dormouse",
-   "94": "Dormouse",
-   "95": "March Hare",
-   "96": "Alice",
-   "97": "Hatter",
-   "98": "Hatter",
-   "99": "Dormouse",
-   "100": "Dormouse",
-   "101": "Alice",
+   "91": "March Hare",
+   "92": "March Hare",
+   "93": "Alice",
+   "94": "unknown",
+   "95": "unknown",
+   "96": "Dormouse",
+   "97": "Dormouse",
+   "98": "March Hare",
+   "99": "Alice",
+   "100": "Hatter",
+   "101": "Hatter",
    "102": "Dormouse",
-   "103": "Alice",
+   "103": "Dormouse",
    "104": "Alice",
    "105": "Dormouse",
-   "106": "Dormouse",
+   "106": "Alice",
    "107": "Alice",
-   "108": "March Hare",
-   "109": "Alice",
+   "108": "Dormouse",
+   "109": "Dormouse",
    "110": "Alice",
-   "111": "Hatter",
-   "112": "Hatter",
+   "111": "March Hare",
+   "112": "Alice",
    "113": "Alice",
    "114": "Hatter",
-   "115": "Alice",
-   "116": "Dormouse",
-   "117": "Alice",
-   "118": "unknown",
+   "115": "Hatter",
+   "116": "Alice",
+   "117": "Hatter",
+   "118": "Alice",
    "119": "Dormouse",
    "120": "Alice",
-   "121": "Alice",
+   "121": "unknown",
    "122": "Dormouse",
-   "123": "Dormouse",
+   "123": "Alice",
    "124": "Alice",
    "125": "Dormouse",
-   "126": "Hatter",
-   "127": "Hatter",
-   "128": "Alice",
+   "126": "Dormouse",
+   "127": "Alice",
+   "128": "Dormouse",
    "129": "Hatter",
    "130": "Hatter",
    "131": "Alice",
-   "132": "Dormouse",
-   "133": "Dormouse",
-   "134": "Dormouse",
+   "132": "Hatter",
+   "133": "Hatter",
+   "134": "Alice",
    "135": "Dormouse",
-   "136": "Alice",
-   "137": "March Hare",
+   "136": "Dormouse",
+   "137": "Dormouse",
    "138": "Dormouse",
    "139": "Alice",
-   "140": "Alice",
-   "141": "Hatter",
+   "140": "March Hare",
+   "141": "Dormouse",
    "142": "Alice",
    "143": "Alice",
-   "144": "Alice",
+   "144": "Hatter",
    "145": "Alice",
-   "146": "Alice"
+   "146": "Alice",
+   "147": "Alice",
+   "148": "Alice",
+   "149": "Alice"
   },
   "CHAPTER VIII. The Queen’s Croquet-Ground": {
    "0": "Two",
@@ -462,147 +465,155 @@
     "emotion": "sad",
     "cue": "shook his head mournfully"
    },
-   "75": {
+   "72": {
     "emotion": null,
-    "cue": "singing in its sleep"
+    "cue": "I had to sing"
+   },
+   "77": {
+    "emotion": null,
+    "cue": "It goes on, you know … in this way"
    },
    "78": {
     "emotion": null,
+    "cue": "singing in its sleep"
+   },
+   "81": {
+    "emotion": null,
     "cue": "exclaimed Alice"
-   },
-   "79": {
-    "emotion": "sad",
-    "cue": "in a mournful tone"
-   },
-   "80": {
-    "emotion": "sad",
-    "cue": "in a mournful tone"
    },
    "82": {
     "emotion": "sad",
-    "cue": "with a sigh"
+    "cue": "in a mournful tone"
    },
    "83": {
     "emotion": "sad",
+    "cue": "in a mournful tone"
+   },
+   "85": {
+    "emotion": "sad",
     "cue": "with a sigh"
    },
-   "88": {
+   "86": {
+    "emotion": "sad",
+    "cue": "with a sigh"
+   },
+   "91": {
     "emotion": null,
     "cue": "interrupted, yawning"
    },
-   "89": {
+   "92": {
     "emotion": null,
     "cue": "interrupted, yawning"
    },
-   "90": {
+   "93": {
     "emotion": "fearful",
     "cue": "rather alarmed at the proposal"
    },
-   "91": {
-    "emotion": "shouted",
-    "cue": "they both cried"
-   },
-   "92": {
-    "emotion": "shouted",
-    "cue": "they both cried"
-   },
-   "93": {
-    "emotion": null,
-    "cue": "in a hoarse, feeble voice"
-   },
    "94": {
-    "emotion": null,
-    "cue": "in a hoarse, feeble voice"
+    "emotion": "shouted",
+    "cue": "they both cried"
+   },
+   "95": {
+    "emotion": "shouted",
+    "cue": "they both cried"
    },
    "96": {
     "emotion": null,
-    "cue": "pleaded Alice"
+    "cue": "in a hoarse, feeble voice"
+   },
+   "97": {
+    "emotion": null,
+    "cue": "in a hoarse, feeble voice"
    },
    "99": {
     "emotion": null,
-    "cue": "began in a great hurry"
+    "cue": "pleaded Alice"
    },
-   "100": {
+   "102": {
     "emotion": null,
     "cue": "began in a great hurry"
    },
    "103": {
     "emotion": null,
-    "cue": "gently remarked"
+    "cue": "began in a great hurry"
    },
-   "104": {
+   "106": {
     "emotion": null,
     "cue": "gently remarked"
    },
-   "108": {
+   "107": {
+    "emotion": null,
+    "cue": "gently remarked"
+   },
+   "111": {
     "emotion": null,
     "cue": "very earnestly"
    },
-   "109": {
+   "112": {
     "emotion": null,
     "cue": "in an offended tone"
    },
-   "110": {
+   "113": {
     "emotion": null,
     "cue": "in an offended tone"
    },
-   "114": {
+   "117": {
     "emotion": "happy",
     "cue": "asked triumphantly"
    },
-   "117": {
+   "120": {
     "emotion": "angry",
     "cue": "Alice was beginning very angrily"
    },
-   "119": {
+   "122": {
     "emotion": null,
     "cue": "sulkily remarked"
    },
-   "120": {
+   "123": {
     "emotion": null,
     "cue": "very humbly"
    },
-   "121": {
+   "124": {
     "emotion": null,
     "cue": "very humbly"
    },
-   "122": {
+   "125": {
     "emotion": "angry",
     "cue": "said the Dormouse indignantly"
    },
-   "128": {
+   "131": {
     "emotion": null,
     "cue": "began very cautiously"
    },
-   "134": {
-    "emotion": null,
-    "cue": "yawning and rubbing its eyes"
-   },
-   "135": {
+   "137": {
     "emotion": null,
     "cue": "yawning and rubbing its eyes"
    },
    "138": {
     "emotion": null,
+    "cue": "yawning and rubbing its eyes"
+   },
+   "141": {
+    "emotion": null,
     "cue": "woke up again with a little shriek"
    },
-   "139": {
+   "142": {
     "emotion": null,
     "cue": "very much confused"
    },
-   "140": {
+   "143": {
     "emotion": null,
     "cue": "very much confused"
    },
-   "144": {
+   "147": {
     "emotion": null,
     "cue": "she thought"
    },
-   "145": {
+   "148": {
     "emotion": null,
     "cue": "she thought"
    },
-   "146": {
+   "149": {
     "emotion": null,
     "cue": "she said to herself"
    }

@@ -223,11 +223,16 @@ Every spoken line gets its speaker in one of three ways:
 
 - **Narration** — text outside quote marks. It goes to your **Narrator** and
   the model is never asked about it. Certain.
-- **The book names the speaker** — the words next to the line say who
-  (*“By twenty minutes,” said Marius.*). Found by pattern, with no model
-  involved, and near-certain: 62 of 62 right on the published test book. A line
-  with no name of its own in the same paragraph as a named one takes that
-  speaker too.
+- **The book names the speaker** — the words right beside the line say who,
+  as *said Marius* or *Marius said* (*“By twenty minutes,” said Marius.*), at
+  most one *-ly* word between (*Marius quietly said*). Found by pattern, with
+  no model involved. Words that only mention someone don't count — *said to
+  Marius*, *he said, turning to Marius*, a name further off in the narration —
+  so the AI decides those lines. A line with no name of its own in the same
+  paragraph as a named one takes that speaker too, unless the narration
+  between them names someone else or has its own *said*, *cried* or the like.
+  On the four answer-keyed test books every line found this way was right:
+  205 of 205 (2026-10-10).
 - **The AI decides** — nothing names the speaker, so the model reads the story
   around the line and works it out. Most spoken lines are decided this way, and
   the AI is right on nearly all of them (about 99 % on the three test books) —
@@ -523,6 +528,13 @@ decides the rest, and a model answer below the confidence floor is dropped.
 quotes, single quotes, guillemets or German marks, as [speech
 marks](#speech-marks) describes. A speech that runs over several paragraphs —
 each opening a mark, only the last closing it — is speech on every paragraph.
+With curly double quotes (“ ”) two more cases are read as speech: a quote
+inside a speech in the same marks (*“…you say things are “much of a
+muchness”—did you ever…?”* is one line), and paragraphs with no marks at all
+between a speech left open and a paragraph that starts by closing it — a song
+or a verse someone recites. A speech left open that never comes back to close
+leaves the paragraphs after it as narration, so a missing mark can't turn the
+story into speech.
 
 **How the model reads a line.** It reads each line in its surroundings — who
 was just spoken to, whose actions and thoughts fill the paragraph, who a *"she

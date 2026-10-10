@@ -170,3 +170,29 @@ test("lines_of_one_paragraph_read_together_again", () => {
   ]);
   expect(paragraphsOf(segs)).toEqual(["Come here, said Marius, now.", "A line you added.", "Yes."]);
 });
+
+// ── Curly quotes are counted (2026-10-10, Alice VII) ─────────────────────
+
+test("a_quote_inside_a_speech_in_the_same_curly_marks_stays_in_the_speech", () => {
+  // The Dormouse's speech quotes a phrase in “ ” too; the pattern kept only the phrase.
+  expect(_cut("The Dormouse went on: “A, you say things are “much of a muchness”—did you?” said the Hatter.")).toEqual([
+    ["narration", "The Dormouse went on:"],
+    ["dialogue", "A, you say things are “much of a muchness”—did you?"],
+    ["narration", "said the Hatter."],
+  ]);
+});
+
+test("unmarked_paragraphs_between_an_open_speech_and_its_close_are_speech", () => {
+  // The Hatter's song: his speech opens, the verse has no marks, the next paragraph closes it.
+  const text = "“I had to sing\n\n‘Twinkle, twinkle, little bat!’\n\nYou know the song, perhaps?”\n\n“I’ve heard something like it,” said Alice.";
+  expect(_spoken(text)).toEqual(["I had to sing", "‘Twinkle, twinkle, little bat!’", "You know the song, perhaps?", "I’ve heard something like it,"]);
+});
+
+test("a_speech_that_never_comes_back_to_close_leaves_the_story_as_narration", () => {
+  expect(_cut("“I had to sing\n\nThe Dormouse slept.\n\n“Wake up!” said the Hatter.")).toEqual([
+    ["dialogue", "I had to sing"],
+    ["narration", "The Dormouse slept."],
+    ["dialogue", "Wake up!"],
+    ["narration", "said the Hatter."],
+  ]);
+});

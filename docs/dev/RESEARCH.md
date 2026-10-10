@@ -1856,10 +1856,22 @@ headless server on the dev data folder, the live prompts and settings, one run;
   Queen is "Queen of Hearts" in VII and "the Queen" in VIII — two names for one speaker across
   chapters. —
   *measured*.
-- Segmentation, read off the line list: the Hatter's song inside his speech (VII paragraphs 48–49,
-  52) comes out as narration, and in the Dormouse's speech that opens mid-paragraph (VII paragraph
-  98) only the phrase he quotes becomes a dialogue line — quotes nested inside speech. — *code,
-  run 2026-10-10* (`segmentParagraphs` on the EPUB's chapter text).
+- Segmentation reads curly double quotes by counting (`segmentation.js` `curlySpans`): the
+  Dormouse's speech with the phrase he quotes inside it is one line (VII D141), and the Hatter's
+  song between his open speech and “You know the song, perhaps?” is his (VII D72, D73, D77) —
+  chapter VII is 150 lines, the other three keyed books split exactly as before. — *code, run
+  2026-10-10* (was: the song came out as narration and only the quoted phrase as a line, VII 147
+  lines, until 2026-10-10).
+- The "said X" rule takes only "Name said" / "said Name" at the edge of a narration, and
+  propagation stops at narration that names someone else or tags a speech of its own
+  (`anchors.js`). With no model, against the four keys: it decides 205 of 755 lines, 205 right
+  (Alice 156, The Speckled Band 31, The Ninth Facet 11, The Salt-Iron Road 7); the old rule's 9
+  wrong on Alice are gone, and on the other three books every keyed line keeps its speaker (a
+  few "tag" become "propagated"). The model's prompt never carries the rule's decisions — they
+  are applied after it answers (`pipeline.js:722`) — so those three books' model runs can't
+  move. — *code, run 2026-10-10* · the scratch scripts' output in this session (was: any name
+  within 18 characters of any verb anywhere in the narration, 9 wrong on Alice, until
+  2026-10-10).
 
 ---
 
