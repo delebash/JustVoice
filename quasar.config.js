@@ -164,6 +164,7 @@ export default defineConfig(() => {
         nsis: {
           // no spaces: GitHub renames a spaced asset on upload (spaces → dots), and latest.yml names
           // electron-builder's dashed form — the updater would download a file that isn't there
+          // biome-ignore lint/suspicious/noTemplateCurlyInString: electron-builder's own ${…} macros
           artifactName: '${productName}-Setup-${version}.${ext}',
           oneClick: false,
           perMachine: false,

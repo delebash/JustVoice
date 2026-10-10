@@ -525,7 +525,11 @@ watch(activeSub, async (a) => {
 // feed. A channel picker and a Check that always answered "You're on the
 // latest version" stood here until then; a real updater comes with the
 // Electron move (electron-updater — docs/plans/2026-10-05-electron-node-study.md).
-const APP_VERSION = "0.1.0";
+// The app's version, as the sidebar shows it — the server's (/v1/health), one source.
+const appVersion = ref("");
+api.safeRequest("/v1/health", null).then((h) => {
+  appVersion.value = h?.version || "";
+});
 // The desktop app's updater (the kit shell's electron-updater); null in a browser.
 const updater = desktopUpdater();
 
@@ -1844,7 +1848,7 @@ onMounted(() => {
          presentation shared). ─── -->
     <div v-show="activeSub === 'updates'" class="jv-section">
       <div class="jv-card">
-        <UpdatesPanel :app-version="APP_VERSION" :changelog-html="changelogHtml" :updater="updater" />
+        <UpdatesPanel :app-version="appVersion" :changelog-html="changelogHtml" :updater="updater" />
       </div>
     </div>
 

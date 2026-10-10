@@ -40,7 +40,7 @@ import * as manager from "./engines/manager.js";
 import { badRequest, internal, notFound } from "./errors.js";
 import { ATOMIC, SPANS, strip as stripTags } from "./inline_tags.js";
 import * as self from "./render_core.js";
-import { VERSION } from "./version.js";
+import { RENDER_KEY_VERSION } from "./version.js";
 import * as voiceModel from "./voice_model.js";
 
 export const log = getLogger("justvoice.render_core");
@@ -585,7 +585,7 @@ export async function probeLineCached(
  * check can never disagree. */
 export function _inputsKey(engineId, voice, effectiveText, language, seed, delivery, native, effects) {
   return new CacheKeyBuilder()
-    .withEngine(engineId, VERSION)
+    .withEngine(engineId, RENDER_KEY_VERSION)
     .withVoice(voice)
     .withText(effectiveText)
     .withLanguage(language)

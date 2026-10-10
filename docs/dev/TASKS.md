@@ -289,8 +289,13 @@ WHY:    one version everywhere without restaling every render; the table's missi
         length that can freeze speech; two finished fixes.
 NOT:    finding the long-reference cause in our audio.cpp copy (not asked); changing what a render's
         key holds beyond the version's place in it.
-BUILT:  in progress.
-OPEN:   1–4.
+BUILT:  1 — the app version is the server package's (0.1.0, /v1/health — the sidebar and Settings →
+        Updates read it); a render's key carries RENDER_KEY_VERSION, frozen at "0.0.1", so no take went
+        stale. 2 — the paragraph is on the Speech engines tab. 4 — kit 1347b49 was already pushed,
+        JustWrite 60f06ad pushed. Also: the artifactName line broke Biome (noTemplateCurlyInString) —
+        marked as electron-builder's own macros in both apps.
+OPEN:   3 — the cap's scope, asked again: the clone screen's clip checks (decided 2026-10-04) call
+        10 s–2 min good, and the runaway was measured on Qwen3-TTS Base only.
 GO:     given 2026-10-10 ("your rec go").
 
 ### FINDING — A long clone reference runs Qwen3-TTS Base on without stopping, and holds the speech queue

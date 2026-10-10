@@ -875,6 +875,12 @@ onBeforeUnmount(() => {
 
     <section v-if="engines.length" class="jv-card ev-picking">
       <div class="jv-card__header"><h3 class="jv-card__title">Picking an engine is picking what a voice can do</h3></div>
+      <!-- The wording approved 2026-10-10 (TASKS "Four answers", 2). -->
+      <p class="jv-lede">
+        A persona's voice brings its model, and the model decides what that persona can do on every line:
+        whether it can clone someone's voice, and whether it takes written direction, tags, or only pace,
+        pitch and gain.
+      </p>
       <UiTable class="jv-table-look" :data="PICKING" :columns="PICKING_COLUMNS" />
     </section>
 

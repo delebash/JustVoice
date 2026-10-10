@@ -22,7 +22,7 @@ import { ExternalOpenAiTtsBackend } from "../src/engines/external_openai.js";
 import { EngineRegistry } from "../src/engines/registry.js";
 import { applyLineDelivery, probeLineCached, renderLine, speedNative } from "../src/render_core.js";
 import * as synthScheduler from "../src/synth_scheduler.js";
-import { VERSION } from "../src/version.js";
+import { RENDER_KEY_VERSION } from "../src/version.js";
 import { FakeCache, renderState, useManager } from "./render_helpers.js";
 
 afterEach(closeApps);
@@ -135,7 +135,7 @@ const state = (cache) => renderState({ cache });
 /** The key a line had before gap 8 — the delivery hashed as it stood. */
 function preGap8Key(engineId, voice, delivery) {
   return new CacheKeyBuilder()
-    .withEngine(engineId, VERSION)
+    .withEngine(engineId, RENDER_KEY_VERSION)
     .withVoice(voice)
     .withText("Hi")
     .withLanguage(null)
