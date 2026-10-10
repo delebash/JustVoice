@@ -294,9 +294,13 @@ BUILT:  1 — the app version is the server package's (0.1.0, /v1/health — the
         stale. 2 — the paragraph is on the Speech engines tab. 4 — kit 1347b49 was already pushed,
         JustWrite 60f06ad pushed. Also: the artifactName line broke Biome (noTemplateCurlyInString) —
         marked as electron-builder's own macros in both apps.
-OPEN:   3 — the cap's scope, asked again: the clone screen's clip checks (decided 2026-10-04) call
-        10 s–2 min good, and the runaway was measured on Qwen3-TTS Base only.
-GO:     given 2026-10-10 ("your rec go").
+DECIDED: 2026-10-10 — 3, asked again: "1. Which engines does the 20-second clip cap cover? … My
+        recommendation: Qwen3-TTS Base only. 2. What should the cap do with a longer clip? My
+        recommendation: use the first 20 seconds automatically and say so on the clone screen
+        ('Qwen3-TTS uses the first 20 seconds; trim the clip to your best 20 for the best copy'),
+        rather than refusing it. 3. Push JustWrite a157e71 (its lint fix)?" The user: "your rec go".
+OPEN:   3 — building: the cap on Qwen3-TTS Base, the first 20 s, said on the clone screen.
+GO:     given 2026-10-10 ("your rec go", twice).
 
 ### FINDING — A long clone reference runs Qwen3-TTS Base on without stopping, and holds the speech queue
 STATE:  FINDING — measured 2026-10-10 (the cloning measurement, plan 2026-10-09
