@@ -267,3 +267,41 @@ test("endpoint_multipart_dry_run_epub", async () => {
     endState();
   }
 });
+
+// New project's dialog names the project, its kind and its language; they win over the file's
+// (2026-10-09) — on the dry run the review page shows and on the commit.
+test("the_new_project_dialog_names_the_project_its_kind_and_language", async () => {
+  useState();
+  try {
+    const md = enc("# One\n\nA first paragraph of the book.\n\n# Two\n\nAnd a second one.");
+    const form = (extra) => ({ data: { source: "book_prose", name: "Stillwater", project_type: "podcast", language: "de", ...extra }, files: { file: ["notes.md", md, "text/markdown"] } });
+    const [dry, made, got] = await viaRoutes([projectsRouter], async (app) => {
+      const dry = await client(app).post("/v1/projects/import", form({ dry_run: "true" }));
+      const made = await client(app).post("/v1/projects/import", form({}));
+      const got = made.status === 200 ? await client(app).get(`/v1/projects/${made.json().project_id}`) : null;
+      return [dry, made, got];
+    });
+    expect(dry.status, dry.text).toBe(200);
+    expect(dry.json().standard.project).toMatchObject({ name: "Stillwater", kind: "podcast", language: "de" });
+    expect(made.status, made.text).toBe(200);
+    expect(got.json()).toMatchObject({ name: "Stillwater", project_type: "podcast", language: "de" });
+  } finally {
+    endState();
+  }
+});
+
+test("an_unknown_kind_from_the_dialog_is_refused", async () => {
+  useState();
+  try {
+    const r = await viaRoutes([projectsRouter], (app) =>
+      client(app).post("/v1/projects/import", {
+        data: { source: "book_prose", dry_run: "true", project_type: "radio_play" },
+        files: { file: ["notes.md", enc("# One\n\nText."), "text/markdown"] },
+      }),
+    );
+    expect(r.status).toBe(400);
+    expect(r.text).toContain("unknown project_type");
+  } finally {
+    endState();
+  }
+});

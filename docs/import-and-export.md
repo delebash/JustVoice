@@ -21,7 +21,9 @@ The runtime registry is the source of truth — `GET /v1/projects/import/adapter
 
 - `GET /v1/projects/import/adapters` — list available adapters.
 - `POST /v1/projects/import` — multipart form upload. Fields: `source`
-  (adapter id), `file` (the file), `dry_run` (optional boolean string).
+  (adapter id), `file` (the file), `dry_run` (optional boolean string), and New project's
+  `name`, `project_type` and `language` (optional — they win over what the file says; a
+  re-import with `project_id` ignores them).
 - Backwards-compat: `POST /v1/projects/import?source=<id>&dry_run=true`
   with the raw body still works for the existing JustWrite integration.
 
@@ -322,8 +324,8 @@ script as CSV or a speaker-labeled markdown file and use those adapters.
    with the input shape, an example, and any nuances.
 
 That's it — no further wiring needed. The adapter is automatically
-listed in `GET /v1/projects/import/adapters` and selectable in the
-ImportModal's UI picker.
+listed in `GET /v1/projects/import/adapters`, in New project's table of sources, and in the
+re-import picker.
 
 ---
 

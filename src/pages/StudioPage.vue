@@ -625,7 +625,7 @@ watch(selectedProjectId, (id) => {
         Pick a {{ copy.book.singular.toLowerCase() }} above, or create one in <a href="#projects">Projects</a>.
       </div>
       <StudioOverview v-else :project="selectedProject" :steps="visibleTabs" :state="overviewState"
-        @go="goStep" @reimported="loadScenesForProject(selectedProjectId)" />
+        @go="goStep" />
     </template>
 
     <!-- ── Discover — its own step (prose kinds) ───────────────────── -->

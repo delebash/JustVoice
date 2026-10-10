@@ -58,7 +58,7 @@ const props = defineProps({
   steps: { type: Array, required: true },       // stepsFor(kind), Overview included
   state: { type: Object, required: true },      // projectState(...)
 });
-const emit = defineEmits(["go", "reimported"]);
+const emit = defineEmits(["go"]);
 
 const copy = useCopy();
 const projectsStore = useProjectsStore();
@@ -185,10 +185,6 @@ const noText = computed(() => !props.state.lines && props.project.project_type !
 
 // ── Whole-project actions ───────────────────────────────────────────────
 const showReimport = ref(false);
-function onReimported() {
-  showReimport.value = false;
-  emit("reimported");
-}
 
 async function exportPackage() {
   try {
@@ -324,7 +320,7 @@ async function deleteProject() {
       </div>
     </div>
 
-    <ImportModal v-if="showReimport" :project-id="project.id" @close="showReimport = false" @created="onReimported" />
+    <ImportModal v-if="showReimport" :project-id="project.id" @close="showReimport = false" />
   </section>
 </template>
 

@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: MIT -->
 <script setup>
-// Multi-adapter import PICKER.
+// Multi-adapter import PICKER — re-importing into an existing project (Overview, Lines). A new
+// project's file comes in through New project's dialog (2026-10-09).
 //
 // Small dialog: pick a source format from the live adapter list
 // (GET /v1/projects/import/adapters), drop/browse a file, then run a

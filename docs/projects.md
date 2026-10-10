@@ -24,6 +24,22 @@ your voices' models speak, or *Language — not set*. Cast uses it to warn when 
 speaker's persona speaks another language; you can set or change it later on
 Studio · [Overview](studio.md#overview).
 
+## Starting from a file
+
+New project takes a file too. Under **Bring the words in**, press **Browse…** or drop the file
+into the box — the table beneath lists every source JustVoice reads (a JustWrite book, a book or
+manuscript, a podcast script, CSV lines, subtitles, an Audacity label track, JustVoice's own JSON),
+the file endings of each, and what comes in from it. The file is read at once: its title and its
+kind fill the name and the kind, unless you picked your own. A file whose ending fits more than one
+source (a `.md` can be a book or a podcast script) shows **Read it as**, already set to the one the
+file looks like.
+
+**Create** then opens the file's [review](import-and-export.md#the-import-review-page), where you
+pick the chapters and import; nothing is made until you do, and the project gets the name, kind and
+language you chose in the dialog. **⬇ Import** on Projects opens the same dialog. To bring a newer
+version of a file into a project you already have, use **↻ Re-import** on its Overview (**⬇
+Re-import CSV** on Lines, for a game) — it merges by line instead of making a new project.
+
 ## Where the settings went
 
 The row used to expand into a detail pane. Everything it held moved:

@@ -211,11 +211,6 @@ async function exportZip() {
   }
 }
 
-function onReimported() {
-  showReimport.value = false;
-  loadLines();
-}
-
 function statusPill(s) {
   return {
     rendered: { intent: "success", label: "✓ rendered" },
@@ -292,7 +287,6 @@ watch(selectedProjectId, (id) => {
       v-if="showReimport"
       :project-id="selectedProjectId"
       @close="showReimport = false"
-      @created="onReimported"
     />
   </div>
 </template>

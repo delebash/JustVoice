@@ -17,6 +17,7 @@ import { useActiveProject } from "../stores/activeProject.js";
 import { openProjectInStudio } from "../services/openProject.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { getImportDraft, clearImportDraft, updateImportStandard } from "../stores/importDraft.js";
+import { kindLabel } from "../services/projectKinds.js";
 import { UiButton, UiCheckbox, UiTag, UiSelect, UiTable } from "@delebash/llm-ui";
 
 // Kit grid in the JustVoice look (`jv-table-look`). The excluded-row state
@@ -68,6 +69,7 @@ async function changeSplit(splitOn) {
       file: draft.value.file,
       dryRun: true,
       splitOn,
+      create: draft.value.create,
     });
     updateImportStandard(res?.standard, splitOn);
     draft.value = getImportDraft();
@@ -124,6 +126,7 @@ async function doImport() {
       projectId: draft.value.projectId,
       includeScenes: excluded.value.size ? included.value.map((s) => s.index) : null,
       splitOn: draft.value.splitOn,
+      create: draft.value.create,
     });
     const pid = res?.project_id || res?.standard?.project?.id;
     pushToast({ kind: "success", title: `Imported "${res?.standard?.project?.name || draft.value.file.name}"` });
@@ -203,6 +206,8 @@ function cancel() {
       <!-- Import summary -->
       <div class="jv-card imrev__card imrev__summary">
         <div class="imrev__cardhead"><strong>Import summary</strong></div>
+        <!-- the project New project's dialog named (2026-10-09) -->
+        <div v-if="draft.create" class="imrev__sum"><span>Project</span><b>{{ draft.create.name }} · {{ kindLabel(draft.create.project_type) }}</b></div>
         <div class="imrev__sum"><span>Chapters</span><b>{{ included.length }}</b></div>
         <div class="imrev__sum"><span>Words</span><b>{{ totalWords.toLocaleString() }}</b></div>
         <div class="imrev__sum"><span>Estimated audio</span><b>{{ totalEst }}</b></div>

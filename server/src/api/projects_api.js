@@ -1274,6 +1274,19 @@ export function router() {
 
     const standard = await runAdapter(effectiveSource, raw, { filename, split_on: splitOn });
 
+    // New project's dialog names the project, picks its kind and its language, and they win over
+    // what the file says — one request creates and imports (the user's word, 2026-10-09: the
+    // dialog takes an optional file). A re-import into a project (`project_id`) ignores them.
+    if (!strip(projectId || projectIdQ || "")) {
+      const nameOver = strip(formValue(fields, "name") || "");
+      const kindOver = strip(formValue(fields, "project_type") || "");
+      const languageOver = strip(formValue(fields, "language") || "");
+      if (kindOver && !Object.hasOwn(_KIND_TO_PROJECT_TYPE, kindOver)) throw badRequest(`import: unknown project_type '${kindOver}'`);
+      if (nameOver) standard.project.name = nameOver;
+      if (kindOver) standard.project.kind = kindOver;
+      if (languageOver) standard.project.language = languageOver;
+    }
+
     // Per-chapter include list (import-page checkboxes): comma-separated scene indices from
     // the dry-run preview. Unlisted scenes don't materialize. Dry runs ignore it — the preview
     // always shows all.

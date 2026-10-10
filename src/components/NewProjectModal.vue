@@ -6,22 +6,30 @@
 // target, and export surface for the project. Replaces the old native
 // prompt() pair in ProjectsView (native dialogs are banned — project_gotchas).
 //
+// A file is optional (the user's word, 2026-10-09 — the dialog stays, the mock's "Bring the words
+// in" joins it): dropped in, it is read at once (the import's dry run), its title and kind fill
+// the name and the kind unless you chose your own, and Create continues on the import review
+// page (#importreview), where you pick the chapters and import — the project is made with the
+// name, kind and language chosen here. Re-importing into an existing project stays ImportModal's.
+//
 // Emits:
-//   close   — cancel / Esc
-//   create  — { name, project_type } (caller owns the API call)
-//   import  — user chose to create from a file instead (caller opens ImportModal)
+//   close   — cancel / Esc, or after handing a file to the review page
+//   create  — { name, project_type, language } with no file (caller owns the API call)
 
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
-import { UiButton, UiInput, UiSelect, AppModal } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiSelect, UiTable, AppModal, fmtBytes, pushToast } from "@delebash/llm-ui";
 import { bookLanguageOptions } from "../services/personaFacts.js";
 import { projectKind } from "../services/projectKinds.js";
+import { projectsService } from "../services/projects.js";
+import { pickAdapter } from "../services/importPicker.js";
+import { setImportDraft } from "../stores/importDraft.js";
 import { useVoicesStore } from "../stores/voices.js";
 
 const props = defineProps({
   // Preselect a kind (Home's Start-something pills hand this over).
   initialKind: { type: String, default: "" },
 });
-const emit = defineEmits(["close", "create", "import", "demo", "focus-only"]);
+const emit = defineEmits(["close", "create", "demo", "focus-only"]);
 
 const KINDS = [
   {
@@ -70,10 +78,36 @@ const language = ref("");
 const languageOptions = computed(() => bookLanguageOptions(voicesStore.items)
   .map((o) => (o.value ? o : { ...o, label: "Language — not set" })));
 
-const canCreate = computed(() => !!name.value.trim());
+// ── the optional file ──
+// The importers the server has (GET /v1/projects/import/adapters): the table of what each source
+// brings, in the server's own words, and the format a dropped file is read as.
+const adapters = ref([]);
+const sourceRows = computed(() => adapters.value.filter((a) => a.implemented)
+  .map((a) => ({ id: a.id, label: a.label, files: a.file_extensions.join(" · "), lands: a.description })));
+const SOURCE_COLUMNS = [
+  { id: "label", header: "Source", accessorKey: "label" },
+  { id: "files", header: "Files", accessorKey: "files" },
+  { id: "lands", header: "What comes in", accessorKey: "lands" },
+];
+const file = ref(null);
+const source = ref("");
+const reading = ref(false);
+const standard = ref(null); // the dry run — what the review page opens on
+const dropActive = ref(false);
+const fileInput = ref(null);
+// Your own name or kind beats the file's; a suggested one ("My audiobook") does not.
+const nameChosen = ref(false);
+const kindChosen = ref(!!props.initialKind);
+const formatOptions = computed(() => {
+  const ext = file.value ? file.value.name.slice(file.value.name.lastIndexOf(".")).toLowerCase() : "";
+  return adapters.value.filter((a) => a.implemented && a.file_extensions.includes(ext)).map((a) => ({ label: a.label, value: a.id }));
+});
+
+const canCreate = computed(() => !!name.value.trim() && !reading.value && (!file.value || !!standard.value));
 
 function pick(id) {
   selected.value = id;
+  kindChosen.value = true;
   // Dead-click fix: choosing a kind suggests a name immediately so
   // Create lights up — typing replaces the suggestion (text selected).
   if (!name.value.trim()) {
@@ -83,9 +117,71 @@ function pick(id) {
   nameInput.value?.select();
 }
 
+async function read() {
+  reading.value = true;
+  standard.value = null;
+  try {
+    const res = await projectsService.runImport({ source: source.value, file: file.value, dryRun: true });
+    standard.value = res.standard;
+    const p = res.standard?.project || {};
+    if (!nameChosen.value && p.name) name.value = p.name;
+    if (!kindChosen.value && KINDS.some((k) => k.id === p.kind)) selected.value = p.kind;
+    if (!language.value && p.language) language.value = p.language;
+  } catch (e) {
+    pushToast({ kind: "error", message: `Couldn't read ${file.value?.name}: ${e?.message || e}` });
+  } finally {
+    reading.value = false;
+  }
+}
+
+async function acceptFile(f) {
+  if (!f) return;
+  file.value = f;
+  const dot = f.name.lastIndexOf(".");
+  let head = "";
+  try {
+    head = await f.slice(0, 4096).text();
+  } catch {
+    /* a zip or a DOCX — the extension decides */
+  }
+  const match = dot < 0 ? null : pickAdapter({ ext: f.name.slice(dot).toLowerCase(), head, adapters: adapters.value });
+  if (!match) {
+    pushToast({ kind: "error", message: `${f.name} isn't a file JustVoice imports — the table lists what it reads.` });
+    clearFile();
+    return;
+  }
+  source.value = match.id;
+  await read();
+}
+
+function onDrop(e) {
+  dropActive.value = false;
+  acceptFile(e.dataTransfer?.files?.[0]);
+}
+
+function changeFormat(id) {
+  source.value = id;
+  read();
+}
+
+function clearFile() {
+  file.value = null;
+  source.value = "";
+  standard.value = null;
+  if (fileInput.value) fileInput.value.value = "";
+}
+
 function create() {
   if (!canCreate.value) return;
-  emit("create", { name: name.value.trim(), project_type: selected.value, language: language.value || null });
+  const choice = { name: name.value.trim(), project_type: selected.value, language: language.value || null };
+  if (!file.value) {
+    emit("create", choice);
+    return;
+  }
+  // With a file: the review page picks the chapters and imports, as Import always has.
+  setImportDraft({ file: file.value, source: source.value, standard: standard.value, create: choice });
+  emit("close");
+  window.location.hash = "#importreview";
 }
 
 function onKey(e) {
@@ -93,9 +189,14 @@ function onKey(e) {
   if (e.key === "Enter" && canCreate.value) create();
 }
 
-onMounted(() => {
+onMounted(async () => {
   window.addEventListener("keydown", onKey);
   nameInput.value?.focus();
+  try {
+    adapters.value = (await projectsService.listImportAdapters()).adapters || [];
+  } catch (e) {
+    pushToast({ kind: "error", message: `Couldn't load what JustVoice imports: ${e?.message || e}` });
+  }
 });
 onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
 </script>
@@ -126,11 +227,30 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
         </button>
       </div>
 
+      <section class="np-words">
+        <h3 class="np-words__title">Bring the words in <span class="jv-hint">— optional</span></h3>
+        <div class="jv-drop" :class="{ 'jv-drop--active': dropActive, 'jv-drop--filled': file }"
+          @dragover.prevent="dropActive = true" @dragleave="dropActive = false" @drop.prevent="onDrop">
+          <div v-if="file" class="jv-drop__row">
+            <span>📄 {{ file.name }} · {{ fmtBytes(file.size) }}</span>
+            <UiSelect v-if="formatOptions.length > 1" :model-value="source" :options="formatOptions" width="name"
+              aria-label="Read it as" title="Read it as — the file's ending fits more than one source"
+              @update:model-value="changeFormat" />
+            <span v-if="reading" class="jv-hint">Reading the file…</span>
+            <span class="jv-spacer" />
+            <UiButton intent="ghost" size="small" label="✕" title="Start without a file" @click="clearFile" />
+          </div>
+          <div v-else class="jv-drop__row">
+            <UiButton intent="secondary" size="small" label="Browse…" title="Pick the file to bring in" @click="fileInput?.click()" />
+            <span class="jv-hint">or drop it here. Create then opens its review, where you pick the chapters to import.</span>
+          </div>
+          <input ref="fileInput" type="file" hidden @change="acceptFile($event.target.files?.[0])" />
+        </div>
+        <UiTable v-if="!file && sourceRows.length" class="jv-table-look np-sources" :data="sourceRows" :columns="SOURCE_COLUMNS" />
+      </section>
+
       <div class="np-alts">
         <span class="np-alts__lead">Or start from —</span>
-        <UiButton intent="ghost" size="small" title="Import EPUB, DOCX, CSV, or markdown" @click="emit('import')">
-          <template #icon>📄</template>a file
-        </UiButton>
         <UiButton
           v-if="selected !== 'custom'"
           intent="ghost"
@@ -156,6 +276,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
         width="name"
         class="np-name-input"
         placeholder="Project name…"
+        @update:model-value="nameChosen = true"
         @keydown.enter.stop.prevent="create"
       />
       <UiSelect v-model="language" width="id" :options="languageOptions" aria-label="Language"
@@ -201,6 +322,12 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
   border-top: 1px solid var(--line, #e3e1dc);
 }
 .np-alts__lead { font-size: 12px; color: var(--muted, #888); }
+.np-words { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+.np-words__title { margin: 0; font-size: 13.5px; font-weight: 600; }
+.np-sources { font-size: 12.5px; }
+/* compact: a reference list under the drop box, not a data grid to work in */
+.np-sources.jv-table-look :deep(.ui-table thead th),
+.np-sources.jv-table-look :deep(.ui-table tbody td) { padding: 5px 10px; line-height: 1.35; }
 
 @media (max-width: 860px) {
   .np-grid { grid-template-columns: repeat(2, 1fr); }

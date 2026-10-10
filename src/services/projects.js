@@ -27,8 +27,9 @@ export const projectsService = {
   remove(id) {
     return withApi().del(`/v1/projects/${id}`);
   },
-  /** Multi-adapter import. {source, file, dryRun?} -> ImportRunResponse. */
-  async runImport({ source, file, dryRun = false, projectId = null, includeScenes = null, splitOn = null } = {}) {
+  /** Multi-adapter import. {source, file, dryRun?} -> ImportRunResponse. `create` carries New
+   *  project's choices — {name, project_type, language} — which win over what the file says. */
+  async runImport({ source, file, dryRun = false, projectId = null, includeScenes = null, splitOn = null, create = null } = {}) {
     if (!source) throw new Error("runImport: source is required");
     if (!file) throw new Error("runImport: file is required");
     const form = new FormData();
@@ -40,6 +41,9 @@ export const projectsService = {
       form.append("include_scenes", includeScenes.join(","));
     }
     if (splitOn) form.append("split_on", splitOn);  // book_prose chapter-split strategy
+    if (create?.name) form.append("name", create.name);
+    if (create?.project_type) form.append("project_type", create.project_type);
+    if (create?.language) form.append("language", create.language);
     return withApi().postForm(`/v1/projects/import`, form);
   },
 

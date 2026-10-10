@@ -16,7 +16,6 @@
 import { computed, onActivated, onMounted, ref } from "vue";
 import { UiButton, UiInput, UiChip, pageFlow } from "@delebash/llm-ui";
 import { EmptyState } from "@delebash/llm-ui";
-import ImportModal from "../components/ImportModal.vue";
 import NewProjectModal from "../components/NewProjectModal.vue";
 import { projectsService } from "../services/projects.js";
 import { openProjectInStudio } from "../services/openProject.js";
@@ -42,7 +41,6 @@ const projects = computed(() => projectsStore.items);
 const search = ref("");
 const projectTypeFilter = ref("all");
 const loading = computed(() => !projectsStore.loaded);
-const showImport = ref(false);
 const showNewProject = ref(false);
 const newProjectKind = ref("");
 
@@ -108,13 +106,6 @@ async function onFocusOnly(focusId) {
   window.location.hash = focusId === "dictation" ? "#captures" : "#settings";
 }
 
-async function onImportCreated({ project_id }) {
-  pushToast({ kind: "success", title: "Project imported" });
-  await refresh();
-  showImport.value = false;
-  landOnOverview(projects.value.find((p) => p.id === project_id));
-}
-
 function createBlank() {
   // Kind picker modal — native prompt() dialogs are banned (project_gotchas).
   showNewProject.value = true;
@@ -149,11 +140,6 @@ async function onCreateDemo(kind) {
   }
 }
 
-function onCreateFromImport() {
-  showNewProject.value = false;
-  showImport.value = true;
-}
-
 onMounted(() => {
   // Warm the shared store (idempotent).
   projectsStore.ensureLoaded();
@@ -165,9 +151,11 @@ onMounted(() => {
 // "start an audiobook" click of a session would open nothing.
 onActivated(() => {
   try {
+    // a file comes in through New project's dialog (2026-10-09)
     if (window.sessionStorage?.getItem("jv.projects.openImport")) {
       window.sessionStorage.removeItem("jv.projects.openImport");
-      showImport.value = true;
+      newProjectKind.value = "";
+      showNewProject.value = true;
     }
     const k = window.sessionStorage?.getItem("jv.projects.createKind");
     if (k !== null) {
@@ -190,7 +178,7 @@ onActivated(() => {
         @click="projectTypeFilter = t.id"
       >{{ t.label }}</UiChip>
       <span class="jv-spacer" />
-      <UiButton intent="secondary" size="small" label="⬇ Import" title="Create a project from a file — EPUB, DOCX, CSV, markdown, JustWrite JSON" @click="showImport = true" />
+      <UiButton intent="secondary" size="small" label="⬇ Import" title="Create a project from a file — EPUB, DOCX, CSV, markdown, a JustWrite book" @click="createBlank" />
       <UiButton intent="primary" size="small" label="＋ New project" @click="createBlank" />
     </div>
 
@@ -202,7 +190,7 @@ onActivated(() => {
       :message="`Import from JustWrite, paste a manuscript chapter, or start blank. Studio walks you from discover → script → cast → render.`"
       action-label="+ Import…"
       compact
-      @action="showImport = true"
+      @action="createBlank"
     />
     <div v-else-if="filtered.length === 0" class="projects__empty">
       <p class="jv-muted">No {{ copy.book.plural.toLowerCase() }} match this filter.</p>
@@ -227,15 +215,12 @@ onActivated(() => {
       </tbody>
     </table>
 
-    <!-- Multi-adapter import modal (justwrite / csv_lines / srt / audacity_labels / justvoice_standard / elevenlabs-stub). -->
-    <ImportModal v-if="showImport" @close="showImport = false" @created="onImportCreated" />
     <NewProjectModal
       v-if="showNewProject"
       :initial-kind="newProjectKind"
       @focus-only="onFocusOnly"
       @close="showNewProject = false"
       @create="onCreateProject"
-      @import="onCreateFromImport"
       @demo="onCreateDemo"
     />
   </q-page>
