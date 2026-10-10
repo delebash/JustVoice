@@ -1,0 +1,813 @@
+{
+ "about": "Who says each dialogue segment in chapters VII and VIII of \"Alice's Adventures in Wonderland\" (Lewis Carroll, 1865) — the answer key for server/scripts/eval_attribution.js, and the test book of TASKS \"One-click audiobook\" (2026-10-10). SOURCE: Project Gutenberg eBook #11 (https://www.gutenberg.org/ebooks/11), whose page states \"Public domain in the USA.\" (checked 2026-10-10); book.epub is that EPUB3, unchanged, so it goes through the book_prose adapter the way an EPUB import does in the app, and only these two of its chapters are keyed. Keys are the pipeline's own [D#] numbers per chapter. Values are cast names; 'unknown' where no single cast member speaks: the group lines (VII D2 and D91–D92, the Hatter and the March Hare together; VII D118, their 'Sh! sh!'; VIII D39, the soldiers). A quoted thought is its thinker's. Segmentation quirks kept as they fall: VII D138 is a phrase the Dormouse quotes inside his own speech, so it is his; the Hatter's song (VII P48–P49, P52) comes out as narration. 'cues' lists the segments whose text says how they are spoken — the book's own words, and the nearest of the app's nine emotions (models.js EMOTION_VALUES) only where the word is a direct match, else null; nothing scores cues yet (the direction step will). Labelled by hand 2026-10-10 from the text.",
+ "title": "Alice's Adventures in Wonderland — chapters VII and VIII",
+ "adapter": "book_prose",
+ "book": "book.epub",
+ "cast": [
+  {
+   "name": "Alice",
+   "aliases": []
+  },
+  {
+   "name": "Hatter",
+   "aliases": [
+    "the Hatter"
+   ]
+  },
+  {
+   "name": "March Hare",
+   "aliases": [
+    "the March Hare",
+    "the Hare"
+   ]
+  },
+  {
+   "name": "Dormouse",
+   "aliases": [
+    "the Dormouse"
+   ]
+  },
+  {
+   "name": "Queen of Hearts",
+   "aliases": [
+    "the Queen",
+    "Queen",
+    "your Majesty"
+   ]
+  },
+  {
+   "name": "King of Hearts",
+   "aliases": [
+    "the King",
+    "King"
+   ]
+  },
+  {
+   "name": "Knave of Hearts",
+   "aliases": [
+    "the Knave",
+    "Knave"
+   ]
+  },
+  {
+   "name": "White Rabbit",
+   "aliases": [
+    "the White Rabbit",
+    "the Rabbit",
+    "Rabbit"
+   ]
+  },
+  {
+   "name": "Cheshire Cat",
+   "aliases": [
+    "the Cat",
+    "Cat"
+   ]
+  },
+  {
+   "name": "Two",
+   "aliases": []
+  },
+  {
+   "name": "Five",
+   "aliases": []
+  },
+  {
+   "name": "Seven",
+   "aliases": []
+  }
+ ],
+ "chapters": {
+  "CHAPTER VII. A Mad Tea-Party": {
+   "0": "Alice",
+   "1": "Alice",
+   "2": "unknown",
+   "3": "Alice",
+   "4": "March Hare",
+   "5": "Alice",
+   "6": "March Hare",
+   "7": "Alice",
+   "8": "March Hare",
+   "9": "Alice",
+   "10": "Alice",
+   "11": "Hatter",
+   "12": "Alice",
+   "13": "Alice",
+   "14": "Hatter",
+   "15": "Alice",
+   "16": "Alice",
+   "17": "March Hare",
+   "18": "Alice",
+   "19": "March Hare",
+   "20": "Alice",
+   "21": "Alice",
+   "22": "Hatter",
+   "23": "Hatter",
+   "24": "March Hare",
+   "25": "March Hare",
+   "26": "Dormouse",
+   "27": "Dormouse",
+   "28": "Hatter",
+   "29": "Hatter",
+   "30": "Alice",
+   "31": "Hatter",
+   "32": "Hatter",
+   "33": "March Hare",
+   "34": "Hatter",
+   "35": "Hatter",
+   "36": "March Hare",
+   "37": "Alice",
+   "38": "Alice",
+   "39": "Hatter",
+   "40": "Hatter",
+   "41": "Alice",
+   "42": "Alice",
+   "43": "Hatter",
+   "44": "Alice",
+   "45": "Hatter",
+   "46": "Dormouse",
+   "47": "Hatter",
+   "48": "Alice",
+   "49": "Alice",
+   "50": "Hatter",
+   "51": "March Hare",
+   "52": "Alice",
+   "53": "Alice",
+   "54": "Hatter",
+   "55": "Hatter",
+   "56": "Alice",
+   "57": "Hatter",
+   "58": "Hatter",
+   "59": "Alice",
+   "60": "Alice",
+   "61": "Hatter",
+   "62": "Hatter",
+   "63": "March Hare",
+   "64": "Alice",
+   "65": "Alice",
+   "66": "Hatter",
+   "67": "Hatter",
+   "68": "Alice",
+   "69": "Hatter",
+   "70": "Hatter",
+   "71": "Hatter",
+   "72": "Alice",
+   "73": "Hatter",
+   "74": "Hatter",
+   "75": "Dormouse",
+   "76": "Hatter",
+   "77": "Hatter",
+   "78": "Alice",
+   "79": "Hatter",
+   "80": "Hatter",
+   "81": "Alice",
+   "82": "Hatter",
+   "83": "Hatter",
+   "84": "Alice",
+   "85": "Hatter",
+   "86": "Hatter",
+   "87": "Alice",
+   "88": "March Hare",
+   "89": "March Hare",
+   "90": "Alice",
+   "91": "unknown",
+   "92": "unknown",
+   "93": "Dormouse",
+   "94": "Dormouse",
+   "95": "March Hare",
+   "96": "Alice",
+   "97": "Hatter",
+   "98": "Hatter",
+   "99": "Dormouse",
+   "100": "Dormouse",
+   "101": "Alice",
+   "102": "Dormouse",
+   "103": "Alice",
+   "104": "Alice",
+   "105": "Dormouse",
+   "106": "Dormouse",
+   "107": "Alice",
+   "108": "March Hare",
+   "109": "Alice",
+   "110": "Alice",
+   "111": "Hatter",
+   "112": "Hatter",
+   "113": "Alice",
+   "114": "Hatter",
+   "115": "Alice",
+   "116": "Dormouse",
+   "117": "Alice",
+   "118": "unknown",
+   "119": "Dormouse",
+   "120": "Alice",
+   "121": "Alice",
+   "122": "Dormouse",
+   "123": "Dormouse",
+   "124": "Alice",
+   "125": "Dormouse",
+   "126": "Hatter",
+   "127": "Hatter",
+   "128": "Alice",
+   "129": "Hatter",
+   "130": "Hatter",
+   "131": "Alice",
+   "132": "Dormouse",
+   "133": "Dormouse",
+   "134": "Dormouse",
+   "135": "Dormouse",
+   "136": "Alice",
+   "137": "March Hare",
+   "138": "Dormouse",
+   "139": "Alice",
+   "140": "Alice",
+   "141": "Hatter",
+   "142": "Alice",
+   "143": "Alice",
+   "144": "Alice",
+   "145": "Alice",
+   "146": "Alice"
+  },
+  "CHAPTER VIII. The Queen’s Croquet-Ground": {
+   "0": "Two",
+   "1": "Five",
+   "2": "Five",
+   "3": "Seven",
+   "4": "Five",
+   "5": "Five",
+   "6": "Two",
+   "7": "Seven",
+   "8": "Five",
+   "9": "Five",
+   "10": "Seven",
+   "11": "Alice",
+   "12": "Alice",
+   "13": "Two",
+   "14": "Five",
+   "15": "Alice",
+   "16": "Alice",
+   "17": "Queen of Hearts",
+   "18": "Queen of Hearts",
+   "19": "Queen of Hearts",
+   "20": "Alice",
+   "21": "Alice",
+   "22": "Queen of Hearts",
+   "23": "Alice",
+   "24": "Alice",
+   "25": "Queen of Hearts",
+   "26": "Alice",
+   "27": "King of Hearts",
+   "28": "Queen of Hearts",
+   "29": "Queen of Hearts",
+   "30": "Queen of Hearts",
+   "31": "Queen of Hearts",
+   "32": "Queen of Hearts",
+   "33": "Two",
+   "34": "Two",
+   "35": "Queen of Hearts",
+   "36": "Queen of Hearts",
+   "37": "Alice",
+   "38": "Queen of Hearts",
+   "39": "unknown",
+   "40": "Queen of Hearts",
+   "41": "Queen of Hearts",
+   "42": "Alice",
+   "43": "Queen of Hearts",
+   "44": "White Rabbit",
+   "45": "Alice",
+   "46": "Alice",
+   "47": "White Rabbit",
+   "48": "White Rabbit",
+   "49": "Alice",
+   "50": "White Rabbit",
+   "51": "Alice",
+   "52": "Alice",
+   "53": "White Rabbit",
+   "54": "White Rabbit",
+   "55": "White Rabbit",
+   "56": "Queen of Hearts",
+   "57": "Queen of Hearts",
+   "58": "Queen of Hearts",
+   "59": "Alice",
+   "60": "Alice",
+   "61": "Alice",
+   "62": "Cheshire Cat",
+   "63": "Alice",
+   "64": "Alice",
+   "65": "Alice",
+   "66": "Alice",
+   "67": "Cheshire Cat",
+   "68": "Alice",
+   "69": "Alice",
+   "70": "Alice",
+   "71": "King of Hearts",
+   "72": "Alice",
+   "73": "Alice",
+   "74": "King of Hearts",
+   "75": "King of Hearts",
+   "76": "Cheshire Cat",
+   "77": "King of Hearts",
+   "78": "King of Hearts",
+   "79": "Alice",
+   "80": "Alice",
+   "81": "King of Hearts",
+   "82": "King of Hearts",
+   "83": "Queen of Hearts",
+   "84": "King of Hearts",
+   "85": "Alice",
+   "86": "Alice",
+   "87": "Alice",
+   "88": "Queen of Hearts",
+   "89": "Queen of Hearts"
+  }
+ },
+ "cues": {
+  "CHAPTER VII. A Mad Tea-Party": {
+   "0": {
+    "emotion": null,
+    "cue": "thought Alice"
+   },
+   "1": {
+    "emotion": null,
+    "cue": "thought Alice"
+   },
+   "2": {
+    "emotion": "shouted",
+    "cue": "they cried out"
+   },
+   "3": {
+    "emotion": "angry",
+    "cue": "said Alice indignantly"
+   },
+   "4": {
+    "emotion": null,
+    "cue": "in an encouraging tone"
+   },
+   "7": {
+    "emotion": "angry",
+    "cue": "said Alice angrily"
+   },
+   "12": {
+    "emotion": null,
+    "cue": "with some severity"
+   },
+   "13": {
+    "emotion": null,
+    "cue": "with some severity"
+   },
+   "15": {
+    "emotion": null,
+    "cue": "thought Alice"
+   },
+   "20": {
+    "emotion": null,
+    "cue": "Alice hastily replied"
+   },
+   "21": {
+    "emotion": null,
+    "cue": "Alice hastily replied"
+   },
+   "26": {
+    "emotion": null,
+    "cue": "talking in his sleep"
+   },
+   "27": {
+    "emotion": null,
+    "cue": "talking in his sleep"
+   },
+   "31": {
+    "emotion": "sad",
+    "cue": "sighed the Hatter"
+   },
+   "32": {
+    "emotion": "angry",
+    "cue": "looking angrily at the March Hare"
+   },
+   "33": {
+    "emotion": null,
+    "cue": "meekly replied"
+   },
+   "34": {
+    "emotion": null,
+    "cue": "the Hatter grumbled"
+   },
+   "35": {
+    "emotion": null,
+    "cue": "the Hatter grumbled"
+   },
+   "36": {
+    "emotion": "sad",
+    "cue": "looked at it gloomily"
+   },
+   "39": {
+    "emotion": null,
+    "cue": "muttered the Hatter"
+   },
+   "40": {
+    "emotion": null,
+    "cue": "muttered the Hatter"
+   },
+   "44": {
+    "emotion": null,
+    "cue": "as politely as she could"
+   },
+   "46": {
+    "emotion": null,
+    "cue": "impatiently, without opening its eyes"
+   },
+   "52": {
+    "emotion": "sad",
+    "cue": "Alice sighed wearily"
+   },
+   "53": {
+    "emotion": "sad",
+    "cue": "Alice sighed wearily"
+   },
+   "57": {
+    "emotion": "contemptuous",
+    "cue": "tossing his head contemptuously"
+   },
+   "58": {
+    "emotion": "contemptuous",
+    "cue": "tossing his head contemptuously"
+   },
+   "59": {
+    "emotion": null,
+    "cue": "Alice cautiously replied"
+   },
+   "60": {
+    "emotion": null,
+    "cue": "Alice cautiously replied"
+   },
+   "63": {
+    "emotion": "whispered",
+    "cue": "said to itself in a whisper"
+   },
+   "64": {
+    "emotion": null,
+    "cue": "said Alice thoughtfully"
+   },
+   "65": {
+    "emotion": null,
+    "cue": "said Alice thoughtfully"
+   },
+   "69": {
+    "emotion": "sad",
+    "cue": "shook his head mournfully"
+   },
+   "70": {
+    "emotion": "sad",
+    "cue": "shook his head mournfully"
+   },
+   "71": {
+    "emotion": "sad",
+    "cue": "shook his head mournfully"
+   },
+   "75": {
+    "emotion": null,
+    "cue": "singing in its sleep"
+   },
+   "78": {
+    "emotion": null,
+    "cue": "exclaimed Alice"
+   },
+   "79": {
+    "emotion": "sad",
+    "cue": "in a mournful tone"
+   },
+   "80": {
+    "emotion": "sad",
+    "cue": "in a mournful tone"
+   },
+   "82": {
+    "emotion": "sad",
+    "cue": "with a sigh"
+   },
+   "83": {
+    "emotion": "sad",
+    "cue": "with a sigh"
+   },
+   "88": {
+    "emotion": null,
+    "cue": "interrupted, yawning"
+   },
+   "89": {
+    "emotion": null,
+    "cue": "interrupted, yawning"
+   },
+   "90": {
+    "emotion": "fearful",
+    "cue": "rather alarmed at the proposal"
+   },
+   "91": {
+    "emotion": "shouted",
+    "cue": "they both cried"
+   },
+   "92": {
+    "emotion": "shouted",
+    "cue": "they both cried"
+   },
+   "93": {
+    "emotion": null,
+    "cue": "in a hoarse, feeble voice"
+   },
+   "94": {
+    "emotion": null,
+    "cue": "in a hoarse, feeble voice"
+   },
+   "96": {
+    "emotion": null,
+    "cue": "pleaded Alice"
+   },
+   "99": {
+    "emotion": null,
+    "cue": "began in a great hurry"
+   },
+   "100": {
+    "emotion": null,
+    "cue": "began in a great hurry"
+   },
+   "103": {
+    "emotion": null,
+    "cue": "gently remarked"
+   },
+   "104": {
+    "emotion": null,
+    "cue": "gently remarked"
+   },
+   "108": {
+    "emotion": null,
+    "cue": "very earnestly"
+   },
+   "109": {
+    "emotion": null,
+    "cue": "in an offended tone"
+   },
+   "110": {
+    "emotion": null,
+    "cue": "in an offended tone"
+   },
+   "114": {
+    "emotion": "happy",
+    "cue": "asked triumphantly"
+   },
+   "117": {
+    "emotion": "angry",
+    "cue": "Alice was beginning very angrily"
+   },
+   "119": {
+    "emotion": null,
+    "cue": "sulkily remarked"
+   },
+   "120": {
+    "emotion": null,
+    "cue": "very humbly"
+   },
+   "121": {
+    "emotion": null,
+    "cue": "very humbly"
+   },
+   "122": {
+    "emotion": "angry",
+    "cue": "said the Dormouse indignantly"
+   },
+   "128": {
+    "emotion": null,
+    "cue": "began very cautiously"
+   },
+   "134": {
+    "emotion": null,
+    "cue": "yawning and rubbing its eyes"
+   },
+   "135": {
+    "emotion": null,
+    "cue": "yawning and rubbing its eyes"
+   },
+   "138": {
+    "emotion": null,
+    "cue": "woke up again with a little shriek"
+   },
+   "139": {
+    "emotion": null,
+    "cue": "very much confused"
+   },
+   "140": {
+    "emotion": null,
+    "cue": "very much confused"
+   },
+   "144": {
+    "emotion": null,
+    "cue": "she thought"
+   },
+   "145": {
+    "emotion": null,
+    "cue": "she thought"
+   },
+   "146": {
+    "emotion": null,
+    "cue": "she said to herself"
+   }
+  },
+  "CHAPTER VIII. The Queen’s Croquet-Ground": {
+   "1": {
+    "emotion": null,
+    "cue": "in a sulky tone"
+   },
+   "2": {
+    "emotion": null,
+    "cue": "in a sulky tone"
+   },
+   "11": {
+    "emotion": "fearful",
+    "cue": "a little timidly"
+   },
+   "12": {
+    "emotion": "fearful",
+    "cue": "a little timidly"
+   },
+   "13": {
+    "emotion": "whispered",
+    "cue": "began in a low voice"
+   },
+   "14": {
+    "emotion": "shouted",
+    "cue": "called out"
+   },
+   "15": {
+    "emotion": null,
+    "cue": "thought she"
+   },
+   "16": {
+    "emotion": null,
+    "cue": "thought she"
+   },
+   "17": {
+    "emotion": null,
+    "cue": "the Queen said severely"
+   },
+   "18": {
+    "emotion": null,
+    "cue": "tossing her head impatiently"
+   },
+   "20": {
+    "emotion": null,
+    "cue": "very politely"
+   },
+   "21": {
+    "emotion": null,
+    "cue": "she added, to herself"
+   },
+   "23": {
+    "emotion": null,
+    "cue": "surprised at her own courage"
+   },
+   "24": {
+    "emotion": null,
+    "cue": "surprised at her own courage"
+   },
+   "25": {
+    "emotion": "shouted",
+    "cue": "turned crimson with fury … screamed"
+   },
+   "26": {
+    "emotion": "shouted",
+    "cue": "very loudly and decidedly"
+   },
+   "27": {
+    "emotion": "fearful",
+    "cue": "timidly said"
+   },
+   "28": {
+    "emotion": "angry",
+    "cue": "turned angrily away"
+   },
+   "29": {
+    "emotion": "shouted",
+    "cue": "in a shrill, loud voice"
+   },
+   "30": {
+    "emotion": "shouted",
+    "cue": "screamed the Queen"
+   },
+   "31": {
+    "emotion": "shouted",
+    "cue": "screamed the Queen"
+   },
+   "33": {
+    "emotion": null,
+    "cue": "in a very humble tone"
+   },
+   "34": {
+    "emotion": null,
+    "cue": "in a very humble tone"
+   },
+   "38": {
+    "emotion": "shouted",
+    "cue": "shouted the Queen"
+   },
+   "39": {
+    "emotion": "shouted",
+    "cue": "the soldiers shouted"
+   },
+   "40": {
+    "emotion": "shouted",
+    "cue": "shouted the Queen"
+   },
+   "41": {
+    "emotion": "shouted",
+    "cue": "shouted the Queen"
+   },
+   "42": {
+    "emotion": "shouted",
+    "cue": "shouted Alice"
+   },
+   "43": {
+    "emotion": "shouted",
+    "cue": "roared the Queen"
+   },
+   "44": {
+    "emotion": "fearful",
+    "cue": "a timid voice … peeping anxiously"
+   },
+   "47": {
+    "emotion": "whispered",
+    "cue": "in a low, hurried tone"
+   },
+   "48": {
+    "emotion": "whispered",
+    "cue": "whispered"
+   },
+   "54": {
+    "emotion": "whispered",
+    "cue": "whispered in a frightened tone"
+   },
+   "55": {
+    "emotion": "whispered",
+    "cue": "whispered in a frightened tone"
+   },
+   "56": {
+    "emotion": "shouted",
+    "cue": "shouted the Queen in a voice of thunder"
+   },
+   "57": {
+    "emotion": "shouted",
+    "cue": "in a furious passion … shouting"
+   },
+   "58": {
+    "emotion": "shouted",
+    "cue": "in a furious passion … shouting"
+   },
+   "59": {
+    "emotion": null,
+    "cue": "thought she"
+   },
+   "60": {
+    "emotion": null,
+    "cue": "thought she"
+   },
+   "61": {
+    "emotion": null,
+    "cue": "she said to herself"
+   },
+   "63": {
+    "emotion": null,
+    "cue": "she thought"
+   },
+   "64": {
+    "emotion": null,
+    "cue": "she thought"
+   },
+   "65": {
+    "emotion": null,
+    "cue": "in rather a complaining tone"
+   },
+   "66": {
+    "emotion": null,
+    "cue": "in rather a complaining tone"
+   },
+   "67": {
+    "emotion": "whispered",
+    "cue": "said the Cat in a low voice"
+   },
+   "81": {
+    "emotion": null,
+    "cue": "very decidedly"
+   },
+   "82": {
+    "emotion": null,
+    "cue": "very decidedly"
+   },
+   "84": {
+    "emotion": null,
+    "cue": "said the King eagerly"
+   },
+   "85": {
+    "emotion": null,
+    "cue": "thought Alice"
+   },
+   "86": {
+    "emotion": null,
+    "cue": "thought Alice"
+   }
+  }
+ }
+}

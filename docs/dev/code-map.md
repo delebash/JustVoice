@@ -653,6 +653,11 @@ plain-text import through the `book_prose` adapter. A key may name its book file
 and adapter (`"book"`, `"adapter"`) and, for a book that ships no characters,
 carry the cast with its aliases. It is the only sample with a first-person
 narrator who also speaks and with speeches that run over several paragraphs.
+`alice-in-wonderland` (2026-10-10) is Gutenberg's EPUB of Carroll's book, read
+by `book_prose` as an EPUB import; only chapters VII and VIII are keyed (many
+speakers, group lines, shouting and whispering), and its key also carries
+`cues` — the lines whose text says how they are spoken — for the direction
+step to be scored against.
 
 **The prompt is thin.** `_resolve_cast` (`extraction_api.py:153-172`) returns
 the book's speakers with role/gender/pronouns hardcoded to `None`, their

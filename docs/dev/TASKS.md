@@ -207,10 +207,31 @@ WHY:    most users have no Claude Code — the in-app route (the local model, or
 NOT:    JV signing in with, or holding, Claude.ai credentials (Anthropic's terms forbid it); a JV
         button that starts Claude Code (Commercial Terms and conditions — ask Anthropic first);
         single-voice tools in the comparison (AudiobookGen, Speechify, Google Play, KDP).
-BUILT:  nothing yet — what exists, the terms, prices and the commercial tools: RESEARCH §10.
-OPEN:   the measurement on one real chapter, then the plan doc. Test book ("your rec on 1-2 go"):
-        Alice's Adventures in Wonderland, Gutenberg #11, `data/test-books/alice-in-wonderland/`.
+BUILT:  test book Alice ("your rec on 1-2 go"); its answer key, chapters VII–VIII ("your rec all
+        go"), `server/samples/alice-in-wonderland/`; the kit's Claude adapter takes the 5.x models
+        (kit 9b534ef). The facts: RESEARCH §10.
+OPEN:   the local baseline on chapter VII (needs the app and the GPU), the measurement, the plan.
 GO:     given 2026-10-10 ("your rec on all"); measuring waits: "wait i want to discuss a little more".
+
+### Frontier models get their own recipe, not the small-model one (decided 2026-10-10)
+STATE:  DECIDED 2026-10-10 — the user: "this could be a serious problem if we are causing frontier
+        models to do worse becuase we have tweaked for local less intelligent models, how do we fix
+        that". Shown: "1. One contract per step … 2. Two recipes per step: Local … Frontier: the
+        whole chapter or the whole book in one call, the full cast with descriptions, thinking on,
+        and the answer in a fixed JSON format where the provider supports it … The fixed text
+        rules become cross-checks that flag disagreements instead of overriding the model. 3. Pick
+        the recipe by kind of model, not size. A recipe setting on each model's preset: frontier by
+        default for cloud providers, local for the built-in engine, and editable … 4. Use me as the
+        target … 5. Never tune one at the other's expense. Every prompt change runs the scored
+        test on gemma and on one frontier model … 6. The new steps get both recipes from the
+        start", then asked: "Should the plan include the fix …? My lean: yes." The user: "your rec
+        all go".
+WHY:    Auto reads a cloud model's size as 0 B, so Opus, Sonnet and GPT-6.1 Sol get the small-model
+        route today (RESEARCH §10.1).
+NOT:    choosing the recipe by parameter count — cloud models publish none.
+BUILT:  nothing yet.
+OPEN:   in the one-click plan doc, with its blast-radius greps.
+GO:     given 2026-10-10 ("your rec all go").
 
 ### The work's eight questions, answered (decided 2026-10-09)
 STATE:  DECIDED 2026-10-09 — asked at the end of the open-work program, as shown: "1. Voice
