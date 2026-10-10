@@ -148,6 +148,14 @@ STATE:  DECIDED 2026-10-09 — asked "whats next" once the phone was done; shown
         fork's v0.9.0-jv.5 (item 1); the apps' releases wait for one cross-platform release at the
         end. Phones: no release workflow builds one; just-sqlite-sync's iOS test went manual-only
         like JustWrite's ("your rec go", just-sqlite-sync 7897f08).
+        The plan for 3 and 4: `docs/plans/2026-10-09-finishing-the-open-work.md`. Its questions, as
+        asked: "4. Engines: the 'If you want… / Use / What you give up' rows in the plan's §5? …
+        My recommendation: as drafted. 5. The updater: download on its own, or ask first? … My
+        recommendation: check at start-up and say when an update is ready, download when you press
+        Download, install on the next restart. … 6. Voice training: research now, or after
+        everything else? … My recommendation: after the screens, the updater and the kit fixes,
+        written up as findings before any code." The user: "4 your rec 5 your rec, 6 your rec".
+        Questions 1–3 (Scene, New project, Effects' "From" column) answered with questions — open.
 WHY:    finish the open work across JustVoice, the kit, JustWrite and docgen.
 NOT:    a NOT STANDARD piece without its own word by name; wording and looks the decisions leave
         open are asked, not chosen.
