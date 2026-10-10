@@ -1762,6 +1762,11 @@ Claude Code" (2026-10-10).
   projects, no commercial licence; the commercial licence starts at Starter, $6/month for 30,000
   credits. — *web, 2026-10-10* · [elevenlabs.io/pricing](https://elevenlabs.io/pricing).
   JV already has ElevenLabs as a voice provider (`server/src/engines/tts_providers/elevenlabs.js`).
+- ElevenLabs' free credits are "shared across all products" — Studio and the API draw on the same
+  10,000. Neither the pricing page nor the API pricing page says whether Free includes API access,
+  and neither names a Studio (book project) API; third-party guides say every account, Free
+  included, can make an API key. — *web, 2026-10-10* · [elevenlabs.io/pricing](https://elevenlabs.io/pricing),
+  [elevenlabs.io/pricing/api](https://elevenlabs.io/pricing/api).
 - ACX: "Unauthorized use of text-to-speech, AI, or automated recordings in ACX titles is
   prohibited"; an audiobook "must be narrated by a human unless otherwise authorized". The
   technical limits: RMS −23 to −18 dB, peaks below −3 dB, noise floor at most −60 dB RMS, 1–5 s
@@ -1779,6 +1784,9 @@ Claude Code" (2026-10-10).
 - Speechify: about 10 minutes of downloadable audio a month on the free plan — a third-party
   review only, undated. — *web, 2026-10-10, not checked against Speechify* ·
   [reedsy.com/blog/speechify-review](https://reedsy.com/blog/speechify-review).
+- Speechify's API: a free tier of "50K characters / mo · hard cap", no card; Starter $10/month for
+  1M characters. JV already has Speechify as a voice provider (`docs/ai-providers.md`). — *web,
+  2026-10-10* · [speechify.ai/pricing](https://speechify.ai/pricing).
 - Play.ht: reported shut down on 2025-12-31 after Meta took the team; the reports are secondary
   and disagree on dates. — *web, 2026-10-10, not confirmed* ·
   [infrabase.ai/audio/playht](https://infrabase.ai/audio/playht).
@@ -1791,6 +1799,10 @@ Claude Code" (2026-10-10).
 - Resemble AI's "best AI tool" article (2025-11-20) is Resemble's own marketing and ranks itself
   first; it names a free trial and no prices. — *web, 2026-10-10* ·
   [resemble.ai/resources/best-ai-tool-turns-book-audiobook](https://www.resemble.ai/resources/best-ai-tool-turns-book-audiobook).
+- Resemble's pricing page: Flex "$0/mo", "Buy credits as you go", "Platform and API access", "No
+  credit card needed to try it"; it names no free credit amount, and its per-second rates are for
+  detection and intelligence, not speech. — *web, 2026-10-10* ·
+  [resemble.ai/pricing](https://www.resemble.ai/pricing/).
 
 ---
 
