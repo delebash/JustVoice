@@ -233,6 +233,26 @@ BUILT:  nothing yet.
 OPEN:   in the one-click plan doc, with its blast-radius greps.
 GO:     given 2026-10-10 ("your rec all go").
 
+### The "said X" rule and nested quotes stop misattributing lines (decided 2026-10-10)
+STATE:  DECIDED 2026-10-10 — the user: "so lets see if we can fix these errors before we continue
+        … can you fix the he said and nested quotes, any ideas?" Shown: "a. Only look at the
+        clause touching the quote … b. Only accept the two shapes a speech tag actually has: 'Name
+        (adverb) said' and 'said (adverb) Name'. 'Said to Name', 'turning to Name', 'said nothing'
+        and a pronoun before the verb ('he said') don't count, so those lines go to the model. c.
+        Propagation stops at narration that has its own speech verb or names a different
+        character." Nested quotes: "curly quotes have a direction … a simple counter can track
+        depth … Straight quotes (\") have no direction, so they stay as now", and "carry 'speech
+        still open' forward … only if the run ends in a paragraph whose first mark is a closing
+        one". Questions: "1. Run the rule-off test on Alice first? … 2. Fix the rule with a, b and
+        c? … 3. Fix nested quotes … 4. Accept the fixes only if none of the four books gets
+        worse?" — my lean yes on each. The user: "your rec go".
+WHY:    9 of the 10 misses on Alice VII–VIII were the rule's and propagation's (RESEARCH §10.4).
+NOT:    a new verb list or a standard library (BookNLP is Python); straight-quote nesting.
+BUILT:  in progress.
+OPEN:   the four books' before/after scores; the fixes in `server/src/extraction/anchors.js` and
+        `segmentation.js`.
+GO:     given 2026-10-10 ("your rec go").
+
 ### The work's eight questions, answered (decided 2026-10-09)
 STATE:  DECIDED 2026-10-09 — asked at the end of the open-work program, as shown: "1. Voice
         training: measure cloning first — clip cloning against a many-clip x-vector, on one
