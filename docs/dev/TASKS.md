@@ -252,8 +252,9 @@ BUILT:  506ce81 — `anchors.js` (tags at a narration's edge, two shapes; propag
         `segmentation.js` (curly quotes counted, a song carried), Alice VII renumbered (150 lines).
         Offline on the four keys: the rule 205/205; the other three books provably unchanged
         (RESEARCH §10.4).
-OPEN:   Alice's model run on the new code, and the rule-off run — both wait for the GPU, which
-        another session's voice training holds.
+        Measured 2026-10-10: Alice 240/240 with the fixed rule, 238/240 with it off (RESEARCH
+        §10.4) — accepted, no book worse.
+OPEN:   nothing — close when read.
 GO:     given 2026-10-10 ("your rec go").
 
 ### The work's eight questions, answered (decided 2026-10-09)

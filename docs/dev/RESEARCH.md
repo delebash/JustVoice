@@ -1879,6 +1879,33 @@ headless server on the dev data folder, the live prompts and settings, one run;
   move. — *code, run 2026-10-10* · the scratch scripts' output in this session (was: any name
   within 18 characters of any verb anywhere in the narration, 9 wrong on Alice, until
   2026-10-10).
+- Analyze after the fix (506ce81), same machine and model: 240 of 240 right — VII 150/150 in
+  123 s, VIII 90/90 in 80 s; the rule decided 138 and propagation 18, all right; gemma 84/84,
+  the five group lines answered "unknown". With the rule off (`--no-propagate`): 238/240 in
+  167 s, gemma giving the group line "Sh! sh!" to the Hatter and the Dormouse's next line to the
+  March Hare. One run each. — *measured, 2026-10-10* · `npm run eval:attribution -- --sample
+  alice-in-wonderland [--no-propagate]`.
+
+### 10.5 Direction and voice descriptions, local, one-off prompts
+
+One-off prompts through `POST /v1/ai/run` on `speaker_attribution.direct`'s route (gemma
+26B-A4B, JSON mode), the chapter text with its lines marked [D#], nothing saved; scored against
+the Alice key's `cues`. Measured 2026-10-10, one run.
+
+- Direction on Alice VII (150 lines; 73 whose text says how they're spoken): 44 of the 73 given
+  an emotion or a direction (60 %); of the 24 whose key names one of the nine emotions, 12 the
+  same (50 %); of the 77 lines with no cue, 3 marked anyway (4 %). 50 s, 4,250 tokens in, 2,104
+  out. — *measured*.
+- Of the 29 cue lines missed, 19 are a speaker's second or third line in the same paragraph — the
+  cue sits beside the first ("“…,” the Hatter grumbled: “…”" marks the first line, not the
+  second); the rest are mostly cues in the narration before the line ("shook his head
+  mournfully", "looked at it gloomily"). — *measured*, read off the run's misses.
+- With `think: true` the run came back with the same answer and the same token count, so
+  thinking did not engage through this door — not a comparison. — *measured*.
+- Voice descriptions for Alice, the Hatter, the March Hare and the Dormouse in 5–12 s, one or two
+  sentences each with gender, age, pitch, pace and manner (e.g. the Dormouse: "Male, young, low
+  and muffled pitch with a sleepy, drowsy timbre … hoarse, feeble, and slow … mumbling as if
+  half-asleep"). Whether they make good voices is for the ear. — *measured*.
 
 ---
 
