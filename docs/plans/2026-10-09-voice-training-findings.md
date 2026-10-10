@@ -154,6 +154,13 @@ unchanged.
 - **Sounds like her** — round 2 of the listening page (same link), her recording beside U, T2 and T3
   shuffled; picks in `round2`.
 
+## Round 2 and the outcome (2026-10-10)
+
+The user, after round 2: *"they all sound worse than just the regular clone"* — the trained takes
+and the untrained one alike, so part of the drop is the Python setup itself (PyTorch, bf16 emulated
+on this card), and nothing in round 2 beat the app's own clone. No trainer is built; voice training
+moved to IDEAS ("your rec on all go", 2026-10-10) and the experiment's temp files were deleted.
+
 ## The decision (the user's)
 
 1. **Measure cloning first?**

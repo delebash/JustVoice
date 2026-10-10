@@ -277,7 +277,8 @@ Blast radius: `SpeechEnginesTab` — `AiPage.vue:25, :94`; the models wire gains
   repos to build from, so research first (what ggml's training support covers, what upstream
   audio.cpp has for LoRA, the size of the job), written up before any code.
   **Written 2026-10-09:** [`2026-10-09-voice-training-findings.md`](2026-10-09-voice-training-findings.md)
-  (the facts in RESEARCH §9) — three questions for the user; no code.
+  (the facts in RESEARCH §9) — three questions for the user; no code. **Measured 2026-10-10** in two
+  listening rounds (cloning, then a Python-trained LoRA) and moved to IDEAS.
 - **The kit's engine findings** — verify first which are already closed by the shared Electron shell
   (the data folder's ladder, the server's stop); then the KV/context sizing faults, fixed together as
   their item demands; then the two smoke tests that fail only inside the suite.

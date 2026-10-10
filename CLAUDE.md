@@ -4,8 +4,7 @@ A cross-platform voice production server: **Electron shell + Vue 3 renderer + No
 (Hono + SQLite)**, with every speech model run by one audio.cpp process (the speech runtime).
 Also runs **headless** (`npm run server`, or the installed app's `justvoice-server serve`), no
 window. Plain `.js` everywhere (`"type": "module"`) — no TypeScript, no `.mjs`/`.cjs`, and no
-Python anywhere (the user's rulings, 2026-10-08) — except, possibly, a small separate Python app for
-LoRA voice training (the user, 2026-10-10; TASKS "Voice training: Python may train LoRAs").
+Python anywhere (the user's rulings, 2026-10-08).
 
 Standalone product. JustWrite drives JustVoice for audiobooks — JW hands over the prose, JV does
 its own casting and narration — but JustVoice does not depend on JustWrite. The boundary rules

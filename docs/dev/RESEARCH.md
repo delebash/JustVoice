@@ -1697,7 +1697,9 @@ experiment"): Qwen3-TTS Base 1.7B with the old trainer (Alexandria's) in bf16 �
 (`torch.cuda.is_bf16_supported(including_emulation=False)` is False) — trains a rank-64 q/k/v/o
 LoRA (29.0 M parameters) on 120 clips (14 min) in 6.3 GB at ~0.6 s a step: 3 epochs in 201 s
 (loss 4.42 → 4.16 → 3.90). The trained voice's lines run 7.06 s on average against her 6.96 s;
-untrained 7.71 s. PyTorch inference ~20 s a line here. — *measured*.
+untrained 7.71 s. PyTorch inference ~20 s a line here. — *measured*. By ear (the user, 2026-10-10):
+all three Python takes — untrained, trained 2 and 3 rounds — sounded worse than the app's audio.cpp
+clone of round 1.
 
 **Memory, by arithmetic, unmeasured:** the 1.7B talker is ~1.41B parameters — ~5.6 GB as F32,
 2.8 GB as BF16; a rank-32 q/k/v/o adapter ~12.8M parameters, ~200 MB with gradients and AdamW

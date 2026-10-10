@@ -181,8 +181,8 @@ BUILT:  in progress — 1: DONE 2026-10-10 — v0.9.0-jv.5 tagged on the fork (5
         measurements from two more machines (the user's 2026-09-19 ruling); the suite-only smoke
         tests are measured — one was the port's 20 s timeout (fixed), one is a re-tune the runner
         drops while a load finishes, for the user's word (kit TASKS; the plan's §6 "Done 2026-10-09"). Voice training (gap 5):
-        the research is written up, findings only — `docs/plans/2026-10-09-voice-training-findings.md`,
-        the facts in RESEARCH §9; its three questions wait for the user.
+        researched, measured by ear in two rounds — cloning and a Python-trained LoRA — and moved
+        to IDEAS 2026-10-10 (`docs/plans/2026-10-09-voice-training-findings.md`, RESEARCH §9).
 OPEN:   1–4 above, in that order.
 GO:     given 2026-10-09 ("do it all your rec go, lets get all the tasks completed").
 
@@ -265,38 +265,11 @@ BUILT:  1 — the measurement ran 2026-10-10 (plan 2026-10-09 voice-training fin
         the deciding part, the user's ears. 2 — kit 1347b49 (a re-tune asked while the load finishes
         runs once it does; the real-router smoke 8/8). 3 — nothing to build. 5 — nothing to build.
         6 — pushed (kit, JustWrite, docgen). 8 — both servers stopped 2026-10-10.
-OPEN:   1 — the user's listening, then the trainer question; 7 — not built: VERSION is in the
+OPEN:   1 — DONE 2026-10-10: two listening rounds; voice training moved to IDEAS ("your rec on all
+        go"), the experiment's temp files deleted; 7 — not built: VERSION is in the
         render cache key (render_core.js `_inputsKey`), so changing it marks every rendered line
         stale — asked again; 4 — asked again.
 GO:     given 2026-10-09 ("your rec all go").
-
-### Voice training: Python may train LoRAs, outside the app — one experiment first (decided 2026-10-10)
-STATE:  DECIDED 2026-10-10. The listening test, the user's words: "most of them are probably 70% close
-        most of my picks where take 1 and 2 but there where differences in picth and sometimes a
-        pause or inflection but it was fairly good it hard to tell" (picks: B 3, C 2, A 2 of 7 —
-        no method wins). Asked whether to move training to IDEAS, the user: "so no lora training?
-        didnt alexandria have lora and it wasnt that hard, you make it sound hard and not worth it,
-        maybe it isnt, what do you think?" Shown: LoRA is easy in Python (PyTorch + PEFT, as
-        Alexandria does) and hard only under the no-Python rule (C++ on ggml, young and
-        unmaintained); "Run Alexandria's trainer once, outside the app, on the same narrator… Add
-        the trained voice to the same listening page… That one-off experiment needs Python on this
-        machine… may I use it just for this test?" The user: "we can use python and if we have
-        tohave a small seperate python app just for lora training thats is possibility, i meant if
-        we are converting the app like we did the goal was to not have python, you did not really
-        make it clear tome that lora would be hard and not well supported, maybe we should have just
-        stayed with python".
-        So: Python may be used for the experiment; a small separate Python app for LoRA training is
-        a possibility; the app itself stays without Python.
-WHY:    LoRA training is mature in Python and young in C++/ggml; the ear test left about 30% of her
-        delivery (pitch, pauses, inflection) to win, which is what training teaches.
-NOT:    Python in the app; building a trainer before the experiment says it is worth it.
-BUILT:  2026-10-10 — the experiment ran (plan 2026-10-09 voice-training findings, "The LoRA
-        experiment"): Alexandria's trainer, unchanged, trained Qwen3-TTS Base 1.7B on 14 minutes of
-        the narrator in 201 s on the 8 GB card (loss 3.90; a 2-epoch run 4.16 in 136 s); the trained
-        voice's pace matches hers (7.06 s against her 6.96 s, untrained 7.71 s). Round 2 of the
-        listening page puts it beside the untrained clone.
-OPEN:   the user's ears on round 2; then the trainer decision.
-GO:     given 2026-10-10 ("we can use python…").
 
 ### FINDING — A long clone reference runs Qwen3-TTS Base on without stopping, and holds the speech queue
 STATE:  FINDING — measured 2026-10-10 (the cloning measurement, plan 2026-10-09
@@ -3158,8 +3131,8 @@ DECIDED: 2026-10-02 — Q2: "q2 remove traingin and rebuild" → "go on both rem
 DECIDED: 2026-10-02 — Q1 (CI on our copy's repo to publish binaries): "q1 yes but not now" — yes,
         when the first change needs C++, not before. "commit and push" — the switch, the training
         removal and CPU placement committed and pushed the same day.
-OPEN:   gap 5 only — training rebuilt on the runtime (TASKS "Our copy of audio.cpp"). Every
-        other gap shipped: 8 and 4 on 2026-10-02 (plan docs 2026-10-02-gap-8-speed.md,
+OPEN:   none — gap 5 (training) was measured and moved to IDEAS on 2026-10-10. Every other gap
+        shipped: 8 and 4 on 2026-10-02 (plan docs 2026-10-02-gap-8-speed.md,
         -gap-4-customvoice-0.6b.md), 9 the same day, 10 and the VoxCPM2 transcript in our jv.1,
         1, 2, 3 and 7 in jv.4 (`engines/audiocpp/release.py:27-44`); Q1's CI runs in the fork.
         (Corrected 2026-10-05 by the tracker sweep — this line listed every gap as open.)
@@ -3323,7 +3296,7 @@ BUILT:  2026-10-05 — the ONE release: `v0.9.0-jv.4` (our copy `f7d8140a`), pub
         the app's real data folder through the pinned path: the update jv.1 → jv.4 in 23 s;
         Kokoro Japanese, a Turbo clone, Chatterbox Russian and Chinese read back exactly; a
         Kokoro blend played (docs/plans/2026-10-02-our-audiocpp-copy.md §6; RESEARCH.md §1.4).
-OPEN:   gap 5 (training rebuild) is the remaining gap.
+OPEN:   none — gap 5 (training rebuild) moved to IDEAS 2026-10-10.
         Local build recipe + release state: docs/plans/2026-10-02-our-audiocpp-copy.md §6.
         (The app's side of the first release is built: the older build keeps working with an
         update offer — `api/speech_runtime_api.py:43`; the pin is our v0.9.0-jv.4 —

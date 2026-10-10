@@ -6,6 +6,20 @@ The holding pen for unscheduled JustVoice ideas — same charter as JW's
 
 ---
 
+- **2026-10-10 · Voice training (gap 5)** — a voice trained on someone's recordings (a LoRA on
+  Qwen3-TTS Base), the last gap of the audio.cpp switch. Measured before building, on one public-domain
+  narrator (LJSpeech): three ways of cloning her were equally clear and all "about 70% close" by ear,
+  with pitch, pauses and inflection off (round 1); a LoRA trained with Alexandria's trainer in Python —
+  14 minutes of her, 3½ minutes on the 8 GB card, her pace matched — was heard against the untrained
+  clone in the same Python setup (round 2). The user, round 1: *"most of them are probably 70% close …
+  there where differences in picth and sometimes a pause or inflection but it was fairly good it hard
+  to tell"*; round 2: *"they all sound worse than just the regular clone"*. So no trainer now. If it
+  comes back: training is easy in Python (a small separate app was allowed — *"if we have tohave a
+  small seperate python app just for lora training thats is possibility"*), hard in C++ on ggml, and
+  our audio.cpp copy can already load a PEFT LoRA at render time. Everything measured:
+  `docs/plans/2026-10-09-voice-training-findings.md`, RESEARCH §9. Asked "Move voice training (gap 5)
+  to IDEAS … Delete the experiment's temp files", the user: *"your rec on all go"*.
+
 - **2026-10-09 · A passage with its own sound (the mock's "Scene")** — the design mock's Scene
   screen (`docs/plans/mock/_s12.html`; redesign doc :352–424): one extra direction for every voice
   plus one effects chain on top, over a stretch of the book (its example: a flashback inside
