@@ -207,9 +207,9 @@ NOT:    JV signing in with, or holding, Claude.ai credentials (Anthropic's terms
         button that starts Claude Code (Commercial Terms and conditions — ask Anthropic first);
         single-voice tools in the comparison (AudiobookGen, Speechify, Google Play, KDP).
 BUILT:  nothing yet — what exists, the terms, prices and the commercial tools: RESEARCH §10.
-OPEN:   the test book (the user picks), the measurement on one real chapter, then the plan doc.
-GO:     given 2026-10-10 ("your rec on all"); "wait i want to discuss a little more" — the
-        measurement waits for the user's word.
+OPEN:   the measurement on one real chapter, then the plan doc. Test book ("your rec on 1-2 go"):
+        Alice's Adventures in Wonderland, Gutenberg #11, `data/test-books/alice-in-wonderland/`.
+GO:     given 2026-10-10 ("your rec on all"); measuring waits: "wait i want to discuss a little more".
 
 ### The work's eight questions, answered (decided 2026-10-09)
 STATE:  DECIDED 2026-10-09 — asked at the end of the open-work program, as shown: "1. Voice
