@@ -248,9 +248,12 @@ STATE:  DECIDED 2026-10-10 — the user: "so lets see if we can fix these errors
         worse?" — my lean yes on each. The user: "your rec go".
 WHY:    9 of the 10 misses on Alice VII–VIII were the rule's and propagation's (RESEARCH §10.4).
 NOT:    a new verb list or a standard library (BookNLP is Python); straight-quote nesting.
-BUILT:  in progress.
-OPEN:   the four books' before/after scores; the fixes in `server/src/extraction/anchors.js` and
-        `segmentation.js`.
+BUILT:  506ce81 — `anchors.js` (tags at a narration's edge, two shapes; propagation stops),
+        `segmentation.js` (curly quotes counted, a song carried), Alice VII renumbered (150 lines).
+        Offline on the four keys: the rule 205/205; the other three books provably unchanged
+        (RESEARCH §10.4).
+OPEN:   Alice's model run on the new code, and the rule-off run — both wait for the GPU, which
+        another session's voice training holds.
 GO:     given 2026-10-10 ("your rec go").
 
 ### The work's eight questions, answered (decided 2026-10-09)
