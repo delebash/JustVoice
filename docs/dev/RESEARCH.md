@@ -1718,7 +1718,16 @@ Claude Code" (2026-10-10).
   (`server/src/mcp/tools.js:4`) — on the official SDK's `McpServer` over Streamable HTTP
   (`server/src/mcp/server.js:27`). — *code, 2026-10-10*.
 - The kit already speaks to Claude with an API key (`../just-llm-runner/server/src/llm/anthropic.js`),
-  routed per feature in AI Settings → Routing by feature. — *code, 2026-10-10*.
+  routed per feature in AI Settings → Routing by feature. It doesn't know the 5.5 models yet —
+  kit RESEARCH §7. — *code, 2026-10-10*.
+- Speaker attribution's Auto picks its route by parameter count alone (Direct from 14 B, else
+  Guided — `server/src/extraction/pipeline.js:370`), and reads an unknown size as 0
+  (`:326`). A cloud model publishes no size, so `claude-opus-5-5`, `claude-sonnet-5-5` and
+  `gpt-6.1-sol` all read as 0 B and get Guided — the small-model recipe (worked examples) with
+  its stricter confidence floor, 0.7 against Direct's 0.5 (`:285`); `gemma-4-26b-a4b-qat` reads
+  26 B. The two routes differ only in the examples; piece size, thinking (off on both), the cast
+  list and the deterministic helpers are shared. — *code, run 2026-10-10* (`modelSizeB` on the
+  ids, no database) · `docs/ai-features.md` §Speaker attribution.
 - Not built, and listed in IDEAS: a direction step ("LLM emotion-tag insertion"), the
   persona-generation loop (description → design → cast), and a take check (transcribe, compare,
   re-render) — `docs/dev/IDEAS.md:309`. — *code, 2026-10-10*.
@@ -1752,6 +1761,11 @@ Claude Code" (2026-10-10).
 - API prices per million tokens, input/output: Haiku 5.5 $0.10/$0.50 (prompts up to 100K),
   Sonnet 5.5 $2/$10, Opus 5.5 $4/$20, Fable 5.1 $10/$50; the Batch API is half price; cache reads
   about a tenth. — *record* · the Claude Code `claude-api` skill's model table, cached 2026-10-06.
+- GPT-6.1 Sol: model id `gpt-6.1-sol`, $2 in / $10 out per million tokens, about a 1M-token
+  context, batch at half price. Gemini 4 Argon is announced ($2/$10 at first, then $4/$20) but not
+  on the public API. — *web, 2026-10-10, third-party pages only, not checked against OpenAI or
+  Google* · [llmreference.com — GPT-6.1 Sol](https://www.llmreference.com/model/gpt-6.1-sol/openai-api),
+  [eesel.ai — Gemini 4 Argon pricing](https://www.eesel.ai/blog/gemini-4-argon-pricing).
 - One pass over a 100,000-word book (about 130K tokens), with context, is roughly 350K tokens in
   and 100K out: about $0.10 on Haiku 5.5, $1.70 on Sonnet 5.5, $3.40 on Opus 5.5, half that as a
   batch. — *arithmetic, unmeasured*.
