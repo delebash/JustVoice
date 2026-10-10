@@ -1345,3 +1345,11 @@ Studio · Export checks the same way. Its package reads **unchecked** until you
 check it there, then **✓ ACX pass** or **✗ out of spec**, the checklist below
 says which limit, and its **Master** row names the project's mastering target
 the way Overview does (*ACX*, *Podcast*, *None — raw*).
+
+**✓ ACX pass means the audio meets ACX's technical limits — not that ACX will
+take the book.** ACX's
+[submission requirements](https://help.acx.com/s/article/acx-audio-submission-requirements)
+(updated 2026-04-15) say a title "must be narrated by a human unless otherwise
+authorized" and prohibit unauthorized text-to-speech or AI recordings. Before
+you publish a book JustVoice narrated, check the rules of the store you publish
+to.
