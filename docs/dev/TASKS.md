@@ -159,7 +159,12 @@ STATE:  DECIDED 2026-10-09 — asked "whats next" once the phone was done; shown
         asked "1. Drop the Scene screen from the work? My recommendation: yes. JustVoice stays
         chapters and lines …", the user: "1 note as idea but leave it for now" — the Scene is an
         idea (IDEAS, 2026-10-09), not in this work, and Effects' "From" column goes with it. New
-        project: asked what I think — open.
+        project, shown: "I'd keep the dialog … Bringing a file in from the same dialog … With a
+        file, Create would go through the same check Import does now and land on the import review
+        page you already have. The small table of what each file type brings in … I'd skip the
+        rest: 'What you get' summary … Master target chooser … So the change is small: the dialog
+        stays, a file is optional in it, and the import review page you already have follows when
+        there is one." The user: "your rec on all go".
 WHY:    finish the open work across JustVoice, the kit, JustWrite and docgen.
 NOT:    a NOT STANDARD piece without its own word by name; wording and looks the decisions leave
         open are asked, not chosen.
