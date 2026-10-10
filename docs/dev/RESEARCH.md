@@ -1853,8 +1853,8 @@ headless server on the dev data folder, the live prompts and settings, one run;
   Queen, the King, the White Rabbit, the Cheshire Cat in 18 s. It also listed people who are named
   but never speak, each with 0 lines (Time, Elsie, Lacie, Tillie, the Duchess, the executioner)
   except the silent Knave (1 line), and one heading as a name, "THE KING AND QUEEN OF HEARTS". The
-  Queen is "Queen of
-  Hearts" in VII and "the Queen" in VIII — two names for one speaker across chapters. —
+  Queen is "Queen of Hearts" in VII and "the Queen" in VIII — two names for one speaker across
+  chapters. —
   *measured*.
 - Segmentation, read off the line list: the Hatter's song inside his speech (VII paragraphs 48–49,
   52) comes out as narration, and in the Dormouse's speech that opens mid-paragraph (VII paragraph
