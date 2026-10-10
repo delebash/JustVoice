@@ -446,7 +446,9 @@ ms`. An empty pause is the book's own gap between lines.
   direction.*
 
 **Effects** shows the chain as chips, by name (`Reverb`, `EQ — Low shelf`);
-**＋ Edit** opens the effects editor. Effects run after the voice speaks.
+**＋ Edit** opens the effects editor, where steps drag into order and **A / B it**
+plays one take without the chain and with it ([Edit a chain](effects.md#edit-a-chain)).
+Effects run after the voice speaks.
 
 **Lexicon** is a lexicon for this persona only (for example, street slang for
 one voice). It is read on every line this persona speaks, after the book's own

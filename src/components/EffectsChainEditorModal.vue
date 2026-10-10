@@ -14,18 +14,32 @@
     GET /v1/effect-presets       — saved chains the user can load wholesale
   Both are nice-to-haves: when the catalog request fails the modal still
   shows the 11 supported types from a local fallback.
+
+  Mock _s11 (2026-10-09): the grip drags a step (VueUse's useSortable over
+  SortableJS; up/down stay for the keyboard); "A / B it" — given a persona, Dry
+  holds its line with no effects (POST /v1/personas/preview, hold) and Wet puts
+  this chain on that same take (POST /v1/effects/apply); "Order matters".
 -->
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
+import { useSortable } from "@vueuse/integrations/useSortable";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "@delebash/llm-ui";
-import { UiButton, UiInput, UiCheckbox, UiTag, UiSelect, AppModal } from "@delebash/llm-ui";
+import { Icon, UiButton, UiInput, UiCheckbox, UiTag, UiSelect, AppModal } from "@delebash/llm-ui";
+import { usePagePlayer } from "../composables/usePagePlayer.js";
+import { handleTermsRefusal } from "../services/engineTerms.js";
+import { holdDryTake } from "../services/voiceAudition.js";
+import { b64ToWavBlob } from "../services/voiceMakers.js";
+import PagePlayer from "./PagePlayer.vue";
+import PlayTransport from "./PlayTransport.vue";
 
 const props = defineProps({
   open: { type: Boolean, required: true },
   modelValue: { type: Array, default: () => [] },
   // Optional context label shown in the header eyebrow (e.g. persona name).
   contextLabel: { type: String, default: "" },
+  // The persona whose chain this is — "A / B it" speaks as it. The persona page passes its draft.
+  persona: { type: Object, default: null },
 });
 
 const emit = defineEmits(["update:modelValue", "save", "cancel"]);
@@ -58,6 +72,83 @@ const FALLBACK_CATALOG = [
 
 const effectiveCatalog = computed(() => catalog.value.length ? catalog.value : FALLBACK_CATALOG);
 
+// Drag to reorder: the grip moves a step. Each step keeps one key while it moves — an index
+// key would hand a moved step's fields to its neighbour.
+const chainEl = ref(null);
+useSortable(chainEl, chain, { handle: ".effects-modal__grip", animation: 150, watchElement: true });
+const stepIds = new WeakMap();
+let lastStepId = 0;
+function stepKey(ef) {
+  if (!stepIds.has(ef)) stepIds.set(ef, ++lastStepId);
+  return stepIds.get(ef);
+}
+
+// ── A / B it: one take, the chain off and on ──
+// Dry renders the persona's line with no effects, held on the server; Wet puts the chain as it
+// stands on that same take. A new line makes a new take; a take is kept 10 minutes.
+const player = usePagePlayer();
+const abLine = ref("");
+const abBusy = ref(null);
+let take = null; // { id, text, dryUrl }
+let wet = null; // { chain (JSON), url }
+let abUrls = [];
+function forgetTake() {
+  player.stop();
+  for (const u of abUrls) URL.revokeObjectURL(u);
+  abUrls = [];
+  take = null;
+  wet = null;
+}
+function keepUrl(blob) {
+  const url = URL.createObjectURL(blob);
+  abUrls.push(url);
+  return url;
+}
+async function ensureTake() {
+  const text = abLine.value.trim();
+  if (take && take.text === text) return take;
+  forgetTake();
+  const held = await holdDryTake(api, props.persona, text);
+  if (!held) return null;
+  take = { id: held.take_id, text, dryUrl: keepUrl(b64ToWavBlob(held.wav_b64)) };
+  return take;
+}
+const applyChain = (t) => api.request("/v1/effects/apply", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ take_id: t.id, chain: chain.value }),
+});
+async function hearAB(which) {
+  if (abBusy.value) return;
+  abBusy.value = which;
+  try {
+    let t = await ensureTake();
+    if (!t) return;
+    if (which === "dry") return await player.play("ab:dry", t.dryUrl);
+    const now = JSON.stringify(chain.value);
+    if (!wet || wet.chain !== now) {
+      let blob;
+      try {
+        blob = await applyChain(t);
+      } catch (e) {
+        // The take lapsed (kept 10 minutes): make a new one, and both sides play it.
+        if (!String(e?.message || "").startsWith("404")) throw e;
+        take = null;
+        t = await ensureTake();
+        if (!t) return;
+        blob = await applyChain(t);
+      }
+      wet = { chain: now, url: keepUrl(blob) };
+    }
+    await player.play("ab:wet", wet.url);
+  } catch (e) {
+    if (handleTermsRefusal(e)) return;
+    pushToast({ kind: "error", message: `Couldn't play it: ${e?.message || e}` });
+  } finally {
+    abBusy.value = null;
+  }
+}
+
 const addEffectType = ref("");
 
 function specFor(type) {
@@ -67,6 +158,7 @@ function specFor(type) {
 watch(
   () => props.open,
   (open) => {
+    if (!open) forgetTake();
     if (open) {
       // Deep-copy the incoming chain so the user can edit + cancel.
       chain.value = JSON.parse(JSON.stringify(props.modelValue || []));
@@ -203,17 +295,22 @@ onMounted(() => {
         <div class="jv-divider" />
 
         <!-- Active chain — ordered list with per-effect param forms -->
+        <div class="effects-modal__row">
+          <span class="effects-modal__add-label">The chain</span>
+          <span v-if="chain.length > 1" class="jv-hint">drag to reorder</span>
+        </div>
         <p v-if="!chain.length" class="jv-muted effects-modal__empty">
           No effects. Pick a type below and click <strong>Add</strong>.
         </p>
 
-        <ul class="effects-modal__chain">
+        <ul ref="chainEl" class="effects-modal__chain">
           <li
             v-for="(ef, i) in chain"
-            :key="i"
+            :key="stepKey(ef)"
             class="effects-modal__effect"
           >
             <div class="effects-modal__effect-h">
+              <span class="effects-modal__grip" title="Drag to reorder"><Icon name="DragHandle" :size="16" :sw="2.6" /></span>
               <strong>{{ specFor(ef.type)?.label || ef.type }}</strong>
               <span class="effects-modal__step">step {{ i + 1 }}</span>
               <span class="jv-spacer" />
@@ -282,6 +379,32 @@ onMounted(() => {
             @click="saveAsPreset"
           />
         </div>
+
+        <section v-if="persona" class="jv-card jv-card--soft effects-modal__card">
+          <div class="jv-card__header"><h3 class="jv-card__title">A / B it</h3></div>
+          <div class="jv-card__body jv-col jv-col--start">
+            <UiInput v-model="abLine" width="prose" placeholder="Type a line — or leave it empty to hear the stock line." />
+            <div class="jv-inline-row">
+              <UiButton intent="secondary" size="small" :loading="abBusy === 'dry'"
+                :label="player.isPlaying('ab:dry') ? '❚❚ Dry' : '▶ Dry'" title="The line with no effects"
+                @click="hearAB('dry')" />
+              <UiButton intent="secondary" size="small" :loading="abBusy === 'wet'"
+                :label="player.isPlaying('ab:wet') ? '❚❚ Wet' : '▶ Wet'" title="The same take through this chain"
+                @click="hearAB('wet')" />
+              <span class="jv-hint">same take, chain on / off</span>
+            </div>
+            <PlayTransport v-if="player.key?.startsWith('ab:')" :player="player" />
+          </div>
+        </section>
+
+        <section class="jv-card jv-card--soft effects-modal__card">
+          <div class="jv-card__header"><h3 class="jv-card__title">Order matters</h3></div>
+          <p class="jv-card__body effects-modal__card-p">
+            EQ before compression shapes what the compressor reacts to; after, it shapes what survives
+            it. Reverb last, or you compress the room.
+          </p>
+        </section>
+        <PagePlayer :player="player" />
       </div>
 
       <template #footer>
@@ -396,5 +519,15 @@ onMounted(() => {
 .effects-modal__saveas {
   margin-top: 14px;
 }
+
+.effects-modal__grip {
+  display: inline-flex;
+  color: var(--ink-3);
+  cursor: grab;
+}
+.effects-modal__grip:active { cursor: grabbing; }
+
+.effects-modal__card { margin-top: 14px; }
+.effects-modal__card-p { margin: 0; max-width: 60ch; }
 .effects-modal__saveas > .ui-input { flex: 1; }
 </style>

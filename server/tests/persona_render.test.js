@@ -262,6 +262,37 @@ test("a_list_play_asks_before_loading_the_model", async () => {
   expect((await c.post("/v1/personas/preview", { json: { persona_id: pid, auto_load: false } })).status).toBe(200);
 });
 
+test("a_held_take_takes_a_chain_on_the_same_audio", async () => {
+  // The chain editor's A / B: ▶ Dry holds the take, ▶ Wet puts the chain on that audio.
+  const c = await api();
+  const pcm = Buffer.alloc(4800);
+  for (let i = 0; i < 2400; i++) pcm.writeInt16LE(Math.round(8000 * Math.sin(i / 8)), i * 2);
+  const seen = [];
+  vi.spyOn(renderCore, "renderLine").mockImplementation(async (_st, kw) => {
+    seen.push(kw);
+    return new RenderedLine({ pcm, sampleRate: 24000, channels: 1, effectiveDelivery: {} });
+  });
+  const r = await c.post("/v1/personas/preview", {
+    json: { persona: { voice_id: "Sohee", language: "en", effects_chain: [] }, text: "You're late.", hold: true },
+  });
+  expect(r.status, r.text).toBe(200);
+  const held = r.json();
+  expect(seen.at(-1).effects).toEqual([]);
+  expect(held.duration_sec).toBeCloseTo(0.1);
+  const dry = Buffer.from(held.wav_b64, "base64");
+  expect(dry.subarray(0, 4).toString("latin1")).toBe("RIFF");
+  const off = await c.post("/v1/effects/apply", { json: { take_id: held.take_id, chain: [] } });
+  expect(Buffer.compare(off.content, dry)).toBe(0);
+  const wet = await c.post("/v1/effects/apply", { json: { take_id: held.take_id, chain: [{ type: "gain", params: { gain_db: -12 } }] } });
+  expect(wet.status, wet.text).toBe(200);
+  expect(wet.content.subarray(0, 4).toString("latin1")).toBe("RIFF");
+  expect(wet.content.length).toBe(dry.length);
+  expect(Buffer.compare(wet.content, dry)).not.toBe(0);
+  expect(seen.length).toBe(1); // one render: Wet is the same take
+  const gone = await c.post("/v1/effects/apply", { json: { take_id: "lapsed", chain: [] } });
+  expect(gone.status).toBe(404);
+});
+
 test("listen_needs_a_voice", async () => {
   const c = await api();
   const r = await c.post("/v1/personas/preview", { json: { persona: { name: "Blank" }, text: "Hi" } });

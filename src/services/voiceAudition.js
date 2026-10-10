@@ -66,6 +66,20 @@ export function auditionWithLexicon(api, persona, text, lexiconId) {
   );
 }
 
+/** Effects' A / B (2026-10-09): the persona's line with no effects, the take held on the server
+ *  for 10 minutes → `{ take_id, wav_b64, duration_sec, expires_at }`, or null when you declined
+ *  the load. POST /v1/effects/apply puts a chain on that same take. */
+export function holdDryTake(api, persona, text) {
+  return askingToLoad(
+    (load) => api.request("/v1/personas/preview", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ persona: { ...persona, effects_chain: [] }, text, hold: true, auto_load: load }),
+    }),
+    { who: persona.name, modelName: persona.model_name },
+  );
+}
+
 /** A saved persona speaking the stock line in its language — through the
  *  same path a chapter renders with (`POST /v1/personas/preview`). */
 export function auditionPersona(api, persona) {

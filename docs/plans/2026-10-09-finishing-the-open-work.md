@@ -155,6 +155,21 @@ Blast radius: `EffectsChainEditorModal` — `EffectsPage.vue:34,:205` · `Person
 :1318` · `mock/MockPersonaEditorPage.vue:32,:899`; `applyEffects(` — `generate_api.js:406`,
 `audio/effects.js:60`.
 
+**Built 2026-10-09** — where it differs from the above:
+- `useSortable` is imported by the chain editor itself (`@vueuse/integrations/useSortable`, as
+  VueUse documents it); JustVoice installs `@vueuse/integrations` and `sortablejs`. The kit takes
+  no dependency yet: a kit peer is declared by the kit file that imports it (SyncPanel and
+  `qrcode`), and no kit control drags a list today — the first one that does takes it that way.
+- The take: the persona preview with `hold: true` (its chain emptied) keeps the take 10 minutes
+  and answers `{ take_id, wav_b64, duration_sec, expires_at }`; `POST /v1/effects/apply
+  { take_id, chain }` puts a chain on it (`effect_presets_api.js`). A held take, because the
+  render cache keys a line by its chain — two previews are two renders, two takes on a model
+  that samples. Checked on the 8741 server with Kokoro: one render, then the chain on it, Dry and
+  Wet both 1.225 s.
+- **A / B it** shows when the editor has a persona — the persona page. From the Effects page (a
+  preset) there is no voice to speak with; the mock draws only the persona's case.
+- ↑ and ↓ stay beside the grip, for the keyboard.
+
 ## 5 · Speech engines — what each model gives you and what it gives up
 
 Mock `_s13`, which predates audio.cpp (LuxTTS and Whisper are gone; Kitten, Pocket and VoxCPM2 are

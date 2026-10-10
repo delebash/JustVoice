@@ -35,6 +35,7 @@ import * as renderCore from "../render_core.js";
 import * as synthScheduler from "../synth_scheduler.js";
 import * as vmod from "../voice_model.js";
 import { sameName, speakerLineCounts } from "./_speaker_helpers.js";
+import { HeldTakeResponse, holdTake } from "./effect_presets_api.js";
 import { RunUsage } from "./extraction_api.js";
 import { clientGone } from "./generate_api.js";
 import { sentBody } from "./settings_api.js";
@@ -417,7 +418,20 @@ export function router() {
     });
     await handle.waitAsync({ signal: clientGone(c) });
     handle.raiseIfFailed();
-    return c.body(handle.items[0].result, 200, { "content-type": "audio/wav" });
+    const wav = handle.items[0].result;
+    if (body.hold) {
+      const [takeId, expiresAt] = holdTake(wav);
+      const [fmt] = parseWavHeader(wav);
+      return c.json(
+        construct(HeldTakeResponse, {
+          take_id: takeId,
+          wav_b64: Buffer.from(wav).toString("base64"),
+          duration_sec: fmt.durationSec,
+          expires_at: expiresAt,
+        }),
+      );
+    }
+    return c.body(wav, 200, { "content-type": "audio/wav" });
   });
 
   /**

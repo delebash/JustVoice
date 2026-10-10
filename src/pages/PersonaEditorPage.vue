@@ -1316,7 +1316,8 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
       </template>
     </AppModal>
     <EffectsChainEditorModal v-if="draft" :open="effectsOpen" v-model="draft.effects_chain"
-      :context-label="draft.name || 'Persona'" @save="onEffectsSaved" @cancel="effectsOpen = false" />
+      :context-label="draft.name || 'Persona'" :persona="voice ? { ...draft, model_name: modelName } : null"
+      @save="onEffectsSaved" @cancel="effectsOpen = false" />
 
     <AppModal v-if="compareOpen" eyebrow="Compare settings" :title="draft?.name || 'This persona'"
       :max-width="'640px'" dismissable @close="compareOpen = false">

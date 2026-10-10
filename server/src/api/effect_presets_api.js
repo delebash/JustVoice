@@ -5,16 +5,20 @@
 // Slice 7 of the Profile-kill plan / Effects v1 wiring. Pairs with the render-time effects
 // pipeline (audio/effects.js). A preset is just a named chain + sort order + optional
 // description. The /catalog endpoint exposes the 11 supported effect types so the modal can
-// render the right parameter form per effect.
+// render the right parameter form per effect. /v1/effects/apply puts a chain on a held take — the
+// chain editor's A / B.
 
+import { randomUUID } from "node:crypto";
 import { Hono, input } from "@delebash/llm-runner/platform";
 import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
 import { strRepr } from "@delebash/llm-runner/platform/py";
 import { pyJson, pyJsonParse } from "@delebash/llm-runner/platform/pyjson";
+import { applyEffectsChain, chainEntries } from "../audio/effects.js";
 import { EffectPreset, uuid } from "../database/models.js";
 import * as session from "../database/session.js";
 import { badRequest, notFound } from "../errors.js";
 import { construct, DateTime } from "../models.js";
+import { TTLCache } from "./voice_preview_api.js";
 
 // ── Effect type catalog ──────────────────────────────────────────────────
 
@@ -165,6 +169,34 @@ export const UpdateEffectPresetRequest = T.Object({
   sort_order: opt(nullable(T.Integer()), null),
 });
 
+// ── A / B: one take, the chain off and on (2026-10-09, mock _s11) ──────────
+// The chain editor's ▶ Dry asks the persona preview for its line with no effects and `hold`;
+// the take is kept here for 10 minutes and ▶ Wet puts the chain on that same audio. Two
+// renders would be two takes on a model that samples.
+
+export const HELD_TAKE_TTL_S = 10 * 60;
+export const heldTakes = new TTLCache(16, HELD_TAKE_TTL_S);
+
+/** Hold a take (WAV bytes) → `[its id, when it lapses (unix seconds)]`. */
+export function holdTake(wav) {
+  const id = randomUUID();
+  heldTakes.set(id, wav);
+  return [id, Date.now() / 1000 + HELD_TAKE_TTL_S];
+}
+
+/** The persona preview's answer with `hold`: the take, and the id to put a chain on it. */
+export const HeldTakeResponse = T.Object({
+  take_id: T.String(),
+  wav_b64: T.String(),
+  duration_sec: T.Number(),
+  expires_at: T.Number(), // unix timestamp
+});
+
+export const ApplyEffectsRequest = T.Object({
+  take_id: T.String(),
+  chain: opt(T.Array(T.Record(T.String(), T.Any())), []),
+});
+
 /** `EffectPresetResponse.from_orm(row)`: the stored chain read as Python's json.loads (a
  * whole-number float stays a float), anything unreadable or not a list → []. */
 export function fromOrm(row) {
@@ -196,6 +228,15 @@ export function router() {
   const app = new Hono();
   /** The 11 supported effect types + their parameter schemas for the EffectsChainEditorModal. */
   app.get("/v1/effects/catalog", (c) => c.json(construct(EffectCatalogResponse, { effects: EFFECT_CATALOG })));
+
+  /** A held take with `chain` on it, as audio/wav — the chain as a render runs it, after the
+   * persona's pace, pitch and gain. 404 once the take has lapsed. */
+  app.post("/v1/effects/apply", input({ body: ApplyEffectsRequest }), async (c) => {
+    const body = c.req.valid("json");
+    const wav = heldTakes.get(body.take_id);
+    if (wav === undefined) throw notFound(`take ${body.take_id} — a take is kept 10 minutes; hear it dry again`);
+    return c.body(await applyEffectsChain(wav, chainEntries(body.chain)), 200, { "content-type": "audio/wav" });
+  });
 
   app.get("/v1/effect-presets", (c) => {
     const rows = session.getDb().all(`select * from ${EffectPreset} order by sort_order, created_at`, undefined, EffectPreset);

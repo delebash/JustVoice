@@ -809,6 +809,9 @@ export const PersonaPreviewRequest = T.Object({
   delivery: opt(nullable(T.Record(T.String(), T.Any())), null),
   // False: refuse with `engine_not_loaded:<engine>` instead of loading the voice's model.
   auto_load: opt(T.Boolean(), true),
+  // Keep the take 10 minutes and answer with its id (effect_presets_api.HeldTakeResponse), so
+  // POST /v1/effects/apply can put a chain on the same audio — the chain editor's A / B.
+  hold: opt(T.Boolean(), false),
 });
 
 /** POST /v1/personas/{id}/merge — every speaker this persona plays moves to `into`. */

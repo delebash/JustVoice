@@ -759,6 +759,12 @@ its blast radius and the gaps.
   card reads "No lines yet — re-import the sheet" until each chapter's blocks have loaded
   (1–3 s; `studioStatus.stepStatus` has no loading word for it, as Render's "Checking what is
   rendered…" has). — *measured, 2026-10-07*.
+- **A line's cached audio is after its effects**: `renderLine` keys the render cache with the
+  persona's chain (`_inputsKey(…, effects)`, `server/src/render_core.js:692`) and stores what the
+  chain made, so the same line with and without a chain is two renders — on a model that
+  samples, two different takes. The chain editor's A / B holds one dry take on the server and
+  puts the chain on it instead (`POST /v1/effects/apply`, plan 2026-10-09 §4). — *code,
+  2026-10-09*.
 
 ---
 

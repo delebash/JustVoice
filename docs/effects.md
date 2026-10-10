@@ -48,6 +48,30 @@ carried a second chain layered on top until they were removed on 2026-10-03; a
 chapter's own sound — a flashback's reverb, say — comes back with Studio's
 scene layer.)
 
+## Edit a chain
+
+A persona's **＋ Edit** (beside **Effects** on its page) opens the chain editor.
+The chain runs top to bottom, each step on what the one above it made:
+
+- **The chain** — drag a step by its grip (the six dots left of its name) to
+  move it; ↑ and ↓ move it one place too. **Remove** takes it out; **Add
+  effect** puts a new one at the bottom with its default settings.
+- **A / B it** — type a line (or leave it empty for the stock line), then
+  **▶ Dry** plays it with no effects and **▶ Wet** plays the same take through
+  the chain as it stands. It is one take, so the only difference you hear is
+  the chain — change a setting and press ▶ Wet again to hear the change on the
+  same audio. A new line makes a new take; a take is kept for 10 minutes. If the
+  persona's voice model isn't loaded, ▶ asks first (**Load & play**), as every
+  ▶ does.
+- **Order matters** — the editor's reminder: EQ before compression shapes what
+  the compressor reacts to; after, it shapes what survives it. Reverb last, or
+  you compress the room.
+
+**Save** puts the chain on the persona (still to be saved with the persona's
+own **Save**); **Cancel** drops what you changed. Opened from the Effects page
+to change a preset, the editor has no **A / B it** — there is no persona to
+speak the line.
+
 ## Where a chain runs
 
 Everywhere audio is made: single-line previews, chapter renders, the audiobook

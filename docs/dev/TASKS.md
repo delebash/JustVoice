@@ -173,7 +173,10 @@ BUILT:  in progress — 1: the fork's release builds `audiocpp_dsp` (fork 342d27
         the program beside `justvoice.exe` (electron-builder `extraFiles`). 2: docgen pushed, the
         kit's loose ends (kit 0289acc), the fonts (3eaf205). 3: New project (0761c86); Lexicons —
         ▶ per entry, Try a word, Affects (`GET /v1/lexicons/:id/reach`), the IPA note under the
-        table; what differs from the plan is its §3 "Built 2026-10-09".
+        table; what differs from the plan is its §3 "Built 2026-10-09". Effects — the chain
+        editor's steps drag into order (VueUse's useSortable), "A / B it" plays one take dry and
+        wet (the persona preview's `hold`, `POST /v1/effects/apply`), "Order matters"; the
+        plan's §4 "Built 2026-10-09".
 OPEN:   1–4 above, in that order.
 GO:     given 2026-10-09 ("do it all your rec go, lets get all the tasks completed").
 
