@@ -224,6 +224,55 @@ Blast radius: `SpeechEnginesTab` — `AiPage.vue:25, :94`; the models wire gains
   cannot update itself without a signed app (the paid Apple account); there it says a new version is
   out, with the link. It is tested against a local feed until the first release exists — the apps'
   releases wait for the cross-platform release (the user's rule).
+
+  **Design (2026-10-09, before building)** — each piece and its standard:
+  - **The updater**: `electron-updater` 6.8.9 (MIT, the stable line beside electron-builder
+    26.15.3; 7.x is alpha) — https://www.electron.build/auto-update. In the kit's shell, loaded
+    only in a packaged app: `autoDownload = false` (Download is pressed), `autoInstallOnAppQuit`
+    (its default — a downloaded update installs when the app quits, so on the next start it is
+    there), `checkForUpdates()` once the window is up, `downloadUpdate()`, `quitAndInstall()`
+    for "Restart now". Its events (`checking-for-update`, `update-available`,
+    `update-not-available`, `download-progress`, `update-downloaded`, `error`) become one status
+    the shell keeps and pushes. macOS: check only — `MacUpdater` installs only a zip through
+    Squirrel.Mac, which needs a signed app; the status carries the release's link instead.
+  - **The feed**: electron-builder's `publish` (`provider: github`) — with it set, electron-builder
+    26.15.3 writes `app-update.yml` into the app and `latest.yml` / `latest-mac.yml` /
+    `latest-linux.yml` beside the installers even under `-P never` (read in
+    `app-builder-lib/out/publish/PublishManager.js`: "file should be generated regardless of publish
+    state"; a DMG writes its update info too, `dmg-builder/out/dmg.js`). The release workflows keep
+    building with `-P never` and upload those files and the `.blockmap`s with the installers.
+    A draft release is invisible to the updater until it is published — the user's act.
+  - **The bridge**: four commands on the one preload object — `updateStatus` (the status, for a
+    page opened after the start-up check), `updateCheck`, `updateDownload`, `updateInstall` —
+    and one push, `update:status` (`appShell.on` allows `update:` beside `tray:`). The apps
+    reach them through `src/services/native.js` alone (`updater`).
+  - **The screen**: the kit's `UpdatesPanel` takes an optional `updater` and shows the status and
+    its one button in its head (Check again · Download · Restart now · the release's link on a
+    Mac); `#actions` stays. One component for the three apps.
+  - **Which apps**: JustVoice and JustWrite name their releases page (`updates.releasesUrl` in
+    `electron-main.js`) and set `publish`; docgen has no release workflow, so its shell runs with
+    updates off and its panel shows only the notes. The template stays without one.
+  - **Testing before a release exists**: a development run takes a local feed from
+    `<APP>_UPDATE_FEED` (electron-updater's `forceDevUpdateConfig` + a `generic` feed) — read only
+    when the app is not packaged.
+
+  **Built 2026-10-09** — as designed, with one change: the development feed is a written
+  `dev-app-update.yml` (`updateConfigPath`), because `setFeedURL` alone checks but fails the
+  download (ENOENT). Checked in JustVoice's real window (`npm run dev`, a local feed of 9.9.9 with a
+  dummy installer): the start-up check found it, the panel said *Version 9.9.9 is out.* with
+  Download, the download ran and verified, and the panel said *Version 9.9.9 is downloaded. It
+  installs when you quit the app.* with Restart now — which was not pressed (in development it
+  would run the dummy). Not checked: a real install, which needs two built versions and a
+  release. Found: electron-updater keeps the downloaded installer in the OS cache folder
+  (`%LOCALAPPDATA%\justvoice-updater\pending`), outside the data folder the user chose, with no
+  option to move it — for the user's word.
+
+  Blast radius: `COMMANDS` — `shell/main.js:51`, `shell/preload.js:16` (must match);
+  `appShell.on` — each app's `native.js` `onShellEvent` (JustVoice, JustWrite, docgen) and
+  `MainLayout.vue` (tray events, unchanged); `<UpdatesPanel` — JustVoice `SettingsPage.vue:1845`,
+  JustWrite `SettingsPage.vue:1632`, docgen `SettingsPage.vue:363` (a new optional prop);
+  `runDesktopApp(` — the four `src-electron/electron-main.js`; the release workflows — JustVoice and
+  JustWrite `.github/workflows/release.yml`.
 - **Voice training (gap 5)** — a LoRA trainer in C++ on ggml for the speech runtime: nothing in our
   repos to build from, so research first (what ggml's training support covers, what upstream
   audio.cpp has for LoRA, the size of the job), written up before any code.

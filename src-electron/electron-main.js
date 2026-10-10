@@ -41,6 +41,9 @@ runDesktopApp({
   // The microphone, for recording a voice to clone (PersonaCloneMaker); the shell denies every
   // other web permission beyond the clipboard.
   permissions: ["media"],
+  // Updates: the feed is the GitHub releases electron-builder's `publish` names (quasar.config.js);
+  // a Mac, which can't install an unsigned update, gets the release's page from here.
+  updates: { releasesUrl: "https://github.com/delebash/JustVoice/releases" },
   // The Tauri tray's two JustVoice items. Their renderer half is parked feature work, as it
   // was under Tauri (AppShell.vue has no listener; the events go nowhere yet).
   trayExtras: [

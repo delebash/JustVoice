@@ -8,6 +8,25 @@ the tray and the server running (headless without a terminal); the
 [system tray](system-tray.md) offers Show/Hide window, Start/Stop/Restart
 server, and Quit.
 
+### Updates
+
+The desktop app checks for a new version each time it starts. **Settings →
+Updates** says where it stands, next to the version you're on:
+
+- *This is the latest version.* — **Check again** asks once more.
+- *Version X is out.* — **Download** fetches it in the background; the line
+  counts the percent.
+- *Version X is downloaded. It installs when you quit the app.* — quitting
+  installs it, and the next start is the new version. **Restart now** quits,
+  installs and starts again at once.
+- *Couldn't update: …* — the reason, with **Check again**.
+
+Nothing downloads until you press Download, and nothing installs until the app
+quits. On a Mac the app can't install its own update (it isn't signed with an
+Apple developer account), so the line says *download it from its release page*
+and **Open the release page** opens it. The headless server and the browser tab
+have no updater: update the installed app.
+
 ## Headless
 
 The same server, no window. On Windows the installer puts a command called

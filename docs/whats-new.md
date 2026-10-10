@@ -2,6 +2,25 @@
 
 ## v0.1.0
 
+- **The desktop app updates itself (2026-10-09)** — it checks for a new version when it starts;
+  **Settings → Updates** says when one is out, **Download** fetches it, and it installs when you
+  quit the app (or at once with **Restart now**). On a Mac it opens the release page instead
+  ([Run modes](run-modes.md#updates))
+- **Speech engines: what each model gives and what it gives up (2026-10-09)** — the tab opens with a
+  table from what you want to the engine to use and what it costs you; every model row says how it
+  is directed (*written direction*, *tags* or *sliders only*); **What for?** says what speech
+  recognition serves ([Engines](engines.md#picking-an-engine-is-picking-what-a-voice-can-do))
+- **Effects: drag a chain into order, hear it dry and wet (2026-10-09)** — a persona's effects
+  editor moves a step by dragging it; **A / B it** plays one take without the chain and with it, so
+  the only difference is the chain ([Effects](effects.md#edit-a-chain))
+- **Lexicons: hear an entry, try a word, see what it affects (2026-10-09)** — ▶ beside an entry
+  plays it as it will be said; **Try a word** plays a word before and after, in the voice of a
+  persona that reads the lexicon; **Affects** counts the lines it changes
+  ([Lexicons](lexicons.md#hear-it-before-you-render))
+- **New project takes a file (2026-10-09)** — drop a manuscript, an EPUB or a JustWrite book into
+  the New project dialog; its name and kind fill in, and Create opens the import review
+  ([Projects](projects.md#starting-from-a-file))
+
 - **Sync (2026-10-08)** — your projects, personas and lexicons on every computer: through a
   cloud folder (Dropbox, OneDrive…), by pairing two computers, or with a file carried by hand.
   Every computer works offline and catches up when it can; the audio and the voices stay on each

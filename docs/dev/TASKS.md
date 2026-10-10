@@ -70,16 +70,6 @@ OPEN:   an absolute-import entry and the `bundle` extra in the recipe — or not
         Electron move ("The family moves to Electron…" below) retires PyInstaller first.
 GO:     needed.
 
-### FINDING — JustVoice has no updater
-STATE:  FINDING — code-verified 2026-10-05 (stack study §4.1). Settings → Updates pretended to have
-        one (a channel picker and a Check that always said "You're on the latest version") until
-        2026-10-06, when it became JustWrite's panel — the version and the release notes (the first
-        item under "The next build").
-BUILT:  no updater plugin in any `Cargo.toml`, no signed release feed.
-OPEN:   an updater — with the Electron move (`electron-updater`, the study §5), then its controls on
-        Settings → Updates.
-GO:     needed.
-
 ### FINDING — `synthetic_keys.rs` empties the clipboard after a paste and hard-codes the macOS V
 STATE:  FINDING — code-verified 2026-10-05 (stack study §4.3). Dead code: nothing calls
         `paste_final_text`.
@@ -180,6 +170,12 @@ BUILT:  in progress — 1: the fork's release builds `audiocpp_dsp` (fork 342d27
         do" (the rows as drafted), each model's direction chip (`directed_by`), speech
         recognition's "What for?", docs/engines.md's counts; the plan's §5 "Built 2026-10-09".
         Open: the mock's paragraph under the table's title, new wording for the user's word.
+        The updater — electron-updater 6.8.9 in the kit's shell (check at start-up, Download,
+        install on quit or Restart now; a Mac links to the release), the kit's UpdatesPanel shows
+        it, JustVoice and JustWrite name their feeds and upload latest*.yml; docgen's stays off
+        until it has releases; checked against a local feed in JustVoice's window (the plan's §6
+        "Built 2026-10-09"). Open: the downloaded installer waits in the OS cache folder, outside
+        the chosen data folder — for the user's word.
 OPEN:   1–4 above, in that order.
 GO:     given 2026-10-09 ("do it all your rec go, lets get all the tasks completed").
 

@@ -7,7 +7,7 @@ import { confirmDialog } from "@delebash/llm-ui";
 import { AppearancePanel, DataManagement, FAMILY_LABELS, LogsPanel, SettingsShell, UiButton, UiInput, UiToggle, UiField, UiCheckbox, UiTag, UiSelect, UpdatesPanel, UiTable, UiSlider, canOpenPath, fmtBytes, openPath, refreshRunnerModels, renderHelpMarkdown, serverUrl, useAiTasksStore } from "@delebash/llm-ui";
 import RefineSectionToggles from "../components/lab/RefineSectionToggles.vue";
 import { loadDoc } from "../services/helpDocs.js";
-import { hasShell, pickDirectory, storageGetRoot, storageRelocate } from "../services/native.js";
+import { desktopUpdater, hasShell, pickDirectory, storageGetRoot, storageRelocate } from "../services/native.js";
 import { useOnboarding } from "../stores/onboarding.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { usePersonasStore } from "../stores/personas.js";
@@ -526,6 +526,8 @@ watch(activeSub, async (a) => {
 // latest version" stood here until then; a real updater comes with the
 // Electron move (electron-updater — docs/plans/2026-10-05-electron-node-study.md).
 const APP_VERSION = "0.1.0";
+// The desktop app's updater (the kit shell's electron-updater); null in a browser.
+const updater = desktopUpdater();
 
 // ── Appearance ───────────────────────────────────────────────────────
 // The appearance config + theming now live in the shared engine via the ui
@@ -1842,7 +1844,7 @@ onMounted(() => {
          presentation shared). ─── -->
     <div v-show="activeSub === 'updates'" class="jv-section">
       <div class="jv-card">
-        <UpdatesPanel :app-version="APP_VERSION" :changelog-html="changelogHtml" />
+        <UpdatesPanel :app-version="APP_VERSION" :changelog-html="changelogHtml" :updater="updater" />
       </div>
     </div>
 
