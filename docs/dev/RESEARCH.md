@@ -1829,6 +1829,38 @@ Claude Code" (2026-10-10).
   detection and intelligence, not speech. — *web, 2026-10-10* ·
   [resemble.ai/pricing](https://www.resemble.ai/pricing/).
 
+### 10.4 The local baseline on Alice VII–VIII
+
+All measured 2026-10-10 on the RTX 2070 SUPER 8 GB, gemma 26B-A4B (`gemma-4-26b-a4b-qat`), the
+headless server on the dev data folder, the live prompts and settings, one run;
+`npm run eval:attribution -- --sample alice-in-wonderland`.
+
+- Analyze: 227 of 237 dialogue lines right (96 %), 9 WRONG, 1 blank — chapter VII 142/147 in
+  117 s, chapter VIII 85/90 in 75 s, each one piece, Auto's route Direct (floor 0.5). — *measured*.
+- By what decided the line: the fixed "said X" rule (`tag`) decided 162 of 237 and got 7 wrong;
+  propagation decided 5 and got 2 wrong; the model decided 70 and got 69 right (the one miss a
+  blank). So 9 of the 10 misses are the rules', on lines the model never decided. The rule's
+  misses: the name after the verb taken as the speaker ("he said, turning to Alice"; "the March
+  Hare said to Alice"; "said to the Knave"); "she heard one of them say" read as Alice; "Five and
+  Seven said nothing, but looked at Two. Two began" read as Seven; "shouted the Queen in a voice
+  of thunder" read as Alice. Propagation gave group lines ("they cried out") and "called out" to
+  the nearest speaker. — *measured* · the run's rows, VII D2 D29 D108 D115 D117 and VIII D0 D13
+  D14 D28 D56.
+- Script's flags caught 8 of the 9 WRONG lines (11 groups, 1 with no wrong line); the miss is
+  VII D2, a group line. — *measured*.
+- Discover (`POST /v1/extraction/discover-speakers`, no known characters): every speaker in both
+  chapters — VII Alice, Hatter, March Hare, Dormouse in 16 s; VIII Alice, Two, Five, Seven, the
+  Queen, the King, the White Rabbit, the Cheshire Cat in 18 s. It also listed people who are named
+  but never speak, each with 0 lines (Time, Elsie, Lacie, Tillie, the Duchess, the executioner)
+  except the silent Knave (1 line), and one heading as a name, "THE KING AND QUEEN OF HEARTS". The
+  Queen is "Queen of
+  Hearts" in VII and "the Queen" in VIII — two names for one speaker across chapters. —
+  *measured*.
+- Segmentation, read off the line list: the Hatter's song inside his speech (VII paragraphs 48–49,
+  52) comes out as narration, and in the Dormouse's speech that opens mid-paragraph (VII paragraph
+  98) only the phrase he quotes becomes a dialogue line — quotes nested inside speech. — *code,
+  run 2026-10-10* (`segmentParagraphs` on the EPUB's chapter text).
+
 ---
 
 ## Records not yet distilled
