@@ -6,6 +6,15 @@ The holding pen for unscheduled JustVoice ideas — same charter as JW's
 
 ---
 
+- **2026-10-09 · A passage with its own sound (the mock's "Scene")** — the design mock's Scene
+  screen (`docs/plans/mock/_s12.html`; redesign doc :352–424): one extra direction for every voice
+  plus one effects chain on top, over a stretch of the book (its example: a flashback inside
+  chapter 1 with reverb) — what the old Render presets were replaced by on paper. JustVoice treats a
+  book as chapters and lines, so if it comes back it is a chapter setting (a flashback chapter with
+  reverb), not a new "scene" thing. The design and its code join points are in
+  `docs/plans/2026-10-09-finishing-the-open-work.md` §1. The user, 2026-10-09: *"note as idea but
+  leave it for now"*.
+
 - **2026-10-09 · One shared engine-load task** — moved here from CLAUDE.md when its rules moved
   to the kit's `docs/family-rules.md`; not re-checked against the code since it was written:
   "Two call sites building the same `createDownloadTask({…})` by hand is a copy, and copies share

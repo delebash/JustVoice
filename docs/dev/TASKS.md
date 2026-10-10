@@ -155,7 +155,11 @@ STATE:  DECIDED 2026-10-09 — asked "whats next" once the phone was done; shown
         Download, install on the next restart. … 6. Voice training: research now, or after
         everything else? … My recommendation: after the screens, the updater and the kit fixes,
         written up as findings before any code." The user: "4 your rec 5 your rec, 6 your rec".
-        Questions 1–3 (Scene, New project, Effects' "From" column) answered with questions — open.
+        Questions 1–3 (Scene, New project, Effects' "From" column) answered with questions; then,
+        asked "1. Drop the Scene screen from the work? My recommendation: yes. JustVoice stays
+        chapters and lines …", the user: "1 note as idea but leave it for now" — the Scene is an
+        idea (IDEAS, 2026-10-09), not in this work, and Effects' "From" column goes with it. New
+        project: asked what I think — open.
 WHY:    finish the open work across JustVoice, the kit, JustWrite and docgen.
 NOT:    a NOT STANDARD piece without its own word by name; wording and looks the decisions leave
         open are asked, not chosen.
