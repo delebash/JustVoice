@@ -284,10 +284,22 @@ STATE:  DECIDED 2026-10-11 — the user: "how hard is it to include engines audi
         as an example, the goal is to be able to produce the best consistant results".
 WHY:    audio.cpp ships 101 machine-readable model specs (tasks, languages, abilities, every
         option with type/range/default) and a 144-entry catalog with minimum graphics memory.
+        The plan's questions, answered "your rec on all" (2026-10-11): 1 audio.cpp's words,
+        "Commercial use: Yes · Conditional · No · Unclear" · 2 a licence that isn't "Yes" is
+        accepted once before the first download · 3 show supported/community/experimental with
+        the status, hide wip and unsupported · 4 too-big models listed, "too big for this card",
+        Load offers the CPU · 5 "Tested by JustVoice" / "Not tested by JustVoice yet" · 6 the
+        Speech engines screen as a mock in the app first · 7 test every speech model that fits
+        8 GB through the app, in batches, files deleted after each batch reads back · 8 move the
+        fork onto v0.9.1 and publish jv.6, right after the list works · 9 voice conversion,
+        cleanup, sound effects and music each get their own plan and mock after, conversion
+        first · 10 VoxCPM2: the clip without its words on directed lines · 11 after the
+        conversion and round 4, test candidates in Python outside the app (Orpheus, EmoTra-TTS
+        …) and port the winners to audio.cpp.
 NOT:    wiring each new model by hand; embedding audio.cpp's own web UI.
 BUILT:  nothing yet.
-OPEN:   the plan doc `docs/plans/2026-10-11-audiocpp-engine-catalog.md` — shown with its blast
-        radius, then built.
+OPEN:   the plan doc `docs/plans/2026-10-11-audiocpp-engine-catalog.md`; the user asked, with
+        the answers, what the fork is for and whether to keep it — answered before building.
 GO:     given 2026-10-11 ("go ahead and complete the engine stuff"); a NOT STANDARD piece in
         the plan waits for its own word.
 
