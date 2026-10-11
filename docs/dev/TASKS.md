@@ -302,6 +302,19 @@ OPEN:   the plan doc `docs/plans/2026-10-11-audiocpp-engine-catalog.md`; the use
 GO:     given 2026-10-11 ("go ahead and complete the engine stuff"); a NOT STANDARD piece in
         the plan waits for its own word.
 
+### No restrictions beyond the final app: sidecars and tools in any language (decided 2026-10-11)
+STATE:  DECIDED 2026-10-11 — the user: "stop with the no python ruling that is just for the
+        final app, if we need a sidecar or serpate app like the lora app python is ok or anything
+        language, stop with the damn restrictionsl, broaden scope, the main goal of everything is
+        i want the best audiobook tool we can make, no restrictions, but just notify me so we can
+        decicde".
+WHY:    the 2026-10-08 no-Python ruling was being applied to every option, ruling out the best
+        tools (Python-only models, scorers, test harnesses) before the user could weigh them.
+NOT:    "no Python anywhere" as a reason to leave an option out.
+BUILT:  CLAUDE.md's opening paragraph says so.
+OPEN:   —
+GO:     given 2026-10-11.
+
 ### Check our direction against each model's own claims and demos; one person across engines? (decided 2026-10-11)
 STATE:  DECIDED 2026-10-11 — the user: "are we describng them correctly … if we look at there
         test sites and we see that is created a sad voice correctly but when we try to create a
