@@ -1817,6 +1817,11 @@ Claude Code" (2026-10-10).
 - One pass over a 100,000-word book (about 130K tokens), with context, is roughly 350K tokens in
   and 100K out: about $0.10 on Haiku 5.5, $1.70 on Sonnet 5.5, $3.40 on Opus 5.5, half that as a
   batch. — *arithmetic, unmeasured*.
+- The whole text side of a one-click run on that book — who speaks and direction in one read
+  (~300K in, ~150K out with thinking), character descriptions (~150K in, ~20K out) — about 450K
+  in and 170K out: Haiku 5.5 ~$0.15, Sonnet 5.5 ~$2.60, Opus 5.5 ~$5, Fable 5.1 ~$13; half as a
+  batch. For scale, AudiobookGen's one-voice price for the same book is about $30 (§10.3). —
+  *arithmetic, unmeasured, 2026-10-10*.
 
 ### 10.3 The commercial tools, for a comparison
 

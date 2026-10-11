@@ -209,8 +209,9 @@ NOT:    JV signing in with, or holding, Claude.ai credentials (Anthropic's terms
         single-voice tools in the comparison (AudiobookGen, Speechify, Google Play, KDP).
 BUILT:  test book Alice ("your rec on 1-2 go"); its answer key, chapters VII–VIII ("your rec all
         go"), `server/samples/alice-in-wonderland/`; the kit's Claude adapter takes the 5.x models
-        (kit 9b534ef). The facts: RESEARCH §10.
-OPEN:   the local baseline on chapter VII (needs the app and the GPU), the measurement, the plan.
+        (kit 9b534ef); the local baseline and the direction test (RESEARCH §10.4–10.5); the plan,
+        `docs/plans/2026-10-11-one-click-audiobook.md` ("your rec go", 2026-10-11).
+OPEN:   the plan's §11 questions — then slice 0 (the owed audio measurements), each slice its go.
 GO:     given 2026-10-10 ("your rec on all"); measuring waits: "wait i want to discuss a little more".
 
 ### Frontier models get their own recipe, not the small-model one (decided 2026-10-10)
