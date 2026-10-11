@@ -2169,6 +2169,39 @@ cue lines rendered plain and directed (`POST /v1/generate`); every clip read bac
   (`../audio.cpp/src/models/fireredtts3/session.cpp:130-146`, `tokenizer_text.cpp:235-245`), as
   upstream's `chatml.py` does; the authors document only speed/pitch/volume edits. audio.cpp's
   spec over-claims `clone: style_control`. Its README limits cloning to "academic research".
+- **Qwen3-TTS** — free prose in Chinese or English (README examples: `instruct="Very happy."`,
+  `"Speak in an incredulous tone, but with a hint of panic beginning to creep into your voice."`);
+  audio.cpp wraps it exactly as the official code (`<|im_start|>user\n{instruct}<|im_end|>`).
+  The model table gives **0.6B CustomVoice no instruction control**, and the official code drops
+  the instruction for it (`qwen3_tts_model.py:799-800`, agent-read); audio.cpp has no such check,
+  and our `qwen3-cv` row offers direction on both sizes (`capability_details.js:285-296`) — slice
+  0 used the 1.7B. We join persona, instruction, emotion and direction with ". "
+  (`delivery_merge.js` `composeInstruct`, `persona_render.js:286`), so an emotion arrives as a
+  bare word ("sad. with a long, weary sigh, disappointed"), "neutral" included. Published:
+  InstructTTSEval-EN 1.7B CustomVoice 77.3 / 77.1 / 63.7 (APS / DSD / RP); no per-emotion table.
+- **CosyVoice3** — the released model documents a **fixed list of 26 instructions**
+  (`cosyvoice/utils/common.py` `instruct_list`, *web*, checked): 17 Chinese dialects, two Chinese
+  speeds, "Please say a sentence as loudly as possible.", "Please say a sentence in a very soft
+  voice.", two playful ones, and the only emotions — 请非常开心地说一句话。(very happy),
+  请非常伤心地说一句话。(very sad), 请非常生气地说一句话。(very angry). The paper's 100+ styles
+  were for its own models. audio.cpp builds "You are a helpful assistant. " + instruction +
+  "<|endofprompt|>" as the official code. Round 3 sent free English prose outside the list
+  ("Speak with a long, weary sigh, disappointed.") — 17 of 21 came back plain. Its published
+  emotion accuracy measures emotion **from an emotional reference clip**, not from instructions.
+  The demo site (funaudiollm.github.io/cosyvoice3/) answered 404 on 2026-10-11.
+- **IndexTTS 2 / 2.5** — three ways: an emotion reference clip with `emo_alpha`, an
+  `emo_vector` of eight [happy, angry, sad, afraid, disgusted, melancholic, surprised, calm],
+  or `emo_text`. **The authors' own web UI hides text mode as experimental**
+  (`EMO_CHOICES_OFFICIAL = EMO_CHOICES_ALL[:-1]  # skip experimental features`, `webui.py`, *web*,
+  checked) and defaults the emotion weight to **0.65** (README: "around 0.6 (or lower) is
+  recommended"); we sent text mode at 1.0. Their text examples are feelings or emotional lines
+  ("I feel really down", 极度悲伤), not manner phrases. No category exists for volume or manner
+  ("muttering") or contempt (disgusted is nearest) — the two lines IndexTTS 2.5 missed on every
+  seed. audio.cpp matches the official `infer()`; an emotion clip goes through `/v1/tasks/run`.
+  Published evidence is for a reference clip or vector (IndexTTS2 ES 0.887; 2.5 EN emotion
+  accuracy 0.673); the text path is not evaluated for 2.5. Demos with downloadable clips:
+  index-tts.github.io/index-tts2.github.io/ (§2.3 "I feel really down"; 2.5 §5 Disgusted at
+  0.5 / 0.8 / 1.0).
 
 ### 10.7 Judging emotion in a take automatically
 
