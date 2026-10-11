@@ -38,7 +38,7 @@ import { computed, onActivated, onBeforeUnmount, ref, watch } from "vue";
 import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import {
   AppModal, EmptyState, UiButton, UiField, UiInput, UiNumber, UiSegmented, UiSelect,
-  DownloadBar, UiSlider, UiTag, UiTextarea, confirmDialog, fmtBytes, languageName, pushToast, runAiEndpoint, saveBlob,
+  DownloadBar, UiSlider, UiTag, UiTextarea, UiToggle, confirmDialog, fmtBytes, languageName, pushToast, runAiEndpoint, saveBlob,
 } from "@delebash/llm-ui";
 import DeliveryKnobs from "../components/DeliveryKnobs.vue";
 import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
@@ -607,12 +607,17 @@ const directionReason = computed(() => {
 // ── Sampling ────────────────────────────────────────────────────────────
 const knobs = computed(() => (row.value?.knobs || []).filter((k) => k.key !== "speed" && k.key !== "seed"));
 const seedSupported = computed(() => (row.value?.knobs || []).some((k) => k.key === "seed"));
+// A setting is a slider (a number), a dropdown, an on/off switch or a text field (KnobSpec.type);
+// only a slider's value is a number.
+const isNumberKnob = (k) => (k.type || "number") === "number";
 function knobValue(k) {
   const v = ms()?.knobs?.[k.key];
-  return v === undefined || v === null ? Number(k.default) : Number(v);
+  const value = v === undefined || v === null ? k.default : v;
+  return isNumberKnob(k) ? Number(value) : value;
 }
 function setKnob(k, value) {
-  ms(true).knobs[k.key] = Number(value);
+  if (!isNumberKnob(k) && (value === "" || value === null || value === undefined)) return resetKnob(k);
+  ms(true).knobs[k.key] = isNumberKnob(k) ? Number(value) : value;
 }
 function resetKnob(k) {
   const s = ms();
@@ -800,7 +805,7 @@ const compareResults = ref([]);   // [{value, url, blob}]
 const compareBusy = ref(false);
 const compareOptions = computed(() => [
   { value: "speed", label: "Pace" }, { value: "pitch", label: "Pitch" }, { value: "gain_db", label: "Gain" },
-  ...knobs.value.map((k) => ({ value: k.key, label: k.label })),
+  ...knobs.value.filter(isNumberKnob).map((k) => ({ value: k.key, label: k.label })),
 ]);
 function compareSpec(key) {
   if (key === "speed") return { min: 0.5, max: 2, step: 0.05, now: shared("speed", 1) };
@@ -1157,8 +1162,14 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
                       :title="`Back to the model default (${k.default})`" @click="resetKnob(k)" />
                   </div>
                   <div class="jv-knob-grid__row">
-                    <UiSlider :model-value="knobValue(k)" :min="k.min" :max="k.max" :step="k.step" width="full"
+                    <UiSlider v-if="isNumberKnob(k)" :model-value="knobValue(k)" :min="k.min" :max="k.max" :step="k.step" width="full"
                       :aria-label="k.label" @update:model-value="(v) => setKnob(k, v)" />
+                    <UiSelect v-else-if="k.type === 'choice'" :model-value="knobValue(k)" :options="k.choices.map((c) => ({ label: c, value: c }))"
+                      width="name" :aria-label="k.label" @update:model-value="(v) => setKnob(k, v)" />
+                    <UiToggle v-else-if="k.type === 'switch'" :model-value="Boolean(knobValue(k))" :aria-label="k.label"
+                      @update:model-value="(v) => setKnob(k, v)" />
+                    <UiInput v-else :model-value="knobValue(k) ?? ''" size="small" width="name" :aria-label="k.label"
+                      @update:model-value="(v) => setKnob(k, v)" />
                     <span v-if="k.unit" class="jv-knob-grid__unit">{{ k.unit }}</span>
                   </div>
                 </div>

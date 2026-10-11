@@ -510,13 +510,19 @@ function setWord(l, key, v) {
 // Sampling: the model's own knobs, as its capability row lists them — minus
 // speed (Pace) and seed (↻ New take).
 const modelKnobs = (l) => (rowOf(l)?.knobs || []).filter((k) => k.key !== "speed" && k.key !== "seed")
-  .map((k) => ({ key: k.key, label: k.label, min: k.min, max: k.max, step: k.step, neutral: Number(k.default), unit: k.unit || "", hint: k.hint }));
+  .map((k) => ({
+    key: k.key, label: k.label, type: k.type || "number", min: k.min, max: k.max, step: k.step, choices: k.choices || [],
+    neutral: (k.type || "number") === "number" ? Number(k.default) : k.default, unit: k.unit || "", hint: k.hint,
+  }));
 const knobFallback = (l) => Object.fromEntries(modelKnobs(l).map((k) => [k.key, personaMs(l).knobs?.[k.key] ?? k.neutral]));
 function setKnob(l, key, v) {
   const model = modelOf(l);
   if (!model) return;
-  let value = v === null || v === undefined || v === "" ? null : Number(v);
-  if (value !== null && value === Number(knobFallback(l)[key])) value = null;
+  // A slider's value is a number; a dropdown's, a switch's or a text field's keeps its type.
+  const isNumber = (modelKnobs(l).find((k) => k.key === key)?.type || "number") === "number";
+  let value = v === null || v === undefined || v === "" ? null : isNumber ? Number(v) : v;
+  const fallback = isNumber ? Number(knobFallback(l)[key]) : knobFallback(l)[key];
+  if (value !== null && value === fallback) value = null;
   if ((lineMs(l).knobs?.[key] ?? null) === value) return;
   patchBlock(l, { line_override: { models: { [model]: { knobs: { [key]: value } } } } });
 }

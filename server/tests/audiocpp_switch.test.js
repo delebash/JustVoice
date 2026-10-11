@@ -361,7 +361,9 @@ test("voxcpm2_clones_from_the_clip_and_sends_direction_as_its_prefix", () => {
     delivery: { instruct: "Whispered, (tired)" },
   });
   expect(req.voice_ref).toBe("C:/voices/v1/ref.wav");
-  expect(req.reference_text).toBe("The reference words.");
+  // A directed line goes without the clip's words: with them VoxCPM2 ignores or speaks the
+  // direction (its authors; decided 2026-10-11 — RESEARCH §10.6, §10.8).
+  expect(req.reference_text).toBeUndefined();
   // Brackets inside the direction would end the tag early; they go.
   expect(req.input).toBe("(Whispered, tired)The lights came on.");
 });

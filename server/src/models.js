@@ -694,8 +694,9 @@ export const CopyVoiceRequest = T.Object({
  * own vocabulary; `register_tag` is a tag model's register.
  */
 export const PersonaModelSettings = strictObject({
-  // The model's own sampling knobs, keyed as its capability row names them.
-  knobs: opt(T.Record(T.String(), T.Number()), {}),
+  // The model's own settings, keyed as its capability row names them: numbers, or a choice's
+  // word, a switch's on/off, a text field's text (KnobSpec.type).
+  knobs: opt(T.Record(T.String(), T.Union([T.Number(), T.String(), T.Boolean()])), {}),
   seed: opt(nullable(T.Integer()), null),
   emotion: opt(nullable(T.String()), null),
   register_tag: opt(nullable(T.String()), null),
@@ -1058,14 +1059,18 @@ export const CurrentEngineResponse = T.Object({
 
 // ─── Engine capability detail (drives Generate UI gating) ───────────────
 
-/** A continuous-value control (slider + number input). */
+/** One of a model's settings: a slider (`number`), a dropdown (`choice`, its `choices`), an
+ * on/off switch (`switch`) or a text field (`text`) — the type a model's spec gives the option
+ * (engine list slice 3, 2026-10-11). The hand-wired models' knobs are all sliders. */
 export const KnobSpec = T.Object({
   key: T.String(), // e.g. "temperature" / "exaggeration" / "cfg_weight" / "speed"
   label: T.String(),
-  min: T.Number(),
-  max: T.Number(),
-  step: T.Number(),
-  default: T.Number(),
+  type: opt(literal("number", "choice", "switch", "text"), "number"),
+  min: opt(T.Number(), 0),
+  max: opt(T.Number(), 0),
+  step: opt(T.Number(), 0),
+  default: T.Union([T.Number(), T.String(), T.Boolean()]),
+  choices: opt(T.Array(T.String()), []),
   unit: opt(T.String(), ""), // display suffix, e.g. "×" / "st" / "dB"
   hint: opt(T.String(), ""),
   advanced: opt(T.Boolean(), false), // hide behind a Show-advanced toggle

@@ -51,6 +51,13 @@ test("a_bad_setting_is_refused", () => {
   }
 });
 
+test("a_switch_takes_on_off_and_a_slider_still_refuses_a_word", () => {
+  // IndexTTS 2.5's settings come from audio.cpp's spec: a switch and a slider (KnobSpec.type).
+  const meta = mergeOverride({}, { models: { "index_tts2-indextts25": { knobs: { use_random_emotion: true, emotion_alpha: 0.7 } } } });
+  expect(meta[LINE_MODELS]["index_tts2-indextts25"].knobs.use_random_emotion).toBe(true);
+  expect(() => mergeOverride({}, { models: { "index_tts2-indextts25": { knobs: { emotion_alpha: "strong" } } } })).toThrow(/must be a number/);
+});
+
 // ── The render reads the line's over the persona's ───────────────────────
 
 test("a_words_models_emotion_and_knobs", () => {

@@ -40,7 +40,9 @@ import { VOICES } from "../kokoro/voices.js";
 import { AUDIOCPP_VOICE as KITTEN_VOICE } from "../kitten/manifest.js";
 import { AUDIOCPP_VOICE as POCKET_VOICE } from "../pocket/manifest.js";
 import * as manager from "../manager.js";
+import { CURATED } from "./curated/index.js";
 import * as espeak from "./espeak.js";
+import * as generated from "./generated.js";
 import * as japanese from "./japanese.js";
 import * as release from "./release.js";
 import * as runtime from "./runtime.js";
@@ -799,6 +801,9 @@ export function toSpeechRequest(row, body) {
   const noSeed = seed == null || seed === "" || seed === "0" || seed === 0 || seed === false;
   req.seed = noSeed ? 1 + Math.floor(Math.random() * (2 ** 31 - 1)) : pyInt(seed);
 
+  // Every other speech model audio.cpp has (engines/audiocpp/generated.js).
+  if (spec.generated) return self.generatedSpeechRequest(row, body, req);
+
   if (family === "kokoro_tts") {
     const voice = get(body, "voice_id") || "af_heart";
     const hit = VOICES.find(([vid]) => vid === voice);
@@ -941,8 +946,12 @@ export function toSpeechRequest(row, body) {
     const instruct = splitWs(get(delivery, "instruct") || get(knobs, "instruct") || "").join(" ");
     if (truthy(get(body, "audio_prompt_path"))) {
       req.voice_ref = fwd(body.audio_prompt_path);
-      // Reaches the model once our copy of audio.cpp passes the clip as prompt audio.
-      if (truthy(get(body, "ref_text"))) req.reference_text = body.ref_text;
+      // Reaches the model once our copy of audio.cpp passes the clip as prompt audio. The clip's
+      // words make it VoxCPM2's Hi-Fi cloning, which its authors say ignores the instruction
+      // ("When Hi-Fi mode is enabled, the control instruction is ignored") — ours read it aloud
+      // (RESEARCH §10.6, §10.8). So a line with direction sends the clip alone (decided
+      // 2026-10-11); a plain line keeps the closer clone.
+      if (truthy(get(body, "ref_text")) && !instruct) req.reference_text = body.ref_text;
     } else if (!instruct) {
       throw new AudioCppError("VoxCPM2 speaks a cloned voice or a designed one — this voice has neither a reference clip nor a description");
     }
@@ -965,5 +974,65 @@ export function toSpeechRequest(row, body) {
   }
 
   throw new AudioCppError(`no speech mapping for the ${family} family`);
+}
+
+/**
+ * A generated model's request (docs/plans/2026-10-11-audiocpp-engine-catalog.md §4): the clip;
+ * the line's direction as the family's file says to give it (`curated/<family>.js`); the clip's
+ * words where the spec takes them and the direction allows; the language and the seed where the
+ * spec lists them; and the model's settings, checked against the spec's types. A family whose
+ * spec lists its options gets only those — audio.cpp refuses others there (RESEARCH §10.6).
+ */
+export function generatedSpeechRequest(row, body, req) {
+  const family = row.audiocpp.family;
+  const delivery = get(body, "delivery") || {};
+  const knobs = get(delivery, "engine") || {};
+  const specOpts = generated.requestOptionsOf(family);
+  const listed = specOpts.size > 0;
+  const curated = CURATED[family] ?? null;
+  if (!truthy(get(body, "audio_prompt_path"))) {
+    throw new AudioCppError(`${row.name || family} speaks only cloned voices — this voice has no reference clip`);
+  }
+  req.voice_ref = fwd(body.audio_prompt_path);
+
+  const words = splitWs(get(delivery, "instruct") || "").join(" ");
+  const dir = generated.applyDirection(curated?.DIRECTION ?? null, { emotion: get(delivery, "emotion"), words });
+  const options = {};
+  for (const [k, v] of Object.entries(knobs)) {
+    if (generated.APP_OWNED_OPTIONS.has(k)) continue;
+    const spec = specOpts.get(k);
+    if (listed && !spec) continue;
+    const value = spec ? generated.coerceOption(spec, v) : v;
+    if (value !== undefined) options[k] = value;
+  }
+  // The direction's options; the defaults it brings (IndexTTS's strength, Breeze's guidance)
+  // yield to the model's settings.
+  Object.assign(options, dir.options);
+  for (const [k, v] of Object.entries(dir.defaults)) if (!Object.hasOwn(options, k)) options[k] = v;
+  const hasWords = truthy(get(body, "ref_text")) && specOpts.has("reference_text");
+  if (!dir.directed && curated?.PLAIN) {
+    Object.assign(options, hasWords ? curated.PLAIN.with_reference_text : curated.PLAIN.without_reference_text);
+  }
+  if (hasWords && !dir.dropReferenceText) req.reference_text = body.ref_text;
+
+  // The language, in the form the spec's option takes: one of its values, or a code — or the
+  // English name where its default is a name ("Chinese", FireRedTTS3).
+  const langSpec = specOpts.get("language");
+  const code = String(get(body, "language") || "").toLowerCase().split("-")[0];
+  if (langSpec && code) {
+    const name = get(QWEN_LANGUAGE, code);
+    if (Array.isArray(langSpec.values) && langSpec.values.length) {
+      const hit = langSpec.values.find((v) => String(v).toLowerCase() === code || (name && String(v).toLowerCase() === name.toLowerCase()));
+      if (hit !== undefined) req.language = hit;
+    } else if (/^[A-Z][a-z]+$/.test(String(langSpec.default || ""))) {
+      if (name) req.language = name;
+    } else {
+      req.language = code;
+    }
+  }
+  if (listed && !specOpts.has("seed")) delete req.seed;
+  if (dir.prefix) req.input = `${dir.prefix}${req.input}`;
+  if (Object.keys(options).length) req.options = options;
+  return req;
 }
 

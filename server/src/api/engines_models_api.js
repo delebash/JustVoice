@@ -53,6 +53,9 @@ export function router() {
           jobId = await installer.spawnPrefetch(st, id, body.model_variant);
         } catch (e) {
           if (e?.name === "ValueError") throw notFound(msg(e));
+          // A licence accepted once before the first download (manifest TERMS, gates
+          // "download"): 403 terms-required opens the app's terms prompt.
+          if (e?.name === "TermsRequired") throw e.apiError();
           throw e;
         }
         return c.json(construct(InstallResponse, { engine_id: id, model_variant: body.model_variant, job_id: jobId }), 202);

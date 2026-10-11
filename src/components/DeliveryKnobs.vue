@@ -14,11 +14,12 @@
 -->
 <script setup>
 import { reactive, watch } from "vue";
-import { UiButton, UiNumber, UiSlider } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiNumber, UiSelect, UiSlider, UiToggle } from "@delebash/llm-ui";
 import { SHAPE_KNOBS } from "../services/personaFacts.js";
 
 const props = defineProps({
-  // [{key, label, min, max, step, neutral, unit, hint?, reset?}]
+  // [{key, label, type?, min, max, step, choices?, neutral, unit, hint?, reset?}] — type is
+  // number (a slider, the default), choice (a dropdown), switch (on/off) or text (KnobSpec.type).
   knobs: { type: Array, default: () => SHAPE_KNOBS },
   values: { type: Object, default: () => ({}) },
   fallback: { type: Object, default: () => ({}) },
@@ -44,6 +45,13 @@ function shown(key, neutral = null) {
   const f = props.fallback?.[key];
   return f === null || f === undefined ? neutral : Number(f);
 }
+// A dropdown, a switch or a text field shows its value as it is; a slider's is a number.
+function raw(key, neutral = null) {
+  if (live[key] !== undefined) return live[key];
+  if (isSet(key)) return props.values[key];
+  const f = props.fallback?.[key];
+  return f === null || f === undefined ? neutral : f;
+}
 function onInput(key, v) {
   live[key] = v;
   emit("input", key, v);
@@ -64,10 +72,19 @@ function onCommit(key, v) {
           :title="resetTitle(k.key, k)" @click="emit('reset', k.key)" />
       </div>
       <div class="jv-knob-grid__row">
-        <UiSlider :model-value="shown(k.key, k.neutral)" :min="k.min" :max="k.max" :step="k.step"
-          width="full" :aria-label="k.label"
-          @update:model-value="(v) => onInput(k.key, v)" @change="(v) => onCommit(k.key, v)" />
-        <span v-if="k.unit" class="jv-knob-grid__unit">{{ k.unit }}</span>
+        <template v-if="(k.type || 'number') === 'number'">
+          <UiSlider :model-value="shown(k.key, k.neutral)" :min="k.min" :max="k.max" :step="k.step"
+            width="full" :aria-label="k.label"
+            @update:model-value="(v) => onInput(k.key, v)" @change="(v) => onCommit(k.key, v)" />
+          <span v-if="k.unit" class="jv-knob-grid__unit">{{ k.unit }}</span>
+        </template>
+        <UiSelect v-else-if="k.type === 'choice'" :model-value="raw(k.key, k.neutral)"
+          :options="(k.choices || []).map((c) => ({ label: c, value: c }))" width="name" :aria-label="k.label"
+          @update:model-value="(v) => { onInput(k.key, v); onCommit(k.key, v); }" />
+        <UiToggle v-else-if="k.type === 'switch'" :model-value="Boolean(raw(k.key, k.neutral))" :aria-label="k.label"
+          @update:model-value="(v) => { onInput(k.key, v); onCommit(k.key, v); }" />
+        <UiInput v-else :model-value="raw(k.key, k.neutral) ?? ''" size="small" width="name" :aria-label="k.label"
+          @update:model-value="(v) => onInput(k.key, v)" @blur="onCommit(k.key)" />
       </div>
     </div>
     <div v-if="pauses.length" class="jv-knob-grid__knob">

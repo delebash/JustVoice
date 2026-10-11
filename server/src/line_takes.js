@@ -33,6 +33,7 @@ import { parseWavHeader } from "./audio/wav.js";
 import * as session from "./database/session.js";
 import { Block, Generation, Project, Scene, Speaker, Take } from "./database/models.js";
 import { notFound } from "./errors.js";
+import { lookup as capabilityRow } from "./engines/capability_details.js";
 import { spokenBlock } from "./extraction/flags.js";
 import { leftOutBlocks } from "./extraction/tags.js";
 import * as mediaPaths from "./media_paths.js";
@@ -158,6 +159,12 @@ export function lineOverride(block) {
   return out;
 }
 
+/** The type of one of a model's settings (KnobSpec.type) — "number" when the model or the key is
+ * unknown, so a word never passes for a slider. */
+function _knobType(model, key) {
+  return capabilityRow(model)?.knobs?.find((x) => x.key === key)?.type || "number";
+}
+
 /** The line's settings per model: {model: {knobs?, emotion?, register_tag?}}, set ones only
  * (knob values are floats — PyFloats). */
 export function lineModels(block) {
@@ -169,6 +176,11 @@ export function lineModels(block) {
     const entry = {};
     const knobs = {};
     for (const [k, v] of Object.entries(truthy(s.knobs) && isDict(s.knobs) ? s.knobs : {})) {
+      // A choice's word, a switch's on/off and a text field keep their type (KnobSpec.type).
+      if (typeof v === "string" || typeof v === "boolean") {
+        knobs[String(k)] = v;
+        continue;
+      }
       try {
         knobs[String(k)] = pyFloatValue(toFloat(v));
       } catch (e) {
@@ -249,6 +261,15 @@ function _mergeModels(current, patch) {
           if (v == null) {
             delete knobs[k];
             continue;
+          }
+          // A word only where the model's setting is a dropdown or a text field, on/off only where
+          // it is a switch (KnobSpec.type); a slider's value is a number.
+          if (typeof v === "string" || typeof v === "boolean") {
+            const type = _knobType(model, k);
+            if ((typeof v === "string" && (type === "choice" || type === "text")) || (typeof v === "boolean" && type === "switch")) {
+              knobs[String(k)] = v;
+              continue;
+            }
           }
           try {
             knobs[String(k)] = pyFloatValue(toFloat(v));

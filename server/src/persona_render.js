@@ -193,7 +193,8 @@ export function modelSettings(persona, model, line = null) {
   const tags = [];
   const ms = model && Object.hasOwn(pd.models, model) ? pd.models[model] : null;
   const knobs = {};
-  if (ms !== null) for (const [k, v] of Object.entries(ms.knobs)) knobs[k] = asFloat(v);
+  // Numbers stay floats; a choice's word, a switch's on/off and a text field pass as they are.
+  if (ms !== null) for (const [k, v] of Object.entries(ms.knobs)) knobs[k] = typeof v === "string" || typeof v === "boolean" ? v : asFloat(v);
   let emotion = ms !== null ? ms.emotion : null;
   let register = ms !== null ? ms.register_tag : null;
   const seed = ms !== null ? ms.seed : null;

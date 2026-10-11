@@ -10,7 +10,9 @@
 // - a voice description — or a line's written direction on a clone — rides a parenthesised
 //   prefix on the text, "(a deep, slow, elderly man's voice)The line.", which is how VoxCPM2
 //   takes it (its README; audio.cpp splits the leading tag off and does not speak it —
-//   measured 2026-10-02 with a Qwen3-ASR read-back);
+//   measured 2026-10-02 with a Qwen3-ASR read-back). With the clip's transcript too — Hi-Fi
+//   cloning — the authors say the instruction is ignored, and ours spoke it (RESEARCH §10.6,
+//   §10.8), so a directed line goes without the transcript (decided 2026-10-11);
 // - the clip's transcript reaches the model from our build v0.9.0-jv.1 on: VoxCPM2's
 //   transcript-guided cloning needs the clip as prompt audio too, and upstream v0.9.0's server
 //   set prompt audio for transcription only — measured with the CLI, the transcript alone

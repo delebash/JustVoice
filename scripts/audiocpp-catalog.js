@@ -145,6 +145,7 @@ export async function buildCatalog(ref) {
           display_name: e.display_name_en || e.display_name,
           task: e.task,
           mode: e.mode,
+          path: e.path || null,
           package: related.length ? preferredPackage(related).id : null,
           packages: related.map((p) => p.id),
           min_vram_gb: e.min_vram_gb ?? null,

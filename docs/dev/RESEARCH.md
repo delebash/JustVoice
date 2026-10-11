@@ -80,7 +80,9 @@ releases, the pin, the C++ gaps; the local CUDA build recipe (§6) ·
 [`2026-10-04-turbo-tag-check.md`](../plans/2026-10-04-turbo-tag-check.md) — all 19 tags on
 Turbo and Nano ·
 [`2026-10-04-audiocpp-switch-audit.md`](../plans/2026-10-04-audiocpp-switch-audit.md) — the
-audit: every decision checked against code, memory measured, findings ranked.
+audit: every decision checked against code, memory measured, findings ranked ·
+[`2026-10-11-audiocpp-engine-catalog.md`](../plans/2026-10-11-audiocpp-engine-catalog.md) — every
+audio.cpp model in the app, built from audio.cpp's own files (§1.5 is what those files hold).
 User-facing half: [`../engines.md`](../engines.md).
 
 Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-platform.md`](../plans/2026-08-17-engine-roster-and-platform.md) ·
@@ -1835,7 +1837,9 @@ OUT_PROD), tight for the 1.7B on an 8 GB card, more plausible for the 0.6B.
 ## 10 · One-click audiobook, frontier AI and the market
 
 The decision these serve: TASKS "One-click audiobook: one pipeline in JV, run by its own AI or by
-Claude Code" (2026-10-10).
+Claude Code" (2026-10-10). **Records:**
+[`2026-10-11-one-click-audiobook.md`](../plans/2026-10-11-one-click-audiobook.md) — the plan, its
+steps, recipes and slices, and §13 what the research found that bears on it.
 
 ### 10.1 What the pipeline already has
 

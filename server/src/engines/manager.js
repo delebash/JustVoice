@@ -42,6 +42,7 @@ import * as paths from "../paths.js";
 import * as speechCache from "../speech_cache.js";
 import * as asrManifest from "./asr/manifest.js";
 import * as devBuild from "./audiocpp/dev_build.js";
+import * as generated from "./audiocpp/generated.js";
 import * as espeak from "./audiocpp/espeak.js";
 import * as japanese from "./audiocpp/japanese.js";
 import * as release from "./audiocpp/release.js";
@@ -281,6 +282,12 @@ export function discoverEngines() {
       log.exception(`failed to load manifest ${name}: ${msgOf(e)}`, e);
     }
   }
+  // Every other speech model audio.cpp has, built from its own files (audiocpp/generated.js).
+  const before = out.size;
+  for (const [id, mod] of generated.generatedEngines()) {
+    if (!out.has(id)) out.set(id, new EngineManifest(path.join(ENGINES_DIR, id), mod));
+  }
+  log.info(`discovered ${out.size - before} engines from audio.cpp's model specs`);
   return out;
 }
 
@@ -307,6 +314,15 @@ export class TermsRequired extends RuntimeError {
   apiError() {
     return new ApiError(403, "terms-required", "Terms not accepted", this.message, { engine: this.engineId });
   }
+}
+
+/** A licence that gates downloads (manifest TERMS with `gates: "download"` — every generated
+ * engine whose commercial use isn't a plain "Yes", decided 2026-10-11) must be accepted once
+ * before the first model file is fetched. */
+export function requireDownloadTerms(manifest) {
+  const terms = manifest?.module?.TERMS;
+  if (!terms || terms.gates !== "download" || slot.termsAccepted(manifest.id)) return;
+  throw new TermsRequired(manifest.id, `Accept ${manifest.name}'s licence before downloading its models.`);
 }
 
 /** A speech request the runtime refused or failed, with its status: 503 (out of memory, busy,
@@ -1284,6 +1300,7 @@ export class EngineManager {
       return null; // bare tests / no app state
     }
     if (speechCache.variantOnDisk(dataDir, m.id, variantId)) return String(speechCache.variantDir(dataDir, m.id, variantId));
+    self.requireDownloadTerms(m);
     let src;
     try {
       const { resolveSource } = await import("../api/engine_sources_api.js");

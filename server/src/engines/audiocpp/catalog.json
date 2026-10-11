@@ -377,6 +377,7 @@
           "display_name": "ACE-Step 1.5 (music gen)",
           "task": "gen",
           "mode": "offline",
+          "path": "models/Ace-Step1.5",
           "package": "ace_step_turbo_bf16",
           "packages": [
             "ace_step_turbo_q8_0",
@@ -535,6 +536,7 @@
           "display_name": "Apollo",
           "task": "s2s",
           "mode": "offline",
+          "path": "models/Apollo-GGUF",
           "package": "apollo_orig",
           "packages": [
             "apollo_orig"
@@ -1054,6 +1056,7 @@
           "display_name": "Audio8 TTS Preview 0.6B (tts + clone, GGUF Q8)",
           "task": "tts",
           "mode": "offline",
+          "path": "models/Audio8-TTS-Preview-0.6B-GGUF",
           "package": "audio8_tts_preview_0_6b_q8_0",
           "packages": [
             "audio8_tts_preview_0_6b_q8_0"
@@ -1258,6 +1261,7 @@
           "display_name": "AudioSR (audio super-resolution)",
           "task": "s2s",
           "mode": "offline",
+          "path": "models/AudioSR-GGUF/audiosr-basic-f32.gguf",
           "package": "audiosr_basic_f32",
           "packages": [
             "audiosr_basic_f32"
@@ -1960,6 +1964,7 @@
           "display_name": "AuK (speech generation, community)",
           "task": "tts",
           "mode": "offline",
+          "path": "models/AuK-Base-and-Flash-GGUF",
           "package": "auk_base_f32",
           "packages": [
             "auk_base_f32"
@@ -1974,6 +1979,7 @@
           "display_name": "AuK (audio editing, community)",
           "task": "gen",
           "mode": "offline",
+          "path": "models/AuK-Base-and-Flash-GGUF",
           "package": "auk_base_f32",
           "packages": [
             "auk_base_f32"
@@ -2349,6 +2355,7 @@
           "display_name": "BreezeTTS 2 VoiceDesign",
           "task": "vdes",
           "mode": "offline",
+          "path": "models/Breeze-TTS-2-GGUF/breeze-tts-2-q8_0.gguf",
           "package": "breeze_tts_2_q8_0",
           "packages": [
             "breeze_tts_2_q8_0",
@@ -2431,6 +2438,7 @@
           "display_name": "BreezeTTS 2 Clone",
           "task": "clon",
           "mode": "offline",
+          "path": "models/Breeze-TTS-2-GGUF/breeze-tts-2-q8_0.gguf",
           "package": "breeze_tts_2_q8_0",
           "packages": [
             "breeze_tts_2_q8_0",
@@ -2539,6 +2547,7 @@
           "display_name": "BS-RoFormer (vocal separation)",
           "task": "sep",
           "mode": "offline",
+          "path": "models/BS-RoFormer-ep368-GGUF/bs-roformer-ep368-q8_0.gguf",
           "package": "bs_roformer_q8_0",
           "packages": [
             "bs_roformer_q8_0"
@@ -2629,6 +2638,7 @@
           "display_name": "RNNoise",
           "task": "s2s",
           "mode": "offline",
+          "path": "models/Audio-Utilities/rnnoise/rnnoise10Gb_15.safetensors",
           "package": null,
           "packages": [],
           "min_vram_gb": null,
@@ -2641,6 +2651,7 @@
           "display_name": "DeepFilterNet2",
           "task": "s2s",
           "mode": "offline",
+          "path": "models/Audio-Utilities/deepfilternet2/deepfilternet2.safetensors",
           "package": null,
           "packages": [],
           "min_vram_gb": null,
@@ -2653,6 +2664,7 @@
           "display_name": "ZipEnhancer",
           "task": "s2s",
           "mode": "offline",
+          "path": "models/Audio-Utilities/zipenhancer/zipenhancer.safetensors",
           "package": null,
           "packages": [],
           "min_vram_gb": null,
@@ -2665,6 +2677,7 @@
           "display_name": "GTCRN Streaming",
           "task": "s2s",
           "mode": "offline",
+          "path": "models/Audio-Utilities/gtcrn/gtcrn_streaming.safetensors",
           "package": null,
           "packages": [],
           "min_vram_gb": null,
@@ -2677,6 +2690,7 @@
           "display_name": "GTCRN DNS3",
           "task": "s2s",
           "mode": "offline",
+          "path": "models/Audio-Utilities/gtcrn/gtcrn_dns3.safetensors",
           "package": null,
           "packages": [],
           "min_vram_gb": null,
@@ -2689,6 +2703,7 @@
           "display_name": "GTCRN VCTK",
           "task": "s2s",
           "mode": "offline",
+          "path": "models/Audio-Utilities/gtcrn/gtcrn_vctk.safetensors",
           "package": null,
           "packages": [],
           "min_vram_gb": null,
@@ -2701,6 +2716,7 @@
           "display_name": "FlashSR",
           "task": "s2s",
           "mode": "offline",
+          "path": "models/Audio-Utilities/flashsr/flashsr.safetensors",
           "package": null,
           "packages": [],
           "min_vram_gb": null,
@@ -2932,6 +2948,7 @@
           "display_name": "Canary 180M Flash",
           "task": "asr",
           "mode": "offline",
+          "path": "models/Canary-180M-Flash-GGUF",
           "package": "canary_180m_flash_f32",
           "packages": [
             "canary_180m_flash_f32"
@@ -3168,6 +3185,7 @@
           "display_name": "Chatterbox (voice clone)",
           "task": "clon",
           "mode": "offline",
+          "path": "models/chatterbox",
           "package": "chatterbox_q8_0",
           "packages": [
             "chatterbox_q8_0",
@@ -3223,6 +3241,7 @@
           "display_name": "Chatterbox (voice conversion)",
           "task": "vc",
           "mode": "offline",
+          "path": "models/chatterbox",
           "package": "chatterbox_q8_0",
           "packages": [
             "chatterbox_q8_0",
@@ -3360,6 +3379,7 @@
           "display_name": "Chatterbox Turbo (tts)",
           "task": "tts",
           "mode": "offline",
+          "path": "models/Chatterbox-Turbo-GGUF/chatterbox-turbo-q8_0.gguf",
           "package": "chatterbox_turbo_q8_0",
           "packages": [
             "chatterbox_turbo_q8_0",
@@ -3448,6 +3468,7 @@
           "display_name": "Citrinet ASR (asr)",
           "task": "asr",
           "mode": "offline",
+          "path": "models/citrinet",
           "package": "citrinet_asr_q8_0",
           "packages": [
             "citrinet_asr_q8_0"
@@ -3695,6 +3716,7 @@
           "display_name": "Cohere Transcribe",
           "task": "asr",
           "mode": "offline",
+          "path": "models/Cohere-Transcribe-GGUF",
           "package": "cohere_transcribe_bf16",
           "packages": [
             "cohere_transcribe_bf16",
@@ -4119,6 +4141,7 @@
           "display_name": "Confucius4-R2T2 (asr, real-time streaming)",
           "task": "asr",
           "mode": "offline",
+          "path": "models/Confucius4-R2T2-GGUF/r2t2-q8_0.gguf",
           "package": "confucius4_r2t2_q8_0",
           "packages": [
             "confucius4_r2t2_q8_0",
@@ -4518,6 +4541,7 @@
           "display_name": "Confucius4-TTS (voice clone, GGUF)",
           "task": "clon",
           "mode": "offline",
+          "path": "models/Confucius4-TTS-GGUF",
           "package": "confucius4_tts_orig",
           "packages": [
             "confucius4_tts_orig"
@@ -4741,6 +4765,7 @@
           "display_name": "ControlFoley (Foley/SFX)",
           "task": "gen",
           "mode": "offline",
+          "path": "models/ControlFoley-GGUF/controlfoley-large-44k-q8_0.gguf",
           "package": "controlfoley_large_44k_q8_0",
           "packages": [
             "controlfoley_large_44k_q8_0"
@@ -5116,6 +5141,7 @@
           "display_name": "CosyVoice3 Clone",
           "task": "clon",
           "mode": "offline",
+          "path": "models/CosyVoice3-GGUF/cosyvoice3-q8_0.gguf",
           "package": "cosyvoice3_q8_0",
           "packages": [
             "cosyvoice3_q8_0"
@@ -5198,6 +5224,7 @@
           "display_name": "CosyVoice3 Instruct",
           "task": "tts",
           "mode": "offline",
+          "path": "models/CosyVoice3-GGUF/cosyvoice3-q8_0.gguf",
           "package": "cosyvoice3_q8_0",
           "packages": [
             "cosyvoice3_q8_0"
@@ -5649,6 +5676,7 @@
           "display_name": "DotTTS SOAR (tts + clone)",
           "task": "tts",
           "mode": "offline",
+          "path": "models/DotTTS-SOAR-GGUF",
           "package": "dots_tts_soar_q8_0",
           "packages": [
             "dots_tts_soar_q8_0",
@@ -5664,6 +5692,7 @@
           "display_name": "DotTTS MeanFlow (tts + clone)",
           "task": "tts",
           "mode": "offline",
+          "path": "models/DotTTS-MF-GGUF",
           "package": "dots_tts_mf_q8_0",
           "packages": [
             "dots_tts_mf_q8_0",
@@ -5993,6 +6022,7 @@
           "display_name": "DramaBox (tts + clone, GGUF Q8)",
           "task": "tts",
           "mode": "offline",
+          "path": "models/DramaBox-GGUF",
           "package": "dramabox_q8_0",
           "packages": [
             "dramabox_q8_0"
@@ -6378,6 +6408,7 @@
           "display_name": "Echo-TTS (voice clone)",
           "task": "clon",
           "mode": "offline",
+          "path": "models/Echo-TTS-GGUF",
           "package": "echo_tts_q8_0",
           "packages": [
             "echo_tts_q8_0",
@@ -7090,6 +7121,7 @@
           "display_name": "FireRedAudio Clone",
           "task": "clon",
           "mode": "offline",
+          "path": "models/FireRedAudio-GGUF/firered-audio-q8_0.gguf",
           "package": "firered_audio_q8_0",
           "packages": [
             "firered_audio_orig",
@@ -7179,6 +7211,7 @@
           "display_name": "FireRedAudio Semantic Edit",
           "task": "gen",
           "mode": "offline",
+          "path": "models/FireRedAudio-GGUF/firered-audio-q8_0.gguf",
           "package": "firered_audio_q8_0",
           "packages": [
             "firered_audio_orig",
@@ -7257,6 +7290,7 @@
           "display_name": "FireRedAudio Acoustic Edit",
           "task": "gen",
           "mode": "offline",
+          "path": "models/FireRedAudio-GGUF/firered-audio-q8_0.gguf",
           "package": "firered_audio_q8_0",
           "packages": [
             "firered_audio_orig",
@@ -7326,6 +7360,7 @@
           "display_name": "FireRedAudio (ASR / audio QA)",
           "task": "asr",
           "mode": "offline",
+          "path": "models/FireRedAudio-GGUF/firered-audio-q8_0.gguf",
           "package": "firered_audio_q8_0",
           "packages": [
             "firered_audio_orig",
@@ -7404,6 +7439,7 @@
           "display_name": "FireRedAudio VoiceDesign",
           "task": "vdes",
           "mode": "offline",
+          "path": "models/FireRedAudio-GGUF/firered-audio-q8_0.gguf",
           "package": "firered_audio_q8_0",
           "packages": [
             "firered_audio_orig",
@@ -7802,6 +7838,7 @@
           "display_name": "FireRedTTS3 Instruct Clone",
           "task": "clon",
           "mode": "offline",
+          "path": "models/FireRedTTS3-Instruct-GGUF/fireredtts3-instruct-q8_0.gguf",
           "package": "fireredtts3_instruct_q8_0",
           "packages": [
             "fireredtts3_instruct_orig",
@@ -7927,6 +7964,7 @@
           "display_name": "FireRedTTS3 Base (voice clone)",
           "task": "clon",
           "mode": "offline",
+          "path": "models/FireRedTTS3-Base-GGUF/fireredtts3-base-q8_0.gguf",
           "package": "fireredtts3_base_q8_0",
           "packages": [
             "fireredtts3_base_orig",
@@ -8023,6 +8061,7 @@
           "display_name": "FireRedTTS3 Instruct VoiceDesign",
           "task": "vdes",
           "mode": "offline",
+          "path": "models/FireRedTTS3-Instruct-GGUF/fireredtts3-instruct-q8_0.gguf",
           "package": "fireredtts3_instruct_q8_0",
           "packages": [
             "fireredtts3_instruct_orig",
@@ -8371,6 +8410,7 @@
           "display_name": "Fish Audio S2 Pro (tts + clone/control tags, GGUF Q8)",
           "task": "tts",
           "mode": "offline",
+          "path": "models/Fish-Audio-S2-Pro-GGUF",
           "package": "fish_audio_s2_pro_q8_0",
           "packages": [
             "fish_audio_s2_pro_q8_0",
@@ -8596,6 +8636,7 @@
           "display_name": "Fun-ASR-Nano 2512 (asr, GGUF Q8)",
           "task": "asr",
           "mode": "offline",
+          "path": "models/Fun-ASR-Nano-2512-GGUF",
           "package": "fun_asr_nano_2512_q8_0",
           "packages": [
             "fun_asr_nano_2512_q8_0",
@@ -8924,6 +8965,7 @@
           "display_name": "GigaAM v3 CTC",
           "task": "asr",
           "mode": "offline",
+          "path": "GigaAM-ASR-GGUF",
           "package": "gigaam_v3_ctc_f16",
           "packages": [
             "gigaam_v3_ctc_f16"
@@ -8938,6 +8980,7 @@
           "display_name": "GigaAM v3 RNN-T",
           "task": "asr",
           "mode": "offline",
+          "path": "GigaAM-ASR-GGUF",
           "package": "gigaam_v3_rnnt_f16",
           "packages": [
             "gigaam_v3_rnnt_f16"
@@ -8952,6 +8995,7 @@
           "display_name": "GigaAM v3 E2E CTC",
           "task": "asr",
           "mode": "offline",
+          "path": "GigaAM-ASR-GGUF",
           "package": "gigaam_v3_e2e_ctc_f16",
           "packages": [
             "gigaam_v3_e2e_ctc_f16"
@@ -8966,6 +9010,7 @@
           "display_name": "GigaAM v3 E2E RNN-T",
           "task": "asr",
           "mode": "offline",
+          "path": "GigaAM-ASR-GGUF",
           "package": "gigaam_v3_e2e_rnnt_f16",
           "packages": [
             "gigaam_v3_e2e_rnnt_f16"
@@ -8980,6 +9025,7 @@
           "display_name": "GigaAM Multilingual",
           "task": "asr",
           "mode": "offline",
+          "path": "GigaAM-ASR-GGUF",
           "package": "gigaam_multilingual_ctc_f16",
           "packages": [
             "gigaam_multilingual_ctc_f16"
@@ -8994,6 +9040,7 @@
           "display_name": "GigaAM Multilingual Large",
           "task": "asr",
           "mode": "offline",
+          "path": "GigaAM-ASR-GGUF",
           "package": "gigaam_multilingual_large_ctc_f16",
           "packages": [
             "gigaam_multilingual_large_ctc_f16"
@@ -9222,6 +9269,7 @@
           "display_name": "GLM-TTS (tts + clone, community)",
           "task": "tts",
           "mode": "offline",
+          "path": "models/GLM-TTS",
           "package": "glm_tts_q8_0",
           "packages": [
             "glm_tts_q8_0"
@@ -9414,6 +9462,7 @@
           "display_name": "Granite Speech 5.0 470M TurboCTC (asr)",
           "task": "asr",
           "mode": "offline",
+          "path": "granite5asr",
           "package": "granite5asr_q8_0",
           "packages": [
             "granite5asr_q8_0",
@@ -9815,6 +9864,7 @@
           "display_name": "HeartMuLa 3B (music gen)",
           "task": "gen",
           "mode": "offline",
+          "path": "models/HeartMuLa",
           "package": "heartmula_q8_0",
           "packages": [
             "heartmula_q8_0",
@@ -10091,6 +10141,7 @@
           "display_name": "Higgs Audio v3 STT (asr, English)",
           "task": "asr",
           "mode": "offline",
+          "path": "models/higgs-audio-v3-stt",
           "package": "higgs_audio_stt_q8_0",
           "packages": [
             "higgs_audio_stt_q8_0",
@@ -10212,6 +10263,7 @@
           "display_name": "Higgs Audio v3 TTS 4B (tts + clone, GGUF Q8)",
           "task": "tts",
           "mode": "offline",
+          "path": "models/Higgs-Audio-v3-TTS-4B-GGUF",
           "package": "higgs_audio_tts_4b_q8_0",
           "packages": [
             "higgs_audio_tts_4b_q8_0",
@@ -10338,6 +10390,7 @@
           "display_name": "HTDemucs (source separation)",
           "task": "sep",
           "mode": "offline",
+          "path": "models/htdemucs",
           "package": "htdemucs_q8_0",
           "packages": [
             "htdemucs_q8_0",
@@ -10464,6 +10517,7 @@
           "display_name": "HTDemucs 6-stem (source separation)",
           "task": "sep",
           "mode": "offline",
+          "path": "models/htdemucs_6stems",
           "package": "htdemucs_6stems_q8_0",
           "packages": [
             "htdemucs_6stems_q8_0",
@@ -10751,6 +10805,7 @@
           "display_name": "Hviske v5.3 (asr, Danish)",
           "task": "asr",
           "mode": "offline",
+          "path": "models/hviske-v5.3",
           "package": "hviske_asr_q8_0",
           "packages": [
             "hviske_asr_q8_0",
@@ -11162,6 +11217,7 @@
           "display_name": "IndexTTS2 (tts, zh/en clone + emotion)",
           "task": "tts",
           "mode": "offline",
+          "path": "models/IndexTTS-2",
           "package": "index_tts2_q8_0",
           "packages": [
             "index_tts2_q8_0",
@@ -11182,6 +11238,7 @@
           "display_name": "IndexTTS2.5 (tts, zh/en/ja/es/ar clone + emotion, GGUF Q8)",
           "task": "tts",
           "mode": "offline",
+          "path": "models/IndexTTS2.5-GGUF",
           "package": "index_tts2_5_q8_0",
           "packages": [
             "index_tts2_5_q8_0",
@@ -11374,6 +11431,7 @@
           "display_name": "Inflect Micro v2 (en tts, community)",
           "task": "tts",
           "mode": "offline",
+          "path": "models/Inflect-Micro-v2",
           "package": "inflect_micro_v2_orig",
           "packages": [
             "inflect_micro_v2_orig"
@@ -11883,6 +11941,7 @@
           "display_name": "Irodori-TTS v4.1 Small (ja tts, GGUF Q8)",
           "task": "tts",
           "mode": "offline",
+          "path": "models/Irodori-TTS-v4-Small-GGUF",
           "package": "irodori_tts_v4_small_q8_0",
           "packages": [
             "irodori_tts_v4_small_q8_0",
@@ -11898,6 +11957,7 @@
           "display_name": "Irodori-TTS 500M v3 (ja tts)",
           "task": "tts",
           "mode": "offline",
+          "path": "models/Irodori-TTS-500M-v3-GGUF",
           "package": "irodori_tts_500m_v3_q8_0",
           "packages": [
             "irodori_tts_500m_v3_q8_0",
@@ -11913,6 +11973,7 @@
           "display_name": "Irodori-TTS v4.1 Small VoiceDesign (ja vdes, GGUF Q8)",
           "task": "vdes",
           "mode": "offline",
+          "path": "models/Irodori-TTS-v4-Small-GGUF",
           "package": "irodori_tts_v4_small_q8_0",
           "packages": [
             "irodori_tts_v4_small_q8_0",
@@ -11928,6 +11989,7 @@
           "display_name": "Irodori-TTS 600M v3 VoiceDesign (ja vdes)",
           "task": "vdes",
           "mode": "offline",
+          "path": "models/Irodori-TTS-600M-v3-VoiceDesign-GGUF",
           "package": "irodori_tts_600m_v3_voicedesign_q8_0",
           "packages": [
             "irodori_tts_600m_v3_voicedesign_q8_0",
@@ -12168,6 +12230,7 @@
           "display_name": "KittenTTS Mini 0.8 (en tts, community)",
           "task": "tts",
           "mode": "offline",
+          "path": "models/KittenTTS-GGUF/kitten-tts-mini-0.8-orig.gguf",
           "package": "kitten_tts_mini_0_8_orig",
           "packages": [
             "kitten_tts_mini_0_8_orig"
@@ -12481,6 +12544,7 @@
           "display_name": "Kokoro 82M (tts, preset voices)",
           "task": "tts",
           "mode": "offline",
+          "path": "models/Kokoro-82M-GGUF/kokoro-82m-q8_0.gguf",
           "package": "kokoro_82m_q8_0",
           "packages": [
             "kokoro_82m_q8_0",
@@ -12673,6 +12737,7 @@
           "display_name": "Kroko Community ASR (asr, GGUF Q8)",
           "task": "asr",
           "mode": "offline",
+          "path": "models/Kroko-ASR-GGUF",
           "package": "kroko_asr_community_q8_0",
           "packages": [
             "kroko_asr_community_q8_0"
@@ -13149,6 +13214,7 @@
           "display_name": "LiveAvatar (audio to video, community)",
           "task": "gen",
           "mode": "offline",
+          "path": "models/LiveAvatar-GGUF",
           "package": "liveavatar_nvfp4_lora",
           "packages": [
             "liveavatar_nvfp4_lora"
@@ -13645,6 +13711,7 @@
           "display_name": "MagpieTTS Multilingual 357M v2607 (tts, preset voices)",
           "task": "tts",
           "mode": "offline",
+          "path": "models/MagpieTTS-Multilingual-357M-GGUF",
           "package": "magpie_tts_q8_0",
           "packages": [
             "magpie_tts_orig",
@@ -13951,6 +14018,7 @@
           "display_name": "Maya1",
           "task": "tts",
           "mode": "offline",
+          "path": "Maya1-GGUF",
           "package": "maya1_orig",
           "packages": [
             "maya1_orig",
@@ -14124,6 +14192,7 @@
           "display_name": "MeanVC2 (voice conversion)",
           "task": "vc",
           "mode": "offline",
+          "path": "models/MeanVC2-GGUF/meanvc2-120ms-40ms-fp32.gguf",
           "package": "meanvc2_120ms_40ms_f32",
           "packages": [
             "meanvc2_120ms_40ms_f32"
@@ -14291,6 +14360,7 @@
           "display_name": "Mel-Band RoFormer (vocal separation)",
           "task": "sep",
           "mode": "offline",
+          "path": "models/mel-roformer-mlx",
           "package": "mel_band_roformer_q8_0",
           "packages": [
             "mel_band_roformer_q8_0",
@@ -14504,6 +14574,7 @@
           "display_name": "MiDashengLM-Gen (audio generation)",
           "task": "gen",
           "mode": "offline",
+          "path": "models/MiDashengLM-Gen-GGUF/midashenglm-gen-q8_0.gguf",
           "package": "midashenglm_gen_q8_0",
           "packages": [
             "midashenglm_gen_q8_0"
@@ -15042,6 +15113,7 @@
           "display_name": "MiniMax-H3 Q4 (sound generation)",
           "task": "gen",
           "mode": "offline",
+          "path": "models/MiniMax-H3-Q4-GGUF/dit.gguf",
           "package": "minimax_h3_q4_k",
           "packages": [
             "minimax_h3_q4_k",
@@ -15520,6 +15592,7 @@
           "display_name": "MiniMax-Music3 (song gen)",
           "task": "gen",
           "mode": "offline",
+          "path": "models/MiniMax-Music3-GGUF",
           "package": "minimax_music3_q4_0",
           "packages": [
             "minimax_music3_q4_0",
@@ -15663,6 +15736,7 @@
           "display_name": "MioCodec (vc; codec dependency)",
           "task": "vc",
           "mode": "offline",
+          "path": "models/MioCodec-25Hz-44.1kHz-v2",
           "package": "miocodec_q8_0",
           "packages": [
             "miocodec_q8_0",
@@ -15849,6 +15923,7 @@
           "display_name": "MioTTS 1.7B (tts; needs MioCodec)",
           "task": "tts",
           "mode": "offline",
+          "path": "models/MioTTS-1.7B",
           "package": "miotts_1_7b_q8_0",
           "packages": [
             "miotts_1_7b_q8_0",
@@ -16636,6 +16711,7 @@
           "display_name": "Moonshine Streaming Tiny (asr, GGUF Q8)",
           "task": "asr",
           "mode": "offline",
+          "path": "models/Moonshine-Streaming-GGUF/moonshine-streaming-tiny-q8_0.gguf",
           "package": "moonshine_streaming_tiny_q8_0",
           "packages": [
             "moonshine_streaming_tiny_q8_0",
@@ -16651,6 +16727,7 @@
           "display_name": "Moonshine Streaming Small (asr, GGUF Q8)",
           "task": "asr",
           "mode": "offline",
+          "path": "models/Moonshine-Streaming-GGUF/moonshine-streaming-small-q8_0.gguf",
           "package": "moonshine_streaming_small_q8_0",
           "packages": [
             "moonshine_streaming_small_q8_0",
@@ -16666,6 +16743,7 @@
           "display_name": "Moonshine Streaming Medium (asr, GGUF Q8)",
           "task": "asr",
           "mode": "offline",
+          "path": "models/Moonshine-Streaming-GGUF/moonshine-streaming-medium-q8_0.gguf",
           "package": "moonshine_streaming_medium_q8_0",
           "packages": [
             "moonshine_streaming_medium_q8_0",
@@ -16827,6 +16905,7 @@
           "display_name": "MOSS-Transcribe-Diarize",
           "task": "asr",
           "mode": "offline",
+          "path": "models/MOSS-Transcribe-Diarize-GGUF",
           "package": "moss_transcribe_diarize_bf16",
           "packages": [
             "moss_transcribe_diarize_bf16",
@@ -17016,6 +17095,7 @@
           "display_name": "MOSS-TTS-Local v1.5 (tts)",
           "task": "tts",
           "mode": "offline",
+          "path": "models/MOSS-TTS-Local-Transformer-v1.5",
           "package": "moss_tts_local_v1_5_q8_0",
           "packages": [
             "moss_tts_local_v1_5_q8_0",
@@ -17193,6 +17273,7 @@
           "display_name": "MOSS-TTS-Nano 100M (tts)",
           "task": "tts",
           "mode": "offline",
+          "path": "models/MOSS-TTS-Nano-100M",
           "package": "moss_tts_nano_100m_q8_0",
           "packages": [
             "moss_tts_nano_100m_q8_0",
@@ -17477,6 +17558,7 @@
           "display_name": "MOSS-TTS v1.5 8B (tts + clone, community)",
           "task": "tts",
           "mode": "offline",
+          "path": "models/MOSS-TTS-v1.5-GGUF/moss_tts_v15_q8_0_codec_f16.gguf",
           "package": "moss_tts_v15_q8_0_codec_f16",
           "packages": [
             "moss_tts_v15_q8_0_codec_f16"
@@ -17740,6 +17822,7 @@
           "display_name": "MOSS-TTSD",
           "task": "tts",
           "mode": "offline",
+          "path": "MOSS-TTSD-GGUF",
           "package": "moss_ttsd_q8_0_codec_f16",
           "packages": [
             "moss_ttsd_q8_0_codec_f16"
@@ -17867,6 +17950,7 @@
           "display_name": "MOSS-VoiceGenerator",
           "task": "vdes",
           "mode": "offline",
+          "path": "MOSS-VoiceGenerator-GGUF",
           "package": "moss_voicegen_bf16_codec_f16_decode",
           "packages": [
             "moss_voicegen_bf16_codec_f16_decode"
@@ -18095,6 +18179,7 @@
           "display_name": "MuScriptor Small (audio to MIDI)",
           "task": "midi",
           "mode": "offline",
+          "path": "models/MuScriptor-Small-GGUF",
           "package": "muscriptor_small_f32",
           "packages": [
             "muscriptor_small_f32"
@@ -18342,6 +18427,7 @@
           "display_name": "Nemotron 3 Diarization",
           "task": "diar",
           "mode": "offline",
+          "path": "models/Nemotron-3-Diarization-GGUF/nemotron-3-diarization-bf16.gguf",
           "package": "nemotron_3_diar_bf16",
           "packages": [
             "nemotron_3_diar_bf16",
@@ -18680,6 +18766,7 @@
           "display_name": "Nemotron 3.5 ASR 0.6B (asr, 100+ languages)",
           "task": "asr",
           "mode": "offline",
+          "path": "models/nemotron-3.5-asr-streaming-0.6b",
           "package": "nemotron_asr_q8_0",
           "packages": [
             "nemotron_asr_q8_0",
@@ -18958,6 +19045,7 @@
           "display_name": "NeuTTS 2E (tts, preset voices)",
           "task": "tts",
           "mode": "offline",
+          "path": "models/NeuTTS-2E-GGUF",
           "package": "neutts_2e_orig",
           "packages": [
             "neutts_2e_orig"
@@ -19125,6 +19213,7 @@
           "display_name": "Niagara ASR 19M (asr)",
           "task": "asr",
           "mode": "offline",
+          "path": "models/Niagara-ASR-GGUF/niagara-19m-batch.en-f32.gguf",
           "package": "niagara_19m_f32",
           "packages": [
             "niagara_19m_f32"
@@ -19139,6 +19228,7 @@
           "display_name": "Niagara ASR 38M (asr)",
           "task": "asr",
           "mode": "offline",
+          "path": "models/Niagara-ASR-GGUF/niagara-38m-batch.en-f32.gguf",
           "package": "niagara_38m_f32",
           "packages": [
             "niagara_38m_f32"
@@ -19373,6 +19463,7 @@
           "display_name": "OmniVoice (tts)",
           "task": "tts",
           "mode": "offline",
+          "path": "models/OmniVoice",
           "package": "omnivoice_q8_0",
           "packages": [
             "omnivoice_q8_0",
@@ -19683,6 +19774,7 @@
           "display_name": "Llama-OuteTTS 1.0 1B (tts + clone, community)",
           "task": "tts",
           "mode": "offline",
+          "path": "models/Llama-OuteTTS-1.0-1B",
           "package": "outetts_1_0_1b_q8_0",
           "packages": [
             "outetts_1_0_1b_q8_0"
@@ -20021,6 +20113,7 @@
           "display_name": "Parakeet-TDT 0.6B v3 (asr + streaming)",
           "task": "asr",
           "mode": "offline",
+          "path": "models/parakeet-tdt-0.6b-v3",
           "package": "parakeet_tdt_q8_0",
           "packages": [
             "parakeet_tdt_q8_0",
@@ -20036,6 +20129,7 @@
           "display_name": "Orukeet r3 (asr, Parakeet fine-tune)",
           "task": "asr",
           "mode": "offline",
+          "path": "models/Orukeet-GGUF/orukeet-q8_0.gguf",
           "package": "orukeet_q8_0",
           "packages": [
             "orukeet_q8_0",
@@ -20361,6 +20455,7 @@
           "display_name": "PersonaPlex 7B v1 (speech conversation)",
           "task": "s2s",
           "mode": "offline",
+          "path": "models/PersonaPlex-GGUF",
           "package": "personaplex_7b_v1_q4_k",
           "packages": [
             "personaplex_7b_v1_q4_k"
@@ -20658,6 +20753,7 @@
           "display_name": "Piper Lessac Medium (en tts, community)",
           "task": "tts",
           "mode": "offline",
+          "path": "models/Piper-TTS-GGUF/piper-en-us-lessac-medium-orig.gguf",
           "package": "piper_lessac_medium_orig",
           "packages": [
             "piper_lessac_medium_orig"
@@ -21124,6 +21220,7 @@
           "display_name": "Pocket TTS (tts)",
           "task": "tts",
           "mode": "offline",
+          "path": "models/pocket-tts",
           "package": "pocket_tts_english_q8_0",
           "packages": [
             "pocket_tts_english_q8_0",
@@ -21332,6 +21429,7 @@
           "display_name": "PulseVAD 2.1K",
           "task": "vad",
           "mode": "offline",
+          "path": "models/PulseVAD-GGUF",
           "package": "pulsevad_2_1k_f32",
           "packages": [
             "pulsevad_2_1k_f32"
@@ -21346,6 +21444,7 @@
           "display_name": "PulseVAD 81K",
           "task": "vad",
           "mode": "offline",
+          "path": "models/PulseVAD-GGUF",
           "package": "pulsevad_81k_f32",
           "packages": [
             "pulsevad_81k_f32"
@@ -21643,6 +21742,7 @@
           "display_name": "Qwen3-ASR 0.6B (asr)",
           "task": "asr",
           "mode": "offline",
+          "path": "models/Qwen3-ASR-0.6B",
           "package": "qwen3_asr_0_6b_q8_0",
           "packages": [
             "qwen3_asr_0_6b_q8_0",
@@ -21659,6 +21759,7 @@
           "display_name": "Qwen3-ASR 1.7B HF (asr)",
           "task": "asr",
           "mode": "offline",
+          "path": "models/Qwen3-ASR-1.7B-hf",
           "package": "qwen3_asr_1_7b_q8_0",
           "packages": [
             "qwen3_asr_1_7b_q8_0",
@@ -21834,6 +21935,7 @@
           "display_name": "Qwen3 Forced Aligner (align)",
           "task": "align",
           "mode": "offline",
+          "path": "models/Qwen3-ForcedAligner-0.6B",
           "package": "qwen3_forced_aligner_0_6b_q8_0",
           "packages": [
             "qwen3_forced_aligner_0_6b_q8_0",
@@ -22236,6 +22338,7 @@
           "display_name": "Qwen3-TTS 0.6B (tts)",
           "task": "tts",
           "mode": "offline",
+          "path": "models/Qwen3-TTS-12Hz-0.6B-Base",
           "package": "qwen3_tts_0_6b_base_q8_0",
           "packages": [
             "qwen3_tts_0_6b_base_q8_0",
@@ -22251,6 +22354,7 @@
           "display_name": "Qwen3-TTS 1.7B Base (tts)",
           "task": "tts",
           "mode": "offline",
+          "path": "models/Qwen3-TTS-12Hz-1.7B-Base",
           "package": "qwen3_tts_1_7b_base_q8_0",
           "packages": [
             "qwen3_tts_1_7b_base_q8_0",
@@ -22268,6 +22372,7 @@
           "display_name": "Qwen3-TTS 1.7B CustomVoice (tts)",
           "task": "tts",
           "mode": "offline",
+          "path": "models/Qwen3-TTS-12Hz-1.7B-CustomVoice",
           "package": "qwen3_tts_1_7b_customvoice_q8_0",
           "packages": [
             "qwen3_tts_1_7b_customvoice_q8_0",
@@ -22283,6 +22388,7 @@
           "display_name": "Qwen3-TTS 1.7B VoiceDesign (vdes)",
           "task": "vdes",
           "mode": "offline",
+          "path": "models/Qwen3-TTS-12Hz-1.7B-VoiceDesign",
           "package": "qwen3_tts_1_7b_voicedesign_q8_0",
           "packages": [
             "qwen3_tts_1_7b_voicedesign_q8_0",
@@ -22653,6 +22759,7 @@
           "display_name": "RVC (voice conversion, GGUF F16)",
           "task": "vc",
           "mode": "offline",
+          "path": "models/RVC-GGUF",
           "package": "rvc_f16",
           "packages": [
             "rvc_f16"
@@ -23099,6 +23206,7 @@
           "display_name": "SAM Audio Small",
           "task": "s2s",
           "mode": "offline",
+          "path": "SAM-Audio-GGUF",
           "package": "sam_audio_small_q8_0",
           "packages": [
             "sam_audio_small_bf16",
@@ -23114,6 +23222,7 @@
           "display_name": "SAM Audio Base",
           "task": "s2s",
           "mode": "offline",
+          "path": "SAM-Audio-GGUF",
           "package": "sam_audio_base_q8_0",
           "packages": [
             "sam_audio_base_bf16",
@@ -23129,6 +23238,7 @@
           "display_name": "SAM Audio Large",
           "task": "s2s",
           "mode": "offline",
+          "path": "SAM-Audio-GGUF",
           "package": "sam_audio_large_q8_0",
           "packages": [
             "sam_audio_large_bf16",
@@ -23359,6 +23469,7 @@
           "display_name": "SAMSONE 99M",
           "task": "asr",
           "mode": "offline",
+          "path": "Samsone-GGUF",
           "package": "samsone_99m_bf16",
           "packages": [
             "samsone_99m_bf16",
@@ -23374,6 +23485,7 @@
           "display_name": "SAMSONE 134M",
           "task": "asr",
           "mode": "offline",
+          "path": "Samsone-GGUF",
           "package": "samsone_134m_q8_0",
           "packages": [
             "samsone_134m_bf16",
@@ -23389,6 +23501,7 @@
           "display_name": "SAMSONE 356M",
           "task": "asr",
           "mode": "offline",
+          "path": "Samsone-GGUF",
           "package": "samsone_356m_q8_0",
           "packages": [
             "samsone_356m_bf16",
@@ -24043,6 +24156,7 @@
           "display_name": "sanoTTS voice family (tts, community)",
           "task": "tts",
           "mode": "offline",
+          "path": "models/sanoTTS-heart-nano-GGUF/heart-nano-f32.gguf",
           "package": "sanotts_heart_nano_orig",
           "packages": [
             "sanotts_heart_nano_orig"
@@ -24539,6 +24653,7 @@
           "display_name": "Seed-VC (voice conversion)",
           "task": "vc",
           "mode": "offline",
+          "path": "models/SeedVC-MLX",
           "package": "seed_vc_mlx_q8_0",
           "packages": [
             "seed_vc_mlx_q8_0",
@@ -24556,6 +24671,7 @@
           "display_name": "Seed-VC (singing voice conversion)",
           "task": "svc",
           "mode": "offline",
+          "path": "models/SeedVC-MLX",
           "package": "seed_vc_mlx_q8_0",
           "packages": [
             "seed_vc_mlx_q8_0",
@@ -24790,6 +24906,7 @@
           "display_name": "SenseVoice-Small (asr + streaming, community)",
           "task": "asr",
           "mode": "offline",
+          "path": "models/SenseVoice-Small-GGUF",
           "package": "sensevoice_small_q8",
           "packages": [
             "sensevoice_small_q8"
@@ -24918,6 +25035,7 @@
           "display_name": "SheetSage2 (audio to ABC)",
           "task": "midi",
           "mode": "offline",
+          "path": "models/SheetSage2-GGUF/sheetsage2-orig.gguf",
           "package": "sheetsage2_orig",
           "packages": [
             "sheetsage2_orig"
@@ -25110,6 +25228,7 @@
           "display_name": "Soprano TTS (tts)",
           "task": "tts",
           "mode": "offline",
+          "path": "models/Soprano-1.1-80M-GGUF",
           "package": "soprano_1_1_80m_q8_0",
           "packages": [
             "soprano_1_1_80m_q8_0",
@@ -25474,6 +25593,7 @@
           "display_name": "Sopro V2 Turbo (tts + clone)",
           "task": "tts",
           "mode": "offline",
+          "path": "models/sopro-v2-turbo",
           "package": "sopro_v2_turbo_f16",
           "packages": [
             "sopro_v2_turbo_f16",
@@ -25732,6 +25852,7 @@
           "display_name": "Sortformer Diarization 4spk (diar)",
           "task": "diar",
           "mode": "offline",
+          "path": "models/diar_sortformer_4spk-v1",
           "package": "sortformer_diar_4spk_v1_q8_0",
           "packages": [
             "sortformer_diar_4spk_v1_q8_0",
@@ -26284,6 +26405,7 @@
           "display_name": "Stable Audio 3 Small Music (gen)",
           "task": "gen",
           "mode": "offline",
+          "path": "models/stable-audio-3-small-music",
           "package": "stable_audio_3_small_music_q8_0",
           "packages": [
             "stable_audio_3_small_music_q8_0",
@@ -26300,6 +26422,7 @@
           "display_name": "Stable Audio 3 Small SFX (gen)",
           "task": "gen",
           "mode": "offline",
+          "path": "models/stable-audio-3-small-sfx",
           "package": "stable_audio_3_small_sfx_q8_0",
           "packages": [
             "stable_audio_3_small_sfx_q8_0",
@@ -26316,6 +26439,7 @@
           "display_name": "Stable Audio 3 Medium (gen)",
           "task": "gen",
           "mode": "offline",
+          "path": "models/stable-audio-3-medium",
           "package": "stable_audio_3_medium_q8_0",
           "packages": [
             "stable_audio_3_medium_q8_0",
@@ -26610,6 +26734,7 @@
           "display_name": "Supertonic 3 (tts, preset voices)",
           "task": "tts",
           "mode": "offline",
+          "path": "models/supertonic-3",
           "package": "supertonic_3_orig",
           "packages": [
             "supertonic_3_q8_0",
@@ -26796,6 +26921,7 @@
           "display_name": "Tone Color VC",
           "task": "vc",
           "mode": "offline",
+          "path": "Tone-Color-VC-GGUF",
           "package": "tone_color_vc_f32",
           "packages": [
             "tone_color_vc_f32"
@@ -27022,6 +27148,7 @@
           "display_name": "UniverSR Audio",
           "task": "s2s",
           "mode": "offline",
+          "path": "models/UniverSR-GGUF",
           "package": "universr_audio_orig",
           "packages": [
             "universr_audio_orig"
@@ -27036,6 +27163,7 @@
           "display_name": "UniverSR Speech",
           "task": "s2s",
           "mode": "offline",
+          "path": "models/UniverSR-GGUF",
           "package": "universr_speech_orig",
           "packages": [
             "universr_speech_orig"
@@ -27278,6 +27406,7 @@
           "display_name": "Vevo2 (voice conversion, GGUF Q8)",
           "task": "vc",
           "mode": "offline",
+          "path": "models/Vevo2-GGUF",
           "package": "vevo2_q8_0",
           "packages": [
             "vevo2_q8_0",
@@ -27380,6 +27509,7 @@
           "display_name": "Vevo2 (singing voice conversion, GGUF Q8)",
           "task": "svc",
           "mode": "offline",
+          "path": "models/Vevo2-GGUF",
           "package": "vevo2_q8_0",
           "packages": [
             "vevo2_q8_0",
@@ -27396,6 +27526,7 @@
           "display_name": "Vevo2 (speech editing, GGUF Q8)",
           "task": "s2s",
           "mode": "offline",
+          "path": "models/Vevo2-GGUF",
           "package": "vevo2_q8_0",
           "packages": [
             "vevo2_q8_0",
@@ -27748,6 +27879,7 @@
           "display_name": "VibeVoice 1.5B/7B (tts, long-form/multi-speaker)",
           "task": "tts",
           "mode": "offline",
+          "path": "models/VibeVoice-1.5B",
           "package": "vibevoice_1_5b_q8_0",
           "packages": [
             "vibevoice_1_5b_q8_0",
@@ -27824,6 +27956,7 @@
           "display_name": "VibeVoice 7B (tts, long-form/multi-speaker)",
           "task": "tts",
           "mode": "offline",
+          "path": "models/VibeVoice-7B-GGUF",
           "package": "vibevoice_7b_q8_0",
           "packages": [
             "vibevoice_7b_q8_0"
@@ -27939,6 +28072,7 @@
           "display_name": "VibeVoice ASR (asr, multilingual + speaker turns)",
           "task": "asr",
           "mode": "offline",
+          "path": "models/VibeVoice-ASR",
           "package": "vibevoice_asr_q8_0",
           "packages": [
             "vibevoice_asr_q8_0",
@@ -28241,6 +28375,7 @@
           "display_name": "VibeVoice ASR Streaming 7B (asr, multilingual + streaming)",
           "task": "asr",
           "mode": "offline",
+          "path": "models/VibeVoice-ASR-Streaming-7B-GGUF/vibevoice-asr-streaming-7b-q8_0.gguf",
           "package": "vibevoice_asr_streaming_7b_q8_0",
           "packages": [
             "vibevoice_asr_streaming_7b_q8_0",
@@ -28256,6 +28391,7 @@
           "display_name": "VibeVoice ASR Streaming 1.5B (asr, multilingual + streaming)",
           "task": "asr",
           "mode": "offline",
+          "path": "models/VibeVoice-ASR-Streaming-1.5B-GGUF/vibevoice-asr-streaming-1.5b-q8_0.gguf",
           "package": "vibevoice_asr_streaming_1_5b_q8_0",
           "packages": [
             "vibevoice_asr_streaming_1_5b_q8_0",
@@ -28411,6 +28547,7 @@
           "display_name": "VieNeu-TTS v3 Turbo (vi tts, community)",
           "task": "tts",
           "mode": "offline",
+          "path": "models/VieNeu-TTS-v3-Turbo",
           "package": "vieneu_v3_turbo_q8_0",
           "packages": [
             "vieneu_v3_turbo_q8_0",
@@ -28741,6 +28878,7 @@
           "display_name": "VoxCPM1 0.5B (tts + clone)",
           "task": "tts",
           "mode": "offline",
+          "path": "models/VoxCPM1-GGUF",
           "package": "voxcpm1_0_5b_q8_0",
           "packages": [
             "voxcpm1_0_5b_q8_0"
@@ -29031,6 +29169,7 @@
           "display_name": "VoxCPM2 (tts)",
           "task": "tts",
           "mode": "offline",
+          "path": "models/VoxCPM2",
           "package": "voxcpm2_q8_0",
           "packages": [
             "voxcpm2_q8_0",
@@ -29230,6 +29369,7 @@
           "display_name": "Voxtral Mini 4B Realtime (asr, auto + streaming)",
           "task": "asr",
           "mode": "offline",
+          "path": "models/Voxtral-Mini-4B-Realtime-2602-GGUF",
           "package": "voxtral_realtime_q8_0",
           "packages": [
             "voxtral_realtime_q8_0",
@@ -30119,6 +30259,7 @@
           "display_name": "Yue2 3B (song gen)",
           "task": "gen",
           "mode": "offline",
+          "path": "models/Yue2-3B-GGUF",
           "package": "yue2_main_q8_0",
           "packages": [
             "yue2_main_q8_0",
@@ -30701,6 +30842,7 @@
           "display_name": "ZipVoice (zh/en zero-shot cloning)",
           "task": "clon",
           "mode": "offline",
+          "path": "models/ZipVoice-Distill-GGUF",
           "package": "zipvoice_distill_gguf",
           "packages": [
             "zipvoice_distill_gguf"

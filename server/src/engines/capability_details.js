@@ -15,6 +15,7 @@
 // order, defaults filled).
 
 import { construct, EngineCapabilityDetail, InlineTagSet, KnobSpec } from "../models.js";
+import { generatedModels, listsOptions, modelName, requestOptionsOf, settingsOf } from "./audiocpp/generated.js";
 import { pinnedHas } from "./audiocpp/release.js";
 import { VARIANTS as CHATTERBOX_VARIANTS } from "./chatterbox/manifest.js";
 
@@ -374,7 +375,9 @@ CAPABILITY_DETAILS.voxcpm2 = detail({
   pitch_post_process: true,
   notes: [
     "Clones from a short clip, or designs a voice from a written description.",
-    "Written direction reaches a cloned voice too.",
+    // Its authors: "When Hi-Fi mode is enabled, the control instruction is ignored" — Hi-Fi is
+    // the clip with its words, so a directed line sends the clip alone (decided 2026-10-11).
+    "Written direction reaches a cloned voice: a line with direction is spoken from the clip alone, without the clip's words.",
     "48 kHz output.",
   ],
 });
@@ -388,6 +391,34 @@ CAPABILITY_DETAILS["chatterbox-nano"] = {
   engine_id: "chatterbox-nano",
   display_name: "Chatterbox Nano",
 };
+
+// ─── Every other speech model audio.cpp has (engines/audiocpp/generated.js) ───
+// One row per model, from its spec: it copies a voice; it takes the clip's words when its spec
+// lists `reference_text`; it takes a line's direction only when our file for the family says how
+// (else "can't be directed yet"). Its settings are its spec's typed options (generated.settingsOf),
+// and the seed where the spec takes one or lists no options at all.
+for (const m of generatedModels()) {
+  if (Object.hasOwn(CAPABILITY_DETAILS, m.modelId)) continue;
+  const opts = requestOptionsOf(m.family);
+  const directed = Boolean(m.curated?.DIRECTION);
+  const tested = m.curated?.TESTED ?? null;
+  CAPABILITY_DETAILS[m.modelId] = detail({
+    engine_id: m.modelId,
+    display_name: modelName(m),
+    supports_voice_cloning: true,
+    supports_clone_prompt_text: opts.has("reference_text"),
+    supports_instruct_freeform: directed,
+    knobs: [...settingsOf(m).map(knob), ...(!listsOptions(m.family) || opts.has("seed") ? [seedKnob()] : [])],
+    inline_tags: [],
+    pitch_post_process: true,
+    notes: [
+      "Clones a voice from a short clip.",
+      directed ? "Takes a line's emotion and direction." : "Can't be directed yet — JustVoice doesn't yet know how this model takes direction.",
+      tested ? `Tested by JustVoice: ${tested.note}` : "Not tested by JustVoice yet.",
+      `audio.cpp lists it as ${m.fam.status}.`,
+    ],
+  });
+}
 
 /** Capability detail by engine id OR variant id (variant ids first); null when none. */
 export function lookup(engineOrVariantId) {

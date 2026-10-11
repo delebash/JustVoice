@@ -150,6 +150,7 @@ export async function spawnPrefetch(state, engineId, variantId) {
   const mgr = manager.getManager();
   const manifest = mgr.getManifest(engineId);
   if (manifest === null) throw new ValueError(`no managed engine with id ${engineId}`);
+  manager.requireDownloadTerms(manifest);
   const { resolveSource } = await import("./api/engine_sources_api.js");
 
   const variant = modelCatalog.modelsFor(engineId).find((v) => v.id === variantId) ?? null;

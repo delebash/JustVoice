@@ -6,6 +6,7 @@
 import { expect, test } from "vitest";
 import "./engines_helpers.js";
 import { nestEngineKeys } from "../src/delivery_merge.js";
+import { generatedEngines, generatedModels } from "../src/engines/audiocpp/generated.js";
 import { toSpeechRequest } from "../src/engines/audiocpp/slot.js";
 import { CAPABILITY_DETAILS, lookup } from "../src/engines/capability_details.js";
 import { discoverEngines } from "../src/engines/manager.js";
@@ -27,6 +28,12 @@ const ROW_VARIANT = {
   pocket: ["pocket", "pocket-en-q8", { voice_id: "pocket_alba" }],
   voxcpm2: ["voxcpm2", "voxcpm2-q8", { audio_prompt_path: "/v/ref.wav" }],
 };
+// Every model built from audio.cpp's own files (engines/audiocpp/generated.js) — each clones.
+const GENERATED_ROWS = new Set(generatedModels().map((m) => m.modelId));
+for (const m of generatedModels()) {
+  const variant = generatedEngines().get(m.family).VARIANTS.find((v) => v.audiocpp.model === m.modelId);
+  ROW_VARIANT[m.modelId] = [m.family, variant.id, { audio_prompt_path: "/v/ref.wav" }];
+}
 
 // Where each knob lands in audio.cpp's request ("options.x" = inside options).
 const LANDS_AT = {
@@ -69,6 +76,7 @@ test("every_declared_knob_reaches_the_runtime", () => {
   // No slider may exist that the engine never receives. (Python parametrized over the rows.)
   for (const capId of Object.keys(CAPABILITY_DETAILS).sort()) {
     const [engine, variant, base] = ROW_VARIANT[capId];
+    if (GENERATED_ROWS.has(capId)) continue; // their typed settings: the next test
     for (const knob of CAPABILITY_DETAILS[capId].knobs) {
       expect(Object.hasOwn(LANDS_AT, knob.key), `${capId}: knob ${knob.key} has no audio.cpp mapping`).toBe(true);
       const value = knob.max !== knob.default ? knob.max : knob.min;
@@ -82,6 +90,29 @@ test("every_declared_knob_reaches_the_runtime", () => {
       const where = LANDS_AT[knob.key];
       const got = where.startsWith("options.") ? (req.options || {})[where.slice(8)] : req[where];
       expect(got, `${capId}: ${knob.key}=${value} reached audio.cpp as ${got}`).toBeCloseTo(value, 6);
+    }
+  }
+});
+
+test("every_generated_setting_reaches_the_runtime_in_its_own_type", () => {
+  // A model built from audio.cpp's spec: each setting lands under its own name, as the spec
+  // types it — a slider's number, a choice's word, a switch's on/off, a text field's text.
+  for (const capId of [...GENERATED_ROWS].sort()) {
+    const [engine, variant, base] = ROW_VARIANT[capId];
+    for (const knob of CAPABILITY_DETAILS[capId].knobs) {
+      const value = {
+        number: knob.max !== knob.default ? knob.max : knob.min,
+        choice: knob.choices.find((c) => c !== knob.default) ?? knob.choices[0],
+        switch: !knob.default,
+        text: "a text value",
+      }[knob.type];
+      const body = { text: "Hi.", language: "en", ...base };
+      if (knob.key === "seed") body.seed = Math.trunc(value);
+      else body.delivery = { engine: { [knob.key]: value } };
+      const req = toSpeechRequest(row(engine, variant), body);
+      const got = knob.key === "seed" ? req.seed : (req.options || {})[knob.key];
+      if (knob.type === "number") expect(got, `${capId}: ${knob.key}`).toBeCloseTo(value, 6);
+      else expect(got, `${capId}: ${knob.key}`).toBe(value);
     }
   }
 });

@@ -130,7 +130,9 @@ test("hf_sources_pin_a_commit_not_a_branch", () => {
       for (const src of variant.sources || []) {
         const rev = String(src.revision || "");
         if (!/^[0-9a-f]{40}$/.test(rev)) loose.push(`${eid}/${variant.id}: '${rev}'`);
-        expect(repos.has(src.hf_repo), variant.id).toBe(true);
+        // A generated engine downloads from whichever repo audio.cpp's spec names, pinned to the
+        // commit scripts/audiocpp-catalog.js resolved; a hand-wired one from our known repos.
+        if (!m.module.GENERATED) expect(repos.has(src.hf_repo), variant.id).toBe(true);
       }
     }
   }
@@ -138,8 +140,11 @@ test("hf_sources_pin_a_commit_not_a_branch", () => {
 });
 
 test("engine_kinds", () => {
-  const kinds = Object.fromEntries([...discoverEngines()].map(([k, m]) => [k, m.kind]));
+  const engines = [...discoverEngines()];
+  const kinds = Object.fromEntries(engines.filter(([, m]) => !m.module.GENERATED).map(([k, m]) => [k, m.kind]));
   expect(kinds).toEqual({ kokoro: "tts", qwen3: "tts", chatterbox: "tts", asr: "stt", kitten: "tts", pocket: "tts", voxcpm2: "tts" });
+  // Every engine built from audio.cpp's own files speaks.
+  for (const [k, m] of engines.filter(([, m]) => m.module.GENERATED)) expect(m.kind, k).toBe("tts");
 });
 
 // ─── current_variant_id recording (user-hit 2026-06-12) ────────────────
@@ -295,6 +300,9 @@ test("every_16_bit_row_is_its_8_bit_siblings_model_at_the_original_precision", (
   // borrowed CPU speed. KittenTTS has no 16-bit file.
   let seen = 0;
   for (const [eid, m] of discoverEngines()) {
+    // The hand-wired engines' 16-bit rows (`release.sixteenBit`); a generated engine's precisions
+    // are audio.cpp's own packages (audiocpp_generated.test.js).
+    if (m.module.GENERATED) continue;
     const rows = Object.fromEntries((m.module.VARIANTS || []).map((r) => [r.id, r]));
     for (const [vid, r] of Object.entries(rows)) {
       if (!(vid.endsWith("-bf16") || vid.endsWith("-f16"))) continue;
