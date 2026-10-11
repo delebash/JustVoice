@@ -2077,6 +2077,36 @@ cue lines rendered plain and directed (`POST /v1/generate`); every clip read bac
   but **"changes" person across ten lines** (overall good). In both, the takes not told already
   sound like the book on several lines (VoiceDesign 4 of 7): the words carry much of it.
   — *measured by ear*.
+- **Round 3** (2026-10-11, test branch `test/round3-engines` 1b5bff4, its server on the dev data
+  folder): the VoxCPM2 Hatter's clip and its words copied to **CosyVoice3** (Q8, 2.26 GB;
+  `template_name` instruct with `instruction` "Speak <direction>.", zero_shot when not told) and
+  **IndexTTS 2.5** (Q8, 3.50 GB; `use_emotion_text` with `emotion_text` = the direction). Seven
+  lines not told (seed 7) and told in round 2's fuller words (seeds 7, 8, 9) — 56 takes, none ran
+  away, every one read back as just its line (two CosyVoice3 slurs: "Two days run", "We cup
+  dormouse"). Once loaded, CosyVoice3 took a median 1.4 s a take, IndexTTS 2.5 7.5 s (max 16 s);
+  CosyVoice3's first take 18 s with the load. Listening page:
+  claude.ai/artifact/Q5D8U4jXRWb1RmHFpAFFgA (collection `round3`). — *measured*.
+- **Round 3 by ear (the user, 2026-10-11, 60 answers; the takes not told were for comparison
+  and not rated):**
+
+  | Line | CosyVoice3 told — seeds 7 / 8 / 9 | IndexTTS 2.5 told — seeds 7 / 8 / 9 |
+  |---|---|---|
+  | 1 sighed | plain / plain / plain | **like / like / like** |
+  | 2 angrily | like / plain / plain | **like / like / like** |
+  | 3 muttered | like / plain / like | plain / plain / plain |
+  | 4 contemptuously | plain / plain / plain | plain / plain / plain |
+  | 5 mournfully | plain / plain / plain | **like / like / like** |
+  | 6 triumphantly | like / plain / plain | like / plain / like |
+  | 7 shouted | plain / plain / plain | plain / plain / like |
+
+  IndexTTS 2.5: 12 of 21 tries like the book, 9 plain, none wrong; at least one like on 5 of 7
+  lines, and on three lines all three seeds agree. CosyVoice3: 4 of 21 like, 17 plain, none
+  wrong; at least one like on 3 of 7. Both: "the Hatter from the clip, on every line" — **same
+  person**; the voice good on 6 of 7 lines and OK on one (CosyVoice3 line 7, IndexTTS line 4);
+  overall good. Against round 2's VoxCPM2 (11 of 21, 1 wrong, seed-dependent): IndexTTS is level
+  on the count and steadier per line, and it alone got "sighed" on every seed. IndexTTS missed
+  "muttered" and "contemptuously" on every seed; VoxCPM2 missed "muttered" on every seed but got
+  "contemptuously" 2 of 3. — *measured by ear*.
 
 ---
 
