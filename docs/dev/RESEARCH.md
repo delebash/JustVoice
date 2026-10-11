@@ -1626,7 +1626,8 @@ audio.cpp's `docs/model_licenses.md`, checked upstream 2026-09-21…27). Their s
   MIT · `meanvc2` Apache-2.0 · `miocodec` MIT · `rvc` — base models MIT, packaged voices
   unlicensed; a user `.pth` (`voice_model_path`), `semitone_shift`, `pitch_path` (a `time,Hz`
   CSV that replaces the pitch curve), `retrieval_blend`, `unvoiced_protection`, `rms_mix_rate` ·
-  `seed_vc` GPL-3.0 weights · `vevo2` CC-BY-NC-ND-4.0. · `../audio.cpp/docs/audio_tools.md`,
+  `seed_vc` GPL-3.0 weights (its GitHub repo archived 2025-11-21 — *agent, 2026-10-11*) ·
+  `vevo2` CC-BY-NC-ND-4.0. · `../audio.cpp/docs/audio_tools.md`,
   `docs/tts.md:77-104`, `docs/models/tone_color_vc.md`.
 - `dots_tts` Edit (Apache-2.0) edits an existing line: `template_name=edit`, `source_audio`, and
   an instruction tagged `<del>`, `<ins>`, `<sub targ>`, `<emo>`, `<pitch>`, `<rate>`,
@@ -1646,9 +1647,12 @@ audio.cpp's `docs/model_licenses.md`, checked upstream 2026-09-21…27). Their s
 **AI outside our runtime** (*web, 2026-10-07*):
 
 - Step-Audio-EditX (980★, code Apache-2.0) edits existing speech — emotion, styles (whisper,
-  child, older, …), paralinguistics, denoise, speed; 3B; ≥12 GB VRAM, an AWQ 4-bit build
-  ~6–8 GB; Python/torch only, no GGUF or C++ runtime documented, not in audio.cpp. Its Hugging
-  Face weights carry no licence tag (engine scan). · `huggingface.co/stepfun-ai/Step-Audio-EditX`.
+  child, older, …), paralinguistics, denoise, speed; 3B; ≥12 GB VRAM, an AWQ 4-bit build needs
+  **8–10 GB** (two research agents independently, 2026-10-11; was: "~6–8 GB" until 2026-10-11);
+  Python/torch only, no GGUF or C++ runtime documented, not in audio.cpp. Its Hugging Face
+  weights carry no licence tag (engine scan). Its emotion edits score near chance: 20.9% on ESD
+  where chance is 20% (arXiv 2603.09120), 23.08% on doteBench's neutral set against 20.43% with
+  no edit (§10.9). · `huggingface.co/stepfun-ai/Step-Audio-EditX`.
 - RAVE is CC-BY-NC-4.0 (its LICENSE); DDSP is Apache-2.0 on TensorFlow; Beatrice v2 forbids
   commercial use (a secondary source).
 - LLM2Fx (Sony AI and KAIST, WASPAA 2025, arXiv 2505.20770): LLMs predict EQ and reverb
@@ -2034,8 +2038,12 @@ cue lines rendered plain and directed (`POST /v1/generate`); every clip read bac
   voice in one request.** FireRedTTS3 has no style control on a clone at all (Base takes only
   the `clon` task; Instruct's clone prompt is fixed and its `instruction` is overwritten by the
   clip's transcript). dots.tts takes emotion only through its separate Edit model — render the
-  take, then re-run that audio with `<emo type="sad" level="2">…</emo>` (`options.template_name
-  = "edit"`, `/v1/tasks/run`), a second 3 GB model; `instructions` is ignored on a plain line.
+  take, then re-run that audio with `<emo desc="a happy and excited tone">…</emo>` (doteBench's
+  Fig. 1, arXiv 2608.02673; audio.cpp passes the attributes through unchecked,
+  `src/models/dots_tts/session.cpp:247-258`; was: `<emo type="sad" level="2">`, documented nowhere
+  upstream — until 2026-10-11) (`options.template_name = "edit"`, `/v1/tasks/run`), a second 3 GB
+  model; `instructions` is ignored on a plain line. doteBench (by the dots team) puts its emotion
+  edits at 33.17% on a neutral set against 20.43% unedited.
   Both refuse any option not in their spec (no temperature, no speed). Sizes (Q8): dots SOAR 2.96
   GB, Edit 2.96 GB; FireRedTTS3 Base 4.18 GB, Instruct 4.15 GB. Licences: dots Apache-2.0 per its
   README (the Edit card's HF tag reads "other"); FireRedTTS3 Apache-2.0 with the README's "solely
@@ -2126,6 +2134,42 @@ cue lines rendered plain and directed (`POST /v1/generate`); every clip read bac
   on the count and steadier per line, and it alone got "sighed" on every seed. IndexTTS missed
   "muttered" and "contemptuously" on every seed; VoxCPM2 missed "muttered" on every seed but got
   "contemptuously" 2 of 3. — *measured by ear*.
+
+### 10.7 Judging emotion in a take automatically
+
+All *agent, 2026-10-11*, not re-checked — a research agent reading our fork (`55b150f4`),
+upstream main (`96269554`) and the web.
+
+- **Nothing in audio.cpp is a dedicated speech-emotion model**; no emotion2vec port in its history.
+- **SenseVoice-Small (`sense_asr`) is in our base** and tags each transcription with one of HAPPY,
+  SAD, ANGRY, NEUTRAL, FEARFUL, DISGUSTED, SURPRISED, plus events (Laughter, Cry, Breath, Cough …).
+  Called as JSON `POST /v1/audio/transcriptions/details` with `options: {keep_tags: true,
+  audio_chunk_mode: "none"}` (the multipart form drops `options`, `app/server/runtime.cpp:2697-2756`;
+  under `auto` each chunk gets its own tags). It returns the tag only — a greedy argmax, no score
+  (`src/community_models/sense_asr/session.cpp:139-166, 201-213`); the logits exist
+  (`session.cpp:629`) but aren't returned. FunASR Model License v1.1, commercial use Yes
+  (`docs/model_licenses.md:108`); 254 MB Q8, `min_vram_gb` 4. Not in JustVoice's catalog.
+- **Upstream main only:** CED (`ced`, Apache-2.0, 22–343 MB) and AST (`ast_audioset`, BSD-3, 346 MB,
+  first 10.24 s only) score the 527 AudioSet classes through `POST /v1/tasks/run` — speech cues
+  among them: Shout, Yell, Screaming, Whispering, Laughter, Giggle, Chuckle, "Crying, sobbing",
+  Whimper, Sigh, Groan, Gasp (independent sigmoids). Audio Flamingo 3 (NVIDIA non-commercial,
+  5.5 GB Q4) and LFM2.5-Audio (conditional, under USD 10M revenue) answer questions in text;
+  SAMSONE (in our base, licence unstated) likewise; FireRedAudio's `understand` needs 10 GB.
+- **Outside audio.cpp:** emotion2vec+ large/base (angry, disgusted, fearful, happy, neutral,
+  other, sad, surprised, unknown; licence sources conflict; no official C++/ONNX port — one GGUF
+  for the Vokra runtime); SenseVoice through `sherpa-onnx-node` (tag strings, no score);
+  audeering's arousal/valence/dominance model is CC-BY-NC-SA (research only).
+- **How the papers score emotion:** CosyVoice 3 — `emotion2vec_plus_large` classification
+  accuracy on happy/sad/angry, text-related vs text-unrelated lines (CosyVoice3-0.5B
+  0.92/0.70/0.72 related, 0.64/0.42/0.58 unrelated; arxiv 2505.17589). IndexTTS2 — "ES", a
+  similarity of emotion2vec representations, plus human EMOS (ES 0.887 vs CosyVoice2 0.802;
+  arxiv 2506.21619). EmergentTTS-Eval — Gemini 2.5 Pro judging pairwise (arxiv 2505.23009).
+  Qwen3-TTS and VoxCPM2 report only InstructTTSEval; Chatterbox none found.
+- **Known weaknesses:** classifiers call neutral speech neutral ~0.99 of the time, so averages
+  flatter a model (arxiv 2507.12015); accuracy falls when the words don't match the emotion
+  (CosyVoice 3); embedding similarity rewards mimicry and is skewed by speaker and wording
+  (arxiv 2604.26347); audio LLMs judge mostly by the words (arxiv 2510.25054). Directions like
+  "muttering" or "scornful" have no class in any of these label sets.
 
 ### 10.8 Direction per model — the authors' way against ours
 
@@ -2229,41 +2273,287 @@ cue lines rendered plain and directed (`POST /v1/generate`); every clip read bac
   adapter. **Orpheus is not in audio.cpp** (base or upstream main; a roadmap candidate only,
   2026-10-01 scan) — running it would mean porting it. — *code + web, 2026-10-11*.
 
-### 10.7 Judging emotion in a take automatically
+### 10.9 The field: models for emotion on a cloned voice (sweep of 2026-10-11)
 
-All *agent, 2026-10-11*, not re-checked — a research agent reading our fork (`55b150f4`),
-upstream main (`96269554`) and the web.
+*agent, 2026-10-11* — a broad web sweep (five researchers under one agent; its re-fetched quotes
+marked ✓), not re-checked by the session unless a line says so. The session's web-search cap ran
+out mid-sweep; unchecked then: ParaStyleTTS, InstructAudio, EmoCtrl, MPE-TTS, UniStyle, StableVC,
+StreamVoice, FreeVC, EmoConv-Diff, PromptEVC, VoiceCraft-X, CapSpeech-Eval, S2S-Arena, Voxtral's
+emotion control, EmoSteer's code (a follow-up sweep is running).
 
-- **Nothing in audio.cpp is a dedicated speech-emotion model**; no emotion2vec port in its history.
-- **SenseVoice-Small (`sense_asr`) is in our base** and tags each transcription with one of HAPPY,
-  SAD, ANGRY, NEUTRAL, FEARFUL, DISGUSTED, SURPRISED, plus events (Laughter, Cry, Breath, Cough …).
-  Called as JSON `POST /v1/audio/transcriptions/details` with `options: {keep_tags: true,
-  audio_chunk_mode: "none"}` (the multipart form drops `options`, `app/server/runtime.cpp:2697-2756`;
-  under `auto` each chunk gets its own tags). It returns the tag only — a greedy argmax, no score
-  (`src/community_models/sense_asr/session.cpp:139-166, 201-213`); the logits exist
-  (`session.cpp:629`) but aren't returned. FunASR Model License v1.1, commercial use Yes
-  (`docs/model_licenses.md:108`); 254 MB Q8, `min_vram_gb` 4. Not in JustVoice's catalog.
-- **Upstream main only:** CED (`ced`, Apache-2.0, 22–343 MB) and AST (`ast_audioset`, BSD-3, 346 MB,
-  first 10.24 s only) score the 527 AudioSet classes through `POST /v1/tasks/run` — speech cues
-  among them: Shout, Yell, Screaming, Whispering, Laughter, Giggle, Chuckle, "Crying, sobbing",
-  Whimper, Sigh, Groan, Gasp (independent sigmoids). Audio Flamingo 3 (NVIDIA non-commercial,
-  5.5 GB Q4) and LFM2.5-Audio (conditional, under USD 10M revenue) answer questions in text;
-  SAMSONE (in our base, licence unstated) likewise; FireRedAudio's `understand` needs 10 GB.
-- **Outside audio.cpp:** emotion2vec+ large/base (angry, disgusted, fearful, happy, neutral,
-  other, sad, surprised, unknown; licence sources conflict; no official C++/ONNX port — one GGUF
-  for the Vokra runtime); SenseVoice through `sherpa-onnx-node` (tag strings, no score);
-  audeering's arousal/valence/dominance model is CC-BY-NC-SA (research only).
-- **How the papers score emotion:** CosyVoice 3 — `emotion2vec_plus_large` classification
-  accuracy on happy/sad/angry, text-related vs text-unrelated lines (CosyVoice3-0.5B
-  0.92/0.70/0.72 related, 0.64/0.42/0.58 unrelated; arxiv 2505.17589). IndexTTS2 — "ES", a
-  similarity of emotion2vec representations, plus human EMOS (ES 0.887 vs CosyVoice2 0.802;
-  arxiv 2506.21619). EmergentTTS-Eval — Gemini 2.5 Pro judging pairwise (arxiv 2505.23009).
-  Qwen3-TTS and VoxCPM2 report only InstructTTSEval; Chatterbox none found.
-- **Known weaknesses:** classifiers call neutral speech neutral ~0.99 of the time, so averages
-  flatter a model (arxiv 2507.12015); accuracy falls when the words don't match the emotion
-  (CosyVoice 3); embedding similarity rewards mimicry and is skewed by speaker and wording
-  (arxiv 2604.26347); audio LLMs judge mostly by the words (arxiv 2510.25054). Directions like
-  "muttering" or "scornful" have no class in any of these label sets.
+- **No neutral leaderboard scores per-emotion acting on a cloned voice.** HF TTS Arena V2 rates
+  built-in voices (open leaders Chatterbox 1481, Kokoro 1478, Maya1 1411; JSON at
+  `tts-agi-tts-arena-v2.hf.space/api/leaderboard`); Artificial Analysis's provider-voice arena
+  (open: Breeze 2 1222, Fish S2 Pro 1116, Step-Audio-EditX 1096, Voxtral 1086) and its 8-clone
+  "Controlled Voice" arena (Breeze 2 1017, OpenAudio S1 Mini 1006, Fish S2 Pro 1005, Voxtral 1002,
+  Higgs V3 960, Chatterbox 933) rate overall preference
+  ([artificialanalysis.ai](https://artificialanalysis.ai/text-to-speech/leaderboard));
+  InstructTTSEval scores voice design and built-in voices, not clones.
+- **Cloning costs acting.** In the dots.tts paper's EmergentTTS Emotions run: Qwen3 on a clone
+  39.8 against its built-in Ryan 60.5; VoxCPM2 clone 42.3; F5 26.8 (arXiv 2606.07080). Boson's own
+  run on a shared clip, no tags (✓ Higgs v3 card): OmniVoice 61.07, MOSS-TTS v1.5 60.54, Higgs 3
+  53.75, Fish S2 Pro 53.04, Qwen3-1.7B 45.54, IndexTTS-2 39.29.
+- **SceneTTS-Bench** (✓ arXiv 2609.26255, ACM MM 2026; academic, makes none of the models) — speaker
+  consistency across a character's turns (CAM++) and under-acting of high-tension lines: Qwen3-TTS
+  0.96 / 85.5%, CosyVoice3 0.90 / 81.6%, IndexTTS2 0.74 / 81.1%, Fish-S2 0.71 / 84.5%. Every system
+  under-acts more than 80% of high-tension lines; the variant and emotion mode each ran are not
+  stated.
+- **BreezeBlue's Voice Direction board** (vendor; 700 cloned-voice tasks, 150 on emotion, Gemini
+  3.1 Pro judge, [breezeblue.ai](https://breezeblue.ai/benchmarks/tts-voice-direction)): Breeze
+  4.25, MiMo-v2.5 3.76, StepAudio 2.5 3.48, Qwen-Audio 3.0 3.33, VoxCPM2 2.49. Breeze TTS 2's vendor
+  suggests cfg 2–4 (HF discussion #15); its PyTorch build ran out of memory on a 2060 Super
+  (dsect-net/quantum #37); an open report of timbre drifting between segments, 2026-10-10
+  (breezeblue-ai/breeze-tts #25).
+- **Higgs Audio v3's licence** is research / non-commercial with a **Creator Use Grant**:
+  monetized audiobooks are allowed with credit, but not "embedding or integrating … in a
+  product, application, or service" (✓ its LICENSE on Hugging Face) — a user could sell books made
+  with it; JustVoice could not ship it built in.
+- **Fish S2 Pro's** EmergentTTS 86.61 used several reference clips with the best reported,
+  Gemini-inserted tags and an unreleased text frontend (fish-speech #1253); a user found its tags
+  "very subtle to essentially inaudible" on emotion-neutral text across temperatures 0.6–1.5 (✓
+  fish-speech #1280, closed unanswered).
+- **AffectF5** (CC BY-NC 4.0, a LoRA on F5 v1, Python): on 24 cloned speakers, emotion recall
+  73.5% against IndexTTS2 62.3% and F5 30.8%; speaker similarity 0.619 / 0.580 / 0.744 (✓ its repo;
+  authors' numbers, 1★, unchecked by anyone else).
+- **Ming-omni-tts** (Ant, MIT, PyTorch, 0.5B and 16.8B-A3B): clone + emotion instruction in one
+  call; CV3-Eval emotion accuracy on emotional / neutral text, 0.5B 0.700 / 0.343 against
+  CosyVoice3-0.5B 0.663 / 0.400 (✓ its README) — below CosyVoice3 on neutral text by its own table.
+- **Zonos v0.1** (Apache, 1.6B, PyTorch): an 8-slot emotion vector + speaker embedding; no
+  accuracy published; the authors say emotion follows the text's sentiment; dormant since 2025-03.
+- **Can't hold a cloned person:** Maya1 (20 tags, no cloning; "does not establish consistent
+  speaker identity"); Orpheus (tags only on its fine-tuned voices; cloning broken per its own
+  checklist and issues #99, #134; community GGUFs exist); Voxtral 4B (the open checkpoint has no
+  codec encoder, so no cloning; CC-BY-NC); OmniVoice (`instruct` designs only; CC-BY-NC); Kimi-Audio,
+  GLM-4-Voice, MiMo-Audio (clone + instruct undocumented). Qwen3's promised VoiceEditing (clone +
+  instruct) is still unreleased (QwenLM/Qwen3-TTS #14).
+- **Clone only, no direction:** Dia/Dia2, CSM-1B (EmergentTTS Emotions 7.32), Kyutai TTS 1.6B (no
+  encoder released), MegaTTS3 (encoder withheld), Llasa, OuteTTS, Spark-TTS (control disables the
+  clone), ZONOS2 (8B MoE; Q4 GGUF 4.9 GB via zonos2.cpp), GLM-TTS, Echo-TTS, Audio8, Kova TTS 1.
+- **Out on size or weights:** MOSS-TTSD v1.0 (q4 9.5 GB; audio.cpp's own doc: "identity drifts
+  across turns"), MOSS-TTS v1.5 8B, VibeVoice 7B (its TTS code pulled 2025-09), KugelAudio (19 GB),
+  DramaBox (~24 GB), Higgs v2 (24 GB). `index_echo` is speech translation, not TTS.
+- **EmoTra-TTS** (EMNLP 2026, arXiv 2608.23791) — *web, checked by the session 2026-10-11*: a
+  method plus training code on CosyVoice2-0.5B (two fine-tuning stages, LLM and flow decoder,
+  +0.43% parameters) that moves emotion **within one line** along valence/arousal/dominance from a
+  start to an end value. The repo (github.com/Liu-Tianchi/EmoTra-TTS) is Apache-2.0, **code only, no
+  trained weights**; you train it on EmoVoice-DB. "A separate model is trained per voice, and
+  zero-shot generalization to arbitrary unseen speakers is not yet demonstrated" (paper,
+  Limitations); no reference-audio input at inference. README: "The core method of EmoTra-TTS has
+  been submitted for patent protection." (The paper's ethics statement said non-commercial
+  research; the repo's licence file says Apache-2.0.)
+- **Render, then edit** is not viable today: doteBench (✓ arXiv 2608.02673, by the dots team),
+  emotion accuracy on its neutral set — no edit 20.43%, AuK 21.63, Step-Audio-EditX 23.08,
+  Ming-UniAudio 25.72, MiMo 23.08, FireRedTTS3-Instruct 20.43, dots.tts.edit 33.17. AuK needs a
+  research-only Qwen2.5-Omni encoder; its Q8 packages total ~6.5 GB though audio.cpp's catalog
+  lists 20 GB.
+- **Act, then convert:** emotion kept after conversion on ESD ranges 37% (HierSpeech++) to ~77%
+  (ConsistencyVC) (arXiv 2506.04013); OpenVoice: "in rare cases the emotion will be slightly
+  neutralized" [authors]; whisper, shout and sigh surviving conversion are measured nowhere.
+- **audio.cpp's catalog memory minimums are coarse** (`webui/configs/models_catalog.json`:
+  chatterbox 12, omnivoice 10, breeze/fish/cosyvoice3 8, higgs 6, voxcpm2 6 GB) — Chatterbox and
+  CosyVoice3 run on this 8 GB card.
+- **The sweep's ranked shortlist for a consistent clone with reliable per-line emotion on 8 GB:**
+  IndexTTS 2.5 the authors' way (vector at ~0.6, or an acted take as its emotion clip); best-of-N
+  with an automatic judge on IndexTTS 2.5 and VoxCPM2 clip-only; Breeze TTS 2 (cfg 1–4); Higgs v3
+  (tagged vs untagged); act-then-reference / act-then-convert; AffectF5 (sidecar); Fish S2 Pro with
+  stacked tags; OmniVoice or MOSS-TTS-Local untagged.
+
+### 10.10 Techniques, pipelines and production (sweep of 2026-10-11)
+
+*agent, 2026-10-11* — as §10.9; ✓ = re-fetched by the agent. Unsearched when the cap ran out:
+Reddit, Hacker News, the latest conference sweeps, breath handling, dual-narration norms (follow-up
+running).
+
+- **Best-of-N with automatic selection works** for errors and expressiveness: Llasa (✓ arXiv
+  2502.04128) — verifiers of speaker similarity, Whisper WER and emotion2vec raised (1B model) WER
+  12.13→5.24, similarity 0.638→0.750, emotion similarity 0.768→0.937; independently (✓ arXiv
+  2607.08256) a 12% relative WER cut over F5 at N=10, with a warning that a verifier and an
+  evaluator from the same ASR family inflate the gain. No published gain from picking on an
+  emotion classifier was found. ElevenLabs Studio's export QA checks "volume distortions", "voice
+  similarity", "mispronunciations", "missing or additional words" and regenerates "up to twice"
+  (✓ its docs).
+- **Emotion banks:** IndexTTS2/2.5 take a voice clip and an emotion clip separately (✓ README;
+  `emo_alpha` 0.9 in their clip example); a community guide finds the emotion clip "stronger, more
+  consistent" than emotion text, advises clips "from the same speaker as the timbre reference",
+  and warns an emotional timbre clip leaks into the voice. F5-TTS's own app has a "Multi-Speech"
+  tab with a clip per speech type ({Regular} {Sad} {Angry} {Whisper}…) (✓ `infer_gradio.py`).
+- **The voice clip's delivery carries into every line** (✓ Audiobook-CC, arXiv 2509.17516): the
+  target line itself as the clip gave similarity 0.87 but style S-MOS 3.45; another clip from the
+  chapter 0.69–0.79 and 3.82–3.86 — a frozen character clip should be calm. Neighbouring sentences
+  as context raised S-MOS 3.82→3.93; chapter-level M-MOS 4.25 against CosyVoice2 3.88 and MOSS-TTSD
+  3.72.
+- **Context in long form:** Higgs Audio renders each chunk with the previous generated audio and
+  the reference in the prompt (✓ its examples); MoonCast — one long pass beat stitching on coherence
+  (4.13 vs 3.80) but lost speaker similarity (0.77 vs 0.86) (arXiv 2503.14345).
+- **Intensity:** EmoKnob (speaker-embedding arithmetic, EMNLP 2024) and EmoSteer-TTS (activation
+  steering; code promised) both degrade quality at high strength and would need fork changes;
+  IndexTTS's `emo_alpha` is the knob we have.
+- **Papers:** MultiActor-Audiobook (GPT-4o instruction per sentence) rated below ElevenLabs on
+  every measure (MOS-E 2.9 vs 4.2, MOS-Q 2.4 vs 4.6), and removing its instructions *raised*
+  quality 2.4→2.8 — direction can cost quality (arXiv 2505.13082). Dopamine Audiobook splits lines
+  by emotion and picks an engine per line (3.685→2.929 without the split); its GPT-4o judge reached
+  r=0.601 with humans (arXiv 2504.11002). Deep Dubbing (✓ arXiv 2509.15845): a fixed template per
+  character and "emotion | scene | text" per line raised MOS-E 3.67→4.15. LibriQuote (✓ Deezer,
+  arXiv 2509.04072): 5.3K hours of book quotes with pseudo-labelled speech verbs and adverbs
+  ("whispered softly"), released — a ready key for our direction step.
+- **Open projects worth copying** (GitHub, 2026-10-11): Pandrator (MIT; audio.cpp is "the default
+  for new workspaces", an MCP server and a Claude Code skill ✓; a character dictionary with
+  aliases, review status and locks; LLM pronunciation proposals inactive until approved; text shown
+  kept apart from text spoken); tts-audiobook-tool (MIT; read-back verification that keeps the most
+  accurate take, EBU R128 loudness, a pause table per boundary ✓, a read-along player with word
+  timings in the M4B); Alexandria (MIT; a second LLM review pass; 500 ms at a speaker change, 250 ms
+  within one speaker ✓; notes "Instruct directions are ignored for cloned voices" ✓); TTS-Story
+  (voice candidates per speaker; an ACX preset); epub2tts (Whisper-tiny fuzzy match → regenerate up
+  to twice); abogen (spaCy part-of-speech heteronym choice); Storyteller (EPUB 3 Media Overlays);
+  audiobook-creator (an Orpheus loop detector; Qwen3-30B-A3B found best for attribution).
+- **Commercial workflows:** ElevenLabs Character Casting (✓ 2026-07-30) detects characters,
+  proposes a voice each, previews on the character's own dialogue, pre-fills a pronunciation
+  dictionary with unusual names, sets break lengths once; Studio's breaks default 1 s, max 3 s,
+  "Lock paragraph", no M4B export. Google Play: "Detect characters" English only and can't be
+  undone. KDP Virtual Voice: Short/Medium/Long pauses, respelling "Apply to all instances".
+- **Pauses** (no distributor publishes rules): tts-audiobook-tool "Normal" ✓ — phrase 0.5 s,
+  sentence 0.9, paragraph 1.2, space break 2.0, section break 2.5 ("Shorter" 0.3/0.6/0.9/1.5/2.0);
+  Alexandria 500 ms at a speaker change, 250 within one speaker. JustVoice today: 600 ms between
+  lines, 250 within a paragraph, 2,000 at a scene break (`server/src/models.js:301-308`, *code*) —
+  nothing specific to a speaker change, after a chapter title, or for head/tail room tone.
+- **Room tone and files:** ACX 1–5 s head and tail (§10.3); Pozotron: "2.5-3.5 is the most common
+  length for end room tone". ACX: one chapter per file with its header, under 120 min, credits
+  matching the metadata, "You have been listening to…" and "The End", retail sample ≤ 5 min.
+  Apple: 22.05 kHz/16-bit or better, chapter titles as printed (255-byte limit); Google: MP3 ≥128
+  kbps mono. ffmpeg writes Nero plus QuickTime chapters; `-movflags disable_chpl` writes QuickTime
+  only, since Nero "can cause failures" with some taggers.
+- **The sweep's ranked list:** take check with best-of-N; an emotion bank per character as
+  IndexTTS's emotion clip; pauses and room tone as settings; structured direction (a stable
+  character profile + "emotion | scene | manner" per line, split a line where its emotion
+  changes); a pronunciation pre-pass; voice candidates per character with a calm frozen clip; a
+  character dictionary with aliases and locks; act-then-convert (weak evidence); neighbouring
+  context; delivery polish (QuickTime-only chapters, credits, a sample, a digital-voice disclosure,
+  read-along timings through `qwen3_forced_aligner`).
+
+### 10.11 Testing takes automatically: tools and protocol (sweep of 2026-10-11)
+
+*agent, 2026-10-11* — as §10.9; the items the agent re-checked at source: EmoVoice's ρ table,
+TTSDS2, ParaSpeechCLAP, SES-Judge, Empathic-Insight, DS-WED, Audiobox, UTMOSv2, the ACX page,
+Pozotron, Orion QC, RW-Voice-EQ, SwanBench, ViSQOL, Hume, Gemini prices.
+
+- **Scorers agree with people on model averages, not on single takes:** EmoVoice (arXiv
+  2504.12867, Table 10) — emotion2vec similarity ρ 0.94 per model but 0.40 per sentence;
+  Gemini-2.0-flash 0.94 / 0.20; GPT-4o-audio 0.77 / 0.26. Automation can rank models and reject
+  bad takes; a person still chooses between good ones.
+- **Quality (MOS) predictors barely separate modern TTS:** TTSDS2 (20 open systems, arXiv
+  2506.19441) — UTMOSv2 0.39, UTMOS 0.51, Audiobox up to 0.60, SQUIM ~0.68, NISQA ~0; on 11 current
+  zero-shot models (arXiv 2603.24430, Chinese) UTMOSv2 0.118, DNSMOS 0.091, speaker similarity 0.68.
+- **Picking on a scorer can game it:** Llasa's emotion-guided search reached emotion2vec
+  similarity 0.974, above real speech's 0.94, with worse WER and no human check.
+- **Emotion and style scorers:** emotion2vec+ (licence sources conflict: FunASR MODEL_LICENSE
+  v1.1 vs an MIT badge with no LICENSE file); **LAION Empathic-Insight-Voice** (CC-BY-4.0; 40
+  continuous emotion intensities plus valence, arousal, monotone-vs-expressive; Whisper-Small
+  encoder, CPU, 30 s cap; ~5,000 h synthetic acting + ~5,000 h real speech; expert agreement ρ 0.418,
+  level with Gemini 2.5 Pro 0.417; its loaded backbone's licence unstated); **ParaSpeechCLAP**
+  (MIT code and weights, training data CC-BY-NC-SA; scores audio against a free-text style —
+  23 situational tags such as angry, whispered, saddened; ships `best_of_n.py`; best-of-10 by
+  human raters: tag recall 69.2→74.3%, CMOS 3.61→3.70) — covers directions with no emotion class;
+  SES-Judge (emotion similarity to a reference, ρ 0.530 vs emotion2vec cosine 0.306; weights not
+  released); a commercial-OK arousal/valence/dominance model trained on real speech — not found.
+- **Vocal events:** BEATs (MIT), Whisper-AT (BSD, transcript + 527 AudioSet classes), PANNs
+  (CC-BY-4.0), YAMNet (Apache); NonverbalTTS scores the Jaccard distance between requested and
+  detected events.
+- **Speaker similarity** agrees with listeners moderately (ECAPA ~0.77 LCC, WavLM ρ 0.55 per
+  utterance) and **drops on emotional speech** (WavLM cosine 0.88–0.91 read vs 0.54–0.85 emotional,
+  ClonEval arXiv 2504.20581) — score within (character, emotion), never against a fixed threshold.
+  CAM++ / ERes2NetV2 (3D-Speaker, Apache-2.0, ONNX); ECAPA2 is non-commercial.
+- **Read-back:** Open ASR Leaderboard (2026-10-09) English WER — Qwen3-ASR-1.7B 5.40, Canary-Qwen
+  5.94, Parakeet-TDT v3 6.18 (6,132× real time), Whisper large-v3 7.16. Normalise both texts with
+  Whisper's normaliser and align (jiwer): deletions = skipped words, insertions and repeats =
+  runaways. Forced alignment: NeMo Forced Aligner (Apache), WhisperX (BSD-2), MFA (MIT);
+  ctc-forced-aligner's default model is non-commercial, whisper-timestamped AGPL. Names:
+  wav2vec2-xlsr-53-espeak-cv-ft (Apache) outputs eSpeak phonemes for a per-name check (untested).
+  The industry's shape: Penguin Random House's Orion QC compares an ASR transcript with the
+  manuscript for missing, repeated and misread text and silences over 3 s — days to minutes ✓.
+- **Audio-LLM judges:** EmergentTTS-Eval (Apache) — pairwise against a fixed baseline, Gemini 2.5
+  Pro, rank ρ 0.905 with humans, ~$50 per system; on speaking-style instructions Gemini-2.5-Pro
+  r 0.640 vs human-human 0.596, GPT-4o-audio 0.355 (arXiv 2506.05984); order flips 10–13% of
+  verdicts (AudioJudge); judges follow the words when words and voice disagree; Hume's RW-Voice-EQ:
+  expression r 0.47, 0.25 with the text cue withheld, identity tracked "especially poorly".
+  SpeechJudge-GRM 77.2% pairwise agreement (CC-BY-NC). No local judge is published as reliable.
+  Gemini prices: 2.5 Pro $1.25/$10, 3.1 Pro preview $2/$12, 3.8 Flash $0.75/$3.75 per M tokens;
+  audio 32 tokens/s.
+- **Toolkits:** VERSA (ESPnet; 90+ metrics incl. UTMOS, Audiobox, WER, speaker similarity,
+  emo2vec, A/V/D; licence file Apache-2.0, badge MIT) — the standard harness; TTSDS2 (scores sets
+  of clips); SwanBench-Speech (long-form, code promised).
+- **Listening:** webMUSHRA (Fraunhofer licence, AB/MUSHRA, CSV) is the standard page; Label
+  Studio (Apache) has pairwise audio; BeaqleJS is GPL-3.0; ASAP (MIT) picks the next pair by
+  information gain; for one listener, forced-choice AB beats MOS; bootstrap by listener and line.
+- **ACX/ffmpeg checks:** noise floor = the RMS of the quietest 0.5 s block
+  (`asetnsamples=n=22050,astats=metadata=1:reset=1`), not astats' `Noise_floor` (a minimum peak)
+  or `RMS_trough` (read −38.5 against a true −74.8); room tone via `silencedetect=n=-60dB:d=0.5`;
+  `adeclick` needs tuning (4 "clicks" on a clean sine).
+- **The sweep's recommended kit:** per take — a signal gate (ffmpeg clipping/silence, seconds per
+  character vs the voice's median for runaways), read-back (Parakeet, Qwen3-ASR second), same
+  character (CAM++ z-score), emotion and direction (emotion2vec+, Empathic-Insight, ParaSpeechCLAP,
+  a vocal-event check), quality outliers (UTMOSv2, Audiobox PQ/CE); send to a person near-misses,
+  scorer disagreements, close top-two takes and 15–25% at random; audit the scorer's pick against a
+  random seed on ~20 lines by ear (stop picking by scorer below ~60% agreement). Model comparison:
+  happy/sad/angry + neutral, 20 lines each (10 emotion-matching words, 10 neutral, plus 5
+  contradicting), 3 seeds, paired bootstrap over lines, blind AB on a random seed chosen by ASAP —
+  about 1–1.5 h of listening for 4 models. The z-score combiner is NOT STANDARD (the standard is
+  VERSA's scores read separately).
+- **Licence flags** (only if shipped in the app): non-commercial — NISQA weights, SpeechJudge-GRM,
+  Vox-Profile, audeering, openSMILE, Audio Flamingo 3, ECAPA2, ctc-forced-aligner's default,
+  AutoPCP; GPL/AGPL — Parselmouth, Allosaurus, BeaqleJS, whisper-timestamped.
+
+### 10.12 The text side: attribution, normalization, pronunciation, import (sweep of 2026-10-11)
+
+*agent, 2026-10-11* — as §10.9. Unsearched when the cap ran out: LLM IPA accuracy for names, LLM
+heteronym accuracy, French/Russian attribution sets, a multilingual BookNLP, NeMo's language list,
+Claude or GPT-4o on PDNC (follow-up running).
+
+- **Ours today** (*code*): attribution 240/240 on two Alice chapters, 138 of them decided by the
+  rule; **no text normalization** of our own (`server/src` has no number/ordinal/abbreviation
+  expansion — Kokoro's own `normalize_numbers` is in the fork,
+  `src/models/kokoro_tts/g2p_multilingual.cpp:237`); **EPUB import is text only** — `epub:type`
+  ignored, so footnotes, notes, front and back matter come in as text, italics dropped
+  (`imports/adapters/book_prose.js:34,301,319`); no MOBI or PDF; lexicons match exact spellings, so
+  heteronyms can't be told apart.
+- **PDNC** (github.com/Priya22/project-dialogism-novel-corpus): 35,978 quotes over 22 novels (later
+  28), each with speaker, addressees, type (explicit / anaphoric / implicit) and a
+  `character_info.csv` with aliases and gender; no licence stated. Llama-3 8B with the whole
+  chapter, the alias list and chain of thought: 90.6% (PDNC1) / 88.5% (PDNC2), BookNLP+ 78.5 / 79.2;
+  without the alias list it invented names; feeding back its previous answers +0.9 points (arXiv
+  2406.11380, NAACL 2025). **ModernBookNLP** (ModernBERT-large joint scoring, arXiv 2608.02359,
+  2026-08): 94.5% overall — explicit 99.3, anaphoric 95.5, implicit 89.3 — 0.43 s per novel on an
+  A100 (Llama-3-8B 400–2,800 s); a gold character list assumed; licence not shown. BookNLP: MIT,
+  English, ~2–4 min per book on CPU. LitBank: quotes with speakers, CC BY 4.0. Chinese: SIG
+  86.15%, JY-QuotePlus; German: DROC. Group lines and nested quotes: no paper evaluates them.
+- **Direction from text:** no per-utterance emotion dataset of novel dialogue found (nearest:
+  MELD, EmotionLines, DailyDialog); StoryTTS (Mandarin, CC-BY-NC) labels rhetorical device, sentence
+  pattern, scene (role-play / aside / inner monologue), imitated character and free emotion words —
+  zero-shot labelling poor, few-shot with explanations used; labels raised MOS 3.88→4.09.
+  "Voicing Personas": closed attributes turned into one sentence beat an open description
+  slightly. No paper measures over-marking (ours: 4–5%).
+- **Casting:** CroSS (EMNLP 2024): LLM character profiles promising but hallucinate on complex
+  plots; ParaSpeechCLAP could rank library voices against a description.
+- **Text normalization:** LLMs make ~40% fewer errors than production rules (NVIDIA, arXiv
+  2309.13426); PolyNorm (Apple, arXiv 2511.03080) — GPT-4o 4.17–7.88% WER vs rules 9.72–17.49% over
+  8 languages, a released benchmark (27 categories × 20 per language). NeMo-text-processing
+  (Apache, Pynini; pip unsupported on Windows), WeTextProcessing (zh/en/ja, C++ runtime).
+- **Pronunciation:** misaki (Kokoro's G2P, inline IPA, espeak fallback), espeak-ng (GPL-3.0+),
+  OpenPhonemizer (archived 2026-03-15), DeepPhonemizer (MIT; en/de/fr/es), CharsiuG2P (MIT, 100
+  languages, PER 0.089–0.107). WikipediaHomographData (Apache, 162 homographs × ~100 sentences) is a
+  ready heteronym test set.
+- **Book import:** EPUB 3 structural semantics (W3C Note 2026-05-28) marks frontmatter,
+  backmatter, footnote, noteref, endnotes, pagebreak, epigraph, dedication, copyright-page and more;
+  calibre's `ebook-convert` reads MOBI/PDF with chapter XPath and heuristics; Docling (MIT) recovers
+  PDF reading order; Marker's weights are restricted commercially above $5M; Chapter Captor finds
+  chapter headers at F1 0.77.
+- **Book-to-script tools** (Alexandria, audiobook-creator, VoxNovel, ebook2audiobook, epub2tts,
+  Dopamine): none publishes text-side accuracy — our answer key is more rigorous than any.
+- **The sweep's ranked list:** test against PDNC and LitBank by quote type; a normalization step
+  (patterns find spans, the LLM rewrites only those, spoken text stored beside the original); an
+  import that reads EPUB semantics; one cast for the whole book with aliases and gender before
+  Analyze; previous answers shown to the next piece; LLM-proposed pronunciations for scanned
+  names; heteronyms by sense; a scene field and intensity in direction; ModernBookNLP as a second
+  opinion; cited character profiles for casting.
 
 ---
 

@@ -6,6 +6,30 @@ The holding pen for unscheduled JustVoice ideas — same charter as JW's
 
 ---
 
+- **2026-10-11 · What the research sweep says would make the audiobooks better** — the user
+  asked for a broad sweep ("you know our goal is the best audiobook converter possible so any new
+  models techniques tools anything lets dig in"), then "write this info to docs update all docs".
+  Nothing here is decided or scheduled; each needs its own word. The facts and sources are
+  RESEARCH §10.9–10.12. The sweep's ideas, by area:
+  - **Acting:** re-test IndexTTS 2.5 the authors' way (emotion vector ~0.6, or an acted take as
+    its emotion clip) and Breeze TTS 2 / Higgs v3; an emotion bank per main character (a clip per
+    emotion fed as IndexTTS's emotion clip, the frozen voice clip kept calm); best of N takes per
+    directed line with an automatic pick; act-then-reference or act-then-convert; a line split
+    where its emotion changes inside it.
+  - **Checking takes:** a test kit — signal gate, read-back (Parakeet / Qwen3-ASR), same-character
+    score, emotion2vec+ and Empathic-Insight and ParaSpeechCLAP for emotion and direction, quality
+    outliers — sending near-misses, disagreements and a random share to a person; webMUSHRA or
+    Label Studio for bigger listening tests.
+  - **The text:** a normalization step (numbers, dates, money, abbreviations) by LLM on
+    pattern-found spans; an import that reads EPUB semantics (skip or tag footnotes, front and back
+    matter, keep italics) and MOBI/PDF through calibre; one cast for the whole book with aliases
+    before Analyze; LLM-proposed pronunciations for names, reviewed before use; heteronyms
+    (read/read) by sense; PDNC and LitBank as attribution answer keys, LibriQuote for direction.
+  - **Production:** pauses and room tone as settings (a speaker-change pause, after a chapter
+    title, 1–5 s head and tail); voice candidates per character previewed on their own lines;
+    QuickTime-only M4B chapters, credits, a retail sample, a digital-voice disclosure; read-along
+    word timings.
+
 - **2026-10-10 · Voice training (gap 5)** — a voice trained on someone's recordings (a LoRA on
   Qwen3-TTS Base), the last gap of the audio.cpp switch. Measured before building, on one public-domain
   narrator (LJSpeech): three ways of cloning her were equally clear and all "about 70% close" by ear,

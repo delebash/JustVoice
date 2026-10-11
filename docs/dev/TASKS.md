@@ -302,6 +302,25 @@ OPEN:   the plan doc `docs/plans/2026-10-11-audiocpp-engine-catalog.md`; the use
 GO:     given 2026-10-11 ("go ahead and complete the engine stuff"); a NOT STANDARD piece in
         the plan waits for its own word.
 
+### OPEN — the audio.cpp fork: keep it as it is, the DSP inside it, no routine pull requests?
+STATE:  OPEN — your call (asked 2026-10-11; the user: "these are questions not decisions").
+        The user's questions and comments: "we cant rely on the maintainer accpeting anything …
+        we should not hold up anyting becuase of them" · "i dont think we automatically offer our
+        fixes as pull requests that could get to bussy for maintainer" · on the DSP: "if dsp is
+        going to be bigger should it rmain part of audo cpp or seperate … i dont know the correct
+        path" · "it might be better to keep it in the fork as audio cpp seems to do toher things
+        as well … correct?"
+        Recommended: keep the fork as it is (it carries ~1,400 lines of model and server changes
+        the app uses daily, none upstream — RESEARCH §1.4); keep `audiocpp_dsp` in it (audio.cpp
+        is the app's whole audio toolbox — voice conversion, cleanup, separation, sound — and the
+        character-voice work pairs those AI tools with the DSP's effects; split only if DSP
+        releases ever wait too long); no pull requests unless you ask for a specific one.
+WHY:    the fork is needed; the DSP never conflicts with upstream merges.
+NOT:    —
+BUILT:  —
+OPEN:   your answer.
+GO:     needed.
+
 ### No restrictions beyond the final app: sidecars and tools in any language (decided 2026-10-11)
 STATE:  DECIDED 2026-10-11 — the user: "stop with the no python ruling that is just for the
         final app, if we need a sidecar or serpate app like the lora app python is ok or anything

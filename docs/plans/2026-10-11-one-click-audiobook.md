@@ -315,3 +315,23 @@ all part of the complete plan"*.
   the voices, an engine audio.cpp supports is added or swapped (RESEARCH §10, the 2026-10-01 scan);
   if frontier is clearly better for a few dollars a book, the app recommends it.
 - **Then:** the MCP tools and the Claude Code skill (decided second, 2026-10-10).
+
+## 13 · What the 2026-10-11 checks and research found that bear on this plan (not decided)
+
+Facts in RESEARCH §10.8–10.12; the ideas, unscheduled, in IDEAS (2026-10-11). Step by step:
+
+- **Voices (step 5):** the frozen character clip should be calm — its delivery carries into every
+  line (Audiobook-CC). VoxCPM2 ignores or speaks direction when the clip comes with its transcript
+  (decided 2026-10-11: drop the transcript on directed lines).
+- **Direction (step 6):** several engines were given direction the wrong way in slice 0 (§10.8):
+  Chatterbox Multilingual got none, Turbo got undocumented tags, CosyVoice3 free prose outside its
+  fixed list, IndexTTS 2.5 its experimental text mode. Slice 0's engine choice is open again until a
+  round done the authors' way. Structured direction ("emotion | scene | manner") and a line split
+  where its emotion changes are measured gains elsewhere (Deep Dubbing, Dopamine).
+- **Take check (step 8):** automatic scores agree with people on model averages but weakly on a
+  single take (§10.11) — the check can reject broken takes and rank engines; choosing between good
+  takes stays with a person, or with best-of-N audited against a random pick.
+- **Import (step 1):** no text normalization and no EPUB semantics today (§10.12) — numbers,
+  footnotes and front matter reach the voice as written.
+- **Export (step 9):** ACX refuses AI narration (§10.3); pauses and room tone could become
+  settings (§10.10).
