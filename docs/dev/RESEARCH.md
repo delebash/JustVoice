@@ -1948,6 +1948,50 @@ the Alice key's `cues`. Measured 2026-10-10, one run.
   and muffled pitch with a sleepy, drowsy timbre … hoarse, feeble, and slow … mumbling as if
   half-asleep"). Whether they make good voices is for the ear. — *measured*.
 
+### 10.6 Slice 0 — direction on the engines, and the frozen voice
+
+Through the app's own routes on the dev data folder, 2026-10-11, RTX 2070 SUPER 8 GB, one seed (7):
+the Hatter designed from gemma's description on Qwen3 VoiceDesign (`POST /v1/voices/preview`, an
+8.2 s audition), kept as a VoxCPM2 clone (`…/save`) and copied to Chatterbox Turbo; seven of his
+cue lines rendered plain and directed (`POST /v1/generate`); every clip read back with
+`POST /v1/transcribe`. The blind listening page: claude.ai/artifact/MnB1Ut3iekQoDtsFDSf4rr.
+
+- **VoxCPM2 speaks the direction when the clone carries its clip's words** ("ultimate cloning"):
+  7 of 7 directed lines read back with the direction first — "Sighing, dismayed, two days wrong.",
+  "Mournful, heavy-hearted, not I…". With the clip alone ("controllable cloning", a copy made with
+  an empty transcript) 0 of 9 — the words come back as written. VoxCPM2's README supports style
+  in controllable cloning and documents none for ultimate cloning
+  ([github.com/OpenBMB/VoxCPM](https://github.com/OpenBMB/VoxCPM)). audio.cpp only keeps the
+  "(…)" tag on a chunk's front (`../audio.cpp/src/models/voxcpm2/session.cpp:99-145`); the model
+  decides whether it is spoken. — *measured* · TASKS FINDING "a VoxCPM2 clone kept with its
+  clip's words reads its line direction out loud".
+- **Chatterbox Turbo:** 4 of 7 directed clips byte-identical to the plain ones — sad,
+  contemptuous and shouted have no Turbo tag (`engines/capability_details.js:237`, the value
+  map). — *measured*.
+- **Speed once loaded:** VoxCPM2 about 2 s a line, Turbo under 1 s, Qwen3 CustomVoice 1–2.7 s;
+  VoxCPM2's first line 17 s with the load. `POST /v1/generate` on a preset Qwen3 voice is refused
+  until the engine is loaded (`POST /v1/engines/qwen3/load`); the clone voices loaded on demand.
+  — *measured*.
+- **dots.tts and FireRedTTS3 are in our build** (`v0.9.0-jv.5`; both loaders in the installed
+  server; model files at the pinned `MODEL_REVISION`) **but neither puts direction on a cloned
+  voice in one request.** FireRedTTS3 has no style control on a clone at all (Base takes only
+  the `clon` task; Instruct's clone prompt is fixed and its `instruction` is overwritten by the
+  clip's transcript). dots.tts takes emotion only through its separate Edit model — render the
+  take, then re-run that audio with `<emo type="sad" level="2">…</emo>` (`options.template_name
+  = "edit"`, `/v1/tasks/run`), a second 3 GB model; `instructions` is ignored on a plain line.
+  Both refuse any option not in their spec (no temperature, no speed). Sizes (Q8): dots SOAR 2.96
+  GB, Edit 2.96 GB; FireRedTTS3 Base 4.18 GB, Instruct 4.15 GB. Licences: dots Apache-2.0 per its
+  README (the Edit card's HF tag reads "other"); FireRedTTS3 Apache-2.0 with the README's "solely
+  for academic research purposes" line, its issue #12 asking about commercial use unanswered.
+  — *agent, 2026-10-11*, not re-checked · `../audio.cpp/src/models/dots_tts/request.cpp:65-212`,
+  `../audio.cpp/src/models/fireredtts3/session.cpp:129-182`,
+  [github.com/studio-dots-ai/dots.tts](https://github.com/studio-dots-ai/dots.tts),
+  [github.com/FireRedTeam/FireRedTTS3](https://github.com/FireRedTeam/FireRedTTS3).
+- Wiring a new engine follows VoxCPM2's: a manifest (`engines/<id>/manifest.js`), an entry in
+  `engines/manager.js` `MANIFEST_MODULES`, a capability row, a `toSpeechRequest` branch in
+  `engines/audiocpp/slot.js`, the renderer's voice-maker notes, and the tests that count engines.
+  — *agent, 2026-10-11*.
+
 ---
 
 ## Records not yet distilled

@@ -57,6 +57,27 @@
 ## Waiting on your decision
 
 
+### FINDING — a VoxCPM2 clone kept with its clip's words reads its line direction out loud
+STATE:  FINDING — measured 2026-10-11 (slice 0, RESEARCH §10.6). A line's direction reaches
+        VoxCPM2 as a "(…)" prefix on the text (`server/src/engines/audiocpp/slot.js:873`). With the
+        clip AND its transcript (VoxCPM2's "ultimate cloning", which continues the recording) the
+        prefix is spoken: "Sighing, dismayed, two days wrong." — 7 of 7 directed lines, read back
+        by the app's own speech recognition. With the clip alone ("controllable cloning") it isn't
+        spoken, 0 of 9. Every take kept from a design is saved with its words
+        (`api/voice_preview_api.js:711`), so every VoxCPM2 voice frozen in the app today does this.
+        The capability note "Written direction reaches a cloned voice too"
+        (`engines/capability_details.js:377`) and the manifest's "audio.cpp splits the leading tag
+        off and does not speak it" (`engines/voxcpm2/manifest.js:10-13`) hold only without a
+        transcript.
+WHY:    the one-click run's character voices are frozen VoxCPM2 clones with direction on lines.
+NOT:    —
+BUILT:  nothing — the slice 0 takes used a copy of the clip with no transcript.
+OPEN:   your call: send the clip without its words when a line has direction (the voice may shift
+        a little between directed and plain lines), or never send VoxCPM2 the words (loses the
+        closer clone), or keep the words and drop direction on VoxCPM2. Which sounds closer is for
+        the ear.
+GO:     needed.
+
 ### FINDING — the release recipe's frozen server dies on start, and never contains the kit
 STATE:  FINDING — measured 2026-10-05 (stack study §1, §10). Tracked at your word: "track all
         side finidngs".
