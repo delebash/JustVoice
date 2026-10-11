@@ -240,50 +240,78 @@ a name already in the book is reused, as promote does today). Nothing is deleted
 
 ## 10 · Slices, in order — each with how it's accepted
 
-0. **The owed audio measurements** (no app code). (a) Six Alice lines with and without direction
-   on VoxCPM2 (words), Chatterbox Turbo (tags) and Qwen3 CustomVoice — is the difference
-   audible? (b) The Hatter's voice designed from gemma's description, frozen on VoxCPM2, ten of his
-   lines — the same person throughout? A blind listening page. *Accepted by your ears.*
+0. **The owed audio measurements.** (a) The same Alice lines with and without direction, on the
+   same frozen voice: VoxCPM2 (written direction), Chatterbox Turbo (tags) and Qwen3 CustomVoice
+   (written direction on a preset speaker), and on **dots.tts** and **FireRedTTS3** once they run
+   in the app (§11 Q2) — is the difference audible, and which reads it best? (b) The Hatter's
+   voice designed from gemma's description, frozen, ten of his lines — the same person
+   throughout? A blind listening page. Installed engines need no app code; dots.tts and
+   FireRedTTS3 each need a catalog entry and their request settings, the way VoxCPM2 went in
+   (`server/src/engines/voxcpm2/manifest.js`, `engines/audiocpp/slot.js`), on what our pinned
+   audio.cpp build carries. *Accepted by your ears.*
 1. **The recipe setting** (kit + JV route choice). *Accepted:* gemma's Alice and the three books
    score as now; a cloud model is read as frontier.
 2. **Direction** (both recipes, the carry, writing many lines at once, `eval:direction`).
    *Accepted:* on gemma, Alice VII cue lines caught ≥ 88 % with no-cue marks ≤ 5 % (today's
    measured numbers), and you hear it on Render.
-3. **Voices for the cast** (both recipes, design → freeze → persona, Smart-assign applied
-   server-side for minor speakers). *Accepted:* Alice VII–VIII cast made in one call per step; you
-   listen to each voice.
-4. **Discover + merge names** across chapters. *Accepted:* Alice VII–VIII give one Queen, and no
-   one with 0 lines becomes a speaker.
+3. **Voices for the cast and the narrator** (both recipes, design → freeze → persona for every
+   speaker with at least N lines in the book, the narrator designed from the book's genre and
+   tone, Smart-assign applied server-side for the rest). *Accepted:* Alice VII–VIII cast made in
+   one call per step; you listen to each voice.
+4. **Discover + merge names** across chapters, and group lines given to one member of the group
+   (§11 Q7). *Accepted:* Alice VII–VIII give one Queen, no one with 0 lines becomes a speaker, and
+   "No room!" goes to the Hatter or the March Hare, flagged.
 5. **The run and its screen** (mock first). *Accepted:* Alice VII from one press to an M4B, the
    time and the token count written down; resumes after a restart.
-6. **Check the takes** (if Q4 says now). *Accepted:* a runaway take is re-rendered once and
-   flagged.
+6. **Check the takes** — before the comparison (§11 Q4). *Accepted:* a runaway take is
+   re-rendered once and flagged.
 
 Each slice that changes what you see or what Analyze does updates the user docs (`docs/studio.md`,
 `docs/ai-features.md`) in the same change, and its facts land in RESEARCH §10.
 
-Then, from the decisions already made: the paid-model comparisons on chapters VII–VIII; the MCP
-tools and the Claude Code skill; the ElevenLabs Studio comparison on the same excerpt.
+## 11 · Questions — answered 2026-10-11
 
-## 11 · Questions — yours
+The user, on the answers below: *"yes your rec on all"* (TASKS "The one-click plan's questions,
+answered"). The answers, as they now stand:
 
-1. **Who gets a voice made from the book?** Speakers with at least N lines; the rest matched from
-   the library. N is a setting (family rule). *My recommendation:* default 5, measured on Alice
-   before it's fixed.
-2. **The clone model for character voices:** VoxCPM2 (written direction, any language) or
-   Chatterbox Turbo (tags, English only)? *My recommendation:* VoxCPM2 by default, Turbo as the
-   other choice — settled by slice 0's listening.
-3. **The narrator:** matched from the library, designed from the book's tone, or picked by you
-   once when the run starts? *My recommendation:* picked by you once — it is the voice of the
-   whole book.
-4. **Check the takes** now (slice 6 in this build) or after the run works? *My recommendation:*
-   after slice 5.
-5. **Slice 0 first?** *My recommendation:* yes — if direction isn't audible, slice 2 changes shape.
-6. **The small mismatch:** the renderer labels Discover's AI task `speaker_identification`
-   (`src/services/chapterRun.js:44`), the server calls the feature `speaker_discovery`
-   (`feature_catalog.js:22`). Fix it in passing? *My recommendation:* yes, in slice 4.
-7. **Lines with no single speaker** (group lines, blanks): read by the narrator and flagged, or
-   left out of the render until you set them? *My recommendation:* the narrator, flagged — the
-   book renders whole, and the flag says where to look.
-8. **A frontier run's price:** show the estimate and ask once before spending, or show it and go?
-   *My recommendation:* ask once — it is the user's money and their key.
+1. **Who gets a voice made from the book:** every speaker with at least **N** lines in the
+   **whole book** — N a setting, default **3**; the rest are matched from the library. You can give
+   anyone a voice of their own later on Cast. (On Alice VII–VIII alone, 3 lines covers every
+   speaker; a whole book is what decides it.)
+2. **Engines for character voices:** settled by slice 0's listening across VoxCPM2, Chatterbox
+   Turbo, dots.tts and FireRedTTS3. VoxCPM2 is the pick on paper — the only one already in the app
+   that clones *and* takes written direction on the clone; Turbo's seven emotion tags can't say
+   sad, mournful or sulky, Alice's commonest cues; Qwen3 VoiceDesign re-makes the voice on every
+   line and its cloning sibling drops direction. **FireRedTTS3** is in the listening test; whether
+   it could ship (its README calls cloning "intended solely for academic research purposes") is a
+   separate licence question, asked only if it wins.
+3. **The narrator:** the AI designs it from the book's genre and tone; you review it on Cast.
+4. **Checking takes:** built before the comparison (slice 6) — a take that runs on past its text is
+   what a listener marks down first.
+5. **Slice 0 first:** yes, widened as in Q2.
+6. **The feature-name mismatch:** fixed in slice 4.
+7. **Lines with no single speaker:** the AI gives a group line to one member of the group the text
+   names ("they" = the Hatter and the March Hare → one of them), or to the narrator when it's
+   unclear, and flags it.
+8. **A frontier run's price:** shown before it starts, and the run asks once.
+
+## 12 · Then: how good is it — local, frontier, and the professional tools
+
+Confirmed by the user as part of the plan: *"we are doing this then we are comparing with
+production to see how good ours is and what we can change … we just need to determine how much
+better a frontier designed audiobook is agians our local and agains profression products, this is
+all part of the complete plan"*.
+
+- **What is compared:** the same Alice excerpt (chapter VII, cut to about 10 minutes so
+  ElevenLabs' free tier can make it too) made five ways — JV with the local model; JV with Opus
+  5.5 by API; JV with GPT-6.1 Sol by API; Claude Code driving JV's routes from the terminal (the
+  free-form target of §3); ElevenLabs Studio, made by hand on its website (multi-voice tools only,
+  decided 2026-10-10).
+- **Scored without ears:** who speaks (the answer key), direction (the `cues`), word errors read
+  back by speech recognition, ACX limits, time, clicks, and price per book.
+- **Scored by ears:** a blind page — you rate each version without knowing which it is.
+- **What it decides:** where we lose. If it's the decisions (who speaks, emotion, casting), the
+  recipes change and the frontier recipe is tuned toward Claude Code's free-form result; if it's
+  the voices, an engine audio.cpp supports is added or swapped (RESEARCH §10, the 2026-10-01 scan);
+  if frontier is clearly better for a few dollars a book, the app recommends it.
+- **Then:** the MCP tools and the Claude Code skill (decided second, 2026-10-10).

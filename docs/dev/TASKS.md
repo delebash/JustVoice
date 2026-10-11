@@ -211,8 +211,35 @@ BUILT:  test book Alice ("your rec on 1-2 go"); its answer key, chapters VII–V
         go"), `server/samples/alice-in-wonderland/`; the kit's Claude adapter takes the 5.x models
         (kit 9b534ef); the local baseline and the direction test (RESEARCH §10.4–10.5); the plan,
         `docs/plans/2026-10-11-one-click-audiobook.md` ("your rec go", 2026-10-11).
-OPEN:   the plan's §11 questions — then slice 0 (the owed audio measurements), each slice its go.
+OPEN:   slice 0 (the owed audio measurements) — go given 2026-10-11, the next entry; later slices
+        each their go.
 GO:     given 2026-10-10 ("your rec on all"); measuring waits: "wait i want to discuss a little more".
+
+### The one-click plan's questions, answered (decided 2026-10-11)
+STATE:  DECIDED 2026-10-11 — the plan's §11, as shown after a rethink "for 'the AI decides, you
+        review'": "1 … everyone with at least 3 lines in the whole book gets a voice made from the
+        book, and the rest come from the library. N is a setting … 2 … widen slice 0. Listen to the
+        same Alice lines on VoxCPM2, Chatterbox Turbo, dots.tts, and FireRedTTS3 if you allow it
+        … 3 Narrator — The AI designs the narrator from the book's genre and tone, and you review
+        it on Cast … 4 Checking takes — Before the comparison … 5 Slice 0 first — yes, widened … 6
+        Feature-name mismatch — fix in slice 4 … 7 Group lines — The AI gives the line to one
+        member of the group it names … or to the narrator if unclear, and flags it … 8 Frontier
+        price — show the estimate and ask once per run", then "1. FireRedTTS3: can it be in slice
+        0's listening test despite its README calling cloning 'academic research' only, or is it
+        out? 2. My revised answers … Do these stand as written?" The user: "yes your rec on all and
+        if you need to do more research you can run your agents we have lots more credits now",
+        then "but dont over use it". Read as: FireRedTTS3 is in the listening test; shipping it
+        stays a separate licence question, asked only if it wins.
+        Also confirmed: "we are doing this then we are comparing with production to see how good
+        ours is and what we can change … we just need to determine how much better a frontier
+        designed audiobook is agians our local and agains profression products, this is all part
+        of the complete plan" — the plan's §12.
+WHY:    an automated run where the AI decides and the user reviews; the comparison decides what
+        to change and whether to recommend a frontier model.
+NOT:    asking the user to pick the narrator at the start; shipping FireRedTTS3 before a ruling.
+BUILT:  the plan's §11 and §12 carry these answers.
+OPEN:   slice 0: direction on/off and the frozen Hatter on the engines above, a blind listening page.
+GO:     given 2026-10-11 ("yes your rec on all").
 
 ### Frontier models get their own recipe, not the small-model one (decided 2026-10-10)
 STATE:  DECIDED 2026-10-10 — the user: "this could be a serious problem if we are causing frontier
