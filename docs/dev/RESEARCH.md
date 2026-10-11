@@ -2449,6 +2449,33 @@ running).
   Apple: 22.05 kHz/16-bit or better, chapter titles as printed (255-byte limit); Google: MP3 ≥128
   kbps mono. ffmpeg writes Nero plus QuickTime chapters; `-movflags disable_chpl` writes QuickTime
   only, since Nero "can cause failures" with some taggers.
+- **Follow-up** (*agent, 2026-10-11*; Reddit refused direct fetches, so its posts come from search
+  snippets only):
+  - **What makers and listeners say:** HN's Kokoro/audiblez thread (420 points) — fiction sounds
+    flat, symbols misread ("C hash"), ~5 glitches in an 8-hour book, and a suggestion to annotate
+    speakers and emotion with an LLM first (news.ycombinator.com/item?id=42708773); Reddit — names
+    mispronounced, or pronounced differently between chapters, and weak character
+    differentiation; some listeners filter AI-narrated titles out (a "Devirtualizer" extension
+    hides Audible Virtual Voice books); Reedsy: 10–20 hours of fixing per ElevenLabs book.
+    **KeenLore**, a near-twin (local, full cast, Gemma 4 for prose, Qwen3-TTS VoiceDesign, an 8 GB
+    T1000), self-reports 97.2% quote attribution (485/499, one novel); video only, no repo.
+  - **Interspeech 2026:** MagpieTTS-LF (long form by carrying state across chunks and reading
+    earlier text), AuDirector (character profiles + per-line emotion + an audit that regenerates
+    bad audio), CAST "Knowing What to Stress" (text models pick the stressed word, TTS often fails
+    to say it; benchmark released), "The False Resonance" (emotion2vec cosine disagrees with
+    humans), "Audiobook Narration Appeal" (tone, pace and loudness predict engagement by genre),
+    NVV-SuperBench (nonverbal control doesn't follow overall quality). Also Qwen-Audio-3.0-TTS
+    (inline tags, 3-minute one-pass generation; weights and licence not stated). ICASSP 2026:
+    nothing found.
+  - **Breaths:** 600 ms inhalations improved listeners' recall of synthetic speech, 300 ms didn't
+    (Elmers et al., Interspeech 2021); breaths, clicks and hesitations make synthetic speech sound
+    less certain (2023); narration practice keeps breaths and only reduces distracting ones
+    (anecdotally 10–12 dB), room tone never dead silence; Amazon Polly has automatic breaths; ACX
+    names only "excessive mouth noise".
+  - **Dual and duet narration** (ACX's blog): dual = narrators swap by chapter or point of view;
+    duet = each narrator voices their own characters throughout, "often alternating during
+    dialogue". How "he said" tags are handled in full cast and a narrator-vs-character loudness
+    norm: not found in any production source.
 - **The sweep's ranked list:** take check with best-of-N; an emotion bank per character as
   IndexTTS's emotion clip; pauses and room tone as settings; structured direction (a stable
   character profile + "emotion | scene | manner" per line, split a line where its emotion
@@ -2598,6 +2625,29 @@ Claude or GPT-4o on PDNC (follow-up running).
   chapter headers at F1 0.77.
 - **Book-to-script tools** (Alexandria, audiobook-creator, VoxNovel, ebook2audiobook, epub2tts,
   Dopamine): none publishes text-side accuracy — our answer key is more rigorous than any.
+- **Follow-up** (*agent, 2026-10-11*; web search capped after ~25 queries; Reddit only through
+  search snippets):
+  - **LLM pronunciations:** Japanese G2P (Koriyama, Interspeech 2026, 3,000 sentences, kana CER) —
+    Claude Opus 4.6 0.52%, Gemini 3.1 Pro 0.53%, GPT-5.2 1.05% against OpenJTalk 1.03% and
+    MeCab+UniDic 1.54%, but **local models far worse** (Gemma3-27B 5.75%, Qwen3.5-27B 6.27%,
+    Gemma3-4B 34.8%); a "parse mode" (the LLM segments, rules convert) beat direct reading; proper
+    nouns called "a major source of errors" but not scored (arXiv 2606.22009). English
+    pseudo-words: LLMs match human agreement ~80%, failing by over-regularizing; GPT-5.4 not
+    significantly better than Llama3 (Waterloo thesis, 2026). PhonologyBench (2024): GPT-4 51.9%,
+    Claude-3-Sonnet 52.7% exact-word G2P vs a G2P library 62.4%. No measurement specific to names
+    found.
+  - **Heteronyms:** "LLM picks the sense, a dictionary gives the sound" — GPT-4 with retrieval
+    95.7% vs SoundChoice 92.2% on Librig2p (arXiv 2411.07563); Amazon's contextual-embedding
+    classifiers 0.991 with ~100 sentences per word; the best of 17 LLM-based TTS models only 82.02%
+    on Chinese polyphones (PolyBench, Interspeech 2026) — the TTS model won't resolve them itself.
+  - **Other languages:** Japanese attribution set from *Romance of the Three Kingdoms*, LLMs ~90%
+    (WNU 2025); French, Spanish, Russian fiction sets not found; no multilingual BookNLP released
+    (an NEH-funded effort, 2020; the repo is still English-only). NeMo text normalization has
+    folders for ar, de, en, es, fr, hi, hu, hy, it, ja, ko, pt, ru, rw, sv, vi, zh.
+  - **Frontier models on PDNC:** no published Claude, GPT-4o/5 or Gemini figure (ChatGPT-3.5 ~71%
+    only); Llama-3 70B made 3 errors in 1,442 quotes on a novel outside PDNC — with the gold
+    alias list, 4,096-token chunks with 1,024 overlap, chain of thought, JSON and earlier answers
+    carried forward.
 - **The sweep's ranked list:** test against PDNC and LitBank by quote type; a normalization step
   (patterns find spans, the LLM rewrites only those, spoken text stored beside the original); an
   import that reads EPUB semantics; one cast for the whole book with aliases and gender before
