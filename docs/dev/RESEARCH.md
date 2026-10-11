@@ -1915,6 +1915,12 @@ the Alice key's `cues`. Measured 2026-10-10, one run.
   cue sits beside the first ("“…,” the Hatter grumbled: “…”" marks the first line, not the
   second); the rest are mostly cues in the narration before the line ("shook his head
   mournfully", "looked at it gloomily"). — *measured*, read off the run's misses.
+- A carry, applied to that run's answers with no model (2026-10-11): within a paragraph, a
+  speaker's direction goes to their other lines there that got none (forward, then back). Cue
+  lines with a direction 44 → 64 of 73 (60 % → 88 %); keyed emotions matching 12 → 15 of 24;
+  no-cue lines marked 3 → 4 of 77 (4 % → 5 %). It carried onto 22 lines, 2 of them without a
+  cue. — *measured* (post-processing the saved run; speakers from the key, which Analyze matched
+  240/240).
 - With `think: true` the run came back with the same answer and the same token count, so
   thinking did not engage through this door — not a comparison. — *measured*.
 - Voice descriptions for Alice, the Hatter, the March Hare and the Dormouse in 5–12 s, one or two
