@@ -262,6 +262,26 @@ BUILT:  the plan's §11 and §12 carry these answers.
 OPEN:   slice 0: direction on/off and the frozen Hatter on the engines above, a blind listening page.
 GO:     given 2026-10-11 ("yes your rec on all").
 
+### Build the engine list from audio.cpp's own model specs, plus a small curated file (decided 2026-10-11)
+STATE:  DECIDED 2026-10-11 — the user: "how hard is it to include engines audio.cpp has, would it
+        just be easier to include eveything tha audio cpp has … we just keep updating audio cpp so
+        we get latest benefits and we just let user know what models we have tested and what we
+        think is best for what task and the license … i want it easy for user to use and easily
+        maintanlble without having to write a bunch of new code on each new model". Shown:
+        "Build JV's engine list from audio.cpp's own specs, plus one small JustVoice file per model
+        holding: how direction reaches it; its licence label (from audio.cpp's table); 'tested by
+        us' and 'best for' notes; any friendly labels … new models appear in the app automatically
+        … marked not tested by JustVoice yet … Generate each model's settings controls from its
+        spec … Keep hand-written code only where a model truly needs it … Timing: finish round 3
+        … then make this data-driven catalog its own planned piece, before wiring any more models
+        by hand … Should I write that up as a plan, after round 3?" The user: "your rec go".
+WHY:    audio.cpp ships 101 machine-readable model specs (tasks, languages, abilities, every
+        option with type/range/default) and a 144-entry catalog with minimum graphics memory.
+NOT:    wiring each new model by hand; embedding audio.cpp's own web UI.
+BUILT:  nothing yet.
+OPEN:   the plan doc (standards, blast radius, slices) after round 3.
+GO:     given 2026-10-11 for the plan ("your rec go"); building waits for the plan's go.
+
 ### Offer the best models audio.cpp has, licence-labelled, not licence-limited (decided 2026-10-11)
 STATE:  DECIDED 2026-10-11 — the user: "i think we should find the best onest that audio cpp has
         to offer, so mark these models best for emotion reading an audio book, we simply put them
