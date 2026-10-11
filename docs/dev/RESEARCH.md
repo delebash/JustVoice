@@ -1991,6 +1991,27 @@ cue lines rendered plain and directed (`POST /v1/generate`); every clip read bac
   `engines/manager.js` `MANIFEST_MODULES`, a capability row, a `toSpeechRequest` branch in
   `engines/audiocpp/slot.js`, the renderer's voice-maker notes, and the tests that count engines.
   — *agent, 2026-10-11*.
+- **By ear, blind (the user, 2026-10-11, the page's 62 answers; one seed per take, one listener):**
+  each take rated against the book's description — *like the book / plain / wrong feeling* — and
+  each voice *good / OK / bad*.
+
+  | Line (the book) | VoxCPM2 clone: told · not told | Qwen3 CustomVoice (Ryan): told · not told | Turbo clone: told · not told | Best |
+  |---|---|---|---|---|
+  | 1 sighed | wrong (a laugh) · plain | **like** · wrong | — | Qwen3 CV |
+  | 2 angrily | like · like | like · like | plain · like | VoxCPM2 |
+  | 3 muttered | plain · plain | **like** · plain | plain · plain | Qwen3 CV |
+  | 4 contemptuously | like · like | **like** · plain | — | Qwen3 CV |
+  | 5 mournfully | like · like | **like** · wrong | — | VoxCPM2 |
+  | 6 triumphantly | plain · plain | wrong · wrong | plain · plain | none |
+  | 7 cried (shouted) | **like** · plain | wrong · wrong | — | VoxCPM2 |
+
+  Every voice on every line rated **good**; VoxCPM2's clone "same person" and good over ten
+  lines, Turbo's "mostly" and good. Read: the direction changed the result for the better on
+  Qwen3 CustomVoice on 4 lines (1, 3, 4, 5) and made none worse; on VoxCPM2 on 1 line (7) and
+  worse on 1 (1); on Turbo on none. VoxCPM2's plain takes already sounded like the book on 3
+  lines (2, 4, 5) — the words carry some of it. "Triumphantly" worked on no engine. Best line by
+  line: Qwen3 CustomVoice 3, VoxCPM2 3, none 1. — *measured by ear* ·
+  claude.ai/artifact/MnB1Ut3iekQoDtsFDSf4rr (collection `slice0b`).
 
 ---
 
