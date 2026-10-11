@@ -2,6 +2,11 @@
 
 ## v0.1.0
 
+- **A Qwen3-TTS clone with silent gaps in its clip no longer runs on (2026-10-11)** — a clip with
+  stretches of pure digital silence (clips joined together, or an edited or gated recording) made
+  Qwen3-TTS Base keep talking for minutes and held up every other line. The app now fills those
+  stretches with noise too quiet to hear before the clip reaches the model; your clip is kept as it
+  is, and nothing changes on the clone screen
 - **Speech runtime v0.9.0-jv.5 (2026-10-10)** — speaks exactly as v0.9.0-jv.4; it adds the program
   that does the app's own audio work (effects, speed, gain, pitch, the joins between pieces), so
   the installed app carries it. The runtime row on AI Settings → Speech engines offers **Update to

@@ -121,8 +121,9 @@ export function _dataDir() {
   return appState.getState().dataDir;
 }
 
-// How many blend packs stay on disk (a test assigns it — Python monkeypatched the global).
-export const cfg = { VOICE_PACKS_KEPT: 200 };
+// How many blend packs and filled references stay on disk, and what counts as digital silence in a
+// Qwen3-TTS Base reference and what fills it (a test assigns them — Python monkeypatched the global).
+export const cfg = { VOICE_PACKS_KEPT: 200, REFERENCES_KEPT: 200, SILENCE_RUN_S: 0.01, SILENCE_FILL_LSB: 2 };
 let packSeq = 0;
 
 const isFile = (p) => {
@@ -158,14 +159,94 @@ export function writeVoicePack(vector) {
   renameSync(tmp, out);
   // Every blend auditioned left a pack for good (audit §5 F). A pack is rebuilt from its voice
   // whenever it is needed, so only the newest are kept.
-  const packs = readdirSync(folder)
-    .filter((n) => n.endsWith(".bin"))
+  keepNewest(folder, ".bin", cfg.VOICE_PACKS_KEPT);
+  return out;
+}
+
+/** Delete all but the `kept` newest `ext` files in `folder` — a cache of files rebuilt on need. */
+function keepNewest(folder, ext, kept) {
+  const files = readdirSync(folder)
+    .filter((n) => n.endsWith(ext))
     .map((n) => {
       const p = path.join(folder, n);
       return [p, statSync(p).mtimeMs];
     })
     .sort((a, b) => b[1] - a[1]);
-  for (const [old] of packs.slice(cfg.VOICE_PACKS_KEPT)) rmSync(old, { force: true });
+  for (const [old] of files.slice(kept)) rmSync(old, { force: true });
+}
+
+// ── Qwen3-TTS Base references: digital silence filled (decided 2026-10-11) ──
+// Stretches of exact digital silence inside a reference run Qwen3-TTS Base on without stopping —
+// one sentence came back as 655 s of audio, and every other speech request waited — while the same
+// stretches filled with ±2 LSB of noise (about −84 dBFS, inaudible) clone normally; the clip's
+// length is not the trigger (measured 2026-10-10, RESEARCH §9). The cause in our audio.cpp copy is
+// not found. Until it is, a reference with such a stretch reaches the runtime as a filled copy,
+// written once to the cache and named by the clip's bytes; the voice's own file is never changed.
+
+/** `pcm` (16-bit, interleaved) with every run of at least `minFrames` all-zero frames filled with
+ * ±`lsb` of noise from a fixed-seed generator, so the same clip always gets the same copy; null
+ * when it has no such run. */
+export function fillDigitalSilence(pcm, channels, minFrames, lsb) {
+  const frames = Math.floor(pcm.length / (2 * channels));
+  const zero = (f) => {
+    for (let c = 0; c < channels; c++) if (pcm.readInt16LE((f * channels + c) * 2) !== 0) return false;
+    return true;
+  };
+  let out = null;
+  let seed = 0x9e3779b9;
+  let start = -1;
+  for (let f = 0; f <= frames; f++) {
+    if (f < frames && zero(f)) {
+      if (start < 0) start = f;
+      continue;
+    }
+    if (start >= 0 && f - start >= minFrames) {
+      if (out === null) out = Buffer.from(pcm);
+      for (let g = start; g < f; g++) {
+        for (let c = 0; c < channels; c++) {
+          seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+          out.writeInt16LE((seed % (2 * lsb + 1)) - lsb, (g * channels + c) * 2);
+        }
+      }
+    }
+    start = -1;
+  }
+  return out;
+}
+
+/** The file the runtime gets for a Qwen3-TTS Base reference: the clip itself, or — when it has a
+ * stretch of digital silence — its filled copy. A file that can't be read as 16-bit PCM WAV goes as
+ * it is (the runtime says what is wrong with it). */
+export function guardedReference(file) {
+  let raw;
+  let fmt;
+  let offset;
+  let size;
+  try {
+    raw = readFileSync(file);
+    [fmt, offset, size] = parseWavHeader(raw);
+  } catch {
+    return file;
+  }
+  if (fmt.bitsPerSample !== 16) return file;
+  const minFrames = Math.max(1, Math.round(fmt.sampleRate * cfg.SILENCE_RUN_S));
+  const filled = fillDigitalSilence(raw.subarray(offset, offset + size), fmt.channels, minFrames, cfg.SILENCE_FILL_LSB);
+  if (filled === null) return file;
+  const folder = path.join(String(self._dataDir()), "cache", "qwen3-references");
+  const stem = createHash("sha1").update(raw).digest("hex");
+  const out = path.join(folder, `${stem}.wav`);
+  if (isFile(out)) {
+    const now = new Date();
+    utimesSync(out, now, now); // in use: newest
+    return out;
+  }
+  mkdirSync(folder, { recursive: true });
+  packSeq += 1;
+  const tmp = path.join(folder, `${stem}.${process.pid}-${packSeq}.tmp`);
+  writeFileSync(tmp, writeWavContainer(filled, fmt.sampleRate, fmt.channels));
+  renameSync(tmp, out);
+  keepNewest(folder, ".wav", cfg.REFERENCES_KEPT);
+  log.info(`a Qwen3-TTS Base reference has digital silence — filled for the runtime (${path.basename(file)})`);
   return out;
 }
 
@@ -772,7 +853,7 @@ export function toSpeechRequest(row, body) {
       req.instructions = instruct;
     } else if (truthy(get(body, "audio_prompt_path"))) {
       if (!spec.clone) throw new AudioCppError("the CustomVoice model cannot clone — use a Base model for this voice");
-      req.voice_ref = fwd(body.audio_prompt_path);
+      req.voice_ref = fwd(self.guardedReference(body.audio_prompt_path));
       // audio.cpp clones a Base voice in ICL mode (the clip and what it says) unless
       // `x_vector_only_mode` asks for the speaker vector alone, and ICL without a transcript
       // is refused — so a clip with neither is refused here, by name (decided 2026-10-03).

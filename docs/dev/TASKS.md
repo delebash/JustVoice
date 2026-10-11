@@ -299,9 +299,7 @@ DECIDED: 2026-10-10 — 3, asked again: "1. Which engines does the 20-second cli
         recommendation: use the first 20 seconds automatically and say so on the clone screen
         ('Qwen3-TTS uses the first 20 seconds; trim the clip to your best 20 for the best copy'),
         rather than refusing it. 3. Push JustWrite a157e71 (its lint fix)?" The user: "your rec go".
-OPEN:   3 — NOT built: probes on 2026-10-10 showed length is not the trigger (exact digital silence
-        in the clip is — the FINDING below), so a 20 s cap would cut good clips and miss the cause;
-        asked again.
+OPEN:   none — 3 was replaced by the digital-silence guard (the FINDING below, built 2026-10-11).
 GO:     given 2026-10-10 ("your rec go", twice).
 
 ### FINDING — Digital silence in a clone reference runs Qwen3-TTS Base on without stopping, and holds the speech queue
@@ -314,10 +312,26 @@ BUILT:  nothing. Probes, one sentence on Qwen3-TTS Base: 26.6 s, 52.9 s and a 22
         silence → still running after 240 s; the same gaps filled with ±2 LSB of noise → fine. While
         it runs every other speech request waits, and a cancelled request does not stop the
         runtime's work. Exact silence comes from joined clips and edited or gated recordings.
-OPEN:   the user's word: an app-side guard (fill exact-silence stretches of a Qwen3-TTS Base
-        reference with inaudible noise before it reaches the runtime) in place of the cap; and/or
-        the cause in our audio.cpp copy.
-GO:     needed.
+DECIDED: 2026-10-11 — asked: "My recommendation: before a Qwen3-TTS Base clip reaches the runtime,
+        the app quietly fills any stretch of pure digital silence with that inaudible noise. You keep
+        your full clip, nothing changes on the clone screen, and the runaway can't happen. The
+        underlying bug in our audio.cpp copy can wait; the guard makes it harmless. Go?" The user:
+        "go". This replaces the 20 s cap (the item above, 3).
+BUILT:  2026-10-11 — the guard: `slot.guardedReference` (engines/audiocpp/slot.js), on the Qwen3 Base
+        path of `toSpeechRequest`, fills every run of exact-zero frames of 10 ms or more with ±2 LSB
+        from a fixed-seed generator and hands the runtime that copy — written once to
+        `<data>/cache/qwen3-references`, named by the clip's bytes, the newest 200 kept (the Kokoro
+        blend packs' pattern); a clean or unreadable clip goes as it is; other engines are untouched.
+        Checked: 5 tests (server/tests/qwen3_reference_silence.test.js), server 1,081/1,081; through
+        the app, the 27 s reference with three silent gaps that ran past 240 s now speaks a sentence
+        in 2.7 s (ICL) and 3.0 s (x-vector only).
+        Found on the way: the speech admission prices a model at its LARGEST measured peak
+        (`manager._priceMb`), so the runaway probes' two peaks (6,235 and 6,255 MB) had left
+        Qwen3-TTS Base unloadable on the 8 GB card; those two rows were removed 2026-10-11 (the two
+        real peaks, ~2.8 GB, stay). One bad run can set a model's price for good.
+OPEN:   the cause in our audio.cpp copy; whether one peak should set a model's price for good
+        (the user's word on either).
+GO:     given 2026-10-11 ("go").
 
 ### The server moves to Hono (decided 2026-10-09)
 STATE:  DECIDED 2026-10-09, family-wide — the decision with the user's words is the kit's TASKS,

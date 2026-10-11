@@ -1692,7 +1692,12 @@ its page: plan 2026-10-09 voice-training findings, "The measurement — results"
   494 s never finished) were clips joined by 0.25 s of digital silence; 2 clips (one gap, 19 s)
   worked. The speaker mel floors its log (`mel_spectrogram_frontend.cpp` `log_floor`), so it is not
   a −infinity there; the mechanism is not found. — *measured*. (was: "a pooled x-vector from a long
-  reference makes the model run away" until 2026-10-10.)
+  reference makes the model run away" until 2026-10-10.) The app now fills such stretches before a
+  Qwen3-TTS Base reference reaches the runtime (`slot.guardedReference`, 2026-10-11): the gapped
+  27 s reference speaks a sentence in 2.7 s (ICL) and 3.0 s (x-vector only). — *measured*.
+- A runaway line records a speech "peak" measurement of its own — 6,235 and 6,255 MB for Qwen3-TTS
+  Base, against ~2.8 GB normally — and the admission prices a model at its largest peak
+  (`engines/manager.js` `_priceMb`), which then left the model unloadable on the 8 GB card. — *measured*.
 - On 20 LJSpeech lines, word errors (Qwen3-ASR, 336 words): real 1, clip with words 0, clip x-vector
   only 1, 2-clip pooled x-vector 1. — *measured*.
 - A request the app cancels (client gone) does not stop the runtime's work: the next request waits
