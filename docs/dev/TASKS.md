@@ -308,10 +308,15 @@ STATE:  DECIDED 2026-10-11 — the user: "stop with the no python ruling that is
         language, stop with the damn restrictionsl, broaden scope, the main goal of everything is
         i want the best audiobook tool we can make, no restrictions, but just notify me so we can
         decicde".
+        Then: "as far as python sidecar winner we should port as long as it is better then any
+        exising solution in audio cpp, yes the javascript again is just for the app code, tools
+        ect can use typescript or any other language if it is worth it, i just dont want the app
+        code using anything but javascript of course wasm is ok too".
 WHY:    the 2026-10-08 no-Python ruling was being applied to every option, ruling out the best
         tools (Python-only models, scorers, test harnesses) before the user could weigh them.
-NOT:    "no Python anywhere" as a reason to leave an option out.
-BUILT:  CLAUDE.md's opening paragraph says so.
+NOT:    "no Python anywhere" as a reason to leave an option out; TypeScript or Python in app code.
+BUILT:  this repo's CLAUDE.md opening paragraph; the global CLAUDE.md's "Our code is plain
+        JavaScript" line (the user's yes to adding the exception there).
 OPEN:   —
 GO:     given 2026-10-11.
 
@@ -327,8 +332,13 @@ STATE:  DECIDED 2026-10-11 — the user: "are we describng them correctly … if
         3. If he doesn't, use best of N on one engine, or act-then-convert." · "I'll check
         whether audio.cpp has a model that can judge emotion" · "The engine-list plan will
         carry this as 'best for' notes per emotion".
+        Then, on emotion2vec+ as a Python sidecar for scoring: "emotion scoring yes and any other
+        tools to help automate this or anyother testing, please do some more broadend research on
+        the web, you know our goal is the best audiobook converter possible so any new models
+        techniques tools anything lets dig in and find out whats avaialable you often keep your
+        scopes so limitied you miss things".
 WHY:    rounds 1–3 measured our wording as much as the models; a miss may be our prompt.
-NOT:    judging a model from our own phrasing alone.
+NOT:    judging a model from our own phrasing alone; a research scope narrowed to what we have.
 BUILT:  nothing yet.
 OPEN:   per model — its documented way to give emotion and its demos, against what
         `engines/audiocpp/slot.js` sends; a demo reproduced through the app; the same-person
