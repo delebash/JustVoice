@@ -337,6 +337,44 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
 - `npm run dev` runs our checkout's build (`../audio.cpp/build/jv-dev`); on this card (Turing)
   CUDA graphs are disabled by ggml. — *code + runtime log, 2026-10-04*.
 
+### 1.5 audio.cpp's own web UI
+
+All *code*, our checkout at `55b150f4`, read 2026-10-11 — `../audio.cpp/webui/`.
+
+- One SvelteKit/TypeScript single-file app embedded in `audiocpp_server` (`--ui`; `--ui-management`
+  adds load/unload, downloads and uploads; needs `AUDIOCPP_BUILD_NATIVE_MODEL_MANAGER=ON`). Four
+  pages: Studio, Arena, Models, Runtime (a browser-side event log). · `webui/README.md`,
+  `native/src/lib/i18n.ts:16-21`.
+- It reads three data files: `configs/models_catalog.json` (144 entries — `id`, `display_name`,
+  `family`, `path`, `task`, `mode` on all; `download_id` 135; `min_vram_gb` 113; a usage hint
+  `input_hint_en` 70 / `input_hint` 46; `arena` 8), `configs/model_params.json` (71 keys, by
+  entry id or family: each control's `name`, `type` text·number·slider·bool·choice, `label`
+  (some only in Chinese, with `label_en`), `default`, `minimum`/`maximum`/`step`, `info`/`info_en`,
+  `scope: session` for load-time options), and `native/lang/lang_*.json`. The model specs
+  (`model_specs/*.json`) hold the typed options with descriptions; `model_params.json` holds the
+  UI's labels, slider-or-number and help text.
+- Its controls are not purely data-driven: `resetParams` and `requestOptions` special-case the
+  families vibevoice, moss_ttsd, minimax_h3, yue2, canary_asr, universr, auk, controlfoley and
+  midashenglm_gen, and three models have their own panels (AuK, LiveAvatar, YuE2). ·
+  `native/src/routes/+page.svelte:1067-1371`, `native/src/lib/models/`.
+- **Arena** runs one input through a queue of installed models and packages, one after another,
+  in TTS, voice-conversion or ASR mode, with a shared voice (model default, built-in demo voice
+  or a reference clip) and shared options. Each result shows wall time and real-time factor; ASR
+  results show word error rate against a pasted transcript; a model that can't take the shared
+  voice is skipped with a note ("requires reference text", "requires a reference voice").
+  Results sort by real-time factor. · `native/src/routes/Arena.svelte:258,499-552`, `i18n.ts:28-97`.
+- **Models** shows each package's precision choices and sizes, a version status (Up to date ·
+  Update available · Version unknown), Stop download, Clean partial download, "HF access
+  required", delete, and a models-folder browser. **Studio** shows "{n} GB estimated VRAM" from
+  `min_vram_gb`, Load/Unload, splits long text in the browser by sentence into chunks of a set
+  size and joins the WAVs (`native/src/lib/text.ts:144`), offers demo voices with their
+  transcripts, saves voices in the browser's IndexedDB only, records the microphone, and runs
+  live ASR in four-second slices. · `i18n.ts:120-258`.
+- The catalog gives CosyVoice3 `min_vram_gb` 8; on this 8 GB card it rendered round 3's 28
+  takes at a median 1.4 s each (§10.6). IndexTTS's `lang` option defaults to auto — Han
+  characters → zh, otherwise en — and setting `emotion_text` turns on `use_emotion_text`. ·
+  `configs/models_catalog.json`, `configs/model_params.json` `index_tts2`.
+
 ---
 
 ## 2 · Speech memory (graphics memory and the booking)
