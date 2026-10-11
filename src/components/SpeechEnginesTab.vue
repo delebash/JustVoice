@@ -423,6 +423,14 @@ async function removeEngineModels(engine) {
   }
 }
 function anyOnDisk(e) { return variantsFor(e.id).some((v) => v.on_disk === true); }
+// A licence that gates downloads (an audio.cpp model whose commercial use isn't a plain "Yes",
+// decided 2026-10-11): ask for it before fetching, rather than let the download fail.
+function askLicenceFirst(engine, variantId) {
+  if (engine.terms?.gates !== "download" || engine.terms_accepted) return false;
+  if (variantsFor(engine.id).find((v) => v.id === variantId)?.on_disk === true) return false;
+  openEngineTerms(engine.id);
+  return true;
+}
 // The OS gate's verdict, computed SERVER-side (`EngineInfo.supported_on_this_os`)
 // — never re-derived here, because the renderer can be a browser on a
 // different machine than the server. False means `install_engine` refuses,
@@ -439,6 +447,7 @@ function osBlockedTitle(e) {
 // ── Load (weights already on disk — the Download verb is separate now:
 // the LLM-catalog split, user ruling 2026-08-14). ─────────────────────
 async function runLoad(engine, variantId) {
+  if (askLicenceFirst(engine, variantId || engine.default_variant_id)) return;
   const key = _variantKey(engine.id, variantId);
   clearTerminalTask(key);
 
@@ -587,6 +596,7 @@ async function redownload(e, v) {
 // Download WITHOUT loading — Re-download's second half. Same job-channel
 // task and DownloadBar as everything else (the one-mechanism rule).
 async function downloadOnly(engine, variantId) {
+  if (askLicenceFirst(engine, variantId)) return;
   const key = _variantKey(engine.id, variantId);
   clearTerminalTask(key);
   const task = makeEngineDownloadTask(api, engine.id, { model_variant: variantId });
@@ -1034,9 +1044,13 @@ onBeforeUnmount(() => {
                runs (the Backend select on the runtime row). -->
           <div class="ev-gfoot" v-if="anyOnDisk(e) || e.terms">
             <template v-if="e.terms">
-              <span v-if="e.terms_accepted">{{ e.terms.owner }}'s terms accepted — cloning is on</span>
-              <template v-else>
-                <span>Cloning waits until you accept {{ e.terms.owner }}'s terms</span>
+              <template v-if="e.terms.gates === 'download'">
+                <span v-if="e.terms_accepted">Licence accepted — downloads are on</span>
+                <span v-else>Downloads wait until you accept its licence ({{ e.terms.owner }})</span>
+              </template>
+              <span v-else-if="e.terms_accepted">{{ e.terms.owner }}'s terms accepted — cloning is on</span>
+              <template v-if="!e.terms_accepted">
+                <span v-if="e.terms.gates !== 'download'">Cloning waits until you accept {{ e.terms.owner }}'s terms</span>
                 <UiButton intent="secondary" size="small" label="Read and accept"
                   @click="openEngineTerms(e.id)" />
               </template>
