@@ -1997,9 +1997,15 @@ cue lines rendered plain and directed (`POST /v1/generate`); every clip read bac
 - **VoxCPM2 speaks the direction when the clone carries its clip's words** ("ultimate cloning"):
   7 of 7 directed lines read back with the direction first — "Sighing, dismayed, two days wrong.",
   "Mournful, heavy-hearted, not I…". With the clip alone ("controllable cloning", a copy made with
-  an empty transcript) 0 of 9 — the words come back as written. VoxCPM2's README supports style
-  in controllable cloning and documents none for ultimate cloning
-  ([github.com/OpenBMB/VoxCPM](https://github.com/OpenBMB/VoxCPM)). audio.cpp only keeps the
+  an empty transcript) 0 of 9 — the words come back as written. **The authors say so:** "When
+  Hi-Fi mode is enabled, the control instruction is ignored" (usage guide,
+  voxcpm.readthedocs.io/en/latest/usage_guide.html, checked 2026-10-11); a maintainer: "style
+  control is not supported in Ultimate Cloning mode" (OpenBMB/VoxCPM issue #210, agent-read).
+  Upstream builds the text as transcript + target, so the "(…)" sits mid-sequence and is read as
+  words (`voxcpm2.py` `_generate`; audio.cpp `generator.cpp:1332-1334`, agent-read). Our fork's
+  0acac2b1 is what turns a transcript into Hi-Fi mode; upstream's server gives controllable
+  cloning only. (was: "the README documents none for ultimate cloning" — until 2026-10-11.)
+  audio.cpp only keeps the
   "(…)" tag on a chunk's front (`../audio.cpp/src/models/voxcpm2/session.cpp:99-145`); the model
   decides whether it is spoken. — *measured* · TASKS FINDING "a VoxCPM2 clone kept with its
   clip's words reads its line direction out loud".
@@ -2107,6 +2113,62 @@ cue lines rendered plain and directed (`POST /v1/generate`); every clip read bac
   on the count and steadier per line, and it alone got "sighed" on every seed. IndexTTS missed
   "muttered" and "contemptuously" on every seed; VoxCPM2 missed "muttered" on every seed but got
   "contemptuously" 2 of 3. — *measured by ear*.
+
+### 10.8 Direction per model — the authors' way against ours
+
+*agent, 2026-10-11* (a research agent; web quotes it re-fetched marked ✓), with the items marked
+*code* or *web* re-checked by the session the same day.
+
+- **VoxCPM2** — the authors put the description in ASCII parentheses at the start of the text
+  (`(slightly faster, cheerful tone)This is…`); instructions in Chinese or English; `cfg_value`
+  "typical range 1.0–3.0", default 2.0 (*web*, usage guide). In controllable cloning results "can
+  vary between runs — you may try to generate 1~3 times" (README). Hi-Fi mode (clip + transcript)
+  ignores it — §10.6. We send clip + transcript + prefix on every directed line of a voice that
+  has a transcript (*code*, `engines/audiocpp/slot.js:937-954`), and our row says "Written
+  direction reaches a cloned voice too" (*code*, `engines/capability_details.js:377`) — untrue
+  for such a voice. Demo clips to reproduce: openbmb.github.io/voxcpm2-demopage/ "Controllable
+  Voice Cloning" (`audio/style_control/prompt1–3.wav`, download). No published number for style
+  on a clone; BreezeBlue's vendor-run Voice Direction leaderboard scores it 2.49 of 5.
+- **Chatterbox Multilingual** — no text direction; the authors' tips: defaults exaggeration 0.5 /
+  cfg 0.5; for expressive speech cfg ~0.3 and exaggeration ~0.7 or higher, which also speeds it up
+  (github.com/resemble-ai/chatterbox README). A user reports exaggeration has "no noticeable
+  effect" on the multilingual v1/v2 models (issue #355, unanswered). **We drop a line's direction
+  and emotion for it** — the request sends only the knobs (*code*, `slot.js:894-916`; nothing in
+  `persona_render.js`, `render_core.js` or `api/generate_api.js` maps emotion onto exaggeration).
+  audio.cpp runs multilingual T3 **v2** unless the session option `chatterbox.multilingual_t3` is
+  `v3` (*code*, `../audio.cpp/src/models/chatterbox/session.cpp:320-330`); we never set it.
+  English lines run the English model.
+- **Chatterbox Turbo** — officially nine sound tags: [clear throat] [sigh] [shush] [cough] [groan]
+  [sniff] [gasp] [chuckle] [laugh] (the official Space's `EVENT_TAGS`); the other ten tokens —
+  [angry] [fear] [happy] [sarcastic] [surprised] [crying] [whispering] [narration] [dramatic]
+  [advertisement] — are documented nowhere, and a user reports they "have no audible effect" while
+  the nine work (resemble-ai/chatterbox issue #557, unanswered). Our value map sends five emotions
+  onto those undocumented tokens (`capability_details.js:237`); round 1 heard them plain. Our
+  2026-10-04 tag check proved each tag arrives, not that it is heard.
+- **Fish Audio S2 Pro** (not wired) — free-form `[tag]` cues, best at a sentence's start
+  (`[sad][whispering] I miss you so much.`, docs.fish.audio); "15,000+" tags; whether they hold on
+  a cloned voice is not documented. audio.cpp passes the text verbatim, as the official
+  `inference.py` (`prompt_builder.cpp:75-104`); its sampling defaults are 0.8 / 0.8 against the
+  official CLI's 1.0 / 0.9. EmergentTTS Emotions win rate 86.61 (arXiv 2603.08823). Q8 6.32 GB;
+  commercial use No. Our tag filter strips any `[…]` a model doesn't list (`inline_tags.js:64-75`).
+- **Breeze TTS 2** (BreezeBlue; not wired) — direction on a cloned voice is its headline: clip +
+  exact transcript + `--instruction`, "match the instruction language to the target text", the
+  README recommends `--cfg-scale 4`. audio.cpp matches the official template but defaults
+  `guidance_scale` to 1.0 (*code*, `include/engine/models/breeze_tts/generator.h:23`), and at
+  exactly 1.0 skips CFG (*code*, `src/models/breeze_tts/generator.cpp:1060`) — so out of the box
+  the instruction is barely enforced; it also adds "Speak clearly and naturally." when none is
+  given. Vendor leaderboard 4.25 of 5 (700 cloned-voice tasks, Gemini-judged). Q8 5.08 GB;
+  commercial use No.
+- **Higgs Audio TTS 3** (not wired) — `<|category:value|>` tags at a sentence's start: 21 emotions
+  (anger, sadness, disgust, bitterness …), styles (singing, shouting, whispering), sound effects
+  (sigh, crying), prosody; "only the tags below are recognized — anything else … gets read
+  literally"; the authors' cookbook combines them with a reference clip. audio.cpp passes them
+  through (`tokenizer_text.cpp:62-89`). Q8 5.10 GB; commercial use No.
+- **FireRedTTS3 — confirmed: no direction on a cloned voice.** Instruct reads `instruction` and
+  then overwrites it with `reference_text` into a fixed "Convert text to speech." prompt
+  (`../audio.cpp/src/models/fireredtts3/session.cpp:130-146`, `tokenizer_text.cpp:235-245`), as
+  upstream's `chatml.py` does; the authors document only speed/pitch/volume edits. audio.cpp's
+  spec over-claims `clone: style_control`. Its README limits cloning to "academic research".
 
 ### 10.7 Judging emotion in a take automatically
 
