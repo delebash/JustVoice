@@ -1698,6 +1698,8 @@ its page: plan 2026-10-09 voice-training findings, "The measurement — results"
 - A runaway line records a speech "peak" measurement of its own — 6,235 and 6,255 MB for Qwen3-TTS
   Base, against ~2.8 GB normally — and the admission prices a model at its largest peak
   (`engines/manager.js` `_priceMb`), which then left the model unloadable on the 8 GB card. — *measured*.
+  Since 2026-10-11 a process that ran such a line (audio past 0.5 s a character and 30 s) no longer
+  saves peaks (`manager._noteRunaway` / `_prices`); the memory it holds is still booked.
 - On 20 LJSpeech lines, word errors (Qwen3-ASR, 336 words): real 1, clip with words 0, clip x-vector
   only 1, 2-clip pooled x-vector 1. — *measured*.
 - A request the app cancels (client gone) does not stop the runtime's work: the next request waits

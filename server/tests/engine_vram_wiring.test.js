@@ -12,6 +12,7 @@
 import * as stores from "@delebash/llm-runner/llm/stores";
 import * as hardware from "@delebash/llm-runner/runner/hardware";
 import { afterEach, expect, test, vi } from "vitest";
+import { writeWavContainer } from "../src/audio/wav.js";
 import { seedWorkspace } from "../src/database/seed.js";
 import { appClient, closeApps } from "./app_helpers.js";
 import { bareManager, discrete, makeArbiter, onePool, resetArbiter } from "./engines_helpers.js";
@@ -614,6 +615,58 @@ test("a_known_price_is_the_floor_and_a_higher_reading_is_recorded", async () => 
   await mgr.load("eng", { device: "auto" });
   expect(arb.reservationOf("tts:eng").vram_mb).toBe(5000);
   expect(recorded).toEqual([5000]);
+});
+
+test("a_runaway_line_no_longer_prices_the_model_from_its_process", async () => {
+  // 2026-10-10: one Qwen3-TTS Base sentence ran on for 655 s; the 6,235 MB it left the process
+  // holding was saved as the model's price and the model no longer fit the card.
+  const procs = { pid: 4242 };
+  class SpeakingProc extends Proc {
+    constructor(m, p) {
+      super(m, p);
+      this.proc = { pid: procs.pid };
+      this.audioS = 2;
+    }
+    post(p, json = null) {
+      if (p !== "/synth") return super.post(p, json);
+      const rate = 1000;
+      return { statusCode: 200, text: "", headers: {}, content: writeWavContainer(Buffer.alloc(rate * 2 * this.audioS), rate, 1) };
+    }
+  }
+  const arb = makeArbiter(discrete());
+  const mgr = mgrFor(discrete(), manifest(), SpeakingProc);
+  const recorded = [];
+  vi.spyOn(EngineManager.prototype, "_recordSpeechLoad").mockImplementation((m, k, v, mb) => recorded.push(mb));
+  vi.spyOn(EngineManager.prototype, "bumpEngineReservationAsync").mockImplementation(() => {});
+  vi.spyOn(EngineManager.prototype, "_engineProcMb").mockResolvedValue(2000);
+  await mgr.load("eng", { device: "auto" });
+  const line = async (text, audioS, probeMb) => {
+    mgr._loaded.get("tts").audioS = audioS;
+    await mgr.synth("eng", { voice_id: "v", text });
+    vi.spyOn(EngineManager.prototype, "_engineProcMb").mockResolvedValue(probeMb);
+    await mgr.bumpEngineReservation("tts");
+  };
+  // A long line that fits its text still prices: 200 characters, 60 s.
+  await line("x".repeat(200), 60, 2800);
+  expect(recorded).toEqual([2800]);
+  // The runaway: 12 characters, 40 s — booked (the process holds it), never saved as the price.
+  await line("Hello there.", 40, 6235);
+  expect(arb.reservationOf("tts:eng").vram_mb).toBe(6235);
+  expect(recorded).toEqual([2800]);
+  // Nor any later reading of that process — a normal line, or a reload into it.
+  await line("Hello there.", 2, 6300);
+  expect(arb.reservationOf("tts:eng").vram_mb).toBe(6300);
+  await mgr.unload("tts");
+  vi.spyOn(EngineManager.prototype, "_priceMb").mockReturnValue(2800);
+  vi.spyOn(EngineManager.prototype, "_engineProcMb").mockResolvedValue(6300);
+  await mgr.load("eng", { device: "auto" });
+  expect(recorded).toEqual([2800]);
+  // A new process prices again.
+  await mgr.unload("tts");
+  procs.pid = 4343;
+  vi.spyOn(EngineManager.prototype, "_engineProcMb").mockResolvedValue(3000);
+  await mgr.load("eng", { device: "auto" });
+  expect(recorded).toEqual([2800, 3000]);
 });
 
 test("admission_credits_what_the_replaced_occupant_gives_back", async () => {

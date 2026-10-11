@@ -89,6 +89,15 @@ export const NOT_ENGINES = new Set(["audiocpp"]);
 // constant: the only numbers in the pricing chain are measured ones.
 export const PROBE_TTL_S = 2.0;
 
+// A line whose audio runs far past its text — a runaway: one Qwen3-TTS Base sentence came back as
+// 655 s (2026-10-10) — leaves its process holding memory no normal line needs (6,235 MB against
+// ~2.8 GB), and that reading, saved as a peak, priced the model out of the card for good. Such a
+// line is longer than RUNAWAY_S_PER_CHAR seconds a character of its text (slow narration is about
+// 0.1) and than RUNAWAY_MIN_S; its process's readings still book the memory it holds, but none is
+// saved as the model's price again (decided 2026-10-11, TASKS FINDING "Digital silence…").
+export const RUNAWAY_S_PER_CHAR = 0.5;
+export const RUNAWAY_MIN_S = 30;
+
 const monotonic = () => performance.now() / 1000;
 const msgOf = (e) => e?.message ?? String(e);
 
@@ -594,6 +603,9 @@ export class EngineManager {
     this._hwDetected = false;
     // The measured true-up's probe TTL cache: "pid:<n>" → [monotonic s, value].
     this._probeCache = new Map();
+    // Pids of speech processes that ran a runaway line: their readings no longer price a model
+    // (RUNAWAY_S_PER_CHAR). Keyed by the process, not the slot — the process outlives an unload.
+    this._unpricedPids = new Set();
     this.refreshManifests();
   }
 
@@ -1106,6 +1118,25 @@ export class EngineManager {
     }
   }
 
+  /** May this slot's process's readings be saved as a model's price? Not after it ran a runaway
+   * line (RUNAWAY_S_PER_CHAR). */
+  _prices(proc) {
+    const pid = proc?.proc?.pid;
+    return !pid || !this._unpricedPids.has(pid);
+  }
+
+  /** Mark the process when its line ran away — before the line's high-water probe reads it. */
+  _noteRunaway(proc, engineId, text, audioS) {
+    const pid = proc?.proc?.pid;
+    if (!pid || audioS === null || this._unpricedPids.has(pid)) return;
+    if (audioS <= Math.max(RUNAWAY_MIN_S, RUNAWAY_S_PER_CHAR * String(text ?? "").length)) return;
+    this._unpricedPids.add(pid);
+    log.warning(
+      `${engineId}: a line of ${String(text ?? "").length} characters ran on for ${pyRound(audioS, 1)} s — ` +
+        `this process's memory no longer sets the model's price (pid ${pid})`,
+    );
+  }
+
   static _measureId(kind, engineId, variant) {
     return `${kind}:${engineId}:${variant || ""}`.replace(/:+$/, "");
   }
@@ -1140,7 +1171,7 @@ export class EngineManager {
         const m = this.getManifest(engineId);
         if (m !== null) {
           this._reserveEngine(m, kind, mb, "measured");
-          this._recordSpeechLoad(m, kind, variant, mb, device);
+          if (this._prices(occ)) this._recordSpeechLoad(m, kind, variant, mb, device);
         }
       }
     } catch {
@@ -1585,7 +1616,7 @@ export class EngineManager {
         }
         if (measured) {
           this._reserveEngine(m, targetKind, Math.max(measured, earlyMb), "measured");
-          if (calibrated || (earlyMb && measured > earlyMb)) {
+          if ((calibrated || (earlyMb && measured > earlyMb)) && this._prices(proc)) {
             this._recordSpeechLoad(m, targetKind, this._currentVariants.get(engineId), measured, device);
           }
         } else if (!earlyMb) {
@@ -1673,6 +1704,8 @@ export class EngineManager {
       r = await proc.post("/synth", body);
       wall = (performance.now() - t0) / 1000;
     });
+    const audioS = r.statusCode === 200 ? _wavSeconds(r.content || Buffer.alloc(0)) : null;
+    this._noteRunaway(proc, engineId, body?.text, audioS);
     // High-water true-up: generate() is where a TTS engine's memory peaks — async +
     // TTL-absorbed, raise-only, never blocks the line.
     this.bumpEngineReservationAsync(kind);
@@ -1683,7 +1716,7 @@ export class EngineManager {
       }
     }
     if (r.statusCode !== 200) throw new EngineRequestError(r.statusCode, `engine synth failed: ${_engineDetail(r)}`);
-    this._recordCpuSpeed(kind, proc, _wavSeconds(r.content || Buffer.alloc(0)), wall);
+    this._recordCpuSpeed(kind, proc, audioS, wall);
     // Mirror the engine's audio headers back through to the host caller.
     const h = (k) => headerGet(r.headers, k);
     const sampleRate = h("X-JustVoice-Sample-Rate");

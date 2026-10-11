@@ -306,7 +306,7 @@ GO:     given 2026-10-10 ("your rec go", twice).
 STATE:  FINDING — measured 2026-10-10 (plan 2026-10-09 voice-training findings, "Found on the way";
         RESEARCH §9). First read as a length problem, which the 20 s cap (the item above, 3) was
         decided on; probes the same day showed the length is not the trigger — the cap is NOT
-        built, and the user is asked again.
+        built; the guard below replaced it (decided and built 2026-10-11).
 BUILT:  nothing. Probes, one sentence on Qwen3-TTS Base: 26.6 s, 52.9 s and a 22.05 kHz reference all
         fine, in ICL and x-vector mode; the 26.6 s one with three 0.25 s gaps of exact digital
         silence → still running after 240 s; the same gaps filled with ±2 LSB of noise → fine. While
@@ -329,9 +329,19 @@ BUILT:  2026-10-11 — the guard: `slot.guardedReference` (engines/audiocpp/slot
         (`manager._priceMb`), so the runaway probes' two peaks (6,235 and 6,255 MB) had left
         Qwen3-TTS Base unloadable on the 8 GB card; those two rows were removed 2026-10-11 (the two
         real peaks, ~2.8 GB, stay). One bad run can set a model's price for good.
-OPEN:   the cause in our audio.cpp copy; whether one peak should set a model's price for good
-        (the user's word on either).
-GO:     given 2026-10-11 ("go").
+DECIDED: 2026-10-11 — asked: "One bad run can set a model's memory budget permanently, which is how
+        my test runs blocked Qwen3. Worth fixing so a single odd reading can't do that again. Say if
+        you want it looked at." The user: "your re go, double check your work make sure you did the
+        correct fixes on the previous stuff".
+BUILT:  2026-10-11 — a line whose audio runs longer than 0.5 s a character of its text and 30 s
+        (`manager.RUNAWAY_S_PER_CHAR`, `RUNAWAY_MIN_S`; slow narration is about 0.1 s a character)
+        marks its speech process (`_noteRunaway`, by pid — the process outlives an unload): its
+        readings still raise the live booking, but none is saved as a model's price again, after a
+        line or at a load (`_prices`); a new process prices again. A warning names the line's
+        length and the process. Checked: 1 test (engine_vram_wiring "a_runaway_line_no_longer_prices
+        _the_model_from_its_process"; it fails with the mark switched off), server 1,082/1,082.
+OPEN:   the cause in our audio.cpp copy (the user's word).
+GO:     given 2026-10-11 ("go"; the price fix "your re go").
 
 ### The server moves to Hono (decided 2026-10-09)
 STATE:  DECIDED 2026-10-09, family-wide — the decision with the user's words is the kit's TASKS,
