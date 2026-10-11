@@ -2021,6 +2021,24 @@ cue lines rendered plain and directed (`POST /v1/generate`); every clip read bac
   no per-take length cap for Qwen3 (`max_tokens` is read by the runtime, not sent by
   `engines/audiocpp/slot.js`). Listening page: claude.ai/artifact/2Z27eh2G5JYjqtXr2yS2PE
   (collection `round2`). — *measured*.
+- **Round 2 by ear, blind where it could be (the user, 2026-10-11, 44 answers):**
+
+  | Line | VoxCPM2 clip-only, fuller direction — seeds 7 / 8 / 9 | Qwen3 VoiceDesign: told · not told |
+  |---|---|---|
+  | 1 sighed | like / plain / wrong | plain · plain |
+  | 2 angrily | like / like / like | like · like |
+  | 3 muttered | plain / plain / plain | plain · wrong |
+  | 4 contemptuously | like / like / plain | like · like |
+  | 5 mournfully | like / plain / plain | like · like |
+  | 6 triumphantly | like / plain / plain | **like** · plain |
+  | 7 shouted | like / like / like | like · like |
+
+  VoxCPM2: 11 of 21 tries like the book, 9 plain, 1 wrong — the same direction gives a different
+  result from one seed to the next; at least one of three tries was like the book on 6 of 7 lines
+  (none on "muttered"). VoiceDesign: told 5 of 7 like the book, none wrong, every voice good —
+  but **"changes" person across ten lines** (overall good). In both, the takes not told already
+  sound like the book on several lines (VoiceDesign 4 of 7): the words carry much of it.
+  — *measured by ear*.
 
 ---
 
