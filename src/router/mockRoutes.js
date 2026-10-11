@@ -42,4 +42,12 @@ export const mockRoutes = [
     component: () => import("../pages/mock/MockStudioPage.vue"),
     meta: { nav: "studio", lede: true, step: "script" },
   },
+  // Engine list slice 4 (2026-10-11): Speech engines with every audio.cpp model, its licence,
+  // status, testing, memory fit, filters and sort.
+  {
+    path: "mock/speech-engines",
+    name: "mock-speech-engines",
+    component: () => import("../pages/mock/MockSpeechEnginesPage.vue"),
+    meta: { nav: "ai" },
+  },
 ];

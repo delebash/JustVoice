@@ -1899,6 +1899,15 @@ section.block > h3 {
    gold use-limited warn for obligation licences (Llama-3.2-Community). */
 .ev-lic{font-size:9.5px;font-weight:700;letter-spacing:.04em;padding:2px 7px;border-radius:999px;border:1px solid var(--line-strong,#cfccc4);color:var(--ink-2);background:var(--surface);white-space:nowrap}
 .ev-lic--warn{border-color:#e2d2b0;background:#f5edda;color:#b08a3e}
+/* Commercial use in audio.cpp's words (2026-10-11): Yes plain, Conditional .ev-lic--warn, No and
+   Unclear these. And a model JustVoice has tested. Born on the Speech engines mock (engine list
+   slice 4). */
+.ev-lic--no{border-color:var(--danger-line);background:var(--danger-bg);color:var(--danger-ink)}
+.ev-lic--unclear{border-style:dashed;color:var(--ink-3)}
+.ev-cap.tested{border-color:var(--accent-line,#b8d2c3);background:var(--accent-soft,#e8f0eb);color:var(--accent-ink,#2c6049)}
+/* An engine's own notes at the top of its open group — what it is best for, what JustVoice's
+   testing found (engine list slice 4). The .ev-model row's left indent, the .ev-mplace size. */
+.ev-gnote{display:flex;flex-direction:column;gap:2px;padding:8px 16px 8px 37px;font-size:12.5px;color:var(--ink-2);border-bottom:1px solid var(--line)}
 /* The loaded row's measured-memory hint ("1.1 GB measured" / "not measured
    yet") — reads the same vram reservations as the budget strip. */
 .ev-memhint{font-size:11px;color:var(--ink-3);white-space:nowrap}
