@@ -68,7 +68,8 @@ STATE:  FINDING — measured 2026-10-11 (slice 0, RESEARCH §10.6). A line's dir
         The capability note "Written direction reaches a cloned voice too"
         (`engines/capability_details.js:377`) and the manifest's "audio.cpp splits the leading tag
         off and does not speak it" (`engines/voxcpm2/manifest.js:10-13`) hold only without a
-        transcript.
+        transcript. The authors document it: "When Hi-Fi mode is enabled, the control instruction
+        is ignored" (VoxCPM usage guide, checked 2026-10-11; RESEARCH §10.6, §10.8).
 WHY:    the one-click run's character voices are frozen VoxCPM2 clones with direction on lines.
 NOT:    —
 BUILT:  nothing — the slice 0 takes used a copy of the clip with no transcript.
