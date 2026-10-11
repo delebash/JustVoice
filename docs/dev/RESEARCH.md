@@ -2202,6 +2202,19 @@ cue lines rendered plain and directed (`POST /v1/generate`); every clip read bac
   accuracy 0.673); the text path is not evaluated for 2.5. Demos with downloadable clips:
   index-tts.github.io/index-tts2.github.io/ (§2.3 "I feel really down"; 2.5 §5 Disgusted at
   0.5 / 0.8 / 1.0).
+- **KittenTTS 2** (`kitten_tts2`) arrived in upstream **v0.9.1** (2026-10-07), not in our v0.9.0
+  base: experimental, speaks 48 presets and clones; "Expression tags reach the model verbatim and
+  enable its emotion prefix"; a `preset` of `stable` or `expressive`. Stellon Labs Community
+  License — commercial use Conditional (registration, revenue/funding limits, attribution). The
+  tag syntax is not in audio.cpp's doc. — *code, 2026-10-11* · `git show
+  v0.9.1:docs/community_models/kitten_tts2.md:192-203`, `v0.9.1:model_specs/kitten_tts2.json`,
+  `v0.9.1:docs/model_licenses.md`.
+- **F5-TTS** (`f5_tts`, in our base, community): clone only, `reference_text` required, no
+  emotion option. "F5-TTS-Emotional-CFG" was not found by that name; the nearest is AffectF5
+  (huggingface.co/ScreamingTony/AffectF5), a LoRA adapter on F5-TTS v1 Base — Neutral, Happy,
+  Sad, Angry, Surprise and an arousal value, CC BY-NC 4.0; audio.cpp's F5 spec takes no
+  adapter. **Orpheus is not in audio.cpp** (base or upstream main; a roadmap candidate only,
+  2026-10-01 scan) — running it would mean porting it. — *code + web, 2026-10-11*.
 
 ### 10.7 Judging emotion in a take automatically
 
