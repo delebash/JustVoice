@@ -262,6 +262,22 @@ BUILT:  the plan's §11 and §12 carry these answers.
 OPEN:   slice 0: direction on/off and the frozen Hatter on the engines above, a blind listening page.
 GO:     given 2026-10-11 ("yes your rec on all").
 
+### Slice 0, round 3: CosyVoice3 and IndexTTS 2 wired in on a test branch (decided 2026-10-11)
+STATE:  DECIDED 2026-10-11 — after rounds 1–2 (RESEARCH §10.6: VoxCPM2 keeps the voice but acts
+        about half the tries; VoiceDesign acts but changes person), shown: "Test CosyVoice3. It's
+        the one engine in our build made for exactly this: copy a voice and follow a written
+        instruction, in one request", and on IndexTTS 2: "test it anyway, next to CosyVoice3, in
+        round 3 … the licence decision only comes up if it wins your ears … So the round-3
+        question: wire CosyVoice3 and IndexTTS 2 into the app for a test? … Nothing ships to users
+        from this … whichever loses gets removed again, unless you want to keep it." The user:
+        "yes do your tests with ccozy your recs go".
+WHY:    the only engines in our build that copy a voice and take emotion in one request.
+NOT:    wiring them on `main` — with no way to hide an engine, they'd ship; IndexTTS's licence
+        (no outputs used to improve an AI model; Bilibili's terms) is unruled.
+BUILT:  in progress — branch `test/round3-engines` in a worktree beside this repo.
+OPEN:   the wiring, the downloads, round 3's renders and its listening page.
+GO:     given 2026-10-11 ("your recs go").
+
 ### Frontier models get their own recipe, not the small-model one (decided 2026-10-10)
 STATE:  DECIDED 2026-10-10 — the user: "this could be a serious problem if we are causing frontier
         models to do worse becuase we have tweaked for local less intelligent models, how do we fix
