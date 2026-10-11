@@ -379,6 +379,47 @@ CAPABILITY_DETAILS.voxcpm2 = detail({
   ],
 });
 
+// ─── CosyVoice3 and IndexTTS (audio.cpp `cosyvoice3`, `index_tts2`) — TEST BRANCH ONLY ────
+// Wired 2026-10-11 for slice 0's round 3 (TASKS): both clone from a clip and take a line's
+// direction on the clone in the same request — CosyVoice3 as an `instruct` instruction, IndexTTS
+// as emotion text (the manifests' headers).
+CAPABILITY_DETAILS.cosyvoice3 = detail({
+  engine_id: "cosyvoice3",
+  display_name: "CosyVoice3",
+  supports_voice_cloning: true,
+  supports_clone_prompt_text: true,
+  supports_voice_design: false,
+  supports_instruct_freeform: true,
+  knobs: [
+    knob({ key: "num_inference_steps", label: "Inference steps", min: 4, max: 30, step: 1, default: 10, advanced: true, hint: "More steps = finer detail, slower." }),
+    seedKnob(),
+  ],
+  inline_tags: [],
+  pitch_post_process: true,
+  notes: [
+    "Clones from a short clip; the clip's words make a closer clone.",
+    "A line's written direction goes as an instruction — then the clip gives only the voice.",
+  ],
+});
+
+CAPABILITY_DETAILS.indextts = detail({
+  engine_id: "indextts",
+  display_name: "IndexTTS",
+  supports_voice_cloning: true,
+  supports_voice_design: false,
+  supports_instruct_freeform: true,
+  knobs: [
+    knob({ key: "emotion_alpha", label: "Emotion strength", min: 0.0, max: 1.0, step: 0.05, default: 1.0, hint: "How strongly the line's direction colours the voice." }),
+    seedKnob(),
+  ],
+  inline_tags: [],
+  pitch_post_process: true,
+  notes: [
+    "Clones from a short clip and sets the emotion apart from the voice.",
+    "A line's written direction becomes its emotion, read by a small built-in emotion model.",
+  ],
+});
+
 // Nano is Turbo's architecture at 110M parameters with the same tag vocabulary (both repos'
 // added_tokens.json compared byte for byte 2026-08-19) and the same generate surface. A copy
 // with its own name, not an alias — the alias put a second "Chatterbox Turbo" in every picker

@@ -964,6 +964,52 @@ export function toSpeechRequest(row, body) {
     return req;
   }
 
+  if (family === "cosyvoice3") {
+    // TEST BRANCH ONLY (TASKS "Slice 0, round 3"). Cloned voices only. A line with direction
+    // goes as the `instruct` template — the clip as the voice, the direction as the instruction
+    // (audio.cpp adds "You are a helpful assistant."); one without as `zero_shot` with the clip's
+    // words, or `cross_lingual` on the clip alone. No language is sent: CosyVoice3 refuses any
+    // option outside its spec (../audio.cpp/docs/models/cosyvoice3.md).
+    if (!truthy(get(body, "audio_prompt_path"))) {
+      throw new AudioCppError("CosyVoice3 speaks only cloned voices — this voice has no reference clip");
+    }
+    req.voice_ref = fwd(body.audio_prompt_path);
+    const instruct = splitWs(get(delivery, "instruct") || get(knobs, "instruct") || "").join(" ");
+    const opts = {};
+    if (instruct) {
+      opts.template_name = "instruct";
+      opts.instruction = instruct;
+    } else if (truthy(get(body, "ref_text"))) {
+      opts.template_name = "zero_shot";
+      req.reference_text = body.ref_text;
+    } else {
+      opts.template_name = "cross_lingual";
+    }
+    if (get(knobs, "num_inference_steps") != null) opts.num_inference_steps = pyIntOf(knobs.num_inference_steps);
+    req.options = opts;
+    return req;
+  }
+
+  if (family === "index_tts2") {
+    // TEST BRANCH ONLY (TASKS "Slice 0, round 3"). Cloned voices only. A line's direction goes
+    // as emotion text, which IndexTTS's built-in emotion model turns into its emotion mix
+    // (../audio.cpp/docs/models/index_tts.md); `emotion_alpha` blends it in.
+    if (!truthy(get(body, "audio_prompt_path"))) {
+      throw new AudioCppError("IndexTTS speaks only cloned voices — this voice has no reference clip");
+    }
+    req.voice_ref = fwd(body.audio_prompt_path);
+    req.language = lang.split("-")[0] || "en";
+    const instruct = splitWs(get(delivery, "instruct") || get(knobs, "instruct") || "").join(" ");
+    const opts = {};
+    if (instruct) {
+      opts.use_emotion_text = true;
+      opts.emotion_text = instruct;
+    }
+    if (get(knobs, "emotion_alpha") != null) opts.emotion_alpha = pyFloatParse(knobs.emotion_alpha);
+    if (Object.keys(opts).length) req.options = opts;
+    return req;
+  }
+
   throw new AudioCppError(`no speech mapping for the ${family} family`);
 }
 

@@ -48,6 +48,8 @@ import * as release from "./audiocpp/release.js";
 import * as runtime from "./audiocpp/runtime.js";
 import * as slot from "./audiocpp/slot.js";
 import * as chatterboxManifest from "./chatterbox/manifest.js";
+import * as cosyvoice3Manifest from "./cosyvoice3/manifest.js";
+import * as indexttsManifest from "./indextts/manifest.js";
 import * as kittenManifest from "./kitten/manifest.js";
 import * as kokoroManifest from "./kokoro/manifest.js";
 import * as self from "./manager.js";
@@ -139,6 +141,8 @@ export function _currentOsLabel() {
 export const MANIFEST_MODULES = new Map([
   ["asr", { ...asrManifest }],
   ["chatterbox", { ...chatterboxManifest }],
+  ["cosyvoice3", { ...cosyvoice3Manifest }],
+  ["indextts", { ...indexttsManifest }],
   ["kitten", { ...kittenManifest }],
   ["kokoro", { ...kokoroManifest }],
   ["pocket", { ...pocketManifest }],
