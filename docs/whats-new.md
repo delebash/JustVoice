@@ -2,6 +2,10 @@
 
 ## v0.1.0
 
+- **One runaway line no longer keeps a voice model from loading (2026-10-11)** — a line that ran on
+  far past its text left the speech process holding much more memory than normal, and the app took
+  that as what the model needs, so it could refuse to load the model again on your graphics card.
+  Such a reading still counts while that process runs, but it is never saved as the model's size
 - **A Qwen3-TTS clone with silent gaps in its clip no longer runs on (2026-10-11)** — a clip with
   stretches of pure digital silence (clips joined together, or an edited or gated recording) made
   Qwen3-TTS Base keep talking for minutes and held up every other line. The app now fills those
