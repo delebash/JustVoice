@@ -262,6 +262,26 @@ BUILT:  the plan's §11 and §12 carry these answers.
 OPEN:   slice 0: direction on/off and the frozen Hatter on the engines above, a blind listening page.
 GO:     given 2026-10-11 ("yes your rec on all").
 
+### Offer the best models audio.cpp has, licence-labelled, not licence-limited (decided 2026-10-11)
+STATE:  DECIDED 2026-10-11 — the user: "i think we should find the best onest that audio cpp has
+        to offer, so mark these models best for emotion reading an audio book, we simply put them
+        behind the terms marke them as non commercials easly sortable ect, as long as its easy for
+        the user to know what it can be used for it want to really off the user the best options
+        models for the task so lets not limit ourselves anymore we just make sure the user is
+        informed". Earlier the same day on IndexTTS: "i dont think the lincese applies to the
+        output … our software is ment for single user".
+WHY:    the one-click run needs the engine that acts best on a copied voice; the licence rule kept
+        the strongest candidates out of the test.
+NOT:    the roster rules "weights and output must permit commercial use" and "no Hugging Face login
+        or terms gate" (2026-10-01 scan's table) as reasons to leave a model out — now a label and
+        a terms gate instead.
+BUILT:  nothing yet.
+OPEN:   a plan for the label (commercial OK / conditional / non-commercial), filtering and sorting
+        by it, the terms gate (Pocket TTS's `TERMS`), and a "best for" note; which non-commercial
+        models fit 8 GB and take emotion on a clone (Breeze TTS, Fish Audio, Higgs Audio,
+        OmniVoice) — research, then round 4.
+GO:     needed for the plan; the research waits for the user's word.
+
 ### Slice 0, round 3: CosyVoice3 and IndexTTS 2 wired in on a test branch (decided 2026-10-11)
 STATE:  DECIDED 2026-10-11 — after rounds 1–2 (RESEARCH §10.6: VoxCPM2 keeps the voice but acts
         about half the tries; VoiceDesign acts but changes person), shown: "Test CosyVoice3. It's
