@@ -72,7 +72,7 @@ const humanize = (name) => {
  * request options — or, for a family whose spec lists none, audio.cpp's own control list
  * (`webui/configs/model_params.json`) — minus what the app sets itself. Labels and help in
  * English from audio.cpp's control list where it has them. A number needs both ends to be a
- * slider; one without is left out. All are advanced (behind "Show advanced").
+ * slider; one without is left out. Each is marked advanced (KnobSpec.advanced).
  */
 export function settingsOf(m) {
   const params = new Map([...(m.fam.params || []), ...(m.entry.params || [])].map((p) => [p.name, p]));

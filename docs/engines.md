@@ -6,8 +6,10 @@ a C++ runtime for speech models — JustVoice installs its own build of it, made
 from [JustVoice's copy](https://github.com/delebash/audio.cpp), the build that suits
 your hardware, starts it when a model loads, and stops it when you close the
 app. Each engine is then just a set of model files the runtime can load:
-Kokoro, KittenTTS, Pocket TTS, Qwen3-TTS, Chatterbox and VoxCPM2 for speech, and
-Speech recognition for turning speech back into text. Each model runs on your
+Kokoro, KittenTTS, Pocket TTS, Qwen3-TTS, Chatterbox and VoxCPM2 for speech,
+Speech recognition for turning speech back into text, and every other speech
+model audio.cpp has that can copy a voice — see
+[Every other model audio.cpp has](#every-other-model-audiocpp-has). Each model runs on your
 graphics card or your CPU — chosen per model, see
 [Where each model runs](#where-each-model-runs--the-graphics-card-or-the-cpu).
 
@@ -28,10 +30,14 @@ What the switch cost is listed under
 [Not available yet](#not-available-yet) — nothing was hidden to make the
 numbers look good.
 
-> **Why no Higgs?** Higgs Audio v3 was removed 2026-06-09 — its model weights
-> are released under a non-commercial license, which conflicts with
-> JustVoice's audiobook / game / podcast use cases where users sell their
-> generated output. Every bundled model's weights permit commercial output.
+> **Licences are shown, not hidden.** Every model keeps the licence of the
+> people who trained it, and some don't allow commercial use. Speech engines
+> shows each one's verdict in audio.cpp's own words — *Commercial use: Yes,
+> Conditional, No or Unclear* — and a model that isn't a plain "Yes" asks you
+> to accept its licence once, before its first download. Kokoro, KittenTTS,
+> Pocket TTS, Qwen3-TTS, Chatterbox and VoxCPM2 all allow commercial use.
+> (Until 2026-10-11 non-commercial models were left out altogether, Higgs
+> Audio among them.)
 
 ## The speech runtime
 
@@ -277,6 +283,53 @@ after the first load, and a model's row shows the CPU speed measured on your
 machine after its first line there. A model placed on the CPU uses no
 graphics memory at all — measured at 0 MB on both the CUDA and Vulkan builds.
 
+## Every other model audio.cpp has
+
+Besides the engines above, Speech engines lists every other speech model the
+speech runtime can run that **copies a voice from a clip** — 25 more engines
+today, among them IndexTTS 2 and 2.5, CosyVoice3, Breeze TTS 2, Higgs Audio 3,
+Fish Audio S2 Pro, OmniVoice, MOSS-TTS, dots.tts, FireRedTTS3 and VoxCPM1. JustVoice doesn't hand-write these: it builds them from
+audio.cpp's own description of each model — what it does, its languages, its
+settings, its download files and its licence. When audio.cpp adds a model, the
+next JustVoice update lists it.
+
+**What each row tells you, before you download anything:**
+
+- **Its licence and commercial use**, in audio.cpp's words: *Yes*,
+  *Conditional* (allowed under a condition the note names, such as a revenue
+  limit), *No* (research or personal use only) or *Unclear*. Anything that
+  isn't a plain *Yes* asks you to accept its licence once, before its first
+  download — the same prompt Pocket TTS shows for Kyutai's terms. The licence
+  text at its source is what counts; the app's summary is there to help you
+  find it.
+- **audio.cpp's status for it** — *supported*, *community* or *experimental*.
+  Models audio.cpp marks as work in progress aren't listed.
+- **Tested by JustVoice**, with what we found, or **Not tested by JustVoice
+  yet**. An untested model works as audio.cpp describes it; we just haven't
+  listened to it ourselves.
+- **Whether it takes direction.** A model JustVoice knows how to direct takes
+  a line's emotion and direction; the others say *Can't be directed yet* and
+  speak every line plainly in the cloned voice.
+
+**Which ones take direction, and how** — each the way its authors document it:
+
+| Model | How a line's emotion and direction reach it |
+|---|---|
+| **IndexTTS 2 / 2.5** | Happy, sad, angry, fearful and contemptuous go as an emotion mix at strength 0.65; any other direction goes as words. Its *emotion strength* setting overrides the 0.65. It has no way to mutter, whisper or shout |
+| **CosyVoice3** | Only what its authors document: very happy, very sad, very angry, as loudly as possible, and in a very soft voice. Other directions are spoken plainly |
+| **Breeze TTS 2** | The direction as its instruction, with its guidance raised to 4 on a directed line unless you set it yourself |
+| **Higgs Audio 3** | Its own emotion and style tags — happy, sad, angry, fearful, contemptuous (as disgust), whispered, shouted. It reads any other tag aloud, so nothing else is sent |
+| **Fish Audio S2 Pro** | The emotion as a tag and the direction as a short description at the start of the line |
+
+**Settings come from the model too.** An engine from audio.cpp shows its own
+settings — sliders, and also dropdowns, on/off switches and text fields where
+the model has them — in the persona page's *Sampling* and in Render's *This line
+only*.
+
+**Downloads** come from whichever repository audio.cpp names for the model,
+pinned to one commit, so a file never changes under you. Some are large: check
+the size on the row before downloading.
+
 ## Where each model runs — the graphics card or the CPU
 
 Each model runs either on your graphics card or on your CPU, and every model
@@ -342,7 +395,7 @@ Everything else is passed to the engine:
 | **KittenTTS** | ✗ | ✓ | ✗ | none (no seed — see below) |
 | **Pocket TTS** | ✓ | ✗ | ✗ | none |
 | **Chatterbox Multilingual** | ✓ | ✗ | ✗ | Exaggeration · CFG weight · Temperature · Repetition penalty · Top p · Min p · Decoder CFG |
-| **VoxCPM2** | ✓ | ✗ | **✓ direction, on a clone too; a description designs the voice** | CFG · Inference steps · Tries on a runaway · Runaway limit |
+| **VoxCPM2** | ✓ | ✗ | **✓ direction, on a clone too (a directed line uses the clip without its words); a description designs the voice** | CFG · Inference steps · Tries on a runaway · Runaway limit |
 | **Qwen3 CustomVoice** | ✗ | ✗ | **✓ instruction** | Temperature · Top k · Top p · Repetition penalty · Detail temperature · Detail top k · Detail top p |
 | **Qwen3 Base** | ✓ | ✗ | ✗ | as above |
 | **Qwen3 VoiceDesign** | ✗ | ✗ | **✓ the description** | as above |
@@ -390,6 +443,15 @@ instruction input, and Chatterbox steers through Exaggeration and CFG weight
 rather than words. So on those, "direct the performance in words" and "use this cloned voice" are a choice — VoxCPM2 is the engine that does both — and that
 includes a designed voice once you keep it, because keeping one turns it into
 a clone ([voices.md](voices.md#keeping-a-designed-voice-is-what-makes-it-one-voice)).
+Several of the [other models from audio.cpp](#every-other-model-audiocpp-has)
+also direct a cloned voice — IndexTTS, CosyVoice3, Breeze, Higgs and Fish.
+
+**A directed VoxCPM2 line is spoken from the clip alone.** VoxCPM2 copies a voice
+more closely when it also has the clip's words, but its authors say that mode
+ignores direction ("When Hi-Fi mode is enabled, the control instruction is
+ignored"), and in our tests it read the direction aloud instead. So since
+2026-10-11 a line with direction leaves the clip's words out, and a plain line
+keeps them.
 
 **Inline tags are Chatterbox Turbo's and Nano's.** Both read 19 bracketed tags
 in the text: an emotion the line is spoken in (`[angry]`, `[fear]`, `[happy]`,
@@ -464,6 +526,8 @@ direction, tags, or only pace, pitch and gain.
 | Someone's own voice, with per-line emotion tags | Chatterbox Turbo or Nano — 19 tags | English only; no written direction |
 | Someone's own voice in another language | Chatterbox Multilingual — 23 languages | No written direction, no tags |
 | Cloning, designing and written direction together | VoxCPM2 — 30 languages | The largest download (2.8 GB at 8-bit) |
+| Someone's own voice, acting each line's emotion | IndexTTS 2.5, from [audio.cpp's other models](#every-other-model-audiocpp-has) — tested by JustVoice: it acted 12 of 21 lines like the book in a blind test and kept the cloned voice | Commercial use is *Conditional* (accept its licence first); no muttering, whispering or shouting; 3.5 GB |
+| The newest models | [Every other model audio.cpp has](#every-other-model-audiocpp-has) | Most are *Not tested by JustVoice yet*; several are non-commercial |
 
 Each model's row says the same with its direction chip (see
 [The catalog rows](#the-catalog-rows)).

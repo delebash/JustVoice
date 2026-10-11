@@ -398,6 +398,22 @@ it has no `manifest.py`, so discovery skips it). `EngineManifest.isolation`
 answers `"audiocpp"` for every engine; `uses_audiocpp` is true when every
 variant row carries an `audiocpp` block.
 
+**Every other audio.cpp speech model is generated, not hand-written** (since
+2026-10-11; plan `docs/plans/2026-10-11-audiocpp-engine-catalog.md`):
+`scripts/audiocpp-catalog.js` (`npm run catalog:audiocpp`) reads the pinned fork
+tag's `model_specs/`, web-UI catalog and control list, and licence table, plus
+Hugging Face file sizes, into `server/src/engines/audiocpp/catalog.json` —
+re-run it when the pin moves. `engines/audiocpp/generated.js` turns each
+uncovered cloning family into a manifest-shaped engine (`generatedEngines()`,
+joined in `manager.discoverEngines`), its models into capability rows
+(`capability_details.js`, `settingsOf` for typed settings) and its requests into
+`slot.generatedSpeechRequest`. What a spec can't say — how direction reaches the
+model, what testing found — is one file per family in
+`engines/audiocpp/curated/<family>.js` (`DIRECTION`, `PLAIN`, `TESTED`,
+`BEST_FOR`); a family without one is "can't be directed yet". A licence that
+isn't "Yes" gates downloads (`TERMS.gates: "download"`,
+`manager.requireDownloadTerms`).
+
 | Piece | Where | What it does |
 |---|---|---|
 | pinned release | `release.py` | `TAG` (`v0.9.0`), the `BinaryAsset` rows per platform/GPU (Windows cuda12 + cudart 12.4, cuda13 + cudart 13.3, vulkan, cpu; Linux vulkan, cpu; macOS metal), `MODEL_REPO`/`MODEL_REVISION`, `model_source()` |
