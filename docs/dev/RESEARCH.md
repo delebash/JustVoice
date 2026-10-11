@@ -1662,6 +1662,59 @@ audio.cpp's `docs/model_licenses.md`, checked upstream 2026-09-21…27). Their s
   parameters from a text description zero-shot, better with DSP features, DSP code and
   few-shot examples in the prompt.
 
+**Reuse instead of build — engines, plugin hosting, ffmpeg, voice changers** (*agent,
+2026-10-11*; two research agents, one of which measured on this machine with a real take looped
+to 471 s, 24 kHz mono, one thread):
+
+- **The app does not ship ffmpeg.** `mastering.js:82-84` and `export_audiobook.js:188-189` find it
+  on PATH (`hardware.which`), `system_info.js:105-115` reports `bundled: false`, and
+  `docs/troubleshooting.md:10` asks users to install it. This machine's is gyan.dev 8.1.1
+  "full_build" (`--enable-gpl --enable-version3`, so GPLv3; librubberband and ladspa, no lv2).
+  Mastering needs only LGPL filters. BtbN/FFmpeg-Builds ships win64/winarm64/linux64/linuxarm64 in
+  `gpl` and `lgpl` variants (n8.1 win64 lgpl 162 MB), no macOS. (was, in the session's answer of
+  2026-10-11: "the app already ships ffmpeg for mastering" — wrong.)
+- **ffmpeg as a character-voice layer:** no formant shift without a GPL build (`rubberband` needs
+  `--enable-librubberband`, a GPL external library; `af_rubberband.c` never calls Rubber Band's
+  formant-scale call — a Size workaround `asetrate=sr*0.8,aresample,rubberband=pitch=1.25:
+  tempo=1.25:formant=preserved` ran at 121× real time, GPL only); no vocoder and no pitch-track
+  editing; textures are covered (`tremolo` as ring mod above 20 Hz, `aeval` ring mod, `afreqshift`,
+  `afftfilt` robot 232× / whisper 49×, vibrato, chorus, flanger, phaser, `acrusher`, `afir`).
+  Measured: a texture chain at 744× real time; our `audiocpp_dsp` Signalsmith pitch −5 at 120–126×,
+  level with rubberband; **each ffmpeg process costs 261–285 ms to start** on a 5 s clip; outputs
+  byte-identical across runs on one build, but **lengths drift** (+20 ms, +61 ms, −15 ms), against
+  our rule that every effect returns its input's length.
+- **Complete engines:** only **Csound** (LGPL-2.1) has formant shift and pitch-with-formants built
+  in (`pvswarp`, `pvscale kkeepform`); Faust (compiler LGPL with an exception letting generated code
+  take our licence; 2 library functions GPL-3) generates C++ for vocoder, wah, distortion, flanger,
+  reverbs but has no formant function; JUCE 9 (AGPLv3 or its EULA — free under US$20k revenue) and
+  Tracktion Engine (GPL-3 or commercial) have no formant processor; Cmajor (GPLv3 or commercial;
+  generated C++ is ours); miniaudio (public domain / MIT-0) has a voclib vocoder node; LabSound
+  (BSD-2, last release 2023), Elementary (MIT, stale), Pedalboard and DawDreamer (GPL-3, Python),
+  SoX (GPL-2), STK (MIT-style), CDP8 (LGPL, formant and voice programs).
+- **Plugin hosting is licence-clean now:** the **VST3 SDK is MIT since 3.8.0 (2025-10-20)** ("Licensing
+  under GPLv3 and the Steinberg proprietary license is no longer available"; hosting code in
+  `public.sdk/source/vst/hosting`), CLAP is MIT (`clap-helpers`), LV2's lilv is ISC (`lv2apply.c`
+  applies a plugin to a file), LADSPA's header LGPL. But the voice plugins worth having are GPL
+  (Surge XT's Vocoder, RingModulator, FrequencyShifter, Treemonster) or Linux-only (Calf, x42 fat1,
+  Autotalent); LSP (LGPL) has no pitch, formant or vocoder; **no permissively licensed formant
+  plugin was found**. Per the GPL FAQ, a host that loads a GPL plugin in-process forms one program;
+  a separate host process, or loading only plugins the user installed, keeps them apart.
+- **Permissive code to take into `audiocpp_dsp`:** Signalsmith Basics (MIT; frequency shifter,
+  crunch, chorus, dynamics); **mda by Paul Kellett, original code** (MIT-or-GPLv2 per
+  `readme.license`; also `elk-audio/mda-vst2`, MIT) — TalkBox (the talking-beast core), Vocoder,
+  VocInput, SubSynth (octave down), RingMod, Degrade (bitcrush), Tracker (the ports mda-lv2 and
+  mda-vst3 are GPL-3); miniaudio's voclib vocoder (MIT-0); OpenAL Soft's `alc/effects/vmorpher.cpp`
+  (BSD-3 inside an LGPL library — a vowel morpher for creature mouths). Godot's and SoLoud's effects
+  add nothing over Airwindows. Design references: Praat's "Change gender" (formant ratio, pitch
+  median, **pitch range factor**, duration factor — the algorithm, GPL code not reused); Krotos
+  Dehumaniser 2 (ten modules, two of each, series or parallel; a sample trigger with 100+ animal
+  recordings).
+- **The agents' verdict:** keep the character effects in our own DSP with these libraries; no
+  engine; ffmpeg stays for mastering; plugin hosting later as an opt-in "use your own VST3/CLAP
+  plugins". First experiment proposed: a Size A/B at −5/+4 semitones — Signalsmith
+  `setFormantSemitones` against Csound `pvscale`/`pvswarp` (reference only) and WORLD — then port
+  `mdaTalkBox`.
+
 ---
 
 ## 9 · Voice training on the speech runtime
