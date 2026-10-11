@@ -2108,6 +2108,42 @@ cue lines rendered plain and directed (`POST /v1/generate`); every clip read bac
   "muttered" and "contemptuously" on every seed; VoxCPM2 missed "muttered" on every seed but got
   "contemptuously" 2 of 3. — *measured by ear*.
 
+### 10.7 Judging emotion in a take automatically
+
+All *agent, 2026-10-11*, not re-checked — a research agent reading our fork (`55b150f4`),
+upstream main (`96269554`) and the web.
+
+- **Nothing in audio.cpp is a dedicated speech-emotion model**; no emotion2vec port in its history.
+- **SenseVoice-Small (`sense_asr`) is in our base** and tags each transcription with one of HAPPY,
+  SAD, ANGRY, NEUTRAL, FEARFUL, DISGUSTED, SURPRISED, plus events (Laughter, Cry, Breath, Cough …).
+  Called as JSON `POST /v1/audio/transcriptions/details` with `options: {keep_tags: true,
+  audio_chunk_mode: "none"}` (the multipart form drops `options`, `app/server/runtime.cpp:2697-2756`;
+  under `auto` each chunk gets its own tags). It returns the tag only — a greedy argmax, no score
+  (`src/community_models/sense_asr/session.cpp:139-166, 201-213`); the logits exist
+  (`session.cpp:629`) but aren't returned. FunASR Model License v1.1, commercial use Yes
+  (`docs/model_licenses.md:108`); 254 MB Q8, `min_vram_gb` 4. Not in JustVoice's catalog.
+- **Upstream main only:** CED (`ced`, Apache-2.0, 22–343 MB) and AST (`ast_audioset`, BSD-3, 346 MB,
+  first 10.24 s only) score the 527 AudioSet classes through `POST /v1/tasks/run` — speech cues
+  among them: Shout, Yell, Screaming, Whispering, Laughter, Giggle, Chuckle, "Crying, sobbing",
+  Whimper, Sigh, Groan, Gasp (independent sigmoids). Audio Flamingo 3 (NVIDIA non-commercial,
+  5.5 GB Q4) and LFM2.5-Audio (conditional, under USD 10M revenue) answer questions in text;
+  SAMSONE (in our base, licence unstated) likewise; FireRedAudio's `understand` needs 10 GB.
+- **Outside audio.cpp:** emotion2vec+ large/base (angry, disgusted, fearful, happy, neutral,
+  other, sad, surprised, unknown; licence sources conflict; no official C++/ONNX port — one GGUF
+  for the Vokra runtime); SenseVoice through `sherpa-onnx-node` (tag strings, no score);
+  audeering's arousal/valence/dominance model is CC-BY-NC-SA (research only).
+- **How the papers score emotion:** CosyVoice 3 — `emotion2vec_plus_large` classification
+  accuracy on happy/sad/angry, text-related vs text-unrelated lines (CosyVoice3-0.5B
+  0.92/0.70/0.72 related, 0.64/0.42/0.58 unrelated; arxiv 2505.17589). IndexTTS2 — "ES", a
+  similarity of emotion2vec representations, plus human EMOS (ES 0.887 vs CosyVoice2 0.802;
+  arxiv 2506.21619). EmergentTTS-Eval — Gemini 2.5 Pro judging pairwise (arxiv 2505.23009).
+  Qwen3-TTS and VoxCPM2 report only InstructTTSEval; Chatterbox none found.
+- **Known weaknesses:** classifiers call neutral speech neutral ~0.99 of the time, so averages
+  flatter a model (arxiv 2507.12015); accuracy falls when the words don't match the emotion
+  (CosyVoice 3); embedding similarity rewards mimicry and is skewed by speaker and wording
+  (arxiv 2604.26347); audio LLMs judge mostly by the words (arxiv 2510.25054). Directions like
+  "muttering" or "scornful" have no class in any of these label sets.
+
 ---
 
 ## Records not yet distilled
