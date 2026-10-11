@@ -2012,6 +2012,15 @@ cue lines rendered plain and directed (`POST /v1/generate`); every clip read bac
   lines (2, 4, 5) — the words carry some of it. "Triumphantly" worked on no engine. Best line by
   line: Qwen3 CustomVoice 3, VoxCPM2 3, none 1. — *measured by ear* ·
   claude.ai/artifact/MnB1Ut3iekQoDtsFDSf4rr (collection `slice0b`).
+- **Round 2** (2026-10-11): the VoxCPM2 clip-only Hatter told in fuller words ("with a long, weary
+  sigh, disappointed"), seeds 7, 8 and 9 — 21 takes, every one read back as just its line; the
+  Hatter as a Qwen3 VoiceDesign voice (`POST /v1/voices/design`, drawn from his description on
+  every line), seven lines told and not told plus three more. One VoiceDesign take ran away —
+  line 4 not told, seed 7: no answer in 300 s, the card at 7.8 GB and 80 % until the server was
+  stopped (a cancelled take keeps running, §1); its seed-8 try finished normally. The app passes
+  no per-take length cap for Qwen3 (`max_tokens` is read by the runtime, not sent by
+  `engines/audiocpp/slot.js`). Listening page: claude.ai/artifact/2Z27eh2G5JYjqtXr2yS2PE
+  (collection `round2`). — *measured*.
 
 ---
 
