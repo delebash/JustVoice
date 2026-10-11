@@ -275,12 +275,20 @@ STATE:  DECIDED 2026-10-11 — the user: "how hard is it to include engines audi
         spec … Keep hand-written code only where a model truly needs it … Timing: finish round 3
         … then make this data-driven catalog its own planned piece, before wiring any more models
         by hand … Should I write that up as a plan, after round 3?" The user: "your rec go".
+        After round 3: "go ahead and complete the engine stuff so we have access to all engines
+        and all models and features of audio cpp and any other recomendations you think while
+        working on this, then we can continue to test to find best model for the tasks we want
+        … if we find that some models that take direction are consistant we could even
+        recommend use based on that, so any angry lines get chatterbox and sad lines get qwen
+        as an example, the goal is to be able to produce the best consistant results".
 WHY:    audio.cpp ships 101 machine-readable model specs (tasks, languages, abilities, every
         option with type/range/default) and a 144-entry catalog with minimum graphics memory.
 NOT:    wiring each new model by hand; embedding audio.cpp's own web UI.
 BUILT:  nothing yet.
-OPEN:   the plan doc (standards, blast radius, slices) after round 3.
-GO:     given 2026-10-11 for the plan ("your rec go"); building waits for the plan's go.
+OPEN:   the plan doc `docs/plans/2026-10-11-audiocpp-engine-catalog.md` — shown with its blast
+        radius, then built.
+GO:     given 2026-10-11 ("go ahead and complete the engine stuff"); a NOT STANDARD piece in
+        the plan waits for its own word.
 
 ### Offer the best models audio.cpp has, licence-labelled, not licence-limited (decided 2026-10-11)
 STATE:  DECIDED 2026-10-11 — the user: "i think we should find the best onest that audio cpp has
@@ -314,8 +322,11 @@ STATE:  DECIDED 2026-10-11 — after rounds 1–2 (RESEARCH §10.6: VoxCPM2 keep
 WHY:    the only engines in our build that copy a voice and take emotion in one request.
 NOT:    wiring them on `main` — with no way to hide an engine, they'd ship; IndexTTS's licence
         (no outputs used to improve an AI model; Bilibili's terms) is unruled.
-BUILT:  in progress — branch `test/round3-engines` in a worktree beside this repo.
-OPEN:   the wiring, the downloads, round 3's renders and its listening page.
+BUILT:  branch `test/round3-engines` (1b5bff4, worktree `../JustVioce-round3`); rendered and
+        scored 2026-10-11 — IndexTTS 2.5 like the book on 12 of 21 tries, CosyVoice3 4 of 21,
+        both the clip's person (RESEARCH §10.6).
+OPEN:   neither is removed: both come in through the engine list ("access to all engines",
+        the entry above), carrying the branch's direction mapping; the branch is not merged.
 GO:     given 2026-10-11 ("your recs go").
 
 ### Frontier models get their own recipe, not the small-model one (decided 2026-10-10)
