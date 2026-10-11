@@ -25,6 +25,7 @@
     "test": "node scripts/e2e.js",
     "eval:discover": "node scripts/node24.js server/scripts/eval_discover.js",
     "eval:attribution": "node scripts/node24.js server/scripts/eval_attribution.js",
+    "catalog:audiocpp": "node scripts/node24.js scripts/audiocpp-catalog.js",
     "test:server:js": "node scripts/node24.js node_modules/vitest/vitest.mjs run --config server/vitest.config.js"
   },
   "dependencies": {

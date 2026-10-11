@@ -262,6 +262,21 @@ BUILT:  the plan's §11 and §12 carry these answers.
 OPEN:   slice 0: direction on/off and the frozen Hatter on the engines above, a blind listening page.
 GO:     given 2026-10-11 ("yes your rec on all").
 
+### The order of work after the research sweep (decided 2026-10-11)
+STATE:  DECIDED 2026-10-11 — shown: "1. Build the engine list … 2. Build a small test kit,
+        following NeMo's standard recipe … 3. Round 4, done the authors' way … 4. Back to the
+        one-click plan, with the research folded in … 5. Later, each with its own plan: character
+        voices (the DSP questions …), voice conversion, and Python-only candidates". The user:
+        "your rec on all but lests wait for the dsp sweep first", then "well if this doesnt
+        affect the dsp stuff then go ahead and code go".
+WHY:    round 4 needs every audio.cpp model in the app; the test kit keeps round 4 off the
+        user's ears alone; the one-click run needs round 4's winner.
+NOT:    building the one-click run before the engines are re-tested the authors' way.
+BUILT:  step 1 under way (the engine list's slices 1–5; slice 6, the v0.9.1 update, waits for
+        the DSP sweep because it changes the fork).
+OPEN:   steps 2–5; the DSP reuse sweep's result goes into step 5.
+GO:     given 2026-10-11 for step 1 ("go ahead and code go").
+
 ### Build the engine list from audio.cpp's own model specs, plus a small curated file (decided 2026-10-11)
 STATE:  DECIDED 2026-10-11 — the user: "how hard is it to include engines audio.cpp has, would it
         just be easier to include eveything tha audio cpp has … we just keep updating audio cpp so
