@@ -73,11 +73,10 @@ STATE:  FINDING — measured 2026-10-11 (slice 0, RESEARCH §10.6). A line's dir
 WHY:    the one-click run's character voices are frozen VoxCPM2 clones with direction on lines.
 NOT:    —
 BUILT:  nothing — the slice 0 takes used a copy of the clip with no transcript.
-OPEN:   your call: send the clip without its words when a line has direction (the voice may shift
-        a little between directed and plain lines), or never send VoxCPM2 the words (loses the
-        closer clone), or keep the words and drop direction on VoxCPM2. Which sounds closer is for
-        the ear.
-GO:     needed.
+OPEN:   DECIDED 2026-10-11 ("your rec on all", answer 10 — "VoxCPM2: on lines with direction,
+        send the clip without its words"): `slot.js`'s voxcpm2 branch drops `reference_text` when
+        the line carries direction; the capability note and the manifest header say so.
+GO:     given 2026-10-11 — built with the engine list's direction data.
 
 ### FINDING — the release recipe's frozen server dies on start, and never contains the kit
 STATE:  FINDING — measured 2026-10-05 (stack study §1, §10). Tracked at your word: "track all

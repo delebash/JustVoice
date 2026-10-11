@@ -336,6 +336,19 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
   Hebrew can't be checked by read-back. — *measured, 2026-10-05* · `slot.py` `ASR_LANGUAGE`.
 - `npm run dev` runs our checkout's build (`../audio.cpp/build/jv-dev`); on this card (Turing)
   CUDA graphs are disabled by ggml. — *code + runtime log, 2026-10-04*.
+- **What our fork carries, and whether upstream has it (upstream main `96269554`, 2026-10-11):**
+  22 commits on v0.9.0, 93 files / 13,302 lines added — of which `dsp/` (`audiocpp_dsp`, no ggml,
+  its own executable) is 54 files / 11,874 lines; the model and server changes are ~1,400 lines.
+  Upstream has **none** of them: Kokoro `voice_pack` (blends) and inline IPA (lexicons), Kokoro
+  joins at its sentence pause, Chatterbox Turbo/Nano cloning (upstream's Turbo spec lists no
+  `speaker_reference`), Chatterbox Hebrew/Russian/Chinese and Japanese with the dictionaries
+  staged, `model_management`, VoxCPM2's transcript as prompt audio, the Qwen3 aligner/ASR
+  word-timing fix, Qwen3's decoder memory and last-25-frames speed-up. No pull request from us
+  exists upstream (`gh pr list --author delebash`: none). Upstream's own v0.9.1 release ships the
+  same platform set our releases do (Windows CPU/Vulkan/CUDA 12.4/13.3, macOS Metal arm64 + x64,
+  Ubuntu CPU/Vulkan, CUDA 12.8 Colab). Its CONTRIBUTING asks a PR that changes runtime behaviour
+  for "actual runtime validation"; it has no rule on AI-written code. — *git + GitHub API,
+  2026-10-11*.
 
 ### 1.5 audio.cpp's own web UI
 
