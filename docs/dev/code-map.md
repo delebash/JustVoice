@@ -1067,6 +1067,40 @@ knob has no adapter reader, or an adapter override has no declaration.
 
 ---
 
+## 7a. From a book file to an audiobook — where each step lives
+
+Mapped 2026-10-11 for the one-click plan (`docs/plans/2026-10-11-one-click-audiobook.md`);
+paths under `server/src/` unless they start with `src/` (the renderer) or `just-llm-runner/`.
+The ones marked ✓ were re-read by hand; the rest come from a code-reading agent the same day.
+
+| Step | Route / function | What it writes |
+|---|---|---|
+| Import a book | `POST /v1/projects/import` (multipart; `.epub/.docx/.md/.txt` → `book_prose`) — `api/projects_api.js:1245` | a project, its chapters (`scenes`) and lines (`blocks`) |
+| Discover | `POST /v1/scenes/:scene_id/discover-speakers` — `api/extraction_api.js:1420` | only the chapter's `metadata.discover`; no speakers |
+| Add speakers | `POST /v1/projects/:project_id/speakers/promote` ✓ — `api/extraction_api.js:1529` | speakers (all-or-nothing); a speaker is cast to the persona with exactly its name |
+| Analyze | `POST /v1/scenes/:scene_id/analyze` (and `/analyze/stream`) — `api/extraction_api.js:939, 987` | each line's `speaker_id`, `source`, confidence; re-cutting the chapter is refused once it has takes (`:473`) |
+| Smart-assign | `POST /v1/llm/smart-assign` ✓ — `api/smart_assign_api.js:112` | **nothing** — the renderer applies each match with `PATCH /v1/speakers/:id {persona_id}` (`src/components/StudioCast.vue:481`) |
+| Design a voice from words | `POST /v1/voices/design` ✓ — `api/voices_api.js:355` | a Voice, `source: "designed"`, no clip — drawn from its words on every line |
+| Keep a designed take as a clone | `POST /v1/voices/preview` then `POST /v1/voices/preview/:preview_id/save` ✓ (the freeze bridge, `api/voice_preview_api.js:755`) | the held audition becomes the voice's `ref.wav`; the persona page's `keepTake` (`src/components/PersonaDesignMaker.vue:149`) prefers voxcpm2, then chatterbox-turbo |
+| Clone from a clip | `POST /v1/voices/clone` ✓ — `api/voices_api.js:324` | a Voice with `ref.wav` |
+| Make / change a persona | `POST /v1/personas`, `PATCH /v1/personas/:id` — `api/personas_api.js:280, 312` | the persona (voice, standing Style instructions, per-model settings) |
+| A line's direction, emotion, tags | `PATCH /v1/blocks/:block_id` ✓ — `api/projects_api.js:1000`: `direction`, and `line_override.models[model].{emotion, register_tag, knobs}` (merged by `line_takes.mergeOverride`) | `blocks.direction` and `blocks.metadata_json.line_models` ✓ (`line_takes.js:60`). One line per call; no bulk route |
+| How render reads them | `line_takes.planBlock` → `persona_render.planLine` → `composeInstruct(design, line instruct or the persona's, emotion, direction)` ✓ (`persona_render.js:285`); on a tag model the emotion becomes Turbo's tag (`render_core.js:323`) | — |
+| Render lines (keeps takes) | `POST /v1/render_jobs`, `POST /v1/scenes/:id/render_lines` — `api/render_jobs_api.js:79`, `api/render_lines_api.js:117` | takes; jobs in `render_jobs` tables, resumed after a restart (`app.js:246` ✓) |
+| Render a chapter to hear it | `POST /v1/render_chapter` — `api/render_chapter_api.js:469` | a mastered WAV monitor; no takes; refuses a line with no speaker, persona or voice |
+| Export | `POST /v1/projects/:id/export_m4b/start` (M4B with chapter marks), `…/export_chapters/start` (zip of raw + mastered WAVs) — `api/export_jobs_api.js:171, 178` | the file; jobs held in memory (`_jobs = new Map()` ✓ `:41`), lost on a restart |
+| ACX check | `GET /v1/projects/:id/qc` — `api/projects_api.js:1343` | — |
+| The chapter run | `src/services/chapterRun.js` — chains Analyze, the second look and Discover, chapter by chapter, as kit AI tasks | renderer memory: survives leaving Studio, not closing the window |
+| MCP | `mcp/tools.js:182` — four tools; a tool calls exported service functions, not HTTP | — |
+
+**What isn't there yet** (the one-click plan's gaps): no server-side job that runs the AI steps
+(only render and export run on the server); Analyze over its stream stops when the window goes;
+no route sets many lines' directions at once; Smart-assign writes nothing on its own; the
+renderer labels Discover's AI task `speaker_identification` (`src/services/chapterRun.js:44`)
+where the server's feature is `speaker_discovery` (`feature_catalog.js:22`).
+
+---
+
 ## 8. The five audiences, and what actually differs
 
 `CLAUDE.md` and `CONCEPTS.md` §1. One engine pool, one voice library, one persona

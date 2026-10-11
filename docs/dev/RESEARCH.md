@@ -1764,6 +1764,21 @@ Claude Code" (2026-10-10).
 - Not built, and listed in IDEAS: a direction step ("LLM emotion-tag insertion"), the
   persona-generation loop (description → design → cast), and a take check (transcribe, compare,
   re-render) — `docs/dev/IDEAS.md:309`. — *code, 2026-10-10*.
+- Where each step from a book file to an audiobook lives, with its route and what it writes:
+  `docs/dev/code-map.md` §7a. The facts a one-click run turns on: — *code, 2026-10-11*, the ✓
+  rows of §7a re-read by hand, the rest *agent*.
+  - A designed voice can already be frozen into a clone: an audition (`POST /v1/voices/preview`,
+    held 10 minutes) saved with `POST /v1/voices/preview/:preview_id/save` becomes the voice's
+    `ref.wav` (`api/voice_preview_api.js:755`, "THE freeze bridge"). `POST /v1/voices/design`
+    alone keeps no clip (`api/voices_api.js:355`).
+  - A line's direction is `blocks.direction`; its emotion, tag and knobs per model are
+    `blocks.metadata_json.line_models` (`line_takes.js:60`), set one line at a time with `PATCH
+    /v1/blocks/:block_id` (`api/projects_api.js:1000`). Analyze never writes them.
+  - Smart-assign returns matches and writes nothing; the renderer casts each one
+    (`api/smart_assign_api.js:112`, `src/components/StudioCast.vue:481`).
+  - Only render jobs (persistent, resumed after a restart) and export jobs (in memory) run on the
+    server; Analyze, Discover and the chapter run are driven from the window
+    (`src/services/chapterRun.js`), and a window closed without keep-running stops them.
 - Render speed on the RTX 2070 SUPER 8 GB: Qwen3 CustomVoice 1.7B 2.0× real time, Kokoro 11.9×
   (§1.3), so a 10-hour book is about 5 hours on Qwen3 and under an hour on Kokoro. — *arithmetic
   on §1.3's measurements*.
