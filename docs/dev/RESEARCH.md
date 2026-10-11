@@ -1647,12 +1647,15 @@ audio.cpp's `docs/model_licenses.md`, checked upstream 2026-09-21…27). Their s
 **AI outside our runtime** (*web, 2026-10-07*):
 
 - Step-Audio-EditX (980★, code Apache-2.0) edits existing speech — emotion, styles (whisper,
-  child, older, …), paralinguistics, denoise, speed; 3B; ≥12 GB VRAM, an AWQ 4-bit build needs
-  **8–10 GB** (two research agents independently, 2026-10-11; was: "~6–8 GB" until 2026-10-11);
-  Python/torch only, no GGUF or C++ runtime documented, not in audio.cpp. Its Hugging Face
-  weights carry no licence tag (engine scan). Its emotion edits score near chance: 20.9% on ESD
-  where chance is 20% (arXiv 2603.09120), 23.08% on doteBench's neutral set against 20.43% with
-  no edit (§10.9). · `huggingface.co/stepfun-ai/Step-Audio-EditX`.
+  child, older, …), paralinguistics, denoise, speed — 14 emotions, in passes, on any audio
+  including other systems' TTS; 3B; ~12 GB nominal, **6–8 GB in its memory-efficient mode, 8–10
+  GB as AWQ 4-bit** (research agents, 2026-10-11; was: "AWQ ~6–8 GB" until 2026-10-11);
+  Python/torch only, not in audio.cpp (our base or upstream main). Code Apache-2.0; its weights
+  state no licence. **Vendor vs independent:** StepFun reports emotion accuracy on commercial TTS
+  voices rising 56–63 → 68–72% after one pass and 72–75% after three, with speaker similarity
+  after editing not reported; independent tests put its edits near chance — 20.9% on ESD where
+  chance is 20% (arXiv 2603.09120), 23.08% on doteBench's neutral set against 20.43% unedited
+  (§10.9). · `github.com/stepfun-ai/Step-Audio-EditX`.
 - RAVE is CC-BY-NC-4.0 (its LICENSE); DDSP is Apache-2.0 on TensorFlow; Beatrice v2 forbids
   commercial use (a secondary source).
 - LLM2Fx (Sony AI and KAIST, WASPAA 2025, arXiv 2505.20770): LLMs predict EQ and reverb
@@ -1896,6 +1899,16 @@ Claude Code" (2026-10-10).
   [help.acx.com — ACX audio submission requirements](https://help.acx.com/s/article/acx-audio-submission-requirements).
   JV's ACX check (`docs/studio.md` §The ACX check) measures those limits; it doesn't make an AI
   title acceptable to ACX.
+- **Spotify for Authors accepts digital narration** when "This audiobook uses digital voice
+  narration" is ticked (Spotify then adds a line to the description; its help names "Google Play
+  Books, ElevenLabs, and more" — whether a self-made local-TTS book counts is not stated). Spec
+  ("Metadata & Asset Guide", 11/2024): MP3 ≥192 kbps (CBR preferred) 44.1 kHz/16-bit, or WAV/FLAC;
+  **RMS −24 to −14 dB**, noise floor under −60 dB, **head 0.5–1 s, tail 1–5 s**, mono or stereo never
+  mixed, no "excessive mouth noises", files ≤120 min, sample ≤5 min. **Voices by INaudio (formerly
+  Findaway Voices) takes digital narration only as unmodified packages from Google Play Books,
+  ElevenLabs or Spoken Press.** — *agent, 2026-10-11* ·
+  support.spotifycdn.com/pdf/SFA%20Metadata_Asset%20Guide_2024.pdf,
+  voicessupport.inaudio.com/en/articles/3219456.
 - KDP Virtual Voice (Amazon's own route for AI narration): "an invite-only beta for eligible KDP
   eBooks"; "After your eBook is Live, we will complete an eligibility check". — *web, 2026-10-10* ·
   [KDP — Audiobooks with virtual voice eligibility and troubleshooting](https://kdp.amazon.com/en_US/help/topic/GJSXT4GZLP4PL62B).
@@ -2352,6 +2365,20 @@ emotion control, EmoSteer's code (a follow-up sweep is running).
 - **audio.cpp's catalog memory minimums are coarse** (`webui/configs/models_catalog.json`:
   chatterbox 12, omnivoice 10, breeze/fish/cosyvoice3 8, higgs 6, voxcpm2 6 GB) — Chatterbox and
   CosyVoice3 run on this 8 GB card.
+- **Follow-up of the unsearched names** (*agent, 2026-10-11*; its web search capped after 15
+  queries, the rest from primary pages and the GitHub API): **no released weights** — InstructAudio,
+  EmoCtrl-TTS, MPE-TTS (emotion accuracy 46–48%), UniStyle, StableVC, StreamVoice, EmoConv-Diff,
+  PromptEVC, EmoSteer-TTS ("upon acceptance"; v3 2025-10-25, no repo); **no cloning** —
+  ParaStyleTTS (MIT, prompt only), CapSpeech (all CC BY-NC 4.0), Voxtral TTS (upstream's own spec:
+  "the released checkpoint does not contain the encoder needed for reference-audio cloning";
+  CC BY-NC, card asks for 16 GB); **non-commercial** — VoiceCraft-X (cloning and editing, no
+  emotion control), EmoVoice (weights CC-BY-NC); FreeVC (MIT, 2023) converts timbre only.
+  **New candidates:** Marco-Voice (Alibaba AIDC, Apache-2.0, on CosyVoice — emotion set apart from
+  the cloned speaker, seven emotions and a continuous vector; the authors note "a trade-off
+  between timbre similarity and emotion control"; size not stated,
+  github.com/AIDC-AI/Marco-Voice); Step-Audio-EditX as an edit pass on any engine's take (§8).
+  Vevo2 (in our base) takes a speaker reference and prompt editing; whether it carries emotion is
+  unchecked.
 - **The sweep's ranked shortlist for a consistent clone with reliable per-line emotion on 8 GB:**
   IndexTTS 2.5 the authors' way (vector at ~0.6, or an acted take as its emotion clip); best-of-N
   with an automatic judge on IndexTTS 2.5 and VoxCPM2 clip-only; Breeze TTS 2 (cfg 1–4); Higgs v3
@@ -2498,6 +2525,29 @@ Pozotron, Orion QC, RW-Voice-EQ, SwanBench, ViSQOL, Hume, Gemini prices.
   contradicting), 3 seeds, paired bootstrap over lines, blind AB on a random seed chosen by ASAP —
   about 1–1.5 h of listening for 4 models. The z-score combiner is NOT STANDARD (the standard is
   VERSA's scores read separately).
+- **NeMo already ships a take-scoring recipe** (Apache-2.0; *agent, 2026-10-11*):
+  `examples/tts/magpietts_inference.py --run_evaluation` →
+  `nemo/collections/tts/modules/magpietts_inference/evaluate_generated_audio.py` computes CER/WER
+  (NeMo ASR or Whisper), speaker similarity (TitaNet or WavLM-base-plus-sv), UTMOSv2 (pinned 1.2.1),
+  FCD, and with `with_prosody_metrics` **emotion similarity and top-emotion match between a
+  reference clip and the take** (ESIM/EMS, through LAION Empathic-Insight-Voice since 2026-09-03 —
+  12 emotions incl. impatience, disappointment, contemplation, emotional numbness) plus pitch,
+  intensity and speech-rate distance — the standard to follow for an act-then-reference check.
+- **More judges and scorers** (*agent, 2026-10-11*): S2S-Arena (ACL 2026) found audio-LLM judges
+  agree with humans only 30.2% (GPT-4o-realtime) and 25.6% (Qwen2-Audio) — "not ready"; SpeechJudge's
+  99K human pairs (CC-BY-NC, gated) label naturalness and intelligibility, not emotion. DNSMOS Pro
+  (MIT) gives a MOS mean and variance. Vox-Profile (emotion, A/V/D, age, accent, voice quality) is
+  RAIL "No commercial use", 3–15 s clips. 3D-Speaker has no emotion model; NeMo none beyond the
+  LAION wrapper.
+- **CPU cost per minute of audio:** CAM++ ~0.8 s (RTF 0.013, arXiv 2303.00332); Parakeet-TDT v3
+  ~4.7 s through audio.cpp on this machine's CPU (12.7× real time,
+  `docs/plans/2026-10-02-cpu-placement.md` §6.2); emotion2vec+, UTMOSv2 (5 frames × 5 folds by
+  default) and ParaSpeechCLAP — not found.
+- **Runaway heuristic:** none published as a threshold. F5-TTS estimates a take's length from the
+  voice's own clip — `duration = ref_len + ref_len / ref_text_bytes × gen_text_bytes / speed`
+  (`src/f5_tts/infer/utils_infer.py:503-505`); ours is flat — `RUNAWAY_S_PER_CHAR = 0.5`,
+  `RUNAWAY_MIN_S = 30` (*code*, `server/src/engines/manager.js:98-99`). A per-voice bound would be
+  tighter.
 - **Licence flags** (only if shipped in the app): non-commercial — NISQA weights, SpeechJudge-GRM,
   Vox-Profile, audeering, openSMILE, Audio Flamingo 3, ECAPA2, ctc-forced-aligner's default,
   AutoPCP; GPL/AGPL — Parselmouth, Allosaurus, BeaqleJS, whisper-timestamped.
