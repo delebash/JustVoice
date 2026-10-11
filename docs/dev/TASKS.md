@@ -290,6 +290,26 @@ OPEN:   the plan doc `docs/plans/2026-10-11-audiocpp-engine-catalog.md` — show
 GO:     given 2026-10-11 ("go ahead and complete the engine stuff"); a NOT STANDARD piece in
         the plan waits for its own word.
 
+### Check our direction against each model's own claims and demos; one person across engines? (decided 2026-10-11)
+STATE:  DECIDED 2026-10-11 — the user: "are we describng them correctly … if we look at there
+        test sites and we see that is created a sad voice correctly but when we try to create a
+        sad voice it doesnt work, it could be becuase we are not using correct tags or correct
+        description … so we need to check what we do against the claims of that model and its
+        test sites to see if we ar emaking mistake or they are over claiming capabilities, your
+        rec all go". The recs it covers, as shown: "1. A short 'same person?' test: one scene
+        with the Hatter's lines alternating between IndexTTS, VoxCPM2 and CosyVoice3. 2. If he
+        stays one person, build the per-emotion table, with the automatic scorer if one exists.
+        3. If he doesn't, use best of N on one engine, or act-then-convert." · "I'll check
+        whether audio.cpp has a model that can judge emotion" · "The engine-list plan will
+        carry this as 'best for' notes per emotion".
+WHY:    rounds 1–3 measured our wording as much as the models; a miss may be our prompt.
+NOT:    judging a model from our own phrasing alone.
+BUILT:  nothing yet.
+OPEN:   per model — its documented way to give emotion and its demos, against what
+        `engines/audiocpp/slot.js` sends; a demo reproduced through the app; the same-person
+        scene; the emotion-scorer search. Facts → RESEARCH §10.
+GO:     given 2026-10-11 ("your rec all go").
+
 ### Offer the best models audio.cpp has, licence-labelled, not licence-limited (decided 2026-10-11)
 STATE:  DECIDED 2026-10-11 — the user: "i think we should find the best onest that audio cpp has
         to offer, so mark these models best for emotion reading an audio book, we simply put them
