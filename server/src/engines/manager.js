@@ -389,6 +389,16 @@ export async function memoryInUseMb() {
   }
 }
 
+/** This machine's memory in use, read fresh — the kit's system-memory probe (the one-pool boxes'
+ * door, `hardware._usedPoolMb`), on every box. null = unmeasurable. */
+export async function systemMemoryInUseMb() {
+  try {
+    return await hardware._usedPoolMb();
+  } catch {
+    return null;
+  }
+}
+
 const mbText = (v) => (v == null ? "?" : String(v));
 
 /**
@@ -1123,6 +1133,36 @@ export class EngineManager {
     );
   }
 
+  /** Persist the system memory a load took as a `"ram_peak"` row in the shared measurement store,
+   * beside the card's `"peak"` rows — the before/after difference of this machine's memory in use
+   * across the load (the kit's system-memory probe, `hardware._usedPoolMb`), on either device
+   * (decided 2026-10-12, TASKS "The download test's last findings" 4(b)). A floor: a model can take
+   * more while it speaks (MOSS-TTS Local, RESEARCH §10.14). Keeps the newest 5 per runtime build.
+   * Best-effort: persistence must never fail a load. */
+  _recordSpeechRam(m, kind, variant, mb, device) {
+    try {
+      const store = stores.getModelMeasurementStore();
+      const modelId = EngineManager._measureId(kind, m.id, variant);
+      const mk = hardware.currentMachineKey();
+      const build = self._runtimeBuild();
+      store.record(modelId, {
+        machineKey: mk,
+        source: "ram_peak",
+        label: `speech memory (${device}, ${build})`,
+        tokensPerSec: 0.0,
+        vramTotalMb: 0,
+        at: Math.trunc(Date.now()),
+        rows: [{ flagName: "runtime", flagValue: build }],
+        kind: kind === "stt" ? "stt" : "tts",
+        backend: device,
+        ramModelMb: pyInt(mb),
+      });
+      store.pruneLoadRows(modelId, mk, new Set(["runtime"]), 5, "ram_peak");
+    } catch (e) {
+      log.debug(`speech memory persist failed for ${m.id}: ${msgOf(e)}`);
+    }
+  }
+
   /** A CPU load reads its weights into this machine's memory: refused, before anything moves,
    * when its files and the safety margin are more than the memory free now — crediting what the
    * kind's current occupant gives back when it is replaced (decided 2026-10-12, TASKS "The
@@ -1584,6 +1624,7 @@ export class EngineManager {
 
       let proc = null;
       let early;
+      let ramBefore = null;
       // Activity lock first (lock order: activity → the manager's lock): a terminate must wait
       // for the slot's in-flight line.
       await this._activity(targetKind).run(() =>
@@ -1617,6 +1658,7 @@ export class EngineManager {
             return;
           }
           if (progress) progress("loading", `loading ${engineId} on the ${placement === "cpu" ? "CPU" : "graphics card"}…`);
+          ramBefore = await self.systemMemoryInUseMb();
           proc = self._newSlot(m, placement);
           await proc.spawn();
           this._loaded.set(targetKind, proc);
@@ -1707,6 +1749,12 @@ export class EngineManager {
           const delta = after !== null && poolBefore !== null ? Math.max(0, after - poolBefore) : 0;
           if (delta > 0) this._reserveEngine(m, targetKind, delta, "computed");
         }
+      }
+      // The system memory this load took — on the CPU its weights, on the card what the runtime
+      // keeps beside them (4(b)).
+      const ramAfter = ramBefore !== null ? await self.systemMemoryInUseMb() : null;
+      if (ramAfter !== null && ramAfter > ramBefore) {
+        this._recordSpeechRam(m, targetKind, this._currentVariants.get(engineId), ramAfter - ramBefore, device);
       }
       log.info(
         `engine ${engineId} loaded ${this._currentVariants.get(engineId)}: pid ${proc?.proc?.pid ?? null}, ` +

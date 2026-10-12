@@ -410,7 +410,12 @@ BUILT:  2026-10-12 — 1: `generatedSpeechRequest` sends the clip's words to a s
         4(a): `manager._admitSystemMemory` — before a CPU load, its files and the kit's safety
         margin against `os.freemem()`, crediting a CPU occupant it replaces; the approved
         message, naming a loaded AI model; a test. User doc: engines.md "Where each model runs".
-OPEN:   4(b) — see below.
+        4(b), the record: every fresh load stores the system memory it took — this machine's
+        memory in use before the slot starts and after the load (the kit's `_usedPoolMb`, via
+        `manager.systemMemoryInUseMb`) — as a "ram_peak" row in the kit's measurement store, in
+        its new `ram_model_mb` column (kit 55055ed, an ADDED_COLUMNS entry, no reset).
+OPEN:   4(b), the check before a load from the recorded memory — built with a new message for a
+        load on the graphics card, held for the user's word.
         4(a) and 4(b) (decided 2026-10-12) — shown: "4(a), the RAM check, waiting on your word.
         It refuses a CPU load when the model's files plus the 1 GB safety margin are more than
         the free RAM … 'not enough memory to load OmniVoice on the CPU: its files are about 1.3 GB

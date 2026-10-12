@@ -2904,7 +2904,10 @@ corrected above.
 - **No RAM check before a CPU load** (until 2026-10-12). The speech manager checked the card's
   memory before a load; nothing checked system RAM. Since 2026-10-12 a CPU load is refused when
   its files and the safety margin are more than the memory free (`manager._admitSystemMemory`,
-  TASKS "The download test's last findings" 4(a)). Auto sends a model whose estimate is more
+  TASKS "The download test's last findings" 4(a)). Each fresh load also records the memory it
+  took (4(b)): this machine's memory in use before the slot starts and after the load, a
+  `"ram_peak"` row with `ram_model_mb`. It is a floor — MOSS-TTS Local took 5.7 GB to load,
+  its warm-up included, and about 5 GB more while it spoke. Auto sends a model whose estimate is more
   than the card to the CPU — MOSS-TTS v1.5 (est. 18 GB, 12.3 GB of weights) and DramaBox
   (est. 16 GB, 17.6 GB) would load there on a machine with less RAM free. RAM use on the card
   doesn't follow the files: MOSS-TTS Local (7.0 GB) took about 11 GB of RAM on CUDA, Confucius4

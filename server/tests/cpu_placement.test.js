@@ -237,6 +237,18 @@ test("the_load_puts_the_slot_where_the_rule_says", async () => {
   expect(arb.reservedMb("tts:kokoro")).toBeNull();
 });
 
+test("a_load_records_the_system_memory_it_took", async () => {
+  // decided 2026-10-12 (4b): this machine's memory in use before the slot starts and after the
+  // load, as a "ram_peak" row beside the card's peaks.
+  const mgr = mgrFor();
+  loadable("cpu");
+  vi.spyOn(manager, "systemMemoryInUseMb").mockResolvedValueOnce(10000).mockResolvedValueOnce(11340);
+  const recorded = [];
+  vi.spyOn(EngineManager.prototype, "_recordSpeechRam").mockImplementation((m, kind, variant, mb, device) => recorded.push([m.id, kind, mb, device]));
+  await mgr.load("kokoro");
+  expect(recorded).toEqual([["kokoro", "tts", 1340, "cpu"]]);
+});
+
 test("the_third_step_unloads_the_ai_model_before_the_load", async () => {
   const mgr = mgrFor();
   const calls = loadable("gpu", true);
@@ -278,7 +290,8 @@ test("the_first_cpu_line_after_a_load_records_its_speed_once", async () => {
   const mgr = mgrFor();
   loadable("cpu");
   const recorded = [];
-  vi.spyOn(stores, "getModelMeasurementStore").mockReturnValue({ record: (mid, kw) => recorded.push([mid, kw]), list: () => [] });
+  // Speed rows only: a load also records the memory it took (4b).
+  vi.spyOn(stores, "getModelMeasurementStore").mockReturnValue({ record: (mid, kw) => kw.source === "speed" && recorded.push([mid, kw]), list: () => [], pruneLoadRows: () => 0 });
   vi.spyOn(hardware, "currentMachineKey").mockReturnValue("box");
   await mgr.load("kokoro");
   await mgr.synth("kokoro", { text: "A line." });
@@ -296,7 +309,7 @@ test("a_gpu_line_records_no_cpu_speed", async () => {
   const mgr = mgrFor();
   loadable("gpu");
   const recorded = [];
-  vi.spyOn(stores, "getModelMeasurementStore").mockReturnValue({ record: (mid) => recorded.push(mid), list: () => [] });
+  vi.spyOn(stores, "getModelMeasurementStore").mockReturnValue({ record: (mid, kw) => kw.source === "speed" && recorded.push(mid), list: () => [], pruneLoadRows: () => 0 });
   await mgr.load("kokoro");
   await mgr.synth("kokoro", { text: "A line." });
   expect(recorded).toEqual([]);
