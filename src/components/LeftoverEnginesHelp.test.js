@@ -8,6 +8,7 @@ import { h, nextTick } from "vue";
 import { afterEach, expect, test, vi } from "vitest";
 // Quasar installed as in the real app — the kit's controls are Quasar components
 import { createTestApp } from "@delebash/llm-ui/quasar/install.js";
+import { i18n } from "../i18n/index.js";
 
 const request = vi.fn();
 const pushToast = vi.fn();
@@ -46,7 +47,7 @@ afterEach(() => {
 async function mount(task) {
   el = document.createElement("div");
   document.body.appendChild(el);
-  app = createTestApp(LeftoverEnginesHelp, { task });
+  app = createTestApp(LeftoverEnginesHelp, { task }).use(i18n);
   app.mount(el);
   for (let i = 0; i < 5; i++) await nextTick();
   await new Promise((r) => setTimeout(r, 0));

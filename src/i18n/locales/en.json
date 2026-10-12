@@ -64,5 +64,29 @@
       "installed": "Installed",
       "loaded": "Loaded"
     }
+  },
+  "kit": {
+    "aiTabs": {
+      "providers": "LLM providers"
+    },
+    "aiOffer": {
+      "quickSetup": "Run LLM engine setup"
+    },
+    "quickSetup": {
+      "runButton": "Run LLM engine setup",
+      "rerunButton": "Re-run LLM engine setup",
+      "bandSub": "A free local text-AI engine in one click — pick the model that fits this PC; speaker attribution, dictation cleanup and note drafting run on it.",
+      "headSub": "A free local text-AI engine in one click — sized to this PC.",
+      "confirmTitle": "Local text AI",
+      "modelHint": "Pick a model — best first. One click installs the engine if it's missing, downloads the model, loads it, and makes it the model JustVoice's AI features run on. Per-feature choices live under Routing by feature.",
+      "chatRole": "attributes speakers + cleans up dictation",
+      "doneBody": "Speaker attribution, dictation cleanup and the other AI features run on this model — change it any time under Routing by feature."
+    },
+    "catalog": {
+      "chatSectionLabel": "Assistant models",
+      "chatSectionHint": "pick one as your model — it runs every AI feature",
+      "generalUse": "Attributes speakers, cleans up dictation, drafts persona text",
+      "slotsFootnote": "One model runs every AI feature — it loads on first use; Load now just skips that first wait."
+    }
   }
 }

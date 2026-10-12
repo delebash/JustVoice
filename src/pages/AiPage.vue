@@ -5,7 +5,7 @@
   LLM providers · Speech engines · Routing by feature · Usage · AI engine
   console. The providers tab is the kit's ("Providers & models" — connections
   + the local model catalog together, the kit's default shape), relabeled
-  JV-only via the labels feed (two provider kinds need naming — see boot/jv.js);
+  JV-only by its `kit.aiTabs.providers` key in en.json (two provider kinds need naming);
   Speech engines is the one speech surface with its own Local/Online pair
   (engines + self-hosted under Local, cloud APIs under Online). The
   four-tab split this replaced (separate TTS-providers and LLM-models tabs)
@@ -15,8 +15,8 @@
   engines tab) and ?action=<featureAction> (the old #speakerlab redirects to
   ?tab=features&action=speaker_attribution.guided — the Lab there IS the
   Speaker Lab now, running the real pipeline via the labAdapters seam;
-  boot/jv.js registers it). The KIT wizard runs here, voiced by boot/jv.js's
-  quickSetupCopy and named "LLM engine setup" by the labels feed (ruling 6).
+  boot/jv.js registers it). The KIT wizard runs here, voiced and named "LLM
+  engine setup" (ruling 6) by JustVoice's `kit.quickSetup.*` keys in en.json.
 -->
 <script setup>
 import { onBeforeUnmount, onMounted, ref, watch } from "vue";

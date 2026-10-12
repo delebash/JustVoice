@@ -1,10 +1,11 @@
 <!-- SPDX-License-Identifier: MIT -->
 <script setup>
 import { ref, computed, onActivated, onMounted, watch } from "vue";
+import { useI18n } from "vue-i18n";
 import { useApi } from "../stores/api.js";
 import { pushToast, pageFlow } from "@delebash/llm-ui";
 import { confirmDialog } from "@delebash/llm-ui";
-import { AppearancePanel, DataManagement, FAMILY_LABELS, LogsPanel, SettingsShell, UiButton, UiInput, UiToggle, UiField, UiCheckbox, UiTag, UiSelect, UpdatesPanel, UiTable, UiSlider, canOpenPath, fmtBytes, openPath, refreshRunnerModels, renderHelpMarkdown, serverUrl, useAiTasksStore } from "@delebash/llm-ui";
+import { AppearancePanel, DataManagement, LogsPanel, SettingsShell, UiButton, UiInput, UiToggle, UiField, UiCheckbox, UiTag, UiSelect, UpdatesPanel, UiTable, UiSlider, canOpenPath, fmtBytes, openPath, refreshRunnerModels, renderHelpMarkdown, serverUrl, useAiTasksStore, SETTINGS_SECTION_ORDER } from "@delebash/llm-ui";
 import RefineSectionToggles from "../components/lab/RefineSectionToggles.vue";
 import { loadDoc } from "../services/helpDocs.js";
 import { desktopUpdater, hasShell, pickDirectory, storageGetRoot, storageRelocate } from "../services/native.js";
@@ -431,11 +432,13 @@ const connectionStatus = computed(() => {
 onMounted(refresh);
 
 // ── Sections (family parity batch 2026-08-06): the canon shared sections in
-// their fixed relative order — words from the FAMILY CONTRACT, enforced by
-// construction — then JV's own lane. "Changelog" died for the canon "Updates".
-// The ORDER lives in settingsSections.js so the canon contract test asserts
-// exactly what renders (slice 11); labels stay here.
-const SEC = FAMILY_LABELS.settingsSections;
+// their fixed relative order — their words the kit's (`kit.settingsSections.*` in
+// the app's language, since the i18n plan's step B, 2026-10-12) — then JV's own
+// lane. "Changelog" died for the canon "Updates". The ORDER lives in
+// settingsSections.js so the canon contract test asserts exactly what renders
+// (slice 11); labels stay here.
+const { t } = useI18n();
+const FAMILY_SECTIONS = new Set(SETTINGS_SECTION_ORDER);
 const APP_SECTION_LABELS = {
   general: "General",
   mastering: "Mastering",
@@ -448,10 +451,12 @@ const APP_SECTION_LABELS = {
   webhooks: "Webhooks",
   sync: "Sync",
 };
-const SUBS = SETTINGS_SECTION_IDS.map((id) => ({
-  id,
-  label: SEC[id] || APP_SECTION_LABELS[id] || id,
-}));
+const SUBS = computed(() =>
+  SETTINGS_SECTION_IDS.map((id) => ({
+    id,
+    label: FAMILY_SECTIONS.has(id) ? t(`kit.settingsSections.${id}`) : APP_SECTION_LABELS[id] || id,
+  })),
+);
 const activeSub = ref("general");
 // Sync (above): the picker's projects on opening; the settings tree again on leaving.
 watch(activeSub, (now, before) => {
@@ -1174,7 +1179,7 @@ onMounted(() => {
          seam — decision ① — covering renders AND dictation recordings. ─── -->
     <div v-show="activeSub === 'backups'" class="jv-section">
       <div class="jv-card">
-        <div class="jv-card__header"><h3 class="jv-card__title">{{ SEC.backups }}</h3></div>
+        <div class="jv-card__header"><h3 class="jv-card__title">{{ t("kit.settingsSections.backups") }}</h3></div>
         <DataManagement app-name="JustVoice" :options="BACKUP_OPTIONS" />
       </div>
     </div>

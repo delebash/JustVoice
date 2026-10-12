@@ -10,7 +10,6 @@ import {
   tooltipDirective,
   configureHelp,
   configureServerApi,
-  configureFamilyLabels,
   configureFileSave,
   configureTestData,
   checkServer,
@@ -20,6 +19,7 @@ import {
 import AttributionAutoPanel from "../components/lab/AttributionAutoPanel.vue";
 import RefineSectionToggles from "../components/lab/RefineSectionToggles.vue";
 import SmartAssignResult from "../components/lab/SmartAssignResult.vue";
+import { i18n } from "../i18n/index.js";
 import { attributionLabAdapter } from "../services/attributionLab.js";
 import { refineLabAdapter } from "../services/refineLab.js";
 import { LAB_TEST_ACTIONS, LAB_TEST_SOURCES } from "../services/labTestData.js";
@@ -46,6 +46,12 @@ function isDictateView() {
 // window.location.origin — app://justvoice in the desktop app, empty views only there.
 function wireKit(app) {
   installLlmUi(app, {
+    // The app's vue-i18n instance: the kit's words come from its `kit.*` keys, JustVoice's own
+    // rewordings in src/i18n/locales/en.json winning — the AI console's "LLM providers", the
+    // wizard's "LLM engine setup" (ruling 6, 2026-08-05: JV has two engine kinds, the pair names
+    // them) and this app's voice on the model catalog and the Quick Setup wizard (the i18n
+    // plan's step B, 2026-10-12; until then they were set by calls in this file).
+    i18n,
     devPorts: ["1430", "1431"],
     fallbackBase: import.meta.env.VITE_SERVER_URL || "http://127.0.0.1:17494",
     serverOverrideKey: "jt:server",
@@ -97,33 +103,10 @@ function wireKit(app) {
       // no Lab-only state, the Lab mirrors production (the standing premise).
       refine: RefineSectionToggles,
     },
-    // This app's voice on the shared model-catalog surface (defaults are JW's words).
-    catalogCopy: {
-      chatSectionLabel: "Assistant models",
-      chatSectionHint: "pick one as your model — it runs every AI feature",
-      generalUse: "Attributes speakers, cleans up dictation, drafts persona text",
-      slotsFootnote:
-        "One model runs every AI feature — it loads on first use; Load now just skips that first wait.",
-    },
-    // This app's voice on the shared Quick Setup wizard. The wizard's visible
-    // NAME becomes "LLM engine setup" in JV (ruling 2026-08-05: JV has two
-    // engine kinds, the pair names them) via the labels feed when the kit
-    // wizard mounts — canon words live in the labels store, never here.
-    quickSetupCopy: {
-      bandSub:
-        "A free local text-AI engine in one click — pick the model that fits this PC; speaker attribution, dictation cleanup and note drafting run on it.",
-      headSub: "A free local text-AI engine in one click — sized to this PC.",
-      confirmTitle: "Local text AI",
-      modelHint:
-        "Pick a model — best first. One click installs the engine if it's missing, downloads the model, loads it, and makes it the model JustVoice's AI features run on. Per-feature choices live under Routing by feature.",
-      chatRole: "attributes speakers + cleans up dictation",
-      doneBody:
-        "Speaker attribution, dictation cleanup and the other AI features run on this model — change it any time under Routing by feature.",
-      // The wizard just loaded the model. Tell the app, so the header's language-model
-      // pill (and everything else that listens) re-reads the kit's model list at once —
-      // until 2026-10-05 the header said "No language model" after a setup.
-      onApplied: () => window.dispatchEvent(new Event("jv:health-refresh")),
-    },
+    // The wizard just loaded the model. Tell the app, so the header's language-model pill (and
+    // everything else that listens) re-reads the kit's model list at once — until 2026-10-05 the
+    // header said "No language model" after a setup.
+    onQuickSetupApplied: () => window.dispatchEvent(new Event("jv:health-refresh")),
   });
   // The Lab's fill-from-app doors (Part 4, 2026-08-06 — the kit's
   // configureTestData seam, off by default; JW's registration is the donor):
@@ -138,26 +121,6 @@ function wireKit(app) {
   configureServerApi({
     authToken: () =>
       (typeof localStorage !== "undefined" && localStorage.getItem("jt:token")) || "",
-  });
-  // Ruling 6 (2026-08-05): JV alone renames the kit wizard's VISIBLE words —
-  // "LLM engine setup" beside the TTS "Voice engine setup" (two engine kinds;
-  // the pair names them). Words only, via the existing labels feed; siblings
-  // keep "Quick Setup"; code identifiers (?quicksetup=1, seam names) unchanged.
-  // The AI console's providers tab relabels the same way: with speech in the
-  // area, a bare "Providers & models" stops naming one thing — JV says which
-  // kind; siblings keep the canon words. (The separate "LLM models" tab died
-  // with the user's 2026-08-06 QC ruling — the catalog lives inside this tab.)
-  configureFamilyLabels({
-    quickSetup: {
-      runButton: "Run LLM engine setup",
-      rerunButton: "Re-run LLM engine setup",
-    },
-    aiOffer: {
-      quickSetup: "Run LLM engine setup",
-    },
-    aiTabs: {
-      providers: "LLM providers",
-    },
   });
 }
 

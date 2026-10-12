@@ -1,26 +1,23 @@
 // SPDX-License-Identifier: MIT
 //
-// i18n scaffold (Phase 9 / Slice 1 — plan task #97).
+// vue-i18n — the instance the i18n boot file installs (boot/i18n.js), here so services and stores
+// translate too.
 //
-// Wires vue-i18n with en.json. Future locales (ja / es / fr / de) land
-// as sibling JSON files in ./locales/ and get registered in the
-// `messages` map below. Settings → Appearance gains a locale picker in
-// a follow-on slice.
+// The kit's words come first: the instance starts from the kit's catalogs (`kit.*`) and
+// JustVoice's own are merged over them, so a `kit.*` key in ./locales/en.json rewords the kit's —
+// "LLM providers" for the AI console's tab (the vue-i18n standard; the family's plan,
+// just-llm-runner/docs/plans/2026-10-12-i18n-standard.md, Task 1 step B). A language is a file in
+// ./locales/ (`<code>.json`, the kit's one rule in catalogsFromFiles).
 //
-// This is INTENTIONALLY MINIMAL — only a small handful of strings are
-// extracted into en.json yet. The full string-sweep across views +
-// components is a dedicated future phase when there's a translation
-// budget to actually use the catalog. Until then existing string
-// literals in views keep working; new strings can opt-in to
-// `t('key')` lookups as they're written.
+// Most of JustVoice's screens still carry their words in their templates; moving them into
+// ./locales/en.json is the plan's Task 5.
 
 import { createI18n } from "vue-i18n";
+import { catalogsFromFiles, kitMessages } from "@delebash/llm-ui/i18n/index.js";
 
-import en from "./locales/en.json";
+const own = catalogsFromFiles(import.meta.glob("./locales/*.json", { eager: true }));
 
-export const i18n = createI18n({
-  legacy: false,
-  locale: "en",
-  fallbackLocale: "en",
-  messages: { en },
-});
+// kitMessages() with the call: vue-i18n merges into the objects it is given, so the kit's catalog
+// must be a fresh copy.
+export const i18n = createI18n({ legacy: false, locale: "en", fallbackLocale: "en", messages: kitMessages() });
+for (const [code, msgs] of Object.entries(own)) i18n.global.mergeLocaleMessage(code, msgs);

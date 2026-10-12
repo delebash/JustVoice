@@ -370,6 +370,27 @@ OPEN:   — (MioTTS re-tested 2026-10-11 with its codec: loads, speaks, reads ba
         §10.14).
 GO:     given 2026-10-11 ("your rec on both go").
 
+### The family on vue-i18n: JustVoice's step B (decided 2026-10-12, in the kit's tracker)
+STATE:  DECIDED 2026-10-12 — the user's ruling in a JustWrite session: "all apps should use the
+        standard i18n including kit, everything should be standard no strange worki arounds";
+        then "your rec go" on the plan (`../just-llm-runner/docs/plans/2026-10-12-i18n-standard.md`),
+        its D2 (b): "JV's session makes them from the diff and the kit commit waits for its word."
+        The whole record: the kit's `docs/dev/TASKS.md`, "Every app and the kit on vue-i18n".
+        Asked of this session by the JustWrite session's message (2026-10-12).
+WHY:    the kit's next step (C) reads its words through vue-i18n; until JustVoice takes the kit's
+        catalog, C would show raw keys in its kit screens and break its imports.
+NOT:    the plan's Task 5 (JustVoice's own ~1,944 template strings to keys) — its own go.
+BUILT:  2026-10-12 — `src/i18n/index.js` starts from `kitMessages()` and merges JustVoice's
+        catalogs over it; its rewordings ("LLM providers", "LLM engine setup", the catalog's and
+        the wizard's words) moved from `src/boot/jv.js` to `kit.*` keys in `en.json`, word for
+        word; `installLlmUi` gets `i18n` and `onQuickSetupApplied`; the labels call and the two
+        copy blocks gone; Settings' shared sections read `kit.settingsSections.*`; Quasar's
+        language packs follow the language (`followQuasarLang`); the component tests mount with
+        the i18n instance; `src/i18n/kitWords.test.js`. No visible change: after the real boot
+        the kit holds every JustVoice word (checked), and the pages show them.
+OPEN:   — (step C is the kit's).
+GO:     the user's D2 (b), above.
+
 ### The download test's last findings: the clip's words, AuK and OuteTTS hidden, memory (decided 2026-10-12)
 STATE:  DECIDED 2026-10-12 — first shown with the test's results, the user: "your rec on all go";
         then "just think on these recs again make sure they are correct". Re-checked and shown:

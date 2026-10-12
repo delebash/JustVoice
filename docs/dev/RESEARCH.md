@@ -839,9 +839,10 @@ its blast radius and the gaps.
   `../just-llm-runner/ui/src/composables/useRunnerModels.js` (`refresh`, `_startPoll`),
   `components/LuModelCatalog.vue` (`unloadModel`).
 - The kit's LLM engine setup loads through its own task and re-reads that list only after its
-  speed measure succeeds; its host hook `quickSetupCopy.onApplied({ modelId })` fires the moment
-  the load is done. JustVoice dispatches `jv:health-refresh` from it. — *code, 2026-10-05* ·
-  kit `views/QuickSetup.vue` (`finishApply`, `measureAfterApply`); `src/main.js`.
+  speed measure succeeds; its host hook — `installLlmUi`'s `onQuickSetupApplied({ modelId })` since
+  the i18n plan's step B (2026-10-12) — fires the moment the load is done. JustVoice dispatches
+  `jv:health-refresh` from it. — *code, 2026-10-05* · kit `views/QuickSetup.vue` (`finishApply`,
+  `measureAfterApply`); `src/boot/jv.js`.
 - JustVoice's header pill reads that list (`App.vue`, `llmLive`) and re-reads it on health
   events and when an AI task starts or ends; Script's "Analyze needs a language model" reads
   `/v1/extraction/config` through `composables/useAnalyzeModel.js` — on mount, on coming back,
