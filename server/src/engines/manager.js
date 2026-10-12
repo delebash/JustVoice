@@ -389,16 +389,6 @@ export async function memoryInUseMb() {
   }
 }
 
-/** This machine's memory in use, read fresh — the kit's system-memory probe (the one-pool boxes'
- * door, `hardware._usedPoolMb`), on every box. null = unmeasurable. */
-export async function systemMemoryInUseMb() {
-  try {
-    return await hardware._usedPoolMb();
-  } catch {
-    return null;
-  }
-}
-
 const mbText = (v) => (v == null ? "?" : String(v));
 
 /**
@@ -1133,12 +1123,11 @@ export class EngineManager {
     );
   }
 
-  /** Persist the system memory a load took as a `"ram_peak"` row in the shared measurement store,
-   * beside the card's `"peak"` rows — the before/after difference of this machine's memory in use
-   * across the load (the kit's system-memory probe, `hardware._usedPoolMb`), on either device
-   * (decided 2026-10-12, TASKS "The download test's last findings" 4(b)). A floor: a model can take
-   * more while it speaks (MOSS-TTS Local, RESEARCH §10.14). Keeps the newest 5 per runtime build.
-   * Best-effort: persistence must never fail a load. */
+  /** Persist the system memory a model holds as a `"ram_peak"` row in the shared measurement
+   * store, beside the card's `"peak"` rows — its slot process, read once the load is done and
+   * again after its lines, raise-only (_slotRamMb, bumpSpeechRam), on either device (decided
+   * 2026-10-12, TASKS "The download test's last findings" 4(b) and "The two-day review's fixes").
+   * Keeps the newest 5 per runtime build. Best-effort: persistence must never fail a load. */
   _recordSpeechRam(m, kind, variant, mb, device) {
     try {
       const store = stores.getModelMeasurementStore();
@@ -1160,6 +1149,53 @@ export class EngineManager {
       store.pruneLoadRows(modelId, mk, new Set(["runtime"]), 5, "ram_peak");
     } catch (e) {
       log.debug(`speech memory persist failed for ${m.id}: ${msgOf(e)}`);
+    }
+  }
+
+  /** The system memory a speech slot's process holds now, MB — the kit's per-process probe
+   * (`hardware.processTreeRssMb`: the process and its children), so nothing else on the machine
+   * counts. A working set: it includes the model file's pages the system could drop, so it errs
+   * high. null = unreadable. */
+  async _slotRamMb(proc) {
+    const pid = proc?.proc?.pid;
+    if (!pid) return null;
+    try {
+      return await hardware.processTreeRssMb(pid);
+    } catch {
+      return null;
+    }
+  }
+
+  /** The system memory the AI models hold now, MB — what unloading them gives back (the kit's
+   * `modelServersRamMb`); 0 when unknown. */
+  async _aiModelsRamMb() {
+    try {
+      return pyInt((await (await lifecycle.getService()).modelServersRamMb()) || 0);
+    } catch {
+      return 0;
+    }
+  }
+
+  /** The raise-only high-water for system memory, in the same after-line pass as the card's: the
+   * slot's process read again, and a reading above this load's highest recorded. A process whose
+   * line ran away sets no record, as for the card. One probe at a time per slot (it can shell
+   * out for a second or two). Best-effort. */
+  async bumpSpeechRam(kind) {
+    const proc = this._loaded.get(kind) ?? null;
+    if (proc === null || proc._ramProbing || !this._prices(proc)) return;
+    proc._ramProbing = true;
+    try {
+      const mb = await this._slotRamMb(proc);
+      // The slot may have swapped while the probe ran.
+      if (!mb || mb <= (proc._ramPeakMb || 0) || this._loaded.get(kind) !== proc) return;
+      proc._ramPeakMb = mb;
+      const engineId = proc.manifest.id;
+      const m = this.getManifest(engineId);
+      if (m !== null) {
+        this._recordSpeechRam(m, kind, this._currentVariants.get(engineId) ?? null, mb, this._resolvedDevices.get(engineId) ?? "");
+      }
+    } finally {
+      proc._ramProbing = false;
     }
   }
 
@@ -1187,9 +1223,11 @@ export class EngineManager {
    * takes and the safety margin are more than the memory free now — crediting what the kind's
    * current occupant gives back when it is replaced. What it takes: on the CPU its files (4(a)),
    * and on either device the memory it took at its last loads here (4(b)), whichever is more
-   * (decided 2026-10-12, TASKS "The download test's last findings"). The AI model is named when
-   * it is loaded: it can hold more of this memory than any speech model (17 GB, RESEARCH §10.14). */
-  async _admitSystemMemory(m, kind, variant, device = "cpu") {
+   * (decided 2026-10-12, TASKS "The download test's last findings"). `aiCreditMb`: the AI
+   * models' memory, when this load may push them off the card (TASKS "The two-day review's
+   * fixes"). The AI model is named when it is loaded: it can hold more of this memory than any
+   * speech model (17 GB, RESEARCH §10.14). */
+  async _admitSystemMemory(m, kind, variant, device = "cpu", aiCreditMb = 0) {
     const filesOf = (mod, id) => {
       const row = (attr(mod, "VARIANTS", null) || []).find((r) => r.id === id);
       return row ? (row.sources || []).reduce((n, s) => n + (s.size_bytes || 0), 0) / (1024 * 1024) : 0;
@@ -1209,7 +1247,7 @@ export class EngineManager {
       creditMb = Math.max(back.files, back.ram);
     }
     const margin = EngineManager._safetyMarginMb();
-    const freeMb = os.freemem() / (1024 * 1024) + creditMb;
+    const freeMb = os.freemem() / (1024 * 1024) + creditMb + aiCreditMb;
     if (needMb + margin <= freeMb) return;
     let ai = [];
     try {
@@ -1307,6 +1345,8 @@ export class EngineManager {
   /** The raise-only HIGH-WATER re-probe: a TTS model allocates at generate(), not load — a
    * post-load number misses render peak. Never lowers a booking; best-effort. */
   async bumpEngineReservation(kind, { fresh = false } = {}) {
+    // System memory first: the card's probe below returns early for a CPU slot.
+    await this.bumpSpeechRam(kind).catch(() => {});
     const proc = this._loaded.get(kind) ?? null;
     if (proc === null) return;
     const engineId = proc.manifest.id;
@@ -1635,7 +1675,13 @@ export class EngineManager {
       // occupant gives back (§5 B5). A model never measured here gets no arithmetic: it loads,
       // calibrates, is measured.
       device = placement === "cpu" ? "cpu" : this._resolveDevice(m, device);
-      if (!already) await this._admitSystemMemory(m, targetKind, planned, device);
+      // A load on the card while an AI model is on it may push the AI model off — the card's
+      // admission makes room for a measured model that doesn't fit beside it, Auto's third step
+      // unloads it — and that gives the AI model's memory back. Credited here, so this check
+      // never refuses what the next steps make room for; checked again without it right before
+      // the slot starts (TASKS "The two-day review's fixes", 2026-10-12).
+      const aiCreditMb = !already && placement !== "cpu" && (await this._aiModelOnCard()) ? await this._aiModelsRamMb() : 0;
+      if (!already) await this._admitSystemMemory(m, targetKind, planned, device, aiCreditMb);
       const books = await this._booksMemory(device);
       const price = books && !already ? this._priceMb(targetKind, engineId, planned, device) : 0;
       if (price > 0) {
@@ -1652,6 +1698,9 @@ export class EngineManager {
         // model's memory to drain before the load reads the card.
         await this._unloadAiModel(engineId);
       }
+      // The memory check again, without the credit: whatever was going to make room has, so this
+      // reading is exact — the last refusal before the slot starts.
+      if (aiCreditMb > 0) await this._admitSystemMemory(m, targetKind, planned, device);
       // A load with no price on the card measures one: its warm-up is a full-length piece.
       const calibrate = books && !already && !price;
       // The device-delta fallback's BEFORE snapshot (boxes with no per-process probe arm).
@@ -1660,7 +1709,6 @@ export class EngineManager {
 
       let proc = null;
       let early;
-      let ramBefore = null;
       // Activity lock first (lock order: activity → the manager's lock): a terminate must wait
       // for the slot's in-flight line.
       await this._activity(targetKind).run(() =>
@@ -1694,7 +1742,6 @@ export class EngineManager {
             return;
           }
           if (progress) progress("loading", `loading ${engineId} on the ${placement === "cpu" ? "CPU" : "graphics card"}…`);
-          ramBefore = await self.systemMemoryInUseMb();
           proc = self._newSlot(m, placement);
           await proc.spawn();
           this._loaded.set(targetKind, proc);
@@ -1786,11 +1833,12 @@ export class EngineManager {
           if (delta > 0) this._reserveEngine(m, targetKind, delta, "computed");
         }
       }
-      // The system memory this load took — on the CPU its weights, on the card what the runtime
-      // keeps beside them (4(b)).
-      const ramAfter = ramBefore !== null ? await self.systemMemoryInUseMb() : null;
-      if (ramAfter !== null && ramAfter > ramBefore) {
-        this._recordSpeechRam(m, targetKind, this._currentVariants.get(engineId), ramAfter - ramBefore, device);
+      // The system memory this model holds once loaded — its slot's process (4(b)); its lines
+      // can raise it (bumpSpeechRam).
+      const ramMb = proc !== null ? await this._slotRamMb(proc) : null;
+      if (ramMb) {
+        proc._ramPeakMb = ramMb;
+        if (this._prices(proc)) this._recordSpeechRam(m, targetKind, this._currentVariants.get(engineId), ramMb, device);
       }
       log.info(
         `engine ${engineId} loaded ${this._currentVariants.get(engineId)}: pid ${proc?.proc?.pid ?? null}, ` +

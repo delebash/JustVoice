@@ -370,6 +370,28 @@ OPEN:   — (MioTTS re-tested 2026-10-11 with its codec: loads, speaks, reads ba
         §10.14).
 GO:     given 2026-10-11 ("your rec on both go").
 
+### The two-day review's fixes: the RAM check's order, per-process readings, the records (decided 2026-10-12)
+STATE:  DECIDED 2026-10-12 — the user had Fable review the 2026-10-11/12 recommendations ("list all
+        those differences so i can have opus check your results"), then asked Opus "what do you
+        think of fables results". Shown, after checking each claim in the code and logs: "Next, in
+        order: 1. Fix #1. Pick one: credit the AI model's RAM (its process read by the kit's
+        probe), or check after the eviction. 2. Move the RAM readings to the kit's per-process
+        probe (#4), then add the after-line reading. 3. Report on the AI model's door (#13) as a
+        kit change for JustVoice and JustWrite. No code yet. 4. Correct the records: #7, #8, #9,
+        the #10 doc line. 5. Settle the CPU-placement speed question (#2) as a decision for you.
+        Go on that order? My lean: yes. For 1, credit the AI model's RAM, since it keeps 'refuse
+        before changing anything'." The user: "fix it all your rec go".
+WHY:    #1 — the RAM check ran before the card's own admission, which evicts the AI model when a
+        measured model doesn't fit beside it, so it refused a load the next step would have made
+        room for. #4 — the kit already reads one process's memory (`hardware.processTreeRssMb`);
+        the whole-machine difference counted whatever else loaded. #13 — the kit's RAM claim for
+        an AI model is "display-only per §8.18": nothing checks free RAM before it loads.
+NOT:    code for #13 (a report first); #2 (a decision for the user); Fable's #5 (wrong: only the
+        e1 retest unloaded the AI model mid-load, and that figure isn't in RESEARCH).
+BUILT:  —
+OPEN:   all of it.
+GO:     given 2026-10-12 ("fix it all your rec go").
+
 ### The family on vue-i18n: JustVoice's step B (decided 2026-10-12, in the kit's tracker)
 STATE:  DECIDED 2026-10-12 — the user's ruling in a JustWrite session: "all apps should use the
         standard i18n including kit, everything should be standard no strange worki arounds";

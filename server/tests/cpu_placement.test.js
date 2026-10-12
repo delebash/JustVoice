@@ -253,16 +253,52 @@ test("the_load_puts_the_slot_where_the_rule_says", async () => {
   expect(arb.reservedMb("tts:kokoro")).toBeNull();
 });
 
-test("a_load_records_the_system_memory_it_took", async () => {
-  // decided 2026-10-12 (4b): this machine's memory in use before the slot starts and after the
-  // load, as a "ram_peak" row beside the card's peaks.
+test("a_load_records_the_system_memory_its_process_holds", async () => {
+  // decided 2026-10-12 (4b; the review's #4): the slot's own process, read by the kit's
+  // per-process probe once the load is done — a "ram_peak" row beside the card's peaks.
   const mgr = mgrFor();
   loadable("cpu");
-  vi.spyOn(manager, "systemMemoryInUseMb").mockResolvedValueOnce(10000).mockResolvedValueOnce(11340);
+  vi.spyOn(EngineManager.prototype, "_slotRamMb").mockResolvedValue(1340);
   const recorded = [];
   vi.spyOn(EngineManager.prototype, "_recordSpeechRam").mockImplementation((m, kind, variant, mb, device) => recorded.push([m.id, kind, mb, device]));
   await mgr.load("kokoro");
   expect(recorded).toEqual([["kokoro", "tts", 1340, "cpu"]]);
+});
+
+test("a_line_raises_the_memory_record_only_above_the_loads_highest", async () => {
+  // The after-line reading, raise-only, in the card re-check's pass (the review, 2026-10-12).
+  const mgr = mgrFor();
+  loadable("cpu");
+  const read = vi.spyOn(EngineManager.prototype, "_slotRamMb").mockResolvedValue(900);
+  const recorded = [];
+  vi.spyOn(EngineManager.prototype, "_recordSpeechRam").mockImplementation((m, kind, variant, mb) => recorded.push(mb));
+  await mgr.load("kokoro");
+  read.mockResolvedValue(1200);
+  await mgr.bumpEngineReservation("tts");
+  read.mockResolvedValue(1100);
+  await mgr.bumpEngineReservation("tts");
+  expect(recorded).toEqual([900, 1200]);
+});
+
+test("a_card_load_credits_the_ai_models_memory_then_checks_exactly_before_the_slot_starts", async () => {
+  // The review's #1 (2026-10-12): the RAM check ran before the card's own admission, which
+  // pushes the AI model off for a measured model that doesn't fit beside it. Now the AI models'
+  // memory is credited first, and the check runs again without it right before the slot starts.
+  const mgr = mgrFor();
+  loadable("gpu");
+  aiOnCard();
+  vi.spyOn(os, "totalmem").mockReturnValue(32 * 1024 ** 3);
+  vi.spyOn(EngineManager.prototype, "_ramPriceMb").mockImplementation((kind, id, variant, device) => (device !== "cpu" ? 5800 : 0));
+  vi.spyOn(EngineManager.prototype, "_aiModelsRamMb").mockResolvedValue(17000);
+  // 6 GB free while the AI model is loaded; 23 GB once it has made room.
+  const free = vi.spyOn(os, "freemem").mockReturnValueOnce(6 * 1024 ** 3).mockReturnValue(23 * 1024 ** 3);
+  await mgr.load("moss_tts_local");
+  expect(made[made.length - 1].placement).toBe("gpu");
+  expect(free).toHaveBeenCalledTimes(2);
+  // Nothing made room: the exact check refuses, naming the AI model.
+  await mgr.unload("tts");
+  free.mockReturnValue(6 * 1024 ** 3);
+  await expect(mgr.load("moss_tts_local")).rejects.toThrow("The AI model (gemma) is loaded and holds memory too");
 });
 
 test("the_third_step_unloads_the_ai_model_before_the_load", async () => {
