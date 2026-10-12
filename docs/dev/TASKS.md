@@ -348,6 +348,22 @@ OPEN:   the real tab with the rest of slice 4 — the server's commercial-use wo
         and TERMS text still come from audio.cpp's table until then.
 GO:     given 2026-10-11 ("your rec on all go").
 
+### A fifth commercial-use word: "Separate licence" (decided 2026-10-11)
+STATE:  DECIDED 2026-10-11 — the user: "i think it is misleading to say no commersial use for
+        things like fish audio, it does allow for commercial use but requires a seperate
+        licesnse, why would that not instead be listed as conditional, dont you think?" Shown:
+        "My recommendation: a fifth word, 'Separate licence'. Hint: 'Not under the free licence
+        — its makers sell or grant a separate one for commercial use. The plain words say who to
+        ask.' Fish Audio S2 … Breeze TTS 2 … AuK … Stays No: OmniVoice, Echo TTS, OuteTTS and
+        ZipVoice … Stays Conditional: Higgs and DramaBox … A. Add 'Separate licence' as above. My
+        lean." The user: "your rec go".
+WHY:    Conditional means the free licence lets you sell once you meet its terms yourself; a
+        separate deal is a different step, and "No" hid that one exists.
+NOT:    moving them to Conditional; changing the four words for any other engine.
+BUILT:  —
+OPEN:   the curated files, the shared words, the chip, RESEARCH §10.13, the user doc.
+GO:     given 2026-10-11 ("your rec go").
+
 ### Speech engines: the real tab, the Unclear wording, the language count, then the download test (decided 2026-10-11)
 STATE:  DECIDED 2026-10-11 — shown: "1. Is the mock OK? If so, go to build the real tab. 2. Change
         the Unclear hint to 'The licence doesn't say, or its makers contradict it. Treat it as No
@@ -377,6 +393,10 @@ BUILT:  2026-10-11 — the real tab (SpeechEnginesTab.vue): the commercial-use l
         Set as default, the ⋯ menu, a model's description and its Runs on line; the memory
         line sits beside the buttons in both.
 OPEN:   the download test (slice 2's acceptance), next.
+        The test's licences (decided 2026-10-11) — shown: "eight models that fit your card need
+        their licence accepted before they'll download … Accepting is your act, so I haven't
+        done it. A. I accept each one only for the test and clear the acceptance afterwards, so
+        your install is left as it was … My lean is A." The user: "your rec go".
 GO:     given 2026-10-11 ("your rec on all go").
 
 ### OPEN — the audio.cpp fork: keep it as it is, the DSP inside it, no routine pull requests?

@@ -931,7 +931,7 @@ export const Prerequisites = T.Object({
 
 export const EngineLicence = T.Object({
   name: T.String(),
-  // Our word: "Yes" | "Conditional" | "No" | "Unclear".
+  // Our word: "Yes" | "Conditional" | "Separate licence" | "No" | "Unclear".
   commercial: T.String(),
   // audio.cpp's word, from its licence table.
   table: T.String(),

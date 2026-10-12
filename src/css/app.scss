@@ -1903,6 +1903,9 @@ section.block > h3 {
    Unclear these. And a model JustVoice has tested. Born on the Speech engines mock (engine list
    slice 4). */
 .ev-lic--no{border-color:var(--danger-line);background:var(--danger-bg);color:var(--danger-ink)}
+/* "Separate licence" (TASKS "A fifth commercial-use word"): No's colour, unfilled — not under the
+   free licence, but its makers offer one. */
+.ev-lic--separate{border-color:var(--danger-line);color:var(--danger-ink)}
 .ev-lic--unclear{border-style:dashed;color:var(--ink-3)}
 .ev-cap.tested{border-color:var(--accent-line,#b8d2c3);background:var(--accent-soft,#e8f0eb);color:var(--accent-ink,#2c6049)}
 /* An engine's own notes at the top of its open group — what it is best for, what JustVoice's

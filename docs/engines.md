@@ -32,7 +32,7 @@ numbers look good.
 
 > **Licences are shown, not hidden.** Every model keeps the licence of the
 > people who trained it, and some don't allow commercial use. Speech engines
-> labels each engine *Commercial use: Yes, Conditional, No or Unclear*, and
+> labels each engine *Commercial use: Yes, Conditional, Separate licence, No or Unclear*, and
 > says in plain words what that means for selling an audiobook you made with
 > it — hover the label, or open the engine. A model that isn't a plain "Yes"
 > asks you to accept its licence once, before its first download. Kokoro,
@@ -296,7 +296,7 @@ next JustVoice update lists it.
 
 **What each engine tells you, before you download anything:**
 
-- **Commercial use** — *Yes*, *Conditional*, *No* or *Unclear* on the engine's
+- **Commercial use** — *Yes*, *Conditional*, *Separate licence*, *No* or *Unclear* on the engine's
   head, and its licence in plain words when you hover it or open the engine.
   See [Commercial use, in plain words](#commercial-use-in-plain-words) below.
 - **audio.cpp's status for it** — *supported*, *community* or *experimental*.
@@ -326,6 +326,7 @@ licence itself, which is what counts.
 |---|---|
 | **Yes** | Sell what you make with it — no conditions. |
 | **Conditional** | Sell what you make if you meet its conditions — credit, a revenue cap. The plain words say which. |
+| **Separate licence** | Not under the free licence — its makers sell or grant a separate one for commercial use. The plain words say who to ask. |
 | **No** | Personal and research use only — don't sell what you make. |
 | **Unclear** | The licence doesn't say, or its makers contradict it. Treat it as No until it's checked. |
 
@@ -342,7 +343,8 @@ the plain words say what audio.cpp's table says:
 | Higgs Audio 3 | No | **Conditional** | Its *Creator Use Grant* lets you sell your own audiobooks, podcasts and videos if you credit "Boson AI's Higgs Audio" where listeners can see it; no revenue cap |
 | IndexTTS 2 / 2.5 | Conditional | **Unclear** | Its own licence caps revenue at RMB 100 million a year (the Chinese text, which governs — the English says 1 billion), but one part it runs, MaskGCT's semantic codec, is non-commercial |
 | FireRedTTS3, FireRedAudio | Yes | **Unclear** | Apache-2.0, but their makers write that voice cloning — all JustVoice uses them for — is "solely for academic research purposes" |
-| AuK | Yes | **No** | It can't run without Qwen2.5-Omni-3B, whose licence is research-only |
+| AuK | Yes | **Separate licence** | It can't run without Qwen2.5-Omni-3B, whose research licence says to ask Alibaba Cloud for a commercial one |
+| Fish Audio S2 Pro, Breeze TTS 2 | No | **Separate licence** | Their free licences grant no commercial rights, and each names the separate written licence its maker offers |
 | ZipVoice | Unclear | **No** | Its makers added a non-commercial licence (CC-BY-NC) to it on 2026-10-10 |
 | MOSS-TTSD, VieNeu-TTS v3 Turbo | not listed | **Yes** | Apache-2.0 at their source |
 
@@ -378,7 +380,7 @@ OmniVoice.
 Above the list, beside the search and the **All · TTS · STT · Cloning ·
 Built-in voices** chips, a second row narrows and orders it:
 
-- **Commercial use** — any, or one of the four labels.
+- **Commercial use** — any, or one of the five labels.
 - **Tested by JustVoice** — only engines we have tested.
 - **Takes direction** — only models that take written direction or tags.
 - **Fits this card** — only models whose memory fits your graphics card

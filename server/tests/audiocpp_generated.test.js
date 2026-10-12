@@ -126,6 +126,10 @@ test("the gate follows our reading of the licence, and says it in plain words", 
   expect(engines.get("fireredtts3").module.TERMS.gates).toBe("download");
   // Not in audio.cpp's table; Apache-2.0 at its source: no gate.
   expect(engines.get("moss_ttsd").module.TERMS).toBeUndefined();
+  // No commercial rights under the free licence, but its maker offers a separate one.
+  const fish = generated.engineFacts(engines.get("fish_audio").module).licence;
+  expect(fish).toMatchObject({ commercial: "Separate licence", table: "No" });
+  expect(engines.get("fish_audio").module.TERMS.gates).toBe("download");
 });
 
 test("every engine's facts: our licence word beside audio.cpp's, its status, tested, best for", () => {

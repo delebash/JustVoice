@@ -17,9 +17,10 @@ export const BEST_FOR = [];
 
 // Its licence in plain words — can a person sell an audiobook made with it? Our reading of the
 // licence at its source, checked 2026-10-11 (RESEARCH §10.13); the licence itself is what counts.
+// audio.cpp's table says "No"; our word says a separate licence is offered (TASKS "A fifth commercial-use word").
 export const LICENCE = {
-  commercial: "No",
-  summary: "No. Selling anything made with the downloaded model needs a written licence from BreezeBlue, and the licence rules out any creator exception. (Audio made on BreezeBlue’s own paid website can be sold.)",
+  commercial: "Separate licence",
+  summary: "Not under its free licence: selling anything made with the downloaded model needs a separate written licence from BreezeBlue, and the free licence rules out any creator exception. (Audio made on BreezeBlue’s own paid website can be sold.)",
   url: "https://huggingface.co/BreezeBlue/Breeze-TTS-2/blob/main/LICENSE",
   checked: "2026-10-11",
 };

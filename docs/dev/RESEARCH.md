@@ -2720,7 +2720,8 @@ Three agents read each model card, licence file and linked GitHub repo (curl and
 verbatim); the load-bearing claims below were re-read by hand (✓). The answers are written into
 each family's `server/src/engines/audiocpp/curated/<family>.js` `LICENCE` (TASKS "Every speech
 engine's licence in plain words"). audio.cpp's table (`docs/model_licenses.md`) reads a licence's
-title; eight of 32 answers differ from it. — *agent + web, 2026-10-11*
+title; ten of 32 answers differ from it (eight until "Separate licence" was added the same day).
+— *agent + web, 2026-10-11*
 
 - **Differ from audio.cpp's table:**
   - **Higgs Audio 3** — table "No"; ours **Conditional**. Section II-A's Creator Use Grant lets a
@@ -2743,10 +2744,22 @@ title; eight of 32 answers differ from it. — *agent + web, 2026-10-11*
     "this capability is intended **solely for academic research purposes**" of zero-shot cloning
     (✓), the only task JustVoice offers them for; FireRedTTS3 issue #12 and HF discussion #7 were
     closed by their asker on 2026-10-12 UTC with no reply.
-  - **AuK** — table "Yes"; ours **No**. Tencent's weights are MIT, but AuK needs Qwen2.5-Omni-3B
-    as its encoder (audio.cpp packages `qwen2.5-omni-3b-*.gguf`, ✓
+  - **AuK** — table "Yes"; ours **Separate licence** (was: **No** — until "Separate licence" was
+    added, 2026-10-11, TASKS "A fifth commercial-use word"). Tencent's weights are MIT, but AuK
+    needs Qwen2.5-Omni-3B as its encoder (audio.cpp packages `qwen2.5-omni-3b-*.gguf`, ✓
     `../audio.cpp/docs/community_models/auk.md:17-31`), whose licence is `qwen-research` (✓ HF
-    API): "FOR NON-COMMERCIAL PURPOSES ONLY".
+    API): "FOR NON-COMMERCIAL PURPOSES ONLY" and "If you are commercially using the Materials,
+    you shall request a license from us".
+  - **Fish Audio S2, Breeze TTS 2** — table "No"; ours **Separate licence**: each licence grants no
+    commercial rights and names the separate written licence its maker offers — Fish (2026-03-07):
+    "Any use of the Fish Audio Materials or Derivative Works for a Commercial Purpose requires a
+    separate written license agreement from Fish Audio", where Commercial Purpose includes any use
+    "in connection with a product or service for which You charge a fee or generate revenue";
+    Breeze (v1.1, 2026-09-01): "Any Commercial Purpose involving the Model Materials, a Derivative
+    Model, or an Output requires a separate written commercial license from BreezeBlue", and "this
+    Agreement does not include a creator, content monetization, small-business,
+    revenue-threshold, or other implied commercial-use exception"; audio made on BreezeBlue's paid
+    hosted service may be sold.
   - **ZipVoice** — table "Unclear" ("the model card states no license"); ours **No**. A License
     section was added to the card on 2026-10-10: "The pre-trained model is licensed under the
     CC-BY-NC due to constraints from its training data (Emilia)" (✓); a maintainer confirmed it on
@@ -2756,11 +2769,8 @@ title; eight of 32 answers differ from it. — *agent + web, 2026-10-11*
   - **VieNeu-TTS v3 Turbo** — not in the table; ours **Yes**: Apache-2.0, and its card's FAQ says
     audio "may be used in commercial and monetized content" (✓). JustVoice downloads upstream's
     own GGUF (`pnnbao-ump`); the third-party GGUF's card says CC-BY-NC-4.0.
-- **No, as the table says:** Breeze TTS 2 (v1.1, 2026-09-01: "this Agreement does not include a
-  creator, content monetization, small-business, revenue-threshold, or other implied
-  commercial-use exception"; audio made on BreezeBlue's paid hosted service may be sold) · Fish
-  Audio S2 (2026-03-07: any use "in connection with a product or service for which You charge a
-  fee or generate revenue") · Echo TTS (its author: "audio outputs are CC-BY-NC-SA-4.0 due to the
+- **No, as the table says** (no commercial licence offered on their pages): Echo TTS (its
+  author: "audio outputs are CC-BY-NC-SA-4.0 due to the
   dependency on the Fish Speech S1-DAC autoencoder") · OmniVoice (CC-BY-NC since 2026-07-03; its
   audio tokenizer is under the Boson Higgs Audio 2 Community License) · OuteTTS (CC-BY-NC-SA-4.0
   on top of Llama 3.2).
