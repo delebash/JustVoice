@@ -348,6 +348,26 @@ OPEN:   the real tab with the rest of slice 4 — the server's commercial-use wo
         and TERMS text still come from audio.cpp's table until then.
 GO:     given 2026-10-11 ("your rec on all go").
 
+### The download test's first findings: VieNeu hidden, MioTTS's codec fetched (decided 2026-10-11)
+STATE:  DECIDED 2026-10-11 — shown: "VieNeu babbles. It needs phonemes and a speaker-embedding file
+        that JustVoice doesn't supply. Hide it, or mark it 'doesn't clone from a clip yet'? ·
+        MioTTS won't load. It needs a separate sound-codec download that JustVoice doesn't fetch.
+        The likely fix: have generated engines download a model's companion files too." The
+        user: "your rec on both go". No lean was shown for VieNeu; the rec given with the go:
+        hide it until it can clone from a clip — a listed model should speak.
+WHY:    VieNeu reads SEA-G2P phonemes and needs a 192-d speaker embedding its unported CAM++
+        encoder would make (audio.cpp docs/community_models/vieneu_v3_turbo.md); plain text and
+        a clip gave a 30 s babble for an 11 s line. MioTTS "requires a reference voice and a
+        MioCodec model" through `miotts.codec_model_path` (docs/models/miotts.md), which
+        audio.cpp's spec doesn't name as a dependency.
+NOT:    wiring SEA-G2P or a speaker embedding for VieNeu.
+BUILT:  2026-10-11 — `curated/vieneu_v3_turbo.js` NOT_OFFERED (generatedModels skips it; 24
+        generated engines); `curated/miotts.js` SESSION_FILES — the miocodec q8 package joins the
+        model's download row (same repository and revision) and slot._entriesFor sets
+        `miotts.codec_model_path` to it; two tests; engines.md "Not available yet".
+OPEN:   MioTTS re-tested in the download test once the app restarts on this code.
+GO:     given 2026-10-11 ("your rec on both go").
+
 ### A fifth commercial-use word: "Separate licence" (decided 2026-10-11)
 STATE:  DECIDED 2026-10-11 — the user: "i think it is misleading to say no commersial use for
         things like fish audio, it does allow for commercial use but requires a seperate

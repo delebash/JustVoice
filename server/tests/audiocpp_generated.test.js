@@ -10,6 +10,7 @@ import * as generated from "../src/engines/audiocpp/generated.js";
 import * as slot from "../src/engines/audiocpp/slot.js";
 import { lookup } from "../src/engines/capability_details.js";
 import * as manager from "../src/engines/manager.js";
+import { tmpPath } from "./helpers.js";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -157,6 +158,25 @@ test("a language list that describes is shown as audio.cpp words it, never count
   expect(omni.every((v) => v.languages_note === "600+ languages")).toBe(true);
   // bf16 and f16 are both 16-bit: the names say which.
   expect(omni.map((v) => v.name)).toEqual(["OmniVoice", "OmniVoice (16-bit, bf16)", "OmniVoice (16-bit, f16)"]);
+});
+
+test("a family file keeps out a model that can't speak from text and a clip", () => {
+  // VieNeu reads phonemes and needs a speaker embedding audio.cpp can't make yet.
+  expect(generated.generatedEngines().has("vieneu_v3_turbo")).toBe(false);
+  expect(lookup("vieneu_v3_turbo")).toBeNull();
+});
+
+test("a companion a family file names downloads with the model and reaches it as a session option", () => {
+  // MioTTS decodes with MioCodec, given as miotts.codec_model_path; the spec doesn't list it.
+  const engine = manager.discoverEngines().get("miotts");
+  const row = engine.module.VARIANTS.find((v) => v.id === "miotts-q8");
+  const codec = "MioCodec-25Hz-44.1kHz-v2-GGUF/miocodec-25hz-44khz-v2-q8_0.gguf";
+  expect(row.sources).toHaveLength(1); // the same repository and revision: one download row
+  expect(row.sources[0].files).toContain(codec);
+  vi.spyOn(slot, "_dataDir").mockReturnValue(tmpPath());
+  const [entry] = slot._entriesFor(engine, row);
+  const opt = Object.fromEntries(entry.sessionOptions);
+  expect(String(opt["miotts.codec_model_path"]).replaceAll("\\", "/")).toMatch(new RegExp(`miotts-q8/${codec}$`));
 });
 
 test("a licence that isn't Yes gates the first download until accepted", () => {

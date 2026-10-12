@@ -168,6 +168,8 @@ export function generatedModels() {
   const out = [];
   for (const fam of Object.values(CATALOG.families)) {
     if (HAND_WIRED_FAMILIES.has(fam.family) || !SHOWN_STATUS.has(fam.status) || !clones(fam)) continue;
+    // Our file can keep a model out that can't speak from text and a clip yet (VieNeu, 2026-10-11).
+    if (CURATED[fam.family]?.NOT_OFFERED) continue;
     if (!(fam.tasks || []).some((t) => t === "tts" || t === "clone")) continue;
     const runnable = [];
     for (const e of fam.entries) {
@@ -213,6 +215,43 @@ export function speaks(fam) {
   return { languages: all.filter((l) => l !== note), note };
 }
 
+/** The packages a family file names as a model's companions (`SESSION_FILES`: a session option →
+ * {family, package}) — MioTTS's codec, which audio.cpp's spec doesn't list as a dependency. */
+function companionPackages(m) {
+  return Object.entries(m.curated?.SESSION_FILES || {}).map(([option, { family, package: id }]) => {
+    const pkg = CATALOG.families[family]?.packages.find((p) => p.id === id);
+    if (!pkg) throw new Error(`${m.family}: its companion ${family}/${id} isn't in catalog.json`);
+    return { option, pkg };
+  });
+}
+
+/** The model's download rows with its companions': downloaded, verified and deleted with it — in
+ * the model's own row when they share its repository and revision (as Qwen3-ASR's aligner does),
+ * else a row of their own. */
+function withCompanions(m, main) {
+  const rows = [{ ...main, files: [...main.files] }];
+  for (const { pkg } of companionPackages(m)) {
+    const size = pkg.source.files.reduce((n, f) => n + (f.size_bytes || 0), 0);
+    const files = pkg.source.files.map((f) => f.path);
+    const same = rows.find((r) => r.hf_repo === pkg.source.repo && r.revision === pkg.source.revision);
+    if (same) {
+      same.files.push(...files);
+      same.size_bytes += size;
+    } else rows.push({ hf_repo: pkg.source.repo, revision: pkg.source.revision, size_bytes: size, files });
+  }
+  return rows;
+}
+
+/** `session_files`: each companion's session option → its main file, relative to the model's
+ * folder (slot._entriesFor makes it a path). */
+function sessionFiles(m) {
+  const out = {};
+  for (const { option, pkg } of companionPackages(m)) {
+    out[option] = (pkg.source.files.find((f) => f.path.endsWith(".gguf")) ?? pkg.source.files[0]).path;
+  }
+  return Object.keys(out).length ? { session_files: out } : {};
+}
+
 /** A variant row (a model at one precision) in the hand-wired manifests' shape. */
 function variantRow(m, { pkg, main }) {
   const tail = PRECISION_TAIL[pkg.precision] || slug(pkg.precision || "gguf");
@@ -231,15 +270,13 @@ function variantRow(m, { pkg, main }) {
     voice_design: false,
     preset_voices: 0,
     weights_license: lic.licence,
-    sources: [
-      {
-        hf_repo: pkg.source.repo,
-        revision: pkg.source.revision,
-        size_bytes: pkg.source.files.reduce((n, f) => n + (f.size_bytes || 0), 0),
-        files,
-      },
-    ],
-    audiocpp: { family: m.family, task: m.entry.task, file: main, generated: true, model: m.modelId },
+    sources: withCompanions(m, {
+      hf_repo: pkg.source.repo,
+      revision: pkg.source.revision,
+      size_bytes: pkg.source.files.reduce((n, f) => n + (f.size_bytes || 0), 0),
+      files,
+    }),
+    audiocpp: { family: m.family, task: m.entry.task, file: main, generated: true, model: m.modelId, ...sessionFiles(m) },
     min_vram_gb: m.entry.min_vram_gb,
     status: m.fam.status,
     commercial_use: lic.commercial_use,

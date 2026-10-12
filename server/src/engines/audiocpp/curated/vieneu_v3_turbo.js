@@ -11,3 +11,9 @@ export const LICENCE = {
   url: "https://huggingface.co/pnnbao-ump/VieNeu-TTS-v3-Turbo",
   checked: "2026-10-11",
 };
+
+// Not offered (decided 2026-10-11, TASKS "The download test's first findings"): it reads SEA-G2P
+// phonemes, not text, and needs a speaker embedding its unported CAM++ encoder would make (audio.cpp
+// docs/community_models/vieneu_v3_turbo.md) — from text and a clip it babbled 30 s for an 11 s line.
+export const NOT_OFFERED =
+  "It reads phonemes from a separate library, not text, and needs a speaker embedding audio.cpp can't make yet — from text and a clip it babbles.";

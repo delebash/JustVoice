@@ -273,6 +273,8 @@ export function _entriesFor(manifest, row) {
   const opts = { ...(spec.session_options || {}) };
   // The options the user set on the model's row (audit §13.5, 5h).
   Object.assign(opts, runtimeOptions.sessionOptionsFor(manifest.id, row));
+  // A companion file downloaded with the model (a family file's SESSION_FILES — MioTTS's codec).
+  for (const [k, file] of Object.entries(spec.session_files || {})) opts[k] = path.join(String(vdir), file);
   // The eSpeak NG phonemizer the runtime install fetched. KittenTTS reads it from its own
   // prefixed session options; Kokoro reads only the runtime's environment
   // (`runtime._childEnv`) and would refuse a session option it doesn't know.

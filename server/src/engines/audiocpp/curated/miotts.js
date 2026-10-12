@@ -9,3 +9,11 @@ export const LICENCE = {
   url: "https://huggingface.co/Aratako/MioTTS-1.7B",
   checked: "2026-10-11",
 };
+
+// MioTTS "requires a reference voice and a MioCodec model" for its acoustic decoding, given as the
+// `miotts.codec_model_path` session option (audio.cpp docs/models/miotts.md); its spec doesn't
+// name that dependency. The codec downloads with the model (decided 2026-10-11, TASKS "The download
+// test's first findings").
+export const SESSION_FILES = {
+  "miotts.codec_model_path": { family: "miocodec", package: "miocodec_q8_0" },
+};

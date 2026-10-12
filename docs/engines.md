@@ -287,7 +287,7 @@ graphics memory at all — measured at 0 MB on both the CUDA and Vulkan builds.
 ## Every other model audio.cpp has
 
 Besides the engines above, Speech engines lists every other speech model the
-speech runtime can run that **copies a voice from a clip** — 25 more engines
+speech runtime can run that **copies a voice from a clip** — 24 more engines
 today, among them IndexTTS 2 and 2.5, CosyVoice3, Breeze TTS 2, Higgs Audio 3,
 Fish Audio S2 Pro, OmniVoice, MOSS-TTS, dots.tts, FireRedTTS3 and VoxCPM1. JustVoice doesn't hand-write these: it builds them from
 audio.cpp's own description of each model — what it does, its languages, its
@@ -574,6 +574,11 @@ runtime; the order is in
 - **A confidence score from speech recognition.** The old recogniser
   reported how sure it was of each transcript; the new one does not.
 - **Voice training** — see [Voice training](#voice-training).
+- **VieNeu-TTS v3 Turbo** (Vietnamese and English), from audio.cpp's other models. It reads
+  phonemes from a separate library rather than text, and needs a *speaker embedding* that
+  audio.cpp can't make from a clip yet; given text and a clip, it babbled 30 seconds for an
+  11-second line in JustVoice's download test (2026-10-11). It's left off the list until it
+  can speak from text and a clip.
 
 Back since v0.9.0-jv.4: Chatterbox Turbo (cloning, inline tags), Chatterbox in
 Hebrew, Japanese, Russian and Chinese, Kokoro blends, Kokoro's Japanese voices,
@@ -581,9 +586,10 @@ and a lexicon's exact pronunciations on Kokoro. A runtime still on an older
 build refuses a line that needs one of them, by name — *"… — this needs the
 speech runtime update"* — and **Update to** on the runtime row brings it.
 
-**Removed for good:** LuxTTS, TADA and MOSS-TTSD. LuxTTS was the one engine
+**Removed for good:** LuxTTS, TADA and the old MOSS-TTSD engine. LuxTTS was the one engine
 that cloned quickly on a CPU; Pocket TTS took its place on 2026-10-02. TADA and
-MOSS-TTSD were already marked for removal. Whisper, the old speech recogniser, was
+MOSS-TTSD were already marked for removal. (audio.cpp's own MOSS-TTSD is listed again since
+2026-10-11, under [Every other model audio.cpp has](#every-other-model-audiocpp-has).) Whisper, the old speech recogniser, was
 replaced by Qwen3-ASR, which got fewer words wrong on both human speech (4.3 %
 against 5.8 %) and rendered narration (8.6 % against 9.9 %).
 
