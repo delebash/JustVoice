@@ -287,7 +287,7 @@ graphics memory at all — measured at 0 MB on both the CUDA and Vulkan builds.
 ## Every other model audio.cpp has
 
 Besides the engines above, Speech engines lists every other speech model the
-speech runtime can run that **copies a voice from a clip** — 24 more engines
+speech runtime can run that **copies a voice from a clip** — 22 more engines
 today, among them IndexTTS 2 and 2.5, CosyVoice3, Breeze TTS 2, Higgs Audio 3,
 Fish Audio S2 Pro, OmniVoice, MOSS-TTS, dots.tts, FireRedTTS3 and VoxCPM1. JustVoice doesn't hand-write these: it builds them from
 audio.cpp's own description of each model — what it does, its languages, its
@@ -359,13 +359,20 @@ it:
 
 - **about X GB, measured here** — an earlier load measured it on this machine.
   That number wins.
-- **needs about X GB · fits this card** — audio.cpp's own estimate, for a model
-  JustVoice hasn't measured yet.
+- **needs about X GB · fits this card** — for a model JustVoice hasn't measured
+  yet: audio.cpp's own estimate, or the size of its download when that is more.
+  audio.cpp gives one estimate per model, shared by all its precisions, so a
+  16-bit or original download can be bigger than the estimate (FireRedAudio's
+  original weights are 23 GB against an estimate of 10) — and the weights alone
+  take at least their own size. MOSS-TTSD has no estimate; its 12 GB download
+  is the number.
 - **needs about X GB · too big for this card — Load runs it on the CPU** —
-  audio.cpp's estimate is more than your card has, so *Auto* under
+  that number is more than your card has, so *Auto* under
   [Runs on](#where-each-model-runs--the-graphics-card-or-the-cpu) loads it on
-  the CPU. Once a load measures it on your card, the measurement decides
-  instead.
+  the CPU, and the row's *Runs on* line says why: *audio.cpp says it needs about
+  10 GB, more than this card's 8 GB*, or *its files are about 12 GB, more than
+  this card's 8 GB*. Once a load measures it on your card, the measurement
+  decides instead.
 - **memory not measured yet** — neither is known. The engines JustVoice wired
   by hand say this until their first load, because their memory is measured,
   never estimated.
@@ -576,9 +583,18 @@ runtime; the order is in
 - **Voice training** — see [Voice training](#voice-training).
 - **VieNeu-TTS v3 Turbo** (Vietnamese and English), from audio.cpp's other models. It reads
   phonemes from a separate library rather than text, and needs a *speaker embedding* that
-  audio.cpp can't make from a clip yet; given text and a clip, it babbled 30 seconds for an
-  11-second line in JustVoice's download test (2026-10-11). It's left off the list until it
-  can speak from text and a clip.
+  audio.cpp can't make from a clip yet; given text and a clip, it babbled for 14.8 seconds
+  over a line the other models speak in 4 to 5 in JustVoice's download test (2026-10-11).
+  It's left off the list until it can speak from text and a clip.
+- **AuK** (Tencent), from audio.cpp's other models. audio.cpp loads it from a folder of
+  three separate downloads — the AuK generator, Qwen2.5-Omni-3B and a VAE, 6 to 13 GB
+  together — and JustVoice fetches only the generator, so it doesn't load. Cloning from a
+  clip also needs a longer instruction than the words alone. Left off the list until those
+  three parts are wired (2026-10-12).
+- **OuteTTS 1.0 1B**, from audio.cpp's other models. Cloning the download test's voice, it
+  generated no audio for ten seeds in eleven — the same with audio.cpp's own command-line
+  tool and the same file — while audio.cpp's sample voice spoke on every seed tried. It's left
+  off the list until it clones reliably (2026-10-12).
 
 Back since v0.9.0-jv.4: Chatterbox Turbo (cloning, inline tags), Chatterbox in
 Hebrew, Japanese, Russian and Chinese, Kokoro blends, Kokoro's Japanese voices,

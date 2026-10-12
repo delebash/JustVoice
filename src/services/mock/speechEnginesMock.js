@@ -40,12 +40,12 @@ const RAW = [
     catalog_status: "supported",
     termsAccepted: false,
     models: [
-      { id: "index_tts2-indextts2-q8", name: "IndexTTS2", size_mb: 3465, languages: LANGS.index, ...clone, directed_by: "words", min_vram_gb: 8 },
-      { id: "index_tts2-indextts2-f16", name: "IndexTTS2 (16-bit)", size_mb: 4431, languages: LANGS.index, ...clone, directed_by: "words", min_vram_gb: 8 },
-      { id: "index_tts2-indextts2-orig", name: "IndexTTS2 (original precision)", size_mb: 7710, languages: LANGS.index, ...clone, directed_by: "words", min_vram_gb: 8 },
-      { id: "index_tts2-indextts25-q8", name: "IndexTTS2.5", size_mb: 3340, languages: LANGS.index, ...clone, directed_by: "words", min_vram_gb: 8 },
-      { id: "index_tts2-indextts25-f16", name: "IndexTTS2.5 (16-bit)", size_mb: 4336, languages: LANGS.index, ...clone, directed_by: "words", min_vram_gb: 8 },
-      { id: "index_tts2-indextts25-orig", name: "IndexTTS2.5 (original precision)", size_mb: 7519, languages: LANGS.index, ...clone, directed_by: "words", min_vram_gb: 8 },
+      { id: "index_tts2-indextts2-q8", name: "IndexTTS2", size_mb: 3465, languages: LANGS.index, ...clone, directed_by: "words", min_vram_gb: 8, need_gb: 8 },
+      { id: "index_tts2-indextts2-f16", name: "IndexTTS2 (16-bit)", size_mb: 4431, languages: LANGS.index, ...clone, directed_by: "words", min_vram_gb: 8, need_gb: 8 },
+      { id: "index_tts2-indextts2-orig", name: "IndexTTS2 (original precision)", size_mb: 7710, languages: LANGS.index, ...clone, directed_by: "words", min_vram_gb: 8, need_gb: 8 },
+      { id: "index_tts2-indextts25-q8", name: "IndexTTS2.5", size_mb: 3340, languages: LANGS.index, ...clone, directed_by: "words", min_vram_gb: 8, need_gb: 8 },
+      { id: "index_tts2-indextts25-f16", name: "IndexTTS2.5 (16-bit)", size_mb: 4336, languages: LANGS.index, ...clone, directed_by: "words", min_vram_gb: 8, need_gb: 8 },
+      { id: "index_tts2-indextts25-orig", name: "IndexTTS2.5 (original precision)", size_mb: 7519, languages: LANGS.index, ...clone, directed_by: "words", min_vram_gb: 8, need_gb: 8 },
     ],
   },
   {
@@ -55,7 +55,7 @@ const RAW = [
     table: { name: "Apache-2.0", word: "Yes" },
     catalog_status: "supported",
     termsAccepted: true,
-    models: [{ id: "cosyvoice3-q8", name: "CosyVoice3", size_mb: 2153, languages: LANGS.cosy, ...clone, directed_by: "words", min_vram_gb: 8, on_disk: true }],
+    models: [{ id: "cosyvoice3-q8", name: "CosyVoice3", size_mb: 2153, languages: LANGS.cosy, ...clone, directed_by: "words", min_vram_gb: 8, need_gb: 8, on_disk: true }],
   },
   {
     id: "higgs_audio_tts",
@@ -65,8 +65,8 @@ const RAW = [
     catalog_status: "supported",
     termsAccepted: false,
     models: [
-      { id: "higgs_audio_tts-q8", name: "Higgs Audio v3 TTS", size_mb: 4859, languages: [], languages_note: "100+ languages", ...clone, directed_by: "words", min_vram_gb: 6 },
-      { id: "higgs_audio_tts-bf16", name: "Higgs Audio v3 TTS (16-bit)", size_mb: 8107, languages: [], languages_note: "100+ languages", ...clone, directed_by: "words", min_vram_gb: 6 },
+      { id: "higgs_audio_tts-q8", name: "Higgs Audio v3 TTS", size_mb: 4859, languages: [], languages_note: "100+ languages", ...clone, directed_by: "words", min_vram_gb: 6, need_gb: 6 },
+      { id: "higgs_audio_tts-bf16", name: "Higgs Audio v3 TTS (16-bit)", size_mb: 8107, languages: [], languages_note: "100+ languages", ...clone, directed_by: "words", min_vram_gb: 6, need_gb: 7.9 },
     ],
   },
   {
@@ -77,9 +77,9 @@ const RAW = [
     catalog_status: "supported",
     termsAccepted: false,
     models: [
-      { id: "omnivoice-q8", name: "OmniVoice", size_mb: 1287, languages: [], languages_note: "600+ languages", ...clone, directed_by: "sliders", min_vram_gb: 10 },
-      { id: "omnivoice-bf16", name: "OmniVoice (16-bit, bf16)", size_mb: 1563, languages: [], languages_note: "600+ languages", ...clone, directed_by: "sliders", min_vram_gb: 10 },
-      { id: "omnivoice-f16", name: "OmniVoice (16-bit, f16)", size_mb: 1563, languages: [], languages_note: "600+ languages", ...clone, directed_by: "sliders", min_vram_gb: 10 },
+      { id: "omnivoice-q8", name: "OmniVoice", size_mb: 1287, languages: [], languages_note: "600+ languages", ...clone, directed_by: "sliders", min_vram_gb: 10, need_gb: 10 },
+      { id: "omnivoice-bf16", name: "OmniVoice (16-bit, bf16)", size_mb: 1563, languages: [], languages_note: "600+ languages", ...clone, directed_by: "sliders", min_vram_gb: 10, need_gb: 10 },
+      { id: "omnivoice-f16", name: "OmniVoice (16-bit, f16)", size_mb: 1563, languages: [], languages_note: "600+ languages", ...clone, directed_by: "sliders", min_vram_gb: 10, need_gb: 10 },
     ],
   },
   {
@@ -89,7 +89,7 @@ const RAW = [
     table: { name: "Not in audio.cpp's licence table", word: "Unclear" },
     catalog_status: "experimental",
     termsAccepted: false,
-    models: [{ id: "moss_ttsd-q8", name: "MOSS-TTSD", size_mb: 12437, languages: ["en", "zh"], ...clone, directed_by: "sliders" }],
+    models: [{ id: "moss_ttsd-q8", name: "MOSS-TTSD", size_mb: 12437, languages: ["en", "zh"], ...clone, directed_by: "sliders", need_gb: 12.1 }],
   },
 ];
 

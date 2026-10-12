@@ -548,7 +548,7 @@ function langTitle(v) {
 // load measured it, else audio.cpp's estimate, against this card; a model too big for it runs on
 // the CPU (manager.placementFor). A discrete card only — shared memory has no card to fit.
 const cardMb = computed(() => (vram.value?.mem_arch === "discrete" ? vram.value.total_mb || null : null));
-const memoryOf = (v) => memoryText({ measuredMb: v.measured_mb, needGb: v.min_vram_gb }, cardMb.value);
+const memoryOf = (v) => memoryText({ measuredMb: v.measured_mb, needGb: v.need_gb }, cardMb.value);
 const fits = (v) => memoryOf(v).gb !== null && cardMb.value !== null && memoryOf(v).gb * 1024 <= cardMb.value;
 const directed = (v) => v.directed_by === "words" || v.directed_by === "tags";
 

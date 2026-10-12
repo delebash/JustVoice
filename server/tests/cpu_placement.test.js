@@ -61,6 +61,19 @@ test("auto_runs_a_generated_model_too_big_for_the_card_on_the_cpu", async () => 
   expect((await mgr.placementFor(mgr.getManifest("omnivoice"), "tts", "omnivoice-q8"))[0]).toBe("gpu");
 });
 
+test("auto_goes_by_the_files_when_they_are_more_than_the_estimate_or_there_is_none", async () => {
+  // MOSS-TTSD's 12 GB has no estimate; MOSS-TTS Local's 16-bit weights are 12 GB against an
+  // estimate of 8 (decided 2026-10-12): the files decide, and the reason says so.
+  const mgr = mgrFor();
+  for (const [engine, variant] of [["moss_ttsd", "moss_ttsd-q8"], ["moss_tts_local", "moss_tts_local-bf16"]]) {
+    const [where, why] = await mgr.placementFor(mgr.getManifest(engine), "tts", variant);
+    expect(where, variant).toBe("cpu");
+    expect(why, variant).toBe("its files are about 12 GB, more than this card's 8 GB");
+  }
+  // Its q8 weights (7 GB) are under its estimate: the estimate decides, and fits.
+  expect((await mgr.placementFor(mgr.getManifest("moss_tts_local"), "tts", "moss_tts_local-q8"))[0]).toBe("gpu");
+});
+
 test("auto_ignores_the_estimate_for_a_hand_wired_model", async () => {
   // audio.cpp lists Chatterbox Multilingual at 12 GB; it runs on an 8 GB card, measured.
   const mgr = mgrFor();

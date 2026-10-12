@@ -818,11 +818,11 @@ export class EngineManager {
     return this._priceMb(kind, engineId, variant, device) || null;
   }
 
-  /** audio.cpp's minimum graphics memory for a generated model, GB, or null. The hand-wired
-   * engines' rows carry none: their memory is measured at load (the 2026-08-14 ruling). */
+  /** What a generated model needs before a load measures it — the larger of audio.cpp's estimate
+   * and its download, {gb, by} (generated.needOf) — or null. The hand-wired engines carry none:
+   * their memory is measured at load (the 2026-08-14 ruling). */
   static _catalogNeedGb(m, variant) {
-    const row = (attr(m.module, "VARIANTS", null) || []).find((r) => r.id === variant);
-    return row?.audiocpp?.generated && row.min_vram_gb ? row.min_vram_gb : null;
+    return generated.needOf((attr(m.module, "VARIANTS", null) || []).find((r) => r.id === variant));
   }
 
   /** A discrete graphics card (its own memory) — or unknown, which reads as one. */
@@ -886,15 +886,20 @@ export class EngineManager {
       return ["gpu", "the graphics share this machine's memory, so the CPU would free none of it", false];
     }
     const prior = this._priceMb(kind, m.id, variant, exe !== null ? runtime.backendOf(exe) : null);
-    // A model JustVoice hasn't wired by hand and hasn't measured here: audio.cpp's minimum
-    // graphics memory decides when it is more than the card has — "too big for this card", and
-    // Load runs it on the CPU (decided 2026-10-11, the engine list's answer 4).
+    // A model JustVoice hasn't wired by hand and hasn't measured here: what it needs — audio.cpp's
+    // estimate or its files, whichever is more — decides when it is more than the card has: "too
+    // big for this card", and Load runs it on the CPU (decided 2026-10-11, the engine list's
+    // answer 4; the files since 2026-10-12).
     const need = EngineManager._catalogNeedGb(m, variant);
     if (need && !prior) {
       const hw = await this._hardware();
       const cardMb = hw !== null ? pyInt(hardware.budgetTotalMb(hw)) : 0;
-      if (cardMb > 0 && need * 1024 > cardMb) {
-        return ["cpu", `audio.cpp says it needs about ${need} GB, more than this card's ${Math.round(cardMb / 1024)} GB`, false];
+      if (cardMb > 0 && need.gb * 1024 > cardMb) {
+        const card = Math.round(cardMb / 1024);
+        const why = need.by === "files"
+          ? `its files are about ${Math.round(need.gb)} GB, more than this card's ${card} GB`
+          : `audio.cpp says it needs about ${need.gb} GB, more than this card's ${card} GB`;
+        return ["cpu", why, false];
       }
     }
     if (!(await this._aiModelOnCard())) return ["gpu", "nothing else is on the graphics card", false];

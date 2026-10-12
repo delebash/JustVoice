@@ -33,7 +33,7 @@ const KINDS = [
 const open = reactive({ index_tts2: true, omnivoice: true });
 const asking = ref(null); // the engine whose licence prompt is open, or null
 
-const memoryOf = (m) => memoryText({ measuredMb: m.measured_mb, needGb: m.min_vram_gb }, CARD_MB);
+const memoryOf = (m) => memoryText({ measuredMb: m.measured_mb, needGb: m.need_gb }, CARD_MB);
 const fits = (m) => memoryOf(m).gb !== null && memoryOf(m).gb * 1024 <= CARD_MB;
 const directed = (m) => m.directed_by === "words" || m.directed_by === "tags";
 function langText(m) {

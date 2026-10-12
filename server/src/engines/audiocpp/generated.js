@@ -283,6 +283,22 @@ function variantRow(m, { pkg, main }) {
   };
 }
 
+/**
+ * What a generated model needs in memory before a load measures it, {gb, by}: the larger of
+ * audio.cpp's estimate and its download, since the weights alone take that much — the estimate is
+ * one per model, shared by its precisions, and below the files of some (FireRedAudio's original
+ * weights are 23 GB against an estimate of 10), and MOSS-TTSD has none (decided 2026-10-12).
+ * `by` says which decided: "estimate" or "files". null for a hand-wired row, whose memory is
+ * measured at load (the 2026-08-14 ruling).
+ */
+export function needOf(row) {
+  if (!row?.audiocpp?.generated) return null;
+  const files = (row.sources || []).reduce((n, s) => n + (s.size_bytes || 0), 0) / 1024 ** 3;
+  const estimate = row.min_vram_gb || 0;
+  if (files > estimate) return { gb: Math.round(files * 10) / 10, by: "files" };
+  return estimate ? { gb: estimate, by: "estimate" } : null;
+}
+
 let _engines = null;
 
 /** The generated engines: engine id (the audio.cpp family) → a manifest module. */

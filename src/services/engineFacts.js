@@ -3,8 +3,9 @@
 // The Speech engines list's words for an engine's licence and a model's memory — ONE vocabulary
 // for AI Settings → Speech engines and its mock (decided 2026-10-11, TASKS "Every speech engine's
 // licence in plain words" and "Speech engines: the real tab…"). The facts come from the server:
-// an engine's `licence` {name, commercial, table, summary, url, checked}, a model's `min_vram_gb`
-// (audio.cpp's estimate) and `measured_mb` (an earlier load on this machine).
+// an engine's `licence` {name, commercial, table, summary, url, checked}, a model's `need_gb`
+// (audio.cpp's estimate or its download, whichever is more) and `measured_mb` (an earlier load
+// on this machine).
 
 /** Commercial use: audio.cpp's four words (decided 2026-10-11, answer 1) and "Separate licence"
  * (TASKS "A fifth commercial-use word"). */

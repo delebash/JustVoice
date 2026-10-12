@@ -10,3 +10,11 @@ export const LICENCE = {
   url: "https://huggingface.co/Qwen/Qwen2.5-Omni-3B/blob/main/LICENSE",
   checked: "2026-10-11",
 };
+
+// Not offered (decided 2026-10-12, TASKS "The download test's last findings"): audio.cpp loads AuK
+// from a folder of three separate downloads — its generator, Qwen2.5-Omni-3B and a VAE — and,
+// cloning from a clip without a voice description, needs "the complete upstream instruction" as
+// the text (audio.cpp docs/community_models/auk.md). JustVoice fetches the generator alone, which
+// audio.cpp refuses to load (RESEARCH §10.14).
+export const NOT_OFFERED =
+  "It loads as a folder of three downloads — its generator, Qwen2.5-Omni-3B and a VAE — and JustVoice fetches only the generator.";

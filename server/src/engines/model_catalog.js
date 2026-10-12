@@ -10,6 +10,7 @@
 
 import { floorDiv, pyInt, pyMin } from "@delebash/llm-runner/platform/py";
 import { construct, ModelVariant } from "../models.js";
+import { needOf } from "./audiocpp/generated.js";
 import * as manager from "./manager.js";
 
 /** The engine's manifest rows visible on this OS (others import it as Python did `_variant_rows`). */
@@ -51,6 +52,9 @@ export function modelsFor(engineId) {
         // audio.cpp's minimum graphics memory, for the models it describes and we don't wire by
         // hand (the hand-wired ones are measured at load — the 2026-08-14 ruling).
         min_vram_gb: r.audiocpp?.generated ? (r.min_vram_gb ?? null) : null,
+        // What it needs before a load measures it: that estimate or its download, whichever is
+        // more (decided 2026-10-12).
+        need_gb: needOf(r)?.gb ?? null,
       }),
     );
   }

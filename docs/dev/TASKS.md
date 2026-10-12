@@ -370,6 +370,47 @@ OPEN:   — (MioTTS re-tested 2026-10-11 with its codec: loads, speaks, reads ba
         §10.14).
 GO:     given 2026-10-11 ("your rec on both go").
 
+### The download test's last findings: the clip's words, AuK and OuteTTS hidden, memory (decided 2026-10-12)
+STATE:  DECIDED 2026-10-12 — first shown with the test's results, the user: "your rec on all go";
+        then "just think on these recs again make sure they are correct". Re-checked and shown:
+        "1. Send the clip's words to models whose spec lists no options — holds, two
+        corrections … MOSS-TTS Nano stores the words but never uses them … Higgs's own doc names
+        the words as its proper input ('transcript through `--reference-text` when known') … Rec:
+        make the fix, then retest OmniVoice (it should now speak) and Higgs. · 2. Hide AuK —
+        holds. · 3. Hide OuteTTS — holds, but my stated reason was too strong … the cause is
+        unknown: it could be the file, or something JustVoice sends. Rec: hide it and record the
+        cause as unknown. One check would tell which it is: clone the Hatter with audio.cpp's own
+        command-line tool, using the same file. · 4. A system-memory check — as I gave it, it would
+        not have prevented last night's kill … Corrected rec: (a) Before a CPU load, compare the
+        model's file size plus 1 GB with free RAM, and refuse with a clear message that names the
+        AI model if it is what's holding the RAM. (b) Later, record each model's RAM peak, the way
+        the card's peak is recorded, and check it before any load. I'd bring you the message
+        wording before it ships. · 5. The memory estimate — corrected: use the larger of
+        audio.cpp's estimate and the download size … Wording to approve: when the file size
+        decides, the 'Runs on' reason can't say 'audio.cpp says…'. I'd use: 'its files are about
+        12 GB, more than this card's 8 GB'." Questions: "1. Go on 1, 2 and 3 as corrected? 2. Run
+        the OuteTTS command-line check? 3. For 4, build (a) now and bring (b) as a plan? 4. For 5,
+        OK with the larger-of-the-two rule and that reason wording?" — a lean of yes on each. The
+        user: "your rec on all go".
+WHY:    OmniVoice can't clone without the clip's words, and JustVoice sends them only to a spec
+        that lists them; AuK and OuteTTS don't speak as listed; a CPU load checks no system
+        memory; audio.cpp's estimate is one per model, below the files of eight downloads, and
+        missing for MOSS-TTSD (RESEARCH §10.14).
+NOT:    wiring AuK's parts; a new OuteTTS file; 4(b), which comes as a plan; 4(a)'s message
+        ships only once its wording is approved.
+BUILT:  2026-10-12 — 1: `generatedSpeechRequest` sends the clip's words to a spec that lists no
+        options too; retested through the app, OmniVoice (Auto → CPU) and Higgs read back 100 %.
+        2 and 3: `curated/auk.js` and `curated/outetts.js` NOT_OFFERED (22 generated engines).
+        The OuteTTS check, with audio.cpp's command-line tool on the same file: not the file
+        and not JustVoice's request — with the Hatter it speaks on seed 42 alone of eleven seeds
+        tried, while audio.cpp's sample clip speaks on every seed (RESEARCH §10.14). 5:
+        `generated.needOf` — Auto and the tab's line go by the larger of the estimate and the
+        download; the wire's `need_gb`; the reason "its files are about 12 GB, more than this
+        card's 8 GB". User doc: engines.md "Memory, before you load", "Not available yet".
+OPEN:   4(a) — built, not committed: a CPU load refused when its files and the safety margin are
+        more than the free memory; its message waits on the user's word. 4(b), as a plan.
+GO:     given 2026-10-12 ("your rec on all go").
+
 ### A fifth commercial-use word: "Separate licence" (decided 2026-10-11)
 STATE:  DECIDED 2026-10-11 — the user: "i think it is misleading to say no commersial use for
         things like fish audio, it does allow for commercial use but requires a seperate

@@ -161,9 +161,30 @@ test("a language list that describes is shown as audio.cpp words it, never count
 });
 
 test("a family file keeps out a model that can't speak from text and a clip", () => {
-  // VieNeu reads phonemes and needs a speaker embedding audio.cpp can't make yet.
-  expect(generated.generatedEngines().has("vieneu_v3_turbo")).toBe(false);
-  expect(lookup("vieneu_v3_turbo")).toBeNull();
+  // VieNeu reads phonemes and needs a speaker embedding audio.cpp can't make yet; AuK is three
+  // downloads loaded as one folder; OuteTTS generated no audio in the download test.
+  for (const id of ["vieneu_v3_turbo", "auk", "outetts"]) {
+    expect(generated.generatedEngines().has(id), id).toBe(false);
+    expect(lookup(id), id).toBeNull();
+  }
+});
+
+test("a model needs its estimate or its files, whichever is more; a hand-wired one, neither", () => {
+  // decided 2026-10-12: the estimate is one per model, shared by its precisions.
+  expect(generated.needOf(rowOf("omnivoice", "omnivoice-q8"))).toEqual({ gb: 10, by: "estimate" });
+  expect(generated.needOf(rowOf("firered_audio", "firered_audio-orig"))).toEqual({ gb: 23.3, by: "files" });
+  expect(generated.needOf(rowOf("moss_ttsd", "moss_ttsd-q8"))).toEqual({ gb: 12.1, by: "files" });
+  const kokoro = manager.discoverEngines().get("kokoro").module.VARIANTS[0];
+  expect(generated.needOf(kokoro)).toBeNull();
+});
+
+test("the clip's words reach a spec that lists no options, as they reach one that lists them", () => {
+  // OmniVoice's spec lists no request options, and its clone needs the words (decided 2026-10-12).
+  const omni = slot.toSpeechRequest(rowOf("omnivoice", "omnivoice-q8"), line({ ref_text: "Why is a raven like a writing desk?" }));
+  expect(omni.reference_text).toBe("Why is a raven like a writing desk?");
+  // Echo TTS lists its options, and not the words: they don't go.
+  const echo = slot.toSpeechRequest(rowOf("echo_tts", "echo_tts-q8"), line({ ref_text: "Why is a raven like a writing desk?" }));
+  expect(echo.reference_text).toBeUndefined();
 });
 
 test("a companion a family file names downloads with the model and reaches it as a session option", () => {

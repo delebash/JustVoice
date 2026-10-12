@@ -1011,7 +1011,9 @@ export function generatedSpeechRequest(row, body, req) {
   // yield to the model's settings.
   Object.assign(options, dir.options);
   for (const [k, v] of Object.entries(dir.defaults)) if (!Object.hasOwn(options, k)) options[k] = v;
-  const hasWords = truthy(get(body, "ref_text")) && specOpts.has("reference_text");
+  // The clip's words: to a spec that lists them, and to one that lists no options at all, whose
+  // own code reads what it reads — OmniVoice needs them, Higgs takes them (decided 2026-10-12).
+  const hasWords = truthy(get(body, "ref_text")) && (!listed || specOpts.has("reference_text"));
   if (!dir.directed && curated?.PLAIN) {
     Object.assign(options, hasWords ? curated.PLAIN.with_reference_text : curated.PLAIN.without_reference_text);
   }

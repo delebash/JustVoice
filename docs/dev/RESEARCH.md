@@ -2831,12 +2831,14 @@ not in the repo. — *measured, 2026-10-11*
 | OuteTTS 1.0 1B, seed 42, again | 2.9 GB | **refused**: "it needs ~6703 MB (+1024 MB safety margin) but only 7334 MB free of 8192 MB" — the first load's measured peak | — | — |
 | OuteTTS 1.0 1B, seed 42, on the CPU | 2.9 GB | CPU, 5 s | **failed** after 2 min: the same "no complete DAC code pairs" | — |
 | VieNeu-TTS v3 Turbo | 179 MB | CUDA, 5 s | 2 s | **0 %** — a 14.8 s take for a line the other models speak in 4–5 s, heard as Chinese |
-| MOSS-TTS Local (2026-10-11) | 7.2 GB | CUDA, 29 s | **stopped**: the run and the app were stopped for low system memory | — |
+| MOSS-TTS Local (2026-10-11) | 7.0 GB | CUDA, 29 s | **stopped**: the run and the app were stopped for low system memory | — |
 | MOSS-TTS Local, again (2026-10-12) | on disk | CUDA, 30 s | 66 s (a 3.9 s take) | 100 % |
-| Confucius4 TTS (original precision) | 7.8 GB | CUDA, 12 s | 5 s | 100 % |
+| Confucius4 TTS (original precision) | 7.6 GB | CUDA, 12 s | 5 s | 100 % |
 | OmniVoice (Auto) | 1.3 GB | CPU, 3 s — "audio.cpp says it needs about 10 GB, more than this card's 8 GB"; RAM 17.2 → 15.9 GB free | **failed**: "OmniVoice native voice clone currently requires reference_text when reference audio is provided" | — |
+| OmniVoice (Auto), sent the clip's words (2026-10-12) | 1.3 GB | CPU, 4 s — the same reason | 80 s (a 4.6 s take) | 100 % |
+| Higgs Audio v3 TTS 4B, sent the clip's words (2026-10-12) | 4.7 GB | CUDA, 8 s | 3 s (a 4.3 s take) | 100 % |
 | AuK base f32 (Auto) | 5.7 GB | **failed**: "GGUF for family 'auk' does not embed an audio.cpp model spec: …auk-base-f32.gguf. Published GGUF packages must embed a model spec; regenerate the GGUF or pass --model-spec-override." | — | — |
-| MOSS-TTS v1.5 q8 · MOSS-TTSD q8 · FireRedAudio q8 · DramaBox q8 | 12.6 · 12.4 · 13.3 · 18.1 GB | **not loaded** — too big for this machine: more than the 8 GB card, and on the CPU 12–18 GB of weights against about 17 GB of free RAM | — | — |
+| MOSS-TTS v1.5 q8 · MOSS-TTSD q8 · FireRedAudio q8 · DramaBox q8 | 12.3 · 12.1 · 13.0 · 17.6 GB | **not loaded** — too big for this machine: more than the 8 GB card, and on the CPU 12–18 GB of weights against about 17 GB of free RAM | — | — |
 
 Takes that read back ran 3.6–5.6 s for the line (read from each WAV's header; models write 16–48 kHz, mono
 or stereo). Durations first recorded here from a 24 kHz mono reading were wrong and are
@@ -2849,21 +2851,30 @@ corrected above.
   sends a random seed when none is set. The GGUF JustVoice fetches is a third party's
   (`mirek190/audio.cpp`, `Llama-OuteTTS-1.0-1B_Q8.gguf`, 3.0 GB, pinned at revision
   `94bbade1`), the one the doc names for direct download.
-  What the failure rules out, and what it points to (2026-10-12):
-  - not the seed or the card — seed 42 on the CPU fails the same way;
-  - not the clip — the Hatter clip is 8.2 s (the doc's limit is 20 s), and JustVoice sends its
-    words as `reference_text` (`slot.js` `generatedSpeechRequest`); `reference_language` is left
-    at its default, `en`;
-  - not a missing aligner as such — "older OuteTTS GGUFs do not contain the aligner … cloning
-    fails clearly", and this one failed later, in generation;
-  - the speech runtime warns on load: "GGUF for family 'outetts' embeds a legacy model spec. …
-    Regenerate the GGUF to make the package fully standalone" (`data/logs/audiocpp-server.log`);
-  - the first tokens it generated are not audio codes: `21321,13,133322,133325,27,91,17947,53623,
-    91,1822,91,68182` (CUDA) and `71,1683,13,133322,133325,27,91,…` (CPU) — the error prints
-    them (`src/community_models/outetts/session.cpp:925-934`, where no token pairs into DAC
-    codes). Not decoded against the vocabulary, so what they spell is unverified.
-  Not tried: a GGUF packed from the official safetensors as the doc shows; speaking without a
-  clip (JustVoice's generated engines speak only cloned voices).
+  The cause, found with audio.cpp's own command-line tool (2026-10-12, the user's word: "Run the
+  OuteTTS command-line check"): **OuteTTS's generation is fragile with the Hatter's voice — not
+  the file, and not JustVoice's request.** The same file (sha256 `b0529271…`, as pinned), the
+  Hatter clip and its transcript, the Hatter line, `--task tts` as JustVoice loads it:
+  - the v0.9.0-jv.4 release's `audiocpp_cli` (`--task clon` and `--task tts`, no seed) and
+    the app's own jv-dev build (`audiocpp_cli` built into `build/jv-dev`; it needs
+    `--model-spec-override model_specs/outetts.json`, not being a deployment build) speak it —
+    read back "Vatter checked his watch twice, and poured the tea, and laughed at luck." (4.5 s);
+  - on CUDA, by seed: 42 speaks; 1, 2, 3, 7, 100, 2026, 4099, 12345, 987654321 and 1801439850
+    all fail with "no complete DAC code pairs" and the same first tokens
+    (`71,1683,13,133322,133325,27,91,17947,53623,91,1822,91`); with no seed, audio.cpp uses
+    42 for a quantized clone (`session.cpp:198-201`), which is why the tool spoke and JustVoice
+    — a random seed per take, `slot.js` `toSpeechRequest` — did not;
+  - seed 42 on the CPU fails too, as it did in the app;
+  - seed 42 on three other lines: two speak, one ("Alice was beginning to get very tired of
+    sitting by her sister on the bank.") fails;
+  - audio.cpp's own sample clip (`assets/resources/b.wav`, its transcript from
+    `docs/reports/outetts_validation.md`) on the Hatter line: seeds 1, 2, 3, 7 and 42 all speak;
+  - the Hatter clip says its transcript (read back by the app's Qwen3-ASR: "Ah, that accounts
+    for it. He won't stand beating. …"), so the words given are right.
+  The load warning — "embeds a legacy model spec … Regenerate the GGUF" — is harmless: upstream
+  still ships the same file as OuteTTS's default (`model_specs/outetts.json` on upstream main,
+  2026-10-12). No upstream issue reports the error. Left off the list (TASKS "The download
+  test's last findings").
 - **The clip's words reach only a model whose spec lists `reference_text`.**
   `generatedSpeechRequest` sends them when `specOpts.has("reference_text")` (`slot.js:1014`),
   so a family whose spec lists no request options at all never gets them. A listing family
@@ -2871,11 +2882,15 @@ corrected above.
   whatever options its own code looks up (`runtime::find_option(request.options, …)`). Six
   generated families list none (2026-10-12): Higgs, IndexTTS2, MioTTS, MOSS-TTS Local,
   MOSS-TTS Nano, OmniVoice. Of these, OmniVoice requires the words
-  (`src/models/omnivoice/prompt_builder.cpp:774`), and Higgs and MOSS-TTS Nano read them when
-  given (`src/models/higgs_audio_tts/session.cpp:253,327`,
-  `src/models/moss/moss_tts_nano/session.cpp:429`) — both read back 100 % without them, so
-  what the words would change in their voice match isn't measured. IndexTTS2, MioTTS and
-  MOSS-TTS Local don't read them (no `reference_text` in their source folders).
+  (`src/models/omnivoice/prompt_builder.cpp:774`), and Higgs reads them — its doc: "transcript
+  through `--reference-text` when known" (`docs/models/higgs_audio_tts.md:30`,
+  `src/models/higgs_audio_tts/session.cpp:253,327`). MOSS-TTS Nano stores them
+  (`moss_tts_nano/session.cpp:429`) but builds its clone prompt from the clip's codes alone
+  (`prompt_builder.cpp` `build`), so they change nothing there. IndexTTS2, MioTTS and MOSS-TTS
+  Local don't read them (no `reference_text` in their source folders). audio.cpp takes the words
+  as a top-level `reference_text` for every model (`app/server/runtime.cpp:2145`). Since
+  2026-10-12 a spec that lists no options gets them too (TASKS "The download test's last
+  findings").
 - **AuK is several files, and JustVoice fetches one.** audio.cpp loads AuK from a folder —
   "Pass the directory to `--model`; choose components with the session options below. The
   defaults are Qwen BF16, AuK base F32, and VAE F32" — and "The native model manager exposes
@@ -2887,11 +2902,17 @@ corrected above.
   also needs more than the words: "Without `instruct`, `--text` must contain the complete
   upstream instruction, not just the words to speak." Catalog status: experimental.
 - **No RAM check before a CPU load.** The speech manager checks the card's memory before a load;
-  nothing checks system RAM (no `os.freemem`/`os.totalmem` in `server/src/engines`). Auto sends a
-  model whose estimate is more than the card to the CPU — MOSS-TTS v1.5 (est. 18 GB, 12.6 GB of
-  weights) and DramaBox (est. 16 GB, 18.1 GB) would load there on a machine with less RAM free.
-- **MOSS-TTSD has no estimate** (`min_vram_gb` null in audio.cpp's catalog), so Auto would try its
-  12.4 GB on the card.
+  nothing checks system RAM (a check is decided, TASKS "The download test's last findings" 4(a)). Auto sends a model whose estimate is more
+  than the card to the CPU — MOSS-TTS v1.5 (est. 18 GB, 12.3 GB of weights) and DramaBox
+  (est. 16 GB, 17.6 GB) would load there on a machine with less RAM free. RAM use on the card
+  doesn't follow the files: MOSS-TTS Local (7.0 GB) took about 11 GB of RAM on CUDA, Confucius4
+  (7.6 GB) none, OmniVoice (1.3 GB) on the CPU 1.3 GB.
+- **audio.cpp's estimate is one per model, shared by its precisions** (`min_vram_gb` on the
+  catalog entry). For eight downloads it is below the files themselves (GB of files / estimate):
+  DramaBox q8 17.6 / 16, FireRedAudio q8 13.0 / 10 and original 23.3 / 10, FireRedTTS3 Instruct
+  and Base original 11.4 and 11.5 / 8, Fish S2 bf16 9.5 / 8, Higgs bf16 7.9 / 6, MOSS-TTS Local
+  bf16 12.4 / 8. MOSS-TTSD (12.1 GB) has none. Since 2026-10-12 a generated model needs the
+  larger of the two (`generated.needOf`).
 - **FireRedTTS3** lists its languages by name ("Chinese", "English", … and 23 Chinese dialects
   as `ZH_<province>`), not codes; JustVoice counts them as 47 languages.
 - **System memory, not the card's, stopped the 2026-10-11 run.** Measured on the rerun: MOSS-TTS
