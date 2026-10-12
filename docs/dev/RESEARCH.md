@@ -2804,9 +2804,10 @@ model's default download is fetched, loaded, and speaks one line in a copy of th
 (VoxCPM2 "Test · Hatter (slice 0)", its clip and transcript); the TTS slot is then freed, every
 take is read back by Qwen3-ASR 1.7B (`/v1/transcribe`), and what the run downloaded is deleted
 (a model already on disk is kept). Match = the longest common subsequence of words (English) or
-characters (Japanese, Chinese) as a share of the line. A licence that gates downloads was accepted
-for the test only and cleared after (the user's word: option A). The harness is a scratch script,
-not in the repo. — *measured, 2026-10-11*
+characters (Japanese, Chinese) as a share of the line. It measures that the words came out
+intelligible to the recogniser, not that the voice matched the clip. A licence that gates
+downloads was accepted for the test only and cleared after (the user's word: option A). The
+harness is a scratch script, not in the repo. — *measured, 2026-10-11*
 
 | Model (q8 unless named) | Download | Loads on | Speaks | Read back |
 |---|---|---|---|---|
@@ -2839,7 +2840,7 @@ not in the repo. — *measured, 2026-10-11*
 | OmniVoice (Auto), sent the clip's words (2026-10-12) | 1.3 GB | CPU, 4 s — the same reason | 80 s (a 4.6 s take) | 100 % |
 | Higgs Audio v3 TTS 4B, sent the clip's words (2026-10-12) | 4.7 GB | CUDA, 8 s | 3 s (a 4.3 s take) | 100 % |
 | AuK base f32 (Auto) | 5.7 GB | **failed**: "GGUF for family 'auk' does not embed an audio.cpp model spec: …auk-base-f32.gguf. Published GGUF packages must embed a model spec; regenerate the GGUF or pass --model-spec-override." | — | — |
-| MOSS-TTS v1.5 q8 · MOSS-TTSD q8 · FireRedAudio q8 · DramaBox q8 | 12.3 · 12.1 · 13.0 · 17.6 GB | **not loaded** — too big for this machine: more than the 8 GB card, and on the CPU 12–18 GB of weights against about 17 GB of free RAM | — | — |
+| MOSS-TTS v1.5 q8 · MOSS-TTSD q8 · FireRedAudio q8 · DramaBox q8 | 12.3 · 12.1 · 13.0 · 17.6 GB | **not loaded**, by the user's choice after the low-memory stop: more than the 8 GB card, and on the CPU 12–18 GB of weights against about 17 GB of free RAM — three of the four might have fit; untested | — | — |
 
 Takes that read back ran 3.6–5.6 s for the line (read from each WAV's header; models write 16–48 kHz, mono
 or stereo). Durations first recorded here from a 24 kHz mono reading were wrong and are
@@ -2902,20 +2903,31 @@ corrected above.
   defaults 13.3 GB, the smallest set 6.1 GB. Cloning from a clip without a voice description
   also needs more than the words: "Without `instruct`, `--text` must contain the complete
   upstream instruction, not just the words to speak." Catalog status: experimental.
-- **No RAM check before a CPU load** (until 2026-10-12). The speech manager checked the card's
-  memory before a load; nothing checked system RAM. Since 2026-10-12 a CPU load is refused when
-  its files and the safety margin are more than the memory free (`manager._admitSystemMemory`,
-  TASKS "The download test's last findings" 4(a)). Each fresh load also records the memory it
-  took (4(b)): this machine's memory in use before the slot starts and after the load, a
-  `"ram_peak"` row with `ram_model_mb`. It is a floor — MOSS-TTS Local took 5.7 GB to load,
-  its warm-up included, and about 5 GB more while it spoke. Since 2026-10-12 the check before any
-  load takes the larger of the files (CPU) and these records (`manager._ramPriceMb`). First record through the app (2026-10-12):
-  Kokoro 82M q8 on the CPU took 968 MB — its files are 0.2 GB; the speech runtime's own process
-  counts in, since the reading starts before the slot does. Auto sends a model whose estimate is more
-  than the card to the CPU — MOSS-TTS v1.5 (est. 18 GB, 12.3 GB of weights) and DramaBox
-  (est. 16 GB, 17.6 GB) would load there on a machine with less RAM free. RAM use on the card
-  doesn't follow the files: MOSS-TTS Local (7.0 GB) took about 11 GB of RAM on CUDA, Confucius4
-  (7.6 GB) none, OmniVoice (1.3 GB) on the CPU 1.3 GB.
+- **System memory before a load** (2026-10-12). Until then the speech manager checked only the
+  card's memory; nothing checked system RAM, and Auto sends a model whose estimate is more than the
+  card to the CPU — MOSS-TTS v1.5 (est. 18 GB, 12.3 GB of weights) and DramaBox (est. 16 GB,
+  17.6 GB) would load there on a machine with less RAM free. What was built the same day (TASKS
+  "The download test's last findings" 4(a) and 4(b), "The two-day review's fixes"):
+  - before any load, `manager._admitSystemMemory` checks the larger of the model's files (on the
+    CPU) and the memory it held at its last loads here (`_ramPriceMb`, the `"ram_peak"` rows
+    with `ram_model_mb`), plus the safety margin, against the memory free — crediting the
+    occupant it replaces, and the AI models' memory when the load may push them off the card (the
+    kit's `modelServersRamMb()`: the router's process tree less the router), then checking again
+    without that credit right before the slot starts. Before the credit, the check ran ahead of
+    the card's admission and refused loads it would have made room for;
+  - the readings are the slot's own process, through the kit's per-process probe
+    (`hardware.processTreeRssMb` — `tasklist`'s working set on Windows, `/proc` on Linux,
+    `ps` on macOS; the process tree through PowerShell's `Get-CimInstance` where `wmic` is gone,
+    as on this machine), once the load is done and again after each line in the card re-check's
+    background pass, raise-only. Nothing else running counts. A working set includes the model
+    file's mapped pages the system could drop, so it errs high.
+  Measured: Kokoro 82M q8 on the CPU 662 MB once loaded and 951 MB after one line (its files are
+  0.2 GB; the runtime's own process counts in); VoxCPM2 q8 on CUDA 3,237 MB (its card peak
+  2,935 MB). With gemma 4 26B back on the card (9.3 GB free), VoxCPM2 loaded again: the card's
+  admission pushed gemma off and the load went through. Earlier, whole-machine differences across
+  a load (replaced by the per-process readings): MOSS-TTS Local (7.0 GB) took about 5.7 GB to load
+  on CUDA and about 5 GB more while it spoke; Confucius4 (7.6 GB) showed none; OmniVoice (1.3 GB)
+  on the CPU 1.3 GB.
 - **audio.cpp's estimate is one per model, shared by its precisions** (`min_vram_gb` on the
   catalog entry). For eight downloads it is below the files themselves (GB of files / estimate):
   DramaBox q8 17.6 / 16, FireRedAudio q8 13.0 / 10 and original 23.3 / 10, FireRedTTS3 Instruct

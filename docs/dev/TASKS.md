@@ -388,8 +388,15 @@ WHY:    #1 — the RAM check ran before the card's own admission, which evicts t
         an AI model is "display-only per §8.18": nothing checks free RAM before it loads.
 NOT:    code for #13 (a report first); #2 (a decision for the user); Fable's #5 (wrong: only the
         e1 retest unloaded the AI model mid-load, and that figure isn't in RESEARCH).
-BUILT:  —
-OPEN:   all of it.
+BUILT:  2026-10-12 — 1: the check credits the AI models' memory when a card load may push
+        them off (the kit's `modelServersRamMb`, kit 1e11d31) and runs again without it right
+        before the slot starts. 2: the readings are the slot's own process
+        (`hardware.processTreeRssMb`), once loaded and after each line, raise-only, in the card
+        re-check's pass; the whole-machine difference gone. Tests; checked through the app
+        (08e8f16). 4: the records — TASKS i18n step B's on-screen claim narrowed (#7), the
+        four large models "not loaded … untested" (#8), OuteTTS's file comment names the random
+        seed (#9), RESEARCH §10.14 says what the read-back measures (#10).
+OPEN:   3 (the AI model's door, a report) and 5 (the CPU-placement speed), the user's word.
 GO:     given 2026-10-12 ("fix it all your rec go").
 
 ### The family on vue-i18n: JustVoice's step B (decided 2026-10-12, in the kit's tracker)
@@ -409,7 +416,10 @@ BUILT:  2026-10-12 — `src/i18n/index.js` starts from `kitMessages()` and merge
         copy blocks gone; Settings' shared sections read `kit.settingsSections.*`; Quasar's
         language packs follow the language (`followQuasarLang`); the component tests mount with
         the i18n instance; `src/i18n/kitWords.test.js`. No visible change: after the real boot
-        the kit holds every JustVoice word (checked), and the pages show them.
+        the kit held every JustVoice word (checked in a throwaway test); on screen, "LLM
+        providers", the Settings sections and "Re-run LLM engine setup" were seen, while the
+        catalog's and the wizard's other words were checked only in what the kit received (the
+        catalog and the wizard were closed). Corrected 2026-10-12 (the two-day review's #7).
 OPEN:   — (step C is the kit's).
 GO:     the user's D2 (b), above.
 
