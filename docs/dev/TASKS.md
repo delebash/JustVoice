@@ -357,15 +357,17 @@ STATE:  DECIDED 2026-10-11 — shown: "VieNeu babbles. It needs phonemes and a s
         hide it until it can clone from a clip — a listed model should speak.
 WHY:    VieNeu reads SEA-G2P phonemes and needs a 192-d speaker embedding its unported CAM++
         encoder would make (audio.cpp docs/community_models/vieneu_v3_turbo.md); plain text and
-        a clip gave a 30 s babble for an 11 s line. MioTTS "requires a reference voice and a
-        MioCodec model" through `miotts.codec_model_path` (docs/models/miotts.md), which
+        a clip gave a 14.8 s babble for a 4–5 s line (first written as "30 s for 11 s", a
+        wrong 24 kHz reading of a 48 kHz stereo take — corrected 2026-10-12). MioTTS "requires
+        a reference voice and a MioCodec model" through `miotts.codec_model_path` (docs/models/miotts.md), which
         audio.cpp's spec doesn't name as a dependency.
 NOT:    wiring SEA-G2P or a speaker embedding for VieNeu.
 BUILT:  2026-10-11 — `curated/vieneu_v3_turbo.js` NOT_OFFERED (generatedModels skips it; 24
         generated engines); `curated/miotts.js` SESSION_FILES — the miocodec q8 package joins the
         model's download row (same repository and revision) and slot._entriesFor sets
         `miotts.codec_model_path` to it; two tests; engines.md "Not available yet".
-OPEN:   MioTTS re-tested in the download test once the app restarts on this code.
+OPEN:   — (MioTTS re-tested 2026-10-11 with its codec: loads, speaks, reads back 100 %, RESEARCH
+        §10.14).
 GO:     given 2026-10-11 ("your rec on both go").
 
 ### A fifth commercial-use word: "Separate licence" (decided 2026-10-11)
@@ -380,8 +382,10 @@ STATE:  DECIDED 2026-10-11 — the user: "i think it is misleading to say no com
 WHY:    Conditional means the free licence lets you sell once you meet its terms yourself; a
         separate deal is a different step, and "No" hid that one exists.
 NOT:    moving them to Conditional; changing the four words for any other engine.
-BUILT:  —
-OPEN:   the curated files, the shared words, the chip, RESEARCH §10.13, the user doc.
+BUILT:  2026-10-11 (98084b9) — the curated files (Fish Audio S2, Breeze TTS 2, AuK), the shared
+        words and the filter's meaning, the chip, RESEARCH §10.13, the user doc; the download
+        gate unchanged (anything but "Yes").
+OPEN:   —
 GO:     given 2026-10-11 ("your rec go").
 
 ### Speech engines: the real tab, the Unclear wording, the language count, then the download test (decided 2026-10-11)
@@ -412,12 +416,25 @@ BUILT:  2026-10-11 — the real tab (SpeechEnginesTab.vue): the commercial-use l
         Local/Online, the loaded-now rail, the runtime and dictionary rows, the picking table,
         Set as default, the ⋯ menu, a model's description and its Runs on line; the memory
         line sits beside the buttons in both.
-OPEN:   the download test (slice 2's acceptance), next.
+OPEN:   the download test (slice 2's acceptance) — RAN 2026-10-11/12, RESEARCH §10.14: every
+        model that fits the card loaded and spoke except OuteTTS (VieNeu babbled and is
+        hidden); OmniVoice and AuK failed on
+        the CPU; the four of 12–18 GB were not loaded. Its findings wait on the user: the clip's
+        words for a family with no option listing (OmniVoice can't clone without them), AuK's
+        missing parts, OuteTTS's legacy GGUF, no RAM check before a CPU load, MOSS-TTSD's
+        missing estimate.
         The test's licences (decided 2026-10-11) — shown: "eight models that fit your card need
         their licence accepted before they'll download … Accepting is your act, so I haven't
         done it. A. I accept each one only for the test and clear the acceptance afterwards, so
         your install is left as it was … My lean is A." The user: "your rec go".
-GO:     given 2026-10-11 ("your rec on all go").
+        The rest of the test (decided 2026-10-12) — shown: "1. Restart the dev app and clean up
+        the leftovers above through the app. 2. Retest MOSS-TTS Local, then Confucius4, one at a
+        time. 3. For the models too big for the card, test only OmniVoice (1.3 GB) and AuK
+        (5.9 GB) on the CPU, one at a time. Record MOSS-TTS v1.5, MOSS-TTSD, FireRedAudio and
+        DramaBox (12–18 GB each) as too big for this machine without loading them, since loads
+        that large on the CPU risk running out of memory again. 4. Look into OuteTTS's failure
+        from its doc before trying it again." The user: "your rec go". All four done.
+GO:     given 2026-10-11 ("your rec on all go"); 2026-10-12 ("your rec go").
 
 ### OPEN — the audio.cpp fork: keep it as it is, the DSP inside it, no routine pull requests?
 STATE:  OPEN — your call (asked 2026-10-11; the user: "these are questions not decisions").

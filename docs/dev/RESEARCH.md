@@ -2795,6 +2795,123 @@ title; ten of 32 answers differ from it (eight until "Separate licence" was adde
   is `fish_qwen3_omni`, so the file may be Qwen3's own tokenizer — not checked);
   Confucius4-TTS's training used a MaskGCT semantic codec, which inference does not load.
 
+### 10.14 The download test — every speech model through the app (2026-10-11)
+
+The engine list's slice 2 acceptance (TASKS "Build the engine list", answer 7): through the
+running dev app's own routes (`npm run dev`, our audio.cpp checkout, RTX 2070 SUPER 8 GB), each
+model's default download is fetched, loaded, and speaks one line in a copy of the frozen Hatter
+(VoxCPM2 "Test · Hatter (slice 0)", its clip and transcript); the TTS slot is then freed, every
+take is read back by Qwen3-ASR 1.7B (`/v1/transcribe`), and what the run downloaded is deleted
+(a model already on disk is kept). Match = the longest common subsequence of words (English) or
+characters (Japanese, Chinese) as a share of the line. A licence that gates downloads was accepted
+for the test only and cleared after (the user's word: option A). The harness is a scratch script,
+not in the repo. — *measured, 2026-10-11*
+
+| Model (q8 unless named) | Download | Loads on | Speaks | Read back |
+|---|---|---|---|---|
+| MOSS-TTS Nano | 184 MB | CUDA, 3 s | 2 s | 100 % |
+| VoxCPM1 | 809 MB | CUDA, 4 s | 3 s | 100 % |
+| Irodori-TTS (Japanese) | 1.3 GB | CUDA, 6 s | 2 s | 88 % (帽子屋 heard as ボーシャ) |
+| Audio8 TTS | 1.4 GB | CUDA, 6 s | 4 s | 100 % |
+| CosyVoice3 (on disk already) | — | CUDA, 10 s | 2 s | 93 % ("Hatter" heard as "header") |
+| dots.tts SOAR (Chinese — the harness picked zh for a "multilingual" list) | 2.8 GB | CUDA, 8 s | 7 s | 100 % |
+| GLM-TTS | 4.9 GB | CUDA, 5 s | 5 s | 100 % |
+| MioTTS 1.7B | 2.1 GB | **failed**: "model path does not exist: …\Temp\audiocpp-gguf\MioCodec-25Hz-44.1kHz-v2" | — | — |
+| MioTTS 1.7B, with its codec (after the fix) | 2.4 GB | CUDA, 9 s | 2 s | 100 % |
+| Higgs Audio v3 TTS 4B | 4.9 GB | CUDA, 8 s | 3 s | 100 % |
+| IndexTTS2 | 3.5 GB | CUDA, 13 s | 7 s | 100 % |
+| IndexTTS2.5 | 3.3 GB | CUDA, 12 s | 4 s | 100 % |
+| Breeze TTS 2 | 4.8 GB | CUDA, 11 s | 7 s | 100 % |
+| ZipVoice (distill, original precision) | 527 MB | CUDA, 3 s | 2 s | 100 % |
+| Echo TTS | 2.9 GB | CUDA, 3 s | 10 s | 100 % |
+| Fish Audio S2 Pro | 6.0 GB | CUDA, 12 s | 6 s | 100 % |
+| FireRedTTS3 Instruct (Chinese — the harness read its language *names* as no English) | 4.0 GB | CUDA, 6 s | 5 s | 65 % (帽匠 heard as 毛娟, 时钟 as 徐娟) |
+| FireRedTTS3 Instruct, English | 4.0 GB | CUDA, 6 s | 4 s | 100 % |
+| OuteTTS 1.0 1B (random seed) | 2.9 GB | CUDA, 8 s | **failed**: "OuteTTS generated no complete DAC code pairs" | — |
+| OuteTTS 1.0 1B, seed 42, again | 2.9 GB | **refused**: "it needs ~6703 MB (+1024 MB safety margin) but only 7334 MB free of 8192 MB" — the first load's measured peak | — | — |
+| OuteTTS 1.0 1B, seed 42, on the CPU | 2.9 GB | CPU, 5 s | **failed** after 2 min: the same "no complete DAC code pairs" | — |
+| VieNeu-TTS v3 Turbo | 179 MB | CUDA, 5 s | 2 s | **0 %** — a 14.8 s take for a line the other models speak in 4–5 s, heard as Chinese |
+| MOSS-TTS Local (2026-10-11) | 7.2 GB | CUDA, 29 s | **stopped**: the run and the app were stopped for low system memory | — |
+| MOSS-TTS Local, again (2026-10-12) | on disk | CUDA, 30 s | 66 s (a 3.9 s take) | 100 % |
+| Confucius4 TTS (original precision) | 7.8 GB | CUDA, 12 s | 5 s | 100 % |
+| OmniVoice (Auto) | 1.3 GB | CPU, 3 s — "audio.cpp says it needs about 10 GB, more than this card's 8 GB"; RAM 17.2 → 15.9 GB free | **failed**: "OmniVoice native voice clone currently requires reference_text when reference audio is provided" | — |
+| AuK base f32 (Auto) | 5.7 GB | **failed**: "GGUF for family 'auk' does not embed an audio.cpp model spec: …auk-base-f32.gguf. Published GGUF packages must embed a model spec; regenerate the GGUF or pass --model-spec-override." | — | — |
+| MOSS-TTS v1.5 q8 · MOSS-TTSD q8 · FireRedAudio q8 · DramaBox q8 | 12.6 · 12.4 · 13.3 · 18.1 GB | **not loaded** — too big for this machine: more than the 8 GB card, and on the CPU 12–18 GB of weights against about 17 GB of free RAM | — | — |
+
+Takes that read back ran 3.6–5.6 s for the line (read from each WAV's header; models write 16–48 kHz, mono
+or stereo). Durations first recorded here from a 24 kHz mono reading were wrong and are
+corrected above.
+
+- **OuteTTS** clones from a clip plus its exact words, with a forced aligner inside the standalone
+  GGUF; "For CUDA voice cloning, quantized weights … are expanded to F32 in VRAM to avoid
+  generation divergence", and its cloning defaults — temperature 0.4, seed 42 for a quantized model
+  — "were separately verified" (`../audio.cpp/docs/community_models/outetts.md:47-111`). JustVoice
+  sends a random seed when none is set. The GGUF JustVoice fetches is a third party's
+  (`mirek190/audio.cpp`, `Llama-OuteTTS-1.0-1B_Q8.gguf`, 3.0 GB, pinned at revision
+  `94bbade1`), the one the doc names for direct download.
+  What the failure rules out, and what it points to (2026-10-12):
+  - not the seed or the card — seed 42 on the CPU fails the same way;
+  - not the clip — the Hatter clip is 8.2 s (the doc's limit is 20 s), and JustVoice sends its
+    words as `reference_text` (`slot.js` `generatedSpeechRequest`); `reference_language` is left
+    at its default, `en`;
+  - not a missing aligner as such — "older OuteTTS GGUFs do not contain the aligner … cloning
+    fails clearly", and this one failed later, in generation;
+  - the speech runtime warns on load: "GGUF for family 'outetts' embeds a legacy model spec. …
+    Regenerate the GGUF to make the package fully standalone" (`data/logs/audiocpp-server.log`);
+  - the first tokens it generated are not audio codes: `21321,13,133322,133325,27,91,17947,53623,
+    91,1822,91,68182` (CUDA) and `71,1683,13,133322,133325,27,91,…` (CPU) — the error prints
+    them (`src/community_models/outetts/session.cpp:925-934`, where no token pairs into DAC
+    codes). Not decoded against the vocabulary, so what they spell is unverified.
+  Not tried: a GGUF packed from the official safetensors as the doc shows; speaking without a
+  clip (JustVoice's generated engines speak only cloned voices).
+- **The clip's words reach only a model whose spec lists `reference_text`.**
+  `generatedSpeechRequest` sends them when `specOpts.has("reference_text")` (`slot.js:1014`),
+  so a family whose spec lists no request options at all never gets them. A listing family
+  refuses an option it doesn't list (dots.tts, FireRedTTS3 — §10.6); one with no listing reads
+  whatever options its own code looks up (`runtime::find_option(request.options, …)`). Six
+  generated families list none (2026-10-12): Higgs, IndexTTS2, MioTTS, MOSS-TTS Local,
+  MOSS-TTS Nano, OmniVoice. Of these, OmniVoice requires the words
+  (`src/models/omnivoice/prompt_builder.cpp:774`), and Higgs and MOSS-TTS Nano read them when
+  given (`src/models/higgs_audio_tts/session.cpp:253,327`,
+  `src/models/moss/moss_tts_nano/session.cpp:429`) — both read back 100 % without them, so
+  what the words would change in their voice match isn't measured. IndexTTS2, MioTTS and
+  MOSS-TTS Local don't read them (no `reference_text` in their source folders).
+- **AuK is several files, and JustVoice fetches one.** audio.cpp loads AuK from a folder —
+  "Pass the directory to `--model`; choose components with the session options below. The
+  defaults are Qwen BF16, AuK base F32, and VAE F32" — and "The native model manager exposes
+  each generator, Qwen, and VAE component as a separate download"
+  (`../audio.cpp/docs/community_models/auk.md`). JustVoice downloads the base package only
+  (5.7 GB) and passes its one GGUF as the model, which audio.cpp refuses. The parts: base f32
+  5.71 / f16 2.86 / q8 1.54 GB, Qwen2.5-Omni-3B bf16 6.95 / q8 3.97 GB, VAE f32 0.60 GB — the
+  defaults 13.3 GB, the smallest set 6.1 GB. Cloning from a clip without a voice description
+  also needs more than the words: "Without `instruct`, `--text` must contain the complete
+  upstream instruction, not just the words to speak." Catalog status: experimental.
+- **No RAM check before a CPU load.** The speech manager checks the card's memory before a load;
+  nothing checks system RAM (no `os.freemem`/`os.totalmem` in `server/src/engines`). Auto sends a
+  model whose estimate is more than the card to the CPU — MOSS-TTS v1.5 (est. 18 GB, 12.6 GB of
+  weights) and DramaBox (est. 16 GB, 18.1 GB) would load there on a machine with less RAM free.
+- **MOSS-TTSD has no estimate** (`min_vram_gb` null in audio.cpp's catalog), so Auto would try its
+  12.4 GB on the card.
+- **FireRedTTS3** lists its languages by name ("Chinese", "English", … and 23 Chinese dialects
+  as `ZH_<province>`), not codes; JustVoice counts them as 47 languages.
+- **System memory, not the card's, stopped the 2026-10-11 run.** Measured on the rerun: MOSS-TTS
+  Local on CUDA took 17.6 → 11.9 GB of free RAM to load and fell to 6.9 GB while speaking —
+  about 11 GB of system RAM for a model held on the card. The AI model (gemma 4 26B A4B) warms
+  at boot: at this restart llama-server held 16.8 GB of private bytes and free RAM was 7.9 GB
+  before any speech model loaded. Whether it was resident when the run was stopped isn't known
+  (the load before it had found the card empty). From the rerun on, the test unloads the AI model
+  before each load (the kit's `POST /v1/llm-runner/stop`), frees the speech slot after each
+  model, and skips a load with under 4 GB of RAM free.
+- **MioTTS** needs MioCodec for acoustic decoding through `miotts.codec_model_path`
+  (`../audio.cpp/docs/models/miotts.md:3-13`; the default is a sibling folder,
+  `src/models/miotts/session.cpp:84-87`); its spec doesn't list it. Fixed by downloading the
+  `miocodec_q8_0` package with it (TASKS "The download test's first findings").
+- **VieNeu** reads SEA-G2P phonemes, not text, and needs a 192-d speaker embedding from a CAM++
+  encoder audio.cpp hasn't ported — "Without it the embedding is all zeros and the voice will not
+  match" (`../audio.cpp/docs/community_models/vieneu_v3_turbo.md`). Left off the list.
+- The first load unloaded the AI model ("it has no usable speed on the CPU, so the AI model makes
+  room"); later loads found the card empty. Downloads ran at about 8 MB/s.
+
 ---
 
 ## Records not yet distilled
