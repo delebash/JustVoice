@@ -1163,31 +1163,67 @@ export class EngineManager {
     }
   }
 
-  /** A CPU load reads its weights into this machine's memory: refused, before anything moves,
-   * when its files and the safety margin are more than the memory free now — crediting what the
-   * kind's current occupant gives back when it is replaced (decided 2026-10-12, TASKS "The
-   * download test's last findings" 4(a)). The AI model is named when it is loaded: it can hold
-   * more of this memory than any speech model (17 GB, RESEARCH §10.14). */
-  async _admitSystemMemory(m, kind, variant) {
+  /** The system memory this model took at its last loads on `device` here, by the runtime build
+   * running now: the largest `"ram_peak"` reading (_recordSpeechRam). 0 = never recorded. */
+  _ramPriceMb(kind, engineId, variant, device) {
+    if (!device) return 0;
+    try {
+      const mk = hardware.currentMachineKey();
+      const build = self._runtimeBuild();
+      let best = 0;
+      for (const row of stores.getModelMeasurementStore().list(EngineManager._measureId(kind, engineId, variant))) {
+        const flags = Object.fromEntries((row.switches || []).map((f) => [f.flagName, f.flagValue]));
+        if (row.machineKey === mk && row.source === "ram_peak" && (row.backend || "") === device && flags.runtime === build) {
+          best = Math.max(best, pyInt(row.ramModelMb || 0));
+        }
+      }
+      return best;
+    } catch {
+      return 0;
+    }
+  }
+
+  /** A load needs room in this machine's memory: refused, before anything moves, when what it
+   * takes and the safety margin are more than the memory free now — crediting what the kind's
+   * current occupant gives back when it is replaced. What it takes: on the CPU its files (4(a)),
+   * and on either device the memory it took at its last loads here (4(b)), whichever is more
+   * (decided 2026-10-12, TASKS "The download test's last findings"). The AI model is named when
+   * it is loaded: it can hold more of this memory than any speech model (17 GB, RESEARCH §10.14). */
+  async _admitSystemMemory(m, kind, variant, device = "cpu") {
     const filesOf = (mod, id) => {
       const row = (attr(mod, "VARIANTS", null) || []).find((r) => r.id === id);
       return row ? (row.sources || []).reduce((n, s) => n + (s.size_bytes || 0), 0) / (1024 * 1024) : 0;
     };
-    const filesMb = filesOf(m.module, variant);
-    if (!filesMb) return;
+    const takesMb = (mod, eid, id, dev) => ({
+      files: dev === "cpu" ? filesOf(mod, id) : 0,
+      ram: this._ramPriceMb(kind, eid, id, dev),
+    });
+    const own = takesMb(m.module, m.id, variant, device);
+    const needMb = Math.max(own.files, own.ram);
+    if (!needMb) return;
     const occ = this._loaded.get(kind) ?? null;
-    const creditMb = occ !== null && (occ.placement ?? "gpu") === "cpu" ? filesOf(occ.manifest.module, this._currentVariants.get(occ.manifest.id)) : 0;
+    let creditMb = 0;
+    if (occ !== null) {
+      const occDevice = this._resolvedDevices.get(occ.manifest.id) ?? ((occ.placement ?? "gpu") === "cpu" ? "cpu" : "");
+      const back = takesMb(occ.manifest.module, occ.manifest.id, this._currentVariants.get(occ.manifest.id), occDevice);
+      creditMb = Math.max(back.files, back.ram);
+    }
     const margin = EngineManager._safetyMarginMb();
     const freeMb = os.freemem() / (1024 * 1024) + creditMb;
-    if (filesMb + margin <= freeMb) return;
+    if (needMb + margin <= freeMb) return;
     let ai = [];
     try {
       const hw = await this._hardware();
       ai = ((await arbiter.getArbiter().snapshot(hw)).reservations || []).filter((r) => r.kind === "llm" && !r.asleep && !r.pinned);
     } catch {}
     const gb = (mb) => Math.round((mb / 1024) * 10) / 10;
+    const where = device === "cpu" ? "the CPU" : "the graphics card";
+    const what =
+      own.ram >= own.files
+        ? `it took about ${gb(own.ram)} GB of this machine's memory when it last loaded here`
+        : `its files are about ${gb(own.files)} GB`;
     throw new RuntimeError(
-      `not enough memory to load ${m.name} on the CPU: its files are about ${gb(filesMb)} GB ` +
+      `not enough memory to load ${m.name} on ${where}: ${what} ` +
         `(+${margin} MB safety margin) but only ${gb(freeMb)} GB of this machine's ${gb(os.totalmem() / (1024 * 1024))} GB is free. ` +
         (ai.length
           ? `The AI model (${ai.map((r) => r.key.replace(/^llm:/, "")).join(", ")}) is loaded and holds memory too — unload it first, or close other programs.`
@@ -1599,7 +1635,7 @@ export class EngineManager {
       // occupant gives back (§5 B5). A model never measured here gets no arithmetic: it loads,
       // calibrates, is measured.
       device = placement === "cpu" ? "cpu" : this._resolveDevice(m, device);
-      if (placement === "cpu" && !already) await this._admitSystemMemory(m, targetKind, planned);
+      if (!already) await this._admitSystemMemory(m, targetKind, planned, device);
       const books = await this._booksMemory(device);
       const price = books && !already ? this._priceMb(targetKind, engineId, planned, device) : 0;
       if (price > 0) {

@@ -455,16 +455,24 @@ free nothing.
 loaded model's place reloads it in its new place. A machine whose speech
 runtime is the CPU build runs everything on the CPU and says so.
 
-**A model on the CPU needs room in your computer's memory.** On the CPU its
-weights are read into your computer's memory, so before it loads there,
-JustVoice checks that the memory free now holds its files plus a safety margin
-(1 GB — the same margin the graphics card's check keeps), counting what the
-model it replaces gives back. If not, the load stops before anything moves and
-says how much is free: *not enough memory to load OmniVoice on the CPU: its
-files are about 1.3 GB (+1024 MB safety margin) but only 1.5 GB of this
-machine's 32 GB is free. Close other programs, or pick a smaller model.* When
-an AI model is loaded — a large one can hold more of this memory than any
-speech model — the message names it and suggests unloading it first.
+**A model needs room in your computer's memory too.** On the CPU its weights
+are read into your computer's memory, and even on the graphics card the speech
+runtime keeps some beside them — MOSS-TTS Local, on the card, took about 6 GB
+of the computer's memory to load. Each load records how much it took, on this
+machine. Before a model loads, JustVoice checks that the memory free now holds
+the larger of its files (on the CPU) and what it took at its last loads here,
+plus a safety margin (1 GB — the same margin the graphics card's check keeps),
+counting what the model it replaces gives back. A model that has never loaded
+here is checked by its files on the CPU and not at all on the card. If there
+isn't room, the load stops before anything moves and says how much is free:
+*not enough memory to load OmniVoice on the CPU: its files are about 1.3 GB
+(+1024 MB safety margin) but only 1.5 GB of this machine's 32 GB is free. Close
+other programs, or pick a smaller model.* — or, by what it took before, *…on
+the graphics card: it took about 5.7 GB of this machine's memory when it last
+loaded here…*. When an AI model is loaded — a large one can hold more of this
+memory than any speech model — the message names it and suggests unloading it
+first. The record is a floor: a model can take more while it speaks than its
+load did.
 
 The 2× bar is `speech_runtime.cpu_min_realtime` in the settings (see
 [Settings reference](settings-reference.md)); the CPU threads are on the

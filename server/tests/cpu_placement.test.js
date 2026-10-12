@@ -90,6 +90,22 @@ test("a_cpu_load_needs_its_files_and_the_margin_in_free_memory", async () => {
   await expect(mgr._admitSystemMemory(m, "tts", "omnivoice-q8")).resolves.toBeUndefined();
 });
 
+test("any_load_needs_the_memory_it_took_at_its_last_loads", async () => {
+  // decided 2026-10-12 (4b): MOSS-TTS Local took 5.7 GB of this machine's memory on the card.
+  const mgr = mgrFor();
+  const m = mgr.getManifest("moss_tts_local");
+  vi.spyOn(os, "totalmem").mockReturnValue(32 * 1024 ** 3);
+  vi.spyOn(os, "freemem").mockReturnValue(6 * 1024 ** 3);
+  // Never recorded on the card: nothing to check there yet.
+  await expect(mgr._admitSystemMemory(m, "tts", "moss_tts_local-q8", "cuda")).resolves.toBeUndefined();
+  vi.spyOn(EngineManager.prototype, "_ramPriceMb").mockImplementation((kind, id, variant, device) => (device === "cuda" ? 5800 : 0));
+  await expect(mgr._admitSystemMemory(m, "tts", "moss_tts_local-q8", "cuda")).rejects.toThrow(
+    "not enough memory to load MOSS-TTS-Local on the graphics card: it took about 5.7 GB of this machine's memory when it last loaded here (+1024 MB safety margin) but only 6 GB of this machine's 32 GB is free.",
+  );
+  vi.spyOn(os, "freemem").mockReturnValue(8 * 1024 ** 3);
+  await expect(mgr._admitSystemMemory(m, "tts", "moss_tts_local-q8", "cuda")).resolves.toBeUndefined();
+});
+
 test("auto_ignores_the_estimate_for_a_hand_wired_model", async () => {
   // audio.cpp lists Chatterbox Multilingual at 12 GB; it runs on an 8 GB card, measured.
   const mgr = mgrFor();

@@ -435,8 +435,14 @@ BUILT:  2026-10-12 — 1: `generatedSpeechRequest` sends the clip's words to a s
         memory in use before the slot starts and after the load (the kit's `_usedPoolMb`, via
         `manager.systemMemoryInUseMb`) — as a "ram_peak" row in the kit's measurement store, in
         its new `ram_model_mb` column (kit 55055ed, an ADDED_COLUMNS entry, no reset).
-OPEN:   4(b), the check before a load from the recorded memory — built with a new message for a
-        load on the graphics card, held for the user's word.
+        4(b), the check: before any load, the larger of its files (on the CPU) and the memory it
+        took at its last loads here (`_ramPriceMb`, the "ram_peak" rows by this runtime build),
+        plus the margin, against the memory free — the occupant it replaces credited; a model
+        never recorded is checked as before; the approved message. User doc: engines.md "Where
+        each model runs".
+OPEN:   the reading after each line — a flaw found before building it (the user's word awaited):
+        a system-wide reading counts whatever else loads while the speech model is up, and the
+        AI model's ~17 GB arriving mid-render would be recorded as the speech model's.
         4(a) and 4(b) (decided 2026-10-12) — shown: "4(a), the RAM check, waiting on your word.
         It refuses a CPU load when the model's files plus the 1 GB safety margin are more than
         the free RAM … 'not enough memory to load OmniVoice on the CPU: its files are about 1.3 GB
@@ -451,7 +457,16 @@ OPEN:   4(b), the check before a load from the recorded memory — built with a 
         "1. Ship 4(a) with that wording? 2. For 4(b), build it with the kit's existing system-RAM
         difference rather than `pidusage`? 3. Delete the 3 GB OuteTTS file from my scratch
         folder?" — a lean of yes, the existing difference, yes. The user: "youre rec go".
-GO:     given 2026-10-12 ("your rec on all go"; 4(a), 4(b) and the file: "youre rec go").
+        The check's message and a reading after each line (decided 2026-10-12) — shown: "1. Ship
+        the 4(b) memory check with its new wording ('…it took about 5.7 GB of this machine's
+        memory when it last loaded here…')? My lean: yes. 2. Also take a reading after each line,
+        so the record catches what a model takes while speaking? My lean: yes." The full message
+        shown before: "not enough memory to load MOSS-TTS-Local on the graphics card: it took
+        about 5.7 GB of this machine's memory when it last loaded here (+1024 MB safety margin)
+        but only 6 GB of this machine's 32 GB is free. Close other programs, or pick a smaller
+        model." The user: "your rec go".
+GO:     given 2026-10-12 ("your rec on all go"; 4(a), 4(b) and the file: "youre rec go"; the
+        check's message and the reading after each line: "your rec go").
 
 ### A fifth commercial-use word: "Separate licence" (decided 2026-10-11)
 STATE:  DECIDED 2026-10-11 — the user: "i think it is misleading to say no commersial use for
