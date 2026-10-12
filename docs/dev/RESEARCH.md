@@ -2962,12 +2962,41 @@ corrected above.
   for the models the kit loads by default; §8.18 itself names mlock/no_mmap as the evidence that
   allows enforcing. (Whether Windows keeps the 12B's mlock is unverified: the kit strips an inert
   mlock there, `process.js:299`.)
+- **The 26B's RAM against its claim** (2026-10-12, the measurement before checking the AI
+  model's door). The kit's RAM claim for an AI model is its Min-RAM floor, `minRamMb` = the
+  whole file + the 4,096 MB headroom (`llm/identity.js` `computedRowNumbers`: "dense and MoE
+  both end up holding the file"). gemma 4 26B A4B, warmed at boot through the app, launched
+  `--load-mode none --n-gpu-layers 31 --n-cpu-moe 21 --ctx-size 32768`, KV q8_0, the MTP draft:
+  | | MB |
+  |---|---|
+  | claim (`minRamMb`) | 17,685 |
+  | working set, settled = its peak working set | 9,838 |
+  | private bytes | 16,836 |
+  The claim is about 7.8 GB above what the process holds in RAM: the non-expert weights and 9 of
+  the 30 layers' experts live on the card, and the claim charges the whole file. Private bytes
+  sit near the claim, but private bytes ran four to nine times the working set for the speech
+  runtime too ("Which memory number"), so they aren't the measure. A check on this claim would
+  refuse the 26B on a machine with 10–17 GB free, where it fits.
 - **OmniVoice fits the card** (2026-10-12): pinned to the GPU it loaded in 6 s, spoke the line in
   3 s and read back 100 %; the card's memory in use went 700 → 1,928 MB (about 1.2 GB) and its
   server's RAM 526 MB. On the CPU (Auto, by audio.cpp's 10 GB estimate) the same line took 80 s
   (0.06× real time). The card peak wasn't saved: the per-process card probe returned nothing at
-  the load, and the device-wide difference is booked but by design never persisted
-  (`manager.js` load, "honestly 'computed' and never persisted") — so Auto never learns it fits.
+  the load, and the device-wide difference was booked but by design never persisted — so Auto
+  never learned it fits. Since 2026-10-12 a calibrated load saves that difference as its price
+  when the probe misses (`manager.js` load, the row labelled "the whole card's difference").
+- **A CUDA load on Windows may not fail when the card runs out** (checked 2026-10-12, for "try
+  the card first, fall back to the CPU if the load fails"). NVIDIA's support text, as quoted on
+  Guru3D: driver 536.40 added a way for applications "to use shared memory when GPU memory was
+  exhausted … applications which previously crashed when running out of GPU memory [can]
+  continue to run, albeit at lower speeds"; 546.01 added the switch to turn it off (NVIDIA
+  Control Panel → Manage 3D Settings → "CUDA - Sysmem Fallback Policy" → "Prefer No Sysmem
+  Fallback"). Third-party guides say it is on by default; no NVIDIA page found states the
+  default. So on Windows a model too big for the card can load and run slowly out of system
+  memory rather than fail — a failed load is not a reliable signal there. The per-process
+  counter `\GPU Process Memory(pid_*)\Shared Usage` would show the spill.
+  Sources: https://forums.guru3d.com/goto/post?id=6180414 ·
+  https://docs.cognex.com/deep-learning_400/web/EN/deep-learning/Content/Topics/optimization/gpu-disable-shared.htm ·
+  https://llmconfigurator.com/en/guides/troubleshooting/windows-shared-gpu-memory-slow
 - **audio.cpp's estimate is one per model, shared by its precisions** (`min_vram_gb` on the
   catalog entry). For eight downloads it is below the files themselves (GB of files / estimate):
   DramaBox q8 17.6 / 16, FireRedAudio q8 13.0 / 10 and original 23.3 / 10, FireRedTTS3 Instruct

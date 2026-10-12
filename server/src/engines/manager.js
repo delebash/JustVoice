@@ -1285,9 +1285,10 @@ export class EngineManager {
   }
 
   /** Persist a measured peak as a `"peak"` row in the shared measurement store — what
-   * `_priceMb` reads on the next load. Keeps the newest 5 per length and runtime build.
-   * Best-effort: persistence must never fail a load. */
-  _recordSpeechLoad(m, kind, variant, mb, device) {
+   * `_priceMb` reads on the next load. Keeps the newest 5 per length and runtime build. `how`
+   * names a reading that isn't the slot's own process in the row's label. Best-effort:
+   * persistence must never fail a load. */
+  _recordSpeechLoad(m, kind, variant, mb, device, how = "") {
     try {
       const store = stores.getModelMeasurementStore();
       const modelId = EngineManager._measureId(kind, m.id, variant);
@@ -1297,7 +1298,7 @@ export class EngineManager {
       store.record(modelId, {
         machineKey: mk,
         source: "peak",
-        label: `speech peak (${device}, pieces of ${split} characters, ${build})`,
+        label: `speech peak (${device}, pieces of ${split} characters, ${build}${how ? `, ${how}` : ""})`,
         tokensPerSec: 0.0,
         vramTotalMb: 0,
         at: Math.trunc(Date.now()),
@@ -1814,8 +1815,9 @@ export class EngineManager {
       // Book the CONFIRMED load at its MEASURED footprint — the per-PID tree probe of the
       // kind's own process. A known price stays the booking's floor. What is RECORDED as this
       // model's peak (§13.3): a calibrated load's measurement, or any measurement above the
-      // price. Probe miss on a box with no per-process arm → the device-wide delta, honestly
-      // "computed" and never persisted; an EARLY booking keeps the price instead.
+      // price. Probe miss → the device-wide delta, booked "computed"; a calibrated load saves it
+      // as the price too, or Auto never learns the model fits (OmniVoice: audio.cpp says 10 GB,
+      // the card took 1.2 GB — decided 2026-10-12). An EARLY booking keeps the price instead.
       if (books) {
         const measured = await this._engineProcMb(proc, { fresh: true });
         let calibrated = false;
@@ -1832,7 +1834,12 @@ export class EngineManager {
         } else if (!earlyMb) {
           const after = await this.poolUsedMb({ fresh: true });
           const delta = after !== null && poolBefore !== null ? Math.max(0, after - poolBefore) : 0;
-          if (delta > 0) this._reserveEngine(m, targetKind, delta, "computed");
+          if (delta > 0) {
+            this._reserveEngine(m, targetKind, delta, "computed");
+            if (calibrated && this._prices(proc)) {
+              this._recordSpeechLoad(m, targetKind, this._currentVariants.get(engineId), delta, device, "the whole card's difference");
+            }
+          }
         }
       }
       // The system memory this model holds once loaded — its slot's process (4(b)); its lines

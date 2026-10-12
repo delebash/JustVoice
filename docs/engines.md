@@ -801,7 +801,10 @@ time a model loads on the graphics card it speaks one full-length piece as its
 warm-up (a few seconds more, once) and what it holds afterwards is remembered as
 its cost. Models that can only speak from a clip (Chatterbox Multilingual,
 Qwen3-TTS Base) measure themselves on their first real lines instead. The cost
-only goes up after that: a line that takes more is remembered too.
+only goes up after that: a line that takes more is remembered too. When the
+model's own process can't be read at that first load, how much the whole card's
+use went up across the load is remembered instead. That reading can include
+another program that took card memory at the same moment, so it errs high.
 
 Each slot's cell shows its own process's measured memory: the model, plus the
 process's own share of the card (about 100 MB). The full story is in

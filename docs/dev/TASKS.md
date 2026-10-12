@@ -402,8 +402,26 @@ BUILT:  2026-10-12 — 1: the check credits the AI models' memory when a card lo
         model's door: reported (RESEARCH "llama.cpp and the AI model's door"). The speed: the
         too-big reason ends "— this may be slow on the CPU", or the measured speed once the model
         has spoken; OmniVoice pinned to the card: it fits (about 1.2 GB), 6 s load, 3 s line.
-OPEN:   the user's word on what these findings mean (the AI model's door; Auto's too-big rule
-        when audio.cpp's estimate is pessimistic).
+        The door, the too-big rule, the stale line (2026-10-12): 1 NOT built — the measurement
+        failed: the 26B holds 9,838 MB (working set = its peak) against a claim of 17,685 MB, the
+        whole file + 4,096 headroom (RESEARCH §10.14 "The 26B's RAM against its claim"). 2, the
+        fallback number: a calibrated load whose own-process probe misses saves the whole card's
+        difference as its price, labelled "the whole card's difference" (`manager.js` load); a
+        test; user doc engines.md "Long lines, and what a model costs". 3: the stale line deleted.
+OPEN:   1 — what the AI model's door checks instead (the user's word). 2 — the card-first rule:
+        what "fits easily" means, its Runs on words, what a failed card load does, and the
+        Windows spill (RESEARCH §10.14 "A CUDA load on Windows may not fail") — the user's word.
+        The AI model's door and the too-big rule (decided 2026-10-12) — shown: "1. The AI model's
+        door: check it on its RAM claim, for the load modes that keep weights resident (`none` and
+        `mmap+mlock`), in the kit for both apps? My lean: yes, after one measurement that the 26B's
+        real memory matches the claim. 2. The too-big rule: when a model's files fit the card
+        easily (OmniVoice 1.3 GB on an 8 GB card), try the card first and fall back to the CPU only
+        if the load fails, so it gets measured. And save the fallback card number for models whose
+        probe fails. My lean: yes to both. 3. Should I delete a stale line in TASKS? … an OPEN line
+        still says the reading after each line is waiting on your word because of a flaw: a
+        whole-machine reading would count other programs. 08e8f16 built that reading from the
+        speech runtime's own process instead, which removes the flaw. My lean: yes, delete it."
+        The user: "your rec on all 3 go".
         The memory number, the AI model's door, the CPU speed (decided 2026-10-12) — after a Fable
         review and an Opus check of it (audio.cpp copies the weights into its own buffers; the
         mapping is released after loading by Kokoro, MOSS, OmniVoice and IndexTTS2 but kept by
@@ -416,7 +434,8 @@ OPEN:   the user's word on what these findings mean (the AI model's door; Auto's
         exact second check stay." The wording, as shown before: "say 'this may be slow on the
         CPU' in its Runs on line, with the measured speed once it has spoken". The user: "your
         rec on all go".
-GO:     given 2026-10-12 ("fix it all your rec go"; the three above: "your rec on all go").
+GO:     given 2026-10-12 ("fix it all your rec go"; the memory number, the door and the speed:
+        "your rec on all go"; the door, the too-big rule and the stale line: "your rec on all 3 go").
 
 ### The family on vue-i18n: JustVoice's step B (decided 2026-10-12, in the kit's tracker)
 STATE:  DECIDED 2026-10-12 — the user's ruling in a JustWrite session: "all apps should use the
@@ -491,9 +510,7 @@ BUILT:  2026-10-12 — 1: `generatedSpeechRequest` sends the clip's words to a s
         plus the margin, against the memory free — the occupant it replaces credited; a model
         never recorded is checked as before; the approved message. User doc: engines.md "Where
         each model runs".
-OPEN:   the reading after each line — a flaw found before building it (the user's word awaited):
-        a system-wide reading counts whatever else loads while the speech model is up, and the
-        AI model's ~17 GB arriving mid-render would be recorded as the speech model's.
+OPEN:   —
         4(a) and 4(b) (decided 2026-10-12) — shown: "4(a), the RAM check, waiting on your word.
         It refuses a CPU load when the model's files plus the 1 GB safety margin are more than
         the free RAM … 'not enough memory to load OmniVoice on the CPU: its files are about 1.3 GB

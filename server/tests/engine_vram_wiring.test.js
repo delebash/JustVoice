@@ -2,8 +2,8 @@
 // The VRAM wiring under the AMENDED measured currency
 // (docs/plans/2026-08-13-speech-catalog-redesign.md §10): device policy at the one load door;
 // NO pre-load estimate — a prior MEASURED footprint admits and books EARLY, a first-ever load
-// gets no arithmetic; the per-PID-tree true-up; the device-delta fallback (computed, never
-// persisted); the raise-only high-water bump with occupant re-check; the one-pool ruling; the
+// gets no arithmetic; the per-PID-tree true-up; the device-delta fallback (computed; saved as
+// the price after a calibrated load); the raise-only high-water bump with occupant re-check; the one-pool ruling; the
 // tts/stt busy flags (the port of tests/test_engine_vram_wiring.py).
 //
 // Every test injects its own VramArbiter (fake hardware) and restores the singleton after. The
@@ -193,9 +193,9 @@ test("failed_load_releases_the_early_booking", async () => {
   expect(arb.reservationOf("tts:eng")).toBeNull();
 });
 
-test("first_load_delta_fallback_books_computed_never_persists", async () => {
-  // No per-process arm on this box (AMD Linux): the device-wide delta books as "computed" —
-  // and is NEVER persisted.
+test("first_load_delta_fallback_books_computed", async () => {
+  // No per-process reading (AMD Linux, or a probe miss): the device-wide delta books as
+  // "computed". A load that could not calibrate saves nothing.
   const arb = makeArbiter(discrete());
   const recorded = [];
   const mgr = mgrFor(discrete(), manifest());
@@ -205,6 +205,26 @@ test("first_load_delta_fallback_books_computed_never_persists", async () => {
   await mgr.load("eng", { device: "auto" });
   expect(arb.reservationOf("tts:eng")).toEqual({ vram_mb: 1400, source: "computed", kind: "tts", pinned: false, asleep: false });
   expect(recorded).toEqual([]);
+});
+
+test("a_calibrated_load_saves_the_delta_as_its_price", async () => {
+  // OmniVoice, 2026-10-12: the probe missed, the delta was never saved, and Auto kept trusting
+  // audio.cpp's 10 GB estimate for a model that took 1.2 GB. A calibrated load saves it.
+  const arb = makeArbiter(discrete());
+  const recorded = [];
+  class CalibratingProc extends Proc {
+    post(p, json = null) {
+      if (p === "/load") return resp({ ok: true, voices: [], calibrated: Boolean((json || {}).calibrate_chars) });
+      return super.post(p, json);
+    }
+  }
+  const mgr = mgrFor(discrete(), manifest(), CalibratingProc);
+  const seq = [3000, 4400];
+  vi.spyOn(EngineManager.prototype, "poolUsedMb").mockImplementation(async () => (seq.length ? seq.shift() : 4400));
+  vi.spyOn(EngineManager.prototype, "_recordSpeechLoad").mockImplementation((m, k, v, mb, d, how) => recorded.push([mb, how]));
+  await mgr.load("eng", { device: "auto" });
+  expect(arb.reservationOf("tts:eng").source).toBe("computed");
+  expect(recorded).toEqual([[1400, "the whole card's difference"]]);
 });
 
 test("cpu_load_books_nothing_on_discrete", async () => {
