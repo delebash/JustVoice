@@ -24,3 +24,12 @@ export const DIRECTION = {
 
 export const TESTED = null;
 export const BEST_FOR = [];
+
+// Its licence in plain words — can a person sell an audiobook made with it? Our reading of the
+// licence at its source, checked 2026-10-11 (RESEARCH §10.13); the licence itself is what counts.
+export const LICENCE = {
+  commercial: "No",
+  summary: "No. Any use tied to something you sell needs a separate licence from Fish Audio.",
+  url: "https://huggingface.co/fishaudio/s2-pro/blob/main/LICENSE.md",
+  checked: "2026-10-11",
+};

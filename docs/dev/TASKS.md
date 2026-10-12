@@ -317,6 +317,37 @@ OPEN:   the plan doc `docs/plans/2026-10-11-audiocpp-engine-catalog.md`; the use
 GO:     given 2026-10-11 ("go ahead and complete the engine stuff"); a NOT STANDARD piece in
         the plan waits for its own word.
 
+### Every speech engine's licence in plain words, on hover and in the opened engine (decided 2026-10-11)
+STATE:  DECIDED 2026-10-11 — the user: "i want you to do a summary just like you showed me of
+        like the conditional ect and add that to our db notes on hover" · "why would we take it
+        out we are allowing the user to choose no one said anothing about removing non
+        commercial just clearifying to user and letting user easily no what the sort options
+        mean, as i look at the options and dont understnad unless we claify when user hoovers
+        over license so higgs is partial commercial". Shown: "1. The filter's options — each gets
+        a one-line meaning under it in the dropdown: Yes — 'Sell what you make with it — no
+        conditions.' · Conditional — 'Sell what you make if you meet its conditions — credit, a
+        revenue cap. Hover a model's licence to see them.' · No — 'Personal and research use
+        only — don't sell what you make.' · Unclear — 'The licence doesn't say. Treat it as No
+        until it's checked.' 2. Each model's licence — hovering the commercial-use chip shows
+        that model's plain summary; the opened engine shows it written out too, since a phone
+        has no hover" · "1. Go to write the summaries (each licence checked at its source, about
+        30) and add the option meanings and the hover to the mock? 2. Is the option wording
+        above right …? 3. Where the summaries live: data files beside the direction files (my
+        lean, since they update with the app), or the database?" The user: "your rec on all go".
+WHY:    audio.cpp's one word reads only a licence's title — Higgs is "No" there, yet its Creator
+        Use Grant lets each user sell their own audiobooks with credit (RESEARCH §10.8).
+NOT:    removing any engine for its licence — the user chooses; a summary is our plain reading,
+        and the licence at its source is what counts.
+BUILT:  2026-10-11 — all 32 speech engines' licences read at their source (RESEARCH §10.13) and
+        written as `LICENCE` {commercial, summary, url, checked} in each family's
+        `server/src/engines/audiocpp/curated/<family>.js`; eight differ from audio.cpp's table
+        (Higgs → Conditional; IndexTTS2, FireRedTTS3, FireRedAudio → Unclear; AuK, ZipVoice → No;
+        MOSS-TTSD, VieNeu → Yes). The mock reads those files: the filter's option meanings, the
+        chip's hover, a line in the opened engine, the licence prompt.
+OPEN:   the real tab with the rest of slice 4 — the server's commercial-use word, download gate
+        and TERMS text still come from audio.cpp's table until then.
+GO:     given 2026-10-11 ("your rec on all go").
+
 ### OPEN — the audio.cpp fork: keep it as it is, the DSP inside it, no routine pull requests?
 STATE:  OPEN — your call (asked 2026-10-11; the user: "these are questions not decisions").
         The user's questions and comments: "we cant rely on the maintainer accpeting anything …

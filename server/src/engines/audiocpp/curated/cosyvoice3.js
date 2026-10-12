@@ -36,3 +36,12 @@ export const TESTED = {
 };
 
 export const BEST_FOR = [];
+
+// Its licence in plain words — can a person sell an audiobook made with it? Our reading of the
+// licence at its source, checked 2026-10-11 (RESEARCH §10.13); the licence itself is what counts.
+export const LICENCE = {
+  commercial: "Yes",
+  summary: "Yes. Apache-2.0. Its “academic purposes only” disclaimer covers the demo examples on its page, not the model.",
+  url: "https://huggingface.co/FunAudioLLM/Fun-CosyVoice3-0.5B-2512",
+  checked: "2026-10-11",
+};

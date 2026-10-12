@@ -2,7 +2,9 @@
 <!--
   AI Settings · Speech engines — every audio.cpp model, before anything is downloaded (the mock,
   dev only: #/mock/speech-engines). Slice 4 of docs/plans/2026-10-11-audiocpp-engine-catalog.md;
-  the words decided 2026-10-11 ("your rec on all"): commercial use in audio.cpp's own words, a
+  the words decided 2026-10-11 ("your rec on all"): commercial use in audio.cpp's own words, each
+  word explained in the filter and each licence in plain words on hover, in the opened engine and
+  in the licence prompt (TASKS "Every speech engine's licence in plain words"), a
   licence that isn't "Yes" accepted once before the first download, audio.cpp's status shown,
   "Tested by JustVoice" / "Not tested by JustVoice yet", a model too big for this card listed and
   offered on the CPU. Made from the real tab's shared .ev-* classes on speechEnginesMock.js.
@@ -11,7 +13,7 @@
 import { computed, reactive, ref } from "vue";
 import { AppModal, UiButton, UiSelect, fmtBytes, pushToast } from "@delebash/llm-ui";
 import { directionCell } from "../../services/personaFacts.js";
-import { CARD_GB, COMMERCIAL_USE, ENGINES } from "../../services/mock/speechEnginesMock.js";
+import { CARD_GB, COMMERCIAL_HINTS, COMMERCIAL_USE, ENGINES } from "../../services/mock/speechEnginesMock.js";
 
 const engines = reactive(structuredClone(ENGINES));
 const q = ref("");
@@ -28,7 +30,10 @@ const KINDS = [
 const open = reactive({ index_tts2: true, omnivoice: true });
 const asking = ref(null); // the engine whose licence prompt is open, or null
 
-const COMMERCIAL_OPTIONS = [{ label: "Any commercial use", value: "all" }, ...COMMERCIAL_USE.map((c) => ({ label: `Commercial use: ${c}`, value: c }))];
+const COMMERCIAL_OPTIONS = [
+  { label: "Any commercial use", value: "all" },
+  ...COMMERCIAL_USE.map((c) => ({ label: `Commercial use: ${c}`, value: c, hint: COMMERCIAL_HINTS[c] })),
+];
 const SORTS = [
   { label: "Sort: name", value: "name" },
   { label: "Sort: download size", value: "size" },
@@ -72,7 +77,10 @@ function clearFilters() {
 
 const isOpen = (e) => Boolean(open[e.id]);
 const licClass = (c) => ({ Conditional: "ev-lic--warn", No: "ev-lic--no", Unclear: "ev-lic--unclear" })[c] || "";
-const licTitle = (l) => [l.name, l.notes, "The licence text at its source is what counts."].filter(Boolean).join(" — ");
+// Where our reading of a licence differs from audio.cpp's table, both words are shown.
+const reading = (l) =>
+  `${l.name} · JustVoice's reading, checked ${l.checked}` + (l.table !== l.commercial ? ` — audio.cpp's licence table says "${l.table}"` : "");
+const licTitle = (l) => `${l.summary}\n\n${reading(l)}. The licence text at its source is what counts.`;
 const gated = (e) => e.licence.commercial !== "Yes";
 const fmtDisk = (mb) => fmtBytes(mb * 1024 * 1024);
 function memoryText(m) {
@@ -80,11 +88,6 @@ function memoryText(m) {
   if (fits(m)) return { text: `needs about ${m.needGb} GB · fits this card`, warn: false };
   return { text: `needs about ${m.needGb} GB · too big for this card — Load runs it on the CPU`, warn: true };
 }
-// The prompt's summary, in the words the server writes into a generated engine's TERMS.
-const termsText = (e) =>
-  `${e.licence.name}. Commercial use, in audio.cpp's licence table: ${e.licence.commercial}.` +
-  (e.licence.notes ? ` ${e.licence.notes}` : "") +
-  " The licence text at its source is what counts.";
 function summary(e) {
   const onDisk = e.models.filter((m) => m.onDisk).length;
   return `${e.models.length} model${e.models.length === 1 ? "" : "s"} · ${onDisk ? `${onDisk} on disk` : "none on disk"}`;
@@ -151,9 +154,12 @@ function accept(e) {
       </div>
 
       <div v-if="isOpen(g.e) || filtered" class="ev-gbody">
-        <div v-if="g.e.tested || g.e.bestFor.length" class="ev-gnote">
+        <div class="ev-gnote">
           <span v-if="g.e.bestFor.length">Best for: {{ g.e.bestFor.join(" · ") }}</span>
           <span v-if="g.e.tested">Tested by JustVoice: {{ g.e.tested.note }}</span>
+          <span>Commercial use: {{ g.e.licence.summary }}
+            <span class="ev-gnote-src">({{ reading(g.e.licence) }} ·
+              <a :href="g.e.licence.url" target="_blank" rel="noopener">read it at its source</a>)</span></span>
         </div>
         <template v-for="m in g.models" :key="m.id">
           <div class="ev-model">
@@ -189,11 +195,11 @@ function accept(e) {
       max-width="620px" @close="asking = null">
       <p class="mock-engines__lede">
         {{ asking.name }}'s licence isn't a plain yes for commercial use, so it's yours to read before
-        you download the model. What follows is audio.cpp's summary of it.
+        you download the model. Here it is in plain words.
       </p>
-      <div class="jv-banner mock-engines__terms">{{ termsText(asking) }}</div>
+      <div class="jv-banner mock-engines__terms">{{ asking.licence.summary }}</div>
       <p class="jv-hint">
-        You accept once, on this install.
+        {{ reading(asking.licence) }}. The licence text at its source is what counts — you accept once, on this install.
         <a v-if="asking.licence.url" :href="asking.licence.url" target="_blank" rel="noopener">Read the licence at its source</a>.
       </p>
       <template #footer>

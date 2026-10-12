@@ -1908,6 +1908,9 @@ section.block > h3 {
 /* An engine's own notes at the top of its open group — what it is best for, what JustVoice's
    testing found (engine list slice 4). The .ev-model row's left indent, the .ev-mplace size. */
 .ev-gnote{display:flex;flex-direction:column;gap:2px;padding:8px 16px 8px 37px;font-size:12.5px;color:var(--ink-2);border-bottom:1px solid var(--line)}
+/* Each note reads as prose; a licence line's source and our reading sit quieter after it. */
+.ev-gnote>span{max-width:100ch}
+.ev-gnote-src{color:var(--ink-3)}
 /* The loaded row's measured-memory hint ("1.1 GB measured" / "not measured
    yet") — reads the same vram reservations as the budget strip. */
 .ev-memhint{font-size:11px;color:var(--ink-3);white-space:nowrap}

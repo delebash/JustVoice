@@ -1,15 +1,19 @@
 // SPDX-License-Identifier: MIT
 // Made-up states over real facts for the Speech engines mock (#/mock/speech-engines, dev only;
-// docs/plans/2026-10-11-audiocpp-engine-catalog.md slice 4). Names, licences, commercial-use
-// verdicts, audio.cpp statuses, languages, download sizes and memory needs are the real ones
-// (server/src/engines/audiocpp/catalog.json, 2026-10-11); which models are on disk or loaded,
+// docs/plans/2026-10-11-audiocpp-engine-catalog.md slice 4). Names, licences, audio.cpp statuses,
+// languages, download sizes and memory needs are the real ones (server/src/engines/audiocpp/
+// catalog.json, 2026-10-11); each licence in plain words, and our commercial-use word, comes from
+// the engine's own curated file, the one the server reads. Which models are on disk or loaded,
 // and which licences are accepted, are made up to show each state.
+
+import { CURATED } from "../../../server/src/engines/audiocpp/curated/index.js";
 
 export const CARD_GB = 8; // this machine's graphics card: RTX 2070 SUPER, 8 GB
 
 export const ENGINES = [
   {
     id: "kokoro",
+    family: "kokoro_tts",
     name: "Kokoro",
     description: "Kokoro-82M: a small, fast multilingual voice with 54 built-in voices.",
     licence: { name: "Apache-2.0", commercial: "Yes", notes: "", url: "https://huggingface.co/hexgrad/Kokoro-82M" },
@@ -105,5 +109,21 @@ export const ENGINES = [
   },
 ];
 
+// Each licence in plain words (decided 2026-10-11): `commercial` becomes our reading of the
+// licence, `table` keeps audio.cpp's word, `summary` answers "can I sell an audiobook made with it?".
+for (const e of ENGINES) {
+  const l = CURATED[e.family ?? e.id].LICENCE;
+  e.licence = { ...e.licence, name: l.name ?? e.licence.name, table: e.licence.commercial, commercial: l.commercial, summary: l.summary, url: l.url, checked: l.checked };
+}
+
 // audio.cpp's own words for commercial use (decided 2026-10-11, answer 1).
 export const COMMERCIAL_USE = ["Yes", "Conditional", "No", "Unclear"];
+
+// What each word means, under it in the filter's open list (decided 2026-10-11, TASKS "Every
+// speech engine's licence in plain words").
+export const COMMERCIAL_HINTS = {
+  Yes: "Sell what you make with it — no conditions.",
+  Conditional: "Sell what you make if you meet its conditions — credit, a revenue cap. Hover a model's licence to see them.",
+  No: "Personal and research use only — don't sell what you make.",
+  Unclear: "The licence doesn't say. Treat it as No until it's checked.",
+};

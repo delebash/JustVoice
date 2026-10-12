@@ -33,3 +33,13 @@ export const TESTED = {
 };
 
 export const BEST_FOR = ["Acting a cloned voice's emotion"];
+
+// Its licence in plain words — can a person sell an audiobook made with it? Our reading of the
+// licence at its source, checked 2026-10-11 (RESEARCH §10.13); the licence itself is what counts.
+// audio.cpp's table says "Conditional"; our reading of the licence differs (RESEARCH §10.13).
+export const LICENCE = {
+  commercial: "Unclear",
+  summary: "Unclear. bilibili’s own licence allows it while you earn under RMB 100 million a year (the Chinese text, which governs; the English says 1 billion), and its audio may not be used to train other AI. But one part it runs, MaskGCT’s semantic codec, is non-commercial (CC-BY-NC-4.0), and bilibili’s licence leaves that part to you.",
+  url: "https://huggingface.co/IndexTeam/IndexTTS-2.5/blob/main/LICENSE",
+  checked: "2026-10-11",
+};

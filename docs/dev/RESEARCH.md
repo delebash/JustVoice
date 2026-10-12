@@ -2117,7 +2117,8 @@ cue lines rendered plain and directed (`POST /v1/generate`); every clip read bac
   Both refuse any option not in their spec (no temperature, no speed). Sizes (Q8): dots SOAR 2.96
   GB, Edit 2.96 GB; FireRedTTS3 Base 4.18 GB, Instruct 4.15 GB. Licences: dots Apache-2.0 per its
   README (the Edit card's HF tag reads "other"); FireRedTTS3 Apache-2.0 with the README's "solely
-  for academic research purposes" line, its issue #12 asking about commercial use unanswered.
+  for academic research purposes" line, its issue #12 and HF discussion #7 asking about
+  commercial use closed by the asker with no reply (§10.13; was: "unanswered" — until 2026-10-11).
   — *agent, 2026-10-11*, not re-checked · `../audio.cpp/src/models/dots_tts/request.cpp:65-212`,
   `../audio.cpp/src/models/fireredtts3/session.cpp:129-182`,
   [github.com/studio-dots-ai/dots.tts](https://github.com/studio-dots-ai/dots.tts),
@@ -2711,6 +2712,78 @@ Claude or GPT-4o on PDNC (follow-up running).
   Analyze; previous answers shown to the next piece; LLM-proposed pronunciations for scanned
   names; heteronyms by sense; a scene field and intensity in direction; ModernBookNLP as a second
   opinion; cited character profiles for casting.
+
+### 10.13 Every speech engine's licence, read at its source (2026-10-11)
+
+One question per engine: can a person sell an audiobook they made with it, on their own machine?
+Three agents read each model card, licence file and linked GitHub repo (curl and the HF API, quotes
+verbatim); the load-bearing claims below were re-read by hand (✓). The answers are written into
+each family's `server/src/engines/audiocpp/curated/<family>.js` `LICENCE` (TASKS "Every speech
+engine's licence in plain words"). audio.cpp's table (`docs/model_licenses.md`) reads a licence's
+title; eight of 32 answers differ from it. — *agent + web, 2026-10-11*
+
+- **Differ from audio.cpp's table:**
+  - **Higgs Audio 3** — table "No"; ours **Conditional**. Section II-A's Creator Use Grant lets a
+    "Digital Creator" monetize audiobooks, podcasts and videos "on channels You own or control",
+    no revenue cap, crediting "Boson AI's Higgs Audio" visibly; a separate written licence is
+    needed for (i) "making the Higgs Materials available to others … end-user application" and
+    (iii) "embedding or integrating the Higgs Materials in a product, application, or service made
+    available to third parties". The licensee is "the individual or entity exercising rights",
+    bound "by accessing, using…"; "integrating" is not defined. Quantized versions are "Derivative
+    Works" distributable only for research or non-commercial use. (✓ LICENSE, last updated
+    2026-07-08.)
+  - **IndexTTS 2 / 2.5** — table "Conditional"; ours **Unclear**. The caps: the English §2.2 says
+    "RMB 1 billion", the Chinese §2.2 says "1亿人民币" (RMB 100 million), and "the Chinese-language
+    version shall prevail" (✓ both files). The runtime loads a semantic codec
+    (`../audio.cpp/src/models/index_tts2/assets.cpp:72-77`) that upstream fetches from
+    `amphion/MaskGCT`, licensed `cc-by-nc-4.0` (✓ HF API); bilibili's §4.1(b) leaves third-party
+    weights to the user. §3.4(c): no improving other AI with the model or its Derivative Works,
+    which §1.5 says include outputs. No registration below the caps.
+  - **FireRedTTS3, FireRedAudio** — table "Yes"; ours **Unclear**. Apache-2.0, but both READMEs:
+    "this capability is intended **solely for academic research purposes**" of zero-shot cloning
+    (✓), the only task JustVoice offers them for; FireRedTTS3 issue #12 and HF discussion #7 were
+    closed by their asker on 2026-10-12 UTC with no reply.
+  - **AuK** — table "Yes"; ours **No**. Tencent's weights are MIT, but AuK needs Qwen2.5-Omni-3B
+    as its encoder (audio.cpp packages `qwen2.5-omni-3b-*.gguf`, ✓
+    `../audio.cpp/docs/community_models/auk.md:17-31`), whose licence is `qwen-research` (✓ HF
+    API): "FOR NON-COMMERCIAL PURPOSES ONLY".
+  - **ZipVoice** — table "Unclear" ("the model card states no license"); ours **No**. A License
+    section was added to the card on 2026-10-10: "The pre-trained model is licensed under the
+    CC-BY-NC due to constraints from its training data (Emilia)" (✓); a maintainer confirmed it on
+    GitHub issue #190. The GGUF JustVoice offers (davidxifeng) still claims Apache-2.0.
+  - **MOSS-TTSD** — not in the table; ours **Yes**: the GGUF is made from MOSS-TTSD v1.0,
+    Apache-2.0 on HF and GitHub.
+  - **VieNeu-TTS v3 Turbo** — not in the table; ours **Yes**: Apache-2.0, and its card's FAQ says
+    audio "may be used in commercial and monetized content" (✓). JustVoice downloads upstream's
+    own GGUF (`pnnbao-ump`); the third-party GGUF's card says CC-BY-NC-4.0.
+- **No, as the table says:** Breeze TTS 2 (v1.1, 2026-09-01: "this Agreement does not include a
+  creator, content monetization, small-business, revenue-threshold, or other implied
+  commercial-use exception"; audio made on BreezeBlue's paid hosted service may be sold) · Fish
+  Audio S2 (2026-03-07: any use "in connection with a product or service for which You charge a
+  fee or generate revenue") · Echo TTS (its author: "audio outputs are CC-BY-NC-SA-4.0 due to the
+  dependency on the Fish Speech S1-DAC autoencoder") · OmniVoice (CC-BY-NC since 2026-07-03; its
+  audio tokenizer is under the Boson Higgs Audio 2 Community License) · OuteTTS (CC-BY-NC-SA-4.0
+  on top of Llama 3.2).
+- **Conditional, as the table says:** DramaBox (LTX-2 Community License, 2026-01-05: any purpose
+  under USD 10M yearly revenue; content must be disclosed as machine-generated; not in a product
+  competing with Lightricks'; Gemma terms on the text encoder; an Acceptable Use Policy it names
+  but doesn't link).
+- **Yes, as the table says:** Kokoro, KittenTTS mini 0.8 (KittenTTS 2 is under a different
+  licence), Qwen3-TTS, Qwen3-ASR, CosyVoice3 (its "academic purposes only" disclaimer covers the
+  page's demo examples), Confucius4-TTS, dots.tts (Edit too, by the project's Apache-2.0),
+  GLM-TTS (card MIT, code Apache-2.0), MioTTS, the three MOSS-TTS, Audio8, Irodori (its author on
+  issue #32: "feel free to use it, including for commercial purposes"), Chatterbox (every output
+  watermarked by Resemble's Perth), VoxCPM2 ("free for commercial use"), VoxCPM1 (Apache-2.0 and
+  "free for commercial use", though its card's Risks section says "released for research and
+  development purposes only" — read as a caution, ✓), Pocket TTS (CC-BY-4.0 behind Kyutai's gate,
+  which forbids cloning without "explicit and lawful consent" and passing output off as genuine
+  recordings; cosette and jean are non-commercial and already left out).
+- **Worth knowing, not in the answers:** many cards ask for consent before cloning and for
+  AI-generated audio to be marked; MioTTS and MioCodec list Emilia (CC-BY-NC) among their training
+  data while licensing Apache-2.0 — the reason OmniVoice and ZipVoice give for going
+  non-commercial; Audio8's `tokenizer.json` is byte-identical to Fish S2 Pro's (Fish's model type
+  is `fish_qwen3_omni`, so the file may be Qwen3's own tokenizer — not checked);
+  Confucius4-TTS's training used a MaskGCT semantic codec, which inference does not load.
 
 ---
 

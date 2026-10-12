@@ -21,3 +21,13 @@ export const DIRECTION = {
 
 export const TESTED = null;
 export const BEST_FOR = [];
+
+// Its licence in plain words — can a person sell an audiobook made with it? Our reading of the
+// licence at its source, checked 2026-10-11 (RESEARCH §10.13); the licence itself is what counts.
+// audio.cpp's table says "No"; our reading of the licence differs (RESEARCH §10.13).
+export const LICENCE = {
+  commercial: "Conditional",
+  summary: "Yes for your own audiobooks, podcasts and videos, if you credit Boson AI’s Higgs Audio where listeners can see it — no revenue cap. Offering Higgs to other people as a service needs Boson’s paid licence.",
+  url: "https://huggingface.co/bosonai/higgs-tts-3-4b/blob/main/LICENSE",
+  checked: "2026-10-11",
+};
