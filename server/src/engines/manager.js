@@ -23,6 +23,7 @@
 // state read without I/O needs no lock. Lock order: activity → the manager's lock.
 
 import { existsSync, readdirSync, readFileSync, realpathSync, rmdirSync, rmSync, statSync, unlinkSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { stores } from "@delebash/llm-runner/llm";
@@ -1122,6 +1123,38 @@ export class EngineManager {
     );
   }
 
+  /** A CPU load reads its weights into this machine's memory: refused, before anything moves,
+   * when its files and the safety margin are more than the memory free now — crediting what the
+   * kind's current occupant gives back when it is replaced (decided 2026-10-12, TASKS "The
+   * download test's last findings" 4(a)). The AI model is named when it is loaded: it can hold
+   * more of this memory than any speech model (17 GB, RESEARCH §10.14). */
+  async _admitSystemMemory(m, kind, variant) {
+    const filesOf = (mod, id) => {
+      const row = (attr(mod, "VARIANTS", null) || []).find((r) => r.id === id);
+      return row ? (row.sources || []).reduce((n, s) => n + (s.size_bytes || 0), 0) / (1024 * 1024) : 0;
+    };
+    const filesMb = filesOf(m.module, variant);
+    if (!filesMb) return;
+    const occ = this._loaded.get(kind) ?? null;
+    const creditMb = occ !== null && (occ.placement ?? "gpu") === "cpu" ? filesOf(occ.manifest.module, this._currentVariants.get(occ.manifest.id)) : 0;
+    const margin = EngineManager._safetyMarginMb();
+    const freeMb = os.freemem() / (1024 * 1024) + creditMb;
+    if (filesMb + margin <= freeMb) return;
+    let ai = [];
+    try {
+      const hw = await this._hardware();
+      ai = ((await arbiter.getArbiter().snapshot(hw)).reservations || []).filter((r) => r.kind === "llm" && !r.asleep && !r.pinned);
+    } catch {}
+    const gb = (mb) => Math.round((mb / 1024) * 10) / 10;
+    throw new RuntimeError(
+      `not enough memory to load ${m.name} on the CPU: its files are about ${gb(filesMb)} GB ` +
+        `(+${margin} MB safety margin) but only ${gb(freeMb)} GB of this machine's ${gb(os.totalmem() / (1024 * 1024))} GB is free. ` +
+        (ai.length
+          ? `The AI model (${ai.map((r) => r.key.replace(/^llm:/, "")).join(", ")}) is loaded and holds memory too — unload it first, or close other programs.`
+          : "Close other programs, or pick a smaller model."),
+    );
+  }
+
   /** Book the confirmed load at `mb` with its honest provenance ("measured" | "computed"). Key
    * = "kind:engine_id"; `evictFn` is our evictor. */
   _reserveEngine(m, kind, mb, source) {
@@ -1526,6 +1559,7 @@ export class EngineManager {
       // occupant gives back (§5 B5). A model never measured here gets no arithmetic: it loads,
       // calibrates, is measured.
       device = placement === "cpu" ? "cpu" : this._resolveDevice(m, device);
+      if (placement === "cpu" && !already) await this._admitSystemMemory(m, targetKind, planned);
       const books = await this._booksMemory(device);
       const price = books && !already ? this._priceMb(targetKind, engineId, planned, device) : 0;
       if (price > 0) {

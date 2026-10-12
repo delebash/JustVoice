@@ -407,9 +407,25 @@ BUILT:  2026-10-12 — 1: `generatedSpeechRequest` sends the clip's words to a s
         `generated.needOf` — Auto and the tab's line go by the larger of the estimate and the
         download; the wire's `need_gb`; the reason "its files are about 12 GB, more than this
         card's 8 GB". User doc: engines.md "Memory, before you load", "Not available yet".
-OPEN:   4(a) — built, not committed: a CPU load refused when its files and the safety margin are
-        more than the free memory; its message waits on the user's word. 4(b), as a plan.
-GO:     given 2026-10-12 ("your rec on all go").
+        4(a): `manager._admitSystemMemory` — before a CPU load, its files and the kit's safety
+        margin against `os.freemem()`, crediting a CPU occupant it replaces; the approved
+        message, naming a loaded AI model; a test. User doc: engines.md "Where each model runs".
+OPEN:   4(b) — see below.
+        4(a) and 4(b) (decided 2026-10-12) — shown: "4(a), the RAM check, waiting on your word.
+        It refuses a CPU load when the model's files plus the 1 GB safety margin are more than
+        the free RAM … 'not enough memory to load OmniVoice on the CPU: its files are about 1.3 GB
+        (+1024 MB safety margin) but only 1.5 GB of this machine's 32 GB is free. Close other
+        programs, or pick a smaller model.' When an AI model is loaded, the last sentence
+        becomes: 'The AI model (gemma-4-26b-a4b-qat) is loaded and holds memory too — unload it
+        first, or close other programs.' · 4(b), the plan … Measuring: the kit already reads
+        system RAM in use (`hardware._usedPoolMb`) … take the same difference across every load.
+        NOT STANDARD alternative: … `pidusage` … Storing: a `ram_model_mb` field beside
+        `vram_model_mb` in the kit's measurement store … Checking: record it in
+        `_recordSpeechLoad` …, and check it before a load next to the card's check." Questions:
+        "1. Ship 4(a) with that wording? 2. For 4(b), build it with the kit's existing system-RAM
+        difference rather than `pidusage`? 3. Delete the 3 GB OuteTTS file from my scratch
+        folder?" — a lean of yes, the existing difference, yes. The user: "youre rec go".
+GO:     given 2026-10-12 ("your rec on all go"; 4(a), 4(b) and the file: "youre rec go").
 
 ### A fifth commercial-use word: "Separate licence" (decided 2026-10-11)
 STATE:  DECIDED 2026-10-11 — the user: "i think it is misleading to say no commersial use for

@@ -455,6 +455,17 @@ free nothing.
 loaded model's place reloads it in its new place. A machine whose speech
 runtime is the CPU build runs everything on the CPU and says so.
 
+**A model on the CPU needs room in your computer's memory.** On the CPU its
+weights are read into your computer's memory, so before it loads there,
+JustVoice checks that the memory free now holds its files plus a safety margin
+(1 GB — the same margin the graphics card's check keeps), counting what the
+model it replaces gives back. If not, the load stops before anything moves and
+says how much is free: *not enough memory to load OmniVoice on the CPU: its
+files are about 1.3 GB (+1024 MB safety margin) but only 1.5 GB of this
+machine's 32 GB is free. Close other programs, or pick a smaller model.* When
+an AI model is loaded — a large one can hold more of this memory than any
+speech model — the message names it and suggests unloading it first.
+
 The 2× bar is `speech_runtime.cpu_min_realtime` in the settings (see
 [Settings reference](settings-reference.md)); the CPU threads are on the
 runtime row.

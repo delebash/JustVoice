@@ -2901,8 +2901,10 @@ corrected above.
   defaults 13.3 GB, the smallest set 6.1 GB. Cloning from a clip without a voice description
   also needs more than the words: "Without `instruct`, `--text` must contain the complete
   upstream instruction, not just the words to speak." Catalog status: experimental.
-- **No RAM check before a CPU load.** The speech manager checks the card's memory before a load;
-  nothing checks system RAM (a check is decided, TASKS "The download test's last findings" 4(a)). Auto sends a model whose estimate is more
+- **No RAM check before a CPU load** (until 2026-10-12). The speech manager checked the card's
+  memory before a load; nothing checked system RAM. Since 2026-10-12 a CPU load is refused when
+  its files and the safety margin are more than the memory free (`manager._admitSystemMemory`,
+  TASKS "The download test's last findings" 4(a)). Auto sends a model whose estimate is more
   than the card to the CPU — MOSS-TTS v1.5 (est. 18 GB, 12.3 GB of weights) and DramaBox
   (est. 16 GB, 17.6 GB) would load there on a machine with less RAM free. RAM use on the card
   doesn't follow the files: MOSS-TTS Local (7.0 GB) took about 11 GB of RAM on CUDA, Confucius4

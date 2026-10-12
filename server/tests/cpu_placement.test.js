@@ -6,6 +6,7 @@
 // else the card with the AI model unloaded first), the load door, KittenTTS and Pocket TTS
 // requests and the Kyutai terms gate, and the runtime processes (the port of
 // tests/test_cpu_placement.py).
+import os from "node:os";
 import * as stores from "@delebash/llm-runner/llm/stores";
 import * as hardware from "@delebash/llm-runner/runner/hardware";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
@@ -72,6 +73,21 @@ test("auto_goes_by_the_files_when_they_are_more_than_the_estimate_or_there_is_no
   }
   // Its q8 weights (7 GB) are under its estimate: the estimate decides, and fits.
   expect((await mgr.placementFor(mgr.getManifest("moss_tts_local"), "tts", "moss_tts_local-q8"))[0]).toBe("gpu");
+});
+
+test("a_cpu_load_needs_its_files_and_the_margin_in_free_memory", async () => {
+  // decided 2026-10-12 (4a): OmniVoice's 1.3 GB of files and the 1 GB margin against what's free.
+  const mgr = mgrFor();
+  const m = mgr.getManifest("omnivoice");
+  vi.spyOn(os, "totalmem").mockReturnValue(32 * 1024 ** 3);
+  vi.spyOn(os, "freemem").mockReturnValue(1.5 * 1024 ** 3);
+  await expect(mgr._admitSystemMemory(m, "tts", "omnivoice-q8")).rejects.toThrow(
+    "its files are about 1.3 GB (+1024 MB safety margin) but only 1.5 GB of this machine's 32 GB is free. Close other programs",
+  );
+  aiOnCard();
+  await expect(mgr._admitSystemMemory(m, "tts", "omnivoice-q8")).rejects.toThrow("The AI model (gemma) is loaded and holds memory too");
+  vi.spyOn(os, "freemem").mockReturnValue(4 * 1024 ** 3);
+  await expect(mgr._admitSystemMemory(m, "tts", "omnivoice-q8")).resolves.toBeUndefined();
 });
 
 test("auto_ignores_the_estimate_for_a_hand_wired_model", async () => {
