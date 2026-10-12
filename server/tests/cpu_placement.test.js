@@ -50,6 +50,23 @@ test("a_cpu_build_runs_everything_on_the_cpu", async () => {
   expect(why).toContain("CPU build");
 });
 
+test("auto_runs_a_generated_model_too_big_for_the_card_on_the_cpu", async () => {
+  // audio.cpp says OmniVoice needs about 10 GB; this card has 8 (decided 2026-10-11, answer 4).
+  const mgr = mgrFor();
+  const [where, why] = await mgr.placementFor(mgr.getManifest("omnivoice"), "tts", "omnivoice-q8");
+  expect(where).toBe("cpu");
+  expect(why).toContain("audio.cpp says it needs about 10 GB");
+  // Once a load measured it here, the measurement decides, not the estimate.
+  vi.spyOn(EngineManager.prototype, "_priceMb").mockReturnValue(3000);
+  expect((await mgr.placementFor(mgr.getManifest("omnivoice"), "tts", "omnivoice-q8"))[0]).toBe("gpu");
+});
+
+test("auto_ignores_the_estimate_for_a_hand_wired_model", async () => {
+  // audio.cpp lists Chatterbox Multilingual at 12 GB; it runs on an 8 GB card, measured.
+  const mgr = mgrFor();
+  expect((await mgr.placementFor(mgr.getManifest("chatterbox"), "tts", "chatterbox-multilingual-v2-q8"))[0]).toBe("gpu");
+});
+
 test("auto_takes_the_card_when_nothing_else_is_on_it", async () => {
   const mgr = mgrFor();
   expect((await mgr.placementFor(mgr.getManifest("kokoro"), "tts", "kokoro-82m-q8"))[0]).toBe("gpu");

@@ -64,6 +64,11 @@ export function router() {
       if (v.on_disk) v.local_dir = String(speechCache.variantDir(st.dataDir, id, v.id));
     }
     await _annotatePlacement(id, variants);
+    // What an earlier load measured on this machine's card — the list's memory line prefers it
+    // to audio.cpp's estimate.
+    const mgr = manager.getManager();
+    const kind = mgr.getManifest(id).kind;
+    for (const v of variants) v.measured_mb = mgr.measuredMbFor(kind, id, v.id);
     // How each speech model is directed — written direction, tags, or sliders only (the Engines
     // page, 2026-10-09). Speech recognition speaks nothing, so it has none.
     if (manager.getManager().getManifest(id).kind === "tts") {

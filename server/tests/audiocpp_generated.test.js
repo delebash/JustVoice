@@ -40,7 +40,7 @@ test("every generated model is one download per precision, with a capability row
   expect(lookup("index_tts2-indextts25").display_name).toBe("IndexTTS2.5");
 });
 
-test("a model with no family file can't be directed and isn't tested", () => {
+test("a model whose family file says nothing of direction can't be directed and isn't tested", () => {
   const row = lookup("audio8_tts");
   expect(row.supports_instruct_freeform).toBe(false);
   expect(row.notes).toContain("Not tested by JustVoice yet.");
@@ -113,6 +113,46 @@ test("a listing family gets only the options its spec lists, typed and in range"
 
 test("a generated model refuses a voice with no clip by name", () => {
   expect(() => slot.toSpeechRequest(rowOf("cosyvoice3", "cosyvoice3-q8"), { voice_id: "v", text: "Hi." })).toThrow(/speaks only cloned voices/);
+});
+
+test("the gate follows our reading of the licence, and says it in plain words", () => {
+  const engines = manager.discoverEngines();
+  // audio.cpp says No; its Creator Use Grant lets a user sell their own audiobooks with credit.
+  const higgs = engines.get("higgs_audio_tts").module.TERMS;
+  expect(higgs.gates).toBe("download");
+  expect(higgs.text).toContain("credit Boson AI");
+  expect(higgs.reading).toContain('licence table says "No"');
+  // audio.cpp says Yes; the authors keep cloning to academic research: gated.
+  expect(engines.get("fireredtts3").module.TERMS.gates).toBe("download");
+  // Not in audio.cpp's table; Apache-2.0 at its source: no gate.
+  expect(engines.get("moss_ttsd").module.TERMS).toBeUndefined();
+});
+
+test("every engine's facts: our licence word beside audio.cpp's, its status, tested, best for", () => {
+  const engines = manager.discoverEngines();
+  const higgs = generated.engineFacts(engines.get("higgs_audio_tts").module);
+  expect(higgs.licence).toMatchObject({ commercial: "Conditional", table: "No" });
+  expect(higgs.catalog_status).toBe("supported");
+  expect(higgs.tested).toBeNull();
+  // A hand-wired engine reads its families' curated file — Chatterbox runs two, one carries it.
+  const chatterbox = generated.engineFacts(engines.get("chatterbox").module);
+  expect(chatterbox.licence).toMatchObject({ name: "MIT", commercial: "Yes", table: "Yes" });
+  expect(chatterbox.tested.note).toBe("Wired by hand and measured by JustVoice.");
+  expect(chatterbox.best_for.length).toBe(2);
+  for (const [id, m] of engines) {
+    if (m.module.GENERATED || m.module.VARIANTS?.some((v) => v.audiocpp)) {
+      expect(generated.engineFacts(m.module).licence, id).not.toBeNull();
+    }
+  }
+});
+
+test("a language list that describes is shown as audio.cpp words it, never counted as one language", () => {
+  expect(generated.speaks(generated.CATALOG.families.higgs_audio_tts)).toEqual({ languages: [], note: "100+ languages" });
+  expect(generated.speaks(generated.CATALOG.families.cosyvoice3).note).toBe("");
+  const omni = generated.generatedEngines().get("omnivoice").VARIANTS;
+  expect(omni.every((v) => v.languages_note === "600+ languages")).toBe(true);
+  // bf16 and f16 are both 16-bit: the names say which.
+  expect(omni.map((v) => v.name)).toEqual(["OmniVoice", "OmniVoice (16-bit, bf16)", "OmniVoice (16-bit, f16)"]);
 });
 
 test("a licence that isn't Yes gates the first download until accepted", () => {

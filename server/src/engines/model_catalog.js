@@ -47,6 +47,10 @@ export function modelsFor(engineId) {
         weights_license: Object.hasOwn(r, "weights_license") ? r.weights_license : "",
         hf_repo: firstOf(sources, "hf_repo"),
         url: firstOf(sources, "url"),
+        languages_note: r.languages_note || "",
+        // audio.cpp's minimum graphics memory, for the models it describes and we don't wire by
+        // hand (the hand-wired ones are measured at load — the 2026-08-14 ruling).
+        min_vram_gb: r.audiocpp?.generated ? (r.min_vram_gb ?? null) : null,
       }),
     );
   }

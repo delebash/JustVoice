@@ -32,12 +32,13 @@ numbers look good.
 
 > **Licences are shown, not hidden.** Every model keeps the licence of the
 > people who trained it, and some don't allow commercial use. Speech engines
-> shows each one's verdict in audio.cpp's own words — *Commercial use: Yes,
-> Conditional, No or Unclear* — and a model that isn't a plain "Yes" asks you
-> to accept its licence once, before its first download. Kokoro, KittenTTS,
-> Pocket TTS, Qwen3-TTS, Chatterbox and VoxCPM2 all allow commercial use.
-> (Until 2026-10-11 non-commercial models were left out altogether, Higgs
-> Audio among them.)
+> labels each engine *Commercial use: Yes, Conditional, No or Unclear*, and
+> says in plain words what that means for selling an audiobook you made with
+> it — hover the label, or open the engine. A model that isn't a plain "Yes"
+> asks you to accept its licence once, before its first download. Kokoro,
+> KittenTTS, Pocket TTS, Qwen3-TTS, Chatterbox and VoxCPM2 all allow commercial
+> use. (Until 2026-10-11 non-commercial models were left out altogether, Higgs
+> Audio among them.) See [Commercial use, in plain words](#commercial-use-in-plain-words).
 
 ## The speech runtime
 
@@ -293,23 +294,99 @@ audio.cpp's own description of each model — what it does, its languages, its
 settings, its download files and its licence. When audio.cpp adds a model, the
 next JustVoice update lists it.
 
-**What each row tells you, before you download anything:**
+**What each engine tells you, before you download anything:**
 
-- **Its licence and commercial use**, in audio.cpp's words: *Yes*,
-  *Conditional* (allowed under a condition the note names, such as a revenue
-  limit), *No* (research or personal use only) or *Unclear*. Anything that
-  isn't a plain *Yes* asks you to accept its licence once, before its first
-  download — the same prompt Pocket TTS shows for Kyutai's terms. The licence
-  text at its source is what counts; the app's summary is there to help you
-  find it.
+- **Commercial use** — *Yes*, *Conditional*, *No* or *Unclear* on the engine's
+  head, and its licence in plain words when you hover it or open the engine.
+  See [Commercial use, in plain words](#commercial-use-in-plain-words) below.
 - **audio.cpp's status for it** — *supported*, *community* or *experimental*.
   Models audio.cpp marks as work in progress aren't listed.
-- **Tested by JustVoice**, with what we found, or **Not tested by JustVoice
-  yet**. An untested model works as audio.cpp describes it; we just haven't
-  listened to it ourselves.
+- **Tested by JustVoice**, with what we found and what it's best for, or **Not
+  tested by JustVoice yet**. An untested model works as audio.cpp describes it;
+  we just haven't listened to it ourselves. The engines JustVoice wired by hand
+  (Kokoro, KittenTTS, Pocket TTS, Qwen3-TTS, Chatterbox, VoxCPM2, Qwen3-ASR) are
+  all tested.
 - **Whether it takes direction.** A model JustVoice knows how to direct takes
   a line's emotion and direction; the others say *Can't be directed yet* and
   speak every line plainly in the cloned voice.
+- **How much graphics memory it needs** — see
+  [Memory, before you load](#memory-before-you-load).
+
+### Commercial use, in plain words
+
+The question each label answers is one: *can you sell an audiobook you made
+with this model, on your own machine?* JustVoice read every speech model's
+licence at its source on 2026-10-11 and wrote the answer in plain words. Hover
+the label for it, or open the engine, where it sits under *Best for* and
+*Tested by JustVoice* — the opened engine is the way on a phone, which has no
+hover. Each answer names the licence, the date it was read, and a link to the
+licence itself, which is what counts.
+
+| Label | What it means |
+|---|---|
+| **Yes** | Sell what you make with it — no conditions. |
+| **Conditional** | Sell what you make if you meet its conditions — credit, a revenue cap. The plain words say which. |
+| **No** | Personal and research use only — don't sell what you make. |
+| **Unclear** | The licence doesn't say, or its makers contradict it. Treat it as No until it's checked. |
+
+The **Commercial use** filter above the list shows the same meanings under each
+choice.
+
+**Where JustVoice's answer differs from audio.cpp's.** audio.cpp keeps a
+licence table of its own, and it mostly reads a licence's title. Where reading
+the whole licence gave a different answer, the label shows JustVoice's word and
+the plain words say what audio.cpp's table says:
+
+| Model | audio.cpp | JustVoice | Why |
+|---|---|---|---|
+| Higgs Audio 3 | No | **Conditional** | Its *Creator Use Grant* lets you sell your own audiobooks, podcasts and videos if you credit "Boson AI's Higgs Audio" where listeners can see it; no revenue cap |
+| IndexTTS 2 / 2.5 | Conditional | **Unclear** | Its own licence caps revenue at RMB 100 million a year (the Chinese text, which governs — the English says 1 billion), but one part it runs, MaskGCT's semantic codec, is non-commercial |
+| FireRedTTS3, FireRedAudio | Yes | **Unclear** | Apache-2.0, but their makers write that voice cloning — all JustVoice uses them for — is "solely for academic research purposes" |
+| AuK | Yes | **No** | It can't run without Qwen2.5-Omni-3B, whose licence is research-only |
+| ZipVoice | Unclear | **No** | Its makers added a non-commercial licence (CC-BY-NC) to it on 2026-10-10 |
+| MOSS-TTSD, VieNeu-TTS v3 Turbo | not listed | **Yes** | Apache-2.0 at their source |
+
+A model that isn't a plain *Yes* asks you to accept its licence once, before
+its first download, showing the same plain words — the same prompt Pocket TTS
+shows for Kyutai's terms.
+
+### Memory, before you load
+
+Each model row says how much graphics memory it needs, before you download
+it:
+
+- **about X GB, measured here** — an earlier load measured it on this machine.
+  That number wins.
+- **needs about X GB · fits this card** — audio.cpp's own estimate, for a model
+  JustVoice hasn't measured yet.
+- **needs about X GB · too big for this card — Load runs it on the CPU** —
+  audio.cpp's estimate is more than your card has, so *Auto* under
+  [Runs on](#where-each-model-runs--the-graphics-card-or-the-cpu) loads it on
+  the CPU. Once a load measures it on your card, the measurement decides
+  instead.
+- **memory not measured yet** — neither is known. The engines JustVoice wired
+  by hand say this until their first load, because their memory is measured,
+  never estimated.
+
+The **Fits this card** filter keeps the models whose number fits your card.
+A model whose language list is a description rather than names shows it as
+audio.cpp words it — *100+ languages* for Higgs Audio, *600+ languages* for
+OmniVoice.
+
+### Finding a model
+
+Above the list, beside the search and the **All · TTS · STT · Cloning ·
+Built-in voices** chips, a second row narrows and orders it:
+
+- **Commercial use** — any, or one of the four labels.
+- **Tested by JustVoice** — only engines we have tested.
+- **Takes direction** — only models that take written direction or tags.
+- **Fits this card** — only models whose memory fits your graphics card
+  (shown when there is one).
+- **Sort** — by name, download size, memory needed or commercial use.
+
+When the filters leave nothing, the list says so and offers **Clear
+filters**.
 
 **Which ones take direction, and how** — each the way its authors document it:
 
@@ -526,7 +603,7 @@ direction, tags, or only pace, pitch and gain.
 | Someone's own voice, with per-line emotion tags | Chatterbox Turbo or Nano — 19 tags | English only; no written direction |
 | Someone's own voice in another language | Chatterbox Multilingual — 23 languages | No written direction, no tags |
 | Cloning, designing and written direction together | VoxCPM2 — 30 languages | The largest download (2.8 GB at 8-bit) |
-| Someone's own voice, acting each line's emotion | IndexTTS 2.5, from [audio.cpp's other models](#every-other-model-audiocpp-has) — tested by JustVoice: it acted 12 of 21 lines like the book in a blind test and kept the cloned voice | Commercial use is *Conditional* (accept its licence first); no muttering, whispering or shouting; 3.5 GB |
+| Someone's own voice, acting each line's emotion | IndexTTS 2.5, from [audio.cpp's other models](#every-other-model-audiocpp-has) — tested by JustVoice: it acted 12 of 21 lines like the book in a blind test and kept the cloned voice | Commercial use is *Unclear* — [why](#commercial-use-in-plain-words) (accept its licence first); no muttering, whispering or shouting; 3.5 GB |
 | The newest models | [Every other model audio.cpp has](#every-other-model-audiocpp-has) | Most are *Not tested by JustVoice yet*; several are non-commercial |
 
 Each model's row says the same with its direction chip (see
@@ -586,7 +663,8 @@ Each engine group expands into its model rows, and each row carries the model's
 
 - **Language chip** — the language's name (*English*) for single-language
   models, *23 languages* for multilingual ones (hover for the full list, by
-  name).
+  name), or audio.cpp's own words where it describes rather than lists
+  (*100+ languages*).
 - **Capability chips** — `CLONING` (clones a voice from a short clean sample)
   and `BUILT-IN · N` (ships N built-in voices). The filter row above the list
   (**All · TTS · STT · Cloning · Built-in voices**) filters on exactly these
@@ -596,14 +674,19 @@ Each engine group expands into its model rows, and each row carries the model's
   VoxCPM2), `✓ TAGS` (the model's own tags — Chatterbox Turbo and Nano) or
   `SLIDERS ONLY` (pace, pitch and gain). The same words as Cast and a
   persona's page. Speech recognition has none.
-- **Licence chip** — the model's *weights* licence. Every bundled model
-  permits selling your generated output.
+- **Status chip** — audio.cpp's own status for the model (*supported*,
+  *community*, *experimental*).
 - **Download size · on disk** — the verified download size, plus "on disk"
   once every file is present.
-- **Measured memory** — on the loaded row: "X GB measured" once this machine
-  has measured the model's real footprint, "not measured yet" on its first
-  load (the same numbers as the memory strip at the top of the console —
-  nothing is ever guessed).
+- **Memory** — before a load, what an earlier load measured here or
+  audio.cpp's estimate against your card ([Memory, before you
+  load](#memory-before-you-load)); on the loaded row, "X GB measured" once this
+  machine has measured the model's real footprint, "not measured yet" on its
+  first load (the same numbers as the memory strip at the top of the console).
+
+The licence is on the engine's head, not on each row: **Commercial use** with
+its plain words on hover ([Commercial use, in plain
+words](#commercial-use-in-plain-words)).
 
 The **⋯ menu** on each row holds the less-common verbs:
 

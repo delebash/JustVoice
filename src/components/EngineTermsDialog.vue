@@ -57,7 +57,7 @@ onBeforeUnmount(() => window.removeEventListener(TERMS_EVENT, open));
     :title="engine.terms.title" max-width="620px" @close="close">
     <p v-if="forDownload" class="engine-terms__lede">
       {{ engine.name }}'s licence isn't a plain yes for commercial use, so it's yours to read before
-      you download the model. What follows is audio.cpp's summary of it.
+      you download the model. Here it is in plain words.
     </p>
     <p v-else class="engine-terms__lede">
       JustVoice downloads {{ engine.name }} from a copy that needs no sign-in.
@@ -65,10 +65,13 @@ onBeforeUnmount(() => window.removeEventListener(TERMS_EVENT, open));
       Built-in voices need no acceptance.
     </p>
     <div class="jv-banner engine-terms__text">{{ engine.terms.text }}</div>
-    <p class="jv-hint">
+    <p v-if="forDownload" class="jv-hint">
+      {{ engine.terms.reading }}. The licence text at its source is what counts — you accept once, on this install.
+      <a v-if="engine.terms.url" href="#" @click.prevent="openExternal(engine.terms.url)">Read the licence at its source</a>.
+    </p>
+    <p v-else class="jv-hint">
       You accept once, on this install.
-      <a v-if="forDownload && engine.terms.url" href="#" @click.prevent="openExternal(engine.terms.url)">Read the licence at its source</a>
-      <a v-else-if="!forDownload" href="#" @click.prevent="openExternal(engine.terms.url)">Read them where {{ engine.terms.owner }} publishes them</a>.
+      <a href="#" @click.prevent="openExternal(engine.terms.url)">Read them where {{ engine.terms.owner }} publishes them</a>.
     </p>
     <template #footer>
       <UiButton intent="ghost" label="Not now" @click="close" />

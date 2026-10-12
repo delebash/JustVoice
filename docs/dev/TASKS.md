@@ -348,6 +348,37 @@ OPEN:   the real tab with the rest of slice 4 — the server's commercial-use wo
         and TERMS text still come from audio.cpp's table until then.
 GO:     given 2026-10-11 ("your rec on all go").
 
+### Speech engines: the real tab, the Unclear wording, the language count, then the download test (decided 2026-10-11)
+STATE:  DECIDED 2026-10-11 — shown: "1. Is the mock OK? If so, go to build the real tab. 2. Change
+        the Unclear hint to 'The licence doesn't say, or its makers contradict it. Treat it as No
+        until it's checked.'? … My lean: yes on 1 and 2, then the download test right after the
+        tab." Then: "the mock shows Higgs as '1 language' … audio.cpp lists Higgs's languages as a
+        single entry, the text '100+ languages' … The fix is to show audio.cpp's own wording
+        ('100+ languages') whenever its list is a description rather than language codes. Want
+        that fixed? It goes in the mock and the server." The user: "your rec on all go".
+WHY:    the mock is the design; the real tab still shows audio.cpp's one word and a wrong
+        language count; the download test is slice 2's acceptance (TASKS "Build the engine
+        list", answer 7).
+NOT:    the fork questions, the LGPL ffmpeg and the hand-wired engines' research fixes — no rec
+        was given with this go, so they stay open.
+BUILT:  2026-10-11 — the real tab (SpeechEnginesTab.vue): the commercial-use label on each
+        engine's head with its plain words on hover and in the opened engine, the tested and
+        status chips, best for, the second filter row (commercial use with each meaning, tested,
+        takes direction, fits this card, sort), the memory line (measured here, else audio.cpp's
+        estimate; Auto puts an unmeasured generated model on the CPU when it's more than the
+        card), "100+ languages" as audio.cpp words it, the empty state; the licence prompt in
+        plain words with the gate following our reading; the Unclear wording; the per-model
+        licence chip and its permissive-list guess removed. Shared words in
+        src/services/engineFacts.js, used by the mock too. Also: bf16/f16 twins named apart,
+        a generated model's description is its precision. User doc: engines.md "Commercial
+        use, in plain words", "Memory, before you load", "Finding a model".
+        Mock vs app at 1400 px: the app keeps what the mock leaves out — the hardware card,
+        Local/Online, the loaded-now rail, the runtime and dictionary rows, the picking table,
+        Set as default, the ⋯ menu, a model's description and its Runs on line; the memory
+        line sits beside the buttons in both.
+OPEN:   the download test (slice 2's acceptance), next.
+GO:     given 2026-10-11 ("your rec on all go").
+
 ### OPEN — the audio.cpp fork: keep it as it is, the DSP inside it, no routine pull requests?
 STATE:  OPEN — your call (asked 2026-10-11; the user: "these are questions not decisions").
         The user's questions and comments: "we cant rely on the maintainer accpeting anything …

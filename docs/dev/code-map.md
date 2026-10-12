@@ -409,10 +409,18 @@ joined in `manager.discoverEngines`), its models into capability rows
 (`capability_details.js`, `settingsOf` for typed settings) and its requests into
 `slot.generatedSpeechRequest`. What a spec can't say — how direction reaches the
 model, what testing found — is one file per family in
-`engines/audiocpp/curated/<family>.js` (`DIRECTION`, `PLAIN`, `TESTED`,
-`BEST_FOR`); a family without one is "can't be directed yet". A licence that
-isn't "Yes" gates downloads (`TERMS.gates: "download"`,
-`manager.requireDownloadTerms`).
+`engines/audiocpp/curated/<family>.js` (`LICENCE`, `DIRECTION`, `PLAIN`,
+`TESTED`, `BEST_FOR`) — every speech engine's family has one, the hand-wired
+ones too; one without `DIRECTION` is "can't be directed yet". `LICENCE` is our
+reading of the licence at its source (RESEARCH §10.13); `generated.engineFacts`
+serves it, audio.cpp's status, tested and best for on each engine
+(`engines_api._infoFromManifest`), and a licence our reading doesn't call "Yes"
+gates downloads (`TERMS.gates: "download"`, `manager.requireDownloadTerms`).
+A model's memory before a load is `measured_mb` (`manager.measuredMbFor`) or a
+generated model's `min_vram_gb`; Auto runs an unmeasured generated model on the
+CPU when that estimate is more than the card (`manager.placementFor`). The
+Speech engines tab's words for all of it are `src/services/engineFacts.js`,
+shared with its mock.
 
 | Piece | Where | What it does |
 |---|---|---|

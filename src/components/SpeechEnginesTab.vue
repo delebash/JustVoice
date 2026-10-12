@@ -21,10 +21,12 @@
   The LLM and Embeddings sections died here in the parity batch: language
   models live on the LLM providers tab of this same console. Kept from the
   old Engines page, deliberately: the hardware card, the loaded-now rail,
-  search + kind chips, the weights-licence attribution row (a licence
-  OBLIGATION when one applies), per-variant delete, and the folder-tab pair
+  search + kind chips, per-variant delete, and the folder-tab pair
   itself (Engines' approved mock v7). The fit dots died 2026-08-14 with the
-  invented per-variant vram_mb column.
+  invented per-variant vram_mb column; the engine list (2026-10-11, the mock at
+  #/mock/speech-engines) brought back a memory line from real numbers — measured here, else
+  audio.cpp's estimate — and put each engine's licence on its head in plain words, replacing
+  the per-model licence chip.
 
   Since the 2026-10-01 switch every engine here runs in the ONE speech runtime
   (audio.cpp): the runtime row at the top installs it and picks its backend;
@@ -50,6 +52,7 @@ import { UiMenu, UiMenuItem, UiMenuSeparator } from "@delebash/llm-ui";
 import SpeechProvidersPanel from "./SpeechProvidersPanel.vue";
 import { UiNumber, UiSelect, UiTable } from "@delebash/llm-ui";
 import { openEngineTerms } from "../services/engineTerms.js";
+import { COMMERCIAL_OPTIONS, COMMERCIAL_USE, SORTS, licClass, licTitle, memoryText, reading } from "../services/engineFacts.js";
 import { directionCell } from "../services/personaFacts.js";
 
 // "Picking an engine is picking what a voice can do" (mock _s13; the rows as approved
@@ -526,7 +529,9 @@ async function deleteModel(e, v) {
 }
 
 // ── Per-variant facts → row chips (phase ③, the §4 cloning ruling) ────
+// audio.cpp's own wording when its list describes rather than names ("100+ languages").
 function langText(v) {
+  if (v.languages_note) return v.languages_note;
   const ls = v.languages || [];
   if (!ls.length) return "";
   return ls.length === 1 ? languageName(ls[0]) || ls[0] : `${ls.length} languages`;
@@ -534,21 +539,18 @@ function langText(v) {
 function langTitle(v) {
   return (v.languages || []).map((c) => languageName(c) || c).join(" · ");
 }
-// Weights-licence chip — the kit's use-limited warn pattern, retold
-// honestly for JV: every bundled engine's weights permit commercial output
-// (Higgs died for that in 2026-06), so a gold ⚠ means an OBLIGATION rides the
-// licence (NOTICE.md has the authoritative copy). Pocket TTS (CC-BY-4.0,
-// added 2026-10-02) carries one — a credit to Kyutai; TADA's "Built with
-// Llama" left on 2026-10-01.
-const PERMISSIVE_LICENSES = new Set(["mit", "apache-2.0", "bsd-2-clause", "bsd-3-clause"]);
-function licenseWarn(v) {
-  return !!v.weights_license && !PERMISSIVE_LICENSES.has(v.weights_license.toLowerCase());
-}
-function licenseTitle(v) {
-  if (!v.weights_license) return "";
-  if (!licenseWarn(v)) return `${v.weights_license} — permissive; publishing your generated audio commercially is fine.`;
-  return `${v.weights_license} — commercial output is permitted, but an obligation rides this licence. See NOTICE.md.`;
-}
+// The engine's licence is a label on its head — "Commercial use: Yes · Conditional · No ·
+// Unclear", our reading of the licence at its source with audio.cpp's word beside it, in plain
+// words on hover and in the opened engine (decided 2026-10-11; services/engineFacts.js). It
+// replaced the old per-model licence chip and its permissive-list guess.
+
+// A model's memory before it loads (decided 2026-10-11, answer 4): measured here if an earlier
+// load measured it, else audio.cpp's estimate, against this card; a model too big for it runs on
+// the CPU (manager.placementFor). A discrete card only — shared memory has no card to fit.
+const cardMb = computed(() => (vram.value?.mem_arch === "discrete" ? vram.value.total_mb || null : null));
+const memoryOf = (v) => memoryText({ measuredMb: v.measured_mb, needGb: v.min_vram_gb }, cardMb.value);
+const fits = (v) => memoryOf(v).gb !== null && cardMb.value !== null && memoryOf(v).gb * 1024 <= cardMb.value;
+const directed = (v) => v.directed_by === "words" || v.directed_by === "tags";
 
 // Per-row measured-memory hint (§13): joins the vram endpoint's
 // reservations the same way vramFeed's hostCells does. Only the LOADED
@@ -645,10 +647,27 @@ const FILTERS = [
   { id: "cloning", label: "Cloning" },
   { id: "presets", label: "Built-in voices" },
 ];
+// The second row (decided 2026-10-11, the engine list's slice 4): commercial use, tested by
+// JustVoice, takes direction, fits this card, and the sort.
+const commercial = ref("all");
+const onlyTested = ref(false);
+const onlyDirected = ref(false);
+const onlyFits = ref(false);
+const sortBy = ref("name");
 function variantMatchesFilter(v) {
-  if (filterId.value === "cloning") return v.voice_cloning === true;
-  if (filterId.value === "presets") return (v.preset_voices || 0) > 0;
+  if (filterId.value === "cloning" && v.voice_cloning !== true) return false;
+  if (filterId.value === "presets" && !((v.preset_voices || 0) > 0)) return false;
+  if (onlyDirected.value && !directed(v)) return false;
+  if (onlyFits.value && !fits(v)) return false;
   return true;
+}
+// A filter about models, not engines, opens the engines to show which.
+const modelFiltered = () => filterId.value === "cloning" || filterId.value === "presets" || onlyDirected.value || onlyFits.value;
+function clearFilters() {
+  q.value = "";
+  filterId.value = "all";
+  commercial.value = "all";
+  onlyTested.value = onlyDirected.value = onlyFits.value = false;
 }
 function visibleVariantsFor(engineId) {
   return variantsFor(engineId).filter(variantMatchesFilter);
@@ -676,24 +695,38 @@ function engineVisible(e, sectionId) {
   if (deprecated(e) && e.status === "not_installed" && !q.value.trim()) return false;
   const f = filterId.value;
   if ((f === "tts" || f === "stt") && !engineCaps(e).includes(f)) return false;
-  if ((f === "cloning" || f === "presets") && !visibleVariantsFor(e.id).length) return false;
+  if (modelFiltered() && !visibleVariantsFor(e.id).length) return false;
+  if (commercial.value !== "all" && e.licence?.commercial !== commercial.value) return false;
+  if (onlyTested.value && !e.tested) return false;
   if (q.value.trim() && !searchBlob(e).includes(q.value.trim().toLowerCase())) return false;
   return true;
 }
+// The smallest of an engine's models, by download or by memory (unknown memory sorts last).
+function smallest(e, key) {
+  const vs = variantsFor(e.id);
+  if (!vs.length) return Number.POSITIVE_INFINITY;
+  return Math.min(...vs.map((v) => (key === "size" ? v.size_mb : (memoryOf(v).gb ?? Number.POSITIVE_INFINITY))));
+}
+const ORDER = {
+  name: (a, b) => (a.name || a.id).localeCompare(b.name || b.id),
+  size: (a, b) => smallest(a, "size") - smallest(b, "size"),
+  memory: (a, b) => smallest(a, "memory") - smallest(b, "memory"),
+  commercial: (a, b) => COMMERCIAL_USE.indexOf(a.licence?.commercial ?? "Unclear") - COMMERCIAL_USE.indexOf(b.licence?.commercial ?? "Unclear"),
+};
 const sectionData = computed(() =>
   SECTIONS.map((s) => {
     const list = engines.value.filter((e) => engineVisible(e, s.id));
-    const rank = { loaded: 0, installed: 1, not_installed: 2 };
-    list.sort((a, b) => (rank[a.status] ?? 3) - (rank[b.status] ?? 3));
+    list.sort((a, b) => ORDER[sortBy.value](a, b) || ORDER.name(a, b));
     const all = engines.value.filter((e) => engineCaps(e)[0] === s.id);
     const modelCount = all.reduce((n, e) => n + variantsFor(e.id).length, 0);
     return { ...s, engines: list, engineCount: all.length, modelCount };
   }).filter((s) => s.engineCount > 0),
 );
+const nothingShown = computed(() => enginesLoaded.value && engines.value.length > 0 && sectionData.value.every((s) => !s.engines.length));
 function isOpen(e) {
   if (expanded[e.id] !== undefined) return expanded[e.id];
   // A capability filter is a question about VARIANTS — show them.
-  if (q.value.trim() || filterId.value === "cloning" || filterId.value === "presets") return true;
+  if (q.value.trim() || modelFiltered()) return true;
   return e.status === "loaded" || anyTaskRunning(e.id);
 }
 function toggleOpen(e) { expanded[e.id] = !isOpen(e); }
@@ -777,6 +810,15 @@ onBeforeUnmount(() => {
           class="ev-chip" :class="{ on: filterId === f.id }" @click="filterId = f.id"
         >{{ f.label }}</button>
       </div>
+    </div>
+    <div class="ev-toprow">
+      <UiSelect v-model="commercial" :options="COMMERCIAL_OPTIONS" width="name" aria-label="Commercial use" />
+      <div class="ev-chips">
+        <button type="button" class="ev-chip" :class="{ on: onlyTested }" @click="onlyTested = !onlyTested">Tested by JustVoice</button>
+        <button type="button" class="ev-chip" :class="{ on: onlyDirected }" @click="onlyDirected = !onlyDirected">Takes direction</button>
+        <button v-if="cardMb" type="button" class="ev-chip" :class="{ on: onlyFits }" @click="onlyFits = !onlyFits">Fits this card</button>
+      </div>
+      <UiSelect v-model="sortBy" :options="SORTS" width="name" aria-label="Sort" />
     </div>
 
     <!-- The hardware card AND the memory budget strip both live ONCE per
@@ -894,6 +936,11 @@ onBeforeUnmount(() => {
       <UiTable class="jv-table-look" :data="PICKING" :columns="PICKING_COLUMNS" />
     </section>
 
+    <div v-if="nothingShown" class="jv-card ev-nomatch">
+      <p class="jv-lede">No engines match these filters.</p>
+      <UiButton intent="secondary" size="small" label="Clear filters" @click="clearFilters" />
+    </div>
+
     <!-- capability sections (speech only) -->
     <div v-for="sec in sectionData" :key="sec.id">
       <div class="ev-section-h">
@@ -915,6 +962,10 @@ onBeforeUnmount(() => {
           <span class="nm">{{ e.name }}</span><span class="id">{{ e.id }}</span>
           <span class="ev-caps">
             <span v-for="c in engineCaps(e)" :key="c" class="ev-cap" :class="c">{{ c.toUpperCase() }}</span>
+            <span v-if="e.licence" class="ev-lic" :class="licClass(e.licence.commercial)" :title="licTitle(e.licence)">Commercial use: {{ e.licence.commercial }}</span>
+            <span class="ev-cap" :class="{ tested: e.tested }" :title="e.tested?.note || 'Works as audio.cpp describes it; JustVoice hasn\'t listened to it yet'">
+              {{ e.tested ? 'TESTED BY JUSTVOICE' : 'NOT TESTED BY JUSTVOICE YET' }}
+            </span>
           </span>
           <span class="desc" :title="e.description">{{ e.description }}</span>
           <span class="gsum">
@@ -938,6 +989,13 @@ onBeforeUnmount(() => {
         </div>
 
         <div class="ev-gbody" v-if="isOpen(e)">
+          <div v-if="e.best_for?.length || e.tested || e.licence" class="ev-gnote">
+            <span v-if="e.best_for?.length">Best for: {{ e.best_for.join(" · ") }}</span>
+            <span v-if="e.tested">Tested by JustVoice: {{ e.tested.note }}</span>
+            <span v-if="e.licence">Commercial use: {{ e.licence.summary }}
+              <span class="ev-gnote-src">({{ reading(e.licence) }}<template v-if="e.licence.url"> ·
+                <a href="#" @click.prevent="openExternal(e.licence.url)">read it at its source</a></template>)</span></span>
+          </div>
           <template v-for="v in visibleVariantsFor(e.id)" :key="v.id">
           <div class="ev-model" :class="{ dim: osBlocked(e) }">
             <span class="vn">{{ v.name }}</span>
@@ -953,17 +1011,16 @@ onBeforeUnmount(() => {
               <span v-if="v.directed_by" class="ev-cap"
                 :class="{ directed: directionCell(v.directed_by).intent === 'success' }"
                 :title="directionCell(v.directed_by).title">{{ directionCell(v.directed_by).label.toUpperCase() }}</span>
-              <span v-if="v.weights_license" class="ev-lic" :class="{ 'ev-lic--warn': licenseWarn(v) }"
-                :title="licenseTitle(v)"><template v-if="licenseWarn(v)">⚠ </template>{{ v.weights_license }}</span>
+              <span v-if="e.catalog_status" class="ev-cap" title="audio.cpp's own status for this model">{{ e.catalog_status.toUpperCase() }}</span>
             </span>
-            <!-- Download size only — no memory claim. The footprint is
-                 measured at load (the budget strip shows it); a number
-                 typed here would be an invention (the 2026-08-14 ruling). -->
             <span class="vmeta">{{ fmtDisk(v.size_mb) }}<template v-if="v.on_disk === true"> · on disk</template></span>
             <span class="vdesc" :title="v.description">{{ v.description }}</span>
             <span class="right">
               <span v-if="modelLoaded(e, v)" class="ev-badge loaded">● Loaded</span>
               <span v-if="measuredHint(e, v)" class="ev-memhint" :title="measuredHint(e, v).title">{{ measuredHint(e, v).text }}</span>
+              <!-- Before a load: measured here, else audio.cpp's estimate against this card
+                   (decided 2026-10-11, answer 4). -->
+              <span v-if="!modelLoaded(e, v)" class="ev-memhint"><span :class="{ 'jv-text-warn': memoryOf(v).warn }">{{ memoryOf(v).text }}</span></span>
               <UiButton v-if="modelLoaded(e, v)" intent="ghost" size="small" label="Unload model"
                 title="Free the slot — weights stay on disk" @click="unload(e)" />
               <!-- The LLM-catalog verb split (user ruling 2026-08-14): a

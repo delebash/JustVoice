@@ -15,6 +15,7 @@ import { HttpError } from "@delebash/llm-runner/platform/errors";
 import { opt, T } from "@delebash/llm-runner/platform/models";
 import { pyInt, strRepr } from "@delebash/llm-runner/platform/py";
 import { getState } from "../app_state.js";
+import { engineFacts } from "../engines/audiocpp/generated.js";
 import * as runtime from "../engines/audiocpp/runtime.js";
 import { CAPABILITY_DETAILS, lookup as lookupCapability } from "../engines/capability_details.js";
 import { computeStatus } from "../engines/catalog.js";
@@ -89,6 +90,8 @@ export function _infoFromManifest(manifest, status) {
     placement_reason: mgr.placementReasonFor(manifest.id),
     terms: _termsOf(manifest),
     terms_accepted: _termsAccepted(manifest.id),
+    // Its licence in plain words, audio.cpp's status, tested, best for (the Speech engines list).
+    ...(manifest.module ? engineFacts(manifest.module) : {}),
   };
 }
 

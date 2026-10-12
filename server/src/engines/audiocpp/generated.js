@@ -202,7 +202,16 @@ export function generatedModels() {
   return out;
 }
 
-const speaks = (fam) => (fam.languages || []).filter((l) => !NOT_LANGUAGES.has(l));
+// audio.cpp's wording where its language list describes rather than names ("100+ languages").
+const LANGUAGES_WORDING = /^\d+\+?\s+languages$/i;
+
+/** The languages a family speaks: the codes (and names) audio.cpp lists, and its own wording
+ * when the list is a description instead — shown as it is, never counted as one language. */
+export function speaks(fam) {
+  const all = (fam.languages || []).filter((l) => !NOT_LANGUAGES.has(l));
+  const note = all.find((l) => LANGUAGES_WORDING.test(l)) ?? "";
+  return { languages: all.filter((l) => l !== note), note };
+}
 
 /** A variant row (a model at one precision) in the hand-wired manifests' shape. */
 function variantRow(m, { pkg, main }) {
@@ -210,11 +219,14 @@ function variantRow(m, { pkg, main }) {
   const lic = licenceOf(m.fam);
   const name = modelName(m);
   const files = pkg.source.files.map((f) => f.path);
+  const langs = speaks(m.fam);
   return {
     id: `${m.modelId}-${tail}`,
     name: tail === "q8" ? name : `${name} (${PRECISION_WORDS[tail] || pkg.precision})`,
-    description: `${m.fam.description} ${PRECISION_WORDS[tail] ? `${PRECISION_WORDS[tail]} weights.` : ""}`.trim(),
-    languages: speaks(m.fam),
+    // The family's description is the engine's; a model's own line says only what differs.
+    description: PRECISION_WORDS[tail] ? `${PRECISION_WORDS[tail]} weights.` : "",
+    languages: langs.languages,
+    languages_note: langs.note,
     voice_cloning: true,
     voice_design: false,
     preset_voices: 0,
@@ -250,6 +262,14 @@ export function generatedEngines() {
     const lic = licenceOf(fam);
     const curated = CURATED[family] ?? null;
     const variants = models.flatMap((m) => m.packages.map((p) => variantRow(m, p)));
+    // bf16 and f16 are both "16-bit": where one model has both, each name says which.
+    for (const v of variants) {
+      if (variants.filter((w) => w.name === v.name).length > 1) v._twin = true;
+    }
+    for (const v of variants) {
+      if (v._twin) v.name = v.name.replace(/\)$/, `, ${v.id.slice(v.id.lastIndexOf("-") + 1)})`);
+      delete v._twin;
+    }
     const mod = {
       ID: family,
       NAME: fam.display_name,
@@ -274,22 +294,65 @@ export function generatedEngines() {
       GENERATED: { status: fam.status, licence: lic, tested: curated?.TESTED ?? null, best_for: curated?.BEST_FOR ?? [] },
     };
     // A licence that isn't a plain "Yes" is accepted once before the first download (decided
-    // 2026-10-11, answer 2) — Pocket's terms door, gating downloads.
-    if (lic.commercial_use !== "Yes") {
+    // 2026-10-11, answer 2) — Pocket's terms door, gating downloads. "Yes" is our reading of the
+    // licence at its source (TASKS "Every speech engine's licence in plain words"), and the
+    // prompt says it in plain words.
+    const facts = engineFacts(mod);
+    if (facts.licence && facts.licence.commercial !== "Yes") {
       mod.TERMS = {
-        owner: lic.licence,
+        owner: facts.licence.name,
         title: `${fam.display_name}'s licence`,
-        text:
-          `${lic.licence}. Commercial use, in audio.cpp's licence table: ${lic.commercial_use}.` +
-          (lic.notes ? ` ${lic.notes}` : "") +
-          " The licence text at its source is what counts.",
-        url: lic.url,
+        text: facts.licence.summary,
+        reading: readingOf(facts.licence),
+        url: facts.licence.url,
         gates: "download",
       };
     }
     _engines.set(family, mod);
   }
   return _engines;
+}
+
+/** "Apache-2.0 · JustVoice's reading, checked 2026-10-11 — audio.cpp's licence table says "No"":
+ * whose reading the summary is, and audio.cpp's word where ours differs. */
+export function readingOf(l) {
+  return `${l.name} · JustVoice's reading, checked ${l.checked}${l.table !== l.commercial ? ` — audio.cpp's licence table says "${l.table}"` : ""}`;
+}
+
+/** The audio.cpp families an engine's models come from: a generated engine's own, a hand-wired
+ * engine's from its variants (Chatterbox runs two). */
+export function familiesOf(mod) {
+  if (mod.GENERATED) return [mod.ID];
+  return [...new Set((mod.VARIANTS || []).map((v) => v.audiocpp?.family).filter(Boolean))];
+}
+
+/** What the Speech engines list says about an engine beyond its models: its licence in plain
+ * words beside audio.cpp's word, audio.cpp's status, what we found by testing, what it's best
+ * for — from the first of its families with a curated file. */
+export function engineFacts(mod) {
+  const fams = familiesOf(mod);
+  const family = fams.find((f) => CURATED[f]?.LICENCE) ?? fams[0];
+  const none = { licence: null, catalog_status: "", tested: null, best_for: [] };
+  if (!family) return none;
+  const cur = CURATED[family] ?? {};
+  const fam = CATALOG.families[family];
+  const table = fam ? licenceOf(fam) : null;
+  const ours = cur.LICENCE;
+  return {
+    licence: ours
+      ? {
+          name: ours.name ?? table?.licence ?? "",
+          commercial: ours.commercial,
+          table: table?.commercial_use ?? "Unclear",
+          summary: ours.summary,
+          url: ours.url || table?.url || "",
+          checked: ours.checked,
+        }
+      : null,
+    catalog_status: fam?.status ?? "",
+    tested: cur.TESTED ?? null,
+    best_for: cur.BEST_FOR ?? [],
+  };
 }
 
 /** One option value in the type the spec gives it, or undefined when it doesn't fit. */

@@ -929,6 +929,17 @@ export const Prerequisites = T.Object({
   gpu_runtimes: opt(T.Array(T.String()), []),
 });
 
+export const EngineLicence = T.Object({
+  name: T.String(),
+  // Our word: "Yes" | "Conditional" | "No" | "Unclear".
+  commercial: T.String(),
+  // audio.cpp's word, from its licence table.
+  table: T.String(),
+  summary: T.String(),
+  url: opt(T.String(), ""),
+  checked: opt(T.String(), ""),
+});
+
 export const EngineInfo = T.Object({
   id: T.String(),
   name: T.String(),
@@ -966,6 +977,15 @@ export const EngineInfo = T.Object({
   // The engine's own terms, when it has some — {title, text, url, gates}; None = no terms.
   terms: opt(nullable(T.Record(T.String(), T.String())), null),
   terms_accepted: opt(T.Boolean(), false),
+  // Its licence in plain words (TASKS "Every speech engine's licence in plain words"): our
+  // reading of the licence at its source and audio.cpp's word beside it; null = not an
+  // audio.cpp model.
+  licence: opt(nullable(EngineLicence), null),
+  // audio.cpp's own status for the model ("supported", "community", "experimental"); "" = none.
+  catalog_status: opt(T.String(), ""),
+  // What JustVoice found by testing it ({date, record, note}); null = not tested yet.
+  tested: opt(nullable(T.Record(T.String(), T.String())), null),
+  best_for: opt(T.Array(T.String()), []),
 });
 
 export const EnginesListResponse = T.Object({
@@ -1172,6 +1192,14 @@ export const ModelVariant = T.Object({
   // "words" | "tags" | "sliders" — how a speech model is directed (voice_model.directedBy);
   // null for speech recognition.
   directed_by: opt(nullable(T.String()), null),
+  // audio.cpp's own wording when its language list is a description ("100+ languages") rather
+  // than codes; "" = the codes in `languages` say it.
+  languages_note: opt(T.String(), ""),
+  // audio.cpp's minimum graphics memory for a model JustVoice hasn't wired by hand, in GB — shown
+  // until a load measures it, never booked (the engine list's plan §4); null = not stated.
+  min_vram_gb: opt(nullable(T.Number()), null),
+  // Its peak on this machine's graphics card, measured at an earlier load; null = not yet.
+  measured_mb: opt(nullable(T.Integer()), null),
 });
 
 export const ModelsListResponse = T.Object({
