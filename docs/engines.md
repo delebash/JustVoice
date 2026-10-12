@@ -370,9 +370,13 @@ it:
   that number is more than your card has, so *Auto* under
   [Runs on](#where-each-model-runs--the-graphics-card-or-the-cpu) loads it on
   the CPU, and the row's *Runs on* line says why: *audio.cpp says it needs about
-  10 GB, more than this card's 8 GB*, or *its files are about 12 GB, more than
-  this card's 8 GB*. Once a load measures it on your card, the measurement
-  decides instead.
+  10 GB, more than this card's 8 GB — this may be slow on the CPU*, or *its files
+  are about 12 GB, more than this card's 8 GB — this may be slow on the CPU*.
+  Unlike Auto's other move to the CPU, this one doesn't wait for a model to be
+  fast there — OmniVoice ran about 17 times slower than real time — so once it
+  has spoken a line, the line shows its measured speed in place of the warning
+  (*— 0.1× real time here*). Once a load measures it on your card, the
+  measurement decides instead.
 - **memory not measured yet** — neither is known. The engines JustVoice wired
   by hand say this until their first load, because their memory is measured,
   never estimated.

@@ -56,7 +56,10 @@ test("auto_runs_a_generated_model_too_big_for_the_card_on_the_cpu", async () => 
   const mgr = mgrFor();
   const [where, why] = await mgr.placementFor(mgr.getManifest("omnivoice"), "tts", "omnivoice-q8");
   expect(where).toBe("cpu");
-  expect(why).toContain("audio.cpp says it needs about 10 GB");
+  expect(why).toBe("audio.cpp says it needs about 10 GB, more than this card's 8 GB — this may be slow on the CPU");
+  // Once a line on the CPU measured it, the speed takes the warning's place.
+  vi.spyOn(EngineManager.prototype, "cpuSpeed").mockReturnValueOnce([0.06, true]);
+  expect((await mgr.placementFor(mgr.getManifest("omnivoice"), "tts", "omnivoice-q8"))[1]).toBe("audio.cpp says it needs about 10 GB, more than this card's 8 GB — 0.1× real time here");
   // Once a load measured it here, the measurement decides, not the estimate.
   vi.spyOn(EngineManager.prototype, "_priceMb").mockReturnValue(3000);
   expect((await mgr.placementFor(mgr.getManifest("omnivoice"), "tts", "omnivoice-q8"))[0]).toBe("gpu");
@@ -69,7 +72,7 @@ test("auto_goes_by_the_files_when_they_are_more_than_the_estimate_or_there_is_no
   for (const [engine, variant] of [["moss_ttsd", "moss_ttsd-q8"], ["moss_tts_local", "moss_tts_local-bf16"]]) {
     const [where, why] = await mgr.placementFor(mgr.getManifest(engine), "tts", variant);
     expect(where, variant).toBe("cpu");
-    expect(why, variant).toBe("its files are about 12 GB, more than this card's 8 GB");
+    expect(why, variant).toBe("its files are about 12 GB, more than this card's 8 GB — this may be slow on the CPU");
   }
   // Its q8 weights (7 GB) are under its estimate: the estimate decides, and fits.
   expect((await mgr.placementFor(mgr.getManifest("moss_tts_local"), "tts", "moss_tts_local-q8"))[0]).toBe("gpu");

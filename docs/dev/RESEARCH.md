@@ -2928,6 +2928,46 @@ corrected above.
   a load (replaced by the per-process readings): MOSS-TTS Local (7.0 GB) took about 5.7 GB to load
   on CUDA and about 5 GB more while it spoke; Confucius4 (7.6 GB) showed none; OmniVoice (1.3 GB)
   on the CPU 1.3 GB.
+- **Which memory number** (2026-10-12, the check before option C — TASKS "The two-day review's
+  fixes"). audio.cpp copies each tensor out of the file mapping into its own buffers
+  (`src/framework/assets/tensor_source.cpp`, `ggml_backend_tensor_set`); the mapping
+  (`src/framework/io/binary.cpp`: `MapViewOfFile` / `mmap`, read-only) is released after
+  loading by Kokoro, MOSS, OmniVoice and IndexTTS2 (`release_storage()`) and kept by VoxCPM2 and
+  Higgs. The runtime is one long-lived server per placement and kind (`slot.ensureServer`: card
+  or CPU × speech or recognition), loading and unloading models inside it. Read through the app
+  (working set / private bytes, Windows `PrivatePageCount`):
+  | Server | Working set | Private |
+  |---|---|---|
+  | card, nothing loaded | 470 MB | 826–1,056 MB |
+  | card, VoxCPM2 q8 loaded / after a line | 3,316 / 3,313 MB | 9,409 / 9,618 MB |
+  | card, Kokoro q8 loaded / after a line | 513 / 524 MB | 4,855 / 5,269 MB |
+  | CPU, nothing loaded | 188 MB | 413 MB |
+  | CPU, Kokoro q8 loaded / after a line | 655 / 947 MB | 4,337 / 4,623 MB |
+  Private bytes run four to nine times the working set: audio.cpp commits large pools up front
+  (its session options size them, e.g. OuteTTS's `llama_weight_context_mb` 4096,
+  `dac_graph_arena_mb` 1536) and touches little of them. So refusing on private memory (option C)
+  would refuse far more wrongly than the working set; not built. Private bytes are what counts
+  against Windows' commit limit (RAM + page file) — the point where an allocation fails outright
+  rather than pages — a separate risk no check reads today.
+- **llama.cpp and the AI model's door** (2026-10-12). At the kit's pinned build (b11239),
+  `src/llama-model-loader.cpp` allocates a CPU tensor directly inside the file mapping when mmap
+  is on (`ggml_backend_tensor_alloc(buf_mmap, cur, mapping->addr() + offs)`, lines ~1641-1658) —
+  used in place, file-backed — and copies card tensors. But the kit's own presets
+  (`data/ai-runtime/models.ini`) load gemma 4 26B A4B with `load-mode = none` (no mapping: the
+  weights read into the process's own memory; the seeded MoE preset sets `no_mmap`,
+  `llm/seed.js:199`) and gemma 4 12B with `load-mode = mmap+mlock` (mapped and locked). Neither
+  leaves droppable pages, so the premise of the kit's RAM ruling — "weights are mmap'd →
+  evictable → a summed ledger OVER-counts … hence §8.18: DISPLAY-ONLY in v1, enforcement only on
+  evidence (mlock/no_mmap-keyed)" (`docs/plans/2026-08-09-fit-redesign.md` §13.12) — doesn't hold
+  for the models the kit loads by default; §8.18 itself names mlock/no_mmap as the evidence that
+  allows enforcing. (Whether Windows keeps the 12B's mlock is unverified: the kit strips an inert
+  mlock there, `process.js:299`.)
+- **OmniVoice fits the card** (2026-10-12): pinned to the GPU it loaded in 6 s, spoke the line in
+  3 s and read back 100 %; the card's memory in use went 700 → 1,928 MB (about 1.2 GB) and its
+  server's RAM 526 MB. On the CPU (Auto, by audio.cpp's 10 GB estimate) the same line took 80 s
+  (0.06× real time). The card peak wasn't saved: the per-process card probe returned nothing at
+  the load, and the device-wide difference is booked but by design never persisted
+  (`manager.js` load, "honestly 'computed' and never persisted") — so Auto never learns it fits.
 - **audio.cpp's estimate is one per model, shared by its precisions** (`min_vram_gb` on the
   catalog entry). For eight downloads it is below the files themselves (GB of files / estimate):
   DramaBox q8 17.6 / 16, FireRedAudio q8 13.0 / 10 and original 23.3 / 10, FireRedTTS3 Instruct

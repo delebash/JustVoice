@@ -900,7 +900,9 @@ export class EngineManager {
         const why = need.by === "files"
           ? `its files are about ${Math.round(need.gb)} GB, more than this card's ${card} GB`
           : `audio.cpp says it needs about ${need.gb} GB, more than this card's ${card} GB`;
-        return ["cpu", why, false];
+        // Unlike Auto's other CPU step, this one asks no speed: say it, measured once it has
+        // spoken (OmniVoice ran 17× slower than real time there; decided 2026-10-12).
+        return ["cpu", `${why} — ${speed || "this may be slow on the CPU"}`, false];
       }
     }
     if (!(await this._aiModelOnCard())) return ["gpu", "nothing else is on the graphics card", false];

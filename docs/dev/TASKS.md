@@ -396,8 +396,27 @@ BUILT:  2026-10-12 — 1: the check credits the AI models' memory when a card lo
         (08e8f16). 4: the records — TASKS i18n step B's on-screen claim narrowed (#7), the
         four large models "not loaded … untested" (#8), OuteTTS's file comment names the random
         seed (#9), RESEARCH §10.14 says what the read-back measures (#10).
-OPEN:   3 (the AI model's door, a report) and 5 (the CPU-placement speed), the user's word.
-GO:     given 2026-10-12 ("fix it all your rec go").
+        The three below (2026-10-12): C NOT built — the check failed: private bytes ran four to
+        nine times the working set on both servers (audio.cpp commits large pools up front), so
+        refusing on them would refuse more wrongly (RESEARCH §10.14 "Which memory number"). The AI
+        model's door: reported (RESEARCH "llama.cpp and the AI model's door"). The speed: the
+        too-big reason ends "— this may be slow on the CPU", or the measured speed once the model
+        has spoken; OmniVoice pinned to the card: it fits (about 1.2 GB), 6 s load, 3 s line.
+OPEN:   the user's word on what these findings mean (the AI model's door; Auto's too-big rule
+        when audio.cpp's estimate is pessimistic).
+        The memory number, the AI model's door, the CPU speed (decided 2026-10-12) — after a Fable
+        review and an Opus check of it (audio.cpp copies the weights into its own buffers; the
+        mapping is released after loading by Kokoro, MOSS, OmniVoice and IndexTTS2 but kept by
+        VoxCPM2 and Higgs; the tab doesn't show the CPU speed). Shown: "1. Decision 1: C for the
+        speech door, after that check? [load VoxCPM2 and Kokoro and read private memory beside
+        the working set] My lean: yes. 2. The AI model's door as a separate report, after
+        checking llama.cpp's mapping? My lean: yes. 3. Decision 2: the wording and the one
+        OmniVoice measurement? My lean: yes." C, as shown: "the speech door refuses on private
+        memory, or on the files on the CPU, whichever is larger; the AI-model credit and the
+        exact second check stay." The wording, as shown before: "say 'this may be slow on the
+        CPU' in its Runs on line, with the measured speed once it has spoken". The user: "your
+        rec on all go".
+GO:     given 2026-10-12 ("fix it all your rec go"; the three above: "your rec on all go").
 
 ### The family on vue-i18n: JustVoice's step B (decided 2026-10-12, in the kit's tracker)
 STATE:  DECIDED 2026-10-12 — the user's ruling in a JustWrite session: "all apps should use the
