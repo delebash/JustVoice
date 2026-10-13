@@ -22,25 +22,50 @@
 // audio made, × real time, time left. While none of its lines has started, it
 // carries what is ahead of it in the queue (`waiting`), and while the line
 // rendering now loads its model, that model (`loading`) — the strip says so.
+//
+//   followRender  a render job of a chapter that this window didn't start —
+//                 another window, an earlier page load, JustWrite, MCP — that
+//                 the server reports on the chapter (`running_job`), followed
+//                 as the same kind of task, Cancel included (2026-10-13, the
+//                 narrowings review R3: "wherever it was started").
 
 import { withAiTask } from "@delebash/llm-ui";
 
 const TERMINAL = new Set(["completed", "failed", "cancelled", "paused"]);
 const JSON_HEADERS = { "Content-Type": "application/json" };
-const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+/** Waits `ms`, or rejects as soon as `signal` aborts. */
+const wait = (ms, signal) => new Promise((resolve, reject) => {
+  if (signal?.aborted) return reject(signal.reason);
+  const onAbort = () => {
+    clearTimeout(timer);
+    reject(signal.reason);
+  };
+  const timer = setTimeout(() => {
+    signal?.removeEventListener("abort", onAbort);
+    resolve();
+  }, ms);
+  signal?.addEventListener("abort", onAbort, { once: true });
+});
 
-/** Follow a render job to its end, reporting each poll. Cancels it when `signal` aborts. */
+/**
+ * Follow a render job to its end, reporting each poll. Cancels it on the server
+ * when `signal` aborts — whether that lands between polls, during the wait or
+ * during a poll's request (2026-10-13, the implementation review's problem 6).
+ */
 export async function followJob(api, job, { signal, onProgress } = {}) {
   let j = job;
   onProgress?.(j);
-  while (!TERMINAL.has(j.status)) {
-    if (signal?.aborted) {
-      await api.safeRequest(`/v1/render_jobs/${j.id}/cancel`, null, { method: "POST" });
-      throw new DOMException("Render cancelled", "AbortError");
+  try {
+    while (!TERMINAL.has(j.status)) {
+      signal?.throwIfAborted();
+      await wait(700, signal);
+      j = await api.request(`/v1/render_jobs/${j.id}?include_blocks=true`, { signal });
+      onProgress?.(j);
     }
-    await wait(700);
-    j = await api.request(`/v1/render_jobs/${j.id}?include_blocks=true`, { signal });
-    onProgress?.(j);
+  } catch (e) {
+    if (!signal?.aborted) throw e;
+    await api.safeRequest(`/v1/render_jobs/${j.id}/cancel`, null, { method: "POST" });
+    throw new DOMException("Render cancelled", "AbortError");
   }
   return j;
 }
@@ -122,27 +147,56 @@ function failedLine(job) {
     : "";
 }
 
+/** A started line job, followed onto its task to its end. Resolves to the finished job. */
+async function followLines(api, task, job, onProgress) {
+  const t0 = Date.now();
+  const done = await followJob(api, job, {
+    signal: task.signal,
+    onProgress: (j) => {
+      task.setProgress(j.completed_blocks + j.failed_blocks, j.total_blocks || 1);
+      report(task, j, t0);
+      onProgress?.(j);
+    },
+  });
+  if (done.status === "cancelled") throw new DOMException("Render cancelled", "AbortError");
+  if (done.failed_blocks && !done.completed_blocks) throw new Error(failedLine(done));
+  return done;
+}
+
 /** ⚡ Render N ready / ↻ Re-render all on one chapter, as a kit task. Resolves to the finished job. */
 export function renderLines(api, { sceneId, title, which, onProgress }) {
   return withAiTask({
     feature: "render-lines",
     label: `${title} → ${which === "all" ? "a new take for every line" : "takes for the ready lines"}`,
     meta: { sceneId },
-  }, async (task) => {
-    const job = await startLines(api, sceneId, which, task.signal);
-    const t0 = Date.now();
-    const done = await followJob(api, job, {
-      signal: task.signal,
-      onProgress: (j) => {
-        task.setProgress(j.completed_blocks + j.failed_blocks, j.total_blocks || 1);
-        report(task, j, t0);
-        onProgress?.(j);
-      },
-    });
-    if (done.status === "cancelled") throw new DOMException("Render cancelled", "AbortError");
-    if (done.failed_blocks && !done.completed_blocks) throw new Error(failedLine(done));
-    return done;
-  });
+  }, async (task) => followLines(api, task, await startLines(api, sceneId, which, task.signal), onProgress));
+}
+
+/**
+ * A chapter's render job started elsewhere (`running_job` on its render_lines
+ * or render_state), as the same kit task ⚡ Render N ready makes — its
+ * strip, lit line and Cancel. Its label is the chapter's title. Resolves to the
+ * finished job.
+ */
+export function followRender(api, { sceneId, title, job, onProgress }) {
+  return withAiTask({
+    feature: "render-lines",
+    label: title,
+    meta: { sceneId, jobId: job.id },
+  }, (task) => followLines(api, task, job, onProgress));
+}
+
+/** Is a render of this chapter running in this window (any of Render's kit tasks)? */
+export function chapterRunning(tasks, sceneId) {
+  return tasks.visibleTasks.some((t) => ["render-lines", "render-scene"].includes(t.feature)
+    && t.meta?.sceneId === sceneId && tasks.isRunning(t.id));
+}
+
+/** Is this render job already followed in this window (`followRender`'s task, still running)?
+ *  A job over several chapters is followed once, not once per chapter (2026-10-13, the
+ *  implementation review's problem 8). */
+export function jobFollowed(tasks, jobId) {
+  return tasks.visibleTasks.some((t) => t.meta?.jobId === jobId && tasks.isRunning(t.id));
 }
 
 /**

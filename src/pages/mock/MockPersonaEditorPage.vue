@@ -238,7 +238,9 @@ const MAKERS = ["clone", "design", "blend"];
 const maker = computed(() => (MAKERS.includes(kind.value) ? kind.value : null));
 const designFrom = ref(null);   // a kept design whose words start the maker
 const makerKey = ref(0);        // a new key = a fresh, empty maker
-watch(kind, () => { modelFilter.value = ""; designFrom.value = null; makerKey.value += 1; });
+// A Type change keeps the chosen Model, shown with (0) when no voice of the new
+// type is on it — as the app does (the narrowings review C14, 2026-10-13).
+watch(kind, () => { designFrom.value = null; makerKey.value += 1; });
 function startFromThis() {
   designFrom.value = voice.value;
   makerKey.value += 1;

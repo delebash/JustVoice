@@ -7,8 +7,10 @@
 
   The line is the unit: Speaker · Model · Text · Can be directed · Status · Audio — Model and
   Can be directed in the Personas and Voices lists' own words (2026-10-06), with the line's
-  direction on a words model and the persona's tags on a tag model. Opening a line shows who speaks it (read-only — Cast decides, D2), the numbers
-  override behind its closed hatch (D3), Pronunciation, Rewrite as the speaker, and its takes:
+  direction on a words model and the persona's tags on a tag model. Opening a line shows its speaker
+  — Script's picker (2026-10-05, answer 3), the page's own markup and options — with its persona
+  and model read-only and "Change in Cast ➜" (the voice stays Cast's, D2); Render overrides, open
+  (2026-10-06, reversing D3's closed hatch); Pronunciation, Rewrite as the speaker, and its takes:
   every take is kept, and the one ★ In use is what the chapter plays and exports (D4). A change to the
   line or to what it is made from marks it stale; you choose when to render it again. A run is the
   app's kit task (2026-10-07): the strip names the line rendering now, that row is lit, the lines
@@ -31,10 +33,11 @@ import { loadingText, waitingText } from "../../services/renderRun.js";
 import DeliveryKnobs from "../../components/DeliveryKnobs.vue";
 import { capabilities, emotionValues, silentWav, wait } from "../../services/mock/personaMock.js";
 import { directionCell, tagCount } from "../../services/personaFacts.js";
+import { speakerOptions as castChoices } from "../../services/scriptReview.js";
 import {
   BOOK_LEXICON, PARAGRAPH_MS, PAUSE_BETWEEN_LINES_MS, SCENE_BREAK_MS, SPEAKERS, addTake, avatarColor, counts,
-  directedBy, lineState, notReady, personaOfSpeaker, render, renderChapter, renderLines, speakerOf, standingTags,
-  voiceless,
+  directedBy, lineState, notReady, personaOfSpeaker, render, renderChapter, renderLines, setSpeaker, speakerOf,
+  standingTags, voiceless,
 } from "../../services/mock/renderMock.js";
 
 const emit = defineEmits(["go"]);
@@ -114,6 +117,12 @@ const STATE_TAG = {
 };
 const personaName = (l) => personaOfSpeaker(l.speaker_id)?.name || "";
 const modelName = (l) => personaOfSpeaker(l.speaker_id)?.model_name || "";
+// Who says the line — the page's picker (Script's, 2026-10-05), its options by the same rule:
+// the narrator first, then by lines in this chapter.
+const narratorId = SPEAKERS.find((s) => s.narrator)?.id || null;
+const speakerChoices = computed(() => castChoices(SPEAKERS.map((s) => ({
+  speaker_id: s.id, name: s.name, lines: lines.value.filter((l) => l.speaker_id === s.id).length,
+})), narratorId));
 const liveTake = (l) => l.takes.find((t) => t.live) || null;
 const fmt = (s) => `0:${String(s).padStart(2, "0")}`;
 function setDirection(l, v) {
@@ -498,7 +507,7 @@ const blockedBanner = computed(() => {
             <UiButton v-else-if="lineState(row) === 'needs a speaker'" intent="secondary" size="small"
               label="Fix in Script" title="Opens Script at this line" @click="goScript" />
             <UiButton v-else-if="!personaOfSpeaker(row.speaker_id)" intent="secondary" size="small"
-              :label="`Cast ${speakerOf(row.speaker_id).name.split(' ')[0]}`" @click="goCast" />
+              :label="`Cast ${speakerOf(row.speaker_id).name}`" @click="goCast" />
             <UiButton v-else intent="secondary" size="small" :label="`Give persona ${personaName(row)} a voice`"
               @click="goPersona(speakerOf(row.speaker_id).persona_id)" />
           </span>
@@ -509,13 +518,17 @@ const blockedBanner = computed(() => {
             <div class="jv-linepanel__side">
               <div class="jv-linepanel__field">
                 <span class="jv-eyebrow">Speaker</span>
-                <span v-if="personaOfSpeaker(row.line.speaker_id)">
-                  <strong>{{ speakerOf(row.line.speaker_id).name }}</strong> — Cast: persona {{ personaName(row.line) }} ·
-                  {{ modelName(row.line) }} · <a href="#" @click.prevent="goCast">Change in Cast ➜</a>
+                <span class="jv-inline-row">
+                  <UiSelect :model-value="row.line.speaker_id" width="name" :options="speakerChoices"
+                    placeholder="— no speaker —"
+                    title="Who says this line in the book — the same choice as Script's"
+                    @update:model-value="(v) => setSpeaker(row.line, v)" />
+                  <span v-if="personaOfSpeaker(row.line.speaker_id)">Cast: persona {{ personaName(row.line) }}<template
+                    v-if="modelName(row.line)"> · {{ modelName(row.line) }}</template> ·
+                    <a href="#" @click.prevent="goCast">Change in Cast ➜</a></span>
+                  <span v-else-if="row.line.speaker_id" class="jv-muted">no persona yet ·
+                    <a href="#" @click.prevent="goCast">Cast them ➜</a></span>
                 </span>
-                <span v-else-if="row.line.speaker_id">{{ speakerOf(row.line.speaker_id).name }} — no persona yet ·
-                  <a href="#" @click.prevent="goCast">Cast them ➜</a></span>
-                <span v-else class="jv-muted">Nobody — <a href="#" @click.prevent="goScript">give it a speaker in Script ➜</a></span>
               </div>
 
               <div class="jv-card jv-linepanel__wide">
@@ -594,7 +607,7 @@ const blockedBanner = computed(() => {
                 <UiButton intent="secondary" size="small" label="📕 Pronunciation"
                   :title="`Opens ${BOOK_LEXICON}, the book's lexicon`" @click="pronounce(row.line)" />
                 <UiButton intent="secondary" size="small" :disabled="!row.line.speaker_id"
-                  :label="row.line.speaker_id ? `✏️ Rewrite as ${speakerOf(row.line.speaker_id).name.split(' ')[0]}` : '✏️ Rewrite as the speaker'"
+                  :label="row.line.speaker_id ? `✏️ Rewrite as ${speakerOf(row.line.speaker_id).name}` : '✏️ Rewrite as the speaker'"
                   :title="!row.line.speaker_id ? 'Give this line a speaker first.'
                     : 'Reads who they are on Cast, and offers the line in their words'" @click="openRewrite(row.line)" />
                 <UiButton intent="secondary" size="small" label="✎ Edit words" :disabled="editing[row.line.id] !== undefined"

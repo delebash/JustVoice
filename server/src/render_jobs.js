@@ -197,6 +197,12 @@ export function cancelJob(jobId) {
   return jobStatus(jobId);
 }
 
+/** Has this job's live runner been asked to cancel? It stays "running" until its current line
+ * ends (cancelJob above). */
+export function cancelRequested(jobId) {
+  return _cancelEvents.get(jobId)?.isSet() === true;
+}
+
 /** Re-run a job's unfinished blocks (pending + failed + interrupted running). Completed blocks
  * are never re-rendered. No-op on a job whose runner is live or whose blocks are all
  * completed. */
@@ -238,6 +244,34 @@ export function jobStatus(jobId, { includeBlocks = false } = {}) {
     out.blocks = h
       .all(`select * from ${RenderJobBlock} where job_id = ?`, [jobId], RenderJobBlock)
       .map((r) => ({ block_id: r.block_id, status: r.status, generation_id: r.generation_id }));
+  }
+  return out;
+}
+
+/** The render job running over each of these chapters' lines (queued or running), as
+ * `jobStatus` shows it: a Map of scene id → job, the oldest when two run. A job over several
+ * chapters is each one's. Render follows a run of its chapter wherever it was started — another
+ * window, JustWrite, MCP (decided 2026-10-07, "wherever it was started"; reached past this
+ * window on 2026-10-13, the narrowings review R3). A job already asked to cancel is left out:
+ * it is still "running" until its current line ends, and a window must not pick it up again
+ * (2026-10-13, the implementation review's problem 7). */
+export function runningJobsByScene(h, sceneIds) {
+  const ids = [...sceneIds];
+  const out = new Map();
+  if (!ids.length) return out;
+  const rows = h.all(
+    `select distinct ${RenderJobBlock}.job_id as job_id, ${Block}.scene_id as scene_id, ${RenderJob}.created_at as created_at ` +
+      `from ${RenderJobBlock} join ${RenderJob} on ${RenderJob}.id = ${RenderJobBlock}.job_id ` +
+      `join ${Block} on ${Block}.id = ${RenderJobBlock}.block_id ` +
+      `where ${RenderJob}.status in ('queued', 'running') and ${Block}.scene_id in (${marks(ids.length)}) ` +
+      `order by ${RenderJob}.created_at`,
+    ids,
+  );
+  const jobs = new Map();
+  for (const r of rows) {
+    if (out.has(r.scene_id) || cancelRequested(r.job_id)) continue;
+    if (!jobs.has(r.job_id)) jobs.set(r.job_id, jobStatus(r.job_id));
+    if (jobs.get(r.job_id) !== null) out.set(r.scene_id, jobs.get(r.job_id));
   }
   return out;
 }

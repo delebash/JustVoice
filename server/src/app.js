@@ -105,8 +105,9 @@ export const TYPE_BASE = "https://justvoice.dev/errors/";
 // The app's own page origins: the Vite dev server, and the Electron window (`app://justvoice`
 // — the desktop shell loads the renderer from there; without it every mutating call from the
 // desktop app would be refused 403 by the CSRF guard). The window's origin stays allowed when
-// the user locks CORS down too — JustWrite's ruling for the Electron move (2026-10-08), the
-// family-sameness law. The packaged Tauri origins are the kit's own CSRF defaults.
+// the user locks CORS down too — step-5 rec 4, my rec applied under the 2026-10-08 go (TASKS; as
+// JustWrite's step-4 rec 1), the family-sameness law. The packaged Tauri origins are the kit's own
+// CSRF defaults.
 export const DESKTOP_ORIGIN = "app://justvoice";
 export const APP_ORIGINS = ["http://localhost:1430", "http://127.0.0.1:1430", DESKTOP_ORIGIN];
 
@@ -257,8 +258,8 @@ export async function createApp(dataDir = null) {
   await _registerExternalEngines(state);
 
   const settings = state.settings.get();
-  // (FastAPI's /openapi.json, /docs and /redoc — `settings.server.docs_enabled` — have no
-  // counterpart here: the JavaScript server publishes no OpenAPI document.)
+  // (FastAPI's /openapi.json, /docs and /redoc have no counterpart here: the JavaScript server
+  // publishes no OpenAPI document.)
   // Request bodies keep Python's floats where a route opts in (the kit's float opt-in:
   // `input({…, pyFloats: true})`, or a kit-built route named here), and every body as sent rides
   // on `c.get("sentBody")` — what pydantic's `exclude_unset` reads (PATCH /v1/settings, PUT
@@ -276,9 +277,10 @@ export async function createApp(dataDir = null) {
   // Python's middleware order, outermost first: the MCP client-id stamp, CSRF, then CORS, then
   // bearer auth (Starlette ran the last-added first; Hono runs middleware in the order added). A
   // CSRF 403 carries no CORS headers; CORS answers preflights before auth sees them and stamps
-  // auth's 401/403. CSRF and auth guard the MCP endpoint like the API (GUARDED_PREFIXES — the
-  // user's ruling, 2026-10-08: an MCP client sends no Origin and carries the token like any other
-  // client). All of it before the routes: a Hono middleware covers only the routes added after it.
+  // auth's 401/403. CSRF and auth guard the MCP endpoint like the API (GUARDED_PREFIXES — clean-room
+  // gap 11, my rec applied under the 2026-10-08 go (not shown): an MCP client sends no Origin and
+  // carries the token like any other client). All of it before the routes: a Hono middleware
+  // covers only the routes added after it.
   const corsOrigins = settings.cors.origins;
   const corsRegex = settings.cors.origin_regex;
 
@@ -305,20 +307,19 @@ export async function createApp(dataDir = null) {
   );
 
   // CORS — the bundled UI is a different origin than this loopback server; without these
-  // headers the webview's fetch() calls are blocked. Operator-tunable; none configured → no
-  // CORS answers at all (Python added the middleware only when one is set).
-  if (corsOrigins.length || corsRegex) {
-    app.use(
-      "*",
-      starletteCors({
-        allowOrigins: [DESKTOP_ORIGIN, ...corsOrigins.filter((o) => o !== DESKTOP_ORIGIN)],
-        allowOriginRegex: corsRegex || null,
-        allowCredentials: true,
-        allowMethods: ["*"],
-        allowHeaders: ["*"],
-      }),
-    );
-  }
+  // headers the webview's fetch() calls are blocked. Operator-tunable; the desktop window's own
+  // origin is always allowed, even with no origins configured (TASKS step-5 rec 4: "app://justvoice
+  // is allowed by CORS and CSRF").
+  app.use(
+    "*",
+    starletteCors({
+      allowOrigins: [DESKTOP_ORIGIN, ...corsOrigins.filter((o) => o !== DESKTOP_ORIGIN)],
+      allowOriginRegex: corsRegex || null,
+      allowCredentials: true,
+      allowMethods: ["*"],
+      allowHeaders: ["*"],
+    }),
+  );
 
   // Auth — the desktop shell closes the server through /v1/shutdown and carries no token; with
   // "Require a token even on localhost" on, every close fell back to a hard kill (2026-09-30).
@@ -375,6 +376,9 @@ export async function createApp(dataDir = null) {
     // Names JustVoice in the family cache registry so a sibling app's Quick Setup can offer to
     // SHARE the engine + model cache instead of re-downloading.
     product: PRODUCT,
+    // The AI model's RAM refusal names a loaded speech model on the card or the CPU (the
+    // narrowings review, M3).
+    speechModelsFn: () => manager.getManager().loadedSpeechModels(),
     // allowKeyReveal stays OFF pending an explicit ruling.
   });
   // Workspace SEEDING (effect presets, JV's warm-OFF default, the legacy migrations, the

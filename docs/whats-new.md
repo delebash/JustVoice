@@ -2,6 +2,28 @@
 
 ## v0.1.0
 
+- **Choices JustVoice made without asking, put right (2026-10-13)** — a review of every rule,
+  number and label the app had taken on without your say:
+  - Script: the second look keeps a name the AI gave even when it wasn't sure, sends each
+    speaker's whole description, and no longer marks the lines it fills as changed by Analyze;
+    **Review** opens a chapter before Analyze; a pasted chapter's paragraph lines join at the
+    shorter pause within a paragraph ([Studio](studio.md))
+  - Render: **Rewrite as** and **Cast** show the speaker's full name; the chapter page and list
+    pick up a render started in another window when they next load it; **Cancel** reaches the
+    server
+  - Export: **Cancel** stops the rendering phase too, a book's title is the file name as written,
+    and deleting a book stops its exports and checks ([Import and export](import-and-export.md))
+  - Cast: Smart-assign includes a narrator with no persona; **Models to choose from** lists each
+    model; voice lists say *Not known* for an unknown gender ([Studio](studio.md))
+  - Personas: the persona page offers **Load** whenever the version you chose isn't the one
+    speaking; a new voice brings its own language ([Personas](personas.md))
+  - Lexicons: ▶ plays an entry with the book's lexicon as a render would, before you save
+    ([Lexicons](lexicons.md))
+  - Speech engines: a model remembered as not fitting the card can **Try the card again**; the
+    clone maker asks for the clip's words for every model that takes them; a setting with no
+    default starts empty (a number box), so the model's own default applies ([Engines](engines.md))
+  - Settings: the desktop app uses the **Port** you set; the API-docs switch and two tray items
+    that did nothing are gone ([Run modes](run-modes.md), [System tray](system-tray.md))
 - **One runaway line no longer keeps a voice model from loading (2026-10-11)** — a line that ran on
   far past its text left the speech process holding much more memory than normal, and the app took
   that as what the model needs, so it could refuse to load the model again on your graphics card.

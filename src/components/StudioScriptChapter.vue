@@ -36,7 +36,7 @@ import { routeWords } from "../services/attribution.js";
 import { useKeptScroll } from "../composables/useKeptScroll.js";
 import { useAnalyzeModel } from "../composables/useAnalyzeModel.js";
 import { inRun, onChapterDone, queueChapters, runStripTask, stepRun } from "../services/chapterRun.js";
-import { addNarrator } from "../services/narrator.js";
+import { addNarrator, narrationOf } from "../services/narrator.js";
 import NarratorNeeded from "./NarratorNeeded.vue";
 import {
   KEYS, applyLocally, checkQuestion, confidenceCell, confirm, decidedBy, editText, filterCounts, hasNoSpeaker, lineFacets,
@@ -203,8 +203,9 @@ function secondLook() {
   queueChapters({ projectId: props.project.id, kind: "analyze", chapters: [scene], mode: "second_look" });
 }
 function reanalyze({ narratorChecked = false } = {}) {
-  const c = chapter.value;
-  if (!narratorChecked && !narratorId.value && c && c.lines - c.spoken > 0) {
+  // The book's narration, every chapter's, as Script's grid and Discover count it (2026-10-13,
+  // the narrowings review S11).
+  if (!narratorChecked && !narratorId.value && narrationOf(props.chapters) > 0) {
     narratorAsk.value = true;
     return;
   }

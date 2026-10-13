@@ -647,8 +647,9 @@ button.jv-topbar__proj:hover { border-color: var(--accent); color: var(--accent-
   padding: 0 12px;
   margin-left: 12px;
   white-space: nowrap;
-  /* Shrinks first when the bar is short of room, its name ending in "…" —
-     the full name is in its tooltip (decided 2026-10-05). */
+  /* Shrinks after the server URL and the project chip, before the page name, when the bar is
+     short of room, its name ending in "…" — the full name is in its tooltip (decided
+     2026-10-05). */
   flex-shrink: 100;
   min-width: 68px;
   max-width: 260px;

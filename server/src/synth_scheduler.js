@@ -318,12 +318,24 @@ export async function warmSpecs(specs, { owner = null, signal = null } = {}) {
 
 /** Warm the render cache for these renderLine calls, engine-grouped (async). Each options
  * object must be EXACTLY what the assembly loop will pass — same args, same cache key,
- * guaranteed hit. */
-export async function warmLines(state, lineKwargs, { owner = null, signal = null } = {}) {
+ * guaranteed hit. `onProgress(done, total)`: called before the first line and after each one
+ * finishes — the M4B and chapter exports count it ("Rendering line 12 of 340", 2026-10-13). */
+export async function warmLines(state, lineKwargs, { owner = null, signal = null, onProgress = null } = {}) {
   const specs = [];
+  let done = 0;
+  const counted = (fn) => async () => {
+    try {
+      return await fn();
+    } finally {
+      done += 1;
+      onProgress(done, lineKwargs.length);
+    }
+  };
   for (const kw of lineKwargs) {
-    specs.push([await voiceModel.modelKey(state, kw.voice), () => renderCore.renderLine(state, kw)]);
+    const fn = () => renderCore.renderLine(state, kw);
+    specs.push([await voiceModel.modelKey(state, kw.voice), onProgress ? counted(fn) : fn]);
   }
+  if (specs.length) onProgress?.(0, specs.length);
   await self.warmSpecs(specs, { owner, signal });
 }
 

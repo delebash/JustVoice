@@ -21,8 +21,9 @@ import { TABLES } from "./models.js";
 
 const log = getLogger("justvoice.database.session");
 
-/** The database file's name inside the data folder (backup and restore look for it). */
-const DB_FILE = "justvoice.db";
+/** The database file's name inside the data folder (backup and restore look for it; serve.js
+ * reads the server's port from it read-only, before anything here opens it). */
+export const DB_FILE = "justvoice.db";
 
 export const cfg = { handle: null, dbPath: null };
 

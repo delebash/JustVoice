@@ -10,7 +10,7 @@
   AppModal (@delebash/llm-ui) shell so the close ✕ never overlaps Import/Export.
 -->
 <script setup>
-import { computed, nextTick, onActivated, onMounted, ref } from "vue";
+import { computed, nextTick, onActivated, onMounted, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import { previewLexiconText } from "../services/lexiconPreview.js";
 import { pushToast, saveBlob, pageFlow } from "@delebash/llm-ui";
@@ -20,6 +20,7 @@ import { EmptyState } from "@delebash/llm-ui";
 import { useLexiconsStore } from "../stores/lexicons.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { usePersonasStore } from "../stores/personas.js";
+import { useActiveProject } from "../stores/activeProject.js";
 import { lexiconUsedBy } from "../services/lexiconUsage.js";
 import { auditionWithLexicon } from "../services/voiceAudition.js";
 import { handleTermsRefusal } from "../services/engineTerms.js";
@@ -187,11 +188,11 @@ const reach = ref(null);
 const player = usePagePlayer();
 const hearAsId = ref(null);
 const tryWord = ref("");
-// The entries as saved when the dialog opened: ▶ plays what the server has, so an entry added
-// or changed since needs a Save first.
-const savedKeys = ref(new Set());
-const entryKey = (e) => `${e.grapheme}\u0000${e.phoneme_ipa || ""}\u0000${e.alias || ""}`;
-const isSaved = (e) => savedKeys.value.has(entryKey(e));
+// The book you came from — the active project, the one open in Studio: ▶ reads its lexicon
+// first, as a render does (the narrowings review P30, 2026-10-13). None open → the persona's
+// slot alone, as before.
+const activeProject = useActiveProject();
+const fromBook = computed(() => projects.value.find((p) => p.id === activeProject.id) || null);
 const hearPersonas = computed(() => {
   const ids = (reach.value?.personas || []).map((p) => p.id);
   const inReach = personas.value.filter((p) => ids.includes(p.id));
@@ -216,17 +217,27 @@ function forgetAudio() {
   for (const u of audioUrls) URL.revokeObjectURL(u);
   audioUrls = [];
 }
+// ▶ plays the entries as they stand, so once they change what is loaded is not what ▶ would
+// say: the next ▶ asks again instead of replaying it.
+watch(() => JSON.stringify(draft.value?.entries ?? null), forgetAudio);
 async function loadReach(id) {
   reach.value = await api.safeRequest(`/v1/lexicons/${encodeURIComponent(id)}/reach`, null);
   if (!hearPersonas.value.some((p) => p.id === hearAsId.value)) hearAsId.value = hearPersonas.value[0]?.id ?? null;
 }
-/** ▶ — `text` in the chosen persona's voice, with this lexicon ("after") or without ("before"). */
+/** ▶ — `text` in the chosen persona's voice, with this lexicon ("after") or without ("before"),
+ *  beside the book's. It reads the entries as the editor holds them, saved or not (the
+ *  narrowings review P31, 2026-10-13: an entry had to be saved to be heard). */
 async function hear(text, which, key) {
   const persona = personas.value.find((p) => p.id === hearAsId.value);
   if (!persona || !String(text || "").trim() || !editingId.value) return;
   if (player.key === key && audioUrls.length) return player.toggle();
   try {
-    const blob = await auditionWithLexicon(api, persona, text.trim(), which === "after" ? editingId.value : null);
+    const blob = await auditionWithLexicon(api, persona, text.trim(), {
+      lexiconId: editingId.value,
+      entries: draft.value?.entries || [],
+      book: fromBook.value,
+      after: which === "after",
+    });
     if (!blob) return;
     const url = URL.createObjectURL(blob);
     audioUrls.push(url);
@@ -240,7 +251,6 @@ async function hear(text, which, key) {
 function openEdit(lex) {
   creating.value = false;
   editingId.value = lex.id;
-  savedKeys.value = new Set((lex.entries ?? []).map(entryKey));
   tryWord.value = lex.entries?.[0]?.grapheme ?? "";
   forgetAudio();
   loadReach(lex.id);
@@ -706,8 +716,8 @@ onActivated(() => {
             <template #heard="{ row }">
               <UiButton v-if="!creating" intent="ghost" size="small"
                 :label="player.isPlaying(`entry:${row.__i}`) ? '❚❚' : '▶'"
-                :disabled="!isSaved(row) || !hearAsId"
-                :title="isSaved(row) ? `Hear “${row.grapheme}” as it will be said` : 'Save the lexicon to hear this entry'"
+                :disabled="!hearAsId"
+                :title="`Hear “${row.grapheme}” as it will be said`"
                 @click="hear(row.grapheme, 'after', `entry:${row.__i}`)" />
             </template>
             <template #grapheme="{ row }"><strong>{{ row.grapheme }}</strong></template>
@@ -741,7 +751,7 @@ onActivated(() => {
               <UiButton intent="secondary" size="small" :label="player.isPlaying('try:before') ? '❚❚ Before' : '▶ Before'"
                 title="Without this lexicon" :disabled="!hearAsId || !tryWord.trim()" @click="hear(tryWord, 'before', 'try:before')" />
               <UiButton intent="secondary" size="small" :label="player.isPlaying('try:after') ? '❚❚ After' : '▶ After'"
-                title="With this lexicon's saved entries" :disabled="!hearAsId || !tryWord.trim()" @click="hear(tryWord, 'after', 'try:after')" />
+                title="With this lexicon's entries" :disabled="!hearAsId || !tryWord.trim()" @click="hear(tryWord, 'after', 'try:after')" />
               <PlayTransport v-if="player.key?.startsWith('try:')" :player="player" />
             </div>
             <p class="jv-hint">{{ hearHint }}</p>

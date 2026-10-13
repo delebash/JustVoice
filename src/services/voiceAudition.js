@@ -51,16 +51,33 @@ export function auditionVoice(api, voice) {
   );
 }
 
-/** A persona saying `text` with one lexicon or with none — Lexicons' ▶ and Try a word
- *  (2026-10-09). The persona goes as a draft with its lexicon swapped, through the same
- *  preview the persona page uses, so before and after differ by that lexicon alone; it
- *  reads the lexicon's saved entries. */
-export function auditionWithLexicon(api, persona, text, lexiconId) {
+/** What Lexicons' ▶ and Try a word send to `POST /v1/personas/preview` (2026-10-13): the
+ *  line as a render reads it — the book's lexicon, then the persona's (the server's
+ *  `lineLexicons`) — with this lexicon in its slot (`after`) or without it. Its slot is the
+ *  book's when `book` chose it, else the persona's. `entries` are the editor's, saved or
+ *  not, read in place of the lexicon's saved ones. No `book`: the persona's slot alone, as
+ *  before (2026-10-09). */
+export function lexiconPreviewBody(persona, text, { lexiconId, entries = null, book = null, after = true }) {
+  const bookSlot = !!book && book.default_lexicon_id === lexiconId;
+  const own = persona.lexicon_id ?? null;
+  let personaLexicon;
+  if (!bookSlot) personaLexicon = after ? lexiconId : null;
+  else personaLexicon = !after && own === lexiconId ? null : own;
+  const body = { persona: { ...persona, lexicon_id: personaLexicon }, text };
+  if (book && (after || !bookSlot)) body.project_id = book.id;
+  if (after && entries) body.draft_lexicon = { id: lexiconId, entries };
+  return body;
+}
+
+/** A persona saying `text` with one lexicon or without it — Lexicons' ▶ and Try a word
+ *  (2026-10-09), through the same preview the persona page uses, so before and after
+ *  differ by that lexicon alone. `opts`: lexiconPreviewBody's. */
+export function auditionWithLexicon(api, persona, text, opts) {
   return askingToLoad(
     (load) => api.request("/v1/personas/preview", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ persona: { ...persona, lexicon_id: lexiconId }, text, auto_load: load }),
+      body: JSON.stringify({ ...lexiconPreviewBody(persona, text, opts), auto_load: load }),
     }),
     { who: persona.name, modelName: persona.model_name },
   );

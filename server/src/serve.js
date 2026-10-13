@@ -27,6 +27,7 @@ import { getState } from "./app_state.js";
 import { seedWorkspace } from "./database/seed.js";
 import * as leftovers from "./engines/leftovers.js";
 import { defaultDataDir } from "./paths.js";
+import { readSettingsReadOnly } from "./storage/settings_store.js";
 import { networkHost } from "./sync.js";
 import { VERSION } from "./version.js";
 
@@ -152,14 +153,27 @@ export async function main(argv = process.argv.slice(2)) {
   // logging.basicConfig: every record at the level and above to stderr, in Python's format.
   addSink((r) => process.stderr.write(`${asctime(r.created)} [${r.levelname}] ${r.name}: ${r.msg}${r.exc ? `\n${r.exc}` : ""}\n`));
 
+  // ABSOLUTE, always; the family ladder otherwise.
+  const dd = args.dataDir ? path.resolve(args.dataDir) : defaultDataDir();
   // runServer reads --host/--port only to listen; the values here are already resolved.
-  const runArgv = ["serve", ...(args.dataDir ? ["--data-dir", args.dataDir] : [])];
   const handle = await runServer({
-    argv: runArgv,
+    argv: ["serve", "--data-dir", dd],
     envPrefix: null,
-    build: async ({ dataDir }) => {
-      // ABSOLUTE, always (runServer resolved --data-dir); the family ladder otherwise.
-      const dd = dataDir ? path.resolve(dataDir) : defaultDataDir();
+    // The port before anything opens the database: CLI/env, else Settings → Server's Port as
+    // saved, read without writing. runServer probes it before `build`, so nothing below opens the
+    // database while another server of this app — its old or headless one, on this data folder —
+    // holds the port (the narrowings review, P6). A database that can't be read here (a crashed
+    // write leaves a journal only a writer can roll back) skips the probe; `build` then reads the
+    // port as it did before.
+    resolvePort: () => {
+      if (args.port) return args.port;
+      try {
+        return readSettingsReadOnly(dd).server.port;
+      } catch {
+        return null;
+      }
+    },
+    build: async ({ port: resolvedPort }) => {
       const app = await createApp(dd);
       await seedWorkspace();
       // Engines a dead server left running still hold their GPU memory; stop them before this
@@ -175,7 +189,7 @@ export async function main(argv = process.argv.slice(2)) {
       // (server/src/sync.js).
       const settings = getState().settings.get();
       const host = args.host || (networkHost() ?? settings.server.host);
-      const port = args.port || settings.server.port;
+      const port = resolvedPort || settings.server.port;
       process.stdout.write(`JustVoice ${VERSION} — http://${host}:${port}/  (data: ${dd})\n`);
       return { app, host, port };
     },

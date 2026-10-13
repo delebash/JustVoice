@@ -9,9 +9,9 @@ the corrections you made to who says what — and your personas and lexicons (th
 pronunciations).
 
 **What stays on each computer:** the audio — rendered takes, generations, exports and dictation
-recordings; your voices; persona pictures; settings, AI providers and keys; the downloaded engines
-and models. The audio is large and renders again from the script; voices travel by hand (see
-*Voices* below).
+recordings; Stories timelines; your voices; persona pictures; settings, AI providers and keys;
+the downloaded engines and models. The audio is large and renders again from the script; voices
+travel by hand (see *Voices* below).
 
 When two computers change the same thing, the newer change wins, field by field: rename a speaker
 on one computer and fix a line's text on the other, and both changes survive.
@@ -41,8 +41,8 @@ The line at the top tells you when this computer last synced, and with which one
 *"Synced 2 min ago · from Studio PC"*. **Devices** lists every computer this one has synced with,
 and how: by hand, the cloud folder, or the network.
 
-When another computer's changes arrive while JustVoice is open, a notice says *Changes from another
-device arrived* — press **Reload** to see them.
+When another computer's changes arrive while JustVoice is open, the window reloads by itself to
+show them.
 
 ---
 

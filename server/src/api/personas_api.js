@@ -146,7 +146,10 @@ export function _personaName(name, { besides = null } = {}) {
  * The language a persona on `voiceId` is saved with (2026-10-03), async. Asked for → it must be
  * one the voice's model speaks. Not asked for → the language it had (`keepIfSpoken`) if the
  * voice still speaks it, else the voice's own. Where the voice or model allows one language (a
- * Kokoro voice, Kitten, Turbo) that is the only answer.
+ * Kokoro voice, Kitten, Turbo) that is the only answer. A new voice passes no `keepIfSpoken`, so
+ * it brings its own language (decided 2026-10-05: "Picking a voice sets Speaks to that voice's
+ * language … This reverses the redesign rule that kept the old language"; the server kept the
+ * old rule until the narrowings review C11, 2026-10-13).
  */
 export async function _checkedLanguage(voiceId, language, { keepIfSpoken = null } = {}) {
   const st = getState();
@@ -320,7 +323,10 @@ export function router() {
     if (sent.has("voice_id")) fields.voice_id = await _checkedVoice(body.voice_id);
     const voiceId = Object.hasOwn(fields, "voice_id") ? fields.voice_id : current.voice_id;
     if (sent.has("language") || sent.has("voice_id")) {
-      fields.language = await _checkedLanguage(voiceId, sent.has("language") ? body.language : null, { keepIfSpoken: current.language });
+      const newVoice = Boolean(voiceId) && voiceId !== current.voice_id;
+      fields.language = await _checkedLanguage(voiceId, sent.has("language") ? body.language : null, {
+        keepIfSpoken: newVoice ? null : current.language,
+      });
     }
     if (sent.has("default_delivery")) fields.default_delivery = _checkedDelivery(body.default_delivery || construct(PersonaDelivery, {}));
     for (const key of ["avatar_path", "voice_instruct", "note", "effects_chain", "lexicon_id"]) {
@@ -346,9 +352,11 @@ export function router() {
   });
 
   /**
-   * "Merge into…" (decided 2026-10-03): every speaker this persona plays is played by `into`
-   * from now on, and this persona goes. Its persona-scoped lexicons, its generations and its MCP
-   * bindings move too; its own settings do not — the persona merged into keeps its own.
+   * "Merge into…" (decided 2026-10-03, Q11: "moves the speakers to the target, then deletes this
+   * one"): every speaker this persona plays is played by `into` from now on, and this persona
+   * goes; the persona merged into keeps its own settings. Built, not decided: its persona-scoped
+   * lexicons, its generations and its MCP bindings move too — kept so by the user's word on
+   * 2026-10-13 (the narrowings review K4).
    */
   app.post("/v1/personas/:id/merge", input({ body: MergePersonaRequest }), (c) => {
     const st = getState();
@@ -373,9 +381,10 @@ export function router() {
 
   /**
    * Hear a persona speak a line — the editor's unsaved draft or a saved one: the persona
-   * editor's Listen and Compare, Cast's ▶ and the index's ▶ (2026-10-03). Renders through
-   * `persona_render.planLine` — the resolver the chapter render uses — so what you hear here is
-   * what the chapter contains. An empty line speaks the stock line in the persona's language.
+   * editor's Listen and Compare, Cast's ▶ and the index's ▶ (2026-10-03), Lexicons' ▶ and Try a
+   * word (2026-10-09). Renders through `persona_render.planLine` — the resolver the chapter render
+   * uses — so what you hear here is what the chapter contains. An empty line speaks the stock
+   * line in the persona's language.
    */
   app.post("/v1/personas/preview", input({ body: PersonaPreviewRequest, pyFloats: true }), async (c) => {
     const st = getState();
@@ -389,7 +398,24 @@ export function router() {
     if (!persona.voice_id) throw badRequest("Pick a voice first — a persona with no voice has nothing to speak with.");
     const problems = personaRender.checkDelivery(persona.default_delivery);
     if (problems.length) throw badRequest(problems.join("; "));
-    const plan = await personaRender.planLine(st, persona, { text: " ", direction: body.direction, requestDelivery: body.delivery });
+    // A book sent → its lexicon is read first, then the persona's, as a chapter render reads
+    // them (`renderCore.lineLexicons`; Lexicons' ▶, the narrowings review P30, 2026-10-13).
+    let bookLexicon = null;
+    if (body.project_id) {
+      const project = session.getDb().one(`select * from ${Project} where id = ? limit 1`, [body.project_id], Project);
+      if (project === null) throw notFound(`project ${body.project_id}`);
+      bookLexicon = project.default_lexicon_id ?? null;
+    }
+    const plan = await personaRender.planLine(st, persona, {
+      text: " ",
+      direction: body.direction,
+      requestDelivery: body.delivery,
+      bookLexicon,
+    });
+    // A lexicon's unsaved entries are read in place of its saved ones, wherever the line reads
+    // that lexicon (Lexicons' ▶ before Save, the narrowings review P31, 2026-10-13).
+    const unsaved = body.draft_lexicon;
+    if (unsaved !== null) plan.lexicons = plan.lexicons.map((lid) => (lid === unsaved.id ? unsaved : lid));
     if (!body.auto_load) {
       const vm = await vmod.voiceModel(st, plan.voice);
       if (vm !== null && manager.getManager().getManifest(vm.engineId) != null && !vmod.isModelLoaded(vm.engineId, vm.model)) {

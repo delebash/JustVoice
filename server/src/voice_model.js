@@ -42,9 +42,10 @@ export const WORDS = "words";
 export const TAGS = "tags";
 export const SLIDERS = "sliders";
 
-/** The voice's model is not installed (or not in this runtime's catalog). A render refuses
- * rather than downloading gigabytes behind the user's back (doc §6.2 call 4); the message names
- * the model to install. */
+/** Thrown when the voice's model isn't in this speech runtime, or has no model for the asked
+ * language (Pocket); the message names the model. A model not yet downloaded is fetched on load
+ * (doc §6.2 call 4 as amended). (was: "a render refuses rather than downloading gigabytes" —
+ * call 4 never said so, and its amendment rules it out; the narrowings review K13, 2026-10-13.) */
 export class ModelUnavailable extends RuntimeError {
   constructor(message) {
     super(message);
@@ -368,13 +369,17 @@ const langKey = (r) => JSON.stringify(r.languages || []);
 
 /**
  * The variant of `model` to load, or null where there is no catalog. Size and precision stay
- * AI Settings' choice (doc §6.2 call 4): the loaded variant if it is this family, else the
- * user's default if it is, else an installed variant of the family — same size and precision
- * first. Nothing of the family on disk → the same pick among all of the family's variants,
- * and the load fetches its file, as a first load always has ("Load never installs a program
- * … it does fetch a missing MODEL file", manager.load). Pocket has one model per language, so
- * its language picks among them; a language it has no model for → ModelUnavailable, naming
- * the model.
+ * AI Settings' choice (doc §6.2 call 4): the loaded variant if it is this family; else, among
+ * the family's variants on disk, the user's default if it is one of them, else the one sharing
+ * most of its size and precision (catalog order breaks ties). So a default that isn't
+ * downloaded speaks only once a load fetches it — until then a downloaded sibling speaks, and
+ * the persona page offers Load for the default (kept so, the narrowings review C5, 2026-10-13;
+ * this comment said "the user's default if it is, else an installed variant", which hid the
+ * on-disk condition). Nothing of the family on disk → the same pick among all of the family's
+ * variants, and the load fetches its file, as a first load always has ("Load never installs a
+ * program … it does fetch a missing MODEL file", manager.load). Pocket has one model per
+ * language, so its language picks among them; a language it has no model for →
+ * ModelUnavailable, naming the model.
  */
 export function variantForModel(engineId, model, language = null) {
   let rows = _familyRows(engineId, model);

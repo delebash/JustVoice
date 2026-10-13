@@ -9,10 +9,11 @@
 // The hand-wired engines (kokoro, kitten, pocket, qwen3, chatterbox, voxcpm2, asr) keep their
 // manifests: they hold measured fixes a spec doesn't carry. Their families are left out here.
 //
-// A model is offered when audio.cpp marks it supported, community or experimental (wip and
-// unsupported are hidden — decided 2026-10-11, answer 3), it copies a voice from a clip, and one
-// of its GGUF packages is complete at the pinned model revision. Built-in voices and voice design
-// need a family file to say how they are asked for, and come later.
+// A model is offered when audio.cpp marks it supported, community or experimental, and one of its
+// GGUF packages is complete at the pinned model revision. Hidden: wip and unsupported (decided
+// 2026-10-11, answer 3). Also left out — mine, not decided: families that don't copy a voice from
+// a clip, voice-design entries, built-in voices and recognition families (TASKS FINDING "the
+// generated engines offer only models that clone a voice"; into the adoption plan).
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -39,8 +40,9 @@ const SPEECH_ENTRY_TASKS = new Set(["tts", "clon"]);
 // The tail a model id takes per precision, and the words a name says.
 const PRECISION_TAIL = { q8_0: "q8", q8: "q8", bf16: "bf16", f16: "f16", fp16: "f16", q4_k: "q4k", q4_0: "q4", f32: "f32", orig: "orig" };
 const PRECISION_WORDS = { q8: "8-bit", bf16: "16-bit", f16: "16-bit", q4k: "4-bit", q4: "4-bit", f32: "32-bit", orig: "original precision" };
-// Not a language: audio.cpp's family-level scope words.
-const NOT_LANGUAGES = new Set(["multilingual", "language_agnostic"]);
+// Not a language: audio.cpp's family-level scope word for audio that isn't speech, and "auto"
+// (it detects the language).
+const NOT_LANGUAGES = new Set(["language_agnostic", "auto"]);
 
 const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]/g, "");
 // A package id's precision tail ("index_tts2_5_q8_0" → "index_tts2_5") — audio.cpp's web UI rule.
@@ -52,13 +54,19 @@ export const modelName = (m) =>
   m.single ? m.fam.display_name : String(m.entry.display_name || m.fam.display_name).replace(/\s*\([^)]*\)\s*$/, "").trim();
 
 /** The options a line can't set through a model's settings: the app sets them itself (the
- * voice, its clip's words, the language, the seed) or a family file's direction does. */
+ * line's text, the voice, its clip's words — `prompt_text` is VoxCPM1's name for them — the
+ * language, the seed) or a family file's direction does (docs/plans/2026-10-11-audiocpp-engine-
+ * catalog.md §5). A family file's `HIDDEN_OPTIONS` hides more of its own. */
 export const APP_OWNED_OPTIONS = new Set([
-  "reference_text", "language", "lang", "seed", "voice", "voice_id", "speaker", "instruct", "instruction",
-  "emotion_text", "use_emotion_text", "emotion_vector", "template_name",
+  "text", "reference_text", "prompt_text", "language", "lang", "seed", "voice", "voice_id", "speaker", "instruct",
+  "instruction", "emotion_text", "use_emotion_text", "emotion_vector", "template_name",
 ]);
 // Not offered as settings either: the host splits long lines, and renders don't stream.
 const NOT_SETTINGS = (name) => name.startsWith("stream") || name.startsWith("text_chunk");
+
+/** Whether a line may set `name` on this family's model through its settings. */
+export const isSetting = (family, name) =>
+  !APP_OWNED_OPTIONS.has(name) && !NOT_SETTINGS(name) && !(CURATED[family]?.HIDDEN_OPTIONS || []).includes(name);
 
 const HAN = /[㐀-鿿]/u;
 const english = (...xs) => xs.find((x) => typeof x === "string" && x.trim() && !HAN.test(x)) ?? "";
@@ -70,9 +78,11 @@ const humanize = (name) => {
 /**
  * A model's settings, as knob specs (models.js KnobSpec, without the construct): its spec's typed
  * request options — or, for a family whose spec lists none, audio.cpp's own control list
- * (`webui/configs/model_params.json`) — minus what the app sets itself. Labels and help in
- * English from audio.cpp's control list where it has them. A number needs both ends to be a
- * slider; one without is left out. Each is marked advanced (KnobSpec.advanced).
+ * (`webui/configs/model_params.json`) — minus what the app sets itself and what the family's
+ * file hides. Labels and help in English from audio.cpp's control list where it has them. A
+ * number needs both ends to be a slider; one without is left out. Each is marked advanced
+ * (KnobSpec.advanced). A setting with no default in the spec or the control list has none here
+ * (null): audio.cpp's own applies, and nothing is sent until it is set.
  */
 export function settingsOf(m) {
   const params = new Map([...(m.fam.params || []), ...(m.entry.params || [])].map((p) => [p.name, p]));
@@ -90,7 +100,7 @@ export function settingsOf(m) {
       }));
   const out = [];
   for (const o of sources) {
-    if (APP_OWNED_OPTIONS.has(o.name) || NOT_SETTINGS(o.name)) continue;
+    if (!isSetting(m.family, o.name)) continue;
     const p = params.get(o.name) || {};
     const base = {
       key: o.name,
@@ -98,21 +108,22 @@ export function settingsOf(m) {
       hint: english(p.info_en, p.info, o.description),
       advanced: true,
     };
+    const given = o.default ?? p.default ?? null;
     if (o.type === "int" || o.type === "float" || o.type === "number") {
       const min = o.min ?? p.minimum;
       const max = o.max ?? p.maximum;
       if (min == null || max == null || !(max > min)) continue;
       const step = p.step ?? (o.type === "int" ? 1 : Number(((max - min) / 100).toPrecision(1)));
-      const def = Number(o.default ?? p.default ?? min);
-      out.push({ ...base, type: "number", min, max, step, default: Number.isFinite(def) ? def : min });
+      const def = given === null ? null : Number(given);
+      out.push({ ...base, type: "number", min, max, step, default: Number.isFinite(def) ? def : null });
     } else if (o.type === "enum" && Array.isArray(o.values) && o.values.length) {
       const choices = o.values.map(String);
-      const def = String(o.default ?? p.default ?? choices[0]);
-      out.push({ ...base, type: "choice", choices, default: choices.includes(def) ? def : choices[0] });
+      const def = given === null ? null : String(given);
+      out.push({ ...base, type: "choice", choices, default: choices.includes(def) ? def : null });
     } else if (o.type === "bool" || o.type === "boolean") {
-      out.push({ ...base, type: "switch", default: Boolean(o.default ?? p.default ?? false) });
+      out.push({ ...base, type: "switch", default: given === null ? null : Boolean(given) });
     } else if (o.type === "string") {
-      out.push({ ...base, type: "text", default: String(o.default ?? p.default ?? "") });
+      out.push({ ...base, type: "text", default: given === null ? null : String(given) });
     }
   }
   return out;
@@ -168,7 +179,9 @@ export function generatedModels() {
   const out = [];
   for (const fam of Object.values(CATALOG.families)) {
     if (HAND_WIRED_FAMILIES.has(fam.family) || !SHOWN_STATUS.has(fam.status) || !clones(fam)) continue;
-    // Our file can keep a model out that can't speak from text and a clip yet (VieNeu, 2026-10-11).
+    // Our file can keep a model out that can't speak from text and a clip yet (VieNeu, hidden
+    // 2026-10-11 on the implementer's pick; decided 2026-10-13, the narrowings review K2: list it,
+    // marked as not cloning yet — built with docs/plans/2026-10-13-adopt-everything-audiocpp.md).
     if (CURATED[fam.family]?.NOT_OFFERED) continue;
     if (!(fam.tasks || []).some((t) => t === "tts" || t === "clone")) continue;
     const runnable = [];
@@ -204,8 +217,9 @@ export function generatedModels() {
   return out;
 }
 
-// audio.cpp's wording where its language list describes rather than names ("100+ languages").
-const LANGUAGES_WORDING = /^\d+\+?\s+languages$/i;
+// audio.cpp's wording where its language list describes rather than names ("100+ languages",
+// "multilingual").
+const LANGUAGES_WORDING = /^(?:\d+\+?\s+languages|multilingual)$/i;
 
 /** The languages a family speaks: the codes (and names) audio.cpp lists, and its own wording
  * when the list is a description instead — shown as it is, never counted as one language. */
@@ -444,6 +458,7 @@ export function applyDirection(direction, cue) {
   const words = String(cue.words || "").trim();
   if (direction.kind === "words") {
     if (!words) return out;
+    Object.assign(out.options, direction.set || {});
     out.options[direction.option] = words;
     Object.assign(out.defaults, direction.when_directed || {});
     out.directed = true;

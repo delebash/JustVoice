@@ -154,6 +154,14 @@ test("a_blend_rides_voice_pack_with_a_preset_of_its_language", () => {
   }
 });
 
+test("a_blend_in_a_language_kokoro_lacks_sends_none_and_a_preset_of_the_voices_own", () => {
+  // The narrowings review, F11: no language goes, and the preset is the voice's own language's.
+  const req = slot.toSpeechRequest(kokoroRow(), { voice_id: "v_blend", text: "Hi.", language: "de", voice_pack_path: "C:\\cache\\p.bin" });
+  expect("language" in req).toBe(false);
+  expect(req.voice).toBe("af_alloy");
+  expect(req.options).toEqual({ voice_pack: "C:/cache/p.bin" });
+});
+
 test("the_pack_file_is_written_once_by_content", () => {
   vi.spyOn(slot, "_dataDir").mockReturnValue(tmpPath());
   const vec = new Array(ROWS * 256).fill(2.0);

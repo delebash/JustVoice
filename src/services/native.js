@@ -55,6 +55,16 @@ export function storageRelocate(newRoot) {
   return call("storageRelocate", { newRoot });
 }
 
+// ─── The server's address ────────────────────────────────────────────
+
+/** The desktop app's server URL (`http://127.0.0.1:<port>`): the server listens on Settings →
+ *  Server's Port and tells the shell, which answers once the server is up (or its start ended).
+ *  Null outside the shell, or when no server runs. */
+export function shellServerUrl() {
+  if (!hasShell()) return Promise.resolve(null);
+  return call("serverUrl").catch(() => null);
+}
+
 // ─── The shell's own switches ────────────────────────────────────────
 
 /** The family headless ruling (2026-08-04): keep the server up on window close. */

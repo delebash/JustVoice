@@ -69,6 +69,25 @@ test("lines_of_one_paragraph_are_found_by_their_source_ref", () => {
   expect(paragraphJoins(blocks)).toEqual(new Set(["b", "c"]));
 });
 
+test("lines_with_no_source_ref_are_found_by_analyzes_paragraph", () => {
+  // 2026-10-13 (the narrowings review R1): a chapter pasted with ＋ Add text has no source_ref, so
+  // Analyze's paragraph_idx says which lines one paragraph was cut into; source_ref still comes
+  // first, and a line split off an analyzed line keeps its paragraph.
+  const meta = ([id, m]) => ({ id, metadata_json: JSON.stringify(m) });
+  const blocks = [
+    ["a", { paragraph_idx: 0 }],
+    ["b", { paragraph_idx: 0 }], // a quote · its tag — one paragraph
+    ["c", { paragraph_idx: 1 }],
+    ["d", {}], // typed in: no paragraph
+    ["e", { paragraph_idx: 1 }],
+    ["f", { source_ref: "ch1#block:7", paragraph_idx: 2 }],
+    ["g", { source_ref: "ch1#block:8", paragraph_idx: 2 }], // two source_refs win over one paragraph
+    ["h", { source_ref: "ch1#block:9", paragraph_idx: 3 }],
+    ["i", { paragraph_idx: 3 }], // split off h: no source_ref, the same paragraph
+  ].map(meta);
+  expect(paragraphJoins(blocks)).toEqual(new Set(["a", "h"]));
+});
+
 test("the_join_uses_the_pause_within_a_paragraph_and_the_scene_break", async () => {
   expect(construct(GenerationSettings, {}).pause_within_paragraph_ms).toBe(250);
   const settings = construct(Settings, {});

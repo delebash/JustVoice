@@ -133,14 +133,16 @@ onMounted(() => {
         <UiInput v-model="editing.name" placeholder="e.g. OBS virtual mic" width="name" />
       </UiField>
 
-      <UiField label="Devices (comma-separated IDs)" layout="block">
+      <!-- Hidden while the device list is a placeholder (native.js answers []); a channel's
+           device ids set elsewhere ride along unchanged on Update. -->
+      <UiField v-if="osDevices.length > 0" label="Devices (comma-separated IDs)" layout="block">
         <UiTextarea
           :model-value="editing.device_ids.join(', ')"
           placeholder="device-id-1, device-id-2"
           :rows="3"
           @update:model-value="editing.device_ids = $event.split(',').map((s) => s.trim()).filter(Boolean)"
         />
-        <details v-if="osDevices.length > 0" class="devices-details">
+        <details class="devices-details">
           <summary>{{ osDevices.length }} system audio devices detected</summary>
           <ul>
             <li v-for="d in osDevices" :key="d.id">{{ d.name }} <code class="jv-mono">{{ d.id }}</code></li>

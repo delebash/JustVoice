@@ -97,6 +97,14 @@ test("kokoro_maps_voice_language_speed_and_seed", () => {
   expect(req).toEqual({ model: "kokoro-82m-q8", input: "Hello.", seed: 7, voice: "bf_emma", language: "en-gb", speed: 1.1 });
 });
 
+test("kokoro_sends_no_language_it_does_not_speak", () => {
+  // The narrowings review, F11: audio.cpp then uses the voice's own (its spec: "defaults to the
+  // selected voice prefix") — never US English for a British voice.
+  const req = toSpeechRequest(row("kokoro", "kokoro-82m-q8"), { voice_id: "bf_emma", text: "Hallo.", language: "de-DE", seed: 7 });
+  expect(req).toEqual({ model: "kokoro-82m-q8", input: "Hallo.", seed: 7, voice: "bf_emma" });
+  expect("language" in req).toBe(false);
+});
+
 test("qwen3_customvoice_takes_speaker_instruct_and_a_language_name", () => {
   for (const variant of ["qwen3-cv-1.7b-q8", "qwen3-cv-0.6b-q8"]) {
     const req = toSpeechRequest(row("qwen3", variant), {
@@ -273,6 +281,8 @@ test("the_runtime_row_reads_and_saves_its_backend", async () => {
     cpu_threads: 0,
     cpu_min_realtime: 2.0,
     spill_mb: 256,
+    runaway_s_per_char: 0.5,
+    runaway_min_s: 30.0,
     gpu_threads: 4,
     start_timeout_s: 60.0,
     request_timeout_s: 900.0,
@@ -295,6 +305,7 @@ test("the_runtime_row_saves_the_cpu_process_threads_without_touching_the_build",
   expect(r.json().backend_setting).toBe("vulkan");
   expect((await c.put("/v1/speech-runtime", { json: { backend: "vulkan", cpu_threads: -1 } })).status).toBe(400);
   expect((await c.put("/v1/speech-runtime", { json: { backend: "vulkan", cpu_min_realtime: 0 } })).status).toBe(400);
+  expect((await c.put("/v1/speech-runtime", { json: { backend: "vulkan", runaway_min_s: -1 } })).status).toBe(400);
 });
 
 test("the_runtime_row_refuses_a_build_this_os_has_none_of", async () => {

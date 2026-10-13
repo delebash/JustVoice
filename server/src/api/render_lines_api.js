@@ -3,9 +3,9 @@
 // docs/plans/2026-10-04-slice-4-render.md) (the port of justvoice/api/render_lines_api.py).
 //
 // - GET  /v1/scenes/{id}/render_lines — a chapter's heard lines, each with its state in §8.16's
-//   words, its ★ take and how many takes it has.
+//   words, its ★ take and how many takes it has, and the render job running over them.
 // - GET  /v1/projects/{id}/render_state — every chapter's counts: Render's grid, Studio's step
-//   card, Overview and Home.
+//   card, Overview and Home — and each chapter's running render job.
 // - POST /v1/scenes/{id}/render_lines — render a chapter's lines as a render job: "ready" (each
 //   line with no take gets one — ⚡ Render N ready, a chapter's ▶ Render) or "all" (a new take
 //   for every line that can render, past the render cache — ↻ Re-render all).
@@ -80,10 +80,18 @@ export const SceneRenderLines = T.Object({
   position: T.Integer(),
   lines: T.Array(RenderLine),
   counts: RenderCounts,
+  // The render job running over this chapter's lines, wherever it was started — Render follows
+  // it (2026-10-13, the narrowings review R3; render_jobs.runningJobsByScene).
+  running_job: opt(nullable(RenderJobOut), null),
 });
 
 // pydantic puts a subclass's own fields after its base's.
-export const ChapterRenderState = T.Object({ ...COUNTS, scene_id: T.String(), title: T.String() });
+export const ChapterRenderState = T.Object({
+  ...COUNTS,
+  scene_id: T.String(),
+  title: T.String(),
+  running_job: opt(nullable(RenderJobOut), null),
+});
 
 export const ProjectRenderState = T.Object({
   project_id: T.String(),
@@ -97,15 +105,21 @@ export const BookLexicon = T.Object({ lexicon_id: T.String(), name: T.String(), 
 
 export function router() {
   const app = new Hono();
-  app.get("/v1/scenes/:scene_id/render_lines", async (c) =>
-    c.json(construct(SceneRenderLines, await lineTakes.sceneLines(_openDb(), getState(), c.req.param("scene_id")))),
-  );
+  app.get("/v1/scenes/:scene_id/render_lines", async (c) => {
+    const h = _openDb();
+    const page = await lineTakes.sceneLines(h, getState(), c.req.param("scene_id"));
+    page.running_job = renderJobs.runningJobsByScene(h, [page.scene_id]).get(page.scene_id) ?? null;
+    return c.json(construct(SceneRenderLines, page));
+  });
 
   app.get("/v1/projects/:project_id/render_state", async (c) => {
     const h = _openDb();
     const projectId = c.req.param("project_id");
     if (h.one(`select id from ${Project} where id = ? limit 1`, [projectId]) === null) throw notFound(`project ${projectId}`);
-    return c.json(construct(ProjectRenderState, await lineTakes.projectRenderState(h, getState(), projectId)));
+    const out = await lineTakes.projectRenderState(h, getState(), projectId);
+    const running = renderJobs.runningJobsByScene(h, out.chapters.map((ch) => ch.scene_id));
+    for (const ch of out.chapters) ch.running_job = running.get(ch.scene_id) ?? null;
+    return c.json(construct(ProjectRenderState, out));
   });
 
   /**

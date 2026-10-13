@@ -36,7 +36,7 @@ import {
 import { useApi } from "../stores/api.js";
 import PageTaskStrips from "./PageTaskStrips.vue";
 import CastNewPersonas from "./CastNewPersonas.vue";
-import { andList, splitByName, voicesForBook } from "../services/newPersonas.js";
+import { andList, castModelChoices, smartAssignSpeakers, splitByName, voicesForBook } from "../services/newPersonas.js";
 import { usePersonasStore } from "../stores/personas.js";
 import { projectsService } from "../services/projects.js";
 import { readPref, writePref } from "../services/prefs.js";
@@ -74,19 +74,20 @@ const narrator = computed(() => props.speakers.find((s) => s.role_label === "nar
 // Smart-assign and ＋ New persona offer the language model only voices — or
 // personas whose voice is — on the ticked models, so a book's cast need not
 // spread over every installed model. The list: each model with voices in the
-// book's language, most voices first. The default: the narrator's model when
-// the narrator is cast, else the model with the most voices. Saved per book
-// (prefs `castModels`: {projectId: [engine ids]}).
+// book's language, most voices first — by the voice's model, not its engine
+// (the narrowings review C2, 2026-10-13: Qwen3's and Chatterbox's models were
+// one choice each). The default: the narrator's model when the narrator is
+// cast, else the model with the most voices. Saved per book (prefs
+// `castModels`: {projectId: [model ids]}); a choice saved before held engine
+// ids, which still match where a model's id is its engine's (Kokoro, Kitten,
+// Pocket) — the others fall back to the default.
 const bookVoices = computed(() => voicesForBook(props.voices, props.project?.language));
-const castModelOptions = computed(() => {
-  const counts = {};
-  for (const v of bookVoices.value) counts[v.engine] = (counts[v.engine] || 0) + 1;
-  return Object.entries(counts).sort((a, b) => b[1] - a[1])
-    .map(([id, n]) => ({ value: id, label: `${engineById.value[id]?.name || id} (${n})` }));
-});
+const castModelOptions = computed(() =>
+  castModelChoices(bookVoices.value, Object.fromEntries(props.engines.map((e) => [e.id, e.name]))),
+);
 const defaultModels = computed(() => {
   const nv = voiceById.value[personaOf(narrator.value)?.voice_id];
-  if (nv?.engine && castModelOptions.value.some((o) => o.value === nv.engine)) return [nv.engine];
+  if (nv?.model && castModelOptions.value.some((o) => o.value === nv.model)) return [nv.model];
   return castModelOptions.value.length ? [castModelOptions.value[0].value] : [];
 });
 const savedModels = ref(readPref("castModels", {}) || {});
@@ -101,7 +102,7 @@ const castModels = computed({
     writePref("castModels", savedModels.value);
   },
 });
-const onCastModels = (engineId) => castModels.value.includes(engineId);
+const onCastModels = (model) => castModels.value.includes(model);
 // The grid: everyone but the narrator, who has the card above it. A game
 // sheet has no narrator section, so all of them.
 const listed = computed(() => (isGame.value
@@ -452,16 +453,18 @@ function genderForAi(v) {
 
 // Smart-assign: the language model matches each speaker (name and who they
 // are) to a persona (name, its voice's gender and language, its note on how
-// it sounds), and the matches apply straight away.
+// it sounds), and the matches apply straight away. It reads a narrator with
+// no persona like anyone, and never replaces a narrator's persona (decided
+// 2026-10-13, the narrowings review C1; it used to leave the narrator out).
 const smartBusy = ref(false);
 async function smartAssign() {
-  const people = listed.value;
+  const people = smartAssignSpeakers(props.speakers);
   if (!people.length) {
     pushToast({ kind: "info", message: "No speakers in this project to assign." });
     return;
   }
   // Only personas whose voice is on a ticked model (Models to choose from).
-  const pool = props.personas.filter((p) => onCastModels(voiceById.value[p.voice_id]?.engine));
+  const pool = props.personas.filter((p) => onCastModels(voiceById.value[p.voice_id]?.model));
   if (!pool.length) {
     pushToast({ kind: "info", message: props.personas.length
       ? "None of your personas is on the models to choose from — tick more, or make some with ＋ New persona."
@@ -517,7 +520,7 @@ async function smartAssign() {
       kind: "warning",
       duration: 6000,
       message: e?.message?.includes("501") || e?.status === 501
-        ? "Smart-assign unavailable — wire an LLM provider in Engines → LLM tab."
+        ? "Smart-assign needs a language model — set one in AI Settings."
         : `Smart-assign failed: ${e?.message || e}`,
     });
   } finally {
@@ -552,10 +555,14 @@ async function play(p) {
 // ＋ New persona for the N with none (decided 2026-10-05). Everyone with no
 // persona, the narrator too. A name that is already a persona in your library
 // is cast with it — no new one. The rest go to the language model with the
-// installed voices that speak the book's language (all of them when it isn't
-// set) — the same Smart-assign call, matched to VOICES — and the proposals are
-// shown before anything is made (CastNewPersonas.vue). A new persona is named
-// after its speaker, with that voice and an empty note.
+// installed voices that speak the book's language (decided 2026-10-05) — the
+// same Smart-assign call, matched to VOICES — and the proposals are shown
+// before anything is made (CastNewPersonas.vue). With no book language set it
+// offers every installed voice — the implementer's choice at first; decided
+// 2026-10-13 (the narrowings review K3): ask for the book's language first.
+// Not built yet: the prompt's words wait on the user, so until then every
+// installed voice. A new persona is named after its speaker, with that voice
+// and an empty note.
 const personasStore = usePersonasStore();
 const withoutPersona = computed(() => props.speakers.filter((s) => !s.persona_id));
 const newAsk = ref(null);     // { byName, proposals, voices } while the list is open
@@ -566,7 +573,7 @@ async function proposeNewPersonas() {
   const { byName, rest } = splitByName(people, props.personas);
   const book = props.project?.language;
   // Only voices on a ticked model (Models to choose from).
-  const voices = voicesForBook(props.voices, book).filter((v) => onCastModels(v.engine));
+  const voices = voicesForBook(props.voices, book).filter((v) => onCastModels(v.model));
   if (rest.length && !voices.length) {
     pushToast({ kind: "warning", duration: 6000,
       message: `No installed voice speaks ${languageName(book) || book} — install a speech model on AI Settings → Speech engines.` });
@@ -782,7 +789,7 @@ const GAME_COLUMNS = [
               <div class="studio-cast__main">
                 <strong class="studio-cast__name">{{ s.name }}</strong>
                 <div class="studio-cast__origin jv-muted"
-                  :title="s.imported_from ? 'One of the characters the import brought' : 'Added here — with Discover\'s ＋ Add'">{{ s.imported_from ? "From the book" : "Added here" }}</div>
+                  :title="s.imported_from ? 'One of the characters the import brought' : 'Added with ＋ Add, and the narrator'">{{ s.imported_from ? "From the book" : "Added here" }}</div>
                 <div v-if="s.aliases?.length" class="studio-cast__aka jv-muted">also called {{ s.aliases.join(", ") }}</div>
                 <div class="studio-cast__role jv-muted">{{ roleLine(s) }}</div>
                 <span class="studio-cast__tick" @click.stop

@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: MIT
 //
 // The book's exports as kit tasks the Export panel's strip follows (decided
-// 2026-10-07): the server's export job (`api/export_jobs_api.py`) reports each
-// chapter as it is mastered (then, for the M4B, the encode); Cancel stops it
-// between chapters. The M4B answered only at the end before — minutes with
-// nothing on screen. `kind`: "m4b" the book, "chapters" each chapter's WAV and
-// master in a zip.
+// 2026-10-07): the server's export job (`api/export_jobs_api.js`) reports its
+// render phase line by line ("Rendering line 12 of 340", 2026-10-13), then each
+// chapter as it is mastered (then, for the M4B, the encode); Cancel stops it —
+// in the render phase after the line rendering now (2026-10-13), then between
+// chapters. The M4B answered only at the end before — minutes with nothing on
+// screen. `kind`: "m4b" the book, "chapters" each chapter's WAV and master in a
+// zip.
 
 import { withAiTask } from "@delebash/llm-ui";
 

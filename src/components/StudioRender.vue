@@ -24,7 +24,7 @@ import {
 import { useApi } from "../stores/api.js";
 import { useCopy } from "../services/copy.js";
 import { CANT_RENDER, partOf } from "../services/lineStates.js";
-import { loadingText, renderChapter, waitingText } from "../services/renderRun.js";
+import { chapterRunning, followRender, jobFollowed, loadingText, renderChapter, waitingText } from "../services/renderRun.js";
 import { usePagePlayer } from "../composables/usePagePlayer.js";
 import PagePlayer from "./PagePlayer.vue";
 import PageTaskStrips from "./PageTaskStrips.vue";
@@ -61,9 +61,28 @@ const titleOf = (s) => `${s.position + 1} · ${s.title || `${word.value.singular
 const lineName = (c) => `line ${c.n}${c.speaker ? ` · ${c.speaker}` : ""}`;
 
 // ── The grid, with a progress row under a chapter while it renders ───
+// Any render of the chapter, wherever it was started (decided 2026-10-07): this
+// window's ▶ Render or ⚡ run, or — reported by the server on the chapter's
+// counts (`running_job`) — one from another window, JustWrite or MCP, followed
+// here with its Cancel (2026-10-13, the narrowings review R3). A job over
+// several chapters is followed once, under the first of its chapters here
+// (2026-10-13, the implementation review's problem 8); how it shows on its
+// other chapters waits on the user's word.
 function taskFor(sceneId) {
-  return tasks.visibleTasks.find((t) => t.feature === "render-scene" && t.meta?.sceneId === sceneId) || null;
+  const mine = tasks.visibleTasks.filter((t) => ["render-scene", "render-lines"].includes(t.feature) && t.meta?.sceneId === sceneId);
+  return mine.find((t) => tasks.isRunning(t.id)) || mine[0] || null;
 }
+watch(() => props.renderState, (rs) => {
+  for (const c of rs?.chapters || []) {
+    const s = props.scenes.find((x) => x.id === c.scene_id);
+    if (!c.running_job || !s || chapterRunning(tasks, s.id) || jobFollowed(tasks, c.running_job.id)) continue;
+    followRender(api, { sceneId: s.id, title: titleOf(s), job: c.running_job })
+      .catch((e) => {
+        if (e?.name !== "AbortError") pushToast({ kind: "error", message: `${titleOf(s)}: ${e?.message || e}`, duration: 9000 });
+      })
+      .finally(() => emit("changed"));
+  }
+}, { immediate: true });
 const isRunning = (sceneId) => {
   const t = taskFor(sceneId);
   return !!t && tasks.isRunning(t.id);

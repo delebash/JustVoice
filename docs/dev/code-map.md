@@ -404,21 +404,28 @@ variant row carries an `audiocpp` block.
 tag's `model_specs/`, web-UI catalog and control list, and licence table, plus
 Hugging Face file sizes, into `server/src/engines/audiocpp/catalog.json` —
 re-run it when the pin moves. `engines/audiocpp/generated.js` turns each
-uncovered cloning family into a manifest-shaped engine (`generatedEngines()`,
+uncovered cloning family into a manifest-shaped engine — cloning only, and no
+voice-design entries, built-in voices or recognition families: mine, not decided
+(TASKS FINDING "the generated engines offer only models that clone a voice"; wip
+and unsupported hidden — decided 2026-10-11, answer 3) — (`generatedEngines()`,
 joined in `manager.discoverEngines`), its models into capability rows
 (`capability_details.js`, `settingsOf` for typed settings) and its requests into
 `slot.generatedSpeechRequest`. What a spec can't say — how direction reaches the
 model, what testing found — is one file per family in
 `engines/audiocpp/curated/<family>.js` (`LICENCE`, `DIRECTION`, `PLAIN`,
-`TESTED`, `BEST_FOR`) — every speech engine's family has one, the hand-wired
+`TESTED`, `BEST_FOR`, `HIDDEN_OPTIONS`) — every speech engine's family has one, the hand-wired
 ones too; one without `DIRECTION` is "can't be directed yet". `LICENCE` is our
 reading of the licence at its source (RESEARCH §10.13); `generated.engineFacts`
 serves it, audio.cpp's status, tested and best for on each engine
 (`engines_api._infoFromManifest`), and a licence our reading doesn't call "Yes"
 gates downloads (`TERMS.gates: "download"`, `manager.requireDownloadTerms`).
-A model's memory before a load is `measured_mb` (`manager.measuredMbFor`) or a
-generated model's `min_vram_gb`; Auto runs an unmeasured generated model on the
-CPU when that estimate is more than the card (`manager.placementFor`). The
+A model's memory before a load is `measured_mb` (`manager.measuredMbFor`), else
+a generated model's `need_gb` — the larger of audio.cpp's `min_vram_gb` and its
+download (2026-10-12); Auto runs an unmeasured generated model on the CPU when
+that is more than the card, or tries the card first when only the estimate is
+(2026-10-12; words 2026-10-13; `manager.placementFor`). A measured size fits the
+card with the safety margin, which `/v1/engines/vram` sends as
+`safety_margin_mb` (the narrowings review, M4). The
 Speech engines tab's words for all of it are `src/services/engineFacts.js`,
 shared with its mock.
 
@@ -948,18 +955,18 @@ exposes queue depth or the current engine.**
 
 ---
 
-## 6. The surfaces — 17 routes, 24 views
+## 6. The surfaces — 15 routes, 24 views
 
-`src/router/index.js`. Real routes:
+`src/router/routes.js`. Real routes — inside the layout (`layouts/MainLayout.vue`):
 
-`/home · /projects · /chapter · /lines · /studio · /generate ·
-/captures · /voices · /personas · /personas/:id · /lexicons · /effects · /ai ·
-/importreview · /labs · /settings` (+ `/` → `/home`, `/overview` → `/home`,
-`/engines` → `/ai?tab=speech-engines`, unknown → `/home`).
+`/home · /projects · /lines · /studio · /captures · /voices · /personas ·
+/personas/:id · /lexicons · /effects · /ai · /importreview · /settings`; outside
+it, `/dictate` (the dictation window) and `/offline` (the connection-error page)
+(+ `/` → `/home`, `/overview` → `/home`, `/engines` → `/ai?tab=speech-engines`,
+unknown → `/home`; the design mocks, `router/mockRoutes.js`, in development only).
 
 **Redirect-only paths** that set `sessionStorage` then land on a parent:
-`/cache`, `/channels`, `/webhooks` → `/settings`; `/compare`,
-`/renderlab`, `/audio` → `/labs`; `/speakerlab` → `/ai?tab=features&action=speaker_attribution.guided`
+`/cache`, `/channels`, `/webhooks` → `/settings`; `/speakerlab` → `/ai?tab=features&action=speaker_attribution.guided`
 (the Speaker Lab died in the 2026-08-06 parity batch).
 
 | View | Lines | What it is |

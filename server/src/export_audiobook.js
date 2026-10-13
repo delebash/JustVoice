@@ -24,6 +24,7 @@ import { parseWavHeader } from "./audio/wav.js";
 import * as session from "./database/session.js";
 import { Scene } from "./database/models.js";
 import { ApiError } from "./errors.js";
+import * as lineTakes from "./line_takes.js";
 
 export const log = getLogger("justvoice.export_audiobook");
 
@@ -119,7 +120,12 @@ export async function assembleProject(state, projectId, { renderSceneFn = null, 
  * Mirrors assembleProject's two modes: the default (export) resolves strict and returns [] the
  * moment ANY scene refuses — the export aborts on that scene, so warming past it would render
  * audio it never reaches. `skipUnrenderable` (ACX QC) resolves lenient and skips scenes that
- * throw, exactly like the measuring assembly it warms for.
+ * throw, exactly like the measuring assembly it warms for. A line that plays its ★ take is left
+ * out — the assembly plays the take and never renders it (`renderSceneLines`), as
+ * `renderSceneLinesAsync` leaves it out of a chapter's warm (2026-10-13, the narrowings review R2).
+ * A take whose audio can't be read doesn't play: the assembly renders that line, so it is warmed
+ * like any other (the same test the assembly makes, `readTakeWav`; 2026-10-13, the implementation
+ * review's problem 20).
  */
 export async function collectProjectLineKwargs(state, projectId, { skipUnrenderable = false } = {}) {
   const out = [];
@@ -131,7 +137,9 @@ export async function collectProjectLineKwargs(state, projectId, { skipUnrendera
       if (skipUnrenderable) continue;
       return [];
     }
+    const takes = renderChapterApi._takesFor(lines);
     for (const line of lines) {
+      if (takes.has(line.block_id) && lineTakes.readTakeWav(takes.get(line.block_id)[1]) !== null) continue;
       out.push({
         voice: line.voice,
         text: line.text,

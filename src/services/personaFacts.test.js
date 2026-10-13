@@ -10,8 +10,8 @@ describe("personaFacts — one vocabulary for voices and personas", () => {
   it("names a voice the same way in every dropdown", () => {
     const sohee = { name: "Sohee", gender: "female", language: "ko", model_name: "Qwen3-TTS CustomVoice", engine: "qwen3" };
     expect(voiceLabel(sohee)).toBe("Sohee · Female · Korean · Qwen3-TTS CustomVoice");
-    // An unknown gender is left out rather than shown as "?".
-    expect(voiceLabel({ name: "Zed", language: "en", engine: "kokoro" })).toBe("Zed · English · kokoro");
+    // An unknown gender reads "Not known", the one word for it.
+    expect(voiceLabel({ name: "Zed", language: "en", engine: "kokoro" })).toBe("Zed · Not known · English · kokoro");
   });
 
   it("says how a persona can be directed, with the model's tag count", () => {

@@ -209,7 +209,8 @@ test("first_load_delta_fallback_books_computed", async () => {
 
 test("a_calibrated_load_saves_the_delta_as_its_price", async () => {
   // OmniVoice, 2026-10-12: the probe missed, the delta was never saved, and Auto kept trusting
-  // audio.cpp's 10 GB estimate for a model that took 1.2 GB. A calibrated load saves it.
+  // audio.cpp's 10 GB estimate for a model that took 1.2 GB. A calibrated load saves it — not
+  // yet OmniVoice's own: a generated model never calibrates (the narrowings review, M1).
   const arb = makeArbiter(discrete());
   const recorded = [];
   class CalibratingProc extends Proc {
@@ -687,6 +688,30 @@ test("a_runaway_line_no_longer_prices_the_model_from_its_process", async () => {
   vi.spyOn(EngineManager.prototype, "_engineProcMb").mockResolvedValue(3000);
   await mgr.load("eng", { device: "auto" });
   expect(recorded).toEqual([2800, 3000]);
+});
+
+test("the_loaded_speech_models_are_named_on_any_placement", async () => {
+  // The kit's speechModelsFn (the narrowings review, M3): a CPU slot books nothing on the card,
+  // yet the AI model's RAM refusal names it.
+  makeArbiter(discrete());
+  const mgr = mgrFor(discrete(), manifest("eng", "tts", "cpu"));
+  expect(mgr.loadedSpeechModels()).toEqual([]);
+  await mgr.load("eng", { device: "cpu" });
+  expect(mgr.loadedSpeechModels()).toEqual(["eng"]);
+});
+
+test("the_runaway_thresholds_are_speech_runtime_settings", () => {
+  // speech_runtime.runaway_s_per_char (0.5) and runaway_min_s (30), read at each line.
+  const mgr = mgrFor(discrete(), manifest());
+  const proc = (pid) => ({ proc: { pid } });
+  mgr._noteRunaway(proc(1), "eng", "x".repeat(200), 60);
+  expect(mgr._prices(proc(1))).toBe(true);
+  const settings = vi.spyOn(runtime, "_settings").mockReturnValue({ runaway_s_per_char: 0.25, runaway_min_s: 30 });
+  mgr._noteRunaway(proc(2), "eng", "x".repeat(200), 60);
+  expect(mgr._prices(proc(2))).toBe(false);
+  settings.mockReturnValue({ runaway_s_per_char: 0.5, runaway_min_s: 120 });
+  mgr._noteRunaway(proc(3), "eng", "Hello there.", 100);
+  expect(mgr._prices(proc(3))).toBe(true);
 });
 
 test("admission_credits_what_the_replaced_occupant_gives_back", async () => {

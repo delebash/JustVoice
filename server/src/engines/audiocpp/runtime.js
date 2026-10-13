@@ -207,6 +207,20 @@ export function spillMb() {
   return Number.isFinite(v) && v >= 0 ? v : 256;
 }
 
+/** settings.engines.speech_runtime.runaway_s_per_char — seconds of audio a character of a line's
+ * text past which the line ran away (manager._noteRunaway). */
+export function runawaySPerChar() {
+  const v = Number(self._settings().runaway_s_per_char);
+  return Number.isFinite(v) && v >= 0 ? v : 0.5;
+}
+
+/** settings.engines.speech_runtime.runaway_min_s — the shortest line, in seconds, that counts as
+ * run away (manager._noteRunaway). */
+export function runawayMinS() {
+  const v = Number(self._settings().runaway_min_s);
+  return Number.isFinite(v) && v >= 0 ? v : 30;
+}
+
 /** The backends audio.cpp publishes a build of for this OS (the runtime row's choices). */
 export function availableBackends() {
   const hw = self._hardware();

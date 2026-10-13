@@ -47,21 +47,26 @@ export const licTitle = (l) => `${l.summary}\n\n${reading(l)}. The licence text 
 const gb = (mb) => Math.round((mb / 1024) * 10) / 10;
 
 /** A model's memory before it loads: what an earlier load measured here, else audio.cpp's
- * estimate, against this card (null = no card to fit). `runsOn` is where the server would load
- * it now: a model too big by the estimate whose files fit the card easily is tried on the card
- * first (2026-10-12), and its Runs on line says why. → {text, warn, gb}; gb is null when
- * neither is known. */
-export function memoryText({ measuredMb, needGb, runsOn = null }, cardMb) {
-  const fitWords = (g) => (cardMb ? (g * 1024 <= cardMb ? " · fits this card" : null) : "");
+ * estimate, against this card (null = no card to fit). A measured size fits when it and the
+ * safety margin (`marginMb`, the server's: /v1/engines/vram `safety_margin_mb`) are no more than
+ * the card — the rule Auto loads by (manager.placementFor; the narrowings review, M4). `runsOn`
+ * is where the server would load it now: a model too big by the estimate whose files fit the
+ * card easily is tried on the card first (2026-10-12), and its Runs on line says why. →
+ * {text, warn, gb, fits}; gb is null when neither is known, fits null when there's no card or
+ * no number. */
+export function memoryText({ measuredMb, needGb, runsOn = null }, cardMb, marginMb = 0) {
+  const fitsCard = (mb) => (cardMb ? mb <= cardMb : null);
+  const fitWords = (fits) => (fits === null ? "" : fits ? " · fits this card" : null);
   if (measuredMb) {
     const g = gb(measuredMb);
-    return { text: `about ${g} GB, measured here${fitWords(g) ?? " · more than this card has"}`, warn: fitWords(g) === null, gb: g };
+    const fits = fitsCard(measuredMb + marginMb);
+    return { text: `about ${g} GB, measured here${fitWords(fits) ?? " · more than this card has"}`, warn: fits === false, gb: g, fits };
   }
   if (needGb) {
-    const f = fitWords(needGb);
-    if (f !== null) return { text: `needs about ${needGb} GB${f}`, warn: false, gb: needGb };
-    if (runsOn === "gpu") return { text: `needs about ${needGb} GB · more than this card has`, warn: true, gb: needGb };
-    return { text: `needs about ${needGb} GB · too big for this card — Load runs it on the CPU`, warn: true, gb: needGb };
+    const fits = fitsCard(needGb * 1024);
+    if (fits !== false) return { text: `needs about ${needGb} GB${fitWords(fits)}`, warn: false, gb: needGb, fits };
+    if (runsOn === "gpu") return { text: `needs about ${needGb} GB · more than this card has`, warn: true, gb: needGb, fits };
+    return { text: `needs about ${needGb} GB · too big for this card — Load runs it on the CPU`, warn: true, gb: needGb, fits };
   }
-  return { text: "memory not measured yet", warn: false, gb: null };
+  return { text: "memory not measured yet", warn: false, gb: null, fits: null };
 }

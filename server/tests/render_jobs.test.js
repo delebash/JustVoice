@@ -206,6 +206,30 @@ test("cancel_withdraws_queued_blocks", async () => {
   expect(statuses.filter((x) => x === "pending").length).toBeGreaterThanOrEqual(2); // withdrawn, resume picks them up
 });
 
+test("a_job_asked_to_cancel_is_no_chapters_running_job", async () => {
+  // 2026-10-13 (the implementation review's problem 7): a cancelled job stays "running" until
+  // its current line ends; the chapter must not report it, or a window picks it up again.
+  const [projectId, sceneId, blockIds] = seedProject(["One.", "Two."]);
+  const entered = new AsyncEvent();
+  const release = new AsyncEvent();
+  fakeRender(async () => {
+    entered.set();
+    await release.wait(5000);
+    return line();
+  });
+  const job = renderJobs.createJob(projectId, "blocks", blockIds);
+  renderJobs.startJob(job.id);
+  expect(await entered.wait(5000)).toBe(true);
+  expect(renderJobs.runningJobsByScene(h, [sceneId]).get(sceneId)?.id).toBe(job.id);
+  expect(renderJobs.cancelRequested(job.id)).toBe(false);
+  renderJobs.cancelJob(job.id);
+  expect(renderJobs.jobStatus(job.id).status).toBe("running"); // its current line still renders
+  expect(renderJobs.cancelRequested(job.id)).toBe(true);
+  expect(renderJobs.runningJobsByScene(h, [sceneId]).has(sceneId)).toBe(false);
+  release.set();
+  expect((await waitTerminal(job.id)).status).toBe("cancelled");
+});
+
 test("boot_sweep_pauses_interrupted_jobs", () => {
   const [projectId] = seedProject(["One."]);
   h.insert(RenderJob, { project_id: projectId, scope: "project", status: "running" });

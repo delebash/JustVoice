@@ -12,10 +12,12 @@
 // as floats (`"loudness_target_lufs": -20.0` — floatify), `", "` / `": "` separators.
 
 import { existsSync, readFileSync, rmSync } from "node:fs";
+import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { getLogger } from "@delebash/llm-runner/platform/log";
 import { RuntimeError, isJsonObject } from "@delebash/llm-runner/platform/py";
 import { pyJson, pyClone } from "@delebash/llm-runner/platform/pyjson";
+import { openDatabase } from "@delebash/llm-runner/platform/sql";
 import * as session from "../database/session.js";
 import { construct, floatify, modelDump, Settings, SettingsPatch } from "../models.js";
 import { settingsPath } from "../paths.js";
@@ -75,6 +77,52 @@ export function _deepMerge(base, update) {
   }
 }
 
+/** The settings in a row's text; a corrupt row gives the defaults (it must not kill boot). */
+function settingsFromRow(text) {
+  try {
+    return construct(Settings, _migrateLlmCamel(JSON.parse(text)));
+  } catch (e) {
+    log.warning(`settings row failed to parse (error=${e?.message ?? e}); using defaults`);
+    return construct(Settings, {});
+  }
+}
+
+/** The settings in a legacy settings.json, or null when there is none or it doesn't parse.
+ * `importing`: the store is about to import it (and says so). */
+function settingsFromLegacy(file, { importing = false } = {}) {
+  if (!existsSync(file)) return null;
+  try {
+    const data = JSON.parse(readFileSync(file, "utf8"));
+    if (importing) log.info(`Migrating settings.json → SQLite (path=${file})`);
+    return construct(Settings, _migrateLlmCamel(data));
+  } catch (e) {
+    log.warning(`settings.json failed to parse (error=${e?.message ?? e}); using defaults`);
+    return null;
+  }
+}
+
+/**
+ * The settings `SettingsStore` would load from `dataDir` — its row, else a legacy settings.json,
+ * else the defaults — read WITHOUT writing anything: the database is opened read-only (not at all
+ * when there is none yet), no row is seeded and no settings.json retired. For serve.js, which
+ * needs the server's port before any of the app's code opens the database (another server of
+ * this app may have it open).
+ */
+export function readSettingsReadOnly(dataDir) {
+  const file = path.join(dataDir, session.DB_FILE);
+  if (existsSync(file)) {
+    const h = openDatabase(file, { foreignKeys: false, readonly: true });
+    try {
+      const hasTable = h.value("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'settings'");
+      const text = hasTable ? h.value("SELECT data FROM settings WHERE id = ?", [ROW_ID]) : null;
+      if (text != null) return settingsFromRow(text);
+    } finally {
+      h.close();
+    }
+  }
+  return settingsFromLegacy(settingsPath(dataDir)) ?? construct(Settings, {});
+}
+
 /** In-memory + SQLite-backed settings store. */
 export class SettingsStore {
   constructor(dataDir) {
@@ -92,14 +140,7 @@ export class SettingsStore {
 
   _readRow(h) {
     const row = h.get("settings", ROW_ID);
-    if (!row) return null;
-    try {
-      return construct(Settings, _migrateLlmCamel(JSON.parse(row.data)));
-    } catch (e) {
-      // a corrupt row must not kill boot
-      log.warning(`settings row failed to parse (error=${e?.message ?? e}); using defaults`);
-      return construct(Settings, {});
-    }
+    return row ? settingsFromRow(row.data) : null;
   }
 
   _writeRow(h, settings) {
@@ -122,15 +163,7 @@ export class SettingsStore {
   }
 
   _loadLegacy() {
-    if (!existsSync(this._legacyPath)) return null;
-    try {
-      const data = JSON.parse(readFileSync(this._legacyPath, "utf8"));
-      log.info(`Migrating settings.json → SQLite (path=${this._legacyPath})`);
-      return construct(Settings, _migrateLlmCamel(data));
-    } catch (e) {
-      log.warning(`settings.json failed to parse (error=${e?.message ?? e}); using defaults`);
-      return null;
-    }
+    return settingsFromLegacy(this._legacyPath, { importing: true });
   }
 
   _retireLegacy() {
@@ -185,7 +218,6 @@ export class SettingsStore {
     if (!eq(prev.server, next.server)) {
       if (prev.server.host !== next.server.host) out.push("server.host");
       if (prev.server.port !== next.server.port) out.push("server.port");
-      if (prev.server.docs_enabled !== next.server.docs_enabled) out.push("server.docs_enabled");
     }
     if (!eq(prev.logging, next.logging)) {
       out.push("logging.level");

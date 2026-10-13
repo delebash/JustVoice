@@ -431,8 +431,9 @@ export function _persistAttribution(h, scene, rows, text, { marks: style = "doub
     else delete m.llm_speaker;
     if (prev === UNCHANGED) delete m.prev_speaker_id;
     else m.prev_speaker_id = prev;
-    // The second look's "not in the cast" name (2026-10-05) — Script offers to add them; set and
-    // cleared with every run, never left stale.
+    // The second look's "not in the cast" name (2026-10-05) — Script's banner names them and
+    // opens Discover's scan; Script never adds (2026-10-06). Set and cleared with every run, never
+    // left stale.
     if (row.not_in_cast) m.not_in_cast = row.not_in_cast;
     else delete m.not_in_cast;
     // Asked by the second look, named no one (2026-10-06) — set and cleared with every run.
@@ -554,9 +555,10 @@ export function _paragraphOf(paragraphs, block) {
 
 /**
  * One answer onto its line. A line given a speaker or set by you meanwhile is left alone, and so
- * is a line whose question failed. Named: the speaker, marked to check; its "changed" mark says
- * who it was before the last Analyze, dropped when that is who it is again. Not named: marked
- * asked (Script's Check column says so), and the "not in the cast" name the answer gave.
+ * is a line whose question failed. Named: the speaker, marked to check; it gets no "changed"
+ * mark of its own (2026-10-13, the narrowings review S4) — one a re-analyze left, saying who it
+ * was before, is dropped when that is who it is again. Not named: marked asked (Script's Check
+ * column says so), and the "not in the cast" name the answer gave.
  */
 export function _saveSecondLook(blockId, row, outcome) {
   const h = session.getDb();
@@ -571,9 +573,7 @@ export function _saveSecondLook(blockId, row, outcome) {
     delete meta.floored_from;
     delete meta.not_in_cast;
     delete meta.second_look_asked;
-    if (Object.hasOwn(meta, "prev_speaker_id")) {
-      if (meta.prev_speaker_id === row.speaker) delete meta.prev_speaker_id;
-    } else meta.prev_speaker_id = null;
+    if (Object.hasOwn(meta, "prev_speaker_id") && meta.prev_speaker_id === row.speaker) delete meta.prev_speaker_id;
   } else {
     meta.second_look_asked = true;
     if (row.not_in_cast) meta.not_in_cast = row.not_in_cast;
@@ -1181,7 +1181,7 @@ export function router() {
             resolve,
             castNames: (name) => Boolean(names.match(name, promptCast)),
             floor,
-            useFloor: true,
+            useFloor: false, // the second look has no floor (2026-10-13, the narrowings review S1)
             cfg,
             report,
             usage,

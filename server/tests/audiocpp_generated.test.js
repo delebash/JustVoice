@@ -62,16 +62,54 @@ test("CosyVoice3 gets the authors' sentence for an emotion, and its plain templa
   expect(smug.language).toBeUndefined(); // CosyVoice3 lists no language option
 });
 
-test("IndexTTS gets an emotion vector at 0.65, and words when the emotion has none", () => {
+test("IndexTTS gets the line's direction as emotion text, at audio.cpp's own strength", () => {
+  // Round 3's tested mapping (test branch 1b5bff4; the narrowings review, E9).
   const row = rowOf("index_tts2", "index_tts2-indextts25-q8");
   const angry = slot.toSpeechRequest(row, line({ delivery: { emotion: "angry", instruct: "angry. scolding" } }));
-  expect(angry.options).toEqual({ emotion_vector: [0, 0.7, 0, 0, 0, 0, 0, 0], emotion_alpha: 0.65 });
+  expect(angry.options).toEqual({ use_emotion_text: true, emotion_text: "angry. scolding" });
   const sigh = slot.toSpeechRequest(row, line({ delivery: { instruct: "with a long, weary sigh" } }));
-  expect(sigh.options).toEqual({ use_emotion_text: true, emotion_text: "with a long, weary sigh", emotion_alpha: 0.65 });
+  expect(sigh.options).toEqual({ use_emotion_text: true, emotion_text: "with a long, weary sigh" });
   expect(slot.toSpeechRequest(row, line()).options).toBeUndefined();
-  // The model's own setting wins over the direction's default strength.
-  const set = slot.toSpeechRequest(row, line({ delivery: { emotion: "sad", instruct: "sad", engine: { emotion_alpha: 0.9 } } }));
-  expect(set.options.emotion_alpha).toBe(0.9);
+  expect(slot.toSpeechRequest(row, line({ delivery: { emotion: "sad" } })).options).toBeUndefined();
+  // The model's own strength setting is sent when set.
+  const set = slot.toSpeechRequest(row, line({ delivery: { instruct: "sad", engine: { emotion_alpha: 0.9 } } }));
+  expect(set.options).toEqual({ use_emotion_text: true, emotion_text: "sad", emotion_alpha: 0.9 });
+  expect(lookup("index_tts2-indextts25").notes).toContain(
+    "Tested by JustVoice: Acted 12 of 21 lines like the book in a blind test, with directions in words; kept the cloned voice.",
+  );
+});
+
+test("the line's text, the clip's words and the clip are never offered as settings", () => {
+  // The narrowings review, E15: plan §5's list ("text, voice, clip …"), VoxCPM1's name for the
+  // clip's words, and what a family's file hides.
+  expect(generated.APP_OWNED_OPTIONS.has("text")).toBe(true);
+  expect(lookup("voxcpm1").knobs.some((k) => k.key === "prompt_text")).toBe(false);
+  for (const [model, key] of [
+    ["moss_ttsd", "voice_samples"],
+    ["fish_audio", "multi_reference_cond"],
+    ["audio8_tts", "multi_reference_cond"],
+  ]) {
+    expect(lookup(model).knobs.some((k) => k.key === key), `${model} ${key}`).toBe(false);
+  }
+  // A value saved before it was hidden isn't sent.
+  const req = slot.toSpeechRequest(rowOf("fish_audio", "fish_audio-q8"), line({ delivery: { engine: { multi_reference_cond: "C:\\clips\\other.wav", temperature: 0.7 } } }));
+  expect(req.options).toEqual({ temperature: 0.7 });
+});
+
+test("a setting with no default has none: audio.cpp's own applies", () => {
+  // The narrowings review, E12: Echo TTS's max_duration_sec has no default in its spec.
+  const echo = lookup("echo_tts").knobs.find((k) => k.key === "max_duration_sec");
+  expect(echo).toMatchObject({ type: "number", min: 0.05 });
+  expect(echo.default).toBeNull();
+  expect(lookup("echo_tts").knobs.find((k) => k.key === "num_inference_steps").default).toBe(40);
+  expect(slot.toSpeechRequest(rowOf("echo_tts", "echo_tts-q8"), line()).options).toBeUndefined();
+});
+
+test("the clip's words field shows for a family whose spec lists no options", () => {
+  // The narrowings review, E11: the field follows the request's rule.
+  expect(lookup("omnivoice").supports_clone_prompt_text).toBe(true);
+  expect(lookup("breeze_tts").supports_clone_prompt_text).toBe(true);
+  expect(lookup("echo_tts").supports_clone_prompt_text).toBe(false);
 });
 
 test("a generated model's settings are its spec's typed options, minus what the app sets", () => {
@@ -154,6 +192,12 @@ test("every engine's facts: our licence word beside audio.cpp's, its status, tes
 test("a language list that describes is shown as audio.cpp words it, never counted as one language", () => {
   expect(generated.speaks(generated.CATALOG.families.higgs_audio_tts)).toEqual({ languages: [], note: "100+ languages" });
   expect(generated.speaks(generated.CATALOG.families.cosyvoice3).note).toBe("");
+  // "multilingual" is audio.cpp's word too; "auto" (it detects) is no language (the narrowings
+  // review, E10).
+  expect(generated.speaks(generated.CATALOG.families.dots_tts)).toEqual({ languages: [], note: "multilingual" });
+  const audio8 = generated.speaks(generated.CATALOG.families.audio8_tts);
+  expect(audio8.languages).not.toContain("auto");
+  expect(audio8.languages).toHaveLength(11);
   const omni = generated.generatedEngines().get("omnivoice").VARIANTS;
   expect(omni.every((v) => v.languages_note === "600+ languages")).toBe(true);
   // bf16 and f16 are both 16-bit: the names say which.

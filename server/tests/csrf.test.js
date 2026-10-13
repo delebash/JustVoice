@@ -48,3 +48,24 @@ test("cross_site_read_allowed", async () => {
   const r = await c.get("/v1/projects", { headers: { origin: "http://evil.example" } });
   expect(r.status).toBe(200);
 });
+
+test("desktop_window_origin_has_cors_with_no_origins_configured", async () => {
+  // The window's origin is allowed by CORS whatever the settings list (TASKS step-5 rec 4) —
+  // even with every origin and the regex emptied, which used to drop CORS altogether.
+  const { c, dir } = await appClient();
+  expect((await c.patch("/v1/settings", { json: { cors: { origins: [], origin_regex: "" } } })).status).toBe(200);
+  await closeApps();
+  const { c: c2 } = await appClient(dir); // CORS is read at boot
+  let r = await c2.get("/v1/projects", { headers: { origin: "app://justvoice" } });
+  expect(r.headers["access-control-allow-origin"]).toBe("app://justvoice");
+  r = await c2.get("/v1/projects", { headers: { origin: "http://localhost:1430" } });
+  expect(r.headers["access-control-allow-origin"]).toBeUndefined();
+});
+
+test("default_cors_has_no_tauri_origins", async () => {
+  const { c } = await appClient();
+  let r = await c.get("/v1/projects", { headers: { origin: "tauri://localhost" } });
+  expect(r.headers["access-control-allow-origin"]).toBeUndefined();
+  r = await c.get("/v1/projects", { headers: { origin: "http://localhost:9999" } });
+  expect(r.headers["access-control-allow-origin"]).toBe("http://localhost:9999");
+});

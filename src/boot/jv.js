@@ -13,6 +13,7 @@ import {
   configureFileSave,
   configureTestData,
   checkServer,
+  CHECK_SERVER_MS,
   installLlmUi,
   startWarmOnBoot,
 } from "@delebash/llm-ui";
@@ -24,7 +25,7 @@ import { attributionLabAdapter } from "../services/attributionLab.js";
 import { refineLabAdapter } from "../services/refineLab.js";
 import { LAB_TEST_ACTIONS, LAB_TEST_SOURCES } from "../services/labTestData.js";
 import { bootPrefs, ensureActiveProjectDefault } from "../services/prefs.js";
-import { openPath, openUrl, saveFile } from "../services/native.js";
+import { openPath, openUrl, saveFile, shellServerUrl } from "../services/native.js";
 import { loadDoc, hasDoc, titleForSlug } from "../services/helpDocs.js";
 import { watchSync } from "../services/syncWatch.js";
 import { useUiStore } from "../stores/ui.js";
@@ -44,7 +45,10 @@ function isDictateView() {
 // Called in BOTH boot branches: the dictate webview builds server URLs off the
 // same transport, and an unconfigured client falls back to
 // window.location.origin — app://justvoice in the desktop app, empty views only there.
-function wireKit(app) {
+// `shellBase`: the desktop app's server URL as its shell says it — the server listens on Settings
+// → Server's Port. In a browser with no shell (`npm run dev:spa`), VITE_SERVER_URL, else the Port
+// setting's default (server/src/models.js).
+function wireKit(app, shellBase) {
   installLlmUi(app, {
     // The app's vue-i18n instance: the kit's words come from its `kit.*` keys, JustVoice's own
     // rewordings in src/i18n/locales/en.json winning — the AI console's "LLM providers", the
@@ -53,7 +57,7 @@ function wireKit(app) {
     // plan's step B, 2026-10-12; until then they were set by calls in this file).
     i18n,
     devPorts: ["1430", "1431"],
-    fallbackBase: import.meta.env.VITE_SERVER_URL || "http://127.0.0.1:17494",
+    fallbackBase: shellBase || import.meta.env.VITE_SERVER_URL || "http://127.0.0.1:17494",
     serverOverrideKey: "jt:server",
     // The openers, through services/native.js (the shell's one bridge) — the SAME
     // line in all three apps. The kit decides when they can be used (browser vs
@@ -125,18 +129,25 @@ function wireKit(app) {
 }
 
 async function boot({ app, router, store: pinia }) {
+  // Where the desktop app's server listens (its shell knows once the server is up); null in a
+  // browser. The wait is the server check's own (CHECK_SERVER_MS, about 7.5 s): a start that
+  // hangs, or a listener that never answers, still ends on the connection-error page with Retry.
+  const shellBase = await Promise.race([
+    shellServerUrl(),
+    new Promise((resolve) => setTimeout(() => resolve(null), CHECK_SERVER_MS)),
+  ]);
   // The dictate window (never created today — study §7.1) runs in a separate
   // window that must skip the main shell + server bootstrap (the main window owns
   // those) and render only the floating recording pill. URL?view=dictate
   // triggers this branch; every route then shows the pill's page (/dictate,
   // outside the layout).
   if (isDictateView()) {
-    wireKit(app);
+    wireKit(app, shellBase);
     router.beforeEach((to) => (to.path === "/dictate" ? true : "/dictate"));
     return;
   }
 
-  wireKit(app);
+  wireKit(app, shellBase);
 
   // Thin-client guard: all data lives in the server. If it's unreachable, every
   // route goes to the connection-error page (pages/ConnectionErrorPage.vue, outside
@@ -185,7 +196,7 @@ async function boot({ app, router, store: pinia }) {
   // so this normally decides "nothing to warm" and the app just opens; the
   // mechanics ship identically so flipping the toggle on is all it takes.
   await startWarmOnBoot();
-  // Another device's changes (sync) offer a reload (services/syncWatch.js).
+  // Another device's changes (sync) reload the window (services/syncWatch.js).
   watchSync();
   // Resolve the initial (lazy) route before mount so the first paint is the
   // real view, not an empty router-view. (main.js awaited router.isReady(); Quasar

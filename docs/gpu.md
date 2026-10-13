@@ -148,6 +148,11 @@ unload gives back. If there isn't room, the load stops before anything moves:
 *not enough memory to load gemma-4-26b-a4b-qat: the part of it that stays in
 this machine's memory is about 8.8 GB (+1024 MB safety margin) but only 8 GB of
 this machine's 32 GB is free. Close other programs, or pick a smaller model.*
+The free figure is what is free right now. With a speech model loaded — on the
+graphics card or the CPU — the last sentence names it instead: *A speech model
+(voxcpm2) is loaded and holds memory too — unload it first, or close other
+programs.* It isn't named when the check already counted the memory a speech
+model gives back.
 A model waking from sleep is never stopped this way — a feature in the middle
 of its work shouldn't fail — so a wake that is short of memory goes ahead, and
 only the log says so.

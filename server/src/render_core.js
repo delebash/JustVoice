@@ -482,6 +482,9 @@ export function lineLexicons(bookLexiconId, personaLexiconId) {
  * `ipaMap` holds only the words THIS line contains. It rides in the delivery and so in the
  * cache key; carrying every entry made any IPA edit re-render every line. The match is the
  * engine's own (`_ipaWords`).
+ *
+ * Each of `lexiconIds` is a lexicon's id, or a lexicon itself (`{id, entries}`) — an unsaved
+ * draft, read in its place (Lexicons' ▶ before Save, 2026-10-13).
  */
 export function _applyLexicons(text, lexiconIds, state, { ipaCapable = false } = {}) {
   if (!lexiconIds || !lexiconIds.length) return [text, {}];
@@ -492,7 +495,7 @@ export function _applyLexicons(text, lexiconIds, state, { ipaCapable = false } =
   const spokenAsIpa = new Set(); // lowercased — IPA matches any case
   const respelt = new Set(); // exact — a respelling matches its own spelling
   for (const lid of lexiconIds) {
-    const lex = state.lexicons.get(lid);
+    const lex = typeof lid === "string" ? state.lexicons.get(lid) : lid;
     if (!lex) continue;
     for (const entry of lex.entries) {
       const word = strip(entry.grapheme).toLowerCase();

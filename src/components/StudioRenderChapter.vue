@@ -9,7 +9,8 @@
   Model and Can be directed are the Personas and Voices lists' own words
   (2026-10-06); the cell adds the line's direction on a words model and the
   persona's tags on a tag model. Opening a line
-  shows who speaks it (read-only — Cast decides, D2), "Render overrides" —
+  shows its speaker — Script's picker (2026-10-05, answer 3) — with its persona
+  and model read-only and "Change in Cast ➜" (D2), "Render overrides" —
   the persona page's controls that the line's model takes, and only those,
   for this line (2026-10-06, was D3's closed hatch; stored in the line's
   metadata), 📕 Pronunciation (the
@@ -34,7 +35,9 @@ import { directionCell, tagCount, voiceKind } from "../services/personaFacts.js"
 import { useVoicesStore } from "../stores/voices.js";
 import { useCopy } from "../services/copy.js";
 import { useKeptScroll } from "../composables/useKeptScroll.js";
-import { loadingText, mediaUrl, renderChapter, renderLines, waitingText } from "../services/renderRun.js";
+import {
+  chapterRunning, followRender, jobFollowed, loadingText, mediaUrl, renderChapter, renderLines, waitingText,
+} from "../services/renderRun.js";
 import { facetCounts, facetOptions, facetTotal, passesFilters } from "../services/facets.js";
 import { CANT_RENDER_STATES as BLOCKED, lineStateWord } from "../services/lineStates.js";
 import { speakerOptions as castChoices } from "../services/scriptReview.js";
@@ -75,6 +78,7 @@ async function load() {
     if (id !== props.sceneId) return;
     page.value = r;
     loadError.value = "";
+    adopt(r);
   } catch (e) {
     if (id === props.sceneId) loadError.value = String(e?.message || e);
   }
@@ -136,7 +140,6 @@ void voicesStore.ensureLoaded();
 const designedVoice = (l) =>
   voiceKind(voicesStore.items.find((v) => v.id === personaOf(l)?.voice_id)) === "design";
 const speakerName = (l) => speakerOf(l)?.name || "—";
-const firstName = (l) => speakerName(l).split(" ")[0];
 
 // ── Who says the line — the same picker as Script's (decided 2026-10-05) ──
 // So a wrong speaker heard while rendering is fixed on the spot. It saves
@@ -312,12 +315,28 @@ async function renderOne(l, { newTake = false } = {}) {
 const runs = reactive({});      // scene id → its run
 const running = computed(() => runs[props.sceneId] || "");
 
-// A render of this chapter, wherever it was started — here or the chapter list
-// (decided 2026-10-07): the page re-reads its lines as each one lands, lights the
-// line rendering now, and says which lines wait in the run.
+// A render of this chapter, wherever it was started (decided 2026-10-07): the
+// page re-reads its lines as each one lands, lights the line rendering now, and
+// says which lines wait in the run. One started here or on the chapter list is
+// this window's task; one started anywhere else — another window, an earlier
+// page load, JustWrite, MCP — the server reports on the lines (`running_job`),
+// and the page follows it as the same task, Cancel included (2026-10-13, the
+// narrowings review R3).
 const aiTasks = useAiTasksStore();
 const liveRun = computed(() => aiTasks.visibleTasks.find((t) => ["render-lines", "render-scene"].includes(t.feature)
   && t.meta?.sceneId === props.sceneId && aiTasks.isRunning(t.id)) || null);
+function adopt(r) {
+  const job = r?.running_job;
+  // A job this window already follows (the list adopted it under another of its chapters) isn't
+  // followed twice; how this chapter's page shows that job is the user's word (the narrowings
+  // review, round 2).
+  if (!job || chapterRunning(aiTasks, r.scene_id) || jobFollowed(aiTasks, job.id)) return;
+  followRender(api, { sceneId: r.scene_id, title: title.value, job })
+    .catch((e) => {
+      if (e?.name !== "AbortError") pushToast({ kind: "error", message: `Render failed: ${e?.message || e}`, duration: 7000 });
+    })
+    .finally(() => emit("changed", { sceneId: r.scene_id }));
+}
 const runState = (blockId) => liveRun.value?.render?.lines?.[blockId] || "";
 // The three whole-chapter runs wait for any run of this chapter, wherever it
 // started — one from the chapter list left them open (2026-10-07).
@@ -512,7 +531,9 @@ function setWord(l, key, v) {
 const modelKnobs = (l) => (rowOf(l)?.knobs || []).filter((k) => k.key !== "speed" && k.key !== "seed")
   .map((k) => ({
     key: k.key, label: k.label, type: k.type || "number", min: k.min, max: k.max, step: k.step, choices: k.choices || [],
-    neutral: (k.type || "number") === "number" ? Number(k.default) : k.default, unit: k.unit || "", hint: k.hint,
+    // No default (null): none shown, audio.cpp's own applies (the narrowings review, E12).
+    neutral: k.default == null ? null : (k.type || "number") === "number" ? Number(k.default) : k.default,
+    unit: k.unit || "", hint: k.hint,
   }));
 const knobFallback = (l) => Object.fromEntries(modelKnobs(l).map((k) => [k.key, personaMs(l).knobs?.[k.key] ?? k.neutral]));
 function setKnob(l, key, v) {
@@ -521,7 +542,8 @@ function setKnob(l, key, v) {
   // A slider's value is a number; a dropdown's, a switch's or a text field's keeps its type.
   const isNumber = (modelKnobs(l).find((k) => k.key === key)?.type || "number") === "number";
   let value = v === null || v === undefined || v === "" ? null : isNumber ? Number(v) : v;
-  const fallback = isNumber ? Number(knobFallback(l)[key]) : knobFallback(l)[key];
+  const fb = knobFallback(l)[key];
+  const fallback = fb == null ? null : isNumber ? Number(fb) : fb;
   if (value !== null && value === fallback) value = null;
   if ((lineMs(l).knobs?.[key] ?? null) === value) return;
   patchBlock(l, { line_override: { models: { [model]: { knobs: { [key]: value } } } } });
@@ -739,7 +761,7 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
                 :loading="busy[row.block_id]" :disabled="!!running" @click="renderOne(row)" />
               <UiButton v-else-if="row.state === 'needs a speaker'" intent="secondary" size="small" label="Fix in Script"
                 title="Opens Script" @click="emit('go', 'script')" />
-              <UiButton v-else-if="!personaOf(row)" intent="secondary" size="small" :label="`Cast ${firstName(row)}`"
+              <UiButton v-else-if="!personaOf(row)" intent="secondary" size="small" :label="`Cast ${speakerName(row)}`"
                 @click="emit('go', 'cast')" />
               <UiButton v-else intent="secondary" size="small" :label="`Give persona ${personaOf(row).name} a voice`"
                 @click="goPersona(personaOf(row).id)" />
@@ -840,7 +862,7 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
                   <UiButton intent="secondary" size="small" label="📕 Pronunciation"
                     title="Opens the book's lexicon — select a word in the line first to add it" @click="pronounce(row.line)" />
                   <UiButton intent="secondary" size="small" :disabled="!row.line.speaker_id"
-                    :label="row.line.speaker_id ? `✏️ Rewrite as ${firstName(row.line)}` : '✏️ Rewrite as the speaker'"
+                    :label="row.line.speaker_id ? `✏️ Rewrite as ${speakerName(row.line)}` : '✏️ Rewrite as the speaker'"
                     :title="rewriteTitle(row.line)" @click="openRewrite(row.line)" />
                   <UiButton intent="secondary" size="small" label="✎ Edit words"
                     :disabled="editing[row.line.block_id] !== undefined"

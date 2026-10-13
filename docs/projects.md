@@ -32,7 +32,8 @@ manuscript, a podcast script, CSV lines, subtitles, an Audacity label track, Jus
 the file endings of each, and what comes in from it. The file is read at once: its title and its
 kind fill the name and the kind, unless you picked your own. A file whose ending fits more than one
 source (a `.md` can be a book or a podcast script) shows **Read it as**, already set to the one the
-file looks like.
+file looks like. **What is this format?** beside the file opens the source's section of
+[Import and export](import-and-export.md).
 
 **Create** then opens the file's [review](import-and-export.md#the-import-review-page), where you
 pick the chapters and import; nothing is made until you do, and the project gets the name, kind and

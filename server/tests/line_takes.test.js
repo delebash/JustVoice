@@ -12,7 +12,7 @@
 // on a bare app over the test's state (render_helpers.js `viaRoutes`); the book of most tests is
 // written straight to the database and stores (render_helpers.js `book`, Python's `_book`
 // without its POSTs).
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { sleep } from "@delebash/llm-runner/platform/asyncutil";
@@ -24,6 +24,7 @@ import { router as renderLinesRouter } from "../src/api/render_lines_api.js";
 import { router as takesRouter } from "../src/api/takes_api.js";
 import * as session from "../src/database/session.js";
 import { Take } from "../src/database/models.js";
+import * as exportAudiobook from "../src/export_audiobook.js";
 import { exportVoicelines } from "../src/export_voicelines.js";
 import { mediaFile } from "../src/media_paths.js";
 import * as renderCore from "../src/render_core.js";
@@ -160,6 +161,45 @@ test("the_chapter_plays_the_star_take", async () => {
   expect(out[0].pcm.length).toBe(2 * 100 * "Take me.".length); // the take's audio, its old words
   expect(renderChapterApi.playedTexts(ls)).toEqual(["Take me.", "No take."]);
   expect(await states(st, b.sid)).toEqual(["stale", "ready"]); // playing it rendered nothing new
+});
+
+test("the_exports_warm_leaves_out_lines_that_play_a_take", async () => {
+  // 2026-10-13 (the narrowings review R2): the whole-book warm is what the assembly will render —
+  // a line with a ★ take, stale or not, plays its take, so rendering it fresh is never heard.
+  const b = book(st, ["Take me.", "No take."]);
+  await renderBlock(st, b.blocks[0]);
+  await patchText(b.blocks[0], "Take me, changed.");
+  const kwargs = await exportAudiobook.collectProjectLineKwargs(st, b.pid);
+  expect(kwargs.map((kw) => kw.text)).toEqual(["No take."]);
+});
+
+test("the_exports_warm_keeps_a_line_whose_take_cant_be_read", async () => {
+  // 2026-10-13 (the implementation review's problem 20): a ★ take whose audio can't be read
+  // doesn't play — the assembly renders that line — so the warm renders it too.
+  const b = book(st, ["Plays.", "Spoiled."]);
+  for (const id of b.blocks) await renderBlock(st, id);
+  const spoiled = (await lines(st, b.sid)).lines.find((l) => l.block_id === b.blocks[1]).live;
+  writeFileSync(mediaFile(h().get("generations", spoiled.generation_id).audio_path), "not a wav");
+  const kwargs = await exportAudiobook.collectProjectLineKwargs(st, b.pid);
+  expect(kwargs.map((kw) => kw.text)).toEqual(["Spoiled."]);
+});
+
+test("render_reads_a_chapters_running_job_wherever_it_was_started", async () => {
+  // 2026-10-13 (the narrowings review R3): the chapter page and the chapter list follow a render
+  // of the chapter started anywhere — another window, JustWrite, MCP — so the server says which.
+  const b = book(st, ["One.", "Two."]);
+  const other = book(st, ["Elsewhere."]);
+  const job = renderJobs.createJob(b.pid, "blocks", [b.blocks[1]]); // queued, as any caller makes one
+  await viaRoutes([renderLinesRouter, renderJobsRouter], async (app) => {
+    const page = (await inject(app, "GET", `/v1/scenes/${b.sid}/render_lines`)).json();
+    expect([page.running_job.id, page.running_job.status, page.running_job.total_blocks]).toEqual([job.id, "queued", 1]);
+    expect((await inject(app, "GET", `/v1/scenes/${other.sid}/render_lines`)).json().running_job).toBeNull();
+    const state = (await inject(app, "GET", `/v1/projects/${b.pid}/render_state`)).json();
+    expect(state.chapters[0].running_job.id).toBe(job.id);
+    renderJobs.cancelJob(job.id);
+    expect((await inject(app, "GET", `/v1/scenes/${b.sid}/render_lines`)).json().running_job).toBeNull();
+    expect((await inject(app, "GET", `/v1/projects/${b.pid}/render_state`)).json().chapters[0].running_job).toBeNull();
+  });
 });
 
 const inject = async (app, method, url, json) => {

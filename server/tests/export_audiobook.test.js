@@ -21,6 +21,7 @@ import { m4bAuthor } from "../src/api/projects_api.js";
 import * as renderChapterApi from "../src/api/render_chapter_api.js";
 import { writeWavContainer } from "../src/audio/wav.js";
 import * as exportAudiobook from "../src/export_audiobook.js";
+import * as exportVoicelines from "../src/export_voicelines.js";
 import { buildFfmetadata, ChapterAudio, muxM4b, qcReport } from "../src/export_audiobook.js";
 import * as synthScheduler from "../src/synth_scheduler.js";
 import { bookJson, scene } from "./jw_fixtures.js";
@@ -255,11 +256,130 @@ test("the_chapter_audio_export_holds_each_chapter_and_its_master", async () => {
   vi.spyOn(exportAudiobook, "haveFfmpeg").mockReturnValue(true);
   const [job] = await follow(c, (await c.post(`/v1/projects/${pid}/export_chapters/start`)).json());
   expect(job.status, JSON.stringify(job)).toBe("done");
-  expect(job.filename.endsWith("_chapters.zip")).toBe(true);
+  expect(job.filename).toBe("The Ninth Facet chapters.zip");
   const r = await c.get(`/v1/export_jobs/${job.id}/file`);
   expect(r.status).toBe(200);
   const z = ZipReader.fromBuffer(r.content);
   expect([...z.names()].sort()).toEqual(["chapters/01 One.wav", "chapters/02 Two.wav", "masters/01 One.wav", "masters/02 Two.wav"]);
   expect(z.read("masters/01 One.wav").equals(wav(0.3, 0.5))).toBe(true);
   expect(z.read("chapters/01 One.wav").equals(wav(0.1, 0.5))).toBe(true);
+});
+
+test("the_save_dialog_suggests_the_books_title_as_written", async () => {
+  // 2026-10-13 (the narrowings review R7): the title as written — spaces, apostrophes, letters
+  // outside ASCII — minus only what Windows forbids (the kit's safeTitle); the header carries it
+  // RFC 5987-encoded, so a quote or a Cyrillic title survives.
+  const c = await app();
+  const pid = await seed(c);
+  vi.spyOn(renderChapterApi, "renderSceneToWav").mockImplementation(async () => wav(0.1, 0.5));
+  vi.spyOn(exportAudiobook, "haveFfmpeg").mockReturnValue(true);
+  fakeFfmpeg("M4B!");
+  expect((await c.patch(`/v1/projects/${pid}`, { json: { name: 'Война: "the" Wizard\'s Tale?' } })).status).toBe(200);
+  const [job] = await follow(c, (await c.post(`/v1/projects/${pid}/export_m4b/start`)).json());
+  expect(job.status, JSON.stringify(job)).toBe("done");
+  expect(job.filename).toBe("Война the Wizard's Tale.m4b");
+  const r = await c.get(`/v1/export_jobs/${job.id}/file`);
+  const header = r.headers["content-disposition"];
+  expect(decodeURIComponent(header.split("filename*=UTF-8''")[1])).toBe("Война the Wizard's Tale.m4b");
+  expect([...header].every((ch) => ch >= " " && ch <= "~")).toBe(true);
+});
+
+/** A warm that counts its lines and then waits until it is aborted (the scheduler's
+ * `waitAsync` throws the signal's reason). */
+function waitingWarm(seen) {
+  return vi.spyOn(synthScheduler, "warmLines").mockImplementation(async (_st, kwargs, opts) => {
+    seen.opts = opts;
+    opts.onProgress(0, 3);
+    opts.onProgress(1, 3);
+    await new Promise((_, reject) => {
+      if (opts.signal.aborted) reject(opts.signal.reason);
+      opts.signal.addEventListener("abort", () => reject(opts.signal.reason), { once: true });
+    });
+  });
+}
+
+test("the_render_phase_counts_its_lines_and_cancel_stops_it", async () => {
+  // 2026-10-13 (the narrowings review R2): the export's render phase reads "Rendering line N of M"
+  // on the strip's count, and Cancel reaches it — the warm gets the job's signal.
+  const c = await app();
+  const pid = await seed(c);
+  vi.spyOn(exportAudiobook, "haveFfmpeg").mockReturnValue(true);
+  const seen = {};
+  waitingWarm(seen);
+  let job = (await c.post(`/v1/projects/${pid}/export_m4b/start`)).json();
+  for (let i = 0; i < 100 && job.step !== "Rendering line 2 of 3"; i++) {
+    await sleep(10);
+    job = (await c.get(`/v1/export_jobs/${job.id}`)).json();
+  }
+  expect([job.step, job.done, job.total]).toEqual(["Rendering line 2 of 3", 1, 3]);
+  expect(seen.opts.owner.label).toBe("the M4B export");
+  await c.post(`/v1/export_jobs/${job.id}/cancel`);
+  [job] = await follow(c, job);
+  expect([job.status, job.step]).toEqual(["cancelled", "Cancelled"]);
+  expect(seen.opts.signal.aborted).toBe(true);
+  // The line rendering when Cancel came still lands; it doesn't write over "Cancelled"
+  // (2026-10-13, the implementation review's problem 17).
+  seen.opts.onProgress(2, 3);
+  job = (await c.get(`/v1/export_jobs/${job.id}`)).json();
+  expect([job.status, job.step, job.done, job.total]).toEqual(["cancelled", "Cancelled", 1, 3]);
+});
+
+test("deleting_a_book_stops_its_export", async () => {
+  // 2026-10-13 (the narrowings review R4): a deleted book's export job is aborted, render phase
+  // included; another book's export runs on.
+  const c = await app();
+  const pid = await seed(c);
+  const otherPid = await seed(c);
+  vi.spyOn(exportAudiobook, "haveFfmpeg").mockReturnValue(true);
+  const seen = {};
+  waitingWarm(seen);
+  const job = (await c.post(`/v1/projects/${pid}/export_chapters/start`)).json();
+  const other = (await c.post(`/v1/projects/${otherPid}/export_chapters/start`)).json();
+  for (let i = 0; i < 100 && !seen.opts; i++) await sleep(10);
+  expect((await c.delete(`/v1/projects/${pid}`)).status).toBe(200);
+  const [done] = await follow(c, job);
+  expect(done.status).toBe("cancelled");
+  expect((await c.get(`/v1/export_jobs/${other.id}`)).json().status).toBe("running");
+  await c.post(`/v1/export_jobs/${other.id}/cancel`);
+  await follow(c, other);
+});
+
+test("deleting_a_book_stops_its_acx_check_and_its_exports_inside_a_request", async () => {
+  // 2026-10-13 (the narrowings review R4, the implementation review's problem 10): the ACX check,
+  // the one-request M4B export and the voice-line export render inside their request; deleting
+  // the book aborts their render, as its client leaving does. Another book's check runs on.
+  const c = await app();
+  const pid = await seed(c);
+  const otherPid = await seed(c);
+  vi.spyOn(exportAudiobook, "haveFfmpeg").mockReturnValue(true);
+  vi.spyOn(exportVoicelines, "collectBlockSpecs").mockResolvedValue([]);
+  const seen = [];
+  const waitForAbort = async (opts) => {
+    seen.push(opts);
+    await new Promise((_, reject) => {
+      if (opts.signal.aborted) reject(opts.signal.reason);
+      opts.signal.addEventListener("abort", () => reject(opts.signal.reason), { once: true });
+    });
+  };
+  vi.spyOn(synthScheduler, "warmLines").mockImplementation(async (_st, _kwargs, opts) => waitForAbort(opts));
+  vi.spyOn(synthScheduler, "warmSpecs").mockImplementation(async (_specs, opts) => waitForAbort(opts));
+  const until = async (n) => {
+    for (let i = 0; i < 200 && seen.length < n; i++) await sleep(10);
+    expect(seen.length).toBe(n);
+  };
+  const qc = c.get(`/v1/projects/${pid}/qc`);
+  await until(1);
+  const m4b = c.post(`/v1/projects/${pid}/export_m4b`);
+  await until(2);
+  const vo = c.post(`/v1/projects/${pid}/export_voicelines`);
+  await until(3);
+  const otherQc = c.get(`/v1/projects/${otherPid}/qc`);
+  await until(4);
+  expect(seen.map((o) => o.owner.label)).toEqual(["the ACX check", "the M4B export", "the voice-line export", "the ACX check"]);
+  expect((await c.delete(`/v1/projects/${pid}`)).status).toBe(200);
+  for (const r of await Promise.all([qc, m4b, vo])) expect(r.status).not.toBe(200);
+  expect(seen.map((o) => o.signal.aborted)).toEqual([true, true, true, false]);
+  expect((await c.delete(`/v1/projects/${otherPid}`)).status).toBe(200);
+  expect((await otherQc).status).not.toBe(200);
+  expect(seen[3].signal.aborted).toBe(true);
 });

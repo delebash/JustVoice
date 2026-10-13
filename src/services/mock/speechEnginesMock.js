@@ -4,12 +4,16 @@
 // languages, audio.cpp's statuses, licence names and words and memory estimates are the server's
 // own (the manifests and catalog.json, 2026-10-11), in the wire's field names; each licence in
 // plain words, what JustVoice tested and what an engine is best for come from the engine's own
-// curated file, the one the server reads. Which models are on disk, loaded or measured, and which
-// licences are accepted, are made up to show each state.
+// curated file, the one the server reads. Which models are on disk, loaded or measured, which one
+// is remembered as failed on the card, and which licences are accepted, are made up to show each
+// state; where a model runs and why are the server's words for that state (manager.placementFor).
 
 import { CURATED } from "../../../server/src/engines/audiocpp/curated/index.js";
 
 export const CARD_MB = 8192; // this machine's graphics card: RTX 2070 SUPER, 8 GB
+// The app's default safety margin (the kit's DEFAULT_SAFETY_MARGIN_MB; the server sends it as
+// /v1/engines/vram `safety_margin_mb`).
+export const SAFETY_MARGIN_MB = 1024;
 
 const LANGS = {
   kokoro: ["en-US", "en-GB", "es", "fr", "hi", "it", "ja", "pt-BR", "zh"],
@@ -17,6 +21,9 @@ const LANGS = {
   cosy: ["zh", "en", "ja", "ko", "de", "es", "fr", "it", "ru", "yue"],
 };
 const clone = { voice_cloning: true, preset_voices: 0 };
+// The server's reason for a model only audio.cpp's estimate calls too big (manager.placementFor).
+const cardFirst = (needGb, filesGb) =>
+  `audio.cpp says it needs about ${needGb} GB, but its files are about ${filesGb} GB, so it tries the graphics card first; if it doesn't fit, Load runs it on the CPU`;
 
 const RAW = [
   {
@@ -55,7 +62,12 @@ const RAW = [
     table: { name: "Apache-2.0", word: "Yes" },
     catalog_status: "supported",
     termsAccepted: true,
-    models: [{ id: "cosyvoice3-q8", name: "CosyVoice3", size_mb: 2153, languages: LANGS.cosy, ...clone, directed_by: "words", min_vram_gb: 8, need_gb: 8, on_disk: true }],
+    models: [
+      {
+        id: "cosyvoice3-q8", name: "CosyVoice3", size_mb: 2153, languages: LANGS.cosy, ...clone, directed_by: "words", min_vram_gb: 8, need_gb: 8, on_disk: true,
+        failed_on_card: true, runs_on: "cpu", runs_on_reason: "it didn't load on the graphics card — this may be slow on the CPU",
+      },
+    ],
   },
   {
     id: "higgs_audio_tts",
@@ -77,9 +89,9 @@ const RAW = [
     catalog_status: "supported",
     termsAccepted: false,
     models: [
-      { id: "omnivoice-q8", name: "OmniVoice", size_mb: 1287, languages: [], languages_note: "600+ languages", ...clone, directed_by: "sliders", min_vram_gb: 10, need_gb: 10, runs_on: "gpu" },
-      { id: "omnivoice-bf16", name: "OmniVoice (16-bit, bf16)", size_mb: 1563, languages: [], languages_note: "600+ languages", ...clone, directed_by: "sliders", min_vram_gb: 10, need_gb: 10, runs_on: "gpu" },
-      { id: "omnivoice-f16", name: "OmniVoice (16-bit, f16)", size_mb: 1563, languages: [], languages_note: "600+ languages", ...clone, directed_by: "sliders", min_vram_gb: 10, need_gb: 10, runs_on: "gpu" },
+      { id: "omnivoice-q8", name: "OmniVoice", size_mb: 1287, languages: [], languages_note: "600+ languages", ...clone, directed_by: "sliders", min_vram_gb: 10, need_gb: 10, runs_on: "gpu", runs_on_reason: cardFirst(10, 1.3) },
+      { id: "omnivoice-bf16", name: "OmniVoice (16-bit, bf16)", size_mb: 1563, languages: [], languages_note: "600+ languages", ...clone, directed_by: "sliders", min_vram_gb: 10, need_gb: 10, runs_on: "gpu", runs_on_reason: cardFirst(10, 1.5) },
+      { id: "omnivoice-f16", name: "OmniVoice (16-bit, f16)", size_mb: 1563, languages: [], languages_note: "600+ languages", ...clone, directed_by: "sliders", min_vram_gb: 10, need_gb: 10, runs_on: "gpu", runs_on_reason: cardFirst(10, 1.5) },
     ],
   },
   {

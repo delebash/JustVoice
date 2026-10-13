@@ -219,7 +219,9 @@ voices left by the others*:
   its count: under **Written direction** and **Built-in**, only *Qwen3-TTS
   CustomVoice (9)*. (Until 2026-10-05 it listed every model of the chosen *Made
   by*, so Written direction still offered Kokoro, and picking it emptied the
-  list.)
+  list.) Changing *Type* keeps the model you chose, with **(0)** when no voice
+  of that type is on it (since 2026-10-13 — before, a *Type* change set Model
+  back to All models).
 - **Gender** — Female · Male · Neutral, with counts. A voice's gender is worked
   out the same way everywhere: your own override first (Voices → click the
   letter), then what the voice says about itself, then the voice's id or first
@@ -263,10 +265,15 @@ now: *Speaks with Qwen3-TTS CustomVoice 1.7B · loaded*. A version is chosen per
 same as **Set as default** on AI Settings → Speech engines, so every persona on
 that model speaks with it. (Two versions of one model can't be loaded at once
 beside the AI model on an 8 GB card.) A version you haven't downloaded says
-*not downloaded*; the first load fetches it. When another version of the model
-is already loaded, it keeps speaking until the chosen one is: the page says
-*1.7B is loaded and speaks until 0.6B is*, with **Load 0.6B** and its progress
-bar. (Since 2026-10-05 — before, no persona screen said which version spoke.)
+*not downloaded*. While another version of the model is downloaded, that one
+keeps speaking — in renders too — until you load the chosen one; when no version
+is downloaded yet, the first load fetches the chosen one. When another version of
+the model is already loaded, it keeps speaking until the chosen one is: the page
+says *1.7B is loaded and speaks until 0.6B is*. Whenever what speaks isn't the
+chosen version, the page offers **Load 0.6B**, with its progress bar, which
+fetches the version if it isn't downloaded (since 2026-10-13; before, only while
+another version was loaded). (Since 2026-10-05 — before, no persona screen said
+which version spoke.)
 
 **Speaks** is the language this persona speaks. Picking a voice sets it to that
 voice's own language. Where the voice or its model allows only one (a Kokoro voice,
@@ -338,7 +345,8 @@ Kyutai's terms (no cloning a voice without that person's consent, nothing
 deceptive), shown right there with **Accept**, once per install.
 
 **What's said in the recording** appears for the models that read it (Qwen3
-Base, VoxCPM2): a word-for-word match gives a truer copy. Qwen3 Base can also
+Base, VoxCPM2, and every model from audio.cpp's catalog that takes it —
+OmniVoice needs it to clone): a word-for-word match gives a truer copy. Qwen3 Base can also
 **Skip the words** and clone from the sound alone.
 
 **💾 Keep** saves the clip as a voice under the name you give it — after
@@ -674,8 +682,10 @@ sounds without you asking.
 
 ## Smart-assign
 
-**✨ Smart-assign** on Studio · Cast sends the book's speakers, the narrator
-aside (name, *Also called*, *Pronouns*, *Who they are*), and your personas (name, the voice's gender as every
+**✨ Smart-assign** on Studio · Cast sends the book's speakers (name, *Also
+called*, *Pronouns*, *Who they are*) — the narrator too while it has no persona;
+a narrator's persona is never replaced (since 2026-10-13; before, the narrator
+was left out) — and your personas (name, the voice's gender as every
 page shows it, the language the persona speaks, note) to your language model, which proposes a persona for each speaker. The matches
 apply straight away. It is a starting point, so listen to each assignment before
 rendering and change any you disagree with by clicking another persona.

@@ -82,7 +82,12 @@ Turbo and Nano ·
 [`2026-10-04-audiocpp-switch-audit.md`](../plans/2026-10-04-audiocpp-switch-audit.md) — the
 audit: every decision checked against code, memory measured, findings ranked ·
 [`2026-10-11-audiocpp-engine-catalog.md`](../plans/2026-10-11-audiocpp-engine-catalog.md) — every
-audio.cpp model in the app, built from audio.cpp's own files (§1.5 is what those files hold).
+audio.cpp model in the app, built from audio.cpp's own files (§1.5 is what those files hold) ·
+[`2026-10-13-narrowings-review/`](../plans/2026-10-13-narrowings-review/README.md) — every choice
+the implementer made that the approved words didn't, checked adversarially ·
+[`2026-10-13-adopt-everything-audiocpp.md`](../plans/2026-10-13-adopt-everything-audiocpp.md) —
+every audio.cpp speech model offered, the seven hand-wired engines on the same path (for the
+user's word).
 User-facing half: [`../engines.md`](../engines.md).
 
 Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-platform.md`](../plans/2026-08-17-engine-roster-and-platform.md) ·
@@ -204,9 +209,12 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
   host splits above `max_chunk_chars` (800) at sentence ends with a 50 ms crossfade. — *code,
   2026-10-04* · `../audio.cpp/src/framework/text/chunking.cpp:332-397`; `render_core.py:774-797`;
   audit §5 D5.
-- Options the runtime reads, per engine — audit §7. Only Kokoro's model spec lists its options
-  (`model_specs/kokoro_tts.json`: request, session, load); the Qwen3, Chatterbox, VoxCPM2 and
-  Pocket specs list none. — *code, 2026-10-04*.
+- Options the runtime reads, per engine — audit §7. At jv.5 Kokoro's model spec lists its options
+  (`model_specs/kokoro_tts.json`: request, session, load), and so do Kitten's (request and
+  session) and Qwen3-ASR's (two request options); the Qwen3-TTS, Chatterbox, VoxCPM2 and Pocket
+  specs list none — upstream added theirs after jv.5 (19859a07, 2026-10-06). (was: "Only
+  Kokoro's model spec lists its options" — corrected 2026-10-13, the narrowings review F1.) —
+  *code, 2026-10-04; checked against the jv.5 tag 2026-10-13*.
 - **Chatterbox reads per request** `min_p` (0.05), `s3gen_cfg_rate` (0.7, the flow decoder's
   CFG), `max_tokens` (384), `do_sample`, `stop_on_eos`, `greedy`. Turbo's meanflow decoder
   ignores `s3gen_cfg_rate`. (was: "the runtime takes no min-p", the switch's reading — until
@@ -543,7 +551,8 @@ its blast radius and the gaps.
   places, and its row stores the language it was spoken in — the call's, else the persona's, else
   `en`. — *code + test, 2026-10-08* · `server/src/mcp/tools.js` `speak`,
   `server/tests/mcp_rulings.test.js`. (was: it assumed 16 kHz, 16-bit mono and stored the call's
-  language or `en` — until 2026-10-08, the clean-room rewrite's rulings 12 and 13.)
+  language or `en` — until 2026-10-08, clean-room gaps 12 and 13, my rec applied under the
+  2026-10-08 go (not shown).)
 - A line is STALE when the inputs key of what it is made from now differs from its ★ take's key;
   the key is the render cache's (`render_core._inputs_key`, one builder for the render, the probe
   and the check). A ↻ New take take (`Generation.source` "new_take") is judged with its own seed,
@@ -1183,7 +1192,9 @@ agent's checks, the suite and the extraction check re-run by me; `extraction/`, 
 - The port found 35 import runs that were Python 500s: a non-EPUB zip named `.epub`, a
   corrupt zip (its directory, a member's CRC, its deflate data), a CSV with a lone CR, a
   JustWrite file whose `project`/`scenes`/`characters`/`chapters`/`aliases`/`body` had a type
-  that crashed. Fixed in both languages 2026-10-08 (the user's go): each is a 400 that names
+  that crashed. Fixed in both languages 2026-10-08 (no go recorded; wave D's FINDING asked for
+  one; the 400s and their words kept by the user's word on 2026-10-13, the narrowings review
+  K10): each is a 400 that names
   the problem; the CSV is read with `newline=""` as the csv module asks, so a lone CR ends a
   row. A wrong type a `for` loop walks without raising (a dict's keys, a str's characters)
   is still walked and skipped as before — only the crashes changed. `compare-imports`: 815
@@ -1229,7 +1240,8 @@ agent's checks, the suite and the extraction check re-run by me; `extraction/`, 
   the token like any API client and a foreign page's POST to `/mcp` is refused 403. (*code + test,
   2026-10-08*, the kit's `auth.js` / `csrf.js` and `tests/guarded_prefixes.test.js`,
   `server/tests/mcp_rulings.test.js`.) (was: they gated only `/v1*`, so `/mcp` passed them as under
-  Python's middlewares — until 2026-10-08, the user's ruling.)
+  Python's middlewares — until 2026-10-08, clean-room gap 11, my rec applied under the
+  2026-10-08 go (not shown).)
 - FastAPI's `Form()` treats an empty string as not sent: a required field answers 422
   "missing". pydantic's `HttpUrl` `str()` equals WHATWG `URL.href` for scheme and host case,
   the default port, an empty path and an IDN host. (*code*, and identical route-diff answers.)
@@ -1278,8 +1290,11 @@ effect_presets, lexicons, pronunciation):
   response closing before it finished aborts the signal passed to `waitAsync` / `warmLines`).
   FastAPI's optional body (`X | None = None`) is `nullable(Model)` as the Fastify body schema.
   pydantic's `model_fields_set` for a nested model rides a Symbol-keyed set
-  (`voice_preview_api.markSent`). cachetools 7.1.7's TTLCache is ported in
-  `voice_preview_api.TTLCache` (a TTL runs from the last set; `get` promotes; `in` does not).
+  (`voice_preview_api.markSent`). cachetools 7.1.7's TTLCache was ported in
+  `voice_preview_api.TTLCache` (a TTL runs from the last set; `get` promotes; `in` does not)
+  until 2026-10-13; the `lru-cache` package (`max` + `ttl`) replaced it with the same behaviour
+  (its `get` updates recency, `has` doesn't, `ttl` counts from `set` — `updateAgeOnGet` is off
+  by default; *code*, lru-cache 11.5.3, `server/tests/voice_preview_lru.test.js`).
 - Not matched: a stream audition failing on its first piece — Starlette had already sent a
   200, Fastify sends the real error; a pydantic ValidationError raised inside a handler — the
   kit's `ModelValidationError` text gives one line and counts a nullable union's null branch
@@ -1386,7 +1401,8 @@ extraction, speakers, smart_assign, project_export, export_jobs, bulk_delete, _s
     new refine Lab samples): with all three toggles on, both 19/22 (the 3 misses are the
     checker's case strictness, identical for both); the new wording also drops a leading
     "So"/"Okay, so". With every toggle off the new one keeps self-corrections ("Mark — no,
-    wait, … Sarah") as ruled, the old one removed them; both still drop "um"/"uh" — gemma does
+    wait, … Sarah") as clean-room gap 2 has it (my rec applied under the 2026-10-08 go, not
+    shown), the old one removed them; both still drop "um"/"uh" — gemma does
     that on its own. — *measured, 2026-10-08* · scratchpad harness `refine-compare/`:
     `createApp(<data>)` + the provider registry from the database (`loadFromConfigs`, what
     `seedWorkspace` step 7 does) + each module's `refineTranscript`, which returns
@@ -1412,8 +1428,11 @@ extraction, speakers, smart_assign, project_export, export_jobs, bulk_delete, _s
 
 ## 7 · Where an AI task shows
 
-- Only Discover adds speakers (since 2026-10-06), and Discover's Speakers found is the scans'
-  results only. A name the second look hears on a line with no speaker, who isn't in the book
+- Script never adds speakers (since 2026-10-06) — they come from the import, Discover's ＋ Add,
+  or Cast's ＋ Add for someone Discover missed (and Cast's Add Narrator); Cast's ＋ Add stays
+  (decided 2026-10-13, the narrowings review C7). Discover's Speakers found is the scans'
+  results only. (was: "Only Discover adds speakers" — false: Cast's ＋ Add, Add Narrator and
+  imports add speakers too.) A name the second look hears on a line with no speaker, who isn't in the book
   (`metadata.not_in_cast`), stays on the line; Script's banner names it and opens Discover with the
   chapter ticked for Scan (`StudioView.openDiscover` → `StudioDiscover` `focusScene`). — *code,
   2026-10-06*. (was: the chapter list derived `second_look_found` and Discover listed it beside the
@@ -1501,13 +1520,18 @@ blast radius.
   until a reset — true until the reset of 2026-10-05.)
 - A voice's model is a FAMILY (`qwen3-cv`, …); its size and precision (1.7B / 0.6B, 8-bit /
   16-bit) stay AI Settings' choice (persona redesign §6.2 call 4). A render picks the variant:
-  the loaded one if it is this family, else the engine's default if it is, else an installed one
-  of the family (same size and precision first), else the same pick among all of the family's
-  variants, and the load fetches it. A loaded version of the family keeps speaking after
-  the default changes, until the chosen one is loaded. The persona page shows it since
-  2026-10-05: `GET /v1/voices/{id}/model-version` (`voice_model.versions_of` — the render's
-  own pick, the loaded one, the default, the family's versions with `on_disk`). — *code,
-  2026-10-05* · `voice_model.variant_for_model` (`voice_model.py:372`).
+  the loaded one if it is this family; else, among the family's variants on disk, the engine's
+  default if it is one of them, else the one sharing most of its size and precision (catalog
+  order breaks ties); nothing of the family on disk → the same pick among all of the family's
+  variants, and the load fetches it. So a default that isn't downloaded speaks only once a load
+  fetches it: until then a downloaded version of the family speaks, as a loaded one keeps
+  speaking after the default changes. Kept so (2026-10-13, the narrowings review C5); since then
+  the persona page shows Load for the chosen version whenever what speaks differs from it, not
+  only while another is loaded. The persona page shows it since 2026-10-05:
+  `GET /v1/voices/{id}/model-version` (`voice_model.versionsOf` — the render's own pick, the
+  loaded one, the default, the family's versions with `on_disk`). — *code, 2026-10-13* ·
+  `voice_model.js` `variantForModel`. (was: "else the engine's default if it is, else an
+  installed one" — the default wins only when it is on disk.)
 - Every multi-filter list follows one rule — each filter lists only what the others leave,
   counts match, a chosen option nothing fits stays with (0) — through `services/facets.js`
   (since 2026-10-05; the audit of every filter set and what broke:
@@ -2631,8 +2655,9 @@ Pozotron, Orion QC, RW-Voice-EQ, SwanBench, ViSQOL, Hume, Gemini prices.
   default) and ParaSpeechCLAP — not found.
 - **Runaway heuristic:** none published as a threshold. F5-TTS estimates a take's length from the
   voice's own clip — `duration = ref_len + ref_len / ref_text_bytes × gen_text_bytes / speed`
-  (`src/f5_tts/infer/utils_infer.py:503-505`); ours is flat — `RUNAWAY_S_PER_CHAR = 0.5`,
-  `RUNAWAY_MIN_S = 30` (*code*, `server/src/engines/manager.js:98-99`). A per-voice bound would be
+  (`src/f5_tts/infer/utils_infer.py:503-505`); ours is flat — 0.5 s a character and 30 s,
+  the settings `speech_runtime.runaway_s_per_char` and `runaway_min_s` since 2026-10-13 (*code*,
+  `manager._noteRunaway`, `runtime.runawaySPerChar`/`runawayMinS`). A per-voice bound would be
   tighter.
 - **Licence flags** (only if shipped in the app): non-commercial — NISQA weights, SpeechJudge-GRM,
   Vox-Profile, audeering, openSMILE, Audio Flamingo 3, ECAPA2, ctc-forced-aligner's default,
@@ -2853,8 +2878,8 @@ corrected above.
   sends a random seed when none is set. The GGUF JustVoice fetches is a third party's
   (`mirek190/audio.cpp`, `Llama-OuteTTS-1.0-1B_Q8.gguf`, 3.0 GB, pinned at revision
   `94bbade1`), the one the doc names for direct download.
-  The cause, found with audio.cpp's own command-line tool (2026-10-12, the user's word: "Run the
-  OuteTTS command-line check"): **OuteTTS's generation is fragile with the Hatter's voice — not
+  The cause, found with audio.cpp's own command-line tool (2026-10-12, question 2, "Run the
+  OuteTTS command-line check?" — the user: "your rec on all go"): **OuteTTS's generation is fragile with the Hatter's voice — not
   the file, and not JustVoice's request.** The same file (sha256 `b0529271…`, as pinned), the
   Hatter clip and its transcript, the Hatter line, `--task tts` as JustVoice loads it:
   - the v0.9.0-jv.4 release's `audiocpp_cli` (`--task clon` and `--task tts`, no seed) and
@@ -3030,7 +3055,10 @@ corrected above.
   (0.06× real time). The card peak wasn't saved: the per-process card probe returned nothing at
   the load, and the device-wide difference was booked but by design never persisted — so Auto
   never learned it fits. Since 2026-10-12 a calibrated load saves that difference as its price
-  when the probe misses (`manager.js` load, the row labelled "the whole card's difference").
+  when the probe misses (`manager.js` load, the row labelled "the whole card's difference") — but
+  a generated model never calibrates (`slot._warm`), so OmniVoice's own load still saves nothing:
+  not fixed for OmniVoice (corrected 2026-10-13, the narrowings review M1; calibrating generated
+  families is in the adoption plan).
 - **A CUDA load on Windows may not fail when the card runs out** (checked 2026-10-12, for "try
   the card first, fall back to the CPU if the load fails"). NVIDIA's support text, as quoted on
   Guru3D: driver 536.40 added a way for applications "to use shared memory when GPU memory was

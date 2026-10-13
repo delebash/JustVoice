@@ -12,7 +12,7 @@ import { LLMNotConfiguredError } from "@delebash/llm-runner/llm";
 import { Hono, input } from "@delebash/llm-runner/platform";
 import { getLogger } from "@delebash/llm-runner/platform/log";
 import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
-import { cpSlice, isDict, strip } from "@delebash/llm-runner/platform/py";
+import { isDict, strip } from "@delebash/llm-runner/platform/py";
 import { jsonLoads, pyStrOf } from "@delebash/llm-runner/platform/pyjson";
 import * as run from "../engines/llm/run.js";
 import { HttpError } from "../errors.js";
@@ -65,7 +65,8 @@ export function _formatCharacters(chars) {
     if (c.gender) bits.push(`gender="${c.gender}"`);
     if (c.pronouns) bits.push(`pronouns="${c.pronouns}"`);
     if (c.aliases.length) bits.push(`aliases="${c.aliases.join(", ")}"`);
-    if (c.description) bits.push(`description="${cpSlice(c.description, 0, 200)}"`);
+    // Who they are, whole (the narrowings review C12, 2026-10-13: it was cut at 200 characters).
+    if (c.description) bits.push(`description="${c.description}"`);
     lines.push(`- ${bits.join(", ")}`);
   }
   return lines.join("\n");

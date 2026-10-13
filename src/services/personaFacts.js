@@ -8,7 +8,7 @@
 // (`words` · `tags` · `sliders`) and `model_name`.
 
 import { languageName } from "@delebash/llm-ui";
-import { voiceGender, voiceGenderWord } from "./voiceGender.js";
+import { voiceGenderWord } from "./voiceGender.js";
 
 /** Pace · Pitch · Gain — the persona page's How it speaks and Render's "This
  *  line only" read this ONE list (2026-10-06), through DeliveryKnobs.vue: same
@@ -21,10 +21,12 @@ export const SHAPE_KNOBS = [
 
 /** Every voice dropdown's label (decided 2026-10-03): "Sohee · Female ·
  *  Korean · Qwen3-TTS CustomVoice" — name, gender, the voice's own language
- *  and the model that speaks it. */
+ *  and the model that speaks it. An unknown gender reads "Not known", the one
+ *  word for it (2026-10-06, B4; it was left out — the narrowings review C4,
+ *  2026-10-13). */
 export function voiceLabel(v) {
   if (!v) return "";
-  return [v.name, voiceGender(v) === "?" ? "" : voiceGenderWord(v), languageName(v.language) || v.language, v.model_name || v.engine]
+  return [v.name, voiceGenderWord(v), languageName(v.language) || v.language, v.model_name || v.engine]
     .filter(Boolean).join(" · ");
 }
 

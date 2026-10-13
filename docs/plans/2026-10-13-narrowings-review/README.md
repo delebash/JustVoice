@@ -235,3 +235,65 @@ rows were approved word for word), E13 (the hover was in the approved mock), F7 
 voice's own language, as decided 2026-10-05), F15 (no usable Linux CUDA archive exists), R9 (the
 rule predates Slice 4), S5 (your own words), S10 (a narrator "is not an option"), S13 (the approved
 table says the chip shows only when there are any).
+
+## Built 2026-10-13, and what waits on the user
+
+**Built** ("your rec on all go"): group A and every group B lean that needed no new word, by four
+agents, then two adversarial reviews of the changes and a second round of fixes
+(`verdicts/` is the finding side; the reviews of the changes are in the session's scratchpad and
+summarized in TASKS). **The restore (P16) is on hold, not shipped:** the backup-keeps-its-stamps
+design (just-sqlite-sync branch `restore-wip`, JustVoice branch `restore-wip`) was redesigned twice
+under review, and a stress test (three devices, random edits, backups and restores, 300 runs) still
+found permanent divergence in 6 runs — an exchange under way during the restore, a backup taken
+while the floor is on, rich-text ids reused, a reset then a restore, the step never running. A
+prototype that makes the restored device a new identity in sync (the engine's own rule for a copied
+database) passed 300 of 300; it shows the restored computer as a new entry in the devices list, so
+it waits for the user's word (question 20). Until then a restore behaves as before. The kit's
+restore route gained the optional hooks (`beforeCopy`, `afterCopy`, `afterTables`) either design uses.
+
+**Waiting on the user** — words, numbers or rules the fixes need (a lean under each in chat):
+
+1. The earlier list (shown 2026-10-13): S6's design, S12's tags, R8's note, B3's hover, C5's hint,
+   K3's prompt, M7's controls, S14's hint, F12's warning, P41's control text, P35's paragraph, P29's
+   strings, P14 (remove persona pictures; takes effect at the next reset), P16's interim warning
+   (moot once built), P11's list (the 21 clean-room rulings), P26 (the four screens beside their
+   frozen mocks).
+2. M4: the tab's words for a measured model that fits the card only without the safety margin.
+3. R2c: "Rendering line N of M" (the export's render phase).
+4. The export hint — "Cancel stops after the chapter it is on" is no longer true while lines render.
+5. E15: dots.tts's Source/Target text and Irodori's No ref (shows "on"; on, a clone ignores its clip)
+   — offered or hidden.
+6. R3: how an open page notices a render started elsewhere (on window focus, or a timer — a number).
+7. R3: how a render over several chapters shows on each of its chapters.
+8. R4: a request stopped because its book was deleted answers 500; a 404 "not found" instead?
+9. P6: the words when another program holds the port; the two waits (the renderer up to ~7.5 s for
+   the server's address, then ~7.5 s for its health; the shell's health probe 500 ms).
+10. P18: the window reloads when another device's changes land — unsaved typing is lost.
+11. P30: "the book you came from" read as the project open in Studio.
+12. P-also1: Channels' docs and its "Multi-device broadcast supported" line describe routing that
+    isn't built.
+13. M3 × M10: a refusal after crediting memory — name the speech models on the CPU?
+14. K2: VieNeu listed with the adoption plan (slice 2 checks it speaks from text), not now.
+15. R7: the file-name rule also drops control characters (as JustWrite's server copy does)?
+16. C5: Pocket's Version offers only versions that speak the persona's language?
+17. F11: a Kokoro blend's own language passed from render and preview.
+18. IndexTTS's capability note "Takes a line's emotion and direction." (it takes direction in words).
+19. A data-folder lock (a standard package such as `proper-lockfile`), so a second server of the
+    app on another port can't open the same data.
+20. P16, the restore: make the restored computer a new device in sync (it appears as a new entry in
+    the devices list; its old folder subfolder stays until removed), plus: keep this computer's live
+    sync settings (library key, paired devices, folder) across a restore — today the backup's
+    replace them; and a backup from another sync library — refused, or this computer joins it?
+
+**Found on the way** (bugs, not fixed — each for the user's word): a lexicon entry with both IPA and
+a spelling is saved as IPA only (`storage/lexicons.js:29-40`); Try a word replays the old take when
+the word changes; a corrected line keeps an old paragraph number after a re-analyze
+(`extraction_api.js` in-place loop); the unused setting `limits.request_body_max_bytes`; stale docs
+(`channels.md`'s routing, `getting-started.md:38`'s tray items); the kit's `TAURI_ORIGINS`
+(`csrf.js`); the re-import dialog's dead "What is this format?" link (`ImportModal.vue`); a long
+book's takes read twice by the export; the shell force-kills its stale server instead of asking it
+to shut down (`shell/main.js`).
+
+**JustWrite's side** (its session, with the user's go there): the restore wiring
+(`beforeCopy`/`afterCopy`/`afterTables`), its CORS test (hono/cors), `serverProduct: "JustWrite
+Server"` and `resolvePort`, switching to the kit's `watchSync` and `safeTitle`.

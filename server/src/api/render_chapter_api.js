@@ -134,9 +134,10 @@ export async function _resolveSceneToLines(sceneId, st, { strict = false } = {})
     // The ONE plan every render path shares (line_takes.planBlock over persona_render.planLine,
     // 2026-10-03): the persona's voice and its model, its delivery with that model's own
     // settings (emotion or tags, knobs, seed), the direction composed most specific last, its
-    // language, its effects, and the book's lexicon then its own. The line's own numbers
-    // (Slice 4's ⚙ hatch) sit on top and win — pace, pitch, gain and the pause after it (the
-    // `pause_after_ms` every import adapter writes; concatLines applies it).
+    // language, its effects, and the book's lexicon then its own. The line's Render overrides
+    // (stored as D3 decided; open since 2026-10-06) sit on top and win — pace, pitch, gain and the
+    // pause after it (the `pause_after_ms` every import adapter writes; concatLines applies it),
+    // and `models`, per model (2026-10-06).
     const plan = await lineTakes.planBlock(st, persona, block, { bookLexicon });
     const delivery = Object.fromEntries(Object.entries(plan.delivery).filter(([k]) => DELIVERY_FIELDS.has(k)));
 

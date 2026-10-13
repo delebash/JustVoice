@@ -371,7 +371,10 @@ const maker = computed(() => (MAKERS.includes(kind.value) ? kind.value : null));
 const makerKey = ref(0);   // a new key = a fresh, empty maker
 // A kept voice is fixed (decided 2026-10-04); its words start a new design.
 const designFrom = ref(null);
-watch(kind, () => { modelFilter.value = ""; designFrom.value = null; makerKey.value += 1; });
+// A Type change keeps the chosen Model, shown with (0) when no voice of the new
+// type is on it — the filter rule "the one you chose stays with (0)"
+// (2026-10-05; it used to clear Model — the narrowings review C14, 2026-10-13).
+watch(kind, () => { designFrom.value = null; makerKey.value += 1; });
 function startFromThis() {
   designFrom.value = voice.value;
   makerKey.value += 1;
@@ -490,8 +493,11 @@ const effectiveLanguage = computed(() => (languageFixed.value
 // ── Which version of the model speaks (decided 2026-10-05: "surface in
 // persona") — size and precision stay per MODEL, not per persona (doc §6.2
 // call 4): the version chosen here is the model's default, so every persona
-// on that model speaks with it. A version already loaded keeps speaking until
-// the chosen one is loaded — the server's own pick (`variant_for_model`).
+// on that model speaks with it. What speaks is the server's own pick
+// (`variantForModel`): a version already loaded; else the chosen one when it is
+// downloaded (or no version is), else a downloaded version — so a chosen
+// version not downloaded speaks once Load fetches it (kept so, the narrowings
+// review C5, 2026-10-13).
 const modelVersion = ref(null);   // GET /v1/voices/{id}/model-version
 let versionSeq = 0;
 async function loadModelVersion() {
@@ -541,7 +547,8 @@ async function chooseVersion(id) {
     versionBusy.value = false;
   }
 }
-// The chosen version isn't the loaded one: the loaded one speaks until this loads.
+// The chosen version isn't what speaks (a version loaded, or downloaded while
+// the chosen one isn't): that one speaks until this loads.
 const versionLoadTask = ref(null);
 async function loadChosenVersion() {
   const mv = modelVersion.value;
@@ -610,13 +617,16 @@ const seedSupported = computed(() => (row.value?.knobs || []).some((k) => k.key 
 // A setting is a slider (a number), a dropdown, an on/off switch or a text field (KnobSpec.type);
 // only a slider's value is a number.
 const isNumberKnob = (k) => (k.type || "number") === "number";
+// A setting with no default (k.default null) shows none until set: audio.cpp's own applies (the
+// narrowings review, E12).
 function knobValue(k) {
   const v = ms()?.knobs?.[k.key];
   const value = v === undefined || v === null ? k.default : v;
+  if (value === undefined || value === null) return null;
   return isNumberKnob(k) ? Number(value) : value;
 }
 function setKnob(k, value) {
-  if (!isNumberKnob(k) && (value === "" || value === null || value === undefined)) return resetKnob(k);
+  if (value === "" || value === null || value === undefined) return resetKnob(k);
   ms(true).knobs[k.key] = isNumberKnob(k) ? Number(value) : value;
 }
 function resetKnob(k) {
@@ -1054,8 +1064,11 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
                 <template v-else-if="!modelVersion.loaded"> · not loaded — the first Listen loads it</template>.
                 Also on <a href="#/ai">AI Settings → Speech engines</a>.
               </p>
-              <div v-if="modelVersion?.loaded && modelVersion.loaded !== chosenVersion" class="jv-inline-row">
-                <span class="jv-hint">{{ versionShort(modelVersion.loaded) }} is loaded and speaks until
+              <!-- Load shows whenever what speaks isn't the chosen version — loaded or
+                   only downloaded (the narrowings review C5, 2026-10-13). -->
+              <div v-if="modelVersion?.speaks_with && chosenVersion && modelVersion.speaks_with !== chosenVersion"
+                class="jv-inline-row">
+                <span v-if="modelVersion.loaded && modelVersion.loaded !== chosenVersion" class="jv-hint">{{ versionShort(modelVersion.loaded) }} is loaded and speaks until
                   {{ versionShort(chosenVersion) }} is.</span>
                 <UiButton intent="secondary" size="small" :label="`Load ${versionShort(chosenVersion)}`"
                   :loading="versionLoadTask?.state === 'running'" @click="loadChosenVersion" />
@@ -1159,14 +1172,16 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
                   <div class="jv-knob-grid__head">
                     <label class="jv-knob-grid__label" :title="k.hint">{{ k.label }}</label>
                     <UiButton intent="ghost" size="small" label="↺" :disabled="ms()?.knobs?.[k.key] === undefined"
-                      :title="`Back to the model default (${k.default})`" @click="resetKnob(k)" />
+                      :title="k.default == null ? 'Back to the model default' : `Back to the model default (${k.default})`" @click="resetKnob(k)" />
                   </div>
                   <div class="jv-knob-grid__row">
-                    <UiSlider v-if="isNumberKnob(k)" :model-value="knobValue(k)" :min="k.min" :max="k.max" :step="k.step" width="full"
+                    <UiSlider v-if="isNumberKnob(k) && k.default != null" :model-value="knobValue(k)" :min="k.min" :max="k.max" :step="k.step" width="full"
                       :aria-label="k.label" @update:model-value="(v) => setKnob(k, v)" />
+                    <UiNumber v-else-if="isNumberKnob(k)" :model-value="knobValue(k)" :min="k.min" :max="k.max" :step="k.step" width="num"
+                      size="small" :aria-label="k.label" @update:model-value="(v) => setKnob(k, v)" />
                     <UiSelect v-else-if="k.type === 'choice'" :model-value="knobValue(k)" :options="k.choices.map((c) => ({ label: c, value: c }))"
                       width="name" :aria-label="k.label" @update:model-value="(v) => setKnob(k, v)" />
-                    <UiToggle v-else-if="k.type === 'switch'" :model-value="Boolean(knobValue(k))" :aria-label="k.label"
+                    <UiToggle v-else-if="k.type === 'switch'" :model-value="knobValue(k) === null ? null : Boolean(knobValue(k))" :aria-label="k.label"
                       @update:model-value="(v) => setKnob(k, v)" />
                     <UiInput v-else :model-value="knobValue(k) ?? ''" size="small" width="name" :aria-label="k.label"
                       @update:model-value="(v) => setKnob(k, v)" />

@@ -812,7 +812,10 @@ export function toSpeechRequest(row, body) {
     const voiceLang = (hit ? hit[2] : "en-us").toLowerCase();
     req.voice = voice;
     const key = lang || voiceLang;
-    req.language = get(KOKORO_LANGUAGE, key) ?? get(KOKORO_LANGUAGE, key.split("-")[0]) ?? "en-us";
+    // A language Kokoro doesn't speak goes as none: audio.cpp then uses the voice's own (its
+    // spec: "defaults to the selected voice prefix"), not US English (the narrowings review, F11).
+    const language = get(KOKORO_LANGUAGE, key) ?? get(KOKORO_LANGUAGE, key.split("-")[0]);
+    if (language) req.language = language;
     if (voiceLang.startsWith("ja") && !truthy(get(body, "voice_pack_path"))) requireJapaneseDictionary();
     if (truthy(get(delivery, "ipa_map"))) {
       // A lexicon's IPA: the words it covers ride as "[word](/phonemes/)" (gap 3). The host
@@ -822,9 +825,11 @@ export function toSpeechRequest(row, body) {
     const opts = {};
     if (truthy(get(body, "voice_pack_path"))) {
       // A blend: its pack rides `voice_pack`; the voice id only picks the language and the
-      // G2P, so it is the first preset that speaks the blend's language.
+      // G2P, so it is the first preset that speaks the blend's language — the line's, or the
+      // voice's own when Kokoro doesn't speak the line's.
       opts.voice_pack = fwd(body.voice_pack_path);
-      const first = VOICES.find(([, , lg]) => (get(KOKORO_LANGUAGE, lg.toLowerCase()) ?? lg.toLowerCase()) === req.language);
+      const want = language ?? get(KOKORO_LANGUAGE, voiceLang) ?? voiceLang;
+      const first = VOICES.find(([, , lg]) => (get(KOKORO_LANGUAGE, lg.toLowerCase()) ?? lg.toLowerCase()) === want);
       req.voice = first ? first[0] : "af_heart";
     }
     if (truthy(get(delivery, "speed"))) req.speed = pyFloatParse(delivery.speed);
@@ -1001,14 +1006,15 @@ export function generatedSpeechRequest(row, body, req) {
   const dir = generated.applyDirection(curated?.DIRECTION ?? null, { emotion: get(delivery, "emotion"), words });
   const options = {};
   for (const [k, v] of Object.entries(knobs)) {
-    if (generated.APP_OWNED_OPTIONS.has(k)) continue;
+    // Never one the app sets itself or the family's file hides, even saved before it was hidden.
+    if (!generated.isSetting(family, k)) continue;
     const spec = specOpts.get(k);
     if (listed && !spec) continue;
     const value = spec ? generated.coerceOption(spec, v) : v;
     if (value !== undefined) options[k] = value;
   }
-  // The direction's options; the defaults it brings (IndexTTS's strength, Breeze's guidance)
-  // yield to the model's settings.
+  // The direction's options; the defaults it brings (Breeze's guidance) yield to the model's
+  // settings.
   Object.assign(options, dir.options);
   for (const [k, v] of Object.entries(dir.defaults)) if (!Object.hasOwn(options, k)) options[k] = v;
   // The clip's words: to a spec that lists them, and to one that lists no options at all, whose

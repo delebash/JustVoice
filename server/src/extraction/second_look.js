@@ -9,13 +9,15 @@
 //
 // The main call reads one chapter, so a speaker who is unseen in it stays unknown even when
 // the next chapter names them (The Ninth Facet's voice in the dark, Bigger Inside's last line,
-// is Ode — revealed in The Same Hour). After the main call, each spoken line left with no
-// speaker gets ONE more call: the line marked in the text around it, the end of the chapter
-// before and the start of the chapter after. A cast member it names is saved marked to check
-// (source "second_look" — Script's "Found in a nearby chapter" mark). A speaker the text names
-// who is not in the cast is kept on the row (`not_in_cast`) so Script can offer to add them.
-// Only blank lines are asked about, so a chapter with none costs nothing; a failed call leaves
-// its line as it was.
+// is Ode — revealed in The Same Hour). After the main call — when it runs: off by default since
+// 2026-10-06; Script's 🔎 Second look asks the same — each spoken line left with no speaker gets
+// ONE more call: the line marked in the text around it, the end of the chapter before and the
+// start of the chapter after. A cast member it names is saved marked to check (source
+// "second_look" — Script's "Found in a nearby chapter" mark), at any confidence: the second look
+// has no floor of its own (2026-10-13, the narrowings review S1). A speaker the text names who is
+// not in the cast is kept on the row (`not_in_cast`): Script's banner names them and opens
+// Discover's scan — Script never adds (2026-10-06). Only blank lines are asked about, so a
+// chapter with none costs nothing; a failed call leaves its line as it was.
 //
 // On Analyze's stream (decided 2026-10-06): each call streams its tokens on to the strip as the
 // main call's do, the strip counts the lines ("second look · 2 of 6 lines"), the calls' tokens
@@ -68,7 +70,8 @@ export const streamFeature = (action, variables, overrides) => run.streamFeature
  * The cast as the second look reads it: id, name, other names AND who they are. The main
  * call's list (`prompts.formatCharacters`) leaves the description out; the second look needs it
  * — "Answers to Ode." is the only link from Odeline Marran to the "Ode" the next chapter names
- * (live 2026-10-05: without it the voice in the dark stayed blank).
+ * (live 2026-10-05: without it the voice in the dark stayed blank). Sent whole (2026-10-13, the
+ * narrowings review S2).
  */
 export function castLines(characters) {
   const out = [];
@@ -77,7 +80,7 @@ export function castLines(characters) {
     if (truthy(c.pronouns)) bits.push(`pronouns="${pyStrOf(c.pronouns)}"`);
     if (truthy(c.aliases)) bits.push(`also called="${c.aliases.join(", ")}"`);
     const who = splitWs(pyStrOf(truthy(c.description) ? c.description : "")).join(" ");
-    if (who) bits.push(`who="${cpSlice(who, 0, 200)}"`);
+    if (who) bits.push(`who="${who}"`);
     out.push(`- ${bits.join(", ")}`);
   }
   return out.join("\n");
@@ -303,7 +306,7 @@ export async function lookAt(
   }
   const nic = Object.hasOwn(ans, "not_in_cast") ? ans.not_in_cast : null;
   const name = strip(strip(pyStrOf(truthy(nic) ? nic : "")), "\"'“”");
-  if (name && Array.from(name).length <= 60 && !["unknown", "narrator", "none"].includes(name.toLowerCase()) && !castNames(name)) {
+  if (name && !["unknown", "narrator", "none"].includes(name.toLowerCase()) && !castNames(name)) {
     row.not_in_cast = name;
     if (!report.not_in_cast.includes(name)) report.not_in_cast.push(name);
   }

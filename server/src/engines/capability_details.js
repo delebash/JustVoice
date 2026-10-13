@@ -394,9 +394,11 @@ CAPABILITY_DETAILS["chatterbox-nano"] = {
 
 // ─── Every other speech model audio.cpp has (engines/audiocpp/generated.js) ───
 // One row per model, from its spec: it copies a voice; it takes the clip's words when its spec
-// lists `reference_text`; it takes a line's direction only when our file for the family says how
-// (else "can't be directed yet"). Its settings are its spec's typed options (generated.settingsOf),
-// and the seed where the spec takes one or lists no options at all.
+// lists `reference_text` or lists no options at all — the rule the request follows
+// (slot.generatedSpeechRequest; the narrowings review, E11); it takes a line's direction only
+// when our file for the family says how (else "can't be directed yet"). Its settings are its
+// spec's typed options (generated.settingsOf), and the seed where the spec takes one or lists no
+// options at all.
 for (const m of generatedModels()) {
   if (Object.hasOwn(CAPABILITY_DETAILS, m.modelId)) continue;
   const opts = requestOptionsOf(m.family);
@@ -406,7 +408,7 @@ for (const m of generatedModels()) {
     engine_id: m.modelId,
     display_name: modelName(m),
     supports_voice_cloning: true,
-    supports_clone_prompt_text: opts.has("reference_text"),
+    supports_clone_prompt_text: !listsOptions(m.family) || opts.has("reference_text"),
     supports_instruct_freeform: directed,
     knobs: [...settingsOf(m).map(knob), ...(!listsOptions(m.family) || opts.has("seed") ? [seedKnob()] : [])],
     inline_tags: [],

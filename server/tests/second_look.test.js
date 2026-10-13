@@ -4,10 +4,11 @@
 //
 // What these pin: only spoken lines with no speaker are asked about — none, no call; a cast
 // member it names is saved with source "second_look", marked "nearby", and counted as AI
-// decided; a name it gives who is not in the cast stays on the line for Script's offer, and a
-// re-analyze clears it; an answer below the floor, a cast member offered as "not in the cast", a
-// line you set, and a failed call all leave the line as it was; the neighbouring chapters' text
-// reaches the prompt, trimmed; the setting turns it off.
+// decided, at any confidence (no floor, 2026-10-13); a name it gives who is not in the cast
+// stays on the line for Script's banner, at any length, and a re-analyze clears it; a cast member
+// offered as "not in the cast", a line you set, and a failed call all leave the line as it was;
+// the neighbouring chapters' text reaches the prompt, trimmed, and who each speaker is, whole;
+// the setting turns it off; a line the 🔎 Second look button fills gets no "changed" mark.
 //
 // The three "Through Analyze" tests drive the app's routes (POST /v1/scenes/{id}/analyze,
 // /script, PATCH /v1/settings). The main pass is `pipeline.runFeature` (its prompt measure,
@@ -56,7 +57,7 @@ async function _look(rows, answers, kw = {}) {
     resolve: (raw) => (raw === "ode" ? "id-ode" : "unknown"),
     castNames: (n) => n.toLowerCase() === "ode",
     floor: 0.5,
-    useFloor: true,
+    useFloor: false, // as both callers ask (2026-10-13: the second look has no floor)
     beforeText: kw.before ?? null,
     afterText: kw.after ?? null,
     cfg: kw.cfg ?? CFG,
@@ -92,9 +93,27 @@ test("someone_not_in_the_cast_is_kept_for_the_offer", async () => {
   expect(report.not_in_cast).toEqual(["Old Sedge"]);
 });
 
+test("a_named_answer_is_saved_at_any_confidence", async () => {
+  // 2026-10-13 (the narrowings review S1): no floor — a low-confidence name is saved marked to
+  // check, never dropped as "found no one".
+  const rows = [_row("“You always find the candle first.”")];
+  const [, report] = await _look(rows, [{ speaker: "ode", confidence: 0.3 }]);
+  expect([rows[0].speaker, rows[0].source, rows[0].confidence]).toEqual(["id-ode", "second_look", 0.3]);
+  expect(rows[0].second_look_asked).toBeFalsy();
+  expect(report.named).toBe(1);
+});
+
+test("a_long_not_in_the_book_name_reaches_the_banner", async () => {
+  // 2026-10-13 (the narrowings review S3): no 60-character cut.
+  const name = "the old woman who keeps the lighthouse at the far end of the harbour wall";
+  const rows = [_row("“You're for the Nine,”")];
+  const [, report] = await _look(rows, [{ speaker: "unknown", not_in_cast: name }]);
+  expect(rows[0].not_in_cast).toBe(name);
+  expect(report.not_in_cast).toEqual([name]);
+});
+
 describe("these_leave_the_line_as_it_was", () => {
   test.each([
-    ["below the floor", { speaker: "ode", confidence: 0.3 }],
     ["a cast member is never 'not in the cast'", { speaker: "unknown", not_in_cast: "Ode" }],
     ["the narrator doesn't speak a quote here", { speaker: "narrator", confidence: 1 }],
     ["a failed call", new RuntimeError("model gone")],
@@ -128,6 +147,15 @@ test("the_cast_carries_who_they_are", () => {
   // — the main call's cast list leaves descriptions out.
   const text = sl.castLines([{ id: "odeline_marran", name: "Odeline Marran", aliases: [], description: "Has been living the same hour.\n\nAnswers to Ode." }]);
   expect(text).toBe('- id="odeline_marran", name="Odeline Marran", who="Has been living the same hour. Answers to Ode."');
+});
+
+test("who_they_are_is_sent_whole", () => {
+  // 2026-10-13 (the narrowings review S2): no 200-character cut — a clue past it still reaches the
+  // model.
+  const description = `${"Keeps the lamp shop on the corner and talks to it when no one is in. ".repeat(4)}Answers to Ode.`;
+  expect(description.length).toBeGreaterThan(200);
+  const text = sl.castLines([{ id: "odeline_marran", name: "Odeline Marran", aliases: [], description }]);
+  expect(text).toBe(`- id="odeline_marran", name="Odeline Marran", who="${description.trim()}"`);
 });
 
 test("a_second_look_line_carries_the_nearby_mark", () => {
@@ -230,4 +258,40 @@ test("the_setting_turns_it_off", async () => {
   await _analyze(c, book);
   expect(calls).toEqual([]);
   expect((await c.get("/v1/extraction/config")).json().second_look).toBe(false);
+});
+
+test("analyze_saves_a_low_confidence_answer", async () => {
+  // 2026-10-13 (the narrowings review S1): Analyze's own second look applies no floor.
+  const { c, book } = await _book();
+  await _secondLookOn(c);
+  const mara = (await c.get(`/v1/projects/${book.id}/speakers`)).json().speakers.find((s) => s.name === "Mara Vance").id;
+  _mainUnknown();
+  vi.spyOn(sl, "runFeature").mockImplementation(_stub([{ speaker: "mara_vance", confidence: 0.1 }], []));
+  await _analyze(c, book);
+  const line = await _spokenLine(c, book);
+  expect([line.speaker_id, line.source]).toEqual([mara, "second_look"]);
+});
+
+test("the_second_look_button_saves_at_any_confidence_and_marks_nothing_changed", async () => {
+  // 2026-10-13 (the narrowings review S1, S4): Script's 🔎 Second look keeps a low-confidence
+  // name too, and a line it fills is not marked "changed by the last Analyze" — no Analyze ran.
+  const { c, book } = await _book();
+  const mara = (await c.get(`/v1/projects/${book.id}/speakers`)).json().speakers.find((s) => s.name === "Mara Vance").id;
+  _mainUnknown();
+  await _analyze(c, book); // the second look is off by default: the line stays blank
+  expect((await _spokenLine(c, book)).speaker_id).toBeNull();
+  vi.spyOn(sl, "streamFeature").mockImplementation(async () =>
+    (async function* answer() {
+      yield { done: false, text: JSON.stringify({ speaker: "mara_vance", confidence: 0.2 }) };
+      yield { done: true, text: "", prompt_tokens: 0, completion_tokens: 0 };
+    })(),
+  );
+  const r = await c.post(`/v1/scenes/${book.scene_id}/second-look/stream`);
+  expect(r.status, r.text).toBe(200);
+  const script = (await c.get(`/v1/scenes/${book.scene_id}/script`)).json();
+  const line = script.lines.find((ln) => ln.spoken);
+  expect([line.speaker_id, line.source]).toEqual([mara, "second_look"]);
+  expect(line.changed).toBeFalsy();
+  expect(line.metadata).not.toHaveProperty("prev_speaker_id");
+  expect(script.chapter.changed).toBe(0);
 });

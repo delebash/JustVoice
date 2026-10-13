@@ -160,7 +160,9 @@ chapter. It creates nothing on its own.
    - **Several at once:** tick rows — the box in the header ticks every New, In your library and In this book row shown — then **＋ Add N selected**,
      **Ignore N selected** or **Remove N selected**. Add and Ignore act on the
      ticked New and In-your-library rows, Remove on the ticked In-this-book rows.
-     Each works exactly as its row's own button would.
+     Each works exactly as its row's own button would — so Ignore's count leaves
+     out the ticked **Narrator** row, which has no Ignore (since 2026-10-13 —
+     before, it counted it).
 
 **What counts as a name.** Discover proposes everyone the text *names* — a
 proper name ("Edith") or a title used as one ("the harbour-master") — whether
@@ -318,7 +320,7 @@ answer must reach to be kept; below it the line is left with no speaker.
 
 A row opens its chapter — before Analyze too, so you can read a chapter you
 pasted or imported and fix its words first, then **✨ Analyze this chapter**
-there. **Review** opens it at the first line to check.
+there. **Review** opens it too — at the first line to check, when there is one.
 
 ### Adding and arranging chapters
 
@@ -333,7 +335,9 @@ did this was removed on 2026-10-04):
   **↓ Move down** and **🗑 Delete**. Deleting asks first, and takes the
   chapter's lines and every take rendered from them with it.
 - **✎ Edit text** opens the chapter's text in the same box, one paragraph per
-  line, to fix a mistake at any time — before or after Analyze. **Save**
+  line, to fix a mistake at any time — before or after Analyze (not while it is
+  being analyzed: it is greyed out then, and its tooltip says *Wait for it to
+  finish*). **Save**
   matches your paragraphs to the lines: a line you left as it is keeps its
   speaker, its marks and its takes (spacing doesn't count as a change); a
   changed or new paragraph becomes a new line with no speaker, and the row then
@@ -431,7 +435,8 @@ quote marks — goes to the narrator, and nothing makes one on its own, so
 Script asks for it:
 
 - **✨ Analyze** (on the grid, and **Re-analyze this chapter** on a chapter's
-  page) on a book with no narrator stops first: *This book has no narrator —
+  page) on a book with narration — in any of its chapters — and no narrator
+  stops first: *This book has no narrator —
   its narration needs one.* **＋ Add Narrator and analyze** adds it and runs;
   **Choose on Cast** is for a book told in the first person, where you tick
   that speaker as Narrator. There is no "analyze without".
@@ -658,7 +663,7 @@ second look to fill blanks.
 text makes clear goes on the line **marked to check** (*Decided by: AI, from the
 chapters around it*); someone the text names who isn't a speaker in this book is
 named on the banner, which opens Discover to scan and **＋ Add** them; a line it still can't place stays blank for you to
-set. A line it names shows under **Changed**, like a line a re-analyze changed.
+set. A line it names isn't marked changed — no Analyze ran.
 It isn't offered while the chapter is being analyzed.
 
 **On the strip** it is its own task, **Script · second look · <chapter>**, with
@@ -796,8 +801,8 @@ effects all belong to the persona, on the [Personas](personas.md) page.
 ### The speakers (left)
 
 **Each card says where the speaker came from** (since 2026-10-06): **From the
-book** — one of the characters the import brought — or **Added here**, with
-Discover's ＋ Add or as the narrator.
+book** — one of the characters the import brought — or **Added here** — added
+with ＋ Add, and the narrator.
 
 **The narrator** has its own full-width card at the top (every kind but
 a game). It reads everything that isn't spoken. Its card shows its role line
@@ -812,7 +817,7 @@ narrator ([Personas → The Narrator](personas.md#the-narrator)).
 speaker of the book, the narrator included, and how many still need a persona.
 Click **No persona** to see only those (the narrator's card too, only when it
 has none); **All** shows everyone again. When everyone is cast it says
-*Everyone has a persona.* The chips change only what you see — Smart-assign and ＋ New persona still read all the book's speakers. Its head has three buttons:
+*Everyone has a persona.* The chips change only what you see — Smart-assign still reads every speaker but a narrator who already has a persona, and ＋ New persona everyone with none, the narrator included. Its head has three buttons:
 
 - **＋ Add** asks for a name and adds a speaker to the book — for someone
   [Discover](#discover) missed. Analyze can only give a line to a speaker the
@@ -826,21 +831,29 @@ has none); **All** shows everyone again. When everyone is cast it says
   links go."*
 - **Models to choose from** (since 2026-10-06), beside the two buttons below: a
   check-list of the models that have voices in the book's language, with how many
-  each has — *Kokoro (28) · Pocket TTS (20) · KittenTTS (8)*. Smart-assign and
+  each has — *Kokoro (28) · Pocket TTS (20) · KittenTTS (8)*. Each model is its
+  own entry (since 2026-10-13; before, each engine was one): *Qwen3-TTS
+  CustomVoice* and *Qwen3-TTS Base* are two, as are *Chatterbox Turbo* and
+  *Chatterbox Multilingual*. Smart-assign and
   ＋ New persona choose only from voices on the ticked models, so a book's cast
   doesn't spread over several models (each extra model is one more load per
   chapter, and sounds like a different production). It starts on the narrator's
   model when the narrator is cast, else on the model with the most voices; your
   choice is saved for the book.
 - **✨ Smart-assign** sends the speakers (name, *Also called*, *Pronouns*, *Who
-  they are*) and your personas whose voice is on a ticked model (name, voice gender, language, note) to your language model,
-  which proposes a persona for each speaker. The matches apply at once. Change
+  they are*, whole) and your personas whose voice is on a ticked model (name, voice gender, language, note) to your language model,
+  which proposes a persona for each speaker. The narrator goes too while it has
+  no persona; a narrator's persona is never replaced (since 2026-10-13 — before,
+  the narrator was left out). The matches apply at once. Change
   any you disagree with by clicking another persona. It needs a language model;
-  without one it says so.
+  without one it says so: *Smart-assign needs a language model — set one in AI
+  Settings.*
 - **＋ New persona for the N with none** (shown while anyone, the narrator
   included, has no persona) makes them personas of their own. A speaker whose
   name is already a persona in your library is simply cast with it. For the
   rest, your language model matches each to a voice — from the installed voices
+  (an engine counts as installed once the speech runtime is — see
+  [Engines → Loading and unloading](engines.md#loading-and-unloading))
   on the ticked models that speak the book's **Language** (every language when it isn't set),
   judging who they are against each voice's gender, language and description.
   Nothing is made yet: a list shows each speaker → voice with **▶** to hear the
@@ -1001,8 +1014,10 @@ lines — a quote, its *she said*, the rest of the quote — they are joined wit
 **Pause within a paragraph** (Settings → Generation pipeline, 250 ms by default)
 instead of the pause between lines; a new paragraph keeps the pause between
 lines. A line knows its paragraph when it came from a JustWrite book or from
-Analyze; a line you split off, typed in or wrote with ✎ Edit text joins with the
-pause between lines. A line's own pause still wins, and a speaker changing gets
+Analyze — a chapter you pasted with **＋ Add text** too, once it is analyzed — and
+a line you split off an analyzed line keeps that line's paragraph; a line you
+typed in or wrote with ✎ Edit text joins with the pause between lines. A line's
+own pause still wins, and a speaker changing gets
 no pause of its own — inside a paragraph it is the paragraph's pause, between
 paragraphs the pause between lines.
 
@@ -1046,7 +1061,8 @@ just got, so **Retry** only joins and masters again.
 
 #### A render's progress
 
-While a chapter renders — from its page or from the chapter list — its strip
+While a chapter renders — started from its page, the chapter list, another
+window, JustWrite or the API — its strip, on the page and on the chapter list,
 shows the lines done of all of them, how long it has run, and then, as lines
 land: the line rendering now (*line 47 · Narrator*), the audio made so far
 (*3:12 of audio*), how fast that is against real time (*2.4× real time*) and
@@ -1055,7 +1071,9 @@ green and its **Status** reads *rendering…*; the lines still waiting in the ru
 read *queued*. The page fills in as each line lands — its counts, the chips
 (**Ready** shrinks, **Rendered** grows), the **Status** and the **▶**. The page
 doesn't scroll on its own; click the line's name on the strip to bring it into
-view.
+view. A render started somewhere else is picked up when the page or the chapter
+list reads the chapter — when you open it, or after a change there — and its
+strip has **Cancel** too, which stops that render wherever it was started.
 
 Speech renders one line at a time, and it finishes every line waiting on the
 model that is already loaded before it loads another — so it isn't swapping
@@ -1076,7 +1094,8 @@ is in.
 Each chapter's page waits only for its own run: while chapter 1 renders, you can
 open chapter 2 and start its render too — it queues behind chapter 1's lines and
 says so. Deleting a book, a chapter or a line takes its waiting renders with it:
-the queue skips those lines.
+the queue skips those lines. Deleting a book also stops its exports and its
+[ACX check](#the-acx-check).
 
 ### A chapter's lines
 

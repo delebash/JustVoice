@@ -769,7 +769,7 @@ export async function analyzeScene({
       },
       castNames: (name) => Boolean(match(name, promptCast)),
       floor,
-      useFloor: request.use_floor,
+      useFloor: false, // the second look has no floor (2026-10-13, the narrowings review S1)
       beforeText: request.before_text,
       afterText: request.after_text,
       cfg,

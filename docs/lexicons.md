@@ -110,10 +110,11 @@ The lexicon editor includes a preview text field. Type a sentence; JustVoice sho
 A saved lexicon's editor lets you listen to it:
 
 - **▶ beside an entry** — the word as it will be said: the persona chosen under
-  **Try a word**, reading this lexicon. It plays what is saved, so the ▶ of an
-  entry added or changed since is greyed out until you **Save**.
+  **Try a word**, reading this lexicon. It plays the entries as they stand in
+  the editor, saved or not, so you can hear an entry before you **Save** it
+  (since 2026-10-13 — before, an entry added or changed had to be saved first).
 - **Try a word** — pick a persona, type a word or a short line, then **▶ Before**
-  hears it without this lexicon and **▶ After** with its saved entries. The
+  hears it without this lexicon and **▶ After** with its entries. The
   persona list holds the personas that read this lexicon — the one that carries
   it, and the ones cast in a book that chose it — so you hear it in the voice
   that will say it. For a lexicon nothing reads yet it lists every persona.
@@ -123,6 +124,16 @@ A saved lexicon's editor lets you listen to it:
   Editing an entry makes those lines [stale](#what-goes-stale-when-you-change-one)
   on Render; nothing renders again until you choose to. A lexicon nothing reads
   says so, and where to choose it.
+
+**▶ beside an entry** and **Try a word** read the line the way a render does
+(since 2026-10-13): with the lexicon of the [active project](projects.md) — the
+book open in Studio — first, then the persona's (see
+[Which lexicons a line is read with](#which-lexicons-a-line-is-read-with)).
+**▶ After** puts this lexicon in its place — the book's, when that book chose it
+on Overview, else the persona's — and **▶ Before** takes it away, so the two
+differ by this lexicon alone and a word the book's lexicon already says is heard
+as the book says it. With no project open, the persona reads this lexicon alone
+(After) or none (Before).
 
 When the persona's voice model isn't loaded, ▶ asks first — **Load & play** —
 unless you chose **Always auto-load**. A new lexicon has none of this until its

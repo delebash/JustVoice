@@ -22,7 +22,7 @@ const CHIPS = [
   { id: "all", label: "All", tip: "" },
   { id: "check", label: "To check", tip: "Chapters with flagged lines or lines with no speaker" },
   { id: "never", label: "Not analyzed yet", tip: "" },
-  { id: "stale", label: "Re-analyze", tip: "A speaker was added since, and the text names them" },
+  { id: "stale", label: "Re-analyze", tip: "Someone was added since, or lines changed since" },
   { id: "problem", label: "Needs attention", tip: "Failed, can't re-cut, no text, or no dialogue found" },
 ];
 const chip = ref("all");
@@ -204,8 +204,7 @@ function analyze() {
               <span class="studio-script__acts" @click.stop>
                 <UiButton v-if="!row.lines.length" intent="secondary" size="small" label="＋ Add text"
                   title="Paste its text" @click="paste = { ch: row.ch, text: '' }" />
-                <UiButton v-else intent="secondary" size="small" label="Review" :disabled="!row.script.analyzed"
-                  :title="row.script.analyzed ? '' : 'Analyze it first'" @click="review" />
+                <UiButton v-else intent="secondary" size="small" label="Review" @click="review" />
                 <UiMenu label="Chapter actions" trigger-class="ev-kebab" content-class="ev-menu" align="end">
                   <template #trigger>⋯</template>
                   <UiMenuItem class="ev-menu-item" @select="rename(row.ch)">✏️ Rename</UiMenuItem>

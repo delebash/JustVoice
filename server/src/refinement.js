@@ -17,8 +17,8 @@
 //     Like the sections, they follow the toggles (`refinementExamplesFor`).
 //
 // The ground rules only ever add capitals and punctuation; every change to the words themselves
-// belongs to a section (the user's ruling, 2026-10-08). With every toggle off the transcript
-// comes back with its words as spoken.
+// belongs to a section (clean-room gap 2, my rec applied under the 2026-10-08 go (not shown)).
+// With every toggle off the transcript comes back with its words as spoken.
 
 import { render, stores } from "@delebash/llm-runner/llm";
 import { NOT_W, PY_WS, splitWs, strip } from "@delebash/llm-runner/platform/py";

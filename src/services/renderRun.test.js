@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
+import { createPinia, setActivePinia } from "pinia";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { clock, followJob, loadingText, mediaUrl, runFigures, waitingText } from "./renderRun.js";
+import { useAiTasksStore } from "@delebash/llm-ui";
+import { chapterRunning, clock, followJob, followRender, jobFollowed, loadingText, mediaUrl, runFigures, waitingText } from "./renderRun.js";
 
 function fakeApi(statuses) {
   const calls = [];
@@ -53,6 +55,111 @@ describe("followJob", () => {
     await expect(followJob(api, { id: "job1", status: "running" }, { signal: ctl.signal }))
       .rejects.toMatchObject({ name: "AbortError" });
     expect(api.calls).toEqual(["POST /v1/render_jobs/job1/cancel"]);
+  });
+
+  // A transport that behaves as fetch does: a GET takes `getMs`, and rejects
+  // with AbortError when its signal aborts before or while it runs.
+  function abortingApi(getMs) {
+    const calls = [];
+    return {
+      calls,
+      request: vi.fn((path, { signal } = {}) => new Promise((resolve, reject) => {
+        calls.push(path);
+        const aborted = () => new DOMException("The operation was aborted.", "AbortError");
+        if (signal?.aborted) return reject(aborted());
+        const t = setTimeout(() => resolve({ id: "job1", status: "running", completed_blocks: 0, total_blocks: 5 }), getMs);
+        signal?.addEventListener("abort", () => {
+          clearTimeout(t);
+          reject(aborted());
+        }, { once: true });
+      })),
+      safeRequest: vi.fn(async (path, fallback, opts) => {
+        calls.push(`${opts?.method || "GET"} ${path}`);
+        return fallback;
+      }),
+    };
+  }
+
+  it("cancels the job on the server when Cancel lands during the wait after a poll", async () => {
+    const api = abortingApi(100);
+    const ctl = new AbortController();
+    const run = followJob(api, { id: "job1", status: "running" }, { signal: ctl.signal });
+    const settled = expect(run).rejects.toMatchObject({ name: "AbortError" });
+    await vi.advanceTimersByTimeAsync(700 + 100 + 200); // one poll done, the next wait under way
+    ctl.abort();
+    await vi.runAllTimersAsync();
+    await settled;
+    expect(api.calls).toEqual(["/v1/render_jobs/job1?include_blocks=true", "POST /v1/render_jobs/job1/cancel"]);
+  });
+
+  it("cancels the job on the server when Cancel lands during a poll's request", async () => {
+    const api = abortingApi(100);
+    const ctl = new AbortController();
+    const run = followJob(api, { id: "job1", status: "running" }, { signal: ctl.signal });
+    const settled = expect(run).rejects.toMatchObject({ name: "AbortError" });
+    await vi.advanceTimersByTimeAsync(700 + 100 + 700 + 50); // one poll done, the second in flight
+    ctl.abort();
+    await vi.runAllTimersAsync();
+    await settled;
+    expect(api.calls).toEqual([
+      "/v1/render_jobs/job1?include_blocks=true",
+      "/v1/render_jobs/job1?include_blocks=true",
+      "POST /v1/render_jobs/job1/cancel",
+    ]);
+  });
+});
+
+describe("a render started elsewhere (2026-10-13, the narrowings review R3)", () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.useFakeTimers();
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it("is followed as this window's own run: its task, its lines, its end", async () => {
+    const api = fakeApi([
+      { status: "running", completed_blocks: 1, failed_blocks: 0, total_blocks: 2, blocks: [{ block_id: "b1", status: "completed" }] },
+      { status: "completed", completed_blocks: 2, failed_blocks: 0, total_blocks: 2 },
+    ]);
+    const tasks = useAiTasksStore();
+    const run = followRender(api, {
+      sceneId: "s1", title: "3 · The Keystone",
+      job: { id: "job1", status: "running", completed_blocks: 0, failed_blocks: 0, total_blocks: 2 },
+    });
+    expect(chapterRunning(tasks, "s1")).toBe(true);
+    expect(chapterRunning(tasks, "s2")).toBe(false);
+    const task = tasks.visibleTasks[0];
+    expect([task.feature, task.label, task.meta]).toEqual(["render-lines", "3 · The Keystone", { sceneId: "s1", jobId: "job1" }]);
+    await vi.runAllTimersAsync();
+    expect((await run).status).toBe("completed");
+    expect(chapterRunning(tasks, "s1")).toBe(false);
+  });
+
+  it("is followed once when it spans several chapters (2026-10-13, the implementation review's problem 8)", async () => {
+    const api = fakeApi([
+      { status: "running", completed_blocks: 0, failed_blocks: 0, total_blocks: 4 },
+      { status: "completed", completed_blocks: 4, failed_blocks: 0, total_blocks: 4 },
+    ]);
+    const tasks = useAiTasksStore();
+    expect(jobFollowed(tasks, "job1")).toBe(false);
+    const run = followRender(api, { sceneId: "s1", title: "1 · Brass Rank", job: { id: "job1", status: "running" } });
+    expect(jobFollowed(tasks, "job1")).toBe(true); // so chapter 2, the same job, isn't adopted again
+    expect(chapterRunning(tasks, "s2")).toBe(false);
+    expect(jobFollowed(tasks, "job2")).toBe(false);
+    await vi.runAllTimersAsync();
+    await run;
+    expect(jobFollowed(tasks, "job1")).toBe(false);
+  });
+
+  it("offers Cancel: cancelling the task cancels the job on the server", async () => {
+    const api = fakeApi([{ status: "running", completed_blocks: 0, failed_blocks: 0, total_blocks: 5 }]);
+    const tasks = useAiTasksStore();
+    const run = followRender(api, { sceneId: "s1", title: "3 · The Keystone", job: { id: "job1", status: "running" } });
+    tasks.cancel(tasks.visibleTasks[0].id);
+    const settled = expect(run).rejects.toMatchObject({ name: "AbortError" });
+    await vi.runAllTimersAsync();
+    await settled;
+    expect(api.calls).toContain("POST /v1/render_jobs/job1/cancel");
   });
 });
 

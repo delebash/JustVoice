@@ -88,11 +88,11 @@ test("a_card_that_failed_or_a_price_it_cannot_hold_sends_the_model_to_the_cpu", 
   expect(await mgr.placementFor(mgr.getManifest("omnivoice"), "tts", "omnivoice-q8")).toEqual(["cpu", want, false]);
   failed.mockReturnValue(false);
   // A price measured here that, with the margin, is more than the card: the CPU, not a refusal,
-  // saying what it took (decided 2026-10-13).
+  // saying what it took (decided 2026-10-13) and the margin it was held to.
   vi.spyOn(EngineManager.prototype, "_priceMb").mockReturnValue(7500);
   expect(await mgr.placementFor(mgr.getManifest("chatterbox"), "tts", "chatterbox-multilingual-v2-q8")).toEqual([
     "cpu",
-    "it took about 7.3 GB on this card before, more than it holds — this may be slow on the CPU",
+    "it took about 7.3 GB on this card before, more than it holds with the 1 GB safety margin — this may be slow on the CPU",
     false,
   ]);
   // The user's pin still wins.
@@ -129,6 +129,15 @@ test("a_remembered_card_failure_lasts_until_a_card_load_measures_the_model", () 
   expect(failed()).toBe(false);
 });
 
+test("try_the_card_again_forgets_only_the_remembered_failure", () => {
+  // The narrowings review, M8: the model's no_card rows go; its price and CPU speed stay.
+  const mgr = mgrFor();
+  const clear = vi.fn(() => 2);
+  vi.spyOn(stores, "getModelMeasurementStore").mockReturnValue({ clear });
+  expect(mgr.forgetCardFailure("tts", "omnivoice", "omnivoice-q8")).toBe(2);
+  expect(clear).toHaveBeenCalledWith("tts:omnivoice:omnivoice-q8", "no_card");
+});
+
 test("auto_goes_by_the_files_when_they_are_more_than_the_estimate_or_there_is_none", async () => {
   // MOSS-TTSD's 12 GB has no estimate; MOSS-TTS Local's 16-bit weights are 12 GB against an
   // estimate of 8 (decided 2026-10-12): the files decide, and the reason says so.
@@ -153,6 +162,11 @@ test("a_cpu_load_needs_its_files_and_the_margin_in_free_memory", async () => {
   );
   aiOnCard();
   await expect(mgr._admitSystemMemory(m, "tts", "omnivoice-q8")).rejects.toThrow("The AI model (gemma) is loaded and holds memory too");
+  // Short even with the AI models' memory credited: the words say what is free now, and don't
+  // name the AI model, whose memory was already counted.
+  await expect(mgr._admitSystemMemory(m, "tts", "omnivoice-q8", "cpu", 200)).rejects.toThrow(
+    "but only 1.5 GB of this machine's 32 GB is free. Close other programs, or pick a smaller model.",
+  );
   vi.spyOn(os, "freemem").mockReturnValue(4 * 1024 ** 3);
   await expect(mgr._admitSystemMemory(m, "tts", "omnivoice-q8")).resolves.toBeUndefined();
 });
@@ -704,6 +718,21 @@ test("a_models_place_is_saved_and_auto_clears_it", async () => {
   expect(ov.placements).toEqual({});
   expect((await c.put("/v1/engines/kokoro/models/nope/placement", { json: { placement: "cpu" } })).status).toBe(404);
   expect((await c.put("/v1/engines/kokoro/models/kokoro-82m-q8/placement", { json: { placement: "npu" } })).status).toBe(422);
+});
+
+test("a_remembered_card_failure_shows_on_its_row_until_try_the_card_again", async () => {
+  // The narrowings review, M8: the row knows, and DELETE …/card-failure forgets it.
+  const c = await placementClient();
+  const mgr = manager.getManager();
+  const row = async () => (await c.get("/v1/engines/kokoro/models")).json().variants.find((v) => v.id === "kokoro-82m-q8");
+  expect((await row()).failed_on_card).toBe(false);
+  mgr._recordCardFailure(mgr.getManifest("kokoro"), "tts", "kokoro-82m-q8", "spilled");
+  expect((await row()).failed_on_card).toBe(true);
+  const r = await c.delete("/v1/engines/kokoro/models/kokoro-82m-q8/card-failure");
+  expect(r.status).toBe(200);
+  expect(r.json().forgotten).toBe(1);
+  expect((await row()).failed_on_card).toBe(false);
+  expect((await c.delete("/v1/engines/kokoro/models/nope/card-failure")).status).toBe(404);
 });
 
 test("pocket_shows_its_terms_until_accepted", async () => {

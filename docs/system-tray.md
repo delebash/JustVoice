@@ -23,10 +23,8 @@ The switch is remembered and re-applied every launch.
 | ▶️ Start server | Start the app's server if it isn't running. |
 | ⏹ Stop server | Stop the server. |
 | 🔄 Restart server | Stop + start. Useful after settings changes that need a restart. |
-| 🎙️ Start dictation | JustVoice-specific (not wired yet — coming with the dictation tray work). |
-| 🎚️ MCP server: toggle | JustVoice-specific (not wired yet). |
 | ⚙️ Open settings | Shows the window and opens Settings. |
-| 📋 Copy server URL | Copies `http://127.0.0.1:17494` to the clipboard and says so. |
+| 📋 Copy server URL | Copies the server's address to the clipboard and says so — `http://127.0.0.1:` and the port it listens on (Settings → Server → Port, 17494 unless you changed it). |
 | 📜 Open log file | Opens the server's log file (`logs/justvoice.log` in your data folder). |
 | ℹ️ About JustVoice | Shows the window and opens Settings (the About tab lives there). |
 | 🚪 Quit JustVoice | Full quit — stops the server too, even with close-to-tray on. |

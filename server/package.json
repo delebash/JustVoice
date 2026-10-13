@@ -8,11 +8,16 @@
   "exports": {
     "./serve": "./src/serve.js"
   },
+  "files": [
+    "src",
+    "samples/the-ninth-facet"
+  ],
   "dependencies": {
     "@delebash/llm-runner": "file:../../just-llm-runner/server",
     "@delebash/sqlite-sync": "file:../../just-sqlite-sync",
     "@fastify/busboy": "^3.2.2",
     "@modelcontextprotocol/sdk": "1.32.1",
+    "lru-cache": "^11.5.3",
     "zod": "4.6.5"
   }
 }

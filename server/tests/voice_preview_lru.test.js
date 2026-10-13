@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 // The voice-preview LRU — 20-cap, 10-min TTL, eviction (the port of
-// tests/test_voice_preview_lru.py). The cache is `cfg._PREVIEW_LRU` (cachetools' TTLCache
-// ported as `TTLCache`); a test replaces it as Python monkeypatched the module global.
+// tests/test_voice_preview_lru.py). The cache is `cfg._PREVIEW_LRU` (lru-cache's LRUCache, max +
+// ttl); a test replaces it as Python monkeypatched the module global.
+import { LRUCache } from "lru-cache";
 import { afterEach, beforeEach, expect, test } from "vitest";
 import * as vp from "../src/api/voice_preview_api.js";
 
@@ -48,7 +49,7 @@ test("store_then_get_hit", async () => {
 test("ttl_expiry", async () => {
   // Expired entries read back as null (→ 404). Expiry is driven by the cache's own TTL timer
   // (set at insert), not the entry's advisory .expiresAt, so exercise a short-lived cache.
-  vp.cfg._PREVIEW_LRU = new vp.TTLCache(vp._LRU_CAP, 0.05);
+  vp.cfg._PREVIEW_LRU = new LRUCache({ max: vp._LRU_CAP, ttl: 50 });
   const pid = await vp._storePreview(new vp._PreviewEntry("cloned", { i: 0 }, Buffer.from("x")));
   expect(await vp._getPreview(pid)).not.toBeNull(); // live immediately
   await new Promise((r) => setTimeout(r, 120));

@@ -73,15 +73,19 @@ function onCommit(key, v) {
       </div>
       <div class="jv-knob-grid__row">
         <template v-if="(k.type || 'number') === 'number'">
-          <UiSlider :model-value="shown(k.key, k.neutral)" :min="k.min" :max="k.max" :step="k.step"
+          <UiSlider v-if="k.neutral != null" :model-value="shown(k.key, k.neutral)" :min="k.min" :max="k.max" :step="k.step"
             width="full" :aria-label="k.label"
             @update:model-value="(v) => onInput(k.key, v)" @change="(v) => onCommit(k.key, v)" />
+          <!-- No default (the model's spec gives none): empty until set, audio.cpp's own applies. -->
+          <UiNumber v-else :model-value="shown(k.key)" :min="k.min" :max="k.max" :step="k.step"
+            width="num" size="small" :aria-label="k.label"
+            @update:model-value="(v) => onInput(k.key, v)" @blur="onCommit(k.key)" />
           <span v-if="k.unit" class="jv-knob-grid__unit">{{ k.unit }}</span>
         </template>
         <UiSelect v-else-if="k.type === 'choice'" :model-value="raw(k.key, k.neutral)"
           :options="(k.choices || []).map((c) => ({ label: c, value: c }))" width="name" :aria-label="k.label"
           @update:model-value="(v) => { onInput(k.key, v); onCommit(k.key, v); }" />
-        <UiToggle v-else-if="k.type === 'switch'" :model-value="Boolean(raw(k.key, k.neutral))" :aria-label="k.label"
+        <UiToggle v-else-if="k.type === 'switch'" :model-value="raw(k.key, k.neutral) == null ? null : Boolean(raw(k.key, k.neutral))" :aria-label="k.label"
           @update:model-value="(v) => { onInput(k.key, v); onCommit(k.key, v); }" />
         <UiInput v-else :model-value="raw(k.key, k.neutral) ?? ''" size="small" width="name" :aria-label="k.label"
           @update:model-value="(v) => onInput(k.key, v)" @blur="onCommit(k.key)" />

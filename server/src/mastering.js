@@ -153,7 +153,7 @@ export function _masterCommand(channels, { presetName, presets, outFormat = null
 }
 
 async function _runMaster(pcm, sampleRate, channels, { presetName, presets, outFormat, title = null, author = null, book = null }) {
-  if (!self.haveFfmpeg()) throw new RuntimeError("ffmpeg not on PATH. Install ffmpeg or set its bundled path before /v1/master.");
+  if (!self.haveFfmpeg()) throw new RuntimeError("ffmpeg not on PATH. Install ffmpeg or set its bundled path.");
   const preset = Object.hasOwn({ acx: 1, inaudio: 1, podcast: 1, youtube: 1 }, presetName) ? presets[presetName] : null;
   if (preset == null) throw new ValueError(`Unknown mastering preset: ${presetName}`);
   const fmt = outFormat || preset.format;

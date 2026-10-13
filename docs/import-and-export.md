@@ -390,23 +390,30 @@ action emits one mastered WAV per chapter.
 M4B assembly happens **on the JustVoice server**, no other app involved.
 
 **In the app** (Studio → Export → **⬇ Export M4B**, since 2026-10-07): a strip under the buttons
-follows it — *Chapter 2 of 4 · Bigger Inside* as each chapter is joined and mastered, then
-*Encoding the book* — with **Cancel**, which stops after the chapter it is on. When the file is
-made, a **Save** dialog asks where to put it and what to call it (the book's title is filled
-in); the message after says where it went, with **Open folder**. Cancel the dialog and it says
-nothing was saved. (Until then the app saved nothing in the desktop window — the window
-ignores a browser-style download — and said "M4B exported." anyway.)
+follows it — first *Rendering line 12 of 340* while the lines with no take in use are rendered
+(a line that has one plays it, so it isn't rendered again), then *Chapter 2 of 4 · Bigger
+Inside* as each chapter is joined and mastered, then *Encoding the book* — with **Cancel**,
+which stops after the line rendering now, or after the chapter it is on. Deleting the book
+stops its export too. When the file is made, a **Save** dialog asks where to put it and what to
+call it — filled in with the book's title as written, leaving out only the characters a Windows
+file name can't hold (`< > : " / \ | ? *`): *The Ninth Facet.m4b*. The message after says where
+it went, with **Open folder**. Cancel the dialog and it says nothing was saved. (Until then the
+app saved nothing in the desktop window — the window ignores a browser-style download — and said
+"M4B exported." anyway.)
 
-**⬇ Chapter WAVs (zip)** runs the same way, with the same strip, and saves a zip with two
-folders: `chapters/` — each chapter joined from its lines' takes in use (`01 Brass Rank.wav`)
+**⬇ Chapter WAVs (zip)** runs the same way, with the same strip, and saves *The Ninth Facet
+chapters.zip* with two folders: `chapters/` — each chapter joined from its lines' takes in use (`01 Brass Rank.wav`)
 — and `masters/` — the same chapters mastered to the book's target, the audio the M4B is made
 from. (Until 2026-10-07 this button saved the project package instead — the book's data and
 each line's take — which is what Overview's project export is for.) A chapter that can't
 render stops it and says why, as the M4B does.
 
 **For other callers:** `POST /v1/projects/{project_id}/export_m4b/start` starts the job;
-`GET /v1/export_jobs/{id}` says `{status, done, total, step}`; `POST /v1/export_jobs/{id}/cancel`
-stops it between chapters; `GET /v1/export_jobs/{id}/file` hands over the finished `.m4b` once.
+`GET /v1/export_jobs/{id}` says `{status, done, total, step}` (`done`/`total` count lines while
+`step` reads *Rendering line N of M*, then chapters); `POST /v1/export_jobs/{id}/cancel` stops it
+after the line rendering now, or between chapters; `GET /v1/export_jobs/{id}/file` hands over the
+finished `.m4b` once, its `Content-Disposition` carrying the name RFC 5987-encoded
+(`filename*=UTF-8''…`) when it goes beyond ASCII.
 `POST /v1/projects/{project_id}/export_m4b` still does it all in one request and returns the
 `.m4b`. The chapter audio: `POST /v1/projects/{project_id}/export_chapters/start`, then the same
 `/v1/export_jobs/{id}` doors.
@@ -496,14 +503,6 @@ Useful for archiving a finished book, or handing its audio and script to someone
 Per-take ZIP export (endpoint exists but not yet exposed in the UI): bundles the take's audio + every effects-applied version + a manifest with the lineage. Useful for handing a take to a sound designer.
 
 API: per-line files ride the project voicelines export (`/v1/projects/{id}/export_voicelines`).
-
-### Mastered audio direct from API
-
-For agents / scripts driving JustVoice via MCP:
-- `POST /v1/master` — apply a mastering preset to bytes you supply
-- `POST /v1/analyze` — get LUFS / peak / noise floor report on bytes
-
-Useful for masking JustVoice-produced audio without re-rendering.
 
 ## Voice bundles
 

@@ -46,7 +46,7 @@ export const log = getLogger("justvoice.line_takes");
 // Metadata key → delivery key. `pause_after_ms` is the field every import adapter already
 // writes.
 export const OVERRIDE_FIELDS = { speed: "speed", pitch: "pitch", gain_db: "gain_db", pause_after_ms: "pause_after" };
-// The limits the hatch's fields keep to — the persona page's own ranges. (Floats where Python
+// The limits Render overrides' numbers keep to — the persona page's own ranges. (Floats where Python
 // wrote floats: they are named in the refusal as Python prints them.)
 export const OVERRIDE_LIMITS = {
   speed: [0.5, 2.0],
@@ -97,19 +97,34 @@ function _bookScene(block) {
   return cut < 0 ? rest : rest.slice(0, cut);
 }
 
+/** Analyze's paragraph of a line (`paragraph_idx`), or null for a line Analyze never cut. */
+function _paragraphIdx(block) {
+  const idx = blockMeta(block).paragraph_idx;
+  return Number.isInteger(idx) ? idx : null;
+}
+
 /**
- * The ids of the lines whose next heard line comes from the same paragraph — both carry the
- * same `source_ref` (the JustWrite import's `…#block:<n>`; Analyze gives every line it cuts
- * from one paragraph that paragraph's). They join with Settings' pause within a paragraph,
- * closer than lines of two paragraphs (decided 2026-10-07: a quote · tag · quote cut into three
- * lines joined at ~1.5 s each). A line with no `source_ref` joins as any other. `blocks` in
- * chapter order — the lines that are heard. A Set.
+ * The ids of the lines whose next heard line comes from the same paragraph. They join with
+ * Settings' pause within a paragraph, closer than lines of two paragraphs (decided 2026-10-07:
+ * a quote · tag · quote cut into three lines joined at ~1.5 s each). Two lines that both carry
+ * a `source_ref` (the JustWrite import's `…#block:<n>`; Analyze gives every line it cuts from
+ * one paragraph that paragraph's) are one paragraph when it is the same; otherwise two lines
+ * that both carry Analyze's `paragraph_idx` are one paragraph when it is the same — a chapter
+ * pasted with ＋ Add text, and a line split off an analyzed line, which keeps its paragraph
+ * (decided 2026-10-13, the narrowings review R1). Any other line joins as any other. `blocks`
+ * in chapter order — the lines that are heard. A Set.
  */
 export function paragraphJoins(blocks) {
   const out = new Set();
   for (let i = 0; i + 1 < blocks.length; i++) {
     const ref = blockMeta(blocks[i]).source_ref;
-    if (typeof ref === "string" && ref && ref === blockMeta(blocks[i + 1]).source_ref) out.add(blocks[i].id);
+    const nextRef = blockMeta(blocks[i + 1]).source_ref;
+    if (typeof ref === "string" && ref && typeof nextRef === "string" && nextRef) {
+      if (ref === nextRef) out.add(blocks[i].id);
+      continue;
+    }
+    const para = _paragraphIdx(blocks[i]);
+    if (para !== null && para === _paragraphIdx(blocks[i + 1])) out.add(blocks[i].id);
   }
   return out;
 }
@@ -207,7 +222,7 @@ export function overrideDelivery(block) {
 const limitText = (key, v) => (key === "pause_after_ms" ? String(v) : pyFloat(v));
 
 /**
- * PATCH semantics for the hatch: a value sets, null clears, a key left out is kept. `models`
+ * PATCH semantics for Render overrides: a value sets, null clears, a key left out is kept. `models`
  * merges the same way, a level down ({model: {knobs: {k: v}, emotion, register_tag}}; a model
  * or `models` itself sent as null clears it). Throws ValueError naming the field when a value
  * is out of range. The numbers it sets are PyFloats where Python stored floats.

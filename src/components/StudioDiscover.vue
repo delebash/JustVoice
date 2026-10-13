@@ -255,6 +255,10 @@ async function promote(rows) {
 const picked = ref(narratorRow.value ? { narrator: true } : {});
 const tickable = (r) => isWaiting(r) || r.status === "cast";
 const pickedWaiting = computed(() => found.value.filter((r) => isWaiting(r) && picked.value[r.key]));
+// What Ignore acts on, counts and is enabled by: the ticked waiting rows but the
+// narrator's — narration needs a narrator, so it is never ignored (the
+// narrowings review C9, 2026-10-13: "Ignore 3 selected" ignored 2).
+const pickedIgnorable = computed(() => pickedWaiting.value.filter((r) => !r.narrator));
 const pickedCast = computed(() => found.value.filter((r) => r.status === "cast" && picked.value[r.key]));
 const tickableShown = computed(() => shown.value.filter(tickable));
 const allRowsPicked = computed(() =>
@@ -294,7 +298,7 @@ async function addSelected() {
 
 async function ignoreSelected() {
   // Narration needs a narrator — it is never ignored.
-  const rows = pickedWaiting.value.filter((r) => !r.narrator);
+  const rows = pickedIgnorable.value;
   if (!rows.length || bulkBusy.value) return;
   bulkBusy.value = true;
   try {
@@ -428,7 +432,7 @@ async function removeRow(row) {
 }
 const clearable = computed(() => props.cast.filter((c) => !c.narrator));
 // Where each speaker came from (decided 2026-10-06): the import's characters, and
-// everyone added here — Discover's ＋ Add and the narrator.
+// everyone added here — ＋ Add (Discover's or Cast's) and the narrator.
 const castGroups = computed(() => [
   { key: "book", label: "From the book", hint: "the characters the import brought",
     rows: props.cast.filter((c) => c.imported_from) },
@@ -606,8 +610,8 @@ async function ignore(c) {
             :loading="bulkBusy" :label="pickedWaiting.length ? `＋ Add ${pickedWaiting.length} selected` : '＋ Add selected'"
             title="Add every ticked name to this book — a name a persona in your library has arrives cast with it"
             @click="addSelected" />
-          <UiButton intent="ghost" size="small" :disabled="!pickedWaiting.length || bulkBusy || busyName !== null"
-            :label="pickedWaiting.length ? `Ignore ${pickedWaiting.length} selected` : 'Ignore selected'"
+          <UiButton intent="ghost" size="small" :disabled="!pickedIgnorable.length || bulkBusy || busyName !== null"
+            :label="pickedIgnorable.length ? `Ignore ${pickedIgnorable.length} selected` : 'Ignore selected'"
             title="Mark every ticked name Ignored for this book"
             @click="ignoreSelected" />
           <UiButton intent="ghost" size="small" :disabled="!pickedCast.length || bulkBusy || busyName !== null || castBusy"

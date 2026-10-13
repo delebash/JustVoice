@@ -20,6 +20,7 @@ import { getLogger } from "@delebash/llm-runner/platform/log";
 import { literal, nullable, opt, T } from "@delebash/llm-runner/platform/models";
 import { b64decode, cpLen, NotImplementedError, pyInt, strip, truthy, ValueError } from "@delebash/llm-runner/platform/py";
 import { pyFloatValue, pyJson } from "@delebash/llm-runner/platform/pyjson";
+import { LRUCache } from "lru-cache";
 import { getState } from "../app_state.js";
 import { splitTextIntoChunks } from "../audio/chunked.js";
 import * as dspClient from "../audio/dsp_client.js";
@@ -114,79 +115,10 @@ export function _clientPinnedLanguage(body) {
   return Boolean(body?.[FIELDS_SET]?.has("language"));
 }
 
-// ── TTL + LRU cache ──────────────────────────────────────────────────────
-
-/**
- * cachetools 7's TTLCache: `maxsize` entries, each living `ttl` seconds from its last `set` on
- * the `timer` clock (seconds). `get` promotes a live entry to most-recently-used; `has` doesn't;
- * an insert past `maxsize` first drops the expired, then the least recently used. An expired
- * entry reads as missing. Candidate for platform/.
- */
-export class TTLCache {
-  constructor(maxsize, ttl, timer = () => performance.now() / 1000) {
-    this.maxsize = maxsize;
-    this.ttl = ttl;
-    this.timer = timer;
-    this._data = new Map();
-    this._expires = new Map(); // key → expiry, in expiry order (a set re-inserts)
-    this._lru = new Map(); // key → true, least recently used first
-  }
-
-  _drop(key) {
-    this._data.delete(key);
-    this._expires.delete(key);
-    this._lru.delete(key);
-  }
-
-  expire(now = this.timer()) {
-    for (const [k, exp] of this._expires) {
-      if (now < exp) break;
-      this._drop(k);
-    }
-  }
-
-  get size() {
-    this.expire();
-    return this._data.size;
-  }
-
-  has(key) {
-    const exp = this._expires.get(key);
-    return exp !== undefined && this.timer() < exp;
-  }
-
-  get(key, dflt = undefined) {
-    if (!this.has(key)) return dflt;
-    this._lru.delete(key);
-    this._lru.set(key, true);
-    return this._data.get(key);
-  }
-
-  set(key, value) {
-    const now = this.timer();
-    this.expire(now);
-    if (!this._data.has(key)) {
-      while (this._data.size + 1 > this.maxsize && this._lru.size) this._drop(this._lru.keys().next().value);
-    }
-    this._data.set(key, value);
-    this._lru.delete(key);
-    this._lru.set(key, true);
-    this._expires.delete(key);
-    this._expires.set(key, now + this.ttl);
-  }
-
-  delete(key) {
-    const had = this._data.has(key);
-    this._drop(key);
-    return had;
-  }
-
-  clear() {
-    this._data.clear();
-    this._expires.clear();
-    this._lru.clear();
-  }
-}
+// ── TTL + LRU caches ─────────────────────────────────────────────────────
+// lru-cache (npmjs.com/package/lru-cache): `max` entries, each living `ttl` ms from its last
+// `set`; `get` makes a live entry the most recently used, `has` doesn't; past `max` the least
+// recently used goes; an expired entry reads as missing.
 
 export const _LRU_CAP = 20;
 export const _TTL_S = 10 * 60;
@@ -215,9 +147,9 @@ export const _AUDITION_TTL_S = 10 * 60;
 // no id until you keep it. A ticket is a short-lived stand-in id: POST the recipe once, then
 // stream against the ticket exactly as if it were a voice. 10 minutes matches the preview LRU.
 export const cfg = {
-  _PREVIEW_LRU: new TTLCache(_LRU_CAP, _TTL_S),
-  _AUDITION_CACHE: new TTLCache(_AUDITION_CAP, _AUDITION_TTL_S),
-  _STREAM_TICKETS: new TTLCache(64, _TTL_S),
+  _PREVIEW_LRU: new LRUCache({ max: _LRU_CAP, ttl: _TTL_S * 1000 }),
+  _AUDITION_CACHE: new LRUCache({ max: _AUDITION_CAP, ttl: _AUDITION_TTL_S * 1000 }),
+  _STREAM_TICKETS: new LRUCache({ max: 64, ttl: _TTL_S * 1000 }),
 };
 
 // Test hook — counts served-from-cache responses. Nothing in the app reads it.

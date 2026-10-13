@@ -175,6 +175,11 @@ German, Greek, English, Spanish, Finnish, French, Hebrew, Hindi, Italian,
 Japanese, Korean, Malay, Dutch, Norwegian, Polish, Portuguese, Russian, Swedish,
 Swahili, Turkish and Chinese.
 
+A Kokoro voice speaks its own language. A line sent to it in a language Kokoro
+doesn't speak — through the API, MCP or JustWrite — goes without one, so the
+voice reads it in its own language (audio.cpp's default) rather than in US
+English.
+
 **Qwen3-TTS is three different models**, and the difference decides what you
 can do with it:
 
@@ -358,7 +363,9 @@ Each model row says how much graphics memory it needs, before you download
 it:
 
 - **about X GB, measured here** — an earlier load measured it on this machine.
-  That number wins.
+  That number wins. It **fits this card** when it and the 1 GB safety margin
+  fit — the rule *Auto* loads it by; otherwise the row says *more than this card
+  has*.
 - **needs about X GB · fits this card** — for a model JustVoice hasn't measured
   yet: audio.cpp's own estimate, or the size of its download when that is more.
   audio.cpp gives one estimate per model, shared by all its precisions, so a
@@ -390,7 +397,8 @@ it:
 The **Fits this card** filter keeps the models whose number fits your card.
 A model whose language list is a description rather than names shows it as
 audio.cpp words it — *100+ languages* for Higgs Audio, *600+ languages* for
-OmniVoice.
+OmniVoice, *multilingual* for dots.tts. *auto* in a model's list — it detects
+the language — isn't counted as a language.
 
 ### Finding a model
 
@@ -411,7 +419,7 @@ filters**.
 
 | Model | How a line's emotion and direction reach it |
 |---|---|
-| **IndexTTS 2 / 2.5** | Happy, sad, angry, fearful and contemptuous go as an emotion mix at strength 0.65; any other direction goes as words. Its *emotion strength* setting overrides the 0.65. It has no way to mutter, whisper or shout |
+| **IndexTTS 2 / 2.5** | The line's direction in words, which its own emotion model turns into an emotion mix — the way JustVoice tested it (12 of 21 lines acted like the book). Its *emotion strength* setting applies when you set it; otherwise audio.cpp's own, full strength. In that test it never muttered or sounded contemptuous |
 | **CosyVoice3** | Only what its authors document: very happy, very sad, very angry, as loudly as possible, and in a very soft voice. Other directions are spoken plainly |
 | **Breeze TTS 2** | The direction as its instruction, with its guidance raised to 4 on a directed line unless you set it yourself |
 | **Higgs Audio 3** | Its own emotion and style tags — happy, sad, angry, fearful, contemptuous (as disgust), whispered, shouted. It reads any other tag aloud, so nothing else is sent |
@@ -420,7 +428,10 @@ filters**.
 **Settings come from the model too.** An engine from audio.cpp shows its own
 settings — sliders, and also dropdowns, on/off switches and text fields where
 the model has them — in the persona page's *Sampling* and in Render's *This line
-only*.
+only*. A setting the model gives no default for shows none (a number is an empty
+box) until you set it; until then audio.cpp's own applies. What JustVoice sends
+itself — the line's text, the voice's clip and its words, the language — is never
+a setting, nor are file paths on the computer running the speech runtime.
 
 **Downloads** come from whichever repository audio.cpp names for the model,
 pinned to one commit, so a file never changes under you. Some are large: check
@@ -474,10 +485,12 @@ than `speech_runtime.spill_mb` (256 MB) is unloaded and loaded on the CPU too.
 Either way JustVoice remembers it, for this machine and this speech runtime
 build, so the next load goes straight to the CPU; a new speech runtime build
 tries the card again, and so does pinning the model to **GPU** — once a load
-measures it there, the card is used again. A model whose measured size, with the
-safety margin, is more than the whole card goes to the CPU the same way instead
-of being refused; its *Runs on* line says *it took about X GB on this card
-before, more than it holds — this may be slow on the CPU*.
+measures it there, the card is used again. **Try the card again** on the
+model's *Runs on* line forgets the failure now, keeping what the model measured.
+A model whose measured size, with the safety margin, is more than the whole card
+goes to the CPU the same way instead of being refused; its *Runs on* line says
+*it took about X GB on this card before, more than it holds with the 1 GB safety
+margin — this may be slow on the CPU*.
 
 **GPU** and **CPU** pin the model there, whatever Auto would do. Changing a
 loaded model's place reloads it in its new place. A machine whose speech
@@ -501,13 +514,16 @@ isn't room, the load stops before anything moves and says how much is free:
 (+1024 MB safety margin) but only 1.5 GB of this machine's 32 GB is free. Close
 other programs, or pick a smaller model.* — or, by what it took before, *…on
 the graphics card: it took about 5.7 GB of this machine's memory when it last
-loaded here…*. When an AI model is loaded — a large one can hold more of this
-memory than any speech model — the message names it and suggests unloading it
-first.
+loaded here…*. The free figure is what is free right now. When an AI model is
+loaded — a large one can hold more of this memory than any speech model — the
+message names it and suggests unloading it first, unless the check already
+counted the AI model's memory as given back.
 
-The 2× bar is `speech_runtime.cpu_min_realtime` in the settings, and the spill
-threshold `speech_runtime.spill_mb` (see [Settings reference](settings-reference.md));
-the CPU threads are on the runtime row.
+The 2× bar is `speech_runtime.cpu_min_realtime` in the settings, the spill
+threshold `speech_runtime.spill_mb`, and what counts as a runaway line
+`speech_runtime.runaway_s_per_char` and `runaway_min_s` (see
+[Settings reference](settings-reference.md)); the CPU threads are on the runtime
+row.
 
 ## What each engine can be tuned with
 
@@ -721,9 +737,11 @@ was made for ([Voices → Every voice knows the model that speaks it](voices.md#
 so hearing a Qwen3 built-in voice while Qwen3 Base is loaded loads CustomVoice first,
 and a chapter with voices on several models loads each in turn. The size and
 precision come from here: the model you loaded if it is the right one, else
-the default version if it is — the one you **Set as default** on its row here,
-the same choice as the persona page's **Version** — else a downloaded build of that model
-(the same size first) — and if none is downloaded, the load downloads one, as
+the default version — the one you **Set as default** on its row here, the same
+choice as the persona page's **Version** — if it is downloaded, else a downloaded
+build of that model (the same size first). While another version of the model is
+downloaded, that one keeps speaking — in renders too — until you load the chosen
+one; when no version is downloaded yet, the first load fetches the chosen one, as
 any first load does. Pocket TTS picks its model by the line's language.
 
 The runtime never outlives JustVoice: closing the window stops it, and the
@@ -825,10 +843,15 @@ time a model loads on the graphics card it speaks one full-length piece as its
 warm-up (a few seconds more, once) and what it holds afterwards is remembered as
 its cost. Models that can only speak from a clip (Chatterbox Multilingual,
 Qwen3-TTS Base) measure themselves on their first real lines instead. The cost
-only goes up after that: a line that takes more is remembered too. When the
-model's own process can't be read at that first load, how much the whole card's
-use went up across the load is remembered instead. That reading can include
-another program that took card memory at the same moment, so it errs high.
+only goes up after that: a line that takes more is remembered too — except after
+a line that ran away (its audio longer than 0.5 s a character of its text and
+than 30 s, `speech_runtime.runaway_s_per_char` and `runaway_min_s`): what that
+model's process holds is never remembered as its cost again. When the model's
+own process can't be read at that first load, how much the whole card's use went
+up across the load is remembered instead — for a model that spoke a warm-up
+piece; one that measures itself on its first lines remembers nothing then. That
+reading can include another program that took card memory at the same moment,
+so it errs high.
 
 Each slot's cell shows its own process's measured memory: the model, plus the
 process's own share of the card (about 100 MB). The full story is in

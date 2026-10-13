@@ -158,7 +158,11 @@ BUILT:  1, the review (2026-10-13): `docs/plans/2026-10-13-narrowings-review/` �
         20 claim groups; 10 refuted, 118 + 20 stand; two can cost data (P16 a restore overwrites
         newer work on synced computers, S6 a speaker set before the first Analyze is lost). The
         findings live in the register rather than as 138 entries here (the 25-line format).
-        Nothing fixed.
+        2026-10-13, A and B built — the register's "Built 2026-10-13, and what waits on the user";
+        two adversarial reviews of the changes and a second round of fixes. The restore (P16) is on
+        hold (branches `restore-wip` in just-sqlite-sync and JustVoice): a stress test found
+        divergence; a new-identity design passed and waits for the user's word (question 20). The adoption plan (C):
+        `docs/plans/2026-10-13-adopt-everything-audiocpp.md`, for the user's word.
         DECIDED 2026-10-13 — shown: the register (README.md at a4b2914: group A, every lean in
         group B, group C), and in chat: "1. P16: restoring an old backup overwrites, on every
         synced computer, the work done since that backup, and deletes anything created since …
@@ -174,8 +178,8 @@ BUILT:  1, the review (2026-10-13): `docs/plans/2026-10-13-narrowings-review/` �
         (P16's warning, S6's design, S12's tags, R8's note, B3's hover, C5's hint, K3's prompt,
         M7's controls, P29/P35/P41's wording, P11's list, P26's comparison), they come back
         before that part ships.
-OPEN:   A and B as decided above; the words and designs listed there, to the user; C goes into
-        2. Then: 2 a plan to adopt everything: every
+OPEN:   the register's 20 questions and its "found on the way" list, to the user; JustWrite's
+        side, to its session; the adoption plan's 7 questions. Then: 2 a plan to adopt everything: every
         audio.cpp speech model offered by default, the seven hand-wired engines on the same
         path, what our fork adds in our fork's own specs, what the app needs in each family's
         curated file — with its blast radius, for the user's word. Then slice 6's last steps,
@@ -256,12 +260,14 @@ BUILT:  in progress — 1: DONE 2026-10-10 — v0.9.0-jv.5 tagged on the fork (5
         install on quit or Restart now; a Mac links to the release), the kit's UpdatesPanel shows
         it, JustVoice and JustWrite name their feeds and upload latest*.yml; docgen's stays off
         until it has releases; checked against a local feed in JustVoice's window (the plan's §6
-        "Built 2026-10-09"). Open: the downloaded installer waits in the OS cache folder, outside
-        the chosen data folder — for the user's word. 4: the kit's data-folder and server-stop
+        "Built 2026-10-09"). The downloaded installer waits in the OS cache folder, outside the
+        chosen data folder — decided 2026-10-09 (the eight questions, answer 3: it stays where
+        electron-updater keeps it). 4: the kit's data-folder and server-stop
         findings verified closed and removed from its TASKS; the KV/context faults wait on
         measurements from two more machines (the user's 2026-09-19 ruling); the suite-only smoke
         tests are measured — one was the port's 20 s timeout (fixed), one is a re-tune the runner
-        drops while a load finishes, for the user's word (kit TASKS; the plan's §6 "Done 2026-10-09"). Voice training (gap 5):
+        drops while a load finishes — decided 2026-10-09 (the eight questions, answer 2: run it when
+        the load finishes; kit 1347b49) (kit TASKS; the plan's §6 "Done 2026-10-09"). Voice training (gap 5):
         researched, measured by ear in two rounds — cloning and a Python-trained LoRA — and moved
         to IDEAS 2026-10-10 (`docs/plans/2026-10-09-voice-training-findings.md`, RESEARCH §9).
 OPEN:   1–4 above, in that order.
@@ -986,7 +992,9 @@ DECIDED: 2026-10-11 — asked: "One bad run can set a model's memory budget perm
         you want it looked at." The user: "your re go, double check your work make sure you did the
         correct fixes on the previous stuff".
 BUILT:  2026-10-11 — a line whose audio runs longer than 0.5 s a character of its text and 30 s
-        (`manager.RUNAWAY_S_PER_CHAR`, `RUNAWAY_MIN_S`; slow narration is about 0.1 s a character)
+        (`manager.RUNAWAY_S_PER_CHAR`, `RUNAWAY_MIN_S` — since 2026-10-13 the settings
+        `speech_runtime.runaway_s_per_char` and `runaway_min_s`, the narrowings review M2; slow
+        narration is about 0.1 s a character)
         marks its speech process (`_noteRunaway`, by pid — the process outlives an unload): its
         readings still raise the live booking, but none is saved as a model's price again, after a
         line or at a load (`_prices`); a new process prices again. A warning names the line's
@@ -1058,7 +1066,7 @@ BUILT:  2026-10-08, on branch `quasar` (worktree `../justvoice-quasar` — this 
         installer's settings — NSIS, the fuses, the launcher, the microphone description, a
         universal macOS .dmg; the app's stylesheets in Quasar's `css` list); `src-electron/` (the
         kit's `runDesktopApp`, the same settings as `electron/main.js`; icons moved from `build/`);
-        `src-capacitor/` (dev.justvoice.app); `src/main.js` → the boot file `src/boot/jv.js` (the
+        `src-capacitor/` (dev.justvoice.app — com.justvoice.app since 2026-10-13, the narrowings review P25); `src/main.js` → the boot file `src/boot/jv.js` (the
         same sequence, its never-strand-the-plate guard kept), the root `src/App.vue` (the shell,
         renamed `AppShell.vue`, the dictation pill, or the connection-error screen);
         `router/routes.js`; `stores/index.js`; `src/css/quasar.variables.scss` (the kit's theme);
@@ -1093,8 +1101,10 @@ STATE:  DECIDED 2026-10-08 — the user asked "do we really need the lab? render
         it. "Hear it" plus comparing takes on Render covers the real use." · "3. The three server
         routes: remove them too, or keep them for API users such as game developers' scripts? Lean:
         remove them. Nothing calls them, and a game developer would use a project's own mastering
-        target." — the user: "1 and do the clean room rewrite", "your rec on all go", "1 2 and 3
-        your rec". The three routes: `POST /v1/analyze`, `/v1/compare`, `/v1/master`.
+        target." — the user: "1 and do the clean room rewrite", "1 2 and 3 your rec". (Was: "your
+        rec on all go" listed here too — that reply answered the voicebox and restructure questions,
+        not Labs; corrected 2026-10-13, the narrowings review P23. The affected list was shown after
+        the removal, not before, as promised.) The three routes: `POST /v1/analyze`, `/v1/compare`, `/v1/master`.
 BUILT:  2026-10-08 — gone: `LabsView`, `CompareView`, `RenderLabView`, `AudioToolsView`, the
         sidebar's Labs entry (`App.vue` VIEWS), `/labs` and the `#compare`/`#renderlab`/`#audio`
         redirects (`router/index.js`), the four `nav.*` strings (`en.json`), `api/analyzer_api.js`
@@ -1767,6 +1777,9 @@ BUILT:  2026-10-06 — how Discover stores its list, checked first: the page bui
         Bigger Inside"; no page errors. Not seen on screen: a New row from the second look and Script's
         link line — Sedge is already in the book (my reproduction click added him earlier today), so
         neither appears; the New path is the same `byName` path scanned names take.
+        Corrected 2026-10-13 (the narrowings review C7): Cast's ＋ Add and Add Narrator, and an
+        import, add speakers too — RESEARCH said "Only Discover adds speakers"; the user kept
+        Cast's ＋ Add (2026-10-13).
 OPEN:   none.
 GO:     given 2026-10-06
 

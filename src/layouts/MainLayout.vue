@@ -449,8 +449,7 @@ onMounted(async () => {
   window.addEventListener("jv:quick-setup", () => { showQuickSetup.value = true; });
   // The tray's renderer half (the family full-donor ruling 2026-08-04), through
   // services/native.js — the shell's one bridge; outside the desktop app each is a
-  // no-op. dictate/MCP stay JV-specific; their wiring is JV feature work, parked per
-  // the standing sequence.
+  // no-op.
   onShellEvent("tray:open-settings", () => goView("settings"));
   onShellEvent("tray:about", () => goView("settings"));
   onShellEvent("tray:copy-url", async (url) => {

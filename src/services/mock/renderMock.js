@@ -178,6 +178,14 @@ export function standingTags(l) {
   return [m.emotion, m.register_tag].filter(Boolean).map((t) => `[${t}]`);
 }
 
+/** Who says the line — Render's speaker picker (Script's, 2026-10-05): a line with a take goes
+ * stale, its persona changed, as the app's does. */
+export function setSpeaker(l, speakerId) {
+  if (!speakerId || speakerId === l.speaker_id) return;
+  l.speaker_id = speakerId;
+  if (l.takes.length) l.madeFrom = "old";
+}
+
 let seq = 0;
 /** A new take: kept beside the others, and live — nothing is overwritten. */
 export function addTake(l, label = "") {

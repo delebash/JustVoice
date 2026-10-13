@@ -7,6 +7,10 @@
 // RESEARCH §10.9). The line's emotion goes as a tag, its direction as a description after it.
 // Not yet tested by JustVoice.
 
+// Not settings (the narrowings review, E15): `multi_reference_cond` is reference WAV paths and their
+// words on the server — the clip is the voice's, which the app sends.
+export const HIDDEN_OPTIONS = ["multi_reference_cond"];
+
 export const DIRECTION = {
   kind: "prefix",
   tags: {

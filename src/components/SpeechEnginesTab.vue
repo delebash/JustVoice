@@ -384,6 +384,17 @@ async function setPlacement(e, v, placement) {
     pushToast({ message: `Couldn't change where ${v.name} runs: ${err?.message || err}`, kind: "error" });
   }
 }
+// "Try the card again": the server forgets the remembered failed card load (the narrowings
+// review, M8), and the row shows where Auto would load it now.
+async function tryCardAgain(e, v) {
+  try {
+    await api.request(`/v1/engines/${encodeURIComponent(e.id)}/models/${encodeURIComponent(v.id)}/card-failure`, { method: "DELETE" });
+    delete variants[e.id];
+    await refresh();
+  } catch (err) {
+    pushToast({ message: String(err?.message || err), kind: "error" });
+  }
+}
 
 // The speech runtime's per-model options (audit 2026-10-04 §13.5): saved per model. The
 // runtime reads them at load, so the server unloads a loaded model whose options changed
@@ -544,12 +555,15 @@ function langTitle(v) {
 // words on hover and in the opened engine (decided 2026-10-11; services/engineFacts.js). It
 // replaced the old per-model licence chip and its permissive-list guess.
 
-// A model's memory before it loads (decided 2026-10-11, answer 4): measured here if an earlier
-// load measured it, else audio.cpp's estimate, against this card; a model too big for it runs on
-// the CPU (manager.placementFor). A discrete card only — shared memory has no card to fit.
+// A model's memory before it loads: measured here, else the larger of audio.cpp's estimate and
+// the download (2026-10-12); more than the card → the CPU, or the card first when only the
+// estimate is too big (2026-10-12; words 2026-10-13) — manager.placementFor. A measured size
+// fits with the server's safety margin, as Auto counts it (the narrowings review, M4). A
+// discrete card only — shared memory has no card to fit.
 const cardMb = computed(() => (vram.value?.mem_arch === "discrete" ? vram.value.total_mb || null : null));
-const memoryOf = (v) => memoryText({ measuredMb: v.measured_mb, needGb: v.need_gb, runsOn: v.runs_on }, cardMb.value);
-const fits = (v) => memoryOf(v).gb !== null && cardMb.value !== null && memoryOf(v).gb * 1024 <= cardMb.value;
+const memoryOf = (v) =>
+  memoryText({ measuredMb: v.measured_mb, needGb: v.need_gb, runsOn: v.runs_on }, cardMb.value, vram.value?.safety_margin_mb || 0);
+const fits = (v) => memoryOf(v).fits === true;
 const directed = (v) => v.directed_by === "words" || v.directed_by === "tags";
 
 // Per-row measured-memory hint (§13): joins the vram endpoint's
@@ -1018,8 +1032,8 @@ onBeforeUnmount(() => {
             <span class="right">
               <span v-if="modelLoaded(e, v)" class="ev-badge loaded">● Loaded</span>
               <span v-if="measuredHint(e, v)" class="ev-memhint" :title="measuredHint(e, v).title">{{ measuredHint(e, v).text }}</span>
-              <!-- Before a load: measured here, else audio.cpp's estimate against this card
-                   (decided 2026-10-11, answer 4). -->
+              <!-- Before a load: measured here, else the larger of audio.cpp's estimate and the
+                   download (2026-10-12), against this card (words 2026-10-13). -->
               <span v-if="!modelLoaded(e, v)" class="ev-memhint"><span :class="{ 'jv-text-warn': memoryOf(v).warn }">{{ memoryOf(v).text }}</span></span>
               <UiButton v-if="modelLoaded(e, v)" intent="ghost" size="small" label="Unload model"
                 title="Free the slot — weights stay on disk" @click="unload(e)" />
@@ -1074,6 +1088,10 @@ onBeforeUnmount(() => {
               title="Auto picks from what was measured on this machine: the graphics card when nothing else is on it or the model fits beside the AI model, else the CPU when the model is fast enough there."
               @update:modelValue="(p) => setPlacement(e, v, p)" />
             <span class="ev-mplace__why">{{ placeText(e, v) }}</span>
+            <!-- A card load remembered as failed is forgotten on request (the narrowings review,
+                 M8); its price and CPU speed stay. -->
+            <UiButton v-if="v.failed_on_card" intent="ghost" size="small" label="Try the card again"
+              :disabled="busyAnywhere(e.id, v.id) || osBlocked(e)" @click="tryCardAgain(e, v)" />
           </div>
           <!-- The speech runtime's options for this model (audit 2026-10-04 §13.5): only
                those whose effect was measured; read when the model loads. -->

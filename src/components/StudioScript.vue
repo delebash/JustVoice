@@ -101,7 +101,8 @@ const CHIPS = [
   { id: "all", label: "All", tip: "" },
   { id: "check", label: "To check", tip: "Chapters with flagged lines or lines with no speaker" },
   { id: "never", label: "Not analyzed yet", tip: "" },
-  { id: "stale", label: "Re-analyze", tip: "A speaker was added since, and the text names them" },
+  // Both reasons a chapter is here, in docs/studio.md's words (2026-10-13, the narrowings review S9).
+  { id: "stale", label: "Re-analyze", tip: "Someone was added since, or lines changed since" },
   { id: "problem", label: "Needs attention", tip: "Failed, can't re-cut, no text, or no dialogue found" },
 ];
 const chip = ref(props.filter || "all");
@@ -146,13 +147,15 @@ const floor = computed(() => {
 const onlyNarrator = computed(() => props.cast.length > 0 && props.cast.every((c) => c.narrator));
 const blocked = computed(() => noModel.value || onlyNarrator.value);
 
-// A book with narration needs a narrator before Analyze runs (2026-10-05).
+// A book with narration needs a narrator before Analyze runs (2026-10-05) —
+// the book's narration, every chapter's, as Discover counts it (2026-10-13, the
+// narrowings review S11).
 const narratorAsk = ref(null);   // the chapters waiting on the answer
 const narratorBusy = ref(false);
 const narrationWaiting = computed(() => props.chapters.reduce((n, c) => n + (c.narration_waiting || 0), 0));
 function analyze(list, { narratorChecked = false } = {}) {
   if (blocked.value || !list.length) return;
-  if (!narratorChecked && !hasNarrator(props.cast) && narrationOf(list) > 0) {
+  if (!narratorChecked && !hasNarrator(props.cast) && narrationOf(props.chapters) > 0) {
     narratorAsk.value = list;
     return;
   }
@@ -472,17 +475,19 @@ function openRow(r, focus = null) {
                     label="Re-analyze" :disabled="blocked"
                     :title="blocked ? '' : `Re-analyze ${row.title || ''} — lines you set are kept.`"
                     @click="analyze([row])" />
+                  <!-- Opens a chapter before Analyze too, as its row does (2026-10-13, the narrowings review S7). -->
                   <UiButton intent="secondary" size="small" label="Review"
-                    :disabled="(!row.analyzed && !row.from_import) || inRun(project.id, row.scene_id, 'analyze') === 'current'"
+                    :disabled="inRun(project.id, row.scene_id, 'analyze') === 'current'"
                     :title="inRun(project.id, row.scene_id, 'analyze') === 'current' ? 'Wait for it to finish'
-                      : (!row.analyzed && !row.from_import) ? 'Analyze it first'
                       : row.to_check ? 'Opens the chapter at its first line to check' : ''"
                     @click="openRow(row, row.to_check ? 'check' : null)" />
                 </template>
                 <UiMenu :label="`${word.singular} actions`" trigger-class="ev-kebab" content-class="ev-menu" align="end">
                   <template #trigger>⋯</template>
+                  <!-- Greyed while a run reads the chapter, saying why in Review's words (2026-10-13, S8). -->
                   <UiMenuItem class="ev-menu-item"
                     :disabled="!row.lines || inRun(project.id, row.scene_id, 'analyze') === 'current'"
+                    :title="inRun(project.id, row.scene_id, 'analyze') === 'current' ? 'Wait for it to finish' : ''"
                     @select="editText(row)">✎ Edit text</UiMenuItem>
                   <UiMenuItem class="ev-menu-item" @select="rename(row)">✏️ Rename</UiMenuItem>
                   <UiMenuItem class="ev-menu-item" :disabled="row.position === 0" @select="move(row, -1)">↑ Move up</UiMenuItem>

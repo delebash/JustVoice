@@ -19,7 +19,9 @@ runDesktopApp({
   // name the server's data_paths ladder uses (server/src/paths.js).
   appName: "JustVoice",
   productName: "JustVoice",
-  port: 17494, // the family port registry: this app 17494 · JW 17495 · docgen 8742 · template 17490
+  // the family port registry: this app 17494 · JW 17495 · docgen 8742 · template 17490. It is the
+  // server's default only: the server listens on Settings → Server's Port and tells the shell.
+  port: 17494,
   // the server package (server/): its source in development, the installed copy when packaged
   serverEntry: dev ? path.resolve("server", "src", "serve.js") : path.join(here, "node_modules", "justvoice-server", "src", "serve.js"),
   dataDirEnv: "JUSTVOICE_DATA_DIR",
@@ -44,10 +46,4 @@ runDesktopApp({
   // Updates: the feed is the GitHub releases electron-builder's `publish` names (quasar.config.js);
   // a Mac, which can't install an unsigned update, gets the release's page from here.
   updates: { releasesUrl: "https://github.com/delebash/JustVoice/releases" },
-  // The Tauri tray's two JustVoice items. Their renderer half is parked feature work, as it
-  // was under Tauri (AppShell.vue has no listener; the events go nowhere yet).
-  trayExtras: [
-    { id: "dictateStart", label: "🎙️ Start dictation (⌥⌘V)", event: "dictate-start" },
-    { id: "mcpToggle", label: "🎚️ MCP server: toggle", event: "mcp-toggle" },
-  ],
 });

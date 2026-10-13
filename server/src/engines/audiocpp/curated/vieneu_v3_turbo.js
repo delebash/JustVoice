@@ -12,7 +12,11 @@ export const LICENCE = {
   checked: "2026-10-11",
 };
 
-// Not offered (decided 2026-10-11, TASKS "The download test's first findings"): it reads SEA-G2P
+// Not offered. Hidden 2026-10-11 on the implementer's pick: the question (hide it, or mark it
+// "doesn't clone from a clip yet") had no recommendation for VieNeu when the user said "your rec on
+// both go" (TASKS "The download test's first findings"). Decided 2026-10-13 (the narrowings review
+// K2): list it, marked as not cloning yet — built with the adoption plan
+// (docs/plans/2026-10-13-adopt-everything-audiocpp.md); until then it stays hidden. It reads SEA-G2P
 // phonemes, not text, and needs a speaker embedding its unported CAM++ encoder would make (audio.cpp
 // docs/community_models/vieneu_v3_turbo.md) — from text and a clip it babbled 14.8 s for a line others speak in 4–5 s.
 export const NOT_OFFERED =

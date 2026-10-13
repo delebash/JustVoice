@@ -61,6 +61,7 @@ import { construct, DateTime } from "../models.js";
 import * as synthScheduler from "../synth_scheduler.js";
 import { adoptBookNarrator, ensureSpeaker } from "./_speaker_helpers.js";
 import * as captures from "./captures_api.js";
+import * as exportJobsApi from "./export_jobs_api.js";
 import * as extraction from "./extraction_api.js";
 import { RunUsage } from "./extraction_api.js";
 import { clientGone } from "./generate_api.js";
@@ -263,9 +264,10 @@ export const UpdateBlockRequest = T.Object({
   speaker_id: opt(nullable(T.String()), null),
   direction: opt(nullable(T.String()), null),
   metadata: opt(nullable(T.Record(T.String(), T.Any())), null),
-  // Render's ⚙ hatch (Studio Slice 4, D3): the line's own speed, pitch, gain_db and
-  // pause_after_ms, merged into its metadata — a value sets it, null clears it, a field left
-  // out is kept (line_takes.mergeOverride). `metadata` replaces the whole JSON.
+  // Render overrides (stored as D3 decided; open since 2026-10-06): the line's own speed, pitch,
+  // gain_db and pause_after_ms, and `models`, per model (2026-10-06), merged into its metadata —
+  // a value sets it, null clears it, a field left out is kept (line_takes.mergeOverride).
+  // `metadata` replaces the whole JSON.
   line_override: opt(nullable(T.Record(T.String(), T.Any())), null),
   extraction_confidence: opt(nullable(T.Number()), null),
   source: opt(nullable(T.String()), null),
@@ -812,6 +814,37 @@ const formValue = (fields, name) => {
   return v === undefined || v === "" ? null : v;
 };
 
+// ── A book's renders inside one request ───────────────────────────────────
+// The ACX check, the one-request M4B export and the voice-line export render a book's lines
+// inside their request. Deleting the book stops them, as it stops its export jobs (2026-10-13,
+// the narrowings review R4: exports and the ACX check count as "a book's renders"): each one's
+// signal is its client gone or its book deleted, combined with the standard `AbortSignal.any`.
+
+/** Book id → the AbortControllers of its requests rendering now. */
+const _bookRenders = new Map();
+
+/** One request's render of a book: `signal` aborts when the client goes or the book is deleted;
+ * `end()` takes the request off the book once its render is done. */
+function bookRender(c, projectId) {
+  const ctl = new AbortController();
+  const live = _bookRenders.get(projectId) ?? new Set();
+  _bookRenders.set(projectId, live.add(ctl));
+  const end = () => {
+    live.delete(ctl);
+    if (!live.size && _bookRenders.get(projectId) === live) _bookRenders.delete(projectId);
+  };
+  return { signal: AbortSignal.any([clientGone(c), ctl.signal]), end };
+}
+
+/** Stop a deleted book's renders inside requests (`DELETE /v1/projects/{id}`). Returns how many
+ * were running. */
+export function abortBookRenders(projectId) {
+  const live = _bookRenders.get(projectId);
+  _bookRenders.delete(projectId);
+  for (const ctl of live ?? []) ctl.abort();
+  return live?.size ?? 0;
+}
+
 // ── The routes ─────────────────────────────────────────────────────────────
 
 export function router() {
@@ -899,6 +932,11 @@ export function router() {
     if (!p) throw notFound(`project ${id}`);
     h.delete(Project, { id });
     lineTakes.sweepOrphanTakes(h); // its takes' audio goes with them (Slice 4)
+    // Its running exports (the jobs and the ones inside a request) and its ACX check stop too
+    // (2026-10-13, the narrowings review R4); its render jobs' lines are skipped as gone
+    // (render_jobs._rendering).
+    exportJobsApi.cancelProjectExports(id);
+    abortBookRenders(id);
     return c.json({ deleted: true });
   });
 
@@ -1348,10 +1386,15 @@ export function router() {
     // Whole-book warm, engine-grouped (§7 of the 2026-08-08 plan); the assembly below re-reads
     // the cache and stays the error surface. QC mode: warm the renderable subset of every
     // scene, skipping refusals, exactly like the measuring assembly below.
-    await synthScheduler.warmLines(st, await exportAudiobook.collectProjectLineKwargs(st, projectId, { skipUnrenderable: true }), {
-      owner: synthScheduler.workOwner("the ACX check"),
-      signal: clientGone(c),
-    });
+    const book = bookRender(c, projectId);
+    try {
+      await synthScheduler.warmLines(st, await exportAudiobook.collectProjectLineKwargs(st, projectId, { skipUnrenderable: true }), {
+        owner: synthScheduler.workOwner("the ACX check"),
+        signal: book.signal,
+      });
+    } finally {
+      book.end();
+    }
 
     // QC MEASURES — it does not ship. The render refusal on unplaced lines (Script-tab restore,
     // decision 5) is right for the M4B export and wrong here: refusing the whole book because
@@ -1447,10 +1490,15 @@ export function router() {
     const st = getState();
     // Whole-book warm, engine-grouped (§7 of the 2026-08-08 plan); the assembly below re-reads
     // the cache and stays the error surface.
-    await synthScheduler.warmLines(st, await exportAudiobook.collectProjectLineKwargs(st, projectId), {
-      owner: synthScheduler.workOwner("the M4B export"),
-      signal: clientGone(c),
-    });
+    const book = bookRender(c, projectId);
+    try {
+      await synthScheduler.warmLines(st, await exportAudiobook.collectProjectLineKwargs(st, projectId), {
+        owner: synthScheduler.workOwner("the M4B export"),
+        signal: book.signal,
+      });
+    } finally {
+      book.end();
+    }
     const chapters = await exportAudiobook.assembleProject(st, projectId);
     if (!chapters.length) throw badRequest("project has no scenes to export");
     const m4b = await exportAudiobook.muxM4b(chapters, project.name, m4bAuthor(project));
@@ -1468,10 +1516,15 @@ export function router() {
     const st = getState();
     // Whole-project warm, engine-grouped (§7 of the 2026-08-08 plan); the export below re-reads
     // the cache and stays the error surface.
-    await synthScheduler.warmSpecs(await exportVoicelines.collectBlockSpecs(st, projectId), {
-      owner: synthScheduler.workOwner("the voice-line export"),
-      signal: clientGone(c),
-    });
+    const book = bookRender(c, projectId);
+    try {
+      await synthScheduler.warmSpecs(await exportVoicelines.collectBlockSpecs(st, projectId), {
+        owner: synthScheduler.workOwner("the voice-line export"),
+        signal: book.signal,
+      });
+    } finally {
+      book.end();
+    }
     const data = await exportVoicelines.exportVoicelines(st, projectId);
     const safe = project.name.replace(IMPORT_SAFE, "_") || "voicelines";
     return c.body(data, 200, { "content-type": "application/zip", "content-disposition": `attachment; filename="${safe}_VO.zip"` });

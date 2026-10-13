@@ -17,7 +17,7 @@
 //   create  — { name, project_type, language } with no file (caller owns the API call)
 
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
-import { UiButton, UiInput, UiSelect, UiTable, AppModal, fmtBytes, pushToast } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiSelect, UiTable, AppModal, fmtBytes, openHelp, pushToast } from "@delebash/llm-ui";
 import { bookLanguageOptions } from "../services/personaFacts.js";
 import { projectKind } from "../services/projectKinds.js";
 import { projectsService } from "../services/projects.js";
@@ -102,6 +102,13 @@ const formatOptions = computed(() => {
   const ext = file.value ? file.value.name.slice(file.value.name.lastIndexOf(".")).toLowerCase() : "";
   return adapters.value.filter((a) => a.implemented && a.file_extensions.includes(ext)).map((a) => ({ label: a.label, value: a.id }));
 });
+
+// The chosen source's section in the docs (its `docs_anchor`) — the old Import dialog's
+// "What is this format?" link (0761c86^ ImportModal.vue), same words and target. It opens in the
+// Help drawer (the kit's openHelp): the desktop window opens no app:// link in a new window, and
+// the headless server serves no /docs.
+const helpKey = computed(() => adapters.value.find((a) => a.id === source.value)?.docs_anchor || null);
+const helpHref = computed(() => (helpKey.value ? `docs/import-and-export.md#${helpKey.value}` : "docs/import-and-export.md"));
 
 const canCreate = computed(() => !!name.value.trim() && !reading.value && (!file.value || !!standard.value));
 
@@ -236,6 +243,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
             <UiSelect v-if="formatOptions.length > 1" :model-value="source" :options="formatOptions" width="name"
               aria-label="Read it as" title="Read it as — the file's ending fits more than one source"
               @update:model-value="changeFormat" />
+            <a v-if="helpKey" :href="helpHref" :data-help-key="helpKey" @click.prevent="openHelp('import-and-export', helpKey)">What is this format?</a>
             <span v-if="reading" class="jv-hint">Reading the file…</span>
             <span class="jv-spacer" />
             <UiButton intent="ghost" size="small" label="✕" title="Start without a file" @click="clearFile" />

@@ -8,7 +8,9 @@
 import { AsyncEvent, sleep } from "@delebash/llm-runner/platform/asyncutil";
 import { beforeEach, expect, test, vi } from "vitest";
 import * as manager from "../src/engines/manager.js";
-import { SynthScheduler, warmSpecs } from "../src/synth_scheduler.js";
+import * as renderCore from "../src/render_core.js";
+import { SynthScheduler, warmLines, warmSpecs } from "../src/synth_scheduler.js";
+import * as voiceModel from "../src/voice_model.js";
 
 // The worker's idle transition re-probes the resident engine's memory; nothing is resident.
 beforeEach(() => {
@@ -143,6 +145,18 @@ test("warm_specs_swallows_failures", async () => {
   // Must not throw — warm sets are advisory; the render loop is the error surface (§7d of the
   // 2026-08-08 plan).
   await warmSpecs([["A", boom]]);
+});
+
+test("warm_lines_counts_each_line_as_it_lands", async () => {
+  // 2026-10-13 (the narrowings review R2): the exports' render phase reads "Rendering line N of M".
+  vi.spyOn(voiceModel, "modelKey").mockResolvedValue("kokoro:kokoro");
+  const rendered = [];
+  vi.spyOn(renderCore, "renderLine").mockImplementation(async (_st, kw) => rendered.push(kw.text));
+  const seen = [];
+  await warmLines({}, [{ voice: "v", text: "One." }, { voice: "v", text: "Two." }], {
+    onProgress: (done, total) => seen.push([done, total, rendered.length]),
+  });
+  expect(seen).toEqual([[0, 2, 0], [1, 2, 1], [2, 2, 2]]);
 });
 
 // ── what is ahead (decided 2026-10-07: Render says what a waiting render waits for) ──

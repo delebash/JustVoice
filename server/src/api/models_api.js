@@ -69,6 +69,8 @@ export function router() {
     const mgr = manager.getManager();
     const kind = mgr.getManifest(id).kind;
     for (const v of variants) v.measured_mb = mgr.measuredMbFor(kind, id, v.id);
+    // A card load remembered as failed here — the row offers "Try the card again".
+    for (const v of variants) v.failed_on_card = mgr._failedOnCard(kind, id, v.id);
     // How each speech model is directed — written direction, tags, or sliders only (the Engines
     // page, 2026-10-09). Speech recognition speaks nothing, so it has none.
     if (manager.getManager().getManifest(id).kind === "tts") {
@@ -115,6 +117,20 @@ export function router() {
       loaded,
       moves: Boolean(loaded && now !== runsOn),
     });
+  });
+
+  /**
+   * "Try the card again" (the narrowings review, M8): forget that a card load of this model
+   * failed or spilled here — its remembered failure only, never its price or CPU speed — so Auto
+   * decides its place afresh.
+   */
+  app.delete("/v1/engines/:id/models/:variant_id/card-failure", (c) => {
+    const { id, variant_id: variantId } = c.req.param();
+    const mgr = manager.getManager();
+    const m = mgr.getManifest(id);
+    if (m === null) throw notFound(`engine ${id}`);
+    if (!variantIn(id, variantId)) throw notFound(`variant ${variantId} on engine ${id}`);
+    return c.json({ engine_id: id, variant_id: variantId, forgotten: mgr.forgetCardFailure(m.kind, id, variantId) });
   });
 
   /**

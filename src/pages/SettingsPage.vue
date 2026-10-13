@@ -172,7 +172,7 @@ async function loadSyncProjects() {
 // field renders before /v1/settings comes back (or when the server is
 // offline). refresh() overwrites with real values when the server is up.
 const settings = ref({
-  server:    { host: "127.0.0.1", port: 17494, docs_enabled: true },
+  server:    { host: "127.0.0.1", port: 17494 },
   logging:   {},
   cache:     { enabled: true, max_memory_entries: 50, max_disk_bytes_per_scope: 2_000_000_000 },
   limits:    { text_max_chars: 100000, chapter_max_lines: 5000, reference_clip_max_bytes: 25_000_000, request_body_max_bytes: 100_000_000 },
@@ -981,7 +981,6 @@ onMounted(() => {
         <div class="jv-card__header"><h3 class="jv-card__title">API reference</h3></div>
         <p class="jv-muted jv-hint">
           JustVoice exposes a stable HTTP API. Use these endpoints from scripts, CI, or external tools.
-          The full OpenAPI spec is at <a :href="api.serverUrl + '/docs'" target="_blank"><code class="jv-mono">{{ api.serverUrl }}/docs</code></a>.
         </p>
         <table class="jv-table jv-mt12">
           <thead><tr><th>Method</th><th>Path</th><th>Purpose</th></tr></thead>
@@ -1202,7 +1201,7 @@ onMounted(() => {
         </div>
         <p class="jv-muted jv-hint jv-mb14">
           Low-level network settings. Most users don't need to touch these — the defaults
-          (127.0.0.1:17494, docs enabled) work for local single-machine use. Restart required
+          (127.0.0.1:17494) work for local single-machine use. Restart required
           after changing.
         </p>
         <div class="settings-grid">
@@ -1212,19 +1211,6 @@ onMounted(() => {
           <UiField label="Port" layout="block">
             <UiInput v-model.number="settings.server.port" type="number" width="token" />
           </UiField>
-        </div>
-        <div class="setting-row jv-mt14">
-          <div class="setting-row__head">
-            <div>
-              <div class="setting-row__title">Interactive API docs</div>
-              <div class="setting-row__desc">
-                Enable Swagger UI at <code class="jv-mono">/docs</code> and ReDoc at
-                <code class="jv-mono">/redoc</code>. Useful for development and external
-                integrations. Disable in production deployments behind public networks.
-              </div>
-            </div>
-            <UiToggle v-model="settings.server.docs_enabled" aria-label="Enable API docs" />
-          </div>
         </div>
       </div>
     </div>

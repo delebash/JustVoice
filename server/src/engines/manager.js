@@ -94,11 +94,12 @@ export const PROBE_TTL_S = 2.0;
 // A line whose audio runs far past its text — a runaway: one Qwen3-TTS Base sentence came back as
 // 655 s (2026-10-10) — leaves its process holding memory no normal line needs (6,235 MB against
 // ~2.8 GB), and that reading, saved as a peak, priced the model out of the card for good. Such a
-// line is longer than RUNAWAY_S_PER_CHAR seconds a character of its text (slow narration is about
-// 0.1) and than RUNAWAY_MIN_S; its process's readings still book the memory it holds, but none is
-// saved as the model's price again (decided 2026-10-11, TASKS FINDING "Digital silence…").
-export const RUNAWAY_S_PER_CHAR = 0.5;
-export const RUNAWAY_MIN_S = 30;
+// line is longer than `speech_runtime.runaway_s_per_char` seconds a character of its text (0.5;
+// slow narration is about 0.1) and than `speech_runtime.runaway_min_s` (30 s); its process's
+// readings still book the memory it holds, but none is saved as the model's price again. Approved
+// 2026-10-11 (TASKS FINDING "Digital silence…"): fix it so one odd reading can't set a model's
+// price for good. This rule and its two numbers were mine, not shown then; kept, as settings,
+// 2026-10-13 (the narrowings review, M2: "your rec on all go").
 
 const monotonic = () => performance.now() / 1000;
 const msgOf = (e) => e?.message ?? String(e);
@@ -626,7 +627,8 @@ export class EngineManager {
     // The measured true-up's probe TTL cache: "pid:<n>" → [monotonic s, value].
     this._probeCache = new Map();
     // Pids of speech processes that ran a runaway line: their readings no longer price a model
-    // (RUNAWAY_S_PER_CHAR). Keyed by the process, not the slot — the process outlives an unload.
+    // (speech_runtime.runaway_s_per_char). Keyed by the process, not the slot — the process
+    // outlives an unload.
     this._unpricedPids = new Set();
     this.refreshManifests();
   }
@@ -666,6 +668,13 @@ export class EngineManager {
   currentFor(kind) {
     const proc = this.loadedFor(kind);
     return proc ? proc.manifest.id : null;
+  }
+
+  /** The loaded speech models (both kinds) by engine id, on the card or the CPU — the AI model's
+   * RAM refusal names them (the kit's `speechModelsFn`, wired in app.js; the narrowings review,
+   * M3). */
+  loadedSpeechModels() {
+    return ["tts", "stt"].map((kind) => this.currentFor(kind)).filter(Boolean);
   }
 
   /** The kind's activity lock (a Mutex), created on first use. */
@@ -901,15 +910,22 @@ export class EngineManager {
     const hw = await this._hardware();
     const cardMb = hw !== null ? pyInt(hardware.budgetTotalMb(hw)) : 0;
     const margin = EngineManager._safetyMarginMb();
-    // A card load that failed or spilled — this click's, or one remembered here for the runtime
-    // build running now — and a price measured here that can't fit the card at all go to the
-    // CPU (decided 2026-10-12; until then such a price went to the card and was refused). The
-    // price says what it took, since that model did load there once (decided 2026-10-13).
+    // A card load that failed or spilled — this click's, or one remembered here — and a price
+    // measured here that, with the safety margin, can't fit the card go to the CPU (decided
+    // 2026-10-12; until then such a price went to the card and was refused). That the memory
+    // counts only for the runtime build running now, until a measured card load, was mine; kept
+    // 2026-10-13 with a "Try the card again" action (the narrowings review, M8). The price says
+    // what it took, since that model did load there once (decided 2026-10-13), and the margin
+    // it was held to (2026-10-13, the narrowings review, M4).
     if (cardFailed || this._failedOnCard(kind, m.id, variant)) {
       return ["cpu", `it didn't load on the graphics card — ${speed || "this may be slow on the CPU"}`, false];
     }
     if (prior && cardMb > 0 && prior + margin > cardMb) {
-      return ["cpu", `it took about ${_gb(prior / 1024)} GB on this card before, more than it holds — ${speed || "this may be slow on the CPU"}`, false];
+      return [
+        "cpu",
+        `it took about ${_gb(prior / 1024)} GB on this card before, more than it holds with the ${_gb(margin / 1024)} GB safety margin — ${speed || "this may be slow on the CPU"}`,
+        false,
+      ];
     }
     // A model JustVoice hasn't wired by hand and hasn't measured here: what it needs — audio.cpp's
     // estimate or its files, whichever is more — decides when it is more than the card has: "too
@@ -945,8 +961,10 @@ export class EngineManager {
   }
 
   /** Did a card load of this model fail or spill here, with the runtime build running now, after
-   * its newest measured card load? A later card load that measures it (a pin to the GPU) clears
-   * it (decided 2026-10-12). */
+   * its newest measured card load? The memory: decided 2026-10-12. That a later card load that
+   * measures it (a pin to the GPU) clears it, and a new runtime build forgets it, was mine; kept
+   * 2026-10-13, with "Try the card again" on the model's row to forget it (forgetCardFailure;
+   * the narrowings review, M8). */
   _failedOnCard(kind, engineId, variant) {
     try {
       const mk = hardware.currentMachineKey();
@@ -964,6 +982,13 @@ export class EngineManager {
     } catch {
       return false; // bare tests / store not wired
     }
+  }
+
+  /** Forget that a card load of this model failed or spilled — "Try the card again" on its row
+   * (the narrowings review, M8): its `no_card` rows only, never its price or CPU speed. Returns
+   * the rows forgotten. */
+  forgetCardFailure(kind, engineId, variant) {
+    return stores.getModelMeasurementStore().clear(EngineManager._measureId(kind, engineId, variant), "no_card");
   }
 
   /** Remember that this model didn't stay on the graphics card here — once the CPU took it, so a
@@ -1339,13 +1364,18 @@ export class EngineManager {
       creditMb = Math.max(back.files, back.ram);
     }
     const margin = EngineManager._safetyMarginMb();
-    const freeMb = os.freemem() / (1024 * 1024) + creditMb + aiCreditMb;
-    if (needMb + margin <= freeMb) return;
+    // The words say what is free now, without the credits; a refusal that credited the AI
+    // models' memory doesn't name them, since that memory was already counted (the narrowings
+    // review, M10).
+    const freeNowMb = os.freemem() / (1024 * 1024);
+    if (needMb + margin <= freeNowMb + creditMb + aiCreditMb) return;
     let ai = [];
-    try {
-      const hw = await this._hardware();
-      ai = ((await arbiter.getArbiter().snapshot(hw)).reservations || []).filter((r) => r.kind === "llm" && !r.asleep && !r.pinned);
-    } catch {}
+    if (!(aiCreditMb > 0)) {
+      try {
+        const hw = await this._hardware();
+        ai = ((await arbiter.getArbiter().snapshot(hw)).reservations || []).filter((r) => r.kind === "llm" && !r.asleep && !r.pinned);
+      } catch {}
+    }
     const gb = (mb) => Math.round((mb / 1024) * 10) / 10;
     const where = device === "cpu" ? "the CPU" : "the graphics card";
     const what =
@@ -1354,7 +1384,7 @@ export class EngineManager {
         : `its files are about ${gb(own.files)} GB`;
     throw new RuntimeError(
       `not enough memory to load ${m.name} on ${where}: ${what} ` +
-        `(+${margin} MB safety margin) but only ${gb(freeMb)} GB of this machine's ${gb(os.totalmem() / (1024 * 1024))} GB is free. ` +
+        `(+${margin} MB safety margin) but only ${gb(freeNowMb)} GB of this machine's ${gb(os.totalmem() / (1024 * 1024))} GB is free. ` +
         (ai.length
           ? `The AI model (${ai.map((r) => r.key.replace(/^llm:/, "")).join(", ")}) is loaded and holds memory too — unload it first, or close other programs.`
           : "Close other programs, or pick a smaller model."),
@@ -1417,7 +1447,7 @@ export class EngineManager {
   }
 
   /** May this slot's process's readings be saved as a model's price? Not after it ran a runaway
-   * line (RUNAWAY_S_PER_CHAR). */
+   * line (speech_runtime.runaway_s_per_char). */
   _prices(proc) {
     const pid = proc?.proc?.pid;
     return !pid || !this._unpricedPids.has(pid);
@@ -1427,7 +1457,7 @@ export class EngineManager {
   _noteRunaway(proc, engineId, text, audioS) {
     const pid = proc?.proc?.pid;
     if (!pid || audioS === null || this._unpricedPids.has(pid)) return;
-    if (audioS <= Math.max(RUNAWAY_MIN_S, RUNAWAY_S_PER_CHAR * String(text ?? "").length)) return;
+    if (audioS <= Math.max(runtime.runawayMinS(), runtime.runawaySPerChar() * String(text ?? "").length)) return;
     this._unpricedPids.add(pid);
     log.warning(
       `${engineId}: a line of ${String(text ?? "").length} characters ran on for ${pyRound(audioS, 1)} s — ` +
@@ -1942,9 +1972,12 @@ export class EngineManager {
       // Book the CONFIRMED load at its MEASURED footprint — the per-PID tree probe of the
       // kind's own process. A known price stays the booking's floor. What is RECORDED as this
       // model's peak (§13.3): a calibrated load's measurement, or any measurement above the
-      // price. Probe miss → the device-wide delta, booked "computed"; a calibrated load saves it
-      // as the price too, or Auto never learns the model fits (OmniVoice: audio.cpp says 10 GB,
-      // the card took 1.2 GB — decided 2026-10-12). An EARLY booking keeps the price instead.
+      // price. Probe miss → the device-wide delta, booked "computed". Approved 2026-10-12: "save
+      // the fallback card number for models whose probe fails", so Auto learns a model fits
+      // (OmniVoice: audio.cpp says 10 GB, the card took 1.2 GB). Saving it only for a calibrated
+      // load was mine, and a generated model never calibrates (slot._warm), so OmniVoice's
+      // probe-miss load saves nothing yet — calibrating them is in the adoption plan (the
+      // narrowings review, M1). An EARLY booking keeps the price instead.
       if (books) {
         const measured = await this._engineProcMb(proc, { fresh: true });
         let calibrated = false;

@@ -263,7 +263,6 @@ export const SystemInfo = T.Object({
 export const ServerSettings = T.Object({
   host: opt(T.String(), "127.0.0.1"),
   port: opt(T.Integer(), 17494),
-  docs_enabled: opt(T.Boolean(), true),
 });
 
 export const LoggingSettings = T.Object({
@@ -314,20 +313,12 @@ export const GenerationSettings = T.Object({
 
 export const CorsSettings = T.Object({
   // The bundled UI runs from a different origin than the loopback server; browsers enforce
-  // CORS on fetch(), so these must be allowed. Operator-tunable via PATCH /v1/settings.
-  origins: opt(T.Array(T.String()), [
-    "http://localhost:1430",
-    "http://127.0.0.1:1430",
-    "tauri://localhost",
-    "http://tauri.localhost",
-    "https://tauri.localhost",
-  ]),
-  // Regex fallback so arbitrary loopback dev ports (and the tauri scheme) work without
-  // re-listing each one. Empty string disables it.
-  origin_regex: opt(
-    T.String(),
-    "^(https?://(localhost|127\\.0\\.0\\.1)(:\\d+)?|tauri://localhost|https?://tauri\\.localhost)$",
-  ),
+  // CORS on fetch(), so these must be allowed. Operator-tunable via PATCH /v1/settings. The
+  // desktop window's own origin (app://justvoice) is always allowed besides (app.js).
+  origins: opt(T.Array(T.String()), ["http://localhost:1430", "http://127.0.0.1:1430"]),
+  // Regex fallback so arbitrary loopback dev ports work without re-listing each one. Empty
+  // string disables it.
+  origin_regex: opt(T.String(), "^https?://(localhost|127\\.0\\.0\\.1)(:\\d+)?$"),
 });
 
 export const AuthSettings = T.Object({
@@ -446,6 +437,11 @@ export const SpeechRuntimeSettings = T.Object({
   // as spilled into system memory, which Auto treats as a failed card load (2026-10-12; a load
   // that fits grows it by 0 from a 78 MB baseline).
   spill_mb: opt(T.Integer(), 256),
+  // A runaway line (manager._noteRunaway): its audio runs longer than this many seconds a
+  // character of its text, and longer than `runaway_min_s` seconds; the process that ran it no
+  // longer sets the model's price.
+  runaway_s_per_char: opt(T.Number(), 0.5),
+  runaway_min_s: opt(T.Number(), 30.0),
   // The graphics-card process's CPU threads — its work off the card (text, sampling).
   gpu_threads: opt(T.Integer(), 4),
   // How long a process may take to come up before its start counts as failed.
@@ -803,11 +799,24 @@ export const PersonaDraft = T.Object({
   lexicon_id: opt(nullable(T.String()), null),
 });
 
+/** One lexicon entry: a word and a way to say it (the Lexicons section's shapes use it too). */
+export const LexiconEntry = T.Object({
+  grapheme: T.String(),
+  phoneme_ipa: opt(nullable(T.String()), null),
+  alias: opt(nullable(T.String()), null),
+});
+
 /** POST /v1/personas/preview — hear a persona speak a line, through the chapter resolver. */
 export const PersonaPreviewRequest = T.Object({
   persona_id: opt(nullable(T.String()), null),
   persona: opt(nullable(PersonaDraft), null),
   text: opt(T.String({ maxLength: 2000 }), ""),
+  // The book whose lexicon the line is read with first, then the persona's — as a chapter
+  // render reads them (Lexicons' ▶ and Try a word, 2026-10-13).
+  project_id: opt(nullable(T.String()), null),
+  // A lexicon's entries as Lexicons' editor holds them, unsaved: read in place of that
+  // lexicon's saved entries wherever the line reads it (2026-10-13).
+  draft_lexicon: opt(nullable(T.Object({ id: T.String(), entries: T.Array(LexiconEntry) })), null),
   // A line's own direction, as a chapter line would carry it (Compare).
   direction: opt(nullable(T.String()), null),
   // One-off delivery on top of the persona's (Compare settings).
@@ -869,11 +878,7 @@ export const UpdateSpeakerRequest = T.Object({
 
 // ─── Lexicons ───────────────────────────────────────────────────────────
 
-export const LexiconEntry = T.Object({
-  grapheme: T.String(),
-  phoneme_ipa: opt(nullable(T.String()), null),
-  alias: opt(nullable(T.String()), null),
-});
+// LexiconEntry is declared above PersonaPreviewRequest, which carries a draft's entries.
 
 export const Lexicon = T.Object({
   id: T.String(),
@@ -1060,6 +1065,9 @@ export const LeftoverEnginesResponse = T.Object({
 export const EngineVramResponse = T.Object({
   mem_arch: T.String(),
   total_mb: T.Integer(),
+  // The safety margin a load is held to on the card (MB) — the runner config's, the one Auto's
+  // "more than it holds" counts; the Speech engines tab's "fits this card" counts it too.
+  safety_margin_mb: opt(T.Integer(), 0),
   committed_mb: T.Integer(),
   // Booked INCLUDING models the AI runner has put to sleep.
   booked_mb: opt(T.Integer(), 0),
@@ -1093,7 +1101,9 @@ export const KnobSpec = T.Object({
   min: opt(T.Number(), 0),
   max: opt(T.Number(), 0),
   step: opt(T.Number(), 0),
-  default: T.Union([T.Number(), T.String(), T.Boolean()]),
+  // null = the model's spec gives none: audio.cpp's own applies, and nothing is sent until set
+  // (the narrowings review, E12).
+  default: opt(nullable(T.Union([T.Number(), T.String(), T.Boolean()])), null),
   choices: opt(T.Array(T.String()), []),
   unit: opt(T.String(), ""), // display suffix, e.g. "×" / "st" / "dB"
   hint: opt(T.String(), ""),
@@ -1208,6 +1218,9 @@ export const ModelVariant = T.Object({
   need_gb: opt(nullable(T.Number()), null),
   // Its peak on this machine's graphics card, measured at an earlier load; null = not yet.
   measured_mb: opt(nullable(T.Integer()), null),
+  // A card load of it failed or spilled here and is remembered (manager._failedOnCard) — its
+  // row offers "Try the card again".
+  failed_on_card: opt(T.Boolean(), false),
 });
 
 export const ModelsListResponse = T.Object({

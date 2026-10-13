@@ -1,31 +1,21 @@
 // SPDX-License-Identifier: MIT
 // IndexTTS 2 / 2.5 — what audio.cpp's spec can't say (docs/plans/2026-10-11-audiocpp-engine-
-// catalog.md §4). The authors' documented way to give emotion is an eight-value emotion vector
-// [happy, angry, sad, afraid, disgusted, melancholic, surprised, calm] or an emotion clip, at a
-// weight "around 0.6" (README; the authors' web UI defaults to 0.65); describing the emotion in
-// words is the mode their web UI hides as experimental (RESEARCH §10.8). So a line's emotion goes
-// as a vector; a direction with no emotion the vector covers goes as words. There is no category
-// for volume or manner (muttering, whispering, shouting) or for contempt — disgusted is nearest.
+// catalog.md §4). Round 3's mapping (test branch 1b5bff4; plan §4: "`emotion_text` +
+// `use_emotion_text` for IndexTTS"): a line's direction in words goes as emotion text, which its
+// built-in emotion model turns into its emotion mix, at audio.cpp's own `emotion_alpha` (1.0)
+// unless the model's settings say otherwise. Back to it 2026-10-13 (the narrowings review, E9,
+// the lean "back to the words until a test says otherwise"; the user: "your rec on all go"). The
+// authors' documented way — an eight-value emotion vector or an emotion clip at a weight "around
+// 0.6" (README; RESEARCH §10.8) — is not tested here.
 
 export const DIRECTION = {
-  kind: "vector",
-  option: "emotion_vector",
-  // JustVoice's emotions → the authors' order; the values follow the authors' own examples.
-  vectors: {
-    happy: [0.75, 0, 0, 0, 0, 0, 0, 0],
-    angry: [0, 0.7, 0, 0, 0, 0, 0, 0],
-    sad: [0, 0, 0.8, 0, 0, 0, 0, 0],
-    fearful: [0, 0, 0, 0.75, 0, 0, 0, 0],
-    contemptuous: [0, 0, 0, 0, 0.75, 0, 0, 0],
-  },
-  alpha_option: "emotion_alpha",
-  alpha: 0.65,
-  // A direction in words, when the line's emotion has no vector.
-  words: { flag: "use_emotion_text", option: "emotion_text" },
+  kind: "words",
+  option: "emotion_text",
+  set: { use_emotion_text: true },
 };
 
-// Round 3 (RESEARCH §10.6) used the words mode at weight 1.0 — like the book on 12 of 21 tries,
-// steady per line, the clip's person kept. The vector mapping above is not yet tested.
+// Round 3 (RESEARCH §10.6) used this mapping at weight 1.0 — like the book on 12 of 21 tries,
+// steady per line, the clip's person kept.
 export const TESTED = {
   date: "2026-10-11",
   record: "RESEARCH §10.6, round 3",

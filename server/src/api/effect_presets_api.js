@@ -13,12 +13,12 @@ import { Hono, input } from "@delebash/llm-runner/platform";
 import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
 import { strRepr } from "@delebash/llm-runner/platform/py";
 import { pyJson, pyJsonParse } from "@delebash/llm-runner/platform/pyjson";
+import { LRUCache } from "lru-cache";
 import { applyEffectsChain, chainEntries } from "../audio/effects.js";
 import { EffectPreset, uuid } from "../database/models.js";
 import * as session from "../database/session.js";
 import { badRequest, notFound } from "../errors.js";
 import { construct, DateTime } from "../models.js";
-import { TTLCache } from "./voice_preview_api.js";
 
 // ── Effect type catalog ──────────────────────────────────────────────────
 
@@ -175,7 +175,7 @@ export const UpdateEffectPresetRequest = T.Object({
 // renders would be two takes on a model that samples.
 
 export const HELD_TAKE_TTL_S = 10 * 60;
-export const heldTakes = new TTLCache(16, HELD_TAKE_TTL_S);
+export const heldTakes = new LRUCache({ max: 16, ttl: HELD_TAKE_TTL_S * 1000 });
 
 /** Hold a take (WAV bytes) → `[its id, when it lapses (unix seconds)]`. */
 export function holdTake(wav) {

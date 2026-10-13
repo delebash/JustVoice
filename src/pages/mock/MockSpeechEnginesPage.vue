@@ -6,8 +6,11 @@
   word explained in the filter and each licence in plain words on hover, in the opened engine and
   in the licence prompt (TASKS "Every speech engine's licence in plain words"), a licence that
   isn't "Yes" accepted once before the first download, audio.cpp's status shown, "Tested by
-  JustVoice" / "Not tested by JustVoice yet", a model's memory measured here or audio.cpp's
-  estimate, one too big for this card offered on the CPU. Made from the real tab's shared .ev-*
+  JustVoice" / "Not tested by JustVoice yet", a model's memory measured here, else the larger of
+  audio.cpp's estimate and the download (2026-10-12), one too big for this card offered on the
+  CPU, or tried on the card first when only the estimate is too big (2026-10-12; words
+  2026-10-13), a measured size held to the safety margin (the narrowings review, M4), and a
+  model remembered as failed on the card, with "Try the card again" (M8). Made from the real tab's shared .ev-*
   classes and services/engineFacts.js — the words SpeechEnginesTab.vue uses — on
   speechEnginesMock.js.
 -->
@@ -16,7 +19,7 @@ import { computed, reactive, ref } from "vue";
 import { AppModal, UiButton, UiSelect, fmtBytes, languageName, pushToast } from "@delebash/llm-ui";
 import { COMMERCIAL_OPTIONS, COMMERCIAL_USE, SORTS, licClass, licTitle, memoryText, reading } from "../../services/engineFacts.js";
 import { directionCell } from "../../services/personaFacts.js";
-import { CARD_MB, ENGINES } from "../../services/mock/speechEnginesMock.js";
+import { CARD_MB, ENGINES, SAFETY_MARGIN_MB } from "../../services/mock/speechEnginesMock.js";
 
 const engines = reactive(structuredClone(ENGINES));
 const q = ref("");
@@ -33,8 +36,31 @@ const KINDS = [
 const open = reactive({ index_tts2: true, omnivoice: true });
 const asking = ref(null); // the engine whose licence prompt is open, or null
 
-const memoryOf = (m) => memoryText({ measuredMb: m.measured_mb, needGb: m.need_gb, runsOn: m.runs_on }, CARD_MB);
-const fits = (m) => memoryOf(m).gb !== null && memoryOf(m).gb * 1024 <= CARD_MB;
+// Where a model runs (the real tab's Runs on row): Auto is the server's answer for the made-up
+// state; GPU or CPU is "your choice" (manager.placementFor).
+const PLACEMENT_OPTIONS = [
+  { label: "Auto", value: "auto" },
+  { label: "GPU", value: "gpu" },
+  { label: "CPU", value: "cpu" },
+];
+const WHERE = { gpu: "the graphics card", cpu: "the CPU" };
+const picked = (m) => m.placement === "gpu" || m.placement === "cpu";
+const runsOn = (m) => (picked(m) ? m.placement : m.runs_on);
+function placeText(m) {
+  const why = picked(m) ? "your choice" : m.runs_on_reason;
+  return `${m.loaded ? "Running on" : "Loads on"} ${WHERE[runsOn(m)]}${why ? ` — ${why}` : ""}`;
+}
+// "Try the card again" forgets the remembered failed card load; Auto then answers as the server
+// does with nothing else on the graphics card.
+function tryCardAgain(m) {
+  m.failed_on_card = false;
+  m.runs_on = "gpu";
+  m.runs_on_reason = "nothing else is on the graphics card";
+}
+
+const memoryOf = (m) =>
+  memoryText({ measuredMb: m.measured_mb, needGb: m.need_gb, runsOn: runsOn(m) }, CARD_MB, SAFETY_MARGIN_MB);
+const fits = (m) => memoryOf(m).fits === true;
 const directed = (m) => m.directed_by === "words" || m.directed_by === "tags";
 function langText(m) {
   if (m.languages_note) return m.languages_note;
@@ -174,6 +200,15 @@ function accept(e) {
               <UiButton v-if="!m.on_disk" intent="primary" size="small" :label="`Download (${fmtDisk(m.size_mb)})`" @click="download(g.e, m)" />
               <UiButton v-else-if="!m.loaded" intent="primary" size="small" label="Load model" />
             </span>
+          </div>
+          <div v-if="m.runs_on" class="ev-mplace" :data-variant="m.id">
+            Runs on
+            <UiSelect :modelValue="m.placement || 'auto'" width="token" size="small" :options="PLACEMENT_OPTIONS"
+              title="Auto picks from what was measured on this machine: the graphics card when nothing else is on it or the model fits beside the AI model, else the CPU when the model is fast enough there."
+              @update:modelValue="(p) => (m.placement = p)" />
+            <span class="ev-mplace__why">{{ placeText(m) }}</span>
+            <UiButton v-if="m.failed_on_card" intent="ghost" size="small" label="Try the card again"
+              @click="tryCardAgain(m)" />
           </div>
         </template>
         <div v-if="gated(g.e)" class="ev-gfoot">

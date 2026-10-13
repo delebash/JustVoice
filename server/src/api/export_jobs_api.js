@@ -4,8 +4,13 @@
 //
 // `POST /v1/projects/{id}/export_m4b` renders and masters every chapter, then encodes the book,
 // and answers only at the end — minutes with nothing to show. These are the same work, reported
-// as it goes: start one, poll it (chapter 2 of 4, then "Encoding the book"), cancel it between
-// chapters, then fetch the file.
+// as it goes: start one, poll it ("Rendering line 12 of 340" while the lines with no take are
+// rendered, then chapter 2 of 4, then "Encoding the book"), cancel it, then fetch the file.
+//
+// Each job has an AbortController (2026-10-13, the narrowings review R2 and R4): its cancel route
+// and deleting its book abort it. The render phase passes its signal to the scheduler, which
+// withdraws the lines still waiting (the line rendering finishes); the chapters check it
+// between chapters.
 //
 // * M4B — the book, one file with chapter marks.
 // * Chapter audio — a zip of each chapter joined (`chapters/NN Title.wav`) and mastered to the
@@ -21,7 +26,8 @@ import { createReadStream, mkdtempSync, rmSync, statSync, writeFileSync } from "
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { Readable } from "node:stream";
-import { Hono } from "@delebash/llm-runner/platform";
+import { attachment, Hono } from "@delebash/llm-runner/platform";
+import { safeTitle } from "@delebash/llm-runner/platform/filename";
 import { getLogger } from "@delebash/llm-runner/platform/log";
 import { strip } from "@delebash/llm-runner/platform/py";
 import { ZipWriter } from "@delebash/llm-runner/platform/zip";
@@ -52,20 +58,36 @@ const _public = (job) => ({
   filename: job.filename,
 });
 
-/** `re.sub(r"[^A-Za-z0-9._ -]+", "_", name or "").strip() or fallback`. */
+/** `re.sub(r"[^A-Za-z0-9._ -]+", "_", name or "").strip() or fallback` — the chapter files'
+ * names inside the zip. */
 export const _safe = (name, fallback) => strip((name || "").replace(/[^A-Za-z0-9._ -]+/g, "_")) || fallback;
 
+/** Abort the job: its cancel route, or its book deleted. */
+function _abort(job) {
+  if (!job.abort.signal.aborted) job.abort.abort(new _Cancelled());
+}
+
 function _chapterStep(job, i, n, scene) {
-  if (job.cancel) throw new _Cancelled();
+  if (job.abort.signal.aborted) throw new _Cancelled();
   job.done = i;
   return `Chapter ${i + 1} of ${n} · ${scene.title || `Chapter ${scene.position + 1}`}`;
 }
 
+/** The render phase: the lines with no take in use, counted on the job as they land. */
 async function _warm(projectId, job) {
   const st = getState();
-  job.step = "Rendering the lines that have no take yet";
   const what = job.media_type === "audio/mp4" ? "the M4B export" : "the chapter WAVs export";
-  await synthScheduler.warmLines(st, await exportAudiobook.collectProjectLineKwargs(st, projectId), { owner: synthScheduler.workOwner(what) });
+  await synthScheduler.warmLines(st, await exportAudiobook.collectProjectLineKwargs(st, projectId), {
+    owner: synthScheduler.workOwner(what),
+    signal: job.abort.signal,
+    onProgress: (done, total) => {
+      // The line rendering when the job was cancelled still lands; it must not write over
+      // "Cancelled" (2026-10-13, the implementation review's problem 17).
+      if (job.abort.signal.aborted) return;
+      Object.assign(job, { done, total, step: `Rendering line ${Math.min(done + 1, total)} of ${total}` });
+    },
+  });
+  if (job.abort.signal.aborted) throw new _Cancelled();
 }
 
 /** `tempfile.mkstemp(prefix="jv-export-", suffix=…)` — a file of its own, in a folder of its
@@ -83,7 +105,7 @@ async function _m4b(job, projectId, name, author) {
   };
   const chapters = await exportAudiobook.assembleProject(getState(), projectId, { progress });
   if (!chapters.length) throw badRequest("project has no scenes to export");
-  if (job.cancel) throw new _Cancelled();
+  if (job.abort.signal.aborted) throw new _Cancelled();
   job.done = chapters.length;
   job.step = "Encoding the book";
   const m4b = await exportAudiobook.muxM4b(chapters, name, author);
@@ -143,6 +165,7 @@ function _needFfmpeg(what) {
 function _start(projectId, filename, mediaType, build) {
   const job = {
     id: randomUUID().replaceAll("-", ""),
+    project_id: projectId,
     status: "running",
     done: 0,
     total: 0,
@@ -151,7 +174,7 @@ function _start(projectId, filename, mediaType, build) {
     filename,
     media_type: mediaType,
     path: null,
-    cancel: false,
+    abort: new AbortController(),
   };
   _jobs.set(job.id, job);
   const out = _public(job);
@@ -166,27 +189,41 @@ function _job(jobId) {
   return job;
 }
 
+/** Stop a deleted book's running exports (`DELETE /v1/projects/{id}`; 2026-10-13, the
+ * narrowings review R4). Returns how many were running. */
+export function cancelProjectExports(projectId) {
+  let n = 0;
+  for (const job of _jobs.values()) {
+    if (job.project_id !== projectId || job.status !== "running") continue;
+    _abort(job);
+    n += 1;
+  }
+  return n;
+}
+
 export function router() {
   const app = new Hono();
+  // The Save dialog suggests the book's title as written (the kit's safeTitle — JustWrite's rule,
+  // copied to the kit; JustWrite still keeps its own; 2026-10-13, the narrowings review R7).
   app.post("/v1/projects/:project_id/export_m4b/start", (c) => {
     const projectId = c.req.param("project_id");
     const [name, author] = _project(projectId);
     _needFfmpeg("M4B export");
-    return c.json(_start(projectId, `${_safe(name, "book").replaceAll(" ", "_")}.m4b`, "audio/mp4", (job) => _m4b(job, projectId, name, author)));
+    return c.json(_start(projectId, `${safeTitle(name)}.m4b`, "audio/mp4", (job) => _m4b(job, projectId, name, author)));
   });
 
   app.post("/v1/projects/:project_id/export_chapters/start", (c) => {
     const projectId = c.req.param("project_id");
     const [name] = _project(projectId);
     _needFfmpeg("mastered chapters");
-    return c.json(_start(projectId, `${_safe(name, "book").replaceAll(" ", "_")}_chapters.zip`, "application/zip", (job) => _chaptersZip(job, projectId)));
+    return c.json(_start(projectId, `${safeTitle(name)} chapters.zip`, "application/zip", (job) => _chaptersZip(job, projectId)));
   });
 
   app.get("/v1/export_jobs/:job_id", (c) => c.json(_public(_job(c.req.param("job_id")))));
 
   app.post("/v1/export_jobs/:job_id/cancel", (c) => {
     const job = _job(c.req.param("job_id"));
-    job.cancel = true;
+    _abort(job);
     return c.json(_public(job));
   });
 
@@ -202,7 +239,8 @@ export function router() {
     stream.once("close", () => removeTemp(p));
     return c.body(Readable.toWeb(stream), 200, {
       "content-type": job.media_type,
-      "content-disposition": `attachment; filename="${job.filename}"`,
+      // RFC 6266/5987: a quote or a title outside ASCII survives (the kit's attachment()).
+      "content-disposition": attachment(job.filename),
       "content-length": String(size),
     });
   });

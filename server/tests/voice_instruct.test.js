@@ -120,8 +120,8 @@ test("smart_assign_description_comes_from_the_sheet", () => {
     construct(SmartAssignCharacter, { id: "p2", name: "Renn" }),
   ]);
 
-  expect(block).toContain(`description="${"x".repeat(200)}"`);
-  expect(block).not.toContain("x".repeat(201));
+  // Who they are goes whole (2026-10-13 — it was cut at 200 characters).
+  expect(block).toContain(`description="${longSheet}"`);
   // A character with no sheet contributes no description at all.
   expect(block.split("\n")[1]).toBe('- id="p2", name="Renn"');
 });

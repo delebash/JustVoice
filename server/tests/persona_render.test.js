@@ -186,10 +186,16 @@ test("patch_refuses_a_setting_the_model_does_not_have", async () => {
   expect(r.status).toBe(422); // the field is gone, not ignored
 });
 
-test("changing_the_voice_keeps_a_language_it_still_speaks", async () => {
+test("a_new_voice_brings_its_own_language", async () => {
+  // Decided 2026-10-05: picking a voice sets Speaks to that voice's language — the server
+  // kept the old one while the new voice could speak it until 2026-10-13.
   const c = await api();
   const pid = (await c.post("/v1/personas", { json: { name: "June", voice_id: "Sohee", language: "en" } })).json().id;
-  expect((await c.patch(`/v1/personas/${pid}`, { json: { voice_id: "Ono_Anna" } })).json().language).toBe("en");
+  expect((await c.patch(`/v1/personas/${pid}`, { json: { voice_id: "Ono_Anna" } })).json().language).toBe("ja");
+  // Sent with the voice, a language it can speak wins.
+  expect((await c.patch(`/v1/personas/${pid}`, { json: { voice_id: "Sohee", language: "en" } })).json().language).toBe("en");
+  // The same voice again keeps the language.
+  expect((await c.patch(`/v1/personas/${pid}`, { json: { voice_id: "Sohee" } })).json().language).toBe("en");
   // Kokoro's Heart speaks only American English.
   expect((await c.patch(`/v1/personas/${pid}`, { json: { voice_id: "af_heart" } })).json().language).toBe("en-US");
 });
@@ -291,6 +297,43 @@ test("a_held_take_takes_a_chain_on_the_same_audio", async () => {
   expect(seen.length).toBe(1); // one render: Wet is the same take
   const gone = await c.post("/v1/effects/apply", { json: { take_id: "lapsed", chain: [] } });
   expect(gone.status).toBe(404);
+});
+
+test("a_book_sent_with_the_line_reads_its_lexicon_first_and_a_draft_reads_in_place_of_its_saved_entries", async () => {
+  // Lexicons' ▶ and Try a word (2026-10-13): the book's lexicon, then the persona's, as a chapter
+  // render reads them; the editor's unsaved entries stand in for the saved ones.
+  const c = await api();
+  const seen = captureRender();
+  const book = (await c.post("/v1/lexicons", { json: { name: "Book names", entries: [{ grapheme: "Worcester", alias: "Wooster" }] } })).json().id;
+  const mine = (await c.post("/v1/lexicons", { json: { name: "Mine", entries: [{ grapheme: "Worcester", alias: "Wusster" }] } })).json().id;
+  const pid = (await c.post("/v1/projects", { json: { name: "Book", project_type: "audiobook", default_lexicon_id: book } })).json().id;
+  const persona = { voice_id: "Sohee", language: "en", lexicon_id: mine };
+  let r = await c.post("/v1/personas/preview", { json: { persona, text: "To Worcester.", project_id: pid } });
+  expect(r.status, r.text).toBe(200);
+  expect(seen.at(-1).lexicons).toEqual([book, mine]);
+  // No book sent: the persona's alone, as before.
+  r = await c.post("/v1/personas/preview", { json: { persona, text: "To Worcester." } });
+  expect(r.status, r.text).toBe(200);
+  expect(seen.at(-1).lexicons).toEqual([mine]);
+  // A draft of the persona's lexicon goes in its place, after the book's.
+  const entries = [{ grapheme: "Worcester", alias: "Woostah" }];
+  r = await c.post("/v1/personas/preview", { json: { persona, text: "To Worcester.", project_id: pid, draft_lexicon: { id: mine, entries } } });
+  expect(r.status, r.text).toBe(200);
+  const [first, second] = seen.at(-1).lexicons;
+  expect(first).toBe(book);
+  expect(second.id).toBe(mine);
+  expect(second.entries[0].alias).toBe("Woostah");
+  // A book that doesn't exist is refused.
+  expect((await c.post("/v1/personas/preview", { json: { persona, project_id: "no-such-book" } })).status).toBe(404);
+});
+
+test("an_unsaved_lexicon_is_read_in_place_of_the_saved_one", () => {
+  const saved = { book: { entries: [{ grapheme: "Worcester", alias: "Wooster" }] } };
+  const stx = { lexicons: { get: (id) => saved[id] ?? null } };
+  const draftLex = { id: "mine", entries: [{ grapheme: "Worcester", phoneme_ipa: null, alias: "Wusster" }] };
+  expect(renderCore._applyLexicons("To Worcester.", [draftLex], stx)[0]).toBe("To Wusster.");
+  // The book's still wins a word both have.
+  expect(renderCore._applyLexicons("To Worcester.", ["book", draftLex], stx)[0]).toBe("To Wooster.");
 });
 
 test("listen_needs_a_voice", async () => {

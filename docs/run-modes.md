@@ -8,6 +8,12 @@ the tray and the server running (headless without a terminal); the
 [system tray](system-tray.md) offers Show/Hide window, Start/Stop/Restart
 server, and Quit.
 
+The server listens on the port in **Settings → Server → Port** (17494 unless you
+change it; quit and start the app again after changing it). If another JustVoice
+server already holds that port — a headless one, or one left behind by a crash —
+the app stops it and starts its own. Any other program on the port is left
+running, and the window says it can't reach the server.
+
 ### Updates
 
 The desktop app checks for a new version each time it starts. **Settings →

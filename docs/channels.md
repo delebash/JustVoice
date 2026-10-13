@@ -2,6 +2,9 @@
 
 Route specific voices to specific OS audio devices. The **Channels** tab is where you bind a persona to an output device (personas wrap a voice; bindings are persona-level) — useful for stream-deck-style multi-output rigs, DAW routing, or accessibility setups.
 
+**Not built yet:** JustVoice doesn't list your computer's audio outputs yet, so the channel form
+has no device field for now — a channel you add holds its name and the default flag.
+
 ## When you'd use channels
 
 - **Streaming / production rigs** — send the narrator's persona to your sound output, send a chat-companion voice to OBS audio source 2, send a "warning bell" to a separate monitor.

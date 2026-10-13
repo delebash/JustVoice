@@ -152,6 +152,7 @@ export function router() {
     if (body.cpu_threads < 0) throw badRequest("cpu_threads must be 0 (the physical core count) or more");
     if (body.cpu_min_realtime <= 0) throw badRequest("cpu_min_realtime must be more than 0");
     if (body.spill_mb < 0) throw badRequest("spill_mb must be 0 or more");
+    if (body.runaway_s_per_char < 0 || body.runaway_min_s < 0) throw badRequest("runaway_s_per_char and runaway_min_s must be 0 or more");
     if (body.gpu_threads < 1) throw badRequest("gpu_threads must be 1 or more");
     if (body.start_timeout_s <= 0 || body.request_timeout_s <= 0) throw badRequest("the timeouts must be more than 0 seconds");
     const store = getState().settings;

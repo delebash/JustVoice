@@ -4,6 +4,6 @@
 const { defineCapacitorConfig } = require('@quasar/app-vite/capacitor');
 
 module.exports = defineCapacitorConfig({
-  appId: 'dev.justvoice.app',
+  appId: 'com.justvoice.app',
   appName: 'JustVoice'
 });
