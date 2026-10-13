@@ -292,11 +292,17 @@ function variantRow(m, { pkg, main }) {
  * measured at load (the 2026-08-14 ruling).
  */
 export function needOf(row) {
-  if (!row?.audiocpp?.generated) return null;
-  const files = (row.sources || []).reduce((n, s) => n + (s.size_bytes || 0), 0) / 1024 ** 3;
+  const files = filesGbOf(row);
+  if (files === null) return null;
   const estimate = row.min_vram_gb || 0;
   if (files > estimate) return { gb: Math.round(files * 10) / 10, by: "files" };
   return estimate ? { gb: estimate, by: "estimate" } : null;
+}
+
+/** A generated model's download, GB (unrounded) — null for a hand-wired row. */
+export function filesGbOf(row) {
+  if (!row?.audiocpp?.generated) return null;
+  return (row.sources || []).reduce((n, s) => n + (s.size_bytes || 0), 0) / 1024 ** 3;
 }
 
 let _engines = null;

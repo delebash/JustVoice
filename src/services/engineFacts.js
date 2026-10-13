@@ -47,9 +47,11 @@ export const licTitle = (l) => `${l.summary}\n\n${reading(l)}. The licence text 
 const gb = (mb) => Math.round((mb / 1024) * 10) / 10;
 
 /** A model's memory before it loads: what an earlier load measured here, else audio.cpp's
- * estimate, against this card (null = no card to fit). → {text, warn, gb}; gb is null when
+ * estimate, against this card (null = no card to fit). `runsOn` is where the server would load
+ * it now: a model too big by the estimate whose files fit the card easily is tried on the card
+ * first (2026-10-12), and its Runs on line says why. → {text, warn, gb}; gb is null when
  * neither is known. */
-export function memoryText({ measuredMb, needGb }, cardMb) {
+export function memoryText({ measuredMb, needGb, runsOn = null }, cardMb) {
   const fitWords = (g) => (cardMb ? (g * 1024 <= cardMb ? " · fits this card" : null) : "");
   if (measuredMb) {
     const g = gb(measuredMb);
@@ -57,9 +59,9 @@ export function memoryText({ measuredMb, needGb }, cardMb) {
   }
   if (needGb) {
     const f = fitWords(needGb);
-    return f === null
-      ? { text: `needs about ${needGb} GB · too big for this card — Load runs it on the CPU`, warn: true, gb: needGb }
-      : { text: `needs about ${needGb} GB${f}`, warn: false, gb: needGb };
+    if (f !== null) return { text: `needs about ${needGb} GB${f}`, warn: false, gb: needGb };
+    if (runsOn === "gpu") return { text: `needs about ${needGb} GB · more than this card has`, warn: true, gb: needGb };
+    return { text: `needs about ${needGb} GB · too big for this card — Load runs it on the CPU`, warn: true, gb: needGb };
   }
   return { text: "memory not measured yet", warn: false, gb: null };
 }

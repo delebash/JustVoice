@@ -442,6 +442,10 @@ export const SpeechRuntimeSettings = T.Object({
   cpu_threads: opt(T.Integer(), 0),
   // "Fast enough on the CPU" for Auto: seconds of audio per second of work (decided 2×).
   cpu_min_realtime: opt(T.Number(), 2.0),
+  // Windows: how much a card load may grow its process's shared GPU memory (MB) before it counts
+  // as spilled into system memory, which Auto treats as a failed card load (2026-10-12; a load
+  // that fits grows it by 0 from a 78 MB baseline).
+  spill_mb: opt(T.Integer(), 256),
   // The graphics-card process's CPU threads — its work off the card (text, sampling).
   gpu_threads: opt(T.Integer(), 4),
   // How long a process may take to come up before its start counts as failed.

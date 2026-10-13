@@ -6,6 +6,12 @@ The holding pen for unscheduled JustVoice ideas — same charter as JW's
 
 ---
 
+- **2026-10-12 · Check the commit limit, not only free RAM** — allocations fail outright only
+  when RAM plus the page file is spent, and nothing reads that. The 26B's private bytes (16.8 GB)
+  plus VoxCPM2's speech server (9.4 GB) are about 26 GB of commit against a 41.4 GB limit on
+  this machine (32.7 GB RAM + an 8.7 GB system-managed page file, which grows). Rare, so parked
+  (TASKS "The two-day review's fixes", item 6; RESEARCH §10.14 "Which memory number").
+
 - **2026-10-11 · What the research sweep says would make the audiobooks better** — the user
   asked for a broad sweep ("you know our goal is the best audiobook converter possible so any new
   models techniques tools anything lets dig in"), then "write this info to docs update all docs".

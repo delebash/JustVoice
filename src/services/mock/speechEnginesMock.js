@@ -77,9 +77,9 @@ const RAW = [
     catalog_status: "supported",
     termsAccepted: false,
     models: [
-      { id: "omnivoice-q8", name: "OmniVoice", size_mb: 1287, languages: [], languages_note: "600+ languages", ...clone, directed_by: "sliders", min_vram_gb: 10, need_gb: 10 },
-      { id: "omnivoice-bf16", name: "OmniVoice (16-bit, bf16)", size_mb: 1563, languages: [], languages_note: "600+ languages", ...clone, directed_by: "sliders", min_vram_gb: 10, need_gb: 10 },
-      { id: "omnivoice-f16", name: "OmniVoice (16-bit, f16)", size_mb: 1563, languages: [], languages_note: "600+ languages", ...clone, directed_by: "sliders", min_vram_gb: 10, need_gb: 10 },
+      { id: "omnivoice-q8", name: "OmniVoice", size_mb: 1287, languages: [], languages_note: "600+ languages", ...clone, directed_by: "sliders", min_vram_gb: 10, need_gb: 10, runs_on: "gpu" },
+      { id: "omnivoice-bf16", name: "OmniVoice (16-bit, bf16)", size_mb: 1563, languages: [], languages_note: "600+ languages", ...clone, directed_by: "sliders", min_vram_gb: 10, need_gb: 10, runs_on: "gpu" },
+      { id: "omnivoice-f16", name: "OmniVoice (16-bit, f16)", size_mb: 1563, languages: [], languages_note: "600+ languages", ...clone, directed_by: "sliders", min_vram_gb: 10, need_gb: 10, runs_on: "gpu" },
     ],
   },
   {

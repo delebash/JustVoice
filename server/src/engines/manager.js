@@ -590,6 +590,11 @@ export function _x(v) {
   return v < 10 ? `${pyFixed(v, 1)}×` : `${pyFixed(v, 0)}×`;
 }
 
+/** A size in GB the way the rows say it: 1.3, 12. */
+export function _gb(v) {
+  return v < 10 ? String(Math.round(v * 10) / 10) : String(Math.round(v));
+}
+
 const isAuto = (v) => v == null || v === "" || v === "auto";
 
 /**
@@ -826,6 +831,11 @@ export class EngineManager {
     return generated.needOf((attr(m.module, "VARIANTS", null) || []).find((r) => r.id === variant));
   }
 
+  /** A generated model's download, GB — null for a hand-wired engine. */
+  static _catalogFilesGb(m, variant) {
+    return generated.filesGbOf((attr(m.module, "VARIANTS", null) || []).find((r) => r.id === variant));
+  }
+
   /** A discrete graphics card (its own memory) — or unknown, which reads as one. */
   async _cardIsItsOwnMemory() {
     const hw = await this._hardware();
@@ -871,8 +881,9 @@ export class EngineManager {
   }
 
   /** Where a load of this model goes now: [`"gpu"` | `"cpu"`, why — a clause the row says
-   * after "Runs on the CPU ·", unload the AI model first?]. */
-  async placementFor(m, kind, variant) {
+   * after "Runs on the CPU ·", unload the AI model first?]. `cardFailed`: this load's try on
+   * the graphics card just failed or spilled. */
+  async placementFor(m, kind, variant, { cardFailed = false } = {}) {
     await runtime.ensureHardware();
     const exe = runtime.installedExe();
     if (exe !== null && runtime.backendOf(exe) === "cpu") return ["cpu", "this machine's speech runtime is the CPU build", false];
@@ -887,16 +898,36 @@ export class EngineManager {
       return ["gpu", "the graphics share this machine's memory, so the CPU would free none of it", false];
     }
     const prior = this._priceMb(kind, m.id, variant, exe !== null ? runtime.backendOf(exe) : null);
+    const hw = await this._hardware();
+    const cardMb = hw !== null ? pyInt(hardware.budgetTotalMb(hw)) : 0;
+    const margin = EngineManager._safetyMarginMb();
+    // A card load that failed or spilled — this click's, or one remembered here for the runtime
+    // build running now — and a price measured here that can't fit the card at all go to the
+    // CPU (decided 2026-10-12; until then such a price went to the card and was refused). The
+    // price says what it took, since that model did load there once (decided 2026-10-13).
+    if (cardFailed || this._failedOnCard(kind, m.id, variant)) {
+      return ["cpu", `it didn't load on the graphics card — ${speed || "this may be slow on the CPU"}`, false];
+    }
+    if (prior && cardMb > 0 && prior + margin > cardMb) {
+      return ["cpu", `it took about ${_gb(prior / 1024)} GB on this card before, more than it holds — ${speed || "this may be slow on the CPU"}`, false];
+    }
     // A model JustVoice hasn't wired by hand and hasn't measured here: what it needs — audio.cpp's
     // estimate or its files, whichever is more — decides when it is more than the card has: "too
     // big for this card", and Load runs it on the CPU (decided 2026-10-11, the engine list's
     // answer 4; the files since 2026-10-12).
     const need = EngineManager._catalogNeedGb(m, variant);
-    if (need && !prior) {
-      const hw = await this._hardware();
-      const cardMb = hw !== null ? pyInt(hardware.budgetTotalMb(hw)) : 0;
-      if (cardMb > 0 && need.gb * 1024 > cardMb) {
-        const card = Math.round(cardMb / 1024);
+    let cardFirst = "";
+    if (need && !prior && cardMb > 0 && need.gb * 1024 > cardMb) {
+      const card = Math.round(cardMb / 1024);
+      const files = EngineManager._catalogFilesGb(m, variant);
+      if (need.by === "estimate" && files !== null && files * 1024 + margin <= cardMb) {
+        // Its files fit the card easily, so the estimate alone says too big: try the card first,
+        // and it is measured there (decided 2026-10-12 — OmniVoice's 1.3 GB took 1.2 GB of an
+        // 8 GB card against audio.cpp's 10 GB, and ran 27× slower on the CPU).
+        cardFirst =
+          `audio.cpp says it needs about ${need.gb} GB, but its files are about ${_gb(files)} GB, ` +
+          "so it tries the graphics card first; if it doesn't fit, Load runs it on the CPU";
+      } else {
         const why = need.by === "files"
           ? `its files are about ${Math.round(need.gb)} GB, more than this card's ${card} GB`
           : `audio.cpp says it needs about ${need.gb} GB, more than this card's ${card} GB`;
@@ -905,12 +936,71 @@ export class EngineManager {
         return ["cpu", `${why} — ${speed || "this may be slow on the CPU"}`, false];
       }
     }
-    if (!(await this._aiModelOnCard())) return ["gpu", "nothing else is on the graphics card", false];
+    if (!(await this._aiModelOnCard())) return ["gpu", cardFirst || "nothing else is on the graphics card", false];
     const free = prior ? await this._freeCardMb(kind, m.id) : null;
     if (prior && free !== null && prior <= free) return ["gpu", `it fits beside the AI model (${prior} MB)`, false];
     if (x !== null && x >= runtime.cpuMinRealtime()) return ["cpu", `${speed}, which keeps the graphics card for the AI model`, false];
     const slow = x ? `only ${speed} on the CPU` : "it has no usable speed on the CPU";
-    return ["gpu", `${slow}, so the AI model makes room`, !prior];
+    return ["gpu", cardFirst || `${slow}, so the AI model makes room`, !prior];
+  }
+
+  /** Did a card load of this model fail or spill here, with the runtime build running now, after
+   * its newest measured card load? A later card load that measures it (a pin to the GPU) clears
+   * it (decided 2026-10-12). */
+  _failedOnCard(kind, engineId, variant) {
+    try {
+      const mk = hardware.currentMachineKey();
+      const build = self._runtimeBuild();
+      let failedAt = 0;
+      let measuredAt = 0;
+      for (const row of stores.getModelMeasurementStore().list(EngineManager._measureId(kind, engineId, variant))) {
+        if (row.machineKey !== mk) continue;
+        const flags = Object.fromEntries((row.switches || []).map((f) => [f.flagName, f.flagValue]));
+        if (flags.runtime !== build) continue;
+        if (row.source === "no_card") failedAt = Math.max(failedAt, row.at);
+        else if (row.source === "peak" && (row.backend || "") !== "cpu") measuredAt = Math.max(measuredAt, row.at);
+      }
+      return failedAt > measuredAt;
+    } catch {
+      return false; // bare tests / store not wired
+    }
+  }
+
+  /** Remember that this model didn't stay on the graphics card here — once the CPU took it, so a
+   * fault that isn't the card's (the CPU failing too) is never blamed on it. Best-effort. */
+  _recordCardFailure(m, kind, variant, how) {
+    try {
+      const store = stores.getModelMeasurementStore();
+      const modelId = EngineManager._measureId(kind, m.id, variant);
+      const mk = hardware.currentMachineKey();
+      const build = self._runtimeBuild();
+      const exe = runtime.installedExe();
+      store.record(modelId, {
+        machineKey: mk,
+        source: "no_card",
+        label: `didn't stay on the graphics card (${how}, ${build})`,
+        tokensPerSec: 0.0,
+        vramTotalMb: 0,
+        at: Math.trunc(Date.now()),
+        rows: [{ flagName: "runtime", flagValue: build }],
+        kind: kind === "stt" ? "stt" : "tts",
+        backend: exe !== null ? runtime.backendOf(exe) : "",
+      });
+      store.pruneLoadRows(modelId, mk, new Set(["runtime"]), 5, "no_card");
+    } catch (e) {
+      log.debug(`card failure persist failed for ${m.id}: ${msgOf(e)}`);
+    }
+  }
+
+  /** The slot's process's shared GPU memory, MB — Windows' `Shared Usage`; null when unreadable. */
+  async _slotSharedMb(proc) {
+    const pid = proc?.proc?.pid;
+    if (!pid) return null;
+    try {
+      return await hardware.processTreeSharedMb(pid);
+    } catch {
+      return null;
+    }
   }
 
   /** Auto's third step for a model never measured on the card: unload the AI model before the
@@ -1281,7 +1371,17 @@ export class EngineManager {
       return;
     }
     const arbKind = kind === "stt" ? "stt" : "tts";
-    arb.reserve(`${kind}:${m.id}`, pyInt(mb), { kind: arbKind, evictFn: () => this._evictForArbiter(kind, m.id), source });
+    arb.reserve(`${kind}:${m.id}`, pyInt(mb), {
+      kind: arbKind,
+      evictFn: () => this._evictForArbiter(kind, m.id),
+      source,
+      // What evicting it gives back in system memory — an AI model's load credits it (the kit's
+      // RAM door, 2026-10-12).
+      ramFn: async () => {
+        const p = this._loaded.get(kind) ?? null;
+        return p !== null && p.manifest.id === m.id ? this._slotRamMb(p) : null;
+      },
+    });
   }
 
   /** Persist a measured peak as a `"peak"` row in the shared measurement store — what
@@ -1626,7 +1726,10 @@ export class EngineManager {
 
   /** Load an engine's model (the resolved default when `variant` is null/""/"auto") into its
    * kind's slot. Resolves the slot's /load answer. */
-  async load(engineId, { device = "auto", variant = null, progress = null, cancelCheck = null } = {}) {
+  async load(engineId, { device = "auto", variant = null, progress = null, cancelCheck = null, cardFailed = "" } = {}) {
+    // `cardFailed` (internal): this click's try on the graphics card failed or spilled — how —
+    // so this load is its retry on the CPU (decided 2026-10-12).
+    const asked = device;
     const m = this.getManifest(engineId);
     if (m === null) throw new RuntimeError(`unknown engine: ${engineId}`);
     // The runtime's sync readers (installedExe, …) read the detection memo (Python detected here).
@@ -1661,8 +1764,12 @@ export class EngineManager {
         : (cur0 !== null && cur0.manifest.id === engineId ? this._currentVariants.get(engineId) : null) ||
           this._resolvedDefaultVariant(m) ||
           null;
-      let [placement, why, unloadAi] = await this.placementFor(m, targetKind, planned);
+      let [placement, why, unloadAi] = await this.placementFor(m, targetKind, planned, { cardFailed: Boolean(cardFailed) });
       placement = slot.effectivePlacement(placement);
+      // Auto put it on the card (not the user's pin, not a caller's device): if that load fails
+      // or spills into system memory, this click retries on the CPU (decided 2026-10-12).
+      const autoCard =
+        !cardFailed && isAuto(asked) && placement === "gpu" && EngineManager._userPlacement(engineId, planned) === "auto";
       // This engine already holds the slot with the same (or unspecified) variant in the same
       // place: that path early-returns below and must never fetch or check.
       const already =
@@ -1760,6 +1867,22 @@ export class EngineManager {
       // engine keeps whatever is loaded.
       if (isAuto(variant)) variant = this._resolvedDefaultVariant(m) || null;
 
+      // The process's shared GPU memory before the model arrives: what fits leaves it as it was.
+      const sharedBefore = autoCard ? await this._slotSharedMb(proc) : null;
+      // Drop this load's slot — a failed, spilled or cancelled load.
+      const dropSlot = () =>
+        this._activity(targetKind).run(() =>
+          this._lock.run(async () => {
+            try {
+              await proc.terminate();
+            } catch {
+              /* already gone is fine */
+            }
+            if (this._loaded.get(targetKind) === proc) this._loaded.delete(targetKind);
+            this._resolvedDevices.delete(engineId);
+          }),
+        );
+
       // The model comes into memory here. `model_dir` (the speech-cache variant dir) makes the
       // engine load plain local files.
       if (progress) progress("loading_weights", `loading ${engineId} weights`);
@@ -1772,34 +1895,36 @@ export class EngineManager {
       });
       if (r.statusCode !== 200) {
         log.warning(`engine ${engineId} /load failed: ${String(r.text).slice(0, 400)}`);
-        await this._activity(targetKind).run(() =>
-          this._lock.run(async () => {
-            await proc.terminate();
-            this._loaded.delete(targetKind);
-            this._resolvedDevices.delete(engineId);
-          }),
-        );
+        await dropSlot();
         // Defensive — a release is idempotent, and a reservation nobody releases is a lying
         // ledger.
         this._releaseEngine(targetKind, engineId);
+        if (autoCard && !effectiveCancel()) {
+          log.warning(`engine ${engineId} didn't load on the graphics card — trying the CPU`);
+          return await this.load(engineId, { device: asked, variant, progress, cancelCheck, cardFailed: "failed" });
+        }
         throw new RuntimeError(`engine load failed: ${r.text}`);
       }
       if (effectiveCancel()) {
         // Cancelled while the model came in — unload it before anything is booked for it;
         // `requestCancelLoad` may already have dropped the slot.
-        await this._activity(targetKind).run(() =>
-          this._lock.run(async () => {
-            try {
-              await proc.terminate();
-            } catch {
-              /* already gone is fine */
-            }
-            if (this._loaded.get(targetKind) === proc) this._loaded.delete(targetKind);
-            this._resolvedDevices.delete(engineId);
-          }),
-        );
+        await dropSlot();
         this._releaseEngine(targetKind, engineId);
         throw new RuntimeError("cancelled by user");
+      }
+      // Loaded, but into system memory: NVIDIA's Windows driver can satisfy an allocation the card
+      // has no room for from shared memory instead of failing (RESEARCH §10.14), and the model then
+      // runs slowly. That is a failed card load too.
+      if (sharedBefore !== null) {
+        const sharedAfter = await this._slotSharedMb(proc);
+        if (sharedAfter !== null && sharedAfter - sharedBefore > runtime.spillMb()) {
+          log.warning(
+            `engine ${engineId} spilled ${sharedAfter - sharedBefore} MB of graphics memory into system memory — trying the CPU`,
+          );
+          await dropSlot();
+          this._releaseEngine(targetKind, engineId);
+          return await this.load(engineId, { device: asked, variant, progress, cancelCheck, cardFailed: "spilled" });
+        }
       }
       // Record what actually LOADED: the slot answers with the variant it resolved, which
       // differs from the request when the request names a model the catalog no longer has.
@@ -1812,6 +1937,8 @@ export class EngineManager {
       this._currentVariants.set(engineId, loadedAs || (!isAuto(variant) ? variant : this._resolvedDefaultVariant(m)));
       this._resolvedDevices.set(engineId, device);
       this._placementReasons.set(engineId, why);
+      // The CPU took what the card couldn't: remembered, so the next load goes straight here.
+      if (cardFailed) this._recordCardFailure(m, targetKind, this._currentVariants.get(engineId), cardFailed);
       // Book the CONFIRMED load at its MEASURED footprint — the per-PID tree probe of the
       // kind's own process. A known price stays the booking's floor. What is RECORDED as this
       // model's peak (§13.3): a calibrated load's measurement, or any measurement above the

@@ -52,17 +52,81 @@ test("a_cpu_build_runs_everything_on_the_cpu", async () => {
 });
 
 test("auto_runs_a_generated_model_too_big_for_the_card_on_the_cpu", async () => {
-  // audio.cpp says OmniVoice needs about 10 GB; this card has 8 (decided 2026-10-11, answer 4).
+  // audio.cpp says MOSS-TTS v1.5 needs about 18 GB, and its 12 GB of files don't fit an 8 GB
+  // card either (decided 2026-10-11, answer 4).
   const mgr = mgrFor();
-  const [where, why] = await mgr.placementFor(mgr.getManifest("omnivoice"), "tts", "omnivoice-q8");
+  const [where, why] = await mgr.placementFor(mgr.getManifest("moss_tts_v15"), "tts", "moss_tts_v15-q8");
   expect(where).toBe("cpu");
-  expect(why).toBe("audio.cpp says it needs about 10 GB, more than this card's 8 GB — this may be slow on the CPU");
+  expect(why).toBe("audio.cpp says it needs about 18 GB, more than this card's 8 GB — this may be slow on the CPU");
   // Once a line on the CPU measured it, the speed takes the warning's place.
   vi.spyOn(EngineManager.prototype, "cpuSpeed").mockReturnValueOnce([0.06, true]);
-  expect((await mgr.placementFor(mgr.getManifest("omnivoice"), "tts", "omnivoice-q8"))[1]).toBe("audio.cpp says it needs about 10 GB, more than this card's 8 GB — 0.1× real time here");
+  expect((await mgr.placementFor(mgr.getManifest("moss_tts_v15"), "tts", "moss_tts_v15-q8"))[1]).toBe("audio.cpp says it needs about 18 GB, more than this card's 8 GB — 0.1× real time here");
   // Once a load measured it here, the measurement decides, not the estimate.
   vi.spyOn(EngineManager.prototype, "_priceMb").mockReturnValue(3000);
-  expect((await mgr.placementFor(mgr.getManifest("omnivoice"), "tts", "omnivoice-q8"))[0]).toBe("gpu");
+  expect((await mgr.placementFor(mgr.getManifest("moss_tts_v15"), "tts", "moss_tts_v15-q8"))[0]).toBe("gpu");
+});
+
+test("auto_tries_the_card_first_when_the_files_fit_it_easily", async () => {
+  // decided 2026-10-12: OmniVoice's 1.3 GB of files took 1.2 GB of an 8 GB card against
+  // audio.cpp's 10 GB, and ran 27× slower on the CPU.
+  const mgr = mgrFor();
+  const want =
+    "audio.cpp says it needs about 10 GB, but its files are about 1.3 GB, so it tries the graphics card first; if it doesn't fit, Load runs it on the CPU";
+  expect(await mgr.placementFor(mgr.getManifest("omnivoice"), "tts", "omnivoice-q8")).toEqual(["gpu", want, false]);
+  // Beside the AI model it is Auto's third step: the AI model makes room.
+  aiOnCard();
+  expect(await mgr.placementFor(mgr.getManifest("omnivoice"), "tts", "omnivoice-q8")).toEqual(["gpu", want, true]);
+});
+
+test("a_card_that_failed_or_a_price_it_cannot_hold_sends_the_model_to_the_cpu", async () => {
+  const mgr = mgrFor();
+  const want = "it didn't load on the graphics card — this may be slow on the CPU";
+  // This click's try failed.
+  expect(await mgr.placementFor(mgr.getManifest("omnivoice"), "tts", "omnivoice-q8", { cardFailed: true })).toEqual(["cpu", want, false]);
+  // A failure remembered here.
+  const failed = vi.spyOn(EngineManager.prototype, "_failedOnCard").mockReturnValue(true);
+  expect(await mgr.placementFor(mgr.getManifest("omnivoice"), "tts", "omnivoice-q8")).toEqual(["cpu", want, false]);
+  failed.mockReturnValue(false);
+  // A price measured here that, with the margin, is more than the card: the CPU, not a refusal,
+  // saying what it took (decided 2026-10-13).
+  vi.spyOn(EngineManager.prototype, "_priceMb").mockReturnValue(7500);
+  expect(await mgr.placementFor(mgr.getManifest("chatterbox"), "tts", "chatterbox-multilingual-v2-q8")).toEqual([
+    "cpu",
+    "it took about 7.3 GB on this card before, more than it holds — this may be slow on the CPU",
+    false,
+  ]);
+  // The user's pin still wins.
+  vi.spyOn(EngineManager, "_userPlacement").mockReturnValue("gpu");
+  expect((await mgr.placementFor(mgr.getManifest("chatterbox"), "tts", "chatterbox-multilingual-v2-q8"))[0]).toBe("gpu");
+});
+
+test("a_remembered_card_failure_lasts_until_a_card_load_measures_the_model", () => {
+  const mgr = mgrFor();
+  const rows = [];
+  vi.spyOn(stores, "getModelMeasurementStore").mockReturnValue({ list: (mid) => rows.filter((r) => r.modelId === mid) });
+  vi.spyOn(hardware, "currentMachineKey").mockReturnValue("box");
+  vi.spyOn(manager, "_runtimeBuild").mockReturnValue("v0.9.0-jv.5");
+  const row = (source, at, build = "v0.9.0-jv.5", backend = "cuda") => ({
+    modelId: "tts:omnivoice:omnivoice-q8",
+    machineKey: "box",
+    source,
+    at,
+    backend,
+    switches: [{ flagName: "runtime", flagValue: build }],
+  });
+  const failed = () => mgr._failedOnCard("tts", "omnivoice", "omnivoice-q8");
+  expect(failed()).toBe(false);
+  rows.push(row("no_card", 100));
+  expect(failed()).toBe(true);
+  // Another runtime build tries the card again.
+  rows[0] = row("no_card", 100, "v0.9.0-jv.6");
+  expect(failed()).toBe(false);
+  rows[0] = row("no_card", 100);
+  // A later load measured on the CPU doesn't clear it; one measured on the card (a pin) does.
+  rows.push(row("peak", 200, undefined, "cpu"));
+  expect(failed()).toBe(true);
+  rows.push(row("peak", 300));
+  expect(failed()).toBe(false);
 });
 
 test("auto_goes_by_the_files_when_they_are_more_than_the_estimate_or_there_is_none", async () => {
@@ -302,6 +366,63 @@ test("a_card_load_credits_the_ai_models_memory_then_checks_exactly_before_the_sl
   await mgr.unload("tts");
   free.mockReturnValue(6 * 1024 ** 3);
   await expect(mgr.load("moss_tts_local")).rejects.toThrow("The AI model (gemma) is loaded and holds memory too");
+});
+
+class FailOnCard extends Slot {
+  post(p, json = null) {
+    if (p === "/load" && this.placement === "gpu") return resp(500, Buffer.alloc(0), { detail: "out of memory" });
+    return super.post(p, json);
+  }
+}
+
+function cardFirst(SlotClass = Slot) {
+  made.length = 0;
+  vi.spyOn(manager, "_newSlot").mockImplementation((m, p) => new SlotClass(m, p));
+  vi.spyOn(os, "freemem").mockReturnValue(16 * 1024 ** 3);
+  const recorded = [];
+  vi.spyOn(EngineManager.prototype, "_recordCardFailure").mockImplementation((m, kind, variant, how) => recorded.push([m.id, variant, how]));
+  return recorded;
+}
+
+test("a_failed_card_load_under_auto_retries_on_the_cpu_and_is_remembered", async () => {
+  // decided 2026-10-12: the same click retries on the CPU; the failure is remembered once the
+  // CPU took it.
+  const mgr = mgrFor();
+  const recorded = cardFirst(FailOnCard);
+  await mgr.load("omnivoice", { variant: "omnivoice-q8" });
+  expect(made.map((s) => s.placement)).toEqual(["gpu", "cpu"]);
+  expect(made[0].terminated).toBe(true);
+  expect(mgr.resolvedDeviceFor("omnivoice")).toBe("cpu");
+  expect(mgr.placementReasonFor("omnivoice")).toBe("it didn't load on the graphics card — this may be slow on the CPU");
+  expect(recorded).toEqual([["omnivoice", "omnivoice-q8", "failed"]]);
+});
+
+test("a_card_load_that_spills_into_system_memory_retries_on_the_cpu", async () => {
+  // NVIDIA's Windows driver can put what the card has no room for in system memory instead of
+  // failing: the process's shared GPU memory grows past spill_mb (256) — a failed card load too.
+  const mgr = mgrFor();
+  const recorded = cardFirst();
+  const shared = vi.spyOn(EngineManager.prototype, "_slotSharedMb").mockResolvedValueOnce(78).mockResolvedValueOnce(2126);
+  await mgr.load("omnivoice", { variant: "omnivoice-q8" });
+  expect(made.map((s) => s.placement)).toEqual(["gpu", "cpu"]);
+  expect(recorded).toEqual([["omnivoice", "omnivoice-q8", "spilled"]]);
+  // What fits leaves it as it was: it stays on the card.
+  await mgr.unload("tts");
+  made.length = 0;
+  shared.mockResolvedValue(78);
+  await mgr.load("omnivoice", { variant: "omnivoice-q8" });
+  expect(made.map((s) => s.placement)).toEqual(["gpu"]);
+  expect(recorded).toHaveLength(1);
+});
+
+test("a_pinned_card_load_that_fails_is_not_moved", async () => {
+  // The user chose the card: a failure there is reported, not moved to the CPU.
+  const mgr = mgrFor();
+  const recorded = cardFirst(FailOnCard);
+  vi.spyOn(EngineManager, "_userPlacement").mockReturnValue("gpu");
+  await expect(mgr.load("omnivoice", { variant: "omnivoice-q8" })).rejects.toThrow("engine load failed");
+  expect(made.map((s) => s.placement)).toEqual(["gpu"]);
+  expect(recorded).toEqual([]);
 });
 
 test("the_third_step_unloads_the_ai_model_before_the_load", async () => {

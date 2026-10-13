@@ -272,6 +272,7 @@ test("the_runtime_row_reads_and_saves_its_backend", async () => {
     gpu: 0,
     cpu_threads: 0,
     cpu_min_realtime: 2.0,
+    spill_mb: 256,
     gpu_threads: 4,
     start_timeout_s: 60.0,
     request_timeout_s: 900.0,

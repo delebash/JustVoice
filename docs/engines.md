@@ -370,13 +370,19 @@ it:
   that number is more than your card has, so *Auto* under
   [Runs on](#where-each-model-runs--the-graphics-card-or-the-cpu) loads it on
   the CPU, and the row's *Runs on* line says why: *audio.cpp says it needs about
-  10 GB, more than this card's 8 GB — this may be slow on the CPU*, or *its files
+  18 GB, more than this card's 8 GB — this may be slow on the CPU*, or *its files
   are about 12 GB, more than this card's 8 GB — this may be slow on the CPU*.
   Unlike Auto's other move to the CPU, this one doesn't wait for a model to be
   fast there — OmniVoice ran about 17 times slower than real time — so once it
   has spoken a line, the line shows its measured speed in place of the warning
   (*— 0.1× real time here*). Once a load measures it on your card, the
   measurement decides instead.
+- **needs about X GB · more than this card has** — only audio.cpp's estimate is
+  too big: the model's files, with the 1 GB safety margin, fit your card. Such an
+  estimate can be far off — OmniVoice's is 10 GB, and on an 8 GB card its 1.3 GB
+  of files took 1.2 GB — so Auto tries the card first and the *Runs on* line says
+  so: *audio.cpp says it needs about 10 GB, but its files are about 1.3 GB, so it
+  tries the graphics card first; if it doesn't fit, Load runs it on the CPU*.
 - **memory not measured yet** — neither is known. The engines JustVoice wired
   by hand say this until their first load, because their memory is measured,
   never estimated.
@@ -455,6 +461,24 @@ On a Mac, or any machine whose graphics share the computer's memory, Auto
 keeps every model on the graphics and says why: moving one to the CPU would
 free nothing.
 
+**When the graphics card can't take a model, Auto moves it to the CPU.** If a
+load Auto put on the card fails, the same click loads it on the CPU instead, and
+its *Runs on* line says *it didn't load on the graphics card — this may be slow on
+the CPU* (or its measured speed, once it has spoken). On Windows a load can also
+"succeed" without fitting: NVIDIA's driver can put what the card has no room for
+in the computer's memory instead of failing, and the model then runs slowly. So
+after each such load JustVoice reads how much of the computer's memory the speech
+runtime's graphics allocations use (Windows' *Shared GPU memory* for that
+process); a model that fits leaves it where it was, and one that grew it by more
+than `speech_runtime.spill_mb` (256 MB) is unloaded and loaded on the CPU too.
+Either way JustVoice remembers it, for this machine and this speech runtime
+build, so the next load goes straight to the CPU; a new speech runtime build
+tries the card again, and so does pinning the model to **GPU** — once a load
+measures it there, the card is used again. A model whose measured size, with the
+safety margin, is more than the whole card goes to the CPU the same way instead
+of being refused; its *Runs on* line says *it took about X GB on this card
+before, more than it holds — this may be slow on the CPU*.
+
 **GPU** and **CPU** pin the model there, whatever Auto would do. Changing a
 loaded model's place reloads it in its new place. A machine whose speech
 runtime is the CPU build runs everything on the CPU and says so.
@@ -481,9 +505,9 @@ loaded here…*. When an AI model is loaded — a large one can hold more of thi
 memory than any speech model — the message names it and suggests unloading it
 first.
 
-The 2× bar is `speech_runtime.cpu_min_realtime` in the settings (see
-[Settings reference](settings-reference.md)); the CPU threads are on the
-runtime row.
+The 2× bar is `speech_runtime.cpu_min_realtime` in the settings, and the spill
+threshold `speech_runtime.spill_mb` (see [Settings reference](settings-reference.md));
+the CPU threads are on the runtime row.
 
 ## What each engine can be tuned with
 

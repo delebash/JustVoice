@@ -2977,6 +2977,34 @@ corrected above.
   sit near the claim, but private bytes ran four to nine times the working set for the speech
   runtime too ("Which memory number"), so they aren't the measure. A check on this claim would
   refuse the 26B on a machine with 10–17 GB free, where it fits.
+  **The computed CPU-held share tracks the placement** (same day, the check before building the
+  door). The kit stores the 26B's exact split (`model_catalog`: experts 12,251 MB, other layer
+  weights 927 MB, output 396 MB; the input side 396 MB, "always on the CPU" — `runner/gguf.js`).
+  Two placements, each loaded through the app's `/v1/llm-runner/load`, settled:
+  | `--n-cpu-moe` | experts on the CPU (computed) | working set | above the experts |
+  |---|---|---|---|
+  | 21 (the tuned default) | 8,576 MB | 9,836 MB | 1,260 MB |
+  | 25 (an override) | 10,209 MB | 11,471 MB | 1,262 MB |
+  Four more layers' experts added 1,635 MB against 1,633 computed. Above the experts sits a
+  constant ~1.26 GB: the input side (396 MB) and ~865 MB of buffers. So the input side + the
+  CPU layers' experts + the 1,024 MB safety margin (9,996 MB at 21) covers the measured 9,836.
+  "Beside a speech model" is not a placement the kit makes: with VoxCPM2 q8 on the card the
+  26B's load evicted it (`arbiter make_room: evict LRU tts:voxcpm2 (tts, 2937 MB)`) and kept
+  its tuned flags. A sleeping 26B (after `--sleep-idle-seconds 900`) holds 371 MB of RAM; the
+  next request wakes it through `_admitWake`, not the load path.
+- **What Shared Usage shows** (2026-10-12, before building the spill check). WDDM's per-process
+  `\GPU Process Memory(pid_*)\Shared Usage`, through the app:
+  | Process | Dedicated | Shared |
+  |---|---|---|
+  | speech server, Kokoro q8 on the card | 567 MB | 78 MB |
+  | speech server, VoxCPM2 q8 on the card | 2,937 MB | 78 MB |
+  | speech server, after VoxCPM2 was evicted | 103 MB | 78 MB |
+  | llama-server, the 26B asleep | 111 MB | 78 MB |
+  | llama-server, the 26B loaded (`--n-cpu-moe 21`) | 6,865 MB | 9,316 MB |
+  The speech server sits at 78 MB whatever fits on the card, so a spill shows as growth across
+  a load. llama.cpp's 9.3 GB is not a spill: it holds its CPU-side weights in pinned host memory
+  (about the CPU-held share above), which WDDM counts as shared — so Shared Usage is a spill
+  signal for audio.cpp, not for llama.cpp.
 - **OmniVoice fits the card** (2026-10-12): pinned to the GPU it loaded in 6 s, spoke the line in
   3 s and read back 100 %; the card's memory in use went 700 → 1,928 MB (about 1.2 GB) and its
   server's RAM 526 MB. On the CPU (Auto, by audio.cpp's 10 GB estimate) the same line took 80 s

@@ -136,6 +136,22 @@ driver quietly spilled the overflow into ordinary system memory, which runs
 many times slower. A model that unloads and reloads with a toast is far
 better than two models fighting over one card in silence.
 
+**The AI model needs room in your computer's memory too.** The part of a
+local model the graphics card doesn't hold stays in your computer's memory — on
+an 8 GB card, gemma 4 26B keeps about 9.8 GB there. When its load mode keeps
+those weights resident (read into memory, or mapped and locked — the defaults
+for both gemma models), JustVoice checks before it loads that the memory free
+now holds that part — worked out from the model file for where the layers
+will go, or what it took at its last load here with the same settings if that
+was more — plus the 1 GB safety margin, counting what any speech model it will
+unload gives back. If there isn't room, the load stops before anything moves:
+*not enough memory to load gemma-4-26b-a4b-qat: the part of it that stays in
+this machine's memory is about 8.8 GB (+1024 MB safety margin) but only 8 GB of
+this machine's 32 GB is free. Close other programs, or pick a smaller model.*
+A model waking from sleep is never stopped this way — a feature in the middle
+of its work shouldn't fail — so a wake that is short of memory goes ahead, and
+only the log says so.
+
 If you would rather your model never slept — you have memory to spare and
 want every answer instant — set **Unload an idle model after** to `0` (never)
 in the AI engine panel. On a card that comfortably fits both your model and

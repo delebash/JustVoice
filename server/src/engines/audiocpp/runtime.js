@@ -200,6 +200,13 @@ export function cpuMinRealtime() {
   return Number(self._settings().cpu_min_realtime || 2.0);
 }
 
+/** settings.engines.speech_runtime.spill_mb — growth of a card load's shared GPU memory (MB)
+ * that counts as a spill into system memory. */
+export function spillMb() {
+  const v = Number(self._settings().spill_mb);
+  return Number.isFinite(v) && v >= 0 ? v : 256;
+}
+
 /** The backends audio.cpp publishes a build of for this OS (the runtime row's choices). */
 export function availableBackends() {
   const hw = self._hardware();

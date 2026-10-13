@@ -408,9 +408,69 @@ BUILT:  2026-10-12 — 1: the check credits the AI models' memory when a card lo
         fallback number: a calibrated load whose own-process probe misses saves the whole card's
         difference as its price, labelled "the whole card's difference" (`manager.js` load); a
         test; user doc engines.md "Long lines, and what a model costs". 3: the stale line deleted.
-OPEN:   1 — what the AI model's door checks instead (the user's word). 2 — the card-first rule:
-        what "fits easily" means, its Runs on words, what a failed card load does, and the
-        Windows spill (RESEARCH §10.14 "A CUDA load on Windows may not fail") — the user's word.
+        The door, card-first and the spill (2026-10-12): the two measurements first (RESEARCH
+        §10.14 "The computed CPU-held share tracks the placement", "What Shared Usage shows").
+        2–4: `placementFor` — card-first (`cardFirst`, the approved words) when the estimate alone
+        is too big and the files + margin fit the card; "it didn't load on the graphics card — …"
+        for this click's failed try (`cardFailed`), a remembered one (`_failedOnCard`: a `no_card`
+        row newer than the newest card `peak`, this runtime build) or a price + margin above the
+        card. `load` — an Auto card load that fails or spills drops its slot and retries on the
+        CPU in the same click; the `no_card` row is written once the CPU took it
+        (`_recordCardFailure`). 5: `_slotSharedMb` (the kit's new `processTreeSharedMb`) before
+        and after the load, against `speech_runtime.spill_mb` (256, a setting). The tab's memory
+        line says "needs about X GB · more than this card has" when the model runs on the card
+        (`engineFacts.memoryText`, `runsOn`). 1: the kit's (its tracker). 6: IDEAS. Tests; the
+        server suites of JustVoice (1,123), the kit (1,154) and JustWrite (158) pass. Through the
+        app: OmniVoice's rows say the card-first words; the 26B's settled reading was recorded
+        (9,843 MB, `ram_peak`); VoxCPM2 under Auto stayed on the card at a Shared Usage of 78 MB.
+        User docs: engines.md "Memory, before you load", "Where each model runs"; gpu.md; the
+        settings reference (`spill_mb`).
+        The new words (2026-10-13): 1–3 as built above (3 is the kit's: its log). 4: a price
+        above the card says "it took about X GB on this card before, more than it holds — …"
+        (`placementFor`, its own branch after the failed-load one); a test; engines.md "When the
+        graphics card can't take a model". 5: the mock's OmniVoice rows carry `runs_on: "gpu"`
+        (`services/mock/speechEnginesMock.js`) and the mock page passes it to `memoryText`.
+OPEN:   — (not checked live: a card load that really fails or spills, and a real refusal; unit
+        tests only).
+        The new words (decided 2026-10-13) — shown: "1. The tab's memory line for a model tried
+        on the card first: "needs about 10 GB · more than this card has". Today it says "too big
+        for this card — Load runs it on the CPU", which is no longer true. My lean: yes. It
+        reuses the words the line already uses for a measured model that's too big. 2. The AI
+        model's refusal: "not enough memory to load gemma-4-26b-a4b-qat: the part of it that
+        stays in this machine's memory is about 8.8 GB (+1024 MB safety margin) but only 8 GB of
+        this machine's 32 GB is free. Close other programs, or pick a smaller model." When a past
+        load decides the number: "…it took about 9.6 GB of this machine's memory when it last
+        loaded here…". With a speech model loaded, the last sentence becomes: "A speech model
+        (voxcpm2) is loaded and holds memory too — unload it first, or close other programs."
+        My lean: yes. It mirrors JustVoice's approved speech message. 3. Where a wake's warning
+        shows. Today it's only in the log. A toast would need new screen work in both apps. My
+        lean: the log. The wake goes ahead either way, so there's nothing for you to act on
+        mid-task. 4. The wording for a saved measurement bigger than the card. It reuses "it
+        didn't load on the graphics card", though that model did load there once. A more exact
+        version: "it took about X GB on this card before, more than it holds — this may be slow
+        on the CPU". My lean: the more exact version. 5. The Speech engines mock still shows
+        OmniVoice as "too big — Load runs it on the CPU". Its made-up data has no "Runs on"
+        field. My lean: give the mock's OmniVoice rows "runs on the card" so it matches the
+        app." The user: "your rec go".
+        The door, card-first, the spill (decided 2026-10-12) — after a Fable review and an Opus
+        check of it. Fable's rule for 1, as shown: "The AI model's door checks the computed
+        CPU-held part of the file plus the safety margin, raised by what it took at its last load
+        with that placement, crediting the speech slots it evicts." Opus, as shown: "1. The AI
+        model's check: Fable's rule, with two additions. It runs at wakes too. At a wake it warns
+        and goes ahead, matching the wake's own policy; at an explicit load it refuses. Measure one
+        more placement first, with a speech model on the card, to confirm the computed number
+        tracks it. My lean: yes. The refusal message comes to you for wording before it ships, as
+        JustVoice's did. 2. 'Fits easily' = the files plus the safety margin fit the card's total
+        memory. My lean: yes. 3. The 'Runs on' wording, with Fable's 'if it doesn't fit, Load runs
+        it on the CPU' added. My lean: yes. 4. A failed card load retries on the CPU in the same
+        click, and the remembered failure sends the model to the CPU next time. A saved price
+        bigger than the card would take that same route instead of being refused. My lean: yes.
+        5. A spill counts as a failure, once loads that fit have been measured on the Shared Usage
+        counter. My lean: yes, measure first. 6. The commit-limit risk goes into IDEAS as one
+        line. My lean: yes." The wording for 3, as shown before: "audio.cpp says it needs about
+        10 GB, but its files are about 1.3 GB, so it tries the graphics card first" + "; if it
+        doesn't fit, Load runs it on the CPU"; for 4: "it didn't load on the graphics card — this
+        may be slow on the CPU". The user: "your rec on all go".
         The AI model's door and the too-big rule (decided 2026-10-12) — shown: "1. The AI model's
         door: check it on its RAM claim, for the load modes that keep weights resident (`none` and
         `mmap+mlock`), in the kit for both apps? My lean: yes, after one measurement that the 26B's
@@ -435,7 +495,9 @@ OPEN:   1 — what the AI model's door checks instead (the user's word). 2 — t
         CPU' in its Runs on line, with the measured speed once it has spoken". The user: "your
         rec on all go".
 GO:     given 2026-10-12 ("fix it all your rec go"; the memory number, the door and the speed:
-        "your rec on all go"; the door, the too-big rule and the stale line: "your rec on all 3 go").
+        "your rec on all go"; the door, the too-big rule and the stale line: "your rec on all 3 go";
+        the door, card-first and the spill: "your rec on all go"; the new words: "your rec go",
+        2026-10-13).
 
 ### The family on vue-i18n: JustVoice's step B (decided 2026-10-12, in the kit's tracker)
 STATE:  DECIDED 2026-10-12 — the user's ruling in a JustWrite session: "all apps should use the

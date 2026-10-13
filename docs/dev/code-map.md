@@ -449,7 +449,12 @@ gitignored), `<data_dir>/engines-runtime` frozen.
 `docs/plans/2026-10-02-cpu-placement.md` §8). `manager.placement_for(m, kind,
 variant)` → (`"gpu"` | `"cpu"`, the reason the row says, unload-the-AI-model?):
 a CPU-build runtime → cpu; the user's `engine_overrides[id].placements[variant]`
-→ that; else Auto — gpu when no un-slept, unpinned `llm` reservation is on the
+→ that; else Auto — cpu when this load's card try failed or spilled, when
+`_failedOnCard` finds a `source="no_card"` row (this machine and runtime build)
+newer than the newest card `"peak"`, or when the price plus the safety margin is
+more than the card; a generated model whose estimate alone is too big but whose
+files plus the margin fit the card tries the card first (`cardFirst`, its
+reason); else gpu when no un-slept, unpinned `llm` reservation is on the
 card (`_ai_model_on_card`) or the variant's price (`_price_mb` — below)
 fits `_free_card_mb`; else cpu when `cpu_speed` (newest `source="speed"`,
 `backend="cpu"` row on this machine, else the manifest variant's `cpu_realtime`
@@ -457,7 +462,10 @@ reference) ≥ `speech_runtime.cpu_min_realtime`; else gpu, and when the size wa
 never measured `_unload_ai_model` runs `make_room(total, protected tts/stt)`
 (the kit's eviction event → the app's toast) and waits for the memory to drain.
 `load()` resolves it before anything moves, reloads a loaded model whose place changed, and records the
-reason (`placement_reason_for`); `synth`/`transcribe` on a CPU slot record the
+reason (`placement_reason_for`); a load Auto put on the card that fails, or whose slot's shared
+GPU memory (`_slotSharedMb`, the kit's `processTreeSharedMb`) grows past
+`speech_runtime.spill_mb`, drops the slot and calls `load()` again with `cardFailed`, which lands
+on the CPU and, once there, writes the `no_card` row (`_recordCardFailure`); `synth`/`transcribe` on a CPU slot record the
 first real-time factor after each load (`_record_cpu_speed`, kit column
 `realtime_x`). The device is then `cpu` for a CPU placement, else
 `_resolve_device` = `backend_of(installed_exe())`; `_books_memory` books VRAM for
