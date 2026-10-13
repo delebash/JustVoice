@@ -159,8 +159,23 @@ BUILT:  1, the review (2026-10-13): `docs/plans/2026-10-13-narrowings-review/` �
         newer work on synced computers, S6 a speaker set before the first Analyze is lost). The
         findings live in the register rather than as 138 entries here (the 25-line format).
         Nothing fixed.
-OPEN:   the user's word on the register — A (one word can cover it), B by ID ("your rec" on a group
-        takes its leans), C goes into 2. Then: 2 a plan to adopt everything: every
+        DECIDED 2026-10-13 — shown: the register (README.md at a4b2914: group A, every lean in
+        group B, group C), and in chat: "1. P16: restoring an old backup overwrites, on every
+        synced computer, the work done since that backup, and deletes anything created since …
+        (a) the backup, with a warning before the restore; (b) the other computers' newer work;
+        or (c) a restore starts a new sync library? My lean: (b). Until it's built, (a)'s
+        warning, with its words for your approval. 2. S6: a speaker you set before a chapter's
+        first Analyze is silently replaced, though the page says "Lines you set are kept." Keep
+        it (that needs a small design, shown to you first), or let Analyze replace it and say
+        so? My lean: keep it." · "A: 22 code fixes and the record corrections … Go on A?" · "B:
+        about 90 questions, each with my lean … 'your rec' on a group takes its leans." · "C: 18
+        items for the adoption plan … The plan comes to you before any of it is built." The
+        user: "your rec on all go". Where a lean says the words or a design come to you first
+        (P16's warning, S6's design, S12's tags, R8's note, B3's hover, C5's hint, K3's prompt,
+        M7's controls, P29/P35/P41's wording, P11's list, P26's comparison), they come back
+        before that part ships.
+OPEN:   A and B as decided above; the words and designs listed there, to the user; C goes into
+        2. Then: 2 a plan to adopt everything: every
         audio.cpp speech model offered by default, the seven hand-wired engines on the same
         path, what our fork adds in our fork's own specs, what the app needs in each family's
         curated file — with its blast radius, for the user's word. Then slice 6's last steps,
