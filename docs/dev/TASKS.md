@@ -78,19 +78,6 @@ OPEN:   DECIDED 2026-10-11 ("your rec on all", answer 10 — "VoxCPM2: on lines 
         the line carries direction; the capability note and the manifest header say so.
 GO:     given 2026-10-11 — built with the engine list's direction data.
 
-### FINDING — the release recipe's frozen server dies on start, and never contains the kit
-STATE:  FINDING — measured 2026-10-05 (stack study §1, §10). Tracked at your word: "track all
-        side finidngs".
-BUILT:  `.github/workflows/release.yml:68-74` freezes `server/justvoice/__main__.py`, whose
-        `from .serve import main` (`__main__.py:25`) dies as a top-level script: "attempted
-        relative import with no known parent package". `release.yml:42` installs `./server[dev]`
-        without the `bundle` extra, so `llm_runner` is never in the build. An absolute-import
-        entry with `--collect-submodules justvoice --collect-submodules llm_runner --collect-data
-        justvoice` builds 76.9 MB and runs.
-OPEN:   an absolute-import entry and the `bundle` extra in the recipe — or nothing, if the
-        Electron move ("The family moves to Electron…" below) retires PyInstaller first.
-GO:     needed.
-
 ### FINDING — `synthetic_keys.rs` empties the clipboard after a paste and hard-codes the macOS V
 STATE:  FINDING — code-verified 2026-10-05 (stack study §4.3). Dead code: nothing calls
         `paste_final_text`.
@@ -317,6 +304,38 @@ OPEN:   the plan doc `docs/plans/2026-10-11-audiocpp-engine-catalog.md`; the use
 GO:     given 2026-10-11 ("go ahead and complete the engine stuff"); a NOT STANDARD piece in
         the plan waits for its own word.
 
+### Slice 6, the fork, the stale tracker lines, the CPU retry and the refusal seen live (decided 2026-10-13)
+STATE:  DECIDED 2026-10-13 — asked "whats next", shown: "1. Slice 6 of the engine list. Move our
+        fork onto upstream v0.9.1 and rerun the catalog script, so its 11 new model families show
+        up in the app. Then publish fork release jv.6 and pin it. A release needs your word." The
+        fork: "keep it as it is, keep the DSP inside it, and send no routine pull requests? My
+        lean: yes on all three." The stale lines: "The licence item still says "the real tab with
+        the rest of slice 4". The real tab was built 2026-10-11, with the download gate following
+        our reading of the licence. · The "eight questions" item still says 4 and 7 are "asked
+        again". The next item, "Four answers…" (2026-10-10), answered them. · The release-recipe
+        finding about PyInstaller. The Electron move retired PyInstaller." Questions: "1. Start
+        slice 6? My lean: yes. First I'd check whether upstream now has a release newer than
+        v0.9.1. 2. Your answer on the fork. 3. Check the three stale lines and fix them? My lean:
+        yes. 4. Force the spill and the refusal once in the app? My lean: yes. It's quick, and
+        those paths have only unit tests behind them." The user: "your rec on all only do a
+        release if you need to this is still testing on the so i dont see why we need a release
+        but that is up to you to decide, i want to get everthing fixed so we can get back to the
+        one-click audiobook plan , go".
+WHY:    the one-click plan needs every audio.cpp model in the app first (the order of work above).
+NOT:    a fork release the work doesn't need (the user's word: still testing).
+BUILT:  2 — the fork entry below, decided. 3 — checked in the code and fixed: the licence item
+        (the server reads the curated licence, `audiocpp/generated.js` `engineFacts`); the eight
+        questions' 4 and 7 (answered in "Four answers…"); the PyInstaller finding deleted
+        (`.github/workflows/release.yml` builds the Electron installer). 4 — through the app,
+        RESEARCH §10.14 "Forcing a spill and a refusal": the AI model's refusal came with the
+        approved words; a spill or a failed card load couldn't be forced from outside (the
+        card's admission refuses first, and a program starting mid-load loses the race).
+        FINDING from 4, for the user's word: with another program holding the card, Auto still
+        says "nothing else is on the graphics card" and the admission refuses — no CPU — naming
+        the sleeping AI model as "Resident" and saying "unload something first".
+OPEN:   1 (slice 6); the FINDING above.
+GO:     given 2026-10-13.
+
 ### Every speech engine's licence in plain words, on hover and in the opened engine (decided 2026-10-11)
 STATE:  DECIDED 2026-10-11 — the user: "i want you to do a summary just like you showed me of
         like the conditional ect and add that to our db notes on hover" · "why would we take it
@@ -344,8 +363,10 @@ BUILT:  2026-10-11 — all 32 speech engines' licences read at their source (RES
         (Higgs → Conditional; IndexTTS2, FireRedTTS3, FireRedAudio → Unclear; AuK, ZipVoice → No;
         MOSS-TTSD, VieNeu → Yes). The mock reads those files: the filter's option meanings, the
         chip's hover, a line in the opened engine, the licence prompt.
-OPEN:   the real tab with the rest of slice 4 — the server's commercial-use word, download gate
-        and TERMS text still come from audio.cpp's table until then.
+        The server too: `audiocpp/generated.js` `engineFacts` reads the curated `LICENCE`, so the
+        tab's word, the download gate (`TERMS`, anything but "Yes") and the prompt's text are
+        our reading, audio.cpp's word beside it where they differ (`readingOf`).
+OPEN:   —
 GO:     given 2026-10-11 ("your rec on all go").
 
 ### The download test's first findings: VieNeu hidden, MioTTS's codec fetched (decided 2026-10-11)
@@ -430,8 +451,9 @@ BUILT:  2026-10-12 — 1: the check credits the AI models' memory when a card lo
         (`placementFor`, its own branch after the failed-load one); a test; engines.md "When the
         graphics card can't take a model". 5: the mock's OmniVoice rows carry `runs_on: "gpu"`
         (`services/mock/speechEnginesMock.js`) and the mock page passes it to `memoryText`.
-OPEN:   — (not checked live: a card load that really fails or spills, and a real refusal; unit
-        tests only).
+OPEN:   — (checked live 2026-10-13, RESEARCH §10.14 "Forcing a spill and a refusal": the AI
+        model's refusal; a card load that really fails or spills couldn't be forced from outside
+        this machine and stays unit-tested only).
         The new words (decided 2026-10-13) — shown: "1. The tab's memory line for a model tried
         on the card first: "needs about 10 GB · more than this card has". Today it says "too big
         for this card — Load runs it on the CPU", which is no longer true. My lean: yes. It
@@ -664,8 +686,11 @@ OPEN:   the download test (slice 2's acceptance) — RAN 2026-10-11/12, RESEARCH
         from its doc before trying it again." The user: "your rec go". All four done.
 GO:     given 2026-10-11 ("your rec on all go"); 2026-10-12 ("your rec go").
 
-### OPEN — the audio.cpp fork: keep it as it is, the DSP inside it, no routine pull requests?
-STATE:  OPEN — your call (asked 2026-10-11; the user: "these are questions not decisions").
+### The audio.cpp fork: kept as it is, the DSP inside it, no routine pull requests (decided 2026-10-13)
+STATE:  DECIDED 2026-10-13 — the recommendation below, asked again 2026-10-13 ("keep it as it is,
+        keep the DSP inside it, and send no routine pull requests? My lean: yes on all three");
+        the user: "your rec on all … go" (the entry "Slice 6, the fork, …" above). Asked first
+        2026-10-11 (the user: "these are questions not decisions").
         The user's questions and comments: "we cant rely on the maintainer accpeting anything …
         we should not hold up anyting becuase of them" · "i dont think we automatically offer our
         fixes as pull requests that could get to bussy for maintainer" · on the DSP: "if dsp is
@@ -678,10 +703,11 @@ STATE:  OPEN — your call (asked 2026-10-11; the user: "these are questions not
         character-voice work pairs those AI tools with the DSP's effects; split only if DSP
         releases ever wait too long); no pull requests unless you ask for a specific one.
 WHY:    the fork is needed; the DSP never conflicts with upstream merges.
-NOT:    —
-BUILT:  —
-OPEN:   your answer.
-GO:     needed.
+NOT:    a separate DSP repo (only if DSP releases ever wait too long); pull requests upstream
+        unless the user asks for a specific one.
+BUILT:  nothing to build — the fork stays as it is.
+OPEN:   —
+GO:     given 2026-10-13 ("your rec on all … go").
 
 ### No restrictions beyond the final app: sidecars and tools in any language (decided 2026-10-11)
 STATE:  DECIDED 2026-10-11 — the user: "stop with the no python ruling that is just for the
@@ -817,10 +843,11 @@ BUILT:  1 — the measurement ran 2026-10-10 (plan 2026-10-09 voice-training fin
         the deciding part, the user's ears. 2 — kit 1347b49 (a re-tune asked while the load finishes
         runs once it does; the real-router smoke 8/8). 3 — nothing to build. 5 — nothing to build.
         6 — pushed (kit, JustWrite, docgen). 8 — both servers stopped 2026-10-10.
-OPEN:   1 — DONE 2026-10-10: two listening rounds; voice training moved to IDEAS ("your rec on all
-        go"), the experiment's temp files deleted; 7 — not built: VERSION is in the
-        render cache key (render_core.js `_inputsKey`), so changing it marks every rendered line
-        stale — asked again; 4 — asked again.
+OPEN:   none — 1 done 2026-10-10: two listening rounds; voice training moved to IDEAS ("your rec on
+        all go"), the experiment's temp files deleted. 4 and 7 were asked again and answered in
+        "Four answers…" below (2026-10-10): the paragraph is on the tab
+        (`SpeechEnginesTab.vue`), and the render key keeps its own `RENDER_KEY_VERSION`
+        (`server/src/version.js`).
 GO:     given 2026-10-09 ("your rec all go").
 
 ### Four answers: the version, the engines paragraph, the clone clip cap, two pushes (decided 2026-10-10)

@@ -3005,6 +3005,25 @@ corrected above.
   a load. llama.cpp's 9.3 GB is not a spill: it holds its CPU-side weights in pinned host memory
   (about the CPU-held share above), which WDDM counts as shared — so Shared Usage is a spill
   signal for audio.cpp, not for llama.cpp.
+- **Forcing a spill and a refusal through the app** (2026-10-13, the live check of the CPU
+  retry and the RAM door). With `spill_mb` at 0, VoxCPM2 under Auto loaded on the card: the
+  speech server's Shared Usage was 78 MB before and after, so no growth and no retry. A second
+  llama-server (the 12B, `-ngl 36`) holding 6,490 of the card's 8,192 MB *before* the load:
+  Auto still said "nothing else is on the graphics card" (`placementFor` weighs only the AI
+  model and the price) and the card's admission refused at once — "not enough memory to load
+  voxcpm2: it needs ~2937 MB (+1024 MB safety margin) but only 1703 MB free … Resident:
+  gemma-4-26b-a4b-qat (6834 MB · asleep)" — no CPU retry (a refused booking isn't a failed
+  load), and the message names the sleeping AI model, not the program that held the card.
+  The same server started 0.5 s *after* the load began lost the race: VoxCPM2 took 2,935 MB
+  dedicated at 78 MB shared, and llama.cpp b11239 fitted itself to what was left (2,953 MB
+  dedicated, 486 MB shared). So a real spill or a failed card load can't be forced from
+  outside on this machine without a tool that grabs the card mid-load; those two paths stay
+  unit-tested only. The RAM door, forced: the 26B stopped, a script holding 11,776 MB left
+  7,166 MB free, and the load ended in the runner's error "not enough memory to load
+  gemma-4-26b-a4b-qat: it took about 9.6 GB of this machine's memory when it last loaded here
+  (+1024 MB safety margin) but only 6.9 GB of this machine's 31.9 GB is free. Close other
+  programs, or pick a smaller model." — the approved words, by the measured reading; with the
+  script stopped it loaded. — *measured through the app, 2026-10-13*.
 - **OmniVoice fits the card** (2026-10-12): pinned to the GPU it loaded in 6 s, spoke the line in
   3 s and read back 100 %; the card's memory in use went 700 → 1,928 MB (about 1.2 GB) and its
   server's RAM 526 MB. On the CPU (Auto, by audio.cpp's 10 GB estimate) the same line took 80 s
