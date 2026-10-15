@@ -5,9 +5,13 @@
 // speech-recognition engines, captions stay on Qwen3-ASR's aligner, a model with no direction file
 // can't be directed yet and offers only the emotions its file maps, and a model that can speak
 // without a clip warms up on a full-length piece.
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
 import { endState, useState } from "./engines_helpers.js";
+import { tmpPath } from "./helpers.js";
 import * as captures from "../src/api/captures_api.js";
+import * as speechCache from "../src/speech_cache.js";
 import { listVoices } from "../src/api/voices_api.js";
 import * as generated from "../src/engines/audiocpp/generated.js";
 import * as slot from "../src/engines/audiocpp/slot.js";
@@ -51,14 +55,19 @@ test("a model does what its spec says: copies a voice, makes one from words, spe
   expect(does("irodori_tts", "irodori_tts-irodorittsv3vdesign")).toEqual({ clone: false, design: true, voices: 0 });
   expect(does("irodori_tts", "irodori_tts-irodoritts")).toEqual({ clone: true, design: true, voices: 0 });
   expect(does("irodori_tts", "irodori_tts-irodorittsv3500m")).toEqual({ clone: true, design: false, voices: 0 });
-  // A family that designs with no voice-design entry: its Text to speech entry takes the words.
-  expect(does("maya1", "maya1")).toEqual({ clone: false, design: true, voices: 0 });
   expect(does("moss_voicegen", "moss_voicegen")).toEqual({ clone: false, design: true, voices: 0 });
+  // Only voice-design entries make a voice from words, as audio.cpp's own Voice design tab lists
+  // them (the plan's E5): Maya1 and OmniVoice have none — Maya1 speaks its one voice, with its
+  // voice description a setting; OmniVoice's instruction is its direction (E3).
+  expect(does("maya1", "maya1")).toEqual({ clone: false, design: false, voices: 1 });
+  expect(does("omnivoice", "omnivoice")).toEqual({ clone: true, design: false, voices: 0 });
+  expect(does("omnivoice", "omnivoice-voicetuttts")).toEqual({ clone: true, design: false, voices: 0 });
   // A model whose spec names no voice speaks in its one voice.
   expect(does("piper_tts", "piper_tts")).toEqual({ clone: false, design: false, voices: 1 });
   // The capability rows say the same: the Clone and Design pickers read them.
   expect(lookup("breeze_tts")).toMatchObject({ supports_voice_cloning: true, supports_voice_design: true });
-  expect(lookup("maya1")).toMatchObject({ supports_voice_cloning: false, supports_voice_design: true, supports_clone_prompt_text: false });
+  expect(lookup("maya1")).toMatchObject({ supports_voice_cloning: false, supports_voice_design: false, supports_clone_prompt_text: false });
+  expect(lookup("omnivoice").supports_voice_design).toBe(false);
   expect(lookup("supertonic")).toMatchObject({ supports_voice_cloning: false, supports_voice_design: false });
   // The engine's capabilities are its models'.
   expect(engines.get("irodori_tts").CAPABILITIES).toMatchObject({ voice_cloning: true, voice_design: true, preset_voices: false });
@@ -138,9 +147,8 @@ test("a designed voice goes in the option the spec's voice design takes, with th
   // FireRedAudio is registered for its clone entry: the voice-design entry's template goes too.
   expect(described(modelRow("firered_audio", "firered_audio")).options).toEqual({ template_name: "voice_design", instruct: "A warm, low voice." });
   expect(described(modelRow("fireredtts3", "fireredtts3-fireredtts3instruct")).options).toMatchObject({ template_name: "voice_design", instruct: "A warm, low voice." });
-  expect(described(modelRow("maya1", "maya1")).options).toEqual({ instruct: "A warm, low voice." });
   // A design with no description is refused by name, in the hand-wired models' words.
-  expect(() => slot.toSpeechRequest(modelRow("maya1", "maya1"), { voice_id: "v", text: "Hi." })).toThrow(/renders from a voice description and this voice has none/);
+  expect(() => slot.toSpeechRequest(modelRow("moss_voicegen", "moss_voicegen"), { voice_id: "v", text: "Hi." })).toThrow(/renders from a voice description and this voice has none/);
   expect(() => slot.toSpeechRequest(modelRow("breeze_tts", "breeze_tts"), { voice_id: "v", text: "Hi." })).toThrow(/neither a reference clip nor a description/);
   // The same model with a clip clones, and takes the line's direction as its file says.
   const clone = described(modelRow("breeze_tts", "breeze_tts"), { audio_prompt_path: "C:\\clips\\hatter.wav" });
@@ -202,11 +210,12 @@ test("a model that speaks without a clip warms up on a full-length piece; a clon
   expect(k[0][1].voice).toBe("Bruno"); // the spec's default voice
   expect(k[0][1].input.length).toBeGreaterThan(300);
   expect(k[0][1].input.length).toBeLessThanOrEqual(380);
-  // From a description on a design model: the one audio.cpp gives the option (Maya1's control
-  // list, Breeze's spec), else Qwen3 VoiceDesign's warm-up words.
+  // Maya1 in its one voice: its required voice description at audio.cpp's own default.
   const [maya, m] = warmSlot("maya1", modelRow("maya1", "maya1"));
   expect(await maya._warm(800)).toBe(true);
   expect(m[0][1].options.instruct).toBe("Warm female voice with an American accent and conversational pacing.");
+  // From a description on a design model: the one audio.cpp gives the option (Breeze's spec),
+  // else Qwen3 VoiceDesign's warm-up words.
   const [breeze, b] = warmSlot("breeze_tts", modelRow("breeze_tts", "breeze_tts"));
   expect(await breeze._warm(800)).toBe(true);
   expect(b[0][1].options.instruct).toBe("Speak clearly and naturally.");
@@ -214,11 +223,6 @@ test("a model that speaks without a clip warms up on a full-length piece; a clon
   const [moss, g] = warmSlot("moss_voicegen", modelRow("moss_voicegen", "moss_voicegen"));
   await moss._warm(800);
   expect(g[0][1].options.instruct).toBe("A calm, clear narrator.");
-  // OmniVoice takes only its own words as a description; with none it speaks its auto voice.
-  const [omni, o] = warmSlot("omnivoice", modelRow("omnivoice", "omnivoice"));
-  expect(await omni._warm(800)).toBe(true);
-  expect(o[0][1].options).toBeUndefined();
-  expect(o[0][1].voice_ref).toBeUndefined();
   // In its one voice.
   const [piper, p] = warmSlot("piper_tts", modelRow("piper_tts", "piper_tts"));
   expect(await piper._warm(0)).toBe(false); // nothing to calibrate: a short warm-up
@@ -274,4 +278,66 @@ test("dictation is ready with whichever recogniser is loaded", async () => {
     currentVariantId: () => "parakeet_tdt-q8",
   });
   expect(_sttReadiness()).toMatchObject({ ready: true, display_name: engines.get("parakeet_tdt").VARIANTS.find((v) => v.id === "parakeet_tdt-q8").name });
+});
+
+test("a family's instruction is its direction where its file says so (E3), else a setting", () => {
+  // OmniVoice takes only its own words there (gender, age, pitch, "whisper", accents): of a line's
+  // direction only whispered is one, so nothing else is sent — never a word it refuses.
+  const omni = modelRow("omnivoice", "omnivoice");
+  const say = (delivery) =>
+    slot.toSpeechRequest(omni, { voice_id: "v", text: "Hi.", audio_prompt_path: "C:\\c.wav", ref_text: "Hello.", delivery });
+  expect(say({ emotion: "whispered", instruct: "whispered. hushed" }).options).toEqual({ instruct: "whisper" });
+  expect(say({ emotion: "sad", instruct: "sad. weary" }).options).toBeUndefined();
+  expect(say({ instruct: "slowly, with care" }).options).toBeUndefined();
+  expect(say({ emotion: "whispered" }).reference_text).toBe("Hello."); // its clone needs the words
+  expect(lookup("omnivoice").emotions).toEqual(["whispered"]);
+  expect(lookup("omnivoice-voicetuttts").emotions).toEqual(["whispered"]);
+  // MOSS-TTSD and MOSS-TTS v1.5: the line's direction in words.
+  const ttsd = slot.toSpeechRequest(modelRow("moss_ttsd", "moss_ttsd"), {
+    voice_id: "v",
+    text: "Hi.",
+    audio_prompt_path: "C:\\c.wav",
+    delivery: { instruct: "Brisk and cheerful." },
+  });
+  expect(ttsd.options).toMatchObject({ instruct: "Brisk and cheerful." });
+  expect(vmod.directedBy("moss_tts_v15")).toBe("words");
+  // Not a setting where the app sets it (or, dots.tts, its Edit template's); Maya1's voice
+  // description is one, at audio.cpp's default.
+  for (const model of ["omnivoice", "moss_ttsd", "breeze_tts", "fireredtts3-fireredtts3base", "irodori_tts-irodorittsv3500m", "dots_tts-dotsttssoar"]) {
+    expect(lookup(model).knobs.some((k) => k.key === "instruct" || k.key === "instruction"), model).toBe(false);
+  }
+  const description = "Warm female voice with an American accent and conversational pacing.";
+  expect(lookup("maya1").knobs.find((k) => k.key === "instruct")).toMatchObject({ type: "text", default: description });
+  // Required, so a line that leaves it unset sends audio.cpp's own; a set one wins.
+  const maya = modelRow("maya1", "maya1");
+  expect(slot.toSpeechRequest(maya, { voice_id: "maya1_model_default", text: "Hi." }).options.instruct).toBe(description);
+  const set = slot.toSpeechRequest(maya, { voice_id: "maya1_model_default", text: "Hi.", delivery: { engine: { instruct: "An old sailor." } } });
+  expect(set.options.instruct).toBe("An old sailor.");
+});
+
+test("a speech and a recognition model on one package share one copy on disk", async () => {
+  const dir = tmpPath();
+  // LFM2.5-Audio's recogniser keeps its files in its speech model's folder.
+  const stt = ["lfm2_audio_asr", "lfm2_audio_asr-lfm2audioasr-q8"];
+  const tts = ["lfm2_audio", "lfm2_audio-lfm2audiotts-q8"];
+  expect(speechCache.variantDir(dir, ...stt)).toBe(speechCache.variantDir(dir, ...tts));
+  expect(speechCache.filesOwner("firered_audio_asr", "firered_audio_asr-q8")).toEqual(["firered_audio", "firered_audio-q8"]);
+  expect(speechCache.filesOwner("canary_asr", "canary_asr-q8")).toEqual(["canary_asr", "canary_asr-q8"]);
+  // One download, and both see it.
+  const vdir = String(speechCache.variantDir(dir, ...tts));
+  mkdirSync(vdir, { recursive: true });
+  writeFileSync(path.join(vdir, "m.gguf"), "x");
+  writeFileSync(path.join(vdir, "files.json"), JSON.stringify({ files: [{ path: "m.gguf", size: 1 }] }));
+  expect(speechCache.variantOnDisk(dir, ...tts)).toBe(true);
+  expect(speechCache.variantOnDisk(dir, ...stt)).toBe(true);
+  expect(speechCache.anyVariantOnDisk(dir, "lfm2_audio_asr")).toBe(true);
+  // Deleting the recognition engine's models deletes the one copy.
+  useState(dir);
+  try {
+    const mgr = new manager.EngineManager();
+    await mgr.uninstall("lfm2_audio_asr");
+    expect(existsSync(vdir)).toBe(false);
+  } finally {
+    endState();
+  }
 });

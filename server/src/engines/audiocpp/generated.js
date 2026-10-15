@@ -32,6 +32,7 @@ import * as kokoro from "../kokoro/manifest.js";
 import * as pocket from "../pocket/manifest.js";
 import * as qwen3 from "../qwen3/manifest.js";
 import * as voxcpm2 from "../voxcpm2/manifest.js";
+import * as speechCache from "../../speech_cache.js";
 import { CURATED } from "./curated/index.js";
 
 export const CATALOG = JSON.parse(readFileSync(new URL("./catalog.json", import.meta.url), "utf8"));
@@ -74,15 +75,31 @@ export const modelName = (m) =>
  * language, the seed) or a family file's direction does (docs/plans/2026-10-11-audiocpp-engine-
  * catalog.md §5). A family file's `HIDDEN_OPTIONS` hides more of its own. */
 export const APP_OWNED_OPTIONS = new Set([
-  "text", "reference_text", "prompt_text", "language", "lang", "seed", "voice", "voice_id", "speaker", "instruct",
-  "instruction", "emotion_text", "use_emotion_text", "emotion_vector", "template_name",
+  "text", "reference_text", "prompt_text", "language", "lang", "seed", "voice", "voice_id", "speaker",
+  "emotion_text", "use_emotion_text", "emotion_vector", "template_name",
 ]);
+// A family's instruction (`instruct`, `instruction` before v0.9.2) is the app's only where the app
+// sets it: the family's direction goes there (its file's `DIRECTION`, the plan's E3), or a
+// voice-design model's description does. Elsewhere it is a setting, as the spec makes it (Maya1's
+// voice description).
+const INSTRUCTION = new Set(["instruct", "instruction"]);
+function appInstructs(family, name) {
+  const current = currentOptionName(family, name);
+  const dir = CURATED[family]?.DIRECTION;
+  const directs = [dir?.option, ...Object.keys(dir?.set || {})].filter(Boolean).map((o) => currentOptionName(family, o));
+  if (directs.includes(current)) return true;
+  const designs = (CATALOG.families[family]?.entries || []).some((e) => e.task === "vdes");
+  return designs && designOptionOf(family) === current;
+}
 // Not offered as settings either: the host splits long lines, and renders don't stream.
 const NOT_SETTINGS = (name) => name.startsWith("stream") || name.startsWith("text_chunk");
 
 /** Whether a line may set `name` on this family's model through its settings. */
 export const isSetting = (family, name) =>
-  !APP_OWNED_OPTIONS.has(name) && !NOT_SETTINGS(name) && !(CURATED[family]?.HIDDEN_OPTIONS || []).includes(name);
+  !APP_OWNED_OPTIONS.has(name) &&
+  !(INSTRUCTION.has(name) && appInstructs(family, name)) &&
+  !NOT_SETTINGS(name) &&
+  !(CURATED[family]?.HIDDEN_OPTIONS || []).includes(name);
 
 /** A setting's name as the family's spec has it now: audio.cpp renamed some (v0.9.2 …), and the
  * family's file maps each old name to its new one (`OLD_OPTION_NAMES`; docs/plans/2026-10-13-
@@ -209,6 +226,23 @@ export function catalogFamily(family) {
   return CATALOG.families[family] ?? null;
 }
 
+/** The options a family's spec marks required that a line may set (Maya1's voice description),
+ * each at audio.cpp's own default for it — its spec's, else its control list's — {name: value}:
+ * sent when a line leaves one unset, as audio.cpp's own web UI sends its controls' values. One with
+ * no default anywhere isn't (audio.cpp then says what is missing). */
+export function requiredDefaultsOf(family) {
+  const fam = catalogFamily(family);
+  const out = {};
+  for (const o of (fam?.options || {}).request || []) {
+    if (!o.required || !isSetting(family, o.name)) continue;
+    const p = [...(fam.params || []), ...fam.entries.flatMap((e) => e.params || [])].find((x) => x.name === o.name);
+    const def = o.default ?? (p?.default === "" ? undefined : p?.default);
+    const value = def === undefined || def === null ? undefined : coerceOption(o, def);
+    if (value !== undefined) out[o.name] = value;
+  }
+  return out;
+}
+
 /** The family's request options by name (its spec's typed `options.request`). */
 export function requestOptionsOf(family) {
   const fam = catalogFamily(family);
@@ -221,7 +255,6 @@ export function requestOptionsOf(family) {
 export const listsOptions = (family) => requestOptionsOf(family).size > 0;
 
 const clones = (fam) => (fam.capabilities?.clone || []).includes("speaker_reference") || (fam.capabilities?.tts || []).includes("speaker_reference");
-const designs = (fam) => (fam.capabilities?.design || []).includes("voice_design") || (fam.capabilities?.tts || []).includes("voice_design");
 
 /** A package the app can download and register: GGUF, every file at the pinned revision. Returns
  * the package with its model file (the entry's own file where it names one), or null. */
@@ -312,9 +345,8 @@ function modelIdOf(fam, engineId, r, runnable) {
  * - `clone`: the family copies a voice from a clip (`speaker_reference`) and one of the model's
  *   entries is on the Text to speech tab — unless our family file says it can't yet (VieNeu,
  *   decided 2026-10-13, the narrowings review K2: `NOT_CLONING_YET`);
- * - `design`: one of its entries is a voice-design (`vdes`) entry — or, in a family that designs
- *   (`voice_design`) and has no `vdes` entry at all, its Text to speech entry (Maya1, OmniVoice);
- *   `designEntry` is the entry a description goes to;
+ * - `design`: one of its entries is a voice-design (`vdes`) entry — the entries audio.cpp's own
+ *   Voice design tab offers (the plan's E5); `designEntry` is the entry a description goes to;
  * - `voices`: its entries' built-in voices (the spec's `ui.builtin_voices`, else its voice
  *   option's choices), `defaultVoice` the spec's own;
  * - `ownVoice`: a model that does none of these speaks in its one voice, audio.cpp's
@@ -325,8 +357,9 @@ function speechFactsOf(fam, entries) {
   const tab = entries.filter((e) => e.task === "tts" || e.task === "clon");
   const vdes = entries.find((e) => e.task === "vdes") ?? null;
   const clone = clones(fam) && tab.length > 0 && !cur?.NOT_CLONING_YET;
-  const familyHasVdes = fam.entries.some((e) => e.task === "vdes");
-  const designEntry = vdes ?? (designs(fam) && !familyHasVdes ? (tab.find((e) => e.task === "tts") ?? null) : null);
+  // A voice from words is a voice-design entry's, as audio.cpp's own Voice design tab lists them
+  // (the plan's E5).
+  const designEntry = vdes;
   const voices = [];
   for (const e of entries) for (const v of e.builtin_voices || []) if (!voices.includes(v)) voices.push(v);
   const defaultVoice = entries.map((e) => e.default_voice).find((v) => v && voices.includes(v)) ?? voices[0] ?? null;
@@ -494,14 +527,11 @@ function speechRequestFacts(m) {
     out.design = template ? { template_name: String(template) } : {};
     // What its warm-up speaks from (slot._warmGenerated): the description audio.cpp itself gives
     // the option — its spec's default (Breeze's "Speak clearly and naturally."), else its control
-    // list's (Maya1's) — or, for a Text to speech entry that designs, nothing at all: such an entry
-    // speaks with no voice (audio.cpp's "Model default"; OmniVoice's auto voice), and OmniVoice
-    // takes only its own list of words as a description.
+    // list's.
     const option = designOptionOf(m.family);
     const fromSpec = option ? requestOptionsOf(m.family).get(option)?.default : null;
     const fromParams = [...(m.designEntry.params || []), ...(m.fam.params || [])].find((p) => p.name === option && p.default)?.default;
     if (fromSpec || fromParams) out.design_example = String(fromSpec || fromParams);
-    else if (m.designEntry.task === "tts") out.design_unvoiced = true;
   }
   return out;
 }
@@ -536,6 +566,8 @@ function variantRow(m, { pkg, main }, label = null) {
       family: m.family,
       task: m.entry.task,
       file: main,
+      // audio.cpp's package: one copy on disk for every engine that uses it.
+      package: pkg.id,
       generated: true,
       model: m.modelId,
       ...sessionFiles(m),
@@ -652,6 +684,23 @@ export function generatedEngines() {
       };
     }
     _engines.set(engineId, mod);
+  }
+  // A recognition model on a package a speech model of its family uses (FireRedAudio, LFM2.5-Audio)
+  // keeps its files in that model's folder: one download, seen by both (speech_cache.variantDir).
+  const speaking = new Map();
+  for (const [engineId, mod] of _engines) {
+    if (mod.KIND !== "tts") continue;
+    for (const v of mod.VARIANTS) {
+      const key = `${v.audiocpp.family}/${v.audiocpp.package}`;
+      if (!speaking.has(key)) speaking.set(key, [engineId, v.id]);
+    }
+  }
+  for (const [engineId, mod] of _engines) {
+    if (mod.KIND !== "stt") continue;
+    for (const v of mod.VARIANTS) {
+      const owner = speaking.get(`${v.audiocpp.family}/${v.audiocpp.package}`);
+      if (owner) speechCache.shareVariantFiles(engineId, v.id, ...owner);
+    }
   }
   return _engines;
 }

@@ -370,7 +370,7 @@ this persona's note in, to edit; it never happens on its own. The model is
 **Qwen3 VoiceDesign** (a separate 2.8 GB download from Qwen3's CustomVoice and
 Base, 1.7B only) or **VoxCPM2** — or, since 2026-10-15, one of audio.cpp's other
 models that make a voice from words: Breeze TTS 2, FireRedTTS3, FireRedAudio,
-Irodori-TTS, MOSS-VoiceGenerator, Maya1 or OmniVoice
+Irodori-TTS or MOSS-VoiceGenerator
 ([Engines](engines.md#every-other-model-audiocpp-has)). A design model invents a voice afresh on
 every call — ask twice for the same description and you get two different
 people — which is why keeping a take matters for a voice that must stay one

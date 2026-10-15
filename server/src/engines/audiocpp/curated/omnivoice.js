@@ -14,3 +14,18 @@ export const LICENCE = {
 // one model names it after the family; OmniVoice had one until our fork's catalog gave
 // VoiceTut-TTS an entry (2026-10-15), so its own entry keeps the id it had.
 export const MODEL_IDS = { omnivoice: "omnivoice" };
+
+// Its direction (the adoption plan's E3: OmniVoice's `instruct` becomes its direction option).
+// OmniVoice takes only its own words there — gender, age, pitch, "whisper", accents and Chinese
+// dialects — and refuses anything else ("unsupported OmniVoice instruct items",
+// ../audio.cpp/src/models/omnivoice/prompt_builder.cpp:311-460). Of a line's direction only the
+// whispered emotion is one of them; nothing else is sent, so it is never refused. Not yet tested by
+// JustVoice.
+export const DIRECTION = {
+  kind: "phrases",
+  option: "instruct",
+  phrases: { whispered: "whisper" },
+};
+
+export const TESTED = null;
+export const BEST_FOR = [];

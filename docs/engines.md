@@ -334,13 +334,17 @@ not listed.)
   LFM2.5-Audio, Voxtral 4B TTS, Kitten TTS 2's language presets); elsewhere the gender
   is *Not known* — set one on Voices if you want Smart-assign to use it. A model
   whose description names no voice — Piper TTS, Inflect, sanoTTS, Soprano, VibeVoice,
-  LFM2.5-Audio's Japanese model — speaks in its one voice, listed as **Model
-  default**, audio.cpp's own name for it.
-- **Makes a voice from words** — the persona page's *New design* offers it beside
-  Qwen3 VoiceDesign and VoxCPM2: Breeze TTS 2, FireRedTTS3 Instruct, FireRedAudio,
-  Irodori-TTS (v4, and its own v3 VoiceDesign model), MOSS-VoiceGenerator, Maya1 and
-  OmniVoice. The description goes to the model as its voice description, with the
-  voice-design mode audio.cpp's own *Voice design* tab uses for it.
+  Maya1, LFM2.5-Audio's Japanese model — speaks in its one voice, listed as **Model
+  default**, audio.cpp's own name for it. Maya1's voice is shaped by its *Voice
+  description* setting (persona page → Sampling); until you set one it speaks with
+  audio.cpp's own, *Warm female voice with an American accent and conversational
+  pacing.*
+- **Makes a voice from words** — the models audio.cpp's own *Voice design* tab
+  lists, which the persona page's *New design* offers beside Qwen3 VoiceDesign and
+  VoxCPM2: Breeze TTS 2, FireRedTTS3 Instruct, FireRedAudio, Irodori-TTS (v4, and its
+  own v3 VoiceDesign model) and MOSS-VoiceGenerator. The description goes to the
+  model as its voice description, with the voice-design mode audio.cpp's tab uses
+  for it.
 - **VieNeu-TTS v3 Turbo** is listed without cloning: it needs a *speaker
   embedding* that audio.cpp can't make from a clip yet, so it speaks in its one
   voice.
@@ -351,8 +355,8 @@ clone a voice from, and transcripts for other apps. Word timings — chapter
 captions and `/v1/align` — need an aligner, and audio.cpp has only Qwen3's, so a
 caption request loads Qwen3-ASR in the speech-recognition slot, whichever
 recogniser was there. Where a family both speaks and recognises speech
-(FireRedAudio, LFM2.5-Audio), each has its own engine, and each downloads its own
-copy of the model.
+(FireRedAudio, LFM2.5-Audio), each has its own engine, and the two share one
+download: on disk once, shown as downloaded on both, deleted from both together.
 
 **What each engine tells you, before you download anything:**
 
@@ -496,6 +500,8 @@ filters**.
 | **Breeze TTS 2** | The direction as its instruction, with its guidance raised to 4 on a directed line unless you set it yourself |
 | **Higgs Audio 3** | Its own emotion and style tags — happy, sad, angry, fearful, contemptuous (as disgust), whispered, shouted. It reads any other tag aloud, so nothing else is sent |
 | **Fish Audio S2 Pro** | The emotion as a tag and the direction as a short description at the start of the line |
+| **MOSS-TTSD**, **MOSS-TTS v1.5** | The line's direction in words, as its instruction (since 2026-10-15; not yet tested by JustVoice) |
+| **OmniVoice** (and VoiceTut-TTS) | Only *whispered*, as its own word *whisper*: OmniVoice takes nothing but its own list of words there (gender, age, pitch, whisper, accents) and refuses anything else, so no other emotion and no written direction is sent (since 2026-10-15; not yet tested) |
 
 **Settings come from the model too.** An engine from audio.cpp shows its own
 settings — sliders, and also dropdowns, on/off switches and text fields where

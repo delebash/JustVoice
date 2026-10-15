@@ -2,8 +2,10 @@
 // dots.tts — what audio.cpp's spec can't say (docs/plans/2026-10-11-audiocpp-engine-catalog.md §4).
 
 // Not settings (decided 2026-10-15, E15): `source_text` and `target_text` belong to its Edit
-// template, which the app never sends.
-export const HIDDEN_OPTIONS = ["source_text", "target_text"];
+// template, which the app never sends — and so does `instruct`, its "Structured DotTTS Edit
+// instruction" (a setting nowhere before; the plan's slice 2 made a family's instruction a setting
+// where the app doesn't set it).
+export const HIDDEN_OPTIONS = ["source_text", "target_text", "instruct"];
 
 // Its licence in plain words — can a person sell an audiobook made with it? Our reading of the
 // licence at its source, checked 2026-10-11 (RESEARCH §10.13); the licence itself is what counts.

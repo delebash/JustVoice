@@ -1815,13 +1815,20 @@ export class EngineManager {
     // The booking goes with the memory, as on every other unload path.
     for (const kind of freed) this._releaseEngine(kind, engineId);
     const removed = [];
-    let root;
+    let dirs;
     try {
-      root = path.join(paths.speechCacheRoot(appState.getState().dataDir), engineId);
+      const dataDir = appState.getState().dataDir;
+      // Its folder, and the folders of the models whose one copy another engine keeps (a
+      // recognition model on its family's speech package — speech_cache.shareVariantFiles).
+      dirs = [
+        path.join(paths.speechCacheRoot(dataDir), engineId),
+        ...speechCache.sharedVariantsOf(engineId).map((v) => String(speechCache.variantDir(dataDir, engineId, v))),
+      ];
     } catch {
-      root = null; // bare tests / no app state
+      dirs = []; // bare tests / no app state
     }
-    if (root !== null && existsSync(root)) {
+    for (const root of dirs) {
+      if (!existsSync(root)) continue;
       self._rmtree(root);
       if (existsSync(root)) {
         // A file the runtime still holds open (Windows refuses the delete).
@@ -1829,7 +1836,7 @@ export class EngineManager {
           `some ${m.name} model files are still in use and were not deleted — unload the model and try again (${root})`,
         );
       }
-      removed.push("models");
+      if (!removed.includes("models")) removed.push("models");
     }
     return { engine_id: engineId, removed };
   }

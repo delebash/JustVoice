@@ -15,3 +15,13 @@ export const LICENCE = {
   url: "https://huggingface.co/OpenMOSS-Team/MOSS-TTSD-v1.0",
   checked: "2026-10-11",
 };
+
+// Its direction (the adoption plan's E3: its `instruct` becomes its direction option): the line's
+// direction, in words, as its instruction. Not yet tested by JustVoice.
+export const DIRECTION = {
+  kind: "words",
+  option: "instruct",
+};
+
+export const TESTED = null;
+export const BEST_FOR = [];

@@ -593,10 +593,6 @@ export class AudioCppSlot {
     let body;
     if (spec.default_voice) {
       body = { voice_id: spec.default_voice, text, seed: 1 };
-    } else if (spec.design && spec.design_unvoiced) {
-      // A Text to speech entry that designs speaks with no voice at all (OmniVoice's auto voice).
-      await srv.speech({ model: this._row.id, input: text, seed: 1 });
-      return Boolean(n);
     } else if (spec.design) {
       body = { text, seed: 1, delivery: { instruct: spec.design_example || WARM_DESCRIPTION } };
     } else {
@@ -1121,6 +1117,9 @@ export function generatedSpeechRequest(row, body, req) {
     const value = opt ? generated.coerceOption(opt, v) : v;
     if (value !== undefined) options[k] = value;
   }
+  // A required setting the line leaves unset goes at audio.cpp's own default (Maya1's voice
+  // description).
+  for (const [k, v] of Object.entries(generated.requiredDefaultsOf(family))) if (!Object.hasOwn(options, k)) options[k] = v;
   // The direction's options; the defaults it brings (Breeze's guidance) yield to the model's
   // settings.
   Object.assign(options, dir.options);

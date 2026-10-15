@@ -16,3 +16,13 @@ export const LICENCE = {
 export const OLD_OPTION_NAMES = {
   tokens: "duration_frames",
 };
+
+// Its direction (the adoption plan's E3: its `instruct` becomes its direction option): the line's
+// direction, in words, as its instruction. Not yet tested by JustVoice.
+export const DIRECTION = {
+  kind: "words",
+  option: "instruct",
+};
+
+export const TESTED = null;
+export const BEST_FOR = [];

@@ -40,8 +40,28 @@ const log = getLogger("justvoice.speech_cache");
 export const MANIFEST_NAME = "files.json";
 const HF_BASE = "https://huggingface.co";
 
+// A variant whose files are another engine's variant's: one copy on disk, in the owner's folder
+// (a family that speaks and recognises speech from one package — FireRedAudio, LFM2.5-Audio — is
+// a speech engine and a recognition engine; engines/audiocpp/generated.js registers them).
+// "<engine>/<variant>" → [owner engine, owner variant].
+const SHARED = new Map();
+
+/** `engineId`'s `variantId` keeps its files in `ownerEngine`'s `ownerVariant` folder. */
+export function shareVariantFiles(engineId, variantId, ownerEngine, ownerVariant) {
+  SHARED.set(`${engineId}/${variantId}`, [ownerEngine, ownerVariant]);
+}
+
+/** [engine, variant] whose folder holds this variant's files. */
+export const filesOwner = (engineId, variantId) => SHARED.get(`${engineId}/${variantId}`) ?? [engineId, variantId];
+
+/** The variants of `engineId` whose files are in another engine's folder, by variant id. */
+export function sharedVariantsOf(engineId) {
+  return [...SHARED.keys()].filter((k) => k.startsWith(`${engineId}/`)).map((k) => k.slice(engineId.length + 1));
+}
+
 export function variantDir(dataDir, engineId, variantId) {
-  return path.join(speechCacheRoot(String(dataDir)), engineId, variantId);
+  const [owner, ownerVariant] = filesOwner(engineId, variantId);
+  return path.join(speechCacheRoot(String(dataDir)), owner, ownerVariant);
 }
 
 /** The variant's files.json, or null (absent/unreadable — not truth). */
@@ -80,9 +100,9 @@ export function anyVariantOnDisk(dataDir, engineId) {
       .filter((d) => d.isDirectory())
       .map((d) => d.name);
   } catch {
-    return false;
+    children = [];
   }
-  return children.some((name) => self.variantOnDisk(dataDir, engineId, name));
+  return [...children, ...sharedVariantsOf(engineId)].some((name) => self.variantOnDisk(dataDir, engineId, name));
 }
 
 /** Recorded total bytes of the variant (manifest sum; 0 when absent). */
@@ -107,7 +127,8 @@ export function _downloadKwargs() {
 // (audit 2026-10-04 §5 E6).
 const FETCH_LOCKS = new Map();
 function fetchLock(engineId, variantId) {
-  const key = `${engineId}/${variantId}`;
+  // By the folder the files go to: two engines sharing one copy fetch it once.
+  const key = filesOwner(engineId, variantId).join("/");
   if (!FETCH_LOCKS.has(key)) FETCH_LOCKS.set(key, new Mutex());
   return FETCH_LOCKS.get(key);
 }

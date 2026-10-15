@@ -410,7 +410,8 @@ family that speaks is a speech engine, its models doing what the spec says
 (`speechFactsOf`: `clone`, `design` from a `vdes` entry, built-in `voices` as its
 `STATIC_VOICES` via `builtinVoicesOf`, else its one "Model default" voice), and its
 Speech to text entries are a speech-recognition engine (`generatedRecognisers`,
-`<family>_asr` where the family also speaks) — the adoption plan's slice 2,
+`<family>_asr` where the family also speaks, keeping its files in the speech model's
+folder when they share a package — `speech_cache.shareVariantFiles`) — the adoption plan's slice 2,
 `docs/plans/2026-10-13-adopt-everything-audiocpp.md` (`generatedEngines()`, joined in
 `manager.discoverEngines`). Its speech models become capability rows
 (`capability_details.js`, `settingsOf` for typed settings), its requests
@@ -421,7 +422,9 @@ warms up (`slot._warmGenerated`) — a clone-only model is priced after its firs
 model, what testing found, a voice's gender and language from audio.cpp's docs — is
 one file per family in `engines/audiocpp/curated/<family>.js` (`LICENCE`,
 `DIRECTION`, `PLAIN`, `TESTED`, `BEST_FOR`, `HIDDEN_OPTIONS`, `VOICES`,
-`NOT_CLONING_YET`); a family without `DIRECTION` "can't be directed yet"
+`NOT_CLONING_YET`); a family's `instruct` is the app's only where its `DIRECTION` or its
+voice-design model uses it, else a setting (`isSetting`), and a required setting goes at
+audio.cpp's own default (`requiredDefaultsOf`); a family without `DIRECTION` "can't be directed yet"
 (`direction_known` false → `directed_by: "not_yet"`), and one without `LICENCE`
 shows audio.cpp's licence table (`engineFacts`, `by: "audio.cpp"`). `LICENCE` is our
 reading of the licence at its source (RESEARCH §10.13); `generated.engineFacts`
