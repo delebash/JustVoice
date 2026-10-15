@@ -1219,6 +1219,47 @@ progress {
   .jv-knob-grid { grid-template-columns: minmax(0, 1fr); }
 }
 
+/* A chain of steps as compact rows — grip · name · its settings inline, each sized to its
+   content with its unit after it · the step's actions — in one box (the Effects chain, mock
+   `_s11`: "each step one row"; drawn in the in-app mock first, decided 2026-10-15,
+   `#/mock/personas/p_june/effects`). One grid for the list and each step a subgrid of it, so the
+   names line up down the list. The settings wrap inside their column; at phone width they move
+   to a row of their own under the name. The grip is the drag handle (VueUse's useSortable). */
+.jv-chain {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: max-content max-content minmax(0, 1fr) max-content;
+  column-gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  /* The kit's number-box width token: a setting's box holds "12000" or "-0.5". */
+  --w-num: 64px;
+}
+.jv-chain__step {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  align-items: center;
+  row-gap: 6px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--line);
+}
+.jv-chain__step:last-child { border-bottom: 0; }
+.jv-chain__grip { display: inline-flex; color: var(--ink-3); cursor: grab; }
+.jv-chain__grip:active { cursor: grabbing; }
+.jv-chain__name { font-weight: 600; white-space: nowrap; }
+.jv-chain__settings { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; min-width: 0; }
+.jv-chain__setting { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.jv-chain__label,
+.jv-chain__unit { font-size: 12.5px; color: var(--ink-3); }
+.jv-chain__actions { grid-column: -2; display: inline-flex; align-items: center; gap: 4px; }
+@media (max-width: 599.98px) {
+  .jv-chain__settings { grid-row: 2; grid-column: 2 / -1; }
+}
+
 /* A block field's label with something at its right end — the tag that
    says which model reads the field (mock `_s7`: "Standing delivery … ✓ qwen3"),
    or a quiet action on it. */

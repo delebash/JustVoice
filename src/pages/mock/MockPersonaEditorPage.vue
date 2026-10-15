@@ -29,7 +29,7 @@ import {
   AppModal, EmptyState, UiButton, UiField, UiInput, UiNumber, UiSegmented, UiSelect,
   UiSlider, UiTag, UiTextarea, confirmDialog, languageName, pushToast, saveBlob,
 } from "@delebash/llm-ui";
-import EffectsChainEditorModal from "../../components/EffectsChainEditorModal.vue";
+import MockEffectsChainEditor from "../../components/mock/MockEffectsChainEditor.vue";
 import SlashTagMenu from "../../components/SlashTagMenu.vue";
 import { usePageCrumbs } from "../../composables/usePageCrumbs.js";
 import { facetCounts, facetOptions, facetTotal, narrowed } from "../../services/facets.js";
@@ -53,7 +53,9 @@ const voices = computed(() => store.voices);
 
 // ── The persona being edited ────────────────────────────────────────────
 const SHARED = ["speed", "pitch", "gain_db", "pause_before", "pause_after"];
-const personaId = computed(() => (route.name === "mock-persona" ? String(route.params.id || "") : ""));
+// `mock-persona-effects` is the same page with its Effects chain editor open (the chain list drawn
+// compact — the build's question 9, 2026-10-15).
+const personaId = computed(() => (["mock-persona", "mock-persona-effects"].includes(route.name) ? String(route.params.id || "") : ""));
 const isNew = computed(() => personaId.value === "new");
 const missing = ref(false);
 const saved = ref(null);
@@ -387,6 +389,7 @@ function rollSeed() {
 
 // ── Effects, lexicon ────────────────────────────────────────────────────
 const effectsOpen = ref(false);
+watch(() => route.name, (name) => { if (name === "mock-persona-effects") effectsOpen.value = true; }, { immediate: true });
 function onEffectsSaved(chain) {
   draft.value.effects_chain = chain;
   effectsOpen.value = false;
@@ -898,8 +901,9 @@ watch([() => draft.value?.name, isNew], publishCrumbs, { immediate: true });
       </div>
     </template>
 
-    <EffectsChainEditorModal v-if="draft" :open="effectsOpen" v-model="draft.effects_chain"
-      :context-label="draft.name || 'Persona'" @save="onEffectsSaved" @cancel="effectsOpen = false" />
+    <MockEffectsChainEditor v-if="draft" :open="effectsOpen" v-model="draft.effects_chain"
+      :context-label="draft.name || 'Persona'" :persona="voice ? { ...draft, model_name: modelName } : null"
+      @save="onEffectsSaved" @cancel="effectsOpen = false" />
 
     <AppModal v-if="compareOpen" eyebrow="Compare settings" :title="draft?.name || 'This persona'"
       :max-width="'640px'" dismissable @close="compareOpen = false">

@@ -83,7 +83,12 @@ const PERSONAS = [
     voice_instruct: "Clipped, world-weary. Dry wit. Boston accent under stress.",
     note: "Tired but sharp; warm only with Marius.",
     default_delivery: { speed: 1.05, gain_db: -1, models: {} },
-    effects_chain: [{ type: "reverb", params: {} }, { type: "eq_low", params: {} }],
+    // Mock `_s11`'s chain (the Effects chain mock, 2026-10-15): EQ, then compression, the room last.
+    effects_chain: [
+      { type: "eq_low", params: { cutoff_frequency_hz: 120.0, gain_db: -2.0, q: 0.7 } },
+      { type: "compressor", params: { threshold_db: -18.0, ratio: 3.0, attack_ms: 1.0, release_ms: 100.0 } },
+      { type: "reverb", params: { room_size: 0.35, damping: 0.5, wet_level: 0.18, dry_level: 0.4, width: 1.0 } },
+    ],
     lexicon_id: "lx_ninth",
   }),
   persona("p_marius", {

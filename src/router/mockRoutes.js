@@ -22,6 +22,15 @@ export const mockRoutes = [
     component: () => import("../pages/mock/MockPersonaEditorPage.vue"),
     meta: { nav: "personas" },
   },
+  // The persona page with its Effects chain editor open — the chain list drawn compact, each
+  // step one row (the build's question 9, 2026-10-15; mock `_s11`). The build waits for the user
+  // to look at it.
+  {
+    path: "mock/personas/:id/effects",
+    name: "mock-persona-effects",
+    component: () => import("../pages/mock/MockPersonaEditorPage.vue"),
+    meta: { nav: "personas" },
+  },
   // Studio Slice 4 (2026-10-04): Render's chapter grid, one chapter's lines,
   // and Script's chapter grid with the chapter verbs (D7).
   {

@@ -41,6 +41,14 @@ test("every_builtin_preset_uses_only_effects_and_knobs_the_catalog_offers", () =
   }
 });
 
+test("the_effects_mock_shows_the_builtin_presets_as_seeded", async () => {
+  // The in-app mock of the chain editor (src/services/mock/effectsChainMock.js) copies the seed —
+  // the seed imports the database, which a browser page can't — so the copy is held to it here.
+  const { BUILTIN_PRESETS } = await import("../../src/services/mock/effectsChainMock.js");
+  const plain = (presets) => presets.map((p) => ({ name: p.name, chain: JSON.parse(JSON.stringify(p.chain)) }));
+  expect(plain(BUILTIN_PRESETS)).toEqual(plain(BUILTIN_EFFECT_PRESETS));
+});
+
 test("the_catalogs_chorus_knobs_are_the_ones_the_dsp_takes", async () => {
   // A knob the DSP doesn't take makes it skip the whole effect (effects_chain.test.js
   // bad_parameter_name_is_skipped), so the audio would come back as it went in.
