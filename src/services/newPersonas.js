@@ -19,11 +19,16 @@ export function splitByName(speakers, personas) {
   return { byName, rest };
 }
 
-/** The installed voices that speak the book's language — every one when the
- *  book's language isn't set. A voice speaks what its model can speak it in
- *  (`speaks`), else its own language; region aside ("en-GB" speaks "en"). */
+/** What Cast says on a book with no language (decided 2026-10-15, K3): it
+ *  offers no voice until the book's language is set. */
+export const NO_BOOK_LANGUAGE = "Set the book's language on its Overview first — Cast then offers the voices that speak it.";
+
+/** The installed voices that speak the book's language — none while the book's
+ *  language isn't set (decided 2026-10-15, K3; it was every voice). A voice
+ *  speaks what its model can speak it in (`speaks`), else its own language;
+ *  region aside ("en-GB" speaks "en"). */
 export function voicesForBook(voices, bookLanguage) {
-  if (!bookLanguage) return voices;
+  if (!bookLanguage) return [];
   return voices.filter((v) => (v.speaks?.length ? v.speaks : [v.language]).some((c) => sameLanguage(c, bookLanguage)));
 }
 

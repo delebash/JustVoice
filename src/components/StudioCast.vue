@@ -36,7 +36,7 @@ import {
 import { useApi } from "../stores/api.js";
 import PageTaskStrips from "./PageTaskStrips.vue";
 import CastNewPersonas from "./CastNewPersonas.vue";
-import { andList, castModelChoices, smartAssignSpeakers, splitByName, voicesForBook } from "../services/newPersonas.js";
+import { andList, castModelChoices, NO_BOOK_LANGUAGE, smartAssignSpeakers, splitByName, voicesForBook } from "../services/newPersonas.js";
 import { usePersonasStore } from "../stores/personas.js";
 import { projectsService } from "../services/projects.js";
 import { readPref, writePref } from "../services/prefs.js";
@@ -458,6 +458,11 @@ function genderForAi(v) {
 // 2026-10-13, the narrowings review C1; it used to leave the narrator out).
 const smartBusy = ref(false);
 async function smartAssign() {
+  // No book language: Cast asks for it first (decided 2026-10-15, K3).
+  if (!props.project?.language) {
+    pushToast({ kind: "info", message: NO_BOOK_LANGUAGE });
+    return;
+  }
   const people = smartAssignSpeakers(props.speakers);
   if (!people.length) {
     pushToast({ kind: "info", message: "No speakers in this project to assign." });
@@ -558,11 +563,10 @@ async function play(p) {
 // installed voices that speak the book's language (decided 2026-10-05) — the
 // same Smart-assign call, matched to VOICES — and the proposals are shown
 // before anything is made (CastNewPersonas.vue). With no book language set it
-// offers every installed voice — the implementer's choice at first; decided
-// 2026-10-13 (the narrowings review K3): ask for the book's language first.
-// Not built yet: the prompt's words wait on the user, so until then every
-// installed voice. A new persona is named after its speaker, with that voice
-// and an empty note.
+// offered every installed voice — the implementer's choice at first; decided
+// 2026-10-13 (the narrowings review K3): ask for the book's language first, in
+// the words approved 2026-10-15 (NO_BOOK_LANGUAGE). A new persona is named
+// after its speaker, with that voice and an empty note.
 const personasStore = usePersonasStore();
 const withoutPersona = computed(() => props.speakers.filter((s) => !s.persona_id));
 const newAsk = ref(null);     // { byName, proposals, voices } while the list is open
@@ -570,6 +574,10 @@ const newBusy = ref(false);
 async function proposeNewPersonas() {
   const people = withoutPersona.value;
   if (!people.length || newBusy.value) return;
+  if (!props.project?.language) {
+    pushToast({ kind: "info", message: NO_BOOK_LANGUAGE });
+    return;
+  }
   const { byName, rest } = splitByName(people, props.personas);
   const book = props.project?.language;
   // Only voices on a ticked model (Models to choose from).
@@ -732,7 +740,8 @@ const GAME_COLUMNS = [
             title="Unassign every persona — the speakers stay" @click="clearCast" />
         </div>
         <div class="studio-cast__head studio-cast__head--ai">
-          <span v-if="castModelOptions.length" class="studio-cast__models"
+          <span v-if="!project.language" class="jv-hint">{{ NO_BOOK_LANGUAGE }}</span>
+          <span v-else-if="castModelOptions.length" class="studio-cast__models"
             title="Smart-assign and ＋ New persona choose only from voices on these models — saved for this book">
             <span class="jv-hint">Models to choose from</span>
             <UiMultiSelect v-model="castModels" :options="castModelOptions" :filterable="false" width="name"

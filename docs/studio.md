@@ -67,8 +67,11 @@ shows no count because nothing records an export.
   languages your voices' models speak (*English*, *Japanese*, *Korean* …). A
   book imported with a language keeps it (*American English*). When it's set,
   Cast warns on any speaker whose persona speaks another language
-  ([below](#the-speakers-left)); when it isn't, Cast checks nothing. New project
-  asks for it too, and you can change it here at any time.
+  ([below](#the-speakers-left)); when it isn't, Cast checks nothing and offers
+  no voices — Smart-assign and ＋ New persona say *Set the book's language on
+  its Overview first — Cast then offers the voices that speak it.* (since
+  2026-10-15; before, they offered every installed voice). New project asks for
+  it too, and you can change it here at any time.
 - **Kind** — shown, not editable; it is fixed when the project is created.
 - **Mastering target** — what every render is mastered to, and what Export
   checks against. A new project starts on its kind's target — ACX for an
@@ -839,7 +842,9 @@ has none); **All** shows everyone again. When everyone is cast it says
   doesn't spread over several models (each extra model is one more load per
   chapter, and sounds like a different production). It starts on the narrator's
   model when the narrator is cast, else on the model with the most voices; your
-  choice is saved for the book.
+  choice is saved for the book. A book with no **Language** has no list: its
+  place says *Set the book's language on its Overview first — Cast then offers
+  the voices that speak it.*
 - **✨ Smart-assign** sends the speakers (name, *Also called*, *Pronouns*, *Who
   they are*, whole) and your personas whose voice is on a ticked model (name, voice gender, language, note) to your language model,
   which proposes a persona for each speaker. The narrator goes too while it has
@@ -854,7 +859,7 @@ has none); **All** shows everyone again. When everyone is cast it says
   rest, your language model matches each to a voice — from the installed voices
   (an engine counts as installed once the speech runtime is — see
   [Engines → Loading and unloading](engines.md#loading-and-unloading))
-  on the ticked models that speak the book's **Language** (every language when it isn't set),
+  on the ticked models that speak the book's **Language**,
   judging who they are against each voice's gender, language and description.
   Nothing is made yet: a list shows each speaker → voice with **▶** to hear the
   voice, and you untick any you'd rather cast yourself. The model sometimes

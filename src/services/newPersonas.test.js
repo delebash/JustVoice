@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 import { describe, expect, it } from "vitest";
-import { castModelChoices, smartAssignSpeakers, splitByName, voicesForBook } from "./newPersonas.js";
+import { castModelChoices, NO_BOOK_LANGUAGE, smartAssignSpeakers, splitByName, voicesForBook } from "./newPersonas.js";
 
 describe("New persona for the N with none (2026-10-05)", () => {
   it("casts a speaker with the library persona of exactly their name; the rest need one", () => {
@@ -12,14 +12,17 @@ describe("New persona for the N with none (2026-10-05)", () => {
     expect(rest.map((s) => s.id)).toEqual(["s2", "s3"]);
   });
 
-  it("offers the voices that speak the book's language, region aside — all when it isn't set", () => {
+  it("offers the voices that speak the book's language, region aside — none when it isn't set", () => {
     const voices = [
       { id: "a", language: "en-us" }, { id: "b", language: "ko" },
       { id: "c", language: "zh", speaks: ["zh", "en", "ko"] }, { id: "d", language: "en-gb" },
     ];
     expect(voicesForBook(voices, "en").map((v) => v.id)).toEqual(["a", "c", "d"]);
     expect(voicesForBook(voices, "ko").map((v) => v.id)).toEqual(["b", "c"]);
-    expect(voicesForBook(voices, "").length).toBe(4);
+    // Decided 2026-10-15 (K3): Cast asks for the book's language first.
+    expect(voicesForBook(voices, "")).toEqual([]);
+    expect(voicesForBook(voices, null)).toEqual([]);
+    expect(NO_BOOK_LANGUAGE).toBe("Set the book's language on its Overview first — Cast then offers the voices that speak it.");
   });
 });
 
