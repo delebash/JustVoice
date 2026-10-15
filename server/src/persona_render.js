@@ -20,6 +20,7 @@ import { strip, truthy } from "@delebash/llm-runner/platform/py";
 import { PyFloat, pyFloatValue } from "@delebash/llm-runner/platform/pyjson";
 import { chainEntries } from "./audio/effects.js";
 import { composeInstruct, mergeDelivery, nestEngineKeys } from "./delivery_merge.js";
+import { currentSettings, takesSetting } from "./engines/audiocpp/generated.js";
 import * as capabilityDetails from "./engines/capability_details.js";
 import { construct, EMOTION_VALUES, PersonaDelivery } from "./models.js";
 import * as renderCore from "./render_core.js";
@@ -148,11 +149,17 @@ export function checkDelivery(delivery) {
     }
     const name = row.display_name;
     const specs = knobSpecs(model);
-    for (const [key, raw] of Object.entries(ms.knobs || {})) {
+    for (const [key, raw] of Object.entries(currentSettings(model, ms.knobs || {}))) {
       const value = Number(raw);
       const spec = Object.hasOwn(specs, key) ? specs[key] : null;
-      if (spec === null) problems.push(`${name} has no ${key} setting`);
-      else if (!(spec.min <= value && value <= spec.max)) {
+      if (spec === null) {
+        // A setting the model's spec still takes stays valid while it isn't shown (audio.cpp
+        // v0.9.2 dropped some ranges; such a number returns as a number box, the adoption plan's
+        // slice 3): saved before, it still reaches the model, checked against the spec there.
+        if (!takesSetting(model, key)) problems.push(`${name} has no ${key} setting`);
+        continue;
+      }
+      if (!(spec.min <= value && value <= spec.max)) {
         problems.push(`${name}'s ${spec.label} runs ${fmtG(spec.min)}–${fmtG(spec.max)}; ${fmtG(value)} is outside it`);
       }
     }
@@ -164,6 +171,17 @@ export function checkDelivery(delivery) {
     }
   }
   return problems;
+}
+
+/** A delivery ({models: {model: {knobs …}} …}) with each model's settings under their current names
+ * (a generated model's renamed as its family's file says, `generated.currentSettings`) — what the
+ * persona page shows and what is saved back. */
+export function currentDelivery(delivery) {
+  const models = delivery?.models;
+  if (!models || !Object.keys(models).length) return delivery;
+  const out = {};
+  for (const [model, ms] of Object.entries(models)) out[model] = ms?.knobs ? { ...ms, knobs: currentSettings(model, ms.knobs) } : ms;
+  return { ...delivery, models: out };
 }
 
 /** The persona's delivery as a PersonaDelivery (a stored persona carries one; a draft or a
@@ -194,12 +212,16 @@ export function modelSettings(persona, model, line = null) {
   const ms = model && Object.hasOwn(pd.models, model) ? pd.models[model] : null;
   const knobs = {};
   // Numbers stay floats; a choice's word, a switch's on/off and a text field pass as they are.
-  if (ms !== null) for (const [k, v] of Object.entries(ms.knobs)) knobs[k] = typeof v === "string" || typeof v === "boolean" ? v : asFloat(v);
+  // A setting saved under a name audio.cpp has since renamed reads under its new name — the
+  // persona's and the line's each, before the line's wins.
+  if (ms !== null) {
+    for (const [k, v] of Object.entries(currentSettings(model, ms.knobs))) knobs[k] = typeof v === "string" || typeof v === "boolean" ? v : asFloat(v);
+  }
   let emotion = ms !== null ? ms.emotion : null;
   let register = ms !== null ? ms.register_tag : null;
   const seed = ms !== null ? ms.seed : null;
   if (truthy(line)) {
-    Object.assign(knobs, line.knobs || {});
+    Object.assign(knobs, currentSettings(model, line.knobs || {}));
     if ("emotion" in line) emotion = line.emotion || null;
     if ("register_tag" in line) register = line.register_tag || null;
   }

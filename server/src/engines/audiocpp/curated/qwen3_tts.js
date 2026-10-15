@@ -18,3 +18,13 @@ export const TESTED = {
 };
 
 export const BEST_FOR = ["To direct performances in words (CustomVoice)","Someone’s own voice, in 10 languages (Base)","A voice designed from a description (VoiceDesign)"];
+
+// Setting names audio.cpp renamed (its v0.9.2 spec against v0.9.0-jv.5's), old → new: a value saved
+// under the old name is read as the new one (docs/plans/2026-10-13-adopt-everything-audiocpp.md
+// §2, §4). The runtime still reads each old name (../audio.cpp src/models/qwen3_tts/session.cpp:676-699).
+// Applied once this family moves onto the generated path (the plan's slice 4); its hand-wired
+// request keeps the names it sends today.
+export const OLD_OPTION_NAMES = {
+  speaker: "voice_id",
+  instruction: "instruct",
+};

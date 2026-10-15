@@ -9,3 +9,16 @@ export const LICENCE = {
   url: "https://huggingface.co/openbmb/VoxCPM-0.5B",
   checked: "2026-10-11",
 };
+
+// Setting names audio.cpp renamed (its v0.9.2 spec against v0.9.0-jv.5's), old → new: a value saved
+// under the old name is read as the new one (docs/plans/2026-10-13-adopt-everything-audiocpp.md
+// §2, §4). The runtime still reads each old name (../audio.cpp src/community_models/voxcpm1/session.cpp:214-240).
+export const OLD_OPTION_NAMES = {
+  text_embedding_graph_context_mb: "text_embedding_graph_arena_mb",
+  lm_step_graph_context_mb: "lm_step_graph_arena_mb",
+  projection_graph_context_mb: "projection_graph_arena_mb",
+  local_encoder_graph_context_mb: "local_encoder_graph_arena_mb",
+  dit_graph_context_mb: "dit_graph_arena_mb",
+  audiovae_graph_context_mb: "audiovae_graph_arena_mb",
+  audiovae_encoder_graph_context_mb: "audiovae_encoder_graph_arena_mb",
+};

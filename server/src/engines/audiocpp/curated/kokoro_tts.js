@@ -18,3 +18,14 @@ export const TESTED = {
 };
 
 export const BEST_FOR = ["Ready-made voices, fast, on any machine"];
+
+// Setting names audio.cpp renamed (its v0.9.2 spec against v0.9.0-jv.5's), old → new: a value saved
+// under the old name is read as the new one (docs/plans/2026-10-13-adopt-everything-audiocpp.md
+// §2, §4). The runtime still reads each old name (../audio.cpp src/models/kokoro_tts/session.cpp:176-187).
+// Applied once this family moves onto the generated path (the plan's slice 4); its hand-wired
+// request keeps the names it sends today.
+export const OLD_OPTION_NAMES = {
+  predictor_duration_graph_mb: "predictor_duration_graph_arena_mb",
+  predictor_text_graph_mb: "predictor_text_graph_arena_mb",
+  predictor_tail_graph_mb: "predictor_tail_graph_arena_mb",
+};

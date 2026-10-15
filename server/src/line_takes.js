@@ -34,6 +34,7 @@ import * as session from "./database/session.js";
 import { Block, Generation, Project, Scene, Speaker, Take } from "./database/models.js";
 import { notFound } from "./errors.js";
 import { lookup as capabilityRow } from "./engines/capability_details.js";
+import { currentSettings } from "./engines/audiocpp/generated.js";
 import { spokenBlock } from "./extraction/flags.js";
 import { leftOutBlocks } from "./extraction/tags.js";
 import * as mediaPaths from "./media_paths.js";
@@ -203,7 +204,8 @@ export function lineModels(block) {
         throw e;
       }
     }
-    if (Object.keys(knobs).length) entry.knobs = knobs;
+    // A setting saved under a name audio.cpp has since renamed reads under its new name.
+    if (Object.keys(knobs).length) entry.knobs = currentSettings(String(model), knobs);
     for (const key of _WORD_FIELDS) if (typeof s[key] === "string") entry[key] = s[key];
     if (Object.keys(entry).length) out[String(model)] = entry;
   }

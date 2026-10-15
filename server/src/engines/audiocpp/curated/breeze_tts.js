@@ -24,3 +24,10 @@ export const LICENCE = {
   url: "https://huggingface.co/BreezeBlue/Breeze-TTS-2/blob/main/LICENSE",
   checked: "2026-10-11",
 };
+
+// Setting names audio.cpp renamed (its v0.9.2 spec against v0.9.0-jv.5's), old → new: a value saved
+// under the old name is read as the new one (docs/plans/2026-10-13-adopt-everything-audiocpp.md
+// §2, §4). The runtime still reads each old name (../audio.cpp src/models/breeze_tts/session.cpp:378).
+export const OLD_OPTION_NAMES = {
+  instruction: "instruct",
+};

@@ -61,8 +61,11 @@ export async function _view(st, persona, seen = null) {
     }
   }
   const [vm, own] = vid ? (seen.get(vid) ?? [null, null]) : [null, null];
+  const dumped = modelDump(Persona, persona);
   return construct(PersonaView, {
-    ...modelDump(Persona, persona),
+    ...dumped,
+    // Each model's settings under their current names (audio.cpp renamed some, v0.9.2).
+    default_delivery: personaRender.currentDelivery(dumped.default_delivery),
     model: vm ? vm.model : null,
     model_name: vm ? vm.name : null,
     directed_by: vm ? vm.directedBy : null,
@@ -174,7 +177,9 @@ async function _checkedVoice(voiceId) {
   return voiceId;
 }
 
-function _checkedDelivery(delivery) {
+function _checkedDelivery(sent) {
+  // Saved under each setting's current name (audio.cpp renamed some, v0.9.2).
+  const delivery = personaRender.currentDelivery(sent);
   const problems = personaRender.checkDelivery(delivery);
   if (problems.length) throw badRequest(problems.join("; "));
   return delivery;

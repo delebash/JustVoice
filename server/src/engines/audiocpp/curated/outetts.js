@@ -18,3 +18,10 @@ export const LICENCE = {
 // nearly every take — audio.cpp's own default for a quantized clone, seed 42, spoke the Hatter line
 // (and three lines in four).
 export const NOT_OFFERED = "Cloning some voices it generates no audio for most seeds — the Hatter spoke on one seed in eleven.";
+
+// Setting names audio.cpp renamed (its v0.9.2 spec against v0.9.0-jv.5's), old → new: a value saved
+// under the old name is read as the new one (docs/plans/2026-10-13-adopt-everything-audiocpp.md
+// §2, §4). The runtime still reads each old name (../audio.cpp src/community_models/outetts/session.cpp:487).
+export const OLD_OPTION_NAMES = {
+  aligner_path: "forced_aligner_path",
+};

@@ -10,6 +10,8 @@ import * as generated from "../src/engines/audiocpp/generated.js";
 import * as slot from "../src/engines/audiocpp/slot.js";
 import { lookup } from "../src/engines/capability_details.js";
 import * as manager from "../src/engines/manager.js";
+import { lineModels } from "../src/line_takes.js";
+import { checkDelivery, currentDelivery, modelSettings } from "../src/persona_render.js";
 import { tmpPath } from "./helpers.js";
 
 afterEach(() => vi.restoreAllMocks());
@@ -111,10 +113,11 @@ test("IndexTTS's note says it takes direction in words; the other directed famil
 });
 
 test("a setting with no default has none: audio.cpp's own applies", () => {
-  // The narrowings review, E12: Echo TTS's max_duration_sec has no default in its spec.
-  const echo = lookup("echo_tts").knobs.find((k) => k.key === "max_duration_sec");
-  expect(echo).toMatchObject({ type: "number", min: 0.05 });
-  expect(echo.default).toBeNull();
+  // The narrowings review, E12: MioTTS's presence_penalty has no default in its spec (Echo
+  // TTS's max_duration_sec, the example until v0.9.2, lost its lower end there and isn't shown).
+  const mio = lookup("miotts").knobs.find((k) => k.key === "presence_penalty");
+  expect(mio).toMatchObject({ type: "number", min: 0, max: 1 });
+  expect(mio.default).toBeNull();
   expect(lookup("echo_tts").knobs.find((k) => k.key === "num_inference_steps").default).toBe(40);
   expect(slot.toSpeechRequest(rowOf("echo_tts", "echo_tts-q8"), line()).options).toBeUndefined();
 });
@@ -215,7 +218,8 @@ test("a language list that describes is shown as audio.cpp words it, never count
   const omni = generated.generatedEngines().get("omnivoice").VARIANTS;
   expect(omni.every((v) => v.languages_note === "600+ languages")).toBe(true);
   // bf16 and f16 are both 16-bit: the names say which.
-  expect(omni.map((v) => v.name)).toEqual(["OmniVoice", "OmniVoice (16-bit, bf16)", "OmniVoice (16-bit, f16)"]);
+  const own = omni.filter((v) => v.audiocpp.model === "omnivoice");
+  expect(own.map((v) => v.name)).toEqual(["OmniVoice", "OmniVoice (16-bit, bf16)", "OmniVoice (16-bit, f16)"]);
 });
 
 test("a family file keeps out a model that can't speak from text and a clip", () => {
@@ -284,4 +288,50 @@ test("the direction kinds apply as data", () => {
   expect(generated.applyDirection({ kind: "prefix", tags: {} }, { emotion: "neutral", words: "" }).directed).toBe(false);
   expect(generated.coerceOption({ type: "int", min: 1, max: 10 }, "42")).toBe(10);
   expect(generated.coerceOption({ type: "enum", values: ["a"] }, "b")).toBeUndefined();
+});
+
+test("a setting saved under a name audio.cpp has since renamed reaches the model under its new name", () => {
+  // audio.cpp v0.9.2 renamed IndexTTS2's duration_factor and ZipVoice's t_shift (the family
+  // files' OLD_OPTION_NAMES; docs/plans/2026-10-13-adopt-everything-audiocpp.md §2, §4).
+  const index = slot.toSpeechRequest(rowOf("index_tts2", "index_tts2-indextts25-q8"), line({ delivery: { engine: { duration_factor: 1.3 } } }));
+  expect(index.options).toEqual({ duration_scale: 1.3 });
+  const zip = slot.toSpeechRequest(rowOf("zipvoice", "zipvoice-orig"), line({ delivery: { engine: { t_shift: 0.7 } } }));
+  expect(zip.options).toEqual({ shift: 0.7 });
+  // Both set: the new name's value wins.
+  expect(generated.currentOptionNames("zipvoice", { t_shift: 0.7, shift: 0.4 })).toEqual({ shift: 0.4 });
+  // The setting shows under its new name, with audio.cpp's control for the old one.
+  expect(lookup("zipvoice").knobs.find((k) => k.key === "shift")).toMatchObject({ type: "number", min: 0.05, max: 1 });
+  expect(lookup("index_tts2-indextts25").knobs.find((k) => k.key === "duration_scale")).toMatchObject({ min: 0.5, max: 2 });
+});
+
+test("a persona's and a line's settings under an old name read under the new one; a hand-wired model's don't", () => {
+  const delivery = {
+    models: {
+      zipvoice: { knobs: { t_shift: 0.7, guidance_scale: 1.5 } },
+      // Chatterbox is hand-wired: its own mapping reads s3gen_cfg_rate (the plan's slice 4 moves it).
+      "chatterbox-multilingual": { knobs: { s3gen_cfg_rate: 0.6 } },
+    },
+  };
+  const shown = currentDelivery(delivery);
+  expect(shown.models.zipvoice.knobs).toEqual({ guidance_scale: 1.5, shift: 0.7 });
+  expect(shown.models["chatterbox-multilingual"].knobs).toEqual({ s3gen_cfg_rate: 0.6 });
+  expect(checkDelivery(delivery)).toEqual([]);
+  const [settings] = modelSettings({ default_delivery: delivery }, "zipvoice", { knobs: { t_shift: 0.9 } });
+  // The line's value wins over the persona's (numbers come as PyFloats).
+  expect(Object.keys(settings.engine).sort()).toEqual(["guidance_scale", "shift"]);
+  expect(Number(settings.engine.shift)).toBe(0.9);
+  expect(Number(settings.engine.guidance_scale)).toBe(1.5);
+  const block = { metadata_json: JSON.stringify({ line_models: { zipvoice: { knobs: { t_shift: 0.8 } } } }) };
+  const lineKnobs = lineModels(block).zipvoice.knobs;
+  expect(Object.keys(lineKnobs)).toEqual(["shift"]);
+  expect(Number(lineKnobs.shift)).toBe(0.8);
+});
+
+test("a setting the spec still takes stays valid while it isn't shown; one it doesn't take is refused", () => {
+  // audio.cpp v0.9.2 dropped ZipVoice feat_scale's range, so it isn't a control until numbers
+  // with no range are shown (the plan's slice 3) — a value saved before still goes.
+  expect(lookup("zipvoice").knobs.some((k) => k.key === "feat_scale")).toBe(false);
+  expect(checkDelivery({ models: { zipvoice: { knobs: { feat_scale: 0.2 } } } })).toEqual([]);
+  expect(slot.toSpeechRequest(rowOf("zipvoice", "zipvoice-orig"), line({ delivery: { engine: { feat_scale: 0.2 } } })).options).toEqual({ feat_scale: 0.2 });
+  expect(checkDelivery({ models: { zipvoice: { knobs: { not_an_option: 1 } } } })).toEqual(["ZipVoice has no not_an_option setting"]);
 });

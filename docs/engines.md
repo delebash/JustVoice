@@ -300,9 +300,14 @@ graphics memory at all — measured at 0 MB on both the CUDA and Vulkan builds.
 ## Every other model audio.cpp has
 
 Besides the engines above, Speech engines lists every other speech model the
-speech runtime can run that **copies a voice from a clip** — 22 more engines
+speech runtime can run that **copies a voice from a clip** — 25 more engines
 today, among them IndexTTS 2 and 2.5, CosyVoice3, Breeze TTS 2, Higgs Audio 3,
-Fish Audio S2 Pro, OmniVoice, MOSS-TTS, dots.tts, FireRedTTS3 and VoxCPM1. JustVoice doesn't hand-write these: it builds them from
+Fish Audio S2 Pro, OmniVoice (with VoiceTut-TTS, its Egyptian Arabic fine-tune),
+MOSS-TTS, dots.tts, FireRedTTS3, VoxCPM1, Kitten TTS 2, Sopro V2 Turbo and
+F5-TTS's Habibi-TTS models for Arabic and its dialects. Each offers every download
+audio.cpp's own model manager offers for it — MOSS-TTSD at 4-bit and 16-bit too,
+CosyVoice3 at 32-bit, Breeze TTS 2 at 4-bit, Irodori-TTS's Anime model beside its
+v4 one. JustVoice doesn't hand-write these: it builds them from
 audio.cpp's own description of each model — what it does, its languages, its
 settings, its download files and its licence. When audio.cpp adds a model, the
 next JustVoice update lists it.
@@ -362,6 +367,7 @@ the plain words say what audio.cpp's table says:
 | Fish Audio S2 Pro, Breeze TTS 2 | No | **Separate licence** | Their free licences grant no commercial rights, and each names the separate written licence its maker offers |
 | ZipVoice | Unclear | **No** | Its makers added a non-commercial licence (CC-BY-NC) to it on 2026-10-10 |
 | MOSS-TTSD, VieNeu-TTS v3 Turbo | not listed | **Yes** | Apache-2.0 at their source |
+| F5-TTS (Habibi-TTS) | No | **Conditional** | Its models are licensed two ways: ALG, EGY, IRQ, MAR and MSA under Apache-2.0; Unified, SAU and UAE non-commercial (CC-BY-NC-SA-4.0) because of their training data |
 
 A model that isn't a plain *Yes* asks you to accept its licence once, before
 its first download, showing the same plain words — the same prompt Pocket TTS

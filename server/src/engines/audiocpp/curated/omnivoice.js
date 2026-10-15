@@ -9,3 +9,8 @@ export const LICENCE = {
   url: "https://huggingface.co/k2-fsa/OmniVoice#license",
   checked: "2026-10-11",
 };
+
+// Its model's id (the plan's §4: saved voices, personas and memory prices use it). A family with
+// one model names it after the family; OmniVoice had one until our fork's catalog gave
+// VoiceTut-TTS an entry (2026-10-15), so its own entry keeps the id it had.
+export const MODEL_IDS = { omnivoice: "omnivoice" };

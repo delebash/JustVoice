@@ -11,9 +11,12 @@
 //
 // A model is offered when audio.cpp marks it supported, community or experimental, and one of its
 // GGUF packages is complete at the pinned model revision. Hidden: wip and unsupported (decided
-// 2026-10-11, answer 3). Also left out — mine, not decided: families that don't copy a voice from
-// a clip, voice-design entries, built-in voices and recognition families (TASKS FINDING "the
-// generated engines offer only models that clone a voice"; into the adoption plan).
+// 2026-10-11, answer 3). A model is a catalog entry on audio.cpp's own Text to speech tab
+// (`workflow`, its web UI's `workflowForEntry`), and its downloads are the ones its web UI offers
+// (`install_packages`, `installChoices`) beside the ones offered before (docs/plans/2026-10-13-
+// adopt-everything-audiocpp.md slice 1; nothing offered before is removed). Also left out — mine,
+// not decided: families that don't copy a voice from a clip, voice-design entries, built-in voices
+// and recognition families (the adoption plan's slice 2).
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -68,6 +71,63 @@ const NOT_SETTINGS = (name) => name.startsWith("stream") || name.startsWith("tex
 export const isSetting = (family, name) =>
   !APP_OWNED_OPTIONS.has(name) && !NOT_SETTINGS(name) && !(CURATED[family]?.HIDDEN_OPTIONS || []).includes(name);
 
+/** A setting's name as the family's spec has it now: audio.cpp renamed some (v0.9.2 …), and the
+ * family's file maps each old name to its new one (`OLD_OPTION_NAMES`; docs/plans/2026-10-13-
+ * adopt-everything-audiocpp.md §2, §4). */
+export const currentOptionName = (family, name) => CURATED[family]?.OLD_OPTION_NAMES?.[name] ?? name;
+
+/** The old names the family's file gives an option now called `name`. */
+export const oldNamesOf = (family, name) =>
+  Object.entries(CURATED[family]?.OLD_OPTION_NAMES || {})
+    .filter(([, current]) => current === name)
+    .map(([old]) => old);
+
+/** A family's settings under their current names: a value saved under an old name moves to the
+ * new one, unless the new one is set too, which wins. */
+export function currentOptionNames(family, settings) {
+  const renames = CURATED[family]?.OLD_OPTION_NAMES;
+  if (!renames || !settings) return settings;
+  const out = {};
+  for (const [k, v] of Object.entries(settings)) if (!Object.hasOwn(renames, k)) out[k] = v;
+  for (const [k, v] of Object.entries(settings)) {
+    if (Object.hasOwn(renames, k) && !Object.hasOwn(out, renames[k])) out[renames[k]] = v;
+  }
+  return out;
+}
+
+let _modelFamilies = null;
+
+/** The audio.cpp family of a generated model (its model id, or one of its variant ids), or null
+ * for anything else — a hand-wired engine's settings keep the names its own mapping reads until it
+ * moves onto the generated path (the adoption plan's slice 4). */
+export function generatedFamilyOf(model) {
+  if (_modelFamilies === null) {
+    _modelFamilies = new Map();
+    for (const mod of generatedEngines().values()) {
+      for (const v of mod.VARIANTS) {
+        _modelFamilies.set(v.audiocpp.model, v.audiocpp.family);
+        _modelFamilies.set(v.id, v.audiocpp.family);
+      }
+    }
+  }
+  return _modelFamilies.get(model) ?? null;
+}
+
+/** Whether a generated model's spec takes `name` as a setting (a request option the app doesn't
+ * set itself) — shown as a control or not (a number with no range, until the adoption plan's
+ * slice 3 shows it as a number box). */
+export function takesSetting(model, name) {
+  const family = generatedFamilyOf(model);
+  return family !== null && isSetting(family, name) && requestOptionsOf(family).has(name);
+}
+
+/** A model's saved settings ({name: value}) under their current names — a generated model's
+ * renamed as its family's file says; any other model's as they are. */
+export function currentSettings(model, settings) {
+  const family = generatedFamilyOf(model);
+  return family ? currentOptionNames(family, settings) : settings;
+}
+
 const HAN = /[㐀-鿿]/u;
 const english = (...xs) => xs.find((x) => typeof x === "string" && x.trim() && !HAN.test(x)) ?? "";
 const humanize = (name) => {
@@ -101,7 +161,9 @@ export function settingsOf(m) {
   const out = [];
   for (const o of sources) {
     if (!isSetting(m.family, o.name)) continue;
-    const p = params.get(o.name) || {};
+    // audio.cpp's control list may still name a renamed option the old way (ZipVoice's `t_shift`
+    // for `shift`, IndexTTS's `duration_factor` for `duration_scale`): its control is this one.
+    const p = params.get(o.name) ?? oldNamesOf(m.family, o.name).map((n) => params.get(n)).find(Boolean) ?? {};
     const base = {
       key: o.name,
       label: english(p.label_en, p.label) || humanize(o.name),
@@ -186,10 +248,13 @@ export function generatedModels() {
     if (!(fam.tasks || []).some((t) => t === "tts" || t === "clone")) continue;
     const runnable = [];
     for (const e of fam.entries) {
-      if (!SPEECH_ENTRY_TASKS.has(e.task)) continue;
+      // audio.cpp's Text to speech tab: a `tts` or `clon` entry, unless the entry names another
+      // workflow (DotTTS Edit runs as `tts` with its edit template — a speech editor).
+      if (e.workflow !== "tts" || !SPEECH_ENTRY_TASKS.has(e.task)) continue;
       const pkgs = e.packages.map((id) => usablePackage(fam, id, e.path)).filter(Boolean);
-      if (!pkgs.length) continue;
-      const preferred = pkgs.find((p) => p.pkg.id === e.package) ?? pkgs[0];
+      const offered = (e.install_packages || []).map((c) => ({ choice: c, usable: usablePackage(fam, c.id, null) })).filter((c) => c.usable);
+      if (!pkgs.length && !offered.length) continue;
+      const preferred = pkgs.find((p) => p.pkg.id === e.package) ?? pkgs[0] ?? offered[0].usable;
       // audio.cpp's rule relates packages broadly ("index_tts2" also matches IndexTTS2.5's): a
       // model is its preferred package's precisions only, one package per precision.
       const stem = preferred.pkg.id.replace(PRECISION_STEM, "");
@@ -200,6 +265,13 @@ export function generatedModels() {
         seen.add(tail);
         return true;
       });
+      // Then each download audio.cpp's web UI offers for the entry that isn't one already
+      // (installChoices: every GGUF in an expose-all family's folder, a stem family's precisions —
+      // MOSS-TTSD's 4-bit, CosyVoice3's 32-bit, Irodori's Anime …), with audio.cpp's own label.
+      for (const { choice, usable } of offered) {
+        if (own.some((p) => p.pkg.id === choice.id)) continue;
+        own.push({ ...usable, label: choice.label });
+      }
       // Two entries on one package are one model registered two ways (CosyVoice3's clone and
       // instruct entries): keep one, the plain `tts` task, which takes every template.
       const twin = runnable.find((r) => r.packages[0].pkg.id === preferred.pkg.id);
@@ -210,7 +282,10 @@ export function generatedModels() {
       runnable.push({ entry: e, packages: own });
     }
     for (const r of runnable) {
-      const modelId = runnable.length === 1 ? fam.family : `${fam.family}-${slug(r.entry.id)}`;
+      // A family's file keeps an id a model had before (a family's one model was named after the
+      // family, so a second entry would rename it).
+      const kept = CURATED[fam.family]?.MODEL_IDS?.[r.entry.id];
+      const modelId = kept ?? (runnable.length === 1 ? fam.family : `${fam.family}-${slug(r.entry.id)}`);
       out.push({ modelId, family: fam.family, fam, entry: r.entry, packages: r.packages, curated: CURATED[fam.family] ?? null, single: runnable.length === 1 });
     }
   }
@@ -266,16 +341,18 @@ function sessionFiles(m) {
   return Object.keys(out).length ? { session_files: out } : {};
 }
 
-/** A variant row (a model at one precision) in the hand-wired manifests' shape. */
-function variantRow(m, { pkg, main }) {
+/** A variant row (a model at one precision) in the hand-wired manifests' shape. `label` is
+ * audio.cpp's own word for a second package at a precision the model has already (Irodori's
+ * "Anime Q8" beside its v4 Q8): its id and name say it instead of the precision. */
+function variantRow(m, { pkg, main }, label = null) {
   const tail = PRECISION_TAIL[pkg.precision] || slug(pkg.precision || "gguf");
   const lic = licenceOf(m.fam);
   const name = modelName(m);
   const files = pkg.source.files.map((f) => f.path);
   const langs = speaks(m.fam);
   return {
-    id: `${m.modelId}-${tail}`,
-    name: tail === "q8" ? name : `${name} (${PRECISION_WORDS[tail] || pkg.precision})`,
+    id: label ? `${m.modelId}-${slug(label)}` : `${m.modelId}-${tail}`,
+    name: label ? `${name} (${label})` : tail === "q8" ? name : `${name} (${PRECISION_WORDS[tail] || pkg.precision})`,
     // The family's description is the engine's; a model's own line says only what differs.
     description: PRECISION_WORDS[tail] ? `${PRECISION_WORDS[tail]} weights.` : "",
     languages: langs.languages,
@@ -330,11 +407,25 @@ export function generatedEngines() {
     byFamily.get(m.family).push(m);
   }
   _engines = new Map();
-  for (const [family, models] of byFamily) {
-    const fam = models[0].fam;
+  for (const [family, unordered] of byFamily) {
+    const fam = unordered[0].fam;
     const lic = licenceOf(fam);
     const curated = CURATED[family] ?? null;
-    const variants = models.flatMap((m) => m.packages.map((p) => variantRow(m, p)));
+    // The model holding the spec's recommended package first — the engine's default — the rest in
+    // the catalog's order (audio.cpp's v0.9.2 catalog lists DotTTS MeanFlow before SOAR, its
+    // recommended one).
+    const recommended = (m) => m.packages.some((p) => p.pkg.id === fam.ui?.recommended_package);
+    const models = [...unordered.filter(recommended), ...unordered.filter((m) => !recommended(m))];
+    const variants = models.flatMap((m) => {
+      // A precision's first package keeps the id and name it always had.
+      const taken = new Set();
+      return m.packages.map((p) => {
+        const tail = PRECISION_TAIL[p.pkg.precision] || slug(p.pkg.precision || "gguf");
+        const first = !taken.has(tail);
+        taken.add(tail);
+        return variantRow(m, p, first ? null : p.label || p.pkg.id);
+      });
+    });
     // bf16 and f16 are both "16-bit": where one model has both, each name says which.
     for (const v of variants) {
       if (variants.filter((w) => w.name === v.name).length > 1) v._twin = true;

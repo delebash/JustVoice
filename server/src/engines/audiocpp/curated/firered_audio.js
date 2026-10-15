@@ -10,3 +10,14 @@ export const LICENCE = {
   url: "https://huggingface.co/FireRedTeam/FireRedAudio",
   checked: "2026-10-11",
 };
+
+// Setting names audio.cpp renamed (its v0.9.2 spec against v0.9.0-jv.5's), old → new: a value saved
+// under the old name is read as the new one (docs/plans/2026-10-13-adopt-everything-audiocpp.md
+// §2, §4). The runtime still reads each old name (../audio.cpp src/models/firered_audio/session.cpp:126-153).
+export const OLD_OPTION_NAMES = {
+  instruction: "instruct",
+  max_new_audio_steps: "max_audio_steps",
+  min_new_audio_steps: "min_audio_steps",
+  max_new_text_tokens: "max_text_tokens",
+  max_new_tokens: "max_tokens",
+};

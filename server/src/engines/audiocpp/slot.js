@@ -1020,7 +1020,8 @@ export function generatedSpeechRequest(row, body, req) {
   const words = splitWs(get(delivery, "instruct") || "").join(" ");
   const dir = generated.applyDirection(curated?.DIRECTION ?? null, { emotion: get(delivery, "emotion"), words });
   const options = {};
-  for (const [k, v] of Object.entries(knobs)) {
+  // A setting saved under a name audio.cpp has since renamed goes under its new name.
+  for (const [k, v] of Object.entries(generated.currentOptionNames(family, knobs))) {
     // Never one the app sets itself or the family's file hides, even saved before it was hidden.
     if (!generated.isSetting(family, k)) continue;
     const spec = specOpts.get(k);

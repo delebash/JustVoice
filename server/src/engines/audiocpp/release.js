@@ -64,9 +64,12 @@ export function pinnedHas(feature) {
   return BUILDS_IN_ORDER.indexOf(cfg.TAG) >= BUILDS_IN_ORDER.indexOf(first);
 }
 
-// The model files: audio.cpp's own GGUF packages. Commit pinned 2026-10-01.
+// The model files: audio.cpp's own GGUF packages. Commit pinned 2026-10-15: the repo's newest
+// (2026-10-11, "Add Voxtral 4B TTS"), the first to hold every package audio.cpp v0.9.2's specs
+// name (Pocket French, Voxtral TTS, Breeze Q4_0 …). From the commit pinned before (7bf52723,
+// 2026-10-01) no file changed but README.md and .gitattributes; 81 were added.
 export const MODEL_REPO = "audio-cpp/audio.cpp-gguf";
-export const MODEL_REVISION = "7bf52723f5a95b6cec53ea905fd10eca1c8b942e";
+export const MODEL_REVISION = "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5";
 
 export const SERVER_EXE = process.platform === "win32" ? "audiocpp_server.exe" : "audiocpp_server";
 

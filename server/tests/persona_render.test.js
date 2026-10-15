@@ -186,6 +186,17 @@ test("patch_refuses_a_setting_the_model_does_not_have", async () => {
   expect(r.status).toBe(422); // the field is gone, not ignored
 });
 
+test("a_setting_sent_under_a_name_audio_cpp_renamed_is_kept_under_its_new_name", async () => {
+  // audio.cpp v0.9.2 renamed ZipVoice's t_shift to shift (curated/zipvoice.js OLD_OPTION_NAMES).
+  const c = await api();
+  const pid = (await c.post("/v1/personas", { json: { name: "June", voice_id: "Sohee" } })).json().id;
+  let r = await c.patch(`/v1/personas/${pid}`, { json: { default_delivery: { models: { zipvoice: { knobs: { t_shift: 0.7 } } } } } });
+  expect(r.status, r.text).toBe(200);
+  expect(r.json().default_delivery.models.zipvoice.knobs).toEqual({ shift: 0.7 });
+  r = await c.get(`/v1/personas/${pid}`);
+  expect(r.json().default_delivery.models.zipvoice.knobs).toEqual({ shift: 0.7 });
+});
+
 test("a_new_voice_brings_its_own_language", async () => {
   // Decided 2026-10-05: picking a voice sets Speaks to that voice's language — the server
   // kept the old one while the new voice could speak it until 2026-10-13.

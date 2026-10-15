@@ -15,6 +15,7 @@ import * as cosyvoice3 from "./cosyvoice3.js";
 import * as dots_tts from "./dots_tts.js";
 import * as dramabox from "./dramabox.js";
 import * as echo_tts from "./echo_tts.js";
+import * as f5_tts from "./f5_tts.js";
 import * as firered_audio from "./firered_audio.js";
 import * as fireredtts3 from "./fireredtts3.js";
 import * as fish_audio from "./fish_audio.js";
@@ -23,7 +24,10 @@ import * as higgs_audio_tts from "./higgs_audio_tts.js";
 import * as index_tts2 from "./index_tts2.js";
 import * as irodori_tts from "./irodori_tts.js";
 import * as kitten_tts from "./kitten_tts.js";
+import * as kitten_tts2 from "./kitten_tts2.js";
 import * as kokoro_tts from "./kokoro_tts.js";
+import * as kugelaudio from "./kugelaudio.js";
+import * as lfm2_audio from "./lfm2_audio.js";
 import * as miotts from "./miotts.js";
 import * as moss_tts_local from "./moss_tts_local.js";
 import * as moss_tts_nano from "./moss_tts_nano.js";
@@ -34,6 +38,7 @@ import * as outetts from "./outetts.js";
 import * as pocket_tts from "./pocket_tts.js";
 import * as qwen3_asr from "./qwen3_asr.js";
 import * as qwen3_tts from "./qwen3_tts.js";
+import * as sopro_tts from "./sopro_tts.js";
 import * as vieneu_v3_turbo from "./vieneu_v3_turbo.js";
 import * as voxcpm1 from "./voxcpm1.js";
 import * as voxcpm2 from "./voxcpm2.js";
@@ -49,6 +54,7 @@ export const CURATED = {
   dots_tts,
   dramabox,
   echo_tts,
+  f5_tts,
   firered_audio,
   fireredtts3,
   fish_audio,
@@ -57,7 +63,10 @@ export const CURATED = {
   index_tts2,
   irodori_tts,
   kitten_tts,
+  kitten_tts2,
   kokoro_tts,
+  kugelaudio,
+  lfm2_audio,
   miotts,
   moss_tts_local,
   moss_tts_nano,
@@ -68,6 +77,7 @@ export const CURATED = {
   pocket_tts,
   qwen3_asr,
   qwen3_tts,
+  sopro_tts,
   vieneu_v3_turbo,
   voxcpm1,
   voxcpm2,
