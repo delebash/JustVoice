@@ -57,6 +57,17 @@
     program, then press Retry.*, and **Retry** starts the server again. A
     JustVoice server left on the port is asked to shut down before it is stopped ([Run
     modes](run-modes.md), [Troubleshooting](troubleshooting.md))
+  - New project: the table of sources says plainly what each brings in — its file endings under
+    its name, **What lands**, and **Says who speaks?** (yes or no) — with no internal field names
+    ([Projects](projects.md))
+  - Lexicons: the note that only Kokoro speaks IPA is an amber warning under the entries, and how
+    many lines the lexicon touches is its own **Affects** card ([Lexicons](lexicons.md))
+  - Effects: **Add effect** offers **Chorus**, with Rate (Hz), Depth, Centre delay (ms),
+    Feedback and Mix; the Effects page names it in Robotic's chain, where it showed "chorus"
+    ([Effects](effects.md))
+  - On a phone (a window under 600 px) the title bar is one row: ☰, Back, the page name, the
+    status, ✨ and Help; the project's chips, the model pills, the server address and Forward wait
+    for a wider window ([Run modes](run-modes.md))
   - Settings → Channels is hidden: routing a persona's audio to an output device of your
     computer isn't built, and nothing used a channel.
     Settings → Limits loses *Request body max bytes*, which nothing used. Re-import's **What is

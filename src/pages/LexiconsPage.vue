@@ -879,7 +879,7 @@ onActivated(() => {
 }
 .lex__table :deep(.ui-table tbody td) {
   padding: 8px 6px;
-  border-bottom: 1px solid var(--line-soft);
+  border-bottom: 1px solid var(--line);
   vertical-align: middle;
 }
 

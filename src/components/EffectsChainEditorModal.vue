@@ -63,6 +63,7 @@ const FALLBACK_CATALOG = [
   { type: "compressor",  label: "Compressor",      params: [] },
   { type: "pitch_shift", label: "Pitch shift",     params: [] },
   { type: "delay",       label: "Delay",           params: [] },
+  { type: "chorus",      label: "Chorus",          params: [] },
   { type: "highpass",    label: "High-pass",       params: [] },
   { type: "lowpass",     label: "Low-pass",        params: [] },
   { type: "eq_low",      label: "EQ — Low shelf",  params: [] },
