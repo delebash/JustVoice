@@ -195,6 +195,19 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
   each family's code still reads the old name, but no spec has an alias field (a few say so in
   a description). So a setting saved under an old name needs our own map once `catalog.json`
   is built from v0.9.2's specs. — *code, 2026-10-15* · the v0.9.2 merge's spec diff.
+- v0.9.2's specs drop numeric bounds the runtime doesn't enforce (ZipVoice shift / feat_scale /
+  target_rms, GLM-TTS top_p, Echo TTS max_duration_sec's minimum, IndexTTS duration_scale), as
+  `model_specs.md` says; `model_params.json` still names some options the old way (ZipVoice
+  `t_shift`, IndexTTS2 `duration_factor` / `lang`). Families check request options against their
+  spec (`validate_spec_backed_request_options`) and read a renamed option under both names
+  (`zipvoice/session.cpp:316,326`, `index_tts2/request.cpp:171`, `cosyvoice3/session.cpp:175`);
+  the jv.5 build reads only the old names. Chatterbox's `flow_guidance_scale` is "captured
+  during clone preparation; changing it on the same prepared session is rejected"
+  (`chatterbox/loader.cpp:43`). Settings saved under an old name keep working through each
+  family's `OLD_OPTION_NAMES` (curated files; applied in `slot.js`, `persona_render.js`,
+  `personas_api.js`, `line_takes.js`). Gone with no successor: CosyVoice3's session
+  `conv_weight_type` (accepted and ignored), FireRedAudio's `helper_graph_arena_mb`. —
+  *code, 2026-10-15* · JustVoice `439d904`.
 - **eSpeak NG:** Kokoro reads only the environment variables `AUDIOCPP_ESPEAK_LIBRARY` /
   `AUDIOCPP_ESPEAK_DATA`, else loads `espeak-ng.dll` / `libespeak-ng.dll` by name; Kitten reads
   `kitten_tts.espeak_library_path` / `kitten_tts.espeak_data_path`; Kokoro refuses a session
@@ -398,6 +411,20 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
   needs a model folder). v0.9.2's release workflow adds `lib-*` archives,
   `server-config-examples.zip` and a Windows Vulkan-portable build; the `bin-*` names
   `release.js` pins are unchanged. — *git + build + ctest, 2026-10-15*.
+- **The catalog at v0.9.2** (adoption slice 1, JustVoice `439d904`): built at `jv` `4d2f1a2b`
+  — the merge plus our additions in our fork's own specs (`68c3ead0`: Kokoro `voice_pack`,
+  Chatterbox he/ru/zh/ja, Turbo/Nano cloning packages, VoxCPM2 `reference_text`), catalog
+  entries for packages that had none (`21607a3a`: F5-TTS's Habibi checkpoints, VoiceTut-TTS,
+  QwenCleo-ASR, DotTTS Edit, Turbo cloning and Nano) and our Qwen3 0.6B CustomVoice
+  (`4d2f1a2b`). 122 families (50 speech), 386 packages, 190 entries; built-in voices 193 (171
+  speech) in 13 families; options 1,028 request / 587 session / 9 load; 25 generated engines
+  with 64 downloads, none of the 47 before removed. `MODEL_REVISION` `f861648c` (2026-10-11):
+  81 files added since `7bf52723`, none changed. 13 files named by v0.9.2's specs are missing
+  at their sources (audio8_asr ×2, upstream's `chatterbox-turbo-f16.gguf`, mms_forced_aligner
+  q8, Orukeet ×2, reuse ×2, sortformer_diar_v2 ×5). The catalog is built ahead of the pin, so
+  the pin test skips until jv.6 is pinned; until then the packaged and headless app (jv.5)
+  lists Kitten TTS 2 without being able to load it, and sends renamed settings under names
+  jv.5 doesn't read. — *git + HF API + tests, 2026-10-15*.
 
 ### 1.5 audio.cpp's own web UI
 
@@ -436,6 +463,14 @@ All *code*, our checkout at `55b150f4`, read 2026-10-11 — `../audio.cpp/webui/
   takes at a median 1.4 s each (§10.6). IndexTTS's `lang` option defaults to auto — Han
   characters → zh, otherwise en — and setting `emotion_text` turns on `use_emotion_text`. ·
   `configs/models_catalog.json`, `configs/model_params.json` `index_tts2`.
+- `installChoices` is ported whole into `scripts/audiocpp-catalog.js` and checked against
+  audio.cpp's own `catalog.ts` run in vitest on the same files: the same downloads for every
+  entry. `workflow` decides an entry's tab (DotTTS Edit runs as `tts` with template `edit`,
+  `dots_tts/session.cpp:454`, under the conversion tab). v0.9.2's catalog lists DotTTS
+  MeanFlow, FireRedTTS3 Base and Irodori v3 before the spec's `recommended_package`, so the app
+  orders by the spec (each engine's default unchanged). F5-TTS's Habibi GGUFs carry Vocos (no
+  vocoder download), and `vocab.txt` is read from the GGUF's folder
+  (`f5_tts/synthesize.cpp:1140`). — *code + tests, 2026-10-15*.
 
 ---
 
@@ -2853,12 +2888,35 @@ title; ten of 32 answers differ from it (eight until "Separate licence" was adde
   development purposes only" — read as a caution, ✓), Pocket TTS (CC-BY-4.0 behind Kyutai's gate,
   which forbids cloning without "explicit and lawful consent" and passing output off as genuine
   recordings; cosette and jean are non-commercial and already left out).
+- **The four that v0.9.1 brought** (read at their source 2026-10-13, curl of each file; ✓ by
+  hand): **Kitten TTS 2** — **Conditional**, as the table says: the Stellon Labs Community
+  License (last updated 2024-07-05; the GGUF repo `dignome/kitten_tts2` carries the same file,
+  byte for byte) grants commercial use, but "If You are using or distributing the Stellon Labs
+  Materials for a Commercial Purpose, You must register with Stellon Labs by contacting us",
+  and every licence ends once You or Your Affiliates make "more than USD $1,000,000 in annual
+  revenue" or have "received more than USD $1,000,000 in total cumulative funding"; outputs are
+  yours ("You own any outputs"); its decoder (Resemble's Chatterbox Turbo S3) and speaker
+  encoder (pyannote) are MIT. **KugelAudio-0-Open** — **Yes**: "This model is released under
+  the MIT License", audiobooks listed under its appropriate uses; trained on YODAS2 (CC-BY-3.0
+  on HF); built on Microsoft's VibeVoice; no cloning from a clip in this release, only its
+  pre-encoded voices. **LFM2.5-Audio** — **Conditional**, as the table says: the LFM Open
+  License v1.0 grants Commercial Use only to a You "not exceeding the Threshold", "annual revenue
+  of 10 million United States dollars ($10,000,000) or more"; its audio encoder (NVIDIA
+  canary-180m-flash) and Kyutai Mimi weights are CC-BY-4.0. **Sopro V2 Turbo** (new to the list
+  because v0.9.1 points its package at a GGUF that exists) — **Yes**: Apache-2.0 on its card;
+  trained on Emilia YODAS (the dataset's HF metadata says CC-BY-4.0; its card is gated, not
+  read), LibriTTS-R and FalAR; its maker: "do not impersonate people", no watermark.
 - **Worth knowing, not in the answers:** many cards ask for consent before cloning and for
   AI-generated audio to be marked; MioTTS and MioCodec list Emilia (CC-BY-NC) among their training
   data while licensing Apache-2.0 — the reason OmniVoice and ZipVoice give for going
   non-commercial; Audio8's `tokenizer.json` is byte-identical to Fish S2 Pro's (Fish's model type
   is `fish_qwen3_omni`, so the file may be Qwen3's own tokenizer — not checked);
   Confucius4-TTS's training used a MaskGCT semantic codec, which inference does not load.
+
+- Habibi-TTS (F5-TTS's Arabic models): Unified, SAU and UAE are CC-BY-NC-SA-4.0 ("restricted by
+  SADA and Mixat"); ALG, EGY, IRQ, MAR and MSA are Apache-2.0; F5-TTS's base is CC-BY-NC-4.0 —
+  so the app says Conditional. VoiceTut-TTS's card says Apache-2.0; it is listed under
+  OmniVoice's engine, whose word is No. — *HF cards, 2026-10-15*.
 
 ### 10.14 The download test — every speech model through the app (2026-10-11)
 
