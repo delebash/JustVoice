@@ -106,8 +106,7 @@ export const TYPE_BASE = "https://justvoice.dev/errors/";
 // — the desktop shell loads the renderer from there; without it every mutating call from the
 // desktop app would be refused 403 by the CSRF guard). The window's origin stays allowed when
 // the user locks CORS down too — step-5 rec 4, my rec applied under the 2026-10-08 go (TASKS; as
-// JustWrite's step-4 rec 1), the family-sameness law. The packaged Tauri origins are the kit's own
-// CSRF defaults.
+// JustWrite's step-4 rec 1), the family-sameness law.
 export const DESKTOP_ORIGIN = "app://justvoice";
 export const APP_ORIGINS = ["http://localhost:1430", "http://127.0.0.1:1430", DESKTOP_ORIGIN];
 
