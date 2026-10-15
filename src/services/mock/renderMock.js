@@ -16,6 +16,7 @@
 // stale. "Rendered": its ★ take was made from what the line says and how it is said now;
 // "stale": something it was made from changed since — you choose when to render it again (D4).
 
+import { safeTitle } from "@delebash/llm-runner/platform/filename";
 import { reactive } from "vue";
 import { withAiTask } from "@delebash/llm-ui";
 import { runFigures } from "../renderRun.js";
@@ -339,7 +340,7 @@ export function renderChapter(ch, { onRetry } = {}) {
     const talk = ch.lines.reduce((s, l) => s + (l.takes.find((x) => x.live)?.seconds || 0), 0);
     const result = {
       url: URL.createObjectURL(silentWav(Math.min(Math.round(talk + pause), 30))),
-      filename: `${ch.n}_${ch.title.replace(/[^a-z0-9_-]+/gi, "_")}.wav`,
+      filename: `${safeTitle(`${ch.n} · ${ch.title}`)}.wav`, // as the app names it
     };
     task.update({ result });
     return result;

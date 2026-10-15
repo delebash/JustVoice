@@ -41,7 +41,7 @@ import {
   confirmDialog, pushToast, saveBlob,
 } from "@delebash/llm-ui";
 import ImportModal from "./ImportModal.vue";
-import { projectsService } from "../services/projects.js";
+import { packageName, projectsService } from "../services/projects.js";
 import { useCopy } from "../services/copy.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { useActiveProject } from "../stores/activeProject.js";
@@ -189,8 +189,9 @@ const showReimport = ref(false);
 async function exportPackage() {
   try {
     const blob = await projectsService.exportZip(props.project.id);
-    // Named as the button says (decided 2026-10-05; it saved as <name>.zip).
-    await saveBlob(blob, `${(props.project.name || "project").replace(/\W+/g, "-")}.justvoice.zip`,
+    // Named as the button says (decided 2026-10-05; it saved as <name>.zip), the name as written
+    // (2026-10-15, the narrowings review R7).
+    await saveBlob(blob, packageName(props.project.name),
       { title: "Save project", filterName: "JustVoice project", filterExt: "zip" });
     pushToast({ kind: "success", title: "Project exported" });
   } catch (e) {

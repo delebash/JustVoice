@@ -12,7 +12,8 @@
 // The archive is the kit's ZIP (platform/zip.js — CPython 3.12's zipfile, deflated).
 
 import { statSync } from "node:fs";
-import { Hono, input } from "@delebash/llm-runner/platform";
+import { attachment, Hono, input } from "@delebash/llm-runner/platform";
+import { safeTitle } from "@delebash/llm-runner/platform/filename";
 import { opt, T } from "@delebash/llm-runner/platform/models";
 import { strip } from "@delebash/llm-runner/platform/py";
 import { jsonLoads, pyJson } from "@delebash/llm-runner/platform/pyjson";
@@ -185,10 +186,13 @@ export function router() {
     );
 
     const bytesOut = zf.toBuffer();
-    const filename = `${_slugify(project.name)}-${stampNow()}.justvoice.zip`;
+    // The project's name as written, by the kit's rule, RFC 5987-encoded beyond ASCII (2026-10-15,
+    // the narrowings review R7; a lowercase slug of letters and digits before). The chapters'
+    // files inside keep their slugs.
+    const filename = `${safeTitle(project.name, "project")}-${stampNow()}.justvoice.zip`;
     return c.body(bytesOut, 200, {
       "content-type": "application/zip",
-      "content-disposition": `attachment; filename="${filename}"`,
+      "content-disposition": attachment(filename),
       "content-length": String(bytesOut.length),
     });
   });

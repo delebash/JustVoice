@@ -1059,7 +1059,8 @@ chapter from every line's take in use and masters it. Stale lines keep their tak
 render them again on the chapter's page when you choose. A progress strip under
 the chapter shows how far it is — the same strip as on the chapter's page (see
 [A render's progress](#a-renders-progress)) — with **Cancel**; when it is done,
-**▶ Play** and **⬇ Download** (a WAV). The chapter starts playing as soon as it is
+**▶ Play** and **⬇ Download** (a WAV named as the row reads, *3 · The Keystone.wav*, leaving
+out only the characters a Windows file name can't hold). The chapter starts playing as soon as it is
 done; **▶ Play** becomes **⏸ Pause**, with a seek bar and *0:02 / 9:04* beside it, and
 plays on from where you paused. One chapter plays at a time, and closing its strip
 (✕) stops it. Tick chapters and **▶ Render N chapters**

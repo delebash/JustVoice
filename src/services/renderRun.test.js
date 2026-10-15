@@ -3,7 +3,8 @@ import { createPinia, setActivePinia } from "pinia";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useAiTasksStore } from "@delebash/llm-ui";
 import {
-  QC_WAITS, chapterRenderTask, chapterRunning, clock, followJob, followRender, jobFollowed, loadingText, mediaUrl, runFigures, waitingText,
+  QC_WAITS, chapterRenderTask, chapterRunning, clock, followJob, followRender, jobFollowed, loadingText, mediaUrl, renderChapter, runFigures,
+  waitingText,
 } from "./renderRun.js";
 
 function fakeApi(statuses) {
@@ -241,6 +242,23 @@ describe("what a loading line says (2026-10-07)", () => {
 describe("🎧 Run ACX QC's hover while it waits (2026-10-15)", () => {
   it("is the user's words (the narrowings review B3)", () => {
     expect(QC_WAITS).toBe("Waits for the render to finish — the check renders lines that have no take.");
+  });
+});
+
+describe("a chapter's ⬇ Download (2026-10-15, the narrowings review R7)", () => {
+  beforeEach(() => setActivePinia(createPinia()));
+
+  it("is named by the chapter's label as written, minus only what a Windows file name can't hold", async () => {
+    const api = {
+      request: vi.fn(async (path) => (path === "/v1/render_chapter"
+        ? new Blob(["RIFF"], { type: "audio/wav" })
+        : { id: "j1", status: "completed", completed_blocks: 0, failed_blocks: 0, total_blocks: 0 })),
+      safeRequest: vi.fn(async () => null),
+    };
+    const one = await renderChapter(api, { sceneId: "s1", projectId: "p1", title: "3 · The Keystone" });
+    expect(one.filename).toBe("3 · The Keystone.wav"); // "3_The_Keystone.wav" before
+    const two = await renderChapter(api, { sceneId: "s2", projectId: "p1", title: `4 · Война: "the" Wizard's Tale?` });
+    expect(two.filename).toBe("4 · Война the Wizard's Tale.wav");
   });
 });
 

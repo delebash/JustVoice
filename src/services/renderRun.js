@@ -33,6 +33,9 @@
 //                 following a job over several chapters — "rendering…" on each
 //                 of them, with one progress strip (2026-10-15).
 
+// The kit's one rule for a file's name — the same module the server names exports with (it is
+// pure, for both sides; JustWrite's renderer imports it too).
+import { safeTitle } from "@delebash/llm-runner/platform/filename";
 import { withAiTask } from "@delebash/llm-ui";
 
 const TERMINAL = new Set(["completed", "failed", "cancelled", "paused"]);
@@ -258,7 +261,9 @@ export function renderChapter(api, { sceneId, projectId, title, onRetry }) {
     if (!(audio instanceof Blob)) return audio;
     const result = {
       url: URL.createObjectURL(audio),
-      filename: `${title.replace(/[^a-z0-9_-]+/gi, "_")}.wav`,
+      // The chapter's label as written, minus only what a Windows file name can't hold — "3 · The
+      // Keystone.wav" (2026-10-15, the narrowings review R7; "3_The_Keystone.wav" before).
+      filename: `${safeTitle(title)}.wav`,
     };
     task.update({ result });
     return result;

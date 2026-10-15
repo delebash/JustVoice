@@ -496,7 +496,7 @@ would silently mismatch every line the moment the sheet was reordered.
 
 ### Project export (full project archive)
 
-Studio → Overview → **📦 Export .justvoice.zip** (under *Also from here*) saves the project as one `<name>.justvoice.zip` archive:
+Studio → Overview → **📦 Export .justvoice.zip** (under *Also from here*) saves the project as one `<name>.justvoice.zip` archive — the project's name as written, leaving out only the characters a Windows file name can't hold (*The Ninth Facet.justvoice.zip*; *project.justvoice.zip* when nothing is left). Fetched straight from `GET /v1/projects/{project_id}/export`, it is `<name>-<time>.justvoice.zip`, the name by the same rule:
 - All chapters' rendered WAVs
 - All takes (not just defaults — full history for re-roll archaeology)
 - The project's full SQLite snapshot

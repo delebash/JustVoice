@@ -3,6 +3,7 @@
  * Projects API client — Project/Scene/Block CRUD + JustWrite import.
  * Backed by /v1/projects/* endpoints (DESIGN_FREEZE §5).
  */
+import { safeTitle } from "@delebash/llm-runner/platform/filename";
 import { useApi } from "../stores/api.js";
 
 function withApi() {
@@ -201,3 +202,9 @@ export const captureReadinessService = {
     return withApi().get(`/v1/capture/readiness`);
   },
 };
+
+/** The name Overview's project package is saved under — the project's name as written, minus only
+ *  what a Windows file name can't hold (the kit's safeTitle, as the server names its exports;
+ *  2026-10-15, the narrowings review R7 — every character but letters and digits became "-"
+ *  before), then ".justvoice.zip", as the button says (decided 2026-10-05). */
+export const packageName = (name) => `${safeTitle(name, "project")}.justvoice.zip`;
