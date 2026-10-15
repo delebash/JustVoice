@@ -31,7 +31,7 @@ import {
 } from "@delebash/llm-runner/platform";
 import { purePath } from "@delebash/llm-runner/platform/data_paths";
 import { getLogger } from "@delebash/llm-runner/platform/log";
-import { NotImplementedError, ValueError } from "@delebash/llm-runner/platform/py";
+import { ValueError } from "@delebash/llm-runner/platform/py";
 // ── The routers (registered below in app.py's order) ──
 import { router as activeTasksRouter } from "./api/active_tasks_api.js";
 import { router as alignRouter } from "./api/align_api.js";
@@ -212,7 +212,6 @@ export async function _buildExternalEngine(cfg) {
       responseFormat: cfg.response_format,
     });
   }
-  if (pt === "edge-tts") throw new NotImplementedError("Edge TTS adapter requires Tauri-side msedge-tts wiring — deferred");
   throw new ValueError(`unknown TTS provider_type: '${pt}'`);
 }
 
