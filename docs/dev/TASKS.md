@@ -279,6 +279,20 @@ BUILT:  15 — 8d7adf6.
 OPEN:   all of 1–16 as above; 3, 12, 13 and 2 with the engine slices (their files).
 GO:     given 2026-10-15 for 1–16.
 
+### An audio.cpp update tests only the engines and models it adds; no full re-run (decided 2026-10-15)
+STATE:  DECIDED 2026-10-15 — during slice 2's acceptance (every model that fits 8 GB loads, speaks,
+        reads back), asked "have we made any major changes since we last ran a test like this … why
+        are we running it again?", answered (most of it was new: the non-cloning families, built-in
+        voices, design, recognisers, on v0.9.2; the models passed on 10-11 re-run only for v0.9.2's
+        breaking changes), the user: "but once we should not need to run this type of test often
+        once we have gone through all engines and modelsk, and we only need to test new engines and
+        models when audio cpp changes no need to rerun full test".
+WHY:    a full run downloads and speaks every model — hours — for models already proven.
+NOT:    re-running models that passed a through-the-app run, on an audio.cpp update.
+BUILT:  slice 2's run told to skip what passed before (RESEARCH §10.14) and test only what is new.
+OPEN:   none — a rule for each later audio.cpp update.
+GO:     given 2026-10-15.
+
 ### FINDING — the generated engines offer only models that clone a voice; 13 speech families never appear
 STATE:  FINDING — code-verified 2026-10-13. Mine, never asked: built in the engine list's slices
         2–3 (df2b40e, 2026-10-11). The approved plan says the opposite: §1, each row says "what it
