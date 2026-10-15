@@ -25,7 +25,8 @@
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { LLMNotConfiguredError } from "@delebash/llm-runner/llm";
-import { Hono, input } from "@delebash/llm-runner/platform";
+import { attachment, Hono, input } from "@delebash/llm-runner/platform";
+import { safeTitle } from "@delebash/llm-runner/platform/filename";
 import { RequestValidationError } from "@delebash/llm-runner/platform/errors";
 import { literal, nullable, opt, T } from "@delebash/llm-runner/platform/models";
 import {
@@ -765,8 +766,6 @@ export const ShowNotesResponse = T.Object({
   usage: opt(nullable(RunUsage), null),
 });
 
-const IMPORT_SAFE = /[^A-Za-z0-9._-]+/g;
-
 /** The name of a speaker row, or null (`db.query(Speaker.name).filter(...).first()`). */
 const speakerName = (h, id) => h.one(`select name from ${Speaker} where id = ? limit 1`, [id])?.name ?? null;
 
@@ -1503,8 +1502,9 @@ export function router() {
     const chapters = await exportAudiobook.assembleProject(st, projectId);
     if (!chapters.length) throw badRequest("project has no scenes to export");
     const m4b = await exportAudiobook.muxM4b(chapters, project.name, m4bAuthor(project));
-    const safe = project.name.replace(IMPORT_SAFE, "_") || "book";
-    return c.body(m4b, 200, { "content-type": "audio/mp4", "content-disposition": `attachment; filename="${safe}.m4b"` });
+    // The title as written, by the kit's rule, RFC 5987-encoded beyond ASCII — as the export
+    // job names it (2026-10-15, the narrowings review R7; letters and digits only before).
+    return c.body(m4b, 200, { "content-type": "audio/mp4", "content-disposition": attachment(`${safeTitle(project.name)}.m4b`) });
   });
 
   /** Game export — zip of per-line WAVs named by stable line id, grouped by scene, plus a
@@ -1527,8 +1527,9 @@ export function router() {
       book.end();
     }
     const data = await exportVoicelines.exportVoicelines(st, projectId);
-    const safe = project.name.replace(IMPORT_SAFE, "_") || "voicelines";
-    return c.body(data, 200, { "content-type": "application/zip", "content-disposition": `attachment; filename="${safe}_VO.zip"` });
+    // The title as written, by the kit's rule (2026-10-15, the narrowings review R7).
+    const name = `${safeTitle(project.name, "voicelines")}_VO.zip`;
+    return c.body(data, 200, { "content-type": "application/zip", "content-disposition": attachment(name) });
   });
 
   /**

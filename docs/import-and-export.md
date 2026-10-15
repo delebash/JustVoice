@@ -402,7 +402,7 @@ app saved nothing in the desktop window — the window ignores a browser-style d
 "M4B exported." anyway.)
 
 **⬇ Chapter WAVs (zip)** runs the same way, with the same strip, and saves *The Ninth Facet
-chapters.zip* with two folders: `chapters/` — each chapter joined from its lines' takes in use (`01 Brass Rank.wav`)
+chapters.zip* with two folders: `chapters/` — each chapter joined from its lines' takes in use (`01 Brass Rank.wav`, the chapter's title as written by the same rule, *Chapter 2* when nothing is left)
 — and `masters/` — the same chapters mastered to the book's target, the audio the M4B is made
 from. (Until 2026-10-07 this button saved the project package instead — the book's data and
 each line's take — which is what Overview's project export is for.) A chapter that can't
@@ -418,7 +418,7 @@ after the line rendering now, or between chapters; `GET /v1/export_jobs/{id}/fil
 finished `.m4b` once, its `Content-Disposition` carrying the name RFC 5987-encoded
 (`filename*=UTF-8''…`) when it goes beyond ASCII.
 `POST /v1/projects/{project_id}/export_m4b` still does it all in one request and returns the
-`.m4b`. The chapter audio: `POST /v1/projects/{project_id}/export_chapters/start`, then the same
+`.m4b`, named the same way. The chapter audio: `POST /v1/projects/{project_id}/export_chapters/start`, then the same
 `/v1/export_jobs/{id}` doors; without ffmpeg its job's `note` says the zip has no masters
 (otherwise `note` is null). Deleting the book while that one-request M4B export, the voice-line
 export (`POST /v1/projects/{project_id}/export_voicelines`) or the ACX check
@@ -474,7 +474,9 @@ Unreal / Unity integration plans: an `.uplugin` (Unreal) and `.unitypackage` (Un
 #### Whole project → voiceline ZIP
 
 `POST /v1/projects/{project_id}/export_voicelines` does the same thing for an entire project
-rather than one chapter, and downloads as `<project>_VO.zip`.
+rather than one chapter, and downloads as `<project>_VO.zip` — the project's name as written,
+leaving out only the characters a Windows file name can't hold (*The Ninth Facet_VO.zip*;
+*voicelines_VO.zip* when nothing is left).
 
 - **One WAV per line**, named by its stable line id and grouped into a folder per scene, so the
   archive stays diffable across re-exports — the same line keeps the same path.

@@ -187,7 +187,8 @@ test("export_m4b_with_stubbed_ffmpeg", async () => {
   expect(r.status, r.text).toBe(200);
   expect(r.content.toString("latin1")).toBe("M4B!");
   expect(r.headers["content-type"].startsWith("audio/mp4")).toBe(true);
-  expect(r.headers["content-disposition"] ?? "").toContain("The_Ninth_Facet.m4b");
+  // The title as written, by the kit's rule (2026-10-15, the narrowings review R7).
+  expect(r.headers["content-disposition"]).toBe('attachment; filename="The Ninth Facet.m4b"');
 });
 
 test("m4b_author_prefers_the_author_field", () => {
@@ -413,4 +414,64 @@ test("deleting_a_book_stops_its_acx_check_and_its_exports_inside_a_request", asy
   expect((await c.delete(`/v1/projects/${otherPid}`)).status).toBe(200);
   expect((await otherQc).status).toBe(404);
   expect(seen[3].signal.aborted).toBe(true);
+});
+
+// ── Every export's file names by the kit's rule (2026-10-15, the narrowings review R7) ────────
+//
+// The title as written, minus only what a Windows file name can't hold (the kit's safeTitle);
+// each file keeps its numbering, folder and ending. Letters and digits only before, the rest "_".
+
+const TITLE = `Война: "the" Wizard's Tale?`;
+const AS_WRITTEN = "Война the Wizard's Tale";
+/** The name a Content-Disposition header carries — its RFC 5987 form when it has one. */
+const dispositionName = (header) =>
+  header.includes("filename*=UTF-8''") ? decodeURIComponent(header.split("filename*=UTF-8''")[1]) : header.match(/filename="([^"]*)"/)[1];
+
+test("the_chapter_zip_names_each_chapter_as_written", async () => {
+  const c = await app();
+  const pid = await seed(c);
+  vi.spyOn(renderChapterApi, "renderSceneWavs").mockImplementation(async () => ({ chapter: wav(0.1, 0.5), master: wav(0.3, 0.5) }));
+  vi.spyOn(exportAudiobook, "haveFfmpeg").mockReturnValue(true);
+  const scenes = (await c.get(`/v1/projects/${pid}/scenes`)).json();
+  expect((await c.patch(`/v1/scenes/${scenes[0].id}`, { json: { title: TITLE } })).status).toBe(200);
+  // Nothing left of a title: the chapter's number, as before.
+  expect((await c.patch(`/v1/scenes/${scenes[1].id}`, { json: { title: "???" } })).status).toBe(200);
+  const [job] = await follow(c, (await c.post(`/v1/projects/${pid}/export_chapters/start`)).json());
+  expect(job.status, JSON.stringify(job)).toBe("done");
+  const z = ZipReader.fromBuffer((await c.get(`/v1/export_jobs/${job.id}/file`)).content);
+  expect([...z.names()].sort()).toEqual([
+    `chapters/01 ${AS_WRITTEN}.wav`,
+    "chapters/02 Chapter 2.wav",
+    `masters/01 ${AS_WRITTEN}.wav`,
+    "masters/02 Chapter 2.wav",
+  ]);
+});
+
+test("the_one_request_m4b_is_named_as_written", async () => {
+  const c = await app();
+  const pid = await seed(c);
+  vi.spyOn(renderChapterApi, "renderSceneToWav").mockImplementation(async () => wav(0.1, 0.5));
+  vi.spyOn(exportAudiobook, "haveFfmpeg").mockReturnValue(true);
+  fakeFfmpeg("M4B!");
+  expect((await c.patch(`/v1/projects/${pid}`, { json: { name: TITLE } })).status).toBe(200);
+  const r = await c.post(`/v1/projects/${pid}/export_m4b`);
+  expect(r.status, r.text).toBe(200);
+  expect(dispositionName(r.headers["content-disposition"])).toBe(`${AS_WRITTEN}.m4b`);
+  expect([...r.headers["content-disposition"]].every((ch) => ch >= " " && ch <= "~")).toBe(true);
+});
+
+test("the_voice_line_zip_is_named_as_written", async () => {
+  const c = await app();
+  const pid = await seed(c);
+  vi.spyOn(exportVoicelines, "collectBlockSpecs").mockResolvedValue([]);
+  vi.spyOn(synthScheduler, "warmSpecs").mockResolvedValue(undefined);
+  vi.spyOn(exportVoicelines, "exportVoicelines").mockResolvedValue(Buffer.from("ZIP"));
+  expect((await c.patch(`/v1/projects/${pid}`, { json: { name: TITLE } })).status).toBe(200);
+  let r = await c.post(`/v1/projects/${pid}/export_voicelines`);
+  expect(r.status, r.text).toBe(200);
+  expect(dispositionName(r.headers["content-disposition"])).toBe(`${AS_WRITTEN}_VO.zip`);
+  // Nothing left of the name: "voicelines", as before.
+  expect((await c.patch(`/v1/projects/${pid}`, { json: { name: "???" } })).status).toBe(200);
+  r = await c.post(`/v1/projects/${pid}/export_voicelines`);
+  expect(r.headers["content-disposition"]).toBe('attachment; filename="voicelines_VO.zip"');
 });

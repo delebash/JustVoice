@@ -30,7 +30,6 @@ import { Readable } from "node:stream";
 import { attachment, Hono } from "@delebash/llm-runner/platform";
 import { safeTitle } from "@delebash/llm-runner/platform/filename";
 import { getLogger } from "@delebash/llm-runner/platform/log";
-import { strip } from "@delebash/llm-runner/platform/py";
 import { ZipWriter } from "@delebash/llm-runner/platform/zip";
 import { getState } from "../app_state.js";
 import { Project } from "../database/models.js";
@@ -63,10 +62,6 @@ const _public = (job) => ({
 
 /** The chapter zip's note without ffmpeg (the user's words, 2026-10-15). */
 export const NO_MASTERS = "No masters — ffmpeg isn't installed, so the zip holds the chapter WAVs only.";
-
-/** `re.sub(r"[^A-Za-z0-9._ -]+", "_", name or "").strip() or fallback` — the chapter files'
- * names inside the zip. */
-export const _safe = (name, fallback) => strip((name || "").replace(/[^A-Za-z0-9._ -]+/g, "_")) || fallback;
 
 /** Abort the job: its cancel route, or its book deleted. */
 function _abort(job) {
@@ -133,7 +128,9 @@ async function _chaptersZip(job, projectId, { masters = true } = {}) {
   for (let i = 0; i < scenes.length; i++) {
     const scene = scenes[i];
     job.step = _chapterStep(job, i, scenes.length, scene);
-    const title = _safe(scene.title, `Chapter ${scene.position + 1}`);
+    // The chapter's title as written, by the kit's rule as the zip's own name is (2026-10-15, the
+    // narrowings review R7; letters and digits only before, the rest "_").
+    const title = safeTitle(scene.title, `Chapter ${scene.position + 1}`);
     const name = `${String(i + 1).padStart(2, "0")} ${title}.wav`;
     const wavs = await renderChapterApi.renderSceneWavs(st, scene.id, { master: masters });
     zf.writestr(`chapters/${name}`, wavs.chapter);
