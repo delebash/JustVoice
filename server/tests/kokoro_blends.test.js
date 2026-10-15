@@ -14,6 +14,7 @@ import * as release from "../src/engines/audiocpp/release.js";
 import * as runtime from "../src/engines/audiocpp/runtime.js";
 import * as slot from "../src/engines/audiocpp/slot.js";
 import { discoverEngines } from "../src/engines/manager.js";
+import { voiceSynthFields } from "../src/render_core.js";
 import { tmpPath } from "./helpers.js";
 
 afterAll(() => dspClient.stop());
@@ -160,6 +161,21 @@ test("a_blend_in_a_language_kokoro_lacks_sends_none_and_a_preset_of_the_voices_o
   expect("language" in req).toBe(false);
   expect(req.voice).toBe("af_alloy");
   expect(req.options).toEqual({ voice_pack: "C:/cache/p.bin" });
+});
+
+test("a_blend_speaks_its_own_language_where_kokoro_lacks_the_lines", () => {
+  // Decided 2026-10-15 (F11): render and preview pass a blend's own language, as a preset's id
+  // carries its own, so a line in a language Kokoro lacks is read in the blend's — not English.
+  const body = { voice_id: "v_blend", text: "Hola.", voice_pack_path: "C:\cache\p.bin", voice_language: "es" };
+  const foreign = slot.toSpeechRequest(kokoroRow(), { ...body, language: "de" });
+  expect("language" in foreign).toBe(false);
+  expect(foreign.voice).toBe("ef_dora");
+  // No line language: the blend's own goes.
+  const own = slot.toSpeechRequest(kokoroRow(), body);
+  expect([own.voice, own.language]).toEqual(["ef_dora", "es"]);
+  // Render and preview put it in the synth body from the voice's record.
+  const fields = voiceSynthFields(null, { id: "v_blend", source: "blended", embedding: [0.5, 0.25], language: "es" });
+  expect(fields).toEqual({ voice_vector: [0.5, 0.25], voice_language: "es" });
 });
 
 test("the_pack_file_is_written_once_by_content", () => {

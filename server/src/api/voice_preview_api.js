@@ -342,6 +342,9 @@ export async function candidateVoiceFields(body, state) {
     let vector;
     [vector, language] = await self._resolveBlend(body, state);
     extra.voice_vector = vector;
+    // Its own language, as a saved blend's (render_core.voiceSynthFields; decided 2026-10-15, F11).
+    const own = language ?? body.language;
+    if (own) extra.voice_language = own;
   }
   return [extra, language];
 }
@@ -751,7 +754,7 @@ export function router() {
     const ticket = `tkt_${randomUUID().replaceAll("-", "")}`;
     cfg._STREAM_TICKETS.set(ticket, {
       engine_id: body.engine,
-      voice_fields: { voice_vector: vector },
+      voice_fields: { voice_vector: vector, voice_language: lang !== null ? lang : body.language },
       language: lang !== null ? lang : body.language,
     });
     return c.json(construct(StreamTicketResponse, { ticket, expires_at: Date.now() / 1000 + _TTL_S }));

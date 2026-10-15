@@ -185,7 +185,8 @@ Swahili, Turkish and Chinese.
 A Kokoro voice speaks its own language. A line sent to it in a language Kokoro
 doesn't speak — through the API, MCP or JustWrite — goes without one, so the
 voice reads it in its own language (audio.cpp's default) rather than in US
-English.
+English. A blend does the same in its own language — the one it was saved with
+(since 2026-10-15; before, a blend fell back to US English there).
 
 **Qwen3-TTS is three different models**, and the difference decides what you
 can do with it:

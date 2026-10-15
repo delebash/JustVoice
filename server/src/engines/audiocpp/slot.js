@@ -819,7 +819,10 @@ export function toSpeechRequest(row, body) {
   if (family === "kokoro_tts") {
     const voice = get(body, "voice_id") || "af_heart";
     const hit = VOICES.find(([vid]) => vid === voice);
-    const voiceLang = (hit ? hit[2] : "en-us").toLowerCase();
+    // A preset's own language is its id's; a blend's rides `voice_language`, which render and
+    // preview pass (decided 2026-10-15, F11) — so a line in a language Kokoro lacks is read in the
+    // voice's own, a blend's too.
+    const voiceLang = String(hit ? hit[2] : get(body, "voice_language") || "en-us").toLowerCase();
     req.voice = voice;
     const key = lang || voiceLang;
     // A language Kokoro doesn't speak goes as none: audio.cpp then uses the voice's own (its
@@ -840,7 +843,7 @@ export function toSpeechRequest(row, body) {
       // G2P, so it is the first preset that speaks the blend's language — the line's, or the
       // voice's own when Kokoro doesn't speak the line's.
       opts.voice_pack = fwd(body.voice_pack_path);
-      const want = language ?? get(KOKORO_LANGUAGE, voiceLang) ?? voiceLang;
+      const want = language ?? get(KOKORO_LANGUAGE, voiceLang) ?? get(KOKORO_LANGUAGE, voiceLang.split("-")[0]) ?? voiceLang;
       const first = VOICES.find(([, , lg]) => (get(KOKORO_LANGUAGE, lg.toLowerCase()) ?? lg.toLowerCase()) === want);
       req.voice = first ? first[0] : "af_heart";
     }

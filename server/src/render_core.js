@@ -215,7 +215,9 @@ export function voiceDesignInstructForId(state, voiceId) {
  *
  *     cloned / imported → audio_prompt_path (+ ref_text where the engine takes the clip's
  *                         transcript, + xvector_only for Qwen3 Base's "Skip the words")
- *     blended           → voice_vector (the style vector; kokoro)
+ *     blended           → voice_vector (the style vector; kokoro) + voice_language (its own
+ *                         language: Kokoro reads a line in a language it lacks in it, as a
+ *                         preset does in its id's — decided 2026-10-15, F11)
  *     designed          → audio_prompt_path + ref_text IF its preview was frozen at save;
  *                         otherwise nothing here, and its description reaches the engine as
  *                         instruct prose through `voiceDesignInstruct` at the compose sites
@@ -230,7 +232,10 @@ export function voiceSynthFields(state, stored) {
     if (stored.transcript) out.ref_text = stored.transcript;
     if (stored.xvector_only) out.xvector_only = true; // Qwen3 Base's "Skip the words", as auditioned
   }
-  if (stored.source === "blended" && truthy(stored.embedding)) out.voice_vector = [...stored.embedding];
+  if (stored.source === "blended" && truthy(stored.embedding)) {
+    out.voice_vector = [...stored.embedding];
+    if (stored.language) out.voice_language = stored.language;
+  }
   return out;
 }
 
