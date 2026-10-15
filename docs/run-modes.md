@@ -11,8 +11,19 @@ server, and Quit.
 The server listens on the port in **Settings → Server → Port** (17494 unless you
 change it; quit and start the app again after changing it). If another JustVoice
 server already holds that port — a headless one, or one left behind by a crash —
-the app stops it and starts its own. Any other program on the port is left
-running, and the window says it can't reach the server.
+the app asks it to shut down, stops it only if it doesn't, and starts its own.
+Any other program on the port is left running, and the window's can't-reach page
+says so: *Port 17494 is in use by another program — change the Port in Settings →
+Server, or close that program.*
+
+One JustVoice server per data folder: a second server started on the same
+folder — a headless one beside the desktop app, or one on another port — refuses
+to start, with *Another JustVoice server is using this data folder (‹path›) —
+stop it first.* The desktop app shows it on its can't-reach page; a headless
+server prints it and exits. The server marks the folder it holds with a
+`server.lock` folder inside it, removed when it stops; after a crash the next
+start waits a few seconds for the crashed server's mark to lapse, then takes
+over.
 
 ### Updates
 

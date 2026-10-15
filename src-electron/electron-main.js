@@ -22,6 +22,9 @@ runDesktopApp({
   // the family port registry: this app 17494 · JW 17495 · docgen 8742 · template 17490. It is the
   // server's default only: the server listens on Settings → Server's Port and tells the shell.
   port: 17494,
+  // A JustVoice server left on the port (a crashed run, a headless one) is asked to stop through
+  // its own route (server/src/api/system_api.js) before the shell kills it.
+  shutdownPath: "/v1/shutdown",
   // the server package (server/): its source in development, the installed copy when packaged
   serverEntry: dev ? path.resolve("server", "src", "serve.js") : path.join(here, "node_modules", "justvoice-server", "src", "serve.js"),
   dataDirEnv: "JUSTVOICE_DATA_DIR",

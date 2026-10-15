@@ -65,6 +65,14 @@ export function shellServerUrl() {
   return call("serverUrl").catch(() => null);
 }
 
+/** Why the desktop app's server didn't start, when its shell knows: `{url, portTaken,
+ *  dataFolderInUse}` — the port another program holds, and the words for a data folder another
+ *  JustVoice server holds. Answered once a start under way ends; null outside the shell. */
+export function shellServerStatus() {
+  if (!hasShell()) return Promise.resolve(null);
+  return call("serverStatus").catch(() => null);
+}
+
 // ─── The shell's own switches ────────────────────────────────────────
 
 /** The family headless ruling (2026-08-04): keep the server up on window close. */

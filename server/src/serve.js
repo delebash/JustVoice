@@ -29,7 +29,7 @@ import * as leftovers from "./engines/leftovers.js";
 import { defaultDataDir } from "./paths.js";
 import { readSettingsReadOnly } from "./storage/settings_store.js";
 import { networkHost } from "./sync.js";
-import { VERSION } from "./version.js";
+import { PRODUCT, VERSION } from "./version.js";
 
 export const PROG = "justvoice-server";
 const USAGE = `usage: ${PROG} [-h] [--host HOST] [--port PORT] [--data-dir DATA_DIR]
@@ -159,6 +159,10 @@ export async function main(argv = process.argv.slice(2)) {
   const handle = await runServer({
     argv: ["serve", "--data-dir", dd],
     envPrefix: null,
+    // One server per data folder: the kit locks `dd` before `build` opens the database; another
+    // JustVoice server on it ends this start with "Another JustVoice server is using this data
+    // folder (…) — stop it first." (approved 2026-10-15; the kit's platform/data_lock.js).
+    productName: PRODUCT,
     // The port before anything opens the database: CLI/env, else Settings → Server's Port as
     // saved, read without writing. runServer probes it before `build`, so nothing below opens the
     // database while another server of this app — its old or headless one, on this data folder —

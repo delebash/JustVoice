@@ -128,7 +128,11 @@ within a few seconds — usually because it is still starting (the first start
 after an update, or a slow disk). The page keeps asking every 2 seconds and
 opens the app the moment the server answers, so most of the time you only need
 to wait; **Retry** asks at once. If it never opens, the server didn't start —
-its log is `logs/justvoice.log` in your data folder.
+its log is `logs/justvoice.log` in your data folder. When the app knows why, the
+page says it under the message: another program holds the port (*Port N is in
+use by another program — change the Port in Settings → Server, or close that
+program.*), or another JustVoice server — a headless one, say — is using the
+same data folder (*… — stop it first.*); see [Run modes](run-modes.md#desktop).
 
 **MCP clients can't find the server.** MCP mounts at `/mcp` on the app port
 (17494) whenever the server starts — it is built in (the official MCP SDK
