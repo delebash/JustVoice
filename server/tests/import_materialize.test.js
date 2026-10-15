@@ -200,6 +200,11 @@ test("an_entry_with_both_ipa_and_a_respelling_keeps_both", () => {
   const both = { grapheme: "Worcester", phoneme_ipa: "/ˈwʊstər/", alias: "WUSS-ter" };
   const lex = store.create("Names", { entries: [both] });
   expect(store.get(lex.id).entries).toEqual([both]);
+  // An import's entry with both keeps both too (projects_api._materializeLexicon).
+  const std = _standard("Both", { lexicon: true });
+  std.lexicon_entries = [both];
+  const imported = h.tx(() => _materializeLexicon(std, _materializeStandard(std, h)[0], h));
+  expect(store.get(imported).entries.find((e) => e.grapheme === "Worcester")).toEqual(both);
   store.update(lex.id, [both, { grapheme: "Hecate", alias: "HEH-kuh-tee" }]);
   store.appendEntry(lex.id, { grapheme: "Beauchamp", phoneme_ipa: "/ˈbiːtʃəm/" });
   expect(store.get(lex.id).entries).toEqual([

@@ -59,6 +59,7 @@ import { AdapterListResponse, ImportRunResponse } from "../imports/standard_sche
 import * as lineTakes from "../line_takes.js";
 import * as mastering from "../mastering.js";
 import { construct, DateTime } from "../models.js";
+import { entryToRowFields } from "../storage/lexicons.js";
 import * as synthScheduler from "../synth_scheduler.js";
 import { adoptBookNarrator, ensureSpeaker } from "./_speaker_helpers.js";
 import * as captures from "./captures_api.js";
@@ -531,12 +532,8 @@ export function _materializeLexicon(standard, project, h) {
   const explicit = new Set();
   for (const e of standard.lexicon_entries) {
     explicit.add(casefold(e.grapheme));
-    h.insert(DbLexiconEntry, {
-      lexicon_id: lexId,
-      word: e.grapheme,
-      pronunciation: e.phoneme_ipa || e.alias || "",
-      notation: e.phoneme_ipa ? "ipa" : "phonetic",
-    });
+    // The store's own mapping: an entry with IPA and a respelling keeps both (2026-10-15).
+    h.insert(DbLexiconEntry, { lexicon_id: lexId, ...entryToRowFields(e) });
   }
   for (const name of nameRows) {
     if (explicit.has(casefold(name))) continue; // the import's own entry wins over the blank seed
