@@ -7,7 +7,7 @@ import { Block, Persona, Project, Scene, Speaker } from "../database/models.js";
 import * as session from "../database/session.js";
 import { notFound } from "../errors.js";
 import * as blending from "../engines/blending.js";
-import { lacking, toKokoro, vocabOf } from "../engines/kokoro/ipa.js";
+import { lackingAll, toKokoro, vocabOf } from "../engines/kokoro/ipa.js";
 import { wordsIn } from "../render_core.js";
 import { strip } from "@delebash/llm-runner/platform/py";
 import { construct, CreateLexiconRequest, Lexicon, LexiconEntry, LexiconList, LexiconReach } from "../models.js";
@@ -59,10 +59,10 @@ export function lexiconReach(lex) {
 }
 
 /**
- * The entries whose IPA uses a symbol Kokoro lacks → [{grapheme, symbol}], read against the
+ * The entries whose IPA uses a symbol Kokoro lacks → [{grapheme, symbols}], read against the
  * downloaded Kokoro's own symbols (decided 2026-10-15, F12: Lexicons warns when you save, and
- * Kokoro reads such a word the normal way — engines/kokoro/ipa.js `splice`). The first such
- * symbol of each entry. [] while Kokoro isn't downloaded.
+ * Kokoro reads such a word the normal way — engines/kokoro/ipa.js `splice`). Every such symbol
+ * of each entry, once. [] while Kokoro isn't downloaded.
  */
 export function kokoroCantSay(entries) {
   let vocab;
@@ -74,8 +74,8 @@ export function kokoroCantSay(entries) {
   const out = [];
   for (const e of entries || []) {
     if (!strip(e.phoneme_ipa || "")) continue;
-    const symbol = lacking(toKokoro(e.phoneme_ipa), vocab);
-    if (symbol !== null) out.push({ grapheme: e.grapheme, symbol });
+    const symbols = lackingAll(toKokoro(e.phoneme_ipa), vocab);
+    if (symbols.length) out.push({ grapheme: e.grapheme, symbols });
   }
   return out;
 }

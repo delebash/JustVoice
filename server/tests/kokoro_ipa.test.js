@@ -155,5 +155,8 @@ test("saving_a_lexicon_names_the_symbol_kokoro_lacks", async () => {
   vi.spyOn(blending, "_kokoroGguf").mockReturnValue(kokoroGguf(SYMBOLS));
   r = await c.put(`/v1/lexicons/${r.json().id}`, { json: { name: "Names", entries } });
   expect(r.status, r.text).toBe(200);
-  expect(r.json().kokoro_cant_say).toEqual([{ grapheme: "Whateley", symbol: "ʍ" }]);
+  expect(r.json().kokoro_cant_say).toEqual([{ grapheme: "Whateley", symbols: ["ʍ"] }]);
+  // Every symbol it lacks, once each, in order.
+  r = await c.put(`/v1/lexicons/${r.json().id}`, { json: { name: "Names", entries: [{ grapheme: "Bael", phoneme_ipa: "/ɫʍiɫ/" }] } });
+  expect(r.json().kokoro_cant_say).toEqual([{ grapheme: "Bael", symbols: ["ɫ", "ʍ"] }]);
 });

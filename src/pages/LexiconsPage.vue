@@ -357,7 +357,7 @@ async function saveDialog() {
     // An entry whose IPA uses a symbol Kokoro lacks: Kokoro reads that word the normal way
     // (decided 2026-10-15, F12; the server checks against the downloaded Kokoro).
     for (const w of saved?.kokoro_cant_say || []) {
-      pushToast({ kind: "warning", title: w.grapheme, description: kokoroCantSayWords(w.symbol) });
+      pushToast({ kind: "warning", title: w.grapheme, description: kokoroCantSayWords(w.symbols) });
     }
   } catch (e) {
     pushToast({ kind: "error", title: "Save failed", description: String(e?.message ?? e) });

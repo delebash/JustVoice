@@ -21,9 +21,11 @@ function escapeRe(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-/** What Lexicons says, on Save, of an entry whose IPA uses a symbol Kokoro lacks — the server's
- *  `kokoro_cant_say` (decided 2026-10-15, F12). Kokoro then reads the word the normal way. */
-export const kokoroCantSayWords = (symbol) => `Kokoro can't say “${symbol}” — it will speak this word the normal way.`;
+/** What Lexicons says, on Save, of an entry whose IPA uses symbols Kokoro lacks — the server's
+ *  `kokoro_cant_say` (decided 2026-10-15, F12): each in its own quotes, comma-separated. Kokoro
+ *  then reads the word the normal way. */
+export const kokoroCantSayWords = (symbols) =>
+  `Kokoro can't say ${symbols.map((s) => `“${s}”`).join(", ")} — it will speak this word the normal way.`;
 
 /** How one entry displays in any preview: "alias", "/ipa/", or both. */
 export function entryDisplay(entry) {

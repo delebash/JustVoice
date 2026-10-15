@@ -71,12 +71,19 @@ export function vocabOf(ggufPath) {
   }
 }
 
-/** The first of Kokoro's phoneme symbols in `phonemes` (already Kokoro's, `toKokoro`) that
- * `vocab` lacks — code point by code point, as audio.cpp checks — or null. */
+/** Every one of Kokoro's phoneme symbols in `phonemes` (already Kokoro's, `toKokoro`) that
+ * `vocab` lacks, once each, in order — code point by code point, as audio.cpp checks. [] when
+ * there is no `vocab` to check against. */
+export function lackingAll(phonemes, vocab) {
+  if (!vocab) return [];
+  const out = [];
+  for (const ch of strip(phonemes || "")) if (!vocab.has(ch) && !out.includes(ch)) out.push(ch);
+  return out;
+}
+
+/** The first symbol `lackingAll` finds, or null. */
 export function lacking(phonemes, vocab) {
-  if (!vocab) return null;
-  for (const ch of strip(phonemes || "")) if (!vocab.has(ch)) return ch;
-  return null;
+  return lackingAll(phonemes, vocab)[0] ?? null;
 }
 
 /** `text` with each word that has an IPA entry written as "[word](/kokoro phonemes/)". With

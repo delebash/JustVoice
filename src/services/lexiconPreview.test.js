@@ -28,8 +28,9 @@ describe("lexiconMatches — IPA counts only where the model takes it (2026-10-0
   });
 });
 
-describe("kokoroCantSayWords — a symbol Kokoro lacks (2026-10-15)", () => {
-  it("names the symbol in the approved words", () => {
-    expect(kokoroCantSayWords("ʍ")).toBe("Kokoro can't say “ʍ” — it will speak this word the normal way.");
+describe("kokoroCantSayWords — the symbols Kokoro lacks (2026-10-15)", () => {
+  it("names each symbol in its own quotes, in the approved words", () => {
+    expect(kokoroCantSayWords(["ʍ"])).toBe("Kokoro can't say “ʍ” — it will speak this word the normal way.");
+    expect(kokoroCantSayWords(["ʍ", "ɫ"])).toBe("Kokoro can't say “ʍ”, “ɫ” — it will speak this word the normal way.");
   });
 });

@@ -201,7 +201,8 @@ way.*, and that is what happens at render: Kokoro reads that word as it would
 with no entry, and the rest of the line keeps its pronunciations (since
 2026-10-15 — before, the whole line was refused). The check reads the symbols
 from the Kokoro model you downloaded; before Kokoro is downloaded, nothing is
-checked. The note names the first such symbol of each entry.
+checked. The note names every such symbol of the entry, each in its own quotes —
+*Kokoro can't say “ʍ”, “ɫ” — it will speak this word the normal way.*
 
 The live preview marks both: respellings replace the word, pronunciations
 show as 「/…/」 after it, with a line under the preview saying which models
