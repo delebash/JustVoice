@@ -9,7 +9,8 @@
 // `*.json.migrated` so deletes don't resurrect.
 //
 // Field mapping (wire ↔ DB rows): `grapheme` ↔ `word`; `phoneme_ipa`/`alias` ↔
-// `pronunciation` + `notation` ("ipa"/"phonetic").
+// `pronunciation` + `notation` ("ipa"/"phonetic"), and an IPA entry's respelling in `alias` — an
+// entry with both keeps both (2026-10-15; it was saved as IPA only).
 //
 // Two time forms, as Python answered (RESEARCH §6): `create` returns the zone-aware times it
 // made (`…Z`); `get`, `list`, `update` and `appendEntry` read them back from the database
@@ -26,16 +27,20 @@ import { lexiconsRoot } from "../paths.js";
 
 const log = getLogger("justvoice.storage.lexicons");
 
-function entryToRowFields(e) {
-  return {
+/** A wire entry → its row's fields. The respelling of an entry that also has IPA goes in
+ * `alias`, written only then. */
+export function entryToRowFields(e) {
+  const out = {
     word: e.grapheme,
     pronunciation: e.phoneme_ipa || e.alias || "",
     notation: e.phoneme_ipa ? "ipa" : "phonetic",
   };
+  if (e.phoneme_ipa && e.alias) out.alias = e.alias;
+  return out;
 }
 
 function rowToEntry(row) {
-  if (row.notation === "ipa") return { grapheme: row.word, phoneme_ipa: row.pronunciation, alias: null };
+  if (row.notation === "ipa") return { grapheme: row.word, phoneme_ipa: row.pronunciation, alias: row.alias || null };
   return { grapheme: row.word, phoneme_ipa: null, alias: row.pronunciation };
 }
 

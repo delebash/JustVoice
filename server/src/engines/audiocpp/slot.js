@@ -35,7 +35,7 @@ import * as appState from "../../app_state.js";
 import * as dspClient from "../../audio/dsp_client.js";
 import { parseWavHeader, writeWavContainer } from "../../audio/wav.js";
 import * as speechCache from "../../speech_cache.js";
-import { splice } from "../kokoro/ipa.js";
+import { splice, vocabOf } from "../kokoro/ipa.js";
 import { VOICES } from "../kokoro/voices.js";
 import { AUDIOCPP_VOICE as KITTEN_VOICE } from "../kitten/manifest.js";
 import { AUDIOCPP_VOICE as POCKET_VOICE } from "../pocket/manifest.js";
@@ -787,6 +787,16 @@ function requireJapaneseDictionary() {
 const PAREN_RE = new RegExp(`${S}*\\(${S}*|${S}*\\)${S}*`, "gu");
 const DASH_RUN_RE = new RegExp(`(?:${S}*—${S}*){2,}`, "gu");
 
+/** Kokoro's phoneme symbols, from this row's own model file (`ipa.vocabOf`) — null when it can't
+ * be read, and the runtime then names a symbol it lacks, as before. */
+export function kokoroVocab(row) {
+  try {
+    return vocabOf(path.join(String(speechCache.variantDir(self._dataDir(), "kokoro", row.id)), row.audiocpp.file));
+  } catch {
+    return null;
+  }
+}
+
 /** A manager synth body (a `SynthRequest` as a snake_case object) → `/v1/audio/speech` JSON. */
 export function toSpeechRequest(row, body) {
   const spec = row.audiocpp;
@@ -819,8 +829,10 @@ export function toSpeechRequest(row, body) {
     if (voiceLang.startsWith("ja") && !truthy(get(body, "voice_pack_path"))) requireJapaneseDictionary();
     if (truthy(get(delivery, "ipa_map"))) {
       // A lexicon's IPA: the words it covers ride as "[word](/phonemes/)" (gap 3). The host
-      // sends an ipa_map only when the installed runtime splices (render_core).
-      req.input = splice(req.input, delivery.ipa_map);
+      // sends an ipa_map only when the installed runtime splices (render_core). A word whose
+      // pronunciation uses a symbol Kokoro lacks is read the normal way, not refused with its
+      // line (decided 2026-10-15, F12).
+      req.input = splice(req.input, delivery.ipa_map, self.kokoroVocab(row));
     }
     const opts = {};
     if (truthy(get(body, "voice_pack_path"))) {

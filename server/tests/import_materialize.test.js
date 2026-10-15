@@ -193,6 +193,22 @@ test("lexicon_store_crud_round_trip", () => {
   expect(store.list()).toEqual([]);
 });
 
+test("an_entry_with_both_ipa_and_a_respelling_keeps_both", () => {
+  // 2026-10-15: it was saved as IPA only (storage/lexicons.js entryToRowFields).
+  const h = tmpDb();
+  const store = new LexiconStore(tmpPath(), h);
+  const both = { grapheme: "Worcester", phoneme_ipa: "/ˈwʊstər/", alias: "WUSS-ter" };
+  const lex = store.create("Names", { entries: [both] });
+  expect(store.get(lex.id).entries).toEqual([both]);
+  store.update(lex.id, [both, { grapheme: "Hecate", alias: "HEH-kuh-tee" }]);
+  store.appendEntry(lex.id, { grapheme: "Beauchamp", phoneme_ipa: "/ˈbiːtʃəm/" });
+  expect(store.get(lex.id).entries).toEqual([
+    both,
+    { grapheme: "Hecate", phoneme_ipa: null, alias: "HEH-kuh-tee" },
+    { grapheme: "Beauchamp", phoneme_ipa: "/ˈbiːtʃəm/", alias: null },
+  ]);
+});
+
 test("legacy_lexicon_files_import_once", () => {
   const h = tmpDb();
   const tmp = tmpPath();

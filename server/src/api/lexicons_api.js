@@ -6,6 +6,8 @@ import { getState } from "../app_state.js";
 import { Block, Persona, Project, Scene, Speaker } from "../database/models.js";
 import * as session from "../database/session.js";
 import { notFound } from "../errors.js";
+import * as blending from "../engines/blending.js";
+import { lacking, toKokoro, vocabOf } from "../engines/kokoro/ipa.js";
 import { wordsIn } from "../render_core.js";
 import { strip } from "@delebash/llm-runner/platform/py";
 import { construct, CreateLexiconRequest, Lexicon, LexiconEntry, LexiconList, LexiconReach } from "../models.js";
@@ -56,9 +58,34 @@ export function lexiconReach(lex) {
   return { lines, projects: projects.map((p) => ({ id: p.id, name: p.name })), personas };
 }
 
+/**
+ * The entries whose IPA uses a symbol Kokoro lacks → [{grapheme, symbol}], read against the
+ * downloaded Kokoro's own symbols (decided 2026-10-15, F12: Lexicons warns when you save, and
+ * Kokoro reads such a word the normal way — engines/kokoro/ipa.js `splice`). The first such
+ * symbol of each entry. [] while Kokoro isn't downloaded.
+ */
+export function kokoroCantSay(entries) {
+  let vocab;
+  try {
+    vocab = vocabOf(blending._kokoroGguf(getState().dataDir));
+  } catch {
+    return []; // Kokoro isn't downloaded
+  }
+  const out = [];
+  for (const e of entries || []) {
+    if (!strip(e.phoneme_ipa || "")) continue;
+    const symbol = lacking(toKokoro(e.phoneme_ipa), vocab);
+    if (symbol !== null) out.push({ grapheme: e.grapheme, symbol });
+  }
+  return out;
+}
+
+/** A lexicon as the API answers it, with `kokoro_cant_say`. */
+const wire = (lex) => construct(Lexicon, { ...lex, kokoro_cant_say: kokoroCantSay(lex.entries) });
+
 export function router() {
   const app = new Hono();
-  app.get("/v1/lexicons", (c) => c.json(construct(LexiconList, { lexicons: getState().lexicons.list() })));
+  app.get("/v1/lexicons", (c) => c.json(construct(LexiconList, { lexicons: getState().lexicons.list().map(wire) })));
 
   app.post("/v1/lexicons", input({ body: CreateLexiconRequest }), (c) => {
     const body = c.req.valid("json");
@@ -70,14 +97,14 @@ export function router() {
       persona_id: body.persona_id,
     });
     if (lex.scope === "project" && lex.project_id) _chooseForBookWithNone(lex.project_id, lex.id);
-    return c.json(construct(Lexicon, lex), 201);
+    return c.json(wire(lex), 201);
   });
 
   app.get("/v1/lexicons/:id", (c) => {
     const id = c.req.param("id");
     const lex = getState().lexicons.get(id);
     if (!lex) throw notFound(`lexicon ${id}`);
-    return c.json(construct(Lexicon, lex));
+    return c.json(wire(lex));
   });
 
   app.put("/v1/lexicons/:id", input({ body: CreateLexiconRequest }), (c) => {
@@ -85,7 +112,7 @@ export function router() {
     const body = c.req.valid("json");
     const lex = getState().lexicons.update(id, body.entries, body.name);
     if (!lex) throw notFound(`lexicon ${id}`);
-    return c.json(construct(Lexicon, lex));
+    return c.json(wire(lex));
   });
 
   app.delete("/v1/lexicons/:id", (c) => {
@@ -105,7 +132,7 @@ export function router() {
     const id = c.req.param("id");
     const lex = getState().lexicons.appendEntry(id, c.req.valid("json"));
     if (!lex) throw notFound(`lexicon ${id}`);
-    return c.json(construct(Lexicon, lex));
+    return c.json(wire(lex));
   });
   return app;
 }

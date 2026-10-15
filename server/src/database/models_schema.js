@@ -366,7 +366,7 @@ export const TABLES = [
   },
   {
     "name": "lexicon_entries",
-    "ddl": "CREATE TABLE lexicon_entries (\n\tid VARCHAR NOT NULL, \n\tlexicon_id VARCHAR NOT NULL, \n\tword VARCHAR NOT NULL, \n\tpronunciation TEXT NOT NULL, \n\tnotation VARCHAR NOT NULL, \n\tnotes TEXT, \n\tcreated_at DATETIME, \n\tPRIMARY KEY (id), \n\tFOREIGN KEY(lexicon_id) REFERENCES lexicons (id) ON DELETE CASCADE\n)",
+    "ddl": "CREATE TABLE lexicon_entries (\n\tid VARCHAR NOT NULL, \n\tlexicon_id VARCHAR NOT NULL, \n\tword VARCHAR NOT NULL, \n\tpronunciation TEXT NOT NULL, \n\tnotation VARCHAR NOT NULL, \n\talias TEXT, \n\tnotes TEXT,\n\tcreated_at DATETIME, \n\tPRIMARY KEY (id), \n\tFOREIGN KEY(lexicon_id) REFERENCES lexicons (id) ON DELETE CASCADE\n)",
     "indexes": [],
     "columns": {
       "id": {
@@ -391,6 +391,9 @@ export const TABLES = [
         "kind": "text",
         "notNull": true,
         "default": "phonetic"
+      },
+      "alias": {
+        "kind": "text"
       },
       "notes": {
         "kind": "text"

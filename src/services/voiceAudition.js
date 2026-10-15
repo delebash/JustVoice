@@ -69,6 +69,14 @@ export function lexiconPreviewBody(persona, text, { lexiconId, entries = null, b
   return body;
 }
 
+/** What one take of Lexicons' ▶ or Try a word says: the persona, before or after, the words. */
+export const lexiconTake = (persona, text, which) => JSON.stringify([persona?.id ?? null, which, String(text || "").trim()]);
+
+/** Whether ▶ replays the take already loaded under `key` (pause / play) rather than asking the
+ *  server again: only when that take says the same thing — a changed word or persona is a new
+ *  take (2026-10-15: Try a word replayed the old word). */
+export const replaysTake = (playerKey, key, heard, take) => playerKey === key && heard === take;
+
 /** A persona saying `text` with one lexicon or without it — Lexicons' ▶ and Try a word
  *  (2026-10-09), through the same preview the persona page uses, so before and after
  *  differ by that lexicon alone. `opts`: lexiconPreviewBody's. */

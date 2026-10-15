@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 import { describe, expect, it } from "vitest";
-import { lexiconMatches } from "./lexiconPreview.js";
+import { kokoroCantSayWords, lexiconMatches } from "./lexiconPreview.js";
 
 const ENTRIES = [
   { grapheme: "Beauchamp", phoneme_ipa: "ˈbiːtʃəm" },
@@ -25,5 +25,11 @@ describe("lexiconMatches — IPA counts only where the model takes it (2026-10-0
       ["Worcester", "spelling", "WOOS-ter"],
       ["Vance", "spelling", "VANSS"],
     ]);
+  });
+});
+
+describe("kokoroCantSayWords — a symbol Kokoro lacks (2026-10-15)", () => {
+  it("names the symbol in the approved words", () => {
+    expect(kokoroCantSayWords("ʍ")).toBe("Kokoro can't say “ʍ” — it will speak this word the normal way.");
   });
 });

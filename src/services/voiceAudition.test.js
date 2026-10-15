@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("@delebash/llm-ui", () => ({ confirmDialog: vi.fn(), pushToast: vi.fn() }));
 vi.mock("./prefs.js", () => ({ readPref: (_k, fallback) => fallback, writePref: () => {} }));
 
-const { lexiconPreviewBody } = await import("./voiceAudition.js");
+const { lexiconPreviewBody, lexiconTake, replaysTake } = await import("./voiceAudition.js");
 
 // Lexicons' ▶ and Try a word (2026-10-13): the line as a render reads it — the book's
 // lexicon, then the persona's — with this lexicon in its slot (After) or without it (Before).
@@ -42,5 +42,21 @@ describe("lexiconPreviewBody — this lexicon in its slot, beside the book's", (
     expect(after).toEqual({ persona: { ...june, lexicon_id: "lex-x" }, text: "Hi" });
     const before = lexiconPreviewBody(june, "Hi", { lexiconId: "lex-x", after: false });
     expect(before).toEqual({ persona: { ...june, lexicon_id: null }, text: "Hi" });
+  });
+});
+
+// 2026-10-15: Try a word replayed the old take when the word changed.
+describe("replaysTake — ▶ replays a take only while it says the same thing", () => {
+  const june = { id: "p1" };
+  const mara = { id: "p2" };
+  it("replays the same word, in the same voice, before or after alike", () => {
+    const take = lexiconTake(june, "Worcester ", "after");
+    expect(replaysTake("try:after", "try:after", take, lexiconTake(june, "Worcester", "after"))).toBe(true);
+  });
+  it("asks again for a changed word or persona, or another button", () => {
+    const take = lexiconTake(june, "Worcester", "after");
+    expect(replaysTake("try:after", "try:after", take, lexiconTake(june, "Beauchamp", "after"))).toBe(false);
+    expect(replaysTake("try:after", "try:after", take, lexiconTake(mara, "Worcester", "after"))).toBe(false);
+    expect(replaysTake("try:after", "try:before", take, lexiconTake(june, "Worcester", "before"))).toBe(false);
   });
 });

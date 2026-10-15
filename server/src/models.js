@@ -891,6 +891,10 @@ export const Lexicon = T.Object({
   persona_id: opt(nullable(T.String()), null),
   created_at: DateTime(),
   updated_at: DateTime(),
+  // The entries whose IPA uses a symbol Kokoro lacks, by the downloaded Kokoro's own symbols —
+  // Kokoro reads those words the normal way, and Lexicons says so when you save (decided
+  // 2026-10-15, F12). Empty while Kokoro isn't downloaded. Answered, never stored.
+  kokoro_cant_say: opt(T.Array(T.Object({ grapheme: T.String(), symbol: T.String() })), []),
 });
 
 export const LexiconList = T.Object({ lexicons: T.Array(Lexicon) });

@@ -88,7 +88,8 @@ An **entry** is a word and a way to say it. In **Add entry**:
   reads this.
 
 Give the word an IPA pronunciation, a phonetic spelling or both, then **+ Add
-entry** puts it in the list. **Save** keeps the whole lexicon — and takes along
+entry** puts it in the list. An entry with both keeps both when saved (since
+2026-10-15; before, only its IPA was kept). **Save** keeps the whole lexicon — and takes along
 an entry still typed in the form, so nothing you typed is dropped. An entry
 typed only halfway (a word with no way to say it, or a pronunciation with no
 word) stops Save: the footer says what is missing, and Save works again once
@@ -114,7 +115,9 @@ A saved lexicon's editor lets you listen to it:
   the editor, saved or not, so you can hear an entry before you **Save** it
   (since 2026-10-13 — before, an entry added or changed had to be saved first).
 - **Try a word** — pick a persona, type a word or a short line, then **▶ Before**
-  hears it without this lexicon and **▶ After** with its entries. The
+  hears it without this lexicon and **▶ After** with its entries; change the
+  word or the persona and the next ▶ asks for a new take (since 2026-10-15 — before,
+  it replayed the last one). The
   persona list holds the personas that read this lexicon — the one that carries
   it, and the ones cast in a book that chose it — so you hear it in the voice
   that will say it. For a lexicon nothing reads yet it lists every persona.
@@ -189,6 +192,16 @@ runtime; between the 2026-10-01 switch and then, no engine did). Every other
 engine reads an entry's **respelling**: give the names that matter a respelling
 ("Beauchamp" → "BEE-chum") as well as their IPA, so they come out right on any
 voice. An IPA-only entry changes nothing on an engine without phonemes.
+
+**A symbol Kokoro doesn't have.** Kokoro speaks from its own set of phoneme
+symbols, which is not all of IPA (it has no *ʍ*, for one). When you **Save** a
+lexicon with an entry whose IPA uses a symbol Kokoro lacks, a note names the
+entry's word and says *Kokoro can't say “ʍ” — it will speak this word the normal
+way.*, and that is what happens at render: Kokoro reads that word as it would
+with no entry, and the rest of the line keeps its pronunciations (since
+2026-10-15 — before, the whole line was refused). The check reads the symbols
+from the Kokoro model you downloaded; before Kokoro is downloaded, nothing is
+checked. The note names the first such symbol of each entry.
 
 The live preview marks both: respellings replace the word, pronunciations
 show as 「/…/」 after it, with a line under the preview saying which models

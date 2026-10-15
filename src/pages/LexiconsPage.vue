@@ -12,7 +12,7 @@
 <script setup>
 import { computed, nextTick, onActivated, onMounted, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
-import { previewLexiconText } from "../services/lexiconPreview.js";
+import { kokoroCantSayWords, previewLexiconText } from "../services/lexiconPreview.js";
 import { pushToast, saveBlob, pageFlow } from "@delebash/llm-ui";
 import { confirmDialog, promptDialog } from "@delebash/llm-ui";
 import { UiButton, UiInput, UiTag, UiChip, UiSelect, AppModal, UiTable } from "@delebash/llm-ui";
@@ -22,7 +22,7 @@ import { useProjectsStore } from "../stores/projects.js";
 import { usePersonasStore } from "../stores/personas.js";
 import { useActiveProject } from "../stores/activeProject.js";
 import { lexiconUsedBy } from "../services/lexiconUsage.js";
-import { auditionWithLexicon } from "../services/voiceAudition.js";
+import { auditionWithLexicon, lexiconTake, replaysTake } from "../services/voiceAudition.js";
 import { handleTermsRefusal } from "../services/engineTerms.js";
 import { usePagePlayer } from "../composables/usePagePlayer.js";
 import PagePlayer from "../components/PagePlayer.vue";
@@ -227,10 +227,14 @@ async function loadReach(id) {
 /** ▶ — `text` in the chosen persona's voice, with this lexicon ("after") or without ("before"),
  *  beside the book's. It reads the entries as the editor holds them, saved or not (the
  *  narrowings review P31, 2026-10-13: an entry had to be saved to be heard). */
+// What the take last played says, so a changed word (or persona) asks again instead of replaying
+// the old take (2026-10-15).
+let heard = "";
 async function hear(text, which, key) {
   const persona = personas.value.find((p) => p.id === hearAsId.value);
   if (!persona || !String(text || "").trim() || !editingId.value) return;
-  if (player.key === key && audioUrls.length) return player.toggle();
+  const what = lexiconTake(persona, text, which);
+  if (audioUrls.length && replaysTake(player.key, key, heard, what)) return player.toggle();
   try {
     const blob = await auditionWithLexicon(api, persona, text.trim(), {
       lexiconId: editingId.value,
@@ -241,6 +245,7 @@ async function hear(text, which, key) {
     if (!blob) return;
     const url = URL.createObjectURL(blob);
     audioUrls.push(url);
+    heard = what;
     await player.play(key, url);
   } catch (e) {
     if (handleTermsRefusal(e)) return;
@@ -330,15 +335,16 @@ async function saveDialog() {
     persona_id: scope === "persona" ? draft.value.persona_id || null : null,
   };
   try {
+    let saved;
     if (creating.value) {
-      await api.request("/v1/lexicons", {
+      saved = await api.request("/v1/lexicons", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
     } else {
       // PUT replaces entries + name (scope is fixed after create).
-      await api.request(`/v1/lexicons/${editingId.value}`, {
+      saved = await api.request(`/v1/lexicons/${editingId.value}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -348,6 +354,11 @@ async function saveDialog() {
     await refresh();
     closeDialog();
     pushToast({ kind: "success", title: wasCreating ? "Lexicon created" : "Lexicon saved" });
+    // An entry whose IPA uses a symbol Kokoro lacks: Kokoro reads that word the normal way
+    // (decided 2026-10-15, F12; the server checks against the downloaded Kokoro).
+    for (const w of saved?.kokoro_cant_say || []) {
+      pushToast({ kind: "warning", title: w.grapheme, description: kokoroCantSayWords(w.symbol) });
+    }
   } catch (e) {
     pushToast({ kind: "error", title: "Save failed", description: String(e?.message ?? e) });
   }
