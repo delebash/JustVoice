@@ -297,3 +297,41 @@ to shut down (`shell/main.js`).
 **JustWrite's side** (its session, with the user's go there): the restore wiring
 (`beforeCopy`/`afterCopy`/`afterTables`), its CORS test (hono/cors), `serverProduct: "JustWrite
 Server"` and `resolvePort`, switching to the kit's `watchSync` and `safeTitle`.
+
+## P26 — three screens beside their frozen mocks (2026-10-15)
+
+Compared at 1280 and 390 px on the user's data (gate server, Playwright; pictures were in the
+session's scratchpad). Speech engines waits for the adoption plan's slices. Each screen: what
+differs, whether a decision covers it, and a lean — **the user's call per screen**.
+
+**New project** (mock `_s1`; `NewProjectModal.vue`). Covered by "Every open task…" (2026-10-09:
+keep the dialog, a file optional, the small table, no "What you get", no master target): a dialog,
+not a two-column page; no target chooser or "What you get". Not covered: Name and Language
+unlabelled in the footer (the mock labels them in step 1); no step numbers; the source table has 7
+rows from the server's importers with columns Source / Files / What comes in (the mock: 4 rows,
+Source / What lands / Speakers?, yes/no and "richest" tags), and its descriptions show internal
+words ("character roster", "lift to characters", `pause_after_ms` — design law 6b). Lean: keep the
+shape; the table's columns and words toward the mock's (new words, for the user's word).
+
+**Lexicons** (mock `_s10`; `LexiconsPage.vue`). Covered: IPA "Kokoro only", Try a word
+before/after (plan §3). Not covered: a library list plus an editor dialog (the mock: a page per
+lexicon); an "Add entry" form below the table (the mock: one inline add row); columns ▶ / Word /
+Pronunciation / Format / Edit+Delete (the mock: Word / Say it as / Notation / Heard ▶ / 🗑); the
+IPA note a plain grey hint (the mock: an amber banner); Affects a hint line (plan §3 said "the card
+says so, as the mock does"); **scope fixed at creation** (the mock: Global / This project / One
+persona, changeable, with which lexicon wins — no decision found). Lean: keep list-and-dialog; the
+amber IPA banner and the Affects card as the mock and plan §3 have them; scope — the user's call.
+
+**Effects** (mock `_s11`; `EffectsPage.vue`, `EffectsChainEditorModal.vue`). Covered: the library
+plus a persona's chain as a dialog (plan §4), no From column or scene rows (the Scene went to
+IDEAS). Not covered: each step is a box with full-width number boxes two per row (the mock: compact
+rows, settings inline and sized, with units) — against the size-to-content rule; "＋ Add effect" and
+the Save-as-preset card drawn differently; no engine pill. Lean: keep the shape; draw the chain list
+in the in-app mock first, then build it.
+
+**Defects found, fixed under the existing rules** (no decision needed): the lexicon dialog's inputs
+shown in 11px capitals (a selector matching Quasar's `<label>`); the lexicon table clipped at 390
+px; the Effects library's chain pills showing internal keys; "dB" shown as "DB"; New project's
+footer cramped at 390 px; at 390 px the ☰ pill over the page's first text and the topbar pills cut
+off. **Seen, for the user's word:** every kit table header is JetBrains Mono 10.5px (the mock: the
+sans).
