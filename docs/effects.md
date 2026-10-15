@@ -11,7 +11,7 @@ JustVoice has an effects chain: 10 effect types, 4 built-in presets, custom pres
 | **Low-pass filter** | Cut high frequencies. 4500 Hz for radio voice; 8000 Hz for telephone. |
 | **Reverb** | Adds space. Room / hall / chamber / plate variants. Wet/dry mix knob. |
 | **Delay** | Echo. Adjustable delay time + feedback. |
-| **Chorus** | Doubling effect. Two slightly-detuned copies layered for thickness. |
+| **Chorus** | Doubling effect. Two slightly-detuned copies layered for thickness. **Rate (Hz)** is how many times a second the copy wavers, **Depth** how far (0–1), **Centre delay (ms)** how far behind the voice it sits, **Feedback** how much of the copy runs back into it — a metallic ring as it rises (0–0.95) — and **Mix** how much of it you hear (0–1). |
 | **Compressor** | Evens out level. 3:1 ratio at -18 dB threshold is a good starting point. |
 | **Gain** | Final level adjustment. ±12 dB. |
 | **Distortion** | Soft clipping (tanh waveshaper). Drive in dB — grit and breakup. |
