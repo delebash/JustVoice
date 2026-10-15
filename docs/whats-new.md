@@ -48,8 +48,9 @@
     work: a restore used to send the backup's old projects to every paired or cloud-folder
     computer as the newest edits; now the backup keeps its age, the next sync brings the newer
     work back on every computer, and this computer carries on as a new device in sync (a new
-    entry in Devices; its old cloud-folder files stay). It keeps its own sync settings, and while
-    it syncs it refuses a backup from another sync library ([Sync](sync.md#good-to-know))
+    entry in Devices; its old cloud-folder files stay — in its own Devices list the old entry
+    reads *‹name› (before the restore on ‹date›)*). It keeps its own sync settings, and while it
+    syncs it refuses a backup from another sync library ([Sync](sync.md#good-to-know))
   - Desktop app: one JustVoice server per data folder — a second one says *Another JustVoice
     server is using this data folder (‹path›) — stop it first.* When another program holds the
     port, the can't-reach page says *Port N is in use by another program — close that

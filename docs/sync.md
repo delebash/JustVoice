@@ -144,7 +144,10 @@ the persona finds it straight away. The built-in voices come with their engine a
   would be without sync.
   - After a restore, this computer carries on in sync as a new device: your other computers'
     **Devices** list it as a new entry beside the old one (both with its name), and the old one's
-    files stay in the cloud folder until they're removed.
+    files stay in the cloud folder. In this computer's own **Devices**, the old entry reads
+    *‹name› (before the restore on ‹date›)*. There is no Remove: that entry's cloud-folder copy is
+    how this computer gets its newer work back, and a computer that is still offline may not have
+    read it yet.
   - This computer keeps its own sync settings — the cloud folder, the paired devices and the
     passwords they reach it with, the library key and its name — not the ones in the backup.
   - While this computer is syncing (a cloud folder or a paired device is set), a backup from
