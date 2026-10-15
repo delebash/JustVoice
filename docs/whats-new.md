@@ -44,7 +44,12 @@
     to think as little as they can, and the control says *This model always thinks — Off makes
     it think less.* ([GPU](gpu.md))
   - Sync: when another computer's changes arrive, the window waits to reload while a dialog is
-    open or the cursor is in a text box ([Sync](sync.md))
+    open or the cursor is in a text box. Restoring a backup keeps your other computers' newer
+    work: a restore used to send the backup's old projects to every paired or cloud-folder
+    computer as the newest edits; now the backup keeps its age, the next sync brings the newer
+    work back on every computer, and this computer carries on as a new device in sync (a new
+    entry in Devices; its old cloud-folder files stay). It keeps its own sync settings, and while
+    it syncs it refuses a backup from another sync library ([Sync](sync.md#good-to-know))
   - Desktop app: one JustVoice server per data folder — a second one says *Another JustVoice
     server is using this data folder (‹path›) — stop it first.* When another program holds the
     port, the can't-reach page says *Port N is in use by another program — change the Port in
