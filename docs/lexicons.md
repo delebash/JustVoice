@@ -121,8 +121,8 @@ A saved lexicon's editor lets you listen to it:
   persona list holds the personas that read this lexicon — the one that carries
   it, and the ones cast in a book that chose it — so you hear it in the voice
   that will say it. For a lexicon nothing reads yet it lists every persona.
-- **Affects** — how many lines contain one of the lexicon's words, counting only
-  the lines the render reads it for (see
+- **Affects** — the card under Try a word: how many lines contain one of the
+  lexicon's words, counting only the lines the render reads it for (see
   [Which lexicons a line is read with](#which-lexicons-a-line-is-read-with)).
   Editing an entry makes those lines [stale](#what-goes-stale-when-you-change-one)
   on Render; nothing renders again until you choose to. A lexicon nothing reads
@@ -207,7 +207,7 @@ checked. The note names every such symbol of the entry, each in its own quotes �
 The live preview marks both: respellings replace the word, pronunciations
 show as 「/…/」 after it, with a line under the preview saying which models
 speak IPA — *「/…/」 is IPA — Kokoro only.* The entries table says the same in
-its Kind column (*IPA · Kokoro only*; hover it for the rest), and the note under
+its Format column (*IPA · Kokoro only*; hover it for the rest), and an amber warning under
 the table spells it out — *Spoken as IPA by Kokoro. Every other model reads the
 respelling — an entry with only IPA does nothing there.* All of them read the
 installed models' capabilities, so they follow the speech runtime you have.

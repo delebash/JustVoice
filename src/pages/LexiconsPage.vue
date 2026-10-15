@@ -748,7 +748,8 @@ onActivated(() => {
           </UiTable>
 
           <PlayTransport v-if="player.key?.startsWith('entry:')" :player="player" />
-          <p v-if="draft.entries.length" class="jv-hint">{{ ipaTip }}</p>
+          <!-- The mock's amber warning (`_s10`, decided 2026-10-15): the app's warn banner. -->
+          <div v-if="draft.entries.length" class="jv-banner jv-banner--warn jv-mt10">{{ ipaTip }}</div>
 
           <!-- Hear a word before and after, in the voice that will say it; what the lexicon touches. -->
           <UiField v-if="!creating" label="Try a word" layout="block" class="lex__try">
@@ -764,8 +765,14 @@ onActivated(() => {
               <PlayTransport v-if="player.key?.startsWith('try:')" :player="player" />
             </div>
             <p class="jv-hint lex__hint">{{ hearHint }}</p>
-            <p v-if="affectsLine" class="jv-hint lex__hint"><b>Affects:</b> {{ affectsLine }}</p>
           </UiField>
+
+          <!-- What the lexicon touches — a card, as the mock (`_s10`) and plan §3 draw it ("the card
+               says so"; decided 2026-10-15), with Effects' "Order matters" shape. -->
+          <section v-if="affectsLine" class="jv-card jv-card--soft jv-mb14">
+            <div class="jv-card__header"><h3 class="jv-card__title">Affects</h3></div>
+            <div class="jv-card__body">{{ affectsLine }}</div>
+          </section>
 
           <div class="jv-divider" />
 
