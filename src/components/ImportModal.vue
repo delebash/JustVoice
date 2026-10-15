@@ -19,12 +19,13 @@
 // remains.
 //
 // Help link: each adapter exposes a `docs_anchor` (e.g. "import-justwrite").
-// We surface it through `data-help-key` on the "What is this format?" link
-// so the existing help-bus picks it up when implemented; for now it deep-
-// links to docs/import-and-export.md#<anchor>.
+// "What is this format?" opens that section in the Help drawer (the kit's
+// openHelp), as New project's dialog does (2026-10-15): it opened
+// docs/import-and-export.md in a new window, which the desktop window never
+// opens for an app:// link and the headless server doesn't serve.
 
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
-import { UiButton, UiSelect, AppModal } from "@delebash/llm-ui";
+import { UiButton, UiSelect, AppModal, openHelp } from "@delebash/llm-ui";
 import { projectsService } from "../services/projects.js";
 import { pickAdapter } from "../services/importPicker.js";
 import { setImportDraft } from "../stores/importDraft.js";
@@ -165,8 +166,7 @@ async function doPreview() {
             class="help"
             :href="helpHref"
             :data-help-key="helpKey"
-            target="_blank"
-            rel="noopener"
+            @click.prevent="openHelp('import-and-export', helpKey)"
           >What is this format?</a>
         </p>
         <p v-if="selectedAdapter && !selectedAdapter.implemented" class="warn">
