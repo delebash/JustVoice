@@ -561,9 +561,11 @@ onMounted(async () => {
         </template>
 
         <!-- Active-project chips (journeys topbar contract) — Project /
-             Kind / Master. Click the project chip to jump to Projects. -->
+             Kind / Master. Click the project chip to jump to Projects. At phone
+             width (`gt-xs`) they hide, as do the model pills and the server URL:
+             the bar is one row there (decided 2026-10-15; app.scss, "At phone width"). -->
         <template v-if="activeProject.id">
-          <div class="jv-topbar__switcher" ref="switcherRef">
+          <div class="jv-topbar__switcher gt-xs" ref="switcherRef">
             <button type="button" class="jv-topbar__proj" title="Active project — click to switch" @click="toggleSwitcher">
               <span class="jv-topbar__proj-k">Project</span><b>{{ activeProject.name }}</b><span class="jv-topbar__proj-chev">▾</span>
             </button>
@@ -586,10 +588,10 @@ onMounted(async () => {
               </button>
             </div>
           </div>
-          <span class="jv-topbar__proj" :title="`Project kind — decides the sidebar vocabulary and the export pipeline`">
+          <span class="jv-topbar__proj gt-xs" :title="`Project kind — decides the sidebar vocabulary and the export pipeline`">
             <span class="jv-topbar__proj-k">Kind</span><b>{{ activeProject.kindIcon }} {{ activeProject.kindLabel }}</b>
           </span>
-          <span v-if="activeProject.master" class="jv-topbar__proj" title="Mastering preset applied on render">
+          <span v-if="activeProject.master" class="jv-topbar__proj gt-xs" title="Mastering preset applied on render">
             <span class="jv-topbar__proj-k">Master</span><b>{{ masterLabel(activeProject.master) }}</b>
           </span>
         </template>
@@ -601,7 +603,7 @@ onMounted(async () => {
         <button
           v-if="health"
           type="button"
-          class="jv-topbar__engine-pill"
+          class="jv-topbar__engine-pill gt-xs"
           :class="{ 'jv-topbar__engine-pill--empty': !health.current_engine }"
           :title="health.current_engine ? `Voice model loaded: ${health.current_model || health.current_engine}. Click to manage speech engines.` : 'No voice model loaded. Click to load one.'"
           @click="goView('engines')"
@@ -612,7 +614,7 @@ onMounted(async () => {
         <button
           v-if="health"
           type="button"
-          class="jv-topbar__engine-pill"
+          class="jv-topbar__engine-pill gt-xs"
           :class="{ 'jv-topbar__engine-pill--empty': !llmModel }"
           :title="llmModel
             ? `Language model ${llmLoading ? 'loading' : 'loaded'}: ${llmModel}. Click to open AI Settings.`
@@ -643,7 +645,7 @@ onMounted(async () => {
             </span>
           </span>
           <a
-            class="jv-topbar__url"
+            class="jv-topbar__url gt-xs"
             :href="api.serverUrl"
             :title="`Open ${api.serverUrl} in your browser`"
             @click.prevent="openExternal(api.serverUrl)"

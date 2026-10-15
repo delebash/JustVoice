@@ -59,8 +59,15 @@ in the macOS app bundle) and the same options. From a copy of the source code,
 `npm run server` does it for you (options go after `--`).
 
 The full UI is served at `http://<host>:17494/ui/` — any browser works, which is
-how you run JustVoice on a remote GPU box and drive it from a laptop. The usual
-flags have `JUSTVOICE_*` environment-variable twins for service managers. Add
+how you run JustVoice on a remote GPU box and drive it from a laptop.
+
+In a phone's browser (a window narrower than 600 px) the sidebar opens from **☰**, and the
+title bar stays one row: ☰, Back, the page name, the server status, the ✨ AI tasks button and
+Help. What a computer's bar also shows — the project's chips, the two model pills, the server's
+address and Forward — waits for a wider window; Projects lists your projects and AI Settings
+the loaded models.
+
+The usual flags have `JUSTVOICE_*` environment-variable twins for service managers. Add
 bearer tokens (Settings → auth) before exposing a host beyond loopback; loopback
 requests are exempt unless you require otherwise. Even then, closing the desktop
 app still shuts its server down cleanly: its shutdown request answers from this

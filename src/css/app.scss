@@ -689,16 +689,18 @@ button.jv-topbar__proj:hover { border-color: var(--accent); color: var(--accent-
 }
 .jv-topbar__engine-icon { font-size: 12px; }
 
-/* At phone width (Quasar's xs) the bar's parts can't share one line — at 390 px they ran 770 px
-   past the window, clipped, the AI and help buttons with them (2026-10-15). They give way in the
-   order above, to the end: the server URL to nothing, the model pills to their shortest ("🔊 N…",
-   as a computer's bar already shows them at 1280 px); and what still doesn't fit beside the page
-   name wraps to the rows below it, as a header does on the phone (the kit's PaneHeader and
-   AppModal header). Nothing reaches past the window. */
+/* At phone width (Quasar's xs) the bar is one row (decided 2026-10-15, the build's question 11:
+   "one row at phone width — the topbar's parts hide, in the 2026-10-05 shrink order, until it
+   fits"). At 390 px even their shortest forms ran 770 px past the window, so the parts that give
+   way hide instead, in that order: the server URL, the project's chips (its name, kind and master
+   target), the two model pills — each carries Quasar's `gt-xs` in MainLayout.vue, so a wider
+   window shows them as before — and the page name gives way last, its end in "…" (its 12ch floor
+   is the computer's). Forward stays on the computer, as the family's phone title bar has it
+   (the kit's phone plan; JustWrite's bar: ☰ · Back · the title · its controls). */
 @media (max-width: 599.98px) {
-  .jv-topbar.lu-titlebar { flex-wrap: wrap; gap: 8px; }
-  .jv-topbar__url { display: none; }
-  .jv-topbar__engine-pill { flex-basis: 68px; }
+  .jv-topbar.lu-titlebar { gap: 8px; }
+  .jv-topbar .lu-titlebar-forward { display: none; }
+  .jv-topbar .lu-titlebar-title { min-width: 0; }
 }
 
 /* Boot banner — shown only when /v1/health hasn't responded yet after
