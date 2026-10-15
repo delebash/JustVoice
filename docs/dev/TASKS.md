@@ -260,10 +260,24 @@ NOT:    the term "hand-wired" — the user finds it strange.
         estimate; a card that can't be read says "memory not measured yet"; 4: hide the Audio
         channels tab until routing is built, and an IDEAS entry saying what it is; 6: check
         Anthropic's docs for what claude-mythos-preview accepts, then treat it like Mythos 5.
+        Then the user: "your rec on all others think on it again first" — the rest, rethought:
+        5: no Remove (a restored computer reads its own old entry's folder to get its newer work
+        back, and a device still offline may not have read it); the old entry is named "‹name›
+        (before the restore on ‹date›)". 9: New project keeps its shape, its source table's
+        columns and words go plain, toward the mock's (no internal words — design law 6b);
+        Lexicons keeps list-and-dialog, gains the amber IPA banner and the Affects card (as plan
+        §3 and the mock), scope stays fixed at creation (a changeable scope changes past renders;
+        nothing needs it now); Effects' chain list is drawn compact in the in-app mock first, the
+        build after the user looks; the kit tables' header font stays (the family's eyebrow
+        style). 10: "Chorus", its knob labels from its parameters, in the effects catalog. 11:
+        one row at phone width — the topbar's parts hide, in the 2026-10-05 shrink order, until
+        it fits. 12: "‹Model› (built-in)" for a model's one unnamed voice. 13: "Can't copy a
+        voice from a clip yet — audio.cpp doesn't support it for this model." 16: no reset now
+        (slice 4 must open the user's data with nothing missing); until the user's next reset,
+        saving a lexicon entry with both IPA and a spelling fails.
 BUILT:  15 — 8d7adf6.
-OPEN:   1, 2, 4, 6 to build; 3 with slice 4; 7, 8, 14 stand as built; 13 explained, waiting on
-        the user; 5, 9–12, 16 not answered yet.
-GO:     given 2026-10-15 for 1, 2, 3, 4, 6, 7, 8, 14, 15.
+OPEN:   all of 1–16 as above; 3, 12, 13 and 2 with the engine slices (their files).
+GO:     given 2026-10-15 for 1–16.
 
 ### FINDING — the generated engines offer only models that clone a voice; 13 speech families never appear
 STATE:  FINDING — code-verified 2026-10-13. Mine, never asked: built in the engine list's slices
