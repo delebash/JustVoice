@@ -2,6 +2,61 @@
 
 ## v0.1.0
 
+- **Your answers to the review's questions, built (2026-10-15)** — the rest of what JustVoice had
+  decided without asking, put right:
+  - Script: a speaker you set before a chapter's first Analyze is yours — Analyze gives it to
+    every line it marks as speech in that paragraph, and the narration to the narrator (before,
+    the first Analyze replaced it); the **Check** column's tag names the kind of check — *No
+    reply*, *Only line*, *Book and AI differ*, *From a nearby chapter* — instead of one *To
+    check*; a line you set keeps the right paragraph after a re-analyze ([Studio](studio.md))
+  - Overview: **Leave out dialogue tags** says it knows English dialogue tags only
+  - Render: a render started in another window or app shows when you come back to the window; a
+    render over several chapters reads *rendering…* on each, with one progress strip; the greyed
+    **🎧 Run ACX QC** says why it waits ([Studio](studio.md))
+  - Export: **⬇ Chapter WAVs** works without ffmpeg — the chapters only, and it says so; the
+    strip says when **Cancel** stops; an export reads each take once; a check or export stopped
+    by deleting its book answers *not found*; every file an export writes keeps the title as
+    written — the M4B, the chapters inside **⬇ Chapter WAVs**, the voice-line zip, Overview's
+    **📦 Export .justvoice.zip** and a chapter's **⬇ Download** on Render (*3 · The
+    Keystone.wav*) — leaving out only the characters a Windows file name can't hold ([Import and
+    export](import-and-export.md))
+  - Cast: a book with no language offers no voices until you set one — *Set the book's language
+    on its Overview first — Cast then offers the voices that speak it.* ([Studio](studio.md))
+  - Persona page: when the Version you chose isn't downloaded, the downloaded one keeps speaking
+    and the page says so beside **Load** — *Speaks with 0.6B until 1.7B is loaded*. Pocket TTS's
+    Version lists only the persona's language ([Personas](personas.md))
+  - Lexicons: an IPA symbol Kokoro lacks no longer stops the whole line. Kokoro reads that word
+    the normal way, and Save says *Kokoro can't say “ʍ” — it will speak this word the normal
+    way.* An entry with both IPA and a phonetic spelling keeps both. **Try a word** plays the new
+    word after you change it ([Lexicons](lexicons.md))
+  - Speech engines: Auto first checks what other programs hold on your graphics card. A model
+    that doesn't fit beside them runs on the CPU and says *other programs are using about 6.3 GB
+    of the graphics card — this may be slow on the CPU* (it used to pick the card and be refused
+    there); one that fits says *it fits in the card's free memory*. On Windows the runtime row has
+    **Card overflow limit (MB)**, 256 unless you change it. A model measured just under your card
+    says *more than this card holds with the 1 GB safety margin*. dots.tts's *Source text* /
+    *Target text* and Irodori TTS's *No ref* are no longer offered as settings. IndexTTS 2 says
+    *Takes a line's direction in words*. A Kokoro blend reads a line in a language Kokoro lacks in
+    its own language, as a preset does. **What for?** no longer names API routes
+    ([Engines](engines.md))
+  - The AI model: a refusal for lack of the computer's memory names the speech models running on
+    the CPU. Claude Opus 5.5, Fable and Mythos can't stop thinking, so thinking **Off** asks them
+    to think as little as they can, and the control says *This model always thinks — Off makes
+    it think less.* ([GPU](gpu.md))
+  - Sync: when another computer's changes arrive, the window waits to reload while a dialog is
+    open or the cursor is in a text box ([Sync](sync.md))
+  - Desktop app: one JustVoice server per data folder — a second one says *Another JustVoice
+    server is using this data folder (‹path›) — stop it first.* When another program holds the
+    port, the can't-reach page says *Port N is in use by another program — change the Port in
+    Settings → Server, or close that program.*, and **Retry** starts the server again. A
+    JustVoice server left on the port is asked to shut down before it is stopped ([Run
+    modes](run-modes.md), [Troubleshooting](troubleshooting.md))
+  - Channels no longer describes device routing that isn't built ([Channels](channels.md)).
+    Settings → Limits loses *Request body max bytes*, which nothing used. Re-import's **What is
+    this format?** opens the format's help again
+  - After your next data reset: personas lose the picture field no screen could set, and lexicon
+    entries can store both IPA and a phonetic spelling. Until the reset, saving an entry that has
+    both fails.
 - **Choices JustVoice made without asking, put right (2026-10-13)** — a review of every rule,
   number and label the app had taken on without your say:
   - Script: the second look keeps a name the AI gave even when it wasn't sure, sends each
