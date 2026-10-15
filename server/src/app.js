@@ -23,7 +23,9 @@ import {
   installLogRing,
   makeDiskRouter,
   makeLogsRouter,
+  makeShutdownRouter,
   onClose,
+  SHUTDOWN_PATH,
   serveStatic,
   starletteCors,
 } from "@delebash/llm-runner/platform";
@@ -264,14 +266,6 @@ export async function createApp(dataDir = null) {
   // on `c.get("sentBody")` — what pydantic's `exclude_unset` reads (PATCH /v1/settings, PUT
   // /v1/speech-runtime).
   const app = createServer({ typeBase: TYPE_BASE, onUnhandled: errorEnvelope, pyFloats: { routes: PY_FLOAT_ROUTES } });
-  // serve.js hands the app its server handle (Python's `app.state.uvicorn_server`) — what
-  // POST /v1/shutdown stops (`c.get("serverHandle")`). Read on each request, so a handle set
-  // after boot is seen.
-  app.serverHandle = null;
-  app.use("*", async (c, next) => {
-    c.set("serverHandle", app.serverHandle ?? null);
-    await next();
-  });
 
   // Python's middleware order, outermost first: the MCP client-id stamp, CSRF, then CORS, then
   // bearer auth (Starlette ran the last-added first; Hono runs middleware in the order added). A
@@ -322,13 +316,13 @@ export async function createApp(dataDir = null) {
 
   // Auth — the desktop shell closes the server through /v1/shutdown and carries no token; with
   // "Require a token even on localhost" on, every close fell back to a hard kill (2026-09-30).
-  // It stays refused from anywhere but this machine (system_api's own check, and auth).
+  // It stays refused from anywhere but this machine (the route's own check, and auth).
   app.use(
     "*",
     bearerAuth({
       readAuth,
       typeBase: TYPE_BASE,
-      loopbackOpenPaths: ["/v1/shutdown"],
+      loopbackOpenPaths: [SHUTDOWN_PATH],
       prefixes: GUARDED_PREFIXES,
     }),
   );
@@ -336,6 +330,9 @@ export async function createApp(dataDir = null) {
   // ── Routes, in app.py's order ──────────────────────────────────────────────
   app.route("/", healthRouter());
   app.route("/", systemRouter());
+  // POST /v1/shutdown, the kit's one route (2026-10-15): the speech engines stop first, so their
+  // graphics memory is free before the answer; then the server runServer runs stops.
+  app.route("/", makeShutdownRouter({ beforeStop: () => manager.shutdownManager() }));
   app.route("/", serverAuthRouter()); // the auth door + lockout escape (family shape)
   app.route("/", settingsRouter());
   app.route("/", voicesRouter());

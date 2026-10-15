@@ -16,7 +16,7 @@ import * as hardware from "@delebash/llm-runner/runner/hardware";
 import { pollProc, waitExit } from "@delebash/llm-runner/runner/process";
 import { afterEach, expect, test, vi } from "vitest";
 import "./engines_helpers.js";
-import * as systemApi from "../src/api/system_api.js";
+import { registerServerStop, cfg as shutdownCfg } from "@delebash/llm-runner/platform/shutdown_api";
 import * as leftovers from "../src/engines/leftovers.js";
 import * as manager from "../src/engines/manager.js";
 import { client, closeApps, makeApp } from "./app_helpers.js";
@@ -184,7 +184,7 @@ test("gpu_is_measured_with_one_whole_machine_query", async () => {
 
 // ── 3. POST /v1/shutdown · 4. the endpoints behind the splash's button ─────
 
-const SYSTEM_CFG = { ...systemApi.cfg };
+const SYSTEM_CFG = { ...shutdownCfg };
 
 test("shutdown_is_refused_from_another_machine", async () => {
   const app = await makeApp();
@@ -198,10 +198,10 @@ test("shutdown_stops_engines_and_ends_the_server", async () => {
   const exits = [];
   vi.spyOn(manager, "shutdownManager").mockImplementation(async () => stopped.push(true));
   // never the real timer: it would end this test run
-  systemApi.cfg.startTimer = (s, fn) => timers.push([s, fn]);
-  systemApi.cfg.exit = (code) => exits.push(code);
+  shutdownCfg.startTimer = (s, fn) => timers.push([s, fn]);
+  shutdownCfg.exit = (code) => exits.push(code);
   const server = { stopped: [], stop: (why) => server.stopped.push(why) };
-  app.serverHandle = server;
+  registerServerStop((why) => server.stop(why));
   try {
     const r = await client(app, { remoteAddress: "127.0.0.1" }).post("/v1/shutdown");
     expect(r.status).toBe(200);
@@ -215,8 +215,8 @@ test("shutdown_stops_engines_and_ends_the_server", async () => {
     timers[0][1]();
     expect(exits).toEqual([0]);
   } finally {
-    Object.assign(systemApi.cfg, SYSTEM_CFG);
-    app.serverHandle = null;
+    Object.assign(shutdownCfg, SYSTEM_CFG);
+    registerServerStop(null);
   }
 });
 
@@ -268,7 +268,7 @@ test("shutdown_needs_no_token_from_this_machine", async () => {
   const app = await makeApp();
   const stopped = [];
   vi.spyOn(manager, "shutdownManager").mockImplementation(async () => stopped.push(true));
-  systemApi.cfg.startTimer = () => {};
+  shutdownCfg.startTimer = () => {};
   try {
     const local = client(app, { remoteAddress: "127.0.0.1" });
     const r = await local.patch("/v1/settings", { json: { auth: { tokens: ["t0k"], require_for_loopback: true } } });
@@ -280,6 +280,6 @@ test("shutdown_needs_no_token_from_this_machine", async () => {
     const remote = client(app, { remoteAddress: "192.168.1.20" });
     expect((await remote.post("/v1/shutdown")).status).toBe(401);
   } finally {
-    Object.assign(systemApi.cfg, SYSTEM_CFG);
+    Object.assign(shutdownCfg, SYSTEM_CFG);
   }
 });

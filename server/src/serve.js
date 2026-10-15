@@ -198,8 +198,6 @@ export async function main(argv = process.argv.slice(2)) {
       return { app, host, port };
     },
   });
-  // POST /v1/shutdown ends the server through this handle (uvicorn's `should_exit`).
-  handle.app.serverHandle = { stop: handle.stop };
   return handle;
 }
 
