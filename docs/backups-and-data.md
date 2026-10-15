@@ -97,6 +97,10 @@ restores everything else and leaves whatever audio is currently on disk in
 place. Loaded speech engines are unloaded during a restore; load one again from
 the AI page when you need it.
 
+On a computer that syncs, a restore keeps your other computers' newer work, and
+this computer keeps its own sync settings; a backup from another sync library
+is refused while this computer syncs — see [Sync](sync.md#good-to-know).
+
 ## Reset
 
 **Reset…** on the same page is the factory reset: every project, persona,

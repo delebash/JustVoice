@@ -25,7 +25,7 @@ import { generationsRoot, lexiconsRoot, personasRoot, projectsRoot, voicesRoot }
 import { LexiconStore } from "./storage/lexicons.js";
 import { PersonaStore } from "./storage/personas.js";
 import { VoiceStore } from "./storage/voices.js";
-import { flushSync, resetSync } from "./sync.js";
+import { resetSync, restoreSyncHooks } from "./sync.js";
 
 const log = getLogger("justvoice.data_admin");
 
@@ -210,12 +210,14 @@ export function getDataRouter() {
     metadata: [TABLES, LLM_TABLES],
     runReset: runFactoryReset,
     assetDirs: _assetDirs,
+    // Sync's restore steps (sync.js): a backup from another sync library is refused while this
+    // computer syncs; the backup's rows keep their sync stamps; this computer keeps its own sync
+    // settings and continues as a new device, so the other computers' newer work wins.
+    ...restoreSyncHooks,
     // A restore replaces routing/models/engine config under the live app — same clean-slate
-    // rule as reset. The restore rewrote the synced tables on its own connection and the
-    // triggers noted it: stamp it now, so the restored projects sync as this device's change.
+    // rule as reset.
     onReplaced: async () => {
       await _stopAiEnginesBestEffort();
-      flushSync();
     },
   });
 }

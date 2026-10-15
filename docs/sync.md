@@ -137,8 +137,21 @@ the persona finds it straight away. The built-in voices come with their engine a
 
 - **A factory reset** starts a new library on this computer — pair your other computers with it
   again.
-- **Restoring a backup** counts as an edit on this computer: the restored projects sync to your
-  other computers like any other change.
+- **Restoring a backup** puts this computer back where the backup was, and the backup keeps its
+  own age: the next sync brings back what was changed, made or deleted since — on your other
+  computers, and what this computer had already synced to them — and your other computers keep
+  their newer work. What this computer changed after the backup and never synced is gone, as it
+  would be without sync.
+  - After a restore, this computer carries on in sync as a new device: your other computers'
+    **Devices** list it as a new entry beside the old one (both with its name), and the old one's
+    files stay in the cloud folder until they're removed.
+  - This computer keeps its own sync settings — the cloud folder, the paired devices, the library
+    key and its name — not the ones in the backup.
+  - While this computer is syncing (a cloud folder or a paired device is set), a backup from
+    another sync library — made on a computer that wasn't synced with this one — is refused with
+    *"This backup is from another sync library. Stop using the cloud folder and remove your paired
+    devices in Settings → Sync, then restore it."* A computer that isn't syncing restores it and
+    stays in its own library.
 - **Sync isn't a backup.** A deleted chapter is deleted everywhere. Keep using
   [Backups](backups-and-data.md).
 - Sync needs JustVoice open on the computers taking part; the cloud folder lets them take turns.

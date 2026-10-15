@@ -5,6 +5,7 @@
 // live (their own row — a whole-tree settings save can't put back an older library key);
 // pairing adds a token the auth check accepts; a factory reset starts a new library. "Another
 // device" is a second database with JustVoice's tables and the same sync setup.
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { betterSqlite3Adapter, decodeFile, openSync } from "@delebash/sqlite-sync";
 import { openDatabase } from "@delebash/llm-runner/platform";
@@ -151,4 +152,65 @@ test("a factory reset starts a new library", async () => {
   session.cfg.handle.insert("projects", { id: "p9", name: "New", project_type: "audiobook" });
   flushSync();
   expect(idsByTable(getSync().changesSince({}).changes)).toEqual({ projects: ["p9"] });
+});
+
+// ── restoring a backup (P16, decided 2026-10-15) ─────────────────────────────────────────────
+
+const stampOf = (h, id, col) => h.all("SELECT stamp FROM sync_clock WHERE tbl = 'blocks' AND pk = ? AND col = ?", [JSON.stringify([id]), col])[0]?.stamp;
+const idOnFile = (dir) => JSON.parse(readFileSync(join(dir, "sync-device.json"), "utf8")).id;
+const restoreFrom = (c, backup) => c.post("/v1/data/restore", { files: { file: ["backup.zip", backup.content, "application/zip"] } });
+
+test("a restore keeps the backup's sync stamps; this computer continues as a new device and keeps its sync settings", async () => {
+  const { c, dir } = await appClient();
+  seedProjects();
+  const h = session.cfg.handle;
+  const stamped = stampOf(h, "b1", "text");
+  expect((await c.put("/v1/sync/settings", { json: { deviceName: "Before the backup", autoMinutes: 0 } })).status).toBe(200);
+  const backup = await c.get("/v1/data/backup");
+  expect(backup.status).toBe(200);
+
+  // after the backup: this computer's sync settings change, and a line is edited and stamped
+  const folder = join(tmpPath(), "cloud");
+  expect((await c.put("/v1/sync/settings", { json: { deviceName: "Studio PC", folder } })).status).toBe(200);
+  h.update("blocks", { text: "Edited after the backup." }, { id: "b1" });
+  flushSync();
+  const before = getSync().device;
+  expect(idOnFile(dir)).toBe(before);
+
+  expect((await restoreFrom(c, backup)).status).toBe(200);
+  expect(h.one("SELECT text FROM blocks WHERE id = 'b1'").text).toBe("The lamp was lying.");
+  flushSync();
+  expect(stampOf(h, "b1", "text")).toBe(stamped); // the backup's own stamp, not a new one
+  const sync = getSync();
+  expect(sync.device).not.toBe(before); // a new device in sync…
+  expect(idOnFile(dir)).toBe(sync.device);
+  expect(sync.vector()[before]).toBeGreaterThan(0); // …and the old one an origin, at what the backup held
+  // nothing restored goes out as a new change of this computer's: the backup's rows keep their age
+  expect(sync.changesSince({ [before]: sync.vector()[before] }).changes.filter((ch) => ch.o === sync.device)).toEqual([]);
+  const status = (await c.get("/v1/sync/status")).json();
+  expect(status.settings).toMatchObject({ deviceName: "Studio PC", folder }); // this computer's, not the backup's
+});
+
+test("a backup from another sync library is refused while this computer syncs, and restores when it doesn't", async () => {
+  const { c } = await appClient();
+  seedProjects();
+  const backup = await c.get("/v1/data/backup");
+  await runFactoryReset(); // a new library
+  const library = getSync().library;
+  const projects = () => session.cfg.handle.all("SELECT id FROM projects ORDER BY id").map((r) => r.id);
+  expect(projects()).toEqual([]);
+
+  expect((await c.put("/v1/sync/settings", { json: { folder: join(tmpPath(), "cloud"), autoMinutes: 0 } })).status).toBe(200);
+  const r = await restoreFrom(c, backup);
+  expect(r.status).toBe(409);
+  expect(r.json()).toMatchObject({
+    error: "restore-other-library",
+    detail: "This backup is from another sync library. Stop using the cloud folder and remove your paired devices in Settings → Sync, then restore it.",
+  });
+  expect(projects()).toEqual([]); // nothing restored
+
+  expect((await c.put("/v1/sync/settings", { json: { folder: null } })).status).toBe(200);
+  expect((await restoreFrom(c, backup)).status).toBe(200);
+  expect(projects()).toEqual(["p1", "p2"]);
+  expect(getSync().library).toBe(library); // it stays in its own library
 });

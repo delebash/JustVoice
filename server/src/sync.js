@@ -191,6 +191,14 @@ export function openSync(dataDir) {
 export const getSync = () => appSync.get();
 /** Stamp what the triggers noted — after every write request (app.js) and before every sync. */
 export const flushSync = () => appSync.flush();
+/**
+ * A restore's steps, as the kit's data router names them (data_admin): before the copy, a backup
+ * from another sync library is refused while this computer syncs (a cloud folder or a paired
+ * device is set); the backup's sync stamps come with its rows; after it, this computer's own sync
+ * settings go back and it continues as a new device in sync — the other computers' newer work
+ * comes back and wins (P16, decided 2026-10-15; docs/sync.md "Good to know").
+ */
+export const restoreSyncHooks = appSync.restoreHooks;
 /** A factory reset made a new database: this device starts a new library. */
 export function resetSync(dataDir) {
   ensureDeletedLog(session.cfg.handle);
