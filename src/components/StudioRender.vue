@@ -24,7 +24,9 @@ import {
 import { useApi } from "../stores/api.js";
 import { useCopy } from "../services/copy.js";
 import { CANT_RENDER, partOf } from "../services/lineStates.js";
-import { chapterRunning, followRender, jobFollowed, loadingText, renderChapter, waitingText } from "../services/renderRun.js";
+import {
+  QC_WAITS, chapterRenderTask, chapterRunning, followRender, jobFollowed, loadingText, renderChapter, waitingText,
+} from "../services/renderRun.js";
 import { usePagePlayer } from "../composables/usePagePlayer.js";
 import PagePlayer from "./PagePlayer.vue";
 import PageTaskStrips from "./PageTaskStrips.vue";
@@ -37,8 +39,6 @@ const props = defineProps({
   renderState: { type: Object, default: null },
   // The book's speakers — the Render-stopped dialog sends lines to the narrator.
   speakers: { type: Array, default: () => [] },
-  // GET /v1/projects/{id}/script's rows — whether a chapter was analyzed.
-  chapters: { type: Array, default: () => [] },
   // Studio's {ok, reason}: ▶ Render all says why it can't run (no text, nobody cast).
   renderGate: { type: Object, default: () => ({ ok: true, reason: "" }) },
 });
@@ -64,10 +64,11 @@ const lineName = (c) => `line ${c.n}${c.speaker ? ` · ${c.speaker}` : ""}`;
 // Any render of the chapter, wherever it was started (decided 2026-10-07): this
 // window's ▶ Render or ⚡ run, or — reported by the server on the chapter's
 // counts (`running_job`) — one from another window, JustWrite or MCP, followed
-// here with its Cancel (2026-10-13, the narrowings review R3). A job over
-// several chapters is followed once, under the first of its chapters here
-// (2026-10-13, the implementation review's problem 8); how it shows on its
-// other chapters waits on the user's word.
+// here with its Cancel (2026-10-13, the narrowings review R3), and noticed when
+// the window regains focus (Studio re-reads the counts; 2026-10-15). A job over
+// several chapters is followed once, its one progress strip under the first of
+// its chapters here (2026-10-13, the implementation review's problem 8), and
+// reads "rendering…" on each of its chapters (2026-10-15, R3).
 function taskFor(sceneId) {
   const mine = tasks.visibleTasks.filter((t) => ["render-scene", "render-lines"].includes(t.feature) && t.meta?.sceneId === sceneId);
   return mine.find((t) => tasks.isRunning(t.id)) || mine[0] || null;
@@ -83,10 +84,7 @@ watch(() => props.renderState, (rs) => {
       .finally(() => emit("changed"));
   }
 }, { immediate: true });
-const isRunning = (sceneId) => {
-  const t = taskFor(sceneId);
-  return !!t && tasks.isRunning(t.id);
-};
+const isRunning = (sceneId) => !!chapterRenderTask(tasks, sceneId, stateById.value[sceneId]?.running_job?.id);
 const anyRunning = computed(() => ordered.value.some((s) => isRunning(s.id)));
 const rows = computed(() => {
   const out = [];
@@ -131,7 +129,7 @@ const pickedReady = computed(() => picked.value.reduce((n, s) => n + (counts(s)?
 // ── Rendering ────────────────────────────────────────────────────────
 // Lines with no speaker stop a render one step early, where the fix is: the
 // lines named, with the one-click way out (the server refuses them anyway).
-const stopped = ref(null);   // [{ scene, lines: [{block_id, text}], analyzed }]
+const stopped = ref(null);   // [{ scene, lines: [{block_id, text}] }]
 const stoppedQueue = ref([]);
 const fixing = ref(false);
 const stoppedTotal = computed(() => (stopped.value || []).reduce((n, g) => n + g.lines.length, 0));
@@ -146,9 +144,7 @@ async function renderQueue(queue) {
     if (!counts(s)?.needs_speaker) continue;
     const page = await api.safeRequest(`/v1/scenes/${s.id}/render_lines`, null);
     const lines = (page?.lines || []).filter((l) => l.state === "needs a speaker");
-    if (lines.length) {
-      found.push({ scene: s, lines, analyzed: !!props.chapters.find((c) => c.scene_id === s.id)?.analyzed });
-    }
+    if (lines.length) found.push({ scene: s, lines });
   }
   if (found.length) {
     stopped.value = found;
@@ -193,11 +189,10 @@ async function assignToNarrator() {
         await api.request(`/v1/blocks/${l.block_id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          // `corrected` freezes a line against every future re-analyze — honest
-          // only where a run decided something and you overrule it.
-          body: JSON.stringify(g.analyzed
-            ? { speaker_id: narrator.value.id, source: "corrected" }
-            : { speaker_id: narrator.value.id }),
+          // Yours, before Analyze too: a first Analyze gives the narrator to every
+          // line it marks as speech in that paragraph (2026-10-15, the narrowings
+          // review S6).
+          body: JSON.stringify({ speaker_id: narrator.value.id, source: "corrected" }),
         });
       } catch { failed += 1; }
     }
@@ -288,8 +283,10 @@ function checkState(s) {
               :title="`Tick every ${word.singular.toLowerCase()} with lines that have no take yet`" @click="tickUnrendered" />
             <span class="jv-hint">{{ picked.length }} selected</span>
             <span class="jv-spacer" />
+            <!-- It waits for any render, and says why on hover (2026-10-15, the narrowings review B3). -->
             <UiButton intent="secondary" size="small" :loading="qcBusy" :disabled="qcBusy || anyRunning" label="🎧 Run ACX QC"
-              :title="`Join every ${word.singular.toLowerCase()} that can render and measure RMS + peak against the ACX limits, after the master`"
+              :title="anyRunning && !qcBusy ? QC_WAITS
+                : `Join every ${word.singular.toLowerCase()} that can render and measure RMS + peak against the ACX limits, after the master`"
               @click="runQc" />
           </div>
           <PageTaskStrips :features="['acx-qc']" :meta="{ projectId: project.id }" />

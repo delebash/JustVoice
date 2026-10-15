@@ -4,24 +4,30 @@
 // 2026-10-07): the server's export job (`api/export_jobs_api.js`) reports its
 // render phase line by line ("Rendering line 12 of 340", 2026-10-13), then each
 // chapter as it is mastered (then, for the M4B, the encode); Cancel stops it —
-// in the render phase after the line rendering now (2026-10-13), then between
-// chapters. The M4B answered only at the end before — minutes with nothing on
+// at once while lines render (2026-10-13), else after the chapter being
+// mastered. The M4B answered only at the end before — minutes with nothing on
 // screen. `kind`: "m4b" the book, "chapters" each chapter's WAV and master in a
-// zip.
+// zip (the chapters only without ffmpeg, the job's `note` saying so —
+// 2026-10-15, the narrowings review R8).
 
 import { withAiTask } from "@delebash/llm-ui";
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const ENDED = new Set(["done", "error", "cancelled"]);
 
+// What Cancel does, in the strip's hint (the user's words, 2026-10-15: "Cancel
+// stops after the chapter it is on" was no longer true while lines render).
+const CANCEL = "Cancel stops at once while lines render, or after the chapter being mastered.";
+
 const KINDS = {
   m4b: { feature: "export-m4b", path: "export_m4b", what: "M4B audiobook",
-    hint: "Chapters joined and mastered, then the book encoded — Cancel stops after the chapter it is on" },
+    hint: `Chapters joined and mastered, then the book encoded — ${CANCEL}` },
   chapters: { feature: "export-chapters", path: "export_chapters", what: "chapter WAVs + masters",
-    hint: "Each chapter joined, then mastered — Cancel stops after the chapter it is on" },
+    hint: `Each chapter joined, then mastered — ${CANCEL}` },
 };
 
-/** Run an export; resolves to { blob, filename } once the file is made. */
+/** Run an export; resolves to { blob, filename, note } once the file is made — `note`, what
+ *  the file leaves out (the server's words), or null. */
 export function exportRun(api, project, kind = "m4b") {
   const k = KINDS[kind];
   return withAiTask({
@@ -44,7 +50,7 @@ export function exportRun(api, project, kind = "m4b") {
     if (job.status === "cancelled") throw new DOMException("Export cancelled", "AbortError");
     if (job.status === "error") throw new Error(job.error || "the export failed");
     const blob = await api.requestBlob(`/v1/export_jobs/${job.id}/file`, { signal: task.signal });
-    return { blob, filename: job.filename };
+    return { blob, filename: job.filename, note: job.note || null };
   });
 }
 

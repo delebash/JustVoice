@@ -406,6 +406,25 @@ export function decidedBy(line, lines = []) {
     : { text: "Not analyzed yet", sub: "", tip: TIP.none };
 }
 
+/** The tag a check's kind leads with — one per kind (the user's words, 2026-10-15, the
+ *  narrowings review S12; one "To check" for all four until then). */
+export const CHECK_TAGS = {
+  run: "No reply",
+  only: "Only line",
+  disagree: "Book and AI differ",
+  nearby: "From a nearby chapter",
+};
+
+/**
+ * The Check column's tag for a line, {text, intent}, or null: red "⚠ No speaker" where the line
+ * can't render, else amber, naming the kind of check its question asks (`checkQuestion`'s mark).
+ */
+export function checkTag(line, groups) {
+  if (hasNoSpeaker(line)) return { text: "⚠ No speaker", intent: "danger" };
+  const text = CHECK_TAGS[groups[(line.flags || [])[0]]?.check];
+  return text ? { text, intent: "accent2" } : null;
+}
+
 /** The Check column's question for a line, or "" when it has none. */
 export function checkQuestion(line, groups, nameOf, chapterWord = "chapter") {
   if (hasNoSpeaker(line)) {

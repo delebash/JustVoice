@@ -837,11 +837,12 @@ function bookRender(c, projectId) {
 }
 
 /** Stop a deleted book's renders inside requests (`DELETE /v1/projects/{id}`). Returns how many
- * were running. */
+ * were running. The request answers 404 — its book is gone — not 500 (2026-10-15, the
+ * narrowings review R4): the abort's reason is what the scheduler throws. */
 export function abortBookRenders(projectId) {
   const live = _bookRenders.get(projectId);
   _bookRenders.delete(projectId);
-  for (const ctl of live ?? []) ctl.abort();
+  for (const ctl of live ?? []) ctl.abort(notFound(`project ${projectId}`));
   return live?.size ?? 0;
 }
 

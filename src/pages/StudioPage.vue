@@ -24,6 +24,7 @@
 import { computed, onActivated, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";
+import { useOnWindowFocus } from "../composables/useOnWindowFocus.js";
 import { isStepFor, stepsFor } from "../services/studioSteps.js";
 import { blockStats, projectState, stepStatus } from "../services/studioStatus.js";
 import { masterLabel } from "../services/masterTargets.js";
@@ -133,6 +134,13 @@ async function onRenderChanged() {
   await loadRenderState();
   scriptVersion.value += 1;
 }
+// The chapter grid notices a render started elsewhere — another window or app,
+// through the API — when the window regains focus: the counts carry each
+// chapter's running job (2026-10-15, the narrowings review R3). A chapter's
+// page re-reads its own lines the same way (StudioRenderChapter.vue).
+useOnWindowFocus(() => {
+  if (tab.value === "render" && !renderSceneId.value) loadRenderState();
+});
 
 // Render gate (queue item 13): ▶ Render all (on the chapter list since
 // 2026-10-07, beside ▶ Render N chapters) says WHY it is disabled instead of
@@ -694,7 +702,6 @@ watch(selectedProjectId, (id) => {
     <KeepAlive>
       <StudioRender v-if="tab === 'render' && selectedProject && !renderSceneId" :render-gate="renderGate"
         :project="selectedProject" :scenes="scenes" :render-state="renderState" :speakers="speakers"
-        :chapters="scriptChapters"
         @open="(id) => openRender({ sceneId: id })"
         @go="(k, arg) => (k === 'script' && arg?.sceneId ? openScript(arg) : goStep(k))"
         @changed="onRenderChanged" />

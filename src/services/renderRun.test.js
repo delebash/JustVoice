@@ -2,7 +2,9 @@
 import { createPinia, setActivePinia } from "pinia";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useAiTasksStore } from "@delebash/llm-ui";
-import { chapterRunning, clock, followJob, followRender, jobFollowed, loadingText, mediaUrl, runFigures, waitingText } from "./renderRun.js";
+import {
+  QC_WAITS, chapterRenderTask, chapterRunning, clock, followJob, followRender, jobFollowed, loadingText, mediaUrl, runFigures, waitingText,
+} from "./renderRun.js";
 
 function fakeApi(statuses) {
   const calls = [];
@@ -151,6 +153,26 @@ describe("a render started elsewhere (2026-10-13, the narrowings review R3)", ()
     expect(jobFollowed(tasks, "job1")).toBe(false);
   });
 
+  it("reads as rendering on each chapter of a job over several, with one task (2026-10-15)", async () => {
+    // The answer to how a render over several chapters shows (the narrowings review R3):
+    // "rendering…" on each of its chapters, with one progress strip.
+    const api = fakeApi([
+      { status: "running", completed_blocks: 0, failed_blocks: 0, total_blocks: 6 },
+      { status: "completed", completed_blocks: 6, failed_blocks: 0, total_blocks: 6 },
+    ]);
+    const tasks = useAiTasksStore();
+    const run = followRender(api, { sceneId: "s1", title: "1 · Brass Rank", job: { id: "job1", status: "running" } });
+    const one = chapterRenderTask(tasks, "s1");
+    expect(one?.meta).toEqual({ sceneId: "s1", jobId: "job1" });
+    expect(chapterRenderTask(tasks, "s2", "job1")).toBe(one); // the job over chapter 2: the same one task
+    expect(chapterRenderTask(tasks, "s2")).toBeNull(); // no job over it
+    expect(chapterRenderTask(tasks, "s3", "job2")).toBeNull(); // another job, not followed here
+    expect(tasks.visibleTasks.length).toBe(1);
+    await vi.runAllTimersAsync();
+    await run;
+    expect(chapterRenderTask(tasks, "s2", "job1")).toBeNull(); // ended
+  });
+
   it("offers Cancel: cancelling the task cancels the job on the server", async () => {
     const api = fakeApi([{ status: "running", completed_blocks: 0, failed_blocks: 0, total_blocks: 5 }]);
     const tasks = useAiTasksStore();
@@ -213,6 +235,12 @@ describe("what a loading line says (2026-10-07)", () => {
   });
   it("says nothing when no model is loading", () => {
     expect(loadingText(null)).toBe("");
+  });
+});
+
+describe("🎧 Run ACX QC's hover while it waits (2026-10-15)", () => {
+  it("is the user's words (the narrowings review B3)", () => {
+    expect(QC_WAITS).toBe("Waits for the render to finish — the check renders lines that have no take.");
   });
 });
 

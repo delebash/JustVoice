@@ -329,9 +329,11 @@ export function _analysisInput(h, scene, text) {
  * DELETES the blocks, and a block is not just text: `metadata.source_ref` (the import's stable
  * line id: re-import merges on it and voiceline export names files from it), `metadata.marker`
  * (a podcast music/ad line, speaker-less by design) and `direction` (the performance note —
- * authored content). → one entry per PARAGRAPH of `text`, so a row's `paragraph_idx` indexes
- * it. Empty when `text` isn't the stored blocks joined back together. The join matches the
- * renderer's `proseFromBlocks` EXACTLY — it drops empty blocks and trims.
+ * authored content) — and the speaker you set on it, when you set one (`source` "corrected";
+ * 2026-10-15, the narrowings review S6). → one `[metadata, direction, your speaker or null]`
+ * per PARAGRAPH of `text`, so a row's `paragraph_idx` indexes it. Empty when `text` isn't the
+ * stored blocks joined back together. The join matches the renderer's `proseFromBlocks`
+ * EXACTLY — it drops empty blocks and trims.
  */
 export function _inherited(blocks, text) {
   const carried = blocks.filter((b) => strip(b.text || ""));
@@ -345,7 +347,7 @@ export function _inherited(blocks, text) {
   }
   const out = [];
   for (const b of carried) {
-    const entry = [_jsonMeta(b.metadata_json), b.direction];
+    const entry = [_jsonMeta(b.metadata_json), b.direction, b.source === "corrected" ? b.speaker_id || null : null];
     // A block holding a blank line splits into more than one paragraph.
     const n = Math.max(1, splitIntoParagraphs(b.text).length);
     for (let i = 0; i < n; i++) out.push(entry);
@@ -370,6 +372,11 @@ const UNCHANGED = Symbol("unchanged");
  * reproducible from it. `lineIds` names the lines a run over an EDITED chapter read as they
  * stood (`_linesToKeep`): one row each, written in place, and the text is not stored — the
  * chapter keeps being read as its lines, so a hand-made cut is never undone by a re-analyze.
+ *
+ * A speaker you set before the first Analyze goes to every line Analyze marks as speech in that
+ * paragraph, kept as yours; the narration in it goes to the narrator as Analyze decides
+ * (2026-10-15, the narrowings review S6 — until then the page sent no `corrected` before Analyze,
+ * and the first run replaced the speaker silently, though the page says "Lines you set are kept").
  */
 export function _persistAttribution(h, scene, rows, text, { marks: style = "double", lineIds = null } = {}) {
   let blocks = blocksOf(h, scene.id);
@@ -391,6 +398,8 @@ export function _persistAttribution(h, scene, rows, text, { marks: style = "doub
   };
 
   const meta = _sceneMeta(scene);
+  // This chapter's first Analyze: it never ran here (the same rule as `_linesToKeep`).
+  const firstRun = lineIds === null && !truthy(dget(meta, "analyzed_at")) && !blocks.some((b) => PIPELINE_SOURCES.has(b.source));
   let texts;
   let inPlace;
   if (lineIds === null) {
@@ -447,8 +456,18 @@ export function _persistAttribution(h, scene, rows, text, { marks: style = "doub
     h.update(Scene, { metadata_json: sceneMetaJson }, { id: scene.id });
     blocks.forEach((block, i) => {
       const row = rows[i];
-      if (block.source === "corrected") {
+      // A line you set keeps its speaker — on the first Analyze only where the run marks it as
+      // speech; narration goes to the narrator as Analyze decides (S6).
+      if (block.source === "corrected" && !(firstRun && row.kind !== "dialogue")) {
         kept += 1;
+        // Its paragraph number follows the run, as every other line's does: a re-analyze of an
+        // edited chapter numbers its paragraphs afresh, and a kept line left its old number
+        // behind (found 2026-10-13 by the narrowings review; fixed 2026-10-15).
+        const m = _jsonMeta(block.metadata_json);
+        if (m.paragraph_idx !== row.paragraph_idx) {
+          m.paragraph_idx = row.paragraph_idx;
+          h.update(Block, { metadata_json: pyJson(m) }, { id: block.id });
+        }
         return;
       }
       const newSpeaker = speakerFor(row.speaker);
@@ -486,7 +505,22 @@ export function _persistAttribution(h, scene, rows, text, { marks: style = "doub
   h.update(Scene, { metadata_json: sceneMetaJson }, { id: scene.id });
 
   rows.forEach((row, i) => {
-    const [parentMeta, parentDirection] = row.paragraph_idx < inherited.length ? inherited[row.paragraph_idx] : [{}, null];
+    const [parentMeta, parentDirection, setByYou] = row.paragraph_idx < inherited.length ? inherited[row.paragraph_idx] : [{}, null, null];
+    // The speaker you set on the paragraph, on each line the first Analyze cut from it as speech
+    // — yours, so no record of the run's own answer (S6).
+    if (firstRun && setByYou && row.kind === "dialogue") {
+      h.insert(Block, {
+        scene_id: scene.id,
+        position: i,
+        text: texts[i],
+        speaker_id: setByYou,
+        direction: parentDirection,
+        extraction_confidence: null,
+        source: "corrected",
+        metadata_json: withAudit(parentMeta, { paragraph_idx: row.paragraph_idx, source: "corrected" }),
+      });
+      return;
+    }
     h.insert(Block, {
       scene_id: scene.id,
       position: i,

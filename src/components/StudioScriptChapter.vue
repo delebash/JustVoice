@@ -39,7 +39,7 @@ import { inRun, onChapterDone, queueChapters, runStripTask, stepRun } from "../s
 import { addNarrator, narrationOf } from "../services/narrator.js";
 import NarratorNeeded from "./NarratorNeeded.vue";
 import {
-  KEYS, applyLocally, checkQuestion, confidenceCell, confirm, decidedBy, editText, filterCounts, hasNoSpeaker, lineFacets,
+  KEYS, applyLocally, checkQuestion, checkTag, confidenceCell, confirm, decidedBy, editText, filterCounts, hasNoSpeaker, lineFacets,
   secondLookCandidate,
   keyAction, markOf, mergeState, move, nextToCheck, numberKeys, popUndo, pushUndo, setSpeaker,
   speakerOptions, swap, swapState, toCheck, visibleLines, wasBefore,
@@ -240,17 +240,11 @@ const busy = ref(false);
 
 async function send(changes, label) {
   if (!changes.length || busy.value) return;
-  // On a chapter Analyze never ran on, a speaker you give is not marked as
-  // yours: `corrected` freezes a line against every future Analyze, and there
-  // it would make attribution impossible for the lines you touched — the same
-  // rule the render blocker's "Assign all" has always kept.
-  if (chapter.value && !chapter.value.analyzed) {
-    changes = changes.map((c) => {
-      const { source: _drop, ...after } = c.after;
-      return { ...c, after };
-    }).filter((c) => Object.keys(c.after).length);
-    if (!changes.length) return;
-  }
+  // A speaker you give is yours before Analyze too (2026-10-15, the narrowings
+  // review S6): the first Analyze gives it to every line it marks as speech in
+  // that paragraph, kept as yours, and the narration to the narrator as it
+  // decides (the server's _persistAttribution). Until then it was sent without
+  // `corrected` here, and the first Analyze replaced it silently.
   busy.value = true;
   const before = lines.value;
   lines.value = applyLocally(lines.value, changes);
@@ -749,9 +743,9 @@ const flagged = (ln) => (ln.flags || []).length > 0;
           </template>
           <template #check="{ row }">
             <template v-if="toCheck(row)">
-              <!-- A tag leads, in the filter chips' words: red where the line can't render,
-                   amber where it is only worth a look (decided 2026-10-06). -->
-              <UiTag :intent="hasNoSpeaker(row) ? 'danger' : 'accent2'">{{ hasNoSpeaker(row) ? "⚠ No speaker" : "To check" }}</UiTag>
+              <!-- A tag leads: red where the line can't render, amber where it is only worth
+                   a look (decided 2026-10-06), naming the kind of check (2026-10-15, S12). -->
+              <UiTag v-if="checkTag(row, groups)" :intent="checkTag(row, groups).intent">{{ checkTag(row, groups).text }}</UiTag>
               <div class="studio-script-ch__q jv-hint">{{ checkQuestion(row, groups, nameOf, word.singular) }}</div>
               <div v-if="flagged(row)" class="studio-script-ch__qacts" @click.stop>
                 <UiButton intent="ghost" size="small" label="👁 Show the lines around"

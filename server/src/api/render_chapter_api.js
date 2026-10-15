@@ -371,19 +371,35 @@ export async function _masterScenePcm(combined, target) {
  * false — it MEASURES.
  */
 export async function renderSceneToWav(st, sceneId, { strict = true, master = true } = {}) {
+  const combined = await _sceneJoined(st, sceneId, strict);
+  const target = master ? self._sceneMasterTarget(sceneId, null)[0] : null;
+  const [wav] = await self._masterScenePcm(combined, target);
+  return wav;
+}
+
+/** The chapter joined once → `{ chapter, master }`: its WAV as joined, and — with `master` — the
+ * same audio mastered to the book's target (null without). Export's chapter zip; joining it once
+ * for each folder read every take twice (2026-10-15). */
+export async function renderSceneWavs(st, sceneId, { master = true } = {}) {
+  const combined = await _sceneJoined(st, sceneId, true);
+  const [chapter] = await self._masterScenePcm(combined, null);
+  if (!master) return { chapter, master: null };
+  const [mastered] = await self._masterScenePcm(combined, self._sceneMasterTarget(sceneId, null)[0]);
+  return { chapter, master: mastered };
+}
+
+/** A chapter's lines joined (async): each line's ★ take where it has one (Studio Slice 4, D4) —
+ * what the chapter plays is what ships and what QC measures — the rest rendered through the
+ * cache. */
+async function _sceneJoined(st, sceneId, strict) {
   const lines = await self._resolveSceneToLines(sceneId, st, { strict });
-  // Each line's ★ take where it has one (Studio Slice 4, D4) — what the chapter plays is what
-  // ships and what QC measures.
   const rendered = await renderSceneLines(
     st,
     lines,
     lines.map((line) => _lineKwargs(line, `scene:${sceneId}`)),
   );
   // The same gap Studio's Render uses (was a hardcoded 600 until 2026-09-29).
-  const combined = await self._join(st, lines, rendered, st.settings.get().generation.pause_between_lines_ms);
-  const target = master ? self._sceneMasterTarget(sceneId, null)[0] : null;
-  const [wav] = await self._masterScenePcm(combined, target);
-  return wav;
+  return self._join(st, lines, rendered, st.settings.get().generation.pause_between_lines_ms);
 }
 
 // ── The routes ─────────────────────────────────────────────────────────────

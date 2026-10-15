@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  applyLocally, checkQuestion, confidenceCell, confirm, decidedBy, editText, filterCounts, lineFacets, keyAction,
+  applyLocally, checkQuestion, checkTag, confidenceCell, confirm, decidedBy, editText, filterCounts, lineFacets, keyAction,
   markOf, mergeState, move, nextToCheck, numberKeys, popUndo, pushUndo, setSpeaker, speakerOptions,
   swap, swapState, toCheck, visibleLines, wasBefore,
 } from "./scriptReview.js";
@@ -246,6 +246,29 @@ describe("the words on a row", () => {
     expect(decidedBy(seen, [seen])).toMatchObject({ text: "AI, from the chapters around it", sub: "" });
     const g = [{ check: "nearby", speaker: "marius", lines: ["a"] }];
     expect(checkQuestion(seen, g, nameOf, "Chapter")).toBe("Found in a nearby chapter — is it Marius?");
+  });
+
+  it("leads the Check cell with a tag per kind of check (2026-10-15, the narrowings review S12)", () => {
+    // One amber tag per kind, in the user's words, replacing the single "To check"; red
+    // "⚠ No speaker" where the line can't render, whatever marks it.
+    const g = [
+      { check: "run", speaker: "june", lines: ["a"], turns: 3 },
+      { check: "only", speaker: "marius", lines: ["a"] },
+      { check: "disagree", speaker: "june", other: "marius", lines: ["a"] },
+      { check: "nearby", speaker: "marius", lines: ["a"] },
+    ];
+    const tag = (flags, speaker = "june") => checkTag(line("a", speaker, { flags }), g);
+    expect([0, 1, 2, 3].map((i) => tag([i]))).toEqual([
+      { text: "No reply", intent: "accent2" },
+      { text: "Only line", intent: "accent2" },
+      { text: "Book and AI differ", intent: "accent2" },
+      { text: "From a nearby chapter", intent: "accent2" },
+    ]);
+    // The tag names the check the question below it asks — the line's first mark.
+    expect(tag([2, 0]).text).toBe("Book and AI differ");
+    expect(checkQuestion(line("a", "june", { flags: [2, 0] }), g, nameOf)).toContain("The book says June");
+    expect(tag([0], null)).toEqual({ text: "⚠ No speaker", intent: "danger" });
+    expect(tag([])).toBeNull();
   });
 
   it("shows confidence in the app's colours, and none on a line that is yours", () => {

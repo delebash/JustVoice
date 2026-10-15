@@ -125,7 +125,8 @@ export async function assembleProject(state, projectId, { renderSceneFn = null, 
  * `renderSceneLinesAsync` leaves it out of a chapter's warm (2026-10-13, the narrowings review R2).
  * A take whose audio can't be read doesn't play: the assembly renders that line, so it is warmed
  * like any other (the same test the assembly makes, `readTakeWav`; 2026-10-13, the implementation
- * review's problem 20).
+ * review's problem 20) — on the take's header only, so the assembly is the one read of each take
+ * (`takeReadable`; 2026-10-15).
  */
 export async function collectProjectLineKwargs(state, projectId, { skipUnrenderable = false } = {}) {
   const out = [];
@@ -139,7 +140,7 @@ export async function collectProjectLineKwargs(state, projectId, { skipUnrendera
     }
     const takes = renderChapterApi._takesFor(lines);
     for (const line of lines) {
-      if (takes.has(line.block_id) && lineTakes.readTakeWav(takes.get(line.block_id)[1]) !== null) continue;
+      if (takes.has(line.block_id) && lineTakes.takeReadable(takes.get(line.block_id)[1])) continue;
       out.push({
         voice: line.voice,
         text: line.text,

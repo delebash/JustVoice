@@ -20,7 +20,7 @@ import PageTaskStrips from "../PageTaskStrips.vue";
 import PlayTransport from "../PlayTransport.vue";
 import { usePagePlayer } from "../../composables/usePagePlayer.js";
 import { CANT_RENDER, partOf } from "../../services/lineStates.js";
-import { loadingText, waitingText } from "../../services/renderRun.js";
+import { QC_WAITS, loadingText, waitingText } from "../../services/renderRun.js";
 import { PROJECT, counts, render, renderChapter, runQc } from "../../services/mock/renderMock.js";
 
 const emit = defineEmits(["go"]);
@@ -183,7 +183,8 @@ function open(ch) {
             <span class="jv-hint">{{ picked.length }} selected</span>
             <span class="jv-spacer" />
             <UiButton intent="secondary" size="small" :loading="qcBusy" :disabled="qcBusy || anyRunning" label="🎧 Run ACX QC"
-              title="Join every chapter that can render and measure RMS + peak against the ACX limits, after the master"
+              :title="anyRunning && !qcBusy ? QC_WAITS
+                : 'Join every chapter that can render and measure RMS + peak against the ACX limits, after the master'"
               @click="qc" />
           </div>
           <PageTaskStrips :features="['acx-qc']" :meta="{ projectId: PROJECT.id }" />

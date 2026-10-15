@@ -289,7 +289,7 @@ async function deleteProject() {
                 option-value="id" @update:model-value="commitMarks" />
             </UiField>
             <UiField label="Leave out dialogue tags" layout="block"
-              hint="The narrator skips lines like “said Marius,” that only say who spoke.">
+              hint="The narrator skips lines like “said Marius,” that only say who spoke. (English dialogue tags only)">
               <UiToggle :model-value="!!meta.leave_out_tags" aria-label="Leave out dialogue tags"
                 @update:model-value="commitTags" />
             </UiField>

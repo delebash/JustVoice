@@ -252,17 +252,43 @@ test("the_chapter_audio_export_holds_each_chapter_and_its_master", async () => {
   // and mastered, as Export's row always said.
   const c = await app();
   const pid = await seed(c);
-  vi.spyOn(renderChapterApi, "renderSceneToWav").mockImplementation(async (_st, _sceneId, kw = {}) => wav((kw.master ?? true) ? 0.3 : 0.1, 0.5));
+  // Each chapter joined once for both folders (2026-10-15: twice read every take twice).
+  const joins = vi
+    .spyOn(renderChapterApi, "renderSceneWavs")
+    .mockImplementation(async (_st, _sceneId, kw = {}) => ({ chapter: wav(0.1, 0.5), master: kw.master ? wav(0.3, 0.5) : null }));
   vi.spyOn(exportAudiobook, "haveFfmpeg").mockReturnValue(true);
   const [job] = await follow(c, (await c.post(`/v1/projects/${pid}/export_chapters/start`)).json());
   expect(job.status, JSON.stringify(job)).toBe("done");
   expect(job.filename).toBe("The Ninth Facet chapters.zip");
+  expect(job.note).toBeNull();
+  expect(joins).toHaveBeenCalledTimes(2);
   const r = await c.get(`/v1/export_jobs/${job.id}/file`);
   expect(r.status).toBe(200);
   const z = ZipReader.fromBuffer(r.content);
   expect([...z.names()].sort()).toEqual(["chapters/01 One.wav", "chapters/02 Two.wav", "masters/01 One.wav", "masters/02 Two.wav"]);
   expect(z.read("masters/01 One.wav").equals(wav(0.3, 0.5))).toBe(true);
   expect(z.read("chapters/01 One.wav").equals(wav(0.1, 0.5))).toBe(true);
+});
+
+test("without_ffmpeg_the_chapter_zip_holds_the_chapters_only_and_says_so", async () => {
+  // 2026-10-15 (the narrowings review R8): it refused the whole zip without ffmpeg; now the
+  // chapters only — never raw audio filed as masters — with the user's note.
+  const c = await app();
+  const pid = await seed(c);
+  vi.spyOn(renderChapterApi, "renderSceneWavs").mockImplementation(async (_st, _sceneId, kw = {}) => {
+    expect(kw.master).toBe(false);
+    return { chapter: wav(0.1, 0.5), master: null };
+  });
+  vi.spyOn(exportAudiobook, "haveFfmpeg").mockReturnValue(false);
+  const start = await c.post(`/v1/projects/${pid}/export_chapters/start`);
+  expect(start.status, start.text).toBe(200);
+  const [job] = await follow(c, start.json());
+  expect(job.status, JSON.stringify(job)).toBe("done");
+  expect(job.note).toBe("No masters — ffmpeg isn't installed, so the zip holds the chapter WAVs only.");
+  const z = ZipReader.fromBuffer((await c.get(`/v1/export_jobs/${job.id}/file`)).content);
+  expect([...z.names()].sort()).toEqual(["chapters/01 One.wav", "chapters/02 Two.wav"]);
+  // The M4B still needs it.
+  expect((await c.post(`/v1/projects/${pid}/export_m4b/start`)).status).toBe(503);
 });
 
 test("the_save_dialog_suggests_the_books_title_as_written", async () => {
@@ -347,7 +373,8 @@ test("deleting_a_book_stops_its_export", async () => {
 test("deleting_a_book_stops_its_acx_check_and_its_exports_inside_a_request", async () => {
   // 2026-10-13 (the narrowings review R4, the implementation review's problem 10): the ACX check,
   // the one-request M4B export and the voice-line export render inside their request; deleting
-  // the book aborts their render, as its client leaving does. Another book's check runs on.
+  // the book aborts their render, as its client leaving does, and they answer 404 (2026-10-15).
+  // Another book's check runs on.
   const c = await app();
   const pid = await seed(c);
   const otherPid = await seed(c);
@@ -377,9 +404,13 @@ test("deleting_a_book_stops_its_acx_check_and_its_exports_inside_a_request", asy
   await until(4);
   expect(seen.map((o) => o.owner.label)).toEqual(["the ACX check", "the M4B export", "the voice-line export", "the ACX check"]);
   expect((await c.delete(`/v1/projects/${pid}`)).status).toBe(200);
-  for (const r of await Promise.all([qc, m4b, vo])) expect(r.status).not.toBe(200);
+  // Its book is gone: 404 "not found", not a 500 (2026-10-15, the narrowings review R4).
+  for (const r of await Promise.all([qc, m4b, vo])) {
+    expect(r.status, r.text).toBe(404);
+    expect(r.json().detail).toBe(`project ${pid}`);
+  }
   expect(seen.map((o) => o.signal.aborted)).toEqual([true, true, true, false]);
   expect((await c.delete(`/v1/projects/${otherPid}`)).status).toBe(200);
-  expect((await otherQc).status).not.toBe(200);
+  expect((await otherQc).status).toBe(404);
   expect(seen[3].signal.aborted).toBe(true);
 });

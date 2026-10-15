@@ -14,8 +14,9 @@
 //
 // * M4B — the book, one file with chapter marks.
 // * Chapter audio — a zip of each chapter joined (`chapters/NN Title.wav`) and mastered to the
-//   book's target (`masters/NN Title.wav`). The package itself (`GET /v1/projects/{id}/export`)
-//   is Overview's, and stays as it is.
+//   book's target (`masters/NN Title.wav`); without ffmpeg, the chapters only, the job's `note`
+//   saying so. The package itself (`GET /v1/projects/{id}/export`) is Overview's, and stays as
+//   it is.
 //
 // Jobs live in memory and a finished file in the temp folder until it is fetched; the old M4B
 // door stays for anything that calls it directly. Python built the file in a worker thread; here
@@ -55,8 +56,13 @@ const _public = (job) => ({
   total: job.total,
   step: job.step,
   error: job.error,
+  // What the file leaves out, said once it is made — the chapter zip without ffmpeg (R8).
+  note: job.note,
   filename: job.filename,
 });
+
+/** The chapter zip's note without ffmpeg (the user's words, 2026-10-15). */
+export const NO_MASTERS = "No masters — ffmpeg isn't installed, so the zip holds the chapter WAVs only.";
 
 /** `re.sub(r"[^A-Za-z0-9._ -]+", "_", name or "").strip() or fallback` — the chapter files'
  * names inside the zip. */
@@ -114,7 +120,10 @@ async function _m4b(job, projectId, name, author) {
   return p;
 }
 
-async function _chaptersZip(job, projectId) {
+/** Each chapter joined once, its WAV in `chapters/` and — with ffmpeg — its master in `masters/`.
+ * Without ffmpeg there are no masters (raw audio filed as a master would be false), and the job
+ * says so in `note` (2026-10-15, the narrowings review R8; it refused the whole zip before). */
+async function _chaptersZip(job, projectId, { masters = true } = {}) {
   const st = getState();
   const scenes = exportAudiobook.projectScenes(projectId);
   if (!scenes.length) throw badRequest("project has no scenes to export");
@@ -126,8 +135,9 @@ async function _chaptersZip(job, projectId) {
     job.step = _chapterStep(job, i, scenes.length, scene);
     const title = _safe(scene.title, `Chapter ${scene.position + 1}`);
     const name = `${String(i + 1).padStart(2, "0")} ${title}.wav`;
-    zf.writestr(`chapters/${name}`, await renderChapterApi.renderSceneToWav(st, scene.id, { master: false }));
-    zf.writestr(`masters/${name}`, await renderChapterApi.renderSceneToWav(st, scene.id, { master: true }));
+    const wavs = await renderChapterApi.renderSceneWavs(st, scene.id, { master: masters });
+    zf.writestr(`chapters/${name}`, wavs.chapter);
+    if (masters) zf.writestr(`masters/${name}`, wavs.master);
   }
   const p = tempFile(".zip");
   writeFileSync(p, zf.toBuffer());
@@ -162,7 +172,7 @@ function _needFfmpeg(what) {
   }
 }
 
-function _start(projectId, filename, mediaType, build) {
+function _start(projectId, filename, mediaType, build, { note = null } = {}) {
   const job = {
     id: randomUUID().replaceAll("-", ""),
     project_id: projectId,
@@ -171,6 +181,7 @@ function _start(projectId, filename, mediaType, build) {
     total: 0,
     step: "Starting",
     error: null,
+    note,
     filename,
     media_type: mediaType,
     path: null,
@@ -215,8 +226,11 @@ export function router() {
   app.post("/v1/projects/:project_id/export_chapters/start", (c) => {
     const projectId = c.req.param("project_id");
     const [name] = _project(projectId);
-    _needFfmpeg("mastered chapters");
-    return c.json(_start(projectId, `${safeTitle(name)} chapters.zip`, "application/zip", (job) => _chaptersZip(job, projectId)));
+    const masters = exportAudiobook.haveFfmpeg();
+    const note = masters ? null : NO_MASTERS;
+    return c.json(
+      _start(projectId, `${safeTitle(name)} chapters.zip`, "application/zip", (job) => _chaptersZip(job, projectId, { masters }), { note }),
+    );
   });
 
   app.get("/v1/export_jobs/:job_id", (c) => c.json(_public(_job(c.req.param("job_id")))));

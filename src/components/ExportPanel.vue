@@ -109,10 +109,14 @@ async function exportChapterWavs() {
   exportBusy.value = "zip";
   try {
     // Each chapter joined and mastered (decided 2026-10-07) — it handed over the
-    // project package, which is Overview's export, until then.
-    const { blob, filename } = await exportRun(api, p, "chapters");
-    sayWhereSaved(await saveBlob(blob, filename,
-      { title: "Save chapter audio", filterName: "Chapter WAVs", filterExt: "zip" }), filename);
+    // project package, which is Overview's export, until then. Without ffmpeg,
+    // the chapters only, and the server's note says so once it is saved
+    // (2026-10-15, the narrowings review R8).
+    const { blob, filename, note } = await exportRun(api, p, "chapters");
+    const res = await saveBlob(blob, filename,
+      { title: "Save chapter audio", filterName: "Chapter WAVs", filterExt: "zip" });
+    sayWhereSaved(res, filename);
+    if (note && savedMessage(res, filename).kind === "success") pushToast({ kind: "warning", message: note });
   } catch (e) {
     if (e?.name !== "AbortError") pushToast({ message: `Export failed: ${e?.message || e}`, kind: "error", duration: 7000 });
   } finally {

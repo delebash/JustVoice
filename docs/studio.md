@@ -88,8 +88,8 @@ shows no count because nothing records an export.
   default), **“Double”**, **‘Single’**, **«Guillemets»** or **„German“**. Every
   project but a game has it. See [speech marks](#speech-marks).
 - **Leave out dialogue tags** — off by default. When it's on, the narrator skips
-  lines like *“said Marius,”* that only say who spoke. See [leaving out dialogue
-  tags](#leaving-out-dialogue-tags).
+  lines like *“said Marius,”* that only say who spoke (English dialogue tags
+  only, as its hint says). See [leaving out dialogue tags](#leaving-out-dialogue-tags).
 
 **Also from here:** **Re-import** merges a newer version of the source file into
 this project, and **Export .justvoice.zip** saves the whole project as one file
@@ -364,7 +364,7 @@ speaker dropdown on every row.
 | **Decided by** | why the line has its speaker — the evidence, not a category (below) |
 | **Text** | the line |
 | **Confidence** | how sure the AI said it was. A low number is worth a look; a high one is not proof — the AI has been 100 % sure and wrong. A line you set shows **—** |
-| **Check** | a tag — red **⚠ No speaker** where the line can't render, amber **To check** where it is only worth a look (since 2026-10-06) — then the question to ask, or why the line can't render |
+| **Check** | a tag — red **⚠ No speaker** where the line can't render; amber where it is only worth a look, naming the kind of check: **No reply**, **Only line**, **Book and AI differ** or **From a nearby chapter** (since 2026-10-15; one amber **To check** before) — then the question to ask, or why the line can't render |
 
 **Decided by** reads:
 
@@ -397,8 +397,16 @@ to the bottom.
 **Fixing lines.**
 
 - Pick a speaker in the row's dropdown — it lists the book's speakers, the
-  narrator first. It saves at once, and the line becomes yours. (On a chapter Analyze has never run on, the speaker is saved but the line
-  isn't marked yours, so a first Analyze can still decide it.)
+  narrator first. It saves at once, and the line becomes yours — before
+  Analyze too. On a chapter Analyze has never run on, the first Analyze gives
+  a speaker you set to every line it marks as speech in that paragraph, kept
+  as yours, and the narration in that paragraph to the narrator, as Analyze
+  decides: set *“We leave at dawn,” said Mara.* to Nettle, and after Analyze
+  *“We leave at dawn,”* is Nettle's and yours, *said Mara.* the narrator's. The
+  same goes for a speaker you give before Analyze in any other way — ticked
+  lines, a swap, **Assign N → Narrator**, Render's speaker picker or its
+  **Assign all to Narrator**. (Until 2026-10-15 the first Analyze replaced a
+  speaker set before it, though this page said lines you set are kept.)
 - **Tick** several rows, then **Set the speaker of ticked lines…**, or **⇄ Swap
   their two speakers** — for ticked lines spoken by exactly two speakers, each
   line goes to the other one. That is the fix for a back-and-forth the AI got
@@ -479,17 +487,18 @@ Script decides who says what, and how it is performed is [Render](#render).
 ### The marks: where to read closely
 
 A mark tints the line and asks its question in the **Check** column, under an
-amber **To check** tag (a line with no speaker says so there too, under a red
-**⚠ No speaker** tag). It marks
+amber tag naming the kind of mark — **No reply**, **Only line**, **Book and AI
+differ**, **From a nearby chapter** (a line with no speaker says so there too,
+under a red **⚠ No speaker** tag). It marks
 the shape the AI's mistakes take, measured on three answer-keyed books before
 it was built:
 
-| Mark | The question |
-|---|---|
-| One speaker speaks **three or more times in a row** — back-to-back spoken paragraphs, no narration-only paragraph between, all theirs | *Marius speaks 3 times with no reply — is one of these the other person's?* The **whole run** is marked: the wrong line is as often the middle one as the last |
-| A speaker's **only line** in the chapter | *Harbek's only line in this chapter — is it theirs?* |
-| **The book and the AI disagree** — the book's words named one speaker, the AI said another | *The book says Nettle, the AI says Marius — whose line is it?* |
-| **Found in a nearby chapter** — the [second look](#the-second-look) named the speaker of a line Analyze had left blank | *Found in a nearby chapter — is it Odeline Marran?* Its first question, ahead of any other mark on the line |
+| Mark | Tag | The question |
+|---|---|---|
+| One speaker speaks **three or more times in a row** — back-to-back spoken paragraphs, no narration-only paragraph between, all theirs | **No reply** | *Marius speaks 3 times with no reply — is one of these the other person's?* The **whole run** is marked: the wrong line is as often the middle one as the last |
+| A speaker's **only line** in the chapter | **Only line** | *Harbek's only line in this chapter — is it theirs?* |
+| **The book and the AI disagree** — the book's words named one speaker, the AI said another | **Book and AI differ** | *The book says Nettle, the AI says Marius — whose line is it?* |
+| **Found in a nearby chapter** — the [second look](#the-second-look) named the speaker of a line Analyze had left blank | **From a nearby chapter** | *Found in a nearby chapter — is it Odeline Marran?* Its first question, ahead of any other mark on the line |
 
 A speech that runs over several paragraphs — each opens a quote, only the last
 closes it — counts as **one** turn, so a long account never looks like three.
@@ -1076,9 +1085,13 @@ green and its **Status** reads *rendering…*; the lines still waiting in the ru
 read *queued*. The page fills in as each line lands — its counts, the chips
 (**Ready** shrinks, **Rendered** grows), the **Status** and the **▶**. The page
 doesn't scroll on its own; click the line's name on the strip to bring it into
-view. A render started somewhere else is picked up when the page or the chapter
-list reads the chapter — when you open it, or after a change there — and its
-strip has **Cancel** too, which stops that render wherever it was started.
+view. A render started somewhere else — another window, JustWrite or the API —
+is picked up when the page or the chapter list reads the chapter: when you open
+it, after a change there, or when you come back to the window (there is no
+timer). Its strip has **Cancel** too, which stops that render wherever it was
+started. A render over several chapters at once reads *rendering…* on each of
+its chapters on the list, with one progress strip, under one of them;
+each of those chapters' pages shows that strip.
 
 Speech renders one line at a time, and it finishes every line waiting on the
 model that is already loaded before it loads another — so it isn't swapping
@@ -1375,7 +1388,9 @@ target applied.
 peak against the ACX limits. It measures the **mastered**
 chapter — the audio the export would ship — so a pass means the finished book
 passes. If ffmpeg is missing, QC still runs and tells you the numbers are for
-the raw render and not what the finished book would measure.
+the raw render and not what the finished book would measure. While a chapter
+renders, **Run ACX QC** is greyed out and its tooltip says why: *Waits for the
+render to finish — the check renders lines that have no take.*
 
 Studio · Export checks the same way. Its package reads **unchecked** until you
 check it there, then **✓ ACX pass** or **✗ out of spec**, the checklist below

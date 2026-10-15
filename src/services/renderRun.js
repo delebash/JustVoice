@@ -27,7 +27,11 @@
 //                 another window, an earlier page load, JustWrite, MCP — that
 //                 the server reports on the chapter (`running_job`), followed
 //                 as the same kind of task, Cancel included (2026-10-13, the
-//                 narrowings review R3: "wherever it was started").
+//                 narrowings review R3: "wherever it was started"). An open page
+//                 notices one when the window regains focus (2026-10-15).
+//   chapterRenderTask  the task rendering a chapter: its own, or the one
+//                 following a job over several chapters — "rendering…" on each
+//                 of them, with one progress strip (2026-10-15).
 
 import { withAiTask } from "@delebash/llm-ui";
 
@@ -186,6 +190,10 @@ export function followRender(api, { sceneId, title, job, onProgress }) {
   }, (task) => followLines(api, task, job, onProgress));
 }
 
+/** 🎧 Run ACX QC's hover while it waits for a render (the user's words, 2026-10-15, the
+ *  narrowings review B3) — the chapter grid and its mock. */
+export const QC_WAITS = "Waits for the render to finish — the check renders lines that have no take.";
+
 /** Is a render of this chapter running in this window (any of Render's kit tasks)? */
 export function chapterRunning(tasks, sceneId) {
   return tasks.visibleTasks.some((t) => ["render-lines", "render-scene"].includes(t.feature)
@@ -197,6 +205,18 @@ export function chapterRunning(tasks, sceneId) {
  *  implementation review's problem 8). */
 export function jobFollowed(tasks, jobId) {
   return tasks.visibleTasks.some((t) => t.meta?.jobId === jobId && tasks.isRunning(t.id));
+}
+
+/**
+ * The running task rendering a chapter, or null: one of this window's runs of it, or — `jobId`,
+ * the render job the server reports over it (`running_job`) — the one task following that job. A
+ * render over several chapters shows "rendering…" on each of its chapters, with one progress
+ * strip, under the chapter it was followed from (2026-10-15, the narrowings review R3).
+ */
+export function chapterRenderTask(tasks, sceneId, jobId = null) {
+  return tasks.visibleTasks.find((t) => tasks.isRunning(t.id) && (
+    (["render-lines", "render-scene"].includes(t.feature) && t.meta?.sceneId === sceneId)
+    || (!!jobId && t.meta?.jobId === jobId))) || null;
 }
 
 /**

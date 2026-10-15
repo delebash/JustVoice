@@ -327,3 +327,113 @@ test("a_chapter_never_edited_is_still_cut_from_its_text", async () => {
   expect(r.status).toBe(200);
   expect((await _meta(c, project.id)).source_text).toBe(TAGGED);
 });
+
+// ── A speaker you set before the first Analyze (2026-10-15, the narrowings review S6) ─────────
+//
+// The page saved it without `corrected` and the first Analyze replaced it silently, though the
+// page says "Lines you set are kept". Now it is yours: it goes to every line Analyze marks as
+// speech in that paragraph, kept as yours; the narration in it goes to the narrator as Analyze
+// decides.
+
+/** A speaker the model never names. */
+async function _odeId(c, projectId) {
+  const r = await c.post(`/v1/projects/${projectId}/speakers`, { json: { name: "Ode" } });
+  expect(r.status, r.text).toBe(201);
+  return r.json().id;
+}
+
+test("a_speaker_set_before_the_first_analyze_goes_to_the_speech_cut_from_its_paragraph", async () => {
+  const { c, project } = await setup();
+  const narrator = await _narratorId(c, project.id);
+  const ode = await _odeId(c, project.id);
+  useModel(_answer(await _maraId(c, project.id))); // the model says Mara
+  const before = await _blocks(c, project.scene_id);
+  for (const b of before) {
+    const r = await c.patch(`/v1/blocks/${b.id}`, { json: { speaker_id: ode, source: "corrected" } });
+    expect(r.status, r.text).toBe(200);
+  }
+
+  const r = await _analyze(c, project.scene_id, `${PARA_1}\n\n${PARA_2}`);
+  expect(r.status, r.text).toBe(200);
+  expect(r.json().persisted.mode).toBe("resegmented"); // PARA_2 is cut into speech · narration
+
+  const after = await _blocks(c, project.scene_id);
+  expect(after.map((b) => b.text)).toEqual([PARA_1, "“We leave at dawn,”", "said Mara."]);
+  // The speech is yours; both narration lines (PARA_1 set by you too) are the narrator's, as
+  // Analyze decides.
+  expect(after.map((b) => [b.speaker_id, b.source])).toEqual([
+    [narrator, "narration"],
+    [ode, "corrected"],
+    [narrator, "narration"],
+  ]);
+  expect(after[1].extraction_confidence).toBeNull();
+  expect(after[1].metadata.paragraph_idx).toBe(1);
+  expect(after[1].metadata).not.toHaveProperty("llm_speaker");
+  // The import's line id still follows the paragraph.
+  expect(after[1].metadata.source_ref).toBe(before[1].metadata.source_ref);
+
+  // A re-analyze keeps it, as it keeps any line you set.
+  expect((await _analyze(c, project.scene_id, `${PARA_1}\n\n${PARA_2}`)).status).toBe(200);
+  expect((await _blocks(c, project.scene_id))[1]).toMatchObject({ speaker_id: ode, source: "corrected" });
+});
+
+test("a_paragraph_nobody_set_is_decided_by_the_first_analyze", async () => {
+  const { c, project } = await setup();
+  const mara = await _maraId(c, project.id);
+  const ode = await _odeId(c, project.id);
+  useModel(_answer(mara));
+  const before = await _blocks(c, project.scene_id);
+  await c.patch(`/v1/blocks/${before[0].id}`, { json: { speaker_id: ode, source: "corrected" } }); // PARA_1 only
+  expect((await _analyze(c, project.scene_id, `${PARA_1}\n\n${PARA_2}`)).status).toBe(200);
+  const after = await _blocks(c, project.scene_id);
+  expect([after[1].speaker_id, after[1].source]).toEqual([mara, "llm"]);
+});
+
+test("a_first_analyze_in_place_keeps_your_speech_and_gives_narration_to_the_narrator", async () => {
+  // Paragraphs Analyze cuts as they stand (one line each) are written in place.
+  const { c } = await appClient(undefined, { seed: true });
+  const quote = "“We leave at dawn.”";
+  let r = await c.post("/v1/projects/import?source=justwrite", {
+    json: bookJson({ chapters: [["ch1", "One", [scene("scn1", PARA_1, quote)]]] }),
+  });
+  expect(r.status, r.text).toBe(200);
+  const pid = r.json().project_id;
+  const sid = (await c.get(`/v1/projects/${pid}/scenes`)).json()[0].id;
+  const narrator = await _narratorId(c, pid);
+  const ode = await _odeId(c, pid);
+  useModel(_answer(await _maraId(c, pid)));
+  const before = await _blocks(c, sid);
+  for (const b of before) await c.patch(`/v1/blocks/${b.id}`, { json: { speaker_id: ode, source: "corrected" } });
+
+  r = await _analyze(c, sid, `${PARA_1}\n\n${quote}`);
+  expect(r.status, r.text).toBe(200);
+  expect(r.json().persisted).toEqual({ mode: "in_place", written: 1, kept_corrected: 1 });
+  const after = await _blocks(c, sid);
+  expect(after.map((b) => b.id)).toEqual(before.map((b) => b.id));
+  expect(after.map((b) => [b.speaker_id, b.source])).toEqual([
+    [narrator, "narration"],
+    [ode, "corrected"],
+  ]);
+});
+
+test("a_line_you_set_takes_the_paragraph_number_of_the_run", async () => {
+  // Found 2026-10-13 (the narrowings review, "found on the way"): a re-analyze of an edited
+  // chapter numbers its paragraphs afresh, and a line you set kept its old number — the pause
+  // between its paragraph's lines and the second look's paragraph read it.
+  const { c, project } = await setup();
+  const narrator = await _narratorId(c, project.id);
+  useModel(_answer("nobody-real"));
+  expect((await _analyze(c, project.scene_id, TAGGED)).status).toBe(200);
+  const blocks = await _blocks(c, project.scene_id);
+  expect(blocks.map((b) => b.metadata.paragraph_idx)).toEqual([0, 1, 1, 1]);
+  await c.patch(`/v1/blocks/${blocks[3].id}`, { json: { speaker_id: narrator, source: "corrected" } });
+  // The first paragraph goes: the rest is now the chapter's first paragraph.
+  expect((await c.delete(`/v1/blocks/${blocks[0].id}`)).status).toBe(200);
+
+  const r = await _analyze(c, project.scene_id, await _joined(c, project.scene_id));
+  expect(r.status, r.text).toBe(200);
+  expect(r.json().persisted.kept_corrected).toBe(1);
+  const after = await _blocks(c, project.scene_id);
+  expect(after.map((b) => b.metadata.paragraph_idx)).toEqual([0, 0, 0]);
+  expect([after[2].speaker_id, after[2].source]).toEqual([narrator, "corrected"]);
+});

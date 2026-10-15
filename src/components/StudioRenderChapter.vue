@@ -35,8 +35,9 @@ import { directionCell, tagCount, voiceKind } from "../services/personaFacts.js"
 import { useVoicesStore } from "../stores/voices.js";
 import { useCopy } from "../services/copy.js";
 import { useKeptScroll } from "../composables/useKeptScroll.js";
+import { useOnWindowFocus } from "../composables/useOnWindowFocus.js";
 import {
-  chapterRunning, followRender, jobFollowed, loadingText, mediaUrl, renderChapter, renderLines, waitingText,
+  chapterRenderTask, chapterRunning, followRender, jobFollowed, loadingText, mediaUrl, renderChapter, renderLines, waitingText,
 } from "../services/renderRun.js";
 import { facetCounts, facetOptions, facetTotal, passesFilters } from "../services/facets.js";
 import { CANT_RENDER_STATES as BLOCKED, lineStateWord } from "../services/lineStates.js";
@@ -152,14 +153,13 @@ const speakerChoices = computed(() => castChoices(props.speakers.map((s) => ({
 const speakerBusy = reactive({});
 async function changeSpeaker(l, speakerId) {
   if (!speakerId || speakerId === l.speaker_id) return;
-  // Script's rule: on a chapter Analyze never ran on, a speaker you give is not
-  // marked as yours — "corrected" would freeze it against every future Analyze.
-  const analyzed = !!props.scenes.find((sc) => sc.id === props.sceneId)?.metadata?.analyzed_at;
+  // Script's rule: a speaker you give is yours, before Analyze too (2026-10-15,
+  // the narrowings review S6).
   speakerBusy[l.block_id] = true;
   try {
     await api.request(`/v1/blocks/${l.block_id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(analyzed ? { speaker_id: speakerId, source: "corrected" } : { speaker_id: speakerId }),
+      body: JSON.stringify({ speaker_id: speakerId, source: "corrected" }),
     });
     await load();
     emit("changed", { sceneId: props.sceneId });
@@ -321,15 +321,20 @@ const running = computed(() => runs[props.sceneId] || "");
 // this window's task; one started anywhere else — another window, an earlier
 // page load, JustWrite, MCP — the server reports on the lines (`running_job`),
 // and the page follows it as the same task, Cancel included (2026-10-13, the
-// narrowings review R3).
+// narrowings review R3) — noticed when the page loads, and when the window
+// regains focus (2026-10-15). A job over several chapters is one task with one
+// strip, followed under one of them; each of its chapters' pages shows it
+// (2026-10-15, R3).
 const aiTasks = useAiTasksStore();
-const liveRun = computed(() => aiTasks.visibleTasks.find((t) => ["render-lines", "render-scene"].includes(t.feature)
-  && t.meta?.sceneId === props.sceneId && aiTasks.isRunning(t.id)) || null);
+const pageJob = computed(() => (page.value?.scene_id === props.sceneId ? page.value.running_job?.id || null : null));
+const liveRun = computed(() => chapterRenderTask(aiTasks, props.sceneId, pageJob.value));
+const stripMeta = computed(() => (liveRun.value?.meta?.jobId && liveRun.value.meta.sceneId !== props.sceneId
+  ? { jobId: liveRun.value.meta.jobId } : { sceneId: props.sceneId }));
+useOnWindowFocus(load);
 function adopt(r) {
   const job = r?.running_job;
   // A job this window already follows (the list adopted it under another of its chapters) isn't
-  // followed twice; how this chapter's page shows that job is the user's word (the narrowings
-  // review, round 2).
+  // followed twice: this page shows that task (`liveRun`, `stripMeta`).
   if (!job || chapterRunning(aiTasks, r.scene_id) || jobFollowed(aiTasks, job.id)) return;
   followRender(api, { sceneId: r.scene_id, title: title.value, job })
     .catch((e) => {
@@ -678,7 +683,7 @@ const chapterBlockedWhy = computed(() => blockedBanner.value.map((p) => p.text).
               <span class="jv-hint">A new take for every line that can render. Old takes are kept.</span>
             </span>
           </div>
-          <PageTaskStrips :features="['render-lines', 'render-scene']" :meta="{ sceneId }">
+          <PageTaskStrips :features="['render-lines', 'render-scene']" :meta="stripMeta">
             <template #extra-stats="{ task }">
               <span v-if="loadingText(task.render?.loading)" class="sts-stat">{{ loadingText(task.render.loading) }}</span>
               <UiButton v-else-if="task.render?.current" intent="ghost" size="small" class="sts-stat"

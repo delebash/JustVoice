@@ -25,7 +25,7 @@
 // takeIsCurrent, sceneLines, projectRenderState); the rest are synchronous.
 
 import { randomInt } from "node:crypto";
-import { readFileSync, rmSync, statSync } from "node:fs";
+import { closeSync, fstatSync, openSync, readFileSync, readSync, rmSync, statSync } from "node:fs";
 import { getLogger } from "@delebash/llm-runner/platform/log";
 import { cpLen, isDict, strip, truthy, ValueError } from "@delebash/llm-runner/platform/py";
 import { pyFloat, pyFloatValue, pyJsonParse, unwrap } from "@delebash/llm-runner/platform/pyjson";
@@ -360,6 +360,36 @@ export function readTakeWav(audioPath) {
   } catch {
     log.warning(`take audio unreadable: ${audioPath}`);
     return null;
+  }
+}
+
+/**
+ * Would `readTakeWav` read this take — the same header check, on the head of the file only. The
+ * export's render phase asks it of every take in the book, and its assembly then reads each take
+ * it plays: reading the whole file here read a long book's takes twice (found 2026-10-13 by the
+ * narrowings review; fixed 2026-10-15). The head starts at the 44 bytes a WAV header takes and
+ * doubles while the header runs on past it.
+ */
+export function takeReadable(audioPath) {
+  if (!audioPath) return false;
+  let fd;
+  try {
+    fd = openSync(mediaPaths.mediaFile(audioPath), "r");
+    const size = fstatSync(fd).size;
+    for (let n = Math.min(44, size); ; n = Math.min(n * 2, size)) {
+      const head = Buffer.alloc(n);
+      readSync(fd, head, 0, n, 0);
+      try {
+        parseWavHeader(head);
+        return true;
+      } catch {
+        if (n >= size) return false;
+      }
+    }
+  } catch {
+    return false;
+  } finally {
+    if (fd !== undefined) closeSync(fd);
   }
 }
 

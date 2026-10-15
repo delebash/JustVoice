@@ -26,6 +26,9 @@ import * as session from "../src/database/session.js";
 import { Take } from "../src/database/models.js";
 import * as exportAudiobook from "../src/export_audiobook.js";
 import { exportVoicelines } from "../src/export_voicelines.js";
+import { writeWavContainer } from "../src/audio/wav.js";
+import * as lineTakes from "../src/line_takes.js";
+import * as mastering from "../src/mastering.js";
 import { mediaFile } from "../src/media_paths.js";
 import * as renderCore from "../src/render_core.js";
 import { lineInputsKey, RenderedLine } from "../src/render_core.js";
@@ -182,6 +185,45 @@ test("the_exports_warm_keeps_a_line_whose_take_cant_be_read", async () => {
   writeFileSync(mediaFile(h().get("generations", spoiled.generation_id).audio_path), "not a wav");
   const kwargs = await exportAudiobook.collectProjectLineKwargs(st, b.pid);
   expect(kwargs.map((kw) => kw.text)).toEqual(["Spoiled."]);
+});
+
+test("the_export_reads_each_take_once", async () => {
+  // Found 2026-10-13 (the narrowings review, "found on the way"); fixed 2026-10-15: the render
+  // phase read every take of the book to see whether it plays, then the assembly read each one
+  // again — and the chapter zip joined each chapter twice, once per folder. The render phase now
+  // reads a take's header only, and the zip joins each chapter once.
+  vi.spyOn(mastering, "haveFfmpeg").mockReturnValue(false);
+  const b = book(st, ["One.", "Two."]);
+  for (const id of b.blocks) await renderBlock(st, id);
+  const reads = vi.spyOn(lineTakes, "readTakeWav");
+  expect(await exportAudiobook.collectProjectLineKwargs(st, b.pid)).toEqual([]); // both play
+  expect(reads).not.toHaveBeenCalled();
+  expect((await exportAudiobook.assembleProject(st, b.pid)).length).toBe(1);
+  expect(reads).toHaveBeenCalledTimes(2);
+  reads.mockClear();
+  const wavs = await renderChapterApi.renderSceneWavs(st, b.sid, { master: true });
+  expect(reads).toHaveBeenCalledTimes(2);
+  expect(wavs.chapter.equals(wavs.master)).toBe(true); // no ffmpeg here: nothing to master with
+  expect((await renderChapterApi.renderSceneWavs(st, b.sid, { master: false })).master).toBeNull();
+});
+
+test("a_takes_header_is_read_without_its_audio", async () => {
+  // `takeReadable` answers as `readTakeWav` would, from the head of the file: past a chunk that
+  // runs on beyond the first read, and refusing a header cut short.
+  const b = book(st, ["One."]);
+  await renderBlock(st, b.blocks[0]);
+  const live = (await lines(st, b.sid)).lines[0].live;
+  const audioPath = h().get("generations", live.generation_id).audio_path;
+  expect(lineTakes.takeReadable(audioPath)).toBe(true);
+  const wav = writeWavContainer(Buffer.alloc(3200), 16000, 1);
+  const size = Buffer.alloc(4);
+  size.writeUInt32LE(100);
+  const withList = Buffer.concat([wav.subarray(0, 36), Buffer.from("LIST"), size, Buffer.alloc(100), wav.subarray(36)]);
+  writeFileSync(mediaFile(audioPath), withList);
+  expect([lineTakes.takeReadable(audioPath), lineTakes.readTakeWav(audioPath) !== null]).toEqual([true, true]);
+  writeFileSync(mediaFile(audioPath), withList.subarray(0, 100)); // cut inside the LIST chunk
+  expect([lineTakes.takeReadable(audioPath), lineTakes.readTakeWav(audioPath) !== null]).toEqual([false, false]);
+  expect(lineTakes.takeReadable(null)).toBe(false);
 });
 
 test("render_reads_a_chapters_running_job_wherever_it_was_started", async () => {
