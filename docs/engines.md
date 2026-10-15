@@ -463,15 +463,20 @@ graphics card pushed a 6.8 GB language model out, while on the CPU it speaks
 three times faster than real time and takes nothing from the card.
 
 **Auto** first checks the card's real free memory (since 2026-10-15): a model
-whose graphics memory, measured on your machine, doesn't fit with the 1 GB
-safety margin beside what other programs use on the card — a game, a second AI
-server — runs on the CPU, and its *Runs on* line says *other programs are using
-about 6.3 GB of the graphics card — this may be slow on the CPU* (or its
-measured speed there). Before, Auto picked the card and the load was refused
-there. The AI model JustVoice loaded doesn't count as another program: it can
-make room. A model never measured on your card isn't checked this way — its
-first load measures it, and a load that doesn't fit moves to the CPU (below).
-Then Auto decides, in this order:
+whose graphics memory doesn't fit with the 1 GB safety margin beside what other
+programs use on the card — a game, a second AI server — runs on the CPU, and its
+*Runs on* line says *other programs are using about 6.3 GB of the graphics card
+— this may be slow on the CPU* (or its measured speed there). Before, Auto
+picked the card and the load was refused there. The model's memory is what a
+load measured on your machine; before one has, a model from audio.cpp's catalog
+counts what audio.cpp says it needs (or its files, when only the estimate is too
+big — see [Memory, before you load](#memory-before-you-load)). The AI model
+JustVoice loaded doesn't count as another program: it can make room.
+JustVoice's own idle processes (about 0.2 GB) are counted with the other
+programs. A model JustVoice wired by hand that has never loaded
+on your card has no size to check: Auto takes the card and its *Runs on* line
+gives no reason — its first load measures it, and a load that doesn't fit moves
+to the CPU (below). Then Auto decides, in this order:
 
 1. **The graphics card** when the model fits in the card's free memory — the
    *Runs on* line says *it fits in the card's free memory* — or when this model's

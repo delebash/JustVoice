@@ -194,8 +194,32 @@ test("auto_ignores_the_estimate_for_a_hand_wired_model", async () => {
 });
 
 test("auto_takes_the_card_when_nothing_else_is_on_it", async () => {
+  // Never measured on this card and wired by hand, so no size: the card, claiming no fit
+  // (2026-10-15) — even beside other programs; its first load measures it.
   const mgr = mgrFor();
-  expect(await mgr.placementFor(mgr.getManifest("kokoro"), "tts", "kokoro-82m-q8")).toEqual(["gpu", "it fits in the card's free memory", false]);
+  expect(await mgr.placementFor(mgr.getManifest("kokoro"), "tts", "kokoro-82m-q8")).toEqual(["gpu", "", false]);
+  vi.spyOn(EngineManager.prototype, "poolUsedMb").mockResolvedValue(6000);
+  expect(await mgr.placementFor(mgr.getManifest("kokoro"), "tts", "kokoro-82m-q8")).toEqual(["gpu", "", false]);
+});
+
+test("auto_weighs_a_never_measured_model_by_what_audiocpp_says_it_needs", async () => {
+  // Decided 2026-10-15: placement and the card agree — a model audio.cpp describes is weighed by
+  // its need (Irodori v3: about 4 GB) beside what other programs hold.
+  const mgr = mgrFor();
+  const used = vi.spyOn(EngineManager.prototype, "poolUsedMb").mockResolvedValue(600);
+  const irodori = () => mgr.placementFor(mgr.getManifest("irodori_tts"), "tts", "irodori_tts-irodorittsv3500m-q8");
+  expect(await irodori()).toEqual(["gpu", "it fits in the card's free memory", false]);
+  used.mockResolvedValue(4000);
+  expect(await irodori()).toEqual([
+    "cpu",
+    "other programs are using about 3.9 GB of the graphics card — this may be slow on the CPU",
+    false,
+  ]);
+  // Tried on the card by its files when only the estimate is too big (OmniVoice's 1.3 GB).
+  const omnivoice = () => mgr.placementFor(mgr.getManifest("omnivoice"), "tts", "omnivoice-q8");
+  expect((await omnivoice())[0]).toBe("gpu");
+  used.mockResolvedValue(6500);
+  expect((await omnivoice())[1]).toBe("other programs are using about 6.3 GB of the graphics card — this may be slow on the CPU");
 });
 
 test("auto_checks_what_other_programs_hold_on_the_card_first", async () => {
@@ -730,7 +754,8 @@ test("the_models_say_where_they_run", async () => {
   const k = rows["kokoro-82m-q8"];
   expect(k.placement).toBe("auto");
   expect(["gpu", "cpu"]).toContain(k.runs_on);
-  expect(k.runs_on_reason).toBeTruthy();
+  // A reason where one was checked; none for a model never measured on an unread card (2026-10-15).
+  expect(typeof k.runs_on_reason).toBe("string");
   expect(k.cpu_realtime).toBe(3.15);
   expect(k.cpu_realtime_here).toBe(false);
 });

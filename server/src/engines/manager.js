@@ -973,18 +973,31 @@ export class EngineManager {
         return ["cpu", `${why} — ${speed || "this may be slow on the CPU"}`, false];
       }
     }
-    // Auto checks the card's real free memory first (decided 2026-10-15): a measured price that,
-    // with the safety margin, doesn't fit beside what other programs hold would be refused at the
-    // card's admission, which can make room only among what is booked here — the CPU instead.
-    const others = prior && cardMb > 0 ? await this._otherProgramsCardMb() : null;
-    if (others !== null && prior + margin + others > cardMb) {
+    // Auto checks the card's real free memory first (decided 2026-10-15). The size it weighs: what
+    // a load measured here; else, for a model audio.cpp describes, what it needs — the size "too
+    // big for this card" is judged by — or, when only the estimate is too big, its files, which the
+    // card is tried on. A size that fits the card with the safety margin but not beside what other
+    // programs hold would be refused there (the card's admission can make room only among what is
+    // booked here) or fail — the CPU instead. The other programs' memory (`_otherProgramsCardMb`)
+    // also counts JustVoice's own unbooked processes — an idle speech runtime, a sleeping AI
+    // server, about 0.2 GB: accepted 2026-10-15, as per-process card memory isn't readable on
+    // Windows.
+    let size = prior || null;
+    if (size === null && need && cardMb > 0) size = (cardFirst ? EngineManager._catalogFilesGb(m, variant) : need.gb) * 1024;
+    const others = size !== null && size + margin <= cardMb ? await this._otherProgramsCardMb() : null;
+    if (others !== null && size + margin + others > cardMb) {
       return [
         "cpu",
         `other programs are using about ${_gb(others / 1024)} GB of the graphics card — ${speed || "this may be slow on the CPU"}`,
         false,
       ];
     }
-    if (!(await this._aiModelOnCard())) return ["gpu", cardFirst || "it fits in the card's free memory", false];
+    // "Fits" only where it was checked — a size and a reading of the card. A model with no size
+    // here (one JustVoice wired by hand, never measured on this card) or no reading keeps the
+    // card and claims nothing: its first load measures it, and a load that doesn't fit moves to
+    // the CPU.
+    const fits = others !== null ? "it fits in the card's free memory" : "";
+    if (!(await this._aiModelOnCard())) return ["gpu", cardFirst || fits, false];
     const free = prior ? await this._freeCardMb(kind, m.id) : null;
     if (prior && free !== null && prior <= free) return ["gpu", `it fits beside the AI model (${prior} MB)`, false];
     if (x !== null && x >= runtime.cpuMinRealtime()) return ["cpu", `${speed}, which keeps the graphics card for the AI model`, false];
