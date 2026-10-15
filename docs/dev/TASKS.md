@@ -186,6 +186,41 @@ OPEN:   the register's 20 questions and its "found on the way" list, to the user
         then the one-click plan.
 GO:     given 2026-10-13 for the review ("go …"); the plan's build waits for its own word.
 
+### The register's 35 questions and the adoption plan's 7, answered: finish all of it, then the one-click plan (decided 2026-10-15)
+STATE:  DECIDED 2026-10-15 — shown: the 35 numbered questions of the register's "Built
+        2026-10-13, and what waits on the user" (1–15 the earlier wording and designs, 16–34 the new
+        round, 35 the eight bugs found on the way), each with "Rec: …", and the adoption plan's §7
+        questions 1–7, "My recommendation is yes on each"; then "Once you answer: I build what you
+        approved, then finish slice 6 (push the fork, the jv.6 build, the pin), then the adoption
+        plan, then the one-click plan." The user: "think on it all again and then your rec lets
+        finish this i wnat to get back to the one click but i want to finish all tis other stuff
+        first, so keep going on your rec but i want you to rethink on anything you are really
+        unsure of and if after adversiarlly thinking on it you are still unsure stop and raise it
+        to me other wise complete everything to get us back to one click, your rec go".
+        Then the five still unsure after the rethink, shown: "1. P16, a backup from another sync
+        library … every new database starts its own sync library, so 'refuse a backup from another
+        library' would also refuse the most common restore … Rec: refuse only when this computer is
+        syncing (a cloud folder or a paired device is set). A computer that isn't syncing restores
+        the backup as it does today. The refusal would say: 'This backup is from another sync
+        library. Stop using the cloud folder and remove your paired devices in Settings → Sync,
+        then restore it.' 2. P18 … Rec: the reload waits while any dialog is open or the cursor is
+        in a text box. 3. The data-folder lock (34). The family rules put it in the kit … 'Another
+        JustVoice server is using this data folder (‹path›) — stop it first.' Each app uses its own
+        name. 4. … Rec: Auto checks the card's real free memory first. If the model doesn't fit
+        beside the other programs, it runs on the CPU and says: 'other programs are using about X
+        GB of the graphics card — this may be slow on the CPU'. 'nothing else is on the graphics
+        card' becomes 'it fits in the card's free memory'. 5. Upstream released audio.cpp v0.9.2
+        today … The fork release becomes v0.9.2-jv.6 … Rec: v0.9.2." Asked "what is this migrating
+        to upstreasm new release?", answered; the user: "your rec on all as long as you have
+        already thought on it again go".
+WHY:    the one-click plan needs every audio.cpp model in the app, and the review's fixes in first.
+NOT:    shipping an item still unsure after an adversarial rethink — it goes back to the user;
+        refusing a restore on a computer that isn't syncing.
+BUILT:  nothing yet.
+OPEN:   every rec in the register's list and the plan's §7; slice 6's last steps (the fork push, the
+        jv.6 release, the pin, `slice-6-wip`); the adoption plan's five slices; then the one-click plan.
+GO:     given 2026-10-15 ("your rec go").
+
 ### FINDING — the generated engines offer only models that clone a voice; 13 speech families never appear
 STATE:  FINDING — code-verified 2026-10-13. Mine, never asked: built in the engine list's slices
         2–3 (df2b40e, 2026-10-11). The approved plan says the opposite: §1, each row says "what it
