@@ -49,10 +49,10 @@ const pageRoutes = [
   { path: "settings", name: "settings", component: () => import("../pages/SettingsPage.vue") },
 
   // ── Legacy sub-tab deep-links ─────────────────────────────────────
-  // Settings sub-tabs (#cache/#channels/#webhooks) were top-level hashes. The
+  // Settings sub-tabs (#cache/#webhooks) were top-level hashes. The
   // destination view reads the chosen sub-tab from sessionStorage on mount, so
   // set it here then redirect to the parent view.
-  ...["cache", "channels", "webhooks"].map((sub) => ({
+  ...["cache", "webhooks"].map((sub) => ({
     path: sub,
     redirect: () => {
       try { sessionStorage.setItem("jv.settings.sub", sub); } catch { /* ignore */ }

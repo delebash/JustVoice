@@ -151,7 +151,6 @@ const HELP_SLUG_BY_VIEW = {
   compare:  "mastering",
   cache:    "core-concepts",
   audio:    "mastering",
-  channels: "channels",
   webhooks: "webhooks",
   settings: "getting-started",
 };

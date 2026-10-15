@@ -6,6 +6,17 @@ The holding pen for unscheduled JustVoice ideas — same charter as JW's
 
 ---
 
+- **2026-10-15 · Audio output channels — a persona's audio to a chosen output device** — the
+  user: "4 your rec but add it to ideas so we dont forget what it is" (TASKS "The build's 16
+  questions…", 4). What it was meant to be: named channels in Settings, each holding output
+  devices of the computer, with personas assigned to them, so playback goes where you route it —
+  the narrator to one speaker, a game character to another, a multi-device broadcast. What exists:
+  the `channels` and `persona_channels` tables, `/v1/channels` (`server/src/api/channels_api.js`),
+  the tab `src/components/AudioChannelsSection.vue` (hidden 2026-10-15 — no Settings section
+  lists "channels"). What is missing: listing the computer's audio
+  outputs (`native.js` `listAudioOutputDevices` answers []), and any playback, render or export
+  that reads a channel. The routing docs went 2026-10-15 (P-also1).
+
 - **2026-10-12 · Check the commit limit, not only free RAM** — allocations fail outright only
   when RAM plus the page file is spent, and nothing reads that. The 26B's private bytes (16.8 GB)
   plus VoxCPM2's speech server (9.4 GB) are about 26 GB of commit against a 41.4 GB limit on

@@ -21,6 +21,7 @@ export const SETTINGS_SECTION_IDS = [
   "mcp",
   "gpu",
   "cache",
-  "channels",
+  // "channels" is hidden until routing a persona to an audio output is built (decided
+  // 2026-10-15; IDEAS "Audio output channels"); its component and API stay.
   "webhooks",
 ];

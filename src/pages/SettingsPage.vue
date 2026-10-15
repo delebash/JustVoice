@@ -18,7 +18,6 @@ import { useServerStore } from "../stores/server.js";
 import { SETTINGS_SECTION_IDS } from "../services/settingsSections.js";
 import { CAPTURE_LANGUAGES, captureLanguageWord } from "../services/captureLanguage.js";
 import CacheView from "../components/CacheSection.vue";
-import AudioChannelsView from "../components/AudioChannelsSection.vue";
 import WebhooksView from "../components/WebhooksSection.vue";
 // The family Sync screen — by path, not the kit barrel (it needs `qrcode`; SyncPanel.vue's header).
 import SyncPanel from "@delebash/llm-ui/components/SyncPanel.vue";
@@ -447,7 +446,6 @@ const APP_SECTION_LABELS = {
   mcp: "MCP server",
   gpu: "GPU",
   cache: "Cache",
-  channels: "Channels",
   webhooks: "Webhooks",
   sync: "Sync",
 };
@@ -464,7 +462,7 @@ watch(activeSub, (now, before) => {
   if (before === "sync") void refresh();
 });
 
-// Deep links (#cache/#channels/#webhooks redirect here) hand the target
+// Deep links (#cache/#webhooks redirect here) hand the target
 // sub-tab over via sessionStorage — ids stay stable; the retired "changelog"
 // id keeps landing on the section that replaced it. Consumed on EVERY entry:
 // this view is kept alive (layouts/MainLayout.vue), so a setup-time read fires once per
@@ -971,7 +969,6 @@ onMounted(() => {
 
     <!-- ─── Cache / Channels / Webhooks (moved from the sidebar's Advanced lane) ─── -->
     <div v-show="activeSub === 'cache'" class="jv-section"><CacheView /></div>
-    <div v-show="activeSub === 'channels'" class="jv-section"><AudioChannelsView /></div>
     <div v-show="activeSub === 'webhooks'" class="jv-section"><WebhooksView /></div>
 
     <!-- ─── Server · API reference (task #96; re-homed from General in the

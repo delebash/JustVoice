@@ -56,7 +56,8 @@
     program, then press Retry.*, and **Retry** starts the server again. A
     JustVoice server left on the port is asked to shut down before it is stopped ([Run
     modes](run-modes.md), [Troubleshooting](troubleshooting.md))
-  - Channels no longer describes device routing that isn't built ([Channels](channels.md)).
+  - Settings → Channels is hidden: routing a persona's audio to an output device of your
+    computer isn't built, and nothing used a channel.
     Settings → Limits loses *Request body max bytes*, which nothing used. Re-import's **What is
     this format?** opens the format's help again
   - After your next data reset: personas lose the picture field no screen could set, and lexicon

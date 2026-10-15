@@ -134,6 +134,11 @@ use by another program — close that program, then press Retry.* — **Retry** 
 the server again), or another JustVoice server — a headless one, say — is using the
 same data folder (*… — stop it first.*); see [Run modes](run-modes.md#desktop).
 
+**The first sound after a quiet spell (Mac).** macOS puts an idle audio session to sleep, so the
+first playback after a long pause could fail or pop. JustVoice keeps the session open with a
+silent looping clip; there is nothing to set up. If the system blocks audio until you interact
+with the window, it starts on your first click or key press.
+
 **MCP clients can't find the server.** MCP mounts at `/mcp` on the app port
 (17494) whenever the server starts — it is built in (the official MCP SDK
 ships with the app), so there is nothing to install. If a client still can't

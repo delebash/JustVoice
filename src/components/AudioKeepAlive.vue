@@ -4,7 +4,8 @@
   the first playback after a long pause neither fails nor pops. It loops a
   short clip of true silence (zero samples) at full volume — not a muted
   element, which an engine is free to skip. Written for macOS, whose audio
-  session went dormant after idle; see docs/channels.md, "Audio keep-alive".
+  session went dormant after idle; see docs/troubleshooting.md, "The first sound after a quiet
+  spell".
 
   Browsers refuse to start audio before the user has interacted with the page,
   so a refused start is retried on the first click or key press, and whenever

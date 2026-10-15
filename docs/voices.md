@@ -228,4 +228,4 @@ See [engines.md](engines.md) for which params each engine supports.
 
 ## Effects
 
-Each voice can carry a default **effects chain** (pedalboard — see [effects.md](effects.md)). It rides along on every render through this voice. (Routing a voice to an audio output device isn't built yet — see [channels.md](channels.md).)
+Each voice can carry a default **effects chain** (pedalboard — see [effects.md](effects.md)). It rides along on every render through this voice.
