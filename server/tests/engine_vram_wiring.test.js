@@ -365,11 +365,13 @@ test("admission_never_evicts_a_busy_kind", async () => {
 
 test("admission_on_measured_free_sees_foreign_usage", async () => {
   // The ledger says 8 GB free but the MEASURED pool says other apps hold 7 GB — refuse,
-  // quoting the measured number.
+  // quoting the measured number. Pinned to the GPU: Auto now runs such a model on the CPU
+  // instead (decided 2026-10-15; cpu_placement.test.js).
   makeArbiter(discrete(8192));
   const mgr = mgrFor(discrete(8192), manifest());
   vi.spyOn(EngineManager.prototype, "_priceMb").mockReturnValue(4096);
   vi.spyOn(EngineManager.prototype, "poolUsedMb").mockResolvedValue(7000);
+  vi.spyOn(EngineManager, "_userPlacement").mockReturnValue("gpu");
   await expect(mgr.load("eng", { device: "auto" })).rejects.toThrow(/free of 8192 MB \(measured, minus what is booked\)/);
   expect(mgr._loaded.get("tts") ?? null).toBeNull();
 });
@@ -533,9 +535,10 @@ test("admission_treats_a_sleeping_booking_as_free_memory", async () => {
 
 test("admission_still_prices_on_the_probe_when_the_probe_is_worse", async () => {
   // 3 GB held by programs we do not manage, nothing in our ledger, and a 4.4 GB engine no
-  // longer fits.
+  // longer fits. Pinned to the GPU: Auto now runs it on the CPU instead (decided 2026-10-15).
   const arb = makeArbiter(discrete());
   const mgr = admissionMgr(arb, { priorMb: 4400, usedMb: 6000 });
+  vi.spyOn(EngineManager, "_userPlacement").mockReturnValue("gpu");
   await expect(mgr.load("eng", { device: "auto" })).rejects.toThrow(/not enough memory/);
   expect(arb.reservationOf("tts:eng")).toBeNull();
 });
