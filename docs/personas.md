@@ -49,7 +49,7 @@ The Personas page lists your library, one row per persona:
 | Persona | Its name, and the start of its note |
 | Built on | The voice it's built on and how that voice was made: `Sohee built-in`, `Mara cloned`, `Old Crow designed`, `Warm mix blended`. *No voice yet* when none is picked, *voice missing* when its voice was deleted |
 | Model | The model that speaks its voice: `Qwen3-TTS CustomVoice`, `Kokoro` |
-| Can be directed | **✓ written direction**, **✓ 19 tags** (the model's own tags) or **sliders only** — see [Voice](#voice) for what each means |
+| Can be directed | **✓ written direction**, **✓ 19 tags** (the model's own tags), **sliders only** or **Can't be directed yet** — see [Voice](#voice) for what each means |
 | Speaks | The language it speaks: `Korean`, `British English` |
 | Shaped | What it does to its voice: `1.05× · −1.0 dB · 2 effects`, `0.92× · −3 st · Reverb`. *as the voice* when it changes nothing |
 | Used by | Who it plays, as *speaker — book*: `Cael Ferren — The Ninth Facet`. The same speaker name in several books reads `Narrator — The Ninth Facet · Emberfall`. A persona that plays no one reads **— not used yet —** |
@@ -64,9 +64,10 @@ blank one.
 
 - **Search personas…** matches a persona's name or its note.
 - **Model** — the models your personas use, each with its count: *Kokoro (9)*.
-- **Can be directed** — Any direction · Written direction · Tags · Sliders only.
-  The open list shows each one's example (*describe it: clipped, world-weary* ·
-  *pick from the model's list: [fear] [sigh]* · *pace, pitch, gain — no words*).
+- **Can be directed** — Any direction · Written direction · Tags · Sliders only ·
+  Can't be directed yet. The open list shows each one's example (*describe it:
+  clipped, world-weary* · *pick from the model's list: [fear] [sigh]* · *pace,
+  pitch, gain — no words*, for both of the last two).
 - **Languages** — the languages your personas speak, with counts.
 - **Used** — All · In use · Unused · *In* each book (*In The Ninth Facet*).
 
@@ -170,9 +171,10 @@ separate engine or model field — pick the voice and the model comes with it.
 read it.)
 
 **What a voice can do comes first.** *How it can be directed* is always in
-view — four choices, each with its example and how many voices can do it, for
+view — five choices, each with its example and how many voices can do it, for
 example **Any (91)** · **Written direction (9)** *describe it* · **Tags (0)**
-*[fear] [sigh]* · **Sliders only (82)** *pace, pitch, gain*. Under it: *What the
+*[fear] [sigh]* · **Sliders only (82)** *pace, pitch, gain* · **Can't be directed
+yet (0)** *pace, pitch, gain* (since 2026-10-15). Under it: *What the
 voice's model takes to shape how it speaks. Written direction: you describe it
 in words (Style Instructions). Tags: you pick from the model's list, like
 [sigh]. Sliders only: pace, pitch and gain. This decides what How it speaks
@@ -183,6 +185,7 @@ offers below.*
 | Written direction | describe it in words | *Clipped, world-weary. Dry wit.* | Qwen3 CustomVoice, VoxCPM2 (its clones too), Qwen3 VoiceDesign (the words reshape the voice) |
 | Tags | pick from the model's own list | `[fear]` … `[sigh]` | Chatterbox Turbo, Chatterbox Nano |
 | Sliders only | pace, pitch, gain — no words | Pace 1.05×, Pitch −2 st | Kokoro, KittenTTS, Pocket TTS, Chatterbox Multilingual, Qwen3 Base |
+| Can't be directed yet | pace, pitch, gain — no words | Pace 1.05×, Pitch −2 st | the models from audio.cpp that JustVoice doesn't know how to direct yet — Supertonic 3, Kitten TTS 2, Voxtral 4B TTS and others ([Engines](engines.md#every-other-model-audiocpp-has)); a line on one is spoken plainly |
 
 **How it was made comes second.** *Type* lists the voices of one type, with
 how many — **Built-in · Cloned · Designed · Blended**, the words every screen
@@ -365,7 +368,10 @@ Describe a voice in words and a design model invents it — no recording.
 harbour-master in his seventies, unhurried"*. **↧ Start from the note** copies
 this persona's note in, to edit; it never happens on its own. The model is
 **Qwen3 VoiceDesign** (a separate 2.8 GB download from Qwen3's CustomVoice and
-Base, 1.7B only) or **VoxCPM2**. A design model invents a voice afresh on
+Base, 1.7B only) or **VoxCPM2** — or, since 2026-10-15, one of audio.cpp's other
+models that make a voice from words: Breeze TTS 2, FireRedTTS3, FireRedAudio,
+Irodori-TTS, MOSS-VoiceGenerator, Maya1 or OmniVoice
+([Engines](engines.md#every-other-model-audiocpp-has)). A design model invents a voice afresh on
 every call — ask twice for the same description and you get two different
 people — which is why keeping a take matters for a voice that must stay one
 person through a book.

@@ -221,12 +221,16 @@ async function copyUpload(file, dest) {
 // ─── Speech recognition ─────────────────────────────────────────────────────
 
 /** `[manager, settings]`, with the speech-recognition model loaded — on first use, when the
- * runtime and the model are installed; otherwise a 400 that says what to do. */
-export async function ensureSttLoaded() {
+ * runtime and the model are installed; otherwise a 400 that says what to do. Whatever recogniser
+ * is loaded transcribes; `aligner`: the words' timings need Qwen3-ASR's aligner, the only one
+ * audio.cpp has, so Qwen3-ASR takes the slot when another recogniser holds it (the adoption
+ * plan's §7 answer 2: captions stay on Qwen3-ASR and its aligner). */
+export async function ensureSttLoaded({ aligner = false } = {}) {
   const { getManager } = await import("../engines/manager.js");
   const mgr = getManager();
   const settings = getState().settings.get();
-  if (mgr.loadedFor("stt") === null) {
+  const loaded = mgr.loadedFor("stt");
+  if (loaded === null || (aligner && loaded.manifest.id !== "asr")) {
     const status = mgr.status("asr");
     if (status !== "installed") {
       throw badRequest(`speech recognition is ${status} — install the speech runtime and its model on the AI page`);

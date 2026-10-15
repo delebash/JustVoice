@@ -22,6 +22,19 @@ describe("personaFacts — one vocabulary for voices and personas", () => {
     expect(tagCount({ inline_tags: [{ tags: ["a", "b"] }, { tags: ["c"] }] })).toBe(3);
   });
 
+  it("says a model JustVoice doesn't yet know how to direct can't be directed yet", async () => {
+    // The adoption plan, E8: on the model's row, the persona page and every screen that words it.
+    const { DIRECTION_OPTIONS, directionSentence } = await import("./personaFacts.js");
+    expect(directionCell("not_yet").label).toBe("Can't be directed yet");
+    expect(directionCell("not_yet").intent).toBe("secondary");
+    expect(directionSentence("not_yet", "Supertonic 3")).toBe("Supertonic 3: can't be directed yet — pace, pitch and gain, no words or tags.");
+    expect(DIRECTION_OPTIONS.find((o) => o.value === "not_yet").label).toBe("Can't be directed yet");
+    const { rowDirectedBy } = await import("./voiceMakers.js");
+    expect(rowDirectedBy({ direction_known: false })).toBe("not_yet");
+    expect(rowDirectedBy({ direction_known: true })).toBe("sliders");
+    expect(rowDirectedBy({ supports_instruct_freeform: true, direction_known: true })).toBe("words");
+  });
+
   it("calls a voice by how it was made", () => {
     expect(voiceKindWord({ source: "preset" })).toBe("built-in");
     expect(voiceKindWord({ source: "imported" })).toBe("cloned");

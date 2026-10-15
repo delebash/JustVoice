@@ -1516,20 +1516,28 @@ export class EngineManager {
 
   /** Fire-and-forget high-water bump for the synthesis/transcription hot path — the probe can
    * shell out for ~1 s and must never add latency to a line. */
-  bumpEngineReservationAsync(kind) {
-    background(`${kind}-highwater`, () => this.bumpEngineReservation(kind), log);
+  bumpEngineReservationAsync(kind, { lineOk = true } = {}) {
+    background(`${kind}-highwater`, () => this.bumpEngineReservation(kind, { lineOk }), log);
   }
 
   /** The raise-only HIGH-WATER re-probe: a TTS model allocates at generate(), not load — a
    * post-load number misses render peak. Never lowers a booking; best-effort. */
-  async bumpEngineReservation(kind, { fresh = false } = {}) {
+  async bumpEngineReservation(kind, { fresh = false, lineOk = true } = {}) {
     // System memory first: the card's probe below returns early for a CPU slot.
     await this.bumpSpeechRam(kind).catch(() => {});
     const proc = this._loaded.get(kind) ?? null;
     if (proc === null) return;
     const engineId = proc.manifest.id;
+    // A load that couldn't measure the model (it speaks only from a clip) prices it on its
+    // first line (§7 answer 5; set in `load`) — a line that spoke, not one that failed.
+    const first = lineOk ? (proc._priceAtFirstLine ?? null) : null;
+    if (first !== null) proc._priceAtFirstLine = null;
     // The kind's own process (audit §13.2): its whole measurement is this model's.
-    const mb = await this._engineProcMb(proc, { fresh });
+    const mb = await this._engineProcMb(proc, { fresh: fresh || first !== null });
+    if (first !== null) {
+      await this._priceFirstLine(proc, kind, first, mb);
+      return;
+    }
     if (!mb) return;
     try {
       const arb = arbiter.getArbiter();
@@ -1551,6 +1559,35 @@ export class EngineManager {
       }
     } catch {
       /* best-effort */
+    }
+  }
+
+  /**
+   * The price of a model its load couldn't measure (it speaks only from a clip), saved after its
+   * first line (§7 answer 5): the process's reading after the line (`mb`), else — a probe that
+   * reads nothing — the whole card's difference since before its load, as a calibrated load's
+   * fallback is. Booked too, and never below what is booked. Not after a runaway line, and not
+   * when the slot swapped while the line ran. Best-effort.
+   */
+  async _priceFirstLine(proc, kind, first, mb) {
+    try {
+      if (this._loaded.get(kind) !== proc || !this._prices(proc)) return;
+      const m = this.getManifest(proc.manifest.id);
+      if (m === null) return;
+      const cur = EngineManager._bookingMb(`${kind}:${m.id}`);
+      if (mb) {
+        this._reserveEngine(m, kind, Math.max(mb, cur), "measured");
+        this._recordSpeechLoad(m, kind, first.variant, Math.max(mb, cur), first.device);
+        return;
+      }
+      if (first.poolBefore === null || first.poolBefore === undefined) return;
+      const after = await this.poolUsedMb({ fresh: true });
+      const delta = after !== null ? Math.max(0, after - first.poolBefore) : 0;
+      if (delta <= 0) return;
+      if (delta > cur) this._reserveEngine(m, kind, delta, "computed");
+      this._recordSpeechLoad(m, kind, first.variant, delta, first.device, "the whole card's difference");
+    } catch (e) {
+      log.debug(`first-line price failed for ${proc?.manifest?.id}: ${msgOf(e)}`);
     }
   }
 
@@ -2019,10 +2056,11 @@ export class EngineManager {
       // model's peak (§13.3): a calibrated load's measurement, or any measurement above the
       // price. Probe miss → the device-wide delta, booked "computed". Approved 2026-10-12: "save
       // the fallback card number for models whose probe fails", so Auto learns a model fits
-      // (OmniVoice: audio.cpp says 10 GB, the card took 1.2 GB). Saving it only for a calibrated
-      // load was mine, and a generated model never calibrates (slot._warm), so OmniVoice's
-      // probe-miss load saves nothing yet — calibrating them is in the adoption plan (the
-      // narrowings review, M1). An EARLY booking keeps the price instead.
+      // (OmniVoice: audio.cpp says 10 GB, the card took 1.2 GB). A generated model that can speak
+      // without a clip calibrates like a hand-wired one (slot._warmGenerated; the adoption plan's
+      // M1); one that speaks only from a clip can't, so its first line sets its price instead —
+      // its process's reading after the line, or the whole card's difference since before the
+      // load (§7 answer 5; `bumpEngineReservation`). An EARLY booking keeps the price instead.
       if (books) {
         const measured = await this._engineProcMb(proc, { fresh: true });
         let calibrated = false;
@@ -2030,6 +2068,10 @@ export class EngineManager {
           calibrated = Boolean((r.json() || {}).calibrated);
         } catch {
           calibrated = false;
+        }
+        // A generated model's (the hand-wired ones move onto this path in the plan's slice 4).
+        if (calibrate && !calibrated && m.module?.GENERATED && this._prices(proc)) {
+          proc._priceAtFirstLine = { poolBefore, device, variant: this._currentVariants.get(engineId) };
         }
         if (measured) {
           this._reserveEngine(m, targetKind, Math.max(measured, earlyMb), "measured");
@@ -2137,7 +2179,7 @@ export class EngineManager {
     this._noteRunaway(proc, engineId, body?.text, audioS);
     // High-water true-up: generate() is where a TTS engine's memory peaks — async +
     // TTL-absorbed, raise-only, never blocks the line.
-    this.bumpEngineReservationAsync(kind);
+    this.bumpEngineReservationAsync(kind, { lineOk: r.statusCode === 200 });
     if (r.statusCode === 403) {
       const payload = typeof r.json === "function" ? r.json() : {};
       if ((payload || {}).code === "terms_required") {
@@ -2181,7 +2223,7 @@ export class EngineManager {
         wall = (performance.now() - t0) / 1000;
       }),
     );
-    this.bumpEngineReservationAsync("stt");
+    this.bumpEngineReservationAsync("stt", { lineOk: r.statusCode === 200 });
     if (r.statusCode !== 200) throw new RuntimeError(`engine transcribe failed: ${r.text}`);
     if ((proc.placement ?? "gpu") === "cpu" && !(proc.speedRecorded ?? true)) {
       this._recordCpuSpeed("stt", proc, _inputSeconds(body), wall);

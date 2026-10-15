@@ -107,10 +107,13 @@ test("manifest_default_variants_exist_in_catalog", () => {
 });
 
 test("speech_recognition_carries_its_aligner", () => {
-  expect(modelsFor("asr").map((x) => x.id)).toEqual(["qwen3-asr-1.7b-q8", "qwen3-asr-1.7b-f16"]);
+  // Qwen3-ASR 0.6B is offered beside 1.7B, which stays the default (the adoption plan §7 answer 4).
+  expect(modelsFor("asr").map((x) => x.id)).toEqual(["qwen3-asr-1.7b-q8", "qwen3-asr-1.7b-f16", "qwen3-asr-0.6b-q8", "qwen3-asr-0.6b-f16"]);
   for (const [vid, dtype] of [
     ["qwen3-asr-1.7b-q8", "q8_0"],
     ["qwen3-asr-1.7b-f16", "f16"],
+    ["qwen3-asr-0.6b-q8", "q8_0"],
+    ["qwen3-asr-0.6b-f16", "f16"],
   ]) {
     const spec = row("asr", vid).audiocpp;
     expect([spec.family, spec.task]).toEqual(["qwen3_asr", "asr"]);
@@ -143,8 +146,17 @@ test("engine_kinds", () => {
   const engines = [...discoverEngines()];
   const kinds = Object.fromEntries(engines.filter(([, m]) => !m.module.GENERATED).map(([k, m]) => [k, m.kind]));
   expect(kinds).toEqual({ kokoro: "tts", qwen3: "tts", chatterbox: "tts", asr: "stt", kitten: "tts", pocket: "tts", voxcpm2: "tts" });
-  // Every engine built from audio.cpp's own files speaks.
-  for (const [k, m] of engines.filter(([, m]) => m.module.GENERATED)) expect(m.kind, k).toBe("tts");
+  // An engine built from audio.cpp's own files speaks, or — from its Speech to text tab — recognises
+  // speech (the adoption plan's slice 2, E1).
+  for (const [k, m] of engines.filter(([, m]) => m.module.GENERATED)) {
+    const tasks = new Set(m.module.VARIANTS.map((v) => v.audiocpp.task));
+    expect(m.kind, k).toBe(tasks.has("asr") ? "stt" : "tts");
+    if (m.kind === "stt") expect([...tasks], k).toEqual(["asr"]);
+  }
+  expect(engines.find(([k]) => k === "parakeet_tdt")[1].kind).toBe("stt");
+  // A family that speaks and recognises has an engine of each kind.
+  expect(engines.find(([k]) => k === "lfm2_audio")[1].kind).toBe("tts");
+  expect(engines.find(([k]) => k === "lfm2_audio_asr")[1].kind).toBe("stt");
 });
 
 // ─── current_variant_id recording (user-hit 2026-06-12) ────────────────
@@ -319,6 +331,6 @@ test("every_16_bit_row_is_its_8_bit_siblings_model_at_the_original_precision", (
     }
     void eid;
   }
-  // kokoro 1 · pocket 5 · qwen3 5 · chatterbox 3 (Turbo and Nano too) · asr 1 · voxcpm2 1
-  expect(seen).toBe(16);
+  // kokoro 1 · pocket 5 · qwen3 5 · chatterbox 3 (Turbo and Nano too) · asr 2 (1.7B, 0.6B) · voxcpm2 1
+  expect(seen).toBe(17);
 });

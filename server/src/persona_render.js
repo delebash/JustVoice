@@ -81,12 +81,13 @@ function _tagsets(model) {
 }
 
 /** The emotions a persona on `model` can pick from: the model's own emotion tags (Turbo's
- * seven), or the app's nine where the model takes written direction, or none. */
+ * seven), or where the model takes written direction the app's nine — or only those its direction
+ * file maps (CosyVoice3's five, Higgs's seven; the adoption plan, E8) — or none. */
 export function emotionChoices(model) {
   const sets = _tagsets(model);
   if (Object.hasOwn(sets, "emotion")) return [...sets.emotion.tags];
   const row = _row(model);
-  if (row !== null && row.supports_instruct_freeform) return [...EMOTION_VALUES];
+  if (row !== null && row.supports_instruct_freeform) return row.emotions ? [...row.emotions] : [...EMOTION_VALUES];
   return [];
 }
 
@@ -163,7 +164,11 @@ export function checkDelivery(delivery) {
         problems.push(`${name}'s ${spec.label} runs ${fmtG(spec.min)}–${fmtG(spec.max)}; ${fmtG(value)} is outside it`);
       }
     }
-    if (ms.emotion != null && !emotionChoices(model).includes(ms.emotion)) {
+    // An emotion is understood when it's one the model's choices name — or, on a written-direction
+    // model, any of the app's nine (a family file that maps only some leaves the others plain, so
+    // one saved before its choices narrowed still saves).
+    const known = Object.hasOwn(_tagsets(model), "emotion") || !row.supports_instruct_freeform ? emotionChoices(model) : EMOTION_VALUES;
+    if (ms.emotion != null && !known.includes(ms.emotion)) {
       problems.push(`${name} has no emotion called ${pyReprStr(ms.emotion)}`);
     }
     if (ms.register_tag != null && !registerChoices(model).includes(ms.register_tag)) {

@@ -540,10 +540,11 @@ export class AudioCppSlot {
   async _warm(calibrateChars = 0) {
     const spec = this._row.audiocpp;
     const { family, task } = spec;
-    const n = calibrateChars ? Math.min(calibrateChars, get(FAMILY_BUDGET, family) ?? calibrateChars) : 0;
+    const n = calibrateChars ? Math.min(calibrateChars, self.familyBudget(family) ?? calibrateChars) : 0;
     const text = n ? calibrationText(n) : "Ready.";
     const model = this._row.id;
     const srv = this._srv();
+    if (spec.generated) return await this._warmGenerated(text, n, calibrateChars);
     if (family === "kokoro_tts") {
       await srv.speech({ model, input: text, voice: "af_heart", language: "en-us", seed: 1 });
     } else if (family === "kitten_tts") {
@@ -570,6 +571,38 @@ export class AudioCppSlot {
     } else {
       return false;
     }
+    return Boolean(n);
+  }
+
+  /**
+   * A generated model's warm-up (the adoption plan's slice 2, M1). A recogniser hears silence, as
+   * Qwen3-ASR does. A speech model that can speak without a clip speaks the piece — in its default
+   * built-in voice (the spec's own), in its one voice, or from a description — through the same
+   * request a line takes, so a first load measures its memory as the hand-wired engines' does. A
+   * model that speaks only from a clip can't: its price is saved after its first line instead
+   * (§7 answer 5; manager.load). Returns whether it calibrated.
+   */
+  async _warmGenerated(text, n, calibrateChars) {
+    const spec = this._row.audiocpp;
+    const srv = this._srv();
+    if (this.kind === "stt") {
+      const seconds = calibrateChars ? CALIBRATION_AUDIO_S : 1 / 3;
+      await srv.transcribe({ model: this._row.id, audio: _silencePath(seconds) });
+      return Boolean(calibrateChars);
+    }
+    let body;
+    if (spec.default_voice) {
+      body = { voice_id: spec.default_voice, text, seed: 1 };
+    } else if (spec.design && spec.design_unvoiced) {
+      // A Text to speech entry that designs speaks with no voice at all (OmniVoice's auto voice).
+      await srv.speech({ model: this._row.id, input: text, seed: 1 });
+      return Boolean(n);
+    } else if (spec.design) {
+      body = { text, seed: 1, delivery: { instruct: spec.design_example || WARM_DESCRIPTION } };
+    } else {
+      return false;
+    }
+    await srv.speech(self.toSpeechRequest(this._row, body));
     return Boolean(n);
   }
 
@@ -622,9 +655,15 @@ export class AudioCppSlot {
     const [p, temp] = this._audioPath(body);
     let out;
     try {
-      const req = { model: this._row.id, audio: p };
-      const lang = String(get(body, "language") || "").split("-")[0].toLowerCase();
-      if (has(ASR_LANGUAGE, lang)) req.language = ASR_LANGUAGE[lang]; // anything else: detected
+      let req;
+      if (this._row.audiocpp.generated) {
+        // Every other recogniser audio.cpp has (generated.js): the language as its spec takes it.
+        req = self.generatedTranscribeRequest(this._row, body, p);
+      } else {
+        req = { model: this._row.id, audio: p };
+        const lang = String(get(body, "language") || "").split("-")[0].toLowerCase();
+        if (has(ASR_LANGUAGE, lang)) req.language = ASR_LANGUAGE[lang]; // anything else: detected
+      }
       out = await this._srv().transcribe(req, self._transcribeTimeout(p));
     } finally {
       if (temp) rmSync(p, { force: true });
@@ -756,6 +795,19 @@ export const CALIBRATION_TEXT =
 // so a calibrating piece is never longer (Chatterbox and Turbo session.cpp, Kokoro and Kitten
 // frontends; audit §5 D5).
 export const FAMILY_BUDGET = { chatterbox: 128, chatterbox_turbo: 128, kokoro_tts: 240, kitten_tts: 400 };
+
+/** audio.cpp's own piece budget for a family: the hand-wired ones' above, else its spec's
+ * `text_chunk_size` default (Kitten TTS 2's 380, Breeze's 600) — null where it gives none. */
+export function familyBudget(family) {
+  const own = get(FAMILY_BUDGET, family);
+  if (own != null) return own;
+  const def = generated.requestOptionsOf(family).get("text_chunk_size")?.default;
+  return Number.isFinite(Number(def)) && Number(def) > 0 ? Number(def) : null;
+}
+
+// The description a design model's warm-up speaks from — the words Qwen3 VoiceDesign's warm-up
+// uses (it had none until 2026-10-04).
+const WARM_DESCRIPTION = "A calm, clear narrator.";
 // Speech recognition is calibrated with its own chunk of audio (`audio_chunk_seconds`, 30 s).
 export const CALIBRATION_AUDIO_S = 30.0;
 
@@ -999,66 +1051,142 @@ export function toSpeechRequest(row, body) {
 }
 
 /**
- * A generated model's request (docs/plans/2026-10-11-audiocpp-engine-catalog.md §4): the clip;
- * the line's direction as the family's file says to give it (`curated/<family>.js`); the clip's
- * words where the spec takes them and the direction allows; the language and the seed where the
- * spec lists them; and the model's settings, checked against the spec's types. A family whose
- * spec lists its options gets only those — audio.cpp refuses others there (RESEARCH §10.6).
+ * A generated model's request (docs/plans/2026-10-11-audiocpp-engine-catalog.md §4): the voice —
+ * a clip (a cloned voice), one of the model's built-in voices as audio.cpp names it, or a
+ * description (a designed voice, in the option the spec's voice design takes it; the adoption
+ * plan's slice 2) — the line's direction as the family's file says to give it
+ * (`curated/<family>.js`); the clip's words where the spec takes them and the direction allows;
+ * the language and the seed where the spec lists them; and the model's settings, checked against
+ * the spec's types. A family whose spec lists its options gets only those — audio.cpp refuses
+ * others there (RESEARCH §10.6).
  */
 export function generatedSpeechRequest(row, body, req) {
-  const family = row.audiocpp.family;
+  const spec = row.audiocpp;
+  const family = spec.family;
   const delivery = get(body, "delivery") || {};
   const knobs = get(delivery, "engine") || {};
   const specOpts = generated.requestOptionsOf(family);
   const listed = specOpts.size > 0;
   const curated = CURATED[family] ?? null;
-  if (!truthy(get(body, "audio_prompt_path"))) {
-    throw new AudioCppError(`${row.name || family} speaks only cloned voices — this voice has no reference clip`);
-  }
-  req.voice_ref = fwd(body.audio_prompt_path);
-
+  const name = row.name || family;
   const words = splitWs(get(delivery, "instruct") || "").join(" ");
-  const dir = generated.applyDirection(curated?.DIRECTION ?? null, { emotion: get(delivery, "emotion"), words });
+  const voices = spec.voices || {};
+  const voiceId = get(body, "voice_id");
+  const clip = truthy(get(body, "audio_prompt_path"));
+  const builtin = !clip && voiceId != null && Object.hasOwn(voices, voiceId);
+
+  // The voice. A clip wins (a cloned voice, or a design kept as a take); then a built-in voice;
+  // then a description, on a model that makes a voice from words.
   const options = {};
+  let designed = false;
+  if (clip) {
+    if (spec.clone === false) throw new AudioCppError(`${name} doesn't copy a voice from a clip`);
+    req.voice_ref = fwd(body.audio_prompt_path);
+  } else if (builtin) {
+    // audio.cpp's name for it, as its own web UI sends a built-in voice (`voice`); a model's one
+    // voice goes as none — the model's default.
+    if (voices[voiceId]) req.voice = voices[voiceId];
+  } else if (spec.design) {
+    if (!words) {
+      throw new AudioCppError(
+        spec.clone
+          ? `${name} speaks a cloned voice or a designed one — this voice has neither a reference clip nor a description`
+          : `${name} renders from a voice description and this voice has none`,
+      );
+    }
+    // The description — with whatever direction the line composed onto it, as Qwen3 VoiceDesign
+    // takes it — in the option the spec's voice design takes, with the voice-design entry's own
+    // template (FireRed's `voice_design`); a spec that names neither option gets it as the
+    // request's `instructions`, as audio.cpp's own Voice design tab sends it.
+    designed = true;
+    const option = generated.designOptionOf(family);
+    Object.assign(options, spec.design);
+    if (option) options[option] = words;
+    else req.instructions = words;
+  } else if (spec.clone === false) {
+    throw new AudioCppError(`${name} speaks only its built-in voices — this voice isn't one of them`);
+  } else {
+    throw new AudioCppError(`${name} speaks only cloned voices — this voice has no reference clip`);
+  }
+
+  // The line's direction as the family's file says to give it — on a cloned or built-in voice; a
+  // designed voice's description already carries it.
+  const dir = generated.applyDirection(designed ? null : (curated?.DIRECTION ?? null), { emotion: get(delivery, "emotion"), words });
   // A setting saved under a name audio.cpp has since renamed goes under its new name.
   for (const [k, v] of Object.entries(generated.currentOptionNames(family, knobs))) {
     // Never one the app sets itself or the family's file hides, even saved before it was hidden.
     if (!generated.isSetting(family, k)) continue;
-    const spec = specOpts.get(k);
-    if (listed && !spec) continue;
-    const value = spec ? generated.coerceOption(spec, v) : v;
+    const opt = specOpts.get(k);
+    if (listed && !opt) continue;
+    const value = opt ? generated.coerceOption(opt, v) : v;
     if (value !== undefined) options[k] = value;
   }
   // The direction's options; the defaults it brings (Breeze's guidance) yield to the model's
   // settings.
   Object.assign(options, dir.options);
   for (const [k, v] of Object.entries(dir.defaults)) if (!Object.hasOwn(options, k)) options[k] = v;
-  // The clip's words: to a spec that lists them, and to one that lists no options at all, whose
-  // own code reads what it reads — OmniVoice needs them, Higgs takes them (decided 2026-10-12).
-  const hasWords = truthy(get(body, "ref_text")) && (!listed || specOpts.has("reference_text"));
-  if (!dir.directed && curated?.PLAIN) {
-    Object.assign(options, hasWords ? curated.PLAIN.with_reference_text : curated.PLAIN.without_reference_text);
-  }
-  if (hasWords && !dir.dropReferenceText) req.reference_text = body.ref_text;
-
-  // The language, in the form the spec's option takes: one of its values, or a code — or the
-  // English name where its default is a name ("Chinese", FireRedTTS3).
-  const langSpec = specOpts.get("language");
-  const code = String(get(body, "language") || "").toLowerCase().split("-")[0];
-  if (langSpec && code) {
-    const name = get(QWEN_LANGUAGE, code);
-    if (Array.isArray(langSpec.values) && langSpec.values.length) {
-      const hit = langSpec.values.find((v) => String(v).toLowerCase() === code || (name && String(v).toLowerCase() === name.toLowerCase()));
-      if (hit !== undefined) req.language = hit;
-    } else if (/^[A-Z][a-z]+$/.test(String(langSpec.default || ""))) {
-      if (name) req.language = name;
-    } else {
-      req.language = code;
+  if (clip) {
+    // The clip's words: to a spec that lists them, and to one that lists no options at all, whose
+    // own code reads what it reads — OmniVoice needs them, Higgs takes them (decided 2026-10-12).
+    const hasWords = truthy(get(body, "ref_text")) && (!listed || specOpts.has("reference_text"));
+    if (!dir.directed && curated?.PLAIN) {
+      Object.assign(options, hasWords ? curated.PLAIN.with_reference_text : curated.PLAIN.without_reference_text);
     }
+    if (hasWords && !dir.dropReferenceText) req.reference_text = body.ref_text;
   }
+
+  const language = generatedLanguage(family, get(body, "language"));
+  if (language !== undefined) req.language = language;
   if (listed && !specOpts.has("seed")) delete req.seed;
   if (dir.prefix) req.input = `${dir.prefix}${req.input}`;
   if (Object.keys(options).length) req.options = options;
   return req;
 }
 
+/** A line's language (a code: "en", "en-US") in the form a generated model's spec takes it — one
+ * of its option's values, the English name where its default is a name ("Chinese", FireRedTTS3),
+ * or the code — or undefined where its spec lists no language option or the line has none. */
+export function generatedLanguage(family, language) {
+  const langSpec = generated.requestOptionsOf(family).get("language");
+  const code = String(language || "").toLowerCase().split("-")[0];
+  if (!langSpec || !code) return undefined;
+  const name = get(QWEN_LANGUAGE, code);
+  if (Array.isArray(langSpec.values) && langSpec.values.length) {
+    return langSpec.values.find((v) => String(v).toLowerCase() === code || (name && String(v).toLowerCase() === name.toLowerCase()));
+  }
+  if (/^[A-Z][a-z]+$/.test(String(langSpec.default || ""))) return name ?? undefined;
+  return code;
+}
+
+/**
+ * A generated recogniser's request (the adoption plan's slice 2, E1): the audio, and the language
+ * where the spec takes one, in a form the spec lists — one of its option's values; the English
+ * name where its default is a name (Confucius4's "Auto"); else a code the family's languages list
+ * (`en`, or `en-US` where it lists regions). A language it lists in no form it takes (OWSM's
+ * three-letter codes) goes as none: the model detects it, or uses its own default.
+ */
+export function generatedTranscribeRequest(row, body, audio) {
+  const family = row.audiocpp.family;
+  const req = { model: row.id, audio };
+  const langSpec = generated.requestOptionsOf(family).get("language");
+  const want = String(get(body, "language") || "").toLowerCase();
+  if (!langSpec || !want) return req;
+  const code = want.split("-")[0];
+  const name = get(ASR_LANGUAGE, code);
+  if (Array.isArray(langSpec.values) && langSpec.values.length) {
+    const hit = langSpec.values.find((v) => [want, code, name?.toLowerCase()].includes(String(v).toLowerCase()));
+    if (hit !== undefined) req.language = hit;
+    return req;
+  }
+  if (/^[A-Z][a-z]+$/.test(String(langSpec.default || ""))) {
+    if (name) req.language = name;
+    return req;
+  }
+  const listed = (generated.catalogFamily(family)?.languages || []).map(String);
+  const exact = listed.find((l) => l.toLowerCase() === want);
+  const base = listed.find((l) => l.toLowerCase() === code);
+  const region = listed.filter((l) => l.toLowerCase().split("-")[0] === code);
+  const hit = exact ?? base ?? (region.length === 1 ? region[0] : undefined);
+  if (hit !== undefined) req.language = hit;
+  return req;
+}

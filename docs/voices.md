@@ -22,7 +22,7 @@ Chatterbox is **Multilingual** (23 languages, no tags), **Turbo** and **Nano**
 render loads *that* model:
 
 - **A built-in voice** belongs to its model — Sohee is Qwen3 CustomVoice,
-  Heart is Kokoro.
+  Heart is Kokoro, `us_male` is LFM2.5-Audio's English model.
 - **A clone** belongs to the model you picked in the **Model** list when you
   cloned it. A clone made on Chatterbox Multilingual renders on Multilingual
   even if another Chatterbox model happens to be loaded — JustVoice loads
@@ -48,9 +48,9 @@ the library, for any persona to use.
 
 | Type | What it is | Made |
 |---|---|---|
-| **Built-in** | Ships with the model. Nothing to make. | Comes with Kokoro (54), Pocket TTS (20), KittenTTS (8), Qwen3 **CustomVoice** (9) |
-| **Cloned** | Learned from a recording of someone speaking — including a clip kept as it was before 2026-10-04, once listed apart as *Imported*. | [New clone](personas.md#new-clone) — Chatterbox Multilingual, Turbo, Nano, Pocket TTS, Qwen3 **Base**, VoxCPM2 |
-| **Designed** | Invented from a written description — no recording. | [New design](personas.md#new-design) — Qwen3 **VoiceDesign**, VoxCPM2 |
+| **Built-in** | Ships with the model. Nothing to make. | Comes with Kokoro (54), Pocket TTS (20), KittenTTS (8), Qwen3 **CustomVoice** (9) — and, since 2026-10-15, audio.cpp's other models' own voices: Kitten TTS 2 (47), Voxtral 4B TTS (20), Supertonic 3 (10), NeuTTS (9), MagpieTTS (5), KugelAudio and LFM2.5-Audio (4 each), and a **Model default** for each model whose description names no voice (Piper TTS and others) — [Engines](engines.md#every-other-model-audiocpp-has) |
+| **Cloned** | Learned from a recording of someone speaking — including a clip kept as it was before 2026-10-04, once listed apart as *Imported*. | [New clone](personas.md#new-clone) — Chatterbox Multilingual, Turbo, Nano, Pocket TTS, Qwen3 **Base**, VoxCPM2, and audio.cpp's other models that copy a voice |
+| **Designed** | Invented from a written description — no recording. | [New design](personas.md#new-design) — Qwen3 **VoiceDesign**, VoxCPM2, and audio.cpp's other models that make a voice from words |
 | **Blended** | Made out of Kokoro's own voices — mixed, exaggerated, added and subtracted, or spliced. | [New blend](personas.md#new-blend) |
 
 These four are the words every screen uses for a voice's type — Voices' chips and Type
@@ -108,13 +108,15 @@ as *engine (0)* instead of an empty list.
 | Type | preset, cloned, designed, imported or blended |
 | Model | The model that speaks it — *Kokoro*, *Qwen3-TTS CustomVoice*, *Chatterbox Multilingual* — with **LOCAL**, **ONLINE · METERED** or **needs the speech runtime** |
 | Voice's language | The voice's own language. **+9** beside it means its model can also speak it in nine more; hover for the list. A persona built on it can speak any of them ([Personas → Voice](personas.md#voice)) |
-| Can be directed | **✓ written direction**, **✓ 19 tags** or **sliders only** — what a persona on this voice can be told (the same words as the Personas page) |
+| Can be directed | **✓ written direction**, **✓ 19 tags**, **sliders only** or **Can't be directed yet** — what a persona on this voice can be told (the same words as the Personas page) |
 | Used by | The personas built on it: *🎭 Narrator*, *🎭 June, Mara +1*. *— unused —* when none is |
 | ⋯ | The voice's menu, below |
 
 **Can be directed** narrows the list to voices whose model takes written
 direction (*describe it: clipped, world-weary*), tags (*pick from the model's
-list: [fear] [sigh]*), or neither (*sliders only — pace, pitch, gain*).
+list: [fear] [sigh]*), or neither (*sliders only — pace, pitch, gain*) — or that
+JustVoice doesn't know how to direct yet (*Can't be directed yet*, a model from
+audio.cpp's other models; pace, pitch and gain still apply).
 
 Every list that offers a voice elsewhere — the persona's page, the cache's **Prune by voice…** — names it the same way: *Sohee · Female · Korean · Qwen3-TTS CustomVoice*
 (name, gender, the voice's own language, its model).

@@ -942,7 +942,8 @@ leave it (or press Enter in a one-line field):
 Above the list, *"Select a speaker, then click a persona to assign it."*
 **Search by name or tone…** matches a persona's name or its note. Three filters
 narrow the list, the same ones the Personas page has: **model** (*Kokoro (9)* —
-remembered), **can be directed** (written direction · tags · sliders only) and
+remembered), **can be directed** (written direction · tags · sliders only · can't
+be directed yet) and
 **language** (*British English (2)*). Each lists only what the others and the
 search leave, with matching counts; a remembered model with no personas left
 shows as *(0)*.
@@ -953,8 +954,9 @@ Each row shows:
   CustomVoice · Korean*), or *no voice yet*;
 - **✓ plays Nettle, Marius** — who in this book it already plays;
 - whether it can be directed, the same words as the Personas page: **✓ written
-  direction**, **✓ 19 tags** (the model's own tags) or **sliders only** (pace,
-  pitch and gain — no words), or **no voice yet**;
+  direction**, **✓ 19 tags** (the model's own tags), **sliders only** (pace,
+  pitch and gain — no words) or **Can't be directed yet** (a model JustVoice
+  doesn't know how to direct yet), or **no voice yet**;
 - **▶** plays the persona — its voice speaking the stock line in its language,
   with its pace, pitch, gain, direction and effects, through the same path a
   chapter renders. If its model isn't loaded, JustVoice asks before loading it

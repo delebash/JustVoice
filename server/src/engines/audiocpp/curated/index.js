@@ -39,9 +39,11 @@ import * as pocket_tts from "./pocket_tts.js";
 import * as qwen3_asr from "./qwen3_asr.js";
 import * as qwen3_tts from "./qwen3_tts.js";
 import * as sopro_tts from "./sopro_tts.js";
+import * as vibevoice from "./vibevoice.js";
 import * as vieneu_v3_turbo from "./vieneu_v3_turbo.js";
 import * as voxcpm1 from "./voxcpm1.js";
 import * as voxcpm2 from "./voxcpm2.js";
+import * as voxtral_tts from "./voxtral_tts.js";
 import * as zipvoice from "./zipvoice.js";
 
 export const CURATED = {
@@ -78,8 +80,10 @@ export const CURATED = {
   qwen3_asr,
   qwen3_tts,
   sopro_tts,
+  vibevoice,
   vieneu_v3_turbo,
   voxcpm1,
   voxcpm2,
+  voxtral_tts,
   zipvoice,
 };

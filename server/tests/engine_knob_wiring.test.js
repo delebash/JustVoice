@@ -28,11 +28,17 @@ const ROW_VARIANT = {
   pocket: ["pocket", "pocket-en-q8", { voice_id: "pocket_alba" }],
   voxcpm2: ["voxcpm2", "voxcpm2-q8", { audio_prompt_path: "/v/ref.wav" }],
 };
-// Every model built from audio.cpp's own files (engines/audiocpp/generated.js) — each clones.
+// Every speech model built from audio.cpp's own files (engines/audiocpp/generated.js), with the
+// voice it can take: a clip where it clones, else its default built-in voice, else a description.
 const GENERATED_ROWS = new Set(generatedModels().map((m) => m.modelId));
 for (const m of generatedModels()) {
-  const variant = generatedEngines().get(m.family).VARIANTS.find((v) => v.audiocpp.model === m.modelId);
-  ROW_VARIANT[m.modelId] = [m.family, variant.id, { audio_prompt_path: "/v/ref.wav" }];
+  const variant = generatedEngines().get(m.engineId).VARIANTS.find((v) => v.audiocpp.model === m.modelId);
+  const voice = m.clone
+    ? { audio_prompt_path: "/v/ref.wav" }
+    : variant.audiocpp.default_voice
+      ? { voice_id: variant.audiocpp.default_voice }
+      : { delivery: { instruct: "A gravel voice." } };
+  ROW_VARIANT[m.modelId] = [m.engineId, variant.id, voice];
 }
 
 // Where each knob lands in audio.cpp's request ("options.x" = inside options).
@@ -108,7 +114,7 @@ test("every_generated_setting_reaches_the_runtime_in_its_own_type", () => {
       }[knob.type];
       const body = { text: "Hi.", language: "en", ...base };
       if (knob.key === "seed") body.seed = Math.trunc(value);
-      else body.delivery = { engine: { [knob.key]: value } };
+      else body.delivery = { ...(base.delivery || {}), engine: { [knob.key]: value } };
       const req = toSpeechRequest(row(engine, variant), body);
       const got = knob.key === "seed" ? req.seed : (req.options || {})[knob.key];
       if (knob.type === "number") expect(got, `${capId}: ${knob.key}`).toBeCloseTo(value, 6);

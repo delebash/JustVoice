@@ -17,10 +17,13 @@ import { DIRECTION_OPTIONS } from "./personaFacts.js";
 import { rowOptions } from "./capabilities.js";
 
 /** How a voice on this capability row can be directed — the server's rule
- *  (`voice_model.directed_by`): words, else its own tags, else sliders. */
+ *  (`voice_model.directed_by`): words, else its own tags, else — for a model
+ *  JustVoice doesn't yet know how to direct — can't be directed yet, else
+ *  sliders. */
 export function rowDirectedBy(row) {
   if (row?.supports_instruct_freeform) return "words";
   if ((row?.inline_tags || []).length) return "tags";
+  if (row?.direction_known === false) return "not_yet";
   return "sliders";
 }
 

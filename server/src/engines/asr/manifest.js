@@ -79,6 +79,43 @@ VARIANTS.push(
   }),
 );
 
+// Qwen3-ASR 0.6B (decided 2026-10-15, the adoption plan §7 answer 4: offered now that everything
+// is; 1.7B stays the default — it was left out by the 2026-10-02 word "keep Qwen3-ASR 1.7B as the
+// only recogniser"), at the two precisions audio.cpp's own catalog offers, each with the same
+// aligner as the 1.7B row of its precision. The same 30 languages (the family's, in audio.cpp's
+// spec); no measured speed or quality of its own yet.
+const ASR_SMALL = "Qwen3-ASR-0.6B-GGUF/qwen3-asr-0.6b-q8_0.gguf";
+const ASR_SMALL_SIZE = 1_151_272_416;
+const ASR_SMALL_F16 = "Qwen3-ASR-0.6B-GGUF/qwen3-asr-0.6b-f16.gguf";
+const ASR_SMALL_F16_SIZE = 1_880_642_016;
+const { cpu_realtime: _measuredOn17B, quality: _quality17B, ...big } = VARIANTS[0];
+const small = {
+  ...big,
+  id: "qwen3-asr-0.6b-q8",
+  name: "Qwen3-ASR 0.6B",
+  description: "30 languages. Word timings from Qwen3's aligner.",
+  sources: [
+    {
+      ...modelSource(ASR_SMALL, ASR_SMALL_SIZE),
+      files: [ASR_SMALL, ALIGNER],
+      size_bytes: ASR_SMALL_SIZE + ALIGNER_SIZE,
+    },
+  ],
+  audiocpp: { ...big.audiocpp, file: ASR_SMALL },
+};
+VARIANTS.push(
+  small,
+  sixteenBit(small, ASR_SMALL_F16, ASR_SMALL_F16_SIZE, {
+    dtype: "f16",
+    source: {
+      ...modelSource(ASR_SMALL_F16, ASR_SMALL_F16_SIZE),
+      files: [ASR_SMALL_F16, ALIGNER_F16],
+      size_bytes: ASR_SMALL_F16_SIZE + ALIGNER_F16_SIZE,
+    },
+    companions: [{ role: "aligner", family: "qwen3_forced_aligner", task: "align", file: ALIGNER_F16 }],
+  }),
+);
+
 export const DEFAULT_VARIANT_ID = "qwen3-asr-1.7b-q8";
 
 export const STATIC_VOICES = [];

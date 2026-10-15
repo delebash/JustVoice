@@ -31,17 +31,24 @@ export function voiceLabel(v) {
 }
 
 /** The "Can be directed" filter, each choice with its one-line example (the
- *  hint shows in the open list; the closed select shows the label). */
+ *  hint shows in the open list; the closed select shows the label). A model
+ *  JustVoice doesn't yet know how to direct (an audio.cpp model with no
+ *  direction file) "can't be directed yet" (the adoption plan, E8): pace,
+ *  pitch and gain still apply. */
 export const DIRECTION_OPTIONS = [
   { value: "", label: "Any direction" },
   { value: "words", label: "Written direction", hint: "describe it: clipped, world-weary" },
   { value: "tags", label: "Tags", hint: "pick from the model's list: [fear] [sigh]" },
   { value: "sliders", label: "Sliders only", hint: "pace, pitch, gain — no words" },
+  { value: "not_yet", label: "Can't be directed yet", hint: "pace, pitch, gain — no words" },
 ];
 
 /** A row's "Can be directed" cell: {label, intent, title}. `tagCount` is the
  *  model's own tags, when known. */
 export function directionCell(directedBy, tagCount = 0) {
+  if (directedBy === "not_yet") {
+    return { label: "Can't be directed yet", intent: "secondary", title: "Pace, pitch and gain — no words, no tags" };
+  }
   if (directedBy === "words") {
     return { label: "✓ written direction", intent: "success", title: "Describe how it speaks, in words" };
   }
@@ -63,6 +70,7 @@ export function directionCell(directedBy, tagCount = 0) {
 export function directionSentence(directedBy, model = "This model") {
   if (directedBy === "words") return `${model} takes written direction.`;
   if (directedBy === "tags") return `${model}: tags only — [fear] [sigh], no written direction.`;
+  if (directedBy === "not_yet") return `${model}: can't be directed yet — pace, pitch and gain, no words or tags.`;
   return `${model}: sliders only — pace, pitch and gain, no words or tags.`;
 }
 

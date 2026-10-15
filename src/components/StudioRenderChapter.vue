@@ -516,7 +516,8 @@ const tagSetOf = (l, category) => (rowOf(l)?.inline_tags || []).find((t) => t.ca
 function emotionChoices(l) {
   const tags = tagSetOf(l, "emotion");
   if (tags) return tags.tags;
-  return takesWords(l) ? emotionValues.value : [];
+  // Only those the model's direction file maps where it maps only some (the persona page's rule).
+  return takesWords(l) ? rowOf(l)?.emotions || emotionValues.value : [];
 }
 // The persona's settings for the model, and the line's own on top.
 const personaMs = (l) => personaOf(l)?.default_delivery?.models?.[modelOf(l)] || {};

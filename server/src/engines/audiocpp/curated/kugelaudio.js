@@ -9,3 +9,13 @@ export const LICENCE = {
   url: "https://huggingface.co/kugelaudio/kugelaudio-0-open",
   checked: "2026-10-13",
 };
+
+// Its built-in voices' languages and genders, as audio.cpp's own model doc gives them
+// (../audio.cpp/docs/models/kugelaudio.md, read 2026-10-15): "The `default` and `clear` presets are
+// German female voices. `english_female` and `english_male` are British English voices."
+export const VOICES = {
+  default: { language: "de", gender: "female" },
+  clear: { language: "de", gender: "female" },
+  english_female: { language: "en-GB", gender: "female" },
+  english_male: { language: "en-GB", gender: "male" },
+};

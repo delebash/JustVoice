@@ -11,6 +11,7 @@
 import { Hono } from "@delebash/llm-runner/platform";
 import { nullable, opt, T } from "@delebash/llm-runner/platform/models";
 import { getState } from "../app_state.js";
+import * as manager from "../engines/manager.js";
 import * as modelCatalog from "../engines/model_catalog.js";
 import { construct } from "../models.js";
 import * as speechCache from "../speech_cache.js";
@@ -26,8 +27,22 @@ export const ModelReadiness = T.Object({
 
 export const CaptureReadiness = T.Object({ stt: ModelReadiness, llm: ModelReadiness });
 
-/** The dictation recogniser: on disk in the speech cache = ready. */
+/** The dictation recogniser: the one loaded — any recogniser on Speech engines transcribes (the
+ * adoption plan's slice 2, E1) — else the setting's Qwen3-ASR model, on disk in the speech cache
+ * = ready. */
 export function _sttReadiness() {
+  try {
+    const mgr = manager.getManager();
+    const loaded = mgr.loadedFor("stt");
+    if (loaded !== null) {
+      const vid = mgr.currentVariantId(loaded.manifest.id);
+      const v = (loaded.manifest.module?.VARIANTS || []).find((x) => x.id === vid);
+      const bytes = (v?.sources || []).reduce((n, s) => n + (s.size_bytes || 0), 0);
+      return { ready: true, display_name: v?.name ?? loaded.manifest.name, size_mb: bytes ? Math.floor(bytes / (1024 * 1024)) : null };
+    }
+  } catch {
+    // no manager (bare tests): the setting's model below
+  }
   try {
     const st = getState();
     const want = st.settings.get().captures.stt_model;

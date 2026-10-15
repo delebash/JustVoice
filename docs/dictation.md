@@ -15,7 +15,7 @@ Before dictation works end-to-end, all six gates must pass. The Captures tab sho
 | 🎙️ Microphone permission | OS-level access to default input |
 | ⌨️ Input Monitoring (macOS) | Required to read raw global keystrokes for hotkey detection |
 | ♿ Accessibility (macOS) | Required for paste injection (synthesizing Cmd-V) |
-| 🤖 STT model | The speech-recognition model (Qwen3-ASR 1.7B, 3.6 GB with its word aligner) is downloaded — on AI Settings → Speech engines → Speech recognition |
+| 🤖 STT model | A speech-recognition model is loaded — any of them on AI Settings → Speech engines → Transcription (since 2026-10-15) — or, with none loaded, Qwen3-ASR 1.7B (3.6 GB with its word aligner) is downloaded, and loads on first use |
 | 💬 LLM refinement model | The **Dictation cleanup** route resolves to a text-AI model (AI Settings → Routing by feature; skip-able if you want the raw transcript) |
 | ⏯ Push-to-talk chord | A chord for the global hotkey — not wired yet (see [Hotkeys](#hotkeys)) |
 

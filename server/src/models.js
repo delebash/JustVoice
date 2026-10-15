@@ -1134,6 +1134,11 @@ export const EngineCapabilityDetail = T.Object({
   supports_clone_prompt_text: opt(T.Boolean(), false), // ref-audio transcript field
   supports_voice_design: opt(T.Boolean(), false), // qwen3-style description
   supports_instruct_freeform: opt(T.Boolean(), false), // qwen3-style prose textarea
+  // False for a model JustVoice doesn't yet know how to direct (an audio.cpp model with no
+  // direction file): it "can't be directed yet" (the adoption plan, E8).
+  direction_known: opt(T.Boolean(), true),
+  // The emotions it acts on where it maps only some (its direction file's); null = every one.
+  emotions: opt(nullable(T.Array(T.String())), null),
   supports_phoneme_input: opt(T.Boolean(), false), // kokoro raw-IPA bypass
   // Clone from the speaker vector alone, skipping the reference transcript.
   supports_xvector_only: opt(T.Boolean(), false),

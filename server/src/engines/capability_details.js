@@ -15,7 +15,7 @@
 // order, defaults filled).
 
 import { construct, EngineCapabilityDetail, InlineTagSet, KnobSpec } from "../models.js";
-import { generatedModels, listsOptions, modelName, requestOptionsOf, settingsOf } from "./audiocpp/generated.js";
+import { directionEmotions, generatedModels, listsOptions, modelName, requestOptionsOf, settingsOf } from "./audiocpp/generated.js";
 import { pinnedHas } from "./audiocpp/release.js";
 import { VARIANTS as CHATTERBOX_VARIANTS } from "./chatterbox/manifest.js";
 
@@ -393,30 +393,39 @@ CAPABILITY_DETAILS["chatterbox-nano"] = {
 };
 
 // ─── Every other speech model audio.cpp has (engines/audiocpp/generated.js) ───
-// One row per model, from its spec: it copies a voice; it takes the clip's words when its spec
-// lists `reference_text` or lists no options at all — the rule the request follows
+// One row per speech model, from its spec (the adoption plan's slice 2): it copies a voice, makes
+// one from words, or speaks its built-in voices, as its spec says; it takes the clip's words when
+// its spec lists `reference_text` or lists no options at all — the rule the request follows
 // (slot.generatedSpeechRequest; the narrowings review, E11); it takes a line's direction only
-// when our file for the family says how (else "can't be directed yet"), in its file's own words
-// where it has them (`DIRECTION_NOTE`: IndexTTS, decided 2026-10-15). Its settings are its
+// when our file for the family says how — else it "can't be directed yet" (`direction_known`
+// false; E8) — in its file's own words where it has them (`DIRECTION_NOTE`: IndexTTS, decided
+// 2026-10-15), and only the emotions that file maps (`emotions`; E8). Its settings are its
 // spec's typed options (generated.settingsOf), and the seed where the spec takes one or lists no
-// options at all.
+// options at all. A recognition model has no row: it speaks nothing.
 for (const m of generatedModels()) {
   if (Object.hasOwn(CAPABILITY_DETAILS, m.modelId)) continue;
   const opts = requestOptionsOf(m.family);
-  const directed = Boolean(m.curated?.DIRECTION);
+  const direction = m.curated?.DIRECTION ?? null;
   const tested = m.curated?.TESTED ?? null;
+  const does = [
+    m.clone ? "Clones a voice from a short clip." : null,
+    m.design ? "Designs a voice from a written description." : null,
+  ].filter(Boolean);
   CAPABILITY_DETAILS[m.modelId] = detail({
     engine_id: m.modelId,
     display_name: modelName(m),
-    supports_voice_cloning: true,
-    supports_clone_prompt_text: !listsOptions(m.family) || opts.has("reference_text"),
-    supports_instruct_freeform: directed,
+    supports_voice_cloning: m.clone,
+    supports_clone_prompt_text: m.clone && (!listsOptions(m.family) || opts.has("reference_text")),
+    supports_voice_design: m.design,
+    supports_instruct_freeform: Boolean(direction),
+    direction_known: Boolean(direction),
+    emotions: directionEmotions(direction),
     knobs: [...settingsOf(m).map(knob), ...(!listsOptions(m.family) || opts.has("seed") ? [seedKnob()] : [])],
     inline_tags: [],
     pitch_post_process: true,
     notes: [
-      "Clones a voice from a short clip.",
-      directed ? (m.curated?.DIRECTION_NOTE ?? "Takes a line's emotion and direction.") : "Can't be directed yet — JustVoice doesn't yet know how this model takes direction.",
+      ...does,
+      direction ? (m.curated?.DIRECTION_NOTE ?? "Takes a line's emotion and direction.") : "Can't be directed yet — JustVoice doesn't yet know how this model takes direction.",
       tested ? `Tested by JustVoice: ${tested.note}` : "Not tested by JustVoice yet.",
       `audio.cpp lists it as ${m.fam.status}.`,
     ],

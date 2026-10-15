@@ -404,17 +404,26 @@ variant row carries an `audiocpp` block.
 tag's `model_specs/`, web-UI catalog and control list, and licence table, plus
 Hugging Face file sizes, into `server/src/engines/audiocpp/catalog.json` —
 re-run it when the pin moves. `engines/audiocpp/generated.js` turns each
-uncovered cloning family into a manifest-shaped engine — cloning only, and no
-voice-design entries, built-in voices or recognition families: mine, not decided
-(TASKS FINDING "the generated engines offer only models that clone a voice"; wip
-and unsupported hidden — decided 2026-10-11, answer 3) — (`generatedEngines()`,
-joined in `manager.discoverEngines`), its models into capability rows
-(`capability_details.js`, `settingsOf` for typed settings) and its requests into
-`slot.generatedSpeechRequest`. What a spec can't say — how direction reaches the
-model, what testing found — is one file per family in
-`engines/audiocpp/curated/<family>.js` (`LICENCE`, `DIRECTION`, `PLAIN`,
-`TESTED`, `BEST_FOR`, `HIDDEN_OPTIONS`) — every speech engine's family has one, the hand-wired
-ones too; one without `DIRECTION` is "can't be directed yet". `LICENCE` is our
+uncovered family into manifest-shaped engines (wip and unsupported hidden — decided
+2026-10-11, answer 3; AuK and OuteTTS kept out by their files' `NOT_OFFERED`): every
+family that speaks is a speech engine, its models doing what the spec says
+(`speechFactsOf`: `clone`, `design` from a `vdes` entry, built-in `voices` as its
+`STATIC_VOICES` via `builtinVoicesOf`, else its one "Model default" voice), and its
+Speech to text entries are a speech-recognition engine (`generatedRecognisers`,
+`<family>_asr` where the family also speaks) — the adoption plan's slice 2,
+`docs/plans/2026-10-13-adopt-everything-audiocpp.md` (`generatedEngines()`, joined in
+`manager.discoverEngines`). Its speech models become capability rows
+(`capability_details.js`, `settingsOf` for typed settings), its requests
+`slot.generatedSpeechRequest` (a clip, a built-in voice as `voice`, or a description
+in the spec's design option) and `slot.generatedTranscribeRequest`, and a first load
+warms up (`slot._warmGenerated`) — a clone-only model is priced after its first line
+(`manager._priceFirstLine`). What a spec can't say — how direction reaches the
+model, what testing found, a voice's gender and language from audio.cpp's docs — is
+one file per family in `engines/audiocpp/curated/<family>.js` (`LICENCE`,
+`DIRECTION`, `PLAIN`, `TESTED`, `BEST_FOR`, `HIDDEN_OPTIONS`, `VOICES`,
+`NOT_CLONING_YET`); a family without `DIRECTION` "can't be directed yet"
+(`direction_known` false → `directed_by: "not_yet"`), and one without `LICENCE`
+shows audio.cpp's licence table (`engineFacts`, `by: "audio.cpp"`). `LICENCE` is our
 reading of the licence at its source (RESEARCH §10.13); `generated.engineFacts`
 serves it, audio.cpp's status, tested and best for on each engine
 (`engines_api._infoFromManifest`), and a licence our reading doesn't call "Yes"

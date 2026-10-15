@@ -591,9 +591,12 @@ function ms(create = false) {
 const tagSets = computed(() => row.value?.inline_tags || []);
 const emotionTagSet = computed(() => tagSets.value.find((t) => t.category === "emotion") || null);
 const registerTagSet = computed(() => tagSets.value.find((t) => t.category === "register") || null);
+// Only the emotions the model acts on: its own tags, or — taking written direction — the app's
+// nine, or those its direction file maps where it maps only some (the capability row's
+// `emotions`; the adoption plan, E8).
 const emotionChoices = computed(() => {
   if (emotionTagSet.value) return emotionTagSet.value.tags;
-  if (directedBy.value === "words") return emotionValues.value;
+  if (directedBy.value === "words") return row.value?.emotions || emotionValues.value;
   return [];
 });
 const emotion = computed({
@@ -608,7 +611,9 @@ const isVoiceDesign = computed(() => model.value === "qwen3-vd");
 const directionReason = computed(() => {
   if (!voice.value) return "";
   if (directedBy.value === "tags") return `${directionSentence("tags", modelName.value)} Pick its emotion and register below.`;
-  if (directedBy.value === "sliders") return `${directionSentence("sliders", modelName.value)} Shape it with the numbers, or pick a voice on a model that takes written direction.`;
+  if (directedBy.value === "sliders" || directedBy.value === "not_yet") {
+    return `${directionSentence(directedBy.value, modelName.value)} Shape it with the numbers, or pick a voice on a model that takes written direction.`;
+  }
   return "";
 });
 

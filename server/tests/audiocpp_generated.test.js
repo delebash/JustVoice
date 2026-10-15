@@ -29,14 +29,16 @@ test("generated engines leave the hand-wired families to their own manifests", (
   expect(found.has("kokoro")).toBe(true);
 });
 
-test("every generated model is one download per precision, with a capability row", () => {
+test("every generated model is one download per precision, a speech one with a capability row", () => {
   for (const [id, mod] of engines) {
     const ids = mod.VARIANTS.map((v) => v.id);
     expect(new Set(ids).size, id).toBe(ids.length);
     for (const v of mod.VARIANTS) {
       expect(v.sources[0].size_bytes, v.id).toBeGreaterThan(0);
       expect(v.audiocpp.file.endsWith(".gguf"), v.id).toBe(true);
-      expect(lookup(v.id)?.engine_id, v.id).toBe(v.audiocpp.model);
+      // A recogniser speaks nothing: no voice, no knobs, no row.
+      if (mod.KIND === "stt") expect(lookup(v.id), v.id).toBeNull();
+      else expect(lookup(v.id)?.engine_id, v.id).toBe(v.audiocpp.model);
     }
   }
   expect(lookup("cosyvoice3").display_name).toBe("CosyVoice3");
@@ -167,7 +169,7 @@ test("a listing family gets only the options its spec lists, typed and in range"
   expect(req.options).toEqual({ temperature: 0.7 });
 });
 
-test("a generated model refuses a voice with no clip by name", () => {
+test("a clone-only model refuses a voice with no clip by name", () => {
   expect(() => slot.toSpeechRequest(rowOf("cosyvoice3", "cosyvoice3-q8"), { voice_id: "v", text: "Hi." })).toThrow(/speaks only cloned voices/);
 });
 
@@ -222,13 +224,25 @@ test("a language list that describes is shown as audio.cpp words it, never count
   expect(own.map((v) => v.name)).toEqual(["OmniVoice", "OmniVoice (16-bit, bf16)", "OmniVoice (16-bit, f16)"]);
 });
 
-test("a family file keeps out a model that can't speak from text and a clip", () => {
-  // VieNeu reads phonemes and needs a speaker embedding audio.cpp can't make yet; AuK is three
-  // downloads loaded as one folder; OuteTTS generated no audio in the download test.
-  for (const id of ["vieneu_v3_turbo", "auk", "outetts"]) {
+test("a family file keeps out a model that doesn't speak as listed", () => {
+  // AuK is three downloads loaded as one folder; OuteTTS generated no audio in the download test
+  // (decided 2026-10-12).
+  for (const id of ["auk", "outetts"]) {
     expect(generated.generatedEngines().has(id), id).toBe(false);
     expect(lookup(id), id).toBeNull();
   }
+});
+
+test("VieNeu is listed, marked as not copying a voice from a clip yet", () => {
+  // Decided 2026-10-13, the narrowings review K2: it needs a speaker embedding audio.cpp can't
+  // make yet. Without its clone it speaks in its one voice — whether it does is checked in the
+  // slice's acceptance.
+  const vieneu = generated.generatedEngines().get("vieneu_v3_turbo");
+  expect(vieneu.VARIANTS.every((v) => v.voice_cloning === false)).toBe(true);
+  expect(lookup("vieneu_v3_turbo").supports_voice_cloning).toBe(false);
+  expect(vieneu.STATIC_VOICES.map((v) => v.name)).toEqual(["Model default"]);
+  const row = vieneu.VARIANTS[0];
+  expect(() => slot.toSpeechRequest(row, line())).toThrow(/doesn't copy a voice from a clip/);
 });
 
 test("a model needs its estimate or its files, whichever is more; a hand-wired one, neither", () => {

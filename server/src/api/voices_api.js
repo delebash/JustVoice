@@ -61,7 +61,7 @@ export function _storedToDto(rec) {
 
 export function _presetDto(st, engineId, v) {
   const language = Object.hasOwn(v, "language") ? v.language : "en";
-  const vm = vmod.describe(st, engineId, vmod.modelForPreset(engineId), language);
+  const vm = vmod.describe(st, engineId, vmod.modelForPreset(engineId, v), language);
   return construct(Voice, {
     id: v.id ?? null,
     engine: engineId,

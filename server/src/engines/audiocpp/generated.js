@@ -11,15 +11,20 @@
 //
 // A model is offered when audio.cpp marks it supported, community or experimental, and one of its
 // GGUF packages is complete at the pinned model revision. Hidden: wip and unsupported (decided
-// 2026-10-11, answer 3). A model is a catalog entry on audio.cpp's own Text to speech tab
-// (`workflow`, its web UI's `workflowForEntry`), and its downloads are the ones its web UI offers
+// 2026-10-11, answer 3). A model is a catalog entry on one of audio.cpp's own web UI tabs
+// (`workflow`, its web UI's `workflowForEntry`) — Text to speech and Voice design for a speech
+// engine, Speech to text for a recognition one — and its downloads are the ones its web UI offers
 // (`install_packages`, `installChoices`) beside the ones offered before (docs/plans/2026-10-13-
-// adopt-everything-audiocpp.md slice 1; nothing offered before is removed). Also left out — mine,
-// not decided: families that don't copy a voice from a clip, voice-design entries, built-in voices
-// and recognition families (the adoption plan's slice 2).
+// adopt-everything-audiocpp.md slice 1; nothing offered before is removed).
+//
+// Every family that speaks is offered (the adoption plan's slice 2, E0): a model does what its
+// spec says — copies a voice from a clip, speaks its built-in voices (the spec's, listed as
+// voices in the app like Kokoro's), makes a voice from words (a `vdes` entry, E5) — and a
+// recognition family is a speech-recognition engine (E1).
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { EMOTION_VALUES } from "../../models.js";
 import * as asr from "../asr/manifest.js";
 import * as chatterbox from "../chatterbox/manifest.js";
 import * as kitten from "../kitten/manifest.js";
@@ -39,7 +44,15 @@ export const HAND_WIRED_FAMILIES = new Set(
 );
 
 const SHOWN_STATUS = new Set(["supported", "community", "experimental", "testing"]);
-const SPEECH_ENTRY_TASKS = new Set(["tts", "clon"]);
+// The entries a speech model is: audio.cpp's Text to speech tab (a `tts` or `clon` entry) and its
+// Voice design tab (`vdes`) — unless the entry names another tab (DotTTS Edit runs as `tts` with
+// its edit template, a speech editor). A recognition model: its Speech to text tab (`asr`);
+// audio understanding on its analysis tab is not one.
+const speechEntry = (e) => (e.workflow === "tts" && (e.task === "tts" || e.task === "clon")) || (e.workflow === "design" && e.task === "vdes");
+const recognitionEntry = (e) => e.workflow === "asr" && e.task === "asr";
+// audio.cpp's own label for a model's voice when no voice is given (its web UI's Arena,
+// `arena.voice.modelDefault`): the one voice of a model whose spec names none.
+export const MODEL_DEFAULT_VOICE = "Model default";
 // The tail a model id takes per precision, and the words a name says.
 const PRECISION_TAIL = { q8_0: "q8", q8: "q8", bf16: "bf16", f16: "f16", fp16: "f16", q4_k: "q4k", q4_0: "q4", f32: "f32", orig: "orig" };
 const PRECISION_WORDS = { q8: "8-bit", bf16: "16-bit", f16: "16-bit", q4k: "4-bit", q4: "4-bit", f32: "32-bit", orig: "original precision" };
@@ -208,6 +221,7 @@ export function requestOptionsOf(family) {
 export const listsOptions = (family) => requestOptionsOf(family).size > 0;
 
 const clones = (fam) => (fam.capabilities?.clone || []).includes("speaker_reference") || (fam.capabilities?.tts || []).includes("speaker_reference");
+const designs = (fam) => (fam.capabilities?.design || []).includes("voice_design") || (fam.capabilities?.tts || []).includes("voice_design");
 
 /** A package the app can download and register: GGUF, every file at the pinned revision. Returns
  * the package with its model file (the entry's own file where it names one), or null. */
@@ -236,60 +250,172 @@ export function licenceOf(fam) {
   };
 }
 
-/** Every model the generated engines offer, in catalog order: one per runnable catalog entry. */
+/** The families a generated engine may come from: shown by audio.cpp, not wired by hand, and not
+ * kept out by our file (AuK and OuteTTS, which don't speak as listed — decided 2026-10-12). */
+function offeredFamilies() {
+  return Object.values(CATALOG.families).filter(
+    (fam) => !HAND_WIRED_FAMILIES.has(fam.family) && SHOWN_STATUS.has(fam.status) && !CURATED[fam.family]?.NOT_OFFERED,
+  );
+}
+
+/** A family's runnable models of one kind, in catalog order: one per runnable catalog entry that
+ * `wanted` accepts, two entries on one package being one model (`entries`), registered as the
+ * first `tts` entry, else its first. */
+function runnableOf(fam, wanted) {
+  const runnable = [];
+  for (const e of fam.entries) {
+    if (!wanted(e)) continue;
+    const pkgs = e.packages.map((id) => usablePackage(fam, id, e.path)).filter(Boolean);
+    const offered = (e.install_packages || []).map((c) => ({ choice: c, usable: usablePackage(fam, c.id, null) })).filter((c) => c.usable);
+    if (!pkgs.length && !offered.length) continue;
+    const preferred = pkgs.find((p) => p.pkg.id === e.package) ?? pkgs[0] ?? offered[0].usable;
+    // audio.cpp's rule relates packages broadly ("index_tts2" also matches IndexTTS2.5's): a
+    // model is its preferred package's precisions only, one package per precision.
+    const stem = preferred.pkg.id.replace(PRECISION_STEM, "");
+    const seen = new Set();
+    const own = [preferred, ...pkgs.filter((p) => p !== preferred)].filter((p) => {
+      const tail = PRECISION_TAIL[p.pkg.precision] || p.pkg.precision;
+      if (p.pkg.id.replace(PRECISION_STEM, "") !== stem || seen.has(tail)) return false;
+      seen.add(tail);
+      return true;
+    });
+    // Then each download audio.cpp's web UI offers for the entry that isn't one already
+    // (installChoices: every GGUF in an expose-all family's folder, a stem family's precisions —
+    // MOSS-TTSD's 4-bit, CosyVoice3's 32-bit, Irodori's Anime …), with audio.cpp's own label.
+    for (const { choice, usable } of offered) {
+      if (own.some((p) => p.pkg.id === choice.id)) continue;
+      own.push({ ...usable, label: choice.label });
+    }
+    // Two entries on one package are one model registered two ways (CosyVoice3's clone and
+    // instruct entries; Breeze's clone and voice-design entries): one model doing what each
+    // entry does, registered as the plain `tts` task, which takes every template.
+    const twin = runnable.find((r) => r.packages[0].pkg.id === preferred.pkg.id);
+    if (twin) {
+      twin.entries.push(e);
+      if (twin.entry.task !== "tts" && e.task === "tts") twin.entry = e;
+      continue;
+    }
+    runnable.push({ entry: e, entries: [e], packages: own });
+  }
+  return runnable;
+}
+
+/** A model's id: the one our family file keeps for it (a family's one model was named after the
+ * family, so a second entry would rename it), else the engine's own for a single model, else the
+ * engine's with its entry's. */
+function modelIdOf(fam, engineId, r, runnable) {
+  return CURATED[fam.family]?.MODEL_IDS?.[r.entry.id] ?? (runnable.length === 1 ? engineId : `${engineId}-${slug(r.entry.id)}`);
+}
+
+/**
+ * What a speech model does, from its entries and its spec (the adoption plan's slice 2):
+ * - `clone`: the family copies a voice from a clip (`speaker_reference`) and one of the model's
+ *   entries is on the Text to speech tab — unless our family file says it can't yet (VieNeu,
+ *   decided 2026-10-13, the narrowings review K2: `NOT_CLONING_YET`);
+ * - `design`: one of its entries is a voice-design (`vdes`) entry — or, in a family that designs
+ *   (`voice_design`) and has no `vdes` entry at all, its Text to speech entry (Maya1, OmniVoice);
+ *   `designEntry` is the entry a description goes to;
+ * - `voices`: its entries' built-in voices (the spec's `ui.builtin_voices`, else its voice
+ *   option's choices), `defaultVoice` the spec's own;
+ * - `ownVoice`: a model that does none of these speaks in its one voice, audio.cpp's
+ *   "Model default" (Piper's Lessac voice, LFM2.5-Audio JP's).
+ */
+function speechFactsOf(fam, entries) {
+  const cur = CURATED[fam.family];
+  const tab = entries.filter((e) => e.task === "tts" || e.task === "clon");
+  const vdes = entries.find((e) => e.task === "vdes") ?? null;
+  const clone = clones(fam) && tab.length > 0 && !cur?.NOT_CLONING_YET;
+  const familyHasVdes = fam.entries.some((e) => e.task === "vdes");
+  const designEntry = vdes ?? (designs(fam) && !familyHasVdes ? (tab.find((e) => e.task === "tts") ?? null) : null);
+  const voices = [];
+  for (const e of entries) for (const v of e.builtin_voices || []) if (!voices.includes(v)) voices.push(v);
+  const defaultVoice = entries.map((e) => e.default_voice).find((v) => v && voices.includes(v)) ?? voices[0] ?? null;
+  const design = designEntry !== null;
+  return { clone, design, designEntry, voices, defaultVoice, ownVoice: !clone && !design && !voices.length };
+}
+
+/** Every speech model the generated engines offer, in catalog order: one per runnable catalog
+ * entry (two on one package being one). */
 export function generatedModels() {
   const out = [];
-  for (const fam of Object.values(CATALOG.families)) {
-    if (HAND_WIRED_FAMILIES.has(fam.family) || !SHOWN_STATUS.has(fam.status) || !clones(fam)) continue;
-    // Our file can keep a model out that can't speak from text and a clip yet (VieNeu, hidden
-    // 2026-10-11 on the implementer's pick; decided 2026-10-13, the narrowings review K2: list it,
-    // marked as not cloning yet — built with docs/plans/2026-10-13-adopt-everything-audiocpp.md).
-    if (CURATED[fam.family]?.NOT_OFFERED) continue;
-    if (!(fam.tasks || []).some((t) => t === "tts" || t === "clone")) continue;
-    const runnable = [];
-    for (const e of fam.entries) {
-      // audio.cpp's Text to speech tab: a `tts` or `clon` entry, unless the entry names another
-      // workflow (DotTTS Edit runs as `tts` with its edit template — a speech editor).
-      if (e.workflow !== "tts" || !SPEECH_ENTRY_TASKS.has(e.task)) continue;
-      const pkgs = e.packages.map((id) => usablePackage(fam, id, e.path)).filter(Boolean);
-      const offered = (e.install_packages || []).map((c) => ({ choice: c, usable: usablePackage(fam, c.id, null) })).filter((c) => c.usable);
-      if (!pkgs.length && !offered.length) continue;
-      const preferred = pkgs.find((p) => p.pkg.id === e.package) ?? pkgs[0] ?? offered[0].usable;
-      // audio.cpp's rule relates packages broadly ("index_tts2" also matches IndexTTS2.5's): a
-      // model is its preferred package's precisions only, one package per precision.
-      const stem = preferred.pkg.id.replace(PRECISION_STEM, "");
-      const seen = new Set();
-      const own = [preferred, ...pkgs.filter((p) => p !== preferred)].filter((p) => {
-        const tail = PRECISION_TAIL[p.pkg.precision] || p.pkg.precision;
-        if (p.pkg.id.replace(PRECISION_STEM, "") !== stem || seen.has(tail)) return false;
-        seen.add(tail);
-        return true;
-      });
-      // Then each download audio.cpp's web UI offers for the entry that isn't one already
-      // (installChoices: every GGUF in an expose-all family's folder, a stem family's precisions —
-      // MOSS-TTSD's 4-bit, CosyVoice3's 32-bit, Irodori's Anime …), with audio.cpp's own label.
-      for (const { choice, usable } of offered) {
-        if (own.some((p) => p.pkg.id === choice.id)) continue;
-        own.push({ ...usable, label: choice.label });
-      }
-      // Two entries on one package are one model registered two ways (CosyVoice3's clone and
-      // instruct entries): keep one, the plain `tts` task, which takes every template.
-      const twin = runnable.find((r) => r.packages[0].pkg.id === preferred.pkg.id);
-      if (twin) {
-        if (twin.entry.task !== "tts" && e.task === "tts") twin.entry = e;
-        continue;
-      }
-      runnable.push({ entry: e, packages: own });
-    }
+  for (const fam of offeredFamilies()) {
+    const runnable = runnableOf(fam, speechEntry);
     for (const r of runnable) {
-      // A family's file keeps an id a model had before (a family's one model was named after the
-      // family, so a second entry would rename it).
-      const kept = CURATED[fam.family]?.MODEL_IDS?.[r.entry.id];
-      const modelId = kept ?? (runnable.length === 1 ? fam.family : `${fam.family}-${slug(r.entry.id)}`);
-      out.push({ modelId, family: fam.family, fam, entry: r.entry, packages: r.packages, curated: CURATED[fam.family] ?? null, single: runnable.length === 1 });
+      const modelId = modelIdOf(fam, fam.family, r, runnable);
+      out.push({
+        kind: "tts",
+        engineId: fam.family,
+        modelId,
+        family: fam.family,
+        fam,
+        entry: r.entry,
+        entries: r.entries,
+        packages: r.packages,
+        curated: CURATED[fam.family] ?? null,
+        single: runnable.length === 1,
+        ...speechFactsOf(fam, r.entries),
+      });
     }
   }
   return out;
+}
+
+/** Every speech-recognition model the generated engines offer (the adoption plan's slice 2, E1):
+ * one per runnable Speech to text entry. Its engine is the family's own — or, where the family
+ * also speaks and its speech engine has that id (FireRedAudio, LFM2.5-Audio), `<family>_asr`. */
+export function generatedRecognisers() {
+  const speaking = new Set(generatedModels().map((m) => m.engineId));
+  const out = [];
+  for (const fam of offeredFamilies()) {
+    const runnable = runnableOf(fam, recognitionEntry);
+    const engineId = speaking.has(fam.family) ? `${fam.family}_asr` : fam.family;
+    for (const r of runnable) {
+      out.push({
+        kind: "stt",
+        engineId,
+        modelId: modelIdOf(fam, engineId, r, runnable),
+        family: fam.family,
+        fam,
+        entry: r.entry,
+        entries: r.entries,
+        packages: r.packages,
+        curated: CURATED[fam.family] ?? null,
+        single: runnable.length === 1,
+        clone: false,
+        design: false,
+        designEntry: null,
+        voices: [],
+        defaultVoice: null,
+        ownVoice: false,
+      });
+    }
+  }
+  return out;
+}
+
+/** Our id for a built-in voice: the engine's id and audio.cpp's name, as Kitten's and Pocket's
+ * presets carry their engine (`kitten_bella`) so they never collide with another engine's. */
+export const builtinVoiceId = (engineId, name) => `${engineId}_${name}`;
+
+/** A model's built-in voices as the app lists them (the hand-wired presets' shape,
+ * `STATIC_VOICES`): audio.cpp's name, the gender and language our family file gives it (`VOICES`,
+ * from audio.cpp's own model docs) — else no gender ("Not known") and the family's one language
+ * where it has only one — and the model it belongs to. A model whose spec names no voice has its
+ * one, audio.cpp's "Model default". */
+export function builtinVoicesOf(m) {
+  const own = speaks(m.fam).languages;
+  const known = m.curated?.VOICES ?? {};
+  const one = (id, name, spec) => ({
+    id,
+    name,
+    language: known[spec ?? ""]?.language ?? (own.length === 1 ? own[0] : ""),
+    gender: known[spec ?? ""]?.gender ?? "",
+    model: m.modelId,
+    // audio.cpp's name for it — what the request's `voice` carries; null for a model's one voice.
+    audiocpp_voice: spec,
+  });
+  if (m.ownVoice) return [one(builtinVoiceId(m.modelId, "model_default"), MODEL_DEFAULT_VOICE, null)];
+  return m.voices.map((v) => one(builtinVoiceId(m.engineId, v), v, v));
 }
 
 // audio.cpp's wording where its language list describes rather than names ("100+ languages",
@@ -341,6 +467,45 @@ function sessionFiles(m) {
   return Object.keys(out).length ? { session_files: out } : {};
 }
 
+/** How many built-in voices a model lists as voices (its one "Model default" counts). */
+const builtinCount = (m) => (m.ownVoice ? 1 : m.voices.length);
+
+/** The option a family's spec takes a voice description in — `instruct` since v0.9.2,
+ * `instruction` before — or null where the spec lists neither (the description then goes as the
+ * request's `instructions`, as audio.cpp's own Voice design tab sends it). */
+export function designOptionOf(family) {
+  const opts = requestOptionsOf(family);
+  return ["instruct", "instruction"].find((n) => opts.has(n)) ?? null;
+}
+
+/** What a speech model's request needs beyond its spec: its built-in voices (our voice id →
+ * audio.cpp's name; null = its one voice, sent as no voice), whether it copies a voice from a clip,
+ * and, where it makes a voice from words, the voice-design entry's own `template_name` (FireRed's
+ * `voice_design` — audio.cpp's catalog pins it per entry, and the app sets that option itself) —
+ * an option a model registered for its clone entry must be told. */
+function speechRequestFacts(m) {
+  const builtin = builtinVoicesOf(m);
+  const out = { clone: m.clone, voices: Object.fromEntries(builtin.map((v) => [v.id, v.audiocpp_voice])) };
+  // The voice it speaks without one given — the spec's default, or its one voice: its warm-up's.
+  const def = builtin.find((v) => v.audiocpp_voice === m.defaultVoice) ?? builtin[0];
+  if (def) out.default_voice = def.id;
+  if (m.designEntry !== null) {
+    const template = (m.designEntry.params || []).find((p) => p.name === "template_name")?.default;
+    out.design = template ? { template_name: String(template) } : {};
+    // What its warm-up speaks from (slot._warmGenerated): the description audio.cpp itself gives
+    // the option — its spec's default (Breeze's "Speak clearly and naturally."), else its control
+    // list's (Maya1's) — or, for a Text to speech entry that designs, nothing at all: such an entry
+    // speaks with no voice (audio.cpp's "Model default"; OmniVoice's auto voice), and OmniVoice
+    // takes only its own list of words as a description.
+    const option = designOptionOf(m.family);
+    const fromSpec = option ? requestOptionsOf(m.family).get(option)?.default : null;
+    const fromParams = [...(m.designEntry.params || []), ...(m.fam.params || [])].find((p) => p.name === option && p.default)?.default;
+    if (fromSpec || fromParams) out.design_example = String(fromSpec || fromParams);
+    else if (m.designEntry.task === "tts") out.design_unvoiced = true;
+  }
+  return out;
+}
+
 /** A variant row (a model at one precision) in the hand-wired manifests' shape. `label` is
  * audio.cpp's own word for a second package at a precision the model has already (Irodori's
  * "Anime Q8" beside its v4 Q8): its id and name say it instead of the precision. */
@@ -357,9 +522,9 @@ function variantRow(m, { pkg, main }, label = null) {
     description: PRECISION_WORDS[tail] ? `${PRECISION_WORDS[tail]} weights.` : "",
     languages: langs.languages,
     languages_note: langs.note,
-    voice_cloning: true,
-    voice_design: false,
-    preset_voices: 0,
+    voice_cloning: m.clone,
+    voice_design: m.design,
+    preset_voices: builtinCount(m),
     weights_license: lic.licence,
     sources: withCompanions(m, {
       hf_repo: pkg.source.repo,
@@ -367,7 +532,15 @@ function variantRow(m, { pkg, main }, label = null) {
       size_bytes: pkg.source.files.reduce((n, f) => n + (f.size_bytes || 0), 0),
       files,
     }),
-    audiocpp: { family: m.family, task: m.entry.task, file: main, generated: true, model: m.modelId, ...sessionFiles(m) },
+    audiocpp: {
+      family: m.family,
+      task: m.entry.task,
+      file: main,
+      generated: true,
+      model: m.modelId,
+      ...sessionFiles(m),
+      ...(m.kind === "tts" ? speechRequestFacts(m) : {}),
+    },
     min_vram_gb: m.entry.min_vram_gb,
     status: m.fam.status,
     commercial_use: lic.commercial_use,
@@ -401,14 +574,16 @@ let _engines = null;
 /** The generated engines: engine id (the audio.cpp family) → a manifest module. */
 export function generatedEngines() {
   if (_engines !== null) return _engines;
-  const byFamily = new Map();
-  for (const m of generatedModels()) {
-    if (!byFamily.has(m.family)) byFamily.set(m.family, []);
-    byFamily.get(m.family).push(m);
+  const byEngine = new Map();
+  for (const m of [...generatedModels(), ...generatedRecognisers()]) {
+    if (!byEngine.has(m.engineId)) byEngine.set(m.engineId, []);
+    byEngine.get(m.engineId).push(m);
   }
   _engines = new Map();
-  for (const [family, unordered] of byFamily) {
+  for (const [engineId, unordered] of byEngine) {
     const fam = unordered[0].fam;
+    const family = fam.family;
+    const kind = unordered[0].kind;
     const lic = licenceOf(fam);
     const curated = CURATED[family] ?? null;
     // The model holding the spec's recommended package first — the engine's default — the rest in
@@ -435,27 +610,31 @@ export function generatedEngines() {
       delete v._twin;
     }
     const mod = {
-      ID: family,
+      ID: engineId,
       NAME: fam.display_name,
       DESCRIPTION: fam.description,
       LICENSE: lic.licence,
       WEIGHTS_LICENSE: lic.licence,
-      KIND: "tts",
-      CAPABILITIES: {
-        preset_voices: false,
-        voice_cloning: true,
-        voice_design: false,
-        instruct_field: Boolean(curated?.DIRECTION),
-        paralinguistic_tags: false,
-        phoneme_override: false,
-      },
+      KIND: kind,
+      CAPABILITIES:
+        kind === "stt"
+          ? { stt: true }
+          : {
+              preset_voices: models.some((m) => builtinCount(m) > 0),
+              voice_cloning: models.some((m) => m.clone),
+              voice_design: models.some((m) => m.design),
+              instruct_field: Boolean(curated?.DIRECTION),
+              paralinguistic_tags: false,
+              phoneme_override: false,
+            },
       REQUIREMENTS: { gpu_runtimes: ["cuda", "vulkan", "metal", "cpu"] },
       SUPPORTED_OSES: ["windows", "linux", "macos"],
-      STATIC_VOICES: [],
+      // Its built-in voices, listed and filtered as Kokoro's are (the adoption plan's slice 2).
+      STATIC_VOICES: models.flatMap((m) => builtinVoicesOf(m)).map(({ audiocpp_voice: _spec, ...v }) => v),
       DEFAULT_VARIANT_ID: variants[0].id,
       VARIANTS: variants,
       // Where this engine came from, for the Speech engines list (status, licence, tested).
-      GENERATED: { status: fam.status, licence: lic, tested: curated?.TESTED ?? null, best_for: curated?.BEST_FOR ?? [] },
+      GENERATED: { family, status: fam.status, licence: lic, tested: curated?.TESTED ?? null, best_for: curated?.BEST_FOR ?? [] },
     };
     // A licence that isn't a plain "Yes" is accepted once before the first download (decided
     // 2026-10-11, answer 2) — Pocket's terms door, gating downloads. "Yes" is our reading of the
@@ -472,21 +651,23 @@ export function generatedEngines() {
         gates: "download",
       };
     }
-    _engines.set(family, mod);
+    _engines.set(engineId, mod);
   }
   return _engines;
 }
 
 /** "Apache-2.0 · JustVoice's reading, checked 2026-10-11 — audio.cpp's licence table says "No"":
- * whose reading the summary is, and audio.cpp's word where ours differs. */
+ * whose reading the summary is, and audio.cpp's word where ours differs — or, for a model whose
+ * licence JustVoice hasn't read yet, "… · audio.cpp's licence table, checked 2026-09-21". */
 export function readingOf(l) {
+  if (l.by === "audio.cpp") return `${l.name} · audio.cpp's licence table, checked ${l.checked}`;
   return `${l.name} · JustVoice's reading, checked ${l.checked}${l.table !== l.commercial ? ` — audio.cpp's licence table says "${l.table}"` : ""}`;
 }
 
 /** The audio.cpp families an engine's models come from: a generated engine's own, a hand-wired
  * engine's from its variants (Chatterbox runs two). */
 export function familiesOf(mod) {
-  if (mod.GENERATED) return [mod.ID];
+  if (mod.GENERATED) return [mod.GENERATED.family ?? mod.ID];
   return [...new Set((mod.VARIANTS || []).map((v) => v.audiocpp?.family).filter(Boolean))];
 }
 
@@ -502,6 +683,10 @@ export function engineFacts(mod) {
   const fam = CATALOG.families[family];
   const table = fam ? licenceOf(fam) : null;
   const ours = cur.LICENCE;
+  // A model JustVoice offers before reading its licence at its source (every speaking family and
+  // every recogniser since the adoption plan's slice 2) shows audio.cpp's own word and notes from
+  // its licence table, gated the same way, until our reading replaces it.
+  const theirs = !ours && mod.GENERATED && fam?.licence ? fam.licence : null;
   return {
     licence: ours
       ? {
@@ -512,7 +697,18 @@ export function engineFacts(mod) {
           url: ours.url || table?.url || "",
           checked: ours.checked,
         }
-      : null,
+      : theirs
+        ? {
+            name: table.licence,
+            commercial: table.commercial_use,
+            table: table.commercial_use,
+            // Its notes, else the label's own words, so a gate always says something.
+            summary: table.notes || `Commercial use: ${table.commercial_use}`,
+            url: table.url,
+            checked: table.checked,
+            by: "audio.cpp",
+          }
+        : null,
     catalog_status: fam?.status ?? "",
     tested: cur.TESTED ?? null,
     best_for: cur.BEST_FOR ?? [],
@@ -534,6 +730,23 @@ export function coerceOption(spec, value) {
   if (t === "bool" || t === "boolean") return value === true || value === "true" || value === 1 || value === "1";
   if (t === "enum") return (spec.values || []).includes(value) ? value : undefined;
   return String(value);
+}
+
+/**
+ * The emotions a family's direction file acts on (the narrowings review E8: "the persona page
+ * offers only the emotions a family's direction file maps"), in the app's order — or null where a
+ * line's emotion reaches the model whatever it is, in its words (Breeze's instruction, IndexTTS's
+ * emotion text, Fish's description) or where there is no direction file. CosyVoice3 acts on its
+ * authors' five sentences; Higgs on its seven tags.
+ */
+export function directionEmotions(direction) {
+  if (!direction) return null;
+  let mapped;
+  if (direction.kind === "phrases") mapped = Object.keys(direction.phrases || {});
+  else if (direction.kind === "vector" && !direction.words) mapped = Object.keys(direction.vectors || {});
+  else if (direction.kind === "prefix" && !direction.words) mapped = Object.keys(direction.tags || {});
+  else return null;
+  return EMOTION_VALUES.filter((e) => mapped.includes(e));
 }
 
 /**

@@ -63,6 +63,9 @@ const manifest = (engineId = "eng", kind = "tts", backend = "cuda") => ({
   backend,
 });
 
+/** The same, built from audio.cpp's own files (engines/audiocpp/generated.js). */
+const generatedManifest = (engineId = "eng") => ({ ...manifest(engineId), module: { GENERATED: { family: engineId } } });
+
 function mgrFor(hw, m, SlotClass = Proc) {
   vi.spyOn(manager, "_newSlot").mockImplementation((mm, p) => new SlotClass(mm, p));
   // Every model runs where the speech runtime runs — the test's manifest says where.
@@ -226,6 +229,61 @@ test("a_calibrated_load_saves_the_delta_as_its_price", async () => {
   await mgr.load("eng", { device: "auto" });
   expect(arb.reservationOf("tts:eng").source).toBe("computed");
   expect(recorded).toEqual([[1400, "the whole card's difference"]]);
+});
+
+test("a_load_that_cant_calibrate_prices_the_model_after_its_first_line", async () => {
+  // The adoption plan's §7 answer 5: a model that speaks only from a clip can't warm up, so its
+  // first line sets its price — here, a probe that reads nothing: the whole card's difference
+  // since before the load (today's fallback, at the line instead of the load).
+  const arb = makeArbiter(discrete());
+  const recorded = [];
+  const mgr = mgrFor(discrete(), generatedManifest());
+  const seq = [3000, 3300, 4400]; // before the load · after it · after the first line
+  vi.spyOn(EngineManager.prototype, "poolUsedMb").mockImplementation(async () => (seq.length ? seq.shift() : 4400));
+  vi.spyOn(EngineManager.prototype, "_recordSpeechLoad").mockImplementation((m, k, v, mb, d, how) => recorded.push([mb, how]));
+  const bumps = [];
+  vi.spyOn(EngineManager.prototype, "bumpEngineReservationAsync").mockImplementation((kind, opts) => bumps.push([kind, opts]));
+  await mgr.load("eng", { device: "auto" });
+  expect(recorded).toEqual([]); // the load measured nothing it may keep
+  expect(arb.reservationOf("tts:eng").vram_mb).toBe(300);
+  await mgr.synth("eng", { text: "Two days wrong!" });
+  expect(bumps).toEqual([["tts", { lineOk: true }]]);
+  await mgr.bumpEngineReservation("tts", { lineOk: true });
+  expect(recorded).toEqual([[1400, "the whole card's difference"]]);
+  expect(arb.reservationOf("tts:eng")).toMatchObject({ vram_mb: 1400, source: "computed" });
+  // Once: the next line prices nothing by the card.
+  await mgr.bumpEngineReservation("tts", { lineOk: true });
+  expect(recorded).toHaveLength(1);
+});
+
+test("a_first_line_prices_the_model_by_its_process_where_the_probe_reads", async () => {
+  makeArbiter(discrete());
+  const recorded = [];
+  const mgr = mgrFor(discrete(), generatedManifest());
+  vi.spyOn(EngineManager.prototype, "_engineProcMb").mockResolvedValue(2100);
+  vi.spyOn(EngineManager.prototype, "_recordSpeechLoad").mockImplementation((m, k, v, mb, d, how) => recorded.push([mb, how ?? ""]));
+  vi.spyOn(EngineManager.prototype, "bumpEngineReservationAsync").mockImplementation(() => {});
+  await mgr.load("eng", { device: "auto" });
+  expect(recorded).toEqual([]);
+  // A line that failed sets nothing; the next one that speaks does.
+  await mgr.bumpEngineReservation("tts", { lineOk: false });
+  expect(recorded).toEqual([]);
+  await mgr.bumpEngineReservation("tts", { lineOk: true });
+  expect(recorded).toEqual([[2100, ""]]);
+});
+
+test("a_hand_wired_model_keeps_its_own_way_until_it_moves_onto_the_generated_path", async () => {
+  // The plan's slice 4 moves the hand-wired engines; until then their first line sets nothing
+  // the load didn't (a raise over the booking, as before).
+  makeArbiter(discrete());
+  const recorded = [];
+  const mgr = mgrFor(discrete(), manifest());
+  vi.spyOn(EngineManager.prototype, "_engineProcMb").mockResolvedValue(2100);
+  vi.spyOn(EngineManager.prototype, "_recordSpeechLoad").mockImplementation((m, k, v, mb) => recorded.push(mb));
+  vi.spyOn(EngineManager.prototype, "bumpEngineReservationAsync").mockImplementation(() => {});
+  await mgr.load("eng", { device: "auto" });
+  await mgr.bumpEngineReservation("tts", { lineOk: true });
+  expect(recorded).toEqual([]);
 });
 
 test("cpu_load_books_nothing_on_discrete", async () => {

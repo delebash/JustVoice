@@ -30,7 +30,7 @@ const msg = (e) => e?.message ?? String(e);
 
 /** WAV + known text → [{word, start, end}], via the stt slot. */
 export async function _alignWavBytes(wav, text, language) {
-  const [mgr, settings] = await captures.ensureSttLoaded();
+  const [mgr, settings] = await captures.ensureSttLoaded({ aligner: true });
   const lang = language || settings.captures.language;
   const hyp = await mgr.align({ wav_b64: wav.toString("base64"), text, language: lang === "" || lang === "auto" ? null : lang });
   return alignKnownText(text, hyp, { totalDuration: _wavSeconds(wav) });

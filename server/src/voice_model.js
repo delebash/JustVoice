@@ -37,10 +37,12 @@ import * as self from "./voice_model.js";
 export const log = getLogger("justvoice.voice_model");
 
 // How a model can be directed (doc §5.5): written direction, tags from its own list, or
-// nothing but the sliders.
+// nothing but the sliders — or, for an audio.cpp model JustVoice doesn't yet know how to direct,
+// "can't be directed yet" (the adoption plan, E8).
 export const WORDS = "words";
 export const TAGS = "tags";
 export const SLIDERS = "sliders";
+export const NOT_YET = "not_yet";
 
 /** Thrown when the voice's model isn't in this speech runtime, or has no model for the asked
  * language (Pocket); the message names the model. A model not yet downloaded is fetched on load
@@ -146,12 +148,13 @@ export function modelName(model, engineId = null) {
   return model;
 }
 
-/** Written direction, tags, or sliders only — the model's own answer. */
+/** Written direction, tags, sliders only, or can't be directed yet — the model's own answer. */
 export function directedBy(model) {
   const row = _capability(model);
   if (row === null || row.engine_id !== model) return SLIDERS;
   if (row.supports_instruct_freeform) return WORDS;
   if (row.inline_tags?.length) return TAGS;
+  if (row.direction_known === false) return NOT_YET;
   return SLIDERS;
 }
 
@@ -248,11 +251,24 @@ export function modelForStored(state, stored) {
   return _defaultModel(engineId, { need }) || engineId;
 }
 
-/** A built-in belongs to one model: Qwen3's nine speakers to CustomVoice, every other
- * engine's presets to its own (single) family. */
-export function modelForPreset(engineId) {
+/** A built-in belongs to one model: Qwen3's nine speakers to CustomVoice, an audio.cpp model's
+ * built-in voices to the model whose spec lists them (a preset's `model`: LFM2.5-Audio's four to
+ * its English model), every other engine's presets to its own (single) family. */
+export function modelForPreset(engineId, voice = null) {
   if (engineId === "qwen3") return "qwen3-cv";
+  if (voice?.model) return voice.model;
   return _defaultModel(engineId) || engineId;
+}
+
+/** The preset `voiceId` of `engineId` (its STATIC_VOICES row), or null. */
+function _preset(engineId, voiceId) {
+  let m;
+  try {
+    m = _manager().getManifest(engineId);
+  } catch {
+    return null;
+  }
+  return (m?.staticVoices || []).find((v) => v.id === voiceId) ?? null;
 }
 
 function _registryEngine(state, engineId) {
@@ -313,7 +329,7 @@ export async function voiceModel(state, voiceId) {
     for (const p of await engine.voices()) if (p.id === voiceId) lang = p.language ?? null;
     return describe(state, engineId, engineId, lang);
   }
-  return describe(state, engineId, modelForPreset(engineId), _presetLanguage(engineId, voiceId));
+  return describe(state, engineId, modelForPreset(engineId, _preset(engineId, voiceId)), _presetLanguage(engineId, voiceId));
 }
 
 /** The language a voice itself is in — a stored voice's own, a preset's catalog language — or

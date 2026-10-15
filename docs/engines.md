@@ -7,8 +7,8 @@ from [JustVoice's copy](https://github.com/delebash/audio.cpp), the build that s
 your hardware, starts it when a model loads, and stops it when you close the
 app. Each engine is then just a set of model files the runtime can load:
 Kokoro, KittenTTS, Pocket TTS, Qwen3-TTS, Chatterbox and VoxCPM2 for speech,
-Speech recognition for turning speech back into text, and every other speech
-model audio.cpp has that can copy a voice — see
+Speech recognition for turning speech back into text, and every other model
+audio.cpp has that speaks or recognises speech — see
 [Every other model audio.cpp has](#every-other-model-audiocpp-has). Each model runs on your
 graphics card or your CPU — chosen per model, see
 [Where each model runs](#where-each-model-runs--the-graphics-card-or-the-cpu).
@@ -174,6 +174,7 @@ See [8-bit or 16-bit](#8-bit-or-16-bit) for what the difference measured.
 | **Chatterbox Nano** (110M) | 616 MB · 895 MB | English | ✓ (a clip longer than 5 s) | — | MIT |
 | **VoxCPM2** | 3.0 GB · 4.8 GB | 30 | ✓ (and designs from words) | — | Apache-2.0 |
 | **Speech recognition — Qwen3-ASR 1.7B** | 3.6 GB · 5.9 GB (with its word aligner) | 30 | — | — | Apache-2.0 |
+| **Speech recognition — Qwen3-ASR 0.6B** (since 2026-10-15) | 2.3 GB · 3.7 GB (with its word aligner) | 30 | — | — | Apache-2.0 |
 | **External** (OpenAI-compatible) | — | — | varies | varies | depends on provider |
 
 Qwen3 speaks Chinese, English, Japanese, Korean, German, French, Russian,
@@ -299,18 +300,59 @@ graphics memory at all — measured at 0 MB on both the CUDA and Vulkan builds.
 
 ## Every other model audio.cpp has
 
-Besides the engines above, Speech engines lists every other speech model the
-speech runtime can run that **copies a voice from a clip** — 25 more engines
-today, among them IndexTTS 2 and 2.5, CosyVoice3, Breeze TTS 2, Higgs Audio 3,
-Fish Audio S2 Pro, OmniVoice (with VoiceTut-TTS, its Egyptian Arabic fine-tune),
-MOSS-TTS, dots.tts, FireRedTTS3, VoxCPM1, Kitten TTS 2, Sopro V2 Turbo and
-F5-TTS's Habibi-TTS models for Arabic and its dialects. Each offers every download
-audio.cpp's own model manager offers for it — MOSS-TTSD at 4-bit and 16-bit too,
-CosyVoice3 at 32-bit, Breeze TTS 2 at 4-bit, Irodori-TTS's Anime model beside its
-v4 one. JustVoice doesn't hand-write these: it builds them from
-audio.cpp's own description of each model — what it does, its languages, its
-settings, its download files and its licence. When audio.cpp adds a model, the
-next JustVoice update lists it.
+Besides the engines above, Speech engines lists **every other speech model the
+speech runtime can run** — 39 more speech engines today, among them IndexTTS 2
+and 2.5, CosyVoice3, Breeze TTS 2, Higgs Audio 3, Fish Audio S2 Pro, OmniVoice
+(with VoiceTut-TTS, its Egyptian Arabic fine-tune), MOSS-TTS, dots.tts,
+FireRedTTS3, VoxCPM1, Kitten TTS 2, Sopro V2 Turbo, F5-TTS's Habibi-TTS models for
+Arabic and its dialects, Supertonic 3, Voxtral 4B TTS, MagpieTTS Multilingual,
+NeuTTS, KugelAudio-0-Open, LFM2.5-Audio, Maya1, MOSS-VoiceGenerator, VibeVoice,
+Piper TTS, Inflect Micro v2, sanoTTS Nano and Soprano — and **25 more
+speech-recognition engines** under *Transcription* (Parakeet-TDT 0.6B v3, Canary
+180M Flash, Cohere Transcribe, CrisperWhisper 2.0, OWSM, GigaAM ASR and others).
+Until 2026-10-15 only the models that copy a voice from a clip were listed. Each
+offers every download audio.cpp's own model manager offers for it — MOSS-TTSD at
+4-bit and 16-bit too, CosyVoice3 at 32-bit, Breeze TTS 2 at 4-bit, Irodori-TTS's
+Anime model beside its v4 one. JustVoice doesn't hand-write these: it builds them
+from audio.cpp's own description of each model — what it does, its languages, its
+voices, its settings, its download files and its licence. When audio.cpp adds a
+model, the next JustVoice update lists it. (Models audio.cpp marks as work in
+progress, and AuK and OuteTTS — see [Not available yet](#not-available-yet) — are
+not listed.)
+
+**Each model does what audio.cpp says it does:**
+
+- **Copies a voice from a clip** — its row says `CLONING`, and the persona page's
+  *New clone* offers it.
+- **Speaks its built-in voices** — `BUILT-IN · N` on its row. They are voices in
+  the app like Kokoro's: listed on [Voices](voices.md), filtered the same way, and
+  any persona can use one — Supertonic 3's ten, Voxtral 4B TTS's twenty, Kitten TTS
+  2's forty-seven, NeuTTS's nine, MagpieTTS's five, KugelAudio's and LFM2.5-Audio's
+  four.
+  Each keeps audio.cpp's name for it (`casual_female`, `us_male`, `M1`). Its gender
+  and language are set only where audio.cpp's own model notes give them (KugelAudio,
+  LFM2.5-Audio, Voxtral 4B TTS, Kitten TTS 2's language presets); elsewhere the gender
+  is *Not known* — set one on Voices if you want Smart-assign to use it. A model
+  whose description names no voice — Piper TTS, Inflect, sanoTTS, Soprano, VibeVoice,
+  LFM2.5-Audio's Japanese model — speaks in its one voice, listed as **Model
+  default**, audio.cpp's own name for it.
+- **Makes a voice from words** — the persona page's *New design* offers it beside
+  Qwen3 VoiceDesign and VoxCPM2: Breeze TTS 2, FireRedTTS3 Instruct, FireRedAudio,
+  Irodori-TTS (v4, and its own v3 VoiceDesign model), MOSS-VoiceGenerator, Maya1 and
+  OmniVoice. The description goes to the model as its voice description, with the
+  voice-design mode audio.cpp's own *Voice design* tab uses for it.
+- **VieNeu-TTS v3 Turbo** is listed without cloning: it needs a *speaker
+  embedding* that audio.cpp can't make from a clip yet, so it speaks in its one
+  voice.
+
+**The speech-recognition models are transcription engines.** Load one on its row
+and it is the one that transcribes: Captures' dictation, the words of a clip you
+clone a voice from, and transcripts for other apps. Word timings — chapter
+captions and `/v1/align` — need an aligner, and audio.cpp has only Qwen3's, so a
+caption request loads Qwen3-ASR in the speech-recognition slot, whichever
+recogniser was there. Where a family both speaks and recognises speech
+(FireRedAudio, LFM2.5-Audio), each has its own engine, and each downloads its own
+copy of the model.
 
 **What each engine tells you, before you download anything:**
 
@@ -327,8 +369,13 @@ next JustVoice update lists it.
 - **Whether it takes direction.** A model JustVoice knows how to direct takes
   a line's emotion and direction — IndexTTS 2 / 2.5 says *Takes a line's
   direction in words* (since 2026-10-15), since it takes the direction alone; the
-  others say *Can't be directed yet* and speak every line plainly in the cloned
-  voice.
+  others say **Can't be directed yet** on the model's row, on the persona page and
+  wherever a voice or persona says how it can be directed (since 2026-10-15; they
+  read *sliders only* before), and speak every line plainly. Pace, pitch and gain
+  still apply. A model that acts on only some emotions offers only those on the
+  persona page and in Render's *This line only*: CosyVoice3 the five its authors
+  document, Higgs Audio 3 its seven tags (since 2026-10-15; the others were offered
+  and spoken plainly).
 - **How much graphics memory it needs** — see
   [Memory, before you load](#memory-before-you-load).
 
@@ -372,6 +419,13 @@ the plain words say what audio.cpp's table says:
 A model that isn't a plain *Yes* asks you to accept its licence once, before
 its first download, showing the same plain words — the same prompt Pocket TTS
 shows for Kyutai's terms.
+
+**Models JustVoice hasn't read the licence of yet** — the ones listed since
+2026-10-15 (the speakers that don't copy a voice, and the speech-recognition
+models) — show audio.cpp's own word and notes from its licence table, and say so:
+*CC-BY-NC-4.0 · audio.cpp's licence table, checked 2026-10-07*. A model that
+isn't a *Yes* there asks you to accept its licence before its first download the
+same way — Voxtral 4B TTS, for one, is *No*.
 
 ### Memory, before you load
 
@@ -684,11 +738,12 @@ runtime; the order is in
 - **A confidence score from speech recognition.** The old recogniser
   reported how sure it was of each transcript; the new one does not.
 - **Voice training** — see [Voice training](#voice-training).
-- **VieNeu-TTS v3 Turbo** (Vietnamese and English), from audio.cpp's other models. It reads
-  phonemes from a separate library rather than text, and needs a *speaker embedding* that
-  audio.cpp can't make from a clip yet; given text and a clip, it babbled for 14.8 seconds
-  over a line the other models speak in 4 to 5 in JustVoice's download test (2026-10-11).
-  It's left off the list until it can speak from text and a clip.
+- **Cloning with VieNeu-TTS v3 Turbo** (Vietnamese and English), from audio.cpp's other
+  models. It reads phonemes from a separate library rather than text, and needs a *speaker
+  embedding* that audio.cpp can't make from a clip yet; given text and a clip, it babbled
+  for 14.8 seconds over a line the other models speak in 4 to 5 in JustVoice's download
+  test (2026-10-11). It was left off the list until 2026-10-15; it is listed now, without
+  cloning, speaking in its one voice.
 - **AuK** (Tencent), from audio.cpp's other models. audio.cpp loads it from a folder of
   three separate downloads — the AuK generator, Qwen2.5-Omni-3B and a VAE, 6 to 13 GB
   together — and JustVoice fetches only the generator, so it doesn't load. Cloning from a
@@ -800,9 +855,11 @@ Each engine group expands into its model rows, and each row carries the model's
   facts.
 - **Direction chip** — how a speech model is directed: `✓ WRITTEN DIRECTION`
   (describe how it speaks, in words — Qwen3 CustomVoice and VoiceDesign,
-  VoxCPM2), `✓ TAGS` (the model's own tags — Chatterbox Turbo and Nano) or
-  `SLIDERS ONLY` (pace, pitch and gain). The same words as Cast and a
-  persona's page. Speech recognition has none.
+  VoxCPM2), `✓ TAGS` (the model's own tags — Chatterbox Turbo and Nano),
+  `SLIDERS ONLY` (pace, pitch and gain), or `CAN'T BE DIRECTED YET` — a model
+  from audio.cpp's other models that JustVoice doesn't know how to direct yet
+  (pace, pitch and gain still apply; since 2026-10-15). The same words as Cast and
+  a persona's page. Speech recognition has none.
 - **Status chip** — audio.cpp's own status for the model (*supported*,
   *community*, *experimental*).
 - **Download size · on disk** — the verified download size, plus "on disk"
@@ -835,7 +892,10 @@ the **⋯** menu on an AI model row under **LLM providers**.
 serves: it is not a voice, it turns speech into text — Captures' dictation, the
 words of a capture you clone a voice from (they fill in its transcript), and,
 for other apps, transcripts and caption timings (other apps reach them through
-`/v1/transcribe`, `/v1/align` and the MCP tool `justvoice.transcribe`).
+`/v1/transcribe`, `/v1/align` and the MCP tool `justvoice.transcribe`). The
+recogniser you load transcribes; with none loaded, Qwen3-ASR 1.7B loads on first
+use. Caption timings always come from Qwen3-ASR and its aligner (see
+[Every other model audio.cpp has](#every-other-model-audiocpp-has)).
 
 At the bottom of an engine group with anything downloaded, **Delete downloaded
 models** removes all of that engine's models at once. The speech runtime stays
@@ -878,17 +938,23 @@ What a model costs is measured at that length, on your machine, for exactly that
 model — the 8-bit and 16-bit files and each size count separately. The first
 time a model loads on the graphics card it speaks one full-length piece as its
 warm-up (a few seconds more, once) and what it holds afterwards is remembered as
-its cost. Models that can only speak from a clip (Chatterbox Multilingual,
-Qwen3-TTS Base) measure themselves on their first real lines instead. The cost
+its cost. Every model audio.cpp describes does the same when it can speak
+without a clip (since 2026-10-15): in its default built-in voice, in its one
+voice, or — a model that makes a voice from words — from a short description; a
+speech-recognition model hears silence. Models that can only speak from a clip
+(Chatterbox Multilingual, Qwen3-TTS Base, and audio.cpp's clone-only models)
+measure themselves on their first real lines instead. The cost
 only goes up after that: a line that takes more is remembered too — except after
 a line that ran away (its audio longer than 0.5 s a character of its text and
 than 30 s, `speech_runtime.runaway_s_per_char` and `runaway_min_s`): what that
 model's process holds is never remembered as its cost again. When the model's
 own process can't be read at that first load, how much the whole card's use went
 up across the load is remembered instead — for a model that spoke a warm-up
-piece; one that measures itself on its first lines remembers nothing then. That
-reading can include another program that took card memory at the same moment,
-so it errs high.
+piece. A model from [Every other model audio.cpp has](#every-other-model-audiocpp-has)
+that measures itself on its first line remembers how much the whole card's use
+went up from before its load to after that line (since 2026-10-15; before, it
+remembered nothing). That reading can include another
+program that took card memory at the same moment, so it errs high.
 
 Each slot's cell shows its own process's measured memory: the model, plus the
 process's own share of the card (about 100 MB). The full story is in
