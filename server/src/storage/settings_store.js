@@ -181,6 +181,20 @@ export class SettingsStore {
     return pyClone(this._current);
   }
 
+  /**
+   * Put `tokens` in the stored row's `auth.tokens`, leaving the rest of the row and the running
+   * copy as they are. After a restore the stored row is the backup's; this computer's own bearer
+   * tokens (the ones its paired devices reach it with — the running copy holds them) go back into
+   * it (sync.js, P16).
+   */
+  setStoredTokens(tokens) {
+    const h = this._session();
+    const stored = this._readRow(h);
+    if (stored === null) return;
+    stored.auth.tokens = [...tokens];
+    this._writeRow(h, stored);
+  }
+
   /** Replace the whole settings tree. Returns a deep copy of what is now current. */
   set(newSettings) {
     const s = construct(Settings, newSettings);

@@ -162,6 +162,9 @@ const appSync = createAppSync({
       all.auth.tokens = [...(all.auth.tokens ?? []).filter((t) => typeof t === "string" && t), token];
       store.set(all);
     },
+    // after a restore: this computer's tokens go back into the restored settings row (the backup's
+    // would lock out a device paired since, or let one removed since back in)
+    set: (tokens) => getState().settings.setStoredTokens(tokens),
   },
   units: {
     scope: (ids) => projectScope(session.cfg.handle, ids),

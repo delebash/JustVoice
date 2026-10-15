@@ -145,8 +145,8 @@ the persona finds it straight away. The built-in voices come with their engine a
   - After a restore, this computer carries on in sync as a new device: your other computers'
     **Devices** list it as a new entry beside the old one (both with its name), and the old one's
     files stay in the cloud folder until they're removed.
-  - This computer keeps its own sync settings — the cloud folder, the paired devices, the library
-    key and its name — not the ones in the backup.
+  - This computer keeps its own sync settings — the cloud folder, the paired devices and the
+    passwords they reach it with, the library key and its name — not the ones in the backup.
   - While this computer is syncing (a cloud folder or a paired device is set), a backup from
     another sync library — made on a computer that wasn't synced with this one — is refused with
     *"This backup is from another sync library. Stop using the cloud folder and remove your paired

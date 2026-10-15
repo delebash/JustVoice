@@ -15,6 +15,7 @@ import { readAuth } from "../src/auth.js";
 import { runFactoryReset } from "../src/data_admin.js";
 import { TABLES } from "../src/database/models.js";
 import * as session from "../src/database/session.js";
+import { readSettingsReadOnly } from "../src/storage/settings_store.js";
 import { SYNC_SCHEMA_VERSION, SYNC_TABLES, flushSync, getSync } from "../src/sync.js";
 import { appClient, closeApps } from "./app_helpers.js";
 import { tmpPath } from "./helpers.js";
@@ -213,4 +214,20 @@ test("a backup from another sync library is refused while this computer syncs, a
   expect((await restoreFrom(c, backup)).status).toBe(200);
   expect(projects()).toEqual(["p1", "p2"]);
   expect(getSync().library).toBe(library); // it stays in its own library
+});
+
+test("a restore keeps this computer's pairing tokens: a device paired since still reaches it, one removed since doesn't come back", async () => {
+  const { c, dir } = await appClient();
+  seedProjects();
+  const before = (await c.post("/v1/sync/pair", { json: {} })).json().code.token;
+  const backup = await c.get("/v1/data/backup");
+  const store = getState().settings;
+  const s = store.get();
+  s.auth.tokens = s.auth.tokens.filter((t) => t !== before); // removed after the backup
+  store.set(s);
+  const since = (await c.post("/v1/sync/pair", { json: {} })).json().code.token; // paired after it
+
+  expect((await restoreFrom(c, backup)).status).toBe(200);
+  expect(readAuth()[0]).toEqual([since]); // the running server's
+  expect(readSettingsReadOnly(dir).auth.tokens).toEqual([since]); // what the next start reads
 });
