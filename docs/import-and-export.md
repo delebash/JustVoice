@@ -15,7 +15,7 @@ standard schema**, which is what the rest of the server stores and
 renders against. This section explains the schema, every shipping
 adapter, and how to write your own.
 
-The runtime registry is the source of truth — `GET /v1/projects/import/adapters` returns the live list with file extensions, descriptions, and whether each adapter is implemented.
+The runtime registry is the source of truth — `GET /v1/projects/import/adapters` returns the live list with file extensions, descriptions, whether each adapter is implemented, and `says_who_speaks` — whether its files can name who says each line. New project's table of sources shows them as **What lands** and **Says who speaks?** (yes / no), the description in plain words.
 
 ### Endpoint summary
 

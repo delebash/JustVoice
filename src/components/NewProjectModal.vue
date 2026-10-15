@@ -17,7 +17,7 @@
 //   create  — { name, project_type, language } with no file (caller owns the API call)
 
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
-import { UiButton, UiInput, UiSelect, UiTable, AppModal, fmtBytes, openHelp, pushToast } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiSelect, UiTable, UiTag, AppModal, fmtBytes, openHelp, pushToast } from "@delebash/llm-ui";
 import { bookLanguageOptions } from "../services/personaFacts.js";
 import { projectKind } from "../services/projectKinds.js";
 import { projectsService } from "../services/projects.js";
@@ -80,14 +80,16 @@ const languageOptions = computed(() => bookLanguageOptions(voicesStore.items)
 
 // ── the optional file ──
 // The importers the server has (GET /v1/projects/import/adapters): the table of what each source
-// brings, in the server's own words, and the format a dropped file is read as.
+// brings, in the server's own words, and the format a dropped file is read as. Its columns are the
+// mock's (`_s1`, decided 2026-10-15): Source (its file endings under it), What lands, and whether
+// the file says who speaks each line — the server's `says_who_speaks`, a yes / no tag.
 const adapters = ref([]);
 const sourceRows = computed(() => adapters.value.filter((a) => a.implemented)
-  .map((a) => ({ id: a.id, label: a.label, files: a.file_extensions.join(" · "), lands: a.description })));
+  .map((a) => ({ id: a.id, label: a.label, files: a.file_extensions.join(" · "), lands: a.description, speaks: !!a.says_who_speaks })));
 const SOURCE_COLUMNS = [
   { id: "label", header: "Source", accessorKey: "label" },
-  { id: "files", header: "Files", accessorKey: "files" },
-  { id: "lands", header: "What comes in", accessorKey: "lands" },
+  { id: "lands", header: "What lands", accessorKey: "lands" },
+  { id: "speaks", header: "Says who speaks?", cellStyle: { whiteSpace: "nowrap" } },
 ];
 const file = ref(null);
 const source = ref("");
@@ -254,7 +256,13 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
           </div>
           <input ref="fileInput" type="file" hidden @change="acceptFile($event.target.files?.[0])" />
         </div>
-        <UiTable v-if="!file && sourceRows.length" class="jv-table-look np-sources" :data="sourceRows" :columns="SOURCE_COLUMNS" />
+        <UiTable v-if="!file && sourceRows.length" class="jv-table-look np-sources" :data="sourceRows" :columns="SOURCE_COLUMNS">
+          <template #label="{ row }">
+            <strong>{{ row.label }}</strong>
+            <div class="jv-hint">{{ row.files }}</div>
+          </template>
+          <template #speaks="{ row }"><UiTag :intent="row.speaks ? 'success' : 'ghost'">{{ row.speaks ? "yes" : "no" }}</UiTag></template>
+        </UiTable>
       </section>
 
       <div class="np-alts">

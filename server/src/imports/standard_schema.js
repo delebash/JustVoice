@@ -84,6 +84,10 @@ export const AdapterInfo = T.Object({
   file_extensions: opt(T.Array(T.String()), []),
   implemented: opt(T.Boolean(), true),
   docs_anchor: opt(nullable(T.String()), null), // e.g. "import-justwrite" — feeds the help-bus key
+  // Whether the file can say who speaks each line (a CSV's character column, a script's SARAH:)
+  // — New project's "Says who speaks?" column (2026-10-15). A source that can't leaves every line
+  // to Studio → Script.
+  says_who_speaks: opt(T.Boolean(), false),
 });
 
 export const AdapterListResponse = T.Object({

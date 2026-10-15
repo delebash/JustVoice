@@ -30,17 +30,23 @@ const info = (v) => construct(AdapterInfo, v);
 
 // Each row: [info, parser]. Order is the order the UI picker shows. JustWrite first — it's the
 // primary integration partner.
+//
+// `description` is what lands from the file, in the screen's words (New project's "What lands",
+// the re-import picker under its select): written from what each parser and
+// projects_api._materializeStandard really bring in, no internal names (design law 6b — until
+// 2026-10-15 these said "character roster", "lift to characters", `pause_after_ms`).
+// `says_who_speaks` is the table's yes / no.
 const _ADAPTER_REGISTRY = [
   [
     info({
       id: justwrite.SOURCE_ID,
       label: "JustWrite book",
-      description:
-        "The .zip JustWrite exports (book.json + images) — chapters, prose and the character roster; speakers are found later in Script.",
+      description: "Chapters and paragraphs; the book's people become its speakers, with their descriptions.",
       // The zip is the real export; a bare book.json (someone unzipped it first) parses too.
       file_extensions: [".zip", ".json"],
       implemented: true,
       docs_anchor: "import-justwrite",
+      says_who_speaks: false,
     }),
     justwrite.parse,
   ],
@@ -48,10 +54,11 @@ const _ADAPTER_REGISTRY = [
     info({
       id: bookProse.SOURCE_ID,
       label: "Book / manuscript",
-      description: "EPUB, DOCX, Markdown, or plain text — chapters split on headings; speakers discovered later in Script.",
+      description: "Chapters and paragraphs.",
       file_extensions: [".epub", ".docx", ".md", ".markdown", ".txt"],
       implemented: true,
       docs_anchor: "import-book_prose",
+      says_who_speaks: false,
     }),
     bookProse.parse,
   ],
@@ -59,10 +66,11 @@ const _ADAPTER_REGISTRY = [
     info({
       id: podcastMarkdown.SOURCE_ID,
       label: "Podcast script (markdown)",
-      description: "Speaker-labeled script — SARAH: / **JIN:** paragraphs become segments; [tags] ride along; ## headings split segments.",
+      description: "A line per paragraph, in segments split at its headings; a label like SARAH: says who speaks.",
       file_extensions: [".md", ".markdown", ".txt", ".fountain"],
       implemented: true,
       docs_anchor: "import-podcast_markdown",
+      says_who_speaks: true,
     }),
     podcastMarkdown.parse,
   ],
@@ -70,10 +78,11 @@ const _ADAPTER_REGISTRY = [
     info({
       id: csvLines.SOURCE_ID,
       label: "CSV lines",
-      description: "Spreadsheet of dialogue rows — scene, character, text, delivery, pause_after_ms.",
+      description: `A line per row, grouped by a "scene" column; a "character" column says who speaks, an "id" column keeps each line's id.`,
       file_extensions: [".csv"],
       implemented: true,
       docs_anchor: "import-csv_lines",
+      says_who_speaks: true,
     }),
     csvLines.parse,
   ],
@@ -81,10 +90,11 @@ const _ADAPTER_REGISTRY = [
     info({
       id: srt.SOURCE_ID,
       label: "SubRip subtitles (.srt)",
-      description: "SRT cue blocks — each cue becomes a line; SPEAKER: prefixes lift to characters.",
+      description: "A line per subtitle, the gap before the next kept as a pause; a NAME: at its start says who speaks.",
       file_extensions: [".srt"],
       implemented: true,
       docs_anchor: "import-srt",
+      says_who_speaks: true,
     }),
     srt.parse,
   ],
@@ -92,10 +102,11 @@ const _ADAPTER_REGISTRY = [
     info({
       id: audacityLabels.SOURCE_ID,
       label: "Audacity label track",
-      description: "Audacity TSV label export — one line per label, pause derived from gaps.",
+      description: "A line per label, the gap before the next kept as a pause.",
       file_extensions: [".txt"],
       implemented: true,
       docs_anchor: "import-audacity_labels",
+      says_who_speaks: false,
     }),
     audacityLabels.parse,
   ],
@@ -103,12 +114,13 @@ const _ADAPTER_REGISTRY = [
     info({
       id: justvoiceStandard.SOURCE_ID,
       label: "JustVoice standard JSON",
-      description: "A payload already in the JustVoice import standard shape — pass-through + validate.",
+      description: "Chapters, lines, speakers and pronunciations, as the file sets them out.",
       file_extensions: [".json"],
       implemented: true,
       // "import-standard-json" since the import/export doc merge (2026-08-08): the old
       // "import-standard" id was duplicated in the page, so the help link landed on the schema.
       docs_anchor: "import-standard-json",
+      says_who_speaks: true,
     }),
     justvoiceStandard.parse,
   ],

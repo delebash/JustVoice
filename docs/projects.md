@@ -29,7 +29,12 @@ Studio · [Overview](studio.md#overview).
 New project takes a file too. Under **Bring the words in**, press **Browse…** or drop the file
 into the box — the table beneath lists every source JustVoice reads (a JustWrite book, a book or
 manuscript, a podcast script, CSV lines, subtitles, an Audacity label track, JustVoice's own JSON),
-the file endings of each, and what comes in from it. The file is read at once: its title and its
+with the file endings of each under its name. **What lands** says what the file brings in — its
+chapters or scenes, its lines, and for a JustWrite book the book's people as its speakers.
+**Says who speaks?** is *yes* when the file can name who says each line — a podcast script's
+`SARAH:` labels, a CSV's `character` column, a subtitle that starts with `NAME:`, JustVoice's own
+JSON — and *no* when every line arrives without a speaker and
+[Studio → Script](studio.md#script) works out who says it. The file is read at once: its title and its
 kind fill the name and the kind, unless you picked your own. A file whose ending fits more than one
 source (a `.md` can be a book or a podcast script) shows **Read it as**, already set to the one the
 file looks like. **What is this format?** beside the file opens the source's section of
