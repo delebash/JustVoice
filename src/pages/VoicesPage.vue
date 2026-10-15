@@ -848,8 +848,10 @@ function voiceTypeVariant(kind) {
 }
 
 /* Root pane — flex column. Toolbar/banner/details stay pinned, the
-   catalog list scroller (.voices-view__list) takes the leftover height
-   so the OUTER .jv-content never scrolls when the catalog is long. */
+   catalog lane (.voices-view__list) takes the leftover height so the OUTER
+   .jv-content never scrolls when the catalog is long. The table fills the lane
+   and its own QTable wrapper scrolls, header pinned — Quasar's "Sticky header"
+   (the kit's ui-table-sticky, kit 387a192, 2026-10-15). */
 .voices-view {
   display: flex;
   flex-direction: column;
@@ -857,10 +859,12 @@ function voiceTypeVariant(kind) {
 .voices-view__list {
   flex: 1 1 0;
   min-height: 0;
-  overflow-y: auto;
-  scrollbar-gutter: stable;
+  display: flex;
+  flex-direction: column;
   margin-top: 14px;
 }
+.voices-view__table { flex: 1 1 0; min-height: 0; }
+.voices-view__table :deep(.q-table__middle) { scrollbar-gutter: stable; }
 
 /* Toolbar — search + type filter chips + + Clone primary action. */
 .voices-view__toolbar {
