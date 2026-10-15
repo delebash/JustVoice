@@ -52,8 +52,8 @@
     it syncs it refuses a backup from another sync library ([Sync](sync.md#good-to-know))
   - Desktop app: one JustVoice server per data folder — a second one says *Another JustVoice
     server is using this data folder (‹path›) — stop it first.* When another program holds the
-    port, the can't-reach page says *Port N is in use by another program — change the Port in
-    Settings → Server, or close that program.*, and **Retry** starts the server again. A
+    port, the can't-reach page says *Port N is in use by another program — close that
+    program, then press Retry.*, and **Retry** starts the server again. A
     JustVoice server left on the port is asked to shut down before it is stopped ([Run
     modes](run-modes.md), [Troubleshooting](troubleshooting.md))
   - Channels no longer describes device routing that isn't built ([Channels](channels.md)).

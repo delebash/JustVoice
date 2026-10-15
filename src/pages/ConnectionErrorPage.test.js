@@ -41,7 +41,7 @@ test("another program on the port: the approved words, with the port", async () 
   status.mockResolvedValue({ url: "http://127.0.0.1:17600", portTaken: 17600, dataFolderInUse: null });
   await mount();
   expect(el.textContent).toContain(
-    "Port 17600 is in use by another program — change the Port in Settings → Server, or close that program.",
+    "Port 17600 is in use by another program — close that program, then press Retry.",
   );
 });
 

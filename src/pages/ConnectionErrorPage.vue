@@ -15,7 +15,9 @@ onMounted(async () => {
   const status = await shellServerStatus();
   if (status?.dataFolderInUse) detail.value = status.dataFolderInUse;
   else if (status?.portTaken) {
-    detail.value = `Port ${status.portTaken} is in use by another program — change the Port in Settings → Server, or close that program.`;
+    // Settings → Server can't open while the server is down, so the page sends you to Retry, which
+    // starts the server again (decided 2026-10-15, the build's question 1).
+    detail.value = `Port ${status.portTaken} is in use by another program — close that program, then press Retry.`;
   }
 });
 </script>

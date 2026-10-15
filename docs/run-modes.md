@@ -13,8 +13,8 @@ change it; quit and start the app again after changing it). If another JustVoice
 server already holds that port — a headless one, or one left behind by a crash —
 the app asks it to shut down, stops it only if it doesn't, and starts its own.
 Any other program on the port is left running, and the window's can't-reach page
-says so: *Port 17494 is in use by another program — change the Port in Settings →
-Server, or close that program.*
+says so: *Port 17494 is in use by another program — close that program, then press
+Retry.* **Retry** starts the server again.
 
 One JustVoice server per data folder: a second server started on the same
 folder — a headless one beside the desktop app, or one on another port — refuses
