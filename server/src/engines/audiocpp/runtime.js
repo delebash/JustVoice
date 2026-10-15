@@ -207,6 +207,13 @@ export function spillMb() {
   return Number.isFinite(v) && v >= 0 ? v : 256;
 }
 
+/** Whether a card load's overflow into the computer's memory is measured here: Windows' per-process
+ * "Shared Usage" counter, read through typeperf (the kit's `processTreeSharedMb`). Elsewhere
+ * `spill_mb` has nothing to compare, so the runtime row doesn't offer it (decided 2026-10-15). */
+export function spillMeasured() {
+  return hardware.platformKey() === "windows" && Boolean(hardware.which("typeperf"));
+}
+
 /** settings.engines.speech_runtime.runaway_s_per_char — seconds of audio a character of a line's
  * text past which the line ran away (manager._noteRunaway). */
 export function runawaySPerChar() {

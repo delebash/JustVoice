@@ -919,12 +919,15 @@ onBeforeUnmount(() => {
             :title="`How many threads the models placed on the CPU compute with. This machine has ${runtime.physical_cores} cores; more threads, faster speech, up to that. Changing it reloads the models on the CPU.`"
             @update:modelValue="setCpuThreads" />
           <span>of {{ runtime.physical_cores }} cores</span>
-          <!-- spill_mb (decided 2026-10-15, M7): the label and hover are the approved words. -->
-          Card overflow limit (MB)
-          <UiNumber :modelValue="runtime.spill_mb" :min="0" :step="1" size="small" width="token"
-            :use-grouping="false"
-            title="A card load that puts more than this in the computer's memory counts as not fitting; Auto then runs the model on the CPU."
-            @update:modelValue="setSpillMb" />
+          <!-- spill_mb (decided 2026-10-15, M7): the label and hover are the approved words; only
+               where the overflow is measured (Windows), as controls that do nothing were removed. -->
+          <template v-if="runtime.spill_measured">
+            Card overflow limit (MB)
+            <UiNumber :modelValue="runtime.spill_mb" :min="0" :step="1" size="small" width="token"
+              :use-grouping="false"
+              title="A card load that puts more than this in the computer's memory counts as not fitting; Auto then runs the model on the CPU."
+              @update:modelValue="setSpillMb" />
+          </template>
         </template>
       </div>
     </div>

@@ -132,9 +132,9 @@ without end.
   puts more than this in the computer's memory counts as not fitting; Auto then
   runs the model on the CPU.* It starts at 256; see
   [Where each model runs](#where-each-model-runs--the-graphics-card-or-the-cpu)
-  for how a load is measured (on Windows). Changing it restarts nothing — the
-  next load on the card reads it. Like CPU threads, it is not shown when the
-  runtime is the CPU build.
+  for how a load is measured. Changing it restarts nothing — the next load on the
+  card reads it. It shows only on Windows, the one system where that overflow is
+  measured, and, like CPU threads, not when the runtime is the CPU build.
 
 **eSpeak NG.** Kokoro and KittenTTS read text through eSpeak NG, the open-source
 pronunciation library. Installing the runtime also downloads eSpeak NG

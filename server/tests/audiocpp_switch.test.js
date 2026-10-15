@@ -5,6 +5,7 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { afterAll, afterEach, expect, test, vi } from "vitest";
+import * as hardware from "@delebash/llm-runner/runner/hardware";
 import { appClient, closeApps } from "./app_helpers.js";
 import { discrete } from "./engines_helpers.js";
 import { parseWavHeader, writeWavContainer } from "../src/audio/wav.js";
@@ -319,6 +320,26 @@ test("the_runtime_row_shows_and_saves_the_card_overflow_limit", async () => {
   expect(stop).not.toHaveBeenCalled();
   expect((await c.get("/v1/settings")).json().engines.speech_runtime.spill_mb).toBe(512);
   expect((await c.put("/v1/speech-runtime", { json: { spill_mb: -1 } })).status).toBe(400);
+  // Offered only where the overflow is measured (Windows; decided 2026-10-15).
+  vi.spyOn(runtime, "spillMeasured").mockReturnValue(true);
+  expect((await c.get("/v1/speech-runtime")).json().spill_measured).toBe(true);
+  vi.spyOn(runtime, "spillMeasured").mockReturnValue(false);
+  expect((await c.get("/v1/speech-runtime")).json().spill_measured).toBe(false);
+});
+
+test("the_card_overflow_is_measured_on_windows_only", () => {
+  // Windows' per-process "Shared Usage" counter, read through typeperf (the kit's
+  // processTreeSharedMb): elsewhere spill_mb has nothing to compare.
+  const which = vi.spyOn(hardware, "which").mockReturnValue("C:/Windows/System32/typeperf.exe");
+  const platform = vi.spyOn(hardware, "platformKey").mockReturnValue("windows");
+  expect(runtime.spillMeasured()).toBe(true);
+  which.mockReturnValue(null);
+  expect(runtime.spillMeasured()).toBe(false);
+  which.mockReturnValue("/usr/bin/typeperf");
+  for (const os of ["linux", "macos"]) {
+    platform.mockReturnValue(os);
+    expect(runtime.spillMeasured(), os).toBe(false);
+  }
 });
 
 test("the_runtime_row_refuses_a_build_this_os_has_none_of", async () => {
