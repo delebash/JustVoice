@@ -195,6 +195,30 @@ test("pocket_picks_its_model_by_language", () => {
   expect(() => vmod.variantForModel("pocket", "pocket", "ja")).toThrow(vmod.ModelUnavailable);
 });
 
+test("pocket_offers_only_the_versions_that_speak_the_personas_language", async () => {
+  // Decided 2026-10-15 (C5): Pocket has one model per language, so the persona page's Version
+  // lists the persona's language's versions; another language's default or loaded model is not
+  // this persona's.
+  const engines = discoverEngines();
+  vi.spyOn(manager, "getManager").mockReturnValue({
+    currentFor: () => "pocket",
+    currentVariantId: () => "pocket-en-q8",
+    resolvedDefaultVariant: () => "pocket-en-q8",
+    manifests: () => engines,
+    getManifest: (e) => engines.get(e) ?? null,
+  });
+  vi.spyOn(vmod, "_onDisk").mockReturnValue(true);
+  vi.spyOn(vmod, "voiceModel").mockResolvedValue({ engineId: "pocket", model: "pocket", name: "Pocket TTS" });
+  const de = await vmod.versionsOf(null, "pocket_alba", "de-DE");
+  expect(de.versions.map((v) => v.id).sort()).toEqual(["pocket-de-bf16", "pocket-de-q8"]);
+  expect(de.speaks_with).toBe("pocket-de-q8");
+  expect([de.default, de.loaded]).toEqual([null, null]);
+  // In English the engine's default and the loaded model are among them.
+  const en = await vmod.versionsOf(null, "pocket_alba", "en");
+  expect(en.versions.every((v) => v.id.startsWith("pocket-en-"))).toBe(true);
+  expect([en.default, en.loaded, en.speaks_with]).toEqual(["pocket-en-q8", "pocket-en-q8", "pocket-en-q8"]);
+});
+
 test("a_load_is_noted_while_it_runs", async () => {
   // Render's loading words (2026-10-07): `loadingNow` names the model a line is loading and
   // for how long, and nothing outside a load.

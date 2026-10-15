@@ -266,10 +266,15 @@ same as **Set as default** on AI Settings → Speech engines, so every persona o
 that model speaks with it. (Two versions of one model can't be loaded at once
 beside the AI model on an 8 GB card.) A version you haven't downloaded says
 *not downloaded*. While another version of the model is downloaded, that one
-keeps speaking — in renders too — until you load the chosen one; when no version
-is downloaded yet, the first load fetches the chosen one. When another version of
+keeps speaking — in renders too — until you load the chosen one, and the page
+says so beside **Load**: *Speaks with 0.6B until 1.7B is loaded* (since
+2026-10-15); when no version is downloaded yet, the first load fetches the
+chosen one. When another version of
 the model is already loaded, it keeps speaking until the chosen one is: the page
-says *1.7B is loaded and speaks until 0.6B is*. Whenever what speaks isn't the
+says *1.7B is loaded and speaks until 0.6B is*. Pocket TTS has one model per
+language, so its **Version** lists only the versions that speak the persona's
+**Speaks** language — *German* and *German (16-bit)* for a German persona
+(since 2026-10-15; before, all ten). Whenever what speaks isn't the
 chosen version, the page offers **Load 0.6B**, with its progress bar, which
 fetches the version if it isn't downloaded (since 2026-10-13; before, only while
 another version was loaded). (Since 2026-10-05 — before, no persona screen said

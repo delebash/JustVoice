@@ -104,6 +104,17 @@ export function voiceKindWord(voice) {
   return KIND_WORD[voiceKind(voice)];
 }
 
+/** The note beside the persona page's Load, when the chosen Version isn't what speaks — or "".
+ *  Another version loaded speaks until the chosen one is (decided 2026-10-05): "1.7B is loaded
+ *  and speaks until 0.6B is."; with nothing loaded, a downloaded version speaks while the chosen
+ *  one isn't downloaded (decided 2026-10-15, C5): "Speaks with 0.6B until 1.7B is loaded."
+ *  `mv`: GET /v1/voices/{id}/model-version; `short`: a version's short name. */
+export function versionLoadNote(mv, chosen, short) {
+  if (!mv?.speaks_with || !chosen || mv.speaks_with === chosen) return "";
+  if (mv.loaded && mv.loaded !== chosen) return `${short(mv.loaded)} is loaded and speaks until ${short(chosen)} is.`;
+  return `Speaks with ${short(mv.speaks_with)} until ${short(chosen)} is loaded.`;
+}
+
 /** What a persona is — ONE sentence for Personas, Cast and the sidebar (the
  *  one-wording audit B9, 2026-10-06; it was phrased four ways). */
 export const PERSONA_IS =

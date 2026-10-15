@@ -523,7 +523,13 @@ export function isModelLoaded(engineId, model) {
 export async function versionsOf(state, voiceId, language = null) {
   const vm = await self.voiceModel(state, voiceId);
   if (vm === null) return null;
-  const rows = _familyRows(vm.engineId, vm.model);
+  let rows = _familyRows(vm.engineId, vm.model);
+  // Pocket has one model per language: only the versions that speak the persona's language are
+  // offered (decided 2026-10-15, C5) — the rule `variantForModel` picks by.
+  if (language && new Set(rows.map(langKey)).size > 1) {
+    const want = baseLang(language);
+    rows = rows.filter((r) => (r.languages || []).some((x) => baseLang(x) === want));
+  }
   let picked;
   try {
     picked = self.variantForModel(vm.engineId, vm.model, language);
@@ -551,8 +557,10 @@ export async function versionsOf(state, voiceId, language = null) {
     model: vm.model,
     model_name: vm.name,
     speaks_with: picked,
-    loaded: rows.length ? loaded : null,
-    default: modelOfVariant(def) === vm.model ? (def ?? null) : null,
+    // Loaded and default only where they are versions offered: another language's Pocket model
+    // never speaks this persona and is never its choice.
+    loaded: rows.some((r) => r.id === loaded) ? loaded : null,
+    default: rows.some((r) => r.id === def) ? def : null,
     versions: rows.map((r) => ({
       id: r.id,
       name: r.name || r.id,

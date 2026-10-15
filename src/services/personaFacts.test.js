@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from "vitest";
 
 vi.mock("./prefs.js", () => ({ readPref: (_k, fallback) => fallback, writePref: () => {} }));
 
-const { bookLanguageOptions, directionCell, sameLanguage, tagCount, voiceKindWord, voiceLabel } =
+const { bookLanguageOptions, directionCell, sameLanguage, tagCount, versionLoadNote, voiceKindWord, voiceLabel } =
   await import("./personaFacts.js");
 
 describe("personaFacts — one vocabulary for voices and personas", () => {
@@ -40,5 +40,16 @@ describe("personaFacts — one vocabulary for voices and personas", () => {
     expect(opts[0]).toEqual({ value: "", label: "Not set" });
     expect(opts.map((o) => o.value)).toEqual(expect.arrayContaining(["en", "ko", "ja", "fr", "en-US"]));
     expect(opts.find((o) => o.value === "ja").label).toBe("Japanese");
+  });
+
+  it("says which Version speaks until the chosen one is loaded", () => {
+    const short = (id) => ({ "q-1.7b": "1.7B", "q-0.6b": "0.6B" })[id] || id;
+    // Decided 2026-10-15 (C5): the chosen one isn't downloaded, a downloaded one speaks.
+    expect(versionLoadNote({ speaks_with: "q-0.6b", loaded: null }, "q-1.7b", short)).toBe("Speaks with 0.6B until 1.7B is loaded.");
+    // Another version loaded (2026-10-05).
+    expect(versionLoadNote({ speaks_with: "q-0.6b", loaded: "q-0.6b" }, "q-1.7b", short)).toBe("0.6B is loaded and speaks until 1.7B is.");
+    // The chosen one speaks: nothing to say, no Load.
+    expect(versionLoadNote({ speaks_with: "q-1.7b", loaded: null }, "q-1.7b", short)).toBe("");
+    expect(versionLoadNote(null, "q-1.7b", short)).toBe("");
   });
 });

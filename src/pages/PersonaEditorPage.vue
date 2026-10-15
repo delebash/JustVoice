@@ -57,7 +57,7 @@ import { openProjectInStudio } from "../services/openProject.js";
 import { projectsService } from "../services/projects.js";
 import {
   DIRECTION_OPTIONS, VOICE_KINDS as KINDS, baseLang, directionCell, directionSentence, tagCount, voiceKind as kindOf, voiceKindLabel,
-  voiceLabel,
+  versionLoadNote, voiceLabel,
 } from "../services/personaFacts.js";
 import { auditionVoice } from "../services/voiceAudition.js";
 import { genderWord, voiceGender, voiceGenderWord } from "../services/voiceGender.js";
@@ -549,6 +549,7 @@ async function chooseVersion(id) {
 }
 // The chosen version isn't what speaks (a version loaded, or downloaded while
 // the chosen one isn't): that one speaks until this loads.
+const versionNote = computed(() => versionLoadNote(modelVersion.value, chosenVersion.value, versionShort));
 const versionLoadTask = ref(null);
 async function loadChosenVersion() {
   const mv = modelVersion.value;
@@ -1065,11 +1066,10 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
                 Also on <a href="#/ai">AI Settings → Speech engines</a>.
               </p>
               <!-- Load shows whenever what speaks isn't the chosen version — loaded or
-                   only downloaded (the narrowings review C5, 2026-10-13). -->
-              <div v-if="modelVersion?.speaks_with && chosenVersion && modelVersion.speaks_with !== chosenVersion"
-                class="jv-inline-row">
-                <span v-if="modelVersion.loaded && modelVersion.loaded !== chosenVersion" class="jv-hint">{{ versionShort(modelVersion.loaded) }} is loaded and speaks until
-                  {{ versionShort(chosenVersion) }} is.</span>
+                   only downloaded (the narrowings review C5, 2026-10-13); the note beside it
+                   says which speaks until then (decided 2026-10-15). -->
+              <div v-if="versionNote" class="jv-inline-row">
+                <span class="jv-hint">{{ versionNote }}</span>
                 <UiButton intent="secondary" size="small" :label="`Load ${versionShort(chosenVersion)}`"
                   :loading="versionLoadTask?.state === 'running'" @click="loadChosenVersion" />
               </div>
