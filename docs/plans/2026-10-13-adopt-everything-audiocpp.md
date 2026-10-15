@@ -6,8 +6,9 @@ user: "the whole point was to adopt everything audio cpp has to offer use everth
 and only add anything custom that we need and make it standard"; "go and i want evertyhing done
 right we adopt all that audio cpp has in engines anything we need to add we do so in a stnadard
 way". The narrowings review (`docs/plans/2026-10-13-narrowings-review/`) found what the app leaves
-out today; its group C is this plan's list. **Nothing here is built until the user's word on this
-plan.** Facts: RESEARCH §1 (the runtime), §1.4 (our fork, v0.9.1), §10.13–10.14.
+out today; its group C is this plan's list. **Decided 2026-10-15** — §7's seven questions, the user:
+"your rec go" (TASKS "The register's 35 questions and the adoption plan's 7, answered"); the specs
+are upstream v0.9.2's (released 2026-10-15; slice 6's first step took the newest release). Facts: RESEARCH §1 (the runtime), §1.4 (our fork, v0.9.1), §10.13–10.14.
 
 ## 1 · What it is
 
@@ -107,8 +108,8 @@ No NOT STANDARD piece is new here: the catalog script and the curated files exis
    the same seed; the user's data opens with nothing missing.
 5. **The user docs** (`docs/engines.md` rewritten for a list we don't hand-write) and the mock.
 
-Slice 6 of the engine list (our fork on v0.9.1, the jv.6 release, the pin) lands first: this plan
-builds on v0.9.1's specs.
+Slice 6 of the engine list (our fork on v0.9.2, the v0.9.2-jv.6 release, the pin) lands first: this
+plan builds on v0.9.2's specs.
 
 ## 6 · Blast radius (greps, 2026-10-13)
 
@@ -133,7 +134,7 @@ server/src/engines/audiocpp/runtime_options.js · server/src/models.js (KnobSpec
 server/tests/{audiocpp_generated,audiocpp_catalog,variant_wiring,engine_knob_wiring,engine_manifests,audit_step5,emotion_wiring,line_model_settings,persona_render,turbo_cloning,audiocpp_switch}.test.js · src/services/{capabilities,facets,newPersonas,personaFacts,voiceGender}.test.js
 ```
 
-## 7 · Questions (a lean under each)
+## 7 · Questions (a lean under each) — decided 2026-10-15: every lean
 
 1. **This plan as written** — the five slices in that order, after slice 6? Lean: yes.
 2. **Captions with a recogniser other than Qwen3-ASR** — word timings need an aligner, and audio.cpp
