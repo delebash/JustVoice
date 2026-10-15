@@ -334,7 +334,7 @@ onMounted(() => {
                 :key="p.key"
                 class="effects-modal__param"
               >
-                <span>{{ paramLabel(p.label).name }}<span v-if="paramLabel(p.label).unit" class="jv-unit">{{ ` ${paramLabel(p.label).unit}` }}</span></span>
+                <span>{{ paramLabel(p.label).name }}<span v-if="paramLabel(p.label).unit" class="ui-unit">{{ ` ${paramLabel(p.label).unit}` }}</span></span>
                 <UiCheckbox
                   v-if="p.type === 'boolean'"
                   :model-value="!!ef.params?.[p.key]"

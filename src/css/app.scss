@@ -236,9 +236,6 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   text-transform: uppercase; color: var(--ink-3); flex: none;
 }
 .jv-eyebrow em { text-transform: none; letter-spacing: 0; font-weight: 400; font-style: normal; }
-/* A unit inside a label drawn in capitals keeps its case — "GAIN (dB)", never "GAIN (DB)"
-   (2026-10-15: the Effects chain editor's knobs). Wrap only the unit. */
-.jv-unit { text-transform: none; }
 .jv-eyebrow--row { display: flex; align-items: center; gap: 8px; }
 .jv-pane-card { padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
 .jv-pane-card__h { display: flex; align-items: center; gap: 8px; }
