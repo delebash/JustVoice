@@ -308,6 +308,19 @@ test("the_runtime_row_saves_the_cpu_process_threads_without_touching_the_build",
   expect((await c.put("/v1/speech-runtime", { json: { backend: "vulkan", runaway_min_s: -1 } })).status).toBe(400);
 });
 
+test("the_runtime_row_shows_and_saves_the_card_overflow_limit", async () => {
+  // M7 (decided 2026-10-15): `spill_mb` on the runtime row, default 256; saving it stops nothing.
+  const c = await runtimeClient(tmpPath());
+  expect((await c.get("/v1/speech-runtime")).json().spill_mb).toBe(256);
+  const stop = vi.spyOn(runtime, "shutdownServer");
+  const r = await c.put("/v1/speech-runtime", { json: { backend: "auto", gpu: 0, cpu_threads: 0, cpu_min_realtime: 2, spill_mb: 512 } });
+  expect(r.status).toBe(200);
+  expect(r.json().spill_mb).toBe(512);
+  expect(stop).not.toHaveBeenCalled();
+  expect((await c.get("/v1/settings")).json().engines.speech_runtime.spill_mb).toBe(512);
+  expect((await c.put("/v1/speech-runtime", { json: { spill_mb: -1 } })).status).toBe(400);
+});
+
 test("the_runtime_row_refuses_a_build_this_os_has_none_of", async () => {
   const c = await runtimeClient(tmpPath());
   expect((await c.put("/v1/speech-runtime", { json: { backend: "metal" } })).status).toBe(400);

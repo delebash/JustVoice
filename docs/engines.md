@@ -128,6 +128,13 @@ without end.
   2.3× at 4 on an 8-core Ryzen 7 5700X. Changing it reloads the models on the
   CPU; it is not shown when the runtime is the CPU build, which runs everything
   at this setting anyway.
+- **Card overflow limit (MB)** — beside it (since 2026-10-15): *A card load that
+  puts more than this in the computer's memory counts as not fitting; Auto then
+  runs the model on the CPU.* It starts at 256; see
+  [Where each model runs](#where-each-model-runs--the-graphics-card-or-the-cpu)
+  for how a load is measured (on Windows). Changing it restarts nothing — the
+  next load on the card reads it. Like CPU threads, it is not shown when the
+  runtime is the CPU build.
 
 **eSpeak NG.** Kokoro and KittenTTS read text through eSpeak NG, the open-source
 pronunciation library. Installing the runtime also downloads eSpeak NG
@@ -364,8 +371,10 @@ it:
 
 - **about X GB, measured here** — an earlier load measured it on this machine.
   That number wins. It **fits this card** when it and the 1 GB safety margin
-  fit — the rule *Auto* loads it by; otherwise the row says *more than this card
-  has*.
+  fit — the rule *Auto* loads it by; when it fits only without the margin the
+  row says *more than this card holds with the 1 GB safety margin* (since
+  2026-10-15), and when it is more than the whole card, *more than this card
+  has*. The margin shown is the one your server keeps.
 - **needs about X GB · fits this card** — for a model JustVoice hasn't measured
   yet: audio.cpp's own estimate, or the size of its download when that is more.
   audio.cpp gives one estimate per model, shared by all its precisions, so a
@@ -447,9 +456,19 @@ card for the AI model"). The reason it matters: on an 8 GB card, Kokoro on the
 graphics card pushed a 6.8 GB language model out, while on the CPU it speaks
 three times faster than real time and takes nothing from the card.
 
-**Auto** decides at each load, in this order:
+**Auto** first checks the card's real free memory (since 2026-10-15): a model
+whose graphics memory, measured on your machine, doesn't fit with the 1 GB
+safety margin beside what other programs use on the card — a game, a second AI
+server — runs on the CPU, and its *Runs on* line says *other programs are using
+about 6.3 GB of the graphics card — this may be slow on the CPU* (or its
+measured speed there). Before, Auto picked the card and the load was refused
+there. The AI model JustVoice loaded doesn't count as another program: it can
+make room. A model never measured on your card isn't checked this way — its
+first load measures it, and a load that doesn't fit moves to the CPU (below).
+Then Auto decides, in this order:
 
-1. **The graphics card** when nothing else is on it — or when this model's
+1. **The graphics card** when the model fits in the card's free memory — the
+   *Runs on* line says *it fits in the card's free memory* — or when this model's
    graphics memory, measured on your machine, fits beside the AI model (its
    peak at the length it speaks in — see
    [Long lines](#long-lines-and-what-a-model-costs)).
@@ -481,7 +500,8 @@ in the computer's memory instead of failing, and the model then runs slowly. So
 after each such load JustVoice reads how much of the computer's memory the speech
 runtime's graphics allocations use (Windows' *Shared GPU memory* for that
 process); a model that fits leaves it where it was, and one that grew it by more
-than `speech_runtime.spill_mb` (256 MB) is unloaded and loaded on the CPU too.
+than the runtime row's **Card overflow limit (MB)** (`speech_runtime.spill_mb`,
+256 MB unless you change it) is unloaded and loaded on the CPU too.
 Either way JustVoice remembers it, for this machine and this speech runtime
 build, so the next load goes straight to the CPU; a new speech runtime build
 tries the card again, and so does pinning the model to **GPU** — once a load
@@ -520,7 +540,7 @@ message names it and suggests unloading it first, unless the check already
 counted the AI model's memory as given back.
 
 The 2× bar is `speech_runtime.cpu_min_realtime` in the settings, the spill
-threshold `speech_runtime.spill_mb`, and what counts as a runaway line
+threshold `speech_runtime.spill_mb` (also on the runtime row), and what counts as a runaway line
 `speech_runtime.runaway_s_per_char` and `runaway_min_s` (see
 [Settings reference](settings-reference.md)); the CPU threads are on the runtime
 row.
@@ -797,8 +817,8 @@ the **⋯** menu on an AI model row under **LLM providers**.
 **What for?** beside the Transcription heading says what speech recognition
 serves: it is not a voice, it turns speech into text — Captures' dictation, the
 words of a capture you clone a voice from (they fill in its transcript), and,
-for other apps, transcripts and the word timings of captions through
-`/v1/transcribe`, `/v1/align` and the MCP tool `justvoice.transcribe`.
+for other apps, transcripts and caption timings (other apps reach them through
+`/v1/transcribe`, `/v1/align` and the MCP tool `justvoice.transcribe`).
 
 At the bottom of an engine group with anything downloaded, **Delete downloaded
 models** removes all of that engine's models at once. The speech runtime stays

@@ -195,7 +195,37 @@ test("auto_ignores_the_estimate_for_a_hand_wired_model", async () => {
 
 test("auto_takes_the_card_when_nothing_else_is_on_it", async () => {
   const mgr = mgrFor();
-  expect((await mgr.placementFor(mgr.getManifest("kokoro"), "tts", "kokoro-82m-q8"))[0]).toBe("gpu");
+  expect(await mgr.placementFor(mgr.getManifest("kokoro"), "tts", "kokoro-82m-q8")).toEqual(["gpu", "it fits in the card's free memory", false]);
+});
+
+test("auto_checks_what_other_programs_hold_on_the_card_first", async () => {
+  // Decided 2026-10-15: another program held 6,490 of the card's 8,192 MB, Auto still picked the
+  // card ("nothing else is on the graphics card") and the card's admission refused VoxCPM2.
+  const mgr = mgrFor();
+  vi.spyOn(EngineManager.prototype, "_priceMb").mockReturnValue(2937);
+  const used = vi.spyOn(EngineManager.prototype, "poolUsedMb");
+  const chatterbox = () => mgr.placementFor(mgr.getManifest("chatterbox"), "tts", "chatterbox-multilingual-v2-q8");
+  // It fits beside them, with the safety margin: the card.
+  used.mockResolvedValue(600);
+  expect(await chatterbox()).toEqual(["gpu", "it fits in the card's free memory", false]);
+  // It doesn't: the CPU, saying what they hold.
+  used.mockResolvedValue(6490);
+  expect(await chatterbox()).toEqual([
+    "cpu",
+    "other programs are using about 6.3 GB of the graphics card — this may be slow on the CPU",
+    false,
+  ]);
+  // A measured speed on the CPU takes the warning's place, as on Auto's other moves there.
+  vi.spyOn(EngineManager.prototype, "cpuSpeed").mockReturnValue([0.4, true]);
+  expect((await chatterbox())[1]).toBe("other programs are using about 6.3 GB of the graphics card — 0.4× real time here");
+  // The AI model's booking is not another program's: it can be unloaded to make room.
+  aiOnCard(5000);
+  used.mockResolvedValue(5600);
+  expect((await chatterbox())[0]).toBe("gpu");
+  // The user's pin to the GPU still wins.
+  used.mockResolvedValue(6490);
+  vi.spyOn(EngineManager, "_userPlacement").mockReturnValue("gpu");
+  expect(await chatterbox()).toEqual(["gpu", "your choice", false]);
 });
 
 test("auto_keeps_a_fast_model_off_the_card_beside_the_ai_model", async () => {

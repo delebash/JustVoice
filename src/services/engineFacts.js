@@ -51,16 +51,20 @@ const gb = (mb) => Math.round((mb / 1024) * 10) / 10;
  * safety margin (`marginMb`, the server's: /v1/engines/vram `safety_margin_mb`) are no more than
  * the card — the rule Auto loads by (manager.placementFor; the narrowings review, M4). `runsOn`
  * is where the server would load it now: a model too big by the estimate whose files fit the
- * card easily is tried on the card first (2026-10-12), and its Runs on line says why. →
- * {text, warn, gb, fits}; gb is null when neither is known, fits null when there's no card or
- * no number. */
+ * card easily is tried on the card first (2026-10-12), and its Runs on line says why. A
+ * measured size that fits the card only without the margin says so, with the margin's live
+ * size (decided 2026-10-15, M4). → {text, warn, gb, fits}; gb is null when neither is known,
+ * fits null when there's no card or no number. */
 export function memoryText({ measuredMb, needGb, runsOn = null }, cardMb, marginMb = 0) {
   const fitsCard = (mb) => (cardMb ? mb <= cardMb : null);
   const fitWords = (fits) => (fits === null ? "" : fits ? " · fits this card" : null);
   if (measuredMb) {
     const g = gb(measuredMb);
     const fits = fitsCard(measuredMb + marginMb);
-    return { text: `about ${g} GB, measured here${fitWords(fits) ?? " · more than this card has"}`, warn: fits === false, gb: g, fits };
+    const notFit = fitsCard(measuredMb)
+      ? ` · more than this card holds with the ${gb(marginMb)} GB safety margin`
+      : " · more than this card has";
+    return { text: `about ${g} GB, measured here${fitWords(fits) ?? notFit}`, warn: fits === false, gb: g, fits };
   }
   if (needGb) {
     const fits = fitsCard(needGb * 1024);

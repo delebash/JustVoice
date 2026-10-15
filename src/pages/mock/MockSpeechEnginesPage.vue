@@ -51,11 +51,11 @@ function placeText(m) {
   return `${m.loaded ? "Running on" : "Loads on"} ${WHERE[runsOn(m)]}${why ? ` — ${why}` : ""}`;
 }
 // "Try the card again" forgets the remembered failed card load; Auto then answers as the server
-// does with nothing else on the graphics card.
+// does when the model fits in the card's free memory.
 function tryCardAgain(m) {
   m.failed_on_card = false;
   m.runs_on = "gpu";
-  m.runs_on_reason = "nothing else is on the graphics card";
+  m.runs_on_reason = "it fits in the card's free memory";
 }
 
 const memoryOf = (m) =>

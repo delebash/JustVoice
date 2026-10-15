@@ -351,6 +351,12 @@ function setCpuThreads(n) {
   if (!runtime.value || v === runtime.value.cpu_threads_used) return;
   setRuntime({ cpu_threads: v === runtime.value.physical_cores ? 0 : v });
 }
+// The card overflow limit (`spill_mb`): restarts nothing — the next card load reads it.
+function setSpillMb(n) {
+  const v = Math.max(0, Math.round(Number(n) || 0));
+  if (!runtime.value || v === runtime.value.spill_mb) return;
+  setRuntime({ spill_mb: v });
+}
 
 // ── Where each model runs (CPU placement, 2026-10-02) ──────────────────
 // Auto / GPU / CPU per model; the server says where it runs — or where a load would
@@ -913,6 +919,12 @@ onBeforeUnmount(() => {
             :title="`How many threads the models placed on the CPU compute with. This machine has ${runtime.physical_cores} cores; more threads, faster speech, up to that. Changing it reloads the models on the CPU.`"
             @update:modelValue="setCpuThreads" />
           <span>of {{ runtime.physical_cores }} cores</span>
+          <!-- spill_mb (decided 2026-10-15, M7): the label and hover are the approved words. -->
+          Card overflow limit (MB)
+          <UiNumber :modelValue="runtime.spill_mb" :min="0" :step="1" size="small" width="token"
+            :use-grouping="false"
+            title="A card load that puts more than this in the computer's memory counts as not fitting; Auto then runs the model on the CPU."
+            @update:modelValue="setSpillMb" />
         </template>
       </div>
     </div>
@@ -966,8 +978,7 @@ onBeforeUnmount(() => {
       <p v-if="sec.id === 'stt' && whatFor" class="jv-hint ev-whatfor">
         Speech recognition is not a voice — nothing here speaks. It turns speech into text: Captures'
         dictation, the words of a capture you clone a voice from (they fill in its transcript), and,
-        for other apps, transcripts and the word timings of captions through /v1/transcribe, /v1/align
-        and the MCP tool justvoice.transcribe.
+        for other apps, transcripts and caption timings.
       </p>
 
       <div v-for="e in sec.engines" :key="e.id" class="ev-group">

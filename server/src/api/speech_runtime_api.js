@@ -62,6 +62,9 @@ export const SpeechRuntimeInfo = T.Object({
   cpu_threads_used: opt(T.Integer(), 0), // what the CPU process runs with
   physical_cores: opt(T.Integer(), 0),
   cpu_min_realtime: opt(T.Number(), 2.0), // Auto's bar for the CPU
+  // A card load that grows the runtime's shared GPU memory by more than this (MB) counts as not
+  // fitting; Auto then loads the model on the CPU (the runtime row's control, decided 2026-10-15).
+  spill_mb: opt(T.Integer(), 256),
   cpu_running: opt(T.Boolean(), false),
   cpu_pid: opt(nullable(T.Integer()), null),
   // The optional Japanese dictionary (gap 7) — null while the pinned runtime cannot use it.
@@ -126,6 +129,7 @@ export function _info() {
     cpu_threads_used: runtime.cpuThreads(),
     physical_cores: runtime.physicalCores(),
     cpu_min_realtime: s.cpu_min_realtime,
+    spill_mb: runtime.spillMb(),
     cpu_running: cpu.length > 0,
     cpu_pid: cpu.length ? cpu[0].pid : null,
     japanese_dictionary: _japaneseDictionary(),

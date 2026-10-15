@@ -6,8 +6,18 @@ describe("memoryText", () => {
   // The narrowings review, M4: a measured size fits the card with the server's safety margin —
   // the rule Auto loads by.
   it("fits a measured size only with the safety margin", () => {
+    // Decided 2026-10-15: one that fits only without the margin says so, with the live values.
     expect(memoryText({ measuredMb: 7500 }, 8192, 1024)).toMatchObject({
-      text: "about 7.3 GB, measured here · more than this card has",
+      text: "about 7.3 GB, measured here · more than this card holds with the 1 GB safety margin",
+      warn: true,
+      fits: false,
+    });
+    expect(memoryText({ measuredMb: 7500 }, 8192, 1536).text).toBe(
+      "about 7.3 GB, measured here · more than this card holds with the 1.5 GB safety margin",
+    );
+    // More than the card itself, margin aside.
+    expect(memoryText({ measuredMb: 9000 }, 8192, 1024)).toMatchObject({
+      text: "about 8.8 GB, measured here · more than this card has",
       warn: true,
       fits: false,
     });

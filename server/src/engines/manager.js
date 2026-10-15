@@ -889,6 +889,23 @@ export class EngineManager {
     }
   }
 
+  /** Graphics memory other programs hold now, MB: the card's measured use beyond everything
+   * booked on it (the speech models and an awake AI model) — the usage the card's admission
+   * can't make room in (`_admitMemory`'s "foreign"). null = not measured. */
+  async _otherProgramsCardMb() {
+    const hw = await this._hardware();
+    try {
+      const total = hw !== null ? pyInt(hardware.budgetTotalMb(hw)) : 0;
+      if (total <= 0) return null;
+      const used = await this.poolUsedMb({ fresh: true });
+      if (used === null) return null;
+      const committed = Math.max(0, total - (await arbiter.getArbiter().remainingMb(hw)));
+      return Math.max(0, used - committed);
+    } catch {
+      return null;
+    }
+  }
+
   /** Where a load of this model goes now: [`"gpu"` | `"cpu"`, why — a clause the row says
    * after "Runs on the CPU ·", unload the AI model first?]. `cardFailed`: this load's try on
    * the graphics card just failed or spilled. */
@@ -952,7 +969,18 @@ export class EngineManager {
         return ["cpu", `${why} — ${speed || "this may be slow on the CPU"}`, false];
       }
     }
-    if (!(await this._aiModelOnCard())) return ["gpu", cardFirst || "nothing else is on the graphics card", false];
+    // Auto checks the card's real free memory first (decided 2026-10-15): a measured price that,
+    // with the safety margin, doesn't fit beside what other programs hold would be refused at the
+    // card's admission, which can make room only among what is booked here — the CPU instead.
+    const others = prior && cardMb > 0 ? await this._otherProgramsCardMb() : null;
+    if (others !== null && prior + margin + others > cardMb) {
+      return [
+        "cpu",
+        `other programs are using about ${_gb(others / 1024)} GB of the graphics card — ${speed || "this may be slow on the CPU"}`,
+        false,
+      ];
+    }
+    if (!(await this._aiModelOnCard())) return ["gpu", cardFirst || "it fits in the card's free memory", false];
     const free = prior ? await this._freeCardMb(kind, m.id) : null;
     if (prior && free !== null && prior <= free) return ["gpu", `it fits beside the AI model (${prior} MB)`, false];
     if (x !== null && x >= runtime.cpuMinRealtime()) return ["cpu", `${speed}, which keeps the graphics card for the AI model`, false];
