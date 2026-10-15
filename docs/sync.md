@@ -42,7 +42,8 @@ The line at the top tells you when this computer last synced, and with which one
 and how: by hand, the cloud folder, or the network.
 
 When another computer's changes arrive while JustVoice is open, the window reloads by itself to
-show them.
+show them. While a dialog is open or the cursor is in a text box, the reload waits until you
+close the dialog or leave the box, so nothing you are typing is lost.
 
 ---
 
