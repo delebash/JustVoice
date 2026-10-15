@@ -360,7 +360,6 @@ async function removePersona(p) {
                 voice_instruct: snapshot.voice_instruct,
                 note: snapshot.note,
                 language: snapshot.language,
-                avatar_path: snapshot.avatar_path,
                 default_delivery: snapshot.default_delivery || {},
                 effects_chain: snapshot.effects_chain || [],
                 lexicon_id: snapshot.lexicon_id,

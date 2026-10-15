@@ -9,7 +9,7 @@ the corrections you made to who says what — and your personas and lexicons (th
 pronunciations).
 
 **What stays on each computer:** the audio — rendered takes, generations, exports and dictation
-recordings; Stories timelines; your voices; persona pictures; settings, AI providers and keys;
+recordings; Stories timelines; your voices; settings, AI providers and keys;
 the downloaded engines and models. The audio is large and renders again from the script; voices
 travel by hand (see *Voices* below).
 

@@ -26,7 +26,6 @@ function otherDevice(name) {
   h.register(TABLES);
   h.createTables(TABLES);
   const tables = Object.fromEntries(SYNC_TABLES.map((t) => [t, {}]));
-  tables.personas = { exclude: ["avatar_path"] };
   return { h, sync: openSync(betterSqlite3Adapter(h.raw), { app: "justvoice", schemaVersion: SYNC_SCHEMA_VERSION, tables, deviceName: name }) };
 }
 
@@ -44,7 +43,7 @@ function seedProjects() {
     h.insert("lexicons", { id: "l2", name: "Other words", scope: "project", project_id: "p2" });
     h.insert("lexicons", { id: "l4", name: "Everywhere", scope: "global" });
     h.update("projects", { default_lexicon_id: "l1" }, { id: "p1" });
-    h.insert("personas", { id: "mira", name: "Mira", lexicon_id: "l2", avatar_path: "personas/mira.png" });
+    h.insert("personas", { id: "mira", name: "Mira", lexicon_id: "l2" });
     h.insert("personas", { id: "idle", name: "Idle" });
     h.insert("lexicons", { id: "l3", name: "Mira's words", scope: "persona", persona_id: "mira" });
     for (const [id, lex] of [["e1", "l1"], ["e2", "l2"], ["e3", "l3"], ["e4", "l4"]]) {
@@ -67,14 +66,15 @@ const idsByTable = (changes) => {
   return Object.fromEntries(Object.entries(out).map(([t, s]) => [t, [...s].sort()]));
 };
 
-test("the projects, scripts, personas and lexicons sync; the audio and the avatar don't", async () => {
+test("the projects, scripts, personas and lexicons sync; the audio doesn't", async () => {
   await appClient();
   seedProjects();
   const changes = getSync().changesSince({}).changes;
   const tables = idsByTable(changes);
   expect(Object.keys(tables).sort()).toEqual([...SYNC_TABLES].sort());
   expect(tables.personas).toEqual(["idle", "mira"]);
-  expect(changes.some((ch) => ch.c === "avatar_path")).toBe(false);
+  // A persona has no picture (decided 2026-10-15, P14: no screen set one; the field is gone).
+  expect(session.cfg.handle.columnNames("personas")).not.toContain("avatar_path");
 });
 
 test("a project's file holds it complete and closed over its keys; importing it deletes nothing", async () => {

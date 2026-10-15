@@ -6,7 +6,7 @@
 export const TABLES = [
   {
     "name": "personas",
-    "ddl": "CREATE TABLE personas (\n\tid VARCHAR NOT NULL, \n\tname VARCHAR NOT NULL, \n\tlanguage VARCHAR, \n\tavatar_path VARCHAR, \n\tvoice_id VARCHAR, \n\tvoice_instruct TEXT, \n\tnote TEXT, \n\tdefault_delivery TEXT, \n\teffects_chain TEXT, \n\tlexicon_id VARCHAR, \n\timported_from VARCHAR, \n\timported_id VARCHAR, \n\tcreated_at DATETIME, \n\tupdated_at DATETIME, \n\tPRIMARY KEY (id), \n\tFOREIGN KEY(lexicon_id) REFERENCES lexicons (id) ON DELETE SET NULL\n)",
+    "ddl": "CREATE TABLE personas (\n\tid VARCHAR NOT NULL, \n\tname VARCHAR NOT NULL, \n\tlanguage VARCHAR, \n\tvoice_id VARCHAR,\n\tvoice_instruct TEXT, \n\tnote TEXT, \n\tdefault_delivery TEXT, \n\teffects_chain TEXT, \n\tlexicon_id VARCHAR, \n\timported_from VARCHAR, \n\timported_id VARCHAR, \n\tcreated_at DATETIME, \n\tupdated_at DATETIME, \n\tPRIMARY KEY (id), \n\tFOREIGN KEY(lexicon_id) REFERENCES lexicons (id) ON DELETE SET NULL\n)",
     "indexes": [],
     "columns": {
       "id": {
@@ -22,9 +22,6 @@ export const TABLES = [
       "language": {
         "kind": "text",
         "default": "en"
-      },
-      "avatar_path": {
-        "kind": "text"
       },
       "voice_id": {
         "kind": "text"

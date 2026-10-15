@@ -10,8 +10,8 @@
 // What is JustVoice's own is here: which tables sync (a project with its chapters, lines,
 // speakers and corrections; the personas; the lexicons and their words — never the audio:
 // takes, generations, render jobs, captures; never the voices, which are files; never the
-// settings or the AI tables), the persona avatar (a file on this device) kept per device, where
-// the `sync` section and the bearer tokens live, what a by-hand file holds, and the error shape.
+// settings or the AI tables), where the `sync` section and the bearer tokens live, what a by-hand
+// file holds, and the error shape.
 
 import { betterSqlite3Adapter, parseStamp } from "@delebash/sqlite-sync";
 import { createAppSync } from "@delebash/sqlite-sync/app";
@@ -33,8 +33,6 @@ export const SYNC_TABLES = ["projects", "scenes", "blocks", "speakers", "speaker
 function tableConfig() {
   const out = {};
   for (const t of SYNC_TABLES) out[t] = {};
-  // the avatar is a file in this device's data folder; files don't sync
-  out.personas = { exclude: ["avatar_path"] };
   return out;
 }
 

@@ -296,7 +296,6 @@ export function router() {
       llm_rewrite_enabled: body.llm_rewrite_enabled,
       llm_model: body.llm_model,
       language,
-      avatar_path: body.avatar_path,
       note: body.note,
       effects_chain: body.effects_chain,
     });
@@ -329,7 +328,7 @@ export function router() {
       });
     }
     if (sent.has("default_delivery")) fields.default_delivery = _checkedDelivery(body.default_delivery || construct(PersonaDelivery, {}));
-    for (const key of ["avatar_path", "voice_instruct", "note", "effects_chain", "lexicon_id"]) {
+    for (const key of ["voice_instruct", "note", "effects_chain", "lexicon_id"]) {
       if (sent.has(key)) {
         const value = body[key];
         fields[key] = typeof value === "string" ? strip(value) || null : value;

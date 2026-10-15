@@ -722,7 +722,6 @@ const PERSONA_PROPS = {
   // Optional — a persona can be saved before its voice is picked.
   voice_id: opt(nullable(T.String()), null),
   language: opt(T.String(), "en"),
-  avatar_path: opt(nullable(T.String()), null),
   // Spoken-delivery instruction — the ONE field that changes the audio. **Never an LLM
   // rewrite of the manuscript.**
   voice_instruct: opt(nullable(T.String()), null),
@@ -764,7 +763,6 @@ export const CreatePersonaRequest = T.Object({
   voice_id: opt(nullable(T.String()), null),
   // Left out = the voice's own language (or "en" with no voice yet).
   language: opt(nullable(T.String()), null),
-  avatar_path: opt(nullable(T.String()), null),
   voice_instruct: opt(nullable(T.String()), null),
   note: opt(nullable(T.String()), null),
   default_delivery: optModel(PersonaDelivery),
@@ -780,7 +778,6 @@ export const UpdatePersonaRequest = strictObject({
   name: opt(nullable(T.String()), null),
   voice_id: opt(nullable(T.String()), null),
   language: opt(nullable(T.String()), null),
-  avatar_path: opt(nullable(T.String()), null),
   voice_instruct: opt(nullable(T.String()), null),
   note: opt(nullable(T.String()), null),
   default_delivery: opt(nullable(PersonaDelivery), null),
