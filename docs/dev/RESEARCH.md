@@ -159,6 +159,12 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
   one a 500, and a string `error` body raised AttributeError — until 2026-10-04.) Its own
   free-memory guard is off (`min_free_memory_mb` 0). — *code + tests, 2026-10-04* ·
   `runtime.py` `_raise_for`, `_post`; audit §5 C8, D8, §13.5.
+- Since v0.9.2 the routes live in `app/server/request_dispatch.h` (shared with the parallel
+  server) with the same paths and bodies JustVoice sends (`/health` :42, `/v1/models/load` :59,
+  `/v1/audio/speech` :100, `/transcriptions/details` :115, `/alignments` :121, the unload routes
+  :139, :142), and an invalid request is an `InvalidRequestError` → 400 (:154), which
+  `runtime.js` `_raiseFor` passes through. — *code, 2026-10-15* · our fork's merge of v0.9.2
+  (`85d97a43`).
 - A runtime log over 10 MB becomes `<name>.1.log` at its process's next start, and an error
   quotes only the log's last 64 KB. (was: never rotated, and read whole for every error —
   until 2026-10-04.) — *code + tests, 2026-10-04* · `runtime.py` `_rotate_log`, `log_tail`.
@@ -171,10 +177,24 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
 
 - Request mapping per family: Kokoro `voice` = preset id, language = the voice-prefix code;
   Qwen3 `options.speaker` (CustomVoice), `voice_ref` + `reference_text` (Base), `instructions`
-  (VoiceDesign), language **a name** (`English` — `en` is rejected); Chatterbox `voice_ref`,
-  language a code. — *measured on v0.9.0, 2026-10-01* · switch §3.4.
+  (VoiceDesign), language **a name** (`English`); Chatterbox `voice_ref`, language a code. —
+  *measured on v0.9.0, 2026-10-01* · switch §3.4. Since v0.9.2 Qwen3-TTS also takes ten language
+  codes (`en`, `zh` …; `qwen3_tts/talker.cpp:515`), and its options are `voice_id` and `instruct`,
+  the old `speaker` and `instruction` still read (`qwen3_tts/session.cpp:680-699`). (was: `en`
+  rejected — until v0.9.2.) — *code, 2026-10-15* · the v0.9.2 merge.
 - Only Kokoro and Kitten reject an unknown option name; Qwen3, Chatterbox, Turbo, VoxCPM2 and
-  Pocket ignore it silently. — *agent, 2026-10-04* · audit §5 (group D).
+  Pocket ignore it silently. — *agent, 2026-10-04* · audit §5 (group D). Since v0.9.2 the check
+  reads the runtime's specs (`package.cpp:508-532`): a dev build reads `model_specs/<family>.json`
+  from the server's working folder upward (`runtime.js` starts it in `bin/`, so
+  `../audio.cpp/model_specs`), a release (`AUDIOCPP_DEPLOYMENT_BUILD=ON`) its built-in copy, the
+  GGUF's embedded spec last (`model_spec_override: "embedded"` exists; unused). At v0.9.2 the
+  qwen3_tts, chatterbox, voxcpm2 and pocket specs list their request options (at jv.5 none did),
+  and many families renamed options — `instruction` → `instruct` (Breeze, CosyVoice3,
+  FireRedTTS3, Irodori, OmniVoice, FireRedAudio), IndexTTS2 `duration_factor` →
+  `duration_scale`, Chatterbox `s3gen_cfg_rate` → `flow_guidance_scale`, Turbo `max_tokens` —
+  each family's code still reads the old name, but no spec has an alias field (a few say so in
+  a description). So a setting saved under an old name needs our own map once `catalog.json`
+  is built from v0.9.2's specs. — *code, 2026-10-15* · the v0.9.2 merge's spec diff.
 - **eSpeak NG:** Kokoro reads only the environment variables `AUDIOCPP_ESPEAK_LIBRARY` /
   `AUDIOCPP_ESPEAK_DATA`, else loads `espeak-ng.dll` / `libespeak-ng.dll` by name; Kitten reads
   `kitten_tts.espeak_library_path` / `kitten_tts.espeak_data_path`; Kokoro refuses a session
@@ -186,11 +206,12 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
   `../audio.cpp/src/models/kokoro_tts/g2p_multilingual.cpp:92-103`,
   `src/community_models/kitten_tts/session.cpp:74`, `src/framework/text/espeak_phonemizer.cpp:71-93`;
   ours `engines/audiocpp/runtime.py` `_child_env`, `slot.py` `_entries_for`; audit §13 step 1.
-- **Seeds:** random per request on Qwen3, Chatterbox and Pocket. Kokoro and Kitten keep the
-  session's seed until a request sends one — Kokoro, measured: no seed twice gives identical
-  audio, and an unseeded line repeats the last seed sent. Turbo: none or 0 = a fixed seed.
-  VoxCPM2: none = 1234. Seed 0 is a literal seed everywhere. — *measured (Kokoro) + agent,
-  2026-10-04* · audit §5 D1.
+- **Seeds:** random per request on Qwen3, Chatterbox and Pocket, and since v0.9.2 on Kokoro and
+  Kitten too (`kokoro_tts/session.cpp:747`, `kitten_tts/session.cpp:267`). Turbo: none or 0 = a
+  fixed seed. VoxCPM2: none = 1234. Seed 0 is a literal seed everywhere. (was: Kokoro and Kitten
+  kept the session's seed until a request sent one — measured on Kokoro: no seed twice gave
+  identical audio — until v0.9.2.) — *measured (Kokoro, 2026-10-04) + code, 2026-10-15* · audit
+  §5 D1; the v0.9.2 merge.
 - **The app sends a random seed when none is set, or 0**, so "no seed" is a new take on every
   family. (was: nothing sent — Kokoro, Kitten, Turbo and VoxCPM2 repeated — until 2026-10-04.)
   — *code + tests, 2026-10-04* · `slot.py` `to_speech_request`; audit §13.5.
@@ -359,6 +380,24 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
   Ubuntu CPU/Vulkan, CUDA 12.8 Colab). Its CONTRIBUTING asks a PR that changes runtime behaviour
   for "actual runtime validation"; it has no rule on AI-written code. — *git + GitHub API,
   2026-10-11*.
+- **Our fork on upstream v0.9.2** (released 2026-10-15, 77 commits after v0.9.1): merged into
+  `jv` as `85d97a43`, pushed 2026-10-15. Six conflicts, all in our additions: the README (models
+  moved to `docs/models/`), Turbo's doc and spec (upstream's request options kept beside our
+  `speaker_reference`, `voice_encoder_weights` and the session option `conditionals_cache_slots`
+  our code reads), Turbo's header (upstream moved S3Gen into `engine::codecs::s3gen`; our voice
+  holds an `S3GenConditioning`), Kokoro's session (upstream's `voice_id`, `language` and
+  per-request seed beside our `voice_pack`), and the server (upstream moved the routes and the
+  speech-request build; `/health`'s `model_management` and the load/unload checks kept, our
+  VoxCPM2 transcript-as-prompt-audio moved into `build_speech_request`,
+  `server_protocol.cpp:213`, with a new `SpeechRequestContext::family` — upstream's VoxCPM2 still
+  reads prompt audio only from `audio_input`, `voxcpm2/session.cpp:356-366`). Upstream's #855
+  dropped `DEPENDS chatterbox` from `chatterbox_turbo`; our Turbo cloning needs core Chatterbox's
+  encoders, so it is back. Every line our fork added against v0.9.1 is present. Built with CUDA
+  12.4 in 758 s; ctest 80 of 82 — the two failures are upstream's (`kokoro_word_timings_test`
+  isn't compiled `/utf-8`, so its IPA literals break on code page 1252; `lfm2_audio_assets_test`
+  needs a model folder). v0.9.2's release workflow adds `lib-*` archives,
+  `server-config-examples.zip` and a Windows Vulkan-portable build; the `bin-*` names
+  `release.js` pins are unchanged. — *git + build + ctest, 2026-10-15*.
 
 ### 1.5 audio.cpp's own web UI
 
