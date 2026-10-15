@@ -249,10 +249,16 @@ STATE:  DECIDED 2026-10-15 (in part) — asked "what are we waiting on?", shown 
 WHY:    the approved P6 sentence pointed at a screen that can't open; the hover described the old
         Auto rule.
 NOT:    the term "hand-wired" — the user finds it strange.
-BUILT:  nothing yet.
-OPEN:   1, 2 to build; 7, 8 stand as built; 3, 4, 6 explained, waiting on the user; 5, 9–16 not
-        answered yet.
-GO:     given 2026-10-15 for 1, 2, 7, 8.
+        Then, 3, 4 and 6 explained, the user: "13 what is this 14 your rec 15 if edge tts is nt
+        buiold why do we have anyting in app about it how can an error even display, think on
+        these things be smart your rec" — 14 (the two error messages as shown); 15, thought on:
+        no screen, setting or doc offers an "edge-tts" provider, only a dead server branch that
+        threw the Tauri message — remove it (the "openai-edge-tts" hint is someone else's
+        OpenAI-compatible server, kept).
+BUILT:  15 — 8d7adf6.
+OPEN:   1, 2 to build; 7, 8, 14 stand as built; 3, 4, 6, 13 explained, waiting on the user; 5,
+        9–12, 16 not answered yet.
+GO:     given 2026-10-15 for 1, 2, 7, 8, 14, 15.
 
 ### FINDING — the generated engines offer only models that clone a voice; 13 speech families never appear
 STATE:  FINDING — code-verified 2026-10-13. Mine, never asked: built in the engine list's slices
