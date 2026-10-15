@@ -236,6 +236,9 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   text-transform: uppercase; color: var(--ink-3); flex: none;
 }
 .jv-eyebrow em { text-transform: none; letter-spacing: 0; font-weight: 400; font-style: normal; }
+/* A unit inside a label drawn in capitals keeps its case — "GAIN (dB)", never "GAIN (DB)"
+   (2026-10-15: the Effects chain editor's knobs). Wrap only the unit. */
+.jv-unit { text-transform: none; }
 .jv-eyebrow--row { display: flex; align-items: center; gap: 8px; }
 .jv-pane-card { padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
 .jv-pane-card__h { display: flex; align-items: center; gap: 8px; }
@@ -449,14 +452,19 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
    layout rule so JV's baseline/gap stand; the frame's nav buttons center
    themselves against the tall title. */
 .jv-topbar.lu-titlebar { align-items: baseline; gap: 16px; }
-.jv-topbar .lu-titlebar-btn {
+/* The phone's ☰ (the frame's `start` slot) is drawn as the frame's own back/forward buttons —
+   JustWrite's `.titlebar-menu` does the same. */
+.jv-topbar .lu-titlebar-btn,
+.jv-topbar__menu-btn {
   align-self: center;
   display: inline-flex; align-items: center; justify-content: center;
   border: 0; background: transparent; cursor: pointer;
   color: var(--ink-2); padding: 4px; border-radius: 6px;
 }
-.jv-topbar .lu-titlebar-btn:hover:not(:disabled) { background: var(--surface-2); color: var(--ink); }
+.jv-topbar .lu-titlebar-btn:hover:not(:disabled),
+.jv-topbar__menu-btn:hover { background: var(--surface-2); color: var(--ink); }
 .jv-topbar .lu-titlebar-btn:disabled { opacity: 0.32; cursor: default; }
+.jv-topbar__menu-btn { font: inherit; font-size: 16px; line-height: 1; min-width: 24px; min-height: 24px; }
 /* The page name keeps about 16 characters before anything else gives way
    (decided 2026-10-05 — at 1440 px "Personas › June" read "P.." and Studio's
    name vanished); the two model pills shrink first (below). */
@@ -683,6 +691,18 @@ button.jv-topbar__proj:hover { border-color: var(--accent); color: var(--accent-
   color: #fff;
 }
 .jv-topbar__engine-icon { font-size: 12px; }
+
+/* At phone width (Quasar's xs) the bar's parts can't share one line — at 390 px they ran 770 px
+   past the window, clipped, the AI and help buttons with them (2026-10-15). They give way in the
+   order above, to the end: the server URL to nothing, the model pills to their shortest ("🔊 N…",
+   as a computer's bar already shows them at 1280 px); and what still doesn't fit beside the page
+   name wraps to the rows below it, as a header does on the phone (the kit's PaneHeader and
+   AppModal header). Nothing reaches past the window. */
+@media (max-width: 599.98px) {
+  .jv-topbar.lu-titlebar { flex-wrap: wrap; gap: 8px; }
+  .jv-topbar__url { display: none; }
+  .jv-topbar__engine-pill { flex-basis: 68px; }
+}
 
 /* Boot banner — shown only when /v1/health hasn't responded yet after
    ~1s, so the user doesn't see an empty UI and assume it's broken. */

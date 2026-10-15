@@ -37,6 +37,11 @@ const api = useApi();
 
 const presets = ref([]);
 const loading = ref(false);
+// Effect type → its name ("highpass" → "High-pass"), from the catalog the chain editor reads
+// (GET /v1/effects/catalog) — the Personas pages build the same map. A chain shows names, never
+// the internal keys (design law 5b; until 2026-10-15 these pills showed `highpass`, `pitch_shift`).
+const effectLabels = ref({});
+const effectName = (type) => effectLabels.value[type] || type;
 
 // Canonical library toolbar (2026-06-12): search + ownership chips.
 const search = ref("");
@@ -49,7 +54,7 @@ const filtered = computed(() => {
   const q = search.value.trim().toLowerCase();
   if (q) list = list.filter((p) =>
     (p.name || "").toLowerCase().includes(q) ||
-    (p.chain || []).some((ef) => (ef.type || "").toLowerCase().includes(q)));
+    (p.chain || []).some((ef) => [ef.type, effectName(ef.type)].some((s) => (s || "").toLowerCase().includes(q))));
   return list;
 });
 
@@ -60,8 +65,12 @@ const editingChain = ref([]);
 async function refresh() {
   loading.value = true;
   try {
-    const r = await api.safeRequest("/v1/effect-presets", { presets: [] });
+    const [r, cat] = await Promise.all([
+      api.safeRequest("/v1/effect-presets", { presets: [] }),
+      api.safeRequest("/v1/effects/catalog", { effects: [] }),
+    ]);
     presets.value = r?.presets ?? [];
+    effectLabels.value = Object.fromEntries((cat?.effects || []).map((e) => [e.type, e.label]));
   } finally {
     loading.value = false;
   }
@@ -183,7 +192,7 @@ onMounted(refresh);
           <div v-if="row.description" class="jv-muted effects-view__desc">{{ row.description }}</div>
         </template>
         <template #chain="{ row }">
-          <span v-for="(ef, i) in (row.chain || [])" :key="i" class="effects-view__chain-pill">{{ ef.type }}</span>
+          <span v-for="(ef, i) in (row.chain || [])" :key="i" class="effects-view__chain-pill">{{ effectName(ef.type) }}</span>
           <span v-if="!(row.chain || []).length" class="jv-muted">(empty chain)</span>
         </template>
         <template #count="{ row }">{{ (row.chain || []).length }}</template>

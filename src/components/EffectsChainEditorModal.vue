@@ -155,6 +155,13 @@ function specFor(type) {
   return effectiveCatalog.value.find((e) => e.type === type) || null;
 }
 
+// A knob's label and its unit, as the catalog writes them: "Gain (dB)" → "Gain" + "(dB)". The
+// label is drawn in capitals; its unit keeps its case — "dB", "Hz", "ms" (2026-10-15: it read "DB").
+function paramLabel(label) {
+  const m = /^(.*\S)\s*(\([^()]*\))$/.exec(label || "");
+  return m ? { name: m[1], unit: m[2] } : { name: label || "", unit: "" };
+}
+
 watch(
   () => props.open,
   (open) => {
@@ -327,7 +334,7 @@ onMounted(() => {
                 :key="p.key"
                 class="effects-modal__param"
               >
-                <span>{{ p.label }}</span>
+                <span>{{ paramLabel(p.label).name }}<span v-if="paramLabel(p.label).unit" class="jv-unit">{{ ` ${paramLabel(p.label).unit}` }}</span></span>
                 <UiCheckbox
                   v-if="p.type === 'boolean'"
                   :model-value="!!ef.params?.[p.key]"

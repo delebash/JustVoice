@@ -542,9 +542,11 @@ onMounted(async () => {
            back/forward mechanics + the frame; everything JV sits in the slots,
            exactly like docgen's adoption. -->
       <TitleBar class="jv-topbar">
-        <!-- At phone width the rail is a drawer: this opens it. -->
+        <!-- At phone width the rail is a drawer: this opens it. It looks like the frame's
+             back/forward buttons; until 2026-10-15 it wore `jv-topbar__menu`, the project
+             switcher's drop-down panel, and floated over the page's opening text. -->
         <template #start>
-          <button v-if="phoneLayout" type="button" class="jv-topbar__menu" aria-label="Menu" @click="drawerOpen = !drawerOpen">☰</button>
+          <button v-if="phoneLayout" type="button" class="jv-topbar__menu-btn" aria-label="Menu" @click="drawerOpen = !drawerOpen">☰</button>
         </template>
         <template #title>
           {{ currentView ? navLabel(currentView) : '' }}

@@ -15,7 +15,7 @@ import { useApi } from "../stores/api.js";
 import { kokoroCantSayWords, previewLexiconText } from "../services/lexiconPreview.js";
 import { pushToast, saveBlob, pageFlow } from "@delebash/llm-ui";
 import { confirmDialog, promptDialog } from "@delebash/llm-ui";
-import { UiButton, UiInput, UiTag, UiChip, UiSelect, AppModal, UiTable } from "@delebash/llm-ui";
+import { UiButton, UiField, UiInput, UiTag, UiChip, UiSelect, AppModal, UiTable } from "@delebash/llm-ui";
 import { EmptyState } from "@delebash/llm-ui";
 import { useLexiconsStore } from "../stores/lexicons.js";
 import { useProjectsStore } from "../stores/projects.js";
@@ -645,14 +645,15 @@ onActivated(() => {
 
     <!-- ── Editor dialog — draft + Save/Cancel (canonical shell) ────── -->
     <AppModal v-if="dialogOpen && draft" :eyebrow="creating ? 'New lexicon' : 'Lexicon'" :title="draft.name || 'Untitled lexicon'" :max-width="'860px'" dismissable @close="closeDialog">
-          <div class="lex__field">
-            <label>Name · required</label>
+          <!-- The kit's block field (label above, as every other page). Until 2026-10-15 these were
+               raw `.lex__field > label` rows, and that selector also caught Quasar's input — its
+               outer element is a <label> — so what you typed showed in 11px capitals. -->
+          <UiField label="Name · required" layout="block">
             <UiInput ref="nameInputEl" width="name" v-model="draft.name" placeholder="e.g. The Ninth Facet names" @keydown.enter.prevent />
-            <p class="jv-hint">What the lexicon is called where you choose one — a book's Overview, a persona's page.</p>
-          </div>
+            <p class="jv-hint lex__hint">What the lexicon is called where you choose one — a book's Overview, a persona's page.</p>
+          </UiField>
 
-          <div class="lex__field">
-            <label>Scope</label>
+          <UiField label="Scope" layout="block">
             <!-- Editable only at create — scope is fixed once a lexicon exists. -->
             <div v-if="creating" class="lex__scope-row">
               <UiSelect width="name" v-model="draft.scope" :options="SCOPE_OPTIONS" />
@@ -661,7 +662,7 @@ onActivated(() => {
               <UiSelect v-if="draft.scope === 'persona'" width="name" v-model="draft.persona_id"
                 placeholder="— pick a persona —" :options="personas" option-label="name" option-value="id" />
             </div>
-            <p v-if="creating" class="jv-hint">
+            <p v-if="creating" class="jv-hint lex__hint">
               What it's made for: <b>Reusable</b> — any book can choose it; <b>Book-scoped</b> — one
               book's own names (pick the book); <b>Persona-scoped</b> — one persona's way of saying
               things (pick the persona). It can't change once saved.
@@ -674,11 +675,10 @@ onActivated(() => {
               <UiTag intent="secondary" v-if="draft.scope === 'project'">book: {{ scopedToName(draft) || "—" }}</UiTag>
               <UiTag intent="secondary" v-if="draft.scope === 'persona'">persona: {{ scopedToName(draft) || "—" }}</UiTag>
             </div>
-          </div>
+          </UiField>
 
           <!-- ── The pronunciation pre-flight (book-scoped lexicons) ── -->
-          <div v-if="draft.project_id" class="lex__field">
-            <label>Names the book may mispronounce</label>
+          <UiField v-if="draft.project_id" label="Names the book may mispronounce" layout="block">
             <div class="jv-inline-row">
               <UiButton
                 intent="secondary" size="small"
@@ -708,19 +708,18 @@ onActivated(() => {
               Added names start blank — a blank row changes nothing until you
               give it a pronunciation, so add freely and fill in as you listen.
             </p>
-          </div>
+          </UiField>
 
-          <div class="lex__field">
-            <label>Live preview text</label>
+          <UiField label="Live preview text" layout="block">
             <UiInput
               width="prose"
               v-model="previewText"
               placeholder="Beauchamp arrived at the Lumen Concern on the NYPD ferry. — Worcestershire sauce on his cuff."
             />
-            <p class="jv-hint">Optional. Type a sentence and ▶ Preview against text shows it as the voice will get it. Nothing here is saved.</p>
+            <p class="jv-hint lex__hint">Optional. Type a sentence and ▶ Preview against text shows it as the voice will get it. Nothing here is saved.</p>
             <p v-if="previewResult" class="lex__preview-out">{{ previewResult }}</p>
-            <p v-if="previewResult.includes('「/')" class="jv-hint">「/…/」 is IPA — {{ ipaWho }}.</p>
-          </div>
+            <p v-if="previewResult.includes('「/')" class="jv-hint lex__hint">「/…/」 is IPA — {{ ipaWho }}.</p>
+          </UiField>
 
           <UiTable class="lex__table" :data="entryRows" :columns="ENTRY_COLUMNS" data-key="__i"
             :row-class="(row) => (editingEntryIndex === row.__i ? 'lex__row--editing' : '')">
@@ -752,8 +751,7 @@ onActivated(() => {
           <p v-if="draft.entries.length" class="jv-hint">{{ ipaTip }}</p>
 
           <!-- Hear a word before and after, in the voice that will say it; what the lexicon touches. -->
-          <div v-if="!creating" class="lex__field lex__try">
-            <label>Try a word</label>
+          <UiField v-if="!creating" label="Try a word" layout="block" class="lex__try">
             <div class="jv-inline-row">
               <UiSelect width="name" v-model="hearAsId" :options="hearPersonaOptions" aria-label="As"
                 title="The persona whose voice says it" placeholder="— a persona —" />
@@ -765,9 +763,9 @@ onActivated(() => {
                 title="With this lexicon's entries" :disabled="!hearAsId || !tryWord.trim()" @click="hear(tryWord, 'after', 'try:after')" />
               <PlayTransport v-if="player.key?.startsWith('try:')" :player="player" />
             </div>
-            <p class="jv-hint">{{ hearHint }}</p>
-            <p v-if="affectsLine" class="jv-hint"><b>Affects:</b> {{ affectsLine }}</p>
-          </div>
+            <p class="jv-hint lex__hint">{{ hearHint }}</p>
+            <p v-if="affectsLine" class="jv-hint lex__hint"><b>Affects:</b> {{ affectsLine }}</p>
+          </UiField>
 
           <div class="jv-divider" />
 
@@ -777,21 +775,18 @@ onActivated(() => {
             in the list; Save keeps the list — and takes along an entry still typed here.
           </p>
           <div class="lex__entry-grid">
-            <label class="lex__field">
-              <span>Word · required</span>
+            <UiField label="Word · required" layout="block">
               <UiInput width="name" v-model="newGrapheme" placeholder="Beauchamp" @keydown.enter="saveEntry" />
-              <span class="jv-hint">Exactly as the text spells it.</span>
-            </label>
-            <label class="lex__field">
-              <span>IPA</span>
+              <p class="jv-hint lex__hint">Exactly as the text spells it.</p>
+            </UiField>
+            <UiField label="IPA" layout="block">
               <UiInput width="name" v-model="newPhonemeIpa" placeholder="/ˈbiːtʃəm/" @keydown.enter="saveEntry" />
-              <span class="jv-hint">The sounds, in the phonetic alphabet — {{ ipaWho }}.</span>
-            </label>
-            <label class="lex__field">
-              <span>Phonetic spelling</span>
+              <p class="jv-hint lex__hint">The sounds, in the phonetic alphabet — {{ ipaWho }}.</p>
+            </UiField>
+            <UiField label="Phonetic spelling" layout="block">
               <UiInput width="name" v-model="newAlias" placeholder="bee-chum" @keydown.enter="saveEntry" />
-              <span class="jv-hint">Spelled the way it sounds — every voice model reads this.</span>
-            </label>
+              <p class="jv-hint lex__hint">Spelled the way it sounds — every voice model reads this.</p>
+            </UiField>
           </div>
 
           <div class="lex__actions">
@@ -843,20 +838,8 @@ onActivated(() => {
    scoped `td` selector never matches a cell the child renders (audit §19.1). */
 .lex__table :deep(.ui-table-row.lex__row--editing) td { background: var(--accent-soft); }
 
-.lex__field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-bottom: 12px;
-}
-.lex__field > label,
-.lex__field > span:not(.jv-hint) {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--ink-3);
-  font-weight: 600;
-}
+/* A field's hint under its control — the gap the old flex column gave it. */
+.lex__hint { margin-top: 4px; }
 
 .lex__scope-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 30px; }
 
@@ -904,6 +887,8 @@ onActivated(() => {
   gap: 12px 18px;
   margin-bottom: 14px;
 }
+/* The grid's gap spaces the fields; the kit's field margin would add to it. */
+.lex__entry-grid > .ui-field { margin: 0; }
 
 .lex__actions {
   display: flex;

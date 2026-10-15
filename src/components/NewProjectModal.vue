@@ -340,6 +340,11 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
 @media (max-width: 860px) {
   .np-grid { grid-template-columns: repeat(2, 1fr); }
 }
+/* At phone width the footer wraps (the kit's AppModal): the name takes the first row, at the
+   start, so it lines up with the language below it rather than sitting at the row's end. */
+@media (max-width: 599.98px) {
+  .np-name-input { margin-right: auto; }
+}
 .np-focus-only { margin: 10px 0 0; font-size: 11.5px; color: var(--muted, #888); }
 .np-focus-only a { color: var(--accent, #3a7d63); text-decoration: underline; }
 </style>
