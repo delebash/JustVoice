@@ -255,10 +255,15 @@ NOT:    the term "hand-wired" — the user finds it strange.
         no screen, setting or doc offers an "edge-tts" provider, only a dead server branch that
         threw the Tauri message — remove it (the "openai-edge-tts" hint is someone else's
         OpenAI-compatible server, kept).
+        Then the user: "3 your rec so slive 4 fixes   4 your rec but add it to ideas so we dont
+        forget what it is 6 your rec" — 3: slice 4 gives those models audio.cpp's memory
+        estimate; a card that can't be read says "memory not measured yet"; 4: hide the Audio
+        channels tab until routing is built, and an IDEAS entry saying what it is; 6: check
+        Anthropic's docs for what claude-mythos-preview accepts, then treat it like Mythos 5.
 BUILT:  15 — 8d7adf6.
-OPEN:   1, 2 to build; 7, 8, 14 stand as built; 3, 4, 6, 13 explained, waiting on the user; 5,
-        9–12, 16 not answered yet.
-GO:     given 2026-10-15 for 1, 2, 7, 8, 14, 15.
+OPEN:   1, 2, 4, 6 to build; 3 with slice 4; 7, 8, 14 stand as built; 13 explained, waiting on
+        the user; 5, 9–12, 16 not answered yet.
+GO:     given 2026-10-15 for 1, 2, 3, 4, 6, 7, 8, 14, 15.
 
 ### FINDING — the generated engines offer only models that clone a voice; 13 speech families never appear
 STATE:  FINDING — code-verified 2026-10-13. Mine, never asked: built in the engine list's slices
