@@ -224,6 +224,6 @@ keeps the pitch, as on every engine but Kokoro and KittenTTS.
 
 See [engines.md](engines.md) for which params each engine supports.
 
-## Effects + channel routing
+## Effects
 
-Each voice can carry a default **effects chain** (pedalboard — see [effects.md](effects.md)) and an **audio output channel** (see [channels.md](channels.md)) for multi-device routing. These ride along on every render through this voice.
+Each voice can carry a default **effects chain** (pedalboard — see [effects.md](effects.md)). It rides along on every render through this voice. (Routing a voice to an audio output device isn't built yet — see [channels.md](channels.md).)

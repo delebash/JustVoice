@@ -100,7 +100,9 @@ onMounted(() => {
     <!-- Tab strip already says "Channels" — explainer lede only, no
          duplicate title (same treatment as the Labs sub-views). -->
     <header class="jv-section">
-      <p class="jv-muted" style="margin-top: 4px; margin-bottom: 0;">Route personas to specific audio outputs. Multi-device broadcast supported (e.g. play through your sound output AND OBS virtual mic).</p>
+      <!-- "Multi-device broadcast supported (e.g. play through your sound output AND OBS
+           virtual mic)." went 2026-10-15 (P-also1): the device routing isn't built. -->
+      <p class="jv-muted" style="margin-top: 4px; margin-bottom: 0;">Route personas to specific audio outputs.</p>
     </header>
 
     <div class="jv-section">
