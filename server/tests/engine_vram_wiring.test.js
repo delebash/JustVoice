@@ -695,12 +695,17 @@ test("a_runaway_line_no_longer_prices_the_model_from_its_process", async () => {
 
 test("the_loaded_speech_models_are_named_on_any_placement", async () => {
   // The kit's speechModelsFn (the narrowings review, M3): a CPU slot books nothing on the card,
-  // yet the AI model's RAM refusal names it.
+  // yet the AI model's RAM refusal names it — even after a credit, which never counts it, so each
+  // says where it runs (M3 × M10, decided 2026-10-15).
   makeArbiter(discrete());
   const mgr = mgrFor(discrete(), manifest("eng", "tts", "cpu"));
   expect(mgr.loadedSpeechModels()).toEqual([]);
   await mgr.load("eng", { device: "cpu" });
-  expect(mgr.loadedSpeechModels()).toEqual(["eng"]);
+  expect(mgr.loadedSpeechModels()).toEqual([{ id: "eng", placement: "cpu" }]);
+  makeArbiter(discrete());
+  const onCard = mgrFor(discrete(), manifest());
+  await onCard.load("eng", { device: "auto" });
+  expect(onCard.loadedSpeechModels()).toEqual([{ id: "eng", placement: "gpu" }]);
 });
 
 test("the_runaway_thresholds_are_speech_runtime_settings", () => {

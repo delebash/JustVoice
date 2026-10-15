@@ -151,8 +151,9 @@ this machine's 32 GB is free. Close other programs, or pick a smaller model.*
 The free figure is what is free right now. With a speech model loaded — on the
 graphics card or the CPU — the last sentence names it instead: *A speech model
 (voxcpm2) is loaded and holds memory too — unload it first, or close other
-programs.* It isn't named when the check already counted the memory a speech
-model gives back.
+programs.* When the check already counted the memory the speech models on the
+graphics card give back, it names only the ones running on the CPU — their memory
+is never counted (since 2026-10-15; before, it named none then).
 A model waking from sleep is never stopped this way — a feature in the middle
 of its work shouldn't fail — so a wake that is short of memory goes ahead, and
 only the log says so.

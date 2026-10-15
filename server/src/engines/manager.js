@@ -670,11 +670,15 @@ export class EngineManager {
     return proc ? proc.manifest.id : null;
   }
 
-  /** The loaded speech models (both kinds) by engine id, on the card or the CPU — the AI model's
-   * RAM refusal names them (the kit's `speechModelsFn`, wired in app.js; the narrowings review,
-   * M3). */
+  /** The loaded speech models (both kinds), each with where it runs — [{id: engine id,
+   * placement: "gpu" | "cpu"}]. The AI model's RAM refusal names them, and after crediting the
+   * card's room-making only those on the CPU, whose memory no credit counted (the kit's
+   * `speechModelsFn`, wired in app.js; the narrowings review M3, and M3 × M10 decided 2026-10-15). */
   loadedSpeechModels() {
-    return ["tts", "stt"].map((kind) => this.currentFor(kind)).filter(Boolean);
+    return ["tts", "stt"]
+      .map((kind) => this.currentFor(kind))
+      .filter(Boolean)
+      .map((id) => ({ id, placement: (this.resolvedDeviceFor(id) || "") === "cpu" ? "cpu" : "gpu" }));
   }
 
   /** The kind's activity lock (a Mutex), created on first use. */
