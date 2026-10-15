@@ -319,8 +319,10 @@ next JustVoice update lists it.
   (Kokoro, KittenTTS, Pocket TTS, Qwen3-TTS, Chatterbox, VoxCPM2, Qwen3-ASR) are
   all tested.
 - **Whether it takes direction.** A model JustVoice knows how to direct takes
-  a line's emotion and direction; the others say *Can't be directed yet* and
-  speak every line plainly in the cloned voice.
+  a line's emotion and direction — IndexTTS 2 / 2.5 says *Takes a line's
+  direction in words* (since 2026-10-15), since it takes the direction alone; the
+  others say *Can't be directed yet* and speak every line plainly in the cloned
+  voice.
 - **How much graphics memory it needs** — see
   [Memory, before you load](#memory-before-you-load).
 
@@ -440,7 +442,10 @@ the model has them — in the persona page's *Sampling* and in Render's *This li
 only*. A setting the model gives no default for shows none (a number is an empty
 box) until you set it; until then audio.cpp's own applies. What JustVoice sends
 itself — the line's text, the voice's clip and its words, the language — is never
-a setting, nor are file paths on the computer running the speech runtime.
+a setting, nor are file paths on the computer running the speech runtime. Nor are
+dots.tts's *Source text* and *Target text* (they belong to its editing mode,
+which JustVoice doesn't use) or Irodori TTS's *No ref*: a voice there is always a
+clone, so its clip always goes (since 2026-10-15).
 
 **Downloads** come from whichever repository audio.cpp names for the model,
 pinned to one commit, so a file never changes under you. Some are large: check

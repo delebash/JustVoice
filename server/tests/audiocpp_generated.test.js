@@ -88,12 +88,26 @@ test("the line's text, the clip's words and the clip are never offered as settin
     ["moss_ttsd", "voice_samples"],
     ["fish_audio", "multi_reference_cond"],
     ["audio8_tts", "multi_reference_cond"],
+    // Decided 2026-10-15: dots.tts's Edit-template texts and Irodori's "No ref".
+    ["dots_tts-dotsttssoar", "source_text"],
+    ["dots_tts-dotsttssoar", "target_text"],
+    ["irodori_tts-irodorittsv3500m", "no_ref"],
   ]) {
     expect(lookup(model).knobs.some((k) => k.key === key), `${model} ${key}`).toBe(false);
   }
   // A value saved before it was hidden isn't sent.
   const req = slot.toSpeechRequest(rowOf("fish_audio", "fish_audio-q8"), line({ delivery: { engine: { multi_reference_cond: "C:\\clips\\other.wav", temperature: 0.7 } } }));
   expect(req.options).toEqual({ temperature: 0.7 });
+  // An Irodori clone sends its clip, and never "No ref", even one saved on.
+  const irodori = slot.toSpeechRequest(rowOf("irodori_tts", "irodori_tts-irodorittsv3500m-q8"), line({ delivery: { engine: { no_ref: true } } }));
+  expect(irodori.voice_ref).toBe("C:/clips/hatter.wav");
+  expect(irodori.options?.no_ref).toBeUndefined();
+});
+
+test("IndexTTS's note says it takes direction in words; the other directed families keep theirs", () => {
+  // Decided 2026-10-15.
+  expect(lookup("index_tts2-indextts25").notes).toContain("Takes a line's direction in words.");
+  expect(lookup("cosyvoice3").notes).toContain("Takes a line's emotion and direction.");
 });
 
 test("a setting with no default has none: audio.cpp's own applies", () => {

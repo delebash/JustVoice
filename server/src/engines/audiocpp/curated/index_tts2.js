@@ -14,6 +14,10 @@ export const DIRECTION = {
   set: { use_emotion_text: true },
 };
 
+// Its capability note says how it takes direction (decided 2026-10-15): in words — not
+// "emotion and direction", the note of the families that take an emotion too.
+export const DIRECTION_NOTE = "Takes a line's direction in words.";
+
 // Round 3 (RESEARCH §10.6) used this mapping at weight 1.0 — like the book on 12 of 21 tries,
 // steady per line, the clip's person kept.
 export const TESTED = {

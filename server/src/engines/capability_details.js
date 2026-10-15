@@ -396,7 +396,8 @@ CAPABILITY_DETAILS["chatterbox-nano"] = {
 // One row per model, from its spec: it copies a voice; it takes the clip's words when its spec
 // lists `reference_text` or lists no options at all — the rule the request follows
 // (slot.generatedSpeechRequest; the narrowings review, E11); it takes a line's direction only
-// when our file for the family says how (else "can't be directed yet"). Its settings are its
+// when our file for the family says how (else "can't be directed yet"), in its file's own words
+// where it has them (`DIRECTION_NOTE`: IndexTTS, decided 2026-10-15). Its settings are its
 // spec's typed options (generated.settingsOf), and the seed where the spec takes one or lists no
 // options at all.
 for (const m of generatedModels()) {
@@ -415,7 +416,7 @@ for (const m of generatedModels()) {
     pitch_post_process: true,
     notes: [
       "Clones a voice from a short clip.",
-      directed ? "Takes a line's emotion and direction." : "Can't be directed yet — JustVoice doesn't yet know how this model takes direction.",
+      directed ? (m.curated?.DIRECTION_NOTE ?? "Takes a line's emotion and direction.") : "Can't be directed yet — JustVoice doesn't yet know how this model takes direction.",
       tested ? `Tested by JustVoice: ${tested.note}` : "Not tested by JustVoice yet.",
       `audio.cpp lists it as ${m.fam.status}.`,
     ],
