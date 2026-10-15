@@ -216,9 +216,18 @@ STATE:  DECIDED 2026-10-15 — shown: the 35 numbered questions of the register'
 WHY:    the one-click plan needs every audio.cpp model in the app, and the review's fixes in first.
 NOT:    shipping an item still unsure after an adversarial rethink — it goes back to the user;
         refusing a restore on a computer that isn't syncing.
-BUILT:  nothing yet.
-OPEN:   every rec in the register's list and the plan's §7; slice 6's last steps (the fork push, the
-        jv.6 release, the pin, `slice-6-wip`); the adoption plan's five slices; then the one-click plan.
+BUILT:  2026-10-15 — the register's recs: Script/Render/Export (7174737, 58569dc, 8535582, kit
+        5fd732e/4ecb763), voices/lexicons/engines (f66b87b … d7d45cd, 7124817, d0f6377, 816dc78,
+        96a9835; kit cd20ab1), kit shell and Claude (kit f92c3de, a1ddee9, 8c7a17a; c14615a,
+        35fecb8), P18 (4a7b4c0, kit 40bd555), the data-folder lock in all three apps (kit
+        708b9d1, docgen 5506cac), P16 a restore as a new sync device (sync 35dc1d7, kit 4157d95,
+        5f76cb9), the kit's shutdown route (f40d57b, kit 0b42f44 by JustWrite's session). The
+        fork on upstream v0.9.2, pushed (85d97a43, then 68c3ead0/21607a3a/4d2f1a2b); adoption
+        slice 1, the catalog at v0.9.2 (439d904; RESEARCH §1.2, §1.4, §1.5).
+OPEN:   the jv.6 release (the auto-mode check refused to start the fork's release workflow — the
+        user's command), then the pin; adoption slices 2–5; the sync engine's two convergence
+        fixes (under way); P26's comparison; the questions the build raised; then the one-click
+        plan.
 GO:     given 2026-10-15 ("your rec go").
 
 ### FINDING — the generated engines offer only models that clone a voice; 13 speech families never appear
