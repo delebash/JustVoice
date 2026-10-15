@@ -230,6 +230,30 @@ OPEN:   the jv.6 release (the auto-mode check refused to start the fork's releas
         plan.
 GO:     given 2026-10-15 ("your rec go").
 
+### The build's 16 questions: 1, 2, 7, 8 answered; 3, 4, 6 asked to explain (2026-10-15)
+STATE:  DECIDED 2026-10-15 (in part) — asked "what are we waiting on?", shown 16 questions, a rec
+        under each, among them: "1. P6. The approved sentence sends you to Settings → Server,
+        which can't open while the server is down. Rec: 'Port N is in use by another program —
+        close that program, then press Retry.' Retry now restarts the server. 2. Auto's hover
+        still says 'when nothing else is on it'. Rec: '…the graphics card when the model fits in
+        its free memory or beside the AI model, else the CPU when the model is fast enough
+        there.' … 7. A test runs audio.cpp's own TypeScript (its catalog.ts) as the reference for
+        our port. We wrote no TypeScript; your rule makes that your call. Rec: keep it. 8.
+        Licence words. I applied the cautious word on four close calls: Maya1 Conditional,
+        sanoTTS Unclear, Supertonic Conditional, VibeVoice Unclear. VoiceTut shows OmniVoice's
+        No, though its own card says Apache-2.0. Rec: keep these." The user: "3. … what is stil
+        hand wired i thought we got rid of anything hand wired and that term is strange if you
+        mean hand wire like custome engine somethings wrong if you mean hand wired just some
+        extra info data for a model thne use another term 4 explain 6 explain 7 your rec 8 your
+        rec 1 your rec 2 your rec".
+WHY:    the approved P6 sentence pointed at a screen that can't open; the hover described the old
+        Auto rule.
+NOT:    the term "hand-wired" — the user finds it strange.
+BUILT:  nothing yet.
+OPEN:   1, 2 to build; 7, 8 stand as built; 3, 4, 6 explained, waiting on the user; 5, 9–16 not
+        answered yet.
+GO:     given 2026-10-15 for 1, 2, 7, 8.
+
 ### FINDING — the generated engines offer only models that clone a voice; 13 speech families never appear
 STATE:  FINDING — code-verified 2026-10-13. Mine, never asked: built in the engine list's slices
         2–3 (df2b40e, 2026-10-11). The approved plan says the opposite: §1, each row says "what it
