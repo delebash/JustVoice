@@ -175,7 +175,7 @@ const settings = ref({
   server:    { host: "127.0.0.1", port: 17494 },
   logging:   {},
   cache:     { enabled: true, max_memory_entries: 50, max_disk_bytes_per_scope: 2_000_000_000 },
-  limits:    { text_max_chars: 100000, chapter_max_lines: 5000, reference_clip_max_bytes: 25_000_000, request_body_max_bytes: 100_000_000 },
+  limits:    { text_max_chars: 100000, chapter_max_lines: 5000, reference_clip_max_bytes: 25_000_000 },
   cors:      {},
   auth:      {},
   mastering: {},
@@ -1260,9 +1260,6 @@ onMounted(() => {
           </UiField>
           <UiField label="Reference clip max bytes" layout="block">
             <UiInput v-model.number="settings.limits.reference_clip_max_bytes" type="number" width="token" />
-          </UiField>
-          <UiField label="Request body max bytes" layout="block">
-            <UiInput v-model.number="settings.limits.request_body_max_bytes" type="number" width="token" />
           </UiField>
         </div>
       </div>

@@ -280,7 +280,6 @@ export const LimitsSettings = T.Object({
   text_max_chars: opt(T.Integer(), 50_000),
   chapter_max_lines: opt(T.Integer(), 5_000),
   reference_clip_max_bytes: opt(T.Integer(), 50 * 1024 * 1024),
-  request_body_max_bytes: opt(T.Integer(), 100 * 1024 * 1024),
 });
 
 /**

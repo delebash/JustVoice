@@ -35,6 +35,6 @@ The same UI is served at `http://localhost:17494/ui/`. Connect from any browser 
 - **Settings.** Server URL, mastering preset (ACX / iAudio / Podcast / YouTube), generation defaults, capture language and cleanup, MCP server, GPU diagnostics.
 - **Engines.** One speech runtime runs every voice engine and speech recognition; each engine is a set of model files you download from its row. See [engines.md](engines.md).
 - **Cache.** Disk-LRU render cache. Identical render of the same line costs nothing twice.
-- **System tray.** Right-click the JustVoice icon in your OS tray (Windows) / menu bar (macOS) for quick access to Show app, Show dictate, Engines, Captures, Settings, and Quit — all without bringing the main window to the foreground.
+- **System tray.** Right-click the JustVoice icon in your OS tray (Windows) / menu bar (macOS) for Show window and Hide window, Start, Stop and Restart server, Open settings, Copy server URL, Open log file, About JustVoice and Quit; a left-click shows or hides the window. See [System tray](system-tray.md).
 
 See [core-concepts.md](core-concepts.md) next for the data model and `[Project → Scene → Block]` shape that all five audiences share.

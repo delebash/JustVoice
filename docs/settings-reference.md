@@ -30,7 +30,6 @@ the sections above can never put back an older library key. See [Sync](sync.md).
 
 A few fields only take effect after a server restart — the API names them when
 you change one: `server.host`, `server.port`,
-`logging.level`, `logging.format`, `cors.origins`,
-and `limits.request_body_max_bytes`. Changing the speech runtime's backend or
+`logging.level`, `logging.format` and `cors.origins`. Changing the speech runtime's backend or
 GPU needs no restart: it unloads the speech models and stops the runtime, and
 the next load starts the build you chose.

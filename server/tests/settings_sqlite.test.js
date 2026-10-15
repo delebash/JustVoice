@@ -56,3 +56,12 @@ test("read_only_settings_read_writes_nothing", async () => {
   expect(readFileSync(db).equals(before.bytes)).toBe(true);
   expect(statSync(db).mtimeMs).toBe(before.mtimeMs);
 });
+
+test("the_unused_request_body_limit_is_gone", async () => {
+  // Found on the way (c), removed 2026-10-15: nothing read limits.request_body_max_bytes (the body
+  // limit is the kit's, on its routes). A value saved before is dropped when the settings load.
+  expect("request_body_max_bytes" in construct(Settings, {}).limits).toBe(false);
+  expect("request_body_max_bytes" in construct(Settings, { limits: { request_body_max_bytes: 5 } }).limits).toBe(false);
+  const { c } = await appClient();
+  expect("request_body_max_bytes" in (await c.get("/v1/settings")).json().limits).toBe(false);
+});

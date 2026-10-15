@@ -224,9 +224,6 @@ export class SettingsStore {
       out.push("logging.format");
     }
     if (!eq(prev.cors, next.cors)) out.push("cors.origins");
-    if (prev.limits.request_body_max_bytes !== next.limits.request_body_max_bytes) {
-      out.push("limits.request_body_max_bytes");
-    }
     return out;
   }
 }
