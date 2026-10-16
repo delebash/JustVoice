@@ -28,7 +28,7 @@ const chapter = (id) => ({ id, title: id.toUpperCase(), metadata: { source_text:
 function store(list, running = []) {
   return { visibleTasks: list, isRunning: (id) => running.includes(id) };
 }
-const task = (id, sceneId, feature = "speaker_identification", projectId = "p1") =>
+const task = (id, sceneId, feature = "speaker_discovery", projectId = "p1") =>
   ({ id, inline: true, feature, meta: { run: true, projectId, sceneId } });
 
 describe("runStripTask", () => {
@@ -43,7 +43,7 @@ describe("runStripTask", () => {
 
   it("shows only its own step, one book only, one chapter when asked (2026-10-05)", () => {
     const tasks = store([task("t1", "a", "speaker_attribution"), task("t2", "b"),
-      task("t3", "c", "speaker_identification", "p2"),
+      task("t3", "c", "speaker_discovery", "p2"),
       { id: "t4", inline: true, feature: "rewrite", meta: { run: true, projectId: "p1" } }], ["t1", "t2"]);
     expect(runStripTask(tasks, "p1", "analyze").id).toBe("t1");
     expect(runStripTask(tasks, "p1", "discover").id).toBe("t2");

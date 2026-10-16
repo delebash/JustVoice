@@ -32,10 +32,12 @@ test("all_actions_seed_as_shared_rows", async () => {
   await seedWorkspace();
   const rows = Object.fromEntries(stores.getPromptStore().list().map((r) => [r.key, r]));
   for (const key of Object.keys(DEFAULT_FEATURE_PROMPTS)) expect(rows, `missing shared row ${key}`).toHaveProperty([key]);
-  // 13 actions over 10 features (the refine x4 composition + attribution's two routes + discovery
-  // as its own speaker_discovery feature + Analyze's second look; Reasoned died 2026-08-07).
-  expect(Object.keys(DEFAULT_FEATURE_PROMPTS).length).toBe(13);
+  // 16 actions over 12 features (the refine x4 composition + attribution's two routes + discovery
+  // as its own speaker_discovery feature + Analyze's second look; Reasoned died 2026-08-07; the
+  // one-click plan's slice 4 added Merge found names' two recipes and the group lines, 2026-10-16).
+  expect(Object.keys(DEFAULT_FEATURE_PROMPTS).length).toBe(16);
   expect(rows.speaker_second_look.json_mode).toBe(true);
+  for (const key of ["speaker_merge.local", "speaker_merge.frontier", "speaker_group"]) expect(rows[key].json_mode, key).toBe(true);
   expect(rows["refine.base"].user_template).toBe("{{transcript}}");
   expect(rows["speaker_attribution.guided"].user_template).toContain("{{speakers}}");
   expect(rows.smart_assign.json_mode).toBe(true);

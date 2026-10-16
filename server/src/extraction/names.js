@@ -85,6 +85,27 @@ export function isVariant(a, b) {
   return false;
 }
 
+// The articles a name can start with — "the Queen" is "Queen" for the merge's containment test
+// (the one-click plan's slice 4). Only the merge reads them, and only to PROPOSE that two names
+// are one person: a model confirms every proposal (`merge_names.js`), so a word stripped wrongly
+// costs a question, never a merge.
+const LEADING_ARTICLES = new Set(["the", "a", "an", "le", "la", "les", "l'", "der", "die", "das", "el", "los", "las", "il", "lo", "gli"]);
+
+/** `norm(name)` without one leading article ("the Queen" → "queen"); a name that IS an article
+ * stays as it is. */
+export function bare(name) {
+  const words = splitWs(norm(name));
+  if (words.length > 1 && LEADING_ARTICLES.has(words[0])) return words.slice(1).join(" ");
+  if (words.length && /^l'./u.test(words[0])) return [words[0].slice(2), ...words.slice(1)].join(" ");
+  return words.join(" ");
+}
+
+/** One name is the other with whole words added, a leading article aside — "the Queen" /
+ * "Queen of Hearts", "Hare" / "the March Hare". */
+export function isVariantBare(a, b) {
+  return isVariant(bare(a), bare(b));
+}
+
 const SQUASH_PAIRS = [
   ["“", '"'],
   ["”", '"'],

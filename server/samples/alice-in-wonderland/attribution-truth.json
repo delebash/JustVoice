@@ -1,5 +1,5 @@
 {
- "about": "Who says each dialogue segment in chapters VII and VIII of \"Alice's Adventures in Wonderland\" (Lewis Carroll, 1865) — the answer key for server/scripts/eval_attribution.js, and the test book of TASKS \"One-click audiobook\" (2026-10-10). SOURCE: Project Gutenberg eBook #11 (https://www.gutenberg.org/ebooks/11), whose page states \"Public domain in the USA.\" (checked 2026-10-10); book.epub is that EPUB3, unchanged, so it goes through the book_prose adapter the way an EPUB import does in the app, and only these two of its chapters are keyed. Keys are the pipeline's own [D#] numbers per chapter. Values are cast names; 'unknown' where no single cast member speaks: the group lines (VII D2 and D94–D95, the Hatter and the March Hare together; VII D121, their 'Sh! sh!'; VIII D39, the soldiers). A quoted thought is its thinker's. Chapter VII is numbered by the splitter as it reads since 2026-10-10 (150 lines; 147 before): the Hatter's song and the end of his speech (VII D72, D73, D77) are his, and D141 is the Dormouse's whole speech, the phrase he quotes inside it included. 'cues' lists the segments whose text says how they are spoken — the book's own words, and the nearest of the app's nine emotions (models.js EMOTION_VALUES) only where the word is a direct match, else null; nothing scores cues yet (the direction step will). Labelled by hand 2026-10-10 from the text.",
+ "about": "Who says each dialogue segment in chapters VII and VIII of \"Alice's Adventures in Wonderland\" (Lewis Carroll, 1865) — the answer key for server/scripts/eval_attribution.js, and the test book of TASKS \"One-click audiobook\" (2026-10-10). SOURCE: Project Gutenberg eBook #11 (https://www.gutenberg.org/ebooks/11), whose page states \"Public domain in the USA.\" (checked 2026-10-10); book.epub is that EPUB3, unchanged, so it goes through the book_prose adapter the way an EPUB import does in the app, and only these two of its chapters are keyed. Keys are the pipeline's own [D#] numbers per chapter. Values are cast names; 'unknown' where no single cast member speaks: the group lines (VII D2 and D94–D95, the Hatter and the March Hare together; VII D121, their 'Sh! sh!'; VIII D39, the soldiers). 'groups' names, for each of those 'unknown' lines, the cast members the text says speak it together ([] when none of them is in the cast — the soldiers); the one-click run gives such a line to one of them, or to the narrator when there are none (TASKS \"The one-click plan's questions, answered\", answer 7), scored by server/scripts/eval_speakers.js (2026-10-16). A quoted thought is its thinker's. Chapter VII is numbered by the splitter as it reads since 2026-10-10 (150 lines; 147 before): the Hatter's song and the end of his speech (VII D72, D73, D77) are his, and D141 is the Dormouse's whole speech, the phrase he quotes inside it included. 'cues' lists the segments whose text says how they are spoken — the book's own words, and the nearest of the app's nine emotions (models.js EMOTION_VALUES) only where the word is a direct match, else null; nothing scores cues yet (the direction step will). Labelled by hand 2026-10-10 from the text.",
  "title": "Alice's Adventures in Wonderland — chapters VII and VIII",
  "adapter": "book_prose",
  "book": "book.epub",
@@ -321,6 +321,29 @@
    "87": "Alice",
    "88": "Queen of Hearts",
    "89": "Queen of Hearts"
+  }
+ },
+ "groups": {
+  "CHAPTER VII. A Mad Tea-Party": {
+   "2": [
+    "Hatter",
+    "March Hare"
+   ],
+   "94": [
+    "Hatter",
+    "March Hare"
+   ],
+   "95": [
+    "Hatter",
+    "March Hare"
+   ],
+   "121": [
+    "Hatter",
+    "March Hare"
+   ]
+  },
+  "CHAPTER VIII. The Queen’s Croquet-Ground": {
+   "39": []
   }
  },
  "cues": {
