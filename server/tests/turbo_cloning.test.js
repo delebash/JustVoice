@@ -88,7 +88,7 @@ test("a_cloned_voice_maps_to_voice_ref_and_turbos_knobs", () => {
 
 test("a_voice_without_a_clip_is_refused_by_name", () => {
   expect(() => slot.toSpeechRequest(TURBO, { text: "Hi.", voice_id: "anything" })).toThrow(
-    /Chatterbox Turbo .* speaks only cloned voices/,
+    /Chatterbox Turbo .* speaks only a cloned voice or its own built-in one/,
   );
 });
 

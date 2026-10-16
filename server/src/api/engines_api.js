@@ -3,7 +3,7 @@
 // justvoice/api/engines_api.py).
 //
 // Merges three sources of truth into one response:
-//   1. Manager-managed engines (engines/<id>/manifest.js — the plugin model).
+//   1. Manager-managed engines (built from audio.cpp's own files, engines/audiocpp/generated.js).
 //   2. Runtime-registered external engines (computeStatus derives their state).
 //   3. Runtime-registered in-process engines (state.engines.all() — the external
 //      OpenAI-compatible servers).

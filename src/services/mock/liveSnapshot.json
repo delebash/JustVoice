@@ -1,17 +1,30 @@
 {
- "_source": "Live answers of the app's own server under npm run dev, 2026-10-04: /v1/engines/capabilities, /v1/voices (presets), /v1/engines (terms), /v1/effects/catalog. Model languages: /v1/engines/{id}/models.",
+ "_source": "The server's own answers for the seven engines described by our own files (Kokoro, KittenTTS, Pocket TTS, Qwen3-TTS, Chatterbox, VoxCPM2, Speech recognition), computed from this checkout's code on 2026-10-16 (da25ad3e) by scripts/mock-snapshots.js, the pinned speech runtime taken as installed: /v1/engines/capabilities, /v1/voices (presets), /v1/engines (terms), /v1/effects/catalog. Model languages: what /v1/voices says each model speaks; versions: /v1/voices/{id}/model-version's rows.",
  "capabilities": {
   "kokoro": {
-   "display_name": "Kokoro",
    "engine_id": "kokoro",
+   "display_name": "Kokoro",
+   "supports_voice_cloning": false,
+   "supports_clone_prompt_text": false,
+   "supports_voice_design": false,
+   "supports_instruct_freeform": false,
+   "direction_known": true,
+   "emotions": null,
+   "supports_phoneme_input": true,
+   "supports_xvector_only": false,
+   "supports_multi_speaker": false,
+   "supports_voice_blending": true,
    "knobs": [
     {
      "key": "speed",
      "label": "Speed",
+     "type": "number",
      "min": 0.5,
-     "max": 3.0,
+     "max": 3,
      "step": 0.05,
-     "default": 1.0,
+     "box": false,
+     "default": 1,
+     "choices": [],
      "unit": "×",
      "hint": "Reading pace multiplier.",
      "advanced": false
@@ -19,85 +32,128 @@
     {
      "key": "seed",
      "label": "Seed",
-     "min": 0.0,
-     "max": 2000000000.0,
-     "step": 1.0,
-     "default": 0.0,
+     "type": "number",
+     "min": 0,
+     "max": 2000000000,
+     "step": 1,
+     "box": false,
+     "default": 0,
+     "choices": [],
      "unit": "",
-     "hint": "Lock deterministic generation. 0 = random.",
+     "hint": "The same seed repeats the same take. 0 = a new take each time.",
      "advanced": true
     }
    ],
    "inline_tags": [],
+   "pitch_native_st_range": null,
+   "pitch_post_process": true,
    "speed_native": true,
-   "supports_voice_cloning": false,
-   "supports_voice_design": false,
-   "supports_voice_blending": true,
-   "supports_instruct_freeform": false,
-   "supports_clone_prompt_text": false,
-   "supports_xvector_only": false
+   "notes": [
+    "Pitch shift is post-process (the server shifts the rendered audio).",
+    "The same seed gives the same audio."
+   ]
   },
   "kitten": {
-   "display_name": "KittenTTS",
    "engine_id": "kitten",
+   "display_name": "KittenTTS",
+   "supports_voice_cloning": false,
+   "supports_clone_prompt_text": false,
+   "supports_voice_design": false,
+   "supports_instruct_freeform": false,
+   "direction_known": true,
+   "emotions": null,
+   "supports_phoneme_input": false,
+   "supports_xvector_only": false,
+   "supports_multi_speaker": false,
+   "supports_voice_blending": false,
    "knobs": [
     {
      "key": "speed",
      "label": "Speed",
-     "min": 0.5,
-     "max": 3.0,
-     "step": 0.05,
-     "default": 1.0,
+     "type": "number",
+     "min": 0.01,
+     "max": 3,
+     "step": 0.01,
+     "box": false,
+     "default": 1,
+     "choices": [],
      "unit": "×",
      "hint": "Reading pace multiplier.",
      "advanced": false
     }
    ],
    "inline_tags": [],
+   "pitch_native_st_range": null,
+   "pitch_post_process": true,
    "speed_native": true,
-   "supports_voice_cloning": false,
-   "supports_voice_design": false,
-   "supports_voice_blending": false,
-   "supports_instruct_freeform": false,
-   "supports_clone_prompt_text": false,
-   "supports_xvector_only": false
+   "notes": [
+    "Eight English preset voices, made for the CPU.",
+    "The same seed does not repeat the same audio."
+   ]
   },
   "pocket": {
-   "display_name": "Pocket TTS",
    "engine_id": "pocket",
+   "display_name": "Pocket TTS",
+   "supports_voice_cloning": true,
+   "supports_clone_prompt_text": false,
+   "supports_voice_design": false,
+   "supports_instruct_freeform": false,
+   "direction_known": true,
+   "emotions": null,
+   "supports_phoneme_input": false,
+   "supports_xvector_only": false,
+   "supports_multi_speaker": false,
+   "supports_voice_blending": false,
    "knobs": [
     {
      "key": "seed",
      "label": "Seed",
-     "min": 0.0,
-     "max": 2000000000.0,
-     "step": 1.0,
-     "default": 0.0,
+     "type": "number",
+     "min": 0,
+     "max": 4294967295,
+     "step": 1,
+     "box": false,
+     "default": 0,
+     "choices": [],
      "unit": "",
-     "hint": "Lock deterministic generation. 0 = random.",
+     "hint": "The same seed repeats the same take. 0 = a new take each time.",
      "advanced": true
     }
    ],
    "inline_tags": [],
+   "pitch_native_st_range": null,
+   "pitch_post_process": true,
    "speed_native": false,
-   "supports_voice_cloning": true,
-   "supports_voice_design": false,
-   "supports_voice_blending": false,
-   "supports_instruct_freeform": false,
-   "supports_clone_prompt_text": false,
-   "supports_xvector_only": false
+   "notes": [
+    "Clones from a short clip, fast enough on the CPU.",
+    "One model per language — load the model for the language you are rendering.",
+    "Cloning asks you to accept Kyutai's terms once."
+   ]
   },
   "chatterbox": {
-   "display_name": "Chatterbox",
    "engine_id": "chatterbox",
+   "display_name": "Chatterbox",
+   "supports_voice_cloning": true,
+   "supports_clone_prompt_text": false,
+   "supports_voice_design": false,
+   "supports_instruct_freeform": false,
+   "direction_known": true,
+   "emotions": null,
+   "supports_phoneme_input": false,
+   "supports_xvector_only": false,
+   "supports_multi_speaker": false,
+   "supports_voice_blending": false,
    "knobs": [
     {
      "key": "temperature",
      "label": "Temperature",
+     "type": "number",
      "min": 0.05,
-     "max": 2.0,
+     "max": 2,
      "step": 0.05,
+     "box": false,
      "default": 0.8,
+     "choices": [],
      "unit": "",
      "hint": "Sampling variance. Lower = stable + robotic; higher = creative + wild.",
      "advanced": false
@@ -105,10 +161,13 @@
     {
      "key": "exaggeration",
      "label": "Exaggeration",
-     "min": 0.25,
-     "max": 2.0,
+     "type": "number",
+     "min": 0,
+     "max": 2,
      "step": 0.05,
+     "box": false,
      "default": 0.5,
+     "choices": [],
      "unit": "",
      "hint": "Expressiveness. 0.3–0.4 = flat narration. >1.0 = dramatic.",
      "advanced": false
@@ -116,10 +175,13 @@
     {
      "key": "cfg_weight",
      "label": "CFG weight",
-     "min": 0.0,
-     "max": 1.0,
+     "type": "number",
+     "min": 0,
+     "max": 1,
      "step": 0.05,
+     "box": false,
      "default": 0.5,
+     "choices": [],
      "unit": "",
      "hint": "Text adherence. Lower = looser pacing; higher = strict.",
      "advanced": false
@@ -127,57 +189,104 @@
     {
      "key": "repetition_penalty",
      "label": "Repetition penalty",
-     "min": 1.0,
-     "max": 4.0,
+     "type": "number",
+     "min": 1,
+     "max": 4,
      "step": 0.1,
-     "default": 2.0,
+     "box": false,
+     "default": 1.2,
+     "choices": [],
+     "unit": "",
+     "hint": "",
+     "advanced": false
+    },
+    {
+     "key": "top_p",
+     "label": "Top p",
+     "type": "number",
+     "min": 0.05,
+     "max": null,
+     "step": 0.01,
+     "box": true,
+     "default": 1,
+     "choices": [],
      "unit": "",
      "hint": "",
      "advanced": true
     },
     {
-     "key": "top_p",
-     "label": "Top p",
-     "min": 0.0,
-     "max": 1.0,
+     "key": "min_p",
+     "label": "Min p",
+     "type": "number",
+     "min": null,
+     "max": null,
      "step": 0.01,
-     "default": 1.0,
+     "box": true,
+     "default": 0.05,
+     "choices": [],
      "unit": "",
-     "hint": "",
+     "hint": "Drops sounds less likely than this share of the likeliest. 0 = off.",
+     "advanced": true
+    },
+    {
+     "key": "s3gen_cfg_rate",
+     "label": "Decoder CFG",
+     "type": "number",
+     "min": null,
+     "max": null,
+     "step": 0.05,
+     "box": true,
+     "default": 0.7,
+     "choices": [],
+     "unit": "",
+     "hint": "How closely the audio decoder holds to the cloned voice.",
      "advanced": true
     },
     {
      "key": "seed",
      "label": "Seed",
-     "min": 0.0,
-     "max": 2000000000.0,
-     "step": 1.0,
-     "default": 0.0,
+     "type": "number",
+     "min": 0,
+     "max": 4294967295,
+     "step": 1,
+     "box": false,
+     "default": 0,
+     "choices": [],
      "unit": "",
-     "hint": "Lock deterministic generation. 0 = random.",
+     "hint": "The same seed repeats the same take. 0 = a new take each time.",
      "advanced": true
     }
    ],
    "inline_tags": [],
+   "pitch_native_st_range": null,
+   "pitch_post_process": true,
    "speed_native": false,
-   "supports_voice_cloning": true,
-   "supports_voice_design": false,
-   "supports_voice_blending": false,
-   "supports_instruct_freeform": false,
-   "supports_clone_prompt_text": false,
-   "supports_xvector_only": false
+   "notes": []
   },
   "chatterbox-multilingual": {
-   "display_name": "Chatterbox Multilingual",
    "engine_id": "chatterbox-multilingual",
+   "display_name": "Chatterbox Multilingual",
+   "supports_voice_cloning": true,
+   "supports_clone_prompt_text": false,
+   "supports_voice_design": false,
+   "supports_instruct_freeform": false,
+   "direction_known": true,
+   "emotions": null,
+   "supports_phoneme_input": false,
+   "supports_xvector_only": false,
+   "supports_multi_speaker": false,
+   "supports_voice_blending": false,
    "knobs": [
     {
      "key": "temperature",
      "label": "Temperature",
+     "type": "number",
      "min": 0.05,
-     "max": 2.0,
+     "max": 2,
      "step": 0.05,
+     "box": false,
      "default": 0.8,
+     "choices": [],
      "unit": "",
      "hint": "Sampling variance. Lower = stable + robotic; higher = creative + wild.",
      "advanced": false
@@ -185,10 +294,13 @@
     {
      "key": "exaggeration",
      "label": "Exaggeration",
-     "min": 0.25,
-     "max": 2.0,
+     "type": "number",
+     "min": 0,
+     "max": 2,
      "step": 0.05,
+     "box": false,
      "default": 0.5,
+     "choices": [],
      "unit": "",
      "hint": "Expressiveness. 0.3–0.4 = flat narration. >1.0 = dramatic.",
      "advanced": false
@@ -196,10 +308,13 @@
     {
      "key": "cfg_weight",
      "label": "CFG weight",
-     "min": 0.0,
-     "max": 1.0,
+     "type": "number",
+     "min": 0,
+     "max": 1,
      "step": 0.05,
+     "box": false,
      "default": 0.5,
+     "choices": [],
      "unit": "",
      "hint": "Text adherence. Lower = looser pacing; higher = strict.",
      "advanced": false
@@ -207,68 +322,121 @@
     {
      "key": "repetition_penalty",
      "label": "Repetition penalty",
-     "min": 1.0,
-     "max": 4.0,
+     "type": "number",
+     "min": 1,
+     "max": 4,
      "step": 0.1,
-     "default": 2.0,
+     "box": false,
+     "default": 1.2,
+     "choices": [],
+     "unit": "",
+     "hint": "",
+     "advanced": false
+    },
+    {
+     "key": "top_p",
+     "label": "Top p",
+     "type": "number",
+     "min": 0.05,
+     "max": null,
+     "step": 0.01,
+     "box": true,
+     "default": 1,
+     "choices": [],
      "unit": "",
      "hint": "",
      "advanced": true
     },
     {
-     "key": "top_p",
-     "label": "Top p",
-     "min": 0.0,
-     "max": 1.0,
+     "key": "min_p",
+     "label": "Min p",
+     "type": "number",
+     "min": null,
+     "max": null,
      "step": 0.01,
-     "default": 1.0,
+     "box": true,
+     "default": 0.05,
+     "choices": [],
      "unit": "",
-     "hint": "",
+     "hint": "Drops sounds less likely than this share of the likeliest. 0 = off.",
+     "advanced": true
+    },
+    {
+     "key": "s3gen_cfg_rate",
+     "label": "Decoder CFG",
+     "type": "number",
+     "min": null,
+     "max": null,
+     "step": 0.05,
+     "box": true,
+     "default": 0.7,
+     "choices": [],
+     "unit": "",
+     "hint": "How closely the audio decoder holds to the cloned voice.",
      "advanced": true
     },
     {
      "key": "seed",
      "label": "Seed",
-     "min": 0.0,
-     "max": 2000000000.0,
-     "step": 1.0,
-     "default": 0.0,
+     "type": "number",
+     "min": 0,
+     "max": 4294967295,
+     "step": 1,
+     "box": false,
+     "default": 0,
+     "choices": [],
      "unit": "",
-     "hint": "Lock deterministic generation. 0 = random.",
+     "hint": "The same seed repeats the same take. 0 = a new take each time.",
      "advanced": true
     }
    ],
    "inline_tags": [],
+   "pitch_native_st_range": null,
+   "pitch_post_process": true,
    "speed_native": false,
-   "supports_voice_cloning": true,
-   "supports_voice_design": false,
-   "supports_voice_blending": false,
-   "supports_instruct_freeform": false,
-   "supports_clone_prompt_text": false,
-   "supports_xvector_only": false
+   "notes": [
+    "23 languages. For language transfer, set cfg_weight=0 (Resemble docs).",
+    "The same seed gives the same audio."
+   ]
   },
   "chatterbox-turbo": {
-   "display_name": "Chatterbox Turbo",
    "engine_id": "chatterbox-turbo",
+   "display_name": "Chatterbox Turbo",
+   "supports_voice_cloning": true,
+   "supports_clone_prompt_text": false,
+   "supports_voice_design": false,
+   "supports_instruct_freeform": false,
+   "direction_known": true,
+   "emotions": null,
+   "supports_phoneme_input": false,
+   "supports_xvector_only": false,
+   "supports_multi_speaker": false,
+   "supports_voice_blending": false,
    "knobs": [
     {
      "key": "temperature",
      "label": "Temperature",
+     "type": "number",
      "min": 0.05,
-     "max": 2.0,
+     "max": null,
      "step": 0.05,
+     "box": true,
      "default": 0.8,
+     "choices": [],
      "unit": "",
      "hint": "Sampling variance. Lower = stable + robotic; higher = creative + wild.",
-     "advanced": false
+     "advanced": true
     },
     {
      "key": "repetition_penalty",
      "label": "Repetition penalty",
-     "min": 1.0,
-     "max": 4.0,
+     "type": "number",
+     "min": null,
+     "max": null,
      "step": 0.1,
+     "box": true,
      "default": 1.2,
+     "choices": [],
      "unit": "",
      "hint": "",
      "advanced": true
@@ -276,10 +444,13 @@
     {
      "key": "top_p",
      "label": "Top p",
-     "min": 0.0,
-     "max": 1.0,
+     "type": "number",
+     "min": 0.05,
+     "max": null,
      "step": 0.01,
+     "box": true,
      "default": 0.95,
+     "choices": [],
      "unit": "",
      "hint": "",
      "advanced": true
@@ -287,10 +458,13 @@
     {
      "key": "top_k",
      "label": "Top k",
-     "min": 1.0,
-     "max": 2000.0,
-     "step": 1.0,
-     "default": 1000.0,
+     "type": "number",
+     "min": 0,
+     "max": null,
+     "step": 1,
+     "box": true,
+     "default": 1000,
+     "choices": [],
      "unit": "",
      "hint": "",
      "advanced": true
@@ -298,12 +472,15 @@
     {
      "key": "seed",
      "label": "Seed",
-     "min": 0.0,
-     "max": 2000000000.0,
-     "step": 1.0,
-     "default": 0.0,
+     "type": "number",
+     "min": 0,
+     "max": 4294967295,
+     "step": 1,
+     "box": false,
+     "default": 0,
+     "choices": [],
      "unit": "",
-     "hint": "Lock deterministic generation. 0 = random.",
+     "hint": "The same seed repeats the same take. 0 = a new take each time.",
      "advanced": true
     }
    ],
@@ -365,25 +542,40 @@
      "value_map": null
     }
    ],
+   "pitch_native_st_range": null,
+   "pitch_post_process": true,
    "speed_native": false,
-   "supports_voice_cloning": true,
-   "supports_voice_design": false,
-   "supports_voice_blending": false,
-   "supports_instruct_freeform": false,
-   "supports_clone_prompt_text": false,
-   "supports_xvector_only": false
+   "notes": [
+    "English only. Clones from a reference clip longer than 5 seconds.",
+    "The 19 inline tags are Turbo's own — Multilingual shares the engine but not the tokenizer, and reads them as words.",
+    "[surprised] and [crying] have no Delivery.emotion equivalent; type them inline. [shouted] and [contemptuous] have no token.",
+    "The same seed gives the same audio."
+   ]
   },
   "qwen3": {
-   "display_name": "Qwen3-TTS",
    "engine_id": "qwen3",
+   "display_name": "Qwen3-TTS",
+   "supports_voice_cloning": true,
+   "supports_clone_prompt_text": false,
+   "supports_voice_design": true,
+   "supports_instruct_freeform": true,
+   "direction_known": true,
+   "emotions": null,
+   "supports_phoneme_input": false,
+   "supports_xvector_only": false,
+   "supports_multi_speaker": false,
+   "supports_voice_blending": false,
    "knobs": [
     {
      "key": "talker_temperature",
      "label": "Temperature",
+     "type": "number",
      "min": 0.05,
-     "max": 2.0,
+     "max": 2,
      "step": 0.05,
+     "box": false,
      "default": 0.9,
+     "choices": [],
      "unit": "",
      "hint": "Sampling variance for the talker model.",
      "advanced": false
@@ -391,32 +583,83 @@
     {
      "key": "talker_top_k",
      "label": "Top k",
-     "min": 1.0,
-     "max": 100.0,
-     "step": 1.0,
-     "default": 50.0,
+     "type": "number",
+     "min": 0,
+     "max": null,
+     "step": 1,
+     "box": true,
+     "default": 50,
+     "choices": [],
      "unit": "",
      "hint": "",
-     "advanced": true
+     "advanced": false
     },
     {
      "key": "talker_top_p",
      "label": "Top p",
-     "min": 0.0,
-     "max": 1.0,
+     "type": "number",
+     "min": 0.05,
+     "max": 1,
      "step": 0.01,
-     "default": 1.0,
+     "box": false,
+     "default": 1,
+     "choices": [],
+     "unit": "",
+     "hint": "",
+     "advanced": false
+    },
+    {
+     "key": "repetition_penalty",
+     "label": "Repetition penalty",
+     "type": "number",
+     "min": 1,
+     "max": 4,
+     "step": 0.05,
+     "box": false,
+     "default": 1.05,
+     "choices": [],
+     "unit": "",
+     "hint": "",
+     "advanced": false
+    },
+    {
+     "key": "subtalker_temperature",
+     "label": "Detail temperature",
+     "type": "number",
+     "min": 0.05,
+     "max": null,
+     "step": 0.05,
+     "box": true,
+     "default": 0.9,
+     "choices": [],
+     "unit": "",
+     "hint": "Sampling variance for the finer audio detail (the sub-talker).",
+     "advanced": true
+    },
+    {
+     "key": "subtalker_top_k",
+     "label": "Detail top k",
+     "type": "number",
+     "min": 0,
+     "max": null,
+     "step": 1,
+     "box": true,
+     "default": 50,
+     "choices": [],
      "unit": "",
      "hint": "",
      "advanced": true
     },
     {
-     "key": "repetition_penalty",
-     "label": "Repetition penalty",
-     "min": 1.0,
-     "max": 4.0,
-     "step": 0.05,
-     "default": 1.05,
+     "key": "subtalker_top_p",
+     "label": "Detail top p",
+     "type": "number",
+     "min": 0.05,
+     "max": 1,
+     "step": 0.01,
+     "box": false,
+     "default": 1,
+     "choices": [],
      "unit": "",
      "hint": "",
      "advanced": true
@@ -424,35 +667,50 @@
     {
      "key": "seed",
      "label": "Seed",
-     "min": 0.0,
-     "max": 2000000000.0,
-     "step": 1.0,
-     "default": 0.0,
+     "type": "number",
+     "min": 0,
+     "max": 4294967295,
+     "step": 1,
+     "box": false,
+     "default": 0,
+     "choices": [],
      "unit": "",
-     "hint": "Lock deterministic generation. 0 = random.",
+     "hint": "The same seed repeats the same take. 0 = a new take each time.",
      "advanced": true
     }
    ],
    "inline_tags": [],
+   "pitch_native_st_range": null,
+   "pitch_post_process": true,
    "speed_native": false,
-   "supports_voice_cloning": true,
-   "supports_voice_design": true,
-   "supports_voice_blending": false,
-   "supports_instruct_freeform": true,
-   "supports_clone_prompt_text": false,
-   "supports_xvector_only": false
+   "notes": [
+    "Instruct field is the primary control — describe voice in plain English (\"young, sarcastic\", \"stadium announcement\", \"angry whisper\")."
+   ]
   },
   "qwen3-cv": {
-   "display_name": "Qwen3-TTS CustomVoice",
    "engine_id": "qwen3-cv",
+   "display_name": "Qwen3-TTS CustomVoice",
+   "supports_voice_cloning": false,
+   "supports_clone_prompt_text": false,
+   "supports_voice_design": false,
+   "supports_instruct_freeform": true,
+   "direction_known": true,
+   "emotions": null,
+   "supports_phoneme_input": false,
+   "supports_xvector_only": false,
+   "supports_multi_speaker": false,
+   "supports_voice_blending": false,
    "knobs": [
     {
      "key": "talker_temperature",
      "label": "Temperature",
+     "type": "number",
      "min": 0.05,
-     "max": 2.0,
+     "max": 2,
      "step": 0.05,
+     "box": false,
      "default": 0.9,
+     "choices": [],
      "unit": "",
      "hint": "Sampling variance for the talker model.",
      "advanced": false
@@ -460,32 +718,83 @@
     {
      "key": "talker_top_k",
      "label": "Top k",
-     "min": 1.0,
-     "max": 100.0,
-     "step": 1.0,
-     "default": 50.0,
+     "type": "number",
+     "min": 0,
+     "max": null,
+     "step": 1,
+     "box": true,
+     "default": 50,
+     "choices": [],
      "unit": "",
      "hint": "",
-     "advanced": true
+     "advanced": false
     },
     {
      "key": "talker_top_p",
      "label": "Top p",
-     "min": 0.0,
-     "max": 1.0,
+     "type": "number",
+     "min": 0.05,
+     "max": 1,
      "step": 0.01,
-     "default": 1.0,
+     "box": false,
+     "default": 1,
+     "choices": [],
+     "unit": "",
+     "hint": "",
+     "advanced": false
+    },
+    {
+     "key": "repetition_penalty",
+     "label": "Repetition penalty",
+     "type": "number",
+     "min": 1,
+     "max": 4,
+     "step": 0.05,
+     "box": false,
+     "default": 1.05,
+     "choices": [],
+     "unit": "",
+     "hint": "",
+     "advanced": false
+    },
+    {
+     "key": "subtalker_temperature",
+     "label": "Detail temperature",
+     "type": "number",
+     "min": 0.05,
+     "max": null,
+     "step": 0.05,
+     "box": true,
+     "default": 0.9,
+     "choices": [],
+     "unit": "",
+     "hint": "Sampling variance for the finer audio detail (the sub-talker).",
+     "advanced": true
+    },
+    {
+     "key": "subtalker_top_k",
+     "label": "Detail top k",
+     "type": "number",
+     "min": 0,
+     "max": null,
+     "step": 1,
+     "box": true,
+     "default": 50,
+     "choices": [],
      "unit": "",
      "hint": "",
      "advanced": true
     },
     {
-     "key": "repetition_penalty",
-     "label": "Repetition penalty",
-     "min": 1.0,
-     "max": 4.0,
-     "step": 0.05,
-     "default": 1.05,
+     "key": "subtalker_top_p",
+     "label": "Detail top p",
+     "type": "number",
+     "min": 0.05,
+     "max": 1,
+     "step": 0.01,
+     "box": false,
+     "default": 1,
+     "choices": [],
      "unit": "",
      "hint": "",
      "advanced": true
@@ -493,35 +802,51 @@
     {
      "key": "seed",
      "label": "Seed",
-     "min": 0.0,
-     "max": 2000000000.0,
-     "step": 1.0,
-     "default": 0.0,
+     "type": "number",
+     "min": 0,
+     "max": 4294967295,
+     "step": 1,
+     "box": false,
+     "default": 0,
+     "choices": [],
      "unit": "",
-     "hint": "Lock deterministic generation. 0 = random.",
+     "hint": "The same seed repeats the same take. 0 = a new take each time.",
      "advanced": true
     }
    ],
    "inline_tags": [],
+   "pitch_native_st_range": null,
+   "pitch_post_process": true,
    "speed_native": false,
-   "supports_voice_cloning": false,
-   "supports_voice_design": false,
-   "supports_voice_blending": false,
-   "supports_instruct_freeform": true,
-   "supports_clone_prompt_text": false,
-   "supports_xvector_only": false
+   "notes": [
+    "Instruct field is the primary control — describe delivery in plain English.",
+    "No cloning on this checkpoint — the Base family clones."
+   ]
   },
   "qwen3-base": {
-   "display_name": "Qwen3-TTS Base",
    "engine_id": "qwen3-base",
+   "display_name": "Qwen3-TTS Base",
+   "supports_voice_cloning": true,
+   "supports_clone_prompt_text": true,
+   "supports_voice_design": false,
+   "supports_instruct_freeform": false,
+   "direction_known": true,
+   "emotions": null,
+   "supports_phoneme_input": false,
+   "supports_xvector_only": true,
+   "supports_multi_speaker": false,
+   "supports_voice_blending": false,
    "knobs": [
     {
      "key": "talker_temperature",
      "label": "Temperature",
+     "type": "number",
      "min": 0.05,
-     "max": 2.0,
+     "max": 2,
      "step": 0.05,
+     "box": false,
      "default": 0.9,
+     "choices": [],
      "unit": "",
      "hint": "Sampling variance for the talker model.",
      "advanced": false
@@ -529,32 +854,83 @@
     {
      "key": "talker_top_k",
      "label": "Top k",
-     "min": 1.0,
-     "max": 100.0,
-     "step": 1.0,
-     "default": 50.0,
+     "type": "number",
+     "min": 0,
+     "max": null,
+     "step": 1,
+     "box": true,
+     "default": 50,
+     "choices": [],
      "unit": "",
      "hint": "",
-     "advanced": true
+     "advanced": false
     },
     {
      "key": "talker_top_p",
      "label": "Top p",
-     "min": 0.0,
-     "max": 1.0,
+     "type": "number",
+     "min": 0.05,
+     "max": 1,
      "step": 0.01,
-     "default": 1.0,
+     "box": false,
+     "default": 1,
+     "choices": [],
+     "unit": "",
+     "hint": "",
+     "advanced": false
+    },
+    {
+     "key": "repetition_penalty",
+     "label": "Repetition penalty",
+     "type": "number",
+     "min": 1,
+     "max": 4,
+     "step": 0.05,
+     "box": false,
+     "default": 1.05,
+     "choices": [],
+     "unit": "",
+     "hint": "",
+     "advanced": false
+    },
+    {
+     "key": "subtalker_temperature",
+     "label": "Detail temperature",
+     "type": "number",
+     "min": 0.05,
+     "max": null,
+     "step": 0.05,
+     "box": true,
+     "default": 0.9,
+     "choices": [],
+     "unit": "",
+     "hint": "Sampling variance for the finer audio detail (the sub-talker).",
+     "advanced": true
+    },
+    {
+     "key": "subtalker_top_k",
+     "label": "Detail top k",
+     "type": "number",
+     "min": 0,
+     "max": null,
+     "step": 1,
+     "box": true,
+     "default": 50,
+     "choices": [],
      "unit": "",
      "hint": "",
      "advanced": true
     },
     {
-     "key": "repetition_penalty",
-     "label": "Repetition penalty",
-     "min": 1.0,
-     "max": 4.0,
-     "step": 0.05,
-     "default": 1.05,
+     "key": "subtalker_top_p",
+     "label": "Detail top p",
+     "type": "number",
+     "min": 0.05,
+     "max": 1,
+     "step": 0.01,
+     "box": false,
+     "default": 1,
+     "choices": [],
      "unit": "",
      "hint": "",
      "advanced": true
@@ -562,35 +938,51 @@
     {
      "key": "seed",
      "label": "Seed",
-     "min": 0.0,
-     "max": 2000000000.0,
-     "step": 1.0,
-     "default": 0.0,
+     "type": "number",
+     "min": 0,
+     "max": 4294967295,
+     "step": 1,
+     "box": false,
+     "default": 0,
+     "choices": [],
      "unit": "",
-     "hint": "Lock deterministic generation. 0 = random.",
+     "hint": "The same seed repeats the same take. 0 = a new take each time.",
      "advanced": true
     }
    ],
    "inline_tags": [],
+   "pitch_native_st_range": null,
+   "pitch_post_process": true,
    "speed_native": false,
-   "supports_voice_cloning": true,
-   "supports_voice_design": false,
-   "supports_voice_blending": false,
-   "supports_instruct_freeform": false,
-   "supports_clone_prompt_text": true,
-   "supports_xvector_only": true
+   "notes": [
+    "Clone-only checkpoint: no preset speakers, and written direction is dropped silently.",
+    "Pass the reference clip's exact transcript for a better clone."
+   ]
   },
   "qwen3-vd": {
-   "display_name": "Qwen3-TTS VoiceDesign",
    "engine_id": "qwen3-vd",
+   "display_name": "Qwen3-TTS VoiceDesign",
+   "supports_voice_cloning": false,
+   "supports_clone_prompt_text": false,
+   "supports_voice_design": true,
+   "supports_instruct_freeform": true,
+   "direction_known": true,
+   "emotions": null,
+   "supports_phoneme_input": false,
+   "supports_xvector_only": false,
+   "supports_multi_speaker": false,
+   "supports_voice_blending": false,
    "knobs": [
     {
      "key": "talker_temperature",
      "label": "Temperature",
+     "type": "number",
      "min": 0.05,
-     "max": 2.0,
+     "max": 2,
      "step": 0.05,
+     "box": false,
      "default": 0.9,
+     "choices": [],
      "unit": "",
      "hint": "Sampling variance for the talker model.",
      "advanced": false
@@ -598,32 +990,83 @@
     {
      "key": "talker_top_k",
      "label": "Top k",
-     "min": 1.0,
-     "max": 100.0,
-     "step": 1.0,
-     "default": 50.0,
+     "type": "number",
+     "min": 0,
+     "max": null,
+     "step": 1,
+     "box": true,
+     "default": 50,
+     "choices": [],
      "unit": "",
      "hint": "",
-     "advanced": true
+     "advanced": false
     },
     {
      "key": "talker_top_p",
      "label": "Top p",
-     "min": 0.0,
-     "max": 1.0,
+     "type": "number",
+     "min": 0.05,
+     "max": 1,
      "step": 0.01,
-     "default": 1.0,
+     "box": false,
+     "default": 1,
+     "choices": [],
+     "unit": "",
+     "hint": "",
+     "advanced": false
+    },
+    {
+     "key": "repetition_penalty",
+     "label": "Repetition penalty",
+     "type": "number",
+     "min": 1,
+     "max": 4,
+     "step": 0.05,
+     "box": false,
+     "default": 1.05,
+     "choices": [],
+     "unit": "",
+     "hint": "",
+     "advanced": false
+    },
+    {
+     "key": "subtalker_temperature",
+     "label": "Detail temperature",
+     "type": "number",
+     "min": 0.05,
+     "max": null,
+     "step": 0.05,
+     "box": true,
+     "default": 0.9,
+     "choices": [],
+     "unit": "",
+     "hint": "Sampling variance for the finer audio detail (the sub-talker).",
+     "advanced": true
+    },
+    {
+     "key": "subtalker_top_k",
+     "label": "Detail top k",
+     "type": "number",
+     "min": 0,
+     "max": null,
+     "step": 1,
+     "box": true,
+     "default": 50,
+     "choices": [],
      "unit": "",
      "hint": "",
      "advanced": true
     },
     {
-     "key": "repetition_penalty",
-     "label": "Repetition penalty",
-     "min": 1.0,
-     "max": 4.0,
-     "step": 0.05,
-     "default": 1.05,
+     "key": "subtalker_top_p",
+     "label": "Detail top p",
+     "type": "number",
+     "min": 0.05,
+     "max": 1,
+     "step": 0.01,
+     "box": false,
+     "default": 1,
+     "choices": [],
      "unit": "",
      "hint": "",
      "advanced": true
@@ -631,35 +1074,51 @@
     {
      "key": "seed",
      "label": "Seed",
-     "min": 0.0,
-     "max": 2000000000.0,
-     "step": 1.0,
-     "default": 0.0,
+     "type": "number",
+     "min": 0,
+     "max": 4294967295,
+     "step": 1,
+     "box": false,
+     "default": 0,
+     "choices": [],
      "unit": "",
-     "hint": "Lock deterministic generation. 0 = random.",
+     "hint": "The same seed repeats the same take. 0 = a new take each time.",
      "advanced": true
     }
    ],
    "inline_tags": [],
+   "pitch_native_st_range": null,
+   "pitch_post_process": true,
    "speed_native": false,
-   "supports_voice_cloning": false,
-   "supports_voice_design": true,
-   "supports_voice_blending": false,
-   "supports_instruct_freeform": true,
-   "supports_clone_prompt_text": false,
-   "supports_xvector_only": false
+   "notes": [
+    "Describe the voice in plain English — \"gravel-voiced harbour-master, 70s\" — and the model invents it. No reference audio.",
+    "1.7B only; there is no 0.6B VoiceDesign checkpoint."
+   ]
   },
   "voxcpm2": {
-   "display_name": "VoxCPM2",
    "engine_id": "voxcpm2",
+   "display_name": "VoxCPM2",
+   "supports_voice_cloning": true,
+   "supports_clone_prompt_text": true,
+   "supports_voice_design": true,
+   "supports_instruct_freeform": true,
+   "direction_known": true,
+   "emotions": null,
+   "supports_phoneme_input": false,
+   "supports_xvector_only": false,
+   "supports_multi_speaker": false,
+   "supports_voice_blending": false,
    "knobs": [
     {
      "key": "cfg_value",
      "label": "CFG",
-     "min": 1.0,
-     "max": 5.0,
+     "type": "number",
+     "min": 0,
+     "max": 5,
      "step": 0.1,
-     "default": 2.0,
+     "box": false,
+     "default": 2,
+     "choices": [],
      "unit": "",
      "hint": "How closely it follows the voice and the text. Higher = stricter.",
      "advanced": false
@@ -667,57 +1126,108 @@
     {
      "key": "inference_timesteps",
      "label": "Inference steps",
-     "min": 4.0,
-     "max": 30.0,
-     "step": 1.0,
-     "default": 10.0,
+     "type": "number",
+     "min": 1,
+     "max": null,
+     "step": 1,
+     "box": true,
+     "default": 10,
+     "choices": [],
      "unit": "",
      "hint": "More steps = finer detail, slower.",
+     "advanced": false
+    },
+    {
+     "key": "retry_badcase_max_times",
+     "label": "Tries on a runaway",
+     "type": "number",
+     "min": 1,
+     "max": null,
+     "step": 1,
+     "box": true,
+     "default": 3,
+     "choices": [],
+     "unit": "",
+     "hint": "A take that runs too long for its text is made again, up to this many tries in all.",
+     "advanced": true
+    },
+    {
+     "key": "retry_badcase_ratio_threshold",
+     "label": "Runaway limit",
+     "type": "number",
+     "min": null,
+     "max": null,
+     "step": 0.5,
+     "box": true,
+     "default": 6,
+     "choices": [],
+     "unit": "",
+     "hint": "How long a take may run for its text before it is cut and tried again. Lower cuts sooner; too low cuts real speech.",
      "advanced": true
     },
     {
      "key": "seed",
      "label": "Seed",
-     "min": 0.0,
-     "max": 2000000000.0,
-     "step": 1.0,
-     "default": 0.0,
+     "type": "number",
+     "min": 0,
+     "max": 4294967295,
+     "step": 1,
+     "box": false,
+     "default": 0,
+     "choices": [],
      "unit": "",
-     "hint": "Lock deterministic generation. 0 = random.",
+     "hint": "The same seed repeats the same take. 0 = a new take each time.",
      "advanced": true
     }
    ],
    "inline_tags": [],
+   "pitch_native_st_range": null,
+   "pitch_post_process": true,
    "speed_native": false,
-   "supports_voice_cloning": true,
-   "supports_voice_design": true,
-   "supports_voice_blending": false,
-   "supports_instruct_freeform": true,
-   "supports_clone_prompt_text": true,
-   "supports_xvector_only": false
+   "notes": [
+    "Clones from a short clip, or designs a voice from a written description.",
+    "Written direction reaches a cloned voice: a line with direction is spoken from the clip alone, without the clip's words.",
+    "48 kHz output."
+   ]
   },
   "chatterbox-nano": {
-   "display_name": "Chatterbox Nano",
    "engine_id": "chatterbox-nano",
+   "display_name": "Chatterbox Nano",
+   "supports_voice_cloning": true,
+   "supports_clone_prompt_text": false,
+   "supports_voice_design": false,
+   "supports_instruct_freeform": false,
+   "direction_known": true,
+   "emotions": null,
+   "supports_phoneme_input": false,
+   "supports_xvector_only": false,
+   "supports_multi_speaker": false,
+   "supports_voice_blending": false,
    "knobs": [
     {
      "key": "temperature",
      "label": "Temperature",
+     "type": "number",
      "min": 0.05,
-     "max": 2.0,
+     "max": null,
      "step": 0.05,
+     "box": true,
      "default": 0.8,
+     "choices": [],
      "unit": "",
      "hint": "Sampling variance. Lower = stable + robotic; higher = creative + wild.",
-     "advanced": false
+     "advanced": true
     },
     {
      "key": "repetition_penalty",
      "label": "Repetition penalty",
-     "min": 1.0,
-     "max": 4.0,
+     "type": "number",
+     "min": null,
+     "max": null,
      "step": 0.1,
+     "box": true,
      "default": 1.2,
+     "choices": [],
      "unit": "",
      "hint": "",
      "advanced": true
@@ -725,10 +1235,13 @@
     {
      "key": "top_p",
      "label": "Top p",
-     "min": 0.0,
-     "max": 1.0,
+     "type": "number",
+     "min": 0.05,
+     "max": null,
      "step": 0.01,
+     "box": true,
      "default": 0.95,
+     "choices": [],
      "unit": "",
      "hint": "",
      "advanced": true
@@ -736,10 +1249,13 @@
     {
      "key": "top_k",
      "label": "Top k",
-     "min": 1.0,
-     "max": 2000.0,
-     "step": 1.0,
-     "default": 1000.0,
+     "type": "number",
+     "min": 0,
+     "max": null,
+     "step": 1,
+     "box": true,
+     "default": 1000,
+     "choices": [],
      "unit": "",
      "hint": "",
      "advanced": true
@@ -747,12 +1263,15 @@
     {
      "key": "seed",
      "label": "Seed",
-     "min": 0.0,
-     "max": 2000000000.0,
-     "step": 1.0,
-     "default": 0.0,
+     "type": "number",
+     "min": 0,
+     "max": 4294967295,
+     "step": 1,
+     "box": false,
+     "default": 0,
+     "choices": [],
      "unit": "",
-     "hint": "Lock deterministic generation. 0 = random.",
+     "hint": "The same seed repeats the same take. 0 = a new take each time.",
      "advanced": true
     }
    ],
@@ -814,13 +1333,168 @@
      "value_map": null
     }
    ],
+   "pitch_native_st_range": null,
+   "pitch_post_process": true,
    "speed_native": false,
-   "supports_voice_cloning": true,
-   "supports_voice_design": false,
-   "supports_voice_blending": false,
-   "supports_instruct_freeform": false,
+   "notes": [
+    "English only. Clones from a reference clip longer than 5 seconds.",
+    "The 19 inline tags are Turbo's own — Multilingual shares the engine but not the tokenizer, and reads them as words.",
+    "[surprised] and [crying] have no Delivery.emotion equivalent; type them inline. [shouted] and [contemptuous] have no token.",
+    "The same seed gives the same audio."
+   ]
+  },
+  "chatterbox-chatterboxturbo": {
+   "engine_id": "chatterbox-chatterboxturbo",
+   "display_name": "Chatterbox Turbo (built-in voice only)",
+   "supports_voice_cloning": false,
    "supports_clone_prompt_text": false,
-   "supports_xvector_only": false
+   "supports_voice_design": false,
+   "supports_instruct_freeform": false,
+   "direction_known": true,
+   "emotions": null,
+   "supports_phoneme_input": false,
+   "supports_xvector_only": false,
+   "supports_multi_speaker": false,
+   "supports_voice_blending": false,
+   "knobs": [
+    {
+     "key": "temperature",
+     "label": "Temperature",
+     "type": "number",
+     "min": 0.05,
+     "max": null,
+     "step": 0.05,
+     "box": true,
+     "default": 0.8,
+     "choices": [],
+     "unit": "",
+     "hint": "Sampling variance. Lower = stable + robotic; higher = creative + wild.",
+     "advanced": true
+    },
+    {
+     "key": "repetition_penalty",
+     "label": "Repetition penalty",
+     "type": "number",
+     "min": null,
+     "max": null,
+     "step": 0.1,
+     "box": true,
+     "default": 1.2,
+     "choices": [],
+     "unit": "",
+     "hint": "",
+     "advanced": true
+    },
+    {
+     "key": "top_p",
+     "label": "Top p",
+     "type": "number",
+     "min": 0.05,
+     "max": null,
+     "step": 0.01,
+     "box": true,
+     "default": 0.95,
+     "choices": [],
+     "unit": "",
+     "hint": "",
+     "advanced": true
+    },
+    {
+     "key": "top_k",
+     "label": "Top k",
+     "type": "number",
+     "min": 0,
+     "max": null,
+     "step": 1,
+     "box": true,
+     "default": 1000,
+     "choices": [],
+     "unit": "",
+     "hint": "",
+     "advanced": true
+    },
+    {
+     "key": "seed",
+     "label": "Seed",
+     "type": "number",
+     "min": 0,
+     "max": 4294967295,
+     "step": 1,
+     "box": false,
+     "default": 0,
+     "choices": [],
+     "unit": "",
+     "hint": "The same seed repeats the same take. 0 = a new take each time.",
+     "advanced": true
+    }
+   ],
+   "inline_tags": [
+    {
+     "category": "emotion",
+     "label": "Emotion",
+     "tags": [
+      "angry",
+      "fear",
+      "happy",
+      "sarcastic",
+      "surprised",
+      "crying",
+      "whispering"
+     ],
+     "syntax": "[{value}]",
+     "placement": "inline_anywhere",
+     "hint": "The state the line is spoken in. Place at the start of the line unless you want the shift mid-sentence.",
+     "value_map": {
+      "neutral": "",
+      "happy": "happy",
+      "angry": "angry",
+      "fearful": "fear",
+      "whispered": "whispering",
+      "sarcastic": "sarcastic"
+     }
+    },
+    {
+     "category": "register",
+     "label": "Register",
+     "tags": [
+      "narration",
+      "dramatic",
+      "advertisement"
+     ],
+     "syntax": "[{value}]",
+     "placement": "inline_anywhere",
+     "hint": "How the passage is read overall, rather than what the speaker feels.",
+     "value_map": null
+    },
+    {
+     "category": "paralinguistic",
+     "label": "Non-verbal",
+     "tags": [
+      "cough",
+      "laugh",
+      "chuckle",
+      "sigh",
+      "gasp",
+      "groan",
+      "sniff",
+      "clear throat",
+      "shush"
+     ],
+     "syntax": "[{value}]",
+     "placement": "inline_anywhere",
+     "hint": "Insert at the moment in the text where you want the sound.",
+     "value_map": null
+    }
+   ],
+   "pitch_native_st_range": null,
+   "pitch_post_process": true,
+   "speed_native": false,
+   "notes": [
+    "English only.",
+    "The 19 inline tags are Turbo's own — Multilingual shares the engine but not the tokenizer, and reads them as words.",
+    "[surprised] and [crying] have no Delivery.emotion equivalent; type them inline. [shouted] and [contemptuous] have no token.",
+    "The same seed gives the same audio."
+   ]
   }
  },
  "emotion_values": [
@@ -836,130 +1510,20 @@
  ],
  "presets": [
   {
-   "id": "kitten_bella",
-   "engine": "kitten",
-   "source": "preset",
-   "name": "Bella",
-   "language": "en-US",
-   "gender": "female",
-   "model": "kitten",
-   "model_name": "KittenTTS",
-   "directed_by": "sliders",
-   "speaks": [
-    "en-US"
-   ]
-  },
-  {
-   "id": "kitten_jasper",
-   "engine": "kitten",
-   "source": "preset",
-   "name": "Jasper",
-   "language": "en-US",
-   "gender": "male",
-   "model": "kitten",
-   "model_name": "KittenTTS",
-   "directed_by": "sliders",
-   "speaks": [
-    "en-US"
-   ]
-  },
-  {
-   "id": "kitten_luna",
-   "engine": "kitten",
-   "source": "preset",
-   "name": "Luna",
-   "language": "en-US",
-   "gender": "female",
-   "model": "kitten",
-   "model_name": "KittenTTS",
-   "directed_by": "sliders",
-   "speaks": [
-    "en-US"
-   ]
-  },
-  {
-   "id": "kitten_bruno",
-   "engine": "kitten",
-   "source": "preset",
-   "name": "Bruno",
-   "language": "en-US",
-   "gender": "male",
-   "model": "kitten",
-   "model_name": "KittenTTS",
-   "directed_by": "sliders",
-   "speaks": [
-    "en-US"
-   ]
-  },
-  {
-   "id": "kitten_rosie",
-   "engine": "kitten",
-   "source": "preset",
-   "name": "Rosie",
-   "language": "en-US",
-   "gender": "female",
-   "model": "kitten",
-   "model_name": "KittenTTS",
-   "directed_by": "sliders",
-   "speaks": [
-    "en-US"
-   ]
-  },
-  {
-   "id": "kitten_hugo",
-   "engine": "kitten",
-   "source": "preset",
-   "name": "Hugo",
-   "language": "en-US",
-   "gender": "male",
-   "model": "kitten",
-   "model_name": "KittenTTS",
-   "directed_by": "sliders",
-   "speaks": [
-    "en-US"
-   ]
-  },
-  {
-   "id": "kitten_kiki",
-   "engine": "kitten",
-   "source": "preset",
-   "name": "Kiki",
-   "language": "en-US",
-   "gender": "female",
-   "model": "kitten",
-   "model_name": "KittenTTS",
-   "directed_by": "sliders",
-   "speaks": [
-    "en-US"
-   ]
-  },
-  {
-   "id": "kitten_leo",
-   "engine": "kitten",
-   "source": "preset",
-   "name": "Leo",
-   "language": "en-US",
-   "gender": "male",
-   "model": "kitten",
-   "model_name": "KittenTTS",
-   "directed_by": "sliders",
-   "speaks": [
-    "en-US"
-   ]
-  },
-  {
    "id": "af_alloy",
    "engine": "kokoro",
    "source": "preset",
    "name": "Alloy",
    "language": "en-US",
    "gender": "female",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "en-US"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "af_aoede",
@@ -968,12 +1532,14 @@
    "name": "Aoede",
    "language": "en-US",
    "gender": "female",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "en-US"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "af_bella",
@@ -982,12 +1548,14 @@
    "name": "Bella",
    "language": "en-US",
    "gender": "female",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "en-US"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "af_heart",
@@ -996,12 +1564,14 @@
    "name": "Heart",
    "language": "en-US",
    "gender": "female",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "en-US"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "af_jessica",
@@ -1010,12 +1580,14 @@
    "name": "Jessica",
    "language": "en-US",
    "gender": "female",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "en-US"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "af_kore",
@@ -1024,12 +1596,14 @@
    "name": "Kore",
    "language": "en-US",
    "gender": "female",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "en-US"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "af_nicole",
@@ -1038,12 +1612,14 @@
    "name": "Nicole",
    "language": "en-US",
    "gender": "female",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "en-US"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "af_nova",
@@ -1052,12 +1628,14 @@
    "name": "Nova",
    "language": "en-US",
    "gender": "female",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "en-US"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "af_river",
@@ -1066,12 +1644,14 @@
    "name": "River",
    "language": "en-US",
    "gender": "female",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "en-US"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "af_sarah",
@@ -1080,12 +1660,14 @@
    "name": "Sarah",
    "language": "en-US",
    "gender": "female",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "en-US"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "af_sky",
@@ -1094,12 +1676,14 @@
    "name": "Sky",
    "language": "en-US",
    "gender": "female",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "en-US"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "am_adam",
@@ -1108,12 +1692,14 @@
    "name": "Adam",
    "language": "en-US",
    "gender": "male",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "en-US"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "am_echo",
@@ -1122,12 +1708,14 @@
    "name": "Echo",
    "language": "en-US",
    "gender": "male",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "en-US"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "am_eric",
@@ -1136,12 +1724,14 @@
    "name": "Eric",
    "language": "en-US",
    "gender": "male",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "en-US"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "am_fenrir",
@@ -1150,12 +1740,14 @@
    "name": "Fenrir",
    "language": "en-US",
    "gender": "male",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "en-US"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "am_liam",
@@ -1164,12 +1756,14 @@
    "name": "Liam",
    "language": "en-US",
    "gender": "male",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "en-US"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "am_michael",
@@ -1178,12 +1772,14 @@
    "name": "Michael",
    "language": "en-US",
    "gender": "male",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "en-US"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "am_onyx",
@@ -1192,12 +1788,14 @@
    "name": "Onyx",
    "language": "en-US",
    "gender": "male",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "en-US"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "am_puck",
@@ -1206,12 +1804,14 @@
    "name": "Puck",
    "language": "en-US",
    "gender": "male",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "en-US"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "am_santa",
@@ -1220,12 +1820,14 @@
    "name": "Santa",
    "language": "en-US",
    "gender": "male",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "en-US"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "bf_alice",
@@ -1234,12 +1836,14 @@
    "name": "Alice (UK)",
    "language": "en-GB",
    "gender": "female",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "en-GB"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "bf_emma",
@@ -1248,12 +1852,14 @@
    "name": "Emma (UK)",
    "language": "en-GB",
    "gender": "female",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "en-GB"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "bf_isabella",
@@ -1262,12 +1868,14 @@
    "name": "Isabella (UK)",
    "language": "en-GB",
    "gender": "female",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "en-GB"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "bf_lily",
@@ -1276,12 +1884,14 @@
    "name": "Lily (UK)",
    "language": "en-GB",
    "gender": "female",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "en-GB"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "bm_daniel",
@@ -1290,12 +1900,14 @@
    "name": "Daniel (UK)",
    "language": "en-GB",
    "gender": "male",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "en-GB"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "bm_fable",
@@ -1304,12 +1916,14 @@
    "name": "Fable (UK)",
    "language": "en-GB",
    "gender": "male",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "en-GB"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "bm_george",
@@ -1318,12 +1932,14 @@
    "name": "George (UK)",
    "language": "en-GB",
    "gender": "male",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "en-GB"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "bm_lewis",
@@ -1332,12 +1948,14 @@
    "name": "Lewis (UK)",
    "language": "en-GB",
    "gender": "male",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "en-GB"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "ef_dora",
@@ -1346,12 +1964,14 @@
    "name": "Dora (Spanish)",
    "language": "es",
    "gender": "female",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "es"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "em_alex",
@@ -1360,12 +1980,14 @@
    "name": "Alex (Spanish)",
    "language": "es",
    "gender": "male",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "es"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "em_santa",
@@ -1374,12 +1996,14 @@
    "name": "Santa (Spanish)",
    "language": "es",
    "gender": "male",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "es"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "ff_siwis",
@@ -1388,12 +2012,14 @@
    "name": "Siwis (French)",
    "language": "fr",
    "gender": "female",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "fr"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "hf_alpha",
@@ -1402,12 +2028,14 @@
    "name": "Alpha (Hindi)",
    "language": "hi",
    "gender": "female",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "hi"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "hf_beta",
@@ -1416,12 +2044,14 @@
    "name": "Beta (Hindi)",
    "language": "hi",
    "gender": "female",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "hi"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "hm_omega",
@@ -1430,12 +2060,14 @@
    "name": "Omega (Hindi)",
    "language": "hi",
    "gender": "male",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "hi"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "hm_psi",
@@ -1444,12 +2076,14 @@
    "name": "Psi (Hindi)",
    "language": "hi",
    "gender": "male",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "hi"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "if_sara",
@@ -1458,12 +2092,14 @@
    "name": "Sara (Italian)",
    "language": "it",
    "gender": "female",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "it"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "im_nicola",
@@ -1472,12 +2108,14 @@
    "name": "Nicola (Italian)",
    "language": "it",
    "gender": "male",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "it"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "jf_alpha",
@@ -1486,12 +2124,14 @@
    "name": "Alpha (Japanese)",
    "language": "ja",
    "gender": "female",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "ja"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "jf_gongitsune",
@@ -1500,12 +2140,14 @@
    "name": "Gongitsune (Japanese)",
    "language": "ja",
    "gender": "female",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "ja"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "jf_nezumi",
@@ -1514,12 +2156,14 @@
    "name": "Nezumi (Japanese)",
    "language": "ja",
    "gender": "female",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "ja"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "jf_tebukuro",
@@ -1528,12 +2172,14 @@
    "name": "Tebukuro (Japanese)",
    "language": "ja",
    "gender": "female",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "ja"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "jm_kumo",
@@ -1542,12 +2188,14 @@
    "name": "Kumo (Japanese)",
    "language": "ja",
    "gender": "male",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "ja"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "pf_dora",
@@ -1556,12 +2204,14 @@
    "name": "Dora (Portuguese)",
    "language": "pt-BR",
    "gender": "female",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "pt-BR"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "pm_alex",
@@ -1570,12 +2220,14 @@
    "name": "Alex (Portuguese)",
    "language": "pt-BR",
    "gender": "male",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "pt-BR"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "pm_santa",
@@ -1584,12 +2236,14 @@
    "name": "Santa (Portuguese)",
    "language": "pt-BR",
    "gender": "male",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "pt-BR"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "zf_xiaobei",
@@ -1598,12 +2252,14 @@
    "name": "Xiaobei (Mandarin)",
    "language": "zh",
    "gender": "female",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "zh"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "zf_xiaoni",
@@ -1612,12 +2268,14 @@
    "name": "Xiaoni (Mandarin)",
    "language": "zh",
    "gender": "female",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "zh"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "zf_xiaoxiao",
@@ -1626,12 +2284,14 @@
    "name": "Xiaoxiao (Mandarin)",
    "language": "zh",
    "gender": "female",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "zh"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "zf_xiaoyi",
@@ -1640,12 +2300,14 @@
    "name": "Xiaoyi (Mandarin)",
    "language": "zh",
    "gender": "female",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "zh"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "zm_yunjian",
@@ -1654,12 +2316,14 @@
    "name": "Yunjian (Mandarin)",
    "language": "zh",
    "gender": "male",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "zh"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "zm_yunxi",
@@ -1668,12 +2332,14 @@
    "name": "Yunxi (Mandarin)",
    "language": "zh",
    "gender": "male",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "zh"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "zm_yunxia",
@@ -1682,12 +2348,14 @@
    "name": "Yunxia (Mandarin)",
    "language": "zh",
    "gender": "male",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "zh"
-   ]
+   ],
+   "design_prompt": null
   },
   {
    "id": "zm_yunyang",
@@ -1696,12 +2364,142 @@
    "name": "Yunyang (Mandarin)",
    "language": "zh",
    "gender": "male",
+   "sample_url": null,
    "model": "kokoro",
    "model_name": "Kokoro",
    "directed_by": "sliders",
    "speaks": [
     "zh"
-   ]
+   ],
+   "design_prompt": null
+  },
+  {
+   "id": "kitten_bella",
+   "engine": "kitten",
+   "source": "preset",
+   "name": "Bella",
+   "language": "en-US",
+   "gender": "female",
+   "sample_url": null,
+   "model": "kitten",
+   "model_name": "KittenTTS",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-US"
+   ],
+   "design_prompt": null
+  },
+  {
+   "id": "kitten_jasper",
+   "engine": "kitten",
+   "source": "preset",
+   "name": "Jasper",
+   "language": "en-US",
+   "gender": "male",
+   "sample_url": null,
+   "model": "kitten",
+   "model_name": "KittenTTS",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-US"
+   ],
+   "design_prompt": null
+  },
+  {
+   "id": "kitten_luna",
+   "engine": "kitten",
+   "source": "preset",
+   "name": "Luna",
+   "language": "en-US",
+   "gender": "female",
+   "sample_url": null,
+   "model": "kitten",
+   "model_name": "KittenTTS",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-US"
+   ],
+   "design_prompt": null
+  },
+  {
+   "id": "kitten_bruno",
+   "engine": "kitten",
+   "source": "preset",
+   "name": "Bruno",
+   "language": "en-US",
+   "gender": "male",
+   "sample_url": null,
+   "model": "kitten",
+   "model_name": "KittenTTS",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-US"
+   ],
+   "design_prompt": null
+  },
+  {
+   "id": "kitten_rosie",
+   "engine": "kitten",
+   "source": "preset",
+   "name": "Rosie",
+   "language": "en-US",
+   "gender": "female",
+   "sample_url": null,
+   "model": "kitten",
+   "model_name": "KittenTTS",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-US"
+   ],
+   "design_prompt": null
+  },
+  {
+   "id": "kitten_hugo",
+   "engine": "kitten",
+   "source": "preset",
+   "name": "Hugo",
+   "language": "en-US",
+   "gender": "male",
+   "sample_url": null,
+   "model": "kitten",
+   "model_name": "KittenTTS",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-US"
+   ],
+   "design_prompt": null
+  },
+  {
+   "id": "kitten_kiki",
+   "engine": "kitten",
+   "source": "preset",
+   "name": "Kiki",
+   "language": "en-US",
+   "gender": "female",
+   "sample_url": null,
+   "model": "kitten",
+   "model_name": "KittenTTS",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-US"
+   ],
+   "design_prompt": null
+  },
+  {
+   "id": "kitten_leo",
+   "engine": "kitten",
+   "source": "preset",
+   "name": "Leo",
+   "language": "en-US",
+   "gender": "male",
+   "sample_url": null,
+   "model": "kitten",
+   "model_name": "KittenTTS",
+   "directed_by": "sliders",
+   "speaks": [
+    "en-US"
+   ],
+   "design_prompt": null
   },
   {
    "id": "pocket_alba",
@@ -1710,6 +2508,7 @@
    "name": "Alba",
    "language": "en",
    "gender": "",
+   "sample_url": null,
    "model": "pocket",
    "model_name": "Pocket TTS",
    "directed_by": "sliders",
@@ -1718,8 +2517,10 @@
     "de",
     "it",
     "pt",
-    "es"
-   ]
+    "es",
+    "fr"
+   ],
+   "design_prompt": null
   },
   {
    "id": "pocket_anna",
@@ -1728,6 +2529,7 @@
    "name": "Anna",
    "language": "en",
    "gender": "",
+   "sample_url": null,
    "model": "pocket",
    "model_name": "Pocket TTS",
    "directed_by": "sliders",
@@ -1736,8 +2538,10 @@
     "de",
     "it",
     "pt",
-    "es"
-   ]
+    "es",
+    "fr"
+   ],
+   "design_prompt": null
   },
   {
    "id": "pocket_azelma",
@@ -1746,6 +2550,7 @@
    "name": "Azelma",
    "language": "en",
    "gender": "",
+   "sample_url": null,
    "model": "pocket",
    "model_name": "Pocket TTS",
    "directed_by": "sliders",
@@ -1754,8 +2559,10 @@
     "de",
     "it",
     "pt",
-    "es"
-   ]
+    "es",
+    "fr"
+   ],
+   "design_prompt": null
   },
   {
    "id": "pocket_bill_boerst",
@@ -1764,6 +2571,7 @@
    "name": "Bill Boerst",
    "language": "en",
    "gender": "",
+   "sample_url": null,
    "model": "pocket",
    "model_name": "Pocket TTS",
    "directed_by": "sliders",
@@ -1772,8 +2580,10 @@
     "de",
     "it",
     "pt",
-    "es"
-   ]
+    "es",
+    "fr"
+   ],
+   "design_prompt": null
   },
   {
    "id": "pocket_caro_davy",
@@ -1782,6 +2592,7 @@
    "name": "Caro Davy",
    "language": "en",
    "gender": "",
+   "sample_url": null,
    "model": "pocket",
    "model_name": "Pocket TTS",
    "directed_by": "sliders",
@@ -1790,8 +2601,10 @@
     "de",
     "it",
     "pt",
-    "es"
-   ]
+    "es",
+    "fr"
+   ],
+   "design_prompt": null
   },
   {
    "id": "pocket_charles",
@@ -1800,6 +2613,7 @@
    "name": "Charles",
    "language": "en",
    "gender": "",
+   "sample_url": null,
    "model": "pocket",
    "model_name": "Pocket TTS",
    "directed_by": "sliders",
@@ -1808,8 +2622,10 @@
     "de",
     "it",
     "pt",
-    "es"
-   ]
+    "es",
+    "fr"
+   ],
+   "design_prompt": null
   },
   {
    "id": "pocket_eponine",
@@ -1818,6 +2634,7 @@
    "name": "Eponine",
    "language": "en",
    "gender": "",
+   "sample_url": null,
    "model": "pocket",
    "model_name": "Pocket TTS",
    "directed_by": "sliders",
@@ -1826,8 +2643,10 @@
     "de",
     "it",
     "pt",
-    "es"
-   ]
+    "es",
+    "fr"
+   ],
+   "design_prompt": null
   },
   {
    "id": "pocket_estelle",
@@ -1836,6 +2655,7 @@
    "name": "Estelle",
    "language": "en",
    "gender": "",
+   "sample_url": null,
    "model": "pocket",
    "model_name": "Pocket TTS",
    "directed_by": "sliders",
@@ -1844,8 +2664,10 @@
     "de",
     "it",
     "pt",
-    "es"
-   ]
+    "es",
+    "fr"
+   ],
+   "design_prompt": null
   },
   {
    "id": "pocket_eve",
@@ -1854,6 +2676,7 @@
    "name": "Eve",
    "language": "en",
    "gender": "",
+   "sample_url": null,
    "model": "pocket",
    "model_name": "Pocket TTS",
    "directed_by": "sliders",
@@ -1862,8 +2685,10 @@
     "de",
     "it",
     "pt",
-    "es"
-   ]
+    "es",
+    "fr"
+   ],
+   "design_prompt": null
   },
   {
    "id": "pocket_fantine",
@@ -1872,6 +2697,7 @@
    "name": "Fantine",
    "language": "en",
    "gender": "",
+   "sample_url": null,
    "model": "pocket",
    "model_name": "Pocket TTS",
    "directed_by": "sliders",
@@ -1880,8 +2706,10 @@
     "de",
     "it",
     "pt",
-    "es"
-   ]
+    "es",
+    "fr"
+   ],
+   "design_prompt": null
   },
   {
    "id": "pocket_george",
@@ -1890,6 +2718,7 @@
    "name": "George",
    "language": "en",
    "gender": "",
+   "sample_url": null,
    "model": "pocket",
    "model_name": "Pocket TTS",
    "directed_by": "sliders",
@@ -1898,8 +2727,10 @@
     "de",
     "it",
     "pt",
-    "es"
-   ]
+    "es",
+    "fr"
+   ],
+   "design_prompt": null
   },
   {
    "id": "pocket_jane",
@@ -1908,6 +2739,7 @@
    "name": "Jane",
    "language": "en",
    "gender": "",
+   "sample_url": null,
    "model": "pocket",
    "model_name": "Pocket TTS",
    "directed_by": "sliders",
@@ -1916,8 +2748,10 @@
     "de",
     "it",
     "pt",
-    "es"
-   ]
+    "es",
+    "fr"
+   ],
+   "design_prompt": null
   },
   {
    "id": "pocket_javert",
@@ -1926,6 +2760,7 @@
    "name": "Javert",
    "language": "en",
    "gender": "",
+   "sample_url": null,
    "model": "pocket",
    "model_name": "Pocket TTS",
    "directed_by": "sliders",
@@ -1934,8 +2769,10 @@
     "de",
     "it",
     "pt",
-    "es"
-   ]
+    "es",
+    "fr"
+   ],
+   "design_prompt": null
   },
   {
    "id": "pocket_marius",
@@ -1944,6 +2781,7 @@
    "name": "Marius",
    "language": "en",
    "gender": "",
+   "sample_url": null,
    "model": "pocket",
    "model_name": "Pocket TTS",
    "directed_by": "sliders",
@@ -1952,8 +2790,10 @@
     "de",
     "it",
     "pt",
-    "es"
-   ]
+    "es",
+    "fr"
+   ],
+   "design_prompt": null
   },
   {
    "id": "pocket_mary",
@@ -1962,6 +2802,7 @@
    "name": "Mary",
    "language": "en",
    "gender": "",
+   "sample_url": null,
    "model": "pocket",
    "model_name": "Pocket TTS",
    "directed_by": "sliders",
@@ -1970,8 +2811,10 @@
     "de",
     "it",
     "pt",
-    "es"
-   ]
+    "es",
+    "fr"
+   ],
+   "design_prompt": null
   },
   {
    "id": "pocket_michael",
@@ -1980,6 +2823,7 @@
    "name": "Michael",
    "language": "en",
    "gender": "",
+   "sample_url": null,
    "model": "pocket",
    "model_name": "Pocket TTS",
    "directed_by": "sliders",
@@ -1988,8 +2832,10 @@
     "de",
     "it",
     "pt",
-    "es"
-   ]
+    "es",
+    "fr"
+   ],
+   "design_prompt": null
   },
   {
    "id": "pocket_paul",
@@ -1998,6 +2844,7 @@
    "name": "Paul",
    "language": "en",
    "gender": "",
+   "sample_url": null,
    "model": "pocket",
    "model_name": "Pocket TTS",
    "directed_by": "sliders",
@@ -2006,8 +2853,10 @@
     "de",
     "it",
     "pt",
-    "es"
-   ]
+    "es",
+    "fr"
+   ],
+   "design_prompt": null
   },
   {
    "id": "pocket_peter_yearsley",
@@ -2016,6 +2865,7 @@
    "name": "Peter Yearsley",
    "language": "en",
    "gender": "",
+   "sample_url": null,
    "model": "pocket",
    "model_name": "Pocket TTS",
    "directed_by": "sliders",
@@ -2024,8 +2874,10 @@
     "de",
     "it",
     "pt",
-    "es"
-   ]
+    "es",
+    "fr"
+   ],
+   "design_prompt": null
   },
   {
    "id": "pocket_stuart_bell",
@@ -2034,6 +2886,7 @@
    "name": "Stuart Bell",
    "language": "en",
    "gender": "",
+   "sample_url": null,
    "model": "pocket",
    "model_name": "Pocket TTS",
    "directed_by": "sliders",
@@ -2042,8 +2895,10 @@
     "de",
     "it",
     "pt",
-    "es"
-   ]
+    "es",
+    "fr"
+   ],
+   "design_prompt": null
   },
   {
    "id": "pocket_vera",
@@ -2052,6 +2907,7 @@
    "name": "Vera",
    "language": "en",
    "gender": "",
+   "sample_url": null,
    "model": "pocket",
    "model_name": "Pocket TTS",
    "directed_by": "sliders",
@@ -2060,146 +2916,10 @@
     "de",
     "it",
     "pt",
-    "es"
-   ]
-  },
-  {
-   "id": "Vivian",
-   "engine": "qwen3",
-   "source": "preset",
-   "name": "Vivian",
-   "language": "zh",
-   "gender": "female",
-   "model": "qwen3-cv",
-   "model_name": "Qwen3-TTS CustomVoice",
-   "directed_by": "words",
-   "speaks": [
-    "zh",
-    "en",
-    "ja",
-    "ko",
-    "de",
-    "fr",
-    "ru",
-    "pt",
     "es",
-    "it"
-   ]
-  },
-  {
-   "id": "Serena",
-   "engine": "qwen3",
-   "source": "preset",
-   "name": "Serena",
-   "language": "zh",
-   "gender": "female",
-   "model": "qwen3-cv",
-   "model_name": "Qwen3-TTS CustomVoice",
-   "directed_by": "words",
-   "speaks": [
-    "zh",
-    "en",
-    "ja",
-    "ko",
-    "de",
-    "fr",
-    "ru",
-    "pt",
-    "es",
-    "it"
-   ]
-  },
-  {
-   "id": "Uncle_Fu",
-   "engine": "qwen3",
-   "source": "preset",
-   "name": "Uncle Fu",
-   "language": "zh",
-   "gender": "male",
-   "model": "qwen3-cv",
-   "model_name": "Qwen3-TTS CustomVoice",
-   "directed_by": "words",
-   "speaks": [
-    "zh",
-    "en",
-    "ja",
-    "ko",
-    "de",
-    "fr",
-    "ru",
-    "pt",
-    "es",
-    "it"
-   ]
-  },
-  {
-   "id": "Dylan",
-   "engine": "qwen3",
-   "source": "preset",
-   "name": "Dylan",
-   "language": "zh",
-   "gender": "male",
-   "model": "qwen3-cv",
-   "model_name": "Qwen3-TTS CustomVoice",
-   "directed_by": "words",
-   "speaks": [
-    "zh",
-    "en",
-    "ja",
-    "ko",
-    "de",
-    "fr",
-    "ru",
-    "pt",
-    "es",
-    "it"
-   ]
-  },
-  {
-   "id": "Eric",
-   "engine": "qwen3",
-   "source": "preset",
-   "name": "Eric",
-   "language": "zh",
-   "gender": "male",
-   "model": "qwen3-cv",
-   "model_name": "Qwen3-TTS CustomVoice",
-   "directed_by": "words",
-   "speaks": [
-    "zh",
-    "en",
-    "ja",
-    "ko",
-    "de",
-    "fr",
-    "ru",
-    "pt",
-    "es",
-    "it"
-   ]
-  },
-  {
-   "id": "Ryan",
-   "engine": "qwen3",
-   "source": "preset",
-   "name": "Ryan",
-   "language": "en",
-   "gender": "male",
-   "model": "qwen3-cv",
-   "model_name": "Qwen3-TTS CustomVoice",
-   "directed_by": "words",
-   "speaks": [
-    "zh",
-    "en",
-    "ja",
-    "ko",
-    "de",
-    "fr",
-    "ru",
-    "pt",
-    "es",
-    "it"
-   ]
+    "fr"
+   ],
+   "design_prompt": null
   },
   {
    "id": "Aiden",
@@ -2208,6 +2928,7 @@
    "name": "Aiden",
    "language": "en",
    "gender": "male",
+   "sample_url": null,
    "model": "qwen3-cv",
    "model_name": "Qwen3-TTS CustomVoice",
    "directed_by": "words",
@@ -2222,7 +2943,58 @@
     "pt",
     "es",
     "it"
-   ]
+   ],
+   "design_prompt": null
+  },
+  {
+   "id": "Dylan",
+   "engine": "qwen3",
+   "source": "preset",
+   "name": "Dylan",
+   "language": "zh",
+   "gender": "male",
+   "sample_url": null,
+   "model": "qwen3-cv",
+   "model_name": "Qwen3-TTS CustomVoice",
+   "directed_by": "words",
+   "speaks": [
+    "zh",
+    "en",
+    "ja",
+    "ko",
+    "de",
+    "fr",
+    "ru",
+    "pt",
+    "es",
+    "it"
+   ],
+   "design_prompt": null
+  },
+  {
+   "id": "Eric",
+   "engine": "qwen3",
+   "source": "preset",
+   "name": "Eric",
+   "language": "zh",
+   "gender": "male",
+   "sample_url": null,
+   "model": "qwen3-cv",
+   "model_name": "Qwen3-TTS CustomVoice",
+   "directed_by": "words",
+   "speaks": [
+    "zh",
+    "en",
+    "ja",
+    "ko",
+    "de",
+    "fr",
+    "ru",
+    "pt",
+    "es",
+    "it"
+   ],
+   "design_prompt": null
   },
   {
    "id": "Ono_Anna",
@@ -2231,6 +3003,7 @@
    "name": "Ono Anna",
    "language": "ja",
    "gender": "female",
+   "sample_url": null,
    "model": "qwen3-cv",
    "model_name": "Qwen3-TTS CustomVoice",
    "directed_by": "words",
@@ -2245,7 +3018,58 @@
     "pt",
     "es",
     "it"
-   ]
+   ],
+   "design_prompt": null
+  },
+  {
+   "id": "Ryan",
+   "engine": "qwen3",
+   "source": "preset",
+   "name": "Ryan",
+   "language": "en",
+   "gender": "male",
+   "sample_url": null,
+   "model": "qwen3-cv",
+   "model_name": "Qwen3-TTS CustomVoice",
+   "directed_by": "words",
+   "speaks": [
+    "zh",
+    "en",
+    "ja",
+    "ko",
+    "de",
+    "fr",
+    "ru",
+    "pt",
+    "es",
+    "it"
+   ],
+   "design_prompt": null
+  },
+  {
+   "id": "Serena",
+   "engine": "qwen3",
+   "source": "preset",
+   "name": "Serena",
+   "language": "zh",
+   "gender": "female",
+   "sample_url": null,
+   "model": "qwen3-cv",
+   "model_name": "Qwen3-TTS CustomVoice",
+   "directed_by": "words",
+   "speaks": [
+    "zh",
+    "en",
+    "ja",
+    "ko",
+    "de",
+    "fr",
+    "ru",
+    "pt",
+    "es",
+    "it"
+   ],
+   "design_prompt": null
   },
   {
    "id": "Sohee",
@@ -2254,6 +3078,7 @@
    "name": "Sohee",
    "language": "ko",
    "gender": "female",
+   "sample_url": null,
    "model": "qwen3-cv",
    "model_name": "Qwen3-TTS CustomVoice",
    "directed_by": "words",
@@ -2268,7 +3093,106 @@
     "pt",
     "es",
     "it"
-   ]
+   ],
+   "design_prompt": null
+  },
+  {
+   "id": "Uncle_Fu",
+   "engine": "qwen3",
+   "source": "preset",
+   "name": "Uncle Fu",
+   "language": "zh",
+   "gender": "male",
+   "sample_url": null,
+   "model": "qwen3-cv",
+   "model_name": "Qwen3-TTS CustomVoice",
+   "directed_by": "words",
+   "speaks": [
+    "zh",
+    "en",
+    "ja",
+    "ko",
+    "de",
+    "fr",
+    "ru",
+    "pt",
+    "es",
+    "it"
+   ],
+   "design_prompt": null
+  },
+  {
+   "id": "Vivian",
+   "engine": "qwen3",
+   "source": "preset",
+   "name": "Vivian",
+   "language": "zh",
+   "gender": "female",
+   "sample_url": null,
+   "model": "qwen3-cv",
+   "model_name": "Qwen3-TTS CustomVoice",
+   "directed_by": "words",
+   "speaks": [
+    "zh",
+    "en",
+    "ja",
+    "ko",
+    "de",
+    "fr",
+    "ru",
+    "pt",
+    "es",
+    "it"
+   ],
+   "design_prompt": null
+  },
+  {
+   "id": "chatterbox-turbo_model_default",
+   "engine": "chatterbox",
+   "source": "preset",
+   "name": "Turbo (built-in)",
+   "language": "en",
+   "gender": "",
+   "sample_url": null,
+   "model": "chatterbox-turbo",
+   "model_name": "Chatterbox Turbo",
+   "directed_by": "tags",
+   "speaks": [
+    "en"
+   ],
+   "design_prompt": null
+  },
+  {
+   "id": "chatterbox-nano_model_default",
+   "engine": "chatterbox",
+   "source": "preset",
+   "name": "Nano (built-in)",
+   "language": "en",
+   "gender": "",
+   "sample_url": null,
+   "model": "chatterbox-nano",
+   "model_name": "Chatterbox Nano",
+   "directed_by": "tags",
+   "speaks": [
+    "en"
+   ],
+   "design_prompt": null
+  },
+  {
+   "id": "chatterbox-chatterboxturbo_model_default",
+   "engine": "chatterbox",
+   "source": "preset",
+   "name": "Chatterbox Turbo (built-in)",
+   "language": "en",
+   "gender": "",
+   "sample_url": null,
+   "model": "chatterbox-chatterboxturbo",
+   "model_name": "Chatterbox Turbo (built-in voice only)",
+   "directed_by": "tags",
+   "speaks": [
+    "en"
+   ],
+   "design_prompt": null
   }
  ],
  "terms": {
@@ -2283,112 +3207,390 @@
  "effects": [
   {
    "type": "reverb",
-   "label": "Reverb"
+   "label": "Reverb",
+   "description": "Space simulation — room, hall, cathedral.",
+   "params": [
+    {
+     "key": "room_size",
+     "label": "Room size",
+     "type": "number",
+     "default": 0.5,
+     "min": 0,
+     "max": 1,
+     "step": 0.05
+    },
+    {
+     "key": "damping",
+     "label": "Damping",
+     "type": "number",
+     "default": 0.5,
+     "min": 0,
+     "max": 1,
+     "step": 0.05
+    },
+    {
+     "key": "wet_level",
+     "label": "Wet",
+     "type": "number",
+     "default": 0.33,
+     "min": 0,
+     "max": 1,
+     "step": 0.05
+    },
+    {
+     "key": "dry_level",
+     "label": "Dry",
+     "type": "number",
+     "default": 0.4,
+     "min": 0,
+     "max": 1,
+     "step": 0.05
+    },
+    {
+     "key": "width",
+     "label": "Width",
+     "type": "number",
+     "default": 1,
+     "min": 0,
+     "max": 1,
+     "step": 0.05
+    }
+   ]
+  },
+  {
+   "type": "chorus",
+   "label": "Chorus",
+   "description": "Doubling effect. Two slightly-detuned copies layered for thickness.",
+   "params": [
+    {
+     "key": "rate_hz",
+     "label": "Rate (Hz)",
+     "type": "number",
+     "default": 1,
+     "min": null,
+     "max": null,
+     "step": 0.05
+    },
+    {
+     "key": "depth",
+     "label": "Depth",
+     "type": "number",
+     "default": 0.25,
+     "min": 0,
+     "max": 1,
+     "step": 0.05
+    },
+    {
+     "key": "centre_delay_ms",
+     "label": "Centre delay (ms)",
+     "type": "number",
+     "default": 7,
+     "min": 0,
+     "max": null,
+     "step": 0.5
+    },
+    {
+     "key": "feedback",
+     "label": "Feedback",
+     "type": "number",
+     "default": 0,
+     "min": 0,
+     "max": 0.95,
+     "step": 0.05
+    },
+    {
+     "key": "mix",
+     "label": "Mix",
+     "type": "number",
+     "default": 0.5,
+     "min": 0,
+     "max": 1,
+     "step": 0.05
+    }
+   ]
   },
   {
    "type": "distortion",
-   "label": "Distortion"
+   "label": "Distortion",
+   "description": "Asymmetric saturation — drive in dB.",
+   "params": [
+    {
+     "key": "drive_db",
+     "label": "Drive (dB)",
+     "type": "number",
+     "default": 25,
+     "min": 0,
+     "max": 60,
+     "step": 1
+    }
+   ]
   },
   {
    "type": "gain",
-   "label": "Gain"
+   "label": "Gain",
+   "description": "Linear level adjust in dB. Use negative for cut.",
+   "params": [
+    {
+     "key": "gain_db",
+     "label": "Gain (dB)",
+     "type": "number",
+     "default": 0,
+     "min": -24,
+     "max": 24,
+     "step": 0.5
+    }
+   ]
   },
   {
    "type": "compressor",
-   "label": "Compressor"
+   "label": "Compressor",
+   "description": "Reduces dynamic range — broadcast / podcast staple.",
+   "params": [
+    {
+     "key": "threshold_db",
+     "label": "Threshold (dB)",
+     "type": "number",
+     "default": -16,
+     "min": -60,
+     "max": 0,
+     "step": 1
+    },
+    {
+     "key": "ratio",
+     "label": "Ratio",
+     "type": "number",
+     "default": 2.5,
+     "min": 1,
+     "max": 20,
+     "step": 0.1
+    },
+    {
+     "key": "attack_ms",
+     "label": "Attack (ms)",
+     "type": "number",
+     "default": 1,
+     "min": 0.1,
+     "max": 200,
+     "step": 0.5
+    },
+    {
+     "key": "release_ms",
+     "label": "Release (ms)",
+     "type": "number",
+     "default": 100,
+     "min": 10,
+     "max": 2000,
+     "step": 10
+    }
+   ]
   },
   {
    "type": "pitch_shift",
-   "label": "Pitch shift"
+   "label": "Pitch shift",
+   "description": "Re-pitch in semitones. Wide ranges introduce artefacts.",
+   "params": [
+    {
+     "key": "semitones",
+     "label": "Semitones",
+     "type": "number",
+     "default": 0,
+     "min": -12,
+     "max": 12,
+     "step": 0.5
+    }
+   ]
   },
   {
    "type": "delay",
-   "label": "Delay"
+   "label": "Delay",
+   "description": "Echo with feedback.",
+   "params": [
+    {
+     "key": "delay_seconds",
+     "label": "Delay (s)",
+     "type": "number",
+     "default": 0.5,
+     "min": 0,
+     "max": 4,
+     "step": 0.05
+    },
+    {
+     "key": "feedback",
+     "label": "Feedback",
+     "type": "number",
+     "default": 0,
+     "min": 0,
+     "max": 1,
+     "step": 0.05
+    },
+    {
+     "key": "mix",
+     "label": "Mix",
+     "type": "number",
+     "default": 0.5,
+     "min": 0,
+     "max": 1,
+     "step": 0.05
+    }
+   ]
   },
   {
    "type": "highpass",
-   "label": "High-pass"
+   "label": "High-pass",
+   "description": "Cut below cutoff frequency.",
+   "params": [
+    {
+     "key": "cutoff_frequency_hz",
+     "label": "Cutoff (Hz)",
+     "type": "number",
+     "default": 80,
+     "min": 20,
+     "max": 2000,
+     "step": 10
+    }
+   ]
   },
   {
    "type": "lowpass",
-   "label": "Low-pass"
+   "label": "Low-pass",
+   "description": "Cut above cutoff frequency.",
+   "params": [
+    {
+     "key": "cutoff_frequency_hz",
+     "label": "Cutoff (Hz)",
+     "type": "number",
+     "default": 12000,
+     "min": 500,
+     "max": 20000,
+     "step": 100
+    }
+   ]
   },
   {
    "type": "eq_low",
-   "label": "EQ — Low shelf"
+   "label": "EQ — Low shelf",
+   "description": "Boost or cut below cutoff with shelf curve.",
+   "params": [
+    {
+     "key": "cutoff_frequency_hz",
+     "label": "Cutoff (Hz)",
+     "type": "number",
+     "default": 120,
+     "min": 20,
+     "max": 500,
+     "step": 10
+    },
+    {
+     "key": "gain_db",
+     "label": "Gain (dB)",
+     "type": "number",
+     "default": 0,
+     "min": -12,
+     "max": 12,
+     "step": 0.5
+    },
+    {
+     "key": "q",
+     "label": "Q",
+     "type": "number",
+     "default": 0.7,
+     "min": 0.1,
+     "max": 4,
+     "step": 0.1
+    }
+   ]
   },
   {
    "type": "eq_mid",
-   "label": "EQ — Mid peak"
+   "label": "EQ — Mid peak",
+   "description": "Boost or cut around centre frequency.",
+   "params": [
+    {
+     "key": "cutoff_frequency_hz",
+     "label": "Centre (Hz)",
+     "type": "number",
+     "default": 1000,
+     "min": 100,
+     "max": 8000,
+     "step": 50
+    },
+    {
+     "key": "gain_db",
+     "label": "Gain (dB)",
+     "type": "number",
+     "default": 0,
+     "min": -12,
+     "max": 12,
+     "step": 0.5
+    },
+    {
+     "key": "q",
+     "label": "Q",
+     "type": "number",
+     "default": 1,
+     "min": 0.1,
+     "max": 4,
+     "step": 0.1
+    }
+   ]
   },
   {
    "type": "eq_high",
-   "label": "EQ — High shelf"
+   "label": "EQ — High shelf",
+   "description": "Boost or cut above cutoff with shelf curve.",
+   "params": [
+    {
+     "key": "cutoff_frequency_hz",
+     "label": "Cutoff (Hz)",
+     "type": "number",
+     "default": 4000,
+     "min": 1000,
+     "max": 12000,
+     "step": 100
+    },
+    {
+     "key": "gain_db",
+     "label": "Gain (dB)",
+     "type": "number",
+     "default": 0,
+     "min": -12,
+     "max": 12,
+     "step": 0.5
+    },
+    {
+     "key": "q",
+     "label": "Q",
+     "type": "number",
+     "default": 0.7,
+     "min": 0.1,
+     "max": 4,
+     "step": 0.1
+    }
+   ]
   }
  ],
  "languages": {
-  "chatterbox-multilingual": [
-   "ar",
-   "da",
-   "de",
-   "el",
-   "en",
+  "kokoro": [
+   "en-US",
+   "en-GB",
    "es",
-   "fi",
    "fr",
-   "he",
    "hi",
    "it",
    "ja",
-   "ko",
-   "ms",
-   "nl",
-   "no",
-   "pl",
-   "pt",
-   "ru",
-   "sv",
-   "sw",
-   "tr",
+   "pt-BR",
    "zh"
   ],
-  "chatterbox-turbo": [
-   "en"
+  "kitten": [
+   "en-US"
   ],
-  "chatterbox-nano": [
-   "en"
-  ],
-  "voxcpm2": [
-   "ar",
-   "my",
-   "zh",
-   "da",
-   "nl",
+  "pocket": [
    "en",
-   "fi",
-   "fr",
    "de",
-   "el",
-   "he",
-   "hi",
-   "id",
    "it",
-   "ja",
-   "km",
-   "ko",
-   "lo",
-   "ms",
-   "no",
-   "pl",
    "pt",
-   "ru",
    "es",
-   "sw",
-   "sv",
-   "tl",
-   "th",
-   "tr",
-   "vi"
+   "fr"
   ],
   "qwen3-cv": [
    "zh",
@@ -2426,15 +3628,662 @@
    "es",
    "it"
   ],
-  "pocket": [
-   "en",
+  "chatterbox-multilingual": [
+   "ar",
+   "da",
    "de",
+   "el",
+   "en",
+   "es",
+   "fi",
+   "fr",
+   "he",
+   "hi",
    "it",
+   "ja",
+   "ko",
+   "ms",
+   "nl",
+   "no",
+   "pl",
    "pt",
-   "es"
+   "ru",
+   "sv",
+   "sw",
+   "tr",
+   "zh"
   ],
-  "kitten": [
-   "en-US"
+  "chatterbox-turbo": [
+   "en"
+  ],
+  "chatterbox-nano": [
+   "en"
+  ],
+  "chatterbox-chatterboxturbo": [
+   "en"
+  ],
+  "voxcpm2": [
+   "ar",
+   "my",
+   "zh",
+   "da",
+   "nl",
+   "en",
+   "fi",
+   "fr",
+   "de",
+   "el",
+   "he",
+   "hi",
+   "id",
+   "it",
+   "ja",
+   "km",
+   "ko",
+   "lo",
+   "ms",
+   "no",
+   "pl",
+   "pt",
+   "ru",
+   "es",
+   "sw",
+   "sv",
+   "tl",
+   "th",
+   "tr",
+   "vi"
   ]
+ },
+ "versions": {
+  "kokoro": {
+   "model_name": "Kokoro",
+   "versions": [
+    {
+     "id": "kokoro-82m-q8",
+     "name": "Kokoro 82M",
+     "size_mb": 180,
+     "languages": [
+      "en-US",
+      "en-GB",
+      "es",
+      "fr",
+      "hi",
+      "it",
+      "ja",
+      "pt-BR",
+      "zh"
+     ]
+    },
+    {
+     "id": "kokoro-82m-bf16",
+     "name": "Kokoro 82M (16-bit)",
+     "size_mb": 202,
+     "languages": [
+      "en-US",
+      "en-GB",
+      "es",
+      "fr",
+      "hi",
+      "it",
+      "ja",
+      "pt-BR",
+      "zh"
+     ]
+    }
+   ]
+  },
+  "kitten": {
+   "model_name": "KittenTTS",
+   "versions": [
+    {
+     "id": "kitten-mini-0.8",
+     "name": "KittenTTS Mini 0.8",
+     "size_mb": 288,
+     "languages": [
+      "en-US"
+     ]
+    }
+   ]
+  },
+  "pocket": {
+   "model_name": "Pocket TTS",
+   "versions": [
+    {
+     "id": "pocket-en-q8",
+     "name": "Pocket TTS English",
+     "size_mb": 246,
+     "languages": [
+      "en"
+     ]
+    },
+    {
+     "id": "pocket-de-q8",
+     "name": "Pocket TTS German",
+     "size_mb": 246,
+     "languages": [
+      "de"
+     ]
+    },
+    {
+     "id": "pocket-it-q8",
+     "name": "Pocket TTS Italian",
+     "size_mb": 246,
+     "languages": [
+      "it"
+     ]
+    },
+    {
+     "id": "pocket-pt-q8",
+     "name": "Pocket TTS Portuguese",
+     "size_mb": 246,
+     "languages": [
+      "pt"
+     ]
+    },
+    {
+     "id": "pocket-es-q8",
+     "name": "Pocket TTS Spanish",
+     "size_mb": 246,
+     "languages": [
+      "es"
+     ]
+    },
+    {
+     "id": "pocket-fr-q8",
+     "name": "Pocket TTS French",
+     "size_mb": 128,
+     "languages": [
+      "fr"
+     ]
+    },
+    {
+     "id": "pocket-en-bf16",
+     "name": "Pocket TTS English (16-bit)",
+     "size_mb": 333,
+     "languages": [
+      "en"
+     ]
+    },
+    {
+     "id": "pocket-de-bf16",
+     "name": "Pocket TTS German (16-bit)",
+     "size_mb": 333,
+     "languages": [
+      "de"
+     ]
+    },
+    {
+     "id": "pocket-it-bf16",
+     "name": "Pocket TTS Italian (16-bit)",
+     "size_mb": 333,
+     "languages": [
+      "it"
+     ]
+    },
+    {
+     "id": "pocket-pt-bf16",
+     "name": "Pocket TTS Portuguese (16-bit)",
+     "size_mb": 333,
+     "languages": [
+      "pt"
+     ]
+    },
+    {
+     "id": "pocket-es-bf16",
+     "name": "Pocket TTS Spanish (16-bit)",
+     "size_mb": 333,
+     "languages": [
+      "es"
+     ]
+    },
+    {
+     "id": "pocket-fr-bf16",
+     "name": "Pocket TTS French (16-bit)",
+     "size_mb": 215,
+     "languages": [
+      "fr"
+     ]
+    }
+   ]
+  },
+  "qwen3-cv": {
+   "model_name": "Qwen3-TTS CustomVoice",
+   "versions": [
+    {
+     "id": "qwen3-cv-1.7b-q8",
+     "name": "Qwen3-TTS CustomVoice 1.7B",
+     "size_mb": 2686,
+     "languages": [
+      "zh",
+      "en",
+      "ja",
+      "ko",
+      "de",
+      "fr",
+      "ru",
+      "pt",
+      "es",
+      "it"
+     ]
+    },
+    {
+     "id": "qwen3-cv-0.6b-q8",
+     "name": "Qwen3-TTS CustomVoice 0.6B",
+     "size_mb": 1631,
+     "languages": [
+      "zh",
+      "en",
+      "ja",
+      "ko",
+      "de",
+      "fr",
+      "ru",
+      "pt",
+      "es",
+      "it"
+     ]
+    },
+    {
+     "id": "qwen3-cv-1.7b-bf16",
+     "name": "Qwen3-TTS CustomVoice 1.7B (16-bit)",
+     "size_mb": 3985,
+     "languages": [
+      "zh",
+      "en",
+      "ja",
+      "ko",
+      "de",
+      "fr",
+      "ru",
+      "pt",
+      "es",
+      "it"
+     ]
+    },
+    {
+     "id": "qwen3-cv-0.6b-bf16",
+     "name": "Qwen3-TTS CustomVoice 0.6B (16-bit)",
+     "size_mb": 2057,
+     "languages": [
+      "zh",
+      "en",
+      "ja",
+      "ko",
+      "de",
+      "fr",
+      "ru",
+      "pt",
+      "es",
+      "it"
+     ]
+    }
+   ]
+  },
+  "qwen3-base": {
+   "model_name": "Qwen3-TTS Base",
+   "versions": [
+    {
+     "id": "qwen3-base-1.7b-q8",
+     "name": "Qwen3-TTS Base 1.7B (cloning)",
+     "size_mb": 2570,
+     "languages": [
+      "zh",
+      "en",
+      "ja",
+      "ko",
+      "de",
+      "fr",
+      "ru",
+      "pt",
+      "es",
+      "it"
+     ]
+    },
+    {
+     "id": "qwen3-base-0.6b-q8",
+     "name": "Qwen3-TTS Base 0.6B (cloning)",
+     "size_mb": 1898,
+     "languages": [
+      "zh",
+      "en",
+      "ja",
+      "ko",
+      "de",
+      "fr",
+      "ru",
+      "pt",
+      "es",
+      "it"
+     ]
+    },
+    {
+     "id": "qwen3-base-1.7b-bf16",
+     "name": "Qwen3-TTS Base 1.7B (cloning, 16-bit)",
+     "size_mb": 4008,
+     "languages": [
+      "zh",
+      "en",
+      "ja",
+      "ko",
+      "de",
+      "fr",
+      "ru",
+      "pt",
+      "es",
+      "it"
+     ]
+    },
+    {
+     "id": "qwen3-base-0.6b-bf16",
+     "name": "Qwen3-TTS Base 0.6B (cloning, 16-bit)",
+     "size_mb": 2399,
+     "languages": [
+      "zh",
+      "en",
+      "ja",
+      "ko",
+      "de",
+      "fr",
+      "ru",
+      "pt",
+      "es",
+      "it"
+     ]
+    },
+    {
+     "id": "qwen3-base-1.7b-orig",
+     "name": "Qwen3-TTS Base 1.7B (cloning, original precision)",
+     "size_mb": 4333,
+     "languages": [
+      "zh",
+      "en",
+      "ja",
+      "ko",
+      "de",
+      "fr",
+      "ru",
+      "pt",
+      "es",
+      "it"
+     ]
+    }
+   ]
+  },
+  "qwen3-vd": {
+   "model_name": "Qwen3-TTS VoiceDesign",
+   "versions": [
+    {
+     "id": "qwen3-vd-1.7b-q8",
+     "name": "Qwen3-TTS VoiceDesign 1.7B",
+     "size_mb": 2686,
+     "languages": [
+      "zh",
+      "en",
+      "ja",
+      "ko",
+      "de",
+      "fr",
+      "ru",
+      "pt",
+      "es",
+      "it"
+     ]
+    },
+    {
+     "id": "qwen3-vd-1.7b-bf16",
+     "name": "Qwen3-TTS VoiceDesign 1.7B (16-bit)",
+     "size_mb": 3985,
+     "languages": [
+      "zh",
+      "en",
+      "ja",
+      "ko",
+      "de",
+      "fr",
+      "ru",
+      "pt",
+      "es",
+      "it"
+     ]
+    }
+   ]
+  },
+  "chatterbox-multilingual": {
+   "model_name": "Chatterbox Multilingual",
+   "versions": [
+    {
+     "id": "chatterbox-multilingual-v2-q8",
+     "name": "Chatterbox Multilingual (23 languages)",
+     "size_mb": 1991,
+     "languages": [
+      "ar",
+      "da",
+      "de",
+      "el",
+      "en",
+      "es",
+      "fi",
+      "fr",
+      "he",
+      "hi",
+      "it",
+      "ja",
+      "ko",
+      "ms",
+      "nl",
+      "no",
+      "pl",
+      "pt",
+      "ru",
+      "sv",
+      "sw",
+      "tr",
+      "zh"
+     ]
+    },
+    {
+     "id": "chatterbox-multilingual-v2-f16",
+     "name": "Chatterbox Multilingual (23 languages, 16-bit)",
+     "size_mb": 3570,
+     "languages": [
+      "ar",
+      "da",
+      "de",
+      "el",
+      "en",
+      "es",
+      "fi",
+      "fr",
+      "he",
+      "hi",
+      "it",
+      "ja",
+      "ko",
+      "ms",
+      "nl",
+      "no",
+      "pl",
+      "pt",
+      "ru",
+      "sv",
+      "sw",
+      "tr",
+      "zh"
+     ]
+    }
+   ]
+  },
+  "chatterbox-turbo": {
+   "model_name": "Chatterbox Turbo",
+   "versions": [
+    {
+     "id": "chatterbox-turbo-q8",
+     "name": "Chatterbox Turbo (350M, English)",
+     "size_mb": 840,
+     "languages": [
+      "en"
+     ]
+    },
+    {
+     "id": "chatterbox-turbo-f16",
+     "name": "Chatterbox Turbo (350M, English, 16-bit)",
+     "size_mb": 1327,
+     "languages": [
+      "en"
+     ]
+    }
+   ]
+  },
+  "chatterbox-nano": {
+   "model_name": "Chatterbox Nano",
+   "versions": [
+    {
+     "id": "chatterbox-nano-q8",
+     "name": "Chatterbox Nano (110M, English)",
+     "size_mb": 587,
+     "languages": [
+      "en"
+     ]
+    },
+    {
+     "id": "chatterbox-nano-f16",
+     "name": "Chatterbox Nano (110M, English, 16-bit)",
+     "size_mb": 853,
+     "languages": [
+      "en"
+     ]
+    }
+   ]
+  },
+  "chatterbox-chatterboxturbo": {
+   "model_name": "Chatterbox Turbo (built-in voice only)",
+   "versions": [
+    {
+     "id": "chatterbox-chatterboxturbo-q8",
+     "name": "Chatterbox Turbo (built-in voice only)",
+     "size_mb": 666,
+     "languages": [
+      "en"
+     ]
+    }
+   ]
+  },
+  "voxcpm2": {
+   "model_name": "VoxCPM2",
+   "versions": [
+    {
+     "id": "voxcpm2-q8",
+     "name": "VoxCPM2",
+     "size_mb": 2818,
+     "languages": [
+      "ar",
+      "my",
+      "zh",
+      "da",
+      "nl",
+      "en",
+      "fi",
+      "fr",
+      "de",
+      "el",
+      "he",
+      "hi",
+      "id",
+      "it",
+      "ja",
+      "km",
+      "ko",
+      "lo",
+      "ms",
+      "no",
+      "pl",
+      "pt",
+      "ru",
+      "es",
+      "sw",
+      "sv",
+      "tl",
+      "th",
+      "tr",
+      "vi"
+     ]
+    },
+    {
+     "id": "voxcpm2-bf16",
+     "name": "VoxCPM2 (16-bit)",
+     "size_mb": 4551,
+     "languages": [
+      "ar",
+      "my",
+      "zh",
+      "da",
+      "nl",
+      "en",
+      "fi",
+      "fr",
+      "de",
+      "el",
+      "he",
+      "hi",
+      "id",
+      "it",
+      "ja",
+      "km",
+      "ko",
+      "lo",
+      "ms",
+      "no",
+      "pl",
+      "pt",
+      "ru",
+      "es",
+      "sw",
+      "sv",
+      "tl",
+      "th",
+      "tr",
+      "vi"
+     ]
+    },
+    {
+     "id": "voxcpm2-orig",
+     "name": "VoxCPM2 (original precision)",
+     "size_mb": 4730,
+     "languages": [
+      "ar",
+      "my",
+      "zh",
+      "da",
+      "nl",
+      "en",
+      "fi",
+      "fr",
+      "de",
+      "el",
+      "he",
+      "hi",
+      "id",
+      "it",
+      "ja",
+      "km",
+      "ko",
+      "lo",
+      "ms",
+      "no",
+      "pl",
+      "pt",
+      "ru",
+      "es",
+      "sw",
+      "sv",
+      "tl",
+      "th",
+      "tr",
+      "vi"
+     ]
+    }
+   ]
+  }
  }
 }

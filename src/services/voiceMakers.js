@@ -48,7 +48,7 @@ export const MODEL_NOTE = {
   "chatterbox-multilingual": "Sliders only — pace, pitch and gain.",
   "qwen3-base": "Sliders only — the clip is the whole voice, so written direction is dropped.",
   voxcpm2: "Takes written direction, on a clone too.",
-  pocket: "Sliders only. One model per language — English, German, Italian, Portuguese or Spanish.",
+  pocket: "Sliders only. One model per language — English, German, Italian, Portuguese, Spanish or French (cloning only).",
 };
 
 /** What a description keeps on each design model. */

@@ -25,7 +25,8 @@ export function rowsThatCan(field) {
 
 export const engineOf = (model) => model.split("-")[0];
 
-const STATUS_SUFFIX = { loaded: " · loaded", "not installed": " (not installed)", "not loaded": " (not loaded)" };
+// The app's words (services/capabilities.js statusSuffix).
+const STATUS_SUFFIX = { loaded: " · loaded", "needs the speech runtime": " (needs the speech runtime)", "not loaded": " (not loaded)" };
 
 function languagesText(model) {
   const list = modelLanguages[model] || [];
@@ -61,7 +62,7 @@ export const MODEL_NOTE = {
   "chatterbox-multilingual": "Sliders only — pace, pitch and gain. 23 languages.",
   "qwen3-base": "Sliders only — the clip is the whole voice, so written direction is dropped. 10 languages.",
   voxcpm2: "Takes written direction, on a clone too. 30 languages.",
-  pocket: "Sliders only. One model per language — English, German, Italian, Portuguese or Spanish.",
+  pocket: "Sliders only. One model per language — English, German, Italian, Portuguese, Spanish or French (cloning only).",
   "qwen3-vd": "Each line is spoken from the description, so the voice can shift a little from line to line. 10 languages.",
 };
 

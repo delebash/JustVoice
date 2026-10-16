@@ -551,8 +551,13 @@ async function unload(engine) {
     // until an alt-tab (the 2026-08-20 finding).
     window.dispatchEvent(new Event("jv:health-refresh"));
     await refresh();
+    // The server answers the engine's id; the toast names it as the list does (design law 5b —
+    // it said "kokoro unloaded."; TASKS "Slice 5's findings: what each one gets").
+    const previous = resp?.previous_engine
+      ? engines.value.find((x) => x.id === resp.previous_engine)?.name || engine.name
+      : null;
     pushToast({
-      message: resp?.previous_engine ? `${resp.previous_engine} unloaded.` : "Nothing was loaded.",
+      message: previous ? `${previous} unloaded.` : "Nothing was loaded.",
       kind: resp?.previous_engine ? "success" : "info",
       duration: 3500,
     });

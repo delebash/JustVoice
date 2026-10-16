@@ -15,13 +15,71 @@
 // order, defaults filled).
 
 import { construct, EngineCapabilityDetail, InlineTagSet, KnobSpec } from "../models.js";
-import { directionEmotions, generatedModels, listsOptions, modelName, requestOptionsOf, settingsOf } from "./audiocpp/generated.js";
+import {
+  audiocppEnds,
+  currentOptionName,
+  directionEmotions,
+  generatedEngines,
+  generatedModels,
+  listsOptions,
+  modelName,
+  requestOptionsOf,
+  settingsOf,
+} from "./audiocpp/generated.js";
 import { pinnedHas } from "./audiocpp/release.js";
-import { VARIANTS as CHATTERBOX_VARIANTS } from "./chatterbox/manifest.js";
 
 const knob = (v) => construct(KnobSpec, v);
 const tags = (v) => construct(InlineTagSet, v);
 const detail = (v) => construct(EngineCapabilityDetail, v);
+
+// The seven engines described by our own files keep their settings under the app's names, which
+// their own requests read (slot.js); the spec option each of those names is, where it differs.
+const SPEC_NAME = {
+  cfg_weight: "guidance_scale",
+  talker_temperature: "temperature",
+  talker_top_k: "top_k",
+  talker_top_p: "top_p",
+  cfg_value: "guidance_scale",
+  inference_timesteps: "num_inference_steps",
+};
+// The app's floors: every temperature and top-p from 0.05, in the knobs and the request mapping
+// (Qwen3 refuses a temperature of 0, Chatterbox divides by it, Turbo reads it as 1.0, and Qwen3
+// reads a top-p of 0 as no filter — audit §5 D4, D9; RESEARCH §1.2), and VoxCPM2's tries from 1,
+// the least its request sends (slot.js).
+const FLOOR = {
+  temperature: 0.05,
+  talker_temperature: 0.05,
+  subtalker_temperature: 0.05,
+  top_p: 0.05,
+  talker_top_p: 0.05,
+  subtalker_top_p: 0.05,
+  retry_badcase_max_times: 1,
+};
+
+/**
+ * One of the seven's settings at audio.cpp's range where it is wider (decided 2026-10-15, TASKS
+ * "Slice 3's six questions" 4: "the seven engines' knobs wider than audio.cpp's, or ranged where it
+ * gives none: slice 4, never narrowed below a saved value"): each end audio.cpp's — its control
+ * list's, else its spec's (generated.audiocppEnds) — where it reaches further, and open where
+ * audio.cpp gives none; ours where audio.cpp's stops short of it, since a persona may have saved a
+ * value there (RESEARCH §1.2 lists them); and never below the app's floors (`FLOOR`). A number
+ * with an open end is a number box, as audio.cpp's own UI shows one (the plan's E2).
+ */
+function atAudiocppRange(family, k) {
+  if (k.key === "seed") return k;
+  const { min, max } = audiocppEnds(family, currentOptionName(family, SPEC_NAME[k.key] ?? k.key));
+  const floor = FLOOR[k.key] ?? null;
+  let lo = min === null ? null : Math.min(k.min ?? min, min);
+  if (floor !== null) lo = Math.max(lo ?? floor, floor);
+  const hi = max === null || k.max === null ? null : Math.max(k.max, max);
+  // A slider steps from its bottom: one that moved off the step's grid (Kitten's Speed, from
+  // audio.cpp's 0.01 by 0.05) would miss its usual values, 1.0 among them — it steps by the
+  // bottom's own last digit instead (decided 2026-10-16, TASKS "Slice 4's gaps" 4).
+  const offGrid = lo !== null && k.step && Math.abs(lo / k.step - Math.round(lo / k.step)) > 1e-9;
+  const step = offGrid ? 10 ** -((String(lo).split(".")[1] || "").length) : k.step;
+  return knob({ ...k, min: lo, max: hi, step, box: lo === null || hi === null ? true : k.box });
+}
+const atAudiocppRanges = (family, knobs) => knobs.map((k) => atAudiocppRange(family, k));
 
 // Shared knob definitions — reused across engines that accept the same control.
 
@@ -66,8 +124,10 @@ function seedKnob(family = null) {
 // own screen shows (its control list, webui/configs/model_params.json) stays in view, one it
 // doesn't folds under Advanced (decided 2026-10-15, TASKS "Slice 3's six questions" 1;
 // generated.inControlList).
+// At audio.cpp's ranges: the detail temperature a number box from the app's 0.05 (the spec gives
+// it no top; was 0.05–2); the repetition penalty's 1–2 stops short of ours (1–4), kept.
 function qwenSamplingKnobs() {
-  return [
+  return atAudiocppRanges("qwen3_tts", [
     knob({ key: "talker_temperature", label: "Temperature", min: 0.05, max: 2.0, step: 0.05, default: 0.9, hint: "Sampling variance for the talker model." }),
     // audio.cpp's range (the narrowings review, F9 — was 1–100): its control list's number box
     // from 0 with no top (webui/configs/model_params.json qwen3_tts `top_k`).
@@ -92,7 +152,7 @@ function qwenSamplingKnobs() {
     knob({ key: "subtalker_top_k", label: "Detail top k", min: 0, max: null, step: 1, box: true, default: 50, advanced: true }),
     knob({ key: "subtalker_top_p", label: "Detail top p", min: 0.05, max: 1.0, step: 0.01, default: 1.0, advanced: true }),
     seedKnob("qwen3_tts"),
-  ];
+  ]);
 }
 
 /** Two more settings audio.cpp's Chatterbox reads per request (../audio.cpp/src/models/
@@ -115,6 +175,7 @@ const cfgWeightKnob = () =>
 
 export const CAPABILITY_DETAILS = {
   // ─── Kokoro (audio.cpp kokoro_tts, since the 2026-10-01 switch) ───
+  // Speed: audio.cpp's 0.5–2 stops short of ours (0.5–3); ours kept.
   kokoro: detail({
     engine_id: "kokoro",
     display_name: "Kokoro",
@@ -127,7 +188,7 @@ export const CAPABILITY_DETAILS = {
     supports_voice_blending: pinnedHas("voice_pack"),
     // audio.cpp's Kokoro takes a decoder-noise seed — the same seed repeats the same audio
     // (measured 2026-10-01).
-    knobs: [speedKnob(), seedKnob("kokoro_tts")],
+    knobs: atAudiocppRanges("kokoro_tts", [speedKnob(), seedKnob("kokoro_tts")]),
     inline_tags: [],
     pitch_native_st_range: null,
     pitch_post_process: true, // the server can pitch-shift the output WAV
@@ -137,12 +198,13 @@ export const CAPABILITY_DETAILS = {
 
   // ─── KittenTTS (audio.cpp `kitten_tts`, CPU placement 2026-10-02) ───
   // Speed only: audio.cpp's KittenTTS takes a seed, but the same seed does not repeat the same
-  // audio (measured 2026-10-02), so no seed control is offered.
+  // audio (measured 2026-10-02), so no seed control is offered. Speed from audio.cpp's 0.01 (was
+  // 0.5); its top, 2, stops short of ours (3), kept.
   kitten: detail({
     engine_id: "kitten",
     display_name: "KittenTTS",
     supports_voice_cloning: false,
-    knobs: [speedKnob()],
+    knobs: atAudiocppRanges("kitten_tts", [speedKnob()]),
     inline_tags: [],
     pitch_native_st_range: null,
     pitch_post_process: true,
@@ -173,12 +235,15 @@ export const CAPABILITY_DETAILS = {
   // ─── Chatterbox (audio.cpp `chatterbox`, since the 2026-10-01 switch) ─
   // The engine-level row is the fallback; the Multilingual row below is what every shipped
   // variant resolves to. Turbo and Nano have rows of their own below (gap 1).
+  // At audio.cpp's ranges (atAudiocppRanges): top-p, min-p and the decoder CFG are number boxes —
+  // audio.cpp gives them none (were 0.05–1, 0–0.5, 0–1.5; top-p still from the app's 0.05); its
+  // repetition penalty, 1–2, stops short of ours (1–4), kept.
   chatterbox: detail({
     engine_id: "chatterbox",
     display_name: "Chatterbox",
     supports_voice_cloning: true,
     supports_clone_prompt_text: false,
-    knobs: [
+    knobs: atAudiocppRanges("chatterbox", [
       temperatureKnob(0.8),
       exaggerationKnob(),
       cfgWeightKnob(),
@@ -188,7 +253,7 @@ export const CAPABILITY_DETAILS = {
       knob({ key: "top_p", label: "Top p", min: 0.05, max: 1.0, step: 0.01, default: 1.0, advanced: true }),
       ...chatterboxExtraKnobs(),
       seedKnob("chatterbox"),
-    ],
+    ]),
     pitch_post_process: true,
   }),
 
@@ -196,7 +261,7 @@ export const CAPABILITY_DETAILS = {
     engine_id: "chatterbox-multilingual",
     display_name: "Chatterbox Multilingual",
     supports_voice_cloning: true,
-    knobs: [
+    knobs: atAudiocppRanges("chatterbox", [
       temperatureKnob(0.8),
       exaggerationKnob(),
       cfgWeightKnob(),
@@ -205,10 +270,10 @@ export const CAPABILITY_DETAILS = {
       knob({ key: "top_p", label: "Top p", min: 0.05, max: 1.0, step: 0.01, default: 1.0, advanced: true }),
       ...chatterboxExtraKnobs(),
       seedKnob("chatterbox"),
-    ],
+    ]),
     pitch_post_process: true,
     notes: [
-      `${CHATTERBOX_VARIANTS[0].languages.length} languages. For language transfer, set cfg_weight=0 (Resemble docs).`,
+      `${generatedEngines().get("chatterbox").VARIANTS[0].languages.length} languages. For language transfer, set cfg_weight=0 (Resemble docs).`,
       "The same seed gives the same audio.",
     ],
   }),
@@ -222,8 +287,10 @@ export const CAPABILITY_DETAILS = {
     display_name: "Chatterbox Turbo",
     supports_voice_cloning: true,
     supports_clone_prompt_text: false,
-    // audio.cpp's own screen shows none of Turbo's settings: all of them fold.
-    knobs: [
+    // audio.cpp's own screen shows none of Turbo's settings: all of them fold. At audio.cpp's
+    // ranges: its spec gives temperature, repetition penalty and top-p none — number boxes (were
+    // 0.05–2, 1–4, 0.05–1), temperature and top-p from the app's 0.05.
+    knobs: atAudiocppRanges("chatterbox_turbo", [
       temperatureKnob(0.8, true),
       knob({ key: "repetition_penalty", label: "Repetition penalty", min: 1.0, max: 4.0, step: 0.1, default: 1.2, advanced: true }),
       knob({ key: "top_p", label: "Top p", min: 0.05, max: 1.0, step: 0.01, default: 0.95, advanced: true }),
@@ -231,7 +298,7 @@ export const CAPABILITY_DETAILS = {
       // 1–2000).
       knob({ key: "top_k", label: "Top k", min: 0, max: null, step: 1, box: true, default: 1000, advanced: true }),
       seedKnob("chatterbox_turbo"),
-    ],
+    ]),
     // The checkpoint's own added_tokens.json: nineteen reserved tokens, ids 50257–50275, in
     // three kinds — a state the line is spoken IN, a register it is read AS, and a sound made
     // AT a point in the text. Upstream's model card names only [cough] [laugh] [chuckle] and
@@ -357,7 +424,9 @@ CAPABILITY_DETAILS.voxcpm2 = detail({
   supports_clone_prompt_text: pinnedHas("voxcpm2_transcript"),
   supports_voice_design: true,
   supports_instruct_freeform: true,
-  knobs: [
+  // The runaway settings at audio.cpp's ranges: its spec gives them none — number boxes, the tries
+  // from 1, what the request sends (were 1–10 and 2–12).
+  knobs: atAudiocppRanges("voxcpm2", [
     // audio.cpp's control list's ranges (model_params.json voxcpm2: `guidance_scale` 0–5, and
     // `num_inference_steps` a number box from 1 with no top; F9 — were 1–5 and 4–30).
     knob({ key: "cfg_value", label: "CFG", min: 0, max: 5.0, step: 0.1, default: 2.0, hint: "How closely it follows the voice and the text. Higher = stricter." }),
@@ -385,7 +454,7 @@ CAPABILITY_DETAILS.voxcpm2 = detail({
       hint: "How long a take may run for its text before it is cut and tried again. Lower cuts sooner; too low cuts real speech.",
     }),
     seedKnob("voxcpm2"),
-  ],
+  ]),
   inline_tags: [],
   pitch_post_process: true,
   notes: [
@@ -406,6 +475,27 @@ CAPABILITY_DETAILS["chatterbox-nano"] = {
   engine_id: "chatterbox-nano",
   display_name: "Chatterbox Nano",
 };
+
+// A model of the seven engines described by our own files that has no row of its own takes the row
+// of the model its notes name (`like`): audio.cpp's own Turbo package, Turbo's settings and tags,
+// under audio.cpp's name — copying no voice (its package has no voice encoder), so it says only
+// "English only." of Turbo's first note.
+for (const mod of generatedEngines().values()) {
+  if (!mod.GENERATED) continue;
+  for (const v of [...mod.VARIANTS, ...(mod.PENDING_VARIANTS || [])]) {
+    const id = v.audiocpp.model;
+    if (Object.hasOwn(CAPABILITY_DETAILS, id)) continue;
+    if (!v.like || !Object.hasOwn(CAPABILITY_DETAILS, v.like)) continue;
+    const like = CAPABILITY_DETAILS[v.like];
+    CAPABILITY_DETAILS[id] = {
+      ...like,
+      engine_id: id,
+      display_name: v.name,
+      supports_voice_cloning: v.voice_cloning,
+      notes: like.notes.map((n, i) => (i === 0 && !v.voice_cloning ? n.replace(/\s*Clones from .*$/, "") : n)),
+    };
+  }
+}
 
 // ─── Every other speech model audio.cpp has (engines/audiocpp/generated.js) ───
 // One row per speech model, from its spec (the adoption plan's slice 2): it copies a voice, makes
@@ -447,9 +537,21 @@ for (const m of generatedModels()) {
   });
 }
 
+let _recognisers = null;
+/** Every speech-recognition model's variant ids. */
+function recogniserIds() {
+  if (_recognisers === null) {
+    _recognisers = new Set([...generatedEngines().values()].filter((m) => m.KIND === "stt").flatMap((m) => m.VARIANTS.map((v) => v.id)));
+  }
+  return _recognisers;
+}
+
 /** Capability detail by engine id OR variant id (variant ids first); null when none. */
 export function lookup(engineOrVariantId) {
   if (Object.hasOwn(CAPABILITY_DETAILS, engineOrVariantId)) return CAPABILITY_DETAILS[engineOrVariantId];
+  // A recogniser speaks nothing: no row — Qwen3-ASR's "qwen3-asr-1.7b-q8" walked to Qwen3-TTS's
+  // "qwen3" (until the adoption plan's slice 4 put it on every recogniser's path).
+  if (recogniserIds().has(String(engineOrVariantId))) return null;
   // Walk the "-" suffixes off one at a time, most specific first. Manifest variant ids carry a
   // version/precision tail the capability map does not, so "chatterbox-multilingual-v2-q8"
   // has to reach "chatterbox-multilingual" and "qwen3-base-1.7b-q8" has to reach "qwen3-base"

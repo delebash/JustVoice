@@ -2,6 +2,36 @@
 
 ## v0.1.0
 
+- **The Engines guide explains the list instead of copying it (2026-10-16)** — it now walks
+  through AI Settings → Speech engines part by part: an engine's head and notes, a model's row
+  and its chips, its downloads, built-in voices, cloning and design, direction, settings and
+  load options, memory before a load, every reason Auto gives for where a model runs, the
+  licence words, *Tested by JustVoice* and the recognisers. Each model's own facts are on its
+  row, from audio.cpp's description of it; the guide keeps what JustVoice adds and measured
+  ([Engines](engines.md))
+- **Speech engines, small fixes (2026-10-16)** — a model whose estimate fits your card only without
+  the 1 GB safety margin (Qwen3-TTS Base 1.7B on an 8 GB card) now says on its *Runs on* line that it
+  tries the graphics card first, where it said nothing; a model too big by its files gives their
+  size as the row does (*about 9.5 GB*, not *10*); **Unload model** names the engine it unloaded,
+  not its id; Pocket TTS's description and the clone maker's note name French, cloning only; and
+  a model's buttons wrap under its chips when the window is narrow, the whole tab stacking at
+  phone width ([Engines](engines.md#where-each-model-runs--the-graphics-card-or-the-cpu))
+- **Kokoro, KittenTTS, Pocket TTS, Qwen3-TTS, Chatterbox, VoxCPM2 and Qwen3-ASR built like every
+  other engine (2026-10-16)** — from audio.cpp's own description of their models: their downloads,
+  voices and languages come from it. Your voices, personas, saved settings, takes and measured
+  memory keep working as they were ([Speech engines](engines.md)).
+  - Chatterbox Turbo and Nano also speak their own voice, with no clip: **Turbo (built-in)** and
+    **Nano (built-in)** on the Voices page, gender *Not known*
+  - New downloads: audio.cpp's own Chatterbox Turbo package (**Chatterbox Turbo (built-in voice
+    only)**), Qwen3-TTS Base 1.7B and VoxCPM2 at their original precision, **Pocket TTS French**
+    (cloning only — its one voice forbids commercial use), and **QwenCleo-ASR**, a recogniser for
+    Egyptian Arabic and Arabic-English speech
+  - Before their first load they show what audio.cpp says they need — Kokoro *needs about 1 GB* —
+    instead of *memory not measured yet*, and Auto weighs them by it
+  - Settings audio.cpp gives a wider range, or none, take audio.cpp's: Chatterbox's **Top p**,
+    **Min p** and **Decoder CFG**, Turbo's and Nano's
+    **Temperature**, **Repetition penalty** and **Top p**, Qwen3's **Detail temperature** and
+    VoxCPM2's runaway settings are number boxes. Where audio.cpp's range is narrower, yours stays
 - **Your answers to the review's questions, built (2026-10-15)** — the rest of what JustVoice had
   decided without asking, put right:
   - Script: a speaker you set before a chapter's first Analyze is yours — Analyze gives it to
@@ -73,7 +103,7 @@
     persona's as Pocket TTS's is. MOSS-TTS v1.5, MOSS-TTSD, MOSS-VoiceGenerator and IndexTTS2
     now get the line's language; before, it never reached them. A speech-recognition model that
     can't take a recording's language says so in its own words — *this LFM2-Audio checkpoint
-    transcribes ja, not en* — where dictation showed it wrapped in code ([Engines](engines.md#every-other-model-audiocpp-has),
+    transcribes ja, not en* — where dictation showed it wrapped in code ([Engines](engines.md#languages),
     [Personas](personas.md))
   - Sync: when another computer's changes arrive, the window waits to reload while a dialog is
     open or the cursor is in a text box. Restoring a backup keeps your other computers' newer
@@ -703,7 +733,7 @@
   Base asks for the transcript or **Skip the words**, by name. **Skip the words**
   works again on Qwen3 Base — it had not reached the speech runtime since the
   2026-10-01 switch — and a voice saved with it keeps it for its renders
-  ([Voices → What each model asks for](voices.md#what-each-model-asks-for))
+  ([Personas → New clone](personas.md#new-clone))
 - **Updating the speech runtime shows its progress and cleans up (2026-10-03).**
   The bar on the runtime row fills as the new build downloads, and the build it
   replaces is deleted afterwards — about 2 GB for a CUDA build
@@ -720,7 +750,7 @@
   48 kHz — and written direction reaches its cloned voices, which no other engine
   here does. About 1.3× real time on an 8 GB card. It does not speak text in
   parentheses, so a line's own brackets are read as dashes
-  ([Engines → The catalog](engines.md#the-catalog))
+  ([Engines → VoxCPM2](engines.md#voxcpm2))
 - **Every model has a 16-bit row (2026-10-02)** beside its 8-bit default — the
   original precision, a larger download that needs more memory. Read back on a
   real chapter, the two precisions came out level on every engine
@@ -735,7 +765,7 @@
   converter and publishes it at
   [delebash/Qwen3-TTS-12Hz-0.6B-CustomVoice-GGUF](https://huggingface.co/delebash/Qwen3-TTS-12Hz-0.6B-CustomVoice-GGUF);
   pick it on its row on AI Settings → Speech engines
-  ([Engines → The catalog](engines.md#the-catalog))
+  ([Engines → Qwen3-TTS](engines.md#qwen3-tts))
 - **Loading another model of an engine that is already loaded now loads it
   (2026-10-02).** Before, the row switched to "loaded" but the first model went
   on speaking — choosing Qwen3-TTS Base while CustomVoice was loaded, or the
@@ -765,7 +795,7 @@
   voices, 3.4× real time on an 8-core CPU. **Pocket TTS** — Kyutai's cloning model, the
   first since LuxTTS to clone fast on a CPU (4× real time), with 20 preset voices, one
   model each for English, German, Italian, Portuguese and Spanish. Its first clone asks
-  you to accept Kyutai's terms ([Engines → The catalog](engines.md#the-catalog))
+  you to accept Kyutai's terms ([Engines → Pocket TTS](engines.md#pocket-tts))
 - **Voice training is gone (2026-10-02).** The Voices page's **LoRA** tab — the
   Preparer, the Dataset Builder and training runs — is removed, with the training
   settings and the `training.completed` / `training.failed` webhook events. It ran on
@@ -1041,21 +1071,21 @@
   ([AI features](ai-features.md#picking-models-fit-speed-and-your-override))
 - **A designed voice keeps the take you auditioned**, and stays one person for
   a whole book instead of re-inventing itself line by line
-  ([Voices](voices.md#keeping-a-designed-voice-is-what-makes-it-one-voice))
+  ([Personas → New design](personas.md#new-design))
 - A designed voice you have not kept a clip for now actually reaches the
   model — its description is spoken on every line, with your direction added
-  after it ([Voices](voices.md#design--from-a-description))
+  after it ([Personas → New design](personas.md#new-design))
 - A table of **which voice types take written direction**, because it depends
   on how the voice was made, not just which engine you picked
   ([Voices](voices.md#which-of-them-take-written-direction))
 - A cast that mixes Qwen3 checkpoints is refused **before** the render starts,
   naming every voice and the model it needs, instead of failing partway
-  through ([Studio](studio.md#one-qwen3-model-at-a-time))
+  through ([Studio](studio.md#one-speech-model-at-a-time--personas-on-several-models-render-model-by-model))
 - Bracketed tags typed into Qwen3 text are removed rather than read aloud —
   Qwen3 takes direction as words, not markup ([Engines](engines.md))
 - Four ways to blend a Kokoro voice — mix, exaggerate, add and subtract, or
   splice one voice's sound onto another's delivery
-  ([Voices](voices.md#blend--make-a-voice-out-of-other-voices))
+  ([Personas → New blend](personas.md#new-blend))
 - Voices library filters by language and gender, and shows language as a name
   rather than a code ([Voices](voices.md#finding-a-voice-in-the-library))
 - **Any column heading sorts, on every list in the app**

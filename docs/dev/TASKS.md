@@ -190,9 +190,30 @@ BUILT:  1, the review (2026-10-13): `docs/plans/2026-10-13-narrowings-review/` �
         app. For the user's word: which settings fold under Advanced (§1); v3's label and place;
         the Seed box's top (2e9 vs the spec's 4,294,967,295); the seven engines' knobs wider
         than audio.cpp's (repetition 1–4, speed 0.5–3) or ranged where it gives none — slice 4.
+        Slice 4, 2026-10-16 (the seven engines on the same path; RESEARCH §1.6), branch `slice4`:
+        2344258c — the before-snapshot, written on main: what a persona of each of the seven sends
+        audio.cpp. 0e3a89bf — Kokoro, KittenTTS, Pocket TTS, Qwen3-TTS, Chatterbox + Turbo/Nano,
+        VoxCPM2, Qwen3-ASR built by `generated.ownEngine` from catalog.json and their families'
+        notes (`ENGINE`/`MODELS`/`VOICES` …: ids, names, genders, measured facts); the seven
+        manifests, kokoro/voices.js and `slot.FAMILY_BUDGET` gone; requests and setting names
+        unchanged (every persona request, warm-up, registration the same bytes; every model, voice
+        and price key kept — seven_engines_unchanged.test.js); F4 Turbo's/Nano's own voice; E6/E14/F5
+        audio.cpp's own Turbo package, Base 1.7B and VoxCPM2 `-orig`, QwenCleo-ASR; answer 3; slice
+        3's item 4. Docs 9bcf188b. The GPU half waits for the merge. Its gaps: "Slice 4's gaps: what
+        each one gets" below.
+        Slice 5, 2026-10-16 (the user docs and the mock), branch `slice4`: 4b6b3d23 — docs/engines.md
+        rewritten for a list we don't hand-write: how to read every part of Speech engines, Auto's
+        reasons in placementFor's words, what JustVoice adds or measured; links into its renamed
+        anchors fixed; whats-new; RESEARCH §1.6's Turbo package name and Pocket TTS French.
+        e830e7da — the 2026-10-16 seed measurement (every engine repeats on the CPU, all but Kitten
+        and Pocket on the card) in engines.md and RESEARCH §1.2. 535289fe — the mocks on the server's
+        own answers at slice 4 (speechEnginesSnapshot.json, every engine; liveSnapshot.json, the
+        seven): Speech engines as the tab draws it, Runs on by placementFor's rule and words,
+        ?ai/?runtime=none/?empty; the persona mock's Built-in/Tags reason gone, its Versions and
+        Sampling the page's. Its questions went to the user with the slice's report.
 OPEN:   the register's 20 questions and its "found on the way" list, to the user; JustWrite's
         side, to its session; the adoption plan's 7 questions. Then: 2 a plan to adopt everything: every
-        audio.cpp speech model offered by default, the seven hand-wired engines on the same
+        audio.cpp speech model offered by default, the seven engines described by our own files on the same
         path, what our fork adds in our fork's own specs, what the app needs in each family's
         curated file — with its blast radius, for the user's word. Then slice 6's last steps,
         then the one-click plan.
@@ -237,7 +258,8 @@ BUILT:  2026-10-15 — the register's recs: Script/Render/Export (7174737, 58569
         fork on upstream v0.9.2, pushed (85d97a43, then 68c3ead0/21607a3a/4d2f1a2b); adoption
         slice 1, the catalog at v0.9.2 (439d904; RESEARCH §1.2, §1.4, §1.5).
 OPEN:   the jv.6 release (the auto-mode check refused to start the fork's release workflow — the
-        user's command), then the pin; adoption slices 2–5; the sync engine's two convergence
+        user's command), then the pin; the adoption plan's merge (2–5 built; 4 and 5 on branch
+        `slice4`), then slice 4's GPU half; the sync engine's two convergence
         fixes (under way); P26's comparison; the questions the build raised; then the one-click
         plan.
 GO:     given 2026-10-15 ("your rec go").
@@ -292,9 +314,80 @@ BUILT:  15 — 8d7adf6. 1 — 1705ac9. 2 and 12 — the commit after 4371c9a (Au
         changed: the docs say claude-mythos-preview accepts the legacy thinking budget (deprecated,
         adaptive recommended) and say nothing of effort or "disabled", so treating it like Mythos 5
         would guess both; left on today's working path, recorded in the kit's RESEARCH §7 (1b127f9).
-OPEN:   the rest of 1–16 as above; 3 with the engine slices (their files). 13 — moot: VieNeu, the
+        3 — 0e3a89bf (adoption slice 4, branch `slice4`): the seven get audio.cpp's estimate, or
+        their files where those are more, as every model (`generated.needOf`; Kokoro 1 GB,
+        Chatterbox Multilingual 12 GB; our own conversions and QwenCleo, which have none, their
+        files); Auto weighs them by it. "A card that can't be read" built as a model with neither
+        number — "memory not measured yet", which no model audio.cpp describes reaches now.
+OPEN:   the rest of 1–16 as above. 13 — moot: VieNeu, the
         one model it was for, is hidden again ("Slice 2's acceptance findings" 1, abd3d1b4).
 GO:     given 2026-10-15 for 1–16.
+
+### Slice 4's gaps: what each one gets (2026-10-16)
+STATE:  DECIDED 2026-10-16 under the user's "your rec go" of 2026-10-15 (the slice's agent's eleven
+        gaps, each with its rec, rethought): 1. audio.cpp's own Turbo package is named "Chatterbox
+        Turbo (built-in voice only)" (was its catalog's "Chatterbox Turbo (tts)"). 2. Pocket TTS
+        French is offered, cloning only — its one preset, cosette (Expresso), forbids commercial
+        use and our twenty have no French file; the weights are CC-BY-4.0 (audio.cpp's licence
+        table, checked 2026-10-14); not timed on the CPU, so Auto doesn't offer it the CPU. 3.
+        Pocket's nineteen presets stay in our notes (the agent's rec was our fork's spec: a
+        difference from upstream's spec to carry at every merge, for nothing the user sees). 4. A
+        slider whose bottom moves off its step's grid steps by the bottom's last digit — Kitten's
+        Speed 0.01–3 by 0.01, so 1.0 is reachable. 5. Turbo's refusal: "‹model› speaks only a
+        cloned voice or its own built-in one — this voice has no reference clip"; audio.cpp's
+        package's: "‹model› speaks only its own built-in voice". 6. The build's answer 3, "a card
+        that can't be read says 'memory not measured yet'": Auto's reason is "memory not measured
+        yet" where the card can't be read or the model has no size (was empty — the agent had
+        built only the model case, which no model reaches). 7. CLAUDE.md's two
+        `engines/<id>/manifest.js` pointers — to the user (an agent asked; CLAUDE.md isn't edited
+        on an agent's word). 8. The persona mock's old Built-in/Tags reason — slice 5. 9. The
+        before-snapshot as our own JSON fixture with a write mode (`JV_SEVEN_BEFORE=write`), not
+        Vitest's snapshots — NOT STANDARD, to the user by name. It ran green on `slice4` (58944ac6:
+        server 1256 + 2 skipped) and is held back from the merge until the user's word — the two
+        files stay in the branch's history, ready to restore.
+        10. QwenCleo's languages `ar-EG` and `en` (VoiceTut's precedent), kept. 11. The worktree's
+        two package-lock.json changes (the kit's package.json since moved on) — not slice 4's,
+        left out.
+WHY:    each gap was the slice's agent's to raise; the rule is to rethink and build the rec, and to
+        put a NOT STANDARD piece to the user by name.
+NOT:    a fork-only spec for Pocket's presets; Pocket's cosette offered.
+BUILT:  1–6 — on branch `slice4`, the commit after f73f5f2e (server 1255 + 2 skipped, unit 239,
+        lint, family guard).
+OPEN:   7 and 9, to the user; the merge, then the GPU half (Pocket TTS French clones and reads
+        back among it).
+GO:     given 2026-10-15 ("your rec go"); 9 waits for its own word.
+
+### Slice 5's findings: what each one gets (2026-10-16)
+STATE:  DECIDED 2026-10-16 under the user's "your rec go" of 2026-10-15 (the slice's agent's seven
+        questions and its findings, each with its rec): 1. Kitten's seed — waits for the fork's
+        search: KittenTTS's graphics-card takes are being looked for in the fork (TASKS "Same seed,
+        same take on the graphics card"). If they're fixed, Kitten gets a seed like every engine;
+        if not, the rec ("repeats only on the CPU"). Not built now. 2. Pocket TTS's words name
+        French: the engine description "…English, German, Italian, Portuguese, Spanish, and French
+        for cloning only"; the clone maker's note "…or French (cloning only)". 3. The missing Runs
+        on reason: Auto gives the card-first words when only audio.cpp's estimate, with the 1 GB
+        margin, is more than the card and the files fit with the margin — "audio.cpp says it needs
+        about N GB, but its files are about M GB, so it tries the graphics card first; if it
+        doesn't fit, Load runs it on the CPU". Placement is unchanged. 4. Speech engines at 1280 and
+        390 px: a row's buttons wrap under its chips when the row is too narrow; at phone width the
+        bars stack — in the real tab's CSS. 5. The persona mock covers every audio.cpp model's
+        voices — open, as its own change; not now. 6. `scripts/mock-snapshots.js`, the script that
+        re-takes both snapshots, checked in with a header saying what it does and when to run it.
+        7. The dev reload port: `hmr: { port: Number(process.env.JV_HMR_PORT) || 1431 }`. Found on
+        the way, fixed as defects: the files reason's size in `_gb`'s words (MOSS-TTSD said "10 GB"
+        beside "9.5 GB"); the Unload toast names the engine, not its id; the KittenTTS Speed-from-
+        0.01 claims out of whats-new and engines.md (no control shows it; the range stays in the
+        data, unused); the broken `voices.md#keeping-a-designed-voice…` links in studio.md and
+        whats-new pointed at the right anchor.
+WHY:    each was the slice's agent's to raise; the rec is built unless it waits on other work.
+NOT:    moving a tight-estimate model by what other programs hold (placement stays as it was).
+BUILT:  2–4, 6, 7 and the defects — 9ee55806 (placementFor + cpu_placement test, Pocket's words,
+        the Unload toast, app.scss's wrap and phone stack, JV_HMR_PORT), 95fa29b3 (the script,
+        the snapshots re-taken, the mock's placementFor port), 37db2cad (engines.md, whats-new,
+        studio.md, RESEARCH §2.3); branch `slice4`. Server 1256 + 2 skipped, unit 239, lint,
+        build:spa, family guard; the tab seen through the mock at 1280 and 390 px.
+OPEN:   1, after the fork's search; 5, its own change.
+GO:     given 2026-10-15 ("your rec go").
 
 ### Slice 3's six questions: what each one gets (2026-10-15)
 STATE:  DECIDED 2026-10-15 under the user's "your rec go" (the slice's agent's recs, rethought):
@@ -318,6 +411,12 @@ BUILT:  slice 3 — 27f1c140, 43007230, 037abbe4, c0a21e7e. 1–3 — 825101cd (
         tokens 25 cut CosyVoice3's take to 1.00 s (with min_tokens 0 — audio.cpp's own minimum,
         twice the text's tokens, refuses it alone); the load options' number boxes widened to fit
         "240,000"; smoke gate passed.
+        4 — 0e3a89bf (adoption slice 4, branch `slice4`; `capability_details.atAudiocppRange`):
+        KittenTTS Speed from 0.01; Chatterbox Top p, Min p, Decoder CFG, Turbo/Nano Temperature,
+        Repetition penalty, Top p, Qwen3 Detail temperature, VoxCPM2's runaway knobs number boxes
+        (audio.cpp gives them no range); kept ours where audio.cpp's stops short (Speed top 3 on
+        Kokoro and Kitten, Repetition penalty top 4 on Chatterbox and Qwen3) and the app's 0.05
+        floors, VoxCPM2's tries from 1 — RESEARCH §1.6.
 OPEN:   Render's line panel with the Advanced fold not seen (every persona the user casts is on
         Kokoro, which shows no sampling settings there). For the user at the end: "Checkpoint" is
         audio.cpp's word.
@@ -357,6 +456,10 @@ BUILT:  6 and the load faults — 75af433b, kit 1401dc8: an unmeasured model who
         Japanese 82 %, against 75 % and 59 % with the language at the top level. Fixed on the way:
         a recogniser's refusal reached dictation as a JSON body — now its own words. SenseVoice's
         `<period>`/`<io>` are its own output, in no field without them (reported, not fixed).
+        QwenCleo — 0e3a89bf (adoption slice 4, branch `slice4`): offered as audio.cpp's catalog
+        gives it (`qwencleo_asr_q8_0` / `_f16`, in audio.cpp's own words, "QwenCleo-ASR Egyptian
+        Arabic"), with the aligner as every Qwen3-ASR model; its `LANGUAGES` `ar-EG` and `en` in
+        qwen3_asr.js, as VoiceTut's; Apache-2.0 at its source (RESEARCH §1.6).
 OPEN:   2 — ship Silero VAD (an asset audio.cpp bundles, 1.2 MB, MIT) with the runtime: the fork's
         dev build and every release bundle (fork work under way). 4 — F5-TTS's memory: upstream's
         open PR #924 (frees evicted graphs, bounds the Vocos cache) into the fork, then size F5's
@@ -376,7 +479,8 @@ OPEN:   2 — ship Silero VAD (an asset audio.cpp bundles, 1.2 MB, MIT) with the
         language goes to MOSS-TTS v1.5, MOSS-TTSD and MOSS-VoiceGenerator as its English name in
         `options.language` (their sessions read only that; a top-level language never reaches
         them). Each after slice 3's code lands (the same files), then through the app — built
-        (BUILT above), and through the app 2026-10-16. QwenCleo's languages with slice 4.
+        (BUILT above), and through the app 2026-10-16; QwenCleo-ASR's Egyptian Arabic clip with slice
+        4's GPU check.
         The plan's own findings, decided the same way: IndexTTS2 reads its language only from
         options too (IndexTTS2.5's Japanese, Spanish and Arabic lines went without it), so its
         spec's code goes in `options.language`; VoiceTut lists `ar-EG` and `en` (the tag Habibi's

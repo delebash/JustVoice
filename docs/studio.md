@@ -1340,7 +1340,7 @@ Each swap costs a model load (seconds for Kokoro, up to a minute for a large
 Qwen3 model), which is the only price of personas on several models. Until 2026-10-03 a book whose personas mixed Qwen3's models was refused.
 
 Casting everyone on one model is still the fastest render — and note that
-[keeping a designed voice](voices.md#keeping-a-designed-voice-is-what-makes-it-one-voice)
+[keeping a designed voice](personas.md#new-design)
 moves it from VoiceDesign to Base, which is usually where the rest of a cloned
 cast already is.
 

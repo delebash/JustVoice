@@ -16,12 +16,23 @@ import * as runtime from "../src/engines/audiocpp/runtime.js";
 import { ModelEntry } from "../src/engines/audiocpp/runtime.js";
 import * as slot from "../src/engines/audiocpp/slot.js";
 import { toSpeechRequest } from "../src/engines/audiocpp/slot.js";
+import { CATALOG } from "../src/engines/audiocpp/generated.js";
 import { lookup } from "../src/engines/capability_details.js";
-import * as chatterboxManifest from "../src/engines/chatterbox/manifest.js";
 import * as manager from "../src/engines/manager.js";
 import { discoverEngines, EngineManager } from "../src/engines/manager.js";
-import * as qwen3Manifest from "../src/engines/qwen3/manifest.js";
 import { tmpPath } from "./helpers.js";
+
+// Our own conversions of models audio.cpp doesn't publish — CustomVoice 0.6B (gap 4), Turbo and
+// Nano (gap 1) — as our fork's catalog names them (the adoption plan's slice 4: the repositories come
+// from audio.cpp's files, where the manifests named them before).
+const source = (family, id) => CATALOG.families[family].packages.find((p) => p.id === id).source;
+const qwen3Manifest = { CV_06_REPO: source("qwen3_tts", "qwen3_tts_0_6b_customvoice_q8_0").repo, CV_06_REVISION: source("qwen3_tts", "qwen3_tts_0_6b_customvoice_q8_0").revision };
+const chatterboxManifest = {
+  TURBO_REPO: source("chatterbox_turbo", "chatterbox_turbo_clone_q8_0").repo,
+  TURBO_REVISION: source("chatterbox_turbo", "chatterbox_turbo_clone_q8_0").revision,
+  NANO_REPO: source("chatterbox_turbo", "chatterbox_nano_q8_0").repo,
+  NANO_REVISION: source("chatterbox_turbo", "chatterbox_nano_q8_0").revision,
+};
 
 afterAll(() => dspClient.stop());
 
@@ -35,12 +46,14 @@ test("every_switched_engine_runs_on_audiocpp", () => {
     expect(m.usesAudiocpp).toBe(true);
     expect(m.module.VARIANTS.map((r) => r.id)).toContain(m.defaultVariantId);
     // audio.cpp's own repo, or our conversion of a model it does not publish (gap 4; Turbo
-    // and Nano, gap 1, offered from v0.9.0-jv.4).
+    // and Nano, gap 1, offered from v0.9.0-jv.4), or QwenCleo-ASR's own (the adoption plan's
+    // E14/F5, as audio.cpp's catalog gives it).
     const pinned = {
       [release.MODEL_REPO]: release.MODEL_REVISION,
       [qwen3Manifest.CV_06_REPO]: qwen3Manifest.CV_06_REVISION,
       [chatterboxManifest.TURBO_REPO]: chatterboxManifest.TURBO_REVISION,
       [chatterboxManifest.NANO_REPO]: chatterboxManifest.NANO_REVISION,
+      [source("qwen3_asr", "qwencleo_asr_q8_0").repo]: source("qwen3_asr", "qwencleo_asr_q8_0").revision,
     };
     for (const r of m.module.VARIANTS) {
       const src = r.sources[0];

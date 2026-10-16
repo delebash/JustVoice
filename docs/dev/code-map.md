@@ -273,23 +273,29 @@ podcast: show/episode/segment.
 
 ## 3. Engines — the capability matrix
 
-Read from each `server/justvoice/engines/<id>/manifest.py`. Since the
-2026-10-01 switch (`docs/plans/2026-10-01-audiocpp-switch.md`) an engine is a
-**catalog**: its manifest names the model files and how the audio.cpp runtime
-loads them; there is no per-engine program. **Cloning is not Chatterbox-only.**
+Built by `server/src/engines/audiocpp/generated.js` from audio.cpp's catalog
+(`catalog.json`) and each family's notes (`audiocpp/curated/<family>.js`) — the seven
+below by `ownEngine` from their families' `ENGINE` / `MODELS` / `VOICES` notes since the
+adoption plan's slice 4 (2026-10-16; until then hand-written `engines/<id>/manifest.js`
+files). Since the 2026-10-01 switch (`docs/plans/2026-10-01-audiocpp-switch.md`) an
+engine is a **catalog**: it names the model files and how the audio.cpp runtime loads
+them; there is no per-engine program. **Cloning is not Chatterbox-only.**
 
 ### 3a. What each MODEL is — every shipped variant
 
-Every variant is one pinned file (two for speech recognition) in
-`audio-cpp/audio.cpp-gguf` at the commit in `engines/audiocpp/release.py`
-(`MODEL_REPO` / `MODEL_REVISION`) — except `qwen3-cv-0.6b-q8`, our own conversion,
-pinned in `engines/qwen3/manifest.py` (`CV_06_REPO` / `CV_06_REVISION`, passed through
-`model_source(repo=, revision=)`; gap 4, `docs/plans/2026-10-02-gap-4-customvoice-0.6b.md`).
-**Every 8-bit row has a 16-bit sibling** (gap 9) built by `release.sixteen_bit(row, path,
-size, dtype=…)`: id `-q8` → `-bf16` (`-f16` for Chatterbox and speech recognition, which
-audio.cpp ships as f16), name "(…, 16-bit)", no `cpu_realtime` of its own, same capability
-row by the suffix walk; the 8-bit rows stay `DEFAULT_VARIANT_ID`. KittenTTS has none (its one
-file is unquantized). The table below lists the 8-bit rows.
+Every variant is an audio.cpp package (two for speech recognition: its aligner rides as a
+companion, `COMPANIONS`) at the repository and commit `catalog.json` pins it to —
+`audio-cpp/audio.cpp-gguf` at `release.js` `MODEL_REVISION`, or our own conversions in our fork's
+catalog (`qwen3-cv-0.6b-q8`, gap 4, `docs/plans/2026-10-02-gap-4-customvoice-0.6b.md`; Turbo and
+Nano, gap 1), or QwenCleo-ASR's own. Our ids are `<the note's id>-<precision>` (Kitten's
+`kitten-mini-0.8` by name). **Every 8-bit row has a 16-bit sibling** (gap 9), named by the rule
+`generated.siblingWords` keeps: id `-q8` → `-bf16` (`-f16` for Chatterbox and speech
+recognition, which audio.cpp ships as f16), name "(…, 16-bit)", no `cpu_realtime` of its own,
+same capability row by the suffix walk; the 8-bit rows stay `DEFAULT_VARIANT_ID`. KittenTTS has
+none (its one file is unquantized); Qwen3 Base 1.7B and VoxCPM2 also have `-orig` (audio.cpp's
+original precision, since slice 4). The table below lists the 8-bit rows; since slice 4 the
+chatterbox engine also lists audio.cpp's own Turbo package (`chatterbox-chatterboxturbo-q8`,
+Turbo's capability row by `like`, no cloning) and the asr engine `qwencleo-asr-q8` / `-f16`.
 Sizes are the summed real bytes. **The
 variant is the unit, never the engine** — every trap below is a case of the
 engine-level flag disagreeing with the variant that loads.
@@ -304,9 +310,11 @@ engine-level flag disagreeing with the variant that loads.
 | **asr** (STT) | `qwen3-asr-1.7b-q8` + companion `::aligner` (`qwen3_forced_aligner` · align) | `qwen3_asr` · asr | — | — | — | 30 | 3.60 GB |
 | **voxcpm2** | `voxcpm2-q8` | `voxcpm2` · tts (its only task in v0.9.0) | **✓** | 0 | **✓** | 30 | 2.96 GB |
 
-Kokoro's five Japanese voices are filtered out of `STATIC_VOICES` (the
-runtime's Kokoro needs MeCab/UniDic for Japanese). The variant ids are new at
-the switch; engine ids and voice ids are unchanged.
+Kokoro's five Japanese voices are filtered out of `STATIC_VOICES` on a pin without
+`japanese` (the runtime's Kokoro needs MeCab/UniDic — the family file's
+`LANGUAGE_FEATURES`). The variant ids are new at the switch; engine ids and voice ids are
+unchanged, and slice 4 kept them all. Turbo and Nano list their own voice since slice 4
+(`chatterbox-turbo_model_default`, "Turbo (built-in)"; the plan's F4).
 
 ### 3b. What each engine DOES with a delivery — the honest ✓ grid
 
@@ -322,7 +330,7 @@ knob through the mapping and fails if one doesn't come out the other side.
 | `temperature` | | | | ✓ `options.temperature` | ✓ | ✓ | ✓ |
 | `engine.*` knobs | | | | `exaggeration`, `cfg_weight`→`guidance_scale`, `repetition_penalty`, `top_p` | `talker_top_k`/`_top_p`→`top_k`/`top_p`, `repetition_penalty` | same | same |
 | `seed` | ✓ | sent, does not repeat (not offered) | ✓ | ✓ | ✓ | ✓ | ✓ |
-| voice | `voice` (the id) | `voice` = `AUDIOCPP_VOICE[id]` (Bella…) | `voice` = `AUDIOCPP_VOICE[id]` (alba…) | | `options.speaker` | | |
+| voice | `voice` (the id) | `voice` = the row's `audiocpp.voices[id]` (Bella…) | `voice` = the row's `audiocpp.voices[id]` (alba…) | | `options.speaker` | | |
 | reference clip | | | ✓ `voice_ref` on the `tts` task (its `clon` task refuses); gated on TERMS | **required** `voice_ref` | **refuses** | **required** `voice_ref` | |
 | clip transcript | | | | | | ✓ `reference_text` (not with `xvector_only`) | |
 | language | voice's code (`KOKORO_LANGUAGE`) | English only | none — the model IS the language; another refuses by name | code | **name** (`QWEN_LANGUAGE`; `en` is rejected) | name | name |
@@ -509,7 +517,7 @@ device at its effective split (flag `split_chars`, kept 5 per fingerprint by
 same-kind occupant's booking)` + an early booking at the price → `_ensure_variant_local`
 → `_unload_ai_model` (unpriced Auto loads only) → spawn → `/load` with `calibrate_chars`
 (unpriced loads on the card: `slot._warm` speaks `CALIBRATION_TEXT` cut to that length,
-never past `_FAMILY_BUDGET`; speech recognition 30 s of silence) → book
+never past audio.cpp's own piece budget, `slot.familyBudget` — the spec's `text_chunk_size`; speech recognition 30 s of silence) → book
 `max(measured, price)`, record a peak when it calibrated or measured above the price. The
 high-water bump records higher readings after lines.
 

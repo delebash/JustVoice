@@ -17,7 +17,6 @@ import os from "node:os";
 import { BinaryAsset } from "@delebash/llm-runner/runner/schema";
 import { model } from "@delebash/llm-runner/platform/models";
 import * as devBuild from "./dev_build.js";
-import * as self from "./release.js";
 
 export const cfg = {
   // Our build 5 on audio.cpp v0.9.0 (github.com/delebash/audio.cpp, published 2026-10-10 by
@@ -126,37 +125,4 @@ export function binaries() {
     row("linux", "cpu", `audio-${tag}-bin-ubuntu-x64-cpu-portable.tar.gz`),
     row("macos", "metal", `audio-${tag}-bin-macos-${macArch}-metal.tar.gz`),
   ];
-}
-
-/** A manifest variant's `sources` row for one GGUF file in the pinned model repo — the shape
- * `speech_cache.fetchHfVariant` downloads. `repo` / `revision` name another pinned repo for a
- * model audio.cpp does not publish (our own conversions). */
-export function modelSource(filePath, sizeBytes, { repo = MODEL_REPO, revision = MODEL_REVISION } = {}) {
-  return { hf_repo: repo, revision, size_bytes: sizeBytes, files: [filePath] };
-}
-
-/**
- * The 16-bit sibling of an 8-bit variant row (switch plan §5, gap 9): same model, same
- * capabilities, the original precision. Its id swaps the `-q8` tail for `-<dtype>`, its name
- * says "16-bit", its description says so, and it has no reference CPU speed of its own (the
- * 8-bit row's would be wrong — a render measures this one). `source` replaces the default
- * one-file source (a multi-file source, another repo); `companions` replaces the companion
- * files (speech recognition's aligner). Key order is Python's dict-update order.
- */
-export function sixteenBit(r, filePath, sizeBytes, { dtype = "bf16", source = null, companions = null } = {}) {
-  let name = r.name;
-  name = name.endsWith(")") ? `${name.slice(0, -1)}, 16-bit)` : `${name} (16-bit)`;
-  const desc = r.description.replaceAll(" 8-bit weights.", "").replace(/\s+$/u, "");
-  const { cpu_realtime: _drop, ...rest } = r;
-  const id = r.id.endsWith("-q8") ? r.id.slice(0, -3) : r.id;
-  const out = {
-    ...rest,
-    id: `${id}-${dtype}`,
-    name,
-    description: `${desc} 16-bit weights — a larger download that needs more memory.`,
-    sources: [source || self.modelSource(filePath, sizeBytes)],
-    audiocpp: { ...r.audiocpp, file: filePath },
-  };
-  if (companions !== null) out.audiocpp.companions = companions;
-  return out;
 }

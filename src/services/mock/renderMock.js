@@ -26,11 +26,11 @@ import script from "./ninthFacetScript.json";
 export const PROJECT = { id: "b_ninth", name: script.book, author: script.author, kind: "audiobook", language: "en" };
 export const PAUSE_BETWEEN_LINES_MS = 600;     // Settings → Generation (D1)
 // After the last line of one of the book's scenes, and between two lines of one paragraph
-// (Settings → Generation, `models.py`; 2026-10-06 and 2026-10-07).
+// (Settings → Generation, `models.js`; 2026-10-06 and 2026-10-07).
 export const SCENE_BREAK_MS = 2000;
 export const PARAGRAPH_MS = 250;
 export const BOOK_LEXICON = "The Ninth Facet names";
-// The audiobook kind's master target (`models.py` MasterPresets.acx).
+// The audiobook kind's master target (`models.js` MasterPresets.acx).
 export const MASTER = { preset: "acx", lufs: -20, peak: -3.5 };
 
 export const SPEAKERS = [
@@ -197,7 +197,7 @@ export function addTake(l, label = "") {
 }
 
 /**
- * Why a chapter can't be joined, in the server's words (`render_chapter_api.py`, the strict
+ * Why a chapter can't be joined, in the server's words (`render_chapter_api.js`, the strict
  * check) — or "" when every line can render. Lines with no speaker are caught first, by the
  * Render-stopped dialog.
  */

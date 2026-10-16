@@ -11,11 +11,11 @@
   length and how noisy it is are checked before anything is kept.
 -->
 <script setup>
-import { computed, onBeforeUnmount, reactive, ref } from "vue";
+import { computed, onBeforeUnmount, ref } from "vue";
 import {
-  DownloadBar, UiButton, UiCheckbox, UiField, UiInput, UiSelect, UiTag, UiTextarea, fmtBytes, pushToast,
+  UiButton, UiCheckbox, UiField, UiInput, UiSelect, UiTag, UiTextarea, fmtBytes, pushToast,
 } from "@delebash/llm-ui";
-import { CAPTURES, capabilities, keepVoice, modelStatus, silentWav, statusOf, terms, termsAccepted, wait } from "../../services/mock/personaMock.js";
+import { CAPTURES, capabilities, keepVoice, silentWav, statusOf, terms, termsAccepted, wait } from "../../services/mock/personaMock.js";
 import { MODEL_NOTE, engineOf, fmtLength, forDirection, languageOptionsFor, modelOptions, preferred } from "../../services/mock/mockMakers.js";
 
 const props = defineProps({
@@ -120,29 +120,9 @@ function acceptTerms() {
   termsAccepted[engine.value] = true;
   pushToast({ kind: "success", message: `${row.value.display_name} can clone voices now.` });
 }
-const notInstalled = computed(() => statusOf(model.value) === "not installed");
-
-// Installing a model — the real DownloadBar on a pretend task.
-const install = ref(null);
-function startInstall() {
-  const total = 1_050_000_000;
-  const task = reactive({ state: "running", done: 0, total, label: "", error: "", finalizing: false });
-  task.cancel = () => { task.state = "cancelled"; };
-  task.retry = () => startInstall();
-  task.dismiss = () => { install.value = null; };
-  install.value = task;
-  const tick = setInterval(() => {
-    const t = install.value;
-    if (t?.state !== "running") return clearInterval(tick);
-    t.done = Math.min(total, t.done + total / 12);
-    t.label = `${Math.round((t.done / total) * 100)}% · ${fmtBytes(t.done)} of ${fmtBytes(total)}`;
-    if (t.done >= total) {
-      clearInterval(tick);
-      t.state = "done";
-      modelStatus[model.value] = "not loaded";
-    }
-  }, 250);
-}
+// The speech runtime is installed on the mock machine: a model is loaded or not (the app's
+// PersonaCloneMaker also says when the runtime is missing).
+const notLoaded = computed(() => statusOf(model.value) !== "loaded");
 
 const transcript = ref("");
 const skipWords = ref(false);
@@ -156,7 +136,6 @@ const busy = ref(false);
 const blocker = computed(() => {
   if (!clip.value) return "Choose a recording.";
   if (!model.value) return "Pick a model.";
-  if (notInstalled.value) return `Install ${row.value.display_name} first.`;
   if (termsPending.value) return `Accept ${engineTerms.value.owner}'s terms above first.`;
   return "";
 });
@@ -241,13 +220,7 @@ function keep() {
         </UiField>
       </div>
       <p class="jv-hint">{{ MODEL_NOTE[model] }}</p>
-      <div v-if="notInstalled" class="jv-banner jv-banner--warn">
-        <strong>{{ row.display_name }} isn't installed.</strong>
-        <div class="jv-inline-row">
-          <UiButton v-if="!install" intent="secondary" size="small" label="⤓ Install" @click="startInstall" />
-        </div>
-      </div>
-      <DownloadBar v-if="install" :title="row.display_name" :task="install" done-label="Installed" />
+      <p v-if="notLoaded" class="jv-hint">{{ row?.display_name || model }} isn't loaded — the first preview loads it, about a minute.</p>
 
       <UiField v-if="row?.supports_clone_prompt_text" label="What's said in the recording" layout="block" class="jv-stretch"
         hint="This model listens to the clip while reading these words, so a word-for-word match gives a truer copy. Skip it and the copy still works — just less exact.">

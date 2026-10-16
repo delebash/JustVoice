@@ -17,7 +17,7 @@ import { afterEach, expect, test, vi } from "vitest";
 import { resolveSource } from "../src/api/engine_sources_api.js";
 import { getState } from "../src/app_state.js";
 import * as release from "../src/engines/audiocpp/release.js";
-import * as cb from "../src/engines/chatterbox/manifest.js";
+import { CATALOG } from "../src/engines/audiocpp/generated.js";
 import * as manager from "../src/engines/manager.js";
 import * as installer from "../src/installer.js";
 import { spawnPrefetch } from "../src/installer.js";
@@ -42,6 +42,15 @@ function putOnDisk(vdir, name, size) {
 }
 
 // ── S0 — sources endpoint ────────────────────────────────────────────
+
+// Our Turbo / Nano conversions, as our fork's catalog names them (the adoption plan's slice 4).
+const source = (family, id) => CATALOG.families[family].packages.find((p) => p.id === id).source;
+const cb = {
+  TURBO_REPO: source("chatterbox_turbo", "chatterbox_turbo_clone_q8_0").repo,
+  TURBO_REVISION: source("chatterbox_turbo", "chatterbox_turbo_clone_q8_0").revision,
+  NANO_REPO: source("chatterbox_turbo", "chatterbox_nano_q8_0").repo,
+  NANO_REVISION: source("chatterbox_turbo", "chatterbox_nano_q8_0").revision,
+};
 
 test("sources_list_uses_catalog_variant_ids_and_manifest_provenance", async () => {
   const { c } = await appClient();

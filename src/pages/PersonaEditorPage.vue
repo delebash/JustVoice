@@ -278,8 +278,9 @@ function onKindBlocked(opt) {
   pushToast({ kind: "info", message: opt.title || "Not available yet." });
 }
 const CAN_MAKE = { clone: ["words", "tags", "sliders"], design: ["words", "tags", "sliders"], blend: ["sliders"] };
+// (Built-in under Tags had its own reason until Turbo and Nano listed their own voice — the
+// adoption plan's F4, 2026-10-16.)
 const OFF_REASON = {
-  builtin: { tags: "No Built-in voice is on a tag model — Chatterbox Turbo and Nano voices are Cloned." },
   blend: {
     words: "Blended voices are Kokoro's: sliders only.",
     tags: "Blended voices are Kokoro's: sliders only.",
