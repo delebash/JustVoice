@@ -4283,7 +4283,9 @@ audition, kept as his VoxCPM2 clone's reference (slice 0, §10.6) — a calm one
   noticeable), "情感与tts 文本强绑定 … 使用 instruct 时，会降低说话人相似性" (#1057, relayed from the
   team); a collaborator: instruct2 still clones, "只是韵律会更加偏向于instruct文本" (#1143). Our phrases
   are the official `instruct_list`'s. An independent test of natural-language emotion on clones:
-  CosyVoice3 31.6 %, IndexTTS2 28.4 % (arXiv 2609.11523).
+  CosyVoice3 31.6 %, IndexTTS2 28.4 % (arXiv 2609.11523; its own method, "Joint-RL", 77.1 % — the
+  51.8 % in that table is the TED-TTS baseline's; was: "51.8 % for their own method" — until
+  2026-10-16, §10.26).
 - **IndexTTS 2.5** — users find it weaker than 2.0: "2.5 …音色相似度,情感色彩上没有 index tts 2.0 好"
   (#759, seven agreeing), "情绪控制和音色还原上开了2.0的倒车" (#781), a one-listener blind A/B 2.0
   winning 5 of 6 (#801); no maintainer reply. The official `infer_v2_5.py` (followed by audio.cpp,
@@ -4320,6 +4322,72 @@ audition, kept as his VoxCPM2 clone's reference (slice 0, §10.6) — a calm one
   Higgs on a clone; a one-word vs phrase comparison for VoxCPM2; any PyTorch-vs-audio.cpp emotion
   comparison for VoxCPM2, Higgs, Fish or CosyVoice3; a new clone-emotion evaluation since
   2026-10-11 (JoyAI-Voice 2.0, arXiv 2610.08834, has none).
+
+### 10.26 Other ways to get emotion on a copied voice — the field again (2026-10-16)
+
+*agent, 2026-10-16* — a research agent (sources opened by it: pages, `gh` / HF API, the local
+audio.cpp tree; quotes through WebFetch's summariser marked (summ.)); asked by the user: "is
+there any other tts methods new or just different that might be better or available or up and
+coming research?". Reddit unreachable.
+
+- **New since 2026-10-11: Fish Audio Drama 3** (huggingface.co/fishaudio/drama-3, report arXiv
+  2610.18010): a 35B MoE (3B active), multi-speaker, cloning, direction as point tags `[sighs]`,
+  scoped tags `<whisper>…</whisper>`, style prefixes, director's notes and relative re-takes
+  ("[softer and warmer versus previous]") (summ.). Licence **Fish Audio Community License v1.0**:
+  commercial use "only while Your Annual Revenue is less than USD 500,000", audiobooks for a
+  client allowed below it, "Built with Fish Audio" attribution. In audio.cpp **upstream main only**
+  (`fish_drama3`, merged 2026-10-15, after v0.9.2 — not in our fork or any release), with CPU
+  expert offload; "physical 16 GB and 24 GB cards have not been tested"; "Some emotion and
+  nonverbal prompts produce prolonged reactions, omit dialogue or reach the generation cap".
+  GGUFs: Q2 experts 15.9 GiB – Q4 22.9 GiB; a community pruned 3-bit 9.7 GiB ("should fit in 12
+  GB of VRAM", Japanese and English). Emotion evidence is the vendor's only (Step-Audio-Edit
+  benchmark 55.5 → 58.2 over 3 edits); Artificial Analysis Controlled-Voice arena: Drama 3 Preview
+  1059, Breeze 2 1018, Eleven v4 1159 (overall preference, not emotion). Open issues: runaway on
+  French clones (#1356), speaker 1 in speaker 0's voice (#1358).
+- **Papers since 2026-10-07, no code or weights:** EDICT (arXiv 2610.11437 — Qwen3 VoiceDesign
+  given the clip in context, 83.6 % emotion accuracy at 0.915 identity, Gemini-judged), SteerSpeech
+  (2610.10415, activation steering on frozen Qwen3-TTS), E3-System (2610.12993, retrieves an
+  emotional prompt clip for a described emotion), Prime-EVC, Emo-BPO, SRSP, LoopTTS (an audio-LLM
+  judge writes re-take instructions). Also new, non-commercial: SteerTTS (23–48M, 51 tags incl.
+  whisper, CC BY-NC), VoTSpeech (design only).
+- **arXiv 2609.11523** — CosyVoice2's speech LM fine-tuned, then GRPO with emotion, duration,
+  content and speaker rewards, on 56.6 h made with IndexTTS2: emotion accuracy 77.1 % against
+  CosyVoice3 31.6 %, IndexTTS2 28.4 %. No code, no weights.
+- **Marco-Voice** — weights released (now ATH-MaaS/Marco-Voice), **Apache-2.0** with a NOTICE
+  naming CosyVoice; CosyVoice **1**-class (llm.pt 1.24 GB); seven emotions (neutral, happy, angry,
+  sad, surprise, playful, fearful — no whisper, no shout); English from ESD; the authors' own
+  numbers only (English emotion 0.77 vs CosyVoice1 0.67, speaker similarity 80.1 → 74.3); "There
+  is a trade-off between timbre similarity and emotion control". Not in audio.cpp (no CosyVoice1
+  family).
+- **Voice conversion in audio.cpp** (local `model_specs/`, `docs/model_licenses.md`):
+  `chatterbox` VC (MIT), `tone_color_vc` (OpenVoice V2, MIT), `meanvc2` (Apache-2.0, ~18M),
+  `miocodec` (MIT), `rvc` (needs a trained voice), `seed_vc` (GPL-3.0; its GitHub repo now 404;
+  style conversion "Not exposed in the current C++ route"), `vevo2` (CC-BY-NC-ND-4.0, a
+  style-preserving route). Whether whisper or shouting survives any VC: still measured nowhere.
+- **Qwen3-TTS** — no release since 2026-03-17; the 25Hz request (#294) closed by the stale bot on
+  2026-10-14, not a maintainer. **An emotion direction added to the clone's speaker vector**
+  (arXiv 2606.05367, Qwen3-TTS-12Hz-1.7B, directions averaged from ESD emotional minus neutral
+  x-vectors): emotion2vec cosine angry 0.539 → 0.925, happy 0.425 → 0.687, sad 0.540 → 0.761, at
+  WavLM similarity 0.945 → 0.907 / 0.951 → 0.902 / 0.948 → 0.926; no listening test; code 1★, no
+  licence file. A pure-C Qwen3 engine (MIT) ships it by ear for 0.6B; the same developer calls it
+  a dead end on 1.7B ("Too little state to carry emotion", summ.) — conflicting. In audio.cpp it
+  needs a fork change (the embedding: `src/models/qwen3_tts/prompt_tts_voice_clone.cpp:34`,
+  `talker.cpp:645`); ESD has no whisper or shout, and its terms are unchecked.
+- **Step-Audio-EditX** — unchanged since 2026-04-09; weights carry no licence ("The code … is
+  licensed under the Apache 2.0 License"); 3B, "16GB GPU memory shoule be safer", AWQ 4-bit ~8–10
+  GB; not in audio.cpp; independent emotion results near chance (20.9 % on ESD, arXiv 2603.09120;
+  doteBench 23.08 %).
+- **Closed services, for reference:** ElevenLabs v3 — "Tags land more readily when the delivery
+  is already in the voice's training data", and professional clones "are not fully optimized for
+  Eleven v3 … we recommend trying Eleven v4"; Hume's acting `description` is Octave 1 only; OpenAI
+  custom voices are for eligible customers, with no `instructions` shown for them; MiniMax's
+  `emotion` includes whisper on speech-2.6 models, its use on cloned voices undocumented.
+- **The agent's ranked shortlist for us:** Qwen3 with the x-vector direction (commercial-OK
+  weights, a small fork change, untested by ear on 1.7B); Qwen3 VoiceDesign / CustomVoice given
+  the clip in context (EDICT; a fork change); IndexTTS with an acted emotion clip (no code change —
+  in round 5); Fish Drama 3 (commercial below USD 500k; not in our pin; 8 GB untested);
+  act-then-convert with the MIT/Apache converters (emotion survival unmeasured); Marco-Voice (low:
+  CosyVoice1-era, no whisper or shout, would need a port).
 
 ## Records not yet distilled
 
