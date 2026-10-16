@@ -3365,7 +3365,17 @@ Captions: with Citrinet loaded, `POST /v1/align` loaded Qwen3-ASR and returned 2
   "Speaker N:" lines and a voice sample per speaker; audio.cpp's page has the user type that
   script.
 - **Finding 2 — SenseVoice can't load**: the release has no
-  `assets/framework/models/silero_vad`; only the checkout does.
+  `assets/framework/models/silero_vad`; only the checkout does. Seven recognisers default their
+  VAD to that path relative to the working folder (qwen3_asr, sense_asr, parakeet_tdt,
+  moonshine_asr, lfm2_audio, granite5asr, vibevoice_asr — `sense_asr/session.cpp:279-282`,
+  `silero_vad/assets.cpp:33-43`), and `runtime.js` starts the server in its own folder.
+  Fixed in our fork (`095cae20`): every build copies `silero_vad_16k.safetensors` and upstream's
+  MIT `LICENSE` (snakers4/silero-vad at `1e261b0`) beside the executables
+  (`cmake/bundled_assets.cmake`), so `build/jv-dev/bin` and every release bin bundle carry it
+  (the Colab bundle copies it in its own step); the pinned jv.5 doesn't until the next release.
+  On the dev build SenseVoice-Small loaded on CUDA in 7 s and transcribed the Hatter clip in
+  0.3 s, 96 % — its text carries `<period>` and `<io>` tokens (finding 3's kind). — *code +
+  measured, 2026-10-15*
 - **Finding 3 — some recognisers put their own markup in the text**: Index-Echo is a Chinese
   speech *translator* and returns timed captions, each a source line and its translation;
   MOSS-Transcribe-Diarize returns `[0.06][S01] …[7.96]`; VibeVoice-ASR starts "Speaker 0:".
@@ -3374,6 +3384,55 @@ Captions: with Citrinet loaded, `POST /v1/align` loaded Qwen3-ASR and returned 2
   process reached 67 GB against the machine's 40 GB commit limit ("bad allocation"); each was
   clean in a fresh process. CosyVoice3 (about 835 MB after each of 3 unloads) and Kokoro (about
   1035 MB) don't leak.
+  - **The cause, in the code** (our fork at v0.9.2): every context F5 builds on CUDA is
+    `no_alloc` but was sized as if it held the data — the batched-CFG DiT graph
+    min(max(1.5 GiB, N·8 MiB), 12 GiB), the plain one up to 6 GiB, Vocos 256 MiB, each weight
+    store 2 GiB — and `ggml_init` mallocs the whole size regardless (`ggml.c:1677` →
+    `_aligned_malloc`, `:339`), which on Windows is committed memory whether or not a page is
+    touched (on Linux it never becomes resident — why upstream's PR #924 saw ~0 on CUDA);
+    `load_model_once` loaded the whole DiT a second time, in F32, that no graph reads; evicted
+    CFG graphs leaked their context, arena and staged constants, and the Vocos graph cache had
+    no bound; every cache lives as long as the process, so unloading frees nothing.
+  - **Fixed in our fork** (pushed 2026-10-15): upstream's open PR #924 (`a339730b`,
+    `088bba5c`, `59686dd0`: the CPU frame budget capped at 960, the CFG pool at 9 MiB a frame,
+    evicted CFG graphs freed, the Vocos cache bounded at 2 and freed), then ours: CUDA graph
+    contexts sized for their headers, ~105 MB a DiT graph (`b937f2ec`); the DiT loaded once, its
+    store sized for 512 headers (`56e7a352`); a graph's staged constants freed with it
+    (`79ca123e`).
+  - **Measured on the dev build `79ca123e`**: one speech process, the Hatter clone, seed 42,
+    Arabic lines; committed = private bytes.
+
+    | Step | Committed | Working set | Card used |
+    |---|---|---|---|
+    | before (no speech process) | — | — | 249 MiB |
+    | Habibi Unified loaded | 396 MB | 164 MB | 257 MiB |
+    | line 1, 19 chars (1.8 s take) | 2,405 MB | 474 MB | 1,886 MiB |
+    | line 2, 52 chars (4.1 s) | 2,898 MB | 484 MB | 2,266 MiB |
+    | line 3, 96 chars (7.3 s) | 3,440 MB | 486 MB | 2,636 MiB |
+    | line 4, 180 chars (14.6 s) | 4,214 MB | 490 MB | 3,331 MiB |
+    | line 5, 330 chars (27.1 s) | 5,459 MB | 483 MB | 4,568 MiB |
+    | Habibi EGY loaded / its 52-char line | 5,208 / 6,121 MB | 484 / 593 MB | 4,579 / 5,216 MiB |
+    | Habibi MSA loaded / its 52-char line | 5,920 / 7,239 MB | 593 / 693 MB | 5,220 / 6,478 MiB |
+    | after unload | 7,239 MB | 693 MB | 6,476 MiB |
+
+    Before the fix: 17,860 MB committed after one 52-char line, in a fresh process, at every
+    Habibi model. Committed memory now rises with the card's, step by step. It still grows with
+    each model — EGY +662 MB committed and +648 MiB on the card, MSA +1,118 MB and +1,262 MiB
+    (each keeps its ~1.3 GB of weights; the bounded graph caches swap) — and **unloading still
+    frees nothing**: 7.2 GB committed and 6.2 GB of the card stay with the process, which the
+    booking reads as free. Not fixed: releasing a model's caches on unload needs reference
+    counts and locks across six process-wide caches.
+  - **The takes didn't change**: Unified's 52-char line is bit-identical to the old build's;
+    so are EGY and MSA each first in a fresh process, MSA after EGY, and EGY after Unified's
+    52-char line. Read back by Qwen3-ASR 1.7B: lines 1–5 at 75 / 60 / 100 / 92 / 91 %.
+  - **New: a take depends on what the process ran before.** After Unified's 180- and 330-char
+    lines, EGY's same line at seed 42 comes out different (correlation 0.35 with the fresh take;
+    the same in two runs, and identical when repeated in place); in the main run MSA read back
+    70 % against 80 % fresh. Likely a graph reading memory it never wrote, exposed now that
+    freed graphs' memory is reused; not run on the old build. The three Habibi checkpoints'
+    Vocos weights are byte-identical (83 tensors, 54.3 MB), so the Vocos cache's key
+    `(T, device)`, which leaves out the model, is harmless for them. — *code + measured,
+    2026-10-15*
 - **Finding 5 — a single-language checkpoint in a many-language family**: LFM2.5-Audio JP ASR
   refuses English, which its family lists; GigaAM (Russian) transcribes English in Cyrillic.
 - **Finding 6 — two loads went to the CPU beside little other use**: Kitten TTS 2 (3.1 GB, other
