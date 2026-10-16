@@ -302,9 +302,9 @@ BUILT:  2026-10-15 — the register's recs: Script/Render/Export (7174737, 58569
         JustVoice server left on the app's port is asked to stop through /v1/shutdown, exits 0,
         and the app's server starts after it (the 15 s kill fallback not reached). Fixed on the
         way: the sidebar's Projects and Import labels had no locale key (029b7143).
-OPEN:   the jv.6 release — the user's command (the auto-mode check refused it) — then the pin;
-        the two mocks waiting on the user's look (TASKS "The run's last questions" 6 and 9); then
-        the one-click plan.
+OPEN:   none of its own — jv.6 tagged (on the user's "do it all", 2026-10-16), published 16:35 UTC
+        and pinned the same day; the two mocks built (TASKS "The run's last questions" 6 and 9);
+        the one-click plan under way (TASKS "The test kit and round 4, then the one-click slices").
 GO:     given 2026-10-15 ("your rec go").
 
 ### The test kit and round 4, then the one-click slices — "do it all" (decided 2026-10-16)
@@ -381,7 +381,11 @@ BUILT:  2026-10-16 — 1: `seven_engines_unchanged.test.js` and `seven_engines_b
         EffectsChainEditorModal.vue as the mock draws them — one row a step, settings inline with
         their units, the kit's UiNumber holding the server's ranges (EffectsChainEditorModal.test.js;
         docs/effects.md, whats-new).
-OPEN:   4 — the pin, once the release build is published.
+        4 — pinned 2026-10-16: `release.js` TAG v0.9.2-jv.6 (jv.5 first of the older builds), its
+        ten archives' published sha256, BUILDS_IN_ORDER; the catalog rebuilt at the tag (only
+        `generated_from` moved); the pin test runs again; server 1351, none skipped. Docs:
+        engines.md (the runtime's build and sizes), whats-new.
+OPEN:   none.
 GO:     given 2026-10-16 ("your rec even for non standard think on it again go").
 
 ### The build's 16 questions: 1, 2, 7, 8 answered; 3, 4, 6 asked to explain (2026-10-15)

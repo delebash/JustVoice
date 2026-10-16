@@ -52,6 +52,11 @@
 - **The Effects chain editor is compact (2026-10-16)** — each step of a chain is one row: its name,
   its settings with their units (*Gain [-2] dB*), then ↑ ↓ Remove; a setting past the effect's range
   is held to it ([Effects → Edit a chain](effects.md#edit-a-chain))
+- **Speech runtime v0.9.2-jv.6 (2026-10-16)** — audio.cpp v0.9.2 with JustVoice's changes: its new
+  models and renamed settings work in the installed app too (until now only `npm run dev` ran them),
+  F5-TTS frees its memory on **Unload**, and F5-TTS and KittenTTS repeat a take for the same seed.
+  The runtime row offers **Update to v0.9.2-jv.6**; jv.5 keeps working until you do
+  ([Engines → The speech runtime](engines.md#the-speech-runtime))
 - **Voices at phone width (2026-10-16)** — the filters fold behind one **Filters** button, which
   says how many are set, so the list keeps its room ([Voices](voices.md#finding-a-voice-in-the-library))
 - **The title bar at phone width (2026-10-16)** — the server status shows only its dot (the word,

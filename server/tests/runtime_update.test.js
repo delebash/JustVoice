@@ -137,10 +137,10 @@ test("voxcpm2s_transcript_follows_the_pin", () => {
 });
 
 test("the_pin_is_our_build_and_the_older_ones_keep_working", () => {
-  expect(release.cfg.TAG).toBe("v0.9.0-jv.5");
-  expect(release.cfg.PREVIOUS_TAGS).toEqual(["v0.9.0-jv.4", "v0.9.0-jv.1", "v0.9.0"]);
+  expect(release.cfg.TAG).toBe("v0.9.2-jv.6");
+  expect(release.cfg.PREVIOUS_TAGS).toEqual(["v0.9.0-jv.5", "v0.9.0-jv.4", "v0.9.0-jv.1", "v0.9.0"]);
   expect(
-    release.binaries().every((b) => b.assetUrl.startsWith("https://github.com/delebash/audio.cpp/releases/download/v0.9.0-jv.5/")),
+    release.binaries().every((b) => b.assetUrl.startsWith("https://github.com/delebash/audio.cpp/releases/download/v0.9.2-jv.6/")),
   ).toBe(true);
   // Every archive the pin downloads is checked against its published digest.
   expect(release.binaries().every((b) => b.sha256 && (!b.runtimeUrl || b.runtimeSha256))).toBe(true);

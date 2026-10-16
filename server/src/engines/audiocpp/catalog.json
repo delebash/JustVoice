@@ -1,7 +1,7 @@
 {
   "generated_from": {
-    "audiocpp_ref": "jv",
-    "audiocpp_commit": "4d2f1a2ba63b10396676859da13c18ac2d93442a",
+    "audiocpp_ref": "v0.9.2-jv.6",
+    "audiocpp_commit": "bcc5dfbb7306a2f9a2d85ea1af6300262a783ece",
     "model_repo": "audio-cpp/audio.cpp-gguf",
     "model_revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5"
   },
@@ -9558,7 +9558,7 @@
           {
             "name": "frame_budget",
             "type": "int",
-            "description": "Total mel frames per CFM pass (ref + generated); larger budgets allow sentence-scale chunks at higher VRAM. Must be in [256, 8192]; omitted uses 2048. Explicit zero is not accepted.",
+            "description": "Total mel frames per CFM pass (ref + generated); larger budgets allow sentence-scale chunks at higher VRAM. Must be in [256, 8192]; omitted uses 2048. Explicit zero is not accepted. On CPU the allocated DiT graph pool caps a pass at 960 frames (10.2 s), so larger values are clamped there; CUDA keeps the full range.",
             "required": false,
             "min": 256,
             "max": 8192,

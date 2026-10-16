@@ -19,8 +19,18 @@ import { model } from "@delebash/llm-runner/platform/models";
 import * as devBuild from "./dev_build.js";
 
 export const cfg = {
-  // Our build 5 on audio.cpp v0.9.0 (github.com/delebash/audio.cpp, published 2026-10-10 by
-  // the fork's release workflow, from 55b150f4): jv.4 plus `audiocpp_dsp`, the audio program
+  // Our build 6 on audio.cpp v0.9.2 (github.com/delebash/audio.cpp, tagged 2026-10-16 at
+  // bcc5dfbb, published the same day by the fork's release workflow): upstream's v0.9.2 — its new
+  // model families (Kitten TTS 2 among them), renamed settings, Silero VAD in the runtime — with
+  // our fork's on top (the DSP program, voice packs, Turbo cloning …) and the day's fixes: F5 frees
+  // its memory on Unload, and F5 and KittenTTS give the same take for the same seed.
+  TAG: "v0.9.2-jv.6",
+  // Older pinned releases an install may still hold, newest first. One of them keeps working
+  // until the runtime row's "Update to <TAG>" installs the pinned build (decided 2026-10-03).
+  PREVIOUS_TAGS: ["v0.9.0-jv.5", "v0.9.0-jv.4", "v0.9.0-jv.1", "v0.9.0"],
+  // (jv.5, the pin from 2026-10-10 to 2026-10-16: our build 5 on audio.cpp v0.9.0
+  // (github.com/delebash/audio.cpp, published 2026-10-10 by the fork's release workflow, from
+  // 55b150f4): jv.4 plus `audiocpp_dsp`, the audio program
   // the server runs (effects, speed, gain, pitch, joins, trim, the analyzer — our `dsp/`), in
   // every build — the installer carries the CPU build's copy beside the app
   // (scripts/audiocpp-dsp-package.js). jv.4 (2026-10-04) brought Kokoro blends and inline IPA,
@@ -29,10 +39,7 @@ export const cfg = {
   // fixes and libmecab beside the executable. jv.2 and jv.3 were tagged on commits whose macOS
   // build failed and were never published; their names are not reused (decided 2026-10-04).
   // Upstream's v0.9.0 was released 2026-09-30 (795c45fb).
-  TAG: "v0.9.0-jv.5",
-  // Older pinned releases an install may still hold, newest first. One of them keeps working
-  // until the runtime row's "Update to <TAG>" installs the pinned build (decided 2026-10-03).
-  PREVIOUS_TAGS: ["v0.9.0-jv.4", "v0.9.0-jv.1", "v0.9.0"],
+  // — until 2026-10-16.)
 };
 
 const dl = () => `https://github.com/delebash/audio.cpp/releases/download/${cfg.TAG}`;
@@ -40,7 +47,7 @@ const dl = () => `https://github.com/delebash/audio.cpp/releases/download/${cfg.
 // Every build the app has pinned or will, oldest first — upstream's, then ours. A feature
 // names the first build that has it, so an older installed build refuses that feature by
 // name instead of failing inside.
-export const BUILDS_IN_ORDER = ["v0.9.0", "v0.9.0-jv.1", "v0.9.0-jv.4", "v0.9.0-jv.5"];
+export const BUILDS_IN_ORDER = ["v0.9.0", "v0.9.0-jv.1", "v0.9.0-jv.4", "v0.9.0-jv.5", "v0.9.2-jv.6"];
 export const FEATURES = {
   voxcpm2_transcript: "v0.9.0-jv.1", // a VoxCPM2 clone uses the clip's transcript
   voice_pack: "v0.9.0-jv.4", // Kokoro blends (gap 2)
@@ -73,20 +80,20 @@ export const MODEL_REVISION = "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5";
 export const SERVER_EXE = process.platform === "win32" ? "audiocpp_server.exe" : "audiocpp_server";
 
 // The pinned release's archives, by their published sha256 (GitHub's asset digests for
-// v0.9.0-jv.5, read 2026-10-10 from the published release). The kit refuses a download that
+// v0.9.2-jv.6, read 2026-10-16 from the published release). The kit refuses a download that
 // doesn't match, before anything is unpacked (audit §5 E6). A new TAG brings its own; an
 // archive missing here is launch-verified only.
 export const SHA256 = {
-  "audio-v0.9.0-jv.5-bin-windows-x64-cuda12.4.zip": "268b9d5aaafc21014d0fd98ffc3013883333fcf861c48644e34072bfcb690093",
-  "audio-v0.9.0-jv.5-cudart-windows-x64-cuda12.4.zip": "ab356389477e11e48d74920d609e6599d3e3a61d44e515e8d332ac930b8342c3",
-  "audio-v0.9.0-jv.5-bin-windows-x64-cuda13.3.zip": "2c23d8178d3386c20e9b8069538bc5953e88e60bd612adb849d02cc7690368e5",
-  "audio-v0.9.0-jv.5-cudart-windows-x64-cuda13.3.zip": "6f6746b99d7943d8fd6c654c05944c1abaa56e3603f0551c579c187c4b3db5df",
-  "audio-v0.9.0-jv.5-bin-windows-x64-vulkan.zip": "1a296190c7bb61307b5f43962bd717806c5863efa2bd2a2144cfc8d869c46261",
-  "audio-v0.9.0-jv.5-bin-windows-x64-cpu-portable.zip": "5f816b4301d6e4c58c5f6175a0215829aeea59f49fe521cf78f33d0793540842",
-  "audio-v0.9.0-jv.5-bin-ubuntu-x64-vulkan.tar.gz": "916ab78bf7717b9fd890c2e18a992fc82c0cd2c25210e5e018c537cf06fda017",
-  "audio-v0.9.0-jv.5-bin-ubuntu-x64-cpu-portable.tar.gz": "a66718ecbf0b8ff8bb8547feeeadd7d706fd2aa0cad8d9d45b98467588ab68f1",
-  "audio-v0.9.0-jv.5-bin-macos-arm64-metal.tar.gz": "9c9f2296e4b2ee02a9959fe19eb7d78c06906e5d083a51bd9a63ba69364bd023",
-  "audio-v0.9.0-jv.5-bin-macos-x64-metal.tar.gz": "8d8a02efd820f6e8e851b6d1b15568c780528fd4db72821ae738548f12b45b2c",
+  "audio-v0.9.2-jv.6-bin-windows-x64-cuda12.4.zip": "e7061704063e2b583714670ddd4479126c23040a1bfed1ac4720d397e0d7a94a",
+  "audio-v0.9.2-jv.6-cudart-windows-x64-cuda12.4.zip": "5172d93ab24a378ea9b4877c5a0055836c81d3bf031d46d0e2722d1a1ad313cc",
+  "audio-v0.9.2-jv.6-bin-windows-x64-cuda13.3.zip": "caeff2e01879ad619f1275ac3848ed1a527902e4929e502c2bec5e08780f8c9b",
+  "audio-v0.9.2-jv.6-cudart-windows-x64-cuda13.3.zip": "8aa9b806a800ab2491ace9aea0910201206e592d17ab7ed445474a6c2e7ab955",
+  "audio-v0.9.2-jv.6-bin-windows-x64-vulkan.zip": "04ef95c99dc33c02feb4516c6d03b4c45fdf658675dfc53881ba646c27a76660",
+  "audio-v0.9.2-jv.6-bin-windows-x64-cpu-portable.zip": "94847349a42ad052250b29c7cd8b5ede4918c1092207671d47235112d9bd856e",
+  "audio-v0.9.2-jv.6-bin-ubuntu-x64-vulkan.tar.gz": "9979081d11214c84ba4302351c7413db45d453f0bb8dc76734c1a0261b3eed93",
+  "audio-v0.9.2-jv.6-bin-ubuntu-x64-cpu-portable.tar.gz": "80d7c998cc7911c2e988da44cb16110f505d6b6e5d5f93968f3756ab27cd9ced",
+  "audio-v0.9.2-jv.6-bin-macos-arm64-metal.tar.gz": "b97e66f85ecfce7aa597fcbabced9eeba4907e049f520da46826d71d3b94c1ef",
+  "audio-v0.9.2-jv.6-bin-macos-x64-metal.tar.gz": "edfda2bce4a719f2307466daf3e25760f5c61f159bbdc3f0cec8246d84f955f5",
 };
 
 const sha = (name) => (Object.hasOwn(SHA256, name) ? SHA256[name] : null);

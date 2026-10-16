@@ -358,11 +358,12 @@ test("a_frontier_route_shows_its_price_and_the_run_asks_once", { timeout: 60000 
   bookRun.cancelRun(runId);
   await bookRun.finished(runId);
 
-  // A cloud model with no price: the tokens still, the price unknown — and it still asks.
-  vi.spyOn(bookRun, "stepRoute").mockReturnValue({ configured: true, model: "gpt-6.1-sol", provider: "OpenAI", provider_id: "openai", cloud: true, detail: null });
+  // A cloud model with no price: the tokens still, the price unknown — and it still asks. (The
+  // pricing table has the 5.x and 6.1 models since kit 90aeada, so the unpriced one is made up.)
+  vi.spyOn(bookRun, "stepRoute").mockReturnValue({ configured: true, model: "an-unpriced-cloud-model", provider: "OpenAI", provider_id: "openai", cloud: true, detail: null });
   const unknown = (await c.get(`/v1/projects/${pid}/book_run`)).json().plan;
   expect(unknown.estimate.price).toBeNull();
-  expect(unknown.estimate.unpriced).toEqual(["gpt-6.1-sol"]);
+  expect(unknown.estimate.unpriced).toEqual(["an-unpriced-cloud-model"]);
   expect(unknown.ask_price).toBe(true);
 });
 

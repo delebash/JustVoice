@@ -481,10 +481,14 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
   with 64 downloads, none of the 47 before removed. `MODEL_REVISION` `f861648c` (2026-10-11):
   81 files added since `7bf52723`, none changed. 13 files named by v0.9.2's specs are missing
   at their sources (audio8_asr ×2, upstream's `chatterbox-turbo-f16.gguf`, mms_forced_aligner
-  q8, Orukeet ×2, reuse ×2, sortformer_diar_v2 ×5). The catalog is built ahead of the pin, so
-  the pin test skips until jv.6 is pinned; until then the packaged and headless app (jv.5)
-  lists Kitten TTS 2 without being able to load it, and sends renamed settings under names
-  jv.5 doesn't read. — *git + HF API + tests, 2026-10-15*.
+  q8, Orukeet ×2, reuse ×2, sortformer_diar_v2 ×5). — *git + HF API + tests, 2026-10-15*.
+  **Pinned to v0.9.2-jv.6 on 2026-10-16** (bcc5dfbb, published 16:35 UTC, 32 assets; the ten
+  archives the app downloads checked by their published sha256, `release.js`); the catalog
+  rebuilt at the tag changed only its `generated_from` (every spec the same as at `jv`
+  4d2f1a2b), so the pin test runs again and the seven engines' proof test passes unchanged.
+  (was: the catalog built ahead of the pin, the pin test skipped, the packaged and headless app
+  on jv.5 listing Kitten TTS 2 without loading it and sending renamed settings under names jv.5
+  doesn't read — until 2026-10-16.) — *GitHub API + tests, 2026-10-16*.
 
 ### 1.5 audio.cpp's own web UI
 
