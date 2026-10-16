@@ -406,6 +406,24 @@ OPEN:   2 — ship Silero VAD (an asset audio.cpp bundles, 1.2 MB, MIT) with the
         above the capture).
 GO:     given 2026-10-15 ("your rec go").
 
+### Same seed, same take on the graphics card: KittenTTS, Pocket TTS, Qwen3 VoiceDesign (2026-10-16)
+STATE:  DECIDED 2026-10-16 under the user's "your rec go" of 2026-10-15, as F5's was ("found and
+        fixed in the fork, so the same seed gives the same take"). Found by slice 4's GPU check,
+        phase 1 (main d8cf3055, audio.cpp dev 8c9a6322, seed 42, 3–4 takes each): every engine
+        repeats byte for byte on the CPU, and on the graphics card Kokoro, Qwen3 CustomVoice and
+        Base, Chatterbox Multilingual and Turbo, and VoxCPM2 too — but KittenTTS's two GPU takes
+        are unrelated, Pocket TTS's match for 2.5 s then drift, and Qwen3 VoiceDesign's first take
+        after a load is one 80 ms frame longer than the next two. Every take reads back word for
+        word. Each cause is looked for in the fork as F5's was; a cause in ggml's shared kernels
+        comes back to the user before any change.
+WHY:    docs/engines.md promised the same audio for the same seed on every engine but KittenTTS,
+        and F5's difference was memory a graph read before writing.
+NOT:    a change to ggml's shared code without the user's word; the jv.6 tag before this is done.
+BUILT:  —
+OPEN:   the fork's search, on its own branch `det` (the checkout stays at 8c9a6322 until slice
+        4's check ends); then jv.6. docs/engines.md says what was measured (slice 5).
+GO:     given 2026-10-15 ("your rec go").
+
 ### An audio.cpp update tests only the engines and models it adds; no full re-run (decided 2026-10-15)
 STATE:  DECIDED 2026-10-15 — during slice 2's acceptance (every model that fits 8 GB loads, speaks,
         reads back), asked "have we made any major changes since we last ran a test like this … why
