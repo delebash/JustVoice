@@ -487,11 +487,16 @@ A number is a slider where audio.cpp gives it both ends, and a **number box** yo
 type into where it gives no top or no bottom, or where audio.cpp's own screen
 shows a box — Qwen3's *Top k*, from 0 with no top (since 2026-10-15). The ranges
 are audio.cpp's own; see [Engines → What each engine can be tuned with](engines.md#what-each-engine-can-be-tuned-with).
+The settings audio.cpp's own screen shows for the model are in view; the rest,
+for experts, fold under **Advanced (N)** at the card's end — Qwen3's three
+*Detail* settings, for example (since 2026-10-15). Render's *This line only*
+folds them the same way.
 **↺** puts one back to the model's default. A model with none and no seed says
 *KittenTTS has no sampling settings.*
 
 **Seed** makes a take repeatable: the same seed gives the same take, and empty
-gives a new one each time. **🎲** picks a new seed. On a model that doesn't
+gives a new one each time. It goes up to the top the model's description gives
+(4,294,967,295 on most models), else 2,000,000,000. **🎲** picks a new seed. On a model that doesn't
 repeat with a seed the field is off: *KittenTTS doesn't repeat with a seed.*
 
 **⚖️ Compare settings…** hears the same line three ways. Pick a setting (Pace,

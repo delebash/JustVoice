@@ -520,7 +520,11 @@ audio.cpp's own — the one its own screen gives the control, else the model's
 description — and a number with no top or no bottom, or one audio.cpp's own
 screen shows as a box, is a number box you type into rather than a slider
 (MioTTS's *Max tokens*, CosyVoice3's *num_inference_steps*, Audio8's *top_k*
-from 0 — each labelled as audio.cpp labels it; since 2026-10-15). What JustVoice sends
+from 0 — each labelled as audio.cpp labels it; since 2026-10-15). The settings
+audio.cpp's own screen shows for the model stay in view; the rest, for experts,
+fold under **Advanced (N)** at the end of the card — on the seven engines
+described by JustVoice's own files too (Qwen3's *Detail* settings, Chatterbox's
+*Top p*, *Min p* and *Decoder CFG*, every Turbo and Nano setting). What JustVoice sends
 itself — the line's text, the voice's clip and its words, the language — is never
 a setting, nor are file paths on the computer running the speech runtime. Nor are
 dots.tts's *Source text* and *Target text* (they belong to its editing mode,
@@ -666,11 +670,12 @@ Every engine but KittenTTS takes a **seed**: the same seed, text and settings
 give the same audio (measured on Kokoro, Qwen3 and Chatterbox on 2026-10-01 and
 on Pocket TTS on 2026-10-02). KittenTTS gave different audio for the same seed,
 so it offers none. Leave the seed empty — or 0 — and every take gets a new one,
-on every engine. Until 2026-10-04 an empty seed on Kokoro repeated the last
+on every engine. The seed box goes up to the top the model's description gives
+(4,294,967,295 on most), else 2,000,000,000 (Kokoro; since 2026-10-15). Until 2026-10-04 an empty seed on Kokoro repeated the last
 seed it was sent, and VoxCPM2 and Chatterbox Turbo used a fixed one, so a new
 take there came out the same.
 
-Added 2026-10-04, all under the advanced knobs: Chatterbox's **Min p** (drops
+Added 2026-10-04, all folded under **Advanced** (since 2026-10-15): Chatterbox's **Min p** (drops
 sounds less likely than that share of the likeliest; 0.05, 0 = off) and
 **Decoder CFG** (how closely the audio decoder holds to the cloned voice; 0.7);
 Qwen3's three **Detail** settings, for the sub-talker that fills in each frame's
@@ -710,9 +715,10 @@ itself:
   2026-10-04 — JustVoice's default, where audio.cpp's own is 32-bit. Pick 32-bit
   on a model's row to go back. (audio.cpp also offers *native*, the file's own.)
 
-**Chatterbox Multilingual v3** is one of its load options: *Multilingual t3*,
-*v2* (the default) or *v3* — the newer of the two multilingual checkpoints inside
-the same downloaded file. It speaks the same 23 languages audio.cpp lists for
+**Chatterbox Multilingual v3** is one of its load options, on the model's row
+itself: **Checkpoint**, audio.cpp's own word for it — *v2* (the default) or *v3*,
+the newer of the two multilingual checkpoints inside the same downloaded file.
+Its other load options fold as the rest do. It speaks the same 23 languages audio.cpp lists for
 Chatterbox; an English line uses Chatterbox's English checkpoint either way, so
 the choice changes only the other languages.
 
