@@ -354,8 +354,17 @@ WHY:    the one-click run needs the engine that acts best on a copied voice (TAS
         with a link to accept it." The user: "your rec on all go".
 NOT:    switching before the configuration check the same message asked for.
 BUILT:  —
-OPEN:   Breeze's placement on this 8 GB card measured; `book_voices.clone_model` → Breeze; the
-        licence word on the run's card; the run's stop when its licence isn't accepted.
+        Measured 2026-10-16: Auto put Breeze on the CPU (7.3 GB + the 0.5 GB margin > the 7.6 GB
+        free). Shown: "when a model's peak has been measured on this machine, the automatic choice
+        uses that measurement with no extra margin. Breeze then goes on the card by itself …
+        Models that are only estimated keep the 512 MB." The user: "yes for breeze i think its ok
+        to run on card by default as long as test is ok, let me know your rec". The test (round
+        5's Breeze arm on the card): 93 takes at a 5.0 s median, nothing spilled. BUILT: a measured
+        model is weighed at what it took (`manager.placementFor`, `_admitMemory`, `_freeCardMb`);
+        docs engines.md (The speech margin), settings-reference, whats-new. Asked of the narrator:
+        "Breeze reads everything, narrator included" after a narrator sample in round 5.
+OPEN:   `book_voices.clone_model` → Breeze (after round 5's narrator sample); the licence word on
+        the run's card; the run's stop when its licence isn't accepted.
 GO:     given 2026-10-16 ("your rec on breeze and license"; after the check, "your rec on all
         go").
 

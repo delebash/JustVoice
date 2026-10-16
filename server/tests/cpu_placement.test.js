@@ -104,15 +104,15 @@ test("a_card_that_failed_or_a_price_it_cannot_hold_sends_the_model_to_the_cpu", 
   const failed = vi.spyOn(EngineManager.prototype, "_failedOnCard").mockReturnValue(true);
   expect(await mgr.placementFor(mgr.getManifest("omnivoice"), "tts", "omnivoice-q8")).toEqual(["cpu", want, false]);
   failed.mockReturnValue(false);
-  // A price measured here that, with the margin, is more than the card: the CPU, not a refusal,
-  // saying what it took (decided 2026-10-13) and the margin it was held to — speech's own 512 MB
-  // since 2026-10-16 (the user: "do 1 and 2"), where 7.3 GB now fits an 8 GB card.
-  const price = vi.spyOn(EngineManager.prototype, "_priceMb").mockReturnValue(7500);
+  // A price measured here is weighed as it is, with no margin (decided 2026-10-16 — BreezeTTS 2's
+  // 7.3 GB on an 8 GB card): 7.6 GB fits the card; more than the card goes to the CPU, not a
+  // refusal, saying what it took (decided 2026-10-13).
+  const price = vi.spyOn(EngineManager.prototype, "_priceMb").mockReturnValue(7800);
   expect((await mgr.placementFor(mgr.getManifest("chatterbox"), "tts", "chatterbox-multilingual-v2-q8"))[0]).toBe("gpu");
-  price.mockReturnValue(7800);
+  price.mockReturnValue(8300);
   expect(await mgr.placementFor(mgr.getManifest("chatterbox"), "tts", "chatterbox-multilingual-v2-q8")).toEqual([
     "cpu",
-    "it took about 7.6 GB on this card before, more than it holds with the 0.5 GB safety margin — this may be slow on the CPU",
+    "it took about 8.1 GB on this card before, more than this card has — this may be slow on the CPU",
     false,
   ]);
   // The user's pin still wins.

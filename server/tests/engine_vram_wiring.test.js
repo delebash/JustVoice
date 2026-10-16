@@ -931,8 +931,10 @@ test("admission_credits_what_the_replaced_occupant_gives_back", async () => {
   vi.spyOn(EngineManager.prototype, "poolUsedMb").mockResolvedValue(4000);
   vi.spyOn(EngineManager, "_safetyMarginMb").mockReturnValue(1024);
   arb.reserve("tts:kokoro", 3000, { kind: "tts", evictFn: null, source: "measured" });
-  await expect(mgr._admitMemory(manifest(), "tts", "eng", 4000)).rejects.toThrow(/not enough memory/);
-  await mgr._admitMemory(manifest(), "tts", "eng", 4000, 3000); // admitted
+  // What it took, with no margin (2026-10-16): more than is free is refused, unless the occupant
+  // it replaces gives enough back.
+  await expect(mgr._admitMemory(manifest(), "tts", "eng", 4300)).rejects.toThrow(/not enough memory/);
+  await mgr._admitMemory(manifest(), "tts", "eng", 4300, 3000); // admitted
 });
 
 test("unloading_the_ai_model_waits_for_its_memory_to_drain", async () => {

@@ -27,6 +27,10 @@
   once with a new seed, and one that still fails is flagged on its line. For now it runs through
   the API (`POST /v1/scenes/{id}/check_takes`); Render doesn't show its findings yet. Its limits are
   settings, `take_check` ([Studio → Checking takes](studio.md#checking-takes))
+- **A model measured on your card is weighed at what it took (2026-10-16)** — the 0.5 GB speech
+  margin is for models not measured yet; once a load has measured one here, Auto weighs it at its
+  measured size, so BreezeTTS 2 (7.3 GB) runs on an 8 GB card by itself instead of on the CPU at
+  0.2× real time ([Engines → The speech margin](engines.md#where-each-model-runs--the-graphics-card-or-the-cpu))
 - **A chapter's buttons wait while Make the audiobook works on it (2026-10-16)** — Script's and
   Discover's buttons for that chapter grey out until the run moves on, and Script's row shows the
   step it is on; the price before a cloud run now reads *up to about $…*, the step for lines no

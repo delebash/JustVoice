@@ -835,9 +835,9 @@ export class EngineManager {
     return (snap.reservations || []).some((r) => r.kind === "llm" && !r.asleep && !r.pinned && pyInt(r.vram_mb || 0) > 0);
   }
 
-  /** Graphics memory a load of `engineId` could use now, after the safety margin: the measured
-   * truth and the ledger, whichever says less, plus what this kind's current occupant gives
-   * back when it is replaced. null = unknown. */
+  /** Graphics memory a load of `engineId` could use now: the measured truth and the ledger,
+   * whichever says less, plus what this kind's current occupant gives back when it is replaced.
+   * No margin: it weighs a model measured here (decided 2026-10-16). null = unknown. */
   async _freeCardMb(kind, engineId) {
     const hw = await this._hardware();
     try {
@@ -849,7 +849,7 @@ export class EngineManager {
       let free = total - Math.max(committed, used ?? 0);
       const occ = this._loaded.get(kind) ?? null;
       if (occ !== null && occ.manifest.id !== engineId) free += pyInt(arb.reservedMb(`${kind}:${occ.manifest.id}`) || 0);
-      return free - EngineManager._cardMarginMb();
+      return free;
     } catch {
       return null;
     }
@@ -892,23 +892,21 @@ export class EngineManager {
     const prior = this._priceMb(kind, m.id, variant, exe !== null ? runtime.backendOf(exe) : null);
     const hw = await this._hardware();
     const cardMb = hw !== null ? pyInt(hardware.budgetTotalMb(hw)) : 0;
-    const margin = EngineManager._cardMarginMb();
+    // The speech margin is for a size that is only an estimate; a model measured here is weighed
+    // at what it took (decided 2026-10-16 — BreezeTTS 2's measured 7.3 GB fits an 8 GB card's
+    // 7.6 GB free, and the margin had sent it to the CPU at 0.2× real time).
+    const margin = prior ? 0 : EngineManager._cardMarginMb();
     // A card load that failed or spilled — this click's, or one remembered here — and a price
-    // measured here that, with the safety margin, can't fit the card go to the CPU (decided
-    // 2026-10-12; until then such a price went to the card and was refused). That the memory
-    // counts only for the runtime build running now, until a measured card load, was mine; kept
-    // 2026-10-13 with a "Try the card again" action (the narrowings review, M8). The price says
-    // what it took, since that model did load there once (decided 2026-10-13), and the margin
-    // it was held to (2026-10-13, the narrowings review, M4).
+    // measured here that can't fit the card go to the CPU (decided 2026-10-12; until then such a
+    // price went to the card and was refused). That the memory counts only for the runtime build
+    // running now, until a measured card load, was mine; kept 2026-10-13 with a "Try the card
+    // again" action (the narrowings review, M8). The price says what it took, since that model
+    // did load there once (decided 2026-10-13); with no margin since 2026-10-16.
     if (cardFailed || this._failedOnCard(kind, m.id, variant)) {
       return ["cpu", `it didn't load on the graphics card — ${speed || "this may be slow on the CPU"}`, false];
     }
-    if (prior && cardMb > 0 && prior + margin > cardMb) {
-      return [
-        "cpu",
-        `it took about ${_gb(prior / 1024)} GB on this card before, more than it holds with the ${_gb(margin / 1024)} GB safety margin — ${speed || "this may be slow on the CPU"}`,
-        false,
-      ];
+    if (prior && cardMb > 0 && prior > cardMb) {
+      return ["cpu", `it took about ${_gb(prior / 1024)} GB on this card before, more than this card has — ${speed || "this may be slow on the CPU"}`, false];
     }
     // A model not measured here: what it needs — audio.cpp's estimate or its files, whichever is
     // more — decides when it is more than the card has: "too big for this card", and Load runs it
@@ -1143,8 +1141,9 @@ export class EngineManager {
     return resolvedDevice !== "cpu";
   }
 
-  /** The headroom a speech model is held to on the graphics card — JustVoice's own setting
-   * (`speech_runtime.card_margin_mb`, 512 MB), not the AI model's (decided 2026-10-16). */
+  /** The headroom a speech model not yet measured here is held to on the graphics card —
+   * JustVoice's own setting (`speech_runtime.card_margin_mb`, 512 MB), not the AI model's
+   * (decided 2026-10-16); a measured model is weighed at what it took. */
   static _cardMarginMb() {
     try {
       return runtime.cardMarginMb();
@@ -1213,10 +1212,11 @@ export class EngineManager {
    * UNLEDGERED usage, so evicting to ledger-room yields real room. Runs with NO manager locks
    * held; busy kinds are protected inside `makeRoom`; a refusal is HONEST and leaves the world
    * exactly as it was. `creditMb`: what the kind's current occupant gives back when this load
-   * replaces it (audit §13.3, §5 B5). A model you pinned to the GPU (`pinned`) is held to no
-   * margin and never refused: when even the room `makeRoom` can make is short, this returns
-   * `{needed, free}` and the load goes on, saying it may spill (decided 2026-10-16, the user's
-   * "do 1 and 2"). Otherwise null.
+   * replaces it (audit §13.3, §5 B5). It weighs what the model took here, with no margin — the
+   * margin is for estimates (decided 2026-10-16). A model you pinned to the GPU (`pinned`) is
+   * never refused: when even the room `makeRoom` can make is short, this returns `{needed, free}`
+   * and the load goes on, saying it may spill (decided 2026-10-16, the user's "do 1 and 2").
+   * Otherwise null.
    */
   async _admitMemory(m, kind, engineId, neededMb, creditMb = 0, { pinned = false } = {}) {
     const needed = pyInt(neededMb);
@@ -1235,8 +1235,7 @@ export class EngineManager {
       log.debug(`sleeping-set reconcile unavailable at the speech door: ${msgOf(e)}`);
     }
     const hw = await this._hardware();
-    const margin = pinned ? 0 : EngineManager._cardMarginMb();
-    const want = Math.max(0, needed + margin - Math.max(0, pyInt(creditMb)));
+    const want = Math.max(0, needed - Math.max(0, pyInt(creditMb)));
     const used = await this.poolUsedMb({ fresh: true });
     let total = 0;
     if (hw !== null) {
@@ -1286,7 +1285,7 @@ export class EngineManager {
     const busy = snap.busy_kinds.join(", ") || "none";
     throw new RuntimeError(
       `not enough memory to load ${engineId}: it needs ~${needed} MB ` +
-        `(+${margin} MB safety margin) but only ${have} remain. ` +
+        `but only ${have} remain. ` +
         `Resident: ${resident}; busy: ${busy}. ` +
         "Wait for the current work to finish or unload something first.",
     );
@@ -1913,8 +1912,8 @@ export class EngineManager {
       // or spills into system memory, this click retries on the CPU (decided 2026-10-12).
       const autoCard =
         !cardFailed && isAuto(asked) && placement === "gpu" && EngineManager._userPlacement(engineId, planned) === "auto";
-      // You pinned it to the card: it is held to no margin and never refused for memory — when it
-      // may not fit, or spills, its Runs on reason says so (decided 2026-10-16, "do 1 and 2").
+      // You pinned it to the card: it is never refused for memory — when it may not fit, or
+      // spills, its Runs on reason says so (decided 2026-10-16, "do 1 and 2").
       const pinnedCard = placement === "gpu" && EngineManager._userPlacement(engineId, planned) === "gpu";
       // This engine already holds the slot with the same (or unspecified) variant in the same
       // place: that path early-returns below and must never fetch or check.
