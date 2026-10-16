@@ -292,7 +292,8 @@ BUILT:  15 — 8d7adf6. 1 — 1705ac9. 2 and 12 — the commit after 4371c9a (Au
         changed: the docs say claude-mythos-preview accepts the legacy thinking budget (deprecated,
         adaptive recommended) and say nothing of effort or "disabled", so treating it like Mythos 5
         would guess both; left on today's working path, recorded in the kit's RESEARCH §7 (1b127f9).
-OPEN:   the rest of 1–16 as above; 3 and 13 with the engine slices (their files).
+OPEN:   the rest of 1–16 as above; 3 with the engine slices (their files). 13 — moot: VieNeu, the
+        one model it was for, is hidden again ("Slice 2's acceptance findings" 1, abd3d1b4).
 GO:     given 2026-10-15 for 1–16.
 
 ### Slice 3's six questions: what each one gets (2026-10-15)
@@ -338,6 +339,16 @@ BUILT:  6 and the load faults — 75af433b, kit 1401dc8: an unmeasured model who
         AI models' bookings; `POST /v1/engines/unload {}` unloads a recogniser loaded alone.
         The 34 licence readings and the three wrong records — 19af47a3 (FireRedAudio's
         recogniser reads Yes from its own RECOGNISER_LICENCE).
+        1, 3, 5, 7 and the plan's own findings (below) — abd3d1b4, the facts RESEARCH §10.17, each
+        in the family's notes file: VieNeu and Index-Echo `NOT_OFFERED` (IDEAS: SEA-G2P in the
+        release); VibeVoice `CLONES` and `SPEAKER_SCRIPT` "Speaker 1: {text}", MOSS-TTSD's "[S1]
+        {text}" on its text and clip words; MOSS-Transcribe-Diarize and VibeVoice-ASR Streaming
+        `WORDS_FROM` their speaker turns (`slot.plainTranscript`); `LANGUAGES` per checkpoint —
+        LFM2.5-Audio en / JP ja, GigaAM v3 ru, Kroko en, IndexTTS2 zh/en, Habibi `ar` / `ar-EG` …
+        / MSA `ar-001`, VoiceTut `ar-EG`/en, sanoTTS one per download (the persona's language
+        picks it, as Pocket's); `LANGUAGE_IN_OPTIONS` — MOSS's three by name, IndexTTS2 by code.
+        engines.md's "Model default" now "‹Model› (built-in)". Unit-tested: server 1243 passed +
+        2 skipped, unit 239, lint, family guard.
 OPEN:   2 — ship Silero VAD (an asset audio.cpp bundles, 1.2 MB, MIT) with the runtime: the fork's
         dev build and every release bundle (fork work under way). 4 — F5-TTS's memory: upstream's
         open PR #924 (frees evicted graphs, bounds the Vocos cache) into the fork, then size F5's
@@ -356,7 +367,10 @@ OPEN:   2 — ship Silero VAD (an asset audio.cpp bundles, 1.2 MB, MIT) with the
         Kroko's English package, QwenCleo, the Habibi models), from audio.cpp's docs. 7 — a line's
         language goes to MOSS-TTS v1.5, MOSS-TTSD and MOSS-VoiceGenerator as its English name in
         `options.language` (their sessions read only that; a top-level language never reaches
-        them). Each after slice 3's code lands (the same files), then through the app.
+        them). Each after slice 3's code lands (the same files), then through the app — built
+        (BUILT above); the GPU acceptance waits for the card: VibeVoice 1.5B, MOSS-Transcribe-
+        Diarize, VibeVoice-ASR Streaming 1.5B, Kroko, LFM2.5-Audio JP ASR, sanoTTS German,
+        VoiceTut, MOSS-VoiceGenerator, IndexTTS2.5. QwenCleo's languages with slice 4.
         The plan's own findings, decided the same way: IndexTTS2 reads its language only from
         options too (IndexTTS2.5's Japanese, Spanish and Arabic lines went without it), so its
         spec's code goes in `options.language`; VoiceTut lists `ar-EG` and `en` (the tag Habibi's

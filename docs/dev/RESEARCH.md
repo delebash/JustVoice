@@ -3438,6 +3438,70 @@ was deleted and the load option set back after. — *measured through the app, 2
   in the user's one project is on Kokoro, which has no sampling settings there. The smoke gate
   passed (12 views, no JS errors).
 
+### 10.17 Slice 2's findings at the source — scripts, transcripts, a request's language, a checkpoint's languages (2026-10-15)
+
+Read in our fork at `79ca123e` (upstream v0.9.2 + F5 commits) for TASKS "Slice 2's acceptance
+findings" 1, 3, 5, 7; built in JV `abd3d1b4`. Unit-tested; not yet through the app. — *read at the
+source, 2026-10-15*
+
+- **VibeVoice's text is a script; its clip is speaker 1.** `src/models/vibevoice/tokenizer_text.cpp:48-83`
+  keeps only lines matching `^Speaker\s+(\d+)\s*:\s*(.*)$` (case-blind), drops the rest silently,
+  refuses none left ("VibeVoice prompt has no valid Speaker N: lines" — its warm-up in §10.15), and
+  shifts ids down by one when the lowest is above 0. `session.cpp:325-344`: a request `voice_ref` is
+  speaker prompt 0; `voice_samples` with `voice_ref` is refused; `:315` refuses a style condition,
+  which only a top-level `speed` sets (`app/server/server_protocol.cpp:220-241`). Its spec names no
+  `speaker_reference` (capabilities `tts: [multi_speaker, long_form]`), yet audio.cpp's own page
+  asks it for a voice (`webui/native/src/routes/+page.svelte:507-510`, with its speaker files).
+  audio.cpp's own example puts two speakers on one line (`docs/tts.md:871`), which the parser reads
+  as speaker 1 saying all of it.
+- **MOSS-TTSD's text is speaker-tagged** — "`[S1]` is the first speaker" (`docs/models/moss_ttsd.md:20-21`)
+  — and so is `reference_text` (`:53`), which it prepends to the dialogue (`session.cpp:364-375`);
+  the prompt keeps the text as given (`prompt.cpp:61-62`). A top-level `reference_text` reaches its
+  options (`server_protocol.cpp:202-203`).
+- **A speech request's top-level `language` reaches only the request's text**
+  (`server_protocol.cpp:72-75`); a transcription's goes into the options too when the spec lists it
+  (`:1281-1300`). Where each generated speech family whose spec lists `language` reads it:
+  | Family | Session reads | Effect of a top-level language |
+  |---|---|---|
+  | MOSS-TTS v1.5, MOSS-TTSD, MOSS-VoiceGenerator | options only (`moss_tts_v15/session.cpp:333-337`, `moss_ttsd/session.cpp:381-384`, `moss_voicegen/session.cpp:271-275`), as a full name | lost |
+  | IndexTTS2 | options only (`index_tts2/request.cpp:90-92`; 2.5's tokenizer `session.cpp:361-366`) | lost: IndexTTS2.5 picks Chinese for Han text, else English (`tokenizer_text.cpp:815-818`); v2 reads none (`:776-784`) |
+  | ZipVoice | options only (`zipvoice/session.cpp:316`) | lost, harmless: it is eSpeak's language for the English words in a line, default `en-us` (`emilia_tokenizer.cpp:259-276`) — the line's `zh` would phonemize them as Chinese |
+  | Irodori-TTS | options only (`irodori_tts/session.cpp:132-136`), only checks `ja` | lost, harmless |
+  | Audio8, Confucius4 TTS, MagpieTTS, VoxCPM1, LFM2.5-Audio | the text first, then the options | reaches it |
+  | dots.tts, FireRedTTS3, FireRedAudio, OmniVoice, Sopro | the options first, then the text | reaches it |
+  So since `abd3d1b4` MOSS's three get it in `options.language` by name and IndexTTS2 by code
+  (their files' `LANGUAGE_IN_OPTIONS`). audio.cpp's own page sends MOSS's language top-level too
+  (`+page.svelte:2099`, `mossLanguage`), so there it never reaches MOSS either — an upstream bug,
+  recorded only (the fork rule: no routine posts).
+- **Two recognisers mark up their text; their turns hold the words.** `/v1/audio/transcriptions/details`
+  returns `text`, `segments` and `speaker_turns` [{start_sample, end_sample, speaker_id,
+  confidence, text}] (`app/server/runtime.cpp:1546-1563`). MOSS-Transcribe-Diarize's `text` is the
+  raw `[0.06][S01] …[7.96]`; each parsed segment's words go to `segments[].text` and
+  `speaker_turns[].text` (`src/models/moss_transcribe_diarize/session.cpp:123-141`).
+  VibeVoice-ASR Streaming's `text` keeps "Speaker N:"; `speaker_turns[].text` has each turn's words
+  without its label, no spans (`vibevoice_asr/session.cpp:1247-1254`, `postprocess.cpp:158-182`).
+  VibeVoice-ASR (offline) already returns its segments' words joined by a space
+  (`postprocess.cpp:121-153`). Index-Echo "translates Chinese speech into English, Spanish, or
+  Japanese text … as timestamped subtitle cues" (`docs/models/index_echo.md:3-5`).
+- **A checkpoint's languages, where fewer than its family's** (audio.cpp's model docs): LFM2.5-Audio
+  1.5B `en`, its JP model `ja`, "each checkpoint transcribes, speaks and chats in its own language"
+  (`lfm2_audio.md:17`); GigaAM v3 Russian, Multilingual five (`gigaam_asr.md:13`); "Each Kroko
+  package recognizes one language" (`kroko_asr.md:25`), the one offered English; IndexTTS2 Chinese
+  and English (`index_tts2.md:9`), 2.5 adds Japanese, Spanish, Arabic (`:127`); sanoTTS one language
+  per package (`sanotts.md:28-47`); Habibi-TTS Arabic, "multi-dialect" Unified and per-dialect
+  checkpoints (`f5_tts.md:5-7,63-64,112`) — its HF card and GitHub README (read 2026-10-15) name the
+  dialects by code only (ALG, EGY, IRQ, MAR, MSA, SAU, UAE), and the README says a checkpoint is
+  "best use[d with] matched dialectal content with ID", while JustVoice leaves the `dialect`
+  setting at audio.cpp's `UNK`; VoiceTut-TTS Egyptian Arabic and Arabic-English code-switching,
+  trained as `arz` (`omnivoice.md:160-166`) — OmniVoice takes `arz` or a name, never `ar` or
+  `ar-EG` (`src/models/omnivoice/language_map.inc:39-46`, `prompt_builder.cpp:255-276`);
+  QwenCleo-ASR Egyptian Arabic (`qwen3_asr.md:47-50`), not offered until slice 4. Upstream's catalog
+  carries no per-entry languages (`webui/configs/models_catalog.json`), so these live in each
+  family's `LANGUAGES`; Intl names the tags (`ar-EG` "Arabic (Egypt)", `ar-001` "Modern Standard
+  Arabic", `pt-BR` "Brazilian Portuguese").
+- **VieNeu** needs sea-g2p, a Rust C library, for plain text (`vieneu_v3_turbo.md:56-81`); its
+  packages install one preset voice pair (`minh_quan_pro` codes and embedding) the app doesn't use.
+
 ---
 
 ## Records not yet distilled
