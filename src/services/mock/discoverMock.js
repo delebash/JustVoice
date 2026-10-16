@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 //
-// Discover's mock data — Speakers found from the server's grouping of the scans' names
-// (pages/mock/MockDiscoverPage.vue; decided 2026-10-16, TASKS "The one-click run's leftovers,
-// rethought", item 6 and answers 3–4). Production minus the plumbing: no server, no scan, no model.
+// Discover's mock data — Speakers found, the AI's Same person? suggestions, your links and the
+// pairs kept apart (pages/mock/MockDiscoverPage.vue; decided 2026-10-16, TASKS "Discover's names:
+// the AI suggests, you link"). Production minus the plumbing: no server, no scan, no model — the
+// functions here stand in for the server's answers.
 //
 // The book is the one-click mock's (bookRunMock.js): Alice's Adventures in Wonderland imported with
 // chapters VII and VIII only — 176 lines as imported (105 + 71), 454 once Analyze has cut them
@@ -11,36 +12,35 @@
 // checked verbatim against server/samples/alice-in-wonderland/book.epub; the scans' own quotes and
 // roles weren't recorded, so the quotes are picked for the mock and no row has a role.
 //
-// The grouping before the AI has checked: names that sit inside one another, a leading article set
-// aside, are one person (extraction/names.js `isVariantBare`), and a name counted with 0 lines joins
-// nothing — it stays its own row (decided 2026-10-16: a wrong join reads two people in one voice
-// unseen; two rows for one person show, and Merge found names joins them). On these scans no two
-// names with lines sit inside one another, so every name is its own row: "Queen of Hearts" (VII, 0
-// lines) apart from "the Queen" (VIII, 13), and the heading THE KING AND QUEEN OF HEARTS alone.
-// The AI's answer (merged, stale): the local merge's one question on Alice keeps the Queen's two
-// names as one person and nothing else (RESEARCH §10.24, `eval:speakers`: "merge clean") — shown as
-// Queen of Hearts, its fullest form (merge_names.js `fullestName`).
+// Every name the scans found is its own row until you link it. Find same people asks the AI which
+// names are one person; its answer on Alice — the local recipe's one question, RESEARCH §10.24,
+// `eval:speakers`: "merge clean" — is that "Queen of Hearts" (VII, 0 lines) and "the Queen" (VIII,
+// 13) are one person, and nothing else (THE KING AND QUEEN OF HEARTS is no one). A linked row goes
+// by its fullest name (merge_names.js `fullestName`).
 
 import { PROJECT, UNIT, VII, VIII } from "./bookRunMock.js";
 
 export { PROJECT, UNIT };
 
-/** The states the page draws (?state=); merged and stale also with ?by=run. */
-export const STATES = ["unchecked", "merging", "merged", "stale", "failed", "noscans"];
+/** The states the page draws (?state=); linked and stale also with ?by=run. */
+export const STATES = ["unchecked", "finding", "suggested", "linked", "apart", "stale", "failed", "noscans"];
 
 export const SCENES = [
   { id: "sc_vii", title: VII, position: 0 },
   { id: "sc_viii", title: VIII, position: 1 },
 ];
 
-/** The model the merge asks — the built-in local model, the run's own (bookRunMock's LOCAL). */
-export const MERGE_MODEL = { model: "gemma-4-26b-a4b-qat", recipe: "local" };
+/** The model Find same people asks — the built-in local model, the run's own (bookRunMock's LOCAL). */
+export const FIND_MODEL = { model: "gemma-4-26b-a4b-qat", recipe: "local" };
 
 /** book_run.problemText's words for no language model. */
 const NO_MODEL = "No language model is set up — set one in AI Settings first.";
 
 /** The library's personas the page matches names against — one called Alice. */
 export const PERSONAS = [{ id: "p_alice", name: "Alice" }];
+
+/** The book's own first pair of names that look like one name — the line's example. */
+export const EXAMPLE = ["the Queen", "Queen of Hearts"];
 
 const ELSIE = "their names were Elsie, Lacie, and Tillie; and they lived at the bottom of a well";
 
@@ -73,39 +73,58 @@ const SCANS = {
   ],
 };
 
-/** The names the AI's answer makes one person, fullest form first (see the top). */
-const ONE_PERSON = [["Queen of Hearts", "the Queen"]];
+/** The AI's answer to Find same people: each group of names it says are one person. */
+export const AI_SAME = [["Queen of Hearts", "the Queen"]];
 
-/**
- * The server's people from the scanned chapters' names → one entry per person, in book order:
- * `{key, name, names, lines, mentions, chapters, evidence, evidence_found, role_hint}`. `lines` is
- * the scans' counts summed; `evidence` the first chapter's quote. `scanned` is the ids of the
- * chapters with a saved scan; `checked`: the AI's answer is in (its pairs joined), else the
- * grouping before the check.
- */
-export function mockFound(scanned, { checked = false } = {}) {
-  const people = [];
+const ARTICLES = new Set(["the", "a", "an"]);
+/** The server's `fullestName`: the most words once a leading article is dropped, then the shorter. */
+export function fullestName(names) {
+  const words = (n) => {
+    const w = n.toLowerCase().split(/\s+/);
+    return (w.length > 1 && ARTICLES.has(w[0]) ? w.slice(1) : w).length;
+  };
+  return [...names].sort((a, b) => words(b) - words(a) || a.length - b.length)[0];
+}
+
+/** Each name the scanned chapters found, in book order: `{name, lines, chapters, evidence}`. */
+export function mockNames(scanned) {
+  const out = [];
   for (const scene of SCENES) {
     if (!scanned.includes(scene.id)) continue;
     for (const c of SCANS[scene.id]) {
-      const group = checked ? ONE_PERSON.find((g) => g.includes(c.name)) : null;
-      let p = people.find((x) => x.names.includes(c.name) || (group && x.names.some((n) => group.includes(n))));
-      if (!p) {
-        p = {
-          key: `p:${(group ? group[0] : c.name).toLowerCase()}`, name: c.name, names: [], lines: 0, mentions: 0,
-          chapters: [], evidence: "", evidence_found: null, role_hint: "",
-        };
-        people.push(p);
+      let n = out.find((x) => x.name === c.name);
+      if (!n) {
+        n = { name: c.name, lines: 0, chapters: [], evidence: c.evidence };
+        out.push(n);
       }
-      if (!p.names.includes(c.name)) p.names.push(c.name);
-      p.lines += c.approx_lines;
-      if (!p.chapters.includes(scene.id)) p.chapters.push(scene.id);
-      if (!p.evidence) Object.assign(p, { evidence: c.evidence, evidence_found: true });
+      n.lines += c.approx_lines;
+      if (!n.chapters.includes(scene.id)) n.chapters.push(scene.id);
     }
   }
-  for (const p of people) {
-    const group = checked ? ONE_PERSON.find((g) => g.includes(p.names[0])) : null;
-    if (group) p.name = group.find((n) => p.names.includes(n));
+  return out;
+}
+
+/**
+ * The server's people: one row per name, or per group of names you linked →
+ * `{key, name, names, lines, mentions, chapters, evidence, evidence_found, role_hint, link}`.
+ * `links` is `[{names, name, by}]`; a linked row goes by the link's name, its lines summed, its
+ * chapters joined, its quote the first name's.
+ */
+export function mockFound(scanned, links = []) {
+  const people = [];
+  for (const n of mockNames(scanned)) {
+    const link = links.find((l) => l.names.includes(n.name)) ?? null;
+    let p = link ? people.find((x) => x.link === link) : null;
+    if (!p) {
+      p = {
+        key: `p:${(link ? link.name : n.name).toLowerCase()}`, name: link ? link.name : n.name, names: [], lines: 0,
+        mentions: 0, chapters: [], evidence: n.evidence, evidence_found: true, role_hint: "", link,
+      };
+      people.push(p);
+    }
+    p.names.push(n.name);
+    p.lines += n.lines;
+    for (const ch of n.chapters) if (!p.chapters.includes(ch)) p.chapters.push(ch);
   }
   return people;
 }
@@ -116,9 +135,9 @@ const BOOK_CAST = [
   { id: "s_narrator", name: "Narrator", aliases: [], narrator: true, lines: 0, ready: false },
   { id: "s_alice", name: "Alice", aliases: [], narrator: false, lines: 0, ready: true },
 ];
-// After Make the audiobook: everyone the merge kept, added most lines first, then the narrator;
-// each cast with a voice made from the book (Alice with your persona Alice). Their lines are
-// Analyze's (bookRunMock's answer key, the Knave with none).
+// After Make the audiobook: everyone with lines, the Queen's two names linked by the run, added
+// most lines first, then the narrator; each cast with a voice made from the book (Alice with your
+// persona Alice). Their lines are Analyze's (bookRunMock's answer key, the Knave with none).
 const RUN_CAST = [
   ["s_alice", "Alice", 92], ["s_hatter", "Hatter", 55], ["s_march_hare", "March Hare", 16],
   ["s_queen", "Queen of Hearts", 22, ["the Queen"]], ["s_dormouse", "Dormouse", 21], ["s_king", "the King", 9],
@@ -128,33 +147,39 @@ const RUN_CAST = [
   .concat([{ id: "s_narrator", name: "Narrator", aliases: [], narrator: true, lines: 214, ready: true }]);
 
 /**
- * Where the page starts in each state: when each chapter was scanned, the merge's record, the book's
- * speakers and each chapter's lines. `byRun` (merged and stale only): Make the audiobook merged the
- * names — its Add step then added everyone with lines, and the run went on to the M4B.
+ * Where the page starts in each state: when each chapter was scanned, the AI's check, your links,
+ * the pairs kept apart, the book's speakers and each chapter's lines. `byRun` (linked and stale
+ * only): Make the audiobook found the same people and linked them itself — its Add step then added
+ * everyone with lines, and the run went on to the M4B.
  */
 export function mockSetup(state, { byRun = false } = {}) {
   const now = Date.now();
   const minutesAgo = (m) => (m === null ? null : new Date(now - m * 60_000).toISOString());
-  const run = byRun && (state === "merged" || state === "stale");
-  // Minutes ago: chapter VII's scan, chapter VIII's, the merge.
-  const [vii, viii, merged] = {
+  const run = byRun && (state === "linked" || state === "stale");
+  // Minutes ago: chapter VII's scan, chapter VIII's, the check.
+  const [vii, viii, checked] = {
     noscans: [null, null, null],
     unchecked: [12, 11, null],
-    merging: [12, 11, null],
+    finding: [12, 11, null],
     failed: [12, 11, null],
-    merged: run ? [21, 21, 20] : [12, 11, 4],
-    // Chapter VIII scanned again after the merge.
+    suggested: [12, 11, 1],
+    linked: run ? [21, 21, 20] : [12, 11, 4],
+    apart: [12, 11, 4],
+    // Chapter VIII scanned again after the check.
     stale: run ? [45, 2, 44] : [40, 2, 25],
   }[state];
-  let merge = { status: "none" };
-  if (state === "merging") merge = { status: "running", ...MERGE_MODEL };
-  else if (state === "failed") merge = { status: "failed", error: NO_MODEL };
-  else if (merged !== null) merge = { status: "done", at: minutesAgo(merged), by: run ? "run" : "button", ...MERGE_MODEL };
+  let check = { status: "none" };
+  if (state === "finding") check = { status: "running", ...FIND_MODEL };
+  else if (state === "failed") check = { status: "failed", error: NO_MODEL };
+  else if (checked !== null) check = { status: "done", at: minutesAgo(checked), by: run ? "run" : "button", ...FIND_MODEL };
+  const queen = { names: [...AI_SAME[0]], name: fullestName(AI_SAME[0]), by: run ? "run" : "you" };
   return {
     run,
     scannedAt: { sc_vii: minutesAgo(vii), sc_viii: minutesAgo(viii) },
-    merge,
-    cast: (run ? RUN_CAST : BOOK_CAST).map((c) => ({ ...c, imported_from: null })),
+    check,
+    links: state === "linked" || state === "stale" ? [queen] : [],
+    apart: state === "apart" ? [{ names: [...AI_SAME[0]], from: "suggestion" }] : [],
+    cast: (run ? RUN_CAST : BOOK_CAST).map((c) => ({ ...c, aliases: [...c.aliases], imported_from: null })),
     linesByScene: run ? { sc_vii: 273, sc_viii: 181 } : { sc_vii: 105, sc_viii: 71 },
   };
 }

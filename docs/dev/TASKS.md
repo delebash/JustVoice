@@ -468,6 +468,49 @@ OPEN:   the renders (the book's cue words as the direction, cfg ~2.5–3.0, 3 se
         book and a best-of pick.
 GO:     given 2026-10-16 ("your rec on all go").
 
+### Discover's names: the AI suggests, you link — Find same people, Link, Unlink, Kept apart (decided 2026-10-16)
+STATE:  DECIDED 2026-10-16 — on the Discover mock the user pressed Merge found names: "it says
+        Checked just now by gemma-4-26b-a4b-qat · Local, with Merge found names. it should not be
+        automatica it should be able to be reviewed in a list like everything else is done with
+        user review, stuff that is automatic is hidden from user, it also need an undo, think on
+        the desgin and flow, its bad"; before that, of the line and the button: "you need to
+        clarify wht the button merge names does, it doesnt merger names, it should seqarch for
+        names that are the same person"; then "maybe the same way you can ignore unignore names we
+        do the same so user can unlink queen with the queen and so on" and "think on the design
+        again and updte it so i can see how it works". Shown (argued against twice): "1. Before
+        the AI — every name is its own row … Some people are named more than one way — "the
+        Queen" and "Queen of Hearts". Find same people asks the AI which names are one person; you
+        link them. [Find same people] … [+ Add selected] [Ignore selected] [Link selected as one
+        person] 2. After Find same people — the AI's answer is a list to review; nothing in the
+        table has changed: Same person? · 1 from gemma-4-26b-a4b-qat · Local [Link all] Queen of
+        Hearts + the Queen ≈ 13 lines · VII, VIII … [Link] [Not the same] 3. After Link — one row
+        … also written the Queen [Unlink] 4. After Not the same, or Unlink — the pair goes to Kept
+        apart, beside Ignored; Find won't suggest it again: Kept apart 1 Queen of Hearts · the
+        Queen [Undo] 5. After Make the audiobook — the run links on its own (one click is its
+        point) and says so on the row; Unlink still works … also written the Queen [Unlink] ·
+        linked by Make the audiobook. Unlink there takes "the Queen" out of that speaker's Also
+        called and shows it as a new row; lines already given to Queen of Hearts stay where Script
+        put them. 6. A new scan after a check — the line says Checked 4 min ago by
+        gemma-4-26b-a4b-qat · Local · 1 chapter scanned since. [Find again]; new suggestions join
+        the list, your earlier answers stay." What the argument changed: "One verb pair — Link /
+        Unlink everywhere … Not the same and Unlink both say 'these are different people', so they
+        share one list, Kept apart … Unlink works after Add … two ticked rows that are both
+        already speakers can't be linked." The user: "your rec go".
+WHY:    the AI's answer joined names with no list to check and no undo; the button's name said it
+        merged when the step only finds (`POST /v1/projects/{id}/speakers/merge` writes nothing).
+        Standards: Google Contacts' Merge & fix — suggestions, Merge or Merge all, a merged contact
+        separated later (support.google.com/contacts/answer/7078226); Discover's own Ignore / Undo.
+NOT:    joining two speakers (lines would move — a different feature).
+        This reverses answer 4 of "The one-click run's leftovers, rethought" (the server's grouping
+        shown as one row before the AI): every name is its own row until you link it.
+BUILT:  —
+OPEN:   the mock first (`#/mock/discover`: before the AI, finding, suggestions, linked, kept
+        apart, after the run, a new scan, failed, nothing scanned), then the user's look; the
+        server part (the stored suggestions, links and kept-apart pairs; the run writing its links
+        there), the real page, the step's new name (Find same people — the run's step label, the
+        AI feature, the docs) after that.
+GO:     given 2026-10-16 ("your rec go") for the mock.
+
 ### The one-click run's leftovers, rethought (decided 2026-10-16)
 STATE:  DECIDED 2026-10-16 — after the gemma acceptances (RESEARCH §10.24), the recs shown for the
         user's look were "think on your rec again"-ed; shown: "1. Slice 5's card and its words — I

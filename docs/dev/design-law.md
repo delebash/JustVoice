@@ -55,6 +55,7 @@ deleted 2026-06-23 and there is no local `components/ui/` directory. What follow
 | `.ui-unit` (the kit's) | a unit inside a label drawn in capitals — wrap only the unit and it keeps its case ("GAIN (dB)", never "GAIN (DB)"); the kit's `UiField` does it by itself for a label ending in "(…)". The Effects chain editor's knobs (2026-10-15) |
 | `.jv-memcells` · `.jv-memcell` | AI Settings' memory strip cell outside AI Settings — eyebrow label, value, the model it holds under it (Home, 2026-10-06). The kit's own cell is scoped to its strip |
 | `.jv-transport` (+ `__time`) · `.jv-player-el` | a page's one player: `usePagePlayer()` + `PagePlayer.vue` (the hidden `<audio>`) + `PlayTransport.vue` (seek bar and "0:02 / 0:05") shown in the row whose ▶ started it — never a second `<audio controls>` line under the rows. Voices and Render (2026-10-07) |
+| `.jv-aka` | a name's other spelling under it with its quiet action beside it, on one line — "also written the Queen [Unlink]", "kept apart from the Queen [Undo]" (Discover's linked names, drawn in the mock `#/mock/discover`, 2026-10-16) |
 | `.jv-lede` | the one-paragraph explanation under a card title — body-size (13.5px) because a lede is content, not a footnote. User-language only, never file formats or internal jargon |
 | `.jv-mt10` / `.jv-mt12` / `.jv-mb14` / `.jv-inline-row` / `.jv-note-xs` | spacing + inline-row utilities (SettingsView referenced them for months while nothing defined them — defined 2026-08-21; `-xs` renders at the same 12.5px floor) |
 
