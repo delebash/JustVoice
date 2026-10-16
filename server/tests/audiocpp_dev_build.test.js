@@ -12,13 +12,17 @@ import "./engines_helpers.js";
 import * as speechRuntimeApi from "../src/api/speech_runtime_api.js";
 import * as devBuild from "../src/engines/audiocpp/dev_build.js";
 import * as espeak from "../src/engines/audiocpp/espeak.js";
+import { ownEngine } from "../src/engines/audiocpp/generated.js";
 import * as release from "../src/engines/audiocpp/release.js";
 import * as runtime from "../src/engines/audiocpp/runtime.js";
-import * as chatterbox from "../src/engines/chatterbox/manifest.js";
-import * as kokoro from "../src/engines/kokoro/manifest.js";
 import * as leftovers from "../src/engines/leftovers.js";
 import * as manager from "../src/engines/manager.js";
 import { tmpPath } from "./helpers.js";
+
+// Chatterbox and Kokoro built again under the pin a test sets (Python reloaded their manifests;
+// since the adoption plan's slice 4 they are built from audio.cpp's files and our notes).
+const chatterbox = { build: () => ownEngine("chatterbox") };
+const kokoro = { build: () => ownEngine("kokoro") };
 
 /** A stand-in for ../audio.cpp/build/jv-dev: the server exe, the CMake cache, the info. */
 function makeBuild(root, { cuda = true, dirty = false } = {}) {

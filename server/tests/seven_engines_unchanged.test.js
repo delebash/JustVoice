@@ -292,28 +292,112 @@ test("a persona of each of the seven sends audio.cpp the same bytes as before", 
   expect(requests()).toEqual(before().requests);
 });
 
+// The models an approved decision adds: QwenCleo-ASR (E14/F5, with its languages — TASKS "Slice 2's
+// acceptance findings" 5), audio.cpp's own Turbo package and the original precisions of Qwen3-TTS
+// Base 1.7B and VoxCPM2 (the plan's E6/E14/F5).
+const ADDED = [
+  "asr/qwencleo-asr-f16",
+  "asr/qwencleo-asr-q8",
+  "chatterbox/chatterbox-chatterboxturbo-q8",
+  "qwen3/qwen3-base-1.7b-orig",
+  "voxcpm2/voxcpm2-orig",
+];
+
 test("each model loads, warms up, transcribes and aligns with the same requests as before", async () => {
-  expect(await loads()).toEqual(before().loads);
+  const was = before().loads;
+  const is = await loads();
+  for (const [key, load] of Object.entries(was)) expect(is[key], key).toEqual(load);
+  expect(Object.keys(is).filter((k) => !Object.hasOwn(was, k)).sort()).toEqual(ADDED);
 });
 
 test("a persona's saved settings read the same as before, under the app's names", () => {
   expect(settings()).toEqual(before().settings);
 });
 
-test("every model, voice and price key there before is there, the same", () => {
+const isObject = (x) => x !== null && typeof x === "object";
+/** Every place `is` differs from `was` — a value `was` has that `is` lacks or holds differently
+ * ("<path>": [was, is]); what only `is` has is an addition, not a difference. A list of plain values
+ * is one value; a list of objects is compared item by item. */
+function differences(was, is, at = "", out = {}) {
+  const items = Array.isArray(was) && Array.isArray(is) && was.some(isObject);
+  if (items && was.length === is.length) was.forEach((x, i) => differences(x, is[i], `${at}.${i}`, out));
+  else if (isObject(was) && !Array.isArray(was) && isObject(is) && !Array.isArray(is)) {
+    for (const k of Object.keys(was)) differences(was[k], is[k], at ? `${at}.${k}` : k, out);
+  } else if (JSON.stringify(was) !== JSON.stringify(is)) out[at] = [was, is];
+  return out;
+}
+
+// What an approved decision changes in what was there before, each with its decision — nothing
+// else may differ.
+const CHANGED = {
+  // F4 (decided 2026-10-15, §7 question 6): Turbo's and Nano's own voice is listed.
+  "chatterbox.engine.CAPABILITIES.preset_voices": "F4",
+  "chatterbox.models.chatterbox-turbo-q8.row.preset_voices": "F4",
+  "chatterbox.models.chatterbox-turbo-f16.row.preset_voices": "F4",
+  "chatterbox.models.chatterbox-nano-q8.row.preset_voices": "F4",
+  "chatterbox.models.chatterbox-nano-f16.row.preset_voices": "F4",
+  // Slice 4 (Qwen3-ASR on every recogniser's path): a recogniser has no capability row — its
+  // models' ids walked to Qwen3-TTS's "qwen3" row before.
+  "asr.models.qwen3-asr-1.7b-q8.capability": "slice 4",
+  "asr.models.qwen3-asr-1.7b-f16.capability": "slice 4",
+  "asr.models.qwen3-asr-0.6b-q8.capability": "slice 4",
+  "asr.models.qwen3-asr-0.6b-f16.capability": "slice 4",
+  // F10: the languages are the spec's, in its order (Qwen3-ASR's last three).
+  "asr.models.qwen3-asr-1.7b-q8.row.languages": "F10",
+  "asr.models.qwen3-asr-1.7b-f16.row.languages": "F10",
+  "asr.models.qwen3-asr-0.6b-q8.row.languages": "F10",
+  "asr.models.qwen3-asr-0.6b-f16.row.languages": "F10",
+};
+// Slice 3's question 4 (decided 2026-10-15): the knobs audio.cpp gives a wider range, or none, take
+// audio.cpp's — a number box where an end is open; never narrower than ours, nor below the app's
+// 0.05 for a temperature or top-p ("open top": from where it was).
+const RANGES = {
+  kitten: { speed: { min: 0.01 } },
+  "chatterbox-multilingual": { top_p: "open top", min_p: "open", s3gen_cfg_rate: "open" },
+  chatterbox: { top_p: "open top", min_p: "open", s3gen_cfg_rate: "open" },
+  "chatterbox-turbo": { temperature: "open top", repetition_penalty: "open", top_p: "open top" },
+  "chatterbox-nano": { temperature: "open top", repetition_penalty: "open", top_p: "open top" },
+  qwen3: { subtalker_temperature: "open top" },
+  "qwen3-cv": { subtalker_temperature: "open top" },
+  "qwen3-base": { subtalker_temperature: "open top" },
+  "qwen3-vd": { subtalker_temperature: "open top" },
+  voxcpm2: { retry_badcase_max_times: "open top", retry_badcase_ratio_threshold: "open" },
+};
+
+test("every model, voice and price key there before is there, the same — but what a decision changed", () => {
   const was = before().facts;
   const is = facts();
+  const found = {};
   for (const engineId of SEVEN) {
-    expect(is[engineId].engine, engineId).toEqual(was[engineId].engine);
     // Every voice, with its id, name, language and gender.
     const voices = new Map(is[engineId].voices.map((v) => [v.id, v]));
-    for (const v of was[engineId].voices) expect(voices.get(v.id), `${engineId}/${v.id}`).toMatchObject(v);
+    for (const v of was[engineId].voices) expect(voices.get(v.id), `${engineId}/${v.id}`).toEqual({ ...v, model: voices.get(v.id)?.model });
     for (const [id, m] of Object.entries(was[engineId].models)) {
       const got = is[engineId].models[id];
       expect(got, `${engineId}/${id}`).toBeDefined();
-      expect(got.row, `${engineId}/${id}`).toMatchObject(m.row);
-      expect(got.capability, `${engineId}/${id}`).toEqual(m.capability);
-      expect(got.price_key, `${engineId}/${id}`).toEqual(m.price_key);
+      // A setting's range changed by question 4; everything else about it the same.
+      const wasKnobs = new Map(m.capability.knobs.map((k) => [k.key, k]));
+      for (const k of got.capability?.knobs || []) {
+        const before = wasKnobs.get(k.key);
+        const change = RANGES[got.capability.engine_id]?.[k.key];
+        if (!change || !before) continue;
+        const want =
+          change === "open"
+            ? { min: null, max: null, box: true }
+            : change === "open top"
+              ? { min: before.min, max: null, box: true }
+              : { ...before, ...change };
+        expect({ ...k, min: k.min, max: k.max, box: k.box }, `${id} ${k.key}`).toEqual({ ...before, ...want });
+        Object.assign(before, { min: k.min, max: k.max, box: k.box });
+      }
     }
+    const { voices: _was, ...wasRest } = was[engineId];
+    const { voices: _is, ...isRest } = is[engineId];
+    Object.assign(found, differences(wasRest, isRest, engineId));
   }
+  expect(Object.keys(found).sort()).toEqual(Object.keys(CHANGED).sort());
+  // F4: one voice each, sent as no voice; F10: the same 30 languages.
+  expect(found["chatterbox.models.chatterbox-turbo-q8.row.preset_voices"]).toEqual([0, 1]);
+  const [wasLangs, isLangs] = found["asr.models.qwen3-asr-1.7b-q8.row.languages"];
+  expect([...isLangs].sort()).toEqual([...wasLangs].sort());
 });

@@ -20,9 +20,8 @@ import path from "node:path";
 import { NotImplementedError, pyRound, ValueError } from "@delebash/llm-runner/platform/py";
 import * as dspClient from "../audio/dsp_client.js";
 import * as speechCache from "../speech_cache.js";
+import { generatedEngines, kokoroVoices } from "./audiocpp/generated.js";
 import { embeddedFiles } from "./audiocpp/gguf_files.js";
-import * as kokoroManifest from "./kokoro/manifest.js";
-import { VOICES } from "./kokoro/voices.js";
 import * as self from "./blending.js";
 
 /** Python's LookupError. */
@@ -44,11 +43,12 @@ export function supports(engineId) {
   return engineId === "kokoro";
 }
 
-/** The catalog language of a preset voice id, if this id is a preset. */
+/** The catalog language of a preset voice id, if this id is a preset (Kokoro's voices are audio.cpp's
+ * names, each with the language our file gives it — generated.kokoroVoices). */
 export function presetLanguage(engineId, voiceId) {
   if (engineId !== "kokoro") return null;
-  const hit = VOICES.find(([vid]) => vid === voiceId);
-  return hit ? hit[2] : null;
+  const hit = kokoroVoices().find(([vid]) => vid === voiceId);
+  return hit ? hit[1] || null : null;
 }
 
 /**
@@ -127,7 +127,7 @@ function rglobGguf(dir) {
  * packs). No fetching — blending never triggers a download; the caller surfaces "download
  * Kokoro first". */
 export function _kokoroGguf(dataDir) {
-  for (const variant of kokoroManifest.VARIANTS) {
+  for (const variant of generatedEngines().get("kokoro").VARIANTS) {
     const vid = variant.id;
     if (speechCache.variantOnDisk(dataDir, "kokoro", vid)) {
       const hits = rglobGguf(String(speechCache.variantDir(dataDir, "kokoro", vid)));

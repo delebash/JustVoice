@@ -10,13 +10,24 @@ import path from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
 import { endState, useState } from "./engines_helpers.js";
 import * as release from "../src/engines/audiocpp/release.js";
+import { CATALOG, OWN_ENGINES } from "../src/engines/audiocpp/generated.js";
 import { QWEN_LANGUAGE, toSpeechRequest } from "../src/engines/audiocpp/slot.js";
-import * as chatterboxManifest from "../src/engines/chatterbox/manifest.js";
 import * as manager from "../src/engines/manager.js";
 import { discoverEngines, EngineManager } from "../src/engines/manager.js";
 import { modelsFor } from "../src/engines/model_catalog.js";
-import * as qwen3Manifest from "../src/engines/qwen3/manifest.js";
 import * as speechCache from "../src/speech_cache.js";
+
+// Our own conversions of models audio.cpp doesn't publish — CustomVoice 0.6B (gap 4), Turbo and
+// Nano (gap 1) — as our fork's catalog names them (the adoption plan's slice 4: the repositories come
+// from audio.cpp's files, where the manifests named them before).
+const source = (family, id) => CATALOG.families[family].packages.find((p) => p.id === id).source;
+const qwen3Manifest = { CV_06_REPO: source("qwen3_tts", "qwen3_tts_0_6b_customvoice_q8_0").repo, CV_06_REVISION: source("qwen3_tts", "qwen3_tts_0_6b_customvoice_q8_0").revision };
+const chatterboxManifest = {
+  TURBO_REPO: source("chatterbox_turbo", "chatterbox_turbo_clone_q8_0").repo,
+  TURBO_REVISION: source("chatterbox_turbo", "chatterbox_turbo_clone_q8_0").revision,
+  NANO_REPO: source("chatterbox_turbo", "chatterbox_nano_q8_0").repo,
+  NANO_REVISION: source("chatterbox_turbo", "chatterbox_nano_q8_0").revision,
+};
 
 const QWEN_LANGS_10 = ["zh", "en", "ja", "ko", "de", "fr", "ru", "pt", "es", "it"];
 const row = (engine, variant) => discoverEngines().get(engine).module.VARIANTS.find((r) => r.id === variant);
@@ -27,8 +38,9 @@ afterEach(() => endState());
 test("qwen3_catalog_is_the_three_checkpoint_families", () => {
   const ids = new Set(modelsFor("qwen3").map((v) => v.id));
   const eight = ["qwen3-cv-1.7b-q8", "qwen3-cv-0.6b-q8", "qwen3-base-1.7b-q8", "qwen3-base-0.6b-q8", "qwen3-vd-1.7b-q8"];
-  // Each checkpoint at 8-bit (the defaults) and its 16-bit sibling (gap 9).
-  expect(ids).toEqual(new Set([...eight, ...eight.map((i) => `${i.slice(0, -3)}-bf16`)]));
+  // Each checkpoint at 8-bit (the defaults) and its 16-bit sibling (gap 9); Base 1.7B at its
+  // original precision too, audio.cpp's own package (the adoption plan's E14/F5).
+  expect(ids).toEqual(new Set([...eight, ...eight.map((i) => `${i.slice(0, -3)}-bf16`), "qwen3-base-1.7b-orig"]));
   for (const r of discoverEngines().get("qwen3").module.VARIANTS) {
     expect(r.audiocpp.family).toBe("qwen3_tts");
     // VoiceDesign is its own audio.cpp task; CustomVoice and Base are tts.
@@ -69,7 +81,8 @@ test("qwen3_voice_design_claim_is_backed", () => {
 // ── Chatterbox ───────────────────────────────────────────────────────────
 
 test("chatterbox_catalog_is_multilingual_turbo_and_nano", () => {
-  // Turbo and Nano are offered since the pin clones with them (v0.9.0-jv.4, gap 1).
+  // Turbo and Nano are offered since the pin clones with them (v0.9.0-jv.4, gap 1); audio.cpp's
+  // own Turbo package beside ours (the adoption plan's E6/E14/F5).
   expect(new Set(modelsFor("chatterbox").map((v) => v.id))).toEqual(
     new Set([
       "chatterbox-multilingual-v2-q8",
@@ -78,6 +91,7 @@ test("chatterbox_catalog_is_multilingual_turbo_and_nano", () => {
       "chatterbox-turbo-f16",
       "chatterbox-nano-q8",
       "chatterbox-nano-f16",
+      "chatterbox-chatterboxturbo-q8",
     ]),
   );
   const spec = row("chatterbox", "chatterbox-multilingual-v2-q8").audiocpp;
@@ -107,8 +121,16 @@ test("manifest_default_variants_exist_in_catalog", () => {
 });
 
 test("speech_recognition_carries_its_aligner", () => {
-  // Qwen3-ASR 0.6B is offered beside 1.7B, which stays the default (the adoption plan §7 answer 4).
-  expect(modelsFor("asr").map((x) => x.id)).toEqual(["qwen3-asr-1.7b-q8", "qwen3-asr-1.7b-f16", "qwen3-asr-0.6b-q8", "qwen3-asr-0.6b-f16"]);
+  // Qwen3-ASR 0.6B is offered beside 1.7B, which stays the default (the adoption plan §7 answer 4),
+  // and QwenCleo-ASR (its E14/F5), each with the aligner.
+  expect(modelsFor("asr").map((x) => x.id)).toEqual([
+    "qwen3-asr-1.7b-q8",
+    "qwen3-asr-1.7b-f16",
+    "qwen3-asr-0.6b-q8",
+    "qwen3-asr-0.6b-f16",
+    "qwencleo-asr-q8",
+    "qwencleo-asr-f16",
+  ]);
   for (const [vid, dtype] of [
     ["qwen3-asr-1.7b-q8", "q8_0"],
     ["qwen3-asr-1.7b-f16", "f16"],
@@ -144,7 +166,9 @@ test("hf_sources_pin_a_commit_not_a_branch", () => {
 
 test("engine_kinds", () => {
   const engines = [...discoverEngines()];
-  const kinds = Object.fromEntries(engines.filter(([, m]) => !m.module.GENERATED).map(([k, m]) => [k, m.kind]));
+  // The seven engines described by our own files (built from audio.cpp's files too since the adoption
+  // plan's slice 4).
+  const kinds = Object.fromEntries(engines.filter(([k]) => OWN_ENGINES.includes(k)).map(([k, m]) => [k, m.kind]));
   expect(kinds).toEqual({ kokoro: "tts", qwen3: "tts", chatterbox: "tts", asr: "stt", kitten: "tts", pocket: "tts", voxcpm2: "tts" });
   // An engine built from audio.cpp's own files speaks, or — from its Speech to text tab — recognises
   // speech (the adoption plan's slice 2, E1).
@@ -312,16 +336,18 @@ test("every_16_bit_row_is_its_8_bit_siblings_model_at_the_original_precision", (
   // borrowed CPU speed. KittenTTS has no 16-bit file.
   let seen = 0;
   for (const [eid, m] of discoverEngines()) {
-    // The hand-wired engines' 16-bit rows (`release.sixteenBit`); a generated engine's precisions
-    // are audio.cpp's own packages (audiocpp_generated.test.js).
-    if (m.module.GENERATED) continue;
+    // The 16-bit rows of the seven engines described by our own files (named by the rule the 16-bit
+    // rows have always had, generated.js `siblingWords`); every other engine's precisions are
+    // audio.cpp's own packages (audiocpp_generated.test.js).
+    if (!OWN_ENGINES.includes(eid)) continue;
     const rows = Object.fromEntries((m.module.VARIANTS || []).map((r) => [r.id, r]));
     for (const [vid, r] of Object.entries(rows)) {
       if (!(vid.endsWith("-bf16") || vid.endsWith("-f16"))) continue;
       seen += 1;
       const sib = rows[`${vid.slice(0, vid.lastIndexOf("-"))}-q8`];
       for (const k of ["languages", "voice_cloning", "preset_voices", "weights_license"]) expect(r[k], `${vid} ${k}`).toEqual(sib[k]);
-      const strip = (a) => Object.fromEntries(Object.entries(a).filter(([k]) => k !== "file" && k !== "companions"));
+      // Its own file — and, since the adoption plan's slice 4, the audio.cpp package that holds it.
+      const strip = (a) => Object.fromEntries(Object.entries(a).filter(([k]) => k !== "file" && k !== "companions" && k !== "package"));
       expect(strip(r.audiocpp), vid).toEqual(strip(sib.audiocpp));
       expect(r.audiocpp.file).not.toBe(sib.audiocpp.file);
       expect(r.sources[0].files).toContain(r.audiocpp.file);
@@ -331,6 +357,7 @@ test("every_16_bit_row_is_its_8_bit_siblings_model_at_the_original_precision", (
     }
     void eid;
   }
-  // kokoro 1 · pocket 5 · qwen3 5 · chatterbox 3 (Turbo and Nano too) · asr 2 (1.7B, 0.6B) · voxcpm2 1
-  expect(seen).toBe(17);
+  // kokoro 1 · pocket 5 · qwen3 5 · chatterbox 3 (Turbo and Nano too) · asr 3 (1.7B, 0.6B, QwenCleo —
+  // the adoption plan's E14/F5) · voxcpm2 1
+  expect(seen).toBe(18);
 });

@@ -2,10 +2,10 @@
 // Speech engine manager — discovery, the runtime install, per-kind slots, memory (the port of
 // justvoice/engines/manager.py).
 //
-// Each engine lives in `server/src/engines/<id>/` as a catalog: `manifest.js` (metadata,
-// capabilities, and the model VARIANTS with their pinned GGUF files). Every variant's models
-// run in the ONE audio.cpp speech runtime (`engines/audiocpp/`, the 2026-10-01 switch —
-// docs/plans/2026-10-01-audiocpp-switch.md):
+// Each engine is a catalog built from audio.cpp's own files (`engines/audiocpp/generated.js`, with
+// our notes per family in `audiocpp/curated/`): metadata, capabilities, and the model VARIANTS
+// with their pinned GGUF files. Every variant's models run in the ONE audio.cpp speech runtime
+// (`engines/audiocpp/`, the 2026-10-01 switch — docs/plans/2026-10-01-audiocpp-switch.md):
 //
 // On Install: the runtime binary for this machine (+ eSpeak NG) — once, for every engine.
 // On Download: the variant's file(s) into the speech cache (`speech_cache.js`).
@@ -22,7 +22,7 @@
 // lock are Mutexes held exactly where Python's locks spanned I/O (a slot's terminate / spawn);
 // state read without I/O needs no lock. Lock order: activity → the manager's lock.
 
-import { existsSync, readdirSync, readFileSync, realpathSync, rmdirSync, rmSync, statSync, unlinkSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, realpathSync, rmdirSync, rmSync, unlinkSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -41,7 +41,6 @@ import { DEFAULT_MAX_CHUNK_CHARS } from "../audio/chunked.js";
 import { ApiError, badRequest, conflict, internal, serviceUnavailable } from "../errors.js";
 import * as paths from "../paths.js";
 import * as speechCache from "../speech_cache.js";
-import * as asrManifest from "./asr/manifest.js";
 import * as devBuild from "./audiocpp/dev_build.js";
 import * as generated from "./audiocpp/generated.js";
 import * as espeak from "./audiocpp/espeak.js";
@@ -50,14 +49,8 @@ import * as release from "./audiocpp/release.js";
 import * as runtime from "./audiocpp/runtime.js";
 import * as runtimeOptions from "./audiocpp/runtime_options.js";
 import * as slot from "./audiocpp/slot.js";
-import * as chatterboxManifest from "./chatterbox/manifest.js";
-import * as kittenManifest from "./kitten/manifest.js";
-import * as kokoroManifest from "./kokoro/manifest.js";
 import * as self from "./manager.js";
 import * as modelCatalog from "./model_catalog.js";
-import * as pocketManifest from "./pocket/manifest.js";
-import * as qwen3Manifest from "./qwen3/manifest.js";
-import * as voxcpm2Manifest from "./voxcpm2/manifest.js";
 
 const log = getLogger("justvoice.engines.manager");
 
@@ -82,10 +75,6 @@ export function enginesRuntimeRoot() {
   }
   return path.join(String(dataDir ?? paths.defaultDataDir()), "engines-runtime");
 }
-
-// Folder names that aren't engines — skipped during discovery. A folder without a manifest.js
-// is skipped anyway; the runtime's own folder is named so it never reads as one.
-export const NOT_ENGINES = new Set(["audiocpp"]);
 
 // The speech measured currency: the probes can shell out (nvidia-smi / typeperf), so every
 // polling/per-line caller goes through a short TTL cache. There is NO pre-load estimate
@@ -134,21 +123,7 @@ export function _currentOsLabel() {
   return "linux";
 }
 
-// ─── Manifest loading ─────────────────────────────────────────────────
-
-// The manifests, imported once (ESM can't import synchronously on a folder scan). Each is a
-// MUTABLE copy of its module's exports — Python modules are objects a test may patch
-// (DEPRECATED, SUPPORTED_OSES), and every discovery wraps the same copy, as Python's
-// re-import returned the same module. A new engine folder adds its manifest here.
-export const MANIFEST_MODULES = new Map([
-  ["asr", { ...asrManifest }],
-  ["chatterbox", { ...chatterboxManifest }],
-  ["kitten", { ...kittenManifest }],
-  ["kokoro", { ...kokoroManifest }],
-  ["pocket", { ...pocketManifest }],
-  ["qwen3", { ...qwen3Manifest }],
-  ["voxcpm2", { ...voxcpm2Manifest }],
-]);
+// ─── Engine modules ───────────────────────────────────────────────────
 
 const has = (o, k) => o != null && Object.hasOwn(o, k);
 const attr = (o, k, d) => (has(o, k) ? o[k] : d);
@@ -249,48 +224,15 @@ export class EngineManifest {
   }
 }
 
-const isFile = (p) => {
-  try {
-    return statSync(p).isFile();
-  } catch {
-    return false;
-  }
-};
-
-/** Scan engines/*\/ for manifest.js — id → EngineManifest (a Map, folder order). */
+/** Every engine — id → EngineManifest (a Map): each built from audio.cpp's own files
+ * (audiocpp/generated.js), the seven described by our own files first (the adoption plan's slice 4;
+ * until then each was a hand-written `engines/<id>/manifest.js` this scanned for). Each wraps its
+ * engine module, the same object every discovery, so a test may patch it (DEPRECATED,
+ * SUPPORTED_OSES). */
 export function discoverEngines() {
   const out = new Map();
-  let children;
-  try {
-    children = readdirSync(ENGINES_DIR, { withFileTypes: true })
-      .filter((d) => d.isDirectory())
-      .map((d) => d.name)
-      .sort();
-  } catch {
-    return out;
-  }
-  for (const name of children) {
-    if (NOT_ENGINES.has(name) || name.startsWith("_")) continue;
-    if (!isFile(path.join(ENGINES_DIR, name, "manifest.js"))) continue;
-    const mod = MANIFEST_MODULES.get(name);
-    if (mod === undefined) {
-      log.warning(`engine dir ${name} has a manifest.js the manager does not import — add it to MANIFEST_MODULES`);
-      continue;
-    }
-    try {
-      const manifest = new EngineManifest(path.join(ENGINES_DIR, name), mod);
-      out.set(manifest.id, manifest);
-      log.info(`discovered engine: ${manifest.id} (${manifest.name})`);
-    } catch (e) {
-      log.exception(`failed to load manifest ${name}: ${msgOf(e)}`, e);
-    }
-  }
-  // Every other speech model audio.cpp has, built from its own files (audiocpp/generated.js).
-  const before = out.size;
-  for (const [id, mod] of generated.generatedEngines()) {
-    if (!out.has(id)) out.set(id, new EngineManifest(path.join(ENGINES_DIR, id), mod));
-  }
-  log.info(`discovered ${out.size - before} engines from audio.cpp's model specs`);
+  for (const [id, mod] of generated.generatedEngines()) out.set(id, new EngineManifest(path.join(ENGINES_DIR, id), mod));
+  log.info(`discovered ${out.size} engines from audio.cpp's model specs and our notes`);
   return out;
 }
 
@@ -856,14 +798,15 @@ export class EngineManager {
     return this._priceMb(kind, engineId, variant, device) || null;
   }
 
-  /** What a generated model needs before a load measures it — the larger of audio.cpp's estimate
-   * and its download, {gb, by} (generated.needOf) — or null. The hand-wired engines carry none:
-   * their memory is measured at load (the 2026-08-14 ruling). */
+  /** What a model needs before a load measures it — the larger of audio.cpp's estimate and its
+   * download, {gb, by} (generated.needOf) — or null. The seven engines described by our own files
+   * too, since the adoption plan's slice 4 (the build's answer 3, decided 2026-10-15; until then
+   * they carried none, their memory measured at load — the 2026-08-14 ruling). */
   static _catalogNeedGb(m, variant) {
     return generated.needOf((attr(m.module, "VARIANTS", null) || []).find((r) => r.id === variant));
   }
 
-  /** A generated model's download, GB — null for a hand-wired engine. */
+  /** A model's download, GB — null for a row not built from audio.cpp's files. */
   static _catalogFilesGb(m, variant) {
     return generated.filesGbOf((attr(m.module, "VARIANTS", null) || []).find((r) => r.id === variant));
   }
@@ -967,10 +910,10 @@ export class EngineManager {
         false,
       ];
     }
-    // A model JustVoice hasn't wired by hand and hasn't measured here: what it needs — audio.cpp's
-    // estimate or its files, whichever is more — decides when it is more than the card has: "too
-    // big for this card", and Load runs it on the CPU (decided 2026-10-11, the engine list's
-    // answer 4; the files since 2026-10-12).
+    // A model not measured here: what it needs — audio.cpp's estimate or its files, whichever is
+    // more — decides when it is more than the card has: "too big for this card", and Load runs it
+    // on the CPU (decided 2026-10-11, the engine list's answer 4; the files since 2026-10-12; the
+    // seven engines described by our own files since 2026-10-15, the build's answer 3).
     const need = EngineManager._catalogNeedGb(m, variant);
     let cardFirst = "";
     if (need && !prior && cardMb > 0 && need.gb * 1024 > cardMb) {
@@ -1025,9 +968,8 @@ export class EngineManager {
       ];
     }
     // "Fits" only where it was checked — a size and a reading of the card. A model with no size
-    // here (one JustVoice wired by hand, never measured on this card) or no reading keeps the
-    // card and claims nothing: its first load measures it, and a load that doesn't fit moves to
-    // the CPU.
+    // here (neither measured nor a number audio.cpp gives) or no reading keeps the card and claims
+    // nothing: its first load measures it, and a load that doesn't fit moves to the CPU.
     const fits = others !== null ? "it fits in the card's free memory" : "";
     if (!(await this._aiModelOnCard())) return ["gpu", cardFirst || fits, false];
     const free = prior ? await this._freeCardMb(kind, m.id) : null;
@@ -2112,9 +2054,9 @@ export class EngineManager {
       // model's peak (§13.3): a calibrated load's measurement, or any measurement above the
       // price. Probe miss → the device-wide delta, booked "computed". Approved 2026-10-12: "save
       // the fallback card number for models whose probe fails", so Auto learns a model fits
-      // (OmniVoice: audio.cpp says 10 GB, the card took 1.2 GB). A generated model that can speak
-      // without a clip calibrates like a hand-wired one (slot._warmGenerated; the adoption plan's
-      // M1); one that speaks only from a clip can't, so its first line sets its price instead —
+      // (OmniVoice: audio.cpp says 10 GB, the card took 1.2 GB). A model that can speak without a
+      // clip calibrates on its load (slot._warm, slot._warmGenerated; the adoption plan's M1); one
+      // that speaks only from a clip can't, so its first line sets its price instead —
       // its process's reading after the line, or the whole card's difference since before the
       // load (§7 answer 5; `bumpEngineReservation`). An EARLY booking keeps the price instead.
       if (books) {
@@ -2125,7 +2067,8 @@ export class EngineManager {
         } catch {
           calibrated = false;
         }
-        // A generated model's (the hand-wired ones move onto this path in the plan's slice 4).
+        // Every engine built from audio.cpp's files — the seven described by our own files too
+        // since the plan's slice 4 (Chatterbox Multilingual, Qwen3-TTS Base).
         if (calibrate && !calibrated && m.module?.GENERATED && this._prices(proc)) {
           proc._priceAtFirstLine = { poolBefore, device, variant: this._currentVariants.get(engineId) };
         }

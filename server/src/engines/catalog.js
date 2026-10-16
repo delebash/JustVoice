@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 // Engine status derivation (the port of justvoice/engines/catalog.py).
 //
-// The hand-typed static catalog that used to live here was excised 2026-08-14 — the manifests
-// (`engines/<id>/manifest.js`) are the catalog. `computeStatus` survives because it is NOT
+// The hand-typed static catalog that used to live here was excised 2026-08-14 — the engine modules
+// (built from audio.cpp's own files, `engines/audiocpp/generated.js`) are the catalog. `computeStatus`
+// survives because it is NOT
 // about that list: it derives a status for RUNTIME-registered engines — the external
 // OpenAI-compatible servers a user adds, which have no manifest by design.
 

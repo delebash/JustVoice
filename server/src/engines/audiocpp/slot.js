@@ -36,9 +36,6 @@ import * as dspClient from "../../audio/dsp_client.js";
 import { parseWavHeader, writeWavContainer } from "../../audio/wav.js";
 import * as speechCache from "../../speech_cache.js";
 import { splice, vocabOf } from "../kokoro/ipa.js";
-import { VOICES } from "../kokoro/voices.js";
-import { AUDIOCPP_VOICE as KITTEN_VOICE } from "../kitten/manifest.js";
-import { AUDIOCPP_VOICE as POCKET_VOICE } from "../pocket/manifest.js";
 import * as manager from "../manager.js";
 import { CURATED } from "./curated/index.js";
 import * as espeak from "./espeak.js";
@@ -81,6 +78,8 @@ export const KOKORO_LANGUAGE = {
 
 const has = (o, k) => o != null && Object.hasOwn(o, k);
 const get = (o, k, d = null) => (has(o, k) ? o[k] : d);
+
+const kokoroLanguageOf = (voice) => generated.kokoroVoices().find(([v]) => v === voice)?.[1] ?? null;
 const fwd = (p) => String(p).replaceAll("\\", "/");
 
 /** Python's repr() of a str / None, for a refusal's text. */
@@ -331,8 +330,7 @@ export function featuresNeeded(row, body) {
   if (truthy(get(body, "voice_vector"))) out.push("voice_pack");
   if (family === "chatterbox_turbo") out.push("turbo_clone");
   if (family === "kokoro_tts") {
-    const hit = VOICES.find(([vid]) => vid === get(body, "voice_id"));
-    const voiceLang = hit ? hit[2] : "";
+    const voiceLang = kokoroLanguageOf(get(body, "voice_id")) ?? "";
     if ((lang || voiceLang.toLowerCase()).startsWith("ja")) out.push("japanese");
   }
   if (family === "chatterbox") {
@@ -544,7 +542,6 @@ export class AudioCppSlot {
     const text = n ? calibrationText(n) : "Ready.";
     const model = this._row.id;
     const srv = this._srv();
-    if (spec.generated) return await this._warmGenerated(text, n, calibrateChars);
     if (family === "kokoro_tts") {
       await srv.speech({ model, input: text, voice: "af_heart", language: "en-us", seed: 1 });
     } else if (family === "kitten_tts") {
@@ -565,9 +562,11 @@ export class AudioCppSlot {
       // 197 MB) and the memory ledger booked 0 MB for a multi-GB model.
       await srv.speech({ model, input: `(A calm, clear voice)${text}`, seed: 1 });
     } else if (family === "chatterbox_turbo") {
-      // The app offers Turbo's cloned voices only, but its built-in voice needs no clip, so a
-      // Load books its memory now rather than on the first line.
+      // Its built-in voice needs no clip, so a Load books its memory now rather than on the first
+      // line.
       await srv.speech({ model, input: text, seed: 1 });
+    } else if (spec.generated) {
+      return await this._warmGenerated(text, n, calibrateChars);
     } else {
       return false;
     }
@@ -578,7 +577,8 @@ export class AudioCppSlot {
    * A generated model's warm-up (the adoption plan's slice 2, M1). A recogniser hears silence, as
    * Qwen3-ASR does. A speech model that can speak without a clip speaks the piece — in its default
    * built-in voice (the spec's own), in its one voice, or from a description — through the same
-   * request a line takes, so a first load measures its memory as the hand-wired engines' does. A
+   * request a line takes, so a first load measures its memory as the seven engines described by
+   * our own files have always done theirs (`_warm`). A
    * model that speaks only from a clip can't: its price is saved after its first line instead
    * (§7 answer 5; manager.load). Returns whether it calibrated.
    */
@@ -652,7 +652,7 @@ export class AudioCppSlot {
     let out;
     try {
       let req;
-      if (this._row.audiocpp.generated) {
+      if (this._row.audiocpp.family !== "qwen3_asr") {
         // Every other recogniser audio.cpp has (generated.js): the audio at 16 kHz mono, as
         // audio.cpp's own page sends a recogniser's (webui +page.svelte, stagedPath) — several
         // (OWSM, CrisperWhisper, MOSS-Transcribe-Diarize, Hviske v6) refuse any other rate
@@ -810,16 +810,12 @@ export const CALIBRATION_TEXT =
   "of them swinging from one hand and his collar turned up against the damp, and set them " +
   "down in a row by the door without being told. Outside, the bell on the channel buoy rang " +
   "twice and then fell silent, as if it too were waiting to see what the night would bring.";
-// audio.cpp's own piece budget for a family, in characters — it splits longer input itself,
-// so a calibrating piece is never longer (Chatterbox and Turbo session.cpp, Kokoro and Kitten
-// frontends; audit §5 D5).
-export const FAMILY_BUDGET = { chatterbox: 128, chatterbox_turbo: 128, kokoro_tts: 240, kitten_tts: 400 };
-
-/** audio.cpp's own piece budget for a family: the hand-wired ones' above, else its spec's
- * `text_chunk_size` default (Kitten TTS 2's 380, Breeze's 600) — null where it gives none. */
+/** audio.cpp's own piece budget for a family, in characters — it splits longer input itself, so a
+ * calibrating piece is never longer (audit §5 D5): its spec's `text_chunk_size` default
+ * (Chatterbox and Turbo 128, Kokoro 240, Kitten 400, Kitten TTS 2's 380, Breeze's 600) — null
+ * where it gives none. (was: the first four copied here by hand — until the adoption plan's slice
+ * 4, F10.) */
 export function familyBudget(family) {
-  const own = get(FAMILY_BUDGET, family);
-  if (own != null) return own;
   const def = generated.requestOptionsOf(family).get("text_chunk_size")?.default;
   return Number.isFinite(Number(def)) && Number(def) > 0 ? Number(def) : null;
 }
@@ -884,16 +880,16 @@ export function toSpeechRequest(row, body) {
   const noSeed = seed == null || seed === "" || seed === "0" || seed === 0 || seed === false;
   req.seed = noSeed ? 1 + Math.floor(Math.random() * (2 ** 31 - 1)) : pyInt(seed);
 
-  // Every other speech model audio.cpp has (engines/audiocpp/generated.js).
-  if (spec.generated) return self.generatedSpeechRequest(row, body, req);
-
+  // The seven engines described by our own files keep their own requests (the adoption plan §2:
+  // the code a model truly needs, in its family's branch); every other model's is built from its
+  // spec (`generatedSpeechRequest`, at the end).
   if (family === "kokoro_tts") {
-    const voice = get(body, "voice_id") || "af_heart";
-    const hit = VOICES.find(([vid]) => vid === voice);
+    const voice = get(body, "voice_id") || spec.default_voice || "af_heart";
+    const own = kokoroLanguageOf(voice);
     // A preset's own language is its id's; a blend's rides `voice_language`, which render and
     // preview pass (decided 2026-10-15, F11) — so a line in a language Kokoro lacks is read in the
     // voice's own, a blend's too.
-    const voiceLang = String(hit ? hit[2] : get(body, "voice_language") || "en-us").toLowerCase();
+    const voiceLang = String(own !== null ? own : get(body, "voice_language") || "en-us").toLowerCase();
     req.voice = voice;
     const key = lang || voiceLang;
     // A language Kokoro doesn't speak goes as none: audio.cpp then uses the voice's own (its
@@ -915,7 +911,7 @@ export function toSpeechRequest(row, body) {
       // voice's own when Kokoro doesn't speak the line's.
       opts.voice_pack = fwd(body.voice_pack_path);
       const want = language ?? get(KOKORO_LANGUAGE, voiceLang) ?? get(KOKORO_LANGUAGE, voiceLang.split("-")[0]) ?? voiceLang;
-      const first = VOICES.find(([, , lg]) => (get(KOKORO_LANGUAGE, lg.toLowerCase()) ?? lg.toLowerCase()) === want);
+      const first = generated.kokoroVoices().find(([, lg]) => (get(KOKORO_LANGUAGE, lg.toLowerCase()) ?? lg.toLowerCase()) === want);
       req.voice = first ? first[0] : "af_heart";
     }
     if (truthy(get(delivery, "speed"))) req.speed = pyFloatParse(delivery.speed);
@@ -967,8 +963,11 @@ export function toSpeechRequest(row, body) {
     return req;
   }
 
+  // Kitten's and Pocket's voices: our id → audio.cpp's name (the row's `voices`, from the spec and
+  // our file); anything else speaks the spec's default voice (Kitten's Leo, Pocket's alba).
+  const builtIn = (voiceId) => get(spec.voices || {}, voiceId || "") ?? get(spec.voices || {}, spec.default_voice || "");
   if (family === "kitten_tts") {
-    req.voice = get(KITTEN_VOICE, get(body, "voice_id") || "") ?? "Leo";
+    req.voice = builtIn(get(body, "voice_id")) ?? "Leo";
     if (truthy(get(delivery, "speed"))) req.speed = pyFloatParse(delivery.speed);
     return req;
   }
@@ -985,7 +984,7 @@ export function toSpeechRequest(row, body) {
       );
     }
     if (truthy(get(body, "audio_prompt_path"))) req.voice_ref = fwd(body.audio_prompt_path);
-    else req.voice = get(POCKET_VOICE, get(body, "voice_id") || "") ?? "alba";
+    else req.voice = builtIn(get(body, "voice_id")) ?? "alba";
     return req;
   }
 
@@ -1014,13 +1013,16 @@ export function toSpeechRequest(row, body) {
   }
 
   if (family === "chatterbox_turbo") {
-    // Turbo and Nano (gap 1): English, cloned voices only — our audio.cpp needs a clip longer
-    // than 5 s and refuses a shorter one by name. Exaggeration / CFG / min-p do nothing on
-    // Turbo, so only its own sampling knobs are sent.
-    if (!truthy(get(body, "audio_prompt_path"))) {
+    // Turbo and Nano (gap 1): English; a cloned voice — our audio.cpp needs a clip longer than
+    // 5 s and refuses a shorter one by name — or the model's own voice, sent as no voice (the
+    // adoption plan's F4; audio.cpp's own Turbo package has only that one). Exaggeration / CFG /
+    // min-p do nothing on Turbo, so only its own sampling knobs are sent.
+    if (truthy(get(body, "audio_prompt_path"))) {
+      if (spec.clone === false) throw new AudioCppError(`${row.name ?? "Chatterbox Turbo"} doesn't copy a voice from a clip`);
+      req.voice_ref = fwd(body.audio_prompt_path);
+    } else if (!has(spec.voices, get(body, "voice_id"))) {
       throw new AudioCppError(`${row.name ?? "Chatterbox Turbo"} speaks only cloned voices — this voice has no reference clip`);
     }
-    req.voice_ref = fwd(body.audio_prompt_path);
     const opts = {};
     for (const key of ["repetition_penalty", "top_p"]) {
       if (get(knobs, key) != null) opts[key] = pyFloatParse(knobs[key]);
@@ -1065,6 +1067,9 @@ export function toSpeechRequest(row, body) {
     if (Object.keys(opts).length) req.options = opts;
     return req;
   }
+
+  // Every other speech model audio.cpp has (engines/audiocpp/generated.js).
+  if (spec.generated) return self.generatedSpeechRequest(row, body, req);
 
   throw new AudioCppError(`no speech mapping for the ${family} family`);
 }

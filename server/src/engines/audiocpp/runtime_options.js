@@ -33,8 +33,9 @@ import * as self from "./runtime_options.js";
 // The spec's option types → the control the row shows.
 const CONTROL = { enum: "choice", bool: "switch", boolean: "switch", int: "number", float: "number", number: "number" };
 
-// The catalog's own mark: every 8-bit row's id ends "-q8" (`release.sixteenBit` swaps it for
-// the 16-bit sibling's). A file name is not one — Base 1.7B's is "…-q8_0_v2.gguf".
+// The catalog's own mark: every 8-bit row's id ends "-q8" (a sibling at another precision ends
+// with its own: "-bf16", "-f16", "-orig" — generated.js). A file name is not one — Base 1.7B's is
+// "…-q8_0_v2.gguf".
 const is8bit = (row) => String(row.id ?? "").endsWith("-q8");
 
 /** A spec default as the text audio.cpp reads, or null. */

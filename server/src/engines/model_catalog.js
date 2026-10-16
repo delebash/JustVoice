@@ -2,11 +2,11 @@
 // The speech model catalog — a READER over the engine manifests (the port of
 // justvoice/engines/model_catalog.py).
 //
-// Phase ②c of the 2026-08-13 redesign (plan doc §12): each engine's `manifest.js` carries
-// facts-only `VARIANTS` rows — id, name, languages, per-variant capabilities (cloning
+// Phase ②c of the 2026-08-13 redesign (plan doc §12): each engine's module (built from audio.cpp's
+// own files, engines/audiocpp/generated.js) carries facts-only `VARIANTS` rows — id, name, languages, per-variant capabilities (cloning
 // first-class), weights license, and pinned `sources` (repo + revision + verified file list +
 // real summed bytes). This module projects those rows onto the wire shape (`ModelVariant`).
-// No memory numbers live here — a variant's footprint is MEASURED at load time.
+// A variant's footprint is MEASURED at load time; before that, audio.cpp's estimate or its files.
 
 import { floorDiv, pyInt, pyMin } from "@delebash/llm-runner/platform/py";
 import { construct, ModelVariant } from "../models.js";
@@ -49,8 +49,9 @@ export function modelsFor(engineId) {
         hf_repo: firstOf(sources, "hf_repo"),
         url: firstOf(sources, "url"),
         languages_note: r.languages_note || "",
-        // audio.cpp's minimum graphics memory, for the models it describes and we don't wire by
-        // hand (the hand-wired ones are measured at load — the 2026-08-14 ruling).
+        // audio.cpp's minimum graphics memory, for every model built from its files — the seven
+        // engines described by our own files too since the adoption plan's slice 4 (the build's
+        // answer 3, decided 2026-10-15; measured at load only, before — the 2026-08-14 ruling).
         min_vram_gb: r.audiocpp?.generated ? (r.min_vram_gb ?? null) : null,
         // What it needs before a load measures it: that estimate or its download, whichever is
         // more (decided 2026-10-12).

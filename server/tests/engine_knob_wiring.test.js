@@ -27,6 +27,8 @@ const ROW_VARIANT = {
   kitten: ["kitten", "kitten-mini-0.8", { voice_id: "kitten_leo" }],
   pocket: ["pocket", "pocket-en-q8", { voice_id: "pocket_alba" }],
   voxcpm2: ["voxcpm2", "voxcpm2-q8", { audio_prompt_path: "/v/ref.wav" }],
+  // audio.cpp's own Turbo package (the adoption plan's E6/E14/F5): Turbo's row, its built-in voice.
+  "chatterbox-chatterboxturbo": ["chatterbox", "chatterbox-chatterboxturbo-q8", { voice_id: "chatterbox-chatterboxturbo_model_default" }],
 };
 // Every speech model built from audio.cpp's own files (engines/audiocpp/generated.js), with the
 // voice it can take: a clip where it clones, else its default built-in voice, else a description.

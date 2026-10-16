@@ -11,15 +11,19 @@ import * as download from "@delebash/llm-runner/runner/download";
 import { afterEach, expect, test, vi } from "vitest";
 import "./engines_helpers.js";
 import * as speechRuntimeApi from "../src/api/speech_runtime_api.js";
+import { ownEngine } from "../src/engines/audiocpp/generated.js";
 import * as japanese from "../src/engines/audiocpp/japanese.js";
 import * as release from "../src/engines/audiocpp/release.js";
 import * as runtime from "../src/engines/audiocpp/runtime.js";
 import * as slot from "../src/engines/audiocpp/slot.js";
-import * as chatterbox from "../src/engines/chatterbox/manifest.js";
-import * as kokoro from "../src/engines/kokoro/manifest.js";
 import * as manager from "../src/engines/manager.js";
 import { discoverEngines } from "../src/engines/manager.js";
 import { tmpPath } from "./helpers.js";
+
+// Chatterbox and Kokoro built again under the pin a test sets (Python reloaded their manifests;
+// since the adoption plan's slice 4 they are built from audio.cpp's files and our notes).
+const chatterbox = { build: () => ownEngine("chatterbox") };
+const kokoro = { build: () => ownEngine("kokoro") };
 
 const DIC = `unidic-lite-${japanese.VERSION}/unidic_lite/dicdir/`;
 const TAG = release.cfg.TAG;

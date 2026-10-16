@@ -1230,12 +1230,12 @@ export const ModelVariant = T.Object({
   // audio.cpp's own wording when its language list is a description ("100+ languages") rather
   // than codes; "" = the codes in `languages` say it.
   languages_note: opt(T.String(), ""),
-  // audio.cpp's minimum graphics memory for a model JustVoice hasn't wired by hand, in GB — shown
-  // until a load measures it, never booked (the engine list's plan §4); null = not stated.
+  // audio.cpp's minimum graphics memory for a model, in GB — shown until a load measures it, never
+  // booked (the engine list's plan §4); null = not stated.
   min_vram_gb: opt(nullable(T.Number()), null),
   // What it needs before a load measures it, in GB: min_vram_gb or its download, whichever is
-  // more — the line the tab shows and Auto decides by (decided 2026-10-12); null = not stated, or
-  // a hand-wired model.
+  // more — the line the tab shows and Auto decides by (decided 2026-10-12); null = neither is
+  // stated ("memory not measured yet").
   need_gb: opt(nullable(T.Number()), null),
   // Its peak on this machine's graphics card, measured at an earlier load; null = not yet.
   measured_mb: opt(nullable(T.Integer()), null),

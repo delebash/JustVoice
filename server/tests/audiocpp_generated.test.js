@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Every other speech model audio.cpp has, built from its own files (engines/audiocpp/
-// generated.js; docs/plans/2026-10-11-audiocpp-engine-catalog.md slice 2): the generated
-// engines join the hand-wired ones, each model has a capability row, a line's direction reaches
+// generated.js; docs/plans/2026-10-11-audiocpp-engine-catalog.md slice 2): every engine is built
+// from them — the seven described by our own files too, since the adoption plan's slice 4 — each
+// model has a capability row, a line's direction reaches
 // each family as its file says, the request keeps to the spec, a licence that isn't "Yes" gates
 // the first download, and a directed VoxCPM2 line goes without the clip's words.
 import { afterEach, expect, test, vi } from "vitest";
@@ -20,9 +21,15 @@ const engines = generated.generatedEngines();
 const rowOf = (engineId, variantId) => engines.get(engineId).VARIANTS.find((v) => v.id === variantId);
 const line = (extra = {}) => ({ voice_id: "v", text: "Two days wrong!", audio_prompt_path: "C:\\clips\\hatter.wav", ...extra });
 
-test("generated engines leave the hand-wired families to their own manifests", () => {
+test("every engine is built from audio.cpp's files; the seven described by our own files under their own ids", () => {
+  // The adoption plan's slice 4: Kokoro, KittenTTS, Pocket TTS, Qwen3-TTS, Chatterbox, VoxCPM2 and
+  // Qwen3-ASR are generated too, from their families' notes — no family of theirs is an engine of
+  // its own (was: they kept hand-written manifests and their families were left out here).
   expect(engines.size).toBeGreaterThan(0);
-  for (const fam of generated.HAND_WIRED_FAMILIES) expect(engines.has(fam), fam).toBe(false);
+  expect(generated.OWN_ENGINES).toEqual(["asr", "chatterbox", "kitten", "kokoro", "pocket", "qwen3", "voxcpm2"]);
+  for (const id of generated.OWN_ENGINES) expect(engines.has(id), id).toBe(true);
+  // (Chatterbox's family and our engine share the id "chatterbox".)
+  for (const fam of generated.OWN_FAMILIES) expect(!engines.has(fam) || generated.OWN_ENGINES.includes(fam), fam).toBe(true);
   for (const id of ["cosyvoice3", "index_tts2", "breeze_tts", "higgs_audio_tts", "fish_audio"]) expect(engines.has(id), id).toBe(true);
   const found = manager.discoverEngines();
   expect(found.has("cosyvoice3")).toBe(true);
@@ -196,10 +203,11 @@ test("every engine's facts: our licence word beside audio.cpp's, its status, tes
   expect(higgs.licence).toMatchObject({ commercial: "Conditional", table: "No" });
   expect(higgs.catalog_status).toBe("supported");
   expect(higgs.tested).toBeNull();
-  // A hand-wired engine reads its families' curated file — Chatterbox runs two, one carries it.
+  // One of the seven engines described by our own files reads its families' — Chatterbox runs
+  // two, one carries it. Its note says what it was, never "wired by hand" (the user, 2026-10-15).
   const chatterbox = generated.engineFacts(engines.get("chatterbox").module);
   expect(chatterbox.licence).toMatchObject({ name: "MIT", commercial: "Yes", table: "Yes" });
-  expect(chatterbox.tested.note).toBe("Wired by hand and measured by JustVoice.");
+  expect(chatterbox.tested.note).toBe("Measured by JustVoice.");
   expect(chatterbox.best_for.length).toBe(2);
   for (const [id, m] of engines) {
     if (m.module.GENERATED || m.module.VARIANTS?.some((v) => v.audiocpp)) {
@@ -237,13 +245,16 @@ test("a family file keeps out a model that doesn't speak as listed", () => {
   expect(voices.some((id) => id.startsWith("vieneu"))).toBe(false);
 });
 
-test("a model needs its estimate or its files, whichever is more; a hand-wired one, neither", () => {
+test("a model needs its estimate or its files, whichever is more — the seven described by our own files too", () => {
   // decided 2026-10-12: the estimate is one per model, shared by its precisions.
   expect(generated.needOf(rowOf("omnivoice", "omnivoice-q8"))).toEqual({ gb: 10, by: "estimate" });
   expect(generated.needOf(rowOf("firered_audio", "firered_audio-orig"))).toEqual({ gb: 23.3, by: "files" });
   expect(generated.needOf(rowOf("moss_ttsd", "moss_ttsd-q8"))).toEqual({ gb: 12.1, by: "files" });
+  // The build's answer 3 (decided 2026-10-15): "slice 4 gives those models audio.cpp's memory
+  // estimate" (was: none — "memory not measured yet" until their first load).
   const kokoro = manager.discoverEngines().get("kokoro").module.VARIANTS[0];
-  expect(generated.needOf(kokoro)).toBeNull();
+  expect(generated.needOf(kokoro)).toEqual({ gb: 1, by: "estimate" });
+  expect(generated.needOf({ audiocpp: { generated: false } })).toBeNull();
 });
 
 test("the clip's words reach a spec that lists no options, as they reach one that lists them", () => {

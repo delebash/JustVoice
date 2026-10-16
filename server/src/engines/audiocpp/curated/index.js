@@ -3,14 +3,17 @@
 // §1, §4, §7): every speech engine's licence in plain words (TASKS "Every speech engine's licence
 // in plain words"), and where we know it, how a line's direction reaches the model, what we found
 // by testing, what it is best for. A family without DIRECTION is offered, marked "can't be
-// directed yet"; without TESTED, "Not tested by JustVoice yet". Adding a family is one file here
-// and one line below.
+// directed yet"; without TESTED, "Not tested by JustVoice yet". A family whose file has an ENGINE
+// runs in an engine of ours, with our ids, names and request (generated.js `ownEngine`): Kokoro,
+// KittenTTS, Pocket TTS, Qwen3-TTS, Chatterbox (with Turbo and Nano), VoxCPM2, Qwen3-ASR. Adding a
+// family is one file here and one line below.
 
 import * as audio8_tts from "./audio8_tts.js";
 import * as auk from "./auk.js";
 import * as breeze_tts from "./breeze_tts.js";
 import * as canary_asr from "./canary_asr.js";
 import * as chatterbox from "./chatterbox.js";
+import * as chatterbox_turbo from "./chatterbox_turbo.js";
 import * as citrinet_asr from "./citrinet_asr.js";
 import * as cohere_asr from "./cohere_asr.js";
 import * as confucius4_r2t2 from "./confucius4_r2t2.js";
@@ -84,6 +87,7 @@ export const CURATED = {
   breeze_tts,
   canary_asr,
   chatterbox,
+  chatterbox_turbo,
   citrinet_asr,
   cohere_asr,
   confucius4_r2t2,

@@ -187,19 +187,23 @@ test("any_load_needs_the_memory_it_took_at_its_last_loads", async () => {
   await expect(mgr._admitSystemMemory(m, "tts", "moss_tts_local-q8", "cuda")).resolves.toBeUndefined();
 });
 
-test("auto_ignores_the_estimate_for_a_hand_wired_model", async () => {
-  // audio.cpp lists Chatterbox Multilingual at 12 GB; it runs on an 8 GB card, measured.
+test("auto_tries_the_card_for_chatterbox_whose_estimate_is_more_than_the_card", async () => {
+  // audio.cpp lists Chatterbox Multilingual at 12 GB; it runs on an 8 GB card, measured. Its files
+  // fit the card, so the card is tried first (the build's answer 3, decided 2026-10-15: the seven
+  // engines described by our own files get audio.cpp's estimate as every model does).
   const mgr = mgrFor();
   expect((await mgr.placementFor(mgr.getManifest("chatterbox"), "tts", "chatterbox-multilingual-v2-q8"))[0]).toBe("gpu");
 });
 
 test("auto_takes_the_card_when_nothing_else_is_on_it", async () => {
-  // Never measured on this card and wired by hand, so no size: the card, claiming no fit
-  // (2026-10-15) — even beside other programs; its first load measures it.
+  // Never measured on this card: weighed by audio.cpp's estimate (Kokoro's 1 GB) — the build's
+  // answer 3 (decided 2026-10-15): the seven engines described by our own files get it as every
+  // model does (was: no size, so the card, claiming no fit). With no reading of the card, the card,
+  // claiming nothing; beside other programs, it fits the card's free memory.
   const mgr = mgrFor();
   expect(await mgr.placementFor(mgr.getManifest("kokoro"), "tts", "kokoro-82m-q8")).toEqual(["gpu", "", false]);
   vi.spyOn(EngineManager.prototype, "poolUsedMb").mockResolvedValue(6000);
-  expect(await mgr.placementFor(mgr.getManifest("kokoro"), "tts", "kokoro-82m-q8")).toEqual(["gpu", "", false]);
+  expect(await mgr.placementFor(mgr.getManifest("kokoro"), "tts", "kokoro-82m-q8")).toEqual(["gpu", "it fits in the card's free memory", false]);
 });
 
 test("auto_weighs_a_never_measured_model_by_what_audiocpp_says_it_needs", async () => {
@@ -294,7 +298,10 @@ test("a_never_measured_slow_model_unloads_the_ai_model", async () => {
   aiOnCard();
   const [where, why, unload] = await mgr.placementFor(mgr.getManifest("chatterbox"), "tts", "chatterbox-multilingual-v2-q8");
   expect([where, unload]).toEqual(["gpu", true]);
-  expect(why).toContain("AI model makes room");
+  // Why, in the words every model audio.cpp says is too big for the card gets: its files fit, so
+  // the card is tried first (the build's answer 3, decided 2026-10-15; was "… so the AI model makes
+  // room").
+  expect(why).toContain("tries the graphics card first");
 });
 
 test("a_measured_size_that_does_not_fit_goes_through_admission", async () => {
