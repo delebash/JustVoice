@@ -161,6 +161,25 @@ test("audio.cpp's memory estimate for the seven, as for every model (the build's
   expect([qwen.min_vram_gb, qwen.need_gb]).toEqual([6, 6]);
 });
 
+test("KittenTTS offers a seed like every engine, and its request sends it (TASKS \"Slice 5's findings\" 1)", () => {
+  // The fork's 7ec5c652 (jv bcc5dfbb): KittenTTS repeats its take on the graphics card and the CPU.
+  const seedOf = (model) => lookup(model).knobs.find((k) => k.key === "seed");
+  expect(seedOf("kitten")).toEqual({ ...seedOf("kokoro"), max: generated.requestOptionsOf("kitten_tts").get("seed")?.max ?? 2_000_000_000 });
+  expect(lookup("kitten").notes).toContain("The same seed gives the same audio.");
+  // Every model of the seven that speaks offers one now.
+  for (const model of ["kokoro", "kitten", "pocket", "qwen3-cv", "qwen3-base", "qwen3-vd", "chatterbox-multilingual", "chatterbox-turbo", "chatterbox-nano", "voxcpm2"]) {
+    expect(seedOf(model), model).toBeTruthy();
+  }
+  const kitten = row("kitten", "kitten-mini-0.8");
+  expect(slot.toSpeechRequest(kitten, { voice_id: "kitten_leo", text: "Hi.", seed: 42, delivery: { speed: 1.1 } })).toEqual({
+    model: "kitten-mini-0.8",
+    input: "Hi.",
+    seed: 42,
+    voice: "Leo",
+    speed: 1.1,
+  });
+});
+
 test("voices, languages and piece budgets read from audio.cpp's files (F10)", () => {
   // The voices: the spec's, in its order, under our ids — Kitten's Leo and Pocket's alba its defaults.
   expect(row("kitten", "kitten-mini-0.8").audiocpp.default_voice).toBe("kitten_leo");

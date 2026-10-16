@@ -33,13 +33,15 @@ export const ENGINE = {
 };
 
 // Its one model — its download is the spec's original-precision package, under the id it always had.
-// Measured: the same seed did not give the same audio twice (2026-10-02), so it offers no seed.
+// The same seed repeats its take on the graphics card and the CPU since our fork's 7ec5c652 (jv
+// bcc5dfbb), so it offers a seed like every engine (decided 2026-10-16, TASKS "Slice 5's findings"
+// 1; was: no seed, the same seed not giving the same audio twice — measured 2026-10-02).
 export const MODELS = [
   {
     entry: "kitten-tts",
     model: "kitten",
     name: "KittenTTS Mini 0.8",
-    description: "Eight English preset voices. Made for the CPU. The same seed does not repeat the same audio.",
+    description: "Eight English preset voices. Made for the CPU.",
     languages: "voices",
     packages: { kitten_tts_mini_0_8_orig: "kitten-mini-0.8" },
   },

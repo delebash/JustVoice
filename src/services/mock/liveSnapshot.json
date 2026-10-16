@@ -1,5 +1,5 @@
 {
- "_source": "The server's own answers for the seven engines described by our own files (Kokoro, KittenTTS, Pocket TTS, Qwen3-TTS, Chatterbox, VoxCPM2, Speech recognition), computed from this checkout's code on 2026-10-16 (80764e12) by scripts/mock-snapshots.js, the pinned speech runtime taken as installed: /v1/engines/capabilities, /v1/voices (presets), /v1/engines (terms), /v1/effects/catalog. Model languages: what /v1/voices says each model speaks; versions: /v1/voices/{id}/model-version's rows.",
+ "_source": "The server's own answers for the seven engines described by our own files (Kokoro, KittenTTS, Pocket TTS, Qwen3-TTS, Chatterbox, VoxCPM2, Speech recognition), computed from this checkout's code on 2026-10-16 (6a020731) by scripts/mock-snapshots.js, the pinned speech runtime taken as installed: /v1/engines/capabilities, /v1/voices (presets), /v1/engines (terms), /v1/effects/catalog. Model languages: what /v1/voices says each model speaks; versions: /v1/voices/{id}/model-version's rows.",
  "capabilities": {
   "kokoro": {
    "engine_id": "kokoro",
@@ -80,6 +80,20 @@
      "unit": "×",
      "hint": "Reading pace multiplier.",
      "advanced": false
+    },
+    {
+     "key": "seed",
+     "label": "Seed",
+     "type": "number",
+     "min": 0,
+     "max": 2000000000,
+     "step": 1,
+     "box": false,
+     "default": 0,
+     "choices": [],
+     "unit": "",
+     "hint": "The same seed repeats the same take. 0 = a new take each time.",
+     "advanced": true
     }
    ],
    "inline_tags": [],
@@ -88,7 +102,7 @@
    "speed_native": true,
    "notes": [
     "Eight English preset voices, made for the CPU.",
-    "The same seed does not repeat the same audio."
+    "The same seed gives the same audio."
    ]
   },
   "pocket": {

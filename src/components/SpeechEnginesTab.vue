@@ -66,7 +66,7 @@ const PICKING_COLUMNS = [
 ];
 const PICKING = [
   { want: "Ready-made voices, fast, on any machine", use: "Kokoro — 54 built-in voices, 9 languages", give: "No cloning and no written direction — pace, pitch, gain and pauses only" },
-  { want: "English voices made for the CPU", use: "Kitten — 8 built-in voices", give: "English only; no cloning, no written direction; the same seed does not repeat the same audio" },
+  { want: "English voices made for the CPU", use: "Kitten — 8 built-in voices", give: "English only; no cloning, no written direction" },
   { want: "Someone's own voice on a modest machine", use: "Pocket — cloning, 20 built-in voices", give: "One language per model; no written direction" },
   { want: "To direct performances in words", use: "Qwen3 CustomVoice — 9 built-in voices, 10 languages", give: "Cannot clone" },
   { want: "Someone's own voice, in 10 languages", use: "Qwen3 Base", give: "Written direction is dropped" },

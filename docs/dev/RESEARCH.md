@@ -229,18 +229,31 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
   family. (was: nothing sent — Kokoro, Kitten, Turbo and VoxCPM2 repeated — until 2026-10-04.)
   — *code + tests, 2026-10-04* · `slot.py` `to_speech_request`; audit §13.5.
 - **The same seed repeats the take on every engine on the CPU, and on the graphics card on all
-  but Kitten and Pocket.** Through the app (main `d8cf3055`, runtime audio.cpp dev `8c9a6322`,
-  RTX 2070 SUPER 8 GB), seed 42, the same line, 3–4 takes each: byte-identical every time on
+  but Pocket TTS and Qwen3-TTS, whose take can change slightly with the longest request since
+  the model loaded.** Through the app (RTX 2070 SUPER 8 GB), seed 42, the same line, 3–4 takes
+  each — first on main `d8cf3055` with audio.cpp dev `8c9a6322`: byte-identical every time on
   Kokoro (CPU and GPU), Qwen3 CustomVoice, Qwen3 Base 1.7B, Chatterbox Multilingual, Chatterbox
-  Turbo (a clone) and VoxCPM2; on the CPU, byte-identical on Kitten and Pocket; on the GPU, Kitten's
-  two takes unrelated (correlation about 0) and Pocket's identical for the first 2.5 s, then
-  drifting. A CPU take and a GPU take of the same seed differ (Kokoro, Kitten, Pocket). Qwen3
-  VoiceDesign: the first take after a fresh load one 80 ms frame longer than the next two
-  (correlation 0.99975), the next two identical. Every take read back word for word. F5-TTS repeats
-  since the fork's `8c9a6322` (§10.15). The app still offers Kitten no seed
-  (`capability_details.js` `kitten`, from the 2026-10-02 reading). (was: "every engine but
-  KittenTTS" repeats, Kitten never — 2026-10-01/02, the device not recorded — until 2026-10-16.) —
-  *measured, 2026-10-16* · the slice-4 GPU run's `phase1/json/renders.json` (scratch, not kept).
+  Turbo (a clone) and VoxCPM2; on the CPU, byte-identical on Kitten and Pocket; on the GPU,
+  Kitten's two takes unrelated (correlation about 0) and Pocket's identical for the first 2.5 s,
+  then drifting; Qwen3 VoiceDesign's first take after a fresh load one 80 ms frame longer than the
+  next two (correlation 0.99975), the next two identical. Then on dev `bcc5dfbb`: KittenTTS repeats
+  on the GPU and the CPU (the fork's 7ec5c652 — its predictor LSTMs started each compute from what
+  the last one left; their zero states were written once, at graph build), the rest as before;
+  39 / 39 takes read back. A CPU take and a GPU take of the same seed differ (Kokoro, Kitten,
+  Pocket). F5-TTS repeats since the fork's `8c9a6322` (§10.15). **Why Pocket and Qwen3 differ on
+  the GPU:** their graphs are sized by the longest request so far — Qwen3's talker step graph
+  doubles (`talker.cpp:1862-1892`), Pocket's by the shared capacity controller
+  (`session.cpp:325-370`) — and ggml's CUDA flash attention splits its sum by that size
+  (`fattn-common.cuh:1057`), so the additions run in another order; the words don't change. A
+  first load with no stored price warms up on a full-length piece (800 characters on VoiceDesign),
+  which is why a model's first take after a new runtime build differs. Whether to change that
+  (in the model, in ggml, or not at all) is the user's (TASKS "Same seed, same take on the graphics
+  card"). The app offers every engine a seed — Kitten's since 2026-10-16 (`capability_details.js`
+  `kitten`, TASKS "Slice 5's findings" 1). (was: "all but Kitten and Pocket" on the card, Kitten
+  offered no seed — until 2026-10-16; before that, "every engine but KittenTTS" repeats, Kitten
+  never — 2026-10-01/02, the device not recorded.) — *measured, 2026-10-16* · the slice-4 GPU
+  run's `phase1/json/renders.json` (scratch, not kept); TASKS "Same seed, same take on the graphics
+  card" BUILT.
 - **Defaults inside audio.cpp:** Qwen3 temperature 0.9, top-k 50, top-p 1.0, repetition 1.05,
   `max_new_tokens` 8192 (the model's own `generation_config.json`); Chatterbox temperature 0.8,
   repetition 1.2, min-p 0.05, top-p 1.0 (upstream `mtl_tts.py` on master says the same); Turbo

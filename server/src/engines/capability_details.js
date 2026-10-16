@@ -197,19 +197,22 @@ export const CAPABILITY_DETAILS = {
   }),
 
   // ─── KittenTTS (audio.cpp `kitten_tts`, CPU placement 2026-10-02) ───
-  // Speed only: audio.cpp's KittenTTS takes a seed, but the same seed does not repeat the same
-  // audio (measured 2026-10-02), so no seed control is offered. Speed from audio.cpp's 0.01 (was
-  // 0.5); its top, 2, stops short of ours (3), kept.
+  // Speed and a seed, like every engine (decided 2026-10-16, TASKS "Slice 5's findings" 1): the
+  // same seed repeats the same audio on the graphics card and the CPU since our fork's 7ec5c652
+  // (jv `bcc5dfbb`) — its predictor's LSTMs started each compute from what the last one left
+  // (TASKS "Same seed, same take on the graphics card"). (was: speed only, as the same seed did not
+  // repeat — measured 2026-10-02 — until 2026-10-16.) Speed from audio.cpp's 0.01 (was 0.5); its
+  // top, 2, stops short of ours (3), kept.
   kitten: detail({
     engine_id: "kitten",
     display_name: "KittenTTS",
     supports_voice_cloning: false,
-    knobs: atAudiocppRanges("kitten_tts", [speedKnob()]),
+    knobs: atAudiocppRanges("kitten_tts", [speedKnob(), seedKnob("kitten_tts")]),
     inline_tags: [],
     pitch_native_st_range: null,
     pitch_post_process: true,
     speed_native: true,
-    notes: ["Eight English preset voices, made for the CPU.", "The same seed does not repeat the same audio."],
+    notes: ["Eight English preset voices, made for the CPU.", "The same seed gives the same audio."],
   }),
 
   // ─── Pocket TTS (audio.cpp `pocket_tts`, CPU placement 2026-10-02) ──

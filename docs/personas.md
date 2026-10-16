@@ -499,13 +499,16 @@ The settings audio.cpp's own screen shows for the model are in view; the rest,
 for experts, fold under **Advanced (N)** at the card's end — Qwen3's three
 *Detail* settings, for example (since 2026-10-15). Render's *This line only*
 folds them the same way.
-**↺** puts one back to the model's default. A model with none and no seed says
-*KittenTTS has no sampling settings.*
+**↺** puts one back to the model's default. A model with no settings and no seed
+would say *‹Model› has no sampling settings.* — every speech model has a seed
+since 2026-10-16, when KittenTTS got one.
 
 **Seed** makes a take repeatable: the same seed gives the same take, and empty
-gives a new one each time. It goes up to the top the model's description gives
-(4,294,967,295 on most models), else 2,000,000,000. **🎲** picks a new seed. On a model that doesn't
-repeat with a seed the field is off: *KittenTTS doesn't repeat with a seed.*
+gives a new one each time — on Pocket TTS and Qwen3-TTS on the graphics card,
+nearly the same ([Engines → The seed](engines.md#the-seed)). It goes up to the
+top the model's description gives (4,294,967,295 on most models), else
+2,000,000,000. **🎲** picks a new seed. On a model without one the field is off:
+*‹Model› doesn't repeat with a seed.* (KittenTTS, until 2026-10-16.)
 
 **⚖️ Compare settings…** hears the same line three ways. Pick a setting (Pace,
 Pitch, Gain, or one of the model's sampling settings) and three values — the

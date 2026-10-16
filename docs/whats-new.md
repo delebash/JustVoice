@@ -2,6 +2,20 @@
 
 ## v0.1.0
 
+- **New models that didn't work now do (2026-10-16)** — **QwenCleo-ASR** loads (its model and
+  its word aligner come from two places, and the load looked for the model in the wrong folder);
+  **Pocket TTS French** loads and clones (its load spoke a built-in voice it doesn't have); Pocket
+  TTS's built-in voices list English, German, Italian, Portuguese and Spanish, not French, so a
+  persona on one can't be saved in French and then stop at its first line; and a model that speaks
+  only from a clip — Qwen3-TTS Base, Chatterbox Multilingual, Pocket TTS French — remembers how
+  much memory it takes after its first line, even when a render moves straight on to another
+  model, where it remembered nothing or far too little
+  ([Engines](engines.md#how-fast-and-how-much-memory), [Personas](personas.md))
+- **KittenTTS repeats a take with the same seed, and offers one (2026-10-16)** — a fix in
+  JustVoice's copy of audio.cpp makes its take on the graphics card repeat as it did on the CPU,
+  so it has a **Seed** like every engine. Every engine repeats on the CPU; on the graphics card
+  every one but Pocket TTS and Qwen3-TTS, whose take can change slightly with the longest line
+  spoken since the model loaded — the words stay the same ([Engines → The seed](engines.md#the-seed))
 - **The Engines guide explains the list instead of copying it (2026-10-16)** — it now walks
   through AI Settings → Speech engines part by part: an engine's head and notes, a model's row
   and its chips, its downloads, built-in voices, cloning and design, direction, settings and
