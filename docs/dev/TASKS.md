@@ -831,8 +831,15 @@ STATE:  DECIDED 2026-10-11 — the plan's §11, as shown after a rethink "for 't
 WHY:    an automated run where the AI decides and the user reviews; the comparison decides what
         to change and whether to recommend a frontier model.
 NOT:    asking the user to pick the narrator at the start; shipping FireRedTTS3 before a ruling.
-BUILT:  the plan's §11 and §12 carry these answers.
+BUILT:  the plan's §11 and §12 carry these answers. 6 and 7 — 2026-10-16, the plan's slice 4
+        (branch `oneclick-s4`, with the merge of Discover's names: `POST /v1/projects/:id/speakers/
+        merge`, its Local/Frontier cards): Discover's task carries `speaker_discovery`;
+        `POST /v1/scenes/:id/group-lines` gives each spoken line Analyze left blank to one of the
+        group the text names, else the narrator, flagged `group` (RESEARCH §10.19; docs studio.md,
+        ai-features.md, whats-new). Accepted with the model stubbed (`one_click_alice.test.js`).
 OPEN:   slice 0: direction on/off and the frozen Hatter on the engines above, a blind listening page.
+        7: the Check column's words for the `group` mark (its tag and question) — the user's, with
+        the run's screen; slice 4's gemma acceptance, `npm run eval:speakers`, once the card is free.
 GO:     given 2026-10-11 ("yes your rec on all").
 
 ### The order of work after the research sweep (decided 2026-10-11)

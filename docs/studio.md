@@ -200,6 +200,32 @@ there ("Answers to Ode") is not proposed as someone new.
 called *Gudgeon* that rides on someone's shoulder — can read to the model as
 a being, and it may propose it. **Ignore** it once and it stays out.
 
+### One list for the whole book
+
+**Speakers found** puts the spellings of one person on one row when one is the
+other with words added — *Sedge* and *Old Sedge*. A chapter can also write a
+person in a way that shares no such run of words with another chapter's: in
+*Alice*, the Queen is *Queen of Hearts* in chapter VII and *the Queen* in VIII,
+two rows here. The one-click audiobook (being built) adds speakers without you,
+so before it adds anyone it merges every chapter's scan into one list of people
+(`POST /v1/projects/{id}/speakers/merge`, since 2026-10-16):
+
+- names that contain one another once a leading *the* or *a* is set aside are
+  checked by the AI, which says which of them are one person — *the Queen* and
+  *Queen of Hearts* are; the heading *THE KING AND QUEEN OF HEARTS*, which
+  shares words with both the King and the Queen, is no one; with a cloud model
+  (a **Frontier** recipe) the AI reads every name, its counts and its quotes at
+  once, so names that share no words can be one person too;
+- a person every scanned chapter counted **0** lines for is left out — named,
+  never heard speaking;
+- your **Ignored** names stay out, and a name that is already a speaker of the
+  book isn't added again.
+
+Each person then becomes a speaker as **＋ Add** makes one, the other names kept
+as *Also called*. This page doesn't use the merge yet — it still shows the rows
+as they are. How the AI is asked, and its two recipes: [AI features → The
+one-click audiobook's speaker steps](ai-features.md#the-one-click-audiobooks-speaker-steps).
+
 ### Removing a speaker
 
 Removing a speaker deletes them from the book: every line they had goes back to
@@ -699,6 +725,30 @@ this chapter is too long for the model to read, even on its own. It needs about
 
 **Cancel means cancel.** Stopping a run mid-chapter leaves that chapter exactly
 as it was; nothing is written.
+
+### Lines with no single speaker
+
+**A line several people say at once can't render.** *"No room! No room!" they
+cried out* is the Hatter's and the March Hare's together; Analyze rightly names
+no one, and a line with no speaker blocks the render. The one-click audiobook
+(being built) can't stop to ask, so after Analyze it gives each spoken line still
+with no speaker to one speaker (decided 2026-10-11): to **one of the group** the
+text names — *they* = the Hatter and the March Hare → one of them — or to the
+**narrator** when the text makes no one clear, or when no one who says it is a
+speaker of this book (*the soldiers shouted in reply*). A book with no narrator
+yet keeps such a line blank. Lines you set are never asked about, and a chapter
+Analyze hasn't read is refused: *Analyze this chapter first — only the lines
+Analyze leaves with no speaker are asked about.*
+
+There is no button for it yet — the one-click run calls it, through
+`POST /v1/scenes/{id}/group-lines` ([AI features → The one-click audiobook's
+speaker steps](ai-features.md#the-one-click-audiobooks-speaker-steps)). Each line
+it gives is **marked to check**: *Decided by* says **AI, from the story around
+it**, the Confidence column shows **—**, and the line counts under **To check**,
+with **👁 Show the lines around** and **✓ Looks right**, until you set a speaker
+or confirm it. (The Check column's tag and question for this mark come with the
+one-click run's screen.) Who the group was is kept on the line; Analyze run on the
+chapter again decides the line afresh and drops it.
 
 ### Re-analyze
 

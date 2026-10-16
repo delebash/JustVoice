@@ -1183,7 +1183,8 @@ decided 2026-10-05 and its blast radius.
   speaker", nearly all narration, until 2026-10-05). — *code, 2026-10-05* · `_chapter_script`.
 - Discover's scan and Script's Analyze share ONE queue per book (`services/chapterRun.js`) —
   one model call, one chapter at a time; each chapter is an inline kit task
-  (`speaker_identification` / `speaker_attribution`, `meta.run`). The kit lists tasks oldest
+  (`speaker_discovery` / `speaker_attribution`, `meta.run` — Discover's was
+  `speaker_identification`, a name the server never had, until 2026-10-16, §10.19). The kit lists tasks oldest
   first and a finished one lingers, so a strip must prefer the running task (`runStripTask`).
   — *code, 2026-10-05*.
 - Each step has its own part of that queue (since 2026-10-05, [`2026-10-05-page-tasks.md`](../plans/2026-10-05-page-tasks.md)):
@@ -3884,6 +3885,54 @@ the module is `server/src/extraction/direction.js`, the step `directScene` in
 - **The answer key lines up with the app's cut**: Alice VII 150 spoken lines, 73 with a cue, 24 of
   them naming one of the nine emotions; VIII 90, 50, 26. — *measured, no model, 2026-10-16* ·
   `npm run eval:direction` against a stand-in.
+### 10.19 Slice 4 — names across chapters, and lines with no single speaker (2026-10-16)
+
+The one-click plan's slice 4 (`docs/plans/2026-10-11-one-click-audiobook.md` §10 item 4, answers
+6 and 7). Built on branch `oneclick-s4`; nothing here ran on a model — every fact is code, or a
+test with the model stubbed. The gemma acceptance is owed: `npm run eval:speakers` (below).
+
+- **Why Discover's page shows the Queen twice.** Its merge (`studioStatus.foundSpeakers`, and the
+  server's `names.isVariant`) joins a name to another only when its words are a run inside the
+  other's — *Sedge* / *Old Sedge*. *the Queen* and *Queen of Hearts* share no such run ("the" is
+  not in the longer name), so they stay two rows. The run's merge sets one leading article aside
+  first (`names.bare`: the, a, an, and the common French, German, Spanish and Italian articles) —
+  *queen* is a run of *queen of hearts*. — *code, 2026-10-16* · `extraction/names.js`.
+- **On gemma's Alice names (§10.4) the local recipe has one group to ask about:** *Queen of
+  Hearts*, *THE KING AND QUEEN OF HEARTS*, *the Queen*, *the King* — the heading shares words with
+  both royals and pulls the King in, so the call must split the group, not just confirm it (its
+  answer says which names are one person; a name it leaves out stays alone). Every other name
+  stands alone — no call is needed for them. — *code, run 2026-10-16* (`merge_names.test.js` on
+  `tests/alice_fixtures.js`, the names as §10.4 lists them, the key's counts).
+- **The 0-line rule uses Discover's count, not the text's.** With the group split as a model
+  should, the merge leaves out Time, Elsie, Lacie, Tillie, the heading, the Duchess and the
+  executioner, and keeps the Knave: Discover counted 1 line for him and VII–VIII give him none, so
+  he becomes a speaker with 0 lines after Analyze. A person a scan gave no number for is kept. —
+  *code, run 2026-10-16* (`one_click_alice.test.js`).
+- **The merged names don't break the "said X" rule on Alice.** Discover's spellings ("Hatter",
+  "the King", "the Cheshire Cat", the Queen with *the Queen* as Also called) promoted as they come,
+  then Analyze with the model answering the key: 235 of 235 keyed single-speaker lines right, the
+  rule and propagation deciding theirs with no wrong one. — *code, run 2026-10-16*
+  (`one_click_alice.test.js`, the model stubbed — so this checks the cast and the rule, not gemma).
+- **Alice VII–VIII has five lines with no single speaker** — VII D2 ("No room! No room!" — *the
+  three* crowd the corner, the key gives it to the Hatter and the March Hare), D94–D95 (*they both
+  cried*), D121 (the Hatter and the March Hare went "Sh! sh!"), VIII D39 (*the soldiers*, not in
+  the cast). The key names each group since 2026-10-16 (`groups`; [] for the soldiers). Gemma's
+  Analyze left exactly these five blank (§10.4: 240/240, "the five group lines answered
+  unknown"), and the step asks only about lines left blank (`_secondLookAsks`), so on gemma it is
+  five calls for the two chapters. — *record + code, 2026-10-16*.
+- **The feature-name mismatch (answer 6).** The renderer labelled Discover's AI task
+  `speaker_identification` (`src/services/chapterRun.js`), a name the server never had; its feature
+  is `speaker_discovery` (`feature_catalog.js`), and the AI tasks panel prints a task's feature as it
+  is (the kit's `AiStatusPanel.vue`, `task.feature`). Now the server's name. The Find new speakers
+  **action** keeps its key, `speaker_attribution.identify`: it is the template row, not the feature
+  ("the action key stays for its callers", `seed_feature_prompts.js`), and renaming it would leave an
+  edited row behind in every database (no migrations). — *code, 2026-10-16*.
+- **Owed — the gemma acceptance:** `npm run eval:speakers -- --server <url>` imports Alice VII–VIII
+  as a new book, runs Discover, the merge, ＋ Add, Analyze and the group lines through the server's
+  routes, scores them against the key (one person per keyed speaker, no one left out who speaks,
+  every keyed line, each group line to its group and flagged), then deletes the book (`--keep`
+  keeps it). Run once the graphics card is free; the frontier side when there is an API key (plan
+  §7). — *record, 2026-10-16*.
 
 ---
 

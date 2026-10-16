@@ -41,9 +41,12 @@ const NO_MODEL = {
   analyze: "Script can't analyze without a language model — set one in AI Settings.",
   discover: "Discover can't scan without a language model — set one in AI Settings.",
 };
-const FEATURE = { analyze: "speaker_attribution", discover: "speaker_identification" };
+// The server's feature names (server/src/feature_catalog.js) — Discover's task was labelled
+// "speaker_identification", a name the server never had, until 2026-10-16 (the one-click plan's
+// answer 6).
+const FEATURE = { analyze: "speaker_attribution", discover: "speaker_discovery" };
 // A step's strip shows its own tasks: Script's are Analyze and its 🔎 Second look.
-const STRIP_FEATURES = { analyze: ["speaker_attribution", "speaker_second_look"], discover: ["speaker_identification"] };
+const STRIP_FEATURES = { analyze: ["speaker_attribution", "speaker_second_look"], discover: ["speaker_discovery"] };
 
 // Analyze's second look on its strip (decided 2026-10-06): the count, and what it
 // is and why it runs as the count's tooltip — the same words as docs/studio.md

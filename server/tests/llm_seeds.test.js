@@ -32,13 +32,15 @@ test("all_actions_seed_as_shared_rows", async () => {
   await seedWorkspace();
   const rows = Object.fromEntries(stores.getPromptStore().list().map((r) => [r.key, r]));
   for (const key of Object.keys(DEFAULT_FEATURE_PROMPTS)) expect(rows, `missing shared row ${key}`).toHaveProperty([key]);
-  // 15 actions over 11 features (the refine x4 composition + attribution's two routes + discovery
-  // as its own speaker_discovery feature + Analyze's second look + direction's two recipes,
-  // 2026-10-16; Reasoned died 2026-08-07).
-  expect(Object.keys(DEFAULT_FEATURE_PROMPTS).length).toBe(15);
+  // 18 actions over 13 features (the refine x4 composition + attribution's two routes + discovery
+  // as its own speaker_discovery feature + Analyze's second look; Reasoned died 2026-08-07; the
+  // one-click plan's slice 2 added direction's two recipes, its slice 4 Merge found names' two
+  // recipes and the group lines, 2026-10-16).
+  expect(Object.keys(DEFAULT_FEATURE_PROMPTS).length).toBe(18);
   expect(rows["direction.local"].json_mode).toBe(true);
   expect(rows["direction.frontier"].json_mode).toBe(false); // so its preset's thinking runs
   expect(rows.speaker_second_look.json_mode).toBe(true);
+  for (const key of ["speaker_merge.local", "speaker_merge.frontier", "speaker_group"]) expect(rows[key].json_mode, key).toBe(true);
   expect(rows["refine.base"].user_template).toBe("{{transcript}}");
   expect(rows["speaker_attribution.guided"].user_template).toContain("{{speakers}}");
   expect(rows.smart_assign.json_mode).toBe(true);

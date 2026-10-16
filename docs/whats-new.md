@@ -16,6 +16,15 @@
   once with a new seed, and one that still fails is flagged on its line. For now it runs through
   the API (`POST /v1/scenes/{id}/check_takes`); Render doesn't show its findings yet. Its limits are
   settings, `take_check` ([Studio → Checking takes](studio.md#checking-takes))
+- **Names merged across chapters; lines no one person says (2026-10-16)** — two steps of the
+  coming one-click audiobook, as routes and as cards in AI Settings → Routing by feature: **Merge
+  found names** turns every chapter's Discover scan into one list of people (*the Queen* and
+  *Queen of Hearts* one person; people named but never heard speaking left out), and **Speaker
+  attribution · lines with no single speaker** gives a line several people say at once to one of
+  them — or to the narrator when no one is clear — marked to check. No button runs them yet. In
+  the AI tasks panel, Discover's scan now carries its feature's own name, `speaker_discovery`
+  ([Studio → One list for the whole book](studio.md#one-list-for-the-whole-book),
+  [Lines with no single speaker](studio.md#lines-with-no-single-speaker))
 - **A cloud model gets the big-model route (2026-10-16)** — every engine preset has a **Recipe**:
   Local for a model on this machine, Frontier for a cloud account, or set by hand on a feature's
   chip. Speaker attribution's Auto now gives a Frontier model **Direct**; it used to read a cloud

@@ -26,6 +26,7 @@
     "eval:discover": "node scripts/node24.js server/scripts/eval_discover.js",
     "eval:attribution": "node scripts/node24.js server/scripts/eval_attribution.js",
     "eval:direction": "node scripts/node24.js server/scripts/eval_direction.js",
+    "eval:speakers": "node scripts/node24.js server/scripts/eval_speakers.js",
     "round4:render": "node scripts/node24.js server/scripts/round4_render.js",
     "catalog:audiocpp": "node scripts/node24.js scripts/audiocpp-catalog.js",
     "test:server:js": "node scripts/node24.js node_modules/vitest/vitest.mjs run --config server/vitest.config.js"

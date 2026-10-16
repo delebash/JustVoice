@@ -35,7 +35,9 @@ import * as run from "../engines/llm/run.js";
 import { ApiError, conflict, HttpError, notFound } from "../errors.js";
 import * as direction from "../extraction/direction.js";
 import { Line, flaggedLines, flagGroups, modelDisagreed, spokenBlock } from "../extraction/flags.js";
+import * as groupLines from "../extraction/group_lines.js";
 import * as identify from "../extraction/identify.js";
+import * as mergeNames from "../extraction/merge_names.js";
 import * as names from "../extraction/names.js";
 import * as pipeline from "../extraction/pipeline.js";
 import { AttributionModelError, AttributionRow } from "../extraction/pipeline.js";
@@ -450,6 +452,9 @@ export function _persistAttribution(h, scene, rows, text, { marks: style = "doub
     // Asked by the second look, named no one (2026-10-06) — set and cleared with every run.
     if (row.second_look_asked) m.second_look_asked = true;
     else delete m.second_look_asked;
+    // Who a line with no single speaker went to (`giveGroupLines`, the one-click plan's answer
+    // 7) — Analyze decides the line again, so the record goes.
+    delete m.group_line;
     return Object.keys(m).length ? pyJson(m) : null;
   };
 
@@ -961,6 +966,13 @@ export function _namePattern(nameList) {
   return new RegExp(`${B}(${uniq.map(reEscape).join("|")})${B}`, "iu");
 }
 
+/** The group a line with no single speaker was given from (`giveGroupLines`' `group_line`), or
+ * null — what Script's "group" flag reads. */
+export function groupOfLine(bm) {
+  const gl = dget(bm, "group_line");
+  return isDict(gl) && Array.isArray(gl.group) ? gl.group.filter((id) => typeof id === "string") : null;
+}
+
 /**
  * One chapter's Script state → `[ScriptChapter, ScriptLine[], FlagGroup[]]`.
  *
@@ -996,6 +1008,7 @@ export function _chapterScript(scene, blocks, { castIds, narratorId, speakers, p
         paragraph: dget(bm, "paragraph_idx"),
         llm_speaker: dget(bm, "llm_speaker"),
         marker,
+        group: groupOfLine(bm),
       }),
   );
   // Flags run only on what Analyze decided, reading quotes in the chapter's speech-mark style
@@ -1222,6 +1235,242 @@ export const PromoteSpeakersResponse = T.Object({ created: T.Array(T.String()), 
 
 /** The candidates a Discover answer names (`SpeakerCandidateOut(...)` of each). */
 const candidateOut = (c, extra = {}) => ({ name: c.name, role_hint: c.role_hint, approx_lines: c.approx_lines, evidence: c.evidence, ...extra });
+
+/** A model call behind Discover failed: 501 unconfigured, 502 with the provider's words. */
+function discoverError(e, what) {
+  if (e instanceof LLMNotConfiguredError) return new HttpError(501, errText(e));
+  if (e instanceof HttpError) return e;
+  log.exception(`${what} failed`, e);
+  return new HttpError(502, `${what} failed: ${errText(e)}`);
+}
+
+/**
+ * Discover one chapter and save the scan on it → `{candidates, named_cast, usage}` — the route's
+ * body, a function so the one-click run calls it too (the plan's §4: "Each step is a function the
+ * run calls directly"). `text` is the chapter's prose; null reads it from the chapter
+ * (`_sceneText`). The model's names that are already a speaker of the book are left out (they are
+ * in `named_cast`); the scan replaces the chapter's last one. A model failure is an HttpError
+ * (501 / 502).
+ */
+export async function discoverChapter(h, scene, text = null, { settings, runFn = null } = {}) {
+  const body = text ?? _sceneText(h, scene);
+  const cast = _resolveCast(scene.id, h);
+  const rawOut = {};
+  let candidates;
+  try {
+    const style = resolveMarks(dget(_projectMeta(h, scene.project_id), "speech_marks"), body);
+    candidates = await identify.identifySpeakers(body, cast, { settings, rawOut, marks: style, ...(runFn ? { runFn } : {}) });
+  } catch (e) {
+    throw discoverError(e, "identification");
+  }
+  const out = [];
+  for (const cand of candidates) {
+    // Already a speaker under a name the model could not connect — a first or last name alone
+    // ("Cael" for Cael Ferren): that person is recorded below, as a speaker the chapter names.
+    // An IGNORED name stays in the record; the page shows it as Ignored.
+    if (names.match(cand.name, cast) !== null) continue;
+    out.push(construct(SpeakerCandidateOut, candidateOut(cand, { evidence_found: cand.evidence ? names.quoteInText(cand.evidence, body) : null })));
+  }
+  // Every speaker of this book the chapter names, found by name in the text (no AI — the same
+  // on every scan). The narrator is a speaker like any other; prose rarely names it.
+  const namedCast = names.castNamedIn(body, cast).map((r) => construct(NamedCastMember, r));
+  // The chapter as it stands now — the model call took a while, and Analyze may have saved it.
+  const meta = _sceneMeta(sceneById(h, scene.id) ?? scene);
+  meta.discover = { scanned_at: dtIso(utcNow()), candidates: out, named_cast: namedCast };
+  h.update(Scene, { metadata_json: pyJson(meta) }, { id: scene.id });
+  return { candidates: out, named_cast: namedCast, usage: rawOut.usage ?? null };
+}
+
+/**
+ * Discover's Add for each candidate → `{created, reused}` (speaker ids): a speaker in this book,
+ * its other spellings kept as "Also called", cast with the persona of exactly its name when the
+ * library has one. A name the book already has is refused (an HttpError 409). The caller runs it
+ * in a transaction, so a refusal saves none of the batch.
+ */
+export function promoteSpeakers(h, projectId, candidates) {
+  const created = [];
+  const reused = [];
+  for (const cand of candidates) {
+    const [speaker, wasCreated] = ensureSpeaker(h, projectId, { name: cand.name, description: cand.description ?? null, aliases: cand.aliases ?? [], unique: true });
+    (wasCreated ? created : reused).push(speaker.id);
+  }
+  return { created, reused };
+}
+
+// ── Discover + merge names across chapters (the one-click plan's step 2, slice 4) ──
+
+/** One person the chapters' scans name, as `promote` takes them (name, description, aliases) and
+ * with what the scans say. `lines` is Discover's count summed over the chapters; null when a
+ * scan gave no number. */
+export const MergedPerson = T.Object({
+  name: T.String(),
+  aliases: opt(T.Array(T.String()), []),
+  description: opt(nullable(T.String()), null),
+  lines: opt(nullable(T.Integer()), null),
+  chapters: opt(T.Array(T.String()), []),
+  evidence: opt(nullable(T.String()), null),
+  evidence_found: opt(nullable(T.Boolean()), null),
+});
+
+/** A found name that is already a speaker of this book. */
+export const InBookName = T.Object({ name: T.String(), speaker_id: T.String() });
+
+export const MergeSpeakersResponse = T.Object({
+  project_id: T.String(),
+  // Which recipe merged them: the Frontier card's preset decides (merge_names.mergeRecipe).
+  recipe: literal("local", "frontier"),
+  // The people to add, most lines first.
+  people: T.Array(MergedPerson),
+  // Every scan that found them counted 0 lines — named, never heard speaking.
+  left_out: opt(T.Array(MergedPerson), []),
+  in_book: opt(T.Array(InBookName), []),
+  // Chapters with a saved scan.
+  scanned: opt(T.Integer(), 0),
+  // null when no model call was needed.
+  usage: opt(nullable(RunUsage), null),
+});
+
+/**
+ * Every chapter's saved scan merged into one list of people → MergeSpeakersResponse's fields. Reads
+ * the scans (`scene.metadata.discover`), never the text; writes nothing — `promoteSpeakers` adds
+ * them. A name on the project's ignore list stays out; a name that is already a speaker
+ * (`names.match`) is listed in `in_book`. The merge itself, and its two recipes, is
+ * `extraction/merge_names.js`. A model failure is an HttpError (501 / 502).
+ */
+export async function mergeFoundNames(h, projectId, { runFn = null } = {}) {
+  const project = projectById(h, projectId);
+  if (project === null) throw notFound(`project ${projectId}`);
+  const ignored = new Set(projectIgnored(project).map((n) => names.norm(n)));
+  const cast = h.all(`select * from ${Speaker} where project_id = ?`, [projectId], Speaker).map((s) => ({ id: s.id, name: s.name, aliases: speakerAliases(s) }));
+  const inBook = [];
+  const scans = [];
+  for (const scene of h.all(`select * from ${Scene} where project_id = ? order by position`, [projectId], Scene)) {
+    const saved = dget(_sceneMeta(scene), "discover");
+    if (!isDict(saved)) continue;
+    const kept = [];
+    for (const c of Array.isArray(saved.candidates) ? saved.candidates : []) {
+      const name = isDict(c) ? strip(pyStrOf(c.name ?? "")) : "";
+      if (!name || ignored.has(names.norm(name))) continue;
+      const sp = names.match(name, cast);
+      if (sp === null) kept.push(c);
+      else if (!inBook.some((x) => x.speaker_id === sp.id && names.norm(x.name) === names.norm(name))) inBook.push({ name, speaker_id: sp.id });
+    }
+    scans.push({ id: scene.id, title: scene.title || "", candidates: kept });
+  }
+  const recipe = mergeNames.mergeRecipe();
+  const rawOut = {};
+  let merged;
+  try {
+    merged = await mergeNames.mergeBook(mergeNames.collectFound(scans), { recipe, rawOut, ...(runFn ? { runFn } : {}) });
+  } catch (e) {
+    throw discoverError(e, "merging names");
+  }
+  return { project_id: projectId, recipe, ...merged, in_book: inBook, scanned: scans.length, usage: rawOut.usage ?? null };
+}
+
+// ── Lines with no single speaker (the one-click plan's answer 7, slice 4) ──
+
+export const GroupLineOut = T.Object({
+  line_id: T.String(),
+  speaker_id: T.String(),
+  // Every cast member the answer said speaks it; empty = given to the narrator.
+  group: T.Array(T.String()),
+});
+
+export const GroupLinesResponse = T.Object({
+  scene_id: T.String(),
+  // Spoken lines with no speaker that you didn't set — each asked about once.
+  asked: opt(T.Integer(), 0),
+  // Given to the one the answer chose (or the first it named).
+  given: opt(T.Integer(), 0),
+  // No one the text makes clear: given to the narrator.
+  to_narrator: opt(T.Integer(), 0),
+  // No one named and the book has no narrator yet: left with no speaker.
+  left: opt(T.Integer(), 0),
+  // The question failed: left as it was.
+  failed: opt(T.Integer(), 0),
+  lines: opt(T.Array(GroupLineOut), []),
+  usage: opt(nullable(RunUsage), null),
+});
+
+/** One answer onto its line, in the caller's transaction. A line given a speaker or set by you
+ * meanwhile is left alone. Given: source "llm" (the AI decided it), no confidence, the marks of a
+ * line with no speaker dropped, and `group_line` = who the answer named and the model — the
+ * "group" flag Script shows. → the outcome's counter name, or null. */
+function _saveGroupLine(h, blockId, got) {
+  const b = h.one(`select * from ${Block} where id = ? limit 1`, [blockId], Block);
+  if (b === null || b.speaker_id || b.source === "corrected") return null;
+  if (got === null) return "failed";
+  if (!got.speaker) return "left";
+  const meta = _jsonMeta(b.metadata_json);
+  delete meta.floored_from;
+  delete meta.second_look_asked;
+  meta.group_line = { group: got.group, model: got.model || "" };
+  h.update(Block, { speaker_id: got.speaker, source: "llm", extraction_confidence: null, metadata_json: pyJson(meta) }, { id: blockId });
+  return got.group.length ? "given" : "to_narrator";
+}
+
+/**
+ * Give each spoken line Analyze left with no speaker to one speaker → GroupLinesResponse's fields
+ * (decided 2026-10-11, the one-click plan's answer 7: "the AI gives a group line to one member of
+ * the group the text names … or to the narrator when it's unclear, and flags it"). One question a
+ * line (`extraction/group_lines.js`), the text around it as the second look reads it; the answers
+ * are written at the end, in one transaction. Asks about the lines the 🔎 Second look would
+ * (`_secondLookAsks`): never a line you set. A chapter Analyze never read is refused (409) — its
+ * lines have no speaker because nothing decided them yet.
+ */
+export async function giveGroupLines(h, scene, { settings }) {
+  const blocks = blocksOf(h, scene.id);
+  const meta = _sceneMeta(scene);
+  if (!(truthy(dget(meta, "analyzed_at")) || blocks.some((b) => PIPELINE_SOURCES.has(b.source)))) {
+    throw conflict("Analyze this chapter first — only the lines Analyze leaves with no speaker are asked about.");
+  }
+  const report = { scene_id: scene.id, asked: 0, given: 0, to_narrator: 0, left: 0, failed: 0, lines: [], usage: null };
+  const asks = _secondLookAsks(h, scene);
+  report.asked = asks.length;
+  if (!asks.length) return report;
+  const cfg = settings?.extraction ?? construct(ExtractionSettings, {});
+  const stored = dget(meta, "source_text");
+  const [text, , , segments] = _analysisInput(
+    h,
+    scene,
+    truthy(stored)
+      ? stored
+      : blocks
+          .filter((b) => b.text)
+          .map((b) => b.text)
+          .join("\n\n"),
+  );
+  const paragraphs = segments === null ? splitIntoParagraphs(text) : paragraphsOf(segments);
+  const [promptCast, handleToId] = pipeline.promptHandles(_resolveCast(scene.id, h));
+  const castText = sl.castLines(promptCast);
+  const resolve = (raw) => {
+    const handle = pipeline.resolveSpeaker(raw, promptCast);
+    return handleToId.has(handle) ? handleToId.get(handle) : handle;
+  };
+  const narratorId = narratorSpeakerId(h, scene.project_id);
+  const usage = { prompt_tokens: 0, completion_tokens: 0, model: "" };
+  const t0 = performance.now();
+  const answers = [];
+  for (const b of asks) {
+    const row = { paragraph_idx: _paragraphOf(paragraphs, b), text: b.text };
+    try {
+      answers.push([b.id, await groupLines.askLine(row, paragraphs, { castText, resolve, narratorId, words: cfg.second_look_words, usage })]);
+    } catch (e) {
+      throw discoverError(e, "giving lines with no single speaker");
+    }
+  }
+  h.tx(() => {
+    for (const [blockId, got] of answers) {
+      const outcome = _saveGroupLine(h, blockId, got);
+      if (outcome === null) continue;
+      report[outcome] += 1;
+      if (outcome === "given" || outcome === "to_narrator") report.lines.push({ line_id: blockId, speaker_id: got.speaker, group: got.group });
+    }
+  });
+  report.usage = { ...usage, duration_ms: Math.trunc(performance.now() - t0), pieces: asks.length };
+  return report;
+}
 
 /** The frames' text: `data: <json.dumps(item)>\n\n`. */
 const frame = (item) => `data: ${pyJson(item)}\n\n`;
@@ -1776,33 +2025,8 @@ export function router() {
     const body = c.req.valid("json");
     const scene = sceneById(h, sceneId);
     if (scene === null) throw notFound(`scene ${sceneId}`);
-    const cast = _resolveCast(sceneId, h);
-    const settings = getState().settings.get();
-    const rawOut = {};
-    let candidates;
-    try {
-      const style = resolveMarks(dget(_projectMeta(h, scene.project_id), "speech_marks"), body.text);
-      candidates = await identify.identifySpeakers(body.text, cast, { settings, rawOut, marks: style });
-    } catch (e) {
-      if (e instanceof LLMNotConfiguredError) throw new HttpError(501, errText(e));
-      log.exception("speaker identification failed", e);
-      throw new HttpError(502, `identification failed: ${errText(e)}`);
-    }
-    const out = [];
-    for (const cand of candidates) {
-      // Already a speaker under a name the model could not connect — a first or last name alone
-      // ("Cael" for Cael Ferren): that person is recorded below, as a speaker the chapter names.
-      // An IGNORED name stays in the record; the page shows it as Ignored.
-      if (names.match(cand.name, cast) !== null) continue;
-      out.push(construct(SpeakerCandidateOut, candidateOut(cand, { evidence_found: cand.evidence ? names.quoteInText(cand.evidence, body.text) : null })));
-    }
-    // Every speaker of this book the chapter names, found by name in the text (no AI — the same
-    // on every scan). The narrator is a speaker like any other; prose rarely names it.
-    const namedCast = names.castNamedIn(body.text, cast).map((r) => construct(NamedCastMember, r));
-    const meta = _sceneMeta(scene);
-    meta.discover = { scanned_at: dtIso(utcNow()), candidates: out, named_cast: namedCast };
-    h.update(Scene, { metadata_json: pyJson(meta) }, { id: sceneId });
-    return c.json(construct(DiscoverSpeakersResponse, { scene_id: sceneId, candidates: out, named_cast: namedCast, usage: rawOut.usage ?? null }));
+    const got = await discoverChapter(h, scene, body.text, { settings: getState().settings.get() });
+    return c.json(construct(DiscoverSpeakersResponse, { scene_id: sceneId, ...got }));
   });
 
   /** Discover's Ignore: the name is remembered for the project, and every chapter that names it
@@ -1883,15 +2107,32 @@ export function router() {
     const h = session.getDb();
     const projectId = c.req.param("project_id");
     if (projectById(h, projectId) === null) throw notFound(`project ${projectId}`);
-    const created = [];
-    const reused = [];
-    h.tx(() => {
-      for (const cand of c.req.valid("json").candidates) {
-        const [speaker, wasCreated] = ensureSpeaker(h, projectId, { name: cand.name, description: cand.description, aliases: cand.aliases, unique: true });
-        (wasCreated ? created : reused).push(speaker.id);
-      }
-    });
-    return c.json(construct(PromoteSpeakersResponse, { created, reused }));
+    const added = h.tx(() => promoteSpeakers(h, projectId, c.req.valid("json").candidates));
+    return c.json(construct(PromoteSpeakersResponse, added));
+  });
+
+  /**
+   * The names every chapter's scan found, as one list of people (the one-click plan's step 2,
+   * slice 4): the spellings of one person merged ("Queen of Hearts" / "the Queen"), the people
+   * Discover counted no lines for left out. Writes nothing — promote adds `people`, which it
+   * takes as they come. Run once every chapter is scanned.
+   */
+  app.post("/v1/projects/:project_id/speakers/merge", async (c) => {
+    const h = session.getDb();
+    return c.json(construct(MergeSpeakersResponse, await mergeFoundNames(h, c.req.param("project_id"))));
+  });
+
+  /**
+   * Give each spoken line Analyze left with no speaker to one speaker, and mark it to check (the
+   * one-click plan's answer 7): a line several people say goes to one of them, a line no one can
+   * be named for to the narrator. Run after Analyze.
+   */
+  app.post("/v1/scenes/:scene_id/group-lines", async (c) => {
+    const h = session.getDb();
+    const sceneId = c.req.param("scene_id");
+    const scene = sceneById(h, sceneId);
+    if (scene === null) throw notFound(`scene ${sceneId}`);
+    return c.json(construct(GroupLinesResponse, await giveGroupLines(h, scene, { settings: getState().settings.get() })));
   });
   return app;
 }

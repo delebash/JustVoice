@@ -246,6 +246,13 @@ export const DEFAULT_FEATURE_PRESETS = {
   // recipe's "thinking on".
   "direction.local": "p_extract_reasoned",
   "direction.frontier": "p_extract_reasoned",
+  // Merge found names (the one-click plan's slice 4) — a routed card per recipe. Local asks which
+  // names in a group are one person: deterministic, like the second look. Frontier runs with
+  // thinking on, the frontier recipe's (plan §3); its preset's recipe picks which card runs.
+  "speaker_merge.local": "p_classify",
+  "speaker_merge.frontier": "p_extract_reasoned",
+  // Lines with no single speaker (answer 7) — one line at a time, deterministic, as the second look.
+  speaker_group: "p_classify",
   smart_assign: "p_extract",
   // Deterministic classification
   voice_gender: "p_classify",
@@ -399,6 +406,42 @@ export const DEFAULT_TEST_SAMPLES = [
         '[D1 · Mara] "Down," Mara said flatly. [D2 · Mara] "There\'s something in the cellar."\n\n' +
         'Sarah didn\'t move. [D3 · Sarah] "Are you sure?"\n\n' +
         '[D4 · Mara] "No."',
+    },
+  },
+  {
+    actions: ["speaker_merge.local"],
+    label: "One queen, two spellings — and a heading",
+    variables: {
+      groups:
+        "Group 1:\n" +
+        '- "Queen of Hearts" — Chapter 7: 0 lines — who: the queen the Hatter sang for — "the Queen of Hearts, and I had to sing"\n' +
+        '- "THE KING AND QUEEN OF HEARTS" — Chapter 8: 0 lines — "THE KING AND QUEEN OF HEARTS."\n' +
+        '- "the Queen" — Chapter 8: 22 lines — who: rules the croquet-ground — "shouted the Queen"\n' +
+        '- "the King" — Chapter 8: 9 lines — who: the Queen\'s husband — "said the King"',
+    },
+  },
+  {
+    actions: ["speaker_merge.frontier"],
+    label: "A book's names, chapter by chapter",
+    variables: {
+      names:
+        '- "Hatter" — Chapter 7: 50 lines — who: hosts the tea-party — "said the Hatter"\n' +
+        '- "Queen of Hearts" — Chapter 7: 0 lines — who: the queen the Hatter sang for — "the Queen of Hearts"\n' +
+        '- "the Queen" — Chapter 8: 22 lines — who: rules the croquet-ground — "shouted the Queen"\n' +
+        '- "her Majesty" — Chapter 8: 0 lines — "if it please your Majesty"\n' +
+        '- "the King" — Chapter 8: 9 lines — who: the Queen\'s husband — "said the King"',
+    },
+  },
+  {
+    actions: ["speaker_group"],
+    label: "They cried out — two of them",
+    variables: {
+      cast: '- id="alice", name="Alice"\n- id="hatter", name="Hatter"\n- id="march_hare", name="March Hare"\n- id="dormouse", name="Dormouse"',
+      chapter:
+        "There was a table set out under a tree, and the March Hare and the Hatter were having tea at it: " +
+        "a Dormouse was sitting between them, fast asleep.\n\n" +
+        "⟦“No room! No room!”⟧ they cried out when they saw Alice coming. “There’s plenty of room!” said Alice indignantly.",
+      line: "“No room! No room!”",
     },
   },
   {

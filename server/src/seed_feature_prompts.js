@@ -16,7 +16,14 @@
 // slices' ports: this file loads once they exist, under exactly these export names.
 
 import { FRONTIER_SYSTEM, FRONTIER_USER_TEMPLATE, LOCAL_SYSTEM, LOCAL_USER_TEMPLATE } from "./extraction/direction.js";
+import { SYSTEM as GROUP_LINES_SYSTEM, USER_TEMPLATE as GROUP_LINES_USER } from "./extraction/group_lines.js";
 import { IDENTIFY_SYSTEM } from "./extraction/identify.js";
+import {
+  FRONTIER_SYSTEM as MERGE_FRONTIER_SYSTEM,
+  FRONTIER_USER_TEMPLATE as MERGE_FRONTIER_USER,
+  LOCAL_SYSTEM as MERGE_LOCAL_SYSTEM,
+  LOCAL_USER_TEMPLATE as MERGE_LOCAL_USER,
+} from "./extraction/merge_names.js";
 import { DIRECT_SYSTEM, GUIDED_SYSTEM } from "./extraction/prompts.js";
 import { SYSTEM as SECOND_LOOK_SYSTEM, USER_TEMPLATE as SECOND_LOOK_USER } from "./extraction/second_look.js";
 import { _BASE_INSTRUCTIONS, _PRESERVE_TECHNICAL, _SELF_CORRECTION, _SMART_CLEANUP } from "./refinement.js";
@@ -138,6 +145,30 @@ export const DEFAULT_FEATURE_PROMPTS = {
 Manuscript text:
 {{manuscript}}`,
   },
+  // ── Merge found names (the one-click plan's slice 4, 2026-10-16) — TWO ROUTED CARDS, one per
+  // recipe (§3: "Local — merge by name containment, then one short model call to confirm;
+  // Frontier — the whole book's candidates in one call"). The Frontier card's preset decides
+  // which runs (merge_names.mergeRecipe). Object answers → json_mode on.
+  "speaker_merge.local": {
+    feature: "speaker_merge",
+    label: "Local",
+    description:
+      "For a model on this machine: names that contain one another are grouped in code, and one short call says which names in each group are one person.",
+    system: MERGE_LOCAL_SYSTEM,
+    user_template: MERGE_LOCAL_USER,
+    json_mode: true,
+    position: 1,
+  },
+  "speaker_merge.frontier": {
+    feature: "speaker_merge",
+    label: "Frontier",
+    description:
+      "For a cloud model: every name the chapters' scans found, with their counts and quotes, in one call that says which are one person. Runs when this card's preset is Frontier.",
+    system: MERGE_FRONTIER_SYSTEM,
+    user_template: MERGE_FRONTIER_USER,
+    json_mode: true,
+    position: 2,
+  },
   // ── casting / production helpers ────────────────────────────────────────
   smart_assign: {
     feature: "smart_assign",
@@ -239,6 +270,18 @@ Return only the JSON object.`,
     system: FRONTIER_SYSTEM,
     user_template: FRONTIER_USER_TEMPLATE,
     position: 2,
+  },
+  // ── Lines with no single speaker (the one-click plan's answer 7, slice 4, 2026-10-16) — its own
+  // card beside the second look, whose question it shares the shape of.
+  speaker_group: {
+    feature: "speaker_group",
+    description:
+      "Gives a spoken line Analyze left with no speaker to one speaker: one of the people " +
+      "who say it together, or the narrator when the text makes no one clear. Its answers " +
+      "are marked to check.",
+    system: GROUP_LINES_SYSTEM,
+    user_template: GROUP_LINES_USER,
+    json_mode: true,
   },
   // ── voices ──────────────────────────────────────────────────────────────
   voice_gender: {

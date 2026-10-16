@@ -13,6 +13,10 @@ const e = (key, label, hint, group) => FeatureCatalogEntry({ key, label, hint, g
 // installLlm({preferLocalFeatures}). speaker_discovery reads the same manuscript text
 // attribution does and keeps the preference with it, and so does direction (2026-10-16).
 export const PREFER_LOCAL_FEATURES = new Set(["speaker_attribution", "speaker_discovery", "speaker_second_look", "direction"]);
+// The one-click plan's slice 4 reads the same manuscript text (Discover's names and quotes, the
+// lines around a group line) and keeps the preference with it.
+PREFER_LOCAL_FEATURES.add("speaker_merge");
+PREFER_LOCAL_FEATURES.add("speaker_group");
 
 export const FEATURE_CATALOG = [
   // ANALYSIS order (user QC 2026-08-06): the plain single cards FIRST, the SPEAKER
@@ -33,6 +37,22 @@ export const FEATURE_CATALOG = [
     "speaker_second_look",
     "Speaker attribution · second look",
     "Asks once more about a line Analyze left with no speaker, reading the chapters either side.",
+    "Analysis",
+  ),
+  // The one-click plan's answer 7 (slice 4, 2026-10-16) — a plain card, beside the second look.
+  e(
+    "speaker_group",
+    "Speaker attribution · lines with no single speaker",
+    "Gives a line Analyze left with no speaker — often one several people say at once — to one of them, or to the narrator, and marks it to check.",
+    "Analysis",
+  ),
+  // The one-click plan's slice 4 (2026-10-16): Discover's names across chapters, merged. A heading
+  // with two routed cards under it, Local and Frontier — the recipes (merge_names.js) — so it sits
+  // with the headed blocks, after the plain cards.
+  e(
+    "speaker_merge",
+    "Merge found names",
+    'Decides which names Discover found in different chapters are one person — "the Queen" and "Queen of Hearts" — before they become speakers.',
     "Analysis",
   ),
   e("speaker_attribution", "Speaker attribution", "Extracts who says what and what they say.", "Analysis"),

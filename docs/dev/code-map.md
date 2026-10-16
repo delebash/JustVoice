@@ -1142,9 +1142,11 @@ The ones marked ✓ were re-read by hand; the rest come from a code-reading agen
 | Step | Route / function | What it writes |
 |---|---|---|
 | Import a book | `POST /v1/projects/import` (multipart; `.epub/.docx/.md/.txt` → `book_prose`) — `api/projects_api.js:1245` | a project, its chapters (`scenes`) and lines (`blocks`) |
-| Discover | `POST /v1/scenes/:scene_id/discover-speakers` — `api/extraction_api.js:1420` | only the chapter's `metadata.discover`; no speakers |
-| Add speakers | `POST /v1/projects/:project_id/speakers/promote` ✓ — `api/extraction_api.js:1529` | speakers (all-or-nothing); a speaker is cast to the persona with exactly its name |
+| Discover | `POST /v1/scenes/:scene_id/discover-speakers` — `extraction_api.discoverChapter` (since 2026-10-16, the route's body moved into it for the run) | only the chapter's `metadata.discover`; no speakers |
+| Merge found names | `POST /v1/projects/:project_id/speakers/merge` — `extraction_api.mergeFoundNames` → `extraction/merge_names.js` (two recipes: `speaker_merge.local` / `.frontier`, the Frontier card's preset picks — `mergeRecipe`) | **nothing** — returns `people` (name, aliases, description, lines, chapters, quote), `left_out` (0 lines in every scan), `in_book` |
+| Add speakers | `POST /v1/projects/:project_id/speakers/promote` ✓ — `extraction_api.promoteSpeakers` (since 2026-10-16) | speakers (all-or-nothing); a speaker is cast to the persona with exactly its name |
 | Analyze | `POST /v1/scenes/:scene_id/analyze` (and `/analyze/stream`) — `api/extraction_api.js:939, 987` | each line's `speaker_id`, `source`, confidence; re-cutting the chapter is refused once it has takes (`:473`) |
+| Lines with no single speaker | `POST /v1/scenes/:scene_id/group-lines` — `extraction_api.giveGroupLines` → `extraction/group_lines.js` (`speaker_group`, one call a line; the one-click plan's answer 7) | each spoken line Analyze left blank (`_secondLookAsks`): `speaker_id` (one of the group, else the narrator), `source: "llm"`, no confidence, `metadata.group_line = {group, model}` — Script's `group` flag; Analyze drops it |
 | Smart-assign | `POST /v1/llm/smart-assign` ✓ — `api/smart_assign_api.js:112` | **nothing** — the renderer applies each match with `PATCH /v1/speakers/:id {persona_id}` (`src/components/StudioCast.vue:481`) |
 | Design a voice from words | `POST /v1/voices/design` ✓ — `api/voices_api.js:355` | a Voice, `source: "designed"`, no clip — drawn from its words on every line |
 | Keep a designed take as a clone | `POST /v1/voices/preview` then `POST /v1/voices/preview/:preview_id/save` ✓ (the freeze bridge, `api/voice_preview_api.js:755`) | the held audition becomes the voice's `ref.wav`; the persona page's `keepTake` (`src/components/PersonaDesignMaker.vue:149`) prefers voxcpm2, then chatterbox-turbo |
@@ -1163,9 +1165,9 @@ The ones marked ✓ were re-read by hand; the rest come from a code-reading agen
 
 **What isn't there yet** (the one-click plan's gaps): no server-side job that runs the AI steps
 (only render and export run on the server); Analyze over its stream stops when the window goes;
-Smart-assign writes nothing on its own; the
-renderer labels Discover's AI task `speaker_identification` (`src/services/chapterRun.js:44`)
-where the server's feature is `speaker_discovery` (`feature_catalog.js:22`).
+Smart-assign writes nothing on its own. (The
+renderer labelled Discover's AI task `speaker_identification` where the server's feature is
+`speaker_discovery`, until 2026-10-16 — `src/services/chapterRun.js` now uses the server's name.)
 
 ---
 

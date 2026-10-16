@@ -15,6 +15,9 @@
 // * only — a speaker's only line in the chapter.
 // * disagree — the book named one speaker and the model said another.
 // * nearby — the second look named the speaker from a nearby chapter (always worth a look).
+// * group — a line with no single speaker was given to one (the one-click plan's answer 7,
+//   2026-10-11: "… or to the narrator when it's unclear, and flags it"); `other` is another of
+//   the group the answer named, none when it went to the narrator.
 //
 // The narrator is an ordinary speaker in every check (2026-09-29): any speaker can narrate, so
 // a "speech given to the Narrator" check would mark a first-person narrator's every line.
@@ -40,8 +43,10 @@ export class Line {
    * `speaker`: speaker id, null = no speaker. `paragraph`: the paragraph of the analyzed text
    * it came from; null (an imported or pasted line) = a paragraph of its own. `llm_speaker`:
    * set only where the book's words decided the line and the model had said someone else.
+   * `group`: a line with no single speaker that was given to one — everyone the answer named
+   * ([] = given to the narrator); null for every other line.
    */
-  constructor({ id, speaker, text = "", spoken = true, source = null, paragraph = null, llm_speaker = null, marker = false }) {
+  constructor({ id, speaker, text = "", spoken = true, source = null, paragraph = null, llm_speaker = null, marker = false, group = null }) {
     this.id = id;
     this.speaker = speaker ?? null;
     this.text = text;
@@ -50,13 +55,14 @@ export class Line {
     this.paragraph = paragraph;
     this.llm_speaker = llm_speaker;
     this.marker = marker;
+    this.group = group;
   }
 }
 
 export class FlagGroup {
-  /** `check`: "run" | "only" | "disagree" | "nearby"; `speaker`: whose line(s) these are;
-   * `lines`: the ids marked; `turns` (run): how many turns with no reply; `other`
-   * (disagree): who the model said. */
+  /** `check`: "run" | "only" | "disagree" | "nearby" | "group"; `speaker`: whose line(s) these
+   * are; `lines`: the ids marked; `turns` (run): how many turns with no reply; `other`
+   * (disagree): who the model said; (group): another of the group. */
   constructor(check, speaker, lines = [], { turns = 0, other = null } = {}) {
     this.check = check;
     this.speaker = speaker;
@@ -145,6 +151,9 @@ export function flagGroups(lines, castIds, { openParagraphs = null, marks = null
   for (const ln of spokenAll) {
     if (!DECIDED.has(ln.source)) continue;
     const w = ln.speaker;
+    // A line with no single speaker given to one — always to check (the one-click plan's answer
+    // 7), and first, so it is the question Script asks of the line.
+    if (Array.isArray(ln.group) && w) groups.push(new FlagGroup("group", w, [ln.id], { other: ln.group.find((g) => g !== w) ?? null }));
     // The second look named the speaker from a nearby chapter — always worth a look (decided
     // 2026-10-05: its answers are "marked to check"). First, so it is the question Script asks
     // of the line (its first mark).
