@@ -6,7 +6,7 @@
 // words, audio.cpp's status, testing, best for, terms, its downloads, languages, voices, cloning,
 // design, how it is directed, its memory estimate and its load options — is the server's own
 // answer, copied into speechEnginesSnapshot.json (/v1/engines and /v1/engines/{id}/models,
-// computed from the code at the adoption plan's slice 4). Made up: this machine — an 8 GB card,
+// computed from the code; re-taken by scripts/mock-snapshots.js). Made up: this machine — an 8 GB card,
 // which models are on disk, loaded, measured or remembered as failed on the card, which licences
 // are accepted, and what other programs hold on the card. Where a model runs and why is the
 // server's rule in the server's words (engines/manager.js `placementFor`), worked out here for
@@ -91,18 +91,24 @@ export function placementFor(state, engine, v) {
   const need = v.need_gb ? { gb: v.need_gb, by: v.need_gb > (v.min_vram_gb || 0) ? "files" : "estimate" } : null;
   const files = v.size_mb / 1024;
   let cardFirst = "";
-  if (need && !prior && need.gb * 1024 > card) {
+  // The card is weighed at the files only for an estimate past the whole card; one that fits the
+  // card only without the margin says the card-first words too, its estimate still the size weighed.
+  let atFiles = false;
+  const tooBig = Boolean(need) && need.gb * 1024 > card;
+  const tight = Boolean(need) && need.by === "estimate" && need.gb * 1024 + margin > card;
+  if (need && !prior && (tooBig || tight)) {
     if (need.by === "estimate" && files * 1024 + margin <= card) {
       cardFirst = `audio.cpp says it needs about ${need.gb} GB, but its files are about ${gbWords(files)} GB, so it tries the graphics card first; if it doesn't fit, Load runs it on the CPU`;
-    } else {
+      atFiles = tooBig;
+    } else if (tooBig) {
       const why = need.by === "files"
-        ? `its files are about ${Math.round(need.gb)} GB, more than this card's ${Math.round(card / 1024)} GB`
+        ? `its files are about ${gbWords(need.gb)} GB, more than this card's ${Math.round(card / 1024)} GB`
         : `audio.cpp says it needs about ${need.gb} GB, more than this card's ${Math.round(card / 1024)} GB`;
       return ["cpu", `${why} — ${slow}`];
     }
   }
   let size = prior || null;
-  if (size === null && need) size = (cardFirst ? files : need.gb) * 1024;
+  if (size === null && need) size = (atFiles ? files : need.gb) * 1024;
   const others = size !== null && size + margin <= card ? sc.othersMb : null;
   if (others !== null && !prior && !cardFirst && need?.by === "estimate" && size + margin + others > card) {
     if (files * 1024 + margin + others <= card) {

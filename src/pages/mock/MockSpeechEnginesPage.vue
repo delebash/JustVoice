@@ -152,7 +152,7 @@ async function runLoad(e, variantId) {
 }
 function unload(e) {
   const prev = unloadKind(state, e.kind);
-  pushToast({ message: prev ? `${prev.id} unloaded.` : "Nothing was loaded.", kind: prev ? "success" : "info", duration: 3500 });
+  pushToast({ message: prev ? `${prev.name} unloaded.` : "Nothing was loaded.", kind: prev ? "success" : "info", duration: 3500 });
 }
 async function downloadOnly(e, variantId, extra = {}) {
   if (askLicenceFirst(e, variantId)) return;

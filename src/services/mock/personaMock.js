@@ -5,8 +5,8 @@
 // no persistence. Everything the server would answer comes from
 // `liveSnapshot.json`, a copy of the app's own answers for the seven engines
 // described by our own files (capabilities, preset voices, model languages and
-// versions, terms, effects — computed from the code at the adoption plan's slice
-// 4, 2026-10-16); only the user's own things — the clones, designs, blends,
+// versions, terms, effects — computed from the code by scripts/mock-snapshots.js);
+// only the user's own things — the clones, designs, blends,
 // personas, books — and which versions are on disk are made up, and they are
 // made with real model ids so every label is the one production builds.
 //
