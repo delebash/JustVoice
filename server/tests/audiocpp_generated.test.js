@@ -240,7 +240,7 @@ test("VieNeu is listed, marked as not copying a voice from a clip yet", () => {
   const vieneu = generated.generatedEngines().get("vieneu_v3_turbo");
   expect(vieneu.VARIANTS.every((v) => v.voice_cloning === false)).toBe(true);
   expect(lookup("vieneu_v3_turbo").supports_voice_cloning).toBe(false);
-  expect(vieneu.STATIC_VOICES.map((v) => v.name)).toEqual(["Model default"]);
+  expect(vieneu.STATIC_VOICES.map((v) => v.name)).toEqual(["VieNeu-TTS v3 Turbo (built-in)"]);
   const row = vieneu.VARIANTS[0];
   expect(() => slot.toSpeechRequest(row, line())).toThrow(/doesn't copy a voice from a clip/);
 });

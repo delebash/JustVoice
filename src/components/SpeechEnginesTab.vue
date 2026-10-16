@@ -1099,7 +1099,7 @@ onBeforeUnmount(() => {
             Runs on
             <UiSelect :modelValue="v.placement || 'auto'" width="token" size="small" :options="PLACEMENT_OPTIONS"
               :disabled="busyAnywhere(e.id, v.id) || osBlocked(e)"
-              title="Auto picks from what was measured on this machine: the graphics card when nothing else is on it or the model fits beside the AI model, else the CPU when the model is fast enough there."
+              title="Auto picks from what was measured on this machine: the graphics card when the model fits in its free memory or beside the AI model, else the CPU when the model is fast enough there."
               @update:modelValue="(p) => setPlacement(e, v, p)" />
             <span class="ev-mplace__why">{{ placeText(e, v) }}</span>
             <!-- A card load remembered as failed is forgotten on request (the narrowings review,

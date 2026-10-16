@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // CPU placement (decided 2026-10-02 — docs/plans/2026-10-02-cpu-placement.md §8). Every speech
 // model runs on the graphics card or the CPU. These pin the rule (a CPU build runs everything
-// on the CPU; the user's choice wins; Auto takes the card when nothing else is on it or the
+// on the CPU; the user's choice wins; Auto takes the card when the model fits in its free memory or the
 // model's MEASURED size fits beside the AI model, else the CPU when it is fast enough there,
 // else the card with the AI model unloaded first), the load door, KittenTTS and Pocket TTS
 // requests and the Kyutai terms gate, and the runtime processes (the port of

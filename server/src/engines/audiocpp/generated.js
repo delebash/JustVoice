@@ -51,9 +51,9 @@ const SHOWN_STATUS = new Set(["supported", "community", "experimental", "testing
 // audio understanding on its analysis tab is not one.
 const speechEntry = (e) => (e.workflow === "tts" && (e.task === "tts" || e.task === "clon")) || (e.workflow === "design" && e.task === "vdes");
 const recognitionEntry = (e) => e.workflow === "asr" && e.task === "asr";
-// audio.cpp's own label for a model's voice when no voice is given (its web UI's Arena,
-// `arena.voice.modelDefault`): the one voice of a model whose spec names none.
-export const MODEL_DEFAULT_VOICE = "Model default";
+// The one voice of a model whose spec names none: "‹Model› (built-in)" (decided 2026-10-15, the
+// build's question 12; audio.cpp's web UI calls it "Model default", `arena.voice.modelDefault`).
+export const ownVoiceName = (m) => `${modelName(m)} (built-in)`;
 // The tail a model id takes per precision, and the words a name says.
 const PRECISION_TAIL = { q8_0: "q8", q8: "q8", bf16: "bf16", f16: "f16", fp16: "f16", q4_k: "q4k", q4_0: "q4", f32: "f32", orig: "orig" };
 const PRECISION_WORDS = { q8: "8-bit", bf16: "16-bit", f16: "16-bit", q4k: "4-bit", q4: "4-bit", f32: "32-bit", orig: "original precision" };
@@ -349,8 +349,8 @@ function modelIdOf(fam, engineId, r, runnable) {
  *   Voice design tab offers (the plan's E5); `designEntry` is the entry a description goes to;
  * - `voices`: its entries' built-in voices (the spec's `ui.builtin_voices`, else its voice
  *   option's choices), `defaultVoice` the spec's own;
- * - `ownVoice`: a model that does none of these speaks in its one voice, audio.cpp's
- *   "Model default" (Piper's Lessac voice, LFM2.5-Audio JP's).
+ * - `ownVoice`: a model that does none of these speaks in its one voice,
+ *   "‹Model› (built-in)" (Piper's Lessac voice, LFM2.5-Audio JP's).
  */
 function speechFactsOf(fam, entries) {
   const cur = CURATED[fam.family];
@@ -434,7 +434,7 @@ export const builtinVoiceId = (engineId, name) => `${engineId}_${name}`;
  * `STATIC_VOICES`): audio.cpp's name, the gender and language our family file gives it (`VOICES`,
  * from audio.cpp's own model docs) — else no gender ("Not known") and the family's one language
  * where it has only one — and the model it belongs to. A model whose spec names no voice has its
- * one, audio.cpp's "Model default". */
+ * one, "‹Model› (built-in)". */
 export function builtinVoicesOf(m) {
   const own = speaks(m.fam).languages;
   const known = m.curated?.VOICES ?? {};
@@ -447,7 +447,7 @@ export function builtinVoicesOf(m) {
     // audio.cpp's name for it — what the request's `voice` carries; null for a model's one voice.
     audiocpp_voice: spec,
   });
-  if (m.ownVoice) return [one(builtinVoiceId(m.modelId, "model_default"), MODEL_DEFAULT_VOICE, null)];
+  if (m.ownVoice) return [one(builtinVoiceId(m.modelId, "model_default"), ownVoiceName(m), null)];
   return m.voices.map((v) => one(builtinVoiceId(m.engineId, v), v, v));
 }
 
@@ -500,7 +500,7 @@ function sessionFiles(m) {
   return Object.keys(out).length ? { session_files: out } : {};
 }
 
-/** How many built-in voices a model lists as voices (its one "Model default" counts). */
+/** How many built-in voices a model lists as voices (its one own voice counts). */
 const builtinCount = (m) => (m.ownVoice ? 1 : m.voices.length);
 
 /** The option a family's spec takes a voice description in — `instruct` since v0.9.2,

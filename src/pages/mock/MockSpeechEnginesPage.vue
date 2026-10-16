@@ -204,7 +204,7 @@ function accept(e) {
           <div v-if="m.runs_on" class="ev-mplace" :data-variant="m.id">
             Runs on
             <UiSelect :modelValue="m.placement || 'auto'" width="token" size="small" :options="PLACEMENT_OPTIONS"
-              title="Auto picks from what was measured on this machine: the graphics card when nothing else is on it or the model fits beside the AI model, else the CPU when the model is fast enough there."
+              title="Auto picks from what was measured on this machine: the graphics card when the model fits in its free memory or beside the AI model, else the CPU when the model is fast enough there."
               @update:modelValue="(p) => (m.placement = p)" />
             <span class="ev-mplace__why">{{ placeText(m) }}</span>
             <UiButton v-if="m.failed_on_card" intent="ghost" size="small" label="Try the card again"

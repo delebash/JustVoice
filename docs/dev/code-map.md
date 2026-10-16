@@ -408,7 +408,7 @@ uncovered family into manifest-shaped engines (wip and unsupported hidden — de
 2026-10-11, answer 3; AuK and OuteTTS kept out by their files' `NOT_OFFERED`): every
 family that speaks is a speech engine, its models doing what the spec says
 (`speechFactsOf`: `clone`, `design` from a `vdes` entry, built-in `voices` as its
-`STATIC_VOICES` via `builtinVoicesOf`, else its one "Model default" voice), and its
+`STATIC_VOICES` via `builtinVoicesOf`, else its one voice, "‹Model› (built-in)"), and its
 Speech to text entries are a speech-recognition engine (`generatedRecognisers`,
 `<family>_asr` where the family also speaks, keeping its files in the speech model's
 folder when they share a package — `speech_cache.shareVariantFiles`) — the adoption plan's slice 2,

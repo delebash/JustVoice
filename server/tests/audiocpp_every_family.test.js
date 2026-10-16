@@ -97,8 +97,8 @@ test("built-in voices: audio.cpp's names, their model, a gender and language onl
   // LFM2.5-Audio: its four voices belong to its English model; the Japanese one has its own.
   const lfm = voicesOf("lfm2_audio");
   expect(lfm.filter((v) => v.model === "lfm2_audio-lfm2audiotts").map((v) => v.name)).toEqual(["us_male", "us_female", "uk_male", "uk_female"]);
-  expect(lfm.filter((v) => v.model === "lfm2_audio-lfm2audiojptts").map((v) => v.name)).toEqual(["Model default"]);
-  expect(voicesOf("piper_tts")).toEqual([{ id: "piper_tts_model_default", name: "Model default", language: "en", gender: "", model: "piper_tts" }]);
+  expect(lfm.filter((v) => v.model === "lfm2_audio-lfm2audiojptts").map((v) => v.name)).toEqual(["LFM2.5-Audio 1.5B JP (built-in)"]);
+  expect(voicesOf("piper_tts")).toEqual([{ id: "piper_tts_model_default", name: "Piper TTS (built-in)", language: "en", gender: "", model: "piper_tts" }]);
   // Ids never collide.
   const ids = [...engines.values()].flatMap((m) => m.STATIC_VOICES.map((v) => v.id));
   expect(new Set(ids).size).toBe(ids.length);

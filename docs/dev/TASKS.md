@@ -275,11 +275,12 @@ NOT:    the term "hand-wired" — the user finds it strange.
         voice from a clip yet — audio.cpp doesn't support it for this model." 16: no reset now
         (slice 4 must open the user's data with nothing missing); until the user's next reset,
         saving a lexicon entry with both IPA and a spelling fails.
-BUILT:  15 — 8d7adf6. 1 — 1705ac9. 4 — 7bc2cb4 (IDEAS "Audio output channels"). 6 — checked, not
+BUILT:  15 — 8d7adf6. 1 — 1705ac9. 2 and 12 — the commit after 4371c9a (Auto's hover; a model's
+        one voice "Piper TTS (built-in)"). 4 — 7bc2cb4 (IDEAS "Audio output channels"). 6 — checked, not
         changed: the docs say claude-mythos-preview accepts the legacy thinking budget (deprecated,
         adaptive recommended) and say nothing of effort or "disabled", so treating it like Mythos 5
         would guess both; left on today's working path, recorded in the kit's RESEARCH §7 (1b127f9).
-OPEN:   the rest of 1–16 as above; 3, 12, 13 and 2 with the engine slices (their files).
+OPEN:   the rest of 1–16 as above; 3 and 13 with the engine slices (their files).
 GO:     given 2026-10-15 for 1–16.
 
 ### An audio.cpp update tests only the engines and models it adds; no full re-run (decided 2026-10-15)
