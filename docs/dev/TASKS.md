@@ -410,6 +410,12 @@ WHY:    the best engine whose audiobooks can be sold (VoxCPM2, Apache-2.0) was t
         way, there are plenty of systems that can already just read text in a plain decent voice
         without emotion, if this system we are building cant compete with a human then it is
         pointless".
+        A person on the page as the bar: shown "put a human performance on the listening page,
+        hidden among the engines. LibriVox has a dramatic reading of Alice's Adventures in
+        Wonderland with a different volunteer voicing each character … I'd find our 13 lines in
+        its chapters VII and VIII automatically … and rate the human takes on the same four
+        steps." The user: "your rec go". (librivox.org/4511; the Internet Archive copy is marked
+        Public Domain Mark 1.0; chapters VII–VIII in `data/round5/human/`.)
 NOT:    CosyVoice3 (its emotion follows the words; its official phrases were already used);
         Chatterbox (exaggeration sets intensity only, no emotion to choose).
 BUILT:  —
