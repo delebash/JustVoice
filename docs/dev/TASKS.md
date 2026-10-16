@@ -224,7 +224,17 @@ BUILT:  1, the review (2026-10-13): `docs/plans/2026-10-13-narrowings-review/` �
         taken the model; the "" rows were a probe of the same engine's next load in flight, 105 MB
         the process's own share), a reading counts only for the confirmed slot, and the card's
         "before" is taken once the previous model has drained. Server 1263 + 2 skipped, unit 239,
-        lint, family guard. The check through the app waits for the merge.
+        lint, family guard. Merged as c1d419fd; through the app 2026-10-16 (dev · bcc5dfbb): QwenCleo-
+        ASR loads and transcribes Egyptian Arabic ("زي كده صاحبي انا رايح السوق النهارده …"), its
+        aligner from its own repository folder; Pocket TTS French loads with no warm-up, clones,
+        speaks a French line that reads back, priced 545 MB cuda by it; a preset refused in French;
+        Qwen3 Base 1.7B 2,499 MB and Chatterbox Multilingual 2,593 MB, cuda, with the next model
+        loaded straight after; KittenTTS's seed repeats on the GPU. Fixed on the way: that refusal
+        answered 500 — a line the model can't take is now a 400, as the slot's contract says (the
+        commit after c1d419fd). Found, open: word timings fail for Arabic — audio.cpp's Qwen3
+        Forced Aligner covers zh, en, yue, fr, de, it, ja, ko, pt, ru, es (its catalog), so the
+        error should name that; audio.cpp's multilingual MMS-300M Forced Aligner could cover the
+        rest — for the user, after the one-click plan.
         Slice 5, 2026-10-16 (the user docs and the mock), branch `slice4`: 4b6b3d23 — docs/engines.md
         rewritten for a list we don't hand-write: how to read every part of Speech engines, Auto's
         reasons in placementFor's words, what JustVoice adds or measured; links into its renamed

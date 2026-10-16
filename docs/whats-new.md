@@ -30,6 +30,9 @@
   not its id; Pocket TTS's description and the clone maker's note name French, cloning only; and
   a model's buttons wrap under its chips when the window is narrow, the whole tab stacking at
   phone width ([Engines](engines.md#where-each-model-runs--the-graphics-card-or-the-cpu))
+- **A line a speech model can't take is a request error, not a server error (2026-10-16)** — a voice
+  it doesn't have or a language it doesn't speak answers 400 with the model's own words, as
+  audio.cpp's own refusals already did; before, it answered 500 and was logged as an error
 - **Kokoro, KittenTTS, Pocket TTS, Qwen3-TTS, Chatterbox, VoxCPM2 and Qwen3-ASR built like every
   other engine (2026-10-16)** — from audio.cpp's own description of their models: their downloads,
   voices and languages come from it. Your voices, personas, saved settings, takes and measured

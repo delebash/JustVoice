@@ -730,6 +730,16 @@ test("an_accepted_pocket_clone_renders", async () => {
   expect(srv.calls[0].voice_ref).toBe("/v/ref.wav");
 });
 
+test("a_line_the_model_cant_take_is_refused_as_a_bad_request_not_an_internal_error", async () => {
+  // Seen through the app 2026-10-16: Pocket TTS French's preset refusal answered 500.
+  const [s, srv] = pocketSlot(true);
+  s._row = row("pocket", "pocket-fr-q8");
+  const r = await s.post("/synth", { text: "Bonjour.", language: "fr", voice_id: "pocket_alba" });
+  expect(r.statusCode).toBe(400);
+  expect(r.json().detail).toBe("Pocket TTS French speaks only cloned voices — this voice has no reference clip");
+  expect(srv.calls).toEqual([]);
+});
+
 // ─── the two processes ──────────────────────────────────────────────────────
 
 test("each_placement_and_kind_has_its_own_process_files", () => {

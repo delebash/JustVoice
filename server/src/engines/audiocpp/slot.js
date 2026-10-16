@@ -637,7 +637,16 @@ export class AudioCppSlot {
         engine: this.manifest.id,
       });
     }
-    const req = self.toSpeechRequest(this._row, body);
+    // A line the model can't take — a voice it doesn't have, a language it doesn't speak — is a
+    // request it can't take (400, EngineRequestError's contract), never an internal error (seen
+    // through the app 2026-10-16: Pocket TTS French's preset refusal answered 500).
+    let req;
+    try {
+      req = self.toSpeechRequest(this._row, body);
+    } catch (e) {
+      if (e instanceof AudioCppError && e.status === 500) throw new AudioCppError(e.message, 400);
+      throw e;
+    }
     const [wav] = await this._srv().speech(req);
     const [sr, ch] = wavRateChannels(wav);
     return new _Resp(200, Buffer.from(wav), {
