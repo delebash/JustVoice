@@ -537,8 +537,8 @@ export class AudioCppSlot {
    * so the warm-up is a FULL-LENGTH piece (`CALIBRATION_TEXT` cut to that length, never longer
    * than audio.cpp's own budget for the family; speech recognition gets its 30 s chunk of
    * silence) and what the process holds after it is this model's peak (audit 2026-10-04
-   * §13.3). Returns whether it calibrated. A family that speaks only from a clip (Chatterbox
-   * Multilingual, Qwen3 Base) warms on its first real line instead.
+   * §13.3). Returns whether it calibrated. A model that speaks only from a clip (Chatterbox
+   * Multilingual, Qwen3 Base, Pocket TTS French) warms on its first real line instead.
    *
    * A failure fails the Load with audio.cpp's own words (audit §5 B4).
    */
@@ -554,7 +554,12 @@ export class AudioCppSlot {
     } else if (family === "kitten_tts") {
       await srv.speech({ model, input: text, voice: "Leo" });
     } else if (family === "pocket_tts") {
-      await srv.speech({ model, input: text, voice: "alba", seed: 1 });
+      // In its default preset, alba. Pocket TTS French has none — it clones only (TASKS "Slice
+      // 4's gaps" 2) — so it can't warm up, and its first line sets its price (§7 answer 5):
+      // until 2026-10-16 it spoke alba, which the French download doesn't have, and the load failed.
+      const voice = spec.voices?.[spec.default_voice];
+      if (!voice) return false;
+      await srv.speech({ model, input: text, voice, seed: 1 });
     } else if (family === "qwen3_tts" && task === "vdes") {
       // Designed from words, so it needs no clip (it had no warm-up until 2026-10-04).
       await srv.speech({ model, input: text, language: "English", seed: 1, instructions: "A calm, clear narrator." });

@@ -774,7 +774,10 @@ naming the model to load, rather than reading German with English sounds.
 - **Pocket TTS French clones only** (since 2026-10-16). Kyutai's one French
   voice, Cosette, is from a recording that forbids commercial use, so JustVoice
   doesn't offer it, and the other twenty have no French version: its row has
-  CLONING and no BUILT-IN. It hasn't been timed on a CPU yet, so Auto doesn't
+  CLONING and no BUILT-IN. With no voice of its own to speak a warm-up in, it
+  measures its memory on its first line, like the other models that speak only
+  from a clip (see [How fast, and how much memory](#how-fast-and-how-much-memory)).
+  It hasn't been timed on a CPU yet, so Auto doesn't
   send it there on speed (see [Where each model runs](#where-each-model-runs--the-graphics-card-or-the-cpu)).
 - **The same seed repeats a take on the CPU**, where Pocket TTS usually runs; on the
   graphics card a take matches for its first few seconds and then drifts
@@ -1251,8 +1254,8 @@ its cost. Every model audio.cpp describes does the same when it can speak
 without a clip (since 2026-10-15): in its default built-in voice, in its one
 voice, or — a model that makes a voice from words — from a short description; a
 speech-recognition model hears silence. Models that can only speak from a clip
-(Chatterbox Multilingual, Qwen3-TTS Base, and audio.cpp's clone-only models)
-measure themselves on their first real lines instead. The cost
+(Chatterbox Multilingual, Qwen3-TTS Base, Pocket TTS French, and audio.cpp's
+clone-only models) measure themselves on their first real lines instead. The cost
 only goes up after that: a line that takes more is remembered too — except after
 a line that ran away (its audio longer than 0.5 s a character of its text and
 than 30 s, `speech_runtime.runaway_s_per_char` and `runaway_min_s`): what that

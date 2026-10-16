@@ -595,6 +595,19 @@ family's `curated/<family>.js` (`ENGINE`, `MODELS`, `VOICES` …).
   folder), as MioTTS's codec does. The 24 downloads on the user's disk all resolve, at the same
   paths as before. (was: the variant's folder — until 2026-10-16.) — *code + tests, 2026-10-16* ·
   `speech_cache.js` `variantFilePath`, `slot._entriesFor`; TASKS, slice 4's "GPU half, 2026-10-16".
+- **Pocket TTS French loads with no voice; only our warm-up asked for alba.** audio.cpp's
+  registration reads no voice: the model's voice folder is its file's own folder
+  (`pocket_tts/assets.cpp:158`), and a preset's file is opened only when a request names it
+  (`session.cpp:369`, `voice_state_assets.cpp:204` — `<model folder>/embeddings/<name>.safetensors`);
+  the server picks a default voice only when its config names one (`default_voice_preset`,
+  `app/server/config.cpp:371`), which ours never does. audio.cpp's own page sends the spec's
+  `default_voice` (alba) when nothing else is chosen (`webui/native/src/routes/+page.svelte:2106`)
+  — and doesn't offer the French package at all (it isn't among its install choices). Our
+  warm-up spoke every Pocket model in alba, so the French load failed with "failed to open
+  safetensors file: …\french\embeddings\alba.safetensors" (its download holds only cosette, which
+  we don't offer). A Pocket model with no preset now has no warm-up, and its first line sets its
+  price (§7 answer 5); the other languages' warm-up is the same request. (was: alba for every
+  language — until 2026-10-16.) — *code (fork `bcc5dfbb`) + tests, 2026-10-16* · `slot._warm`.
 - **Turbo's and Nano's own voice** (the plan's F4): a line with no clip and the model's own voice
   goes as no voice (`{model, input, seed, options}`), as the warm-up always spoke; listed as
   "Turbo (built-in)" and "Nano (built-in)", gender Not known (decided 2026-10-15, §7 question 6),

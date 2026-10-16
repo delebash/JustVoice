@@ -205,3 +205,23 @@ test("Pocket TTS French clones only: none of our presets, its own non-commercial
   // The other languages keep their presets.
   expect(row("pocket", "pocket-de-q8").preset_voices).toBe(20);
 });
+
+test("Pocket TTS French loads without a warm-up: it has no preset to speak one in, so its first line sets its price", async () => {
+  // Slice 4's GPU half (2026-10-16): its load failed with "failed to open safetensors file:
+  // …\french\embeddings\alba.safetensors" — the warm-up spoke every Pocket model in alba, which the
+  // French download doesn't have. audio.cpp's registration reads no voice (pocket_tts/loader.cpp).
+  vi.spyOn(slot, "effectivePlacement").mockImplementation((p) => p);
+  const warm = async (id, chars) => {
+    const s = new slot.AudioCppSlot(discoverEngines().get("pocket"));
+    s._row = row("pocket", id);
+    const asked = [];
+    vi.spyOn(s, "_srv").mockReturnValue({ speech: async (req) => asked.push(req) });
+    return [await s._warm(chars), asked];
+  };
+  for (const id of ["pocket-fr-q8", "pocket-fr-bf16"]) expect(await warm(id, 200), id).toEqual([false, []]);
+  // Every other language warms in its default preset, as before: the same request.
+  const [calibrated, asked] = await warm("pocket-de-q8", 0);
+  expect(calibrated).toBe(false);
+  expect(asked).toEqual([{ model: "pocket-de-q8", input: "Ready.", voice: "alba", seed: 1 }]);
+  expect((await warm("pocket-en-bf16", 200))[0]).toBe(true);
+});
