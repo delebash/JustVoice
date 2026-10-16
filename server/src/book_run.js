@@ -63,6 +63,7 @@ import * as exportAudiobook from "./export_audiobook.js";
 import * as direction from "./extraction/direction.js";
 import * as groupLines from "./extraction/group_lines.js";
 import * as mergeNames from "./extraction/merge_names.js";
+import * as names from "./extraction/names.js";
 import * as pipeline from "./extraction/pipeline.js";
 import { around } from "./extraction/second_look.js";
 import { resolveMarks, segmentParagraphs, splitIntoParagraphs } from "./extraction/segmentation.js";
@@ -371,7 +372,8 @@ function stepModels(settings) {
  * What a run of this book would do now, before it starts → `{project_id, chapters, steps:
  * [{key, kind, model, provider, cloud, configured, recipe, action, estimate}], estimate,
  * ask_price, problems, warnings}`. `problems` stop it starting (no chapter with text, no language
- * model, the book's language not set); `warnings` don't (no ffmpeg — it stops before the M4B; no
+ * model, the book's language not set, every name the scans found ignored while the book has no
+ * speaker but the narrator — it would be read in one voice); `warnings` don't (no ffmpeg — it stops before the M4B; no
  * speech recognition — the takes go unchecked). `ask_price`: an AI step runs on a cloud model, so
  * the start must carry `accept_price` (the plan's Q8: "shown before it starts, and the run asks
  * once").
@@ -387,6 +389,7 @@ export function planRun(h, projectId, { redo = [] } = {}) {
   const unconfigured = Object.keys(AI_STEPS).find((k) => !models[k].configured);
   if (unconfigured) problems.push({ step: unconfigured, code: "no_model", detail: models[unconfigured].detail });
   if (!projectLanguage(project)) problems.push({ step: "design", code: "no_language" });
+  if (allIgnored(h, project, chapters)) problems.push({ step: "merge", code: "all_ignored" });
   if (!exportAudiobook.haveFfmpeg()) warnings.push({ step: "export", code: "no_ffmpeg" });
   if (!models.check.ready) warnings.push({ step: "check", code: "no_recognition" });
   const routes = Object.fromEntries(Object.keys(AI_STEPS).map((k) => [k, models[k]]));
@@ -452,11 +455,33 @@ export function createRun(projectId, { scope = "project", acceptPrice = false, r
   return h.get(BookRun, runId);
 }
 
+/**
+ * Every name the chapters' scans found is on the book's ignore list, and the book has no speaker
+ * but the narrator — a run would read the whole book in one voice (decided 2026-10-16: removing a
+ * speaker ignores their names, so removing them all leaves nothing to add). A book whose scans
+ * found no one, or that has none yet, isn't stopped.
+ */
+function allIgnored(h, project, chapters) {
+  const found = new Set();
+  for (const scene of chapters) {
+    const saved = extraction._sceneMeta(scene).discover;
+    for (const c of isDict(saved) && Array.isArray(saved.candidates) ? saved.candidates : []) {
+      const name = isDict(c) ? strip(String(c.name ?? "")) : "";
+      if (name) found.add(names.norm(name));
+    }
+  }
+  if (!found.size) return false;
+  const ignored = new Set(extraction.projectIgnored(project).map((n) => names.norm(n)));
+  if (![...found].every((n) => ignored.has(n))) return false;
+  return !h.all(`select role_label from ${Speaker} where project_id = ?`, [project.id]).some((s) => s.role_label !== "narrator");
+}
+
 /** A problem's words, for an API caller (the screen says its own). */
 export function problemText(p) {
   if (p.code === "no_text") return "This book has no text yet — import it or add its chapters first.";
   if (p.code === "no_model") return p.detail || "No language model is set up — set one in AI Settings first.";
   if (p.code === "no_language") return "Set the book's language on its Overview first — its voices are made in it.";
+  if (p.code === "all_ignored") return "Every name the scans found is ignored — the book would be read in one voice. Undo some on Discover first.";
   return p.code;
 }
 

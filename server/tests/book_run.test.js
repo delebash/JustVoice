@@ -373,6 +373,25 @@ test("a_frontier_route_shows_its_price_and_the_run_asks_once", { timeout: 60000 
   expect(unknown.ask_price).toBe(true);
 });
 
+test("every_scanned_name_ignored_and_no_speaker_stops_the_run_it_would_be_one_voice", async () => {
+  // Removing a speaker ignores their names (2026-10-16); removing them all leaves nothing to add.
+  const { c, pid } = await aliceVII();
+  const sid = (await c.get(`/v1/projects/${pid}/scenes`)).json()[0].id;
+  const text = (await c.get(`/v1/scenes/${sid}/blocks`)).json().map((b) => b.text).filter(Boolean).join("\n\n");
+  vi.spyOn(identify, "identifySpeakers").mockResolvedValueOnce([new SpeakerCandidate({ name: "Hatter" }), new SpeakerCandidate({ name: "March Hare" })]);
+  expect((await c.post(`/v1/scenes/${sid}/discover-speakers`, { json: { text } })).status).toBe(200);
+  const codes = async () => (await c.get(`/v1/projects/${pid}/book_run`)).json().plan.problems.map((p) => p.code);
+  expect(await codes()).not.toContain("all_ignored");
+  await c.post(`/v1/projects/${pid}/discover/ignore`, { json: { names: ["Hatter", "March Hare"] } });
+  expect(await codes()).toContain("all_ignored");
+  const r = await c.post("/v1/book_runs", { json: { project_id: pid } });
+  expect(r.status).toBe(409);
+  expect(r.text).toContain("the book would be read in one voice");
+  // One name back: the run can add them again.
+  await c.post(`/v1/projects/${pid}/discover/unignore`, { json: { names: ["Hatter"] } });
+  expect(await codes()).not.toContain("all_ignored");
+});
+
 test("what_stops_a_run_starting_is_said_before_it_starts", async () => {
   const { c, pid } = await aliceVII();
   await c.patch(`/v1/projects/${pid}`, { json: { language: "" } });

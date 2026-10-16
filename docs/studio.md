@@ -137,7 +137,10 @@ change it — and its recipe (**Local** or **Frontier**,
 step on this computer: *Every AI step runs on this computer — nothing is sent
 anywhere, nothing to pay.* What stops it starting is said on the card: no
 language model set up, the book's **Language** not set (its voices are made in
-it), or no text yet. What it will meet is said too: without ffmpeg it stops
+it), no text yet, or every name the scans found ignored while the book has no
+speaker but the narrator — *Every name the scans found is ignored — the book
+would be read in one voice. Undo some on Discover ➜* (since 2026-10-16;
+[removing a speaker](#removing-a-speaker) ignores their names). What it will meet is said too: without ffmpeg it stops
 before the M4B, and without speech recognition the takes go unchecked.
 
 **On a cloud model it asks once.** When any AI step runs on a cloud account

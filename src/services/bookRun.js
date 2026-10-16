@@ -145,6 +145,8 @@ export const PROBLEMS = {
   no_text: { text: "This book has no text yet — import it, or add its chapters in Script.", go: ["script"], link: "Open Script ➜" },
   no_model: { text: "No language model is set up for the AI steps.", go: ["ai"], link: "AI Settings ➜" },
   no_language: { text: "Set the book's Language below first — its voices are made in it.", go: null, link: "" },
+  // Every scanned name ignored, no speaker but the narrator (decided 2026-10-16).
+  all_ignored: { text: "Every name the scans found is ignored — the book would be read in one voice.", go: ["discover"], link: "Undo some on Discover ➜" },
   no_ffmpeg: { text: "ffmpeg isn't installed, so the run will stop before the M4B. Install ffmpeg and restart the server, then Resume.", go: null, link: "" },
   no_recognition: { text: "Speech recognition isn't installed, so the takes won't be checked.", go: ["ai", "speech-engines"], link: "Speech engines ➜" },
 };
