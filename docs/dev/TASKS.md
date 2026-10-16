@@ -199,8 +199,20 @@ BUILT:  1, the review (2026-10-13): `docs/plans/2026-10-13-narrowings-review/` �
         unchanged (every persona request, warm-up, registration the same bytes; every model, voice
         and price key kept — seven_engines_unchanged.test.js); F4 Turbo's/Nano's own voice; E6/E14/F5
         audio.cpp's own Turbo package, Base 1.7B and VoxCPM2 `-orig`, QwenCleo-ASR; answer 3; slice
-        3's item 4. Docs 9bcf188b. The GPU half waits for the merge. Its gaps: "Slice 4's gaps: what
-        each one gets" below.
+        3's item 4. Docs 9bcf188b. Its gaps: "Slice 4's gaps: what each one gets" below. Merged
+        with slice 5 as aa10e4cf (2026-10-16). GPU half, 2026-10-16 (fork build 8c9a6322 both
+        times; nine personas, one per engine, seed 42, with saved settings off their defaults;
+        made, then deleted): before the merge on d8cf3055, after it on aa10e4cf — 30 / 30 takes
+        byte-identical at the same placement, every one read back word for word, the Hatter
+        clip's transcript and alignment equal; the user's data opens with nothing missing (208
+        models → 215, the additions only; 10 personas; 289 lines, 0 stale). Turbo (built-in),
+        Nano (built-in) and Chatterbox Turbo (built-in voice only) speak. Failed, to fix:
+        QwenCleo-ASR doesn't load (its files sit in a per-repository folder the load path
+        leaves out); Pocket TTS French doesn't load (its warm-up speaks the preset alba, which
+        the French download lacks); Pocket's presets list French among their languages; a
+        clone-only model gets no price from its first line (Qwen3 Base 1.7B none, Chatterbox
+        Multilingual 105 MB with no backend — the reading before is taken with the last model
+        still loaded).
         Slice 5, 2026-10-16 (the user docs and the mock), branch `slice4`: 4b6b3d23 — docs/engines.md
         rewritten for a list we don't hand-write: how to read every part of Speech engines, Auto's
         reasons in placementFor's words, what JustVoice adds or measured; links into its renamed
