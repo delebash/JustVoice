@@ -4372,7 +4372,13 @@ coming research?". Reddit unreachable.
   licence file. A pure-C Qwen3 engine (MIT) ships it by ear for 0.6B; the same developer calls it
   a dead end on 1.7B ("Too little state to carry emotion", summ.) — conflicting. In audio.cpp it
   needs a fork change (the embedding: `src/models/qwen3_tts/prompt_tts_voice_clone.cpp:34`,
-  `talker.cpp:645`); ESD has no whisper or shout, and its terms are unchecked.
+  `talker.cpp:645`); ESD has no whisper or shout. **ESD's terms (checked by the session,
+  2026-10-16): "This database can only be used for research purpose"**, with a licence form to
+  send in (github.com/HLTSingapore/Emotional-Speech-Data) — directions taken from it can't ship
+  in a product people sell with. **CREMA-D** (github.com/CheyneyComputerScience/CREMA-D): the
+  database under the Open Database License, its clips under the Database Contents License — open
+  data licences that allow commercial use (ODbL asks attribution and shares derived databases
+  alike); anger, disgust, fear, happy, neutral and sad at four intensities; no whisper or shout.
 - **Step-Audio-EditX** — unchanged since 2026-04-09; weights carry no licence ("The code … is
   licensed under the Apache 2.0 License"); 3B, "16GB GPU memory shoule be safer", AWQ 4-bit ~8–10
   GB; not in audio.cpp; independent emotion results near chance (20.9 % on ESD, arXiv 2603.09120;

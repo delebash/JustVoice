@@ -382,8 +382,13 @@ BUILT:  —
 OPEN:   after round 5's renders: our fork updated to audio.cpp's upstream main (`fish_drama3`,
         merged upstream 2026-10-15), the dev build rebuilt, only the new models tested (TASKS "An
         audio.cpp update tests only the engines and models it adds"); Drama 3 on this 8 GB card
-        with CPU expert offload; ESD's licence checked; the x-vector direction as a fork change;
-        both on round 5's lines and four-step page.
+        with CPU expert offload; the x-vector direction as a fork change — ESD is research-only
+        (checked 2026-10-16, RESEARCH §10.26), so the directions come from CREMA-D (open data
+        licences, commercial use allowed; no whisper or shout); both on round 5's lines and
+        four-step page. The fork's upstream merge is ready on branch `jv-up`
+        (`../audio.cpp-up`, ea1e8c61 — F5's conflict kept ours, audio.cpp's web UI rebuilt from
+        the merged sources); it also carries upstream's Fish codec fixes (#936, #937), so Fish S2
+        Pro is re-tested with it.
 GO:     given 2026-10-16 ("your rec on both go when ready").
 
 ### Round 5 — VoxCPM2 told the authors' way, best of 3 picked by the scorers (decided 2026-10-16)
