@@ -281,14 +281,21 @@ test("captions keep Qwen3-ASR and its aligner whatever recogniser transcribes", 
   }
 });
 
-test("a model whose licence JustVoice hasn't read yet shows audio.cpp's word, gated the same way", () => {
-  const voxtral = generated.engineFacts(engines.get("voxtral_tts")).licence;
-  expect(voxtral).toMatchObject({ name: "CC-BY-NC-4.0", commercial: "No", table: "No", by: "audio.cpp" });
-  expect(engines.get("voxtral_tts").TERMS).toMatchObject({ gates: "download", reading: "CC-BY-NC-4.0 · audio.cpp's licence table, checked 2026-10-07" });
-  // A Yes in audio.cpp's table: no gate.
-  expect(engines.get("supertonic").TERMS).toBeUndefined();
-  // Our reading wins where we have one.
-  expect(generated.engineFacts(engines.get("kitten_tts2")).licence.by).toBeUndefined();
+test("every offered model shows JustVoice's licence reading; one not read yet would show audio.cpp's word", () => {
+  // The 34 families listed since slice 2 were read at their source on 2026-10-15 (RESEARCH §10.13).
+  for (const [id, m] of engines) expect(generated.engineFacts(m).licence?.by, id).toBeUndefined();
+  expect(generated.engineFacts(engines.get("voxtral_tts")).licence).toMatchObject({ commercial: "No", checked: "2026-10-15" });
+  // Our word differs from audio.cpp's table: Supertonic 3's OpenRAIL-M asks you to say the audio
+  // is machine-generated, so its download is gated now; CrisperWhisper's maker sells a licence.
+  expect(engines.get("supertonic").TERMS).toMatchObject({ gates: "download" });
+  expect(engines.get("supertonic").TERMS.reading).toContain(`audio.cpp's licence table says "Yes"`);
+  expect(generated.engineFacts(engines.get("crisperwhisper")).licence).toMatchObject({ commercial: "Separate licence", table: "No" });
+  // Parakeet's link is NVIDIA's model, not the catalog row's.
+  expect(generated.engineFacts(engines.get("parakeet_tdt")).licence.url).toBe("https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3");
+  // A family audio.cpp adds before we read it falls back to its table, and says so.
+  const unread = generated.engineFacts({ GENERATED: { family: "audio8_asr" } }).licence;
+  expect(unread).toMatchObject({ commercial: "No", by: "audio.cpp" });
+  expect(generated.readingOf(unread)).toBe("CC-BY-NC-4.0 · audio.cpp's licence table, checked 2026-09-21");
   // Every gate says something.
   for (const [id, m] of engines) if (m.TERMS) expect(m.TERMS.text, id).toBeTruthy();
 });

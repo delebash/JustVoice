@@ -3,9 +3,11 @@
 
 // Its licence in plain words — can a person sell an audiobook made with it? Our reading of the
 // licence at its source, checked 2026-10-11 (RESEARCH §10.13); the licence itself is what counts.
+// No watermark claim (corrected 2026-10-15): Resemble's own package adds its PerTh watermark,
+// audio.cpp doesn't (engines/chatterbox/manifest.js; no PerTh code in audio.cpp's src/).
 export const LICENCE = {
   commercial: "Yes",
-  summary: "Yes. MIT, nothing added. Every file it makes carries Resemble AI’s inaudible watermark.",
+  summary: "Yes. MIT, nothing added.",
   url: "https://huggingface.co/ResembleAI/chatterbox",
   checked: "2026-10-11",
 };

@@ -39,6 +39,12 @@
     *Takes a line's direction in words*. A Kokoro blend reads a line in a language Kokoro lacks in
     its own language, as a preset does. **What for?** no longer names API routes
     ([Engines](engines.md))
+  - Speech engines: every model listed since 2026-10-15, the speech-recognition models among
+    them, now shows JustVoice's own reading of its licence in plain words instead of audio.cpp's
+    table. Maya1 and Supertonic 3 are *Conditional*, sanoTTS and VibeVoice *Unclear*, so each now
+    asks you to accept its licence before its first download; CrisperWhisper 2.0 and Hviske ASR
+    are *Separate licence*; FireRedAudio's speech recognition is *Yes*. Chatterbox's plain words no longer claim a watermark the speech runtime
+    doesn't add ([Commercial use, in plain words](engines.md#commercial-use-in-plain-words))
   - The AI model: a refusal for lack of the computer's memory names the speech models running on
     the CPU. Claude Opus 5.5, Fable and Mythos can't stop thinking, so thinking **Off** asks them
     to think as little as they can, and the control says *This model always thinks — Off makes

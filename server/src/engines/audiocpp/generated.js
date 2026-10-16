@@ -731,7 +731,8 @@ export function engineFacts(mod) {
   const cur = CURATED[family] ?? {};
   const fam = CATALOG.families[family];
   const table = fam ? licenceOf(fam) : null;
-  const ours = cur.LICENCE;
+  // A family that both speaks and recognises may read differently for each (FireRedAudio).
+  const ours = (mod.KIND === "stt" && cur.RECOGNISER_LICENCE) || cur.LICENCE;
   // A model JustVoice offers before reading its licence at its source (every speaking family and
   // every recogniser since the adoption plan's slice 2) shows audio.cpp's own word and notes from
   // its licence table, gated the same way, until our reading replaces it.

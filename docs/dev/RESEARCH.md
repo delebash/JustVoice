@@ -2842,8 +2842,11 @@ title; ten of 32 answers differ from it (eight until "Separate licence" was adde
     which §1.5 says include outputs. No registration below the caps.
   - **FireRedTTS3, FireRedAudio** — table "Yes"; ours **Unclear**. Apache-2.0, but both READMEs:
     "this capability is intended **solely for academic research purposes**" of zero-shot cloning
-    (✓), the only task JustVoice offers them for; FireRedTTS3 issue #12 and HF discussion #7 were
-    closed by their asker on 2026-10-12 UTC with no reply.
+    (✓), the only task JustVoice offered them for until 2026-10-15; FireRedTTS3 issue #12 and HF
+    discussion #7 were closed by their asker on 2026-10-12 UTC with no reply. Since the adoption
+    plan's slice 2 FireRedAudio's recogniser is offered too (`firered_audio_asr`); recognition is
+    outside that sentence (plain Apache-2.0), so the recogniser reads **Yes** from the family
+    file's `RECOGNISER_LICENCE` (`engineFacts` takes it for an `stt` engine; 2026-10-15).
   - **AuK** — table "Yes"; ours **Separate licence** (was: **No** — until "Separate licence" was
     added, 2026-10-11, TASKS "A fifth commercial-use word"). Tencent's weights are MIT, but AuK
     needs Qwen2.5-Omni-3B as its encoder (audio.cpp packages `qwen2.5-omni-3b-*.gguf`, ✓
@@ -2883,7 +2886,9 @@ title; ten of 32 answers differ from it (eight until "Separate licence" was adde
   page's demo examples), Confucius4-TTS, dots.tts (Edit too, by the project's Apache-2.0),
   GLM-TTS (card MIT, code Apache-2.0), MioTTS, the three MOSS-TTS, Audio8, Irodori (its author on
   issue #32: "feel free to use it, including for commercial purposes"), Chatterbox (every output
-  watermarked by Resemble's Perth), VoxCPM2 ("free for commercial use"), VoxCPM1 (Apache-2.0 and
+  watermarked by Resemble's Perth — **wrong for JustVoice**: Resemble's own package adds it,
+  audio.cpp doesn't; no PerTh code in its `src/`, and `engines/chatterbox/manifest.js` says so —
+  corrected 2026-10-15), VoxCPM2 ("free for commercial use"), VoxCPM1 (Apache-2.0 and
   "free for commercial use", though its card's Risks section says "released for research and
   development purposes only" — read as a caution, ✓), Pocket TTS (CC-BY-4.0 behind Kyutai's gate,
   which forbids cloning without "explicit and lawful consent" and passing output off as genuine
@@ -2917,6 +2922,56 @@ title; ten of 32 answers differ from it (eight until "Separate licence" was adde
   SADA and Mixat"); ALG, EGY, IRQ, MAR and MSA are Apache-2.0; F5-TTS's base is CC-BY-NC-4.0 —
   so the app says Conditional. VoiceTut-TTS's card says Apache-2.0; it is listed under
   OmniVoice's engine, whose word is No. — *HF cards, 2026-10-15*.
+
+- **The 34 families the adoption plan's slice 2 offers** (11 speaking, 23 recognising; read at
+  their source 2026-10-15, curl of each card, licence file and the HF API, GitHub where the card
+  points; ✓ by hand). Until then they showed audio.cpp's table word; each now has a curated
+  `LICENCE`. **Differ from the table:**
+  - **Maya1** — table "Yes"; ours **Conditional**. The card says Apache-2.0, but its first
+    versions (2025-10-30 to 11-01, rev `3b3d6bb0`) gave `base_model: meta-llama/Llama-3.2-3B`
+    and "we pretrained a 3B-parameter Llama backbone"; the line went on 2025-11-02 (`c881ccf1`),
+    and `config.json` is Llama 3.2 3B's shape with Llama 3's token ids. Llama 3.2's licence: a
+    licence from Meta above "700 million monthly active users"; use must "adhere to the
+    Acceptable Use Policy". SNAC decoder MIT.
+  - **sanoTTS** — table "Yes"; ours **Unclear**. The card: "the project as a whole is GPLv3";
+    its GGUF README: "Weights are distilled from Apache-2.0 (Kokoro) and MIT (piper) teachers".
+    Piper's own voice cards disagree: hfc_female, tr dfki, hi pratham CC-BY-NC-SA-4.0, ru irina
+    "Unknown", most "Finetuned from U.S. English lessac voice". heart/heart-nano (Kokoro) and
+    kristin (LibriVox, "public domain", trained from scratch) are clear.
+  - **Supertonic 3** — table "Yes"; ours **Conditional**. OpenRAIL-M Attachment A(e): no content
+    put out "without expressly and intelligibly disclaiming that the information and/or content
+    is machine generated"; (g) no impersonating others "without their consent".
+  - **VibeVoice** — table "Yes"; ours **Unclear**. MIT, but the card: "The VibeVoice model is
+    limited to research purpose use" and "We do not recommend using VibeVoice in commercial or
+    real-world applications"; GitHub, 2025-09-05: "we have removed the VibeVoice-TTS code from
+    this repository". Microsoft's 7B is gone (401); JustVoice's comes from `vibevoice/VibeVoice-7B`,
+    "duplicated from" a community re-upload. audio.cpp adds no watermark or spoken disclaimer.
+  - **CrisperWhisper 2.0, Hviske v5.3** — table "No"; ours **Separate licence**: nyra health's
+    licence covers weights "and any Outputs", Non-Commercial only, and "Licensor expressly offers
+    such commercial licenses" (licensing@nyra-labs.com); Hviske v5.3 (CC-BY-NC-4.0): "Commercial
+    licensing: contact mads@syv.ai".
+  - Maya1, sanoTTS, Supertonic and VibeVoice were close calls; each takes the cautious word.
+- **Same word, other facts:** Confucius4-R2T2 Conditional, but its cap is the Chinese text's
+  "1亿人民币" (RMB 100 million), not the English "RMB 1 billion", and "the Chinese-language
+  version shall prevail" — as IndexTTS's; Parakeet-TDT Yes, but audio.cpp's catalog row for the
+  family is Phonon-2's (the last of the table's three `parakeet_tdt` rows) while JustVoice
+  downloads NVIDIA's parakeet-tdt-0.6b-v3 ("ready for commercial/non-commercial use") — its
+  curated `LICENCE` links NVIDIA's card; NeuTTS Conditional (USD 5M; its card's Perth watermark
+  is not applied by audio.cpp — no Perth code in `src/`, its bench sets `tts.watermarker =
+  None`); Niagara Conditional (USD 1M with affiliates, then "thereafter limited to
+  non-commercial research"); Piper Unclear (the Lessac licence excludes "any commercial purpose,
+  including the … sale or licencing of voice synthesis … products"); Voxtral TTS No ("the
+  license that the model inherits"); Hviske v6 No (no commercial route named).
+- **Yes, as the table says:** Inflect v2, MagpieTTS ("Models are commercially usable"),
+  MOSS-VoiceGenerator, Soprano, Canary, Citrinet, Cohere Transcribe (click-through gate), GigaAM,
+  Granite Speech 5.0, Higgs Audio v3 STT, Index-Echo (Index-Translate's Apache-2.0), Kroko
+  (CC-BY-SA, stated in prose; LICENSE empty), Moonshine Streaming, MOSS-Transcribe-Diarize,
+  Nemotron 3.5 (OpenMDW-1.1: "without restriction"), OWSM, OWSM-CTC, SenseVoice (FunASR licence:
+  credit source and authors, keep the name), VibeVoice ASR and ASR Streaming, Voxtral Realtime.
+- **Worth knowing:** MagpieTTS trained partly on Emilia (CC-BY-NC); Inflect's voice is synthetic
+  from an undisclosed source; Soprano's 1,000 hours are unnamed; Hviske v5.3's GGUF is
+  `mirek190/audio.cpp`'s, whose card says Apache-2.0; SenseVoice's own GGUF repo says
+  apache-2.0. — *agent + web, 2026-10-15*
 
 ### 10.14 The download test — every speech model through the app (2026-10-11)
 

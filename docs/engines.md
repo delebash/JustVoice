@@ -389,7 +389,8 @@ download: on disk once, shown as downloaded on both, deleted from both together.
 
 The question each label answers is one: *can you sell an audiobook you made
 with this model, on your own machine?* JustVoice read every speech model's
-licence at its source on 2026-10-11 and wrote the answer in plain words. Hover
+licence at its source on 2026-10-11 — and the speech-recognition models and the
+speakers listed since on 2026-10-15 — and wrote the answer in plain words. Hover
 the label for it, or open the engine, where it sits under *Best for* and
 *Tested by JustVoice* — the opened engine is the way on a phone, which has no
 hover. Each answer names the licence, the date it was read, and a link to the
@@ -415,23 +416,28 @@ the plain words say what audio.cpp's table says:
 |---|---|---|---|
 | Higgs Audio 3 | No | **Conditional** | Its *Creator Use Grant* lets you sell your own audiobooks, podcasts and videos if you credit "Boson AI's Higgs Audio" where listeners can see it; no revenue cap |
 | IndexTTS 2 / 2.5 | Conditional | **Unclear** | Its own licence caps revenue at RMB 100 million a year (the Chinese text, which governs — the English says 1 billion), but one part it runs, MaskGCT's semantic codec, is non-commercial |
-| FireRedTTS3, FireRedAudio | Yes | **Unclear** | Apache-2.0, but their makers write that voice cloning — all JustVoice uses them for — is "solely for academic research purposes" |
+| FireRedTTS3, FireRedAudio | Yes | **Unclear** | Apache-2.0, but their makers write that voice cloning is "solely for academic research purposes". FireRedAudio's speech recognition is outside that sentence: its recogniser reads *Yes* |
 | AuK | Yes | **Separate licence** | It can't run without Qwen2.5-Omni-3B, whose research licence says to ask Alibaba Cloud for a commercial one |
 | Fish Audio S2 Pro, Breeze TTS 2 | No | **Separate licence** | Their free licences grant no commercial rights, and each names the separate written licence its maker offers |
 | ZipVoice | Unclear | **No** | Its makers added a non-commercial licence (CC-BY-NC) to it on 2026-10-10 |
 | MOSS-TTSD, VieNeu-TTS v3 Turbo | not listed | **Yes** | Apache-2.0 at their source |
 | F5-TTS (Habibi-TTS) | No | **Conditional** | Its models are licensed two ways: ALG, EGY, IRQ, MAR and MSA under Apache-2.0; Unified, SAU and UAE non-commercial (CC-BY-NC-SA-4.0) because of their training data |
+| Maya1 | Yes | **Conditional** | Its card says Apache-2.0, but it was first published as built on Meta's Llama 3.2 3B, so Meta's terms likely apply too: follow Meta's Acceptable Use Policy |
+| Supertonic 3 | Yes | **Conditional** | Its licence (OpenRAIL-M) forbids putting out what it makes without saying plainly that it is machine-generated |
+| sanoTTS | Yes | **Unclear** | Depends on the voice: heart, heart-nano and kristin learned from openly licensed voices; the others from Piper voices whose own cards name non-commercial or unknown recordings |
+| VibeVoice | Yes | **Unclear** | MIT, but Microsoft's card limits it to research use, and Microsoft has withdrawn its speech code and its own 7B model |
+| CrisperWhisper 2.0, Hviske ASR (v5.3) | No | **Separate licence** | Non-commercial, and each maker offers a separate commercial licence — the plain words say who to ask |
 
 A model that isn't a plain *Yes* asks you to accept its licence once, before
 its first download, showing the same plain words — the same prompt Pocket TTS
 shows for Kyutai's terms.
 
-**Models JustVoice hasn't read the licence of yet** — the ones listed since
-2026-10-15 (the speakers that don't copy a voice, and the speech-recognition
-models) — show audio.cpp's own word and notes from its licence table, and say so:
-*CC-BY-NC-4.0 · audio.cpp's licence table, checked 2026-10-07*. A model that
-isn't a *Yes* there asks you to accept its licence before its first download the
-same way — Voxtral 4B TTS, for one, is *No*.
+**A model JustVoice hasn't read the licence of yet** — one audio.cpp adds in a
+later update — shows audio.cpp's own word and notes from its licence table until
+JustVoice reads it, and says so: *CC-BY-NC-4.0 · audio.cpp's licence table,
+checked 2026-09-21*. A model that isn't a *Yes* there asks you to accept its
+licence before its first download the same way. Every model listed today has
+JustVoice's own reading (since 2026-10-15).
 
 ### Memory, before you load
 
