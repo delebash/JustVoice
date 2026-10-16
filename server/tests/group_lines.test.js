@@ -106,6 +106,11 @@ describe("Script's mark", () => {
     expect(groups.filter((g) => g.lines.includes("d0")).map((g) => g.check)).toEqual(["group", "only"]);
   });
 
+  test("an answer that named one person gets its own check, not Said together", () => {
+    const groups = flagGroups([say(0, "hatter", { group: ["hatter"] }), say(1, "alice"), say(2, "alice")], new Set(["hatter", "alice"]));
+    expect(groups.filter((g) => g.lines.includes("d0")).map((g) => g.check)).toEqual(["chosen", "only"]);
+  });
+
   test("a line you set is never marked", () => {
     expect(flagGroups([say(0, "hare", { group: ["hatter", "hare"], source: "corrected" })], new Set(["hare"]))).toEqual([]);
   });

@@ -416,6 +416,8 @@ export const CHECK_TAGS = {
   nearby: "From a nearby chapter",
   // A line with no single speaker, given to one (the one-click plan's answer 7, 2026-10-16).
   group: "Said together",
+  // A line left blank that the AI gave to the one person it named (2026-10-16).
+  chosen: "AI chose",
 };
 
 /**
@@ -463,6 +465,8 @@ export function checkQuestion(line, groups, nameOf, chapterWord = "chapter") {
       return (g.group || []).length > 1
         ? `Said together by ${andList(g.group.map(nameOf))} — given to ${who}. Is that right?`
         : `No one could be named — given to ${who}. Who says it?`;
+    case "chosen":
+      return `Analyze left it blank; the AI chose ${who} from the text around it. Is that right?`;
     default:
       return "";
   }

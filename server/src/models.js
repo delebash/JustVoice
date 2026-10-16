@@ -1600,7 +1600,8 @@ export const ScriptLine = T.Object({
 
 export const ScriptFlag = T.Object({
   // "group": a line with no single speaker given to one (the one-click plan's answer 7, 2026-10-11).
-  check: literal("run", "only", "disagree", "nearby", "group"),
+  // "chosen": a line Analyze and its second look left blank that the AI then gave to one person.
+  check: literal("run", "only", "disagree", "nearby", "group", "chosen"),
   speaker: opt(nullable(T.String()), null),
   lines: T.Array(T.String()),
   turns: opt(T.Integer(), 0),

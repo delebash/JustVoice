@@ -251,6 +251,10 @@ describe("the words on a row", () => {
     expect(checkTag(line("a", "june", { flags: [0] }), g)).toEqual({ text: "Said together", intent: "accent2" });
     expect(checkQuestion(line("a", "june", { flags: [0] }), g, names)).toBe("Said together by June and Marius — given to June. Is that right?");
     expect(checkQuestion(line("b", "narrator", { flags: [1] }), g, names)).toBe("No one could be named — given to Narrator. Who says it?");
+    // One person named: its own check (2026-10-16).
+    const one = [{ check: "chosen", speaker: "june", lines: ["d"] }];
+    expect(checkTag(line("d", "june", { flags: [0] }), one)).toEqual({ text: "AI chose", intent: "accent2" });
+    expect(checkQuestion(line("d", "june", { flags: [0] }), one, names)).toBe("Analyze left it blank; the AI chose June from the text around it. Is that right?");
     // The whole group, as the answer named it (2026-10-16).
     expect(checkQuestion(line("c", "marius", { flags: [2] }), g, names)).toBe("Said together by June, Marius and Ada — given to Marius. Is that right?");
   });

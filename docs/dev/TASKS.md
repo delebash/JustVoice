@@ -433,7 +433,8 @@ BUILT:  2 — the "group" flag carries the whole group (`ScriptFlag.group`); Scr
         accent made it harder to understand"; "Sh! sh!" — "you can't tell that it said sh at all"),
         so lines under 4 words keep their read-back and the numbers stay (RESEARCH §10.24).
 OPEN:   6 (mock first); 4's calibration after the first frontier run; 1's differences (a)–(d)
-        for the user's look; the four answers below.
+        for the user's look; answers 2–4 below. Answer 1 BUILT: the "chosen" check (`flags.js`,
+        `ScriptFlag.check`), tag "AI chose", its question; docs studio.md (the marks).
         Four follow-up answers, argued against at the user's "think on the questions again
         adverserially", shown: "1 … give it its own check, separate from 'Said together' … draft
         tag 'AI chose', question 'Analyze left it blank; the AI chose the Hatter from the text

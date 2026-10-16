@@ -629,7 +629,7 @@ Script decides who says what, and how it is performed is [Render](#render).
 
 A mark tints the line and asks its question in the **Check** column, under an
 amber tag naming the kind of mark — **No reply**, **Only line**, **Book and AI
-differ**, **From a nearby chapter**, **Said together** (a line with no speaker says so there too,
+differ**, **From a nearby chapter**, **Said together**, **AI chose** (a line with no speaker says so there too,
 under a red **⚠ No speaker** tag). It marks
 the shape the AI's mistakes take, measured on three answer-keyed books before
 it was built:
@@ -641,6 +641,7 @@ it was built:
 | **The book and the AI disagree** — the book's words named one speaker, the AI said another | **Book and AI differ** | *The book says Nettle, the AI says Marius — whose line is it?* |
 | **Found in a nearby chapter** — the [second look](#the-second-look) named the speaker of a line Analyze had left blank | **From a nearby chapter** | *Found in a nearby chapter — is it Odeline Marran?* Its first question, ahead of any other mark on the line |
 | **Said together** — a line [no one person says](#lines-with-no-single-speaker) was given to one of the people who say it, or to the narrator when no one could be named (since 2026-10-16) | **Said together** | *Said together by Hatter and March Hare — given to Hatter. Is that right?* — every one of the group named (*Said together by Hatter, March Hare and Dormouse — …*) — or *No one could be named — given to Narrator. Who says it?* |
+| **The AI chose one person** — a line Analyze and its second look both left blank, that the step for [lines with no single speaker](#lines-with-no-single-speaker) gave to the one person it named (since 2026-10-16) | **AI chose** | *Analyze left it blank; the AI chose Hatter from the text around it. Is that right?* |
 
 A speech that runs over several paragraphs — each opens a quote, only the last
 closes it — counts as **one** turn, so a long account never looks like three.
