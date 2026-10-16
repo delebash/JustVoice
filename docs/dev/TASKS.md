@@ -201,6 +201,16 @@ BUILT:  1, the review (2026-10-13): `docs/plans/2026-10-13-narrowings-review/` �
         audio.cpp's own Turbo package, Base 1.7B and VoxCPM2 `-orig`, QwenCleo-ASR; answer 3; slice
         3's item 4. Docs 9bcf188b. The GPU half waits for the merge. Its gaps: "Slice 4's gaps: what
         each one gets" below.
+        Slice 5, 2026-10-16 (the user docs and the mock), branch `slice4`: 4b6b3d23 — docs/engines.md
+        rewritten for a list we don't hand-write: how to read every part of Speech engines, Auto's
+        reasons in placementFor's words, what JustVoice adds or measured; links into its renamed
+        anchors fixed; whats-new; RESEARCH §1.6's Turbo package name and Pocket TTS French.
+        e830e7da — the 2026-10-16 seed measurement (every engine repeats on the CPU, all but Kitten
+        and Pocket on the card) in engines.md and RESEARCH §1.2. 535289fe — the mocks on the server's
+        own answers at slice 4 (speechEnginesSnapshot.json, every engine; liveSnapshot.json, the
+        seven): Speech engines as the tab draws it, Runs on by placementFor's rule and words,
+        ?ai/?runtime=none/?empty; the persona mock's Built-in/Tags reason gone, its Versions and
+        Sampling the page's. Its questions went to the user with the slice's report.
 OPEN:   the register's 20 questions and its "found on the way" list, to the user; JustWrite's
         side, to its session; the adoption plan's 7 questions. Then: 2 a plan to adopt everything: every
         audio.cpp speech model offered by default, the seven engines described by our own files on the same
@@ -248,8 +258,8 @@ BUILT:  2026-10-15 — the register's recs: Script/Render/Export (7174737, 58569
         fork on upstream v0.9.2, pushed (85d97a43, then 68c3ead0/21607a3a/4d2f1a2b); adoption
         slice 1, the catalog at v0.9.2 (439d904; RESEARCH §1.2, §1.4, §1.5).
 OPEN:   the jv.6 release (the auto-mode check refused to start the fork's release workflow — the
-        user's command), then the pin; adoption slice 5 (2–4 built; 4 on branch `slice4`, its GPU
-        half after the merge); the sync engine's two convergence
+        user's command), then the pin; the adoption plan's merge (2–5 built; 4 and 5 on branch
+        `slice4`), then slice 4's GPU half; the sync engine's two convergence
         fixes (under way); P26's comparison; the questions the build raised; then the one-click
         plan.
 GO:     given 2026-10-15 ("your rec go").
