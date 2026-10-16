@@ -297,6 +297,7 @@ test("the_runtime_row_reads_and_saves_its_backend", async () => {
     spill_mb: 256,
     runaway_s_per_char: 0.5,
     runaway_min_s: 30.0,
+    card_margin_mb: 512,
     gpu_threads: 4,
     start_timeout_s: 60.0,
     request_timeout_s: 900.0,

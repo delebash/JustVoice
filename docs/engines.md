@@ -501,9 +501,9 @@ finds the earlier measurement. They are saved per model in
 Each model row says how much graphics memory it needs before you download it:
 
 - **about X GB, measured here** — an earlier load measured it on this machine.
-  That number wins. It **fits this card** when it and the 1 GB safety margin
-  fit — the rule *Auto* loads it by; when it fits only without the margin the
-  row says *more than this card holds with the 1 GB safety margin* (since
+  That number wins. It **fits this card** when it and the speech margin (0.5 GB,
+  below) fit — the rule *Auto* loads it by; when it fits only without the margin
+  the row says *more than this card holds with the 0.5 GB safety margin* (since
   2026-10-15), and when it is more than the whole card, *more than this card
   has*. The margin shown is the one your server keeps.
 - **needs about X GB · fits this card** — for a model JustVoice hasn't measured
@@ -513,7 +513,7 @@ Each model row says how much graphics memory it needs before you download it:
   original weights are 23 GB against an estimate of 10) — and the weights alone
   take at least their own size. A model with no estimate — MOSS-TTSD, JustVoice's
   own conversions — is judged by its files. An estimate that fits the card only
-  without the 1 GB safety margin — audio.cpp's 8 GB for Qwen3-TTS Base 1.7B on an
+  without the speech margin — audio.cpp's 8 GB for Qwen3-TTS Base 1.7B on an
   8 GB card — still reads *fits this card* here, and its *Runs on* line says the
   card is tried first, as below (since 2026-10-16; before, that line gave no
   reason).
@@ -527,7 +527,7 @@ Each model row says how much graphics memory it needs before you download it:
   line shows its measured speed in place of the warning (*— 0.1× real time
   here*). Once a load measures it on your card, the measurement decides instead.
 - **needs about X GB · more than this card has** — only audio.cpp's estimate is
-  too big: the model's files, with the 1 GB safety margin, fit your card. Such an
+  too big: the model's files, with the speech margin, fit your card. Such an
   estimate can be far off — OmniVoice's is 10 GB, and on an 8 GB card its 1.3 GB
   of files took 1.2 GB — so Auto tries the card first and the *Runs on* line says
   so: *audio.cpp says it needs about 10 GB, but its files are about 1.3 GB, so it
@@ -938,7 +938,7 @@ graphics card pushed a 6.8 GB language model out, while on the CPU it speaks
 three times faster than real time and takes nothing from the card.
 
 **Auto** first checks the card's real free memory (since 2026-10-15): a model
-whose graphics memory doesn't fit with the 1 GB safety margin beside what other
+whose graphics memory doesn't fit with the speech margin beside what other
 programs use on the card — a game, a second AI server — runs on the CPU. Before,
 Auto picked the card and the load was refused there. The model's memory is what a
 load measured on your machine; before one has, it counts what audio.cpp says the
@@ -980,15 +980,16 @@ model's measured speed there instead once it has one (*— 0.1× real time here*
 |---|---|---|
 | *it fits in the card's free memory* | the graphics card | Auto read the card, and the model fits with the safety margin beside what other programs hold |
 | *memory not measured yet* | the graphics card | The card can't be read, or the model has no size yet; its first load measures it |
-| *audio.cpp says it needs about 10 GB, but its files are about 1.3 GB, so it tries the graphics card first; if it doesn't fit, Load runs it on the CPU* | the graphics card | Only audio.cpp's estimate is too big for the card, or fits it only without the 1 GB safety margin (since 2026-10-16), and the files fit with the margin |
+| *audio.cpp says it needs about 10 GB, but its files are about 1.3 GB, so it tries the graphics card first; if it doesn't fit, Load runs it on the CPU* | the graphics card | Only audio.cpp's estimate is too big for the card, or fits it only without the speech margin (since 2026-10-16), and the files fit with the margin |
 | *it fits beside the AI model (3433 MB)* | the graphics card | An AI model is on the card, and this model's measured size fits beside it |
 | *3.2× real time here, which keeps the graphics card for the AI model* | the CPU | An AI model is on the card, this model doesn't fit beside it, and it speaks at least 2× real time on the CPU (*on the reference machine* until measured here) |
 | *only 1.5× real time here on the CPU, so the AI model makes room* · *it has no usable speed on the CPU, so the AI model makes room* | the graphics card, the AI model unloaded first | An AI model is on the card, this model doesn't fit beside it, and it isn't fast enough on the CPU |
 | *other programs are using about 6.3 GB of the graphics card — this may be slow on the CPU* | the CPU | It would fit the card, but not beside what other programs hold now |
 | *audio.cpp says it needs about 18 GB, more than this card's 8 GB — …* · *its files are about 12 GB, more than this card's 8 GB — …* | the CPU | Not measured here, and too big for the card ([Memory, before you load](#memory-before-you-load)) |
-| *it took about 9.1 GB on this card before, more than it holds with the 1 GB safety margin — …* | the CPU | Measured here, and too big for the card with the margin |
+| *it took about 9.1 GB on this card before, more than it holds with the 0.5 GB safety margin — …* | the CPU | Measured here, and too big for the card with the speech margin |
 | *it didn't load on the graphics card — this may be slow on the CPU* | the CPU | A load on the card failed or overflowed (below); **Try the card again** beside it |
 | *your choice* · *your choice — 3.2× real time here* | where you pinned it | You picked **GPU** or **CPU** |
+| *your choice — it took about … GB here before and about … GB of the card is free, so it may spill …* · *your choice — about … GB of it spilled …* | the graphics card | You picked **GPU** and it may not fit, or it spilled (since 2026-10-16) |
 | *the graphics share this machine's memory, so the CPU would free none of it* | the graphics | A Mac, or graphics that share the computer's memory |
 | *this machine's speech runtime is the CPU build* | the CPU | The runtime is the CPU build |
 
@@ -1022,6 +1023,21 @@ goes to the CPU the same way instead of being refused.
 loaded model's place reloads it in its new place. A machine whose speech
 runtime is the CPU build runs everything on the CPU and says so.
 
+**The speech margin** (since 2026-10-16). On the graphics card a speech model is
+held to 0.5 GB of headroom on top of the card's measured free memory — room for a
+longer line than the one it was measured on, and for a program that starts using
+the card. It is a setting, `speech_runtime.card_margin_mb` (512); the AI model
+keeps its own 1 GB for its layers. A model you pin to **GPU** is held to no
+margin and is never refused for memory: the load makes what room it can —
+unloading the other speech model and the AI model — and goes ahead. When it may
+not fit, its *Runs on* line says so: *your choice — it took about 7.3 GB here
+before and about 7.1 GB of the card is free, so it may spill into this machine's
+memory and run slowly*; and if it does spill, *your choice — about 0.4 GB of it
+spilled into this machine's memory, so it runs slowly; Auto would run it on the
+CPU*. Until 2026-10-16 the margin was the AI model's 1 GB, and a pinned model
+that didn't fit with it was refused — BreezeTTS 2, measured at 7.3 GB, could not
+load on an 8 GB card at all.
+
 **A model needs room in your computer's memory too.** On the CPU its weights
 are read into your computer's memory, and even on the graphics card the speech
 runtime keeps some beside them — VoxCPM2, on the card, held 3.2 GB of the
@@ -1029,8 +1045,8 @@ computer's memory. JustVoice reads how much the speech runtime's own process
 holds once a model has loaded and again after its lines, and keeps the highest,
 on this machine — nothing else running counts. Before a model loads, JustVoice
 checks that the memory free now holds the larger of its files (on the CPU) and
-what it held at its last loads here, plus a safety margin (1 GB — the same
-margin the graphics card's check keeps), counting what the model it replaces
+what it held at its last loads here, plus a safety margin (1 GB — the AI
+model's, the kit's `safety_margin_mb`), counting what the model it replaces
 gives back. When the load is going to push the AI model off the graphics card,
 the AI model's memory counts as given back too, and the check runs again,
 exactly, just before the speech model starts. A model that has never loaded

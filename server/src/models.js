@@ -441,6 +441,11 @@ export const SpeechRuntimeSettings = T.Object({
   // longer sets the model's price.
   runaway_s_per_char: opt(T.Number(), 0.5),
   runaway_min_s: opt(T.Number(), 30.0),
+  // The headroom (MB) a speech model is held to on the graphics card, on top of the card's measured
+  // free memory: Auto's "more than it holds", the card's admission and Speech engines' "fits this
+  // card" (decided 2026-10-16, the user: "do 1 and 2" — 512 MB for speech; the AI model's layer
+  // split keeps the kit's 1 GB `safety_margin_mb`). A model you pin to the GPU is held to none.
+  card_margin_mb: opt(T.Integer({ minimum: 0 }), 512),
   // The graphics-card process's CPU threads — its work off the card (text, sampling).
   gpu_threads: opt(T.Integer(), 4),
   // How long a process may take to come up before its start counts as failed.

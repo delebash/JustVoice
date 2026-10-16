@@ -24,8 +24,8 @@ import SNAPSHOT from "./speechEnginesSnapshot.json";
 
 /** This machine's graphics card: RTX 2070 SUPER, 8 GB. */
 export const CARD_MB = 8192;
-/** The kit's default safety margin (DEFAULT_SAFETY_MARGIN_MB; /v1/engines/vram `safety_margin_mb`). */
-export const SAFETY_MARGIN_MB = 1024;
+/** The speech margin's default (`speech_runtime.card_margin_mb`; /v1/engines/vram `safety_margin_mb`). */
+export const SAFETY_MARGIN_MB = 512;
 /** Auto's bar for the CPU (`speech_runtime.cpu_min_realtime`). */
 const CPU_MIN_REALTIME = 2;
 /** The AI model on the card under `?ai` (Gemma 4 26B-A4B QAT measured 6,844 MB — RESEARCH §2.2). */

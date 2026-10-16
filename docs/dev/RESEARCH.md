@@ -788,8 +788,15 @@ unloaded — audit §3.1 has the method.
 - On a machine whose graphics share its memory, Auto places on the graphics and says the CPU
   would free nothing. (was: always "nothing else is on the graphics card" — until 2026-10-04.) —
   *code, 2026-10-04* · `manager.py` `_card_is_its_own_memory`; audit §5 B9.
-- The safety margin is 1,024 MB (the kit's setting; the manager falls back to the same). —
-  *code, 2026-10-04* · `manager.py:800-803`.
+- Speech's card margin is its own, 512 MB (`speech_runtime.card_margin_mb`), for Auto's
+  placement, the card's admission and `/v1/engines/vram`; the system-memory check keeps the kit's
+  1,024 MB `safety_margin_mb`, as the AI model's layer split does. A model pinned to GPU is held
+  to no margin and never refused for memory — the admission makes what room it can and the load
+  goes on, its reason saying it may spill, or that it did (decided 2026-10-16, the user: "do 1
+  and 2", after BreezeTTS 2 — measured 7.3 GB at guidance 4 — was refused on an 8 GB card even
+  pinned: 7.4 GB + 1 GB against about 7.7 GB free). (was: the kit's 1,024 MB for both, and a pin
+  refused like Auto — until 2026-10-16.) — *code + tests, 2026-10-16* · `manager.js`
+  `_cardMarginMb`, `_admitMemory`; `engine_vram_wiring.test.js`.
 - An unmeasured model whose estimate fits the card only without the margin (Qwen3-TTS Base 1.7B's
   8 GB on an 8 GB card), its files fitting with it, says the card-first words; it is placed as
   before — its estimate, not its files, is the size weighed, so what other programs hold is not

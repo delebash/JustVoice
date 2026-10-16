@@ -214,6 +214,13 @@ export function spillMeasured() {
   return hardware.platformKey() === "windows" && Boolean(hardware.which("typeperf"));
 }
 
+/** settings.engines.speech_runtime.card_margin_mb — the headroom a speech model is held to on the
+ * graphics card (manager: Auto's placement, the card's admission, /v1/engines/vram). */
+export function cardMarginMb() {
+  const v = Number(self._settings().card_margin_mb);
+  return Number.isFinite(v) && v >= 0 ? Math.trunc(v) : 512;
+}
+
 /** settings.engines.speech_runtime.runaway_s_per_char — seconds of audio a character of a line's
  * text past which the line ran away (manager._noteRunaway). */
 export function runawaySPerChar() {

@@ -248,7 +248,7 @@ export async function getEngineVram(eventsSince = 0) {
   return construct(EngineVramResponse, {
     mem_arch: snap.mem_arch,
     total_mb: snap.vram_total_mb,
-    safety_margin_mb: manager.EngineManager._safetyMarginMb(),
+    safety_margin_mb: manager.EngineManager._cardMarginMb(),
     committed_mb: snap.committed_mb,
     booked_mb: snap.booked_mb ?? snap.committed_mb,
     remaining_mb: snap.remaining_mb,

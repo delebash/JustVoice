@@ -849,7 +849,7 @@ export class EngineManager {
       let free = total - Math.max(committed, used ?? 0);
       const occ = this._loaded.get(kind) ?? null;
       if (occ !== null && occ.manifest.id !== engineId) free += pyInt(arb.reservedMb(`${kind}:${occ.manifest.id}`) || 0);
-      return free - EngineManager._safetyMarginMb();
+      return free - EngineManager._cardMarginMb();
     } catch {
       return null;
     }
@@ -892,7 +892,7 @@ export class EngineManager {
     const prior = this._priceMb(kind, m.id, variant, exe !== null ? runtime.backendOf(exe) : null);
     const hw = await this._hardware();
     const cardMb = hw !== null ? pyInt(hardware.budgetTotalMb(hw)) : 0;
-    const margin = EngineManager._safetyMarginMb();
+    const margin = EngineManager._cardMarginMb();
     // A card load that failed or spilled — this click's, or one remembered here — and a price
     // measured here that, with the safety margin, can't fit the card go to the CPU (decided
     // 2026-10-12; until then such a price went to the card and was refused). That the memory
@@ -1143,8 +1143,19 @@ export class EngineManager {
     return resolvedDevice !== "cpu";
   }
 
+  /** The headroom a speech model is held to on the graphics card — JustVoice's own setting
+   * (`speech_runtime.card_margin_mb`, 512 MB), not the AI model's (decided 2026-10-16). */
+  static _cardMarginMb() {
+    try {
+      return runtime.cardMarginMb();
+    } catch {
+      return 512;
+    }
+  }
+
   /** The runner config's margin knob (the SAME knob the LLM admission subtracts); the kit's
-   * seed default when the shared service isn't wired. */
+   * seed default when the shared service isn't wired. Speech holds system memory to it; the card
+   * to `_cardMarginMb`. */
   static _safetyMarginMb() {
     try {
       return pyInt(lifecycle.getService().config().safetyMarginMb);
@@ -1202,9 +1213,12 @@ export class EngineManager {
    * UNLEDGERED usage, so evicting to ledger-room yields real room. Runs with NO manager locks
    * held; busy kinds are protected inside `makeRoom`; a refusal is HONEST and leaves the world
    * exactly as it was. `creditMb`: what the kind's current occupant gives back when this load
-   * replaces it (audit §13.3, §5 B5).
+   * replaces it (audit §13.3, §5 B5). A model you pinned to the GPU (`pinned`) is held to no
+   * margin and never refused: when even the room `makeRoom` can make is short, this returns
+   * `{needed, free}` and the load goes on, saying it may spill (decided 2026-10-16, the user's
+   * "do 1 and 2"). Otherwise null.
    */
-  async _admitMemory(m, kind, engineId, neededMb, creditMb = 0) {
+  async _admitMemory(m, kind, engineId, neededMb, creditMb = 0, { pinned = false } = {}) {
     const needed = pyInt(neededMb);
     if (needed <= 0) return;
     let arb;
@@ -1221,7 +1235,7 @@ export class EngineManager {
       log.debug(`sleeping-set reconcile unavailable at the speech door: ${msgOf(e)}`);
     }
     const hw = await this._hardware();
-    const margin = EngineManager._safetyMarginMb();
+    const margin = pinned ? 0 : EngineManager._cardMarginMb();
     const want = Math.max(0, needed + margin - Math.max(0, pyInt(creditMb)));
     const used = await this.poolUsedMb({ fresh: true });
     let total = 0;
@@ -1262,6 +1276,7 @@ export class EngineManager {
       }
       return;
     }
+    if (pinned) return { needed: want, free: free ?? (await arb.remainingMb(hw)) };
     const snap = await arb.snapshot(hw);
     const have =
       free !== null
@@ -1898,6 +1913,9 @@ export class EngineManager {
       // or spills into system memory, this click retries on the CPU (decided 2026-10-12).
       const autoCard =
         !cardFailed && isAuto(asked) && placement === "gpu" && EngineManager._userPlacement(engineId, planned) === "auto";
+      // You pinned it to the card: it is held to no margin and never refused for memory — when it
+      // may not fit, or spills, its Runs on reason says so (decided 2026-10-16, "do 1 and 2").
+      const pinnedCard = placement === "gpu" && EngineManager._userPlacement(engineId, planned) === "gpu";
       // This engine already holds the slot with the same (or unspecified) variant in the same
       // place: that path early-returns below and must never fetch or check.
       const already =
@@ -1924,7 +1942,13 @@ export class EngineManager {
       const price = books && !already ? this._priceMb(targetKind, engineId, planned, device) : 0;
       if (price > 0) {
         const credit = cur0 !== null ? EngineManager._bookingMb(`${targetKind}:${cur0.manifest.id}`) : 0;
-        await this._admitMemory(m, targetKind, engineId, price, credit);
+        const short = await this._admitMemory(m, targetKind, engineId, price, credit, { pinned: pinnedCard });
+        if (short) {
+          why =
+            `your choice — it took about ${_gb(short.needed / 1024)} GB here before and about ` +
+            `${_gb(short.free / 1024)} GB of the card is free, so it may spill into this machine's ` +
+            "memory and run slowly";
+        }
         this._reserveEngine(m, targetKind, price, "measured");
         earlyMb = price;
       }
@@ -2005,7 +2029,7 @@ export class EngineManager {
       if (isAuto(variant)) variant = this._resolvedDefaultVariant(m) || null;
 
       // The process's shared GPU memory before the model arrives: what fits leaves it as it was.
-      const sharedBefore = autoCard ? await this._slotSharedMb(proc) : null;
+      const sharedBefore = autoCard || pinnedCard ? await this._slotSharedMb(proc) : null;
       // Drop this load's slot — a failed, spilled or cancelled load.
       const dropSlot = () =>
         this._activity(targetKind).run(() =>
@@ -2054,7 +2078,14 @@ export class EngineManager {
       // runs slowly. That is a failed card load too.
       if (sharedBefore !== null) {
         const sharedAfter = await this._slotSharedMb(proc);
-        if (sharedAfter !== null && sharedAfter - sharedBefore > runtime.spillMb()) {
+        if (sharedAfter !== null && sharedAfter - sharedBefore > runtime.spillMb() && pinnedCard) {
+          // Your pin holds: it stays on the card, and says what that costs.
+          const spilled = sharedAfter - sharedBefore;
+          log.warning(`engine ${engineId} spilled ${spilled} MB into system memory — kept on the card, your choice`);
+          why =
+            `your choice — about ${_gb(spilled / 1024)} GB of it spilled into this machine's memory, so ` +
+            "it runs slowly; Auto would run it on the CPU";
+        } else if (sharedAfter !== null && sharedAfter - sharedBefore > runtime.spillMb()) {
           log.warning(
             `engine ${engineId} spilled ${sharedAfter - sharedBefore} MB of graphics memory into system memory — trying the CPU`,
           );

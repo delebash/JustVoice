@@ -105,11 +105,14 @@ test("a_card_that_failed_or_a_price_it_cannot_hold_sends_the_model_to_the_cpu", 
   expect(await mgr.placementFor(mgr.getManifest("omnivoice"), "tts", "omnivoice-q8")).toEqual(["cpu", want, false]);
   failed.mockReturnValue(false);
   // A price measured here that, with the margin, is more than the card: the CPU, not a refusal,
-  // saying what it took (decided 2026-10-13) and the margin it was held to.
-  vi.spyOn(EngineManager.prototype, "_priceMb").mockReturnValue(7500);
+  // saying what it took (decided 2026-10-13) and the margin it was held to — speech's own 512 MB
+  // since 2026-10-16 (the user: "do 1 and 2"), where 7.3 GB now fits an 8 GB card.
+  const price = vi.spyOn(EngineManager.prototype, "_priceMb").mockReturnValue(7500);
+  expect((await mgr.placementFor(mgr.getManifest("chatterbox"), "tts", "chatterbox-multilingual-v2-q8"))[0]).toBe("gpu");
+  price.mockReturnValue(7800);
   expect(await mgr.placementFor(mgr.getManifest("chatterbox"), "tts", "chatterbox-multilingual-v2-q8")).toEqual([
     "cpu",
-    "it took about 7.3 GB on this card before, more than it holds with the 1 GB safety margin — this may be slow on the CPU",
+    "it took about 7.6 GB on this card before, more than it holds with the 0.5 GB safety margin — this may be slow on the CPU",
     false,
   ]);
   // The user's pin still wins.
@@ -246,10 +249,10 @@ test("auto_weighs_a_never_measured_model_by_what_audiocpp_says_it_needs", async 
     "audio.cpp says it needs about 7 GB, but its files are about 3.1 GB, so it tries the graphics card first; if it doesn't fit, Load runs it on the CPU",
   );
   // Its files don't fit beside them either: the CPU.
-  used.mockResolvedValue(6500);
+  used.mockResolvedValue(7000);
   expect(await irodori()).toEqual([
     "cpu",
-    "other programs are using about 6.3 GB of the graphics card — this may be slow on the CPU",
+    "other programs are using about 6.8 GB of the graphics card — this may be slow on the CPU",
     false,
   ]);
   // Tried on the card by its files when only the estimate is too big (OmniVoice's 1.3 GB).

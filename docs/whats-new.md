@@ -52,6 +52,11 @@
 - **The Effects chain editor is compact (2026-10-16)** — each step of a chain is one row: its name,
   its settings with their units (*Gain [-2] dB*), then ↑ ↓ Remove; a setting past the effect's range
   is held to it ([Effects → Edit a chain](effects.md#edit-a-chain))
+- **A speech model gets more of the graphics card (2026-10-16)** — its headroom on the card is now its
+  own 0.5 GB (a setting, `speech_runtime.card_margin_mb`), not the AI model's 1 GB, so a model measured
+  at 7.3 GB fits an 8 GB card; and a model you pin to **GPU** is loaded there whatever the margin
+  says — its *Runs on* line warns when it may spill into the computer's memory, instead of the load
+  being refused ([Engines → Where each model runs](engines.md#where-each-model-runs--the-graphics-card-or-the-cpu))
 - **Speech runtime v0.9.2-jv.6 (2026-10-16)** — audio.cpp v0.9.2 with JustVoice's changes: its new
   models and renamed settings work in the installed app too (until now only `npm run dev` ran them),
   F5-TTS frees its memory on **Unload**, and F5-TTS and KittenTTS repeat a take for the same seed.
