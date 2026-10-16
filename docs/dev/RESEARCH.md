@@ -4151,8 +4151,16 @@ emo_vad, BS.1770 loudness); `npm run round4:report -- data/round4/score-a/out da
   2.5 in words, and VoxCPM2 (the plan's pick, Apache) — on 13 of the lines (two per emotion; six
   of rounds 1–3's seven Hatter lines), blind, one seed per line; the clip and each voice's untold
   takes for "same person". Page: claude.ai/artifact/5ar9XVsVy3mPWBf2vH2tch (collection `round4`; the
-  letters behind each take are in its data, revealed by its Show totals). Waiting on the user's
-  answers. — *measured, 2026-10-16* · `data/round4/` (gitignored).
+  letters behind each take are in its data, revealed by its Show totals). — *measured, 2026-10-16*
+  · `data/round4/` (gitignored).
+- **The user's ears** (51 answers, then three changed on a second listen): plays like the book —
+  BreezeTTS 2 13/13, IndexTTS 2.5 8/13, Higgs 6/12 (one unanswered), VoxCPM2 5/13; none "wrong
+  feeling"; the same-person and overall questions unanswered. The user's notes: the others do
+  change a line, less — "louder but not like a shout", "a little sad", "a little contempt", "loud
+  doesn't always mean anger"; three choices were too few ("something more than plain like book or
+  wrong") — next time no change · a little · clearly · like the book, and a best-of-the-four pick.
+  Loudness agreed with the ear on Breeze (shouted +5.5 / +7.6 dB, whispered −9.1 / −3.1 dB); on
+  single takes emotion2vec often didn't (§10.11). — *measured, 2026-10-16*.
 
 ### 10.23 The one-click slices on gemma — slice 1's and slice 2's acceptance (2026-10-16)
 
@@ -4233,6 +4241,82 @@ The headless server on the dev build (bcc5dfbb), the user's data folder, gemma 4
   ≤ 5 %, §10.5's 64/73 and 4/77): 68/73 (93 %) and 4/77 — the bar's own 4/77. What still over-marks
   is the model's own: 9/117 (8 %) — *after thinking a minute or two*, *without considering at all
   this time*, the King's and the Queen's angry lines with no word for it. — *measured*.
+
+### 10.25 Is round 4's weak acting the models, or our setup? (2026-10-16)
+
+*agent, 2026-10-16* — a research agent, every source opened by it (GitHub issues through `gh`,
+Hugging Face discussions through its API, pages fetched); Reddit unreachable to the tools. Asked
+after round 4 (§10.22) by the user: "maybe we have something configured wrong". The verdict:
+**the weak acting is the models' for Chatterbox (both), Fish S2 Pro, CosyVoice3 and Qwen3** —
+users of the official PyTorch code (and Fish's own cloud) report the same; **VoxCPM2 and IndexTTS
+were told less well than their authors document**; no report found of audio.cpp, or any ggml port,
+losing expressiveness. The clip was the same for every model: the Hatter's Qwen3 VoiceDesign
+audition, kept as his VoxCPM2 clone's reference (slice 0, §10.6) — a calm one.
+
+- **VoxCPM2** — we sent one word, `(shouting)`, at cfg 2.0, one seed on the page. A user on
+  controllable cloning: "`(assertive, crystal clear, sharp diction, faster pace)` — best result …
+  All of the above had a clear and audible effect"; a maintainer: "We originally wanted the Basic
+  Cloning to perform as well as the Hi-Fi Cloning, but it didn't meet our expectations"
+  (OpenBMB/VoxCPM #210). An emotion in `()` on a clone moves the voice, "甚至能男变女" (even male to
+  female), "可控克隆这样上不了生产" (#317, open). The usage guide: cfg 2.0–3.0 "Stronger adherence
+  …more risk of noise"; the card: "generating 1–3 times is recommended", its clone example
+  `(slightly faster, cheerful tone)`; the tech report (arXiv 2606.06928) trained on "free-form
+  natural-language descriptions at varying granularities", cfg [1.5, 3.0], no score for
+  controllable cloning.
+- **Chatterbox** — exaggeration sets intensity only; nothing picks the emotion, which comes from
+  the words. The README's expressive tip starts at 0.7 ("~0.7 or higher"). An English line runs the
+  original English model in audio.cpp (`src/models/chatterbox/session.cpp:164-169`), where #355's
+  "no noticeable effect" (multilingual) doesn't apply. EmergentTTS-Eval Emotions win rate, built-in
+  voices: Chatterbox 28.03 %, Higgs Audio V2 69.28 %, ElevenLabs multilingual v2 35.35 %
+  (github.com/boson-ai/EmergentTTS-Eval-public). **Turbo**: exaggeration removed — "the resulting
+  naturalness was not as good … I would recommend using the original model if CFG/exaggeration is
+  preferred"; the supported tags are the nine sounds, no emotions (a Resemble AI member, HF
+  chatterbox-turbo #22, #21); the emotion tokens work on ONNX "sometimes … artefacts" (#492) and
+  not on mlx-audio (#557).
+- **CosyVoice3** — "in text-unrelated tasks, emotion accuracy drops significantly, particularly for
+  'sad' and 'angry'"; "TTS systems primarily infer the emotional tone of output audio from text
+  sentiment" (arXiv 2505.17589 §5.2.3; 0.5B on unrelated text: happy 0.64, sad 0.42, angry 0.58 —
+  from emotional reference clips). Users: "instruct情感不明显" (the instructed emotion isn't
+  noticeable), "情感与tts 文本强绑定 … 使用 instruct 时，会降低说话人相似性" (#1057, relayed from the
+  team); a collaborator: instruct2 still clones, "只是韵律会更加偏向于instruct文本" (#1143). Our phrases
+  are the official `instruct_list`'s. An independent test of natural-language emotion on clones:
+  CosyVoice3 31.6 %, IndexTTS2 28.4 % (arXiv 2609.11523).
+- **IndexTTS 2.5** — users find it weaker than 2.0: "2.5 …音色相似度,情感色彩上没有 index tts 2.0 好"
+  (#759, seven agreeing), "情绪控制和音色还原上开了2.0的倒车" (#781), a one-listener blind A/B 2.0
+  winning 5 of 6 (#801); no maintainer reply. The official `infer_v2_5.py` (followed by audio.cpp,
+  `src/models/index_tts2/session.cpp:561-625`): the emotion is Σwᵢ·(emotion) + (1−Σw)·(the clip's own),
+  text mode first turned into the same vector — so our one-hot vector at 0.65 kept 35 % of the calm
+  clip, and our words arm ran at audio.cpp's default 1.0 against the README's "around 0.6 (or
+  lower)"; the README's vector example is `[0, 0, 0.8, …]` at 1.0, its emotion texts sentences, not
+  labels. 2.0's own trade-off: "有感情就没音色，有音色就没感情", ~0.6 the balance (#321). LibriQuote
+  (arXiv 2509.04072, audiobook quotes): IndexTTS2 ContextMOS 3.33 (3.45 with the context's emotion)
+  against ~2.94 for SparkTTS/F5/MaskGCT and 3.55 for human readers. audio.cpp's author shows 2.0's
+  emotion vector and text at parity (index-tts #722); none for 2.5.
+- **Fish S2 Pro** — "emotion tags are useless with cloned voice … only works 1 out of 10 times",
+  "voice is flat", "most tags are simply ignored" (HF s2-pro #17); fish-speech #1280 confirmed twice
+  more (May, July 2026); on Fish's own cloud "The speaker's voice never changes" (#1162).
+- **Higgs Audio v3** — on a clone `<|emotion:anger|>` moved pitch ~7.6 semitones with ~21 % timbre
+  drift, "Several emotion tags make it sound like a DIFFERENT speaker"; "character shift" in ~80 %;
+  "They often tend to shout instead of subtle but evident emotions" (HF higgs-tts-3-4b #20) — our
+  0.92 → 0.82 likeness. Tags at a sentence's start, stackable; `<|prosody:expressive_high|>`
+  exists, unsent by us (PROMPTING.md).
+- **BreezeTTS 2** — the vendor: instructions take "both short and long phrases … simply type
+  'whispering' … (cfg value=2-4 usually helps)" (HF Breeze-TTS-2 #15); README "Match the instruction
+  language to the target text"; audio.cpp against the official runtime: "everything matches", fp32
+  activations worse ("mispronunciations and occasional runaway repetition") — it needs bf16
+  (audio.cpp #380). Round 4's Breeze takes ran on the CPU (§10.22); whether that path keeps bf16
+  isn't documented, and its told WER (0.045) was among the highest — unconnected so far.
+- **Qwen3-TTS** — "our base model does not currently support instruct. In the future, we will
+  release a 25Hz voice editing model" (QwenLM/Qwen3-TTS #25); still asked for in August 2026 (#34);
+  only the six 12Hz models on Hugging Face; PR #281 (open) adds `instruct` to cloning, warning the
+  base model "was not trained for instruct-guided voice cloning". No supported way to direct a clone.
+- **What a fairer round would change** (for the two the authors say more about): VoxCPM2 told a
+  described delivery (the book's own cue words — "sighed the Hatter", "in a hoarse, feeble voice" —
+  rather than one label), cfg ~2.5–3.0, best of 2–3 takes; IndexTTS 2.0 beside 2.5, the words arm at
+  ~0.6, emotion text as the book's sentence. Not found: an independent per-emotion test of Breeze or
+  Higgs on a clone; a one-word vs phrase comparison for VoxCPM2; any PyTorch-vs-audio.cpp emotion
+  comparison for VoxCPM2, Higgs, Fish or CosyVoice3; a new clone-emotion evaluation since
+  2026-10-11 (JoyAI-Voice 2.0, arXiv 2610.08834, has none).
 
 ## Records not yet distilled
 
