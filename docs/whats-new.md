@@ -2,6 +2,14 @@
 
 ## v0.1.0
 
+- **Direction: how each line is said, from the book (2026-10-16)** — a new AI step reads a chapter
+  and writes how each spoken line should be said, only where the text gives a reason: one of the
+  nine emotions and a few words from the book's own cue, carried to the speaker's other lines in
+  the same paragraph. It goes into the line's Style Instructions and Emotion on Render (a tag
+  model's own tag), shaped to the model that speaks it, and never over what you set. Two recipes,
+  **Local** and **Frontier**, under AI Settings → Routing by feature. No button yet — the one-click
+  audiobook will run it; `POST /v1/scenes/{id}/direction` runs it now
+  ([AI features → Direction](ai-features.md#direction--two-recipes-and-the-carry))
 - **A cloud model gets the big-model route (2026-10-16)** — every engine preset has a **Recipe**:
   Local for a model on this machine, Frontier for a cloud account, or set by hand on a feature's
   chip. Speaker attribution's Auto now gives a Frontier model **Direct**; it used to read a cloud

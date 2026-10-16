@@ -239,6 +239,13 @@ export const DEFAULT_FEATURE_PRESETS = {
   // p_extract's 0.2 it declined a line it could answer about one time in four; at 0 the 30
   // answer-keyed lines came back 30 right, 0 wrong (docs/plans/2026-10-05-second-look-test.md).
   speaker_second_look: "p_classify",
+  // Direction's two recipes (the one-click plan's slice 2, 2026-10-16) — each card its own ref,
+  // as attribution's routes, on the preset RESEARCH §10.5's hand measurement ran on (it went
+  // through speaker_attribution.direct's route): on the Local card JSON mode turns its thinking
+  // off, as it did then; on the Frontier card, which runs without JSON mode, its thinking is the
+  // recipe's "thinking on".
+  "direction.local": "p_extract_reasoned",
+  "direction.frontier": "p_extract_reasoned",
   smart_assign: "p_extract",
   // Deterministic classification
   voice_gender: "p_classify",
@@ -376,6 +383,22 @@ export const DEFAULT_TEST_SAMPLES = [
         "“Don't answer it,” Iven said. A woman stepped into the light. “I'm Ode,” she " +
         "said. “I've been waiting for you to find the candle.”",
       line: "“You always find the candle first. Every time.”",
+    },
+  },
+  {
+    // Direction's run contract: the chapter already marked, each spoken line [D#] with who speaks
+    // it — what extraction/direction.formatLines sends (Local reads only `paragraphs`).
+    actions: ["direction.local", "direction.frontier"],
+    label: "Cellar scene — two cues, one carried",
+    variables: {
+      speakers: "- Mara — a dry archivist in her thirties\n- Sarah",
+      earlier: "(none — this is the first chapter)",
+      paragraphs:
+        "Mara stood at the rail. The fog clawed at her ankles.\n\n" +
+        '[D0 · Sarah] "Where are you going?" Sarah asked, her voice shaking.\n\n' +
+        '[D1 · Mara] "Down," Mara said flatly. [D2 · Mara] "There\'s something in the cellar."\n\n' +
+        'Sarah didn\'t move. [D3 · Sarah] "Are you sure?"\n\n' +
+        '[D4 · Mara] "No."',
     },
   },
   {

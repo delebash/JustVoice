@@ -2201,9 +2201,10 @@ steps, recipes and slices, and §13 what the research found that bears on it.
   26 B. The two routes differ only in the examples; piece size, thinking (off on both), the cast
   list and the deterministic helpers are shared. — *code, run 2026-10-10* (`modelSizeB` on the
   ids, no database) · `docs/ai-features.md` §Speaker attribution.
-- Not built, and listed in IDEAS: a direction step ("LLM emotion-tag insertion"), the
-  persona-generation loop (description → design → cast), and a take check (transcribe, compare,
-  re-render) — `docs/dev/IDEAS.md:309`. — *code, 2026-10-10*.
+- Not built, and listed in IDEAS: the persona-generation loop (description → design → cast) and
+  a take check (transcribe, compare, re-render) — `docs/dev/IDEAS.md:309`. The direction step
+  ("LLM emotion-tag insertion") is built since 2026-10-16 (§10.18). — *code, 2026-10-16* (was: the
+  direction step not built either, until 2026-10-16).
 - Where each step from a book file to an audiobook lives, with its route and what it writes:
   `docs/dev/code-map.md` §7a. The facts a one-click run turns on: — *code, 2026-10-11*, the ✓
   rows of §7a re-read by hand, the rest *agent*.
@@ -3809,6 +3810,52 @@ IndexTTS2.5, the same clip, seed and lines sent straight to the runtime both way
   segments, turns or words (`session.cpp:589`) — so no field has the words without them, and
   audio.cpp's own page shows `text` as it is (`+page.svelte`, `nextText = result.text`). Not
   fixed here: it is the model's (or the port's) output.
+
+### 10.18 The direction step as built — the one-click plan's slice 2 (2026-10-16)
+
+The plan's step 6 (`docs/plans/2026-10-11-one-click-audiobook.md` §2, §3, §5), built on a branch;
+the module is `server/src/extraction/direction.js`, the step `directScene` in
+`server/src/api/extraction_api.js`. Not yet run on a model: the GPU was busy, so the acceptance
+(Alice VII cue lines caught ≥ 88 %, no-cue marks ≤ 5 %, on gemma) waits for
+`npm run eval:direction`.
+
+- **The kit turns thinking off whenever an action's JSON mode is on** — `_effectiveThink` returns
+  `think && !jsonMode` (its comment: "B3 guardrail: a reasoning block corrupts strict JSON"). That
+  is why §10.5's `think: true` changed nothing: the run was in JSON mode. So the Frontier recipe's
+  row runs with JSON mode off, its preset's thinking on, and its reply is read wherever its JSON
+  sits. — *code, 2026-10-16* · `../just-llm-runner/server/src/llm/prompts.js:511-514`.
+- **The kit's Claude adapter drops `response_format`** — it passes only `top_p`, `top_k`,
+  `metadata` and `stop` — so neither JSON mode nor an action's `json_schema` reaches Claude as
+  structured outputs (`output_config.format`, the plan's §8 standard for JSON answers on Claude).
+  — *code, 2026-10-16* · `../just-llm-runner/server/src/llm/anthropic.js:187-188`.
+- **§10.5's hand prompt was not kept**, so the seeded Local prompt is new: the rules of the
+  cue (a manner verb, an adverb or phrase, narration showing the speaker's state, a thought; not
+  the words alone or an exclamation mark), the nine emotions or "", a few words from the cue,
+  answered as `{"lines": [{"id": "D4", "emotion": …, "direction": …}]}` for marked lines only.
+  §10.5's numbers are the baseline it has to meet. — *record*.
+- **What it sends.** Local: the chapter's paragraphs, each spoken line as `[D# · Name] "…"`.
+  Frontier: the same, plus who is who (name, other names, who they are) and every chapter before
+  it, each its title then its text. Alice VII's chapters before are the EPUB's seven scenes — front
+  matter included — 70,413 characters; VIII's eight, 83,021. — *code + measured, no model,
+  2026-10-16* (the eval against a stand-in for its route).
+- **Which recipe runs** is `presetRecipe` of the Frontier card's preset (`direction.frontier`),
+  as attribution's Auto judges its Direct card; both cards are seeded on `p_extract_reasoned`, so a
+  fresh install runs Local. — *code, 2026-10-16* · `extraction/direction.js` `directionRecipe`.
+- **The carry** is §10.5's rule exactly: within a paragraph, a speaker's unanswered lines take the
+  nearest answer of theirs before them, then after; only the model's own answers carry, and a line
+  with no speaker neither gives nor takes. — *code, 2026-10-16* · `direction.js` `carry`.
+- **What it writes.** On a written-direction model the words to `blocks.direction` and the emotion
+  to `line_models[model].emotion` where `emotionChoices` names it; on a tag model the emotion
+  through its `value_map` (Turbo: fearful → `fear`; sad, shouted and contemptuous have none); on
+  sliders, or a speaker with no voice, nothing — merged with `line_takes.mergeOverride`, all of a
+  chapter in one transaction. Each written line records `metadata.direction_by` = {model, recipe,
+  direction, emotion: {model: value}, carried_from?}; a line whose direction or emotions differ
+  from that record (or, with none, are set at all) is the user's and is skipped. The chapter
+  records `metadata.direction` = {directed_at, model, recipe}. — *code, 2026-10-16* ·
+  `api/extraction_api.js` `_persistDirection`, `direction.js` `shapeFor`, `modelOwns`.
+- **The answer key lines up with the app's cut**: Alice VII 150 spoken lines, 73 with a cue, 24 of
+  them naming one of the nine emotions; VIII 90, 50, 26. — *measured, no model, 2026-10-16* ·
+  `npm run eval:direction` against a stand-in.
 
 ---
 

@@ -1,6 +1,6 @@
 # AI features — routing, prompts & the AI Settings area
 
-JustVoice's text-AI features (speaker attribution, smart assign, persona
+JustVoice's text-AI features (speaker attribution, direction, smart assign, persona
 compose/rewrite, show notes, dictation cleanup, voice-gender guess) all run on the **shared AI stack** — the same providers, model catalog,
 routing and prompt system as the rest of the family. The surface for all of it
 is the **AI Settings** page in the sidebar.
@@ -13,6 +13,7 @@ is the **AI Settings** page in the sidebar.
 | **Persona rewrite** | Rewrites the current text in a persona's voice, or a line as its speaker would say it (preview-then-accept) | A persona's page → Hear it → ✏️ Rewrite · Studio Render → a line's ✏️ Rewrite as *name* |
 | **Speaker attribution** | Extracts who says what and what they say; its Find new speakers row lists the people a chapter names | Studio Script tab → Analyze · Studio Discover → Scan |
 | **Speaker attribution · second look** | Asks once more about a spoken line Analyze left with no speaker, with the chapters either side; what it finds is marked to check | Runs inside Analyze, only on lines left blank — [Studio → The second look](studio.md#the-second-look) |
+| **Direction** | Writes how each spoken line should be said — an emotion and a few words — only where the book gives a reason, onto the line's Style Instructions and Emotion | No button yet: a step of the one-click audiobook; the API runs it now — [Direction](#direction--two-recipes-and-the-carry) |
 | **Smart-assign** | Matches each speaker in a book to a persona | Studio Cast tab → Smart-assign |
 | **Show notes** | Chapter summaries for podcast descriptions | Projects → Show notes |
 | **Dictation cleanup** | Raw speech → clean text before paste | Captures — runs after a dictation when auto-refine is on |
@@ -33,8 +34,9 @@ model. Left on **From the provider** (the default), a provider on this
 machine (the built-in engine, Ollama, LM Studio) is Local and a cloud account
 (Claude, GPT, Gemini …) is Frontier. Change it on a feature's chip, beside
 **Thinking** (since 2026-10-16). Today the recipe picks Speaker attribution's
-route ([Auto](#speaker-attribution--two-routes-and-the-auto-row), below); the one-click audiobook's steps
-will each have both.
+route ([Auto](#speaker-attribution--two-routes-and-the-auto-row), below) and
+which of Direction's two cards runs ([Direction](#direction--two-recipes-and-the-carry));
+the one-click audiobook's other steps will each have both.
 
 Until a model is picked, features answer with a "run the LLM engine setup"
 message — the one-click wizard on the AI Settings page installs the built-in
@@ -406,6 +408,76 @@ fakes:
 - **Compose / Rewrite**: *Insert from persona…* drops a persona's note on how
   it sounds into the box, so you test with the same text a persona page's 🎲
   and ✏️ buttons use.
+
+## Direction — two recipes and the carry
+
+Direction reads a chapter and writes **how each spoken line should be said** —
+only where the book says so (since 2026-10-16). *“Off with her head!” the Queen
+shouted* gets *shouted*; *“I don't see any wine,” she remarked* gets nothing,
+because the text gives no reason. For each line it marks, the model gives one
+of the nine emotions — neutral, happy, sad, angry, fearful, whispered,
+shouted, sarcastic, contemptuous, or none when none fits — and a few words
+taken from the book's own cue: *indignantly*, *grumbling*, *talking in his
+sleep*. Most lines get nothing, and that is the point: a line the book says
+nothing about is read as the persona always speaks.
+
+**The carry.** A speaker often says two things in one paragraph with the cue
+beside only the first (*“…,” the Hatter grumbled: “…”*). After the model
+answers, a speaker's direction goes to their other lines in the same paragraph
+that got none — forward, then back. Measured by hand on *Alice* chapter VII
+with the built-in Gemma: of the lines whose text says how they're spoken,
+60 % got a direction from the model alone and 88 % with the carry; of the
+lines with no such cue, 4 % and 5 % got one anyway.
+
+**Where the answer goes** — the fields a line's **Render overrides** edit on
+Render ([Studio → Can be directed](studio.md#can-be-directed)), shaped to the
+model of the persona that speaks the line:
+
+- **A model that takes written direction** (Qwen3-TTS, VoxCPM2): the words go
+  to the line's **Style Instructions**, the emotion to its **Emotion** — where
+  the model's list has it (CosyVoice3 takes five of the nine).
+- **A tag model** (Chatterbox Turbo and Nano): the emotion becomes the model's
+  own tag — *fearful* is *[fear]*. An emotion it has no tag for (sad, shouted,
+  contemptuous) gives nothing.
+- **Every other model**, or a speaker with no voice yet: nothing. Cast the
+  speakers first.
+
+A line whose direction changed turns [stale](studio.md#stale-lines) until you
+render it again — then you hear it.
+
+**What you set is never touched.** Each line records which model and recipe
+wrote its direction, and what it wrote. Run Direction again and it replaces
+only that — or takes it away, if the new run no longer marks the line. A line
+whose Style Instructions or Emotion you set, changed after the AI wrote it, or
+cleared with **↺**, is left as you made it; so is direction an import brought
+in.
+
+**Two recipes.** Under the **DIRECTION** heading in AI Settings → Routing by
+feature there are two cards, each with its own prompt, engine preset and Lab:
+
+- **Local** — reads the chapter alone and answers in JSON, for a model on this
+  machine. A chapter too long for the model is read in pieces, the way Analyze
+  reads one (the same two settings, [Long chapters](#speaker-attribution--two-routes-and-the-auto-row)).
+- **Frontier** — reads the chapter with the book's earlier chapters and who is
+  who, and thinks before it answers, for a large cloud model. Its prompt runs
+  without JSON mode, because JSON mode turns a model's thinking off.
+
+**Frontier** runs when the Frontier card's model is a frontier one — its
+preset's **Recipe**, which is Frontier by default for a cloud account
+([How routing works](#how-routing-works)) — and **Local** otherwise. Both cards
+ship on *Reasoned extraction*, the preset speaker attribution uses, so on the
+built-in engine Local runs. To direct with a cloud model, point the Frontier
+card at it. The carry applies to both.
+
+**Running it.** There is no button for it yet: it is a step of the one-click
+audiobook, which will run it chapter by chapter. Until then the server's API
+runs it — `POST /v1/scenes/{scene_id}/direction` on a chapter Analyze has cut
+into lines (a chapter never analyzed is refused, since Direction reads who
+speaks each line). Send `{"recipe": "local"}` or `{"recipe": "frontier"}` to
+force a recipe, `{"carry": false}` to leave the carry off. The answer lists every
+line it marked, the model's own and the carried, and counts what it did:
+lines written, earlier direction taken away, lines kept as yours, lines whose
+speaker has no voice, and lines whose model takes none of it.
 
 ## Thinking — one control, honest errors
 

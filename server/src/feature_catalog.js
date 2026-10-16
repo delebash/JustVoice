@@ -11,8 +11,8 @@ const e = (key, label, hint, group) => FeatureCatalogEntry({ key, label, hint, g
 // Features that prefer the built-in llama.cpp runner when nothing more specific is
 // configured (privacy-sensitive, accuracy-critical work). Passed to
 // installLlm({preferLocalFeatures}). speaker_discovery reads the same manuscript text
-// attribution does and keeps the preference with it.
-export const PREFER_LOCAL_FEATURES = new Set(["speaker_attribution", "speaker_discovery", "speaker_second_look"]);
+// attribution does and keeps the preference with it, and so does direction (2026-10-16).
+export const PREFER_LOCAL_FEATURES = new Set(["speaker_attribution", "speaker_discovery", "speaker_second_look", "direction"]);
 
 export const FEATURE_CATALOG = [
   // ANALYSIS order (user QC 2026-08-06): the plain single cards FIRST, the SPEAKER
@@ -36,6 +36,15 @@ export const FEATURE_CATALOG = [
     "Analysis",
   ),
   e("speaker_attribution", "Speaker attribution", "Extracts who says what and what they say.", "Analysis"),
+  // DIRECTION — the one-click audiobook's step 6 (slice 2, 2026-10-16): a heading of its own with
+  // its two recipes as routed cards (Local · Frontier), after attribution's block for the same
+  // reason that block is last.
+  e(
+    "direction",
+    "Direction",
+    "Marks how each spoken line should be said, where the text gives a reason — one of nine emotions and a few words of direction.",
+    "Analysis",
+  ),
   e("compose", "Compose", "Draft text from a prompt in the editor.", "Editing"),
   e(
     "refine",
