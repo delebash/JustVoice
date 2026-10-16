@@ -321,7 +321,8 @@ NOT:    a combined score (NOT STANDARD, RESEARCH §10.11); NeMo itself (Linux on
 BUILT:  the plan `docs/plans/2026-10-16-test-kit-and-round-4.md`; `npm run round4:render`; the
         four licences accepted through the app 2026-10-16 14:48 UTC and their 8-bit models
         downloading; one-click slice 1 (TASKS "Frontier models get their own recipe").
-OPEN:   the kit (tools/take-check); round 4's renders, scores and blind page; one-click slices 2–6.
+OPEN:   the kit (tools/take-check); round 4's renders, scores and blind page; the one-click
+        slices' acceptances on the GPU (slice 5 built on branch `oneclick-s5`, not merged).
 GO:     given 2026-10-16.
 
 ### The run's last questions, answered (decided 2026-10-16)
@@ -831,6 +832,31 @@ OPEN:   slice 0 (the owed audio measurements) — go given 2026-10-11, the next 
         merges names its own way (the Queen shows twice there); a name Discover counted a line
         for that the book never gives (the Knave) still becomes a speaker; `eval:speakers` imports
         a temporary book on the server it's pointed at and deletes it after.
+        Slice 5, the run and its screen (branch `oneclick-s5`, 2026-10-16, not merged): the run a
+        persistent job in render jobs' shape — `book_run.js`, its `book_runs` table (not synced),
+        `POST /v1/book_runs` · `GET /v1/book_runs/{id}` · `…/cancel` · `…/resume` · `GET
+        /v1/projects/{id}/book_run` (the plan and the latest run), the boot sweep pausing it; each
+        step the function its route calls (Analyze's route body moved into `analyzeChapter`, + Add
+        Narrator's into `addNarrator`, the M4B export start into `startM4bExport`); the twelve
+        steps in the plan's order, a chapter done before kept unless redone, a step's 409 recorded
+        and passed, 501/502 stopping it with its reason; the price on a cloud step estimated
+        (`book_run.chars_per_token`, the kit's pricing table) and asked once (`accept_price`, Q8);
+        per step the model, recipe, tokens, calls and seconds. The screen: the card "Make the
+        audiobook" across an audiobook's Overview (`BookRunCard.vue` · `StudioBookRun.vue`), drawn
+        first as the in-app mock `#/mock/one-click` (states new · price · blocked · running ·
+        paused · stopped · failed · done, `?route=frontier`), mirrored into the AI tasks panel.
+        Tests: `book_run.test.js` (Alice VII one press to an M4B with every model faked, a restart
+        paused and resumed, the frontier price asked once, what stops a start), the card's mount
+        and its words (`BookRunCard.test.js`, `bookRun.test.js`). RESEARCH §10.21; docs studio.md
+        (Make the audiobook), ai-features, personas, settings-reference, whats-new.
+        Open, slice 5: its acceptance on the GPU — Alice VII from one press to an M4B, the time
+        and the token count written down, a restart resumed; the user's look at the screen and
+        its words — its place (Overview, across both columns), "▶ Make audiobook", the steps'
+        names, the progress and Status words, the price question, "What to check"; `redo` has no
+        button; a removed speaker comes back on a re-run while the scans name them (Ignore keeps
+        a name out); the run doesn't hold off Script's own Analyze of the same chapter; the kit's
+        pricing table has no 5.x model (kit need: a row for claude-opus-5-5 and the others, or the
+        user adds them in AI Settings → Pricing).
 GO:     given 2026-10-10 ("your rec on all"); measuring waits: "wait i want to discuss a little more".
 
 ### The one-click plan's questions, answered (decided 2026-10-11)
@@ -866,9 +892,14 @@ BUILT:  the plan's §11 and §12 carry these answers. 6 and 7 — 2026-10-16, th
         (describe · design · match), the Local and Frontier rows of "Voices from the book",
         settings `book_voices` (min_lines 3; Q2's engine is `clone_model`, voxcpm2, until round 4);
         Smart-assign's matches cast on the server. RESEARCH §10.20; docs ai-features, personas.
+        8 built 2026-10-16 as slice 5 (branch `oneclick-s5`): a run with a step on a cloud model
+        shows its estimated tokens and price before it starts, and starts only with
+        `accept_price` — the screen asks once ("Send the book to a cloud model?"); Resume never
+        asks again. RESEARCH §10.21.
 OPEN:   slice 0: direction on/off and the frozen Hatter on the engines above, a blind listening page.
-        7: the Check column's words for the `group` mark (its tag and question) — the user's, with
-        the run's screen; slice 4's gemma acceptance, `npm run eval:speakers`, once the card is free.
+        7: the Check column's words for the `group` mark (its tag and question, built 6f3ad045) —
+        the user's look, with the run's screen (slice 5); slice 4's gemma acceptance, `npm run
+        eval:speakers`, once the card is free.
         Slice 3: its acceptance on the GPU (Alice VII–VIII, one call per step, the user listens);
         the user's word on what it chose (RESEARCH §10.20): the match pool (personas playing no one
         in the book), the persona note's words. A second book's narrator cast by name with the

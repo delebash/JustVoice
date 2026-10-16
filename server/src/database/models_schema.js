@@ -878,6 +878,65 @@ export const TABLES = [
     }
   },
   {
+    "name": "book_runs",
+    "ddl": "CREATE TABLE book_runs (\n\tid VARCHAR NOT NULL, \n\tproject_id VARCHAR NOT NULL, \n\tscope VARCHAR NOT NULL, \n\tstatus VARCHAR NOT NULL, \n\tstep VARCHAR, \n\tscene_id VARCHAR, \n\tsteps_json TEXT, \n\toptions_json TEXT, \n\terror TEXT, \n\tstarted_at DATETIME, \n\tfinished_at DATETIME, \n\tcreated_at DATETIME, \n\tupdated_at DATETIME, \n\tPRIMARY KEY (id), \n\tFOREIGN KEY(project_id) REFERENCES projects (id) ON DELETE CASCADE, \n\tFOREIGN KEY(scene_id) REFERENCES scenes (id) ON DELETE SET NULL\n)",
+    "indexes": [
+      "CREATE INDEX ix_book_runs_project_created ON book_runs (project_id, created_at)"
+    ],
+    "columns": {
+      "id": {
+        "kind": "text",
+        "pk": true,
+        "notNull": true,
+        "defaultFn": "justvoice.database.models._uuid"
+      },
+      "project_id": {
+        "kind": "text",
+        "notNull": true
+      },
+      "scope": {
+        "kind": "text",
+        "notNull": true,
+        "default": "project"
+      },
+      "status": {
+        "kind": "text",
+        "notNull": true,
+        "default": "queued"
+      },
+      "step": {
+        "kind": "text"
+      },
+      "scene_id": {
+        "kind": "text"
+      },
+      "steps_json": {
+        "kind": "text"
+      },
+      "options_json": {
+        "kind": "text"
+      },
+      "error": {
+        "kind": "text"
+      },
+      "started_at": {
+        "kind": "datetime"
+      },
+      "finished_at": {
+        "kind": "datetime"
+      },
+      "created_at": {
+        "kind": "datetime",
+        "defaultFn": "justvoice.database.models._utcnow"
+      },
+      "updated_at": {
+        "kind": "datetime",
+        "defaultFn": "justvoice.database.models._utcnow",
+        "onupdateFn": "justvoice.database.models._utcnow"
+      }
+    }
+  },
+  {
     "name": "story_items",
     "ddl": "CREATE TABLE story_items (\n\tid VARCHAR NOT NULL, \n\tstory_id VARCHAR NOT NULL, \n\tgeneration_id VARCHAR, \n\tversion_id VARCHAR, \n\ttrack INTEGER NOT NULL, \n\tstart_time_ms INTEGER NOT NULL, \n\ttrim_start_ms INTEGER NOT NULL, \n\ttrim_end_ms INTEGER NOT NULL, \n\tvolume FLOAT NOT NULL, \n\tduration FLOAT, \n\tcreated_at DATETIME, \n\tPRIMARY KEY (id), \n\tFOREIGN KEY(story_id) REFERENCES stories (id) ON DELETE CASCADE, \n\tFOREIGN KEY(generation_id) REFERENCES generations (id) ON DELETE CASCADE, \n\tFOREIGN KEY(version_id) REFERENCES generation_versions (id) ON DELETE SET NULL\n)",
     "indexes": [],

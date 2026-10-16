@@ -209,16 +209,36 @@ export function cancelProjectExports(projectId) {
   return n;
 }
 
+/**
+ * Start the book's M4B export job → the job as its routes show it — the route's body, a function
+ * so the one-click run calls it too (its last step). The Save dialog suggests the book's title as
+ * written (the kit's safeTitle — JustWrite's rule, copied to the kit; JustWrite still keeps its
+ * own; 2026-10-13, the narrowings review R7). 404 for an unknown book, 503 without ffmpeg.
+ */
+export function startM4bExport(projectId) {
+  const [name, author] = _project(projectId);
+  _needFfmpeg("M4B export");
+  return _start(projectId, `${safeTitle(name)}.m4b`, "audio/mp4", (job) => _m4b(job, projectId, name, author));
+}
+
+/** An export job as its routes show it, and its task (resolves once it ends) — or null when it is
+ * unknown (fetched, or gone with a restart: jobs live in memory). */
+export function exportJob(jobId) {
+  const job = _jobs.get(jobId);
+  return job === undefined ? null : { ..._public(job), task: job.task };
+}
+
+/** Cancel an export job (its cancel route's). Unknown → false. */
+export function cancelExportJob(jobId) {
+  const job = _jobs.get(jobId);
+  if (job === undefined) return false;
+  _abort(job);
+  return true;
+}
+
 export function router() {
   const app = new Hono();
-  // The Save dialog suggests the book's title as written (the kit's safeTitle — JustWrite's rule,
-  // copied to the kit; JustWrite still keeps its own; 2026-10-13, the narrowings review R7).
-  app.post("/v1/projects/:project_id/export_m4b/start", (c) => {
-    const projectId = c.req.param("project_id");
-    const [name, author] = _project(projectId);
-    _needFfmpeg("M4B export");
-    return c.json(_start(projectId, `${safeTitle(name)}.m4b`, "audio/mp4", (job) => _m4b(job, projectId, name, author)));
-  });
+  app.post("/v1/projects/:project_id/export_m4b/start", (c) => c.json(startM4bExport(c.req.param("project_id"))));
 
   app.post("/v1/projects/:project_id/export_chapters/start", (c) => {
     const projectId = c.req.param("project_id");
@@ -234,7 +254,7 @@ export function router() {
 
   app.post("/v1/export_jobs/:job_id/cancel", (c) => {
     const job = _job(c.req.param("job_id"));
-    _abort(job);
+    cancelExportJob(job.id);
     return c.json(_public(job));
   });
 

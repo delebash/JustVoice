@@ -564,6 +564,37 @@ function sceneRequest(h, scene, body) {
   return { request, text, style, lineIds, segments };
 }
 
+/**
+ * Analyze one chapter and save it onto its lines (async) → AnalyzeSceneResponse's fields — the
+ * route's body, a function so the one-click run calls it too (the plan's §4: "where a route holds
+ * the logic inline, it moves into a function both the route and the run call"). `body` is the
+ * route's (AnalyzeSceneRequest: the chapter's text, and any per-run cast, corrections or route
+ * force). The model's failures are HttpErrors (501 / 502); a re-cut that would delete takes is
+ * refused (409, `_persistAttribution`) and saves nothing.
+ */
+export async function analyzeChapter(h, scene, body, { settings }) {
+  const { request, text, style, lineIds, segments } = sceneRequest(h, scene, construct(AnalyzeSceneRequest, body));
+  const rawOut = {};
+  let rows;
+  try {
+    rows = await pipeline.analyzeScene({ settings, request, rawOut, marks: style, segments });
+  } catch (e) {
+    throw analyzeError(e);
+  }
+  // The scene as this request read it (Python's session object, never refreshed).
+  const persisted = h.tx(() => _persistAttribution(h, scene, rows, text, { marks: style, lineIds }));
+  return {
+    scene_id: scene.id,
+    raw_llm: rawOut.llm_text ?? null,
+    rows: rowsOut(rows),
+    route_used: rawOut.route ?? "guided",
+    route_source: rawOut.route_source ?? "auto",
+    confidence_floor: rawOut.floor ?? 0.7,
+    usage: rawOut.usage ?? null,
+    persisted,
+  };
+}
+
 /** The pipeline's refusals as the routes answer them: 501 unconfigured, 502 the model's own
  * words, 502 "extraction failed: …" for anything else. */
 function analyzeError(e) {
@@ -1484,31 +1515,8 @@ export function router() {
     const sceneId = c.req.param("scene_id");
     const scene = sceneById(h, sceneId);
     if (scene === null) throw notFound(`scene ${sceneId}`);
-    const settings = getState().settings.get();
-    const { request, text, style, lineIds, segments } = sceneRequest(h, scene, c.req.valid("json"));
-
-    const rawOut = {};
-    let rows;
-    try {
-      rows = await pipeline.analyzeScene({ settings, request, rawOut, marks: style, segments });
-    } catch (e) {
-      throw analyzeError(e);
-    }
-
-    // The scene as this request read it (Python's session object, never refreshed).
-    const persisted = h.tx(() => _persistAttribution(h, scene, rows, text, { marks: style, lineIds }));
-    return c.json(
-      construct(AnalyzeSceneResponse, {
-        scene_id: sceneId,
-        raw_llm: rawOut.llm_text ?? null,
-        rows: rowsOut(rows),
-        route_used: rawOut.route ?? "guided",
-        route_source: rawOut.route_source ?? "auto",
-        confidence_floor: rawOut.floor ?? 0.7,
-        usage: rawOut.usage ?? null,
-        persisted,
-      }),
-    );
+    const out = await analyzeChapter(h, scene, c.req.valid("json"), { settings: getState().settings.get() });
+    return c.json(construct(AnalyzeSceneResponse, out));
   });
 
   /**

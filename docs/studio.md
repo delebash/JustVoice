@@ -6,6 +6,10 @@ always lands on its **Overview**. From there the steps run in order:
 
 **Discover → Script → Cast → Render → Export**
 
+Or all of them at once: an audiobook's Overview has **▶ Make audiobook**, which
+runs every step for you, unattended, and exports the M4B —
+[Make the audiobook](#make-the-audiobook) below.
+
 The step names adapt to your project kind (chapters for audiobooks, scenes for
 game projects, segments for podcasts) — same flow, your vocabulary. Each step's
 card says where it stands in the same words as the Overview's row for it —
@@ -41,8 +45,9 @@ selected line and scroll position. Discover keeps its ticks the same way.
 
 ## Overview
 
-The project's own page. **Where it stands** has one row per step, and clicking a
-row opens that step:
+The project's own page. An audiobook's starts with **Make the audiobook** — one
+press for the whole book ([below](#make-the-audiobook)). **Where it stands** has
+one row per step, and clicking a row opens that step:
 
 | Step | What the row says |
 |---|---|
@@ -96,7 +101,100 @@ this project, and **Export .justvoice.zip** saves the whole project as one file
 — a backup or a hand-off; nothing imports it back yet.
 **Delete project** asks first, then removes the project and everything in it,
 its speakers included; takes, generations, personas, voices and lexicons are
-kept.
+kept. A one-click run of the book stops with it.
+
+### Make the audiobook
+
+**One press turns the book into a finished audiobook** — a cast of voices, the
+lines directed where the book says how they're spoken — and leaves every
+decision where you can hear it and change it (since 2026-10-16). It is the card
+on top of an audiobook's Overview. Press **▶ Make audiobook** and the run goes
+through every step of Studio by itself, in this order:
+
+| Step | What it does | What it runs on |
+|---|---|---|
+| Discover the speakers | scans each chapter for the people it names ([Discover](#discover)) | the language model |
+| Merge found names | one person per name — *the Queen* and *Queen of Hearts* — leaving out people never heard speaking ([One list for the whole book](#one-list-for-the-whole-book)) | the language model |
+| Add the speakers | adds them to the book, and the narrator | — |
+| Analyze — who speaks each line | each chapter, as Script's Analyze does ([How Analyze reads a chapter](#how-analyze-reads-a-chapter)) | the language model |
+| Lines with no single speaker | gives each line several people say to one of them, or the narrator, marked to check ([below](#lines-with-no-single-speaker)) | the language model |
+| Describe the voices | writes each main speaker's voice, and the narrator's, from the book | the language model |
+| Design the voices | designs each one once and keeps it as a persona, cast with its speaker ([Personas made from the book](personas.md#personas-made-from-the-book)) | Qwen3-TTS VoiceDesign → VoxCPM2 |
+| Match the rest from your library | casts everyone else with a persona you have | the language model |
+| Direction | how each spoken line should be said, where the book gives a reason ([Can be directed](#can-be-directed)) | the language model |
+| Render every line | a take for every line that has none | each speaker's persona |
+| Check the takes | reads every take back and renders a failed one again once ([Checking takes](#checking-takes)) | your speech recognition |
+| Master and export the M4B | joins and masters each chapter, then encodes the book | ffmpeg |
+
+It does the language model's steps together, then the voices, then the
+render, so the AI model and the speech models change places on your graphics
+card only a few times a book.
+
+**Before you press it**, the card names the model each step will run on — the
+chip opens that step's card in AI Settings → Routing by feature, where you can
+change it — and its recipe (**Local** or **Frontier**,
+[AI features → How routing works](ai-features.md#how-routing-works)). Every AI
+step on this computer: *Every AI step runs on this computer — nothing is sent
+anywhere, nothing to pay.* What stops it starting is said on the card: no
+language model set up, the book's **Language** not set (its voices are made in
+it), or no text yet. What it will meet is said too: without ffmpeg it stops
+before the M4B, and without speech recognition the takes go unchecked.
+
+**On a cloud model it asks once.** When any AI step runs on a cloud account
+(Claude, GPT, Gemini…), the card adds an **Estimate** column and a line — *Sends
+the book to claude-opus-5-5: about 33,404 tokens in and 31,525 out, about $0.76*
+— and the button carries the price. Pressing it asks once, *Send the book to a
+cloud model?*, and the run starts only on your yes; Resume never asks again. The
+estimate is arithmetic, not a measurement: the text each step reads at about
+four characters a token (`book_run.chars_per_token`, [Settings
+reference](settings-reference.md)), each spoken line's answer at
+`extraction.answer_tokens_per_line`, priced from AI Settings → Pricing. A model
+Pricing has no price for gets the token count and *price unknown*. The run
+writes down what it really used.
+
+**While it runs** a bar fills step by step, and the line under it says where
+it is — *Direction · 1 of 2 chapters — CHAPTER VIII. The Queen's
+Croquet-Ground · 12:15 so far · 64,132 tokens in* — and each step's **Status**
+says *Done · 2 chapters*, *Running · 212 of 454 lines* or *Waiting*. It runs on
+the server: it goes on if you leave the page, close the window, or run the
+server headless, and the AI tasks panel shows it too (its Cancel is **Stop**).
+**Stop** stops it at the next chapter or line; what is done is kept.
+
+**It never stops to ask.** Where it isn't sure it marks the line, the way Script
+and Render mark lines, and carries on. A step that can't go on — no language
+model, a model that fails, no ffmpeg — stops the run with its reason, in red,
+and the step's row says *Stopped here*. Fix it, then **▶ Resume**: it picks up
+at that step and chapter. A run the app closed during is **Paused** — *The app
+closed while this ran. Resume picks up at Direction, CHAPTER VIII…* — and
+resumes the same way.
+
+**It does only what isn't done.** A chapter already scanned, analyzed or
+directed — by an earlier run or by you on Script — is kept, and its step says
+*· 1 already done*; a line you set is never overwritten; voices and personas
+you made are never replaced, and a speaker you cast is never recast; Analyze on
+a chapter that has takes stays refused, and the run lists that chapter under
+what to check. So **↻ Run again** after you add a chapter does only the new
+one. A name you removed as a speaker comes back if the scans still find it —
+**Ignore** it on Discover to keep it out.
+
+**When it's done** the card says how long it took and what it used — *Made in
+42:38 · 67,512 tokens in, 9,236 out* (and its cost on a cloud model) — and
+offers **⬇ Save the M4B**. The M4B waits until you save it, once; after that,
+or after the app restarts, Export makes it again. Then **What to check**, each
+with a link to where you fix it:
+
+- each chapter with lines **to check in Script** — the marks Script shows
+  ([The marks](#the-marks-where-to-read-closely)), the lines given to one of a
+  group among them — **Open in Script ➜** lands on the first;
+- each line whose take the take check **flagged** — *its take misses words, after
+  one new take* — **Open in Render ➜**;
+- the **voices made from the book** — listen to each on Cast;
+- a speaker with lines and **no persona**;
+- a chapter a step **left as it was**, and why.
+
+**Model, tokens and time for each step** (a fold under it) is the run's own
+record: for each step the model it ran on, its recipe, tokens in and out, the
+model calls and the time — the numbers that compare one run with another.
 
 ## Discover
 
@@ -206,9 +304,9 @@ a being, and it may propose it. **Ignore** it once and it stays out.
 other with words added — *Sedge* and *Old Sedge*. A chapter can also write a
 person in a way that shares no such run of words with another chapter's: in
 *Alice*, the Queen is *Queen of Hearts* in chapter VII and *the Queen* in VIII,
-two rows here. The one-click audiobook (being built) adds speakers without you,
-so before it adds anyone it merges every chapter's scan into one list of people
-(`POST /v1/projects/{id}/speakers/merge`, since 2026-10-16):
+two rows here. [Make the audiobook](#make-the-audiobook) adds speakers without
+you, so before it adds anyone it merges every chapter's scan into one list of
+people (`POST /v1/projects/{id}/speakers/merge`, since 2026-10-16):
 
 - names that contain one another once a leading *the* or *a* is set aside are
   checked by the AI, which says which of them are one person — *the Queen* and
@@ -731,8 +829,8 @@ as it was; nothing is written.
 
 **A line several people say at once can't render.** *"No room! No room!" they
 cried out* is the Hatter's and the March Hare's together; Analyze rightly names
-no one, and a line with no speaker blocks the render. The one-click audiobook
-(being built) can't stop to ask, so after Analyze it gives each spoken line still
+no one, and a line with no speaker blocks the render. [Make the
+audiobook](#make-the-audiobook) can't stop to ask, so after Analyze it gives each spoken line still
 with no speaker to one speaker (decided 2026-10-11): to **one of the group** the
 text names — *they* = the Hatter and the March Hare → one of them — or to the
 **narrator** when the text makes no one clear, or when no one who says it is a
@@ -741,15 +839,16 @@ yet keeps such a line blank. Lines you set are never asked about, and a chapter
 Analyze hasn't read is refused: *Analyze this chapter first — only the lines
 Analyze leaves with no speaker are asked about.*
 
-There is no button for it yet — the one-click run calls it, through
+Make the audiobook runs it; the server's API does too,
 `POST /v1/scenes/{id}/group-lines` ([AI features → The one-click audiobook's
 speaker steps](ai-features.md#the-one-click-audiobooks-speaker-steps)). Each line
 it gives is **marked to check**: *Decided by* says **AI, from the story around
-it**, the Confidence column shows **—**, and the line counts under **To check**,
-with **👁 Show the lines around** and **✓ Looks right**, until you set a speaker
-or confirm it. (The Check column's tag and question for this mark come with the
-one-click run's screen.) Who the group was is kept on the line; Analyze run on the
-chapter again decides the line afresh and drops it.
+it**, the Confidence column shows **—**, the Check column **Said together** —
+*Said together by the Hatter and the March Hare — given to the Hatter. Is that
+right?*, or *No one could be named — given to Narrator. Who says it?* — and the
+line counts under **To check**, with **👁 Show the lines around** and **✓ Looks
+right**, until you set a speaker or confirm it. Who the group was is kept on the
+line; Analyze run on the chapter again decides the line afresh and drops it.
 
 ### Re-analyze
 
@@ -861,8 +960,8 @@ Select a speaker, then click a persona. One persona can play many speakers
 speaker it plays. Cast never changes a voice: pace, pitch, gain, delivery and
 effects all belong to the persona, on the [Personas](personas.md) page.
 
-The one-click audiobook will cast a book for you (its voices step, since
-2026-10-16, not on a screen yet — [AI features → Voices from the
+[Make the audiobook](#make-the-audiobook) casts a book for you (its voices steps —
+[AI features → Voices from the
 book](ai-features.md#voices-from-the-book)): each speaker with at least three lines and the
 narrator get a persona of their own, made from how the book shows them, and the
 rest a persona from your library. They arrive here as ordinary casts — review
@@ -1331,10 +1430,11 @@ they are if you go ahead.
 
 A take can go wrong in ways you only hear: the model skips words, says a line
 twice, or runs on past its text — the thing a listener notices first. The take
-check listens for you. It is the step of the one-click run that comes after the
-render (the run itself is still being built), and today it runs through the server's
-API: `POST /v1/scenes/{chapter id}/check_takes` checks one chapter. There is no
-button for it in Render yet, and Render doesn't show its findings yet.
+check listens for you. It is the step of [Make the audiobook](#make-the-audiobook)
+that comes after the render — over the whole book, its flagged lines listed under
+the card's *What to check* — and the server's API runs it on one chapter:
+`POST /v1/scenes/{chapter id}/check_takes`. There is no button for it in Render,
+and Render doesn't mark a flagged take on its line yet.
 
 What it does, for every line whose take in use was made from what the line is now
 (a stale line, or one with no take, is left alone — render it first):

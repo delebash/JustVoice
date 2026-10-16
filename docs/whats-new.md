@@ -2,6 +2,17 @@
 
 ## v0.1.0
 
+- **Make the audiobook (2026-10-16)** — an audiobook's Overview has one button that turns the book
+  into a finished audiobook, unattended: it finds the speakers, merges their names, decides who
+  says every line, gives the main speakers voices made from the book and casts the rest from your
+  library, directs the lines, renders and checks every take, and exports the M4B. Before it starts
+  the card names each step's model and recipe; on a cloud model it shows the estimated tokens and
+  price and asks once. It runs on the server — leave the page, close the window, or restart the app
+  and **Resume** picks up where it stopped — does only what isn't done yet, never overwrites what
+  you set, and afterwards lists what to check, each with a link: Script's marked lines, flagged
+  takes, the voices it made. Each step writes down its model, recipe, tokens and time
+  ([Studio → Make the audiobook](studio.md#make-the-audiobook))
+
 - **Direction: how each line is said, from the book (2026-10-16)** — a new AI step reads a chapter
   and writes how each spoken line should be said, only where the text gives a reason: one of the
   nine emotions and a few words from the book's own cue, carried to the speaker's other lines in

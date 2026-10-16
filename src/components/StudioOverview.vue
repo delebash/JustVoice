@@ -28,6 +28,9 @@
   Author. The server reads them: extraction_api._project_meta (Analyze,
   Discover, Script) and render_chapter_api (the render skips the tags).
 
+  Make the audiobook (2026-10-16, the one-click plan's slice 5) — the one-click run's
+  card, an audiobook's only, on top across both columns: StudioBookRun.vue.
+
   Pronunciation lexicon (2026-09-30, docs/plans/2026-09-30-project-lexicon.md)
   is the project's own `default_lexicon_id`: every line of the book is read
   with it, before its speaker's persona lexicon (render_core.line_lexicons).
@@ -41,6 +44,7 @@ import {
   confirmDialog, pushToast, saveBlob,
 } from "@delebash/llm-ui";
 import ImportModal from "./ImportModal.vue";
+import StudioBookRun from "./StudioBookRun.vue";
 import { packageName, projectsService } from "../services/projects.js";
 import { useCopy } from "../services/copy.js";
 import { useProjectsStore } from "../stores/projects.js";
@@ -58,7 +62,8 @@ const props = defineProps({
   steps: { type: Array, required: true },       // stepsFor(kind), Overview included
   state: { type: Object, required: true },      // projectState(...)
 });
-const emit = defineEmits(["go"]);
+// `changed`: the one-click run stopped or ended — Studio reads the book again.
+const emit = defineEmits(["go", "changed"]);
 
 const copy = useCopy();
 const projectsStore = useProjectsStore();
@@ -222,6 +227,10 @@ async function deleteProject() {
 
 <template>
   <section class="studio-overview">
+    <!-- The one-click run (the one-click plan's slice 5): an audiobook's, on top across both
+         columns — the mock #/mock/one-click draws it. -->
+    <StudioBookRun v-if="project.project_type === 'audiobook'" class="studio-overview__wide" :project="project"
+      @go="(k, a) => emit('go', k, a)" @changed="emit('changed')" />
     <div class="studio-overview__main">
       <div class="jv-card">
         <div class="jv-card__header">
@@ -337,6 +346,7 @@ async function deleteProject() {
 }
 .studio-overview__main,
 .studio-overview__side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.studio-overview__wide { grid-column: 1 / -1; min-width: 0; }
 .studio-overview__step { font-weight: 700; color: var(--accent-ink); }
 .studio-overview__steps :deep(.ui-table-row) { cursor: pointer; }
 .studio-overview__actions { gap: 8px; flex-wrap: wrap; }

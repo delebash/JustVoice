@@ -3996,6 +3996,99 @@ finish it all go!" (TASKS "The test kit and round 4, then the one-click slices")
   (`ensureSpeaker`), so the voices step leaves it alone and its voice isn't drawn from the second
   book's genre. Not decided.
 - Tests: `server/tests/book_voices.test.js` (15, the model and the speech engine faked).
+### 10.21 Slice 5 — the run and its screen, built (2026-10-16)
+
+The one-click plan's slice 5 (§10 item 5; Q8), built under "your rec do it all stop stoping and
+finish it all go!" on branch `oneclick-s5`. Every fact is *code, 2026-10-16* unless it says
+otherwise; nothing ran on the graphics card — the acceptance (Alice VII, one press to an M4B, the
+time and the tokens written down, a restart resumed) ran with every model faked
+(`server/tests/book_run.test.js`), so it proves the run, not the models.
+
+- **The run is a persistent job in render jobs' shape** — `server/src/book_run.js`
+  (`createRun`, `startRun` on the kit's `background()`, `cancelRun`, `resumeRun`, `finished`,
+  `sweepStaleRuns` from `app.js`'s boot beside render jobs'), its row in `book_runs`
+  (`models_schema.js`): project, scope (`project` only), status (queued · running · paused ·
+  cancelled · failed · completed), the step and chapter it is on, `steps_json` (per step: status,
+  done/total/kept, model, recipe, tokens in and out, calls, seconds, the chapters it did, and the
+  refusals it recorded) and `options_json` (redo, the price accepted, the estimate shown). Not in
+  `SYNC_TABLES`, so it stays on the device; what it writes syncs as before, stamped by
+  `flushSync()` after each chapter and step (a background task has no request whose answer
+  stamps it, `app.js:286`).
+- **Routes** — `GET /v1/projects/:id/book_run` (the plan and the latest run, with its review once
+  completed), `POST /v1/book_runs` (`accept_price`, `redo`), `GET /v1/book_runs/:id`
+  (`?review=true`), `POST …/cancel`, `POST …/resume` (`api/book_runs_api.js`), as
+  `/v1/render_jobs` is laid out.
+- **Each step is the function its route calls** — Discover `discoverChapter`, merge
+  `mergeFoundNames`, add `promoteSpeakers` one person at a time (a name the book gained since is
+  skipped) then `addNarrator` (moved out of `POST /v1/projects/:id/narrator` for it), Analyze
+  `analyzeChapter` (moved out of `POST /v1/scenes/:id/analyze`, the chapter's text read with
+  `_sceneText`), `giveGroupLines`, `describeVoices` → `makeVoices` → `matchRest`, `directScene`,
+  one render job over every line whose state is `ready` (`createJob` · `startJob` ·
+  `finished`), `checkTakes` over every chapter, and the M4B export job (`startM4bExport`, moved
+  out of its route; the run waits on the job's task). Analyze's 409 on a chapter with takes, and
+  any step's 409, is recorded against that chapter and the run goes on; 501/502 and anything
+  else stop it ("failed", its reason kept). No speech recognition (the check's 400) skips the
+  check with its reason; no ffmpeg (503) stops the run at the export.
+- **Idempotent, per step:** a chapter the run did is passed over on resume; one done before is
+  kept unless `redo` names the step — Discover: a saved scan; Analyze: analyzed or every line
+  with a speaker from the import (`directScene`'s own rule); Direction: `metadata.direction`;
+  lines with no single speaker: only analyzed chapters are asked. Merge and add, the voices steps
+  and match have nothing to skip — each adds only what is missing. **Consequence:** a speaker you
+  removed comes back on a re-run while the scans still name them, as Discover's own page shows
+  them again; Ignore keeps a name out (`mergeFoundNames` reads the ignore list). The render takes
+  `ready` lines only — a stale line keeps its take unless `redo: ["render"]`.
+- **Batched by kind, in the plan's order:** language model (Discover … describe) → speech (design)
+  → language model (match, direction) → speech (render) → recognition (check; its one re-render
+  on speech) → ffmpeg. Match must follow design: it casts every speaker still without a persona.
+- **A restart:** the boot sweep pauses the run; Resume re-enters at the step it was on. Its render
+  job, paused by its own sweep, is resumed by the run (`resumeJob`); the export job lived in
+  memory and is started again; the descriptions are kept in the run's row, so a restart between
+  describe and design loses none (RESEARCH §10.20: nothing in the book stores them); a model call
+  in flight is lost and that chapter is asked again. Measured with the model faked: the run
+  stopped inside the descriptions, the server restarted on the same data folder, the run read
+  "paused" at `describe`, and Resume finished it with no Discover or Analyze call repeated
+  (`a_restart_pauses_the_run_and_resume_finishes_it`).
+- **The model each step will use** is the kit's own resolution, as `GET /v1/ai/resolved-route`
+  reports it (the action's preset over the feature's route; `resolveFeaturePresetWithSource`,
+  `resolveRoute`), the action by the step's recipe (merge, Analyze's route, describe, direction).
+  A step is **cloud** when its provider's `local` is false — the flag `presetRecipe` reads.
+- **The price (Q8):** before a run that has any cloud step, `estimateRun` counts each AI step's
+  prompt rows and the text it reads at `book_run.chars_per_token` (4 — OpenAI's rule of thumb for
+  English, "about 4 characters a token", help.openai.com "What are tokens and how to count them";
+  CJK nearer 1), answers at `extraction.answer_tokens_per_line` (65) a spoken line for Analyze and
+  Direction and once a call for the rest, leaves out chapters it would keep (and the voices steps
+  once every speaker has a persona — a re-run), and prices it with
+  the kit's `priceFor` / `costFor` (`@delebash/llm-runner/llm/pricing`). The lines with no single
+  speaker aren't counted (unknown before Analyze). The start refuses (409) until `accept_price`;
+  Resume never asks. *Arithmetic, unmeasured* — on Alice VII–VIII: 30,144 tokens in, 31,525 out
+  on the local recipes; 33,404 in, 31,525 out on the frontier ones (Direction reading the chapters
+  before it), about $0.76 at Opus 5.5's $4/$20.
+- **The kit's pricing table has no 5.x row** (`DEFAULT_PRICING`: claude-opus-4-8, sonnet-4-6 …;
+  matched by exact id or prefix), so `claude-opus-5-5` and `gpt-6.1-sol` read as *price unknown*
+  until a row is added in AI Settings → Pricing — the run still shows their tokens and still
+  asks. — *code* · `../just-llm-runner/server/src/llm/pricing.js:9`.
+- **What the run writes down (§5):** per step the model of its last call, the recipe, tokens in
+  and out summed over its calls, calls, and seconds (the steps' own time — a pause between them
+  doesn't count); totals and a cost from `costFor`. On the faked Alice VII run each AI step
+  recorded its model and tokens; the render's and check's counts are lines (273, 274 reads with
+  the one re-render). Measured (faked models): the whole run on VII in about 33 s.
+- **Alice's counts the screen's mock uses** — imported VII–VIII: 176 lines (105 + 71), none with
+  a speaker, narration waiting for a narrator; after the run 454 (273 + 181), 150 + 90 spoken;
+  speakers Narrator 214, Alice 92, Hatter 55, the Queen 22, Dormouse 21, March Hare 16, the King
+  9, Five 7, the White Rabbit 7, Two 5, Seven 3, the Cheshire Cat 3, the Knave 0; Script's To
+  check after it 9 in VII (the four group lines and a run of five) and 1 in VIII. — *measured,
+  models faked, 2026-10-16* (a scratch copy of `book_run.test.js` on both chapters).
+- **The screen** — the card *Make the audiobook* on an audiobook's Overview, across both columns
+  (`components/BookRunCard.vue`, fed by `StudioBookRun.vue`; drawn first as the in-app mock
+  `#/mock/one-click`, its states `?state=new|price|blocked|running|paused|stopped|failed|done`,
+  `?route=frontier`). Each AI step's model is the kit's `LuFeatureChip` (it opens AI Settings →
+  Routing by feature on the step's action). The run is mirrored into the AI tasks panel as a kit
+  task polled every second, as Render follows a render job (`services/bookRun.js`,
+  `followBookRun`; its Cancel stops the run). Below 600 px each step's model goes under its name.
+- **Not done here:** the run doesn't stop Script's renderer-side chapter run from analyzing the
+  same chapter meanwhile; a factory reset doesn't stop a live run; `redo` has no button; a
+  chapter-scoped run (`scope` is `project` only); the M4B isn't kept past its first save or a
+  restart (export jobs live in memory, decided 2026-10-07).
 
 ---
 
