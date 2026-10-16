@@ -9,6 +9,13 @@
   licence words, *Tested by JustVoice* and the recognisers. Each model's own facts are on its
   row, from audio.cpp's description of it; the guide keeps what JustVoice adds and measured
   ([Engines](engines.md))
+- **Speech engines, small fixes (2026-10-16)** — a model whose estimate fits your card only without
+  the 1 GB safety margin (Qwen3-TTS Base 1.7B on an 8 GB card) now says on its *Runs on* line that it
+  tries the graphics card first, where it said nothing; a model too big by its files gives their
+  size as the row does (*about 9.5 GB*, not *10*); **Unload model** names the engine it unloaded,
+  not its id; Pocket TTS's description and the clone maker's note name French, cloning only; and
+  a model's buttons wrap under its chips when the window is narrow, the whole tab stacking at
+  phone width ([Engines](engines.md#where-each-model-runs--the-graphics-card-or-the-cpu))
 - **Kokoro, KittenTTS, Pocket TTS, Qwen3-TTS, Chatterbox, VoxCPM2 and Qwen3-ASR built like every
   other engine (2026-10-16)** — from audio.cpp's own description of their models: their downloads,
   voices and languages come from it. Your voices, personas, saved settings, takes and measured
@@ -21,8 +28,8 @@
     Egyptian Arabic and Arabic-English speech
   - Before their first load they show what audio.cpp says they need — Kokoro *needs about 1 GB* —
     instead of *memory not measured yet*, and Auto weighs them by it
-  - Settings audio.cpp gives a wider range, or none, take audio.cpp's: KittenTTS's **Speed** from
-    0.01; Chatterbox's **Top p**, **Min p** and **Decoder CFG**, Turbo's and Nano's
+  - Settings audio.cpp gives a wider range, or none, take audio.cpp's: Chatterbox's **Top p**,
+    **Min p** and **Decoder CFG**, Turbo's and Nano's
     **Temperature**, **Repetition penalty** and **Top p**, Qwen3's **Detail temperature** and
     VoxCPM2's runaway settings are number boxes. Where audio.cpp's range is narrower, yours stays
 - **Your answers to the review's questions, built (2026-10-15)** — the rest of what JustVoice had
@@ -1062,7 +1069,7 @@
   ([AI features](ai-features.md#picking-models-fit-speed-and-your-override))
 - **A designed voice keeps the take you auditioned**, and stays one person for
   a whole book instead of re-inventing itself line by line
-  ([Voices](voices.md#keeping-a-designed-voice-is-what-makes-it-one-voice))
+  ([Personas → New design](personas.md#new-design))
 - A designed voice you have not kept a clip for now actually reaches the
   model — its description is spoken on every line, with your direction added
   after it ([Voices](voices.md#design--from-a-description))

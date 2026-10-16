@@ -705,6 +705,13 @@ unloaded — audit §3.1 has the method.
   *code, 2026-10-04* · `manager.py` `_card_is_its_own_memory`; audit §5 B9.
 - The safety margin is 1,024 MB (the kit's setting; the manager falls back to the same). —
   *code, 2026-10-04* · `manager.py:800-803`.
+- An unmeasured model whose estimate fits the card only without the margin (Qwen3-TTS Base 1.7B's
+  8 GB on an 8 GB card), its files fitting with it, says the card-first words; it is placed as
+  before — its estimate, not its files, is the size weighed, so what other programs hold is not
+  checked. A model too big by its files says their size in `_gb`'s words (9.5, 12). (was: no
+  reason after "Loads on the graphics card", and the files rounded whole — "10 GB" beside the
+  row's "9.5 GB" — until 2026-10-16.) — *code + tests, 2026-10-16* · `manager.js` `placementFor`;
+  `cpu_placement.test.js`; TASKS "Slice 5's findings: what each one gets" 3.
 
 ### 2.4 What the app shows of it
 

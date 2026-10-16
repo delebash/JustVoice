@@ -508,7 +508,11 @@ Each model row says how much graphics memory it needs before you download it:
   16-bit or original download can be bigger than the estimate (FireRedAudio's
   original weights are 23 GB against an estimate of 10) — and the weights alone
   take at least their own size. A model with no estimate — MOSS-TTSD, JustVoice's
-  own conversions — is judged by its files.
+  own conversions — is judged by its files. An estimate that fits the card only
+  without the 1 GB safety margin — audio.cpp's 8 GB for Qwen3-TTS Base 1.7B on an
+  8 GB card — still reads *fits this card* here, and its *Runs on* line says the
+  card is tried first, as below (since 2026-10-16; before, that line gave no
+  reason).
 - **needs about X GB · too big for this card — Load runs it on the CPU** —
   that number is more than your card has, so *Auto* loads it on the CPU, and the
   row's *Runs on* line says why: *audio.cpp says it needs about 18 GB, more than
@@ -968,7 +972,7 @@ model's measured speed there instead once it has one (*— 0.1× real time here*
 |---|---|---|
 | *it fits in the card's free memory* | the graphics card | Auto read the card, and the model fits with the safety margin beside what other programs hold |
 | *memory not measured yet* | the graphics card | The card can't be read, or the model has no size yet; its first load measures it |
-| *audio.cpp says it needs about 10 GB, but its files are about 1.3 GB, so it tries the graphics card first; if it doesn't fit, Load runs it on the CPU* | the graphics card | Only audio.cpp's estimate is too big for the card |
+| *audio.cpp says it needs about 10 GB, but its files are about 1.3 GB, so it tries the graphics card first; if it doesn't fit, Load runs it on the CPU* | the graphics card | Only audio.cpp's estimate is too big for the card, or fits it only without the 1 GB safety margin (since 2026-10-16), and the files fit with the margin |
 | *it fits beside the AI model (3433 MB)* | the graphics card | An AI model is on the card, and this model's measured size fits beside it |
 | *3.2× real time here, which keeps the graphics card for the AI model* | the CPU | An AI model is on the card, this model doesn't fit beside it, and it speaks at least 2× real time on the CPU (*on the reference machine* until measured here) |
 | *only 1.5× real time here on the CPU, so the AI model makes room* · *it has no usable speed on the CPU, so the AI model makes room* | the graphics card, the AI model unloaded first | An AI model is on the card, this model doesn't fit beside it, and it isn't fast enough on the CPU |
