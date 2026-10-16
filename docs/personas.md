@@ -204,9 +204,11 @@ one.*
 | Trained | Off: *LoRA training — not rebuilt yet.* When it is, its maker opens here like the others | — |
 
 A *Type* that can't be directed the way you picked is off, and says
-why when you click it. Under **Tags**: *No Built-in voice is on a tag model — Chatterbox
-Turbo and Nano voices are Cloned*, and *Blended voices are Kokoro's: sliders
-only.* Under **Written direction**, Blended is off the same way. Blended is also
+why when you click it. Under **Tags**: *Blended voices are Kokoro's: sliders
+only.* — Built-in lists Chatterbox Turbo's and Nano's own voices there, *Turbo
+(built-in)* and *Nano (built-in)* (since 2026-10-16; before, it was off: *No
+Built-in voice is on a tag model — Chatterbox Turbo and Nano voices are Cloned*).
+Under **Written direction**, Blended is off the same way. Blended is also
 off while the installed speech runtime can't play a blend: *Blends need a speech
 runtime that can play them — update it on AI Settings → Speech engines when an
 update is offered.* If the choice you were on goes off, the page moves to the

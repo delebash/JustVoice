@@ -2,6 +2,21 @@
 
 ## v0.1.0
 
+- **Kokoro, KittenTTS, Pocket TTS, Qwen3-TTS, Chatterbox, VoxCPM2 and Qwen3-ASR built like every
+  other engine (2026-10-16)** — from audio.cpp's own description of their models: their downloads,
+  voices and languages come from it. Your voices, personas, saved settings, takes and measured
+  memory keep working as they were ([Speech engines](engines.md)).
+  - Chatterbox Turbo and Nano also speak their own voice, with no clip: **Turbo (built-in)** and
+    **Nano (built-in)** on the Voices page, gender *Not known*
+  - New downloads: audio.cpp's own Chatterbox Turbo package (**Chatterbox Turbo (tts)**, its
+    built-in voice), Qwen3-TTS Base 1.7B and VoxCPM2 at their original precision, and
+    **QwenCleo-ASR**, a recogniser for Egyptian Arabic and Arabic-English speech
+  - Before their first load they show what audio.cpp says they need — Kokoro *needs about 1 GB* —
+    instead of *memory not measured yet*, and Auto weighs them by it
+  - Settings audio.cpp gives a wider range, or none, take audio.cpp's: KittenTTS's **Speed** from
+    0.01; Chatterbox's **Top p**, **Min p** and **Decoder CFG**, Turbo's and Nano's
+    **Temperature**, **Repetition penalty** and **Top p**, Qwen3's **Detail temperature** and
+    VoxCPM2's runaway settings are number boxes. Where audio.cpp's range is narrower, yours stays
 - **Your answers to the review's questions, built (2026-10-15)** — the rest of what JustVoice had
   decided without asking, put right:
   - Script: a speaker you set before a chapter's first Analyze is yours — Analyze gives it to

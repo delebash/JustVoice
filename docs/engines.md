@@ -158,6 +158,17 @@ its original precision, named "(16-bit)" on Speech engines, beside the 8-bit
 row. It is a larger download and needs more memory; the 8-bit row stays the
 default, and KittenTTS has no second row because it already ships unquantized.
 See [8-bit or 16-bit](#8-bit-or-16-bit) for what the difference measured.
+Qwen3-TTS Base 1.7B and VoxCPM2 also have an **original precision** row (since
+2026-10-16), audio.cpp's own package: 4.5 GB and 5.0 GB, never the default.
+audio.cpp's own Turbo package has only its 8-bit file.
+
+**Where these facts come from** (since 2026-10-16): each of these engines is built from
+audio.cpp's own description of its models, as every other engine is — the
+downloads and their sizes, the precisions, the built-in voices, the languages
+and how long a piece of text audio.cpp reads at once. JustVoice's own file for
+each keeps only what audio.cpp doesn't say: the names you see, the voices'
+genders and display names, which Qwen3 checkpoint does what, and what JustVoice
+measured. The model, voice and setting names you know are unchanged.
 
 | Engine · model | Download (8-bit · 16-bit) | Languages | Clones | Built-in voices | Weights licence |
 |---|---|---|---|---|---|
@@ -170,11 +181,13 @@ See [8-bit or 16-bit](#8-bit-or-16-bit) for what the difference measured.
 | **Qwen3-TTS Base 0.6B** | 2.0 GB · 2.5 GB | 10 | ✓ | — | Apache-2.0 |
 | **Qwen3-TTS VoiceDesign 1.7B** | 2.8 GB · 4.2 GB | 10 | — (designs a voice from words) | — | Apache-2.0 |
 | **Chatterbox Multilingual** | 2.1 GB · 3.7 GB | 23 | ✓ | — | MIT |
-| **Chatterbox Turbo** (350M) | 881 MB · 1.4 GB | English | ✓ (a clip longer than 5 s) | — | MIT |
-| **Chatterbox Nano** (110M) | 616 MB · 895 MB | English | ✓ (a clip longer than 5 s) | — | MIT |
+| **Chatterbox Turbo** (350M) | 881 MB · 1.4 GB | English | ✓ (a clip longer than 5 s) | 1 (since 2026-10-16) | MIT |
+| **Chatterbox Nano** (110M) | 616 MB · 895 MB | English | ✓ (a clip longer than 5 s) | 1 (since 2026-10-16) | MIT |
+| **Chatterbox Turbo (tts)** — audio.cpp's own package (since 2026-10-16) | 699 MB (8-bit only) | English | — | 1 | MIT |
 | **VoxCPM2** | 3.0 GB · 4.8 GB | 30 | ✓ (and designs from words) | — | Apache-2.0 |
 | **Speech recognition — Qwen3-ASR 1.7B** | 3.6 GB · 5.9 GB (with its word aligner) | 30 | — | — | Apache-2.0 |
 | **Speech recognition — Qwen3-ASR 0.6B** (since 2026-10-15) | 2.3 GB · 3.7 GB (with its word aligner) | 30 | — | — | Apache-2.0 |
+| **Speech recognition — QwenCleo-ASR Egyptian Arabic** (since 2026-10-16) | 3.6 GB · 5.9 GB (with its word aligner) | Egyptian Arabic, English | — | — | Apache-2.0 |
 | **External** (OpenAI-compatible) | — | — | varies | varies | depends on provider |
 
 Qwen3 speaks Chinese, English, Japanese, Korean, German, French, Russian,
@@ -388,9 +401,9 @@ download: on disk once, shown as downloaded on both, deleted from both together.
   Models audio.cpp marks as work in progress aren't listed.
 - **Tested by JustVoice**, with what we found and what it's best for, or **Not
   tested by JustVoice yet**. An untested model works as audio.cpp describes it;
-  we just haven't listened to it ourselves. The engines JustVoice wired by hand
-  (Kokoro, KittenTTS, Pocket TTS, Qwen3-TTS, Chatterbox, VoxCPM2, Qwen3-ASR) are
-  all tested.
+  we just haven't listened to it ourselves. Kokoro, KittenTTS, Pocket TTS,
+  Qwen3-TTS, Chatterbox, VoxCPM2 and Qwen3-ASR are all tested: their note reads
+  *Measured by JustVoice*.
 - **Whether it takes direction.** A model JustVoice knows how to direct takes
   a line's emotion and direction — IndexTTS 2 / 2.5 says *Takes a line's
   direction in words* (since 2026-10-15), since it takes the direction alone; the
@@ -493,9 +506,13 @@ it:
   of files took 1.2 GB — so Auto tries the card first and the *Runs on* line says
   so: *audio.cpp says it needs about 10 GB, but its files are about 1.3 GB, so it
   tries the graphics card first; if it doesn't fit, Load runs it on the CPU*.
-- **memory not measured yet** — neither is known. The engines JustVoice wired
-  by hand say this until their first load, because their memory is measured,
-  never estimated.
+- **memory not measured yet** — neither is known. Every model audio.cpp
+  describes has at least its download's size, so this shows only for one with no
+  number at all. (Until 2026-10-16 Kokoro, KittenTTS, Pocket TTS, Qwen3-TTS,
+  Chatterbox, VoxCPM2 and Qwen3-ASR said this until their first load; they now
+  show audio.cpp's estimate, or their files where those are more, like every
+  model — Kokoro *needs about 1 GB*, Chatterbox Multilingual *needs about 12 GB*,
+  audio.cpp's own estimate for it.)
 
 The **Fits this card** filter keeps the models whose number fits your card.
 A model whose language list is a description rather than names shows it as
@@ -575,10 +592,12 @@ counts what audio.cpp says it needs (or its files, when only the estimate is too
 big — see [Memory, before you load](#memory-before-you-load)). The AI model
 JustVoice loaded doesn't count as another program: it can make room.
 JustVoice's own idle processes (about 0.2 GB) are counted with the other
-programs. A model JustVoice wired by hand that has never loaded
-on your card has no size to check: Auto takes the card and its *Runs on* line
-gives no reason — its first load measures it, and a load that doesn't fit moves
-to the CPU (below). Then Auto decides, in this order:
+programs. Every model has a size to check before its first load — Kokoro,
+KittenTTS, Pocket TTS, Qwen3-TTS, Chatterbox, VoxCPM2 and Qwen3-ASR too, since
+2026-10-16 (before, Auto took the card for them and gave no reason). With no
+reading of the card, Auto takes the card and gives no reason — the model's first
+load measures it, and a load that doesn't fit moves to the CPU (below). Then Auto
+decides, in this order:
 
 1. **The graphics card** when the model fits in the card's free memory — the
    *Runs on* line says *it fits in the card's free memory* — or when this model's
@@ -711,6 +730,19 @@ narrower: Chatterbox's **Exaggeration** starts at 0 (was 0.25) and VoxCPM2's
 and **Detail top k** (from 0), and Turbo's and Nano's **Top k** (from 0) are
 number boxes with no top (were sliders of 4–30, 1–100 and 1–2000).
 
+Since 2026-10-16 they are audio.cpp's where audio.cpp reaches further, or gives no
+range at all: KittenTTS's **Speed** starts at 0.01 (was 0.5); Chatterbox's
+**Top p**, **Min p** and **Decoder CFG**, Turbo's and Nano's **Temperature**,
+**Repetition penalty** and **Top p**, Qwen3's **Detail temperature**, and
+VoxCPM2's **Tries on a runaway** and **Runaway limit** are number boxes, since
+audio.cpp gives them no range (were sliders of 0.05–1, 0–0.5, 0–1.5, 0.05–2, 1–4,
+0.05–1, 0.05–2, 1–10 and 2–12). A temperature and a top-p still start at 0.05 —
+below it some models refuse the value or read it as no filter — and the tries at
+1. Where audio.cpp's own range stops short of JustVoice's, JustVoice keeps its
+own, so a value a persona saved stays valid: **Speed** up to 3 on Kokoro and
+KittenTTS (audio.cpp's screen: 2), **Repetition penalty** up to 4 on Chatterbox
+and Qwen3 (audio.cpp's screen: 2).
+
 **Options on a model's row — its load options.** Some settings are read when a
 model loads rather than per line, so they live on its row on Speech engines,
 under **Runs on**. Every one audio.cpp's description of the model lists is there
@@ -785,6 +817,12 @@ Top p and Top k. They come from JustVoice's own conversions of Resemble AI's
 checkpoints (MIT), at
 [delebash/chatterbox-turbo-GGUF](https://huggingface.co/delebash/chatterbox-turbo-GGUF)
 and [delebash/chatterbox-nano-GGUF](https://huggingface.co/delebash/chatterbox-nano-GGUF).
+Each also speaks its own voice, with no clip (since 2026-10-16): **Turbo (built-in)**
+and **Nano (built-in)** among Chatterbox's voices on the Voices page, gender *Not
+known* — Resemble gives the voice no name or gender. audio.cpp's own Turbo
+package is listed beside them as **Chatterbox Turbo (tts)**: its built-in voice
+(**Chatterbox Turbo (built-in)**), Turbo's settings and tags, and no cloning —
+it carries no voice encoder.
 
 **Emotion** is a nine-value label rather than a sentence. On Qwen3
 CustomVoice and VoiceDesign it becomes part of the instruction; the other
