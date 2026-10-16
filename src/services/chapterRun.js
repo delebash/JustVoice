@@ -29,6 +29,7 @@ import { reactive } from "vue";
 import { pushToast, runAiEndpoint, runAiEndpointStream } from "@delebash/llm-ui";
 import { useApi } from "../stores/api.js";
 import { proseFromBlocks } from "./attribution.js";
+import { bookRunOn } from "./bookRun.js";
 import { pageTasks } from "./pageTasks.js";
 
 // {projectId: {queue, current, done, failed, steps: {analyze?, discover?}, controller}}
@@ -80,8 +81,11 @@ export function chapterRunFor(projectId) {
 }
 
 /** "current" | "queued" | null — where a chapter stands in one step's part of
- *  the run (`kind` "analyze" | "discover"), or in either step's with no kind. */
+ *  the run (`kind` "analyze" | "discover"), or in either step's with no kind.
+ *  The one-click run working on the chapter counts as "current" for every kind,
+ *  so the chapter's buttons wait for it too (decided 2026-10-16). */
 export function inRun(projectId, sceneId, kind = null) {
+  if (bookRunOn(projectId, sceneId)) return "current";
   const run = chapterRunFor(projectId);
   if (!run) return null;
   const mine = (q) => q.sceneId === sceneId && (!kind || q.kind === kind);

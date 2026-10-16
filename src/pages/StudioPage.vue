@@ -30,7 +30,8 @@ import { blockStats, projectState, stepStatus } from "../services/studioStatus.j
 import { masterLabel } from "../services/masterTargets.js";
 import { useCopy } from "../services/copy.js";
 import { chapterRunFor, onChapterDone } from "../services/chapterRun.js";
-import { pushToast, pageFlow } from "@delebash/llm-ui";
+import { pushToast, pageFlow, useAiTasksStore } from "@delebash/llm-ui";
+import { followLive, loadBookRun } from "../services/bookRun.js";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { usePersonasStore } from "../stores/personas.js";
@@ -379,6 +380,22 @@ watch(selectedProjectId, (id) => {
   loadSpeakers(id);
   loadScenesForProject(id);
 }, { immediate: true });
+
+// Make the audiobook's run, followed whichever tab is open: while it works on a chapter, that
+// chapter's buttons on Script and Discover wait for it (chapterRun.inRun; decided 2026-10-16).
+// By the project's id once the project list has it.
+const aiTasks = useAiTasksStore();
+watch(() => selectedProject.value?.id, followBookRunOf, { immediate: true });
+async function followBookRunOf(id) {
+  const project = projects.value.find((p) => p.id === id);
+  if (project?.project_type !== "audiobook") return;
+  try {
+    await loadBookRun(api, id);
+  } catch {
+    return; // the Overview card says why when it is opened
+  }
+  if (selectedProjectId.value === id) followLive(api, aiTasks, project, { unit: copy.value.chapter });
+}
 // A persona deleted or renamed elsewhere changes who plays whom.
 watch(personas, () => loadSpeakers());
 

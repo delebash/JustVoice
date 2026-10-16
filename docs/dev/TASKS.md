@@ -391,8 +391,12 @@ BUILT:  2 — the "group" flag carries the whole group (`ScriptFlag.group`); Scr
         speak it, in the chapters Analyze will read, with its text around it — `estimateRun`), and
         the price reads "up to about $…" on the card, the question and its button (server
         `priceWords` too); docs studio.md (Make the audiobook).
+        9 — the run working on a chapter counts as "current" in `chapterRun.inRun`, so every
+        button that waits for Analyze on Script and Discover waits for it too; Script's row shows
+        its step ("Render every line…"); the Studio page follows a live run whichever tab is open
+        (`bookRun.followLive`, `bookRunOn`); docs studio.md (Make the audiobook), whats-new.
 OPEN:   1 after the graphics card is free (JustWrite's Lab run); 3 waits on the user's ears;
-        6 (mock first), 9; 4's calibration after the first frontier run. For the user: the cast card's Clear all ignores no one (a gap — a
+        6 (mock first); 4's calibration after the first frontier run. For the user: the cast card's Clear all ignores no one (a gap — a
         start-over shouldn't empty the next run's cast); a line given to the ONE person the
         answer named still asks "No one could be named — given to ‹X›. Who says it?" (words
         needed).

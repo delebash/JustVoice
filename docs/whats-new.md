@@ -27,6 +27,10 @@
   once with a new seed, and one that still fails is flagged on its line. For now it runs through
   the API (`POST /v1/scenes/{id}/check_takes`); Render doesn't show its findings yet. Its limits are
   settings, `take_check` ([Studio → Checking takes](studio.md#checking-takes))
+- **A chapter's buttons wait while Make the audiobook works on it (2026-10-16)** — Script's and
+  Discover's buttons for that chapter grey out until the run moves on, and Script's row shows the
+  step it is on; the price before a cloud run now reads *up to about $…*, the step for lines no
+  one person says counted in it ([Studio → Make the audiobook](studio.md#make-the-audiobook))
 - **A removed speaker stays out; "Said together" names the whole group (2026-10-16)** — removing
   a speaker now puts the names the scans gave them on the book's ignore list (the question says
   *… won't be suggested again*), so Discover shows them as Ignored and Make the audiobook doesn't

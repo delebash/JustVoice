@@ -165,7 +165,11 @@ Croquet-Ground · 12:15 so far · 64,132 tokens in* — and each step's **Status
 says *Done · 2 chapters*, *Running · 212 of 454 lines* or *Waiting*. It runs on
 the server: it goes on if you leave the page, close the window, or run the
 server headless, and the AI tasks panel shows it too (its Cancel is **Stop**).
-**Stop** stops it at the next chapter or line; what is done is kept.
+**Stop** stops it at the next chapter or line; what is done is kept. While it
+works on a chapter, that chapter's own buttons on Script and Discover wait —
+Analyze, Review, ✎ Edit text, Delete, ticking it — and its row on Script shows
+the step in place of its Analyzed date (*Render every line…*), so the run and
+you don't write the same chapter at once (since 2026-10-16).
 
 **It never stops to ask.** Where it isn't sure it marks the line, the way Script
 and Render mark lines, and carries on. A step that can't go on — no language

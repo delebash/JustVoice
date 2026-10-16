@@ -16,7 +16,7 @@ import { useRouter } from "vue-router";
 import { confirmDialog, openPath, pushToast, saveBlob, useAiTasksStore } from "@delebash/llm-ui";
 import BookRunCard from "./BookRunCard.vue";
 import {
-  LIVE, bookRunFor, followBookRun, loadBookRun, priceQuestion, resumeBookRun, runFollowed, startBookRun, stopBookRun,
+  LIVE, bookRunFor, followBookRun, followLive, loadBookRun, priceQuestion, resumeBookRun, runFollowed, startBookRun, stopBookRun,
 } from "../services/bookRun.js";
 import { useCopy } from "../services/copy.js";
 import { savedMessage } from "../services/exportRun.js";
@@ -53,14 +53,14 @@ onActivated(load);
 
 /** Follow a live run in this window (once), and read the book again when it stops. */
 function follow() {
-  const r = run.value;
-  if (!r || !LIVE.has(r.status) || runFollowed(tasks, r.id)) return;
-  followBookRun(api, { project: props.project, run: r, unit: unit.value })
-    .catch(() => { /* the card and the task strip say why */ })
-    .finally(() => {
-      if (props.project.id === r.project_id) load();
+  const id = props.project.id;
+  followLive(api, tasks, props.project, {
+    unit: unit.value,
+    onEnd: () => {
+      if (props.project.id === id) load();
       emit("changed");
-    });
+    },
+  });
 }
 
 async function start() {

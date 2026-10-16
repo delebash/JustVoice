@@ -21,6 +21,7 @@ vi.mock("../stores/api.js", () => ({
 const { cancelRun, inRun, queueChapters, runStripTask, stepRun } = await import("./chapterRun.js");
 const { pageTasks } = await import("./pageTasks.js");
 const { hasNarrator, narrationOf } = await import("./narrator.js");
+const { bookRunOn, loadBookRun } = await import("./bookRun.js");
 
 const settle = () => new Promise((r) => setTimeout(r, 0));
 const chapter = (id) => ({ id, title: id.toUpperCase(), metadata: { source_text: `The text of ${id}.` } });
@@ -108,5 +109,19 @@ describe("narrator", () => {
     expect(narrationOf([{ lines: 78, spoken: 35 }, { lines: 0 }, { lines: 5, spoken: 6 }])).toBe(43);
     expect(hasNarrator([{ narrator: false }, { narrator: true }])).toBe(true);
     expect(hasNarrator([])).toBe(false);
+  });
+});
+
+describe("Make the audiobook working on a chapter (2026-10-16)", () => {
+  it("counts as current for every step, so the chapter's buttons wait — that chapter only, while it runs", async () => {
+    const live = { id: "r1", project_id: "pb", status: "running", step: "render", scene_id: "s1" };
+    await loadBookRun({ request: async () => ({ plan: null, run: live }) }, "pb");
+    expect(bookRunOn("pb", "s1")).toBe("Render every line");
+    expect(inRun("pb", "s1", "analyze")).toBe("current");
+    expect(inRun("pb", "s1", "discover")).toBe("current");
+    expect(inRun("pb", "s2", "analyze")).toBeNull();
+    await loadBookRun({ request: async () => ({ plan: null, run: { ...live, status: "completed", step: null } }) }, "pb");
+    expect(bookRunOn("pb", "s1")).toBeNull();
+    expect(inRun("pb", "s1", "analyze")).toBeNull();
   });
 });

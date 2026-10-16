@@ -263,6 +263,26 @@ const wait = (ms, signal) => new Promise((resolve, reject) => {
   }, { once: true });
 });
 
+/**
+ * Follow the book's run in this window when it is live and nobody here follows it yet — the
+ * Overview card, and the Studio page, so Script's and Discover's buttons for the run's chapter
+ * wait on any tab (2026-10-16). `onEnd` runs when the followed run stops.
+ */
+export function followLive(api, tasks, project, { unit, onEnd = () => {} } = {}) {
+  const r = bookRunFor(project.id);
+  if (!r || !LIVE.has(r.status) || runFollowed(tasks, r.id)) return;
+  followBookRun(api, { project, run: r, unit })
+    .catch(() => { /* the card and the task strip say why */ })
+    .finally(onEnd);
+}
+
+/** The run's step while it works on this chapter ("Render every line"), or null — the chapter's
+ * own buttons wait meanwhile (chapterRun.inRun; decided 2026-10-16). */
+export function bookRunOn(projectId, sceneId) {
+  const r = bookRunFor(projectId);
+  return r && LIVE.has(r.status) && r.scene_id && r.scene_id === sceneId ? (STEP_LABELS[r.step] ?? r.step) : null;
+}
+
 /** Is this run followed in this window already (its task still running)? */
 export function runFollowed(tasks, runId) {
   return tasks.visibleTasks.some((t) => t.feature === "book_run" && t.meta?.runId === runId && tasks.isRunning(t.id));

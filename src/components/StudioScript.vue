@@ -41,6 +41,7 @@ import {
 import { useApi } from "../stores/api.js";
 import { useCopy } from "../services/copy.js";
 import { routeWords } from "../services/attribution.js";
+import { bookRunOn } from "../services/bookRun.js";
 import { chapterRunFor, failureOf, inRun, queueChapters } from "../services/chapterRun.js";
 import { addNarrator, hasNarrator, narrationOf } from "../services/narrator.js";
 import NarratorNeeded from "./NarratorNeeded.vue";
@@ -424,7 +425,9 @@ function openRow(r, focus = null) {
               <span v-else class="jv-muted">—</span>
             </template>
             <template #analyzed="{ row }">
-              <UiTag v-if="inRun(project.id, row.scene_id, 'analyze') === 'current'" intent="solid">analyzing…</UiTag>
+              <UiTag v-if="bookRunOn(project.id, row.scene_id)" intent="solid"
+                :title="`Make the audiobook is working on this ${word.singular.toLowerCase()} — its buttons wait until it moves on.`">{{ bookRunOn(project.id, row.scene_id) }}…</UiTag>
+              <UiTag v-else-if="inRun(project.id, row.scene_id, 'analyze') === 'current'" intent="solid">analyzing…</UiTag>
               <UiTag v-else-if="inRun(project.id, row.scene_id, 'analyze') === 'queued'" intent="ghost">queued</UiTag>
               <span v-else-if="!row.lines" class="jv-muted">no text yet</span>
               <template v-else>
