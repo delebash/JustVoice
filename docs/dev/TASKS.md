@@ -380,6 +380,13 @@ OPEN:   2 — ship Silero VAD (an asset audio.cpp bundles, 1.2 MB, MIT) with the
         what's offered, not its request, so audio.cpp's own refusal stays (LFM2 JP ASR given
         `en`); audio.cpp's web page sends MOSS's language top-level too, where it never reaches
         MOSS (an upstream bug, recorded, nothing posted).
+        F5, measured after the fork's fix (RESEARCH §10.15): 17.9 GB committed after one line → 2.4–
+        2.9 GB. Left, decided the same way: unloading an F5 model frees nothing (its caches live as
+        long as the process) — the speech slot stops the process instead of unloading, for a
+        family whose notes say so (each kind has its own process, so nothing else goes with it);
+        an F5 take after other lines differed from the same line in a fresh process (likely a
+        graph reading memory it never wrote, now reused) — found and fixed in the fork, so the
+        same seed gives the same take.
         For the user at the end: the topbar at 390 px (the page name gets 73 px, cut on every
         page; hide the status word "Operational", 104 px, and keep its dot?); Voices at 390 (the
         stacked filters leave the table about 105 px). Home (210 px) and Captures (106 px) scrolled
