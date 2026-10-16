@@ -180,11 +180,12 @@ a frontier route, progress per step and chapter, and afterwards the flags with a
 | The carry | the attribution propagation pattern (same paragraph, same speaker) — existing code | `extraction/anchors.js` pass 2 |
 | The screen | a mock in the app first, the kit's `Ui*` controls, `docs/dev/design-law.md` | CLAUDE.md, the mock rule |
 | Tests | the eval script and answer-key pattern | `server/scripts/eval_attribution.js` |
-| Take check: comparing a transcript with the text | **to choose in slice 6** — a widely used word-diff package, named then with its link | — |
+| Take check: comparing a transcript with the text | chosen in slice 6 (2026-10-16): **jsdiff** (`diff` on npm, `diffArrays`; BSD-3-Clause), over words normalised by **Whisper's basic text normaliser**, ported line for line (no JavaScript port exists; MIT); read back by the app's own recogniser (`captures_api._sttTranscribe`); the re-render is a render job with a new seed per line (↻ New take's) | [github.com/kpdecker/jsdiff](https://github.com/kpdecker/jsdiff); [openai/whisper `normalizers/basic.py`](https://github.com/openai/whisper/blob/main/whisper/normalizers/basic.py); `server/src/take_check.js`, `whisper_normalizer.js` |
 | Claude Code plugin (later) | MCP and Claude Code skills | [modelcontextprotocol.io/specification](https://modelcontextprotocol.io/specification), [code.claude.com/docs/en/skills](https://code.claude.com/docs/en/skills) |
 
-**No NOT STANDARD piece in slices 0–5.** Slice 6's diff package is named when that slice is
-planned.
+**No NOT STANDARD piece in slices 0–5.** Slice 6's diff package is named above (2026-10-16);
+what slice 6 left open — Whisper's English normaliser (numbers) and letter-by-letter comparison
+for Chinese and Japanese (RESEARCH §10.11), and showing the findings on a screen (slice 5's).
 
 ## 9 · Blast radius — what the build touches (greps, 2026-10-11)
 

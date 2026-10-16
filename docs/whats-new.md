@@ -10,6 +10,12 @@
   **Local** and **Frontier**, under AI Settings → Routing by feature. No button yet — the one-click
   audiobook will run it; `POST /v1/scenes/{id}/direction` runs it now
   ([AI features → Direction](ai-features.md#direction--two-recipes-and-the-carry))
+- **The take check (2026-10-16)** — the one-click run's step after the render: each take in use
+  is read back by your speech-recognition model and lined up against the line's words; a take that
+  skips words, says the line twice, runs on past its text or runs far too long is rendered again
+  once with a new seed, and one that still fails is flagged on its line. For now it runs through
+  the API (`POST /v1/scenes/{id}/check_takes`); Render doesn't show its findings yet. Its limits are
+  settings, `take_check` ([Studio → Checking takes](studio.md#checking-takes))
 - **A cloud model gets the big-model route (2026-10-16)** — every engine preset has a **Recipe**:
   Local for a model on this machine, Frontier for a cloud account, or set by hand on a feature's
   chip. Speaker attribution's Auto now gives a Frontier model **Direct**; it used to read a cloud

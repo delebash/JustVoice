@@ -1267,6 +1267,58 @@ take**'s own seed stays rendered when the persona's seed changes; any other take
 goes stale. Studio · Export warns how many lines are stale, and ships them as
 they are if you go ahead.
 
+### Checking takes
+
+A take can go wrong in ways you only hear: the model skips words, says a line
+twice, or runs on past its text — the thing a listener notices first. The take
+check listens for you. It is the step of the one-click run that comes after the
+render (the run itself is still being built), and today it runs through the server's
+API: `POST /v1/scenes/{chapter id}/check_takes` checks one chapter. There is no
+button for it in Render yet, and Render doesn't show its findings yet.
+
+What it does, for every line whose take in use was made from what the line is now
+(a stale line, or one with no take, is left alone — render it first):
+
+1. **It reads each take back** with your speech-recognition model — the one loaded,
+   else the one Dictation uses (`captures.stt_model`), loaded once for the whole
+   chapter — in the line's language. Then it lines up what it heard against the
+   line's words, after putting both through Whisper's standard text normaliser: case,
+   punctuation and symbols don't count, and words in brackets — a performed tag such
+   as `[laugh]` — aren't expected to be heard.
+2. **It judges each take.** A take fails when:
+   - the read-back **misses** more than 20 % of the line's words — words skipped,
+     or heard as other words;
+   - it hears **extra** words past the line's — more than 20 % of the line's count
+     again, as when a line is said twice or the take runs on;
+   - in both cases at least 2 words, so one misheard name in a short line doesn't fail
+     it;
+   - or the take **runs away**: longer than half a second for each character of its
+     text, and longer than 30 seconds — the same limit the speech runtime uses for a
+     runaway line ([Engines → Long lines](engines.md#long-lines-and-what-a-model-costs)).
+     Such a take fails by its length alone; it isn't read back, since a runaway can
+     run for minutes.
+3. **It renders each failed take again, once**, with a new seed, as **↻ New take**
+   does — all of them in one render job, which Render follows like any other run of
+   the chapter. The take that failed is kept; the new one goes in use.
+4. **It reads the new takes back.** One that passes is done. One that still fails is
+   **flagged** — the check never renders a line twice; that line is yours to hear.
+
+What it found is kept on each line: whether its take passed, why not, what the
+recogniser heard, and whether the line is flagged. Checking the chapter again skips
+every take already judged, so a check that stopped part-way carries on where it
+left off; send `{"redo": true}` to judge every take again. A new take you make
+yourself after a failure counts as that line's one re-render.
+
+The numbers are settings — `take_check.missed_share`, `extra_share` and `min_words`
+([Settings reference](settings-reference.md)); they are starting points, not yet
+measured on real books. The check can't tell a good reading from a better one — that
+stays with your ears — and it has known blind spots: a number written in figures but
+heard in words (*1865* / *eighteen sixty-five*) counts as missed words, and so does a
+Chinese or Japanese clause the recogniser gets one character of wrong (the text has no
+spaces, so the whole clause is one word); the normaliser drops words in parentheses
+from the line, so an aside the voice reads counts as extra words; and a heavy effects
+chain on a persona can make its takes hard for the recogniser to hear.
+
 ### Pronunciation and Rewrite as the speaker
 
 **📕 Pronunciation** opens the book's lexicon on the Lexicons page

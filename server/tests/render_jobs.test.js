@@ -144,6 +144,30 @@ test("a_fresh_job_renders_past_the_cache", async () => {
   expect(seen).toEqual([{ useCache: false }]);
 });
 
+test("a_new_take_job_gives_each_line_a_seed_of_its_own", async () => {
+  // The take check's one re-render (2026-10-16): a job made with `newTake` renders each line with
+  // a seed of its own, as ↻ New take does, and keeps it as a new take judged by that seed.
+  const [projectId, , blockIds] = seedProject(["Line one.", "Line two."]);
+  const seen = [];
+  fakeRender(async (st, p, b, kw) => {
+    seen.push(kw);
+    return line(kw.seed);
+  });
+  const job = renderJobs.createJob(projectId, "blocks", blockIds, { newTake: true });
+  expect(JSON.parse(job.scope_ids_json)).toEqual({ ids: blockIds, new_take: true });
+  renderJobs.startJob(job.id);
+  // `finished` waits for the runner and answers with the blocks.
+  const done = await renderJobs.finished(job.id);
+  expect(done.status).toBe("completed");
+  expect(done.blocks.map((b) => b.status)).toEqual(["completed", "completed"]);
+  expect(seen.every((kw) => kw.useCache === true && Number.isInteger(kw.seed) && kw.seed > 0)).toBe(true);
+  const gens = h.all(`select * from ${Generation}`, [], Generation);
+  expect(new Set(gens.map((g) => g.source))).toEqual(new Set(["new_take"]));
+  expect(gens.map((g) => g.seed).sort()).toEqual(seen.map((kw) => kw.seed).sort());
+  // A job with no live runner answers at once.
+  expect((await renderJobs.finished(job.id)).status).toBe("completed");
+});
+
 test("failed_block_is_isolated", async () => {
   const [projectId, , blockIds] = seedProject(["Fine.", "BOOM"]);
   fakeRender(async (st, persona, block) => {

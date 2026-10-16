@@ -1502,7 +1502,7 @@ export class EngineManager {
   _noteRunaway(proc, engineId, text, audioS) {
     const pid = proc?.proc?.pid;
     if (!pid || audioS === null || this._unpricedPids.has(pid)) return;
-    if (audioS <= Math.max(runtime.runawayMinS(), runtime.runawaySPerChar() * String(text ?? "").length)) return;
+    if (audioS <= runtime.runawayLimitS(text)) return;
     this._unpricedPids.add(pid);
     log.warning(
       `${engineId}: a line of ${String(text ?? "").length} characters ran on for ${pyRound(audioS, 1)} s — ` +

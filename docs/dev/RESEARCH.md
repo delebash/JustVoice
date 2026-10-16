@@ -2961,8 +2961,36 @@ Pozotron, Orion QC, RW-Voice-EQ, SwanBench, ViSQOL, Hume, Gemini prices.
   voice's own clip — `duration = ref_len + ref_len / ref_text_bytes × gen_text_bytes / speed`
   (`src/f5_tts/infer/utils_infer.py:503-505`); ours is flat — 0.5 s a character and 30 s,
   the settings `speech_runtime.runaway_s_per_char` and `runaway_min_s` since 2026-10-13 (*code*,
-  `manager._noteRunaway`, `runtime.runawaySPerChar`/`runawayMinS`). A per-voice bound would be
+  `manager._noteRunaway`, `runtime.runawaySPerChar`/`runawayMinS`; one function since
+  2026-10-16, `runtime.runawayLimitS`, which the take check reads too). A per-voice bound would be
   tighter.
+- **The take check as built (slice 6, 2026-10-16)** — *code + tests*, `server/src/take_check.js`,
+  `server/tests/take_check.test.js`:
+  - **No JavaScript port of the standard pieces exists** (npm search 2026-10-16): no Whisper
+    normaliser, and the WER packages are abandoned (`word-error-rate` 0.0.7, 2019;
+    `stt-evaluation` 1.4.0, 2021). So the normaliser is a line-for-line port of Whisper's
+    `whisper/normalizers/basic.py` (upstream commit 26a7cac, 2025-01-04, MIT) —
+    `server/src/whisper_normalizer.js`; on eight sample lines (curly and straight apostrophes,
+    em dashes, brackets, parentheses, fractions, Roman numerals, full-width letters) its output is
+    the upstream Python's, character for character. Whisper's *English* normaliser (numbers,
+    spellings, contractions) is not ported.
+  - **The word diff is jsdiff** (`diff` on npm, 9.0.0 of 2026-04-13, BSD-3-Clause, ~146 M
+    downloads a week, maintained — https://github.com/kpdecker/jsdiff): `diffArrays` over the
+    normalised words gives the fewest words added and removed (Myers). In a run of changes the
+    removed and added words pair off as words heard wrong (counted missed), the rest of the added
+    ones are extra — jiwer's substitutions, deletions and insertions, from a diff that has no
+    substitutions of its own. The repo's own `difflib.js` (Python's SequenceMatcher, used by
+    caption alignment) was the other candidate; the plan named a word-diff package, and
+    SequenceMatcher matches the longest block first rather than the fewest edits.
+  - **The rule:** fail on missed words > `take_check.missed_share` × the line's words (0.2), extra
+    words > `extra_share` × them (0.2), each at least `min_words` (2), or a take longer than
+    `runtime.runawayLimitS(text)` — that one is not read back (the 655 s runaway of 2026-10-10
+    would hold the recogniser for minutes). All three numbers are unmeasured starting points.
+  - **Known blind spots:** a number in figures heard as words counts as missed (the English
+    normaliser's job); Chinese and Japanese text has no spaces, so a clause is one word (Whisper's
+    `split_letters` option exists in the port, unused); Whisper's rule drops words in parentheses
+    from the line's text, so an aside the voice reads counts as extra words; a persona's effects
+    chain is in the take the recogniser hears.
 - **The kit built on this, and round 4:** `docs/plans/2026-10-16-test-kit-and-round-4.md` — VERSA
   for read-back, same speaker, quality and arousal/valence/dominance, emotion2vec+ for the emotion,
   pyloudnorm for loud and soft, each score read on its own; NeMo's recipe installs on Linux only.
