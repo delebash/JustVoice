@@ -791,14 +791,22 @@ BUILT:  test book Alice ("your rec on 1-2 go"); its answer key, chapters VII–V
         go"), `server/samples/alice-in-wonderland/`; the kit's Claude adapter takes the 5.x models
         (kit 9b534ef); the local baseline and the direction test (RESEARCH §10.4–10.5); the plan,
         `docs/plans/2026-10-11-one-click-audiobook.md` ("your rec go", 2026-10-11). Slice 2,
-        Direction, 2026-10-16 on branch `oneclick-s2`: the `direction` feature's two recipe cards
+        Direction, 2026-10-16 (563d3cda, merged e9219869): the `direction` feature's two recipe cards
         (Local · Frontier, the Frontier card's preset decides), the carry, many lines written in
         one transaction never over yours (`POST /v1/scenes/{id}/direction`, its Lab twin
         `/v1/extraction/direction-text`), `npm run eval:direction` (RESEARCH §10.18; docs
         ai-features.md §Direction, studio.md §Can be directed, whats-new).
 OPEN:   slice 0 (the owed audio measurements) — go given 2026-10-11, the next entry; slice 2's
         acceptance on the GPU — `npm run eval:direction` on gemma, Alice VII cue lines caught
-        ≥ 88 % with no-cue marks ≤ 5 %, and heard on Render; later slices each their go.
+        ≥ 88 % with no-cue marks ≤ 5 %, and heard on Render; slices 3–6 under "do it all"
+        (2026-10-16). Slice 2's own, kept as built: a line whose speaker has no voice yet gets
+        nothing (the run directs after the voices); a line you set for any model is kept whole;
+        Frontier's thinking is its preset's. For later: Frontier sends every earlier chapter in
+        full — a book longer than the model's context fails on its last chapters, and the error
+        says "a paragraph"; the kit's Claude adapter drops `response_format` (`anthropic.js:187`),
+        so structured outputs (§8) don't reach Claude, and the kit turns thinking off under JSON
+        mode (`prompts.js:511`) — kit work when an API key arrives; the Direction cards' Lab runs
+        the generic call, not the step with its carry.
 GO:     given 2026-10-10 ("your rec on all"); measuring waits: "wait i want to discuss a little more".
 
 ### The one-click plan's questions, answered (decided 2026-10-11)
