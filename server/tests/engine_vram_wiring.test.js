@@ -555,6 +555,21 @@ test("transcribe_marks_stt_busy", async () => {
   expect(arb.busyKinds().has("stt")).toBe(false);
 });
 
+test("a recogniser's refusal reads in its own words, not as a JSON body", async () => {
+  // Seen through the app 2026-10-15: "engine transcribe failed: {"detail": "this LFM2-Audio
+  // checkpoint transcribes ja, not en"}" reached dictation as it was.
+  makeArbiter(discrete());
+  const mgr = bareManager();
+  const detail = "this LFM2-Audio checkpoint transcribes ja, not en";
+  mgr._loaded.set("stt", {
+    manifest: { id: "lfm2_audio_asr", kind: "stt" },
+    isAlive: () => true,
+    post: () => ({ statusCode: 500, text: JSON.stringify({ detail }), json: () => ({ detail }) }),
+  });
+  await expect(mgr.transcribe({ wav_b64: "" })).rejects.toThrow(`engine transcribe failed: ${detail}`);
+  await expect(mgr.align({ wav_b64: "", text: "x" })).rejects.toThrow(`engine align failed: ${detail}`);
+});
+
 // ─── the speech door prices on BOTH truths (2026-08-15) ───────────────
 
 function admissionMgr(arb, { priorMb, usedMb }) {

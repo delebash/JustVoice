@@ -348,7 +348,15 @@ BUILT:  6 and the load faults — 75af433b, kit 1401dc8: an unmeasured model who
         / MSA `ar-001`, VoiceTut `ar-EG`/en, sanoTTS one per download (the persona's language
         picks it, as Pocket's); `LANGUAGE_IN_OPTIONS` — MOSS's three by name, IndexTTS2 by code.
         engines.md's "Model default" now "‹Model› (built-in)". Unit-tested: server 1243 passed +
-        2 skipped, unit 239, lint, family guard.
+        2 skipped, unit 239, lint, family guard. Through the app 2026-10-16 (RESEARCH §10.17
+        "Through the app"): every check passed — VibeVoice 100 % on a line and on two paragraphs;
+        MOSS-Transcribe-Diarize and VibeVoice-ASR Streaming 96 % with no markup; Kroko and LFM2.5-
+        Audio JP refuse a language they don't speak in audio.cpp's own words; sanoTTS loaded its
+        German download for a German line (88 %); VoiceTut 80 % as before; MOSS-VoiceGenerator
+        English and Chinese 100 % (on the CPU: it spilled on the card); IndexTTS2.5 Spanish 100 %,
+        Japanese 82 %, against 75 % and 59 % with the language at the top level. Fixed on the way:
+        a recogniser's refusal reached dictation as a JSON body — now its own words. SenseVoice's
+        `<period>`/`<io>` are its own output, in no field without them (reported, not fixed).
 OPEN:   2 — ship Silero VAD (an asset audio.cpp bundles, 1.2 MB, MIT) with the runtime: the fork's
         dev build and every release bundle (fork work under way). 4 — F5-TTS's memory: upstream's
         open PR #924 (frees evicted graphs, bounds the Vocos cache) into the fork, then size F5's
@@ -368,9 +376,7 @@ OPEN:   2 — ship Silero VAD (an asset audio.cpp bundles, 1.2 MB, MIT) with the
         language goes to MOSS-TTS v1.5, MOSS-TTSD and MOSS-VoiceGenerator as its English name in
         `options.language` (their sessions read only that; a top-level language never reaches
         them). Each after slice 3's code lands (the same files), then through the app — built
-        (BUILT above); the GPU acceptance waits for the card: VibeVoice 1.5B, MOSS-Transcribe-
-        Diarize, VibeVoice-ASR Streaming 1.5B, Kroko, LFM2.5-Audio JP ASR, sanoTTS German,
-        VoiceTut, MOSS-VoiceGenerator, IndexTTS2.5. QwenCleo's languages with slice 4.
+        (BUILT above), and through the app 2026-10-16. QwenCleo's languages with slice 4.
         The plan's own findings, decided the same way: IndexTTS2 reads its language only from
         options too (IndexTTS2.5's Japanese, Spanish and Arabic lines went without it), so its
         spec's code goes in `options.language`; VoiceTut lists `ar-EG` and `en` (the tag Habibi's

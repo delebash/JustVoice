@@ -3500,8 +3500,8 @@ was deleted and the load option set back after. — *measured through the app, 2
 ### 10.17 Slice 2's findings at the source — scripts, transcripts, a request's language, a checkpoint's languages (2026-10-15)
 
 Read in our fork at `79ca123e` (upstream v0.9.2 + F5 commits) for TASKS "Slice 2's acceptance
-findings" 1, 3, 5, 7; built in JV `abd3d1b4`. Unit-tested; not yet through the app. — *read at the
-source, 2026-10-15*
+findings" 1, 3, 5, 7; built in JV `abd3d1b4`; through the app below ("Through the app"). — *read at
+the source, 2026-10-15*
 
 - **VibeVoice's text is a script; its clip is speaker 1.** `src/models/vibevoice/tokenizer_text.cpp:48-83`
   keeps only lines matching `^Speaker\s+(\d+)\s*:\s*(.*)$` (case-blind), drops the rest silently,
@@ -3560,6 +3560,47 @@ source, 2026-10-15*
   Arabic", `pt-BR` "Brazilian Portuguese").
 - **VieNeu** needs sea-g2p, a Rust C library, for plain text (`vieneu_v3_turbo.md:56-81`); its
   packages install one preset voice pair (`minh_quan_pro` codes and embedding) the app doesn't use.
+
+**Through the app** (2026-10-16, the findings plan's GPU acceptance): `npm run dev` on JV
+`5bcd223f` + fork `79ca123e` (`build/jv-dev`), RTX 2070 SUPER 8 GB, the AI model stopped before each
+load; the Hatter clip and its words; takes read back by Qwen3-ASR 1.7B; seed 42. Every download
+the run made was deleted (no 409), the five licences accepted for it cleared, the four test voices
+deleted, the app closed by its ports, the card back at 216 MB. — *measured through the app,
+2026-10-16*
+
+| Check | Result |
+|---|---|
+| Lists (no card) | 44 speech engines (38 from audio.cpp's files) and 25 recognisers (24); no VieNeu, no Index-Echo; VibeVoice `CLONING`, no voice of its own; every row's languages as §10.17 (LFM2.5-Audio en / JP ja, GigaAM v3 ru, Kroko en, IndexTTS2 zh·en, Habibi `ar` / `ar-EG` / `ar-001`, VoiceTut `ar-EG`·en, sanoTTS one per download); LFM2.5-Audio JP's own voice Japanese |
+| VibeVoice 1.5B q8 (3.0 GB), a Hatter clone | loaded on CUDA in 8 s; the line a 4.93 s take, read back 100 %; two paragraphs (8.13 s) 100 %; priced after its lines (3,723 MB) |
+| MOSS-Transcribe-Diarize q8 (1.05 GB) | the clip: 96 %, no timestamps or `[S01]` |
+| VibeVoice-ASR Streaming 1.5B q8 (3.1 GB) | 96 %, no "Speaker 0:" |
+| Kroko (0.16 GB) | `en` 96 %; `de` refused by audio.cpp, "Kroko ASR package language is en, but the request selected de" (a recogniser's request keeps the family's form) |
+| LFM2.5-Audio JP ASR (1.7 GB) | a Japanese take 95 %; `en` refused by audio.cpp, "this LFM2-Audio checkpoint transcribes ja, not en" |
+| sanoTTS (5 MB German + its 1 MB default) | its English download loaded, a German line loaded `sanotts-german` itself; read back 88 % ("Hutmacher" heard "Hubmacher", "Glück" "Lächeln") |
+| VoiceTut-TTS q8 (1.3 GB), an Arabic line | no language sent (OmniVoice takes no `ar-EG`), a 4.37 s take, 80 % — as §10.15 |
+| MOSS-VoiceGenerator bf16 (5.7 GB), designed | on the card it spilled 308 MB into system memory, so Auto retried on the CPU (§10.15 had it on the card at 7.7 GB with less else on it); English 100 %, Chinese 100 % (`options.language` English / Chinese) |
+| IndexTTS2.5 q8 (3.3 GB), a Hatter clone | Spanish 100 %, Japanese 82 % (帽子屋 heard ボーシャ) |
+
+IndexTTS2.5, the same clip, seed and lines sent straight to the runtime both ways: the language in
+`options` — Spanish 100 % (6.83 s), Japanese 82 % (4.99 s); at the top level, as before
+`abd3d1b4` — Spanish 75 % ("Al sombrero … as::erio", 7.63 s), Japanese 59 % ("帽子をは直径を…雲に消だ",
+5.50 s). So the option is what makes its tokenizer read the line's language.
+
+- **A recogniser's refusal reached dictation as JSON** — "engine transcribe failed: {"detail":
+  "this LFM2-Audio checkpoint transcribes ja, not en"}" (the manager passed the slot's body as it
+  was; a synth's error already took its `detail`). Fixed: transcribe and align say the engine's own
+  words.
+- **SenseVoice-Small's `<period>`, `<io>`** (asked by the coordinator). Its `text` read "That accounts
+  for it<period> He won't stand beating<io Now, if you only kept on good terms with him<io> …"
+  (96 %). They aren't special tokens: its vocabulary (`sv.vocab`, 25,055 pieces) has none —
+  only `<unk>`, `<s>`, `</s>` and its `<|…|>` tags, which the decoder drops
+  (`src/community_models/sense_asr/session.cpp:139-221`, `keep_tags` keeps them). The model spells
+  them out of ordinary pieces (`<` 9702, `>` 9704, `io` 1696, `▁period` 767), and they shift with
+  the input: the same clip resampled by ffmpeg gave "<.d>>", "<io", "himio>"; without ITN
+  (`enable_itn: false`) "<d>", "<", "<io>". Its response holds only `text` and `language` — no
+  segments, turns or words (`session.cpp:589`) — so no field has the words without them, and
+  audio.cpp's own page shows `text` as it is (`+page.svelte`, `nextText = result.text`). Not
+  fixed here: it is the model's (or the port's) output.
 
 ---
 

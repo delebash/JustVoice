@@ -2286,7 +2286,9 @@ export class EngineManager {
       }),
     );
     this.bumpEngineReservationAsync("stt", { lineOk: r.statusCode === 200 });
-    if (r.statusCode !== 200) throw new RuntimeError(`engine transcribe failed: ${r.text}`);
+    // The recogniser's own words (audio.cpp's refusal — "this LFM2-Audio checkpoint transcribes ja,
+    // not en"), as a synth's are, not the raw JSON body (seen through the app 2026-10-15).
+    if (r.statusCode !== 200) throw new RuntimeError(`engine transcribe failed: ${_engineDetail(r)}`);
     if ((proc.placement ?? "gpu") === "cpu" && !(proc.speedRecorded ?? true)) {
       this._recordCpuSpeed("stt", proc, _inputSeconds(body), wall);
     }
@@ -2310,7 +2312,7 @@ export class EngineManager {
     );
     this.bumpEngineReservationAsync("stt");
     if (r.statusCode === 501) throw new RuntimeError(r.json().detail ?? "word alignment unsupported");
-    if (r.statusCode !== 200) throw new RuntimeError(`engine align failed: ${r.text}`);
+    if (r.statusCode !== 200) throw new RuntimeError(`engine align failed: ${_engineDetail(r)}`);
     return r.json().words || [];
   }
 

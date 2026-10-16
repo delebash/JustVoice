@@ -71,7 +71,9 @@
     LFM2.5-Audio's English and Japanese models, GigaAM v3, Kroko, IndexTTS2, each Habibi-TTS
     model's Arabic, VoiceTut-TTS — and each sanoTTS download its one language, picked by the
     persona's as Pocket TTS's is. MOSS-TTS v1.5, MOSS-TTSD, MOSS-VoiceGenerator and IndexTTS2
-    now get the line's language; before, it never reached them ([Engines](engines.md#every-other-model-audiocpp-has),
+    now get the line's language; before, it never reached them. A speech-recognition model that
+    can't take a recording's language says so in its own words — *this LFM2-Audio checkpoint
+    transcribes ja, not en* — where dictation showed it wrapped in code ([Engines](engines.md#every-other-model-audiocpp-has),
     [Personas](personas.md))
   - Sync: when another computer's changes arrive, the window waits to reload while a dialog is
     open or the cursor is in a text box. Restoring a backup keeps your other computers' newer
