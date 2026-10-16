@@ -355,6 +355,38 @@ OPEN:   7 and 9, to the user; the merge, then the GPU half (Pocket TTS French cl
         back among it).
 GO:     given 2026-10-15 ("your rec go"); 9 waits for its own word.
 
+### Slice 5's findings: what each one gets (2026-10-16)
+STATE:  DECIDED 2026-10-16 under the user's "your rec go" of 2026-10-15 (the slice's agent's seven
+        questions and its findings, each with its rec): 1. Kitten's seed — waits for the fork's
+        search: KittenTTS's graphics-card takes are being looked for in the fork (TASKS "Same seed,
+        same take on the graphics card"). If they're fixed, Kitten gets a seed like every engine;
+        if not, the rec ("repeats only on the CPU"). Not built now. 2. Pocket TTS's words name
+        French: the engine description "…English, German, Italian, Portuguese, Spanish, and French
+        for cloning only"; the clone maker's note "…or French (cloning only)". 3. The missing Runs
+        on reason: Auto gives the card-first words when only audio.cpp's estimate, with the 1 GB
+        margin, is more than the card and the files fit with the margin — "audio.cpp says it needs
+        about N GB, but its files are about M GB, so it tries the graphics card first; if it
+        doesn't fit, Load runs it on the CPU". Placement is unchanged. 4. Speech engines at 1280 and
+        390 px: a row's buttons wrap under its chips when the row is too narrow; at phone width the
+        bars stack — in the real tab's CSS. 5. The persona mock covers every audio.cpp model's
+        voices — open, as its own change; not now. 6. `scripts/mock-snapshots.js`, the script that
+        re-takes both snapshots, checked in with a header saying what it does and when to run it.
+        7. The dev reload port: `hmr: { port: Number(process.env.JV_HMR_PORT) || 1431 }`. Found on
+        the way, fixed as defects: the files reason's size in `_gb`'s words (MOSS-TTSD said "10 GB"
+        beside "9.5 GB"); the Unload toast names the engine, not its id; the KittenTTS Speed-from-
+        0.01 claims out of whats-new and engines.md (no control shows it; the range stays in the
+        data, unused); the broken `voices.md#keeping-a-designed-voice…` links in studio.md and
+        whats-new pointed at the right anchor.
+WHY:    each was the slice's agent's to raise; the rec is built unless it waits on other work.
+NOT:    moving a tight-estimate model by what other programs hold (placement stays as it was).
+BUILT:  2–4, 6, 7 and the defects — 9ee55806 (placementFor + cpu_placement test, Pocket's words,
+        the Unload toast, app.scss's wrap and phone stack, JV_HMR_PORT), 95fa29b3 (the script,
+        the snapshots re-taken, the mock's placementFor port), 37db2cad (engines.md, whats-new,
+        studio.md, RESEARCH §2.3); branch `slice4`. Server 1256 + 2 skipped, unit 239, lint,
+        build:spa, family guard; the tab seen through the mock at 1280 and 390 px.
+OPEN:   1, after the fork's search; 5, its own change.
+GO:     given 2026-10-15 ("your rec go").
+
 ### Slice 3's six questions: what each one gets (2026-10-15)
 STATE:  DECIDED 2026-10-15 under the user's "your rec go" (the slice's agent's recs, rethought):
         1. Plan §1's "expert-only settings fold under Advanced" names none — settings in
