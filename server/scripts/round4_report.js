@@ -8,8 +8,9 @@
 //     npm run round4:report -- data/round4/score-a/out data/round4/score-b/out
 //
 // Reads each folder's summary.json and scores.csv (tools/take-check), and the round's manifest
-// for the render times. Prints a Markdown table and writes round4-report.json beside the first
-// folder. Built 2026-10-16.
+// for the render times (the kit's manifest.json beside the first folder when there is one, as
+// round 5's `data/round5/score/`; round 4's otherwise). Prints a Markdown table and writes
+// round4-report.json beside the first folder. Built 2026-10-16.
 
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -44,7 +45,8 @@ if (!dirs.length) {
   console.error("usage: npm run round4:report -- <kit out folder> [<another> …]");
   process.exit(2);
 }
-const manifest = JSON.parse(readFileSync(path.join(ROOT, "data", "round4", "manifest.json"), "utf8"));
+const beside = path.join(dirs[0] ?? "", "..", "manifest.json");
+const manifest = JSON.parse(readFileSync(existsSync(beside) ? beside : path.join(ROOT, "data", "round4", "manifest.json"), "utf8"));
 const renderS = new Map();
 for (const t of manifest.takes) {
   if (t.error) continue;
