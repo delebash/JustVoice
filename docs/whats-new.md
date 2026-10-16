@@ -731,7 +731,7 @@
   Base asks for the transcript or **Skip the words**, by name. **Skip the words**
   works again on Qwen3 Base — it had not reached the speech runtime since the
   2026-10-01 switch — and a voice saved with it keeps it for its renders
-  ([Voices → What each model asks for](voices.md#what-each-model-asks-for))
+  ([Personas → New clone](personas.md#new-clone))
 - **Updating the speech runtime shows its progress and cleans up (2026-10-03).**
   The bar on the runtime row fills as the new build downloads, and the build it
   replaces is deleted afterwards — about 2 GB for a CUDA build
@@ -1072,18 +1072,18 @@
   ([Personas → New design](personas.md#new-design))
 - A designed voice you have not kept a clip for now actually reaches the
   model — its description is spoken on every line, with your direction added
-  after it ([Voices](voices.md#design--from-a-description))
+  after it ([Personas → New design](personas.md#new-design))
 - A table of **which voice types take written direction**, because it depends
   on how the voice was made, not just which engine you picked
   ([Voices](voices.md#which-of-them-take-written-direction))
 - A cast that mixes Qwen3 checkpoints is refused **before** the render starts,
   naming every voice and the model it needs, instead of failing partway
-  through ([Studio](studio.md#one-qwen3-model-at-a-time))
+  through ([Studio](studio.md#one-speech-model-at-a-time--personas-on-several-models-render-model-by-model))
 - Bracketed tags typed into Qwen3 text are removed rather than read aloud —
   Qwen3 takes direction as words, not markup ([Engines](engines.md))
 - Four ways to blend a Kokoro voice — mix, exaggerate, add and subtract, or
   splice one voice's sound onto another's delivery
-  ([Voices](voices.md#blend--make-a-voice-out-of-other-voices))
+  ([Personas → New blend](personas.md#new-blend))
 - Voices library filters by language and gender, and shows language as a name
   rather than a code ([Voices](voices.md#finding-a-voice-in-the-library))
 - **Any column heading sorts, on every list in the app**
