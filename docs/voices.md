@@ -28,7 +28,7 @@ render loads *that* model:
   even if another Chatterbox model happens to be loaded — JustVoice loads
   Multilingual for it first.
 - **A designed voice** is Qwen3 VoiceDesign while it has no kept clip, and
-  Qwen3 Base once you keep its clip ([below](#keeping-a-designed-voice-is-what-makes-it-one-voice)).
+  Qwen3 Base once you keep its clip ([Personas → New design](personas.md#new-design)).
 - **A blend** is Kokoro's.
 
 The model's *size and precision* — Qwen3 1.7B or 0.6B, 8-bit or 16-bit — stay
@@ -48,7 +48,7 @@ the library, for any persona to use.
 
 | Type | What it is | Made |
 |---|---|---|
-| **Built-in** | Ships with the model. Nothing to make. | Comes with Kokoro (54), Pocket TTS (20), KittenTTS (8), Qwen3 **CustomVoice** (9) — and, since 2026-10-15, audio.cpp's other models' own voices: Kitten TTS 2 (47), Voxtral 4B TTS (20), Supertonic 3 (10), NeuTTS (9), MagpieTTS (5), KugelAudio and LFM2.5-Audio (4 each), and one voice named for its model — *Piper TTS (built-in)* — for each model whose description names no voice — [Engines](engines.md#every-other-model-audiocpp-has) |
+| **Built-in** | Ships with the model. Nothing to make. | Comes with Kokoro (54), Pocket TTS (20), KittenTTS (8), Qwen3 **CustomVoice** (9), Chatterbox Turbo and Nano (since 2026-10-16: *Turbo (built-in)*, *Nano (built-in)*, and *Chatterbox Turbo (built-in)* on audio.cpp's own Turbo package) — and, since 2026-10-15, audio.cpp's other models' own voices: Kitten TTS 2 (47), Voxtral 4B TTS (20), Supertonic 3 (10), NeuTTS (9), MagpieTTS (5), KugelAudio and LFM2.5-Audio (4 each), and one voice named for its model — *Piper TTS (built-in)* — for each model whose description names no voice — [Engines](engines.md#built-in-voices) |
 | **Cloned** | Learned from a recording of someone speaking — including a clip kept as it was before 2026-10-04, once listed apart as *Imported*. | [New clone](personas.md#new-clone) — Chatterbox Multilingual, Turbo, Nano, Pocket TTS, Qwen3 **Base**, VoxCPM2, and audio.cpp's other models that copy a voice |
 | **Designed** | Invented from a written description — no recording. | [New design](personas.md#new-design) — Qwen3 **VoiceDesign**, VoxCPM2, and audio.cpp's other models that make a voice from words |
 | **Blended** | Made out of Kokoro's own voices — mixed, exaggerated, added and subtracted, or spliced. | [New blend](personas.md#new-blend) |

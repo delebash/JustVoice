@@ -550,12 +550,17 @@ family's `curated/<family>.js` (`ENGINE`, `MODELS`, `VOICES` …).
 - **Added (the plan's E6/E14/F5):** Qwen3-TTS Base 1.7B and VoxCPM2 at their original precision
   (`-orig`, 4.5 GB and 5.0 GB); audio.cpp's own Turbo package (`chatterbox_turbo_q8_0`, 699 MB,
   estimate 4 GB; its f16 file is missing at `f861648c`) — its built-in voice only, no voice
-  encoder, so no cloning (refused by name), named as audio.cpp's catalog names it whole, "Chatterbox
-  Turbo (tts)", since "Chatterbox Turbo" is our Turbo's; and QwenCleo-ASR (`qwencleo_asr_q8_0` /
+  encoder, so no cloning (refused by name: "‹model› speaks only its own built-in voice"), named
+  "Chatterbox Turbo (built-in voice only)" (`curated/chatterbox_turbo.js`; decided 2026-10-16,
+  TASKS "Slice 4's gaps" 1 — was: audio.cpp's catalog name whole, "Chatterbox Turbo (tts)", until
+  8c54401f, 2026-10-16); and QwenCleo-ASR (`qwencleo_asr_q8_0` /
   `_f16`, 2.48 / 4.09 GB, `mohammedaly22/QwenCleo-ASR-GGUF` at `6884dc20`), with the aligner like
   every Qwen3-ASR row. Pocket TTS French (`pocket_tts_french_q8_0` / `_bf16`, in the spec, not in
-  audio.cpp's own install choices) is not offered: its one preset, cosette, is Expresso's,
-  non-commercial — the only spec package of the seven's entries left out.
+  audio.cpp's own install choices) is offered for cloning only: its one preset, cosette, is
+  Expresso's, non-commercial, and none of our twenty presets has a French file, so its rows list
+  no voice (`curated/pocket_tts.js` `MODELS`, `voices: false`); no CPU speed, so Auto doesn't send
+  it to the CPU on speed (decided 2026-10-16, TASKS "Slice 4's gaps" 2; was: not offered, until
+  8c54401f, 2026-10-16). — *code, 2026-10-16*.
 - **QwenCleo-ASR:** Apache-2.0, "inheriting the Qwen3-ASR license terms"; its card names Egyptian
   Arabic, Modern Standard Arabic and Arabic ↔ English code-switching, "Not optimized for
   pure-English audio", and recommends the language hint "Arabic"; the card's and its GGUF repo's

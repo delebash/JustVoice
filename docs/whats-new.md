@@ -2,6 +2,13 @@
 
 ## v0.1.0
 
+- **The Engines guide explains the list instead of copying it (2026-10-16)** — it now walks
+  through AI Settings → Speech engines part by part: an engine's head and notes, a model's row
+  and its chips, its downloads, built-in voices, cloning and design, direction, settings and
+  load options, memory before a load, every reason Auto gives for where a model runs, the
+  licence words, *Tested by JustVoice* and the recognisers. Each model's own facts are on its
+  row, from audio.cpp's description of it; the guide keeps what JustVoice adds and measured
+  ([Engines](engines.md))
 - **Kokoro, KittenTTS, Pocket TTS, Qwen3-TTS, Chatterbox, VoxCPM2 and Qwen3-ASR built like every
   other engine (2026-10-16)** — from audio.cpp's own description of their models: their downloads,
   voices and languages come from it. Your voices, personas, saved settings, takes and measured
@@ -87,7 +94,7 @@
     LFM2.5-Audio's English and Japanese models, GigaAM v3, Kroko, IndexTTS2, each Habibi-TTS
     model's Arabic, VoiceTut-TTS — and each sanoTTS download its one language, picked by the
     persona's as Pocket TTS's is. MOSS-TTS v1.5, MOSS-TTSD, MOSS-VoiceGenerator and IndexTTS2
-    now get the line's language; before, it never reached them ([Engines](engines.md#every-other-model-audiocpp-has),
+    now get the line's language; before, it never reached them ([Engines](engines.md#languages),
     [Personas](personas.md))
   - Sync: when another computer's changes arrive, the window waits to reload while a dialog is
     open or the cursor is in a text box. Restoring a backup keeps your other computers' newer
@@ -734,7 +741,7 @@
   48 kHz — and written direction reaches its cloned voices, which no other engine
   here does. About 1.3× real time on an 8 GB card. It does not speak text in
   parentheses, so a line's own brackets are read as dashes
-  ([Engines → The catalog](engines.md#the-catalog))
+  ([Engines → VoxCPM2](engines.md#voxcpm2))
 - **Every model has a 16-bit row (2026-10-02)** beside its 8-bit default — the
   original precision, a larger download that needs more memory. Read back on a
   real chapter, the two precisions came out level on every engine
@@ -749,7 +756,7 @@
   converter and publishes it at
   [delebash/Qwen3-TTS-12Hz-0.6B-CustomVoice-GGUF](https://huggingface.co/delebash/Qwen3-TTS-12Hz-0.6B-CustomVoice-GGUF);
   pick it on its row on AI Settings → Speech engines
-  ([Engines → The catalog](engines.md#the-catalog))
+  ([Engines → Qwen3-TTS](engines.md#qwen3-tts))
 - **Loading another model of an engine that is already loaded now loads it
   (2026-10-02).** Before, the row switched to "loaded" but the first model went
   on speaking — choosing Qwen3-TTS Base while CustomVoice was loaded, or the
@@ -779,7 +786,7 @@
   voices, 3.4× real time on an 8-core CPU. **Pocket TTS** — Kyutai's cloning model, the
   first since LuxTTS to clone fast on a CPU (4× real time), with 20 preset voices, one
   model each for English, German, Italian, Portuguese and Spanish. Its first clone asks
-  you to accept Kyutai's terms ([Engines → The catalog](engines.md#the-catalog))
+  you to accept Kyutai's terms ([Engines → Pocket TTS](engines.md#pocket-tts))
 - **Voice training is gone (2026-10-02).** The Voices page's **LoRA** tab — the
   Preparer, the Dataset Builder and training runs — is removed, with the training
   settings and the `training.completed` / `training.failed` webhook events. It ran on

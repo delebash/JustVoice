@@ -71,7 +71,7 @@ Speech engines (about 260 MB). See
 Pocket TTS clones only once you have accepted Kyutai's terms for it, on this
 install. Open a persona's page, pick *Cloned* under Type and Pocket TTS, or the Pocket TTS row on AI
 Settings → Speech engines, read the terms and click **Accept**. Its preset
-voices never need it. See [Engines → The catalog](engines.md#the-catalog).
+voices never need it. See [Engines → Pocket TTS](engines.md#pocket-tts).
 
 **A Pocket TTS line stops with "… speaks English, and this line is German".**
 Pocket TTS is one model per language. Load the model for the line's language on

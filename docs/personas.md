@@ -185,7 +185,7 @@ offers below.*
 | Written direction | describe it in words | *Clipped, world-weary. Dry wit.* | Qwen3 CustomVoice, VoxCPM2 (its clones too), Qwen3 VoiceDesign (the words reshape the voice) |
 | Tags | pick from the model's own list | `[fear]` … `[sigh]` | Chatterbox Turbo, Chatterbox Nano |
 | Sliders only | pace, pitch, gain — no words | Pace 1.05×, Pitch −2 st | Kokoro, KittenTTS, Pocket TTS, Chatterbox Multilingual, Qwen3 Base |
-| Can't be directed yet | pace, pitch, gain — no words | Pace 1.05×, Pitch −2 st | the models from audio.cpp that JustVoice doesn't know how to direct yet — Supertonic 3, Kitten TTS 2, Voxtral 4B TTS and others ([Engines](engines.md#every-other-model-audiocpp-has)); a line on one is spoken plainly |
+| Can't be directed yet | pace, pitch, gain — no words | Pace 1.05×, Pitch −2 st | the models from audio.cpp that JustVoice doesn't know how to direct yet — Supertonic 3, Kitten TTS 2, Voxtral 4B TTS and others ([Engines](engines.md#how-a-model-takes-direction)); a line on one is spoken plainly |
 
 **How it was made comes second.** *Type* lists the voices of one type, with
 how many — **Built-in · Cloned · Designed · Blended**, the words every screen
@@ -375,7 +375,7 @@ this persona's note in, to edit; it never happens on its own. The model is
 Base, 1.7B only) or **VoxCPM2** — or, since 2026-10-15, one of audio.cpp's other
 models that make a voice from words: Breeze TTS 2, FireRedTTS3, FireRedAudio,
 Irodori-TTS or MOSS-VoiceGenerator
-([Engines](engines.md#every-other-model-audiocpp-has)). A design model invents a voice afresh on
+([Engines](engines.md#copying-a-voice-and-making-one-from-words)). A design model invents a voice afresh on
 every call — ask twice for the same description and you get two different
 people — which is why keeping a take matters for a voice that must stay one
 person through a book.
