@@ -368,6 +368,28 @@ OPEN:   `book_voices.clone_model` → Breeze (after round 5's narrator sample); 
 GO:     given 2026-10-16 ("your rec on breeze and license"; after the check, "your rec on all
         go").
 
+### Round 6b — emotion we build ourselves, simplest first (decided 2026-10-16)
+STATE:  DECIDED 2026-10-16 — after the user's "if the tts cant do the emotion directly maybe we do
+        the emotion in a different method" and "you need to think like this what things can work
+        togetther to get us the voice we want", argued against twice; shown: "1. Priming (an
+        emotional lead-in, cut off afterwards) on VoxCPM2 and CosyVoice3. No new code. 2. The
+        EDICT prototype, tested on all seven feelings, whisper and shout included. 3. Fill only the
+        gaps 2 leaves: a DSP whisper or shout, or the CREMA-D emotion direction for a feeling
+        VoiceDesign misses. 4. Best of 2–3 takes, if round 5 shows the scorers' pick matches
+        yours. 5. Alongside, a small design comparison: the run's four Alice characters designed
+        from the same descriptions on Qwen3 VoiceDesign, MOSS-VoiceGenerator and VoxCPM2, plus
+        Breeze as the reference we can't sell. You pick which voice fits each character." The
+        user: "your rec, sae the research".
+WHY:    the user's bar: "if this system we are building cant compete with a human then it is
+        pointless"; every part here can be sold with (Apache, MIT, open data) and fits 8 GB.
+NOT:    building the four-stage chain before testing whether one model does it; act-then-convert
+        (emotion lost in conversion unmeasured); Joint-RL (needs training that won't fit 8 GB).
+BUILT:  — (research: RESEARCH §10.26–10.27).
+OPEN:   1–5 in that order, after round 5's renders; each on round 5's 13 lines, scored, then the
+        user's four steps. Starting 3's DSP whisper and shout starts part of the DSP
+        character-voice plan (IDEAS 2026-10-07).
+GO:     given 2026-10-16 ("your rec, sae the research").
+
 ### Round 6 — the best engine to sell with: Fish Drama 3, then Qwen3 with an emotion direction (decided 2026-10-16)
 STATE:  DECIDED 2026-10-16 — after the field sweep (RESEARCH §10.26), shown: "finish round 5 first.
         After it, a round 6 for the sellable question, in this order: 1. Fish Drama 3. It needs our

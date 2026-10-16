@@ -4395,6 +4395,50 @@ coming research?". Reddit unreachable.
   act-then-convert with the MIT/Apache converters (emotion survival unmeasured); Marco-Voice (low:
   CosyVoice1-era, no whisper or shout, would need a port).
 
+### 10.27 Building emotion ourselves: EDICT's method, the design models, a person as the bar (2026-10-16)
+
+*web, checked by the session 2026-10-16* — the user: "can you figure out how [EDICT] works or any of
+the research and build something yourself, can we build it with my 8gb card?", then "if the tts
+cant do the emotion directly maybe we do the emotion in a different method" and "what things can
+work togetther to get us the voice we want".
+
+- **EDICT** (arXiv 2610.11437, demo danny-nus.github.io/EDICT-demopage/, anonymous; no code or
+  weights, none promised). Two stages. **Stage I** edits a reference voice's timbre with a
+  *trained* editor (Qwen3-TTS-12Hz-1.7B-Base fine-tuned in full, then preference-trained) into an
+  edited codec reference — the part our DSP character-voice plan (§8) covers another way.
+  **Stage II** needs no training: a frozen backbone (Qwen3-TTS VoiceDesign; CosyVoice 2 as a
+  second) gets the shared reference "through in-context learning" with each segment's
+  natural-language instruction; at each instruction change "The old KV cache is discarded" and a
+  fresh prefill holds "the new instruction, shared edited reference, new text" plus the "first S
+  and most recent K generated codec positions" of the speech so far, (S, K) = (4, 5) — about 0.3 s
+  and 0.4 s at 12 Hz. The prompt layout itself is not given. IntraTTS-Bench (997 requests, Chinese
+  and English; Gemini-judged accuracy, WavLM similarity between segments, SIM-I), Qwen3-TTS-VD:
+  Concat. (each segment synthesised on its own with its instruction and the original reference,
+  joined) EmoAcc 92.66 % at SIM-I **0.658**; Joint (one pass) 66.37 % at 0.922; TED-TTS 74.02 % at
+  0.911; **EDICT Stage II 83.60 % at 0.915**, WER 5.1 %. 19 listeners: Stage II beat TED-TTS on
+  following instructions and on transitions. So the reference alone doesn't hold the voice when the
+  instruction changes (0.658); the carried context does (0.915) — the cure for §1.3's finding that
+  a voice made from words is not stable across pieces.
+- **The voice-design models in our build** (§10.15): Qwen3-TTS VoiceDesign (the run's
+  `design_model`, Apache-2.0 — its makers report it "beats MiniMax-Voice-Design on InstructTTSEval
+  and leads other open models by a wide margin", self-reported), MOSS-VoiceGenerator (commercial
+  use Yes, §10.13; made for natural, less studio-clean voices, arXiv 2603.28086; bf16 5.7 GB,
+  spilled once on this card, §10.17), VoxCPM2 (designs from a parenthesised description,
+  Apache-2.0), BreezeTTS 2 (commercial use No), FireRedTTS3 Instruct and FireRedAudio (cloning "for
+  academic research"), Irodori v3 VoiceDesign and v4.1. No head-to-head comparison of them found;
+  none made by ear here.
+- **A person as the bar:** LibriVox's dramatic reading of *Alice's Adventures in Wonderland*
+  (librivox.org/4511; narrator David Goldfarb, Alice by Miss Avarice, about 40 readers, one per
+  character), the Internet Archive copy (aliceinwonderland_1102_librivox) marked Public Domain Mark
+  1.0; chapters VII (14:31) and VIII (13:27) at 64 kbps in `data/round5/human/`.
+- **The emotions each way can cover** (the reasoning behind round 6b, TASKS): an emotion direction
+  from CREMA-D covers anger, disgust (contempt's nearest), fear, happy, sad — not whisper or shout;
+  DSP can make a real whisper (voicing removed) and can push an angry take toward a shout (pitch,
+  brightness, compression); priming with an emotional lead-in works on a model that takes its
+  feeling from the words (CosyVoice3's paper: "TTS systems primarily infer the emotional tone of
+  output audio from text sentiment"). Whether VoiceDesign whispers and shouts on a held voice is
+  unmeasured.
+
 ## Records not yet distilled
 
 Indexed by subject so they can be found; their facts move into a section above when work next
