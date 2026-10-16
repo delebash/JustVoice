@@ -1342,8 +1342,8 @@ export class EngineManager {
     proc._ramProbing = true;
     try {
       const mb = await this._slotRamMb(proc);
-      // The slot may have swapped while the probe ran.
-      if (!mb || mb <= (proc._ramPeakMb || 0) || this._loaded.get(kind) !== proc) return;
+      // The slot may have swapped while the probe ran, or still be loading (`_settled`).
+      if (!mb || mb <= (proc._ramPeakMb || 0) || !this._settled(kind, proc)) return;
       proc._ramPeakMb = mb;
       const engineId = proc.manifest.id;
       const m = this.getManifest(engineId);
@@ -1516,45 +1516,46 @@ export class EngineManager {
 
   /** Fire-and-forget high-water bump for the synthesis/transcription hot path — the probe can
    * shell out for ~1 s and must never add latency to a line. */
-  bumpEngineReservationAsync(kind, { lineOk = true } = {}) {
-    background(`${kind}-highwater`, () => this.bumpEngineReservation(kind, { lineOk }), log);
+  bumpEngineReservationAsync(kind) {
+    background(`${kind}-highwater`, () => this.bumpEngineReservation(kind), log);
+  }
+
+  /** Is `proc` the kind's slot, its load confirmed? A probe runs unlocked: by the time it reads,
+   * the slot may hold another model, or a new load of the same engine still in flight — whose
+   * variant and device aren't recorded yet. A reading then is no model's price. (was: the engine's
+   * id alone — a line's background probe that landed while Chatterbox Turbo was loading wrote
+   * the process's 105 MB, Multilingual gone, as Multilingual's price with no device; until
+   * 2026-10-16.) */
+  _settled(kind, proc) {
+    return this._loaded.get(kind) === proc && this._resolvedDevices.has(proc.manifest.id);
   }
 
   /** The raise-only HIGH-WATER re-probe: a TTS model allocates at generate(), not load — a
    * post-load number misses render peak. Never lowers a booking; best-effort. */
-  async bumpEngineReservation(kind, { fresh = false, lineOk = true } = {}) {
+  async bumpEngineReservation(kind, { fresh = false } = {}) {
     // System memory first: the card's probe below returns early for a CPU slot.
     await this.bumpSpeechRam(kind).catch(() => {});
     const proc = this._loaded.get(kind) ?? null;
     if (proc === null) return;
     const engineId = proc.manifest.id;
-    // A load that couldn't measure the model (it speaks only from a clip) prices it on its
-    // first line (§7 answer 5; set in `load`) — a line that spoke, not one that failed.
-    const first = lineOk ? (proc._priceAtFirstLine ?? null) : null;
-    if (first !== null) proc._priceAtFirstLine = null;
     // The kind's own process (audit §13.2): its whole measurement is this model's.
-    const mb = await this._engineProcMb(proc, { fresh: fresh || first !== null });
-    if (first !== null) {
-      await this._priceFirstLine(proc, kind, first, mb);
-      return;
-    }
+    const mb = await this._engineProcMb(proc, { fresh });
     if (!mb) return;
     try {
       const arb = arbiter.getArbiter();
       const cur = arb.reservedMb(`${kind}:${engineId}`);
       if (cur === null || mb > cur) {
-        // Occupant re-check: the probe ran unlocked — the slot may have swapped meanwhile.
-        const occ = this._loaded.get(kind) ?? null;
+        // Occupant re-check: the probe ran unlocked.
+        if (!this._settled(kind, proc)) return;
         const variant = this._currentVariants.get(engineId) ?? null;
-        const device = this._resolvedDevices.get(engineId) ?? "";
-        if (occ === null || occ.manifest.id !== engineId) return;
+        const device = this._resolvedDevices.get(engineId);
         // cur null = "not measured yet": the first measured probe CREATES the booking — only
         // when the resolved device books at all.
         if (cur === null && !(await this._booksMemory(device))) return;
         const m = this.getManifest(engineId);
         if (m !== null) {
           this._reserveEngine(m, kind, mb, "measured");
-          if (this._prices(occ)) this._recordSpeechLoad(m, kind, variant, mb, device);
+          if (this._prices(proc)) this._recordSpeechLoad(m, kind, variant, mb, device);
         }
       }
     } catch {
@@ -1564,16 +1565,24 @@ export class EngineManager {
 
   /**
    * The price of a model its load couldn't measure (it speaks only from a clip), saved after its
-   * first line (§7 answer 5): the process's reading after the line (`mb`), else — a probe that
-   * reads nothing — the whole card's difference since before its load, as a calibrated load's
-   * fallback is. Booked too, and never below what is booked. Not after a runaway line, and not
-   * when the slot swapped while the line ran. Best-effort.
+   * first line that spoke (§7 answer 5; `load` marks the slot): the process's reading after the
+   * line, else — a probe that reads nothing — the whole card's difference since before its load,
+   * as a calibrated load's fallback is. Booked too, and never below what is booked. Not after a
+   * runaway line. Called while the line still holds the slot (`synth`, `transcribe`), so the
+   * next load can't take the model away before it is read. (was: read by the line's background
+   * probe, which found the slot given to the next model and dropped the price when a render
+   * moved on at once — Qwen3-TTS Base 1.7B had none after three lines; until 2026-10-16.)
+   * Best-effort.
    */
-  async _priceFirstLine(proc, kind, first, mb) {
+  async _priceFirstLine(kind, proc) {
+    const first = proc?._priceAtFirstLine ?? null;
+    if (first === null) return;
+    proc._priceAtFirstLine = null;
     try {
       if (this._loaded.get(kind) !== proc || !this._prices(proc)) return;
       const m = this.getManifest(proc.manifest.id);
       if (m === null) return;
+      const mb = await this._engineProcMb(proc, { fresh: true });
       const cur = EngineManager._bookingMb(`${kind}:${m.id}`);
       if (mb) {
         this._reserveEngine(m, kind, Math.max(mb, cur), "measured");
@@ -1932,9 +1941,12 @@ export class EngineManager {
       if (aiCreditMb > 0) await this._admitSystemMemory(m, targetKind, planned, device);
       // A load with no price on the card measures one: its warm-up is a full-length piece.
       const calibrate = books && !already && !price;
-      // The device-delta fallback's BEFORE snapshot (boxes with no per-process probe arm).
-      const poolBefore = books ? await this.poolUsedMb({ fresh: true }) : null;
-      const gpuBefore = books ? poolBefore : await self.memoryInUseMb();
+      // The device-delta fallback's BEFORE snapshot (boxes with no per-process probe arm), taken
+      // below once the slot's previous model has left the card — its memory is never this one's.
+      // (was: taken here, with that model still loaded — Qwen3 Base's "2574 -> 2068 MB" beside
+      // VoiceDesign, until 2026-10-16.)
+      let poolBefore = null;
+      let gpuBefore = null;
 
       let proc = null;
       let early;
@@ -1973,6 +1985,9 @@ export class EngineManager {
             early = { value: (await prior.get("/voices")).json() };
             return;
           }
+          // The card as this model finds it: the previous model gone and drained (above).
+          poolBefore = books ? await this.poolUsedMb({ fresh: true }) : null;
+          gpuBefore = books ? poolBefore : await self.memoryInUseMb();
           if (progress) progress("loading", `loading ${engineId} on the ${placement === "cpu" ? "CPU" : "graphics card"}…`);
           proc = self._newSlot(m, placement);
           await proc.spawn();
@@ -2070,7 +2085,8 @@ export class EngineManager {
       // clip calibrates on its load (slot._warm, slot._warmGenerated; the adoption plan's M1); one
       // that speaks only from a clip can't, so its first line sets its price instead —
       // its process's reading after the line, or the whole card's difference since before the
-      // load (§7 answer 5; `bumpEngineReservation`). An EARLY booking keeps the price instead.
+      // load (§7 answer 5; `_priceFirstLine`, read while that line still holds the slot). An
+      // EARLY booking keeps the price instead.
       if (books) {
         const measured = await this._engineProcMb(proc, { fresh: true });
         let calibrated = false;
@@ -2186,17 +2202,21 @@ export class EngineManager {
     let proc;
     let r;
     let wall;
+    let audioS = null;
     await this._activity(kind).run(async () => {
       proc = this._requireCurrent(engineId);
       const t0 = performance.now();
       r = await proc.post("/synth", body);
       wall = (performance.now() - t0) / 1000;
+      audioS = r.statusCode === 200 ? _wavSeconds(r.content || Buffer.alloc(0)) : null;
+      this._noteRunaway(proc, engineId, body?.text, audioS);
+      // A model its load couldn't measure: this line, if it spoke, sets its price — read before
+      // the line lets go of the slot (once per load; the probe can take a second or two).
+      if (r.statusCode === 200) await this._priceFirstLine(kind, proc);
     });
-    const audioS = r.statusCode === 200 ? _wavSeconds(r.content || Buffer.alloc(0)) : null;
-    this._noteRunaway(proc, engineId, body?.text, audioS);
     // High-water true-up: generate() is where a TTS engine's memory peaks — async +
     // TTL-absorbed, raise-only, never blocks the line.
-    this.bumpEngineReservationAsync(kind, { lineOk: r.statusCode === 200 });
+    this.bumpEngineReservationAsync(kind);
     if (r.statusCode === 403) {
       const payload = typeof r.json === "function" ? r.json() : {};
       if ((payload || {}).code === "terms_required") {
@@ -2238,9 +2258,10 @@ export class EngineManager {
         const t0 = performance.now();
         r = await proc.post("/transcribe", body, timeout);
         wall = (performance.now() - t0) / 1000;
+        if (r.statusCode === 200) await this._priceFirstLine("stt", proc);
       }),
     );
-    this.bumpEngineReservationAsync("stt", { lineOk: r.statusCode === 200 });
+    this.bumpEngineReservationAsync("stt");
     // The recogniser's own words (audio.cpp's refusal — "this LFM2-Audio checkpoint transcribes ja,
     // not en"), as a synth's are, not the raw JSON body (seen through the app 2026-10-15).
     if (r.statusCode !== 200) throw new RuntimeError(`engine transcribe failed: ${_engineDetail(r)}`);

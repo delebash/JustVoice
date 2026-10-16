@@ -629,7 +629,8 @@ family's `curated/<family>.js` (`ENGINE`, `MODELS`, `VOICES` …).
   3 and 1.7B 6; our own conversions (CustomVoice 0.6B, Turbo, Nano) and QwenCleo have no estimate,
   so their files decide. Auto weighs an unmeasured one by it (Chatterbox on an 8 GB card: "tries the
   graphics card first", its files fitting); a measured price still decides first. A clone-only one
-  (Chatterbox Multilingual, Qwen3 Base) is priced after its first line (§7 answer 5). (was: none —
+  (Chatterbox Multilingual, Qwen3 Base, Pocket TTS French) is priced after its first line (§7
+  answer 5; how, §2.3 "A first line's price"). (was: none —
   "memory not measured yet", Auto taking the card without a reason — until 2026-10-16.)
 - **The seven's settings at audio.cpp's ranges** (TASKS "Slice 3's six questions" 4,
   `capability_details.atAudiocppRange`, ends from `generated.audiocppEnds`): Kitten's Speed from
@@ -724,6 +725,27 @@ unloaded — audit §3.1 has the method.
   unload, which now waits for the memory to drain. (was: download, then unload the AI model,
   then the check — a refusal left both done; a variant switch skipped the check — until
   2026-10-04.) — *code + tests, 2026-10-04* · audit §5 B2, B5, §13.3.
+- **A first line's price** (a model that speaks only from a clip, §7 answer 5) is read while that
+  line still holds the slot (`manager._priceFirstLine`, inside `synth`'s and `transcribe`'s
+  activity lock), so the next load can't unload the model first; it costs that line one
+  per-process probe (a second or two on Windows), once per load. Slice 4's GPU half (2026-10-16)
+  found the two ways it failed, both in a render that loads the next persona's model at once:
+  the after-line reading ran in the background, found the slot given to the next model and
+  dropped the price (Qwen3-TTS Base 1.7B: none after three lines); and a line's background
+  probe that landed while the same engine's next model was loading (Chatterbox Multilingual →
+  Turbo) read the shared process after Multilingual had left — 105 MB, the CUDA process's own
+  share (typeperf's `Dedicated Usage` for an idle `audiocpp_server.exe`: 110,206,976 bytes) —
+  passed the re-check, which compared only the engine's id, and wrote it as Multilingual's price
+  with the device the next load had already cleared (`backend` ""), a row `_priceMb` never
+  reads. A reading now counts only for the same slot with its load confirmed
+  (`manager._settled`). The whole card's difference, where the process can't be read, counts
+  from a reading taken after the slot's previous model has left and drained (was: before it —
+  Qwen3 Base's load logged "2574 -> 2068 MB" with VoiceDesign still loaded). Per-process card
+  memory IS read on this machine (typeperf; nvidia-smi says N/A under WDDM): Chatterbox
+  Multilingual's first line, with nothing loaded after it, priced 2,595 MB on the card
+  (2026-10-16 06:32 UTC). (was: the background probe and the engine-id re-check — until
+  2026-10-16.) — *code + tests + the user's database, 2026-10-16* · `manager.js`
+  `_priceFirstLine`, `_settled`, `load`; `engine_vram_wiring.test.js`.
 - **A price belongs to the runtime build that measured it** (flag `runtime`); a new build
   calibrates again, because a price only rises within a build. — *code, 2026-10-04* · audit §13.4.
 - Each kind books its own process's measured memory — its model plus ~100 MB of process. (was:

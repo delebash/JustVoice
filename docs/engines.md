@@ -1264,11 +1264,17 @@ than 30 s, `speech_runtime.runaway_s_per_char` and `runaway_min_s`): what that
 model's process holds is never remembered as its cost again. When the model's
 own process can't be read at that first load, how much the whole card's use went
 up across the load is remembered instead — for a model that spoke a warm-up
-piece. A model built from audio.cpp's description that measures itself on its
-first line remembers how much the whole card's use went up from before its load
-to after that line (since 2026-10-15; before, it remembered nothing). That
-reading can include another program that took card memory at the same moment, so
-it errs high.
+piece. A model that measures itself on its first line remembers what its process
+holds after that line, or, where the process can't be read, how much the whole
+card's use went up from before its load — once the model before it in that slot
+has left the card — to after that line (since 2026-10-15; before, it remembered
+nothing). That reading can include another program that took card memory at the
+same moment, so it errs high. The reading is taken before that first line lets
+go of the model, so it takes a second or two longer, once; a render that moves
+straight on to another model's line keeps it (since 2026-10-16 — before, a model
+whose line was followed at once by another model's load often kept no cost, as
+Qwen3-TTS Base 1.7B did, or a far too small one, as Chatterbox Multilingual's
+105 MB was, and the "before" reading counted the model before it).
 
 Each slot's cell shows its own process's measured memory: the model, plus the
 process's own share of the card (about 100 MB). The full story is in

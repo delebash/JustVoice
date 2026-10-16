@@ -240,36 +240,151 @@ test("a_load_that_cant_calibrate_prices_the_model_after_its_first_line", async (
   const mgr = mgrFor(discrete(), generatedManifest());
   const seq = [3000, 3300, 4400]; // before the load · after it · after the first line
   vi.spyOn(EngineManager.prototype, "poolUsedMb").mockImplementation(async () => (seq.length ? seq.shift() : 4400));
-  vi.spyOn(EngineManager.prototype, "_recordSpeechLoad").mockImplementation((m, k, v, mb, d, how) => recorded.push([mb, how]));
-  const bumps = [];
-  vi.spyOn(EngineManager.prototype, "bumpEngineReservationAsync").mockImplementation((kind, opts) => bumps.push([kind, opts]));
+  vi.spyOn(EngineManager.prototype, "_recordSpeechLoad").mockImplementation((m, k, v, mb, d, how) => recorded.push([mb, d, how]));
+  vi.spyOn(EngineManager.prototype, "bumpEngineReservationAsync").mockImplementation(() => {});
   await mgr.load("eng", { device: "auto" });
   expect(recorded).toEqual([]); // the load measured nothing it may keep
   expect(arb.reservationOf("tts:eng").vram_mb).toBe(300);
+  // The line itself prices it, on the card it runs on.
   await mgr.synth("eng", { text: "Two days wrong!" });
-  expect(bumps).toEqual([["tts", { lineOk: true }]]);
-  await mgr.bumpEngineReservation("tts", { lineOk: true });
-  expect(recorded).toEqual([[1400, "the whole card's difference"]]);
+  expect(recorded).toEqual([[1400, "cuda", "the whole card's difference"]]);
   expect(arb.reservationOf("tts:eng")).toMatchObject({ vram_mb: 1400, source: "computed" });
   // Once: the next line prices nothing by the card.
-  await mgr.bumpEngineReservation("tts", { lineOk: true });
+  await mgr.synth("eng", { text: "Two days wrong!" });
   expect(recorded).toHaveLength(1);
 });
 
 test("a_first_line_prices_the_model_by_its_process_where_the_probe_reads", async () => {
   makeArbiter(discrete());
   const recorded = [];
-  const mgr = mgrFor(discrete(), generatedManifest());
+  class FirstLineFails extends Proc {
+    constructor(m, p) {
+      super(m, p);
+      this.statuses = [500, 200];
+    }
+    post(p, json = null) {
+      if (p === "/synth") return resp({ detail: "boom" }, this.statuses.shift());
+      return super.post(p, json);
+    }
+  }
+  const mgr = mgrFor(discrete(), generatedManifest(), FirstLineFails);
   vi.spyOn(EngineManager.prototype, "_engineProcMb").mockResolvedValue(2100);
-  vi.spyOn(EngineManager.prototype, "_recordSpeechLoad").mockImplementation((m, k, v, mb, d, how) => recorded.push([mb, how ?? ""]));
+  vi.spyOn(EngineManager.prototype, "_recordSpeechLoad").mockImplementation((m, k, v, mb, d, how) => recorded.push([mb, d, how ?? ""]));
   vi.spyOn(EngineManager.prototype, "bumpEngineReservationAsync").mockImplementation(() => {});
   await mgr.load("eng", { device: "auto" });
   expect(recorded).toEqual([]);
   // A line that failed sets nothing; the next one that speaks does.
-  await mgr.bumpEngineReservation("tts", { lineOk: false });
+  await expect(mgr.synth("eng", { text: "x" })).rejects.toThrow(/engine synth failed/);
   expect(recorded).toEqual([]);
-  await mgr.bumpEngineReservation("tts", { lineOk: true });
-  expect(recorded).toEqual([[2100, ""]]);
+  await mgr.synth("eng", { text: "x" });
+  expect(recorded).toEqual([[2100, "cuda", ""]]);
+});
+
+test("the_first_line_is_priced_before_the_next_load_can_take_the_model_away", async () => {
+  // Slice 4's GPU half (2026-10-16): Qwen3-TTS Base 1.7B had no price after three lines — each
+  // line was followed at once by the next persona's model loading, and the after-line reading,
+  // taken in the background, found the slot already given to that model and dropped the price.
+  makeArbiter(discrete());
+  const recorded = [];
+  const mgr = mgrFor(discrete(), generatedManifest());
+  mgr._manifests.set("next", manifest("next"));
+  const probe = vi.spyOn(EngineManager.prototype, "_engineProcMb").mockResolvedValue(2300);
+  vi.spyOn(EngineManager.prototype, "_recordSpeechLoad").mockImplementation((m, k, v, mb, d) => recorded.push([m.id, mb, d]));
+  const later = [];
+  vi.spyOn(EngineManager.prototype, "bumpEngineReservationAsync").mockImplementation((kind) => later.push(kind));
+  await mgr.load("eng", { device: "auto" });
+  await mgr.synth("eng", { text: "x" });
+  await mgr.load("next", { device: "auto" });
+  // The line's background probe lands now: the process holds only its own share.
+  probe.mockResolvedValue(105);
+  for (const kind of later) await mgr.bumpEngineReservation(kind);
+  expect(recorded).toEqual([["eng", 2300, "cuda"]]);
+});
+
+test("a_reading_taken_while_the_engines_next_model_loads_is_no_models_price", async () => {
+  // Slice 4's GPU half (2026-10-16): Chatterbox Multilingual's "peak" rows of 103–105 MB with no
+  // backend — a line's background probe that landed while the same engine's next model (Turbo)
+  // was loading: it read the process after Multilingual had left and wrote that as Multilingual's
+  // price, with the device the next load had not set yet.
+  const arb = makeArbiter(discrete());
+  const recorded = [];
+  let mgr = null;
+  class SwitchingProc extends Proc {
+    async post(p, json = null) {
+      if (p === "/load" && json?.variant === "v2") await mgr.bumpEngineReservation("tts");
+      return super.post(p, json);
+    }
+  }
+  mgr = mgrFor(discrete(), manifest(), SwitchingProc);
+  const probe = vi.spyOn(EngineManager.prototype, "_engineProcMb").mockResolvedValue(2300);
+  vi.spyOn(EngineManager.prototype, "_recordSpeechLoad").mockImplementation((m, k, v, mb, d) => recorded.push([v, mb, d]));
+  await mgr.load("eng", { device: "auto", variant: "v1" });
+  probe.mockResolvedValue(105);
+  await mgr.load("eng", { device: "auto", variant: "v2" });
+  expect(recorded).toEqual([]);
+  // Booked by v2's own load, once it confirmed.
+  expect(arb.reservationOf("tts:eng")).toMatchObject({ vram_mb: 105, source: "measured" });
+  expect(mgr.resolvedDeviceFor("eng")).toBe("cuda");
+});
+
+test("every_clone_only_model_is_priced_by_its_first_line_on_its_card", async () => {
+  // The four clone-only models of slice 4's GPU half and one of audio.cpp's other ones: each load
+  // can't measure it (no warm-up — seven_engines_slice4.test.js), each first line prices it, with
+  // its backend — the price lookup (`_priceMb`) reads only rows of the card's.
+  const engines = manager.discoverEngines();
+  for (const [engineId, variant] of [
+    ["qwen3", "qwen3-base-1.7b-q8"],
+    ["chatterbox", "chatterbox-multilingual-v2-q8"],
+    ["pocket", "pocket-fr-q8"],
+    ["cosyvoice3", "cosyvoice3-q8"],
+  ]) {
+    vi.restoreAllMocks();
+    makeArbiter(discrete());
+    const recorded = [];
+    // The real engine, its speech runtime taken as installed.
+    const m = Object.create(engines.get(engineId), { isInstalled: { value: true } });
+    const mgr = mgrFor(discrete(), m);
+    vi.spyOn(EngineManager.prototype, "_resolveDevice").mockReturnValue("cuda");
+    vi.spyOn(EngineManager.prototype, "_ensureVariantLocal").mockResolvedValue(null);
+    vi.spyOn(EngineManager.prototype, "_recordSpeechLoad").mockImplementation((m, k, v, mb, d) => recorded.push([v, mb, d]));
+    vi.spyOn(EngineManager.prototype, "bumpEngineReservationAsync").mockImplementation(() => {});
+    const probe = vi.spyOn(EngineManager.prototype, "_engineProcMb").mockResolvedValue(300); // its weights still on their way
+    await mgr.load(engineId, { device: "auto", variant });
+    expect(recorded, variant).toEqual([]);
+    probe.mockResolvedValue(2300);
+    await mgr.synth(engineId, { text: "x" });
+    expect(recorded, variant).toEqual([[variant, 2300, "cuda"]]);
+  }
+});
+
+test("the_whole_cards_difference_counts_from_after_the_model_before_it_left", async () => {
+  // Slice 4's GPU half (2026-10-16): Qwen3 Base's load logged "2574 -> 2068 MB" — its reading
+  // before was taken with Qwen3 VoiceDesign still loaded, so the card's difference after its first
+  // line left the model's own memory out.
+  const arb = makeArbiter(discrete());
+  const recorded = [];
+  let card = 400;
+  class CardProc extends Proc {
+    terminate() {
+      super.terminate();
+      card -= 2300; // the model before it leaves the card
+    }
+    post(p, json = null) {
+      if (p === "/load") card += this.manifest.id === "prev" ? 2300 : 50;
+      if (p === "/synth") card += 2300;
+      return super.post(p, json);
+    }
+  }
+  const mgr = mgrFor(discrete(), generatedManifest(), CardProc);
+  mgr._manifests.set("prev", manifest("prev"));
+  vi.spyOn(EngineManager.prototype, "poolUsedMb").mockImplementation(async () => card);
+  vi.spyOn(EngineManager.prototype, "_recordSpeechLoad").mockImplementation((m, k, v, mb, d, how) => recorded.push([m.id, mb, d, how]));
+  vi.spyOn(EngineManager.prototype, "bumpEngineReservationAsync").mockImplementation(() => {});
+  await mgr.load("prev", { device: "auto" });
+  expect(arb.reservationOf("tts:prev").vram_mb).toBe(2300);
+  await mgr.load("eng", { device: "auto" });
+  await mgr.synth("eng", { text: "x" });
+  expect(recorded).toEqual([["eng", 2350, "cuda", "the whole card's difference"]]);
 });
 
 test("a_hand_wired_model_keeps_its_own_way_until_it_moves_onto_the_generated_path", async () => {

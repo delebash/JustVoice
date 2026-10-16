@@ -219,9 +219,36 @@ test("Pocket TTS French loads without a warm-up: it has no preset to speak one i
     return [await s._warm(chars), asked];
   };
   for (const id of ["pocket-fr-q8", "pocket-fr-bf16"]) expect(await warm(id, 200), id).toEqual([false, []]);
+  // TASKS "Slice 4's gaps" 2: no preset in French, ours or Kyutai's cosette.
+  expect(Object.values(row("pocket", "pocket-fr-q8").audiocpp.voices)).toEqual([]);
   // Every other language warms in its default preset, as before: the same request.
   const [calibrated, asked] = await warm("pocket-de-q8", 0);
   expect(calibrated).toBe(false);
   expect(asked).toEqual([{ model: "pocket-de-q8", input: "Ready.", voice: "alba", seed: 1 }]);
   expect((await warm("pocket-en-bf16", 200))[0]).toBe(true);
+});
+
+test("every speech model warms up in a voice it has, or clones only and is priced by its first line", async () => {
+  // Pocket TTS French warmed up in a voice its download lacks (slice 4's GPU half). A model whose
+  // warm-up says nothing is one that speaks only from a clip: its first line sets its price (§7
+  // answer 5; manager._priceFirstLine).
+  vi.spyOn(slot, "effectivePlacement").mockImplementation((p) => p);
+  const silent = [];
+  for (const m of discoverEngines().values()) {
+    if (m.kind !== "tts") continue;
+    for (const r of m.module.VARIANTS) {
+      const s = new slot.AudioCppSlot(m);
+      s._row = r;
+      const asked = [];
+      vi.spyOn(s, "_srv").mockReturnValue({ speech: async (req) => asked.push(req) });
+      const calibrated = await s._warm(200);
+      if (!asked.length) {
+        silent.push(r.id);
+        expect([calibrated, r.voice_cloning, r.voice_design, r.preset_voices], r.id).toEqual([false, true, false, 0]);
+      } else if (asked[0].voice) {
+        expect(Object.values(r.audiocpp.voices || {}), `${r.id} warms up in ${asked[0].voice}`).toContain(asked[0].voice);
+      }
+    }
+  }
+  expect(silent).toEqual(expect.arrayContaining(["pocket-fr-q8", "pocket-fr-bf16", "chatterbox-multilingual-v2-q8", "qwen3-base-1.7b-q8", "cosyvoice3-q8"]));
 });
