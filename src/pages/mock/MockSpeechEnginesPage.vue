@@ -1,137 +1,450 @@
 <!-- SPDX-License-Identifier: MIT -->
 <!--
-  AI Settings · Speech engines — every audio.cpp model, before anything is downloaded (the mock,
-  dev only: #/mock/speech-engines). Slice 4 of docs/plans/2026-10-11-audiocpp-engine-catalog.md;
-  the words decided 2026-10-11 ("your rec on all"): commercial use in audio.cpp's words, each
-  word explained in the filter and each licence in plain words on hover, in the opened engine and
-  in the licence prompt (TASKS "Every speech engine's licence in plain words"), a licence that
-  isn't "Yes" accepted once before the first download, audio.cpp's status shown, "Tested by
-  JustVoice" / "Not tested by JustVoice yet", a model's memory measured here, else the larger of
-  audio.cpp's estimate and the download (2026-10-12), one too big for this card offered on the
-  CPU, or tried on the card first when only the estimate is too big (2026-10-12; words
-  2026-10-13), a measured size held to the safety margin (the narrowings review, M4), and a
-  model remembered as failed on the card, with "Try the card again" (M8). Made from the real tab's shared .ev-*
-  classes and services/engineFacts.js — the words SpeechEnginesTab.vue uses — on
-  speechEnginesMock.js.
+  AI Settings · Speech engines, Local · free — the mock (dev only: #/mock/speech-engines). The
+  real tab's template (components/SpeechEnginesTab.vue) with its classes and words, on
+  services/mock/speechEnginesMock.js in place of the server: every engine and model audio.cpp's
+  description gives, as the server lists them since the adoption plan's slice 4 (2026-10-16) —
+  the seven engines described by our own files among them, built like every other; Chatterbox
+  Turbo (built-in voice only) and Pocket TTS French (cloning only) with them. Licences, statuses,
+  testing, memory, Runs on and its reasons, load options, the licence and terms prompts, a
+  running download and a failed load are the app's own words and states; the machine (an 8 GB
+  card, what is on disk, loaded, measured) is made up. Other states: ?ai (an AI model on the
+  card), ?runtime=none (no speech runtime), ?empty (no engines).
+
+  Not drawn: the AI console around the tab (its memory strip and tab strip), the Local · free /
+  Online · metered tabs, and Self-hosted servers — the providers panel's own screen.
 -->
 <script setup>
-import { computed, reactive, ref } from "vue";
-import { AppModal, UiButton, UiSelect, fmtBytes, languageName, pushToast } from "@delebash/llm-ui";
+import { computed, onMounted, reactive, ref } from "vue";
+import { useRoute } from "vue-router";
+import {
+  AppModal, DownloadBar, UiButton, UiMenu, UiMenuItem, UiMenuSeparator, UiNumber, UiSelect, UiTable,
+  confirmDialog, fmtBytes, languageName, openExternal, openPath, pushToast,
+} from "@delebash/llm-ui";
+import DeliveryKnobs from "../../components/DeliveryKnobs.vue";
 import { COMMERCIAL_OPTIONS, COMMERCIAL_USE, SORTS, licClass, licTitle, memoryText, reading } from "../../services/engineFacts.js";
 import { directionCell } from "../../services/personaFacts.js";
-import { CARD_MB, ENGINES, SAFETY_MARGIN_MB } from "../../services/mock/speechEnginesMock.js";
+import { makeEngineDownloadTask, makeEngineLoadTask, makeJobDownloadTask } from "../../services/ttsJobChannel.js";
+import { fmtDisk } from "../../services/vramFeed.js";
+import {
+  CARD_MB, SAFETY_MARGIN_MB, createState, mockApi, refreshPlacements, scenarioOf, unloadKind,
+} from "../../services/mock/speechEnginesMock.js";
 
-const engines = reactive(structuredClone(ENGINES));
-const q = ref("");
-const commercial = ref("all");
-const onlyTested = ref(false);
-const onlyDirected = ref(false);
-const onlyFits = ref(false);
-const sortBy = ref("name");
-const kind = ref("all"); // the real tab's kind chips
-const KINDS = [
+const route = useRoute();
+const state = createState(scenarioOf(route.query));
+const api = mockApi(state);
+const engines = computed(() => state.engines);
+const runtime = computed(() => state.runtime);
+
+// The tab's own tables and words (SpeechEnginesTab.vue).
+const PICKING_COLUMNS = [
+  { id: "want", header: "If you want…", accessorKey: "want" },
+  { id: "use", header: "Use", accessorKey: "use" },
+  { id: "give", header: "What you give up", accessorKey: "give" },
+];
+const PICKING = [
+  { want: "Ready-made voices, fast, on any machine", use: "Kokoro — 54 built-in voices, 9 languages", give: "No cloning and no written direction — pace, pitch, gain and pauses only" },
+  { want: "English voices made for the CPU", use: "Kitten — 8 built-in voices", give: "English only; no cloning, no written direction; the same seed does not repeat the same audio" },
+  { want: "Someone's own voice on a modest machine", use: "Pocket — cloning, 20 built-in voices", give: "One language per model; no written direction" },
+  { want: "To direct performances in words", use: "Qwen3 CustomVoice — 9 built-in voices, 10 languages", give: "Cannot clone" },
+  { want: "Someone's own voice, in 10 languages", use: "Qwen3 Base", give: "Written direction is dropped" },
+  { want: "A voice designed from a description", use: "Qwen3 VoiceDesign", give: "—" },
+  { want: "Someone's own voice, with per-line emotion tags", use: "Chatterbox Turbo or Nano — 19 tags", give: "English only; no written direction" },
+  { want: "Someone's own voice in another language", use: "Chatterbox Multilingual — 23 languages", give: "No written direction, no tags" },
+  { want: "Cloning, designing and written direction together", use: "VoxCPM2 — 30 languages", give: "The largest download (2.8 GB at 8-bit)" },
+];
+const whatFor = ref(false);
+const FILTERS = [
   { id: "all", label: "All" }, { id: "tts", label: "TTS" }, { id: "stt", label: "STT" },
   { id: "cloning", label: "Cloning" }, { id: "presets", label: "Built-in voices" },
 ];
-const open = reactive({ index_tts2: true, omnivoice: true });
-const asking = ref(null); // the engine whose licence prompt is open, or null
-
-// Where a model runs (the real tab's Runs on row): Auto is the server's answer for the made-up
-// state; GPU or CPU is "your choice" (manager.placementFor).
+const SECTIONS = [
+  { id: "tts", title: "Voice generation", suffix: "TTS", note: "one model loaded at a time — loading another swaps the TTS slot" },
+  { id: "stt", title: "Transcription", suffix: "STT", note: "powers dictation, /v1/transcribe, and agent transcription" },
+];
 const PLACEMENT_OPTIONS = [
   { label: "Auto", value: "auto" },
   { label: "GPU", value: "gpu" },
   { label: "CPU", value: "cpu" },
 ];
 const WHERE = { gpu: "the graphics card", cpu: "the CPU" };
-const picked = (m) => m.placement === "gpu" || m.placement === "cpu";
-const runsOn = (m) => (picked(m) ? m.placement : m.runs_on);
-function placeText(m) {
-  const why = picked(m) ? "your choice" : m.runs_on_reason;
-  return `${m.loaded ? "Running on" : "Loads on"} ${WHERE[runsOn(m)]}${why ? ` — ${why}` : ""}`;
+const BACKEND_LABELS = { cuda: "CUDA (NVIDIA)", vulkan: "Vulkan", cpu: "CPU", metal: "Metal (Apple GPU)" };
+
+// ── Tasks: the app's own channels on the mock's server ───────────────────
+const dlTasks = reactive({});
+const taskKind = reactive({});
+const RUNTIME_KEY = "__speech-runtime";
+const JA_KEY = "__japanese-dictionary";
+const _variantKey = (engineId, variantId) => `${engineId}/${variantId}`;
+function taskRowsFor(engineId) {
+  const rows = [];
+  const live = (k) => dlTasks[k]?.state;
+  if (live(engineId)) rows.push({ key: engineId, variantId: null, task: dlTasks[engineId] });
+  for (const k of Object.keys(dlTasks)) {
+    if (k.startsWith(`${engineId}/`) && live(k)) rows.push({ key: k, variantId: k.slice(engineId.length + 1), task: dlTasks[k] });
+  }
+  return rows;
 }
-// "Try the card again" forgets the remembered failed card load; Auto then answers as the server
-// does when the model fits in the card's free memory.
-function tryCardAgain(m) {
-  m.failed_on_card = false;
-  m.runs_on = "gpu";
-  m.runs_on_reason = "it fits in the card's free memory";
+const anyTaskRunning = (engineId) => taskRowsFor(engineId).some((r) => r.task.state === "running");
+const busyAnywhere = (engineId, variantId) =>
+  dlTasks[engineId]?.state === "running" || (variantId && dlTasks[_variantKey(engineId, variantId)]?.state === "running");
+function clearTerminalTask(key) {
+  const t = dlTasks[key];
+  if (t && t.state !== "running") { delete dlTasks[key]; delete taskKind[key]; }
 }
 
-const memoryOf = (m) =>
-  memoryText({ measuredMb: m.measured_mb, needGb: m.need_gb, runsOn: runsOn(m) }, CARD_MB, SAFETY_MARGIN_MB);
-const fits = (m) => memoryOf(m).fits === true;
-const directed = (m) => m.directed_by === "words" || m.directed_by === "tags";
-function langText(m) {
-  if (m.languages_note) return m.languages_note;
-  return m.languages.length === 1 ? languageName(m.languages[0]) || m.languages[0] : `${m.languages.length} languages`;
+// ── The engine and its models ──────────────────────────────────────────
+const variantsFor = (engineId) => state.engines.find((e) => e.id === engineId)?.variants || [];
+const variantNameFor = (engineId, variantId) => variantsFor(engineId).find((x) => x.id === variantId)?.name || variantId || engineId;
+const isLoadedVariant = (e, variantId) => e.status === "loaded" && e.current_variant_id === variantId;
+const modelLoaded = (e, v) => isLoadedVariant(e, v.id);
+const modelOnDisk = (v) => v.on_disk === true;
+const engineNeedsInstall = (e) => e.status === "not_installed";
+const osBlocked = (e) => e.supported_on_this_os === false;
+const deprecated = (e) => (e.deprecated || "").trim();
+const anyOnDisk = (e) => e.variants.some((v) => v.on_disk === true);
+
+function setDefaultEngine(e) {
+  state.defaultEngineId = e.id;
+  pushToast({ message: `${e.name || e.id} is now the default speech engine.`, kind: "success" });
 }
-function modelShown(m) {
-  if (kind.value === "stt") return false; // speech recognition isn't in this mock's data
-  if (kind.value === "cloning" && !m.voice_cloning) return false;
-  if (kind.value === "presets" && !m.preset_voices) return false;
-  if (onlyDirected.value && !directed(m)) return false;
-  if (onlyFits.value && !fits(m)) return false;
+function setDefaultVariant(e, variantId) {
+  e.default_variant_id = variantId;
+  pushToast({ message: `${variantNameFor(e.id, variantId)} is now ${e.name || e.id}'s default version.`, kind: "success" });
+}
+
+// A licence that gates downloads is asked for first; Pocket's terms gate cloning only.
+const asking = ref(null);
+const forDownload = computed(() => asking.value?.terms?.gates === "download");
+function openEngineTerms(e) {
+  if (e.terms_accepted) {
+    const what = e.terms.gates === "download" ? `${e.name}'s licence` : `${e.terms.owner}'s terms for ${e.name}`;
+    pushToast({ message: `You have already accepted ${what}.`, kind: "info" });
+    return;
+  }
+  asking.value = e;
+}
+function acceptTerms() {
+  const e = asking.value;
+  e.terms_accepted = true;
+  pushToast({ message: forDownload.value ? `${e.name}'s models can be downloaded now.` : `${e.name} can clone voices now.`, kind: "success" });
+  asking.value = null;
+}
+function askLicenceFirst(e, variantId) {
+  if (e.terms?.gates !== "download" || e.terms_accepted) return false;
+  if (variantsFor(e.id).find((v) => v.id === variantId)?.on_disk === true) return false;
+  openEngineTerms(e);
   return true;
 }
-const modelFiltered = () => kind.value === "cloning" || kind.value === "presets" || onlyDirected.value || onlyFits.value;
-function engineShown(e) {
-  if (commercial.value !== "all" && e.licence.commercial !== commercial.value) return false;
-  if (onlyTested.value && !e.tested) return false;
-  const text = `${e.name} ${e.id} ${e.description} ${e.models.map((m) => m.name).join(" ")}`.toLowerCase();
-  if (q.value.trim() && !text.includes(q.value.trim().toLowerCase())) return false;
+
+async function runLoad(e, variantId) {
+  if (askLicenceFirst(e, variantId || e.default_variant_id)) return;
+  const key = _variantKey(e.id, variantId);
+  clearTerminalTask(key);
+  const task = makeEngineLoadTask(api, e.id, { model_variant: variantId || null });
+  dlTasks[key] = task;
+  taskKind[key] = "load";
+  await task.start();
+  if (task.state !== "done") return;
+  pushToast({ message: `${e.name || e.id} loaded.`, kind: "success", duration: 4500 });
+  delete dlTasks[key];
+  delete taskKind[key];
+}
+function unload(e) {
+  const prev = unloadKind(state, e.kind);
+  pushToast({ message: prev ? `${prev.id} unloaded.` : "Nothing was loaded.", kind: prev ? "success" : "info", duration: 3500 });
+}
+async function downloadOnly(e, variantId, extra = {}) {
+  if (askLicenceFirst(e, variantId)) return;
+  const key = _variantKey(e.id, variantId);
+  clearTerminalTask(key);
+  const task = makeEngineDownloadTask(api, e.id, { model_variant: variantId, ...extra });
+  dlTasks[key] = task;
+  await task.start();
+  if (task.state !== "done") return;
+  pushToast({ message: `${variantNameFor(e.id, variantId)} downloaded.`, kind: "success", duration: 4000 });
+  refreshPlacements(state);
+  delete dlTasks[key];
+  delete taskKind[key];
+}
+async function deleteModel(v) {
+  const ok = await confirmDialog({
+    title: `Delete the downloaded model "${v.name}"?`,
+    message: `Deletes its downloaded weights (${fmtDisk(v.size_mb)}) from disk. The engine stays; the model re-downloads on demand.`,
+    danger: true, confirmLabel: "Delete downloaded model",
+  });
+  if (!ok) return;
+  v.on_disk = false;
+  v.local_dir = null;
+  pushToast({ message: `${v.name} deleted.`, kind: "success" });
+}
+async function redownload(e, v) {
+  const ok = await confirmDialog({
+    title: `Re-download ${v.name}?`,
+    message: `Deletes the local files, then downloads fresh (${fmtDisk(v.size_mb)}). Use this when a download looks corrupted — models downloaded before the speech cache also move onto the new layout this way.`,
+    confirmLabel: "Re-download",
+  });
+  if (!ok) return;
+  v.on_disk = false;
+  await downloadOnly(e, v.id);
+}
+async function removeEngineModels(e) {
+  const ok = await confirmDialog({
+    title: `Delete every downloaded ${e.name || e.id} model?`,
+    message: "Deletes this engine's model files from disk. The speech runtime stays installed, and any model downloads again when you need it.",
+    danger: true, confirmLabel: "Delete downloaded models",
+  });
+  if (!ok) return;
+  for (const v of e.variants) if (!modelLoaded(e, v)) { v.on_disk = false; v.local_dir = null; }
+  pushToast({ message: `${e.name || e.id} models deleted.`, kind: "success", duration: 4000 });
+}
+function openModelFolder(v) {
+  if (!openPath(v.local_dir)) pushToast({ message: "Open folder requires the desktop app.", kind: "warning" });
+}
+const viewOnHf = (v) => openExternal(`https://huggingface.co/${v.hf_repo}`);
+
+// ── Where each model runs ──────────────────────────────────────────────
+function placeText(e, v) {
+  const where = WHERE[v.runs_on] || v.runs_on;
+  return `${modelLoaded(e, v) ? "Running on" : "Loads on"} ${where}${v.runs_on_reason ? ` — ${v.runs_on_reason}` : ""}`;
+}
+async function setPlacement(e, v, placement) {
+  if (placement === v.placement) return;
+  v.placement = placement;
+  refreshPlacements(state);
+  // A loaded model that would now run elsewhere is loaded again in its new place.
+  if (modelLoaded(e, v)) await runLoad(e, v.id);
+}
+function tryCardAgain(v) {
+  v.failed_on_card = false;
+  refreshPlacements(state);
+}
+
+// ── Load options ───────────────────────────────────────────────────────
+async function setRuntimeOption(e, v, key, value) {
+  const o = v.runtime_options.find((x) => x.key === key);
+  const next = value === null || value === undefined || value === "" ? o.default : String(value);
+  if (o.value === next) return;
+  o.value = next;
+  if (modelLoaded(e, v)) await runLoad(e, v.id);
+}
+const rowOptions = (v) => v.runtime_options.filter((o) => o.featured && o.type === "choice");
+const foldedOptions = (v) => v.runtime_options.filter((o) => !(o.featured && o.type === "choice"));
+function optionTyped(o, value) {
+  if (value === null || value === undefined) return null;
+  if (o.type === "switch") return value === "true";
+  if (o.type === "number") return Number(value);
+  return value;
+}
+const optionKnobs = (v) =>
+  foldedOptions(v).map((o) => ({
+    key: o.key, label: o.label, hint: o.hint, type: o.type, box: true, min: o.min, max: o.max, step: 1,
+    choices: o.choices.map((c) => c.value), neutral: optionTyped(o, o.default),
+  }));
+const optionValues = (v) =>
+  Object.fromEntries(foldedOptions(v).filter((o) => o.value !== o.default).map((o) => [o.key, optionTyped(o, o.value)]));
+
+// ── The speech runtime ─────────────────────────────────────────────────
+const backendOptions = computed(() => [
+  { label: "Auto", value: "auto" },
+  ...runtime.value.backends.map((b) => ({ label: BACKEND_LABELS[b] || b, value: b })),
+]);
+const gpuOptions = computed(() => runtime.value.gpus.map((name, i) => ({ label: `${i} · ${name}`, value: i })));
+function runtimeSummary(r) {
+  const parts = [BACKEND_LABELS[r.backend] || r.backend || "no build for this machine"];
+  if (r.dev_source) parts.push(`development build from ${r.dev_source}`);
+  else if (r.build && r.build !== r.backend) parts.push(r.build);
+  if (r.installed) parts.push(r.running ? "running" : "stopped — starts on the first load");
+  if (r.installed && r.cpu_running && r.backend !== "cpu") parts.push("CPU models running");
+  return parts.join(" · ");
+}
+async function installRuntime(repair = false) {
+  const first = state.engines[0];
+  if (!first) return;
+  if (repair) {
+    const ok = await confirmDialog({
+      title: "Reinstall the speech runtime?",
+      message: "It downloads the speech runtime and eSpeak NG again and replaces the installed ones. "
+        + "The speech models unload while it does; they load again on their next use.",
+      confirmLabel: "Reinstall",
+    });
+    if (!ok) return;
+  }
+  clearTerminalTask(RUNTIME_KEY);
+  const task = makeEngineDownloadTask(api, first.id, repair ? { repair: true } : {});
+  dlTasks[RUNTIME_KEY] = task;
+  await task.start();
+  if (task.state !== "done") return;
+  pushToast({ message: repair ? "Speech runtime reinstalled." : "Speech runtime installed.", kind: "success", duration: 4000 });
+  if (repair) for (const k of ["tts", "stt"]) unloadKind(state, k);
+  state.runtime.installed = true;
+  state.runtime.running = false;
+  for (const e of state.engines) if (e.status === "not_installed") e.status = "installed";
+  refreshPlacements(state);
+  delete dlTasks[RUNTIME_KEY];
+}
+async function installJapaneseDictionary() {
+  clearTerminalTask(JA_KEY);
+  const task = makeJobDownloadTask(api, "/v1/speech-runtime/japanese-dictionary", {});
+  dlTasks[JA_KEY] = task;
+  await task.start();
+  if (task.state !== "done") return;
+  pushToast({ message: "Japanese dictionary installed.", kind: "success", duration: 4000 });
+  state.runtime.japanese_dictionary.installed = true;
+  delete dlTasks[JA_KEY];
+}
+function setRuntime(patch) {
+  Object.assign(state.runtime, patch);
+  if ("cpu_threads" in patch) state.runtime.cpu_threads_used = patch.cpu_threads || state.runtime.physical_cores;
+  if ("backend" in patch) {
+    state.runtime.backend_setting = patch.backend;
+    state.runtime.backend = patch.backend === "auto" ? "cuda" : patch.backend;
+    for (const k of ["tts", "stt"]) unloadKind(state, k);
+    state.runtime.running = false;
+  }
+  refreshPlacements(state);
+  pushToast({
+    message: "cpu_threads" in patch
+      ? "CPU threads changed — models on the CPU use them from their next load."
+      : state.runtime.installed ? "Speech runtime changed — the next load uses it." : "Saved. Install the speech runtime to use this build.",
+    kind: "success",
+  });
+}
+function setCpuThreads(n) {
+  const v = Math.max(1, Math.round(Number(n) || 0));
+  if (v === state.runtime.cpu_threads_used) return;
+  setRuntime({ cpu_threads: v === state.runtime.physical_cores ? 0 : v });
+}
+function setSpillMb(n) {
+  const v = Math.max(0, Math.round(Number(n) || 0));
+  if (v === state.runtime.spill_mb) return;
+  setRuntime({ spill_mb: v });
+}
+
+// ── Facts → chips, memory ──────────────────────────────────────────────
+function langText(v) {
+  if (v.languages_note) return v.languages_note;
+  const ls = v.languages || [];
+  if (!ls.length) return "";
+  return ls.length === 1 ? languageName(ls[0]) || ls[0] : `${ls.length} languages`;
+}
+const langTitle = (v) => (v.languages || []).map((c) => languageName(c) || c).join(" · ");
+// The card the vram reading reports — none when the server doesn't answer (?empty), as the tab.
+const cardMb = computed(() => (state.scenario.empty ? null : CARD_MB));
+const memoryOf = (v) => memoryText({ measuredMb: v.measured_mb, needGb: v.need_gb, runsOn: v.runs_on }, cardMb.value, SAFETY_MARGIN_MB);
+const fits = (v) => memoryOf(v).fits === true;
+const directed = (v) => v.directed_by === "words" || v.directed_by === "tags";
+function measuredHint(e, v) {
+  if (!isLoadedVariant(e, v.id)) return null;
+  if ((e.resolved_device || "").toLowerCase() === "cpu") return null;
+  const slot = state.loaded[e.kind];
+  if (!slot?.mb) return { text: "not measured yet", title: "First load on this machine — JustVoice books the real measured footprint as soon as a probe lands" };
+  return { text: `${fmtDisk(slot.mb)} measured`, title: "Measured on this machine at load" };
+}
+
+// ── Search, filters, sections ──────────────────────────────────────────
+const q = ref("");
+const filterId = ref("all");
+const commercial = ref("all");
+const onlyTested = ref(false);
+const onlyDirected = ref(false);
+const onlyFits = ref(false);
+const sortBy = ref("name");
+function variantMatchesFilter(v) {
+  if (filterId.value === "cloning" && v.voice_cloning !== true) return false;
+  if (filterId.value === "presets" && !((v.preset_voices || 0) > 0)) return false;
+  if (onlyDirected.value && !directed(v)) return false;
+  if (onlyFits.value && !fits(v)) return false;
   return true;
 }
-const smallest = (e, key) => Math.min(...e.models.map((m) => (key === "size" ? m.size_mb : (memoryOf(m).gb ?? Number.POSITIVE_INFINITY))));
-const ORDER = {
-  name: (a, b) => a.e.name.localeCompare(b.e.name),
-  size: (a, b) => smallest(a.e, "size") - smallest(b.e, "size"),
-  memory: (a, b) => smallest(a.e, "memory") - smallest(b.e, "memory"),
-  commercial: (a, b) => COMMERCIAL_USE.indexOf(a.e.licence.commercial) - COMMERCIAL_USE.indexOf(b.e.licence.commercial),
-};
-const shown = computed(() => {
-  const list = engines.filter(engineShown).map((e) => ({ e, models: e.models.filter(modelShown) })).filter((g) => g.models.length);
-  return [...list].sort((a, b) => ORDER[sortBy.value](a, b) || ORDER.name(a, b));
-});
-const modelCount = computed(() => engines.reduce((n, e) => n + e.models.length, 0));
+const modelFiltered = () => filterId.value === "cloning" || filterId.value === "presets" || onlyDirected.value || onlyFits.value;
 function clearFilters() {
   q.value = "";
-  kind.value = "all";
+  filterId.value = "all";
   commercial.value = "all";
   onlyTested.value = onlyDirected.value = onlyFits.value = false;
 }
-
-const isOpen = (e) => open[e.id] ?? (Boolean(q.value.trim()) || modelFiltered() || e.models.some((m) => m.loaded));
-const gated = (e) => e.licence.commercial !== "Yes";
-const fmtDisk = (mb) => fmtBytes(mb * 1024 * 1024);
-function summary(e) {
-  const onDisk = e.models.filter((m) => m.on_disk).length;
-  return `${e.models.length} model${e.models.length === 1 ? "" : "s"} · ${onDisk ? `${onDisk} on disk` : "none on disk"}`;
+const visibleVariantsFor = (engineId) => variantsFor(engineId).filter(variantMatchesFilter);
+// Opened as if clicked: engines whose rows show this slice's states.
+const expanded = reactive({ pocket: true, chatterbox: true, qwen3: true, cosyvoice3: true, moss_ttsd: true, omnivoice: true });
+const engineCaps = (e) => (e.kinds?.length ? e.kinds : [e.kind || "tts"]);
+function searchBlob(e) {
+  const vs = e.variants.map((v) => `${v.name} ${v.description || ""}`).join(" ");
+  return `${e.name} ${e.id} ${e.description || ""} ${vs}`.toLowerCase();
 }
-
-function download(e, m) {
-  if (gated(e) && !e.termsAccepted) {
-    asking.value = e;
-    return;
+function engineVisible(e, sectionId) {
+  if (engineCaps(e)[0] !== sectionId) return false;
+  if (deprecated(e) && e.status === "not_installed" && !q.value.trim()) return false;
+  const f = filterId.value;
+  if ((f === "tts" || f === "stt") && !engineCaps(e).includes(f)) return false;
+  if (modelFiltered() && !visibleVariantsFor(e.id).length) return false;
+  if (commercial.value !== "all" && e.licence?.commercial !== commercial.value) return false;
+  if (onlyTested.value && !e.tested) return false;
+  if (q.value.trim() && !searchBlob(e).includes(q.value.trim().toLowerCase())) return false;
+  return true;
+}
+function smallest(e, key) {
+  if (!e.variants.length) return Number.POSITIVE_INFINITY;
+  return Math.min(...e.variants.map((v) => (key === "size" ? v.size_mb : (memoryOf(v).gb ?? Number.POSITIVE_INFINITY))));
+}
+const ORDER = {
+  name: (a, b) => (a.name || a.id).localeCompare(b.name || b.id),
+  size: (a, b) => smallest(a, "size") - smallest(b, "size"),
+  memory: (a, b) => smallest(a, "memory") - smallest(b, "memory"),
+  commercial: (a, b) => COMMERCIAL_USE.indexOf(a.licence?.commercial ?? "Unclear") - COMMERCIAL_USE.indexOf(b.licence?.commercial ?? "Unclear"),
+};
+const sectionData = computed(() =>
+  SECTIONS.map((s) => {
+    const list = state.engines.filter((e) => engineVisible(e, s.id));
+    list.sort((a, b) => ORDER[sortBy.value](a, b) || ORDER.name(a, b));
+    const all = state.engines.filter((e) => engineCaps(e)[0] === s.id);
+    const modelCount = all.reduce((n, e) => n + e.variants.length, 0);
+    return { ...s, engines: list, engineCount: all.length, modelCount };
+  }).filter((s) => s.engineCount > 0),
+);
+const nothingShown = computed(() => state.engines.length > 0 && sectionData.value.every((s) => !s.engines.length));
+function isOpen(e) {
+  if (expanded[e.id] !== undefined) return expanded[e.id];
+  if (q.value.trim() || modelFiltered()) return true;
+  return e.status === "loaded" || anyTaskRunning(e.id);
+}
+const toggleOpen = (e) => { expanded[e.id] = !isOpen(e); };
+function groupSummary(e) {
+  const onDisk = e.variants.filter((v) => v.on_disk === true).length;
+  return `${e.variants.length} model${e.variants.length === 1 ? "" : "s"} · ${onDisk ? `${onDisk} on disk` : "none on disk"}`;
+}
+function loadedVariantName(e) {
+  if (e.status !== "loaded") return null;
+  return e.variants.find((x) => x.id === e.current_variant_id)?.name || e.current_variant_id || e.name;
+}
+const rail = computed(() => {
+  const out = {};
+  for (const k of ["tts", "stt"]) {
+    const e = state.engines.find((x) => x.status === "loaded" && (x.kind || "tts") === k);
+    out[k] = e ? { engine: e, model: loadedVariantName(e) } : null;
   }
-  m.on_disk = true;
-  pushToast({ kind: "success", message: `${m.name} downloaded.`, duration: 4000 });
-}
-function accept(e) {
-  e.termsAccepted = true;
-  asking.value = null;
-  pushToast({ kind: "success", message: `${e.name}'s models can be downloaded now.` });
-}
+  return out;
+});
+
+// The states a visit lands on: a download under way (Parakeet), and a load the memory check
+// refused (MOSS-TTSD on the CPU) — its bar stays with Retry and Dismiss.
+onMounted(() => {
+  if (!state.runtime.installed || !state.engines.length) return;
+  const parakeet = state.engines.find((e) => e.id === "parakeet_tdt");
+  if (parakeet) void downloadOnly(parakeet, "parakeet_tdt-q8", { slow: true });
+  const moss = state.engines.find((e) => e.id === "moss_ttsd");
+  if (moss) void runLoad(moss, "moss_ttsd-q8");
+});
 </script>
 
 <template>
   <div class="mock-engines">
     <div class="ev-toprow">
       <div class="jv-searchbar">
-        🔍 <input v-model="q" placeholder="Search speech models and engines…">
+        🔍 <input v-model="q" placeholder="Search speech models and engines…" title="Filters engines and models; matching groups auto-expand">
       </div>
       <div class="ev-chips">
-        <button v-for="f in KINDS" :key="f.id" type="button" class="ev-chip" :class="{ on: kind === f.id }" @click="kind = f.id">{{ f.label }}</button>
+        <button v-for="f in FILTERS" :key="f.id" type="button" class="ev-chip" :class="{ on: filterId === f.id }" @click="filterId = f.id">{{ f.label }}</button>
       </div>
     </div>
     <div class="ev-toprow">
@@ -139,103 +452,270 @@ function accept(e) {
       <div class="ev-chips">
         <button type="button" class="ev-chip" :class="{ on: onlyTested }" @click="onlyTested = !onlyTested">Tested by JustVoice</button>
         <button type="button" class="ev-chip" :class="{ on: onlyDirected }" @click="onlyDirected = !onlyDirected">Takes direction</button>
-        <button type="button" class="ev-chip" :class="{ on: onlyFits }" @click="onlyFits = !onlyFits">Fits this card</button>
+        <button v-if="cardMb" type="button" class="ev-chip" :class="{ on: onlyFits }" @click="onlyFits = !onlyFits">Fits this card</button>
       </div>
       <UiSelect v-model="sortBy" :options="SORTS" width="name" aria-label="Sort" />
     </div>
 
-    <div v-if="!shown.length" class="jv-card ev-nomatch">
+    <div class="ev-rail">
+      <div class="ev-rail-h">Loaded now</div>
+      <div v-for="k in ['tts','stt']" :key="k" class="ev-slot" :class="{ empty: !rail[k] }">
+        <span class="k">{{ k.toUpperCase() }}</span>
+        <div v-if="rail[k]">
+          <div class="nm">{{ rail[k].model || rail[k].engine.name }}</div>
+          <div class="sub">{{ rail[k].engine.name }}</div>
+        </div>
+        <div v-else><div class="nm">— nothing loaded</div></div>
+        <button v-if="rail[k]" type="button" class="ev-x" title="Free this slot — weights stay on disk" @click="unloadKind(state, k)">Unload</button>
+      </div>
+    </div>
+
+    <p v-if="!engines.length" class="jv-banner jv-banner--warn">
+      No engines listed — the server may not be running. Check <a href="#settings">Settings → Server</a>.
+    </p>
+
+    <div v-if="engines.length" class="ev-group">
+      <div class="ev-ghead">
+        <span class="nm">Speech runtime</span><span class="id">{{ runtime.runtime }} {{ runtime.version }}</span>
+        <span class="desc" title="One program runs every speech model below — one install, one download per model">Runs every speech model below</span>
+        <span class="gsum">
+          <template v-if="dlTasks[RUNTIME_KEY]?.state !== 'running'">
+            <span v-if="!runtime.installed" class="ev-badge none">not installed</span>
+            <span class="meta">{{ runtimeSummary(runtime) }}</span>
+            <UiButton v-if="!runtime.installed" intent="primary" size="small" label="Install speech runtime" :disabled="!runtime.backend"
+              title="One-time: downloads the speech runtime for this machine. Models download separately." @click.stop="installRuntime()" />
+            <UiButton v-else-if="!runtime.dev_source" intent="ghost" size="small" label="Reinstall"
+              title="Downloads the speech runtime again and replaces the installed one — for a runtime that won't start. Your models stay."
+              @click.stop="installRuntime(true)" />
+          </template>
+          <span v-else class="meta">working…</span>
+        </span>
+      </div>
+      <DownloadBar v-if="dlTasks[RUNTIME_KEY]?.state" :task="dlTasks[RUNTIME_KEY]" :title="`Speech runtime · ${runtime.runtime} ${runtime.version}`" />
+      <div class="ev-gfoot">
+        Backend
+        <UiSelect :modelValue="runtime.backend_setting || 'auto'" width="id" :options="backendOptions"
+          title="Which build of the runtime runs. Auto picks CUDA on NVIDIA, Vulkan on AMD and Intel, Metal on a Mac. Changing it unloads the speech models."
+          @update:modelValue="(v) => setRuntime({ backend: v })" />
+        <template v-if="gpuOptions.length > 1">
+          GPU
+          <UiSelect :modelValue="runtime.gpu || 0" width="name" :options="gpuOptions"
+            title="Which GPU the runtime runs on. Changing it unloads the speech models." @update:modelValue="(v) => setRuntime({ gpu: Number(v) })" />
+        </template>
+        <template v-if="runtime.backend !== 'cpu'">
+          CPU threads
+          <UiNumber :modelValue="runtime.cpu_threads_used" :min="1" :step="1" size="small" width="token" :use-grouping="false"
+            :title="`How many threads the models placed on the CPU compute with. This machine has ${runtime.physical_cores} cores; more threads, faster speech, up to that. Changing it reloads the models on the CPU.`"
+            @update:modelValue="setCpuThreads" />
+          <span>of {{ runtime.physical_cores }} cores</span>
+          <template v-if="runtime.spill_measured">
+            Card overflow limit (MB)
+            <UiNumber :modelValue="runtime.spill_mb" :min="0" :step="1" size="small" width="token" :use-grouping="false"
+              title="A card load that puts more than this in the computer's memory counts as not fitting; Auto then runs the model on the CPU."
+              @update:modelValue="setSpillMb" />
+          </template>
+        </template>
+      </div>
+    </div>
+
+    <div v-if="engines.length && runtime.japanese_dictionary" class="ev-group">
+      <div class="ev-ghead">
+        <span class="nm">Japanese dictionary</span><span class="id">UniDic {{ runtime.japanese_dictionary.version }}</span>
+        <span class="desc" title="MeCab's UniDic dictionary — how the runtime reads Japanese text">For Kokoro's Japanese voices and Chatterbox in Japanese</span>
+        <span class="gsum">
+          <template v-if="dlTasks[JA_KEY]?.state !== 'running'">
+            <span v-if="!runtime.japanese_dictionary.installed" class="ev-badge none">not installed</span>
+            <span class="meta">{{ fmtBytes(runtime.japanese_dictionary.size_bytes) }}</span>
+            <UiButton v-if="!runtime.japanese_dictionary.installed" intent="primary" size="small" label="Install" :disabled="!runtime.installed"
+              :title="`Downloads ${fmtBytes(runtime.japanese_dictionary.download_bytes)} and unpacks it. The speech runtime restarts if it is running.`"
+              @click.stop="installJapaneseDictionary" />
+          </template>
+          <span v-else class="meta">working…</span>
+        </span>
+      </div>
+      <DownloadBar v-if="dlTasks[JA_KEY]?.state" :task="dlTasks[JA_KEY]" :title="`Japanese dictionary · UniDic ${runtime.japanese_dictionary.version}`" />
+    </div>
+
+    <section v-if="engines.length" class="jv-card ev-picking">
+      <div class="jv-card__header"><h3 class="jv-card__title">Picking an engine is picking what a voice can do</h3></div>
+      <p class="jv-lede">
+        A persona's voice brings its model, and the model decides what that persona can do on every line:
+        whether it can clone someone's voice, and whether it takes written direction, tags, or only pace,
+        pitch and gain.
+      </p>
+      <UiTable class="jv-table-look" :data="PICKING" :columns="PICKING_COLUMNS" />
+    </section>
+
+    <div v-if="nothingShown" class="jv-card ev-nomatch">
       <p class="jv-lede">No engines match these filters.</p>
       <UiButton intent="secondary" size="small" label="Clear filters" @click="clearFilters" />
     </div>
 
-    <div class="ev-section-h">
-      <h3>Voice generation <span class="suffix">— TTS</span></h3>
-      <span class="count">{{ engines.length }} engines · {{ modelCount }} models</span>
-      <span class="note">one model loaded at a time — loading another swaps the TTS slot</span>
-    </div>
+    <div v-for="sec in sectionData" :key="sec.id">
+      <div class="ev-section-h">
+        <h3>{{ sec.title }} <span class="suffix">— {{ sec.suffix }}</span></h3>
+        <span class="count">{{ sec.engineCount }} engine{{ sec.engineCount === 1 ? '' : 's' }} · {{ sec.modelCount }} models</span>
+        <span class="note">{{ sec.note }}</span>
+        <UiButton v-if="sec.id === 'stt'" intent="ghost" size="small" label="What for?" @click="whatFor = !whatFor" />
+      </div>
+      <p v-if="sec.id === 'stt' && whatFor" class="jv-hint ev-whatfor">
+        Speech recognition is not a voice — nothing here speaks. It turns speech into text: Captures'
+        dictation, the words of a capture you clone a voice from (they fill in its transcript), and,
+        for other apps, transcripts and caption timings.
+      </p>
 
-    <div v-for="g in shown" :key="g.e.id" class="ev-group">
-      <div class="ev-ghead" @click="open[g.e.id] = !isOpen(g.e)">
-        <span class="chev" :class="{ open: isOpen(g.e) }">▶</span>
-        <span class="nm">{{ g.e.name }}</span><span class="id">{{ g.e.id }}</span>
-        <span class="ev-caps">
-          <span class="ev-cap tts">TTS</span>
-          <span class="ev-lic" :class="licClass(g.e.licence.commercial)" :title="licTitle(g.e.licence)">Commercial use: {{ g.e.licence.commercial }}</span>
-          <span class="ev-cap" :class="{ tested: g.e.tested }" :title="g.e.tested?.note || 'Works as audio.cpp describes it; JustVoice hasn\'t listened to it yet'">
-            {{ g.e.tested ? 'TESTED BY JUSTVOICE' : 'NOT TESTED BY JUSTVOICE YET' }}
+      <div v-for="e in sec.engines" :key="e.id" class="ev-group">
+        <div class="ev-ghead" @click="toggleOpen(e)">
+          <span class="chev" :class="{ open: isOpen(e) }">▶</span>
+          <span class="nm">{{ e.name }}</span><span class="id">{{ e.id }}</span>
+          <span class="ev-caps">
+            <span v-for="c in engineCaps(e)" :key="c" class="ev-cap" :class="c">{{ c.toUpperCase() }}</span>
+            <span v-if="e.licence" class="ev-lic" :class="licClass(e.licence.commercial)" :title="licTitle(e.licence)">Commercial use: {{ e.licence.commercial }}</span>
+            <span class="ev-cap" :class="{ tested: e.tested }" :title="e.tested?.note || 'Works as audio.cpp describes it; JustVoice hasn\'t listened to it yet'">
+              {{ e.tested ? 'TESTED BY JUSTVOICE' : 'NOT TESTED BY JUSTVOICE YET' }}
+            </span>
           </span>
-        </span>
-        <span class="desc" :title="g.e.description">{{ g.e.description }}</span>
-        <span class="gsum">
-          <span class="meta">{{ summary(g.e) }}</span>
-          <span v-if="g.e.models.some((m) => m.loaded)" class="ldd">● {{ g.e.models.find((m) => m.loaded).name }} loaded · CUDA</span>
-        </span>
-      </div>
-
-      <div v-if="isOpen(g.e)" class="ev-gbody">
-        <div class="ev-gnote">
-          <span v-if="g.e.best_for.length">Best for: {{ g.e.best_for.join(" · ") }}</span>
-          <span v-if="g.e.tested">Tested by JustVoice: {{ g.e.tested.note }}</span>
-          <span>Commercial use: {{ g.e.licence.summary }}
-            <span class="ev-gnote-src">({{ reading(g.e.licence) }} ·
-              <a :href="g.e.licence.url" target="_blank" rel="noopener">read it at its source</a>)</span></span>
+          <span class="desc" :title="e.description">{{ e.description }}</span>
+          <span class="gsum">
+            <span v-if="anyTaskRunning(e.id)" class="meta">working… · click to expand</span>
+            <span v-if="!anyTaskRunning(e.id) && engineNeedsInstall(e)" class="ev-badge none"
+              title="Install the speech runtime on the row above — it runs every engine here. Models can download first.">needs the speech runtime</span>
+            <span v-if="!anyTaskRunning(e.id)" class="meta">{{ groupSummary(e) }}</span>
+            <span v-if="!anyTaskRunning(e.id) && !engineNeedsInstall(e) && loadedVariantName(e)" class="ldd">● {{ loadedVariantName(e) }} loaded<template v-if="e.resolved_device"> · {{ e.resolved_device.toUpperCase() }}</template></span>
+            <UiButton v-if="sec.id === 'tts'" :intent="state.defaultEngineId === e.id ? 'success' : 'secondary'" size="small"
+              :label="state.defaultEngineId === e.id ? 'Default ✓' : 'Set as default'"
+              title="Which engine new-voice flows and first-render auto-setup prefer"
+              @click.stop="state.defaultEngineId === e.id ? null : setDefaultEngine(e)" />
+          </span>
         </div>
-        <template v-for="m in g.models" :key="m.id">
-          <div class="ev-model">
-            <span class="vn">{{ m.name }}</span>
-            <span class="ev-vchips">
-              <span class="ev-cap">{{ langText(m) }}</span>
-              <span v-if="m.voice_cloning" class="ev-cap clone" title="Clones a voice from a short clean sample">CLONING</span>
-              <span v-if="m.preset_voices" class="ev-cap presets" :title="`${m.preset_voices} built-in voices — no sample needed`">BUILT-IN · {{ m.preset_voices }}</span>
-              <span class="ev-cap" :class="{ directed: directionCell(m.directed_by).intent === 'success' }"
-                :title="directionCell(m.directed_by).title">{{ directionCell(m.directed_by).label.toUpperCase() }}</span>
-              <span class="ev-cap" title="audio.cpp's own status for this model">{{ g.e.catalog_status.toUpperCase() }}</span>
-            </span>
-            <span class="vmeta">{{ fmtDisk(m.size_mb) }}<template v-if="m.on_disk"> · on disk</template></span>
-            <span class="right">
-              <span v-if="m.loaded" class="ev-badge loaded">● Loaded</span>
-              <span v-if="m.loaded" class="ev-memhint" title="Measured on this machine at load">{{ fmtDisk(m.measured_mb) }} measured</span>
-              <span v-else class="ev-memhint"><span :class="{ 'jv-text-warn': memoryOf(m).warn }">{{ memoryOf(m).text }}</span></span>
-              <UiButton v-if="!m.on_disk" intent="primary" size="small" :label="`Download (${fmtDisk(m.size_mb)})`" @click="download(g.e, m)" />
-              <UiButton v-else-if="!m.loaded" intent="primary" size="small" label="Load model" />
-            </span>
+
+        <div v-if="isOpen(e)" class="ev-gbody">
+          <div v-if="e.best_for?.length || e.tested || e.licence" class="ev-gnote">
+            <span v-if="e.best_for?.length">Best for: {{ e.best_for.join(" · ") }}</span>
+            <span v-if="e.tested">Tested by JustVoice: {{ e.tested.note }}</span>
+            <span v-if="e.licence">Commercial use: {{ e.licence.summary }}
+              <span class="ev-gnote-src">({{ reading(e.licence) }}<template v-if="e.licence.url"> ·
+                <a href="#" @click.prevent="openExternal(e.licence.url)">read it at its source</a></template>)</span></span>
           </div>
-          <div v-if="m.runs_on" class="ev-mplace" :data-variant="m.id">
-            Runs on
-            <UiSelect :modelValue="m.placement || 'auto'" width="token" size="small" :options="PLACEMENT_OPTIONS"
-              title="Auto picks from what was measured on this machine: the graphics card when the model fits in its free memory or beside the AI model, else the CPU when the model is fast enough there."
-              @update:modelValue="(p) => (m.placement = p)" />
-            <span class="ev-mplace__why">{{ placeText(m) }}</span>
-            <UiButton v-if="m.failed_on_card" intent="ghost" size="small" label="Try the card again"
-              @click="tryCardAgain(m)" />
-          </div>
-        </template>
-        <div v-if="gated(g.e)" class="ev-gfoot">
-          <span v-if="g.e.termsAccepted">Licence accepted — downloads are on</span>
-          <template v-else>
-            <span>Downloads wait until you accept its licence ({{ g.e.licence.name }})</span>
-            <UiButton intent="secondary" size="small" label="Read and accept" @click="asking = g.e" />
+          <template v-for="v in visibleVariantsFor(e.id)" :key="v.id">
+            <div class="ev-model" :class="{ dim: osBlocked(e) }">
+              <span class="vn">{{ v.name }}</span>
+              <span class="ev-vchips">
+                <span v-if="langText(v)" class="ev-cap" :title="langTitle(v)">{{ langText(v) }}</span>
+                <span v-if="v.voice_cloning === true" class="ev-cap clone" title="Clones a voice from a short clean sample">CLONING</span>
+                <span v-if="v.preset_voices > 0" class="ev-cap presets" :title="`${v.preset_voices} built-in voices — no sample needed`">BUILT-IN · {{ v.preset_voices }}</span>
+                <span v-if="v.directed_by" class="ev-cap" :class="{ directed: directionCell(v.directed_by).intent === 'success' }"
+                  :title="directionCell(v.directed_by).title">{{ directionCell(v.directed_by).label.toUpperCase() }}</span>
+                <span v-if="e.catalog_status" class="ev-cap" title="audio.cpp's own status for this model">{{ e.catalog_status.toUpperCase() }}</span>
+              </span>
+              <span class="vmeta">{{ fmtDisk(v.size_mb) }}<template v-if="v.on_disk === true"> · on disk</template></span>
+              <span class="vdesc" :title="v.description">{{ v.description }}</span>
+              <span class="right">
+                <span v-if="modelLoaded(e, v)" class="ev-badge loaded">● Loaded</span>
+                <span v-if="measuredHint(e, v)" class="ev-memhint" :title="measuredHint(e, v).title">{{ measuredHint(e, v).text }}</span>
+                <span v-if="!modelLoaded(e, v)" class="ev-memhint"><span :class="{ 'jv-text-warn': memoryOf(v).warn }">{{ memoryOf(v).text }}</span></span>
+                <UiButton v-if="modelLoaded(e, v)" intent="ghost" size="small" label="Unload model" title="Free the slot — weights stay on disk" @click="unload(e)" />
+                <UiButton v-if="!modelLoaded(e, v) && !modelOnDisk(v)" intent="primary" size="small" :label="`Download (${fmtDisk(v.size_mb)})`"
+                  :disabled="busyAnywhere(e.id, v.id) || osBlocked(e)"
+                  title="Download the model files. Load it from this row once it's on disk." @click="downloadOnly(e, v.id)" />
+                <UiButton v-if="!modelLoaded(e, v) && modelOnDisk(v)" intent="primary" size="small" label="Load model"
+                  :disabled="busyAnywhere(e.id, v.id) || engineNeedsInstall(e) || osBlocked(e)"
+                  :title="engineNeedsInstall(e) ? 'Install the speech runtime first — the row at the top of this list' : `Load into the ${(e.kind || 'tts').toUpperCase()} slot`"
+                  @click="runLoad(e, v.id)" />
+                <UiButton :intent="e.default_variant_id === v.id ? 'success' : 'secondary'" size="small"
+                  :label="e.default_variant_id === v.id ? 'Default ✓' : 'Set as default'"
+                  title="The version this engine loads when nothing picks one explicitly"
+                  @click="e.default_variant_id === v.id ? null : setDefaultVariant(e, v.id)" />
+                <UiMenu label="More actions" trigger-class="ev-kebab" content-class="ev-menu" align="end">
+                  <template #trigger>⋯</template>
+                  <UiMenuItem v-if="v.on_disk === true" class="ev-menu-item" :disabled="busyAnywhere(e.id, v.id) || modelLoaded(e, v)"
+                    @select="redownload(e, v)">Re-download</UiMenuItem>
+                  <UiMenuItem v-if="v.local_dir" class="ev-menu-item" @select="openModelFolder(v)">Open folder</UiMenuItem>
+                  <UiMenuItem v-if="v.hf_repo" class="ev-menu-item" @select="viewOnHf(v)">View on Hugging Face</UiMenuItem>
+                  <template v-if="v.on_disk === true && !modelLoaded(e, v)">
+                    <UiMenuSeparator class="ev-menu-sep" />
+                    <UiMenuItem class="ev-menu-item danger" @select="deleteModel(v)">Delete downloaded model</UiMenuItem>
+                  </template>
+                </UiMenu>
+              </span>
+            </div>
+            <div v-if="v.runs_on" class="ev-mplace" :class="{ dim: osBlocked(e) }" :data-variant="v.id">
+              Runs on
+              <UiSelect :modelValue="v.placement || 'auto'" width="token" size="small" :options="PLACEMENT_OPTIONS"
+                :disabled="busyAnywhere(e.id, v.id) || osBlocked(e)"
+                title="Auto picks from what was measured on this machine: the graphics card when the model fits in its free memory or beside the AI model, else the CPU when the model is fast enough there."
+                @update:modelValue="(p) => setPlacement(e, v, p)" />
+              <span class="ev-mplace__why">{{ placeText(e, v) }}</span>
+              <UiButton v-if="v.failed_on_card" intent="ghost" size="small" label="Try the card again"
+                :disabled="busyAnywhere(e.id, v.id) || osBlocked(e)" @click="tryCardAgain(v)" />
+            </div>
+            <div v-if="rowOptions(v).length" class="ev-mplace" :class="{ dim: osBlocked(e) }" :data-variant-options="v.id">
+              <template v-for="o in rowOptions(v)" :key="o.key">
+                {{ o.label }}
+                <UiSelect :modelValue="o.value" width="id" size="small" :options="o.choices" :title="o.hint"
+                  :disabled="busyAnywhere(e.id, v.id) || osBlocked(e)"
+                  @update:modelValue="(val) => setRuntimeOption(e, v, o.key, val)" />
+              </template>
+              <span class="ev-mplace__why">Read when the model loads — a change reloads it.</span>
+            </div>
+            <details v-if="foldedOptions(v).length" class="ev-mfold" :class="{ dim: osBlocked(e) }" :data-variant-load-options="v.id">
+              <summary>Load options ({{ foldedOptions(v).length }})</summary>
+              <p v-if="!rowOptions(v).length" class="ev-mplace__why">Read when the model loads — a change reloads it.</p>
+              <DeliveryKnobs :knobs="optionKnobs(v)" :values="optionValues(v)" :pauses="[]"
+                :disabled="busyAnywhere(e.id, v.id) || osBlocked(e)"
+                @commit="(key, val) => setRuntimeOption(e, v, key, val)"
+                @reset="(key) => setRuntimeOption(e, v, key, null)" />
+            </details>
           </template>
+
+          <DownloadBar v-for="row in taskRowsFor(e.id)" :key="row.key"
+            :title="row.variantId ? variantNameFor(e.id, row.variantId) : `${e.name || e.id} · engine setup`"
+            :done-label="taskKind[row.key] === 'load' ? 'Loaded' : ''" :task="row.task" />
+
+          <div v-if="anyOnDisk(e) || e.terms" class="ev-gfoot">
+            <template v-if="e.terms">
+              <template v-if="e.terms.gates === 'download'">
+                <span v-if="e.terms_accepted">Licence accepted — downloads are on</span>
+                <span v-else>Downloads wait until you accept its licence ({{ e.terms.owner }})</span>
+              </template>
+              <span v-else-if="e.terms_accepted">{{ e.terms.owner }}'s terms accepted — cloning is on</span>
+              <template v-if="!e.terms_accepted">
+                <span v-if="e.terms.gates !== 'download'">Cloning waits until you accept {{ e.terms.owner }}'s terms</span>
+                <UiButton intent="secondary" size="small" label="Read and accept" @click="openEngineTerms(e)" />
+              </template>
+            </template>
+            <UiButton v-if="anyOnDisk(e)" intent="ghost" size="small" label="Delete downloaded models" class="ev-danger ev-push-right"
+              title="Delete every downloaded model of this engine — the speech runtime stays" @click="removeEngineModels(e)" />
+          </div>
         </div>
       </div>
     </div>
 
-    <AppModal v-if="asking" :eyebrow="`Before downloading ${asking.name}`" :title="`${asking.name}'s licence`"
-      max-width="620px" @close="asking = null">
-      <p class="mock-engines__lede">
+    <!-- The licence or terms prompt (components/EngineTermsDialog.vue's words). -->
+    <AppModal v-if="asking" :eyebrow="forDownload ? `Before downloading ${asking.name}` : `Before cloning with ${asking.name}`"
+      :title="asking.terms.title" max-width="620px" @close="asking = null">
+      <p v-if="forDownload" class="mock-engines__lede">
         {{ asking.name }}'s licence isn't a plain yes for commercial use, so it's yours to read before
         you download the model. Here it is in plain words.
       </p>
-      <div class="jv-banner mock-engines__terms">{{ asking.licence.summary }}</div>
-      <p class="jv-hint">
-        {{ reading(asking.licence) }}. The licence text at its source is what counts — you accept once, on this install.
-        <a v-if="asking.licence.url" :href="asking.licence.url" target="_blank" rel="noopener">Read the licence at its source</a>.
+      <p v-else class="mock-engines__lede">
+        JustVoice downloads {{ asking.name }} from a copy that needs no sign-in.
+        {{ asking.terms.owner }}, who made it, asks everyone who clones voices with it to accept these terms.
+        Built-in voices need no acceptance.
+      </p>
+      <div class="jv-banner mock-engines__terms">{{ asking.terms.text }}</div>
+      <p v-if="forDownload" class="jv-hint">
+        {{ asking.terms.reading }}. The licence text at its source is what counts — you accept once, on this install.
+        <a v-if="asking.terms.url" href="#" @click.prevent="openExternal(asking.terms.url)">Read the licence at its source</a>.
+      </p>
+      <p v-else class="jv-hint">
+        You accept once, on this install.
+        <a href="#" @click.prevent="openExternal(asking.terms.url)">Read them where {{ asking.terms.owner }} publishes them</a>.
       </p>
       <template #footer>
         <UiButton intent="ghost" label="Not now" @click="asking = null" />
         <span class="jv-spacer" />
-        <UiButton intent="primary" label="Accept the licence" @click="accept(asking)" />
+        <UiButton intent="primary" :label="forDownload ? 'Accept the licence' : `Accept ${asking.terms.owner}'s terms`" @click="acceptTerms" />
       </template>
     </AppModal>
   </div>

@@ -25,7 +25,8 @@ export function rowsThatCan(field) {
 
 export const engineOf = (model) => model.split("-")[0];
 
-const STATUS_SUFFIX = { loaded: " · loaded", "not installed": " (not installed)", "not loaded": " (not loaded)" };
+// The app's words (services/capabilities.js statusSuffix).
+const STATUS_SUFFIX = { loaded: " · loaded", "needs the speech runtime": " (needs the speech runtime)", "not loaded": " (not loaded)" };
 
 function languagesText(model) {
   const list = modelLanguages[model] || [];

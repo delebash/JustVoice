@@ -3,10 +3,12 @@
 // The persona mock's data — production minus the plumbing (decided 2026-10-04,
 // docs/plans/2026-10-04-persona-voice-making.md §2): no server, no real audio,
 // no persistence. Everything the server would answer comes from
-// `liveSnapshot.json`, a copy of the app's own answers (capabilities, preset
-// voices, model languages, terms, effects); only the user's own things — the
-// clones, designs, blends, personas, books — are made up, and they are made
-// with real model ids so every label is the one production builds.
+// `liveSnapshot.json`, a copy of the app's own answers for the seven engines
+// described by our own files (capabilities, preset voices, model languages and
+// versions, terms, effects — computed from the code at the adoption plan's slice
+// 4, 2026-10-16); only the user's own things — the clones, designs, blends,
+// personas, books — and which versions are on disk are made up, and they are
+// made with real model ids so every label is the one production builds.
 //
 // One reactive store, shared by the Personas list and the persona's page, so a
 // save on one shows on the other. A reload starts it fresh.
@@ -22,12 +24,13 @@ export const modelLanguages = snapshot.languages;
 
 const DISPLAY = Object.fromEntries(Object.entries(capabilities).map(([id, r]) => [id, r.display_name]));
 
-/** How a model can be directed — the server's own rule (`voice_model.py:143-152`). */
+/** How a model can be directed — the server's own rule (`voice_model.js` `directedBy`). */
 export function directedByOf(model) {
   const r = capabilities[model];
   if (!r) return "sliders";
   if (r.supports_instruct_freeform) return "words";
   if ((r.inline_tags || []).length) return "tags";
+  if (r.direction_known === false) return "not_yet";
   return "sliders";
 }
 
@@ -162,19 +165,29 @@ const USAGE = {
   p_tom: [{ project_id: "b_ninth", project_name: "The Ninth Facet", speaker_id: "s_auberon", speaker_name: "Auberon Vasht", lines: 2, directed: 0 }],
 };
 
-/** The versions (size · precision) the catalog lists per model family
- *  (engines/<id>/manifest.py), for the mocks' Version field. */
-export const MODEL_VERSIONS = {
-  "qwen3-cv": ["1.7B", "0.6B", "1.7B (16-bit)", "0.6B (16-bit)"],
-  "qwen3-base": ["1.7B (cloning)", "0.6B (cloning)", "1.7B (cloning, 16-bit)", "0.6B (cloning, 16-bit)"],
-  "qwen3-vd": ["1.7B", "1.7B (16-bit)"],
-  kokoro: ["82M"],
-};
+/** Which versions (size · precision) of a model are on disk on this mock machine. */
+const ON_DISK = new Set([
+  "kokoro-82m-q8", "kitten-mini-0.8", "pocket-en-q8", "qwen3-cv-1.7b-q8", "qwen3-base-1.7b-q8", "qwen3-vd-1.7b-q8",
+  "chatterbox-multilingual-v2-q8", "chatterbox-turbo-q8", "voxcpm2-q8",
+]);
 
-/** Which models are loaded or installed on this mock machine. */
+/** A model's versions as `GET /v1/voices/{id}/model-version` answers them — Pocket TTS's only
+ *  those that speak the persona's language (`voice_model.versionsOf`). null = none. */
+export function modelVersions(model, language = "") {
+  const mv = snapshot.versions[model];
+  if (!mv) return null;
+  const base = (c) => String(c || "").split(/[-_]/)[0].toLowerCase();
+  let rows = mv.versions;
+  if (language && new Set(rows.map((r) => r.languages.join(","))).size > 1) {
+    rows = rows.filter((r) => r.languages.some((x) => base(x) === base(language)));
+  }
+  return { model_name: mv.model_name, versions: rows.map((r) => ({ ...r, on_disk: ON_DISK.has(r.id) })) };
+}
+
+/** Which models are loaded on this mock machine (the speech runtime is installed; the rest are
+ *  "not loaded"). */
 export const modelStatus = reactive({
   kokoro: "loaded",
-  "chatterbox-nano": "not installed",
 });
 export function statusOf(model) {
   return modelStatus[model] || "not loaded";

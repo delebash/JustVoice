@@ -27,7 +27,7 @@ import { computed, ref, watch } from "vue";
 import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import {
   AppModal, EmptyState, UiButton, UiField, UiInput, UiNumber, UiSegmented, UiSelect,
-  UiSlider, UiTag, UiTextarea, confirmDialog, languageName, pushToast, saveBlob,
+  UiTag, UiTextarea, confirmDialog, fmtBytes, languageName, pushToast, saveBlob,
 } from "@delebash/llm-ui";
 import MockEffectsChainEditor from "../../components/mock/MockEffectsChainEditor.vue";
 import SlashTagMenu from "../../components/SlashTagMenu.vue";
@@ -43,7 +43,7 @@ import MockBlendMaker from "../../components/mock/MockBlendMaker.vue";
 import MockCloneMaker from "../../components/mock/MockCloneMaker.vue";
 import MockDesignMaker from "../../components/mock/MockDesignMaker.vue";
 import {
-  LEXICONS, MODEL_VERSIONS, capabilities as caps, effectLabels, emotionValues, newId, silentWav, statusOf, store, wait,
+  LEXICONS, capabilities as caps, effectLabels, emotionValues, modelVersions, newId, silentWav, statusOf, store, wait,
 } from "../../services/mock/personaMock.js";
 import { pageFlow } from "@delebash/llm-ui";
 
@@ -143,8 +143,9 @@ function onKindBlocked(opt) {
   pushToast({ kind: "info", message: opt.title || "Not available yet." });
 }
 const CAN_MAKE = { clone: ["words", "tags", "sliders"], design: ["words", "tags", "sliders"], blend: ["sliders"] };
+// (Built-in under Tags had its own reason until Turbo and Nano listed their own voice — the
+// adoption plan's F4, 2026-10-16.)
 const OFF_REASON = {
-  builtin: { tags: "No Built-in voice is on a tag model — Chatterbox Turbo and Nano voices are Cloned." },
   blend: {
     words: "Blended voices are Kokoro's: sliders only.",
     tags: "Blended voices are Kokoro's: sliders only.",
@@ -233,8 +234,18 @@ const voiceEmptyHint = computed(() => {
     blend: "No blended voices yet — make one on the right.",
   }[kind.value] || "";
 });
-// The Version field, from the catalog's list (MODEL_VERSIONS).
-const versionOptions = computed(() => (MODEL_VERSIONS[voice.value?.model] || []).map((x) => ({ value: x, label: x })));
+// The Version field: the model's versions as the server lists them (`modelVersions`), each
+// "1.7B (16-bit) · 3.9 GB · not downloaded" — the page's own words (versionShort).
+const versionList = computed(() => (voice.value ? modelVersions(voice.value.model, draft.value?.language || voice.value.language) : null));
+function versionShort(row) {
+  const mv = versionList.value;
+  const rest = row.name.startsWith(mv.model_name) ? row.name.slice(mv.model_name.length).trim() : "";
+  return rest || row.name;
+}
+const versionOptions = computed(() => (versionList.value?.versions || []).map((x) => ({
+  value: x.id,
+  label: [versionShort(x), x.size_mb ? fmtBytes(x.size_mb * 1024 * 1024) : "", x.on_disk ? "" : "not downloaded"].filter(Boolean).join(" · "),
+})));
 
 // ── Making a voice, here — a made type under Type opens its maker.
 const MAKERS = ["clone", "design", "blend"];
@@ -369,17 +380,42 @@ const directionReason = computed(() => {
 // ── Sampling ────────────────────────────────────────────────────────────
 const knobs = computed(() => (row.value?.knobs || []).filter((k) => k.key !== "speed" && k.key !== "seed"));
 const seedSupported = computed(() => (row.value?.knobs || []).some((k) => k.key === "seed"));
+// As the page (PersonaEditorPage.vue): a setting is a slider or number box, a dropdown, an on/off
+// switch or a text field; one with no default shows none until set; the settings audio.cpp's own
+// screen doesn't show fold under Advanced (DeliveryKnobs).
+const isNumberKnob = (k) => (k.type || "number") === "number";
 function knobValue(k) {
   const v = ms()?.knobs?.[k.key];
-  return v === undefined || v === null ? Number(k.default) : Number(v);
+  const value = v === undefined || v === null ? k.default : v;
+  if (value === undefined || value === null) return null;
+  return isNumberKnob(k) ? Number(value) : value;
 }
 function setKnob(k, value) {
-  ms(true).knobs[k.key] = Number(value);
+  if (value === "" || value === null || value === undefined) return resetKnob(k);
+  ms(true).knobs[k.key] = isNumberKnob(k) ? Number(value) : value;
 }
 function resetKnob(k) {
   const s = ms();
   if (s?.knobs) delete s.knobs[k.key];
 }
+const samplingKnobs = computed(() =>
+  knobs.value.map((k) => ({
+    key: k.key, label: k.label, hint: k.hint, type: k.type || "number", min: k.min, max: k.max, step: k.step,
+    box: Boolean(k.box), choices: k.choices || [], unit: k.unit || "", advanced: Boolean(k.advanced),
+    neutral: k.default == null ? null : isNumberKnob(k) ? Number(k.default) : k.default,
+  })),
+);
+const samplingResetTitle = (_key, k) => (k?.neutral == null ? "Back to the model default" : `Back to the model default (${k.neutral})`);
+function setKnobByKey(key, value) {
+  const k = knobs.value.find((x) => x.key === key);
+  if (k) setKnob(k, value);
+}
+function resetKnobByKey(key) {
+  const k = knobs.value.find((x) => x.key === key);
+  if (k) resetKnob(k);
+}
+// The seed box's top: the model's spec's where it gives one, else 2,000,000,000.
+const seedTop = computed(() => (row.value?.knobs || []).find((k) => k.key === "seed")?.max ?? 2_000_000_000);
 const seed = computed({
   get: () => ms()?.seed ?? null,
   set: (v) => { ms(true).seed = v === null || v === "" ? null : Number(v); },
@@ -458,17 +494,18 @@ const compareResults = ref([]);
 const compareBusy = ref(false);
 const compareOptions = computed(() => [
   { value: "speed", label: "Pace" }, { value: "pitch", label: "Pitch" }, { value: "gain_db", label: "Gain" },
-  ...knobs.value.map((k) => ({ value: k.key, label: k.label })),
+  ...knobs.value.filter(isNumberKnob).map((k) => ({ value: k.key, label: k.label })),
 ]);
 function compareSpec(key) {
   const s = SHAPE_KNOBS.find((x) => x.key === key);
   if (s) return { min: s.min, max: s.max, step: s.step, now: shared(key, s.neutral) };
   const k = knobs.value.find((x) => x.key === key);
-  return k ? { min: k.min, max: k.max, step: k.step, now: knobValue(k) } : { min: 0, max: 1, step: 0.01, now: 0 };
+  // A number box may be open at an end (null; the adoption plan, E2).
+  return k ? { min: k.min ?? null, max: k.max ?? null, step: k.step || 1, now: knobValue(k) } : { min: 0, max: 1, step: 0.01, now: 0 };
 }
 function seedCompareValues() {
   const s = compareSpec(compareKey.value);
-  const clamp = (x) => Math.min(s.max, Math.max(s.min, Math.round(x / s.step) * s.step));
+  const clamp = (x) => Math.min(s.max ?? Number.POSITIVE_INFINITY, Math.max(s.min ?? Number.NEGATIVE_INFINITY, Math.round(x / s.step) * s.step));
   compareValues.value = [clamp(s.now - 2 * s.step), clamp(s.now), clamp(s.now + 2 * s.step)];
 }
 function openCompare() {
@@ -762,28 +799,19 @@ watch([() => draft.value?.name, isNew], publishCrumbs, { immediate: true });
               <span v-if="voice" class="jv-hint">{{ modelName }}</span>
             </div>
             <div class="jv-card__body jv-col">
-              <div class="jv-knob-grid">
-                <div v-for="k in knobs" :key="k.key" class="jv-knob-grid__knob">
-                  <div class="jv-knob-grid__head">
-                    <label class="jv-knob-grid__label" :title="k.hint">{{ k.label }}</label>
-                    <UiButton intent="ghost" size="small" label="↺" :disabled="ms()?.knobs?.[k.key] === undefined"
-                      :title="`Back to the model default (${k.default})`" @click="resetKnob(k)" />
-                  </div>
-                  <div class="jv-knob-grid__row">
-                    <UiSlider :model-value="knobValue(k)" :min="k.min" :max="k.max" :step="k.step" width="full"
-                      :aria-label="k.label" @update:model-value="(v) => setKnob(k, v)" />
-                    <span v-if="k.unit" class="jv-knob-grid__unit">{{ k.unit }}</span>
-                  </div>
-                </div>
+              <!-- The page's knob grid (DeliveryKnobs): a number box where audio.cpp shows one or gives no
+                   range; the settings audio.cpp's own screen doesn't show fold under Advanced. -->
+              <DeliveryKnobs :knobs="samplingKnobs" :values="ms()?.knobs || {}" :pauses="[]" :reset-title="samplingResetTitle"
+                @input="setKnobByKey" @commit="setKnobByKey" @reset="resetKnobByKey">
                 <div v-if="voice" class="jv-knob-grid__knob">
                   <div class="jv-knob-grid__head"><label class="jv-knob-grid__label">Seed</label></div>
                   <div class="jv-knob-grid__row">
-                    <UiNumber v-model="seed" :min="0" :max="2000000000" :step="1" width="id" size="small"
+                    <UiNumber v-model="seed" :min="0" :max="seedTop" :step="1" width="id" size="small"
                       placeholder="random" :disabled="!seedSupported" :use-grouping="false" aria-label="Seed" />
                     <UiButton intent="ghost" size="small" label="🎲" title="A new seed" :disabled="!seedSupported" @click="rollSeed" />
                   </div>
                 </div>
-              </div>
+              </DeliveryKnobs>
               <p v-if="voice && !knobs.length && !seedSupported" class="jv-hint">{{ modelName }} has no sampling settings.</p>
               <p v-if="voice" class="jv-hint">
                 {{ seedSupported ? "The same seed gives the same take. Empty = a new one each time." : `${modelName} doesn't repeat with a seed.` }}
