@@ -7,9 +7,10 @@
 // The run's steps 1–4 and answer 7, as the run will take them: the EPUB imported (its chapters VII
 // and VIII), + Add Narrator, Discover on each chapter (the model's names as gemma gave them,
 // alice_fixtures.js), the names merged (the local recipe's one call answering as a model should),
-// the people added, Analyze on each chapter (the model answering the key, and "unknown" for the
-// five lines several people say), then the lines with no single speaker given out (the model
-// naming the key's groups). What is checked is what the app wrote: Script's lines and flags.
+// the people added, Analyze on each chapter (the model answering the key; for the five lines
+// several people say, one of the group in chapter VII — as gemma did on 2026-10-16, RESEARCH
+// §10.23 — and "unknown" for the soldiers), then the lines with no single speaker given out (the
+// model naming the key's groups). What is checked is what the app wrote: Script's lines and flags.
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
@@ -40,12 +41,14 @@ function promptCast(text) {
   }));
 }
 
-/** Analyze's model: each [D#] the key's speaker, "unknown" where the key has no one. */
+/** Analyze's model: each [D#] the key's speaker; where the key has no one, the last of the group
+ * it names (the March Hare, for the Hatter and the March Hare), else "unknown". */
 async function answerFromKey(_action, variables) {
   const chapter = variables.paragraphs.includes("No room!") ? VII : VIII;
   const cast = promptCast(variables.speakers);
   const out = Object.entries(KEY.chapters[chapter]).map(([d, who]) => {
-    const hit = who === "unknown" ? null : cast.find((p) => keyNameOf(p) === who);
+    const one = who === "unknown" ? (KEY.groups[chapter][d] ?? []).at(-1) : who;
+    const hit = one ? cast.find((p) => keyNameOf(p) === one) : null;
     return { id: `D${d}`, speaker: hit ? hit.handle : "unknown", confidence: 0.95 };
   });
   return { text: JSON.stringify(out), prompt_tokens: 0, completion_tokens: 0, model: "stub" };
@@ -127,10 +130,11 @@ test("Alice VII–VIII: one Queen, no one with 0 lines a speaker, 'No room!' to 
     expect(r.status, r.text).toBe(200);
     given[s.title] = r.json();
   }
-  // Only the five lines Analyze left blank were asked about.
+  // Only the five lines several people say were asked about: the four Analyze named, their
+  // narration saying "they" or "the Hatter and the March Hare", and the one it left blank.
   expect(asked.sort()).toEqual([...groupOf.keys()].sort());
-  expect(given[VII]).toMatchObject({ asked: 4, given: 4, to_narrator: 0, left: 0 });
-  expect(given[VIII]).toMatchObject({ asked: 1, given: 0, to_narrator: 1, left: 0 });
+  expect(given[VII]).toMatchObject({ asked: 4, given: 4, kept: 0, to_narrator: 0, left: 0 });
+  expect(given[VIII]).toMatchObject({ asked: 1, given: 0, kept: 0, to_narrator: 1, left: 0 });
 
   // What Script now shows: every keyed line right, the group lines given and flagged.
   speakers = (await c.get(`/v1/projects/${pid}/speakers`)).json().speakers;
@@ -148,7 +152,8 @@ test("Alice VII–VIII: one Queen, no one with 0 lines a speaker, 'No room!' to 
         continue;
       }
       const group = KEY.groups[s.title][d];
-      if (group.length) expect(group, `${s.title} D${d}`).toContain(got);
+      // Analyze's pick (the last of the group) is kept when the answer's group holds it.
+      if (group.length) expect(got, `${s.title} D${d}`).toBe(group.at(-1));
       else expect(got, `${s.title} D${d}`).toBe("Narrator");
       expect(page.flag_groups[line.flags[0]].check, `${s.title} D${d}`).toBe("group");
     }

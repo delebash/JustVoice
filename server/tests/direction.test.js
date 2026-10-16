@@ -20,7 +20,8 @@ import { getState } from "../src/app_state.js";
 import { Block, Project, Scene, Speaker, uuid } from "../src/database/models.js";
 import * as session from "../src/database/session.js";
 import * as direction from "../src/extraction/direction.js";
-import { carry, formatLines, isMarked, modelOwns, parseAnswers, shapeFor } from "../src/extraction/direction.js";
+import { carriesAcross, carry, formatLines, isMarked, modelOwns, narrationAround, parseAnswers, shapeFor } from "../src/extraction/direction.js";
+import { segmentParagraphs, splitIntoParagraphs } from "../src/extraction/segmentation.js";
 import { blockMeta } from "../src/line_takes.js";
 import { DEFAULT_FEATURE_PROMPTS } from "../src/seed_feature_prompts.js";
 import { DEFAULT_FEATURE_PRESETS } from "../src/seed_presets.js";
@@ -104,6 +105,48 @@ test("a_nearer_cue_wins_and_a_carried_answer_is_never_carried_again", () => {
   );
   expect(got.get(0).carried_from).toBe("D1"); // back from the nearest after
   expect(got.get(2).carried_from).toBe("D1"); // forward from the nearest before
+});
+
+test("the_carry_crosses_only_the_givers_own_tag", () => {
+  // Alice VII–VIII's narration between two lines of one speaker (RESEARCH §10.24).
+  expect(carriesAcross("screamed the Queen.", "forward")).toBe(true);
+  expect(carriesAcross("the Hatter grumbled:", "forward")).toBe(true); // a verb the list lacks, in a few words
+  expect(carriesAcross("(pointing with his tea spoon at the March Hare,)", "forward")).toBe(true);
+  expect(carriesAcross("Alice hastily replied;", "back")).toBe(true);
+  expect(carriesAcross("said Mr. Holmes, quietly.", "forward")).toBe(true);
+  expect(carriesAcross(" — ", "back")).toBe(true);
+  // A sentence after the tag, or the next line's own tag.
+  expect(carriesAcross("said the Dormouse indignantly. However, he consented to go on.", "forward")).toBe(false);
+  expect(carriesAcross("And then, turning to the rose-tree, she went on,", "forward")).toBe(false);
+  expect(carriesAcross("said the Queen, tossing her head impatiently; and, turning to Alice, she went on,", "forward")).toBe(false);
+  expect(carriesAcross("the Rabbit began. Alice gave a little scream of laughter.", "back")).toBe(false);
+});
+
+test("a_line_with_its_own_tag_takes_nothing_forward_and_a_new_tag_stops_the_sweep", () => {
+  const segments = segmentParagraphs(
+    splitIntoParagraphs(
+      [
+        "“Come, we shall have some fun now!” thought Alice. “I’m glad they’ve begun asking riddles,” she added aloud.",
+        "“Leave off that!” screamed the Queen. “You make me giddy.” And then, turning to the rose-tree, she went on, “What have you been doing here?”",
+      ].join("\n\n"),
+    ),
+  );
+  const around = narrationAround(segments);
+  expect(around.get(0)).toEqual({ before: "", after: "thought Alice." });
+  expect(around.get(1).before).toBe("thought Alice.");
+  expect(around.get(1).after).toBe("she added aloud.");
+  const who = ["alice", "alice", "queen", "queen", "queen"];
+  const lines = segments.filter((s) => s.kind === "dialogue").map((s) => ({ did: s.dialogue_id, paragraph: s.paragraph_idx, speaker: who[s.dialogue_id], ...around.get(s.dialogue_id) }));
+  const got = carry(
+    lines,
+    new Map([
+      [0, { emotion: "neutral", direction: "thinking to herself" }],
+      [2, { emotion: "shouted", direction: "screaming" }],
+    ]),
+  );
+  expect(got.has(1)).toBe(false); // “she added aloud” — said as it is said
+  expect(got.get(3)).toEqual({ emotion: "shouted", direction: "screaming", carried_from: "D2" });
+  expect(got.has(4)).toBe(false); // “she went on,” — a new line of hers
 });
 
 // ── Shaped to the line's model ─────────────────────────────────────────────

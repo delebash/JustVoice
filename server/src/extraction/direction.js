@@ -23,13 +23,14 @@
 
 import { LLMNotConfiguredError, presetRecipe, resolveFeaturePreset } from "@delebash/llm-runner/llm";
 import { getLogger } from "@delebash/llm-runner/platform/log";
-import { cpLen, errText, isDict, RuntimeError, splitWs, strip, truthy } from "@delebash/llm-runner/platform/py";
+import { B, cpLen, errText, isDict, RuntimeError, splitWs, strip, truthy } from "@delebash/llm-runner/platform/py";
 import { jsonRawDecode, pyStrOf } from "@delebash/llm-runner/platform/pyjson";
 import * as run from "../engines/llm/run.js";
 import { construct, EMOTION_VALUES, ExtractionSettings } from "../models.js";
 import { emotionChoices } from "../persona_render.js";
 import { _emotionTagset } from "../render_core.js";
 import { directedBy, TAGS, WORDS } from "../voice_model.js";
+import { DIALOGUE_VERBS } from "./anchors.js";
 import { ParagraphTooBig, Piece, isBreak, planPieces } from "./pieces.js";
 import { _isOverflow, _pickDid, modelFailureMessage } from "./pipeline.js";
 import * as self from "./direction.js";
@@ -225,14 +226,59 @@ export function parseAnswers(text) {
 
 // ── The carry ─────────────────────────────────────────────────────────────────
 
+// A speech tag's verbs (anchors.DIALOGUE_VERBS), the ones that carry a speech on — "she added
+// aloud", "the Rabbit began", "she went on" — and loud ones its list lacks ("screamed the Queen").
+// English, as the tag rule's.
+const MORE_TAG_VERBS = [
+  "added", "adds", "began", "begins", "continued", "continues", "went on", "goes on",
+  "screamed", "screams", "shrieked", "shrieks", "roared", "roars", "bellowed", "bellows", "gasped", "gasps",
+];
+const TAG_ALT = `${B}(?:${[...DIALOGUE_VERBS, ...MORE_TAG_VERBS].join("|")})${B}`;
+const TAG_VERB = new RegExp(TAG_ALT, "iu");
+const TAG_VERBS = new RegExp(TAG_ALT, "giu");
+// How near a narration's start or end its tag sits ("said the Dormouse", "she went on").
+const TAG_WORDS = 4;
+// A sentence that ends inside the narration, more words after it — "said the Dormouse
+// indignantly. However, he consented to go on." — a title's full stop aside.
+const INNER_END = /(?<!\b(?:Mr|Mrs|Ms|Dr|St|Jr|Sr))[.!?;…](?=[^\p{L}]*\p{L})/u;
+
+/**
+ * Does a direction carry across `between`, the narration between two lines of one paragraph, `way`
+ * "forward" (from the line before it) or "back" (from the line after)? Across nothing, an aside in
+ * brackets, or the giving line's own tag alone: one sentence, with no tag but the giver's —
+ * forward, a tag opening the narration ("screamed the Queen." → "You make me giddy."); back, none,
+ * or one closing it. A narration with a sentence after the tag, or a tag of the other line's ("she
+ * went on,"), stops it — measured on Alice VII–VIII (RESEARCH §10.24: the carry had marked 7 lines
+ * with no cue).
+ */
+export function carriesAcross(between, way) {
+  const n = strip(between || "");
+  if (!/\p{L}/u.test(n)) return true;
+  // An aside inside the speech — "(pointing with his tea spoon at the March Hare,)".
+  if (/^\(.*\)[\s.,;:!?…—–]*$/su.test(n)) return true;
+  if (INNER_END.test(n)) return false;
+  const words = splitWs(n);
+  const head = TAG_VERB.test(words.slice(0, TAG_WORDS).join(" "));
+  const tail = TAG_VERB.test(words.slice(-TAG_WORDS).join(" "));
+  const tags = [...n.matchAll(TAG_VERBS)].length;
+  // Forward: the giver's tag opens it — or a few words, a tag whose verb the list lacks ("the
+  // Hatter grumbled:").
+  if (way === "forward") return (tags === 1 && head) || (tags === 0 && words.length <= TAG_WORDS);
+  // Back: no tag, or the giver's closing it ("Alice hastily replied;" between "I do," and the rest).
+  return tags === 0 || (tags === 1 && tail);
+}
+
 /**
  * RESEARCH §10.5's carry: within a paragraph, a speaker's direction goes to their other lines there
  * that got none — forward, then back. The shape of the attribution propagation pass
  * (anchors.findAnchors pass 2): per paragraph, a forward sweep, then a backward one. Only the
  * model's own answers carry — a carried answer is never carried again — and a line with no speaker
- * neither gives nor takes. `lines` = [{did, paragraph, speaker}] in chapter order (spoken lines);
- * `answers` = parseAnswers' Map. → a new Map; a carried answer names its source in `carried_from`
- * ("D12").
+ * neither gives nor takes; the narration between two lines that holds more than the giver's tag
+ * stops every carry across it (`carriesAcross`), and a line with a tag of its own right after it
+ * takes none forward. `lines` = [{did, paragraph, speaker, before, after}] in chapter order (spoken
+ * lines; `before`/`after` the narration between it and the spoken line before/after it in its
+ * paragraph, "" or absent for none); `answers` = parseAnswers' Map. → a new Map; a carried answer
+ * names its source in `carried_from` ("D12").
  */
 export function carry(lines, answers) {
   const out = new Map(answers);
@@ -241,22 +287,58 @@ export function carry(lines, answers) {
     if (!byPara.has(ln.paragraph)) byPara.set(ln.paragraph, []);
     byPara.get(ln.paragraph).push(ln);
   }
-  const sweep = (paraLines) => {
+  const sweep = (paraLines, way) => {
     const last = new Map(); // speaker → [did, answer]
-    for (const ln of paraLines) {
-      if (!ln.speaker) continue;
+    paraLines.forEach((ln, i) => {
+      if (i > 0 && !carriesAcross(way === "forward" ? ln.before : ln.after, way)) last.clear();
+      if (!ln.speaker) return;
       const own = answers.get(ln.did);
       if (own) last.set(ln.speaker, [ln.did, own]);
-      else if (!out.has(ln.did) && last.has(ln.speaker)) {
+      else if (!out.has(ln.did) && last.has(ln.speaker) && !(way === "forward" && ownTag(ln.after))) {
         const [from, a] = last.get(ln.speaker);
         out.set(ln.did, { emotion: a.emotion, direction: a.direction, carried_from: `D${from}` });
       }
-    }
+    });
   };
   for (const paraLines of byPara.values()) {
-    sweep(paraLines); // forward
-    sweep([...paraLines].reverse()); // back — a speaker's lines before their cue
+    sweep(paraLines, "forward");
+    sweep([...paraLines].reverse(), "back"); // a speaker's lines before their cue
   }
+  return out;
+}
+
+/** A tag opening the narration after a line — the line's own ("she added aloud"). */
+function ownTag(after) {
+  return TAG_VERB.test(splitWs(strip(after || "")).slice(0, TAG_WORDS).join(" "));
+}
+
+/**
+ * Each spoken segment's narration in its paragraph → Map dialogue_id → `{before, after}`: the
+ * narration between it and the spoken segment before it, and after it (to the next one, or the
+ * paragraph's end) — what the carry reads.
+ */
+export function narrationAround(segments) {
+  const out = new Map();
+  let prev = null; // the last spoken segment of the paragraph so far
+  let gap = [];
+  let para = null;
+  for (const seg of segments) {
+    if (seg.paragraph_idx !== para) {
+      if (prev !== null) out.get(prev).after = gap.join(" ");
+      prev = null;
+      gap = [];
+      para = seg.paragraph_idx;
+    }
+    if (seg.kind !== "dialogue") {
+      gap.push(seg.text || "");
+      continue;
+    }
+    if (prev !== null) out.get(prev).after = gap.join(" ");
+    out.set(seg.dialogue_id, { before: prev === null ? "" : gap.join(" "), after: "" });
+    prev = seg.dialogue_id;
+    gap = [];
+  }
+  if (prev !== null) out.get(prev).after = gap.join(" ");
   return out;
 }
 

@@ -18,7 +18,8 @@
 //   lines      every keyed line right / WRONG / blank, as eval:attribution scores them
 //   group      every line the key gives no single speaker: who it went to, whether that is one of
 //              the group the key names (`groups`; the narrator when it names none of the cast),
-//              and whether Script marks it "group"
+//              and whether Script marks it "group"; and every line one person says that is
+//              marked "group" all the same
 //
 // Unlike eval:discover and eval:attribution it WRITES: it imports the sample's keyed chapters as a
 // new book on that server (its data folder) and deletes the book at the end unless --keep. The
@@ -150,14 +151,14 @@ async function main() {
       const g = given[s.id];
       console.log(
         `analyze · ${s.title}: route ${a.route_used} (${((t1 - t0) / 1000).toFixed(0)}s, ${tokens(a.usage)}) · ` +
-          `no single speaker: ${g.asked} asked, ${g.given} to one of a group, ${g.to_narrator} to the narrator, ${g.left} left, ${g.failed} failed (${secs(t1)}, ${tokens(g.usage)})`,
+          `no single speaker: ${g.asked} asked, ${g.given} to one of a group, ${g.kept ?? 0} kept, ${g.to_narrator} to the narrator, ${g.left} left, ${g.failed} failed (${secs(t1)}, ${tokens(g.usage)})`,
       );
     }
 
     // Score what Script shows.
     const speakers = (await call(server, "GET", `/v1/projects/${pid}/speakers`)).speakers;
     const nameOf = new Map(speakers.map((sp) => [sp.id, sp.role_label === "narrator" ? "Narrator" : (keyOf(sp)[0] ?? sp.name)]));
-    const total = { right: 0, WRONG: 0, blank: 0, group_right: 0, group_flagged: 0, group_n: 0 };
+    const total = { right: 0, WRONG: 0, blank: 0, group_right: 0, group_flagged: 0, group_n: 0, group_extra: 0 };
     for (const s of scenes) {
       const page = await call(server, "GET", `/v1/scenes/${s.id}/script`);
       const lines = page.lines.filter((l) => l.spoken);
@@ -180,6 +181,10 @@ async function main() {
           groupRows.push(`D${d} ${ok === null ? "(no group in the key)" : ok ? "right" : "WRONG"} → ${got}${flagged ? ", flagged" : ", NOT flagged"}  ${line.text.slice(0, 60)}`);
           continue;
         }
+        if ((line.flags || []).some((f) => page.flag_groups[f]?.check === "group")) {
+          total.group_extra += 1;
+          groupRows.push(`D${d} one speaker (${want}), marked "group" all the same  ${line.text.slice(0, 60)}`);
+        }
         const verdict = got === want ? "right" : got === "unknown" ? "blank" : "WRONG";
         c[verdict] += 1;
         if (verdict !== "right") errors.push(`D${d} ${verdict.padEnd(5)} want ${want.padEnd(15)} got ${got}  [${line.source}]  ${line.text.slice(0, 60)}`);
@@ -193,7 +198,8 @@ async function main() {
     const n = total.right + total.WRONG + total.blank;
     console.log(
       `\nTOTAL lines right ${total.right}/${n} · WRONG ${total.WRONG} · blank ${total.blank} · ` +
-        `no single speaker: ${total.group_right}/${total.group_n} to the key's group, ${total.group_flagged}/${total.group_n} flagged · ` +
+        `no single speaker: ${total.group_right}/${total.group_n} to the key's group, ${total.group_flagged}/${total.group_n} flagged, ` +
+        `${total.group_extra} one-speaker line(s) marked · ` +
         `merge: ${problems.length ? `${problems.length} problem(s)` : "clean"}`,
     );
   } finally {

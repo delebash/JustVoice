@@ -27,6 +27,13 @@
   once with a new seed, and one that still fails is flagged on its line. For now it runs through
   the API (`POST /v1/scenes/{id}/check_takes`); Render doesn't show its findings yet. Its limits are
   settings, `take_check` ([Studio → Checking takes](studio.md#checking-takes))
+- **Lines several people say are marked even when Analyze named one; direction carries less
+  (2026-10-16)** — a line Analyze gave to one of a group (*"Sh! sh!"* — the Hatter and the March
+  Hare) is now asked about and marked **Said together** like a blank one, when the words beside
+  it say several people speak it. And a line's direction carries to the speaker's next line in the
+  paragraph only across their own tag — a new sentence or a new *she went on* stops it
+  ([Studio → Lines with no single speaker](studio.md#lines-with-no-single-speaker),
+  [AI features → Direction](ai-features.md#direction--two-recipes-and-the-carry))
 - **Names merged across chapters; lines no one person says (2026-10-16)** — two steps of the
   coming one-click audiobook, as routes and as cards in AI Settings → Routing by feature: **Merge
   found names** turns every chapter's Discover scan into one list of people (*the Queen* and

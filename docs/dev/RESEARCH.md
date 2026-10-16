@@ -4179,6 +4179,61 @@ The headless server on the dev build (bcc5dfbb), the user's data folder, gemma 4
   GB held). The eval's temporary book was deleted by hand; gemma unloaded (21 GB free after).
   — *measured, 2026-10-16*.
 
+### 10.24 The one-click slices on gemma — slice 5's run, slice 4's group lines, slice 2's carry (2026-10-16)
+
+The headless server on the dev build (bcc5dfbb), the user's data folder, gemma 4 26B-A4B QAT on the
+8 GB card, after §10.23 (gemma unloaded and reloaded between the checks).
+
+- **Slice 5, Alice VII from one press to an M4B** (run 604207ee, the book "Alice VII (one-click
+  test)", chapter VII alone, the narrator added first): 16 min 21 s (980.7 s), 27,943 tokens in
+  and 6,782 out, price 0 (every step local), nothing failed. Per step — Discover 26.6 s (1 call,
+  3,671 in / 303 out); the merge no call (4 names, none inside another); ＋ Add 4; Analyze 105 s
+  (1 call, 4,578 / 4,780); the lines with no single speaker 18.1 s (3 calls, 9,949 / 192); Describe
+  14.2 s (4 calls, 4,943 / 234); Design 27.4 s, 4 voices (Qwen3-TTS VoiceDesign → VoxCPM2); Match
+  none left; Direction 48.6 s (1 call, 4,802 / 1,273); Render 273 lines in 568.6 s, 902.4 s of
+  audio (0.63× real time), none failed; Check 273 takes read back by Qwen3-ASR 1.7B in 149.6 s, 4
+  rendered again, 2 flagged; Export 22.6 s. The M4B: 13.9 MB, AAC 44.1 kHz mono, 15 min 3.7 s, one
+  chapter mark (kept as `data/one-click/Alice VII (one-click test).m4b`). The estimate shown
+  before the start was 14,569 in / 19,760 out — input about half the real figure (each line with
+  no single speaker is its own call with about 3,300 tokens of text around it), output about three
+  times the real figure. — *measured*.
+- **A restart resumed:** a second run redoing the check (64d396ee) was stopped by killing the
+  server's process tree at check 48/273; on the restart the boot sweep had paused it there;
+  Resume finished it — 273/273, 2 rendered again, the same 2 flagged. — *measured*.
+- **The take check's flags (slice 6's thresholds — missed share 0.2, extra share 0.2, two words
+  at least):** on 273 takes, 4 failed the first reading (1.5 %), 2 passed after their one new
+  take; the 2 flagged are the shortest — the narrator's *added the Hatter,* (3 words, heard "I did
+  the harder.") and *"Sh! sh!"* (2 words, heard "Okay."). Nothing longer was flagged, so the
+  numbers stay. — *measured*.
+- **Slice 4's group lines: Analyze names one of a group often.** In the run above gemma gave
+  *"Sh! sh!"* to the Hatter — not blank — so the step (asking blank lines only) neither asked nor
+  marked it; in §10.23's run Analyze named four of the five. Fixed the same day: a line Analyze
+  named is asked too when the narration right beside it in its paragraph (its first 6 words after
+  the line, its last 6 before) has *they*, *both*, *together*, *everyone*, *everybody*, *chorus*,
+  *unison*, or two of the cast joined by *and* (`group_lines.severalSpeak`); the answer marks it
+  when it names several (Analyze's speaker kept when one of them), and leaves it as it was when
+  it names one (`group_asked` on the line, so it isn't asked again). Not *all* (*but all he said
+  was* comes before one speaker's line). On the run's chapter VII the test picks exactly the four
+  group lines Analyze named or might name — D2, D94, D95, D121 — and no other line; with *all* and
+  the whole narration read it had picked 4 more. `npm run eval:speakers` after the change:
+  every keyed line right on both chapters (235/235), every keyed speaker once with no one added who speaks no line (Discover counted the Knave 0 this time), and all five lines with no single speaker given to the key's group (4 to the Hatter, the soldiers' to the narrator) and marked; no line one person says was marked. Chapter VII asked 4 lines (all named by Analyze), VIII 1 (left blank) — 5 calls, 17,795 tokens in. Accepted. — *measured*.
+- **Slice 2's carry, tightened.** §10.23's over-marks came from the carry crossing more than the
+  speaker's tag: *said the Dormouse indignantly. However, he consented to go on.* (D126); *…; and,
+  turning to Alice, she went on,* (VIII D19); *And then, turning to the rose-tree, she went on,*
+  (VIII D32); *the Rabbit began. Alice gave a little scream of laughter.* (VIII D53, back); and a
+  thought's direction to *“…,” she added aloud* (D16). The carry now crosses only nothing, an aside
+  in brackets, or the giver's own tag — one sentence, the tag opening the narration going forward
+  (or a few words with a verb the tag list lacks: *the Hatter grumbled:*), closing it going back —
+  and a line with a tag of its own right after it takes nothing forward (`direction.carriesAcross`,
+  `narrationAround`). On one gemma run's answers (`eval:direction --out`), old rule against new:
+  chapter VII 68/73 caught both, no-cue marks 5/77 → 4/77 (the 4 the model's own); chapter VIII
+  50/50 → 49/50 (lost D82, *said the King very decidedly, and he called the Queen, …*), no-cue
+  8/40 → 6/40 (5 the model's own, D78 carried from the model's own D77). Both chapters: 117/123
+  caught (95 %), the carry's own no-cue marks 4 → 1 of 117. Against the bar on Alice VII (≥ 88 %,
+  ≤ 5 %, §10.5's 64/73 and 4/77): 68/73 (93 %) and 4/77 — the bar's own 4/77. What still over-marks
+  is the model's own: 9/117 (8 %) — *after thinking a minute or two*, *without considering at all
+  this time*, the King's and the Queen's angry lines with no word for it. — *measured*.
+
 ## Records not yet distilled
 
 Indexed by subject so they can be found; their facts move into a section above when work next

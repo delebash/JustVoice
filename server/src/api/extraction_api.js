@@ -453,8 +453,10 @@ export function _persistAttribution(h, scene, rows, text, { marks: style = "doub
     if (row.second_look_asked) m.second_look_asked = true;
     else delete m.second_look_asked;
     // Who a line with no single speaker went to (`giveGroupLines`, the one-click plan's answer
-    // 7) — Analyze decides the line again, so the record goes.
+    // 7), or that it was asked and one person says it — Analyze decides the line again, so the
+    // record goes.
     delete m.group_line;
+    delete m.group_asked;
     return Object.keys(m).length ? pyJson(m) : null;
   };
 
@@ -870,12 +872,13 @@ export async function directScene(sceneId, { recipe = null, carry = true } = {})
   );
   const cast = _resolveCast(sceneId, h);
   const names_ = new Map(cast.map((c) => [c.id, c.name]));
+  const around = direction.narrationAround(segments);
   const lines = [];
   segments.forEach((seg, i) => {
     if (seg.kind !== "dialogue") return;
     const b = blocks[i];
     seg.speaker_name = b.speaker_id ? (names_.get(b.speaker_id) ?? null) : null;
-    lines.push({ did: seg.dialogue_id, block_id: b.id, text: b.text, speaker: b.speaker_id || null, paragraph: seg.paragraph_idx });
+    lines.push({ did: seg.dialogue_id, block_id: b.id, text: b.text, speaker: b.speaker_id || null, paragraph: seg.paragraph_idx, ...around.get(seg.dialogue_id) });
   });
   const use = recipe ?? direction.directionRecipe();
   const state = getState();
@@ -1410,10 +1413,15 @@ export const GroupLineOut = T.Object({
 
 export const GroupLinesResponse = T.Object({
   scene_id: T.String(),
-  // Spoken lines with no speaker that you didn't set — each asked about once.
+  // Spoken lines with no speaker that you didn't set, and lines Analyze gave a speaker whose
+  // narration says several people speak them — each asked about once.
   asked: opt(T.Integer(), 0),
-  // Given to the one the answer chose (or the first it named).
+  // Given to one of the group the answer named: Analyze's speaker when it is one of them, else
+  // the one the answer chose (or the first it named).
   given: opt(T.Integer(), 0),
+  // A line Analyze gave a speaker that the answer says one person, or no one clear, speaks: left
+  // with Analyze's speaker, unmarked.
+  kept: opt(T.Integer(), 0),
   // No one the text makes clear: given to the narrator.
   to_narrator: opt(T.Integer(), 0),
   // No one named and the book has no narrator yet: left with no speaker.
@@ -1424,21 +1432,57 @@ export const GroupLinesResponse = T.Object({
   usage: opt(nullable(RunUsage), null),
 });
 
-/** One answer onto its line, in the caller's transaction. A line given a speaker or set by you
- * meanwhile is left alone. Given: source "llm" (the AI decided it), no confidence, the marks of a
- * line with no speaker dropped, and `group_line` = who the answer named and the model — the
- * "group" flag Script shows. → the outcome's counter name, or null. */
-function _saveGroupLine(h, blockId, got) {
+/** Who a group line goes to: Analyze's speaker when the answer's group holds them, else the
+ * answer's choice. */
+const _givenTo = (got, named) => (named !== null && got.group.includes(named) ? named : got.speaker);
+
+/** One answer onto its line, in the caller's transaction. `named` is the speaker Analyze gave the
+ * line (null for a blank one); a line whose speaker changed or that you set meanwhile is left
+ * alone. A named line the answer says one person, or no one clear, speaks keeps its speaker,
+ * marked `group_asked` so it isn't asked again. Given:
+ * `group_line` = who the answer named and the model — the "group" flag Script shows — the marks of
+ * a line with no speaker dropped, and, when the speaker changes, source "llm" (the AI decided it)
+ * with no confidence; a named line keeps Analyze's speaker when it is one of the group. → the
+ * outcome's counter name, or null. */
+function _saveGroupLine(h, blockId, got, named = null) {
   const b = h.one(`select * from ${Block} where id = ? limit 1`, [blockId], Block);
-  if (b === null || b.speaker_id || b.source === "corrected") return null;
+  if (b === null || (b.speaker_id || null) !== named || b.source === "corrected") return null;
   if (got === null) return "failed";
-  if (!got.speaker) return "left";
   const meta = _jsonMeta(b.metadata_json);
+  if (named !== null && got.group.length < 2) {
+    // Asked, and one person says it: not asked again until Analyze decides the line again.
+    meta.group_asked = true;
+    h.update(Block, { metadata_json: pyJson(meta) }, { id: blockId });
+    return "kept";
+  }
+  if (!got.speaker) return "left";
   delete meta.floored_from;
   delete meta.second_look_asked;
   meta.group_line = { group: got.group, model: got.model || "" };
-  h.update(Block, { speaker_id: got.speaker, source: "llm", extraction_confidence: null, metadata_json: pyJson(meta) }, { id: blockId });
+  const speaker = _givenTo(got, named);
+  const changes = { metadata_json: pyJson(meta) };
+  if (speaker !== named) Object.assign(changes, { speaker_id: speaker, source: "llm", extraction_confidence: null });
+  h.update(Block, changes, { id: blockId });
   return got.group.length ? "given" : "to_narrator";
+}
+
+/** The lines Analyze gave a speaker whose narration, right beside them in their paragraph, says
+ * several people speak them (`group_lines.severalSpeak`) — asked too, so a line several people say
+ * is marked whoever answered it. Never a line you set, one a "said X" tag decided (the book named
+ * one speaker), or one already asked (`group_line`, `group_asked`). */
+export function _severalSpeakAsks(h, scene, characters) {
+  const blocks = blocksOf(h, scene.id);
+  const several = groupLines.severalSpeak(characters);
+  const paraOf = (b) => dget(_jsonMeta(b.metadata_json), "paragraph_idx");
+  return blocks.filter((b, i) => {
+    if (!strip(b.text || "") || !b.speaker_id || b.source === "corrected" || b.source === "tag" || isMarker(b)) return false;
+    const meta = _jsonMeta(b.metadata_json);
+    if (!spokenBlock(b.source, b.text) || dget(meta, "group_line") !== null || dget(meta, "group_asked")) return false;
+    const para = paraOf(b);
+    if (para === null) return false;
+    const beside = (n) => n && !spokenBlock(n.source, n.text) && paraOf(n) === para;
+    return (beside(blocks[i - 1]) && several(blocks[i - 1].text || "", "before")) || (beside(blocks[i + 1]) && several(blocks[i + 1].text || "", "after"));
+  });
 }
 
 /**
@@ -1447,8 +1491,9 @@ function _saveGroupLine(h, blockId, got) {
  * the group the text names … or to the narrator when it's unclear, and flags it"). One question a
  * line (`extraction/group_lines.js`), the text around it as the second look reads it; the answers
  * are written at the end, in one transaction. Asks about the lines the 🔎 Second look would
- * (`_secondLookAsks`): never a line you set. A chapter Analyze never read is refused (409) — its
- * lines have no speaker because nothing decided them yet.
+ * (`_secondLookAsks`), and the lines Analyze gave a speaker whose narration says several people
+ * speak them (`_severalSpeakAsks`): never a line you set. A chapter Analyze never read is refused
+ * (409) — its lines have no speaker because nothing decided them yet.
  */
 export async function giveGroupLines(h, scene, { settings }) {
   const blocks = blocksOf(h, scene.id);
@@ -1456,8 +1501,9 @@ export async function giveGroupLines(h, scene, { settings }) {
   if (!(truthy(dget(meta, "analyzed_at")) || blocks.some((b) => PIPELINE_SOURCES.has(b.source)))) {
     throw conflict("Analyze this chapter first — only the lines Analyze leaves with no speaker are asked about.");
   }
-  const report = { scene_id: scene.id, asked: 0, given: 0, to_narrator: 0, left: 0, failed: 0, lines: [], usage: null };
-  const asks = _secondLookAsks(h, scene);
+  const report = { scene_id: scene.id, asked: 0, given: 0, kept: 0, to_narrator: 0, left: 0, failed: 0, lines: [], usage: null };
+  const cast = _resolveCast(scene.id, h);
+  const asks = [..._secondLookAsks(h, scene), ..._severalSpeakAsks(h, scene, cast)].sort((a, b) => a.position - b.position);
   report.asked = asks.length;
   if (!asks.length) return report;
   const cfg = settings?.extraction ?? construct(ExtractionSettings, {});
@@ -1473,7 +1519,7 @@ export async function giveGroupLines(h, scene, { settings }) {
           .join("\n\n"),
   );
   const paragraphs = segments === null ? splitIntoParagraphs(text) : paragraphsOf(segments);
-  const [promptCast, handleToId] = pipeline.promptHandles(_resolveCast(scene.id, h));
+  const [promptCast, handleToId] = pipeline.promptHandles(cast);
   const castText = sl.castLines(promptCast);
   const resolve = (raw) => {
     const handle = pipeline.resolveSpeaker(raw, promptCast);
@@ -1486,17 +1532,17 @@ export async function giveGroupLines(h, scene, { settings }) {
   for (const b of asks) {
     const row = { paragraph_idx: _paragraphOf(paragraphs, b), text: b.text };
     try {
-      answers.push([b.id, await groupLines.askLine(row, paragraphs, { castText, resolve, narratorId, words: cfg.second_look_words, usage })]);
+      answers.push([b.id, await groupLines.askLine(row, paragraphs, { castText, resolve, narratorId, words: cfg.second_look_words, usage }), b.speaker_id || null]);
     } catch (e) {
       throw discoverError(e, "giving lines with no single speaker");
     }
   }
   h.tx(() => {
-    for (const [blockId, got] of answers) {
-      const outcome = _saveGroupLine(h, blockId, got);
+    for (const [blockId, got, named] of answers) {
+      const outcome = _saveGroupLine(h, blockId, got, named);
       if (outcome === null) continue;
       report[outcome] += 1;
-      if (outcome === "given" || outcome === "to_narrator") report.lines.push({ line_id: blockId, speaker_id: got.speaker, group: got.group });
+      if (outcome === "given" || outcome === "to_narrator") report.lines.push({ line_id: blockId, speaker_id: _givenTo(got, named), group: got.group });
     }
   });
   report.usage = { ...usage, duration_ms: Math.trunc(performance.now() - t0), pieces: asks.length };
@@ -1854,13 +1900,14 @@ export function router() {
   app.post("/v1/extraction/direction-text", input({ body: DirectionTextRequest }), async (c) => {
     const body = c.req.valid("json");
     const segments = segmentParagraphs(splitIntoParagraphs(body.text));
+    const around = direction.narrationAround(segments);
     const lines = [];
     for (const seg of segments) {
       if (seg.kind !== "dialogue") continue;
       const who = strip(pyStrOf(body.speakers[String(seg.dialogue_id)] ?? ""));
       const speaker = who && who.toLowerCase() !== "unknown" ? who : null;
       seg.speaker_name = speaker;
-      lines.push({ did: seg.dialogue_id, text: seg.text, speaker, paragraph: seg.paragraph_idx });
+      lines.push({ did: seg.dialogue_id, text: seg.text, speaker, paragraph: seg.paragraph_idx, ...around.get(seg.dialogue_id) });
     }
     const all = {
       providerId: body.providerId,

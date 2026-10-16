@@ -15,12 +15,18 @@
 //
 // One recipe for both kinds of model: §3 names none for this step, and each question is one line
 // with the text around it, small for any model.
+//
+// Analyze does not always leave such a line blank: on 2026-10-16 gemma named one of the two for
+// four of the five (RESEARCH §10.23), and the step, asking only blank lines, flagged one. So a line
+// Analyze gave a speaker is asked too when the narration right beside it says several people speak
+// it (`severalSpeak`); the answer marks it only when it names several.
 
 import { LLMNotConfiguredError } from "@delebash/llm-runner/llm";
 import { getLogger } from "@delebash/llm-runner/platform/log";
-import { cpSlice, errText, strip, strRepr } from "@delebash/llm-runner/platform/py";
+import { B, cpSlice, errText, strip, strRepr } from "@delebash/llm-runner/platform/py";
 import { pyStrOf } from "@delebash/llm-runner/platform/pyjson";
 import * as run from "../engines/llm/run.js";
+import { _buildNameRegex } from "./anchors.js";
 import * as self from "./group_lines.js";
 import { around, parse } from "./second_look.js";
 
@@ -47,6 +53,32 @@ The text around the line:
 {{chapter}}
 
 Who says the marked line ⟦{{line}}⟧? Return only the JSON object.`;
+
+// The narration beside a line saying several people speak it: a plural word — "they cried out",
+// "they both cried", "together", "in chorus". English, as the "said X" rule's verbs (anchors.js).
+// Not "all": "but all he said was" and "looked all round" come before one speaker's line.
+const SEVERAL = new RegExp(`${B}(?:they|both|together|everyone|everybody|chorus|unison)${B}`, "iu");
+// How far into the narration the words are read: its first words when it follows the line, its
+// last when it comes before — where a speech tag sits (anchors.js). On Alice VII, 6 words keep
+// "and went on so long that they had to pinch it" off the Dormouse's song before it.
+const NEAR_WORDS = 6;
+
+/**
+ * A test for the narration right beside a line (in its own paragraph) → `(narration, side)` is
+ * true when it says several people speak the line: a plural word, or two of `characters` (the
+ * cast, `{name, aliases}`) joined by "and" ("the Hatter and the March Hare went"), within its
+ * first words when `side` is "after" (it follows the line), its last when "before". It only picks
+ * the lines to ask about; the answer decides whether the line is several people's.
+ */
+export function severalSpeak(characters) {
+  const name = _buildNameRegex(characters).source;
+  const pair = new RegExp(`${name}\\s+and\\s+(?:the\\s+)?${name}`, "iu");
+  return (narration, side) => {
+    const words = strip(narration).split(/\s+/u);
+    const near = (side === "after" ? words.slice(0, NEAR_WORDS) : words.slice(-NEAR_WORDS)).join(" ");
+    return SEVERAL.test(near) || pair.test(near);
+  };
+}
 
 /** The engine door, called through this module so a test can stand in for it. */
 export const runFeature = (action, variables, overrides) => run.runFeature(action, variables, overrides);

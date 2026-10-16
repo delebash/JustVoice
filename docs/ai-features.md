@@ -329,14 +329,18 @@ names as *Also called*.
   it can't add a name, lose one, or change a count.
 
 **Speaker attribution · lines with no single speaker** (`POST /v1/scenes/{id}/group-lines`, after
-Analyze) — Render can't voice a line with no speaker, and Analyze leaves a line several people say
-at once with none (*"No room! No room!" they cried out*). This asks about each spoken line Analyze
-left with no speaker — never a line you set — one call a line, with the text around it (about
-1,500 words either side, as the [second look](studio.md#the-second-look) reads it) and the cast
-with who each one is. The line goes to the one of the group the model chooses (*they* = the Hatter
-and the March Hare → one of them); when the text makes no one clear, or no one who says it is a
-speaker of the book, to the narrator. A book with no narrator yet keeps such a line blank. Every
-line given this way is **marked to check** — [Studio → Lines with no single
+Analyze) — Render can't voice a line with no speaker, and Analyze often leaves a line several people
+say at once with none (*"No room! No room!" they cried out*). This asks about each spoken line Analyze
+left with no speaker, and each line Analyze gave a speaker whose narration right beside it says
+several people speak it (*they cried*, *they both cried*, *together*, *the Hatter and the March
+Hare went*) — never a line you set or one the book tags with one name (*said Alice*) — one call a
+line, with the text around it (about 1,500 words either side, as the [second
+look](studio.md#the-second-look) reads it) and the cast with who each one is. The line goes to the
+one of the group the model chooses (*they* = the Hatter and the March Hare → one of them; a line
+Analyze gave to one of them stays theirs); when the text makes no one clear, or no one who says it
+is a speaker of the book, to the narrator. A line Analyze named that the answer says one person
+speaks is left as it was. A book with no narrator yet keeps such a line blank. Every line given to
+one of a group, or to the narrator, is **marked to check** — [Studio → Lines with no single
 speaker](studio.md#lines-with-no-single-speaker). It has one recipe for every model: each
 question is one line, small for any model, on Deterministic classification as the second look is.
 
@@ -487,10 +491,17 @@ nothing about is read as the persona always speaks.
 **The carry.** A speaker often says two things in one paragraph with the cue
 beside only the first (*“…,” the Hatter grumbled: “…”*). After the model
 answers, a speaker's direction goes to their other lines in the same paragraph
-that got none — forward, then back. Measured by hand on *Alice* chapter VII
-with the built-in Gemma: of the lines whose text says how they're spoken,
-60 % got a direction from the model alone and 88 % with the carry; of the
-lines with no such cue, 4 % and 5 % got one anyway.
+that got none — forward, then back — but only across the speaker's own tag:
+*“Leave off that!” screamed the Queen. “You make me giddy.”* carries the
+scream; a second sentence (*said the Dormouse indignantly. However, he
+consented to go on.*) or a new tag for the next line (*…, she went on, “What
+have you been doing here?”*) stops it, and a line with a tag of its own after
+it (*“…,” she added aloud*) keeps none. An aside in brackets doesn't stop it.
+Measured on *Alice* chapters VII and VIII with the built-in Gemma
+(2026-10-16): of the lines whose text says how they're spoken, 71 % got a
+direction from the model alone and 95 % with the carry; of the lines with no
+such cue, the carry marked 1 of 117 the model hadn't — before this rule it
+marked 4.
 
 **Where the answer goes** — the fields a line's **Render overrides** edit on
 Render ([Studio → Can be directed](studio.md#can-be-directed)), shaped to the

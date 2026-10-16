@@ -6,15 +6,16 @@
 // What these pin: the answer's group is cast members only, each once, and the line goes to the one
 // it chose — else the first it named, else the narrator, else (no narrator) nowhere; a failed
 // question leaves its line, no model at all stops the step; Script marks every given line "group";
-// through the app, only lines Analyze left blank are asked about — never a line you set — a
-// chapter never analyzed is refused, and a re-analyze clears the record. The main pass is
+// through the app, the lines Analyze left blank are asked about, and the lines it named whose
+// narration says several speak them — kept when one person does, marked when several do — never a
+// line you set; a chapter never analyzed is refused, and a re-analyze clears the record. The main pass is
 // `pipeline.runFeature` (its measure stubbed to "can't say"); the question is
 // `group_lines.runFeature`.
 import { LLMNotConfiguredError } from "@delebash/llm-runner/llm";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { Line, flagGroups } from "../src/extraction/flags.js";
 import * as gl from "../src/extraction/group_lines.js";
-import { decide } from "../src/extraction/group_lines.js";
+import { decide, severalSpeak } from "../src/extraction/group_lines.js";
 import * as pipeline from "../src/extraction/pipeline.js";
 import { appClient, closeApps } from "./app_helpers.js";
 import { bookJson, scene } from "./jw_fixtures.js";
@@ -70,6 +71,25 @@ describe("who gets the line", () => {
     expect(await gl.askLine({ paragraph_idx: 0, text: "Hi." }, ["Hi."], kw)).toBeNull();
     vi.spyOn(gl, "runFeature").mockRejectedValueOnce(new LLMNotConfiguredError("no LLM provider registered"));
     await expect(gl.askLine({ paragraph_idx: 0, text: "Hi." }, ["Hi."], kw)).rejects.toBeInstanceOf(LLMNotConfiguredError);
+  });
+});
+
+describe("the narration that says several speak a line", () => {
+  const several = severalSpeak([{ name: "Hatter" }, { name: "March Hare" }, { name: "Alice" }]);
+
+  test("a plural word, or two of the cast joined by and, next to the line", () => {
+    expect(several("they cried out when they saw Alice coming.", "after")).toBe(true);
+    expect(several("they both cried.", "before")).toBe(true);
+    expect(several("Alice was beginning very angrily, but the Hatter and the March Hare went", "before")).toBe(true);
+    expect(several("said all together.", "after")).toBe(true);
+  });
+
+  test("one speaker's words, or a plural word away from the line, are not", () => {
+    expect(several("The Hatter opened his eyes very wide on hearing this; but all he said was", "before")).toBe(false);
+    expect(several("and went on so long that they had to pinch it to make it stop.", "after")).toBe(false);
+    // The pair opens the narration after "There's no such thing!" — it is the next line's.
+    expect(several("Alice was beginning very angrily, but the Hatter and the March Hare went", "after")).toBe(false);
+    expect(several("said the Hatter.", "after")).toBe(false);
   });
 });
 
@@ -181,6 +201,55 @@ test("a line you set is never asked about; with no narrator an unclear line stay
   const page = await spokenLines(c, sid);
   expect(page.lines.find((l) => l.text.includes("Who goes there")).speaker_id).toBeNull();
   expect(page.lines.find((l) => l.text.includes("Not again")).speaker_id).toBe(speakers["Mara Vance"]);
+});
+
+test("a line Analyze named: asked when its narration says several speak it — marked when several do, kept when one does", async () => {
+  const P5 = "They looked at Mara. “Sit down,” she said.";
+  const { c, sid, speakers } = await setup();
+  const text = [P1, P2, P3, P4, P5].join("\n\n");
+  // Analyze names Renn for "Not again!" and Mara for "Sit down"; "Who goes there?" stays blank.
+  vi.spyOn(pipeline, "measureFeature").mockResolvedValue(null);
+  vi.spyOn(pipeline, "runFeature").mockResolvedValue({
+    text: JSON.stringify([
+      { id: "D0", speaker: "renn", confidence: 0.9 },
+      { id: "D3", speaker: "mara_vance", confidence: 0.9 },
+    ]),
+    prompt_tokens: 0,
+    completion_tokens: 0,
+    model: "stub",
+  });
+  expect((await c.post(`/v1/scenes/${sid}/analyze`, { json: { text } })).status).toBe(200);
+  const calls = [];
+  vi.spyOn(gl, "runFeature").mockImplementation(async (_action, variables) => {
+    calls.push(variables.line);
+    const ans = variables.line.includes("Not again")
+      ? { group: ["mara_vance", "renn"], speaker: "mara_vance" }
+      : variables.line.includes("Sit down")
+        ? { group: ["mara_vance"], speaker: "mara_vance" }
+        : { group: [], speaker: "unknown" };
+    return { text: JSON.stringify({ reason: "…", ...ans }), prompt_tokens: 40, completion_tokens: 8, model: "gemma" };
+  });
+  const got = (await c.post(`/v1/scenes/${sid}/group-lines`)).json();
+  // "Again," said Renn — the book names one speaker — is never asked.
+  expect(calls).toEqual(["“Not again!”", "“Who goes there?”", "“Sit down,”"]);
+  expect(got).toMatchObject({ asked: 3, given: 1, kept: 1, to_narrator: 1, left: 0, failed: 0 });
+
+  const page = await spokenLines(c, sid);
+  const line = (words) => page.lines.find((l) => l.text.includes(words));
+  // Several say it: Analyze's Renn is one of them, so the line stays his — marked.
+  const together = line("Not again");
+  expect(together).toMatchObject({ speaker_id: speakers.Renn, source: "llm" });
+  expect(together.metadata.group_line).toEqual({ group: [speakers["Mara Vance"], speakers.Renn], model: "gemma" });
+  expect(page.flag_groups[together.flags[0]]).toMatchObject({ check: "group", speaker: speakers.Renn, other: speakers["Mara Vance"] });
+  // One says it: kept as Analyze gave it, unmarked.
+  const one = line("Sit down");
+  expect(one.speaker_id).toBe(speakers["Mara Vance"]);
+  expect(one.metadata.group_line).toBeUndefined();
+  expect(one.flags.map((f) => page.flag_groups[f].check)).not.toContain("group");
+
+  // Asked again: every line has its answer, so nothing is asked.
+  expect((await c.post(`/v1/scenes/${sid}/group-lines`)).json()).toMatchObject({ asked: 0 });
+  expect(calls.length).toBe(3);
 });
 
 test("a chapter never analyzed is refused; no model is a 501", async () => {

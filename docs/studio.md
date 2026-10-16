@@ -839,6 +839,15 @@ yet keeps such a line blank. Lines you set are never asked about, and a chapter
 Analyze hasn't read is refused: *Analyze this chapter first — only the lines
 Analyze leaves with no speaker are asked about.*
 
+Analyze doesn't always leave such a line blank — it may name one of the people
+who say it. So a line Analyze named is asked about too when the words right
+beside it say several people speak it: *they cried out*, *they both cried*,
+*together*, *in chorus*, or two of the cast joined by *and* (*the Hatter and the
+March Hare went "Sh! sh!"*). When the answer names several, the line keeps
+Analyze's speaker if they're one of them and is marked like the others; when it
+names one, the line is left as Analyze gave it and isn't asked again. A line the
+book tags with one name (*said Alice*) is never asked.
+
 Make the audiobook runs it; the server's API does too,
 `POST /v1/scenes/{id}/group-lines` ([AI features → The one-click audiobook's
 speaker steps](ai-features.md#the-one-click-audiobooks-speaker-steps)). Each line

@@ -326,7 +326,8 @@ BUILT:  the plan `docs/plans/2026-10-16-test-kit-and-round-4.md`; `npm run round
         about 0; IndexTTS's emotion vector moved nothing. The blind page with the top four:
         claude.ai/artifact/5ar9XVsVy3mPWBf2vH2tch.
 OPEN:   the user's ears on round 4's page, then the character-voice engine (the plan's Q2:
-        `book_voices.clone_model`); the one-click slices' acceptances on the GPU. The kit is built (3f9ca3ed; a pass per metric,
+        `book_voices.clone_model`); the user's ears on the one-click M4B (`data/one-click/`). The
+        slices' acceptances on gemma are done (RESEARCH §10.23–10.24). The kit is built (3f9ca3ed; a pass per metric,
         `--quality-seeds`, `--whisper-model`); slices 1–6 are merged (5 as 4923ab57).
 GO:     given 2026-10-16.
 
@@ -806,10 +807,12 @@ BUILT:  test book Alice ("your rec on 1-2 go"); its answer key, chapters VII–V
         one transaction never over yours (`POST /v1/scenes/{id}/direction`, its Lab twin
         `/v1/extraction/direction-text`), `npm run eval:direction` (RESEARCH §10.18; docs
         ai-features.md §Direction, studio.md §Can be directed, whats-new).
-OPEN:   slice 0 (the owed audio measurements) — go given 2026-10-11, the next entry; slice 2's
-        acceptance on the GPU — `npm run eval:direction` on gemma, Alice VII cue lines caught
-        ≥ 88 % with no-cue marks ≤ 5 %, and heard on Render; slices 3–6 under "do it all"
-        (2026-10-16). Slice 2's own, kept as built: a line whose speaker has no voice yet gets
+OPEN:   slice 0 (the owed audio measurements) — go given 2026-10-11, the next entry; slice 2
+        heard on Render (the user's ears — the M4B below). Slice 2's acceptance on gemma
+        2026-10-16 (RESEARCH §10.23–10.24): the carry over-marked (7 lines with no cue), so it now
+        crosses only the speaker's own tag (`direction.carriesAcross`); on one run's answers Alice
+        VII 68/73 caught, 4/77 no-cue marks — the bar's own 4/77, all the model's; both chapters
+        117/123. What still over-marks is the model's own (9/117). Slice 2's own, kept as built: a line whose speaker has no voice yet gets
         nothing (the run directs after the voices); a line you set for any model is kept whole;
         Frontier's thinking is its preset's. For later: Frontier sends every earlier chapter in
         full — a book longer than the model's context fails on its last chapters, and the error
@@ -825,7 +828,8 @@ OPEN:   slice 0 (the owed audio measurements) — go given 2026-10-11, the next 
         take that runs away, misses or adds words past the `take_check` settings (missed_share
         0.2, extra_share 0.2, min_words 2 — unmeasured starting points) is rendered again once
         with a new seed, then flagged with its reasons (`POST /v1/scenes/{id}/check_takes`).
-        Open: the three numbers set on real takes (GPU); Whisper's English normaliser (numbers,
+        The three numbers kept after 273 real takes (RESEARCH §10.24: 4 failed, 2 flagged — the
+        two shortest lines). Open: Whisper's English normaliser (numbers,
         spellings) and letter-by-letter Chinese/Japanese, each a bigger port; a per-voice runaway
         bound; Render showing the findings (slice 5's mock); a paused re-render job resumed after
         a later check adds a second take; `diff` in the packaged app unverified (no installer
@@ -837,7 +841,12 @@ OPEN:   slice 0 (the owed audio measurements) — go given 2026-10-11, the next 
         `speaker_identification` → `speaker_discovery` in the renderer. Script's `group` mark:
         tag "Said together", question "Said together by ‹X› and ‹Y› — given to ‹X›. Is that
         right?" / "No one could be named — given to ‹narrator›. Who says it?" (6f3ad045, the
-        slice's proposal under "do it all" — for the user's look). Open: Discover's page still
+        slice's proposal under "do it all" — for the user's look). Gemma's acceptance 2026-10-16
+        (RESEARCH §10.24): Analyze named one of a group for most of the five, so the step marked
+        one; now a line Analyze named is asked too when the words right beside it say several
+        speak it (`group_lines.severalSpeak`), marked when the answer names several, kept when it
+        names one — then `eval:speakers` 235/235, 5/5 to the key's group, 5/5 marked, no other line
+        marked, merge clean. Open: Discover's page still
         merges names its own way (the Queen shows twice there); a name Discover counted a line
         for that the book never gives (the Knave) still becomes a speaker; `eval:speakers` imports
         a temporary book on the server it's pointed at and deletes it after.
@@ -858,14 +867,17 @@ OPEN:   slice 0 (the owed audio measurements) — go given 2026-10-11, the next 
         paused and resumed, the frontier price asked once, what stops a start), the card's mount
         and its words (`BookRunCard.test.js`, `bookRun.test.js`). RESEARCH §10.21; docs studio.md
         (Make the audiobook), ai-features, personas, settings-reference, whats-new.
-        Open, slice 5: its acceptance on the GPU — Alice VII from one press to an M4B, the time
-        and the token count written down, a restart resumed; the user's look at the screen and
+        Slice 5's acceptance on gemma 2026-10-16 (RESEARCH §10.24): Alice VII from one press to an
+        M4B in 16 min 21 s, 27,943 tokens in / 6,782 out, nothing failed; a run killed mid-check
+        paused on the restart and Resume finished it; the M4B is `data/one-click/Alice VII
+        (one-click test).m4b`. Open, slice 5: the user's look at the screen and
         its words — its place (Overview, across both columns), "▶ Make audiobook", the steps'
         names, the progress and Status words, the price question, "What to check"; `redo` has no
         button; a removed speaker comes back on a re-run while the scans name them (Ignore keeps
         a name out); the run doesn't hold off Script's own Analyze of the same chapter; its price
         estimate is about 4 characters a token (`book_run.chars_per_token`) — the exact way would
-        be each provider's token count, which sends the book to count it (for the user's look);
+        be each provider's token count, which sends the book to count it (for the user's look; on
+        Alice VII it said 14,569 in / 19,760 out against 27,943 / 6,782 — RESEARCH §10.24);
         the M4B is held in memory like Export's, gone after its save or a restart. Done since:
         the kit's pricing seeds the 5.x models (kit 90aeada, RESEARCH §10.2's prices).
 GO:     given 2026-10-10 ("your rec on all"); measuring waits: "wait i want to discuss a little more".
@@ -909,9 +921,10 @@ BUILT:  the plan's §11 and §12 carry these answers. 6 and 7 — 2026-10-16, th
         asks again. RESEARCH §10.21.
 OPEN:   slice 0: direction on/off and the frozen Hatter on the engines above, a blind listening page.
         7: the Check column's words for the `group` mark (its tag and question, built 6f3ad045) —
-        the user's look, with the run's screen (slice 5); slice 4's gemma acceptance, `npm run
-        eval:speakers`, once the card is free.
-        Slice 3: its acceptance on the GPU (Alice VII–VIII, one call per step, the user listens);
+        the user's look, with the run's screen (slice 5). Slice 4's gemma acceptance passed
+        2026-10-16 (RESEARCH §10.24).
+        Slice 3: the user listens — the run made Alice VII's four voices from the book (Describe 4
+        calls, Design 27 s, RESEARCH §10.24), heard in the M4B;
         the user's word on what it chose (RESEARCH §10.20): the match pool (personas playing no one
         in the book), the persona note's words. A second book's narrator cast by name with the
         first's designed one: fixed 2026-10-16 — the designed narrator's persona is "Narrator ·
