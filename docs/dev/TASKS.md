@@ -307,6 +307,23 @@ OPEN:   the jv.6 release — the user's command (the auto-mode check refused it)
         the one-click plan.
 GO:     given 2026-10-15 ("your rec go").
 
+### The test kit and round 4, then the one-click slices — "do it all" (decided 2026-10-16)
+STATE:  DECIDED 2026-10-16 — shown: "Can I build the test kit next, following NVIDIA NeMo's own
+        scoring recipe? That recipe is in Python. The kit would be a separate tool, never part of
+        the app, but by your rule the language is your call. Rec: yes, in Python." The user:
+        "your rec do it all stop stoping and finish it all go!". Then, shown that four round-4
+        candidates (IndexTTS2, Higgs Audio v3 TTS, Fish Audio S2 Pro, BreezeTTS 2) need their
+        licences accepted before download, "accepting a licence is your call, not mine", the
+        user: "you have approval to do it all including accepting licenses".
+WHY:    steps 2–4 of the 2026-10-11 order (TASKS "The order of work after the research sweep"):
+        the kit keeps round 4 off the user's ears alone; the one-click run needs round 4's winner.
+NOT:    a combined score (NOT STANDARD, RESEARCH §10.11); NeMo itself (Linux only).
+BUILT:  the plan `docs/plans/2026-10-16-test-kit-and-round-4.md`; `npm run round4:render`; the
+        four licences accepted through the app 2026-10-16 14:48 UTC and their 8-bit models
+        downloading; one-click slice 1 (TASKS "Frontier models get their own recipe").
+OPEN:   the kit (tools/take-check); round 4's renders, scores and blind page; one-click slices 2–6.
+GO:     given 2026-10-16.
+
 ### The run's last questions, answered (decided 2026-10-16)
 STATE:  DECIDED 2026-10-16 — shown, each with its rec: "1. Slice 4's proof test is NOT STANDARD.
         It keeps what the seven engines sent audio.cpp in our own JSON file. It allows only the
