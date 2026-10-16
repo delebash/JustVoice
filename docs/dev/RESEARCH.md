@@ -2201,21 +2201,27 @@ steps, recipes and slices, and §13 what the research found that bears on it.
   26 B. The two routes differ only in the examples; piece size, thinking (off on both), the cast
   list and the deterministic helpers are shared. — *code, run 2026-10-10* (`modelSizeB` on the
   ids, no database) · `docs/ai-features.md` §Speaker attribution.
-- Not built, and listed in IDEAS: a direction step ("LLM emotion-tag insertion"), the
-  persona-generation loop (description → design → cast), and a take check (transcribe, compare,
-  re-render) — `docs/dev/IDEAS.md:309`. — *code, 2026-10-10*.
+- Not built, and listed in IDEAS: a direction step ("LLM emotion-tag insertion") and a take
+  check (transcribe, compare, re-render) — `docs/dev/IDEAS.md:309`. — *code, 2026-10-10* (was:
+  the persona-generation loop (description → design → cast) listed with them — until 2026-10-16,
+  built as the voices step, §10.18).
 - Where each step from a book file to an audiobook lives, with its route and what it writes:
   `docs/dev/code-map.md` §7a. The facts a one-click run turns on: — *code, 2026-10-11*, the ✓
   rows of §7a re-read by hand, the rest *agent*.
   - A designed voice can already be frozen into a clone: an audition (`POST /v1/voices/preview`,
     held 10 minutes) saved with `POST /v1/voices/preview/:preview_id/save` becomes the voice's
-    `ref.wav` (`api/voice_preview_api.js:755`, "THE freeze bridge"). `POST /v1/voices/design`
-    alone keeps no clip (`api/voices_api.js:355`).
+    `ref.wav` ("THE freeze bridge"). Since 2026-10-16 both routes' work is a function the
+    voices step calls too: `previewVoice` and `savePreview` (`api/voice_preview_api.js:406, 438`;
+    the bridge itself `:519`). `POST /v1/voices/design` alone keeps no clip
+    (`api/voices_api.js:355`).
   - A line's direction is `blocks.direction`; its emotion, tag and knobs per model are
     `blocks.metadata_json.line_models` (`line_takes.js:60`), set one line at a time with `PATCH
     /v1/blocks/:block_id` (`api/projects_api.js:1000`). Analyze never writes them.
-  - Smart-assign returns matches and writes nothing; the renderer casts each one
-    (`api/smart_assign_api.js:112`, `src/components/StudioCast.vue:481`).
+  - Smart-assign casts its matches on the server when asked (`apply: true`;
+    `applyAssignments`, `api/smart_assign_api.js:155`, never over a narrator's persona, and with
+    `onlyUncast` never over any); Cast's ✨ Smart-assign asks (`src/components/StudioCast.vue:505`),
+    ＋ New persona — matched to voices — doesn't. — *code, 2026-10-16* (was: "returns matches and
+    writes nothing; the renderer casts each one" — until 2026-10-16, slice 3).
   - Only render jobs (persistent, resumed after a restart) and export jobs (in memory) run on the
     server; Analyze, Discover and the chapter run are driven from the window
     (`src/services/chapterRun.js`), and a window closed without keep-running stops them.
@@ -3809,6 +3815,65 @@ IndexTTS2.5, the same clip, seed and lines sent straight to the runtime both way
   segments, turns or words (`session.cpp:589`) — so no field has the words without them, and
   audio.cpp's own page shows `text` as it is (`+page.svelte`, `nextText = result.text`). Not
   fixed here: it is the model's (or the port's) output.
+
+### 10.18 Slice 3 — voices for the cast and the narrator, built (2026-10-16)
+
+The one-click plan's slice 3 (§10 item 3; Q1–Q3), built under "your rec do it all stop stoping and
+finish it all go!" (TASKS "The test kit and round 4, then the one-click slices"). All *code,
+2026-10-16*; nothing measured on the graphics card yet (it was busy with round 4).
+
+- **Three steps, each a function and a route** — `book_voices/index.js` `describeVoices` :165,
+  `makeVoices` :288, `matchRest` :387; `POST /v1/projects/:id/book-voices/describe | design |
+  match` (`api/book_voices_api.js:104, 111, 118`). Describe writes nothing; design writes voices
+  (`ref.wav`), personas and casts; match writes casts. The one-click run (slice 5) holds step 1's
+  descriptions between the steps — nothing stores them in the book.
+- **Who:** every speaker but the narrator with at least `book_voices.min_lines` (3) lines in the
+  whole book (`speakerLineCounts`), most lines first, and the narrator (the role). Left out: a
+  speaker with a persona (`cast`) and one whose name is exactly one persona's (`persona_named`,
+  cast by step 3 as `ensureSpeaker` casts a new speaker) — `bookTargets` :134.
+- **The recipes** are three rows of the feature `book_voices` (`book_voices/prompts.js`; card
+  "Voices from the book", group Voices, preset `p_extract` each, `json_mode` on, in
+  `PREFER_LOCAL_FEATURES`). Auto reads the **Whole cast** row's preset (`presetRecipe`), as
+  attribution's Auto reads Direct's; the describe route can force one. Local: one call per
+  speaker with the paragraphs their lines are in, theirs marked ⟦ ⟧, earliest first, up to
+  `speaker_words` (2000) words (`text.speakerPassages`), and one for the narrator with the opening's
+  `narrator_words` (2000) (`bookOpening`). Frontier: one call, the whole book, each spoken line
+  after `[Name]` (`bookManuscript`), answers keyed by speaker id (a name key is read too). The two
+  word budgets are unmeasured defaults.
+- **The prompts** ask for §10.5's shape (one or two sentences: gender, age, pitch, pace, manner)
+  plus a gender field, **in English** (Qwen3-TTS VoiceDesign's note: "Describe the voice in plain
+  English", `engines/capability_details.js:413`) and **at rest** (the plan's §13: the clip's
+  delivery carries into every line). Their example voices are invented, not Alice's, so the Alice
+  acceptance isn't primed with the Hatter's description.
+- **The audition** speaks one of the speaker's own lines, marks off (`text.auditionLine`): of
+  at least half `audition_words` (25), the nearest 25 among lines without "!", else among all; the
+  narrator's a narration line; none that long → the book language's stock line
+  (`persona_render.stockLine`). Slice 0's Hatter spoke his own line too — "Ah! that accounts for
+  it. He won't stand beating. Now, if you only kept on good terms with him, he'd do almost anything
+  you liked with the clock." (his VoxCPM2 copies' `transcript`, the dev data folder, read
+  2026-10-16). "No !" as calm is a text rule; whether it picks calm takes is for the ear.
+- **Design → freeze → persona:** `previewVoice` on `design_model` (`qwen3-vd`) with the
+  description as the instruct, then `savePreview` at once with `model: clone_model` (`voxcpm2`) —
+  the take becomes a VoxCPM2 voice's `ref.wav` with the audition as `transcript` and the
+  description as `design_prompt`, its gender from the answer; then `createPersona`
+  (`api/personas_api.js:194`), named after the speaker, language the book's, note
+  "<description>\n\nWritten from the book by <model>." (`personaNote`); then the speaker cast only
+  while uncast. A name two older personas share is refused before any render; a voice whose
+  persona fails is deleted. The step refuses a clone model that doesn't clone or take direction
+  (words or tags — `voice_model.directedBy`; Kokoro and Qwen3-TTS Base refused, tested) and a
+  design or clone model that doesn't speak the book's language.
+- **Batched by kind** inside the steps: step 1 makes only language-model calls, step 2 renders
+  only on the design model (the save renders nothing), so a book swaps models once between them.
+- **The rest (step 3)** are matched by Smart-assign over the personas whose voice speaks the
+  book's language and that **play no one in this book yet** — chosen in this slice so a minor
+  speaker isn't given a main speaker's new persona; Cast's own ✨ pool is the ticked models
+  instead. Genders come from `listVoices` (a stored or built-in voice's own); Cast's renderer rule
+  also reads a first name and your preset overrides, which the server has no copy of.
+- **A consequence of naming personas after speakers** (Cast's ＋ New persona rule): a second book's
+  "Narrator" speaker is cast by name with the first book's "Narrator" persona when it is made
+  (`ensureSpeaker`), so the voices step leaves it alone and its voice isn't drawn from the second
+  book's genre. Not decided.
+- Tests: `server/tests/book_voices.test.js` (15, the model and the speech engine faked).
 
 ---
 

@@ -35,6 +35,7 @@ import { ValueError } from "@delebash/llm-runner/platform/py";
 // ── The routers (registered below in app.py's order) ──
 import { router as activeTasksRouter } from "./api/active_tasks_api.js";
 import { router as alignRouter } from "./api/align_api.js";
+import { router as bookVoicesRouter } from "./api/book_voices_api.js";
 import { router as bulkDeleteRouter } from "./api/bulk_delete_api.js";
 import { router as cacheRouter } from "./api/cache_api.js";
 import { router as captureReadinessRouter } from "./api/capture_readiness_api.js";
@@ -416,6 +417,7 @@ export async function createApp(dataDir = null) {
   app.route("/", extractionRouter());
   app.route("/", refineLabRouter());
   app.route("/", smartAssignRouter());
+  app.route("/", bookVoicesRouter()); // the one-click run's voices step (slice 3)
 
   // MCP server — justvoice.speak / list_voices / list_personas for local AI agents, at /mcp
   // (Streamable HTTP), before the root static catch-all. A failed mount must still boot the app.

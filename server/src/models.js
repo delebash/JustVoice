@@ -522,6 +522,24 @@ export const ExtractionSettings = T.Object({
   second_look_after: opt(T.Integer({ minimum: 0 }), 1500), // the start of the chapter after
 });
 
+/**
+ * Voices from the book — the one-click run's step 5 (the one-click plan's Q1 and Q2, decided
+ * 2026-10-11; slice 3, 2026-10-16). A speaker with at least `min_lines` lines in the whole book gets
+ * a voice made from the book; the rest are matched from the library. Each voice is designed once on
+ * `design_model` and its audition kept as the clip of a voice on `clone_model`, which must clone and
+ * still take direction — VoxCPM2, the pick on paper until round 4 settles it. The Local recipe reads
+ * up to `speaker_words` words of a speaker's paragraphs and `narrator_words` of the book's opening;
+ * an audition speaks the speaker's calm line nearest `audition_words` words.
+ */
+export const BookVoicesSettings = T.Object({
+  min_lines: opt(T.Integer({ minimum: 1 }), 3),
+  design_model: opt(T.String(), "qwen3-vd"),
+  clone_model: opt(T.String(), "voxcpm2"),
+  speaker_words: opt(T.Integer({ minimum: 50 }), 2000),
+  narrator_words: opt(T.Integer({ minimum: 50 }), 2000),
+  audition_words: opt(T.Integer({ minimum: 2 }), 25),
+});
+
 /** First-run onboarding + cross-cutting UI preferences. */
 export const AppSettings = T.Object({
   primary_use_case: opt(UseCase, "unset"),
@@ -543,6 +561,7 @@ export const Settings = T.Object({
   captures: optModel(CapturesSettings),
   mcp: optModel(MCPSettings),
   extraction: optModel(ExtractionSettings),
+  book_voices: optModel(BookVoicesSettings),
   app: optModel(AppSettings),
 });
 
@@ -561,6 +580,7 @@ export const SettingsPatch = T.Object({
   captures: opt(nullable(CapturesSettings), null),
   mcp: opt(nullable(MCPSettings), null),
   extraction: opt(nullable(ExtractionSettings), null),
+  book_voices: opt(nullable(BookVoicesSettings), null),
   app: opt(nullable(AppSettings), null),
 });
 

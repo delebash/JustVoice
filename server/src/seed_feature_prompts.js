@@ -15,6 +15,7 @@
 // extraction/second_look, refinement) — one source, no text forks. Those modules are other
 // slices' ports: this file loads once they exist, under exactly these export names.
 
+import { BOOK_VOICES_PROMPTS } from "./book_voices/prompts.js";
 import { IDENTIFY_SYSTEM } from "./extraction/identify.js";
 import { DIRECT_SYSTEM, GUIDED_SYSTEM } from "./extraction/prompts.js";
 import { SYSTEM as SECOND_LOOK_SYSTEM, USER_TEMPLATE as SECOND_LOOK_USER } from "./extraction/second_look.js";
@@ -226,4 +227,6 @@ Return only the JSON object.`,
 Return only the JSON object.`,
     json_mode: true,
   },
+  // ── voices from the book — the one-click run's step 5, its two recipes (slice 3) ──
+  ...BOOK_VOICES_PROMPTS,
 };

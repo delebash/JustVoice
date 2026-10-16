@@ -11,8 +11,8 @@ const e = (key, label, hint, group) => FeatureCatalogEntry({ key, label, hint, g
 // Features that prefer the built-in llama.cpp runner when nothing more specific is
 // configured (privacy-sensitive, accuracy-critical work). Passed to
 // installLlm({preferLocalFeatures}). speaker_discovery reads the same manuscript text
-// attribution does and keeps the preference with it.
-export const PREFER_LOCAL_FEATURES = new Set(["speaker_attribution", "speaker_discovery", "speaker_second_look"]);
+// attribution does and keeps the preference with it; so does book_voices (2026-10-16).
+export const PREFER_LOCAL_FEATURES = new Set(["speaker_attribution", "speaker_discovery", "speaker_second_look", "book_voices"]);
 
 export const FEATURE_CATALOG = [
   // ANALYSIS order (user QC 2026-08-06): the plain single cards FIRST, the SPEAKER
@@ -45,4 +45,11 @@ export const FEATURE_CATALOG = [
   ),
   e("persona_rewrite", "Persona rewrite", "Rewrite text in a persona's voice.", "Editing"),
   e("voice_gender", "Voice gender guess", "Label fetched voices the dictionary doesn't know.", "Voices"),
+  // The one-click run's step 5 (slice 3): its rows are the two recipes (book_voices/prompts.js).
+  e(
+    "book_voices",
+    "Voices from the book",
+    "Describes each main speaker's voice from how the book shows them, and the narrator's from the book's genre and tone.",
+    "Voices",
+  ),
 ];

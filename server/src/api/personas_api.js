@@ -185,6 +185,33 @@ function _checkedDelivery(sent) {
   return delivery;
 }
 
+/**
+ * Make a persona → its view (`PersonaView`), async. POST /v1/personas's work, and the one-click
+ * run's (a persona for each voice made from the book). `body` is a CreatePersonaRequest, as
+ * `construct` makes one. Refuses a blank or taken name (400 / 409), a voice that doesn't exist
+ * (400), a delivery a model refuses (400) and a language the voice's model can't speak (400).
+ */
+export async function createPersona(body) {
+  const voiceId = await _checkedVoice(body.voice_id);
+  const st = getState();
+  // Python's argument order: the name, then the delivery, then the language.
+  const name = _personaName(body.name);
+  const delivery = _checkedDelivery(body.default_delivery);
+  const language = await _checkedLanguage(voiceId, body.language);
+  const created = st.personas.create(name, {
+    voice_id: voiceId,
+    default_delivery: delivery,
+    voice_instruct: body.voice_instruct,
+    lexicon_id: body.lexicon_id,
+    llm_rewrite_enabled: body.llm_rewrite_enabled,
+    llm_model: body.llm_model,
+    language,
+    note: body.note,
+    effects_chain: body.effects_chain,
+  });
+  return _view(st, created);
+}
+
 /** POST /v1/personas/preview-candidate — hear a voice not kept yet (a clip, a description or a
  * blend, as the persona page's makers hold it) spoken as this persona (decided 2026-10-04:
  * "design the voice you want and test it all in one page"). */
@@ -285,27 +312,9 @@ export function router() {
     return c.json(construct(StockLineResponse, { language, text: personaRender.stockLine(language) }));
   });
 
-  app.post("/v1/personas", input({ body: CreatePersonaRequest, pyFloats: true }), async (c) => {
-    const body = c.req.valid("json");
-    const voiceId = await _checkedVoice(body.voice_id);
-    const st = getState();
-    // Python's argument order: the name, then the delivery, then the language.
-    const name = _personaName(body.name);
-    const delivery = _checkedDelivery(body.default_delivery);
-    const language = await _checkedLanguage(voiceId, body.language);
-    const created = st.personas.create(name, {
-      voice_id: voiceId,
-      default_delivery: delivery,
-      voice_instruct: body.voice_instruct,
-      lexicon_id: body.lexicon_id,
-      llm_rewrite_enabled: body.llm_rewrite_enabled,
-      llm_model: body.llm_model,
-      language,
-      note: body.note,
-      effects_chain: body.effects_chain,
-    });
-    return c.json(await _view(st, created), 201);
-  });
+  app.post("/v1/personas", input({ body: CreatePersonaRequest, pyFloats: true }), async (c) =>
+    c.json(await createPersona(c.req.valid("json")), 201),
+  );
 
   app.get("/v1/personas/:id", async (c) => {
     const st = getState();

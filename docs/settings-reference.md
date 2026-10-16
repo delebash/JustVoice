@@ -1,6 +1,6 @@
 # Settings reference
 
-The Settings model has fourteen sections. The ones with their own doc pages are
+The Settings model has fifteen sections. The ones with their own doc pages are
 linked; the rest are summarized here at the level the UI exposes them. (Renderer
 preferences — window/layout state — live separately under `/v1/prefs` and never
 need your attention; this page is the operator config under `/v1/settings`.)
@@ -19,6 +19,7 @@ need your attention; this page is the operator config under `/v1/settings`.)
 | `generation` | Generation defaults incl. auto-chunking; `pause_between_lines_ms` — the silence between a chapter's lines in Render, export and ACX QC (600); `pause_at_scene_break_ms` — the silence after the last line of one of the book's scenes inside a chapter, used there instead (2000); `pause_within_paragraph_ms` — the silence between two lines cut from one paragraph, used there instead (250) — see [Engines → Long text](engines.md#long-text-cut-into-pieces), [Studio → Render](studio.md#render); and `default_voice_language` — the language a blend speaks when the voices it mixes disagree (`en-US`), see [Personas → New blend](personas.md#new-blend). |
 | `captures` | Dictation: push-to-talk chord, refinement, the speech-recognition model (`stt_model`) and capture language — see [Dictation](dictation.md). |
 | `mcp` | One field: the default voice for agent `speak` calls — see [MCP server](mcp-server.md). |
+| `book_voices` | The one-click audiobook's voices step: `min_lines` (a speaker with at least this many lines in the book gets a voice made from the book; 3), `design_model` (`qwen3-vd`) and `clone_model` (`voxcpm2` — it must clone and still take direction), the Local recipe's reading in words (`speaker_words`, `narrator_words`; 2000 each) and `audition_words` (25) — see [AI features → Voices from the book](ai-features.md#voices-from-the-book). |
 | `app` | `primary_use_case` (the Welcome pick; re-pick here) and app-level toggles. |
 
 Sync's settings — this computer's name, the cloud folder, how often it syncs, letting your other

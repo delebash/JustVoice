@@ -2,6 +2,15 @@
 
 ## v0.1.0
 
+- **Voices from the book (2026-10-16)** — the one-click audiobook's voices step, not on a screen
+  yet: your language model describes each main speaker's voice from how the book shows them and the
+  narrator's from the book's genre and tone; each is designed once on Qwen3-TTS VoiceDesign, its take
+  kept as a VoxCPM2 voice and made a persona named after its speaker, with the description and the
+  model that wrote it as its note; everyone else is matched from your library. Three routes, one per
+  step; a speaker you cast is never recast. Its prompts are on AI Settings → Routing by feature, a
+  Local and a Frontier recipe ([AI features → Voices from the book](ai-features.md#voices-from-the-book),
+  [Personas → Personas made from the book](personas.md#personas-made-from-the-book)). Smart-assign's
+  matches are now cast by the server — nothing changes on Cast
 - **A cloud model gets the big-model route (2026-10-16)** — every engine preset has a **Recipe**:
   Local for a model on this machine, Frontier for a cloud account, or set by hand on a feature's
   chip. Speaker attribution's Auto now gives a Frontier model **Direct**; it used to read a cloud

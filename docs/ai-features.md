@@ -1,6 +1,6 @@
 # AI features — routing, prompts & the AI Settings area
 
-JustVoice's text-AI features (speaker attribution, smart assign, persona
+JustVoice's text-AI features (speaker attribution, smart assign, voices from the book, persona
 compose/rewrite, show notes, dictation cleanup, voice-gender guess) all run on the **shared AI stack** — the same providers, model catalog,
 routing and prompt system as the rest of the family. The surface for all of it
 is the **AI Settings** page in the sidebar.
@@ -14,6 +14,7 @@ is the **AI Settings** page in the sidebar.
 | **Speaker attribution** | Extracts who says what and what they say; its Find new speakers row lists the people a chapter names | Studio Script tab → Analyze · Studio Discover → Scan |
 | **Speaker attribution · second look** | Asks once more about a spoken line Analyze left with no speaker, with the chapters either side; what it finds is marked to check | Runs inside Analyze, only on lines left blank — [Studio → The second look](studio.md#the-second-look) |
 | **Smart-assign** | Matches each speaker in a book to a persona | Studio Cast tab → Smart-assign |
+| **Voices from the book** | Describes the voice each main speaker should have from how the book shows them, and the narrator's from the book's genre and tone — the one-click audiobook's voices step | Not on a screen yet: three routes, one per step — [Voices from the book](#voices-from-the-book) |
 | **Show notes** | Chapter summaries for podcast descriptions | Projects → Show notes |
 | **Dictation cleanup** | Raw speech → clean text before paste | Captures — runs after a dictation when auto-refine is on |
 | **Voice gender guess** | Labels fetched voices the built-in dictionary doesn't know | Voices → ✨ Guess unknown genders (only when you click) |
@@ -33,7 +34,8 @@ model. Left on **From the provider** (the default), a provider on this
 machine (the built-in engine, Ollama, LM Studio) is Local and a cloud account
 (Claude, GPT, Gemini …) is Frontier. Change it on a feature's chip, beside
 **Thinking** (since 2026-10-16). Today the recipe picks Speaker attribution's
-route ([Auto](#speaker-attribution--two-routes-and-the-auto-row), below); the one-click audiobook's steps
+route ([Auto](#speaker-attribution--two-routes-and-the-auto-row), below) and which of
+[Voices from the book](#voices-from-the-book)'s rows run; the one-click audiobook's other steps
 will each have both.
 
 Until a model is picked, features answer with a "run the LLM engine setup"
@@ -201,6 +203,12 @@ and each AI feature reads the half it needs:
 - **Smart-assign** matches the book's speakers (name, Also called, Pronouns, Who they are)
   to your personas (name, their voice's gender, language, and the note as
   `tone`), and applies its matches straight away — change any of them on Cast.
+  The server casts them (since 2026-10-16: `POST /v1/llm/smart-assign` with
+  `apply: true`), the same cast the one-click audiobook's voices step uses.
+- **Voices from the book** reads a speaker's lines and the narration around
+  them, with their name, Also called, Pronouns and Who they are — or, for the
+  narrator, the book's opening — and writes how the voice should sound
+  ([below](#voices-from-the-book)).
 
 **Discover no longer sends your library to the model.** The Find new speakers
 prompt (`speaker_attribution.identify`) used to list "people in the library,
@@ -455,6 +463,73 @@ thinking and in half a minute with it. That's why everything else ships
 off: enable it deliberately, on a feature where you've tested that it
 earns its time — as speaker attribution was — and lower the effort level
 if you want the reasoning pass shorter.
+
+## Voices from the book
+
+The one-click audiobook's voices step (since 2026-10-16) gives each main
+speaker a voice made from how the book shows them, the narrator one made from
+the book's genre and tone, and everyone else a persona from your library. It
+isn't on a screen yet — the one-click run and its page come next; until then
+it is three routes, one per step, run in this order. Each answers what it did,
+what it left alone and what failed, with the model, the recipe, the tokens
+and the seconds.
+
+1. **Describe** — `POST /v1/projects/{id}/book-voices/describe`. Every speaker
+   with at least **3** lines in the whole book, and the narrator, gets a voice
+   description: one or two sentences, in English, giving gender, age, pitch,
+   pace and manner — the voice *at rest*, because it is recorded once and
+   every line is spoken from that recording. Nothing is written yet.
+2. **Design** — `POST /v1/projects/{id}/book-voices/design`, with step 1's
+   descriptions. Each voice is designed once on **Qwen3-TTS VoiceDesign**,
+   speaking one of the speaker's own lines — the calm one (no *!*) nearest 25
+   words; the narrator's, a line of narration; a stock sentence when a speaker
+   has none half that long. That take is kept at once as the clip of a
+   **VoxCPM2** voice, with the description as the voice's description — what
+   **📌 Keep take N** does on a persona's [New design](personas.md#new-design).
+   A persona named after the speaker is made with that voice, its note the
+   description and the model that wrote it
+   ([Personas → Personas made from the book](personas.md#personas-made-from-the-book)),
+   and the speaker is cast with it.
+3. **Match** — `POST /v1/projects/{id}/book-voices/match`. Every speaker
+   still without a persona: one whose name is exactly a persona's in your
+   library is cast with it, as every new speaker is; the rest go to
+   Smart-assign with your personas that speak the book's language and play
+   no one in this book yet, and its matches are cast.
+
+**Nothing you made is replaced.** A speaker who already has a persona is left
+out of every step, and a speaker is cast only while it has none. A speaker
+whose name is exactly a persona's isn't described or designed — step 3 casts
+it with that persona. Steps 2 and 3 need the book's language (Overview); the
+voices are made to speak it.
+
+**Two recipes.** Under the **VOICES FROM THE BOOK** heading in AI Settings →
+Routing by feature there are three rows, each with its own prompt, preset and
+Lab:
+
+- **One speaker (Local)** — one call for each speaker: the paragraphs their
+  lines are in, earliest first, their own lines marked ⟦ ⟧.
+- **Narrator (Local)** — one call with the book's opening.
+- **Whole cast (Frontier)** — one call for every speaker and the narrator,
+  with the whole book, each spoken line after its speaker's name.
+
+Which runs follows the **Whole cast** row's preset: when its
+[Recipe](#how-routing-works) is **Frontier** (a cloud model, unless you set it
+otherwise) that one call runs; otherwise the two Local rows. A call to the
+describe route can name one instead (`{"recipe": "local"}` or
+`"frontier"`) — for comparing the two. All three ship on **Structured
+extraction**, thinking off.
+
+**Its settings** have no control in the app yet; they are set through
+`PATCH /v1/settings` under `book_voices`:
+
+| Setting | Default | What it does |
+|---|---|---|
+| `min_lines` | 3 | A speaker with at least this many lines in the whole book gets a voice made from the book; the rest are matched from your library. |
+| `design_model` | `qwen3-vd` | The model each voice is designed on (any model that can make a voice from words — Qwen3-TTS VoiceDesign, VoxCPM2 …). |
+| `clone_model` | `voxcpm2` | The model the designed take is kept on. It must clone and still take direction, written or by tags; the design step refuses one that can't — Qwen3-TTS Base, for one, drops direction. |
+| `speaker_words` | 2000 | How much of a speaker's paragraphs the Local recipe reads, in words. |
+| `narrator_words` | 2000 | How much of the book's opening the Local recipe reads for the narrator, in words. |
+| `audition_words` | 25 | The length, in words, of the line a voice's audition speaks. |
 
 ## Show notes (podcast projects)
 

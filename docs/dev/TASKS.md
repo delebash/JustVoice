@@ -817,8 +817,15 @@ STATE:  DECIDED 2026-10-11 — the plan's §11, as shown after a rethink "for 't
 WHY:    an automated run where the AI decides and the user reviews; the comparison decides what
         to change and whether to recommend a frontier model.
 NOT:    asking the user to pick the narrator at the start; shipping FireRedTTS3 before a ruling.
-BUILT:  the plan's §11 and §12 carry these answers.
+BUILT:  the plan's §11 and §12 carry these answers. 1 and 3 built 2026-10-16 as slice 3 ("your rec do
+        it all stop stoping and finish it all go!"): `book_voices/index.js`, three routes
+        (describe · design · match), the Local and Frontier rows of "Voices from the book",
+        settings `book_voices` (min_lines 3; Q2's engine is `clone_model`, voxcpm2, until round 4);
+        Smart-assign's matches cast on the server. RESEARCH §10.18; docs ai-features, personas.
 OPEN:   slice 0: direction on/off and the frozen Hatter on the engines above, a blind listening page.
+        Slice 3: its acceptance on the GPU (Alice VII–VIII, one call per step, the user listens);
+        the user's word on what it chose (RESEARCH §10.18): the match pool (personas playing no one
+        in the book), the persona note's words, a second book's "Narrator" cast by name.
 GO:     given 2026-10-11 ("yes your rec on all").
 
 ### The order of work after the research sweep (decided 2026-10-11)

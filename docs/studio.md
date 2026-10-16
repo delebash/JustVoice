@@ -810,6 +810,14 @@ Select a speaker, then click a persona. One persona can play many speakers
 speaker it plays. Cast never changes a voice: pace, pitch, gain, delivery and
 effects all belong to the persona, on the [Personas](personas.md) page.
 
+The one-click audiobook will cast a book for you (its voices step, since
+2026-10-16, not on a screen yet — [AI features → Voices from the
+book](ai-features.md#voices-from-the-book)): each speaker with at least three lines and the
+narrator get a persona of their own, made from how the book shows them, and the
+rest a persona from your library. They arrive here as ordinary casts — review
+them on Cast and [Personas → Personas made from the book](personas.md#personas-made-from-the-book).
+A speaker you cast is never recast by it.
+
 ### The speakers (left)
 
 **Each card says where the speaker came from** (since 2026-10-06): **From the
@@ -858,7 +866,8 @@ has none); **All** shows everyone again. When everyone is cast it says
   they are*, whole) and your personas whose voice is on a ticked model (name, voice gender, language, note) to your language model,
   which proposes a persona for each speaker. The narrator goes too while it has
   no persona; a narrator's persona is never replaced (since 2026-10-13 — before,
-  the narrator was left out). The matches apply at once. Change
+  the narrator was left out). The matches apply at once — the server casts
+  them (since 2026-10-16). Change
   any you disagree with by clicking another persona. It needs a language model;
   without one it says so: *Smart-assign needs a language model — set one in AI
   Settings.*

@@ -718,10 +718,36 @@ called*, *Pronouns*, *Who they are*) — the narrator too while it has no person
 a narrator's persona is never replaced (since 2026-10-13; before, the narrator
 was left out) — and your personas (name, the voice's gender as every
 page shows it, the language the persona speaks, note) to your language model, which proposes a persona for each speaker. The matches
-apply straight away. It is a starting point, so listen to each assignment before
+apply straight away — the server casts them (since 2026-10-16), the same cast the one-click
+audiobook's voices step uses. It is a starting point, so listen to each assignment before
 rendering and change any you disagree with by clicking another persona.
 
 One book's speakers can be cast with personas on different engines and providers, for example an
 OpenAI voice for the protagonist, Kokoro for the villagers and a Chatterbox clone
 for the narrator. Cast warns when the book's personas are on several models (chapters swap
 engines while rendering) or uses online voices (billed per use).
+
+## Personas made from the book
+
+The one-click audiobook's voices step ([AI features → Voices from the
+book](ai-features.md#voices-from-the-book), since 2026-10-16; not on a screen yet) makes a
+persona for each speaker with at least three lines in the book, and for the narrator, from a
+description the language model writes of how the voice should sound. Each is an ordinary
+persona, in the list with the rest:
+
+- **Its name** is its speaker's, and its speaker is cast with it. A speaker who already had a
+  persona keeps it; a speaker whose name is already a persona's is cast with that one instead
+  (as every new speaker is), and no new persona is made.
+- **Its voice** is a design kept as a clip: the description designed once on Qwen3-TTS
+  VoiceDesign, speaking one of the speaker's own calm lines, and that take kept as a **VoxCPM2**
+  voice — the same as **📌 Keep take N** on [New design](#new-design). The voice keeps its
+  description, and its gender when the description gives one. So it stays one person through
+  the book and still takes written direction on each line.
+- **Its note** is the description, then a line saying which model wrote it. The Hatter's, from
+  the built-in Gemma: *"Male, middle-aged, mid-to-low pitch with a sharp, eccentric timbre. He
+  speaks with a rapid, unpredictable pace and a condescending, mercurial manner."*, and under it
+  *"Written from the book by gemma-4-26b-a4b-qat."* Smart-assign reads the note as the persona's
+  tone, and Compose and Rewrite as its voice, like any note.
+
+Listen to each one. Change its voice, its note or anything else on its page, or cast the speaker
+with another persona on Cast — nothing the step made is special.

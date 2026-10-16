@@ -397,6 +397,175 @@ export async function storeCandidate(source, payload, wavBytes) {
   return [await _storePreview(entry), entry.expiresAt];
 }
 
+/**
+ * Render a candidate's audition and hold it for 10 minutes so it can be saved (async) →
+ * `{wav, sampleRate, channels, durationSec, previewId, expiresAt}`. POST /v1/voices/preview's
+ * work, and the one-click run's (book_voices: each voice designed once, its audition kept as its
+ * clip at once). `body` is a VoicePreviewRequest — `voicePreviewRequest` marks what was given.
+ */
+export async function previewVoice(body, { signal = null } = {}) {
+  self.validateCandidate(body);
+  const state = getState();
+  const engine = await self.candidateEngine(body, state);
+  const [extra, blendLanguage] = await self.candidateVoiceFields(body, state);
+  if (blendLanguage !== null) body.language = blendLanguage;
+  const delivery = { ...(body.delivery || {}) };
+  if (body.source === "designed") {
+    // The description IS the instruct for a design checkpoint; a line's own direction would
+    // append to it exactly as it does at render.
+    delivery.instruct = [body.prompt, delivery.instruct ?? null].filter((x) => truthy(x)).join(" ");
+  }
+  const [wav, sampleRate, channels] = await self.synthCandidate(body, engine, {
+    text: body.preview_text,
+    language: body.language,
+    delivery,
+    seed: body.seed,
+    extra,
+    signal,
+  });
+  const durationSec = wav.length / (sampleRate * channels * 2);
+  const [previewId, expiresAt] = await self.storeCandidate(body.source, modelDump(VoicePreviewRequest, body), wav);
+  return { wav, sampleRate, channels, durationSec, previewId, expiresAt };
+}
+
+/**
+ * Keep a held candidate as a voice in the library (async) → `{promoted, preview_id, voice_id,
+ * name, source}`. POST /v1/voices/preview/{id}/save's work, and the one-click run's. Idempotent on
+ * `previewId`: a second save returns the first voice. 404 once the candidate has lapsed. `body` is
+ * a PromotePreviewRequest's fields: `name`, `gender`, `model` (a design's take kept on another
+ * clone model).
+ */
+export async function savePreview(previewId, body) {
+  body = construct(PromotePreviewRequest, body);
+  const entry = await _getPreview(previewId);
+  if (entry === null) throw notFound(`preview ${previewId} (expired from LRU or never existed)`);
+
+  // Implemented 2026-08-19 (the acquisition build). This route used to return {"promoted":
+  // true, …, "note": "route stub"} without writing anything.
+  const state = getState();
+  const payload = entry.payload || {};
+
+  // Idempotent on preview_id: a second save returns the first record.
+  const already = entry.savedVoiceId;
+  if (already) {
+    const rec = state.voices.get(already);
+    if (rec) return { promoted: true, preview_id: previewId, voice_id: rec.id, name: rec.name, source: rec.source };
+  }
+
+  const now = utcNow();
+  // The recipe stored here must match what POST /v1/voices/blend would store for the same
+  // inputs, or the same mix reached through two doors dedups as two voices. Shares are
+  // normalized; an analogy is not.
+  const strategy = payload.strategy || "blend";
+  const segments = (payload.segments || []).map((s) => construct(BlendSegment, s));
+  const weights = [...(payload.weights || [])];
+  let recipeSources;
+  let recipeWeights;
+  if (strategy === "recombine") {
+    recipeSources = segments.map((s) => s.voice_id);
+    recipeWeights = [];
+  } else {
+    recipeSources = [...(payload.source_voice_ids || [])];
+    const total = weights.reduce((a, b) => a + b, 0);
+    recipeWeights = strategy !== "vector" && total ? weights.map((w) => w / total) : weights;
+  }
+  // A designed voice's transcript is the line its own preview speaks: the frozen clip + the
+  // words it speaks is what makes an ICL clone source.
+  let transcript = payload.transcript ?? null;
+  if (entry.source === "designed") transcript = payload.preview_text || transcript;
+
+  // A design's take kept on another clone model (2026-10-04).
+  let engineId = Object.hasOwn(payload, "engine") ? payload.engine : "";
+  let model = payload.model ?? null;
+  if (body.model && body.model !== model) {
+    if (entry.source !== "designed") throw badRequest("Only a design's take can be kept on another model.");
+    const other = vmod.engineOfModel(body.model);
+    if (other === null || !vmod.can(body.model, "clone")) throw badRequest(`${vmod.modelName(body.model)} can't speak a voice from its clip.`);
+    [engineId, model] = [other, body.model];
+  }
+
+  const recipe =
+    entry.source === "blended" && (weights.length || segments.length)
+      ? { strategy, sources: recipeSources, weights: recipeWeights, segments: segments.length ? segments : null }
+      : null;
+  const created = state.voices.create({
+    id: "",
+    engine: engineId,
+    model,
+    source: entry.source,
+    name: body.name,
+    language: payload.language || "en",
+    gender: body.gender,
+    transcript,
+    xvector_only: Boolean(payload.xvector_only) && (entry.source === "cloned" || entry.source === "imported"),
+    design_prompt: payload.prompt ?? null,
+    sample_count: 0,
+    blend_recipe: recipe,
+    created_at: now,
+    updated_at: now,
+  });
+
+  // The reference clip travels with a cloned/imported voice — without it the saved voice has
+  // no timbre source and every later render fails.
+  const refB64 = payload.ref_wav_b64;
+  if (refB64) {
+    try {
+      state.voices.writeRefWav(created.id, b64decode(refB64));
+    } catch (e) {
+      state.voices.delete(created.id);
+      throw badRequest(`could not store the reference clip: ${errText(e)}`);
+    }
+  } else if (entry.source === "designed" && entry.wavBytes && entry.wavBytes.length) {
+    // THE freeze bridge (2026-08-22). The audition just rendered this voice and we are
+    // holding the audio — keeping it turns a designed voice into a stable clone source, the
+    // only way a designed identity survives from one line to the next. Failure here is NOT
+    // fatal: the voice still works, dynamically, off its description alone.
+    try {
+      state.voices.writeRefWav(created.id, entry.wavBytes);
+    } catch (e) {
+      log.warning(`designed voice ${created.id} saved without its frozen clip (${errText(e)}) — it will render dynamically from its description`);
+    }
+  }
+
+  // A blend's vector is recomputed from its recipe rather than carried in the preview
+  // payload — same inputs, same arithmetic, and it stays correct if the voice pack was
+  // reinstalled between audition and save.
+  if (entry.source === "blended" && recipe !== null) {
+    const resolve = (vid) => {
+      const r = state.voices.get(vid);
+      return r && r.embedding && r.embedding.length ? [...r.embedding] : null;
+    };
+    try {
+      let vector;
+      if (recipe.strategy === "recombine") {
+        vector = await blending.recombine(
+          created.engine,
+          (recipe.segments || []).map((s) => [s.voice_id, pyFloatValue(s.start), pyFloatValue(s.end)]),
+          { dataDir: state.dataDir, resolveStored: resolve },
+        );
+      } else {
+        // The recipe's weights are already in their final form — normalized for a mix, raw for
+        // an analogy — so the combine must not divide again.
+        vector = await blending.blend(created.engine, [...recipe.sources], [...recipe.weights], {
+          dataDir: state.dataDir,
+          resolveStored: resolve,
+          normalize: false,
+        });
+      }
+      state.voices.update(created.id, { embedding: vector });
+    } catch (e) {
+      if (e instanceof blending.LookupError || e instanceof NotImplementedError || e instanceof ValueError) {
+        state.voices.delete(created.id);
+        throw badRequest(`could not save the blend: ${errText(e)}`);
+      }
+      throw e;
+    }
+  }
+
+  entry.savedVoiceId = created.id;
+  return { promoted: true, preview_id: previewId, voice_id: created.id, name: created.name, source: created.source };
+}
+
 // ── Row preview — audition an EXISTING voice (table ▶) ──────────────────
 
 export const PREVIEW_LINE_DEFAULT = "Hello — here's how this voice sounds.";
@@ -571,33 +740,13 @@ export function router() {
    */
   app.post("/v1/voices/preview", input({ body: VoicePreviewRequest }), async (c) => {
     const body = markSent(c.req.valid("json"), sentBody(c));
-    self.validateCandidate(body);
-    const state = getState();
-    const engine = await self.candidateEngine(body, state);
-    const [extra, blendLanguage] = await self.candidateVoiceFields(body, state);
-    if (blendLanguage !== null) body.language = blendLanguage;
-    const delivery = { ...(body.delivery || {}) };
-    if (body.source === "designed") {
-      // The description IS the instruct for a design checkpoint; a line's own direction would
-      // append to it exactly as it does at render.
-      delivery.instruct = [body.prompt, delivery.instruct ?? null].filter((x) => truthy(x)).join(" ");
-    }
-    const [wav, sampleRate, channels] = await self.synthCandidate(body, engine, {
-      text: body.preview_text,
-      language: body.language,
-      delivery,
-      seed: body.seed,
-      extra,
-      signal: generateApi.clientGone(c),
-    });
-    const durationSec = wav.length / (sampleRate * channels * 2);
-    const [previewId, expiresAt] = await self.storeCandidate(body.source, modelDump(VoicePreviewRequest, body), wav);
+    const r = await self.previewVoice(body, { signal: generateApi.clientGone(c) });
     return c.json(
       construct(VoicePreviewResponse, {
-        wav_b64: Buffer.from(wav).toString("base64"),
-        duration_sec: durationSec,
-        preview_id: previewId,
-        expires_at: expiresAt,
+        wav_b64: Buffer.from(r.wav).toString("base64"),
+        duration_sec: r.durationSec,
+        preview_id: r.previewId,
+        expires_at: r.expiresAt,
       }),
     );
   });
@@ -606,137 +755,9 @@ export function router() {
    * Promote a previewed voice to the persistent library. Idempotent on preview_id: subsequent
    * saves return the same record. 404 if the preview has expired from the LRU.
    */
-  app.post("/v1/voices/preview/:preview_id/save", input({ body: PromotePreviewRequest }), async (c) => {
-    const previewId = c.req.param("preview_id");
-    const body = c.req.valid("json");
-    const entry = await _getPreview(previewId);
-    if (entry === null) throw notFound(`preview ${previewId} (expired from LRU or never existed)`);
-
-    // Implemented 2026-08-19 (the acquisition build). This route used to return {"promoted":
-    // true, …, "note": "route stub"} without writing anything.
-    const state = getState();
-    const payload = entry.payload || {};
-
-    // Idempotent on preview_id: a second save returns the first record.
-    const already = entry.savedVoiceId;
-    if (already) {
-      const rec = state.voices.get(already);
-      if (rec) return c.json({ promoted: true, preview_id: previewId, voice_id: rec.id, name: rec.name, source: rec.source });
-    }
-
-    const now = utcNow();
-    // The recipe stored here must match what POST /v1/voices/blend would store for the same
-    // inputs, or the same mix reached through two doors dedups as two voices. Shares are
-    // normalized; an analogy is not.
-    const strategy = payload.strategy || "blend";
-    const segments = (payload.segments || []).map((s) => construct(BlendSegment, s));
-    const weights = [...(payload.weights || [])];
-    let recipeSources;
-    let recipeWeights;
-    if (strategy === "recombine") {
-      recipeSources = segments.map((s) => s.voice_id);
-      recipeWeights = [];
-    } else {
-      recipeSources = [...(payload.source_voice_ids || [])];
-      const total = weights.reduce((a, b) => a + b, 0);
-      recipeWeights = strategy !== "vector" && total ? weights.map((w) => w / total) : weights;
-    }
-    // A designed voice's transcript is the line its own preview speaks: the frozen clip + the
-    // words it speaks is what makes an ICL clone source.
-    let transcript = payload.transcript ?? null;
-    if (entry.source === "designed") transcript = payload.preview_text || transcript;
-
-    // A design's take kept on another clone model (2026-10-04).
-    let engineId = Object.hasOwn(payload, "engine") ? payload.engine : "";
-    let model = payload.model ?? null;
-    if (body.model && body.model !== model) {
-      if (entry.source !== "designed") throw badRequest("Only a design's take can be kept on another model.");
-      const other = vmod.engineOfModel(body.model);
-      if (other === null || !vmod.can(body.model, "clone")) throw badRequest(`${vmod.modelName(body.model)} can't speak a voice from its clip.`);
-      [engineId, model] = [other, body.model];
-    }
-
-    const recipe =
-      entry.source === "blended" && (weights.length || segments.length)
-        ? { strategy, sources: recipeSources, weights: recipeWeights, segments: segments.length ? segments : null }
-        : null;
-    const created = state.voices.create({
-      id: "",
-      engine: engineId,
-      model,
-      source: entry.source,
-      name: body.name,
-      language: payload.language || "en",
-      gender: body.gender,
-      transcript,
-      xvector_only: Boolean(payload.xvector_only) && (entry.source === "cloned" || entry.source === "imported"),
-      design_prompt: payload.prompt ?? null,
-      sample_count: 0,
-      blend_recipe: recipe,
-      created_at: now,
-      updated_at: now,
-    });
-
-    // The reference clip travels with a cloned/imported voice — without it the saved voice has
-    // no timbre source and every later render fails.
-    const refB64 = payload.ref_wav_b64;
-    if (refB64) {
-      try {
-        state.voices.writeRefWav(created.id, b64decode(refB64));
-      } catch (e) {
-        state.voices.delete(created.id);
-        throw badRequest(`could not store the reference clip: ${errText(e)}`);
-      }
-    } else if (entry.source === "designed" && entry.wavBytes && entry.wavBytes.length) {
-      // THE freeze bridge (2026-08-22). The audition just rendered this voice and we are
-      // holding the audio — keeping it turns a designed voice into a stable clone source, the
-      // only way a designed identity survives from one line to the next. Failure here is NOT
-      // fatal: the voice still works, dynamically, off its description alone.
-      try {
-        state.voices.writeRefWav(created.id, entry.wavBytes);
-      } catch (e) {
-        log.warning(`designed voice ${created.id} saved without its frozen clip (${errText(e)}) — it will render dynamically from its description`);
-      }
-    }
-
-    // A blend's vector is recomputed from its recipe rather than carried in the preview
-    // payload — same inputs, same arithmetic, and it stays correct if the voice pack was
-    // reinstalled between audition and save.
-    if (entry.source === "blended" && recipe !== null) {
-      const resolve = (vid) => {
-        const r = state.voices.get(vid);
-        return r && r.embedding && r.embedding.length ? [...r.embedding] : null;
-      };
-      try {
-        let vector;
-        if (recipe.strategy === "recombine") {
-          vector = await blending.recombine(
-            created.engine,
-            (recipe.segments || []).map((s) => [s.voice_id, pyFloatValue(s.start), pyFloatValue(s.end)]),
-            { dataDir: state.dataDir, resolveStored: resolve },
-          );
-        } else {
-          // The recipe's weights are already in their final form — normalized for a mix, raw for
-          // an analogy — so the combine must not divide again.
-          vector = await blending.blend(created.engine, [...recipe.sources], [...recipe.weights], {
-            dataDir: state.dataDir,
-            resolveStored: resolve,
-            normalize: false,
-          });
-        }
-        state.voices.update(created.id, { embedding: vector });
-      } catch (e) {
-        if (e instanceof blending.LookupError || e instanceof NotImplementedError || e instanceof ValueError) {
-          state.voices.delete(created.id);
-          throw badRequest(`could not save the blend: ${errText(e)}`);
-        }
-        throw e;
-      }
-    }
-
-    entry.savedVoiceId = created.id;
-    return c.json({ promoted: true, preview_id: previewId, voice_id: created.id, name: created.name, source: created.source });
-  });
+  app.post("/v1/voices/preview/:preview_id/save", input({ body: PromotePreviewRequest }), async (c) =>
+    c.json(await self.savePreview(c.req.param("preview_id"), c.req.valid("json"))),
+  );
 
   /**
    * Mint a short-lived id so an unsaved candidate can be streamed. Two steps, because an <audio
