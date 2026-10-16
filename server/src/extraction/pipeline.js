@@ -199,8 +199,9 @@ export function modelFailureMessage(e) {
 // a digit ("nettle_2") is not line 2.
 const _DID = new RegExp(`^${WS}*\\[?${WS}*D?${WS}*(\\p{Nd}+)${WS}*\\]?${WS}*$`, "iu");
 
-/** The [D#] an answer names, read the way alignPicks reads it. */
-function _pickDid(p) {
+/** The [D#] an answer names, read the way alignPicks reads it (the direction step reads its
+ * answers' lines the same way). */
+export function _pickDid(p) {
   if (!isDict(p) || p.id === null || p.id === undefined) return null;
   const m = _DID.exec(pyStrOf(p.id));
   return m ? digitsToInt(m[1]) : null;
@@ -407,8 +408,9 @@ export function pickRoute(routeOverride, settings, modelOverride = "") {
 
 const _OVERFLOW_WORDS = ["exceed_context_size", "context_length_exceeded", "maximum context length", "prompt is too long"];
 
-/** The provider refused the request as bigger than the model's context. */
-function _isOverflow(e) {
+/** The provider refused the request as bigger than the model's context (the direction step's
+ * pieces read it too). */
+export function _isOverflow(e) {
   const text = errText(e);
   return _CTX.test(text) || _OVERFLOW_WORDS.some((w) => text.includes(w));
 }

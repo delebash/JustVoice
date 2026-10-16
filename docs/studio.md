@@ -1180,6 +1180,13 @@ What a line can be told depends on the model of the persona that speaks it
   *sliders only* — no words, no tags; [Render overrides](#render-overrides)
   shapes the line with the numbers.
 
+**Direction the AI wrote.** The one-click audiobook's Direction step
+([AI features → Direction](ai-features.md#direction--two-recipes-and-the-carry))
+fills these same fields — a line's Style Instructions and Emotion, or a tag
+model's emotion tag — where the book says how the line is spoken. It is yours
+to change like anything you typed: once you edit or clear what it wrote, a
+later run leaves that line alone.
+
 ### Render overrides
 
 Every open line has a box, **Render overrides**: the persona page's controls

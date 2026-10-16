@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // /v1/scenes/{id}/analyze and the rest of Script's AI routes — speaker attribution, the second
 // look, Discover, the corrections memory and the Script pages (the port of
-// justvoice/api/extraction_api.py).
+// justvoice/api/extraction_api.py) — and the one-click plan's direction step (2026-10-16).
 //
 // Phase 3 / Slice 1 of the Profile-kill plan. Runs the extraction pipeline against scene text
 // and returns attribution rows for the Studio Script tab.
@@ -33,16 +33,18 @@ import { Block, Project, Scene, Speaker, SpeakerCorrection, Take } from "../data
 import * as session from "../database/session.js";
 import * as run from "../engines/llm/run.js";
 import { ApiError, conflict, HttpError, notFound } from "../errors.js";
+import * as direction from "../extraction/direction.js";
 import { Line, flaggedLines, flagGroups, modelDisagreed, spokenBlock } from "../extraction/flags.js";
 import * as identify from "../extraction/identify.js";
 import * as names from "../extraction/names.js";
 import * as pipeline from "../extraction/pipeline.js";
 import { AttributionModelError, AttributionRow } from "../extraction/pipeline.js";
 import * as sl from "../extraction/second_look.js";
-import { paragraphsOf, QUOTE_PAIRS, resolveMarks, segmentsFromLines, splitIntoParagraphs } from "../extraction/segmentation.js";
+import { paragraphsOf, QUOTE_PAIRS, resolveMarks, segmentParagraphs, segmentsFromLines, splitIntoParagraphs } from "../extraction/segmentation.js";
 import { leftOutBlocks } from "../extraction/tags.js";
-import { isMarker } from "../line_takes.js";
+import { blockMeta, isMarker, mergeOverride } from "../line_takes.js";
 import { construct, dtIso, ExtractionSettings, ProjectScript, SceneScript, utcNow } from "../models.js";
+import * as vmod from "../voice_model.js";
 import { ensureSpeaker, narratorSpeakerId, speakerAliases } from "./_speaker_helpers.js";
 import { sseResponse } from "./sse_streams_api.js";
 
@@ -616,6 +618,264 @@ export function _saveSecondLook(blockId, row, outcome) {
   changes.metadata_json = Object.keys(meta).length ? pyJson(meta) : null;
   const diff = Object.fromEntries(Object.entries(changes).filter(([k, v]) => b[k] !== v));
   if (Object.keys(diff).length) h.update(Block, diff, { id: blockId });
+}
+
+// ── Direction — the one-click plan's step 6 (slice 2, 2026-10-16) ──────────
+//
+// How each spoken line should be said, where the book says so (extraction/direction.js). The step
+// is `directScene`, which `POST /v1/scenes/{id}/direction` and the one-click run call; it writes
+// the fields Render's "This line only" edits — the line's `direction` and its
+// `line_models[model].emotion` — for many lines in one transaction (`_persistDirection`), never
+// over what you set. `/v1/extraction/direction-text` is its Lab twin: the same step over any text,
+// writing nothing — what `npm run eval:direction` scores.
+
+/** Body for POST /v1/scenes/{id}/direction. */
+export const DirectSceneRequest = T.Object({
+  // Per-run recipe force (an API caller comparing the two); null = the Frontier card's preset
+  // decides (direction.directionRecipe).
+  recipe: opt(nullable(literal("local", "frontier")), null),
+  // The carry: a speaker's direction goes to their other lines in the same paragraph that got none.
+  carry: opt(T.Boolean(), true),
+});
+
+/** One spoken line the run marked. `id` is its number among the chapter's spoken lines ("D12");
+ * `carried_from` names the line its answer was carried from, null for the model's own. */
+export const DirectionLine = T.Object({
+  id: T.String(),
+  block_id: opt(nullable(T.String()), null),
+  speaker: opt(nullable(T.String()), null),
+  text: T.String(),
+  emotion: opt(T.String(), ""),
+  direction: opt(T.String(), ""),
+  carried_from: opt(nullable(T.String()), null),
+});
+
+/** What the run wrote onto the chapter's lines. */
+export const DirectionPersistInfo = T.Object({
+  // Lines that now hold this run's direction or emotion.
+  written: opt(T.Integer(), 0),
+  // Lines whose earlier AI direction this run took away (it marks them no longer).
+  cleared: opt(T.Integer(), 0),
+  // Marked lines left alone because you set their direction or emotion.
+  kept_yours: opt(T.Integer(), 0),
+  // Marked lines whose speaker has no voice yet (or no speaker) — nothing to shape the answer to.
+  no_voice: opt(T.Integer(), 0),
+  // Marked lines whose voice's model takes none of the answer: sliders only, or a tag model with
+  // no tag for that emotion.
+  takes_none: opt(T.Integer(), 0),
+  // Marked lines whose words changed while the model was reading them.
+  changed: opt(T.Integer(), 0),
+});
+
+export const DirectionResponse = T.Object({
+  scene_id: T.String(),
+  // The recipe that ran ("local" | "frontier") and its prompt row.
+  recipe: T.String(),
+  action: T.String(),
+  // Every spoken line the run marked, the carry's included, in chapter order.
+  lines: T.Array(DirectionLine),
+  raw_llm: opt(nullable(T.String()), null),
+  usage: opt(nullable(RunUsage), null),
+  // What landed in the database (the scene route only).
+  persisted: opt(nullable(DirectionPersistInfo), null),
+});
+
+/** The Lab twin's body: any text, who speaks each of its spoken lines, and the Lab column's pins
+ * (camelCase, as analyze-text's). */
+export const DirectionTextRequest = T.Object({
+  text: T.String(),
+  // Who speaks each spoken line, by its number as the segmenter counts them ("0" → "Alice"); a line
+  // not named, or named "unknown", has no speaker.
+  speakers: opt(T.Record(T.String(), T.String()), {}),
+  // Who is who (name, aliases, description) and the chapters before — the Frontier recipe's
+  // context.
+  characters: opt(T.Array(T.Record(T.String(), T.Any())), []),
+  earlier: opt(T.Array(T.Object({ title: opt(T.String(), ""), text: T.String() })), []),
+  recipe: opt(nullable(literal("local", "frontier")), null),
+  carry: opt(T.Boolean(), true),
+  providerId: opt(nullable(T.String()), null),
+  model: opt(nullable(T.String()), null),
+  temperature: opt(nullable(T.Number()), null),
+  systemPrompt: opt(nullable(T.String()), null),
+  userPrompt: opt(nullable(T.String()), null),
+  think: opt(nullable(T.Boolean()), null),
+  maxTokens: opt(nullable(T.Integer()), null),
+  // Treat the model's context as at most this many tokens (forces reading in pieces).
+  max_context: opt(nullable(T.Integer()), null),
+});
+
+/** The chapters before `scene`, by position, as [title, text] — the Frontier recipe's context. */
+export function _earlierChapters(h, scene) {
+  return h
+    .all(`select * from ${Scene} where project_id = ? and position < ? order by position`, [scene.project_id, scene.position], Scene)
+    .map((s) => [s.title || "", _sceneText(h, s)]);
+}
+
+/** The model each of the book's speakers is heard on — their persona's voice's, the model Render's
+ * "This line only" keys a line's settings by (async). null with no persona or no voice. */
+export async function _speakerModels(h, state, projectId) {
+  const out = new Map();
+  for (const sp of h.all(`select * from ${Speaker} where project_id = ?`, [projectId], Speaker)) {
+    const persona = sp.persona_id ? (state?.personas?.get(sp.persona_id) ?? null) : null;
+    const vm = persona?.voice_id ? await vmod.voiceModel(state, persona.voice_id) : null;
+    out.set(sp.id, vm ? vm.model : null);
+  }
+  return out;
+}
+
+/** Marked lines out (DirectionLine), in chapter order. `lines` = [{did, block_id, speaker, text}]. */
+function _directionLinesOut(lines, answers) {
+  return lines
+    .filter((ln) => answers.has(ln.did))
+    .map((ln) => {
+      const a = answers.get(ln.did);
+      return construct(DirectionLine, {
+        id: `D${ln.did}`,
+        block_id: ln.block_id ?? null,
+        speaker: ln.speaker ?? null,
+        text: ln.text,
+        emotion: a.emotion,
+        direction: a.direction,
+        carried_from: a.carried_from ?? null,
+      });
+    });
+}
+
+/**
+ * Write a direction run onto the chapter's lines → DirectionPersistInfo. The caller runs it in a
+ * transaction.
+ *
+ * Each spoken line read (`lines`: {did, block_id, text, speaker}) is re-read here: one whose words
+ * changed meanwhile, or that is gone, is skipped; one whose direction or emotion you set is left
+ * alone (`direction.modelOwns`). On every other line the run's answer — shaped to the model its
+ * speaker's voice speaks on (`direction.shapeFor`, `models`: speaker id → model) — replaces what an
+ * earlier run wrote, through the line-override merge `PATCH /v1/blocks/{id}` uses
+ * (line_takes.mergeOverride), and the line records which model and recipe wrote it and what
+ * (`direction_by`, the plan's §5). A line the run doesn't mark loses an earlier run's direction.
+ * The chapter records the run (`metadata.direction`).
+ */
+export function _persistDirection(h, scene, lines, answers, { model, recipe, models }) {
+  const info = { written: 0, cleared: 0, kept_yours: 0, no_voice: 0, takes_none: 0, changed: 0 };
+  const now = new Map(blocksOf(h, scene.id).map((b) => [b.id, b]));
+  for (const ln of lines) {
+    const answer = answers.get(ln.did) ?? null;
+    const b = now.get(ln.block_id);
+    if (!b || b.text !== ln.text) {
+      if (answer) info.changed += 1;
+      continue;
+    }
+    const meta = blockMeta(b);
+    if (!direction.modelOwns(b.direction, meta)) {
+      if (answer) info.kept_yours += 1;
+      continue;
+    }
+    const lineModel = ln.speaker ? (models.get(ln.speaker) ?? null) : null;
+    const shaped = direction.shapeFor(answer, lineModel);
+    if (answer && !shaped.direction && !shaped.emotion) info[lineModel ? "takes_none" : "no_voice"] += 1;
+    const before = isDict(meta[direction.DIRECTION_BY]) ? meta[direction.DIRECTION_BY] : null;
+    // The emotions the last run wrote come off first, then this run's goes on.
+    const models_ = {};
+    for (const m of Object.keys(before && isDict(before.emotion) ? before.emotion : {})) models_[m] = { emotion: null };
+    if (shaped.emotion) models_[lineModel] = { emotion: shaped.emotion };
+    const wrote = Boolean(shaped.direction || shaped.emotion);
+    if (!wrote && !before) continue; // nothing of the model's here, and nothing to write
+    const out = Object.keys(models_).length ? mergeOverride(meta, { models: models_ }) : { ...meta };
+    if (wrote) {
+      out[direction.DIRECTION_BY] = {
+        model: model || "",
+        recipe,
+        direction: shaped.direction || "",
+        emotion: shaped.emotion ? { [lineModel]: shaped.emotion } : {},
+        ...(answer?.carried_from ? { carried_from: answer.carried_from } : {}),
+      };
+      info.written += 1;
+    } else {
+      delete out[direction.DIRECTION_BY];
+      info.cleared += 1;
+    }
+    const changes = {
+      // An empty direction stays as the line had it ("" or none).
+      direction: (b.direction || "") === (shaped.direction || "") ? b.direction : shaped.direction,
+      metadata_json: Object.keys(out).length ? pyJson(out) : null,
+    };
+    const diff = Object.fromEntries(Object.entries(changes).filter(([k, v]) => b[k] !== v));
+    if (Object.keys(diff).length) h.update(Block, diff, { id: b.id });
+  }
+  const fresh = sceneById(h, scene.id) ?? scene;
+  const sm = _sceneMeta(fresh);
+  sm.direction = { directed_at: dtIso(utcNow()), model: model || "", recipe };
+  h.update(Scene, { metadata_json: pyJson(sm) }, { id: scene.id });
+  return construct(DirectionPersistInfo, info);
+}
+
+/**
+ * The direction step on one chapter (async) → DirectionResponse — the function
+ * `POST /v1/scenes/{id}/direction` and the one-click run call.
+ *
+ * Reads the chapter's lines as they stand, each spoken one with its speaker — so it runs on a
+ * chapter Analyze has cut into lines, or an import whose every line has a speaker (Script's
+ * "From the import"); anything else is refused (409). The recipe is `recipe`, else the Frontier
+ * card's preset's (direction.directionRecipe); the Frontier recipe also reads the cast and the
+ * chapters before. The model's answer, then the carry (unless `carry` is false), is written by
+ * `_persistDirection` in one transaction.
+ */
+export async function directScene(sceneId, { recipe = null, carry = true } = {}) {
+  const h = session.getDb();
+  const scene = sceneById(h, sceneId);
+  if (scene === null) throw notFound(`scene ${sceneId}`);
+  const blocks = blocksOf(h, sceneId).filter((b) => strip(b.text || "") && !isMarker(b));
+  const meta = _sceneMeta(scene);
+  const analyzed = truthy(dget(meta, "analyzed_at")) || blocks.some((b) => PIPELINE_SOURCES.has(b.source));
+  if (!analyzed && !(blocks.length && blocks.every((b) => b.speaker_id))) {
+    throw conflict("Analyze this chapter first — direction reads who speaks each line.");
+  }
+  const segments = segmentsFromLines(
+    blocks.map((b) => ({ text: b.text, spoken: spokenBlock(b.source, b.text), paragraph: dget(_jsonMeta(b.metadata_json), "paragraph_idx") })),
+  );
+  const cast = _resolveCast(sceneId, h);
+  const names_ = new Map(cast.map((c) => [c.id, c.name]));
+  const lines = [];
+  segments.forEach((seg, i) => {
+    if (seg.kind !== "dialogue") return;
+    const b = blocks[i];
+    seg.speaker_name = b.speaker_id ? (names_.get(b.speaker_id) ?? null) : null;
+    lines.push({ did: seg.dialogue_id, block_id: b.id, text: b.text, speaker: b.speaker_id || null, paragraph: seg.paragraph_idx });
+  });
+  const use = recipe ?? direction.directionRecipe();
+  const state = getState();
+  let result;
+  try {
+    result = await direction.directChapter({
+      segments,
+      cast,
+      earlier: use === "frontier" ? _earlierChapters(h, scene) : [],
+      recipe: use,
+      settings: state.settings.get(),
+    });
+  } catch (e) {
+    throw directionError(e);
+  }
+  const answers = carry ? direction.carry(lines, result.answers) : result.answers;
+  const models = await _speakerModels(h, state, scene.project_id);
+  const persisted = h.tx(() => _persistDirection(h, scene, lines, answers, { model: result.usage.model, recipe: result.recipe, models }));
+  return construct(DirectionResponse, {
+    scene_id: sceneId,
+    recipe: result.recipe,
+    action: result.action,
+    lines: _directionLinesOut(lines, answers),
+    raw_llm: result.raw || null,
+    usage: result.usage,
+    persisted,
+  });
+}
+
+/** The direction step's refusals as the routes answer them: 501 unconfigured, 502 the model's own
+ * words, 502 "direction failed: …" for anything else. */
+function directionError(e) {
+  if (e instanceof LLMNotConfiguredError) return new HttpError(501, errText(e));
+  if (e instanceof direction.DirectionModelError) return new HttpError(502, errText(e));
+  log.exception("direction failed", e);
+  return new HttpError(502, `direction failed: ${errText(e)}`);
 }
 
 // ── The Lab's text routes ──────────────────────────────────────────────────
@@ -1319,6 +1579,65 @@ export function router() {
         route_source: rawOut.route_source ?? "auto",
         confidence_floor: rawOut.floor ?? 0.7,
         usage: rawOut.usage ?? null,
+      }),
+    );
+  });
+
+  // ── Direction (the one-click plan's step 6) ──
+
+  /** The direction step on one chapter, written onto its lines (`directScene`). */
+  app.post("/v1/scenes/:scene_id/direction", input({ body: DirectSceneRequest }), async (c) => {
+    const body = c.req.valid("json");
+    return c.json(await directScene(c.req.param("scene_id"), { recipe: body.recipe, carry: body.carry }));
+  });
+
+  /** No scene id — the same step over any text, writing nothing (the twin of analyze-text):
+   * the text is cut as Analyze cuts it, its spoken lines numbered as the segmenter numbers them,
+   * and `speakers` says who speaks each. What `npm run eval:direction` scores. */
+  app.post("/v1/extraction/direction-text", input({ body: DirectionTextRequest }), async (c) => {
+    const body = c.req.valid("json");
+    const segments = segmentParagraphs(splitIntoParagraphs(body.text));
+    const lines = [];
+    for (const seg of segments) {
+      if (seg.kind !== "dialogue") continue;
+      const who = strip(pyStrOf(body.speakers[String(seg.dialogue_id)] ?? ""));
+      const speaker = who && who.toLowerCase() !== "unknown" ? who : null;
+      seg.speaker_name = speaker;
+      lines.push({ did: seg.dialogue_id, text: seg.text, speaker, paragraph: seg.paragraph_idx });
+    }
+    const all = {
+      providerId: body.providerId,
+      model: body.model,
+      temperature: body.temperature,
+      system: body.systemPrompt,
+      userTemplate: body.userPrompt,
+      think: body.think,
+      maxTokens: body.maxTokens,
+    };
+    const overrides = Object.fromEntries(Object.entries(all).filter(([, v]) => v !== null));
+    let result;
+    try {
+      result = await direction.directChapter({
+        segments,
+        cast: body.characters,
+        earlier: body.earlier.map((ch) => [ch.title, ch.text]),
+        recipe: body.recipe,
+        settings: getState().settings.get(),
+        overrides,
+        maxContext: body.max_context,
+      });
+    } catch (e) {
+      throw directionError(e);
+    }
+    const answers = body.carry ? direction.carry(lines, result.answers) : result.answers;
+    return c.json(
+      construct(DirectionResponse, {
+        scene_id: "(adhoc)",
+        recipe: result.recipe,
+        action: result.action,
+        lines: _directionLinesOut(lines, answers),
+        raw_llm: result.raw || null,
+        usage: result.usage,
       }),
     );
   });

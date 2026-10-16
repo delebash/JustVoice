@@ -15,6 +15,7 @@
 // extraction/second_look, refinement) — one source, no text forks. Those modules are other
 // slices' ports: this file loads once they exist, under exactly these export names.
 
+import { FRONTIER_SYSTEM, FRONTIER_USER_TEMPLATE, LOCAL_SYSTEM, LOCAL_USER_TEMPLATE } from "./extraction/direction.js";
 import { IDENTIFY_SYSTEM } from "./extraction/identify.js";
 import { DIRECT_SYSTEM, GUIDED_SYSTEM } from "./extraction/prompts.js";
 import { SYSTEM as SECOND_LOOK_SYSTEM, USER_TEMPLATE as SECOND_LOOK_USER } from "./extraction/second_look.js";
@@ -213,6 +214,31 @@ Return only the JSON object.`,
     system: SECOND_LOOK_SYSTEM,
     user_template: SECOND_LOOK_USER,
     json_mode: true,
+  },
+  // ── direction — the one-click audiobook's step 6 (slice 2, 2026-10-16; plan §2 step 6, §3). Two
+  // RECIPES as two routed cards under the DIRECTION heading, the way attribution's two routes are;
+  // the Frontier card's preset decides which runs (extraction/direction.directionRecipe). Local
+  // answers in JSON mode — an object, so json_object fits; Frontier keeps JSON mode OFF so its
+  // preset's thinking runs (the kit turns thinking off under JSON mode), and the same tolerant
+  // reader takes its reply.
+  "direction.local": {
+    feature: "direction",
+    label: "Local",
+    description:
+      "For a model on this machine — reads one chapter and answers in JSON. Runs unless the Frontier card's model is a frontier model.",
+    system: LOCAL_SYSTEM,
+    user_template: LOCAL_USER_TEMPLATE,
+    json_mode: true,
+    position: 1,
+  },
+  "direction.frontier": {
+    feature: "direction",
+    label: "Frontier",
+    description:
+      "For a large cloud model — reads the chapter with the book's earlier chapters and who is who, thinking first. Runs when this card's model is a frontier model (its preset's Recipe).",
+    system: FRONTIER_SYSTEM,
+    user_template: FRONTIER_USER_TEMPLATE,
+    position: 2,
   },
   // ── voices ──────────────────────────────────────────────────────────────
   voice_gender: {
