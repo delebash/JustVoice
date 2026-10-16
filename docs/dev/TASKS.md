@@ -347,12 +347,35 @@ STATE:  DECIDED 2026-10-16 — the user's ears on round 4's blind page (51 answe
         people are saying regarding this … maybe we have something configured wrong".
 WHY:    the one-click run needs the engine that acts best on a copied voice (TASKS "The order of
         work after the research sweep").
-NOT:    switching before the configuration check the same message asked for — if it shows our
-        setup was wrong for the others, the rec goes back to the user.
+        The check (RESEARCH §10.25): the weak acting is the models' own, but VoxCPM2 and IndexTTS
+        were told less than their authors document; shown again: "switch the character voices to
+        BreezeTTS 2, as you approved … Placement measured first … Its licence word on the run's
+        card … A stop before the run when Breeze's licence hasn't been accepted on that machine,
+        with a link to accept it." The user: "your rec on all go".
+NOT:    switching before the configuration check the same message asked for.
 BUILT:  —
-OPEN:   the check (a research agent, then RESEARCH); then `book_voices.clone_model` → breeze, the
-        licence word on the run's card, and Breeze's placement on an 8 GB card measured.
-GO:     given 2026-10-16 ("your rec on breeze and license").
+OPEN:   Breeze's placement on this 8 GB card measured; `book_voices.clone_model` → Breeze; the
+        licence word on the run's card; the run's stop when its licence isn't accepted.
+GO:     given 2026-10-16 ("your rec on breeze and license"; after the check, "your rec on all
+        go").
+
+### Round 5 — VoxCPM2 told the authors' way, best of 3 picked by the scorers (decided 2026-10-16)
+STATE:  DECIDED 2026-10-16 — after RESEARCH §10.25 and another session's desk review, shown:
+        "keep Breeze as the character voices. Narrow round 5 to VoxCPM2 alone: told the book's
+        own words, stronger guidance, best of 3", then, on other methods: "test method 1 inside
+        round 5. VoxCPM2's best of 3, picked by the scorers, against a random take, on your
+        four-step page. If automatic picking matches your ears, it lifts any engine, not just
+        one." The user: "your rec on all go".
+WHY:    the best engine whose audiobooks can be sold (VoxCPM2, Apache-2.0) was told less than its
+        authors document (one word, cfg 2.0, one take); best-of-N with automatic verifiers is the
+        standard method (Llasa, RESEARCH §10.10).
+NOT:    IndexTTS (licence unclear for selling); CosyVoice3 (its emotion follows the words; its
+        official phrases were already used).
+BUILT:  —
+OPEN:   the renders (the book's cue words as the direction, cfg ~2.5–3.0, 3 seeds), the scorers'
+        pick against a random take, a blind page with no change · a little · clearly · like the
+        book and a best-of pick.
+GO:     given 2026-10-16 ("your rec on all go").
 
 ### The one-click run's leftovers, rethought (decided 2026-10-16)
 STATE:  DECIDED 2026-10-16 — after the gemma acceptances (RESEARCH §10.24), the recs shown for the
@@ -410,11 +433,20 @@ BUILT:  2 — the "group" flag carries the whole group (`ScriptFlag.group`); Scr
         accent made it harder to understand"; "Sh! sh!" — "you can't tell that it said sh at all"),
         so lines under 4 words keep their read-back and the numbers stay (RESEARCH §10.24).
 OPEN:   6 (mock first); 4's calibration after the first frontier run; 1's differences (a)–(d)
-        for the user's look. For the user: the cast card's Clear all ignores no one (a gap — a
-        start-over shouldn't empty the next run's cast); a line given to the ONE person the
-        answer named still asks "No one could be named — given to ‹X›. Who says it?" (words
-        needed).
-GO:     given 2026-10-16 ("your rec go") for 1–4 and 6–9.
+        for the user's look; the four answers below.
+        Four follow-up answers, argued against at the user's "think on the questions again
+        adverserially", shown: "1 … give it its own check, separate from 'Said together' … draft
+        tag 'AI chose', question 'Analyze left it blank; the AI chose the Hatter from the text
+        around it. Is that right?' 2 … keep Clear all as it is, and add a check before the run
+        starts: 'Every name the scans found is ignored — the book would be read in one voice.
+        Undo some on Discover ➜'. 3 … (b): a Merge found names button on Discover. Discover makes
+        no automatic model calls. When Make the audiobook has already merged the names, the page
+        shows that stored answer … 4 … show the server's own grouping, the merge's first stage,
+        which runs without any model … names counted with 0 lines are left out … The model only
+        confirms or splits these groups, on the button or in the run." The user: "your rec on all
+        go".
+GO:     given 2026-10-16 ("your rec go") for 1–4 and 6–9; the four answers ("your rec on all
+        go").
 
 ### The run's last questions, answered (decided 2026-10-16)
 STATE:  DECIDED 2026-10-16 — shown, each with its rec: "1. Slice 4's proof test is NOT STANDARD.
