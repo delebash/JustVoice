@@ -178,6 +178,18 @@ BUILT:  1, the review (2026-10-13): `docs/plans/2026-10-13-narrowings-review/` �
         (P16's warning, S6's design, S12's tags, R8's note, B3's hover, C5's hint, K3's prompt,
         M7's controls, P29/P35/P41's wording, P11's list, P26's comparison), they come back
         before that part ships.
+        Slice 3, 2026-10-15 (settings and load options from the spec; RESEARCH §1.2, §1.5):
+        27f1c140 — E2 a number with an open end is a number box (161 settings), ends audio.cpp's
+        control list's then the spec's, the request kept to them, file paths never settings; F9
+        the seven engines' narrower knobs take audio.cpp's ranges (Chatterbox exaggeration and
+        VoxCPM2 CFG from 0; VoxCPM2 steps, Qwen3 top k ×2, Turbo top k open-topped boxes); a
+        persona's choice/switch/text setting no longer refused on save as a number. 43007230 —
+        E4 every session option a spec lists on the model's row, folded under "Load options (N)",
+        Qwen3's two on the row, 16-bit default; F3 `chatterbox.multilingual_t3` among them; §7 q3
+        a price per load-option set. Docs 037abbe4. Unit-tested; the runtime check waits for the
+        app. For the user's word: which settings fold under Advanced (§1); v3's label and place;
+        the Seed box's top (2e9 vs the spec's 4,294,967,295); the seven engines' knobs wider
+        than audio.cpp's (repetition 1–4, speed 0.5–3) or ranged where it gives none — slice 4.
 OPEN:   the register's 20 questions and its "found on the way" list, to the user; JustWrite's
         side, to its session; the adoption plan's 7 questions. Then: 2 a plan to adopt everything: every
         audio.cpp speech model offered by default, the seven hand-wired engines on the same

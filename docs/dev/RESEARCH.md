@@ -272,10 +272,44 @@ Before the switch (Python engines, history): [`2026-08-17-engine-roster-and-plat
   `../audio.cpp/src/models/pocket_tts/session.cpp:135-191`.
 - **What the app exposes of these** (since 2026-10-04): Chatterbox `min_p` and `s3gen_cfg_rate`;
   Qwen3's three sub-talker settings; VoxCPM2's two runaway settings — advanced knobs at the
-  runtime's defaults; Qwen3's `perf_mode` (8-bit rows) and `conv_weight_type` as per-model
-  runtime options on the model row, passed at registration. Max-token caps are not offered (the
-  models' positional limits unchecked). — *code + tests, 2026-10-04* · `capability_details.py`,
-  `engines/audiocpp/runtime_options.py`; audit §13.5.
+  runtime's defaults. Max-token caps are not offered on those seven engines (the models'
+  positional limits unchecked). — *code + tests, 2026-10-04* · `capability_details.py`; audit
+  §13.5. **Load options:** every session option a model's spec lists (catalog.json
+  `options.session`), typed as the spec types it, at audio.cpp's default — except file paths and
+  what the app sets for the row — with Qwen3's `perf_mode` (8-bit rows) and `conv_weight_type`
+  (16-bit by default) kept on the row with their measured words (curated `LOAD_OPTIONS`). (was:
+  those two Qwen3 options alone — until 2026-10-15, the adoption plan's E4.) — *code + tests,
+  2026-10-15* · `engines/audiocpp/runtime_options.js`; JustVoice `43007230`.
+- **A session option's key and value** (adoption slice 3): the spec names it locally and the
+  framework's key is `<family>.<name>` ("load and session options are local names in the spec;
+  the framework derives their public keys as `<family>.<name>`", `docs/maintainers/
+  model_specs.md`). A server config's or `/v1/models/load`'s `session_options` object becomes a
+  map of strings (`app/server/config.cpp:352` → `json_options_map`, `app/cli/request.cpp:253`),
+  so JustVoice sends and saves text; a switch reads `true`/`1`/`yes`/`on` or their opposites
+  (`parse_bool_option`, `src/framework/runtime/options.cpp:298`). `GET /v1/models?
+  include_session_options=true` lists the loaded models with their session options
+  (`app/server/request_dispatch.h:44-51`). The spec also has a `load` scope (9 options at v0.9.2:
+  Pocket's `language`, VibeVoice's LoRA …), sent as the config's separate `load_options`; the app
+  offers only `options.session`, as the plan's E4 says. — *code, 2026-10-15*.
+- **Chatterbox Multilingual v3** (`chatterbox.multilingual_t3`, `v2` | `v3`, default `v2`;
+  `src/models/chatterbox/session.cpp:299-308`): picks which multilingual T3 a session builds for a
+  non-English line — English always uses the English T3 (`chatterbox_language_uses_multilingual_t3`
+  is "language != en", `text_tokenizer.cpp:612`). The language list is one for both
+  (`supported_chatterbox_language_codes`, 23; "mtl23ls" is the checkpoint's own name for it). The
+  pinned `Chatterbox-GGUF/chatterbox-q8_0.gguf` (revision `7bf52723`, unchanged at `f861648c`)
+  carries both: `t3_multilingual_v2/*` and `t3_multilingual_v3/*`, 262 tensors each, beside
+  `t3_english/*` (its header read on this machine, 3,381 tensors). Not yet loaded through the app.
+  — *code + file, 2026-10-15*.
+- **A number's ends: audio.cpp's control list against the spec.** Where both give an end they
+  differ for seven settings of the generated models at v0.9.2: Audio8 `max_tokens` (spec 0,
+  control 1) and `top_k` (spec 1, control 0), CosyVoice3 `min_tokens` (−1 / 0), Echo TTS
+  `num_inference_steps` (from 1 / 8–40), Irodori `duration_scale` (from 0 / 0.5–2), Maya1
+  `temperature` and `repetition_penalty` (0 / 0.01). The app takes the control list's end where it
+  gives one, else the spec's (the plan's §2: "audio.cpp's `model_params.json` where it has them,
+  else the spec"), and the request keeps a value to those ends. 161 number settings of the
+  generated families (one model per family) have an open end — number boxes now, left out before
+  (E2). — *code, 2026-10-15* ·
+  `generated.settingsOf`; JustVoice `27f1c140`.
 - Qwen3: a missing or unsupported language goes as "Auto", audio.cpp's own default. (was:
   "English" — until 2026-10-04.) Speech recognition and the aligner get the language's name for
   all 30 Qwen3-ASR languages, detection for anything else. (was: raw codes for the 20 outside
@@ -471,6 +505,12 @@ All *code*, our checkout at `55b150f4`, read 2026-10-11 — `../audio.cpp/webui/
   orders by the spec (each engine's default unchanged). F5-TTS's Habibi GGUFs carry Vocos (no
   vocoder download), and `vocab.txt` is read from the GGUF's folder
   (`f5_tts/synthesize.cpp:1140`). — *code + tests, 2026-10-15*.
+- **How it shows a model's options:** all of them, session-scoped ones too, folded in one
+  `<details>` — "Model parameters" and their count — each control by its control-list type: a
+  `slider` a range input, a `number` an `<input type="number">` with the control's min, max and
+  step (none given = the browser's step of 1), `bool` a switch, `choice` a select, `text` a text
+  input (`native/src/routes/+page.svelte:3040-3077`). JustVoice's number box and its folded load
+  options follow it (the adoption plan's E2, E4). — *code, 2026-10-15*.
 
 ---
 
