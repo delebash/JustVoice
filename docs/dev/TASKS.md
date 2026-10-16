@@ -395,8 +395,19 @@ BUILT:  2 — the "group" flag carries the whole group (`ScriptFlag.group`); Scr
         button that waits for Analyze on Script and Discover waits for it too; Script's row shows
         its step ("Render every line…"); the Studio page follows a live run whichever tab is open
         (`bookRun.followLive`, `bookRunOn`); docs studio.md (Make the audiobook), whats-new.
-OPEN:   1 after the graphics card is free (JustWrite's Lab run); 3 waits on the user's ears;
-        6 (mock first); 4's calibration after the first frontier run. For the user: the cast card's Clear all ignores no one (a gap — a
+        1 — the card on the real book (Alice VII (one-click test), its latest run: the re-run that
+        redid the check) beside the mock's done state, at 1280 and 390 px, no JS errors on either;
+        the differences, for the user's look: (a) at 390 px the real Overview puts the card first,
+        the mock puts the chapter steps (4 · Render, 5 · Export) above it; (b) a re-run's words —
+        the mock has no re-run state, and the real card says "Done · 0 people", "0 speakers
+        added", "0 voices", "0 voices made", "0 speakers", "Render every line — Done · 0 lines"
+        beside "Done · 1 chapter · 1 already done" — the book-wide steps never say what was kept;
+        (c) the M4B gone after a restart — real "↻ Run again · The M4B was saved or the app
+        restarted since — Export makes it again. Open Export →", the mock's done state only has
+        "⬇ Save the M4B"; (d) outside the card, the top bar's voice and model chips shrink to
+        "N…" and "g…" at 1280 px when the crumb carries a long book name.
+OPEN:   3 waits on the user's ears; 6 (mock first); 4's calibration after the first frontier run;
+        1's differences (a)–(d) for the user's look. For the user: the cast card's Clear all ignores no one (a gap — a
         start-over shouldn't empty the next run's cast); a line given to the ONE person the
         answer named still asks "No one could be named — given to ‹X›. Who says it?" (words
         needed).
