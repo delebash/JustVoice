@@ -309,9 +309,12 @@ STATE:  DECIDED 2026-10-15 under the user's "your rec go" (the slice's agent's r
 WHY:    the plan leaves which settings fold, and the v3 label, open; audio.cpp's own UI and spec
         answer both.
 NOT:    a label of my own for the checkpoint.
-BUILT:  slice 3 — 27f1c140, 43007230, 037abbe4, c0a21e7e; 1–3 under way.
-OPEN:   1–3; the runtime check (a load option and a number-box setting reach the runtime) once
-        the fork's build is done. For the user at the end: "Checkpoint" is audio.cpp's word.
+BUILT:  slice 3 — 27f1c140, 43007230, 037abbe4, c0a21e7e. 1–3 — 825101cd (the fold by audio.cpp's
+        control list, the seven engines' knobs too; the persona page's Sampling now DeliveryKnobs,
+        as Render's; Chatterbox's Checkpoint on the row; the seed's top from the spec), docs
+        e906b863.
+OPEN:   the runtime check (a load option and a number-box setting reach the runtime) once the
+        fork's build is done. For the user at the end: "Checkpoint" is audio.cpp's word.
 GO:     given 2026-10-15 ("your rec go").
 
 ### Slice 2's acceptance findings: what each one gets (2026-10-15)
