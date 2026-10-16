@@ -199,13 +199,8 @@ BUILT:  1, the review (2026-10-13): `docs/plans/2026-10-13-narrowings-review/` �
         unchanged (every persona request, warm-up, registration the same bytes; every model, voice
         and price key kept — seven_engines_unchanged.test.js); F4 Turbo's/Nano's own voice; E6/E14/F5
         audio.cpp's own Turbo package, Base 1.7B and VoxCPM2 `-orig`, QwenCleo-ASR; answer 3; slice
-        3's item 4. Docs 9bcf188b. The GPU half waits for the merge. For the user's word: audio.cpp's
-        Turbo package's name (built as its catalog's, "Chatterbox Turbo (tts)"); Pocket TTS French
-        (in the spec; its one preset, cosette, non-commercial — not offered); Pocket's 19 presets
-        into our fork's spec (they stay in our notes); "Measured by JustVoice." for the seven's
-        tested note (was "Wired by hand and …"); Kitten's Speed from 0.01 by 0.05 steps misses 1.0;
-        Turbo's "speaks only cloned voices" refusal, inexact since F4; CLAUDE.md's two
-        `engines/<id>/manifest.js` pointers (not edited — an agent may not).
+        3's item 4. Docs 9bcf188b. The GPU half waits for the merge. Its gaps: "Slice 4's gaps: what
+        each one gets" below.
 OPEN:   the register's 20 questions and its "found on the way" list, to the user; JustWrite's
         side, to its session; the adoption plan's 7 questions. Then: 2 a plan to adopt everything: every
         audio.cpp speech model offered by default, the seven engines described by our own files on the same
@@ -317,6 +312,38 @@ BUILT:  15 — 8d7adf6. 1 — 1705ac9. 2 and 12 — the commit after 4371c9a (Au
 OPEN:   the rest of 1–16 as above. 13 — moot: VieNeu, the
         one model it was for, is hidden again ("Slice 2's acceptance findings" 1, abd3d1b4).
 GO:     given 2026-10-15 for 1–16.
+
+### Slice 4's gaps: what each one gets (2026-10-16)
+STATE:  DECIDED 2026-10-16 under the user's "your rec go" of 2026-10-15 (the slice's agent's eleven
+        gaps, each with its rec, rethought): 1. audio.cpp's own Turbo package is named "Chatterbox
+        Turbo (built-in voice only)" (was its catalog's "Chatterbox Turbo (tts)"). 2. Pocket TTS
+        French is offered, cloning only — its one preset, cosette (Expresso), forbids commercial
+        use and our twenty have no French file; the weights are CC-BY-4.0 (audio.cpp's licence
+        table, checked 2026-10-14); not timed on the CPU, so Auto doesn't offer it the CPU. 3.
+        Pocket's nineteen presets stay in our notes (the agent's rec was our fork's spec: a
+        difference from upstream's spec to carry at every merge, for nothing the user sees). 4. A
+        slider whose bottom moves off its step's grid steps by the bottom's last digit — Kitten's
+        Speed 0.01–3 by 0.01, so 1.0 is reachable. 5. Turbo's refusal: "‹model› speaks only a
+        cloned voice or its own built-in one — this voice has no reference clip"; audio.cpp's
+        package's: "‹model› speaks only its own built-in voice". 6. The build's answer 3, "a card
+        that can't be read says 'memory not measured yet'": Auto's reason is "memory not measured
+        yet" where the card can't be read or the model has no size (was empty — the agent had
+        built only the model case, which no model reaches). 7. CLAUDE.md's two
+        `engines/<id>/manifest.js` pointers — to the user (an agent asked; CLAUDE.md isn't edited
+        on an agent's word). 8. The persona mock's old Built-in/Tags reason — slice 5. 9. The
+        before-snapshot as our own JSON fixture with a write mode (`JV_SEVEN_BEFORE=write`), not
+        Vitest's snapshots — NOT STANDARD, to the user by name; the merge waits for the answer.
+        10. QwenCleo's languages `ar-EG` and `en` (VoiceTut's precedent), kept. 11. The worktree's
+        two package-lock.json changes (the kit's package.json since moved on) — not slice 4's,
+        left out.
+WHY:    each gap was the slice's agent's to raise; the rule is to rethink and build the rec, and to
+        put a NOT STANDARD piece to the user by name.
+NOT:    a fork-only spec for Pocket's presets; Pocket's cosette offered.
+BUILT:  1–6 — on branch `slice4`, the commit after f73f5f2e (server 1255 + 2 skipped, unit 239,
+        lint, family guard).
+OPEN:   7 and 9, to the user; the merge, then the GPU half (Pocket TTS French clones and reads
+        back among it).
+GO:     given 2026-10-15 ("your rec go"); 9 waits for its own word.
 
 ### Slice 3's six questions: what each one gets (2026-10-15)
 STATE:  DECIDED 2026-10-15 under the user's "your rec go" (the slice's agent's recs, rethought):

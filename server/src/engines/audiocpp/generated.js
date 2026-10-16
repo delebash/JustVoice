@@ -732,10 +732,10 @@ function ownModel(engineId, family, note) {
   // Its capability row: our notes' (`model`), else the rule a model of an engine's gets.
   const modelId = note.model ?? `${engineId}-${slug(entry.id)}`;
   const own = Boolean(note.name);
-  // Its name: our notes', else its catalog entry's without the web UI's notes in brackets — or
-  // whole, where our notes say another model of the engine has that name (`audiocpp_name`:
-  // audio.cpp's own Turbo package, "Chatterbox Turbo (tts)", beside our Turbo).
-  const name = note.name ?? (note.audiocpp_name ? String(entry.display_name) : modelName({ single: false, fam, entry }));
+  // Its name: our notes', else its catalog entry's without the web UI's notes in brackets — or,
+  // where another model of the engine has that name, the one our notes give it (`distinct_name`:
+  // audio.cpp's own Turbo package beside our Turbo).
+  const name = note.name ?? note.distinct_name ?? modelName({ single: false, fam, entry });
   const clone = kind === "tts" && (note.clone ?? clones(fam));
   const design = kind === "tts" && (note.design ?? entry.task === "vdes");
   const ids = Array.isArray(note.packages) ? Object.fromEntries(note.packages.map((p) => [p, null])) : note.packages;

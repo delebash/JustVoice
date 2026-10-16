@@ -984,7 +984,10 @@ export function toSpeechRequest(row, body) {
       );
     }
     if (truthy(get(body, "audio_prompt_path"))) req.voice_ref = fwd(body.audio_prompt_path);
-    else req.voice = builtIn(get(body, "voice_id")) ?? "alba";
+    else if (!Object.keys(spec.voices || {}).length) {
+      // French has no preset of ours: it clones only (decided 2026-10-16, TASKS "Slice 4's gaps" 2).
+      throw new AudioCppError(`${row.name ?? "Pocket TTS"} speaks only cloned voices — this voice has no reference clip`);
+    } else req.voice = builtIn(get(body, "voice_id")) ?? "alba";
     return req;
   }
 
@@ -1021,7 +1024,10 @@ export function toSpeechRequest(row, body) {
       if (spec.clone === false) throw new AudioCppError(`${row.name ?? "Chatterbox Turbo"} doesn't copy a voice from a clip`);
       req.voice_ref = fwd(body.audio_prompt_path);
     } else if (!has(spec.voices, get(body, "voice_id"))) {
-      throw new AudioCppError(`${row.name ?? "Chatterbox Turbo"} speaks only cloned voices — this voice has no reference clip`);
+      // Since F4 a cloned voice or the model's own; audio.cpp's package only its own (decided
+      // 2026-10-16, TASKS "Slice 4's gaps" 5).
+      const speaks = spec.clone === false ? "only its own built-in voice" : "only a cloned voice or its own built-in one — this voice has no reference clip";
+      throw new AudioCppError(`${row.name ?? "Chatterbox Turbo"} speaks ${speaks}`);
     }
     const opts = {};
     for (const key of ["repetition_penalty", "top_p"]) {

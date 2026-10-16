@@ -175,6 +175,7 @@ measured. The model, voice and setting names you know are unchanged.
 | **Kokoro 82M** | 190 MB · 212 MB | 9 (American and British English, Mandarin, Spanish, French, Hindi, Italian, Brazilian Portuguese, Japanese) | — | 54 | Apache-2.0 |
 | **KittenTTS Mini 0.8** | 302 MB (unquantized) | English | — | 8 | Apache-2.0 |
 | **Pocket TTS** — one model per language: English, German, Italian, Portuguese, Spanish | 258 MB · 350 MB each | 1 each | ✓ | 20 | CC-BY-4.0 |
+| **Pocket TTS French** (since 2026-10-16) | 134 MB · 226 MB | French | ✓ | — | CC-BY-4.0 |
 | **Qwen3-TTS CustomVoice 1.7B** | 2.8 GB · 4.2 GB | 10 | — | 9 | Apache-2.0 |
 | **Qwen3-TTS CustomVoice 0.6B** | 1.7 GB · 2.2 GB | 10 | — | 9 | Apache-2.0 |
 | **Qwen3-TTS Base 1.7B** | 2.7 GB · 4.2 GB | 10 | ✓ | — | Apache-2.0 |
@@ -183,7 +184,7 @@ measured. The model, voice and setting names you know are unchanged.
 | **Chatterbox Multilingual** | 2.1 GB · 3.7 GB | 23 | ✓ | — | MIT |
 | **Chatterbox Turbo** (350M) | 881 MB · 1.4 GB | English | ✓ (a clip longer than 5 s) | 1 (since 2026-10-16) | MIT |
 | **Chatterbox Nano** (110M) | 616 MB · 895 MB | English | ✓ (a clip longer than 5 s) | 1 (since 2026-10-16) | MIT |
-| **Chatterbox Turbo (tts)** — audio.cpp's own package (since 2026-10-16) | 699 MB (8-bit only) | English | — | 1 | MIT |
+| **Chatterbox Turbo (built-in voice only)** — audio.cpp's own package (since 2026-10-16) | 699 MB (8-bit only) | English | — | 1 | MIT |
 | **VoxCPM2** | 3.0 GB · 4.8 GB | 30 | ✓ (and designs from words) | — | Apache-2.0 |
 | **Speech recognition — Qwen3-ASR 1.7B** | 3.6 GB · 5.9 GB (with its word aligner) | 30 | — | — | Apache-2.0 |
 | **Speech recognition — Qwen3-ASR 0.6B** (since 2026-10-15) | 2.3 GB · 3.7 GB (with its word aligner) | 30 | — | — | Apache-2.0 |
@@ -236,7 +237,10 @@ enough on a CPU. It clones from a short clip (no transcript needed) and speaks
 20 built-in voices. Each language is its own model and its own download; the
 presets speak whichever language's model is loaded, and a line in another
 language stops with a message naming the model to load, rather than reading
-German with English sounds.
+German with English sounds. **Pocket TTS French** (since 2026-10-16) only
+clones: Kyutai's one French voice, Cosette, is from a recording that forbids
+commercial use, so JustVoice doesn't offer it, and the other twenty have no
+French version. It hasn't been timed on a CPU yet.
 
 - **Its presets** are the 20 of Kyutai's 26 whose recordings permit selling
   what you make: Alba, Estelle, the twelve VCTK voices (Anna, Azelma, Charles,
@@ -595,8 +599,9 @@ JustVoice's own idle processes (about 0.2 GB) are counted with the other
 programs. Every model has a size to check before its first load — Kokoro,
 KittenTTS, Pocket TTS, Qwen3-TTS, Chatterbox, VoxCPM2 and Qwen3-ASR too, since
 2026-10-16 (before, Auto took the card for them and gave no reason). With no
-reading of the card, Auto takes the card and gives no reason — the model's first
-load measures it, and a load that doesn't fit moves to the CPU (below). Then Auto
+reading of the card, Auto takes the card and says *memory not measured yet* — the
+model's first load measures it, and a load that doesn't fit moves to the CPU
+(below). Then Auto
 decides, in this order:
 
 1. **The graphics card** when the model fits in the card's free memory — the
@@ -731,7 +736,7 @@ and **Detail top k** (from 0), and Turbo's and Nano's **Top k** (from 0) are
 number boxes with no top (were sliders of 4–30, 1–100 and 1–2000).
 
 Since 2026-10-16 they are audio.cpp's where audio.cpp reaches further, or gives no
-range at all: KittenTTS's **Speed** starts at 0.01 (was 0.5); Chatterbox's
+range at all: KittenTTS's **Speed** starts at 0.01 (was 0.5), in steps of 0.01; Chatterbox's
 **Top p**, **Min p** and **Decoder CFG**, Turbo's and Nano's **Temperature**,
 **Repetition penalty** and **Top p**, Qwen3's **Detail temperature**, and
 VoxCPM2's **Tries on a runaway** and **Runaway limit** are number boxes, since
@@ -820,7 +825,7 @@ and [delebash/chatterbox-nano-GGUF](https://huggingface.co/delebash/chatterbox-n
 Each also speaks its own voice, with no clip (since 2026-10-16): **Turbo (built-in)**
 and **Nano (built-in)** among Chatterbox's voices on the Voices page, gender *Not
 known* — Resemble gives the voice no name or gender. audio.cpp's own Turbo
-package is listed beside them as **Chatterbox Turbo (tts)**: its built-in voice
+package is listed beside them as **Chatterbox Turbo (built-in voice only)**: its built-in voice
 (**Chatterbox Turbo (built-in)**), Turbo's settings and tags, and no cloning —
 it carries no voice encoder.
 

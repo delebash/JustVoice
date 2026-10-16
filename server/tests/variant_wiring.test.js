@@ -357,7 +357,7 @@ test("every_16_bit_row_is_its_8_bit_siblings_model_at_the_original_precision", (
     }
     void eid;
   }
-  // kokoro 1 · pocket 5 · qwen3 5 · chatterbox 3 (Turbo and Nano too) · asr 3 (1.7B, 0.6B, QwenCleo —
-  // the adoption plan's E14/F5) · voxcpm2 1
-  expect(seen).toBe(18);
+  // kokoro 1 · pocket 6 (French — TASKS "Slice 4's gaps" 2) · qwen3 5 · chatterbox 3 (Turbo and Nano
+  // too) · asr 3 (1.7B, 0.6B, QwenCleo — the adoption plan's E14/F5) · voxcpm2 1
+  expect(seen).toBe(19);
 });

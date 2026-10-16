@@ -62,15 +62,19 @@ export const ENGINE = {
 // One model per language, each its own download (audio.cpp's packages per language): the presets
 // speak whichever language's model is loaded; a line in another language is refused by name. Read
 // back by Parakeet (2026-10-02): English, German and Italian clean; Portuguese and Spanish sometimes
-// drop words, depending on the seed. French — the spec's sixth language — isn't offered yet: its
-// one preset voice (cosette, Expresso) is non-commercial (TASKS, slice 4's gaps).
-const language = (code, folder, word) => ({
+// drop words, depending on the seed. French — the spec's sixth language — clones only: its one
+// preset voice (cosette, Expresso) is non-commercial, and its folder has none of the others
+// (decided 2026-10-16, TASKS "Slice 4's gaps" 2); not measured on the CPU yet.
+const language = (code, folder, word, { presets = true } = {}) => ({
   entry: "pocket-tts",
   model: "pocket",
   id: `pocket-${code}`,
   name: `Pocket TTS ${word}`,
-  description: `Clones a voice from a short clip, and speaks the {voices} presets, in ${word}. Fast enough on the CPU. 8-bit weights.`,
+  description: presets
+    ? `Clones a voice from a short clip, and speaks the {voices} presets, in ${word}. Fast enough on the CPU. 8-bit weights.`
+    : `Clones a voice from a short clip, in ${word}. 8-bit weights.`,
   languages: [code],
+  ...(presets ? {} : { voices: false }),
   packages: [`pocket_tts_${folder}_q8_0`, `pocket_tts_${folder}_bf16`],
 });
 export const MODELS = [
@@ -79,6 +83,7 @@ export const MODELS = [
   language("it", "italian", "Italian"),
   language("pt", "portuguese", "Portuguese"),
   language("es", "spanish", "Spanish"),
+  language("fr", "french", "French", { presets: false }),
 ];
 
 // Seconds of audio per second of work on the CPU on the reference machine (Ryzen 7 5700X, 8

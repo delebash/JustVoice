@@ -288,17 +288,28 @@ test("the seven's snapshot from main exists (written there with JV_SEVEN_BEFORE=
 
 const before = () => JSON.parse(readFileSync(BEFORE, "utf8"));
 
+// What an approved decision rewords in a refusal: Turbo's names what it speaks since F4 (decided
+// 2026-10-16, TASKS "Slice 4's gaps" 5).
+const REWORDED = {
+  "chatterbox/chatterbox-turbo-f16 · a Turbo voice with no clip": ["speaks only cloned voices", "speaks only a cloned voice or its own built-in one"],
+};
+
 test("a persona of each of the seven sends audio.cpp the same bytes as before", () => {
-  expect(requests()).toEqual(before().requests);
+  const was = before().requests;
+  for (const [key, [from, to]] of Object.entries(REWORDED)) was[key] = was[key].replace(from, to);
+  expect(requests()).toEqual(was);
 });
 
 // The models an approved decision adds: QwenCleo-ASR (E14/F5, with its languages — TASKS "Slice 2's
 // acceptance findings" 5), audio.cpp's own Turbo package and the original precisions of Qwen3-TTS
-// Base 1.7B and VoxCPM2 (the plan's E6/E14/F5).
+// Base 1.7B and VoxCPM2 (the plan's E6/E14/F5); Pocket TTS French, clone-only (TASKS "Slice 4's
+// gaps" 2).
 const ADDED = [
   "asr/qwencleo-asr-f16",
   "asr/qwencleo-asr-q8",
   "chatterbox/chatterbox-chatterboxturbo-q8",
+  "pocket/pocket-fr-bf16",
+  "pocket/pocket-fr-q8",
   "qwen3/qwen3-base-1.7b-orig",
   "voxcpm2/voxcpm2-orig",
 ];
@@ -350,9 +361,10 @@ const CHANGED = {
 };
 // Slice 3's question 4 (decided 2026-10-15): the knobs audio.cpp gives a wider range, or none, take
 // audio.cpp's — a number box where an end is open; never narrower than ours, nor below the app's
-// 0.05 for a temperature or top-p ("open top": from where it was).
+// 0.05 for a temperature or top-p ("open top": from where it was). Kitten's Speed steps by 0.01 from
+// there, so 1.0 stays reachable (TASKS "Slice 4's gaps" 4).
 const RANGES = {
-  kitten: { speed: { min: 0.01 } },
+  kitten: { speed: { min: 0.01, step: 0.01 } },
   "chatterbox-multilingual": { top_p: "open top", min_p: "open", s3gen_cfg_rate: "open" },
   chatterbox: { top_p: "open top", min_p: "open", s3gen_cfg_rate: "open" },
   "chatterbox-turbo": { temperature: "open top", repetition_penalty: "open", top_p: "open top" },
@@ -388,7 +400,7 @@ test("every model, voice and price key there before is there, the same — but w
               ? { min: before.min, max: null, box: true }
               : { ...before, ...change };
         expect({ ...k, min: k.min, max: k.max, box: k.box }, `${id} ${k.key}`).toEqual({ ...before, ...want });
-        Object.assign(before, { min: k.min, max: k.max, box: k.box });
+        Object.assign(before, { min: k.min, max: k.max, box: k.box, step: k.step });
       }
     }
     const { voices: _was, ...wasRest } = was[engineId];

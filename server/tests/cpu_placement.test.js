@@ -199,9 +199,10 @@ test("auto_takes_the_card_when_nothing_else_is_on_it", async () => {
   // Never measured on this card: weighed by audio.cpp's estimate (Kokoro's 1 GB) — the build's
   // answer 3 (decided 2026-10-15): the seven engines described by our own files get it as every
   // model does (was: no size, so the card, claiming no fit). With no reading of the card, the card,
-  // claiming nothing; beside other programs, it fits the card's free memory.
+  // saying so ("memory not measured yet" — the same answer 3); beside other programs, it fits the
+  // card's free memory.
   const mgr = mgrFor();
-  expect(await mgr.placementFor(mgr.getManifest("kokoro"), "tts", "kokoro-82m-q8")).toEqual(["gpu", "", false]);
+  expect(await mgr.placementFor(mgr.getManifest("kokoro"), "tts", "kokoro-82m-q8")).toEqual(["gpu", "memory not measured yet", false]);
   vi.spyOn(EngineManager.prototype, "poolUsedMb").mockResolvedValue(6000);
   expect(await mgr.placementFor(mgr.getManifest("kokoro"), "tts", "kokoro-82m-q8")).toEqual(["gpu", "it fits in the card's free memory", false]);
 });
@@ -660,7 +661,8 @@ test("pocket_offers_only_the_presets_licensed_for_commercial_use", () => {
   }
   for (const r of discoverEngines().get("pocket").module.VARIANTS) {
     const files = r.sources[0].files;
-    expect(files.length).toBe(21);
+    // French clones only: its package's own cosette comes with it, never offered (TASKS "Slice 4's gaps" 2).
+    expect(files.length, r.id).toBe(r.id.startsWith("pocket-fr-") ? 2 : 21);
     expect(files[0].endsWith(".gguf")).toBe(true);
   }
 });

@@ -8,9 +8,10 @@
   memory keep working as they were ([Speech engines](engines.md)).
   - Chatterbox Turbo and Nano also speak their own voice, with no clip: **Turbo (built-in)** and
     **Nano (built-in)** on the Voices page, gender *Not known*
-  - New downloads: audio.cpp's own Chatterbox Turbo package (**Chatterbox Turbo (tts)**, its
-    built-in voice), Qwen3-TTS Base 1.7B and VoxCPM2 at their original precision, and
-    **QwenCleo-ASR**, a recogniser for Egyptian Arabic and Arabic-English speech
+  - New downloads: audio.cpp's own Chatterbox Turbo package (**Chatterbox Turbo (built-in voice
+    only)**), Qwen3-TTS Base 1.7B and VoxCPM2 at their original precision, **Pocket TTS French**
+    (cloning only — its one voice forbids commercial use), and **QwenCleo-ASR**, a recogniser for
+    Egyptian Arabic and Arabic-English speech
   - Before their first load they show what audio.cpp says they need — Kokoro *needs about 1 GB* —
     instead of *memory not measured yet*, and Auto weighs them by it
   - Settings audio.cpp gives a wider range, or none, take audio.cpp's: KittenTTS's **Speed** from

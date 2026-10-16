@@ -51,7 +51,8 @@ test("every download the seven engines offer is a spec package's file, at the sa
     expect(names.every((n) => PRESETS.includes(n)), `${vid}: ${paths.join(" ")}`).toBe(true);
     expect(names.length, vid).toBe(vid.startsWith("pocket-en-") ? PRESETS.length - 1 : PRESETS.length);
   }
-  expect(Object.keys(notInSpecs).sort()).toEqual(rows(pocket).map((v) => v.id).sort());
+  // French clones only — none of our presets (TASKS "Slice 4's gaps" 2), so it adds no file.
+  expect(Object.keys(notInSpecs).sort()).toEqual(rows(pocket).map((v) => v.id).filter((id) => !id.startsWith("pocket-fr-")).sort());
 });
 
 test("the seven engines' voices beside the specs' built-in voices", () => {
@@ -87,7 +88,7 @@ test("the seven engines' languages beside the specs'", () => {
   expect(ours(qwen3)).toEqual(spec("qwen3_tts"));
   expect(ours(chatterbox, (v) => v.audiocpp.family === "chatterbox")).toEqual(spec("chatterbox")); // 23, with our he/ru/zh/ja
   expect(ours(chatterbox, (v) => v.audiocpp.family === "chatterbox_turbo")).toEqual(spec("chatterbox_turbo"));
-  expect(ours(pocket)).toEqual(minus(spec("pocket_tts"), ["fr"])); // known: French is in the spec, not offered yet (TASKS)
+  expect(ours(pocket)).toEqual(spec("pocket_tts")); // French clones only (TASKS "Slice 4's gaps" 2)
   // Known: the spec also lists "zh dialects", a description rather than a language.
   expect(minus(spec("voxcpm2"), ours(voxcpm2))).toEqual(["zh dialects"]);
   expect(minus(ours(voxcpm2), spec("voxcpm2"))).toEqual([]);

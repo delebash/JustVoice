@@ -72,7 +72,12 @@ function atAudiocppRange(family, k) {
   let lo = min === null ? null : Math.min(k.min ?? min, min);
   if (floor !== null) lo = Math.max(lo ?? floor, floor);
   const hi = max === null || k.max === null ? null : Math.max(k.max, max);
-  return knob({ ...k, min: lo, max: hi, box: lo === null || hi === null ? true : k.box });
+  // A slider steps from its bottom: one that moved off the step's grid (Kitten's Speed, from
+  // audio.cpp's 0.01 by 0.05) would miss its usual values, 1.0 among them — it steps by the
+  // bottom's own last digit instead (decided 2026-10-16, TASKS "Slice 4's gaps" 4).
+  const offGrid = lo !== null && k.step && Math.abs(lo / k.step - Math.round(lo / k.step)) > 1e-9;
+  const step = offGrid ? 10 ** -((String(lo).split(".")[1] || "").length) : k.step;
+  return knob({ ...k, min: lo, max: hi, step, box: lo === null || hi === null ? true : k.box });
 }
 const atAudiocppRanges = (family, knobs) => knobs.map((k) => atAudiocppRange(family, k));
 

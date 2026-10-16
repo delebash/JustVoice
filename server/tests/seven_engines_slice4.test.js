@@ -40,9 +40,9 @@ test("Turbo and Nano each list their own voice, Not known, and speak it with no 
     delivery: { temperature: 0.7, engine: { top_k: 500 } },
   });
   expect(req).toEqual({ model: "chatterbox-nano-q8", input: "[laugh] Two days wrong!", seed: 42, options: { top_k: 500, temperature: 0.7 } });
-  // Another model's voice is no voice of Turbo's: refused as before.
+  // Another model's voice is no voice of Turbo's: refused, naming what it speaks (TASKS "Slice 4's gaps" 5).
   expect(() => slot.toSpeechRequest(row("chatterbox", "chatterbox-turbo-q8"), { voice_id: "af_heart", text: "Hi.", seed: 1 })).toThrow(
-    /speaks only cloned voices/,
+    "Chatterbox Turbo (350M, English) speaks only a cloned voice or its own built-in one — this voice has no reference clip",
   );
   // The persona page and every voice list read the voice's model from it.
   expect(vmod.modelForPreset("chatterbox", voices[0])).toBe("chatterbox-turbo");
@@ -51,9 +51,9 @@ test("Turbo and Nano each list their own voice, Not known, and speak it with no 
 test("audio.cpp's own Turbo package is offered beside ours: its own voice, Turbo's settings, no cloning (E6/E14/F5)", () => {
   const upstream = row("chatterbox", "chatterbox-chatterboxturbo-q8");
   expect(upstream.sources[0]).toMatchObject({ hf_repo: "audio-cpp/audio.cpp-gguf", files: ["Chatterbox-Turbo-GGUF/chatterbox-turbo-q8_0.gguf"] });
-  expect([upstream.name, upstream.voice_cloning, upstream.preset_voices, upstream.min_vram_gb]).toEqual(["Chatterbox Turbo (tts)", false, 1, 4]);
+  expect([upstream.name, upstream.voice_cloning, upstream.preset_voices, upstream.min_vram_gb]).toEqual(["Chatterbox Turbo (built-in voice only)", false, 1, 4]);
   const cap = lookup(upstream.id);
-  expect(cap.display_name).toBe("Chatterbox Turbo (tts)");
+  expect(cap.display_name).toBe("Chatterbox Turbo (built-in voice only)");
   expect(cap.supports_voice_cloning).toBe(false);
   expect(cap.knobs.map((k) => k.key)).toEqual(lookup("chatterbox-turbo").knobs.map((k) => k.key));
   expect(cap.inline_tags).toEqual(lookup("chatterbox-turbo").inline_tags);
@@ -134,7 +134,7 @@ test("voices, languages and piece budgets read from audio.cpp's files (F10)", ()
   expect(row("kokoro", "kokoro-82m-q8").split_chars).toBe(240);
   // Every package audio.cpp's own UI offers for the seven's models (installChoices), and every other
   // GGUF package of their entries, is offered where its files are at the pinned revision (audio.cpp's
-  // own Turbo f16 isn't); one that isn't is named: Pocket TTS French (TASKS, slice 4's gaps).
+  // own Turbo f16 isn't) — Pocket TTS French too, clone-only (TASKS "Slice 4's gaps" 2).
   const offered = new Set([...generated.generatedEngines().values()].flatMap((m) => [...m.VARIANTS, ...(m.PENDING_VARIANTS || [])].map((v) => v.audiocpp.package)));
   const missing = [];
   for (const family of generated.OWN_FAMILIES) {
@@ -147,5 +147,22 @@ test("voices, languages and piece budgets read from audio.cpp's files (F10)", ()
       for (const id of [...(e.install_packages || []).map((c) => c.id), ...e.packages]) if (usable(id) && !offered.has(id)) missing.push(id);
     }
   }
-  expect([...new Set(missing)].sort()).toEqual(["pocket_tts_french_bf16", "pocket_tts_french_q8_0"]);
+  expect([...new Set(missing)].sort()).toEqual([]);
+});
+
+test("Pocket TTS French clones only: none of our presets, its own non-commercial one left out (TASKS \"Slice 4's gaps\" 2)", () => {
+  const fr = row("pocket", "pocket-fr-q8");
+  expect([fr.name, fr.voice_cloning, fr.preset_voices, fr.languages]).toEqual(["Pocket TTS French", true, 0, ["fr"]]);
+  expect(fr.description).toBe("Clones a voice from a short clip, in French. 8-bit weights.");
+  expect(() => slot.toSpeechRequest(fr, { voice_id: "pocket_alba", text: "Bonjour.", language: "fr", seed: 1 })).toThrow(
+    "Pocket TTS French speaks only cloned voices — this voice has no reference clip",
+  );
+  expect(slot.toSpeechRequest(fr, { voice_id: "v", text: "Bonjour.", language: "fr", seed: 1, audio_prompt_path: "C:/v.wav" })).toEqual({
+    model: "pocket-fr-q8",
+    input: "Bonjour.",
+    seed: 1,
+    voice_ref: "C:/v.wav",
+  });
+  // The other languages keep their presets.
+  expect(row("pocket", "pocket-de-q8").preset_voices).toBe(20);
 });

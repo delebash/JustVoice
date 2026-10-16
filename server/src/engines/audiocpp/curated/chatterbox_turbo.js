@@ -15,7 +15,8 @@
 // Each also speaks the model's own voice, with no clip (the plan's F4; decided 2026-10-15, §7
 // question 6: "Turbo (built-in)" and "Nano (built-in)", gender Not known — the spec gives it no
 // name or gender). audio.cpp's own Turbo package (its built-in voice only, no voice encoder, so it
-// can't copy a voice) is offered beside ours (the plan's E6/E14/F5), in audio.cpp's own words.
+// can't copy a voice) is offered beside ours (the plan's E6/E14/F5), as "Chatterbox Turbo (built-in
+// voice only)" (decided 2026-10-16, TASKS "Slice 4's gaps" 1).
 
 export const ENGINE = { id: "chatterbox" };
 
@@ -47,14 +48,14 @@ export const MODELS = [
     packages: ["chatterbox_nano_q8_0", "chatterbox_nano_f16"],
   },
   // audio.cpp's own package: its f16 file isn't at the pinned model revision (RESEARCH §1.4), so
-  // only its 8-bit one. Turbo's settings and tags (capability_details.js `like`); named as
-  // audio.cpp's catalog names it, whole — "Chatterbox Turbo" is our Turbo's name too, and two models
-  // under one name is the duplicate engine_knob_wiring's test refuses.
+  // only its 8-bit one. Turbo's settings and tags (capability_details.js `like`); named for what
+  // sets it apart — "Chatterbox Turbo" is our Turbo's name too, and two models under one name is
+  // the duplicate engine_knob_wiring's test refuses.
   {
     entry: "chatterbox-turbo",
     clone: false,
     like: "chatterbox-turbo",
-    audiocpp_name: true,
+    distinct_name: "Chatterbox Turbo (built-in voice only)",
     packages: ["chatterbox_turbo_q8_0"],
   },
 ];

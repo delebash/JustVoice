@@ -968,9 +968,11 @@ export class EngineManager {
       ];
     }
     // "Fits" only where it was checked — a size and a reading of the card. A model with no size
-    // here (neither measured nor a number audio.cpp gives) or no reading keeps the card and claims
-    // nothing: its first load measures it, and a load that doesn't fit moves to the CPU.
-    const fits = others !== null ? "it fits in the card's free memory" : "";
+    // here (neither measured nor a number audio.cpp gives) or a card that can't be read keeps the
+    // card and says so (decided 2026-10-15, the build's answer 3): its first load measures it, and
+    // a load that doesn't fit moves to the CPU.
+    const unchecked = size === null || (size + margin <= cardMb && others === null);
+    const fits = others !== null ? "it fits in the card's free memory" : unchecked ? "memory not measured yet" : "";
     if (!(await this._aiModelOnCard())) return ["gpu", cardFirst || fits, false];
     const free = prior ? await this._freeCardMb(kind, m.id) : null;
     if (prior && free !== null && prior <= free) return ["gpu", `it fits beside the AI model (${prior} MB)`, false];
