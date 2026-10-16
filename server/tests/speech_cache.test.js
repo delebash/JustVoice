@@ -92,6 +92,33 @@ test("multi_source_nests_per_repo", async () => {
   expect(sc.variantOnDisk(tmp, "eng", "v1")).toBe(true);
 });
 
+test("a_file_is_where_its_source_put_it", async () => {
+  // The registration's path (slot._entriesFor): QwenCleo-ASR's model and Qwen3's aligner come from
+  // two repositories, each in its own folder — the load looked at the variant's folder instead
+  // (slice 4's GPU half, 2026-10-16).
+  const tmp = tmpPath();
+  const sources = [
+    { hf_repo: "owner/repo", files: ["model-4.bin"] },
+    { hf_repo: "owner/codec", files: ["enc-3.bin"] },
+  ];
+  await sc.fetchHfVariant(tmp, "eng", "v1", sources);
+  const vdir = sc.variantDir(tmp, "eng", "v1");
+  expect(sc.variantFilePath(tmp, "eng", "v1", sources, "model-4.bin")).toBe(path.join(vdir, "owner--repo", "model-4.bin"));
+  expect(sc.variantFilePath(tmp, "eng", "v1", sources, "enc-3.bin")).toBe(path.join(vdir, "owner--codec", "enc-3.bin"));
+  // One repository: the variant's own folder, as before.
+  await sc.fetchHfVariant(tmp, "eng", "v2", [{ hf_repo: "owner/repo", files: ["cfg-2.bin"] }]);
+  expect(sc.variantFilePath(tmp, "eng", "v2", [{ hf_repo: "owner/repo", files: ["cfg-2.bin"] }], "cfg-2.bin")).toBe(
+    path.join(sc.variantDir(tmp, "eng", "v2"), "cfg-2.bin"),
+  );
+  // Fetched from an operator's mirror (engine_sources_api.resolveSource swaps each repository):
+  // the folders are the mirror's, as files.json records them.
+  const mirror = sources.map((s) => ({ ...s, hf_repo: "mirror/all" }));
+  vi.spyOn(km, "selectRepoFiles").mockImplementation(async (_repo, { files }) => ["sha-m", files.map((p) => ({ path: p, size: Number(p.split("-")[1][0]), oid: "o" }))]);
+  await sc.fetchHfVariant(tmp, "eng", "v3", mirror);
+  expect(sc.variantFilePath(tmp, "eng", "v3", sources, "enc-3.bin")).toBe(path.join(sc.variantDir(tmp, "eng", "v3"), "mirror--all", "enc-3.bin"));
+  expect(statSync(sc.variantFilePath(tmp, "eng", "v3", sources, "enc-3.bin")).size).toBe(3);
+});
+
 test("on_disk_is_size_exact_never_folder_non_empty", async () => {
   const tmp = tmpPath();
   await sc.fetchHfVariant(tmp, "eng", "v1", [{ hf_repo: "owner/repo", files: null }]);

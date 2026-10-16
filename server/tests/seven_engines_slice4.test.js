@@ -4,6 +4,10 @@
 // what audio.cpp's files give them (F10), the packages it offers beside ours (E6/E14/F5, QwenCleo),
 // and audio.cpp's memory estimate (the build's answer 3). What stays the same is
 // seven_engines_unchanged.test.js.
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import path from "node:path";
+import * as dl from "@delebash/llm-runner/runner/download";
+import * as km from "@delebash/llm-runner/runner/models";
 import { afterEach, expect, test, vi } from "vitest";
 import "./engines_helpers.js";
 import * as generated from "../src/engines/audiocpp/generated.js";
@@ -11,7 +15,9 @@ import * as slot from "../src/engines/audiocpp/slot.js";
 import { lookup } from "../src/engines/capability_details.js";
 import { discoverEngines } from "../src/engines/manager.js";
 import { modelsFor } from "../src/engines/model_catalog.js";
+import * as speechCache from "../src/speech_cache.js";
 import * as vmod from "../src/voice_model.js";
+import { tmpPath } from "./helpers.js";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -107,6 +113,39 @@ test("QwenCleo-ASR: its package as audio.cpp's catalog gives it, its languages i
   expect(lookup(q8.id)).toBeNull();
   // 1.7B stays the default.
   expect(engine("asr").DEFAULT_VARIANT_ID).toBe("qwen3-asr-1.7b-q8");
+});
+
+/** Download a row's files as the app does (speech_cache.fetchHfVariant), each 4 bytes, offline. */
+async function fetchOffline(dataDir, engineId, r) {
+  vi.spyOn(km, "selectRepoFiles").mockImplementation(async (repo, { files }) => [`sha-${repo}`, files.map((p) => ({ path: p, size: 4, oid: "x" }))]);
+  vi.spyOn(dl, "streamDownload").mockImplementation(async (_url, dest) => {
+    mkdirSync(path.dirname(dest), { recursive: true });
+    writeFileSync(dest, Buffer.alloc(4));
+  });
+  vi.spyOn(speechCache, "_downloadKwargs").mockReturnValue({ segments: 1, retries: 0 });
+  await speechCache.fetchHfVariant(dataDir, engineId, r.id, r.sources);
+}
+
+test("QwenCleo-ASR registers its files where its download put them: each repository in its own folder", async () => {
+  // Slice 4's GPU half (2026-10-16): "model path does not exist: …\qwencleo-asr-q8\qwencleo-asr-q8_0.gguf"
+  // — its model and Qwen3's aligner come from two repositories, so the download keeps each in its own
+  // folder, and the registration left that folder out.
+  const dataDir = tmpPath();
+  vi.spyOn(slot, "_dataDir").mockReturnValue(dataDir);
+  const asr = discoverEngines().get("asr");
+  for (const id of ["qwencleo-asr-q8", "qwencleo-asr-f16", "qwen3-asr-1.7b-q8", "qwen3-asr-0.6b-f16"]) {
+    const r = row("asr", id);
+    await fetchOffline(dataDir, "asr", r);
+    expect(speechCache.variantOnDisk(dataDir, "asr", id), id).toBe(true);
+    const [model, aligner] = slot._entriesFor(asr, r);
+    expect(existsSync(model.path), model.path).toBe(true);
+    expect(existsSync(aligner.path), aligner.path).toBe(true);
+    expect(aligner.id).toBe(`${id}::aligner`);
+  }
+  // QwenCleo's model in its repository's folder; Qwen3-ASR's, one repository, at the model's own.
+  const vdir = (id) => String(speechCache.variantDir(dataDir, "asr", id));
+  expect(slot._entriesFor(asr, row("asr", "qwencleo-asr-q8"))[0].path).toBe(path.join(vdir("qwencleo-asr-q8"), "mohammedaly22--QwenCleo-ASR-GGUF", "qwencleo-asr-q8_0.gguf"));
+  expect(slot._entriesFor(asr, row("asr", "qwen3-asr-1.7b-q8"))[0].path).toBe(path.join(vdir("qwen3-asr-1.7b-q8"), "Qwen3-ASR-1.7B-GGUF", "qwen3-asr-1.7b-q8_0.gguf"));
 });
 
 test("audio.cpp's memory estimate for the seven, as for every model (the build's answer 3)", () => {

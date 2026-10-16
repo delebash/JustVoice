@@ -582,6 +582,19 @@ family's `curated/<family>.js` (`ENGINE`, `MODELS`, `VOICES` …).
   code-switching" (`docs/models/qwen3_asr.md:47-50`). Its languages in our notes: `ar-EG`, `en`, as
   VoiceTut-TTS's (decided 2026-10-15); its request sends "Arabic" for either Arabic tag. — *web
   (HF API, model card) + code, 2026-10-16*.
+- **QwenCleo-ASR's files are in two repositories' folders.** Its model is in
+  `mohammedaly22/QwenCleo-ASR-GGUF` and Qwen3's aligner in `audio-cpp/audio.cpp-gguf`, so its
+  download has two sources, and `speech_cache.fetchHfVariant` keeps each source in its own folder
+  (`<owner>--<name>/`) whenever a variant has more than one. The registration joined the variant's
+  folder and the file, so the load failed with "model path does not exist:
+  …\qwencleo-asr-q8\qwencleo-asr-q8_0.gguf" (the file was at
+  `…\qwencleo-asr-q8\mohammedaly22--QwenCleo-ASR-GGUF\`). The registration now asks
+  `speech_cache.variantFilePath`, the download's own rule, with the repository files.json records
+  (an operator's mirror replaces it). QwenCleo's two rows are the only ones with two sources at
+  `f861648c`; Qwen3-ASR's aligner shares its model's repository and revision (one source, one
+  folder), as MioTTS's codec does. The 24 downloads on the user's disk all resolve, at the same
+  paths as before. (was: the variant's folder — until 2026-10-16.) — *code + tests, 2026-10-16* ·
+  `speech_cache.js` `variantFilePath`, `slot._entriesFor`; TASKS, slice 4's "GPU half, 2026-10-16".
 - **Turbo's and Nano's own voice** (the plan's F4): a line with no clip and the model's own voice
   goes as no voice (`{model, input, seed, options}`), as the warm-up always spoke; listed as
   "Turbo (built-in)" and "Nano (built-in)", gender Not known (decided 2026-10-15, §7 question 6),

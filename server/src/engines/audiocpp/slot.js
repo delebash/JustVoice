@@ -265,15 +265,17 @@ export function variantSpec(manifest, variantId) {
 // `kitten_tts.espeak_data_path`). Kokoro is not one: it reads the environment.
 export const ESPEAK_SESSION_FAMILIES = ["kitten_tts"];
 
-/** The runtime entries a row registers: its model, then its companions (`<id>::<role>`). */
+/** The runtime entries a row registers: its model, then its companions (`<id>::<role>`) — each
+ * file where its download put it (speech_cache.variantFilePath: a model from two repositories,
+ * QwenCleo-ASR and Qwen3's aligner, keeps each in its own folder). */
 export function _entriesFor(manifest, row) {
   const spec = row.audiocpp;
-  const vdir = speechCache.variantDir(self._dataDir(), manifest.id, row.id);
+  const at = (file) => String(speechCache.variantFilePath(self._dataDir(), manifest.id, row.id, row.sources, file));
   const opts = { ...(spec.session_options || {}) };
   // The options the user set on the model's row (audit §13.5, 5h).
   Object.assign(opts, runtimeOptions.sessionOptionsFor(manifest.id, row));
   // A companion file downloaded with the model (a family file's SESSION_FILES — MioTTS's codec).
-  for (const [k, file] of Object.entries(spec.session_files || {})) opts[k] = path.join(String(vdir), file);
+  for (const [k, file] of Object.entries(spec.session_files || {})) opts[k] = at(file);
   // The eSpeak NG phonemizer the runtime install fetched. KittenTTS reads it from its own
   // prefixed session options; Kokoro reads only the runtime's environment
   // (`runtime._childEnv`) and would refuse a session option it doesn't know.
@@ -285,9 +287,9 @@ export function _entriesFor(manifest, row) {
     }
   }
   const pairs = Object.entries(opts).sort(([a], [b]) => cmp(a, b));
-  const out = [new ModelEntry(row.id, spec.family, spec.task, path.join(String(vdir), spec.file), pairs)];
+  const out = [new ModelEntry(row.id, spec.family, spec.task, at(spec.file), pairs)];
   for (const comp of spec.companions || []) {
-    out.push(new ModelEntry(`${row.id}::${comp.role}`, comp.family, comp.task, path.join(String(vdir), comp.file)));
+    out.push(new ModelEntry(`${row.id}::${comp.role}`, comp.family, comp.task, at(comp.file)));
   }
   return out;
 }

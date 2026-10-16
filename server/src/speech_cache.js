@@ -20,7 +20,8 @@
 //   hashing).
 // - Multi-repo variants nest one subdir per repo under the variant dir (`<owner>--<name>/`);
 //   single-repo variants keep their files at the variant root — the folder the speech
-//   runtime's config points into.
+//   runtime's config points into. `variantFilePath` is where a file of either is, for the
+//   runtime's registration (QwenCleo-ASR and its aligner, two repositories).
 
 import { createHash } from "node:crypto";
 import { createReadStream, mkdirSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
@@ -105,6 +106,31 @@ export function anyVariantOnDisk(dataDir, engineId) {
   return [...children, ...sharedVariantsOf(engineId)].some((name) => self.variantOnDisk(dataDir, engineId, name));
 }
 
+/** The folder a variant's source `i` of `sources` is fetched into, relative to the variant's
+ * folder: its repository's own (`<owner>--<name>`) when the variant has more than one source,
+ * else the variant's folder itself (""). */
+export function sourceFolder(sources, i) {
+  return sources.length > 1 ? String(sources[i].hf_repo).replaceAll("/", "--") : "";
+}
+
+/**
+ * Where `file` — a path in one of the variant's `sources` (its repository's own path) — is on
+ * disk: under that source's folder (`sourceFolder`), named by the repository the variant's
+ * files.json says it was fetched from (an operator's mirror replaces each one), else by
+ * `sources`. A file no source lists is at the variant's folder. The speech runtime registers a
+ * model by this path (slot._entriesFor); until 2026-10-16 it joined the variant's folder and the
+ * file, so QwenCleo-ASR's model — in its repository's folder beside the aligner's — was missing.
+ */
+export function variantFilePath(dataDir, engineId, variantId, sources, file) {
+  const vdir = variantDir(dataDir, engineId, variantId);
+  const list = sources || [];
+  const i = list.findIndex((s) => (s.files || []).includes(file));
+  if (i < 0 || list.length < 2) return path.join(vdir, file);
+  const fetched = readManifest(vdir)?.sources;
+  const from = Array.isArray(fetched) && fetched.length === list.length ? fetched : list;
+  return path.join(vdir, sourceFolder(from, i), file);
+}
+
 /** Recorded total bytes of the variant (manifest sum; 0 when absent). */
 export function variantDiskBytes(dataDir, engineId, variantId) {
   const man = readManifest(variantDir(dataDir, engineId, variantId));
@@ -175,7 +201,6 @@ const isSizedFile = (p, size) => {
 async function fetchHfVariantLocked(dataDir, engineId, variantId, sources, { onProgress, cancelCheck }) {
   const vdir = variantDir(dataDir, engineId, variantId);
   mkdirSync(vdir, { recursive: true });
-  const nest = sources.length > 1;
   const headers = kitModels.hfDownloadHeaders();
   const kwargs = self._downloadKwargs();
 
@@ -183,24 +208,23 @@ async function fetchHfVariantLocked(dataDir, engineId, variantId, sources, { onP
   // list fails before any byte moves.
   const resolved = [];
   let total = 0;
-  for (const src of sources) {
+  for (const [i, src] of sources.entries()) {
     const repo = src.hf_repo;
     const revision = src.revision || "main";
     const [sha, entries] = await kitModels.selectRepoFiles(repo, { revision, files: src.files ?? null });
-    const root = nest ? path.join(vdir, repo.replaceAll("/", "--")) : vdir;
-    resolved.push([src, sha, entries, root]);
+    resolved.push([src, sha, entries, sourceFolder(sources, i)]);
     total += entries.reduce((s, e) => s + kitModels._entrySize(e), 0);
   }
   if (onProgress) onProgress(0, total);
 
   let done = 0;
   const recorded = [];
-  for (const [src, sha, entries] of resolved) {
+  for (const [src, sha, entries, folder] of resolved) {
     const repo = src.hf_repo;
     for (const e of entries) {
       const p = e.path;
       const size = kitModels._entrySize(e);
-      const rel = nest ? `${repo.replaceAll("/", "--")}/${p}` : p;
+      const rel = folder ? `${folder}/${p}` : p;
       const dest = path.join(vdir, ...rel.split("/"));
       recorded.push({ path: rel, size, oid: kitModels._entryOid(e) });
       if (isSizedFile(dest, size)) {
