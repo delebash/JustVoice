@@ -10,7 +10,7 @@
 // The dataclasses keep their Python field names: `AttributionRow` IS the wire row
 // (`AttributionRowResponse(**row.__dict__)` in extraction_api), so one name per field.
 
-import { getLlmRegistry, LLMNotConfiguredError, resolveFeaturePreset } from "@delebash/llm-runner/llm";
+import { getLlmRegistry, LLMNotConfiguredError, presetRecipe, resolveFeaturePreset } from "@delebash/llm-runner/llm";
 import * as llmDb from "@delebash/llm-runner/llm/db";
 import { literal, nullable, opt, T } from "@delebash/llm-runner/platform/models";
 import { getLogger } from "@delebash/llm-runner/platform/log";
@@ -318,6 +318,13 @@ export function routeModel(route) {
   return _providerDefaultModel(preset.providerId || "");
 }
 
+/** The recipe a route's preset runs with — "local" or "frontier" (the kit's `presetRecipe`: the
+ * preset's own setting, else its provider's kind — on this machine local, a cloud account
+ * frontier). Decided 2026-10-10: pick the recipe by kind of model, not size. */
+export function routeRecipe(route) {
+  return presetRecipe(resolveFeaturePreset(`speaker_attribution.${route}`, "speaker_attribution"));
+}
+
 const SIZE = new RegExp(`(\\p{Nd}+(?:\\.\\p{Nd}+)?)${WS}*b${B}`, "iu");
 
 /** Billions of parameters for the Auto size rule: the catalog row's total_params when the model
@@ -360,17 +367,25 @@ export function formatG(x) {
 }
 
 /**
- * The Auto pick + its shown work — SIZE ONLY: Direct when the model is at least `directMinB`
- * billion params (a MoE counts TOTAL params), Guided otherwise, including when the size is
- * unknown (worked examples never hurt a big model; missing them hurts a small one).
+ * The Auto pick + its shown work. A model whose preset's recipe is Frontier goes Direct (decided
+ * 2026-10-10, the one-click plan's slice 1: a cloud model publishes no size, and the size rule
+ * read Opus as 0 B — Guided, the small-model route). Otherwise the SIZE rule: Direct when the
+ * model is at least `directMinB` billion params (a MoE counts TOTAL params), Guided otherwise,
+ * including when the size is unknown (worked examples never hurt a big model; missing them hurts
+ * a small one).
  *
- * Production (no override): judged against THAT CARD'S OWN model. A per-call MODEL override (a
- * Lab column's pin) is the model that actually runs, so the rule judges IT. → [route, checks].
+ * Production (no override): judged against THAT CARD'S OWN model and preset. A per-call MODEL
+ * override (a Lab column's pin) is the model that actually runs, so the size rule judges IT
+ * (the pin names no preset). → [route, checks].
  */
 export function autoRoute(directMinB, modelOverride = "") {
   const m = (route) => modelOverride || self.routeModel(route);
   const checks = [];
   const mDirect = m("direct");
+  if (!modelOverride && self.routeRecipe("direct") === "frontier") {
+    checks.push({ route: "direct", model: mDirect, passed: true, rule: "when the model's recipe is Frontier" });
+    return ["direct", checks];
+  }
   const size = modelSizeB(mDirect);
   const big = size >= Number(directMinB || 0);
   checks.push({ route: "direct", model: mDirect, passed: big, rule: `when the model is at least ${formatG(Number(directMinB))} B` });

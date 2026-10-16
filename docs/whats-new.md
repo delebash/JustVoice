@@ -2,6 +2,10 @@
 
 ## v0.1.0
 
+- **A cloud model gets the big-model route (2026-10-16)** — every engine preset has a **Recipe**:
+  Local for a model on this machine, Frontier for a cloud account, or set by hand on a feature's
+  chip. Speaker attribution's Auto now gives a Frontier model **Direct**; it used to read a cloud
+  model's size as 0 B and give it Guided ([AI features → How routing works](ai-features.md#how-routing-works))
 - **The Effects chain editor is compact (2026-10-16)** — each step of a chain is one row: its name,
   its settings with their units (*Gain [-2] dB*), then ↑ ↓ Remove; a setting past the effect's range
   is held to it ([Effects → Edit a chain](effects.md#edit-a-chain))

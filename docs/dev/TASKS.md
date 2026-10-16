@@ -1362,8 +1362,18 @@ STATE:  DECIDED 2026-10-10 — the user: "this could be a serious problem if we 
 WHY:    Auto reads a cloud model's size as 0 B, so Opus, Sonnet and GPT-6.1 Sol get the small-model
         route today (RESEARCH §10.1).
 NOT:    choosing the recipe by parameter count — cloud models publish none.
-BUILT:  nothing yet.
-OPEN:   in the one-click plan doc, with its blast-radius greps.
+BUILT:  2026-10-16, the one-click plan's slice 1 (the user's "your rec do it all stop stoping and
+        finish it all go!"): the kit's engine presets carry `recipe` ("" follows the provider —
+        `local` on this machine, `frontier` on a metered cloud account; or set by hand), stored,
+        seeded and returned on every preset route; `presetRecipe(preset)` resolves it; a feature's
+        chip shows it beside Thinking (Recipe: From the provider — Local / Frontier · Local ·
+        Frontier); the Lab's in-place update keeps it. JustVoice's speaker attribution Auto gives a
+        Frontier model Direct before the size rule (`pipeline.routeRecipe`, `autoRoute`). Tests: kit
+        presets (11), JV extraction_config `a_frontier_recipe_picks_direct`. Docs: ai-features.md
+        (How routing works, the Auto row), whats-new; the kit's feature-model-system.md.
+OPEN:   the slice's acceptance on the GPU — gemma's Alice and the three books score as before
+        (`npm run eval:attribution`), after round 4 frees the card; the recipe's per-step use as
+        each step is built (slices 2–4).
 GO:     given 2026-10-10 ("your rec all go").
 
 ### The work's eight questions, answered (decided 2026-10-09)

@@ -7,7 +7,8 @@
 // row → render → preset → dispatch) runs end to end. The prompt measure
 // (`pipeline.measureFeature`, which only sizes pieces) is stubbed to "can't say" on the routes
 // that run the pipeline, so nothing probes a local runner.
-import { getLlmRegistry, LLMResponse } from "@delebash/llm-runner/llm";
+import { getLlmRegistry, LLMResponse, resolveFeaturePreset } from "@delebash/llm-runner/llm";
+import * as llmStores from "@delebash/llm-runner/llm/stores";
 import { setEnsureLocalModel } from "@delebash/llm-runner/llm/dispatch";
 import { RuntimeError, rstrip, cpSlice } from "@delebash/llm-runner/platform/py";
 import { afterEach, expect, test, vi } from "vitest";
@@ -107,6 +108,22 @@ test("extraction_config_no_provider", async () => {
   expect(body.system_prompts.guided).toBeTruthy(); // prompts still served
   // No model routed anywhere → the rules land on Guided, visibly.
   expect(body.auto_picked).toBe("guided");
+});
+
+// The one-click plan's slice 1 (decided 2026-10-10): a model whose preset's recipe is Frontier
+// goes Direct whatever its size — a cloud model publishes none, and Auto read it as 0 B, Guided.
+test("a_frontier_recipe_picks_direct", async () => {
+  const c = await fakeApp();
+  let body = (await c.get("/v1/extraction/config")).json();
+  expect(body.auto_picked).toBe("guided"); // the seeded local provider's qwen3:8b — 8 B < 14 B
+  const preset = resolveFeaturePreset("speaker_attribution.direct", "speaker_attribution");
+  llmStores.getEnginePresetStore().save({ ...preset, recipe: "frontier" });
+  body = (await c.get("/v1/extraction/config")).json();
+  expect(body.auto_picked).toBe("direct");
+  expect(body.auto_checks).toEqual([{ route: "direct", model: "qwen3:8b", passed: true, rule: "when the model's recipe is Frontier" }]);
+  // Local by hand on the same preset: the size rule again.
+  llmStores.getEnginePresetStore().save({ ...preset, recipe: "local" });
+  expect((await c.get("/v1/extraction/config")).json().auto_picked).toBe("guided");
 });
 
 /** FakeAdapter.chat replacement — captures what the RENDERED template produced (the real run

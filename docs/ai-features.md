@@ -27,6 +27,15 @@ feature, what it resolves to right now, and to point it somewhere else. One
 model can serve everything, or heavy analysis (attribution) can run on a bigger
 model than the quick features.
 
+A preset also has a **Recipe** — how JustVoice's AI steps ask its model:
+**Local** suits a smaller model on this machine, **Frontier** a large cloud
+model. Left on **From the provider** (the default), a provider on this
+machine (the built-in engine, Ollama, LM Studio) is Local and a cloud account
+(Claude, GPT, Gemini …) is Frontier. Change it on a feature's chip, beside
+**Thinking** (since 2026-10-16). Today the recipe picks Speaker attribution's
+route ([Auto](#speaker-attribution--two-routes-and-the-auto-row), below); the one-click audiobook's steps
+will each have both.
+
 Until a model is picked, features answer with a "run the LLM engine setup"
 message — the one-click wizard on the AI Settings page installs the built-in
 engine, downloads a model sized to your PC, and sets it as the default.
@@ -229,7 +238,10 @@ Lab:
 Above them sits the **Auto** row — *"Picks which of the two features below
 runs."* Its page is plain sentences plus one number. Auto never picks a
 model — it looks at the model you've already assigned and picks the feature
-that suits it, **by size alone**: at least the editable number of billion
+that suits it. A model whose preset's **Recipe** is **Frontier** — a cloud
+model, unless you've set it otherwise — runs **Direct** (since 2026-10-16:
+a cloud model publishes no size, and Auto used to read it as 0 B and give it
+Guided). Otherwise **by size**: at least the editable number of billion
 parameters (default 14) and **Direct** runs; smaller models get **Guided**.
 A mixture-of-experts model counts its **total** size (the built-in Gemma
 reads as 26B). When JustVoice can't tell the size, it plays it safe and
