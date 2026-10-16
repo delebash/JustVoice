@@ -4154,6 +4154,31 @@ emo_vad, BS.1770 loudness); `npm run round4:report -- data/round4/score-a/out da
   letters behind each take are in its data, revealed by its Show totals). Waiting on the user's
   answers. — *measured, 2026-10-16* · `data/round4/` (gitignored).
 
+### 10.23 The one-click slices on gemma — slice 1's and slice 2's acceptance (2026-10-16)
+
+The headless server on the dev build (bcc5dfbb), the user's data folder, gemma 4 26B-A4B QAT on the
+8 GB card; one run each.
+
+- **Slice 1 (the recipe):** every book ran Direct, as before — a local model's recipe is Local, so
+  Auto still judges gemma by its 26B. `npm run eval:attribution`: Alice VII–VIII 239/240 (the miss
+  the group line "Sh! sh!", given to the Hatter at 0.70 where the 2026-10-10 run said "unknown";
+  gemma gave it the Hatter before too, §10.4's no-propagate run), The Ninth Facet 133/136 (D9–D11,
+  the systematic miss of every run since 2026-09-28), The Salt-Iron Road 131/132 (the known
+  "Quartermaster."), The Speckled Band 246/247. Accepted: scores as before. — *measured*.
+- **Slice 2 (direction), `npm run eval:direction`:** Alice VII — the model's own 44/73 cue lines
+  (60 %), emotions matching 14/24, no-cue lines marked 2/77; with the carry **66/73 (90 %)**,
+  emotions 18/24 (75 %), **no-cue lines marked 5/77 (6.5 %)**; 30 s, 4,802 tokens in, 1,071 out,
+  one call. Against the bar (≥ 88 %, ≤ 5 %, §10.5's 64/73 and 4/77): the catch passes, the no-cue
+  marks miss by one line. Alice VIII: own 39/50, with the carry 50/50, but no-cue marks 7/40
+  (18 %) — the carry reached 4 lines with no cue. Both chapters: 116/123 caught (94 %), 37/50
+  emotions (74 %), 12/117 no-cue marks (10 %). The carry is where the over-marking comes from.
+  — *measured*.
+- **Stopped by the machine:** the session's memory guard stopped the speakers eval (slice 4)
+  mid-run and the server's shell at 18:3x — 4 GB of 32 GB free, the AI model's llama-server
+  holding 17.6 GB of the computer's memory (gemma's resident weights; the runner measured 14.2
+  GB held). The eval's temporary book was deleted by hand; gemma unloaded (21 GB free after).
+  — *measured, 2026-10-16*.
+
 ## Records not yet distilled
 
 Indexed by subject so they can be found; their facts move into a section above when work next
