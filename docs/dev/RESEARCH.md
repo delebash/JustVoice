@@ -3398,6 +3398,46 @@ Captions: with Citrinet loaded, `POST /v1/align` loaded Qwen3-ASR and returned 2
   from the leaking process (3.1–7.2 GB) are stored under the old build key (`4d2f1a2b + local
   changes`); the app reads prices only for its current build, so they are inert.
 
+### 10.16 Slice 3's runtime check — a load option and a number box reach the runtime (2026-10-15)
+
+The adoption plan's slice 3 acceptance ("one model's load option and one number-box setting reach
+the runtime"), through the running dev app's own routes (`npm run dev`, our fork at `79ca123e`
+built in `build/jv-dev`, RTX 2070 SUPER 8 GB), the Hatter clip (`Test · Hatter`, 8 s) as the
+voice, seed 42, takes read back by Qwen3-ASR 1.7B. No licence needed accepting; the test persona
+was deleted and the load option set back after. — *measured through the app, 2026-10-15*
+
+- **Chatterbox Multilingual's Checkpoint (`chatterbox.multilingual_t3`).** Set to v3 on
+  `chatterbox-multilingual-v2-q8` (`PUT …/runtime-options`), the model loaded in 8 s, and the
+  runtime's own list (`GET /v1/models?include_session_options=true`) showed
+  `"session_options":{"chatterbox.multilingual_t3":"v3"}`. Same clip, same seed, v3 then v2:
+
+  | Line | v3 | v2 |
+  |---|---|---|
+  | German, "Der Hutmacher sah zweimal auf seine Uhr, goss den Tee ein und lachte über sein Glück." | 5.28 s, read back word for word ("goß") | 5.68 s, word for word |
+  | English, the same line | 4.36 s | 4.36 s — **byte-identical** to v3 |
+
+  So the option reaches the model, and an English line uses Chatterbox's English T3 whichever
+  checkpoint is set (§1.2). The v3 loads saved their own price rows (`load_options=
+  chatterbox.multilingual_t3=v3`, card peak 2,395 MB after its lines); the default set's rows
+  stayed flagless (2,397 MB): the two checkpoints cost the same here.
+- **CosyVoice3's Max tokens (a number box from −1, no top; folded under Advanced).** A test
+  persona with `max_tokens: 25` saved (201). Heard with only that set, audio.cpp refused the line:
+  "CosyVoice3 AR token length bounds are invalid" — its minimum, when `min_tokens` is unset, is
+  twice the text's tokens (`src/models/cosyvoice3/ar.cpp:420-427`: min `text_tokens × 2`, max
+  `text_tokens × 20`, refused when min > max), above 25 for this line. With `min_tokens` 0 as well
+  (also a number box), the take was **1.00 s** (25 speech tokens) and read back "The hatter
+  checked his." — against 4.52 s and the whole line at the defaults. So a Max tokens below twice
+  the text's tokens needs Min tokens lowered too; the app sends both as set and audio.cpp names the
+  problem.
+- **What the screens show at 1280** (the app's own server, `dist/spa` built): Speech engines →
+  Chatterbox Multilingual 8-bit: *Checkpoint* v2 on the row, *Load options (7)* folded below it; the
+  knob grid's 60 px number box cut "240,000" (Decoder condition samples), so the fold's number
+  boxes are 96 px since. The persona page's Sampling on CosyVoice3: min_tokens, top_k,
+  num_inference_steps in view (audio.cpp's control list), *Advanced (1)* holding Max tokens;
+  nothing past its cell or the window. Render's line panel couldn't be shown: every persona cast
+  in the user's one project is on Kokoro, which has no sampling settings there. The smoke gate
+  passed (12 views, no JS errors).
+
 ---
 
 ## Records not yet distilled

@@ -312,9 +312,14 @@ NOT:    a label of my own for the checkpoint.
 BUILT:  slice 3 — 27f1c140, 43007230, 037abbe4, c0a21e7e. 1–3 — 825101cd (the fold by audio.cpp's
         control list, the seven engines' knobs too; the persona page's Sampling now DeliveryKnobs,
         as Render's; Chatterbox's Checkpoint on the row; the seed's top from the spec), docs
-        e906b863.
-OPEN:   the runtime check (a load option and a number-box setting reach the runtime) once the
-        fork's build is done. For the user at the end: "Checkpoint" is audio.cpp's word.
+        e906b863. The runtime check passed through the app (fork 79ca123e; RESEARCH §10.16):
+        Checkpoint v3 reached the runtime and changed the German take, not the English one; Max
+        tokens 25 cut CosyVoice3's take to 1.00 s (with min_tokens 0 — audio.cpp's own minimum,
+        twice the text's tokens, refuses it alone); the load options' number boxes widened to fit
+        "240,000"; smoke gate passed.
+OPEN:   Render's line panel with the Advanced fold not seen (every persona the user casts is on
+        Kokoro, which shows no sampling settings there). For the user at the end: "Checkpoint" is
+        audio.cpp's word.
 GO:     given 2026-10-15 ("your rec go").
 
 ### Slice 2's acceptance findings: what each one gets (2026-10-15)

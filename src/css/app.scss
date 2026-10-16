@@ -2037,6 +2037,9 @@ section.block > h3 {
 .ev-mfold>summary{cursor:pointer;color:var(--ink-2);width:max-content}
 .ev-mfold[open]>summary{margin-bottom:8px}
 .ev-mfold>.ev-mplace__why{margin:0 0 8px}
+/* Its numbers run to six digits and more (memory pools in MB, sample counts — "240,000"): the
+   knob grid's 60px number box cut them, so here the box holds seven digits and their commas. */
+.ev-mfold .jv-knob-grid{--w-num:96px}
 .ev-mfold.dim{opacity:.55}
 .ev-danger{color:#b04a3e !important}
 .ev-costnote{display:flex;gap:10px;align-items:center;margin-bottom:14px;padding:10px 16px;border:1px solid #e2d2b0;background:#f5edda;border-radius:10px;font-size:12.5px;color:var(--ink-2)}
