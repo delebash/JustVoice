@@ -385,10 +385,28 @@ WHY:    the user's bar: "if this system we are building cant compete with a huma
 NOT:    building the four-stage chain before testing whether one model does it; act-then-convert
         (emotion lost in conversion unmeasured); Joint-RL (needs training that won't fit 8 GB).
 BUILT:  — (research: RESEARCH §10.26–10.27).
-OPEN:   1–5 in that order, after round 5's renders; each on round 5's 13 lines, scored, then the
-        user's four steps. Starting 3's DSP whisper and shout starts part of the DSP
-        character-voice plan (IDEAS 2026-10-07).
-GO:     given 2026-10-16 ("your rec, sae the research").
+        Reordered the same day, after the user's "are you really thinking about these solutions and
+        looking at what we have already tested" (rounds 2–3 had VoxCPM2 told in fuller words like
+        the book on 6 of 7 lines at best of three seeds; Qwen3 VoiceDesign acting 5 of 7 but
+        changing person across lines) and "doesnt qwen3 have another model with predefined voices
+        that take direction" — shown: "1. round 5's VoxCPM2 … 2. Priming, only for the lines where
+        all three seeds stay plain. 3. … replace step 3 (EDICT on VoiceDesign) with this:
+        CustomVoice 1.7B, our character's audition placed before each line, plus the line's
+        instruction. Port the layout from the MIT engine into our fork" (github.com/
+        gabriele-mastrapasqua/qwen3-tts: "The default `.qvoice` is now a ~25 MB "graft" — it keeps
+        the CustomVoice weights"). The user: "we can try your rec on replacing edict with the
+        already built code, if it doesnt work we can try your original edict plan, think on this
+        adverserially", then "go on it all". NOT STANDARD, named by the user: no official API puts
+        a voice before CustomVoice's lines — a fork change porting the MIT engine's layout (its
+        MIT notice kept, NOTICE.md); running that engine as-is needs WSL2 (not installed here) or a
+        Windows port of its C, so the port goes straight into our fork.
+OPEN:   in this order, after round 5's renders, each on round 5's 13 lines, scored, then the
+        user's four steps: 1. VoxCPM2 told the line's words, best of three (round 5); 2. priming
+        for lines all three seeds leave plain; 3. CustomVoice 1.7B with the audition before each
+        line and the line's instruction (EDICT on VoiceDesign if it fails); 4. gaps — a DSP
+        whisper or shout (part of the DSP character-voice plan, IDEAS 2026-10-07), the CREMA-D
+        emotion direction; 5. the design comparison alongside.
+GO:     given 2026-10-16 ("your rec, sae the research"; the new order: "go on it all").
 
 ### Round 6 — the best engine to sell with: Fish Drama 3, then Qwen3 with an emotion direction (decided 2026-10-16)
 STATE:  DECIDED 2026-10-16 — after the field sweep (RESEARCH §10.26), shown: "finish round 5 first.
