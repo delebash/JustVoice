@@ -213,6 +213,18 @@ BUILT:  1, the review (2026-10-13): `docs/plans/2026-10-13-narrowings-review/` �
         clone-only model gets no price from its first line (Qwen3 Base 1.7B none, Chatterbox
         Multilingual 105 MB with no backend — the reading before is taken with the last model
         still loaded).
+        BUILT, the four, 2026-10-16, branch `s4fix` (RESEARCH §1.6, §2.3): 5005f0b7 — QwenCleo-ASR
+        registers its files where its download put them (`speech_cache.variantFilePath`; the 24
+        downloads on the user's disk resolve at the same paths); 80764e12 — a Pocket model with no
+        preset has no warm-up (audio.cpp's registration reads no voice), Pocket TTS French priced
+        by its first line; 764dbfe7 — a preset speaks the languages of the versions that carry it
+        (Pocket's twenty: en, de, it, pt, es; a French persona on one refused at save), the persona
+        mock's snapshot re-taken; a2de060e — the first line's price is read while that line holds
+        the slot (the cause: the after-line probe ran in the background and the next load had
+        taken the model; the "" rows were a probe of the same engine's next load in flight, 105 MB
+        the process's own share), a reading counts only for the confirmed slot, and the card's
+        "before" is taken once the previous model has drained. Server 1263 + 2 skipped, unit 239,
+        lint, family guard. The check through the app waits for the merge.
         Slice 5, 2026-10-16 (the user docs and the mock), branch `slice4`: 4b6b3d23 — docs/engines.md
         rewritten for a list we don't hand-write: how to read every part of Speech engines, Auto's
         reasons in placementFor's words, what JustVoice adds or measured; links into its renamed
@@ -398,7 +410,11 @@ BUILT:  2–4, 6, 7 and the defects — 9ee55806 (placementFor + cpu_placement t
         the snapshots re-taken, the mock's placementFor port), 37db2cad (engines.md, whats-new,
         studio.md, RESEARCH §2.3); branch `slice4`. Server 1256 + 2 skipped, unit 239, lint,
         build:spa, family guard; the tab seen through the mock at 1280 and 390 px.
-OPEN:   1, after the fork's search; 5, its own change.
+        1 — 4baf5d39 (branch `s4fix`): the fork fixed KittenTTS (7ec5c652, jv bcc5dfbb), so
+        Kitten's row has the seed every engine has (its request already sent it); every "the same
+        seed does not repeat" claim gone — the picking table and its mock, the model's
+        description, engines.md, personas.md; Engines → The seed says what repeats where now.
+OPEN:   5, its own change.
 GO:     given 2026-10-15 ("your rec go").
 
 ### Slice 3's six questions: what each one gets (2026-10-15)
