@@ -100,15 +100,35 @@ def run_versa(
         pred_scp = run_dir / "pred.scp"
         gt_scp = run_dir / "gt.scp"
         text_file = run_dir / "text"
-        pred_scp.write_text("".join(f"{k} {t.wav}\n" for k, t in chosen.items()), encoding="utf-8")
+        pred_text = "".join(f"{k} {t.wav}\n" for k, t in chosen.items())
+        # The takes the last pass here scored, before this run writes its own.
+        last_pred = pred_scp.read_text(encoding="utf-8") if pred_scp.is_file() else None
+        pred_scp.write_text(pred_text, encoding="utf-8")
         gt_scp.write_text("".join(f"{k} {t.reference_wav}\n" for k, t in chosen.items()), encoding="utf-8")
         text_file.write_text(
             "".join(f"{k} {' '.join(plain_quotes(t.text).split())}\n" for k, t in chosen.items()), encoding="utf-8"
         )
         config = run_dir / "versa_score.yaml"
-        config.write_text(yaml.safe_dump([metric], sort_keys=False), encoding="utf-8")
+        config_text = yaml.safe_dump([metric], sort_keys=False)
         output = run_dir / "versa_scores.jsonl"
         log = run_dir / "versa.log"
+        # A finished pass over the same takes with the same config is read back, not run again
+        # (a rerun after a later step failed).
+        if (
+            output.is_file()
+            and config.is_file()
+            and config.read_text(encoding="utf-8") == config_text
+            and last_pred == pred_text
+        ):
+            done = {json.loads(line)["key"] for line in output.read_text(encoding="utf-8").splitlines() if line.strip()}
+            if done >= set(chosen):
+                print(f"take-check:   VERSA {name}: reusing its finished pass", flush=True)
+                for line in output.read_text(encoding="utf-8").splitlines():
+                    if line.strip():
+                        row = json.loads(line)
+                        rows.setdefault(row["key"], {"key": row["key"]}).update(row)
+                continue
+        config.write_text(config_text, encoding="utf-8")
         command = [
             sys.executable,
             "-m",
