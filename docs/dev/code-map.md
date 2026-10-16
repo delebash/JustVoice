@@ -1145,7 +1145,8 @@ The ones marked ✓ were re-read by hand; the rest come from a code-reading agen
 | Discover | `POST /v1/scenes/:scene_id/discover-speakers` — `extraction_api.discoverChapter` (since 2026-10-16, the route's body moved into it for the run) | only the chapter's `metadata.discover`; no speakers |
 | Merge found names | `POST /v1/projects/:project_id/speakers/merge` — `extraction_api.mergeFoundNames` → `extraction/merge_names.js` (two recipes: `speaker_merge.local` / `.frontier`, the Frontier card's preset picks — `mergeRecipe`) | **nothing** — returns `people` (name, aliases, description, lines, chapters, quote), `left_out` (0 lines in every scan), `in_book` |
 | Add speakers | `POST /v1/projects/:project_id/speakers/promote` ✓ — `extraction_api.promoteSpeakers` (since 2026-10-16) | speakers (all-or-nothing); a speaker is cast to the persona with exactly its name |
-| Analyze | `POST /v1/scenes/:scene_id/analyze` (and `/analyze/stream`) — `api/extraction_api.js:939, 987` | each line's `speaker_id`, `source`, confidence; re-cutting the chapter is refused once it has takes (`:473`) |
+| Add the narrator | `POST /v1/projects/:project_id/narrator` (+ Add Narrator) — `speakers_api.addNarrator` (since 2026-10-16, for the run) | the narrator role (a new speaker "Narrator", or the one called that), narration with no speaker moved to it |
+| Analyze | `POST /v1/scenes/:scene_id/analyze` (and `/analyze/stream`) — `extraction_api.analyzeChapter` (since 2026-10-16, the route's body moved into it for the run) | each line's `speaker_id`, `source`, confidence; re-cutting the chapter is refused once it has takes (`_persistAttribution`) |
 | Lines with no single speaker | `POST /v1/scenes/:scene_id/group-lines` — `extraction_api.giveGroupLines` → `extraction/group_lines.js` (`speaker_group`, one call a line; the one-click plan's answer 7) | each spoken line Analyze left blank (`_secondLookAsks`): `speaker_id` (one of the group, else the narrator), `source: "llm"`, no confidence, `metadata.group_line = {group, model}` — Script's `group` flag; Analyze drops it |
 | Smart-assign | `POST /v1/llm/smart-assign` ✓ — `api/smart_assign_api.js:171`; the call `smartAssign` :130 | with `apply: true`, each match cast on the server (`applyAssignments` :155 — never over a narrator's persona); Cast's ✨ asks (`src/components/StudioCast.vue:505`), ＋ New persona doesn't (since 2026-10-16; until then the renderer cast each match) |
 | Design a voice from words | `POST /v1/voices/design` ✓ — `api/voices_api.js:355` | a Voice, `source: "designed"`, no clip — drawn from its words on every line |
@@ -1159,13 +1160,15 @@ The ones marked ✓ were re-read by hand; the rest come from a code-reading agen
 | Render lines (keeps takes) | `POST /v1/render_jobs`, `POST /v1/scenes/:id/render_lines` — `api/render_jobs_api.js:79`, `api/render_lines_api.js:117` | takes; jobs in `render_jobs` tables, resumed after a restart (`app.js:246` ✓) |
 | Render a chapter to hear it | `POST /v1/render_chapter` — `api/render_chapter_api.js:469` | a mastered WAV monitor; no takes; refuses a line with no speaker, persona or voice |
 | Check the takes (slice 6, 2026-10-16) | `take_check.checkTakes(state, sceneIds, {redo, signal, onProgress})`; `POST /v1/scenes/:scene_id/check_takes` (`api/render_lines_api.js`) | each line's `metadata_json.take_check` (the finding about its take in use, shown as `check` on `GET …/render_lines`); a failed take's one re-render as a render job made with `newTake` (`render_jobs.createJob`) |
-| Export | `POST /v1/projects/:id/export_m4b/start` (M4B with chapter marks), `…/export_chapters/start` (zip of raw + mastered WAVs) — `api/export_jobs_api.js:171, 178` | the file; jobs held in memory (`_jobs = new Map()` ✓ `:41`), lost on a restart |
+| Export | `POST /v1/projects/:id/export_m4b/start` (M4B with chapter marks; its body `startM4bExport` since 2026-10-16, for the run), `…/export_chapters/start` (zip of raw + mastered WAVs) — `api/export_jobs_api.js` | the file; jobs held in memory (`_jobs = new Map()` ✓ `:47`), lost on a restart |
+| **The one-click run** (slice 5, 2026-10-16) | `POST /v1/book_runs`, `GET /v1/book_runs/:id`, `…/cancel`, `…/resume`, `GET /v1/projects/:id/book_run` — `api/book_runs_api.js`; the runner `book_run.js` (`createRun`, `startRun`, `_runBook`, `STEP_FNS`, `planRun`, `estimateRun`, `runReview`); the screen `src/components/StudioBookRun.vue` → `BookRunCard.vue` on Overview, `src/services/bookRun.js` | its `book_runs` row (not synced); every step above through its own function, in the plan's order — RESEARCH §10.21 |
 | ACX check | `GET /v1/projects/:id/qc` — `api/projects_api.js:1343` | — |
 | The chapter run | `src/services/chapterRun.js` — chains Analyze, the second look and Discover, chapter by chapter, as kit AI tasks | renderer memory: survives leaving Studio, not closing the window |
 | MCP | `mcp/tools.js:182` — four tools; a tool calls exported service functions, not HTTP | — |
 
-**What isn't there yet** (the one-click plan's gaps): no server-side job that runs the AI steps
-(only render and export run on the server); Analyze over its stream stops when the window goes;
+**What isn't there yet** (the one-click plan's gaps): the AI steps run on the server only inside
+the one-click run (since 2026-10-16; Script's and Discover's own buttons still drive them from the
+window); Analyze over its stream stops when the window goes;
 and Smart-assign's matches were cast by the renderer one by one until 2026-10-16 (the voices
 step casts them on the server). (The renderer labelled Discover's AI task `speaker_identification`
 where the server's feature is `speaker_discovery`, until 2026-10-16 — `src/services/chapterRun.js`

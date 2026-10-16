@@ -35,6 +35,7 @@ import { ValueError } from "@delebash/llm-runner/platform/py";
 // ── The routers (registered below in app.py's order) ──
 import { router as activeTasksRouter } from "./api/active_tasks_api.js";
 import { router as alignRouter } from "./api/align_api.js";
+import { router as bookRunsRouter } from "./api/book_runs_api.js";
 import { router as bookVoicesRouter } from "./api/book_voices_api.js";
 import { router as bulkDeleteRouter } from "./api/bulk_delete_api.js";
 import { router as cacheRouter } from "./api/cache_api.js";
@@ -76,6 +77,7 @@ import { router as voicesRouter } from "./api/voices_api.js";
 import { router as webhooksRouter } from "./api/webhooks_api.js";
 import { flushSync, openSync, stopSync, router as syncRouter } from "./sync.js";
 import { AppState, setState } from "./app_state.js";
+import * as bookRun from "./book_run.js";
 import * as dspClient from "./audio/dsp_client.js";
 import { readAuth } from "./auth.js";
 import { getDataRouter } from "./data_admin.js";
@@ -250,6 +252,13 @@ export async function createApp(dataDir = null) {
   } catch (e) {
     log.warning(`render-job boot sweep failed: ${e?.message ?? e}`);
   }
+  // So do one-click runs (book_run.js): Resume picks up at the step and chapter they were on.
+  try {
+    const swept = bookRun.sweepStaleRuns();
+    if (swept) log.info(`book runs: ${swept} interrupted run(s) marked paused`);
+  } catch (e) {
+    log.warning(`book-run boot sweep failed: ${e?.message ?? e}`);
+  }
   // A take's audio goes with it (Studio Slice 4): generations whose take was deleted with its
   // line, chapter or book — rows and files.
   const sweptTakes = lineTakes.sweepOrphanTakesNow();
@@ -418,6 +427,7 @@ export async function createApp(dataDir = null) {
   app.route("/", refineLabRouter());
   app.route("/", smartAssignRouter());
   app.route("/", bookVoicesRouter()); // the one-click run's voices step (slice 3)
+  app.route("/", bookRunsRouter()); // the one-click run itself (slice 5)
 
   // MCP server — justvoice.speak / list_voices / list_personas for local AI agents, at /mcp
   // (Streamable HTTP), before the root static catch-all. A failed mount must still boot the app.

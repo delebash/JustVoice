@@ -13,11 +13,11 @@ is the **AI Settings** page in the sidebar.
 | **Persona rewrite** | Rewrites the current text in a persona's voice, or a line as its speaker would say it (preview-then-accept) | A persona's page → Hear it → ✏️ Rewrite · Studio Render → a line's ✏️ Rewrite as *name* |
 | **Speaker attribution** | Extracts who says what and what they say; its Find new speakers row lists the people a chapter names | Studio Script tab → Analyze · Studio Discover → Scan |
 | **Speaker attribution · second look** | Asks once more about a spoken line Analyze left with no speaker, with the chapters either side; what it finds is marked to check | Runs inside Analyze, only on lines left blank — [Studio → The second look](studio.md#the-second-look) |
-| **Direction** | Writes how each spoken line should be said — an emotion and a few words — only where the book gives a reason, onto the line's Style Instructions and Emotion | No button yet: a step of the one-click audiobook; the API runs it now — [Direction](#direction--two-recipes-and-the-carry) |
-| **Merge found names** | Decides which names Discover found in different chapters are one person — *the Queen* and *Queen of Hearts* — and leaves out the people it counted no lines for | The one-click audiobook's step between Discover and adding the speakers; no button yet — [below](#the-one-click-audiobooks-speaker-steps) |
-| **Speaker attribution · lines with no single speaker** | Gives a spoken line Analyze left with no speaker — often one several people say at once — to one of them, or to the narrator, and marks it to check | The one-click audiobook's step after Analyze; no button yet — [below](#the-one-click-audiobooks-speaker-steps) |
+| **Direction** | Writes how each spoken line should be said — an emotion and a few words — only where the book gives a reason, onto the line's Style Instructions and Emotion | A step of [Studio → Make the audiobook](studio.md#make-the-audiobook); the API runs it on one chapter too — [Direction](#direction--two-recipes-and-the-carry) |
+| **Merge found names** | Decides which names Discover found in different chapters are one person — *the Queen* and *Queen of Hearts* — and leaves out the people it counted no lines for | A step of [Studio → Make the audiobook](studio.md#make-the-audiobook), between Discover and adding the speakers — [below](#the-one-click-audiobooks-speaker-steps) |
+| **Speaker attribution · lines with no single speaker** | Gives a spoken line Analyze left with no speaker — often one several people say at once — to one of them, or to the narrator, and marks it to check | A step of [Studio → Make the audiobook](studio.md#make-the-audiobook), after Analyze — [below](#the-one-click-audiobooks-speaker-steps) |
 | **Smart-assign** | Matches each speaker in a book to a persona | Studio Cast tab → Smart-assign |
-| **Voices from the book** | Describes the voice each main speaker should have from how the book shows them, and the narrator's from the book's genre and tone — the one-click audiobook's voices step | Not on a screen yet: three routes, one per step — [Voices from the book](#voices-from-the-book) |
+| **Voices from the book** | Describes the voice each main speaker should have from how the book shows them, and the narrator's from the book's genre and tone — the one-click audiobook's voices step | A step of [Studio → Make the audiobook](studio.md#make-the-audiobook); three routes too, one per step — [Voices from the book](#voices-from-the-book) |
 | **Show notes** | Chapter summaries for podcast descriptions | Projects → Show notes |
 | **Dictation cleanup** | Raw speech → clean text before paste | Captures — runs after a dictation when auto-refine is on |
 | **Voice gender guess** | Labels fetched voices the built-in dictionary doesn't know | Voices → ✨ Guess unknown genders (only when you click) |
@@ -40,8 +40,9 @@ machine (the built-in engine, Ollama, LM Studio) is Local and a cloud account
 route ([Auto](#speaker-attribution--two-routes-and-the-auto-row), below), which of Direction's two
 cards runs ([Direction](#direction--two-recipes-and-the-carry)), which of **Merge found names**'
 two cards runs ([the one-click audiobook's speaker steps](#the-one-click-audiobooks-speaker-steps))
-and which of [Voices from the book](#voices-from-the-book)'s rows run; the one-click audiobook's
-other steps will each have both.
+and which of [Voices from the book](#voices-from-the-book)'s rows run. Before
+[Make the audiobook](studio.md#make-the-audiobook) starts, its card names each step's
+model and recipe, and asks once before it sends the book to a cloud model.
 
 Until a model is picked, features answer with a "run the LLM engine setup"
 message — the one-click wizard on the AI Settings page installs the built-in
@@ -295,11 +296,11 @@ for the model. They have no control in the app yet; they are set through
 
 ## The one-click audiobook's speaker steps
 
-The one-click audiobook (being built — `docs/plans/2026-10-11-one-click-audiobook.md`) turns a
-book into an audiobook without stopping to ask. Two of its steps are AI features of their own,
-built 2026-10-16. Nothing in the app runs them yet — the run and its screen come later — but each
-is a route you can call, and each has its card in **AI Settings → Routing by feature**, with its
-prompt, preset and Lab, like every feature.
+The one-click audiobook ([Studio → Make the audiobook](studio.md#make-the-audiobook), since
+2026-10-16) turns a book into an audiobook without stopping to ask. Two of its steps are AI
+features of their own: the run calls them, each is a route you can call too, and each has its
+card in **AI Settings → Routing by feature**, with its prompt, preset and Lab, like every
+feature.
 
 **Merge found names** (`POST /v1/projects/{id}/speakers/merge`) — Discover reads a book one
 chapter at a time and writes a person the way that chapter does: in *Alice*, the Queen is *Queen
@@ -531,9 +532,9 @@ ship on *Reasoned extraction*, the preset speaker attribution uses, so on the
 built-in engine Local runs. To direct with a cloud model, point the Frontier
 card at it. The carry applies to both.
 
-**Running it.** There is no button for it yet: it is a step of the one-click
-audiobook, which will run it chapter by chapter. Until then the server's API
-runs it — `POST /v1/scenes/{scene_id}/direction` on a chapter Analyze has cut
+**Running it.** [Make the audiobook](studio.md#make-the-audiobook) runs it on
+every chapter not directed yet, after the voices are cast. The server's API runs it
+on one chapter — `POST /v1/scenes/{scene_id}/direction` on a chapter Analyze has cut
 into lines (a chapter never analyzed is refused, since Direction reads who
 speaks each line). Send `{"recipe": "local"}` or `{"recipe": "frontier"}` to
 force a recipe, `{"carry": false}` to leave the carry off. The answer lists every
@@ -594,9 +595,10 @@ if you want the reasoning pass shorter.
 
 The one-click audiobook's voices step (since 2026-10-16) gives each main
 speaker a voice made from how the book shows them, the narrator one made from
-the book's genre and tone, and everyone else a persona from your library. It
-isn't on a screen yet — the one-click run and its page come next; until then
-it is three routes, one per step, run in this order. Each answers what it did,
+the book's genre and tone, and everyone else a persona from your library.
+[Make the audiobook](studio.md#make-the-audiobook) runs it — the descriptions kept
+with the run until every voice is designed — and it is three routes too, one per
+step, run in this order. Each answers what it did,
 what it left alone and what failed, with the model, the recipe, the tokens
 and the seconds.
 
@@ -675,7 +677,10 @@ assign and New personas on Cast, Show notes on Export, *Re-render changed* on
 Lines, the gender guess on Voices, Compose and Rewrite on a persona's page, and
 Discover's scan and Script's Analyze each on their own step. Anywhere else, the
 ✨ button in the title bar counts what is running, and its panel lists
-everything.
+everything — *Make the audiobook* among them, *‹book› → audiobook*, the step it is
+on as its progress, and its Cancel stops the run (since 2026-10-16; the run's own
+card on Overview shows it in full, [Studio → Make the
+audiobook](studio.md#make-the-audiobook)).
 
 Two kinds of work get a strip, and only these two:
 

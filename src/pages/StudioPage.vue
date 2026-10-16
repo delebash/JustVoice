@@ -222,9 +222,11 @@ function openDiscover(arg) {
 }
 watch(tab, (t) => { if (t !== "discover") discoverFocus.value = null; });
 // A step, and where in it to land: Overview's Script numbers open the grid on
-// To check.
+// To check (a filter); the one-click run's "what to check" opens a chapter
+// ({sceneId, focus}) on Script or Render.
 function goStep(k, arg = null) {
-  if (k === "script") openScript({ sceneId: null, filter: arg || "all" });
+  if (k === "script") openScript(arg && typeof arg === "object" ? arg : { sceneId: null, filter: arg || "all" });
+  else if (k === "render" && arg?.sceneId) openRender({ sceneId: arg.sceneId });
   else tab.value = k;
 }
 
@@ -530,6 +532,17 @@ async function onScriptChanged() {
   renderVersion.value += 1;
 }
 
+// The one-click run stopped or ended: it added speakers, decided lines, made
+// personas and takes — every page's numbers follow.
+async function onRunChanged() {
+  await Promise.all([personasStore.reload(), voicesStore.reload()]);
+  await loadSpeakers();
+  await loadScenesForProject(selectedProjectId.value);
+  await loadRenderState();
+  scriptVersion.value += 1;
+  renderVersion.value += 1;
+}
+
 // Script's grid added, renamed, moved or deleted a chapter, or pasted its
 // text (D7) — every count follows.
 async function onChaptersChanged() {
@@ -633,7 +646,7 @@ watch(selectedProjectId, (id) => {
         Pick a {{ copy.book.singular.toLowerCase() }} above, or create one in <a href="#projects">Projects</a>.
       </div>
       <StudioOverview v-else :project="selectedProject" :steps="visibleTabs" :state="overviewState"
-        @go="goStep" />
+        @go="goStep" @changed="onRunChanged" />
     </template>
 
     <!-- ── Discover — its own step (prose kinds) ───────────────────── -->

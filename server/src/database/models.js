@@ -43,6 +43,7 @@ export const Take = "takes";
 export const GenerationVersion = "generation_versions";
 export const RenderJob = "render_jobs";
 export const RenderJobBlock = "render_job_blocks";
+export const BookRun = "book_runs";
 export const Story = "stories";
 export const StoryItem = "story_items";
 export const Channel = "channels";

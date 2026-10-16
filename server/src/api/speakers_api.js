@@ -100,6 +100,29 @@ export const NarratorResponse = T.Object({
   moved_lines: opt(T.Integer(), 0),
 });
 
+/**
+ * Studio Cast's "+ Add Narrator" → how many narration lines moved to the narrator — the route's
+ * body, a function so the one-click run calls it too. Idempotent: a book that has a narrator is
+ * left as it is (0). Else a speaker called Narrator takes the role, or a new speaker "Narrator" is
+ * made — cast with the persona of exactly that name when there is one. Narration with no speaker
+ * then moves to it. One transaction.
+ */
+export function addNarrator(h, projectId) {
+  if (h.one(`select id from ${Speaker} where project_id = ? and role_label = 'narrator' limit 1`, [projectId]) !== null) return 0;
+  return h.tx(() => {
+    let existing = h.all(`select * from ${Speaker} where project_id = ?`, [projectId], Speaker).find((s) => sameName(s.name) === "narrator") ?? null;
+    if (existing === null) {
+      [existing] = ensureSpeaker(h, projectId, {
+        name: "Narrator",
+        description: "The book's narrator: reads everything that is not a speaker's line.",
+      });
+    }
+    const n = moveNarration(h, projectId, existing.id, null);
+    _dirtyUpdate(h, Speaker, existing, { role_label: "narrator" });
+    return n;
+  });
+}
+
 // ── Rewrite in character (Script's right-click) ──────────────────────────
 
 export const SpeakerRewriteRequest = T.Object({ text: T.String() });
@@ -232,29 +255,12 @@ export function router() {
     return c.json(construct(NarratorResponse, { speakers: listSpeakers(h, projectId), moved_lines: moved }));
   });
 
-  /** Studio Cast's "+ Add Narrator". Idempotent: a book that has a narrator comes back
-   * unchanged. Else a speaker called Narrator takes the role, or a new speaker "Narrator" is made
-   * — cast with the persona of exactly that name when there is one. Narration with no speaker
-   * then moves to it. */
+  /** Studio Cast's "+ Add Narrator" (`addNarrator`). */
   app.post("/v1/projects/:project_id/narrator", (c) => {
     const h = session.getDb();
     const projectId = c.req.param("project_id");
     _project(h, projectId);
-    if (h.one(`select id from ${Speaker} where project_id = ? and role_label = 'narrator' limit 1`, [projectId]) !== null) {
-      return c.json(construct(NarratorResponse, { speakers: listSpeakers(h, projectId) }), 201);
-    }
-    const moved = h.tx(() => {
-      let existing = h.all(`select * from ${Speaker} where project_id = ?`, [projectId], Speaker).find((s) => sameName(s.name) === "narrator") ?? null;
-      if (existing === null) {
-        [existing] = ensureSpeaker(h, projectId, {
-          name: "Narrator",
-          description: "The book's narrator: reads everything that is not a speaker's line.",
-        });
-      }
-      const n = moveNarration(h, projectId, existing.id, null);
-      _dirtyUpdate(h, Speaker, existing, { role_label: "narrator" });
-      return n;
-    });
+    const moved = addNarrator(h, projectId);
     return c.json(construct(NarratorResponse, { speakers: listSpeakers(h, projectId), moved_lines: moved }), 201);
   });
 

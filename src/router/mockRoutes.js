@@ -59,6 +59,14 @@ export const mockRoutes = [
     component: () => import("../pages/mock/MockStudioPage.vue"),
     meta: { nav: "studio", lede: true, step: "script" },
   },
+  // The one-click audiobook's run and its card on a book's Overview (the one-click plan's slice 5,
+  // 2026-10-16): ?state=new|price|blocked|running|paused|stopped|failed|done, ?route=frontier.
+  {
+    path: "mock/one-click",
+    name: "mock-one-click",
+    component: () => import("../pages/mock/MockOneClickPage.vue"),
+    meta: { nav: "studio", lede: true },
+  },
   // Engine list slice 4 (2026-10-11): Speech engines with every audio.cpp model, its licence,
   // status, testing, memory fit, filters and sort; since the adoption plan's slice 5 (2026-10-16)
   // the seven engines described by our own files built like every other, from the server's own

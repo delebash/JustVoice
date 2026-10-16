@@ -729,8 +729,9 @@ engines while rendering) or uses online voices (billed per use).
 
 ## Personas made from the book
 
-The one-click audiobook's voices step ([AI features → Voices from the
-book](ai-features.md#voices-from-the-book), since 2026-10-16; not on a screen yet) makes a
+The one-click audiobook's voices step ([Studio → Make the
+audiobook](studio.md#make-the-audiobook) runs it; [AI features → Voices from the
+book](ai-features.md#voices-from-the-book), since 2026-10-16) makes a
 persona for each speaker with at least three lines in the book, and for the narrator, from a
 description the language model writes of how the voice should sound. Each is an ordinary
 persona, in the list with the rest:

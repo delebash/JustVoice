@@ -46,6 +46,7 @@ import {
 } from "@delebash/llm-runner/platform/py";
 import { jsonLoads, pyJson, pyStrOf } from "@delebash/llm-runner/platform/pyjson";
 import { getState } from "../app_state.js";
+import * as bookRun from "../book_run.js";
 import { SequenceMatcher } from "../difflib.js";
 import { Block, Lexicon as DbLexicon, LexiconEntry as DbLexiconEntry, Project, Scene, Speaker, Take } from "../database/models.js";
 import * as session from "../database/session.js";
@@ -934,6 +935,8 @@ export function router() {
     // (render_jobs._rendering).
     exportJobsApi.cancelProjectExports(id);
     abortBookRenders(id);
+    // Its one-click run stops too (its row went with the book).
+    bookRun.cancelProjectRuns(id);
     return c.json({ deleted: true });
   });
 

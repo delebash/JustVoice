@@ -564,6 +564,16 @@ export const AppSettings = T.Object({
   onboarding_shown: opt(T.Boolean(), false),
 });
 
+/**
+ * The one-click audiobook's run (the one-click plan's slice 5, 2026-10-16; book_run.js). Before a
+ * run that sends the book to a cloud model starts, its tokens are estimated from the text each AI
+ * step reads at `chars_per_token` characters a token — OpenAI's rule of thumb for English text,
+ * about 4; Chinese or Japanese runs nearer 1 — and priced from AI Settings → Pricing.
+ */
+export const BookRunSettings = T.Object({
+  chars_per_token: opt(T.Number({ exclusiveMinimum: 0 }), 4.0),
+});
+
 export const Settings = T.Object({
   server: optModel(ServerSettings),
   logging: optModel(LoggingSettings),
@@ -580,6 +590,7 @@ export const Settings = T.Object({
   extraction: optModel(ExtractionSettings),
   take_check: optModel(TakeCheckSettings),
   book_voices: optModel(BookVoicesSettings),
+  book_run: optModel(BookRunSettings),
   app: optModel(AppSettings),
 });
 
@@ -600,6 +611,7 @@ export const SettingsPatch = T.Object({
   extraction: opt(nullable(ExtractionSettings), null),
   take_check: opt(nullable(TakeCheckSettings), null),
   book_voices: opt(nullable(BookVoicesSettings), null),
+  book_run: opt(nullable(BookRunSettings), null),
   app: opt(nullable(AppSettings), null),
 });
 
