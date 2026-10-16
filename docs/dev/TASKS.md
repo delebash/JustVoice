@@ -429,6 +429,10 @@ OPEN:   after round 5's renders: our fork updated to audio.cpp's upstream main (
         (`../audio.cpp-up`, ea1e8c61 — F5's conflict kept ours, audio.cpp's web UI rebuilt from
         the merged sources); it also carries upstream's Fish codec fixes (#936, #937), so Fish S2
         Pro is re-tested with it.
+        Order, decided 2026-10-16: shown "which comes first after round 5, round 6b or Fish Drama
+        3? Rec: 6b first … Drama 3 needs the fork update, a ~30-minute rebuild, and may not fit
+        this card"; the user: "your rec go". The Qwen3 emotion direction runs once, as round 6b's
+        gap-filler.
 GO:     given 2026-10-16 ("your rec on both go when ready").
 
 ### Round 5 — VoxCPM2 told the authors' way, best of 3 picked by the scorers (decided 2026-10-16)
