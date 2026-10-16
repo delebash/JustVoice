@@ -3195,6 +3195,106 @@ corrected above.
 - The first load unloaded the AI model ("it has no usable speed on the CPU, so the AI model makes
   room"); later loads found the card empty. Downloads ran at about 8 MB/s.
 
+### 10.15 Slice 2's acceptance — the new models through the app (2026-10-15)
+
+The adoption plan's slice 2 (`docs/plans/2026-10-13-adopt-everything-audiocpp.md` §5), on our
+fork at upstream v0.9.2: 39 speech engines and 25 recognisers built from audio.cpp's
+descriptions, 180 downloads between them; 108 built-in voices (8 of them *Model default*); 25
+engines copy a voice from a clip; 6 design a voice (Breeze TTS 2, FireRedTTS3 Instruct,
+FireRedAudio, Irodori v4.1, Irodori v3 VoiceDesign, MOSS-VoiceGenerator); 25 say *Can't be
+directed yet*. Method as §10.14 (the running dev app's own routes, RTX 2070 SUPER 8 GB; read
+back by Qwen3-ASR 1.7B; a recogniser's own transcript of the Hatter clip against its text).
+Only models new since §10.14 were run — the user's ruling of 2026-10-15: "we only need to test
+new engines and models when audio cpp changes no need to rerun full test". — *measured,
+2026-10-15*
+
+| Model | Download | Loads on | Speaks / transcribes | Read back |
+|---|---|---|---|---|
+| Supertonic 3 (built-in) | 433 MB | CUDA 10 s · 611 MB | 0.3 s | 100 % |
+| NeuTTS (built-in) | 2.9 GB | CUDA 44 s · 2611 MB | 6.7 s | 93 % |
+| MagpieTTS 357M (built-in) | 1.5 GB | CUDA 19 s | 1.8 s | 100 % |
+| LFM2.5-Audio 1.5B (built-in) | 1.7 GB | CUDA 12 s | 1.4 s | 100 % |
+| LFM2.5-Audio JP (Model default, ja) | 1.7 GB | CUDA 12 s | 1.5 s | 82 % |
+| Piper · Inflect v2 · sanoTTS · Soprano (Model default) | 59 MB · 68 MB · 1 MB · 117 MB | CUDA 8–12 s | 0.1–0.6 s | 100 % each |
+| Kitten TTS 2 (built-in) | 3.1 GB | CPU 14 s (finding 6) | 8.6 s | 100 % |
+| Maya1 (Model default) | 6.4 GB | CPU 33 s (finding 6) | 72.8 s | 100 % |
+| Voxtral 4B TTS (built-in) | 4.5 GB | CUDA 17 s · 5007 MB | 1.6 s | 100 % |
+| KugelAudio q4k (built-in) | 5.5 GB | CPU — the run's full AI stop had cleared the kit's memory ledger | 28 s | 100 % |
+| Breeze TTS 2 (design / clone) | 4.8 GB | CUDA · 3829 MB | 7.1 s / 6.6 s | 100 % / 100 % |
+| FireRedTTS3 Instruct (design / clone) | 4.0 GB | CUDA · 4811 MB | 5.6 s / 3.6 s | 100 % / 100 % |
+| FireRedTTS3 Base (clone) | 4.0 GB | CUDA 12 s | 4.7 s | 100 % |
+| Irodori v3 VoiceDesign (design, ja) | 1.2 GB | CUDA 22 s | 1.4 s | 100 % |
+| Irodori v4.1 (design / clone, ja) | 1.3 GB | CUDA | 1.3 s / 1.5 s | 100 % / 86 % (帽子屋 heard as ボスヤ) |
+| Irodori v3 500M (clone, ja) | 1.0 GB | CUDA 11 s | 1.5 s | 77 % |
+| MOSS-VoiceGenerator bf16 (design) | 5.7 GB | CUDA 23 s · 7703 MB | 3.9 s | 100 % |
+| dots.tts MeanFlow (clone) | 2.8 GB | CUDA 11 s | 6.5 s | 100 % |
+| Sopro (clone) | 302 MB | CUDA 11 s | 0.8 s | 100 % |
+| ZipVoice (clone, a Chinese line with English words) | 527 MB | CPU — loaded while the card was still freeing the model before | 11.3 s | 74 % ("Apple Store", "iPhone" spoken in English, heard back in Latin letters; 三点 heard as 送你) |
+| OmniVoice (clone, en), after fix 3 | 1.3 GB | CUDA 10 s | 2.8 s | 100 % |
+| VoiceTut-TTS (clone, ar) | 1.3 GB | CUDA 10 s | first **failed**: "unsupported OmniVoice language 'ar'"; 2.9 s after fix 3 | 80 % |
+| dots.tts SOAR (clone, en), after fix 3 | 2.8 GB | CUDA 11 s | 5.6 s | 100 % |
+| F5 Habibi ×8 (clone, ar) | 1.3 GB each | CUDA 4–8 s | first: 4 of 8 **failed**, "bad allocation" (finding 4); 9.9–10.6 s each in a fresh process | 60–90 % (all drop the last word وضحك) |
+| VieNeu-TTS v3 Turbo | 179 MB | **failed**: "requires a voice: --voice-ref, reference_codes_file, or speaker_embedding_file…" | — | — |
+| VibeVoice 1.5B / 7B | 3.1 GB | **failed**: "VibeVoice prompt has no valid Speaker N: lines" | — | — |
+| Qwen3-ASR 0.6B | 2.2 GB | CUDA 9 s · 2483 MB | 0.8 s | 100 % |
+| Canary · Citrinet · Parakeet · Nemotron · Cohere · Confucius4-R2T2 · Higgs STT · LFM2.5-Audio ASR | 38 MB – 3.9 GB | CUDA | 0.1–0.9 s | 100 % |
+| Granite5 · Kroko · Moonshine tiny/small/medium · Niagara 19M/38M · Hviske | — | CUDA | 0.3–0.7 s | 89–100 % |
+| VibeVoice-ASR Streaming 1.5B | 3.2 GB | CUDA · 3113 MB | 1.0 s | 96 % (its text starts "Speaker 0:") |
+| Voxtral Realtime | 4.9 GB | CUDA · 5401 MB | 2.1 s | 96 % |
+| Index-Echo 2B | 4.9 GB | CUDA · 5875 MB | 3.0 s | 100 % (its text comes back as timed captions with a translation — finding 3) |
+| CrisperWhisper · OWSM base/small · OWSM-CTC · MOSS-Transcribe-Diarize · Hviske v6 | 316 MB – 3.9 GB | CUDA | first **failed**: "requires SOXR"; 0.4–1.3 s after fix 2 | 93–100 % |
+| OWSM medium | 3.7 GB | CUDA · 5509 MB | failed on SOXR; not re-run after fix 2 (the family of base and small) | — |
+| LFM2.5-Audio JP ASR | 1.7 GB | CUDA 9 s | the English clip refused, "transcribes ja, not en"; 0.4 s on a Japanese take | 95 % |
+| GigaAM ×6 | 421 MB – 1.1 GB | CUDA 9 s | the English clip came back in Cyrillic (0–29 %); 0.1–0.3 s on a Russian take | 100 % each |
+| SenseVoice-Small | 242 MB | **failed**: "Silero VAD model path does not exist: assets\framework\models\silero_vad" | — | — |
+
+Captions: with Citrinet loaded, `POST /v1/align` loaded Qwen3-ASR and returned 28 timed words in
+13.3 s. Not run: FireRedAudio, MOSS-TTS v1.5, MOSS-TTSD and DramaBox (12–18 GB each, as in
+§10.14) and VibeVoice-ASR (9.9 GB). Every licence accepted for the run was cleared after
+(`terms_accepted_at: ""`), every download and test voice deleted.
+
+- **The fork didn't build with MSVC** (fixed, fork `a1e139ff`): MSVC refuses a string literal
+  over 16,380 characters (C2026), and CMake embedded each model spec as one literal;
+  `qwen3_tts.json` reached 17,427 bytes. Each spec is now literals of at most 16,000 bytes.
+- **A recogniser hears 16 kHz mono** (fixed, JV `cde4120`): audio.cpp's own page converts a
+  recogniser's audio to 16 kHz before sending it (`webui/…/+page.svelte:1341`), and OWSM,
+  OWSM-CTC, CrisperWhisper, MOSS-Transcribe-Diarize and Hviske v6 refuse any other rate without
+  `libsoxr`, which the release doesn't ship.
+- **A line's language goes in a form the family's list names, or not at all** (fixed, JV
+  `cde4120`, `listedLanguage`): OmniVoice lists Arabic only as `arb`, `arz` …, never `ar`, and
+  refused `ar`. Sending none is audio.cpp's page default ("auto"). OmniVoice ("600+ languages")
+  and dots.tts ("multilingual") now get no language even for English; both read back 100 % in
+  English.
+- **Finding 1 — VieNeu and VibeVoice download but can't load.** VieNeu at v0.9.2 refuses to load
+  with no voice (on 2026-10-11 it loaded and babbled, §10.14). VibeVoice takes a script of
+  "Speaker N:" lines and a voice sample per speaker; audio.cpp's page has the user type that
+  script.
+- **Finding 2 — SenseVoice can't load**: the release has no
+  `assets/framework/models/silero_vad`; only the checkout does.
+- **Finding 3 — some recognisers put their own markup in the text**: Index-Echo is a Chinese
+  speech *translator* and returns timed captions, each a source line and its translation;
+  MOSS-Transcribe-Diarize returns `[0.06][S01] …[7.96]`; VibeVoice-ASR starts "Speaker 0:".
+- **Finding 4 — F5-TTS leaks** (audio.cpp): after one line the speech process holds about
+  17.5 GB of committed memory, and unloading the model doesn't free it. Four F5 models in one
+  process reached 67 GB against the machine's 40 GB commit limit ("bad allocation"); each was
+  clean in a fresh process. CosyVoice3 (about 835 MB after each of 3 unloads) and Kokoro (about
+  1035 MB) don't leak.
+- **Finding 5 — a single-language checkpoint in a many-language family**: LFM2.5-Audio JP ASR
+  refuses English, which its family lists; GigaAM (Russian) transcribes English in Cyrillic.
+- **Finding 6 — two loads went to the CPU beside little other use**: Kitten TTS 2 (3.1 GB, other
+  programs 0.6 GB) and Maya1 (6.4 GB, 0.8 GB) on the 8 GB card, under Auto's check of the
+  card's real free memory (2026-10-15).
+- **Finding 7 — MOSS-TTS v1.5's spec asks for a language name** ("does not understand codes like
+  'en'"); JustVoice sends `en`.
+- **Loads beside the run's own steps**: a load straight after an unload, while the card was still
+  freeing memory, went to the CPU (ZipVoice); the kit's `POST /v1/llm-runner/stop` clears its
+  whole memory ledger (KugelAudio then went to the CPU); `POST /v1/engines/unload {}` unloads
+  only the speech slot.
+- **The GPU disturbance of 18:17:26–18:18:30** (another app's run): no load or line of the test
+  ran in it, no card failure was recorded and the prices around it are normal. The F5 prices
+  from the leaking process (3.1–7.2 GB) are stored under the old build key (`4d2f1a2b + local
+  changes`); the app reads prices only for its current build, so they are inert.
+
 ---
 
 ## Records not yet distilled
