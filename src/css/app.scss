@@ -1226,6 +1226,12 @@ progress {
 @media (max-width: 700px) {
   .jv-knob-grid { grid-template-columns: minmax(0, 1fr); }
 }
+/* A fold: a <details> whose summary reads as a quiet line — "Advanced (N)" under a knob grid, the
+   settings audio.cpp's own screen doesn't show (decided 2026-10-15), as the kit's ConfigColumn
+   folds its samplers. Under a grid it takes the grid's whole row. */
+.jv-fold > summary { cursor: pointer; width: max-content; font-size: 12.5px; color: var(--ink-2); }
+.jv-fold[open] > summary { margin-bottom: 8px; }
+.jv-knob-grid__fold { grid-column: 1 / -1; }
 
 /* A chain of steps as compact rows — grip · name · its settings inline, each sized to its
    content with its unit after it · the step's actions — in one box (the Effects chain, mock

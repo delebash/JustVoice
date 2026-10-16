@@ -76,6 +76,63 @@ test("the seven engines' knobs narrower than audio.cpp's take its ranges (F9)", 
   expect(req.options).toMatchObject({ guidance_scale: 0.5, num_inference_steps: 64 });
 });
 
+// The capability rows of the seven engines described by our own files: their family, and each
+// knob's name in audio.cpp's spec where it differs (slot.toSpeechRequest's mapping).
+const SEVEN = {
+  "chatterbox-multilingual": "chatterbox",
+  chatterbox: "chatterbox",
+  "chatterbox-turbo": "chatterbox_turbo",
+  "chatterbox-nano": "chatterbox_turbo",
+  qwen3: "qwen3_tts",
+  "qwen3-cv": "qwen3_tts",
+  "qwen3-base": "qwen3_tts",
+  "qwen3-vd": "qwen3_tts",
+  voxcpm2: "voxcpm2",
+};
+const SPEC_NAME = {
+  talker_temperature: "temperature",
+  talker_top_k: "top_k",
+  talker_top_p: "top_p",
+  cfg_weight: "guidance_scale",
+  cfg_value: "guidance_scale",
+  inference_timesteps: "num_inference_steps",
+};
+
+test("a setting audio.cpp's own screen doesn't show folds under Advanced; one it shows stays in view", () => {
+  // Decided 2026-10-15 (TASKS "Slice 3's six questions" 1): generated models from their control list.
+  expect(knob("cosyvoice3", "num_inference_steps").advanced).toBe(false);
+  expect(knob("cosyvoice3", "max_tokens").advanced).toBe(true);
+  for (const m of generated.generatedModels()) {
+    for (const k of lookup(m.modelId).knobs) {
+      if (k.key === "seed") continue;
+      expect(k.advanced, `${m.modelId} ${k.key}`).toBe(!generated.inControlList(m.family, k.key));
+    }
+  }
+  // The seven engines' knobs by the same rule.
+  for (const [capId, family] of Object.entries(SEVEN)) {
+    for (const k of lookup(capId).knobs) {
+      if (k.key === "seed" || k.key === "speed") continue;
+      expect(k.advanced, `${capId} ${k.key}`).toBe(!generated.inControlList(family, SPEC_NAME[k.key] ?? k.key));
+    }
+  }
+  expect(knob("qwen3-cv", "talker_top_k").advanced).toBe(false);
+  expect(knob("qwen3-cv", "subtalker_top_k").advanced).toBe(true);
+  // Turbo: audio.cpp's own screen shows none of its settings.
+  expect(lookup("chatterbox-turbo").knobs.filter((k) => k.key !== "seed").every((k) => k.advanced)).toBe(true);
+});
+
+test("the seed box's top is the spec's where it gives one", () => {
+  // Decided 2026-10-15 (TASKS "Slice 3's six questions" 3); was 2,000,000,000 everywhere.
+  expect(knob("qwen3-cv", "seed").max).toBe(4294967295);
+  expect(knob("chatterbox-multilingual", "seed").max).toBe(4294967295);
+  expect(knob("voxcpm2", "seed").max).toBe(4294967295);
+  // Kokoro's spec gives the seed no top: the app's own stays.
+  expect(knob("kokoro", "seed").max).toBe(2_000_000_000);
+  // A top-of-range seed reaches the runtime as it is.
+  const req = slot.toSpeechRequest(row("qwen3", "qwen3-cv-1.7b-q8"), { text: "Hi.", voice_id: "Ryan", seed: 4294967295 });
+  expect(req.seed).toBe(4294967295);
+});
+
 test("a persona's settings: a number box checks only the ends it has; a word or a switch is never read as a number", () => {
   expect(checkDelivery({ models: { "qwen3-cv": { knobs: { talker_top_k: 5000 } } } })).toEqual([]);
   expect(checkDelivery({ models: { "qwen3-cv": { knobs: { talker_top_k: -1 } } } })).toEqual([
@@ -115,13 +172,18 @@ test("every load option the spec lists is on the model's row, at audio.cpp's def
 
 test("Chatterbox Multilingual's v3 checkpoint is its load option; set, it reaches the model's registration", () => {
   const r = row(...MULTILINGUAL);
+  // On the model's row, in audio.cpp's own word (decided 2026-10-15, TASKS "Slice 3's six
+  // questions" 2).
   expect(option(r, "chatterbox.multilingual_t3")).toMatchObject({
     type: "choice",
+    label: "Checkpoint",
+    hint: "Multilingual T3 checkpoint selection.",
     choices: [
       ["v2", "v2"],
       ["v3", "v3"],
     ],
     default: "v2",
+    featured: true,
   });
   // Turbo and Nano are another family: no such option.
   expect(option(row("chatterbox", "chatterbox-turbo-q8"), "chatterbox.multilingual_t3")).toBeUndefined();

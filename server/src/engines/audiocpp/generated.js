@@ -173,6 +173,23 @@ export const humanize = (name) => {
   return s.charAt(0).toUpperCase() + s.slice(1);
 };
 
+/** audio.cpp's own control list for a model (`webui/configs/model_params.json`): its family's
+ * controls and its catalog entry's own, by name. */
+function controlsOf(fam, entry) {
+  return new Map([...(fam?.params || []), ...(entry?.params || [])].map((p) => [p.name, p]));
+}
+
+/** Whether audio.cpp's own screen shows `name` (a request option, under its spec name or an old
+ * one) for a family's speech model — its family's controls, or its Text to speech entries'. A
+ * setting it doesn't show folds under Advanced (decided 2026-10-15). */
+export function inControlList(family, name) {
+  const fam = catalogFamily(family);
+  if (!fam) return false;
+  const entries = (fam.entries || []).filter((e) => e.workflow === "tts");
+  const names = [name, ...oldNamesOf(family, name)];
+  return [fam, ...entries].some((x) => (x.params || []).some((p) => names.includes(p.name)));
+}
+
 /**
  * A model's settings, as knob specs (models.js KnobSpec, without the construct): its spec's typed
  * request options — or, for a family whose spec lists none, audio.cpp's own control list
@@ -181,12 +198,13 @@ export const humanize = (name) => {
  * number's ends are audio.cpp's — its control list's where it gives one, else the spec's (the
  * adoption plan §2, F9); it is a slider where both are given and the control list doesn't make it
  * a number box, else a number box, open at an end neither gives (E2) — as audio.cpp's own UI
- * shows it. Each is marked advanced (KnobSpec.advanced). A setting with no default in the spec or
- * the control list has none here (null): audio.cpp's own applies, and nothing is sent until it
- * is set.
+ * shows it. One audio.cpp's own screen doesn't show (not in its control list) is for experts
+ * and folds under Advanced (KnobSpec.advanced; decided 2026-10-15, TASKS "Slice 3's six
+ * questions" 1). A setting with no default in the spec or the control list has none here (null):
+ * audio.cpp's own applies, and nothing is sent until it is set.
  */
 export function settingsOf(m) {
-  const params = new Map([...(m.fam.params || []), ...(m.entry.params || [])].map((p) => [p.name, p]));
+  const params = controlsOf(m.fam, m.entry);
   const fromSpec = (m.fam.options || {}).request || [];
   const sources = fromSpec.length
     ? fromSpec.map((o) => ({ name: o.name, type: o.type, min: o.min, max: o.max, default: o.default, values: o.values, description: o.description }))
@@ -204,12 +222,13 @@ export function settingsOf(m) {
     if (!isSetting(m.family, o.name)) continue;
     // audio.cpp's control list may still name a renamed option the old way (ZipVoice's `t_shift`
     // for `shift`, IndexTTS's `duration_factor` for `duration_scale`): its control is this one.
-    const p = params.get(o.name) ?? oldNamesOf(m.family, o.name).map((n) => params.get(n)).find(Boolean) ?? {};
+    const control = params.get(o.name) ?? oldNamesOf(m.family, o.name).map((n) => params.get(n)).find(Boolean) ?? null;
+    const p = control ?? {};
     const base = {
       key: o.name,
       label: english(p.label_en, p.label) || humanize(o.name),
       hint: english(p.info_en, p.info, o.description),
-      advanced: true,
+      advanced: control === null,
     };
     const given = o.default ?? p.default ?? null;
     if (o.type === "int" || o.type === "float" || o.type === "number") {

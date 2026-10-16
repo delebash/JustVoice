@@ -11,9 +11,15 @@
   value (else the knob's neutral). Events: `input` on every step of a drag or
   keystroke (the persona page's draft follows it), `commit` when the slider is
   let go or the pause box is left (Render saves then), `reset` from a ↺.
+
+  A knob marked `advanced` — a setting audio.cpp's own screen doesn't show —
+  folds under "Advanced (N)" at the grid's end (decided 2026-10-15, TASKS
+  "Slice 3's six questions" 1), drawn by this same component inside a
+  <details>, as the kit's ConfigColumn folds its samplers. The default slot
+  adds cells to the grid (the persona page's Seed).
 -->
 <script setup>
-import { reactive, watch } from "vue";
+import { computed, reactive, watch } from "vue";
 import { UiButton, UiInput, UiNumber, UiSelect, UiSlider, UiToggle } from "@delebash/llm-ui";
 import { SHAPE_KNOBS } from "../services/personaFacts.js";
 
@@ -34,8 +40,13 @@ const props = defineProps({
   pausePlaceholder: { type: String, default: "—" },
   // Every control greyed (Speech engines, while its model is busy).
   disabled: { type: Boolean, default: false },
+  // Fold the advanced knobs (false inside the fold itself).
+  foldAdvanced: { type: Boolean, default: true },
 });
 const emit = defineEmits(["input", "commit", "reset"]);
+
+const shownKnobs = computed(() => (props.foldAdvanced ? props.knobs.filter((k) => !k.advanced) : props.knobs));
+const foldedKnobs = computed(() => (props.foldAdvanced ? props.knobs.filter((k) => k.advanced) : []));
 
 const PAUSE_WORD = { pause_before: "Pause before", pause_after: "Pause after" };
 // What a knob shows while it moves, before the parent's value catches up.
@@ -69,7 +80,7 @@ function onCommit(key, v) {
 
 <template>
   <div class="jv-knob-grid">
-    <div v-for="k in knobs" :key="k.key" class="jv-knob-grid__knob">
+    <div v-for="k in shownKnobs" :key="k.key" class="jv-knob-grid__knob">
       <div class="jv-knob-grid__head">
         <label class="jv-knob-grid__label" :title="k.hint">{{ k.label }}</label>
         <UiButton intent="ghost" size="small" label="↺" :disabled="disabled || !isSet(k.key)"
@@ -113,5 +124,13 @@ function onCommit(key, v) {
         <span class="jv-knob-grid__unit">ms</span>
       </div>
     </div>
+    <slot />
+    <details v-if="foldedKnobs.length" class="jv-fold jv-knob-grid__fold">
+      <summary>Advanced ({{ foldedKnobs.length }})</summary>
+      <DeliveryKnobs :knobs="foldedKnobs" :values="values" :fallback="fallback" :pauses="[]"
+        :reset-title="resetTitle" :disabled="disabled" :fold-advanced="false"
+        @input="(key, v) => emit('input', key, v)" @commit="(key, v) => emit('commit', key, v)"
+        @reset="(key) => emit('reset', key)" />
+    </details>
   </div>
 </template>

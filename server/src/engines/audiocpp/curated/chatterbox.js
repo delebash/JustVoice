@@ -29,3 +29,14 @@ export const BEST_FOR = ["Someone’s own voice, with per-line emotion tags (Tur
 export const OLD_OPTION_NAMES = {
   s3gen_cfg_rate: "flow_guidance_scale",
 };
+
+// Chatterbox Multilingual's v3 checkpoint (the adoption plan's F3) on the model's row itself,
+// labelled with audio.cpp's own word — its spec: "Multilingual T3 checkpoint selection" — v2 the
+// default, as the spec's (decided 2026-10-15, TASKS "Slice 3's six questions" 2). Its other load
+// options fold (engines/audiocpp/runtime_options.js).
+export const LOAD_OPTIONS = {
+  multilingual_t3: {
+    label: "Checkpoint",
+    choices: { v2: "v2", v3: "v3" },
+  },
+};

@@ -38,7 +38,7 @@ import { computed, onActivated, onBeforeUnmount, ref, watch } from "vue";
 import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import {
   AppModal, EmptyState, UiButton, UiField, UiInput, UiNumber, UiSegmented, UiSelect,
-  DownloadBar, UiSlider, UiTag, UiTextarea, UiToggle, confirmDialog, fmtBytes, languageName, pushToast, runAiEndpoint, saveBlob,
+  DownloadBar, UiTag, UiTextarea, confirmDialog, fmtBytes, languageName, pushToast, runAiEndpoint, saveBlob,
 } from "@delebash/llm-ui";
 import DeliveryKnobs from "../components/DeliveryKnobs.vue";
 import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
@@ -640,6 +640,27 @@ function resetKnob(k) {
   const s = ms();
   if (s?.knobs) delete s.knobs[k.key];
 }
+// The model's settings as the knob grid takes them (DeliveryKnobs, as Render's): a default is its
+// neutral, an advanced one folds.
+const samplingKnobs = computed(() =>
+  knobs.value.map((k) => ({
+    key: k.key, label: k.label, hint: k.hint, type: k.type || "number", min: k.min, max: k.max, step: k.step,
+    box: Boolean(k.box), choices: k.choices || [], unit: k.unit || "", advanced: Boolean(k.advanced),
+    neutral: k.default == null ? null : isNumberKnob(k) ? Number(k.default) : k.default,
+  })),
+);
+const samplingResetTitle = (_key, k) => (k?.neutral == null ? "Back to the model default" : `Back to the model default (${k.neutral})`);
+function setKnobByKey(key, value) {
+  const k = knobs.value.find((x) => x.key === key);
+  if (k) setKnob(k, value);
+}
+function resetKnobByKey(key) {
+  const k = knobs.value.find((x) => x.key === key);
+  if (k) resetKnob(k);
+}
+// The seed box's top: the model's spec's where it gives one (decided 2026-10-15, TASKS "Slice 3's
+// six questions" 3), else 2,000,000,000 — its seed knob's.
+const seedTop = computed(() => (row.value?.knobs || []).find((k) => k.key === "seed")?.max ?? 2_000_000_000);
 const seed = computed({
   get: () => ms()?.seed ?? null,
   set: (v) => { ms(true).seed = v === null || v === "" ? null : Number(v); },
@@ -1174,38 +1195,20 @@ function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
               <span v-if="voice" class="jv-hint">{{ modelName }}</span>
             </div>
             <div class="jv-card__body jv-col">
-              <div class="jv-knob-grid">
-                <div v-for="k in knobs" :key="k.key" class="jv-knob-grid__knob">
-                  <div class="jv-knob-grid__head">
-                    <label class="jv-knob-grid__label" :title="k.hint">{{ k.label }}</label>
-                    <UiButton intent="ghost" size="small" label="↺" :disabled="ms()?.knobs?.[k.key] === undefined"
-                      :title="k.default == null ? 'Back to the model default' : `Back to the model default (${k.default})`" @click="resetKnob(k)" />
-                  </div>
-                  <div class="jv-knob-grid__row">
-                    <!-- A number box where audio.cpp shows one or gives no range (k.box; the
-                         adoption plan, E2), or where it gives no default. -->
-                    <UiSlider v-if="isNumberKnob(k) && k.default != null && !k.box" :model-value="knobValue(k)" :min="k.min" :max="k.max" :step="k.step" width="full"
-                      :aria-label="k.label" @update:model-value="(v) => setKnob(k, v)" />
-                    <UiNumber v-else-if="isNumberKnob(k)" :model-value="knobValue(k)" :min="k.min ?? null" :max="k.max ?? null" :step="k.step || 1" width="num"
-                      size="small" :aria-label="k.label" @update:model-value="(v) => setKnob(k, v)" />
-                    <UiSelect v-else-if="k.type === 'choice'" :model-value="knobValue(k)" :options="k.choices.map((c) => ({ label: c, value: c }))"
-                      width="name" :aria-label="k.label" @update:model-value="(v) => setKnob(k, v)" />
-                    <UiToggle v-else-if="k.type === 'switch'" :model-value="knobValue(k) === null ? null : Boolean(knobValue(k))" :aria-label="k.label"
-                      @update:model-value="(v) => setKnob(k, v)" />
-                    <UiInput v-else :model-value="knobValue(k) ?? ''" size="small" width="name" :aria-label="k.label"
-                      @update:model-value="(v) => setKnob(k, v)" />
-                    <span v-if="k.unit" class="jv-knob-grid__unit">{{ k.unit }}</span>
-                  </div>
-                </div>
+              <!-- The knob grid How it speaks and Render use (DeliveryKnobs): a number box where
+                   audio.cpp shows one or gives no range (the adoption plan, E2); the settings
+                   audio.cpp's own screen doesn't show fold under Advanced (decided 2026-10-15). -->
+              <DeliveryKnobs :knobs="samplingKnobs" :values="ms()?.knobs || {}" :pauses="[]" :reset-title="samplingResetTitle"
+                @input="setKnobByKey" @commit="setKnobByKey" @reset="resetKnobByKey">
                 <div v-if="voice" class="jv-knob-grid__knob">
                   <div class="jv-knob-grid__head"><label class="jv-knob-grid__label">Seed</label></div>
                   <div class="jv-knob-grid__row">
-                    <UiNumber v-model="seed" :min="0" :max="2000000000" :step="1" width="id" size="small"
+                    <UiNumber v-model="seed" :min="0" :max="seedTop" :step="1" width="id" size="small"
                       placeholder="random" :disabled="!seedSupported" :use-grouping="false" aria-label="Seed" />
                     <UiButton intent="ghost" size="small" label="🎲" title="A new seed" :disabled="!seedSupported" @click="rollSeed" />
                   </div>
                 </div>
-              </div>
+              </DeliveryKnobs>
               <p v-if="voice && !knobs.length && !seedSupported" class="jv-hint">{{ modelName }} has no sampling settings.</p>
               <p v-if="voice" class="jv-hint">
                 {{ seedSupported ? "The same seed gives the same take. Empty = a new one each time." : `${modelName} doesn't repeat with a seed.` }}

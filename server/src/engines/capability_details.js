@@ -42,14 +42,16 @@ function speedKnob(def = 1.0) {
   return knob({ key: "speed", label: "Speed", min: 0.5, max: 3.0, step: 0.05, default: def, unit: "×", hint: "Reading pace multiplier." });
 }
 
-function seedKnob() {
+function seedKnob(family = null) {
   // 0 (or empty) is a new take each time: the request mapping sends a random seed for it —
   // audio.cpp's own "no seed" repeated for Kokoro, Kitten, Turbo and VoxCPM2 (audit §5 D1).
+  // Its top is the spec's where it gives one (4,294,967,295 at v0.9.2), else 2,000,000,000
+  // (decided 2026-10-15, TASKS "Slice 3's six questions" 3).
   return knob({
     key: "seed",
     label: "Seed",
     min: 0,
-    max: 2_000_000_000,
+    max: (family ? requestOptionsOf(family).get("seed")?.max : null) ?? 2_000_000_000,
     step: 1,
     default: 0,
     hint: "The same seed repeats the same take. 0 = a new take each time.",
@@ -60,15 +62,19 @@ function seedKnob() {
 /** The talker sampling surface — identical across every Qwen3 checkpoint family (CustomVoice /
  * Base / VoiceDesign share the talker architecture); what differs per family is capability,
  * not knobs. */
+// `advanced`, on the seven engines described by our own files as on the rest: a setting audio.cpp's
+// own screen shows (its control list, webui/configs/model_params.json) stays in view, one it
+// doesn't folds under Advanced (decided 2026-10-15, TASKS "Slice 3's six questions" 1;
+// generated.inControlList).
 function qwenSamplingKnobs() {
   return [
     knob({ key: "talker_temperature", label: "Temperature", min: 0.05, max: 2.0, step: 0.05, default: 0.9, hint: "Sampling variance for the talker model." }),
     // audio.cpp's range (the narrowings review, F9 — was 1–100): its control list's number box
     // from 0 with no top (webui/configs/model_params.json qwen3_tts `top_k`).
-    knob({ key: "talker_top_k", label: "Top k", min: 0, max: null, step: 1, box: true, default: 50, advanced: true }),
+    knob({ key: "talker_top_k", label: "Top k", min: 0, max: null, step: 1, box: true, default: 50 }),
     // Not 0: Qwen3 reads a top-p of 0 as "no filter" (audit §5 D9).
-    knob({ key: "talker_top_p", label: "Top p", min: 0.05, max: 1.0, step: 0.01, default: 1.0, advanced: true }),
-    knob({ key: "repetition_penalty", label: "Repetition penalty", min: 1.0, max: 4.0, step: 0.05, default: 1.05, advanced: true }),
+    knob({ key: "talker_top_p", label: "Top p", min: 0.05, max: 1.0, step: 0.01, default: 1.0 }),
+    knob({ key: "repetition_penalty", label: "Repetition penalty", min: 1.0, max: 4.0, step: 0.05, default: 1.05 }),
     // The sub-talker fills in each frame's finer audio codes after the talker picks the first;
     // audio.cpp samples it with its own three settings, defaults from the model's
     // generation_config.json (../audio.cpp/include/engine/models/qwen3_tts/types.h).
@@ -85,7 +91,7 @@ function qwenSamplingKnobs() {
     // The spec's range, from 0 with no top (model_specs/qwen3_tts.json `subtalker_top_k`; F9).
     knob({ key: "subtalker_top_k", label: "Detail top k", min: 0, max: null, step: 1, box: true, default: 50, advanced: true }),
     knob({ key: "subtalker_top_p", label: "Detail top p", min: 0.05, max: 1.0, step: 0.01, default: 1.0, advanced: true }),
-    seedKnob(),
+    seedKnob("qwen3_tts"),
   ];
 }
 
@@ -121,7 +127,7 @@ export const CAPABILITY_DETAILS = {
     supports_voice_blending: pinnedHas("voice_pack"),
     // audio.cpp's Kokoro takes a decoder-noise seed — the same seed repeats the same audio
     // (measured 2026-10-01).
-    knobs: [speedKnob(), seedKnob()],
+    knobs: [speedKnob(), seedKnob("kokoro_tts")],
     inline_tags: [],
     pitch_native_st_range: null,
     pitch_post_process: true, // the server can pitch-shift the output WAV
@@ -153,7 +159,7 @@ export const CAPABILITY_DETAILS = {
     display_name: "Pocket TTS",
     supports_voice_cloning: true,
     supports_clone_prompt_text: false,
-    knobs: [seedKnob()],
+    knobs: [seedKnob("pocket_tts")],
     inline_tags: [],
     pitch_native_st_range: null,
     pitch_post_process: true,
@@ -178,10 +184,10 @@ export const CAPABILITY_DETAILS = {
       cfgWeightKnob(),
       // 1.2 is what audio.cpp and upstream (mtl_tts.py, master) use; the knob said 2.0 and
       // sent nothing at its default (audit §5 D3).
-      knob({ key: "repetition_penalty", label: "Repetition penalty", min: 1.0, max: 4.0, step: 0.1, default: 1.2, advanced: true }),
+      knob({ key: "repetition_penalty", label: "Repetition penalty", min: 1.0, max: 4.0, step: 0.1, default: 1.2 }),
       knob({ key: "top_p", label: "Top p", min: 0.05, max: 1.0, step: 0.01, default: 1.0, advanced: true }),
       ...chatterboxExtraKnobs(),
-      seedKnob(),
+      seedKnob("chatterbox"),
     ],
     pitch_post_process: true,
   }),
@@ -195,10 +201,10 @@ export const CAPABILITY_DETAILS = {
       exaggerationKnob(),
       cfgWeightKnob(),
       // 1.2: audio.cpp's and upstream's (audit §5 D3).
-      knob({ key: "repetition_penalty", label: "Repetition penalty", min: 1.0, max: 4.0, step: 0.1, default: 1.2, advanced: true }),
+      knob({ key: "repetition_penalty", label: "Repetition penalty", min: 1.0, max: 4.0, step: 0.1, default: 1.2 }),
       knob({ key: "top_p", label: "Top p", min: 0.05, max: 1.0, step: 0.01, default: 1.0, advanced: true }),
       ...chatterboxExtraKnobs(),
-      seedKnob(),
+      seedKnob("chatterbox"),
     ],
     pitch_post_process: true,
     notes: [
@@ -216,14 +222,15 @@ export const CAPABILITY_DETAILS = {
     display_name: "Chatterbox Turbo",
     supports_voice_cloning: true,
     supports_clone_prompt_text: false,
+    // audio.cpp's own screen shows none of Turbo's settings: all of them fold.
     knobs: [
-      temperatureKnob(0.8),
+      temperatureKnob(0.8, true),
       knob({ key: "repetition_penalty", label: "Repetition penalty", min: 1.0, max: 4.0, step: 0.1, default: 1.2, advanced: true }),
       knob({ key: "top_p", label: "Top p", min: 0.05, max: 1.0, step: 0.01, default: 0.95, advanced: true }),
       // The spec's range, from 0 with no top (model_specs/chatterbox_turbo.json `top_k`; F9 — was
       // 1–2000).
       knob({ key: "top_k", label: "Top k", min: 0, max: null, step: 1, box: true, default: 1000, advanced: true }),
-      seedKnob(),
+      seedKnob("chatterbox_turbo"),
     ],
     // The checkpoint's own added_tokens.json: nineteen reserved tokens, ids 50257–50275, in
     // three kinds — a state the line is spoken IN, a register it is read AS, and a sound made
@@ -354,7 +361,7 @@ CAPABILITY_DETAILS.voxcpm2 = detail({
     // audio.cpp's control list's ranges (model_params.json voxcpm2: `guidance_scale` 0–5, and
     // `num_inference_steps` a number box from 1 with no top; F9 — were 1–5 and 4–30).
     knob({ key: "cfg_value", label: "CFG", min: 0, max: 5.0, step: 0.1, default: 2.0, hint: "How closely it follows the voice and the text. Higher = stricter." }),
-    knob({ key: "inference_timesteps", label: "Inference steps", min: 1, max: null, step: 1, box: true, default: 10, advanced: true, hint: "More steps = finer detail, slower." }),
+    knob({ key: "inference_timesteps", label: "Inference steps", min: 1, max: null, step: 1, box: true, default: 10, hint: "More steps = finer detail, slower." }),
     // A take that runs far longer than its text — a "runaway" — is cut and made again
     // (../audio.cpp/src/models/voxcpm2/generator.cpp; defaults in types.h, audit §7).
     knob({
@@ -377,7 +384,7 @@ CAPABILITY_DETAILS.voxcpm2 = detail({
       advanced: true,
       hint: "How long a take may run for its text before it is cut and tried again. Lower cuts sooner; too low cuts real speech.",
     }),
-    seedKnob(),
+    seedKnob("voxcpm2"),
   ],
   inline_tags: [],
   pitch_post_process: true,
@@ -428,7 +435,7 @@ for (const m of generatedModels()) {
     supports_instruct_freeform: Boolean(direction),
     direction_known: Boolean(direction),
     emotions: directionEmotions(direction),
-    knobs: [...settingsOf(m).map(knob), ...(!listsOptions(m.family) || opts.has("seed") ? [seedKnob()] : [])],
+    knobs: [...settingsOf(m).map(knob), ...(!listsOptions(m.family) || opts.has("seed") ? [seedKnob(m.family)] : [])],
     inline_tags: [],
     pitch_post_process: true,
     notes: [
