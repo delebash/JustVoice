@@ -288,6 +288,14 @@ onMounted(() => {
 @media (max-width: 900px) {
   .captures__top { grid-template-columns: 1fr; }
 }
+/* At phone width (Quasar's xs) the list sits over the capture it opens, each as tall as what it
+   holds, and the page scrolls: the list's 380 px column ran 106 px past a 390 px window and the
+   page scrolled sideways (2026-10-15). Stacked inside the pane's fixed height, the list's row
+   was left no height at all. */
+@media (max-width: 599.98px) {
+  .captures { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; flex: none; }
+  .captures__top { grid-template-columns: minmax(0, 1fr); }
+}
 .captures__hotkeys, .captures__pill-preview { padding: 14px 18px; }
 .captures__band-h,
 .captures__sub-h {

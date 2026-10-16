@@ -562,4 +562,14 @@ onMounted(() => {
 .home__mini-step i { font-style: normal; font-weight: 500; color: var(--ink-3); }
 .home__mini-step--done { border-color: var(--accent-line); background: var(--accent-soft); color: var(--accent-ink); }
 .home__mini-step--done i { color: var(--accent-ink); }
+
+/* At phone width (Quasar's xs) a row's cards stack and the six counts go two across: side by
+   side they ran 210 px past a 390 px window and the page scrolled sideways (2026-10-15). In the
+   Continue card, Resume takes the line under the project when the two don't fit beside it. */
+@media (max-width: 599.98px) {
+  .home__row { flex-direction: column; }
+  .home__row--top .home__continue { flex-wrap: wrap; }
+  .home__continue-main { flex-basis: 180px; }
+  .home__stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 </style>
