@@ -406,8 +406,11 @@ BUILT:  2 — the "group" flag carries the whole group (`ScriptFlag.group`); Scr
         restarted since — Export makes it again. Open Export →", the mock's done state only has
         "⬇ Save the M4B"; (d) outside the card, the top bar's voice and model chips shrink to
         "N…" and "g…" at 1280 px when the crumb carries a long book name.
-OPEN:   3 waits on the user's ears; 6 (mock first); 4's calibration after the first frontier run;
-        1's differences (a)–(d) for the user's look. For the user: the cast card's Clear all ignores no one (a gap — a
+        3 — the user's ears, 2026-10-16: both flags were right ("added the Hatter" said, "but the
+        accent made it harder to understand"; "Sh! sh!" — "you can't tell that it said sh at all"),
+        so lines under 4 words keep their read-back and the numbers stay (RESEARCH §10.24).
+OPEN:   6 (mock first); 4's calibration after the first frontier run; 1's differences (a)–(d)
+        for the user's look. For the user: the cast card's Clear all ignores no one (a gap — a
         start-over shouldn't empty the next run's cast); a line given to the ONE person the
         answer named still asks "No one could be named — given to ‹X›. Who says it?" (words
         needed).

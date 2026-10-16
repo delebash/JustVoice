@@ -4212,7 +4212,10 @@ The headless server on the dev build (bcc5dfbb), the user's data folder, gemma 4
   at least):** on 273 takes, 4 failed the first reading (1.5 %), 2 passed after their one new
   take; the 2 flagged are the shortest — the narrator's *added the Hatter,* (3 words, heard "I did
   the harder.") and *"Sh! sh!"* (2 words, heard "Okay."). Nothing longer was flagged, so the
-  numbers stay. — *measured*.
+  numbers stay. **The user's ears agree with both flags** (2026-10-16): *added the Hatter* is
+  said, "but the accent made it harder to understand" — the narrator voice designed from the book;
+  *"Sh! sh!"* "did not come out correct, you can't tell that it said sh at all" — the model can't
+  voice the shush. So short lines keep their read-back. — *measured*.
 - **Slice 4's group lines: Analyze names one of a group often.** In the run above gemma gave
   *"Sh! sh!"* to the Hatter — not blank — so the step (asking blank lines only) neither asked nor
   marked it; in §10.23's run Analyze named four of the five. Fixed the same day: a line Analyze
