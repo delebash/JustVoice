@@ -354,7 +354,9 @@ and it is the one that transcribes: Captures' dictation, the words of a clip you
 clone a voice from, and transcripts for other apps. Word timings — chapter
 captions and `/v1/align` — need an aligner, and audio.cpp has only Qwen3's, so a
 caption request loads Qwen3-ASR in the speech-recognition slot, whichever
-recogniser was there. Where a family both speaks and recognises speech
+recogniser was there. Each recogniser hears the recording at 16 kHz mono, as
+audio.cpp's own page sends it: several (OWSM, CrisperWhisper,
+MOSS-Transcribe-Diarize, Hviske v6) can't take any other rate. Where a family both speaks and recognises speech
 (FireRedAudio, LFM2.5-Audio), each has its own engine, and the two share one
 download: on disk once, shown as downloaded on both, deleted from both together.
 
@@ -734,6 +736,13 @@ recognition is given the language's name too, and detects the language itself
 for one it doesn't know.
 Pocket TTS takes no language: its loaded model is the language, and a line in
 another one is refused by name.
+The models built from audio.cpp's descriptions get the line's language in the
+form their own list names it (`en`, or `en-US` where only that is listed). Where
+the list names none in a form the model takes — OmniVoice's *600+ languages*,
+dots.tts's *multilingual*, or Arabic on a model that lists only English and
+Chinese — the line goes without one, as audio.cpp's own page sends it by
+default, and the model picks the language itself (since 2026-10-15: OmniVoice
+refused an Arabic line sent as `ar`).
 
 ## Not available yet
 

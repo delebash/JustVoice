@@ -648,12 +648,23 @@ export class AudioCppSlot {
 
   async _transcribe(body) {
     if (!this.isAlive() || this._row === null) return err(409, `${this.manifest.name} is not loaded`);
-    const [p, temp] = this._audioPath(body);
+    let [p, temp] = this._audioPath(body);
     let out;
     try {
       let req;
       if (this._row.audiocpp.generated) {
-        // Every other recogniser audio.cpp has (generated.js): the language as its spec takes it.
+        // Every other recogniser audio.cpp has (generated.js): the audio at 16 kHz mono, as
+        // audio.cpp's own page sends a recogniser's (webui +page.svelte, stagedPath) — several
+        // (OWSM, CrisperWhisper, MOSS-Transcribe-Diarize, Hviske v6) refuse any other rate
+        // without libsoxr, which the release doesn't carry; and the language as its spec takes it.
+        const wav = readFileSync(p);
+        const at16k = await self.asAudio16kMono(wav);
+        if (at16k !== wav) {
+          const name = path.join(os.tmpdir(), `tmp${Math.random().toString(36).slice(2, 10)}.wav`);
+          writeFileSync(name, at16k);
+          if (temp) rmSync(p, { force: true });
+          [p, temp] = [fwd(name), true];
+        }
         req = self.generatedTranscribeRequest(this._row, body, p);
       } else {
         req = { model: this._row.id, audio: p };
@@ -1144,7 +1155,10 @@ export function generatedSpeechRequest(row, body, req) {
 
 /** A line's language (a code: "en", "en-US") in the form a generated model's spec takes it — one
  * of its option's values, the English name where its default is a name ("Chinese", FireRedTTS3),
- * or the code — or undefined where its spec lists no language option or the line has none. */
+ * or a code its family's languages list (`listedLanguage`) — or undefined where its spec lists no
+ * language option, the line has none, or the family lists it in no form it takes: the model then
+ * picks it, as its spec says an omitted language does (OmniVoice takes Arabic only as `arb`, `arz`
+ * … and its spec lists no codes; it refused `ar`). */
 export function generatedLanguage(family, language) {
   const langSpec = generated.requestOptionsOf(family).get("language");
   const code = String(language || "").toLowerCase().split("-")[0];
@@ -1154,7 +1168,21 @@ export function generatedLanguage(family, language) {
     return langSpec.values.find((v) => String(v).toLowerCase() === code || (name && String(v).toLowerCase() === name.toLowerCase()));
   }
   if (/^[A-Z][a-z]+$/.test(String(langSpec.default || ""))) return name ?? undefined;
-  return code;
+  return self.listedLanguage(family, language);
+}
+
+/** The form a family's language list (audio.cpp's spec) names a language in: the exact code, its
+ * base (`en` for `en-US`), or the one region it lists (`en-GB` for `en`) — undefined when it lists
+ * none, or several regions and none exactly. */
+export function listedLanguage(family, language) {
+  const want = String(language || "").toLowerCase();
+  const code = want.split("-")[0];
+  if (!code) return undefined;
+  const listed = (generated.catalogFamily(family)?.languages || []).map(String);
+  const exact = listed.find((l) => l.toLowerCase() === want);
+  const base = listed.find((l) => l.toLowerCase() === code);
+  const region = listed.filter((l) => l.toLowerCase().split("-")[0] === code);
+  return exact ?? base ?? (region.length === 1 ? region[0] : undefined);
 }
 
 /**
@@ -1181,11 +1209,7 @@ export function generatedTranscribeRequest(row, body, audio) {
     if (name) req.language = name;
     return req;
   }
-  const listed = (generated.catalogFamily(family)?.languages || []).map(String);
-  const exact = listed.find((l) => l.toLowerCase() === want);
-  const base = listed.find((l) => l.toLowerCase() === code);
-  const region = listed.filter((l) => l.toLowerCase().split("-")[0] === code);
-  const hit = exact ?? base ?? (region.length === 1 ? region[0] : undefined);
+  const hit = self.listedLanguage(family, want);
   if (hit !== undefined) req.language = hit;
   return req;
 }

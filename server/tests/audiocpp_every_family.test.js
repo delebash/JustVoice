@@ -5,7 +5,7 @@
 // speech-recognition engines, captions stay on Qwen3-ASR's aligner, a model with no direction file
 // can't be directed yet and offers only the emotions its file maps, and a model that can speak
 // without a clip warms up on a full-length piece.
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
 import { endState, useState } from "./engines_helpers.js";
@@ -13,6 +13,7 @@ import { tmpPath } from "./helpers.js";
 import * as captures from "../src/api/captures_api.js";
 import * as speechCache from "../src/speech_cache.js";
 import { listVoices } from "../src/api/voices_api.js";
+import { parseWavHeader, writeWavContainer } from "../src/audio/wav.js";
 import * as generated from "../src/engines/audiocpp/generated.js";
 import * as slot from "../src/engines/audiocpp/slot.js";
 import { lookup } from "../src/engines/capability_details.js";
@@ -238,6 +239,27 @@ test("a model that speaks without a clip warms up on a full-length piece; a clon
   expect(a[0][1].audio).toMatch(/silence-480000\.wav$/);
 });
 
+test("a recogniser hears 16 kHz mono, as audio.cpp's own page sends it", async () => {
+  // OWSM, CrisperWhisper, MOSS-Transcribe-Diarize and Hviske v6 refuse any other rate without
+  // libsoxr (the acceptance run, 2026-10-15); audio.cpp's page sends every recogniser 16 kHz.
+  const [owsm] = warmSlot("owsm", engines.get("owsm").VARIANTS[0]);
+  vi.spyOn(owsm, "isAlive").mockReturnValue(true);
+  const heard = [];
+  owsm._srv.mockReturnValue({
+    transcribe: async (req) => {
+      heard.push(parseWavHeader(readFileSync(req.audio))[0]);
+      return { text: "Ready." };
+    },
+  });
+  const f = path.join(tmpPath(), "a-24k-take.wav");
+  writeFileSync(f, writeWavContainer(Buffer.alloc(24000 * 2 * 2), 24000, 2)); // 1 s, stereo
+  const out = await owsm._transcribe({ audio_path: f });
+  expect([out.statusCode, JSON.parse(out.text).text]).toEqual([200, "Ready."]);
+  expect([heard[0].sampleRate, heard[0].channels]).toEqual([16000, 1]);
+  expect(Math.abs(heard[0].durationSec - 1.0)).toBeLessThanOrEqual(0.01);
+  expect(existsSync(f)).toBe(true); // the caller's file stays; only the 16 kHz copy goes
+});
+
 test("captions keep Qwen3-ASR and its aligner whatever recogniser transcribes", async () => {
   const st = useState();
   try {
@@ -313,6 +335,30 @@ test("a family's instruction is its direction where its file says so (E3), else 
   expect(slot.toSpeechRequest(maya, { voice_id: "maya1_model_default", text: "Hi." }).options.instruct).toBe(description);
   const set = slot.toSpeechRequest(maya, { voice_id: "maya1_model_default", text: "Hi.", delivery: { engine: { instruct: "An old sailor." } } });
   expect(set.options.instruct).toBe("An old sailor.");
+});
+
+test("a line's language goes only in a form the family lists; otherwise the model picks it", () => {
+  // OmniVoice takes Arabic only as `arb`, `arz` … and its spec lists no codes: `ar` was refused in
+  // the acceptance, so it goes as none — its spec's "omitted uses automatic language selection".
+  expect(slot.generatedLanguage("omnivoice", "ar")).toBeUndefined();
+  expect(slot.generatedLanguage("omnivoice", "en")).toBeUndefined();
+  // A family that lists codes gets its own form; one it doesn't list goes as none.
+  expect(slot.generatedLanguage("audio8_tts", "en-US")).toBe("en");
+  expect(slot.generatedLanguage("audio8_tts", "ar")).toBeUndefined();
+  expect(slot.generatedLanguage("index_tts2", "ar")).toBe("ar");
+  // Magpie lists Arabic as three regions: not guessed.
+  expect(slot.listedLanguage("magpie_tts", "ar")).toBeUndefined();
+  expect(slot.listedLanguage("magpie_tts", "ar-SA")).toBe("ar-SA");
+  // A name where the default is one, a value where the spec lists values — as before.
+  expect(slot.generatedLanguage("fireredtts3", "en")).toBe("English");
+  const req = slot.toSpeechRequest(modelRow("omnivoice", "omnivoice-voicetuttts"), {
+    voice_id: "v",
+    text: "مرحبا",
+    language: "ar",
+    audio_prompt_path: "C:\\c.wav",
+    ref_text: "Hello.",
+  });
+  expect(req.language).toBeUndefined();
 });
 
 test("a speech and a recognition model on one package share one copy on disk", async () => {
