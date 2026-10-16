@@ -535,9 +535,19 @@ STATE:  DECIDED 2026-10-16 under the user's "your rec go" of 2026-10-15, as F5's
 WHY:    docs/engines.md promised the same audio for the same seed on every engine but KittenTTS,
         and F5's difference was memory a graph read before writing.
 NOT:    a change to ggml's shared code without the user's word; the jv.6 tag before this is done.
-BUILT:  —
-OPEN:   the fork's search, on its own branch `det` (the checkout stays at 8c9a6322 until slice
-        4's check ends); then jv.6. docs/engines.md says what was measured (slice 5).
+BUILT:  2026-10-16 — fork `det`, merged into jv at bcc5dfbb: 7ec5c652 KittenTTS's predictor LSTMs
+        started each compute from what the last one left (their zero states were written once,
+        at graph build) — now written before every compute; bcc5dfbb Qwen3-TTS's code-predictor
+        buffer starts from zeros (a stale NaN could pass its −inf mask; no take changed). Through
+        the app on bcc5dfbb: KittenTTS repeats on the GPU and the CPU; Kokoro, Qwen3 CustomVoice
+        and Base, Chatterbox Multilingual and Turbo, VoxCPM2 as before; 39 / 39 read back.
+        Found, not a stale read: Pocket TTS's and Qwen3 VoiceDesign's GPU take depends on the
+        longest request since the model loaded — their graphs are sized by it (Qwen3's talker
+        step graph doubles, `talker.cpp:1862-1892`; Pocket by the shared capacity controller,
+        `session.cpp:325-370`), and ggml's CUDA flash attention splits its sum by that size
+        (`fattn-common.cuh:1057`), so the additions run in another order. A first load with no
+        stored price warms up with an 800-character piece, which is why the first take differed.
+OPEN:   Pocket's and Qwen3's — to the user (a model-side fix, ggml's, or none); then jv.6.
 GO:     given 2026-10-15 ("your rec go").
 
 ### An audio.cpp update tests only the engines and models it adds; no full re-run (decided 2026-10-15)
