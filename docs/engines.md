@@ -909,6 +909,15 @@ disk shows **Download (N GB)** — download only; once its files are on disk
 the row shows **Load model**. A load of a model that is not downloaded yet
 downloads it first. Loading a model unloads the same slot's previous one.
 
+**F5-TTS unloads by stopping its process.** F5-TTS (the Habibi-TTS models) keeps
+its weights and working memory for as long as its speech process runs, so asking
+it to unload gave nothing back: after three Habibi models, 6.2 GB of the card and
+7.2 GB of the computer's memory stayed taken. Unloading an F5-TTS model, or
+loading another speech model in its place, now stops the speech process instead,
+which returns all of it; the next speech model starts a new process. Only the
+speech slot's process stops — a speech-recognition model stays loaded — and
+every other engine still unloads without a restart.
+
 **A render loads the model each voice needs.** A voice remembers the model it
 was made for ([Voices → Every voice knows the model that speaks it](voices.md#every-voice-knows-the-model-that-speaks-it)),
 so hearing a Qwen3 built-in voice while Qwen3 Base is loaded loads CustomVoice first,

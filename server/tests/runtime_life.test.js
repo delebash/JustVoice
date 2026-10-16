@@ -93,9 +93,38 @@ function managedServer() {
     async unload(ids) {
       srv.calls.push(["unload", [...ids]]);
     },
+    async stop() {
+      srv.calls.push(["stop"]);
+    },
   };
   return srv;
 }
+
+test("an_f5_unload_stops_its_process_and_other_families_still_unload", async () => {
+  // RESEARCH §10.15 finding 4: F5's caches live as long as the process, so an unload freed
+  // nothing (7.2 GB committed, 6.2 GB of the card) — its curated file says stop the process.
+  const srv = managedServer();
+  vi.spyOn(runtime, "getServer").mockReturnValue(srv);
+  vi.spyOn(slotMod, "effectivePlacement").mockImplementation((p) => p);
+  vi.spyOn(slotMod, "_dataDir").mockReturnValue(tmpPath());
+  const loaded = (engineId) => {
+    const s = new slotMod.AudioCppSlot(discoverEngines().get(engineId), "gpu");
+    s._row = slotMod.variantSpec(s.manifest, null);
+    s._generation = srv.pid;
+    s._loaded = true;
+    return s;
+  };
+  const f5 = loaded("f5_tts");
+  expect(f5._row.audiocpp.family).toBe("f5_tts");
+  await f5.terminate();
+  expect(srv.calls).toEqual([["stop"]]);
+  expect(f5.isAlive()).toBe(false);
+  srv.calls.length = 0;
+  const kokoro = loaded("kokoro");
+  srv.registered.set(kokoro._row.id, {});
+  await kokoro.terminate();
+  expect(srv.calls).toEqual([["unload", [kokoro._row.id]]]);
+});
 
 test("a_load_registers_its_model_and_the_aligner_registers_on_first_use", async () => {
   const srv = managedServer();

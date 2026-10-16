@@ -461,7 +461,12 @@ export class AudioCppSlot {
 
   async terminate() {
     const srv = this._srv();
-    if (this._row !== null && srv.isRunning() && srv.pid === this._generation) {
+    const ours = this._row !== null && srv.isRunning() && srv.pid === this._generation;
+    if (ours && CURATED[this._row.audiocpp?.family]?.UNLOAD_STOPS_PROCESS) {
+      // A family whose memory only its process's end frees (its curated file says so): this
+      // kind's process holds no other model, so stopping it is the unload.
+      await srv.stop();
+    } else if (ours) {
       let ids = self._entriesFor(this.manifest, this._row).map((e) => e.id);
       if (srv.managed) ids = ids.filter((i) => srv.hasModel(i));
       try {

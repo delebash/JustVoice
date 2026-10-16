@@ -3417,22 +3417,38 @@ Captions: with Citrinet loaded, `POST /v1/align` loaded Qwen3-ASR and returned 2
 
     Before the fix: 17,860 MB committed after one 52-char line, in a fresh process, at every
     Habibi model. Committed memory now rises with the card's, step by step. It still grows with
-    each model — EGY +662 MB committed and +648 MiB on the card, MSA +1,118 MB and +1,262 MiB
-    (each keeps its ~1.3 GB of weights; the bounded graph caches swap) — and **unloading still
-    frees nothing**: 7.2 GB committed and 6.2 GB of the card stay with the process, which the
-    booking reads as free. Not fixed: releasing a model's caches on unload needs reference
-    counts and locks across six process-wide caches.
-  - **The takes didn't change**: Unified's 52-char line is bit-identical to the old build's;
-    so are EGY and MSA each first in a fresh process, MSA after EGY, and EGY after Unified's
-    52-char line. Read back by Qwen3-ASR 1.7B: lines 1–5 at 75 / 60 / 100 / 92 / 91 %.
-  - **New: a take depends on what the process ran before.** After Unified's 180- and 330-char
-    lines, EGY's same line at seed 42 comes out different (correlation 0.35 with the fresh take;
-    the same in two runs, and identical when repeated in place); in the main run MSA read back
-    70 % against 80 % fresh. Likely a graph reading memory it never wrote, exposed now that
-    freed graphs' memory is reused; not run on the old build. The three Habibi checkpoints'
-    Vocos weights are byte-identical (83 tensors, 54.3 MB), so the Vocos cache's key
-    `(T, device)`, which leaves out the model, is harmless for them. — *code + measured,
-    2026-10-15*
+    each model loaded into one process — EGY +662 MB committed and +648 MiB on the card, MSA
+    +1,118 MB and +1,262 MiB (each keeps its ~1.3 GB of weights; the bounded graph caches swap).
+  - **Unloading F5 stops its speech process** (decided 2026-10-15, TASKS `4d54ee1f`):
+    `curated/f5_tts.js` `UNLOAD_STOPS_PROCESS`, read in `slot.js` `terminate`, which then stops
+    the slot's process instead of asking audio.cpp to unload; each kind has its own process, so
+    nothing else goes with it. Measured 2026-10-16 through the app (fork `8c9a6322`): Habibi
+    EGY's process went 396 → 4,762 MB committed over three lines and the card 368 → 4,005 MiB;
+    after Unload the process was gone and the card read 361 MiB. The recognition process
+    (Qwen3-ASR, loaded beside it) kept its pid and transcribed after; Kokoro still unloads in
+    place (its process kept, 7,095 → 794 MB committed); and the downloads delete at once.
+    (was: unloading freed nothing — 7.2 GB committed and 6.2 GB of the card stayed with the
+    process, which the booking read as free, and Delete answered 409 "still in use" until the
+    process ended — until 2026-10-16.)
+  - **The memory fix didn't change the takes**: Unified's 52-char line is bit-identical to the
+    old build's; so are EGY and MSA each first in a fresh process, MSA after EGY, and EGY after
+    Unified's 52-char line. Read back by Qwen3-ASR 1.7B: lines 1–5 at 75 / 60 / 100 / 92 / 91 %.
+  - **A take no longer depends on what the process ran before** (fork `8c9a6322`). The
+    batched-CFG graph's GRN eps is [2, 1, 1], one per CFG half, but `grn()` gave it one value
+    (`dit_modules.cpp`), so the unconditional half's eps was never written: zero in fresh
+    memory, anything once freed graphs' memory was reused. Found by filling every non-weight
+    tensor of a new CUDA graph with NaN and computing it node by node: those four leaves, one per
+    text ConvNeXt block, were the only unwritten tensors in the CFG and Vocos graphs, and with
+    the fix none is; `ctx_store_f32` now refuses a value count that doesn't fill its shape.
+    Measured 2026-10-16 through the app, seed 42: Unified's 52-char line byte-identical first in
+    a fresh process, after the 180- and 330-char lines, after the 96- and 19-char lines, and in
+    a new process; EGY's the same first and after the 330- and 180-char lines. Takes moved
+    slightly from before (the unconditional half's eps was 0, now 1e-6: correlation 0.989 with
+    the old take; Qwen3-ASR hears the same words). (was: after Unified's long lines, EGY's same
+    line came out different — correlation 0.35 with the fresh take — and MSA read back 70 %
+    against 80 % fresh — until 2026-10-16.) The three Habibi checkpoints' Vocos weights are
+    byte-identical (83 tensors, 54.3 MB), so the Vocos cache's key `(T, device)`, which leaves
+    out the model, is harmless for them. — *code + measured, 2026-10-15/16*
 - **Finding 5 — a single-language checkpoint in a many-language family**: LFM2.5-Audio JP ASR
   refuses English, which its family lists; GigaAM (Russian) transcribes English in Cyrillic.
 - **Finding 6 — two loads went to the CPU beside little other use**: Kitten TTS 2 (3.1 GB, other
