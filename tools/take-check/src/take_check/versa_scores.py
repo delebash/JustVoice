@@ -63,6 +63,7 @@ def run_versa(
     use_gpu: bool,
     env: dict[str, str],
     quality_seeds: set[str] | None = None,
+    whisper_model: str | None = None,
 ) -> tuple[dict[str, dict], list[str]]:
     """Score every take with VERSA. Returns ({take id: scores}, [problems]).
 
@@ -86,6 +87,8 @@ def run_versa(
     versa_env = {**env, "PYTHONUTF8": "1"}
     for metric in metrics:
         name = metric["name"] if metric["name"] != "pseudo_mos" else "utmosv2"
+        if name == "whisper_wer" and whisper_model:
+            metric = {**metric, "model_tag": whisper_model}
         chosen = keys
         if name == "utmosv2" and quality_seeds:
             chosen = {k: t for k, t in keys.items() if str(t.seed) in quality_seeds}

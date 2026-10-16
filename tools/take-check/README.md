@@ -112,7 +112,9 @@ VERSA runs once per metric, so each model has the card to itself: all four toget
 8 GB card and spilled into system memory, 11 s a take (2026-10-16). Then about 3 s a take for
 Whisper large-v3, 4 s for UTMOSv2, under 1 s for the rest. `--quality-seeds 7` scores UTMOSv2 on
 seed 7's takes only — a model's average quality, which is all a quality predictor tells reliably
-(RESEARCH §10.11); its column is empty on the other takes.
+(RESEARCH §10.11); its column is empty on the other takes. `--whisper-model turbo` reads back with
+Whisper large-v3-turbo — large-v3's encoder with a 4-layer decoder: on 12 takes 35 s against 56 s,
+the same words heard; large-v3 in 32-bit fills most of an 8 GB card on its own.
 
 ## Output
 

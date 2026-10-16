@@ -50,7 +50,7 @@ def score(args: argparse.Namespace) -> int:
 
     print(f"take-check: {len(takes)} takes; VERSA (read-back, speaker, UTMOSv2, emo_vad) ...", flush=True)
     quality_seeds = {s.strip() for s in args.quality_seeds.split(",") if s.strip()} if args.quality_seeds else None
-    versa, problems = run_versa(takes, out / "versa", cache, args.device == "cuda", env, quality_seeds)
+    versa, problems = run_versa(takes, out / "versa", cache, args.device == "cuda", env, quality_seeds, args.whisper_model or None)
 
     print("take-check: emotion2vec+ large ...", flush=True)
     from take_check.emotion import score_emotion
@@ -123,6 +123,12 @@ def main() -> None:
     score_parser.add_argument("--manifest", required=True, help="path to manifest.json")
     score_parser.add_argument("--out", required=True, help="folder for scores.csv and summary.json")
     score_parser.add_argument("--device", choices=("cpu", "cuda"), default="cpu")
+    score_parser.add_argument(
+        "--whisper-model",
+        default="",
+        help="the read-back's Whisper model in place of the config's large-v3, e.g. turbo — "
+        "large-v3's encoder with a 4-layer decoder, about twice as fast (default: large-v3)",
+    )
     score_parser.add_argument(
         "--quality-seeds",
         default="",
